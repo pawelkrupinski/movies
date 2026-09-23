@@ -8359,7 +8359,7 @@
     "_id" : "f6d3e7dd54249523",
     "title" : "Michael",
     "posterUrl" : "https://movies.helios.pl/images/Michaelnowyplakat.jpg",
-    "fallbackPosterUrls" : [ "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7785S2R.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/MICHAEL/plak1at_8212836.8.jpg_x_standa.jpg", "https://www.novekino.pl/multimedia/michael_2026/plakat.jpg", "https://img.helios.pl/pliki/film/michael/michael-plakat-202.jpg", "https://biletyna.pl/file/get/id/346221", "https://image.tmdb.org/t/p/w500/5HgVwIzug5iCoprtj4ZSvcHjjI1.jpg", "https://m.media-amazon.com/images/M/MV5BNzllNmRlN2EtMDQyOC00ODJjLTg4OWQtZDNmNGU3YzlkNjc1XkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7785S2R.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/MICHAEL/plak1at_8212836.8.jpg_x_standa.jpg", "https://www.novekino.pl/multimedia/michael_2026/plakat.jpg", "https://img.helios.pl/pliki/film/michael/michael-plakat-202.jpg", "https://biletyna.pl/file/get/id/346221", "https://fwcdn.pl/ppo/81/80/10008180/8236331.2.jpg", "https://image.tmdb.org/t/p/w500/5HgVwIzug5iCoprtj4ZSvcHjjI1.jpg", "https://m.media-amazon.com/images/M/MV5BNzllNmRlN2EtMDQyOC00ODJjLTg4OWQtZDNmNGU3YzlkNjc1XkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 128,
     "releaseYear" : 2026,
     "genres" : [ "Muzyczny", "Dramat" ],
@@ -19546,22 +19546,6 @@
     "weightedRating" : 7.55,
     "synopsisByCity" : { },
     "ageRating" : "18"
-  }, {
-    "_id" : "fe2257b40ef8d933",
-    "title" : "Bolek i lolek na wakacjach: pierwszy dzień wakacji",
-    "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Bolek+i+lolek+na+wakacjach%3A+pierwszy+dzie%C5%84+wakacji/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Bolek+i+lolek+na+wakacjach%3A+pierwszy+dzie%C5%84+wakacji",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Bolek+i+lolek+na+wakacjach%3A+pierwszy+dzie%C5%84+wakacji"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : { }
   }, {
     "_id" : "fe22aa92dbfe541c",
     "title" : "Obcy",
@@ -39932,45 +39916,6 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "f2080da189ce2077|konin|Kino nad Wartą",
-    "filmId" : "f2080da189ce2077",
-    "city" : "konin",
-    "cinema" : "Kino nad Wartą",
-    "filmUrl" : "https://www.bilety24.pl/kino/1626-poslani-157116?id=935745",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-20T17:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1626-poslani-157116?id=935745",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-20T17:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1626-poslani-157116?id=935745",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-22T16:30:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1626-poslani-157116?id=941486",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-22T16:30:00",
-      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1626-poslani-157116?id=941486",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-24T16:30:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1626-poslani-157116?id=941489",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-24T16:30:00",
-      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1626-poslani-157116?id=941489",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-25T16:30:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1626-poslani-157116?id=941490",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-25T16:30:00",
-      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1626-poslani-157116?id=941490",
-      "format" : [ ]
-    } ]
-  }, {
     "_id" : "f2080da189ce2077|krakow|Kino Kijów",
     "filmId" : "f2080da189ce2077",
     "city" : "krakow",
@@ -40213,21 +40158,6 @@
       "dateTime" : "2026-06-09T18:00:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/670556",
       "format" : [ "2D", "ORG" ]
-    } ]
-  }, {
-    "_id" : "f21a091d3619480b|konin|Kino nad Wartą",
-    "filmId" : "f21a091d3619480b",
-    "city" : "konin",
-    "cinema" : "Kino nad Wartą",
-    "filmUrl" : "https://www.bilety24.pl/kino/1626-czlowiek-z-marmuru-157123?id=935748",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-21T16:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1626-czlowiek-z-marmuru-157123?id=935748",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-21T16:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1626-czlowiek-z-marmuru-157123?id=935748",
-      "format" : [ ]
     } ]
   }, {
     "_id" : "f21a091d3619480b|koszalin|Kino Goplana",
@@ -104509,6 +104439,16 @@
       "format" : [ "2D", "NAP" ]
     } ]
   }, {
+    "_id" : "f6d3e7dd54249523|konin|Kino nad Wartą",
+    "filmId" : "f6d3e7dd54249523",
+    "city" : "konin",
+    "cinema" : "Kino nad Wartą",
+    "filmUrl" : "https://www.filmweb.pl/film/10008180",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-11T19:00:00",
+      "format" : [ "NAP" ]
+    } ]
+  }, {
     "_id" : "f6d3e7dd54249523|koszalin|Helios Koszalin",
     "filmId" : "f6d3e7dd54249523",
     "city" : "koszalin",
@@ -154612,61 +154552,6 @@
       "format" : [ "2D", "NAP" ]
     } ]
   }, {
-    "_id" : "fa84ad79126cb516|konin|Kino nad Wartą",
-    "filmId" : "fa84ad79126cb516",
-    "city" : "konin",
-    "cinema" : "Kino nad Wartą",
-    "filmUrl" : "https://www.bilety24.pl/kino/1626-drugie-zycie-157122?id=935744",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-20T19:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1626-drugie-zycie-157122?id=935744",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-20T19:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1626-drugie-zycie-157122?id=935744",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-21T19:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1626-drugie-zycie-157122?id=935747",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-21T19:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1626-drugie-zycie-157122?id=935747",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-22T20:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1626-drugie-zycie-157122?id=935751",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-22T20:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1626-drugie-zycie-157122?id=935751",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-23T20:45:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1626-drugie-zycie-157122?id=935753",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-23T20:45:00",
-      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1626-drugie-zycie-157122?id=935753",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-24T19:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1626-drugie-zycie-157122?id=935754",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-24T19:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1626-drugie-zycie-157122?id=935754",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-25T20:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1626-drugie-zycie-157122?id=935757",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-25T20:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1626-drugie-zycie-157122?id=935757",
-      "format" : [ ]
-    } ]
-  }, {
     "_id" : "fa84ad79126cb516|koszalin|Kino Kryterium",
     "filmId" : "fa84ad79126cb516",
     "city" : "koszalin",
@@ -158408,6 +158293,16 @@
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-11T15:00:00",
+      "format" : [ "DUB" ]
+    } ]
+  }, {
+    "_id" : "fa8fd9c2e0cde60f|konin|Kino nad Wartą",
+    "filmId" : "fa8fd9c2e0cde60f",
+    "city" : "konin",
+    "cinema" : "Kino nad Wartą",
+    "filmUrl" : "https://www.filmweb.pl/film/10086986",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-11T17:00:00",
       "format" : [ "DUB" ]
     } ]
   }, {
@@ -171671,61 +171566,6 @@
       "dateTime" : "2026-06-11T13:00:00",
       "bookingUrl" : "https://ckis-konin.bilety24.pl/b24-do-miejsc-numerowanych-i-nienumerowanych/?id=934808",
       "format" : [ "2D", "DUB" ]
-    } ]
-  }, {
-    "_id" : "fba5ca9e1f6601c6|konin|Kino nad Wartą",
-    "filmId" : "fba5ca9e1f6601c6",
-    "city" : "konin",
-    "cinema" : "Kino nad Wartą",
-    "filmUrl" : "https://www.bilety24.pl/kino/1626-drzewo-magii-157110?id=935746",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-20T15:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1626-drzewo-magii-157110?id=935746",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-20T15:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1626-drzewo-magii-157110?id=935746",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-21T14:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1626-drzewo-magii-157110?id=935749",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-21T14:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1626-drzewo-magii-157110?id=935749",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-22T18:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1626-drzewo-magii-157110?id=935750",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-22T18:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1626-drzewo-magii-157110?id=935750",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-23T17:40:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1626-drzewo-magii-157110?id=935752",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-23T17:40:00",
-      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1626-drzewo-magii-157110?id=935752",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-24T18:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1626-drzewo-magii-157110?id=935755",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-24T18:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1626-drzewo-magii-157110?id=935755",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-25T18:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1626-drzewo-magii-157110?id=935756",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-25T18:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1626-drzewo-magii-157110?id=935756",
-      "format" : [ ]
     } ]
   }, {
     "_id" : "fba5ca9e1f6601c6|koszalin|Bajka",
@@ -196394,21 +196234,6 @@
       "dateTime" : "2026-06-21T18:00:00",
       "bookingUrl" : "https://bilet.gcf.org.pl/MSI/?event_id=61190&typetran=0&ReturnLink=http://gcf.org.pl/kino-studyjne/repertuar/",
       "room" : "Sala Goplana",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "fe2257b40ef8d933|konin|Kino nad Wartą",
-    "filmId" : "fe2257b40ef8d933",
-    "city" : "konin",
-    "cinema" : "Kino nad Wartą",
-    "filmUrl" : "https://www.bilety24.pl/kino/1626-bolek-i-lolek-na-wakacjach-pierwszy-dzien-wakacji-157235?id=935763",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-20T14:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1626-bolek-i-lolek-na-wakacjach-pierwszy-dzien-wakacji-157235?id=935763",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-20T14:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1626-bolek-i-lolek-na-wakacjach-pierwszy-dzien-wakacji-157235?id=935763",
       "format" : [ ]
     } ]
   }, {

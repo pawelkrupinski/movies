@@ -502,7 +502,7 @@ class CinemaScraperCatalog(
     helios(HeliosNuxt.Konin),
     bilety24Subdomain(KinoOskard),
     filmweb(2405, KinoZacheta),   // Kleczew
-    bilety24("https://www.bilety24.pl/kino/organizator/koninskie-centrum-kultury-1626", KinoNadWarta),   // Koło
+    filmweb(1526, KinoNadWarta),   // Koło
     bilety24("https://www.bilety24.pl/kino/organizator/zajezdnia-kultury-w-pleszewie-1255", KinoHel),   // Pleszew
     bilety24("https://www.bilety24.pl/kino/organizator/miejski-dom-kultury-w-slupcy-1423", KinoSokolnia),   // Słupca
     biletyna(KinoTur),   // Turek

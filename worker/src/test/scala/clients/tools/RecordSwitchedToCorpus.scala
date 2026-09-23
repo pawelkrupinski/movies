@@ -41,7 +41,6 @@ object RecordSwitchedToCorpus {
     rep("KinoMDK")(new Bilety24OrganizerClient(record, "https://www.bilety24.pl/kino/organizator/miejski-dom-kultury-w-radomsku-1546", KinoMDK, titles = titleNormalizer).fetch().size)
     rep("KinoMOKCentrum")(new Bilety24OrganizerClient(record, "https://www.bilety24.pl/kino/organizator/miejski-osrodek-kultury-centrum-im-adama-mickiewicza-w-zawierciu-1305", KinoMOKCentrum, titles = titleNormalizer).fetch().size)
     rep("KinoSokol")(new Bilety24OrganizerClient(record, "https://www.bilety24.pl/kino/organizator/malopolskie-centrum-kultury-sokol-w-nowym-saczu-1225", KinoSokol, titles = titleNormalizer).fetch().size)
-    rep("KinoNadWarta")(new Bilety24OrganizerClient(record, "https://www.bilety24.pl/kino/organizator/koninskie-centrum-kultury-1626", KinoNadWarta, titles = titleNormalizer).fetch().size)
     rep("Kino60Krzesel")(new Bilety24OrganizerClient(record, "https://www.bilety24.pl/kino/organizator/miejski-osrodek-sztuki-kino-60-krzesel-dkf-megaron-776", Kino60Krzesel, titles = titleNormalizer).fetch().size)
     rep("KinoGornik")(new Bilety24OrganizerClient(record, "https://www.bilety24.pl/kino/organizator/szydlowieckie-centrum-kultury-zamek-1320", KinoGornik, titles = titleNormalizer).fetch().size)
     rep("KinoJanosik")(new Bilety24OrganizerClient(record, "https://www.bilety24.pl/kino/organizator/kino-janosik-1500", KinoJanosik, titles = titleNormalizer).fetch().size)

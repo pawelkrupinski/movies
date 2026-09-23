@@ -1,7 +1,7 @@
 package clients
 
 import clients.tools.FakeHttpFetch
-import models.{AdaKinoStudyjne, KinoBaszta, KinoEcho, KinoMewaBudzyn, UsRoster, CinemaCityBialaPodlaska, HeliosSiedlce, KinoGiewont, KinoMuranow, KinoOdraOlawa, KinoWCKWalcz, MultikinoLeszno, MultikinoPruszkow, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
+import models.{AdaKinoStudyjne, KinoBaszta, KinoNadWarta, KinoEcho, KinoMewaBudzyn, UsRoster, CinemaCityBialaPodlaska, HeliosSiedlce, KinoGiewont, KinoMuranow, KinoOdraOlawa, KinoWCKWalcz, MultikinoLeszno, MultikinoPruszkow, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -370,6 +370,16 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     val scraper = catalog(biletyna = "kino-kameralne").byCity("elblag").find(_.cinema == KinoBaszta).value
     scraper shouldBe a [FilmwebShowtimesClient]
     scraper.sourceUrl.value should endWith ("-2352")
+  }
+
+  // Kino nad Wartą is in Koło (Filmweb 1526, Słowackiego 5). The 2026-06 move off
+  // Filmweb pointed it at Konińskie Centrum Kultury's bilety24 organiser — a
+  // different venue in Konin whose programme is concerts and plays, which is why
+  // the "Koło" cinema kept reading white with 0 films.
+  it should "scrape Koło's Kino nad Wartą off its own Filmweb id, not Konin's culture centre" in {
+    val scraper = catalog(biletyna = "kino-kameralne").byCity("konin").find(_.cinema == KinoNadWarta).value
+    scraper shouldBe a [FilmwebShowtimesClient]
+    scraper.sourceUrl.value should endWith ("-1526")
   }
 
   // Filmweb's "Etiuda OBK" (3024) is the same screen as bilety24's MCK Ostrowiec
