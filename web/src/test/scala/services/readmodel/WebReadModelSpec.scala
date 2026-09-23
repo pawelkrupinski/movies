@@ -77,6 +77,26 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.screeningsForCity("san-francisco-bay-area").map(_._id) shouldBe Seq("new")
   }
 
+  // A re-cluster moves venues between pages without renaming any: Turek's
+  // cinema was on Konin's page and is on "Turek i okolice" now; Szamotuły's was
+  // on Poznań's. Rows projected before the move still carry the old slug until
+  // their film is projected again — served from the new page straight away,
+  // and never from the major city the venue left.
+  "A venue that moved to another page" should "be served from its new page, and not from the one it left" in {
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(movie("dune|2021"))
+    repository.upsertScreening(CityScreening("tur", "dune|2021", "konin", models.KinoTur.displayName, None, Nil))
+    repository.upsertScreening(CityScreening("halszka", "dune|2021", "poznan", models.KinoHalszka.displayName, None, Nil))
+    repository.upsertScreening(CityScreening("muza", "dune|2021", "poznan", models.KinoMuza.displayName, None, Nil))
+    val rm = new WebReadModel(repository)
+    rm.reload()
+
+    rm.screeningsForCity("turek").map(_._id) shouldBe Seq("tur")
+    rm.screeningsForCity("konin") shouldBe empty
+    rm.screeningsForCity("poznan").map(_._id) shouldBe Seq("muza")
+    rm.screeningsForCity(City.forCinema(models.KinoHalszka).get.slug).map(_._id) shouldBe Seq("halszka")
+  }
+
   "A city SPLIT out of a shared slug" should "take only its own venues from the shared bucket" in {
     // `alaska` was one city and is now nine metros, so — unlike a rename — its
     // rows hold every OTHER metro's venues too. Anchorage must not serve Juneau's

@@ -148,7 +148,7 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
     val place = byType(arr, "City").head
     (place \ "name").as[String] shouldBe "Trójmiasto"
     (place \ "containsPlace").as[JsArray].value.map(p => (p \ "name").as[String]).toSeq shouldBe
-      Seq("Gdańsk", "Gdynia", "Sopot", "Rumia", "Wejherowo", "Pruszcz Gdański", "Chmielno", "Gniewino", "Jastarnia", "Kartuzy")
+      Seq("Gdańsk", "Gdynia", "Sopot")
     (place \ "containsPlace").as[JsArray].value.map(p => (p \ "@type").as[String]).toSet shouldBe Set("City")
   }
 

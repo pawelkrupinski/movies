@@ -1,14 +1,14 @@
 package clients
 
 import clients.tools.FakeHttpFetch
-import models.{AdaKinoStudyjne, KinoZacheta, KinoKoneckieCentrumKultury, KinoBaszta, KinoNadWarta, KinoEcho, KinoMewaBudzyn, UsRoster, CinemaCityBialaPodlaska, HeliosSiedlce, KinoGiewont, KinoMuranow, KinoOdraOlawa, KinoWCKWalcz, MultikinoLeszno, MultikinoPruszkow, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
+import models.{City, Country, AdaKinoStudyjne, KinoZacheta, KinoKoneckieCentrumKultury, KinoBaszta, KinoNadWarta, KinoEcho, KinoMewaBudzyn, UsRoster, HeliosSiedlce, KinoGiewont, KinoMuranow, KinoWCKWalcz, MultikinoPruszkow, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{ChainFlicksFallback, CinemaScraperCatalog}
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.cinemas.common.{CinemaScraper, FlicksClient, FlicksMarket, GatsbyBoxOfficeClient, MultiListingScraper}
-import services.cinemas.pl.{Bilety24OrganizerClient, CinemaCityScraper, FilmwebShowtimesClient, HeliosClient, MultikinoClient}
+import services.cinemas.common.{FlicksClient, FlicksMarket, GatsbyBoxOfficeClient, MultiListingScraper}
+import services.cinemas.pl.{Bilety24OrganizerClient, FilmwebShowtimesClient, HeliosClient, MultikinoClient}
 import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
 import services.cinemas.uk.CineworldClient
 import services.cinemas.us.{AmcClient, RegalClient}
@@ -58,6 +58,9 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       zyteFetch = new FakeHttpFetch(zyte), flicksFetch = flicks, vueFetch = vue,
       odeonFetch = odeon, odeonAuthToken = () => odeonToken, titles = titleNormalizer
     )
+
+  /** The slug of the page a cinema is listed on. */
+  private def pageOf(cinema: Cinema): String = City.forCinema(cinema).value.slug
 
   /** An HttpFetch that fails every GET and POST with a uniquely-identifiable
    *  message, so a test can prove WHICH seam a scraper egressed through by catching
@@ -356,7 +359,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // Środa's programme. One scraper per upstream listing is now held for every
   // source by `services.cinemas.roster.CinemaRosterAuditSpec`.
   it should "scrape Braniewo's Baszta off its own Filmweb id, not Środa Wielkopolska's bilety24 organiser" in {
-    val scraper = catalog(biletyna = "kino-kameralne").byCity("elblag").find(_.cinema == KinoBaszta).value
+    val scraper = catalog(biletyna = "kino-kameralne").byCity(pageOf(KinoBaszta)).find(_.cinema == KinoBaszta).value
     scraper shouldBe a [FilmwebShowtimesClient]
     scraper.sourceUrl.value should endWith ("-2352")
   }
@@ -367,14 +370,14 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // showtime for showtime; Filmweb 1526 is the right venue but lists only a day
   // or two of it (one screening in the next ten days, against bilety24's month).
   it should "scrape Koło's Kino nad Wartą off its own bilety24 organiser, not Konin's or Filmweb's" in {
-    val scraper = catalog(biletyna = "kino-kameralne").byCity("konin").find(_.cinema == KinoNadWarta).value
+    val scraper = catalog(biletyna = "kino-kameralne").byCity(pageOf(KinoNadWarta)).find(_.cinema == KinoNadWarta).value
     scraper shouldBe a [Bilety24OrganizerClient]
     scraper.sourceKey.value shouldBe "bilety24.pl/kino/organizator/1621"
   }
 
   // The one Konin-catchment venue still on Filmweb; its capture is replayed in KoninFilmwebShowtimesSpec.
   it should "scrape Kleczew's Kino Zachęta off Filmweb id 2405" in {
-    val scraper = catalog().byCity("konin").find(_.cinema == KinoZacheta).value
+    val scraper = catalog().byCity(pageOf(KinoZacheta)).find(_.cinema == KinoZacheta).value
     scraper shouldBe a [FilmwebShowtimesClient]
     scraper.sourceUrl.value should endWith ("-2405")
   }
@@ -394,7 +397,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // second cinema — one venue shown twice under two names. It is ONE cinema read
   // off both pages, each showtime tagged with its hall.
   it should "scrape Końskie's culture centre as one cinema off both its halls' pages" in {
-    val konskie = catalog(biletyna = "08-06-2026").byCity("kielce").filter(_.cinema.displayName.startsWith("Koneckie"))
+    val konskie = catalog(biletyna = "08-06-2026").byCity(pageOf(KinoKoneckieCentrumKultury)).filter(_.cinema.displayName.startsWith("Koneckie"))
     konskie.map(_.cinema) shouldBe Seq(KinoKoneckieCentrumKultury)
     val venue = konskie.head.asInstanceOf[MultiListingScraper]
     venue.listings.flatMap(_.sourceUrl) shouldBe Seq(
@@ -419,22 +422,23 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     }
   }
 
-  // The 2026-09 sweep: small towns grouped into regional hubs, and towns near an
-  // existing city folded into it. Each is wired through its OWN source — the
-  // chain's API, the venue's bilety24 organiser page, or Filmweb when neither.
-  it should "wire regional hubs and nearby-town venues under their region, each via its own source" in {
+  // Which Polish page lists which venue is data (`models.PolishPages`), not the
+  // group a scraper happens to be wired in here: a major city scrapes only its
+  // own venues, and a venue outside every major city is scraped under the town
+  // or cluster page it is on. Each still comes off its own source.
+  it should "file every Polish scraper under the page its cinema is on" in {
     val c = catalog(biletyna = "kino-kameralne")
-    def scraperFor(slug: String, cinema: Cinema): CinemaScraper = c.byCity(slug).find(_.cinema == cinema).value
+    for ((slug, scrapers) <- c.byCity; s <- scrapers if City.forCinema(s.cinema).exists(_.country == Country.Poland))
+      withClue(s"${s.cinema.displayName}: ") { City.forCinema(s.cinema).value.slug shouldBe slug }
+  }
 
-    scraperFor("siedlce", HeliosSiedlce) shouldBe a [HeliosClient]
-    scraperFor("siedlce", CinemaCityBialaPodlaska) shouldBe a [CinemaCityScraper]
-    scraperFor("leszno", MultikinoLeszno) shouldBe a [MultikinoClient]
-    scraperFor("pila", KinoWCKWalcz) shouldBe a [Bilety24OrganizerClient]
-    scraperFor("zakopane", KinoGiewont) shouldBe a [FilmwebShowtimesClient]
-    // Nearby towns join the existing city's own group rather than replacing it.
-    scraperFor("warszawa", MultikinoPruszkow) shouldBe a [MultikinoClient]
-    scraperFor("wroclaw", KinoOdraOlawa) shouldBe a [Bilety24OrganizerClient]
-    c.byCity("warszawa").map(_.cinema) should contain (KinoMuranow)
+  it should "scrape a suburb's venue under its own page, not the major city it used to be folded into" in {
+    val c = catalog(biletyna = "kino-kameralne")
+    c.byCity("warszawa").map(_.cinema) should (contain (KinoMuranow) and not contain (MultikinoPruszkow))
+    c.byCity("pruszkow").find(_.cinema == MultikinoPruszkow).value shouldBe a [MultikinoClient]
+    c.byCity(pageOf(HeliosSiedlce)).find(_.cinema == HeliosSiedlce).value shouldBe a [HeliosClient]
+    c.byCity(pageOf(KinoWCKWalcz)).find(_.cinema == KinoWCKWalcz).value shouldBe a [Bilety24OrganizerClient]
+    c.byCity(pageOf(KinoGiewont)).find(_.cinema == KinoGiewont).value shouldBe a [FilmwebShowtimesClient]
   }
 
   // `MonitoringHttpFetch` suppresses these hosts so cinema scrapes don't

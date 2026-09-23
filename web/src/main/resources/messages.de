@@ -71,6 +71,7 @@ empty.films=Keine Filme.
 browse.htmlTitle={0} – Kinoprogramm {1}
 browse.ogTitle={0} — Kinoprogramm {1}
 browse.ogDescription=Filme aus {0} Kinos: {1}. Mit aktuellen Spielzeiten, Bewertungen und Beschreibungen.
+browse.ogDescriptionNear=Filme aus den Kinos {0}: {1}. Mit aktuellen Spielzeiten, Bewertungen und Beschreibungen.
 
 # ── Landing (city picker) ───────────────────────────────────────────────────
 landing.title={0} — Kinoprogramm in deiner Stadt
@@ -89,6 +90,7 @@ landing.level.uk.region=Landesteil
 landing.level.uk.subregion=Grafschaft
 landing.level.us.region=Bundesstaat
 landing.level.de.region=Bundesland
+landing.level.pl.region=Woiwodschaft
 
 # The notice a retired deployment serves in place of `/` and `/{city}/`.
 moved.heading=Wir sind umgezogen

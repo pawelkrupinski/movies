@@ -2065,10 +2065,12 @@ class CinemaScraperCatalog(
     ++ usBaseByCity       // USA: 461 metros + 7 small states (data-driven)
     ++ spanishBaseByCity  // Spain: the full 52-province roster (data-driven)
 
-  // Venues in towns within about an hour's drive of a city's page (2026-09 sweeps
-  // of Filmweb, bilety24, biletyna and the three chains' own branch lists), plus
-  // the few in-city venues found by the same sweeps. Kept apart from
-  // `filmwebExtra` so each city's hand-written group stays as it was.
+  // Venues the 2026-09 sweeps added (Filmweb, bilety24, biletyna, the chains' own
+  // branch lists), grouped by the city they were first found near. The key is
+  // only where each is WIRED: the page a venue is listed on — its own town, a
+  // cluster of small towns, or a major city — is `models.PolishPages`, and
+  // `byCity` below files every Polish scraper under that page, whatever key it
+  // sits under here.
   private val nearbyTowns: Map[String, Seq[CinemaScraper]] = Map(
     "szczecin" -> Seq(
       filmweb(307, KinoMOKPolice),   // Police
@@ -2298,10 +2300,20 @@ class CinemaScraperCatalog(
   )
 
   /** Per-city scrapers plus that city's catchment venues (Filmweb sweep + nearby towns). */
-  val byCity: Map[String, Seq[CinemaScraper]] =
-    baseByCity.map { case (slug, scrapers) =>
+  val byCity: Map[String, Seq[CinemaScraper]] = {
+    val wired = baseByCity.map { case (slug, scrapers) =>
       slug -> (scrapers ++ filmwebExtra.getOrElse(slug, Nil) ++ nearbyTowns.getOrElse(slug, Nil))
-    }
+    } ++ nearbyTowns.filter { case (slug, _) => !baseByCity.contains(slug) }
+    // A Polish scraper is filed under the PAGE its cinema is on, not the group it
+    // is wired in above: which page lists which venue is data (`models.PolishPages`,
+    // re-clustered by `data/pl/scripts/build_pages.py`), and a re-cluster must not
+    // need a single scraper moved here to take effect.
+    def polishPage(s: CinemaScraper): Option[City] = City.forCinema(s.cinema).filter(_.country == Country.Poland)
+    val polish = wired.values.flatten.toSeq.filter(polishPage(_).isDefined)
+    val others = wired.map { case (slug, scrapers) => slug -> scrapers.filterNot(polishPage(_).isDefined) }
+      .filter { case (_, scrapers) => scrapers.nonEmpty }
+    others ++ polish.groupBy(polishPage(_).get.slug)
+  }
 
   /** Every raw scraper across every city, in city order. */
   val all: Seq[CinemaScraper] =

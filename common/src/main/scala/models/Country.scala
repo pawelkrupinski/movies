@@ -190,6 +190,8 @@ object Country {
     brandName      = "Kinowo",
   ) {
     val cities: Seq[City] = City.polishCities
+    /** One group per voivodeship — see `City.polishVoivodeships`. */
+    override lazy val cityGroups: Seq[CityGroup] = City.polishVoivodeships
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("NAP", "DUB"))
     val voiceoverToken: Option[String] = Some("LEK")
   }

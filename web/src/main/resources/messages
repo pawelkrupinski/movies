@@ -80,6 +80,7 @@ browse.htmlTitle={0} – Repertuar kinowy {1}
 browse.ogTitle={0} — Repertuar kinowy {1}
 # {0} = city genitive-plural label ("poznańskich"), {1} = heading.
 browse.ogDescription=Filmy z {0} kin: {1}. Z aktualnymi seansami, ocenami i opisami.
+browse.ogDescriptionNear=Filmy z kin {0}: {1}. Z aktualnymi seansami, ocenami i opisami.
 
 # ── Landing (city picker) ───────────────────────────────────────────────────
 landing.title={0} — repertuar kin w Twoim mieście
@@ -99,7 +100,7 @@ landing.noCity=Brak miasta o tej nazwie.
 landing.locating=Ustalanie lokalizacji…
 landing.noNearby=Brak obsługiwanego miasta w pobliżu — wybierz z listy.
 # The picker's own group-level terms, one per country that nests
-# (`Country.cityGroups`) — Poland and Spain are flat and never need one. Feeds
+# (`Country.cityGroups`) — Spain is flat and never needs one. Feeds
 # the search box's placeholder (landing.searchLevels1/2) with the CORRECT
 # administrative word for that country's own top group ([[.region]]) and,
 # where it nests a second level (only the UK), the one below it
@@ -109,6 +110,7 @@ landing.level.uk.region=kraj
 landing.level.uk.subregion=hrabstwo
 landing.level.us.region=stan
 landing.level.de.region=kraj związkowy
+landing.level.pl.region=województwo
 
 # The notice a retired deployment serves in place of `/` and `/{city}/`.
 moved.heading=Zmieniliśmy adres

@@ -251,16 +251,12 @@ case object Trojmiasto extends City(
   zoneId = ZoneId.of("Europe/Warsaw"),
 ) {
   val cinemas: Seq[Cinema] = Cinema.trojmiasto
-  /** The towns the conurbation is, biggest first — the three of the Tri-City
-   *  proper, then the larger satellite towns whose venues this page also lists —
-   *  followed by the rest of the venue table's towns (Kartuzy, Jastarnia…).
-   *  Hand-ordered because the heading and description name only the first few,
-   *  and the table ranks equal venue counts alphabetically, which would name
-   *  Chmielno before Rumia. Needed at all because "Trójmiasto" is a name nobody
-   *  searches a cinema by: only "Gdańsk" appeared on the page, inside
-   *  `Multikino Gdańsk`. */
-  override protected val extraPlaces: Seq[String] =
-    (homeTowns ++ Seq("Rumia", "Wejherowo", "Pruszcz Gdański") ++ VenueTowns.of(cinemas)).distinct
+  /** The three towns the conurbation is, biggest first, then any other town the
+   *  venue table files one of its venues under. Its satellite towns (Rumia,
+   *  Wejherowo, Pruszcz Gdański) are pages of their own now. Needed at all
+   *  because "Trójmiasto" is a name nobody searches a cinema by: only "Gdańsk"
+   *  appeared on the page, inside `Multikino Gdańsk`. */
+  override protected val extraPlaces: Seq[String] = (homeTowns ++ VenueTowns.of(cinemas)).distinct
   /** No venue sits in "Trójmiasto": the unannotated ones are in its three towns. */
   override def homeTowns: Seq[String] = Seq("Gdańsk", "Gdynia", "Sopot")
 }
@@ -587,244 +583,26 @@ case object Konin extends City(
   val cinemas: Seq[Cinema] = Cinema.konin
 }
 
-case object PiotrkowTrybunalski extends City(
-  slug   = "piotrkow-trybunalski",
-  labels = CityLabels(nominative = "Piotrków Trybunalski", genitivePlural = "piotrkowskich", locative = "Piotrkowie Trybunalskim"),
-  lat    = 51.4055,
-  lon    = 19.7032,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.piotrkowTrybunalski
-}
-
-case object Siedlce extends City(
-  slug   = "siedlce",
-  labels = CityLabels(nominative = "Siedlce", genitivePlural = "siedleckich", locative = "Siedlcach"),
-  lat    = 52.1677,
-  lon    = 22.2901,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.siedlce
-}
-
-case object Pila extends City(
-  slug   = "pila",
-  labels = CityLabels(nominative = "Piła", genitivePlural = "pilskich", locative = "Pile"),
-  lat    = 53.1514,
-  lon    = 16.7378,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.pila
-}
-
-case object OstrowiecSwietokrzyski extends City(
-  slug   = "ostrowiec-swietokrzyski",
-  labels = CityLabels(nominative = "Ostrowiec Świętokrzyski", genitivePlural = "ostrowieckich", locative = "Ostrowcu Świętokrzyskim"),
-  lat    = 50.9294,
-  lon    = 21.3852,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.ostrowiecSwietokrzyski
-}
-
-case object Gniezno extends City(
-  slug   = "gniezno",
-  labels = CityLabels(nominative = "Gniezno", genitivePlural = "gnieźnieńskich", locative = "Gnieźnie"),
-  lat    = 52.5348,
-  lon    = 17.5826,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.gniezno
-}
-
-case object Suwalki extends City(
-  slug   = "suwalki",
-  labels = CityLabels(nominative = "Suwałki", genitivePlural = "suwalskich", locative = "Suwałkach"),
-  lat    = 54.1118,
-  lon    = 22.9309,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.suwalki
-}
-
-case object StalowaWola extends City(
-  slug   = "stalowa-wola",
-  labels = CityLabels(nominative = "Stalowa Wola", genitivePlural = "stalowowolskich", locative = "Stalowej Woli"),
-  lat    = 50.5829,
-  lon    = 22.0533,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.stalowaWola
-}
-
-case object Zamosc extends City(
-  slug   = "zamosc",
-  labels = CityLabels(nominative = "Zamość", genitivePlural = "zamojskich", locative = "Zamościu"),
-  lat    = 50.7231,
-  lon    = 23.2520,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.zamosc
-}
-
-case object Leszno extends City(
-  slug   = "leszno",
-  labels = CityLabels(nominative = "Leszno", genitivePlural = "leszczyńskich", locative = "Lesznie"),
-  lat    = 51.8403,
-  lon    = 16.5749,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.leszno
-}
-
-case object Lomza extends City(
-  slug   = "lomza",
-  labels = CityLabels(nominative = "Łomża", genitivePlural = "łomżyńskich", locative = "Łomży"),
-  lat    = 53.1781,
-  lon    = 22.0593,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.lomza
-}
-
-case object Pulawy extends City(
-  slug   = "pulawy",
-  labels = CityLabels(nominative = "Puławy", genitivePlural = "puławskich", locative = "Puławach"),
-  lat    = 51.4166,
-  lon    = 21.9694,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.pulawy
-}
-
-case object Skierniewice extends City(
-  slug   = "skierniewice",
-  labels = CityLabels(nominative = "Skierniewice", genitivePlural = "skierniewickich", locative = "Skierniewicach"),
-  lat    = 51.9549,
-  lon    = 20.1584,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.skierniewice
-}
-
-case object StarogardGdanski extends City(
-  slug   = "starogard-gdanski",
-  labels = CityLabels(nominative = "Starogard Gdański", genitivePlural = "starogardzkich", locative = "Starogardzie Gdańskim"),
-  lat    = 53.9640,
-  lon    = 18.5264,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.starogardGdanski
-}
-
-case object Ciechanow extends City(
-  slug   = "ciechanow",
-  labels = CityLabels(nominative = "Ciechanów", genitivePlural = "ciechanowskich", locative = "Ciechanowie"),
-  lat    = 52.8814,
-  lon    = 20.6200,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.ciechanow
-}
-
-case object Wielun extends City(
-  slug   = "wielun",
-  labels = CityLabels(nominative = "Wieluń", genitivePlural = "wieluńskich", locative = "Wieluniu"),
-  lat    = 51.2210,
-  lon    = 18.5696,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.wielun
-}
-
-case object Chojnice extends City(
-  slug   = "chojnice",
-  labels = CityLabels(nominative = "Chojnice", genitivePlural = "chojnickich", locative = "Chojnicach"),
-  lat    = 53.6955,
-  lon    = 17.5570,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.chojnice
-}
-
-case object Zgorzelec extends City(
-  slug   = "zgorzelec",
-  labels = CityLabels(nominative = "Zgorzelec", genitivePlural = "zgorzeleckich", locative = "Zgorzelcu"),
-  lat    = 51.1494,
-  lon    = 15.0084,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.zgorzelec
-}
-
-case object Ilawa extends City(
-  slug   = "ilawa",
-  labels = CityLabels(nominative = "Iława", genitivePlural = "iławskich", locative = "Iławie"),
-  lat    = 53.5960,
-  lon    = 19.5685,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.ilawa
-}
-
-case object Ketrzyn extends City(
-  slug   = "ketrzyn",
-  labels = CityLabels(nominative = "Kętrzyn", genitivePlural = "kętrzyńskich", locative = "Kętrzynie"),
-  lat    = 54.0768,
-  lon    = 21.3753,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.ketrzyn
-}
-
-case object Zakopane extends City(
-  slug   = "zakopane",
-  labels = CityLabels(nominative = "Zakopane", genitivePlural = "zakopiańskich", locative = "Zakopanem"),
-  lat    = 49.2990,
-  lon    = 19.9489,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.zakopane
-}
-
-case object Wyszkow extends City(
-  slug   = "wyszkow",
-  labels = CityLabels(nominative = "Wyszków", genitivePlural = "wyszkowskich", locative = "Wyszkowie"),
-  lat    = 52.5928,
-  lon    = 21.4584,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.wyszkow
-}
-
-case object Zlocieniec extends City(
-  slug   = "zlocieniec",
-  labels = CityLabels(nominative = "Złocieniec", genitivePlural = "złocienieckich", locative = "Złocieńcu"),
-  lat    = 53.5329,
-  lon    = 16.0113,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.zlocieniec
-}
-
-case object Slubice extends City(
-  slug   = "slubice",
-  labels = CityLabels(nominative = "Słubice", genitivePlural = "słubickich", locative = "Słubicach"),
-  lat    = 52.3509,
-  lon    = 14.5607,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.slubice
-}
-
-case object Wlodawa extends City(
-  slug   = "wlodawa",
-  labels = CityLabels(nominative = "Włodawa", genitivePlural = "włodawskich", locative = "Włodawie"),
-  lat    = 51.5500,
-  lon    = 23.5500,
-  zoneId = ZoneId.of("Europe/Warsaw"),
-) {
-  val cinemas: Seq[Cinema] = Cinema.wlodawa
+/** A Polish page that is not one of the 41 major cities: a town with a few
+ *  venues of its own, or a cluster of small towns a short drive apart, named
+ *  after the biggest ("Turek i okolice"). Generated — see [[PolishPages]] and
+ *  `data/pl/scripts/build_pages.py` for which venues each one holds.
+ *
+ *  Its labels carry no genitive-plural adjective: the major cities' hand-declined
+ *  "poznańskich" has no dependable equivalent for a village or a cluster, so the
+ *  places that would use one speak of "kin w Turku i okolicach" instead (see
+ *  [[genitivePluralLabel]] and `FilterDescription`). */
+final class PolishPage private[models] (row: PolishPages.Row)
+  extends City(row.slug, CityLabels(row.nominative, genitivePlural = "", row.locative), row.lat, row.lon,
+               ZoneId.of("Europe/Warsaw")) {
+  val cinemas: Seq[Cinema] = row.cinemas
+  /** The town the page is named after first, then the rest of its towns — the
+   *  venue table alone would rank a cluster's one-venue towns alphabetically and
+   *  could put Koło ahead of the Turek the page is named for. */
+  override protected def extraPlaces: Seq[String] = (row.name +: VenueTowns.of(cinemas)).distinct
+  /** "w Turku i okolicach" for a cluster, plain "w Słubicach" for one town. */
+  override def locativePhrase: String = super.locativePhrase + (if (row.multiTown) " i okolicach" else "")
+  def voivodeship: String = row.voivodeship
 }
 
 // ── United Kingdom (English — non-declining, so the three label slots all carry
@@ -1317,15 +1095,31 @@ object City {
   /** Poland's cities — the authoritative list for [[Country.Poland]]. [[all]] is
    *  the union across every [[Country]], so a new country contributes its own
    *  list (e.g. `ukCities`) here and [[all]] picks it up automatically. */
-  private[models] val polishCities: Seq[City] = Seq(
+  private[models] val majorPolishCities: Seq[City] = Seq(
     Poznan, Wroclaw, Warszawa, Krakow, Lodz, Katowice, Szczecin, Bialystok, Trojmiasto, Bydgoszcz, Lublin,
     Czestochowa, Radom, Sosnowiec, Torun, Kielce, Rzeszow, Gliwice, Zabrze,
     Olsztyn, BielskoBiala, Opole, Rybnik, GorzowWielkopolski, Elblag, Koszalin, Kalisz, ZielonaGora, Tychy,
     Walbrzych, Tarnow, Wloclawek, Legnica, Plock, Bytom, DabrowaGornicza, NowySacz, Slupsk, JeleniaGora,
-    Przemysl, Konin, PiotrkowTrybunalski, Siedlce, Pila, OstrowiecSwietokrzyski, Gniezno, Suwalki, StalowaWola, Zamosc,
-    Leszno, Lomza, Pulawy, Skierniewice, StarogardGdanski, Ciechanow, Wielun, Chojnice, Zgorzelec,
-    Ilawa, Ketrzyn, Zakopane, Wyszkow, Zlocieniec, Slubice, Wlodawa,
+    Przemysl, Konin,
   )
+  /** Every Polish page that is not a major city — see [[PolishPage]]. */
+  private[models] lazy val polishPages: Seq[PolishPage] = PolishPages.rows.map(new PolishPage(_))
+  private[models] lazy val polishCities: Seq[City] = majorPolishCities ++ polishPages
+
+  /** Poland's picker: one group per voivodeship, holding its major cities and its
+   *  town and cluster pages side by side, alphabetically — a flat list of 180
+   *  pages is not one anybody reads. */
+  private[models] lazy val polishVoivodeships: Seq[CityGroup] = {
+    val pl = Locale.forLanguageTag("pl-PL")
+    val voivodeshipOf: City => String = {
+      case page: PolishPage => page.voivodeship
+      case major            => PolishPages.majorVoivodeship(major.slug)
+    }
+    val built = polishCities.groupBy(voivodeshipOf).toSeq.map { case (name, cities) =>
+      CityGroup(name, Slugify.stable(name), CityListing.sorted(cities, pl))
+    }
+    CityListing.sortedLabels(built, pl)(_.displayLabel)
+  }
 
   /** The United Kingdom's full modelled roster — every Flicks region we know how
    *  to scrape (79). Retained in full even while only a subset is live so that
@@ -1592,7 +1386,7 @@ object City {
    *  - `alaska` and `hawaii` → their metros (2026-09-03). Neither was a place
    *    anyone browses as one list — see [[splitStates]].
    */
-  lazy val slugSuccession: Map[String, Seq[String]] = Map(
+  lazy val slugSuccession: Map[String, Seq[String]] = PolishPages.retired.view.mapValues(Seq(_)).toMap ++ Map(
     "san-francisco" -> Seq("san-francisco-bay-area"),
     // The four metros that stopped existing when four bad venue coordinates were
     // corrected (`data/us/README.md`). Two of them WERE the bad coordinate:

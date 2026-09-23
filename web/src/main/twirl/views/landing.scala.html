@@ -295,7 +295,7 @@
     // The search box's copy names what a query can ACTUALLY reach from the
     // level currently open — "state" in the US, "nation"/"county" in the UK —
     // never a bare "region" that would misname either. One entry per country
-    // that nests (`Country.cityGroups`); Poland and Spain are flat and never
+    // that nests (`Country.cityGroups`); Spain is flat and never
     // reach `pickerSearchLevels` below with a match. See `landing.level.*` in
     // the messages files for the per-language terms. Looked up live via `t()`
     // (like `countryName` above), not pre-rendered in one language.
@@ -304,6 +304,7 @@
         uk: { region: t('landing.level.uk.region'), subregion: t('landing.level.uk.subregion') },
         us: { region: t('landing.level.us.region') },
         de: { region: t('landing.level.de.region') },
+        pl: { region: t('landing.level.pl.region') },
       };
     }
 

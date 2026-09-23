@@ -111,7 +111,10 @@ object FilterDescription {
     // byte for byte.
     val places = if (towns.isEmpty) "" else towns.mkString(" (", ", ", ")")
     if (city.country.language.getLanguage == "pl")
-      s"Repertuar wszystkich $genitiveLabel kin$places – godziny seansów na dziś, " +
+      // A generated town or cluster page has no hand-declined adjective
+      // ("poznańskich"), so it says where the cinemas are instead.
+      (if (genitiveLabel.nonEmpty) s"Repertuar wszystkich $genitiveLabel kin$places"
+       else s"Repertuar wszystkich kin $locative$places") + " – godziny seansów na dziś, " +
         s"oceny IMDb, Filmweb, Metacritic i Rotten Tomatoes." +
         (if (towns.isEmpty) s" Sprawdź, co dziś grają w kinie $locative." else "")
     else if (city.country.language.getLanguage == "es")

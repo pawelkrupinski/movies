@@ -1,13 +1,47 @@
-# Polish venue towns
+# Polish venue towns and pages
 
-Poland's pages named no town but Trójmiasto's, on the assumption that a Polish
-city page covers one town. It is not true of most of the 65: `/tarnow/` lists
-cinemas in Biecz, Gorlice, Bochnia, Brzesko, Tuchów, Solec-Zdrój and Dąbrowa
-Tarnowska, `/walbrzych/` reaches Kłodzko, Świdnica and Dzierżoniów, and
-`/wloclawek/` reaches Sierpc, Lipno and Gostynin. (It also reached Płock's Kino
-za Rogiem until 2026-09-23, though Płock is its own city page; the roster audit
-in `CinemaRosterAuditSpec` now refuses a venue filed under a neighbour of a town
-that has its own page.)
+## Pages
+
+Which page lists which venue is data, built by `scripts/build_pages.py` into
+`pages.json` and generated into `common/.../models/PolishPages.scala`:
+
+1. **A major city** — the 41 original city pages, Trójmiasto being Gdańsk,
+   Gdynia and Sopot — lists only the venues inside that city. `/poznan/` is
+   Poznań's cinemas, not Buk's or Szamotuły's.
+2. **Any other town with 3+ venues** is a page of its own (Głogów, Zakopane…).
+3. **Every other town is clustered:** a 2-venue town takes the 1- and 2-venue
+   towns within 10 km; the 1-venue towns left cluster within 25 km of the
+   biggest of them; a town still alone joins the nearest cluster within 35 km.
+   A cluster is named after its biggest town — "Turek i okolice", "w Turku i
+   okolicach" — and a one-town page just after the town.
+4. The picker groups every page by **voivodeship**, cities and clusters side by
+   side.
+
+A page that disappears in a rebuild is kept in `pages.json`'s `retired` map,
+pointing at the page now holding its town; `City.renamedSlugs` redirects it.
+Anchor towns need their locative in `town_forms.json` (hand-checked Polish);
+a town GeoNames gives to several places is pinned in `build_pages.py`'s
+`TOWN_COORDS`, and the build refuses one that lands far from its previous page.
+
+Re-cluster (after adding venues, or to change the rule):
+
+```
+mkdir -p data/pl/geonames
+curl -sL https://download.geonames.org/export/dump/PL.zip -o data/pl/geonames/PL.zip
+unzip -o data/pl/geonames/PL.zip -d data/pl/geonames
+python3 data/pl/scripts/build_pages.py            # -> data/pl/pages.json
+python3 data/pl/scripts/test_build_pages.py
+python3 data/pl/scripts/build_venue_towns.py      # -> data/pl/venues.json
+python3 data/pl/scripts/generate_polish_pages.py  # -> PolishPages.scala + the apps' city lists
+python3 data/scripts/generate_venue_towns.py      # -> models.VenueTowns
+rm -rf data/pl/geonames
+```
+
+## Venue towns
+
+Each venue's town comes from the annotation beside it in `Cinema.scala`. A
+cluster page names its towns from them (the heading reads "Repertuar kin w
+Turku i okolicach – Turek, Koło").
 
 Unlike the UK — the other hand-written roster, whose towns had to be harvested
 off Flicks — Poland needed no harvest, because the answer was already written

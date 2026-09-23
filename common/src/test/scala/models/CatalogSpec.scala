@@ -64,7 +64,7 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     // A single-zone country writes none at all: the field is what a client falls
     // back FROM, so emitting it where it would repeat the country's says nothing
     // and costs bytes on every city of four countries out of five.
-    j should include("""{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252,"country":"pl"}""")
+    j should include("""{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252,"country":"pl","region":"Wielkopolskie"}""")
     j should not include """"slug":"london","name":"London","lat":51.5074,"lon":-0.1278,"country":"uk","timezone""""
     // The US spans six zones, so every metro off the country's own carries its.
     // This is the whole point: an app pruning a Knoxville showtime on the
@@ -81,7 +81,7 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
 
   it should "carry each city with its owning country's code" in {
     val j = Catalog.json
-    j should include("""{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252,"country":"pl"}""")
+    j should include("""{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252,"country":"pl","region":"Wielkopolskie"}""")
     j should include("""{"slug":"london","name":"London","lat":51.5074,"lon":-0.1278,"country":"uk","region":"England"}""")
   }
 
@@ -102,7 +102,7 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     cityEntry("cheshire") should not include "West Midlands"
     // A flat country sends nothing — a name is all its visitor needs, and the
     // field costs bytes on every city where it would say nothing.
-    cityEntry("poznan") should not include "region"
+    cityEntry("poznan") should include(""""region":"Wielkopolskie"""")
     cityEntry("madrid") should not include "region"
   }
 

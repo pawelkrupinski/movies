@@ -73,17 +73,37 @@ class CitySpec extends AnyFlatSpec with Matchers {
     // The Polish cities keep their exact Polish-collation order regardless of the
     // foreign (UK/DE) cities now interleaved among them by their own names.
     City.allSorted.filter(City.polishCities.contains).map(_.slug) shouldBe Seq(
-      "bialystok", "bielsko-biala", "bydgoszcz", "bytom", "chojnice", "ciechanow",
-      "czestochowa", "dabrowa-gornicza", "elblag", "gliwice", "gniezno", "gorzow-wielkopolski",
-      "ilawa", "jelenia-gora", "kalisz", "katowice", "ketrzyn", "kielce",
-      "konin", "koszalin", "krakow", "legnica", "leszno", "lublin",
-      "lomza", "lodz", "nowy-sacz", "olsztyn", "opole", "ostrowiec-swietokrzyski",
-      "pila", "piotrkow-trybunalski", "plock", "poznan", "przemysl", "pulawy",
-      "radom", "rybnik", "rzeszow", "siedlce", "skierniewice", "slubice", "slupsk",
-      "sosnowiec", "stalowa-wola", "starogard-gdanski", "suwalki", "szczecin", "tarnow",
-      "torun", "trojmiasto", "tychy", "walbrzych", "warszawa", "wielun",
-      "wloclawek", "wlodawa", "wroclaw", "wyszkow", "zabrze", "zakopane", "zamosc",
-      "zgorzelec", "zielona-gora", "zlocieniec",
+      "augustow", "belchatow", "biala-podlaska", "bialystok", "bielsko-biala", "bielsk-podlaski",
+      "bilgoraj", "bochnia", "boleslawiec", "braniewo", "brzeg", "brzeg-dolny",
+      "busko-zdroj", "bydgoszcz", "bytom", "chelm", "chojnice", "choszczno",
+      "ciechanow", "czechowice-dziedzice", "czestochowa", "dabrowa-gornicza", "dabrowa-tarnowska", "elblag",
+      "elk", "gizycko", "gliwice", "glogow", "gniezno", "goldap",
+      "gorzow-wielkopolski", "grajewo", "grudziadz", "hrubieszow", "ilawa", "inowroclaw",
+      "jaroslaw", "jaslo", "jastrzebie-zdroj", "jaworzno", "jelenia-gora", "kalisz",
+      "katowice", "kedzierzyn-kozle", "kepno", "kielce", "kluczbork", "klodzko",
+      "kolobrzeg", "konin", "koszalin", "koscierzyna", "krakow", "krapkowice",
+      "krasnystaw", "krasnik", "krosno", "krotoszyn", "krynica-zdroj", "kutno",
+      "legionowo", "legnica", "leszno", "lidzbark-warminski", "lipno", "lubin",
+      "lublin", "lubliniec", "lapy", "leba", "lomza", "lodz",
+      "lukow", "miechow", "mielec", "miedzyrzec-podlaski", "miedzyrzecz", "miedzyzdroje",
+      "mlawa", "morag", "myszkow", "naklo-nad-notecia", "nowa-sol", "nowy-sacz",
+      "nowy-targ", "nowy-tomysl", "nysa", "olecko", "olesnica", "olsztyn",
+      "olsztynek", "olawa", "opoczno", "opole", "ostrowiec-swietokrzyski", "ostrow-mazowiecka",
+      "ostrow-wielkopolski", "oswiecim", "otwock", "pabianice", "parczew", "pila",
+      "piotrkow-trybunalski", "plock", "police", "polkowice", "poznan", "pruszkow",
+      "przemysl", "przeworsk", "pulawy", "pultusk", "radom", "radomsko",
+      "rawicz", "ruda-slaska", "rybnik", "rypin", "rzeszow", "sanok",
+      "siedlce", "sierpc", "skierniewice", "slawno", "slubice", "slupca",
+      "slupsk", "sokolow-podlaski", "sokolka", "sosnowiec", "stalowa-wola", "stara-blotnica",
+      "starachowice", "stargard", "strzelin", "suwalki", "szamotuly", "szczecin",
+      "szczecinek", "szczytno", "srem", "swidnica", "swidnik", "swiebodzin",
+      "tarnow", "tczew", "tomaszow-lubelski", "tomaszow-mazowiecki", "torun", "trojmiasto",
+      "turek", "tychy", "wadowice", "walbrzych", "warszawa", "wagrowiec",
+      "wejherowo", "wielen", "wieliczka", "wielun", "wloclawek", "wlodawa",
+      "wloszczowa", "wolomin", "wroclaw", "wysokie-mazowieckie", "wyszkow", "zabrze",
+      "zakopane", "zamosc", "zawiercie", "zdunska-wola", "zgierz", "zgorzelec",
+      "zielona-gora", "zlocieniec", "zlotow", "zary", "zory", "zyrardow",
+      "zywiec",
     )
 
     // The foreign cities are present in the global sort too.
@@ -112,7 +132,8 @@ class CitySpec extends AnyFlatSpec with Matchers {
     // The page is `/trojmiasto/`, and "Sopot" and "Gdynia" occur in no slug, no
     // label and no cinema display name — so without this the towns are on the
     // page nowhere at all, and a search for either can match nothing.
-    val towns = Seq("Gdańsk", "Gdynia", "Sopot", "Rumia", "Wejherowo", "Pruszcz Gdański", "Chmielno", "Gniewino", "Jastarnia", "Kartuzy")
+    // Its satellite towns (Rumia, Wejherowo…) are pages of their own now.
+    val towns = Seq("Gdańsk", "Gdynia", "Sopot")
     Trojmiasto.coveredPlaces      shouldBe "Trójmiasto" +: towns
     Trojmiasto.otherCoveredPlaces shouldBe towns
   }
@@ -151,9 +172,11 @@ class CitySpec extends AnyFlatSpec with Matchers {
   // Poland's pages named no town but Trójmiasto's, on the assumption that a
   // Polish city is one town. 36 of the 41 are not: `/tarnow/` lists cinemas in
   // Biecz, Gorlice, Bochnia and Brzesko, and named none of them.
-  it should "read a Polish city's towns from the annotations beside its venues" in {
-    Tarnow.coveredPlaces.head shouldBe "Tarnów"
-    Tarnow.otherCoveredPlaces should contain allOf ("Biecz", "Gorlice", "Bochnia", "Brzesko")
+  it should "keep a major city to itself, and read a cluster's towns off its venues" in {
+    // Tarnów used to list Biecz, Gorlice, Bochnia… — they are pages of their own now.
+    Tarnow.otherCoveredPlaces shouldBe empty
+    val turek = City.bySlug("turek").get
+    turek.coveredPlaces shouldBe Seq("Turek i okolice", "Turek", "Koło")
   }
 
   it should "keep a Polish city that really is one town naming only itself" in {

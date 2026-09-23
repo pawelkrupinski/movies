@@ -45,12 +45,12 @@ class CinemaByCitySpec extends AnyFlatSpec with Matchers {
     // lets the debug source-data view tell them apart.
     Cinema.cityOf(HeliosKonin) shouldBe Some("Konin")
     Cinema.cityOf(HeliosKatowice) shouldBe Some("Katowice")
-    Cinema.cityOf(HeliosPila) shouldBe Some("Piła")
+    Cinema.cityOf(HeliosPila) shouldBe Some("Piła i okolice")
   }
 
-  it should "file a nearby town's venue under the city it joined, and a regional one under its hub" in {
-    Cinema.cityOf(MultikinoPruszkow) shouldBe Some("Warszawa")
-    Cinema.cityOf(KinoSokolniaKepno) shouldBe Some("Wieluń")
-    City.forCinema(CinemaCityBialaPodlaska) shouldBe Some(Siedlce)
+  it should "file a venue outside every major city under its own town or cluster page" in {
+    Cinema.cityOf(MultikinoPruszkow) shouldBe Some("Pruszków i okolice")
+    Cinema.cityOf(KinoTur) shouldBe Some("Turek i okolice")
+    Cinema.cityOf(CinemaCityBialaPodlaska) shouldBe Some("Biała Podlaska")
   }
 }

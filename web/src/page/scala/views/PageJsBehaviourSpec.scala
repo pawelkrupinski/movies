@@ -830,18 +830,19 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       "Array.prototype.filter.call(document.querySelectorAll('#picker-countries .picker-country-pill')," +
       s"""function(el){return el.textContent.trim()==="$label";})[0].click()""")
 
-  "the dynamic picker's search" should "narrow the flat country's rows to a typed city name" in {
+  "the dynamic picker's search" should "narrow the country's rows to a typed city name, across its groups" in {
     onLanding { page =>
       typePickerSearch(page, "wroc")
-      pickerRowLabels(page) shouldBe """["Wrocław"]"""
+      pickerRowLabels(page) shouldBe """["Inowrocław i okolice","Wrocław"]"""
     }
   }
 
   it should "match Polish names typed without diacritics" in {
     onLanding { page =>
-      // "lodz" must find "Łódź" — ł/ó folded away on both sides.
+      // "lodz" must find "Łódź" — ł/ó folded away on both sides — along with
+      // KŁODZko's cluster and the Łódzkie voivodeship itself.
       typePickerSearch(page, "lodz")
-      pickerRowLabels(page) shouldBe """["Łódź"]"""
+      pickerRowLabels(page) shouldBe """["Kłodzko i okolice","Łódź","Łódzkie"]"""
       typePickerSearch(page, "krakow")
       pickerRowLabels(page) shouldBe """["Kraków"]"""
       typePickerSearch(page, "czestochowa")
@@ -865,15 +866,15 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onLanding { page =>
       typePickerSearch(page, "wroc")
       typePickerSearch(page, "")
-      pickerRowCount(page) shouldBe models.Country.default.cities.size
+      // Poland is grouped: the cleared list is its voivodeships again.
+      pickerRowCount(page) shouldBe models.Country.default.cityGroups.size
     }
   }
 
-  it should "just ask for a city — Poland's picker never groups" in {
+  it should "name Poland's voivodeship level by its own term, then just ask for a city" in {
     onLanding { page =>
-      // No `Country.cityGroups` here, so `PICKER_GROUP_LABELS`
-      // (`landing.scala.html`) has no `pl` entry — the box's copy stays the
-      // plain city placeholder no matter how the query narrows the list.
+      pickerSearchPlaceholder(page) shouldBe "Szukaj: województwo lub miasto…"
+      clickPickerRow(page, "Wielkopolskie")
       pickerSearchPlaceholder(page) shouldBe "Szukaj miasta…"
     }
   }
@@ -1112,9 +1113,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   it should "switch the search box's level term along with the country" in {
     onLanding { page =>
-      // Poland: flat, so just "city" — Polish copy, this fixture's own page
-      // language.
-      pickerSearchPlaceholder(page) shouldBe "Szukaj miasta…"
+      // Poland: one level, the voivodeship — Polish copy, this fixture's own
+      // page language.
+      pickerSearchPlaceholder(page) shouldBe "Szukaj: województwo lub miasto…"
       // Germany: one level, its OWN term — not Poland's, not a bare "region".
       // `onLanding` renders in Polish, so the German term is Polish too
       // (`landing.level.de.region`), same as a Polish visitor browsing

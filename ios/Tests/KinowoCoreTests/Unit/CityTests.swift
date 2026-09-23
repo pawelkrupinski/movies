@@ -12,8 +12,9 @@ final class CityTests: XCTestCase {
     }
 
     func testCoordsJustOutsidePoznanStillResolveWithin100km() {
-        // ~40 km west of Poznań — well inside the radius.
-        XCTAssertEqual(City.all.nearestWithin100km(lat: 52.4064, lon: 16.3, inCountry: "pl")?.slug, "poznan")
+        // ~12 km east of Poznań — inside the radius, and nearer Poznań than any
+        // of the town pages around it.
+        XCTAssertEqual(City.all.nearestWithin100km(lat: 52.40, lon: 17.10, inCountry: "pl")?.slug, "poznan")
     }
 
     func testEachSupportedCityResolvesFromItsOwnCoords() {
@@ -30,8 +31,8 @@ final class CityTests: XCTestCase {
     }
 
     func testCoordsFarFromEveryCityAreOutOfRange() {
-        // Open Baltic, beyond the 100 km cutoff of every Polish city.
-        XCTAssertNil(City.all.nearestWithin100km(lat: 55.5, lon: 17.0, inCountry: "pl"))
+        // Open Baltic, beyond the 100 km cutoff of every Polish page (Łeba's included).
+        XCTAssertNil(City.all.nearestWithin100km(lat: 56.3, lon: 17.0, inCountry: "pl"))
     }
 
     func testFarAwayCoordsReturnNil() {
@@ -98,8 +99,8 @@ final class CityTests: XCTestCase {
     // ── catalogue (global union, per-country order) ───────────────
 
     func testAllIsTheGlobalUnionOfPolishAndUkCities() {
-        XCTAssertEqual(City.all.count, 144)                 // 65 PL + 79 UK
-        XCTAssertEqual(City.all.inCountry("pl").count, 65)
+        XCTAssertEqual(City.all.count, 260)                 // 181 PL + 79 UK
+        XCTAssertEqual(City.all.inCountry("pl").count, 181)
         XCTAssertEqual(City.all.inCountry("uk").count, 79)
     }
 
@@ -140,37 +141,75 @@ final class CityTests: XCTestCase {
             "torun", "kielce", "rzeszow", "gliwice", "zabrze", "olsztyn", "bielsko-biala",
             "opole", "rybnik", "gorzow-wielkopolski", "elblag", "koszalin", "kalisz", "zielona-gora",
             "tychy", "walbrzych", "tarnow", "wloclawek", "legnica", "plock", "bytom",
-            "dabrowa-gornicza", "nowy-sacz", "slupsk", "jelenia-gora", "przemysl", "konin", "piotrkow-trybunalski",
-            "siedlce", "pila", "ostrowiec-swietokrzyski", "gniezno", "suwalki", "stalowa-wola", "zamosc",
-            "leszno", "lomza", "pulawy", "skierniewice", "starogard-gdanski", "ciechanow", "wielun",
-            "chojnice", "zgorzelec", "ilawa", "ketrzyn", "zakopane", "wyszkow", "zlocieniec", "slubice", "wlodawa",
+            "dabrowa-gornicza", "nowy-sacz", "slupsk", "jelenia-gora", "przemysl", "konin", "augustow",
+            "belchatow", "biala-podlaska", "bielsk-podlaski", "bilgoraj", "bochnia", "boleslawiec", "braniewo",
+            "brzeg", "brzeg-dolny", "busko-zdroj", "chelm", "chojnice", "choszczno", "ciechanow",
+            "czechowice-dziedzice", "dabrowa-tarnowska", "elk", "gizycko", "glogow", "gniezno", "goldap",
+            "grajewo", "grudziadz", "hrubieszow", "ilawa", "inowroclaw", "jaroslaw", "jaslo",
+            "jastrzebie-zdroj", "jaworzno", "kedzierzyn-kozle", "kepno", "klodzko", "kluczbork", "kolobrzeg",
+            "koscierzyna", "krapkowice", "krasnik", "krasnystaw", "krosno", "krotoszyn", "krynica-zdroj",
+            "kutno", "lapy", "leba", "legionowo", "leszno", "lidzbark-warminski", "lipno",
+            "lomza", "lubin", "lubliniec", "lukow", "miechow", "miedzyrzec-podlaski", "miedzyrzecz",
+            "miedzyzdroje", "mielec", "mlawa", "morag", "myszkow", "naklo-nad-notecia", "nowa-sol",
+            "nowy-targ", "nowy-tomysl", "nysa", "olawa", "olecko", "olesnica", "olsztynek",
+            "opoczno", "ostrow-mazowiecka", "ostrow-wielkopolski", "ostrowiec-swietokrzyski", "oswiecim", "otwock", "pabianice",
+            "parczew", "pila", "piotrkow-trybunalski", "police", "polkowice", "pruszkow", "przeworsk",
+            "pulawy", "pultusk", "radomsko", "rawicz", "ruda-slaska", "rypin", "sanok",
+            "siedlce", "sierpc", "skierniewice", "slawno", "slubice", "slupca", "sokolka",
+            "sokolow-podlaski", "srem", "stalowa-wola", "stara-blotnica", "starachowice", "stargard", "strzelin",
+            "suwalki", "swidnica", "swidnik", "swiebodzin", "szamotuly", "szczecinek", "szczytno",
+            "tczew", "tomaszow-lubelski", "tomaszow-mazowiecki", "turek", "wadowice", "wagrowiec", "wejherowo",
+            "wielen", "wieliczka", "wielun", "wlodawa", "wloszczowa", "wolomin", "wysokie-mazowieckie",
+            "wyszkow", "zakopane", "zamosc", "zary", "zawiercie", "zdunska-wola", "zgierz",
+            "zgorzelec", "zlocieniec", "zlotow", "zory", "zyrardow", "zywiec",
         ])
     }
 
     func testPolishSortedIsAlphabeticalUnderPolishCollation() {
         XCTAssertEqual(Set(City.all.sortedForPicker(inCountry: "pl").map(\.slug)), Set(City.all.inCountry("pl").map(\.slug)))
         XCTAssertEqual(City.all.sortedForPicker(inCountry: "pl").map(\.slug), [
-            "bialystok", "bielsko-biala", "bydgoszcz", "bytom", "chojnice", "ciechanow",
-            "czestochowa", "dabrowa-gornicza", "elblag", "gliwice", "gniezno", "gorzow-wielkopolski",
-            "ilawa", "jelenia-gora", "kalisz", "katowice", "ketrzyn", "kielce",
-            "konin", "koszalin", "krakow", "legnica", "leszno", "lublin",
-            "lomza", "lodz", "nowy-sacz", "olsztyn", "opole", "ostrowiec-swietokrzyski",
-            "pila", "piotrkow-trybunalski", "plock", "poznan", "przemysl", "pulawy",
-            "radom", "rybnik", "rzeszow", "siedlce", "skierniewice", "slubice", "slupsk",
-            "sosnowiec", "stalowa-wola", "starogard-gdanski", "suwalki", "szczecin", "tarnow",
-            "torun", "trojmiasto", "tychy", "walbrzych", "warszawa", "wielun",
-            "wloclawek", "wlodawa", "wroclaw", "wyszkow", "zabrze", "zakopane", "zamosc",
-            "zgorzelec", "zielona-gora", "zlocieniec",
+            "augustow", "belchatow", "biala-podlaska", "bialystok", "bielsk-podlaski", "bielsko-biala",
+            "bilgoraj", "bochnia", "boleslawiec", "braniewo", "brzeg", "brzeg-dolny",
+            "busko-zdroj", "bydgoszcz", "bytom", "chelm", "chojnice", "choszczno",
+            "ciechanow", "czechowice-dziedzice", "czestochowa", "dabrowa-gornicza", "dabrowa-tarnowska", "elblag",
+            "elk", "gizycko", "gliwice", "glogow", "gniezno", "goldap",
+            "gorzow-wielkopolski", "grajewo", "grudziadz", "hrubieszow", "ilawa", "inowroclaw",
+            "jaroslaw", "jaslo", "jastrzebie-zdroj", "jaworzno", "jelenia-gora", "kalisz",
+            "katowice", "kedzierzyn-kozle", "kepno", "kielce", "kluczbork", "klodzko",
+            "kolobrzeg", "konin", "koszalin", "koscierzyna", "krakow", "krapkowice",
+            "krasnystaw", "krasnik", "krosno", "krotoszyn", "krynica-zdroj", "kutno",
+            "legionowo", "legnica", "leszno", "lidzbark-warminski", "lipno", "lubin",
+            "lublin", "lubliniec", "lapy", "leba", "lomza", "lodz",
+            "lukow", "miechow", "mielec", "miedzyrzec-podlaski", "miedzyrzecz", "miedzyzdroje",
+            "mlawa", "morag", "myszkow", "naklo-nad-notecia", "nowa-sol", "nowy-sacz",
+            "nowy-targ", "nowy-tomysl", "nysa", "olecko", "olesnica", "olsztyn",
+            "olsztynek", "olawa", "opoczno", "opole", "ostrowiec-swietokrzyski", "ostrow-mazowiecka",
+            "ostrow-wielkopolski", "oswiecim", "otwock", "pabianice", "parczew", "pila",
+            "piotrkow-trybunalski", "plock", "police", "polkowice", "poznan", "pruszkow",
+            "przemysl", "przeworsk", "pulawy", "pultusk", "radom", "radomsko",
+            "rawicz", "ruda-slaska", "rybnik", "rypin", "rzeszow", "sanok",
+            "siedlce", "sierpc", "skierniewice", "slawno", "slubice", "slupca",
+            "slupsk", "sokolow-podlaski", "sokolka", "sosnowiec", "stalowa-wola", "stara-blotnica",
+            "starachowice", "stargard", "strzelin", "suwalki", "szamotuly", "szczecin",
+            "szczecinek", "szczytno", "srem", "swidnica", "swidnik", "swiebodzin",
+            "tarnow", "tczew", "tomaszow-lubelski", "tomaszow-mazowiecki", "torun", "trojmiasto",
+            "turek", "tychy", "wadowice", "walbrzych", "warszawa", "wagrowiec",
+            "wejherowo", "wielen", "wieliczka", "wielun", "wloclawek", "wlodawa",
+            "wloszczowa", "wolomin", "wroclaw", "wysokie-mazowieckie", "wyszkow", "zabrze",
+            "zakopane", "zamosc", "zawiercie", "zdunska-wola", "zgierz", "zgorzelec",
+            "zielona-gora", "zlocieniec", "zlotow", "zary", "zory", "zyrardow",
+            "zywiec",
         ])
     }
 
     func testPolishSortedCollatesLAfterLNotAtTheEnd() {
-        // The Ł-cities ("Łomża", then "Łódź"; Ł = U+0141) sort right after
-        // "Lublin", not at the very end.
+        // The Ł-pages (Łapy, Łeba, Łomża, Łódź; Ł = U+0141) sort after "Lublin"
+        // and before "M", not at the very end.
         let slugs = City.all.sortedForPicker(inCountry: "pl").map(\.slug)
-        XCTAssertEqual(slugs.firstIndex(of: "lomza"), slugs.firstIndex(of: "lublin").map { $0 + 1 })
-        XCTAssertEqual(slugs.firstIndex(of: "lodz"), slugs.firstIndex(of: "lomza").map { $0 + 1 })
-        XCTAssertLessThan(slugs.firstIndex(of: "lodz")!, slugs.firstIndex(of: "zabrze")!)
+        for l in ["lapy", "leba", "lomza", "lodz"] {
+            XCTAssertGreaterThan(slugs.firstIndex(of: l)!, slugs.firstIndex(of: "lublin")!)
+            XCTAssertLessThan(slugs.firstIndex(of: l)!, slugs.firstIndex(of: "mielec")!)
+        }
     }
 
     // ── country(ofSlug:) (deep-link → right deployment) ───────────
@@ -203,7 +242,7 @@ final class CityTests: XCTestCase {
     }
 
     func testNoSwitchSuggestionWhenOutOfRangeOfEveryCity() {
-        XCTAssertNil(City.all.switchSuggestion(chosenSlug: "poznan", lat: 55.5, lon: 17.0, lastPromptKey: nil, inCountry: "pl"))
+        XCTAssertNil(City.all.switchSuggestion(chosenSlug: "poznan", lat: 56.3, lon: 17.0, lastPromptKey: nil, inCountry: "pl"))
     }
 
     func testSwitchSuggestionIsCountryScoped() {
@@ -280,13 +319,13 @@ final class CityTests: XCTestCase {
     }
 
     func testQueryNarrowsToAMatchingPrefix() {
-        XCTAssertEqual(City.all.matching("wroc", inCountry: "pl").map(\.slug), ["wroclaw"])
+        XCTAssertEqual(City.all.matching("wroc", inCountry: "pl").map(\.slug), ["inowroclaw", "wroclaw"])
     }
 
     func testMatchIsDiacriticInsensitiveTypedWithoutPolishLetters() {
-        XCTAssertEqual(City.all.matching("lodz", inCountry: "pl").map(\.slug), ["lodz"])
+        XCTAssertEqual(City.all.matching("lodz", inCountry: "pl").map(\.slug), ["klodzko", "lodz"])   // KŁODZko
         XCTAssertEqual(City.all.matching("krakow", inCountry: "pl").map(\.slug), ["krakow"])
-        XCTAssertEqual(City.all.matching("gdansk", inCountry: "pl").map(\.slug), ["starogard-gdanski"])   // Trójmiasto has no "Gdańsk" name; Starogard Gdański does
+        XCTAssertEqual(City.all.matching("gdansk", inCountry: "pl").map(\.slug), [])   // Trójmiasto has no "Gdańsk" name
         XCTAssertTrue(City.all.matching("zielona gora", inCountry: "pl").map(\.slug).contains("zielona-gora"))
     }
 

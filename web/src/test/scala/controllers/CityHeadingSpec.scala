@@ -47,7 +47,7 @@ class CityHeadingSpec extends AnyFlatSpec with Matchers {
 
   "a multi-town city's index" should "name the covered towns in the heading" in {
     val html = contentAsString(controller().index("trojmiasto")(req("/trojmiasto/")))
-    h1Of(html) shouldBe Some("Repertuar kin w Trójmieście – Gdańsk, Gdynia, Sopot, Rumia, Wejherowo, Pruszcz Gdański")
+    h1Of(html) shouldBe Some("Repertuar kin w Trójmieście – Gdańsk, Gdynia, Sopot")
     // The point of the exercise: "Sopot" is now text on the page, where before
     // it appeared in no heading, no meta tag and no cinema name.
     html should include("Sopot")

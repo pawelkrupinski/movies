@@ -71,6 +71,7 @@ empty.films=No hay películas.
 browse.htmlTitle={0} – Cartelera de cine en {1}
 browse.ogTitle={0} — Cartelera de cine en {1}
 browse.ogDescription=Películas en {0} cines: {1}. Con las sesiones de hoy, valoraciones y sinopsis.
+browse.ogDescriptionNear=Películas en los cines {0}: {1}. Con las sesiones de hoy, valoraciones y sinopsis.
 
 # ── Landing (city picker) ───────────────────────────────────────────────────
 landing.title={0} — cartelera de cine en tu ciudad
@@ -89,6 +90,7 @@ landing.level.uk.region=nación
 landing.level.uk.subregion=condado
 landing.level.us.region=estado
 landing.level.de.region=estado federado
+landing.level.pl.region=voivodato
 
 # The notice a retired deployment serves in place of `/` and `/{city}/`.
 moved.heading=Nos hemos mudado

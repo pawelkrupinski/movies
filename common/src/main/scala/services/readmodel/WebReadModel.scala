@@ -1,6 +1,6 @@
 package services.readmodel
 
-import models.{City, CityScreening, ResolvedMovie}
+import models.{Cinema, City, CityScreening, ResolvedMovie}
 import play.api.Logging
 import services.Stoppable
 import tools.{DaemonExecutors, Env}
@@ -243,7 +243,21 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
     if (movies.remove(id) != null) touchEveryCity()
   }
 
-  private def applyScreeningUpsert(s: CityScreening): Unit = {
+  /** The row filed under the page its cinema is listed on NOW, rather than the
+   *  slug it was projected under. Which page lists which venue is roster data
+   *  (Poland's is re-clustered by `data/pl/scripts/build_pages.py`), and a row is
+   *  only re-projected when its film is — up to a whole scrape cadence later. Re-
+   *  addressed here, a venue that moved pages is served from its new page the
+   *  moment this tier starts, and never again from the one it left. A venue the
+   *  roster no longer knows keeps the slug it was projected under. */
+  private def onCurrentPage(s: CityScreening): CityScreening =
+    Cinema.byDisplayName.get(s.cinema).flatMap(City.forCinema).map(_.slug) match {
+      case Some(page) if page != s.city => s.copy(city = page)
+      case _                            => s
+    }
+
+  private def applyScreeningUpsert(projected: CityScreening): Unit = {
+    val s        = onCurrentPage(projected)
     val bucket   = byCity.computeIfAbsent(s.city, _ => new ConcurrentHashMap[String, CityScreening]())
     val previous = bucket.put(s._id, s)
     indexFilmCity(s.filmId, s.city)
@@ -272,7 +286,7 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
    *  skipped. Returns the movie-document count. */
   def reload(): Int = {
     val ms = reader.findAllMovies()
-    val ss = reader.findAllScreenings()
+    val ss = reader.findAllScreenings().map(onCurrentPage)
     if (ms.isEmpty && ss.isEmpty && !movies.isEmpty) {
       logger.warn("WebReadModel reload: read model returned empty while the cache is warm — " +
         "treating as a transient Mongo failure; cache left intact.")

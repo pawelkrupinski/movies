@@ -47,6 +47,7 @@ import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 GEONAMES = ROOT / "data" / "pl" / "geonames" / "PL.txt"
+PAGES = ROOT / "data/pl/pages.json"
 CINEMA = ROOT / "common/src/main/scala/models/Cinema.scala"
 CITY = ROOT / "common/src/main/scala/models/City.scala"
 OUT = ROOT / "data" / "pl" / "venues.json"
@@ -114,18 +115,12 @@ def gazetteer() -> tuple[set, dict]:
 
 
 def polish_venues() -> list[tuple[str, str]]:
-    """(city slug, case object) for every venue of every Polish city, in order."""
-    city, cinema = CITY.read_text(), CINEMA.read_text()
-    cities = re.findall(
-        r'case object \w+ extends City\(\s*\n?\s*slug\s*=\s*"([^"]+)"'
-        r'[\s\S]{0,400}?val cinemas: Seq\[Cinema\]\s*=\s*Cinema\.(\w+)', city)
-    lists = dict(re.findall(
-        r'val (\w+): Seq\[Cinema\]\s*=\s*Seq\(([^)]*(?:\([^)]*\)[^)]*)*)\)', cinema))
-    out = []
-    for slug, list_name in cities:
-        for obj in re.findall(r'\b([A-Z][A-Za-z0-9_]+)\b', lists.get(list_name, "")):
-            out.append((slug, obj))
-    return out
+    """(page slug, case object) for every venue of every Polish page, in order.
+
+    Read off data/pl/pages.json — which page lists which venue is data now, not
+    the hand-written per-city lists it used to be (see build_pages.py)."""
+    pages = json.loads(PAGES.read_text(encoding="utf-8"))["pages"]
+    return [(p["slug"], obj) for p in pages for obj in p["cinemas"]]
 
 
 def annotations() -> tuple[dict, dict]:

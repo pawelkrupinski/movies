@@ -130,7 +130,6 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   }
 
   "Country.cityGroups" should "group the US by state and leave the flat countries flat" in {
-    Country.Poland.cityGroups shouldBe empty
     Country.Spain.cityGroups shouldBe empty
     Country.UnitedStates.cityGroups should have size 55
     // The groups partition the country's cities — a metro reachable from no

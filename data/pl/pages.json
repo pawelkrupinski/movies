@@ -1,0 +1,3466 @@
+{
+ "pages": [
+  {
+   "slug": "poznan",
+   "kind": "major",
+   "object": "Poznan",
+   "name": "Poznań",
+   "anchor": "Poznań",
+   "lat": 52.4064,
+   "lon": 16.9252,
+   "towns": [],
+   "cinemas": [
+    "KinoApollo",
+    "KinoBulgarska",
+    "CharlieMonroe",
+    "Helios",
+    "CinemaCityKinepolis",
+    "KinoMuza",
+    "Multikino",
+    "KinoPalacowe",
+    "CinemaCityPoznanPlaza",
+    "Rialto"
+   ],
+   "voivodeship": "Wielkopolskie"
+  },
+  {
+   "slug": "wroclaw",
+   "kind": "major",
+   "object": "Wroclaw",
+   "name": "Wrocław",
+   "anchor": "Wrocław",
+   "lat": 51.1079,
+   "lon": 17.0385,
+   "towns": [],
+   "cinemas": [
+    "CinemaCityWroclavia",
+    "CinemaCityKorona",
+    "MultikinoPasazGrunwaldzki",
+    "HeliosMagnolia",
+    "HeliosAlejaBielany",
+    "KinoNoweHoryzonty",
+    "DolnoslaskieCentrumFilmowe",
+    "KinoDyskusyjnyKlubFilmowyPolitechnika",
+    "KinoNowyPafawag"
+   ],
+   "voivodeship": "Dolnośląskie"
+  },
+  {
+   "slug": "warszawa",
+   "kind": "major",
+   "object": "Warszawa",
+   "name": "Warszawa",
+   "anchor": "Warszawa",
+   "lat": 52.2297,
+   "lon": 21.0122,
+   "towns": [],
+   "cinemas": [
+    "CinemaCityArkadia",
+    "CinemaCityBemowo",
+    "CinemaCityGaleriaPolnocna",
+    "CinemaCityMokotow",
+    "CinemaCityPromenada",
+    "CinemaCitySadyba",
+    "MultikinoZloteTarasy",
+    "MultikinoMlociny",
+    "MultikinoReduta",
+    "MultikinoTargowek",
+    "MultikinoWolaPark",
+    "HeliosBlueCity",
+    "KinoMuranow",
+    "KinoLuna",
+    "KinoElektronik",
+    "KinoIluzjon",
+    "KinoGram",
+    "KinoKultura",
+    "KinoAmondo",
+    "KinoNaBoku",
+    "KinoGlebocka66",
+    "Kinomuzeum",
+    "KinoSwit",
+    "KinoKepa",
+    "StacjaFalenica",
+    "SluzewskiDomKultury",
+    "KinoAtlantic",
+    "Kinoteka",
+    "Ujazdowski",
+    "KinoCytadela",
+    "KinoWisla",
+    "AdaKinoStudyjne",
+    "KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha",
+    "KinoAlternatywy",
+    "KinoWKadrze",
+    "KinoDomSztukiUrsynow",
+    "KinoTerminalKultury",
+    "KinoBielanskiOsrodekKultury",
+    "KinoWawerskaStrefaKultury"
+   ],
+   "voivodeship": "Mazowieckie"
+  },
+  {
+   "slug": "krakow",
+   "kind": "major",
+   "object": "Krakow",
+   "name": "Kraków",
+   "anchor": "Kraków",
+   "lat": 50.0647,
+   "lon": 19.945,
+   "towns": [],
+   "cinemas": [
+    "CinemaCityBonarka",
+    "CinemaCityKazimierz",
+    "CinemaCityZakopianka",
+    "MultikinoKrakow",
+    "KinoMikro",
+    "MikroBronowice",
+    "KinoSfinks",
+    "KinoPodBaranami",
+    "KinoKijow",
+    "KinoKika",
+    "KinoAgrafka",
+    "KinoParadox"
+   ],
+   "voivodeship": "Małopolskie"
+  },
+  {
+   "slug": "lodz",
+   "kind": "major",
+   "object": "Lodz",
+   "name": "Łódź",
+   "anchor": "Łódź",
+   "lat": 51.7592,
+   "lon": 19.456,
+   "towns": [],
+   "cinemas": [
+    "CinemaCityManufaktura",
+    "MultikinoLodz",
+    "HeliosLodz",
+    "KinoCharlie",
+    "KinematografLodz",
+    "Nckf",
+    "KinoTatry"
+   ],
+   "voivodeship": "Łódzkie"
+  },
+  {
+   "slug": "katowice",
+   "kind": "major",
+   "object": "Katowice",
+   "name": "Katowice",
+   "anchor": "Katowice",
+   "lat": 50.2649,
+   "lon": 19.0238,
+   "towns": [],
+   "cinemas": [
+    "CinemaCityPunkt44",
+    "CinemaCitySilesia",
+    "MultikinoKatowice",
+    "HeliosKatowice",
+    "KinoKosmos",
+    "KinoSwiatowid",
+    "KinoteatrRialto"
+   ],
+   "voivodeship": "Śląskie"
+  },
+  {
+   "slug": "szczecin",
+   "kind": "major",
+   "object": "Szczecin",
+   "name": "Szczecin",
+   "anchor": "Szczecin",
+   "lat": 53.4285,
+   "lon": 14.5528,
+   "towns": [],
+   "cinemas": [
+    "HeliosSzczecin",
+    "MultikinoSzczecin",
+    "KinoPionier",
+    "HeliosOutletPark",
+    "KinoZamekSzczecin"
+   ],
+   "voivodeship": "Zachodniopomorskie"
+  },
+  {
+   "slug": "bialystok",
+   "kind": "major",
+   "object": "Bialystok",
+   "name": "Białystok",
+   "anchor": "Białystok",
+   "lat": 53.1325,
+   "lon": 23.1688,
+   "towns": [],
+   "cinemas": [
+    "HeliosAlfa",
+    "HeliosBiala",
+    "HeliosJurowiecka",
+    "KinoForum"
+   ],
+   "voivodeship": "Podlaskie"
+  },
+  {
+   "slug": "trojmiasto",
+   "kind": "major",
+   "object": "Trojmiasto",
+   "name": "Trójmiasto",
+   "anchor": "Trójmiasto",
+   "lat": 54.4416,
+   "lon": 18.5601,
+   "towns": [],
+   "cinemas": [
+    "MultikinoGdansk",
+    "HeliosMetropolia",
+    "HeliosForum",
+    "HeliosRiviera",
+    "KinoSpektrum",
+    "KinoKameralne",
+    "KinoIkm",
+    "KinoMuzeumGdansk",
+    "KinoZak",
+    "KinoPort",
+    "Cinema1Gdansk",
+    "GdynskieCentrumFilmowe",
+    "KinoNaSzekspirowskim",
+    "TeatrBoto",
+    "TeatrAtelier"
+   ],
+   "voivodeship": "Pomorskie"
+  },
+  {
+   "slug": "bydgoszcz",
+   "kind": "major",
+   "object": "Bydgoszcz",
+   "name": "Bydgoszcz",
+   "anchor": "Bydgoszcz",
+   "lat": 53.1235,
+   "lon": 18.0084,
+   "towns": [],
+   "cinemas": [
+    "CinemaCityBydgoszcz",
+    "MultikinoBydgoszcz",
+    "HeliosBydgoszcz",
+    "KinoOrzel"
+   ],
+   "voivodeship": "Kujawsko-pomorskie"
+  },
+  {
+   "slug": "lublin",
+   "kind": "major",
+   "object": "Lublin",
+   "name": "Lublin",
+   "anchor": "Lublin",
+   "lat": 51.2465,
+   "lon": 22.5684,
+   "towns": [],
+   "cinemas": [
+    "CinemaCityLublinFelicity",
+    "CinemaCityLublinPlaza",
+    "MultikinoLublin",
+    "KinoBajka",
+    "KinoCkLublin",
+    "KinoChatkaZaka"
+   ],
+   "voivodeship": "Lubelskie"
+  },
+  {
+   "slug": "czestochowa",
+   "kind": "major",
+   "object": "Czestochowa",
+   "name": "Częstochowa",
+   "anchor": "Częstochowa",
+   "lat": 50.8118,
+   "lon": 19.1203,
+   "towns": [],
+   "cinemas": [
+    "CinemaCityCzestochowaJurajska",
+    "CinemaCityCzestochowaWolnosc",
+    "OkfIluzja",
+    "KinoDKFRumcajs"
+   ],
+   "voivodeship": "Śląskie"
+  },
+  {
+   "slug": "radom",
+   "kind": "major",
+   "object": "Radom",
+   "name": "Radom",
+   "anchor": "Radom",
+   "lat": 51.4027,
+   "lon": 21.1471,
+   "towns": [],
+   "cinemas": [
+    "HeliosRadom",
+    "MultikinoRadom",
+    "McswElektrowniaCinema"
+   ],
+   "voivodeship": "Mazowieckie"
+  },
+  {
+   "slug": "sosnowiec",
+   "kind": "major",
+   "object": "Sosnowiec",
+   "name": "Sosnowiec",
+   "anchor": "Sosnowiec",
+   "lat": 50.2863,
+   "lon": 19.1041,
+   "towns": [],
+   "cinemas": [
+    "HeliosSosnowiec",
+    "CinemaCitySosnowiec"
+   ],
+   "voivodeship": "Śląskie"
+  },
+  {
+   "slug": "torun",
+   "kind": "major",
+   "object": "Torun",
+   "name": "Toruń",
+   "anchor": "Toruń",
+   "lat": 53.0138,
+   "lon": 18.5984,
+   "towns": [],
+   "cinemas": [
+    "CinemaCityTorunCzerwonaDroga",
+    "CinemaCityTorunPlaza",
+    "KinoCentrumCsw",
+    "Kino1410"
+   ],
+   "voivodeship": "Kujawsko-pomorskie"
+  },
+  {
+   "slug": "kielce",
+   "kind": "major",
+   "object": "Kielce",
+   "name": "Kielce",
+   "anchor": "Kielce",
+   "lat": 50.8661,
+   "lon": 20.6286,
+   "towns": [],
+   "cinemas": [
+    "HeliosKielce",
+    "MultikinoKielce",
+    "KinoFenomen",
+    "KinoMoskwa"
+   ],
+   "voivodeship": "Świętokrzyskie"
+  },
+  {
+   "slug": "rzeszow",
+   "kind": "major",
+   "object": "Rzeszow",
+   "name": "Rzeszów",
+   "anchor": "Rzeszów",
+   "lat": 50.0413,
+   "lon": 21.999,
+   "towns": [],
+   "cinemas": [
+    "HeliosRzeszow",
+    "MultikinoRzeszow",
+    "KinoZorza",
+    "KinoZaRogiemCafe"
+   ],
+   "voivodeship": "Podkarpackie"
+  },
+  {
+   "slug": "gliwice",
+   "kind": "major",
+   "object": "Gliwice",
+   "name": "Gliwice",
+   "anchor": "Gliwice",
+   "lat": 50.2945,
+   "lon": 18.6714,
+   "towns": [],
+   "cinemas": [
+    "CinemaCityGliwice",
+    "KinoAmok"
+   ],
+   "voivodeship": "Śląskie"
+  },
+  {
+   "slug": "zabrze",
+   "kind": "major",
+   "object": "Zabrze",
+   "name": "Zabrze",
+   "anchor": "Zabrze",
+   "lat": 50.3249,
+   "lon": 18.7857,
+   "towns": [],
+   "cinemas": [
+    "MultikinoZabrze",
+    "KinoRoma",
+    "KinoPlanetCinemaZabrze"
+   ],
+   "voivodeship": "Śląskie"
+  },
+  {
+   "slug": "olsztyn",
+   "kind": "major",
+   "object": "Olsztyn",
+   "name": "Olsztyn",
+   "anchor": "Olsztyn",
+   "lat": 53.7784,
+   "lon": 20.4801,
+   "towns": [],
+   "cinemas": [
+    "HeliosOlsztyn",
+    "MultikinoOlsztyn",
+    "KinoAwangarda2"
+   ],
+   "voivodeship": "Warmińsko-mazurskie"
+  },
+  {
+   "slug": "bielsko-biala",
+   "kind": "major",
+   "object": "BielskoBiala",
+   "name": "Bielsko-Biała",
+   "anchor": "Bielsko-Biała",
+   "lat": 49.8224,
+   "lon": 19.0584,
+   "towns": [],
+   "cinemas": [
+    "HeliosBielskoBiala",
+    "CinemaCityBielskoBiala",
+    "KinoKreska"
+   ],
+   "voivodeship": "Śląskie"
+  },
+  {
+   "slug": "opole",
+   "kind": "major",
+   "object": "Opole",
+   "name": "Opole",
+   "anchor": "Opole",
+   "lat": 50.6751,
+   "lon": 17.9213,
+   "towns": [],
+   "cinemas": [
+    "HeliosOpoleKarolinka",
+    "HeliosOpoleSolaris",
+    "KinoMeduza",
+    "KinoStudio"
+   ],
+   "voivodeship": "Opolskie"
+  },
+  {
+   "slug": "rybnik",
+   "kind": "major",
+   "object": "Rybnik",
+   "name": "Rybnik",
+   "anchor": "Rybnik",
+   "lat": 50.0971,
+   "lon": 18.5416,
+   "towns": [],
+   "cinemas": [
+    "MultikinoRybnik",
+    "CinemaCityRybnik",
+    "KinoTeatrZiemiRybnickiej"
+   ],
+   "voivodeship": "Śląskie"
+  },
+  {
+   "slug": "gorzow-wielkopolski",
+   "kind": "major",
+   "object": "GorzowWielkopolski",
+   "name": "Gorzów Wielkopolski",
+   "anchor": "Gorzów Wielkopolski",
+   "lat": 52.7368,
+   "lon": 15.2288,
+   "towns": [],
+   "cinemas": [
+    "HeliosGorzow",
+    "MultikinoGorzow",
+    "Kino60Krzesel"
+   ],
+   "voivodeship": "Lubuskie"
+  },
+  {
+   "slug": "elblag",
+   "kind": "major",
+   "object": "Elblag",
+   "name": "Elbląg",
+   "anchor": "Elbląg",
+   "lat": 54.1522,
+   "lon": 19.4088,
+   "towns": [],
+   "cinemas": [
+    "MultikinoElblag",
+    "CinemaCityElblag",
+    "KinoSwiatowidElblag"
+   ],
+   "voivodeship": "Warmińsko-mazurskie"
+  },
+  {
+   "slug": "koszalin",
+   "kind": "major",
+   "object": "Koszalin",
+   "name": "Koszalin",
+   "anchor": "Koszalin",
+   "lat": 54.1943,
+   "lon": 16.1722,
+   "towns": [],
+   "cinemas": [
+    "HeliosKoszalin",
+    "MultikinoKoszalin",
+    "KinoKryterium"
+   ],
+   "voivodeship": "Zachodniopomorskie"
+  },
+  {
+   "slug": "kalisz",
+   "kind": "major",
+   "object": "Kalisz",
+   "name": "Kalisz",
+   "anchor": "Kalisz",
+   "lat": 51.7611,
+   "lon": 18.0911,
+   "towns": [],
+   "cinemas": [
+    "HeliosKalisz",
+    "MultikinoKalisz",
+    "KinoCentrum3D"
+   ],
+   "voivodeship": "Wielkopolskie"
+  },
+  {
+   "slug": "zielona-gora",
+   "kind": "major",
+   "object": "ZielonaGora",
+   "name": "Zielona Góra",
+   "anchor": "Zielona Góra",
+   "lat": 51.9356,
+   "lon": 15.5062,
+   "towns": [],
+   "cinemas": [
+    "CinemaCityZielonaGora"
+   ],
+   "voivodeship": "Lubuskie"
+  },
+  {
+   "slug": "tychy",
+   "kind": "major",
+   "object": "Tychy",
+   "name": "Tychy",
+   "anchor": "Tychy",
+   "lat": 50.1357,
+   "lon": 18.9985,
+   "towns": [],
+   "cinemas": [
+    "MultikinoTychy"
+   ],
+   "voivodeship": "Śląskie"
+  },
+  {
+   "slug": "walbrzych",
+   "kind": "major",
+   "object": "Walbrzych",
+   "name": "Wałbrzych",
+   "anchor": "Wałbrzych",
+   "lat": 50.7714,
+   "lon": 16.2845,
+   "towns": [],
+   "cinemas": [
+    "CinemaCityWalbrzych",
+    "KinoApolloWalbrzych"
+   ],
+   "voivodeship": "Dolnośląskie"
+  },
+  {
+   "slug": "tarnow",
+   "kind": "major",
+   "object": "Tarnow",
+   "name": "Tarnów",
+   "anchor": "Tarnów",
+   "lat": 50.0121,
+   "lon": 20.9858,
+   "towns": [],
+   "cinemas": [
+    "MultikinoTarnow",
+    "KinoMillenium",
+    "KinoMarzenie"
+   ],
+   "voivodeship": "Małopolskie"
+  },
+  {
+   "slug": "wloclawek",
+   "kind": "major",
+   "object": "Wloclawek",
+   "name": "Włocławek",
+   "anchor": "Włocławek",
+   "lat": 52.6483,
+   "lon": 19.0677,
+   "towns": [],
+   "cinemas": [
+    "MultikinoWloclawek"
+   ],
+   "voivodeship": "Kujawsko-pomorskie"
+  },
+  {
+   "slug": "legnica",
+   "kind": "major",
+   "object": "Legnica",
+   "name": "Legnica",
+   "anchor": "Legnica",
+   "lat": 51.207,
+   "lon": 16.1619,
+   "towns": [],
+   "cinemas": [
+    "HeliosLegnica",
+    "KinoPiast"
+   ],
+   "voivodeship": "Dolnośląskie"
+  },
+  {
+   "slug": "plock",
+   "kind": "major",
+   "object": "Plock",
+   "name": "Płock",
+   "anchor": "Płock",
+   "lat": 52.5468,
+   "lon": 19.7064,
+   "towns": [],
+   "cinemas": [
+    "HeliosPlock",
+    "KinoPrzedwiosnie",
+    "KinoZaRogiem"
+   ],
+   "voivodeship": "Mazowieckie"
+  },
+  {
+   "slug": "bytom",
+   "kind": "major",
+   "object": "Bytom",
+   "name": "Bytom",
+   "anchor": "Bytom",
+   "lat": 50.3483,
+   "lon": 18.9157,
+   "towns": [],
+   "cinemas": [
+    "CinemaCityBytom",
+    "KinoBCKBytom"
+   ],
+   "voivodeship": "Śląskie"
+  },
+  {
+   "slug": "dabrowa-gornicza",
+   "kind": "major",
+   "object": "DabrowaGornicza",
+   "name": "Dąbrowa Górnicza",
+   "anchor": "Dąbrowa Górnicza",
+   "lat": 50.3219,
+   "lon": 19.1876,
+   "towns": [],
+   "cinemas": [
+    "HeliosDabrowaGornicza",
+    "KinoKadr"
+   ],
+   "voivodeship": "Śląskie"
+  },
+  {
+   "slug": "nowy-sacz",
+   "kind": "major",
+   "object": "NowySacz",
+   "name": "Nowy Sącz",
+   "anchor": "Nowy Sącz",
+   "lat": 49.6175,
+   "lon": 20.7154,
+   "towns": [],
+   "cinemas": [
+    "HeliosNowySacz",
+    "KinoSokol"
+   ],
+   "voivodeship": "Małopolskie"
+  },
+  {
+   "slug": "slupsk",
+   "kind": "major",
+   "object": "Slupsk",
+   "name": "Słupsk",
+   "anchor": "Słupsk",
+   "lat": 54.4641,
+   "lon": 17.0287,
+   "towns": [],
+   "cinemas": [
+    "MultikinoSlupsk",
+    "KinoRejs"
+   ],
+   "voivodeship": "Pomorskie"
+  },
+  {
+   "slug": "jelenia-gora",
+   "kind": "major",
+   "object": "JeleniaGora",
+   "name": "Jelenia Góra",
+   "anchor": "Jelenia Góra",
+   "lat": 50.9044,
+   "lon": 15.7197,
+   "towns": [],
+   "cinemas": [
+    "HeliosJeleniaGora",
+    "KinoLot"
+   ],
+   "voivodeship": "Dolnośląskie"
+  },
+  {
+   "slug": "przemysl",
+   "kind": "major",
+   "object": "Przemysl",
+   "name": "Przemyśl",
+   "anchor": "Przemyśl",
+   "lat": 49.7838,
+   "lon": 22.7677,
+   "towns": [],
+   "cinemas": [
+    "HeliosPrzemysl",
+    "KinoCentrum3DPrzemysl"
+   ],
+   "voivodeship": "Podkarpackie"
+  },
+  {
+   "slug": "konin",
+   "kind": "major",
+   "object": "Konin",
+   "name": "Konin",
+   "anchor": "Konin",
+   "lat": 52.223,
+   "lon": 18.2511,
+   "towns": [],
+   "cinemas": [
+    "HeliosKonin",
+    "KinoOskard",
+    "KinoStudyjneCentrum"
+   ],
+   "voivodeship": "Wielkopolskie"
+  },
+  {
+   "slug": "augustow",
+   "kind": "town",
+   "object": null,
+   "name": "Augustów",
+   "anchor": "Augustów",
+   "locative": "Augustowie",
+   "lat": 53.8432,
+   "lon": 22.9798,
+   "towns": [
+    "Augustów"
+   ],
+   "cinemas": [
+    "KinoIskra"
+   ],
+   "voivodeship": "Podlaskie"
+  },
+  {
+   "slug": "belchatow",
+   "kind": "town",
+   "object": null,
+   "name": "Bełchatów",
+   "anchor": "Bełchatów",
+   "locative": "Bełchatowie",
+   "lat": 51.3688,
+   "lon": 19.3567,
+   "towns": [
+    "Bełchatów"
+   ],
+   "cinemas": [
+    "HeliosBelchatow",
+    "KinoKulturaBelchatow"
+   ],
+   "voivodeship": "Łódzkie"
+  },
+  {
+   "slug": "biala-podlaska",
+   "kind": "town",
+   "object": null,
+   "name": "Biała Podlaska",
+   "anchor": "Biała Podlaska",
+   "locative": "Białej Podlaskiej",
+   "lat": 52.0324,
+   "lon": 23.1165,
+   "towns": [
+    "Biała Podlaska"
+   ],
+   "cinemas": [
+    "CinemaCityBialaPodlaska"
+   ],
+   "voivodeship": "Lubelskie"
+  },
+  {
+   "slug": "bielsk-podlaski",
+   "kind": "town",
+   "object": null,
+   "name": "Bielsk Podlaski",
+   "anchor": "Bielsk Podlaski",
+   "locative": "Bielsku Podlaskim",
+   "lat": 52.7651,
+   "lon": 23.1865,
+   "towns": [
+    "Bielsk Podlaski"
+   ],
+   "cinemas": [
+    "KinoBielsk"
+   ],
+   "voivodeship": "Podlaskie"
+  },
+  {
+   "slug": "bilgoraj",
+   "kind": "town",
+   "object": null,
+   "name": "Biłgoraj",
+   "anchor": "Biłgoraj",
+   "locative": "Biłgoraju",
+   "lat": 50.5411,
+   "lon": 22.722,
+   "towns": [
+    "Biłgoraj"
+   ],
+   "cinemas": [
+    "KinoBCK"
+   ],
+   "voivodeship": "Lubelskie"
+  },
+  {
+   "slug": "bochnia",
+   "kind": "cluster",
+   "object": null,
+   "name": "Bochnia",
+   "anchor": "Bochnia",
+   "locative": "Bochni",
+   "lat": 49.9691,
+   "lon": 20.4303,
+   "towns": [
+    "Bochnia",
+    "Brzesko",
+    "Limanowa",
+    "Niepołomice"
+   ],
+   "cinemas": [
+    "KinoWazka",
+    "KinoPlaneta",
+    "KinoRegis",
+    "KinoKlaps"
+   ],
+   "voivodeship": "Małopolskie"
+  },
+  {
+   "slug": "boleslawiec",
+   "kind": "cluster",
+   "object": null,
+   "name": "Bolesławiec",
+   "anchor": "Bolesławiec",
+   "locative": "Bolesławcu",
+   "lat": 51.2642,
+   "lon": 15.5697,
+   "towns": [
+    "Bolesławiec",
+    "Złotoryja",
+    "Chojnów"
+   ],
+   "cinemas": [
+    "KinoAurum",
+    "KinoForumBoleslawiec",
+    "KinoKulturaChojnow"
+   ],
+   "voivodeship": "Dolnośląskie"
+  },
+  {
+   "slug": "braniewo",
+   "kind": "town",
+   "object": null,
+   "name": "Braniewo",
+   "anchor": "Braniewo",
+   "locative": "Braniewie",
+   "lat": 54.3797,
+   "lon": 19.8196,
+   "towns": [
+    "Braniewo"
+   ],
+   "cinemas": [
+    "KinoBaszta"
+   ],
+   "voivodeship": "Warmińsko-mazurskie"
+  },
+  {
+   "slug": "brzeg",
+   "kind": "town",
+   "object": null,
+   "name": "Brzeg",
+   "anchor": "Brzeg",
+   "locative": "Brzegu",
+   "lat": 50.8608,
+   "lon": 17.4674,
+   "towns": [
+    "Brzeg"
+   ],
+   "cinemas": [
+    "KinoCentrumBrzeg"
+   ],
+   "voivodeship": "Opolskie"
+  },
+  {
+   "slug": "brzeg-dolny",
+   "kind": "cluster",
+   "object": null,
+   "name": "Brzeg Dolny",
+   "anchor": "Brzeg Dolny",
+   "locative": "Brzegu Dolnym",
+   "lat": 51.273,
+   "lon": 16.7081,
+   "towns": [
+    "Brzeg Dolny",
+    "Trzebnica",
+    "Środa Śląska",
+    "Oborniki Śląskie"
+   ],
+   "cinemas": [
+    "KinoAstra",
+    "KinoOdraBrzegDolny",
+    "KinoPoloniaTrzebnica",
+    "KinoCyfroweKino"
+   ],
+   "voivodeship": "Dolnośląskie"
+  },
+  {
+   "slug": "busko-zdroj",
+   "kind": "cluster",
+   "object": null,
+   "name": "Busko-Zdrój",
+   "anchor": "Busko-Zdrój",
+   "locative": "Busku-Zdroju",
+   "lat": 50.4708,
+   "lon": 20.7188,
+   "towns": [
+    "Busko-Zdrój",
+    "Jędrzejów",
+    "Staszów",
+    "Solec-Zdrój"
+   ],
+   "cinemas": [
+    "KinoCK",
+    "KinoZdrojBusko",
+    "KinoGCK",
+    "KinoKadrStaszow"
+   ],
+   "voivodeship": "Świętokrzyskie"
+  },
+  {
+   "slug": "chelm",
+   "kind": "town",
+   "object": null,
+   "name": "Chełm",
+   "anchor": "Chełm",
+   "locative": "Chełmie",
+   "lat": 51.1431,
+   "lon": 23.4716,
+   "towns": [
+    "Chełm"
+   ],
+   "cinemas": [
+    "KinoZorzaChelm"
+   ],
+   "voivodeship": "Lubelskie"
+  },
+  {
+   "slug": "chojnice",
+   "kind": "cluster",
+   "object": null,
+   "name": "Chojnice",
+   "anchor": "Chojnice",
+   "locative": "Chojnicach",
+   "lat": 53.6955,
+   "lon": 17.557,
+   "towns": [
+    "Chojnice",
+    "Tuchola",
+    "Człuchów",
+    "Sępólno Krajeńskie",
+    "Brusy"
+   ],
+   "cinemas": [
+    "KinoChDK",
+    "KinoUciechaCzluchow",
+    "KinoZaRogiemBrusy",
+    "KinoCKiSSepolno",
+    "KinoTucholskiOsrodekKultury"
+   ],
+   "voivodeship": "Pomorskie"
+  },
+  {
+   "slug": "choszczno",
+   "kind": "cluster",
+   "object": null,
+   "name": "Choszczno",
+   "anchor": "Choszczno",
+   "locative": "Choszcznie",
+   "lat": 53.169,
+   "lon": 15.4205,
+   "towns": [
+    "Choszczno",
+    "Barlinek",
+    "Recz",
+    "Drawno"
+   ],
+   "cinemas": [
+    "KinoPanorama",
+    "KinoChDKChoszczno",
+    "KinoDOKDrawno",
+    "KinoMGOKRecz"
+   ],
+   "voivodeship": "Zachodniopomorskie"
+  },
+  {
+   "slug": "ciechanow",
+   "kind": "cluster",
+   "object": null,
+   "name": "Ciechanów",
+   "anchor": "Ciechanów",
+   "locative": "Ciechanowie",
+   "lat": 52.8814,
+   "lon": 20.62,
+   "towns": [
+    "Ciechanów",
+    "Płońsk",
+    "Przasnysz"
+   ],
+   "cinemas": [
+    "KinoKalejdoskop",
+    "KinoLydynia",
+    "KinoSwiatowidPrzasnysz"
+   ],
+   "voivodeship": "Mazowieckie"
+  },
+  {
+   "slug": "czechowice-dziedzice",
+   "kind": "cluster",
+   "object": null,
+   "name": "Czechowice-Dziedzice",
+   "anchor": "Czechowice-Dziedzice",
+   "locative": "Czechowicach-Dziedzicach",
+   "lat": 49.9134,
+   "lon": 19.0048,
+   "towns": [
+    "Czechowice-Dziedzice",
+    "Pszczyna"
+   ],
+   "cinemas": [
+    "KinoPckulKino",
+    "KinoSwitCzechowiceDziedzice",
+    "MultikinoCzechowiceDziedzice"
+   ],
+   "voivodeship": "Śląskie"
+  },
+  {
+   "slug": "dabrowa-tarnowska",
+   "kind": "cluster",
+   "object": null,
+   "name": "Dąbrowa Tarnowska",
+   "anchor": "Dąbrowa Tarnowska",
+   "locative": "Dąbrowie Tarnowskiej",
+   "lat": 50.1746,
+   "lon": 20.9863,
+   "towns": [
+    "Dąbrowa Tarnowska",
+    "Lisia Góra",
+    "Radłów"
+   ],
+   "cinemas": [
+    "KinoSokolDabrowaTarnowska",
+    "KinoMCKRadlow",
+    "KinoCentrumLisiaGora"
+   ],
+   "voivodeship": "Małopolskie"
+  },
+  {
+   "slug": "elk",
+   "kind": "town",
+   "object": null,
+   "name": "Ełk",
+   "anchor": "Ełk",
+   "locative": "Ełku",
+   "lat": 53.8282,
+   "lon": 22.3647,
+   "towns": [
+    "Ełk"
+   ],
+   "cinemas": [
+    "KinoECK",
+    "KinoPlanetCinemaElk"
+   ],
+   "voivodeship": "Warmińsko-mazurskie"
+  },
+  {
+   "slug": "gizycko",
+   "kind": "cluster",
+   "object": null,
+   "name": "Giżycko",
+   "anchor": "Giżycko",
+   "locative": "Giżycku",
+   "lat": 54.0381,
+   "lon": 21.7644,
+   "towns": [
+    "Giżycko",
+    "Kętrzyn",
+    "Mrągowo"
+   ],
+   "cinemas": [
+    "KinoGwiazdaKetrzyn",
+    "KinoZodiak",
+    "KinoNowaFalaGizycko"
+   ],
+   "voivodeship": "Warmińsko-mazurskie"
+  },
+  {
+   "slug": "glogow",
+   "kind": "town",
+   "object": null,
+   "name": "Głogów",
+   "anchor": "Głogów",
+   "locative": "Głogowie",
+   "lat": 51.6636,
+   "lon": 16.0845,
+   "towns": [
+    "Głogów"
+   ],
+   "cinemas": [
+    "MultikinoGlogow",
+    "KinoMOKGlogow",
+    "TeatrGryphius"
+   ],
+   "voivodeship": "Dolnośląskie"
+  },
+  {
+   "slug": "gniezno",
+   "kind": "cluster",
+   "object": null,
+   "name": "Gniezno",
+   "anchor": "Gniezno",
+   "locative": "Gnieźnie",
+   "lat": 52.5348,
+   "lon": 17.5826,
+   "towns": [
+    "Gniezno",
+    "Września"
+   ],
+   "cinemas": [
+    "KinoTrojka",
+    "HeliosGniezno"
+   ],
+   "voivodeship": "Wielkopolskie"
+  },
+  {
+   "slug": "goldap",
+   "kind": "town",
+   "object": null,
+   "name": "Gołdap",
+   "anchor": "Gołdap",
+   "locative": "Gołdapi",
+   "lat": 54.3063,
+   "lon": 22.3036,
+   "towns": [
+    "Gołdap"
+   ],
+   "cinemas": [
+    "KinoKulturaGoldap"
+   ],
+   "voivodeship": "Warmińsko-mazurskie"
+  },
+  {
+   "slug": "grajewo",
+   "kind": "town",
+   "object": null,
+   "name": "Grajewo",
+   "anchor": "Grajewo",
+   "locative": "Grajewie",
+   "lat": 53.6473,
+   "lon": 22.4554,
+   "towns": [
+    "Grajewo"
+   ],
+   "cinemas": [
+    "KinoDomKulturyGrajewo"
+   ],
+   "voivodeship": "Podlaskie"
+  },
+  {
+   "slug": "grudziadz",
+   "kind": "cluster",
+   "object": null,
+   "name": "Grudziądz",
+   "anchor": "Grudziądz",
+   "locative": "Grudziądzu",
+   "lat": 53.4841,
+   "lon": 18.7537,
+   "towns": [
+    "Grudziądz",
+    "Świecie",
+    "Chełmno"
+   ],
+   "cinemas": [
+    "KinoRondo",
+    "KinoCKSwiecie",
+    "HeliosGrudziadz"
+   ],
+   "voivodeship": "Kujawsko-pomorskie"
+  },
+  {
+   "slug": "hrubieszow",
+   "kind": "town",
+   "object": null,
+   "name": "Hrubieszów",
+   "anchor": "Hrubieszów",
+   "locative": "Hrubieszowie",
+   "lat": 50.805,
+   "lon": 23.8925,
+   "towns": [
+    "Hrubieszów"
+   ],
+   "cinemas": [
+    "KinoPlon"
+   ],
+   "voivodeship": "Lubelskie"
+  },
+  {
+   "slug": "ilawa",
+   "kind": "cluster",
+   "object": null,
+   "name": "Iława",
+   "anchor": "Iława",
+   "locative": "Iławie",
+   "lat": 53.596,
+   "lon": 19.5685,
+   "towns": [
+    "Iława",
+    "Nowe Miasto Lubawskie",
+    "Lubawa"
+   ],
+   "cinemas": [
+    "KinoteatrPasja",
+    "KinoPokoj",
+    "KinoteatrHarmonia"
+   ],
+   "voivodeship": "Warmińsko-mazurskie"
+  },
+  {
+   "slug": "inowroclaw",
+   "kind": "cluster",
+   "object": null,
+   "name": "Inowrocław",
+   "anchor": "Inowrocław",
+   "locative": "Inowrocławiu",
+   "lat": 52.7989,
+   "lon": 18.2639,
+   "towns": [
+    "Inowrocław",
+    "Mogilno",
+    "Janikowo"
+   ],
+   "cinemas": [
+    "KinoKinomax",
+    "KinoManhattanJanikowo",
+    "KinoWawrzyn"
+   ],
+   "voivodeship": "Kujawsko-pomorskie"
+  },
+  {
+   "slug": "jaroslaw",
+   "kind": "town",
+   "object": null,
+   "name": "Jarosław",
+   "anchor": "Jarosław",
+   "locative": "Jarosławiu",
+   "lat": 50.0162,
+   "lon": 22.6778,
+   "towns": [
+    "Jarosław"
+   ],
+   "cinemas": [
+    "KinoIkar",
+    "KinoNaBiegunach"
+   ],
+   "voivodeship": "Podkarpackie"
+  },
+  {
+   "slug": "jaslo",
+   "kind": "cluster",
+   "object": null,
+   "name": "Jasło",
+   "anchor": "Jasło",
+   "locative": "Jaśle",
+   "lat": 49.7451,
+   "lon": 21.4725,
+   "towns": [
+    "Jasło",
+    "Gorlice",
+    "Strzyżów",
+    "Biecz"
+   ],
+   "cinemas": [
+    "KinoSokolStrzyzow",
+    "KinoFarys",
+    "KinoKolory",
+    "KinoJDK"
+   ],
+   "voivodeship": "Podkarpackie"
+  },
+  {
+   "slug": "jastrzebie-zdroj",
+   "kind": "cluster",
+   "object": null,
+   "name": "Jastrzębie-Zdrój",
+   "anchor": "Jastrzębie Zdrój",
+   "locative": "Jastrzębiu-Zdroju",
+   "lat": 49.9554,
+   "lon": 18.5748,
+   "towns": [
+    "Jastrzębie Zdrój",
+    "Racibórz",
+    "Wodzisław Śląski",
+    "Cieszyn",
+    "Rydułtowy",
+    "Skoczów"
+   ],
+   "cinemas": [
+    "KinoTeatrElektryczny",
+    "CinemaCityCieszyn",
+    "KinoBaltyk",
+    "KinoCentrum",
+    "KinoPegaz",
+    "KinoFeniks"
+   ],
+   "voivodeship": "Śląskie"
+  },
+  {
+   "slug": "jaworzno",
+   "kind": "cluster",
+   "object": null,
+   "name": "Jaworzno",
+   "anchor": "Jaworzno",
+   "locative": "Jaworznie",
+   "lat": 50.2053,
+   "lon": 19.275,
+   "towns": [
+    "Jaworzno",
+    "Chrzanów",
+    "Olkusz",
+    "Libiąż"
+   ],
+   "cinemas": [
+    "KinoAleKinoLibiaz",
+    "KinoZbyszekOlkusz",
+    "MultikinoJaworzno",
+    "KinoSztuka"
+   ],
+   "voivodeship": "Śląskie"
+  },
+  {
+   "slug": "kedzierzyn-kozle",
+   "kind": "town",
+   "object": null,
+   "name": "Kędzierzyn-Koźle",
+   "anchor": "Kędzierzyn-Koźle",
+   "locative": "Kędzierzynie-Koźlu",
+   "lat": 50.3498,
+   "lon": 18.2261,
+   "towns": [
+    "Kędzierzyn-Koźle"
+   ],
+   "cinemas": [
+    "HeliosKedzierzynKozle",
+    "KinoChemik",
+    "KinoTwierdza"
+   ],
+   "voivodeship": "Opolskie"
+  },
+  {
+   "slug": "kepno",
+   "kind": "cluster",
+   "object": null,
+   "name": "Kępno",
+   "anchor": "Kępno",
+   "locative": "Kępnie",
+   "lat": 51.2784,
+   "lon": 17.9891,
+   "towns": [
+    "Kępno",
+    "Ostrzeszów",
+    "Wieruszów"
+   ],
+   "cinemas": [
+    "KinoPiastOstrzeszow",
+    "KinoSlonce",
+    "KinoSokolniaKepno"
+   ],
+   "voivodeship": "Wielkopolskie"
+  },
+  {
+   "slug": "klodzko",
+   "kind": "cluster",
+   "object": null,
+   "name": "Kłodzko",
+   "anchor": "Kłodzko",
+   "locative": "Kłodzku",
+   "lat": 50.4349,
+   "lon": 16.6614,
+   "towns": [
+    "Kłodzko",
+    "Nowa Ruda"
+   ],
+   "cinemas": [
+    "KinoMOKNowaRuda",
+    "MultikinoKlodzko"
+   ],
+   "voivodeship": "Dolnośląskie"
+  },
+  {
+   "slug": "kluczbork",
+   "kind": "town",
+   "object": null,
+   "name": "Kluczbork",
+   "anchor": "Kluczbork",
+   "locative": "Kluczborku",
+   "lat": 50.9728,
+   "lon": 18.2182,
+   "towns": [
+    "Kluczbork"
+   ],
+   "cinemas": [
+    "KinoBajkaKluczbork"
+   ],
+   "voivodeship": "Opolskie"
+  },
+  {
+   "slug": "kolobrzeg",
+   "kind": "cluster",
+   "object": null,
+   "name": "Kołobrzeg",
+   "anchor": "Kołobrzeg",
+   "locative": "Kołobrzegu",
+   "lat": 54.1756,
+   "lon": 15.5834,
+   "towns": [
+    "Kołobrzeg",
+    "Białogard",
+    "Tychowo"
+   ],
+   "cinemas": [
+    "KinoCentrumBialogard",
+    "KinoGOK",
+    "KinoWybrzeze"
+   ],
+   "voivodeship": "Zachodniopomorskie"
+  },
+  {
+   "slug": "koscierzyna",
+   "kind": "cluster",
+   "object": null,
+   "name": "Kościerzyna",
+   "anchor": "Kościerzyna",
+   "locative": "Kościerzynie",
+   "lat": 54.1223,
+   "lon": 17.9812,
+   "towns": [
+    "Kościerzyna",
+    "Kartuzy",
+    "Chmielno"
+   ],
+   "cinemas": [
+    "KinoZaRogiemChmielno",
+    "KinoKCK",
+    "KinoRemus"
+   ],
+   "voivodeship": "Pomorskie"
+  },
+  {
+   "slug": "krapkowice",
+   "kind": "town",
+   "object": null,
+   "name": "Krapkowice",
+   "anchor": "Krapkowice",
+   "locative": "Krapkowicach",
+   "lat": 50.4751,
+   "lon": 17.9654,
+   "towns": [
+    "Krapkowice"
+   ],
+   "cinemas": [
+    "KinoKrapkowice"
+   ],
+   "voivodeship": "Opolskie"
+  },
+  {
+   "slug": "krasnik",
+   "kind": "cluster",
+   "object": null,
+   "name": "Kraśnik",
+   "anchor": "Kraśnik",
+   "locative": "Kraśniku",
+   "lat": 50.9236,
+   "lon": 22.2271,
+   "towns": [
+    "Kraśnik",
+    "Poniatowa",
+    "Opole Lubelskie"
+   ],
+   "cinemas": [
+    "KinoMetalowiec",
+    "KinoCzyn",
+    "KinoOpolanka"
+   ],
+   "voivodeship": "Lubelskie"
+  },
+  {
+   "slug": "krasnystaw",
+   "kind": "town",
+   "object": null,
+   "name": "Krasnystaw",
+   "anchor": "Krasnystaw",
+   "locative": "Krasnymstawie",
+   "lat": 50.9846,
+   "lon": 23.1742,
+   "towns": [
+    "Krasnystaw"
+   ],
+   "cinemas": [
+    "KinoMorskieOko"
+   ],
+   "voivodeship": "Lubelskie"
+  },
+  {
+   "slug": "krosno",
+   "kind": "town",
+   "object": null,
+   "name": "Krosno",
+   "anchor": "Krosno",
+   "locative": "Krośnie",
+   "lat": 49.6887,
+   "lon": 21.7706,
+   "towns": [
+    "Krosno"
+   ],
+   "cinemas": [
+    "HeliosKrosno",
+    "KinoArtKino"
+   ],
+   "voivodeship": "Podkarpackie"
+  },
+  {
+   "slug": "krotoszyn",
+   "kind": "cluster",
+   "object": null,
+   "name": "Krotoszyn",
+   "anchor": "Krotoszyn",
+   "locative": "Krotoszynie",
+   "lat": 51.6987,
+   "lon": 17.4374,
+   "towns": [
+    "Krotoszyn",
+    "Jarocin",
+    "Pleszew"
+   ],
+   "cinemas": [
+    "KinoEcho",
+    "KinoPrzedwiosnieKrotoszyn",
+    "KinoHel"
+   ],
+   "voivodeship": "Wielkopolskie"
+  },
+  {
+   "slug": "krynica-zdroj",
+   "kind": "cluster",
+   "object": null,
+   "name": "Krynica-Zdrój",
+   "anchor": "Krynica-Zdrój",
+   "locative": "Krynicy-Zdroju",
+   "lat": 49.4222,
+   "lon": 20.9594,
+   "towns": [
+    "Krynica-Zdrój",
+    "Grybów"
+   ],
+   "cinemas": [
+    "KinoJaworzyna",
+    "KinoMCKGrybow"
+   ],
+   "voivodeship": "Małopolskie"
+  },
+  {
+   "slug": "kutno",
+   "kind": "cluster",
+   "object": null,
+   "name": "Kutno",
+   "anchor": "Kutno",
+   "locative": "Kutnie",
+   "lat": 52.2306,
+   "lon": 19.3641,
+   "towns": [
+    "Kutno",
+    "Gostynin",
+    "Łęczyca"
+   ],
+   "cinemas": [
+    "KinoGornikLeczyca",
+    "KinoNoweKinoWarszawa",
+    "KinoKDK"
+   ],
+   "voivodeship": "Łódzkie"
+  },
+  {
+   "slug": "lapy",
+   "kind": "town",
+   "object": null,
+   "name": "Łapy",
+   "anchor": "Łapy",
+   "locative": "Łapach",
+   "lat": 52.9911,
+   "lon": 22.8842,
+   "towns": [
+    "Łapy"
+   ],
+   "cinemas": [
+    "DomKulturyLapy"
+   ],
+   "voivodeship": "Podlaskie"
+  },
+  {
+   "slug": "leba",
+   "kind": "town",
+   "object": null,
+   "name": "Łeba",
+   "anchor": "Łeba",
+   "locative": "Łebie",
+   "lat": 54.761,
+   "lon": 17.5555,
+   "towns": [
+    "Łeba"
+   ],
+   "cinemas": [
+    "KinoLeba"
+   ],
+   "voivodeship": "Pomorskie"
+  },
+  {
+   "slug": "legionowo",
+   "kind": "cluster",
+   "object": null,
+   "name": "Legionowo",
+   "anchor": "Legionowo",
+   "locative": "Legionowie",
+   "lat": 52.4015,
+   "lon": 20.9266,
+   "towns": [
+    "Legionowo",
+    "Nowy Dwór Mazowiecki",
+    "Nasielsk"
+   ],
+   "cinemas": [
+    "HeliosLegionowo",
+    "KinoKasynoOficerskie",
+    "KinoNOKNasielsk"
+   ],
+   "voivodeship": "Mazowieckie"
+  },
+  {
+   "slug": "leszno",
+   "kind": "town",
+   "object": null,
+   "name": "Leszno",
+   "anchor": "Leszno",
+   "locative": "Lesznie",
+   "lat": 51.8403,
+   "lon": 16.5749,
+   "towns": [
+    "Leszno"
+   ],
+   "cinemas": [
+    "MultikinoLeszno",
+    "KinoTeatrMiejskiLeszno"
+   ],
+   "voivodeship": "Wielkopolskie"
+  },
+  {
+   "slug": "lidzbark-warminski",
+   "kind": "town",
+   "object": null,
+   "name": "Lidzbark Warmiński",
+   "anchor": "Lidzbark Warmiński",
+   "locative": "Lidzbarku Warmińskim",
+   "lat": 54.1259,
+   "lon": 20.5795,
+   "towns": [
+    "Lidzbark Warmiński"
+   ],
+   "cinemas": [
+    "KinoIgnacy"
+   ],
+   "voivodeship": "Warmińsko-mazurskie"
+  },
+  {
+   "slug": "lipno",
+   "kind": "cluster",
+   "object": null,
+   "name": "Lipno",
+   "anchor": "Lipno",
+   "locative": "Lipnie",
+   "lat": 52.8444,
+   "lon": 19.1785,
+   "towns": [
+    "Lipno",
+    "Aleksandrów Kujawski",
+    "Ciechocinek"
+   ],
+   "cinemas": [
+    "KinoMiejskieCentrumKultury",
+    "KinoZdroj",
+    "KinoNawojka"
+   ],
+   "voivodeship": "Kujawsko-pomorskie"
+  },
+  {
+   "slug": "lomza",
+   "kind": "cluster",
+   "object": null,
+   "name": "Łomża",
+   "anchor": "Łomża",
+   "locative": "Łomży",
+   "lat": 53.1781,
+   "lon": 22.0593,
+   "towns": [
+    "Łomża",
+    "Ostrołęka",
+    "Zambrów"
+   ],
+   "cinemas": [
+    "HeliosLomza",
+    "KinoJantar",
+    "KinoCKZambrow"
+   ],
+   "voivodeship": "Podlaskie"
+  },
+  {
+   "slug": "lubin",
+   "kind": "town",
+   "object": null,
+   "name": "Lubin",
+   "anchor": "Lubin",
+   "locative": "Lubinie",
+   "lat": 51.4009,
+   "lon": 16.2015,
+   "towns": [
+    "Lubin"
+   ],
+   "cinemas": [
+    "HeliosLubin",
+    "KinoMuzaLubin"
+   ],
+   "voivodeship": "Dolnośląskie"
+  },
+  {
+   "slug": "lubliniec",
+   "kind": "town",
+   "object": null,
+   "name": "Lubliniec",
+   "anchor": "Lubliniec",
+   "locative": "Lublińcu",
+   "lat": 50.669,
+   "lon": 18.6844,
+   "towns": [
+    "Lubliniec"
+   ],
+   "cinemas": [
+    "KinoKarolinka"
+   ],
+   "voivodeship": "Śląskie"
+  },
+  {
+   "slug": "lukow",
+   "kind": "town",
+   "object": null,
+   "name": "Łuków",
+   "anchor": "Łuków",
+   "locative": "Łukowie",
+   "lat": 51.929,
+   "lon": 22.3796,
+   "towns": [
+    "Łuków"
+   ],
+   "cinemas": [
+    "KinoLukow"
+   ],
+   "voivodeship": "Lubelskie"
+  },
+  {
+   "slug": "miechow",
+   "kind": "cluster",
+   "object": null,
+   "name": "Miechów",
+   "anchor": "Miechów",
+   "locative": "Miechowie",
+   "lat": 50.3565,
+   "lon": 20.0279,
+   "towns": [
+    "Miechów",
+    "Wolbrom"
+   ],
+   "cinemas": [
+    "KinoRadosc",
+    "KinoGryf"
+   ],
+   "voivodeship": "Małopolskie"
+  },
+  {
+   "slug": "miedzyrzec-podlaski",
+   "kind": "town",
+   "object": null,
+   "name": "Międzyrzec Podlaski",
+   "anchor": "Międzyrzec Podlaski",
+   "locative": "Międzyrzecu Podlaskim",
+   "lat": 51.9864,
+   "lon": 22.7825,
+   "towns": [
+    "Międzyrzec Podlaski"
+   ],
+   "cinemas": [
+    "KinoSlawa",
+    "KinoZaRogiemMiedzyrzec"
+   ],
+   "voivodeship": "Lubelskie"
+  },
+  {
+   "slug": "miedzyrzecz",
+   "kind": "town",
+   "object": null,
+   "name": "Międzyrzecz",
+   "anchor": "Międzyrzecz",
+   "locative": "Międzyrzeczu",
+   "lat": 52.4446,
+   "lon": 15.578,
+   "towns": [
+    "Międzyrzecz"
+   ],
+   "cinemas": [
+    "KinoMOKMiedzyrzecz"
+   ],
+   "voivodeship": "Lubuskie"
+  },
+  {
+   "slug": "miedzyzdroje",
+   "kind": "town",
+   "object": null,
+   "name": "Międzyzdroje",
+   "anchor": "Międzyzdroje",
+   "locative": "Międzyzdrojach",
+   "lat": 53.9292,
+   "lon": 14.451,
+   "towns": [
+    "Międzyzdroje"
+   ],
+   "cinemas": [
+    "KinoEva"
+   ],
+   "voivodeship": "Zachodniopomorskie"
+  },
+  {
+   "slug": "mielec",
+   "kind": "cluster",
+   "object": null,
+   "name": "Mielec",
+   "anchor": "Mielec",
+   "locative": "Mielcu",
+   "lat": 50.2871,
+   "lon": 21.4239,
+   "towns": [
+    "Mielec",
+    "Dębica",
+    "Sędziszów Małopolski",
+    "Tuchów"
+   ],
+   "cinemas": [
+    "KinoJednosc",
+    "KinoSniezka",
+    "KinoPromien",
+    "MultikinoMielec"
+   ],
+   "voivodeship": "Podkarpackie"
+  },
+  {
+   "slug": "mlawa",
+   "kind": "cluster",
+   "object": null,
+   "name": "Mława",
+   "anchor": "Mława",
+   "locative": "Mławie",
+   "lat": 53.1128,
+   "lon": 20.3841,
+   "towns": [
+    "Mława",
+    "Działdowo",
+    "Żuromin"
+   ],
+   "cinemas": [
+    "KinoKosmosMlawa",
+    "KinoApolloDzialdowo",
+    "KinoTon"
+   ],
+   "voivodeship": "Mazowieckie"
+  },
+  {
+   "slug": "morag",
+   "kind": "town",
+   "object": null,
+   "name": "Morąg",
+   "anchor": "Morąg",
+   "locative": "Morągu",
+   "lat": 53.9171,
+   "lon": 19.926,
+   "towns": [
+    "Morąg"
+   ],
+   "cinemas": [
+    "KinoNarie"
+   ],
+   "voivodeship": "Warmińsko-mazurskie"
+  },
+  {
+   "slug": "myszkow",
+   "kind": "town",
+   "object": null,
+   "name": "Myszków",
+   "anchor": "Myszków",
+   "locative": "Myszkowie",
+   "lat": 50.5752,
+   "lon": 19.3246,
+   "towns": [
+    "Myszków"
+   ],
+   "cinemas": [
+    "KinoMDKMyszkow"
+   ],
+   "voivodeship": "Śląskie"
+  },
+  {
+   "slug": "naklo-nad-notecia",
+   "kind": "cluster",
+   "object": null,
+   "name": "Nakło nad Notecią",
+   "anchor": "Nakło nad Notecią",
+   "locative": "Nakle nad Notecią",
+   "lat": 53.1421,
+   "lon": 17.6018,
+   "towns": [
+    "Nakło nad Notecią",
+    "Więcbork"
+   ],
+   "cinemas": [
+    "KinoRelaks",
+    "KinoPromienWiecbork"
+   ],
+   "voivodeship": "Kujawsko-pomorskie"
+  },
+  {
+   "slug": "nowa-sol",
+   "kind": "town",
+   "object": null,
+   "name": "Nowa Sól",
+   "anchor": "Nowa Sól",
+   "locative": "Nowej Soli",
+   "lat": 51.8033,
+   "lon": 15.717,
+   "towns": [
+    "Nowa Sól"
+   ],
+   "cinemas": [
+    "KinoEuropa"
+   ],
+   "voivodeship": "Lubuskie"
+  },
+  {
+   "slug": "nowy-targ",
+   "kind": "cluster",
+   "object": null,
+   "name": "Nowy Targ",
+   "anchor": "Nowy Targ",
+   "locative": "Nowym Targu",
+   "lat": 49.4778,
+   "lon": 20.0323,
+   "towns": [
+    "Nowy Targ",
+    "Rabka-Zdrój",
+    "Mszana Dolna"
+   ],
+   "cinemas": [
+    "KinoLubon",
+    "KinoSniezkaRabka",
+    "KinoStopiak"
+   ],
+   "voivodeship": "Małopolskie"
+  },
+  {
+   "slug": "nowy-tomysl",
+   "kind": "cluster",
+   "object": null,
+   "name": "Nowy Tomyśl",
+   "anchor": "Nowy Tomyśl",
+   "locative": "Nowym Tomyślu",
+   "lat": 52.3195,
+   "lon": 16.1284,
+   "towns": [
+    "Nowy Tomyśl",
+    "Międzychód",
+    "Opalenica",
+    "Buk",
+    "Siedlec"
+   ],
+   "cinemas": [
+    "KinoWielkopolanin",
+    "KinoOpalenica",
+    "KinoNOKNowyTomysl",
+    "KinoMewaMiedzychod",
+    "KinoZaRogiemSiedlec"
+   ],
+   "voivodeship": "Wielkopolskie"
+  },
+  {
+   "slug": "nysa",
+   "kind": "cluster",
+   "object": null,
+   "name": "Nysa",
+   "anchor": "Nysa",
+   "locative": "Nysie",
+   "lat": 50.4738,
+   "lon": 17.3344,
+   "towns": [
+    "Nysa",
+    "Prudnik"
+   ],
+   "cinemas": [
+    "KinoDiana",
+    "KinoCinemaN"
+   ],
+   "voivodeship": "Opolskie"
+  },
+  {
+   "slug": "olawa",
+   "kind": "town",
+   "object": null,
+   "name": "Oława",
+   "anchor": "Oława",
+   "locative": "Oławie",
+   "lat": 50.9466,
+   "lon": 17.2926,
+   "towns": [
+    "Oława"
+   ],
+   "cinemas": [
+    "KinoOdraOlawa",
+    "GoKinoOlawa"
+   ],
+   "voivodeship": "Dolnośląskie"
+  },
+  {
+   "slug": "olecko",
+   "kind": "town",
+   "object": null,
+   "name": "Olecko",
+   "anchor": "Olecko",
+   "locative": "Olecku",
+   "lat": 54.0337,
+   "lon": 22.507,
+   "towns": [
+    "Olecko"
+   ],
+   "cinemas": [
+    "KinoMazur"
+   ],
+   "voivodeship": "Warmińsko-mazurskie"
+  },
+  {
+   "slug": "olesnica",
+   "kind": "town",
+   "object": null,
+   "name": "Oleśnica",
+   "anchor": "Oleśnica",
+   "locative": "Oleśnicy",
+   "lat": 51.2134,
+   "lon": 17.3899,
+   "towns": [
+    "Oleśnica"
+   ],
+   "cinemas": [
+    "KinoMOKiSOlesnica"
+   ],
+   "voivodeship": "Dolnośląskie"
+  },
+  {
+   "slug": "olsztynek",
+   "kind": "town",
+   "object": null,
+   "name": "Olsztynek",
+   "anchor": "Olsztynek",
+   "locative": "Olsztynku",
+   "lat": 53.5837,
+   "lon": 20.2847,
+   "towns": [
+    "Olsztynek"
+   ],
+   "cinemas": [
+    "KinoGrunwald"
+   ],
+   "voivodeship": "Warmińsko-mazurskie"
+  },
+  {
+   "slug": "opoczno",
+   "kind": "cluster",
+   "object": null,
+   "name": "Opoczno",
+   "anchor": "Opoczno",
+   "locative": "Opocznie",
+   "lat": 51.3757,
+   "lon": 20.2783,
+   "towns": [
+    "Opoczno",
+    "Końskie",
+    "Drzewica"
+   ],
+   "cinemas": [
+    "KinoRCKDrzewica",
+    "KinoKoneckieCentrumKultury",
+    "KinoMDKOpoczno"
+   ],
+   "voivodeship": "Łódzkie"
+  },
+  {
+   "slug": "ostrow-mazowiecka",
+   "kind": "town",
+   "object": null,
+   "name": "Ostrów Mazowiecka",
+   "anchor": "Ostrów Mazowiecka",
+   "locative": "Ostrowi Mazowieckiej",
+   "lat": 52.8025,
+   "lon": 21.8951,
+   "towns": [
+    "Ostrów Mazowiecka"
+   ],
+   "cinemas": [
+    "KinoOstrovia"
+   ],
+   "voivodeship": "Mazowieckie"
+  },
+  {
+   "slug": "ostrow-wielkopolski",
+   "kind": "town",
+   "object": null,
+   "name": "Ostrów Wielkopolski",
+   "anchor": "Ostrów Wielkopolski",
+   "locative": "Ostrowie Wielkopolskim",
+   "lat": 51.655,
+   "lon": 17.8069,
+   "towns": [
+    "Ostrów Wielkopolski"
+   ],
+   "cinemas": [
+    "HeliosOstrowWlkp"
+   ],
+   "voivodeship": "Wielkopolskie"
+  },
+  {
+   "slug": "ostrowiec-swietokrzyski",
+   "kind": "cluster",
+   "object": null,
+   "name": "Ostrowiec Świętokrzyski",
+   "anchor": "Ostrowiec Świętokrzyski",
+   "locative": "Ostrowcu Świętokrzyskim",
+   "lat": 50.9294,
+   "lon": 21.3852,
+   "towns": [
+    "Ostrowiec Świętokrzyski",
+    "Opatów"
+   ],
+   "cinemas": [
+    "KinoEtiuda",
+    "KinoOOK"
+   ],
+   "voivodeship": "Świętokrzyskie"
+  },
+  {
+   "slug": "oswiecim",
+   "kind": "cluster",
+   "object": null,
+   "name": "Oświęcim",
+   "anchor": "Oświęcim",
+   "locative": "Oświęcimiu",
+   "lat": 50.0344,
+   "lon": 19.2104,
+   "towns": [
+    "Oświęcim",
+    "Brzeszcze"
+   ],
+   "cinemas": [
+    "KinoWislaBrzeszcze",
+    "KinoNaszeKino",
+    "KinoPlanetCinema"
+   ],
+   "voivodeship": "Małopolskie"
+  },
+  {
+   "slug": "otwock",
+   "kind": "cluster",
+   "object": null,
+   "name": "Otwock",
+   "anchor": "Otwock",
+   "locative": "Otwocku",
+   "lat": 52.1058,
+   "lon": 21.2613,
+   "towns": [
+    "Otwock",
+    "Garwolin",
+    "Góra Kalwaria"
+   ],
+   "cinemas": [
+    "KinoUciecha",
+    "KinoOaza",
+    "KinoWilga"
+   ],
+   "voivodeship": "Mazowieckie"
+  },
+  {
+   "slug": "pabianice",
+   "kind": "town",
+   "object": null,
+   "name": "Pabianice",
+   "anchor": "Pabianice",
+   "locative": "Pabianicach",
+   "lat": 51.6645,
+   "lon": 19.3547,
+   "towns": [
+    "Pabianice"
+   ],
+   "cinemas": [
+    "KinoTomi",
+    "HeliosPabianice"
+   ],
+   "voivodeship": "Łódzkie"
+  },
+  {
+   "slug": "parczew",
+   "kind": "town",
+   "object": null,
+   "name": "Parczew",
+   "anchor": "Parczew",
+   "locative": "Parczewie",
+   "lat": 51.6402,
+   "lon": 22.9006,
+   "towns": [
+    "Parczew"
+   ],
+   "cinemas": [
+    "KinoParczew"
+   ],
+   "voivodeship": "Lubelskie"
+  },
+  {
+   "slug": "pila",
+   "kind": "cluster",
+   "object": null,
+   "name": "Piła",
+   "anchor": "Piła",
+   "locative": "Pile",
+   "lat": 53.1514,
+   "lon": 16.7378,
+   "towns": [
+    "Piła",
+    "Wałcz",
+    "Chodzież",
+    "Trzcianka",
+    "Czarnków"
+   ],
+   "cinemas": [
+    "HeliosPila",
+    "KinoWCKWalcz",
+    "KinoOsiedlowe",
+    "KinoNotec",
+    "KinoSwiatowidCzarnkow"
+   ],
+   "voivodeship": "Wielkopolskie"
+  },
+  {
+   "slug": "piotrkow-trybunalski",
+   "kind": "town",
+   "object": null,
+   "name": "Piotrków Trybunalski",
+   "anchor": "Piotrków Trybunalski",
+   "locative": "Piotrkowie Trybunalskim",
+   "lat": 51.4055,
+   "lon": 19.7032,
+   "towns": [
+    "Piotrków Trybunalski"
+   ],
+   "cinemas": [
+    "HeliosPiotrkow"
+   ],
+   "voivodeship": "Łódzkie"
+  },
+  {
+   "slug": "police",
+   "kind": "cluster",
+   "object": null,
+   "name": "Police",
+   "anchor": "Police",
+   "locative": "Policach",
+   "lat": 53.5521,
+   "lon": 14.5718,
+   "towns": [
+    "Police",
+    "Goleniów",
+    "Gryfino"
+   ],
+   "cinemas": [
+    "KinoKawiarnia",
+    "KinoMOKPolice",
+    "KinoGryfinskiDomKultury"
+   ],
+   "voivodeship": "Zachodniopomorskie"
+  },
+  {
+   "slug": "polkowice",
+   "kind": "town",
+   "object": null,
+   "name": "Polkowice",
+   "anchor": "Polkowice",
+   "locative": "Polkowicach",
+   "lat": 51.5039,
+   "lon": 16.0726,
+   "towns": [
+    "Polkowice"
+   ],
+   "cinemas": [
+    "KinoPCA"
+   ],
+   "voivodeship": "Dolnośląskie"
+  },
+  {
+   "slug": "pruszkow",
+   "kind": "cluster",
+   "object": null,
+   "name": "Pruszków",
+   "anchor": "Pruszków",
+   "locative": "Pruszkowie",
+   "lat": 52.1707,
+   "lon": 20.8121,
+   "towns": [
+    "Pruszków",
+    "Piastów",
+    "Grójec",
+    "Janki"
+   ],
+   "cinemas": [
+    "CinemaCityJanki",
+    "KinoGrojeckiOsrodekKultury",
+    "MultikinoPruszkow",
+    "KinoCKiSPruszkow",
+    "KinoBasn"
+   ],
+   "voivodeship": "Mazowieckie"
+  },
+  {
+   "slug": "przeworsk",
+   "kind": "cluster",
+   "object": null,
+   "name": "Przeworsk",
+   "anchor": "Przeworsk",
+   "locative": "Przeworsku",
+   "lat": 50.0591,
+   "lon": 22.4941,
+   "towns": [
+    "Przeworsk",
+    "Leżajsk",
+    "Nowa Sarzyna"
+   ],
+   "cinemas": [
+    "KinoMCK",
+    "KinoWarszawa",
+    "KinoCKiBNowaSarzyna"
+   ],
+   "voivodeship": "Podkarpackie"
+  },
+  {
+   "slug": "pulawy",
+   "kind": "cluster",
+   "object": null,
+   "name": "Puławy",
+   "anchor": "Puławy",
+   "locative": "Puławach",
+   "lat": 51.4166,
+   "lon": 21.9694,
+   "towns": [
+    "Puławy",
+    "Kozienice",
+    "Ryki",
+    "Zwoleń"
+   ],
+   "cinemas": [
+    "KinoKozienickiDomKultury",
+    "KinoSwitZwolen",
+    "KinoSybilla",
+    "KinoRenesans"
+   ],
+   "voivodeship": "Lubelskie"
+  },
+  {
+   "slug": "pultusk",
+   "kind": "cluster",
+   "object": null,
+   "name": "Pułtusk",
+   "anchor": "Pułtusk",
+   "locative": "Pułtusku",
+   "lat": 52.7025,
+   "lon": 21.0828,
+   "towns": [
+    "Pułtusk",
+    "Maków Mazowiecki"
+   ],
+   "cinemas": [
+    "KinoMDKMakow",
+    "KinoNarew"
+   ],
+   "voivodeship": "Mazowieckie"
+  },
+  {
+   "slug": "radomsko",
+   "kind": "town",
+   "object": null,
+   "name": "Radomsko",
+   "anchor": "Radomsko",
+   "locative": "Radomsku",
+   "lat": 51.0671,
+   "lon": 19.4448,
+   "towns": [
+    "Radomsko"
+   ],
+   "cinemas": [
+    "KinoMDK"
+   ],
+   "voivodeship": "Łódzkie"
+  },
+  {
+   "slug": "rawicz",
+   "kind": "cluster",
+   "object": null,
+   "name": "Rawicz",
+   "anchor": "Rawicz",
+   "locative": "Rawiczu",
+   "lat": 51.6095,
+   "lon": 16.8585,
+   "towns": [
+    "Rawicz",
+    "Góra",
+    "Krobia",
+    "Wąsosz"
+   ],
+   "cinemas": [
+    "KinoPromienRawicz",
+    "KinoKrobia",
+    "KinoDKGora",
+    "KinoZaciszeWasosz"
+   ],
+   "voivodeship": "Wielkopolskie"
+  },
+  {
+   "slug": "ruda-slaska",
+   "kind": "cluster",
+   "object": null,
+   "name": "Ruda Śląska",
+   "anchor": "Ruda Śląska",
+   "locative": "Rudzie Śląskiej",
+   "lat": 50.2584,
+   "lon": 18.8563,
+   "towns": [
+    "Ruda Śląska",
+    "Chorzów",
+    "Piekary Śląskie",
+    "Knurów"
+   ],
+   "cinemas": [
+    "CinemaCity",
+    "KinoPatria",
+    "KinoGrajfka",
+    "KinoFrajda",
+    "KinoZacisze",
+    "KinoScenaKultura"
+   ],
+   "voivodeship": "Śląskie"
+  },
+  {
+   "slug": "rypin",
+   "kind": "town",
+   "object": null,
+   "name": "Rypin",
+   "anchor": "Rypin",
+   "locative": "Rypinie",
+   "lat": 53.066,
+   "lon": 19.4094,
+   "towns": [
+    "Rypin"
+   ],
+   "cinemas": [
+    "KinoBaltykRypin"
+   ],
+   "voivodeship": "Kujawsko-pomorskie"
+  },
+  {
+   "slug": "sanok",
+   "kind": "cluster",
+   "object": null,
+   "name": "Sanok",
+   "anchor": "Sanok",
+   "locative": "Sanoku",
+   "lat": 49.5557,
+   "lon": 22.2056,
+   "towns": [
+    "Sanok",
+    "Ustrzyki Dolne",
+    "Brzozów",
+    "Lesko"
+   ],
+   "cinemas": [
+    "KinoSokolBrzozow",
+    "KinoSDK",
+    "KinoOrzelUstrzyki",
+    "KinoBieszczadzkiDK"
+   ],
+   "voivodeship": "Podkarpackie"
+  },
+  {
+   "slug": "siedlce",
+   "kind": "town",
+   "object": null,
+   "name": "Siedlce",
+   "anchor": "Siedlce",
+   "locative": "Siedlcach",
+   "lat": 52.1677,
+   "lon": 22.2901,
+   "towns": [
+    "Siedlce"
+   ],
+   "cinemas": [
+    "HeliosSiedlce",
+    "NoveKinoSiedlce"
+   ],
+   "voivodeship": "Mazowieckie"
+  },
+  {
+   "slug": "sierpc",
+   "kind": "town",
+   "object": null,
+   "name": "Sierpc",
+   "anchor": "Sierpc",
+   "locative": "Sierpcu",
+   "lat": 52.8568,
+   "lon": 19.6691,
+   "towns": [
+    "Sierpc"
+   ],
+   "cinemas": [
+    "KinoJutrzenka"
+   ],
+   "voivodeship": "Mazowieckie"
+  },
+  {
+   "slug": "skierniewice",
+   "kind": "town",
+   "object": null,
+   "name": "Skierniewice",
+   "anchor": "Skierniewice",
+   "locative": "Skierniewicach",
+   "lat": 51.9549,
+   "lon": 20.1584,
+   "towns": [
+    "Skierniewice"
+   ],
+   "cinemas": [
+    "KinoPolonez",
+    "KinoCKiSSkierniewice"
+   ],
+   "voivodeship": "Łódzkie"
+  },
+  {
+   "slug": "slawno",
+   "kind": "cluster",
+   "object": null,
+   "name": "Sławno",
+   "anchor": "Sławno",
+   "locative": "Sławnie",
+   "lat": 54.3628,
+   "lon": 16.6789,
+   "towns": [
+    "Sławno",
+    "Darłowo"
+   ],
+   "cinemas": [
+    "KinoBajkaDarlowo",
+    "KinoDK"
+   ],
+   "voivodeship": "Zachodniopomorskie"
+  },
+  {
+   "slug": "slubice",
+   "kind": "town",
+   "object": null,
+   "name": "Słubice",
+   "anchor": "Słubice",
+   "locative": "Słubicach",
+   "lat": 52.3509,
+   "lon": 14.5607,
+   "towns": [
+    "Słubice"
+   ],
+   "cinemas": [
+    "KinoSmok"
+   ],
+   "voivodeship": "Lubuskie"
+  },
+  {
+   "slug": "slupca",
+   "kind": "cluster",
+   "object": null,
+   "name": "Słupca",
+   "anchor": "Słupca",
+   "locative": "Słupcy",
+   "lat": 52.2873,
+   "lon": 17.8719,
+   "towns": [
+    "Słupca",
+    "Kleczew",
+    "Zagórów"
+   ],
+   "cinemas": [
+    "KinoZacheta",
+    "KinoSokolnia",
+    "KinoMok"
+   ],
+   "voivodeship": "Wielkopolskie"
+  },
+  {
+   "slug": "sokolka",
+   "kind": "town",
+   "object": null,
+   "name": "Sokółka",
+   "anchor": "Sokółka",
+   "locative": "Sokółce",
+   "lat": 53.4072,
+   "lon": 23.5023,
+   "towns": [
+    "Sokółka"
+   ],
+   "cinemas": [
+    "KinoSokolSokolka"
+   ],
+   "voivodeship": "Podlaskie"
+  },
+  {
+   "slug": "sokolow-podlaski",
+   "kind": "cluster",
+   "object": null,
+   "name": "Sokołów Podlaski",
+   "anchor": "Sokołów Podlaski",
+   "locative": "Sokołowie Podlaskim",
+   "lat": 52.4068,
+   "lon": 22.2531,
+   "towns": [
+    "Sokołów Podlaski",
+    "Węgrów"
+   ],
+   "cinemas": [
+    "KinoSokolSokolowPodlaski",
+    "KinoKongres"
+   ],
+   "voivodeship": "Mazowieckie"
+  },
+  {
+   "slug": "srem",
+   "kind": "cluster",
+   "object": null,
+   "name": "Śrem",
+   "anchor": "Śrem",
+   "locative": "Śremie",
+   "lat": 52.0887,
+   "lon": 17.0151,
+   "towns": [
+    "Śrem",
+    "Środa Wielkopolska",
+    "Gostyń"
+   ],
+   "cinemas": [
+    "KinoBasztaSroda",
+    "KinoteatrSlonko",
+    "KinoPodKopula"
+   ],
+   "voivodeship": "Wielkopolskie"
+  },
+  {
+   "slug": "stalowa-wola",
+   "kind": "cluster",
+   "object": null,
+   "name": "Stalowa Wola",
+   "anchor": "Stalowa Wola",
+   "locative": "Stalowej Woli",
+   "lat": 50.5829,
+   "lon": 22.0533,
+   "towns": [
+    "Stalowa Wola",
+    "Sandomierz",
+    "Nisko",
+    "Janów Lubelski",
+    "Nowa Dęba"
+   ],
+   "cinemas": [
+    "KinoStarowka",
+    "HeliosStalowaWola",
+    "KinoWrzos",
+    "KinoSokolNisko",
+    "KinoMetalowiecNowaDeba",
+    "KinoJOK"
+   ],
+   "voivodeship": "Podkarpackie"
+  },
+  {
+   "slug": "stara-blotnica",
+   "kind": "town",
+   "object": null,
+   "name": "Stara Błotnica",
+   "anchor": "Stara Błotnica",
+   "locative": "Starej Błotnicy",
+   "lat": 51.5468,
+   "lon": 20.9748,
+   "towns": [
+    "Stara Błotnica"
+   ],
+   "cinemas": [
+    "KinoKsiazka"
+   ],
+   "voivodeship": "Mazowieckie"
+  },
+  {
+   "slug": "starachowice",
+   "kind": "cluster",
+   "object": null,
+   "name": "Starachowice",
+   "anchor": "Starachowice",
+   "locative": "Starachowicach",
+   "lat": 51.0374,
+   "lon": 21.0713,
+   "towns": [
+    "Starachowice",
+    "Skarżysko-Kamienna",
+    "Szydłowiec",
+    "Suchedniów",
+    "Iłża"
+   ],
+   "cinemas": [
+    "HeliosStarachowice",
+    "KinoCentrumSkarzyskoKamienna",
+    "KinoGornik",
+    "KinoKuznica",
+    "KinoCKiTIlza"
+   ],
+   "voivodeship": "Świętokrzyskie"
+  },
+  {
+   "slug": "stargard",
+   "kind": "cluster",
+   "object": null,
+   "name": "Stargard",
+   "anchor": "Stargard",
+   "locative": "Stargardzie",
+   "lat": 53.3367,
+   "lon": 15.0499,
+   "towns": [
+    "Stargard",
+    "Pyrzyce"
+   ],
+   "cinemas": [
+    "KinoPDK",
+    "KinoSCK"
+   ],
+   "voivodeship": "Zachodniopomorskie"
+  },
+  {
+   "slug": "strzelin",
+   "kind": "town",
+   "object": null,
+   "name": "Strzelin",
+   "anchor": "Strzelin",
+   "locative": "Strzelinie",
+   "lat": 50.7816,
+   "lon": 17.0648,
+   "towns": [
+    "Strzelin"
+   ],
+   "cinemas": [
+    "KinoGrazyna"
+   ],
+   "voivodeship": "Dolnośląskie"
+  },
+  {
+   "slug": "suwalki",
+   "kind": "town",
+   "object": null,
+   "name": "Suwałki",
+   "anchor": "Suwałki",
+   "locative": "Suwałkach",
+   "lat": 54.1118,
+   "lon": 22.9309,
+   "towns": [
+    "Suwałki"
+   ],
+   "cinemas": [
+    "KinoCinemaLumiereSuwalki"
+   ],
+   "voivodeship": "Podlaskie"
+  },
+  {
+   "slug": "swidnica",
+   "kind": "cluster",
+   "object": null,
+   "name": "Świdnica",
+   "anchor": "Świdnica",
+   "locative": "Świdnicy",
+   "lat": 50.8438,
+   "lon": 16.4886,
+   "towns": [
+    "Świdnica",
+    "Dzierżoniów",
+    "Bielawa",
+    "Strzegom",
+    "Sobótka"
+   ],
+   "cinemas": [
+    "KinoMOKiS",
+    "KinoSleza",
+    "KinoZbyszek",
+    "MultikinoSwidnica",
+    "KinoSCKStrzegom"
+   ],
+   "voivodeship": "Dolnośląskie"
+  },
+  {
+   "slug": "swidnik",
+   "kind": "cluster",
+   "object": null,
+   "name": "Świdnik",
+   "anchor": "Świdnik",
+   "locative": "Świdniku",
+   "lat": 51.219,
+   "lon": 22.6962,
+   "towns": [
+    "Świdnik",
+    "Lubartów",
+    "Milejów"
+   ],
+   "cinemas": [
+    "KinoLewart",
+    "KinoMilenium",
+    "KinoLotSwidnik"
+   ],
+   "voivodeship": "Lubelskie"
+  },
+  {
+   "slug": "swiebodzin",
+   "kind": "town",
+   "object": null,
+   "name": "Świebodzin",
+   "anchor": "Świebodzin",
+   "locative": "Świebodzinie",
+   "lat": 52.2475,
+   "lon": 15.5335,
+   "towns": [
+    "Świebodzin"
+   ],
+   "cinemas": [
+    "KinoMaxKino",
+    "KinoSDKSwiebodzin"
+   ],
+   "voivodeship": "Lubuskie"
+  },
+  {
+   "slug": "szamotuly",
+   "kind": "cluster",
+   "object": null,
+   "name": "Szamotuły",
+   "anchor": "Szamotuły",
+   "locative": "Szamotułach",
+   "lat": 52.612,
+   "lon": 16.5779,
+   "towns": [
+    "Szamotuły",
+    "Wronki",
+    "Przeźmierowo"
+   ],
+   "cinemas": [
+    "KinoHalszka",
+    "KinoteatrGwiazda",
+    "KinoCKPrzezmierowo"
+   ],
+   "voivodeship": "Wielkopolskie"
+  },
+  {
+   "slug": "szczecinek",
+   "kind": "town",
+   "object": null,
+   "name": "Szczecinek",
+   "anchor": "Szczecinek",
+   "locative": "Szczecinku",
+   "lat": 53.7079,
+   "lon": 16.6994,
+   "towns": [
+    "Szczecinek"
+   ],
+   "cinemas": [
+    "KinoWolnoscSzczecinek"
+   ],
+   "voivodeship": "Zachodniopomorskie"
+  },
+  {
+   "slug": "szczytno",
+   "kind": "town",
+   "object": null,
+   "name": "Szczytno",
+   "anchor": "Szczytno",
+   "locative": "Szczytnie",
+   "lat": 53.5626,
+   "lon": 20.9875,
+   "towns": [
+    "Szczytno"
+   ],
+   "cinemas": [
+    "KinoCinemaLumiere"
+   ],
+   "voivodeship": "Warmińsko-mazurskie"
+  },
+  {
+   "slug": "tczew",
+   "kind": "cluster",
+   "object": null,
+   "name": "Tczew",
+   "anchor": "Tczew",
+   "locative": "Tczewie",
+   "lat": 54.0924,
+   "lon": 18.7779,
+   "towns": [
+    "Tczew",
+    "Starogard Gdański",
+    "Pruszcz Gdański",
+    "Nowy Dwór Gdański",
+    "Sztum"
+   ],
+   "cinemas": [
+    "KinoCKiSPruszczGdanski",
+    "HeliosTczew",
+    "KinoPowisle",
+    "KinoZulawskiOsrodekKultury",
+    "CinemaCityStarogard"
+   ],
+   "voivodeship": "Pomorskie"
+  },
+  {
+   "slug": "tomaszow-lubelski",
+   "kind": "town",
+   "object": null,
+   "name": "Tomaszów Lubelski",
+   "anchor": "Tomaszów Lubelski",
+   "locative": "Tomaszowie Lubelskim",
+   "lat": 50.4477,
+   "lon": 23.4162,
+   "towns": [
+    "Tomaszów Lubelski"
+   ],
+   "cinemas": [
+    "KinoKadrTomaszowLubelski"
+   ],
+   "voivodeship": "Lubelskie"
+  },
+  {
+   "slug": "tomaszow-mazowiecki",
+   "kind": "town",
+   "object": null,
+   "name": "Tomaszów Mazowiecki",
+   "anchor": "Tomaszów Mazowiecki",
+   "locative": "Tomaszowie Mazowieckim",
+   "lat": 51.5313,
+   "lon": 20.0085,
+   "towns": [
+    "Tomaszów Mazowiecki"
+   ],
+   "cinemas": [
+    "HeliosTomaszow",
+    "KinoMCKTkacz"
+   ],
+   "voivodeship": "Łódzkie"
+  },
+  {
+   "slug": "turek",
+   "kind": "cluster",
+   "object": null,
+   "name": "Turek",
+   "anchor": "Turek",
+   "locative": "Turku",
+   "lat": 52.0155,
+   "lon": 18.5006,
+   "towns": [
+    "Turek",
+    "Koło"
+   ],
+   "cinemas": [
+    "KinoNadWarta",
+    "KinoTur"
+   ],
+   "voivodeship": "Wielkopolskie"
+  },
+  {
+   "slug": "wadowice",
+   "kind": "cluster",
+   "object": null,
+   "name": "Wadowice",
+   "anchor": "Wadowice",
+   "locative": "Wadowicach",
+   "lat": 49.8834,
+   "lon": 19.4929,
+   "towns": [
+    "Wadowice",
+    "Sucha Beskidzka"
+   ],
+   "cinemas": [
+    "KinoCentrumWadowice",
+    "KinoCKiF"
+   ],
+   "voivodeship": "Małopolskie"
+  },
+  {
+   "slug": "wagrowiec",
+   "kind": "cluster",
+   "object": null,
+   "name": "Wągrowiec",
+   "anchor": "Wągrowiec",
+   "locative": "Wągrowcu",
+   "lat": 52.8084,
+   "lon": 17.1996,
+   "towns": [
+    "Wągrowiec",
+    "Budzyń",
+    "Mieścisko"
+   ],
+   "cinemas": [
+    "KinoMewaBudzyn",
+    "KinoMDKWagrowiec",
+    "KinoMiescisko"
+   ],
+   "voivodeship": "Wielkopolskie"
+  },
+  {
+   "slug": "wejherowo",
+   "kind": "cluster",
+   "object": null,
+   "name": "Wejherowo",
+   "anchor": "Wejherowo",
+   "locative": "Wejherowie",
+   "lat": 54.6057,
+   "lon": 18.2356,
+   "towns": [
+    "Wejherowo",
+    "Rumia",
+    "Lębork",
+    "Jastarnia",
+    "Gniewino"
+   ],
+   "cinemas": [
+    "MultikinoRumia",
+    "KinoWCK",
+    "KinoZeglarz",
+    "KinoCKGniewino",
+    "KinoFregata"
+   ],
+   "voivodeship": "Pomorskie"
+  },
+  {
+   "slug": "wielen",
+   "kind": "town",
+   "object": null,
+   "name": "Wieleń",
+   "anchor": "Wieleń",
+   "locative": "Wieleniu",
+   "lat": 52.8946,
+   "lon": 16.1714,
+   "towns": [
+    "Wieleń"
+   ],
+   "cinemas": [
+    "KinoZaRogiemWielen"
+   ],
+   "voivodeship": "Wielkopolskie"
+  },
+  {
+   "slug": "wieliczka",
+   "kind": "cluster",
+   "object": null,
+   "name": "Wieliczka",
+   "anchor": "Wieliczka",
+   "locative": "Wieliczce",
+   "lat": 49.9874,
+   "lon": 20.0647,
+   "towns": [
+    "Wieliczka",
+    "Myślenice"
+   ],
+   "cinemas": [
+    "KinoMuzaMyslenice",
+    "KinoWielickaMediateka"
+   ],
+   "voivodeship": "Małopolskie"
+  },
+  {
+   "slug": "wielun",
+   "kind": "town",
+   "object": null,
+   "name": "Wieluń",
+   "anchor": "Wieluń",
+   "locative": "Wieluniu",
+   "lat": 51.221,
+   "lon": 18.5696,
+   "towns": [
+    "Wieluń"
+   ],
+   "cinemas": [
+    "KinoSyrena"
+   ],
+   "voivodeship": "Łódzkie"
+  },
+  {
+   "slug": "wlodawa",
+   "kind": "town",
+   "object": null,
+   "name": "Włodawa",
+   "anchor": "Włodawa",
+   "locative": "Włodawie",
+   "lat": 51.55,
+   "lon": 23.55,
+   "towns": [
+    "Włodawa"
+   ],
+   "cinemas": [
+    "KinoWDK"
+   ],
+   "voivodeship": "Lubelskie"
+  },
+  {
+   "slug": "wloszczowa",
+   "kind": "town",
+   "object": null,
+   "name": "Włoszczowa",
+   "anchor": "Włoszczowa",
+   "locative": "Włoszczowie",
+   "lat": 50.8526,
+   "lon": 19.9659,
+   "towns": [
+    "Włoszczowa"
+   ],
+   "cinemas": [
+    "KinoMuzaWloszczowa"
+   ],
+   "voivodeship": "Świętokrzyskie"
+  },
+  {
+   "slug": "wolomin",
+   "kind": "cluster",
+   "object": null,
+   "name": "Wołomin",
+   "anchor": "Wołomin",
+   "locative": "Wołominie",
+   "lat": 52.3401,
+   "lon": 21.2421,
+   "towns": [
+    "Wołomin",
+    "Sulejówek"
+   ],
+   "cinemas": [
+    "HeliosWolomin",
+    "KinoKulturaWolomin",
+    "KinoTeatrKurtyna"
+   ],
+   "voivodeship": "Mazowieckie"
+  },
+  {
+   "slug": "wysokie-mazowieckie",
+   "kind": "town",
+   "object": null,
+   "name": "Wysokie Mazowieckie",
+   "anchor": "Wysokie Mazowieckie",
+   "locative": "Wysokiem Mazowieckiem",
+   "lat": 52.9166,
+   "lon": 22.5171,
+   "towns": [
+    "Wysokie Mazowieckie"
+   ],
+   "cinemas": [
+    "KinoWars"
+   ],
+   "voivodeship": "Podlaskie"
+  },
+  {
+   "slug": "wyszkow",
+   "kind": "cluster",
+   "object": null,
+   "name": "Wyszków",
+   "anchor": "Wyszków",
+   "locative": "Wyszkowie",
+   "lat": 52.5928,
+   "lon": 21.4584,
+   "towns": [
+    "Wyszków",
+    "Łochów"
+   ],
+   "cinemas": [
+    "KinoDobrychFilmow",
+    "KinoMiGOK"
+   ],
+   "voivodeship": "Mazowieckie"
+  },
+  {
+   "slug": "zakopane",
+   "kind": "town",
+   "object": null,
+   "name": "Zakopane",
+   "anchor": "Zakopane",
+   "locative": "Zakopanem",
+   "lat": 49.299,
+   "lon": 19.9489,
+   "towns": [
+    "Zakopane"
+   ],
+   "cinemas": [
+    "KinoSokolZakopane",
+    "KinoGiewont",
+    "KinoMiejsce"
+   ],
+   "voivodeship": "Małopolskie"
+  },
+  {
+   "slug": "zamosc",
+   "kind": "town",
+   "object": null,
+   "name": "Zamość",
+   "anchor": "Zamość",
+   "locative": "Zamościu",
+   "lat": 50.7231,
+   "lon": 23.252,
+   "towns": [
+    "Zamość"
+   ],
+   "cinemas": [
+    "KinoStylowy"
+   ],
+   "voivodeship": "Lubelskie"
+  },
+  {
+   "slug": "zary",
+   "kind": "town",
+   "object": null,
+   "name": "Żary",
+   "anchor": "Żary",
+   "locative": "Żarach",
+   "lat": 51.642,
+   "lon": 15.1373,
+   "towns": [
+    "Żary"
+   ],
+   "cinemas": [
+    "KinoPionierZary"
+   ],
+   "voivodeship": "Lubuskie"
+  },
+  {
+   "slug": "zawiercie",
+   "kind": "town",
+   "object": null,
+   "name": "Zawiercie",
+   "anchor": "Zawiercie",
+   "locative": "Zawierciu",
+   "lat": 50.4877,
+   "lon": 19.4168,
+   "towns": [
+    "Zawiercie"
+   ],
+   "cinemas": [
+    "KinoMOKCentrum",
+    "KinoPlanetCinemaZawiercie"
+   ],
+   "voivodeship": "Śląskie"
+  },
+  {
+   "slug": "zdunska-wola",
+   "kind": "cluster",
+   "object": null,
+   "name": "Zduńska Wola",
+   "anchor": "Zduńska Wola",
+   "locative": "Zduńskiej Woli",
+   "lat": 51.5992,
+   "lon": 18.9397,
+   "towns": [
+    "Zduńska Wola",
+    "Sieradz"
+   ],
+   "cinemas": [
+    "KinoTeatrSieradz",
+    "KinoWRatuszu"
+   ],
+   "voivodeship": "Łódzkie"
+  },
+  {
+   "slug": "zgierz",
+   "kind": "cluster",
+   "object": null,
+   "name": "Zgierz",
+   "anchor": "Zgierz",
+   "locative": "Zgierzu",
+   "lat": 51.8556,
+   "lon": 19.4062,
+   "towns": [
+    "Zgierz",
+    "Aleksandrów Łódzki",
+    "Głowno"
+   ],
+   "cinemas": [
+    "KinoSpojnia",
+    "KinoStaryMlyn",
+    "KinoMOKGlowno"
+   ],
+   "voivodeship": "Łódzkie"
+  },
+  {
+   "slug": "zgorzelec",
+   "kind": "cluster",
+   "object": null,
+   "name": "Zgorzelec",
+   "anchor": "Zgorzelec",
+   "locative": "Zgorzelcu",
+   "lat": 51.1494,
+   "lon": 15.0084,
+   "towns": [
+    "Zgorzelec",
+    "Lubań",
+    "Bogatynia"
+   ],
+   "cinemas": [
+    "KinoWawel",
+    "MultikinoZgorzelec",
+    "KinoKadrBogatynia"
+   ],
+   "voivodeship": "Dolnośląskie"
+  },
+  {
+   "slug": "zlocieniec",
+   "kind": "cluster",
+   "object": null,
+   "name": "Złocieniec",
+   "anchor": "Złocieniec",
+   "locative": "Złocieńcu",
+   "lat": 53.5329,
+   "lon": 16.0113,
+   "towns": [
+    "Złocieniec",
+    "Drawsko Pomorskie",
+    "Połczyn-Zdrój"
+   ],
+   "cinemas": [
+    "KinoGoplana",
+    "KinoMewaZlocieniec",
+    "KinoOKDrawsko"
+   ],
+   "voivodeship": "Zachodniopomorskie"
+  },
+  {
+   "slug": "zlotow",
+   "kind": "cluster",
+   "object": null,
+   "name": "Złotów",
+   "anchor": "Złotów",
+   "locative": "Złotowie",
+   "lat": 53.3635,
+   "lon": 17.0408,
+   "towns": [
+    "Złotów",
+    "Jastrowie",
+    "Lipka"
+   ],
+   "cinemas": [
+    "KinoRodlo",
+    "KinoOKJastrowie",
+    "KinoGOKLipka"
+   ],
+   "voivodeship": "Wielkopolskie"
+  },
+  {
+   "slug": "zory",
+   "kind": "town",
+   "object": null,
+   "name": "Żory",
+   "anchor": "Żory",
+   "locative": "Żorach",
+   "lat": 50.0452,
+   "lon": 18.7006,
+   "towns": [
+    "Żory"
+   ],
+   "cinemas": [
+    "HeliosZory",
+    "KinoNaStarowce"
+   ],
+   "voivodeship": "Śląskie"
+  },
+  {
+   "slug": "zyrardow",
+   "kind": "cluster",
+   "object": null,
+   "name": "Żyrardów",
+   "anchor": "Żyrardów",
+   "locative": "Żyrardowie",
+   "lat": 52.0488,
+   "lon": 20.446,
+   "towns": [
+    "Żyrardów",
+    "Sochaczew",
+    "Łowicz",
+    "Grodzisk Mazowiecki",
+    "Rawa Mazowiecka",
+    "Błonie"
+   ],
+   "cinemas": [
+    "KinoGrodziskieCentrumKultury",
+    "KinoCentrumKulturyBlonie",
+    "KinoODEON",
+    "KinoLen",
+    "KinoRomaRawa",
+    "KinoFenix"
+   ],
+   "voivodeship": "Mazowieckie"
+  },
+  {
+   "slug": "zywiec",
+   "kind": "cluster",
+   "object": null,
+   "name": "Żywiec",
+   "anchor": "Żywiec",
+   "locative": "Żywcu",
+   "lat": 49.6853,
+   "lon": 19.1924,
+   "towns": [
+    "Żywiec",
+    "Bystra"
+   ],
+   "cinemas": [
+    "KinoJanosik",
+    "KinoPromyk"
+   ],
+   "voivodeship": "Śląskie"
+  }
+ ],
+ "retired": {
+  "starogard-gdanski": "tczew",
+  "ketrzyn": "gizycko"
+ }
+}

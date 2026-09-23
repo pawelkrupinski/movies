@@ -8,7 +8,8 @@
   <title>@messages("browse.htmlTitle", heading, city.labels.nominative)</title>
   @_ogTagsApp(
     pageTitle       = messages("browse.ogTitle", heading, city.labels.nominative),
-    pageDescription = messages("browse.ogDescription", city.genitivePluralLabel, heading),
+    pageDescription = if (city.genitivePluralLabel.nonEmpty) messages("browse.ogDescription", city.genitivePluralLabel, heading)
+                      else messages("browse.ogDescriptionNear", city.locativePhrase, heading),
     pageUrl         = pageUrl,
     fbAppId         = fbAppId,
     canonicalUrl    = canonicalUrl,

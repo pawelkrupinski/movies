@@ -59,7 +59,7 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
 
   "a multi-town city's description" should "name its towns instead of the closing sentence" in {
     val d = FilterDescription.defaultDescription(Trojmiasto)
-    d           should include("Repertuar wszystkich trójmiejskich kin (Gdańsk, Gdynia, Sopot, Rumia")
+    d           should include("Repertuar wszystkich trójmiejskich kin (Gdańsk, Gdynia, Sopot)")
     // The two together run past MaxDescription, and `truncate` would then cut
     // the list off mid-town — so the towns win and the sentence goes.
     d           should not include "Sprawdź"
@@ -80,16 +80,17 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still name the towns it drops the rest for" in {
-    val d = FilterDescription.defaultDescription(Tarnow)
-    d           should include("Repertuar wszystkich tarnowskich kin (Biecz")
+    val d = FilterDescription.defaultDescription(City.bySlug("pila").get)
+    d           should include("Repertuar wszystkich kin w Pile i okolicach (Piła")
     d           should include("Rotten Tomatoes.")   // the sources survive
     d.length    should be <= FilterDescription.MaxDescription
   }
 
   "pageHeading" should "carry the covered towns, and the bare heading when there are none" in {
     FilterDescription.pageHeading(Sosnowiec)  shouldBe "Repertuar kin w Sosnowcu"
-    FilterDescription.pageHeading(Trojmiasto) shouldBe
-      "Repertuar kin w Trójmieście – Gdańsk, Gdynia, Sopot, Rumia, Wejherowo, Pruszcz Gdański"
+    FilterDescription.pageHeading(Trojmiasto) shouldBe "Repertuar kin w Trójmieście – Gdańsk, Gdynia, Sopot"
+    // A cluster of small towns is named after its biggest, "i okolicach".
+    FilterDescription.pageHeading(City.bySlug("turek").get) shouldBe "Repertuar kin w Turku i okolicach – Turek, Koło"
   }
 
   "FilterDescription.forIndex with an empty query" should "produce the keyword-rich default city title" in {

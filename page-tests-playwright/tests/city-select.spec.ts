@@ -27,11 +27,11 @@ test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     // The fixture `/` renders ONE country's list, exactly as a deployment does
     // (`views.html.landing(Country.default, isApex = false)` — see
-    // FixtureServerMain), so this is Poland's 65 cities. Real `<a href>`
+    // FixtureServerMain), so this is Poland's 181 pages. Real `<a href>`
     // markup even though the dynamic picker below hides it once JS runs —
     // `toHaveCount`/`allTextContents` read the DOM regardless of visibility.
     const links = page.locator('.city-list a');
-    await expect(links).toHaveCount(65);
+    await expect(links).toHaveCount(181);
     await expect(page.locator('.city-list')).toContainText('Poznań');
     await expect(page.locator('.city-list')).toContainText('Wrocław');
     await expect(page.locator('.city-list')).toContainText('Warszawa');
@@ -39,8 +39,9 @@ test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
     await expect(page.locator('.city-list')).toContainText('Łódź');
     await expect(page.locator('.city-list')).toContainText('Trójmiasto');
     await expect(page.locator('.city-list')).toContainText('Częstochowa');
-    // One flat A-to-Z: only a grouped country carries state headings.
-    await expect(page.locator('.city-group')).toHaveCount(0);
+    // Grouped by voivodeship: a major city sits beside the towns around it.
+    await expect(page.locator('#city-list > li > details.city-group > summary')).toHaveCount(16);
+    await expect(staticGroupNamed(page, 'Wielkopolskie')).toContainText('Turek i okolice');
   });
 
   test('hides the static fallback and picks a city through the dynamic picker', async ({ page }) => {
@@ -48,17 +49,16 @@ test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
     await expect(page.locator('#picker-static')).toBeHidden();
     await expect(page.locator('#picker-dynamic')).toBeVisible();
 
+    await pickerRow(page, 'Wielkopolskie').click();
     await pickerRow(page, 'Poznań').click();
     await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
   });
 
-  test('the search box just asks for a city — Poland never groups', async ({ page }) => {
+  test('the search box names the voivodeship by its own term, then just asks for a city', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    // No `Country.cityGroups` here, so `PICKER_GROUP_LABELS` (`landing.scala.html`)
-    // has no entry for `pl` — the box's copy stays the plain city placeholder,
-    // same as the static fallback's own.
+    await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj: województwo lub miasto…');
+    await pickerRow(page, 'Wielkopolskie').click();
     await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj miasta…');
-    await expect(page.locator('#picker-search')).toHaveAttribute('aria-label', 'Szukaj miasta');
   });
 });
 
@@ -413,19 +413,20 @@ test.describe('the apex front door offers the manual locate button too', { tag: 
 // country, the manual "use my location" button, and the cross-country
 // hand-off.
 test.describe('Filtry → Miasto navigates to the unified picker', { tag: '@agnostic' }, () => {
-  test('opens on this deployment\'s own country, flat, with no back row', async ({ page }) => {
+  test('opens on this deployment\'s own country, at its voivodeships, with no back row', async ({ page }) => {
     await gotoAndWaitForCards(page, '/poznan/');
     await page.locator('#format-filter-btn').click();
     await page.locator('#city-picker-row').click();
     await page.waitForURL((u) => new URL(u).pathname === '/' && new URL(u).search === '?pick=city');
     await expect(page.locator('#picker-back-row')).toBeHidden();
-    await expect(pickerRow(page, 'Wrocław')).toBeVisible();
+    await expect(pickerRow(page, 'Dolnośląskie')).toBeVisible();
   });
 
   test('picking a city in the current country navigates straight to its repertoire root', async ({ page }) => {
     await gotoAndWaitForCards(page, '/poznan/');
     await page.locator('#format-filter-btn').click();
     await page.locator('#city-picker-row').click();
+    await pickerRow(page, 'Dolnośląskie').click();
     await pickerRow(page, 'Wrocław').click();
     await page.waitForURL((u) => new URL(u).pathname === '/wroclaw/');
   });
@@ -434,8 +435,8 @@ test.describe('Filtry → Miasto navigates to the unified picker', { tag: '@agno
     await gotoAndWaitForCards(page, '/poznan/');
     await page.locator('#format-filter-btn').click();
     await page.locator('#city-picker-row').click();
-    // Poland: flat, so just "city".
-    await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj miasta…');
+    // Poland: one level, the voivodeship.
+    await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj: województwo lub miasto…');
     // Germany: one level, its OWN term — not Poland's, not a bare "region".
     // The pill reads "Niemcy" — localized to the visitor's language via
     // `COUNTRY_NAMES` (`landing.scala.html`), not "Deutschland".

@@ -172,7 +172,15 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "stay one flat list for a country with no groups" in {
-    html should not include """<details class="city-group">"""
-    html should include ("""<li><a href="/poznan/">Poznań</a></li>""")
+    val esHtml = views.html.landing(models.Country.Spain, isApex = false).body
+    esHtml should not include """<details class="city-group">"""
+    esHtml should include ("Madrid</a>")
+  }
+
+  it should "group Poland by voivodeship, a major city beside the towns around it" in {
+    html should include ("""<details class="city-group">""")
+    html should include ("Wielkopolskie")
+    html should include ("""<a href="/poznan/">Poznań</a>""")
+    html should include ("""<a href="/turek/">Turek i okolice</a>""")
   }
 }
