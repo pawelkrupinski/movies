@@ -181,35 +181,29 @@ internal fun CityGate(
     // a fresh gate open.
     var locateFailed by remember { mutableStateOf(false) }
 
-    fun resolveIn(country: String) = scope.launch {
-        val city = resolveNearest(country, catalog.cities)
+    // One resolution attempt: the first-launch one scoped to the gate's
+    // country, or the chooser's own "use my location" button's (`manual`),
+    // which searches every country so it finds the right city even when the
+    // country tab open at the moment isn't the one the device is actually in —
+    // `onConfirm` (wired at the ViewModel) switches the app's country to match.
+    // A miss only reports `locateFailed` for the manual button; a first-launch
+    // miss stays silent and just opens the chooser.
+    fun resolve(manual: Boolean, find: suspend () -> City?) = scope.launch {
+        val city = find()
         if (city != null) {
-            // `showChooser` may already be true here — a manual "use my
-            // location" tap runs this from the chooser itself, unlike the
-            // first-launch call where it always starts false — so a hit must
-            // explicitly hand control back to the confirm screen.
+            // `showChooser` may already be true here — a manual tap runs this
+            // from the chooser itself — so a hit must explicitly hand control
+            // back to the confirm screen.
             detected = city; nearest = city; showChooser = false
         } else {
             showChooser = true
-            if (locating) locateFailed = true
+            if (manual) locateFailed = true
         }
         locating = false
     }
 
-    // The chooser's own "use my location" button's resolution — unscoped, so
-    // it finds the right city even when the country tab open at the moment
-    // isn't the one the device is actually in. `onConfirm` (wired at the
-    // ViewModel) is what switches the app's country to match, if it must.
-    fun resolveAny() = scope.launch {
-        val city = resolveNearestAnyCountry(catalog.cities)
-        if (city != null) {
-            detected = city; nearest = city; showChooser = false
-        } else {
-            showChooser = true
-            locateFailed = true
-        }
-        locating = false
-    }
+    fun resolveIn(country: String) = resolve(manual = false) { resolveNearest(country, catalog.cities) }
+    fun resolveAny() = resolve(manual = true) { resolveNearestAnyCountry(catalog.cities) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
