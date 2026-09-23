@@ -7,6 +7,7 @@ import org.mongodb.scala.model.Filters
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.movies.ChangeStreamReopen
 import services.users.{CaffeineUserChangeTimeCache, MongoUserRepository, MongoUserStateRepository, UserCodecs}
 import tools.Env
 import tools.Eventually.eventually
@@ -244,6 +245,39 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         .find(_.get("name").map(_.asString.getValue).contains("userId_1")).value
         .get("unique").map(_.asBoolean.getValue) shouldBe Some(true)
     } finally client.close()
+  }
+
+  // THE REOPEN GAP. A dead `userStates` cursor reopens at "now", so a write made between the
+  // death and the reopen is never delivered. The death's `onDisconnect` only covered what the
+  // listener knew THEN; the reopen must report losing track again, so nothing a listener picked
+  // up in the gap is trusted past it. Runs in its own database: killing the cursor means
+  // dropping the collection, and the shared spec DB's `userStates` carries the unique index
+  // other cases depend on.
+  it should "report lost track again when a dead cursor reopens" in {
+    val client  = MongoClient(Env.get("MONGODB_URI").get)
+    val dbName  = Env.get("MONGODB_DB").getOrElse("kinowo") + "_userstate_reopen"
+    val db      = client.getDatabase(dbName)
+    val raw     = db.withCodecRegistry(UserCodecs.registry).getCollection[UserState]("userStates")
+    val pendingReopen = new java.util.concurrent.atomic.AtomicReference[() => Unit]()
+    val manualReopen: (String, () => Unit) => ChangeStreamReopen =
+      (name, reopen) => new ChangeStreamReopen(name, reopen, (_, run) => pendingReopen.set(run))
+    val mongo    = new MongoUserStateRepository(Some(db), fallbackToOwnInit = false, reopenDriver = manualReopen)
+    val lostTrack = new java.util.concurrent.atomic.AtomicInteger(0)
+    val handle   = mongo.watchChanges(_ => (), _ => (), () => { lostTrack.incrementAndGet(); () })
+    try {
+      Await.result(raw.insertOne(UserState("__integration-test-warm", Set.empty, Set.empty, Now)).toFuture(), 10.seconds)
+      Thread.sleep(500)
+      Await.result(raw.drop().toFuture(), 10.seconds) // the cursor's terminal end
+      eventually(Option(pendingReopen.get()) should not be empty, timeoutMs = 10000)
+      val atDeath = lostTrack.get()
+
+      pendingReopen.get()() // the reopen fires
+      eventually(lostTrack.get() should be > atDeath, timeoutMs = 10000)
+    } finally {
+      handle.foreach(_.close())
+      Await.ready(db.drop().toFuture(), 10.seconds)
+      client.close()
+    }
   }
 
 }

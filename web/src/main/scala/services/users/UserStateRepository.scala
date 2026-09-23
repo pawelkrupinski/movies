@@ -89,7 +89,10 @@ object UserStateRepository {
 
 class MongoUserStateRepository(
   sharedDb: Option[MongoDatabase] = None,
-  fallbackToOwnInit: Boolean = true
+  fallbackToOwnInit: Boolean = true,
+  // The reopen driver for the `userStates` cursor. Production schedules on a daemon
+  // thread; a spec hands over one that fires when it says so.
+  reopenDriver: (String, () => Unit) => ChangeStreamReopen = ChangeStreamReopen.onDaemonScheduler
 ) extends UserStateRepository with Logging {
 
   // Shares its MongoClient with the rest of the app via the
@@ -190,10 +193,11 @@ class MongoUserStateRepository(
   }
 
   private val liveness = new ChangeStreamLiveness()
-  private var listener: Option[(UserState => Unit, String => Unit, () => Unit)] = None
-  private var subscription: Option[Subscription] = None
-  private lazy val reopen: ChangeStreamReopen =
-    ChangeStreamReopen.onDaemonScheduler("userStates", () => subscribe())
+  // Written by the caller's thread, read on the driver's: volatile so a registration (or
+  // its close) is seen by the next event rather than whenever the cache line happens to move.
+  @volatile private var listener: Option[(UserState => Unit, String => Unit, () => Unit)] = None
+  @volatile private var subscription: Option[Subscription] = None
+  private lazy val reopen: ChangeStreamReopen = reopenDriver("userStates", () => subscribe(reopened = true))
 
   override def changeStreamLiveness: ChangeStreamLiveness = liveness
 
@@ -208,7 +212,7 @@ class MongoUserStateRepository(
     onDisconnect: () => Unit
   ): Option[AutoCloseable] = coll.map { _ =>
     listener = Some((onUpsert, onDelete, onDisconnect))
-    subscribe()
+    subscribe(reopened = false)
     new AutoCloseable {
       override def close(): Unit = {
         reopen.close()
@@ -219,12 +223,17 @@ class MongoUserStateRepository(
     }
   }
 
-  private def subscribe(): Unit = coll.foreach { c =>
+  /** `reopened`: this open replaces a cursor that DIED. It opens at "now", so every write
+   *  between the death and this open was never delivered — and the death's `onDisconnect`
+   *  only cleared what was cached THEN, not what callers cached during the gap. So a reopen
+   *  reports losing track again, once the new cursor is live. */
+  private def subscribe(reopened: Boolean): Unit = coll.foreach { c =>
     c.watch().fullDocument(FullDocument.UPDATE_LOOKUP).subscribe(new Observer[ChangeStreamDocument[UserState]] {
       override def onSubscribe(s: Subscription): Unit = {
         subscription = Some(s)
         s.request(Long.MaxValue)
         liveness.watching(UserStateRepository.Collection)
+        if (reopened) listener.foreach { case (_, _, onLostTrack) => onLostTrack() }
       }
       override def onNext(change: ChangeStreamDocument[UserState]): Unit = {
         reopen.opened()
