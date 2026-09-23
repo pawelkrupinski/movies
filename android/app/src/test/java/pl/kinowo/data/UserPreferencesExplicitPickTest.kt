@@ -1,10 +1,10 @@
 package pl.kinowo.data
 
-import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -20,7 +20,10 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34])
 class UserPreferencesExplicitPickTest {
 
-    private val prefs = UserPreferences(ApplicationProvider.getApplicationContext())
+    @get:Rule
+    val fresh = FreshUserPreferences()
+
+    private val prefs get() = fresh.prefs
 
     @Test
     fun armedUntilACityIsChosen() = runBlocking {

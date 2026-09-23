@@ -17,6 +17,7 @@ import pl.kinowo.auth.HiddenFilmsClient
 import pl.kinowo.auth.HiddenFilmsFetchResult
 import pl.kinowo.auth.HiddenFilmsState
 import pl.kinowo.data.DetailsRepository
+import pl.kinowo.data.FreshUserPreferences
 import pl.kinowo.data.JsonListCache
 import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
@@ -95,6 +96,11 @@ class KinowoViewModelHarness : ExternalResource() {
         pumpUntil("the ViewModel job to complete") { job.isCompleted }
     }
 
+    // Every test starts and ends on an empty prefs store (see FreshUserPreferences).
+    private val fresh = FreshUserPreferences()
+
+    override fun before() = fresh.before()
+
     override fun after() {
         stores.forEach { it.clear() }
         stores.clear()
@@ -109,6 +115,7 @@ class KinowoViewModelHarness : ExternalResource() {
             done.set(true)
         }.apply { isDaemon = true }.start()
         pumpUntil("a pending DataStore write to release the lock") { done.get() }
+        fresh.after()
         clients.forEach { it.dispatcher.executorService.shutdown(); it.connectionPool.evictAll() }
         clients.clear()
     }

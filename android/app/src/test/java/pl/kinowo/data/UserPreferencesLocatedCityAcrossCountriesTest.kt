@@ -1,6 +1,5 @@
 package pl.kinowo.data
 
-import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
@@ -9,6 +8,7 @@ import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -28,7 +28,10 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34])
 class UserPreferencesLocatedCityAcrossCountriesTest {
 
-    private val prefs = UserPreferences(ApplicationProvider.getApplicationContext())
+    @get:Rule
+    val fresh = FreshUserPreferences()
+
+    private val prefs get() = fresh.prefs
 
     @Test
     fun setsBothCountryAndCityAndClearsExplicitPick() = runBlocking {

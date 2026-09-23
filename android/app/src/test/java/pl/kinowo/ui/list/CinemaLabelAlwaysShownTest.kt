@@ -41,8 +41,6 @@ class CinemaLabelAlwaysShownTest {
     @get:Rule
     val compose = createComposeRule()
 
-    // A name no other test disables, so a DataStore `disabledCinemas` left over
-    // from another spec in the shared test JVM can't filter this film out.
     private val cinema = "Kino Testowe Solo"
 
     @get:Rule
@@ -50,10 +48,7 @@ class CinemaLabelAlwaysShownTest {
 
     private fun seedViewModel(): KinowoViewModel {
         val context = harness.context
-        // Hermetic: the DataStore is process-wide in the Robolectric JVM, so
-        // clear any cinema exclusions a prior test persisted before mounting.
         val prefs = UserPreferences(context)
-        runBlocking { prefs.setDisabledCinemas(emptySet()); prefs.unhideAll() }
         val zone = ZoneId.of("Europe/Warsaw")
         val today = LocalDate.now(zone).format(DateTimeFormatter.ISO_DATE)
         // A single film, at a SINGLE cinema, late enough to survive past-pruning.

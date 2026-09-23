@@ -1,10 +1,10 @@
 package pl.kinowo.data
 
-import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -21,7 +21,10 @@ import pl.kinowo.model.Country
 @Config(sdk = [34])
 class UserPreferencesCountryTest {
 
-    private val prefs = UserPreferences(ApplicationProvider.getApplicationContext())
+    @get:Rule
+    val fresh = FreshUserPreferences()
+
+    private val prefs get() = fresh.prefs
 
     @Test
     fun countryIsNullUntilSetThenReadsBack() = runBlocking {
@@ -34,11 +37,12 @@ class UserPreferencesCountryTest {
         assertEquals("GB", prefs.selectedCountryCode.first())
         assertEquals("GB", prefs.blockingCountryCode())
         assertEquals("en", Country.byCode(prefs.blockingCountryCode()).languageTag)
+    }
 
-        // A fourth country round-trips the same way — same store, same registry
-        // lookup, its own deployment. (One test, not two: the DataStore file is
-        // shared across this class, so a second writer would break the
-        // "null until set" assertion above.)
+    /** A fourth country round-trips the same way — same store, same registry
+     *  lookup, its own deployment. */
+    @Test
+    fun aFourthCountryRoundTripsToItsOwnDeployment() = runBlocking {
         prefs.setCountryCode("us")
         assertEquals("us", prefs.blockingCountryCode())
         val us = Country.byCode(prefs.blockingCountryCode())

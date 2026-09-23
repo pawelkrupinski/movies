@@ -1,10 +1,10 @@
 package pl.kinowo.data
 
-import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -17,16 +17,15 @@ import org.robolectric.annotation.Config
  * MainActivity uses at attach time. Also pins the decoupling contract this
  * preference exists for: switching the COUNTRY must never touch the language,
  * and vice versa — see [pl.kinowo.MainActivity]'s two independent watchers.
- *
- * One test method, not several: the DataStore file is shared across this
- * class (see [UserPreferencesCountryTest]), so a second writer in its own
- * method would break the "null until set" assertion below.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class UserPreferencesLanguageTest {
 
-    private val prefs = UserPreferences(ApplicationProvider.getApplicationContext())
+    @get:Rule
+    val fresh = FreshUserPreferences()
+
+    private val prefs get() = fresh.prefs
 
     @Test
     fun languageRoundTripsAndStaysDecoupledFromCountry() = runBlocking {

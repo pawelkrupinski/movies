@@ -6,7 +6,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.runBlocking
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -34,16 +33,9 @@ class CrossCountryDeepLinkTest {
 
     private val prefs get() = UserPreferences(harness.context)
 
-    // Other classes in the fork assert "null until set" on country and city.
-    @After
-    fun wipe() {
-        runBlocking { prefs.clearAllForTest() }
-    }
-
     @Test
     fun aCrossCountryLinkSwitchesCountryAndCityInOneWrite() {
         runBlocking {
-            prefs.clearAllForTest()
             prefs.setCityInCountry("warszawa", "pl")
         }
         val seen = Collections.synchronizedList(mutableListOf<Pair<String?, String?>>())

@@ -1,11 +1,9 @@
 package pl.kinowo.data
 
-import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.After
-import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -17,22 +15,17 @@ import org.robolectric.annotation.Config
  * into another on a country switch: the next reconcile unioned them into the
  * new country and uploaded them, or (on a 304) simply kept showing them.
  *
- * The DataStore is process-wide under Robolectric, so every test starts and
- * ends on an empty store — which also means "never picked a country" (Poland).
+ * [FreshUserPreferences] starts every test on an empty store — which also
+ * means "never picked a country" (Poland).
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class UserPreferencesHiddenFilmsPerCountryTest {
 
-    private val prefs = UserPreferences(ApplicationProvider.getApplicationContext())
+    @get:Rule
+    val fresh = FreshUserPreferences()
 
-    // Other classes in the fork assert "null until set" on the country and
-    // city, so leave the store as empty as it was found.
-    @Before
-    @After
-    fun reset() {
-        runBlocking { prefs.clearAllForTest() }
-    }
+    private val prefs get() = fresh.prefs
 
     @Test
     fun aCountrySwitchShowsThatCountrysOwnSetAndSwitchingBackRestoresTheFirst() = runBlocking {
