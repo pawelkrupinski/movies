@@ -268,6 +268,24 @@ class TitleNormalizer(val rules: TitleRuleSet) {
     if (unified.trim.nonEmpty) unified else t
   }
 
+  /** One vote per venue for [[chooseDisplay]], from each venue's spellings of the film.
+   *  A venue that lists it several ways votes with its LEAST-decorated spelling — one
+   *  `apiQuery` leaves unchanged (no programme prefix, promo banner or event suffix) —
+   *  then the spelling most venues share, then the smallest key, so the vote is a pure
+   *  function of the spellings. */
+  def venueVotes(byVenue: Seq[Seq[String]]): Seq[String] = {
+    val venuesPerKey = byVenue.flatMap(_.map(sanitize).distinct).groupMapReduce(identity)(_ => 1)(_ + _)
+    byVenue.flatMap { spellings =>
+      spellings.distinct match {
+        case Seq(only) => Some(only)
+        case several   => several.minByOption { t =>
+          val key = sanitize(t)
+          (sanitize(apiQuery(t)) != key, -venuesPerKey(key), key, t)
+        }
+      }
+    }
+  }
+
   /** The deterministic display-title ladder used by the live merge
    *  (`MovieRecord.displayTitle`): from the per-cinema cleaned spellings of one
    *  merged row, pick the form to show (no scrape-order dependence).

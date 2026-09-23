@@ -94,4 +94,30 @@ class MovieRecordDisplayTitleSpec extends AnyFlatSpec with Matchers {
     val record = MovieRecord(data = Map[Source, SourceData](Imdb -> SourceData()))
     record.displayTitle("Anchor Title", titleNormalizer) shouldBe "Anchor Title"
   }
+  it should "take a venue's LEAST-decorated spelling as its one vote, not its alphabetically last" in {
+    // Kino Sfinks lists one film three ways: plain, as its senior club, and as its
+    // cheap-Tuesday promo. A venue has ONE vote, and it used to be whichever spelling
+    // sorted last ("Tani wtorek: …"), which then outvoted the plain spelling of a
+    // second cinema and named the whole row after a price promotion.
+    val record = MovieRecord(data = Map[Source, SourceData](
+      CinemaShowing(KinoSfinks, "robinhoodkonieclegendy")                          -> SourceData(title = Some("Robin hood. Koniec legendy")),
+      CinemaShowing(KinoSfinks, "filmowyklubsenioraiseniorkirobinhoodkonieclegendy") -> SourceData(title = Some("Filmowy Klub Seniora i Seniorki: Robin hood. Koniec legendy")),
+      CinemaShowing(KinoSfinks, "taniwtorekrobinhoodkonieclegendy")                -> SourceData(title = Some("Tani wtorek: Robin hood. Koniec legendy")),
+      KinoApollo                                                                   -> SourceData(title = Some("Tani wtorek: Robin hood. Koniec legendy"))
+    ))
+    record.displayTitle("Robin hood. Koniec legendy", titleNormalizer) shouldBe "Robin hood. Koniec legendy"
+  }
+
+  it should "take the spelling most venues share when a venue's spellings are equally bare" in {
+    // Neither "Dune" nor "Diuna" is decorated, so the venue's vote goes to the spelling
+    // the other venues use most — not to the one that sorts last.
+    val record = MovieRecord(data = Map[Source, SourceData](
+      CinemaShowing(KinoSfinks, "diuna") -> SourceData(title = Some("Diuna")),
+      CinemaShowing(KinoSfinks, "dune")  -> SourceData(title = Some("Dune")),
+      Multikino                          -> SourceData(title = Some("Diuna")),
+      KinoApollo                         -> SourceData(title = Some("Dune")),
+      CinemaCityWroclavia                -> SourceData(title = Some("Diuna"))
+    ))
+    record.cinemaTitleVotes(titleNormalizer).sorted shouldBe Seq("Diuna", "Diuna", "Diuna", "Dune")
+  }
 }

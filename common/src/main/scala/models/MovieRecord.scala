@@ -263,9 +263,18 @@ case class MovieRecord(
   def displayTitle(cleanTitle: String, normalizer: services.movies.TitleNormalizer,
                    extraCinemaTitles: Seq[String] = Nil): String =
     normalizer.chooseDisplay(
-      perCinemaTitles = cinemaData.values.flatMap(_.title).toSeq ++ extraCinemaTitles,
+      perCinemaTitles = cinemaTitleVotes(normalizer) ++ extraCinemaTitles,
       fallback        = cleanTitle,
       tmdbTitle       = data.get(Tmdb).flatMap(_.title))
+
+  /** Each venue's ONE vote in [[displayTitle]]'s dominant-spelling election. A venue
+   *  listing the film under several titles (plain, a senior-club screening, a
+   *  cheap-Tuesday promo) votes with the spelling [[services.movies.TitleNormalizer.venueVotes]]
+   *  picks — its least-decorated one — never with [[cinemaData]]'s representative slot,
+   *  which is whichever title sorts last and so named rows after promotions. */
+  def cinemaTitleVotes(normalizer: services.movies.TitleNormalizer): Seq[String] =
+    normalizer.venueVotes(cinemaShowings.flatMap { case (cinema, sd) => sd.title.map(cinema -> _) }
+      .groupMap(_._1)(_._2).values.toSeq)
 
   /** TMDB-resolved original (production-language) title. None when TMDB
    *  hasn't filled this row yet. */
