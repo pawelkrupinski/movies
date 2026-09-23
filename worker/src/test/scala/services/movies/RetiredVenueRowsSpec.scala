@@ -122,13 +122,14 @@ class RetiredVenueRowsSpec extends AnyFlatSpec with Matchers {
     venuesOf(slots) should contain allOf (Retired, KinoWawrzyn.displayName)
   }
 
-  it should "skip a side store whose id read failed, while still sweeping the other" in {
+  it should "remove nothing from EITHER store when one store's id read failed" in {
+    // Sweeping the readable store alone would judge the grace without the other twin's stamp
+    // and could delete one half of a pair — the split the freshest-twin rule exists to stop.
     val screeningsStore = new InMemoryScreeningsRepository(clock)
     val (_, slots) = corpus(screenings = screeningsStore)
-    sweep(Some(new UnreadableScreeningsRepository(screeningsStore)), Some(slots), roster) shouldBe
-      RetiredVenueRows(screenings = 0, slots = 3, venues = Map(Retired -> 3L))
+    sweep(Some(new UnreadableScreeningsRepository(screeningsStore)), Some(slots), roster) shouldBe RetiredVenueRows.none
     venuesOf(screeningsStore) should contain (Retired)
-    venuesOf(slots) should not contain Retired
+    venuesOf(slots)           should contain (Retired)
   }
 
   it should "put the removal on the removal-audit log with the venue" in {
