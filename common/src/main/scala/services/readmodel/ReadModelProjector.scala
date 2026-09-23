@@ -348,7 +348,7 @@ class ReadModelProjector(
     val screeningRefsBefore: Option[Seq[ScreeningRef]] =
       if (reproject) None else Try(reader.findAllScreeningRefs()).toOption
     val screeningsBefore = screeningRefsBefore.map(_.map(_._id).toSet)
-    var healed = 0
+    val healed = scala.collection.mutable.ArrayBuffer.empty[String]
     // The REPROJECT needs showtimes — it writes them. The PRUNE never looks at one: it
     // computes ids, and `filmIds` derives those from the cinema SLOTS, which the slots-only
     // scan still stitches. So the frequent, scheduled sweep no longer pulls the whole
@@ -378,7 +378,7 @@ class ReadModelProjector(
           if (absentCards.nonEmpty || absentVenues.nonEmpty)
             // The slots-only scan carries no showtimes; read the row whole for its projection.
             try heal(row.id, absentCards, absentVenues).foreach { case (_, written) =>
-              if (written > 0) healed += 1
+              if (written > 0) { healed += row.id.value; () }
               // Nothing written: the projection agrees with the read model, so the absence
               // was the slots-only view's phantom. Do not ask again at this row state.
               else healedClean.update(row.id.value, metadataHash)
@@ -473,7 +473,8 @@ class ReadModelProjector(
     // the change stream can't deliver. Surfaced as kinowo_worker_readmodel_reconcile_sweeps.
     val didWork = reprojected > 0 || prunedFilms > 0 || prunedScreenings > 0
     if (!reproject) metrics.recordReconcileSweep(ReconcileKind.Prune, didWork)
-    if (healed > 0) logger.warn(s"read-model $kind sweep: projected $healed ready row(s) missing a card or a venue before the prune.")
+    if (healed.nonEmpty) logger.warn(s"read-model $kind sweep: projected ${healed.size} ready row(s) missing a card or a venue " +
+      s"before the prune: ${ReadModelProjector.idsForLog(healed)}.")
     logger.info(s"read-model $kind sweep: reprojected $reprojected doc(s), pruned $prunedFilms film(s) + " +
       s"$prunedScreenings orphan screening(s)${if (scanComplete) "" else " [scan INCOMPLETE — prune skipped]"}.")
   }
@@ -549,12 +550,12 @@ class ReadModelProjector(
       }
     }
     if (!cardsRead) logger.warn("read model: the card ids could not be read at boot — nothing healed; the prune sweep retries.")
-    var healed = 0
-    missing.foreach { case (id, absentCards, absentVenues) =>
-      lock.synchronized(heal(id, absentCards, absentVenues)).foreach { case (_, written) => if (written > 0) healed += 1 } }
-    if (healed > 0)
-      logger.warn(s"read model: projected $healed ready row(s) missing a card or a venue at boot" +
-        (if (complete) "" else " (source scan incomplete — the rest heal on their next change)") + ".")
+    val healed = missing.flatMap { case (id, absentCards, absentVenues) =>
+      lock.synchronized(heal(id, absentCards, absentVenues)).collect { case (_, written) if written > 0 => id.value } }
+    if (healed.nonEmpty)
+      logger.warn(s"read model: projected ${healed.size} ready row(s) missing a card or a venue at boot" +
+        (if (complete) "" else " (source scan incomplete — the rest heal on their next change)") +
+        s": ${ReadModelProjector.idsForLog(healed)}.")
   }.recover { case exception => logger.warn(s"read-model missing-card check failed, skipped: ${exception.getMessage}") }
 
   /** Caller holds `lock`. Re-project a row whose cards under `absentCards` and whose
@@ -583,6 +584,17 @@ class ReadModelProjector(
     watchHandle.foreach(h => Try(h.close()))
     scheduler.shutdown()
   }
+}
+
+object ReadModelProjector {
+  /** How many row ids one heal line names before it summarises the rest. */
+  private[readmodel] val LoggedIdsPerLine = 20
+
+  /** The healed row ids for a log line — every heal is otherwise a count nobody can trace
+   *  back to the retirement that caused it — capped so a mass heal stays one line. */
+  private[readmodel] def idsForLog(ids: collection.Seq[String]): String =
+    ids.take(LoggedIdsPerLine).mkString(", ") +
+      (if (ids.sizeIs > LoggedIdsPerLine) s" (+${ids.size - LoggedIdsPerLine} more)" else "")
 }
 
 /** What the projector remembers about a written card: one hash per part, so the next

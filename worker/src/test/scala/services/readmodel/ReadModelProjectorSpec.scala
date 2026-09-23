@@ -368,6 +368,22 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     steady.stop()
   }
 
+  "the prune" should "name the rows it healed, capped per line" in {
+    // "projected 3 ready row(s) missing a card or a venue" was all prod ever said, so a
+    // heal could not be tied to the retirement that caused it (2026-09-23: 31 US heals in a
+    // day, none attributable). The ids make each heal a lookup; the cap keeps a mass heal
+    // (the 509-card id-scheme rollout) one readable line.
+    val (projector, repository, _) = fixture()
+    (1 to 25).foreach(i => repository.upsert(s"Film$i", Some(2024), record(Some(7.0), Seq(at("2026-06-12T20:00")))))
+    val ids = repository.findAll().map(_.id.value)
+    val lines = tools.LogCapture.capture(classOf[ReadModelProjector].getName)(projector.pruneOrphans())
+      .map(_.getFormattedMessage).filter(_.contains("missing a card"))
+    lines should have size 1
+    val named = ids.filter(id => lines.head.contains(id))
+    withClue(s"the heal line named ${named.size} of ${ids.size} rows: ${lines.head}") { named should have size 20 }
+    lines.head should include ("(+5 more)")
+  }
+
   "reconcile" should "prune derived documents whose source film vanished" in {
     val (projector, repository, rm) = fixture()
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
