@@ -46,39 +46,13 @@ class OgCardAssetsSpec extends AnyFlatSpec with Matchers {
     missing(Country.all.map(_.homeOgImage)) shouldBe empty
   }
 
-  /** Cards owed until their page's first deploy — see the class doc. Exact: a
-   *  generated card fails the second clue below until its entry goes.
-   *  2026-09-23 — the Polish town and cluster pages of the re-cluster. */
-  private val awaitingFirstDeploy: Set[String] = Seq(
-    "augustow", "belchatow", "biala-podlaska", "bielsk-podlaski", "bilgoraj", "bochnia", "boleslawiec",
-    "braniewo", "brzeg", "brzeg-dolny", "busko-zdroj", "chelm", "choszczno", "czechowice-dziedzice",
-    "dabrowa-tarnowska", "elk", "gizycko", "glogow", "goldap", "grajewo", "grudziadz",
-    "hrubieszow", "inowroclaw", "jaroslaw", "jaslo", "jastrzebie-zdroj", "jaworzno", "kedzierzyn-kozle",
-    "kepno", "klodzko", "kluczbork", "kolobrzeg", "koscierzyna", "krapkowice", "krasnik",
-    "krasnystaw", "krosno", "krotoszyn", "krynica-zdroj", "kutno", "lapy", "leba",
-    "legionowo", "lidzbark-warminski", "lipno", "lubin", "lubliniec", "lukow", "miechow",
-    "miedzyrzec-podlaski", "miedzyrzecz", "miedzyzdroje", "mielec", "mlawa", "morag", "myszkow",
-    "naklo-nad-notecia", "nowa-sol", "nowy-targ", "nowy-tomysl", "nysa", "olawa", "olecko",
-    "olesnica", "olsztynek", "opoczno", "ostrow-mazowiecka", "ostrow-wielkopolski", "oswiecim", "otwock",
-    "pabianice", "parczew", "police", "polkowice", "pruszkow", "przeworsk", "pultusk",
-    "radomsko", "rawicz", "ruda-slaska", "rypin", "sanok", "sierpc", "slawno",
-    "slupca", "sokolka", "sokolow-podlaski", "srem", "stara-blotnica", "starachowice", "stargard",
-    "strzelin", "swidnica", "swidnik", "swiebodzin", "szamotuly", "szczecinek", "szczytno",
-    "tczew", "tomaszow-lubelski", "tomaszow-mazowiecki", "turek", "wadowice", "wagrowiec", "wejherowo",
-    "wielen", "wieliczka", "wloszczowa", "wolomin", "wysokie-mazowieckie", "zary", "zawiercie",
-    "zdunska-wola", "zgierz", "zlotow", "zory", "zyrardow", "zywiec",
-  ).map(slug => s"og-$slug.jpg").toSet
-
   "every city, in every country" should "have the card its index page names" in {
     val absent = missing(Country.all.flatMap(_.cities).map(_.shareImage))
     // Only the first few names, or a country that was never swept prints its
     // whole roster — 546 filenames on one assertion line, in the run that
     // introduced this spec.
     withClue(s"${absent.size} cities have no committed share card; first: ") {
-      absent.filterNot(awaitingFirstDeploy).take(8) shouldBe empty
-    }
-    withClue("cards listed as awaiting their first deploy that now exist — delete them from the list: ") {
-      awaitingFirstDeploy.diff(absent.toSet) shouldBe empty
+      absent.take(8) shouldBe empty
     }
   }
 
