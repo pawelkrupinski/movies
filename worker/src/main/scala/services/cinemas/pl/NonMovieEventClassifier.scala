@@ -78,9 +78,11 @@ object NonMovieEventClassifier {
     """seans\s?w\s?ciemno""".r,
     """seans\s?niespodziank""".r,
     // Activity classes sold through the same ticketing surface — a yoga session
-    // ("Joga w chmurach – Studio Jogi…") is never a screening. `\bjog` also
-    // covers "jogi"/"jogą" without touching any film title.
-    """\bjog[aiąę]\b""".r,
+    // ("Joga w chmurach – Studio Jogi…") is never a screening. Covers "joga",
+    // "jogi", "jogą", "jogę" without touching any film title; closed by a
+    // lookahead rather than `\b`, since Java's ASCII-only `\b` sees no boundary
+    // after "ą"/"ę" (the same trap `spektakl` above avoids).
+    """\bjog[aiąę](?![\p{L}\d])""".r,
     // Silent-disco nights ("Zamkowe Silent Disco"). Deliberately NOT a bare
     // `disco`, which would drop the film "Disco Polo".
     """silent\s?disco""".r

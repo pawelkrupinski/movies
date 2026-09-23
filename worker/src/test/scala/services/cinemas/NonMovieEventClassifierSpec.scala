@@ -167,6 +167,14 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
     notFilms.foreach(t => withClue(s"$t\n")(NonMovieEventClassifier.isLiveEvent(t) shouldBe true))
   }
 
+  // The instrumental/accusative "jogą"/"jogę" end on a Polish letter, which Java's
+  // ASCII-only `\b` never counts as a word character — so a trailing `\b` after
+  // them can never match and the marker only ever caught "joga"/"jogi".
+  it should "drop a yoga class spelled with an inflection ending in a Polish letter" in {
+    Seq("Poranek z jogą na tarasie", "Zapraszamy na jogę", "RELAKS Z JOGĄ")
+      .foreach(t => withClue(s"$t\n")(NonMovieEventClassifier.isLiveEvent(t) shouldBe true))
+  }
+
   // A venue's own programme name is NOT a national rule: on its own the shared
   // classifier must not know what "Lato na tarasach" is. The client that owns the
   // venue supplies it (see KinoZamekClientSpec).
