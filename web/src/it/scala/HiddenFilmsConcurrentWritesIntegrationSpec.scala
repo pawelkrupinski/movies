@@ -12,11 +12,12 @@ import org.scalatest.matchers.should.Matchers
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
 import services.metrics.LegacyUserStateMetrics
-import services.users.{AccountDeletion, InMemoryUserRepository, MongoUserStateRepository, NoUserChangeTimeCache}
+import services.users.{AccountDeletion, InMemoryUserRepository, MongoUserStateRepository, NoUserChangeTimeCache, UserStateWriteOutcomes}
 import tools.Env
 
 import java.time.Instant
-import java.util.concurrent.Executors
+import java.util.concurrent.{ConcurrentLinkedQueue, Executors}
+import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
@@ -30,7 +31,10 @@ class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matche
   tools.IntegrationMongo.requireThrowaway()
 
   private val Prefix = "__integration-test-hide-"
-  private val states = new MongoUserStateRepository()
+  // Every write's reported outcome, as (userId-free) (endpoint, outcome) pairs.
+  private val outcomes = new ConcurrentLinkedQueue[(String, String)]()
+  private val states = new MongoUserStateRepository(
+    writeOutcomes = (endpoint: String, outcome: String) => { outcomes.add(endpoint -> outcome); () })
   private val users  = new InMemoryUserRepository
   private val pool   = Executors.newFixedThreadPool(32)
   private implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(pool)
@@ -65,6 +69,14 @@ class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matche
 
     statuses.distinct shouldBe Seq(OK)
     states.find(userId).value.hiddenFilmsByCountry("pl") shouldBe titles.toSet
+    // One outcome per write, each on the `hide` endpoint, and every one of them a
+    // success — a first-write race is a `conflict` that succeeded on the retry,
+    // never a store failure. This is what the write-outcome counter reports.
+    val reported = outcomes.asScala.toList
+    outcomes.clear()
+    reported should have size titles.size.toLong
+    reported.map(_._1).distinct shouldBe List(UserStateWriteOutcomes.Endpoint.Hide)
+    reported.map(_._2).toSet should contain noneOf (UserStateWriteOutcomes.Outcome.StoreFailure, UserStateWriteOutcomes.Outcome.Unavailable)
   }
 
   they should "not disturb another country's bucket being written at the same time" in {

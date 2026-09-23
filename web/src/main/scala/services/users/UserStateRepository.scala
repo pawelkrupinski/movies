@@ -100,8 +100,12 @@ class MongoUserStateRepository(
   fallbackToOwnInit: Boolean = true,
   // The reopen driver for the `userStates` cursor. Production schedules on a daemon
   // thread; a spec hands over one that fires when it says so.
-  reopenDriver: (String, () => Unit) => ChangeStreamReopen = ChangeStreamReopen.onDaemonScheduler
+  reopenDriver: (String, () => Unit) => ChangeStreamReopen = ChangeStreamReopen.onDaemonScheduler,
+  // How each atomic write went, one outcome per write — the web's
+  // `UserStateWriteMetrics` in production.
+  writeOutcomes: UserStateWriteOutcomes = UserStateWriteOutcomes.none
 ) extends UserStateRepository with Logging {
+  import UserStateWriteOutcomes.{Endpoint, Outcome}
 
   // Shares its MongoClient with the rest of the app via the
   // `MongoConnection` passed by Wiring. See MongoUserRepository for the
@@ -160,29 +164,34 @@ class MongoUserStateRepository(
   }
 
   def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange, now: Instant): Option[UserState] =
-    atomically(userId, s"changeHiddenFilms($userId, $country)", MongoUserStateRepository.hiddenFilmsPipeline(country, change, now))
+    atomically(userId, s"changeHiddenFilms($userId, $country)", Endpoint.of(change),
+      MongoUserStateRepository.hiddenFilmsPipeline(country, change, now))
 
   def patchLegacyState(userId: String, patch: LegacyStatePatch, now: Instant): Option[UserState] =
-    atomically(userId, s"patchLegacyState($userId)", MongoUserStateRepository.legacyStatePipeline(patch, now))
+    atomically(userId, s"patchLegacyState($userId)", Endpoint.LegacyPut, MongoUserStateRepository.legacyStatePipeline(patch, now))
 
   /** Run `update` against `userId`'s row as one `findOneAndUpdate` — upserting
-   *  when there is no row — and answer with the row right after it. */
-  private def atomically(userId: String, what: String, update: Seq[BsonDocument]): Option[UserState] =
-    coll.flatMap { c =>
-      val options = new FindOneAndUpdateOptions().upsert(true).returnDocument(ReturnDocument.AFTER)
-      def attempt(): UserState =
-        Await.result(c.findOneAndUpdate(Filters.eq("userId", userId), update, options).toFuture(), 10.seconds)
-      Try(attempt()).recover {
-        // Two first-ever writes for one user both upserting: the unique `userId`
-        // index turns the loser's insert away. The row exists now, so the retry
-        // updates it instead.
-        case duplicate: MongoServerException if ErrorCategory.fromErrorCode(duplicate.getCode) == ErrorCategory.DUPLICATE_KEY =>
-          attempt()
-      }.recover {
-        case exception: Throwable =>
-          logger.warn(s"UserStateRepository.$what failed: ${exception.getMessage}")
-          null
-      }.toOption.flatMap(Option(_))
+   *  when there is no row — and answer with the row right after it, reporting
+   *  how it went to `writeOutcomes` under `endpoint`. */
+  private def atomically(userId: String, what: String, endpoint: String, update: Seq[BsonDocument]): Option[UserState] =
+    coll match {
+      case None =>
+        writeOutcomes.record(endpoint, Outcome.Unavailable)
+        None
+      case Some(c) =>
+        val options = new FindOneAndUpdateOptions().upsert(true).returnDocument(ReturnDocument.AFTER)
+        def attempt(): UserState =
+          Await.result(c.findOneAndUpdate(Filters.eq("userId", userId), update, options).toFuture(), 10.seconds)
+        val written = Try(attempt() -> Outcome.Ok).recover {
+          // Two first-ever writes for one user both upserting: the unique `userId`
+          // index turns the loser's insert away. The row exists now, so the retry
+          // updates it instead.
+          case duplicate: MongoServerException if ErrorCategory.fromErrorCode(duplicate.getCode) == ErrorCategory.DUPLICATE_KEY =>
+            attempt() -> Outcome.Conflict
+        }
+        written.failed.foreach(exception => logger.warn(s"UserStateRepository.$what failed: ${exception.getMessage}"))
+        writeOutcomes.record(endpoint, written.fold(_ => Outcome.StoreFailure, _._2))
+        written.toOption.flatMap { case (state, _) => Option(state) }
     }
 
   def delete(userId: String): Unit = coll.foreach { c =>

@@ -1053,6 +1053,126 @@
           }
         }
       ]
+    },
+    {
+      "type": "timeseries",
+      "title": "User-state writes by endpoint and outcome",
+      "description": "Every atomic write to a signed-in visitor's state (kinowo_web_user_state_writes_total): hide / unhide / clear per country, and the legacy full-state PUT. `conflict` is two first writes for one user racing -- harmless now the writes are atomic, and it succeeded on the retry. `store_failure` (Mongo threw) and `unavailable` (no users store) are the two ways a write answers 503; UserStateWritesFailing (web-errors.rules) alerts on the 503s per /api/me route. NOT scoped by $country (this is the inbound half).",
+      "id": 19,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 73,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (endpoint, outcome) (increase(kinowo_web_user_state_writes_total[$__rate_interval])) > 0",
+          "legendFormat": "{{endpoint}} {{outcome}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "/api/me/* responses by route and status (alert: UserStateWritesFailing)",
+      "description": "The per-route view WebServerErrorsServed cannot give: /api/me/* is a sliver of the tier's traffic, so its 5xx never move the tier-wide share. UserStateWritesFailing fires at 3+ 5xx in 30 min AND over 10% of a route's responses. 4xx on GET /api/me is every anonymous visitor's 401 -- by design.",
+      "id": 20,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 73,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (route, status) (increase(kinowo_web_http_requests_total{job=\"kinowo-web\",route=~\"/api/me.*\"}[$__rate_interval])) > 0",
+          "legendFormat": "{{route}} {{status}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
     }
   ]
 }

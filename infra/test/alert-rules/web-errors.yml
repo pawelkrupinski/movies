@@ -119,3 +119,60 @@ tests:
             exp_annotations:
               summary: "The web tier's request metric has stopped arriving"
               description: "`WebServerErrorsServed` and `WebAssetsNotFound` are both silent while this is firing, and their silence means nothing. Either every web pod is gone (k3s.rules, monitoring-self.rules) or `WebHttpMetrics` stopped registering -- check `/metrics` on a web pod for the `kinowo_web_http_requests_total` family before assuming the scrape."
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # USER-STATE WRITES FAILING WHILE THE TIER IS FINE -- the 2026-09 lost-writes shape. A signed-in
+  # visitor's hides answer 503 (the store could not write) one in two, a few an hour, while the
+  # tier serves 50 requests a second of healthy pages. `WebServerErrorsServed` is a TIER-WIDE share
+  # and cannot see this: /api/me is under 0.01% of traffic, so every write could fail and the share
+  # would not move. `UserStateWritesFailing` asks per route: at least three 5xx in 30 minutes and
+  # over 10% of that route's responses. Anonymous 401s from GET /api/me -- by far its commonest
+  # answer -- are 4xx and never count.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 5m
+    input_series:
+      - series: 'kinowo_web_http_requests_total{country="pl",job="kinowo-web",route="/:city/",method="GET",status="2xx"}'
+        values: '0+15000x16'
+      - series: 'kinowo_web_http_requests_total{country="pl",job="kinowo-web",route="/api/me/:country/hidden-films/:title",method="PUT",status="5xx"}'
+        values: '0+1x16'
+      - series: 'kinowo_web_http_requests_total{country="pl",job="kinowo-web",route="/api/me/:country/hidden-films/:title",method="PUT",status="2xx"}'
+        values: '0+1x16'
+      - series: 'kinowo_web_http_requests_total{country="pl",job="kinowo-web",route="/api/me",method="GET",status="4xx"}'
+        values: '0+40x16'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: UserStateWritesFailing
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: WebServerErrorsServed
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: UserStateWritesFailing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: pl
+              route: /api/me/:country/hidden-films/:title
+            exp_annotations:
+              summary: "pl /api/me/:country/hidden-films/:title is answering 5xx to 50% of requests"
+              description: >-
+                Signed-in visitors' writes to their own state are failing -- a hide that does not
+                stick, a language pick that reverts -- while the rest of the tier is fine, which is
+                why `WebServerErrorsServed` (a tier-wide share) cannot see it. A 503 here is the
+                store refusing the write: `sum by (endpoint, outcome)
+                (increase(kinowo_web_user_state_writes_total[1h]))` says whether it is
+                `store_failure` (Mongo threw -- the web log has `UserStateRepository.… failed`) or
+                `unavailable` (the pod has no users store at all).
+
+  # ONE 5xx IS NOT A PATTERN: a single 503 on a route that saw four requests in half an hour is a
+  # 25% share and must stay silent, because it is below the three-error floor.
+  - interval: 5m
+    input_series:
+      - series: 'kinowo_web_http_requests_total{country="de",job="kinowo-web",route="/api/me/state",method="PUT",status="5xx"}'
+        values: '0 1+0x15'
+      - series: 'kinowo_web_http_requests_total{country="de",job="kinowo-web",route="/api/me/state",method="PUT",status="2xx"}'
+        values: '0 1 1 2 2 3+0x11'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: UserStateWritesFailing
+        exp_alerts: []

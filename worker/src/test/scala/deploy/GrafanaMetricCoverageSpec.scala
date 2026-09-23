@@ -114,7 +114,10 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     // the web registry. Missing from this hand-maintained list read as
     // "exported by nothing" here even though it's real — the same failure
     // mode this list's own comment warns about.
-    "kinowo_web_legacy_userstate_put_last_called_seconds"
+    "kinowo_web_legacy_userstate_put_last_called_seconds",
+    // Every atomic user-state write by endpoint and outcome — see
+    // `services.metrics.UserStateWriteMetrics`.
+    "kinowo_web_user_state_writes"
   )
 
   /** `kinowo_*` families exported by the FLEET rather than by either application —
