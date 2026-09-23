@@ -871,6 +871,40 @@ tests:
                 flapping out of readiness), and `RemovalAudit` log lines for the same ids.
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────
+  # BOOT HEALS ON A DEPLOY DAY DO NOT FIRE; SWEEP HEALS BESIDE THEM STILL DO. Every boot's check
+  # heals the rows the old pod's last minutes never projected -- 1-6 on most boots, and the fleet
+  # boots ~16 times on a deploy day, so boot heals an hour or more apart are the normal shape
+  # (UK below: 3 at a boot at 30m, 2 more at a boot at 2h55m, each a fresh counter). The retry-gap
+  # defect the rule exists for healed in the SWEEP, and DE's sweep heals at the same two marks
+  # still page.
+  # ──────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: boot heals on every deploy stay quiet, sweep heals beside them fire
+    input_series:
+      - series: 'kinowo_worker_readmodel_heals_total{country="uk",job="kinowo-worker",trigger="boot"}'
+        values: '0x29 3x139 stale _x2 0x2 2x70'
+      - series: 'kinowo_worker_readmodel_heals_total{country="de",job="kinowo-worker",trigger="sweep"}'
+        values: '0x29 1x90 0x59 1x60'
+    alert_rule_test:
+      - eval_time: 3h10m
+        alertname: ReadModelHealsRecurring
+        exp_alerts:
+          - exp_labels:
+              country: de
+              severity: warning
+            exp_annotations:
+              summary: "de's read-model sweep keeps healing cards the change stream did not write"
+              description: >-
+                The read-model prune sweep in "de" re-projected rows missing a card or
+                a venue in the last hour, and also in the six hours before that. Each heal is a row the
+                change-stream path should already have written, so the site served without it for up to
+                30 minutes each time. The worker's WARN lines name the healed rows ("projected N ready
+                row(s) missing a card or a venue ... : <ids>"); look up what retired those rows' cards --
+                `kinowo_worker_readmodel_cards_retired_total` by reason on the read-model heals panel of
+                the worker diagnostics dashboard (a `row-unready` rate that the heals trail is a row
+                flapping out of readiness), and `RemovalAudit` log lines for the same ids.
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────
   # A HEALTHY STREAM: the counter is seeded at zero and stays there. Nothing fires however long.
   # ──────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 1m
