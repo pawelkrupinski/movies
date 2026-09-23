@@ -148,22 +148,6 @@ in
   # own -- with no trusted issuer the name matches nobody. The k3s option and its `oidc:` username
   # prefix went with it; see docs/headlamp-serviceaccount-subject.md in the app repo.
 
-  # CADDY RELOADS RATHER THAN RESTARTS, which is why it is here and not in the list above.
-  # `caddy.service` reports `CanReload=yes` with an `ExecReload` of `caddy reload --force`, so a
-  # vhost added or changed is picked up without dropping a connection -- including the TLS
-  # session somebody is reading Grafana over at that moment.
-  #
-  # WITHOUT IT THE APPLIER REFUSES THE WHOLE CLOSURE, SILENTLY -- the same failure the paragraph
-  # above describes for the missing Grafana entry on 2026-08-30, and it was about to happen
-  # again: publishing Headlamp adds a vhost, which changes this unit, and every unrelated change
-  # staged for this machine would have sat unapplied with nothing saying why.
-  #
-  # THE SENTENCE WRITTEN OUT: a graceful config reload of the reverse proxy at an arbitrary
-  # moment is a cost this host accepts -- it drops no connection and no request. A RESTART is
-  # deliberately NOT accepted and stays refused, so if the Caddy package itself changes and
-  # switch-to-configuration wants a bounce, a person takes that brief 502 knowingly.
-  fleet.autoApply.reloadableUnits = [ "caddy.service" ];
-
   # WHO MAY OPEN ANYTHING THIS HOST PUBLISHES -- and since 2026-09-07 that is the WHOLE of the
   # answer, for all three published names. See roles/google-sso.nix for why the sign-in lives on one
   # name and one callback.
@@ -386,7 +370,6 @@ in
   fleet.firewall.k3sServer = true;
 
   sops.defaultSopsFile = ../../secrets/monitoring-1.yaml;
-
 
   system.stateVersion = "26.05";
 }

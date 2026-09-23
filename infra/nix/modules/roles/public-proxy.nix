@@ -458,5 +458,23 @@ in
     # does not harden anything -- it just makes every certificate fail to renew, silently, sixty
     # days later. Caddy redirects 80 to 443 for everything that is not a challenge.
     networking.firewall.allowedTCPPorts = [ 80 443 ];
+
+    # CADDY RELOADS RATHER THAN RESTARTS, on every host that serves a public vhost -- so it is set
+    # here, in the role, not host by host. It used to be a line in monitoring-1 alone, and its absence
+    # on k3s-worker-1 stranded the one-year HSTS change there on 2026-09-23 (test_public_proxy.sh
+    # now checks every proxy host).
+    #
+    # `caddy.service` reports `CanReload=yes` with an `ExecReload` of `caddy reload --force`, so a
+    # vhost added or changed is picked up without dropping a connection -- including the TLS
+    # session somebody is reading Grafana over at that moment.
+    #
+    # WITHOUT IT THE APPLIER REFUSES THE WHOLE CLOSURE, SILENTLY: any vhost edit changes this unit,
+    # and every unrelated change staged for that machine sits unapplied with nothing saying why.
+    #
+    # THE SENTENCE WRITTEN OUT: a graceful config reload of the reverse proxy at an arbitrary
+    # moment is a cost this host accepts -- it drops no connection and no request. A RESTART is
+    # deliberately NOT accepted and stays refused, so if the Caddy package itself changes and
+    # switch-to-configuration wants a bounce, a person takes that brief 502 knowingly.
+    fleet.autoApply.reloadableUnits = [ "caddy.service" ];
   };
 }

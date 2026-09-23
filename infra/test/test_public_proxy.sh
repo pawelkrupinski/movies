@@ -58,6 +58,18 @@ caddy_cmd=("$caddy_bin")
 work="$(mktemp -d)"
 trap 'kill %1 2>/dev/null; wait 2>/dev/null; rm -rf "$work"' EXIT
 
+# EVERY HOST THAT SERVES A PUBLIC VHOST MUST LET AUTO-APPLY RELOAD CADDY. Without it any vhost edit
+# changes caddy.service, and the applier refuses the WHOLE closure silently -- which is how the
+# one-year HSTS change sat unapplied on k3s-worker-1 on 2026-09-23.
+echo "==> auto-apply may reload caddy on every public-proxy host"
+for host in k3s-worker-1 monitoring-1; do
+  units="$(nix "${nix_flags[@]}" eval --json "$infra/nix#nixosConfigurations.$host.config.fleet.autoApply.reloadableUnits" 2>/dev/null)"
+  case "$units" in
+    *'"caddy.service"'*) echo "  ok  $host may reload caddy.service" ;;
+    *) echo "  FAILED $host's reloadableUnits ($units) lacks caddy.service, so every vhost change is refused"; failed=1 ;;
+  esac
+done
+
 echo "==> rendering showtimes.cc's vhost out of k3s-worker-1"
 vhost="$(nix "${nix_flags[@]}" eval --raw \
   "$infra/nix#nixosConfigurations.k3s-worker-1.config.services.caddy.virtualHosts.\"showtimes.cc\".extraConfig" 2>"$work/eval.err")"
