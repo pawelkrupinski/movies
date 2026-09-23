@@ -1,7 +1,7 @@
 package clients
 
 import clients.tools.FakeHttpFetch
-import models.{AdaKinoStudyjne, KinoEcho, KinoMewaBudzyn, UsRoster, CinemaCityBialaPodlaska, HeliosSiedlce, KinoGiewont, KinoMuranow, KinoOdraOlawa, KinoWCKWalcz, MultikinoLeszno, MultikinoPruszkow, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
+import models.{AdaKinoStudyjne, KinoBaszta, KinoEcho, KinoMewaBudzyn, UsRoster, CinemaCityBialaPodlaska, HeliosSiedlce, KinoGiewont, KinoMuranow, KinoOdraOlawa, KinoWCKWalcz, MultikinoLeszno, MultikinoPruszkow, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -349,6 +349,27 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       "https://www.bilety24.pl/kino/organizator/kino-echo-1159"
     sourceUrlOf(KinoMewaBudzyn) shouldBe
       "https://www.bilety24.pl/kino/organizator/gminny-osrodek-kultury-685"
+  }
+
+  // bilety24 routes an organiser page by its trailing numeric id alone — any slug
+  // in front of it resolves to the same venue. Braniewo's Baszta was wired (since
+  // 2026-06) to organiser 477, which is Kino Baszta in Środa Wielkopolska, so
+  // Elbląg's page listed Środa's programme under a Braniewo name; once the
+  // regional-hubs sweep wired Środa's own Baszta under Poznań, the same
+  // programme was scraped twice into two cities.
+  it should "never wire two venues to the same bilety24 organiser" in {
+    val OrganiserId = """/kino/organizator/[^/?#]*-(\d+)$""".r.unanchored
+    val organisers = catalog(biletyna = "kino-kameralne").byCity.values.flatten.toSeq.collect {
+      case s: Bilety24OrganizerClient => s.sourceUrl.value match { case OrganiserId(id) => id -> s.cinema.displayName }
+    }
+    val shared = organisers.groupMap(_._1)(_._2).filter(_._2.size > 1)
+    withClue(s"organisers wired more than once: $shared") { shared shouldBe empty }
+  }
+
+  it should "scrape Braniewo's Baszta off its own Filmweb id, not Środa Wielkopolska's bilety24 organiser" in {
+    val scraper = catalog(biletyna = "kino-kameralne").byCity("elblag").find(_.cinema == KinoBaszta).value
+    scraper shouldBe a [FilmwebShowtimesClient]
+    scraper.sourceUrl.value should endWith ("-2352")
   }
 
   // A `Cinema` that's modelled (so it shows on the web/in a city) but has no

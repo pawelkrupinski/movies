@@ -2020,11 +2020,12 @@ cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r
   Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413
+  Kino Baszta Środa = https://www.bilety24.pl/kino/477-drzewo-magii-154871?id=936176
   Kino Bułgarska 19 = http://kinobulgarska19.pl/filmy/drzewo-magii
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/drzewo-magii
 cinemaScrapes:
   Bajka / Drzewo magii / —
-  Baszta / Drzewo magii / —
+  Baszta / Drzewo magii / 2026
   Bałtyk / Drzewo magii / —
   Centrum / Drzewo magii / —
   Centrum 3D Przemyśl / DRZEWO MAGII / —
@@ -2108,6 +2109,7 @@ cinemaScrapes:
   Janosik / Drzewo magii / —
   Jutrzenka / Drzewo magii / —
   Kino Atlantic / Drzewo magii / 2026
+  Kino Baszta Środa / Drzewo magii / —
   Kino Bułgarska 19 / DRZEWO MAGII / 2026
   Kino Charlie / Drzewo Magii / —
   Kino DK / Drzewo magii / —
@@ -2168,9 +2170,11 @@ showings:
   2026-06-10  Cinema City Kinepolis         12:00 Sala 13 2D/DUB · 16:00 Sala 1 2D/DUB · 18:40 Sala 8 2D/DUB
   2026-06-10  Cinema City Poznań Plaza      10:00 Sala 6 2D/DUB · 11:10 Sala 1 2D/DUB · 16:00 Sala 1 2D/DUB
   2026-06-10  Helios Posnania               11:10 Sala 8 2D/DUB · 13:10 Sala 3 2D/DUB · 15:50 Sala 3 2D/DUB
+  2026-06-10  Kino Baszta Środa             20:30 · 20:30
   2026-06-11  Cinema City Kinepolis         12:00 Sala 13 2D/DUB · 16:00 Sala 1 2D/DUB · 18:40 Sala 8 2D/DUB
   2026-06-11  Cinema City Poznań Plaza      10:00 Sala 1 2D/DUB · 16:00 Sala 1 2D/DUB
   2026-06-11  Helios Posnania               11:10 Sala 2 2D/DUB · 13:10 Sala 3 2D/DUB · 15:50 Sala 3 2D/DUB
+  2026-06-11  Kino Baszta Środa             18:30 · 18:30
   2026-06-11  Kino Bułgarska 19             16:00 Sala Dzienniki Motocyklowe
 
 === Dziewczyna z igłą ===
@@ -2224,9 +2228,9 @@ cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/dzien-objawienia/7913s2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/dzien-objawienia/7913s2r
   Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/dzien-objawienia-4349
+  Kino Baszta Środa = https://www.bilety24.pl/kino/477-dzien-objawienia-156766?id=938877
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157354
 cinemaScrapes:
-  Baszta / Dzień objawienia / —
   Bałtyk / Dzień objawienia / —
   Chemik / Pokaz przedpremierowy: dzień objawienia / —
   Cinema City / — / —
@@ -2313,6 +2317,7 @@ cinemaScrapes:
   Kino Atlantic / Dzień objawienia / 2026
   Kino Awangarda 2 / Dzień objawienia / —
   Kino Bajka Kluczbork / Dzień Objawienia / —
+  Kino Baszta Środa / Dzień objawienia / —
   Kino Hel / DZIEŃ OBJAWIENIA - 2D napisy - Premiera Krajowa / —
   Kino Iluzjon / Dzień objawienia / 2026
   Kino KDK / DZIEŃ OBJAWIENIA / —
@@ -2370,16 +2375,22 @@ showings:
   2026-06-12  Cinema City Kinepolis         11:00 Sala 12 2D/NAP · 12:10 Sala 14 2D/NAP · 14:10 Sala 12 2D/NAP · 15:20 Sala 14 2D/NAP · 17:20 Sala 12 2D/NAP · 18:30 Sala 14 2D/NAP · 20:30 Sala 12 2D/NAP · 21:40 Sala 14 2D/NAP
   2026-06-12  Cinema City Poznań Plaza      10:30 Sala 3 2D/NAP · 11:00 Sala IMAX IMAX/2D/NAP · 13:40 Sala 3 2D/NAP · 14:10 Sala IMAX IMAX/2D/NAP · 16:50 Sala 3 2D/NAP · 17:20 Sala IMAX IMAX/2D/NAP · 20:00 Sala 3 2D/NAP · 20:30 Sala IMAX IMAX/2D/NAP
   2026-06-12  Helios Posnania               14:20 Sala 1 2D/NAP · 17:35 Sala 1 2D/NAP · 19:15 Sala 7 - Dream 2D/NAP/ATMOS · 20:45 Sala 1 2D/NAP
+  2026-06-12  Kino Baszta Środa             20:15 · 20:15
   2026-06-12  Kino Rialto                   18:00
   2026-06-13  Cinema City Kinepolis         11:00 Sala 12 2D/NAP · 12:10 Sala 14 2D/NAP · 14:10 Sala 12 2D/NAP · 15:20 Sala 14 2D/NAP · 17:20 Sala 12 2D/NAP · 18:30 Sala 14 2D/NAP · 20:30 Sala 12 2D/NAP · 21:40 Sala 14 2D/NAP
   2026-06-13  Cinema City Poznań Plaza      10:30 Sala 8 2D/NAP · 11:00 Sala IMAX IMAX/2D/NAP · 13:40 Sala 8 2D/NAP · 14:10 Sala IMAX IMAX/2D/NAP · 16:50 Sala 8 2D/NAP · 17:20 Sala IMAX IMAX/2D/NAP · 20:00 Sala 8 2D/NAP · 20:30 Sala IMAX IMAX/2D/NAP
   2026-06-13  Helios Posnania               14:15 Sala 7 - Dream 2D/NAP/ATMOS · 17:30 Sala 7 - Dream 2D/NAP/ATMOS · 19:15 Sala 3 2D/NAP · 20:45 Sala 7 - Dream 2D/NAP/ATMOS
+  2026-06-13  Kino Baszta Środa             20:15 · 20:15
   2026-06-13  Kino Rialto                   19:30
   2026-06-14  Cinema City Kinepolis         12:10 Sala 14 2D/NAP · 14:10 Sala 12 2D/NAP · 15:20 Sala 14 2D/NAP · 17:20 Sala 12 2D/NAP · 18:30 Sala 14 2D/NAP · 20:30 Sala 12 2D/NAP · 21:40 Sala 14 2D/NAP
   2026-06-14  Cinema City Poznań Plaza      10:30 Sala 3 2D/NAP · 11:00 Sala IMAX IMAX/2D/NAP · 13:40 Sala 3 2D/NAP · 14:10 Sala IMAX IMAX/2D/NAP · 16:50 Sala 3 2D/NAP · 17:20 Sala IMAX IMAX/2D/NAP · 20:00 Sala 3 2D/NAP · 20:30 Sala IMAX IMAX/2D/NAP
   2026-06-14  Helios Posnania               14:15 Sala 1 2D/NAP · 17:30 Sala 1 2D/NAP · 19:15 Sala 7 - Dream 2D/NAP/ATMOS · 20:45 Sala 1 2D/NAP
+  2026-06-14  Kino Baszta Środa             19:45 · 19:45
   2026-06-14  Kino Rialto                   19:15
   2026-06-15  Kino Rialto                   18:00
+  2026-06-16  Kino Baszta Środa             20:15 · 20:15
+  2026-06-17  Kino Baszta Środa             18:00 · 18:00
+  2026-06-18  Kino Baszta Środa             20:15 · 20:15
 
 === Dzień objawienia ukraiński dubbing ===
 displayTitle:      Dzień objawienia ukraiński dubbing
@@ -2404,7 +2415,6 @@ filmwebUrl:        https://www.filmweb.pl/film/Dzie%C5%84+objawienia-2026-100607
 cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/dzien-objawienia-ukrainski-dubbing/7913s2r1
 cinemaScrapes:
-  Baszta / Dzień objawienia / —
   Bałtyk / Dzień objawienia / —
   Chemik / Pokaz przedpremierowy: dzień objawienia / —
   Cinema City / — / —
@@ -2491,6 +2501,7 @@ cinemaScrapes:
   Kino Atlantic / Dzień objawienia / 2026
   Kino Awangarda 2 / Dzień objawienia / —
   Kino Bajka Kluczbork / Dzień Objawienia / —
+  Kino Baszta Środa / Dzień objawienia / —
   Kino Hel / DZIEŃ OBJAWIENIA - 2D napisy - Premiera Krajowa / —
   Kino Iluzjon / Dzień objawienia / 2026
   Kino KDK / DZIEŃ OBJAWIENIA / —
@@ -3231,6 +3242,7 @@ cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/gwiezdne-wojny-mandalorian-i-grogu/7667s2r
   Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/mandalorian-grogu-4347
 cinemaScrapes:
+  Baszta / Gwiezdne wojny: Mandalorian i Grogu / 2026
   Centrum / Mandalorian i Grogu / —
   Chemik / The mandalorian and grogu / —
   Cinema City / — / —
@@ -8313,7 +8325,6 @@ cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157353
 cinemaScrapes:
   Bajka / Tom i jerry: przygoda w muzeum / —
-  Baszta / Tom i Jerry: Przygoda w muzeum / —
   Centrum / Tom i Jerry: Przygoda w muzeum / —
   Chemik / Tom i jerry: przygoda w muzeum / —
   Cinema City / — / —
@@ -8395,6 +8406,7 @@ cinemaScrapes:
   Jutrzenka / Tom i jerry: przygoda w muzeum / —
   Kino Atlantic / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Bajka Kluczbork / Tom i Jerry: Przygoda w muzeum / —
+  Kino Baszta Środa / Tom i Jerry: Przygoda w muzeum / —
   Kino Charlie / Tom i Jerry: Przygoda w muzeum / —
   Kino Cytadela / Tom i Jerry. Przygoda w muzeum / 2026
   Kino DK / Tom i Jerry: Przygoda w muzeum / —
@@ -8872,8 +8884,8 @@ cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/straszny-film/8117s2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/straszny-film/8117s2r
   Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/straszny-film-4465
+  Kino Baszta Środa = https://www.bilety24.pl/kino/477-straszny-film-155740?id=936174
 cinemaScrapes:
-  Baszta / Straszny film / —
   Bałtyk / Straszny film / —
   Cinema City / — / —
   Cinema City Arkadia / Straszny film / 2026
@@ -8954,6 +8966,7 @@ cinemaScrapes:
   Helios Żory / Straszny film / 2026
   Janosik / Straszny film / —
   Jutrzenka / Straszny film / —
+  Kino Baszta Środa / Straszny film / —
   Kino DK / Straszny film / —
   Kino Diana / Straszny film / —
   Kino GCK / Straszny film / —
@@ -8997,9 +9010,17 @@ showings:
   2026-06-10  Cinema City Kinepolis         13:20 Sala 17 2D/DUB · 16:20 Sala 3 2D/DUB · 18:50 Sala 3 2D/NAP · 20:20 Sala 17 2D/NAP · 21:20 Sala 3 2D/NAP
   2026-06-10  Cinema City Poznań Plaza      11:40 Sala 8 2D/DUB · 14:00 Sala 8 2D/NAP · 16:20 Sala 8 2D/DUB · 18:40 Sala 8 2D/NAP · 21:00 Sala 8 2D/NAP
   2026-06-10  Helios Posnania               10:00 Sala 6 2D/NAP · 11:10 Sala 4 2D/DUB · 13:40 Sala 4 2D/NAP · 16:00 Sala 4 2D/DUB · 18:15 Sala 4 2D/NAP · 20:15 Sala 7 - Dream 2D/NAP · 21:40 Sala 6 2D/NAP
+  2026-06-10  Kino Baszta Środa             18:30 · 18:30
   2026-06-11  Cinema City Kinepolis         13:20 Sala 17 2D/DUB · 16:20 Sala 3 2D/DUB · 18:50 Sala 3 2D/NAP · 20:20 Sala 17 2D/NAP · 21:20 Sala 3 2D/NAP
   2026-06-11  Cinema City Poznań Plaza      11:40 Sala 8 2D/DUB · 14:00 Sala 8 2D/NAP · 16:20 Sala 8 2D/DUB · 18:40 Sala 8 2D/NAP · 21:00 Sala 8 2D/NAP
   2026-06-11  Helios Posnania               13:40 Sala 2 2D/DUB · 16:00 Sala 2 2D/DUB · 18:15 Sala 2 2D/NAP · 20:15 Sala 7 - Dream 2D/NAP
+  2026-06-11  Kino Baszta Środa             20:30 · 20:30
+  2026-06-12  Kino Baszta Środa             18:00 · 18:00
+  2026-06-13  Kino Baszta Środa             18:00 · 18:00
+  2026-06-14  Kino Baszta Środa             17:30 · 17:30
+  2026-06-16  Kino Baszta Środa             18:00 · 18:00
+  2026-06-17  Kino Baszta Środa             20:30 · 20:30
+  2026-06-18  Kino Baszta Środa             18:00 · 18:00
 
 === Straszny film ukraiński dubbing ===
 displayTitle:      Straszny film ukraiński dubbing
@@ -9024,7 +9045,6 @@ filmwebUrl:        https://www.filmweb.pl/film/Straszny+film-2026-10084281
 cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/straszny-film-ukrainski-dubbing/8117s2r1
 cinemaScrapes:
-  Baszta / Straszny film / —
   Bałtyk / Straszny film / —
   Cinema City / — / —
   Cinema City Arkadia / Straszny film / 2026
@@ -9105,6 +9125,7 @@ cinemaScrapes:
   Helios Żory / Straszny film / 2026
   Janosik / Straszny film / —
   Jutrzenka / Straszny film / —
+  Kino Baszta Środa / Straszny film / —
   Kino DK / Straszny film / —
   Kino Diana / Straszny film / —
   Kino GCK / Straszny film / —
@@ -9618,9 +9639,9 @@ cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/tom-i-jerry-przygoda-w-muzeum/8142d2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/tom-i-jerry-przygoda-w-muzeum/8142d2r
   Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/tom-i-jerry-przygoda-w-muzeum-4394
+  Kino Baszta Środa = https://www.bilety24.pl/kino/477-tom-i-jerry-przygoda-w-muzeum-154578?id=936172
 cinemaScrapes:
   Bajka / Tom i jerry: przygoda w muzeum / —
-  Baszta / Tom i Jerry: Przygoda w muzeum / —
   Centrum / Tom i Jerry: Przygoda w muzeum / —
   Chemik / Tom i jerry: przygoda w muzeum / —
   Cinema City / — / —
@@ -9702,6 +9723,7 @@ cinemaScrapes:
   Jutrzenka / Tom i jerry: przygoda w muzeum / —
   Kino Atlantic / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Bajka Kluczbork / Tom i Jerry: Przygoda w muzeum / —
+  Kino Baszta Środa / Tom i Jerry: Przygoda w muzeum / —
   Kino Charlie / Tom i Jerry: Przygoda w muzeum / —
   Kino Cytadela / Tom i Jerry. Przygoda w muzeum / 2026
   Kino DK / Tom i Jerry: Przygoda w muzeum / —
@@ -9757,9 +9779,11 @@ showings:
   2026-06-10  Cinema City Kinepolis         10:00 Sala 10 2D/DUB · 12:50 Sala 15 2D/DUB · 17:40 Sala 9 2D/DUB
   2026-06-10  Cinema City Poznań Plaza      12:10 Sala 4 2D/DUB · 14:40 Sala 4 2D/DUB
   2026-06-10  Helios Posnania               10:20 Sala 2 2D/DUB · 13:20 Sala 1 2D/DUB · 15:15 Sala 2 2D/DUB · 17:45 Sala 2 2D/DUB
+  2026-06-10  Kino Baszta Środa             14:30 · 14:30 · 16:30
   2026-06-11  Cinema City Kinepolis         12:50 Sala 15 2D/DUB · 17:40 Sala 9 2D/DUB
   2026-06-11  Cinema City Poznań Plaza      12:10 Sala 4 2D/DUB · 14:40 Sala 4 2D/DUB · 17:00 Sala 4 2D/DUB
   2026-06-11  Helios Posnania               10:50 Sala 3 2D/DUB · 13:20 Sala 4 2D/DUB · 15:15 Sala 1 2D/DUB · 17:45 Sala 1 2D/DUB
+  2026-06-11  Kino Baszta Środa             14:30 · 14:30 · 16:30
 
 === Toy Story 5 ===
 displayTitle:      Toy Story 5
@@ -10315,6 +10339,62 @@ cinemaScrapes:
 showings:
   2026-06-14  Kino Muza                     19:00 Sala 1
 
+=== Willow i tajemniczy las ===
+displayTitle:      Willow i tajemniczy las
+cinemaTitles:      WILLOW I TAJEMNICZY LAS | Willow i tajemniczy las
+runtimeMinutes:    100
+releaseYear:       2025
+countries:         Niemcy, Austria
+posterUrl:         https://img.helios.pl/pliki/film/willow-i-tajemniczy-las/willow-i-tajemniczy-las-plakat-745.jpg
+synopsis.length:   339
+cast:              Ava Petsch, Cora Trube, Anna von Seld, Mary Tölle, Golo Euler
+director:          Mike Marzuk
+tmdbId:            1176932
+imdbId:            tt35300281
+originalTitle:     Ein Mädchen namens Willow
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     5.0
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        https://www.filmweb.pl/film/Willow+i+tajemniczy+las-2025-10073149
+cinemaFilmUrls:
+  Kino Baszta Środa = https://www.bilety24.pl/kino/477-willow-i-tajemniczy-las-155741?id=938874
+cinemaScrapes:
+  Helios Bielsko-Biała / Willow i tajemniczy las / —
+  Helios Gorzów Wielkopolski / Willow i tajemniczy las / —
+  Helios Katowice / Willow i tajemniczy las / 2026
+  Helios Koszalin / Willow i tajemniczy las / 2026
+  Helios Krosno / Willow i tajemniczy las / —
+  Helios Magnolia Park / Willow i tajemniczy las / —
+  Helios Olsztyn / Willow i tajemniczy las / 2026
+  Helios Riviera / Willow i tajemniczy las / —
+  Helios Solaris / Willow i tajemniczy las / 2026
+  Helios Łódź / Willow i tajemniczy las / —
+  Kino Baszta Środa / Willow i tajemniczy las / —
+  Kino DK / Willow i tajemniczy las / —
+  Kino Iluzjon / Willow i tajemniczy las / 2025
+  Kino KDK / WILLOW I TAJEMNICZY LAS / —
+  Kino Kolory / Willow i tajemniczy las / —
+  Kino MDK / WILLOW I TAJEMNICZY LAS / —
+  Kino Millenium / Willow i tajemniczy las / —
+  Kino ODEON / Willow i tajemniczy las / —
+  Kino Oskard / WILLOW I TAJEMNICZY LAS / —
+  Kino PCKul / Willow i tajemniczy las / —
+  Kino Sokół / WILLOW I TAJEMNICZY LAS / —
+  Kino ŚDK / Willow i tajemniczy las / —
+  Kino Śnieżka / Willow i tajemniczy las / —
+  Klaps / Willow i tajemniczy las / —
+  Kozienicki Dom Kultury / Willow i tajemniczy las / —
+showings:
+  2026-06-12  Kino Baszta Środa             14:30 · 14:30 · 16:15
+  2026-06-13  Kino Baszta Środa             14:30 · 14:30 · 16:15
+  2026-06-14  Kino Baszta Środa             11:00 · 11:00 · 15:30
+  2026-06-16  Kino Baszta Środa             14:30 · 14:30 · 16:15
+  2026-06-17  Kino Baszta Środa             14:30 · 14:30 · 16:15
+  2026-06-18  Kino Baszta Środa             14:30 · 14:30 · 16:15
+
 === Windą na szafot ===
 displayTitle:      Windą na szafot
 cinemaTitles:      Windą na szafot | Windą na szafot | Przegląd Nowego Kina Francuskiego
@@ -10627,6 +10707,33 @@ showings:
   2026-06-11  Cinema City Kinepolis         14:00 Sala 10 2D/NAP · 15:20 Sala 15 2D/NAP · 17:00 Sala 10 2D/DUB · 18:20 Sala 15 2D/NAP · 20:00 Sala 10 2D/NAP · 21:20 Sala 15 2D/NAP
   2026-06-11  Cinema City Poznań Plaza      10:30 Sala 5 2D/NAP · 11:10 Sala IMAX IMAX/2D/NAP · 13:30 Sala 5 2D/NAP · 16:30 Sala 5 2D/DUB · 17:20 Sala IMAX IMAX/2D/NAP · 19:30 Sala 5 2D/NAP
   2026-06-11  Helios Posnania               15:30 Sala 6 2D/DUB · 17:00 Sala 7 - Dream 2D/DUB · 18:45 Sala 6 2D/NAP · 20:30 Sala 2 2D/NAP
+
+=== Zapiski śmiertelnika ===
+displayTitle:      Zapiski śmiertelnika
+cinemaTitles:      Zapiski śmiertelnika
+runtimeMinutes:    —
+releaseYear:       —
+countries:         —
+posterUrl:         —
+synopsis.length:   —
+cast:              —
+director:          —
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        —
+cinemaFilmUrls:
+  Kino Baszta Środa = https://www.bilety24.pl/kino/477-zapiski-smiertelnika-154452?id=938886
+cinemaScrapes:
+  Kino Baszta Środa / Zapiski śmiertelnika / —
+showings:
+  2026-06-15  Kino Baszta Środa             17:30 · 17:30 · 19:15
 
 === Zaproszenie ===
 displayTitle:      Zaproszenie
