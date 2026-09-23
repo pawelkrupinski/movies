@@ -172,19 +172,24 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
    *  is order-independent like prod's arbitrary one); omit it for a stable
    *  title order. */
   def converge(reorder: Option[scala.util.Random] = None): Unit = {
-    // 1. Collapse spelling/year variants a concurrent scrape/enrichment left
-    //    behind FIRST, so every row is under its canonical key BEFORE we
-    //    re-enrich. Otherwise the title-keyed enrichment (esp. Filmweb's fuzzy
-    //    title/director SEARCH) would run against an order-dependent spelling
-    //    and land an order-dependent result. `movieService.settle()` is the SAME
-    //    `canonicalizeBySanitize` collapse the staging fold and every rehydrate
-    //    run — here it settles the DIRECT-scrape cache, which (unlike the staging
-    //    path) has no Mongo rehydrate round-trip in this harness to lean on.
-    movieService.settle()
-    // 1b. Graduate newcomers out of staging into `movies` (resolve-then-fold),
-    //     the same pipeline the worker's promoter scheduler runs in prod, before
-    //     the re-enrich sweep so the merged corpus is complete.
+    // 1. Graduate newcomers out of staging into `movies` (resolve-then-fold),
+    //    the same pipeline the worker's promoter scheduler runs in prod, so the
+    //    settle below sees the complete corpus.
     drainStaging()
+    // 1b. THEN collapse the spelling/year variants a concurrent scrape/enrichment
+    //     or an arrival-ordered fold left behind, so every row is under its
+    //     canonical key BEFORE we re-enrich. Otherwise the title-keyed enrichment
+    //     (esp. Filmweb's fuzzy title/director SEARCH) runs against an
+    //     order-dependent spelling and lands an order-dependent result. The order
+    //     matters: on the staging path every film is still in `pending_movies`
+    //     until `drainStaging`, so a settle run before it collapsed nothing, and the
+    //     sweep audited Filmweb on two halves of a film that step 3 then merged
+    //     (Kino Sfinks' "Tani wtorek: Robin hood…" beside a yearless
+    //     "Robin Hood:Koniec Legendy" — the fold keeps them apart when the decorated
+    //     spelling folds first, and only the settle's search-title edge joins them).
+    //     Prod reaches the same end state because a settle merge re-kicks the
+    //     title ratings (`MergeRetrigger`); this sweep is the harness's stand-in.
+    movieService.settle()
     // 2. Re-run enrichment synchronously against the now-canonical, settled rows.
     //    Production's `retryUnresolvedTmdb` sweeps rows in arbitrary map order,
     //    so `reorder` SHUFFLES this sweep — a cross-film re-enrich/settle order

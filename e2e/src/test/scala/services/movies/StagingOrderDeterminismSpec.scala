@@ -175,6 +175,33 @@ class StagingOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // Kino Sfinks lists "Robin Hood: Koniec legendy" three times — bare, "Tani wtorek: …"
+  // and "Filmowy Klub Seniora i Seniorki: …" — and its detail resolves the film; Kino
+  // Pionier Żary lists it yearless as "Robin Hood:Koniec Legendy", which TMDB can't
+  // resolve on its own. When Sfinks folds first its resolved row is keyed under the
+  // decorated "Tani wtorek" spelling, so Pionier's row folds beside it, and only the
+  // settle's search-title edge joins the two. A converge that runs its enrichment sweep
+  // before that settle audits Filmweb on the two halves and never on the merged film,
+  // so its "steady state" is not steady: a second pass still finds the film's page.
+  private val RobinHoodCinemas: Set[Cinema] = Set(KinoSfinks, KinoPionierZary)
+
+  "converge" should "leave a staging-booted corpus that a second converge does not change" in {
+    (0 to 5).foreach { i =>
+      val seed = 700000L + i
+      val w = new FixtureTestWiring(Fixture) {
+        override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
+      }
+      val rnd = new scala.util.Random(seed)
+      w.bootStartupInterleaved(rnd, RobinHoodCinemas.contains)
+      w.converge(Some(rnd))
+      def robin = OrderIndependentIds(w.movieRepository.findAll().filter(_.title.toLowerCase.contains("robin hood")), w.titleNormalizer)
+        .stableRecords.map(r => (r.title, r.year, r.record.tmdbId, r.record.filmwebUrl, r.record.cinemaData.keySet))
+      val settled = robin
+      w.converge()
+      withClue(s"seed $seed:\n")(robin shouldBe settled)
+    }
+  }
+
   "Głos Hind Rajab, booted from just its cinemas" should
     "settle to one identical record regardless of arrival order" in {
     // Ids are opaque and depend on which key the row was FIRST created under — i.e. on
