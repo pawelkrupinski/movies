@@ -58,7 +58,7 @@ case object CinemaCityBemowo extends Cinema("Cinema City Bemowo", "Bemowo")
 
 case object CinemaCityGaleriaPolnocna extends Cinema("Cinema City Galeria Północna", "Galeria Północna")
 
-case object CinemaCityJanki extends Cinema("Cinema City Janki", "Janki")
+case object CinemaCityJanki extends Cinema("Cinema City Janki", "Janki")   // Janki — Cinema City API
 
 case object CinemaCityMokotow extends Cinema("Cinema City Mokotów", "Mokotów")
 

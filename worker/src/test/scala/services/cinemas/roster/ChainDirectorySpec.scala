@@ -1,8 +1,10 @@
 package services.cinemas.roster
 
-import models.GeoPoint
+import clients.tools.FakeHttpFetch
+import models.{Country, GeoPoint}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.CinemaScraperCatalog
 import services.cinemas.roster.ChainDirectory._
 import services.cinemas.roster.RosterAuditFixtures._
 import services.cinemas.roster.RosterFinding._
@@ -12,7 +14,7 @@ import tools.{FetchedPage, HttpStatusException}
 import java.time.LocalDate
 
 /** The chains' own venue lists, recorded 2026-09-23, read by the online roster
- *  audit. */
+ *  audit — and the whole Polish roster's chain venues checked against them. */
 class ChainDirectorySpec extends AnyFlatSpec with Matchers {
 
   private val Today = LocalDate.of(2026, 9, 23)
@@ -60,5 +62,17 @@ class ChainDirectorySpec extends AnyFlatSpec with Matchers {
       case Left(DirectoryNotRead("Multikino", 2, _)) =>
     }
     DirectoryNotRead("Multikino", 2, "HTTP 403").failing shouldBe false
+  }
+
+  // The live run of 2026-09-23 found Cinema City Janki filed as a Warszawa
+  // venue with no town of its own; the chain lists it in Janki.
+  "every Polish chain venue" should "be listed by its chain, in the town we file it under and near its city page" in {
+    val catalog = new CinemaScraperCatalog(new FakeHttpFetch("does-not-exist"), Today)
+    val venues  = RosterSourceReader.chainVenuesOf(Country.Poland.cities, slug => catalog.byCity.getOrElse(slug, Nil))
+    venues.map(_._1).distinct should contain theSameElementsAs ChainDirectory.all
+    val readings = venues.groupMap(_._1)(v => v._2 -> v._3).toSeq.flatMap { case (directory, vs) =>
+      RosterSourceReader.readDirectory(recorded, Today)(directory, vs).fold(e => fail(e.describe), identity)
+    }
+    RosterLocationAudit.findings(readings).map(_.describe) shouldBe empty
   }
 }
