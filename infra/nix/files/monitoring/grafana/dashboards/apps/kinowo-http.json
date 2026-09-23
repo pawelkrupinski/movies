@@ -872,7 +872,7 @@
     {
       "type": "stat",
       "title": "Legacy PUT /api/me/state \u2014 time since last call",
-      "description": "How long ago the pre-per-country, full-state-replace endpoint was last called, by country. Paired with the request-rate-by-route panel above (filter route=\"/api/me/state\", method=\"PUT\") for call volume; this is the recency half of the retirement decision \u2014 see LegacyUserStateMetrics.",
+      "description": "How long ago the legacy full-state PUT /api/me/state last carried a hidden-films or disabled-cinemas set, by country (the web's own language-only PUT is its intended use and is not counted -- fixed 2026-09-23, before which this read 'just now' for ever). Read across pod restarts with max_over_time over 60 days: the gauge lives in the pod's memory and a deploy forgets it, so the raw gauge could never show more than one pod's uptime. GREEN at 30 days is the retirement signal: no shipped client still syncs sets through this endpoint. No value = no such call in 60 days (or since the gauge shipped). Pair with the request-rate-by-route panel for volume.",
       "id": 16,
       "datasource": {
         "type": "prometheus",
@@ -894,20 +894,16 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "yellow",
                 "value": null
               },
               {
-                "color": "yellow",
-                "value": 604800
-              },
-              {
-                "color": "red",
+                "color": "green",
                 "value": 2592000
               }
             ]
           },
-          "noValue": "no calls since boot"
+          "noValue": "no legacy set-sync call in 60 days"
         },
         "overrides": []
       },
@@ -928,7 +924,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "time() - kinowo_web_legacy_userstate_put_last_called_seconds",
+          "expr": "time() - max by (country) (max_over_time(kinowo_web_legacy_userstate_put_last_called_seconds[60d]))",
           "legendFormat": "{{country}}",
           "datasource": {
             "type": "prometheus",
