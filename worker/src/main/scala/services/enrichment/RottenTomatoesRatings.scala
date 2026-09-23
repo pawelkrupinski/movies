@@ -68,28 +68,34 @@ class RottenTomatoesRatings(
       resolved
     }
 
-  private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Option[String] = {
-    val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
-    val fetched = rt.scoreAndYearFor(url)
-    // The page we just fetched says which film it is about. When it names a year
-    // the row's own year positively contradicts, this url is a DIFFERENT film's —
-    // drop it (and the score that came off it) so the next tick re-resolves.
-    // Re-resolution alone never fixes this: `resolveAndPersistUrl` writes only
-    // when it finds a page, so a row with no RT page of its own kept scoring the
-    // namesake's forever — Wanda Jakubowska's "Zaproszenie" (1986) served the
-    // Tomatometer of Olivia Wilde's 2026 film. Only a POSITIVE conflict counts;
-    // an undated page is not evidence and is left alone.
-    if (fetched.exists { case (_, pageYear) => !MetacriticClient.yearsCompatible(key.year, pageYear) }) {
-      logger.info(s"RT: $label $url → page names ${fetched.flatMap(_._2).getOrElse("?")}, not this film — dropping the URL")
-      cache.putIfPresent(key, _.copy(rottenTomatoesUrl = None, rottenTomatoes = None))
-      return None
-    }
-    fetched.flatMap(_._1) match {
+  private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Option[String] =
+    tomatometerIfThisFilm(key, url).flatMap {
       case Some(score) => persistIfMoved(key, url, "Tomatometer", e.rottenTomatoes, score, withTomatometer, badge)
       case None =>
-        logger.info(s"RT: $label $url → no Tomatometer on page")
+        logger.info(s"RT: '${key.cleanTitle}' (${key.year.getOrElse("?")}) $url → no Tomatometer on page")
         None
     }
+
+  /** The Tomatometer on `url`'s page — `Some(None)` when it carries none — or
+   *  `None` when the page is a DIFFERENT film's, in which case the url and the
+   *  score that came off it are dropped here so the next tick re-resolves.
+   *
+   *  The page says which film it is about: when it names a year the row's own
+   *  year positively contradicts, the url is another film's. Re-resolution alone
+   *  never fixes this — `resolveAndPersistUrl` writes only when it finds a page,
+   *  so a row with no RT page of its own kept scoring the namesake's forever:
+   *  Wanda Jakubowska's "Zaproszenie" (1986) served the Tomatometer of Olivia
+   *  Wilde's 2026 film. Only a POSITIVE conflict counts; an undated page is not
+   *  evidence and is left alone. Both the per-row refresh and the bulk walk ask
+   *  this, so neither can re-score a url the other would drop. */
+  private def tomatometerIfThisFilm(key: CacheKey, url: String): Option[Option[Int]] = {
+    val fetched = rt.scoreAndYearFor(url)
+    if (fetched.exists { case (_, pageYear) => !MetacriticClient.yearsCompatible(key.year, pageYear) }) {
+      logger.info(s"RT: '${key.cleanTitle}' (${key.year.getOrElse("?")}) $url → page names " +
+        s"${fetched.flatMap(_._2).getOrElse("?")}, not this film — dropping the URL")
+      cache.putIfPresent(key, _.copy(rottenTomatoesUrl = None, rottenTomatoes = None))
+      None
+    } else Some(fetched.flatMap(_._1))
   }
 
   private def withTomatometer(row: models.MovieRecord, score: Option[Int]): models.MovieRecord = row.copy(rottenTomatoes = score)
@@ -105,7 +111,7 @@ class RottenTomatoesRatings(
       urlOf         = _.rottenTomatoesUrl,
       scoreOf       = _.rottenTomatoes,
       rediscoverUrl = (key, row) => Success(resolveAndPersistUrl(key, row).isDefined),
-      fetchScore    = rt.scoreFor,
+      fetchScore    = (key, url) => tomatometerIfThisFilm(key, url).flatten,
       withScore     = withTomatometer,
       badge         = badge
     )

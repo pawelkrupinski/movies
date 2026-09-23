@@ -138,7 +138,7 @@ class MetascoreRatings(
       urlOf         = _.metacriticUrl,
       scoreOf       = _.metascore,
       rediscoverUrl = (key, row) => Success(resolveAndPersistUrl(key, row).isDefined),
-      fetchScore    = metacritic.metascoreFor,
+      fetchScore    = (_, url) => metacritic.metascoreFor(url),
       withScore     = withMetascore,
       badge         = badge
     )

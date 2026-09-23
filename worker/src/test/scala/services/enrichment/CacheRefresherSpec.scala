@@ -61,7 +61,7 @@ class CacheRefresherSpec extends AnyFlatSpec with Matchers {
             case Some(Failure(e))   => Failure(e)
           }
         },
-        fetchScore    = url => {
+        fetchScore    = (_, url) => {
           events.add(s"fetch $url")
           scores.getOrElse(url, throw new RuntimeException(s"HTTP 503 $url"))
         },

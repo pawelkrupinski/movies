@@ -232,6 +232,23 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     cadence.statsFor("rt|tmdb:202")                                    shouldBe None
   }
 
+  it should "drop a stored URL whose page names a different film's year, exactly as the per-row refresh does" in {
+    // The operator-triggered bulk walk read only the score off each stored URL,
+    // never the year beside it — so the per-row guard's "Zaproszenie" (1986)
+    // carrying Olivia Wilde's 2026 "The Invite" was re-scored by every bulk run.
+    val url = "https://www.rottentomatoes.com/m/the_invite"
+    val repository = new InMemoryMovieRepository(Seq(("Zaproszenie", Some(1986), mkEnrichment(Some(url), score = Some(50)))))
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None),
+      rtClient(Map(url -> pageWithScoreAndYear(96, 2026))))
+
+    ratings.refreshAll()
+
+    val row = cache.get(cache.keyOf("Zaproszenie", Some(1986)))
+    row.flatMap(_.rottenTomatoesUrl) shouldBe None
+    row.flatMap(_.rottenTomatoes) shouldBe None
+  }
+
   it should "skip rows without an RT URL (no GET issued, no exception)" in {
     val urlA = "https://www.rottentomatoes.com/m/a"
     val repository = new InMemoryMovieRepository(Seq(

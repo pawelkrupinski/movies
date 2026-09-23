@@ -277,7 +277,7 @@ class FilmwebRatings(
         // Discovered iff the lookup stored a URL the snapshot row didn't have.
         cache.get(key).exists(_.filmwebUrl.isDefined && !row.filmwebUrl.isDefined)
       },
-      fetchScore    = filmweb.ratingFor(_).map(RatingDisplay.oneDecimal),
+      fetchScore    = (_, url) => filmweb.ratingFor(url).map(RatingDisplay.oneDecimal),
       withScore     = withFilmwebRating,
       badge         = RatingDisplay.label,
       changedNoun   = "rating(s)"

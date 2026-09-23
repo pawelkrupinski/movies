@@ -131,7 +131,8 @@ abstract class CacheRefresher(
    *  @param rediscoverUrl step 1 — re-derive and persist the URL. Runs only for
    *                       rows with a tmdbId; `Success(true)` when a URL was
    *                       found.
-   *  @param fetchScore    step 2 — read the score off a URL.
+   *  @param fetchScore    step 2 — read the score off the row's URL (the key lets a
+   *                       source reject a page that names a different film).
    *  @param withScore     write a fresh score onto the live row.
    *  @param badge         the displayed value a fresh score becomes — what the
    *                       cadence is told.
@@ -142,7 +143,7 @@ abstract class CacheRefresher(
     urlOf:         MovieRecord => Option[String],
     scoreOf:       MovieRecord => Option[A],
     rediscoverUrl: (CacheKey, MovieRecord) => Try[Boolean],
-    fetchScore:    String => Option[A],
+    fetchScore:    (CacheKey, String) => Option[A],
     withScore:     (MovieRecord, Option[A]) => MovieRecord,
     badge:         A => String,
     changedNoun:   String = "score(s)"
@@ -171,7 +172,7 @@ abstract class CacheRefresher(
       //    one just re-resolved, possibly the pre-existing one.
       val current = cache.get(key).getOrElse(enrichment)
       urlOf(current).foreach { url =>
-        Try(fetchScore(url)) match {
+        Try(fetchScore(key, url)) match {
           case Success(fresh) if fresh != scoreOf(current) =>
             logger.debug(s"$walkLabel: ${key.cleanTitle} $url ${scoreOf(current).getOrElse("—")} → ${fresh.getOrElse("—")}")
             cache.putIfPresent(key, withScore(_, fresh))
