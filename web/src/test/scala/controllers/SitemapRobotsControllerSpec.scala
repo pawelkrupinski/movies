@@ -44,6 +44,9 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     body should include("Sitemap: https://kinowo.net/sitemap.xml")
     body should include("Disallow: /debug")
     body should include("Disallow: /admin")
+    // The mount-root JSON (`/api/me`, `/api/catalog`) — `/*/api/` needs a
+    // segment before `api`, so it never covered these.
+    body.linesIterator.toSeq should contain ("Disallow: /api/")
     body should include("Disallow: /*/api/")
     // og:image PNGs must stay crawlable — Facebook honours robots.txt for them.
     body should not include "og-image"

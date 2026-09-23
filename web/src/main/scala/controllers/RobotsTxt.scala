@@ -25,9 +25,10 @@ object RobotsTxt {
 
   // The operational paths, relative to a mount point. A `*` in a robots.txt
   // path matches any run of characters, slashes included, so one wildcard rule
-  // covers every city under that prefix.
+  // covers every city under that prefix — but not the mount root's own
+  // `/api/` (`/api/me`, `/api/catalog`): `/*/api/` needs a segment before it.
   private val disallowed =
-    Seq("/debug", "/admin", "/tasks", "/uptime", "/auth/", "/*/api/", "/*/debug/", "/*/movies", "/*/filmy")
+    Seq("/debug", "/admin", "/tasks", "/uptime", "/auth/", "/api/", "/*/api/", "/*/debug/", "/*/movies", "/*/filmy")
 
   // SemrushBot crawls the same volume as any other bot but, unlike Applebot
   // (which feeds Apple's own search/Siri suggestions), the result only
