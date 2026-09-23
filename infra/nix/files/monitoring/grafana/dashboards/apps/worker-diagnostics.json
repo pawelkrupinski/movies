@@ -1468,6 +1468,57 @@
           "legendFormat": "{{country}} {{collection}} pending"
         }
       ]
+    },
+    {
+      "id": 29,
+      "title": "TMDB re-try resolves that landed on a queued resolve — upgraded or not",
+      "description": "`kinowo_worker_resolve_retry_duplicates_total`: a re-try resolve (mode=retry-miss, the scheduled unresolved re-try; mode=force, the operator's re-enrich) whose film already had a ResolveTmdb task queued under the same dedupKey. upgraded = merged into the WAITING task, which now searches in the re-try's mode; not-upgraded = the queued task was already being worked on with its old mode (or already carried this one), so this re-try added no search.\n\nWhy it exists: until 2026-09-23 every one of these was DROPPED by the queue's dedup, visible only as `tasks_enqueued{result=deduped}` — indistinguishable from a harmless duplicate plain resolve — and the plain resolve then stopped at the remembered miss the re-try existed to look past, for another 24h. A sustained not-upgraded rate means re-tries keep arriving while their film is mid-resolve. Panel only; no alert.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 137
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country, mode, outcome) (increase(kinowo_worker_resolve_retry_duplicates_total{country=~\"$country\"}[1h]))",
+          "legendFormat": "{{country}} {{mode}} {{outcome}} per hour"
+        }
+      ]
     }
   ],
   "description": "Why a worker is misbehaving, once the application-health dashboard has told you that one is. There are FIVE workers — pl, uk, de, us and es, each its own k3s Deployment — so every panel is scoped by the Country variable and carries the country in its legend; pick one to isolate it, or All to compare. Memory (heap, NMT native categories, the off-book gap, buffers, and the pod's real cgroup limit from kube-state-metrics), CPU split by JIT and GC, GC frequency, restarts, resolution-cache hit rates, and the error shape of the outbound HTTP the scrape and enrichment phases depend on. All from each worker's own /metrics on k3s via local-prometheus. There is no CPU-credit panel: shared-CPU credit was a Fly billing concept and the whole throttle path it drove was deleted on 2026-09-04, so no series behind it exists. · NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still — the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",

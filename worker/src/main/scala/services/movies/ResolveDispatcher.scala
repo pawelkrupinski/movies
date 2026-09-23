@@ -33,8 +33,9 @@ trait ResolveDispatcher {
  *  RetryMiss/Force dispatch that finds a task already WAITING raises that task's mode
  *  instead of being dropped (a still-waiting plain resolve would otherwise stop at the
  *  very miss the re-try exists to look past). A task already being worked on keeps the
- *  mode it was claimed with. */
-class QueueResolveDispatcher(queue: TaskQueue) extends ResolveDispatcher {
+ *  mode it was claimed with — that re-try is lost, and `duplicates` is told which. */
+class QueueResolveDispatcher(queue: TaskQueue, duplicates: ResolveDuplicateMetrics = ResolveDuplicateMetrics.noop)
+    extends ResolveDispatcher {
   def dispatch(title:         String,
                year:          Option[Int],
                originalTitle: Option[String],
@@ -44,10 +45,23 @@ class QueueResolveDispatcher(queue: TaskQueue) extends ResolveDispatcher {
     queue.enqueue(TaskType.ResolveTmdb, dedupKey,
       EnrichTaskKeys.resolveTmdbPayload(title, year, director, originalTitle, mode)) match {
       case EnqueueResult.Duplicate if mode != ResolveMode.Normal =>
-        queue.amendWaiting(dedupKey, EnrichTaskKeys.modeFields(mode)); ()
+        duplicates.recordDuplicate(mode, upgraded = queue.amendWaiting(dedupKey, EnrichTaskKeys.modeFields(mode)))
       case _ => ()
     }
   }
+}
+
+/** What became of a re-try (RetryMiss / Force) resolve that found its film's resolve already
+ *  queued: `upgraded` onto the waiting task, or not — the task was already claimed with its
+ *  old mode, so this re-try's search did not happen. A plain duplicate loses nothing and is not
+ *  reported. Before 2026-09-23 every such re-try was dropped, and the enqueue counter's
+ *  `deduped` could not tell a lost re-try from a harmless duplicate. */
+trait ResolveDuplicateMetrics {
+  def recordDuplicate(mode: ResolveMode, upgraded: Boolean): Unit
+}
+
+object ResolveDuplicateMetrics {
+  val noop: ResolveDuplicateMetrics = (_, _) => ()
 }
 
 /** Default (unit specs, scripts, Mongo-less dev, the fixture/determinism harness):

@@ -69,7 +69,7 @@ trait ResolutionWiring { self: WorkerWiring =>
    *  rungs of the resolution ladder), `enqueueNewcomerRatings`, `freshness`,
    *  `tmdbIdCache`, `forgetResolutions`. Each was invisible until something measured
    *  it. Overriding one `def` cannot drop the rest. */
-  protected def resolveDispatcher: Option[services.movies.ResolveDispatcher] = Some(new QueueResolveDispatcher(taskQueue))
+  protected def resolveDispatcher: Option[services.movies.ResolveDispatcher] = Some(new QueueResolveDispatcher(taskQueue, taskMetrics))
 
   lazy val movieService: MovieService = new MovieService(
     movieCache, eventBus, tmdbClient,

@@ -3,10 +3,10 @@ package services.metrics
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
-import services.movies.{CacheSyncMetrics, ChangeStreamLiveness, ChangeStreamMetrics, MergeMetrics, MergeReason, RekeyReason, ScrapeLandingMetrics, ScreeningsMetrics, SideCollectionChangeMetrics, SplitMetrics}
+import services.movies.{CacheSyncMetrics, ResolveDuplicateMetrics, ChangeStreamLiveness, ChangeStreamMetrics, MergeMetrics, MergeReason, RekeyReason, ScrapeLandingMetrics, ScreeningsMetrics, SideCollectionChangeMetrics, SplitMetrics}
 import services.readmodel.ReadModelProjectionMetrics
 import services.staging.StagingStep
-import services.tasks.{QueueSnapshot, RatingLatencyMetrics, Task, TaskState, TaskType}
+import services.tasks.{QueueSnapshot, RatingLatencyMetrics, ResolveMode, Task, TaskState, TaskType}
 
 import java.time.Instant
 
@@ -68,7 +68,7 @@ object TaskObserver {
  * gauges are refreshed from a per-country `QueueSnapshot` each `Series.scrape()`.
  */
 class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
-  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ScrapeLandingMetrics {
+  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ScrapeLandingMetrics with ResolveDuplicateMetrics {
 
   // ── RatingLatencyMetrics ────────────────────────────────────────────────────
   def recordFirstRatingDelay(site: String, seconds: Double): Unit = series.recordFirstRatingDelay(countryCode, site, seconds)
@@ -94,6 +94,9 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
 
   // ── CacheSyncMetrics ────────────────────────────────────────────────────────
   def recordRehydrate(changedUpserts: Int, deletes: Int): Unit = series.recordRehydrate(countryCode, changedUpserts, deletes)
+
+  // ── ResolveDuplicateMetrics ─────────────────────────────────────────────────
+  def recordDuplicate(mode: ResolveMode, upgraded: Boolean): Unit = series.recordResolveDuplicate(countryCode, mode, upgraded)
 
   // ── ScrapeLandingMetrics ────────────────────────────────────────────────────
   def recordGuardVerdict(guard: String, verdict: String): Unit = series.recordScrapeGuardVerdict(countryCode, guard, verdict)
@@ -406,6 +409,12 @@ object WorkerTaskMetrics {
       .labelNames("country")
       .register(registry)
 
+    private val resolveRetryDuplicates = Counter.builder()
+      .name("kinowo_worker_resolve_retry_duplicates")
+      .help("TMDB re-try resolves (mode=retry-miss|force) that found their film's resolve already queued, by country, mode and outcome: upgraded = merged into the WAITING task, which now searches in the re-try's mode; not-upgraded = the queued task was already being worked on with its old mode (or already carried this mode), so this re-try did not add a search. Before 2026-09-23 every one of these was DROPPED, invisible behind tasks_enqueued{result=deduped}, and a plain resolve then stopped at the remembered miss the re-try existed to look past, for another 24h. A plain duplicate loses nothing and is not counted.")
+      .labelNames("country", "mode", "outcome")
+      .register(registry)
+
     private val scrapeGuardVerdicts = Counter.builder()
       .name("kinowo_worker_scrape_guard_verdicts")
       .help("ScrapeLanding's depth and breadth guards (services.movies.ScrapeHealth) rejecting or accepting a tick, by country, guard (depth|breadth) and verdict (reject|accept). `healthy` is not counted — the overwhelming default on every tick of every cinema, and answered better by a scrape-completed counter elsewhere. Added 2026-09-13: before this, a guard stuck rejecting (or repeatedly giving up) for hours was visible only by grepping [scrape-depth]/[scrape-prune] log lines by cinema name — which is how long Kino Aurum's breadth-guard deadlock (57 accumulated slot-keys against an 11-film board, permanently below the prune-floor ratio) went unnoticed. A `reject` RATE that never falls is the signal to alert on; a sustained run of `accept`s on one axis means a scraper that has been degraded in the SAME shape for hours, not a one-off.")
@@ -441,6 +450,7 @@ object WorkerTaskMetrics {
         ScrapeLandingMetrics.Guards.foreach(g =>
           ScrapeLandingMetrics.Verdicts.foreach(v => scrapeGuardVerdicts.labelValues(c, g, v).inc(0.0)))
         ScrapeLandingMetrics.SkipReasons.foreach(r => scrapeWriteSkipped.labelValues(c, r).inc(0.0))
+        RetryModes.foreach(m => ResolveDuplicateOutcomes.foreach(o => resolveRetryDuplicates.labelValues(c, m, o).inc(0.0)))
         ReadModelProjectionMetrics.Targets.foreach(t =>
           ReadModelProjectionMetrics.Ops.foreach(o => readModelWrites.labelValues(c, t, o)))
         // Materialize at 0 so Grafana draws a continuous line — and for the prune, so the
@@ -538,6 +548,10 @@ object WorkerTaskMetrics {
       if (deletes > 0)        cacheRehydrateChanges.labelValues(country, "deleted").inc(deletes.toDouble)
     }
 
+    def recordResolveDuplicate(country: String, mode: ResolveMode, upgraded: Boolean): Unit =
+      resolveRetryDuplicates.labelValues(country, modeLabel(mode),
+        if (upgraded) ResolveDuplicateOutcome.Upgraded else ResolveDuplicateOutcome.NotUpgraded).inc()
+
     // ── ScrapeLandingMetrics ──────────────────────────────────────────────────
     def recordScrapeGuardVerdict(country: String, guard: String, verdict: String): Unit =
       scrapeGuardVerdicts.labelValues(country, guard, verdict).inc()
@@ -629,6 +643,18 @@ object WorkerTaskMetrics {
   val EnqueueResults: Seq[String] = Seq(EnqueueResult.Added, EnqueueResult.Deduped, EnqueueResult.Failed)
 
   private val QueueStates: Seq[String] = Seq(TaskState.Waiting, TaskState.WorkedOn)
+
+  /** `outcome` of a re-try resolve that landed on an already-queued one. */
+  object ResolveDuplicateOutcome { val Upgraded = "upgraded"; val NotUpgraded = "not-upgraded" }
+  private val ResolveDuplicateOutcomes: Seq[String] = Seq(ResolveDuplicateOutcome.Upgraded, ResolveDuplicateOutcome.NotUpgraded)
+
+  /** The `mode` label of a re-try resolve; Normal is never reported (see ResolveDuplicateMetrics). */
+  private def modeLabel(mode: ResolveMode): String = mode match {
+    case ResolveMode.Normal    => "normal"
+    case ResolveMode.RetryMiss => "retry-miss"
+    case ResolveMode.Force     => "force"
+  }
+  private val RetryModes: Seq[String] = Seq(ResolveMode.RetryMiss, ResolveMode.Force).map(modeLabel)
 
   /** Fixed histogram upper bounds (seconds), spanning a sub-second freshness
    *  skip up to a slow multi-minute scrape/detail fetch. */

@@ -120,6 +120,17 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     later should include ("""kinowo_worker_change_stream_apply_lag_seconds{collection="screenings",country="pl"} 360.0""")
   }
 
+  it should "count re-try resolves that landed on a queued one by mode and whether they upgraded it" in {
+    val (pl, series) = newPl()
+    pl.recordDuplicate(services.tasks.ResolveMode.RetryMiss, upgraded = true)
+    pl.recordDuplicate(services.tasks.ResolveMode.Force, upgraded = false)
+
+    val out = series.scrape(Seq(CountryQueueSample("pl", emptySnapshot, noStaging, ChangeStreamLiveness.unwatched())), now)
+    out should include ("""kinowo_worker_resolve_retry_duplicates_total{country="pl",mode="retry-miss",outcome="upgraded"} 1""")
+    out should include ("""kinowo_worker_resolve_retry_duplicates_total{country="pl",mode="force",outcome="not-upgraded"} 1""")
+    out should include ("""kinowo_worker_resolve_retry_duplicates_total{country="pl",mode="retry-miss",outcome="not-upgraded"} 0""")
+  }
+
   it should "count the rows the read-model sweep re-projected behind a silent change stream" in {
     val (m, series) = newPl()
     m.recordCatchUp(3)

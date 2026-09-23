@@ -72,6 +72,23 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
     EnrichTaskKeys.modeOf(task.payload) shouldBe ResolveMode.Force
   }
 
+  // A re-try that finds its film's resolve already queued used to be DROPPED by the dedup, and
+  // the loss was invisible: the enqueue counter says `deduped` for a harmless duplicate plain
+  // resolve and for a lost re-try alike. What happened to each non-plain duplicate is counted:
+  // upgraded onto the waiting task, or not (the task was already claimed with its old mode).
+  it should "count each re-try that landed on a queued resolve as upgraded, or not when it was already claimed" in {
+    val queue    = new InMemoryTaskQueue()
+    val recorded = scala.collection.mutable.Buffer.empty[(ResolveMode, Boolean)]
+    val dispatcher = new QueueResolveDispatcher(queue, (mode, upgraded) => recorded += (mode -> upgraded))
+    dispatcher.dispatch("Tosca", None, None, None)
+    dispatcher.dispatch("Tosca", None, None, None)                        // a plain duplicate: nothing lost, not counted
+    dispatcher.dispatch("Tosca", None, None, None, ResolveMode.RetryMiss) // waiting → upgraded
+    queue.claim("w", 1.minute, Instant.now()).getOrElse(fail("no ResolveTmdb task enqueued"))
+    dispatcher.dispatch("Tosca", None, None, None, ResolveMode.Force)     // being worked on → not upgraded
+
+    recorded.toSeq shouldBe Seq(ResolveMode.RetryMiss -> true, ResolveMode.Force -> false)
+  }
+
   private val keyOf: (String, Option[Int]) => CacheKey =
     new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer).keyOf
 
