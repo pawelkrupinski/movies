@@ -91,7 +91,7 @@ object FilmCanonicalizer {
    *    2b. A year-bearing row still orphaned by rule 2 (outside every resolved
    *        cluster's ±2 window) is reclaimed anyway if it shares an IDENTICAL
    *        (cinema, sanitized-title) listing — same venue, same verbatim
-   *        synopsis text — with exactly one resolved cluster: not a second
+   *        cinema synopsis text (never an enrichment source's) — with exactly one resolved cluster: not a second
    *        film awaiting its own year, but the same listing the venue
    *        re-published under a different year tag. See [[sharesADuplicateListing]].
    *    3. The remaining year-bearing unresolved rows form their OWN clusters by
@@ -99,7 +99,8 @@ object FilmCanonicalizer {
    *       rows at y or y+1, the next window opens at the next distinct year
    *       > y+1. At most two neighbouring years per cluster, order-independent.
    *    4. Yearless AND idless rows fold into the group's canonical cluster (the
-   *       smallest-`canonicalRank` cluster from 1–3) on the title match alone,
+   *       one resolved cluster from 1–2b when there is one, else the smallest-
+   *       `canonicalRank` cluster from 3) on the title match alone,
    *       UNLESS the row's own evidence contradicts it (a slot year or runtime
    *       past tolerance, or a cinema-published original title `MixedFilmDetector`
    *       reads as a different film) — except a slot-year contradiction alone is
@@ -275,9 +276,14 @@ object FilmCanonicalizer {
     // of one underlying listing, however far apart the years attached to it are.
     // A coincidental same-title different film would need to ALSO coin the exact
     // same blurb, which cinemas don't do independently.
+    //
+    // CINEMA slots only: a shared TMDB/IMDb/Filmweb blurb says the same title-keyed
+    // lookup ran for both rows, which is the same-title confusion the year window
+    // guards against — not a venue re-publishing its own listing.
     def slotTexts(r: MovieRecord): Map[Source, String] =
-      r.retainedSynopses.filter { case (_, text) => text.trim.nonEmpty } ++
-        r.data.flatMap { case (source, sd) => sd.synopsis.filter(_.trim.nonEmpty).map(source -> _) }
+      (r.retainedSynopses.filter { case (_, text) => text.trim.nonEmpty } ++
+        r.data.flatMap { case (source, sd) => sd.synopsis.filter(_.trim.nonEmpty).map(source -> _) })
+        .filter { case (source, _) => Source.cinemaOf(source).isDefined }
     def sharesADuplicateListing(a: MovieRecord, b: MovieRecord): Boolean = {
       val bTexts = slotTexts(b)
       slotTexts(a).exists { case (source, text) => bTexts.get(source).contains(text) }
@@ -349,9 +355,10 @@ object FilmCanonicalizer {
 
     val seeded: Seq[Cluster] = resolvedReclaimed ++ windowClusters.toSeq
 
-    // (4) Yearless+idless rows fold into the group's canonical cluster (smallest
-    // canonicalRank) — BUT only when the title maps to ONE film. With NO resolved
-    // film, or with TWO-OR-MORE distinct ones, each such row stands alone.
+    // (4) Yearless+idless rows fold into the group's canonical cluster (the single
+    // resolved one, else the smallest-canonicalRank one) — BUT only when the title
+    // maps to at most ONE resolved film. With no cluster at all, or with TWO-OR-MORE
+    // distinct resolved films, each such row stands alone.
     //
     // The multi-film guard is the ambiguity refuse: a `sanitize(title)` can collide
     // across genuinely different TMDB films — "Guru" is THREE (a Persian "لؤ گورو",
@@ -412,7 +419,10 @@ object FilmCanonicalizer {
       if (seeded.isEmpty || distinctFilms >= 2)
         seeded ++ yearlessRows.map(r => Cluster(refYear = None, rows = Seq(r)))
       else {
-        val canonicalIndex   = seeded.zipWithIndex.minBy { case (c, index) => (c.minRank, index) }._2
+        // The one RESOLVED film when there is one (resolved clusters lead `seeded`),
+        // never an unresolved orphan that merely ranks earlier on its key year — that
+        // orphan is by construction a film rule 2 refused to identify with it.
+        val canonicalIndex   = seeded.indices.minBy(index => (index >= resolvedClusters.size, seeded(index).minRank, index))
         val canonicalCluster = seeded(canonicalIndex)
         val canonicalRuntime = canonicalCluster.rows.flatMap(_._2.data.get(Tmdb).flatMap(_.runtimeMinutes)).headOption
         val (attach, refuse) = yearlessRows.partition { r =>

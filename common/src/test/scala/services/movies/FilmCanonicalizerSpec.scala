@@ -302,6 +302,52 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "not reclaim a year-window orphan on a shared ENRICHMENT synopsis — only a venue's own print is a duplicate listing" in {
+    // Rule 2b's evidence is a CINEMA re-publishing its own listing under a new
+    // year. Two rows carrying the same Filmweb (or IMDb/TMDB) blurb only says the
+    // same lookup ran for both titles — a title-keyed enrichment landing both a
+    // 1990 and a 2017 "It" on one entry is exactly the same-title confusion the
+    // year window exists to keep apart, not proof of one film.
+    val text = "A shared enrichment synopsis for a same-titled film."
+    val group = Seq(
+      key("It", Some(2017)) -> MovieRecord(
+        tmdbId = Some(346364),
+        data = Map[Source, SourceData](
+          Tmdb    -> SourceData(releaseYear = Some(2017)),
+          Helios  -> SourceData(title = Some("It"), releaseYear = Some(2017)),
+          Filmweb -> SourceData(synopsis = Some(text)))),
+      key("It", Some(1990)) -> MovieRecord(
+        data = Map[Source, SourceData](
+          Multikino -> SourceData(title = Some("It"), releaseYear = Some(1990)),
+          Filmweb   -> SourceData(synopsis = Some(text))))
+    )
+    val clusters = FilmCanonicalizer.clusterByFilm(group, titleNormalizer)
+    withClue(s"clusters: ${clusters.map(_.map(c => (c._1.cleanTitle, c._1.year)))}\n") {
+      clusters should have size 2
+    }
+  }
+
+  it should "fold a rule-4 straggler onto the ONE resolved film, never onto an unresolved orphan that merely ranks earlier" in {
+    // One resolved "Hope" (2026) and an unresolved 2010 orphan outside its window —
+    // rule 3 gives the orphan its own cluster, and its lower key year ranks it
+    // first. A bare, evidence-free "Hope" straggler is the case rule 4 documents as
+    // folding onto the single RESOLVED film; ranking alone handed it to the
+    // unresolved orphan instead, a film nothing has identified.
+    val group = Seq(
+      resolved("Hope", tmdbId = 1058424, tmdbYear = 2026, cinema = Helios),
+      unresolved("Hope", Some(2010), cinema = Multikino),
+      key("Hope", None) -> MovieRecord(
+        data = Map[Source, SourceData](Kinoteka -> SourceData(title = Some("Hope"))))
+    )
+    Seq(group, group.reverse).foreach { ordered =>
+      val clusters = FilmCanonicalizer.clusterByFilm(ordered, titleNormalizer)
+      withClue(s"clusters: ${clusters.map(_.map(c => (c._1.cleanTitle, c._1.year)))}\n") {
+        val resolvedCluster = clusters.find(_.exists(_._2.tmdbId.contains(1058424))).get
+        resolvedCluster.map(_._1.year) should contain (None)
+      }
+    }
+  }
+
   it should "refuse to reclaim an orphan whose identical text happens to sit on TWO resolved clusters (ambiguous)" in {
     val text = "Some verbatim synopsis text shared by coincidence."
     val group = Seq(
