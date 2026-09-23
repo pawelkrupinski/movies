@@ -1,17 +1,20 @@
 package services.users
 
-import com.mongodb.{ErrorCategory, MongoWriteException}
-import com.mongodb.client.model.ReplaceOptions
+import com.mongodb.{ErrorCategory, MongoServerException, MongoWriteException}
+import com.mongodb.client.model.{FindOneAndUpdateOptions, ReplaceOptions, ReturnDocument}
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument}
 import models.UserState
-import org.mongodb.scala.model.Filters
+import org.bson.{BsonArray, BsonDateTime, BsonDocument, BsonInt32, BsonString, BsonValue}
+import org.mongodb.scala.model.{Aggregates, Field, Filters}
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import play.api.Logging
 import services.movies.{ChangeStreamLiveness, ChangeStreamReopen}
 import tools.Env
 
 import scala.concurrent.Await
+import java.time.Instant
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
@@ -37,16 +40,29 @@ trait UserStateRepository {
    *  `expected` was read as — `None` meaning "there was no row yet". `false`
    *  when another write got there first: the caller re-reads and re-applies
    *  its change instead of writing back a copy that would erase that write.
-   *  (Every request's write is read-modify-write over the WHOLE row — a hide in
-   *  one country, a legacy PUT's language — so the unconditional [[upsert]]
-   *  loses whichever of two overlapping writes lands first.)
+   *  (The legacy whole-row PUT is read-modify-write over the WHOLE row, so the
+   *  unconditional [[upsert]] would lose whichever of two overlapping writes
+   *  lands first. Per-title hidden-films writes don't come here at all — see
+   *  [[changeHiddenFilms]].)
    *
    *  The version is `updatedAt`, so `next.updatedAt` must differ from
    *  `expected`'s at the store's millisecond precision (see
-   *  `UserStateController.nextUpdatedAt`). A failure that is NOT a lost race is
+   *  `UserState.nextUpdatedAt`). A failure that is NOT a lost race is
    *  logged and reported as written, the same best-effort contract as
    *  [[upsert]] — retrying cannot fix it. */
   def replaceIfUnchanged(expected: Option[UserState], next: UserState): Boolean
+
+  /** Apply `change` to `userId`'s `country` bucket in ONE atomic step —
+   *  creating the row if there is none — and return the row as it stands
+   *  right after. Unless `change` declines (see [[HiddenFilmsChange.applyTo]]),
+   *  it also stamps `updatedAt` per `UserState.nextUpdatedAt` from `now`, so
+   *  every applied write moves the version even within one millisecond.
+   *  Nothing else on the row is touched, so overlapping writes for one user
+   *  never erase each other.
+   *
+   *  `None` only when the store could not perform the write at all (disabled,
+   *  or failed) — not for a declined change, which returns the row unchanged. */
+  def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange, now: Instant): Option[UserState]
 
   /** Remove this user's state row entirely. Used by the account-deletion
    *  endpoint alongside `UserRepository.delete`. */
@@ -183,6 +199,25 @@ class MongoUserStateRepository(
     }.get
   }
 
+  def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange, now: Instant): Option[UserState] =
+    coll.flatMap { c =>
+      val update  = MongoUserStateRepository.hiddenFilmsPipeline(country, change, now)
+      val options = new FindOneAndUpdateOptions().upsert(true).returnDocument(ReturnDocument.AFTER)
+      def attempt(): UserState =
+        Await.result(c.findOneAndUpdate(Filters.eq("userId", userId), update, options).toFuture(), 10.seconds)
+      Try(attempt()).recover {
+        // Two first-ever writes for one user both upserting: the unique `userId`
+        // index turns the loser's insert away. The row exists now, so the retry
+        // updates it instead.
+        case duplicate: MongoServerException if ErrorCategory.fromErrorCode(duplicate.getCode) == ErrorCategory.DUPLICATE_KEY =>
+          attempt()
+      }.recover {
+        case exception: Throwable =>
+          logger.warn(s"UserStateRepository.changeHiddenFilms($userId, $country) failed: ${exception.getMessage}")
+          null
+      }.toOption.flatMap(Option(_))
+    }
+
   def delete(userId: String): Unit = coll.foreach { c =>
     Try {
       Await.result(c.deleteOne(Filters.eq("userId", userId)).toFuture(), 10.seconds)
@@ -293,6 +328,42 @@ class MongoUserStateRepository(
     }
 }
 
+object MongoUserStateRepository {
+
+  /** [[HiddenFilmsChange.applyTo]] plus `UserState.nextUpdatedAt`, stated as a
+   *  single-stage update pipeline so the server evaluates both against the row
+   *  it is writing — nothing read beforehand, nothing to go stale. Every title
+   *  travels inside `$literal`: a title is user text, and one starting with `$`
+   *  would otherwise read as a field path. The last two fields only matter on
+   *  the upsert's insert, where the codec needs both legacy sets present. */
+  private[users] def hiddenFilmsPipeline(country: String, change: HiddenFilmsChange, now: Instant): Seq[BsonDocument] = {
+    // Country codes come from `models.Country` — but this becomes a field path.
+    require(country.matches("[a-z]{2,3}"), s"not a country code: '$country'")
+    def op(name: String, args: BsonValue*): BsonDocument = new BsonDocument(name, new BsonArray(args.toList.asJava))
+    def titles(title: String): BsonDocument = new BsonDocument("$literal", new BsonArray(List[BsonValue](new BsonString(title)).asJava))
+    def orEmpty(fieldPath: String): BsonDocument = op("$ifNull", new BsonString("$" + fieldPath), new BsonArray())
+    val path    = s"hiddenFilmsByCountry.$country"
+    val bucket  = orEmpty(path)
+    val always  = org.bson.BsonBoolean.TRUE
+    val (next, applies) = change match {
+      case HiddenFilmsChange.Hide(title, limit) =>
+        op("$setUnion", bucket, titles(title)) ->
+          op("$or", op("$in", new BsonDocument("$literal", new BsonString(title)), bucket), op("$lt", op("$size", bucket), new BsonInt32(limit)))
+      case HiddenFilmsChange.Unhide(title) => op("$setDifference", bucket, titles(title)) -> always
+      // `$literal` so the empty array is a value, not an (empty) expression list.
+      case HiddenFilmsChange.Clear         => new BsonDocument("$literal", new BsonArray()) -> always
+    }
+    val tick    = new BsonDateTime(now.toEpochMilli)
+    val stamped = op("$max", tick, op("$add", new BsonString("$updatedAt"), new BsonInt32(1)))
+    Seq(Aggregates.set(
+      Field(path,              op("$cond", applies, next, new BsonString("$" + path))),
+      Field("updatedAt",       op("$cond", applies, stamped, op("$ifNull", new BsonString("$updatedAt"), tick))),
+      Field("hiddenFilms",     orEmpty("hiddenFilms")),
+      Field("disabledCinemas", orEmpty("disabledCinemas"))
+    ).toBsonDocument)
+  }
+}
+
 class InMemoryUserStateRepository extends UserStateRepository {
   private val store = scala.collection.mutable.Map.empty[String, UserState]
   private val liveness = new ChangeStreamLiveness()
@@ -304,8 +375,7 @@ class InMemoryUserStateRepository extends UserStateRepository {
 
   def upsert(state: UserState): Unit = {
     synchronized(store(state.userId) = state)
-    liveness.delivered(UserStateRepository.Collection)
-    listener.foreach { case (onUpsert, _, _) => onUpsert(state) }
+    published(state)
   }
 
   def replaceIfUnchanged(expected: Option[UserState], next: UserState): Boolean = {
@@ -314,11 +384,32 @@ class InMemoryUserStateRepository extends UserStateRepository {
       if (unchanged) store(next.userId) = next
       unchanged
     }
-    if (won) {
-      liveness.delivered(UserStateRepository.Collection)
-      listener.foreach { case (onUpsert, _, _) => onUpsert(next) }
-    }
+    if (won) published(next)
     won
+  }
+
+  def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange, now: Instant): Option[UserState] = {
+    val (after, written) = synchronized {
+      val stored = store.get(userId)
+      val base   = stored.getOrElse(UserState.empty(userId, now))
+      change.applyTo(base.hiddenFilmsByCountry.getOrElse(country, Set.empty)) match {
+        case None         => (base, false)
+        case Some(bucket) =>
+          val next = base.copy(
+            hiddenFilmsByCountry = base.hiddenFilmsByCountry.updated(country, bucket),
+            updatedAt            = UserState.nextUpdatedAt(stored.map(_.updatedAt), now))
+          store(userId) = next
+          (next, true)
+      }
+    }
+    if (written) published(after)
+    Some(after)
+  }
+
+  /** What the Mongo change stream would deliver for a write that landed. */
+  private def published(state: UserState): Unit = {
+    liveness.delivered(UserStateRepository.Collection)
+    listener.foreach { case (onUpsert, _, _) => onUpsert(state) }
   }
 
   def delete(userId: String): Unit = {

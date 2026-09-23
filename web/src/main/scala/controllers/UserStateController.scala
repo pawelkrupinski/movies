@@ -4,7 +4,7 @@ import models.UserState
 import play.api.libs.json.{JsNull, JsValue, Json}
 import play.api.mvc._
 import services.metrics.LegacyUserStateMetrics
-import services.users.{AccountDeletion, UserChangeTimeCache, UserRepository, UserStateRepository}
+import services.users.{AccountDeletion, HiddenFilmsChange, UserChangeTimeCache, UserRepository, UserStateRepository}
 
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -156,7 +156,9 @@ class UserStateController(
    *  Bounded: a title over [[UserStateController.MaxTitleLength]] is a 400, and
    *  a NEW title into a bucket already holding
    *  [[UserStateController.MaxHiddenPerCountry]] is a 413 — nothing written
-   *  either way. */
+   *  either way. The bound is checked by the store inside the same atomic
+   *  write (see `HiddenFilmsChange.Hide`), so parallel hides can't overshoot it;
+   *  the title missing from the bucket the store answers with is the refusal. */
   def hideFilm(country: String, title: String): Action[AnyContent] = Action { request =>
     PerUserResponse((signedInUserId(request), models.Country.byCode(country)) match {
       case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
@@ -164,11 +166,9 @@ class UserStateController(
       case (Some(_), Some(_)) if title.length > MaxTitleLength =>
         BadRequest(Json.obj("error" -> s"title longer than $MaxTitleLength characters"))
       case (Some(userId), Some(c)) =>
-        updateHiddenFilms(userId, c.code) { hidden =>
-          // Checked against the bucket as read inside the write, so a retry
-          // after a lost race re-checks against the fresh one.
-          if (hidden.contains(title) || hidden.size < MaxHiddenPerCountry) Right(hidden + title)
-          else Left(EntityTooLarge(Json.obj("error" -> s"at most $MaxHiddenPerCountry hidden films per country")))
+        changeHiddenFilms(userId, c.code, HiddenFilmsChange.Hide(title, MaxHiddenPerCountry)) { (hidden, updatedAt) =>
+          if (hidden.contains(title)) respondWithHiddenFilms(hidden, updatedAt)
+          else EntityTooLarge(Json.obj("error" -> s"at most $MaxHiddenPerCountry hidden films per country"))
         }
     })
   }
@@ -181,7 +181,7 @@ class UserStateController(
       case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
       case (Some(_), None) => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
       case (Some(userId), Some(c)) =>
-        updateHiddenFilms(userId, c.code)(hidden => Right(hidden - title))
+        changeHiddenFilms(userId, c.code, HiddenFilmsChange.Unhide(title))(respondWithHiddenFilms)
     })
   }
 
@@ -194,23 +194,25 @@ class UserStateController(
       case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
       case (Some(_), None) => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
       case (Some(userId), Some(c)) =>
-        updateHiddenFilms(userId, c.code)(_ => Right(Set.empty))
+        changeHiddenFilms(userId, c.code, HiddenFilmsChange.Clear)(respondWithHiddenFilms)
     })
   }
 
-  /** Shared by `hideFilm`/`unhideFilm`/`clearHiddenFilms`: apply `f` to THIS
-   *  country's bucket only and answer with the bucket as stored — or with
-   *  `f`'s own refusal (`Left`), writing nothing. Otherwise always writes
-   *  (even when `f` is a no-op) — same "every write bumps `updatedAt`"
-   *  behaviour the legacy PUT has. */
-  private def updateHiddenFilms(userId: String, country: String)(f: Set[String] => Either[Result, Set[String]]): Result =
-    updateState(userId) { base =>
-      f(base.hiddenFilmsByCountry.getOrElse(country, Set.empty))
-        .map(hidden => base.copy(hiddenFilmsByCountry = base.hiddenFilmsByCountry.updated(country, hidden)))
-    }.fold(identity, state => respondWithHiddenFilms(state.hiddenFilmsByCountry.getOrElse(country, Set.empty), state.updatedAt))
+  /** Shared by `hideFilm`/`unhideFilm`/`clearHiddenFilms`: one atomic write to
+   *  THIS country's bucket only (see `UserStateRepository.changeHiddenFilms`),
+   *  answered from the bucket and `updatedAt` the store holds right after it —
+   *  never a copy computed here, which a concurrent write could already have
+   *  moved past. An applied change always bumps `updatedAt`, even a no-op one —
+   *  same "every write bumps it" behaviour the legacy PUT has. A 503 when the
+   *  store could not write at all. */
+  private def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange)(respond: (Set[String], Instant) => Result): Result =
+    userStateRepository.changeHiddenFilms(userId, country, change, Instant.now()) match {
+      case Some(state) => respond(state.hiddenFilmsByCountry.getOrElse(country, Set.empty), state.updatedAt)
+      case None        => ServiceUnavailable(Json.obj("error" -> "hidden films could not be saved — retry"))
+    }
 
-  /** Every write's read-modify-write over the user's row: read it, apply
-   *  `change`, and store the result ONLY if nothing else wrote the row in
+  /** The legacy PUT's read-modify-write over the user's WHOLE row: read it,
+   *  apply `change`, and store the result ONLY if nothing else wrote the row in
    *  between (`replaceIfUnchanged`) — otherwise re-read and re-apply, so a
    *  concurrent request's write (another tab, the app, a hide in another
    *  country) is built on rather than overwritten by this request's stale copy.
@@ -220,7 +222,7 @@ class UserStateController(
     @scala.annotation.tailrec
     def attempt(n: Int): Either[Result, UserState] = {
       val stored = userStateRepository.find(userId)
-      change(stored.getOrElse(UserState.empty(userId))).map(_.copy(updatedAt = nextUpdatedAt(stored))) match {
+      change(stored.getOrElse(UserState.empty(userId))).map(_.copy(updatedAt = UserState.nextUpdatedAt(stored.map(_.updatedAt)))) match {
         case Right(next) if !userStateRepository.replaceIfUnchanged(stored, next) =>
           if (n < MaxWriteAttempts) attempt(n + 1)
           else Left(ServiceUnavailable(Json.obj("error" -> "state is changing too fast — retry")))
@@ -290,21 +292,11 @@ object UserStateController {
    *  what it bounds is a script growing one row toward Mongo's 16 MB limit. */
   val MaxHiddenPerCountry = 5000
 
-  /** How many lost races [[UserStateController.updateState]] retries before
+  /** How many lost races the legacy PUT's `updateState` retries before
    *  giving up with a 503. A race needs another write to the SAME user's row
    *  inside one read-write round trip, so more than one in a row is already
    *  rare; five is a bound, not a tuning knob. */
   val MaxWriteAttempts = 5
-
-  /** The `updatedAt` a write stamps — also the row's version for
-   *  `replaceIfUnchanged`, so it must move even when two writes land in the
-   *  same millisecond (Mongo stores `updatedAt` as a millisecond BSON date):
-   *  now, or one millisecond past what was read, whichever is later. */
-  def nextUpdatedAt(stored: Option[UserState], now: Instant = Instant.now()): Instant = {
-    val tick = now.truncatedTo(java.time.temporal.ChronoUnit.MILLIS)
-    stored.map(_.updatedAt.truncatedTo(java.time.temporal.ChronoUnit.MILLIS).plusMillis(1))
-      .filter(_.isAfter(tick)).getOrElse(tick)
-  }
 
   /** A body carrying `language` and nothing else — the one PUT that isn't a
    *  legacy set sync. */

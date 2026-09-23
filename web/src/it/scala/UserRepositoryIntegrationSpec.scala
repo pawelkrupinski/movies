@@ -8,7 +8,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.ChangeStreamReopen
-import services.users.{CaffeineUserChangeTimeCache, MongoUserRepository, MongoUserStateRepository, UserCodecs}
+import services.users.{CaffeineUserChangeTimeCache, HiddenFilmsChangeContract, MongoUserRepository, MongoUserStateRepository, UserCodecs}
 import tools.Env
 import tools.Eventually.eventually
 
@@ -16,7 +16,7 @@ import java.time.Instant
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with HiddenFilmsChangeContract {
 
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   // Never against a real cluster: these specs write + purge sentinels, and
@@ -37,6 +37,12 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   } finally super.afterAll()
 
   private val Now = Instant.parse("2026-05-19T12:00:00Z")
+
+  // The update pipeline behind every per-title hide/unhide/clear, held to the
+  // same cases the in-memory store runs (`UserStateRepositorySpec`).
+  protected def hiddenFilmsStore = states
+  protected val userIdPrefix     = "__integration-test-hidden-films-"
+  hiddenFilmsChangeBehaviour("MongoUserStateRepository")
 
   private def sentinelUser(suffix: String, email: Option[String]) = User(
     id          = s"__integration-test-$suffix",
@@ -134,7 +140,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     states.find(first.userId).value.hiddenFilms shouldBe Set("Hidden")
   }
 
-  // The version check behind every controller write (`UserStateController.updateState`):
+  // The version check behind the legacy whole-row PUT (`UserStateController.updateState`):
   // against real Mongo, because the whole point is what the SERVER refuses — a
   // replace filtered on the millisecond `updatedAt` it stored, and an insert the
   // unique `userId` index turns away.

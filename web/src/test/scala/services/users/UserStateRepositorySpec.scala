@@ -7,7 +7,10 @@ import org.scalatest.matchers.should.Matchers
 
 import java.time.Instant
 
-class UserStateRepositorySpec extends AnyFlatSpec with Matchers {
+class UserStateRepositorySpec extends AnyFlatSpec with Matchers with HiddenFilmsChangeContract {
+
+  protected val hiddenFilmsStore = new InMemoryUserStateRepository
+  protected val userIdPrefix     = "contract-"
 
   private val Now = Instant.parse("2026-05-19T12:00:00Z")
 
@@ -119,4 +122,18 @@ class UserStateRepositorySpec extends AnyFlatSpec with Matchers {
     disconnected shouldBe true
   }
 
+
+  it should "publish an applied hidden-films change to the watcher, and stay silent on a declined one" in {
+    val repository = new InMemoryUserStateRepository
+    val seen       = scala.collection.mutable.ListBuffer.empty[UserState]
+    repository.watchChanges(seen += _, _ => (), () => ())
+    repository.upsert(UserState("u1", Set.empty, Set.empty, Now, Map("pl" -> Set("A"))))
+    seen.clear()
+
+    val applied = repository.changeHiddenFilms("u1", "pl", HiddenFilmsChange.Hide("A", 1), Now.plusSeconds(1)).value
+    repository.changeHiddenFilms("u1", "pl", HiddenFilmsChange.Hide("B", 1), Now.plusSeconds(2))
+    seen.toList shouldBe List(applied)
+  }
+
+  hiddenFilmsChangeBehaviour("InMemoryUserStateRepository")
 }

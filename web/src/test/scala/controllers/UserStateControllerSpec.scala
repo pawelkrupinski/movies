@@ -9,7 +9,7 @@ import play.api.libs.json.{JsNull, Json}
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
 import services.metrics.LegacyUserStateMetrics
-import services.users.{AccountDeletion, InMemoryUserRepository, InMemoryUserStateRepository, NoUserChangeTimeCache, UserChangeTimeCache}
+import services.users.{AccountDeletion, HiddenFilmsChange, InMemoryUserRepository, InMemoryUserStateRepository, NoUserChangeTimeCache, UserChangeTimeCache}
 
 import java.time.Instant
 
@@ -270,51 +270,78 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
 
   // ── concurrent writes for one user ───────────────────────────────────────
   //
-  // Every write is read-modify-write over the whole row, so a write that lands
-  // between this request's read and its own write must not be overwritten by
-  // the stale copy this request read.
+  // A per-title hidden-films write is ONE atomic store operation, not a
+  // read-modify-write of the row — so overlapping requests (another tab, the
+  // app) each land, and each answers with what the store holds right after it.
+  // The Mongo side of the same guarantee: HiddenFilmsConcurrentWritesIntegrationSpec.
 
-  "a hidden-films write" should "not erase a write that landed between its read and its write" in {
-    val raced = new RacedUserStateRepository(s => s.copy(hiddenFilmsByCountry = s.hiddenFilmsByCountry.updated("de", Set("Der Film"))))
-    val (ctl, repository, _) = fixture(Some(storedFor("pl", "Madagaskar")), stateRepository = raced)
-
-    status(ctl.hideFilm("pl", "Sing")(FakeRequest("PUT", "/api/me/pl/hidden-films/Sing").withSession("userId" -> "u1"))) shouldBe OK
+  "a hidden-films write" should "not lose any of many parallel hides for one user" in {
+    val (ctl, repository, _) = fixture(Some(storedFor("de", "Der Film")))
+    val pool   = java.util.concurrent.Executors.newFixedThreadPool(16)
+    val titles = (1 to 64).map(i => s"Film $i")
+    try {
+      val results = titles.map(t => pool.submit(() =>
+        status(ctl.hideFilm("pl", t)(FakeRequest("PUT", "/api/me/pl/hidden-films/x").withSession("userId" -> "u1")))))
+      results.map(_.get).distinct shouldBe Seq(OK)
+    } finally pool.shutdown()
 
     val stored = repository.find("u1").value.hiddenFilmsByCountry
-    stored.get("pl") shouldBe Some(Set("Madagaskar", "Sing"))
-    stored.get("de") shouldBe Some(Set("Der Film"))
+    stored("pl") shouldBe titles.toSet
+    stored("de") shouldBe Set("Der Film") // another country's bucket, untouched
   }
 
-  it should "answer with the bucket as actually stored after the retry" in {
-    val raced = new RacedUserStateRepository(s => s.copy(hiddenFilmsByCountry = s.hiddenFilmsByCountry.updated("pl", Set("Other Tab"))))
-    val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")), stateRepository = raced)
+  it should "answer with the bucket as actually stored, including a write that landed alongside it" in {
+    val alongside = new InMemoryUserStateRepository {
+      override def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange, now: Instant): Option[UserState] = {
+        super.changeHiddenFilms(userId, country, HiddenFilmsChange.Hide("Other Tab", UserStateController.MaxHiddenPerCountry), now)
+        super.changeHiddenFilms(userId, country, change, now)
+      }
+    }
+    val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")), stateRepository = alongside)
 
     val result = ctl.hideFilm("pl", "Sing")(FakeRequest("PUT", "/api/me/pl/hidden-films/Sing").withSession("userId" -> "u1"))
-    (contentAsJson(result) \ "hiddenFilms").as[Seq[String]] shouldBe Seq("Other Tab", "Sing")
+    (contentAsJson(result) \ "hiddenFilms").as[Seq[String]] shouldBe Seq("Madagaskar", "Other Tab", "Sing")
   }
 
-  it should "give up with a 503, not a silent overwrite, once every retry has lost its race" in {
+  it should "bump updatedAt past the stored one even within the same millisecond" in {
+    val stamp = Instant.now().plusSeconds(3600).truncatedTo(java.time.temporal.ChronoUnit.MILLIS) // "now" is behind the row: only the +1ms rule can move it
+    val (ctl, repository, _) = fixture(Some(storedFor("pl", "Madagaskar").copy(updatedAt = stamp)))
+    val result = ctl.unhideFilm("pl", "Never Hidden")(FakeRequest("DELETE", "/api/me/pl/hidden-films/x").withSession("userId" -> "u1"))
+
+    repository.find("u1").value.updatedAt shouldBe stamp.plusMillis(1)
+    header("Last-Modified", result).value shouldBe UserStateController.httpDate(stamp.plusMillis(1))
+  }
+
+  it should "503 when the store could not write at all" in {
+    val failing = new InMemoryUserStateRepository {
+      override def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange, now: Instant): Option[UserState] = None
+    }
+    val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")), stateRepository = failing)
+    status(ctl.hideFilm("pl", "Sing")(FakeRequest("PUT", "/api/me/pl/hidden-films/Sing").withSession("userId" -> "u1"))) shouldBe SERVICE_UNAVAILABLE
+  }
+
+  "UserState.nextUpdatedAt" should "move the version even when two writes share a millisecond" in {
+    val read = Instant.parse("2026-05-19T12:00:00.123Z")
+    UserState.nextUpdatedAt(Some(read), now = Instant.parse("2026-05-19T12:00:00.123456Z")) shouldBe
+      Instant.parse("2026-05-19T12:00:00.124Z")
+    UserState.nextUpdatedAt(Some(read), now = Instant.parse("2026-05-19T12:00:05.5Z")) shouldBe
+      Instant.parse("2026-05-19T12:00:05.500Z")
+    UserState.nextUpdatedAt(None, now = Instant.parse("2026-05-19T12:00:00.123456Z")) shouldBe
+      Instant.parse("2026-05-19T12:00:00.123Z")
+  }
+
+  "a legacy PUT /api/me/state" should "give up with a 503, not a silent overwrite, once every retry has lost its race" in {
     val alwaysBeaten = new InMemoryUserStateRepository {
       override def replaceIfUnchanged(expected: Option[UserState], next: UserState): Boolean = false
     }
     val (ctl, repository, _) = fixture(Some(storedFor("pl", "Madagaskar")), stateRepository = alwaysBeaten)
 
-    val result = ctl.hideFilm("pl", "Sing")(FakeRequest("PUT", "/api/me/pl/hidden-films/Sing").withSession("userId" -> "u1"))
+    val result = ctl.put()(FakeRequest("PUT", "/api/me/state").withSession("userId" -> "u1").withBody(Json.obj("language" -> "en")))
     status(result) shouldBe SERVICE_UNAVAILABLE
-    repository.find("u1").value.hiddenFilmsByCountry.get("pl") shouldBe Some(Set("Madagaskar"))
+    repository.find("u1").value.language shouldBe None
   }
 
-  "UserStateController.nextUpdatedAt" should "move the version even when two writes share a millisecond" in {
-    val read = storedFor("pl").copy(updatedAt = Instant.parse("2026-05-19T12:00:00.123Z"))
-    UserStateController.nextUpdatedAt(Some(read), now = Instant.parse("2026-05-19T12:00:00.123456Z")) shouldBe
-      Instant.parse("2026-05-19T12:00:00.124Z")
-    UserStateController.nextUpdatedAt(Some(read), now = Instant.parse("2026-05-19T12:00:05.5Z")) shouldBe
-      Instant.parse("2026-05-19T12:00:05.500Z")
-    UserStateController.nextUpdatedAt(None, now = Instant.parse("2026-05-19T12:00:00.123456Z")) shouldBe
-      Instant.parse("2026-05-19T12:00:00.123Z")
-  }
-
-  "a legacy PUT /api/me/state" should "not erase a hidden-films write that landed between its read and its write" in {
+  it should "not erase a hidden-films write that landed between its read and its write" in {
     val raced = new RacedUserStateRepository(s => s.copy(hiddenFilmsByCountry = s.hiddenFilmsByCountry.updated("pl", Set("Sing"))))
     val (ctl, repository, _) = fixture(stateRepository = raced)
 
@@ -327,7 +354,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
 
   // ── GET /api/me/:country/hidden-films — userChangeTimeCache fast path ────
 
-  it should "304 straight from the change-time cache, without reading storage, on a proven-unchanged If-Modified-Since" in {
+  "GET /api/me/:country/hidden-films with a change-time cache" should "304 straight from the change-time cache, without reading storage, on a proven-unchanged If-Modified-Since" in {
     val countingRepo = new CountingUserStateRepository
     val cache = new StubUserChangeTimeCache(Map("u1" -> Instant.parse("2026-05-19T12:00:00Z")))
     val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")), changeTimeCache = cache, stateRepository = countingRepo)
