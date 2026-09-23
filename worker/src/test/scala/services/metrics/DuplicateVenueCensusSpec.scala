@@ -32,14 +32,15 @@ class DuplicateVenueCensusSpec extends AnyFlatSpec with Matchers {
   private def row(title: String, slots: (Source, Seq[LocalDateTime])*): StoredMovieRecord =
     StoredMovieRecord(title, Some(2026), MovieRecord(tmdbId = Some(1), data = slots.map { case (s, t) => s -> slot(t*) }.toMap))
 
-  private def census(rows: Seq[StoredMovieRecord], complete: Boolean = true, preset: Option[Double] = None): Double = {
+  private def census(rows: Seq[StoredMovieRecord], complete: Boolean = true, preset: Option[Double] = None,
+                     country: Country = Country.Poland): Double = {
     val gauge  = DuplicateVenueCensus.gauge(new PrometheusRegistry())
-    val census = new DuplicateVenueCensus(gauge, Country.Poland, clock)
-    preset.foreach(gauge.labelValues("pl").set)
+    val census = new DuplicateVenueCensus(gauge, country, clock)
+    preset.foreach(gauge.labelValues(country.code).set)
     val sampler = census.startSample()
     rows.foreach(sampler.accept)
     sampler.publish(complete)
-    gauge.labelValues("pl").get()
+    gauge.labelValues(country.code).get()
   }
 
   "DuplicateVenueCensus" should "count two venues in one city whose upcoming programmes overlap by 90% or more" in {
@@ -65,6 +66,32 @@ class DuplicateVenueCensusSpec extends AnyFlatSpec with Matchers {
     // Positive control: without the allowlist they WOULD pair — one city lists both.
     Country.Poland.cities.exists(c => c.cinemas.contains(KinoMikro) && c.cinemas.contains(MikroBronowice)) shouldBe true
     census(Seq(row("Foo", KinoMikro -> times(10), MikroBronowice -> times(10)))) shouldBe 0.0
+  }
+
+  // The pairs prod's first census found on 2026-09-23 that are two real venues programmed alike
+  // (the one real duplicate, Koło repeating Konin, was a mis-wired scraper and is fixed there).
+  it should "not count the chain-mates prod's first census found, in any country" in {
+    val sameProgramme = for {
+      country <- Country.all
+      city    <- country.cities
+      pair    <- services.cinemas.roster.DistinctVenuePairs.all.toSeq
+      if pair.subsetOf(city.cinemas.toSet)
+      a       <- pair.headOption
+      b       <- pair.lastOption
+    } yield (country, a, b)
+    val found = sameProgramme.map { case (country, a, b) =>
+      s"${a.displayName} / ${b.displayName}" -> census(Seq(row("Foo", a -> times(10), b -> times(10))), country = country)
+    }
+    found.map(_._1) should contain allOf ("Cineplex Friedrichshafen / Cineplex Singen",
+      "Cines Victoria Don Benito / Cines Victoria Mérida", "Columbia St Helens / Mt Hood Theatre Gresham",
+      "Flora Cinema Helston / Royal St Ives Cinema")
+    withClue(found.filter(_._2 != 0.0).mkString("\n")) { all(found.map(_._2)) shouldBe 0.0 }
+  }
+
+  it should "list only pairs that share a city, so no entry is dead" in {
+    val cities = Country.all.flatMap(_.cities).map(_.cinemas.toSet)
+    val dead   = services.cinemas.roster.DistinctVenuePairs.all.filterNot(p => p.size == 2 && cities.exists(p.subsetOf))
+    withClue(dead.map(_.map(_.displayName)).mkString("\n")) { dead shouldBe empty }
   }
 
   it should "publish nothing from a partial scan" in {
