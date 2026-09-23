@@ -76,4 +76,20 @@ class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matche
     stored("pl") shouldBe (1 to 20).map(i => s"PL $i").toSet
     stored("de") shouldBe (1 to 20).map(i => s"DE $i").toSet
   }
+
+  "legacy whole-state PUTs racing per-title hides for one user" should "all succeed, and neither erases the other" in {
+    val userId = signedIn("legacy-put")
+    val titles = (1 to 30).map(i => s"Film $i")
+    val puts   = (1 to 30).map(i => if (i % 2 == 0) "en" else "pl")
+    def put(language: String) = controller.put()(FakeRequest("PUT", "/api/me/state").withSession("userId" -> userId)
+      .withBody(play.api.libs.json.Json.obj("language" -> language, "disabledCinemas" -> Seq("Kino"))))
+
+    val writes = titles.zip(puts).flatMap { case (t, l) => Seq(Future(status(hide(userId, "pl", t))), Future(status(put(l)))) }
+    Await.result(Future.sequence(writes), 60.seconds).distinct shouldBe Seq(OK)
+
+    val stored = states.find(userId).value
+    stored.hiddenFilmsByCountry("pl") shouldBe titles.toSet
+    stored.disabledCinemas shouldBe Set("Kino")
+    stored.language should (be(Some("en")) or be(Some("pl")))
+  }
 }

@@ -38,12 +38,11 @@ object UserState {
     UserState(userId, Set.empty, Set.empty, now)
 
   /** The `updatedAt` a write stamps over a row last stamped `previous` — the
-   *  row's version (`UserStateRepository.replaceIfUnchanged`) and the source of
-   *  `Last-Modified` / `UserChangeTimeCache`, so it must move even when two
+   *  source of `Last-Modified` / `UserChangeTimeCache`, so it must move even when two
    *  writes land in the same millisecond (Mongo stores `updatedAt` as a
    *  millisecond BSON date): now, or one millisecond past `previous`, whichever
-   *  is later. `MongoUserStateRepository.changeHiddenFilms` computes the same
-   *  rule server-side, inside its atomic update. */
+   *  is later. `MongoUserStateRepository` computes the same rule server-side,
+   *  inside each atomic update. */
   def nextUpdatedAt(previous: Option[Instant], now: Instant = Instant.now()): Instant = {
     val tick = now.truncatedTo(java.time.temporal.ChronoUnit.MILLIS)
     previous.map(_.truncatedTo(java.time.temporal.ChronoUnit.MILLIS).plusMillis(1))

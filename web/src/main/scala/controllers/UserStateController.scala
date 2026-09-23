@@ -4,7 +4,7 @@ import models.UserState
 import play.api.libs.json.{JsNull, JsValue, Json}
 import play.api.mvc._
 import services.metrics.LegacyUserStateMetrics
-import services.users.{AccountDeletion, HiddenFilmsChange, UserChangeTimeCache, UserRepository, UserStateRepository}
+import services.users.{AccountDeletion, HiddenFilmsChange, LegacyStatePatch, UserChangeTimeCache, UserRepository, UserStateRepository}
 
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -211,27 +211,6 @@ class UserStateController(
       case None        => ServiceUnavailable(Json.obj("error" -> "hidden films could not be saved — retry"))
     }
 
-  /** The legacy PUT's read-modify-write over the user's WHOLE row: read it,
-   *  apply `change`, and store the result ONLY if nothing else wrote the row in
-   *  between (`replaceIfUnchanged`) — otherwise re-read and re-apply, so a
-   *  concurrent request's write (another tab, the app, a hide in another
-   *  country) is built on rather than overwritten by this request's stale copy.
-   *  `Left` is `change`'s own refusal, or a 503 once [[MaxWriteAttempts]] races
-   *  in a row have all been lost. */
-  private def updateState(userId: String)(change: UserState => Either[Result, UserState]): Either[Result, UserState] = {
-    @scala.annotation.tailrec
-    def attempt(n: Int): Either[Result, UserState] = {
-      val stored = userStateRepository.find(userId)
-      change(stored.getOrElse(UserState.empty(userId))).map(_.copy(updatedAt = UserState.nextUpdatedAt(stored.map(_.updatedAt)))) match {
-        case Right(next) if !userStateRepository.replaceIfUnchanged(stored, next) =>
-          if (n < MaxWriteAttempts) attempt(n + 1)
-          else Left(ServiceUnavailable(Json.obj("error" -> "state is changing too fast — retry")))
-        case outcome => outcome
-      }
-    }
-    attempt(1)
-  }
-
   /** The 200 shape `hiddenFilms()`'s non-304 branch and every write action
    *  share: the hiddenFilms-only body plus fresh `ETag`/`Last-Modified`. */
   private def respondWithHiddenFilms(hidden: Set[String], updatedAt: Instant): Result = {
@@ -253,9 +232,16 @@ class UserStateController(
       case Some(userId) =>
         // PUT is a partial update over the stored row (see fromJson): fields
         // the body omits keep their stored value, so a client that only
-        // models some of the sets can't wipe the others.
-        updateState(userId)(base => fromJson(base, request.body).left.map(reason => BadRequest(Json.obj("error" -> reason))))
-          .fold(identity, state => Ok(toJson(state)))
+        // models some of the sets can't wipe the others. The store sets only
+        // the fields present, atomically, so a concurrent hide survives it too.
+        fromJson(request.body) match {
+          case Left(reason) => BadRequest(Json.obj("error" -> reason))
+          case Right(patch) if (patch.hiddenFilms ++ patch.disabledCinemas).exists(_.size > MaxHiddenPerCountry) =>
+            EntityTooLarge(Json.obj("error" -> s"at most $MaxHiddenPerCountry entries per set"))
+          case Right(patch) =>
+            userStateRepository.patchLegacyState(userId, patch, Instant.now())
+              .fold(ServiceUnavailable(Json.obj("error" -> "state could not be saved — retry")))(state => Ok(toJson(state)))
+        }
     })
   }
 
@@ -291,12 +277,6 @@ object UserStateController {
    *  A country shows a few hundred films a month, so a human never gets here;
    *  what it bounds is a script growing one row toward Mongo's 16 MB limit. */
   val MaxHiddenPerCountry = 5000
-
-  /** How many lost races the legacy PUT's `updateState` retries before
-   *  giving up with a 503. A race needs another write to the SAME user's row
-   *  inside one read-write round trip, so more than one in a row is already
-   *  rare; five is a bound, not a tuning knob. */
-  val MaxWriteAttempts = 5
 
   /** A body carrying `language` and nothing else — the one PUT that isn't a
    *  legacy set sync. */
@@ -339,48 +319,46 @@ object UserStateController {
   def parseHttpDate(value: String): Option[Instant] =
     scala.util.Try(DateTimeFormatter.RFC_1123_DATE_TIME.parse(value)).map(Instant.from).toOption
 
-  /** Parse a wire JSON into `UserState` as a PARTIAL update over `base`: a
-   *  field present in the body overwrites that set, a field the body omits
-   *  keeps `base`'s value (and a present-but-empty array clears it). This
-   *  lets a client send only the fields it owns without re-shipping, and
-   *  without wiping the ones it doesn't model — the rule that mattered when
-   *  the web carried two fields the mobile apps did not, and that stays
-   *  because the next such field should not have to rediscover it. Wrong
-   *  shape (non-array value, non-string element) returns Left with a hint.
+  /** Parse a wire JSON into the PARTIAL update it asks for: a field present in
+   *  the body overwrites that set, a field the body omits keeps the stored
+   *  value (and a present-but-empty array clears it). This lets a client send
+   *  only the fields it owns without re-shipping, and without wiping the ones
+   *  it doesn't model — the rule that mattered when the web carried two fields
+   *  the mobile apps did not, and that stays because the next such field
+   *  should not have to rediscover it. `hiddenFilmsByCountry` isn't
+   *  expressible here at all, so a legacy PUT can never touch it. Wrong shape
+   *  (non-array value, non-string element), an unknown language, or an entry
+   *  longer than [[MaxTitleLength]] returns Left with a hint.
    */
-  def fromJson(base: UserState, body: JsValue): Either[String, UserState] = {
-    def stringSet(field: String, fallback: Set[String]): Either[String, Set[String]] =
+  def fromJson(body: JsValue): Either[String, LegacyStatePatch] = {
+    def stringSet(field: String): Either[String, Option[Set[String]]] =
       (body \ field).toOption match {
-        case None                      => Right(fallback)
+        case None          => Right(None)
         case Some(jsArray) =>
           jsArray.asOpt[Seq[String]] match {
-            case Some(seq) => Right(seq.toSet)
+            case Some(seq) if seq.exists(_.length > MaxTitleLength) => Left(s"$field entries must be at most $MaxTitleLength characters")
+            case Some(seq) => Right(Some(seq.toSet))
             case None      => Left(s"$field must be an array of strings")
           }
       }
     // Present and a known code → overwrite; present and `null` → clear
     // (a client that wants to give up its pick sends this, though none do
-    // today); absent → keep `base`'s value, same rule as the sets above.
-    def language(fallback: Option[String]): Either[String, Option[String]] =
+    // today); absent → keep the stored value, same rule as the sets above.
+    def language: Either[String, Option[Option[String]]] =
       (body \ "language").toOption match {
-        case None            => Right(fallback)
-        case Some(JsNull)    => Right(None)
+        case None            => Right(None)
+        case Some(JsNull)    => Right(Some(None))
         case Some(jsValue) =>
           jsValue.asOpt[String] match {
-            case Some(code) if LanguageNames.Codes.contains(code) => Right(Some(code))
+            case Some(code) if LanguageNames.Codes.contains(code) => Right(Some(Some(code)))
             case Some(code) => Left(s"language must be one of ${LanguageNames.Codes.mkString(", ")}, got $code")
             case None       => Left("language must be a string")
           }
       }
     for {
-      hf   <- stringSet("hiddenFilms",     base.hiddenFilms)
-      dc   <- stringSet("disabledCinemas", base.disabledCinemas)
-      lang <- language(base.language)
-      // `hiddenFilmsByCountry` is a field NEITHER this body's keys nor
-      // `language`'s parsing can touch — it MUST be threaded through
-      // explicitly, or every legacy PUT would silently wipe it back to the
-      // constructor's default empty map.
-      // `updatedAt` is left as read: the write stamps it (`updateState`).
-    } yield UserState(base.userId, hf, dc, base.updatedAt, base.hiddenFilmsByCountry, lang)
+      hf   <- stringSet("hiddenFilms")
+      dc   <- stringSet("disabledCinemas")
+      lang <- language
+    } yield LegacyStatePatch(hf, dc, lang)
   }
 }

@@ -9,7 +9,7 @@ import play.api.libs.json.{JsNull, Json}
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
 import services.metrics.LegacyUserStateMetrics
-import services.users.{AccountDeletion, HiddenFilmsChange, InMemoryUserRepository, InMemoryUserStateRepository, NoUserChangeTimeCache, UserChangeTimeCache}
+import services.users.{AccountDeletion, HiddenFilmsChange, InMemoryUserRepository, LegacyStatePatch, InMemoryUserStateRepository, NoUserChangeTimeCache, UserChangeTimeCache}
 
 import java.time.Instant
 
@@ -43,23 +43,6 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   private class CountingUserStateRepository extends InMemoryUserStateRepository {
     var findCalls: Int = 0
     override def find(userId: String): Option[UserState] = { findCalls += 1; super.find(userId) }
-  }
-
-  /** Lands `competingWrite` on the store the moment the controller has READ
-   *  the row, once — another request for the same user (a second tab, the
-   *  app, a legacy PUT) winning the race between this request's read and its
-   *  write. Deterministic stand-in for two concurrent requests. */
-  private class RacedUserStateRepository(competingWrite: UserState => UserState) extends InMemoryUserStateRepository {
-    private var raced = false
-    override def find(userId: String): Option[UserState] = {
-      val read = super.find(userId)
-      if (!raced) {
-        raced = true
-        val base = read.getOrElse(UserState.empty(userId))
-        super.upsert(competingWrite(base).copy(updatedAt = base.updatedAt.plusSeconds(1)))
-      }
-      read
-    }
   }
 
   /** A `UserChangeTimeCache` whose answers are fixed in the test, not derived
@@ -330,26 +313,41 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
       Instant.parse("2026-05-19T12:00:00.123Z")
   }
 
-  "a legacy PUT /api/me/state" should "give up with a 503, not a silent overwrite, once every retry has lost its race" in {
-    val alwaysBeaten = new InMemoryUserStateRepository {
-      override def replaceIfUnchanged(expected: Option[UserState], next: UserState): Boolean = false
-    }
-    val (ctl, repository, _) = fixture(Some(storedFor("pl", "Madagaskar")), stateRepository = alwaysBeaten)
-
-    val result = ctl.put()(FakeRequest("PUT", "/api/me/state").withSession("userId" -> "u1").withBody(Json.obj("language" -> "en")))
-    status(result) shouldBe SERVICE_UNAVAILABLE
-    repository.find("u1").value.language shouldBe None
-  }
-
-  it should "not erase a hidden-films write that landed between its read and its write" in {
-    val raced = new RacedUserStateRepository(s => s.copy(hiddenFilmsByCountry = s.hiddenFilmsByCountry.updated("pl", Set("Sing"))))
-    val (ctl, repository, _) = fixture(stateRepository = raced)
-
-    status(ctl.put()(FakeRequest("PUT", "/api/me/state").withSession("userId" -> "u1").withBody(Json.obj("language" -> "en")))) shouldBe OK
+  "a legacy PUT /api/me/state" should "not erase, nor be erased by, per-title hides racing it" in {
+    val (ctl, repository, _) = fixture()
+    val pool   = java.util.concurrent.Executors.newFixedThreadPool(16)
+    val titles = (1 to 32).map(i => s"Film $i")
+    try {
+      val writes = titles.flatMap(t => Seq(
+        pool.submit(() => status(ctl.hideFilm("pl", t)(FakeRequest("PUT", "/api/me/pl/hidden-films/x").withSession("userId" -> "u1")))),
+        pool.submit(() => status(ctl.put()(FakeRequest("PUT", "/api/me/state").withSession("userId" -> "u1")
+          .withBody(Json.obj("language" -> "en", "disabledCinemas" -> Json.arr("Kino"))))))))
+      writes.map(_.get).distinct shouldBe Seq(OK)
+    } finally pool.shutdown()
 
     val stored = repository.find("u1").value
+    stored.hiddenFilmsByCountry("pl") shouldBe titles.toSet
     stored.language shouldBe Some("en")
-    stored.hiddenFilmsByCountry.get("pl") shouldBe Some(Set("Sing"))
+    stored.disabledCinemas shouldBe Set("Kino")
+  }
+
+  it should "503 when the store could not write at all" in {
+    val failing = new InMemoryUserStateRepository {
+      override def patchLegacyState(userId: String, patch: LegacyStatePatch, now: Instant): Option[UserState] = None
+    }
+    val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")), stateRepository = failing)
+    val result = ctl.put()(FakeRequest("PUT", "/api/me/state").withSession("userId" -> "u1").withBody(Json.obj("language" -> "en")))
+    status(result) shouldBe SERVICE_UNAVAILABLE
+  }
+
+  it should "400 an entry longer than any real title, and 413 a set past the per-set bound — storing nothing" in {
+    val (ctl, repository, _) = fixture(Some(storedFor("pl", "Madagaskar")))
+    def put(body: play.api.libs.json.JsObject) =
+      status(ctl.put()(FakeRequest("PUT", "/api/me/state").withSession("userId" -> "u1").withBody(body)))
+
+    put(Json.obj("hiddenFilms" -> Json.arr("x" * (UserStateController.MaxTitleLength + 1)))) shouldBe BAD_REQUEST
+    put(Json.obj("disabledCinemas" -> (0 to UserStateController.MaxHiddenPerCountry).map(i => s"Kino $i"))) shouldBe REQUEST_ENTITY_TOO_LARGE
+    repository.find("u1").value shouldBe storedFor("pl", "Madagaskar")
   }
 
   // ── GET /api/me/:country/hidden-films — userChangeTimeCache fast path ────
@@ -671,7 +669,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
 
   "UserStateController.fromJson" should "keep base fields the body omits and overwrite the ones it sends" in {
     val base = UserState("u1", Set("H"), Set("D"), Instant.now())
-    UserStateController.fromJson(base, Json.obj("hiddenFilms" -> Json.arr("H2"))) match {
+    UserStateController.fromJson(Json.obj("hiddenFilms" -> Json.arr("H2"))).map(_.applyTo(base)) match {
       case Right(s) =>
         s.hiddenFilms     shouldBe Set("H2")  // present → overwritten
         s.disabledCinemas shouldBe Set("D")   // absent  → preserved
@@ -680,12 +678,11 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   // `fromJson` has no field for hiddenFilmsByCountry at all — this legacy body can't touch it in
-  // either direction — but it constructs a fresh `UserState`, and that constructor DEFAULTS the
-  // field to `Map.empty`. Without explicitly threading `base.hiddenFilmsByCountry` through, any
-  // legacy PUT would silently wipe every per-country hide the user has ever made.
+  // either direction. Were the patch ever to build a fresh `UserState` instead of copying the
+  // stored one, the constructor's `Map.empty` default would silently wipe every per-country hide.
   it should "never wipe hiddenFilmsByCountry — a field this legacy body can't even express" in {
     val base = UserState("u1", Set("H"), Set("D"), Instant.now(), Map("pl" -> Set("Kept Across A Legacy PUT")))
-    UserStateController.fromJson(base, Json.obj("hiddenFilms" -> Json.arr("H2"))) match {
+    UserStateController.fromJson(Json.obj("hiddenFilms" -> Json.arr("H2"))).map(_.applyTo(base)) match {
       case Right(s)      => s.hiddenFilmsByCountry shouldBe base.hiddenFilmsByCountry
       case Left(reason)  => fail(s"expected Right, got Left($reason)")
     }

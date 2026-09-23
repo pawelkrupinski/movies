@@ -10,7 +10,7 @@ package services.users
  *  (`UserStateController`); this only says what the store does with them.
  *  [[applyTo]] is that meaning in Scala: the in-memory store runs it directly,
  *  and `MongoUserStateRepository` states the same thing as an update pipeline
- *  (`UserRepositoryIntegrationSpec` holds it to the same outcomes). */
+ *  (`UserStateWritesContract` holds both to it). */
 sealed trait HiddenFilmsChange {
 
   /** The bucket after this change, or `None` when the change declines to

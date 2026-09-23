@@ -159,7 +159,7 @@ class SharedUsersMigrationSpec extends AnyFlatSpec with Matchers {
     def enabled                                       = true
     def find(userId: String): Option[UserState]       = None
     def upsert(state: UserState): Unit                = ()
-    def replaceIfUnchanged(expected: Option[UserState], next: UserState): Boolean = true
+    def patchLegacyState(userId: String, patch: services.users.LegacyStatePatch, now: java.time.Instant): Option[UserState] = None
     def changeHiddenFilms(userId: String, country: String, change: services.users.HiddenFilmsChange, now: java.time.Instant): Option[UserState] = None
     def delete(userId: String): Unit                  = ()
     def close(): Unit                                 = ()

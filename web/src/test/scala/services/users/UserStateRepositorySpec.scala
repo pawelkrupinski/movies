@@ -7,10 +7,10 @@ import org.scalatest.matchers.should.Matchers
 
 import java.time.Instant
 
-class UserStateRepositorySpec extends AnyFlatSpec with Matchers with HiddenFilmsChangeContract {
+class UserStateRepositorySpec extends AnyFlatSpec with Matchers with UserStateWritesContract {
 
-  protected val hiddenFilmsStore = new InMemoryUserStateRepository
-  protected val userIdPrefix     = "contract-"
+  protected val writesStore  = new InMemoryUserStateRepository
+  protected val userIdPrefix = "contract-"
 
   private val Now = Instant.parse("2026-05-19T12:00:00Z")
 
@@ -135,5 +135,5 @@ class UserStateRepositorySpec extends AnyFlatSpec with Matchers with HiddenFilms
     seen.toList shouldBe List(applied)
   }
 
-  hiddenFilmsChangeBehaviour("InMemoryUserStateRepository")
+  atomicWritesBehaviour("InMemoryUserStateRepository")
 }

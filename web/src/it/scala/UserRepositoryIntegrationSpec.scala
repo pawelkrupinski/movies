@@ -8,7 +8,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.ChangeStreamReopen
-import services.users.{CaffeineUserChangeTimeCache, HiddenFilmsChangeContract, MongoUserRepository, MongoUserStateRepository, UserCodecs}
+import services.users.{CaffeineUserChangeTimeCache, UserStateWritesContract, MongoUserRepository, MongoUserStateRepository, UserCodecs}
 import tools.Env
 import tools.Eventually.eventually
 
@@ -16,7 +16,7 @@ import java.time.Instant
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with HiddenFilmsChangeContract {
+class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with UserStateWritesContract {
 
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   // Never against a real cluster: these specs write + purge sentinels, and
@@ -38,11 +38,11 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
 
   private val Now = Instant.parse("2026-05-19T12:00:00Z")
 
-  // The update pipeline behind every per-title hide/unhide/clear, held to the
-  // same cases the in-memory store runs (`UserStateRepositorySpec`).
-  protected def hiddenFilmsStore = states
-  protected val userIdPrefix     = "__integration-test-hidden-films-"
-  hiddenFilmsChangeBehaviour("MongoUserStateRepository")
+  // The update pipelines behind every hidden-films and legacy-PUT write, held to
+  // the same cases the in-memory store runs (`UserStateRepositorySpec`).
+  protected def writesStore  = states
+  protected val userIdPrefix = "__integration-test-writes-"
+  atomicWritesBehaviour("MongoUserStateRepository")
 
   private def sentinelUser(suffix: String, email: Option[String]) = User(
     id          = s"__integration-test-$suffix",
@@ -138,27 +138,6 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     states.upsert(first)
     states.upsert(second)
     states.find(first.userId).value.hiddenFilms shouldBe Set("Hidden")
-  }
-
-  // The version check behind the legacy whole-row PUT (`UserStateController.updateState`):
-  // against real Mongo, because the whole point is what the SERVER refuses — a
-  // replace filtered on the millisecond `updatedAt` it stored, and an insert the
-  // unique `userId` index turns away.
-  it should "replaceIfUnchanged: insert only while there is still no row" in {
-    val id = "__integration-test-state-cas-insert"
-    states.replaceIfUnchanged(None, UserState(id, Set("First"), Set.empty, Now)) shouldBe true
-    states.replaceIfUnchanged(None, UserState(id, Set("Racing"), Set.empty, Now)) shouldBe false
-    states.find(id).value.hiddenFilms shouldBe Set("First")
-  }
-
-  it should "replaceIfUnchanged: replace only the version that was read" in {
-    val id   = "__integration-test-state-cas-replace"
-    states.upsert(UserState(id, Set.empty, Set.empty, Now))
-    val read = states.find(id).value
-    states.replaceIfUnchanged(Some(read), read.copy(hiddenFilms = Set("Won"), updatedAt = Now.plusMillis(1))) shouldBe true
-    // A second writer still holding the ORIGINAL read loses, and changes nothing.
-    states.replaceIfUnchanged(Some(read), read.copy(hiddenFilms = Set("Stale"), updatedAt = Now.plusMillis(2))) shouldBe false
-    states.find(id).value.hiddenFilms shouldBe Set("Won")
   }
 
   it should "delete the state row by userId" in {

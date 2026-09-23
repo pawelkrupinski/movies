@@ -1,6 +1,6 @@
 package services.users
 
-import com.mongodb.{ErrorCategory, MongoServerException, MongoWriteException}
+import com.mongodb.{ErrorCategory, MongoServerException}
 import com.mongodb.client.model.{FindOneAndUpdateOptions, ReplaceOptions, ReturnDocument}
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument}
 import models.UserState
@@ -36,21 +36,16 @@ trait UserStateRepository {
   /** Full-document replace. Best-effort. */
   def upsert(state: UserState): Unit
 
-  /** Replace the row with `next` only if it is still exactly the version
-   *  `expected` was read as — `None` meaning "there was no row yet". `false`
-   *  when another write got there first: the caller re-reads and re-applies
-   *  its change instead of writing back a copy that would erase that write.
-   *  (The legacy whole-row PUT is read-modify-write over the WHOLE row, so the
-   *  unconditional [[upsert]] would lose whichever of two overlapping writes
-   *  lands first. Per-title hidden-films writes don't come here at all — see
-   *  [[changeHiddenFilms]].)
+  /** Set the fields a legacy `PUT /api/me/state` body carried (see
+   *  [[LegacyStatePatch]]) in ONE atomic step — creating the row if there is
+   *  none — stamp `updatedAt` per `UserState.nextUpdatedAt` from `now`, and
+   *  return the row as it stands right after. Fields the patch leaves out, and
+   *  `hiddenFilmsByCountry` always, are untouched — so a hide landing at the
+   *  same moment survives it (the whole-row read-modify-write this replaced
+   *  had to detect and retry that race, and 503'd once it lost five in a row).
    *
-   *  The version is `updatedAt`, so `next.updatedAt` must differ from
-   *  `expected`'s at the store's millisecond precision (see
-   *  `UserState.nextUpdatedAt`). A failure that is NOT a lost race is
-   *  logged and reported as written, the same best-effort contract as
-   *  [[upsert]] — retrying cannot fix it. */
-  def replaceIfUnchanged(expected: Option[UserState], next: UserState): Boolean
+   *  `None` only when the store could not perform the write at all. */
+  def patchLegacyState(userId: String, patch: LegacyStatePatch, now: Instant): Option[UserState]
 
   /** Apply `change` to `userId`'s `country` bucket in ONE atomic step —
    *  creating the row if there is none — and return the row as it stands
@@ -178,30 +173,16 @@ class MongoUserStateRepository(
     }
   }
 
-  def replaceIfUnchanged(expected: Option[UserState], next: UserState): Boolean = coll.forall { c =>
-    Try {
-      expected match {
-        // No row when it was read: only an insert may win, and the unique
-        // `userId` index turns a racing insert into a duplicate-key refusal.
-        case None =>
-          Await.result(c.insertOne(next).toFuture(), 10.seconds)
-          true
-        case Some(read) =>
-          Await.result(c.replaceOne(
-            Filters.and(Filters.eq("userId", next.userId), Filters.eq("updatedAt", read.updatedAt)),
-            next).toFuture(), 10.seconds).getMatchedCount == 1
-      }
-    }.recover {
-      case duplicate: MongoWriteException if duplicate.getError.getCategory == ErrorCategory.DUPLICATE_KEY => false
-      case exception: Throwable =>
-        logger.warn(s"UserStateRepository.replaceIfUnchanged(${next.userId}) failed: ${exception.getMessage}")
-        true
-    }.get
-  }
-
   def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange, now: Instant): Option[UserState] =
+    atomically(userId, s"changeHiddenFilms($userId, $country)", MongoUserStateRepository.hiddenFilmsPipeline(country, change, now))
+
+  def patchLegacyState(userId: String, patch: LegacyStatePatch, now: Instant): Option[UserState] =
+    atomically(userId, s"patchLegacyState($userId)", MongoUserStateRepository.legacyStatePipeline(patch, now))
+
+  /** Run `update` against `userId`'s row as one `findOneAndUpdate` — upserting
+   *  when there is no row — and answer with the row right after it. */
+  private def atomically(userId: String, what: String, update: Seq[BsonDocument]): Option[UserState] =
     coll.flatMap { c =>
-      val update  = MongoUserStateRepository.hiddenFilmsPipeline(country, change, now)
       val options = new FindOneAndUpdateOptions().upsert(true).returnDocument(ReturnDocument.AFTER)
       def attempt(): UserState =
         Await.result(c.findOneAndUpdate(Filters.eq("userId", userId), update, options).toFuture(), 10.seconds)
@@ -213,7 +194,7 @@ class MongoUserStateRepository(
           attempt()
       }.recover {
         case exception: Throwable =>
-          logger.warn(s"UserStateRepository.changeHiddenFilms($userId, $country) failed: ${exception.getMessage}")
+          logger.warn(s"UserStateRepository.$what failed: ${exception.getMessage}")
           null
       }.toOption.flatMap(Option(_))
     }
@@ -330,37 +311,59 @@ class MongoUserStateRepository(
 
 object MongoUserStateRepository {
 
-  /** [[HiddenFilmsChange.applyTo]] plus `UserState.nextUpdatedAt`, stated as a
-   *  single-stage update pipeline so the server evaluates both against the row
-   *  it is writing — nothing read beforehand, nothing to go stale. Every title
-   *  travels inside `$literal`: a title is user text, and one starting with `$`
-   *  would otherwise read as a field path. The last two fields only matter on
-   *  the upsert's insert, where the codec needs both legacy sets present. */
+  // Both pipelines below are single-stage `$set`s: the server evaluates every
+  // field against the row it is writing — nothing read beforehand, nothing to
+  // go stale. User text (titles, cinema names) always travels inside
+  // `$literal`, since a string starting with `$` would otherwise read as a
+  // field path.
+
+  private def op(name: String, args: BsonValue*): BsonDocument = new BsonDocument(name, new BsonArray(args.toList.asJava))
+  private def literal(value: BsonValue): BsonDocument = new BsonDocument("$literal", value)
+  private def strings(values: Iterable[String]): BsonArray = new BsonArray(values.toList.map(v => new BsonString(v): BsonValue).asJava)
+  private def field(path: String): BsonString = new BsonString("$" + path)
+  private def orEmpty(path: String): BsonDocument = op("$ifNull", field(path), new BsonArray())
+
+  /** `UserState.nextUpdatedAt`: now, or a millisecond past the stored stamp. */
+  private def stamped(now: Instant): BsonDocument =
+    op("$max", new BsonDateTime(now.toEpochMilli), op("$add", field("updatedAt"), new BsonInt32(1)))
+
+  /** A legacy set: `replacement` when given, else the stored one — or empty
+   *  on the upsert's insert, since the codec needs both sets on every row. */
+  private def legacySet(name: String, replacement: Option[Set[String]] = None): Field[BsonValue] =
+    Field(name, replacement.fold[BsonValue](orEmpty(name))(v => literal(strings(v))))
+
+  /** [[HiddenFilmsChange.applyTo]] plus the `updatedAt` stamp — neither applied
+   *  when the change declines. */
   private[users] def hiddenFilmsPipeline(country: String, change: HiddenFilmsChange, now: Instant): Seq[BsonDocument] = {
     // Country codes come from `models.Country` — but this becomes a field path.
     require(country.matches("[a-z]{2,3}"), s"not a country code: '$country'")
-    def op(name: String, args: BsonValue*): BsonDocument = new BsonDocument(name, new BsonArray(args.toList.asJava))
-    def titles(title: String): BsonDocument = new BsonDocument("$literal", new BsonArray(List[BsonValue](new BsonString(title)).asJava))
-    def orEmpty(fieldPath: String): BsonDocument = op("$ifNull", new BsonString("$" + fieldPath), new BsonArray())
-    val path    = s"hiddenFilmsByCountry.$country"
-    val bucket  = orEmpty(path)
-    val always  = org.bson.BsonBoolean.TRUE
+    val path   = s"hiddenFilmsByCountry.$country"
+    val bucket = orEmpty(path)
+    val always = org.bson.BsonBoolean.TRUE
     val (next, applies) = change match {
       case HiddenFilmsChange.Hide(title, limit) =>
-        op("$setUnion", bucket, titles(title)) ->
-          op("$or", op("$in", new BsonDocument("$literal", new BsonString(title)), bucket), op("$lt", op("$size", bucket), new BsonInt32(limit)))
-      case HiddenFilmsChange.Unhide(title) => op("$setDifference", bucket, titles(title)) -> always
-      // `$literal` so the empty array is a value, not an (empty) expression list.
-      case HiddenFilmsChange.Clear         => new BsonDocument("$literal", new BsonArray()) -> always
+        op("$setUnion", bucket, literal(strings(Seq(title)))) ->
+          op("$or", op("$in", literal(new BsonString(title)), bucket), op("$lt", op("$size", bucket), new BsonInt32(limit)))
+      case HiddenFilmsChange.Unhide(title) => op("$setDifference", bucket, literal(strings(Seq(title)))) -> always
+      case HiddenFilmsChange.Clear         => literal(new BsonArray()) -> always
     }
-    val tick    = new BsonDateTime(now.toEpochMilli)
-    val stamped = op("$max", tick, op("$add", new BsonString("$updatedAt"), new BsonInt32(1)))
+    val unstamped = op("$ifNull", field("updatedAt"), new BsonDateTime(now.toEpochMilli))
     Seq(Aggregates.set(
-      Field(path,              op("$cond", applies, next, new BsonString("$" + path))),
-      Field("updatedAt",       op("$cond", applies, stamped, op("$ifNull", new BsonString("$updatedAt"), tick))),
-      Field("hiddenFilms",     orEmpty("hiddenFilms")),
-      Field("disabledCinemas", orEmpty("disabledCinemas"))
+      Field[BsonValue](path,        op("$cond", applies, next, field(path))),
+      Field[BsonValue]("updatedAt", op("$cond", applies, stamped(now), unstamped)),
+      legacySet("hiddenFilms"),
+      legacySet("disabledCinemas")
     ).toBsonDocument)
+  }
+
+  /** [[LegacyStatePatch.applyTo]] plus the `updatedAt` stamp. A cleared
+   *  language is `$$REMOVE`d — the codec reads an absent field as `None`. */
+  private[users] def legacyStatePipeline(patch: LegacyStatePatch, now: Instant): Seq[BsonDocument] = {
+    val language = patch.language.map(pick =>
+      Field[BsonValue]("language", pick.fold[BsonValue](new BsonString("$$REMOVE"))(l => literal(new BsonString(l)))))
+    val fields = Seq(legacySet("hiddenFilms", patch.hiddenFilms), legacySet("disabledCinemas", patch.disabledCinemas)) ++
+      language :+ Field[BsonValue]("updatedAt", stamped(now))
+    Seq(Aggregates.set(fields*).toBsonDocument)
   }
 }
 
@@ -378,14 +381,16 @@ class InMemoryUserStateRepository extends UserStateRepository {
     published(state)
   }
 
-  def replaceIfUnchanged(expected: Option[UserState], next: UserState): Boolean = {
-    val won = synchronized {
-      val unchanged = store.get(next.userId).map(_.updatedAt) == expected.map(_.updatedAt)
-      if (unchanged) store(next.userId) = next
-      unchanged
+  def patchLegacyState(userId: String, patch: LegacyStatePatch, now: Instant): Option[UserState] = {
+    val after = synchronized {
+      val stored = store.get(userId)
+      val next   = patch.applyTo(stored.getOrElse(UserState.empty(userId, now)))
+        .copy(updatedAt = UserState.nextUpdatedAt(stored.map(_.updatedAt), now))
+      store(userId) = next
+      next
     }
-    if (won) published(next)
-    won
+    published(after)
+    Some(after)
   }
 
   def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange, now: Instant): Option[UserState] = {
