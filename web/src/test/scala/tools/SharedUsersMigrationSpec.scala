@@ -158,7 +158,6 @@ class SharedUsersMigrationSpec extends AnyFlatSpec with Matchers {
   private class DroppingUserStateRepository extends UserStateRepository {
     def enabled                                       = true
     def find(userId: String): Option[UserState]       = None
-    def upsert(state: UserState): Unit                = ()
     def patchLegacyState(userId: String, patch: services.users.LegacyStatePatch, now: java.time.Instant): Option[UserState] = None
     def changeHiddenFilms(userId: String, country: String, change: services.users.HiddenFilmsChange, now: java.time.Instant): Option[UserState] = None
     def delete(userId: String): Unit                  = ()
@@ -200,8 +199,7 @@ class SharedUsersMigrationSpec extends AnyFlatSpec with Matchers {
 
   it should "name every row when the store silently kept none" in {
     val rows  = Seq(state("alice@example.com", Mid), state("bob@example.com", Mid))
-    val store = new DroppingUserStateRepository
-    rows.foreach(store.upsert)
+    val store = new DroppingUserStateRepository   // the writes went nowhere it can read back
 
     SharedUsersMigration.unwrittenStates(rows, store) shouldBe Seq("alice@example.com", "bob@example.com")
   }

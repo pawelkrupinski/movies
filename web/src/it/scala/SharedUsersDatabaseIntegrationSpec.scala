@@ -6,7 +6,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.users.{MongoUserRepository, MongoUserStateRepository}
+import services.users.{MongoUserRepository, MongoUserStateRepository, UserStateRows}
 import tools.Env
 
 import java.time.Instant
@@ -113,15 +113,15 @@ class SharedUsersDatabaseIntegrationSpec extends AnyFlatSpec with Matchers with 
       disabledCinemas = Set("Cinema City"),
       updatedAt       = Now
     )
-    statesOn(Country.UnitedKingdom, shared).upsert(state)
+    UserStateRows.replace(usersDbFor(Country.UnitedKingdom, shared), state)
     statesOn(Country.Germany, shared).find(state.userId).value shouldBe state
   }
 
   it should "let one country's write be read back by another — last write wins, not a per-country copy" in {
     val shared = Some(SharedDb)
     val userId = "dave-shared@example.com"
-    statesOn(Country.UnitedKingdom, shared).upsert(UserState(userId, Set("Hidden-UK"), Set.empty, Now))
-    statesOn(Country.Germany, shared).upsert(UserState(userId, Set("Hidden-DE"), Set.empty, Now.plusSeconds(60)))
+    UserStateRows.replace(usersDbFor(Country.UnitedKingdom, shared), UserState(userId, Set("Hidden-UK"), Set.empty, Now))
+    UserStateRows.replace(usersDbFor(Country.Germany, shared), UserState(userId, Set("Hidden-DE"), Set.empty, Now.plusSeconds(60)))
 
     statesOn(Country.UnitedKingdom, shared).find(userId).value.hiddenFilms shouldBe Set("Hidden-DE")
   }

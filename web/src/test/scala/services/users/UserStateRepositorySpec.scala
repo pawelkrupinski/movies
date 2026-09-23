@@ -9,8 +9,9 @@ import java.time.Instant
 
 class UserStateRepositorySpec extends AnyFlatSpec with Matchers with UserStateWritesContract {
 
-  protected val writesStore  = new InMemoryUserStateRepository
+  protected val writesStore: InMemoryUserStateRepository = new InMemoryUserStateRepository
   protected val userIdPrefix = "contract-"
+  protected def seed(state: UserState): Unit = writesStore.upsert(state)
 
   private val Now = Instant.parse("2026-05-19T12:00:00Z")
 

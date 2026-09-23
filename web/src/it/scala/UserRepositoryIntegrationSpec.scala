@@ -8,7 +8,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.ChangeStreamReopen
-import services.users.{CaffeineUserChangeTimeCache, UserStateWritesContract, MongoUserRepository, MongoUserStateRepository, UserCodecs}
+import services.users.{CaffeineUserChangeTimeCache, UserStateRows, UserStateWritesContract, MongoUserRepository, MongoUserStateRepository, UserCodecs}
 import tools.Env
 import tools.Eventually.eventually
 
@@ -25,6 +25,11 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
 
   private val users  = new MongoUserRepository()
   private val states = new MongoUserStateRepository()
+  // The database `states` resolved for itself, for seeding whole rows: the production store
+  // has no whole-row write (see `UserStateRows`).
+  private lazy val seedClient = MongoClient(Env.get("MONGODB_URI").get)
+  protected def seed(state: UserState): Unit =
+    UserStateRows.replace(seedClient.getDatabase(models.Country.resolvedDbName), state)
 
   override protected def afterAll(): Unit = try {
     val client = MongoClient(Env.get("MONGODB_URI").get)
@@ -32,6 +37,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     Await.ready(db.getCollection("users")     .deleteMany(Filters.regex("id",     "^__integration-test-")).toFuture(), 10.seconds)
     Await.ready(db.getCollection("userStates").deleteMany(Filters.regex("userId", "^__integration-test-")).toFuture(), 10.seconds)
     client.close()
+    seedClient.close()
     users.close()
     states.close()
   } finally super.afterAll()
@@ -124,7 +130,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       disabledCinemas = Set("Kino Apollo", "Cinema City"),
       updatedAt       = Now
     )
-    states.upsert(s)
+    seed(s)
     states.find(s.userId).value shouldBe s
   }
 
@@ -132,17 +138,9 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     states.find("__integration-test-no-such-user") shouldBe empty
   }
 
-  it should "let upsert replace the previous state — last write wins, not merge" in {
-    val first  = UserState("__integration-test-state-replace", Set.empty,    Set.empty, Now)
-    val second = UserState(first.userId,                       Set("Hidden"), Set.empty, Now.plusSeconds(60))
-    states.upsert(first)
-    states.upsert(second)
-    states.find(first.userId).value.hiddenFilms shouldBe Set("Hidden")
-  }
-
   it should "delete the state row by userId" in {
     val s = UserState("__integration-test-state-delete", Set("X"), Set.empty, Now)
-    states.upsert(s)
+    seed(s)
     states.find(s.userId) should be (defined)
     states.delete(s.userId)
     states.find(s.userId) shouldBe empty
@@ -184,7 +182,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     cache.start()
     try {
       Thread.sleep(500) // the cursor opens at "now": give it a moment to be open before writing
-      states.upsert(UserState(userId, Set("X"), Set.empty, Now))
+      seed(UserState(userId, Set("X"), Set.empty, Now))
       eventually(cache.lastChangeAt(userId) shouldBe Some(Now), timeoutMs = 10000)
 
       states.delete(userId)

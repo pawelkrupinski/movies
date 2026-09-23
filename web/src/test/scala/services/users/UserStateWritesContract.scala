@@ -19,6 +19,9 @@ trait UserStateWritesContract { this: AnyFlatSpec & Matchers =>
    *  database's specs must stay out of each other's rows). */
   protected def writesStore: UserStateRepository
   protected def userIdPrefix: String
+  /** Put a whole row in place before a case runs — the store's trait has no whole-row
+   *  write, so each store's spec says how (in memory: `upsert`; Mongo: `UserStateRows`). */
+  protected def seed(state: UserState): Unit
 
   /** A user with no row yet, whatever an earlier run left behind. */
   private def userId(suffix: String): String = {
@@ -43,7 +46,7 @@ trait UserStateWritesContract { this: AnyFlatSpec & Matchers =>
 
     it should "add, re-add idempotently, and remove titles — touching only that country" in {
       val id = userId("add-remove")
-      writesStore.upsert(UserState(id, Set("Legacy"), Set("Kino"), Stamp, Map("us" -> Set("Sing")), Some("en")))
+      seed(UserState(id, Set("Legacy"), Set("Kino"), Stamp, Map("us" -> Set("Sing")), Some("en")))
       change(id, HiddenFilmsChange.Hide("Madagaskar", 10), Stamp.plusSeconds(1))
       change(id, HiddenFilmsChange.Hide("Sing", 10), Stamp.plusSeconds(2))
       change(id, HiddenFilmsChange.Hide("Sing", 10), Stamp.plusSeconds(3)).hiddenFilmsByCountry("pl") shouldBe Set("Madagaskar", "Sing")
@@ -53,7 +56,7 @@ trait UserStateWritesContract { this: AnyFlatSpec & Matchers =>
 
     it should "clear only that country's bucket, and be harmless on a user with no row" in {
       val id = userId("clear")
-      writesStore.upsert(UserState(id, Set.empty, Set.empty, Stamp, Map("pl" -> Set("A", "B"), "us" -> Set("C"))))
+      seed(UserState(id, Set.empty, Set.empty, Stamp, Map("pl" -> Set("A", "B"), "us" -> Set("C"))))
       change(id, HiddenFilmsChange.Clear, Stamp.plusSeconds(1)).hiddenFilmsByCountry shouldBe Map("pl" -> Set.empty, "us" -> Set("C"))
       change(userId("clear-no-row"), HiddenFilmsChange.Clear).hiddenFilmsByCountry shouldBe Map("pl" -> Set.empty)
     }
@@ -61,7 +64,7 @@ trait UserStateWritesContract { this: AnyFlatSpec & Matchers =>
     it should "decline a NEW title into a full bucket — writing nothing, updatedAt included — but re-accept one already there" in {
       val id   = userId("full")
       val full = UserState(id, Set.empty, Set.empty, Stamp, Map("pl" -> Set("A", "B")))
-      writesStore.upsert(full)
+      seed(full)
       change(id, HiddenFilmsChange.Hide("C", 2), Stamp.plusSeconds(1)) shouldBe full
       writesStore.find(id).value shouldBe full
       change(id, HiddenFilmsChange.Hide("A", 2), Stamp.plusSeconds(1)).updatedAt shouldBe Stamp.plusSeconds(1)
@@ -85,7 +88,7 @@ trait UserStateWritesContract { this: AnyFlatSpec & Matchers =>
     s"$storeName.patchLegacyState" should "set only the fields the patch carries, keeping the rest and every country's hides" in {
       val id     = userId("patch")
       val stored = UserState(id, Set("H"), Set("D"), Stamp, Map("pl" -> Set("Kept")), Some("pl"))
-      writesStore.upsert(stored)
+      seed(stored)
       val after  = writesStore.patchLegacyState(id, LegacyStatePatch(disabledCinemas = Some(Set("$Kino", "a.b")), language = Some(Some("en"))), Stamp.plusSeconds(1)).value
       after shouldBe stored.copy(disabledCinemas = Set("$Kino", "a.b"), language = Some("en"), updatedAt = Stamp.plusSeconds(1))
       writesStore.find(id).value shouldBe after
@@ -93,7 +96,7 @@ trait UserStateWritesContract { this: AnyFlatSpec & Matchers =>
 
     it should "clear the language on an explicit null, and empty a set on an empty one" in {
       val id = userId("patch-clear")
-      writesStore.upsert(UserState(id, Set("H"), Set("D"), Stamp, language = Some("pl")))
+      seed(UserState(id, Set("H"), Set("D"), Stamp, language = Some("pl")))
       writesStore.patchLegacyState(id, LegacyStatePatch(hiddenFilms = Some(Set.empty), language = Some(None)), Stamp.plusSeconds(1)).value shouldBe
         UserState(id, Set.empty, Set("D"), Stamp.plusSeconds(1))
     }

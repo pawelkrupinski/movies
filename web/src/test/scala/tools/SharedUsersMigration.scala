@@ -3,7 +3,7 @@ package tools
 import models.{Country, User, UserState}
 import org.mongodb.scala.{MongoDatabase, ObservableFuture}
 import services.MongoConnection
-import services.users.{MongoUserRepository, MongoUserStateRepository, UserCodecs, UserRepository, UserStateRepository}
+import services.users.{MongoUserRepository, MongoUserStateRepository, UserCodecs, UserRepository, UserStateRepository, UserStateRows}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -137,12 +137,18 @@ object SharedUsersMigration {
       if (!write) println("\nDry run — nothing written. Re-run with --write.")
       else {
         val targetDb    = client.getDatabase(target)
-        // The production write path, so the rows land under the same codecs and
-        // the same indexes the app expects to find.
+        // The production stores, so the rows land under the same codecs and the
+        // same indexes the app expects to find. States are whole-row replaces, which
+        // the production state store deliberately does not offer (its writes are the
+        // atomic field-scoped pipelines) — `UserStateRows` is that replace, and a
+        // failed one is reported here and caught by the read-back below.
         val userStore   = new MongoUserRepository(Some(targetDb), fallbackToOwnInit = false)
         val stateStore  = new MongoUserStateRepository(Some(targetDb), fallbackToOwnInit = false)
         users.foreach(userStore.upsert)
-        states.foreach(stateStore.upsert)
+        states.foreach { state =>
+          scala.util.Try(UserStateRows.replace(targetDb, state)).failed
+            .foreach(e => println(s"  state write failed for ${state.userId}: ${e.getMessage}"))
+        }
 
         // READ IT BACK BEFORE CLAIMING ANYTHING. Both repositories are
         // best-effort by design — a write that fails is logged and swallowed, so

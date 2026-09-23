@@ -1,7 +1,7 @@
 package services.users
 
 import com.mongodb.{ErrorCategory, MongoServerException}
-import com.mongodb.client.model.{FindOneAndUpdateOptions, ReplaceOptions, ReturnDocument}
+import com.mongodb.client.model.{FindOneAndUpdateOptions, ReturnDocument}
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument}
 import models.UserState
 import org.bson.{BsonArray, BsonDateTime, BsonDocument, BsonInt32, BsonString, BsonValue}
@@ -32,9 +32,6 @@ trait UserStateRepository {
   /** State for `userId`, or `None` when nothing's been persisted yet —
    *  callers treat `None` as `UserState.empty(userId)`. */
   def find(userId: String): Option[UserState]
-
-  /** Full-document replace. Best-effort. */
-  def upsert(state: UserState): Unit
 
   /** Set the fields a legacy `PUT /api/me/state` body carried (see
    *  [[LegacyStatePatch]]) in ONE atomic step — creating the row if there is
@@ -122,11 +119,11 @@ class MongoUserStateRepository(
       case None                      => (None, None)
     }
 
-  // `unique` — without it `upsert`'s `replaceOne(Filters.eq("userId", …), …)`
+  // `unique` — without it an upserting write keyed on `Filters.eq("userId", …)`
   // can't tell "this user's one row" from "the first of several": a plain
   // (non-unique) index let 4 duplicate rows for one userId accumulate from a
   // historic write race (found + cleaned up 2026-09-20), after which `find`
-  // and `upsert` could silently disagree on WHICH duplicate is "the" row.
+  // and a write could silently disagree on WHICH duplicate is "the" row.
   //
   // A deployment that already has the OLD plain index can't just add
   // `unique` to it in place — Mongo rejects a `createIndex` whose auto-generated
@@ -160,17 +157,6 @@ class MongoUserStateRepository(
         logger.warn(s"UserStateRepository.find($userId) failed: ${exception.getMessage}")
         None
     }.getOrElse(None)
-  }
-
-  def upsert(state: UserState): Unit = coll.foreach { c =>
-    val opts = new ReplaceOptions().upsert(true)
-    Try {
-      Await.result(c.replaceOne(Filters.eq("userId", state.userId), state, opts).toFuture(), 10.seconds)
-      ()
-    }.recover {
-      case exception: Throwable =>
-        logger.warn(s"UserStateRepository.upsert(${state.userId}) failed: ${exception.getMessage}")
-    }
   }
 
   def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange, now: Instant): Option[UserState] =
@@ -376,6 +362,9 @@ class InMemoryUserStateRepository extends UserStateRepository {
 
   def find(userId: String): Option[UserState] = synchronized(store.get(userId))
 
+  /** Whole-row replace, for SEEDING a spec — deliberately not on the trait: production
+   *  writes only through the atomic field-scoped pipelines. The Mongo-side equivalent
+   *  is the test-support `UserStateRows.replace`. */
   def upsert(state: UserState): Unit = {
     synchronized(store(state.userId) = state)
     published(state)
