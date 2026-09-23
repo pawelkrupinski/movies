@@ -15,7 +15,7 @@ trait EgressWiring { self: WorkerWiring =>
   // Residential-proxy egress (Decodo static-ISP, PL Netia) for the cinema sites
   // that Cloudflare-block our Fly datacenter IP. Non-secret host+ports come from
   // the committed residential-proxy.properties; the KINOWO_PROXY_USER/PASS secrets
-  // come from Env (env -> .env.local). Some only when both are present — absent in
+  // come from Env (env -> .env.local). Set only when both are present — absent in
   // local/test, where the chain collapses to the existing Zyte/direct path. See
   // the `reference_decodo_isp_proxy` memory.
   // One RealHttpFetch per Decodo pool IP (each pinned, own cookie jar), built
@@ -112,9 +112,10 @@ trait EgressWiring { self: WorkerWiring =>
 
   // Vue/CinemaxX films API is Cloudflare-403'd from our Fly IP (like flicks) AND
   // token-gated, so it egresses residential AND host-sticky (one IP+cookie for the
-  // token POST + films GET — see proxyPrimary/keyOf). Cineworld reuses flicksFetch
-  // (GET-only, no cookie, so per-venue stickiness is fine). Both fall back to flicks
-  // if the proxy is down. Showcase/Everyman still reach their origins directly.
+  // token POST + films GET — see proxyPrimary/keyOf) and falls back to direct if
+  // the proxy is down. Cineworld reuses flicksFetch (GET-only, no cookie, so
+  // per-venue stickiness is fine), Zyte fallback included. Showcase/Everyman still
+  // reach their origins directly.
   lazy val vueFetch: HttpFetch = proxyPrimary(httoFetch, keyOf = StickyShardHttpFetch.hostOnly)
 
   // vwc.odeon.co.uk — Odeon's Vista ocapi backend — is Cloudflare-403'd too. It was

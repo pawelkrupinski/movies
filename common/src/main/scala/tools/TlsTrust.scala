@@ -66,9 +66,8 @@ import scala.util.{Try, Using}
  * APIs (TMDB, IMDb, Filmweb, …) keep validating against the standard store. The
  * composite trust manager tries the default store first and only falls back to
  * the bundled roots on a `CertificateException`, so trust is strictly widened.
- * The pinned-expired-leaf check (case 5) is checked ahead of all of that — a
- * cryptographic byte-match is cheaper and more precise than path-building — but
- * it can only ever match the handful of exact leaves in
+ * The pinned-expired-leaf check (case 5) runs only after both of those have
+ * rejected the chain, and it can only ever match the handful of exact leaves in
  * [[PinnedExpiredLeafResources]], so it doesn't widen trust for anything else.
  */
 object TlsTrust extends Logging {
@@ -130,10 +129,8 @@ object TlsTrust extends Logging {
     val cf = CertificateFactory.getInstance("X.509")
     resources.flatMap { path =>
       Option(getClass.getResourceAsStream(path)) match {
-        case Some(_) =>
-          Using.resource(getClass.getResourceAsStream(path)) { in =>
-            Some(cf.generateCertificate(in).asInstanceOf[X509Certificate])
-          }
+        case Some(stream) =>
+          Using.resource(stream)(in => Some(cf.generateCertificate(in).asInstanceOf[X509Certificate]))
         case None =>
           logger.warn(s"TlsTrust: bundled cert resource not found: $path")
           None

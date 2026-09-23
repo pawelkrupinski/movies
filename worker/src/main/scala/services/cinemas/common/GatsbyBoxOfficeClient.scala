@@ -9,9 +9,12 @@ import java.time.{LocalDate, ZoneId}
 
 /**
  * Scraper for Webedia's Gatsby-hosted "box office" cinema platform — one
- * implementation serving FOUR chains, on two continents, that run the identical
+ * implementation serving FIVE chains, on two continents, that run the identical
  * backend on their own hosts:
  *
+ *   - Cineworld            `https://www.cineworld.co.uk`        (87 venues, via
+ *                          [[services.cinemas.uk.CineworldClient]], since its
+ *                          2026-09-17 relaunch)
  *   - Showcase Cinemas UK  `https://www.showcasecinemas.co.uk`  (16 venues)
  *   - Everyman             `https://www.everymancinema.com`     (50 venues)
  *   - Showcase Cinemas US  `https://www.showcasecinemas.com`    (13 venues)
@@ -19,7 +22,7 @@ import java.time.{LocalDate, ZoneId}
  *
  * Verified 2026-07-27 (UK) and 2026-08-30 (US): every host answers
  * unauthenticated, with no Cloudflare challenge, and — because Gatsby derives
- * the filename from the query text — the SAME static-query hashes on all four.
+ * the filename from the query text — the SAME static-query hashes on all of them.
  * One class parameterised by `baseUrl` is therefore the whole story; there is no
  * per-brand behaviour to model, which is why this lives in
  * `services.cinemas.common` rather than under `uk`.
@@ -53,7 +56,7 @@ class GatsbyBoxOfficeClient(
   baseUrl:   String,        // e.g. "https://www.showcasecinemas.co.uk"
   theaterId: String,        // e.g. "X06JR" — the platform's own venue id
   override val cinema: Cinema,
-  // Every venue on both brands reports `Europe/London`; parameterised anyway
+  // Every UK venue reports `Europe/London`; parameterised anyway
   // because the query needs it verbatim and the platform is multi-country.
   timeZone:  String         = GatsbyBoxOfficeClient.UkTimeZone,
   // The venue's public page path from the roster query
@@ -122,7 +125,7 @@ object GatsbyBoxOfficeClient {
   val MaxHorizonDays = ScrapeHorizon.MaxDays
 
   /** The chain-wide film catalogue (Gatsby static query `allMovie`). The hash is
-   *  Gatsby's digest of the query TEXT, so it is identical on both brands'
+   *  Gatsby's digest of the query TEXT, so it is identical on every brand's
    *  hosts — confirmed live on each 2026-07-27 — and changes only if the site
    *  rewrites the query. */
   def catalogueUrl(baseUrl: String): String =
