@@ -47,11 +47,11 @@ concurrency:
 # signed release APK to a rolling `android-latest` GitHub Release, which has a
 # stable anonymous download URL anyone can install from. The release build
 # signs with the keystore decoded from repo secrets (see below); with no
-# secrets it still builds, just unsigned (and the publish step then fails). No
-# emulator job: the Compose UI tests we have (e.g. ShowtimeChipFitTest) render
-# off-device via Robolectric and run inside `testDebugUnitTest`, so they need no
-# emulator. Add an instrumented (androidTest) lane only if a test ever needs a
-# real device/GPU that Robolectric can't fake.
+# secrets it still builds, just unsigned (and the publish step then fails).
+# Most Compose UI tests (e.g. ShowtimeChipFitTest) render off-device via
+# Robolectric inside `testDebugUnitTest`; the few that need real touch physics,
+# pixels or a running MainActivity live in `androidTest` and run in the separate
+# `instrumented` job below, on an emulator.
 #
 # Release signing secrets (Settings ▸ Secrets and variables ▸ Actions):
 #   KINOWO_RELEASE_KEYSTORE_BASE64 — `base64 -i kinowo-release.jks`
@@ -361,4 +361,111 @@ jobs:
               with:
                   name: unit-test-report
                   path: android/app/build/reports/tests/testDebugUnitTest
+                  if-no-files-found: ignore
+
+    # The on-device suite (android/app/src/androidTest) on an x86_64 emulator —
+    # the same `connectedDebugAndroidTest` android/scripts/devtest.sh runs on a
+    # phone. It ran in NO workflow until 2026-09-23, and two of its thirteen
+    # tests had been red since June by then (a Polish-only string lookup, and a
+    # pixel gauge a tuning pass outdated) with nothing saying so.
+    #
+    # `needs: build` rather than a parallel job: the workflow then never holds
+    # more than one runner at a time (see CiRunnerBudgetSpec on why a job that
+    # starts at t=0 is the costly kind), a red unit suite skips the slower
+    # emulator boot, and the build job's Play publish / rolling releases are
+    # NOT gated on this lane, since they run inside `build` before it starts.
+    instrumented:
+        needs: build
+        runs-on: ubuntu-latest
+        timeout-minutes: 35
+        permissions:
+            contents: read
+        defaults:
+            run:
+                working-directory: android
+        env:
+            # Matches the local `kinowo` AVD the suite is tuned on (Pixel 6,
+            # API 34): RatingPillVisualPaddingTest's pixel thresholds were
+            # measured at that density.
+            API_LEVEL: 34
+            AVD_PROFILE: pixel_6
+        steps:
+            - uses: actions/checkout@v5
+
+            - name: Set up JDK 17
+              uses: actions/setup-java@v5
+              with:
+                  distribution: temurin
+                  java-version: '17'
+
+            # Same minimal install as `build` — the emulator runner below
+            # fetches the emulator + system image itself.
+            - name: Set up Android SDK
+              uses: android-actions/setup-android@v3
+              with:
+                  packages: platform-tools
+
+            - name: Set up Gradle
+              uses: gradle/actions/setup-gradle@v4
+
+            # Hardware acceleration: without KVM the x86_64 emulator falls back
+            # to software emulation and does not boot inside the timeout.
+            - name: Enable KVM
+              run: |
+                  echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+                      | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+                  sudo udevadm control --reload-rules
+                  sudo udevadm trigger --name-match=kvm
+
+            # A booted-once AVD snapshot, so later runs cold-start from it
+            # instead of a first boot (minutes) — keyed on everything that
+            # shapes the image.
+            - name: Cache AVD
+              id: avd-cache
+              uses: actions/cache@v5
+              with:
+                  path: |
+                      ~/.android/avd/*
+                      ~/.android/adb*
+                  key: avd-${{ env.API_LEVEL }}-google_apis-x86_64-${{ env.AVD_PROFILE }}
+
+            - name: Create AVD snapshot
+              if: steps.avd-cache.outputs.cache-hit != 'true'
+              uses: reactivecircus/android-emulator-runner@v2
+              with:
+                  api-level: ${{ env.API_LEVEL }}
+                  target: google_apis
+                  arch: x86_64
+                  profile: ${{ env.AVD_PROFILE }}
+                  force-avd-creation: false
+                  emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+                  disable-animations: false
+                  script: echo "Generated AVD snapshot for caching."
+
+            - name: Instrumented tests
+              uses: reactivecircus/android-emulator-runner@v2
+              with:
+                  api-level: ${{ env.API_LEVEL }}
+                  target: google_apis
+                  arch: x86_64
+                  profile: ${{ env.AVD_PROFILE }}
+                  force-avd-creation: false
+                  emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+                  disable-animations: true
+                  emulator-boot-timeout: 600
+                  working-directory: android
+                  # devtest.sh adds the `.debug` applicationId suffix and the
+                  # local.properties/adb setup, exactly as on a phone.
+                  script: scripts/devtest.sh
+
+            # The runner only prints a one-line failure; the per-test stack
+            # traces are in the connected-test report.
+            - name: Upload instrumented test report
+              uses: actions/upload-artifact@v6
+              if: failure()
+              with:
+                  name: instrumented-test-report
+                  path: |
+                      android/app/build/reports/androidTests/connected
+                      android/app/build/outputs/androidTest-results/connected
                   if-no-files-found: ignore
