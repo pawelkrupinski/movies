@@ -7,8 +7,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import org.junit.rules.ExternalResource
 import org.robolectric.Shadows.shadowOf
@@ -17,7 +15,6 @@ import pl.kinowo.data.FreshUserPreferences
 import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
 import pl.kinowo.ui.KinowoViewModel
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Builds real [KinowoViewModel]s for Robolectric tests AND tears them down —
@@ -79,18 +76,7 @@ class KinowoViewModelHarness : ExternalResource() {
     override fun after() {
         stores.forEach { it.clear() }
         stores.clear()
-        // Prove the DataStore write lock is free: a same-value write can only
-        // complete once every earlier write has released it. Pumping Main lets
-        // a transform already posted there run (and fail fast, its scope now
-        // cancelled) instead of being discarded with the Looper's queue.
-        val prefs = UserPreferences(context)
-        val done = AtomicBoolean(false)
-        Thread {
-            runBlocking { prefs.markSwipeHintShown(prefs.swipeHintShownDate.first()) }
-            done.set(true)
-        }.apply { isDaemon = true }.start()
-        pumpUntil("a pending DataStore write to release the lock") { done.get() }
-        fresh.after()
+        fresh.after() // also proves the DataStore write lock free (see FreshUserPreferences)
         clients.forEach { it.dispatcher.executorService.shutdown(); it.connectionPool.evictAll() }
         clients.clear()
     }

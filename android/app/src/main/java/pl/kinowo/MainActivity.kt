@@ -12,7 +12,9 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -57,7 +59,10 @@ class MainActivity : ComponentActivity() {
     // independent pick — see attachBaseContext and UserPreferences.selectedLanguageTag.
     private val country: Country by lazy { Country.byCode(UserPreferences(applicationContext).blockingCountryCode()) }
 
-    private val viewModel: KinowoViewModel by viewModels { kinowoViewModelFactory(applicationContext, country) }
+    private val viewModel: KinowoViewModel by viewModels {
+        (application as? KinowoGraphProvider)?.viewModelFactory(country)
+            ?: kinowoViewModelFactory(applicationContext, country)
+    }
 
     // Force the user's selected UI language regardless of the device locale and
     // regardless of the selected country — the two are independent picks now (see
@@ -107,7 +112,10 @@ class MainActivity : ComponentActivity() {
         // ViewModel is stale. Clearing it here would just force a wasteful full
         // data reload for a change that only needed new strings. This asymmetry
         // between the two watchers is intentional — don't "fix" it into symmetry.
+        // `distinctUntilChanged` first: the flow re-emits the same tag on EVERY
+        // prefs write (it maps the whole store), and each would recreate.
         UserPreferences(applicationContext).selectedLanguageTag
+            .distinctUntilChanged()
             .drop(1)
             .onEach { recreate() }
             .launchIn(lifecycleScope)
@@ -154,6 +162,15 @@ class MainActivity : ComponentActivity() {
     private fun handleNavDeepLink(intent: Intent?) {
         intent?.data?.let { viewModel.handleDeepLink(it.toString()) }
     }
+}
+
+/**
+ * An Application that supplies the ViewModel graph itself — how an
+ * activity-level test swaps in an offline one. The real app has no custom
+ * Application, so [MainActivity] falls back to [kinowoViewModelFactory].
+ */
+interface KinowoGraphProvider {
+    fun viewModelFactory(country: Country): ViewModelProvider.Factory
 }
 
 /**
