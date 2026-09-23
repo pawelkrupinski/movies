@@ -86,7 +86,9 @@ object RetiredVenueCensus {
   private val Collections = Seq(ScreeningsRepository.Collection, SlotsRepository.Collection)
 
   /** Hourly: the rows appear the moment a venue leaves the roster and should go with the next
-   *  cleanup, so this moves on the scale of deploys, not minutes. Two id-only reads per tick. */
+   *  cleanup, so this moves on the scale of deploys, not minutes. Two id-only reads per tick.
+   *  The cleanup tick (`StrandedSideRowsCleanup`) also takes a reading right after it sweeps,
+   *  so a removal shows at once instead of up to an hour later. */
   val DefaultSampleInterval: FiniteDuration = 1.hour
 
   /** The two shared gauges every country's census writes into, registered once. */

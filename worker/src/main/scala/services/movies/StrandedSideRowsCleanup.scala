@@ -21,7 +21,10 @@ import scala.util.Try
  *
  * The same tick then runs the retired-VENUE sweep ([[RetiredVenueRows]]): rows whose film
  * is alive but whose venue left the roster, which the film-keyed rule above cannot see.
- * Each sweep is guarded separately, so one failing never skips the other.
+ * Each sweep is guarded separately, so one failing never skips the other. Then
+ * `afterSweeps` runs (the wiring hands it the retired-venue census's `sample`), so the
+ * watchdog reads what the sweeps left rather than holding its pre-sweep boot reading
+ * for up to an hour.
  *
  * Same shape as [[UnscreenedCleanup]]: once shortly after boot, then every 24h, the
  * hour-of-day drifting with each restart. Lifecycle owned by the wiring (`start()`
@@ -31,6 +34,7 @@ import scala.util.Try
 class StrandedSideRowsCleanup(
   repository:    MovieRepository,
   retiredVenues: () => RetiredVenueRows,
+  afterSweeps:   () => Unit,
   scheduler:     ScheduledExecutorService = DaemonExecutors.scheduler("stranded-side-rows-cleanup")
 ) extends Stoppable with Logging {
 
@@ -55,6 +59,9 @@ class StrandedSideRowsCleanup(
         }
         Try(removeRetiredVenues()).recover {
           case exception => logger.warn(s"Retired-venue side-row cleanup tick failed: ${exception.getMessage}")
+        }
+        Try(afterSweeps()).recover {
+          case exception => logger.warn(s"Side-row cleanup's after-sweep report failed: ${exception.getMessage}")
         }
         ()
       },

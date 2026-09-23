@@ -40,7 +40,7 @@ class StrandedSideRowsCleanupSpec extends AnyFlatSpec with Matchers {
   "start" should "schedule one sweep shortly after boot and then every 24h, and the tick sweeps" in {
     val (repository, screenings) = repositoryWithStrandedRow()
     val scheduler = new HeldScheduler
-    val cleanup   = new StrandedSideRowsCleanup(repository, () => RetiredVenueRows.none, scheduler)
+    val cleanup   = new StrandedSideRowsCleanup(repository, () => RetiredVenueRows.none, () => (), scheduler)
     try {
       cleanup.start()
 
@@ -61,7 +61,7 @@ class StrandedSideRowsCleanupSpec extends AnyFlatSpec with Matchers {
       override def deleteStrandedSideRows(): StrandedSideRows = throw new RuntimeException("mongo went away")
     }
     val scheduler = new HeldScheduler
-    val cleanup   = new StrandedSideRowsCleanup(failing, () => { retiredSwept += 1; RetiredVenueRows.none }, scheduler)
+    val cleanup   = new StrandedSideRowsCleanup(failing, () => { retiredSwept += 1; RetiredVenueRows.none }, () => (), scheduler)
     try {
       cleanup.start()
       noException should be thrownBy scheduler.ticks.head._1.run()
@@ -74,7 +74,7 @@ class StrandedSideRowsCleanupSpec extends AnyFlatSpec with Matchers {
     var retiredSwept = 0
     val scheduler = new HeldScheduler
     val cleanup   = new StrandedSideRowsCleanup(repository,
-      () => { retiredSwept += 1; throw new RuntimeException("mongo went away") }, scheduler)
+      () => { retiredSwept += 1; throw new RuntimeException("mongo went away") }, () => (), scheduler)
     try {
       cleanup.start()
       noException should be thrownBy scheduler.ticks.head._1.run()
@@ -83,9 +83,27 @@ class StrandedSideRowsCleanupSpec extends AnyFlatSpec with Matchers {
     } finally cleanup.stop()
   }
 
+  it should "report after BOTH sweeps on every tick, even when they throw" in {
+    // The retired-venue census read at boot and then hourly, so each boot's sweep (120s in)
+    // showed on the dashboard up to an hour late (prod US 2026-09-23: 13 rows / 221 future
+    // showtimes held for 25 min after the sweep had removed 11 of them). The tick now hands
+    // the census a fresh reading the moment the sweeps finish.
+    val (repository, screenings) = repositoryWithStrandedRow()
+    var events = Vector.empty[String]
+    val scheduler = new HeldScheduler
+    val cleanup   = new StrandedSideRowsCleanup(repository,
+      () => { events :+= "retired"; throw new RuntimeException("mongo went away") },
+      () => events :+= s"reported:${screenings.findForFilm("dead|2020").isEmpty}", scheduler)
+    try {
+      cleanup.start()
+      noException should be thrownBy scheduler.ticks.head._1.run()
+      events shouldBe Vector("retired", "reported:true")
+    } finally cleanup.stop()
+  }
+
   "removeStranded" should "return what the repository swept" in {
     val (repository, _) = repositoryWithStrandedRow()
-    new StrandedSideRowsCleanup(repository, () => RetiredVenueRows.none, new HeldScheduler).removeStranded() shouldBe
+    new StrandedSideRowsCleanup(repository, () => RetiredVenueRows.none, () => (), new HeldScheduler).removeStranded() shouldBe
       StrandedSideRows(screenings = 1, slots = 0, filmIds = Set("dead|2020"))
   }
 }
