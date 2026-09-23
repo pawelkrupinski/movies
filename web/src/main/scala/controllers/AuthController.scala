@@ -294,8 +294,8 @@ class AuthController(
           case other => throw new RuntimeException(s"Unknown provider: $other")
         }) match {
           case Failure(exception) =>
-            logger.warn(s"Token validation failed for $provider: ${exception.getMessage}")
-            Unauthorized(Json.obj("error" -> exception.getMessage))
+            logger.warn(s"Token validation failed for $provider: ${exception.getMessage}", exception)
+            Unauthorized(Json.obj("error" -> AuthController.TokenRejected))
           case Success(profile) =>
             Try(upsertUser(provider, profile)) match {
               case Failure(exception) =>
@@ -546,6 +546,10 @@ class AuthController(
 }
 
 object AuthController {
+
+  /** What a refused `POST /auth/token` tells the client — the same words
+   *  whatever went wrong; the reason goes to the server log. */
+  val TokenRejected = "token not accepted"
 
   /** The `state` a flow starts with: a random nonce, and the code of the country
    *  that started it.
