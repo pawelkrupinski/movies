@@ -1300,7 +1300,8 @@
     {
       "id": 27,
       "title": "Read-model heals vs the stream's card retirements, by country",
-      "description": "`kinowo_worker_readmodel_heals_total` (bars, left): ready rows the 30-min prune sweep (trigger=sweep) or the boot check (trigger=boot) re-projected because the read model lacked one of their cards or venues. ZERO IS THE HEALTHY READING: every heal is a row the change-stream path should already have written, and the site served without it until the sweep came round. Alerted by ReadModelHealsRecurring (read-model-projection.rules).\n\n`kinowo_worker_readmodel_cards_retired_total` (lines): cards the change-stream path removed on its own, by reason. The pair is the diagnosis: a `row-unready` retirement rate that the heals trail by a sweep is a row flapping out of readiness and back (the 2026-09-11..23 TMDB re-try defect: ~500 row-unready retirements and ~26 heals a day, visible until now only in WARN lines). Heals with no matching retirements point at a missed stream event instead (a slot written after the row's last projection). The worker's heal WARN lines name the row ids.",
+      "description": "`kinowo_worker_readmodel_heals_total` (bars, left): ready rows the 30-min prune sweep (trigger=sweep) or the boot check (trigger=boot) re-projected because the read model lacked one of their cards or venues. ZERO IS THE HEALTHY READING: every heal is a row the change-stream path should already have written, and the site served without it until the sweep came round. Alerted by ReadModelHealsRecurring (read-model-projection.rules).\n\n`kinowo_worker_readmodel_cards_retired_total` (lines): cards the change-stream path removed on its own, by reason. The pair is the diagnosis: a `row-unready` retirement rate that the heals trail by a sweep is a row flapping out of readiness and back (the 2026-09-11..23 TMDB re-try defect: ~500 row-unready retirements and ~26 heals a day, visible until now only in WARN lines). Heals with no matching retirements point at a missed stream event instead (a slot written after the row's last projection). The worker's heal WARN lines name the row ids.\n\nEach point counts ITS OWN interval (at least 30 min, one prune sweep), not a trailing half hour, so one burst is one bar. Boot heals and `row-deleted` retirements land right after a worker deploy by design: the boot check runs before the change stream resumes, and UnscreenedCleanup's daily pass runs 20 s after every boot. A mass boot heal is what a change to the projected ids looks like (2026-09-23 18:22: the Polish re-cluster moved every screening onto a new city page, 376 rows re-projected once); only boot heals that recur deploy after deploy are a defect.",
+      "interval": "30m",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -1368,8 +1369,8 @@
             "type": "prometheus",
             "uid": "local-prometheus"
           },
-          "expr": "sum by (country, trigger) (increase(kinowo_worker_readmodel_heals_total{country=~\"$country\"}[30m]))",
-          "legendFormat": "{{country}} healed ({{trigger}}) per 30m"
+          "expr": "sum by (country, trigger) (increase(kinowo_worker_readmodel_heals_total{country=~\"$country\"}[$__interval]))",
+          "legendFormat": "{{country}} healed ({{trigger}})"
         },
         {
           "refId": "B",
@@ -1377,8 +1378,8 @@
             "type": "prometheus",
             "uid": "local-prometheus"
           },
-          "expr": "sum by (country, reason) (increase(kinowo_worker_readmodel_cards_retired_total{country=~\"$country\"}[30m]))",
-          "legendFormat": "{{country}} retired {{reason}} per 30m"
+          "expr": "sum by (country, reason) (increase(kinowo_worker_readmodel_cards_retired_total{country=~\"$country\"}[$__interval]))",
+          "legendFormat": "{{country}} retired {{reason}}"
         }
       ]
     },

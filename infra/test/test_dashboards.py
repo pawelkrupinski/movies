@@ -381,5 +381,58 @@ class SingleScrapeSpikeGauges(unittest.TestCase):
                                         % (panel.get("title"), self.APP_SCRAPE_INTERVAL_SECONDS))
 
 
+def bar_targets(panel):
+    """The targets a timeseries panel draws as BARS: all of them when the panel's default is
+    bars, else those whose legend a `byRegexp` bars override matches (the template variables
+    filled with a placeholder, which is close enough to what Grafana renders)."""
+    defaults = panel.get("fieldConfig", {}).get("defaults", {}).get("custom", {})
+    targets = panel.get("targets", [])
+    if defaults.get("drawStyle") == "bars":
+        return targets
+    patterns = [
+        override["matcher"]["options"]
+        for override in panel.get("fieldConfig", {}).get("overrides", [])
+        if override.get("matcher", {}).get("id") == "byRegexp"
+        and any(p.get("id") == "custom.drawStyle" and p.get("value") == "bars"
+                for p in override.get("properties", []))
+    ]
+    legend = lambda target: re.sub(r"\{\{[^}]*\}\}", "x", target.get("legendFormat", ""))
+    return [t for t in targets if any(re.fullmatch(p, legend(t)) for p in patterns)]
+
+
+class BarsTileTheTimeAxis(unittest.TestCase):
+    """A bar is a bucket: each one has to count its own slice of time and no other's.
+
+    `increase(x[30m])` evaluated every step is a SLIDING window -- fine as a line, where it
+    reads as a rate, but drawn as bars at Grafana's default 24h step (~1-2 minutes) one
+    burst is counted again by every bar whose trailing half hour contains it. On
+    2026-09-23 a single boot heal of 376 Polish rows (18:22, the voivodeship re-cluster
+    moving every screening id) rendered as a 30-minute block of 376-high bars on
+    worker-diagnostics panel 27 -- fifteen-odd "heals" for one event, right after a
+    deploy. The bucket form is `increase(x[$__interval])` on a panel with a minimum
+    `interval`, so the step and the window are the same length and the bars tile.
+    """
+
+    def test_every_bar_counts_only_its_own_interval(self):
+        checked = 0
+        for path, document in dashboards():
+            for panel in query_panels(document):
+                # A gauge drawn as bars samples an instant; only a WINDOWED bar can overlap.
+                bars = [t for t in bar_targets(panel) if re.search(r"\[[^\]]+\]", t.get("expr", ""))]
+                if not bars:
+                    continue
+                self.assertTrue(panel.get("interval"),
+                                "%s panel %r draws bars with no minimum interval, so a bar can be "
+                                "narrower than a scrape" % (path, panel.get("title")))
+                for target in bars:
+                    checked += 1
+                    windows = re.findall(r"\[([^\]]+)\]", target.get("expr", ""))
+                    self.assertTrue(all(w == "$__interval" for w in windows),
+                                    "%s panel %r draws a sliding window as bars, so one event "
+                                    "fills every bar that window overlaps: %s"
+                                    % (path, panel.get("title"), target.get("expr")))
+        self.assertTrue(checked, "no bar series found -- the detection above has gone blind")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
