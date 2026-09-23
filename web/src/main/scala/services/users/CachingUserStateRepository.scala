@@ -22,6 +22,16 @@ import java.util.concurrent.TimeUnit
  *
  * Misses are not cached: a fresh user with no state row yet should not
  * carry a phantom-empty across an upsert that lands between two calls.
+ *
+ * OTHER WRITERS. The users database is shared by every web replica and every
+ * country's host, and the controller's writes are read-modify-write full
+ * replaces — so a row cached here after another pod wrote is not merely stale,
+ * it is the base the next write here would overwrite that pod's change with.
+ * The change stream sees every pod's writes: the `watchChanges` pass-through
+ * below also drops any cached row the stream says moved on (a different
+ * `updatedAt` — this pod's own echo matches and is kept), deleted, or — when
+ * the stream loses track — everything. This only holds while someone watches
+ * through this decorator; production's `UserChangeTimeCache` does.
  */
 class CachingUserStateRepository(inner: UserStateRepository) extends UserStateRepository {
 
@@ -55,17 +65,24 @@ class CachingUserStateRepository(inner: UserStateRepository) extends UserStateRe
 
   def close(): Unit = inner.close()
 
-  // Pass-through, not cached here: this decorator caches READ RESULTS, but a
-  // change-stream subscription isn't a result to cache — it's a capability
-  // `inner` either has or doesn't. `UserChangeTimeCache` wraps whichever
-  // repository it's handed, so these MUST reach the real Mongo-backed
-  // watch underneath, or the cache would be permanently empty in production
-  // (this decorator sits between them in `UsersWiring`).
+  // Passed through to `inner` — `UserChangeTimeCache` wraps whichever repository
+  // it's handed, so this MUST reach the real Mongo-backed watch underneath, or
+  // that cache would be permanently empty in production (this decorator sits
+  // between them in `UsersWiring`) — with each callback first evicting what
+  // the event makes stale here (see the class doc's OTHER WRITERS).
   override def watchChanges(
     onUpsert:     UserState => Unit,
     onDelete:     String => Unit,
     onDisconnect: () => Unit
-  ): Option[AutoCloseable] = inner.watchChanges(onUpsert, onDelete, onDisconnect)
+  ): Option[AutoCloseable] = inner.watchChanges(
+    onUpsert = state => {
+      Option(byUserIdCache.getIfPresent(state.userId))
+        .filter(_.updatedAt != state.updatedAt)
+        .foreach(_ => byUserIdCache.invalidate(state.userId))
+      onUpsert(state)
+    },
+    onDelete = userId => { byUserIdCache.invalidate(userId); onDelete(userId) },
+    onDisconnect = () => { byUserIdCache.invalidateAll(); onDisconnect() })
 
   override def changeStreamLiveness: ChangeStreamLiveness = inner.changeStreamLiveness
 }
