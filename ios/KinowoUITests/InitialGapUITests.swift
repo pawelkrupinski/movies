@@ -27,7 +27,7 @@ final class InitialGapUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-UITests", "1"]
+        FixtureLaunch.pinCountryAndLanguage(app)
         app.launchEnvironment["KINOWO_UITEST_FIXTURE"] = "1" // warm: grid at first paint
         app.launch()
     }

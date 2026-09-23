@@ -22,7 +22,7 @@ final class DayPillTapUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-UITests", "1"]
+        FixtureLaunch.pinCountryAndLanguage(app)
         app.launch()
 
         // "Wszystkie" so the Films grid has cards regardless of the hour —

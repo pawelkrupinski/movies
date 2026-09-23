@@ -14,7 +14,7 @@ final class CardShareMenuUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-UITests", "1"]
+        FixtureLaunch.pinCountryAndLanguage(app)
         app.launchEnvironment["KINOWO_FORCE_DETECTED_CITY"] = "poznan"
         app.launch()
 

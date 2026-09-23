@@ -14,7 +14,7 @@ final class PosterFullScreenUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-UITests", "1"]
+        FixtureLaunch.pinCountryAndLanguage(app)
         // Inject the detected city so the first-launch gate is deterministic
         // (no CoreLocation dialog / resolve timeout); confirm it below.
         app.launchEnvironment["KINOWO_FORCE_DETECTED_CITY"] = "poznan"

@@ -30,7 +30,7 @@ final class CardSpacingTuningUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-UITests", "1"]
+        FixtureLaunch.pinCountryAndLanguage(app)
         app.launchEnvironment["KINOWO_TUNING"] = "1"
         app.launch()
     }

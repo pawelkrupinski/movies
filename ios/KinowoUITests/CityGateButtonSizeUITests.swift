@@ -19,7 +19,7 @@ final class CityGateButtonSizeUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-UITests", "1"]
+        FixtureLaunch.pinCountryAndLanguage(app)
         app.launchEnvironment["KINOWO_CLEAR_CITY"] = "1"
         app.launchEnvironment["KINOWO_FORCE_DETECTED_CITY"] = "warszawa"
         app.launch()

@@ -21,7 +21,7 @@ final class CityChoiceLocateUITests: XCTestCase {
 
     func testLocateButtonHitNavigatesToConfirmScreen() throws {
         app = XCUIApplication()
-        app.launchArguments += ["-UITests", "1", "-selectedCountryCode", "pl"]
+        FixtureLaunch.pinCountryAndLanguage(app)
         app.launchEnvironment["KINOWO_CLEAR_CITY"] = "1"
         // First launch also detects Warszawa — reach the manual picker via
         // "choose another city" first, exactly like `CityChoiceSearchUITests`.
@@ -45,7 +45,7 @@ final class CityChoiceLocateUITests: XCTestCase {
 
     func testLocateButtonMissShowsNoNearbyMessage() throws {
         app = XCUIApplication()
-        app.launchArguments += ["-UITests", "1", "-selectedCountryCode", "pl"]
+        FixtureLaunch.pinCountryAndLanguage(app)
         app.launchEnvironment["KINOWO_CLEAR_CITY"] = "1"
         // Reaches the picker via the ordinary first-launch hit + "choose
         // another city" — `CityResolverView` never reads the unavailable

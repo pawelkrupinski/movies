@@ -6,7 +6,7 @@ final class RepertoireLaunchUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-UITests", "1"]
+        FixtureLaunch.pinCountryAndLanguage(app)
     }
 
     override func tearDownWithError() throws {

@@ -24,7 +24,7 @@ final class CardsVisibleUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-UITests", "1"]
+        FixtureLaunch.pinCountryAndLanguage(app)
         app.launchEnvironment["KINOWO_UITEST_FIXTURE"] = "1" // warm: dense grid at first paint
         // Pass the first-launch city gate deterministically so the test stands
         // alone (mirrors DayChangeScrollResetUITests).

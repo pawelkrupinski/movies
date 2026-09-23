@@ -36,13 +36,7 @@ enum FixtureLaunch {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        app.launchArguments += [
-            "-UITests", "1",
-            "-selectedCountryCode", country,
-            "-selectedLanguageCode", language,
-            "-AppleLanguages", "(\(language))",
-            "-AppleLocale", language,
-        ]
+        pinCountryAndLanguage(app, country: country, language: language)
         app.launchEnvironment["KINOWO_UITEST_FIXTURE"] = "1"
         app.launchEnvironment["KINOWO_CLEAR_CITY"] = "1"
         app.launchEnvironment["KINOWO_FORCE_DETECTED_CITY"] = city
@@ -53,6 +47,31 @@ enum FixtureLaunch {
         XCTAssertTrue(confirm.waitForExistence(timeout: 15),
                       "City-confirm screen never showed", file: file, line: line)
         confirm.tap()
+    }
+
+    /// Mark `app` as a UI-test launch and pin its country and UI language in
+    /// `UserDefaults`' ARGUMENT domain (see `intoGrid` for what each key does).
+    ///
+    /// Every suite that launches the app must go through this (or `intoGrid`),
+    /// never a bare `-UITests 1`: the simulator keeps whatever an EARLIER suite
+    /// persisted — `CountySubregionPickerUITests` switches to the UK under
+    /// English — so an unpinned launch would fetch `showtimes.cc/uk/warszawa`
+    /// (a 404, "Couldn't load showtimes") and render English day labels,
+    /// failing on run order alone. Only a suite that changes country through
+    /// the UI itself may skip it, since the argument domain would override
+    /// that change.
+    static func pinCountryAndLanguage(
+        _ app: XCUIApplication,
+        country: String = "pl",
+        language: String = "pl"
+    ) {
+        app.launchArguments += [
+            "-UITests", "1",
+            "-selectedCountryCode", country,
+            "-selectedLanguageCode", language,
+            "-AppleLanguages", "(\(language))",
+            "-AppleLocale", language,
+        ]
     }
 
     /// The first film card — the marker that the grid has actually rendered.

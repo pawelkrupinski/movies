@@ -18,7 +18,7 @@ final class ScrollInsetUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-UITests", "1"]
+        FixtureLaunch.pinCountryAndLanguage(app)
         app.launch()
 
         XCTAssertTrue(firstFilmCard(app).waitForExistence(timeout: 30),

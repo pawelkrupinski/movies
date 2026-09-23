@@ -18,7 +18,7 @@ final class RotationColumnsUITests: XCTestCase {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
-        app.launchArguments += ["-UITests", "1"]
+        FixtureLaunch.pinCountryAndLanguage(app)
         app.launchEnvironment["KINOWO_FORCE_DETECTED_CITY"] = "poznan"
         app.launch()
 

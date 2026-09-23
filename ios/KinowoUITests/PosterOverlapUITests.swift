@@ -19,7 +19,7 @@ final class PosterOverlapUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-UITests", "1"]
+        FixtureLaunch.pinCountryAndLanguage(app)
         app.launch()
         // Wait on app launch (the date-pill row), NOT on a film card —
         // the default "Dziś" repertoire is empty late at night, so the
