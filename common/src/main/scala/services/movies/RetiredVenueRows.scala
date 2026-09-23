@@ -49,7 +49,9 @@ final case class RetiredVenueRows(screenings: Long, slots: Long, venues: Map[Str
  *     even when its venue is off the roster. During a rolling deploy the OLD pod's roster
  *     lacks a venue the NEW pod has just added and is already writing; its sweep must not
  *     delete those rows. A genuinely retired venue is never scraped again, so its rows only
- *     age and are swept on the first tick after the grace runs out.
+ *     age and are swept on the first tick after the grace runs out. The grace is judged on
+ *     the FRESHER of a row's `screenings` / `movie_slots` twins, so a sweep never deletes one
+ *     twin and leaves the other.
  *
  * Idempotent: once a venue's rows are gone a second sweep finds nothing, and no retired
  * venue is scraped, so nothing writes them back.
@@ -77,7 +79,11 @@ object RetiredVenueRows {
     val stored       = (screeningIds.toSeq.flatMap(_.keys) ++ slotIds.toSeq.flatMap(_.keys)).map(venueOf).toSet
     val retired      = stored -- roster
     val cutoff       = now.minusMillis(grace.toMillis)
-    def sweepable(id: String, writtenAt: Instant): Boolean = retired(venueOf(id)) && writtenAt.isBefore(cutoff)
+    // A row is as fresh as its freshest twin: `screenings` and `movie_slots` share row ids, and
+    // judging each store's stamp alone split pairs (prod US 2026-09-23: 8 slot rows swept, their
+    // recently rewritten screenings twins left twinless with 200 future showtimes).
+    val freshest     = (screeningIds.toSeq.flatten ++ slotIds.toSeq.flatten).groupMapReduce(_._1)(_._2)((a, b) => if (a.isAfter(b)) a else b)
+    def sweepable(id: String): Boolean = retired(venueOf(id)) && freshest(id).isBefore(cutoff)
     if (roster.isEmpty) {
       logger.warn("Retired-venue rows: the roster is EMPTY — refusing to treat any venue as retired.")
       none
@@ -88,8 +94,8 @@ object RetiredVenueRows {
         s"half-loaded than pruned. Venues: ${retired.toSeq.sorted.take(20).mkString(", ")}")
       none
     } else {
-      val screeningRows     = screeningIds.fold(Set.empty[String])(_.collect { case (id, at) if sweepable(id, at) => id }.toSet)
-      val slotRows          = slotIds.fold(Set.empty[String])(_.collect { case (id, at) if sweepable(id, at) => id }.toSet)
+      val screeningRows     = screeningIds.fold(Set.empty[String])(_.keySet.filter(sweepable))
+      val slotRows          = slotIds.fold(Set.empty[String])(_.keySet.filter(sweepable))
       val screeningsDeleted = if (screeningRows.isEmpty) 0L else screenings.fold(0L)(_.deleteRows(screeningRows))
       val slotsDeleted      = if (slotRows.isEmpty) 0L else slots.fold(0L)(_.deleteRows(slotRows))
       if (screeningsDeleted + slotsDeleted == 0) none

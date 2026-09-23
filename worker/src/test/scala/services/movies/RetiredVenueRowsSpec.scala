@@ -85,6 +85,22 @@ class RetiredVenueRowsSpec extends AnyFlatSpec with Matchers {
     } finally clockNow = T0
   }
 
+  it should "never split a screenings/slot twin pair: one twin written inside the grace spares both" in {
+    // Prod US 2026-09-23: Pickwick Theatre Syracuse's movie_slots rows were older than the
+    // grace but 8 of their screenings twins had been rewritten since, so the sweep deleted
+    // the slots and left 8 twinless screenings rows (200 future showtimes) for the stranded
+    // sweep to find a day later. A row is as fresh as its freshest twin.
+    val (screenings, slots) = corpus()
+    clockNow = later.minusSeconds(3600)   // only the screenings twin is rewritten recently
+    screenings.upsertSlot("other|2025", s"$Retired${CinemaShowing.Separator}other", tomorrow ++ tomorrow)
+    try {
+      sweep(Some(screenings), Some(slots), roster) shouldBe
+        RetiredVenueRows(screenings = 1, slots = 2, venues = Map(Retired -> 3L))
+      screenings.findForFilm("other|2025").keySet should contain (s"$Retired${CinemaShowing.Separator}other")
+      slots.findForFilm("other|2025").keySet     should contain (s"$Retired${CinemaShowing.Separator}other")
+    } finally clockNow = T0
+  }
+
   it should "be idempotent — a second sweep finds nothing" in {
     val (screenings, slots) = corpus()
     sweep(Some(screenings), Some(slots), roster).rows shouldBe 5
