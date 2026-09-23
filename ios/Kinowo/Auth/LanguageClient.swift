@@ -10,16 +10,22 @@ protocol LanguageClient: AnyObject {
     /// The account's current pick, or nil if it hasn't made one.
     func fetch() async throws -> String?
 
-    /// Push this device's explicit pick as the account's.
+    /// Push this device's explicit pick as the account's. Throws when the
+    /// server did not accept it, so the caller keeps it pending.
     func push(_ language: String) async throws
 }
 
 final class HttpLanguageClient: LanguageClient {
+    private let session: URLSession
+
+    init(session: URLSession = .shared) {
+        self.session = session
+    }
 
     func fetch() async throws -> String? {
         var request = URLRequest(url: kinowoBaseURL.appendingPathComponent("api/me/state"))
         request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             throw URLError(.userAuthenticationRequired)
         }
@@ -42,7 +48,10 @@ final class HttpLanguageClient: LanguageClient {
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(body)
-        _ = try await URLSession.shared.data(for: request)
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
     }
 
     private struct WireLanguage: Codable {

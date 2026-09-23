@@ -30,7 +30,8 @@ import Combine
 /// dance the sets do. It reconciles at the SAME triggers as hiddenFilms
 /// (login, resume, country switch) but as its own independent step (a
 /// separate fetch — `HiddenFilmsClient`'s response never carries `language`
-/// at all), and pushes a local change on its OWN debounce (`schedulePush`) —
+/// at all), and pushes a local change on its OWN debounce (`schedulePush`),
+/// never echoing back a value it just adopted from the server —
 /// unlike the hiddenFilms writes, there was never really a batching case to
 /// close for a picker choice, but this mirrors the shape the mechanism
 /// always had here.
@@ -44,6 +45,14 @@ final class StateSyncService: ObservableObject {
     private var prefsCancellables = Set<AnyCancellable>()
     private var syncTask: Task<Void, Never>?
     private var debounceWorkItem: DispatchWorkItem?
+    /// The language the account is known to hold — last fetched or
+    /// successfully pushed. A `selectedLanguage` change to this value merely
+    /// adopted the server's pick, so it is never pushed back.
+    private var accountLanguage: String?
+    /// A local pick the server hasn't confirmed yet: its debounced push is
+    /// still waiting, or it failed. While set, a reconcile pushes it instead
+    /// of fetching — the account's value is by definition OLDER than it.
+    private var pendingLanguage: String?
 
     init(
         prefs: UserPreferences,
@@ -99,6 +108,8 @@ final class StateSyncService: ObservableObject {
         syncTask = nil
         debounceWorkItem?.cancel()
         debounceWorkItem = nil
+        accountLanguage = nil
+        pendingLanguage = nil
         prefsCancellables.removeAll()
     }
 
@@ -164,17 +175,42 @@ final class StateSyncService: ObservableObject {
     /// otherwise this device's own explicit pick, if any, becomes the
     /// account's. A separate fetch from `reconcile`'s — `HiddenFilmsClient`'s
     /// response never carries `language` at all, only `LanguageClient`'s does.
+    ///
+    /// The one exception is a PENDING local pick (see `pendingLanguage`): it
+    /// is newer than anything the account holds, so it is pushed rather than
+    /// overwritten — whether it was made just before this reconcile (inside
+    /// the push debounce), while the fetch was in flight, or its push failed.
     private func reconcileLanguage() async {
         guard isLoggedIn else { return }
+        if let pending = pendingLanguage { return await pushLanguage(pending) }
         do {
             let remoteLanguage = try await languageClient.fetch()
+            if let pending = pendingLanguage { return await pushLanguage(pending) }
             if let remoteLanguage {
+                accountLanguage = remoteLanguage
                 if remoteLanguage != prefs.selectedLanguage { prefs.setLanguage(remoteLanguage) }
             } else if let explicit = prefs.explicitLanguage {
-                try? await languageClient.push(explicit)
+                pendingLanguage = explicit
+                await pushLanguage(explicit)
             }
         } catch {
             // Network error — local state is authoritative; leave prefs alone.
+        }
+    }
+
+    /// Push `language` now, superseding any debounced push. On success the
+    /// account holds it; on failure it stays pending, and the next reconcile
+    /// (resume, country switch, next login) retries it — the same self-heal
+    /// the hiddenFilms writes rely on.
+    private func pushLanguage(_ language: String) async {
+        debounceWorkItem?.cancel()
+        debounceWorkItem = nil
+        do {
+            try await languageClient.push(language)
+            accountLanguage = language
+            if pendingLanguage == language { pendingLanguage = nil }
+        } catch {
+            // Left pending — see above.
         }
     }
 
@@ -189,12 +225,14 @@ final class StateSyncService: ObservableObject {
 
         // `.dropFirst()` skips the INIT value `UserPreferences` resolves at
         // launch (device/storefront fallback, not a pick) — every mutation
-        // after that goes through `setLanguage`, which only ever runs for an
-        // explicit pick, so every event this sink sees IS one.
+        // after that goes through `setLanguage`: either an explicit pick, or
+        // `reconcileLanguage` adopting `accountLanguage`, which is skipped.
+        // Delivered synchronously (no `receive(on:)` hop — `setLanguage` runs
+        // on the main actor), so a pick is pending before any reconcile that
+        // follows it can read the account's older value.
         prefs.$selectedLanguage
             .dropFirst()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.schedulePush() }
+            .sink { [weak self] language in self?.languageChanged(to: language) }
             .store(in: &prefsCancellables)
     }
 
@@ -218,14 +256,26 @@ final class StateSyncService: ObservableObject {
         }
     }
 
-    /// Debounced language push — 400ms, long enough that a rapid run of
-    /// picker taps folds into one PUT.
+    private func languageChanged(to language: String) {
+        guard language != accountLanguage else {
+            // Back on (or adopted) what the account already holds — nothing to push.
+            pendingLanguage = nil
+            debounceWorkItem?.cancel()
+            debounceWorkItem = nil
+            return
+        }
+        pendingLanguage = language
+        schedulePush()
+    }
+
+    /// Debounced push of `pendingLanguage` — 400ms, long enough that a rapid
+    /// run of picker taps folds into one PUT.
     private func schedulePush() {
         debounceWorkItem?.cancel()
         let item = DispatchWorkItem { [weak self] in
             Task { @MainActor [weak self] in
-                guard let self, self.isLoggedIn, let explicit = self.prefs.explicitLanguage else { return }
-                try? await self.languageClient.push(explicit)
+                guard let self, self.isLoggedIn, let pending = self.pendingLanguage else { return }
+                await self.pushLanguage(pending)
             }
         }
         debounceWorkItem = item

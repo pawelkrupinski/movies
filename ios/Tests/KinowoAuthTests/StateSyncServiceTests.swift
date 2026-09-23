@@ -170,6 +170,72 @@ final class StateSyncServiceTests: XCTestCase {
         _ = sync
     }
 
+    /// A foreground reconcile inside the push debounce used to fetch the
+    /// account's OLDER pick, write it over the one just made, and push that
+    /// old value back — cancelling the push of the new one. The pending pick
+    /// must win and reach the server instead.
+    func testReconcileRightAfterAPickKeepsThePickAndPushesIt() async throws {
+        languageClient.remote = "de"
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.selectedLanguage == "de" }
+        try await Task.sleep(for: .milliseconds(100))
+
+        prefs.setLanguage("es")
+        await Task.yield()
+        await sync.reconcileCurrentCountry()
+
+        XCTAssertEqual(prefs.selectedLanguage, "es")
+        try await waitUntil { self.languageClient.remote == "es" }
+        try await Task.sleep(for: .milliseconds(500))
+        XCTAssertEqual(languageClient.pushes, ["es"])
+        _ = sync
+    }
+
+    /// Adopting the account's pick on a resume reconcile (another device
+    /// changed it) is not a local pick: it must not echo the same value
+    /// straight back to the server.
+    func testAdoptingTheAccountLanguageDoesNotPushItBack() async throws {
+        languageClient.remote = "de"
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.selectedLanguage == "de" }
+        try await Task.sleep(for: .milliseconds(100))
+
+        languageClient.remote = "pl"
+        await sync.reconcileCurrentCountry()
+        XCTAssertEqual(prefs.selectedLanguage, "pl")
+
+        try await Task.sleep(for: .milliseconds(600))
+
+        XCTAssertEqual(languageClient.pushes, [])
+        _ = sync
+    }
+
+    /// A push the server rejected is still pending: the next reconcile
+    /// retries it rather than adopting the account's older value.
+    func testAFailedLanguagePushIsRetriedOnTheNextReconcile() async throws {
+        languageClient.remote = "de"
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.selectedLanguage == "de" }
+        try await Task.sleep(for: .milliseconds(100))
+
+        languageClient.shouldFailPush = true
+        let attempted = expectation(description: "push attempted")
+        languageClient.onPush = { _ in attempted.fulfill() }
+        prefs.setLanguage("es")
+        await fulfillment(of: [attempted], timeout: 1)
+        languageClient.onPush = nil
+
+        languageClient.shouldFailPush = false
+        await sync.reconcileCurrentCountry()
+
+        XCTAssertEqual(prefs.selectedLanguage, "es")
+        XCTAssertEqual(languageClient.remote, "es")
+        _ = sync
+    }
+
     // MARK: - Server authoritative after first sync
 
     func testServerAuthoritativeAfterFirstSyncDropsStaleLocal() async throws {
@@ -468,14 +534,22 @@ final class FakeHiddenFilmsClient: HiddenFilmsClient {
 
 @MainActor
 final class FakeLanguageClient: LanguageClient {
+    /// The account's stored pick — a successful push updates it, as the
+    /// server does.
     var remote: String?
-    private(set) var lastPushed: String?
+    var shouldFailPush = false
+    /// Every push that SUCCEEDED, in order.
+    private(set) var pushes: [String] = []
+    var lastPushed: String? { pushes.last }
+    /// Called on every push attempt, failed or not.
     var onPush: ((String) -> Void)?
 
     func fetch() async throws -> String? { remote }
 
     func push(_ language: String) async throws {
-        lastPushed = language
-        onPush?(language)
+        defer { onPush?(language) }
+        if shouldFailPush { throw URLError(.badServerResponse) }
+        pushes.append(language)
+        remote = language
     }
 }
