@@ -82,6 +82,9 @@ class MsiClient(
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(baseUrl)
   override def sourceUrl: Option[String] = Some(baseUrl)
+  // Two venues can share one portal, split by the title prefix (see `titlePrefix`).
+  override def sourceKey: Option[String] =
+    Some(CinemaScraper.urlKey(baseUrl) + titlePrefix.fold("")(p => s"#$p"))
 
   private val titleCleaner: String => (String, List[String]) =
     titlePrefix.map(cleanTitleForVenue)

@@ -71,6 +71,20 @@ trait CinemaScraper {
    *  Derive it from the same base URL the client already fetches with, so the
    *  link and the scrape can't drift. */
   def sourceUrl: Option[String] = None
+
+  /** The identity of the upstream listing this scraper reads: two scrapers with
+   *  the same key scrape the same programme, whatever venue each claims to be.
+   *  `CinemaRosterAuditSpec` holds the whole catalog to one scraper per key —
+   *  the check that would have caught Braniewo's Baszta reading Środa
+   *  Wielkopolska's bilety24 organiser under a different slug.
+   *
+   *  Defaults to [[sourceUrl]] without its scheme, `www.` or trailing slash.
+   *  Override where that URL is absent (an API-only chain venue, keyed by the
+   *  chain's own venue id) or does not identify the listing by itself: an
+   *  id-routed page whose slug is decoration, or one portal serving two venues
+   *  told apart by a title prefix. `None` only for a scraper with no upstream
+   *  identity at all, which the audit refuses. */
+  def sourceKey: Option[String] = sourceUrl.map(CinemaScraper.urlKey)
 }
 
 object CinemaScraper {
@@ -79,4 +93,15 @@ object CinemaScraper {
    *  URL(s) it already fetches with — no second copy of the host string. */
   def hostsOf(urls: String*): Set[String] =
     urls.flatMap(u => Option(URI.create(u).getHost)).map(_.toLowerCase).toSet
+
+  private val SchemeAndWww = "^[a-zA-Z][a-zA-Z0-9+.-]*://(www\\.)?".r
+
+  /** A URL as a [[CinemaScraper.sourceKey]]: scheme, a leading `www.` and a
+   *  trailing slash dropped, host lower-cased — so `http://www.x.pl/` and
+   *  `https://x.pl` name one listing. */
+  def urlKey(url: String): String = {
+    val bare = SchemeAndWww.replaceFirstIn(url.trim, "").stripSuffix("/")
+    val (host, path) = bare.span(_ != '/')
+    host.toLowerCase + path
+  }
 }

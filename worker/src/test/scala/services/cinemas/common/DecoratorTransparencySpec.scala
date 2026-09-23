@@ -38,6 +38,7 @@ class DecoratorTransparencySpec extends AnyFlatSpec with Matchers {
     override def chain: Boolean             = true
     override def listingIsComplete: Boolean = false
     override def sourceUrl: Option[String]  = Some("https://delegate.test/repertuar")
+    override def sourceKey: Option[String]  = Some("delegate.test/venue-42")
   }
 
   private val executor = Executors.newSingleThreadExecutor()
@@ -61,6 +62,7 @@ class DecoratorTransparencySpec extends AnyFlatSpec with Matchers {
       // short listing never mentioned.
       withClue("listingIsComplete: ")(decorated.listingIsComplete shouldBe delegate.listingIsComplete)
       withClue("sourceUrl: ")(decorated.sourceUrl shouldBe delegate.sourceUrl)
+      withClue("sourceKey: ")(decorated.sourceKey shouldBe delegate.sourceKey)
     }
   }
 

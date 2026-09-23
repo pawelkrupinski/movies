@@ -55,6 +55,7 @@ class OdeonClient(
   // The ocapi `sites` roster carries no public slug, and the www venue page is
   // Cloudflare-protected anyway, so there's no stable public URL to derive here.
   override def sourceUrl: Option[String] = None
+  override def sourceKey: Option[String] = Some(s"${CinemaScraper.urlKey(ApiBase)}/sites/$siteId")
 
   /** The venue's business dates, bounded to `[today, today+MaxHorizonDays]`. One
    *  `film-screening-dates` call names exactly the days the venue has a

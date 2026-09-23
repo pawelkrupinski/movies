@@ -25,6 +25,8 @@ class KinoAurumClient(http: HttpFetch, override val cinema: Cinema = KinoAurum)
     extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoAurumClient.SeanseUrl)
+  // The Firestore collection path, without the API key riding in the query.
+  override def sourceKey: Option[String] = Some(CinemaScraper.urlKey(KinoAurumClient.SeanseUrl.takeWhile(_ != '?')))
 
   def fetch(): Seq[CinemaMovie] =
     KinoAurumClient.parse(http.get(KinoAurumClient.SeanseUrl), cinema)

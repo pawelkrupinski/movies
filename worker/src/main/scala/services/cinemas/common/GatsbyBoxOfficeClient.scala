@@ -77,6 +77,8 @@ class GatsbyBoxOfficeClient(
   override def chain: Boolean = true
 
   override def sourceUrl: Option[String] = venuePath.map(p => s"$baseUrl$p")
+  // The venue path is optional; the platform's own theatre id always identifies it.
+  override def sourceKey: Option[String] = Some(s"${CinemaScraper.urlKey(baseUrl)}/theaters/$theaterId")
 
   /** ONE schedule request covers the entire horizon.
    *

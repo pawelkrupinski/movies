@@ -51,6 +51,10 @@ class Bilety24OrganizerClient(http: HttpFetch, organizerUrl: String, override va
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(organizerUrl)
   override def sourceUrl: Option[String] = Some(organizerUrl)
+  // bilety24 routes an organiser page by its trailing id alone — any slug in
+  // front of it serves the same venue — so the id is the listing's identity.
+  override def sourceKey: Option[String] =
+    Bilety24OrganizerClient.organiserId(organizerUrl).map(id => s"bilety24.pl/kino/organizator/$id")
 
   override val detailGroup: String = "bilety24-organizer"
 
@@ -76,6 +80,22 @@ class Bilety24OrganizerClient(http: HttpFetch, organizerUrl: String, override va
 object Bilety24OrganizerClient {
 
   val BaseUrl = "https://www.bilety24.pl"
+
+  private val OrganiserUrl = """^https://www\.bilety24\.pl/kino/organizator/([a-z0-9]+(?:-[a-z0-9]+)*)-(\d+)$""".r
+
+  /** The numeric organiser id of a well-formed organiser page URL
+   *  (`…/kino/organizator/<slug>-<id>`, no query or trailing slash). */
+  def organiserId(url: String): Option[String] = url match {
+    case OrganiserUrl(_, id) => Some(id)
+    case _                   => None
+  }
+
+  /** The slug in front of the id — decoration to bilety24's router, but the
+   *  part that goes stale when a venue renames. */
+  def organiserSlug(url: String): Option[String] = url match {
+    case OrganiserUrl(slug, _) => Some(slug)
+    case _                     => None
+  }
 
   // title="Film: <Title> - 2026-06-19 18:50 - Katowice" — the title may itself
   // contain " - ", so the non-greedy capture stops at the first " - <ISO date>".

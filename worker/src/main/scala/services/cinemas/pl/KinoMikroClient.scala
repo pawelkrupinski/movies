@@ -34,6 +34,8 @@ class KinoMikroClient(
   today:               LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends ChunkedCinemaScraper {
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoMikroClient.BaseApiUrl, "https://bilety.kinomikro.pl")
+  // One feed serves both Mikro screens; the venue name picks this one's rows.
+  override def sourceKey: Option[String] = Some(s"${CinemaScraper.urlKey(KinoMikroClient.BaseApiUrl)}#$venueName")
 
   /** Follow the programme rather than assume a week of it.
    *

@@ -41,6 +41,7 @@ class MultikinoClient(
   private val apiUrl = MultikinoClient.apiUrl(cinemaId)
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceKey: Option[String] = Some(s"${CinemaScraper.urlKey(BaseUrl)}/cinemas/$cinemaId")
   override def chain: Boolean = true
 
   def fetch(): Seq[CinemaMovie] = MultikinoParser.parse(getApiWithRetry(), cinema, titles)

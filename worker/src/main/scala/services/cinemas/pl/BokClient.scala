@@ -39,6 +39,8 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
+  // BOK runs two screens off one site, one listing path each.
+  override def sourceKey: Option[String] = Some(s"${CinemaScraper.urlKey(BaseUrl)}/$prefix")
 
   def fetch(): Seq[CinemaMovie] = {
     val listing = http.get(s"$BaseUrl/$prefix")

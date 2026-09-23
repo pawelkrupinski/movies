@@ -66,6 +66,7 @@ class VueCinemasPlatformClient(
    *  That is precisely the `None` case [[CinemaScraper.sourceUrl]] documents;
    *  guessing a slug off the display name would produce dead /uptime links. */
   override def sourceUrl: Option[String] = None
+  override def sourceKey: Option[String] = Some(s"${CinemaScraper.urlKey(baseUrl)}/cinemas/$cinemaId")
 
   def fetch(): Seq[CinemaMovie] =
     VueCinemasPlatformParser.parse(filmsJsonWithTokenBootstrap(), cinema, baseUrl)
