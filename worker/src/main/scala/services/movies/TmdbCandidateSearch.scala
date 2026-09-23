@@ -697,6 +697,9 @@ object TmdbCandidateSearch {
   val RuntimeAgreementMinutes: Int = 2
 
   /** A trailing IMDb disambiguator — " (I)", " (II)", " (III)", … — see
-   *  `stripImdbDisambiguator`. */
-  val ImdbDisambiguatorSuffix: scala.util.matching.Regex = """(?i)\s+\([IVXLCDM]+\)$""".r
+   *  `stripImdbDisambiguator`. Case-sensitive and limited to well-formed numerals
+   *  below C, because that is all IMDb ever writes: a lowercase "(mix)" or
+   *  "(vi)", a malformed "(IIII)", or a word-like "(MIX)" is part of the credit. */
+  val ImdbDisambiguatorSuffix: scala.util.matching.Regex =
+    """\s+\((?=[IVXL])(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})\)$""".r
 }

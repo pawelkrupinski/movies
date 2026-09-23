@@ -219,4 +219,19 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
     found.map(_._1) shouldBe Some(ChildsPlay)
     found.flatMap(_._3) shouldBe Some(TmdbBasis.DirectorWalk)
   }
+
+  /** IMDb's disambiguator is always an UPPERCASE Roman numeral, and a small one
+   *  — nobody has a hundred namesakes. A lowercase parenthetical that happens to
+   *  be spelled with Roman-numeral letters ("(mix)", "(dim)", "(vi)") is part of
+   *  the credit, and so is an uppercase run that is no valid numeral ("(IIII)",
+   *  "(VX)") or a large one that reads as a word ("(MIX)", "(DC)"). */
+  "ImdbDisambiguatorSuffix" should "strip only an uppercase, valid Roman numeral" in {
+    def strip(name: String) = TmdbCandidateSearch.ImdbDisambiguatorSuffix.replaceFirstIn(name, "")
+
+    Seq("Tom Holland (II)", "Tom Holland (I)", "Tom Holland (IV)", "Tom Holland (XIV)", "Tom Holland (XLIX)")
+      .foreach(name => withClue(name)(strip(name) shouldBe "Tom Holland"))
+    Seq("DJ Food (mix)", "Lights (dim)", "Someone (vi)", "Someone (ii)", "Someone (IIII)", "Someone (VX)",
+        "Someone (MIX)", "Someone (DC)", "Someone (IL)", "Tom Holland (II) Jr")
+      .foreach(name => withClue(name)(strip(name) shouldBe name))
+  }
 }
