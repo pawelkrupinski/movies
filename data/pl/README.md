@@ -15,7 +15,7 @@ case object KinoFarys extends Cinema("Farys", "Farys")   // Biecz — filmweb 23
 ```
 
 That is exactly the set worth having: the annotation exists BECAUSE the venue
-is somewhere the city's name does not say. 291 of the 450 Polish venues carry
+is somewhere the city's name does not say. 291 of the 449 Polish venues carry
 one, across 60 cities.
 
 ## Rebuilding

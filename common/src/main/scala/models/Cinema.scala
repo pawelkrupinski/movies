@@ -659,7 +659,6 @@ case object KinoMDKWagrowiec extends Cinema("Kino MDK Wągrowiec", "MDK Wągrowi
 case object KinoSwiatowidCzarnkow extends Cinema("Kino Światowid Czarnków", "Światowid")   // Czarnków — bilety24
 // ostrowiec-swietokrzyski
 case object KinoEtiuda extends Cinema("Kino Etiuda", "Etiuda")   // Ostrowiec Świętokrzyski — bilety24
-case object KinoEtiudaOBK extends Cinema("Kino Etiuda OBK", "Etiuda OBK")   // Ostrowiec Świętokrzyski — filmweb 3024
 case object KinoOOK extends Cinema("Opatowski Ośrodek Kultury", "Opatów")   // Opatów — filmweb 3133
 case object KinoStarowka extends Cinema("Kino Starówka", "Starówka")   // Sandomierz — filmweb 1601
 // gniezno
@@ -2217,7 +2216,7 @@ object Cinema {
   val piotrkowTrybunalski: Seq[Cinema] = Seq(HeliosPiotrkow, HeliosBelchatow, KinoKulturaBelchatow, HeliosTomaszow)
   val siedlce: Seq[Cinema] = Seq(HeliosSiedlce, NoveKinoSiedlce, KinoSokolSokolowPodlaski, KinoSlawa, KinoZaRogiemMiedzyrzec, KinoKongres, KinoLukow, CinemaCityBialaPodlaska, KinoWilga)
   val pila: Seq[Cinema] = Seq(HeliosPila, KinoWCKWalcz, KinoOsiedlowe, KinoRodlo, KinoMewaBudzyn, KinoNotec, KinoZaRogiemWielen, KinoMDKWagrowiec, KinoSwiatowidCzarnkow)
-  val ostrowiecSwietokrzyski: Seq[Cinema] = Seq(KinoEtiuda, KinoEtiudaOBK, KinoOOK, KinoStarowka)
+  val ostrowiecSwietokrzyski: Seq[Cinema] = Seq(KinoEtiuda, KinoOOK, KinoStarowka)
   val gniezno: Seq[Cinema] = Seq(HeliosGniezno, KinoWawrzyn, KinoMiescisko)
   val suwalki: Seq[Cinema] = Seq(KinoCinemaLumiereSuwalki, KinoIskra, KinoKulturaGoldap, KinoMazur, KinoECK, KinoPlanetCinemaElk)
   val stalowaWola: Seq[Cinema] = Seq(HeliosStalowaWola, KinoWrzos, KinoSokolNisko, KinoMetalowiecNowaDeba, KinoBCK)

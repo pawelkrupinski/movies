@@ -411,7 +411,6 @@ private[models] object VenueTowns {
     ("Kino ECK", "Ełk"),
     ("Kino Echo", "Jarocin"),
     ("Kino Etiuda", "Ostrowiec Świętokrzyski"),
-    ("Kino Etiuda OBK", "Ostrowiec Świętokrzyski"),
     ("Kino Eva", "Międzyzdroje"),
     ("Kino Fenix", "Łowicz"),
     ("Kino GCK", "Solec-Zdrój"),

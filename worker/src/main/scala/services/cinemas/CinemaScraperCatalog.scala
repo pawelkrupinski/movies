@@ -542,7 +542,6 @@ class CinemaScraperCatalog(
   )
   private val ostrowiecSwietokrzyskiScrapers = Seq(
     bilety24("https://www.bilety24.pl/kino/organizator/miejskie-centrum-kultury-w-ostrowcu-swietokrzyskim-1389", KinoEtiuda),   // Ostrowiec Świętokrzyski
-    filmweb(3024, KinoEtiudaOBK),   // Ostrowiec Świętokrzyski
     filmweb(3133, KinoOOK),   // Opatów
     filmweb(1601, KinoStarowka),   // Sandomierz
   )

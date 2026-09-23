@@ -372,6 +372,16 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     scraper.sourceUrl.value should endWith ("-2352")
   }
 
+  // Filmweb's "Etiuda OBK" (3024) is the same screen as bilety24's MCK Ostrowiec
+  // organiser (Siennieńska 54, identical showtimes), which lists its whole
+  // programme — so wiring both showed Kino Etiuda twice under two names.
+  it should "scrape Ostrowiec's Kino Etiuda once, off its bilety24 organiser" in {
+    val etiudas = catalog(biletyna = "kino-kameralne").byCity("ostrowiec-swietokrzyski")
+      .filter(_.cinema.displayName.contains("Etiuda"))
+    etiudas.map(_.cinema.displayName) shouldBe Seq("Kino Etiuda")
+    etiudas.head shouldBe a [Bilety24OrganizerClient]
+  }
+
   // A `Cinema` that's modelled (so it shows on the web/in a city) but has no
   // scraper is silently never populated — the city renders empty forever. This
   // also catches a `City.slug` ↔ `byCity` key mismatch: `catalog.all` resolves

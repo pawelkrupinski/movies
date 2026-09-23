@@ -2675,13 +2675,6 @@
  },
  {
   "citySlug": "ostrowiec-swietokrzyski",
-  "cinemaObject": "KinoEtiudaOBK",
-  "displayName": "Kino Etiuda OBK",
-  "town": "Ostrowiec Świętokrzyski",
-  "annotation": "Ostrowiec Świętokrzyski — filmweb 3024"
- },
- {
-  "citySlug": "ostrowiec-swietokrzyski",
   "cinemaObject": "KinoOOK",
   "displayName": "Opatowski Ośrodek Kultury",
   "town": "Opatów",
