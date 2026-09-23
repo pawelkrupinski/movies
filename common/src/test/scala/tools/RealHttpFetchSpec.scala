@@ -125,4 +125,36 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
       "https://caching.graphql.imdb.com/x", Map("x-imdb-client-name" -> "caller-wins"))
     request.headers.allValues("x-imdb-client-name") should contain only "caller-wins"
   }
+
+  // ── getPage: where the redirects ended ─────────────────────────────────────
+  // The roster audit tells a bilety24 organiser address we wire from the one
+  // bilety24 now 301s it to; that needs the final URL, which `get` drops.
+
+  private def withServer(test: String => Unit): Unit = {
+    val server = com.sun.net.httpserver.HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0)
+    def respond(code: Int, headers: (String, String)*)(body: String)(exchange: com.sun.net.httpserver.HttpExchange): Unit = {
+      headers.foreach { case (k, v) => exchange.getResponseHeaders.add(k, v) }
+      val bytes = body.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+      exchange.sendResponseHeaders(code, if (bytes.isEmpty) -1 else bytes.length.toLong)
+      if (bytes.nonEmpty) exchange.getResponseBody.write(bytes)
+      exchange.close()
+    }
+    val base = s"http://127.0.0.1:${server.getAddress.getPort}"
+    server.createContext("/organizator/old-slug-477", e => respond(301, "Location" -> s"$base/organizator/new-slug-477")("")(e))
+    server.createContext("/organizator/new-slug-477", e => respond(200)("<h1>Kino Baszta</h1>")(e))
+    server.createContext("/gone", e => respond(404)("")(e))
+    server.start()
+    try test(base) finally server.stop(0)
+  }
+
+  "getPage" should "report the URL a redirect ended on, with the page served there" in withServer { base =>
+    val page = new RealHttpFetch().getPage(s"$base/organizator/old-slug-477")
+    page.finalUrl shouldBe s"$base/organizator/new-slug-477"
+    page.body shouldBe "<h1>Kino Baszta</h1>"
+  }
+
+  it should "fail a non-2xx the way get does" in withServer { base =>
+    val thrown = the [HttpStatusException] thrownBy new RealHttpFetch().getPage(s"$base/gone")
+    thrown.code shouldBe 404
+  }
 }

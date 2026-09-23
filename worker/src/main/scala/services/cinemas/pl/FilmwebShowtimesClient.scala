@@ -74,12 +74,8 @@ class FilmwebShowtimesClient(
    *  failure (network, missing fields) yields `None` and the caller keeps the
    *  `/cinema/-<id>` [[sourceUrl]] fallback. */
   def resolveSourceUrl(): Option[String] =
-    Try(Json.parse(http.get(cinemaInfoUrl(cinemaId)))).toOption.flatMap { js =>
-      for {
-        name <- (js \ "name").asOpt[String].map(_.trim).filter(_.nonEmpty)
-        city <- (js \ "city").asOpt[String].map(_.trim).filter(_.nonEmpty)
-      } yield canonicalSourceUrl(name, city, cinemaId)
-    }
+    Try(http.get(cinemaInfoUrl(cinemaId))).toOption.flatMap(parseCinemaInfo)
+      .map(info => canonicalSourceUrl(info.name, info.city, cinemaId))
 
   def fetch(): Seq[CinemaMovie] = {
     val dates = (0 to daysAhead).map(today.plusDays(_))
@@ -179,6 +175,16 @@ object FilmwebShowtimesClient extends play.api.Logging {
   private val PosterBase  = "https://fwcdn.pl/ppo"
 
   def cinemaInfoUrl(cinemaId: Int): String = s"$ApiBase/cinema/$cinemaId/info"
+
+  /** What `/cinema/<id>/info` says of a venue: `{"name":"Kino nad Wartą",
+   *  "city":"Koło","street":"Słowackiego 5",…}`. An id Filmweb does not know
+   *  answers 204 with no body — `None`, as is a body without a name or city. */
+  final case class CinemaInfo(name: String, city: String, street: Option[String])
+  def parseCinemaInfo(body: String): Option[CinemaInfo] =
+    Try(Json.parse(body)).toOption.flatMap { js =>
+      def field(key: String) = (js \ key).asOpt[String].map(_.trim).filter(_.nonEmpty)
+      for { name <- field("name"); city <- field("city") } yield CinemaInfo(name, city, field("street"))
+    }
 
   /** Filmweb's canonical public showtimes URL for a venue. The id is the stable
    *  key; the city + name segments are slugged the way Filmweb itself does —

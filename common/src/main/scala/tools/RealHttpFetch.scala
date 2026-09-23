@@ -91,6 +91,18 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
   override def get(url: String, headers: Map[String, String]): String =
     sendLogged("GET", url, clientFor(url).send(buildRequest(url, headers), HttpResponse.BodyHandlers.ofByteArray()))
 
+  /** GET, also reporting the URL the redirects ended on — for a caller that
+   *  must know whether the address it holds is the one the upstream serves (the
+   *  roster audit's stale-slug check). Same status handling as `get`. */
+  def getPage(url: String): FetchedPage = {
+    val response = try clientFor(url).send(buildRequest(url), HttpResponse.BodyHandlers.ofByteArray()) catch {
+      case exception: Throwable =>
+        logFailure("GET", url, exception)
+        throw exception
+    }
+    FetchedPage(response.uri().toString, checkStatus("GET", url, response))
+  }
+
   override def getAsync(url: String): CompletableFuture[String] =
     clientFor(url).sendAsync(buildRequest(url), HttpResponse.BodyHandlers.ofByteArray())
       .handle[String] { (response, throwable) =>
@@ -227,6 +239,9 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
 
   protected def decorateBuilder(builder: HttpRequest.Builder, url: String): HttpRequest.Builder = builder
 }
+
+/** A page body and the URL it was finally served from, after redirects. */
+final case class FetchedPage(finalUrl: String, body: String)
 
 object RealHttpFetch {
 

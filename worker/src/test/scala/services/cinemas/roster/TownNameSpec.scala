@@ -16,6 +16,13 @@ class TownNameSpec extends AnyFlatSpec with Matchers {
     TownName.same("Ostrów Wlkp.", "Ostrów Mazowiecka") shouldBe false
   }
 
+  // Filmweb files Kino Wars under "Wysokie Mazowiecki" — the town is Wysokie
+  // Mazowieckie. A qualifier's adjective ending is not what tells towns apart.
+  it should "read a qualifier's adjective ending loosely" in {
+    TownName.same("Wysokie Mazowieckie", "Wysokie Mazowiecki") shouldBe true
+    TownName.same("Środa Śląska", "Środa Wielkopolska") shouldBe false
+  }
+
   it should "accept a qualifier one side left off" in {
     TownName.same("Połczyn", "Połczyn-Zdrój") shouldBe true
   }

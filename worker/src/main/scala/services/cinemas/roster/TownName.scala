@@ -13,7 +13,11 @@ import tools.Slugify
  *   - the qualifier ABBREVIATED: `Ostrów Wlkp.` for Ostrów Wielkopolski, and
  *     `Środa Wlkp.` for Środa Wielkopolska. Expanded, not dropped, because
  *     Ostrów Mazowiecka is a different town;
- *   - the qualifier LEFT OFF by one side: `Połczyn` for Połczyn-Zdrój.
+ *   - the qualifier LEFT OFF by one side: `Połczyn` for Połczyn-Zdrój;
+ *   - the qualifier's adjective ENDING: Filmweb files a venue under
+ *     "Wysokie Mazowiecki", which is Wysokie Mazowieckie. Only the ending
+ *     (`-i`/`-ie`/`-a`/`-e` after `-sk`/`-ck`) is loosened, so Środa Śląska and
+ *     Środa Wielkopolska stay apart.
  */
 object TownName {
 
@@ -25,8 +29,13 @@ object TownName {
     "gd"   -> "gdansk",
   )
 
+  private val AdjectiveEnding = """^(.+(?:sk|ck))(?:ie|i|a|e)$""".r
+
   private def tokens(town: String): Seq[String] =
-    Slugify.stable(town).split('-').toSeq.filter(_.nonEmpty)
+    Slugify.stable(town).split('-').toSeq.filter(_.nonEmpty).map {
+      case AdjectiveEnding(stem) => stem
+      case token                 => token
+    }
 
   private def sameToken(a: String, b: String): Boolean =
     a == b ||
