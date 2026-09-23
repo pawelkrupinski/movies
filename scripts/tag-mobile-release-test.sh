@@ -43,10 +43,15 @@ check "pushes the tag to origin" "1" \
 
 # ── a broken remote: warns, does not fail ──────────────────────────────────────
 git -C "$REPO" remote set-url origin /nonexistent-path
-bash "$REPO/scripts/tag-mobile-release.sh" android 2.0.0 >/dev/null 2>&1
+push_output="$(bash "$REPO/scripts/tag-mobile-release.sh" android 2.0.0 2>&1)"
 check "exits 0 even when the push fails" "0" "$?"
 check "still creates the tag locally" "mobile-android-2.0.0" \
   "$(git -C "$REPO" tag -l mobile-android-2.0.0)"
+# The tag is FORCE-moved on every re-upload of a version, so the manual retry it
+# suggests must force too — a plain `git push origin <tag>` is rejected as
+# "already exists" whenever origin still holds the tag's previous position.
+check "suggests a FORCE push as the manual retry" "1" \
+  "$(printf '%s' "$push_output" | grep -c 'git push -f origin mobile-android-2.0.0')"
 git -C "$REPO" remote set-url origin "$SCRATCH/origin.git"
 
 # ── a version string git can't use as a ref: warns, does not fail ─────────────

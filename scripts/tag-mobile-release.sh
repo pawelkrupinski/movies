@@ -30,4 +30,4 @@ if ! git -C "$repo_root" tag -f "$tag" "$sha" >/dev/null 2>&1; then
   exit 0
 fi
 git -C "$repo_root" push -f origin "$tag" >/dev/null 2>&1 \
-  || warn "could not push tag $tag — push it manually: git push origin $tag"
+  || warn "could not push tag $tag — push it manually: git push -f origin $tag"
