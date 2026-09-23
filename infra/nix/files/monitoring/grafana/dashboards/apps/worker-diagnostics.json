@@ -1700,6 +1700,72 @@
           "legendFormat": "{{country}}"
         }
       ]
+    },
+    {
+      "id": 33,
+      "title": "Read-model venues per projection — rebuilt vs reused, by country (per min)",
+      "description": "`kinowo_worker_readmodel_venue_projections_total{outcome}`: the screenings rows a projection considered. rebuilt (bars, right axis) = the venue's slots (showtimes or link) moved since its row was written, or this process never wrote it (every venue after a worker boot, when the memo is seeded from the read model and cannot vouch for the inputs). reused (lines, left axis) = the row was already written from identical inputs, so it was neither built nor rewritten. A showtime change at one venue of a wide release reads 1 rebuilt against thousands reused — that skip is what took the ~2 s per-film re-projection off the single change-apply thread (panel 28). Rebuilt tracking reused one-for-one outside a boot means the input hash is missing its matches: every projection is rebuilding the whole film again.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 169
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*rebuilt.*"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "bars"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "refId": "A",
+          "expr": "sum by (country, outcome) (rate(kinowo_worker_readmodel_venue_projections_total{country=~\"$country\"}[$__rate_interval])) * 60",
+          "legendFormat": "{{country}} {{outcome}}"
+        }
+      ]
     }
   ],
   "description": "Why a worker is misbehaving, once the application-health dashboard has told you that one is. There are FIVE workers — pl, uk, de, us and es, each its own k3s Deployment — so every panel is scoped by the Country variable and carries the country in its legend; pick one to isolate it, or All to compare. Memory (heap, NMT native categories, the off-book gap, buffers, and the pod's real cgroup limit from kube-state-metrics), CPU split by JIT and GC, GC frequency, restarts, resolution-cache hit rates, and the error shape of the outbound HTTP the scrape and enrichment phases depend on. All from each worker's own /metrics on k3s via local-prometheus. There is no CPU-credit panel: shared-CPU credit was a Fly billing concept and the whole throttle path it drove was deleted on 2026-09-04, so no series behind it exists. · NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still — the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",
