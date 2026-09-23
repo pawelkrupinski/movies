@@ -337,8 +337,11 @@ target_precedence_and_default() {
     local envfile; envfile="$(mktemp -t kinowo-tunnel-env)"
     echo "KINOWO_MONGO_SSH=root@from-env-file" > "$envfile"
 
-    PROD_TUNNEL_ENV_FILE="" KINOWO_MONGO_SSH="" \
-      [ "$(PROD_TUNNEL_ENV_FILE="" prod_tunnel_target)" = "root@178.105.221.61" ] || { rm -f "$envfile"; return 1; }
+    # Hermetic against the caller's own shell: an exported KINOWO_MONGO_SSH would
+    # otherwise win every assertion below. (An `X="" [ "$(...)" ]` prefix does not
+    # do this -- it scopes to `[`, and the substitution has already run by then.)
+    unset KINOWO_MONGO_SSH PROD_TUNNEL_ENV_FILE
+    [ "$(prod_tunnel_target)" = "root@178.105.221.61" ] || { rm -f "$envfile"; return 1; }
     [ "$(PROD_TUNNEL_ENV_FILE="$envfile" prod_tunnel_target)" = "root@from-env-file" ] || { rm -f "$envfile"; return 1; }
     [ "$(PROD_TUNNEL_ENV_FILE="$envfile" KINOWO_MONGO_SSH="root@override" prod_tunnel_target)" = "root@override" ] \
       || { rm -f "$envfile"; return 1; }
