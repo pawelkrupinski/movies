@@ -624,6 +624,40 @@ class MobileReleaseBaseline(unittest.TestCase):
         self.assertEqual(app.unreleased_commits(base, "ios"), [])
 
 
+class MobileTagFetch(unittest.TestCase):
+    """The mobile-* tags are pushed by CI (Android) and by whichever laptop ran ios-release.sh, and
+    FORCE-moved when a version is re-uploaded. A plain `git pull` auto-follows a NEW tag but
+    refuses to move an existing one, so without a forced fetch this checkout would keep anchoring
+    a re-uploaded version on the commit its first, superseded build came from."""
+
+    def setUp(self):
+        self.origin = _TempRepo()
+        self.first = self.origin.commit("android/a.kt", "Release mobile 2.0.9")
+        self.origin.tag("mobile-android-2.0.9", self.first)
+        self.clone_dir = tempfile.TemporaryDirectory()
+        self.clone = os.path.join(self.clone_dir.name, "clone")
+        subprocess.run(["git", "clone", "-q", self.origin.root, self.clone], check=True)
+        self._orig_root = app.ROOT_DIR
+        app.ROOT_DIR = self.clone
+
+    def tearDown(self):
+        app.ROOT_DIR = self._orig_root
+        self.clone_dir.cleanup()
+        self.origin.cleanup()
+
+    def test_a_force_moved_tag_on_origin_is_moved_here_too(self):
+        second = self.origin.commit("android/b.kt", "fix the build")
+        self.origin.tag("mobile-android-2.0.9", second)
+        self.assertEqual(app.mobile_tag_sha("android", "2.0.9"), self.first)  # the stale view
+        self.assertTrue(app.fetch_mobile_tags())
+        self.assertEqual(app.mobile_tag_sha("android", "2.0.9"), second)
+
+    def test_a_checkout_with_no_reachable_origin_is_not_fatal(self):
+        subprocess.run(["git", "remote", "set-url", "origin", "/nonexistent"], cwd=self.clone, check=True)
+        self.assertFalse(app.fetch_mobile_tags())
+        self.assertEqual(app.mobile_tag_sha("android", "2.0.9"), self.first)
+
+
 class MobileBuildAssembly(unittest.TestCase):
     """build_mobile()'s only real job is wiring each store's own live_version to ITS OWN baseline
     commit and diffing ITS OWN directory from there. That independence is the whole point of the

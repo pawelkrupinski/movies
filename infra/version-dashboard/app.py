@@ -2220,6 +2220,30 @@ def reachable_from_head(sha):
 _UNSET = object()
 
 
+# Bound on the forced tag fetch below. Short: it runs on every build, and a slow or unreachable
+# origin must cost a page seconds, never the whole MOBILE_GIT_TIMEOUT.
+MOBILE_TAG_FETCH_TIMEOUT = 15
+
+
+def fetch_mobile_tags():
+    """Force-fetches origin's `mobile-*` tags into this checkout; returns whether that worked.
+
+    FORCED because the tags MOVE: tag-mobile-release.sh force-moves `mobile-<platform>-<version>`
+    whenever a version is re-uploaded, and `git fetch`/`git pull` auto-follow a NEW tag but refuse
+    to move an existing one -- so without `+` this checkout would keep anchoring that version on
+    its first, superseded build. Only `mobile-*`, so no other local tag is ever overwritten.
+
+    Non-fatal: a failure leaves the tags as they were, which is exactly what the page showed before
+    this fetch existed."""
+    ok, _, err = run(["git", "fetch", "--quiet", "--no-tags", "origin",
+                      "+refs/tags/mobile-*:refs/tags/mobile-*"],
+                     cwd=ROOT_DIR, timeout=MOBILE_TAG_FETCH_TIMEOUT)
+    if not ok:
+        print(f"mobile dashboard: could not fetch mobile-* tags ({err}); using local tags",
+              file=sys.stderr, flush=True)
+    return ok
+
+
 def mobile_tag_sha(platform, version):
     """The commit a mobile-<platform>-<version> tag points at, or None if no such tag exists --
     the lookup release_commit_for() and the "why didn't this resolve" error message both need,
@@ -2285,10 +2309,14 @@ def unreleased_commits(baseline_sha, subdir):
 
 def build_mobile():
     started = time.time()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+        # The tag fetch overlaps the two store round-trips; it must land before any tag is
+        # resolved below, which `.result()` guarantees.
+        f_tags = pool.submit(fetch_mobile_tags)
         f_ios = pool.submit(ios_release_state)
         f_android = pool.submit(android_release_state)
         raw = {"iOS": (f_ios.result(), "ios"), "Android": (f_android.result(), "android")}
+        f_tags.result()
 
     platforms = []
     for name, (state, subdir) in raw.items():
