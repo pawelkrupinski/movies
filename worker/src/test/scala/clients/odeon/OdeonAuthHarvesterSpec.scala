@@ -72,4 +72,18 @@ class OdeonAuthHarvesterSpec extends AnyFlatSpec with Matchers {
     h.invalidate()
     h.token(); calls shouldBe 2
   }
+
+  // The token harvest is a paid Zyte request like any other, and was the one Zyte
+  // call the paid-egress counter could not see.
+  "zyteFetchPage's metering" should "record each browserHtml call's outcome on the paid-egress meter" in {
+    val seen  = scala.collection.mutable.ListBuffer.empty[String]
+    val meter: tools.HttpOutcomeRecorder = (o: String) => seen += o
+
+    OdeonAuthHarvester.meteredBrowserHtml(meter)(200 -> """{"browserHtml":"<html/>"}""") shouldBe Some("<html/>")
+    OdeonAuthHarvester.meteredBrowserHtml(meter)(401 -> "denied") shouldBe None
+    OdeonAuthHarvester.meteredBrowserHtml(meter)(throw new java.net.http.HttpTimeoutException("slow")) shouldBe None
+
+    seen.toList shouldBe List(tools.HttpOutcome.Success, tools.HttpOutcome.Http401, tools.HttpOutcome.Timeout)
+  }
 }
+

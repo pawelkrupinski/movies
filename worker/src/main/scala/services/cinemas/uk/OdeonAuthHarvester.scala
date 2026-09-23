@@ -3,6 +3,7 @@ package services.cinemas.uk
 import play.api.libs.json.Json
 import play.api.Logging
 import services.cinemas.common.ZyteClient
+import tools.{HttpOutcome, HttpOutcomeRecorder, HttpStatusException}
 
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
@@ -99,10 +100,12 @@ object OdeonAuthHarvester {
 
   /** Production `fetchPage`: one Zyte `browserHtml` POST. Unlike `httpResponseBody`
    *  (which [[ZyteClient]] uses and base64-encodes), `browserHtml` comes back as a
-   *  plain UTF-8 string. `None` when no key is set or the call fails. */
-  def zyteFetchPage(apiKey: Option[String], pageUrl: String = OdeonPageUrl): Option[String] =
+   *  plain UTF-8 string. `None` when no key is set or the call fails. Each call is a
+   *  paid Zyte request, so its outcome goes to `meter` — the paid-egress counter. */
+  def zyteFetchPage(apiKey: Option[String], pageUrl: String = OdeonPageUrl,
+                    meter: HttpOutcomeRecorder = HttpOutcomeRecorder.noop): Option[String] =
     apiKey.filter(_.nonEmpty).flatMap { key =>
-      try {
+      meteredBrowserHtml(meter) {
         val client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build()
         val body   = Json.obj("url" -> pageUrl, "browserHtml" -> true).toString
         val request = HttpRequest.newBuilder()
@@ -113,9 +116,27 @@ object OdeonAuthHarvester {
           .POST(HttpRequest.BodyPublishers.ofString(body, UTF_8))
           .build()
         val response = client.send(request, HttpResponse.BodyHandlers.ofString(UTF_8))
-        if (response.statusCode() == 200) (Json.parse(response.body()) \ "browserHtml").asOpt[String]
-        else None
-      } catch { case NonFatal(_) => None }
+        (response.statusCode(), response.body())
+      }
+    }
+
+  /** Run one Zyte `browserHtml` `call` (status, body), record its outcome on
+   *  `meter` — a non-200 classed by its status, a throw by its type — and answer
+   *  the page, or `None`. Split out so the metering is testable offline. */
+  def meteredBrowserHtml(meter: HttpOutcomeRecorder)(call: => (Int, String)): Option[String] =
+    try {
+      val (status, body) = call
+      if (status == 200) {
+        meter.record(HttpOutcome.Success)
+        (Json.parse(body) \ "browserHtml").asOpt[String]
+      } else {
+        meter.record(HttpOutcome.classify(new HttpStatusException(status, "POST", ZyteEndpoint, None)))
+        None
+      }
+    } catch {
+      case NonFatal(e) =>
+        meter.record(HttpOutcome.classify(e))
+        None
     }
 
   private val ZyteEndpoint = "https://api.zyte.com/v1/extract"

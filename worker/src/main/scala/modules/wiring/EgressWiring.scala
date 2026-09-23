@@ -148,7 +148,7 @@ trait EgressWiring { self: WorkerWiring =>
   // cache — ~2 browser fetches/day — so Odeon's ocapi pulls run over plain `http`.
   // No key (CI/local) → token() is None → Odeon venues ride the flicks fallback.
   lazy val odeonAuthHarvester: OdeonAuthHarvester =
-    new OdeonAuthHarvester(() => OdeonAuthHarvester.zyteFetchPage(Env.get("ZYTE_API_KEY")))
+    new OdeonAuthHarvester(() => OdeonAuthHarvester.zyteFetchPage(Env.get("ZYTE_API_KEY"), meter = zyteMeter))
 }
 
 object EgressWiring {
