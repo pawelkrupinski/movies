@@ -15,9 +15,9 @@ import java.io.IOException
 /**
  * The account's language pick — the one thing still riding the legacy
  * `/api/me/state` document now that hiddenFilms moved to [HiddenFilmsClient]
- * and disabledCinemas is device-local (see [pl.kinowo.data.SyncPrefs]'s doc
- * comment): there's no granular endpoint for a single scalar pick, only for
- * the two sets that used to share this document with it. Mirrors iOS's
+ * and disabledCinemas is device-local: there's no granular endpoint for a
+ * single scalar pick, only for the two sets that used to share this document
+ * with it. Mirrors iOS's
  * equivalent split.
  */
 interface LanguageClient {

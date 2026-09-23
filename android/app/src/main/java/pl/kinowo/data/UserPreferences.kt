@@ -1,6 +1,8 @@
 package pl.kinowo.data
 
 import android.content.Context
+import androidx.datastore.preferences.core.MutablePreferences
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -10,25 +12,27 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
+import pl.kinowo.model.Country
 
 private val Context.dataStore by preferencesDataStore(name = "kinowo_prefs")
 
 /**
- * The slice of preferences [pl.kinowo.auth.StateSyncService] touches, PLUS
- * disabledCinemas — which it stopped touching (device-local now), but stays
- * on this interface since it's still the shared seam other local-only
- * consumers (the cinema filter UI) read/write through. hiddenFilms
- * round-trips to `/api/me/{country}/hidden-films`; the language pick still
- * rides the legacy `/api/me/state` (there's no granular endpoint for a
- * single scalar). Narrowing the sync service to this interface keeps it
- * unit-testable against an in-memory fake instead of a real DataStore.
+ * The slice of preferences [pl.kinowo.auth.StateSyncService] touches:
+ * hiddenFilms (round-trips to `/api/me/{country}/hidden-films`) and the
+ * language pick (still rides the legacy `/api/me/state` — there's no granular
+ * endpoint for a single scalar). Narrowing the sync service to this interface
+ * keeps it unit-testable against an in-memory fake instead of a real DataStore.
+ *
+ * hiddenFilms is keyed by country on this side too, because it is on the
+ * server: a sync that computed a country and then wrote a device-wide set
+ * could only ever be right for one country at a time.
  */
 interface SyncPrefs {
-    val hiddenFilms: Flow<Set<String>>
-    val disabledCinemas: Flow<Set<String>>
     val selectedCountryCode: Flow<String?>
-    suspend fun setHiddenFilms(films: Set<String>)
-    suspend fun setDisabledCinemas(cinemas: Set<String>)
+
+    /** [country]'s hidden titles (server code space — `pl`, `uk`, …). */
+    suspend fun hiddenFilmsFor(country: String): Set<String>
+    suspend fun setHiddenFilms(country: String, films: Set<String>)
 
     /** True once [pl.kinowo.auth.StateSyncService] has done its one-time
      *  local→server migration FOR THIS COUNTRY. After that the server is
@@ -63,18 +67,20 @@ interface SyncPrefs {
 }
 
 /**
- * Per-device hidden-films + disabled-cinemas state, persisted with
- * Preferences DataStore. Mirrors what the iOS app keeps in UserDefaults and
- * the web keeps in `localStorage` for anonymous users. When the user signs
- * in, [pl.kinowo.auth.StateSyncService] mirrors hiddenFilms to the server —
- * disabledCinemas is device-local only, in every direction.
+ * Per-device preferences, persisted with Preferences DataStore. Mirrors what
+ * the iOS app keeps in UserDefaults and the web keeps in `localStorage` for
+ * anonymous users. When the user signs in, [pl.kinowo.auth.StateSyncService]
+ * mirrors hiddenFilms (per country) to the server — disabledCinemas is
+ * device-local only, in every direction.
  */
 class UserPreferences(private val context: Context) : SyncPrefs {
 
-    override val hiddenFilms: Flow<Set<String>> =
-        context.dataStore.data.map { it[KEY_HIDDEN] ?: emptySet() }
+    /** The hidden titles of the country being browsed — re-emits on a
+     *  country switch, since both come from the same snapshot. */
+    val hiddenFilms: Flow<Set<String>> =
+        context.dataStore.data.map { it.hiddenIn(it.currentCountry()) }
 
-    override val disabledCinemas: Flow<Set<String>> =
+    val disabledCinemas: Flow<Set<String>> =
         context.dataStore.data.map { it[KEY_DISABLED] ?: emptySet() }
 
     /** Slugs of split cities whose first-visit area picker the user has already
@@ -128,6 +134,7 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         context.dataStore.data.map { it[KEY_COUNTRY] }
 
     suspend fun setCountryCode(code: String) = context.dataStore.edit { prefs ->
+        prefs.settleLegacyHiddenFilms()
         prefs[KEY_COUNTRY] = code
     }
 
@@ -141,6 +148,7 @@ class UserPreferences(private val context: Context) : SyncPrefs {
      *  vanishes with the teardown. See
      *  [pl.kinowo.ui.KinowoViewModel.adoptDetectedCity]. */
     suspend fun setCityInCountry(slug: String, code: String) = context.dataStore.edit { prefs ->
+        prefs.settleLegacyHiddenFilms()
         prefs[KEY_COUNTRY] = code
         prefs[KEY_CITY] = slug
         prefs.remove(KEY_EXPLICIT_PICK)
@@ -209,23 +217,80 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         context.dataStore.data.map { it[KEY_POSTER_PURGE_DATE] ?: "" }
 
     suspend fun hide(title: String) = context.dataStore.edit { prefs ->
-        prefs[KEY_HIDDEN] = (prefs[KEY_HIDDEN] ?: emptySet()) + title
+        val country = prefs.currentCountry()
+        prefs.putHidden(country, prefs.hiddenIn(country) + title)
     }
 
     suspend fun unhide(title: String) = context.dataStore.edit { prefs ->
-        prefs[KEY_HIDDEN] = (prefs[KEY_HIDDEN] ?: emptySet()) - title
+        val country = prefs.currentCountry()
+        prefs.putHidden(country, prefs.hiddenIn(country) - title)
     }
 
+    /** Unhide everything in the country being browsed — the other countries'
+     *  sets belong to their own server rows and stay put. */
     suspend fun unhideAll() = context.dataStore.edit { prefs ->
-        prefs[KEY_HIDDEN] = emptySet()
+        prefs.putHidden(prefs.currentCountry(), emptySet())
     }
 
-    override suspend fun setHiddenFilms(films: Set<String>) {
-        context.dataStore.edit { prefs -> prefs[KEY_HIDDEN] = films }
+    /** Forget every country's hidden titles (account deletion). */
+    suspend fun clearAllHiddenFilms() = context.dataStore.edit { prefs ->
+        prefs.asMap().keys.filter { it.name.startsWith(HIDDEN_PREFIX) }.forEach { prefs.remove(it) }
+        prefs.remove(KEY_HIDDEN_LEGACY)
     }
 
-    override suspend fun setDisabledCinemas(cinemas: Set<String>) {
+    override suspend fun hiddenFilmsFor(country: String): Set<String> =
+        context.dataStore.data.first().hiddenIn(country)
+
+    override suspend fun setHiddenFilms(country: String, films: Set<String>) {
+        context.dataStore.edit { prefs -> prefs.putHidden(country, films) }
+    }
+
+    suspend fun setDisabledCinemas(cinemas: Set<String>) {
         context.dataStore.edit { prefs -> prefs[KEY_DISABLED] = cinemas }
+    }
+
+    /** The DataStore is a process singleton, shared by every Robolectric
+     *  test in a Gradle fork — a test that writes state others assert on
+     *  wipes it afterwards. */
+    @androidx.annotation.VisibleForTesting
+    internal suspend fun clearAllForTest() {
+        context.dataStore.edit { it.clear() }
+    }
+
+    @androidx.annotation.VisibleForTesting
+    internal suspend fun writeLegacyHiddenFilms(films: Set<String>) {
+        context.dataStore.edit { prefs ->
+            prefs.remove(hiddenKey(prefs.currentCountry()))
+            prefs[KEY_HIDDEN_LEGACY] = films
+        }
+    }
+
+    // ── per-country hiddenFilms ──────────────────────────────────────────
+    // Builds before per-country sets kept ONE device-wide set under
+    // KEY_HIDDEN_LEGACY. It is read as the set of the country being browsed
+    // until either that country's own set is first written (the legacy set is
+    // folded into it) or the country changes (it is pinned to the country it
+    // was made in) — so it never follows the user into another country.
+
+    /** The country being browsed, resolved the way MainActivity picks the
+     *  API base URL (null → default, legacy `GB` → `uk`). */
+    private fun Preferences.currentCountry(): String = Country.byCode(this[KEY_COUNTRY]).code
+
+    private fun Preferences.hiddenIn(country: String): Set<String> =
+        this[hiddenKey(country)]
+            ?: this[KEY_HIDDEN_LEGACY]?.takeIf { country == currentCountry() }
+            ?: emptySet()
+
+    private fun MutablePreferences.putHidden(country: String, films: Set<String>) {
+        if (country == currentCountry()) remove(KEY_HIDDEN_LEGACY)
+        this[hiddenKey(country)] = films
+    }
+
+    private fun MutablePreferences.settleLegacyHiddenFilms() {
+        val legacy = this[KEY_HIDDEN_LEGACY] ?: return
+        val country = currentCountry()
+        if (this[hiddenKey(country)] == null) this[hiddenKey(country)] = legacy
+        remove(KEY_HIDDEN_LEGACY)
     }
 
     override suspend fun isHiddenFilmsMigrated(country: String): Boolean =
@@ -260,6 +325,7 @@ class UserPreferences(private val context: Context) : SyncPrefs {
     // Dynamic, per-country keys — DataStore Preferences keys need not be static
     // vals, so "one key per country" is just a computed name rather than a
     // schema migration every time a country is added.
+    private fun hiddenKey(country: String) = stringSetPreferencesKey("$HIDDEN_PREFIX$country")
     private fun migratedKey(country: String) = booleanPreferencesKey("$MIGRATED_PREFIX$country")
     private fun etagKey(country: String) = stringPreferencesKey("$ETAG_PREFIX$country")
     private fun lastModifiedKey(country: String) = stringPreferencesKey("$LAST_MODIFIED_PREFIX$country")
@@ -281,7 +347,8 @@ class UserPreferences(private val context: Context) : SyncPrefs {
     }
 
     private companion object {
-        val KEY_HIDDEN = stringSetPreferencesKey("hiddenFilms")
+        val KEY_HIDDEN_LEGACY = stringSetPreferencesKey("hiddenFilms")
+        const val HIDDEN_PREFIX = "hiddenFilms_"
         val KEY_DISABLED = stringSetPreferencesKey("disabledCinemas")
         val KEY_CITY = stringPreferencesKey("selectedCity")
         val KEY_COUNTRY = stringPreferencesKey("selectedCountryCode")

@@ -53,7 +53,7 @@ class CinemaLabelAlwaysShownTest {
         // Hermetic: the DataStore is process-wide in the Robolectric JVM, so
         // clear any cinema exclusions a prior test persisted before mounting.
         val prefs = UserPreferences(context)
-        runBlocking { prefs.setDisabledCinemas(emptySet()); prefs.setHiddenFilms(emptySet()) }
+        runBlocking { prefs.setDisabledCinemas(emptySet()); prefs.unhideAll() }
         val zone = ZoneId.of("Europe/Warsaw")
         val today = LocalDate.now(zone).format(DateTimeFormatter.ISO_DATE)
         // A single film, at a SINGLE cinema, late enough to survive past-pruning.

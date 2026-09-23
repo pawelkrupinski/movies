@@ -13,12 +13,13 @@ import pl.kinowo.model.Country
 /**
  * Keeps per-device [SyncPrefs] hiddenFilms — and the account's language pick —
  * in step with the server while signed in — the Android counterpart of iOS
- * `StateSyncService`. disabledCinemas is device-local (see [SyncPrefs]'s doc
- * comment) and never touched here.
+ * `StateSyncService`. disabledCinemas is device-local and never touched here.
  *
- * hiddenFilms is per-country server-side now (`/api/me/{country}/hidden-films`
+ * hiddenFilms is per country on both sides (`/api/me/{country}/hidden-films`
  * — a title isn't globally unique across countries the way a cinema display
- * name is), so migration/authority is tracked per country too: the FIRST
+ * name is), and every read/write here names the country it fetched for, so a
+ * reconcile that lands after a country switch can't touch the new country's
+ * set. Migration/authority is tracked per country too: the FIRST
  * reconcile for a given country unions local + remote (so nothing set while
  * signed-out, or set for a country never reconciled on this device, is
  * lost), pushes each LOCAL-ONLY title with its own `hide` call (there is no
@@ -118,15 +119,15 @@ class StateSyncService(
                     is HiddenFilmsFetchResult.NotModified -> Unit
                     is HiddenFilmsFetchResult.Changed -> {
                         val state = result.state
-                        if (state.hiddenFilms != prefs.hiddenFilms.first()) prefs.setHiddenFilms(state.hiddenFilms)
+                        if (state.hiddenFilms != prefs.hiddenFilmsFor(country)) prefs.setHiddenFilms(country, state.hiddenFilms)
                         prefs.setHiddenFilmsValidators(country, state.etag, state.lastModified)
                     }
                 }
             } else {
                 val remote = (client.fetch(country, null, null) as? HiddenFilmsFetchResult.Changed)?.state
-                val local = prefs.hiddenFilms.first()
+                val local = prefs.hiddenFilmsFor(country)
                 val merged = local + (remote?.hiddenFilms ?: emptySet())
-                if (merged != local) prefs.setHiddenFilms(merged)
+                if (merged != local) prefs.setHiddenFilms(country, merged)
 
                 var latest = remote
                 (local - (remote?.hiddenFilms ?: emptySet())).forEach { title -> latest = client.hide(country, title) }

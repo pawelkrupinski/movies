@@ -20,6 +20,7 @@ import pl.kinowo.auth.LanguageClient
 import pl.kinowo.auth.StateSyncService
 import pl.kinowo.auth.UserProfile
 import pl.kinowo.data.SyncPrefs
+import pl.kinowo.model.Country
 import java.io.IOException
 
 /**
@@ -59,34 +60,22 @@ class StateSyncServiceTest {
         login()
         advanceUntilIdle()
 
-        assertEquals(setOf("Film A", "Film B"), prefs.hiddenState.value)
+        assertEquals(setOf("Film A", "Film B"), prefs.hiddenState)
     }
 
     @Test
     fun loginMergesLocalAndRemoteHiddenPushingOnlyTheLocalOnlyTitles() = runTest(UnconfinedTestDispatcher()) {
         prefs.countryState.value = "pl"
-        prefs.hiddenState.value = setOf("Local Only")
+        prefs.hiddenByCountry["pl"] = setOf("Local Only")
         client.remote["pl"] = setOf("Remote Only")
         startService()
         login()
         advanceUntilIdle()
 
-        assertEquals(setOf("Local Only", "Remote Only"), prefs.hiddenState.value)
+        assertEquals(setOf("Local Only", "Remote Only"), prefs.hiddenState)
         // Only the title the server didn't already have was pushed — there is
         // no bulk write, so the diff must be exact, not "everything local".
         assertEquals(listOf("Local Only" to "pl"), client.hideCalls)
-    }
-
-    @Test
-    fun mergeNeverTouchesDisabledCinemas() = runTest(UnconfinedTestDispatcher()) {
-        prefs.countryState.value = "pl"
-        prefs.disabledState.value = setOf("Local Only Cinema")
-        client.remote["pl"] = setOf("Film A")
-        startService()
-        login()
-        advanceUntilIdle()
-
-        assertEquals(setOf("Local Only Cinema"), prefs.disabledState.value)
     }
 
     @Test
@@ -96,7 +85,7 @@ class StateSyncServiceTest {
         startService()
         advanceUntilIdle()
 
-        assertTrue(prefs.hiddenState.value.isEmpty())
+        assertTrue(prefs.hiddenState.isEmpty())
         assertTrue(client.hideCalls.isEmpty())
     }
 
@@ -110,7 +99,7 @@ class StateSyncServiceTest {
         login()
         advanceUntilIdle()
 
-        assertEquals(setOf("Film A"), prefs.hiddenState.value)
+        assertEquals(setOf("Film A"), prefs.hiddenState)
         assertEquals(listOf("pl"), client.fetchCalls)
     }
 
@@ -119,7 +108,7 @@ class StateSyncServiceTest {
         // Earlier builds persisted ISO codes; the per-country API and the
         // migration-flag keys use the server's code space.
         prefs.countryState.value = "GB"
-        prefs.hiddenState.value = setOf("Local Only")
+        prefs.hiddenByCountry["uk"] = setOf("Local Only")
         startService()
         login()
         advanceUntilIdle()
@@ -142,13 +131,13 @@ class StateSyncServiceTest {
     @Test
     fun fetchFailurePreservesLocalState() = runTest(UnconfinedTestDispatcher()) {
         prefs.countryState.value = "pl"
-        prefs.hiddenState.value = setOf("My Film")
+        prefs.hiddenByCountry["pl"] = setOf("My Film")
         client.shouldFailFetch = true
         startService()
         login()
         advanceUntilIdle()
 
-        assertEquals(setOf("My Film"), prefs.hiddenState.value)
+        assertEquals(setOf("My Film"), prefs.hiddenState)
         assertTrue(client.hideCalls.isEmpty())
     }
 
@@ -163,7 +152,7 @@ class StateSyncServiceTest {
         startService()
         login()
         advanceUntilIdle()
-        assertEquals(setOf("Film A"), prefs.hiddenState.value)
+        assertEquals(setOf("Film A"), prefs.hiddenState)
         assertTrue(prefs.isHiddenFilmsMigrated("pl"))
 
         // Another device removes Film A from the account.
@@ -174,7 +163,7 @@ class StateSyncServiceTest {
         userFlow2.value = UserProfile(displayName = "Test", email = "test@test.com", provider = "google")
         advanceUntilIdle()
 
-        assertEquals(emptySet<String>(), prefs.hiddenState.value)
+        assertEquals(emptySet<String>(), prefs.hiddenState)
     }
 
     /** Each country migrates independently — a country already synced doesn't
@@ -261,13 +250,99 @@ class StateSyncServiceTest {
         val service = startService()
         login()
         advanceUntilIdle()
-        assertEquals(setOf("Film A"), prefs.hiddenState.value)
+        assertEquals(setOf("Film A"), prefs.hiddenState)
 
         client.remote["pl"] = setOf("Film A", "Film B") // changed elsewhere while backgrounded
         service.reconcileCurrentCountry()
         advanceUntilIdle()
 
-        assertEquals(setOf("Film A", "Film B"), prefs.hiddenState.value)
+        assertEquals(setOf("Film A", "Film B"), prefs.hiddenState)
+    }
+
+    // ── Country switches — hiddenFilms is per country on both sides ────────
+
+    /** A switch re-runs the first-login union for a never-synced country.
+     *  With one device-wide set, that union pulled the OLD country's hides in
+     *  and uploaded them to the new country's account row. */
+    @Test
+    fun switchingToANeverSyncedCountryNeverUploadsTheOldCountrysHides() = runTest(UnconfinedTestDispatcher()) {
+        prefs.countryState.value = "pl"
+        client.remote["pl"] = setOf("Film PL")
+        startService()
+        login()
+        advanceUntilIdle()
+
+        // MainActivity recreates on a country switch: a fresh service, same prefs.
+        prefs.countryState.value = "uk"
+        client.remote["uk"] = setOf("Film UK")
+        val userAfterSwitch = MutableStateFlow<UserProfile?>(null)
+        StateSyncService(prefs, userAfterSwitch, client, languageClient, backgroundScope).also { it.start() }
+        userAfterSwitch.value = UserProfile(displayName = "Test", email = "test@test.com", provider = "google")
+        advanceUntilIdle()
+
+        assertTrue("nothing from Poland may be pushed to the UK row", client.hideCalls.none { it.second == "uk" })
+        assertEquals(setOf("Film UK"), prefs.hiddenState)
+        assertEquals(setOf("Film PL"), prefs.hiddenByCountry["pl"])
+    }
+
+    /** Switching back to an already-synced country usually answers 304 —
+     *  which must leave THAT country's own set showing, not whatever the
+     *  other country last put in a shared one. */
+    @Test
+    fun aNotModifiedOnSwitchBackKeepsThatCountrysOwnSet() = runTest(UnconfinedTestDispatcher()) {
+        prefs.countryState.value = "pl"
+        client.remote["pl"] = setOf("Film PL")
+        startService()
+        login()
+        advanceUntilIdle()
+        prefs.setHiddenFilms("uk", setOf("Film UK"))
+
+        client.notModified = true
+        val service = StateSyncService(prefs, userFlow, client, languageClient, backgroundScope)
+        service.reconcileCurrentCountry()
+
+        assertEquals(setOf("Film PL"), prefs.hiddenState)
+    }
+
+    /** A reconcile still in flight when the country changes writes the result
+     *  to the country it FETCHED, never onto the one selected by the time it
+     *  lands. */
+    @Test
+    fun aReconcileLandingAfterASwitchWritesOnlyItsOwnCountry() = runTest(UnconfinedTestDispatcher()) {
+        prefs.countryState.value = "pl"
+        client.remote["pl"] = setOf("Film PL")
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        client.beforeFetch = { gate.await() }
+        startService()
+        login()
+        runCurrent() // the pl reconcile is now parked inside fetch
+
+        prefs.countryState.value = "uk"
+        prefs.setHiddenFilms("uk", setOf("Film UK"))
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(setOf("Film UK"), prefs.hiddenState)
+        assertEquals(setOf("Film PL"), prefs.hiddenByCountry["pl"])
+    }
+
+    /** A second non-null user emission (session re-check returning a changed
+     *  profile) restarts the sync job rather than stacking a second one, so a
+     *  local change is still pushed exactly once. */
+    @Test
+    fun aRepeatedLoginEmissionDoesNotDoubleTheLanguagePush() = runTest(UnconfinedTestDispatcher()) {
+        startService()
+        login()
+        advanceUntilIdle()
+        userFlow.value = UserProfile(displayName = "Test Renamed", email = "test@test.com", provider = "google")
+        advanceUntilIdle()
+        languageClient.pushCount = 0
+
+        prefs.setLanguageTag("de")
+        advanceTimeBy(500)
+        runCurrent()
+
+        assertEquals(1, languageClient.pushCount)
     }
 
     // ── Language sync — a scalar, so no migration-flag dance, and its own
@@ -333,20 +408,20 @@ class StateSyncServiceTest {
 }
 
 private class FakeSyncPrefs : SyncPrefs {
-    val hiddenState = MutableStateFlow<Set<String>>(emptySet())
-    val disabledState = MutableStateFlow<Set<String>>(emptySet())
+    val hiddenByCountry = mutableMapOf<String, Set<String>>()
     val countryState = MutableStateFlow<String?>(null)
     val languageState = MutableStateFlow<String?>(null)
     private val migrated = mutableSetOf<String>()
     private val etags = mutableMapOf<String, String?>()
     private val lastModifieds = mutableMapOf<String, String?>()
 
-    override val hiddenFilms = hiddenState
-    override val disabledCinemas = disabledState
+    /** The set of whichever country is selected — what the UI would show. */
+    val hiddenState: Set<String> get() = hiddenByCountry[Country.byCode(countryState.value).code] ?: emptySet()
+
     override val selectedCountryCode = countryState
 
-    override suspend fun setHiddenFilms(films: Set<String>) { hiddenState.value = films }
-    override suspend fun setDisabledCinemas(cinemas: Set<String>) { disabledState.value = cinemas }
+    override suspend fun hiddenFilmsFor(country: String): Set<String> = hiddenByCountry[country] ?: emptySet()
+    override suspend fun setHiddenFilms(country: String, films: Set<String>) { hiddenByCountry[country] = films }
 
     override suspend fun isHiddenFilmsMigrated(country: String): Boolean = country in migrated
     override suspend fun setHiddenFilmsMigrated(country: String, migrated: Boolean) {
@@ -377,10 +452,14 @@ private class FakeHiddenFilmsClient : HiddenFilmsClient {
     val clearCalls = mutableListOf<String>()
     val fetchCalls = mutableListOf<String>()
     var shouldFailFetch = false
+    var notModified = false
+    var beforeFetch: suspend () -> Unit = {}
 
     override suspend fun fetch(country: String, etag: String?, lastModified: String?): HiddenFilmsFetchResult {
         fetchCalls += country
+        beforeFetch()
         if (shouldFailFetch) throw IOException("no network")
+        if (notModified && etag != null) return HiddenFilmsFetchResult.NotModified
         return HiddenFilmsFetchResult.Changed(HiddenFilmsState(remote[country] ?: emptySet(), "\"etag-$country\"", "lm-$country"))
     }
 
@@ -406,7 +485,8 @@ private class FakeHiddenFilmsClient : HiddenFilmsClient {
 private class FakeLanguageClient : LanguageClient {
     var remote: String? = null
     var lastPushed: String? = null
+    var pushCount = 0
 
     override suspend fun fetch(): String? = remote
-    override suspend fun push(language: String) { lastPushed = language }
+    override suspend fun push(language: String) { lastPushed = language; pushCount++ }
 }

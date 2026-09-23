@@ -635,7 +635,7 @@ class KinowoViewModel(
     fun unhideAll() = viewModelScope.launch { prefs.unhideAll(); sync.clear() }
     /** Replace the excluded-cinemas set. The Filtry sheet's "Kina" section works
      *  out the new set via [pl.kinowo.filter.CinemaFilterSection] and hands it
-     *  here; deep links and the server sync write through the same path. */
+     *  here; deep links write through the same path. */
     fun setDisabledCinemas(set: Set<String>) =
         viewModelScope.launch { prefs.setDisabledCinemas(set) }
 
@@ -672,10 +672,10 @@ class KinowoViewModel(
     fun signOut() = viewModelScope.launch { authRepository.signOut() }
 
     /** Delete the account, then wipe local prefs — matches iOS, which clears
-     *  hidden films + disabled cinemas after `deleteAccount()`. */
+     *  hidden films (every country's) + disabled cinemas after `deleteAccount()`. */
     fun deleteAccount() = viewModelScope.launch {
         authRepository.deleteAccount()
-        prefs.unhideAll()
+        prefs.clearAllHiddenFilms()
         prefs.setDisabledCinemas(emptySet())
         // Otherwise a stale per-country migration flag survives into the next
         // login: reconcile would see "already migrated" for a country whose
