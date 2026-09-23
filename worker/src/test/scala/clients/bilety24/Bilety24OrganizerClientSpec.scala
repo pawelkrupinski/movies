@@ -122,4 +122,28 @@ class Bilety24OrganizerClientSpec
     movies.map(_.movie.title) shouldBe Seq("Monterey Pop")
     movies.head.showtimes.map(_.format).toSet shouldBe Set(List.empty[String])
   }
+
+  it should "list each screening once, although the page links it twice (event page + buy button)" in {
+    // bilety24 renders every bookable screening as TWO anchors with near-identical
+    // titles: the event page `/kino/<id>-<slug>-<eid>` ("Film: X - date time - city")
+    // and the buy button `/kup-bilet-na-<id>-<slug>-<eid>` ("Kup bilet - Film: X - …").
+    // Both parsed as slots, and the (dateTime, bookingUrl) dedup kept both — prod
+    // served every Braniewo/Środa screening twice until 2026-09-23.
+    val html = new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(
+      "worker/src/test/resources/fixtures/roster-audit/bilety24-organiser-477-sroda-wielkopolska.html")),
+      java.nio.charset.StandardCharsets.UTF_8)
+    html should include("kup-bilet-na-") // the shape under test is really in the fixture
+    val movies = Bilety24OrganizerClient.parse(html, KinoForumBoleslawiec, titleNormalizer)
+
+    val EventId  = """[?&]id=(\d+)""".r
+    val urls     = movies.flatMap(_.showtimes).map(_.bookingUrl.value)
+    val eventIds = urls.map(u => EventId.findFirstMatchIn(u).value.group(1))
+
+    eventIds should not be empty
+    eventIds.distinct should have size eventIds.size.toLong // each screening exactly once
+    // The event page wins where the page has one; a buy button alone (some screenings
+    // are linked only that way) still keeps its screening.
+    urls should contain("https://www.bilety24.pl/kino/477-100-dni-misja-zeus-162003?id=987082")
+    urls should contain("https://www.bilety24.pl/kup-bilet-na-477-ksiega-pustyni-161744?id=990819")
+  }
 }

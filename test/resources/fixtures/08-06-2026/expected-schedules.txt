@@ -2165,11 +2165,11 @@ showings:
   2026-06-10  Cinema City Kinepolis         12:00 Sala 13 2D/DUB · 16:00 Sala 1 2D/DUB · 18:40 Sala 8 2D/DUB
   2026-06-10  Cinema City Poznań Plaza      10:00 Sala 6 2D/DUB · 11:10 Sala 1 2D/DUB · 16:00 Sala 1 2D/DUB
   2026-06-10  Helios Posnania               11:10 Sala 8 2D/DUB · 13:10 Sala 3 2D/DUB · 15:50 Sala 3 2D/DUB
-  2026-06-10  Kino Baszta Środa             20:30 · 20:30
+  2026-06-10  Kino Baszta Środa             20:30
   2026-06-11  Cinema City Kinepolis         12:00 Sala 13 2D/DUB · 16:00 Sala 1 2D/DUB · 18:40 Sala 8 2D/DUB
   2026-06-11  Cinema City Poznań Plaza      10:00 Sala 1 2D/DUB · 16:00 Sala 1 2D/DUB
   2026-06-11  Helios Posnania               11:10 Sala 2 2D/DUB · 13:10 Sala 3 2D/DUB · 15:50 Sala 3 2D/DUB
-  2026-06-11  Kino Baszta Środa             18:30 · 18:30
+  2026-06-11  Kino Baszta Środa             18:30
   2026-06-11  Kino Bułgarska 19             16:00 Sala Dzienniki Motocyklowe
 
 === Dziewczyna z igłą ===
@@ -2370,22 +2370,22 @@ showings:
   2026-06-12  Cinema City Kinepolis         11:00 Sala 12 2D/NAP · 12:10 Sala 14 2D/NAP · 14:10 Sala 12 2D/NAP · 15:20 Sala 14 2D/NAP · 17:20 Sala 12 2D/NAP · 18:30 Sala 14 2D/NAP · 20:30 Sala 12 2D/NAP · 21:40 Sala 14 2D/NAP
   2026-06-12  Cinema City Poznań Plaza      10:30 Sala 3 2D/NAP · 11:00 Sala IMAX IMAX/2D/NAP · 13:40 Sala 3 2D/NAP · 14:10 Sala IMAX IMAX/2D/NAP · 16:50 Sala 3 2D/NAP · 17:20 Sala IMAX IMAX/2D/NAP · 20:00 Sala 3 2D/NAP · 20:30 Sala IMAX IMAX/2D/NAP
   2026-06-12  Helios Posnania               14:20 Sala 1 2D/NAP · 17:35 Sala 1 2D/NAP · 19:15 Sala 7 - Dream 2D/NAP/ATMOS · 20:45 Sala 1 2D/NAP
-  2026-06-12  Kino Baszta Środa             20:15 · 20:15
+  2026-06-12  Kino Baszta Środa             20:15
   2026-06-12  Kino Rialto                   18:00
   2026-06-13  Cinema City Kinepolis         11:00 Sala 12 2D/NAP · 12:10 Sala 14 2D/NAP · 14:10 Sala 12 2D/NAP · 15:20 Sala 14 2D/NAP · 17:20 Sala 12 2D/NAP · 18:30 Sala 14 2D/NAP · 20:30 Sala 12 2D/NAP · 21:40 Sala 14 2D/NAP
   2026-06-13  Cinema City Poznań Plaza      10:30 Sala 8 2D/NAP · 11:00 Sala IMAX IMAX/2D/NAP · 13:40 Sala 8 2D/NAP · 14:10 Sala IMAX IMAX/2D/NAP · 16:50 Sala 8 2D/NAP · 17:20 Sala IMAX IMAX/2D/NAP · 20:00 Sala 8 2D/NAP · 20:30 Sala IMAX IMAX/2D/NAP
   2026-06-13  Helios Posnania               14:15 Sala 7 - Dream 2D/NAP/ATMOS · 17:30 Sala 7 - Dream 2D/NAP/ATMOS · 19:15 Sala 3 2D/NAP · 20:45 Sala 7 - Dream 2D/NAP/ATMOS
-  2026-06-13  Kino Baszta Środa             20:15 · 20:15
+  2026-06-13  Kino Baszta Środa             20:15
   2026-06-13  Kino Rialto                   19:30
   2026-06-14  Cinema City Kinepolis         12:10 Sala 14 2D/NAP · 14:10 Sala 12 2D/NAP · 15:20 Sala 14 2D/NAP · 17:20 Sala 12 2D/NAP · 18:30 Sala 14 2D/NAP · 20:30 Sala 12 2D/NAP · 21:40 Sala 14 2D/NAP
   2026-06-14  Cinema City Poznań Plaza      10:30 Sala 3 2D/NAP · 11:00 Sala IMAX IMAX/2D/NAP · 13:40 Sala 3 2D/NAP · 14:10 Sala IMAX IMAX/2D/NAP · 16:50 Sala 3 2D/NAP · 17:20 Sala IMAX IMAX/2D/NAP · 20:00 Sala 3 2D/NAP · 20:30 Sala IMAX IMAX/2D/NAP
   2026-06-14  Helios Posnania               14:15 Sala 1 2D/NAP · 17:30 Sala 1 2D/NAP · 19:15 Sala 7 - Dream 2D/NAP/ATMOS · 20:45 Sala 1 2D/NAP
-  2026-06-14  Kino Baszta Środa             19:45 · 19:45
+  2026-06-14  Kino Baszta Środa             19:45
   2026-06-14  Kino Rialto                   19:15
   2026-06-15  Kino Rialto                   18:00
-  2026-06-16  Kino Baszta Środa             20:15 · 20:15
-  2026-06-17  Kino Baszta Środa             18:00 · 18:00
-  2026-06-18  Kino Baszta Środa             20:15 · 20:15
+  2026-06-16  Kino Baszta Środa             20:15
+  2026-06-17  Kino Baszta Środa             18:00
+  2026-06-18  Kino Baszta Środa             20:15
 
 === Dzień objawienia ukraiński dubbing ===
 displayTitle:      Dzień objawienia ukraiński dubbing
@@ -9001,17 +9001,17 @@ showings:
   2026-06-10  Cinema City Kinepolis         13:20 Sala 17 2D/DUB · 16:20 Sala 3 2D/DUB · 18:50 Sala 3 2D/NAP · 20:20 Sala 17 2D/NAP · 21:20 Sala 3 2D/NAP
   2026-06-10  Cinema City Poznań Plaza      11:40 Sala 8 2D/DUB · 14:00 Sala 8 2D/NAP · 16:20 Sala 8 2D/DUB · 18:40 Sala 8 2D/NAP · 21:00 Sala 8 2D/NAP
   2026-06-10  Helios Posnania               10:00 Sala 6 2D/NAP · 11:10 Sala 4 2D/DUB · 13:40 Sala 4 2D/NAP · 16:00 Sala 4 2D/DUB · 18:15 Sala 4 2D/NAP · 20:15 Sala 7 - Dream 2D/NAP · 21:40 Sala 6 2D/NAP
-  2026-06-10  Kino Baszta Środa             18:30 · 18:30
+  2026-06-10  Kino Baszta Środa             18:30
   2026-06-11  Cinema City Kinepolis         13:20 Sala 17 2D/DUB · 16:20 Sala 3 2D/DUB · 18:50 Sala 3 2D/NAP · 20:20 Sala 17 2D/NAP · 21:20 Sala 3 2D/NAP
   2026-06-11  Cinema City Poznań Plaza      11:40 Sala 8 2D/DUB · 14:00 Sala 8 2D/NAP · 16:20 Sala 8 2D/DUB · 18:40 Sala 8 2D/NAP · 21:00 Sala 8 2D/NAP
   2026-06-11  Helios Posnania               13:40 Sala 2 2D/DUB · 16:00 Sala 2 2D/DUB · 18:15 Sala 2 2D/NAP · 20:15 Sala 7 - Dream 2D/NAP
-  2026-06-11  Kino Baszta Środa             20:30 · 20:30
-  2026-06-12  Kino Baszta Środa             18:00 · 18:00
-  2026-06-13  Kino Baszta Środa             18:00 · 18:00
-  2026-06-14  Kino Baszta Środa             17:30 · 17:30
-  2026-06-16  Kino Baszta Środa             18:00 · 18:00
-  2026-06-17  Kino Baszta Środa             20:30 · 20:30
-  2026-06-18  Kino Baszta Środa             18:00 · 18:00
+  2026-06-11  Kino Baszta Środa             20:30
+  2026-06-12  Kino Baszta Środa             18:00
+  2026-06-13  Kino Baszta Środa             18:00
+  2026-06-14  Kino Baszta Środa             17:30
+  2026-06-16  Kino Baszta Środa             18:00
+  2026-06-17  Kino Baszta Środa             20:30
+  2026-06-18  Kino Baszta Środa             18:00
 
 === Straszny film ukraiński dubbing ===
 displayTitle:      Straszny film ukraiński dubbing
@@ -9770,11 +9770,11 @@ showings:
   2026-06-10  Cinema City Kinepolis         10:00 Sala 10 2D/DUB · 12:50 Sala 15 2D/DUB · 17:40 Sala 9 2D/DUB
   2026-06-10  Cinema City Poznań Plaza      12:10 Sala 4 2D/DUB · 14:40 Sala 4 2D/DUB
   2026-06-10  Helios Posnania               10:20 Sala 2 2D/DUB · 13:20 Sala 1 2D/DUB · 15:15 Sala 2 2D/DUB · 17:45 Sala 2 2D/DUB
-  2026-06-10  Kino Baszta Środa             14:30 · 14:30 · 16:30
+  2026-06-10  Kino Baszta Środa             14:30 · 16:30
   2026-06-11  Cinema City Kinepolis         12:50 Sala 15 2D/DUB · 17:40 Sala 9 2D/DUB
   2026-06-11  Cinema City Poznań Plaza      12:10 Sala 4 2D/DUB · 14:40 Sala 4 2D/DUB · 17:00 Sala 4 2D/DUB
   2026-06-11  Helios Posnania               10:50 Sala 3 2D/DUB · 13:20 Sala 4 2D/DUB · 15:15 Sala 1 2D/DUB · 17:45 Sala 1 2D/DUB
-  2026-06-11  Kino Baszta Środa             14:30 · 14:30 · 16:30
+  2026-06-11  Kino Baszta Środa             14:30 · 16:30
 
 === Toy Story 5 ===
 displayTitle:      Toy Story 5
@@ -10379,12 +10379,12 @@ cinemaScrapes:
   Klaps / Willow i tajemniczy las / —
   Kozienicki Dom Kultury / Willow i tajemniczy las / —
 showings:
-  2026-06-12  Kino Baszta Środa             14:30 · 14:30 · 16:15
-  2026-06-13  Kino Baszta Środa             14:30 · 14:30 · 16:15
-  2026-06-14  Kino Baszta Środa             11:00 · 11:00 · 15:30
-  2026-06-16  Kino Baszta Środa             14:30 · 14:30 · 16:15
-  2026-06-17  Kino Baszta Środa             14:30 · 14:30 · 16:15
-  2026-06-18  Kino Baszta Środa             14:30 · 14:30 · 16:15
+  2026-06-12  Kino Baszta Środa             14:30 · 16:15
+  2026-06-13  Kino Baszta Środa             14:30 · 16:15
+  2026-06-14  Kino Baszta Środa             11:00 · 15:30
+  2026-06-16  Kino Baszta Środa             14:30 · 16:15
+  2026-06-17  Kino Baszta Środa             14:30 · 16:15
+  2026-06-18  Kino Baszta Środa             14:30 · 16:15
 
 === Windą na szafot ===
 displayTitle:      Windą na szafot
@@ -10724,7 +10724,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Kino Baszta Środa / Zapiski śmiertelnika / —
 showings:
-  2026-06-15  Kino Baszta Środa             17:30 · 17:30 · 19:15
+  2026-06-15  Kino Baszta Środa             17:30 · 19:15
 
 === Zaproszenie ===
 displayTitle:      Zaproszenie

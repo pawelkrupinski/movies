@@ -110,6 +110,9 @@ object Bilety24OrganizerClient {
   private def stripProgrammeTag(title: String): String =
     ProgrammeTagSuffix.replaceFirstIn(title, "").trim
 
+  // The screening's own id, shared by both links the page gives it — see `parse`.
+  private val EventId = """[?&]id=(\d+)""".r
+
   private case class RawSlot(title: String, dateTime: LocalDateTime, eventUrl: Option[String],
                             format: List[String])
 
@@ -136,6 +139,15 @@ object Bilety24OrganizerClient {
         }
       }
     }
+      // bilety24 links a bookable screening TWICE — its event page `/kino/<…>?id=N`
+      // ("Film: X - …") and a buy button `/kup-bilet-na-<…>?id=N` ("Kup bilet - Film:
+      // X - …") — and SlotPat matches both titles. Two URLs, so the fold's
+      // (dateTime, bookingUrl) dedup kept both and every screening was listed twice
+      // (Środa's programme under Braniewo's Baszta, 2026-09-22). One slot per
+      // screening id, the event page first; a screening linked ONLY by its buy
+      // button still keeps it. Stable sort, so the page's own order otherwise stands.
+      .sortBy(s => !s.eventUrl.exists(_.contains("/kino/")))
+      .distinctBy(s => (s.dateTime, s.eventUrl.flatMap(EventId.findFirstMatchIn(_)).map(_.group(1)).orElse(s.eventUrl)))
 
     SlotsToMovies.fold(
       slots.filter(_.title.nonEmpty),
