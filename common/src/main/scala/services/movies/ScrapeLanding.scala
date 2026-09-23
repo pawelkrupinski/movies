@@ -172,9 +172,17 @@ private[movies] final class ScrapeLanding(
     // never reset the other's; plus the source its stored listing came from. A tick
     // from a DIFFERENT source is a rewire, and both guards stand aside for it: they
     // measure against the old source's rows, which say nothing about the new one.
+    // A venue with no recorded key is judged by where its stored rows' film links
+    // point instead (see `ScrapeHealth.isRewire`) — only then are the sites computed.
     val guardState = guardLedger.get(cinema)
-    val rewired    = ScrapeHealth.isRewire(guardState.sourceKey, sourceKey)
-    if (rewired) RemovalAudit.scrapeRewired(cinema.displayName, guardState.sourceKey, sourceKey)
+    def sites(urls: Iterator[Option[String]]): Set[String] = urls.flatten.flatMap(ScrapeHealth.siteOf).toSet
+    lazy val storedSites = sites(corpusIndex.slotsOf(cinema).iterator.map(_._3.filmUrl))
+    val rewired = guardState.sourceKey match {
+      case Some(_) => ScrapeHealth.isRewire(guardState.sourceKey, sourceKey)
+      case None    => ScrapeHealth.isRewire(None, sourceKey, storedSites, sites(movies.iterator.map(_.filmUrl)))
+    }
+    if (rewired) RemovalAudit.scrapeRewired(cinema.displayName,
+      guardState.sourceKey.orElse(Some(s"rows linking to ${storedSites.toSeq.sorted.mkString("+")}")), sourceKey)
 
     // DEPTH guard — the same "trust what we have" bail as above, on the axis
     // neither that check nor the breadth guard below can see (a chunked fetch that

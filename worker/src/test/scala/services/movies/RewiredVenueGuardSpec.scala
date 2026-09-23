@@ -86,6 +86,47 @@ class RewiredVenueGuardSpec extends AnyFlatSpec with Matchers {
     ledger.get(Multikino).sourceKey shouldBe NewSource
   }
 
+  "a venue rewired before its source was ever recorded" should "be recognised from the stored rows' own links" in {
+    // Braniewo's Baszta as production held it: the programme of bilety24 organiser 477
+    // (Środa Wielkopolska's cinema, recorded 2026-09-23), landed before source keys
+    // existed, so no key says where it came from — while the scraper now reads Baszta's
+    // own Filmweb listing (id 2352, recorded 2026-06-07). Every stored row links to
+    // bilety24, every fresh one to filmweb: a different source, not a thin fetch.
+    val clock      = new tools.MutableClock(java.time.Instant.parse("2026-06-01T00:00:00Z"))
+    val repository = splitRepository()
+    val ledger     = new InMemoryScrapeGuardLedger
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer,
+      scrapeGuardLedger = ledger, clock = clock)
+
+    val sroda = services.cinemas.pl.Bilety24OrganizerClient.parse(
+      services.cinemas.roster.RosterAuditFixtures.page(services.cinemas.roster.RosterAuditFixtures.Sroda477),
+      KinoBaszta, titleNormalizer)
+    cache.recordCinemaScrape(KinoBaszta, sroda)
+    ledger.get(KinoBaszta).sourceKey shouldBe None
+
+    val filmweb = new services.cinemas.pl.FilmwebShowtimesClient(new clients.tools.FakeHttpFetch("filmweb-catchment"),
+      2352, KinoBaszta, daysAhead = 0, today = java.time.LocalDate.of(2026, 6, 7))
+    val baszta  = filmweb.fetch()
+    baszta should not be empty
+    cache.recordCinemaScrape(KinoBaszta, baszta, sourceKey = filmweb.sourceKey)
+
+    val held = repository.findAll().flatMap(_.record.cinemaSlots).collect {
+      case (CinemaShowing(KinoBaszta, _), slot) => slot.filmUrl.flatMap(ScrapeHealth.siteOf) }.flatten.toSet
+    withClue("the other town's films must be gone after the first tick of the new source: ")(
+      held shouldBe Set("filmweb.pl"))
+    ledger.get(KinoBaszta).sourceKey shouldBe filmweb.sourceKey
+  }
+
+  it should "still guard a keyless venue whose thin tick links to the same site as its stored rows" in {
+    val repository = splitRepository()
+    val cache      = cacheOver(repository, new InMemoryScrapeGuardLedger)
+    def linked(movies: Seq[CinemaMovie]) = movies.map(m => m.copy(filmUrl = Some(s"https://www.bilety24.pl/kino/477-${m.movie.title.replace(' ', '-')}")))
+
+    cache.recordCinemaScrape(Multikino, linked(scrape(films = 10, showtimesEach = 8)))
+    cache.recordCinemaScrape(Multikino, linked(scrape(films = 10, showtimesEach = 1)), sourceKey = OldSource)
+    storedShowtimes(repository, "Film 1") shouldBe 8
+  }
+
   "a source change neither guard can recognise" should "clear both guards on the SAME tick once depth gives up" in {
     // No keys at all, so nothing marks it as a rewire: the depth guard's grace is the
     // only way out. When it finally accepts, the breadth guard must not then open a

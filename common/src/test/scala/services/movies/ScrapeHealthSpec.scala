@@ -34,11 +34,31 @@ class ScrapeHealthSpec extends AnyFlatSpec with Matchers {
     ScrapeHealth.isRewire(stored = Some("filmweb.pl/cinema/2352"), current = Some("filmweb.pl/cinema/2352")) shouldBe false
   }
 
-  it should "never be inferred from a venue with no recorded key" in {
+  it should "not be inferred from a missing key alone" in {
     // Legacy rows predate the ledger: an unknown past is not evidence of a change,
     // and the guards must keep protecting the venue until a key is recorded.
     ScrapeHealth.isRewire(stored = None, current = Some("filmweb.pl/cinema/2352")) shouldBe false
     ScrapeHealth.isRewire(stored = Some("filmweb.pl/cinema/2352"), current = None) shouldBe false
+  }
+
+  it should "be inferred for a keyless venue whose stored rows link to a different site than the tick" in {
+    ScrapeHealth.isRewire(None, Some("filmweb.pl/cinema/2352"),
+      storedSites = Set("bilety24.pl"), batchSites = Set("filmweb.pl")) shouldBe true
+    // One site shared is the same source, however thin the tick; no links on either
+    // side says nothing.
+    ScrapeHealth.isRewire(None, None, Set("bilety24.pl"), Set("bilety24.pl", "youtube.com")) shouldBe false
+    ScrapeHealth.isRewire(None, None, Set.empty, Set("filmweb.pl")) shouldBe false
+    ScrapeHealth.isRewire(None, None, Set("bilety24.pl"), Set.empty) shouldBe false
+    // A recorded key is the better witness and wins over the links.
+    ScrapeHealth.isRewire(Some("filmweb.pl/cinema/2352"), Some("filmweb.pl/cinema/2352"),
+      Set("bilety24.pl"), Set("filmweb.pl")) shouldBe false
+  }
+
+  "siteOf" should "reduce a link to its lower-cased host without www" in {
+    ScrapeHealth.siteOf("https://www.Bilety24.pl/kino/477-lalka-1?id=2") shouldBe Some("bilety24.pl")
+    ScrapeHealth.siteOf("https://filmweb.pl/film/123")                   shouldBe Some("filmweb.pl")
+    ScrapeHealth.siteOf("/kino/relative")                                 shouldBe None
+    ScrapeHealth.siteOf("not a url")                                      shouldBe None
   }
 
   "the breadth guard" should "trust a caller that says the listing is short" in {
