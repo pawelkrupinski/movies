@@ -1,7 +1,14 @@
 package services.users
 
+import controllers.UserStateController
+import io.prometheus.metrics.model.registry.PrometheusRegistry
+import models.User
+import org.mongodb.scala.MongoClient
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import play.api.test.Helpers._
+import play.api.test.{FakeRequest, Helpers}
+import services.metrics.{LegacyUserStateMetrics, PrometheusExposition, UserStateWriteMetrics}
 import services.users.UserStateWriteOutcomes.{Endpoint, Outcome}
 
 import java.time.Instant
@@ -10,8 +17,10 @@ import scala.collection.mutable
 /** The write outcomes `MongoUserStateRepository` reports for the paths that need
  *  no database: a pod whose users store never came up answers every write with
  *  a 503, and that has to be countable as `unavailable` rather than lost among
- *  Mongo throwing (`store_failure`). The `ok` / `conflict` paths are driven
- *  against real Mongo in `HiddenFilmsConcurrentWritesIntegrationSpec`. */
+ *  Mongo throwing (`store_failure`) — and a write the driver really does throw
+ *  on has to be counted as `store_failure`, through the controller's 503, all the
+ *  way to the exported counter. The `ok` / `conflict` paths are driven against
+ *  real Mongo in `HiddenFilmsConcurrentWritesIntegrationSpec`. */
 class MongoUserStateRepositoryOutcomesSpec extends AnyFlatSpec with Matchers {
 
   private def recording() = {
@@ -36,4 +45,29 @@ class MongoUserStateRepositoryOutcomesSpec extends AnyFlatSpec with Matchers {
       Endpoint.Clear     -> Outcome.Unavailable,
       Endpoint.LegacyPut -> Outcome.Unavailable)
   }
+
+  "a write the Mongo driver throws on" should "answer 503 and count as store_failure on the exported counter" in {
+    // A real driver and collection whose client is CLOSED: `findOneAndUpdate`
+    // throws inside the driver ("state should be: open"), with no server needed.
+    val client = MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=500")
+    val db     = client.getDatabase("closed")
+    client.close()
+
+    val registry = new PrometheusRegistry()
+    val store    = new MongoUserStateRepository(sharedDb = Some(db), fallbackToOwnInit = false,
+      writeOutcomes = new UserStateWriteMetrics(registry, "pl"))
+    val users    = new InMemoryUserRepository
+    users.upsert(User(id = "u", provider = "google", providerSub = "G-u", email = None, displayName = None,
+      avatarUrl = None, createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH))
+    val controller = new UserStateController(Helpers.stubControllerComponents(), store,
+      new AccountDeletion(users, store), NoUserChangeTimeCache, new LegacyUserStateMetrics(registry, "pl"), users)
+
+    val result = controller.hideFilm("pl", "Film")(FakeRequest("PUT", "/api/me/pl/hidden-films/Film").withSession("userId" -> "u"))
+
+    status(result) shouldBe SERVICE_UNAVAILABLE
+    val text = PrometheusExposition.render(registry)
+    text should include ("""kinowo_web_user_state_writes_total{country="pl",endpoint="hide",outcome="store_failure"} 1""")
+    text should include ("""kinowo_web_user_state_writes_total{country="pl",endpoint="hide",outcome="ok"} 0""")
+  }
 }
+
