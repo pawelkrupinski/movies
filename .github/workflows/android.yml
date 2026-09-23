@@ -11,6 +11,11 @@ on:
             # capture would not run the test that catches it.
             - 'scripts/store-screenshots-common.sh'
             - 'ios/scripts/store-screenshots*.sh'
+            # The mobile RELEASE scripts' own specs run in the same step; this
+            # workflow calls tag-mobile-release.sh itself after a Play publish.
+            - 'scripts/*mobile-release*.sh'
+            - 'scripts/log.sh'
+            - 'scripts/shell-spec.sh'
     push:
         branches: [main]
         paths:
@@ -22,6 +27,11 @@ on:
             # capture would not run the test that catches it.
             - 'scripts/store-screenshots-common.sh'
             - 'ios/scripts/store-screenshots*.sh'
+            # The mobile RELEASE scripts' own specs run in the same step; this
+            # workflow calls tag-mobile-release.sh itself after a Play publish.
+            - 'scripts/*mobile-release*.sh'
+            - 'scripts/log.sh'
+            - 'scripts/shell-spec.sh'
     workflow_dispatch:
 
 # A newer push to the same ref cancels the older run mid-flight instead of
@@ -104,12 +114,19 @@ jobs:
             # weeks, red on anyone's laptop and invisible everywhere else. A
             # missing entry returns "" rather than failing, which is how Spain's
             # first capture skipped all ten cities.
-            - name: Store script helper tests
+            #
+            # The mobile RELEASE scripts' specs ride along for the same reason:
+            # tag-mobile-release-test.sh and mobile-release-test.sh ran in no
+            # workflow either, although this one runs tag-mobile-release.sh
+            # after every Play publish.
+            - name: Store and release script helper tests
               working-directory: ${{ github.workspace }}
               run: |
                   android/scripts/store-screenshots-test.sh
                   android/scripts/store-graphics-test.sh
                   ios/scripts/store-screenshots-test.sh
+                  scripts/mobile-release-test.sh
+                  scripts/tag-mobile-release-test.sh
 
             - name: Unit tests
               run: ./gradlew --no-daemon testDebugUnitTest
