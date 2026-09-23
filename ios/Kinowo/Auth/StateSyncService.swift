@@ -52,7 +52,11 @@ final class StateSyncService: ObservableObject {
     /// A local pick the server hasn't confirmed yet: its debounced push is
     /// still waiting, or it failed. While set, a reconcile pushes it instead
     /// of fetching — the account's value is by definition OLDER than it.
-    private var pendingLanguage: String?
+    /// Persisted in `UserPreferences`, so it outlives a relaunch.
+    private var pendingLanguage: String? {
+        get { prefs.pendingLanguagePush }
+        set { prefs.setPendingLanguagePush(newValue) }
+    }
 
     init(
         prefs: UserPreferences,
@@ -86,7 +90,13 @@ final class StateSyncService: ObservableObject {
                     // session restores — otherwise every cold start would re-run
                     // the first-login union instead of treating the server as
                     // authoritative.
-                    if self.isLoggedIn { self.prefs.clearHiddenFilmsMigration() }
+                    // The same goes for an unsent language pick: it is
+                    // persisted precisely so the session restore after a
+                    // relaunch can still push it.
+                    if self.isLoggedIn {
+                        self.prefs.clearHiddenFilmsMigration()
+                        self.pendingLanguage = nil
+                    }
                     self.isLoggedIn = false
                     self.cancelSync()
                 }
@@ -109,7 +119,6 @@ final class StateSyncService: ObservableObject {
         debounceWorkItem?.cancel()
         debounceWorkItem = nil
         accountLanguage = nil
-        pendingLanguage = nil
         prefsCancellables.removeAll()
     }
 

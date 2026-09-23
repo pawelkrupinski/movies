@@ -87,6 +87,7 @@ final class UserPreferences: ObservableObject {
     /// country it mirrored; only ever removed now.
     private let kHiddenFilmsMirroredLegacy = "hiddenFilmsMirroredCountry"
     private let kAreaSeen       = "areaPickerSeenCities"
+    private let kPendingLanguage = "pendingLanguagePush"
     private let kExplicitPick   = "awaitingExplicitCityPick"
 
     init(store: UserDefaults = .standard) {
@@ -300,6 +301,16 @@ final class UserPreferences: ObservableObject {
     /// it on the account the first time a signed-in visitor merely opens the
     /// app, before they have ever touched the language picker.
     var explicitLanguage: String? { LanguageSelection.explicit(store) }
+
+    /// A language pick the account hasn't confirmed yet (see
+    /// `StateSyncService.pendingLanguage`). Persisted so a push that failed —
+    /// or never ran because the app was killed inside the debounce — is still
+    /// retried after a relaunch instead of losing to the account's older value.
+    var pendingLanguagePush: String? { store.string(forKey: kPendingLanguage) }
+
+    func setPendingLanguagePush(_ code: String?) {
+        if let code { store.set(code, forKey: kPendingLanguage) } else { store.removeObject(forKey: kPendingLanguage) }
+    }
 
     /// Ask the city gate for an explicit pick rather than a located offer.
     func awaitExplicitCityPick() {

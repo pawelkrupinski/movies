@@ -236,6 +236,51 @@ final class StateSyncServiceTests: XCTestCase {
         _ = sync
     }
 
+    /// A pick whose push failed survives a relaunch: the next session's
+    /// login reconcile pushes it instead of restoring the account's older
+    /// value over it.
+    func testAFailedLanguagePushSurvivesARelaunch() async throws {
+        languageClient.remote = "de"
+        let sync1 = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.selectedLanguage == "de" }
+        try await Task.sleep(for: .milliseconds(100))
+
+        languageClient.shouldFailPush = true
+        let attempted = expectation(description: "push attempted")
+        languageClient.onPush = { _ in attempted.fulfill() }
+        prefs.setLanguage("es")
+        await fulfillment(of: [attempted], timeout: 1)
+        languageClient.onPush = nil
+        languageClient.shouldFailPush = false
+
+        // Relaunch: fresh prefs over the same store, fresh service, session restored.
+        prefs = UserPreferences(store: defaults)
+        let userSubject2 = CurrentValueSubject<UserProfile?, Never>(nil)
+        let sync2 = StateSyncService(prefs: prefs, userPublisher: userSubject2.eraseToAnyPublisher(), client: client, languageClient: languageClient)
+        userSubject2.send(UserProfile(displayName: "Test", email: "test@test.com", avatarUrl: nil, provider: "google"))
+        try await waitUntil { self.languageClient.remote == "es" }
+        XCTAssertEqual(prefs.selectedLanguage, "es")
+        _ = (sync1, sync2)
+    }
+
+    /// A genuine logout forgets the unsent pick — the next sign-in may be a
+    /// different account, which must not inherit it.
+    func testLogoutForgetsAnUnsentLanguagePick() async throws {
+        languageClient.remote = "de"
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.selectedLanguage == "de" }
+        try await Task.sleep(for: .milliseconds(100))
+        languageClient.shouldFailPush = true
+        prefs.setLanguage("es")
+        XCTAssertEqual(prefs.pendingLanguagePush, "es")
+
+        userSubject.send(nil)
+        try await waitUntil { self.prefs.pendingLanguagePush == nil }
+        _ = sync
+    }
+
     // MARK: - Server authoritative after first sync
 
     func testServerAuthoritativeAfterFirstSyncDropsStaleLocal() async throws {
