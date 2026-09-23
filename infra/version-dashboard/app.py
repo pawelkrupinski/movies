@@ -60,6 +60,7 @@ import os
 import re
 import shlex
 import socket
+import ssl
 import subprocess
 import sys
 import threading
@@ -1990,14 +1991,24 @@ def _is_transient_network_error(exc):
 
     `HTTPError` is checked first because it is itself a `URLError` subclass -- the server DID
     answer, just not with 2xx, so it must not be classified as a network failure by the broader
-    `URLError` check below."""
+    `URLError` check below.
+
+    A TLS REFUSAL IS NOT TRANSIENT EITHER, although `ssl.SSLError` is an `OSError`: an expired or
+    untrusted certificate, or a protocol mismatch, answers the same way on every retry, and counting
+    it towards MOBILE_SELF_RESTART_AFTER would restart the process over something a fresh one
+    cannot fix. The exceptions are the far end DROPPING the connection mid-handshake
+    (`SSLEOFError`, `SSLZeroReturnError`) -- that is the network, same as a reset."""
     if isinstance(exc, urllib.error.HTTPError):
         return False
-    if isinstance(exc, (socket.gaierror, socket.timeout, TimeoutError, ConnectionError)):
+    # Only a URLError's REASON gets the broad OSError reading: a bare OSError raised outside the
+    # round-trip (say, the .p8 key file missing) is a local fault, not the network.
+    wrapped = isinstance(exc, urllib.error.URLError)
+    cause = exc.reason if wrapped else exc
+    if isinstance(cause, ssl.SSLError):
+        return isinstance(cause, (ssl.SSLEOFError, ssl.SSLZeroReturnError))
+    if isinstance(cause, (socket.gaierror, socket.timeout, TimeoutError, ConnectionError)):
         return True
-    if isinstance(exc, urllib.error.URLError):
-        return isinstance(exc.reason, (OSError, TimeoutError))
-    return False
+    return wrapped and isinstance(cause, OSError)
 
 
 def _with_network_retries(fn):

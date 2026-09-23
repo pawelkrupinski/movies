@@ -13,6 +13,7 @@ import os
 import pathlib
 import re
 import socket
+import ssl
 import subprocess
 import sys
 import tempfile
@@ -928,6 +929,34 @@ class MobileNetworkFailureWiring(unittest.TestCase):
             socket.gaierror(8, "nodename nor servname provided, or not known"))
         state = app.android_release_state()
         self.assertTrue(state["network_error"])
+
+
+class TransientNetworkErrorClassification(unittest.TestCase):
+    """A certificate or TLS-handshake refusal is a configuration fault, not a blip: retrying it
+    seconds later gives the same answer, and counting it towards MOBILE_SELF_RESTART_AFTER would
+    restart the process every few builds over something no fresh process fixes. A TLS connection
+    the far end just DROPPED (an EOF mid-handshake) is still the network, though."""
+
+    def test_a_certificate_failure_is_not_transient(self):
+        cert = ssl.SSLCertVerificationError(1, "certificate verify failed: certificate has expired")
+        self.assertFalse(app._is_transient_network_error(urllib.error.URLError(cert)))
+        self.assertFalse(app._is_transient_network_error(cert))
+
+    def test_a_tls_protocol_failure_is_not_transient(self):
+        err = ssl.SSLError(1, "wrong version number")
+        self.assertFalse(app._is_transient_network_error(urllib.error.URLError(err)))
+
+    def test_a_tls_connection_dropped_mid_handshake_still_is(self):
+        eof = ssl.SSLEOFError(8, "EOF occurred in violation of protocol")
+        self.assertTrue(app._is_transient_network_error(urllib.error.URLError(eof)))
+
+    def test_dns_and_connection_failures_still_are(self):
+        self.assertTrue(app._is_transient_network_error(
+            urllib.error.URLError(socket.gaierror(8, "nodename nor servname provided"))))
+        self.assertTrue(app._is_transient_network_error(ConnectionResetError()))
+
+    def test_a_local_os_error_outside_the_round_trip_is_not(self):
+        self.assertFalse(app._is_transient_network_error(FileNotFoundError("AuthKey_X.p8")))
 
 
 class MobileRetryFloorAndSelfHeal(unittest.TestCase):
