@@ -24,7 +24,7 @@ name: Discover UK cinemas
 # (`harvest_towns.py --sync`: only the venues the file lacks, a handful at most)
 # and regenerates the lookup, in the same PR as the wiring that needs it.
 #
-# Like regenerate-og-cards.yml / sync-title-rules, the PR is opened via the
+# Like regenerate-og-cards.yml, the PR is opened via the
 # "Kinowo Sync Bot" GitHub App (secrets SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY)
 # so Branch CI runs on it — a PR opened with the default GITHUB_TOKEN never fires
 # `pull_request`. A fixed branch means reruns amend the open PR; a week with no

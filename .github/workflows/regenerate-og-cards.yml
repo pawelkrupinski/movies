@@ -35,10 +35,10 @@ name: Regenerate OG share cards
 # only one leg's refresh would ever survive into the diff — see the fix that
 # added this paragraph for the months of silently-stale cards that caused.
 #
-# Like sync-title-rules.yml, the PR is opened via the "Kinowo Sync Bot" GitHub
+# Like discover-cinemas.yml, the PR is opened via the "Kinowo Sync Bot" GitHub
 # App so Branch CI runs on it (a PR created with the default GITHUB_TOKEN never
-# triggers `pull_request` — GitHub's recursion guard). Reuses the same repo
-# secrets: SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY.
+# triggers `pull_request` — GitHub's recursion guard). Repo secrets:
+# SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY.
 
 on:
     # Manual trigger for an on-demand refresh.
@@ -198,7 +198,7 @@ jobs:
             # The PR below is opened with THIS token (not GITHUB_TOKEN) so it fires
             # `pull_request` and Branch CI runs on the refresh PR without a human
             # nudge. Needs repo secrets SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY
-            # (set up for sync-title-rules.yml — see that file's header).
+            # (shared with discover-cinemas.yml).
             - uses: actions/create-github-app-token@v3
               id: app-token
               with:
