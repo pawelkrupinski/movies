@@ -4,7 +4,7 @@ import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument}
 import models.UserState
 import org.mongodb.scala.model.Filters
-import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, Observer, SingleObservableFuture, Subscription}
+import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import play.api.Logging
 import services.movies.{ChangeStreamLiveness, ChangeStreamReopen}
 import tools.Env
@@ -101,12 +101,16 @@ class MongoUserStateRepository(
   // A deployment that already has the OLD plain index can't just add
   // `unique` to it in place — Mongo rejects a `createIndex` whose auto-generated
   // name ("userId_1") already exists with different options
-  // (`IndexKeySpecsConflict`). Drop the old one by name first, tolerating
-  // "already gone" (a fresh collection, or a deploy that already migrated)
-  // so this stays idempotent on every boot.
+  // (`IndexKeySpecsConflict`). Drop the old one by name first — but ONLY when
+  // it exists and isn't unique yet. Every web pod runs this on every boot:
+  // an unconditional drop rebuilt the index each time and, between the drop
+  // and the create, left the collection with no index (and no uniqueness)
+  // at all.
   private def ensureUniqueUserIdIndex(coll: MongoCollection[UserState]): Unit = {
-    scala.util.Try(scala.concurrent.Await.result(coll.dropIndex("userId_1").toFuture(), 10.seconds))
-    scala.concurrent.Await.result(
+    val legacyPlainIndex = Await.result(coll.listIndexes[org.bson.BsonDocument]().toFuture(), 10.seconds)
+      .exists(ix => ix.getString("name").getValue == "userId_1" && !ix.getBoolean("unique", org.bson.BsonBoolean.FALSE).getValue)
+    if (legacyPlainIndex) Await.result(coll.dropIndex("userId_1").toFuture(), 10.seconds)
+    Await.result(
       coll.createIndex(
         org.mongodb.scala.model.Indexes.ascending("userId"),
         new org.mongodb.scala.model.IndexOptions().unique(true)

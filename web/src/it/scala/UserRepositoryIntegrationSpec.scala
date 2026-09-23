@@ -2,7 +2,7 @@ package integration
 
 import models.{User, UserState}
 import org.scalatest.OptionValues._
-import org.mongodb.scala.{MongoClient, SingleObservableFuture}
+import org.mongodb.scala.{MongoClient, ObservableFuture, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
@@ -183,6 +183,46 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       states.delete(userId)
       eventually(cache.lastChangeAt(userId) shouldBe None, timeoutMs = 10000)
     } finally cache.stop()
+  }
+
+  // Every web pod runs this on boot. Dropping and re-creating the index each time rebuilt it
+  // for nothing and, between the drop and the create, left `userStates` with no index at all —
+  // no uniqueness for a concurrent first write to hit, and a collection scan for every `find`.
+  it should "leave an already-unique userId index alone on the next boot" in {
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val coll   = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo")).getCollection("userStates")
+    def userIdIndexCreatedAt(): Any =
+      Await.result(coll.aggregate(Seq(org.mongodb.scala.bson.collection.immutable.Document(
+        "$indexStats" -> org.mongodb.scala.bson.collection.immutable.Document()))).toFuture(), 10.seconds)
+        .find(_.get("name").map(_.asString.getValue).contains("userId_1")).value
+        .get("accesses").value.asDocument().get("since")
+    try {
+      val booted = new MongoUserStateRepository()
+      try booted.enabled shouldBe true finally booted.close() // boots once: the index exists, unique
+      val before = userIdIndexCreatedAt()
+      Thread.sleep(50)
+      val rebooted = new MongoUserStateRepository()
+      try {
+        rebooted.enabled shouldBe true
+        userIdIndexCreatedAt() shouldBe before
+      } finally rebooted.close()
+    } finally client.close()
+  }
+
+  it should "migrate a legacy plain userId index to a unique one on boot" in {
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val coll   = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo")).getCollection("userStates")
+    try {
+      Await.result(coll.dropIndex("userId_1").toFuture(), 10.seconds)
+      Await.result(coll.createIndex(org.mongodb.scala.model.Indexes.ascending("userId")).toFuture(), 10.seconds)
+
+      val rebooted = new MongoUserStateRepository()
+      try rebooted.enabled shouldBe true finally rebooted.close()
+
+      Await.result(coll.listIndexes().toFuture(), 10.seconds)
+        .find(_.get("name").map(_.asString.getValue).contains("userId_1")).value
+        .get("unique").map(_.asBoolean.getValue) shouldBe Some(true)
+    } finally client.close()
   }
 
 }
