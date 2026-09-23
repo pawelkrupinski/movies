@@ -197,8 +197,8 @@ abstract class CountryConvergenceBehaviour(
     val store   = enrichmentCacheStore
     val expired = expireStaleFixtures
     if (expired > 0)
-      info(s"${country.displayName}: expired $expired recorded response(s) older than " +
-           s"${EnrichmentFreshness.Ttl.toDays}d — they refetch and record fresh")
+      info(s"${country.displayName}: expired $expired recorded response(s) past their lifetime (at most " +
+           s"${EnrichmentFreshness.Ttl.toDays}d) — they refetch and record fresh")
     // Successes are never persisted here: `RecordingHttpFetch` already writes every
     // response into the fixture tree and the tree is consulted first, so a copy in the
     // cache could not be read — it only made the artifact three times larger. What the

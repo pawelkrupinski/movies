@@ -63,7 +63,8 @@ class EnrichmentFreshnessSpec extends AnyFlatSpec with Matchers {
   // once in a full run and passed on its own.
   it should "expire gradually, so a tree recorded over days doesn't go cold all at once" in {
     withTree { root =>
-      val fresh = Seq(1, 2, 3, 4)
+      // Within half the TTL nothing expires; past the TTL everything does.
+      val fresh = Seq(1, 2)
       val stale = Seq(6, 7, 8)
       (fresh ++ stale).foreach(day => write(root, s"host/day-$day.json", ageInDays = day))
 
@@ -72,6 +73,31 @@ class EnrichmentFreshnessSpec extends AnyFlatSpec with Matchers {
       fresh.foreach(day => Files.exists(root.resolve(s"host/day-$day.json")) shouldBe true)
       stale.foreach(day => Files.exists(root.resolve(s"host/day-$day.json")) shouldBe false)
     }
+  }
+
+  /** The US tree was recorded almost whole by one leg, so every file shared one mtime and
+   *  the whole tree crossed the TTL in the same run: 2026-09-23 09:22 pruned 27,359
+   *  recorded responses to 3,534, and the next leg started cold. Each file's lifetime is
+   *  spread over the second half of the TTL, keyed by its path, so a tree recorded at
+   *  one instant expires over two and a half days and re-records in the same staggered
+   *  way. */
+  it should "spread a tree recorded in ONE leg over several runs rather than expiring it together" in {
+    withTree { root =>
+      val files = (1 to 200).map(n => write(root, s"host/film-$n.json", ageInDays = 4))
+
+      val removed = EnrichmentFreshness.prune(root)
+
+      withClue(s"$removed of ${files.size} files recorded at the same instant expired together: ") {
+        removed should be > 0
+        removed should be < files.size
+      }
+    }
+  }
+
+  it should "give a file the same lifetime on every run, so a replay stays reproducible" in {
+    val path = java.nio.file.Paths.get("host/film.json")
+    EnrichmentFreshness.lifetimeOf(path) shouldBe EnrichmentFreshness.lifetimeOf(java.nio.file.Paths.get("host/film.json"))
+    EnrichmentFreshness.lifetimeOf(path) should (be >= EnrichmentFreshness.Ttl / 2 and be <= EnrichmentFreshness.Ttl)
   }
 
   it should "do nothing at all when there is no tree yet" in {
