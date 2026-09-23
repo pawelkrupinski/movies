@@ -7,9 +7,9 @@ import models.{Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
-import services.readmodel.{MongoReadModelRepository, ReadModelProjector}
+import integration.ProjectedMongoCorpus
 import services.resolution.TmdbAttempt
-import tools.{Env, Eventually, GetOnlyHttpFetch, IntegrationCorpusDatabase}
+import tools.{Env, Eventually, GetOnlyHttpFetch}
 
 import java.time.{Instant, LocalDateTime}
 
@@ -22,7 +22,7 @@ import java.time.{Instant, LocalDateTime}
  * row's remembered miss, and came back only at the next 30-minute prune — Met Opera
  * events gone from ~200 US city pages several times a day. Asserts the card never leaves.
  *
- * Its own database: the projector reads and writes `web_*` whole. Requires MONGODB_URI.
+ * Requires MONGODB_URI.
  */
 class RetryResolveServingIntegrationSpec extends AnyFlatSpec with Matchers {
 
@@ -34,14 +34,9 @@ class RetryResolveServingIntegrationSpec extends AnyFlatSpec with Matchers {
   }
 
   "a no-match row re-tried by the reaper" should "keep its card while TMDB answers no match again" in
-    IntegrationCorpusDatabase.withDatabase(Env.get("MONGODB_URI").get, "retry_resolve_serving") { db =>
+    ProjectedMongoCorpus.withCorpus("retry_resolve_serving") { corpus =>
+      import corpus._
       val title      = "__retry-resolve-serving__"
-      val screenings = new MongoScreeningsRepository(Some(db))
-      val slots      = new MongoSlotsRepository(Some(db))
-      val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), slots = Some(slots),
-        normalizer = titleNormalizer)
-      val readModel  = new MongoReadModelRepository(Some(db))
-      val projector  = new ReadModelProjector(repository, readModel, readModel)
       val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
       val service    = new MovieService(cache, new InProcessEventBus(), new TmdbClient(http = NoMatchTmdb, apiKey = Some("stub")))
       val key        = cache.keyOf(title, None)
@@ -77,7 +72,6 @@ class RetryResolveServingIntegrationSpec extends AnyFlatSpec with Matchers {
       } finally {
         service.stop(); cache.stop()
         unreadySeen.foreach(_.close()); projecting.foreach(_.close())
-        readModel.close(); repository.close(); slots.close(); screenings.close()
       }
     }
 }

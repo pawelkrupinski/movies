@@ -5,9 +5,8 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import models.{KinoLuna, KinoMuranow, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
-import services.readmodel.{MongoReadModelRepository, ReadModelProjector}
-import tools.{Env, Eventually, IntegrationCorpusDatabase}
+import services.movies.StoredMovieRecord
+import tools.{Env, Eventually}
 
 import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicInteger
@@ -40,13 +39,8 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers {
 
   "a movie_slots write with no movies or screenings change" should
     "reach the projector and emit the venue's web_screenings row" in {
-    IntegrationCorpusDatabase.withDatabase(Env.get("MONGODB_URI").get, "slots_watch") { db =>
-      val screenings = new MongoScreeningsRepository(Some(db))
-      val slots      = new MongoSlotsRepository(Some(db))
-      val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), slots = Some(slots),
-        normalizer = titleNormalizer)
-      val readModel  = new MongoReadModelRepository(Some(db))
-      val projector  = new ReadModelProjector(repository, readModel, readModel)
+    ProjectedMongoCorpus.withCorpus("slots_watch") { corpus =>
+      import corpus._
       val id         = StoredMovieRecord.keyFor(title, year, titleNormalizer)
       val when       = LocalDateTime.now().plusDays(3).withHour(20).withMinute(0).withSecond(0).withNano(0)
 
@@ -87,10 +81,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers {
                  "nothing re-projected the film, so the venue never reaches the site: ") {
           Eventually.poll(30000)(venueRows(KinoLuna).nonEmpty) shouldBe true
         }
-      } finally {
-        counting.foreach(_.close()); projecting.foreach(_.close())
-        readModel.close(); repository.close(); slots.close(); screenings.close()
-      }
+      } finally { counting.foreach(_.close()); projecting.foreach(_.close()) }
     }
   }
 }
