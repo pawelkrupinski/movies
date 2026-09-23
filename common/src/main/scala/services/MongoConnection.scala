@@ -63,7 +63,16 @@ class MongoConnection(
     // set instead of each spinning a full client (the RSS blow-up this class was
     // created to avoid). When `None` we build (and close) our own from `uri`, the
     // single-connection default every existing call site keeps.
-    sharedClient: Option[MongoClient] = None) extends Logging {
+    sharedClient: Option[MongoClient] = None,
+    // Run against the database every time a connect attempt SUCCEEDS — at boot and on a
+    // background reconnect alike — before the database is published through `database`.
+    // A throw fails that attempt: a transient one is retried, anything else aborts a
+    // required boot or, on a reconnect, leaves the connection degraded for good. This is
+    // where a writer claims its database ([[MongoConnection.claimFor]]), so a process that
+    // booted with Mongo unreachable cannot start writing, once it reconnects, into a
+    // database another country owns. Reads never wait on it: until it passes, `database`
+    // is `None`, exactly the degraded state an unreachable Mongo already means.
+    onConnected: MongoDatabase => Unit = _ => ()) extends Logging {
 
   // Eager — connecting now (at construction) surfaces wiring / network
   // problems at boot rather than at the first request. `Wiring` touches
@@ -113,7 +122,10 @@ class MongoConnection(
     // exists in every environment; an empty collection still
     // round-trips fine. The wait is `probeTimeout` (default 30s) rather
     // than the old hard-coded 10s — see `DefaultProbeTimeout`.
-    Await.result(db.getCollection("movies").countDocuments().toFuture(), probeTimeout)
+    try {
+      Await.result(db.getCollection("movies").countDocuments().toFuture(), probeTimeout)
+      onConnected(db)
+    } catch { case e: Throwable => if (sharedClient.isEmpty) client.close(); throw e }
     logger.info(s"MongoConnection connected to $dbName")
     (client, db)
   }
@@ -128,7 +140,8 @@ class MongoConnection(
     val thread = new Thread(
       () => {
         var waitSeconds = 5L
-        while (!closed && initResult._2.isEmpty) {
+        var givenUp     = false
+        while (!closed && !givenUp && initResult._2.isEmpty) {
           Thread.sleep(waitSeconds * 1000L)
           if (!closed)
             connect(connectionString) match {
@@ -141,6 +154,12 @@ class MongoConnection(
                   initResult = (Some(client), Some(db))
                   logger.info(s"MongoConnection to $dbName RECOVERED — serving from the database again.")
                 }
+              case Failure(exception) if !MongoConnection.isTransient(exception) =>
+                // Reachable, but refused for good — the `onConnected` claim found another
+                // country's database. Stay degraded: publishing it would let writes through.
+                givenUp = true
+                logger.error(s"MongoConnection to $dbName reconnected but was REFUSED (${exception.getMessage}) — " +
+                  "staying degraded, nothing will be read from or written to it.")
               case Failure(exception) =>
                 waitSeconds = math.min(waitSeconds * 2, 60L)
                 logger.warn(s"MongoConnection to $dbName still unreachable (${exception.getMessage}) — " +
@@ -288,15 +307,20 @@ object MongoConnection extends Logging {
    *  `Country.dbNameFor`, so an explicit `MONGODB_DB` still wins; what this adds is that a
    *  `MONGODB_DB` naming ANOTHER country's database (`.env.local`'s `kinowo` under a German
    *  run — how DE/UK rows reached the Polish corpus) is refused with an
-   *  `IllegalStateException` instead of written into. A connection that could not reach
-   *  Mongo claims nothing — its own required/optional handling already decided that. */
+   *  `IllegalStateException` instead of written into. The claim runs on every successful
+   *  connect, including a background reconnect after an unreachable boot. */
   def forCountry(country: models.Country, required: Boolean, sharedClient: Option[MongoClient] = None,
-      dbName: Option[String] = None): MongoConnection = {
-    val connection = fromEnvForDb(dbName.getOrElse(models.Country.dbNameFor(country)), required, sharedClient)
-    try connection.database.foreach(new DatabaseOwner(_).claim(country))
-    catch { case e: IllegalStateException => connection.close(); throw e }
-    connection
-  }
+      dbName: Option[String] = None): MongoConnection =
+    new MongoConnection(
+      Env.get("MONGODB_URI"),
+      dbName.getOrElse(models.Country.dbNameFor(country)),
+      required,
+      parseProbeTimeout(Env.get("MONGODB_PROBE_TIMEOUT_SECONDS")),
+      sharedClient = sharedClient,
+      onConnected = claimFor(country))
+
+  /** The [[MongoConnection]] `onConnected` hook of a writer of `country`'s corpus. */
+  def claimFor(country: models.Country): MongoDatabase => Unit = new DatabaseOwner(_).claim(country)
 
   /** One shared `MongoClient` for the whole process, built from `MONGODB_URI`,
    *  to be bound to per-country database views via [[fromEnvForDb]]'s
