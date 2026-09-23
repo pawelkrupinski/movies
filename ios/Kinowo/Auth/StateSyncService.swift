@@ -112,66 +112,48 @@ final class StateSyncService: ObservableObject {
         await reconcile(country: prefs.selectedCountry.code)
     }
 
-    /// The reconcile for ONE country. `hiddenFilms` is a single device-wide
-    /// set mirroring ONE country's server bucket at a time, so there are three
-    /// cases:
+    /// The reconcile for ONE country. The local store keeps one set per
+    /// country, exactly like the server, so each country reconciles against
+    /// its OWN local bucket — a country switch can neither leak the previous
+    /// country's titles into this one nor leave them on screen after a 304.
     ///
-    /// - Already mirroring `country` (or, from a build that predates
-    ///   `hiddenFilmsMirroredCountry`, migrated with nothing recorded): fetch
-    ///   CONDITIONALLY with the stored validators — a "not modified" leaves
-    ///   local untouched; a fresh result REPLACES local (server authoritative,
-    ///   so a removal made elsewhere stays removed instead of being
-    ///   resurrected).
-    /// - Mirroring ANOTHER country (a country switch while signed in): the
-    ///   local set is that country's bucket, already on the server — fetch
-    ///   unconditionally and REPLACE, never union it into this one.
-    /// - First reconcile of this sign-in: the local set is the anonymous
-    ///   device's — fetch unconditionally, union local+server, push every
-    ///   LOCAL-ONLY title as its own `hide` call (there's no bulk push).
+    /// - Already migrated: fetch CONDITIONALLY with the stored validators —
+    ///   a "not modified" leaves local untouched; a fresh result REPLACES
+    ///   local (server authoritative, so a removal made elsewhere stays
+    ///   removed instead of being resurrected).
+    /// - First reconcile of this country this sign-in: fetch
+    ///   unconditionally, union local+server, push every LOCAL-ONLY title as
+    ///   its own `hide` call (there's no bulk push).
     ///
-    /// A result for a country that's no longer selected by the time it
-    /// lands (a quick switch away mid-fetch) is dropped rather than written
-    /// over the newly selected country's set.
+    /// A result that lands after the user switched away writes to its own
+    /// country's bucket, never over the newly selected one.
     private func reconcile(country: String) async {
-        let mirrored = prefs.hiddenFilmsMirroredCountry
         do {
-            if prefs.isHiddenFilmsMigrated(country: country), mirrored == nil || mirrored == country {
+            if prefs.isHiddenFilmsMigrated(country: country) {
                 let (etag, lastModified) = prefs.hiddenFilmsValidators(country: country)
-                let result = try await client.fetch(country: country, etag: etag, lastModified: lastModified)
-                guard prefs.selectedCountry.code == country else { return }
-                if case .current(let remote) = result {
-                    replaceLocal(with: remote, country: country)
+                if case .current(let remote) = try await client.fetch(country: country, etag: etag, lastModified: lastModified) {
+                    prefs.setHiddenFilms(remote.hiddenFilms, country: country)
+                    prefs.setHiddenFilmsValidators(country: country, etag: remote.etag, lastModified: remote.lastModified)
                 }
             } else {
                 // No usable validators, so this is always a fresh 200.
-                guard case .current(let remote) = try await client.fetch(country: country, etag: nil, lastModified: nil),
-                      prefs.selectedCountry.code == country else { return }
-                if mirrored != nil {
-                    replaceLocal(with: remote, country: country)
-                } else {
-                    let merged    = prefs.hiddenFilms.union(remote.hiddenFilms)
-                    let localOnly = prefs.hiddenFilms.subtracting(remote.hiddenFilms)
-                    if merged != prefs.hiddenFilms { prefs.setHiddenFilms(merged) }
+                guard case .current(let remote) = try await client.fetch(country: country, etag: nil, lastModified: nil) else { return }
+                let local     = prefs.hiddenFilms(country: country)
+                let localOnly = local.subtracting(remote.hiddenFilms)
+                prefs.setHiddenFilms(local.union(remote.hiddenFilms), country: country)
 
-                    var latest = remote
-                    for title in localOnly {
-                        latest = try await client.hide(country: country, title: title)
-                    }
-                    prefs.setHiddenFilmsValidators(country: country, etag: latest.etag, lastModified: latest.lastModified)
+                var latest = remote
+                for title in localOnly {
+                    latest = try await client.hide(country: country, title: title)
                 }
+                prefs.setHiddenFilmsValidators(country: country, etag: latest.etag, lastModified: latest.lastModified)
             }
             prefs.setHiddenFilmsMigrated(country: country)
-            prefs.setHiddenFilmsMirrored(country: country)
         } catch {
             // Network error — local state is authoritative; leave prefs + flags
             // alone, a later reconcile (resume, country switch, next login)
             // retries.
         }
-    }
-
-    private func replaceLocal(with remote: HiddenFilmsResult, country: String) {
-        if prefs.hiddenFilms != remote.hiddenFilms { prefs.setHiddenFilms(remote.hiddenFilms) }
-        prefs.setHiddenFilmsValidators(country: country, etag: remote.etag, lastModified: remote.lastModified)
     }
 
     /// Language is a scalar, not a set, so it skips the per-country

@@ -328,11 +328,9 @@ final class StateSyncServiceTests: XCTestCase {
         _ = sync
     }
 
-    /// The local set is ONE device-wide set, while the server keeps one per
-    /// country. Once signed in it mirrors the selected country's bucket, so
-    /// switching to a country this device has never synced must REPLACE it
-    /// with that country's bucket — not union the previous country's titles
-    /// in and push them up as hides of the new one.
+    /// Switching to a country this device has never synced must show that
+    /// country's bucket — not union the previous country's titles in and
+    /// push them up as hides of the new one.
     func testCountrySwitchToUnsyncedCountryDoesNotLeakThePreviousCountrysHides() async throws {
         client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: ["PL Film"], etag: "\"pl1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
         let sync = makeSyncService()
@@ -348,9 +346,9 @@ final class StateSyncServiceTests: XCTestCase {
         _ = sync
     }
 
-    /// Switching BACK to an already-synced country: its stored validators
-    /// describe that country's bucket, but the local set currently holds the
-    /// OTHER country's — a 304 there must not leave the wrong set in place.
+    /// Switching BACK to an already-synced country answers 304 — the
+    /// visible set must still become that country's own, not stay on the
+    /// OTHER country's.
     func testCountrySwitchBackToASyncedCountryRestoresItsOwnSet() async throws {
         client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: ["PL Film"], etag: "\"pl1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
         client.fetchResults[unitedKingdom.code] = .current(HiddenFilmsResult(hiddenFilms: ["UK Film"], etag: "\"uk1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
@@ -370,8 +368,9 @@ final class StateSyncServiceTests: XCTestCase {
     }
 
     /// A reconcile still in flight when the user switches country must not
-    /// land its (old-country) result over the newly selected country's set.
-    func testReconcileResultForAPreviouslySelectedCountryIsDropped() async throws {
+    /// land its (old-country) result over the newly selected country's set —
+    /// it belongs in the old country's own bucket.
+    func testReconcileResultForAPreviouslySelectedCountryLandsInItsOwnBucket() async throws {
         client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: ["PL Film"], etag: "\"pl1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
         client.fetchResults[unitedKingdom.code] = .current(HiddenFilmsResult(hiddenFilms: ["UK Film"], etag: "\"uk1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
         let sync = makeSyncService()
@@ -387,6 +386,7 @@ final class StateSyncServiceTests: XCTestCase {
 
         await slowResume.value
         XCTAssertEqual(prefs.hiddenFilms, ["UK Film"])
+        XCTAssertEqual(prefs.hiddenFilms(country: pl), ["PL Film", "PL Film 2"])
     }
 
     /// `AuthService.user` re-publishes a non-nil profile whenever

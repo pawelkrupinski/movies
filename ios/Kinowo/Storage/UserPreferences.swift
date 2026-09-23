@@ -15,6 +15,11 @@ enum HiddenFilmsChange: Equatable {
 /// cross-platform `disabledCinemas` exclusion set.
 /// Mirrors what the web app stores in `localStorage` for anonymous users.
 final class UserPreferences: ObservableObject {
+    /// The hidden titles of the country being browsed. Stored PER COUNTRY
+    /// (one `hiddenFilms_<code>` key each), like the server's
+    /// `/api/me/{country}/hidden-films` buckets and Android's store, so a
+    /// country switch shows that country's own set instead of carrying the
+    /// previous one across. Re-read from the store by `setCountry`.
     @Published private(set) var hiddenFilms: Set<String> = []
     /// The excluded-cinemas set, shared in NAME only with the web's
     /// `disabledCinemas` localStorage key — both are device-local, neither
@@ -44,15 +49,6 @@ final class UserPreferences: ObservableObject {
     /// reconcile (so a removal sticks); cleared on logout so the next
     /// sign-in migrates every country afresh.
     private var hiddenFilmsMigratedCountries: Set<String> = []
-    /// The country whose server bucket `hiddenFilms` last mirrored, or `nil`
-    /// before this sign-in's first reconcile. `hiddenFilms` is ONE
-    /// device-wide set while the server keeps one per country, so after a
-    /// country switch the local set still holds the PREVIOUS country's
-    /// titles — `StateSyncService` reads this to replace it wholesale instead
-    /// of trusting that country's validators (a 304 would keep the wrong set)
-    /// or unioning it in (which would push the old country's titles up as
-    /// hides of the new one). Cleared with the migration flags on logout.
-    private(set) var hiddenFilmsMirroredCountry: String?
     /// Slugs of split cities whose first-visit area picker the user has already
     /// completed, so it shows once per city (never on a flat city). Device-local.
     @Published private(set) var areaPickerSeenCities: Set<String> = []
@@ -75,7 +71,10 @@ final class UserPreferences: ObservableObject {
     @Published private(set) var selectedLanguage: String
 
     private let store: UserDefaults
-    private let kHidden        = "hiddenFilms"
+    /// Builds before per-country sets kept ONE device-wide set here; `init`
+    /// folds it into the country it was made in (see `settleLegacyHiddenFilms`).
+    private let kHiddenLegacy  = "hiddenFilms"
+    private let kHiddenPrefix  = "hiddenFilms_"
     private let kDisabled      = "disabledCinemas"
     private let kSwiped        = "swipedScreens"
     private let kHintDate      = "swipeHintShownDate"
@@ -84,24 +83,26 @@ final class UserPreferences: ObservableObject {
     private let kHiddenFilmsMigrated = "hiddenFilmsMigratedCountries"
     private let kHiddenFilmsETags        = "hiddenFilmsETags"
     private let kHiddenFilmsLastModified = "hiddenFilmsLastModified"
-    private let kHiddenFilmsMirrored     = "hiddenFilmsMirroredCountry"
+    /// Written by builds whose device-wide set needed to remember which
+    /// country it mirrored; only ever removed now.
+    private let kHiddenFilmsMirroredLegacy = "hiddenFilmsMirroredCountry"
     private let kAreaSeen       = "areaPickerSeenCities"
     private let kExplicitPick   = "awaitingExplicitCityPick"
 
     init(store: UserDefaults = .standard) {
         self.store = store
-        hiddenFilms         = Set(store.stringArray(forKey: kHidden)        ?? [])
         disabledCinemas     = Set(store.stringArray(forKey: kDisabled)      ?? [])
         hasSwipedScreens    = store.bool(forKey: kSwiped)
         swipeHintShownDate  = store.string(forKey: kHintDate)              ?? ""
         selectedCity        = store.string(forKey: kCity)
         citySwitchPromptKey = store.string(forKey: kSwitchPrompt)
         hiddenFilmsMigratedCountries = Set(store.stringArray(forKey: kHiddenFilmsMigrated) ?? [])
-        hiddenFilmsMirroredCountry = store.string(forKey: kHiddenFilmsMirrored)
         awaitingExplicitCityPick = store.bool(forKey: kExplicitPick)
         areaPickerSeenCities = Set(store.stringArray(forKey: kAreaSeen) ?? [])
         selectedCountry     = CountrySelection.current(store)
         selectedLanguage    = LanguageSelection.resolve(storefrontCountry: nil, defaults: store)
+        settleLegacyHiddenFilms()
+        hiddenFilms         = hiddenFilms(country: selectedCountry.code)
 
         #if DEBUG
         // UI tests force the first-launch city gate by ignoring any persisted
@@ -121,21 +122,19 @@ final class UserPreferences: ObservableObject {
     /// no startup value to skip.
     let hiddenFilmsChanges = PassthroughSubject<HiddenFilmsChange, Never>()
 
+    /// Hide/unhide/clear-all act on the country being browsed.
     func hide(_ title: String) {
-        hiddenFilms.insert(title)
-        store.set(Array(hiddenFilms), forKey: kHidden)
+        setHiddenFilms(hiddenFilms.union([title]), country: selectedCountry.code)
         hiddenFilmsChanges.send(.hidden(title))
     }
 
     func unhide(_ title: String) {
-        hiddenFilms.remove(title)
-        store.set(Array(hiddenFilms), forKey: kHidden)
+        setHiddenFilms(hiddenFilms.subtracting([title]), country: selectedCountry.code)
         hiddenFilmsChanges.send(.unhidden(title))
     }
 
     func unhideAll() {
-        hiddenFilms.removeAll()
-        store.set(Array(hiddenFilms), forKey: kHidden)
+        setHiddenFilms([], country: selectedCountry.code)
         hiddenFilmsChanges.send(.clearedAll)
     }
 
@@ -155,12 +154,31 @@ final class UserPreferences: ObservableObject {
         store.set(Array(areaPickerSeenCities), forKey: kAreaSeen)
     }
 
-    /// Replace the whole hidden-films set — used by `StateSyncService` when the
-    /// server is authoritative (mirror the remote set, dropping local-only
-    /// entries the user removed elsewhere).
-    func setHiddenFilms(_ s: Set<String>) {
-        hiddenFilms = s
-        store.set(Array(hiddenFilms), forKey: kHidden)
+    /// `country`'s hidden titles (server code space — `pl`, `uk`, …),
+    /// whether or not it is the country being browsed.
+    func hiddenFilms(country: String) -> Set<String> {
+        Set(store.stringArray(forKey: kHiddenPrefix + country) ?? [])
+    }
+
+    /// Replace `country`'s whole hidden-films set — used by `StateSyncService`
+    /// when the server is authoritative (mirror the remote set, dropping
+    /// local-only entries the user removed elsewhere). Updates the published
+    /// `hiddenFilms` only when `country` is the one being browsed.
+    func setHiddenFilms(_ s: Set<String>, country: String) {
+        store.set(Array(s), forKey: kHiddenPrefix + country)
+        if country == selectedCountry.code, hiddenFilms != s { hiddenFilms = s }
+    }
+
+    /// Fold the pre-per-country device-wide set into the country it was made
+    /// in — the one selected when this build first launches — unless that
+    /// country already has its own set. Idempotent; the legacy key is gone
+    /// after the first run.
+    private func settleLegacyHiddenFilms() {
+        store.removeObject(forKey: kHiddenFilmsMirroredLegacy)
+        guard let legacy = store.stringArray(forKey: kHiddenLegacy) else { return }
+        let key = kHiddenPrefix + selectedCountry.code
+        if store.object(forKey: key) == nil { store.set(legacy, forKey: key) }
+        store.removeObject(forKey: kHiddenLegacy)
     }
 
     /// Whether `country` has completed its one-time local→server hiddenFilms
@@ -177,16 +195,8 @@ final class UserPreferences: ObservableObject {
         store.set(Array(hiddenFilmsMigratedCountries), forKey: kHiddenFilmsMigrated)
     }
 
-    /// Record that `hiddenFilms` now mirrors `country`'s server bucket (see
-    /// `hiddenFilmsMirroredCountry`).
-    func setHiddenFilmsMirrored(country: String) {
-        guard hiddenFilmsMirroredCountry != country else { return }
-        hiddenFilmsMirroredCountry = country
-        store.set(country, forKey: kHiddenFilmsMirrored)
-    }
-
     /// Undo every country's migration flag AND forget every stored
-    /// validator and the mirrored country — a genuine logout, so the next sign-in (possibly a
+    /// validator — a genuine logout, so the next sign-in (possibly a
     /// different account) migrates every country afresh rather than reusing
     /// this device's previous account's ETags. See `StateSyncService`.
     func clearHiddenFilmsMigration() {
@@ -194,8 +204,6 @@ final class UserPreferences: ObservableObject {
         store.removeObject(forKey: kHiddenFilmsMigrated)
         store.removeObject(forKey: kHiddenFilmsETags)
         store.removeObject(forKey: kHiddenFilmsLastModified)
-        hiddenFilmsMirroredCountry = nil
-        store.removeObject(forKey: kHiddenFilmsMirrored)
     }
 
     /// The stored `(ETag, Last-Modified)` pair for `country`'s last known
@@ -267,6 +275,7 @@ final class UserPreferences: ObservableObject {
         guard selectedCountry != country else { return }
         selectedCountry = country
         CountrySelection.select(country, in: store)
+        hiddenFilms = hiddenFilms(country: country.code)
         // The user just said which country they want, so let them say which
         // city too: the re-gated app offers that country's list rather than
         // whatever city the device happens to sit near.
