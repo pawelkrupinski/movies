@@ -65,6 +65,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = sweeps += (kind -> didWork)
     val caughtUp = scala.collection.mutable.Buffer.empty[Int]
     def recordCatchUp(rows: Int): Unit                             = caughtUp += rows
+    val heals = scala.collection.mutable.Buffer.empty[(String, Int)]
+    def recordHeal(trigger: String, rows: Int): Unit               = heals += (trigger -> rows)
     val cardWrites = scala.collection.mutable.Buffer.empty[Set[String]]
     def recordCardWrite(changed: Set[String]): Unit                = cardWrites += changed
   }
@@ -382,6 +384,29 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val named = ids.filter(id => lines.head.contains(id))
     withClue(s"the heal line named ${named.size} of ${ids.size} rows: ${lines.head}") { named should have size 20 }
     lines.head should include ("(+5 more)")
+  }
+
+  // Every heal is a row the change-stream path failed to write, and on 2026-09-22 they ran
+  // ~26 a day for days (a TMDB re-try making rows briefly unready) with nothing but a WARN line
+  // to show for it. The count is what an alert can watch: each pass meters the rows it WROTE
+  // for, by which pass it was, and a pass that found nothing missing meters nothing.
+  "a heal" should "be metered by the pass that made it, one count per row it wrote for" in {
+    val repository = new InMemoryMovieRepository()
+    val rm = new InMemoryReadModelRepository()
+    val m  = new RecordingMetrics()
+    val projector = new ReadModelProjector(repository, rm, rm, m)
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00"))))
+    projector.start()                                   // both uncarded → both healed at boot
+    m.heals.toSeq shouldBe Seq(ReadModelProjectionMetrics.HealTrigger.Boot -> 2)
+
+    projector.pruneOrphans()                            // nothing missing → no heal to meter
+    m.heals.toSeq shouldBe Seq(ReadModelProjectionMetrics.HealTrigger.Boot -> 2)
+
+    rm.deleteMovie("bar|2024")                          // a card the stream lost
+    projector.pruneOrphans()
+    m.heals.last shouldBe (ReadModelProjectionMetrics.HealTrigger.Sweep -> 1)
+    projector.stop()
   }
 
   "reconcile" should "prune derived documents whose source film vanished" in {

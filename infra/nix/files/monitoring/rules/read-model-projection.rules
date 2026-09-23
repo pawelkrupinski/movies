@@ -665,3 +665,46 @@ groups:
             (`kinowo_worker_readmodel_catchup_rows_total`), so the site is at most half an hour
             stale. Check the two side cursors on the change-stream silence panel of the application
             dashboard: all three silent points at Mongo, one silent points at that cursor.
+
+      # -----------------------------------------------------------------------------------------
+      # THE SWEEP KEEPS HEALING WHAT THE STREAM SHOULD HAVE WRITTEN.
+      #
+      # `kinowo_worker_readmodel_heals_total` counts ready rows the prune sweep (or the boot check)
+      # re-projected because the read model lacked one of their cards or venues. Every one is a row
+      # the change-stream path missed: a card it retired and never restored, a slot event it never
+      # applied. The heal repairs it -- up to 30 minutes late, after the city page has served
+      # without the film -- and says so only in a WARN line.
+      #
+      # WHY IT EXISTS: from 2026-09-11 a TMDB re-try made rows briefly unready, the stream retired
+      # their cards (`readmodel_cards_retired_total{reason="row-unready"}`, ~500/day), and only the
+      # sweep put them back: the US logged 15-21 heal lines a day for a week, PL 6 on 09-23, and
+      # nothing alerted, because the existing rules watch the prune RATE and the served-films HOLE,
+      # and a card missing for half an hour at a time moves neither far enough.
+      #
+      # "KEEPS HAPPENING", NOT "HAPPENED": healed in the last hour AND at least once in the six
+      # hours before that. One heal -- a boot after a long outage, a single missed event -- does
+      # not fire; heals in two sweeps at least an hour apart do. Measured against the heal lines in
+      # VictoriaLogs (2026-09-11 .. 09-23): the US would have fired from 09-12 and stayed firing
+      # through 09-19, PL at 10:38 on 09-23 (heals at 09:38 and 10:38). After the fix went out
+      # (~13:50 on 09-23) no country healed a row in the next 40 minutes, so this is quiet today.
+      # The occasional pair of heals a few hours apart in PL/UK/DE (1-3 a day over those 12 days)
+      # WILL fire it, and should: each is a stream miss nobody has explained yet.
+      - alert: ReadModelHealsRecurring
+        expr: >-
+          (sum by (country) (increase(kinowo_worker_readmodel_heals_total[1h])) > 0)
+          and on (country)
+          (sum by (country) (increase(kinowo_worker_readmodel_heals_total[6h] offset 1h)) > 0)
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}'s read-model sweep keeps healing cards the change stream did not write"
+          description: >-
+            The read-model prune sweep in "{{ $labels.country }}" re-projected rows missing a card or
+            a venue in the last hour, and also in the six hours before that. Each heal is a row the
+            change-stream path should already have written, so the site served without it for up to
+            30 minutes each time. The worker's WARN lines name the healed rows ("projected N ready
+            row(s) missing a card or a venue ... : <ids>"); look up what retired those rows' cards --
+            `kinowo_worker_readmodel_cards_retired_total` by reason on the read-model heals panel of
+            the worker diagnostics dashboard (a `row-unready` rate that the heals trail is a row
+            flapping out of readiness), and `RemovalAudit` log lines for the same ids.

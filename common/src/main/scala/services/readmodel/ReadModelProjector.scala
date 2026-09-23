@@ -56,7 +56,7 @@ class ReadModelProjector(
   // it rather than accepting a second, separately-wired copy that could disagree.
   private val normalizer: services.movies.TitleNormalizer = movieRepository.normalizer
 
-  import ReadModelProjectionMetrics.{Op, PruneReason, ReconcileKind, RetireReason, Target}
+  import ReadModelProjectionMetrics.{HealTrigger, Op, PruneReason, ReconcileKind, RetireReason, Target}
 
   // Diff state for minimal writes: the CONTENT HASH of the last-projected document per
   // film (and per screening), NOT the full document. The projection is deterministic, so
@@ -473,8 +473,11 @@ class ReadModelProjector(
     // the change stream can't deliver. Surfaced as kinowo_worker_readmodel_reconcile_sweeps.
     val didWork = reprojected > 0 || prunedFilms > 0 || prunedScreenings > 0
     if (!reproject) metrics.recordReconcileSweep(ReconcileKind.Prune, didWork)
-    if (healed.nonEmpty) logger.warn(s"read-model $kind sweep: projected ${healed.size} ready row(s) missing a card or a venue " +
-      s"before the prune: ${ReadModelProjector.idsForLog(healed)}.")
+    if (healed.nonEmpty) {
+      metrics.recordHeal(HealTrigger.Sweep, healed.size)
+      logger.warn(s"read-model $kind sweep: projected ${healed.size} ready row(s) missing a card or a venue " +
+        s"before the prune: ${ReadModelProjector.idsForLog(healed)}.")
+    }
     logger.info(s"read-model $kind sweep: reprojected $reprojected doc(s), pruned $prunedFilms film(s) + " +
       s"$prunedScreenings orphan screening(s)${if (scanComplete) "" else " [scan INCOMPLETE — prune skipped]"}.")
   }
@@ -552,10 +555,12 @@ class ReadModelProjector(
     if (!cardsRead) logger.warn("read model: the card ids could not be read at boot — nothing healed; the prune sweep retries.")
     val healed = missing.flatMap { case (id, absentCards, absentVenues) =>
       lock.synchronized(heal(id, absentCards, absentVenues)).collect { case (_, written) if written > 0 => id.value } }
-    if (healed.nonEmpty)
+    if (healed.nonEmpty) {
+      metrics.recordHeal(HealTrigger.Boot, healed.size)
       logger.warn(s"read model: projected ${healed.size} ready row(s) missing a card or a venue at boot" +
         (if (complete) "" else " (source scan incomplete — the rest heal on their next change)") +
         s": ${ReadModelProjector.idsForLog(healed)}.")
+    }
   }.recover { case exception => logger.warn(s"read-model missing-card check failed, skipped: ${exception.getMessage}") }
 
   /** Caller holds `lock`. Re-project a row whose cards under `absentCards` and whose

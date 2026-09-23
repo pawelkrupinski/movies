@@ -828,3 +828,53 @@ tests:
       - eval_time: 1h
         alertname: ChangeStreamMoviesCursorSilent
         exp_alerts: []
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────
+  # HEALS THAT KEEP COMING FIRE; ONE HEAL DOES NOT. PL heals one row at the 30-minute mark and
+  # another at 3h: the second lands in the last hour while the first sits in the six hours before
+  # it, which is the recurrence the rule exists for. The US heals five rows ONCE (a boot after an
+  # outage) and nothing after: the last-hour clause holds only while the earlier-window clause
+  # cannot, so it never fires. A counter reset (the pod restarting) between PL's heals must not
+  # read as a heal of its own, and does not: `increase` treats the drop as a reset.
+  # ──────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: heals in two sweeps hours apart fire, a single mass heal does not
+    input_series:
+      - series: 'kinowo_worker_readmodel_heals_total{country="pl",job="kinowo-worker",trigger="sweep"}'
+        values: '0x29 1x90 0x59 1x60'
+      - series: 'kinowo_worker_readmodel_heals_total{country="us",job="kinowo-worker",trigger="boot"}'
+        values: '0x29 5x210'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: ReadModelHealsRecurring
+        exp_alerts: []
+      - eval_time: 3h10m
+        alertname: ReadModelHealsRecurring
+        exp_alerts:
+          - exp_labels:
+              country: pl
+              severity: warning
+            exp_annotations:
+              summary: "pl's read-model sweep keeps healing cards the change stream did not write"
+              description: >-
+                The read-model prune sweep in "pl" re-projected rows missing a card or
+                a venue in the last hour, and also in the six hours before that. Each heal is a row the
+                change-stream path should already have written, so the site served without it for up to
+                30 minutes each time. The worker's WARN lines name the healed rows ("projected N ready
+                row(s) missing a card or a venue ... : <ids>"); look up what retired those rows' cards --
+                `kinowo_worker_readmodel_cards_retired_total` by reason on the read-model heals panel of
+                the worker diagnostics dashboard (a `row-unready` rate that the heals trail is a row
+                flapping out of readiness), and `RemovalAudit` log lines for the same ids.
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────
+  # A HEALTHY STREAM: the counter is seeded at zero and stays there. Nothing fires however long.
+  # ──────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: no heals, no alert
+    input_series:
+      - series: 'kinowo_worker_readmodel_heals_total{country="de",job="kinowo-worker",trigger="sweep"}'
+        values: '0x600'
+    alert_rule_test:
+      - eval_time: 9h
+        alertname: ReadModelHealsRecurring
+        exp_alerts: []

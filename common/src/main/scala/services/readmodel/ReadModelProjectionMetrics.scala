@@ -91,6 +91,16 @@ trait ReadModelProjectionMetrics {
    *  side of `ChangeStreamMoviesCursorSilent`. Fed from [[ReadModelProjector.sweep]]. */
   def recordCatchUp(rows: Int): Unit
 
+  /** `rows` ready rows were re-projected because the read model lacked one of their cards or
+   *  venues, found by the prune sweep or by the boot check ([[ReadModelProjectionMetrics.HealTrigger]]).
+   *  Every such row is one the change-stream path should already have written — a card it
+   *  retired and never restored, a slot whose event it missed — so zero is the healthy reading
+   *  and any heal is a stream-path defect. On 2026-09-22 a TMDB re-try made rows briefly
+   *  unready, the stream retired ~500 cards a day for it, and only the sweep's ~26 heal lines
+   *  a day put them back, 30 minutes late each time; that ran for days visible only in logs.
+   *  Only rows the heal actually WROTE for count — a look that found nothing missing is not a heal. */
+  def recordHeal(trigger: String, rows: Int): Unit
+
   /** One card document written, by what moved it: `changed` is the set of card parts
    *  ([[ReadModelProjectionMetrics.CardPart]]) that differ from the card written before,
    *  empty for a card that had none. The single-part share per part says what actually
@@ -112,6 +122,8 @@ object ReadModelProjectionMetrics {
   object PruneReason  { val RowGone = "row-gone"; val VariantGone = "variant-gone" }
   /** Why the change-stream path retired a card on its own. */
   object RetireReason { val VariantGone = "variant-gone"; val RowDeleted = "row-deleted"; val RowUnready = "row-unready" }
+  /** Which pass healed a row: the scheduled prune sweep, or the check `start()` runs at boot. */
+  object HealTrigger { val Sweep = "sweep"; val Boot = "boot" }
   /** `outcome` label values for the metadata-projection counter. */
   object MetadataOutcome { val Reused = "reused"; val Recomputed = "recomputed" }
   /** The parts of a card a rewrite can move, each a group of fields that change together. */
@@ -127,6 +139,7 @@ object ReadModelProjectionMetrics {
   val ReconcileKinds: Seq[String] = Seq(ReconcileKind.Prune)
   val PruneReasons:  Seq[String]  = Seq(PruneReason.RowGone, PruneReason.VariantGone)
   val RetireReasons: Seq[String]  = Seq(RetireReason.VariantGone, RetireReason.RowDeleted, RetireReason.RowUnready)
+  val HealTriggers: Seq[String]   = Seq(HealTrigger.Sweep, HealTrigger.Boot)
   val MetadataOutcomes: Seq[String] = Seq(MetadataOutcome.Reused, MetadataOutcome.Recomputed)
   val CardParts: Seq[String] = Seq(CardPart.Title, CardPart.Poster, CardPart.Facts, CardPart.Synopsis,
     CardPart.SynopsisByCity, CardPart.Ratings, CardPart.Trailers, CardPart.AgeRating)
@@ -146,6 +159,7 @@ object ReadModelProjectionMetrics {
     def recordMetadataProjection(reused: Boolean): Unit           = ()
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = ()
     def recordCatchUp(rows: Int): Unit                              = ()
+    def recordHeal(trigger: String, rows: Int): Unit                = ()
     def recordCardWrite(changed: Set[String]): Unit                 = ()
   }
 }

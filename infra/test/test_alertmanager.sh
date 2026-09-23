@@ -194,6 +194,7 @@ route_is telegram-and-email alertname=PaidEgressFailing severity=warning country
 route_is telegram alertname=ReadModelFilmPruneBurst severity=warning country=pl
 route_is telegram alertname=ReadModelProjectionTriggerUnaccounted severity=warning country=us
 route_is telegram alertname=ReadModelFilmsInvisibleWithScreenings severity=warning country=de
+route_is telegram alertname=ReadModelHealsRecurring severity=warning country=us
 
 # AND NOTHING ELSE CHANGED. The email receiver is for the disk alerts alone; every other alert must
 # still land on plain Telegram, or "add email for the disks" has quietly become "add email".
