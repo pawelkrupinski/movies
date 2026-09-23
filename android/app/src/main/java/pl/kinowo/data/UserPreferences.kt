@@ -145,13 +145,27 @@ class UserPreferences(private val context: Context) : SyncPrefs {
      *  changes, so writing the country and the city as two separate [edit]
      *  calls lets that recreate race ahead of the second call and cancel it —
      *  the city is then never adopted and the "which city did you mean" dialog
-     *  vanishes with the teardown. See
+     *  vanishes with the teardown. [pendingDeepLink], when given, rides the
+     *  same write for the recreated ViewModel to apply. See
      *  [pl.kinowo.ui.KinowoViewModel.adoptDetectedCity]. */
-    suspend fun setCityInCountry(slug: String, code: String) = context.dataStore.edit { prefs ->
-        prefs.settleLegacyHiddenFilms()
-        prefs[KEY_COUNTRY] = code
-        prefs[KEY_CITY] = slug
-        prefs.remove(KEY_EXPLICIT_PICK)
+    suspend fun setCityInCountry(slug: String, code: String, pendingDeepLink: String? = null) =
+        context.dataStore.edit { prefs ->
+            prefs.settleLegacyHiddenFilms()
+            prefs[KEY_COUNTRY] = code
+            prefs[KEY_CITY] = slug
+            prefs.remove(KEY_EXPLICIT_PICK)
+            if (pendingDeepLink != null) prefs[KEY_PENDING_DEEP_LINK] = pendingDeepLink
+        }
+
+    /** Read-and-remove the deep link a cross-country switch handed over (see
+     *  [setCityInCountry]) — atomically, so it is applied at most once. */
+    suspend fun takePendingDeepLink(): String? {
+        var link: String? = null
+        context.dataStore.edit { prefs ->
+            link = prefs[KEY_PENDING_DEEP_LINK]
+            prefs.remove(KEY_PENDING_DEEP_LINK)
+        }
+        return link
     }
 
     /** [selectedCountryCode] and [selectedCity] paired from the SAME
@@ -363,5 +377,6 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         val KEY_POSTER_PURGE_DATE = stringPreferencesKey("posterPurgeDate")
         val KEY_AREA_SEEN = stringSetPreferencesKey("areaPickerSeenCities")
         val KEY_EXPLICIT_PICK = booleanPreferencesKey("awaitingExplicitCityPick")
+        val KEY_PENDING_DEEP_LINK = stringPreferencesKey("pendingDeepLink")
     }
 }

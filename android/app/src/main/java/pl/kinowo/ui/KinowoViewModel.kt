@@ -366,6 +366,9 @@ class KinowoViewModel(
                 .distinctUntilChanged()
                 .collectLatest { slug -> fetchAll(slug) }
         }
+        // A cross-country deep link the previous ViewModel handed over (see
+        // [handleDeepLink]) — its country and city are already stored.
+        viewModelScope.launch { prefs.takePendingDeepLink()?.let { handleDeepLink(it) } }
     }
 
     /** Listing + details fetched concurrently for [citySlug] — the grid paints
@@ -460,41 +463,42 @@ class KinowoViewModel(
      * filters immediately, and defers the film push + multi-value (exclusion /
      * cinema) filters until the repertoire loads — both need the loaded films
      * (the value universe to invert the link's inclusion lists, and the title to
-     * confirm before navigating). Mirrors iOS `ContentView.consumeDeepLink`.
+     * confirm before navigating). A link into another country is handed over
+     * to the ViewModel the country switch recreates. Mirrors iOS
+     * `ContentView.consumeDeepLink`.
      */
-    fun handleDeepLink(rawUrl: String) {
+    fun handleDeepLink(rawUrl: String) = viewModelScope.launch {
         // Parse against the LIVE catalog's slugs (like iOS `catalog.allSlugs`), so
         // a city that ships only via `/api/catalog` — every German city — is
         // recognised, not just the compile-time `Cities.all` roster.
         val catalog = countryCatalog.value
-        val cities = catalog.cities
-        val link = DeepLink.parse(rawUrl, cities.map { it.slug }.toSet(), catalog::versionTokensOf) ?: return
-        // A link on another country's deployment must switch the country too,
-        // or the linked city resolves against the wrong deployment's host.
-        // Unlike the manual switch (`setCountry`) we KEEP the linked city rather
-        // than clearing it — in one atomic write, see [moveToCity]. The country
-        // change makes MainActivity clear this ViewModel and recreate, and its
-        // onCreate hands the activity's intent to the FRESH ViewModel — which,
-        // country and city now matching, applies the filters + film itself.
-        val country = cities.countryOf(link.citySlug) ?: selectedCountryCode.value
-        if (link.citySlug != selectedCity.value || country != selectedCountryCode.value) {
-            viewModelScope.launch {
-                citySwitchSuggestion = null
-                moveToCity(link.citySlug, country)
-            }
+        val link = DeepLink.parse(rawUrl, catalog.cities.map { it.slug }.toSet(), catalog::versionTokensOf) ?: return@launch
+        // The STORED choices, not this ViewModel's `stateIn` mirrors, which
+        // still read null until DataStore's first emission lands.
+        val (storedCountry, storedCity) = prefs.countryAndCity.first()
+        val current = Country.byCode(storedCountry).code
+        val target = catalog.cities.countryOf(link.citySlug) ?: current
+        citySwitchSuggestion = null
+        if (target != current) {
+            // Another country's deployment: switch country and city in ONE
+            // write (see [adoptDetectedCity]) and hand the link itself over in that
+            // same write. MainActivity clears this ViewModel and recreates the
+            // instant the country changes, so nothing here survives; the fresh
+            // ViewModel applies the pending link from [start].
+            prefs.setCityInCountry(link.citySlug, target, pendingDeepLink = rawUrl)
+            return@launch
         }
+        if (link.citySlug != storedCity) prefs.setCity(link.citySlug)
         applyScalarFilters(link.filters)
-        viewModelScope.launch {
-            // Wait for the TARGET city's repertoire to be the loaded one — NOT
-            // merely for `films` to be non-empty. On a warm app (or a cached
-            // cold start) `films` still holds the PREVIOUS city's list, so
-            // matching the deep-linked film against it misses and the film page
-            // never opens — the bug MIUI hits every time, since it keeps the app
-            // warm. Bounded so a film that genuinely left the repertoire, or a
-            // city whose load fails, falls through to a no-op instead of hanging.
-            withTimeoutOrNull(10_000) { repository.loadedCity.first { it == link.citySlug } }
-            applyRepertoireDependent(link, films.value)
-        }
+        // Wait for the TARGET city's repertoire to be the loaded one — NOT
+        // merely for `films` to be non-empty. On a warm app (or a cached
+        // cold start) `films` still holds the PREVIOUS city's list, so
+        // matching the deep-linked film against it misses and the film page
+        // never opens — the bug MIUI hits every time, since it keeps the app
+        // warm. Bounded so a film that genuinely left the repertoire, or a
+        // city whose load fails, falls through to a no-op instead of hanging.
+        withTimeoutOrNull(10_000) { repository.loadedCity.first { it == link.citySlug } }
+        applyRepertoireDependent(link, films.value)
     }
 
     @androidx.annotation.VisibleForTesting
@@ -547,24 +551,15 @@ class KinowoViewModel(
      *  country and set the city in ONE atomic write via `prefs.setCityInCountry`
      *  rather than [setCountry], which clears the city — as [handleDeepLink]
      *  does for a cross-country link: we're about to set this exact city, not
-     *  re-arm the gate for a fresh pick. See [moveToCity]. */
+     *  re-arm the gate for a fresh pick. */
     fun adoptDetectedCity(city: City) = viewModelScope.launch {
         citySwitchSuggestion = null
-        moveToCity(city.slug, city.country)
-    }
-
-    /** Persist [slug], switching to [country] in the SAME write when it isn't
-     *  the current one. Never two writes: MainActivity recreates the activity
-     *  (cancelling this coroutine) the instant the country pref changes, so a
-     *  `setCountryCode` followed by a `setCity` exposes the new country with
-     *  the old city and can lose the city to that teardown — see
-     *  [pl.kinowo.data.UserPreferences.setCityInCountry]. */
-    private suspend fun moveToCity(slug: String, country: String?) {
-        if (country != null && country != selectedCountryCode.value) {
-            prefs.setCityInCountry(slug, country)
-        } else {
-            prefs.setCity(slug)
-        }
+        // Never two writes: MainActivity recreates the activity (cancelling
+        // this coroutine) the instant the country pref changes, so a
+        // `setCountryCode` followed by a `setCity` exposes the new country with
+        // the old city and can lose the city to that teardown.
+        if (city.country != selectedCountryCode.value) prefs.setCityInCountry(city.slug, city.country)
+        else prefs.setCity(city.slug)
     }
 
     /** Adopt a city the user deliberately picked at the gate. When it differs

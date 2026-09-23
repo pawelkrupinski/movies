@@ -119,8 +119,10 @@ class MainActivity : ComponentActivity() {
             .drop(1)
             .onEach { recreate() }
             .launchIn(lifecycleScope)
-        handleAuthDeepLink(intent)
-        handleNavDeepLink(intent)
+        // A restored activity is not a new link. After process death the system
+        // restores the ORIGINAL launch intent, without consumeLinks' marker —
+        // the link it carries was handled before the process died.
+        if (savedInstanceState == null) consumeLinks(intent)
         // Non-prod tweak screen, gated behind a launch extra so it never shows in
         // a normal run, AND behind BuildConfig.ENABLE_TUNING so it's compiled out
         // of the public `release` build (it's on for `debug` + `tuneRelease`).
@@ -144,8 +146,25 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        consumeLinks(intent)
+    }
+
+    /** Handle [intent]'s auth / nav link ONCE, then mark it consumed:
+     *  `recreate()` (rotation, language switch) relaunches with this same
+     *  intent, and a link still live on it would re-apply its filters over the
+     *  user's later changes and reopen its film. Marked with an extra rather
+     *  than by dropping the data, so the intent keeps its identity. A
+     *  cross-country link that must survive its own country-switch recreate
+     *  is carried by the ViewModel instead (see [KinowoViewModel.handleDeepLink]). */
+    private fun consumeLinks(intent: Intent) {
+        if (intent.data == null || intent.getBooleanExtra(EXTRA_LINK_CONSUMED, false)) return
         handleAuthDeepLink(intent)
         handleNavDeepLink(intent)
+        intent.putExtra(EXTRA_LINK_CONSUMED, true)
+    }
+
+    private companion object {
+        const val EXTRA_LINK_CONSUMED = "pl.kinowo.LINK_CONSUMED"
     }
 
     private fun handleAuthDeepLink(intent: Intent?) {
