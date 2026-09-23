@@ -51,7 +51,12 @@ class ZyteClient(httpClient: HttpClient, apiKey: String) extends Logging {
    *  `customHttpRequestHeaders`) — for an origin that authenticates in a header
    *  rather than a cookie (Odeon's ocapi `Authorization: Bearer`). */
   def get(targetUrl: String, headers: Map[String, String]): String =
-    bodyOrThrow(post(targetUrl, sessionId = None, headers), targetUrl)
+    new String(getBytes(targetUrl, headers), StandardCharsets.UTF_8)
+
+  /** [[get]]'s raw upstream bytes, undecoded — for a legacy single-byte page
+   *  whose parser picks its own charset. */
+  def getBytes(targetUrl: String, headers: Map[String, String] = Map.empty): Array[Byte] =
+    bodyBytesOrThrow(post(targetUrl, sessionId = None, headers), targetUrl)
 
   /** Warm a Zyte session: fetch `cookieSourceUrl` (the homepage) under
    *  `sessionId` so Zyte parks the upstream's Set-Cookie in the server-side
@@ -73,7 +78,11 @@ class ZyteClient(httpClient: HttpClient, apiKey: String) extends Logging {
    *  ([[SharedZyteSession]]) treats as "re-warm and retry once".
    */
   def fetchWithSession(targetUrl: String, sessionId: String): String =
-    bodyOrThrow(post(targetUrl, Some(sessionId)), targetUrl)
+    new String(fetchBytesWithSession(targetUrl, sessionId), StandardCharsets.UTF_8)
+
+  /** [[fetchWithSession]]'s raw upstream bytes, undecoded. */
+  def fetchBytesWithSession(targetUrl: String, sessionId: String): Array[Byte] =
+    bodyBytesOrThrow(post(targetUrl, Some(sessionId)), targetUrl)
 
   /** Single POST to Zyte's /extract. Returns the raw JSON body or throws
    *  if Zyte itself failed (network error, 4xx/5xx from Zyte).
@@ -134,19 +143,25 @@ object ZyteClient {
    *  `browserHtml` instead).
    */
   def extractBody(zyteJson: String): Option[String] =
-    (Json.parse(zyteJson) \ "httpResponseBody")
-      .asOpt[String]
-      .map(b64 => new String(Base64.getDecoder.decode(b64), StandardCharsets.UTF_8))
+    extractBodyBytes(zyteJson).map(new String(_, StandardCharsets.UTF_8))
+
+  /** The base64 `httpResponseBody` decoded to the upstream's exact bytes. */
+  def extractBodyBytes(zyteJson: String): Option[Array[Byte]] =
+    (Json.parse(zyteJson) \ "httpResponseBody").asOpt[String].map(Base64.getDecoder.decode)
 
   /** Decode the upstream body from one Zyte extract response, or throw with
    *  diagnostics: a non-2xx upstream status, or a response that carried no
    *  `httpResponseBody`. Shared by `get` and `fetchWithSession` so both fetch
    *  shapes agree on what counts as a usable result. */
-  def bodyOrThrow(zyteJson: String, targetUrl: String): String = {
+  def bodyOrThrow(zyteJson: String, targetUrl: String): String =
+    new String(bodyBytesOrThrow(zyteJson, targetUrl), StandardCharsets.UTF_8)
+
+  /** [[bodyOrThrow]] without the UTF-8 decode — the upstream's exact bytes. */
+  def bodyBytesOrThrow(zyteJson: String, targetUrl: String): Array[Byte] = {
     val status = extractStatus(zyteJson)
     if (status < 200 || status >= 300)
       throw new RuntimeException(s"Zyte API call returned upstream status=$status for $targetUrl")
-    extractBody(zyteJson).getOrElse(
+    extractBodyBytes(zyteJson).getOrElse(
       throw new RuntimeException(s"Zyte response missing httpResponseBody for $targetUrl")
     )
   }

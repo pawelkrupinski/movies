@@ -42,14 +42,20 @@ class SharedZyteSession(
   private var current: Option[(String, Long)] = None
   private val lock = new Object
 
-  override def get(targetUrl: String): String =
-    try client.fetchWithSession(targetUrl, sessionId())
+  override def get(targetUrl: String): String = withSession(client.fetchWithSession(targetUrl, _))
+
+  /** Raw bytes under the shared session — never the inherited lossy
+   *  `get(url).getBytes(UTF_8)`. */
+  override def getBytes(targetUrl: String): Array[Byte] = withSession(client.fetchBytesWithSession(targetUrl, _))
+
+  private def withSession[T](fetch: String => T): T =
+    try fetch(sessionId())
     catch {
       case _: Exception =>
         // The session likely died upstream (401) — drop it, re-warm, retry once.
         // A second failure propagates to the FallbackHttpFetch → direct leg.
         invalidate()
-        client.fetchWithSession(targetUrl, sessionId())
+        fetch(sessionId())
     }
 
   /** The current live session id — reused while inside `ttl`, otherwise a fresh

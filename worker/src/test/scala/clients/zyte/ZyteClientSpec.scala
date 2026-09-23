@@ -86,6 +86,14 @@ class ZyteClientSpec extends AnyFlatSpec with Matchers {
     ZyteClient.requestBody("https://vwc.odeon.co.uk/x", None) should not include "customHttpRequestHeaders"
   }
 
+  "bodyBytesOrThrow" should "return the upstream bytes exactly, not a UTF-8 round-trip of them" in {
+    // "ą" in ISO-8859-2 is the single byte 0xB1 — invalid as UTF-8, so decoding
+    // to a String and re-encoding would turn it into U+FFFD's three bytes.
+    val raw  = Array[Byte]('K'.toByte, 0xB1.toByte)
+    val json = s"""{"statusCode":200,"httpResponseBody":"${java.util.Base64.getEncoder.encodeToString(raw)}"}"""
+    ZyteClient.bodyBytesOrThrow(json, "https://example.pl/") shouldBe raw
+  }
+
   "basicAuth" should "format Authorization as 'Basic <b64(key:)>' per Zyte's auth spec" in {
     // Zyte uses Basic auth with the API key as username and an empty
     // password — verify the encoding shape so a refactor can't quietly

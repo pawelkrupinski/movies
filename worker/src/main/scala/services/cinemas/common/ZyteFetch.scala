@@ -29,6 +29,11 @@ class ZyteFetch(
   override def get(url: String): String =
     session.fold(client.get(url))(_.get(url))
 
+  /** The upstream's exact bytes — the inherited `get(url).getBytes(UTF_8)` would
+   *  already have decoded a single-byte page as UTF-8 and mangled it. */
+  override def getBytes(url: String): Array[Byte] =
+    session.fold(client.getBytes(url))(_.getBytes(url))
+
   /** Headers must reach the upstream — inheriting `HttpFetch`'s default
    *  (`get(url, headers) = get(url)`) silently dropped them, so Odeon's Zyte
    *  fallback went out without its `Authorization: Bearer` and paid for a 401.

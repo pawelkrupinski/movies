@@ -24,6 +24,8 @@ class ZyteFetchSpec extends AnyFlatSpec with Matchers {
     var headed:  List[(String, Map[String, String])] = Nil // (targetUrl, headers)
     override def get(url: String): String = { gets ::= url; "BODY" }
     override def get(url: String, headers: Map[String, String]): String = { headed ::= (url -> headers); "BODY" }
+    var byteGets: List[String] = Nil
+    override def getBytes(url: String, headers: Map[String, String]): Array[Byte] = { byteGets ::= url; Array[Byte](0xB1.toByte) }
     override def warm(cookieSourceUrl: String, sessionId: String): Unit =
       warms = warms :+ (cookieSourceUrl -> sessionId)
     override def fetchWithSession(targetUrl: String, sessionId: String): String =
@@ -79,5 +81,13 @@ class ZyteFetchSpec extends AnyFlatSpec with Matchers {
     an [UnsupportedOperationException] should be thrownBy
       new ZyteFetch(client, Some("https://www.multikino.pl/")).get("https://www.multikino.pl/api/x", Map("Authorization" -> "Bearer t0k"))
     client.fetches shouldBe empty
+  }
+
+  // A legacy single-byte page must reach its parser as the bytes Zyte returned:
+  // the inherited `get(url).getBytes(UTF_8)` had already decoded them as UTF-8.
+  "ZyteFetch with no cookie source" should "fetch raw bytes without a UTF-8 round-trip" in {
+    val client = new RecordingZyteClient
+    new ZyteFetch(client, None).getBytes("https://kino.example.pl/repertuar") shouldBe Array[Byte](0xB1.toByte)
+    client.byteGets shouldBe List("https://kino.example.pl/repertuar")
   }
 }
