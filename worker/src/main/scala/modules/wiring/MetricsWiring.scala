@@ -52,7 +52,7 @@ trait MetricsWiring { self: WorkerWiring =>
   // twice under two names, which the name-based roster audit cannot see. Rides the same pass.
   lazy val duplicateVenueCensus: DuplicateVenueCensus =
     new DuplicateVenueCensus(workerMetrics.duplicateVenuePairsGauge, country)
-  // ONE 5-minute corpus scan feeding all three censuses above. They each used to run
+  // ONE 5-minute corpus scan feeding every census above. The first three each used to run
   // their own timer AND their own full scan of the same rows — 14,704 documents per
   // country per 5 min for Poland alone (measured 2026-07-18) — see WorkerCorpusScan.
   lazy val corpusScan: WorkerCorpusScan =

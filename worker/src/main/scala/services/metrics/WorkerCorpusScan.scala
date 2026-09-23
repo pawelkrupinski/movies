@@ -12,7 +12,8 @@ import scala.util.Try
 
 /**
  * The ONE periodic corpus scan behind every `movies`-census gauge the worker exposes
- * ([[WorkerCorpusMetrics]], [[WorkerSourceFilmsMetrics]], [[WorkerShowtimesMetrics]]).
+ * ([[WorkerCorpusMetrics]], [[WorkerSourceFilmsMetrics]], [[WorkerShowtimesMetrics]],
+ * [[WorkerSlotFanoutMetrics]], [[DuplicateVenueCensus]]).
  *
  * Each of those three used to own its own 5-minute timer AND its own full-corpus scan
  * of the very same data. Measured on prod (2026-07-18), for Poland alone — 788 movie

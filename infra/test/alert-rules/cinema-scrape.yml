@@ -284,3 +284,58 @@ tests:
                 fix; a chain genuinely running one programme in two towns of one region goes on
                 `services.cinemas.roster.DistinctVenuePairs` with its reason, which clears it here and
                 in the offline roster audit alike.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # FAILURE SHARE: A SUSTAINED SPIKE FIRES; EMPTY LISTINGS, NON-CINEMA SERVICES AND A THIN WINDOW
+  # DO NOT. UK: 30 venues, 12 failing (40%) for 3h. PL: 20 venues, every one returning an EMPTY
+  # listing (a closed season), plus TMDB failing hard -- zero cinema failures, so silent. ES: 2
+  # checks, 1 failed -- 50%, but under the 10-check floor. UK's failures start at t=0 and the
+  # rule holds for 2h, so it is pending at 1h and firing at 2h10m.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_uptime_recent_failures{country="uk",job="kinowo-web",service="Cineworld Feltham"}'
+        values: '12x200'
+      - series: 'kinowo_uptime_recent_successes{country="uk",job="kinowo-web",service="Cineworld Feltham"}'
+        values: '18x200'
+      - series: 'kinowo_uptime_recent_zeroes{country="uk",job="kinowo-web",service="Cineworld Feltham"}'
+        values: '0x200'
+      - series: 'kinowo_uptime_recent_failures{country="pl",job="kinowo-web",service="Kino Sława"}'
+        values: '0x200'
+      - series: 'kinowo_uptime_recent_successes{country="pl",job="kinowo-web",service="Kino Sława"}'
+        values: '0x200'
+      - series: 'kinowo_uptime_recent_zeroes{country="pl",job="kinowo-web",service="Kino Sława"}'
+        values: '20x200'
+      - series: 'kinowo_uptime_recent_failures{country="pl",job="kinowo-web",service="TMDB"}'
+        values: '50x200'
+      - series: 'kinowo_uptime_recent_successes{country="pl",job="kinowo-web",service="TMDB"}'
+        values: '0x200'
+      - series: 'kinowo_uptime_recent_zeroes{country="pl",job="kinowo-web",service="TMDB"}'
+        values: '0x200'
+      - series: 'kinowo_uptime_recent_failures{country="es",job="kinowo-web",service="Cines Victoria Mérida"}'
+        values: '1x200'
+      - series: 'kinowo_uptime_recent_successes{country="es",job="kinowo-web",service="Cines Victoria Mérida"}'
+        values: '1x200'
+      - series: 'kinowo_uptime_recent_zeroes{country="es",job="kinowo-web",service="Cines Victoria Mérida"}'
+        values: '0x200'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: CinemaScrapeFailureShareHigh
+        exp_alerts: []
+      - eval_time: 2h10m
+        alertname: CinemaScrapeFailureShareHigh
+        exp_alerts:
+          - exp_labels:
+              country: uk
+              severity: warning
+            exp_annotations:
+              summary: "40% of uk's cinema scrape checks have been failing for two hours"
+              description: >-
+                More than a fifth of the cinema uptime checks in "uk" have FAILED
+                (fetch or parse threw, not an empty listing) for two hours straight. That is a shared
+                code path, not one venue: a chain client, a ticketing portal, a proxy or an upstream
+                that changed its markup or started refusing us. Open https://kinowo.net/uptime (or the
+                country's own /uptime) and group the red rows by source host -- the one host they share
+                is the cause, and its error text is on the row. Empty listings are NOT counted: a
+                seasonally closed venue returns nothing and is healthy. A single venue failing every
+                attempt shows up in CinemaScrapeOldestAgeHigh instead.

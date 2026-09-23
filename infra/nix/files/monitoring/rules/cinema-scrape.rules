@@ -239,3 +239,54 @@ groups:
             fix; a chain genuinely running one programme in two towns of one region goes on
             `services.cinemas.roster.DistinctVenuePairs` with its reason, which clears it here and
             in the offline roster audit alike.
+
+      # -----------------------------------------------------------------------------------------
+      # A COUNTRY'S SCRAPES ARE FAILING, NOT COMING BACK EMPTY.
+      #
+      # The share of the last 30 minutes' cinema uptime checks that FAILED (fetch or parse threw),
+      # out of every check (failed + succeeded + parsed-but-empty), from the web tier's
+      # `kinowo_uptime_recent_*` per-service gauges -- cinema services only: the enrichment
+      # sources, hosts, image proxies and the residential proxy have rules of their own.
+      #
+      # WHY ZEROES ARE IN THE DENOMINATOR AND NOT THE NUMERATOR: an empty listing is what a
+      # seasonally closed venue legitimately returns (~120 of ~2,800 services at any moment), so it
+      # must never read as a failure. Until 2026-09-23 the reverse was the bug: Cinema1 and several
+      # scrapers turned a fetch or parse FAILURE into an empty scrape, so a broken parser looked
+      # like a closed cinema, marked its freshness and fired nothing. They now throw; a throw is a
+      # failed check here AND, since a failed scrape never marks freshness, a venue failing every
+      # attempt still reaches `CinemaScrapeOldestAgeHigh` above. This rule is the other shape: a
+      # SHARED code path (a chain client, a proxy, a portal) breaking many venues at once, which
+      # the per-country worst-case age only notices hours later, if the venues ever succeed at all.
+      #
+      # 20% FOR TWO HOURS, measured on 14 days of the gauges (2026-09-09 .. 09-23, 30-min steps):
+      # normal p99 is de 0.10, es 0.06, us 0.02, uk 0.02, pl 0.17, and the one PL excursion above
+      # 0.2 (0.37 on 09-10 07:58) lasted under an hour. Two real, sustained spikes crossed it:
+      # PL at ~0.30 and UK at 0.75-0.95 from the evening of 09-18 to 09-21 17:00 -- three days,
+      # alerted by nothing. This would have fired for UK at ~23:45 on 09-18 and PL at ~00:00 on
+      # 09-19 (replayed against Prometheus). At least 10 checks in the
+      # window, so a country's quiet half-hour cannot make one failure a 50% share.
+      - alert: CinemaScrapeFailureShareHigh
+        expr: >-
+          (
+            sum by (country) (kinowo_uptime_recent_failures{service!~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes|Residential proxy|img: .*|[a-z0-9.-]+\\.[a-z]{2,}|.*\\|enrichment"})
+            /
+            (sum by (country) (
+                kinowo_uptime_recent_failures{service!~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes|Residential proxy|img: .*|[a-z0-9.-]+\\.[a-z]{2,}|.*\\|enrichment"}
+              + kinowo_uptime_recent_successes{service!~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes|Residential proxy|img: .*|[a-z0-9.-]+\\.[a-z]{2,}|.*\\|enrichment"}
+              + kinowo_uptime_recent_zeroes{service!~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes|Residential proxy|img: .*|[a-z0-9.-]+\\.[a-z]{2,}|.*\\|enrichment"}
+            ) >= 10)
+          ) > 0.2
+        for: 2h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value | humanizePercentage }} of {{ $labels.country }}'s cinema scrape checks have been failing for two hours"
+          description: >-
+            More than a fifth of the cinema uptime checks in "{{ $labels.country }}" have FAILED
+            (fetch or parse threw, not an empty listing) for two hours straight. That is a shared
+            code path, not one venue: a chain client, a ticketing portal, a proxy or an upstream
+            that changed its markup or started refusing us. Open https://kinowo.net/uptime (or the
+            country's own /uptime) and group the red rows by source host -- the one host they share
+            is the cause, and its error text is on the row. Empty listings are NOT counted: a
+            seasonally closed venue returns nothing and is healthy. A single venue failing every
+            attempt shows up in CinemaScrapeOldestAgeHigh instead.
