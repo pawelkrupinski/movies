@@ -1,7 +1,7 @@
 package clients
 
 import clients.tools.FakeHttpFetch
-import models.{AdaKinoStudyjne, KinoKoneckieCentrumKultury, KinoBaszta, KinoNadWarta, KinoEcho, KinoMewaBudzyn, UsRoster, CinemaCityBialaPodlaska, HeliosSiedlce, KinoGiewont, KinoMuranow, KinoOdraOlawa, KinoWCKWalcz, MultikinoLeszno, MultikinoPruszkow, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
+import models.{AdaKinoStudyjne, KinoZacheta, KinoKoneckieCentrumKultury, KinoBaszta, KinoNadWarta, KinoEcho, KinoMewaBudzyn, UsRoster, CinemaCityBialaPodlaska, HeliosSiedlce, KinoGiewont, KinoMuranow, KinoOdraOlawa, KinoWCKWalcz, MultikinoLeszno, MultikinoPruszkow, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -370,6 +370,13 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     val scraper = catalog(biletyna = "kino-kameralne").byCity("konin").find(_.cinema == KinoNadWarta).value
     scraper shouldBe a [Bilety24OrganizerClient]
     scraper.sourceKey.value shouldBe "bilety24.pl/kino/organizator/1621"
+  }
+
+  // The one Konin-catchment venue still on Filmweb; its capture is replayed in KoninFilmwebShowtimesSpec.
+  it should "scrape Kleczew's Kino Zachęta off Filmweb id 2405" in {
+    val scraper = catalog().byCity("konin").find(_.cinema == KinoZacheta).value
+    scraper shouldBe a [FilmwebShowtimesClient]
+    scraper.sourceUrl.value should endWith ("-2405")
   }
 
   // Filmweb's "Etiuda OBK" (3024) is the same screen as bilety24's MCK Ostrowiec
