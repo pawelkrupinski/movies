@@ -313,7 +313,7 @@ class FilmwebClient(http: HttpFetch) {
 
   private[enrichment] def matchesByTitle(c: Candidate, query: String): Boolean = {
     val normalizedQuery = TitleMatch.fold(query)
-    val titles = (c.title +: c.originalTitle.toSeq).map(TitleMatch.fold)
+    val titles = c.titles.map(TitleMatch.fold)
     titles.exists(_ == normalizedQuery) || titles.exists(t => TitleMatch.isModifierSuffix(t, normalizedQuery))
   }
 
@@ -324,7 +324,7 @@ class FilmwebClient(http: HttpFetch) {
    *  strict half of [[matchesByTitle]], excluding the looser modifier-suffix
    *  branch. */
   private[enrichment] def matchesByExactTitle(c: Candidate, query: String): Boolean =
-    (c.title +: c.originalTitle.toSeq).exists(TitleMatch.exact(_, query))
+    c.titles.exists(TitleMatch.exact(_, query))
 
   /** False-positive guard for the no-director path. When neither the caller nor
    *  the merge gives us a director to disambiguate AND the row carries a year,
@@ -373,7 +373,7 @@ class FilmwebClient(http: HttpFetch) {
       YearWindow.agrees(year, c.year, YearTolerance).contains(true) &&
       directorsOverlap(c.directors, directors) &&
       TitleMatch.sharesDistinctiveToken(
-        knownAs, c.title +: c.originalTitle.toSeq, deburr, maxTokenEdits = 1)
+        knownAs, c.titles, deburr, maxTokenEdits = 1)
 
   /** Some caller director naming some Filmweb director, per [[SamePerson]] — so
    *  "M. Szumowska" meets "Małgorzata Szumowska" and TMDB's surname-first "Enyedi
@@ -443,7 +443,10 @@ object FilmwebClient {
     // /preview was fetched (the director-verification path). Feeds the synopsis
     // tie-break in `pickBest`; empty otherwise (then the tie-break no-ops).
     plot:          Option[String] = None
-  )
+  ) {
+    /** Every title Filmweb knows this candidate by: its Polish title, then its original. */
+    def titles: Seq[String] = title +: originalTitle.toSeq
+  }
 
   /**
    * Build the canonical page URL the way Filmweb encodes it. The site replaces
