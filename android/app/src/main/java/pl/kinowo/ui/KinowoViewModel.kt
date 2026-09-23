@@ -482,26 +482,20 @@ class KinowoViewModel(
         val catalog = countryCatalog.value
         val cities = catalog.cities
         val link = DeepLink.parse(rawUrl, cities.map { it.slug }.toSet(), catalog::versionTokensOf) ?: return
-        // A link on another country's deployment (showtimes-uk / showtimes-de) must
-        // switch the country too, or the linked city resolves against the wrong
-        // deployment's host. Unlike the manual switch (`setCountry`) we KEEP the
-        // linked city rather than clearing it. MainActivity recreates on the
-        // country change; the retained ViewModel keeps the coroutine + pending nav.
-        //
-        // NOTE: this writes the country and the city as two SEPARATE prefs edits,
-        // the same shape [adoptDetectedCity] used to have before it was found to
-        // race MainActivity's recreate-on-country-change watcher (which cancels
-        // the ViewModel's coroutine scope the instant the country pref changes,
-        // possibly before the second edit runs) — see
-        // [pl.kinowo.data.UserPreferences.setCityInCountry]. A cross-country deep
-        // link is likely exposed to the same race; fixing it needs its own
-        // dedicated regression test (a ViewModel-level one hung under Robolectric
-        // during this change — the dispatcher wiring needs sorting out first), so
-        // it's left as a follow-up rather than an untested change here.
-        cities.countryOf(link.citySlug)?.let { code ->
-            if (code != selectedCountryCode.value) viewModelScope.launch { prefs.setCountryCode(code) }
+        // A link on another country's deployment must switch the country too,
+        // or the linked city resolves against the wrong deployment's host.
+        // Unlike the manual switch (`setCountry`) we KEEP the linked city rather
+        // than clearing it — in one atomic write, see [moveToCity]. The country
+        // change makes MainActivity clear this ViewModel and recreate, and its
+        // onCreate hands the activity's intent to the FRESH ViewModel — which,
+        // country and city now matching, applies the filters + film itself.
+        val country = cities.countryOf(link.citySlug) ?: selectedCountryCode.value
+        if (link.citySlug != selectedCity.value || country != selectedCountryCode.value) {
+            viewModelScope.launch {
+                citySwitchSuggestion = null
+                moveToCity(link.citySlug, country)
+            }
         }
-        if (link.citySlug != selectedCity.value) setCity(link.citySlug)
         applyScalarFilters(link.filters)
         viewModelScope.launch {
             // Wait for the TARGET city's repertoire to be the loaded one — NOT
@@ -564,20 +558,25 @@ class KinowoViewModel(
      *  The manual button now searches EVERY country, so [city] may sit in a
      *  country other than the one currently open; when it does, switch the
      *  country and set the city in ONE atomic write via `prefs.setCityInCountry`
-     *  rather than [setCountry], which clears the city — the same reasoning
-     *  [handleDeepLink] already applies to a cross-country deep link, and for
-     *  the same reason: we're about to set this exact city, not re-arm the
-     *  gate for a fresh pick. The two prefs can't be written separately here:
-     *  MainActivity recreates the activity (cancelling this coroutine) the
-     *  instant the country pref changes, so a `setCountryCode` followed by a
-     *  `setCity` races that teardown and can lose the city — see
-     *  [pl.kinowo.data.UserPreferences.setCityInCountry]. */
+     *  rather than [setCountry], which clears the city — as [handleDeepLink]
+     *  does for a cross-country link: we're about to set this exact city, not
+     *  re-arm the gate for a fresh pick. See [moveToCity]. */
     fun adoptDetectedCity(city: City) = viewModelScope.launch {
         citySwitchSuggestion = null
-        if (city.country != selectedCountryCode.value) {
-            prefs.setCityInCountry(city.slug, city.country)
+        moveToCity(city.slug, city.country)
+    }
+
+    /** Persist [slug], switching to [country] in the SAME write when it isn't
+     *  the current one. Never two writes: MainActivity recreates the activity
+     *  (cancelling this coroutine) the instant the country pref changes, so a
+     *  `setCountryCode` followed by a `setCity` exposes the new country with
+     *  the old city and can lose the city to that teardown — see
+     *  [pl.kinowo.data.UserPreferences.setCityInCountry]. */
+    private suspend fun moveToCity(slug: String, country: String?) {
+        if (country != null && country != selectedCountryCode.value) {
+            prefs.setCityInCountry(slug, country)
         } else {
-            prefs.setCity(city.slug)
+            prefs.setCity(slug)
         }
     }
 
