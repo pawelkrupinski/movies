@@ -688,9 +688,9 @@ class KinowoViewModel(
         private val repository: RepertoireRepository,
         private val detailsRepository: DetailsRepository,
         private val prefs: UserPreferences,
-        private val authRepository: AuthRepository,
-        private val hiddenFilmsClient: HiddenFilmsClient,
-        private val languageClient: LanguageClient,
+        internal val authRepository: AuthRepository,
+        internal val hiddenFilmsClient: HiddenFilmsClient,
+        internal val languageClient: LanguageClient,
         private val catalogApi: CinemaCatalogApi,
         private val catalogRepository: CatalogRepository,
     ) : ViewModelProvider.Factory {

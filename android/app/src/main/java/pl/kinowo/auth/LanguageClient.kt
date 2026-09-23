@@ -29,7 +29,7 @@ interface LanguageClient {
 }
 
 class HttpLanguageClient(
-    private val baseUrl: String = "https://kinowo.net",
+    internal val baseUrl: String,
     private val client: OkHttpClient,
 ) : LanguageClient {
 

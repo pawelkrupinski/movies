@@ -83,7 +83,7 @@ class DayScrollOnSwipeTest {
         runBlocking { repository.reload("warszawa") }
         val http = OkHttpClient()
         val detailsRepository = DetailsRepository(KinowoApi(client = http), JsonListCache(context.cacheDir, "det_probe", FilmDetails.serializer()))
-        val authRepository = AuthRepository(http, PersistentCookieJar(context))
+        val authRepository = AuthRepository(http, PersistentCookieJar(context), baseUrl = "http://127.0.0.1:1")
         val noop = object : HiddenFilmsClient {
             override suspend fun fetch(country: String, etag: String?, lastModified: String?) =
                 HiddenFilmsFetchResult.NotModified

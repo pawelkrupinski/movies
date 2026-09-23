@@ -57,36 +57,7 @@ class MainActivity : ComponentActivity() {
     // independent pick — see attachBaseContext and UserPreferences.selectedLanguageTag.
     private val country: Country by lazy { Country.byCode(UserPreferences(applicationContext).blockingCountryCode()) }
 
-    private val viewModel: KinowoViewModel by viewModels {
-        // One client shared by every caller so the auth session cookie set at
-        // /auth/exchange is carried on /api/me, /api/me/state, etc.
-        val cookieJar = PersistentCookieJar(applicationContext)
-        val httpClient = OkHttpClient.Builder()
-            .cookieJar(cookieJar)
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(20, TimeUnit.SECONDS)
-            .build()
-        // Route every repertoire/details request at the SELECTED country's
-        // deployment (Poland's prod URL by default).
-        val api = KinowoApi(baseUrl = country.baseUrl, client = httpClient)
-        val repository = RepertoireRepository(api, JsonListCache(cacheDir, "repertoire", Film.serializer()))
-        val detailsRepository = DetailsRepository(api, JsonListCache(cacheDir, "details", FilmDetails.serializer()))
-        val prefs = UserPreferences(applicationContext)
-        val authRepository = AuthRepository(httpClient, cookieJar)
-        val hiddenFilmsClient = HttpHiddenFilmsClient(baseUrl = country.baseUrl, client = httpClient)
-        val languageClient = HttpLanguageClient(baseUrl = country.baseUrl, client = httpClient)
-        // The country/city catalog: seeded from the bundled assets snapshot (so a
-        // fresh install renders offline and the first fetch already carries the
-        // build's ETag), refreshed via `api` (KinowoApi implements CatalogApi),
-        // persisted in cacheDir. Country-agnostic, so any deployment's base works.
-        val catalogSeed = runCatching {
-            applicationContext.assets.open("catalog-seed.json").bufferedReader().use { it.readText() }
-        }.getOrNull()
-        // filesDir (durable), not cacheDir — the OS may evict cacheDir under
-        // storage pressure, and the catalog should survive that.
-        val catalogRepository = CatalogRepository(api, CatalogCache(filesDir), catalogSeed)
-        KinowoViewModel.Factory(repository, detailsRepository, prefs, authRepository, hiddenFilmsClient, languageClient, api, catalogRepository)
-    }
+    private val viewModel: KinowoViewModel by viewModels { kinowoViewModelFactory(applicationContext, country) }
 
     // Force the user's selected UI language regardless of the device locale and
     // regardless of the selected country — the two are independent picks now (see
@@ -183,4 +154,39 @@ class MainActivity : ComponentActivity() {
     private fun handleNavDeepLink(intent: Intent?) {
         intent?.data?.let { viewModel.handleDeepLink(it.toString()) }
     }
+}
+
+/**
+ * The composition root's object graph for [country]'s deployment. One OkHttp
+ * client is shared by every caller so the session cookie set at
+ * `/auth/exchange` is carried on `/api/me`, `/api/me/{country}/hidden-films`,
+ * etc. — which only works if every one of them, auth included, talks to the
+ * SAME host.
+ */
+internal fun kinowoViewModelFactory(context: Context, country: Country): KinowoViewModel.Factory {
+    val cookieJar = PersistentCookieJar(context)
+    val httpClient = OkHttpClient.Builder()
+        .cookieJar(cookieJar)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .build()
+    val api = KinowoApi(baseUrl = country.baseUrl, client = httpClient)
+    val repository = RepertoireRepository(api, JsonListCache(context.cacheDir, "repertoire", Film.serializer()))
+    val detailsRepository = DetailsRepository(api, JsonListCache(context.cacheDir, "details", FilmDetails.serializer()))
+    val authRepository = AuthRepository(httpClient, cookieJar, baseUrl = country.baseUrl)
+    val hiddenFilmsClient = HttpHiddenFilmsClient(baseUrl = country.baseUrl, client = httpClient)
+    val languageClient = HttpLanguageClient(baseUrl = country.baseUrl, client = httpClient)
+    // The country/city catalog: seeded from the bundled assets snapshot (so a
+    // fresh install renders offline and the first fetch already carries the
+    // build's ETag), refreshed via `api` (KinowoApi implements CatalogApi),
+    // persisted in filesDir — durable, unlike cacheDir, which the OS may evict
+    // under storage pressure. Country-agnostic, so any deployment's base works.
+    val catalogSeed = runCatching {
+        context.assets.open("catalog-seed.json").bufferedReader().use { it.readText() }
+    }.getOrNull()
+    val catalogRepository = CatalogRepository(api, CatalogCache(context.filesDir), catalogSeed)
+    return KinowoViewModel.Factory(
+        repository, detailsRepository, UserPreferences(context), authRepository,
+        hiddenFilmsClient, languageClient, api, catalogRepository,
+    )
 }

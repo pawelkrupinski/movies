@@ -47,7 +47,7 @@ interface HiddenFilmsClient {
 }
 
 class HttpHiddenFilmsClient(
-    private val baseUrl: String = "https://kinowo.net",
+    internal val baseUrl: String,
     private val client: OkHttpClient,
 ) : HiddenFilmsClient {
 
