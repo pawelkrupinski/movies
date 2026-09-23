@@ -18,6 +18,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import pl.kinowo.R
 import pl.kinowo.model.CinemaShowings
 import pl.kinowo.model.DayShowings
 import pl.kinowo.model.Film
@@ -74,7 +75,9 @@ class FiltersSheetDragDismissTest {
         }
         compose.waitForIdle()
         // Expand "Kina" so the list overflows the screen and is clearly scrollable.
-        compose.onNodeWithText("Kina").performClick()
+        // By resource, not literal: the header follows the device locale
+        // ("Cinemas" on an en-US emulator).
+        compose.onNodeWithText(compose.activity.getString(R.string.filter_cinemas)).performClick()
         compose.waitForIdle()
     }
 
