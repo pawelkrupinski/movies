@@ -386,7 +386,7 @@ case object KinoPrzedwiosnie    extends Cinema("Kino Przedwiośnie", "Przedwioś
 // page, each in a nearby town. Helios Konin (chain client) and Kino Oskard
 // (Bilety24, above) are already covered; Września's Kino Trójka is excluded.
 case object KinoZacheta         extends Cinema("Kino Zachęta", "Zachęta")            // Kleczew — filmweb
-case object KinoNadWarta        extends Cinema("Kino nad Wartą", "nad Wartą")        // Koło — filmweb 1526
+case object KinoNadWarta        extends Cinema("Kino nad Wartą", "nad Wartą")        // Koło — bilety24 1621 (filmweb 1526 lists a day or two)
 case object KinoStudyjneCentrum extends Cinema("Kino Studyjne Centrum", "Centrum")  // Konin — bilety24
 case object KinoHel             extends Cinema("Kino Hel", "Hel")                   // Pleszew — filmweb
 case object KinoSokolnia        extends Cinema("Kino Sokolnia", "Sokolnia")          // Słupca — filmweb

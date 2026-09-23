@@ -19,8 +19,7 @@ import java.time.{LocalDate, LocalDateTime}
  * So this replays a recorded seances + title/info capture for every Filmweb id
  * wired in `CinemaScraperCatalog.koninScrapers` and asserts each yields real,
  * this-venue films — fixtures recorded 2026-06 from `/api/v1/cinema/<id>/seances`.
- * The capture date is per-venue: most published on 2026-06-07, Koło's Kino nad
- * Wartą only screens midweek (2026-06-11 in-window). Helios (chain client) and
+ * All captured 2026-06-07. Helios (chain client) and
  * Oskard (Bilety24) are covered elsewhere; Września's Kino Trójka is excluded.
  */
 class KoninFilmwebShowtimesSpec extends AnyFlatSpec with Matchers with OptionValues {
@@ -31,7 +30,6 @@ class KoninFilmwebShowtimesSpec extends AnyFlatSpec with Matchers with OptionVal
   // entries in koninScrapers.
   private val venues: Seq[(Int, Cinema, LocalDate)] = Seq(
     (2405, KinoZacheta,  LocalDate.of(2026, 6, 7)),  // Kleczew
-    (1526, KinoNadWarta, LocalDate.of(2026, 6, 11)), // Koło — midweek only
     (2417, KinoHel,      LocalDate.of(2026, 6, 7)),  // Pleszew
     (1694, KinoSokolnia, LocalDate.of(2026, 6, 7)),  // Słupca
     (1523, KinoTur,      LocalDate.of(2026, 6, 7)),  // Turek

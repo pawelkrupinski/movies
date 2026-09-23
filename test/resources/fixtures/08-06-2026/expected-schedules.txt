@@ -4807,7 +4807,6 @@ cinemaScrapes:
   Kino Nowe Horyzonty / Michael / 2026
   Kino Promień / Michael / —
   Kino Wisła / Michael / 2026
-  Kino nad Wartą / Michael / 2026
   Planet Cinema / Michael / —
   Teatr Elektryczny / Michael / —
 showings:
@@ -8433,7 +8432,6 @@ cinemaScrapes:
   Kino Wisła / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Zachęta / Tom i Jerry: Przygoda w muzeum / 2025
   Kino na Boku / Tom i Jerry: Przygoda w muzeum / —
-  Kino nad Wartą / Tom i Jerry: Przygoda w muzeum / 2025
   Kino ŚDK / Tom i jerry: przygoda w muzeum / —
   Kinomax / Tom i jerry: przygoda w muzeum / —
   Kinoteatr Rondo / Tom i Jerry: Przygoda w muzeum / —
@@ -9751,7 +9749,6 @@ cinemaScrapes:
   Kino Wisła / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Zachęta / Tom i Jerry: Przygoda w muzeum / 2025
   Kino na Boku / Tom i Jerry: Przygoda w muzeum / —
-  Kino nad Wartą / Tom i Jerry: Przygoda w muzeum / 2025
   Kino ŚDK / Tom i jerry: przygoda w muzeum / —
   Kinomax / Tom i jerry: przygoda w muzeum / —
   Kinoteatr Rondo / Tom i Jerry: Przygoda w muzeum / —

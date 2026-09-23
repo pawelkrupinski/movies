@@ -361,14 +361,15 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     scraper.sourceUrl.value should endWith ("-2352")
   }
 
-  // Kino nad Wartą is in Koło (Filmweb 1526, Słowackiego 5). The 2026-06 move off
-  // Filmweb pointed it at Konińskie Centrum Kultury's bilety24 organiser — a
-  // different venue in Konin whose programme is concerts and plays, which is why
-  // the "Koło" cinema kept reading white with 0 films.
-  it should "scrape Koło's Kino nad Wartą off its own Filmweb id, not Konin's culture centre" in {
+  // Kino nad Wartą is Miejski Dom Kultury w Kole (Słowackiego 5), whose own
+  // bilety24 organiser is 1621. The June wiring used 1626 — Konińskie Centrum
+  // Kultury, Kino Studyjne Centrum's source — so Koło listed Konin's programme
+  // showtime for showtime; Filmweb 1526 is the right venue but lists only a day
+  // or two of it (one screening in the next ten days, against bilety24's month).
+  it should "scrape Koło's Kino nad Wartą off its own bilety24 organiser, not Konin's or Filmweb's" in {
     val scraper = catalog(biletyna = "kino-kameralne").byCity("konin").find(_.cinema == KinoNadWarta).value
-    scraper shouldBe a [FilmwebShowtimesClient]
-    scraper.sourceUrl.value should endWith ("-1526")
+    scraper shouldBe a [Bilety24OrganizerClient]
+    scraper.sourceKey.value shouldBe "bilety24.pl/kino/organizator/1621"
   }
 
   // Filmweb's "Etiuda OBK" (3024) is the same screen as bilety24's MCK Ostrowiec

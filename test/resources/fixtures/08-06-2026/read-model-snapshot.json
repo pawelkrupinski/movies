@@ -8359,7 +8359,7 @@
     "_id" : "f6d3e7dd54249523",
     "title" : "Michael",
     "posterUrl" : "https://movies.helios.pl/images/Michaelnowyplakat.jpg",
-    "fallbackPosterUrls" : [ "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7785S2R.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/MICHAEL/plak1at_8212836.8.jpg_x_standa.jpg", "https://www.novekino.pl/multimedia/michael_2026/plakat.jpg", "https://img.helios.pl/pliki/film/michael/michael-plakat-202.jpg", "https://biletyna.pl/file/get/id/346221", "https://fwcdn.pl/ppo/81/80/10008180/8236331.2.jpg", "https://image.tmdb.org/t/p/w500/5HgVwIzug5iCoprtj4ZSvcHjjI1.jpg", "https://m.media-amazon.com/images/M/MV5BNzllNmRlN2EtMDQyOC00ODJjLTg4OWQtZDNmNGU3YzlkNjc1XkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7785S2R.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/MICHAEL/plak1at_8212836.8.jpg_x_standa.jpg", "https://www.novekino.pl/multimedia/michael_2026/plakat.jpg", "https://img.helios.pl/pliki/film/michael/michael-plakat-202.jpg", "https://biletyna.pl/file/get/id/346221", "https://image.tmdb.org/t/p/w500/5HgVwIzug5iCoprtj4ZSvcHjjI1.jpg", "https://m.media-amazon.com/images/M/MV5BNzllNmRlN2EtMDQyOC00ODJjLTg4OWQtZDNmNGU3YzlkNjc1XkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 128,
     "releaseYear" : 2026,
     "genres" : [ "Muzyczny", "Dramat" ],
@@ -104486,16 +104486,6 @@
       "format" : [ "2D", "NAP" ]
     } ]
   }, {
-    "_id" : "f6d3e7dd54249523|konin|Kino nad Wartą",
-    "filmId" : "f6d3e7dd54249523",
-    "city" : "konin",
-    "cinema" : "Kino nad Wartą",
-    "filmUrl" : "https://www.filmweb.pl/film/10008180",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-11T19:00:00",
-      "format" : [ "NAP" ]
-    } ]
-  }, {
     "_id" : "f6d3e7dd54249523|koszalin|Helios Koszalin",
     "filmId" : "f6d3e7dd54249523",
     "city" : "koszalin",
@@ -158350,16 +158340,6 @@
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-11T15:00:00",
-      "format" : [ "DUB" ]
-    } ]
-  }, {
-    "_id" : "fa8fd9c2e0cde60f|konin|Kino nad Wartą",
-    "filmId" : "fa8fd9c2e0cde60f",
-    "city" : "konin",
-    "cinema" : "Kino nad Wartą",
-    "filmUrl" : "https://www.filmweb.pl/film/10086986",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-11T17:00:00",
       "format" : [ "DUB" ]
     } ]
   }, {

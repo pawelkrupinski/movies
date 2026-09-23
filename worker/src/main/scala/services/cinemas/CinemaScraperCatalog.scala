@@ -550,16 +550,17 @@ class CinemaScraperCatalog(
   private val slupskScrapers       = Seq(multikino("0030", MultikinoSlupsk), ekobilet("kinorejs", KinoRejs))
   private val jeleniaGoraScrapers  = Seq(helios(HeliosNuxt.JeleniaGora), bilety24Subdomain(KinoLot))
   private val przemyslScrapers     = Seq(helios(HeliosNuxt.Przemysl))
-  // Konin + its catchment: Helios via the chain client, Oskard via Bilety24, and
-  // the remaining independents Filmweb serves by internal cinema id (verified
-  // non-empty seances 2026-06). Września's Kino Trójka (1698) is intentionally
-  // not wired.
+  // Konin + its catchment: Helios via the chain client, and each independent off
+  // its own ticketing listing (bilety24 organiser / biletyna), Filmweb only where
+  // it has none. Neighbouring bilety24 organiser ids are different towns: 1626 is
+  // Konin's culture centre, 1621 Koło's MDK. Września's Kino Trójka (1698) is
+  // intentionally not wired.
   private val koninScrapers        = Seq(
     helios(HeliosNuxt.Konin),
     bilety24Subdomain(KinoOskard),
     filmweb(2405, KinoZacheta),   // Kleczew
     bilety24("https://www.bilety24.pl/kino/organizator/koninskie-centrum-kultury-1626", KinoStudyjneCentrum),   // Konin
-    filmweb(1526, KinoNadWarta),   // Koło
+    bilety24("https://www.bilety24.pl/kino/organizator/miejski-dom-kultury-w-kole-1621", KinoNadWarta),   // Koło
     bilety24("https://www.bilety24.pl/kino/organizator/zajezdnia-kultury-w-pleszewie-1255", KinoHel),   // Pleszew
     bilety24("https://www.bilety24.pl/kino/organizator/miejski-dom-kultury-w-slupcy-1423", KinoSokolnia),   // Słupca
     biletyna(KinoTur),   // Turek
