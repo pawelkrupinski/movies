@@ -16,6 +16,9 @@ on:
             - 'scripts/*mobile-release*.sh'
             - 'scripts/log.sh'
             - 'scripts/shell-spec.sh'
+            # The rolling-release publish below runs through these.
+            - 'scripts/ci/gh-release*.sh'
+            - 'scripts/ci/publish-rolling-release.sh'
     push:
         branches: [main]
         paths:
@@ -32,6 +35,9 @@ on:
             - 'scripts/*mobile-release*.sh'
             - 'scripts/log.sh'
             - 'scripts/shell-spec.sh'
+            # The rolling-release publish below runs through these.
+            - 'scripts/ci/gh-release*.sh'
+            - 'scripts/ci/publish-rolling-release.sh'
     workflow_dispatch:
 
 # A newer push to the same ref cancels the older run mid-flight instead of
@@ -132,6 +138,7 @@ jobs:
                   ios/scripts/store-screenshots-test.sh
                   scripts/mobile-release-test.sh
                   scripts/tag-mobile-release-test.sh
+                  scripts/ci/gh-release-test.sh
 
             - name: Unit tests
               run: ./gradlew --no-daemon testDebugUnitTest
@@ -281,9 +288,11 @@ jobs:
             # The APK is for sideloading; the AAB is the Play Console upload
             # artifact (Play requires an AAB, not an APK).
             #
-            # Only on main pushes / manual runs — never on PRs. We delete +
-            # recreate the release each time so its tag tracks the newest main
-            # commit (a rolling "latest", not a versioned release). Marked
+            # Only on main pushes / manual runs — never on PRs. Each run edits
+            # the same release in place and --clobbers its assets (a rolling
+            # "latest", not a versioned release); its notes name the commit.
+            # The git tag itself stays where the release was first created —
+            # `--target` only moves a tag that does not exist yet. Marked
             # prerelease so it stays out of the repo's "Latest release" slot.
             # Requires the KINOWO_RELEASE_* signing secrets: an unsigned APK
             # won't install, so we fail loudly rather than publish a dud.
@@ -304,27 +313,13 @@ jobs:
                   fi
                   cp "$apk" "$RUNNER_TEMP/kinowo.apk"
                   cp "$aab" "$RUNNER_TEMP/kinowo.aab"
-                  # Upsert rather than delete-then-create. Deleting the release
-                  # (with --cleanup-tag) and immediately recreating it opens a
-                  # window in which the tag does not exist, and GitHub answered
-                  # one of those windows with `HTTP 403: Resource not accessible
-                  # by integration` on 2026-09-04 — a permissions-shaped error
-                  # from a race, since `contents: write` is declared above and
-                  # the same step succeeded on the runs either side of it. An
-                  # upsert never deletes the tag, so there is no window: create
-                  # the release when it is missing, and --clobber the assets.
+                  # Upsert + retry of transient 403/409/5xx: see the header of
+                  # publish-rolling-release.sh and gh-release.sh for the two
+                  # 403s (2026-09-04, 2026-09-23) that shaped it.
                   notes="Signed build from the latest \`main\` commit (${GITHUB_SHA:0:7}). \`kinowo.apk\` to sideload on Android (enable installing from unknown sources); \`kinowo.aab\` to upload to the Google Play Console."
-                  if gh release view android-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-                      gh release edit android-latest --repo "$GITHUB_REPOSITORY" \
-                          --target "$GITHUB_SHA" --prerelease --notes "$notes"
-                  else
-                      gh release create android-latest --repo "$GITHUB_REPOSITORY" \
-                          --target "$GITHUB_SHA" --prerelease \
-                          --title "Kinowo Android (latest)" --notes "$notes"
-                  fi
-                  gh release upload android-latest --repo "$GITHUB_REPOSITORY" --clobber \
-                      "$RUNNER_TEMP/kinowo.apk" \
-                      "$RUNNER_TEMP/kinowo.aab"
+                  "$GITHUB_WORKSPACE/scripts/ci/publish-rolling-release.sh" android-latest \
+                      "Kinowo Android (latest)" "$notes" \
+                      "$RUNNER_TEMP/kinowo.apk" "$RUNNER_TEMP/kinowo.aab"
 
             # Same as above, for the tweak build: a signed, minified APK
             # (≈ the same size as kinowo.apk) that adds the "Kinowo Tune"
@@ -342,17 +337,9 @@ jobs:
                       exit 1
                   fi
                   cp "$apk" "$RUNNER_TEMP/kinowo-tune.apk"
-                  # Upsert, for the same reason as the release above.
                   notes="Signed APK from the latest \`main\` build (${GITHUB_SHA:0:7}) WITH the on-device tweak screen — tap the \"Kinowo Tune\" launcher icon to open it. Sideload \`kinowo-tune.apk\` on Android; enable installing from unknown sources."
-                  if gh release view android-tune-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-                      gh release edit android-tune-latest --repo "$GITHUB_REPOSITORY" \
-                          --target "$GITHUB_SHA" --prerelease --notes "$notes"
-                  else
-                      gh release create android-tune-latest --repo "$GITHUB_REPOSITORY" \
-                          --target "$GITHUB_SHA" --prerelease \
-                          --title "Kinowo Android — tweak build (latest)" --notes "$notes"
-                  fi
-                  gh release upload android-tune-latest --repo "$GITHUB_REPOSITORY" --clobber \
+                  "$GITHUB_WORKSPACE/scripts/ci/publish-rolling-release.sh" android-tune-latest \
+                      "Kinowo Android — tweak build (latest)" "$notes" \
                       "$RUNNER_TEMP/kinowo-tune.apk"
 
             - name: Upload test report

@@ -18,7 +18,7 @@ class ConvergencePublishMainOnlySpec extends AnyFlatSpec with Matchers {
 
   "the convergence publish action" should "upload to the shared release only from main" in {
     val publish = RepoFile.step(action, "Publish the tree to the rolling release")
-    publish should include("gh release upload")
+    publish should include("\"$RELEASE\" upload")
     publish should include(MainOnly)
   }
 
@@ -29,7 +29,8 @@ class ConvergencePublishMainOnlySpec extends AnyFlatSpec with Matchers {
       ".github/workflows/us-convergence.yml")
       .filter(path => RepoFile.read(path).linesIterator
         .filterNot(_.trim.startsWith("#"))
-        .exists(l => l.contains("gh release upload") || l.contains("gh release create")))
+        .exists(l => l.contains("gh release upload") || l.contains("gh release create") ||
+          l.contains("gh-release.sh")))
     writers shouldBe empty
   }
 }

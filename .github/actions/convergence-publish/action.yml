@@ -90,11 +90,15 @@ runs:
               echo "nothing to publish — no $ARCHIVE"
               exit 0
           fi
-          gh release view "$TAG" >/dev/null 2>&1 || \
-            gh release create "$TAG" --prerelease \
+          # Through gh-release.sh, which retries GitHub's transient 403/409/5xx
+          # answers (see its header) — this upload is the whole point of a leg
+          # that just spent an hour enriching.
+          RELEASE=scripts/ci/gh-release.sh
+          "$RELEASE" view "$TAG" >/dev/null 2>&1 || \
+            "$RELEASE" create "$TAG" --prerelease \
               --title "Convergence fixture trees (rolling)" \
               --notes "Recorded enrichment responses and remembered answers per country.
           Replaced in place by every convergence leg — one copy each, no history.
           Not a version of anything; do not treat as a release." || true
-          gh release upload "$TAG" "$ARCHIVE" --clobber
+          "$RELEASE" upload "$TAG" "$ARCHIVE" --clobber
           echo "published $ARCHIVE to release $TAG"
