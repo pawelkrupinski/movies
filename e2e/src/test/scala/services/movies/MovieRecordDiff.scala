@@ -22,10 +22,23 @@ object MovieRecordDiff {
   def describe(a: MovieRecord, b: MovieRecord, otherIndex: Int): String = {
     val differing = a.productElementNames.toSeq
       .zip(a.productIterator.zip(b.productIterator).toSeq)
-      .collect { case (name, (x, y)) if x != y => s"$name 0=${render(x)} $otherIndex=${render(y)}" }
+      .collect {
+        case (name, (x: Map[?, ?], y: Map[?, ?])) if x != y =>
+          s"$name 0=${render(x)} $otherIndex=${render(y)} ${keyDelta(x, y, otherIndex)}"
+        case (name, (x, y)) if x != y => s"$name 0=${render(x)} $otherIndex=${render(y)}"
+      }
     if (differing.isEmpty)
       "records compare unequal yet every declared field matches — the difference is outside the constructor"
     else differing.mkString(", ")
+  }
+
+  /** A truncated key list hides the one key that moved, so name the keys only one
+   *  side has — and, for a key both sides share, that its value differs. */
+  private def keyDelta(left: Map[?, ?], right: Map[?, ?], otherIndex: Int): String = {
+    val (a, b) = (left.asInstanceOf[Map[Any, Any]], right.asInstanceOf[Map[Any, Any]])
+    val changed = (a.keySet intersect b.keySet).filter(k => a(k) != b(k))
+    s"(keys only-in-0=${truncate((a.keySet -- b.keySet).mkString(","))} only-in-$otherIndex=${truncate((b.keySet -- a.keySet).mkString(","))}" +
+      s" value-differs=${truncate(changed.mkString(","))})"
   }
 
   /** Whole collections bury the one field that moved, so summarise the big ones.
