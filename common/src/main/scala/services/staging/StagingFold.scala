@@ -76,6 +76,30 @@ object StagingFold {
     case scala.util.Failure(e) => Next.Abandon(e)
   }
 
+  /** What a failed `commitTransaction` means — the commit's counterpart of
+   *  [[nextAfterAttempt]], and pure for the same reason. */
+  sealed trait AfterCommitFailure
+  object AfterCommitFailure {
+    /** The reply was lost (`UnknownTransactionCommitResult`): the server may have
+     *  committed, so re-issue the COMMIT — never re-run the body, whose staging rows
+     *  may already be gone. */
+    case object RetryCommit extends AfterCommitFailure
+    /** The commit failed transiently and did not land: re-run the whole transaction. */
+    case class RetryTransaction(cause: Throwable) extends AfterCommitFailure
+    /** Out of retries, or not retryable — raise, so the task reschedules. */
+    case class Abandon(cause: Throwable) extends AfterCommitFailure
+  }
+
+  def afterCommitFailure(e: Throwable, commitAttempt: Int, attempt: Int, maxRetries: Int): AfterCommitFailure = e match {
+    case m: com.mongodb.MongoException
+      if m.hasErrorLabel(com.mongodb.MongoException.UNKNOWN_TRANSACTION_COMMIT_RESULT_LABEL) && commitAttempt < maxRetries =>
+      AfterCommitFailure.RetryCommit
+    case m: com.mongodb.MongoException
+      if m.hasErrorLabel(com.mongodb.MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL) && attempt < maxRetries =>
+      AfterCommitFailure.RetryTransaction(m)
+    case other => AfterCommitFailure.Abandon(other)
+  }
+
   /** True when a duplicate-key write error names the `tmdbId` unique index specifically.
    *  The driver's `WriteError` carries no structured index name, only the server's text
    *  (`"... index: tmdbId_1 dup key: { tmdbId: 1321666 }"`), so this is matched on the

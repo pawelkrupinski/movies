@@ -93,4 +93,29 @@ class StagingFoldOutcomeSpec extends AnyFlatSpec with Matchers {
     "be abandoned rather than retried" in {
     StagingFold.nextAfterAttempt(Failure(keyCollision), attempt = 1, maxRetries) shouldBe a[StagingFold.Next.Abandon]
   }
+
+  private def labelled(label: String): com.mongodb.MongoException = {
+    val e = new com.mongodb.MongoException("commit failed"); e.addLabel(label); e
+  }
+
+  "a commit whose result is unknown" should "retry the COMMIT, not the body, while commit retries remain" in {
+    val lost = labelled(com.mongodb.MongoException.UNKNOWN_TRANSACTION_COMMIT_RESULT_LABEL)
+    StagingFold.afterCommitFailure(lost, commitAttempt = 1, attempt = 1, maxRetries) shouldBe
+      StagingFold.AfterCommitFailure.RetryCommit
+    StagingFold.afterCommitFailure(lost, commitAttempt = maxRetries, attempt = 1, maxRetries) shouldBe
+      a[StagingFold.AfterCommitFailure.Abandon]
+  }
+
+  "a commit that failed transiently" should "re-run the transaction while attempts remain" in {
+    val transientCommit = labelled(com.mongodb.MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL)
+    StagingFold.afterCommitFailure(transientCommit, commitAttempt = 1, attempt = 1, maxRetries) shouldBe
+      StagingFold.AfterCommitFailure.RetryTransaction(transientCommit)
+    StagingFold.afterCommitFailure(transientCommit, commitAttempt = 1, attempt = maxRetries, maxRetries) shouldBe
+      a[StagingFold.AfterCommitFailure.Abandon]
+  }
+
+  "a commit failure with no retry label" should "be abandoned" in {
+    StagingFold.afterCommitFailure(new RuntimeException("boom"), commitAttempt = 1, attempt = 1, maxRetries) shouldBe
+      a[StagingFold.AfterCommitFailure.Abandon]
+  }
 }

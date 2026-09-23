@@ -152,6 +152,61 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
       }
   }
 
+  /** A COMMIT WHOSE REPLY WAS LOST. The server committed; the driver saw a network error
+   *  and labelled it `UnknownTransactionCommitResult`. Rethrowing it rescheduled a fold that
+   *  had already happened — whose retry then found the group drained and did nothing — so
+   *  the post-commit steps (side-row migration, `completeSideCollections`) never ran and
+   *  the graduated film held no showtimes. The commit must be retried, and the fold finish. */
+  it should "retry a commit whose result is unknown, and still complete the graduated film" in {
+    FoldFixture.withFold("staging-fold") { fold =>
+      import fold.{movies, staging, screenings, db}
+      val repository = new services.movies.MongoMovieRepository(Some(db), fallbackToOwnInit = false,
+        normalizer = titleNormalizer, screenings = Some(screenings), slots = Some(new MongoSlotsRepository(Some(db))))
+      seedConcludedNewcomer(staging)
+      val commits = new java.util.concurrent.atomic.AtomicInteger(0)
+      val lostReply: org.mongodb.scala.ClientSession => Unit = session => {
+        services.staging.MongoStagingFolder.commitTransaction(session) // it DID commit…
+        if (commits.incrementAndGet() == 1) {                          // …but the first reply is lost
+          val e = new com.mongodb.MongoException("simulated lost commit reply")
+          e.addLabel(com.mongodb.MongoException.UNKNOWN_TRANSACTION_COMMIT_RESULT_LABEL)
+          throw e
+        }
+      }
+
+      noException should be thrownBy fold.folder(commit = lostReply).foldGroup(newcomerTitle)
+
+      val folded = Await.result(movies.find(Filters.regex("key",
+        s"^${titleNormalizer.sanitize(newcomerTitle)}\\|")).toFuture(), 10.seconds)
+        .flatMap(_.get("_id").map(_.asString().getValue))
+      folded should not be empty
+      folded.foreach { id =>
+        repository.findByIdChecked(FilmId(id))._1.map(_.record.cinemaData.values.map(_.showtimes.size).sum)
+          .getOrElse(0) should be > 0
+      }
+    }
+  }
+
+  /** A commit that FAILED with a transient error: the transaction did not land, so the whole
+   *  attempt re-runs — exactly what a transient error in the body gets. */
+  it should "re-run the transaction when its commit fails with a transient error" in {
+    FoldFixture.withFold("staging-fold") { fold =>
+      import fold.{movies, staging}
+      seedConcludedNewcomer(staging)
+      val commits = new java.util.concurrent.atomic.AtomicInteger(0)
+      val transientOnce: org.mongodb.scala.ClientSession => Unit = session =>
+        if (commits.incrementAndGet() == 1) { // never reaches the server: the fold must abort and re-run
+          val e = new com.mongodb.MongoException("simulated transient commit failure")
+          e.addLabel(com.mongodb.MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL)
+          throw e
+        } else services.staging.MongoStagingFolder.commitTransaction(session)
+
+      noException should be thrownBy fold.folder(commit = transientOnce).foldGroup(newcomerTitle)
+      commits.get() shouldBe 2
+      Await.result(movies.find(Filters.regex("key",
+        s"^${titleNormalizer.sanitize(newcomerTitle)}\\|")).toFuture(), 10.seconds) should not be empty
+    }
+  }
+
   /** A fold whose group is BIGGER THAN ONE DOCUMENT — the case that broke the United
    *  States and could not be seen from anywhere else.
    *

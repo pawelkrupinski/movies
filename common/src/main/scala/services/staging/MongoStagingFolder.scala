@@ -51,7 +51,10 @@ class MongoStagingFolder(
    *  constructor seam (mirroring `tools.RetryWithBackoff`'s own `sleep`
    *  parameter) so a spec wanting fast retries can inject a no-op instead of
    *  a real `Thread.sleep`. */
-  sleep: Long => Unit = Thread.sleep
+  sleep: Long => Unit = Thread.sleep,
+  /** Commits the session's transaction — a seam so a spec can make a commit's reply go
+   *  missing (or fail transiently) after, or instead of, the real commit. */
+  commit: ClientSession => Unit = MongoStagingFolder.commitTransaction
 ) extends StagingFolder with Logging {
 
 
@@ -111,14 +114,21 @@ class MongoStagingFolder(
       val outcome = Try(foldOnce(session, movies, staging, cleanTitle, candidateIds))
       StagingFold.nextAfterAttempt(outcome.map(_.newPromotions), attempt, maxRetries) match {
         case StagingFold.Next.Commit(newPromotions) =>
-          await(publisherToFuture(session.commitTransaction()))
-          val plan = outcome.toOption
-          // Migrate BEFORE completing: `upsert` re-stitches a stripped slot from the
-          // `screenings` rows filed under the id it is writing, so the winner has to own
-          // the retired rows by the time it runs, or it writes the film with an empty board.
-          plan.foreach(p => migrateRetiredSideRows(p.retirements))
-          completeSideCollections(plan.map(_.moviesUpserts.toSeq).getOrElse(Seq.empty))
-          result = Some(newPromotions)
+          commitWithRetry(session, cleanTitle, attempt) match {
+            case None =>
+              val plan = outcome.toOption
+              // Migrate BEFORE completing: `upsert` re-stitches a stripped slot from the
+              // `screenings` rows filed under the id it is writing, so the winner has to own
+              // the retired rows by the time it runs, or it writes the film with an empty board.
+              plan.foreach(p => migrateRetiredSideRows(p.retirements))
+              completeSideCollections(plan.map(_.moviesUpserts.toSeq).getOrElse(Seq.empty))
+              result = Some(newPromotions)
+            case Some(transient) =>
+              Try(await(publisherToFuture(session.abortTransaction())))
+              logger.warn(s"Staging fold '$cleanTitle' commit hit a transient error (attempt $attempt): " +
+                s"${transient.getMessage} — re-running the transaction.")
+              sleep(MongoStagingFolder.retryBackoffMs(attempt))
+          }
         case StagingFold.Next.Retry(e) =>
           Try(await(publisherToFuture(session.abortTransaction())))
           // Covers both a transient transaction error AND a losing race against a
@@ -140,6 +150,42 @@ class MongoStagingFolder(
       }
     }
     result.getOrElse(Seq.empty)
+  }
+
+  /** Commit, retrying the COMMIT itself while its result is unknown. `None` once it has
+   *  committed; `Some(cause)` when it failed transiently and the whole transaction must
+   *  re-run; throws when neither retry applies.
+   *
+   *  Why the commit gets its own retry. `UnknownTransactionCommitResult` means the reply
+   *  was lost — the server may well have committed. Rethrowing it rescheduled a fold that
+   *  had (probably) already happened, whose retry then found the group drained and did
+   *  nothing; the post-commit steps — `migrateRetiredSideRows`, `completeSideCollections`
+   *  — never ran, and the graduated film held no showtimes until its next scrape.
+   *  Re-issuing `commitTransaction` is what the server's own guidance prescribes: it is
+   *  idempotent for a transaction that did commit. */
+  private def commitWithRetry(session: ClientSession, cleanTitle: String, attempt: Int): Option[Throwable] = {
+    var commitAttempt = 0
+    var outcome: Option[Option[Throwable]] = None
+    while (outcome.isEmpty) {
+      commitAttempt += 1
+      Try(commit(session)) match {
+        case scala.util.Success(_) => outcome = Some(None)
+        case scala.util.Failure(e) =>
+          StagingFold.afterCommitFailure(e, commitAttempt, attempt, maxRetries) match {
+            case StagingFold.AfterCommitFailure.RetryCommit =>
+              logger.warn(s"Staging fold '$cleanTitle' commit result unknown (commit attempt $commitAttempt): " +
+                s"${e.getMessage} — retrying the commit.")
+              sleep(MongoStagingFolder.retryBackoffMs(commitAttempt))
+            case StagingFold.AfterCommitFailure.RetryTransaction(cause) => outcome = Some(Some(cause))
+            case StagingFold.AfterCommitFailure.Abandon(cause) =>
+              Try(await(publisherToFuture(session.abortTransaction())))
+              logger.error(s"Staging fold '$cleanTitle' could not commit after $attempt attempt(s): ${cause.getMessage} " +
+                "— rethrowing so the task reschedules.")
+              throw cause
+          }
+      }
+    }
+    outcome.get
   }
 
   /** Write each folded film AGAIN, through the repository's own protocol, so it ends up
@@ -413,10 +459,20 @@ class MongoStagingFolder(
 
   private def await[T](f: => scala.concurrent.Future[T]): T = Await.result(f, opTimeout)
 
+  private def publisherToFuture[T](pub: Publisher[T]): scala.concurrent.Future[Unit] =
+    MongoStagingFolder.publisherToFuture(pub)
+}
+
+object MongoStagingFolder {
+
+  /** Production's `commit`: commit the session's transaction and wait for the reply. */
+  def commitTransaction(session: ClientSession): Unit =
+    Await.result(publisherToFuture(session.commitTransaction()), 10.seconds)
+
   /** Adapt a reactive-streams `Publisher` (what `ClientSession.commitTransaction`
    *  / `abortTransaction` return — raw Java publishers, not scala Observables) to
    *  a `Future` so it composes with `await`. Completes on the terminal signal. */
-  private def publisherToFuture[T](pub: Publisher[T]): scala.concurrent.Future[Unit] = {
+  private[staging] def publisherToFuture[T](pub: Publisher[T]): scala.concurrent.Future[Unit] = {
     val promise = scala.concurrent.Promise[Unit]()
     pub.subscribe(new Subscriber[T] {
       def onSubscribe(s: Subscription): Unit = s.request(Long.MaxValue)
@@ -426,9 +482,6 @@ class MongoStagingFolder(
     })
     promise.future
   }
-}
-
-object MongoStagingFolder {
 
   /** Jittered backoff before a retry: `10 * attempt` ms of base delay plus up to
    *  20ms of jitter (so ~10-30ms on attempt 1, ~20-40ms on attempt 2, …). Small
