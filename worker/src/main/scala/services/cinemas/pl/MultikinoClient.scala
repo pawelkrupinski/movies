@@ -29,7 +29,7 @@ import services.movies.TitleNormalizer
  */
 class MultikinoClient(
   http:              HttpFetch,
-  val cinemaId:      String = MultikinoClient.PoznanStaryBrowarId,
+  cinemaId:          String = MultikinoClient.PoznanStaryBrowarId,
   override val cinema: Cinema = Multikino,
   // The country's title rules. An ordinary dependency, not a context param:
   // every scraper is built by `CinemaScraperCatalog`, which has exactly one.
@@ -43,6 +43,7 @@ class MultikinoClient(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceKey: Option[String] = Some(s"${CinemaScraper.urlKey(BaseUrl)}/cinemas/$cinemaId")
   override def chain: Boolean = true
+  override def chainVenueId: Option[String] = Some(cinemaId)
 
   def fetch(): Seq[CinemaMovie] = MultikinoParser.parse(getApiWithRetry(), cinema, titles)
 

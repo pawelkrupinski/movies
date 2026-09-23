@@ -85,6 +85,12 @@ trait CinemaScraper {
    *  told apart by a title prefix. `None` only for a scraper with no upstream
    *  identity at all, which the audit refuses. */
   def sourceKey: Option[String] = sourceUrl.map(CinemaScraper.urlKey)
+
+  /** The id a chain's own venue list knows this venue by — Helios's REST
+   *  `sourceId`, Cinema City's externalCode, Multikino's cinema id — for the
+   *  online roster audit to look the venue up in that list. `None` for a venue
+   *  no chain lists. */
+  def chainVenueId: Option[String] = None
 }
 
 object CinemaScraper {

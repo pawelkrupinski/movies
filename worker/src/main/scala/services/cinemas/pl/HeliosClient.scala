@@ -18,7 +18,7 @@ import services.movies.TitleNormalizer
 // wirings pass the fixture's capture date so the recorded URLs still match.
 class HeliosClient(
   http:  HttpFetch    = HeliosFetch,
-  val config: HeliosCinema = HeliosNuxt.Poznan,
+  config:   HeliosCinema = HeliosNuxt.Poznan,
   today: LocalDate    = LocalDate.now(ZoneId.of("Europe/Warsaw")),
   // Per-film detail (`/api/movie/{id}`) + screen-name fetch path. Defaults to
   // `http`; the composition root injects ONE CachingDetailFetch shared across
@@ -46,6 +46,7 @@ class HeliosClient(
   // `config.baseUrl` (`helios.pl/<citySlug>/<cinemaSlug>`) is the venue's public
   // repertoire page — the same URL the NUXT scrape fetches `/repertuar` from.
   override def sourceUrl: Option[String] = Some(config.baseUrl)
+  override def chainVenueId: Option[String] = Some(sourceId)
 
   def fetch(): Seq[CinemaMovie] = {
     val rest = fetchRestData()

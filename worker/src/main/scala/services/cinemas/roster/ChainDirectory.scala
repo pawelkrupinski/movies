@@ -3,7 +3,7 @@ package services.cinemas.roster
 import models.GeoPoint
 import play.api.libs.json.{JsValue, Json}
 import services.cinemas.common.CinemaScraper
-import services.cinemas.pl.{CinemaCityClient, CinemaCityScraper, HeliosClient, MultikinoClient}
+import services.cinemas.pl.{CinemaCityClient, MultikinoClient}
 
 import java.time.LocalDate
 import scala.util.Try
@@ -19,9 +19,9 @@ import scala.util.Try
 sealed trait ChainDirectory {
   def name: String
 
-  /** The id this chain's list knows `scraper`'s venue by, `None` for a scraper
-   *  of another source. */
-  def venueId(scraper: CinemaScraper): Option[String]
+  /** The host the chain's own scrapers fetch from — how a scraper is told to
+   *  be this chain's, before its [[CinemaScraper.chainVenueId]] is looked up. */
+  def host: String
 
   /** The list, as of `today` where the endpoint wants a date. */
   def listUrl(today: LocalDate): String
@@ -39,7 +39,10 @@ object ChainDirectory {
   val all: Seq[ChainDirectory] = Seq(Helios, CinemaCity, Multikino)
 
   def of(scraper: CinemaScraper): Option[(ChainDirectory, String)] =
-    all.iterator.flatMap(d => d.venueId(scraper).map(d -> _)).nextOption()
+    for {
+      id        <- scraper.chainVenueId
+      directory <- all.find(d => scraper.scrapeHosts.contains(d.host))
+    } yield directory -> id
 
   private def text(js: JsValue, key: String): Option[String] =
     (js \ key).asOpt[String].map(_.trim).filter(_.nonEmpty)
@@ -55,11 +58,9 @@ object ChainDirectory {
     // Helios appends the postcode to the street: "ul. Mostowa 5 43-300".
     private val TrailingPostcode = """\s*\d{2}-\d{3}$""".r
 
-    def venueId(scraper: CinemaScraper): Option[String] = scraper match {
-      case h: HeliosClient => Some(h.config.sourceId)
-      case _               => None
-    }
-    def listUrl(today: LocalDate): String = "https://restapi.helios.pl/api/cinema"
+    private val ListUrl = "https://restapi.helios.pl/api/cinema"
+    val host = CinemaScraper.hostsOf(ListUrl).head
+    def listUrl(today: LocalDate): String = ListUrl
     def parse(body: String): Map[String, PublishedVenue] =
       Try(Json.parse(body).as[Seq[JsValue]]).getOrElse(Nil).flatMap { js =>
         for { id <- text(js, "id"); town <- text(js, "city") } yield
@@ -71,13 +72,10 @@ object ChainDirectory {
   /** Cinema City's quickbook `cinemas/with-event/until/<date>`: `{"body":
    *  {"cinemas":[{"id":"1100","addressInfo":{"address1":"ul. Brzeska 27",
    *  "city":"Biała Podlaska",…},"latitude":…,…}]}}` — the id is the
-   *  externalCode a [[CinemaCityScraper]] is wired with. */
+   *  externalCode a `CinemaCityScraper` is wired with. */
   case object CinemaCity extends ChainDirectory {
     val name = "Cinema City"
-    def venueId(scraper: CinemaScraper): Option[String] = scraper match {
-      case c: CinemaCityScraper => Some(c.cinemaId)
-      case _                    => None
-    }
+    val host = CinemaScraper.hostsOf(CinemaCityClient.BaseApiUrl).head
     // A year out: a venue with nothing on sale that far ahead is not open.
     def listUrl(today: LocalDate): String = s"${CinemaCityClient.BaseApiUrl}/cinemas/with-event/until/${today.plusYears(1)}"
     def parse(body: String): Map[String, PublishedVenue] =
@@ -97,10 +95,7 @@ object ChainDirectory {
    *  programme API, so the home page goes first. */
   case object Multikino extends ChainDirectory {
     val name = "Multikino"
-    def venueId(scraper: CinemaScraper): Option[String] = scraper match {
-      case m: MultikinoClient => Some(m.cinemaId)
-      case _                  => None
-    }
+    val host = CinemaScraper.hostsOf(MultikinoClient.BaseUrl).head
     def listUrl(today: LocalDate): String = s"${MultikinoClient.BaseUrl}/api/microservice/showings/cinemas"
     override def warmUpUrl: Option[String] = Some(MultikinoClient.HomeUrl)
     def parse(body: String): Map[String, PublishedVenue] =
