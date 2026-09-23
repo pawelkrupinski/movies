@@ -99,8 +99,8 @@ object FilmCanonicalizer {
    *       rows at y or y+1, the next window opens at the next distinct year
    *       > y+1. At most two neighbouring years per cluster, order-independent.
    *    4. Yearless AND idless rows fold into the group's canonical cluster (the
-   *       one resolved cluster from 1–2b when there is one, else the smallest-
-   *       `canonicalRank` cluster from 3) on the title match alone,
+   *       one resolved cluster from 1–2b when there is one, else the ONLY cluster
+   *       from 3 — two or more are ambiguous and refused) on the title match alone,
    *       UNLESS the row's own evidence contradicts it (a slot year or runtime
    *       past tolerance, or a cinema-published original title `MixedFilmDetector`
    *       reads as a different film) — except a slot-year contradiction alone is
@@ -353,9 +353,9 @@ object FilmCanonicalizer {
     val seeded: Seq[Cluster] = resolvedReclaimed ++ windowClusters.toSeq
 
     // (4) Yearless+idless rows fold into the group's canonical cluster (the single
-    // resolved one, else the smallest-canonicalRank one) — BUT only when the title
-    // maps to at most ONE resolved film. With no cluster at all, or with TWO-OR-MORE
-    // distinct resolved films, each such row stands alone.
+    // resolved one, else the group's only cluster) — BUT only when the title maps to
+    // exactly ONE plausible film. With no cluster at all, TWO-OR-MORE distinct resolved
+    // films, or no resolved film and two-or-more year clusters, each such row stands alone.
     //
     // The multi-film guard is the ambiguity refuse: a `sanitize(title)` can collide
     // across genuinely different TMDB films — "Guru" is THREE (a Persian "لؤ گورو",
@@ -410,16 +410,20 @@ object FilmCanonicalizer {
     // TMDB's Chinese-script originals ("春光乍洩"/"王家衛"), so neither a title nor a
     // director comparison can see the agreement, but the runtime — 96 minutes on
     // both sides — needs no script to compare.
+    //
+    // With NO resolved film the same refuse applies one rung down: two unresolved
+    // year-window clusters ("Diuna" 1984 and 2021 before either resolves) are two
+    // plausible films, and handing the straggler to the lower year was the same guess.
+    // Only a group whose single cluster is the only candidate folds.
     val yearlessRows = yearless.toSeq
-    val distinctFilms = resolvedClusters.size
-    val clusters: Seq[Cluster] =
-      if (seeded.isEmpty || distinctFilms >= 2)
+    // The one RESOLVED film when there is one (resolved clusters lead `seeded`), never an
+    // unresolved orphan that merely ranks earlier on its key year — that orphan is by
+    // construction a film rule 2 refused to identify with it; else the group's only cluster.
+    val home: Option[Int] = Option.when(resolvedClusters.sizeIs == 1 || seeded.sizeIs == 1)(0)
+    val clusters: Seq[Cluster] = home match {
+      case None =>
         seeded ++ yearlessRows.map(r => Cluster(refYear = None, rows = Seq(r)))
-      else {
-        // The one RESOLVED film when there is one (resolved clusters lead `seeded`),
-        // never an unresolved orphan that merely ranks earlier on its key year — that
-        // orphan is by construction a film rule 2 refused to identify with it.
-        val canonicalIndex   = seeded.indices.minBy(index => (index >= resolvedClusters.size, seeded(index).minRank, index))
+      case Some(canonicalIndex) =>
         val canonicalCluster = seeded(canonicalIndex)
         val canonicalRuntime = canonicalCluster.rows.flatMap(_._2.data.get(Tmdb).flatMap(_.runtimeMinutes)).headOption
         val (attach, refuse) = yearlessRows.partition { r =>
@@ -433,7 +437,7 @@ object FilmCanonicalizer {
         seeded.zipWithIndex.map { case (c, index) =>
           if (index == canonicalIndex) c.copy(rows = c.rows ++ attach) else c
         } ++ refuse.map(r => Cluster(refYear = None, rows = Seq(r)))
-      }
+    }
 
     clusters.map(_.rows).filter(_.nonEmpty)
   }

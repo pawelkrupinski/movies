@@ -348,6 +348,37 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "leave a rule-4 straggler alone when NO film is resolved and two unresolved year clusters could claim it" in {
+    // Nothing is resolved; rule 3 gives the 1984 and the 2021 "Diuna" a window cluster
+    // each. A bare, yearless listing is either film, so picking the lower year would
+    // be a guess the row then inherits — refuse, exactly as rule 4 does for two
+    // resolved films.
+    val straggler = key("Diuna", None) -> MovieRecord(
+      data = Map[Source, SourceData](Kinoteka -> SourceData(title = Some("Diuna"))))
+    val group = Seq(
+      unresolved("Diuna", Some(1984), cinema = Helios),
+      unresolved("Diuna", Some(2021), cinema = Multikino),
+      straggler
+    )
+    Seq(group, group.reverse).foreach { ordered =>
+      val clusters = FilmCanonicalizer.clusterByFilm(ordered, titleNormalizer)
+      withClue(s"clusters: ${clusters.map(_.map(c => (c._1.cleanTitle, c._1.year)))}\n") {
+        clusters should have size 3
+        clusters should contain (Seq(straggler))
+      }
+    }
+  }
+
+  it should "still fold a rule-4 straggler onto the ONLY unresolved year cluster when nothing is resolved" in {
+    val group = Seq(
+      unresolved("Diuna", Some(2021), cinema = Helios),
+      unresolved("Diuna", Some(2022), cinema = Multikino),
+      key("Diuna", None) -> MovieRecord(
+        data = Map[Source, SourceData](Kinoteka -> SourceData(title = Some("Diuna"))))
+    )
+    FilmCanonicalizer.clusterByFilm(group, titleNormalizer) should have size 1
+  }
+
   it should "refuse to reclaim an orphan whose identical text happens to sit on TWO resolved clusters (ambiguous)" in {
     val text = "Some verbatim synopsis text shared by coincidence."
     val group = Seq(
