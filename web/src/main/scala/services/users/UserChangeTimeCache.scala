@@ -76,7 +76,7 @@ final class CaffeineUserChangeTimeCache(
       onUpsert     = state => cache.put(state.userId, state.updatedAt),
       onDelete     = userId => cache.invalidate(userId),
       onDisconnect = () => {
-        logger.warn("UserChangeTimeCache: change stream disconnected — invalidating the whole cache.")
+        logger.warn("UserChangeTimeCache: change stream disconnected or saw an unattributable delete — invalidating the whole cache.")
         cache.invalidateAll()
       }
     )

@@ -39,7 +39,8 @@ trait UserStateRepository {
   /** Stream out-of-band writes/deletes to `userStates` as they happen — see
    *  `MovieRepository.watchChanges`, which this mirrors, with one addition:
    *  `onDisconnect` fires once if the underlying cursor dies before a new
-   *  registration replaces it. `MovieCache`'s consumers don't need that
+   *  registration replaces it — and whenever the stream sees a change it cannot
+   *  attribute to a user (the Mongo store's deletes: see `MongoUserStateRepository`). `MovieCache`'s consumers don't need that
    *  signal — they tolerate staleness via a periodic rehydrate backstop.
    *  `UserChangeTimeCache` (the one caller today) gates an HTTP freshness
    *  *decision*, so it must know the moment its view stops being current
@@ -189,9 +190,14 @@ class MongoUserStateRepository(
         liveness.delivered(UserStateRepository.Collection)
         (Option(change.getFullDocument), listener) match {
           case (Some(state), Some((onUpsert, _, _))) => onUpsert(state)
-          case (None, Some((_, onDelete, _)))        =>
+          // A delete carries only its documentKey — and a row's `_id` is a driver-generated
+          // ObjectId, not the userId, so the key cannot say WHOSE row went (and there is no
+          // pre-image to ask). Deletes are rare (account deletion), so rather than enable
+          // collection pre-images, report "can no longer vouch for what changed" — the same
+          // signal as a dead cursor, which makes the change-time cache drop everything.
+          case (None, Some((_, onDelete, onLostTrack))) =>
             Option(change.getDocumentKey).flatMap(k => Option(k.get("userId")))
-              .foreach(v => onDelete(if (v.isString) v.asString.getValue else v.toString))
+              .fold(onLostTrack())(v => onDelete(if (v.isString) v.asString.getValue else v.toString))
           case _ => ()
         }
       }

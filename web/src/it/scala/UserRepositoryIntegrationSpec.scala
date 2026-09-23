@@ -7,8 +7,9 @@ import org.mongodb.scala.model.Filters
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.users.{MongoUserRepository, MongoUserStateRepository, UserCodecs}
+import services.users.{CaffeineUserChangeTimeCache, MongoUserRepository, MongoUserStateRepository, UserCodecs}
 import tools.Env
+import tools.Eventually.eventually
 
 import java.time.Instant
 import scala.concurrent.Await
@@ -163,6 +164,25 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         Await.result(coll.insertOne(UserState(userId, Set("B"), Set.empty, Now.plusSeconds(1))).toFuture(), 10.seconds)
       Await.result(db.getCollection("userStates").countDocuments(Filters.eq("userId", userId)).toFuture(), 10.seconds) shouldBe 1
     } finally client.close()
+  }
+
+
+  // The real cursor, not the in-memory ring: a `userStates` row's `_id` is a driver-generated
+  // ObjectId, so a DELETE event's documentKey carries no `userId` at all. The change-time
+  // cache must still stop vouching for that user — a stale entry would answer a later
+  // conditional GET with 304 for state that no longer exists.
+  it should "stream a delete through to the change-time cache, even though the event key names no user" in {
+    val cache  = new CaffeineUserChangeTimeCache(states)
+    val userId = "__integration-test-state-stream-delete"
+    cache.start()
+    try {
+      Thread.sleep(500) // the cursor opens at "now": give it a moment to be open before writing
+      states.upsert(UserState(userId, Set("X"), Set.empty, Now))
+      eventually(cache.lastChangeAt(userId) shouldBe Some(Now), timeoutMs = 10000)
+
+      states.delete(userId)
+      eventually(cache.lastChangeAt(userId) shouldBe None, timeoutMs = 10000)
+    } finally cache.stop()
   }
 
 }
