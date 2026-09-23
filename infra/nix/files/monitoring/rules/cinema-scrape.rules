@@ -216,12 +216,19 @@ groups:
       # TWENTY-FOUR HOURS: programmes move with every scrape, and a pair that matches for a day
       # is not a coincidence of one evening's schedule.
       #
+      # `last_over_time(...[10m])` BRIDGES A WORKER RESTART. Each pod change leaves the series
+      # absent for ~3 minutes (staleness marker, then boot), and one absent evaluation drops a
+      # pending alert, so the bare gauge only reached `for: 24h` after a day with no deploy --
+      # with ~16 worker restarts on 2026-09-23 and one day-long uptime in the week before it,
+      # effectively never. Ten minutes covers the gap and keeps a cleared pair clearing within
+      # two corpus scans.
+      #
       # Measured against prod on 2026-09-23 it would have fired in five countries; every pair is
       # now either fixed at its source (Koło's Kino nad Wartą repeating Konin's; the Syracuse
       # Pickwick; Braniewo's Baszta repeating Środa's, fixed that morning) or on
       # `DistinctVenuePairs` with its ticketing evidence (chain-mates in both scopes).
       - alert: DuplicateVenueListing
-        expr: max by (country, scope) (kinowo_worker_duplicate_venue_pairs) > 0
+        expr: max by (country, scope) (last_over_time(kinowo_worker_duplicate_venue_pairs[10m])) > 0
         for: 24h
         labels:
           severity: warning
