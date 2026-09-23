@@ -3,7 +3,7 @@ package modules.webwiring
 import controllers.{AuthController, FacebookDataDeletionController, UserStateController}
 import modules.Wiring
 import services.auth.{AppleTokenValidator, AuthExchangeCodeStore, AuthExchangeCodes, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, InMemoryAuthExchangeCodeStore, MongoAuthExchangeCodeStore, OauthProvider}
-import services.users.{AccountDeletion, CachingUserRepository, CachingUserStateRepository, CaffeineUserChangeTimeCache, MongoUserRepository, MongoUserStateRepository, UserRepository, UserStateRepository}
+import services.users.{AccountDeletion, CaffeineUserChangeTimeCache, MongoUserRepository, MongoUserStateRepository, UserRepository, UserStateRepository}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch}
 
 /** ── Accounts ──────────────────────────────────────────────────────────────
@@ -17,16 +17,13 @@ trait UsersWiring { self: Wiring =>
   // wrapper records their latency on the same /uptime surface the worker feeds.
   lazy val httoFetch: HttpFetch = new MonitoringHttpFetch(new RealHttpFetch(), uptimeMonitor)
 
-  // Caching decorators trim the Atlas RTT off the logged-in critical path.
-  lazy val userRepository:      UserRepository      = new CachingUserRepository(new MongoUserRepository(usersConnection.database, fallbackToOwnInit = false))
-  lazy val userStateRepository: UserStateRepository = new CachingUserStateRepository(new MongoUserStateRepository(usersConnection.database, fallbackToOwnInit = false))
+  lazy val userRepository:      UserRepository      = UsersWiring.podUserRepository(new MongoUserRepository(usersConnection.database, fallbackToOwnInit = false))
+  lazy val userStateRepository: UserStateRepository = UsersWiring.podUserStateRepository(new MongoUserStateRepository(usersConnection.database, fallbackToOwnInit = false))
 
   // The last-1000-active-users change-time cache behind `hiddenFilms()`'s
   // fast path — see `CaffeineUserChangeTimeCache`'s doc comment for why it
   // invalidates wholesale on a stream failure rather than tolerating
-  // staleness like `MovieCache`. Watches `userStateRepository` itself (the
-  // caching decorator), which forwards `watchChanges` straight to the inner
-  // Mongo repository — see that decorator's pass-through methods.
+  // staleness like `MovieCache`.
   // Typed concrete, not `UserChangeTimeCache` — `Wiring.start()`/`stop()` need
   // its lifecycle methods, which the lookup-only trait deliberately omits
   // (same split as `MovieCache`'s trait vs. its `Stoppable` real impl).
@@ -77,4 +74,27 @@ trait UsersWiring { self: Wiring =>
   lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, accountDeletion, userChangeTimeCache, legacyUserStateMetrics, userRepository)
   lazy val facebookDataDeletionController =
     new FacebookDataDeletionController(controllerComponents, Env.get("FACEBOOK_APP_SECRET"), userRepository, accountDeletion)
+}
+
+object UsersWiring {
+
+  /** What a pod puts between its controllers and the SHARED users database:
+   *  nothing — every pod reads the store itself.
+   *
+   *  One person is served by several processes at once: each country is its own
+   *  pod (and the showtimes.cc ones share the session cookie), the apex pod
+   *  answers `/auth/…` for all of them, and a rolling deploy runs two of one
+   *  country side by side. A per-process copy of a row is invisible to every
+   *  other pod's writes, and both rows here are ones those writes change:
+   *  `sessionVersion` ("sign out everywhere" kept working on every other pod
+   *  for the copy's hour, and signed the asking device out of them), and the
+   *  hidden-films sets (a pod wrote back the row as IT last saw it, erasing
+   *  another country's hide, and answered reads with the old set for ten
+   *  minutes). Both reads are one `_id`/`userId` lookup against the fleet's own
+   *  replica set, made only for signed-in visitors. `UserAcrossPodsSpec` pins
+   *  these sequences. */
+  def podUserRepository(shared: UserRepository): UserRepository = shared
+
+  /** See [[podUserRepository]]. */
+  def podUserStateRepository(shared: UserStateRepository): UserStateRepository = shared
 }

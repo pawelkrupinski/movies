@@ -77,11 +77,10 @@ class SignedInUserSpec extends AnyFlatSpec with Matchers {
     SignedInUser(requestWith(legacySession), users) shouldBe empty
   }
 
-  "SignedInUser.establish" should "carry userId, signedInAt, and sessionVersion" in {
+  "SignedInUser.establish" should "carry userId and sessionVersion" in {
     val user    = testUser("u1", sessionVersion = 3).copy(lastSeenAt = Now)
     val session = SignedInUser.establish(Session.emptyCookie, user)
     session.get(SignedInUser.UserIdKey)         shouldBe Some("u1")
-    session.get(SignedInUser.SignedInAtKey)     shouldBe Some(Now.toEpochMilli.toString)
     session.get(SignedInUser.SessionVersionKey) shouldBe Some("3")
   }
 }

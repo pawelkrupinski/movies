@@ -595,8 +595,8 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     // the pod that renders /us serving the Google name and avatar for the rest
     // of that cache's hour.
     val store   = new InMemoryUserRepository                 // Mongo, shared by both pods
-    val apex    = new services.users.CachingUserRepository(store)
-    val sibling = new services.users.CachingUserRepository(store)
+    val apex    = modules.webwiring.UsersWiring.podUserRepository(store)
+    val sibling = modules.webwiring.UsersWiring.podUserRepository(store)
 
     def pod(users: services.users.UserRepository, provider: OauthProvider*): AuthController =
       new AuthController(
