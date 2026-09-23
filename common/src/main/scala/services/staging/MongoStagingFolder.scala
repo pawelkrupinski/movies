@@ -349,7 +349,7 @@ class MongoStagingFolder(
       if (!readOk) throw new IllegalStateException(
         s"Staging fold could not read '$id' back through the storage split. Refusing to " +
         "re-key the film on a view that reports none of its cinemas.")
-      stitched.toSeq.flatMap(_.record.cinemaTitleVotes(normalizer))
+      stitched.toSeq.flatMap(_.record.cinemaData.values.flatMap(_.title))
     }
 
   /** One transaction body: read the WHOLE `sanitize(title)` GROUP's staging +

@@ -152,7 +152,7 @@ object MovieRecordMerge {
    *  takes the richest slot that published it. A total order over the slots, so the
    *  result does not depend on the order they are given in — which the pairwise fold
    *  this replaces could not promise beyond two slots. */
-  private[services] def mergeSlots(slots: Seq[SourceData]): SourceData = {
+  def mergeSlots(slots: Seq[SourceData]): SourceData = {
     require(slots.nonEmpty, "MovieRecordMerge.mergeSlots: no slots")
     // Richest first — the tie-break for a field several published with different
     // values, and the source of the cache-only digest fields below, which are not

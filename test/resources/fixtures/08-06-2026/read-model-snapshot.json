@@ -21751,7 +21751,7 @@
     "synopsisByCity" : { }
   }, {
     "_id" : "fffeccbc822bbdb8",
-    "title" : "Czas Apokalipsy: wersja reżyserska",
+    "title" : "Czas Apokalipsy",
     "originalTitle" : "Apocalypse Now",
     "posterUrl" : "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czas_apokalipsy_01_1080_x_1080.png?h=9d82a385&itok=tklpXXK4",
     "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/1L2mrAKFHPvj2w4Y8Wcfe06Mglx.jpg", "https://m.media-amazon.com/images/M/MV5BZDhiMTljYjYtODc1Yy00MmEwLTg2OTYtYmE1YTRmNDE4MmEwXkEyXkFqcGc@._V1_.jpg" ],
@@ -21777,8 +21777,8 @@
     "synopsisByCity" : { },
     "ageRating" : "16"
   }, {
-    "_id" : "fffeccbc822bbdb8~czasapokalipsy",
-    "title" : "Czas Apokalipsy",
+    "_id" : "fffeccbc822bbdb8~czasapokalipsywersjarezyserska",
+    "title" : "Czas Apokalipsy: wersja reżyserska",
     "originalTitle" : "Apocalypse Now",
     "posterUrl" : "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czas_apokalipsy_01_1080_x_1080.png?h=9d82a385&itok=tklpXXK4",
     "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/1L2mrAKFHPvj2w4Y8Wcfe06Mglx.jpg", "https://m.media-amazon.com/images/M/MV5BZDhiMTljYjYtODc1Yy00MmEwLTg2OTYtYmE1YTRmNDE4MmEwXkEyXkFqcGc@._V1_.jpg" ],
@@ -202231,28 +202231,28 @@
     "cinema" : "KinoPort",
     "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
     "showtimes" : [ {
+      "dateTime" : "2026-08-09T17:30:00",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "fffeccbc822bbdb8~czasapokalipsywersjarezyserska|trojmiasto|KinoPort",
+    "filmId" : "fffeccbc822bbdb8~czasapokalipsywersjarezyserska",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
       "dateTime" : "2026-08-08T14:00:00",
       "format" : [ ]
     } ]
   }, {
-    "_id" : "fffeccbc822bbdb8|warszawa|Kino Muranów",
-    "filmId" : "fffeccbc822bbdb8",
+    "_id" : "fffeccbc822bbdb8~czasapokalipsywersjarezyserska|warszawa|Kino Muranów",
+    "filmId" : "fffeccbc822bbdb8~czasapokalipsywersjarezyserska",
     "city" : "warszawa",
     "cinema" : "Kino Muranów",
     "filmUrl" : "https://kinomuranow.pl/film/czas-apokalipsy-wersja-rezyserska",
     "showtimes" : [ {
       "dateTime" : "2026-06-19T20:30:00",
       "bookingUrl" : "https://kinomuranow.pl/tickets/26039/buy",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "fffeccbc822bbdb8~czasapokalipsy|trojmiasto|KinoPort",
-    "filmId" : "fffeccbc822bbdb8~czasapokalipsy",
-    "city" : "trojmiasto",
-    "cinema" : "KinoPort",
-    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
-    "showtimes" : [ {
-      "dateTime" : "2026-08-09T17:30:00",
       "format" : [ ]
     } ]
   } ]

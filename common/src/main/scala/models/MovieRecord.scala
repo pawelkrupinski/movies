@@ -142,16 +142,42 @@ case class MovieRecord(
    *  membership question pays O(n log n) for an answer that needs one pass. */
   private def slotCinemas: Iterator[Cinema] = data.keysIterator.flatMap(Source.cinemaOf)
 
-  /** One representative slot per cinema — the keyed view detail enrichment uses.
-   *  When a venue holds several title-slots, the highest-priority/title one wins
-   *  deterministically; consumers that need EVERY slot (the display split, divert)
-   *  use [[cinemaShowings]] instead, and consumers that only ask WHICH venues are
-   *  present use [[slotCinemas]] rather than paying for the sort. */
-  def cinemaData: Map[Cinema, SourceData] =
-    cinemaSlots
-      .sortBy { case (source, sd) => (Source.priorityOf(source), sd.title.getOrElse("")) }
-      .flatMap { case (source, sd) => Source.cinemaOf(source).map(_ -> sd) }
-      .toMap
+  /** One representative slot per cinema — the keyed view detail enrichment, the
+   *  published [[evidence]] and the [[displayTitle]] vote read. A venue listing the film
+   *  several ways (plain, a senior-club screening, a cheap-Tuesday promo) is represented
+   *  by its LEAST-decorated listing — see [[leastDecorated]]; it used to be whichever
+   *  title sorted last, which named rows after promotions. Consumers that need EVERY
+   *  slot (the display split, divert) use [[cinemaShowings]]; consumers that only ask
+   *  WHICH venues are present use [[slotCinemas]]. */
+  def cinemaData: Map[Cinema, SourceData] = {
+    val byVenue = cinemaShowings.groupMap(_._1)(_._2)
+    if (byVenue.valuesIterator.forall(_.lengthIs == 1)) byVenue.view.mapValues(_.head).toMap
+    else {
+      val venuesPerSpelling = byVenue.valuesIterator
+        .flatMap(_.flatMap(_.title).map(services.movies.TitleContainment.tokens).distinct)
+        .toSeq.groupMapReduce(identity)(_ => 1)(_ + _)
+      byVenue.view.mapValues(leastDecorated(_, venuesPerSpelling)).toMap
+    }
+  }
+
+  /** Of one venue's slots, the least-decorated listing: a spelling that does not
+   *  decorate another of the venue's titles (`TitleContainment` — a banner on either
+   *  edge), then the spelling most venues share (catches a banner on BOTH edges, and
+   *  picks between equally bare translations), then the fewest words, then the words
+   *  themselves. Structural rather than rule-driven, so it needs no country's
+   *  normalizer. Several slots carrying that one spelling are one listing and settle
+   *  field by field (`MovieRecordMerge.mergeSlots`), so no order picks among them. */
+  private def leastDecorated(slots: Seq[SourceData], venuesPerSpelling: Map[Seq[String], Int]): SourceData = {
+    val spelled = slots.map(sd => sd -> services.movies.TitleContainment.tokens(sd.title.getOrElse("")))
+    val best = spelled.map(_._2).distinct.minBy { tokens =>
+      (spelled.exists { case (_, other) => services.movies.TitleContainment.decorates(other, tokens) },
+       -venuesPerSpelling.getOrElse(tokens, 0), tokens.length, tokens.mkString(" "))
+    }
+    spelled.collect { case (sd, tokens) if tokens == best => sd } match {
+      case Seq(only) => only
+      case several   => services.movies.MovieRecordMerge.mergeSlots(several)
+    }
+  }
 
   /** What the cinemas published about this film — the only evidence a TMDB
    *  resolution is searched from or judged against. Cinema slots only; see
@@ -263,18 +289,9 @@ case class MovieRecord(
   def displayTitle(cleanTitle: String, normalizer: services.movies.TitleNormalizer,
                    extraCinemaTitles: Seq[String] = Nil): String =
     normalizer.chooseDisplay(
-      perCinemaTitles = cinemaTitleVotes(normalizer) ++ extraCinemaTitles,
+      perCinemaTitles = cinemaData.values.flatMap(_.title).toSeq ++ extraCinemaTitles,
       fallback        = cleanTitle,
       tmdbTitle       = data.get(Tmdb).flatMap(_.title))
-
-  /** Each venue's ONE vote in [[displayTitle]]'s dominant-spelling election. A venue
-   *  listing the film under several titles (plain, a senior-club screening, a
-   *  cheap-Tuesday promo) votes with the spelling [[services.movies.TitleNormalizer.venueVotes]]
-   *  picks — its least-decorated one — never with [[cinemaData]]'s representative slot,
-   *  which is whichever title sorts last and so named rows after promotions. */
-  def cinemaTitleVotes(normalizer: services.movies.TitleNormalizer): Seq[String] =
-    normalizer.venueVotes(cinemaShowings.flatMap { case (cinema, sd) => sd.title.map(cinema -> _) }
-      .groupMap(_._1)(_._2).values.toSeq)
 
   /** TMDB-resolved original (production-language) title. None when TMDB
    *  hasn't filled this row yet. */

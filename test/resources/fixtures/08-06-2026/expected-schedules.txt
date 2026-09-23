@@ -1775,16 +1775,16 @@ cinemaScrapes:
   Helios Kielce / Drugie życie - Kino Kobiet / —
   Helios Konin / Drugie życie - Kino Kobiet / —
   Helios Koszalin / Drugie życie - Kino Kobiet / —
-  Helios Krosno / Drugie życie - Kino Kobiet / —
+  Helios Krosno / Drugie życie / —
   Helios Kupiec / Drugie życie - Kino Kobiet / —
-  Helios Kędzierzyn-Koźle / Drugie życie - Kino Kobiet / —
+  Helios Kędzierzyn-Koźle / Drugie życie / —
   Helios Legnica / Drugie życie - Kino Kobiet / —
   Helios Lubin / Drugie życie - Kino Kobiet / —
   Helios Magnolia Park / Drugie życie - Kino Kobiet / —
   Helios Metropolia / Drugie życie - Kino Kobiet / —
   Helios Nowy Sącz / Drugie życie - Kino Kobiet / —
   Helios Olsztyn / Drugie życie - Kino Kobiet / —
-  Helios Ostrów Wlkp. / Drugie życie - Kino Kobiet / —
+  Helios Ostrów Wlkp. / Drugie życie / —
   Helios Outlet Park / Drugie życie - Kino Kobiet / —
   Helios Posnania / Drugie życie - Kino Kobiet / —
   Helios Przemyśl / Drugie życie - Kino Kobiet / —
@@ -1794,11 +1794,11 @@ cinemaScrapes:
   Helios Rzeszów / Drugie życie - Kino Kobiet / —
   Helios Solaris / Drugie życie - Kino Kobiet / —
   Helios Sosnowiec / Drugie życie - Kino Kobiet / —
-  Helios Starachowice / Drugie życie - Kino Kobiet / —
-  Helios Tczew / Drugie życie - Kino Kobiet / —
+  Helios Starachowice / Drugie życie / —
+  Helios Tczew / Drugie życie / —
   Helios Łódź / Drugie życie - Kino Kobiet / —
-  Helios Żory / Drugie życie - Kino Kobiet / —
-  Janosik / Kino Dostępne: Drugie życie / —
+  Helios Żory / Drugie życie / —
+  Janosik / Drugie życie / —
   Kino 60 Krzeseł / Drugie życie / —
   Kino Agrafka / DRUGIE ŻYCIE / 2025
   Kino Amok / Drugie życie | przedpremierowo / —
@@ -1806,7 +1806,7 @@ cinemaScrapes:
   Kino Apollo Wałbrzych / Drugie życie / —
   Kino Atlantic / Pora dla Seniora: Drugie życie - pokaz przedpremierowy / 2025
   Kino Awangarda 2 / Drugie życie / —
-  Kino CK Lublin / Filmoterapia z Inspirą: Drugie życie / —
+  Kino CK Lublin / Drugie życie / —
   Kino Echo / DRUGIE ŻYCIE / —
   Kino Fenomen (WDK) / Drugie życie / —
   Kino Górnik / Drugie życie / —
@@ -1822,17 +1822,17 @@ cinemaScrapes:
   Kino MCSW Elektrownia / DRUGIE ŻYCIE / —
   Kino Mikro / Drugie życie / —
   Kino Millenium / Drugie życie / —
-  Kino Muranów / „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM / 2025
+  Kino Muranów / Drugie życie / 2025
   Kino Muza / Drugie życie / 2025
-  Kino Oskard / Kino Konesera: Drugie życie / —
+  Kino Oskard / Drugie życie / —
   Kino Pałacowe / Kino bez barier: Drugie życie (AD + CC) / 2025
   Kino Piast / Drugie życie / —
   Kino Pionier 1907 / Drugie życie / 2025
   Kino Pod Baranami / Drugie życie / —
   Kino Praha / Drugie życie / —
   Kino Przedwiośnie / Drugie życie / 2025
-  Kino Rialto / Filmowy Klub Seniora: DRUGIE ŻYCIE / 2025
-  Kino Sfinks / Tani wtorek: DRUGIE ŻYCIE / —
+  Kino Rialto / DRUGIE ŻYCIE / 2025
+  Kino Sfinks / DRUGIE ŻYCIE / —
   Kino Sokół / DRUGIE ŻYCIE / —
   Kino Spektrum / Drugie życie - pokaz przedpremierowy / —
   Kino U-jazdowski / Drugie życie / 2025
@@ -1840,8 +1840,8 @@ cinemaScrapes:
   Kino na Boku / Drugie życie / —
   Kino Śnieżka / Drugie życie / —
   KinoGram / SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE / 2025
-  Kinoteatr Rialto / Filmowy Klub Seniora - Drugie życie / —
-  Kinoteka / Drugie życie | Kino przy herbatce / —
+  Kinoteatr Rialto / Drugie życie / —
+  Kinoteka / Drugie życie / 2026
   Klaps / Drugie życie / —
   OKF Iluzja / Drugie życie / —
   Piast / DRUGIE ŻYCIE / —
@@ -1916,16 +1916,16 @@ cinemaScrapes:
   Helios Kielce / Drugie życie - Kino Kobiet / —
   Helios Konin / Drugie życie - Kino Kobiet / —
   Helios Koszalin / Drugie życie - Kino Kobiet / —
-  Helios Krosno / Drugie życie - Kino Kobiet / —
+  Helios Krosno / Drugie życie / —
   Helios Kupiec / Drugie życie - Kino Kobiet / —
-  Helios Kędzierzyn-Koźle / Drugie życie - Kino Kobiet / —
+  Helios Kędzierzyn-Koźle / Drugie życie / —
   Helios Legnica / Drugie życie - Kino Kobiet / —
   Helios Lubin / Drugie życie - Kino Kobiet / —
   Helios Magnolia Park / Drugie życie - Kino Kobiet / —
   Helios Metropolia / Drugie życie - Kino Kobiet / —
   Helios Nowy Sącz / Drugie życie - Kino Kobiet / —
   Helios Olsztyn / Drugie życie - Kino Kobiet / —
-  Helios Ostrów Wlkp. / Drugie życie - Kino Kobiet / —
+  Helios Ostrów Wlkp. / Drugie życie / —
   Helios Outlet Park / Drugie życie - Kino Kobiet / —
   Helios Posnania / Drugie życie - Kino Kobiet / —
   Helios Przemyśl / Drugie życie - Kino Kobiet / —
@@ -1935,11 +1935,11 @@ cinemaScrapes:
   Helios Rzeszów / Drugie życie - Kino Kobiet / —
   Helios Solaris / Drugie życie - Kino Kobiet / —
   Helios Sosnowiec / Drugie życie - Kino Kobiet / —
-  Helios Starachowice / Drugie życie - Kino Kobiet / —
-  Helios Tczew / Drugie życie - Kino Kobiet / —
+  Helios Starachowice / Drugie życie / —
+  Helios Tczew / Drugie życie / —
   Helios Łódź / Drugie życie - Kino Kobiet / —
-  Helios Żory / Drugie życie - Kino Kobiet / —
-  Janosik / Kino Dostępne: Drugie życie / —
+  Helios Żory / Drugie życie / —
+  Janosik / Drugie życie / —
   Kino 60 Krzeseł / Drugie życie / —
   Kino Agrafka / DRUGIE ŻYCIE / 2025
   Kino Amok / Drugie życie | przedpremierowo / —
@@ -1947,7 +1947,7 @@ cinemaScrapes:
   Kino Apollo Wałbrzych / Drugie życie / —
   Kino Atlantic / Pora dla Seniora: Drugie życie - pokaz przedpremierowy / 2025
   Kino Awangarda 2 / Drugie życie / —
-  Kino CK Lublin / Filmoterapia z Inspirą: Drugie życie / —
+  Kino CK Lublin / Drugie życie / —
   Kino Echo / DRUGIE ŻYCIE / —
   Kino Fenomen (WDK) / Drugie życie / —
   Kino Górnik / Drugie życie / —
@@ -1963,17 +1963,17 @@ cinemaScrapes:
   Kino MCSW Elektrownia / DRUGIE ŻYCIE / —
   Kino Mikro / Drugie życie / —
   Kino Millenium / Drugie życie / —
-  Kino Muranów / „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM / 2025
+  Kino Muranów / Drugie życie / 2025
   Kino Muza / Drugie życie / 2025
-  Kino Oskard / Kino Konesera: Drugie życie / —
+  Kino Oskard / Drugie życie / —
   Kino Pałacowe / Kino bez barier: Drugie życie (AD + CC) / 2025
   Kino Piast / Drugie życie / —
   Kino Pionier 1907 / Drugie życie / 2025
   Kino Pod Baranami / Drugie życie / —
   Kino Praha / Drugie życie / —
   Kino Przedwiośnie / Drugie życie / 2025
-  Kino Rialto / Filmowy Klub Seniora: DRUGIE ŻYCIE / 2025
-  Kino Sfinks / Tani wtorek: DRUGIE ŻYCIE / —
+  Kino Rialto / DRUGIE ŻYCIE / 2025
+  Kino Sfinks / DRUGIE ŻYCIE / —
   Kino Sokół / DRUGIE ŻYCIE / —
   Kino Spektrum / Drugie życie - pokaz przedpremierowy / —
   Kino U-jazdowski / Drugie życie / 2025
@@ -1981,8 +1981,8 @@ cinemaScrapes:
   Kino na Boku / Drugie życie / —
   Kino Śnieżka / Drugie życie / —
   KinoGram / SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE / 2025
-  Kinoteatr Rialto / Filmowy Klub Seniora - Drugie życie / —
-  Kinoteka / Drugie życie | Kino przy herbatce / —
+  Kinoteatr Rialto / Drugie życie / —
+  Kinoteka / Drugie życie / 2026
   Klaps / Drugie życie / —
   OKF Iluzja / Drugie życie / —
   Piast / DRUGIE ŻYCIE / —
@@ -2227,28 +2227,28 @@ cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157354
 cinemaScrapes:
   Bałtyk / Dzień objawienia / —
-  Chemik / Pokaz przedpremierowy: dzień objawienia / —
+  Chemik / Dzień objawienia / —
   Cinema City / — / —
   Cinema City Arkadia / Dzień objawienia / 2026
   Cinema City Bemowo / Dzień objawienia / 2026
   Cinema City Bielsko-Biała / Dzień objawienia / 2026
-  Cinema City Bonarka / Dzień objawienia ukraiński dubbing / 2026
-  Cinema City Bydgoszcz / Dzień objawienia ukraiński dubbing / 2026
+  Cinema City Bonarka / Dzień objawienia / 2026
+  Cinema City Bydgoszcz / Dzień objawienia / 2026
   Cinema City Bytom / Dzień objawienia / 2026
   Cinema City Czerwona Droga / Dzień objawienia / 2026
   Cinema City Elbląg / Dzień objawienia / 2026
   Cinema City Felicity / Dzień objawienia / 2026
   Cinema City Galeria Północna / Dzień objawienia / 2026
   Cinema City Gliwice / Dzień objawienia / 2026
-  Cinema City Janki / Dzień objawienia ukraiński dubbing / 2026
+  Cinema City Janki / Dzień objawienia / 2026
   Cinema City Jurajska / Dzień objawienia / 2026
-  Cinema City Kazimierz / Dzień objawienia ukraiński dubbing / 2026
+  Cinema City Kazimierz / Dzień objawienia / 2026
   Cinema City Kinepolis / Dzień objawienia / 2026
   Cinema City Korona / Dzień objawienia / 2026
-  Cinema City Lublin Plaza / Dzień objawienia ukraiński dubbing / 2026
-  Cinema City Manufaktura / Dzień objawienia ukraiński dubbing / 2026
-  Cinema City Mokotów / Dzień objawienia ukraiński dubbing / 2026
-  Cinema City Poznań Plaza / Dzień objawienia ukraiński dubbing / 2026
+  Cinema City Lublin Plaza / Dzień objawienia / 2026
+  Cinema City Manufaktura / Dzień objawienia / 2026
+  Cinema City Mokotów / Dzień objawienia / 2026
+  Cinema City Poznań Plaza / Dzień objawienia / 2026
   Cinema City Promenada / Dzień objawienia / 2026
   Cinema City Punkt 44 / Dzień objawienia / 2026
   Cinema City Ruda Śląska / Dzień objawienia / 2026
@@ -2259,9 +2259,9 @@ cinemaScrapes:
   Cinema City Toruń Plaza / Dzień objawienia / 2026
   Cinema City Wałbrzych / Dzień objawienia / 2026
   Cinema City Wolność / Dzień objawienia / 2026
-  Cinema City Wroclavia / Dzień objawienia ukraiński dubbing / 2026
+  Cinema City Wroclavia / Dzień objawienia / 2026
   Cinema City Zakopianka / Dzień objawienia / 2026
-  Cinema City Zielona Góra / Dzień objawienia ukraiński dubbing / 2026
+  Cinema City Zielona Góra / Dzień objawienia / 2026
   Dolnośląskie Centrum Filmowe / Dzień objawienia / 2026
   Forum / Dzień Objawienia / —
   Gdyńskie Centrum Filmowe / Dzień objawienia / —
@@ -2346,7 +2346,7 @@ cinemaScrapes:
   KinoGram / Dzień objawienia / 2026
   Kinomax / Dzień objawienia / —
   Kinoteatr Rondo / Dzień objawienia / —
-  Kinoteka / Dzień objawienia | Kino przy herbatce / —
+  Kinoteka / Dzień objawienia / 2026
   Klaps / Dzień Objawienia / —
   Kozienicki Dom Kultury / Dzień objawienia / —
   Max Kino / Dzień objawienia / —
@@ -2411,28 +2411,28 @@ cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/dzien-objawienia-ukrainski-dubbing/7913s2r1
 cinemaScrapes:
   Bałtyk / Dzień objawienia / —
-  Chemik / Pokaz przedpremierowy: dzień objawienia / —
+  Chemik / Dzień objawienia / —
   Cinema City / — / —
   Cinema City Arkadia / Dzień objawienia / 2026
   Cinema City Bemowo / Dzień objawienia / 2026
   Cinema City Bielsko-Biała / Dzień objawienia / 2026
-  Cinema City Bonarka / Dzień objawienia ukraiński dubbing / 2026
-  Cinema City Bydgoszcz / Dzień objawienia ukraiński dubbing / 2026
+  Cinema City Bonarka / Dzień objawienia / 2026
+  Cinema City Bydgoszcz / Dzień objawienia / 2026
   Cinema City Bytom / Dzień objawienia / 2026
   Cinema City Czerwona Droga / Dzień objawienia / 2026
   Cinema City Elbląg / Dzień objawienia / 2026
   Cinema City Felicity / Dzień objawienia / 2026
   Cinema City Galeria Północna / Dzień objawienia / 2026
   Cinema City Gliwice / Dzień objawienia / 2026
-  Cinema City Janki / Dzień objawienia ukraiński dubbing / 2026
+  Cinema City Janki / Dzień objawienia / 2026
   Cinema City Jurajska / Dzień objawienia / 2026
-  Cinema City Kazimierz / Dzień objawienia ukraiński dubbing / 2026
+  Cinema City Kazimierz / Dzień objawienia / 2026
   Cinema City Kinepolis / Dzień objawienia / 2026
   Cinema City Korona / Dzień objawienia / 2026
-  Cinema City Lublin Plaza / Dzień objawienia ukraiński dubbing / 2026
-  Cinema City Manufaktura / Dzień objawienia ukraiński dubbing / 2026
-  Cinema City Mokotów / Dzień objawienia ukraiński dubbing / 2026
-  Cinema City Poznań Plaza / Dzień objawienia ukraiński dubbing / 2026
+  Cinema City Lublin Plaza / Dzień objawienia / 2026
+  Cinema City Manufaktura / Dzień objawienia / 2026
+  Cinema City Mokotów / Dzień objawienia / 2026
+  Cinema City Poznań Plaza / Dzień objawienia / 2026
   Cinema City Promenada / Dzień objawienia / 2026
   Cinema City Punkt 44 / Dzień objawienia / 2026
   Cinema City Ruda Śląska / Dzień objawienia / 2026
@@ -2443,9 +2443,9 @@ cinemaScrapes:
   Cinema City Toruń Plaza / Dzień objawienia / 2026
   Cinema City Wałbrzych / Dzień objawienia / 2026
   Cinema City Wolność / Dzień objawienia / 2026
-  Cinema City Wroclavia / Dzień objawienia ukraiński dubbing / 2026
+  Cinema City Wroclavia / Dzień objawienia / 2026
   Cinema City Zakopianka / Dzień objawienia / 2026
-  Cinema City Zielona Góra / Dzień objawienia ukraiński dubbing / 2026
+  Cinema City Zielona Góra / Dzień objawienia / 2026
   Dolnośląskie Centrum Filmowe / Dzień objawienia / 2026
   Forum / Dzień Objawienia / —
   Gdyńskie Centrum Filmowe / Dzień objawienia / —
@@ -2530,7 +2530,7 @@ cinemaScrapes:
   KinoGram / Dzień objawienia / 2026
   Kinomax / Dzień objawienia / —
   Kinoteatr Rondo / Dzień objawienia / —
-  Kinoteka / Dzień objawienia | Kino przy herbatce / —
+  Kinoteka / Dzień objawienia / 2026
   Klaps / Dzień Objawienia / —
   Kozienicki Dom Kultury / Dzień objawienia / —
   Max Kino / Dzień objawienia / —
@@ -2620,7 +2620,7 @@ cinemaScrapes:
   Kino Spektrum / Erupcja / —
   Kino Studyjne Kadr / Erupcja / —
   Kino U-jazdowski / Erupcja / 2025
-  Kinoteka / Erupcja | Kinoteka dla Rodziców / —
+  Kinoteka / Erupcja / 2026
   Mikro Bronowice / Erupcja / —
   OKF Iluzja / Erupcja / —
 showings:
@@ -2862,16 +2862,16 @@ cinemaScrapes:
   Helios Kielce / Drugie życie - Kino Kobiet / —
   Helios Konin / Drugie życie - Kino Kobiet / —
   Helios Koszalin / Drugie życie - Kino Kobiet / —
-  Helios Krosno / Drugie życie - Kino Kobiet / —
+  Helios Krosno / Drugie życie / —
   Helios Kupiec / Drugie życie - Kino Kobiet / —
-  Helios Kędzierzyn-Koźle / Drugie życie - Kino Kobiet / —
+  Helios Kędzierzyn-Koźle / Drugie życie / —
   Helios Legnica / Drugie życie - Kino Kobiet / —
   Helios Lubin / Drugie życie - Kino Kobiet / —
   Helios Magnolia Park / Drugie życie - Kino Kobiet / —
   Helios Metropolia / Drugie życie - Kino Kobiet / —
   Helios Nowy Sącz / Drugie życie - Kino Kobiet / —
   Helios Olsztyn / Drugie życie - Kino Kobiet / —
-  Helios Ostrów Wlkp. / Drugie życie - Kino Kobiet / —
+  Helios Ostrów Wlkp. / Drugie życie / —
   Helios Outlet Park / Drugie życie - Kino Kobiet / —
   Helios Posnania / Drugie życie - Kino Kobiet / —
   Helios Przemyśl / Drugie życie - Kino Kobiet / —
@@ -2881,11 +2881,11 @@ cinemaScrapes:
   Helios Rzeszów / Drugie życie - Kino Kobiet / —
   Helios Solaris / Drugie życie - Kino Kobiet / —
   Helios Sosnowiec / Drugie życie - Kino Kobiet / —
-  Helios Starachowice / Drugie życie - Kino Kobiet / —
-  Helios Tczew / Drugie życie - Kino Kobiet / —
+  Helios Starachowice / Drugie życie / —
+  Helios Tczew / Drugie życie / —
   Helios Łódź / Drugie życie - Kino Kobiet / —
-  Helios Żory / Drugie życie - Kino Kobiet / —
-  Janosik / Kino Dostępne: Drugie życie / —
+  Helios Żory / Drugie życie / —
+  Janosik / Drugie życie / —
   Kino 60 Krzeseł / Drugie życie / —
   Kino Agrafka / DRUGIE ŻYCIE / 2025
   Kino Amok / Drugie życie | przedpremierowo / —
@@ -2893,7 +2893,7 @@ cinemaScrapes:
   Kino Apollo Wałbrzych / Drugie życie / —
   Kino Atlantic / Pora dla Seniora: Drugie życie - pokaz przedpremierowy / 2025
   Kino Awangarda 2 / Drugie życie / —
-  Kino CK Lublin / Filmoterapia z Inspirą: Drugie życie / —
+  Kino CK Lublin / Drugie życie / —
   Kino Echo / DRUGIE ŻYCIE / —
   Kino Fenomen (WDK) / Drugie życie / —
   Kino Górnik / Drugie życie / —
@@ -2909,17 +2909,17 @@ cinemaScrapes:
   Kino MCSW Elektrownia / DRUGIE ŻYCIE / —
   Kino Mikro / Drugie życie / —
   Kino Millenium / Drugie życie / —
-  Kino Muranów / „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM / 2025
+  Kino Muranów / Drugie życie / 2025
   Kino Muza / Drugie życie / 2025
-  Kino Oskard / Kino Konesera: Drugie życie / —
+  Kino Oskard / Drugie życie / —
   Kino Pałacowe / Kino bez barier: Drugie życie (AD + CC) / 2025
   Kino Piast / Drugie życie / —
   Kino Pionier 1907 / Drugie życie / 2025
   Kino Pod Baranami / Drugie życie / —
   Kino Praha / Drugie życie / —
   Kino Przedwiośnie / Drugie życie / 2025
-  Kino Rialto / Filmowy Klub Seniora: DRUGIE ŻYCIE / 2025
-  Kino Sfinks / Tani wtorek: DRUGIE ŻYCIE / —
+  Kino Rialto / DRUGIE ŻYCIE / 2025
+  Kino Sfinks / DRUGIE ŻYCIE / —
   Kino Sokół / DRUGIE ŻYCIE / —
   Kino Spektrum / Drugie życie - pokaz przedpremierowy / —
   Kino U-jazdowski / Drugie życie / 2025
@@ -2927,8 +2927,8 @@ cinemaScrapes:
   Kino na Boku / Drugie życie / —
   Kino Śnieżka / Drugie życie / —
   KinoGram / SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE / 2025
-  Kinoteatr Rialto / Filmowy Klub Seniora - Drugie życie / —
-  Kinoteka / Drugie życie | Kino przy herbatce / —
+  Kinoteatr Rialto / Drugie życie / —
+  Kinoteka / Drugie życie / 2026
   Klaps / Drugie życie / —
   OKF Iluzja / Drugie życie / —
   Piast / DRUGIE ŻYCIE / —
@@ -2982,8 +2982,8 @@ cinemaScrapes:
   Kino 60 Krzeseł / Ojczyzna / —
   Kino Agrafka / OJCZYZNA / 2026
   Kino Apollo / Ojczyzna / —
-  Kino Apollo Wałbrzych / Ojczyzna | pokaz przedpremierowy / —
-  Kino Atlantic / Za Drzwiami Atlantica: Ojczyzna / 2026
+  Kino Apollo Wałbrzych / Ojczyzna / —
+  Kino Atlantic / Ojczyzna - pokaz przedpremierowy / 2026
   Kino Awangarda 2 / Ojczyzna / —
   Kino Bajka Kluczbork / Ojczyzna / —
   Kino Cytadela / Ojczyzna (pokaz przedpremierowy) / 2026
@@ -2993,7 +2993,7 @@ cinemaScrapes:
   Kino Kolory / Ojczyzna / —
   Kino Kreska / Ojczyzna / —
   Kino Kultura / Ojczyzna / —
-  Kino Lot / Ojczyzna | pokaz przedpremierowy / —
+  Kino Lot / Ojczyzna / —
   Kino Millenium / Ojczyzna / —
   Kino Muranów / Ojczyzna / 2026
   Kino Muza / Ojczyzna / 2026
@@ -3004,7 +3004,7 @@ cinemaScrapes:
   Kino Oskard / Ojczyzna / —
   Kino PDK / Ojczyzna / —
   Kino Paradox / Ojczyzna / 2026
-  Kino Piast / Ojczyzna | Pokaz przedpremierowy / —
+  Kino Piast / Ojczyzna / —
   Kino Pionier 1907 / OJCZYZNA / 2026
   Kino Pod Baranami / Ojczyzna / —
   Kino Rialto / OJCZYZNA / 2026
@@ -3013,7 +3013,7 @@ cinemaScrapes:
   Kino Stary Młyn / Ojczyzna / —
   Kino Studyjne Kadr / Ojczyzna / —
   Kino Twierdza / Ojczyzna / —
-  Kino Wisła / WSP: Ojczyzna - przedpremiera / 2026
+  Kino Wisła / Ojczyzna - pokaz przedpremierowy / 2026
   KinoGram / Ojczyzna / —
   KinoPort / Ojczyzna / 2026
   Kinomax / Ojczyzna / —
@@ -3281,7 +3281,7 @@ cinemaScrapes:
   Helios Alfa / Mandalorian & Grogu / 2025
   Helios Biała / Mandalorian & Grogu / 2025
   Helios Bielsko-Biała / Mandalorian & Grogu / 2025
-  Helios Blue City / Мандалорець і Ґроґу / —
+  Helios Blue City / Mandalorian & Grogu / 2025
   Helios Bydgoszcz / Mandalorian & Grogu / —
   Helios Dąbrowa Górnicza / Mandalorian & Grogu / 2025
   Helios Forum / Mandalorian & Grogu / 2025
@@ -3588,7 +3588,7 @@ cinemaScrapes:
   Kino Lewart / K-popowe łowczynie demonów / —
   Kino MCSW Elektrownia / K- POPOWE ŁOWCZYNIE DEMONÓW / —
   Kino Muranów / K-popowe łowczynie demonów / 2025
-  Kino NCKF EC1 / K-Popowe Łowczynie Demonów (seans z napisami karaoke) / —
+  Kino NCKF EC1 / K-Popowe Łowczynie Demonów / —
   Kino Nowe Horyzonty / K-popowe łowczynie demonów / 2025
   Kino PCKul / K-popowe łowczynie demonów / —
   Kino Pod Baranami / K-popowe Łowczynie demonów / —
@@ -3775,16 +3775,16 @@ cinemaScrapes:
   Helios Kielce / Drugie życie - Kino Kobiet / —
   Helios Konin / Drugie życie - Kino Kobiet / —
   Helios Koszalin / Drugie życie - Kino Kobiet / —
-  Helios Krosno / Drugie życie - Kino Kobiet / —
+  Helios Krosno / Drugie życie / —
   Helios Kupiec / Drugie życie - Kino Kobiet / —
-  Helios Kędzierzyn-Koźle / Drugie życie - Kino Kobiet / —
+  Helios Kędzierzyn-Koźle / Drugie życie / —
   Helios Legnica / Drugie życie - Kino Kobiet / —
   Helios Lubin / Drugie życie - Kino Kobiet / —
   Helios Magnolia Park / Drugie życie - Kino Kobiet / —
   Helios Metropolia / Drugie życie - Kino Kobiet / —
   Helios Nowy Sącz / Drugie życie - Kino Kobiet / —
   Helios Olsztyn / Drugie życie - Kino Kobiet / —
-  Helios Ostrów Wlkp. / Drugie życie - Kino Kobiet / —
+  Helios Ostrów Wlkp. / Drugie życie / —
   Helios Outlet Park / Drugie życie - Kino Kobiet / —
   Helios Posnania / Drugie życie - Kino Kobiet / —
   Helios Przemyśl / Drugie życie - Kino Kobiet / —
@@ -3794,11 +3794,11 @@ cinemaScrapes:
   Helios Rzeszów / Drugie życie - Kino Kobiet / —
   Helios Solaris / Drugie życie - Kino Kobiet / —
   Helios Sosnowiec / Drugie życie - Kino Kobiet / —
-  Helios Starachowice / Drugie życie - Kino Kobiet / —
-  Helios Tczew / Drugie życie - Kino Kobiet / —
+  Helios Starachowice / Drugie życie / —
+  Helios Tczew / Drugie życie / —
   Helios Łódź / Drugie życie - Kino Kobiet / —
-  Helios Żory / Drugie życie - Kino Kobiet / —
-  Janosik / Kino Dostępne: Drugie życie / —
+  Helios Żory / Drugie życie / —
+  Janosik / Drugie życie / —
   Kino 60 Krzeseł / Drugie życie / —
   Kino Agrafka / DRUGIE ŻYCIE / 2025
   Kino Amok / Drugie życie | przedpremierowo / —
@@ -3806,7 +3806,7 @@ cinemaScrapes:
   Kino Apollo Wałbrzych / Drugie życie / —
   Kino Atlantic / Pora dla Seniora: Drugie życie - pokaz przedpremierowy / 2025
   Kino Awangarda 2 / Drugie życie / —
-  Kino CK Lublin / Filmoterapia z Inspirą: Drugie życie / —
+  Kino CK Lublin / Drugie życie / —
   Kino Echo / DRUGIE ŻYCIE / —
   Kino Fenomen (WDK) / Drugie życie / —
   Kino Górnik / Drugie życie / —
@@ -3822,17 +3822,17 @@ cinemaScrapes:
   Kino MCSW Elektrownia / DRUGIE ŻYCIE / —
   Kino Mikro / Drugie życie / —
   Kino Millenium / Drugie życie / —
-  Kino Muranów / „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM / 2025
+  Kino Muranów / Drugie życie / 2025
   Kino Muza / Drugie życie / 2025
-  Kino Oskard / Kino Konesera: Drugie życie / —
+  Kino Oskard / Drugie życie / —
   Kino Pałacowe / Kino bez barier: Drugie życie (AD + CC) / 2025
   Kino Piast / Drugie życie / —
   Kino Pionier 1907 / Drugie życie / 2025
   Kino Pod Baranami / Drugie życie / —
   Kino Praha / Drugie życie / —
   Kino Przedwiośnie / Drugie życie / 2025
-  Kino Rialto / Filmowy Klub Seniora: DRUGIE ŻYCIE / 2025
-  Kino Sfinks / Tani wtorek: DRUGIE ŻYCIE / —
+  Kino Rialto / DRUGIE ŻYCIE / 2025
+  Kino Sfinks / DRUGIE ŻYCIE / —
   Kino Sokół / DRUGIE ŻYCIE / —
   Kino Spektrum / Drugie życie - pokaz przedpremierowy / —
   Kino U-jazdowski / Drugie życie / 2025
@@ -3840,8 +3840,8 @@ cinemaScrapes:
   Kino na Boku / Drugie życie / —
   Kino Śnieżka / Drugie życie / —
   KinoGram / SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE / 2025
-  Kinoteatr Rialto / Filmowy Klub Seniora - Drugie życie / —
-  Kinoteka / Drugie życie | Kino przy herbatce / —
+  Kinoteatr Rialto / Drugie życie / —
+  Kinoteka / Drugie życie / 2026
   Klaps / Drugie życie / —
   OKF Iluzja / Drugie życie / —
   Piast / DRUGIE ŻYCIE / —
@@ -3908,16 +3908,16 @@ cinemaScrapes:
   Helios Kielce / Drugie życie - Kino Kobiet / —
   Helios Konin / Drugie życie - Kino Kobiet / —
   Helios Koszalin / Drugie życie - Kino Kobiet / —
-  Helios Krosno / Drugie życie - Kino Kobiet / —
+  Helios Krosno / Drugie życie / —
   Helios Kupiec / Drugie życie - Kino Kobiet / —
-  Helios Kędzierzyn-Koźle / Drugie życie - Kino Kobiet / —
+  Helios Kędzierzyn-Koźle / Drugie życie / —
   Helios Legnica / Drugie życie - Kino Kobiet / —
   Helios Lubin / Drugie życie - Kino Kobiet / —
   Helios Magnolia Park / Drugie życie - Kino Kobiet / —
   Helios Metropolia / Drugie życie - Kino Kobiet / —
   Helios Nowy Sącz / Drugie życie - Kino Kobiet / —
   Helios Olsztyn / Drugie życie - Kino Kobiet / —
-  Helios Ostrów Wlkp. / Drugie życie - Kino Kobiet / —
+  Helios Ostrów Wlkp. / Drugie życie / —
   Helios Outlet Park / Drugie życie - Kino Kobiet / —
   Helios Posnania / Drugie życie - Kino Kobiet / —
   Helios Przemyśl / Drugie życie - Kino Kobiet / —
@@ -3927,11 +3927,11 @@ cinemaScrapes:
   Helios Rzeszów / Drugie życie - Kino Kobiet / —
   Helios Solaris / Drugie życie - Kino Kobiet / —
   Helios Sosnowiec / Drugie życie - Kino Kobiet / —
-  Helios Starachowice / Drugie życie - Kino Kobiet / —
-  Helios Tczew / Drugie życie - Kino Kobiet / —
+  Helios Starachowice / Drugie życie / —
+  Helios Tczew / Drugie życie / —
   Helios Łódź / Drugie życie - Kino Kobiet / —
-  Helios Żory / Drugie życie - Kino Kobiet / —
-  Janosik / Kino Dostępne: Drugie życie / —
+  Helios Żory / Drugie życie / —
+  Janosik / Drugie życie / —
   Kino 60 Krzeseł / Drugie życie / —
   Kino Agrafka / DRUGIE ŻYCIE / 2025
   Kino Amok / Drugie życie | przedpremierowo / —
@@ -3939,7 +3939,7 @@ cinemaScrapes:
   Kino Apollo Wałbrzych / Drugie życie / —
   Kino Atlantic / Pora dla Seniora: Drugie życie - pokaz przedpremierowy / 2025
   Kino Awangarda 2 / Drugie życie / —
-  Kino CK Lublin / Filmoterapia z Inspirą: Drugie życie / —
+  Kino CK Lublin / Drugie życie / —
   Kino Echo / DRUGIE ŻYCIE / —
   Kino Fenomen (WDK) / Drugie życie / —
   Kino Górnik / Drugie życie / —
@@ -3955,17 +3955,17 @@ cinemaScrapes:
   Kino MCSW Elektrownia / DRUGIE ŻYCIE / —
   Kino Mikro / Drugie życie / —
   Kino Millenium / Drugie życie / —
-  Kino Muranów / „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM / 2025
+  Kino Muranów / Drugie życie / 2025
   Kino Muza / Drugie życie / 2025
-  Kino Oskard / Kino Konesera: Drugie życie / —
+  Kino Oskard / Drugie życie / —
   Kino Pałacowe / Kino bez barier: Drugie życie (AD + CC) / 2025
   Kino Piast / Drugie życie / —
   Kino Pionier 1907 / Drugie życie / 2025
   Kino Pod Baranami / Drugie życie / —
   Kino Praha / Drugie życie / —
   Kino Przedwiośnie / Drugie życie / 2025
-  Kino Rialto / Filmowy Klub Seniora: DRUGIE ŻYCIE / 2025
-  Kino Sfinks / Tani wtorek: DRUGIE ŻYCIE / —
+  Kino Rialto / DRUGIE ŻYCIE / 2025
+  Kino Sfinks / DRUGIE ŻYCIE / —
   Kino Sokół / DRUGIE ŻYCIE / —
   Kino Spektrum / Drugie życie - pokaz przedpremierowy / —
   Kino U-jazdowski / Drugie życie / 2025
@@ -3973,8 +3973,8 @@ cinemaScrapes:
   Kino na Boku / Drugie życie / —
   Kino Śnieżka / Drugie życie / —
   KinoGram / SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE / 2025
-  Kinoteatr Rialto / Filmowy Klub Seniora - Drugie życie / —
-  Kinoteka / Drugie życie | Kino przy herbatce / —
+  Kinoteatr Rialto / Drugie życie / —
+  Kinoteka / Drugie życie / 2026
   Klaps / Drugie życie / —
   OKF Iluzja / Drugie życie / —
   Piast / DRUGIE ŻYCIE / —
@@ -4370,9 +4370,9 @@ cinemaFilmUrls:
 cinemaScrapes:
   Centrum 3D / Kumotry / —
   Gdyńskie Centrum Filmowe / Kumotry| POKAZ+SPOTKANIE / —
-  Janosik / Niedziela z Dokumentem: Kumotry / —
+  Janosik / Kino Dostępne: Kumotry / —
   KINOMUZEUM / Kumotry / 2025
-  Kino 60 Krzeseł / Kumotry - przedpremiera (pokaz w DKF Megaron) / —
+  Kino 60 Krzeseł / Kumotry / —
   Kino Amok / Kumotry / —
   Kino Awangarda 2 / Kumotry / —
   Kino CK Lublin / Kumotry / —
@@ -4384,7 +4384,7 @@ cinemaScrapes:
   Kino Pałacowe / Kumotry / 2025
   Kino Pionier 1907 / KUMOTRY / 2025
   Kino Pod Baranami / Kumotry / —
-  Kino Sfinks / Tani wtorek: KUMOTRY / —
+  Kino Sfinks / KUMOTRY / —
   Kino Spektrum / Kumotry / —
   Kino U-jazdowski / Kumotry / 2025
   Kinoteka / Kumotry (uroczysta premiera + spotkanie z twórcami) / —
@@ -5151,26 +5151,26 @@ cinemaFilmUrls:
 cinemaScrapes:
   Centrum 3D Przemyśl / MINIONKI I STRASZYDŁA / —
   Cinema City / — / —
-  Cinema City Arkadia / Minionki i straszydła ukraiński dubbing / 2026
+  Cinema City Arkadia / Minionki i straszydła / 2026
   Cinema City Bemowo / Minionki i straszydła / 2026
   Cinema City Bielsko-Biała / Minionki i straszydła / 2026
-  Cinema City Bonarka / Minionki i straszydła ukraiński dubbing / 2026
-  Cinema City Bydgoszcz / Minionki i straszydła ukraiński dubbing / 2026
+  Cinema City Bonarka / Minionki i straszydła / 2026
+  Cinema City Bydgoszcz / Minionki i straszydła / 2026
   Cinema City Bytom / Minionki i straszydła / 2026
   Cinema City Czerwona Droga / Minionki i straszydła / 2026
   Cinema City Elbląg / Minionki i straszydła / 2026
   Cinema City Felicity / Minionki i straszydła / 2026
-  Cinema City Galeria Północna / Minionki i straszydła ukraiński dubbing / 2026
+  Cinema City Galeria Północna / Minionki i straszydła / 2026
   Cinema City Gliwice / Minionki i straszydła / 2026
-  Cinema City Janki / Minionki i straszydła ukraiński dubbing / 2026
+  Cinema City Janki / Minionki i straszydła / 2026
   Cinema City Jurajska / Minionki i straszydła / 2026
-  Cinema City Kazimierz / Minionki i straszydła ukraiński dubbing / 2026
+  Cinema City Kazimierz / Minionki i straszydła / 2026
   Cinema City Kinepolis / Minionki i straszydła / 2026
   Cinema City Korona / Minionki i straszydła / 2026
-  Cinema City Lublin Plaza / Minionki i straszydła ukraiński dubbing / 2026
-  Cinema City Manufaktura / Minionki i straszydła ukraiński dubbing / 2026
-  Cinema City Mokotów / Minionki i straszydła ukraiński dubbing / 2026
-  Cinema City Poznań Plaza / Minionki i straszydła ukraiński dubbing / 2026
+  Cinema City Lublin Plaza / Minionki i straszydła / 2026
+  Cinema City Manufaktura / Minionki i straszydła / 2026
+  Cinema City Mokotów / Minionki i straszydła / 2026
+  Cinema City Poznań Plaza / Minionki i straszydła / 2026
   Cinema City Promenada / Minionki i straszydła / 2026
   Cinema City Punkt 44 / Minionki i straszydła / 2026
   Cinema City Ruda Śląska / Minionki i straszydła / 2026
@@ -5181,16 +5181,16 @@ cinemaScrapes:
   Cinema City Toruń Plaza / Minionki i straszydła / 2026
   Cinema City Wałbrzych / Minionki i straszydła / 2026
   Cinema City Wolność / Minionki i straszydła / 2026
-  Cinema City Wroclavia / Minionki i straszydła ukraiński dubbing / 2026
+  Cinema City Wroclavia / Minionki i straszydła / 2026
   Cinema City Zakopianka / Minionki i straszydła / 2026
-  Cinema City Zielona Góra / Minionki i straszydła ukraiński dubbing / 2026
+  Cinema City Zielona Góra / Minionki i straszydła / 2026
   Cinema1 / MINIONKI I STRASZYDŁA / 2026
   Forum / Minionki i straszydła / —
   Helios Aleja Bielany / Minionki i straszydła / —
   Helios Alfa / Minionki i straszydła / —
   Helios Biała / Minionki i straszydła / —
   Helios Bielsko-Biała / Minionki i straszydła / —
-  Helios Blue City / Посіпаки і Монстряки / —
+  Helios Blue City / Minionki i straszydła / —
   Helios Bydgoszcz / Minionki i straszydła / —
   Helios Dąbrowa Górnicza / Minionki i straszydła / —
   Helios Forum / Minionki i straszydła / —
@@ -5286,26 +5286,26 @@ cinemaFilmUrls:
 cinemaScrapes:
   Centrum 3D Przemyśl / MINIONKI I STRASZYDŁA / —
   Cinema City / — / —
-  Cinema City Arkadia / Minionki i straszydła ukraiński dubbing / 2026
+  Cinema City Arkadia / Minionki i straszydła / 2026
   Cinema City Bemowo / Minionki i straszydła / 2026
   Cinema City Bielsko-Biała / Minionki i straszydła / 2026
-  Cinema City Bonarka / Minionki i straszydła ukraiński dubbing / 2026
-  Cinema City Bydgoszcz / Minionki i straszydła ukraiński dubbing / 2026
+  Cinema City Bonarka / Minionki i straszydła / 2026
+  Cinema City Bydgoszcz / Minionki i straszydła / 2026
   Cinema City Bytom / Minionki i straszydła / 2026
   Cinema City Czerwona Droga / Minionki i straszydła / 2026
   Cinema City Elbląg / Minionki i straszydła / 2026
   Cinema City Felicity / Minionki i straszydła / 2026
-  Cinema City Galeria Północna / Minionki i straszydła ukraiński dubbing / 2026
+  Cinema City Galeria Północna / Minionki i straszydła / 2026
   Cinema City Gliwice / Minionki i straszydła / 2026
-  Cinema City Janki / Minionki i straszydła ukraiński dubbing / 2026
+  Cinema City Janki / Minionki i straszydła / 2026
   Cinema City Jurajska / Minionki i straszydła / 2026
-  Cinema City Kazimierz / Minionki i straszydła ukraiński dubbing / 2026
+  Cinema City Kazimierz / Minionki i straszydła / 2026
   Cinema City Kinepolis / Minionki i straszydła / 2026
   Cinema City Korona / Minionki i straszydła / 2026
-  Cinema City Lublin Plaza / Minionki i straszydła ukraiński dubbing / 2026
-  Cinema City Manufaktura / Minionki i straszydła ukraiński dubbing / 2026
-  Cinema City Mokotów / Minionki i straszydła ukraiński dubbing / 2026
-  Cinema City Poznań Plaza / Minionki i straszydła ukraiński dubbing / 2026
+  Cinema City Lublin Plaza / Minionki i straszydła / 2026
+  Cinema City Manufaktura / Minionki i straszydła / 2026
+  Cinema City Mokotów / Minionki i straszydła / 2026
+  Cinema City Poznań Plaza / Minionki i straszydła / 2026
   Cinema City Promenada / Minionki i straszydła / 2026
   Cinema City Punkt 44 / Minionki i straszydła / 2026
   Cinema City Ruda Śląska / Minionki i straszydła / 2026
@@ -5316,16 +5316,16 @@ cinemaScrapes:
   Cinema City Toruń Plaza / Minionki i straszydła / 2026
   Cinema City Wałbrzych / Minionki i straszydła / 2026
   Cinema City Wolność / Minionki i straszydła / 2026
-  Cinema City Wroclavia / Minionki i straszydła ukraiński dubbing / 2026
+  Cinema City Wroclavia / Minionki i straszydła / 2026
   Cinema City Zakopianka / Minionki i straszydła / 2026
-  Cinema City Zielona Góra / Minionki i straszydła ukraiński dubbing / 2026
+  Cinema City Zielona Góra / Minionki i straszydła / 2026
   Cinema1 / MINIONKI I STRASZYDŁA / 2026
   Forum / Minionki i straszydła / —
   Helios Aleja Bielany / Minionki i straszydła / —
   Helios Alfa / Minionki i straszydła / —
   Helios Biała / Minionki i straszydła / —
   Helios Bielsko-Biała / Minionki i straszydła / —
-  Helios Blue City / Посіпаки і Монстряки / —
+  Helios Blue City / Minionki i straszydła / —
   Helios Bydgoszcz / Minionki i straszydła / —
   Helios Dąbrowa Górnicza / Minionki i straszydła / —
   Helios Forum / Minionki i straszydła / —
@@ -6268,8 +6268,8 @@ cinemaScrapes:
   Kino 60 Krzeseł / Ojczyzna / —
   Kino Agrafka / OJCZYZNA / 2026
   Kino Apollo / Ojczyzna / —
-  Kino Apollo Wałbrzych / Ojczyzna | pokaz przedpremierowy / —
-  Kino Atlantic / Za Drzwiami Atlantica: Ojczyzna / 2026
+  Kino Apollo Wałbrzych / Ojczyzna / —
+  Kino Atlantic / Ojczyzna - pokaz przedpremierowy / 2026
   Kino Awangarda 2 / Ojczyzna / —
   Kino Bajka Kluczbork / Ojczyzna / —
   Kino Cytadela / Ojczyzna (pokaz przedpremierowy) / 2026
@@ -6279,7 +6279,7 @@ cinemaScrapes:
   Kino Kolory / Ojczyzna / —
   Kino Kreska / Ojczyzna / —
   Kino Kultura / Ojczyzna / —
-  Kino Lot / Ojczyzna | pokaz przedpremierowy / —
+  Kino Lot / Ojczyzna / —
   Kino Millenium / Ojczyzna / —
   Kino Muranów / Ojczyzna / 2026
   Kino Muza / Ojczyzna / 2026
@@ -6290,7 +6290,7 @@ cinemaScrapes:
   Kino Oskard / Ojczyzna / —
   Kino PDK / Ojczyzna / —
   Kino Paradox / Ojczyzna / 2026
-  Kino Piast / Ojczyzna | Pokaz przedpremierowy / —
+  Kino Piast / Ojczyzna / —
   Kino Pionier 1907 / OJCZYZNA / 2026
   Kino Pod Baranami / Ojczyzna / —
   Kino Rialto / OJCZYZNA / 2026
@@ -6299,7 +6299,7 @@ cinemaScrapes:
   Kino Stary Młyn / Ojczyzna / —
   Kino Studyjne Kadr / Ojczyzna / —
   Kino Twierdza / Ojczyzna / —
-  Kino Wisła / WSP: Ojczyzna - przedpremiera / 2026
+  Kino Wisła / Ojczyzna - pokaz przedpremierowy / 2026
   KinoGram / Ojczyzna / —
   KinoPort / Ojczyzna / 2026
   Kinomax / Ojczyzna / —
@@ -6407,7 +6407,7 @@ cinemaScrapes:
   Kino Pionier 1907 / ORŁY REPUBLIKI / —
   Kino Pod Baranami / Orły republiki / —
   Kino Praha / Orły republiki / —
-  Kino Sfinks / Tani wtorek: ORŁY REPUBLIKI / —
+  Kino Sfinks / ORŁY REPUBLIKI / —
   Kino Zamek / Orły republiki / —
   OKF Iluzja / Orły Republiki / —
   Teatr Ziemi Rybnickiej / Orły Republiki / 2025
@@ -7355,7 +7355,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Kino Amondo / Wartość sentymentalna / —
   Kino Fenomen (WDK) / Wartość sentymentalna / —
-  Kino IKM / Wartość sentymentalna | Kino Dostępne / —
+  Kino IKM / Wartość sentymentalna / —
   Kino Kika / WARTOŚĆ SENTYMENTALNA / —
   Kino Malta Charlie Monroe / Wartość sentymentalna / —
   Kino Mikro / Wartość sentymentalna / —
@@ -7581,10 +7581,10 @@ cinemaScrapes:
   Kino Nowe Horyzonty / Podziemny krąg / 1999
   Kino Pałacowe / Podziemny krąg / 1999
   Kino Pod Baranami / Podziemny krąg / —
-  Kino Sfinks / Tani wtorek: PODZIEMNY KRĄG / —
+  Kino Sfinks / PODZIEMNY KRĄG / —
   Kino Spektrum / Podziemny krąg / —
   Kino Wisła / Podziemny krąg - zrekonstruowana wersja 4K / 1999
-  KinoGram / Podziemny Krąg (Fight Club) / 1999
+  KinoGram / Classy Monday - Podziemny krąg / 1999
   Kinoteka / Podziemny krąg / 2026
   OKF Iluzja / Podziemny krąg / —
   Pionier / Podziemny krąg | DKF / —
@@ -7982,7 +7982,7 @@ cinemaScrapes:
   Kino Kijów / Posłani / —
   Kino MOKiS / Posłani / —
   Kino Moskwa / POSŁANI / —
-  Kino PCKul / Posłani – kino dla seniora / —
+  Kino PCKul / Posłani / —
   Kino Sokół / POSŁANI / —
   Kino Stary Młyn / Posłani / —
   Kino Zdrój / Posłani / —
@@ -8198,7 +8198,7 @@ cinemaScrapes:
   Helios Łódź / Projekt Hail Mary / 2026
   Kino Nowe Horyzonty / Projekt Hail Mary / 2026
   Kino Pod Baranami / Projekt Hail Mary / —
-  Kinoteka / Projekt Hail Mary | Kinoteka dla rodzica / —
+  Kinoteka / Projekt Hail Mary / 2026
 showings:
   2026-06-08  Cinema City Kinepolis         19:40 Sala 2 2D/NAP
   2026-06-09  Cinema City Kinepolis         19:40 Sala 2 2D/NAP
@@ -8884,23 +8884,23 @@ cinemaScrapes:
   Cinema City Arkadia / Straszny film / 2026
   Cinema City Bemowo / Straszny film / 2026
   Cinema City Bielsko-Biała / Straszny film / 2026
-  Cinema City Bonarka / Straszny film ukraiński dubbing / 2026
-  Cinema City Bydgoszcz / Straszny film ukraiński dubbing / 2026
+  Cinema City Bonarka / Straszny film / 2026
+  Cinema City Bydgoszcz / Straszny film / 2026
   Cinema City Bytom / Straszny film / 2026
   Cinema City Czerwona Droga / Straszny film / 2026
   Cinema City Elbląg / Straszny film / 2026
   Cinema City Felicity / Straszny film / 2026
   Cinema City Galeria Północna / Straszny film / 2026
   Cinema City Gliwice / Straszny film / 2026
-  Cinema City Janki / Straszny film ukraiński dubbing / 2026
+  Cinema City Janki / Straszny film / 2026
   Cinema City Jurajska / Straszny film / 2026
-  Cinema City Kazimierz / Straszny film ukraiński dubbing / 2026
+  Cinema City Kazimierz / Straszny film / 2026
   Cinema City Kinepolis / Straszny film / 2026
   Cinema City Korona / Straszny film / 2026
-  Cinema City Lublin Plaza / Straszny film ukraiński dubbing / 2026
-  Cinema City Manufaktura / Straszny film ukraiński dubbing / 2026
-  Cinema City Mokotów / Straszny film ukraiński dubbing / 2026
-  Cinema City Poznań Plaza / Straszny film ukraiński dubbing / 2026
+  Cinema City Lublin Plaza / Straszny film / 2026
+  Cinema City Manufaktura / Straszny film / 2026
+  Cinema City Mokotów / Straszny film / 2026
+  Cinema City Poznań Plaza / Straszny film / 2026
   Cinema City Promenada / Straszny film / 2026
   Cinema City Punkt 44 / Straszny film / 2026
   Cinema City Ruda Śląska / Straszny film / 2026
@@ -8911,9 +8911,9 @@ cinemaScrapes:
   Cinema City Toruń Plaza / Straszny film / 2026
   Cinema City Wałbrzych / Straszny film / 2026
   Cinema City Wolność / Straszny film / 2026
-  Cinema City Wroclavia / Straszny film ukraiński dubbing / 2026
+  Cinema City Wroclavia / Straszny film / 2026
   Cinema City Zakopianka / Straszny film / 2026
-  Cinema City Zielona Góra / Straszny film ukraiński dubbing / 2026
+  Cinema City Zielona Góra / Straszny film / 2026
   Cinema Lumiere / Straszny film / —
   Forum / Straszny film / —
   Fregata / Straszny film / —
@@ -8921,7 +8921,7 @@ cinemaScrapes:
   Helios Alfa / Straszny film / 2026
   Helios Biała / Straszny film / 2026
   Helios Bielsko-Biała / Straszny film / 2026
-  Helios Blue City / Дуже страшне кіно 6 / —
+  Helios Blue City / Straszny film / 2026
   Helios Bydgoszcz / Straszny film / 2026
   Helios Dąbrowa Górnicza / Straszny film / 2026
   Helios Forum / Straszny film / 2026
@@ -9043,23 +9043,23 @@ cinemaScrapes:
   Cinema City Arkadia / Straszny film / 2026
   Cinema City Bemowo / Straszny film / 2026
   Cinema City Bielsko-Biała / Straszny film / 2026
-  Cinema City Bonarka / Straszny film ukraiński dubbing / 2026
-  Cinema City Bydgoszcz / Straszny film ukraiński dubbing / 2026
+  Cinema City Bonarka / Straszny film / 2026
+  Cinema City Bydgoszcz / Straszny film / 2026
   Cinema City Bytom / Straszny film / 2026
   Cinema City Czerwona Droga / Straszny film / 2026
   Cinema City Elbląg / Straszny film / 2026
   Cinema City Felicity / Straszny film / 2026
   Cinema City Galeria Północna / Straszny film / 2026
   Cinema City Gliwice / Straszny film / 2026
-  Cinema City Janki / Straszny film ukraiński dubbing / 2026
+  Cinema City Janki / Straszny film / 2026
   Cinema City Jurajska / Straszny film / 2026
-  Cinema City Kazimierz / Straszny film ukraiński dubbing / 2026
+  Cinema City Kazimierz / Straszny film / 2026
   Cinema City Kinepolis / Straszny film / 2026
   Cinema City Korona / Straszny film / 2026
-  Cinema City Lublin Plaza / Straszny film ukraiński dubbing / 2026
-  Cinema City Manufaktura / Straszny film ukraiński dubbing / 2026
-  Cinema City Mokotów / Straszny film ukraiński dubbing / 2026
-  Cinema City Poznań Plaza / Straszny film ukraiński dubbing / 2026
+  Cinema City Lublin Plaza / Straszny film / 2026
+  Cinema City Manufaktura / Straszny film / 2026
+  Cinema City Mokotów / Straszny film / 2026
+  Cinema City Poznań Plaza / Straszny film / 2026
   Cinema City Promenada / Straszny film / 2026
   Cinema City Punkt 44 / Straszny film / 2026
   Cinema City Ruda Śląska / Straszny film / 2026
@@ -9070,9 +9070,9 @@ cinemaScrapes:
   Cinema City Toruń Plaza / Straszny film / 2026
   Cinema City Wałbrzych / Straszny film / 2026
   Cinema City Wolność / Straszny film / 2026
-  Cinema City Wroclavia / Straszny film ukraiński dubbing / 2026
+  Cinema City Wroclavia / Straszny film / 2026
   Cinema City Zakopianka / Straszny film / 2026
-  Cinema City Zielona Góra / Straszny film ukraiński dubbing / 2026
+  Cinema City Zielona Góra / Straszny film / 2026
   Cinema Lumiere / Straszny film / —
   Forum / Straszny film / —
   Fregata / Straszny film / —
@@ -9080,7 +9080,7 @@ cinemaScrapes:
   Helios Alfa / Straszny film / 2026
   Helios Biała / Straszny film / 2026
   Helios Bielsko-Biała / Straszny film / 2026
-  Helios Blue City / Дуже страшне кіно 6 / —
+  Helios Blue City / Straszny film / 2026
   Helios Bydgoszcz / Straszny film / 2026
   Helios Dąbrowa Górnicza / Straszny film / 2026
   Helios Forum / Straszny film / 2026
@@ -9297,11 +9297,11 @@ cinemaFilmUrls:
 cinemaScrapes:
   Bałtyk / Supergirl / —
   Cinema City / — / —
-  Cinema City Arkadia / Supergirl ukraiński dubbing / 2026
+  Cinema City Arkadia / Supergirl / 2026
   Cinema City Bemowo / Supergirl / 2026
   Cinema City Bielsko-Biała / Supergirl / 2026
-  Cinema City Bonarka / Supergirl ukraiński dubbing / 2026
-  Cinema City Bydgoszcz / Supergirl ukraiński dubbing / 2026
+  Cinema City Bonarka / Supergirl / 2026
+  Cinema City Bydgoszcz / Supergirl / 2026
   Cinema City Bytom / Supergirl / 2026
   Cinema City Czerwona Droga / Supergirl / 2026
   Cinema City Elbląg / Supergirl / 2026
@@ -9310,12 +9310,12 @@ cinemaScrapes:
   Cinema City Gliwice / Supergirl / 2026
   Cinema City Janki / Supergirl / 2026
   Cinema City Jurajska / Supergirl / 2026
-  Cinema City Kazimierz / Supergirl ukraiński dubbing / 2026
+  Cinema City Kazimierz / Supergirl / 2026
   Cinema City Kinepolis / Supergirl / 2026
   Cinema City Korona / Supergirl / 2026
-  Cinema City Lublin Plaza / Supergirl ukraiński dubbing / 2026
-  Cinema City Manufaktura / Supergirl ukraiński dubbing / 2026
-  Cinema City Mokotów / Supergirl ukraiński dubbing / 2026
+  Cinema City Lublin Plaza / Supergirl / 2026
+  Cinema City Manufaktura / Supergirl / 2026
+  Cinema City Mokotów / Supergirl / 2026
   Cinema City Poznań Plaza / Supergirl / 2026
   Cinema City Promenada / Supergirl / 2026
   Cinema City Punkt 44 / Supergirl / 2026
@@ -9327,9 +9327,9 @@ cinemaScrapes:
   Cinema City Toruń Plaza / Supergirl / 2026
   Cinema City Wałbrzych / Supergirl / 2026
   Cinema City Wolność / Supergirl / 2026
-  Cinema City Wroclavia / Supergirl ukraiński dubbing / 2026
+  Cinema City Wroclavia / Supergirl / 2026
   Cinema City Zakopianka / Supergirl / 2026
-  Cinema City Zielona Góra / Supergirl ukraiński dubbing / 2026
+  Cinema City Zielona Góra / Supergirl / 2026
   Forum / Supergirl / —
   Helios Aleja Bielany / Supergirl / —
   Helios Alfa / Supergirl / —
@@ -9810,26 +9810,26 @@ cinemaScrapes:
   Centrum 3D Przemyśl / TOY STORY 5 / —
   Chemik / Toy story 5 / —
   Cinema City / — / —
-  Cinema City Arkadia / Toy Story 5 ukraiński dubbing / 2026
+  Cinema City Arkadia / Toy Story 5 / 2026
   Cinema City Bemowo / Toy Story 5 / 2026
   Cinema City Bielsko-Biała / Toy Story 5 / 2026
-  Cinema City Bonarka / Toy Story 5 ukraiński dubbing / 2026
-  Cinema City Bydgoszcz / Toy Story 5 ukraiński dubbing / 2026
+  Cinema City Bonarka / Toy Story 5 / 2026
+  Cinema City Bydgoszcz / Toy Story 5 / 2026
   Cinema City Bytom / Toy Story 5 / 2026
   Cinema City Czerwona Droga / Toy Story 5 / 2026
   Cinema City Elbląg / Toy Story 5 / 2026
   Cinema City Felicity / Toy Story 5 / 2026
-  Cinema City Galeria Północna / Toy Story 5 ukraiński dubbing / 2026
+  Cinema City Galeria Północna / Toy Story 5 / 2026
   Cinema City Gliwice / Toy Story 5 / 2026
-  Cinema City Janki / Toy Story 5 ukraiński dubbing / 2026
+  Cinema City Janki / Toy Story 5 / 2026
   Cinema City Jurajska / Toy Story 5 / 2026
-  Cinema City Kazimierz / Toy Story 5 ukraiński dubbing / 2026
+  Cinema City Kazimierz / Toy Story 5 / 2026
   Cinema City Kinepolis / Toy Story 5 / 2026
   Cinema City Korona / Toy Story 5 / 2026
-  Cinema City Lublin Plaza / Toy Story 5 ukraiński dubbing / 2026
-  Cinema City Manufaktura / Toy Story 5 ukraiński dubbing / 2026
-  Cinema City Mokotów / Toy Story 5 ukraiński dubbing / 2026
-  Cinema City Poznań Plaza / Toy Story 5 ukraiński dubbing / 2026
+  Cinema City Lublin Plaza / Toy Story 5 / 2026
+  Cinema City Manufaktura / Toy Story 5 / 2026
+  Cinema City Mokotów / Toy Story 5 / 2026
+  Cinema City Poznań Plaza / Toy Story 5 / 2026
   Cinema City Promenada / Toy Story 5 / 2026
   Cinema City Punkt 44 / Toy Story 5 / 2026
   Cinema City Ruda Śląska / Toy Story 5 / 2026
@@ -9840,9 +9840,9 @@ cinemaScrapes:
   Cinema City Toruń Plaza / Toy Story 5 / 2026
   Cinema City Wałbrzych / Toy Story 5 / 2026
   Cinema City Wolność / Toy Story 5 / 2026
-  Cinema City Wroclavia / Toy Story 5 ukraiński dubbing / 2026
+  Cinema City Wroclavia / Toy Story 5 / 2026
   Cinema City Zakopianka / Toy Story 5 / 2026
-  Cinema City Zielona Góra / Toy Story 5 ukraiński dubbing / 2026
+  Cinema City Zielona Góra / Toy Story 5 / 2026
   Cinema1 / TOY STORY 5 / 2026
   Forum / Toy Story 5 / —
   Fregata / Toy Story 5 / —
@@ -9850,7 +9850,7 @@ cinemaScrapes:
   Helios Alfa / Toy Story 5 / —
   Helios Biała / Toy Story 5 / —
   Helios Bielsko-Biała / Toy Story 5 / —
-  Helios Blue City / ІСТОРІЯ ІГРАШОК 5 / —
+  Helios Blue City / Toy Story 5 / —
   Helios Bydgoszcz / Toy Story 5 / —
   Helios Dąbrowa Górnicza / Toy Story 5 / —
   Helios Forum / Toy Story 5 / —
@@ -9976,26 +9976,26 @@ cinemaScrapes:
   Centrum 3D Przemyśl / TOY STORY 5 / —
   Chemik / Toy story 5 / —
   Cinema City / — / —
-  Cinema City Arkadia / Toy Story 5 ukraiński dubbing / 2026
+  Cinema City Arkadia / Toy Story 5 / 2026
   Cinema City Bemowo / Toy Story 5 / 2026
   Cinema City Bielsko-Biała / Toy Story 5 / 2026
-  Cinema City Bonarka / Toy Story 5 ukraiński dubbing / 2026
-  Cinema City Bydgoszcz / Toy Story 5 ukraiński dubbing / 2026
+  Cinema City Bonarka / Toy Story 5 / 2026
+  Cinema City Bydgoszcz / Toy Story 5 / 2026
   Cinema City Bytom / Toy Story 5 / 2026
   Cinema City Czerwona Droga / Toy Story 5 / 2026
   Cinema City Elbląg / Toy Story 5 / 2026
   Cinema City Felicity / Toy Story 5 / 2026
-  Cinema City Galeria Północna / Toy Story 5 ukraiński dubbing / 2026
+  Cinema City Galeria Północna / Toy Story 5 / 2026
   Cinema City Gliwice / Toy Story 5 / 2026
-  Cinema City Janki / Toy Story 5 ukraiński dubbing / 2026
+  Cinema City Janki / Toy Story 5 / 2026
   Cinema City Jurajska / Toy Story 5 / 2026
-  Cinema City Kazimierz / Toy Story 5 ukraiński dubbing / 2026
+  Cinema City Kazimierz / Toy Story 5 / 2026
   Cinema City Kinepolis / Toy Story 5 / 2026
   Cinema City Korona / Toy Story 5 / 2026
-  Cinema City Lublin Plaza / Toy Story 5 ukraiński dubbing / 2026
-  Cinema City Manufaktura / Toy Story 5 ukraiński dubbing / 2026
-  Cinema City Mokotów / Toy Story 5 ukraiński dubbing / 2026
-  Cinema City Poznań Plaza / Toy Story 5 ukraiński dubbing / 2026
+  Cinema City Lublin Plaza / Toy Story 5 / 2026
+  Cinema City Manufaktura / Toy Story 5 / 2026
+  Cinema City Mokotów / Toy Story 5 / 2026
+  Cinema City Poznań Plaza / Toy Story 5 / 2026
   Cinema City Promenada / Toy Story 5 / 2026
   Cinema City Punkt 44 / Toy Story 5 / 2026
   Cinema City Ruda Śląska / Toy Story 5 / 2026
@@ -10006,9 +10006,9 @@ cinemaScrapes:
   Cinema City Toruń Plaza / Toy Story 5 / 2026
   Cinema City Wałbrzych / Toy Story 5 / 2026
   Cinema City Wolność / Toy Story 5 / 2026
-  Cinema City Wroclavia / Toy Story 5 ukraiński dubbing / 2026
+  Cinema City Wroclavia / Toy Story 5 / 2026
   Cinema City Zakopianka / Toy Story 5 / 2026
-  Cinema City Zielona Góra / Toy Story 5 ukraiński dubbing / 2026
+  Cinema City Zielona Góra / Toy Story 5 / 2026
   Cinema1 / TOY STORY 5 / 2026
   Forum / Toy Story 5 / —
   Fregata / Toy Story 5 / —
@@ -10016,7 +10016,7 @@ cinemaScrapes:
   Helios Alfa / Toy Story 5 / —
   Helios Biała / Toy Story 5 / —
   Helios Bielsko-Biała / Toy Story 5 / —
-  Helios Blue City / ІСТОРІЯ ІГРАШОК 5 / —
+  Helios Blue City / Toy Story 5 / —
   Helios Bydgoszcz / Toy Story 5 / —
   Helios Dąbrowa Górnicza / Toy Story 5 / —
   Helios Forum / Toy Story 5 / —
@@ -10182,7 +10182,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Kino Amondo / Wartość sentymentalna / —
   Kino Fenomen (WDK) / Wartość sentymentalna / —
-  Kino IKM / Wartość sentymentalna | Kino Dostępne / —
+  Kino IKM / Wartość sentymentalna / —
   Kino Kika / WARTOŚĆ SENTYMENTALNA / —
   Kino Malta Charlie Monroe / Wartość sentymentalna / —
   Kino Mikro / Wartość sentymentalna / —
@@ -11080,7 +11080,7 @@ cinemaScrapes:
   Kino Mikro / Znaki Pana Śliwki / —
   Kino Muza / Znaki Pana Śliwki / 2025
   Kino Nowe Horyzonty / Znaki Pana Śliwki / 2025
-  Kino Orzeł / Znaki Pana Śliwki + spotkanie z reżyserami / —
+  Kino Orzeł / Znaki Pana Śliwki / —
   Kino Paradox / Znaki Pana Śliwki - w ramach cyklu Twarda Sztuka x Paradox / 2025
   Kino Spektrum / Znaki Pana Śliwki / —
   Kino Studyjne Kadr / Znaki pana Śliwki / —
