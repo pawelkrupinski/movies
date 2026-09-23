@@ -101,15 +101,42 @@ class StateSyncServiceTest {
     }
 
     @Test
-    fun noSyncWhenNoCountrySelectedYet() = runTest(UnconfinedTestDispatcher()) {
-        // countryState left null — nothing to reconcile against.
+    fun noCountryPickedYetSyncsTheDefaultCountryTheAppIsBrowsing() = runTest(UnconfinedTestDispatcher()) {
+        // countryState left null — a manual city pick at the gate, or an
+        // install that predates the country picker. The app is still browsing
+        // Poland (Country.byCode(null)), so its hides must still sync as "pl".
         client.remote["pl"] = setOf("Film A")
         startService()
         login()
         advanceUntilIdle()
 
-        assertTrue(prefs.hiddenState.value.isEmpty())
-        assertTrue(client.fetchCalls.isEmpty())
+        assertEquals(setOf("Film A"), prefs.hiddenState.value)
+        assertEquals(listOf("pl"), client.fetchCalls)
+    }
+
+    @Test
+    fun aLegacyUppercaseCountryCodeSyncsUnderItsCurrentServerCode() = runTest(UnconfinedTestDispatcher()) {
+        // Earlier builds persisted ISO codes; the per-country API and the
+        // migration-flag keys use the server's code space.
+        prefs.countryState.value = "GB"
+        prefs.hiddenState.value = setOf("Local Only")
+        startService()
+        login()
+        advanceUntilIdle()
+
+        assertEquals(listOf("Local Only" to "uk"), client.hideCalls)
+    }
+
+    @Test
+    fun aHidePushedWithNoCountryPickedGoesToTheDefaultCountry() = runTest(UnconfinedTestDispatcher()) {
+        val service = startService()
+        login()
+        advanceUntilIdle()
+
+        service.hide("Film A")
+        advanceUntilIdle()
+
+        assertEquals(listOf("Film A" to "pl"), client.hideCalls)
     }
 
     @Test

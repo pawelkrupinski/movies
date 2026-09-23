@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import pl.kinowo.data.SyncPrefs
+import pl.kinowo.model.Country
 
 /**
  * Keeps per-device [SyncPrefs] hiddenFilms — and the account's language pick —
@@ -95,16 +96,20 @@ class StateSyncService(
 
     /** Reconcile whichever country is currently selected, PLUS language
      *  (which needs no country at all — see [reconcileLanguage]). Called on
-     *  login and on app foreground-resume; the hiddenFilms half is a no-op
-     *  if no country has been chosen yet (nothing to reconcile against), but
-     *  language still runs regardless — that's why it's reconciled BEFORE
-     *  the country early-return, not after. Public so
+     *  login and on app foreground-resume. Public so
      *  [pl.kinowo.ui.KinowoViewModel] can call it from its `onResume()`. */
     suspend fun reconcileCurrentCountry() {
         reconcileLanguage()
-        val country = prefs.selectedCountryCode.first() ?: return
-        reconcile(country)
+        reconcile(currentCountry())
     }
+
+    /** The country whose deployment the app is browsing — the same resolution
+     *  MainActivity applies to pick the API base URL: a never-picked (null)
+     *  code is the default country, and a legacy ISO code (`GB`) maps onto the
+     *  server's (`uk`). Using the raw pref instead skipped sync entirely for
+     *  anyone who picked their city by hand, and keyed legacy installs under a
+     *  country code the per-country API doesn't know. */
+    private suspend fun currentCountry(): String = Country.byCode(prefs.selectedCountryCode.first()).code
 
     private suspend fun reconcile(country: String) {
         try {
@@ -183,7 +188,7 @@ class StateSyncService(
     private fun push(write: suspend (country: String) -> HiddenFilmsState) {
         if (!loggedIn) return
         scope.launch {
-            val country = prefs.selectedCountryCode.first() ?: return@launch
+            val country = currentCountry()
             runCatching { write(country) }
                 .onSuccess { prefs.setHiddenFilmsValidators(country, it.etag, it.lastModified) }
         }
