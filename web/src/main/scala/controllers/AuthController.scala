@@ -261,8 +261,11 @@ class AuthController(
       case _                             => routes.LandingController.index().url
     }
 
-  def token(): Action[JsValue] = Action(parse.json) { request =>
-    val body = request.body
+  /** Native sign-in: a provider token in, the user plus a session cookie out —
+   *  `PerUserResponse`, like every response here that names someone. */
+  def token(): Action[JsValue] = Action(parse.json) { request => PerUserResponse(signInWithToken(request.body)) }
+
+  private def signInWithToken(body: JsValue): Result = {
     ((body \ "provider").asOpt[String], (body \ "token").asOpt[String]) match {
       case (None, _) => BadRequest(Json.obj("error" -> "missing provider"))
       case (_, None) => BadRequest(Json.obj("error" -> "missing token"))
@@ -302,12 +305,7 @@ class AuthController(
                 logger.error(s"Token sign-in failed for $provider: ${exception.getMessage}", exception)
                 InternalServerError(Json.obj("error" -> "Couldn't complete sign-in."))
               case Success(user) =>
-                Ok(Json.obj(
-                  "displayName" -> user.displayName,
-                  "email"       -> user.email,
-                  "avatarUrl"   -> user.avatarUrl,
-                  "provider"    -> user.provider
-                )).withSession(SignedInUser.establish(Session.emptyCookie, user))
+                Ok(AuthController.userJson(user)).withSession(SignedInUser.establish(Session.emptyCookie, user))
             }
         }
     }
@@ -324,12 +322,7 @@ class AuthController(
   def me(): Action[AnyContent] = Action { request =>
     PerUserResponse(SignedInUser(request, userRepository) match {
       case None => Unauthorized(Json.obj("error" -> "not logged in"))
-      case Some(user) => Ok(Json.obj(
-        "displayName" -> user.displayName,
-        "email"       -> user.email,
-        "avatarUrl"   -> user.avatarUrl,
-        "provider"    -> user.provider
-      ))
+      case Some(user) => Ok(AuthController.userJson(user))
     })
   }
 
@@ -418,8 +411,10 @@ class AuthController(
     user
   }
 
-  def exchange(): Action[JsValue] = Action(parse.json) { request =>
-    (request.body \ "code").asOpt[String].flatMap(exchangeCodes.redeem) match {
+  def exchange(): Action[JsValue] = Action(parse.json) { request => PerUserResponse(redeemExchangeCode(request.body)) }
+
+  private def redeemExchangeCode(body: JsValue): Result = {
+    (body \ "code").asOpt[String].flatMap(exchangeCodes.redeem) match {
       case None =>
         Unauthorized(Json.obj("error" -> "invalid or expired code"))
       case Some(userId) =>
@@ -427,12 +422,7 @@ class AuthController(
           case None =>
             Unauthorized(Json.obj("error" -> "user not found"))
           case Some(user) =>
-            Ok(Json.obj(
-              "displayName" -> user.displayName,
-              "email"       -> user.email,
-              "avatarUrl"   -> user.avatarUrl,
-              "provider"    -> user.provider
-            )).withSession(SignedInUser.establish(Session.emptyCookie, user))
+            Ok(AuthController.userJson(user)).withSession(SignedInUser.establish(Session.emptyCookie, user))
         }
     }
   }
@@ -522,7 +512,7 @@ class AuthController(
     request.getQueryString("code").flatMap(exchangeCodes.redeem).flatMap(userRepository.findById) match {
       case None =>
         logger.warn("SSO handoff arrived without a redeemable code — landing signed out.")
-        home
+        uncacheable(home)
       case Some(user) =>
         // Deliberately does NOT pair onwards: this IS the pairing leg, and a
         // second hop from here is the loop.
@@ -546,6 +536,15 @@ class AuthController(
 }
 
 object AuthController {
+
+  /** Who a signed-in response says is signed in — the one shape `/api/me`,
+   *  `/auth/token` and `/auth/exchange` all answer with. */
+  private[controllers] def userJson(user: User): JsValue = Json.obj(
+    "displayName" -> user.displayName,
+    "email"       -> user.email,
+    "avatarUrl"   -> user.avatarUrl,
+    "provider"    -> user.provider
+  )
 
   /** What a refused `POST /auth/token` tells the client — the same words
    *  whatever went wrong; the reason goes to the server log. */
