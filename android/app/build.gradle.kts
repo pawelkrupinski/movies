@@ -164,12 +164,14 @@ android {
         // Test fixtures both the JVM and the on-device suites build ViewModels from.
         getByName("test") { kotlin.directories.add("src/sharedTest/java") }
         getByName("androidTest") { kotlin.directories.add("src/sharedTest/java") }
+        // `kotlin`, not `java`: under AGP's built-in Kotlin a `java.srcDir`
+        // never reaches the Kotlin compiler (see TuningLauncherCompiledTest).
         getByName("debug") {
-            java.srcDir("src/tuning/java")
+            kotlin.directories.add("src/tuning/java")
             manifest.srcFile("src/tuning/AndroidManifest.xml")
         }
         getByName("tuneRelease") {
-            java.srcDir("src/tuning/java")
+            kotlin.directories.add("src/tuning/java")
             manifest.srcFile("src/tuning/AndroidManifest.xml")
         }
     }
