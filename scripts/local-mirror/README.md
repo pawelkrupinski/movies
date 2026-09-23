@@ -107,7 +107,11 @@ Mongo via `brew services` if it's stopped, re-seeds when a mirror is empty **or
 has drifted** (below), and reconnects the tunnel / change stream on every drop.
 So a dropped tunnel, a stopped Mongo, or a stale resume token all recover on
 their own instead of leaving `/debug` empty. The Mongo itself also restarts at
-login (it's a `brew services` agent). Logs:
+login (it's a `brew services` agent). `start-local-mongo.sh` asks `brew services`
+for whichever `mongodb-community[@X.Y]` formula is installed, and when `brew
+services` cannot start it falls back to `mongod --config $(brew --prefix)/etc/mongod.conf
+--fork` (same config, but no restart at login) — both paths asserted against stubs by
+`scripts/local-mirror/start-local-mongo-spec.sh`. Logs:
 `~/Library/Logs/kinowo-local-mirror.log`, trimmed to its last 2000 lines
 whenever it passes 8MB (in place — launchd holds an append fd on it, so renaming
 would strand the agent writing to the old inode). Prereqs:
