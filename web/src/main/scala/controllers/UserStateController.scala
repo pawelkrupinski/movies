@@ -157,8 +157,7 @@ class UserStateController(
       case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
       case (Some(_), None) => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
       case (Some(userId), Some(c)) =>
-        val (hidden, updatedAt) = updateHiddenFilms(userId, c.code)(_ + title)
-        respondWithHiddenFilms(hidden, updatedAt)
+        updateHiddenFilms(userId, c.code)(_ + title)
     })
   }
 
@@ -170,8 +169,7 @@ class UserStateController(
       case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
       case (Some(_), None) => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
       case (Some(userId), Some(c)) =>
-        val (hidden, updatedAt) = updateHiddenFilms(userId, c.code)(_ - title)
-        respondWithHiddenFilms(hidden, updatedAt)
+        updateHiddenFilms(userId, c.code)(_ - title)
     })
   }
 
@@ -184,25 +182,39 @@ class UserStateController(
       case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
       case (Some(_), None) => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
       case (Some(userId), Some(c)) =>
-        val (hidden, updatedAt) = updateHiddenFilms(userId, c.code)(_ => Set.empty)
-        respondWithHiddenFilms(hidden, updatedAt)
+        updateHiddenFilms(userId, c.code)(_ => Set.empty)
     })
   }
 
-  /** Shared by `hideFilm`/`unhideFilm`/`clearHiddenFilms`: read the stored
-   *  state, apply `f` to THIS country's bucket only, upsert, and hand back
-   *  the resulting bucket + the fresh `updatedAt` written. Always writes
+  /** Shared by `hideFilm`/`unhideFilm`/`clearHiddenFilms`: apply `f` to THIS
+   *  country's bucket only and answer with the bucket as stored. Always writes
    *  (even when `f` is a no-op) — same "every write bumps `updatedAt`"
-   *  behaviour `fromJson` already has for the legacy PUT. */
-  private def updateHiddenFilms(userId: String, country: String)(f: Set[String] => Set[String]): (Set[String], Instant) = {
-    val base         = userStateRepository.find(userId).getOrElse(UserState.empty(userId))
-    val updatedHidden = f(base.hiddenFilmsByCountry.getOrElse(country, Set.empty))
-    val updatedAt     = Instant.now()
-    userStateRepository.upsert(base.copy(
-      hiddenFilmsByCountry = base.hiddenFilmsByCountry.updated(country, updatedHidden),
-      updatedAt             = updatedAt
-    ))
-    (updatedHidden, updatedAt)
+   *  behaviour the legacy PUT has. */
+  private def updateHiddenFilms(userId: String, country: String)(f: Set[String] => Set[String]): Result =
+    updateState(userId) { base =>
+      Right(base.copy(hiddenFilmsByCountry =
+        base.hiddenFilmsByCountry.updated(country, f(base.hiddenFilmsByCountry.getOrElse(country, Set.empty)))))
+    }.fold(identity, state => respondWithHiddenFilms(state.hiddenFilmsByCountry.getOrElse(country, Set.empty), state.updatedAt))
+
+  /** Every write's read-modify-write over the user's row: read it, apply
+   *  `change`, and store the result ONLY if nothing else wrote the row in
+   *  between (`replaceIfUnchanged`) — otherwise re-read and re-apply, so a
+   *  concurrent request's write (another tab, the app, a hide in another
+   *  country) is built on rather than overwritten by this request's stale copy.
+   *  `Left` is `change`'s own refusal, or a 503 once [[MaxWriteAttempts]] races
+   *  in a row have all been lost. */
+  private def updateState(userId: String)(change: UserState => Either[Result, UserState]): Either[Result, UserState] = {
+    @scala.annotation.tailrec
+    def attempt(n: Int): Either[Result, UserState] = {
+      val stored = userStateRepository.find(userId)
+      change(stored.getOrElse(UserState.empty(userId))).map(_.copy(updatedAt = nextUpdatedAt(stored))) match {
+        case Right(next) if !userStateRepository.replaceIfUnchanged(stored, next) =>
+          if (n < MaxWriteAttempts) attempt(n + 1)
+          else Left(ServiceUnavailable(Json.obj("error" -> "state is changing too fast — retry")))
+        case outcome => outcome
+      }
+    }
+    attempt(1)
   }
 
   /** The 200 shape `hiddenFilms()`'s non-304 branch and every write action
@@ -223,13 +235,8 @@ class UserStateController(
         // PUT is a partial update over the stored row (see fromJson): fields
         // the body omits keep their stored value, so a client that only
         // models some of the sets can't wipe the others.
-        val base = userStateRepository.find(userId).getOrElse(UserState.empty(userId))
-        fromJson(base, request.body) match {
-          case Left(reason) => BadRequest(Json.obj("error" -> reason))
-          case Right(state) =>
-            userStateRepository.upsert(state)
-            Ok(toJson(state))
-        }
+        updateState(userId)(base => fromJson(base, request.body).left.map(reason => BadRequest(Json.obj("error" -> reason))))
+          .fold(identity, state => Ok(toJson(state)))
     })
   }
 
@@ -254,6 +261,22 @@ class UserStateController(
 }
 
 object UserStateController {
+
+  /** How many lost races [[UserStateController.updateState]] retries before
+   *  giving up with a 503. A race needs another write to the SAME user's row
+   *  inside one read-write round trip, so more than one in a row is already
+   *  rare; five is a bound, not a tuning knob. */
+  val MaxWriteAttempts = 5
+
+  /** The `updatedAt` a write stamps — also the row's version for
+   *  `replaceIfUnchanged`, so it must move even when two writes land in the
+   *  same millisecond (Mongo stores `updatedAt` as a millisecond BSON date):
+   *  now, or one millisecond past what was read, whichever is later. */
+  def nextUpdatedAt(stored: Option[UserState], now: Instant = Instant.now()): Instant = {
+    val tick = now.truncatedTo(java.time.temporal.ChronoUnit.MILLIS)
+    stored.map(_.updatedAt.truncatedTo(java.time.temporal.ChronoUnit.MILLIS).plusMillis(1))
+      .filter(_.isAfter(tick)).getOrElse(tick)
+  }
 
   /** Render a `UserState` to its wire JSON. Sorted lists at the wire
    *  edge so the response is deterministic (helps caching and makes
@@ -332,6 +355,7 @@ object UserStateController {
       // `language`'s parsing can touch — it MUST be threaded through
       // explicitly, or every legacy PUT would silently wipe it back to the
       // constructor's default empty map.
-    } yield UserState(base.userId, hf, dc, Instant.now(), base.hiddenFilmsByCountry, lang)
+      // `updatedAt` is left as read: the write stamps it (`updateState`).
+    } yield UserState(base.userId, hf, dc, base.updatedAt, base.hiddenFilmsByCountry, lang)
   }
 }

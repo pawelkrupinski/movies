@@ -133,6 +133,27 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     states.find(first.userId).value.hiddenFilms shouldBe Set("Hidden")
   }
 
+  // The version check behind every controller write (`UserStateController.updateState`):
+  // against real Mongo, because the whole point is what the SERVER refuses — a
+  // replace filtered on the millisecond `updatedAt` it stored, and an insert the
+  // unique `userId` index turns away.
+  it should "replaceIfUnchanged: insert only while there is still no row" in {
+    val id = "__integration-test-state-cas-insert"
+    states.replaceIfUnchanged(None, UserState(id, Set("First"), Set.empty, Now)) shouldBe true
+    states.replaceIfUnchanged(None, UserState(id, Set("Racing"), Set.empty, Now)) shouldBe false
+    states.find(id).value.hiddenFilms shouldBe Set("First")
+  }
+
+  it should "replaceIfUnchanged: replace only the version that was read" in {
+    val id   = "__integration-test-state-cas-replace"
+    states.upsert(UserState(id, Set.empty, Set.empty, Now))
+    val read = states.find(id).value
+    states.replaceIfUnchanged(Some(read), read.copy(hiddenFilms = Set("Won"), updatedAt = Now.plusMillis(1))) shouldBe true
+    // A second writer still holding the ORIGINAL read loses, and changes nothing.
+    states.replaceIfUnchanged(Some(read), read.copy(hiddenFilms = Set("Stale"), updatedAt = Now.plusMillis(2))) shouldBe false
+    states.find(id).value.hiddenFilms shouldBe Set("Won")
+  }
+
   it should "delete the state row by userId" in {
     val s = UserState("__integration-test-state-delete", Set("X"), Set.empty, Now)
     states.upsert(s)

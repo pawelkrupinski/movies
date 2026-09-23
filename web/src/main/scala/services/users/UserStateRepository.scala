@@ -1,5 +1,6 @@
 package services.users
 
+import com.mongodb.{ErrorCategory, MongoWriteException}
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument}
 import models.UserState
@@ -31,6 +32,21 @@ trait UserStateRepository {
 
   /** Full-document replace. Best-effort. */
   def upsert(state: UserState): Unit
+
+  /** Replace the row with `next` only if it is still exactly the version
+   *  `expected` was read as — `None` meaning "there was no row yet". `false`
+   *  when another write got there first: the caller re-reads and re-applies
+   *  its change instead of writing back a copy that would erase that write.
+   *  (Every request's write is read-modify-write over the WHOLE row — a hide in
+   *  one country, a legacy PUT's language — so the unconditional [[upsert]]
+   *  loses whichever of two overlapping writes lands first.)
+   *
+   *  The version is `updatedAt`, so `next.updatedAt` must differ from
+   *  `expected`'s at the store's millisecond precision (see
+   *  `UserStateController.nextUpdatedAt`). A failure that is NOT a lost race is
+   *  logged and reported as written, the same best-effort contract as
+   *  [[upsert]] — retrying cannot fix it. */
+  def replaceIfUnchanged(expected: Option[UserState], next: UserState): Boolean
 
   /** Remove this user's state row entirely. Used by the account-deletion
    *  endpoint alongside `UserRepository.delete`. */
@@ -141,6 +157,27 @@ class MongoUserStateRepository(
       case exception: Throwable =>
         logger.warn(s"UserStateRepository.upsert(${state.userId}) failed: ${exception.getMessage}")
     }
+  }
+
+  def replaceIfUnchanged(expected: Option[UserState], next: UserState): Boolean = coll.forall { c =>
+    Try {
+      expected match {
+        // No row when it was read: only an insert may win, and the unique
+        // `userId` index turns a racing insert into a duplicate-key refusal.
+        case None =>
+          Await.result(c.insertOne(next).toFuture(), 10.seconds)
+          true
+        case Some(read) =>
+          Await.result(c.replaceOne(
+            Filters.and(Filters.eq("userId", next.userId), Filters.eq("updatedAt", read.updatedAt)),
+            next).toFuture(), 10.seconds).getMatchedCount == 1
+      }
+    }.recover {
+      case duplicate: MongoWriteException if duplicate.getError.getCategory == ErrorCategory.DUPLICATE_KEY => false
+      case exception: Throwable =>
+        logger.warn(s"UserStateRepository.replaceIfUnchanged(${next.userId}) failed: ${exception.getMessage}")
+        true
+    }.get
   }
 
   def delete(userId: String): Unit = coll.foreach { c =>
@@ -254,16 +291,29 @@ class InMemoryUserStateRepository extends UserStateRepository {
 
   def enabled: Boolean = true
 
-  def find(userId: String): Option[UserState] = store.get(userId)
+  def find(userId: String): Option[UserState] = synchronized(store.get(userId))
 
   def upsert(state: UserState): Unit = {
-    store(state.userId) = state
+    synchronized(store(state.userId) = state)
     liveness.delivered(UserStateRepository.Collection)
     listener.foreach { case (onUpsert, _, _) => onUpsert(state) }
   }
 
+  def replaceIfUnchanged(expected: Option[UserState], next: UserState): Boolean = {
+    val won = synchronized {
+      val unchanged = store.get(next.userId).map(_.updatedAt) == expected.map(_.updatedAt)
+      if (unchanged) store(next.userId) = next
+      unchanged
+    }
+    if (won) {
+      liveness.delivered(UserStateRepository.Collection)
+      listener.foreach { case (onUpsert, _, _) => onUpsert(next) }
+    }
+    won
+  }
+
   def delete(userId: String): Unit = {
-    store.remove(userId)
+    synchronized(store.remove(userId))
     liveness.delivered(UserStateRepository.Collection)
     listener.foreach { case (_, onDelete, _) => onDelete(userId) }
   }

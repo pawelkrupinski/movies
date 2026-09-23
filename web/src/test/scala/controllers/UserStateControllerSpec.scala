@@ -45,6 +45,23 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     override def find(userId: String): Option[UserState] = { findCalls += 1; super.find(userId) }
   }
 
+  /** Lands `competingWrite` on the store the moment the controller has READ
+   *  the row, once — another request for the same user (a second tab, the
+   *  app, a legacy PUT) winning the race between this request's read and its
+   *  write. Deterministic stand-in for two concurrent requests. */
+  private class RacedUserStateRepository(competingWrite: UserState => UserState) extends InMemoryUserStateRepository {
+    private var raced = false
+    override def find(userId: String): Option[UserState] = {
+      val read = super.find(userId)
+      if (!raced) {
+        raced = true
+        val base = read.getOrElse(UserState.empty(userId))
+        super.upsert(competingWrite(base).copy(updatedAt = base.updatedAt.plusSeconds(1)))
+      }
+      read
+    }
+  }
+
   /** A `UserChangeTimeCache` whose answers are fixed in the test, not derived
    *  from a real change stream — `UserChangeTimeCacheSpec` covers the real
    *  `CaffeineUserChangeTimeCache`'s own behaviour (eviction, invalidate-on-
@@ -249,6 +266,63 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
       "If-Modified-Since" -> "Mon, 01 Jan 2001 00:00:00 GMT"
     )*)
     status(result) shouldBe NOT_MODIFIED
+  }
+
+  // ── concurrent writes for one user ───────────────────────────────────────
+  //
+  // Every write is read-modify-write over the whole row, so a write that lands
+  // between this request's read and its own write must not be overwritten by
+  // the stale copy this request read.
+
+  "a hidden-films write" should "not erase a write that landed between its read and its write" in {
+    val raced = new RacedUserStateRepository(s => s.copy(hiddenFilmsByCountry = s.hiddenFilmsByCountry.updated("de", Set("Der Film"))))
+    val (ctl, repository, _) = fixture(Some(storedFor("pl", "Madagaskar")), stateRepository = raced)
+
+    status(ctl.hideFilm("pl", "Sing")(FakeRequest("PUT", "/api/me/pl/hidden-films/Sing").withSession("userId" -> "u1"))) shouldBe OK
+
+    val stored = repository.find("u1").value.hiddenFilmsByCountry
+    stored.get("pl") shouldBe Some(Set("Madagaskar", "Sing"))
+    stored.get("de") shouldBe Some(Set("Der Film"))
+  }
+
+  it should "answer with the bucket as actually stored after the retry" in {
+    val raced = new RacedUserStateRepository(s => s.copy(hiddenFilmsByCountry = s.hiddenFilmsByCountry.updated("pl", Set("Other Tab"))))
+    val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")), stateRepository = raced)
+
+    val result = ctl.hideFilm("pl", "Sing")(FakeRequest("PUT", "/api/me/pl/hidden-films/Sing").withSession("userId" -> "u1"))
+    (contentAsJson(result) \ "hiddenFilms").as[Seq[String]] shouldBe Seq("Other Tab", "Sing")
+  }
+
+  it should "give up with a 503, not a silent overwrite, once every retry has lost its race" in {
+    val alwaysBeaten = new InMemoryUserStateRepository {
+      override def replaceIfUnchanged(expected: Option[UserState], next: UserState): Boolean = false
+    }
+    val (ctl, repository, _) = fixture(Some(storedFor("pl", "Madagaskar")), stateRepository = alwaysBeaten)
+
+    val result = ctl.hideFilm("pl", "Sing")(FakeRequest("PUT", "/api/me/pl/hidden-films/Sing").withSession("userId" -> "u1"))
+    status(result) shouldBe SERVICE_UNAVAILABLE
+    repository.find("u1").value.hiddenFilmsByCountry.get("pl") shouldBe Some(Set("Madagaskar"))
+  }
+
+  "UserStateController.nextUpdatedAt" should "move the version even when two writes share a millisecond" in {
+    val read = storedFor("pl").copy(updatedAt = Instant.parse("2026-05-19T12:00:00.123Z"))
+    UserStateController.nextUpdatedAt(Some(read), now = Instant.parse("2026-05-19T12:00:00.123456Z")) shouldBe
+      Instant.parse("2026-05-19T12:00:00.124Z")
+    UserStateController.nextUpdatedAt(Some(read), now = Instant.parse("2026-05-19T12:00:05.5Z")) shouldBe
+      Instant.parse("2026-05-19T12:00:05.500Z")
+    UserStateController.nextUpdatedAt(None, now = Instant.parse("2026-05-19T12:00:00.123456Z")) shouldBe
+      Instant.parse("2026-05-19T12:00:00.123Z")
+  }
+
+  "a legacy PUT /api/me/state" should "not erase a hidden-films write that landed between its read and its write" in {
+    val raced = new RacedUserStateRepository(s => s.copy(hiddenFilmsByCountry = s.hiddenFilmsByCountry.updated("pl", Set("Sing"))))
+    val (ctl, repository, _) = fixture(stateRepository = raced)
+
+    status(ctl.put()(FakeRequest("PUT", "/api/me/state").withSession("userId" -> "u1").withBody(Json.obj("language" -> "en")))) shouldBe OK
+
+    val stored = repository.find("u1").value
+    stored.language shouldBe Some("en")
+    stored.hiddenFilmsByCountry.get("pl") shouldBe Some(Set("Sing"))
   }
 
   // ── GET /api/me/:country/hidden-films — userChangeTimeCache fast path ────

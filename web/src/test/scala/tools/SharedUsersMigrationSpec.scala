@@ -159,6 +159,7 @@ class SharedUsersMigrationSpec extends AnyFlatSpec with Matchers {
     def enabled                                       = true
     def find(userId: String): Option[UserState]       = None
     def upsert(state: UserState): Unit                = ()
+    def replaceIfUnchanged(expected: Option[UserState], next: UserState): Boolean = true
     def delete(userId: String): Unit                  = ()
     def close(): Unit                                 = ()
   }
