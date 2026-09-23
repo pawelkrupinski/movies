@@ -1,4 +1,5 @@
 import XCTest
+import KinowoTestSupport
 @testable import KinowoCore
 @testable import KinowoNetworking
 
@@ -29,10 +30,8 @@ final class DetailsStoreCitySwitchTests: XCTestCase {
             if isOld { response.delay = 0.4 }
             return response
         }
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [URLProtocolStub.self]
 
-        let store = DetailsStore(base: deployment, citySlug: city, session: URLSession(configuration: config))
+        let store = DetailsStore(base: deployment, citySlug: city, session: URLProtocolStub.session())
         let slowReload = Task { await store.reload() }
         try await Task.sleep(for: .milliseconds(100))
         store.use(citySlug: otherCity)
@@ -50,9 +49,7 @@ final class DetailsStoreCitySwitchTests: XCTestCase {
     /// city's fetch is in flight.
     func testACitySwitchDropsThePreviousCitysDetailsImmediately() async throws {
         let oldCity = [FilmDetails(title: "Shared Title", originalTitle: nil, synopsis: "old city", trailerURLs: [])]
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [URLProtocolStub.self]
-        let store = DetailsStore(base: deployment, citySlug: city, session: URLSession(configuration: config))
+        let store = DetailsStore(base: deployment, citySlug: city, session: URLProtocolStub.session())
         URLProtocolStub.handler = { _ in URLProtocolStub.Response(statusCode: 200, headers: [:], body: try! JSONEncoder().encode(oldCity)) }
         await store.reload()
         XCTAssertEqual(store.details(for: "Shared Title")?.synopsis, "old city")

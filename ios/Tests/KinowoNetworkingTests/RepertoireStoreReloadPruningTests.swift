@@ -1,4 +1,5 @@
 import XCTest
+import KinowoTestSupport
 @testable import KinowoCore
 @testable import KinowoNetworking
 
@@ -22,12 +23,6 @@ final class RepertoireStoreReloadPruningTests: XCTestCase {
         super.tearDown()
     }
 
-    private func stubbedSession() -> URLSession {
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [URLProtocolStub.self]
-        return URLSession(configuration: config)
-    }
-
     // MARK: - A freshly-decoded (200) response
 
     /// Even though the server is expected to have already dropped past
@@ -47,7 +42,7 @@ final class RepertoireStoreReloadPruningTests: XCTestCase {
                 : jsonResponse(stalePayload)
         }
 
-        let store = RepertoireStore(base: deployment, citySlug: city, session: stubbedSession())
+        let store = RepertoireStore(base: deployment, citySlug: city, session: URLProtocolStub.session())
         await store.reload(now: now)
 
         XCTAssertTrue(store.films.isEmpty,
@@ -67,7 +62,7 @@ final class RepertoireStoreReloadPruningTests: XCTestCase {
                 : jsonResponse(payload)
         }
 
-        let store = RepertoireStore(base: deployment, citySlug: city, session: stubbedSession())
+        let store = RepertoireStore(base: deployment, citySlug: city, session: URLProtocolStub.session())
         await store.reload(now: now)
 
         XCTAssertEqual(store.films.count, 1,
@@ -94,7 +89,7 @@ final class RepertoireStoreReloadPruningTests: XCTestCase {
                 : .init(statusCode: 304, headers: [:], body: Data())
         }
 
-        let store = RepertoireStore(base: deployment, citySlug: city, session: stubbedSession())
+        let store = RepertoireStore(base: deployment, citySlug: city, session: URLProtocolStub.session())
         XCTAssertTrue(store.films.isEmpty, "precondition: a fresh store starts with no in-memory films")
         await store.reload(now: now)
 
@@ -127,7 +122,7 @@ final class RepertoireStoreReloadPruningTests: XCTestCase {
             return jsonResponse([newCityFilm])
         }
 
-        let store = RepertoireStore(base: deployment, citySlug: city, session: stubbedSession())
+        let store = RepertoireStore(base: deployment, citySlug: city, session: URLProtocolStub.session())
         let slowReload = Task { await store.reload() }
         try await Task.sleep(for: .milliseconds(100))
         store.use(citySlug: otherCity)

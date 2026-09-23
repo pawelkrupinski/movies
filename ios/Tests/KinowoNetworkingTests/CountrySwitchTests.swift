@@ -1,4 +1,5 @@
 import XCTest
+import KinowoTestSupport
 @testable import KinowoCore
 @testable import KinowoAuth
 @testable import KinowoNetworking
@@ -32,9 +33,7 @@ final class CountrySwitchTests: XCTestCase {
             requestedHosts.append(request.url!.host!)
             return .init(statusCode: 404, headers: [:], body: Data())
         }
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [URLProtocolStub.self]
-        let session = URLSession(configuration: config)
+        let session = URLProtocolStub.session()
         let prefs = UserPreferences(store: defaults)
         let store = RepertoireStore(base: poland.baseURL, citySlug: "poznan", session: session)
         let details = DetailsStore(base: poland.baseURL, citySlug: "poznan", session: session)

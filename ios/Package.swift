@@ -23,6 +23,8 @@ import PackageDescription
 // - `KinowoCoreTests` — unit + LocalServer XCTest cases, resourced
 //   with a captured production `/api/details` JSON fixture.
 // - `KinowoAuthTests` — sync-service tests (Combine; macOS/iOS only).
+// - `KinowoTestSupport` — test doubles shared across test targets
+//   (`URLProtocolStub`); macOS/iOS only, alongside its two users.
 #if canImport(Combine)
 let authTargets: [Target] = [
     .target(
@@ -49,8 +51,14 @@ let authTargets: [Target] = [
     ),
     .testTarget(
         name: "KinowoAuthTests",
-        dependencies: ["KinowoAuth"],
+        dependencies: ["KinowoAuth", "KinowoTestSupport"],
         path: "Tests/KinowoAuthTests"
+    ),
+    // Test doubles more than one test target needs (the canned-HTTP
+    // `URLProtocolStub`). A plain target, so its API is `public`.
+    .target(
+        name: "KinowoTestSupport",
+        path: "Tests/KinowoTestSupport"
     ),
 ]
 #else
@@ -88,7 +96,7 @@ let networkingTargets: [Target] = [
     ),
     .testTarget(
         name: "KinowoNetworkingTests",
-        dependencies: ["KinowoCore", "KinowoNetworking"],
+        dependencies: ["KinowoCore", "KinowoNetworking", "KinowoTestSupport"],
         path: "Tests/KinowoNetworkingTests"
     ),
 ]
