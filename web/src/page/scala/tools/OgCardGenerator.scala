@@ -52,7 +52,7 @@ import javax.imageio.{IIOImage, ImageIO, ImageWriteParam}
  *
  * `KINOWO_PROXY_USER` / `KINOWO_PROXY_PASS` (same secrets the worker's Decodo
  * residential proxy already uses, see [[reference_decodo_isp_proxy]]), when
- * BOTH present, route every screenshot request through
+ * BOTH non-blank, route every screenshot request through
  * `KINOWO_OG_PROXY_HOST`/`KINOWO_OG_PROXY_PORT` (default `isp.decodo.com` on
  * a residential port) instead of this machine's own egress — needed because
  * GitHub Actions' datacenter IP ranges are Cloudflare Bot-Fight-Mode material
@@ -101,8 +101,6 @@ object OgCardGenerator {
    *  of pinning one port. */
   private val CitiesPerProxyBatch = 15
 
-  private val proxyEnabled: Boolean = sys.env.contains("KINOWO_PROXY_USER") && sys.env.contains("KINOWO_PROXY_PASS")
-
   /** The ports to rotate through this run. `KINOWO_OG_PROXY_PORT`, when set,
    *  pins a single port instead (local debugging against one specific port). */
   private def proxyPorts(): Seq[Int] =
@@ -111,13 +109,23 @@ object OgCardGenerator {
       case None       => ResidentialProxyPorts
     }
 
-  private def proxyConfigFor(port: Int): Option[Chrome.ProxyConfig] =
-    Option.when(proxyEnabled)(Chrome.ProxyConfig(
-      host = sys.env.getOrElse("KINOWO_OG_PROXY_HOST", "isp.decodo.com"),
+  /** The proxy for `port`, or `None` to use this machine's own egress. Needs
+   *  BOTH credentials NON-BLANK, not merely present: GitHub Actions renders an
+   *  unset `${{ secrets.X }}` as an empty string, so a presence check would
+   *  launch Chrome against the proxy with empty credentials and fail every card
+   *  on a 407 instead of falling back as documented above. */
+  private[tools] def proxyConfigFor(port: Int, env: Map[String, String] = sys.env): Option[Chrome.ProxyConfig] = {
+    def nonBlank(key: String) = env.get(key).filter(_.trim.nonEmpty)
+    for {
+      user <- nonBlank("KINOWO_PROXY_USER")
+      pass <- nonBlank("KINOWO_PROXY_PASS")
+    } yield Chrome.ProxyConfig(
+      host = env.getOrElse("KINOWO_OG_PROXY_HOST", "isp.decodo.com"),
       port = port,
-      user = sys.env("KINOWO_PROXY_USER"),
-      pass = sys.env("KINOWO_PROXY_PASS")
-    ))
+      user = user,
+      pass = pass
+    )
+  }
 
   private def startChromeOrExit(proxy: Option[Chrome.ProxyConfig]): Chrome =
     Chrome.tryStart(proxy = proxy, spoofHeadlessUserAgent = true).getOrElse {
