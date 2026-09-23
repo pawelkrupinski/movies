@@ -57,4 +57,13 @@ final class DateLabelTests: XCTestCase {
         let english = DateLabel.format(isoDate: "2026-06-04", locale: Locale(identifier: "en"))
         XCTAssertNotEqual(polish, english)
     }
+
+    /// The doc promises an unparseable date comes back as-is. `Calendar`
+    /// silently rolls an out-of-range month/day over instead of failing, so
+    /// month 13 used to index past the month tables and trap.
+    func testOutOfRangeDateComesBackUnchangedInsteadOfCrashing() {
+        XCTAssertEqual(DateLabel.format(isoDate: "2026-13-04", locale: Locale(identifier: "pl")), "2026-13-04")
+        XCTAssertEqual(DateLabel.format(isoDate: "2026-13-04", locale: Locale(identifier: "en")), "2026-13-04")
+        XCTAssertEqual(DateLabel.format(isoDate: "2026-02-30", locale: Locale(identifier: "en")), "2026-02-30")
+    }
 }

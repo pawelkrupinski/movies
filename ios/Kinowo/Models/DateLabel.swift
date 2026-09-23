@@ -31,15 +31,19 @@ enum DateLabel {
     }()
 
     /// `isoDate` is `YYYY-MM-DD`. Returns `isoDate` itself if it doesn't parse
-    /// (defensive only — every `date` this app decodes comes from the API's
-    /// own ISO-formatted field).
+    /// or names a day that doesn't exist (defensive only — every `date` this
+    /// app decodes comes from the API's own ISO-formatted field).
     static func format(isoDate: String, locale: Locale) -> String {
         let parts = isoDate.split(separator: "-").compactMap { Int($0) }
-        guard parts.count == 3,
-              let date = isoCalendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
+        guard parts.count == 3 else { return isoDate }
+        let (year, month, day) = (parts[0], parts[1], parts[2])
+        // `Calendar` rolls an out-of-range month/day over (month 13 → next
+        // January) rather than failing, so round-trip it: only a date whose
+        // components survive unchanged is real — and month-indexes safely.
+        guard let date = isoCalendar.date(from: DateComponents(year: year, month: month, day: day)),
+              isoCalendar.dateComponents([.year, .month, .day], from: date) == DateComponents(year: year, month: month, day: day)
         else { return isoDate }
 
-        let (year, month, day) = (parts[0], parts[1], parts[2])
         let currentYear = isoCalendar.component(.year, from: Date())
         let yearSuffix  = year == currentYear ? "" : " \(year)"
 
