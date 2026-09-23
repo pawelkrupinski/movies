@@ -19,14 +19,19 @@ import scala.util.Try
  * dead ids, 169 of them with future showtimes. See [[StrandedSideRows]] for the rule and
  * for what a sweep refuses to do.
  *
+ * The same tick then runs the retired-VENUE sweep ([[RetiredVenueRows]]): rows whose film
+ * is alive but whose venue left the roster, which the film-keyed rule above cannot see.
+ * Each sweep is guarded separately, so one failing never skips the other.
+ *
  * Same shape as [[UnscreenedCleanup]]: once shortly after boot, then every 24h, the
  * hour-of-day drifting with each restart. Lifecycle owned by the wiring (`start()`
  * schedules the tick; `stop()` runs at shutdown) — the class never self-schedules. The
  * scheduler is injected so a spec can hold the tick and run it by hand.
  */
 class StrandedSideRowsCleanup(
-  repository: MovieRepository,
-  scheduler:  ScheduledExecutorService = DaemonExecutors.scheduler("stranded-side-rows-cleanup")
+  repository:    MovieRepository,
+  retiredVenues: () => RetiredVenueRows,
+  scheduler:     ScheduledExecutorService = DaemonExecutors.scheduler("stranded-side-rows-cleanup")
 ) extends Stoppable with Logging {
 
   // Off the boot window: the cache hydrate and the projector's state seed own the first
@@ -38,11 +43,20 @@ class StrandedSideRowsCleanup(
    *  the same method. */
   def removeStranded(): StrandedSideRows = repository.deleteStrandedSideRows()
 
+  /** One retired-venue sweep, on demand — the daily tick runs it after [[removeStranded]]. */
+  def removeRetiredVenues(): RetiredVenueRows = retiredVenues()
+
   def start(): Unit = {
     logger.info(s"Stranded side-row cleanup scheduled every ${RunEveryHours}h (first run in ${StartupDelaySeconds}s).")
     scheduler.scheduleAtFixedRate(
-      () => Try(removeStranded()).recover {
-        case exception => logger.warn(s"Stranded side-row cleanup tick failed: ${exception.getMessage}")
+      () => {
+        Try(removeStranded()).recover {
+          case exception => logger.warn(s"Stranded side-row cleanup tick failed: ${exception.getMessage}")
+        }
+        Try(removeRetiredVenues()).recover {
+          case exception => logger.warn(s"Retired-venue side-row cleanup tick failed: ${exception.getMessage}")
+        }
+        ()
       },
       StartupDelaySeconds, RunEveryHours * 3600, TimeUnit.SECONDS
     )

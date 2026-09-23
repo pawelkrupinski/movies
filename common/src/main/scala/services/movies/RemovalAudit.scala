@@ -73,6 +73,15 @@ object RemovalAudit {
         s"film id(s) with no movies document: reason=stranded ids=[${sample(all)}]")
   }
 
+  /** Side-collection rows removed because their VENUE left the country's roster — the
+   *  daily retired-venue sweep ([[RetiredVenueRows]]). Names every venue with its row
+   *  count: a venue on this line that is still screening is the incident to look for. */
+  def retiredVenueRowsRemoved(source: String, screenings: Long, slots: Long, perVenue: Map[String, Long]): Unit =
+    if (perVenue.nonEmpty)
+      logger.info(s"[$source] $screenings screenings row(s) + $slots slot row(s) removed under ${perVenue.size} " +
+        s"venue(s) no longer on the roster: reason=retired-venue venues=[" +
+        s"${sample(perVenue.toSeq.sortBy(_._1).map { case (venue, rows) => s"$venue=$rows" })}]")
+
   /** A read-model card (`web_movies` doc + its `web_screenings`) removed — the
    *  point at which a film actually leaves the served site. */
   def cardRemoved(filmId: String, screenings: Int, reason: String): Unit =

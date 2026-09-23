@@ -40,7 +40,7 @@ class StrandedSideRowsCleanupSpec extends AnyFlatSpec with Matchers {
   "start" should "schedule one sweep shortly after boot and then every 24h, and the tick sweeps" in {
     val (repository, screenings) = repositoryWithStrandedRow()
     val scheduler = new HeldScheduler
-    val cleanup   = new StrandedSideRowsCleanup(repository, scheduler)
+    val cleanup   = new StrandedSideRowsCleanup(repository, () => RetiredVenueRows.none, scheduler)
     try {
       cleanup.start()
 
@@ -56,20 +56,36 @@ class StrandedSideRowsCleanupSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "survive a tick whose sweep throws" in {
+    var retiredSwept = 0
     val failing = new InMemoryMovieRepository(normalizer = titleNormalizer) {
       override def deleteStrandedSideRows(): StrandedSideRows = throw new RuntimeException("mongo went away")
     }
     val scheduler = new HeldScheduler
-    val cleanup   = new StrandedSideRowsCleanup(failing, scheduler)
+    val cleanup   = new StrandedSideRowsCleanup(failing, () => { retiredSwept += 1; RetiredVenueRows.none }, scheduler)
     try {
       cleanup.start()
       noException should be thrownBy scheduler.ticks.head._1.run()
+      retiredSwept shouldBe 1   // the stranded sweep throwing does not skip the retired-venue one
+    } finally cleanup.stop()
+  }
+
+  it should "run the retired-venue sweep on the same tick, and survive it throwing" in {
+    val (repository, screenings) = repositoryWithStrandedRow()
+    var retiredSwept = 0
+    val scheduler = new HeldScheduler
+    val cleanup   = new StrandedSideRowsCleanup(repository,
+      () => { retiredSwept += 1; throw new RuntimeException("mongo went away") }, scheduler)
+    try {
+      cleanup.start()
+      noException should be thrownBy scheduler.ticks.head._1.run()
+      retiredSwept shouldBe 1
+      screenings.findForFilm("dead|2020") shouldBe empty   // the stranded sweep still ran
     } finally cleanup.stop()
   }
 
   "removeStranded" should "return what the repository swept" in {
     val (repository, _) = repositoryWithStrandedRow()
-    new StrandedSideRowsCleanup(repository, new HeldScheduler).removeStranded() shouldBe
+    new StrandedSideRowsCleanup(repository, () => RetiredVenueRows.none, new HeldScheduler).removeStranded() shouldBe
       StrandedSideRows(screenings = 1, slots = 0, filmIds = Set("dead|2020"))
   }
 }

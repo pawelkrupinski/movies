@@ -1,7 +1,7 @@
 package modules.wiring
 
 import modules.WorkerWiring
-import services.movies.{CaffeineMovieCache, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, ScreeningTokens, ScreeningsRepository, SlotsRepository, StrandedSideRowsCleanup, TitleNormalizer, UnscreenedCleanup}
+import services.movies.{CaffeineMovieCache, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, RetiredVenueRows, ScreeningTokens, ScreeningsRepository, SlotsRepository, StrandedSideRowsCleanup, TitleNormalizer, UnscreenedCleanup}
 
 /** ── MovieRecord cache (write-through) ───────────────────────────────────────
  *  The `movies` corpus and its side collections, the write-through cache every
@@ -74,6 +74,9 @@ trait CorpusWiring { self: WorkerWiring =>
   lazy val unscreenedCleanup = new UnscreenedCleanup(movieCache, movieRepository)
 
   // The other daily sweep: side-collection rows whose film left the corpus before
-  // deletes and merges carried their rows with them.
-  lazy val strandedSideRowsCleanup = new StrandedSideRowsCleanup(movieRepository)
+  // deletes and merges carried their rows with them — and, on the same tick, rows filed
+  // under a venue this country's roster no longer lists.
+  lazy val strandedSideRowsCleanup = new StrandedSideRowsCleanup(movieRepository,
+    retiredVenues = () => RetiredVenueRows.sweep(Some(screeningsRepository), Some(slotsRepository),
+      RetiredVenueRows.rosterOf(country)))
 }
