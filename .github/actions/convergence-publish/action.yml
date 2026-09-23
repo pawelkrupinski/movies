@@ -71,7 +71,12 @@ runs:
     # A country's sample and its full leg are chained by `needs:`, never concurrent, so
     # the two `--clobber`s of one asset are ordered: the sample publishes what it
     # recorded, the full leg restores that and republishes the superset.
+    #
+    # MAIN ONLY. A branch dispatched to verify a fix still packs (so the log shows what
+    # it recorded) but never overwrites the tree every main run restores with a capture
+    # made by code main has not run. (ConvergencePublishMainOnlySpec)
     - name: Publish the tree to the rolling release
+      if: github.ref == 'refs/heads/main'
       shell: bash
       env:
           GH_TOKEN: ${{ inputs.token }}
