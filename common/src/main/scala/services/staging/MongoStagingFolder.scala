@@ -27,6 +27,12 @@ import scala.util.Try
  * Requires a replica set (prod `kinowo-mongo` is one — change streams already
  * depend on it). On a standalone Mongo `startSession`/transactions error out; the
  * composition root should wire `InMemoryStagingFolder` there instead.
+ *
+ * ASSUMES ONE WORKER PROCESS PER CORPUS. The post-commit `completeSideCollections` is a
+ * read-union-write serialized per film id by an IN-PROCESS lock (`withIdLock`), which is
+ * only a lock at all because each country's worker Deployment runs `replicas: 1` with
+ * `strategy: Recreate` (movies-gitops `worker/base/all.yaml`, pinned by
+ * `WebRolloutAvailabilitySpec`). A second replica would race it unguarded.
  */
 class MongoStagingFolder(
   connection: MongoConnection,
@@ -269,7 +275,9 @@ class MongoStagingFolder(
    *  read-union-write — see that method's doc for the race this closes. A
    *  `ConcurrentHashMap` rather than a global lock: unrelated films complete
    *  concurrently exactly as before, only two calls for the SAME id ever block each
-   *  other. Entries are never evicted; the key space is one film id per row this
+   *  other. IN-PROCESS ONLY: it holds because the worker runs one replica per corpus (see
+   *  the class doc and `WebRolloutAvailabilitySpec`); scaling the worker out needs a
+   *  cross-process lock here first. Entries are never evicted; the key space is one film id per row this
    *  process's worker ever folds, which is bounded by the corpus, not by traffic. */
   private val idLocks = new java.util.concurrent.ConcurrentHashMap[String, Object]()
 

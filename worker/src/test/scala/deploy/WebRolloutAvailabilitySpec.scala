@@ -134,4 +134,22 @@ class WebRolloutAvailabilitySpec extends AnyFlatSpec with Matchers {
       RepoFile.block(WorkerBase, "strategy") should include ("type: Recreate")
     }
   }
+
+  // ONE WORKER PER COUNTRY IS A CORRECTNESS ASSUMPTION, not just a sizing choice — and the
+  // replica count lives in the movies-gitops repo, where nothing says so. `MongoStagingFolder`
+  // serializes `completeSideCollections`' read-union-write per film id with an IN-PROCESS lock
+  // (`withIdLock`); a second worker replica on the same corpus would run that race unguarded
+  // and silently drop a converging fold's cinema (`StagingFoldConcurrentTmdbRaceIntegrationSpec`).
+  // Scaling the worker out needs a cross-process lock first, not just a bigger number here.
+  it should "run exactly one replica per country — the staging fold's per-film lock is in-process" in {
+    withClue("worker/base/all.yaml must declare `replicas: 1` (see MongoStagingFolder.withIdLock): ") {
+      intField(WorkerBase, "replicas") shouldBe Some(1)
+    }
+    Seq("pl", "uk", "de", "es", "us").foreach { country =>
+      val overlay = RepoFile.read(s"infra/kubernetes/worker/overlays/$country/patch.yaml")
+      withClue(s"worker overlay `$country` overrides the replica count; MongoStagingFolder.withIdLock assumes one: ") {
+        intField(overlay, "replicas").forall(_ == 1) shouldBe true
+      }
+    }
+  }
 }
