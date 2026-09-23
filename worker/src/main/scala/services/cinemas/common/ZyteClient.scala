@@ -45,8 +45,13 @@ class ZyteClient(httpClient: HttpClient, apiKey: String) extends Logging {
    *  HTML is a datacenter-IP block (biletyna's venue page). One credit.
    *  Throws on non-2xx upstream status or a missing body.
    */
-  def get(targetUrl: String): String =
-    bodyOrThrow(post(targetUrl, sessionId = None), targetUrl)
+  def get(targetUrl: String): String = get(targetUrl, Map.empty)
+
+  /** [[get]] carrying request `headers` to the upstream (Zyte's
+   *  `customHttpRequestHeaders`) — for an origin that authenticates in a header
+   *  rather than a cookie (Odeon's ocapi `Authorization: Bearer`). */
+  def get(targetUrl: String, headers: Map[String, String]): String =
+    bodyOrThrow(post(targetUrl, sessionId = None, headers), targetUrl)
 
   /** Warm a Zyte session: fetch `cookieSourceUrl` (the homepage) under
    *  `sessionId` so Zyte parks the upstream's Set-Cookie in the server-side
@@ -73,8 +78,8 @@ class ZyteClient(httpClient: HttpClient, apiKey: String) extends Logging {
   /** Single POST to Zyte's /extract. Returns the raw JSON body or throws
    *  if Zyte itself failed (network error, 4xx/5xx from Zyte).
    */
-  private def post(targetUrl: String, sessionId: Option[String]): String = {
-    val body = requestBody(targetUrl, sessionId)
+  private def post(targetUrl: String, sessionId: Option[String], headers: Map[String, String] = Map.empty): String = {
+    val body = requestBody(targetUrl, sessionId, headers)
 
     val request = HttpRequest.newBuilder()
       .uri(URI.create(Endpoint))
@@ -104,10 +109,17 @@ object ZyteClient {
    *  is ban-prone on some hosts — bilety.ck105.koszalin.pl answers `520
    *  /download/website-ban` WITH a session but `200` (full programme) WITHOUT,
    *  so a stray session id was exactly what left Kino Kryterium a permanent white
-   *  /uptime bar. */
-  def requestBody(targetUrl: String, sessionId: Option[String]): String = {
-    val base = Json.obj("url" -> targetUrl, "httpResponseBody" -> true)
-    sessionId.fold(base)(id => base + ("session" -> Json.obj("id" -> JsString(id)))).toString
+   *  /uptime bar.
+   *
+   *  `headers` ride as `customHttpRequestHeaders`, and only when there are any. */
+  def requestBody(targetUrl: String, sessionId: Option[String], headers: Map[String, String] = Map.empty): String = {
+    val base        = Json.obj("url" -> targetUrl, "httpResponseBody" -> true)
+    val withSession = sessionId.fold(base)(id => base + ("session" -> Json.obj("id" -> JsString(id))))
+    val withHeaders =
+      if (headers.isEmpty) withSession
+      else withSession + ("customHttpRequestHeaders" ->
+        Json.toJson(headers.toSeq.map { case (name, value) => Json.obj("name" -> name, "value" -> value) }))
+    withHeaders.toString
   }
 
   /** Pull the upstream HTTP status code from a Zyte extract response.

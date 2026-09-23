@@ -78,6 +78,14 @@ class ZyteClientSpec extends AnyFlatSpec with Matchers {
     body should include(""""session":{"id":"sess-123"}""")
   }
 
+  it should "pass request headers as Zyte's customHttpRequestHeaders, and omit the field when there are none" in {
+    val body = play.api.libs.json.Json.parse(
+      ZyteClient.requestBody("https://vwc.odeon.co.uk/x", None, Map("Authorization" -> "Bearer t0k")))
+    (body \ "customHttpRequestHeaders").as[Seq[Map[String, String]]] shouldBe
+      Seq(Map("name" -> "Authorization", "value" -> "Bearer t0k"))
+    ZyteClient.requestBody("https://vwc.odeon.co.uk/x", None) should not include "customHttpRequestHeaders"
+  }
+
   "basicAuth" should "format Authorization as 'Basic <b64(key:)>' per Zyte's auth spec" in {
     // Zyte uses Basic auth with the API key as username and an empty
     // password — verify the encoding shape so a refactor can't quietly

@@ -28,6 +28,16 @@ class ZyteFetch(
 
   override def get(url: String): String =
     session.fold(client.get(url))(_.get(url))
+
+  /** Headers must reach the upstream — inheriting `HttpFetch`'s default
+   *  (`get(url, headers) = get(url)`) silently dropped them, so Odeon's Zyte
+   *  fallback went out without its `Authorization: Bearer` and paid for a 401.
+   *  The warmed-session path carries only cookies; rather than drop a header
+   *  there, it refuses, and the fallback chain moves on. */
+  override def get(url: String, headers: Map[String, String]): String =
+    if (headers.isEmpty) get(url)
+    else if (session.isEmpty) client.get(url, headers)
+    else throw new UnsupportedOperationException(s"ZyteFetch: the warmed-session path cannot carry request headers ($url)")
 }
 
 object ZyteFetch {

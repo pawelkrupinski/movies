@@ -21,7 +21,9 @@ class ZyteFetchSpec extends AnyFlatSpec with Matchers {
     var gets:    List[String]           = Nil
     var warms:   List[(String, String)] = Nil // (cookieSourceUrl, sessionId)
     var fetches: List[(String, String)] = Nil // (targetUrl,      sessionId)
+    var headed:  List[(String, Map[String, String])] = Nil // (targetUrl, headers)
     override def get(url: String): String = { gets ::= url; "BODY" }
+    override def get(url: String, headers: Map[String, String]): String = { headed ::= (url -> headers); "BODY" }
     override def warm(cookieSourceUrl: String, sessionId: String): Unit =
       warms = warms :+ (cookieSourceUrl -> sessionId)
     override def fetchWithSession(targetUrl: String, sessionId: String): String =
@@ -57,5 +59,25 @@ class ZyteFetchSpec extends AnyFlatSpec with Matchers {
     client.warms should have size 1       // warmed once, not five times
     client.fetches should have size 5     // every cinema still fetched
     client.fetches.map(_._2).distinct shouldBe List(client.warms.head._2) // all under that one session
+  }
+
+  // Odeon's ocapi authenticates with `Authorization: Bearer`, and `odeonFetch`
+  // falls back to Zyte when the residential proxy is down. Inheriting
+  // HttpFetch's default `get(url, headers) = get(url)` sent that fallback
+  // unauthenticated — a billed Zyte request guaranteed to come back 401.
+  "ZyteFetch with no cookie source" should "carry the caller's request headers through to Zyte" in {
+    val client = new RecordingZyteClient
+    val url    = "https://vwc.odeon.co.uk/WSVistaWebClient/ocapi/v1/sites/1/showtimes"
+    new ZyteFetch(client, None).get(url, Map("Authorization" -> "Bearer t0k"))
+
+    client.headed shouldBe List(url -> Map("Authorization" -> "Bearer t0k"))
+    client.gets shouldBe empty
+  }
+
+  "ZyteFetch with a cookie source" should "refuse headers it cannot carry rather than silently drop them" in {
+    val client = new RecordingZyteClient
+    an [UnsupportedOperationException] should be thrownBy
+      new ZyteFetch(client, Some("https://www.multikino.pl/")).get("https://www.multikino.pl/api/x", Map("Authorization" -> "Bearer t0k"))
+    client.fetches shouldBe empty
   }
 }
