@@ -936,6 +936,123 @@
           }
         }
       ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Paid egress (Zyte / Decodo) \u2014 requests by provider and outcome",
+      "description": "Every request the workers sent through a PAID egress provider, by provider and outcome (kinowo_worker_paid_egress_total). Zyte is billed per request and should be near zero -- it is the fallback behind Decodo -- so any sustained Zyte line is money; a Zyte line that is all http_401 is Odeon's 2026-09 missing-Authorization bug. Breaker fast-fails are not counted: they send nothing.",
+      "id": 17,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 65,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "reqps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (provider, outcome) (rate(kinowo_worker_paid_egress_total{country=~\"$country\"}[$__rate_interval])) > 0",
+          "legendFormat": "{{provider}} {{outcome}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Paid egress \u2014 failure share by provider (alert: PaidEgressFailing > 90%)",
+      "description": "Share of each provider's paid requests that failed (anything but success/404/410 -- a 404 is the origin answering through a working provider). PaidEgressFailing fires above 90% held 30 min with at least 10 requests in the hour. An idle provider is a GAP, not 0%: it divides by (total > 0).",
+      "id": 18,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 65,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (country, provider) (rate(kinowo_worker_paid_egress_total{country=~\"$country\",outcome!~\"success|http_404|http_410\"}[$__rate_interval])) / (sum by (country, provider) (rate(kinowo_worker_paid_egress_total{country=~\"$country\"}[$__rate_interval])) > 0)",
+          "legendFormat": "{{country}} {{provider}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
     }
   ]
 }

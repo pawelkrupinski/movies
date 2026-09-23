@@ -183,6 +183,11 @@ route_is telegram-and-email alertname=ResidentialProxyFallingBackToZyte severity
 # chain-fallback.rules.
 route_is telegram-and-email alertname=ChainFallbackSaturated severity=warning country=uk
 
+# ADDED 2026-09-23: Odeon's Zyte fallback paid for a 401 on every request and nothing said so.
+# Paid egress returning nothing is the same "silent, sustained, costs money" shape as the proxy
+# falling back to Zyte above, so it earns the same mailbox. See residential-proxy.rules.
+route_is telegram-and-email alertname=PaidEgressFailing severity=warning country=uk
+
 # THE REST OF THE READ-MODEL FAMILY MUST *NOT* HAVE FOLLOWED THEM INTO THE MAILBOX. This is the
 # assertion that fails if somebody later replaces the two names above with a `ReadModel.*` prefix,
 # which is the tempting simplification and the wrong one.

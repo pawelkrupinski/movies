@@ -4,7 +4,8 @@ import modules.WorkerWiring
 import services.cinemas.common.ZyteFallback
 import services.cinemas.pl.MultikinoClient
 import services.cinemas.uk.OdeonAuthHarvester
-import tools.{Env, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HttpFetch, RealHttpFetch, ResidentialProxy, SessionWarmingHttpFetch, StickyShardHttpFetch}
+import services.metrics.PaidEgressMetrics
+import tools.{CountingHttpFetch, Env, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HttpFetch, HttpOutcomeRecorder, RealHttpFetch, ResidentialProxy, SessionWarmingHttpFetch, StickyShardHttpFetch}
 
 /** Cinema-site egress routes: the residential-proxy and Zyte chains the
  *  Cloudflare-blocked venues scrape through, each a seam the fixture wirings
@@ -70,7 +71,7 @@ trait EgressWiring { self: WorkerWiring =>
     proxyShards.fold(fallback) { shards =>
       val legs: IndexedSeq[HttpFetch] =
         warmUrl.fold[IndexedSeq[HttpFetch]](shards)(u => shards.map(new SessionWarmingHttpFetch(_, u)))
-      val proxyLeg = EgressWiring.breakerGuarded(new StickyShardHttpFetch(legs, keyOf))
+      val proxyLeg = EgressWiring.meteredProxyLeg(new StickyShardHttpFetch(legs, keyOf), decodoMeter)
       new FallbackHttpFetch(Seq("proxy" -> proxyLeg, "fallback" -> fallback), onOutcome = recordProxyOutcome)
     }
 
@@ -85,10 +86,17 @@ trait EgressWiring { self: WorkerWiring =>
       case Some(label) => uptimeMonitor.recordFailure(ResidentialProxyService, label)
     }
 
+  // Each paid leg's per-request outcome, for `PaidEgressFailing` — the Zyte leg
+  // was metered nowhere before Odeon's paid 401s (see PaidEgressMetrics).
+  private lazy val zyteMeter: HttpOutcomeRecorder =
+    workerMetrics.paidEgress.recorderFor(country.code, PaidEgressMetrics.Provider.Zyte)
+  private lazy val decodoMeter: HttpOutcomeRecorder =
+    workerMetrics.paidEgress.recorderFor(country.code, PaidEgressMetrics.Provider.Decodo)
+
   lazy val multikinoFetch: HttpFetch =
-    proxyPrimary(MultikinoClient.fetchFor(httoFetch), warmUrl = Some(MultikinoClient.HomeUrl))
+    proxyPrimary(MultikinoClient.fetchFor(httoFetch, zyteMeter), warmUrl = Some(MultikinoClient.HomeUrl))
   // Zyte residential egress → direct fallback (Zyte only when ZYTE_API_KEY is set).
-  lazy val zyteFetch: HttpFetch = ZyteFallback.fetchFor(httoFetch)
+  lazy val zyteFetch: HttpFetch = ZyteFallback.fetchFor(httoFetch, meter = zyteMeter)
   // biletyna.pl 403s our datacenter IP; residential proxy primary, Zyte fallback.
   lazy val biletynaFetch: HttpFetch = proxyPrimary(zyteFetch)
   // www.flicks.co.uk 403s our datacenter IP behind Cloudflare (verified 2026-07-26
@@ -155,4 +163,11 @@ object EgressWiring {
    *  `WorkerWiring`. */
   private[wiring] def breakerGuarded(proxyLeg: HttpFetch): HttpFetch =
     new HostCircuitBreakerHttpFetch(proxyLeg)
+
+  /** [[breakerGuarded]] around the proxy leg with its paid-egress `meter` INSIDE
+   *  the breaker: every attempt that reached Decodo is counted with its outcome,
+   *  and a fast-fail from an open breaker — which sends nothing — is not, or an
+   *  open breaker would read as the proxy failing at 100%. */
+  private[wiring] def meteredProxyLeg(proxyLeg: HttpFetch, meter: HttpOutcomeRecorder): HttpFetch =
+    breakerGuarded(new CountingHttpFetch(proxyLeg, meter))
 }

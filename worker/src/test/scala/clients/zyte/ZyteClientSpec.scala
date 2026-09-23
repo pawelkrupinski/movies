@@ -3,6 +3,7 @@ package clients.zyte
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.common.ZyteClient
+import tools.HttpOutcome
 
 import java.nio.charset.StandardCharsets
 import java.util.Base64
@@ -54,6 +55,17 @@ class ZyteClientSpec extends AnyFlatSpec with Matchers {
     val exception   = the[RuntimeException] thrownBy ZyteClient.bodyOrThrow(json, "https://biletyna.pl/x")
     exception.getMessage should include("403")
     exception.getMessage should include("https://biletyna.pl/x")
+  }
+
+  // The paid-egress counter classifies what the Zyte leg throws. A bare
+  // RuntimeException classified as `other`, so Odeon's Zyte fallback paying for
+  // a 401 on every request (the Authorization header dropped) was
+  // indistinguishable from any other miss.
+  it should "throw an exception carrying the upstream status, so the paid-egress counter can class it" in {
+    val json      = """{"statusCode":401,"httpResponseBody":""}"""
+    val exception = the[RuntimeException] thrownBy ZyteClient.bodyOrThrow(json, "https://vwc.odeon.co.uk/x")
+    HttpOutcome.classify(exception) shouldBe HttpOutcome.Http401
+    exception.getMessage shouldBe "Zyte API call returned upstream status=401 for https://vwc.odeon.co.uk/x"
   }
 
   it should "throw when the body is missing even on a 2xx status" in {

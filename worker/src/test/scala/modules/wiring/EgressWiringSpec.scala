@@ -5,6 +5,7 @@ import org.scalatest.matchers.should.Matchers
 import tools._
 
 import java.util.concurrent.atomic.AtomicInteger
+import scala.collection.mutable
 
 /** `EgressWiring.breakerGuarded` is what stands between a Decodo-account-wide
  *  outage (every tunnel 503ing, 2026-09-10) and a worker task queue backlog:
@@ -65,5 +66,28 @@ class EgressWiringSpec extends AnyFlatSpec with Matchers {
     }
     val guarded = EgressWiring.breakerGuarded(healthy)
     (1 to 20).foreach(_ => guarded.get("https://vwc.odeon.co.uk/x") shouldBe "ok")
+  }
+
+  // The Decodo leg's paid-egress meter sits INSIDE the breaker: an attempt that
+  // reached the proxy is counted with its outcome, a breaker fast-fail (~0ms, no
+  // request made) is not — otherwise an open breaker would read as a proxy
+  // failing at 100%.
+  "meteredProxyLeg" should "count the attempts that reached the proxy, and not the breaker's fast-fails" in {
+    val outcomes  = mutable.ListBuffer.empty[String]
+    val deadProxy = new CountingFailingFetch(tunnelFailed)
+    val leg       = EgressWiring.meteredProxyLeg(deadProxy, (o: String) => outcomes += o)
+
+    (1 to 4).foreach(_ => an[java.io.IOException] should be thrownBy leg.get("https://vwc.odeon.co.uk/x"))
+    a[CircuitOpenException] should be thrownBy leg.get("https://vwc.odeon.co.uk/y")
+
+    outcomes.toList shouldBe List.fill(4)(HttpOutcome.ConnectionError)
+  }
+
+  it should "count a 401 from the origin behind the proxy as the 401 it is" in {
+    val outcomes = mutable.ListBuffer.empty[String]
+    val leg = EgressWiring.meteredProxyLeg(
+      new CountingFailingFetch(url => new HttpStatusException(401, "GET", url, None)), (o: String) => outcomes += o)
+    an[HttpStatusException] should be thrownBy leg.get("https://vwc.odeon.co.uk/x")
+    outcomes.toList shouldBe List(HttpOutcome.Http401)
   }
 }

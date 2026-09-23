@@ -72,6 +72,9 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: Int) {
   // registered-once family, each wiring binds its own country's recorders.
   val resolutionMetrics: WorkerResolutionMetrics = new WorkerResolutionMetrics(countryCodes, registry)
 
+  // Per-request outcome of the PAID egress legs (Zyte, Decodo) — see PaidEgressMetrics.
+  val paidEgress: PaidEgressMetrics = new PaidEgressMetrics(countryCodes, registry)
+
   // Census gauges, each registered once with a leading `country` label; a
   // per-country sampler (built in the wiring) writes its own slice.
   val corpusGauge:    Gauge          = WorkerCorpusMetrics.gauge(registry)

@@ -55,3 +55,60 @@ tests:
       - eval_time: 30m
         alertname: ResidentialProxyFallingBackToZyte
         exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # PaidEgressFailing -- ODEON'S ZYTE FALLBACK, REPLAYED. Every paid Zyte request from the UK
+  # worker came back 401 because the Authorization header never reached Zyte; nothing counted
+  # it. Here UK Zyte sends 2 requests a minute, all http_401. The rule needs the ratio over 90%
+  # for 30 minutes, so 20 minutes in is quiet and 45 is firing.
+  #
+  # Alongside it, and all of them silent:
+  #   - UK Decodo, healthy (a 2% failure rate);
+  #   - PL Zyte, IDLE -- seeded at 0 and never used. 0/0 is NaN and must not read as "100% failing";
+  #   - DE Decodo, failing but at a trickle (4 in the hour): under the 10-request floor, a
+  #     couple of stray timeouts on a quiet worker is not a provider that is down;
+  #   - ES Decodo, answering with 404s -- the origin saying "no such page" through a proxy that
+  #     works. Not a paid request wasted on the provider.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_paid_egress_total{country="uk",provider="zyte",outcome="http_401",job="kinowo-worker"}'
+        values: '0+2x120'
+      - series: 'kinowo_worker_paid_egress_total{country="uk",provider="zyte",outcome="success",job="kinowo-worker"}'
+        values: '0+0x120'
+      - series: 'kinowo_worker_paid_egress_total{country="uk",provider="decodo",outcome="success",job="kinowo-worker"}'
+        values: '0+49x120'
+      - series: 'kinowo_worker_paid_egress_total{country="uk",provider="decodo",outcome="timeout",job="kinowo-worker"}'
+        values: '0+1x120'
+      - series: 'kinowo_worker_paid_egress_total{country="pl",provider="zyte",outcome="success",job="kinowo-worker"}'
+        values: '0+0x120'
+      - series: 'kinowo_worker_paid_egress_total{country="pl",provider="zyte",outcome="http_401",job="kinowo-worker"}'
+        values: '0+0x120'
+      - series: 'kinowo_worker_paid_egress_total{country="de",provider="decodo",outcome="timeout",job="kinowo-worker"}'
+        values: '0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4+0x80'
+      - series: 'kinowo_worker_paid_egress_total{country="de",provider="decodo",outcome="success",job="kinowo-worker"}'
+        values: '0+0x120'
+      - series: 'kinowo_worker_paid_egress_total{country="es",provider="decodo",outcome="http_404",job="kinowo-worker"}'
+        values: '0+5x120'
+      - series: 'kinowo_worker_paid_egress_total{country="es",provider="decodo",outcome="success",job="kinowo-worker"}'
+        values: '0+0x120'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: PaidEgressFailing
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: PaidEgressFailing
+        exp_alerts:
+          - exp_labels: { severity: warning, country: uk, provider: zyte }
+            exp_annotations:
+              summary: "uk: 100% of paid zyte requests are failing"
+              description: >-
+                Over the last hour at least 90% of the requests uk's worker sent through zyte
+                failed, and it sent at least ten -- so it is paying for egress that returns
+                nothing. The fallback chain hides this completely: the next leg answers or the
+                venue goes red for some other reason. `sum by (outcome)
+                (increase(kinowo_worker_paid_egress_total{country="uk",provider="zyte"}[1h]))`
+                says HOW it fails. An http_401 on zyte is the origin refusing the request Zyte
+                forwarded (Odeon, 2026-09: the Authorization header was dropped) or, as `Zyte
+                http=401` in the worker log, Zyte refusing our key; connection_error on decodo
+                is the tunnel. Check the worker log for the leg's error text.

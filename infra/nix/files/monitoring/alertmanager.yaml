@@ -146,14 +146,14 @@ route:
     # one message to five, repeating hourly, on the channel this file's header argues must stay a
     # single stream. The subject is fixed below instead, where it costs nothing.
     - matchers:
-        - alertname =~ "Filesystem.*|Worker.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte|ChainFallbackSaturated"
+        - alertname =~ "Filesystem.*|Worker.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte|ChainFallbackSaturated|PaidEgressFailing"
         - severity = "critical"
       receiver: telegram-and-email
       group_wait: 10s
       repeat_interval: 1h
 
     - matchers:
-        - alertname =~ "Filesystem.*|Worker.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte|ChainFallbackSaturated"
+        - alertname =~ "Filesystem.*|Worker.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte|ChainFallbackSaturated|PaidEgressFailing"
         - severity = "warning"
       receiver: telegram-and-email
       group_interval: 15m

@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import models.{Cinema, CinemaMovie, Multikino}
-import tools.HttpFetch
+import tools.{HttpFetch, HttpOutcomeRecorder}
 import services.cinemas.common.{CinemaScraper, ZyteFallback}
 import services.movies.TitleNormalizer
 
@@ -78,6 +78,6 @@ object MultikinoClient {
    *  the cinema clients sharing this fetch (see [[SharedZyteSession]]). Tests
    *  override `Wiring.multikinoFetch` directly with `FakeHttpFetch`.
    */
-  def fetchFor(direct: HttpFetch): HttpFetch =
-    ZyteFallback.fetchFor(direct, cookieSource = Some(HomeUrl))
+  def fetchFor(direct: HttpFetch, zyteMeter: HttpOutcomeRecorder = HttpOutcomeRecorder.noop): HttpFetch =
+    ZyteFallback.fetchFor(direct, cookieSource = Some(HomeUrl), meter = zyteMeter)
 }

@@ -1,6 +1,6 @@
 package services.cinemas.common
 
-import tools.{Env, FallbackHttpFetch, HttpFetch}
+import tools.{CountingHttpFetch, Env, FallbackHttpFetch, HttpFetch, HttpOutcomeRecorder}
 
 import java.net.http.HttpClient
 import java.time.Duration
@@ -26,14 +26,17 @@ object ZyteFallback {
   def fetchFor(
     direct:       HttpFetch,
     cookieSource: Option[String] = None,
-    apiKey:       Option[String] = Env.get("ZYTE_API_KEY")
-  ): HttpFetch = {
-    val zyte = apiKey.filter(_.nonEmpty).map { k =>
-      "zyte" -> (new ZyteFetch(new ZyteClient(httpClient, k), cookieSource): HttpFetch)
-    }
-    val chain = zyte.toSeq :+ ("direct" -> direct)
-    if (chain.size == 1) chain.head._2 else new FallbackHttpFetch(chain)
-  }
+    apiKey:       Option[String] = Env.get("ZYTE_API_KEY"),
+    meter:        HttpOutcomeRecorder = HttpOutcomeRecorder.noop
+  ): HttpFetch =
+    chain(apiKey.filter(_.nonEmpty).map(k => new ZyteFetch(new ZyteClient(httpClient, k), cookieSource)), direct, meter)
+
+  /** Zyte (when there is a Zyte leg) → `direct`, with every Zyte attempt's
+   *  outcome going to `meter` — the paid-egress counter; `direct` is free and is
+   *  not metered here. Split from [[fetchFor]] so the composition is testable
+   *  without a key or a network. */
+  def chain(zyte: Option[HttpFetch], direct: HttpFetch, meter: HttpOutcomeRecorder): HttpFetch =
+    zyte.fold(direct)(z => new FallbackHttpFetch(Seq("zyte" -> new CountingHttpFetch(z, meter), "direct" -> direct)))
 
   private lazy val httpClient = HttpClient.newBuilder()
     .version(HttpClient.Version.HTTP_1_1)

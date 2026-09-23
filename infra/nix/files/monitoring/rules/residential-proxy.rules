@@ -74,3 +74,43 @@ groups:
             is the whole account -- check the Decodo dashboard for plan/billing/quota before
             chasing worker code, same as the 2026-06-16 "Limit: 3" incident). See
             reference_decodo_isp_proxy and reference_zyte_is_decodo_fallback_only.
+
+      # ---------------------------------------------------------------------------------------
+      # PAID EGRESS THAT RETURNS NOTHING. The rule above asks whether Decodo is serving; this one
+      # asks, per provider, whether the requests we PAY for are answering at all. Odeon's Zyte
+      # fallback sent every request without its Authorization header, so every one came back 401
+      # -- paid for, useless, and invisible: the Zyte leg had no meter, and the /uptime
+      # "Residential proxy" row pools every venue, so one always-failing client hides behind the
+      # others' successes. `kinowo_worker_paid_egress_total` meters each provider's leg directly.
+      #
+      # A 404 or 410 is the ORIGIN answering through a working provider, so it is not a failure
+      # here. The 10-request floor keeps a quiet worker's two stray timeouts from reading as a
+      # provider that is down, and an IDLE provider (seeded at zero, never used -- Zyte, most of
+      # the time, since it is only a fallback) divides 0/0 into NaN and stays silent: "while it
+      # is being used" is part of the question. A one-hour window because the fallback is used
+      # in bursts, one scrape cycle at a time; `for: 30m` on top so one bad burst is not enough.
+      # ---------------------------------------------------------------------------------------
+      - alert: PaidEgressFailing
+        expr: >-
+          (
+            sum by (country, provider) (increase(kinowo_worker_paid_egress_total{outcome!~"success|http_404|http_410"}[1h]))
+            /
+            sum by (country, provider) (increase(kinowo_worker_paid_egress_total[1h]))
+          ) > 0.9
+          and
+          sum by (country, provider) (increase(kinowo_worker_paid_egress_total[1h])) >= 10
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: {{ $value | humanizePercentage }} of paid {{ $labels.provider }} requests are failing"
+          description: >-
+            Over the last hour at least 90% of the requests {{ $labels.country }}'s worker sent
+            through {{ $labels.provider }} failed, and it sent at least ten -- so it is paying for
+            egress that returns nothing. The fallback chain hides this completely: the next leg
+            answers or the venue goes red for some other reason. `sum by (outcome)
+            (increase(kinowo_worker_paid_egress_total{country="{{ $labels.country }}",provider="{{ $labels.provider }}"}[1h]))`
+            says HOW it fails. An http_401 on zyte is the origin refusing the request Zyte
+            forwarded (Odeon, 2026-09: the Authorization header was dropped) or, as `Zyte
+            http=401` in the worker log, Zyte refusing our key; connection_error on decodo
+            is the tunnel. Check the worker log for the leg's error text.
