@@ -39,6 +39,34 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
     found.flatMap(_._3) shouldBe Some(TmdbBasis.DirectorWalk)
   }
 
+  it should "collapse a cached id onto its adjacent-year TMDB duplicate even when the reported person is credited only as WRITER" in {
+    // The walk finds a film through a person's WRITING credits when they have no
+    // directing ones (a cinema printed the writer), so the duplicate collapse has
+    // to look the same person up the same way — otherwise a cached higher-id
+    // duplicate of one film ("Gourou" held as 1315702/2025 and 1259983/2026)
+    // survives just because the credit sits under Writing.
+    val (low, high) = (1259983, 1315702)
+    def details(id: Int, date: String) =
+      s"""{"id":$id,"title":"Gourou","original_title":"Gourou","release_date":"$date","runtime":120,"credits":{"crew":[],"cast":[]}}"""
+    val tmdb = new TmdbClient(http = new StubFetch(Map(
+      "query=Yann+Gozlan"          -> """{"results":[{"id":5000,"name":"Yann Gozlan","known_for_department":"Writing"}]}""",
+      "/person/5000/movie_credits" -> s"""{"crew":[
+        |{"id":$low,"title":"Gourou","original_title":"Gourou","release_date":"2026-01-28","department":"Writing"},
+        |{"id":$high,"title":"Gourou","original_title":"Gourou","release_date":"2025-10-01","department":"Writing"}
+        |]}""".stripMargin,
+      s"/movie/$low?"              -> details(low, "2026-01-28"),
+      s"/movie/$high?"             -> details(high, "2025-10-01")
+    )), apiKey = Some("stub"))
+    val cachedHigh = new ResolutionCache {
+      def getOrResolve(hintKey: String)(resolve: => Option[String]): Option[String] = Some(high.toString)
+    }
+    val row = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("Gourou"), director = Seq("Yann Gozlan"))))
+
+    new TmdbCandidateSearch(tmdb, titleNormalizer, cachedHigh, letterboxdIdResolver = None, wikidata = None)
+      .resolve("Gourou", Some(2026), row).map(_._1) shouldBe Some(low)
+  }
+
   it should "refuse to guess for a bare title the search cannot narrow to one film" in {
     val tmdb = new TmdbClient(http = new StubFetch(Map(
       "/search/movie" -> """{"results":[

@@ -452,6 +452,23 @@ class TmdbCandidateSearch(
   private def stripImdbDisambiguator(name: String): String =
     TmdbCandidateSearch.ImdbDisambiguatorSuffix.replaceFirstIn(name, "")
 
+  /** Every TMDB person a reported director credit could mean, each with the films
+   *  the walk searches: their DIRECTING credits, or — when they have none — what
+   *  they WROTE. Try each person in turn — TMDB's top hit is wrong often enough (a
+   *  credit-less duplicate stub, or an alias another director lists) that trusting
+   *  it costs the whole resolution. The writer fallback exists because a cinema
+   *  may print the writer instead ("Drzewo magii" is directed by Ben Gregor and
+   *  written by Simon Farnaby, and cinemas print either); same response, same
+   *  round-trip, since TMDB returns the whole crew. Shared by [[directorWalk]] and
+   *  [[collapseDirectorDuplicate]] so the collapse sees exactly the filmography
+   *  the walk found the film in. Lazy: a caller stopping at the first hit fetches
+   *  no further person. */
+  private def personFilmographies(director: String): Iterator[(Int, Seq[TmdbClient.SearchResult])] =
+    tmdb.findPersonCandidates(stripImdbDisambiguator(director.split(",").head.trim)).iterator.map { personId =>
+      val directed = tmdb.personDirectorCredits(personId)
+      personId -> (if (directed.nonEmpty) directed else tmdb.personWriterCredits(personId))
+    }
+
   /** Walk a cinema-reported director's TMDB filmography and pick the entry the
    *  cinema is actually showing. Needed when the title search lands on the wrong
    *  film (different decade, different language, popularity tie-break gone wrong).
@@ -481,21 +498,7 @@ class TmdbCandidateSearch(
     cinemaTitleWeight: Map[String, Int] = Map.empty
   ): Option[TmdbClient.SearchResult] = {
     {
-      // Try each person the name could mean, in turn — TMDB's top hit is wrong
-      // often enough (a credit-less duplicate stub, or an alias another director
-      // lists) that trusting it costs the whole resolution now the walk is the
-      // only resolver. A person whose filmography doesn't contain the film simply
-      // yields nothing here, which is exactly the signal to try the next one.
-      tmdb.findPersonCandidates(stripImdbDisambiguator(director.split(",").head.trim)).iterator.flatMap { personId =>
-        // Directing credits first — the common case, unchanged. A cinema that
-        // printed the WRITER instead ("Drzewo magii" is directed by Ben Gregor and
-        // written by Simon Farnaby, and cinemas print either) would otherwise walk
-        // an empty filmography and resolve to nothing, so fall back to what this
-        // person WROTE. Same response, same round-trip — TMDB returns the whole
-        // crew — and every guard below is unchanged, so widening where the film may
-        // be FOUND does not widen what counts as a match.
-        val directed = tmdb.personDirectorCredits(personId)
-        val credits  = if (directed.nonEmpty) directed else tmdb.personWriterCredits(personId)
+      personFilmographies(director).flatMap { case (personId, credits) =>
         def sanitizedPairs(titles: Seq[String]): Seq[(String, String)] =
           titles.iterator.map(t => t -> normalizer.sanitize(t)).filter(_._2.nonEmpty).toSeq
         val wantedPairs       = sanitizedPairs(candidates)
@@ -664,13 +667,13 @@ class TmdbCandidateSearch(
    *  — independent of which duplicate the row's (merge-order-dependent) key year or
    *  a popularity tie-break happened to land on. A genuinely-different same-title
    *  remake by the same director is kept apart by needing the SAME title AND ±1
-   *  year (a remake is years apart); this only fuses true duplicates. Reuses the
-   *  director credits `directorWalk` already fetched (cached), so no extra calls.
+   *  year (a remake is years apart); this only fuses true duplicates. Reads the
+   *  same filmographies the walk does ([[personFilmographies]] — every candidate
+   *  person, writer credits when they directed nothing), so a film the walk can
+   *  find is a film the collapse can see.
    *  Order-independent — see `StagingOrderDeterminismSpec`. */
   private def collapseDirectorDuplicate(id: Int, directors: Seq[String]): Int = {
-    val credits = directors.iterator
-      .flatMap(d => tmdb.findPerson(stripImdbDisambiguator(d.split(",").head.trim)).iterator.flatMap(tmdb.personDirectorCredits))
-      .toSeq.distinctBy(_.id)
+    val credits = directors.iterator.flatMap(personFilmographies).flatMap(_._2).toSeq.distinctBy(_.id)
     def titles(f: TmdbClient.SearchResult): Set[String] =
       (Seq(f.title) ++ f.originalTitle.toSeq).map(normalizer.sanitize).filter(_.nonEmpty).toSet
     credits.find(_.id == id).fold(id) { resolved =>
