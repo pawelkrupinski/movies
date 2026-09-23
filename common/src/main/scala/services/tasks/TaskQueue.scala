@@ -163,6 +163,13 @@ trait TaskQueue {
     notBefore:   Option[Instant]     = None
   ): EnqueueResult
 
+  /** Merge `fields` into the payload of the WAITING task under `dedupKey` — for a caller
+   *  whose [[enqueue]] came back Duplicate but whose request carries something the queued
+   *  task lacks (a resolve re-try arriving while a plain resolve is queued). A worked-on
+   *  task is left alone: its handler has already read the payload. Returns whether a
+   *  waiting task was amended. */
+  def amendWaiting(dedupKey: String, fields: Map[String, String]): Boolean
+
   /** Atomically lease the oldest *eligible* waiting task to `workerId` for
    *  `lease`, or None when nothing is waiting. A task released with a future
    *  `notBefore` (transient-failure backoff) is skipped until `now` reaches it,

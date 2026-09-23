@@ -115,6 +115,22 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       }.get
   }
 
+  override def amendWaiting(dedupKey: String, fields: Map[String, String]): Boolean = coll match {
+    case None => false
+    case Some(_) if fields.isEmpty => false
+    case Some(c) =>
+      // Conditional on `state` in the filter itself, so a claim racing this update either
+      // sees the amended payload or leaves this matching nothing — never a half-read one.
+      val filter = Filters.and(Filters.eq("dedupKey", dedupKey), Filters.eq("active", true),
+        Filters.eq("state", TaskState.Waiting))
+      val update = Updates.combine(fields.toSeq.map { case (k, v) => Updates.set(s"payload.$k", v) }*)
+      Try(Await.result(c.updateOne(filter, update).toFuture(), 10.seconds).getModifiedCount > 0).recover {
+        case exception: Throwable =>
+          logger.warn(s"TaskQueue.amendWaiting($dedupKey) failed: ${exception.getMessage}")
+          false
+      }.get
+  }
+
   override def claim(workerId: String, lease: FiniteDuration, now: Instant): Option[Task] = coll match {
     case None => None
     case Some(c) =>

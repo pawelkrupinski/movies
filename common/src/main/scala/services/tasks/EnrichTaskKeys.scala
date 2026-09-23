@@ -50,11 +50,16 @@ object EnrichTaskKeys {
     Map(TitleKey -> title, YearKey -> year.map(_.toString).getOrElse("")) ++
       director.filter(_.nonEmpty).map(DirectorKey -> _) ++
       originalTitle.filter(_.nonEmpty).map(OriginalTitleKey -> _) ++
-      (mode match {
-        case ResolveMode.Normal    => None
-        case ResolveMode.RetryMiss => Some(RetryMissKey -> "true")
-        case ResolveMode.Force     => Some(ForceKey -> "true")
-      })
+      modeFields(mode)
+
+  /** The payload fields that carry `mode` — empty for Normal. Merging them into ANY
+   *  resolve payload can only raise its mode (Normal < RetryMiss < Force, see [[modeOf]]),
+   *  which is what lets a Duplicate dispatch amend a queued task without downgrading it. */
+  def modeFields(mode: ResolveMode): Map[String, String] = mode match {
+    case ResolveMode.Normal    => Map.empty
+    case ResolveMode.RetryMiss => Map(RetryMissKey -> "true")
+    case ResolveMode.Force     => Map(ForceKey -> "true")
+  }
 
   def titleOf(payload: Map[String, String]): String = payload.getOrElse(TitleKey, "")
   def yearOf(payload: Map[String, String]): Option[Int] =

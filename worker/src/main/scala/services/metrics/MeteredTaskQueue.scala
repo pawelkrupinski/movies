@@ -36,6 +36,7 @@ class MeteredTaskQueue(delegate: TaskQueue, metrics: WorkerTaskMetrics) extends 
   override def release(id: String, workerId: String, error: Option[String], notBefore: Option[Instant],
                        refundAttempt: Boolean): Unit =
     delegate.release(id, workerId, error, notBefore, refundAttempt)
+  override def amendWaiting(dedupKey: String, fields: Map[String, String]): Boolean = delegate.amendWaiting(dedupKey, fields)
   override def reapExpiredLeases(now: Instant): Int = delegate.reapExpiredLeases(now)
   override def countByState(): Map[String, Long] = delegate.countByState()
   override def waitingCount(taskType: TaskType): Int = delegate.waitingCount(taskType)

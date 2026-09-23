@@ -54,6 +54,12 @@ class InMemoryTaskQueue extends TaskQueue {
     result
   }
 
+  override def amendWaiting(dedupKey: String, fields: Map[String, String]): Boolean = lock.synchronized {
+    rows.values.find(r => r.dedupKey == dedupKey && r.state == TaskState.Waiting).exists { r =>
+      rows.put(r.id, r.copy(payload = r.payload ++ fields)); true
+    }
+  }
+
   override def claim(workerId: String, lease: FiniteDuration, now: Instant): Option[Task] = lock.synchronized {
     rows.values
       .filter(r => r.state == TaskState.Waiting && !r.nextEligibleAt.exists(_.isAfter(now)))

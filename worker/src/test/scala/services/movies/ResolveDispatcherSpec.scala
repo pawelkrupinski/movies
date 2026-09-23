@@ -47,6 +47,31 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
     EnrichTaskKeys.modeOf(task.payload) shouldBe ResolveMode.Force
   }
 
+  it should "upgrade a WAITING normal task to a re-try instead of dropping the re-try" in {
+    // The same dedupKey serves every mode, so a re-try that lands while a plain resolve is
+    // still queued came back Duplicate and was lost — and the plain resolve then stopped at
+    // the very remembered miss the re-try existed to look past, for another 24h.
+    val queue = new InMemoryTaskQueue()
+    val dispatcher = new QueueResolveDispatcher(queue)
+    dispatcher.dispatch("Tosca", None, None, None)
+    dispatcher.dispatch("Tosca", None, None, None, ResolveMode.RetryMiss)
+
+    queue.monitor().active.size shouldBe 1
+    val task = queue.claim("w", 1.minute, Instant.now()).getOrElse(fail("no ResolveTmdb task enqueued"))
+    EnrichTaskKeys.modeOf(task.payload) shouldBe ResolveMode.RetryMiss
+  }
+
+  it should "never downgrade a queued task: a later plain or re-try dispatch leaves Force in place" in {
+    val queue = new InMemoryTaskQueue()
+    val dispatcher = new QueueResolveDispatcher(queue)
+    dispatcher.dispatch("Tosca", None, None, None, ResolveMode.Force)
+    dispatcher.dispatch("Tosca", None, None, None, ResolveMode.RetryMiss)
+    dispatcher.dispatch("Tosca", None, None, None)
+
+    val task = queue.claim("w", 1.minute, Instant.now()).getOrElse(fail("no ResolveTmdb task enqueued"))
+    EnrichTaskKeys.modeOf(task.payload) shouldBe ResolveMode.Force
+  }
+
   private val keyOf: (String, Option[Int]) => CacheKey =
     new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer).keyOf
 

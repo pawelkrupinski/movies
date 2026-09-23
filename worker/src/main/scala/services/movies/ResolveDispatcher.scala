@@ -1,6 +1,6 @@
 package services.movies
 
-import services.tasks.{EnrichTaskKeys, ResolveMode, TaskQueue, TaskType}
+import services.tasks.{EnqueueResult, EnrichTaskKeys, ResolveMode, TaskQueue, TaskType}
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.ExecutionContextExecutorService
@@ -29,18 +29,24 @@ trait ResolveDispatcher {
 }
 
 /** Production: enqueue a `ResolveTmdb` worker task — retried (Reschedule), deduped
- *  by dedupKey, and visible on `/debug`. */
+ *  by dedupKey, and visible on `/debug`. Every mode shares the dedupKey, so a
+ *  RetryMiss/Force dispatch that finds a task already WAITING raises that task's mode
+ *  instead of being dropped (a still-waiting plain resolve would otherwise stop at the
+ *  very miss the re-try exists to look past). A task already being worked on keeps the
+ *  mode it was claimed with. */
 class QueueResolveDispatcher(queue: TaskQueue) extends ResolveDispatcher {
   def dispatch(title:         String,
                year:          Option[Int],
                originalTitle: Option[String],
                director:      Option[String],
                mode:          ResolveMode): Unit = {
-    queue.enqueue(
-      TaskType.ResolveTmdb,
-      EnrichTaskKeys.resolveTmdbDedup(title, year),
-      EnrichTaskKeys.resolveTmdbPayload(title, year, director, originalTitle, mode))
-    ()
+    val dedupKey = EnrichTaskKeys.resolveTmdbDedup(title, year)
+    queue.enqueue(TaskType.ResolveTmdb, dedupKey,
+      EnrichTaskKeys.resolveTmdbPayload(title, year, director, originalTitle, mode)) match {
+      case EnqueueResult.Duplicate if mode != ResolveMode.Normal =>
+        queue.amendWaiting(dedupKey, EnrichTaskKeys.modeFields(mode)); ()
+      case _ => ()
+    }
   }
 }
 
