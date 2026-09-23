@@ -6,17 +6,22 @@ package tools
 object Eventually {
   /** Retry `check` until it passes or `timeoutMs` elapses. Re-throws the LAST failure
    *  when the deadline hits, so the caller's own assertion failure is what's reported
-   *  rather than a generic timeout. */
+   *  rather than a generic timeout. Always tries at least once, and the last sleep is
+   *  cut short so there is always one try AT the deadline. */
   def eventually(check: => org.scalatest.Assertion,
                  timeoutMs: Long = 2000,
                  pollMs: Long = 20): org.scalatest.Assertion = {
     val deadline = System.currentTimeMillis() + timeoutMs
-    var last: Throwable = null
-    while (System.currentTimeMillis() < deadline) {
+    while (true) {
       try return check
-      catch { case t: Throwable => last = t; Thread.sleep(pollMs) }
+      catch {
+        case t: Throwable =>
+          val remaining = deadline - System.currentTimeMillis()
+          if (remaining <= 0) throw t
+          Thread.sleep(math.min(pollMs, remaining))
+      }
     }
-    throw last
+    throw new IllegalStateException("unreachable")
   }
 
   /** Poll `probe` until it holds or `timeoutMs` elapses, returning whatever it last
