@@ -398,17 +398,45 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     AuthController.validatedCitySlug("https://evil.example.com", Some("london")) shouldBe empty
   }
 
-  "AuthController.ssoStart" should "hand a signed-in visitor over with a one-shot code" in {
-    val (ctl, repository, codes) = fixture()
+  "AuthController.ssoStart" should "first send a signed-in visitor to the far side for a binding, minting nothing" in {
+    val (ctl, repository, _) = fixture()
     val userId = signedIn(repository, "alice@example.com")
 
     val result = ctl.ssoStart()(
       FakeRequest("GET", s"/auth/sso/start?to=$UkBase").withSession("userId" -> userId))
 
     status(result) shouldBe SEE_OTHER
+    redirectLocation(result).value shouldBe s"$UkBase/auth/sso/finish"
+  }
+
+  it should "hand a signed-in visitor over with a one-shot code bound to the browser that asked" in {
+    val (ctl, repository, codes) = fixture()
+    val userId = signedIn(repository, "alice@example.com")
+
+    val result = ctl.ssoStart()(
+      FakeRequest("GET", s"/auth/sso/start?to=$UkBase&bind=that-browser").withSession("userId" -> userId))
+
     val location = redirectLocation(result).value
     location should startWith (s"$UkBase/auth/sso/finish?code=")
-    codes.redeem(location.stripPrefix(s"$UkBase/auth/sso/finish?code=")).value shouldBe userId
+    val code = queryParams(location)("code")
+    codes.redeem(code, Some("another-browser")) shouldBe empty
+    val again = ctl.ssoStart()(
+      FakeRequest("GET", s"/auth/sso/start?to=$UkBase&bind=that-browser").withSession("userId" -> userId))
+    codes.redeem(queryParams(redirectLocation(again).value)("code"), Some("that-browser")).value shouldBe userId
+  }
+
+  // The Showtimes countries share one origin and so the cookie: there is nothing
+  // to hand over, and the far side's sibling is not this origin.
+  it should "send a signed-in visitor straight there when the target shares this origin" in {
+    val (ctl, repository, _) = fixture()
+    val userId = signedIn(repository, "alice@example.com")
+
+    val result = ctl.ssoStart()(
+      FakeRequest("GET", s"/auth/sso/start?to=$UkBase&city=london")
+        .withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "showtimes.cc")
+        .withSession("userId" -> userId))
+
+    redirectLocation(result).value shouldBe s"$UkBase/london/"
   }
 
   // Nothing to hand over is not a failure — it is the plain link the switcher
@@ -467,17 +495,52 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val result = ctl.ssoStart()(
       FakeRequest("GET", s"/auth/sso/start?to=$UkBase&city=london").withSession("userId" -> userId))
 
-    redirectLocation(result).value should include(s"&city=london")
+    redirectLocation(result).value should include(s"city=london")
   }
+
+  /** A finish request carrying a code bound to the browser it comes from. */
+  private def boundFinish(codes: AuthExchangeCodes, userId: String, extra: String = "") =
+    FakeRequest("GET", s"/auth/sso/finish?code=${codes.mint(userId, Some("this-browser"))}$extra")
+      .withSession(AuthController.SsoBindingKey -> "this-browser")
 
   "AuthController.ssoFinish" should "sign the visitor in and land them on this country's home" in {
     val (ctl, repository, codes) = fixture()
     val userId = signedIn(repository, "alice@example.com")
 
-    val result = ctl.ssoFinish()(FakeRequest("GET", s"/auth/sso/finish?code=${codes.mint(userId)}"))
+    val result = ctl.ssoFinish()(boundFinish(codes, userId))
 
     status(result) shouldBe SEE_OTHER
     session(result).get("userId").value shouldBe userId
+    session(result).get(AuthController.SsoBindingKey) shouldBe empty
+  }
+
+  // Codeless is the first leg: this browser is given a binding, and sent back to
+  // the domain that holds the session to have a code minted for it.
+  it should "give a codeless arrival a binding and send it back to the other domain for its code" in {
+    val (ctl, _, _) = fixtureFor(models.Country.UnitedKingdom)
+
+    val result = ctl.ssoFinish()(
+      FakeRequest("GET", "/uk/auth/sso/finish?city=london")
+        .withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "showtimes.cc"))
+
+    val binding  = session(result).get(AuthController.SsoBindingKey).value
+    val location = redirectLocation(result).value
+    location should startWith (s"$PlBase/auth/sso/start?")
+    queryParams(location) shouldBe Map("to" -> UkBase, "bind" -> binding, "city" -> "london")
+    session(result).get("userId") shouldBe empty
+  }
+
+  // An unbound code — the kind the native apps' deep link carries — is not a
+  // handoff code, and this browser cannot spend it either.
+  it should "refuse an unbound code" in {
+    val (ctl, repository, codes) = fixture()
+    val userId = signedIn(repository, "alice@example.com")
+
+    val result = ctl.ssoFinish()(
+      FakeRequest("GET", s"/auth/sso/finish?code=${codes.mint(userId)}")
+        .withSession(AuthController.SsoBindingKey -> "this-browser"))
+
+    session(result).get("userId") shouldBe empty
   }
 
   // By the time they are here they have already left the page they came from,
@@ -501,8 +564,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val (ctl, repository, codes) = fixtureFor(models.Country.UnitedKingdom)
     val userId = signedIn(repository, "alice@example.com")
 
-    val result = ctl.ssoFinish()(
-      FakeRequest("GET", s"/auth/sso/finish?code=${codes.mint(userId)}&city=london"))
+    val result = ctl.ssoFinish()(boundFinish(codes, userId, "&city=london"))
 
     redirectLocation(result).value shouldBe "/uk/london/"
     session(result).get("userId").value shouldBe userId
@@ -512,8 +574,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val (ctl, repository, codes) = fixtureFor(models.Country.UnitedKingdom)
     val userId = signedIn(repository, "alice@example.com")
 
-    val result = ctl.ssoFinish()(
-      FakeRequest("GET", s"/auth/sso/finish?code=${codes.mint(userId)}&city=warszawa"))
+    val result = ctl.ssoFinish()(boundFinish(codes, userId, "&city=warszawa"))
 
     redirectLocation(result).value shouldBe routes.LandingController.index().url
   }
@@ -523,68 +584,103 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   // store — which is what `MONGODB_USERS_DB` buys — and nothing else, no cookie
   // among them. An in-process code cache would fail exactly here, and used to.
   "A visitor switching country across the domain boundary" should "arrive signed in" in {
-    val repository = new InMemoryUserRepository
-    val store      = new InMemoryAuthExchangeCodeStore
-    def pod(): AuthController = new AuthController(
-      Helpers.stubControllerComponents(), Map.empty, repository,
-      new AuthExchangeCodes(store, fixedClk), models.Country.Poland, clock = fixedClk)
-
-    val poland = pod()
-    val uk     = pod()
+    val (poland, uk, repository) = pods()
     val userId = signedIn(repository, "alice@example.com")
 
-    val handoff  = poland.ssoStart()(
-      FakeRequest("GET", s"/auth/sso/start?to=$UkBase").withSession("userId" -> userId))
-    val code     = redirectLocation(handoff).value.stripPrefix(s"$UkBase/auth/sso/finish?code=")
-    val arrival  = uk.ssoFinish()(FakeRequest("GET", s"/auth/sso/finish?code=$code"))
-
-    session(arrival).get("userId").value shouldBe userId
+    session(handedOver(poland, uk, userId, s"to=$UkBase").arrival).get("userId").value shouldBe userId
   }
 
   // THE BUG THIS PINS, end to end: a signed-in visitor who picked a specific
   // city (not just a country) across the domain boundary arrives on that
-  // city, not on the UK pod's own picker.
+  // city, not on the UK pod's own picker — through every leg of the handoff.
   it should "arrive on the exact city that was picked, not that country's picker" in {
-    val repository = new InMemoryUserRepository
-    val store      = new InMemoryAuthExchangeCodeStore
-    def pod(country: models.Country): AuthController = new AuthController(
-      Helpers.stubControllerComponents(), Map.empty, repository,
-      new AuthExchangeCodes(store, fixedClk), country, clock = fixedClk)
-
-    val poland = pod(models.Country.Poland)
-    val uk     = pod(models.Country.UnitedKingdom)
+    val (poland, uk, repository) = pods()
     val userId = signedIn(repository, "alice@example.com")
 
-    val handoff = poland.ssoStart()(
-      FakeRequest("GET", s"/auth/sso/start?to=$UkBase&city=london").withSession("userId" -> userId))
-    // Pulled out by name rather than assumed to come first — `ssoStart`
-    // appends `&city=` after `code=`, but nothing about query order is a
-    // contract worth pinning here.
-    val finishUrl = redirectLocation(handoff).value.stripPrefix(s"$UkBase/auth/sso/finish?")
-    val params    = finishUrl.split("&").map(_.split("=", 2)).collect { case Array(k, v) => k -> v }.toMap
-    val arrival   = uk.ssoFinish()(FakeRequest("GET", s"/auth/sso/finish?code=${params("code")}&city=${params("city")}"))
+    val arrival = handedOver(poland, uk, userId, s"to=$UkBase&city=london").arrival
 
     redirectLocation(arrival).value shouldBe "/uk/london/"
     session(arrival).get("userId").value shouldBe userId
   }
 
   it should "not be able to do it twice with the same code" in {
+    val (poland, uk, repository) = pods()
+    val userId  = signedIn(repository, "alice@example.com")
+    val handoff = handedOver(poland, uk, userId, s"to=$UkBase")
+
+    // A replayed link — shoulder-surfed, or sitting in someone's history — is
+    // worth nothing, even in the browser it was minted for.
+    session(handoff.arrival).get("userId").value shouldBe userId
+    session(uk.ssoFinish()(FakeRequest("GET", s"/uk/auth/sso/finish?code=${handoff.code}")
+      .withSession(AuthController.SsoBindingKey -> handoff.binding))).get("userId") shouldBe empty
+  }
+
+  /** Two pods either side of the domain boundary. They share a user repository
+   *  and a code store — which is what `MONGODB_USERS_DB` buys — and nothing else,
+   *  no cookie among them. An in-process code cache would fail exactly here, and
+   *  used to. */
+  private def pods(): (AuthController, AuthController, InMemoryUserRepository) = {
     val repository = new InMemoryUserRepository
     val store      = new InMemoryAuthExchangeCodeStore
-    def pod(): AuthController = new AuthController(
+    def pod(country: models.Country) = new AuthController(
       Helpers.stubControllerComponents(), Map.empty, repository,
-      new AuthExchangeCodes(store, fixedClk), models.Country.Poland, clock = fixedClk)
-
-    val userId  = signedIn(repository, "alice@example.com")
-    val handoff = pod().ssoStart()(
-      FakeRequest("GET", s"/auth/sso/start?to=$PlBase").withSession("userId" -> userId))
-    val code    = redirectLocation(handoff).value.stripPrefix(s"$PlBase/auth/sso/finish?code=")
-
-    session(pod().ssoFinish()(FakeRequest("GET", s"/auth/sso/finish?code=$code"))).get("userId").value shouldBe userId
-    // A replayed link — shoulder-surfed, or sitting in someone's history — is
-    // worth nothing.
-    session(pod().ssoFinish()(FakeRequest("GET", s"/auth/sso/finish?code=$code"))).get("userId") shouldBe empty
+      new AuthExchangeCodes(store, fixedClk), country, clock = fixedClk)
+    (pod(models.Country.Poland), pod(models.Country.UnitedKingdom), repository)
   }
+
+  private case class Handoff(arrival: scala.concurrent.Future[play.api.mvc.Result], code: String, binding: String)
+
+  private def arriving(url: String) = {
+    val origin = AuthController.originOf(url)
+    val (scheme, host) = origin.split("://") match { case Array(sc, h) => (sc, h) }
+    FakeRequest("GET", url.drop(origin.length)).withHeaders("X-Forwarded-Proto" -> scheme, "X-Forwarded-Host" -> host)
+  }
+
+  /** Every leg of a handoff from Poland (`kinowo.net`, where `userId` is signed
+   *  in) to the UK (`showtimes.cc/uk`, where this browser holds no session yet),
+   *  followed as the browser would follow the redirects; the final landing. */
+  private def handedOver(poland: AuthController, uk: AuthController, userId: String, startQuery: String): Handoff = {
+    val start  = poland.ssoStart()(arriving(s"$PlBase/auth/sso/start?$startQuery").withSession("userId" -> userId))
+    val ask    = uk.ssoFinish()(arriving(redirectLocation(start).value))
+    val onUk   = session(ask)
+    val minted = poland.ssoStart()(arriving(redirectLocation(ask).value).withSession("userId" -> userId))
+    Handoff(
+      arrival = uk.ssoFinish()(arriving(redirectLocation(minted).value).withSession(onUk.data.toSeq*)),
+      code    = queryParams(redirectLocation(minted).value)("code"),
+      binding = onUk(AuthController.SsoBindingKey))
+  }
+
+  // THE BUG THIS PINS — login CSRF. Anyone signed in can run the handoff in
+  // THEIR OWN browser, stop at the redirect, and send the finish link to
+  // somebody else; following it used to sign the victim in as the attacker, so
+  // whatever the victim then hid or saved landed in the attacker's account. A
+  // code is now bound to the receiving browser, and only that browser can spend it.
+  it should "not sign one browser in with a handoff code minted for another" in {
+    val repository = new InMemoryUserRepository
+    val store      = new InMemoryAuthExchangeCodeStore
+    def pod(country: models.Country): AuthController = new AuthController(
+      Helpers.stubControllerComponents(), Map.empty, repository,
+      new AuthExchangeCodes(store, fixedClk), country, clock = fixedClk)
+
+    val mallory = signedIn(repository, "mallory@example.com")
+    val handoff = pod(models.Country.Poland).ssoStart()(
+      FakeRequest("GET", s"/auth/sso/start?to=$UkBase&bind=mallorys-browser").withSession("userId" -> mallory))
+    val code = queryParams(redirectLocation(handoff).value).get("code")
+
+    val victim = pod(models.Country.UnitedKingdom).ssoFinish()(
+      FakeRequest("GET", s"/uk/auth/sso/finish?code=${code.getOrElse("")}")
+        .withSession(AuthController.SsoBindingKey -> "victims-browser"))
+    session(victim).get("userId") shouldBe empty
+
+    val noBinding = pod(models.Country.UnitedKingdom).ssoFinish()(
+      FakeRequest("GET", s"/uk/auth/sso/finish?code=${code.getOrElse("")}"))
+    session(noBinding).get("userId") shouldBe empty
+  }
+
+  private def queryParams(url: String): Map[String, String] =
+    url.dropWhile(_ != '?').drop(1).split("&").toSeq.map(_.split("=", 2)).collect {
+      case Array(k, v) => k -> java.net.URLDecoder.decode(v, "UTF-8")
+    }.toMap
 
   // ── one sign-in, two deployments ─────────────────────────────────────────
 

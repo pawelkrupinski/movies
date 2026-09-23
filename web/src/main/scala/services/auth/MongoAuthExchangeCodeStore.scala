@@ -1,6 +1,7 @@
 package services.auth
 
 import com.mongodb.client.model.{IndexOptions => JIndexOptions}
+import org.mongodb.scala.bson.{BsonDateTime, BsonDocument, BsonString}
 import org.mongodb.scala.model.{Filters, Indexes}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
 import play.api.Logging
@@ -39,11 +40,12 @@ class MongoAuthExchangeCodeStore(db: Option[MongoDatabase]) extends AuthExchange
   }
 
   override def put(pending: PendingExchangeCode): Unit = coll.foreach { c =>
-    Try(Await.result(c.insertOne(Document(
-      "_id"      -> pending.code,
-      "userId"   -> pending.userId,
-      "issuedAt" -> new java.util.Date(pending.issuedAt.toEpochMilli)
-    )).toFuture(), MongoAuthExchangeCodeStore.Timeout))
+    val document = new BsonDocument()
+      .append("_id",      BsonString(pending.code))
+      .append("userId",   BsonString(pending.userId))
+      .append("issuedAt", BsonDateTime(pending.issuedAt.toEpochMilli))
+    pending.binding.foreach(binding => document.append("binding", BsonString(binding)))
+    Try(Await.result(c.insertOne(Document(document)).toFuture(), MongoAuthExchangeCodeStore.Timeout))
       // WARN, not debug: the visitor lands signed out on the far side and has no
       // way to tell why, so this line is the only trace the handoff was even
       // attempted.
@@ -66,7 +68,7 @@ class MongoAuthExchangeCodeStore(db: Option[MongoDatabase]) extends AuthExchange
     code     <- Option(document.getString("_id"))
     userId   <- Option(document.getString("userId"))
     issuedAt <- Option(document.getDate("issuedAt"))
-  } yield PendingExchangeCode(code, userId, Instant.ofEpochMilli(issuedAt.getTime))
+  } yield PendingExchangeCode(code, userId, Instant.ofEpochMilli(issuedAt.getTime), Option(document.getString("binding")))
 
   /** Housekeeping only — [[AuthExchangeCodes.redeem]] is what actually refuses an
    *  expired code, and it does so the instant the code is presented. Mongo's TTL

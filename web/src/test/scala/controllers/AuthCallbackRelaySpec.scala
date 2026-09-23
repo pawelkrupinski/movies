@@ -256,6 +256,9 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
     else location
   }
 
+  /** The session of a browser the far side has already given a binding. */
+  private val bound = Seq(AuthController.SsoBindingKey -> "this-browser")
+
   /** A repository holding one signed-in person, and their id. */
   private def signedIn(repository: InMemoryUserRepository, email: String): String = {
     repository.upsert(models.User(
@@ -280,7 +283,10 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
 
     status(result) shouldBe SEE_OTHER
     val location = redirectLocation(result).value
-    location should startWith (s"$SiblingOfPoland/auth/sso/finish?code=")
+    // Codeless: the far side first gives that browser a binding, then asks back
+    // for a code minted for it alone (see `AuthController.ssoFinish`).
+    location should startWith (s"$SiblingOfPoland/auth/sso/finish?")
+    location should not include "code="
     // ...and it carries where the visitor was actually going, so the far side
     // hands them back rather than stranding them on its own home page.
     location should include ("next=https%3A%2F%2Fkinowo.net%2F")
@@ -313,11 +319,41 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
       new AuthExchangeCodes(store, fixedClk), country, clock = fixedClk)
 
     val userId = signedIn(repository, "alice@example.com")
-    val code   = new AuthExchangeCodes(store, fixedClk).mint(userId)
+    val code   = new AuthExchangeCodes(store, fixedClk).mint(userId, Some("this-browser"))
     val landed = pod(Country.UnitedKingdom).ssoFinish()(
-      arrivingAt(Apex, s"/auth/sso/finish?code=$code&next=$PlOrigin"))
+      arrivingAt(Apex, s"/auth/sso/finish?code=$code&next=$PlOrigin").withSession(bound*))
 
     session(landed).get("userId").value shouldBe userId
+    redirectLocation(landed).value      shouldBe s"$PlOrigin/"
+  }
+
+  // Every leg as the browser follows it: kinowo.net signs in, showtimes.cc
+  // gives the browser a binding and asks back, kinowo.net mints a code for that
+  // binding, showtimes.cc spends it. Two pods sharing only the user and code
+  // stores, as production does.
+  it should "end with the visitor signed in on both domains and back where they were going" in {
+    val repository = new InMemoryUserRepository
+    val store      = new InMemoryAuthExchangeCodeStore
+    def pod(country: Country) = new AuthController(
+      Helpers.stubControllerComponents(), Map("google" -> new FakeProvider("google")), repository,
+      new AuthExchangeCodes(store, fixedClk), country, clock = fixedClk)
+    def follow(result: scala.concurrent.Future[play.api.mvc.Result]) = {
+      val url    = redirectLocation(result).value
+      val origin = AuthController.originOf(url)
+      arrivingAt(origin, url.drop(origin.length))
+    }
+    val kinowo = pod(Country.Poland)
+    val apex   = pod(Country.Poland)   // the process mounted at showtimes.cc's root
+
+    val state    = AuthController.newState(Country.Poland)
+    val signedIn = kinowo.callback("google")(
+      arrivingAt(PlOrigin, s"/auth/google/callback?code=C&state=$state").withSession(sessionFor(state)*))
+    val onKinowo = session(signedIn).data.toSeq
+    val ask      = apex.ssoFinish()(follow(signedIn))
+    val minted   = kinowo.ssoStart()(follow(ask).withSession(onKinowo*))
+    val landed   = apex.ssoFinish()(follow(minted).withSession(session(ask).data.toSeq*))
+
+    session(landed).get("userId").value shouldBe "alice@example.com"
     redirectLocation(landed).value      shouldBe s"$PlOrigin/"
   }
 
@@ -327,7 +363,8 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
     val (ctl, repository, codes) = podWith(Country.Poland)
     val userId = signedIn(repository, "alice@example.com")
     val landed = ctl.ssoFinish()(
-      arrivingAt(PlOrigin, s"/auth/sso/finish?code=${codes.mint(userId)}&next=https://evil.example.com"))
+      arrivingAt(PlOrigin, s"/auth/sso/finish?code=${codes.mint(userId, Some("this-browser"))}&next=https://evil.example.com")
+        .withSession(bound*))
 
     session(landed).get("userId").value shouldBe userId
     redirectLocation(landed).value should not include "evil.example.com"
@@ -339,9 +376,10 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
     val (ctl, repository, codes) = podWith(Country.Poland)
     val userId = signedIn(repository, "alice@example.com")
     val landed = ctl.ssoFinish()(
-      arrivingAt(PlOrigin, s"/auth/sso/finish?code=${codes.mint(userId)}"))
+      arrivingAt(PlOrigin, s"/auth/sso/finish?code=${codes.mint(userId, Some("this-browser"))}").withSession(bound*))
 
-    redirectLocation(landed).value should not include "/auth/sso/finish"
+    session(landed).get("userId").value shouldBe userId
+    redirectLocation(landed).value should not include "/auth/sso/"
   }
 
   // ── Signing out has to mean both, too ────────────────────────────────────
@@ -409,7 +447,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
     val result = podFor(Country.Poland).callback("google")(
       arrivingAt(Apex, s"/auth/google/callback?code=C&state=$state").withSession(sessionFor(state)*))
 
-    redirectLocation(result).value should startWith (s"$PlOrigin/auth/sso/finish?code=")
+    redirectLocation(result).value should startWith (s"$PlOrigin/auth/sso/finish?")
   }
 
   it should "hand the visitor back to the country they signed in on" in {

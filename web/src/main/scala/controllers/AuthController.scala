@@ -27,9 +27,13 @@ import scala.util.{Failure, Success, Try}
  * a live session to a deployment the cookie cannot reach:
  *
  *   - GET `/auth/sso/start?to=<base url>` — on the deployment the visitor is
- *     signed in to: mint a one-shot code and redirect to `to`'s `finish`.
- *   - GET `/auth/sso/finish?code=…` — on the deployment being handed the
- *     session: spend the code, set `userId`, land on that country's home.
+ *     signed in to: send the browser to `to`'s `finish` for a binding, and —
+ *     back with `&bind=…` — mint a one-shot code for that binding alone.
+ *   - GET `/auth/sso/finish` — on the deployment being handed the session:
+ *     codeless, stamp a random binding into this browser's session and ask
+ *     back; with `?code=…`, spend it only if the bindings match, set `userId`,
+ *     land on that country's home. The binding is what stops a signed-in
+ *     attacker's code from signing a victim in (login CSRF).
  *
  * That pair exists for ONE boundary. `/uk`, `/de` and `/us` share an origin and
  * so share the session cookie outright (`AppLoader.mountedAt` leaves its path at
@@ -50,6 +54,8 @@ import scala.util.{Failure, Success, Try}
  *     mixing state from /auth/google/start with a callback to
  *     /auth/facebook/callback)
  *   - `userId`        — set on successful callback, dropped on logout
+ *   - `ssoBinding`    — set by a codeless `/auth/sso/finish`, spent by the
+ *     next one that carries a code
  */
 class AuthController(
   cc:                     ControllerComponents,
@@ -185,7 +191,7 @@ class AuthController(
               // through the deep link, so there is no sibling to pair.
               uncacheable(Redirect(s"kinowo://auth-done?code=${exchangeCodes.mint(user.id)}").withSession(nextSession))
             } else {
-              uncacheable(Redirect(pairSiblingThen(landingFor(request), user.id, request)).withSession(nextSession))
+              uncacheable(Redirect(pairSiblingThen(landingFor(request), request)).withSession(nextSession))
             }
         }
     }
@@ -208,15 +214,16 @@ class AuthController(
    *  the third-party cookie rules that make the iframe version fail silently in
    *  Safari and increasingly in Chrome.
    *
+   *  Codeless: the sibling gives the browser a binding and asks back here for a
+   *  code minted for it (see [[ssoFinish]]).
+   *
    *  No pairing without a sibling, and none FROM the pairing leg itself —
    *  [[ssoFinish]] never calls this, so the chain is one hop by construction. */
-  private def pairSiblingThen(landing: String, userId: String, request: RequestHeader): String =
+  private def pairSiblingThen(landing: String, request: RequestHeader): String =
     models.Country.siblingOfOrigin(ForwardedUrl.base(request)) match {
       case None => landing
       case Some(sibling) =>
-        val code = URLEncoder.encode(exchangeCodes.mint(userId), UTF_8)
-        val next = URLEncoder.encode(absolute(landing, request), UTF_8)
-        s"$sibling${AuthController.SsoFinishPath}?code=$code&next=$next"
+        s"$sibling${AuthController.SsoFinishPath}${AuthController.query(Seq("next" -> absolute(landing, request)))}"
     }
 
   /** An auth transition nothing may keep a copy of.
@@ -414,7 +421,7 @@ class AuthController(
   def exchange(): Action[JsValue] = Action(parse.json) { request => PerUserResponse(redeemExchangeCode(request.body)) }
 
   private def redeemExchangeCode(body: JsValue): Result = {
-    (body \ "code").asOpt[String].flatMap(exchangeCodes.redeem) match {
+    (body \ "code").asOpt[String].flatMap(exchangeCodes.redeem(_)) match {
       case None =>
         Unauthorized(Json.obj("error" -> "invalid or expired code"))
       case Some(userId) =>
@@ -430,8 +437,8 @@ class AuthController(
   /** Hand this visitor's signed-in session to another country's deployment.
    *
    *  Only needed across an ORIGIN boundary — the Showtimes countries share one
-   *  and so share the cookie — but it is harmless where it is not needed, so the
-   *  switcher does not have to know which pairs those are.
+   *  and so share the cookie — so a `to` on this request's own origin is just
+   *  the plain link, and the switcher does not have to know which pairs those are.
    *
    *  Signed OUT is not an error: there is nothing to hand over, so this is just
    *  the link the switcher would have followed anyway, and the visitor lands
@@ -439,11 +446,16 @@ class AuthController(
    *  only be a hand-crafted URL, since the only thing that builds these is a
    *  `<select>` of the deployed countries.
    *
+   *  TWO LEGS, because the code must be bound to the browser that will spend it
+   *  (see [[ssoFinish]]). Without `bind` this only sends the visitor to the far
+   *  side's finish, codeless, to be given a binding there; it comes back here
+   *  with `bind` and only then is a code minted, for that binding alone.
+   *
    *  The code rides in the query string, which is the one thing worth being
    *  uncomfortable about — mitigated by making it single-use, two minutes long,
-   *  and redeemed by a URL that only ever answers with a redirect, so no page
-   *  ever renders (and no subresource sends a `Referer`) while it is still in
-   *  the address bar. */
+   *  bound to one browser, and redeemed by a URL that only ever answers with a
+   *  redirect, so no page ever renders (and no subresource sends a `Referer`)
+   *  while it is still in the address bar. */
   def ssoStart(): Action[AnyContent] = Action { request =>
     // Rides ALONGSIDE `to` rather than inside it: `to` is matched against the
     // deployed base URLs verbatim, so a query string on it is not a deployed
@@ -451,7 +463,7 @@ class AuthController(
     // reaches the far landing knowing they chose it — same as the signed-out
     // switch, which navigates there directly.
     val pick = if (LandingController.picksCity(request)) LandingController.PickCityQuery else ""
-    AuthController.switchTarget(request.getQueryString("to")) match {
+    AuthController.handoffTarget(request.getQueryString("to")) match {
       case None =>
         logger.warn(s"SSO start refused: '${request.getQueryString("to").getOrElse("")}' is not a deployed country.")
         BadRequest("Unknown country")
@@ -463,6 +475,10 @@ class AuthController(
         // controls — so the handoff below lands on the exact city rather than
         // dropping the visitor at that country's picker.
         val citySlug = AuthController.validatedCitySlug(target, request.getQueryString(LandingController.CityParam))
+        val onward = citySlug.map(LandingController.CityParam -> _).toSeq ++
+          (if (citySlug.isEmpty && pick.nonEmpty) Seq(LandingController.PickCityParam -> LandingController.PickCityValue) else Nil) ++
+          AuthController.switchTarget(request.getQueryString("next")).map("next" -> _)
+        val landing = Redirect(citySlug.map(s => s"$target/$s/").getOrElse(s"$target/$pick"))
         SignedInUser(request, userRepository) match {
           // NOTHING TO HAND OVER, and the marker matters. This endpoint is now
           // also reached unprompted, by a signed-out arrival probing whether the
@@ -472,19 +488,31 @@ class AuthController(
           // probe's own cookie guard is the durable half; this is what holds when
           // a browser is refusing cookies, which is also a browser that can never
           // hold a session and must not be put in a loop chasing one.
-          case None       => Redirect(citySlug.map(s => s"$target/$s/").getOrElse(s"$target/$pick"))
+          case None => landing
+          // Same origin: the cookie is already there, and the far side's sibling
+          // is not this origin, so a binding round trip would go astray.
+          case Some(_) if AuthController.originOf(target) == ForwardedUrl.base(request) => landing
           case Some(user) =>
-            val code = URLEncoder.encode(exchangeCodes.mint(user.id), UTF_8)
-            val onward = citySlug match {
-              case Some(s) => s"&${LandingController.CityParam}=${URLEncoder.encode(s, UTF_8)}"
-              case None    => if (pick.isEmpty) "" else s"&${LandingController.PickCityParam}=${LandingController.PickCityValue}"
+            request.getQueryString(AuthController.BindParam).filter(_.nonEmpty) match {
+              case None =>
+                Redirect(s"$target${AuthController.SsoFinishPath}${AuthController.query(onward)}")
+              case Some(binding) =>
+                val code = exchangeCodes.mint(user.id, Some(binding))
+                Redirect(s"$target${AuthController.SsoFinishPath}${AuthController.query(("code" -> code) +: onward)}")
             }
-            Redirect(s"$target/auth/sso/finish?code=$code$onward")
         }
     }
   }
 
   /** Receive a session handed over by [[ssoStart]] on another domain.
+   *
+   *  CODELESS, this is the first leg: stamp a fresh random binding into THIS
+   *  browser's session here and send it back to the other domain's `ssoStart`
+   *  carrying that binding, so the code it mints can only be spent by a request
+   *  whose session holds the same value. That is the login-CSRF defence: a
+   *  signed-in attacker can still mint a code for their own account, but only
+   *  bound to their own browser — a victim sent the finish link holds a
+   *  different binding (or none) and lands signed out.
    *
    *  A code that does not redeem lands the visitor on this country's home page
    *  signed out rather than on an error: by the time they are here they have
@@ -509,14 +537,29 @@ class AuthController(
       citySlug.map(s => s"${country.pathPrefix}/$s/").getOrElse(
         AuthController.switchTarget(request.getQueryString("next")).map(_ + "/")
           .getOrElse(routes.LandingController.index().url) + pick))
-    request.getQueryString("code").flatMap(exchangeCodes.redeem).flatMap(userRepository.findById) match {
-      case None =>
-        logger.warn("SSO handoff arrived without a redeemable code — landing signed out.")
-        uncacheable(home)
-      case Some(user) =>
-        // Deliberately does NOT pair onwards: this IS the pairing leg, and a
-        // second hop from here is the loop.
-        uncacheable(home.withSession(SignedInUser.establish(request.session, user)))
+    val here = ForwardedUrl.base(request)
+    (request.getQueryString("code"), models.Country.siblingOfOrigin(here)) match {
+      case (None, Some(sibling)) =>
+        val binding = UUID.randomUUID().toString
+        val self    = here + request.path.stripSuffix(AuthController.SsoFinishPath)
+        val onward  = Seq(LandingController.CityParam, LandingController.PickCityParam, "next")
+          .flatMap(key => request.getQueryString(key).map(key -> _))
+        uncacheable(Redirect(s"$sibling${AuthController.SsoStartPath}${AuthController.query(
+          Seq("to" -> self, AuthController.BindParam -> binding) ++ onward)}")
+          .withSession(request.session + (AuthController.SsoBindingKey -> binding)))
+      case (code, _) =>
+        // Spent either way: a binding is good for one handoff, like its code.
+        val binding = request.session.get(AuthController.SsoBindingKey)
+        val cleared = request.session - AuthController.SsoBindingKey
+        code.flatMap(exchangeCodes.redeem(_, binding)).flatMap(userRepository.findById) match {
+          case None =>
+            logger.warn("SSO handoff arrived without a code redeemable by this browser — landing signed out.")
+            uncacheable(home.withSession(cleared))
+          case Some(user) =>
+            // Deliberately does NOT pair onwards: this IS the pairing leg, and a
+            // second hop from here is the loop.
+            uncacheable(home.withSession(SignedInUser.establish(cleared, user)))
+        }
     }
   }
 
@@ -593,12 +636,7 @@ object AuthController {
    *  session is the one that should say so. Re-encoded rather than passed as a
    *  raw string so a value containing `&` cannot split into extra parameters. */
   private[controllers] def relayQuery(request: RequestHeader): String =
-    request.queryString.toSeq.sortBy(_._1).flatMap { case (key, values) =>
-      values.map(value => s"${URLEncoder.encode(key, UTF_8)}=${URLEncoder.encode(value, UTF_8)}")
-    } match {
-      case Nil    => ""
-      case params => params.mkString("?", "&", "")
-    }
+    query(request.queryString.toSeq.sortBy(_._1).flatMap { case (key, values) => values.map(key -> _) })
 
   /** The two SSO legs' paths, as the OTHER domain has to spell them.
    *
@@ -606,7 +644,30 @@ object AuthController {
    *  [[callbackPath]]: these address a DIFFERENT deployment, whose mount point is
    *  not ours, and the reverse route would helpfully prepend ours.
    *  `AuthCallbackRelaySpec` pins both against a root-mounted reverse route. */
+  val SsoStartPath  = "/auth/sso/start"
   val SsoFinishPath = "/auth/sso/finish"
+
+  /** Session key (on the RECEIVING domain) and query parameter (on the way back
+   *  to the handing-over one) for the value that binds a handoff code to one
+   *  browser — see [[AuthController.ssoFinish]]. */
+  val SsoBindingKey = "ssoBinding"
+  val BindParam     = "bind"
+
+  /** `params` as a query string, keys and values encoded; empty for none. */
+  private[controllers] def query(params: Seq[(String, String)]): String =
+    if (params.isEmpty) ""
+    else params.map { case (k, v) => s"${URLEncoder.encode(k, UTF_8)}=${URLEncoder.encode(v, UTF_8)}" }.mkString("?", "&", "")
+
+  /** `scheme://host[:port]` of an absolute URL. */
+  private[controllers] def originOf(url: String): String = url.split('/').take(3).mkString("/")
+
+  /** Where [[AuthController.ssoStart]] may send a handoff: a deployed country's
+   *  base URL (the country switch), or a deployed ORIGIN — the pairing leg of a
+   *  sign-in asks from the far domain's root, where its `/auth` routes live.
+   *  Still an exact-match allowlist of addresses we deploy, never a shape test. */
+  private[controllers] def handoffTarget(to: Option[String]): Option[String] =
+    switchTarget(to).orElse(
+      to.map(_.trim.stripSuffix("/")).filter(models.Country.deployedOrigins.contains))
   val SsoLogoutPath = "/auth/sso/logout"
 
   /** A landing as an absolute URL on `origin`.

@@ -17,8 +17,15 @@ import java.util.concurrent.ConcurrentHashMap
  *
  * `issuedAt` rather than an expiry instant so the TTL is one number, owned by
  * [[AuthExchangeCodes]], instead of a deadline each writer computes for itself.
+ *
+ * `binding` ties a cross-domain handoff code to the ONE browser meant to spend
+ * it: a random value that browser's own session on the receiving domain holds
+ * (see `AuthController.ssoFinish`). Without it a code is a bearer token for
+ * whoever follows the link, and a signed-in attacker can mint one for their own
+ * account and send it to a victim. The deep-link codes the native apps redeem
+ * carry none — the app itself received the deep link.
  */
-final case class PendingExchangeCode(code: String, userId: String, issuedAt: Instant)
+final case class PendingExchangeCode(code: String, userId: String, issuedAt: Instant, binding: Option[String] = None)
 
 /**
  * The durable boundary under [[AuthExchangeCodes]] — persistence only, no policy.
@@ -55,22 +62,26 @@ class AuthExchangeCodes(
   ttl:   Duration = AuthExchangeCodes.Ttl
 ) {
 
-  /** A fresh single-use code standing in for `userId`. */
-  def mint(userId: String): String = {
-    val pending = PendingExchangeCode(UUID.randomUUID().toString, userId, clock.instant())
+  /** A fresh single-use code standing in for `userId`, spendable only by a
+   *  redeemer presenting the same `binding`. */
+  def mint(userId: String, binding: Option[String] = None): String = {
+    val pending = PendingExchangeCode(UUID.randomUUID().toString, userId, clock.instant(), binding)
     store.put(pending)
     pending.code
   }
 
   /** The `userId` behind `code`, spending it in the process. `None` when the code
-   *  is unknown, already spent, or older than the TTL.
+   *  is unknown, already spent, older than the TTL, or was minted for a different
+   *  `binding` — a bound code is worthless to anyone but its browser, and an
+   *  unbound one is not spendable as a bound one either.
    *
    *  An EXPIRED code is still removed rather than left to the store's own
    *  housekeeping: it is spent either way, and leaving it would let a caller keep
    *  retrying a code that can never work again. */
-  def redeem(code: String): Option[String] =
+  def redeem(code: String, binding: Option[String] = None): Option[String] =
     store.remove(code)
       .filter(pending => !pending.issuedAt.plus(ttl).isBefore(clock.instant()))
+      .filter(_.binding == binding)
       .map(_.userId)
 }
 

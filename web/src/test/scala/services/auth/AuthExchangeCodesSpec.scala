@@ -41,6 +41,28 @@ class AuthExchangeCodesSpec extends AnyFlatSpec with Matchers {
     codes.redeem(code)       shouldBe empty
   }
 
+  // A cross-domain handoff code is bound to the one browser meant to spend it;
+  // anyone else following the link — the login-CSRF victim — gets nothing, and
+  // the attempt spends the code.
+  it should "redeem only with the binding it was minted for" in {
+    val codes = fixture()
+    val code  = codes.mint("alice@example.com", Some("alices-browser"))
+
+    codes.redeem(code, Some("another-browser")) shouldBe empty
+    codes.redeem(code, Some("alices-browser"))  shouldBe empty
+
+    val fresh = codes.mint("alice@example.com", Some("alices-browser"))
+    codes.redeem(fresh)                         shouldBe empty
+    val again = codes.mint("alice@example.com", Some("alices-browser"))
+    codes.redeem(again, Some("alices-browser")).value shouldBe "alice@example.com"
+  }
+
+  // The native apps' deep-link codes are unbound; a binding cannot spend one.
+  it should "not redeem an unbound code as a bound one" in {
+    val codes = fixture()
+    codes.redeem(codes.mint("alice@example.com"), Some("any-browser")) shouldBe empty
+  }
+
   // Two mints must never collide — one visitor's handoff cannot be redeemable
   // by another's code.
   it should "be unique per mint, even for the same user" in {
