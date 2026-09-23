@@ -37,13 +37,15 @@ class CityChoiceSearchTest {
     fun typingNarrowsTheListDiacriticInsensitively() {
         compose.setContent { CityChoiceScreen(catalog = Catalog.fallback, onPick = {}) }
 
-        // Białystok leads the Polish-collated list, so it's rendered up front.
-        compose.onNodeWithText("Białystok").assertExists()
+        // Poland is grouped by voivodeship: its rows open on the voivodeships,
+        // Dolnośląskie leading the Polish-collated list.
+        compose.onNodeWithText("Dolnośląskie").assertExists()
 
-        // "wroc" — typed without diacritics — keeps Wrocław, drops the rest.
+        // "wroc" — typed without diacritics — finds Wrocław across the groups,
+        // and drops the rest.
         compose.onNode(hasSetTextAction()).performTextInput("wroc")
         compose.onNodeWithText("Wrocław").assertExists()
-        compose.onNodeWithText("Białystok").assertDoesNotExist()
+        compose.onNodeWithText("Dolnośląskie").assertDoesNotExist()
         compose.onNodeWithText("Kraków").assertDoesNotExist()
     }
 
@@ -63,8 +65,8 @@ class CityChoiceSearchTest {
 
         compose.onNode(hasSetTextAction()).performTextInput("zzzzz")
         compose.onNodeWithText("Brak miasta", substring = true).assertExists()
-        // No city rows survive (Białystok led the unfiltered list).
-        compose.onNodeWithText("Białystok").assertDoesNotExist()
+        // No rows survive (Dolnośląskie led the unfiltered list).
+        compose.onNodeWithText("Dolnośląskie").assertDoesNotExist()
     }
 
     /**
@@ -84,14 +86,14 @@ class CityChoiceSearchTest {
         listOf("Polska", "Wielka Brytania", "Niemcy", "Stany Zjednoczone").forEach {
             compose.onNodeWithText(it).assertExists()
         }
-        compose.onNodeWithText("Białystok").assertIsDisplayed()
+        compose.onNodeWithText("Dolnośląskie").assertIsDisplayed()
     }
 
     /**
      * Country names in the picker follow the viewer's UI language switch
      * (Poland reads "Polen" under German, not the fixed native "Polska"),
-     * while a city's own name never translates with the reader's language —
-     * Białystok stays Białystok even here.
+     * while a place's own name never translates with the reader's language —
+     * Dolnośląskie stays Dolnośląskie even here.
      */
     @Test
     @Config(sdk = [34], qualifiers = "de")
@@ -100,7 +102,7 @@ class CityChoiceSearchTest {
 
         compose.onNodeWithText("Polen").assertExists()
         compose.onNodeWithText("Polska").assertDoesNotExist()
-        compose.onNodeWithText("Białystok").assertIsDisplayed()
+        compose.onNodeWithText("Dolnośląskie").assertIsDisplayed()
     }
 
     @Test

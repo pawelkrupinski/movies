@@ -115,6 +115,10 @@ final class CityRegionTests: XCTestCase {
                 XCTAssertNotNil(city.region, "\(city.slug) has no region and would be unreachable")
             }
         }
-        XCTAssertTrue(seeded.inCountry("pl").allSatisfy { $0.region == nil })
+        // Poland is grouped by voivodeship: every page — major city, town or
+        // cluster — carries its own, and all 16 are there.
+        XCTAssertTrue(seeded.inCountry("pl").allSatisfy { $0.region != nil })
+        XCTAssertEqual(seeded.regions(inCountry: "pl").count, 16)
+        XCTAssertTrue(seeded.regions(inCountry: "pl").contains("Wielkopolskie"))
     }
 }
