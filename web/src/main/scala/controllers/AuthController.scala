@@ -191,14 +191,6 @@ class AuthController(
     }
   }
 
-  /** Where a finished sign-in drops the visitor: the site they started on.
-   *
-   *  Usually this deployment's own landing, and expressed as a reverse route so
-   *  it keeps working off a deployed origin (a developer on localhost, a spec).
-   *  But the apex deployment finishes flows on behalf of its siblings — a `/uk`
-   *  sign-in is completed by the process mounted at `/` — and sending those
-   *  visitors to the country picker, or worse to Poland, would be a sign-in that
-   *  silently moved them to another country's repertoire. */
   /** Route the finished sign-in through the OTHER domain on its way home, so the
    *  visitor ends up signed in on both.
    *
@@ -227,14 +219,6 @@ class AuthController(
         s"$sibling${AuthController.SsoFinishPath}?code=$code&next=$next"
     }
 
-  /** `landing` as an absolute URL, so the far side can send the visitor back to
-   *  it across the domain boundary.
-   *
-   *  Against the request's ORIGIN, because a relative landing came from a reverse
-   *  route and already carries this deployment's mount point: resolving `/uk/`
-   *  against the country's base URL — which ends in `/uk` — produces
-   *  `showtimes.cc/uk/uk/`, which then fails the `next` allowlist and strands the
-   *  visitor on the wrong country entirely. */
   /** An auth transition nothing may keep a copy of.
    *
    *  These responses hand out or tear down a session, so a cached one is either
@@ -258,9 +242,19 @@ class AuthController(
   private def signedOut(result: Result): Result =
     uncacheable(result).withHeaders("Clear-Site-Data" -> "\"cache\"")
 
+  /** `landing` as an absolute URL, so the far side can send the visitor back to
+   *  it across the domain boundary — see [[AuthController.absoluteLanding]]. */
   private def absolute(landing: String, request: RequestHeader): String =
     AuthController.absoluteLanding(ForwardedUrl.base(request), landing)
 
+  /** Where a finished sign-in drops the visitor: the site they started on.
+   *
+   *  Usually this deployment's own landing, and expressed as a reverse route so
+   *  it keeps working off a deployed origin (a developer on localhost, a spec).
+   *  But the apex deployment finishes flows on behalf of its siblings — a `/uk`
+   *  sign-in is completed by the process mounted at `/` — and sending those
+   *  visitors to the country picker, or worse to Poland, would be a sign-in that
+   *  silently moved them to another country's repertoire. */
   private def landingFor(request: RequestHeader): String =
     request.getQueryString("state").flatMap(AuthController.stateCountry) match {
       case Some(home) if home != country => home.webUrl.map(_ + "/").getOrElse(routes.LandingController.index().url)
