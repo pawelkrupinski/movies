@@ -46,28 +46,27 @@ class AuthRepository(
     }
 
     /** Redeem the one-shot code from the deep link for a session. */
-    suspend fun exchangeCode(code: String) = withContext(Dispatchers.IO) {
-        val payload = json.encodeToString(CodeRequest(code))
-        val request = post("auth/exchange", payload)
-        client.newCall(request).execute().use { response ->
-            val body = response.body?.string()
-            if (response.isSuccessful && body != null) {
-                _user.value = json.decodeFromString<UserProfile>(body)
-            }
-        }
-    }
+    suspend fun exchangeCode(code: String) =
+        adoptProfileFrom(post("auth/exchange", json.encodeToString(CodeRequest(code))))
 
     /** Re-hydrate the user from a cookie persisted across launches. */
-    suspend fun checkSession() = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
+    suspend fun checkSession() = adoptProfileFrom(
+        Request.Builder()
             .url("$baseUrl/api/me")
             .header("User-Agent", UA)
-            .build()
+            .build(),
+    )
+
+    /** Run [request] and, on a 2xx whose body decodes as a [UserProfile],
+     *  sign that user in. Anything else — no network, an error status, an
+     *  unexpected body — leaves the session as it was: both callers run in a
+     *  bare `viewModelScope.launch`, where an escaping exception would crash
+     *  the app. */
+    private suspend fun adoptProfileFrom(request: Request) = withContext(Dispatchers.IO) {
         runCatching {
             client.newCall(request).execute().use { response ->
-                val body = response.body?.string()
-                if (response.isSuccessful && body != null) {
-                    _user.value = json.decodeFromString<UserProfile>(body)
+                if (response.isSuccessful) {
+                    _user.value = json.decodeFromString<UserProfile>(response.body.string())
                 }
             }
         }
