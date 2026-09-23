@@ -129,7 +129,7 @@ final class MovieChangeStream(
     // The re-read is a BLOCKING read, so it (and the fanout) run on `changeApply`, never
     // on this cursor's I/O event loop.
     def ensureOpen(): Unit = if (handle.get().isEmpty) handle.set(open(applyChange, demand))
-    def close(): Unit      = handle.getAndSet(None).foreach(h => Try(h.close()))
+    def close(): Unit      = { handle.getAndSet(None).foreach(h => Try(h.close())); demand.closed() }
 
     /** One side-collection change: re-read the film (stitched) and fan it out, COALESCING
      *  the events that name a film an apply is already queued for.
@@ -154,10 +154,11 @@ final class MovieChangeStream(
      *  and an event that rides an already-queued apply never reaches that task's `finally`. It
      *  releases ITS OWN cursor's demand, whichever cursor queued the apply it rides.
      *
-     *  AFTER `close()` an enqueue is dropped on the floor (`dropRejectedAfterShutdown`), so the id
-     *  stays in the set and its demand is never released. That is deliberate, not an oversight: the
-     *  only reachable case is a repository being discarded, whose cursor nobody is waiting on any
-     *  more. Anything that resurrects a closed repository would have to clear the set first. */
+     *  `close()` closes the side cursors, but an event already in flight on a driver thread can
+     *  still land after it: that enqueue is dropped on the floor (`dropRejectedAfterShutdown`), so
+     *  the id stays in the set and its demand is never released. That is deliberate, not an
+     *  oversight: the repository is being discarded and nobody is waiting on its cursor any more.
+     *  Anything that resurrects a closed repository would have to clear the set first. */
     private def applyChange(filmId: String): Unit = {
       liveness.delivered(collection)
       if (sideApplyPending.add(filmId))
@@ -331,9 +332,13 @@ final class MovieChangeStream(
 
   /** Tear the subscription down for good: no more reopens, the final resume position
    *  persisted synchronously, every demand window closed, the apply thread stopped. */
-  override def close(): Unit = {
+  override def close(): Unit = changeLock.synchronized {
     changeReopen.close(); resumeToken.save(force = true)
-    moviesDemand.closed(); sideCursors.foreach(_.demand.closed())
+    Option(changeSub.getAndSet(null)).foreach(_.unsubscribe())
+    moviesDemand.closed()
+    // Each side handle stops its own reopen driver too — left open, a Mongo side cursor whose
+    // client is closed under it would fail and reschedule its reopen for the life of the JVM.
+    sideCursors.foreach(_.close())
     changeApply.shutdown()
   }
 }

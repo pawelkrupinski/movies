@@ -28,14 +28,15 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
    *  shared cursor for any number of listeners is the point of the fan-out. */
   private final class HandFedSource extends MovieChangeStream.Source {
     val opens    = mutable.Buffer.empty[Option[BsonDocument]]
+    @volatile var unsubscribed = false
     private var observer: Observer[ChangeStreamDocument[StoredMovieDto]] = null
     override def open(resumeAfter: Option[BsonDocument], o: Observer[ChangeStreamDocument[StoredMovieDto]]): Unit = {
       opens += resumeAfter
       observer = o
       o.onSubscribe(new Subscription {
         override def request(n: Long): Unit  = ()
-        override def unsubscribe(): Unit     = ()
-        override def isUnsubscribed: Boolean = false
+        override def unsubscribe(): Unit     = unsubscribed = true
+        override def isUnsubscribed: Boolean = unsubscribed
       })
     }
     def emit(change: ChangeStreamDocument[StoredMovieDto]): Unit = observer.onNext(change)
@@ -309,6 +310,30 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
       import scala.jdk.CollectionConverters._
       ops.asScala.filter(_.endsWith("film|2024")).last shouldBe "upsert film|2024" // the film exists — the last word must say so
     } finally { handle.close(); under.close() }
+  }
+
+  // `close()` is "tear the subscription down for good" — the side cursors included. A Mongo
+  // side cursor left open past close keeps its own reopen driver alive: once the client is
+  // closed under it, every reopen fails and reschedules, for the life of the JVM.
+  it should "close the side cursors and the movies subscription when the stream is closed" in {
+    val source = new HandFedSource
+    val closedSides = mutable.Buffer.empty[String]
+    val slots = new InMemorySlotsRepository {
+      override def watch(onChange: String => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+        Some(new AutoCloseable { override def close(): Unit = closedSides += "slots" })
+    }
+    val screenings = new InMemoryScreeningsRepository {
+      override def watch(onChange: String => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+        Some(new AutoCloseable { override def close(): Unit = closedSides += "screenings" })
+    }
+    val under = stream(source, screenings = Some(screenings), slots = Some(slots))
+    under.watch(_ => (), _ => ()) // a listener still attached: close must not rely on it detaching
+
+    under.close()
+
+    closedSides.toSet shouldBe Set("slots", "screenings")
+    source.unsubscribed shouldBe true
+    under.isWatching shouldBe false
   }
 
   // THE SILENT CURSOR. A terminal error is reopened on a backoff; a cursor that is OPEN and
