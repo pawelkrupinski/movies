@@ -34,35 +34,33 @@ object AdaptiveParallel {
     val queue    = new ConcurrentLinkedQueue[(Int, Int)]()   // (item index, attempts so far)
     items.indices.foreach(i => queue.add(i -> 0))
     val results  = new AtomicReferenceArray[Try[B]](items.size)
-    val allowed  = new AtomicInteger(math.max(1, workers))
-    val inFlight = new AtomicInteger(0)
-    val calls    = new AtomicInteger(0)
+    val allowed   = new AtomicInteger(math.max(1, workers))
+    val remaining = new AtomicInteger(items.size)   // items without a final result yet
+    val calls     = new AtomicInteger(0)
 
+    // Done is ONE atomic read of "items still owed a result", never the pair
+    // "nothing in flight" + "queue empty": between those two reads another worker
+    // could take the last item, be throttled, shrink the pool below its own index
+    // and leave with the item re-queued — and every worker would already be gone.
+    // Worker 0 is never retired (the pool never drops below one), so a re-queued
+    // item always has a taker.
     def work(worker: Int): Unit = {
       var done = false
       while (!done) {
-        if (worker >= allowed.get) done = true
-        else {
-          // Counted in flight BEFORE the poll, so a worker that finds the queue
-          // empty can tell "all done" from "another worker holds an item it may
-          // still put back".
-          inFlight.incrementAndGet()
-          try Option(queue.poll()) match {
-            case None => ()
-            case Some((index, attempts)) =>
-              calls.incrementAndGet()
-              Try(f(items(index))) match {
-                case Failure(e) if isThrottle(e) && attempts + 1 < maxAttempts =>
-                  allowed.updateAndGet(n => math.max(1, n / 2))
-                  sleep(backoff * (attempts + 1).toLong)
-                  queue.add(index -> (attempts + 1))
-                case outcome => results.set(index, outcome)
-              }
-          } finally inFlight.decrementAndGet()
-          // In-flight read FIRST: a throttled item is re-queued before its worker
-          // leaves flight, so "none in flight, then queue empty" means finished.
-          if (inFlight.get == 0 && queue.isEmpty) done = true
-          else if (queue.isEmpty) sleep(50.millis)
+        if (remaining.get == 0 || worker >= allowed.get) done = true
+        else Option(queue.poll()) match {
+          case None => sleep(50.millis)   // another worker holds the rest; one may still come back
+          case Some((index, attempts)) =>
+            calls.incrementAndGet()
+            Try(f(items(index))) match {
+              case Failure(e) if isThrottle(e) && attempts + 1 < maxAttempts =>
+                allowed.updateAndGet(n => math.max(1, n / 2))
+                sleep(backoff * (attempts + 1).toLong)
+                queue.add(index -> (attempts + 1))
+              case outcome =>
+                results.set(index, outcome)
+                remaining.decrementAndGet()
+            }
         }
       }
     }

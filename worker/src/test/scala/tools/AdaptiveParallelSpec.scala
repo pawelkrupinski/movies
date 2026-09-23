@@ -39,6 +39,20 @@ class AdaptiveParallelSpec extends AnyFlatSpec with Matchers {
     stats.endWorkers shouldBe 1
   }
 
+  // Workers used to decide "all done" from two separate reads — nothing in
+  // flight, then queue empty. Between them another worker could take the last
+  // item, be throttled, shrink the pool below its own index and leave; everyone
+  // was then gone and the item came back "never processed" (seen in a full
+  // unit run). Repeated so the interleaving actually gets a chance to occur.
+  it should "never abandon an item when a throttle retires the worker holding it" in {
+    (1 to 3000).foreach { _ =>
+      val (results, _) = AdaptiveParallel.map(Seq("x"), workers = 16, maxAttempts = 5, sleep = noSleep)(_ == Throttled) { _ =>
+        Thread.`yield`(); throw Throttled
+      }
+      results.head._2.failed.get shouldBe Throttled
+    }
+  }
+
   it should "keep a non-throttle failure as that item's answer, without retrying" in {
     val (results, stats) = AdaptiveParallel.map(Seq(1, 2), workers = 2, sleep = noSleep)(_ == Throttled) { i =>
       if (i == 1) throw new IllegalArgumentException("bad") else i
