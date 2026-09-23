@@ -74,4 +74,20 @@ class ChangeStreamResumeTokenSpec extends AnyFlatSpec with Matchers {
       "operation was interrupted", Nil)) shouldBe false
     ChangeStreamResumeToken.isInvalid(new RuntimeException("connection reset")) shouldBe false
   }
+
+  // THE GENERATION GUARD. A position is only advanced once its event is APPLIED, on the
+  // apply thread — so an event queued before an invalid-token `clear()` can finish after it.
+  // Letting it advance would re-arm the very token the clear threw away, and the next open
+  // would resume from it and fail the same way.
+  "advance" should "ignore a position captured before a clear()" in {
+    val token = new ChangeStreamResumeToken("movies", database = None, enabled = false)
+    val stale = token.generation
+    token.clear()
+
+    token.advance(new BsonDocument("_data", new BsonString("before-clear")), stale)
+    token.current shouldBe None
+
+    token.advance(new BsonDocument("_data", new BsonString("after-clear")), token.generation)
+    token.current shouldBe Some(new BsonDocument("_data", new BsonString("after-clear")))
+  }
 }

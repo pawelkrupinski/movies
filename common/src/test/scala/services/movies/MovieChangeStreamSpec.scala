@@ -40,6 +40,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
       })
     }
     def emit(change: ChangeStreamDocument[StoredMovieDto]): Unit = observer.onNext(change)
+    def fail(e: Throwable): Unit                                  = observer.onError(e)
   }
 
   /** Counts what a side cursor's apply coalesced away — `ScreeningsMetrics` so one class
@@ -77,13 +78,14 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
     screeningsMetrics:   SideCollectionChangeMetrics = ScreeningsMetrics.noop,
     slotsMetrics:        SideCollectionChangeMetrics = SideCollectionChangeMetrics.noop,
     changeStreamMetrics: ChangeStreamMetrics         = ChangeStreamMetrics.noop,
-    clock:               Clock                       = Clock.systemUTC()
+    clock:               Clock                       = Clock.systemUTC(),
+    resumeToken:         ChangeStreamResumeToken     = new ChangeStreamResumeToken("movies", database = None, enabled = false)
   ) = new MovieChangeStream(
     source              = source,
     screenings          = screenings,
     slots               = slots,
     reread              = reread,
-    resumeToken         = new ChangeStreamResumeToken("movies", database = None, enabled = false),
+    resumeToken         = resumeToken,
     changeStreamMetrics = changeStreamMetrics,
     screeningsMetrics   = screeningsMetrics,
     slotsMetrics        = slotsMetrics,
@@ -319,11 +321,11 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
     val source = new HandFedSource
     val closedSides = mutable.Buffer.empty[String]
     val slots = new InMemorySlotsRepository {
-      override def watch(onChange: String => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+      override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
         Some(new AutoCloseable { override def close(): Unit = closedSides += "slots" })
     }
     val screenings = new InMemoryScreeningsRepository {
-      override def watch(onChange: String => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+      override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
         Some(new AutoCloseable { override def close(): Unit = closedSides += "screenings" })
     }
     val under = stream(source, screenings = Some(screenings), slots = Some(slots))
@@ -334,6 +336,84 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
     closedSides.toSet shouldBe Set("slots", "screenings")
     source.unsubscribed shouldBe true
     under.isWatching shouldBe false
+  }
+
+  // THE RESUME POSITION IS WHAT HAS BEEN APPLIED, NOT WHAT HAS BEEN DELIVERED. The apply
+  // queue can hold a window's worth of delivered events per cursor; a position persisted at
+  // delivery (a throttled save, or the forced one at shutdown) points past every one of them,
+  // so a restart resumes after events that were never applied — and never replays them.
+  it should "advance the resume position only once the event's apply has run" in {
+    val source = new HandFedSource
+    val token  = new ChangeStreamResumeToken("movies", database = None, enabled = false)
+    val gate   = new CountDownLatch(1)
+    val under  = stream(source, resumeToken = token, reread = id => { gate.await(5, TimeUnit.SECONDS); Some(recordOf(id)) })
+    val applied = new CountDownLatch(1)
+
+    val handle = under.watch(_ => applied.countDown(), _ => ())
+    try {
+      source.emit(event("insert", "film|2024", StoredMovieDto.fromDomain("film|2024", MovieRecord(), Instant.EPOCH)))
+      token.current shouldBe None // delivered, still queued behind the gate — not applied
+
+      gate.countDown()
+      applied.await(5, TimeUnit.SECONDS) shouldBe true
+      token.current shouldBe Some(new BsonDocument("_data", new BsonString("token-film|2024")))
+    } finally { handle.close(); under.close() }
+  }
+
+  it should "not re-arm a token that an invalid-token error cleared while its event was still queued" in {
+    val source = new HandFedSource
+    val token  = new ChangeStreamResumeToken("movies", database = None, enabled = false)
+    val gate   = new CountDownLatch(1)
+    val under  = stream(source, resumeToken = token, reread = id => { gate.await(5, TimeUnit.SECONDS); Some(recordOf(id)) })
+    val applied = new CountDownLatch(1)
+
+    val handle = under.watch(_ => applied.countDown(), _ => ())
+    try {
+      source.emit(event("insert", "film|2024", StoredMovieDto.fromDomain("film|2024", MovieRecord(), Instant.EPOCH)))
+      source.fail(new com.mongodb.MongoCommandException(
+        new BsonDocument("ok", new org.bson.BsonInt32(0)).append("code", new org.bson.BsonInt32(286))
+          .append("errmsg", new BsonString("ChangeStreamHistoryLost")),
+        new com.mongodb.ServerAddress()))
+
+      gate.countDown()
+      applied.await(5, TimeUnit.SECONDS) shouldBe true
+      token.current shouldBe None
+    } finally { handle.close(); under.close() }
+  }
+
+  // The side cursors' half of the same rule: each delivered side event hands over an
+  // `applied` acknowledgement (which advances THAT cursor's position), and it is called
+  // only by the apply the event queued — never at delivery, and never for an event that
+  // coalesced onto an apply queued before it (acknowledging that one would move the
+  // position past events queued in between).
+  it should "acknowledge a side-collection event only when its own apply has run" in {
+    val source = new HandFedSource
+    @volatile var ring: (String, () => Unit) => Unit = null
+    val slots = new InMemorySlotsRepository {
+      override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] = {
+        ring = onChange
+        Some(new AutoCloseable { override def close(): Unit = () })
+      }
+    }
+    val gate  = new CountDownLatch(1)
+    val under = stream(source, slots = Some(slots), reread = id => { gate.await(5, TimeUnit.SECONDS); Some(recordOf(id)) })
+    val acks  = new java.util.concurrent.ConcurrentLinkedQueue[String]()
+    val drained = new CountDownLatch(1)
+
+    val handle = under.watch(r => if (r.id == FilmId("sentinel|2024")) drained.countDown(), _ => ())
+    try {
+      // Warm-up: hold the apply thread on an unrelated film so film|2024's apply stays QUEUED.
+      source.emit(event("insert", "other|2024", StoredMovieDto.fromDomain("other|2024", MovieRecord(), Instant.EPOCH)))
+      ring("film|2024", () => acks.add("first"))
+      ring("film|2024", () => acks.add("coalesced"))
+      acks.isEmpty shouldBe true // delivered, not applied
+      source.emit(event("insert", "sentinel|2024", StoredMovieDto.fromDomain("sentinel|2024", MovieRecord(), Instant.EPOCH)))
+
+      gate.countDown()
+      drained.await(5, TimeUnit.SECONDS) shouldBe true
+      import scala.jdk.CollectionConverters._
+      acks.asScala.toSeq shouldBe Seq("first")
+    } finally { handle.close(); under.close() }
   }
 
   // THE SILENT CURSOR. A terminal error is reopened on a backoff; a cursor that is OPEN and

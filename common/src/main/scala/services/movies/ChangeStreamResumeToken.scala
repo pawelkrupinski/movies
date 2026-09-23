@@ -48,9 +48,25 @@ class ChangeStreamResumeToken(streamId: String, database: Option[MongoDatabase],
         .toOption.flatten.flatMap(_.get("token")).map(_.asDocument())
     }
 
-  /** Record the latest seen token — call BEFORE fanning an event out, so a consumer
-   *  signal can never observe an event before the position moves. */
-  def advance(token: BsonDocument): Unit = lastToken.set(token)
+  // Bumped by every `clear()`. A position is advanced only once its event is APPLIED —
+  // on the apply thread, possibly well after delivery — so an event delivered before a
+  // clear can finish after it; its stale `generation` is what stops it re-arming the token
+  // the clear threw away.
+  private val generations = new AtomicLong(0L)
+
+  /** The generation to capture when an event is DELIVERED and hand back to [[advance]]
+   *  once it has been applied. */
+  def generation: Long = generations.get()
+
+  /** Record `token` as the position to resume AFTER — call once its event has been
+   *  APPLIED (and before fanning it out, so a consumer signal can never observe an event
+   *  before the position moves). A token delivered before the last [[clear]] is ignored. */
+  def advance(token: BsonDocument, deliveredAt: Long): Unit = synchronized {
+    if (deliveredAt == generations.get()) lastToken.set(token)
+  }
+
+  /** The position a save would persist now — for specs. */
+  private[movies] def current: Option[BsonDocument] = Option(lastToken.get())
 
   /** Persist the advanced position. `force` (clean shutdown) writes SYNCHRONOUSLY so a
    *  restart resumes deterministically; otherwise fire-and-forget + time-throttled. */
@@ -70,7 +86,7 @@ class ChangeStreamResumeToken(streamId: String, database: Option[MongoDatabase],
   /** Drop the token so the next open starts fresh at "now" — for a too-old / invalidated
    *  token (oplog window exceeded), where resuming would loop on the same error. */
   def clear(): Unit = {
-    lastToken.set(null)
+    synchronized { generations.incrementAndGet(); lastToken.set(null) }
     coll.foreach(c => Try(Await.result(c.deleteOne(Filters.eq("_id", streamId)).toFuture(), 5.seconds)))
   }
 }

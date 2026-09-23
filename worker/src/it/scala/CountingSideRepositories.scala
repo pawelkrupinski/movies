@@ -54,8 +54,8 @@ final class CountingScreeningsRepository(underlying: ScreeningsRepository) exten
   def deleteFilms(filmIds: Set[String]): Long           = underlying.deleteFilms(filmIds)
   def rowIdsChecked(): (Set[String], Boolean)           = underlying.rowIdsChecked()
   def deleteRows(ids: Set[String]): Long                = underlying.deleteRows(ids)
-  override def watch(onChange: String => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
-    underlying.watch(onChange, demand)
+  override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+    underlying.watchApplied(onChange, demand)
   override def close(): Unit = underlying.close()
 
   def reset(): Unit = { replaceFilmCalls.set(0); batchReadCalls.set(0); findAllCalls.set(0) }
@@ -90,8 +90,8 @@ final class CountingSlotsRepository(underlying: SlotsRepository) extends SlotsRe
   def deleteFilms(filmIds: Set[String]): Long           = underlying.deleteFilms(filmIds)
   def rowIdsChecked(): (Set[String], Boolean)           = underlying.rowIdsChecked()
   def deleteRows(ids: Set[String]): Long                = underlying.deleteRows(ids)
-  override def watch(onChange: String => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
-    underlying.watch(onChange, demand)
+  override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+    underlying.watchApplied(onChange, demand)
   override def close(): Unit                            = underlying.close()
 
   def reset(): Unit = { replaceFilmCalls.set(0); batchReadCalls.set(0); findAllCalls.set(0) }

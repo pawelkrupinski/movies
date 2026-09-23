@@ -22,6 +22,9 @@ import scala.reflect.ClassTag
  * third change-stream observer in the codebase to get the resume-token / reopen / demand
  * dance subtly different from the others; this is the one place it is written.
  *
+ * `onChange(filmId, applied)`: the caller calls `applied()` once it has APPLIED the event
+ * (not merely queued it) — that, and only that, moves this cursor's resume position.
+ *
  * What an event carries: insert/update/replace deliver the document, whose `filmIdOf`
  * names the film; a DELETE carries only the composite `_id`, from which
  * [[SlotKeyed.filmIdOf]] recovers the prefix. `onChange` is called ON THE DRIVER'S I/O
@@ -43,7 +46,7 @@ final class SideCollectionWatch[Dto: ClassTag](
 
   /** Open the cursor; the handle stops reopening, persists the final position and
    *  unsubscribes. */
-  def watch(onChange: String => Unit, demand: ChangeStreamDemand): AutoCloseable = {
+  def watch(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): AutoCloseable = {
     val subRef = new AtomicReference[Subscription]()
     // A terminal error is the END of a cursor — the driver never brings it back, and unlike
     // the movies stream there is not even a later registration to re-open this one. Without
@@ -63,16 +66,20 @@ final class SideCollectionWatch[Dto: ClassTag](
             // throws on, or one the resume-token save fails behind, still cost a projection.
             metrics.recordChangeEvent(
               ChangeStreamMetrics.normalizeOp(Option(change.getOperationType).map(_.getValue).getOrElse("")))
-            // Advance the resume position BEFORE ringing onChange, so a re-read can never
-            // observe the change before the token moves past it.
-            resumeToken.advance(change.getResumeToken)
+            // The resume position moves only when the CALLER says this event is applied —
+            // the `applied` it is handed with the film id. `onChange` only queues the re-read;
+            // advancing here, at delivery, persisted a position past every queued event, so a
+            // restart resumed after changes that were never applied. The generation stops a
+            // late acknowledgement re-arming a token `clear()` has since thrown away.
+            val token      = change.getResumeToken
+            val generation = resumeToken.generation
+            val applied    = () => { resumeToken.advance(token, generation); resumeToken.save(force = false) }
             val filmId = Option(change.getFullDocument).map(filmIdOf).orElse(
               Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
                 .map(v => if (v.isString) v.asString.getValue else v.toString)
                 .map(SlotKeyed.filmIdOf)) // a delete carries no post-image — split the _id
-            filmId.foreach(fid => try onChange(fid)
+            filmId.foreach(fid => try onChange(fid, applied)
               catch { case e: Throwable => logger.warn(s"$name watch onChange($fid) failed: ${e.getMessage}") })
-            resumeToken.save(force = false) // time-throttled, fire-and-forget
           }
           override def onError(e: Throwable): Unit = {
             if (ChangeStreamResumeToken.isInvalid(e)) {

@@ -93,12 +93,22 @@ trait ScreeningsRepository extends SlotKeyedRows {
    *  (unchanged showtimes) does NOT ring — mirroring the `movies` no-op guard.
    *  Returns a handle to stop watching, or None when this impl can't push.
    *
+   *  `onChange(filmId, applied)`: call `applied()` once the change is APPLIED, not merely
+   *  queued — it is what moves the cursor's persisted resume position (see
+   *  [[SideCollectionWatch]]).
+   *
    *  `demand` bounds how far the cursor may run ahead of the caller's apply — the
    *  caller owns it, because the caller is what decides when an event is APPLIED (it
    *  hands the work to a queue rather than doing it in `onChange`). Impls that ring
    *  listeners synchronously have no backlog and can ignore it. */
-  def watch(onChange: String => Unit,
-            demand:   ChangeStreamDemand = ChangeStreamDemand.unbounded): Option[AutoCloseable] = None
+  def watchApplied(onChange: (String, () => Unit) => Unit,
+                   demand:   ChangeStreamDemand = ChangeStreamDemand.unbounded): Option[AutoCloseable] = None
+
+  /** [[watchApplied]] for a caller that applies inline: each ring counts as applied the
+   *  moment `onChange` returns. Final so a decorator overrides the one real method. */
+  final def watch(onChange: String => Unit,
+                  demand:   ChangeStreamDemand = ChangeStreamDemand.unbounded): Option[AutoCloseable] =
+    watchApplied((filmId, applied) => { onChange(filmId); applied() }, demand)
 
   def close(): Unit = ()
 }
@@ -147,8 +157,8 @@ class InMemoryScreeningsRepository extends ScreeningsRepository {
 
   // Rings listeners synchronously, so there is no queue and nothing for `demand` to
   // bound — it is accepted only to honour the trait's contract.
-  override def watch(onChange: String => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
-    Some(rows.watch(onChange))
+  override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+    Some(rows.watch(filmId => onChange(filmId, () => ())))
 }
 
 object ScreeningsRepository {
@@ -406,7 +416,7 @@ class MongoScreeningsRepository(
   private lazy val changes: Option[SideCollectionWatch[StoredScreeningsDto]] =
     coll.map(c => new SideCollectionWatch(ScreeningsRepository.Collection, c, _.filmId, resumeToken, metrics))
 
-  override def watch(onChange: String => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+  override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
     changes.map(_.watch(onChange, demand))
 
   override def close(): Unit = resumeToken.save(force = true)

@@ -121,7 +121,7 @@ final class MovieChangeStream(
   private final class SideCursor(
     collection: String,
     metrics:    SideCollectionChangeMetrics,
-    open:       (String => Unit, ChangeStreamDemand) => Option[AutoCloseable]
+    open:       ((String, () => Unit) => Unit, ChangeStreamDemand) => Option[AutoCloseable]
   ) {
     val demand = new ChangeStreamDemand(changeDemandWindow)
     private val handle = new AtomicReference[Option[AutoCloseable]](None)
@@ -154,17 +154,24 @@ final class MovieChangeStream(
      *  and an event that rides an already-queued apply never reaches that task's `finally`. It
      *  releases ITS OWN cursor's demand, whichever cursor queued the apply it rides.
      *
+     *  A coalesced event is NOT acknowledged to its cursor (`applied`), so that cursor's resume
+     *  position does not move for it: the apply it rode was queued BEFORE it, and the events
+     *  queued in between have not run yet — moving past it would move past them too. It is
+     *  covered by the next acknowledged event, or replayed (a harmless re-read) after a restart.
+     *
      *  `close()` closes the side cursors, but an event already in flight on a driver thread can
      *  still land after it: that enqueue is dropped on the floor (`dropRejectedAfterShutdown`), so
      *  the id stays in the set and its demand is never released. That is deliberate, not an
      *  oversight: the repository is being discarded and nobody is waiting on its cursor any more.
      *  Anything that resurrects a closed repository would have to clear the set first. */
-    private def applyChange(filmId: String): Unit = {
+    private def applyChange(filmId: String, applied: () => Unit): Unit = {
       liveness.delivered(collection)
       if (sideApplyPending.add(filmId))
         applyOffLoop(demand) {
           sideApplyPending.remove(filmId)
-          reread(filmId).foreach(movieChanges.dispatchUpsert)
+          val film = reread(filmId)
+          applied() // this cursor's resume position moves only now — see `SideCollectionWatch`
+          film.foreach(movieChanges.dispatchUpsert)
         }
       else {
         metrics.recordCoalescedChange()
@@ -177,9 +184,9 @@ final class MovieChangeStream(
   // `movie_slots` (movies stays put), so without these the projector would never see either.
   private val sideCursors: Seq[SideCursor] = Seq(
     new SideCursor(ChangeStreamLiveness.Screenings, screeningsMetrics,
-      (onChange, demand) => screenings.flatMap(_.watch(onChange, demand))),
+      (onChange, demand) => screenings.flatMap(_.watchApplied(onChange, demand))),
     new SideCursor(ChangeStreamLiveness.Slots, slotsMetrics,
-      (onChange, demand) => slots.flatMap(_.watch(onChange, demand))))
+      (onChange, demand) => slots.flatMap(_.watchApplied(onChange, demand))))
 
   // A change stream's onError is TERMINAL — nothing brings the cursor back on its own, and
   // `ensureWatching` only runs on REGISTRATION, which the worker does twice at boot and never
@@ -216,10 +223,14 @@ final class MovieChangeStream(
           changeReopen.opened() // a delivered event is what proves the cursor healthy — reset the backoff
           liveness.delivered(ChangeStreamLiveness.Movies)
           recordChangeMetrics(change)
-          // Advance the resume position BEFORE fanning out, so a consumer signal (a
-          // downstream latch / write) can never observe an event before the token moves.
-          // This stays on the I/O thread (a cheap atomic set) to preserve that ordering.
-          resumeToken.advance(change.getResumeToken)
+          // The resume position moves only once this event is APPLIED — in its apply task,
+          // before the fan-out, so a consumer signal (a downstream latch / write) can never
+          // observe an event before the token moves. Advancing HERE, at delivery, persisted a
+          // position past every delivered-but-queued event (up to a demand window of them), so a
+          // restart resumed after events that were never applied. The generation guards against
+          // a `clear()` (invalid token) landing while this event is still queued.
+          val token      = change.getResumeToken
+          val generation = resumeToken.generation
           val fullDocument = Option(change.getFullDocument)
           val deletedId    = Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
             .map(v => if (v.isString) v.asString.getValue else v.toString)
@@ -251,10 +262,12 @@ final class MovieChangeStream(
               if (sideApplyPending.add(dto._id))
                 applyOffLoop(moviesDemand) {
                   sideApplyPending.remove(dto._id)
-                  reread(dto._id).foreach(movieChanges.dispatchUpsert)
+                  val film = reread(dto._id)
+                  resumeToken.advance(token, generation)
+                  film.foreach(movieChanges.dispatchUpsert)
                   resumeToken.save(force = false) // time-throttled, fire-and-forget
                 }
-              else {
+              else { // not advanced — see `SideCursor.applyChange` on why a coalesced event must not be
                 changeStreamMetrics.recordCoalescedChange()
                 moviesDemand.applied()
               }
@@ -272,6 +285,7 @@ final class MovieChangeStream(
             case None =>
               deletedId.foreach(sideApplyPending.remove)
               applyOffLoop(moviesDemand) {
+                resumeToken.advance(token, generation)
                 deletedId.foreach(movieChanges.dispatchDelete)
                 resumeToken.save(force = false) // time-throttled, fire-and-forget
               }

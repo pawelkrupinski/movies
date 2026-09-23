@@ -51,9 +51,9 @@ class UnreadableScreeningsRepository(store: ScreeningsRepository = new InMemoryS
   // `MovieRepositoryIntegrationSpec`'s screenings-resume case red: a decorator that swallows
   // `close` leaves the underlying cursor open, and a stray cursor on the same collection is
   // exactly what a resume-token test cannot survive. Both delegations stay.
-  override def watch(onChange: String => Unit,
-                     demand:   ChangeStreamDemand = ChangeStreamDemand.unbounded): Option[AutoCloseable] =
-    store.watch(onChange, demand)
+  override def watchApplied(onChange: (String, () => Unit) => Unit,
+                            demand:   ChangeStreamDemand = ChangeStreamDemand.unbounded): Option[AutoCloseable] =
+    store.watchApplied(onChange, demand)
   override def close(): Unit = store.close()
 }
 
