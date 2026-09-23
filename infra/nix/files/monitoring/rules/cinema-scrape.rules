@@ -112,8 +112,13 @@ groups:
       # a venue added to the roster and never once fetched -- moves `oldest_age_seconds` not at
       # all. Without this rule the staleness alerting would be silent on exactly the venue that has
       # been dark longest.
+      #
+      # `last_over_time(...[10m])` BRIDGES A WORKER RESTART, as in DuplicateVenueListing below:
+      # each pod change leaves the gauge absent for ~3 minutes and one absent evaluation resets
+      # the `for:` -- with ~16 worker restarts on a deploy day (and one day-long uptime in the
+      # week to 2026-09-23) the bare gauge could not hold a day.
       - alert: CinemaScrapeNeverScraped
-        expr: kinowo_worker_cinema_scrape_never_scraped > 0
+        expr: last_over_time(kinowo_worker_cinema_scrape_never_scraped[10m]) > 0
         # TWENTY-FOUR HOURS, and it MUST stay longer than the slowest country's full sweep. Every
         # cinema is legitimately never-scraped on a fresh worker until the first sweep reaches it,
         # so a shorter window would page on every US rollout -- 14h cadence, and 1.5x of that is
@@ -181,8 +186,13 @@ groups:
       # rows for 28 DE/UK venues (a foreign venue's row in a country's own database is as
       # unservable as a retired one), UK 20 under Odeon Cinema Basingstoke, DE 1 under "Studio";
       # ES and US none. The cleanup landed today, so these should step down within two days.
+      #
+      # `last_over_time(...[10m])` BRIDGES A WORKER RESTART, as in DuplicateVenueListing below:
+      # each pod change leaves the gauge absent for ~3 minutes and one absent evaluation resets
+      # the `for:` -- with ~16 worker restarts on a deploy day (and one day-long uptime in the
+      # week to 2026-09-23) the bare gauge could not hold fifty hours.
       - alert: RetiredVenueRowsLingering
-        expr: max by (country) (kinowo_worker_retired_venue_side_rows) > 0
+        expr: max by (country) (last_over_time(kinowo_worker_retired_venue_side_rows[10m])) > 0
         for: 50h
         labels:
           severity: warning

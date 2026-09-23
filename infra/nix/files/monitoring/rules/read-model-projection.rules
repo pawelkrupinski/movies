@@ -186,9 +186,14 @@ groups:
       # transient (a re-key or title-rule wave leaving a row briefly un-concluded) without
       # letting a stuck row hide: the reaper's own retry period is 24h, so anything still here
       # after two hours is waiting a day, not a tick.
+      #
+      # `last_over_time(...[10m])` BRIDGES A WORKER RESTART, as in cinema-scrape.rules:
+      # each pod change leaves the gauge absent for ~3 minutes and one absent evaluation resets
+      # the `for:` -- with ~16 worker restarts on a deploy day (and one day-long uptime in the
+      # week to 2026-09-23) the bare gauge could not hold two hours.
       - alert: ReadModelFilmsInvisibleWithScreenings
         expr: >-
-          max by (country) (kinowo_worker_corpus_movies{subset="unresolved_with_showtimes"}) > 0
+          max by (country) (last_over_time(kinowo_worker_corpus_movies{subset="unresolved_with_showtimes"}[10m])) > 0
         for: 2h
         labels:
           severity: warning
@@ -454,19 +459,24 @@ groups:
             started on a pair that had already settled, or the counter is genuinely nonzero:
             treat it as real.)
 
+      #
+      # The WORKER side is read through `last_over_time(...[10m])`: the worker is `replicas: 1`, so
+      # each of its ~16 restarts on a deploy day leaves its gauge absent for ~3 minutes and resets
+      # the 45-minute hold (the web side rolls, so it never gaps). Its census publishes before the
+      # first scrape of a new pod, so the bridge never carries a boot-seeded zero.
       - alert: ReadModelServingShortOfCorpus
         expr: >-
           (
             (
               (
-                sum by (country) (max by (country, city) (kinowo_worker_movies_served{scope="all"}))
+                sum by (country) (max by (country, city) (last_over_time(kinowo_worker_movies_served{scope="all"}[10m])))
                 - sum by (country) (max by (country, city) (kinowo_web_movies_served{scope="all"}))
               )
-              / sum by (country) (max by (country, city) (kinowo_worker_movies_served{scope="all"}))
+              / sum by (country) (max by (country, city) (last_over_time(kinowo_worker_movies_served{scope="all"}[10m])))
             ) > 0.03
           )
           and on (country) (
-            sum by (country) (max by (country, city) (kinowo_worker_movies_served{scope="all"})) > 0
+            sum by (country) (max by (country, city) (last_over_time(kinowo_worker_movies_served{scope="all"}[10m]))) > 0
           )
         for: 45m
         labels:

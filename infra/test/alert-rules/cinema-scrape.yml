@@ -155,13 +155,15 @@ tests:
   # age gauge sits at a healthy value: the hole the age rule is structurally blind to. Twelve
   # hours in, this is still what a fresh US worker looks like before its first sweep reaches
   # everything, so nothing fires; at twenty-five hours it is not a cold start any more.
+  # THROUGH RESTARTS. Each series goes stale for ~3 minutes every five hours -- a worker restart, which the
+  # fleet does ~16 times on a deploy day -- and the hold must ride through it.
   # ────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 1m
     input_series:
       - series: 'kinowo_worker_cinema_scrape_oldest_age_seconds{country="us"}'
-        values: '36000+0x1600'
+        values: '36000x299 stale _x2 36000x299 stale _x2 36000x299 stale _x2 36000x299 stale _x2 36000x299 stale _x2 36000x85'
       - series: 'kinowo_worker_cinema_scrape_never_scraped{country="us"}'
-        values: '3+0x1600'
+        values: '3x299 stale _x2 3x299 stale _x2 3x299 stale _x2 3x299 stale _x2 3x299 stale _x2 3x85'
     alert_rule_test:
       - eval_time: 12h
         alertname: CinemaScrapeNeverScraped
@@ -220,13 +222,15 @@ tests:
   # carries 6 rows for 51 hours; UK carries 20 for 47 hours -- the 24h grace plus a daily tick
   # that came late -- and then its cleanup runs. The `max by (country)` takes the larger
   # collection, so the summary names the rows still left.
+  # PL THROUGH RESTARTS. Each series goes stale for ~3 minutes every ten hours -- a worker restart, which the
+  # fleet does ~16 times on a deploy day -- and the hold must ride through it.
   # ────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 1m
     input_series:
       - series: 'kinowo_worker_retired_venue_side_rows{country="pl",collection="screenings",job="kinowo-worker"}'
-        values: '3x3120'
+        values: '3x599 stale _x2 3x599 stale _x2 3x599 stale _x2 3x599 stale _x2 3x599 stale _x2 3x105'
       - series: 'kinowo_worker_retired_venue_side_rows{country="pl",collection="movie_slots",job="kinowo-worker"}'
-        values: '6x3120'
+        values: '6x599 stale _x2 6x599 stale _x2 6x599 stale _x2 6x599 stale _x2 6x599 stale _x2 6x105'
       - series: 'kinowo_worker_retired_venue_side_rows{country="uk",collection="screenings",job="kinowo-worker"}'
         values: '20x2820 0x300'
     alert_rule_test:

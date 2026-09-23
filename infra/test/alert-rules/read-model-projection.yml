@@ -139,6 +139,8 @@ tests:
   # FILMS INVISIBLE WHILE SCREENING. The measured baseline is zero, so the rule is a plain > 0 --
   # these cases pin that a steady zero stays quiet, that one stuck row pages after 2h, and that a
   # row which resolves itself inside the window never does.
+  # ES's stuck row pages THROUGH RESTARTS. Each series goes stale for ~3 minutes every hour -- a worker restart, which the
+  # fleet does ~16 times on a deploy day -- and the hold must ride through it.
   - interval: 1m
     input_series:
       - series: 'kinowo_worker_corpus_movies{country="pl",job="kinowo-worker",subset="unresolved_with_showtimes"}'
@@ -151,7 +153,7 @@ tests:
   - interval: 1m
     input_series:
       - series: 'kinowo_worker_corpus_movies{country="es",job="kinowo-worker",subset="unresolved_with_showtimes"}'
-        values: '1x240'
+        values: '1x59 stale _x2 1x59 stale _x2 1x59 stale _x2 1x51'
     alert_rule_test:
       # Still inside `for: 2h` -- a transient re-key wave must not page.
       - eval_time: 1h
@@ -207,10 +209,12 @@ tests:
   # 435 films for warszawa and the web serves 435, until 04:06Z takes it to 322 (26% short). The
   # prune stops immediately; the SHORTFALL does not. This is the case ReadModelFilmPruneBurst
   # cannot cover: it cleared 25 minutes in, with 84 cards still missing.
+  # The worker side is replayed THROUGH RESTARTS. Each series goes stale for ~3 minutes every 100 minutes -- a worker restart, which the
+  # fleet does ~16 times on a deploy day -- and the hold must ride through it.
   - interval: 1m
     input_series:
       - series: 'kinowo_worker_movies_served{country="pl",city="warszawa",instance="kinowo-worker-pl",job="kinowo-worker",scope="all"}'
-        values: '435x300'
+        values: '435x99 stale _x2 435x99 stale _x2 435x94'
       - series: 'kinowo_web_movies_served{country="pl",city="warszawa",instance="kinowo-web-pl",job="kinowo-web",scope="all"}'
         values: '435x60 322x240'
     alert_rule_test:
