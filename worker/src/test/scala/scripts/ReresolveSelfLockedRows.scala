@@ -1,7 +1,6 @@
 package scripts
 
 import services.MongoConnection
-import tools.Env
 import services.movies.{FilmId, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, StoredMovieRecord}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.tasks.MongoTaskQueue
@@ -128,7 +127,7 @@ object ReresolveSelfLockedRows {
   def main(args: Array[String]): Unit = {
     val apply = args.contains("--apply")
     val wanted = targets(args.toSeq, lockedTo)
-    val conn  = MongoConnection.fromEnvForDb(Env.get("MONGODB_DB").getOrElse("kinowo"), required = true)
+    val conn  = MongoConnection.forCountry(models.Country.fromEnv, required = true)
     val db = conn.database.getOrElse {
       println("Could not open the database — is the Mongo tunnel up and MONGODB_URI set?")
       sys.exit(1)

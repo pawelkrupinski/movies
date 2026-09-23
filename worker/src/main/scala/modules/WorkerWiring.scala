@@ -103,13 +103,13 @@ class WorkerWiring(
 
   // The worker is the writer — Mongo is mandatory (opt out only for local dev
   // with MONGODB_OPTIONAL=true). Bound to THIS country's database, on the shared
-  // `MongoClient` when WorkerMain injected one.
+  // `MongoClient` when WorkerMain injected one — and claimed for this country before
+  // anything can prune or write against it (see [[services.DatabaseOwner]]).
   lazy val mongoConnection: MongoConnection = {
     val optedOut = Env.flag("MONGODB_OPTIONAL")
-    MongoConnection.fromEnvForDb(
-      mongoDbName,
+    MongoConnection.forCountry(country,
       required = MongoConnection.isRequired(testMode = false, optedOut = optedOut),
-      sharedClient = sharedMongoClient)
+      sharedClient = sharedMongoClient, dbName = Some(mongoDbName))
   }
 
   /** The one clock a no-match `TmdbAttempt` is stamped from — `MovieService` on the

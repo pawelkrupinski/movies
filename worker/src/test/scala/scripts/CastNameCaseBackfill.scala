@@ -150,7 +150,7 @@ object CastNameCaseBackfill {
 
   private def backfill(country: Country, apply: Boolean): Counts = {
     // `country.mongoDb`, never `Country.dbNameFor` — see the class comment.
-    val connection = MongoConnection.fromEnvForDb(country.mongoDb, required = true)
+    val connection = MongoConnection.forCountry(country, required = true, dbName = Some(country.mongoDb))
     val database = connection.database.getOrElse {
       println(s"${country.displayName}: could not open ${country.mongoDb} — is the Mongo tunnel up " +
         "(scripts/local-mirror/prod-tunnel.sh) and MONGODB_URI set?")

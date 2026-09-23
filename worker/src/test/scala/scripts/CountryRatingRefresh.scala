@@ -21,7 +21,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 object CountryRatingRefresh {
   def main(args: Array[String]): Unit = {
     val country = args.headOption.flatMap(Country.byCode).getOrElse(Country.UnitedKingdom)
-    val conn    = MongoConnection.fromEnvForDb(country.mongoDb, required = true)
+    val conn    = MongoConnection.forCountry(country, required = true, dbName = Some(country.mongoDb))
     val db = conn.database.getOrElse {
       println(s"Could not open ${country.mongoDb} — is the tunnel up + MONGODB_URI set?"); sys.exit(1)
     }

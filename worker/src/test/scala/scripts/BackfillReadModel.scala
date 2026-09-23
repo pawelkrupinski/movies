@@ -1,11 +1,10 @@
 package scripts
 
+import services.MongoConnection
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
-import org.mongodb.scala.MongoClient
 import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, MovieRepository}
 import services.readmodel.{MongoReadModelRepository, ReadModelProjection, ReadModelReader, ReadModelWriter}
-import tools.Env
 
 /**
  * One-shot backfill: populate the denormalised read-model collections
@@ -97,13 +96,10 @@ object BackfillReadModel {
     )
 
   def main(args: Array[String]): Unit = {
-    val uri = Env.get("MONGODB_URI").getOrElse {
-      println("MONGODB_URI not set."); sys.exit(1)
-    }
-    val dbName = Env.get("MONGODB_DB").getOrElse("kinowo")
-    val client = MongoClient(uri)
+    val conn   = MongoConnection.forCountry(models.Country.fromEnv, required = true)
+    val db     = conn.database.getOrElse { println("Could not open the database — is MONGODB_URI set?"); sys.exit(1) }
+    val dbName = db.name
     try {
-      val db            = client.getDatabase(dbName)
       val movieRepository     = corpusReader(db)
       val readModelRepository = new MongoReadModelRepository(Some(db))
       require(movieRepository.enabled,     s"movies repository not enabled for $dbName")
@@ -115,6 +111,6 @@ object BackfillReadModel {
       val secs = (System.nanoTime() - started) / 1e9
       println(f"@@ done in $secs%.1fs — wrote web_movies=$movies, web_screenings=$screenings" +
               s"${if (prunedM + prunedS > 0) s" (pruned $prunedM movie + $prunedS screening stale document(s))" else ""}")
-    } finally client.close()
+    } finally conn.close()
   }
 }

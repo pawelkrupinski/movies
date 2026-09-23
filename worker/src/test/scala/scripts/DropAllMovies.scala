@@ -1,8 +1,8 @@
 package scripts
 
-import org.mongodb.scala.{MongoClient, SingleObservableFuture}
+import services.MongoConnection
+import org.mongodb.scala.SingleObservableFuture
 import services.movies.MongoMovieRepository
-import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -27,13 +27,11 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 object DropAllMovies {
 
   def main(args: Array[String]): Unit = {
-    val uri = Env.get("MONGODB_URI").getOrElse {
-      println("MONGODB_URI not set — nothing to drop.")
-      sys.exit(1)
-    }
-    val dbName = Env.get("MONGODB_DB").getOrElse("kinowo")
+    val conn   = MongoConnection.forCountry(models.Country.fromEnv, required = true)
+    val db     = conn.database.getOrElse { println("Could not open the database — nothing to drop."); sys.exit(1) }
+    val dbName = db.name
 
-    val repository   = new MongoMovieRepository(normalizer = titleNormalizer)
+    val repository   = new MongoMovieRepository(Some(db), normalizer = titleNormalizer)
     val before = repository.findAll()
     println(s"$dbName.movies: ${before.size} row(s) currently stored.\n")
 
@@ -49,9 +47,8 @@ object DropAllMovies {
     // `deleteMany({})` rather than `drop()` — drop would also remove any
     // indexes we'd configured outside this codebase; deleteMany keeps the
     // collection structure intact, just empties it.
-    val client = MongoClient(uri)
     try {
-      val coll    = client.getDatabase(dbName).getCollection("movies")
+      val coll    = db.getCollection("movies")
       val deleted = Await.result(coll.deleteMany(org.mongodb.scala.bson.collection.immutable.Document()).toFuture(), 60.seconds)
       println()
       println("════ Summary ════")
@@ -62,6 +59,6 @@ object DropAllMovies {
       println("each new MovieDetailsComplete event drives a fresh TMDB/IMDb/MC/RT/Filmweb")
       println("resolution. Expect ~5 minutes of in-flight rating discovery before")
       println("the cache reaches steady state.")
-    } finally client.close()
+    } finally conn.close()
   }
 }

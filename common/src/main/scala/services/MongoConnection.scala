@@ -282,6 +282,22 @@ object MongoConnection extends Logging {
       parseProbeTimeout(Env.get("MONGODB_PROBE_TIMEOUT_SECONDS")),
       sharedClient = sharedClient)
 
+  /** [[fromEnvForDb]] for a process that WRITES `country`'s corpus — the worker and every
+   *  `worker/Test/runMain scripts.*` tool that writes — claimed for that country through
+   *  [[DatabaseOwner]] before the caller can write anything. `dbName` defaults to
+   *  `Country.dbNameFor`, so an explicit `MONGODB_DB` still wins; what this adds is that a
+   *  `MONGODB_DB` naming ANOTHER country's database (`.env.local`'s `kinowo` under a German
+   *  run — how DE/UK rows reached the Polish corpus) is refused with an
+   *  `IllegalStateException` instead of written into. A connection that could not reach
+   *  Mongo claims nothing — its own required/optional handling already decided that. */
+  def forCountry(country: models.Country, required: Boolean, sharedClient: Option[MongoClient] = None,
+      dbName: Option[String] = None): MongoConnection = {
+    val connection = fromEnvForDb(dbName.getOrElse(models.Country.dbNameFor(country)), required, sharedClient)
+    try connection.database.foreach(new DatabaseOwner(_).claim(country))
+    catch { case e: IllegalStateException => connection.close(); throw e }
+    connection
+  }
+
   /** One shared `MongoClient` for the whole process, built from `MONGODB_URI`,
    *  to be bound to per-country database views via [[fromEnvForDb]]'s
    *  `sharedClient`. `None` when `MONGODB_URI` is unset (local opt-out) — each

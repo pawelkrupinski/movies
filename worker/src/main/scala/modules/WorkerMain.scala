@@ -73,9 +73,9 @@ object WorkerMain extends Logging {
     val wirings =
       try {
         val ws = countries.map(c => new WorkerWiring(c, sharedBudget, sharedClient, Some(workerMetrics)))
-        // A deployment, not a test wiring: refuse a database another country already
-        // owns before anything prunes against it (see [[services.DatabaseOwner]]).
-        ws.foreach(w => w.mongoConnection.database.foreach(new services.DatabaseOwner(_).claim(w.country)))
+        // Open (and so claim — `MongoConnection.forCountry`) every country's database
+        // before any wiring starts, so a mismatch refuses the whole boot up front.
+        ws.foreach(_.mongoConnection)
         ws.foreach(_.start())
         workerMetrics.start() // process-level JVM/native samplers, once
         ws

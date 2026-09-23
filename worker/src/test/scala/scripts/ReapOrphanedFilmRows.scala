@@ -1,9 +1,9 @@
 package scripts
 
+import services.MongoConnection
 import org.mongodb.scala.model.{Filters, Sorts}
-import org.mongodb.scala.{Document, MongoClient, MongoCollection, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, SingleObservableFuture}
 import services.movies.{KeysetScan, MovieCodecs, MovieRepository, ScreeningsRepository, SlotsRepository, StoredMovieDto}
-import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -45,11 +45,10 @@ object ReapOrphanedFilmRows {
   def main(args: Array[String]): Unit = {
     val apply  = args.contains("--apply")
     val max    = argInt(args, "--max", 5000)
-    val uri    = Env.get("MONGODB_URI").getOrElse { println("MONGODB_URI not set."); sys.exit(1) }
-    val dbName = Env.get("MONGODB_DB").getOrElse("kinowo")
-    val client = MongoClient(uri)
+    val conn   = MongoConnection.forCountry(models.Country.fromEnv, required = true)
+    val db     = conn.database.getOrElse { println("Could not open the database — is MONGODB_URI set?"); sys.exit(1) }
+    val dbName = db.name
     try {
-      val db     = client.getDatabase(dbName)
       val movies = db.withCodecRegistry(MovieCodecs.registry)
         .getCollection[StoredMovieDto](MovieRepository.Collection)
 
@@ -106,7 +105,7 @@ object ReapOrphanedFilmRows {
           }
         }
       }
-    } finally client.close()
+    } finally conn.close()
   }
 
   private def argInt(args: Array[String], flag: String, default: Int): Int =
