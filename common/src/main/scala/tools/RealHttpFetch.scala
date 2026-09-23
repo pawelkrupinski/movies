@@ -11,6 +11,9 @@ import java.util.concurrent.CompletableFuture
 import scala.concurrent.duration.FiniteDuration
 
 class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends HttpFetch with Logging {
+  // Before any client below exists — see RealHttpFetch.allowBasicProxyTunnelAuth.
+  RealHttpFetch.allowBasicProxyTunnelAuth()
+
   // Connect + per-request timeouts so a hung upstream (MC search HTML
   // sometimes streams forever, Filmweb soft-blocks by holding the socket
   // open, …) can't pin a worker thread indefinitely. Production was
@@ -245,6 +248,18 @@ final case class FetchedPage(finalUrl: String, body: String)
 
 object RealHttpFetch {
 
+  /** java.net.http disables Basic auth on HTTPS CONNECT tunnels by default
+   *  (`jdk.http.auth.tunneling.disabledSchemes` = "Basic"), so every request
+   *  through the Decodo proxy 407s unless this is cleared. The JDK reads it ONCE,
+   *  when java.net.http first initialises — so clearing it when the proxy is
+   *  configured is too late if any direct fetch ran first: the roster audit's
+   *  ~170 direct page reads did, and every proxied chain-list request 407'd (run
+   *  35912986387). Hence every [[RealHttpFetch]] clears it before building its
+   *  clients. It only permits Basic to a proxy we configure; none is used
+   *  otherwise. */
+  def allowBasicProxyTunnelAuth(): Unit =
+    System.setProperty("jdk.http.auth.tunneling.disabledSchemes", "")
+
   /** Routes a `RealHttpFetch`'s outbound requests through an authenticated HTTP
    *  proxy — the Decodo static-residential (ISP) egress used for cinema sites
    *  that Cloudflare-block our Fly datacenter IP at the ASN level (Multikino,
@@ -265,12 +280,7 @@ object RealHttpFetch {
   case class ProxyConfig(host: String, ports: Seq[Int], user: String, password: String) {
     require(ports.nonEmpty, "ProxyConfig needs at least one port")
 
-    // java.net.http disables Basic auth on HTTPS CONNECT tunnels by default
-    // (`jdk.http.auth.tunneling.disabledSchemes` = "Basic"). Both our targets are
-    // HTTPS, so without clearing it every proxied request 407s. Set before the
-    // proxied HttpClient issues its first request. The worker also passes
-    // `-Djdk.http.auth.tunneling.disabledSchemes=` as a belt-and-suspenders.
-    System.setProperty("jdk.http.auth.tunneling.disabledSchemes", "")
+    allowBasicProxyTunnelAuth()
 
     /** This config's sticky egress: the sole port of a [[pinnedTo]] config, or
      *  `ports.head` for the full pool (whose selector is unused — clients always
