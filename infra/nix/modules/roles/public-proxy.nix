@@ -444,11 +444,12 @@ in
           ${tlsBlock}
           ${served}
 
-          # HSTS. Deliberately modest -- one week, no preload, no includeSubDomains. Preload is a
-          # one-way door (removal takes months and ships with the browser), and includeSubDomains
-          # would impose HTTPS-only on every future name under these domains, including ones that
-          # do not exist yet.
-          header Strict-Transport-Security "max-age=604800"
+          # HSTS. One year, so a returning visitor's first request can't be downgraded to http on a
+          # hostile network -- but no preload and no includeSubDomains. Preload is a one-way door
+          # (removal takes months and ships with the browser), and includeSubDomains would impose
+          # HTTPS-only on every future name under these domains, including ones that do not exist
+          # yet. test_public_proxy.sh pins the value.
+          header Strict-Transport-Security "max-age=31536000"
         '';
       }) cfg.vhosts;
     };

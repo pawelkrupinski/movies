@@ -178,6 +178,12 @@ check 502 "$META"    "/us/sitemap.xml"                    "the crawl map stays o
 check 502 "$HUMAN"   "/us/florence/movies?cast=Tom+Hanks" "a PERSON using the filter UI is never throttled"
 check 502 "$PREVIEW" "/us/florence/movies"                "the share-preview agent is a different agent and stays open"
 
+# HSTS: one year, still without preload or includeSubDomains (both one-way doors -- see the vhost).
+echo "==> what HSTS the vhost promises"
+hsts="$(curl -s -o /dev/null -D - -A "$HUMAN" "http://127.0.0.1:$port/us/florence/" | tr -d '\r' | awk -F': ' 'tolower($1)=="strict-transport-security"{print $2}')"
+if [ "$hsts" = "max-age=31536000" ]; then echo "  ok  browsers are told to stay on https for a year"
+else echo "  FAILED Strict-Transport-Security was '$hsts', wanted max-age=31536000"; failed=1; fi
+
 echo "==> the Retry-After a throttled crawler is handed"
 retry="$(curl -s -o /dev/null -D - -A "$META" "http://127.0.0.1:$port/us/florence/movies" | tr -d '\r' | awk -F': ' '/^[Rr]etry-[Aa]fter/{print $2}')"
 if [ "$retry" = "3600" ]; then echo "  ok  429 carries Retry-After: 3600, which is the half that reduces the RATE"
