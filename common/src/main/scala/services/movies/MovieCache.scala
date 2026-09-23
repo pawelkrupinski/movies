@@ -1049,6 +1049,13 @@ class CaffeineMovieCache(
           "the repository write reported failure for a row the cache still holds resident " +
           "— the Mongo document didn't match, or the write itself failed.")
         scrapeLandingMetrics.recordWriteSkipped(ScrapeLandingMetrics.SkipReason.RepositoryWriteFailed)
+        // …and put the resident row BACK. The write guard above diffs against it, so a
+        // cache left holding the state Mongo never took would make the next identical
+        // update (the next tick re-asserting the same slot) look like a no-op: skipped,
+        // reported as success, the failure healed in memory and never in Mongo. `replace`
+        // only if it is still ours — under the title lock nothing else wrote this key,
+        // but an eviction may have.
+        if (positive.asMap().replace(key, updated, prior)) corpusIndex.put(key, prior, id)
       }
       touch()
       wrote

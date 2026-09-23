@@ -275,6 +275,25 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
     metrics.skips shouldBe Vector(ScrapeLandingMetrics.SkipReason.RepositoryWriteFailed)
   }
 
+  // A failed write must not leave the CACHE holding the state Mongo never took. The write
+  // guard diffs against the resident row, so if the cache kept the new value the very next
+  // identical update — the next scrape tick re-asserting the same slot — would look like a
+  // no-op, skip the write and report success: the failure healed in memory, never in Mongo.
+  it should "keep the pre-update row resident after a failed write, so the same update is written again" in {
+    val repo    = new Repo(Seq.empty, readable = true)
+    val metrics = new RecordingScrapeLandingMetrics
+    val cache   = new CaffeineMovieCache(repo, normalizer = titleNormalizer, scrapeLandingMetrics = metrics)
+    val key     = cache.keyOf("Live Film", Some(2026))
+    cache.put(key, liveFilm)
+
+    cache.putIfPresent(key, current => current.copy(tmdbId = Some(999))) shouldBe false
+    cache.get(key).flatMap(_.tmdbId) shouldBe liveFilm.tmdbId
+
+    withClue("the retry must reach the repository again, not be skipped as already applied: ")(
+      cache.putIfPresent(key, current => current.copy(tmdbId = Some(999))) shouldBe false)
+    metrics.skips shouldBe Vector.fill(2)(ScrapeLandingMetrics.SkipReason.RepositoryWriteFailed)
+  }
+
   it should "meter and return false on a Caffeine-level miss, without touching the repository" in {
     val repo    = new Repo(Seq.empty, readable = true)
     val metrics = new RecordingScrapeLandingMetrics
