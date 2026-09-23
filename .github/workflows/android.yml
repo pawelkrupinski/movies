@@ -442,8 +442,12 @@ jobs:
                   emulator-boot-timeout: 600
                   working-directory: android
                   # devtest.sh adds the `.debug` applicationId suffix and the
-                  # local.properties/adb setup, exactly as on a phone.
-                  script: scripts/devtest.sh
+                  # local.properties/adb setup, exactly as on a phone. It leaves
+                  # out the tests that play a real YouTube video: from a runner's
+                  # datacenter address YouTube answers the embed with error 150
+                  # (run 35915030310), which says nothing about our code. See
+                  # pl.kinowo.RequiresLiveYouTube.
+                  script: scripts/devtest.sh --skip-live-youtube
 
             # The runner only prints a one-line failure; the per-test stack
             # traces are in the connected-test report.

@@ -19,6 +19,7 @@
 #   android/scripts/devtest.sh                                  # whole suite
 #   android/scripts/devtest.sh pl.kinowo.ui.list.FiltersSheetDragDismissTest
 #   android/scripts/devtest.sh 'pl.kinowo.ui.list.*'            # package glob
+#   android/scripts/devtest.sh --skip-live-youtube              # CI: see RequiresLiveYouTube
 #
 set -euo pipefail
 
@@ -41,6 +42,12 @@ if ! adb get-state >/dev/null 2>&1; then
 fi
 
 GRADLE_ARGS=(-PdebugSuffix)
+if [ "${1:-}" = "--skip-live-youtube" ]; then
+    # Tests that play a real YouTube video get error 150 from a datacenter
+    # address (pl.kinowo.RequiresLiveYouTube), so a CI runner can't judge them.
+    GRADLE_ARGS+=("-Pandroid.testInstrumentationRunnerArguments.notAnnotation=pl.kinowo.RequiresLiveYouTube")
+    shift
+fi
 if [ "${1:-}" != "" ]; then
     GRADLE_ARGS+=("-Pandroid.testInstrumentationRunnerArguments.class=$1")
 fi

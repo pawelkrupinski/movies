@@ -19,6 +19,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import pl.kinowo.RequiresLiveYouTube
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -45,12 +46,13 @@ import java.util.concurrent.TimeUnit
  * embed under our own origin, the referer YouTube already allows on the web.
  *
  * Run on a connected, unlocked, online device:
- *   `./gradlew app:connectedDebugAndroidTest \
- *     -Pandroid.testInstrumentationRunnerArguments.class=pl.kinowo.ui.detail.TrailerPlaybackTest`
- * Not in CI (needs a device + live YouTube). Uses a public, embeddable clip;
- * swap [VIDEO_ID] if it ever goes private.
+ *   `android/scripts/devtest.sh pl.kinowo.ui.detail.TrailerPlaybackTest`
+ * The CI emulator lane skips it (see [RequiresLiveYouTube]): YouTube rejects
+ * the embed from a datacenter address. Uses a public, embeddable clip; swap
+ * [VIDEO_ID] if it ever goes private.
  */
 @RunWith(AndroidJUnit4::class)
+@RequiresLiveYouTube
 class TrailerPlaybackTest {
 
     @get:Rule
