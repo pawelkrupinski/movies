@@ -169,7 +169,22 @@ object OgCardGenerator {
     val total = if (homeMode) 1 else cities.size
     val secs  = (System.currentTimeMillis() - startedAt) / 1000.0
     println(f"done: $ok/$total cards in $secs%.1fs")
+    if (!runSucceeded(ok, total)) {
+      System.err.println(f"✗ only $ok/$total cards written, below the ${MinSuccessRatio * 100}%.0f%% a run needs — failing")
+      sys.exit(1)
+    }
   }
+
+  /** The share of cards a run must write to count as a success. A few cities
+   *  failing all three attempts is ordinary slow-tail noise and must not cost
+   *  the other cards their refresh; a third of them failing (the 2026-09-15
+   *  blank-poster shape) is a broken run and should turn the CI leg red. The
+   *  cards that WERE written are still uploaded either way — the workflow's
+   *  upload step runs regardless of this exit code. */
+  private[tools] val MinSuccessRatio = 0.9
+
+  private[tools] def runSucceeded(ok: Int, total: Int): Boolean =
+    total > 0 && ok.toDouble / total >= MinSuccessRatio
 
   /** Screenshot `screenshotUrl`, compose the card for `country` with `tagline`,
    *  and write it to `out`. Retries transient load failures (the offline dino

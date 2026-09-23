@@ -144,7 +144,11 @@ jobs:
             # public prod site — no Mongo/Fly secrets needed. ~5s/city.
             # KINOWO_COUNTRY picks the brand/language and the base URL
             # screenshotted (its own webUrl, path prefix included).
+            #
+            # `!cancelled()`: a failed landing card (the generator exits non-zero
+            # when its one card fails) must not cost this country its city cards.
             - name: Regenerate the ${{ matrix.country }} city cards
+              if: ${{ !cancelled() }}
               env:
                   CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
                   KINOWO_COUNTRY: ${{ matrix.code }}
@@ -173,7 +177,13 @@ jobs:
             # artifact to a leg's own isolated output directory means no two
             # artifacts ever share a file path, so there is nothing left to
             # clobber regardless of download order.
+            #
+            # `!cancelled()` rather than the default success(): the generator
+            # exits non-zero when too many of its cards failed (see
+            # OgCardGenerator.MinSuccessRatio), and the cards it DID write
+            # should still reach the PR while the leg shows red.
             - uses: actions/upload-artifact@v6
+              if: ${{ !cancelled() }}
               with:
                   name: og-cards-${{ matrix.code }}
                   path: ${{ runner.temp }}/og-out/og-*.jpg

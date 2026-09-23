@@ -33,3 +33,29 @@ class OgCardOverlaySpec extends AnyFlatSpec with Matchers {
     OgCardGenerator.homeTagline(Country.Germany)       shouldBe "Kinoprogramm in deiner Stadt"
   }
 }
+
+/**
+ * When does a generator run fail its CI leg? `main` used to exit 0 however many
+ * cards failed — a leg that wrote 150 of 468 US cards read as green, and only a
+ * run that wrote NOTHING tripped the upload's `if-no-files-found`. Below
+ * [[OgCardGenerator.MinSuccessRatio]] it now exits non-zero.
+ */
+class OgCardRunOutcomeSpec extends AnyFlatSpec with Matchers {
+
+  "A run" should "pass when every card was written" in {
+    OgCardGenerator.runSucceeded(ok = 468, total = 468) shouldBe true
+  }
+
+  it should "tolerate a sparse handful of failed cities" in {
+    OgCardGenerator.runSucceeded(ok = 460, total = 468) shouldBe true
+  }
+
+  it should "fail when a large share of the cards failed" in {
+    OgCardGenerator.runSucceeded(ok = 312, total = 468) shouldBe false // the ~1/3 blank-poster era
+  }
+
+  it should "fail the single-card home run when that card failed" in {
+    OgCardGenerator.runSucceeded(ok = 0, total = 1) shouldBe false
+    OgCardGenerator.runSucceeded(ok = 1, total = 1) shouldBe true
+  }
+}
