@@ -1,5 +1,6 @@
 package services.movies
 
+import java.time.Instant
 import java.util.concurrent.CopyOnWriteArrayList
 import scala.jdk.CollectionConverters._
 
@@ -14,11 +15,15 @@ import scala.jdk.CollectionConverters._
  * fake had, in fact, no ring at all before `movie_slots` grew a cursor. Each mutation
  * answers whether it changed anything and rings only then, OUTSIDE the lock.
  *
+ * Each row also carries the instant it last genuinely CHANGED, read from `clock` — the
+ * in-memory twin of the Mongo rows' `updatedAt`, which the same no-op guards leave alone.
+ *
  * One monitor guards all mutations — fine at test/dev scale.
  */
-final class InMemorySlotRows[A] {
+final class InMemorySlotRows[A](clock: () => Instant = () => Instant.now()) {
 
   private val byFilm    = scala.collection.mutable.Map.empty[String, Map[String, A]]
+  private val stamps    = scala.collection.mutable.Map.empty[String, Instant]   // composite row id -> last change
   private val lock      = new Object
   private val listeners = new CopyOnWriteArrayList[String => Unit]()
 
@@ -29,15 +34,21 @@ final class InMemorySlotRows[A] {
   /** Set a film's rows to EXACTLY `rows` — an empty map removes the film. */
   def replaceFilm(filmId: String, rows: Map[String, A]): Unit =
     ringIf(filmId, lock.synchronized {
-      if (byFilm.getOrElse(filmId, Map.empty) == rows) false
-      else { if (rows.isEmpty) byFilm.remove(filmId) else byFilm.update(filmId, rows); true }
+      val current = byFilm.getOrElse(filmId, Map.empty)
+      if (current == rows) false
+      else {
+        if (rows.isEmpty) byFilm.remove(filmId) else byFilm.update(filmId, rows)
+        (current.keySet -- rows.keySet).foreach(k => stamps.remove(SlotKeyed.idOf(filmId, k)))
+        rows.foreach { case (k, row) => if (!current.get(k).contains(row)) stamp(filmId, k) }
+        true
+      }
     })
 
   def upsert(filmId: String, slotKey: String, row: A): Unit =
     ringIf(filmId, lock.synchronized {
       val current = byFilm.getOrElse(filmId, Map.empty)
       if (current.get(slotKey).contains(row)) false
-      else { byFilm.update(filmId, current + (slotKey -> row)); true }
+      else { byFilm.update(filmId, current + (slotKey -> row)); stamp(filmId, slotKey); true }
     })
 
   def delete(filmId: String, slotKey: String): Unit =
@@ -47,12 +58,40 @@ final class InMemorySlotRows[A] {
       else {
         val next = current - slotKey
         if (next.isEmpty) byFilm.remove(filmId) else byFilm.update(filmId, next)
+        stamps.remove(SlotKeyed.idOf(filmId, slotKey))
         true
       }
     })
 
   def deleteFilm(filmId: String): Unit =
-    ringIf(filmId, lock.synchronized(byFilm.remove(filmId).isDefined))
+    ringIf(filmId, lock.synchronized(byFilm.remove(filmId).exists { removed =>
+      removed.keysIterator.foreach(k => stamps.remove(SlotKeyed.idOf(filmId, k)))
+      true
+    }))
+
+  /** Every row's composite `_id` with the instant it last changed — what both fakes answer
+   *  [[SlotKeyedRows.rowIdsChecked]] and [[SlotKeyedRows.rowWrittenAtChecked]] from. */
+  def writtenAt(): Map[String, Instant] = lock.synchronized(stamps.toMap)
+
+  /** Drop the rows with exactly these composite `_id`s; returns how many existed. */
+  def deleteRows(ids: Set[String]): Long = {
+    val present = ids.filter(writtenAt().contains)
+    present.foreach { id =>
+      val filmId = SlotKeyed.filmIdOf(id)
+      delete(filmId, id.drop(filmId.length + 1))
+    }
+    present.size.toLong
+  }
+
+  /** Drop every row of these films; returns how many rows went. */
+  def deleteFilms(filmIds: Set[String]): Long = {
+    val removed = filmIds.toSeq.map(id => forFilm(id).size.toLong).sum
+    filmIds.foreach(deleteFilm)
+    removed
+  }
+
+  private def stamp(filmId: String, slotKey: String): Unit =
+    stamps.update(SlotKeyed.idOf(filmId, slotKey), clock())
 
   /** Ring `onChange(filmId)` on every genuine change until the handle is closed. Listeners
    *  are rung synchronously, so there is no backlog and nothing for a demand window to

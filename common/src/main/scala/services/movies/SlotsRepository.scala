@@ -149,9 +149,9 @@ trait SlotsRepository extends SlotKeyedRows {
  * the store its `screenings` twin is built on too. Neither store holds business logic —
  * both just store — so neither can drift from the other's understanding of the rules.
  */
-class InMemorySlotsRepository extends SlotsRepository {
+class InMemorySlotsRepository(clock: () => java.time.Instant = () => java.time.Instant.now()) extends SlotsRepository {
 
-  private val rows = new InMemorySlotRows[SourceData]
+  private val rows = new InMemorySlotRows[SourceData](clock)
 
   // An in-memory read cannot fail, so the checked form always reports complete.
   def findForFilmChecked(filmId: String): (Map[String, SourceData], Boolean) = (rows.forFilm(filmId), true)
@@ -174,20 +174,13 @@ class InMemorySlotsRepository extends SlotsRepository {
 
   def filmIdsChecked(): (Set[String], Boolean) = (rows.all().keySet, true)
 
-  def rowIdsChecked(): (Set[String], Boolean) =
-    (rows.all().iterator.flatMap { case (filmId, byKey) => byKey.keysIterator.map(SlotKeyed.idOf(filmId, _)) }.toSet, true)
+  def rowIdsChecked(): (Set[String], Boolean) = (rows.writtenAt().keySet, true)
 
-  def deleteRows(ids: Set[String]): Long = {
-    val present = ids.filter(id => rows.forFilm(SlotKeyed.filmIdOf(id)).contains(id.drop(SlotKeyed.filmIdOf(id).length + 1)))
-    present.foreach(id => rows.delete(SlotKeyed.filmIdOf(id), id.drop(SlotKeyed.filmIdOf(id).length + 1)))
-    present.size.toLong
-  }
+  def rowWrittenAtChecked(): (Map[String, java.time.Instant], Boolean) = (rows.writtenAt(), true)
 
-  def deleteFilms(filmIds: Set[String]): Long = {
-    val removed = filmIds.toSeq.map(id => rows.forFilm(id).size.toLong).sum
-    filmIds.foreach(rows.deleteFilm)
-    removed
-  }
+  def deleteRows(ids: Set[String]): Long = rows.deleteRows(ids)
+
+  def deleteFilms(filmIds: Set[String]): Long = rows.deleteFilms(filmIds)
 
   // Rings listeners synchronously, so there is no queue and nothing for `demand` to
   // bound — it is accepted only to honour the trait's contract.
@@ -452,6 +445,9 @@ class MongoSlotsRepository(
 
   def rowIdsChecked(): (Set[String], Boolean) =
     coll.fold((Set.empty[String], true))(SlotKeyed.rowIdsChecked(_, "SlotsRepository", logger.warn(_)))
+
+  def rowWrittenAtChecked(): (Map[String, java.time.Instant], Boolean) =
+    coll.fold((Map.empty[String, java.time.Instant], true))(SlotKeyed.rowWrittenAtChecked(_, "SlotsRepository", logger.warn(_)))
 
   def deleteRows(ids: Set[String]): Long =
     coll.fold(0L)(SlotKeyed.deleteRows(_, ids, "SlotsRepository", logger.warn(_)))

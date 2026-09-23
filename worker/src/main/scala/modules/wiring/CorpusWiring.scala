@@ -78,5 +78,5 @@ trait CorpusWiring { self: WorkerWiring =>
   // under a venue this country's roster no longer lists.
   lazy val strandedSideRowsCleanup = new StrandedSideRowsCleanup(movieRepository,
     retiredVenues = () => RetiredVenueRows.sweep(Some(screeningsRepository), Some(slotsRepository),
-      RetiredVenueRows.rosterOf(country)))
+      RetiredVenueRows.rosterOf(country), now = java.time.Instant.now()))
 }

@@ -4,6 +4,7 @@ import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.{Aggregates, Filters, Projections}
 import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, SingleObservableFuture}
 
+import java.time.Instant
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
@@ -30,6 +31,11 @@ trait SlotKeyedRows {
    *  the id strings only, never the rows. The stranded sweep compares the two side
    *  collections' id sets: a `screenings` row with no `movie_slots` twin projects nothing. */
   def rowIdsChecked(): (Set[String], Boolean)
+
+  /** Every row `_id` with the instant it was last WRITTEN (`updatedAt`, which the no-op write
+   *  guards leave alone), plus whether the read succeeded. A sweep that must not touch rows
+   *  a newer deploy may have just written — [[RetiredVenueRows]] — ages them by this. */
+  def rowWrittenAtChecked(): (Map[String, Instant], Boolean)
 
   /** Drop the rows with exactly these `_id`s in one write; returns the rows removed. */
   def deleteRows(ids: Set[String]): Long
@@ -128,6 +134,24 @@ object SlotKeyed {
         warn(s"$label.rowIds failed: ${exception.getClass.getSimpleName}: ${exception.getMessage} — " +
           "reporting the read as incomplete.")
         (Set.empty, false)
+    }
+
+  /** [[SlotKeyedRows.rowWrittenAtChecked]] for a Mongo side collection: `_id` + `updatedAt`
+   *  projected server-side. A row with no `updatedAt` (none is written without one) reads as
+   *  the epoch — as old as it gets, since nothing current could have written it. */
+  def rowWrittenAtChecked[T](c: MongoCollection[T], label: String, warn: String => Unit): (Map[String, Instant], Boolean) =
+    Try(Await.result(c.find[Document]().projection(Projections.include("_id", "updatedAt")).toFuture(), 120.seconds)) match {
+      case Success(docs) =>
+        (docs.flatMap { d =>
+          d.get("_id").collect { case id if id.isString =>
+            id.asString.getValue -> d.get("updatedAt").collect { case at if at.isDateTime =>
+              Instant.ofEpochMilli(at.asDateTime.getValue) }.getOrElse(Instant.EPOCH)
+          }
+        }.toMap, true)
+      case Failure(exception) =>
+        warn(s"$label.rowWrittenAt failed: ${exception.getClass.getSimpleName}: ${exception.getMessage} — " +
+          "reporting the read as incomplete.")
+        (Map.empty, false)
     }
 
   /** [[SlotKeyedRows.deleteRows]] for a Mongo side collection: one `_id $in` delete. */

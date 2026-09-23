@@ -53,6 +53,7 @@ final class CountingScreeningsRepository(underlying: ScreeningsRepository) exten
   def filmIdsChecked(): (Set[String], Boolean)          = underlying.filmIdsChecked()
   def deleteFilms(filmIds: Set[String]): Long           = underlying.deleteFilms(filmIds)
   def rowIdsChecked(): (Set[String], Boolean)           = underlying.rowIdsChecked()
+  def rowWrittenAtChecked(): (Map[String, java.time.Instant], Boolean) = underlying.rowWrittenAtChecked()
   def deleteRows(ids: Set[String]): Long                = underlying.deleteRows(ids)
   override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
     underlying.watchApplied(onChange, demand)
@@ -89,6 +90,7 @@ final class CountingSlotsRepository(underlying: SlotsRepository) extends SlotsRe
   def filmIdsChecked(): (Set[String], Boolean)          = underlying.filmIdsChecked()
   def deleteFilms(filmIds: Set[String]): Long           = underlying.deleteFilms(filmIds)
   def rowIdsChecked(): (Set[String], Boolean)           = underlying.rowIdsChecked()
+  def rowWrittenAtChecked(): (Map[String, java.time.Instant], Boolean) = underlying.rowWrittenAtChecked()
   def deleteRows(ids: Set[String]): Long                = underlying.deleteRows(ids)
   override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
     underlying.watchApplied(onChange, demand)

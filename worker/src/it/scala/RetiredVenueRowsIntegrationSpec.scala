@@ -3,7 +3,12 @@ package services.movies
 import models.{CinemaShowing, Country, KinoEtiuda, KinoMiescisko, KinoOOK, KinoStarowka, KinoWawrzyn, Showtime, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.mongodb.scala.SingleObservableFuture
+import org.mongodb.scala.model.{Filters, Updates}
 import tools.Env
+
+import scala.concurrent.Await
+import scala.concurrent.duration._
 
 import java.time.LocalDateTime
 
@@ -11,7 +16,8 @@ import java.time.LocalDateTime
  *  delete against the real `screenings` / `movie_slots` collections, on a database of its
  *  own that is dropped afterwards. The rule itself is `RetiredVenueRowsSpec`'s; this proves
  *  the stores answer it — the retired venue's rows go, a live venue's rows (including the
- *  prefix-sharing "Kino Etiuda") stay, and a second sweep is a no-op. */
+ *  prefix-sharing "Kino Etiuda") stay, a retired-venue row written inside the grace period
+ *  stays (the real `updatedAt` read), and a second sweep is a no-op. */
 class RetiredVenueRowsIntegrationSpec extends AnyFlatSpec with Matchers {
   private val uri = Env.get("MONGODB_URI").get
 
@@ -33,15 +39,24 @@ class RetiredVenueRowsIntegrationSpec extends AnyFlatSpec with Matchers {
         seed("other|2025", s"$Retired${CinemaShowing.Separator}other")
         seed("other|2025", CinemaShowing(KinoEtiuda, "other").displayName)
 
+        // Age everything seeded so far past the grace period, then write one row under the
+        // retired venue NOW — what a newer pod that still lists the venue would have just done.
+        Seq(ScreeningsRepository.Collection, SlotsRepository.Collection).foreach { name =>
+          Await.result(db.getCollection(name).updateMany(Filters.empty(),
+            Updates.set("updatedAt", java.util.Date.from(java.time.Instant.now().minusSeconds(2 * 86400)))).toFuture(), 10.seconds)
+        }
+        seed("fresh|2026", s"$Retired${CinemaShowing.Separator}fresh")
+        val freshIds = Set(SlotKeyed.idOf("fresh|2026", s"$Retired${CinemaShowing.Separator}fresh"))
+
         val (screeningIdsBefore, _) = screenings.rowIdsChecked()
         val (slotIdsBefore, _)      = slots.rowIdsChecked()
-        screeningIdsBefore should have size 8
+        screeningIdsBefore should have size 9
 
         RetiredVenueRows.sweep(Some(screenings), Some(slots), RetiredVenueRows.rosterOf(Country.Poland)) shouldBe
           RetiredVenueRows(screenings = 2, slots = 2, venues = Map(Retired -> 4L))
 
-        screenings.rowIdsChecked() shouldBe ((screeningIdsBefore.filterNot(RetiredVenueRows.venueOf(_) == Retired), true))
-        slots.rowIdsChecked()      shouldBe ((slotIdsBefore.filterNot(RetiredVenueRows.venueOf(_) == Retired), true))
+        screenings.rowIdsChecked() shouldBe ((screeningIdsBefore.filterNot(RetiredVenueRows.venueOf(_) == Retired) ++ freshIds, true))
+        slots.rowIdsChecked()      shouldBe ((slotIdsBefore.filterNot(RetiredVenueRows.venueOf(_) == Retired) ++ freshIds, true))
         screenings.findForFilmChecked("other|2025") shouldBe
           ((Map(CinemaShowing(KinoEtiuda, "other").displayName -> tomorrow), true))
 

@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.LogCapture
 
-import java.time.LocalDateTime
+import java.time.{Instant, LocalDateTime}
 
 /**
  * [[RetiredVenueRows.sweep]] removes the `screenings` / `movie_slots` rows of a venue the
@@ -19,6 +19,15 @@ import java.time.LocalDateTime
 class RetiredVenueRowsSpec extends AnyFlatSpec with Matchers {
 
   private val tomorrow = Seq(Showtime(LocalDateTime.now.plusDays(1), bookingUrl = None))
+
+  /** The stores' clock: every row is written at `T0`, and every sweep runs past the grace
+   *  period unless a case says otherwise. */
+  private val T0 = Instant.parse("2026-09-20T12:00:00Z")
+  private var clockNow = T0
+  private val clock: () => Instant = () => clockNow
+  private val later = T0.plusSeconds(RetiredVenueRows.Grace.toSeconds + 3600)
+  private def sweep(screenings: Option[SlotKeyedRows], slots: Option[SlotKeyedRows], roster: Set[String]) =
+    RetiredVenueRows.sweep(screenings, slots, roster, now = later)
   private val roster   = RetiredVenueRows.rosterOf(Country.Poland)
 
   /** The retired venue's name. A PREFIX-sharing sibling ("Kino Etiuda") is still on the
@@ -34,8 +43,8 @@ class RetiredVenueRowsSpec extends AnyFlatSpec with Matchers {
 
   /** Every live venue holds a slot on `live|2026`; the retired one holds per-title slots
    *  on two films plus one legacy bare-cinema key. */
-  private def corpus(screenings: ScreeningsRepository = new InMemoryScreeningsRepository,
-                     slots: SlotsRepository = new InMemorySlotsRepository) = {
+  private def corpus(screenings: ScreeningsRepository = new InMemoryScreeningsRepository(clock),
+                     slots: SlotsRepository = new InMemorySlotsRepository(clock)) = {
     live.foreach(c => seed(screenings, slots, "live|2026", CinemaShowing(c, "live").displayName))
     seed(screenings, slots, "live|2026", s"$Retired${CinemaShowing.Separator}live")
     seed(screenings, slots, "other|2025", s"$Retired${CinemaShowing.Separator}other")
@@ -54,7 +63,7 @@ class RetiredVenueRowsSpec extends AnyFlatSpec with Matchers {
     val liveScreenings = screenings.rowIdsChecked()._1.filterNot(RetiredVenueRows.venueOf(_) == Retired)
     val liveSlots      = slots.rowIdsChecked()._1.filterNot(RetiredVenueRows.venueOf(_) == Retired)
 
-    RetiredVenueRows.sweep(Some(screenings), Some(slots), roster) shouldBe
+    sweep(Some(screenings), Some(slots), roster) shouldBe
       RetiredVenueRows(screenings = 2, slots = 3, venues = Map(Retired -> 5L))
 
     screenings.rowIdsChecked() shouldBe ((liveScreenings, true))
@@ -62,15 +71,29 @@ class RetiredVenueRowsSpec extends AnyFlatSpec with Matchers {
     venuesOf(slots) should contain allOf (KinoEtiuda.displayName, CinemaCityChain.displayName, Tmdb.displayName)
   }
 
+  it should "leave a retired venue's row alone while it is younger than the grace period" in {
+    // A rolling deploy: the NEW pod knows a venue the old pod's roster lacks, and has just
+    // written its rows. The old pod's sweep must not delete them.
+    val (screenings, slots) = corpus()
+    clockNow = later.minusSeconds(3600)   // written an hour before the sweep
+    seed(screenings, slots, "fresh|2026", s"$Retired${CinemaShowing.Separator}fresh")
+    try {
+      sweep(Some(screenings), Some(slots), roster) shouldBe
+        RetiredVenueRows(screenings = 2, slots = 3, venues = Map(Retired -> 5L))
+      screenings.findForFilm("fresh|2026") should not be empty
+      slots.findForFilm("fresh|2026")      should not be empty
+    } finally clockNow = T0
+  }
+
   it should "be idempotent — a second sweep finds nothing" in {
     val (screenings, slots) = corpus()
-    RetiredVenueRows.sweep(Some(screenings), Some(slots), roster).rows shouldBe 5
-    RetiredVenueRows.sweep(Some(screenings), Some(slots), roster) shouldBe RetiredVenueRows.none
+    sweep(Some(screenings), Some(slots), roster).rows shouldBe 5
+    sweep(Some(screenings), Some(slots), roster) shouldBe RetiredVenueRows.none
   }
 
   it should "remove nothing when the roster is EMPTY" in {
     val (screenings, slots) = corpus()
-    RetiredVenueRows.sweep(Some(screenings), Some(slots), roster = Set.empty) shouldBe RetiredVenueRows.none
+    sweep(Some(screenings), Some(slots), roster = Set.empty) shouldBe RetiredVenueRows.none
     venuesOf(screenings) should contain (Retired)
     venuesOf(slots)      should contain (Retired)
   }
@@ -79,14 +102,14 @@ class RetiredVenueRowsSpec extends AnyFlatSpec with Matchers {
     val (screenings, slots) = corpus()
     // A roster that has lost most of its venues — a half-loaded data file, a wrong country.
     val partial = roster -- live.drop(2).map(_.displayName)
-    RetiredVenueRows.sweep(Some(screenings), Some(slots), partial) shouldBe RetiredVenueRows.none
+    sweep(Some(screenings), Some(slots), partial) shouldBe RetiredVenueRows.none
     venuesOf(slots) should contain allOf (Retired, KinoWawrzyn.displayName)
   }
 
   it should "skip a side store whose id read failed, while still sweeping the other" in {
-    val screeningsStore = new InMemoryScreeningsRepository
+    val screeningsStore = new InMemoryScreeningsRepository(clock)
     val (_, slots) = corpus(screenings = screeningsStore)
-    RetiredVenueRows.sweep(Some(new UnreadableScreeningsRepository(screeningsStore)), Some(slots), roster) shouldBe
+    sweep(Some(new UnreadableScreeningsRepository(screeningsStore)), Some(slots), roster) shouldBe
       RetiredVenueRows(screenings = 0, slots = 3, venues = Map(Retired -> 3L))
     venuesOf(screeningsStore) should contain (Retired)
     venuesOf(slots) should not contain Retired
@@ -95,7 +118,7 @@ class RetiredVenueRowsSpec extends AnyFlatSpec with Matchers {
   it should "put the removal on the removal-audit log with the venue" in {
     val (screenings, slots) = corpus()
     val events = LogCapture.thisThread(RemovalAudit.LoggerName, Some(Level.INFO))(
-      RetiredVenueRows.sweep(Some(screenings), Some(slots), roster))
+      sweep(Some(screenings), Some(slots), roster))
     val lines = events.map(_.getFormattedMessage).filter(_.contains("reason=retired-venue"))
     withClue(s"audit lines: $lines\n") {
       lines should have size 1

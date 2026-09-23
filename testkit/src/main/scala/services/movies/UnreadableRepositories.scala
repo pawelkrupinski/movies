@@ -39,6 +39,7 @@ class UnreadableScreeningsRepository(store: ScreeningsRepository = new InMemoryS
    *  not clear it on the strength of an id list it never saw. */
   def filmIdsChecked(): (Set[String], Boolean)                                  = (Set.empty, false)
   def rowIdsChecked(): (Set[String], Boolean)                                   = (Set.empty, false)
+  def rowWrittenAtChecked(): (Map[String, java.time.Instant], Boolean)          = (Map.empty, false)
   def deleteRows(ids: Set[String]): Long                                        = store.deleteRows(ids)
   // DELEGATED LIKE EVERY OTHER NON-READ. These two were missing until 2026-09-06, so decorating a
   // real Mongo store — which is the case this class documents itself as existing for — silently

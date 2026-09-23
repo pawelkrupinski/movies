@@ -3,6 +3,9 @@ package services.movies
 import models.{Cinema, CinemaShowing, Country, Source}
 import play.api.Logger
 
+import java.time.Instant
+import scala.concurrent.duration._
+
 /**
  * What one sweep of retired-venue rows removed: rows per side collection, and the rows
  * removed per retired venue name. See [[RetiredVenueRows.sweep]].
@@ -43,6 +46,11 @@ final case class RetiredVenueRows(screenings: Long, slots: Long, venues: Map[Str
  *     otherwise convict most of a live corpus. Real removals are a handful of venues at a
  *     time; a bulk one can be split across deploys.
  *  5. A store whose id read failed is skipped — "could not read the ids" is not "no ids".
+ *  6. A row written within the last [[Grace]] (24h, longer than any rollout) is left alone
+ *     even when its venue is off the roster. During a rolling deploy the OLD pod's roster
+ *     lacks a venue the NEW pod has just added and is already writing; its sweep must not
+ *     delete those rows. A genuinely retired venue is never scraped again, so its rows only
+ *     age and are swept on the first tick after the grace runs out.
  *
  * Idempotent: once a venue's rows are gone a second sweep finds nothing, and no retired
  * venue is scraped, so nothing writes them back.
@@ -50,6 +58,9 @@ final case class RetiredVenueRows(screenings: Long, slots: Long, venues: Map[Str
 object RetiredVenueRows {
 
   val none: RetiredVenueRows = RetiredVenueRows(0, 0, Map.empty)
+
+  /** How long a row must have gone unwritten before a retired venue's row may be swept. */
+  val Grace: FiniteDuration = 24.hours
 
   /** The largest share of stored venues one sweep may retire before it refuses outright. */
   val MaxRetiredShare: Double = 0.2
@@ -73,11 +84,14 @@ object RetiredVenueRows {
   def venueOf(rowId: String): String =
     rowId.drop(SlotKeyed.filmIdOf(rowId).length + 1).takeWhile(_ != CinemaShowing.Separator)
 
-  def sweep(screenings: Option[SlotKeyedRows], slots: Option[SlotKeyedRows], roster: Set[String]): RetiredVenueRows = {
-    val screeningIds = idsOf(screenings, "screenings")
-    val slotIds      = idsOf(slots, "movie_slots")
-    val stored       = (screeningIds.toSeq.flatten ++ slotIds.toSeq.flatten).map(venueOf).toSet
+  def sweep(screenings: Option[SlotKeyedRows], slots: Option[SlotKeyedRows], roster: Set[String],
+            now: Instant = Instant.now(), grace: FiniteDuration = Grace): RetiredVenueRows = {
+    val screeningIds = stampsOf(screenings, "screenings")
+    val slotIds      = stampsOf(slots, "movie_slots")
+    val stored       = (screeningIds.toSeq.flatMap(_.keys) ++ slotIds.toSeq.flatMap(_.keys)).map(venueOf).toSet
     val retired      = stored -- roster
+    val cutoff       = now.minusMillis(grace.toMillis)
+    def sweepable(id: String, writtenAt: Instant): Boolean = retired(venueOf(id)) && writtenAt.isBefore(cutoff)
     if (roster.isEmpty) {
       logger.warn("Retired-venue rows: the roster is EMPTY — refusing to treat any venue as retired.")
       none
@@ -88,8 +102,8 @@ object RetiredVenueRows {
         s"half-loaded than pruned. Venues: ${retired.toSeq.sorted.take(20).mkString(", ")}")
       none
     } else {
-      val screeningRows     = screeningIds.fold(Set.empty[String])(_.filter(id => retired(venueOf(id))))
-      val slotRows          = slotIds.fold(Set.empty[String])(_.filter(id => retired(venueOf(id))))
+      val screeningRows     = screeningIds.fold(Set.empty[String])(_.collect { case (id, at) if sweepable(id, at) => id }.toSet)
+      val slotRows          = slotIds.fold(Set.empty[String])(_.collect { case (id, at) if sweepable(id, at) => id }.toSet)
       val screeningsDeleted = if (screeningRows.isEmpty) 0L else screenings.fold(0L)(_.deleteRows(screeningRows))
       val slotsDeleted      = if (slotRows.isEmpty) 0L else slots.fold(0L)(_.deleteRows(slotRows))
       if (screeningsDeleted + slotsDeleted == 0) none
@@ -101,10 +115,11 @@ object RetiredVenueRows {
     }
   }
 
-  /** A store's row ids, or None when it is not wired or its read failed (logged). */
-  private def idsOf(store: Option[SlotKeyedRows], label: String): Option[Set[String]] =
+  /** A store's row ids with their last write, or None when it is not wired or its read
+   *  failed (logged). */
+  private def stampsOf(store: Option[SlotKeyedRows], label: String): Option[Map[String, Instant]] =
     store.flatMap { s =>
-      val (ids, read) = s.rowIdsChecked()
+      val (ids, read) = s.rowWrittenAtChecked()
       if (!read) logger.warn(s"Retired-venue rows: the $label row ids could not be read — no $label row removed.")
       Option.when(read)(ids)
     }
