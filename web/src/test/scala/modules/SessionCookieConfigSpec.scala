@@ -28,4 +28,15 @@ class SessionCookieConfigSpec extends AnyFlatSpec with Matchers {
   it should "be Secure when KINOWO_SESSION_SECURE=true" in {
     sessionSecure(Map("KINOWO_SESSION_SECURE" -> "true")) shouldBe true
   }
+
+  // Every write route is `nocsrf`, so SameSite=Lax on the session cookie is what
+  // keeps a cross-site form POST from carrying it (`CrossSiteWriteFilter` is the
+  // layer that does not depend on it). It comes from Play's own reference.conf;
+  // this pins that nothing of ours loosens it.
+  it should "be SameSite=Lax" in {
+    ConfigFactory.parseResources("application.conf")
+      .withFallback(ConfigFactory.defaultReference())
+      .resolve(ConfigResolveOptions.noSystem().setAllowUnresolved(true))
+      .getString("play.http.session.sameSite") shouldBe "lax"
+  }
 }

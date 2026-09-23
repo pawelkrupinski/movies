@@ -19,7 +19,7 @@ import scala.concurrent.Await
  *
  * Every state-changing `/api/me` and `/auth` route is `nocsrf` (the browser
  * JS calls them with `fetch`, not a form), so what keeps another origin from
- * driving them with a visitor's cookie is SameSite plus THIS policy. It allows
+ * driving them with a visitor's cookie is SameSite, `CrossSiteWriteFilter` and THIS policy. It allows
  * any origin — the public JSON (repertoire, catalog) is fine to read from
  * anywhere — but it must never let that origin do so WITH CREDENTIALS: Play's
  * default `supportsCredentials = true` combined with `allowedOrigins = null`

@@ -177,6 +177,7 @@ class AppComponents(context: Context)
   lazy val renamedCityRedirectFilter: RenamedCityRedirectFilter =
     new RenamedCityRedirectFilter(models.Country.fromEnv.mountPath)(using materializer)
   lazy val httpMetricsFilter: HttpMetricsFilter = new HttpMetricsFilter(webHttpMetrics)(using executionContext)
+  lazy val crossSiteWriteFilter: CrossSiteWriteFilter = new CrossSiteWriteFilter()(using materializer)
   // Metrics FIRST (outermost) so the latency it records is the whole chain —
   // including gzip of a multi-MB body — and so a request rejected by Play's own
   // allowed-hosts/CSRF filters still lands on the error-rate panel. Any inner
@@ -190,8 +191,10 @@ class AppComponents(context: Context)
   // The renamed-city 301 sits INSIDE the metrics filter (so the redirect is
   // counted like any other response) but ahead of the router, since its whole
   // job is to answer a path the router would 404.
+  // The cross-site write refusal sits right after Play's own filters, ahead of
+  // everything that could act on the request.
   override def httpFilters: Seq[EssentialFilter] =
-    (httpMetricsFilter +: super.httpFilters) :+ renamedCityRedirectFilter :+ corsFilter :+ cspFilter :+ gzipFilter
+    (httpMetricsFilter +: super.httpFilters) :+ crossSiteWriteFilter :+ renamedCityRedirectFilter :+ corsFilter :+ cspFilter :+ gzipFilter
 
   // Replace Play's default error handler with the truncation-tolerant
   // variant so `EntityStreamException` from client-side body cutoffs
