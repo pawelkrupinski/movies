@@ -62,141 +62,78 @@ object FilmCanonicalizer {
     cluster.flatMap { case (_, e) => e.tmdbYear }.minOption
       .orElse(cluster.flatMap { case (k, _) => k.year }.minOption)
 
+  private type Row = (CacheKey, MovieRecord)
+  private def rank(r: Row): (Boolean, Int, String) = canonicalRank(r._1)
+
   /** One per-film cluster within a `sanitize(title)` group — its member rows and
    *  the reference year an unresolved row's year is measured against (rule 2,
    *  `YearWindow.ProductionToRelease`). `minRank` is the cluster's
    *  smallest `canonicalRank`, the deterministic tie-break for "which cluster is
    *  canonical / nearest". */
-  private case class Cluster(refYear: Option[Int], rows: Seq[(CacheKey, MovieRecord)]) {
-    def minRank: (Boolean, Int, String) = rows.map(r => canonicalRank(r._1)).min
+  private case class Cluster(refYear: Option[Int], rows: Seq[Row]) {
+    def minRank: (Boolean, Int, String) = rows.map(rank).min
   }
+
+  /** A resolved row beside the identity its cinemas published, read ONCE: rule 1 asks
+   *  `MixedFilmDetector` about a row against every sibling, and rebuilding the
+   *  identity per question re-read one row's slots once per comparison. */
+  private case class Identified(row: Row, identity: Option[MixedFilmDetector.Group])
 
   /** Partition one `sanitize(title)` group into per-film clusters. A pure
    *  function of the row SET — every intermediate collection is sorted by
    *  `canonicalRank` (or a total order on its key) before iterating, so the
-   *  result is independent of cache/scrape/iteration order. Precedence:
+   *  result is independent of cache/scrape/iteration order. Every rule refuses
+   *  when it cannot tell which film a row belongs to. Precedence:
    *
-   *    1. Resolved rows (carry a `tmdbId`) cluster BY tmdbId — two distinct ids
-   *       are two films — EXCEPT when they carry the same `imdbId`, which says
-   *       they are one film TMDB happens to hold twice (see below). Each resolved
-   *       cluster's reference year is its `tmdbYear`.
-   *    2. Unresolved rows that HAVE a year attach to the NEAREST resolved cluster
-   *       (by `|year − tmdbYear|`) within ±2 of its tmdbYear — wide enough to
-   *       absorb a cinema's production-vs-release-year disagreement (a film shot
-   *       in year Y but released Y+1/Y+2), but NOT so wide that a genuinely
-   *       different same-title film still awaiting its own tmdbId gets swallowed.
-   *       Ties (equidistant between two resolved remakes) break on the cluster's
-   *       smallest `canonicalRank` then index. Rows beyond ±2 of every resolved
-   *       cluster fall through to rule 3.
-   *    2b. A year-bearing row still orphaned by rule 2 (outside every resolved
-   *        cluster's ±2 window) is reclaimed anyway if it shares an IDENTICAL
-   *        (cinema, sanitized-title) listing — same venue, same verbatim
-   *        cinema synopsis text (never an enrichment source's) — with exactly one resolved cluster: not a second
-   *        film awaiting its own year, but the same listing the venue
-   *        re-published under a different year tag. See [[sharesADuplicateListing]].
-   *    3. The remaining year-bearing unresolved rows form their OWN clusters by
-   *       a greedy 2-year window from the lowest year — {y, y+1} absorbs all
-   *       rows at y or y+1, the next window opens at the next distinct year
-   *       > y+1. At most two neighbouring years per cluster, order-independent.
-   *    4. Yearless AND idless rows fold into the group's canonical cluster (the
-   *       one resolved cluster from 1–2b when there is one, else the ONLY cluster
-   *       from 3 — two or more are ambiguous and refused) on the title match alone,
-   *       UNLESS the row's own evidence contradicts it (a slot year or runtime
-   *       past tolerance, or a cinema-published original title `MixedFilmDetector`
-   *       reads as a different film) — except a slot-year contradiction alone is
-   *       waived when the row's own published runtime AGREES CLOSELY with the
-   *       resolved film's, the same "runtime settles it, not the year" precedent
-   *       `MixedFilmDetector.corroborated` documents. A lone such row stays its
-   *       own singleton. */
+   *    1. [[resolvedClusters]] — resolved rows cluster by tmdbId, split where their
+   *       cinemas published different films, folded where TMDB holds one film
+   *       under two ids (shared imdbId).
+   *    2. [[attachWithinYearWindow]] — unresolved year-bearing rows join the
+   *       nearest resolved cluster within `YearWindow.ProductionToRelease`.
+   *    2b. [[reclaimOrphans]] — a rule-2 orphan that is provably the same listing
+   *       (identical venue synopsis, or a decoration of the film's title) is
+   *       reclaimed whatever its year.
+   *    3. [[yearWindowClusters]] — remaining orphans cluster by
+   *       `YearWindow.PublishedAdjacency`-wide windows from the lowest year.
+   *    4. [[foldYearless]] — yearless unresolved rows fold into the ONE plausible
+   *       film, unless their own published evidence contradicts it. */
   def clusterByFilm(group: Seq[(CacheKey, MovieRecord)], normalizer: TitleNormalizer): Seq[Seq[(CacheKey, MovieRecord)]] = {
-    type Row = (CacheKey, MovieRecord)
-    def rank(r: Row): (Boolean, Int, String) = canonicalRank(r._1)
-    // A resolved row beside the identity its cinemas published, read ONCE: every
-    // question below is `MixedFilmDetector`'s, and it asks about a group's main row
-    // against each sibling and about imdbId-sharing groups row by row, so reading the
-    // identity per question rebuilt one row's from its slots once per comparison.
-    case class Identified(row: Row, identity: Option[MixedFilmDetector.Group])
-    // A CURATED franchise-sibling check, independent of `MixedFilmDetector` and its
-    // `sameDirector` veto — deliberately so. `conflicting()`'s veto exists because an
-    // AGREEING director is normally conclusive evidence of one film (the "Twoje imię"
-    // dub case), but a franchise sequel routinely shares its director with its
-    // siblings (Francis Lawrence directed every modern Hunger Games film), which would
-    // make that veto wrongly protect exactly the merge this check exists to catch. So
-    // this reads ONLY the cinema-published bare titles (`evidence.titles` — present
-    // even when no venue publishes a distinct `originalTitle`, unlike
-    // `MixedFilmDetector`'s identity, which is why the byTmdbId/imdbId-sharing folds
-    // below needed a second check at all) and asks `SequelMarker.curatedSiblings`
-    // (not the fuller `differentInstalments`, which also runs its general
-    // ordinal/containment logic against ANY title pair — vetted against clean TMDB
-    // candidate titles or an already-resolved base, it misfires on raw cinema title
-    // text: a test fixture's synthetic "Ghost 2 (1)" disambiguator reads as a false
-    // ordinal split, `FilmCanonicalizerSpec` pins this). `curatedSiblings` gates that
-    // same ordinal logic behind a match on a CURATED franchise prefix first — Ghost 2
-    // never reaches it (no curated base matches), while a genuine curated-franchise
-    // numbered pair ("Mockingjay Part 1" vs "Part 2") still correctly splits too, not
-    // just the named non-numbered subtitles. UK prod, 2026-09-16:
-    // `hungergamesballadofsongbirdssnakes|2026` ended up holding Catching Fire, both
-    // Mockingjay parts, AND Ballad of Songbirds and Snakes — each independently
-    // mis-resolved (before `TmdbCandidateSearch`'s own `SequelMarker` guard existed)
-    // to the SAME wrong tmdbId, which this fold then waved together because Odeon's
-    // listings publish no `originalTitle`/runtime/year for either side.
-    def curatedFranchiseSiblings(a: MovieRecord, b: MovieRecord): Boolean =
-      SequelMarker.curatedSiblingTitles(a.evidence.titles, b.evidence.titles)
-    def differ(a: Identified, b: Identified): Boolean =
-      MixedFilmDetector.describeDifferentFilms(a.identity, b.identity) || curatedFranchiseSiblings(a.row._2, b.row._2)
+    val resolved                   = resolvedClusters(group.filter(_._2.tmdbId.isDefined), normalizer)
+    val (yeared, yearless)         = group.filter(_._2.tmdbId.isEmpty).partition(_._1.year.isDefined)
+    val (withAdjacent, orphans)    = attachWithinYearWindow(resolved, yeared)
+    val (reclaimed, stillOrphaned) = reclaimOrphans(withAdjacent, orphans, normalizer)
+    val seeded                     = reclaimed ++ yearWindowClusters(stillOrphaned)
+    foldYearless(seeded, resolvedCount = resolved.size, yearless, normalizer).map(_.rows).filter(_.nonEmpty)
+  }
 
-    // (1) Resolved rows → one cluster per distinct tmdbId. Sort the ids so the
-    // cluster sequence is order-independent.
-    //
-    // A SHARED id is not on its own permission to merge. The imdbId fold below is
-    // guarded by the cinemas' own published evidence — "if two rows' venues describe
-    // different films, no id agreement may merge them" — and the same has to hold one
-    // rung down, for the reason that guard exists: a row can be holding an id that is
-    // not its film's, and merging a second row onto it buries the disagreement inside
-    // one record where nothing can see it again. Prod's "Mistyczka" absorbed Kino
-    // Klaps's listing of a DIFFERENT 2026 film that way, and the merged row then had a
-    // venue naming each film, so even the resolution could no longer tell them apart.
-    //
-    // The test is `MixedFilmDetector`'s, not a new one: a differing cinema-published
-    // ORIGINAL title corroborated by runtime or year, vetoed by an agreeing director.
-    // A title difference alone is deliberately NOT enough — measured over the PL
-    // corpus, 73 of 572 films have a venue whose title shares no distinctive word with
-    // TMDB's, and almost every one is a Polish title beside a foreign original
-    // ("Rozważna i romantyczna" / "Sense and Sensibility"). Splitting on that would
-    // break one film in eight.
-    //
-    // Keep the row the corpus would canonicalise onto and split off only what
-    // contradicts it, so the partition is a pure function of the row set.
-    val resolved: Seq[Identified] = group.filter(_._2.tmdbId.isDefined)
-      .map(row => Identified(row, MixedFilmDetector.publishedIdentity(row._2, normalizer)))
-    val byTmdbId: Seq[Seq[Identified]] = resolved.groupBy(_.row._2.tmdbId.get).toSeq.sortBy(_._1)
-      .flatMap { case (_, rows) =>
-        val ordered = rows.sortBy(r => rank(r.row))
-        val main    = ordered.head
-        val (different, same) = ordered.tail.partition(differ(main, _))
+  /** Rule 1: one cluster per tmdbId, sorted by id, with two corrections.
+   *
+   *  A shared tmdbId is not on its own permission to merge: a row can hold an id that
+   *  is not its film's, and merging a sibling onto it buries the disagreement for good
+   *  (prod "Mistyczka" absorbed a different 2026 film). So keep the best-ranked row and
+   *  split off every sibling [[differentFilms]] says contradicts it.
+   *
+   *  Conversely TMDB sometimes holds ONE film under two ids (a re-release catalogued
+   *  separately), both carrying the same imdbId — left apart the site shows the film
+   *  twice (prod `ghost2bigtorig` 2025/2026, 2026-08-14). Clusters sharing an imdbId
+   *  fold, under the same published-evidence veto. */
+  private def resolvedClusters(rows: Seq[Row], normalizer: TitleNormalizer): Seq[Cluster] = {
+    val identified = rows.map(row => Identified(row, MixedFilmDetector.publishedIdentity(row._2, normalizer)))
+    val byTmdbId: Seq[Seq[Identified]] = identified.groupBy(_.row._2.tmdbId.get).toSeq.sortBy(_._1)
+      .flatMap { case (_, members) =>
+        val ordered           = members.sortBy(r => rank(r.row))
+        val main              = ordered.head
+        val (different, same) = ordered.tail.partition(differentFilms(main, _))
         (main +: same) +: different.map(Seq(_))
       }
-    // …then fold together the tmdbId groups that share an IMDb id. One film can carry
-    // two tmdbIds: TMDB sometimes holds two records for the same picture (a re-release,
-    // an extended cut catalogued separately), and both resolve to the SAME IMDb id.
-    // Splitting on tmdbId alone then gives the film two `movies` rows FOREVER — nothing
-    // else in the fold can see they are one — and both accumulate the same venues'
-    // listings, so the read model projects a card each and the site shows the film twice
-    // under one slug. Production, 2026-08-14: `ghost2bigtorig|2025` (tmdbId 1568069) and
-    // `ghost2bigtorig|2026` (tmdbId 1693400), both `tt43683692`, 44 cinema slots filed
-    // under each. `scripts.DuplicateAudit` has always named this the gold standard —
-    // "two rows that TMDB resolved to the same IMDb id are definitionally the same film"
-    // — and this is the fold finally acting on it.
-    //
-    // Guarded by the cinemas' OWN published evidence, exactly as the containment edge in
-    // `groupByFilm` is: if two rows' venues describe different films, no id agreement may
-    // merge them, or the fold and `MixedFilmSplitter` would chase each other forever.
-    //
-    // Union-find over the tmdbId groups; a component's root is always its lowest
-    // index, so the partition (and the order below) is independent of the order the
-    // pairs fold in. The pairs to consider are found by grouping the groups by imdbId
-    // — a group with no imdbId, or one nobody else carries, is never compared at all —
-    // rather than by testing every pair of groups for an id in common.
+    foldSharedImdbIds(byTmdbId).map(rows => Cluster(refYear = rows.flatMap(_._2.tmdbYear).minOption, rows = rows))
+  }
+
+  /** Union-find over rule 1's tmdbId groups: groups carrying a common imdbId fold
+   *  unless any pair across them describes different films. A component's root is
+   *  always its lowest index, so the partition does not depend on the order the pairs
+   *  fold in; only groups that actually share an imdbId are ever compared. */
+  private def foldSharedImdbIds(byTmdbId: Seq[Seq[Identified]]): Seq[Seq[Row]] = {
     val sameFilm = Array.tabulate(byTmdbId.length)(identity)
     def root(x: Int): Int = { var r = x; while (sameFilm(r) != r) r = sameFilm(r); r }
     def fold(a: Int, b: Int): Unit = {
@@ -209,237 +146,156 @@ object FilmCanonicalizer {
         .flatMap(_.combinations(2).map { case Seq(i, j) => (i, j) })
         .toSeq.distinct.sorted
     sharingAnImdbId.foreach { case (i, j) =>
-      if (!byTmdbId(i).exists(a => byTmdbId(j).exists(differ(a, _)))) fold(i, j)
+      if (!byTmdbId(i).exists(a => byTmdbId(j).exists(differentFilms(a, _)))) fold(i, j)
     }
-    val resolvedClusters: Seq[Cluster] =
-      byTmdbId.indices.groupBy(root).toSeq.sortBy(_._1).map { case (_, indices) =>
-        val rows = indices.sorted.flatMap(byTmdbId).map(_.row)
-        Cluster(refYear = rows.flatMap(_._2.tmdbYear).minOption, rows = rows)
-      }
+    byTmdbId.indices.groupBy(root).toSeq.sortBy(_._1).map { case (_, indices) =>
+      indices.sorted.flatMap(byTmdbId).map(_.row)
+    }
+  }
 
-    val unresolved         = group.filter(_._2.tmdbId.isEmpty)
-    val (yeared, yearless) = unresolved.partition(_._1.year.isDefined)
+  /** Do two resolved rows describe different films? `MixedFilmDetector`'s test (a
+   *  differing published original title corroborated by runtime or year, vetoed by an
+   *  agreeing director — a title difference alone is a translation one film in eight),
+   *  OR the two are curated franchise siblings.
+   *
+   *  The franchise check deliberately bypasses the director veto: sequels share
+   *  directors (UK prod, 2026-09-16: every Hunger Games film ended up on one wrong
+   *  tmdbId, with Odeon publishing nothing else to tell them apart). It reads only the
+   *  cinemas' bare titles and asks `SequelMarker.curatedSiblingTitles`, not the general
+   *  ordinal logic, which misfires on raw cinema text ("Ghost 2 (1)"). */
+  private def differentFilms(a: Identified, b: Identified): Boolean =
+    MixedFilmDetector.describeDifferentFilms(a.identity, b.identity) ||
+      SequelMarker.curatedSiblingTitles(a.row._2.evidence.titles, b.row._2.evidence.titles)
 
-    // (2) Year-bearing unresolved rows attach to the NEAREST resolved cluster
-    // within `YearWindow.ProductionToRelease` of its tmdbYear. The ±1 window this
-    // widened from was too tight: Kino Muzeum reports "Zawieście czerwone latarnie"
-    // at its 1989 PRODUCTION year while TMDB resolved the film to its 1991 release
-    // — two years off — so the unresolved 1989 row orphaned into its own cluster
-    // and only merged when its own TMDB lookup happened to land before this pass
-    // (a race that left the corpus, and the rendered snapshot, nondeterministic).
-    // ±2 covers the usual production-vs-release gap; staying bounded (not "nearest
-    // at any distance") keeps a genuinely different same-title film still awaiting
-    // its tmdbId — a remake decades apart — from being swallowed into the wrong
-    // cluster. Pick the nearest by |year − tmdbYear|, ties on the cluster's
-    // smallest canonicalRank then index, so the attachment is a pure function of
-    // the row set, not arrival order. Iterate in canonicalRank order for the same
-    // reason.
-    val adjacent = scala.collection.mutable.LinkedHashMap.empty[Int, scala.collection.mutable.ListBuffer[Row]]
-    val orphans  = scala.collection.mutable.ListBuffer.empty[Row]
-    yeared.sortBy(rank).foreach { row =>
+  /** Rule 2: each unresolved year-bearing row joins the NEAREST resolved cluster whose
+   *  tmdbYear is within `YearWindow.ProductionToRelease` (±2 — a cinema's production
+   *  year vs TMDB's release year, "Zawieście czerwone latarnie" 1989 vs 1991), ties on
+   *  the cluster's `minRank` then index. Bounded rather than "nearest at any distance"
+   *  so a same-titled remake awaiting its own tmdbId is not swallowed. Returns the
+   *  clusters with their adjacent rows, and the orphans (rank order) no window took. */
+  private def attachWithinYearWindow(resolved: Seq[Cluster], yeared: Seq[Row]): (Seq[Cluster], Seq[Row]) = {
+    val homes: Seq[(Row, Option[Int])] = yeared.sortBy(rank).map { row =>
       val year = row._1.year.get
-      resolvedClusters.zipWithIndex
+      row -> resolved.zipWithIndex
         .filter { case (c, _) => YearWindow.agrees(Some(year), c.refYear, YearWindow.ProductionToRelease).contains(true) }
-        .minByOption { case (c, index) => (YearWindow.distance(year, c.refYear.get), c.minRank, index) } match {
-        case Some((_, index)) => adjacent.getOrElseUpdate(index, scala.collection.mutable.ListBuffer.empty) += row
-        case None           => orphans += row
-      }
+        .minByOption { case (c, index) => (YearWindow.distance(year, c.refYear.get), c.minRank, index) }
+        .map(_._2)
     }
-    val resolvedWithAdjacent: Seq[Cluster] = resolvedClusters.zipWithIndex.map { case (c, index) =>
-      c.copy(rows = c.rows ++ adjacent.getOrElse(index, Nil).toSeq)
+    (withHomedRows(resolved, homes), homes.collect { case (row, None) => row })
+  }
+
+  /** Each cluster plus, appended in `homes` order, the rows whose home is its index. */
+  private def withHomedRows(clusters: Seq[Cluster], homes: Seq[(Row, Option[Int])]): Seq[Cluster] =
+    clusters.zipWithIndex.map { case (c, index) =>
+      c.copy(rows = c.rows ++ homes.collect { case (row, Some(`index`)) => row })
     }
 
-    // (2b) A year-window orphan that shares an IDENTICAL listing with a resolved
-    // cluster — same (cinema, sanitized-title) slot key, same verbatim synopsis
-    // text — is reclaimed into it regardless of the year gap.
-    //
-    // The window in rule 2 (±2, a cinema's production-vs-release disagreement)
-    // has to stay narrow to keep a genuine same-titled remake split — but a venue
-    // sometimes re-publishes the SAME listing under a fresh, wrong year with
-    // nothing else changed: Odeon's rerelease-season pages stamp EVERY title with
-    // the season's current year regardless of the film's own vintage
-    // (`releaseYear` deliberately unset by that client), so "The Hunger Games"
-    // relanded at 2026, fourteen years past the resolved 2012 cluster, while
-    // "Odeon Cinema Belfast" carries the byte-identical synopsis on both rows.
-    // DE "Finding Connection" (2023 vs the resolved 2026) is the same shape at
-    // "Eifel-Film-Bühne". Neither row's own TMDB search can ever succeed — it is
-    // searching for a film that does not exist at that year — so left alone they
-    // are permanent ghosts (`kinowo_uk`/`kinowo_de`, found 2026-09-16).
-    //
-    // The signal a plain year-gap can't safely use here (rule 4's own guard needs
-    // a much wider tolerance than this — see [[YearWindow.SlotYearImplausibility]]
-    // — precisely because a slot year alone is noisy) is a venue's OWN published
-    // text matching BYTE FOR BYTE: two prints of one synopsis are strong evidence
-    // of one underlying listing, however far apart the years attached to it are.
-    // A coincidental same-title different film would need to ALSO coin the exact
-    // same blurb, which cinemas don't do independently.
-    //
-    // CINEMA slots only: a shared TMDB/IMDb/Filmweb blurb says the same title-keyed
-    // lookup ran for both rows, which is the same-title confusion the year window
-    // guards against — not a venue re-publishing its own listing.
-    def slotTexts(r: MovieRecord): Map[Source, String] =
-      (r.retainedSynopses.filter { case (_, text) => text.trim.nonEmpty } ++
-        r.data.flatMap { case (source, sd) => sd.synopsis.filter(_.trim.nonEmpty).map(source -> _) })
-        .filter { case (source, _) => Source.cinemaOf(source).isDefined }
-    def sharesADuplicateListing(a: MovieRecord, b: MovieRecord): Boolean = {
-      val bTexts = slotTexts(b)
-      slotTexts(a).exists { case (source, text) => bTexts.get(source).contains(text) }
-    }
-    // A year-window orphan whose OWN title textually DECORATES a resolved
-    // cluster's bare title/alias — a re-release banner stamped with the
-    // SCREENING's year, not the film's — is reclaimed the same way as an
-    // identical listing, for the cinema that never gets the chance to publish
-    // one: `sharesADuplicateListing` needs a matching print at a cinema the
-    // resolved cluster ALREADY has, which a decorated banner at a DIFFERENT
-    // venue never has. PL "Opętanie" poster-tour promo, 2026-09-17: Kino
-    // Spektrum published "Opętanie - plakatowa trasa: darmowy plakat dla
-    // każdego widza!" keyed at the tour's own year (2026), 45 years from the
-    // resolved 1981 cluster and at none of its cinemas — the row was a
-    // permanent orphan (`readyToProject` never held, so the projector pruned
-    // its card — `ReadModelFilmsInvisibleWithScreenings`). Reuses the SAME
-    // `TitleContainment.decorates` + `MixedFilmDetector` guard `groupByFilm`'s
-    // containment edge already trusts to union the two rows into one
-    // component in the first place — this only extends that trust to
-    // `clusterByFilm`'s own year-window refusal, so a decoration the settle
-    // already agreed is the same film isn't split back apart by its year.
-    def clusterTitleTokens(c: Cluster): Seq[Seq[String]] =
-      c.rows.flatMap { case (k, e) => (e.tmdbTitleAliases + k.cleanTitle).toSeq }.distinct.map(TitleContainment.tokens)
-    // A title carrying its OWN delimited year annotation that DISAGREES with the
-    // candidate cluster's is evidence of a genuinely different same-titled film —
-    // "It (1990)" beside a resolved "It" (2017) — which `EmbeddedYear` exists
-    // precisely to keep apart (`SameTitleTwoFilmsSpec`), and a bare title-run match
-    // must never override it: `TitleContainment`/`SequelMarker` deliberately do NOT
-    // treat a plain four-digit year as a sequel/entry marker ("Casablanca 1942" is
-    // still Casablanca), so without this check a decoration-reclaim would fold the
-    // one shape that guard was never meant to cover. A row with no delimited year of
-    // its own (the ordinary case, including "Opętanie"'s poster-tour banner) carries
-    // no such evidence and is unaffected.
-    def ownYearContradicts(c: Cluster, row: Row): Boolean =
-      EmbeddedYear.of(row._1.cleanTitle).exists(y => !c.refYear.contains(y))
-    def decoratesResolvedCluster(c: Cluster, row: Row): Boolean = {
-      val whole = TitleContainment.tokens(row._1.cleanTitle)
-      !ownYearContradicts(c, row) && whole.nonEmpty &&
-        clusterTitleTokens(c).exists(base => TitleContainment.decorates(base, whole)) &&
-        !c.rows.exists(cr => MixedFilmDetector.describeDifferentFilms(cr._2, row._2, normalizer))
-    }
-    val reclaimHome: Map[Row, Int] = orphans.iterator.flatMap { row =>
-      val matches = resolvedWithAdjacent.zipWithIndex.filter { case (c, _) =>
-        c.rows.exists(cr => sharesADuplicateListing(cr._2, row._2)) || decoratesResolvedCluster(c, row)
+  /** Rule 2b: reclaim a rule-2 orphan into the ONE resolved cluster it provably
+   *  belongs to, however far its year — two matching clusters is ambiguous and
+   *  refused. Two proofs:
+   *
+   *   - [[sharesADuplicateListing]]: a venue re-published the same listing under a
+   *     wrong year (Odeon's rerelease season stamps every title with the current
+   *     year; "The Hunger Games" at 2026 vs 2012). Neither row's own TMDB search can
+   *     ever succeed, so left alone they are permanent ghosts.
+   *   - [[decoratesResolvedCluster]]: a re-release banner keyed at the SCREENING's
+   *     year at a venue the film has no print at ("Opętanie - plakatowa trasa…" 2026
+   *     vs 1981) — the same containment the settle's `groupByFilm` edge already
+   *     trusted to put the two in one component. */
+  private def reclaimOrphans(resolved: Seq[Cluster], orphans: Seq[Row], normalizer: TitleNormalizer): (Seq[Cluster], Seq[Row]) = {
+    val homes: Seq[(Row, Option[Int])] = orphans.map { row =>
+      val matches = resolved.zipWithIndex.filter { case (c, _) =>
+        c.rows.exists(cr => sharesADuplicateListing(cr._2, row._2)) || decoratesResolvedCluster(c, row, normalizer)
       }
-      // Ambiguous (the same text, or a decoration, matches two resolved
-      // clusters) refuses, exactly like every other edge in this file that
-      // can't tell which film a row belongs to.
-      Option.when(matches.lengthIs == 1)(row -> matches.head._2)
-    }.toMap
-    val resolvedReclaimed: Seq[Cluster] = resolvedWithAdjacent.zipWithIndex.map { case (c, index) =>
-      c.copy(rows = c.rows ++ orphans.filter(r => reclaimHome.get(r).contains(index)))
+      row -> Option.when(matches.lengthIs == 1)(matches.head._2)
     }
+    (withHomedRows(resolved, homes), homes.collect { case (row, None) => row })
+  }
 
-    // (3) Orphaned year-bearing rows → greedy windows from the lowest distinct
-    // year, each `YearWindow.PublishedAdjacency` wide: {y, y+1} absorbs every
-    // orphan at y or y+1; the next window opens at the next distinct year > y+1.
-    val orphanRows  = orphans.toSeq.filterNot(reclaimHome.contains)
-    val orphanYears = orphanRows.map(_._1.year.get).distinct.sorted
-    val windowClusters = scala.collection.mutable.ListBuffer.empty[Cluster]
-    var remaining = orphanYears
+  /** A venue's synopsis text for its cinema slots (live or retained). Cinema slots
+   *  only: a shared TMDB/IMDb/Filmweb blurb says the same title-keyed lookup ran for
+   *  both rows — the very same-title confusion the year window guards against. */
+  private def slotTexts(r: MovieRecord): Map[Source, String] =
+    (r.retainedSynopses.filter { case (_, text) => text.trim.nonEmpty } ++
+      r.data.flatMap { case (source, sd) => sd.synopsis.filter(_.trim.nonEmpty).map(source -> _) })
+      .filter { case (source, _) => Source.cinemaOf(source).isDefined }
+
+  /** Same venue, byte-identical synopsis — two prints of one listing. A coincidental
+   *  same-title different film would also have to coin the exact same blurb. */
+  private def sharesADuplicateListing(a: MovieRecord, b: MovieRecord): Boolean = {
+    val bTexts = slotTexts(b)
+    slotTexts(a).exists { case (source, text) => bTexts.get(source).contains(text) }
+  }
+
+  /** Does `row`'s title decorate one of the cluster's titles/aliases (the
+   *  `TitleContainment` + `MixedFilmDetector` guard `groupByFilm`'s containment edge
+   *  uses)? Never when the row's title carries its OWN delimited year that disagrees
+   *  with the cluster's — "It (1990)" beside a resolved 2017 "It" is the different
+   *  film `EmbeddedYear` exists to keep apart, and a plain year is not a sequel marker
+   *  `TitleContainment` would see. */
+  private def decoratesResolvedCluster(c: Cluster, row: Row, normalizer: TitleNormalizer): Boolean = {
+    val whole              = TitleContainment.tokens(row._1.cleanTitle)
+    val ownYearContradicts = EmbeddedYear.of(row._1.cleanTitle).exists(y => !c.refYear.contains(y))
+    val clusterTitles      = c.rows.flatMap { case (k, e) => (e.tmdbTitleAliases + k.cleanTitle).toSeq }.distinct.map(TitleContainment.tokens)
+    !ownYearContradicts && whole.nonEmpty &&
+      clusterTitles.exists(base => TitleContainment.decorates(base, whole)) &&
+      !c.rows.exists(cr => MixedFilmDetector.describeDifferentFilms(cr._2, row._2, normalizer))
+  }
+
+  /** Rule 3: the remaining orphans form greedy windows from the lowest distinct year,
+   *  each `YearWindow.PublishedAdjacency` wide — {y, y+1} absorbs every orphan at y or
+   *  y+1, the next window opens at the next distinct year past it. */
+  private def yearWindowClusters(orphans: Seq[Row]): Seq[Cluster] = {
+    val windows   = scala.collection.mutable.ListBuffer.empty[Cluster]
+    var remaining = orphans.map(_._1.year.get).distinct.sorted
     while (remaining.nonEmpty) {
-      val lo    = remaining.head
-      val hi    = lo + YearWindow.PublishedAdjacency
-      val inWin = orphanRows.filter(r => r._1.year.get >= lo && r._1.year.get <= hi)
-      windowClusters += Cluster(refYear = Some(lo), rows = inWin)
+      val lo = remaining.head
+      val hi = lo + YearWindow.PublishedAdjacency
+      windows += Cluster(refYear = Some(lo), rows = orphans.filter(r => r._1.year.get >= lo && r._1.year.get <= hi))
       remaining = remaining.dropWhile(_ <= hi)
     }
+    windows.toSeq
+  }
 
-    val seeded: Seq[Cluster] = resolvedReclaimed ++ windowClusters.toSeq
-
-    // (4) Yearless+idless rows fold into the group's canonical cluster (the single
-    // resolved one, else the group's only cluster) — BUT only when the title maps to
-    // exactly ONE plausible film. With no cluster at all, TWO-OR-MORE distinct resolved
-    // films, or no resolved film and two-or-more year clusters, each such row stands alone.
-    //
-    // The multi-film guard is the ambiguity refuse: a `sanitize(title)` can collide
-    // across genuinely different TMDB films — "Guru" is THREE (a Persian "لؤ گورو",
-    // Yann Gozlan's "Gourou" 2026, and his unrelated "Dalloway"/"Rezydencja" 2025).
-    // A yearless+idless row (a cinema that reports just the bare title, no year/
-    // director) can't tell which it is, so attaching it to the smallest-canonicalRank
-    // cluster would make it INHERIT that film's year + tmdbId — an order-dependent
-    // wrong guess (whichever same-title film resolved first wins the rank), and the
-    // inherited year then mis-pins the direct re-resolve to yet another same-director
-    // film (`directorWalk` byYear). Refuse instead: the row stays its own
-    // `tmdbNoMatch` self and renders with cinema-only data, identically across
-    // arrival orders (StagingOrderDeterminismSpec). A SINGLE resolved film is
-    // unambiguous, so the straggler still folds onto it (the cross-language adoption
-    // the alias-edge + this rule exist for — "The Mandalorian and Grogu") — UNLESS
-    // the straggler's own cinema-published evidence positively contradicts the
-    // resolved film. No comparable title from either side is common (Flicks/small
-    // sites publish `title` only, never `originalTitle`) and is NOT evidence of
-    // difference — [[MixedFilmDetector]] correctly stays silent then, which is why
-    // this rule exists at all. But when a straggler's OWN venue published a year or
-    // runtime, that IS evidence, and it was going unread here: DE "Hope" absorbed a
-    // Cameroonian migration drama (Harmonie in Sachsenhausen, 91min/2014) and an
-    // economist's-affair drama (Filmforum Höchst) onto the resolved 2026 Korean
-    // horror film's row — three films, one tmdbId — because both stragglers were
-    // yearless-KEY (deferred-detail) with nothing to compare by TITLE, even though
-    // their SLOTS carried a year the resolved cluster flatly disagreed with (found
-    // 2026-09-16, `kinowo_de`). `MixedFilmDetector.describeDifferentFilms` still
-    // fires too, for the rarer straggler that DOES publish a differing original
-    // title (defense in depth; adds nothing beyond it for a title-silent row).
-    //
-    // The year tolerance here is deliberately WIDER than [[YearWindow.ProductionToRelease]]
-    // — see [[YearWindow.SlotYearImplausibility]] — because a slot year on a
-    // yearless-KEY row is the noisier "deferred-detail" kind `clusterYear` already
-    // refuses to promote, not a cinema's considered production-year disagreement;
-    // "Głos Hind Rajab"'s Δ3 slot-vs-resolved gap must still fold (the test below
-    // pins it), while "Hope"'s Δ12 must not.
-    //
-    // A straggler whose OWN published runtime AGREES CLOSELY with the resolved
-    // film's is exempted from the year-implausibility refusal above — the same
-    // "runtime settles it, not the year" precedent `MixedFilmDetector.corroborated`
-    // itself documents (Kinoteka's "Rozmowa" listed at a 2026 screening date beside
-    // a matching 113-minute runtime), applied here to a brand-new venue with
-    // nothing yet on the resolved row to reclaim by shared text (rule 2b's reclaim
-    // needs an EXISTING same-venue print to compare against, which a venue's
-    // first-ever scrape never has). PL "Happy Together" (Wong Kar-wai, 1997),
-    // 2026-09-17: Kinoteka's OWN detail page reports "Data premiery: 30.06.2026" —
-    // this rerelease's screening date, not the film's vintage — under a BARE
-    // heading `KinotekaClient`'s decorated-heading guard doesn't catch, so the row
-    // keys yearless but its slot carries a year Δ29 from the resolved 1997 cluster,
-    // past even `SlotYearImplausibility`. Runtime is the one signal that survives
-    // this row's OTHER trap too — its own `originalTitle`/`director` are published
-    // in Cantonese romanization ("Chun gwong cha sit"/"Wong Kar Wai") against
-    // TMDB's Chinese-script originals ("春光乍洩"/"王家衛"), so neither a title nor a
-    // director comparison can see the agreement, but the runtime — 96 minutes on
-    // both sides — needs no script to compare.
-    //
-    // With NO resolved film the same refuse applies one rung down: two unresolved
-    // year-window clusters ("Diuna" 1984 and 2021 before either resolves) are two
-    // plausible films, and handing the straggler to the lower year was the same guess.
-    // Only a group whose single cluster is the only candidate folds.
-    val yearlessRows = yearless.toSeq
-    // The one RESOLVED film when there is one (resolved clusters lead `seeded`), never an
-    // unresolved orphan that merely ranks earlier on its key year — that orphan is by
-    // construction a film rule 2 refused to identify with it; else the group's only cluster.
-    val home: Option[Int] = Option.when(resolvedClusters.sizeIs == 1 || seeded.sizeIs == 1)(0)
-    val clusters: Seq[Cluster] = home match {
-      case None =>
-        seeded ++ yearlessRows.map(r => Cluster(refYear = None, rows = Seq(r)))
-      case Some(canonicalIndex) =>
-        val canonicalCluster = seeded(canonicalIndex)
-        val canonicalRuntime = canonicalCluster.rows.flatMap(_._2.data.get(Tmdb).flatMap(_.runtimeMinutes)).headOption
-        val (attach, refuse) = yearlessRows.partition { r =>
-          val ev = r._2.evidence
-          val yearContradicts = YearWindow.contradicts(ev.years, canonicalCluster.refYear, YearWindow.SlotYearImplausibility)
-          val runtimeAgrees   = MixedFilmDetector.runtimesAgree(ev.runtimes, canonicalRuntime.toSeq)
-          (!yearContradicts || runtimeAgrees) &&
-            RuntimeCorroboration.plausible(ev.runtimes, canonicalRuntime) &&
-            !canonicalCluster.rows.exists(cr => MixedFilmDetector.describeDifferentFilms(cr._2, r._2, normalizer))
-        }
-        seeded.zipWithIndex.map { case (c, index) =>
-          if (index == canonicalIndex) c.copy(rows = c.rows ++ attach) else c
-        } ++ refuse.map(r => Cluster(refYear = None, rows = Seq(r)))
+  /** Rule 4: yearless unresolved rows fold into the group's ONE plausible film — the
+   *  single resolved cluster (which leads `seeded`), else the only cluster at all.
+   *  Otherwise they stay singletons: a bare title that could be two films ("Guru" is
+   *  three on TMDB; "Diuna" 1984/2021 before either resolves) would inherit whichever
+   *  ranked first — an order-dependent wrong guess that then mis-pins its re-resolve.
+   *  Never onto an unresolved orphan beside a resolved film: rule 2 already refused to
+   *  identify the two. Even with one home, a row whose own evidence contradicts it
+   *  stays apart ([[contradictsHome]]). */
+  private def foldYearless(seeded: Seq[Cluster], resolvedCount: Int, yearless: Seq[Row],
+                           normalizer: TitleNormalizer): Seq[Cluster] = {
+    def singletons(rows: Seq[Row]) = rows.map(r => Cluster(refYear = None, rows = Seq(r)))
+    if (resolvedCount != 1 && seeded.sizeIs != 1) seeded ++ singletons(yearless)
+    else {
+      val home             = seeded.head
+      val (refuse, attach) = yearless.partition(contradictsHome(home, _, normalizer))
+      (home.copy(rows = home.rows ++ attach) +: seeded.tail) ++ singletons(refuse)
     }
+  }
 
-    clusters.map(_.rows).filter(_.nonEmpty)
+  /** Does a yearless straggler's OWN published evidence contradict the film rule 4
+   *  would fold it into? Title-silent venues are the norm (and not evidence), but a
+   *  published year or runtime is: DE "Hope" (2026-09-16) folded a 2014 91-minute
+   *  drama onto a 2026 Korean horror film for want of reading it.
+   *
+   *   - Year: tolerance `YearWindow.SlotYearImplausibility`, wider than rule 2's,
+   *     because a yearless-KEY row's slot year is the noisy deferred-detail kind
+   *     ("Głos Hind Rajab"'s Δ3 must still fold; "Hope"'s Δ12 must not). Waived when
+   *     the runtime agrees closely — a rerelease stamped with its screening date
+   *     (Kinoteka's "Happy Together", Δ29 but 96 min on both sides).
+   *   - Runtime: `RuntimeCorroboration.plausible`.
+   *   - A differing published original title (`MixedFilmDetector`). */
+  private def contradictsHome(home: Cluster, row: Row, normalizer: TitleNormalizer): Boolean = {
+    val ev              = row._2.evidence
+    val homeRuntime     = home.rows.flatMap(_._2.data.get(Tmdb).flatMap(_.runtimeMinutes)).headOption
+    val yearContradicts = YearWindow.contradicts(ev.years, home.refYear, YearWindow.SlotYearImplausibility)
+    val runtimeAgrees   = MixedFilmDetector.runtimesAgree(ev.runtimes, homeRuntime.toSeq)
+    (yearContradicts && !runtimeAgrees) ||
+      !RuntimeCorroboration.plausible(ev.runtimes, homeRuntime) ||
+      home.rows.exists(cr => MixedFilmDetector.describeDifferentFilms(cr._2, row._2, normalizer))
   }
 
   /** Is this row's KEY one of the film's own TMDB titles (its Polish or original
