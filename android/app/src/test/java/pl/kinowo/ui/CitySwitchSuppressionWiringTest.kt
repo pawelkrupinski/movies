@@ -1,26 +1,13 @@
 package pl.kinowo.ui
 
-import androidx.test.core.app.ApplicationProvider
-import kotlinx.coroutines.runBlocking
-import okhttp3.OkHttpClient
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import pl.kinowo.auth.AuthRepository
-import pl.kinowo.auth.HiddenFilmsClient
-import pl.kinowo.auth.HiddenFilmsFetchResult
-import pl.kinowo.auth.HiddenFilmsState
-import pl.kinowo.data.DetailsRepository
-import pl.kinowo.data.JsonListCache
-import pl.kinowo.data.RepertoireRepository
-import pl.kinowo.data.UserPreferences
-import pl.kinowo.model.Film
-import pl.kinowo.model.FilmDetails
-import pl.kinowo.net.KinowoApi
-import pl.kinowo.net.PersistentCookieJar
+import pl.kinowo.KinowoViewModelHarness
 
 /**
  * [KinowoViewModel.chooseCityAtGate] must not let [KinowoViewModel.checkCitySwitch]
@@ -40,29 +27,14 @@ import pl.kinowo.net.PersistentCookieJar
 @Config(sdk = [34])
 class CitySwitchSuppressionWiringTest {
 
-    private fun viewModel(): KinowoViewModel {
-        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val http = OkHttpClient()
-        val api = KinowoApi(client = http)
-        val repository = RepertoireRepository(api, JsonListCache(context.cacheDir, "repertoire", Film.serializer()))
-        val detailsRepository = DetailsRepository(api, JsonListCache(context.cacheDir, "details", FilmDetails.serializer()))
-        val authRepository = AuthRepository(http, PersistentCookieJar(context))
-        val noopStateClient = object : HiddenFilmsClient {
-            override suspend fun fetch(country: String, etag: String?, lastModified: String?) =
-                HiddenFilmsFetchResult.NotModified
-            override suspend fun hide(country: String, title: String) = HiddenFilmsState(emptySet(), null, null)
-            override suspend fun unhide(country: String, title: String) = HiddenFilmsState(emptySet(), null, null)
-            override suspend fun clear(country: String) = HiddenFilmsState(emptySet(), null, null)
-        }
-        val prefs = UserPreferences(context)
-        return KinowoViewModel(repository, detailsRepository, prefs, authRepository, noopStateClient)
-    }
+    @get:Rule
+    val harness = KinowoViewModelHarness()
 
     @Test
     fun rePickingWithNoDetectedNearestArmsTheBlanketSuppressor() {
-        val vm = viewModel()
+        val vm = harness.viewModel()
 
-        runBlocking { vm.chooseCityAtGate("warszawa", nearestSlug = null) }
+        harness.settle(vm.chooseCityAtGate("warszawa", nearestSlug = null))
 
         assertTrue(
             "chooseCityAtGate(nearestSlug = null) should skip the next checkCitySwitch",
@@ -72,9 +44,9 @@ class CitySwitchSuppressionWiringTest {
 
     @Test
     fun firstLaunchWithADetectedNearestUsesThePreciseKeyInstead() {
-        val vm = viewModel()
+        val vm = harness.viewModel()
 
-        runBlocking { vm.chooseCityAtGate("warszawa", nearestSlug = "poznan") }
+        harness.settle(vm.chooseCityAtGate("warszawa", nearestSlug = "poznan"))
 
         // The exact chosen→nearest pair is handled by the persisted prompt key
         // (see UserPreferencesCityTests-equivalent coverage of setCitySwitchPromptKey);
@@ -87,13 +59,13 @@ class CitySwitchSuppressionWiringTest {
 
     @Test
     fun rePickingTheAlreadyNearestCityAlsoLeavesTheBlanketSuppressorDisarmed() {
-        val vm = viewModel()
+        val vm = harness.viewModel()
 
         // chosen == nearest: initialChoiceSuppressKey returns null (nothing to
         // suppress — switchSuggestion already stays quiet when nearest equals
         // chosen), and nearestSlug is non-null, so the blanket fallback must not
         // fire either.
-        runBlocking { vm.chooseCityAtGate("warszawa", nearestSlug = "warszawa") }
+        harness.settle(vm.chooseCityAtGate("warszawa", nearestSlug = "warszawa"))
 
         assertFalse(vm.citySwitchSuppressor.consumeShouldSkip())
     }

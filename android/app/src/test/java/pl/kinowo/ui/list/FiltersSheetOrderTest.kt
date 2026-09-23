@@ -1,5 +1,6 @@
 package pl.kinowo.ui.list
 
+import pl.kinowo.KinowoViewModelHarness
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
@@ -13,7 +14,6 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import okhttp3.OkHttpClient
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -21,19 +21,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import pl.kinowo.auth.AuthRepository
-import pl.kinowo.auth.HiddenFilmsClient
-import pl.kinowo.auth.HiddenFilmsFetchResult
-import pl.kinowo.auth.HiddenFilmsState
-import pl.kinowo.data.DetailsRepository
-import pl.kinowo.data.JsonListCache
-import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
 import pl.kinowo.model.Cities
-import pl.kinowo.model.Film
-import pl.kinowo.model.FilmDetails
-import pl.kinowo.net.KinowoApi
-import pl.kinowo.net.PersistentCookieJar
 import pl.kinowo.R
 import pl.kinowo.ui.KinowoViewModel
 
@@ -52,21 +41,11 @@ class FiltersSheetOrderTest {
     @get:Rule
     val compose = createComposeRule()
 
+    @get:Rule
+    val harness = KinowoViewModelHarness()
+
     private fun viewModel(vararg hidden: String): KinowoViewModel {
-        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val http = OkHttpClient()
-        val api = KinowoApi(client = http)
-        val repository = RepertoireRepository(api, JsonListCache(context.cacheDir, "repertoire", Film.serializer()))
-        val detailsRepository = DetailsRepository(api, JsonListCache(context.cacheDir, "details", FilmDetails.serializer()))
-        val authRepository = AuthRepository(http, PersistentCookieJar(context))
-        val noopStateClient = object : HiddenFilmsClient {
-            override suspend fun fetch(country: String, etag: String?, lastModified: String?) =
-                HiddenFilmsFetchResult.NotModified
-            override suspend fun hide(country: String, title: String) = HiddenFilmsState(emptySet(), null, null)
-            override suspend fun unhide(country: String, title: String) = HiddenFilmsState(emptySet(), null, null)
-            override suspend fun clear(country: String) = HiddenFilmsState(emptySet(), null, null)
-        }
-        val prefs = UserPreferences(context)
+        val prefs = UserPreferences(harness.context)
         if (hidden.isNotEmpty()) runBlocking { hidden.forEach { prefs.hide(it) } }
         // `CitySection` freezes `selectedCity`/`selectedCountryCode` into a
         // `remember {}` snapshot at FIRST composition (deliberately — see its own
@@ -87,7 +66,7 @@ class FiltersSheetOrderTest {
             prefs.selectedCity.first()
             prefs.selectedCountryCode.first()
         }
-        return KinowoViewModel(repository, detailsRepository, prefs, authRepository, noopStateClient)
+        return harness.viewModel(prefs = prefs)
     }
 
     /**

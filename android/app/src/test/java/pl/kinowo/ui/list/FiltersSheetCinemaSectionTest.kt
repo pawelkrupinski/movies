@@ -1,5 +1,6 @@
 package pl.kinowo.ui.list
 
+import pl.kinowo.KinowoViewModelHarness
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
@@ -9,9 +10,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
-import androidx.test.core.app.ApplicationProvider
 
-import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -22,19 +21,6 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import pl.kinowo.TestData
 import pl.kinowo.filter.CinemaSection
-import pl.kinowo.auth.AuthRepository
-import pl.kinowo.auth.HiddenFilmsClient
-import pl.kinowo.auth.HiddenFilmsFetchResult
-import pl.kinowo.auth.HiddenFilmsState
-import pl.kinowo.data.DetailsRepository
-import pl.kinowo.data.JsonListCache
-import pl.kinowo.data.RepertoireRepository
-import pl.kinowo.data.UserPreferences
-import pl.kinowo.model.Film
-import pl.kinowo.model.FilmDetails
-import pl.kinowo.net.KinowoApi
-import pl.kinowo.net.PersistentCookieJar
-import pl.kinowo.ui.KinowoViewModel
 
 /**
  * The cinema filter lives in the Filtry sheet — NOT in a pulldown bar under the
@@ -72,33 +58,13 @@ class FiltersSheetCinemaSectionTest {
         ),
     )
 
-    private fun viewModel(): KinowoViewModel {
-        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val http = OkHttpClient()
-        val api = KinowoApi(client = http)
-        val repository = RepertoireRepository(api, JsonListCache(context.cacheDir, "repertoire", Film.serializer()))
-        val detailsRepository = DetailsRepository(api, JsonListCache(context.cacheDir, "details", FilmDetails.serializer()))
-        val authRepository = AuthRepository(http, PersistentCookieJar(context))
-        val noopStateClient = object : HiddenFilmsClient {
-            override suspend fun fetch(country: String, etag: String?, lastModified: String?) =
-                HiddenFilmsFetchResult.NotModified
-            override suspend fun hide(country: String, title: String) = HiddenFilmsState(emptySet(), null, null)
-            override suspend fun unhide(country: String, title: String) = HiddenFilmsState(emptySet(), null, null)
-            override suspend fun clear(country: String) = HiddenFilmsState(emptySet(), null, null)
-        }
-        return KinowoViewModel(
-            repository,
-            detailsRepository,
-            UserPreferences(context),
-            authRepository,
-            noopStateClient,
-        )
-    }
+    @get:Rule
+    val harness = KinowoViewModelHarness()
 
     /** The section exists and is collapsed until tapped, like the name filters. */
     @Test
     fun kinaIsACollapsibleSectionInTheSheet() {
-        compose.setContent { FiltersSheetContent(viewModel(), films = films) }
+        compose.setContent { FiltersSheetContent(harness.viewModel(), films = films) }
 
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Kina"))
         compose.onNodeWithText("Kina").assertIsDisplayed()
@@ -117,7 +83,7 @@ class FiltersSheetCinemaSectionTest {
     /** Unticking a cinema writes it into the one `disabledCinemas` exclusion set. */
     @Test
     fun untickingACinemaExcludesIt() {
-        val viewModel = viewModel()
+        val viewModel = harness.viewModel()
         compose.setContent { FiltersSheetContent(viewModel, films = films) }
 
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Kina"))
@@ -141,7 +107,7 @@ class FiltersSheetCinemaSectionTest {
      */
     @Test
     fun kinaSitsBetweenSortujAndTheFormatFilters() {
-        compose.setContent { FiltersSheetContent(viewModel(), films = films) }
+        compose.setContent { FiltersSheetContent(harness.viewModel(), films = films) }
 
         fun top(text: String) =
             compose.onNodeWithText(text).fetchSemanticsNode().boundsInRoot.top

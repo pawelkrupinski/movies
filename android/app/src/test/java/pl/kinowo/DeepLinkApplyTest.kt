@@ -1,28 +1,16 @@
 package pl.kinowo
 
-import androidx.test.core.app.ApplicationProvider
-import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import pl.kinowo.auth.AuthRepository
-import pl.kinowo.auth.HiddenFilmsClient
-import pl.kinowo.auth.HiddenFilmsFetchResult
-import pl.kinowo.auth.HiddenFilmsState
-import pl.kinowo.data.DetailsRepository
-import pl.kinowo.data.JsonListCache
-import pl.kinowo.data.RepertoireRepository
-import pl.kinowo.data.UserPreferences
 import pl.kinowo.deeplink.DeepLink
 import pl.kinowo.filter.DateFilter
 import pl.kinowo.filter.SortOption
 import pl.kinowo.model.Film
-import pl.kinowo.model.FilmDetails
-import pl.kinowo.net.KinowoApi
-import pl.kinowo.net.PersistentCookieJar
 import pl.kinowo.ui.KinowoViewModel
 
 /**
@@ -32,37 +20,19 @@ import pl.kinowo.ui.KinowoViewModel
  * the ViewModel's [KinowoViewModel.applyScalarFilters], which `handleDeepLink`
  * runs synchronously.
  *
- * We assert on `applyScalarFilters` rather than the whole `handleDeepLink`
- * on purpose: `handleDeepLink` also calls `setCity`, which WRITES to the
- * process-shared Robolectric DataStore (`kinowo_prefs`). That write — async on
- * `viewModelScope` — outlives the test and wedges the shared write-mutex,
- * deadlocking the next test that reads prefs (`UserPreferencesCityTest`). Reads
- * are fine, writes are not; staying read-only keeps the suite hermetic.
+ * The ViewModel comes from [KinowoViewModelHarness], which also tears it
+ * down so no async prefs write outlives the test.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class DeepLinkApplyTest {
 
-    private fun viewModel(): KinowoViewModel {
-        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val http = OkHttpClient()
-        val api = KinowoApi(client = http)
-        val repository = RepertoireRepository(api, JsonListCache(context.cacheDir, "repertoire", Film.serializer()))
-        val detailsRepository = DetailsRepository(api, JsonListCache(context.cacheDir, "details", FilmDetails.serializer()))
-        val authRepository = AuthRepository(http, PersistentCookieJar(context))
-        val noopStateClient = object : HiddenFilmsClient {
-            override suspend fun fetch(country: String, etag: String?, lastModified: String?) =
-                HiddenFilmsFetchResult.NotModified
-            override suspend fun hide(country: String, title: String) = HiddenFilmsState(emptySet(), null, null)
-            override suspend fun unhide(country: String, title: String) = HiddenFilmsState(emptySet(), null, null)
-            override suspend fun clear(country: String) = HiddenFilmsState(emptySet(), null, null)
-        }
-        return KinowoViewModel(repository, detailsRepository, UserPreferences(context), authRepository, noopStateClient)
-    }
+    @get:Rule
+    val harness = KinowoViewModelHarness()
 
     @Test
     fun scalarFiltersFromLinkLandOnViewModelState() {
-        val vm = viewModel()
+        val vm = harness.viewModel()
 
         vm.applyScalarFilters(DeepLink.parse("https://kinowo.net/warszawa/?date=tomorrow&q=duna&dim=2D&lang=NAP&imax=1&from=18:30&sort=rating")!!.filters)
 
@@ -78,7 +48,7 @@ class DeepLinkApplyTest {
 
     @Test
     fun absentAxesLeaveStateAtDefaults() {
-        val vm = viewModel()
+        val vm = harness.viewModel()
 
         // A link that sets only `dim` must not disturb the other axes.
         vm.applyScalarFilters(DeepLink.parse("https://kinowo.net/warszawa/?dim=3D")!!.filters)
@@ -91,7 +61,7 @@ class DeepLinkApplyTest {
 
     @Test
     fun filmLinkQueuesNavigationWhenTitleIsInTheLoadedRepertoire() {
-        val vm = viewModel()
+        val vm = harness.viewModel()
 
         // The film lookup runs against the list it's GIVEN — which the fix
         // guarantees is the target city's repertoire, not stale films.
@@ -105,7 +75,7 @@ class DeepLinkApplyTest {
 
     @Test
     fun filmLinkMatchesNumberedTitleByNormalizedForm() {
-        val vm = viewModel()
+        val vm = harness.viewModel()
 
         // The web links "…Prady 2" (Arabic, as displayed) but the stored film is
         // "…Prady II" — exact match would miss. Normalized match finds it, and we
@@ -120,7 +90,7 @@ class DeepLinkApplyTest {
 
     @Test
     fun filmLinkDoesNotNavigateWhenTitleAbsentFromRepertoire() {
-        val vm = viewModel()
+        val vm = harness.viewModel()
 
         // Title not in the supplied list (e.g. matched against the wrong/stale
         // city, or the film left the listing) → no navigation, lands on the grid.

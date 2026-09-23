@@ -1,11 +1,9 @@
 package pl.kinowo.ui.list
 
-import android.content.Context
+import pl.kinowo.KinowoViewModelHarness
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.runBlocking
-import okhttp3.OkHttpClient
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -13,21 +11,14 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import pl.kinowo.auth.AuthRepository
-import pl.kinowo.auth.HiddenFilmsClient
-import pl.kinowo.auth.HiddenFilmsFetchResult
-import pl.kinowo.auth.HiddenFilmsState
-import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.JsonListCache
 import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
 import pl.kinowo.model.CinemaShowings
 import pl.kinowo.model.DayShowings
 import pl.kinowo.model.Film
-import pl.kinowo.model.FilmDetails
 import pl.kinowo.model.Showtime
 import pl.kinowo.net.KinowoApi
-import pl.kinowo.net.PersistentCookieJar
 import pl.kinowo.net.RepertoireApi
 import pl.kinowo.ui.KinowoViewModel
 import pl.kinowo.ui.theme.KinowoTheme
@@ -54,8 +45,11 @@ class CinemaLabelAlwaysShownTest {
     // from another spec in the shared test JVM can't filter this film out.
     private val cinema = "Kino Testowe Solo"
 
+    @get:Rule
+    val harness = KinowoViewModelHarness()
+
     private fun seedViewModel(): KinowoViewModel {
-        val context = ApplicationProvider.getApplicationContext<Context>()
+        val context = harness.context
         // Hermetic: the DataStore is process-wide in the Robolectric JVM, so
         // clear any cinema exclusions a prior test persisted before mounting.
         val prefs = UserPreferences(context)
@@ -80,17 +74,7 @@ class CinemaLabelAlwaysShownTest {
         }
         val repository = RepertoireRepository(fakeApi, JsonListCache(context.cacheDir, "rep_label", Film.serializer()))
         runBlocking { repository.reload("warszawa") }
-        val http = OkHttpClient()
-        val detailsRepository = DetailsRepository(KinowoApi(client = http), JsonListCache(context.cacheDir, "det_label", FilmDetails.serializer()))
-        val authRepository = AuthRepository(http, PersistentCookieJar(context))
-        val noop = object : HiddenFilmsClient {
-            override suspend fun fetch(country: String, etag: String?, lastModified: String?) =
-                HiddenFilmsFetchResult.NotModified
-            override suspend fun hide(country: String, title: String) = HiddenFilmsState(emptySet(), null, null)
-            override suspend fun unhide(country: String, title: String) = HiddenFilmsState(emptySet(), null, null)
-            override suspend fun clear(country: String) = HiddenFilmsState(emptySet(), null, null)
-        }
-        return KinowoViewModel(repository, detailsRepository, prefs, authRepository, noop)
+        return harness.viewModel(prefs = prefs, repository = repository)
     }
 
     @Test

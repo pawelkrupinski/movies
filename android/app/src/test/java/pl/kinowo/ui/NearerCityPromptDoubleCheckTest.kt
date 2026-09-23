@@ -1,10 +1,7 @@
 package pl.kinowo.ui
 
-import android.content.Context
+import pl.kinowo.KinowoViewModelHarness
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.test.core.app.ApplicationProvider
-import kotlinx.coroutines.runBlocking
-import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -12,18 +9,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import pl.kinowo.auth.AuthRepository
-import pl.kinowo.auth.HiddenFilmsClient
-import pl.kinowo.auth.HiddenFilmsFetchResult
-import pl.kinowo.auth.HiddenFilmsState
-import pl.kinowo.data.DetailsRepository
-import pl.kinowo.data.JsonListCache
-import pl.kinowo.data.RepertoireRepository
-import pl.kinowo.data.UserPreferences
-import pl.kinowo.model.Film
-import pl.kinowo.model.FilmDetails
-import pl.kinowo.net.KinowoApi
-import pl.kinowo.net.PersistentCookieJar
 
 /**
  * A manual re-pick with no detected nearest (Filtry's "Pick another city", or
@@ -48,32 +33,17 @@ class NearerCityPromptDoubleCheckTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private fun viewModel(): KinowoViewModel {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        val http = OkHttpClient()
-        val api = KinowoApi(client = http)
-        val repository = RepertoireRepository(api, JsonListCache(context.cacheDir, "repertoire", Film.serializer()))
-        val detailsRepository = DetailsRepository(api, JsonListCache(context.cacheDir, "details", FilmDetails.serializer()))
-        val authRepository = AuthRepository(http, PersistentCookieJar(context))
-        val noopStateClient = object : HiddenFilmsClient {
-            override suspend fun fetch(country: String, etag: String?, lastModified: String?) =
-                HiddenFilmsFetchResult.NotModified
-            override suspend fun hide(country: String, title: String) = HiddenFilmsState(emptySet(), null, null)
-            override suspend fun unhide(country: String, title: String) = HiddenFilmsState(emptySet(), null, null)
-            override suspend fun clear(country: String) = HiddenFilmsState(emptySet(), null, null)
-        }
-        val prefs = UserPreferences(context)
-        return KinowoViewModel(repository, detailsRepository, prefs, authRepository, noopStateClient)
-    }
+    @get:Rule
+    val harness = KinowoViewModelHarness()
 
     @Test
     fun mountingRightAfterAManualRepickChecksExactlyOnce() {
-        val vm = viewModel()
+        val vm = harness.viewModel()
         // The "no detected nearest" branch of chooseCityAtGate — Filtry's "Pick
         // another city", or a country switch — is exactly the one that relies on
         // the fragile one-shot suppressor rather than a persisted chosen→nearest
         // key.
-        runBlocking { vm.chooseCityAtGate("warszawa", nearestSlug = null) }
+        harness.settle(vm.chooseCityAtGate("warszawa", nearestSlug = null))
 
         // Mirrors KinowoApp: NearerCityPrompt mounts once `selectedCity` is
         // non-null, which happens right after the pick above — no real
