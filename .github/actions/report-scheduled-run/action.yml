@@ -1,0 +1,27 @@
+name: Report a scheduled run
+description: >-
+  Opens (or comments on) an issue assigned to the repository owner when a
+  SCHEDULED run failed, and closes it when one passes — so a red cron run
+  reaches a person instead of sitting in the Actions tab. See
+  scripts/ci/scheduled-failure-issue.sh. The calling job needs
+  `permissions: issues: write` and a checkout.
+
+inputs:
+  failed:
+    description: "'true' when any job this run depends on failed"
+    required: true
+
+runs:
+  using: composite
+  steps:
+      - shell: bash
+        env:
+            GH_TOKEN: ${{ github.token }}
+            GH_REPO: ${{ github.repository }}
+            FAILED: ${{ inputs.failed }}
+            WORKFLOW: ${{ github.workflow }}
+            RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            OWNER: ${{ github.repository_owner }}
+        run: |
+            if [ "$FAILED" = "true" ]; then verdict=failed; else verdict=recovered; fi
+            "$GITHUB_WORKSPACE/scripts/ci/scheduled-failure-issue.sh" "$verdict" "$WORKFLOW" "$RUN_URL" "$OWNER"
