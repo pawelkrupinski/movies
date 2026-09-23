@@ -97,6 +97,29 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     later should include ("""kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="pl"} 180.0""")
   }
 
+  // A cursor that delivers on time can still sit behind a stuck apply thread — the half the
+  // delivery age cannot see. Queued-but-unapplied per cursor, and the oldest one's wait, both
+  // recomputed per scrape so a stuck apply climbs instead of freezing.
+  it should "publish each cursor's unapplied backlog and the oldest one's wait, at scrape time" in {
+    val (_, series) = newPl()
+    val clock    = new tools.MutableClock(now.minusSeconds(300))
+    val liveness = new ChangeStreamLiveness(clock)
+    liveness.queued(ChangeStreamLiveness.Screenings)                // handed off 300s before `now`
+    clock.advanceSeconds(200)
+    val done = liveness.queued(ChangeStreamLiveness.Screenings)
+    liveness.queued(ChangeStreamLiveness.Screenings)
+    liveness.applied(ChangeStreamLiveness.Screenings, done)
+
+    val out = series.scrape(Seq(CountryQueueSample("pl", emptySnapshot, noStaging, liveness)), now)
+    out should include ("""kinowo_worker_change_stream_apply_pending{collection="screenings",country="pl"} 2.0""")
+    out should include ("""kinowo_worker_change_stream_apply_lag_seconds{collection="screenings",country="pl"} 300.0""")
+    out should include ("""kinowo_worker_change_stream_apply_pending{collection="movies",country="pl"} 0.0""")
+    out should include ("""kinowo_worker_change_stream_apply_lag_seconds{collection="movies",country="pl"} 0.0""")
+
+    val later = series.scrape(Seq(CountryQueueSample("pl", emptySnapshot, noStaging, liveness)), now.plusSeconds(60))
+    later should include ("""kinowo_worker_change_stream_apply_lag_seconds{collection="screenings",country="pl"} 360.0""")
+  }
+
   it should "count the rows the read-model sweep re-projected behind a silent change stream" in {
     val (m, series) = newPl()
     m.recordCatchUp(3)

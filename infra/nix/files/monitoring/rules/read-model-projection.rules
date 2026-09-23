@@ -708,3 +708,42 @@ groups:
             `kinowo_worker_readmodel_cards_retired_total` by reason on the read-model heals panel of
             the worker diagnostics dashboard (a `row-unready` rate that the heals trail is a row
             flapping out of readiness), and `RemovalAudit` log lines for the same ids.
+
+      # -----------------------------------------------------------------------------------------
+      # THE CURSOR DELIVERS, AND THE APPLY THREAD IS NOT KEEPING UP.
+      #
+      # `ChangeStreamMoviesCursorSilent` above asks whether a cursor DELIVERS. This asks the other
+      # half: whether what it delivered gets APPLIED. Every event goes through one apply thread
+      # (a stitch read, then the synchronized read-model projection), and
+      # `kinowo_worker_change_stream_apply_lag_seconds` is how long the oldest event still
+      # waiting there has waited since delivery, per cursor, recomputed on every scrape so a stuck
+      # thread climbs in a straight line.
+      #
+      # WHY IT EXISTS: until 2026-09-23 the resume token was saved at DELIVERY, so a restart
+      # skipped every event still queued -- changes the read model never saw -- and no metric said
+      # how many were queued or for how long. The token now moves only once an event is applied;
+      # this is the watchdog for the queue it moves behind.
+      #
+      # TEN MINUTES, FOR TEN MINUTES: an apply is one stitch read, so a healthy backlog drains in
+      # seconds, and a boot replay of a whole demand window (256 events) in well under a minute.
+      # The one legitimate hold is the 30-minute prune sweep, which takes the projection lock for
+      # its whole pass; a sweep that holds it for twenty minutes is itself worth a page. Picked,
+      # not measured -- the gauge is new -- so revisit it against a week of the panel.
+      - alert: ChangeStreamApplyLagging
+        expr: max by (country, collection) (kinowo_worker_change_stream_apply_lag_seconds) > 600
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}'s {{ $labels.collection }} change events have waited {{ $value | humanizeDuration }} to be applied"
+          description: >-
+            The oldest `{{ $labels.collection }}` change event the worker in "{{ $labels.country }}"
+            has received and not yet applied was delivered over ten minutes ago, and has been for
+            ten minutes. The cursor is delivering (its last-event age is the other panel); the
+            single apply thread behind it is not getting through the queue, so the read model is at
+            least that stale for those films. `kinowo_worker_change_stream_apply_pending` on the
+            change-stream apply panel of the worker diagnostics dashboard says how many are
+            waiting. Look for the apply blocked on the read-model projection lock (a prune sweep
+            that never finishes: the "read-model prune sweep" INFO line stops appearing) or on a
+            Mongo read (the stitch `findById`); a thread dump of the worker names which
+            (`movie-change-apply`).

@@ -136,7 +136,8 @@ object WorkerTaskMetrics {
    *  for one country on each scrape. `snapshot` is that country's live queue
    *  monitor, `stagingByStep` its `StagingReaper.stepCounts()`, and
    *  `changeStreamLiveness` the repository's record of when each change-stream cursor
-   *  last delivered — read at scrape time, so a silent cursor's age keeps climbing. */
+   *  last delivered and what it has handed the apply thread that has not been applied yet —
+   *  read at scrape time, so a silent cursor's age and a stuck apply's lag keep climbing. */
   case class CountryQueueSample(countryCode: String, snapshot: QueueSnapshot, stagingByStep: Map[StagingStep, Int],
                                 changeStreamLiveness: ChangeStreamLiveness)
 
@@ -225,6 +226,22 @@ object WorkerTaskMetrics {
     private val changeStreamLastEventAge = Gauge.builder()
       .name("kinowo_worker_change_stream_last_event_age_seconds")
       .help("Seconds since each change-stream cursor (collection=movies|screenings|movie_slots) last DELIVERED an event to the worker, by country; since boot when it never has. Recomputed on every scrape, so an open-but-silent cursor climbs in a straight line. Read against the country's scrape cadence: the movies cursor is quiet for at most one sweep while ratings and scrapes are being written; longer than that with kinowo_worker_corpus_movies moving means the stream is not delivering the writes.")
+      .labelNames("country", "collection")
+      .register(registry)
+
+    // The APPLY side of the same three cursors, also computed at scrape time: an event delivered
+    // on time can still wait behind the single apply thread, and until 2026-09-23 the resume token
+    // was saved at delivery, so a restart skipped whatever was waiting — with nothing to show how
+    // much that was. See [[services.movies.ChangeStreamLiveness.queued]].
+    private val changeStreamApplyPending = Gauge.builder()
+      .name("kinowo_worker_change_stream_apply_pending")
+      .help("Change events each cursor (collection=movies|screenings|movie_slots) handed to the worker's apply thread that have not been applied yet, by country. Bounded by the cursor's demand window (256); near zero in steady state because an apply is one stitch read. Pinned near the window means the apply thread cannot keep up, and every one of these is a change the read model has not seen. Coalesced events ride an apply already queued and are not counted twice.")
+      .labelNames("country", "collection")
+      .register(registry)
+
+    private val changeStreamApplyLag = Gauge.builder()
+      .name("kinowo_worker_change_stream_apply_lag_seconds")
+      .help("Seconds the OLDEST not-yet-applied change event of each cursor (collection=movies|screenings|movie_slots) has waited since delivery, by country; 0 when nothing is waiting. Recomputed on every scrape, so an apply thread that is stuck climbs in a straight line. The delivered-vs-applied lag: the read model is at least this stale for that change. Alerted by ChangeStreamApplyLagging (over 10 minutes for 10 minutes).")
       .labelNames("country", "collection")
       .register(registry)
 
@@ -449,7 +466,11 @@ object WorkerTaskMetrics {
         ChangeStreamMetrics.Ops.foreach(o => slotsChangeEvents.labelValues(c, o))
         slotsCoalesced.labelValues(c)
         ChangeStreamMetrics.Kinds.foreach(k => changeUpdateKinds.labelValues(c, k))
-        ChangeStreamLiveness.Collections.foreach(coll => changeStreamLastEventAge.labelValues(c, coll).set(0.0))
+        ChangeStreamLiveness.Collections.foreach { coll =>
+          changeStreamLastEventAge.labelValues(c, coll).set(0.0)
+          changeStreamApplyPending.labelValues(c, coll).set(0.0)
+          changeStreamApplyLag.labelValues(c, coll).set(0.0)
+        }
       }
       poolSizeGauge.set(poolSize.toDouble)
     }
@@ -559,8 +580,11 @@ object WorkerTaskMetrics {
       samples.foreach { s =>
         refreshQueueGauges(s.countryCode, s.snapshot, now)
         StagingStep.all.foreach(step => stagingMovies.labelValues(s.countryCode, step.label).set(s.stagingByStep.getOrElse(step, 0).toDouble))
-        ChangeStreamLiveness.Collections.foreach(coll =>
-          changeStreamLastEventAge.labelValues(s.countryCode, coll).set(s.changeStreamLiveness.ageSeconds(coll, now)))
+        ChangeStreamLiveness.Collections.foreach { coll =>
+          changeStreamLastEventAge.labelValues(s.countryCode, coll).set(s.changeStreamLiveness.ageSeconds(coll, now))
+          changeStreamApplyPending.labelValues(s.countryCode, coll).set(s.changeStreamLiveness.pendingApplies(coll).toDouble)
+          changeStreamApplyLag.labelValues(s.countryCode, coll).set(s.changeStreamLiveness.applyLagSeconds(coll, now))
+        }
       }
       PrometheusExposition.render(registry)
     }

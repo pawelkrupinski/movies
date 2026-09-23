@@ -1381,6 +1381,93 @@
           "legendFormat": "{{country}} retired {{reason}} per 30m"
         }
       ]
+    },
+    {
+      "id": 28,
+      "title": "Change-stream apply — oldest unapplied event's wait, and how many are waiting",
+      "description": "The APPLY half of the three change-stream cursors (the delivery half is `kinowo_worker_change_stream_last_event_age_seconds`). Every delivered event is handed to ONE apply thread (a stitch read, then the synchronized read-model projection); `kinowo_worker_change_stream_apply_lag_seconds` (lines, left) is how long the oldest event still waiting there has waited since delivery, recomputed per scrape so a stuck apply climbs in a straight line; `kinowo_worker_change_stream_apply_pending` (dashed, right) is how many are waiting, bounded by each cursor's demand window (256).\n\nHEALTHY is a flat line at or near zero: an apply is one Mongo read. A short hump is a prune sweep holding the projection lock. Why it exists: until 2026-09-23 the resume token was saved at DELIVERY, so a restart skipped every event still waiting here and nothing showed how many that was. Alerted by ChangeStreamApplyLagging (over 10 minutes, for 10 minutes).",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 129
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*pending.*"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country, collection) (kinowo_worker_change_stream_apply_lag_seconds{country=~\"$country\"})",
+          "legendFormat": "{{country}} {{collection}} oldest wait"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country, collection) (kinowo_worker_change_stream_apply_pending{country=~\"$country\"})",
+          "legendFormat": "{{country}} {{collection}} pending"
+        }
+      ]
     }
   ],
   "description": "Why a worker is misbehaving, once the application-health dashboard has told you that one is. There are FIVE workers — pl, uk, de, us and es, each its own k3s Deployment — so every panel is scoped by the Country variable and carries the country in its legend; pick one to isolate it, or All to compare. Memory (heap, NMT native categories, the off-book gap, buffers, and the pod's real cgroup limit from kube-state-metrics), CPU split by JIT and GC, GC frequency, restarts, resolution-cache hit rates, and the error shape of the outbound HTTP the scrape and enrichment phases depend on. All from each worker's own /metrics on k3s via local-prometheus. There is no CPU-credit panel: shared-CPU credit was a Fly billing concept and the whole throttle path it drove was deleted on 2026-09-04, so no series behind it exists. · NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still — the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",

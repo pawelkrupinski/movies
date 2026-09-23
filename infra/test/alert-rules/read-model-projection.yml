@@ -878,3 +878,41 @@ tests:
       - eval_time: 9h
         alertname: ReadModelHealsRecurring
         exp_alerts: []
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────
+  # A STUCK APPLY FIRES, A SWEEP-LENGTH HOLD DOES NOT. PL's screenings apply stops at t=0 and its
+  # oldest event ages a minute per minute: past 600s at 10m, held for ten more, firing at 20m and
+  # not before. UK's movies apply is held for eight minutes (a long prune sweep holding the
+  # projection lock) and then drains to zero: it never crosses the line.
+  # ──────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a stuck apply fires after ten minutes over the line, a short hold does not
+    input_series:
+      - series: 'kinowo_worker_change_stream_apply_lag_seconds{collection="screenings",country="pl",job="kinowo-worker"}'
+        values: '0+60x40'
+      - series: 'kinowo_worker_change_stream_apply_lag_seconds{collection="movies",country="uk",job="kinowo-worker"}'
+        values: '0+60x8 0x32'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: ChangeStreamApplyLagging
+        exp_alerts: []
+      - eval_time: 21m
+        alertname: ChangeStreamApplyLagging
+        exp_alerts:
+          - exp_labels:
+              collection: screenings
+              country: pl
+              severity: warning
+            exp_annotations:
+              summary: "pl's screenings change events have waited 21m 0s to be applied"
+              description: >-
+                The oldest `screenings` change event the worker in "pl"
+                has received and not yet applied was delivered over ten minutes ago, and has been for
+                ten minutes. The cursor is delivering (its last-event age is the other panel); the
+                single apply thread behind it is not getting through the queue, so the read model is at
+                least that stale for those films. `kinowo_worker_change_stream_apply_pending` on the
+                change-stream apply panel of the worker diagnostics dashboard says how many are
+                waiting. Look for the apply blocked on the read-model projection lock (a prune sweep
+                that never finishes: the "read-model prune sweep" INFO line stops appearing) or on a
+                Mongo read (the stitch `findById`); a thread dump of the worker names which
+                (`movie-change-apply`).

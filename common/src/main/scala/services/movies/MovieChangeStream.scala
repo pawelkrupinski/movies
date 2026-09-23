@@ -97,14 +97,16 @@ final class MovieChangeStream(
    *  behind a gauge if this ever needs watching in prod. */
   def applyBacklog: Int = backlog.get()
 
-  /** Enqueue one change-stream apply: count it into the backlog, and release a unit of
-   *  the cursor's demand once it has actually run. Every hand-off to `changeApply` goes
-   *  through here so neither half can be forgotten at a call site. */
-  private def applyOffLoop(demand: ChangeStreamDemand)(work: => Unit): Unit = {
+  /** Enqueue one change-stream apply for an event `collection`'s cursor delivered: count it
+   *  into the backlog and into that cursor's [[ChangeStreamLiveness]] apply lag, and release a
+   *  unit of the cursor's demand once it has actually run. Every hand-off to `changeApply` goes
+   *  through here so none of the three can be forgotten at a call site. */
+  private def applyOffLoop(collection: String, demand: ChangeStreamDemand)(work: => Unit): Unit = {
     backlog.incrementAndGet()
+    val ticket = liveness.queued(collection)
     changeApply.execute { () =>
       try work
-      finally { backlog.decrementAndGet(); demand.applied() }
+      finally { backlog.decrementAndGet(); liveness.applied(collection, ticket); demand.applied() }
     }
   }
 
@@ -167,7 +169,7 @@ final class MovieChangeStream(
     private def applyChange(filmId: String, applied: () => Unit): Unit = {
       liveness.delivered(collection)
       if (sideApplyPending.add(filmId))
-        applyOffLoop(demand) {
+        applyOffLoop(collection, demand) {
           sideApplyPending.remove(filmId)
           val film = reread(filmId)
           applied() // this cursor's resume position moves only now — see `SideCollectionWatch`
@@ -260,7 +262,7 @@ final class MovieChangeStream(
             // does, at the cost of one extra point read per movies apply.)
             case Some(dto) =>
               if (sideApplyPending.add(dto._id))
-                applyOffLoop(moviesDemand) {
+                applyOffLoop(ChangeStreamLiveness.Movies, moviesDemand) {
                   sideApplyPending.remove(dto._id)
                   val film = reread(dto._id)
                   resumeToken.advance(token, generation)
@@ -284,7 +286,7 @@ final class MovieChangeStream(
             // `remove` may then clear the later one's marker; that only costs an extra apply.)
             case None =>
               deletedId.foreach(sideApplyPending.remove)
-              applyOffLoop(moviesDemand) {
+              applyOffLoop(ChangeStreamLiveness.Movies, moviesDemand) {
                 resumeToken.advance(token, generation)
                 deletedId.foreach(movieChanges.dispatchDelete)
                 resumeToken.save(force = false) // time-throttled, fire-and-forget

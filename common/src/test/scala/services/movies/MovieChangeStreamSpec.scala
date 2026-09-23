@@ -22,7 +22,7 @@ import scala.collection.mutable
  * synchronously: a `movie_slots` or `screenings` change must re-read the film and fan it
  * out as an upsert, and a burst on one film must collapse onto one re-read.
  */
-class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
+class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest.concurrent.Eventually {
 
   /** Hands the observer back so the spec can push events; counts the opens, since ONE
    *  shared cursor for any number of listeners is the point of the fan-out. */
@@ -455,6 +455,44 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
 
       under.liveness.lastDelivered(Slots)  shouldBe Some(opened.plusSeconds(360))
       under.liveness.lastDelivered(Movies) shouldBe Some(opened.plusSeconds(60)) // a slot delivery is not a movies one
+    } finally { handle.close(); under.close() }
+  }
+
+  // THE APPLY LAG. The resume token used to be saved at DELIVERY, so a restart could skip every
+  // event still queued for the apply thread (fixed 2026-09-23) — and nothing showed how far behind
+  // that thread ran. Per cursor, what is queued and not yet applied, and how long the OLDEST of it
+  // has waited: counted from delivery, still growing while the apply is stuck, zero once it runs.
+  it should "count each cursor's queued, unapplied events and age the oldest until its apply runs" in {
+    import ChangeStreamLiveness.{Movies, Slots}
+    val source = new HandFedSource
+    val slots  = new InMemorySlotsRepository
+    val clock  = new tools.MutableClock(Instant.parse("2026-09-23T10:00:00Z"))
+    val gate   = new CountDownLatch(1)
+    val under  = stream(source, slots = Some(slots), clock = clock,
+      reread = id => { gate.await(5, TimeUnit.SECONDS); Some(recordOf(id)) })
+    val delivered = new java.util.concurrent.LinkedBlockingQueue[StoredMovieRecord]()
+
+    val handle = under.watch(delivered.put, _ => ())
+    try {
+      under.liveness.pendingApplies(Movies) shouldBe 0
+      under.liveness.applyLagSeconds(Movies, clock.instant()) shouldBe 0.0
+
+      source.emit(event("insert", "film|2024", StoredMovieDto.fromDomain("film|2024", MovieRecord(), Instant.EPOCH)))
+      clock.advanceSeconds(120)
+      slots.upsertSlot("other|2024", "Kino␟other", SourceData(title = Some("Other")))
+      clock.advanceSeconds(30)
+
+      under.liveness.pendingApplies(Movies) shouldBe 1
+      under.liveness.pendingApplies(Slots)  shouldBe 1
+      under.liveness.applyLagSeconds(Movies, clock.instant()) shouldBe 150.0 // delivered 150s ago, still not applied
+      under.liveness.applyLagSeconds(Slots, clock.instant())  shouldBe 30.0
+
+      gate.countDown()
+      delivered.poll(5, TimeUnit.SECONDS) should not be null
+      delivered.poll(5, TimeUnit.SECONDS) should not be null
+      eventually(under.liveness.pendingApplies(Movies) + under.liveness.pendingApplies(Slots) shouldBe 0)
+      under.liveness.applyLagSeconds(Movies, clock.instant()) shouldBe 0.0
+      under.liveness.applyLagSeconds(Slots, clock.instant())  shouldBe 0.0
     } finally { handle.close(); under.close() }
   }
 }

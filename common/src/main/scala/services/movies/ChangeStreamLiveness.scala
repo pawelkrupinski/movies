@@ -1,7 +1,8 @@
 package services.movies
 
 import java.time.{Clock, Duration, Instant}
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.{ConcurrentHashMap, ConcurrentSkipListMap}
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * WHEN EACH CHANGE-STREAM CURSOR LAST DELIVERED AN EVENT — the liveness signal the
@@ -24,6 +25,14 @@ import java.util.concurrent.ConcurrentHashMap
  * Keyed by collection name ([[ChangeStreamLiveness.Movies]] / `Screenings` / `Slots`):
  * the three cursors are three subscriptions that fail independently, and a live
  * `movie_slots` cursor says nothing about the `movies` one.
+ *
+ * THE OTHER HALF IS THE APPLY. A cursor that delivers on time can still sit behind an apply
+ * thread that has fallen behind (one thread, a blocking stitch read per event), and a
+ * delivered-but-unapplied event is exactly what a resume token saved at delivery used to skip
+ * on restart (fixed 2026-09-23 — nothing could have shown that it was happening). So each
+ * event handed to the apply thread is also recorded here ([[queued]]) until its apply has
+ * run ([[applied]]): how many are waiting per cursor, and how long the OLDEST has waited —
+ * computed against `now` like the delivery age, so a stuck apply climbs rather than freezes.
  */
 final class ChangeStreamLiveness(clock: Clock = Clock.systemUTC()) {
   /** When this instance was created — the floor every never-delivered cursor ages from. */
@@ -56,6 +65,36 @@ final class ChangeStreamLiveness(clock: Clock = Clock.systemUTC()) {
    *  so that a stalled cursor's age keeps GROWING on every scrape. */
   def ageSeconds(collection: String, now: Instant): Double =
     math.max(0L, Duration.between(lastDeliveredOrOpened(collection), now).toMillis) / 1000.0
+
+  // Per cursor: every event handed to the apply thread and not yet applied, by a ticket in
+  // hand-off order, with the instant it was handed off. A map, not a FIFO, so an apply that
+  // finishes out of order (a throw, a future second apply thread) still removes its own entry.
+  private val waiting = new ConcurrentHashMap[String, ConcurrentSkipListMap[Long, Instant]]()
+  private val tickets = new AtomicLong(0L)
+
+  private def waitingOn(collection: String): ConcurrentSkipListMap[Long, Instant] =
+    waiting.computeIfAbsent(collection, _ => new ConcurrentSkipListMap[Long, Instant]())
+
+  /** An event from `collection`'s cursor was handed to the apply thread. Returns the ticket
+   *  to give back to [[applied]] once that apply has run. */
+  def queued(collection: String): Long = {
+    val ticket = tickets.incrementAndGet()
+    waitingOn(collection).put(ticket, clock.instant())
+    ticket
+  }
+
+  /** The apply behind `ticket` has run (or failed — either way it is no longer waiting). */
+  def applied(collection: String, ticket: Long): Unit = { waitingOn(collection).remove(ticket); () }
+
+  /** Events from `collection`'s cursor handed to the apply thread and not yet applied. */
+  def pendingApplies(collection: String): Int = waitingOn(collection).size
+
+  /** Seconds the OLDEST unapplied event from `collection`'s cursor has waited since it was
+   *  handed off; 0 when nothing is waiting. Computed on demand, so a stuck apply keeps growing. */
+  def applyLagSeconds(collection: String, now: Instant): Double =
+    Option(waitingOn(collection).firstEntry())
+      .map(oldest => math.max(0L, Duration.between(oldest.getValue, now).toMillis) / 1000.0)
+      .getOrElse(0.0)
 }
 
 object ChangeStreamLiveness {
