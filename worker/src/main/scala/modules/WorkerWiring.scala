@@ -246,6 +246,7 @@ class WorkerWiring(
     // Census the roster's worst-case scrape staleness (off-band, in-memory scan).
     cinemaScrapeCensus.start()
     cinemaContentCensus.start()
+    retiredVenueCensus.start()
   }
 
   /** Event-cascade drain order, producer→consumer (see monolith comment). Only
@@ -257,6 +258,7 @@ class WorkerWiring(
     envConfigService.stop()
     cinemaScrapeCensus.stop()
     cinemaContentCensus.stop()
+    retiredVenueCensus.stop()
     ratingRunCensus.stop()
     corpusScan.stop()
     // jvmVitals is process-level (shared WorkerMetrics bundle); WorkerMain stops it.

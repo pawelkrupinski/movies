@@ -84,6 +84,7 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: Int) {
   val (ratingNotRunGauge, ratingOldestAgeGauge) = RatingRunCensus.gauges(registry)
   val (scrapeOldestAgeGauge, scrapeNeverScrapedGauge) = CinemaScrapeCensus.gauges(registry)
   val (contentOldestAgeGauge, neverContentGauge) = CinemaContentCensus.gauges(registry)
+  val (retiredVenueRowsGauge, retiredVenueFutureGauge) = RetiredVenueCensus.gauges(registry)
 
   // Counts census passes that could not read the whole corpus. The gauges above publish
   // NOTHING on such a pass (a partial count is indistinguishable from a real collapse),

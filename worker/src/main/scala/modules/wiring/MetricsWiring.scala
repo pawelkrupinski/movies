@@ -1,7 +1,7 @@
 package modules.wiring
 
 import modules.WorkerWiring
-import services.metrics.{CinemaContentCensus, CinemaScrapeCensus, CorpusScanMetrics, RatingRunCensus, WorkerCorpusMetrics, WorkerCorpusScan, WorkerShowtimesMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics, WorkerTaskMetrics}
+import services.metrics.{CinemaContentCensus, CinemaScrapeCensus, CorpusScanMetrics, RatingRunCensus, RetiredVenueCensus, WorkerCorpusMetrics, WorkerCorpusScan, WorkerShowtimesMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics, WorkerTaskMetrics}
 
 /** This country's slice of the process-wide `/metrics` registry: the
  *  per-country task-pipeline facade, the cache-occupancy gauges, and the
@@ -72,4 +72,9 @@ trait MetricsWiring { self: WorkerWiring =>
   lazy val cinemaContentCensus: CinemaContentCensus =
     new CinemaContentCensus(cinemaScrapers, scrapeArchive,
       workerMetrics.contentOldestAgeGauge, workerMetrics.neverContentGauge, country)
+  // Side rows a venue left behind when it was dropped from the roster — nothing serves them and
+  // nothing deleted them (Kino Etiuda OBK, 2026-09). The watchdog for the cleanup that should.
+  lazy val retiredVenueCensus: RetiredVenueCensus =
+    new RetiredVenueCensus(screeningsRepository, slotsRepository, services.movies.VenueRoster.venuesOf(country),
+      workerMetrics.retiredVenueRowsGauge, workerMetrics.retiredVenueFutureGauge, country)
 }
