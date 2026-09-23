@@ -44,6 +44,15 @@ final class UserPreferences: ObservableObject {
     /// reconcile (so a removal sticks); cleared on logout so the next
     /// sign-in migrates every country afresh.
     private var hiddenFilmsMigratedCountries: Set<String> = []
+    /// The country whose server bucket `hiddenFilms` last mirrored, or `nil`
+    /// before this sign-in's first reconcile. `hiddenFilms` is ONE
+    /// device-wide set while the server keeps one per country, so after a
+    /// country switch the local set still holds the PREVIOUS country's
+    /// titles — `StateSyncService` reads this to replace it wholesale instead
+    /// of trusting that country's validators (a 304 would keep the wrong set)
+    /// or unioning it in (which would push the old country's titles up as
+    /// hides of the new one). Cleared with the migration flags on logout.
+    private(set) var hiddenFilmsMirroredCountry: String?
     /// Slugs of split cities whose first-visit area picker the user has already
     /// completed, so it shows once per city (never on a flat city). Device-local.
     @Published private(set) var areaPickerSeenCities: Set<String> = []
@@ -75,6 +84,7 @@ final class UserPreferences: ObservableObject {
     private let kHiddenFilmsMigrated = "hiddenFilmsMigratedCountries"
     private let kHiddenFilmsETags        = "hiddenFilmsETags"
     private let kHiddenFilmsLastModified = "hiddenFilmsLastModified"
+    private let kHiddenFilmsMirrored     = "hiddenFilmsMirroredCountry"
     private let kAreaSeen       = "areaPickerSeenCities"
     private let kExplicitPick   = "awaitingExplicitCityPick"
 
@@ -87,6 +97,7 @@ final class UserPreferences: ObservableObject {
         selectedCity        = store.string(forKey: kCity)
         citySwitchPromptKey = store.string(forKey: kSwitchPrompt)
         hiddenFilmsMigratedCountries = Set(store.stringArray(forKey: kHiddenFilmsMigrated) ?? [])
+        hiddenFilmsMirroredCountry = store.string(forKey: kHiddenFilmsMirrored)
         awaitingExplicitCityPick = store.bool(forKey: kExplicitPick)
         areaPickerSeenCities = Set(store.stringArray(forKey: kAreaSeen) ?? [])
         selectedCountry     = CountrySelection.current(store)
@@ -166,8 +177,16 @@ final class UserPreferences: ObservableObject {
         store.set(Array(hiddenFilmsMigratedCountries), forKey: kHiddenFilmsMigrated)
     }
 
+    /// Record that `hiddenFilms` now mirrors `country`'s server bucket (see
+    /// `hiddenFilmsMirroredCountry`).
+    func setHiddenFilmsMirrored(country: String) {
+        guard hiddenFilmsMirroredCountry != country else { return }
+        hiddenFilmsMirroredCountry = country
+        store.set(country, forKey: kHiddenFilmsMirrored)
+    }
+
     /// Undo every country's migration flag AND forget every stored
-    /// validator — a genuine logout, so the next sign-in (possibly a
+    /// validator and the mirrored country — a genuine logout, so the next sign-in (possibly a
     /// different account) migrates every country afresh rather than reusing
     /// this device's previous account's ETags. See `StateSyncService`.
     func clearHiddenFilmsMigration() {
@@ -175,6 +194,8 @@ final class UserPreferences: ObservableObject {
         store.removeObject(forKey: kHiddenFilmsMigrated)
         store.removeObject(forKey: kHiddenFilmsETags)
         store.removeObject(forKey: kHiddenFilmsLastModified)
+        hiddenFilmsMirroredCountry = nil
+        store.removeObject(forKey: kHiddenFilmsMirrored)
     }
 
     /// The stored `(ETag, Last-Modified)` pair for `country`'s last known

@@ -63,6 +63,12 @@ final class StateSyncService: ObservableObject {
             .sink { [weak self] user in
                 guard let self else { return }
                 if user != nil {
+                    // `AuthService.user` re-publishes the profile every time
+                    // `checkSession()` re-runs (the root `.task` restarts when
+                    // the language `.id` flips) — only the FIRST non-nil value
+                    // is a login; re-running `onLogin` would stack a second set
+                    // of change observers and PUT every hide twice.
+                    guard !self.isLoggedIn else { return }
                     self.isLoggedIn = true
                     self.onLogin()
                 } else {
@@ -106,47 +112,66 @@ final class StateSyncService: ObservableObject {
         await reconcile(country: prefs.selectedCountry.code)
     }
 
-    /// The reconcile for ONE country. First call for that country (its
-    /// migrated flag unset): fetch unconditionally, union local+server,
-    /// push every LOCAL-ONLY title as its own `hide` call (there's no bulk
-    /// push any more), store the resulting validators, mark migrated. Every
-    /// call after that: fetch CONDITIONALLY using the stored validators — a
-    /// "not modified" leaves local untouched; a fresh result REPLACES local
-    /// (server authoritative, so a removal made elsewhere — another device,
-    /// or this one last session — stays removed instead of being
-    /// resurrected).
+    /// The reconcile for ONE country. `hiddenFilms` is a single device-wide
+    /// set mirroring ONE country's server bucket at a time, so there are three
+    /// cases:
+    ///
+    /// - Already mirroring `country` (or, from a build that predates
+    ///   `hiddenFilmsMirroredCountry`, migrated with nothing recorded): fetch
+    ///   CONDITIONALLY with the stored validators — a "not modified" leaves
+    ///   local untouched; a fresh result REPLACES local (server authoritative,
+    ///   so a removal made elsewhere stays removed instead of being
+    ///   resurrected).
+    /// - Mirroring ANOTHER country (a country switch while signed in): the
+    ///   local set is that country's bucket, already on the server — fetch
+    ///   unconditionally and REPLACE, never union it into this one.
+    /// - First reconcile of this sign-in: the local set is the anonymous
+    ///   device's — fetch unconditionally, union local+server, push every
+    ///   LOCAL-ONLY title as its own `hide` call (there's no bulk push).
+    ///
+    /// A result for a country that's no longer selected by the time it
+    /// lands (a quick switch away mid-fetch) is dropped rather than written
+    /// over the newly selected country's set.
     private func reconcile(country: String) async {
+        let mirrored = prefs.hiddenFilmsMirroredCountry
         do {
-            if prefs.isHiddenFilmsMigrated(country: country) {
+            if prefs.isHiddenFilmsMigrated(country: country), mirrored == nil || mirrored == country {
                 let (etag, lastModified) = prefs.hiddenFilmsValidators(country: country)
-                switch try await client.fetch(country: country, etag: etag, lastModified: lastModified) {
-                case .notModified:
-                    break
-                case .current(let remote):
-                    if prefs.hiddenFilms != remote.hiddenFilms {
-                        prefs.setHiddenFilms(remote.hiddenFilms)
-                    }
-                    prefs.setHiddenFilmsValidators(country: country, etag: remote.etag, lastModified: remote.lastModified)
+                let result = try await client.fetch(country: country, etag: etag, lastModified: lastModified)
+                guard prefs.selectedCountry.code == country else { return }
+                if case .current(let remote) = result {
+                    replaceLocal(with: remote, country: country)
                 }
             } else {
-                // No stored validators yet, so this is always a fresh 200.
-                guard case .current(let remote) = try await client.fetch(country: country, etag: nil, lastModified: nil) else { return }
-                let merged   = prefs.hiddenFilms.union(remote.hiddenFilms)
-                let localOnly = prefs.hiddenFilms.subtracting(remote.hiddenFilms)
-                if merged != prefs.hiddenFilms { prefs.setHiddenFilms(merged) }
+                // No usable validators, so this is always a fresh 200.
+                guard case .current(let remote) = try await client.fetch(country: country, etag: nil, lastModified: nil),
+                      prefs.selectedCountry.code == country else { return }
+                if mirrored != nil {
+                    replaceLocal(with: remote, country: country)
+                } else {
+                    let merged    = prefs.hiddenFilms.union(remote.hiddenFilms)
+                    let localOnly = prefs.hiddenFilms.subtracting(remote.hiddenFilms)
+                    if merged != prefs.hiddenFilms { prefs.setHiddenFilms(merged) }
 
-                var latest = remote
-                for title in localOnly {
-                    latest = try await client.hide(country: country, title: title)
+                    var latest = remote
+                    for title in localOnly {
+                        latest = try await client.hide(country: country, title: title)
+                    }
+                    prefs.setHiddenFilmsValidators(country: country, etag: latest.etag, lastModified: latest.lastModified)
                 }
-                prefs.setHiddenFilmsValidators(country: country, etag: latest.etag, lastModified: latest.lastModified)
-                prefs.setHiddenFilmsMigrated(country: country)
             }
+            prefs.setHiddenFilmsMigrated(country: country)
+            prefs.setHiddenFilmsMirrored(country: country)
         } catch {
             // Network error — local state is authoritative; leave prefs + flags
             // alone, a later reconcile (resume, country switch, next login)
             // retries.
         }
+    }
+
+    private func replaceLocal(with remote: HiddenFilmsResult, country: String) {
+        if prefs.hiddenFilms != remote.hiddenFilms { prefs.setHiddenFilms(remote.hiddenFilms) }
+        prefs.setHiddenFilmsValidators(country: country, etag: remote.etag, lastModified: remote.lastModified)
     }
 
     /// Language is a scalar, not a set, so it skips the per-country

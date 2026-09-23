@@ -327,6 +327,86 @@ final class StateSyncServiceTests: XCTestCase {
         XCTAssertEqual(prefs.hiddenFilms, ["UK Film"])
         _ = sync
     }
+
+    /// The local set is ONE device-wide set, while the server keeps one per
+    /// country. Once signed in it mirrors the selected country's bucket, so
+    /// switching to a country this device has never synced must REPLACE it
+    /// with that country's bucket — not union the previous country's titles
+    /// in and push them up as hides of the new one.
+    func testCountrySwitchToUnsyncedCountryDoesNotLeakThePreviousCountrysHides() async throws {
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: ["PL Film"], etag: "\"pl1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.hiddenFilms == ["PL Film"] }
+
+        client.fetchResults[unitedKingdom.code] = .current(HiddenFilmsResult(hiddenFilms: ["UK Film"], etag: "\"uk1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
+        prefs.setCountry(unitedKingdom)
+
+        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.unitedKingdom.code) }
+        XCTAssertEqual(prefs.hiddenFilms, ["UK Film"])
+        XCTAssertTrue(client.hideCalls.isEmpty, "pushed another country's hides: \(client.hideCalls)")
+        _ = sync
+    }
+
+    /// Switching BACK to an already-synced country: its stored validators
+    /// describe that country's bucket, but the local set currently holds the
+    /// OTHER country's — a 304 there must not leave the wrong set in place.
+    func testCountrySwitchBackToASyncedCountryRestoresItsOwnSet() async throws {
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: ["PL Film"], etag: "\"pl1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
+        client.fetchResults[unitedKingdom.code] = .current(HiddenFilmsResult(hiddenFilms: ["UK Film"], etag: "\"uk1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.hiddenFilms == ["PL Film"] }
+        prefs.setCountry(unitedKingdom)
+        try await waitUntil { self.prefs.hiddenFilms == ["UK Film"] }
+
+        // PL's bucket hasn't changed server-side, so a conditional GET with
+        // PL's validators would answer 304.
+        client.notModifiedWhenETagMatches = true
+        prefs.setCountry(Country.all.first { $0.code == pl }!)
+
+        try await waitUntil { self.prefs.hiddenFilms == ["PL Film"] }
+        _ = sync
+    }
+
+    /// A reconcile still in flight when the user switches country must not
+    /// land its (old-country) result over the newly selected country's set.
+    func testReconcileResultForAPreviouslySelectedCountryIsDropped() async throws {
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: ["PL Film"], etag: "\"pl1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
+        client.fetchResults[unitedKingdom.code] = .current(HiddenFilmsResult(hiddenFilms: ["UK Film"], etag: "\"uk1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.hiddenFilms == ["PL Film"] }
+
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: ["PL Film", "PL Film 2"], etag: "\"pl2\"", lastModified: "Tue, 19 May 2026 13:00:00 GMT"))
+        client.fetchDelay[pl] = .milliseconds(300)
+        let slowResume = Task { await sync.reconcileCurrentCountry() }
+        try await Task.sleep(for: .milliseconds(50))
+        prefs.setCountry(unitedKingdom)
+        try await waitUntil { self.prefs.hiddenFilms == ["UK Film"] }
+
+        await slowResume.value
+        XCTAssertEqual(prefs.hiddenFilms, ["UK Film"])
+    }
+
+    /// `AuthService.user` re-publishes a non-nil profile whenever
+    /// `checkSession()` re-runs (e.g. the root `.task` restarting after the
+    /// language `.id` flips). A second non-nil emission must not stack a
+    /// second set of change observers — every hide would then be PUT twice.
+    func testRepeatedLoginEmissionPushesEachHideOnce() async throws {
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: [], etag: "\"e1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        login()
+        try await Task.sleep(for: .milliseconds(200))
+
+        prefs.hide("New Hide")
+        try await Task.sleep(for: .milliseconds(200))
+
+        XCTAssertEqual(client.hideCalls.map(\.title), ["New Hide"])
+        _ = sync
+    }
 }
 
 // MARK: - Fake
@@ -338,6 +418,13 @@ final class FakeHiddenFilmsClient: HiddenFilmsClient {
     /// hidden), matching a brand-new account.
     var fetchResults: [String: HiddenFilmsFetchResult] = [:]
     var shouldFailFetch = false
+    /// Answer like a real conditional GET: `.notModified` when the caller's
+    /// `etag` matches the stored result's. Off by default so existing tests
+    /// keep their explicit `.notModified` / `.current` scripting.
+    var notModifiedWhenETagMatches = false
+    /// Hold `fetch` for this long before answering, per country — lets a
+    /// test switch country while an older reconcile is still in flight.
+    var fetchDelay: [String: Duration] = [:]
     var writeResult = HiddenFilmsResult(hiddenFilms: [], etag: "\"w\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT")
 
     private(set) var fetchedCountries: [String] = []
@@ -352,7 +439,12 @@ final class FakeHiddenFilmsClient: HiddenFilmsClient {
     func fetch(country: String, etag: String?, lastModified: String?) async throws -> HiddenFilmsFetchResult {
         if shouldFailFetch { throw URLError(.notConnectedToInternet) }
         fetchedCountries.append(country)
-        return fetchResults[country] ?? .current(HiddenFilmsResult(hiddenFilms: [], etag: "\"empty\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
+        if let delay = fetchDelay[country] { try await Task.sleep(for: delay) }
+        let result = fetchResults[country] ?? .current(HiddenFilmsResult(hiddenFilms: [], etag: "\"empty\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
+        if notModifiedWhenETagMatches, let etag, case .current(let current) = result, current.etag == etag {
+            return .notModified
+        }
+        return result
     }
 
     func hide(country: String, title: String) async throws -> HiddenFilmsResult {
