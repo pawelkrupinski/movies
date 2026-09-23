@@ -206,4 +206,24 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
       "OPERA - Wesoła wdówka - RETRANSMISJA")
     broadcasts.foreach(t => withClue(s"$t\n")(NonMovieEventClassifier.isLiveEvent(t) shouldBe false))
   }
+
+  // Końskie's culture centre sells its magic shows through the same biletyna
+  // page as its film screenings ("Iluzjonista Adrian Mitoraj", 2026-11-14). The
+  // films these words also name must survive: "Iluzjonista" (2006), "Iluzja",
+  // "Drzewo magii" (The Magic Faraway Tree), Warsaw's Kino Iluzjon.
+  it should "drop an illusionist's or magician's show, but not a film named for one" in {
+    Seq(
+      "Iluzjonista Adrian Mitoraj",
+      "ILUZJONISTA MAREK KRZYŻANOWSKI",
+      "Pokaz magii dla dzieci",
+      "Magik Tomasz Kowalski - show",
+      "Iluzjonista Jan Nowak - pokaz iluzji",
+      "Wieczór iluzji z Mistrzem",
+    ).foreach(t => withClue(s"expected live-event: [$t] ")(NonMovieEventClassifier.isLiveEvent(t) shouldBe true))
+    Seq(
+      "Iluzjonista", "Iluzjonista (2006)", "Iluzja", "Iluzja 2", "Iluzja 3",
+      "Drzewo magii", "Drzewo magii - dubbing", "Drzewo magii - seanse z konkursami",
+      "Magik", "Kino Iluzjon zaprasza: Vertigo", "Iluzjonista - pokaz filmu",
+    ).foreach(t => withClue(s"expected KEPT: [$t] ")(NonMovieEventClassifier.isLiveEvent(t) shouldBe false))
+  }
 }

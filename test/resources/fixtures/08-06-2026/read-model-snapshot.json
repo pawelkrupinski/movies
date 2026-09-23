@@ -6659,23 +6659,6 @@
     "weightedRating" : 7.7,
     "synopsisByCity" : { }
   }, {
-    "_id" : "f59252e6ff68caf5",
-    "title" : "Iluzjonista Adrian Mitoraj",
-    "posterUrl" : "https://biletyna.pl/file/get/id/107891",
-    "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Iluzjonista+Adrian+Mitoraj/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Iluzjonista+Adrian+Mitoraj",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Iluzjonista+Adrian+Mitoraj"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : { }
-  }, {
     "_id" : "f5985733cd1d1c45",
     "title" : "Wszystkie Głosy Marca Silka",
     "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/05/CJ4GEMADOgUxLjEuOQ.png",
@@ -70144,18 +70127,6 @@
       "dateTime" : "2026-06-18T20:30:00",
       "bookingUrl" : "https://rezerwacja.kinokultura.pl/MSI/mvc/pl?sort=Flow&date=2026-06-18&datestart=0",
       "room" : "Rejs",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "f59252e6ff68caf5|kielce|Koneckie Centrum Kultury",
-    "filmId" : "f59252e6ff68caf5",
-    "city" : "kielce",
-    "cinema" : "Koneckie Centrum Kultury",
-    "filmUrl" : "https://biletyna.pl/spektakl/iluzjonista-Adrian-Mitoraj-Pokaz-iluzji-dla-calej-rodziny?eid=645949#opis",
-    "showtimes" : [ {
-      "dateTime" : "2026-11-14T16:00:00",
-      "bookingUrl" : "https://biletyna.pl/spektakl/iluzjonista-Adrian-Mitoraj-Pokaz-iluzji-dla-calej-rodziny?eid=645949#opis",
-      "room" : "sala widowiskowa",
       "format" : [ ]
     } ]
   }, {

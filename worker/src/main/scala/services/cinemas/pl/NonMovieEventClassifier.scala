@@ -113,6 +113,24 @@ object NonMovieEventClassifier {
   private def isStandaloneDiscussion(t: String): Boolean =
     DiscussionMarkers.exists(_.findFirstIn(t).isDefined) && !hasBoltedOnFilm(t)
 
+  /** A magic show ("Pokaz magii dla dzieci", "Wieczór iluzji"), named by what
+   *  it shows. Deliberately not a bare `magii`/`iluzj`: "Drzewo magii" and
+   *  "Iluzja" are films, and Warsaw's Kino Iluzjon names itself in titles. */
+  private val MagicShowMarkers = List(
+    """\bpokaz\s+(magii|iluzji)""".r,
+    """\bwiecz[oó]r\s+(magii|iluzji)""".r,
+    """\bmagic\s+show""".r
+  )
+
+  /** A magic show named by its PERFORMER: "Iluzjonista Adrian Mitoraj". The
+   *  job word alone is a film ("Iluzjonista", 2006), so it counts only when a
+   *  capitalised first name and surname follow — matched on the title as
+   *  published, since lowercasing erases exactly that cue. */
+  private val PerformerBilling =
+    """(?:\b[Ii]luzjonist\p{L}*|\bILUZJONIST\p{L}*|\b[Mm]agik|\bMAGIK)\s+\p{Lu}\p{L}+\s+\p{Lu}\p{L}+""".r
+  private def isMagicShow(title: String, lower: String): Boolean =
+    MagicShowMarkers.exists(_.findFirstIn(lower).isDefined) || PerformerBilling.findFirstIn(title).isDefined
+
   /** "gala" is handled separately from [[EventMarkers]]: it marks a live event
    *  (Gala Baletowa, Światowa gala muzyczna, Gala Rozdania Nagród) EXCEPT a film
    *  screened under a gala banner, which uses a "Banner | Film" title — e.g.
@@ -163,6 +181,7 @@ object NonMovieEventClassifier {
       EventMarkers.exists(_.findFirstIn(t).isDefined) ||
       venueMarkers.exists(_.findFirstIn(t).isDefined) ||
       isStandaloneGala(t) ||
-      isStandaloneDiscussion(t)
+      isStandaloneDiscussion(t) ||
+      isMagicShow(title, t)
   }
 }
