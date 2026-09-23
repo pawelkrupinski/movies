@@ -338,5 +338,48 @@ class InProcessRecencyGauges(unittest.TestCase):
                                  "%s is read raw, so every pod restart resets it: %s" % (gauge, expr))
 
 
+class SingleScrapeSpikeGauges(unittest.TestCase):
+    """A gauge whose excursions last one scrape has to be read as a `max_over_time`, or the peak
+    depends on the zoom.
+
+    `kinowo_worker_change_stream_apply_lag_seconds` / `_apply_pending` are recomputed on every
+    30s scrape, and a healthy excursion -- a scrape wave queueing a dozen wide-film re-projections
+    behind the one apply thread -- drains in seconds, so it is usually ONE nonzero sample. A panel
+    reading the raw gauge shows only the sample that happens to land on each step: measured on
+    2026-09-23 (US, screenings, 16:40-19:05Z), a 30s step shows 47 nonzero points and the 11.5s
+    peak, a 60s step 29, a 120s step 14 and a 4.4s peak -- the 11.5s hump is simply gone. The
+    same event appears or vanishes as the time range changes, which reads as a spike that came
+    and went. `max_over_time(...[$__interval])` keeps every sample's worst case in its step, and
+    a panel min interval of at least the app scrape interval (30s) keeps each window holding a
+    sample at short ranges, where the datasource's 15s default would leave gaps.
+    """
+
+    SPIKE_GAUGES = (
+        "kinowo_worker_change_stream_apply_lag_seconds",
+        "kinowo_worker_change_stream_apply_pending",
+    )
+    APP_SCRAPE_INTERVAL_SECONDS = 30
+
+    @staticmethod
+    def seconds(interval):
+        match = re.fullmatch(r"(\d+)(s|m|h)", interval or "")
+        return int(match.group(1)) * {"s": 1, "m": 60, "h": 3600}[match.group(2)] if match else 0
+
+    def test_a_spike_gauge_is_read_as_its_worst_sample_per_step(self):
+        panels = [p for _, d in dashboards() for p in query_panels(d)]
+        for gauge in self.SPIKE_GAUGES:
+            reading = [(p, t.get("expr", "")) for p in panels for t in p.get("targets", [])
+                       if gauge in t.get("expr", "")]
+            self.assertTrue(reading, "no panel reads %s" % gauge)
+            for panel, expr in reading:
+                self.assertRegex(expr, r"max_over_time\(\s*%s(\{[^}]*\})?\[\$__interval\]\)" % gauge,
+                                 "%s is read raw, so a one-scrape peak shows or vanishes with the zoom: %s"
+                                 % (gauge, expr))
+                self.assertGreaterEqual(self.seconds(panel.get("interval")), self.APP_SCRAPE_INTERVAL_SECONDS,
+                                        "panel %r needs a min interval of at least the %ds app scrape, or "
+                                        "$__interval windows at short ranges hold no sample"
+                                        % (panel.get("title"), self.APP_SCRAPE_INTERVAL_SECONDS))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

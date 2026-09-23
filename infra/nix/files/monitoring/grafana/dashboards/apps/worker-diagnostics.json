@@ -1385,7 +1385,8 @@
     {
       "id": 28,
       "title": "Change-stream apply — oldest unapplied event's wait, and how many are waiting",
-      "description": "The APPLY half of the three change-stream cursors (the delivery half is `kinowo_worker_change_stream_last_event_age_seconds`). Every delivered event is handed to ONE apply thread (a stitch read, then the synchronized read-model projection); `kinowo_worker_change_stream_apply_lag_seconds` (lines, left) is how long the oldest event still waiting there has waited since delivery, recomputed per scrape so a stuck apply climbs in a straight line; `kinowo_worker_change_stream_apply_pending` (dashed, right) is how many are waiting, bounded by each cursor's demand window (256).\n\nHEALTHY is a flat line at or near zero: an apply is one Mongo read. A short hump is a prune sweep holding the projection lock. Why it exists: until 2026-09-23 the resume token was saved at DELIVERY, so a restart skipped every event still waiting here and nothing showed how many that was. Alerted by ChangeStreamApplyLagging (over 10 minutes, for 10 minutes).",
+      "interval": "1m",
+      "description": "The APPLY half of the three change-stream cursors (the delivery half is `kinowo_worker_change_stream_last_event_age_seconds`). Every delivered event is handed to ONE apply thread (a stitch read, then the synchronized read-model projection); `kinowo_worker_change_stream_apply_lag_seconds` (lines, left) is how long the oldest event still waiting there has waited since delivery, recomputed per scrape so a stuck apply climbs in a straight line; `kinowo_worker_change_stream_apply_pending` (dashed, right) is how many are waiting, bounded by each cursor's demand window (256).\n\nHEALTHY is a flat line at or near zero with humps of SECONDS. The three cursors share that one thread, so a burst on one delays the other two and their lines rise TOGETHER. The humps are scrape waves: each venue scrape that changes a film's showtimes re-projects the WHOLE film, and a wide US film (thousands of slots) takes up to ~2s to project (p99 of `kinowo_worker_readmodel_project_duration_seconds`), so a dozen queued behind a Regal/AMC wave, or behind the scrape wave a worker starts ~2 min after boot, reads as 5-12s (US, 2026-09-23). Both lines are the worst sample in each step (`max_over_time` over `$__interval`, min interval 1m): a hump usually lasts ONE 30s scrape, and the raw gauge showed it or dropped it depending on the zoom. Why it exists: until 2026-09-23 the resume token was saved at DELIVERY, so a restart skipped every event still waiting here and nothing showed how many that was. Alerted by ChangeStreamApplyLagging (over 10 minutes, for 10 minutes).",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -1455,7 +1456,7 @@
             "type": "prometheus",
             "uid": "local-prometheus"
           },
-          "expr": "max by (country, collection) (kinowo_worker_change_stream_apply_lag_seconds{country=~\"$country\"})",
+          "expr": "max by (country, collection) (max_over_time(kinowo_worker_change_stream_apply_lag_seconds{country=~\"$country\"}[$__interval]))",
           "legendFormat": "{{country}} {{collection}} oldest wait"
         },
         {
@@ -1464,7 +1465,7 @@
             "type": "prometheus",
             "uid": "local-prometheus"
           },
-          "expr": "max by (country, collection) (kinowo_worker_change_stream_apply_pending{country=~\"$country\"})",
+          "expr": "max by (country, collection) (max_over_time(kinowo_worker_change_stream_apply_pending{country=~\"$country\"}[$__interval]))",
           "legendFormat": "{{country}} {{collection}} pending"
         }
       ]
