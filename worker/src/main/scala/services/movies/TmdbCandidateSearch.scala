@@ -277,7 +277,7 @@ class TmdbCandidateSearch(
           candidates.iterator.flatMap(q => tmdb.searchUnique(q, effectiveYear).map(q -> _))
             .find { case (q, hit) =>
               wholeCandidates.contains(q) ||
-                TitleMatch.sharesDistinctiveToken(Seq(q), Seq(hit.title) ++ hit.originalTitle.toSeq, normalizer.sanitize)
+                TitleMatch.sharesDistinctiveToken(Seq(q), hit.titles, normalizer.sanitize)
             }
             .map(_._2)
             .orElse(candidates.iterator.flatMap(q => tmdb.searchYearExactTop(q, effectiveYear)).nextOption())
@@ -505,8 +505,6 @@ class TmdbCandidateSearch(
         val wantedCinemaPairs = sanitizedPairs(cinemaCandidates)
         val wanted            = wantedPairs.map(_._2).toSet
         val wantedCinema      = wantedCinemaPairs.map(_._2).toSet
-        def titleOf(f: TmdbClient.SearchResult): Set[String] =
-          (Seq(f.title) ++ f.originalTitle.toSeq).map(normalizer.sanitize).filter(_.nonEmpty).toSet
         // Fuzzy title match, scoped to THIS director's filmography (a small, trusted
         // set): a cinema's spelling of a foreign title drifts from TMDB's ("Guru" vs
         // Yann Gozlan's "Gourou"), so an exact match misses and the year-only `byYear`
@@ -522,8 +520,7 @@ class TmdbCandidateSearch(
         // (`DirectorWalkResolvesSpec`). Operates on the RAW (pre-sanitize) title
         // pairs because the sequel check needs word boundaries sanitize discards.
         def titleClose(f: TmdbClient.SearchResult, want: Seq[(String, String)] = wantedPairs): Boolean = {
-          val fPairs = (Seq(f.title) ++ f.originalTitle.toSeq)
-            .map(t => t -> normalizer.sanitize(t)).filter(_._2.nonEmpty)
+          val fPairs = f.titles.map(t => t -> normalizer.sanitize(t)).filter(_._2.nonEmpty)
           fPairs.exists { case (fRaw, fSan) =>
             want.exists { case (wRaw, wSan) =>
               TitleMatch.close(wSan, fSan) &&
@@ -571,13 +568,13 @@ class TmdbCandidateSearch(
         // a genuine tie (the TMDB adjacent-year duplicate this was written for, where
         // both entries carry the same title and so the same weight).
         def venuesNaming(f: TmdbClient.SearchResult): Int =
-          titleOf(f).iterator.map(cinemaTitleWeight.getOrElse(_, 0)).maxOption.getOrElse(0)
+          sanitizedTitles(f).iterator.map(cinemaTitleWeight.getOrElse(_, 0)).maxOption.getOrElse(0)
         def bestOf(tier: Seq[TmdbClient.SearchResult]): Option[TmdbClient.SearchResult] =
           tier.sortBy(f => (-venuesNaming(f), f.id)).headOption
         val byTitle = Seq(
-          eligible.filter(f => titleOf(f).exists(wantedCinema.contains)),
+          eligible.filter(f => sanitizedTitles(f).exists(wantedCinema.contains)),
           eligible.filter(f => titleClose(f, wantedCinemaPairs)),
-          eligible.filter(f => titleOf(f).exists(wanted.contains)),
+          eligible.filter(f => sanitizedTitles(f).exists(wanted.contains)),
           eligible
         ).find(_.nonEmpty).flatMap(bestOf)
         // The year-pinned branch below exists for films whose Polish title has no
@@ -597,7 +594,7 @@ class TmdbCandidateSearch(
         // are folded — Filmweb's director+year override answers the same question.
         def corroboratedByTitle(f: TmdbClient.SearchResult): Boolean =
           TitleMatch.sharesDistinctiveToken(
-            candidates, Seq(f.title) ++ f.originalTitle.toSeq, normalizer.sanitize)
+            candidates, f.titles, normalizer.sanitize)
 
         // `corroboratedByTitle` shares a proper noun across languages, but two
         // instalments of the same series share that noun with EACH OTHER too
@@ -607,11 +604,9 @@ class TmdbCandidateSearch(
         // mirroring the `titleClose` collision `SequelMarker` already guards
         // (`DirectorWalkResolvesSpec`). Same veto, applied to the raw candidate
         // titles against the year-pinned credit's own titles.
-        def isDifferentInstalment(f: TmdbClient.SearchResult): Boolean = {
-          val fRaws = Seq(f.title) ++ f.originalTitle.toSeq
-          candidates.exists(wRaw => fRaws.exists(fRaw =>
+        def isDifferentInstalment(f: TmdbClient.SearchResult): Boolean =
+          candidates.exists(wRaw => f.titles.exists(fRaw =>
             SequelMarker.differentInstalments(TitleContainment.tokens(wRaw), TitleContainment.tokens(fRaw))))
-        }
 
         // When the title is FULLY translated it keeps nothing to share — "Trener
         // Tenisa" against "Il Maestro", "Kochanie" against "Gioia mia" — and the
@@ -647,7 +642,7 @@ class TmdbCandidateSearch(
             // twice — "Gourou" as both 2025/1315702 and 2026/1259983), they're ONE
             // film; pick the lowest id so the merge-order-dependent KEY year can't pin
             // whichever duplicate sits at it (StagingOrderDeterminismSpec).
-            Some(credits.filter(f => titleOf(f) == titleOf(only) &&
+            Some(credits.filter(f => sanitizedTitles(f) == sanitizedTitles(only) &&
               f.releaseYear.exists(fy => math.abs(fy - y) <= 1)).minBy(_.id))
           case _         => None         // 0 or >1 at the exact year, or no title corroboration → don't guess
         })
@@ -658,6 +653,10 @@ class TmdbCandidateSearch(
       }.nextOption()
     }
   }
+
+  /** A hit's titles as the resolution compares them: sanitized, blanks dropped. */
+  private def sanitizedTitles(f: TmdbClient.SearchResult): Set[String] =
+    f.titles.map(normalizer.sanitize).filter(_.nonEmpty).toSet
 
   /** Collapse a TMDB adjacent-year DUPLICATE of ONE film to its lowest id. TMDB
    *  occasionally lists a single film under two ids a year apart (Yann Gozlan's
@@ -674,8 +673,6 @@ class TmdbCandidateSearch(
    *  Order-independent — see `StagingOrderDeterminismSpec`. */
   private def collapseDirectorDuplicate(id: Int, directors: Seq[String]): Int = {
     val credits = directors.iterator.flatMap(personFilmographies).flatMap(_._2).toSeq.distinctBy(_.id)
-    def titles(f: TmdbClient.SearchResult): Set[String] =
-      (Seq(f.title) ++ f.originalTitle.toSeq).map(normalizer.sanitize).filter(_.nonEmpty).toSet
     credits.find(_.id == id).fold(id) { resolved =>
       // `minOption.getOrElse(id)`, not `.min`: the adjacency filter is EMPTY
       // whenever the resolved credit carries no TMDB release year (its own
@@ -684,7 +681,7 @@ class TmdbCandidateSearch(
       // `UnsupportedOperationException: empty.min`, which the resolve mistook for a
       // transient failure and retried forever. No year ⇒ no provable duplicate ⇒
       // keep the resolved id.
-      credits.filter(f => titles(f) == titles(resolved) &&
+      credits.filter(f => sanitizedTitles(f) == sanitizedTitles(resolved) &&
         f.releaseYear.exists(ry => resolved.releaseYear.exists(ay => math.abs(ry - ay) <= 1)))
         .map(_.id).minOption.getOrElse(id)
     }

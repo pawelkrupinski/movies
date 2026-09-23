@@ -514,7 +514,10 @@ object TmdbClient {
     // the person-credits decoder. No resolution path reads it today — the synopsis
     // tie-break went with `pickBest`.
     overview:      Option[String] = None
-  )
+  ) {
+    /** Every title TMDB knows this hit by: its deployment-language title, then its original. */
+    def titles: Seq[String] = title +: originalTitle.toSeq
+  }
 
   /** A TMDB hit whose Polish OR original title matches the query, ignoring case,
    *  surrounding whitespace AND punctuation — the exactness
@@ -535,7 +538,7 @@ object TmdbClient {
 
   private[clients] def isExactTitleMatch(r: SearchResult, title: String): Boolean = {
     val q = titleMatchKey(title)
-    q.nonEmpty && (titleMatchKey(r.title) == q || r.originalTitle.exists(titleMatchKey(_) == q))
+    q.nonEmpty && r.titles.exists(titleMatchKey(_) == q)
   }
 
   /** Fold every Unicode dash variant a cinema might emit — hyphen-minus through
