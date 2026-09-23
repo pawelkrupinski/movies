@@ -101,6 +101,19 @@ trait StagingRepository {
   }
 
   /**
+   * Whether ANY cinema has a row staged under `anchor` — [[findByAnchor]]'s emptiness,
+   * asked without decoding the group.
+   *
+   * The scrape landing asks it once per diverted listing, to tell a film that is new to
+   * staging (kick its chain) from a venue joining a film already incubating (its chain is
+   * already running, and its next step re-reads the whole group anyway). Answered by
+   * fetching the group, the question is exactly the quadratic it exists to avoid: a
+   * presale blockbuster staged at 2,441 US venues cost every one of them a decode of
+   * every earlier venue's row, showtimes included.
+   */
+  def holdsAnchor(anchor: String): Boolean = findByAnchor(anchor).nonEmpty
+
+  /**
    * The rows of ONE cinema — what a scrape tick needs to carry a newcomer's prior slot
    * forward and to prune the venue's rows it no longer lists.
    *
@@ -470,6 +483,14 @@ class MongoStagingRepository(
           super.findByCinemaAndAnchor(cinema, anchor)
       }
     }
+
+  /** Straight off the anchor index: no fetch, no decode. A stale entry can only answer
+   *  "held" for a film whose rows are gone, which costs the newcomer its immediate kick
+   *  and leaves it to the reaper's periodic pass — never a wrong row anywhere. */
+  override def holdsAnchor(anchor: String): Boolean = coll.isDefined && {
+    ensureAnchorIndex()
+    Option(idsByAnchor.get(anchor)).exists(!_.isEmpty)
+  }
 
   /** Decoded rows are re-checked against `anchor` before being returned, so a stale index
    *  entry can only ever cost a wasted fetch — never a wrong row. */

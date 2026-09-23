@@ -394,10 +394,15 @@ private[movies] final class ScrapeLanding(
      *  deciding which they are. */
     val divertsToStage = scala.collection.mutable.ArrayBuffer.empty[(Source, String, Option[Int], MovieRecord)]
     val divertedSanitized = scala.collection.mutable.Set.empty[String]
-    // Titles diverted into staging for the FIRST time this cinema (no prior row) —
-    // the newcomers whose initial step StagingReaper should kick off an event,
-    // rather than the periodic backstop. A re-divert of an already-incubating film
-    // (prior row present) is NOT collected, so we don't republish every tick.
+    // Titles NEW TO STAGING — no row under their anchor from this cinema or any other —
+    // the newcomers whose initial step StagingReaper should kick off an event, rather
+    // than the periodic backstop. A re-divert of an already-incubating film (prior row
+    // present) is NOT collected, so we don't republish every tick; nor is a venue
+    // JOINING a film another venue already staged. Its chain is running, and every
+    // step it finishes re-reads the whole group, this venue's row included. Kicking
+    // it per venue made the reaper decode the film's whole group once per venue — for
+    // a blockbuster staged at 2,441 US venues, quadratic in its showtimes (the US
+    // sample leg's scrape tick went from 27s to 1,419s on 2026-09-23).
     val newlyDiverted = scala.collection.mutable.ArrayBuffer.empty[String]
 
     /** Titles this venue LISTED this tick whose write did not land — a concurrent
@@ -477,7 +482,7 @@ private[movies] final class ScrapeLanding(
             data        = Map(cinemaSlotKey(cinema, displayTitle) -> slot)
           )))
           divertedSanitized += norm
-          if (!priorStagingRows.contains(norm)) newlyDiverted += displayTitle
+          if (!priorStagingRows.contains(norm) && !staging.exists(_.holdsAnchor(norm))) newlyDiverted += displayTitle
           None
         } else {
           // Land the slot on the *canonical* key for this film, chosen by

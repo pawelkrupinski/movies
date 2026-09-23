@@ -28,6 +28,21 @@ class InMemoryStagingRepositorySpec extends AnyFlatSpec with Matchers {
       Set((Helios, "Kumotry", Some(2026)), (Multikino, "Kumotry", Some(2026)))
   }
 
+  it should "say it holds an anchor exactly while findByAnchor has rows for it" in {
+    val repository = new InMemoryStagingRepository
+    val anchor     = repository.normalizer.sanitize("Kumotry")
+    repository.holdsAnchor(anchor) shouldBe false
+    repository.upsert(Helios, "Kumotry", Some(2026), slot(Helios, "Kumotry", Some(2026)))
+    repository.upsert(Multikino, "KUMOTRY", Some(2025), slot(Multikino, "KUMOTRY", Some(2025)))
+    repository.holdsAnchor(anchor) shouldBe repository.findByAnchor(anchor).nonEmpty
+    repository.holdsAnchor(anchor) shouldBe true
+    repository.delete(Helios, "Kumotry", Some(2026))
+    repository.holdsAnchor(anchor) shouldBe true      // Multikino's row still holds it
+    repository.delete(Multikino, "KUMOTRY", Some(2025))
+    repository.holdsAnchor(anchor) shouldBe false
+    repository.findByAnchor(anchor) shouldBe empty
+  }
+
   it should "preserve enrichment when a re-scrape re-upserts an already-resolved newcomer row" in {
     // The "stuck in staging" bug: MovieCache.recordCinemaScrape re-diverts a
     // newcomer via `upsert` on EVERY scrape tick until it folds. A blind replace

@@ -52,6 +52,25 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers with OptionValu
     kicked.toSeq shouldBe Seq("Brand New Film")                 // still incubating → no republish
   }
 
+  /** Every kick makes the reaper read the film's WHOLE staging group, so a kick per
+   *  joining venue is quadratic in venues: "Avengers: Doomsday", staged at 2,441 US
+   *  venues with 326k presale showtimes, took the US sample leg's scrape tick from 27s
+   *  to 1,419s and timed the leg out on 2026-09-23. The chain the first venue kicked
+   *  re-reads the group, joiners included, at every step it finishes. */
+  it should "not publish again when another cinema joins a film already incubating" in {
+    val staging = new InMemoryStagingRepository
+    val bus     = new InProcessEventBus
+    val kicked  = scala.collection.mutable.ArrayBuffer.empty[String]
+    bus.subscribe { case StagingNewcomerDiverted(title) => kicked += title }
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, bus, staging = Some(staging), normalizer = titleNormalizer)
+
+    cache.recordCinemaScrape(Helios, Seq(scrape("Brand New Film", Some(2026))))
+    cache.recordCinemaScrape(Multikino, Seq(scrape("Brand New Film", Some(2026)).copy(cinema = Multikino)))
+
+    staging.findAll().map(_.cinema).toSet shouldBe Set[Source](Helios, Multikino) // both venues staged…
+    kicked.toSeq shouldBe Seq("Brand New Film")                                    // …one kick
+  }
+
   /** Two DIFFERENT films legitimately share a title, one row per year — and a cinema
    *  screens the newer one, which already has its own row.
    *

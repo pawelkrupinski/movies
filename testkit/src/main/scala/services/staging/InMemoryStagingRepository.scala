@@ -39,6 +39,9 @@ class InMemoryStagingRepository(
   // harness runs (`TestWiring` wires no Mongo), so without this the leg pays that
   // quadratic even though the production repository doesn't.
   private val idsByCinema = mutable.Map.empty[models.Cinema, mutable.Set[String]]
+  // How many rows each anchor holds — for `holdsAnchor`, which the scrape landing asks
+  // once per diverted listing and which must not cost a walk of the backlog either.
+  private val rowsByAnchor = mutable.Map.empty[String, Int]
   private val lock  = new AnyRef
   val upserts       = mutable.ListBuffer.empty[(Source, String, Option[Int], MovieRecord)]
   val deletes       = mutable.ListBuffer.empty[(Source, String, Option[Int])]
@@ -54,6 +57,7 @@ class InMemoryStagingRepository(
       drop(id)
       store.put(id, sr)
       models.Source.cinemaOf(sr.cinema).foreach(c => idsByCinema.getOrElseUpdate(c, mutable.Set.empty) += id)
+      rowsByAnchor.updateWith(anchorOf(sr))(n => Some(n.getOrElse(0) + 1))
     }
     built
   }
@@ -61,6 +65,7 @@ class InMemoryStagingRepository(
   /** The ONLY way a row leaves the store, so the cinema index can't drift from it. */
   private def drop(id: String): Unit = {
     store.remove(id).foreach { sr =>
+      rowsByAnchor.updateWith(anchorOf(sr))(_.map(_ - 1).filter(_ > 0))
       models.Source.cinemaOf(sr.cinema).foreach { c =>
         idsByCinema.get(c).foreach { ids =>
           ids -= id
@@ -69,6 +74,8 @@ class InMemoryStagingRepository(
       }
     }
   }
+
+  private def anchorOf(row: StagingRecord): String = normalizer.sanitize(row.title)
 
   seed.foreach { case (c, t, y, e) => put(StagingRecord.idFor(c, t, y, normalizer), e) }
 
@@ -84,6 +91,8 @@ class InMemoryStagingRepository(
   override def findByCinema(cinema: models.Cinema): Seq[StagingRecord] = lock.synchronized {
     idsByCinema.get(cinema).toSeq.flatMap(_.toSeq.sorted.flatMap(store.get))
   }
+
+  override def holdsAnchor(anchor: String): Boolean = lock.synchronized(rowsByAnchor.contains(anchor))
 
   def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = lock.synchronized {
     val id       = StagingRecord.idFor(cinema, title, year, normalizer)

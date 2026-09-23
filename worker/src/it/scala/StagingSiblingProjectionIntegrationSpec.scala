@@ -173,6 +173,32 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
     } finally purge()
   }
 
+  /** The scrape landing asks this once per diverted listing, so answering it by fetching
+   *  the group re-opens the per-venue quadratic the question exists to avoid. */
+  "holdsAnchor" should "answer what findByAnchor's emptiness answers, without fetching a row" in {
+    purge()
+    try {
+      val anchor = titleNormalizer.sanitize(title)
+      Seq[Source](Multikino, models.CinemaCity, models.Helios)
+        .foreach(v => repositoryUnderTest.upsert(v, title, Some(2026), MovieRecord()))
+
+      var fetchedIds = 0
+      val counting = new MongoStagingRepository(Some(db), normalizer = titleNormalizer) {
+        override protected def fetchByIds(c: org.mongodb.scala.MongoCollection[services.movies.StoredMovieDto],
+                                          ids: Seq[String]): scala.util.Try[Seq[services.movies.StoredMovieDto]] = {
+          fetchedIds += ids.size
+          super.fetchByIds(c, ids)
+        }
+      }
+      val held   = counting.holdsAnchor(anchor)
+      val absent = counting.holdsAnchor("a film nobody staged")
+      withClue(s"holdsAnchor fetched $fetchedIds row(s): ") { fetchedIds shouldBe 0 }
+      held shouldBe counting.findByAnchor(anchor).nonEmpty
+      held shouldBe true
+      absent shouldBe false
+    } finally purge()
+  }
+
   private def repositoryUnderTest = new MongoStagingRepository(Some(db), normalizer = titleNormalizer)
 
   // The invariant an override must hold: answer EXACTLY what filtering `findAll` answers.
