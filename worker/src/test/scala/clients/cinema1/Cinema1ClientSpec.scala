@@ -1,10 +1,11 @@
 package clients.cinema1
 
 import models.Cinema1Gdansk
-import clients.tools.FakeHttpFetch
+import clients.tools.{FailingHttpFetch, FakeHttpFetch}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.Cinema1Client
+import tools.HttpStatusException
 
 import java.time.LocalDate
 
@@ -67,5 +68,14 @@ class Cinema1ClientSpec extends AnyFlatSpec with Matchers {
 
   it should "leave director empty rather than guessing when the source field is blank" in {
     byTitle("MARSUPILAMI").director shouldBe Seq.empty
+  }
+
+  // The screenings listing is the whole scrape: a failed fetch of it must surface
+  // red on /uptime with its cause, not be swallowed into an empty list that reads
+  // as a successful "0 showtimes" scrape (white, indistinguishable from a dormant
+  // venue — and the exact symptom the SPA migration itself produced).
+  it should "propagate a failed screenings fetch instead of swallowing it into an empty (white) scrape" in {
+    val failing = new Cinema1Client(new FailingHttpFetch(503), Cinema1Gdansk, cinemaId = CinemaId, today = LocalDate.of(2026, 9, 13))
+    a[HttpStatusException] should be thrownBy failing.fetch()
   }
 }

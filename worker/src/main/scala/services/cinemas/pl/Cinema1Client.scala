@@ -50,8 +50,10 @@ class Cinema1Client(
   override def sourceUrl: Option[String] = Some(s"$BookingBase/pl/cinema?cinemaId=$cinemaId")
 
   def fetch(): Seq[CinemaMovie] = {
-    val screenings = Try(http.get(screeningsUrl(cinemaId, today.atStartOfDay, today.plusYears(1).atStartOfDay)))
-      .toOption.map(parseScreenings).getOrElse(Seq.empty)
+    // Not wrapped in a Try: the listing is the whole scrape, so a failed fetch has
+    // to surface as a failed (red) scrape with its cause, not an empty (white) one.
+    // The per-film and room lookups below stay tolerant — they only enrich.
+    val screenings = parseScreenings(http.get(screeningsUrl(cinemaId, today.atStartOfDay, today.plusYears(1).atStartOfDay)))
     if (screenings.isEmpty) return Seq.empty
 
     val roomByScreen = Try(http.get(screenHeadUrl(cinemaId))).toOption.map(parseScreenHeads).getOrElse(Map.empty)
