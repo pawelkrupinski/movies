@@ -95,4 +95,25 @@ class KeysetScanSpec extends AnyFlatSpec with Matchers {
     complete shouldBe true
     rows shouldBe Vector("a", "b", "c")
   }
+
+  it should "propagate an exception the CONSUMER throws, rather than passing it off as an incomplete read" in {
+    // A bug in `onBatch` is not Mongo failing: reported as `false` it read as "a page failed
+    // after retries", sent a pruning caller down its skip path with a misleading warning, and
+    // hid the bug indefinitely. A read failure keeps its `false` (the spec above).
+    var notified: Option[Throwable] = None
+    var pagesFetched = 0
+    val base = collectionOf("a", "b", "c", "d")
+    val thrown = the[IllegalStateException] thrownBy KeysetScan.scan[String](
+      label          = "test",
+      batchSize      = 2,
+      maxAttempts    = 3,
+      initialBackoff = 1.milli,
+      keyOf          = identity,
+      fetchPage      = (afterId, limit) => { pagesFetched += 1; base(afterId, limit) },
+      onIncomplete   = e => notified = Some(e)
+    )(batch => if (batch.contains("c")) throw new IllegalStateException("consumer bug"))
+    thrown.getMessage shouldBe "consumer bug"
+    notified shouldBe None      // not reported as an incomplete read
+    pagesFetched shouldBe 2     // and not retried as one: the consumer saw each page once
+  }
 }

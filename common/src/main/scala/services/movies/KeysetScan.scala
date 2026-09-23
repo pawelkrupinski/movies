@@ -3,7 +3,7 @@ package services.movies
 import tools.RetryWithBackoff
 
 import scala.concurrent.duration.FiniteDuration
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 /**
  * Keyset-paged scan of a whole Mongo collection by a unique, immutable `_id`-like
@@ -30,6 +30,12 @@ import scala.util.Try
  * failed after its retries. Rows delivered so far still reached `onBatch`, so a PRUNING
  * caller must treat `false` as "not the complete collection" and skip its destructive
  * step. `onIncomplete` is invoked once with the failure so the caller can log it.
+ *
+ * Only a READ failure is "incomplete". An exception `onBatch` throws is the caller's own
+ * bug and PROPAGATES: reporting it as `false` read as "Mongo failed after retries", sent
+ * pruning callers down their skip path under a misleading warning, and kept the bug
+ * hidden for as long as it lasted. The in-memory repositories already behave this way
+ * (their `foreachRecord` is a plain `foreach`), so this also keeps the fakes honest.
  */
 object KeysetScan {
 
@@ -41,23 +47,26 @@ object KeysetScan {
     keyOf:          A => String,
     fetchPage:      (Option[String], Int) => Seq[A],
     onIncomplete:   Throwable => Unit = _ => ()
-  )(onBatch: Seq[A] => Unit): Boolean =
-    Try {
-      var afterId: Option[String] = None
-      var more                    = true
-      while (more) {
-        val batch = RetryWithBackoff(
-          label          = label,
-          maxAttempts    = maxAttempts,
-          initialBackoff = initialBackoff
-        )(fetchPage(afterId, batchSize))
-        onBatch(batch)
-        afterId = batch.lastOption.map(keyOf)
-        more    = batch.sizeIs == batchSize
+  )(onBatch: Seq[A] => Unit): Boolean = {
+    var afterId: Option[String] = None
+    var more                    = true
+    var complete                = true
+    while (more) {
+      Try(RetryWithBackoff(
+        label          = label,
+        maxAttempts    = maxAttempts,
+        initialBackoff = initialBackoff
+      )(fetchPage(afterId, batchSize))) match {
+        case Success(batch) =>
+          onBatch(batch)   // outside the Try: a consumer failure is not a read failure
+          afterId = batch.lastOption.map(keyOf)
+          more    = batch.sizeIs == batchSize
+        case Failure(exception) =>
+          onIncomplete(exception)
+          complete = false
+          more     = false
       }
-      true
-    }.recover { case exception: Throwable =>
-      onIncomplete(exception)
-      false
-    }.getOrElse(false)
+    }
+    complete
+  }
 }
