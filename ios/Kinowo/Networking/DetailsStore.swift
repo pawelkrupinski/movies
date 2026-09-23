@@ -1,4 +1,12 @@
 import Foundation
+// See `RepertoireClient.swift`: a no-op in the Xcode app's flat module, true
+// only in the `KinowoNetworking` SPM target that lets `swift test` drive this.
+#if canImport(KinowoCore)
+@testable import KinowoCore
+#endif
+#if canImport(KinowoAuth)
+@testable import KinowoAuth
+#endif
 
 /// Fetches `/{city}/api/details` and exposes a title → details lookup the
 /// detail screen reads synopsis + trailers from. Analogous to
@@ -64,14 +72,21 @@ final class DetailsStore: ObservableObject {
     }
 
     func reload(now: Date = Date()) async {
+        // As in `RepertoireStore.reload`: a switch mid-fetch re-points `url`,
+        // so a late response for the previous city is dropped rather than
+        // written into `byTitle` and the NEW city's disk cache.
+        let requestURL = url
+        let city = citySlug
+        let deployment = base
         do {
-            var request = URLRequest(url: url)
+            var request = URLRequest(url: requestURL)
             request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
             request.cachePolicy = .reloadIgnoringLocalCacheData
-            if let lm = DetailsCache.lastModified(deployment: base, city: citySlug) {
+            if let lm = DetailsCache.lastModified(deployment: deployment, city: city) {
                 request.setValue(lm, forHTTPHeaderField: "If-Modified-Since")
             }
             let (data, response) = try await session.data(for: request)
+            guard url == requestURL else { return }
             guard let http = response as? HTTPURLResponse else {
                 throw URLError(.badServerResponse)
             }
@@ -79,7 +94,7 @@ final class DetailsStore: ObservableObject {
                 // As in `RepertoireStore.reload`: 304 vouches for the CACHED
                 // body, so read it in when the in-memory map missed it.
                 if let cached = DetailsCache.bodyForNotModified(
-                    callerIsEmpty: byTitle.isEmpty, deployment: base, city: citySlug) {
+                    callerIsEmpty: byTitle.isEmpty, deployment: deployment, city: city) {
                     self.byTitle = cached.keyedByTitle()
                 }
                 self.lastReloadedAt = now
@@ -92,10 +107,7 @@ final class DetailsStore: ObservableObject {
             self.byTitle = decoded.keyedByTitle()
             self.lastReloadedAt = now
             let lm = http.value(forHTTPHeaderField: "Last-Modified")
-            let copy = decoded
-            let city = citySlug
-            let deployment = base
-            Task.detached { DetailsCache.save(copy, deployment: deployment, city: city, lastModified: lm) }
+            Task.detached { DetailsCache.save(decoded, deployment: deployment, city: city, lastModified: lm) }
         } catch {
             // Details are non-essential — the listing still renders the
             // film without synopsis/trailers. Swallow the error rather

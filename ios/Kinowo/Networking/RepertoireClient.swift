@@ -132,9 +132,17 @@ final class RepertoireStore: ObservableObject {
     }
 
     func reload(now: Date = Date()) async {
+        // Everything after an `await` below answers for THIS request's city
+        // and deployment, captured here. A city/country switch mid-fetch
+        // re-points `url` and kicks its own reload; this one's late response
+        // must then be dropped, not written into `films` under the new slug
+        // (and into the new city's disk cache).
+        let requestURL = url
+        let city = citySlug
+        let deployment = base
         isLoading = true
         error = nil
-        defer { isLoading = false }
+        defer { if url == requestURL { isLoading = false } }
         // UI tests run against the in-memory fixture, never the network.
         if RepertoireStore.uiTestFixtureEnabled {
             lastReloadedAt = now
@@ -145,13 +153,14 @@ final class RepertoireStore: ObservableObject {
         // per city alongside the repertoire, independent of the listing's success.
         await fetchCatalogIfNeeded()
         do {
-            var request = URLRequest(url: url)
+            var request = URLRequest(url: requestURL)
             request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
             request.cachePolicy = .reloadIgnoringLocalCacheData
-            if let lm = RepertoireCache.lastModified(deployment: base, city: citySlug) {
+            if let lm = RepertoireCache.lastModified(deployment: deployment, city: city) {
                 request.setValue(lm, forHTTPHeaderField: "If-Modified-Since")
             }
             let (data, response) = try await session.data(for: request)
+            guard url == requestURL else { return }
             guard let http = response as? HTTPURLResponse else {
                 throw URLError(.badServerResponse)
             }
@@ -169,10 +178,10 @@ final class RepertoireStore: ObservableObject {
                 // crossed the 30-minute cutoff — re-prune it against the
                 // caller's own clock rather than trusting its age.
                 if let cached = RepertoireCache.bodyForNotModified(
-                    callerIsEmpty: films.isEmpty, deployment: base, city: citySlug) {
+                    callerIsEmpty: films.isEmpty, deployment: deployment, city: city) {
                     self.films = cached.prunedPastShowings(now: now, zone: timeZone)
                 }
-                self.loadedCitySlug = citySlug
+                self.loadedCitySlug = city
                 self.lastReloadedAt = now
                 return
             }
@@ -187,15 +196,12 @@ final class RepertoireStore: ObservableObject {
             // silently undo that prune with a payload the server considered
             // fresh at request time but that has since aged past 30 minutes.
             self.films = decoded.prunedPastShowings(now: now, zone: timeZone)
-            self.loadedCitySlug = citySlug
+            self.loadedCitySlug = city
             self.lastReloadedAt = now
             let lm = http.value(forHTTPHeaderField: "Last-Modified")
-            let filmsCopy = decoded
-            let city = citySlug
-            let deployment = base
-            Task.detached { RepertoireCache.save(filmsCopy, deployment: deployment, city: city, lastModified: lm) }
+            Task.detached { RepertoireCache.save(decoded, deployment: deployment, city: city, lastModified: lm) }
         } catch {
-            self.error = error
+            if url == requestURL { self.error = error }
         }
     }
 
@@ -204,14 +210,19 @@ final class RepertoireStore: ObservableObject {
     /// works even if this call fails.
     private func fetchCatalogIfNeeded() async {
         guard catalogCitySlug != citySlug else { return }
-        let catalogURL = City.apiURL(base: base, slug: citySlug, endpoint: "cinemas")
+        let city = citySlug
+        let deployment = base
+        let catalogURL = City.apiURL(base: deployment, slug: city, endpoint: "cinemas")
         do {
             var request = URLRequest(url: catalogURL)
             request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
             let (data, response) = try await session.data(for: request)
-            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { return }
+            // Same late-landing guard as `reload`: the switch already cleared
+            // `catalog` for the new city, don't refill it with the old one's.
+            guard citySlug == city, base == deployment,
+                  let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { return }
             self.catalog = try JSONDecoder().decode(CinemaCatalog.self, from: data)
-            self.catalogCitySlug = citySlug
+            self.catalogCitySlug = city
         } catch {
             // Leave the current catalog; the flat pill-bar path is unaffected.
         }

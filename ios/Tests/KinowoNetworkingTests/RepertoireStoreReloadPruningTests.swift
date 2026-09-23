@@ -101,15 +101,52 @@ final class RepertoireStoreReloadPruningTests: XCTestCase {
         XCTAssertTrue(store.films.isEmpty,
                        "a 304-replayed cache entry with a screening 45 minutes in the past should have been pruned, got \(store.films)")
     }
+
+    // MARK: - A response that lands after a city switch
+
+    /// A reload for the OUTGOING city that is still in flight when the user
+    /// picks another city must be dropped when it lands: it used to write the
+    /// old city's films into `films`, stamp them with the NEW slug (read after
+    /// the await), and save them to the new city's disk cache.
+    func testSlowResponseForThePreviousCityIsDroppedAfterASwitch() async throws {
+        let otherCity = "othercity"
+        defer { RepertoireCache.save([], deployment: deployment, city: otherCity, lastModified: nil) }
+        let later = Date().addingTimeInterval(3 * 3600)
+        let (date, time) = warsawDateAndTime(later)
+        let oldCityFilm = film(date: date, time: time, title: "Old City Film")
+        let newCityFilm = film(date: date, time: time, title: "New City Film")
+
+        URLProtocolStub.handler = { request in
+            let path = request.url!.path
+            if path.hasSuffix("/cinemas") { return .init(statusCode: 404, headers: [:], body: Data()) }
+            if path.contains("/\(self.city)/") {
+                var slow = jsonResponse([oldCityFilm])
+                slow.delay = 0.4
+                return slow
+            }
+            return jsonResponse([newCityFilm])
+        }
+
+        let store = RepertoireStore(base: deployment, citySlug: city, session: stubbedSession())
+        let slowReload = Task { await store.reload() }
+        try await Task.sleep(for: .milliseconds(100))
+        store.use(citySlug: otherCity)
+        await slowReload.value
+        try await Task.sleep(for: .milliseconds(300))
+
+        XCTAssertEqual(store.films.map(\.title), ["New City Film"])
+        XCTAssertEqual(store.loadedCitySlug, otherCity)
+        XCTAssertEqual(RepertoireCache.load(deployment: deployment, city: otherCity)?.map(\.title), ["New City Film"])
+    }
 }
 
 // MARK: - Fixtures
 
 /// A film with one showtime at `time` (`HH:mm`, `.warsaw`) on `date`
 /// (`yyyy-MM-dd`, `.warsaw`) — everything else is filler.
-private func film(date: String, time: String) -> Film {
+private func film(date: String, time: String, title: String = "Test Film") -> Film {
     Film(
-        title: "Test Film",
+        title: title,
         posterURL: nil,
         fallbackPosterURLs: [],
         runtimeMinutes: 100,
@@ -143,38 +180,4 @@ private func warsawDateAndTime(_ moment: Date) -> (date: String, time: String) {
 
 private func jsonResponse(_ films: [Film]) -> URLProtocolStub.Response {
     .init(statusCode: 200, headers: [:], body: try! JSONEncoder().encode(films))
-}
-
-// MARK: - URLProtocol stub
-
-/// Intercepts every request on a session configured with it and answers from
-/// `handler`, so `RepertoireStore.reload()` can be driven against canned
-/// HTTP responses without touching the network.
-final class URLProtocolStub: URLProtocol {
-    struct Response {
-        let statusCode: Int
-        let headers: [String: String]
-        let body: Data
-    }
-
-    static var handler: ((URLRequest) -> Response)?
-
-    override class func canInit(with request: URLRequest) -> Bool { true }
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
-
-    override func startLoading() {
-        guard let handler = URLProtocolStub.handler, let url = request.url else {
-            client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
-            return
-        }
-        let response = handler(request)
-        let httpResponse = HTTPURLResponse(
-            url: url, statusCode: response.statusCode,
-            httpVersion: "HTTP/1.1", headerFields: response.headers)!
-        client?.urlProtocol(self, didReceive: httpResponse, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: response.body)
-        client?.urlProtocolDidFinishLoading(self)
-    }
-
-    override func stopLoading() {}
 }
