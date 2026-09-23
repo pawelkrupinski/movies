@@ -89,10 +89,9 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
     val scale = RatingBadgeMetrics.scale(layoutWidthDp())
     val fontSize = (style.baseFontSize.value * scale).sp
     val hPad = (style.hPad.value * scale).dp
-    // No extra vertical padding by default: the trimmed font box already carries
-    // ~4px above the caps and the descent below the baseline (the pill text has
-    // no descenders), which is the whole pill height. Any vPad here just stacks
-    // on that and makes the pill read tall — see RatingPillVisualPaddingTest.
+    // vPad stacks on the trimmed font box, which already carries ~4px above the
+    // caps and the descent below the baseline (the pill text has no descenders)
+    // — see RatingPillVisualPaddingTest, which gates that box net of vPad.
     val vPad = (style.vPad.value * scale).dp
     val corner = (style.corner.value * scale).dp
     val gap = (style.interPillGap.value * scale).dp
