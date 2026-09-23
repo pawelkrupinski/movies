@@ -1,0 +1,77 @@
+name: Security headers (live)
+
+# Asserts the LIVE sites' security headers against kinowo.net and showtimes.cc -- see
+# scripts/ci/check-security-headers.py for the checks and why each exists:
+#   - no `Access-Control-Allow-Credentials: true` for a foreign Origin on /api/me (it once granted
+#     credentials to any origin);
+#   - HSTS max-age of at least a year (it was one week);
+#   - `Secure` on the session cookie, enforced once the repository variable
+#     REQUIRE_SECURE_SESSION_COOKIE is 'true' -- set it when KINOWO_SESSION_SECURE goes live;
+#     until then a missing `Secure` is a warning annotation.
+#
+# Header values are the one layer no test here renders: they are set by Play, Caddy and
+# Cloudflare together, on the real hosts only. So this is a synthetic check, not a unit test, and
+# the fleet has no blackbox exporter to hang it on.
+#
+# Through the Decodo proxy (same secrets as the OG-card workflow): GitHub's runner IPs get a
+# Cloudflare Bot-Fight challenge on both zones, and the checker FAILS on a challenge rather than
+# passing a page that is not ours.
+
+on:
+    schedule:
+        # Every six hours: a header regression ships with a deploy, and a quarter of a day is
+        # well inside "found before anyone relies on it" without spending the proxy's quota.
+        - cron: '17 */6 * * *'
+    workflow_dispatch:
+    push:
+        branches: [main]
+        paths:
+            - '.github/workflows/security-headers.yml'
+            - 'scripts/ci/check-security-headers.py'
+            - 'scripts/ci/test_check_security_headers.py'
+            - 'scripts/ci/scheduled-failure-issue*.sh'
+            - '.github/actions/report-scheduled-run/**'
+
+permissions:
+    contents: read
+
+jobs:
+    check:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - uses: actions/checkout@v5
+
+            # The checker's own verdicts first, offline: a checker that can no longer fail would
+            # otherwise report green here for as long as nobody looked at it.
+            - name: Self-test the checker
+              run: python3 scripts/ci/test_check_security_headers.py
+
+            # And the reporter the `report` job below (and the OG-card workflow) relies on to reach
+            # a person, against a stub `gh`: a reporter that silently stopped opening issues is the
+            # exact silence it exists to end.
+            - name: Self-test the failure reporter
+              run: bash scripts/ci/scheduled-failure-issue-test.sh
+
+            - name: Check kinowo.net and showtimes.cc
+              env:
+                  KINOWO_PROXY_USER: ${{ secrets.KINOWO_PROXY_USER }}
+                  KINOWO_PROXY_PASS: ${{ secrets.KINOWO_PROXY_PASS }}
+                  REQUIRE_SECURE_SESSION_COOKIE: ${{ vars.REQUIRE_SECURE_SESSION_COOKIE }}
+              run: python3 scripts/ci/check-security-headers.py
+
+    # A failed scheduled check becomes an issue assigned to the owner, closed on the next pass --
+    # see .github/actions/report-scheduled-run.
+    report:
+        needs: check
+        if: always() && !cancelled() && github.event_name == 'schedule'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}
