@@ -136,6 +136,8 @@ struct City: Codable, Hashable {
         City(slug: "zakopane", name: "Zakopane", lat: 49.2990, lon: 19.9489, country: "pl"),
         City(slug: "wyszkow", name: "Wyszków", lat: 52.5928, lon: 21.4584, country: "pl"),
         City(slug: "zlocieniec", name: "Złocieniec", lat: 53.5329, lon: 16.0113, country: "pl"),
+        City(slug: "slubice", name: "Słubice", lat: 52.3509, lon: 14.5607, country: "pl"),
+        City(slug: "wlodawa", name: "Włodawa", lat: 51.5500, lon: 23.5500, country: "pl"),
         // ── United Kingdom (79 Flicks regions; English labels). Each carries the
         //    NATION it is picked under, matching what `/api/catalog` sends for it
         //    — this list is the fallback that renders before the catalog arrives,

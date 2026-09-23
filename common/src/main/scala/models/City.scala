@@ -791,6 +791,26 @@ case object Zlocieniec extends City(
   val cinemas: Seq[Cinema] = Cinema.zlocieniec
 }
 
+case object Slubice extends City(
+  slug   = "slubice",
+  labels = CityLabels(nominative = "Słubice", genitivePlural = "słubickich", locative = "Słubicach"),
+  lat    = 52.3509,
+  lon    = 14.5607,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.slubice
+}
+
+case object Wlodawa extends City(
+  slug   = "wlodawa",
+  labels = CityLabels(nominative = "Włodawa", genitivePlural = "włodawskich", locative = "Włodawie"),
+  lat    = 51.5500,
+  lon    = 23.5500,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.wlodawa
+}
+
 // ── United Kingdom (English — non-declining, so the three label slots all carry
 //    the plain nominative; `CityGrammar.Nominative` reads only that). ──────────
 
@@ -1215,7 +1235,7 @@ final class SpanishProvince(slug: String, labels: CityLabels, lat: Double, lon: 
  *
  *  The exception is [[soleCity]] — see there.
  *
- *  A country whose picker is one flat list — Poland's 63 and Spain's 52, the
+ *  A country whose picker is one flat list — Poland's 65 and Spain's 52, the
  *  two short enough to read straight through — leaves `Country.cityGroups`
  *  empty rather than declaring one group per city. */
 final case class CityGroup(label: String, slug: String, cities: Seq[City] = Nil,
@@ -1288,7 +1308,7 @@ object City {
     Walbrzych, Tarnow, Wloclawek, Legnica, Plock, Bytom, DabrowaGornicza, NowySacz, Slupsk, JeleniaGora,
     Przemysl, Konin, PiotrkowTrybunalski, Siedlce, Pila, OstrowiecSwietokrzyski, Gniezno, Suwalki, StalowaWola, Zamosc,
     Leszno, Lomza, Pulawy, Skierniewice, StarogardGdanski, Ciechanow, Wielun, Chojnice, Zgorzelec,
-    Ilawa, Ketrzyn, Zakopane, Wyszkow, Zlocieniec,
+    Ilawa, Ketrzyn, Zakopane, Wyszkow, Zlocieniec, Slubice, Wlodawa,
   )
 
   /** The United Kingdom's full modelled roster — every Flicks region we know how

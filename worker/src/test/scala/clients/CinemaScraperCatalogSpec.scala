@@ -407,6 +407,25 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     }
   }
 
+  // Two venues reading one upstream means one of them is shown another town's
+  // programme under its own name, and its real programme is never scraped. Both
+  // shapes were live: Braniewo's Kino Baszta read Środa Wlkp.'s bilety24 organiser
+  // (477), and Koło's Kino nad Wartą read the Konin cultural centre's. bilety24
+  // renames organiser slugs but keeps the trailing id, so identity is the id.
+  // Only the per-VENUE upstreams (a bilety24 organiser, a Filmweb cinema id) —
+  // a whole-site root like bok.waw.pl legitimately serves several venues, each
+  // client filtering its own out.
+  it should "never point two cinemas at the same upstream venue" in {
+    val keys = catalog(biletyna = "kino-kameralne").byCity.values.flatten.toSeq.flatMap { s =>
+      s.sourceUrl.collect {
+        case url if url.contains("bilety24.pl/kino/organizator/") => "bilety24:" + url.split('-').last
+        case url if url.contains("filmweb.pl/cinema/")             => url
+      }.map(_ -> s.cinema.displayName)
+    }
+    val shared = keys.groupBy(_._1).collect { case (k, vs) if vs.map(_._2).distinct.sizeIs > 1 => k -> vs.map(_._2).distinct }
+    withClue(s"upstreams read by more than one cinema: $shared") { shared shouldBe empty }
+  }
+
   // The 2026-09 sweep: small towns grouped into regional hubs, and towns near an
   // existing city folded into it. Each is wired through its OWN source — the
   // chain's API, the venue's bilety24 organiser page, or Filmweb when neither.

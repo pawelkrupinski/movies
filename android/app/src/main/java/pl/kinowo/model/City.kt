@@ -163,6 +163,8 @@ object Cities {
         City("zakopane", "Zakopane", 49.2990, 19.9489, "pl"),
         City("wyszkow", "Wyszków", 52.5928, 21.4584, "pl"),
         City("zlocieniec", "Złocieniec", 53.5329, 16.0113, "pl"),
+        City("slubice", "Słubice", 52.3509, 14.5607, "pl"),
+        City("wlodawa", "Włodawa", 51.5500, 23.5500, "pl"),
         // ── United Kingdom (79 Flicks regions; English labels). Each carries the
         //    NATION it is picked under, matching what `/api/catalog` sends for it
         //    — this list is the fallback that renders before the catalog arrives,

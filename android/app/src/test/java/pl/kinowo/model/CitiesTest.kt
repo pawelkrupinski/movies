@@ -95,8 +95,8 @@ class CitiesTest {
 
     @Test
     fun allIsTheGlobalUnionOfPolishAndUkCities() {
-        assertEquals(142, Cities.all.size)               // 63 PL + 79 GB
-        assertEquals(63, Cities.citiesIn("pl").size)
+        assertEquals(144, Cities.all.size)               // 65 PL + 79 GB
+        assertEquals(65, Cities.citiesIn("pl").size)
         assertEquals(79, Cities.citiesIn("uk").size)
     }
 
@@ -159,7 +159,7 @@ class CitiesTest {
     }
 
     @Test
-    fun listsAllSixtyThreePolishCitiesInOrder() {
+    fun listsAllSixtyFivePolishCitiesInOrder() {
         assertEquals(
             listOf(
                 "poznan", "wroclaw", "warszawa", "krakow", "lodz", "katowice", "szczecin",
@@ -170,7 +170,7 @@ class CitiesTest {
                 "dabrowa-gornicza", "nowy-sacz", "slupsk", "jelenia-gora", "przemysl", "konin", "piotrkow-trybunalski",
                 "siedlce", "pila", "ostrowiec-swietokrzyski", "gniezno", "suwalki", "stalowa-wola", "zamosc",
                 "leszno", "lomza", "pulawy", "skierniewice", "starogard-gdanski", "ciechanow", "wielun",
-                "chojnice", "zgorzelec", "ilawa", "ketrzyn", "zakopane", "wyszkow", "zlocieniec",
+                "chojnice", "zgorzelec", "ilawa", "ketrzyn", "zakopane", "wyszkow", "zlocieniec", "slubice", "wlodawa",
             ),
             Cities.citiesIn("pl").map { it.slug },
         )
@@ -188,10 +188,10 @@ class CitiesTest {
                 "konin", "koszalin", "krakow", "legnica", "leszno", "lublin",
                 "lomza", "lodz", "nowy-sacz", "olsztyn", "opole", "ostrowiec-swietokrzyski",
                 "pila", "piotrkow-trybunalski", "plock", "poznan", "przemysl", "pulawy",
-                "radom", "rybnik", "rzeszow", "siedlce", "skierniewice", "slupsk",
+                "radom", "rybnik", "rzeszow", "siedlce", "skierniewice", "slubice", "slupsk",
                 "sosnowiec", "stalowa-wola", "starogard-gdanski", "suwalki", "szczecin", "tarnow",
                 "torun", "trojmiasto", "tychy", "walbrzych", "warszawa", "wielun",
-                "wloclawek", "wroclaw", "wyszkow", "zabrze", "zakopane", "zamosc",
+                "wloclawek", "wlodawa", "wroclaw", "wyszkow", "zabrze", "zakopane", "zamosc",
                 "zgorzelec", "zielona-gora", "zlocieniec",
             ),
             Cities.sortedIn("pl").map { it.slug },

@@ -1,6 +1,6 @@
 // GENERATED from data/uk/venues.json + data/pl/venues.json by
 // data/scripts/generate_venue_towns.py — do NOT edit by hand.
-// The town each of 1132 venues sits in (841 in the UK, 291 in Poland).
+// The town each of 1167 venues sits in (841 in the UK, 326 in Poland).
 // Regenerate after rebuilding either country's table; see data/uk/README.md
 // and data/pl/README.md.
 package models
@@ -50,6 +50,7 @@ private[models] object VenueTowns {
     ("Bałtyk", "Racibórz"),
     ("Beau Séjour Leisure Centre, ​Guernsey", "Guernsey"),
     ("Belmont Filmhouse", "Aberdeen"),
+    ("Bielański Ośrodek Kultury", "Warszawa"),
     ("Birks Aberfeldy", "Aberfeldy"),
     ("Brewery Arts Centre Kendal", "Kendal"),
     ("Broadway Cinema Nottingham", "Nottingham"),
@@ -58,6 +59,7 @@ private[models] object VenueTowns {
     ("Brunswick Moviebowl Londonderry", "Londonderry"),
     ("Buxton Cinema, Pavilion Arts Centre", "Buxton"),
     ("CKF Stylowy", "Zamość"),
+    ("CKiS Sępólno Krajeńskie", "Sępólno Krajeńskie"),
     ("Campbeltown Picture House", "Campbeltown"),
     ("Cannock Cinema", "Cannock"),
     ("Capitol Horsham", "Horsham"),
@@ -71,6 +73,10 @@ private[models] object VenueTowns {
     ("Centrum", "Jastrzębie Zdrój"),
     ("Centrum 3D", "Kalisz"),
     ("Centrum 3D Przemyśl", "Przemyśl"),
+    ("Centrum Kultury Gniewino", "Gniewino"),
+    ("Centrum Kultury Nowy Pafawag", "Wrocław"),
+    ("Centrum Kultury Przeźmierowo", "Przeźmierowo"),
+    ("Centrum Kultury w Świeciu", "Świecie"),
     ("Century Cinema Clacton", "Clacton-on-Sea"),
     ("Chalmers Alloa Cinema", "CLACKMANNANSHIRE"),
     ("Chalmers Filmhouse Arbroath", "Arbroath"),
@@ -79,6 +85,7 @@ private[models] object VenueTowns {
     ("Chichester Cinema at New Park", "Chichester"),
     ("Chiddingfold Village Hall Cinema", "Godalming"),
     ("Chiswick Cinema", "London"),
+    ("Choszczeński Dom Kultury", "Choszczno"),
     ("Cinebowl Uttoxeter", "Uttoxeter"),
     ("Cinema City Biała Podlaska", "Biała Podlaska"),
     ("Cinema City Cieszyn", "Cieszyn"),
@@ -155,17 +162,17 @@ private[models] object VenueTowns {
     ("Cineworld Sheffield", "Sheffield"),
     ("Cineworld Shrewsbury", "Shrewsbury"),
     ("Cineworld Solihull", "Solihull"),
-    ("Cineworld South Ruislip", "London"),
+    ("Cineworld South Ruislip", "London")
+  )
+
+  private def chunk1: Seq[(String, String)] = Seq(
     ("Cineworld Speke", "Speke"),
     ("Cineworld St Helens", "St Helens"),
     ("Cineworld St Helier, Jersey", "Jersey"),
     ("Cineworld St Neots", "St Neots"),
     ("Cineworld Stevenage", "Stevenage"),
     ("Cineworld Stoke-on-Trent", "Stoke-on-Trent"),
-    ("Cineworld Telford", "Telford")
-  )
-
-  private def chunk1: Seq[(String, String)] = Seq(
+    ("Cineworld Telford", "Telford"),
     ("Cineworld Wakefield", "Wakefield"),
     ("Cineworld Wandsworth", "London"),
     ("Cineworld Warrington", "Warrington"),
@@ -223,6 +230,7 @@ private[models] object VenueTowns {
     ("Discovery Centre Cinema Rothesay", "Isle of Bute"),
     ("Dome Worthing", "Worthing"),
     ("Dominion Cinema Edinburgh", "Edinburgh"),
+    ("Drawieński Ośrodek Kultury", "Drawno"),
     ("Duke of York's Picturehouse Brighton", "Brighton"),
     ("Duke's at Komedia Picturehouse", "Brighton"),
     ("Dundee Contemporary Arts (DCA)", "Dundee"),
@@ -307,18 +315,20 @@ private[models] object VenueTowns {
     ("Flower Bowl Entertainment Centre Preston", "Preston"),
     ("Forest Cinemas Walthamstow", "London"),
     ("Forum", "Bolesławiec"),
-    ("Forum Bridlington", "Bridlington"),
+    ("Forum Bridlington", "Bridlington")
+  )
+
+  private def chunk2: Seq[(String, String)] = Seq(
     ("Forum Cinema Hexham", "Hexham"),
     ("Forum Cinema Northampton", "Northampton"),
     ("Fregata", "Lębork"),
     ("Fuse Community Cinema Prudhoe", "Prudhoe"),
     ("Futurist Cinema", "Kidderminster"),
     ("GO KINO Oława", "Oława"),
+    ("GOK Lipka", "Lipka"),
+    ("GOK Promyk", "Bystra"),
     ("Gaiety Cinema Whitehaven", "Whitehaven"),
-    ("Gala Cinema Durham", "Durham")
-  )
-
-  private def chunk2: Seq[(String, String)] = Seq(
+    ("Gala Cinema Durham", "Durham"),
     ("Galeri Caenarfon", "Caenarfon"),
     ("Gateway Cinema Ross-on-Wye", "Ross-on-Wye"),
     ("Genesis Cinema Whitechapel", "London"),
@@ -372,6 +382,7 @@ private[models] object VenueTowns {
     ("Jaworzyna", "Krynica Zdrój"),
     ("Junction Goole", "East Riding of Yorkshire"),
     ("Jutrzenka", "Sierpc"),
+    ("Kasyno Oficerskie", "Nowy Dwór Mazowiecki"),
     ("Kavanagh Cinema Herne Bay", "Herne Bay"),
     ("Keswick Alhambra", "Keswick"),
     ("Key Theatre Peterborough", "Peterborough"),
@@ -390,6 +401,7 @@ private[models] object VenueTowns {
     ("Kino Bajka Kluczbork", "Kluczbork"),
     ("Kino Baszta Środa", "Środa Wielkopolska"),
     ("Kino Bałtyk Rypin", "Rypin"),
+    ("Kino Baśń", "Piastów"),
     ("Kino CK", "Jędrzejów"),
     ("Kino CKiF", "Sucha Beskidzka"),
     ("Kino CKiS Pruszcz Gdański", "Pruszcz Gdański"),
@@ -408,6 +420,7 @@ private[models] object VenueTowns {
     ("Kino Diana", "Prudnik"),
     ("Kino Dobrych Filmów", "Wyszków"),
     ("Kino Dom Kultury Grajewo", "Grajewo"),
+    ("Kino Domu Sztuki", "Warszawa"),
     ("Kino ECK", "Ełk"),
     ("Kino Echo", "Jarocin"),
     ("Kino Etiuda", "Ostrowiec Świętokrzyski"),
@@ -446,6 +459,7 @@ private[models] object VenueTowns {
     ("Kino Kreska", "Bielsko-Biała"),
     ("Kino Krobia", "Krobia"),
     ("Kino Kryterium", "Koszalin"),
+    ("Kino Książka", "Stara Błotnica"),
     ("Kino Kultura Bełchatów", "Bełchatów"),
     ("Kino Kultura Gołdap", "Gołdap"),
     ("Kino Kultura Wołomin", "Wołomin"),
@@ -454,7 +468,10 @@ private[models] object VenueTowns {
     ("Kino Lewart", "Lubartów"),
     ("Kino Lot", "Jelenia Góra"),
     ("Kino Luboń 2.0", "Mszana Dolna"),
-    ("Kino MBP Łeba", "Łeba"),
+    ("Kino MBP Łeba", "Łeba")
+  )
+
+  private def chunk3: Seq[(String, String)] = Seq(
     ("Kino MCK", "Leżajsk"),
     ("Kino MCK Radłów", "Radłów"),
     ("Kino MCKCziE Grybów", "Grybów"),
@@ -467,13 +484,11 @@ private[models] object VenueTowns {
     ("Kino MOK Police", "Police"),
     ("Kino MOKiS", "Bielawa"),
     ("Kino MOKiS Oleśnica", "Oleśnica"),
-    ("Kino Mazur", "Olecko")
-  )
-
-  private def chunk3: Seq[(String, String)] = Seq(
+    ("Kino Mazur", "Olecko"),
     ("Kino Meduza", "Opole"),
     ("Kino Metalowiec Nowa Dęba", "Nowa Dęba"),
     ("Kino Mewa Budzyń", "Budzyń"),
+    ("Kino Mewa Międzychód", "Międzychód"),
     ("Kino Mewa Złocieniec", "Złocieniec"),
     ("Kino MiGOK", "Łochów"),
     ("Kino Miejsce", "Zakopane"),
@@ -510,6 +525,7 @@ private[models] object VenueTowns {
     ("Kino Praha", "Warszawa"),
     ("Kino Promień", "Tuchów"),
     ("Kino Promień Rawicz", "Rawicz"),
+    ("Kino Promień Więcbork", "Więcbork"),
     ("Kino Przedwiośnie", "Płock"),
     ("Kino Radość", "Wolbrom"),
     ("Kino Rejs", "Słupsk"),
@@ -522,6 +538,7 @@ private[models] object VenueTowns {
     ("Kino SCK", "Stargard"),
     ("Kino SDK", "Sanok"),
     ("Kino Scena Kultura", "Knurów"),
+    ("Kino Smok", "Słubice"),
     ("Kino Sokolnia", "Słupca"),
     ("Kino Sokolnia Kępno", "Kępno"),
     ("Kino Sokół", "Nowy Sącz"),
@@ -534,6 +551,7 @@ private[models] object VenueTowns {
     ("Kino Spójnia", "Aleksandrów Łódzki"),
     ("Kino Stary Młyn", "Zgierz"),
     ("Kino Starówka", "Sandomierz"),
+    ("Kino Studyjne Centrum", "Konin"),
     ("Kino Studyjne Kadr", "Dąbrowa Górnicza"),
     ("Kino Sybilla", "Puławy"),
     ("Kino Sława", "Międzyrzec Podlaski"),
@@ -547,6 +565,7 @@ private[models] object VenueTowns {
     ("Kino Twierdza", "Kędzierzyn-Koźle"),
     ("Kino Uciecha", "Góra Kalwaria"),
     ("Kino Uciecha Człuchów", "Człuchów"),
+    ("Kino WDK Włodawa", "Włodawa"),
     ("Kino Wars", "Wysokie Mazowieckie"),
     ("Kino Warszawa", "Przeworsk"),
     ("Kino Wawel", "Lubań"),
@@ -567,6 +586,8 @@ private[models] object VenueTowns {
     ("Kino Zorza Chełm", "Chełm"),
     ("Kino na Szekspirowskim", "Gdańsk"),
     ("Kino nad Wartą", "Koło"),
+    ("Kino w Kadrze", "Warszawa"),
+    ("Kino w Ratuszu", "Zduńska Wola"),
     ("Kino za Rogiem", "Płock"),
     ("Kino za Rogiem Brusy", "Brusy"),
     ("Kino za Rogiem Chmielno", "Chmielno"),
@@ -593,13 +614,17 @@ private[models] object VenueTowns {
     ("Kinoteatr Słonko", "Śrem"),
     ("Klaps", "Limanowa"),
     ("Koneckie Centrum Kultury", "Końskie"),
+    ("Koneckie Centrum Kultury – sala widowiskowa", "Końskie"),
     ("Kozienicki Dom Kultury", "Kozienice"),
     ("LAS Port Righ (Aros Cinema Portree)", "Portree"),
     ("Lanternhouse Cinema", "Glasgow"),
     ("Leatherhead Cinema", "Leatherhead"),
     ("Leigh Film Factory", "Leigh"),
     ("Lexi Cinema Kensal Rise", "London"),
-    ("Libanus 1877", "Borth"),
+    ("Libanus 1877", "Borth")
+  )
+
+  private def chunk4: Seq[(String, String)] = Seq(
     ("Lichfield Garrick Theatre & Studio", "Lichfield"),
     ("Lighthouse Poole", "Poole"),
     ("Little Theatre Picturehouse", "Bath"),
@@ -612,6 +637,11 @@ private[models] object VenueTowns {
     ("Lumiere Romford", "Romford"),
     ("Luxe Wisbech", "Wisbech"),
     ("Lynton Cinema", "Lynton & Lynmouth"),
+    ("MCK Tkacz", "Tomaszów Mazowiecki"),
+    ("MDK Opoczno", "Opoczno"),
+    ("MGOK Recz", "Recz"),
+    ("MOK Głogów", "Głogów"),
+    ("MOK Głowno", "Głowno"),
     ("Macrobert Art Centre Stirling", "Stirling"),
     ("Magic Lantern Tywyn", "Tywyn"),
     ("Majestic King's Lynn", "King's Lynn"),
@@ -620,10 +650,7 @@ private[models] object VenueTowns {
     ("Mareel Lerwick, Shetland Islands", "Lerwick"),
     ("Marina Theatre Lowestoft", "Lowestoft"),
     ("Market Hall Cinema Brynmawr", "Ebbw Vale"),
-    ("Market Pavilion Cinema Blyth", "Blyth")
-  )
-
-  private def chunk4: Seq[(String, String)] = Seq(
+    ("Market Pavilion Cinema Blyth", "Blyth"),
     ("Max Kino", "Świebodzin"),
     ("Maxime Cinema Blackwood", "Blackwood"),
     ("Merlin Capitol Bodmin", "Bodmin"),
@@ -657,6 +684,7 @@ private[models] object VenueTowns {
     ("Multikino Świdnica", "Świdnica"),
     ("Muza", "Lubin"),
     ("Na Starówce", "Żory"),
+    ("Nasielski Ośrodek Kultury", "Nasielsk"),
     ("Nasze Kino", "Oświęcim"),
     ("Nerve Centre Londonderry", "Londonderry"),
     ("Neuadd Dwyfor Pwllheli", "Pwllheli"),
@@ -670,6 +698,7 @@ private[models] object VenueTowns {
     ("Nova Cinema Woking", "Woking"),
     ("Nove Kino Siedlce", "Siedlce"),
     ("Nowe Kino Warszawa", "Gostynin"),
+    ("Nowotomyski Ośrodek Kultury", "Nowy Tomyśl"),
     ("Number 30 Huntly", "Aberdeenshire"),
     ("Number 8 Pershore", "Pershore"),
     ("Odeon Birmingham New Street", "Birmingham"),
@@ -745,7 +774,10 @@ private[models] object VenueTowns {
     ("Odeon Edinburgh (Lothian Road)", "Edinburgh"),
     ("Odeon Liverpool ONE", "Liverpool"),
     ("Odeon Liverpool Switch Island", "Liverpool"),
-    ("Odeon Luxe Birmingham Broadway Plaza", "Birmingham"),
+    ("Odeon Luxe Birmingham Broadway Plaza", "Birmingham")
+  )
+
+  private def chunk5: Seq[(String, String)] = Seq(
     ("Odeon Luxe Bromborough", "Bromborough"),
     ("Odeon Luxe Derby", "Derby"),
     ("Odeon Luxe Dundee", "Dundee"),
@@ -773,10 +805,7 @@ private[models] object VenueTowns {
     ("Odeon Luxe West End", "London"),
     ("Odeon Middlesbrough", "Middlesbrough"),
     ("Odeon Northampton", "Northampton"),
-    ("Old Market Hall Shrewsbury", "Shrewsbury")
-  )
-
-  private def chunk5: Seq[(String, String)] = Seq(
+    ("Old Market Hall Shrewsbury", "Shrewsbury"),
     ("Olympic Cinema Barnes", "London"),
     ("Omniplex Antrim", "Antrim"),
     ("Omniplex Banbridge", "Banbridge"),
@@ -802,6 +831,7 @@ private[models] object VenueTowns {
     ("Opatowski Ośrodek Kultury", "Opatów"),
     ("Orion Burgess Hill", "Burgess Hill"),
     ("Orion Dereham", "Dereham"),
+    ("Ośrodek Kultury Jastrowie", "Jastrowie"),
     ("Palace Cinema Cinderford", "Cinderford"),
     ("Palace Cinema Devizes", "Devizes"),
     ("Palace Cinema Felixstowe", "Felixstowe"),
@@ -866,6 +896,7 @@ private[models] object VenueTowns {
     ("Public Hall Brynamman", "Brynamman"),
     ("Quad Derby", "Derby"),
     ("Queen's Film Theatre Belfast", "Belfast"),
+    ("RCK Feniks", "Rydułtowy"),
     ("Radway Sidmouth", "Sidmouth"),
     ("Reading Biscuit Factory", "Reading"),
     ("Rebel Cinema", "Bude"),
@@ -896,7 +927,10 @@ private[models] object VenueTowns {
     ("Regent Blackpool", "Blackpool"),
     ("Regent Christchurch", "Christchurch"),
     ("Regent Cinema Marple", "Marple"),
-    ("Regent Redcar", "Redcar"),
+    ("Regent Redcar", "Redcar")
+  )
+
+  private def chunk6: Seq[(String, String)] = Seq(
     ("Regent Street Cinema London", "London"),
     ("Regis", "Bochnia"),
     ("Rex Elland", "Elland"),
@@ -926,10 +960,7 @@ private[models] object VenueTowns {
     ("Royalty Bowness-on-Windemere", "Bowness-on-Windemere"),
     ("Saffron Screen", "Saffron Walden"),
     ("Savoy (Scott Cinemas) Exmouth", "Exmouth"),
-    ("Savoy Boston", "Boston")
-  )
-
-  private def chunk6: Seq[(String, String)] = Seq(
+    ("Savoy Boston", "Boston"),
     ("Savoy Cinema Catterick Garrison", "Catterick Garrison"),
     ("Savoy Cinema Corby", "Corby"),
     ("Savoy Cinema Heaton Moor", "Heaton Moor"),
@@ -977,8 +1008,12 @@ private[models] object VenueTowns {
     ("Studio Cinema Dunoon", "Dunoon"),
     ("Taliesin Arts Centre Swansea", "Swansea"),
     ("Taunton Brewhouse", "Taunton"),
+    ("Teatr Atelier", "Sopot"),
+    ("Teatr Boto", "Sopot"),
     ("Teatr Elektryczny", "Skoczów"),
     ("Teatr Ziemi Rybnickiej", "Rybnik"),
+    ("Teatr im. Andreasa Gryphiusa", "Głogów"),
+    ("Terminal Kultury Gocław", "Warszawa"),
     ("The Arches (The Cinema in the Power Station)", "London"),
     ("The Arzner", "London"),
     ("The Ashford Cinema (formerly Picturehouse)", "Ashford"),
@@ -1045,7 +1080,10 @@ private[models] object VenueTowns {
     ("Tower Cinema Skegness", "Skegness"),
     ("Tower Mill (Heart of Hawick)", "Hawick"),
     ("Towner Eastbourne Cinema", "Eastbourne"),
-    ("Tyneside Newcastle", "Newcastle"),
+    ("Tyneside Newcastle", "Newcastle")
+  )
+
+  private def chunk7: Seq[(String, String)] = Seq(
     ("Ultimate Picture Palace Oxford", "Oxford"),
     ("Victoria Hall Ellon", "Ellon"),
     ("Village Picture House Cuddington", "Aylesbury"),
@@ -1079,10 +1117,7 @@ private[models] object VenueTowns {
     ("Vue Cinemas Eastleigh", "Eastleigh"),
     ("Vue Cinemas Eltham", "London"),
     ("Vue Cinemas Exeter", "Exeter"),
-    ("Vue Cinemas Farnborough", "Farnborough")
-  )
-
-  private def chunk7: Seq[(String, String)] = Seq(
+    ("Vue Cinemas Farnborough", "Farnborough"),
     ("Vue Cinemas Finchley Road", "London"),
     ("Vue Cinemas Fulham", "London"),
     ("Vue Cinemas Gateshead", "Tyne & Wear"),
@@ -1149,6 +1184,7 @@ private[models] object VenueTowns {
     ("Watermans Art Centre Brentford", "London"),
     ("Watershed Bristol", "Bristol"),
     ("Watersmeet", "Rickmansworth"),
+    ("Wawerska Strefa Kultury", "Warszawa"),
     ("Wejherowskie Centrum Kultury", "Wejherowo"),
     ("Wellington Orbit", "Wellington"),
     ("West Side Cinema Stromness", "Stromness"),

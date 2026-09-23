@@ -98,8 +98,8 @@ final class CityTests: XCTestCase {
     // ── catalogue (global union, per-country order) ───────────────
 
     func testAllIsTheGlobalUnionOfPolishAndUkCities() {
-        XCTAssertEqual(City.all.count, 142)                 // 63 PL + 79 UK
-        XCTAssertEqual(City.all.inCountry("pl").count, 63)
+        XCTAssertEqual(City.all.count, 144)                 // 65 PL + 79 UK
+        XCTAssertEqual(City.all.inCountry("pl").count, 65)
         XCTAssertEqual(City.all.inCountry("uk").count, 79)
     }
 
@@ -143,7 +143,7 @@ final class CityTests: XCTestCase {
             "dabrowa-gornicza", "nowy-sacz", "slupsk", "jelenia-gora", "przemysl", "konin", "piotrkow-trybunalski",
             "siedlce", "pila", "ostrowiec-swietokrzyski", "gniezno", "suwalki", "stalowa-wola", "zamosc",
             "leszno", "lomza", "pulawy", "skierniewice", "starogard-gdanski", "ciechanow", "wielun",
-            "chojnice", "zgorzelec", "ilawa", "ketrzyn", "zakopane", "wyszkow", "zlocieniec",
+            "chojnice", "zgorzelec", "ilawa", "ketrzyn", "zakopane", "wyszkow", "zlocieniec", "slubice", "wlodawa",
         ])
     }
 
@@ -156,10 +156,10 @@ final class CityTests: XCTestCase {
             "konin", "koszalin", "krakow", "legnica", "leszno", "lublin",
             "lomza", "lodz", "nowy-sacz", "olsztyn", "opole", "ostrowiec-swietokrzyski",
             "pila", "piotrkow-trybunalski", "plock", "poznan", "przemysl", "pulawy",
-            "radom", "rybnik", "rzeszow", "siedlce", "skierniewice", "slupsk",
+            "radom", "rybnik", "rzeszow", "siedlce", "skierniewice", "slubice", "slupsk",
             "sosnowiec", "stalowa-wola", "starogard-gdanski", "suwalki", "szczecin", "tarnow",
             "torun", "trojmiasto", "tychy", "walbrzych", "warszawa", "wielun",
-            "wloclawek", "wroclaw", "wyszkow", "zabrze", "zakopane", "zamosc",
+            "wloclawek", "wlodawa", "wroclaw", "wyszkow", "zabrze", "zakopane", "zamosc",
             "zgorzelec", "zielona-gora", "zlocieniec",
         ])
     }

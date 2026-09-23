@@ -46,13 +46,21 @@ class OgCardAssetsSpec extends AnyFlatSpec with Matchers {
     missing(Country.all.map(_.homeOgImage)) shouldBe empty
   }
 
+  /** Cards owed until their city's first deploy — see the class doc. Exact: a
+   *  generated card fails the second clue below until its entry goes.
+   *  2026-09-23 — Słubice and Włodawa. */
+  private val awaitingFirstDeploy: Set[String] = Set("og-slubice.jpg", "og-wlodawa.jpg")
+
   "every city, in every country" should "have the card its index page names" in {
     val absent = missing(Country.all.flatMap(_.cities).map(_.shareImage))
     // Only the first few names, or a country that was never swept prints its
     // whole roster — 546 filenames on one assertion line, in the run that
     // introduced this spec.
     withClue(s"${absent.size} cities have no committed share card; first: ") {
-      absent.take(8) shouldBe empty
+      absent.filterNot(awaitingFirstDeploy).take(8) shouldBe empty
+    }
+    withClue("cards listed as awaiting their first deploy that now exist — delete them from the list: ") {
+      awaitingFirstDeploy.diff(absent.toSet) shouldBe empty
     }
   }
 

@@ -163,6 +163,7 @@ class CinemaScraperCatalog(
     KinoMillenium                -> MsiVenue("https://bilety.csm.tarnow.pl", mvcPath = "/Kino/mvc/pl"),
     KinoKinomax                  -> MsiVenue("https://bilety.kinomax.info.pl"),
     KinoCentrumSkarzyskoKamienna -> MsiVenue("https://bilet-mck.skarzysko.pl"),
+    KinoWRatuszu                 -> MsiVenue("https://bilety.mdk-zdunskawola.pl"),
     KinoKozienickiDomKultury     -> MsiVenue("http://bilety.dkkozienice.pl"),
     KinoSwitZwolen               -> MsiVenue("https://bilety.switzwolen.pl"),
     KinoMCK                      -> MsiVenue("https://bilety.kinolezajsk.pl"),
@@ -199,6 +200,37 @@ class CinemaScraperCatalog(
   // waiting-room), so every one routes through `bnFetch` — Zyte's residential
   // egress in prod, the fixture fake in tests.
   private val biletynaPages: Map[Cinema, String] = Map(
+    KinoMCKTkacz -> "https://biletyna.pl/Tomaszow-Mazowiecki/Miejskie-Centrum-Kultury-Filia-Tkacz",
+    KinoMDKOpoczno -> "https://biletyna.pl/Opoczno/Miejski-Dom-Kultury-im-Tadeusza-Sygietynskiego",
+    KinoDomSztukiUrsynow -> "https://biletyna.pl/Warszawa/Kino-Domu-Sztuki-Ursynow",
+    KinoTerminalKultury -> "https://biletyna.pl/Warszawa/Terminal-Kultury",
+    KinoBielanskiOsrodekKultury -> "https://biletyna.pl/Warszawa/Bielanski-Osrodek-Kultury",
+    KinoWawerskaStrefaKultury -> "https://biletyna.pl/Warszawa/Wawerska-Strefa-Kultury-sala-widowiskowa",
+    KinoBasn -> "https://biletyna.pl/Piastow/sala-widowiskowa",
+    KinoKasynoOficerskie -> "https://biletyna.pl/Nowy-Dwor-Mazowiecki/Kasyno-Oficerskie-Sala-kinowa",
+    KinoNowyPafawag -> "https://biletyna.pl/Wroclaw/Centrum-Kultury-Wroclaw-Zachod",
+    TeatrBoto -> "https://biletyna.pl/Sopot/Teatr-Boto",
+    TeatrAtelier -> "https://biletyna.pl/Sopot/Teatr-Atelier-Sopot",
+    KinoCKGniewino -> "https://biletyna.pl/Gniewino/Centrum-Kultury-Sportu-Turystyki-i-Biblioteka-w-Gniewinie",
+    KinoMOKGlogow -> "https://biletyna.pl/Glogow/Miejski-Osrodek-Kultury",
+    TeatrGryphius -> "https://biletyna.pl/Glogow/Teatr-im-Andreasa-Gryphiusa",
+    KinoKCKSalaWidowiskowa -> "https://biletyna.pl/Konskie/Koneckie-Centrum-Kultury-sala-widowiskowa",
+    KinoCKSwiecie -> "https://biletyna.pl/Swiecie/Sala-Widowiskowa-Osrodek-Kultury-Sportu-i-Rekreacji",
+    KinoMOKGlowno -> "https://biletyna.pl/Glowno/Miejski-Osrodek-Kultury",
+    KinoPromienWiecbork -> "https://biletyna.pl/Wiecbork/Kino-Promien",
+    KinoCKiSSepolno -> "https://biletyna.pl/Sepolno-Krajenskie/Centrum-Kultury-i-Sztuki",
+    KinoGOKLipka -> "https://biletyna.pl/Lipka/Gminny-Osrodek-Kultury",
+    KinoNOKNasielsk -> "https://biletyna.pl/Nasielsk/Nasielski-Osrodek-Kultury",
+    KinoFeniks -> "https://biletyna.pl/Rydultowy/Rydultowskie-Centrum-Kultury-sala-teatralna",
+    KinoCKPrzezmierowo -> "https://biletyna.pl/Przezmierowo/Dom-Kultury",
+    KinoNOKNowyTomysl -> "https://biletyna.pl/Nowy-Tomysl/Nowotomyski-Osrodek-Kultury",
+    KinoMewaMiedzychod -> "https://biletyna.pl/Miedzychod/Kino-Mewa",
+    KinoPromyk -> "https://biletyna.pl/Bystra/Gminny-Osrodek-Kultury-Promyk",
+    KinoKsiazka -> "https://biletyna.pl/Stara-Blotnica/Kino-KSIAZKA-w-GPB-w-St-Blotnicy",
+    KinoChDKChoszczno -> "https://biletyna.pl/Choszczno/Choszczenski-Dom-Kultury",
+    KinoDOKDrawno -> "https://biletyna.pl/Drawno/Drawienski-Osrodek-Kultury",
+    KinoMGOKRecz -> "https://biletyna.pl/Recz/Miejsko-Gminny-Osrodek-Kultury",
+    KinoOKJastrowie -> "https://biletyna.pl/Jastrowie/Osrodek-Kultury",
     AdaKinoStudyjne             -> "https://www.biletyna.pl/Warszawa/ADA-Kino-Studyjne",
     KinoKameralne               -> "https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe",
     KinoTur                     -> "https://biletyna.pl/Turek/Kino-Tur",
@@ -320,6 +352,7 @@ class CinemaScraperCatalog(
     noveKino("wisla", KinoWisla),
     biletyna(AdaKinoStudyjne),
     new AlternatywyClient(http, today, titles = titles),
+    filmweb(2436, KinoWKadrze),
   )
 
   private val krakowScrapers: Seq[CinemaScraper] = Seq(
@@ -502,6 +535,7 @@ class CinemaScraperCatalog(
     helios(HeliosNuxt.Konin),
     bilety24Subdomain(KinoOskard),
     filmweb(2405, KinoZacheta),   // Kleczew
+    bilety24("https://www.bilety24.pl/kino/organizator/koninskie-centrum-kultury-1626", KinoStudyjneCentrum),   // Konin
     filmweb(1526, KinoNadWarta),   // Koło
     bilety24("https://www.bilety24.pl/kino/organizator/zajezdnia-kultury-w-pleszewie-1255", KinoHel),   // Pleszew
     bilety24("https://www.bilety24.pl/kino/organizator/miejski-dom-kultury-w-slupcy-1423", KinoSokolnia),   // Słupca
@@ -642,6 +676,10 @@ class CinemaScraperCatalog(
     filmweb(2304, KinoDobrychFilmow),   // Wyszków
     filmweb(2337, KinoMiGOK),   // Łochów
   )
+  // Two towns with one cinema each and nothing else within an hour's drive —
+  // pages of their own rather than a stretch onto the nearest region.
+  private val slubiceScrapers = Seq(bilety24("https://www.bilety24.pl/kino/organizator/kino-smok-w-slubicach-1336", KinoSmok))
+  private val wlodawaScrapers = Seq(filmweb(2312, KinoWDK))
   private val zlocieniecScrapers = Seq(
     bilety24("https://www.bilety24.pl/kino/organizator/zlocieniecki-osrodek-kultury-1710", KinoMewaZlocieniec),   // Złocieniec
     bilety24("https://www.bilety24.pl/kino/organizator/osrodek-kultury-w-drawsku-pomorskim-1680", KinoOKDrawsko),   // Drawsko Pomorskie
@@ -1896,6 +1934,8 @@ class CinemaScraperCatalog(
     "zakopane" -> zakopaneScrapers,
     "wyszkow" -> wyszkowScrapers,
     "zlocieniec" -> zlocieniecScrapers,
+    "slubice" -> slubiceScrapers,
+    "wlodawa" -> wlodawaScrapers,
     // United Kingdom (Flicks)
     "london" -> londonScrapers,
     "manchester" -> manchesterScrapers,
@@ -1980,8 +2020,9 @@ class CinemaScraperCatalog(
     ++ usBaseByCity       // USA: 461 metros + 7 small states (data-driven)
     ++ spanishBaseByCity  // Spain: the full 52-province roster (data-driven)
 
-  // Venues in towns within ~45 km of an existing city (2026-09 sweep of Filmweb,
-  // bilety24 and the three chains' own branch lists). Kept apart from
+  // Venues in towns within about an hour's drive of a city's page (2026-09 sweeps
+  // of Filmweb, bilety24, biletyna and the three chains' own branch lists), plus
+  // the few in-city venues found by the same sweeps. Kept apart from
   // `filmwebExtra` so each city's hand-written group stays as it was.
   private val nearbyTowns: Map[String, Seq[CinemaScraper]] = Map(
     "szczecin" -> Seq(
@@ -1989,11 +2030,18 @@ class CinemaScraperCatalog(
       filmweb(1662, KinoEva),   // Międzyzdroje
     ),
     "bielsko-biala" -> Seq(
+      biletyna(KinoPromyk),   // Bystra
       filmweb(486, KinoCentrumWadowice),   // Wadowice
       cinemaCity("1098", CinemaCityCieszyn),   // Cieszyn
       filmweb(2412, KinoCKiF),   // Sucha Beskidzka
     ),
     "warszawa" -> Seq(
+      biletyna(KinoDomSztukiUrsynow),   // Warszawa
+      biletyna(KinoTerminalKultury),   // Warszawa
+      biletyna(KinoBielanskiOsrodekKultury),   // Warszawa
+      biletyna(KinoWawerskaStrefaKultury),   // Warszawa
+      biletyna(KinoBasn),   // Piastów
+      biletyna(KinoKasynoOficerskie),   // Nowy Dwór Mazowiecki
       bilety24("https://www.bilety24.pl/kino/organizator/osrodek-kultury-gminy-grodzisk-mazowiecki-1231", KinoGrodziskieCentrumKultury),   // Grodzisk Mazowiecki
       filmweb(1514, KinoCentrumKulturyBlonie),   // Błonie
       filmweb(1683, KinoGrojeckiOsrodekKultury),   // Grójec
@@ -2007,6 +2055,7 @@ class CinemaScraperCatalog(
       filmweb(2340, KinoOaza),   // Otwock
     ),
     "lodz" -> Seq(
+      biletyna(KinoMOKGlowno),   // Głowno
       filmweb(1404, KinoTomi),   // Pabianice
       helios(HeliosNuxt.Pabianice),   // Pabianice
       filmweb(2065, KinoGornikLeczyca),   // Łęczyca
@@ -2024,6 +2073,8 @@ class CinemaScraperCatalog(
       bilety24("https://www.bilety24.pl/kino/organizator/kino-lubon-2-0-1549", KinoLubon),   // Mszana Dolna
     ),
     "poznan" -> Seq(
+      biletyna(KinoCKPrzezmierowo),   // Przeźmierowo
+      biletyna(KinoNOKNowyTomysl),   // Nowy Tomyśl
       bilety24("https://www.bilety24.pl/kino/organizator/kino-baszta-477", KinoBasztaSroda),   // Środa Wielkopolska
       bilety24("https://www.bilety24.pl/kino/organizator/kino-halszka-494", KinoHalszka),   // Szamotuły
       bilety24("https://www.bilety24.pl/kino/organizator/sremski-osrodek-kultury-kinoteatr-slonko-478", KinoteatrSlonko),   // Śrem
@@ -2037,6 +2088,7 @@ class CinemaScraperCatalog(
       filmweb(1657, KinoCinemaN),   // Nysa
     ),
     "wroclaw" -> Seq(
+      biletyna(KinoNowyPafawag),   // Wrocław
       bilety24("https://www.bilety24.pl/kino/organizator/kino-odra-1601", KinoOdraBrzegDolny),   // Brzeg Dolny
       bilety24("https://www.bilety24.pl/kino/organizator/centrum-sztuki-w-olawie-1498", KinoOdraOlawa),   // Oława
       filmweb(2161, GoKinoOlawa),   // Oława
@@ -2045,10 +2097,14 @@ class CinemaScraperCatalog(
       bilety24("https://www.bilety24.pl/kino/organizator/miejski-osrodek-kultury-i-sztuki-w-olesnicy-1193", KinoMOKiSOlesnica),   // Oleśnica
     ),
     "kielce" -> Seq(
+      biletyna(KinoKCKSalaWidowiskowa),   // Końskie
       filmweb(1720, KinoZdrojBusko),   // Busko-Zdrój
       filmweb(1482, KinoMuzaWloszczowa),   // Włoszczowa
     ),
     "trojmiasto" -> Seq(
+      biletyna(TeatrBoto),   // Sopot
+      biletyna(TeatrAtelier),   // Sopot
+      biletyna(KinoCKGniewino),   // Gniewino
       filmweb(1835, KinoWCK),   // Wejherowo
       filmweb(3122, KinoZaRogiemChmielno),   // Chmielno
       bilety24("https://www.bilety24.pl/kino/organizator/kino-zeglarz-1224", KinoZeglarz),   // Jastarnia
@@ -2056,6 +2112,7 @@ class CinemaScraperCatalog(
       bilety24("https://www.bilety24.pl/kino/organizator/centrum-kultury-i-sportu-w-pruszczu-gdanskim-1569", KinoCKiSPruszczGdanski),   // Pruszcz Gdański
     ),
     "bydgoszcz" -> Seq(
+      biletyna(KinoCKSwiecie),   // Świecie
       filmweb(2329, KinoRelaks),   // Nakło nad Notecią
     ),
     "tarnow" -> Seq(
@@ -2065,6 +2122,7 @@ class CinemaScraperCatalog(
       multikino("0051", MultikinoMielec),   // Mielec
     ),
     "gorzow-wielkopolski" -> Seq(
+      biletyna(KinoMewaMiedzychod),   // Międzychód
       bilety24("https://www.bilety24.pl/kino/organizator/barlinecki-osrodek-kultury-1052", KinoPanorama),   // Barlinek
     ),
     "nowy-sacz" -> Seq(
@@ -2083,7 +2141,38 @@ class CinemaScraperCatalog(
       bilety24("https://www.bilety24.pl/kino/organizator/miejska-biblioteka-publiczna-w-lebie-1722", KinoLeba),   // Łeba
     ),
     "legnica" -> Seq(
+      biletyna(KinoMOKGlogow),   // Głogów
+      biletyna(TeatrGryphius),   // Głogów
       multikino("0048", MultikinoGlogow),   // Głogów
+    ),
+    "piotrkow-trybunalski" -> Seq(
+      biletyna(KinoMCKTkacz),   // Tomaszów Mazowiecki
+      biletyna(KinoMDKOpoczno),   // Opoczno
+    ),
+    "chojnice" -> Seq(
+      biletyna(KinoPromienWiecbork),   // Więcbork
+      biletyna(KinoCKiSSepolno),   // Sępólno Krajeńskie
+      biletyna(KinoGOKLipka),   // Lipka
+    ),
+    "ciechanow" -> Seq(
+      biletyna(KinoNOKNasielsk),   // Nasielsk
+    ),
+    "rybnik" -> Seq(
+      biletyna(KinoFeniks),   // Rydułtowy
+    ),
+    "radom" -> Seq(
+      biletyna(KinoKsiazka),   // Stara Błotnica
+    ),
+    "zlocieniec" -> Seq(
+      biletyna(KinoChDKChoszczno),   // Choszczno
+      biletyna(KinoDOKDrawno),   // Drawno
+      biletyna(KinoMGOKRecz),   // Recz
+    ),
+    "pila" -> Seq(
+      biletyna(KinoOKJastrowie),   // Jastrowie
+    ),
+    "wielun" -> Seq(
+      msi(KinoWRatuszu),   // Zduńska Wola
     ),
   )
 

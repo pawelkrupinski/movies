@@ -38,7 +38,7 @@ class CitySpec extends AnyFlatSpec with Matchers {
   }
 
   /** `/{slug}/` is ONE global namespace — `City.bySlug` searches every country's
-   *  list — and the US now puts 468 places into it beside 63 Polish, 79 UK and
+   *  list — and the US now puts 468 places into it beside 65 Polish, 79 UK and
    *  158 German ones. Two cities sharing a slug means one of them is
    *  unreachable, silently, at whichever position `find` reaches second. */
   "Every city slug" should "be unique across every country, and URL-shaped" in {
@@ -79,10 +79,10 @@ class CitySpec extends AnyFlatSpec with Matchers {
       "konin", "koszalin", "krakow", "legnica", "leszno", "lublin",
       "lomza", "lodz", "nowy-sacz", "olsztyn", "opole", "ostrowiec-swietokrzyski",
       "pila", "piotrkow-trybunalski", "plock", "poznan", "przemysl", "pulawy",
-      "radom", "rybnik", "rzeszow", "siedlce", "skierniewice", "slupsk",
+      "radom", "rybnik", "rzeszow", "siedlce", "skierniewice", "slubice", "slupsk",
       "sosnowiec", "stalowa-wola", "starogard-gdanski", "suwalki", "szczecin", "tarnow",
       "torun", "trojmiasto", "tychy", "walbrzych", "warszawa", "wielun",
-      "wloclawek", "wroclaw", "wyszkow", "zabrze", "zakopane", "zamosc",
+      "wloclawek", "wlodawa", "wroclaw", "wyszkow", "zabrze", "zakopane", "zamosc",
       "zgorzelec", "zielona-gora", "zlocieniec",
     )
 
@@ -112,7 +112,7 @@ class CitySpec extends AnyFlatSpec with Matchers {
     // The page is `/trojmiasto/`, and "Sopot" and "Gdynia" occur in no slug, no
     // label and no cinema display name — so without this the towns are on the
     // page nowhere at all, and a search for either can match nothing.
-    val towns = Seq("Gdańsk", "Gdynia", "Sopot", "Rumia", "Wejherowo", "Pruszcz Gdański", "Chmielno", "Jastarnia", "Kartuzy")
+    val towns = Seq("Gdańsk", "Gdynia", "Sopot", "Rumia", "Wejherowo", "Pruszcz Gdański", "Chmielno", "Gniewino", "Jastarnia", "Kartuzy")
     Trojmiasto.coveredPlaces      shouldBe "Trójmiasto" +: towns
     Trojmiasto.otherCoveredPlaces shouldBe towns
   }
