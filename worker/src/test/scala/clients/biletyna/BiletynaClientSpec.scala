@@ -44,7 +44,19 @@ class BiletynaClientSpec
     // below). Replays the recorded 08-06-2026 snapshot page.
     ("Kinoteatr Rondo Chełmno", "08-06-2026", "https://biletyna.pl/Chelmno/Kinoteatr-Rondo",
       KinoRondo, "Dyrygent", LocalDateTime.of(2026, 6, 26, 20, 0),
-      "https://biletyna.pl/film/Dyrygent-rezyseria-Ondej-Provaznk-Czechy-2025?eid=668818#opis")
+      "https://biletyna.pl/film/Dyrygent-rezyseria-Ondej-Provaznk-Czechy-2025?eid=668818#opis"),
+    // Strzegom's programme page (sck.strzegom.pl/bilety/) is itself just a
+    // "KUP BILET" button embedding a biletyna.pl widget; the venue's real
+    // programme lives only on its biletyna place page.
+    ("Kino SCK Strzegom", "kino-sck-strzegom", "https://biletyna.pl/Strzegom/Kino-SCK",
+      KinoSCKStrzegom, "Posłani", LocalDateTime.of(2026, 9, 27, 17, 0),
+      "https://biletyna.pl/film/Poslani?eid=702533#opis"),
+    // Chrzanów's own site (mckis.chrzanow.pl/repertuar-2/) is likewise just a
+    // biletyna.pl iframe embed with no static programme of its own.
+    ("Kino Sztuka Chrzanów", "kino-sztuka-chrzanow",
+      "https://biletyna.pl/Chrzanow/Miejski-Osrodek-Kultury-Sportu-i-Rekreacji",
+      KinoSztuka, "100 dni: Misja Zeus", LocalDateTime.of(2026, 9, 23, 16, 0),
+      "https://biletyna.pl/film/100-dni-Misja-Zeus?eid=693269#opis")
   )
 
   forAll(venues) { (label, directory, pageUrl, cinema, title, when, booking) =>
@@ -151,5 +163,21 @@ class BiletynaClientSpec
     titles should contain("André Rieu. Niech żyje Maastricht! Retransmisja letniego koncertu")
     titles should contain("National Theatre Live: Hamlet")
     titles should not contain "Edyta Geppert - recital"
+  }
+
+  // Chrzanów's real captured page mixes 48 film screenings with a MusicEvent
+  // concert and two TheaterEvent plays on the same programme — the live
+  // regression for the @type filter proven synthetically above.
+  it should "drop the real concert and plays off Chrzanów's programme, keeping every film" in {
+    val movies = new BiletynaClient(
+      new FakeHttpFetch("kino-sztuka-chrzanow"),
+      "https://biletyna.pl/Chrzanow/Miejski-Osrodek-Kultury-Sportu-i-Rekreacji",
+      KinoSztuka
+    ).fetch()
+    val titles = movies.map(_.movie.title).toSet
+    titles should contain("Terminator 2. Dzień sądu 35. rocznica")
+    titles should not contain "Gdy kino zaczyna śpiewać - koncert polskiej muzyki filmowej"
+    titles should not contain "O mało co... - Anna Mucha i Michał Sitarski w kultowej komedii"
+    titles should not contain "Klimakterium 2 czyli Menopauzy Szał"
   }
 }

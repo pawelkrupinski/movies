@@ -896,6 +896,13 @@
   "annotation": "Ruda Śląska — filmweb 352"
  },
  {
+  "citySlug": "katowice",
+  "cinemaObject": "KinoGrajfka",
+  "displayName": "Kino Grajfka",
+  "town": "Chorzów",
+  "annotation": "Chorzów — own site"
+ },
+ {
   "citySlug": "szczecin",
   "cinemaObject": "HeliosSzczecin",
   "displayName": "Helios Kupiec",
@@ -999,6 +1006,20 @@
   "displayName": "Kino Sokół Sokółka",
   "town": "Sokółka",
   "annotation": "Sokółka — filmweb 1659"
+ },
+ {
+  "citySlug": "bialystok",
+  "cinemaObject": "DomKulturyLapy",
+  "displayName": "Dom Kultury w Łapach",
+  "town": "Łapy",
+  "annotation": "Łapy — own site"
+ },
+ {
+  "citySlug": "bialystok",
+  "cinemaObject": "KinoBielsk",
+  "displayName": "Kino Bielsk",
+  "town": "Bielsk Podlaski",
+  "annotation": "Bielsk Podlaski — own site"
  },
  {
   "citySlug": "trojmiasto",
@@ -1330,6 +1351,13 @@
   "annotation": "Piekary Śląskie — filmweb 2350"
  },
  {
+  "citySlug": "czestochowa",
+  "cinemaObject": "KinoPlanetCinemaZawiercie",
+  "displayName": "Planet Cinema Zawiercie",
+  "town": "Zawiercie",
+  "annotation": "Zawiercie — MSI"
+ },
+ {
   "citySlug": "radom",
   "cinemaObject": "HeliosRadom",
   "displayName": "Helios Radom",
@@ -1624,6 +1652,13 @@
   "annotation": ""
  },
  {
+  "citySlug": "zabrze",
+  "cinemaObject": "KinoPlanetCinemaZabrze",
+  "displayName": "Planet Cinema Zabrze",
+  "town": "Zabrze",
+  "annotation": "Zabrze — MSI"
+ },
+ {
   "citySlug": "olsztyn",
   "cinemaObject": "HeliosOlsztyn",
   "displayName": "Helios Olsztyn",
@@ -1664,6 +1699,13 @@
   "displayName": "Kino Narie",
   "town": "Morąg",
   "annotation": "Morąg — filmweb 2355"
+ },
+ {
+  "citySlug": "olsztyn",
+  "cinemaObject": "KinoGrunwald",
+  "displayName": "Kino Grunwald",
+  "town": "Olsztynek",
+  "annotation": "Olsztynek — own site"
  },
  {
   "citySlug": "bielsko-biala",
@@ -1981,6 +2023,13 @@
   "annotation": "Nowy Dwór Gdański — filmweb 3131"
  },
  {
+  "citySlug": "elblag",
+  "cinemaObject": "KinoSwiatowidElblag",
+  "displayName": "Kino Światowid Elbląg",
+  "town": "Elbląg",
+  "annotation": "Elbląg — own site"
+ },
+ {
   "citySlug": "koszalin",
   "cinemaObject": "HeliosKoszalin",
   "displayName": "Helios Koszalin",
@@ -2146,7 +2195,7 @@
   "cinemaObject": "KinoPlanetCinema",
   "displayName": "Planet Cinema",
   "town": "Oświęcim",
-  "annotation": "Oświęcim — filmweb 1528"
+  "annotation": "Oświęcim — MSI"
  },
  {
   "citySlug": "walbrzych",
@@ -2203,6 +2252,13 @@
   "displayName": "Multikino Świdnica",
   "town": "Świdnica",
   "annotation": "Świdnica — filmweb 2993"
+ },
+ {
+  "citySlug": "walbrzych",
+  "cinemaObject": "KinoSCKStrzegom",
+  "displayName": "Kino SCK Strzegom",
+  "town": "Strzegom",
+  "annotation": "Strzegom — biletyna"
  },
  {
   "citySlug": "tarnow",
@@ -2294,6 +2350,13 @@
   "displayName": "Multikino Mielec",
   "town": "Mielec",
   "annotation": "Mielec — Multikino API"
+ },
+ {
+  "citySlug": "tarnow",
+  "cinemaObject": "KinoMarzenie",
+  "displayName": "Kino Marzenie",
+  "town": "Tarnów",
+  "annotation": "Tarnów — own site"
  },
  {
   "citySlug": "wloclawek",
@@ -2457,6 +2520,13 @@
   "annotation": ""
  },
  {
+  "citySlug": "bytom",
+  "cinemaObject": "KinoBCKBytom",
+  "displayName": "BCKino Bytom",
+  "town": "Bytom",
+  "annotation": "Bytom — systembiletowy"
+ },
+ {
   "citySlug": "dabrowa-gornicza",
   "cinemaObject": "HeliosDabrowaGornicza",
   "displayName": "Helios Dąbrowa Górnicza",
@@ -2483,6 +2553,13 @@
   "displayName": "Multikino Jaworzno",
   "town": "Jaworzno",
   "annotation": "Jaworzno — Multikino API"
+ },
+ {
+  "citySlug": "dabrowa-gornicza",
+  "cinemaObject": "KinoSztuka",
+  "displayName": "Kino Sztuka",
+  "town": "Chrzanów",
+  "annotation": "Chrzanów — biletyna"
  },
  {
   "citySlug": "nowy-sacz",
@@ -2602,6 +2679,13 @@
   "displayName": "Kino SDK",
   "town": "Sanok",
   "annotation": "Sanok — bilety.sdksanok.pl"
+ },
+ {
+  "citySlug": "przemysl",
+  "cinemaObject": "KinoOrzelUstrzyki",
+  "displayName": "Kino Orzeł Ustrzyki Dolne",
+  "town": "Ustrzyki Dolne",
+  "annotation": "Ustrzyki Dolne — systembiletowy"
  },
  {
   "citySlug": "konin",
@@ -2863,6 +2947,13 @@
   "annotation": "Sandomierz — filmweb 1601"
  },
  {
+  "citySlug": "ostrowiec-swietokrzyski",
+  "cinemaObject": "KinoKadrStaszow",
+  "displayName": "Kino Kadr Staszów",
+  "town": "Staszów",
+  "annotation": "Staszów — systemBiletowy"
+ },
+ {
   "citySlug": "gniezno",
   "cinemaObject": "HeliosGniezno",
   "displayName": "Helios Gniezno",
@@ -2923,7 +3014,7 @@
   "cinemaObject": "KinoPlanetCinemaElk",
   "displayName": "Planet Cinema Ełk",
   "town": "Ełk",
-  "annotation": "Ełk — filmweb 1839"
+  "annotation": "Ełk — MSI"
  },
  {
   "citySlug": "stalowa-wola",
@@ -3297,6 +3388,13 @@
   "annotation": "Mrągowo — filmweb 1701"
  },
  {
+  "citySlug": "ketrzyn",
+  "cinemaObject": "KinoNowaFalaGizycko",
+  "displayName": "Kino Nowa Fala",
+  "town": "Giżycko",
+  "annotation": "Giżycko — own site"
+ },
+ {
   "citySlug": "zakopane",
   "cinemaObject": "KinoSokolZakopane",
   "displayName": "Kino Sokół Zakopane",
@@ -3337,6 +3435,13 @@
   "displayName": "Kino MiGOK",
   "town": "Łochów",
   "annotation": "Łochów — filmweb 2337"
+ },
+ {
+  "citySlug": "wyszkow",
+  "cinemaObject": "KinoNarew",
+  "displayName": "Kino Narew",
+  "town": "Pułtusk",
+  "annotation": "Pułtusk — own site"
  },
  {
   "citySlug": "zlocieniec",
@@ -3386,5 +3491,12 @@
   "displayName": "Kino WDK Włodawa",
   "town": "Włodawa",
   "annotation": "Włodawa — filmweb 2312"
+ },
+ {
+  "citySlug": "wlodawa",
+  "cinemaObject": "KinoParczew",
+  "displayName": "Kino Parczew",
+  "town": "Parczew",
+  "annotation": "Parczew — own site"
  }
 ]

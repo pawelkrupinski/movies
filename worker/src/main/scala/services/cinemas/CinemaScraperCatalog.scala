@@ -181,6 +181,9 @@ class CinemaScraperCatalog(
     KinoMaxKino                  -> MsiVenue("https://repertuar.maxkino.eu"),
     KinoSDKSwiebodzin            -> MsiVenue("https://bilety.kino.swiebodzin.pl:4433"),
     KinoPlanetCinema             -> MsiVenue("https://oswiecim.planetcinema.pl"),
+    KinoPlanetCinemaElk          -> MsiVenue("https://elk.planetcinema.pl"),
+    KinoPlanetCinemaZabrze       -> MsiVenue("https://zabrze.planetcinema.pl"),
+    KinoPlanetCinemaZawiercie    -> MsiVenue("https://zawiercie.planetcinema.pl"),
     KinoMOKNowaRuda              -> MsiVenue("https://bilety.nowaruda.pl"),
     KinoPlaneta                  -> MsiVenue("https://rezerwacja.planetabrzesko.pl", mvcPath = "/Rezerwacja/mvc/pl"),
     KinoJutrzenka                -> MsiVenue("https://kino.sierpc.pl"),
@@ -246,6 +249,8 @@ class CinemaScraperCatalog(
     KinoDK                      -> "https://biletyna.pl/Slawno/Slawienski-Dom-Kultury",
     KinoGCK                     -> "https://biletyna.pl/Solec-Zdroj/Kino-Solec-Zdroj",
     KinoNawojka                 -> "https://biletyna.pl/Lipno/Kino-Nawojka",
+    KinoSCKStrzegom             -> "https://biletyna.pl/Strzegom/Kino-SCK",
+    KinoSztuka                  -> "https://biletyna.pl/Chrzanow/Miejski-Osrodek-Kultury-Sportu-i-Rekreacji",
   )
   private def biletyna(cinema: Cinema): BiletynaClient =
     new BiletynaClient(bnFetch, biletynaPages(cinema), cinema)
@@ -272,6 +277,7 @@ class CinemaScraperCatalog(
     KinoFarys       -> "https://kfb.systembiletowy.pl",
     KinoRegis       -> "https://bilety.kino.bochnia.pl",
     KinoKalejdoskop -> "https://ckp.systembiletowy.pl",
+    KinoKadrStaszow -> "https://sta.systembiletowy.pl",
   )
   private def systemBiletowy(cinema: Cinema): SystemBiletowyClient =
     new SystemBiletowyClient(http, systemBiletowyPortals(cinema), cinema, titles = titles)
@@ -507,6 +513,7 @@ class CinemaScraperCatalog(
   private val zabrzeScrapers: Seq[CinemaScraper] = Seq(
     multikino("0003", MultikinoZabrze),
     new KinoRomaClient(http, KinoRoma, today),
+    msi(KinoPlanetCinemaZabrze),
   )
 
   // ── New mid-size cities ─────────────────────────────────────────────────────
@@ -526,11 +533,18 @@ class CinemaScraperCatalog(
   private val zielonaGoraScrapers  = Seq(cinemaCity("1087", CinemaCityZielonaGora))
   private val tychyScrapers        = Seq(multikino("0053", MultikinoTychy))
   private val walbrzychScrapers    = Seq(cinemaCity("1091", CinemaCityWalbrzych), bilety24Subdomain(KinoApolloWalbrzych))
-  private val tarnowScrapers       = Seq(multikino("0050", MultikinoTarnow), msi(KinoMillenium))
+  private val tarnowScrapers       = Seq(multikino("0050", MultikinoTarnow), msi(KinoMillenium), new KinoMarzenieClient(http, KinoMarzenie, today))
   private val wloclawekScrapers    = Seq(multikino("0008", MultikinoWloclawek))
   private val legnicaScrapers      = Seq(helios(HeliosNuxt.Legnica), bilety24Subdomain(KinoPiast))
   private val plockScrapers        = Seq(helios(HeliosNuxt.Plock), noveKino("przedwiosnie", KinoPrzedwiosnie))
-  private val bytomScrapers        = Seq(cinemaCity("1092", CinemaCityBytom))
+  // BCKino sells theatre/workshops/concerts through the same listing as its
+  // films, tagged with a `data-group` per event ("BCKino" for films) —
+  // `filmGroups` keeps only those and peels the resulting "BCKino – " title
+  // prefix. Verified screening 2026-09-23.
+  private val bytomScrapers        = Seq(
+    cinemaCity("1092", CinemaCityBytom),
+    new SystemBiletowyClient(http, "https://bck.systembiletowy.pl", KinoBCKBytom, titles = titles, filmGroups = Set("BCKino")),
+  )
   private val dabrowaGorniczaScrapers = Seq(helios(HeliosNuxt.DabrowaGornicza), new VisualTicketClient(http, "https://bilety.palac.art.pl", KinoKadr, locationId = 2))
   private val nowySaczScrapers     = Seq(helios(HeliosNuxt.NowySacz), bilety24("https://www.bilety24.pl/kino/organizator/malopolskie-centrum-kultury-sokol-w-nowym-saczu-1225", KinoSokol))
   private val slupskScrapers       = Seq(multikino("0030", MultikinoSlupsk), ekobilet("kinorejs", KinoRejs))
@@ -599,7 +613,7 @@ class CinemaScraperCatalog(
     bilety24("https://www.bilety24.pl/kino/organizator/dom-kultury-w-goldapi-1089", KinoKulturaGoldap),   // Gołdap
     filmweb(1533, KinoMazur),   // Olecko
     filmweb(1650, KinoECK),   // Ełk
-    filmweb(1839, KinoPlanetCinemaElk),   // Ełk
+    msi(KinoPlanetCinemaElk),   // Ełk
   )
   private val stalowaWolaScrapers = Seq(
     helios(HeliosNuxt.StalowaWola),   // Stalowa Wola
@@ -721,7 +735,7 @@ class CinemaScraperCatalog(
     "bielsko-biala" -> Seq(bilety24("https://www.bilety24.pl/kino/organizator/kino-janosik-1500", KinoJanosik), systemBiletowy(KinoPckulKino), biletyna(KinoSwitCzechowiceDziedzice), biletyna(KinoTeatrElektryczny), bilety24("https://www.bilety24.pl/kino/organizator/osrodek-kultury-w-brzeszczach-1539", KinoWislaBrzeszcze), multikino("0033", MultikinoCzechowiceDziedzice)),
     "opole" -> Seq(helios(HeliosNuxt.KedzierzynKozle), bilety24("https://www.bilety24.pl/kino/organizator/centrum-aktywnosci-lokalnej-w-kluczborku-kino-bajka-1467", KinoBajkaKluczbork), msi(KinoChemik), new KinoDianaClient(http, KinoDiana), new KdkKrapkowiceClient(http, KinoKrapkowice), new KinoStudioClient(http, KinoStudio, today), msi(KinoTwierdza)),
     "rybnik" -> Seq(helios(HeliosNuxt.Zory), bilety24("https://www.bilety24.pl/kino/organizator/kino-baltyk-1499", KinoBaltyk), ekobilet("kino-centrum-jastrzebiezdrj", KinoCentrum), systemBiletowy(KinoNaStarowce), biletyna(KinoPegaz), new TeatrZiemiRybnickiejClient(http)),
-    "elblag" -> Seq(helios(HeliosNuxt.Tczew), filmweb(2352, KinoBaszta), msi(KinoPowisle), biletyna(KinoZulawskiOsrodekKultury)),
+    "elblag" -> Seq(helios(HeliosNuxt.Tczew), filmweb(2352, KinoBaszta), msi(KinoPowisle), biletyna(KinoZulawskiOsrodekKultury), new KinoSwiatowidElblagClient(http, KinoSwiatowidElblag, today)),
     "koszalin" -> Seq(msi(KinoBajkaDarlowo), bilety24("https://www.bilety24.pl/kino/organizator/centrum-kultury-i-spotkan-europejskich-w-bialogardzie-1685", KinoCentrumBialogard), biletyna(KinoDK), msi(KinoGOK), msi(KinoGoplana), msi(KinoWybrzeze)),
     "kalisz" -> Seq(helios(HeliosNuxt.OstrowWielkopolski), systemBiletowy(KinoCentrum3D), bilety24("https://www.bilety24.pl/kino/organizator/kino-echo-1159", KinoEcho), bilety24("https://www.bilety24.pl/kino/organizator/ostrzeszowskie-centrum-kultury-601", KinoPiastOstrzeszow), bilety24("https://www.bilety24.pl/kino/organizator/krotoszynski-osrodek-kultury-1668", KinoPrzedwiosnieKrotoszyn)),
     "zielona-gora" -> Seq(bilety24("https://www.bilety24.pl/kino/organizator/nowosolski-dom-kultury-1679", KinoEuropa), msi(KinoMaxKino), bilety24("https://www.bilety24.pl/kino/organizator/kino-pionier-1492", KinoPionierZary), msi(KinoSDKSwiebodzin)),
@@ -2072,6 +2086,7 @@ class CinemaScraperCatalog(
     "dabrowa-gornicza" -> Seq(
       filmweb(1487, KinoZbyszekOlkusz),   // Olkusz
       multikino("0038", MultikinoJaworzno),   // Jaworzno
+      biletyna(KinoSztuka),   // Chrzanów
     ),
     "krakow" -> Seq(
       filmweb(1491, KinoMuzaMyslenice),   // Myślenice
@@ -2181,6 +2196,37 @@ class CinemaScraperCatalog(
     ),
     "wielun" -> Seq(
       msi(KinoWRatuszu),   // Zduńska Wola
+    ),
+    "czestochowa" -> Seq(
+      msi(KinoPlanetCinemaZawiercie),   // Zawiercie
+    ),
+    "ketrzyn" -> Seq(
+      new KinoNowaFalaClient(http, KinoNowaFalaGizycko),   // Giżycko
+    ),
+    "przemysl" -> Seq(
+      new SystemBiletowyClient(http, "https://udk.systembiletowy.pl", KinoOrzelUstrzyki, titles = titles),   // Ustrzyki Dolne
+    ),
+    "katowice" -> Seq(
+      new KinoGrajfkaClient(http, KinoGrajfka),   // Chorzów
+    ),
+    "ostrowiec-swietokrzyski" -> Seq(
+      systemBiletowy(KinoKadrStaszow),   // Staszów
+    ),
+    "walbrzych" -> Seq(
+      biletyna(KinoSCKStrzegom),   // Strzegom
+    ),
+    "bialystok" -> Seq(
+      new DomKulturyLapyClient(http, DomKulturyLapy, today),   // Łapy
+      new KinoBielskClient(http, KinoBielsk),   // Bielsk Podlaski
+    ),
+    "wyszkow" -> Seq(
+      new KinoNarewClient(http, KinoNarew),   // Pułtusk
+    ),
+    "olsztyn" -> Seq(
+      new KinoGrunwaldClient(http, KinoGrunwald, today),   // Olsztynek
+    ),
+    "wlodawa" -> Seq(
+      new KinoParczewClient(http, KinoParczew),   // Parczew
     ),
   )
 

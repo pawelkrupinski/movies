@@ -59,7 +59,17 @@ class MsiClientSpec
     // portal carries the full month (the fixtures live in the 08-06-2026 corpus,
     // both months present, so today=2026-06-08 fetches June + July).
     ("Planet Cinema Oświęcim", "08-06-2026", "https://oswiecim.planetcinema.pl",
-      KinoPlanetCinema, LocalDate.of(2026, 6, 8), "backrooms", LocalDateTime.of(2026, 6, 19, 18, 15))
+      KinoPlanetCinema, LocalDate.of(2026, 6, 8), "backrooms", LocalDateTime.of(2026, 6, 19, 18, 15)),
+    // Planet Cinema Zabrze and Planet Cinema Zawiercie run the identical
+    // city-subdomain MSI portal as the sibling Oświęcim venue — a pure
+    // catalog-wiring addition, no bespoke client.
+    ("Planet Cinema Zabrze", "planet-cinema-zabrze", "https://zabrze.planetcinema.pl",
+      KinoPlanetCinemaZabrze, LocalDate.of(2026, 9, 23), "lalka", LocalDateTime.of(2026, 9, 30, 10, 30)),
+    ("Planet Cinema Zawiercie", "planet-cinema-zawiercie", "https://zawiercie.planetcinema.pl",
+      KinoPlanetCinemaZawiercie, LocalDate.of(2026, 9, 23), "lalka", LocalDateTime.of(2026, 9, 30, 17, 0)),
+    // Ełk moved off Filmweb onto its own branch portal, like its siblings.
+    ("Planet Cinema Ełk", "planet-cinema-elk", "https://elk.planetcinema.pl",
+      KinoPlanetCinemaElk, LocalDate.of(2026, 9, 23), "lalka", LocalDateTime.of(2026, 9, 30, 13, 50))
   )
 
   forAll(venues) { (label, directory, baseUrl, cinema, today, titleSub, when) =>

@@ -3,7 +3,7 @@ package clients.kino_kuznica
 import org.scalatest.OptionValues
 import org.scalatest.matchers.should.Matchers
 import clients.tools.FakeHttpFetch
-import models.{KinoCentrum3D, KinoFarys, KinoKawiarnia, KinoKuznica, KinoPckulKino, KinoRegis}
+import models.{KinoBCKBytom, KinoCentrum3D, KinoFarys, KinoKadrStaszow, KinoKawiarnia, KinoKuznica, KinoOrzelUstrzyki, KinoPckulKino, KinoRegis}
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.SystemBiletowyClient
 
@@ -104,6 +104,23 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
     film.showtimes.flatMap(_.bookingUrl).head should include("kup-bilet")
   }
 
+  // Kino Kadr (Staszów, sta.systembiletowy.pl) — found in the 2026-09-23
+  // nearby-towns sweep (assigned to Ostrowiec Świętokrzyski's catchment) and
+  // verified against the live site: real dated screenings through mid-October
+  // 2026, on the same visual9 skin as Kawiarnia/Centrum 3D/Regis above. Its own
+  // fixture directory (not the shared 08-06-2026 corpus the other visual9
+  // venues replay), captured live 2026-09-23.
+  "SystemBiletowyClient (visual9 skin)" should "parse Kino Kadr Staszów (sta.systembiletowy.pl)" in {
+    val movies = new SystemBiletowyClient(
+      new FakeHttpFetch("kino-kadr-staszow"), "https://sta.systembiletowy.pl", KinoKadrStaszow,
+      titles = titleNormalizer).fetch()
+    movies should not be empty
+    movies.map(_.cinema).toSet shouldBe Set(KinoKadrStaszow)
+    val film = movies.find(_.movie.title.toLowerCase.contains("psi patrol")).value
+    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 9, 25, 15, 40))
+    film.showtimes.flatMap(_.bookingUrl).head should include("kup-bilet")
+  }
+
   it should "carry the stripped language onto each showing as a format badge, merging the editions" in {
     // The version tag was already stripped from the title; now it's also surfaced
     // as a per-screening format, so the dubbed + subtitled showings share one row
@@ -117,5 +134,54 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
     movies should have size 1
     movies.head.movie.title.toLowerCase        should include("toy story 5")
     movies.head.showtimes.map(_.format).toSet shouldBe Set(List("DUB"), List("NAP"))
+  }
+
+  // ── BCKino (Bytom) — visual9 skin, but the venue also sells theatre/
+  // workshops/concerts through the same listing, tagged by a `data-group`
+  // attribute per event ("BCKino" for films). `filmGroups` keeps only those and
+  // peels the "BCKino – " title prefix the listing glues on. ──────────────────
+  private val bck =
+    new SystemBiletowyClient(new FakeHttpFetch("bck-bytom"), "https://bck.systembiletowy.pl", KinoBCKBytom,
+      titles = titleNormalizer, filmGroups = Set("BCKino")).fetch()
+
+  "SystemBiletowyClient (filmGroups)" should "keep only the events in the given data-group, stripping its title prefix" in {
+    bck should not be empty
+    bck.map(_.cinema).toSet shouldBe Set(KinoBCKBytom)
+    val film = bck.find(_.movie.title.toLowerCase.contains("kandydaci")).value
+    film.movie.title.toLowerCase should not include "bckino"
+    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 9, 23, 18, 0))
+  }
+
+  it should "drop the venue's non-film events (workshops, book club, concerts, author talks)" in {
+    // "BAŚKA tworzy: Słoik mocy" (data-group="Warsztaty") and the reading-club
+    // "BECEK CZYTA" events carry no film-vocabulary the national classifier
+    // would catch — only the data-group filter keeps them out.
+    bck.map(_.movie.title.toLowerCase).exists(_.contains("baśka")) shouldBe false
+    bck should have size 8   // the 8 events tagged data-group="BCKino" in the fixture
+  }
+
+  // ── Kino Orzeł (Ustrzyki Dolne) — the "repertoire-once" skin: one
+  // div.repertoire-once.row per screening, with a "-Film"/"- Film" boilerplate
+  // word ahead of the format tag. ─────────────────────────────────────────────
+  private val orzel =
+    new SystemBiletowyClient(new FakeHttpFetch("kino-orzel-ustrzyki"), "https://udk.systembiletowy.pl", KinoOrzelUstrzyki,
+      titles = titleNormalizer).fetch()
+
+  "SystemBiletowyClient (repertoire-once skin)" should "parse the Ustrzyki Dolne instance, stripping the '-Film' boilerplate" in {
+    orzel should not be empty
+    orzel.map(_.cinema).toSet shouldBe Set(KinoOrzelUstrzyki)
+    val film = orzel.find(_.movie.title.toLowerCase.contains("mistyczka")).value
+    film.movie.title.toLowerCase should not include "film"
+    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 10, 4, 19, 0))
+    film.showtimes.flatMap(_.bookingUrl).head should include("repertoire.html?id=")
+  }
+
+  it should "peel the dubbing/2D format tags off a '- Film' suffixed title into a format badge" in {
+    val film = orzel.find(_.movie.title.toLowerCase.contains("podręcznik")).value
+    film.showtimes.map(_.format) should contain(List("2D", "DUB"))
+    // 03.10 dubbed screening + the same film's 02.10 screening merge onto one row.
+    film.showtimes.map(_.dateTime) should contain allOf (
+      LocalDateTime.of(2026, 10, 2, 17, 0), LocalDateTime.of(2026, 10, 3, 17, 0)
+    )
   }
 }

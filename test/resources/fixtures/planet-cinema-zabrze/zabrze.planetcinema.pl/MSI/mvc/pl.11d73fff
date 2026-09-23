@@ -1,0 +1,1998 @@
+
+
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="version" content="1.8.73.0 | 08.09.2026 08:12:42">
+    <meta name="format-detection" content="telephone=no">
+
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+             <link rel="stylesheet" href="/MSI/Themes/light/Styles/global.min.css?v=090826080014"/>
+
+             <link rel="stylesheet" href="/MSI/Themes/light/Vendors/Styles/font-awesome.min.css?v=072126103006"/>
+         <link rel="stylesheet" href="/MSI/Themes/light/Vendors/Styles/jquery.fancybox.min.css?v=072126103006"/>
+
+            <script type="text/javascript" src="/MSI/Themes/light/Scripts/jquery-3.7.1.min.js?v=072126103006"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/slick.min.js?v=072126103006"></script>
+
+             <script type="text/javascript" src="/MSI/Themes/light/Vendors/Scripts/handlebars.min-v4.7.7.js?v=072126103006"></script>
+         <script type="text/javascript" src="/MSI/Themes/light/Vendors/Scripts/jquery.fancybox.min.js?v=072126103006"></script>
+
+    <title>Lista wydarzeń: - Planet Cinema POLAND sp. z o.o</title>
+
+    <script>
+        var hostUrl = '/MSI/';
+        var currentLanguage = 'pl';
+        var newTabAnnouncement = 'otwiera sie w nowej karcie';
+    </script>
+    
+</head>
+
+<body>
+    
+    <div class="skip-links">
+        <a href="#main-content" class="show-on-focus js-skip-link">Przejdź do gł&#243;wnej treści</a>
+    </div>
+
+            <div id="preloader" class="preloader"></div>
+
+
+        <!-- Fixed navbar -->
+    <header class="navigation-bar" aria-label="Menu">
+        <div class="position-fixed">
+            <div class="container">
+                <div class="row align-items-center">
+                    <div class="col-8 col-md-6 ">
+                        <a href="https://www.planetcinema.pl/zabrze/" class="navigation-bar-logo">
+                            <img src="/MSI/Themes/light/images/logo.png" alt="Planet Cinema POLAND sp. z o.o" title="Planet Cinema POLAND sp. z o.o" class="navigation-bar-logo__image">
+                        </a>
+                    </div>
+                    <div class="col-4 col-md-6  navigation-bar-info justify-content-end">
+                        <app-header-menu class="order-12 order-lg-0">
+                            <nav class="navigation-bar-menu d-none d-lg-block" aria-label="Menu">
+                                <ul>
+                                                                                                                                            </ul>
+                            </nav>
+                            <button class="navigation-bar-menu__button js-mobile-menu-open d-block d-lg-none" type="button" aria-label="Menu">
+                                <svg-icon name="menu"></svg-icon>
+                            </button>
+                        </app-header-menu>
+                            <a href="/MSI/mvc/pl/Customer/Login?partnerMode=False" id="loginLink" class="navigation-bar-login" data-toggle="tooltip" data-tooltip-trigger="hover focus" title="Zaloguj" aria-label="Zaloguj">
+        <span class="user fas fa-user-alt"></span>
+    </a>
+                        <a href="/MSI/ShoppingCart.aspx" class="navigation-bar-shop" data-toggle="tooltip" data-tooltip-trigger="hover focus" title="Wyświetl koszyk" aria-label="Wyświetl koszyk" aria-haspopup="true" aria-expanded="false" aria-controls="shoppingCartPreview">
+                            <div class="navigation-bar-shop__basket">
+                            </div>
+                                <span class="cart fas fa-shopping-cart"></span>
+                        </a>
+                        <div class="shopping_cart_preview" id="shoppingCartPreview">
+                        </div>
+                        <div class="navigation-bar-switches d-md-flex d-none">
+                            <button class="js-change-fontsize" type="button" data-toggle="tooltip" data-tooltip-trigger="hover focus" title="Zmień rozmiar czcionki" aria-label="Zmień rozmiar czcionki">
+                                <span class="fontSize fas fa-text-height"></span>
+                            </button>
+                            <button class="js-change-contrast" type="button" data-toggle="tooltip" data-tooltip-trigger="hover focus" title="Zmień kontrast" aria-label="Zmień kontrast">
+                                <span class="contrast fas fa-adjust"></span>
+                            </button>
+
+                            <div class="dropdown language-switcher-dropdown">
+                                <button class="btn dropdown-toggle js-tooltip" type="button" id="dropdownLanguageDesktop" data-toggle="dropdown" data-tooltip-trigger="hover focus" title="Zmień język" aria-label="Zmień język" aria-haspopup="true" aria-expanded="false">
+                                    pl
+                                </button>
+                                <div aria-labelledby="dropdownLanguageDesktop" class="dropdown-menu language-switcher-menu">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    <menu class="navigation-mobile js-mobile-menu d-flex d-lg-none m-0 p-5 align-items-center">
+        <button class="position-absolute navigation-mobile--close js-mobile-menu-close" type="button" aria-label="Zamknij Menu">
+            <svg-icon name="filterXClose"></svg-icon>
+        </button>
+        <nav class="navigation-mobile-menu" aria-label="Menu">
+            <ul>
+                    <li class="navigation-bar-menu__element navigation-bar-menu__element--active">
+                        <a href="https://www.planetcinema.pl/zabrze/">
+                            <span>
+                                Zaplanuj wizytę
+                            </span>
+                        </a>
+                    </li>
+                
+
+            </ul>
+        </nav>
+        <div class="navigation-bar-switches mt-3 d-md-none d-flex row align-items-center justify-content-center text-center">
+            <div class="col-3 col-sm-2">
+                <button class="js-change-fontsize-mobile" type="button" data-toggle="tooltip" data-tooltip-trigger="hover focus" title="Zmień rozmiar czcionki" aria-label="Zmień rozmiar czcionki">
+                    <span class="fontSize fas fa-text-height"></span>
+                </button>
+            </div>
+            <div class="col-3 col-sm-2">
+                <button class="js-change-contrast-mobile" type="button" data-toggle="tooltip" data-tooltip-trigger="hover focus" title="Zmień kontrast" aria-label="Zmień kontrast">
+                    <span class="contrast fas fa-adjust"></span>
+                </button>
+            </div>
+                <div class="col-3 col-sm-2">
+                    <div class="dropdown language-switcher-dropdown">
+                        <button class="btn dropdown-toggle js-tooltip" type="button" id="dropdownLanguageMobile" data-toggle="dropdown" data-tooltip-trigger="hover focus" title="Zmień język" aria-label="Zmień język" aria-haspopup="true" aria-expanded="false">
+                            pl
+                        </button>
+
+                    <div aria-labelledby="dropdownLanguageMobile" class="dropdown-menu language-switcher-menu">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </menu>
+    <div class="shopping-cart-expired-modal modal fade" id="shoppingCartExpiredModal" data-backdrop="static" data-keyboard="false" tabindex="-1" aria-labelledby="shoppingCartExpiredModalTitle" aria-describedby="shoppingCartExpiredModalBody" aria-hidden="true" hidden>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title" id="shoppingCartExpiredModalTitle">
+                        <span class="fa fa-warning"></span>Zakończył się czas koszyka!
+                    </div>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Zamknij" title="Zamknij">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div id="shoppingCartExpiredModalBody" class="modal-body">
+                    Czas na zrealizowanie zam&#243;wienia niestety dobiegł końca. Prosimy o ponowne wybranie bilet&#243;w i dodanie ich do koszyka.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="btnCloseModalCart" class="btn btn-warning" data-dismiss="modal">Zamknij</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript">
+        function closeShoppingCart() {
+            $(function () {
+                $.ajax({
+                    type: "POST",
+                    url: "../Ajax.aspx/CloseShoppingCart",
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function (response) {
+                        var names = response.d;
+                        window.location.reload();
+                    },
+                    error: function (response) {
+                        window.location.reload();
+                    }
+                });
+            });
+        };
+
+    </script>
+
+
+    <div id="body">
+
+        <input type="hidden" id="randomWindowName" value="fb24cd8b94c442478f24ba01bc173e83" />
+        <input type="hidden" id="isNewSessionWindowName" value="False" />
+        <input type="hidden" id="sessionWindowName" value="f88b2aad7ecf42b0b31021d2ce346a7c" />
+        <input type="hidden" id="absoluteHomeUrl" value="/MSI/" />
+
+        <main id="main-content">
+            <div class="row">
+
+
+            </div>
+
+            
+
+
+
+<div class="row">
+    <div class="col-sm-12 no-gutter padding-0">
+        
+    <div class="movies-filters">
+        <div class="container movies-filters__bar">
+            <div class="row align-items-stretch">
+                <div class="col-xl-9 col-lg-9 col-9 col-md-9 js-slider-dates">
+                    <div class="container movies-filters__dates">
+                        <ul class="movies-filters__dates__list row flex-nowrap w-100">
+                                    <li class="js-filters-dates__28.09.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-09-28&amp;datestart=0" class="" aria-label="poniedziałek 28 września 2026" title="poniedziałek 28 września 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop ">poniedziałek</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber ">28</span>
+                                                    <sup class="sup " style="top: 0 !important">wrz</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__29.09.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-09-29&amp;datestart=0" class="" aria-label="wtorek 29 września 2026" title="wtorek 29 września 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop ">wtorek</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber ">29</span>
+                                                    <sup class="sup " style="top: 0 !important">wrz</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__30.09.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-09-30&amp;datestart=0" class="" aria-label="środa 30 września 2026" title="środa 30 września 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop ">środa</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber ">30</span>
+                                                    <sup class="sup " style="top: 0 !important">wrz</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__01.10.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-10-01&amp;datestart=0" class=" active" aria-label="czwartek 1 października 2026" title="czwartek 1 października 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop  active">czwartek</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber  active">01</span>
+                                                    <sup class="sup  active" style="top: 0 !important">paź</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber  active">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__02.10.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-10-02&amp;datestart=0" class="" aria-label="piątek 2 października 2026" title="piątek 2 października 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop ">piątek</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber ">02</span>
+                                                    <sup class="sup " style="top: 0 !important">paź</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__03.10.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-10-03&amp;datestart=0" class="" aria-label="sobota 3 października 2026" title="sobota 3 października 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop ">sobota</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber ">03</span>
+                                                    <sup class="sup " style="top: 0 !important">paź</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__04.10.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-10-04&amp;datestart=0" class="" aria-label="niedziela 4 października 2026" title="niedziela 4 października 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop ">niedziela</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber ">04</span>
+                                                    <sup class="sup " style="top: 0 !important">paź</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-lg-3 col-3 col-md-3">
+                    <div class="d-flex align-items-stretch justify-content-end movies-filters__buttons">
+                            <div class="">
+                                <div class="movies-filters__calendar" id="datePickerMovieFilters">
+                                    <button class="movies-filters__button justify-content-start justify-content-md-center pr-lg-3 js-calendar-button" type="button" data-target="#datePickerMovieFilters" data-toggle="datetimepicker" aria-haspopup="dialog" aria-expanded="false">
+                                        <span class="fas fa-calendar-alt mr-1"></span>
+                                        <span class="d-none d-lg-block movies-filters__button__label">KALENDARZ</span>
+                                    </button>
+                                </div>
+                            </div>
+                        <div class="movies-filters__filters">
+                            <button class="movies-filters__button justify-content-start justify-content-md-center pr-lg-3 js-filters-button" type="button" aria-expanded="false" aria-controls="repertoireFiltersPanel">
+                                <span class="fas fa-filter mr-1"></span>
+                                <span class="d-none d-lg-block">Filtry</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="container-max-width">
+        <div class="position-relative">
+<div class="movies-filters--opened position-absolute w-100">
+    <div class="row">
+        <div class="container">
+            <div class="col-12 position-relative flex-wrap js-filters d-none" id="repertoireFiltersPanel">
+                <button class="position-absolute movies-filters--close offset-11 mt-3 mt-md-5 js-filters-close" type="button" aria-label="Zamknij Filtry" aria-controls="repertoireFiltersPanel" style="z-index:300;">
+                    <svg-icon name="filterXClose"></svg-icon>
+                </button>
+                    <div class="p-3 col-12 col-md-6 col-lg-4 col-xl-3 p-md-5  categories filter-container">
+                        <p><strong> Darmowe/Płatne:</strong></p>
+                        <ul>
+                                <li>
+                                    <button class="js-filter row w-100 js-filter-selection"  filter-type="free-event-filter" filter-value="1" filter-name="Darmowe">
+                                            <svg-icon name="filterDot" class=""></svg-icon>Darmowe
+                                    </button>
+                                </li>
+                                <li>
+                                    <button class="js-filter row w-100 js-filter-selection"  filter-type="free-event-filter" filter-value="0" filter-name="Płatne">
+                                            <svg-icon name="filterDot" class=""></svg-icon>Płatne
+                                    </button>
+                                </li>
+                        </ul>
+                    </div>
+                <div class="p-3 p-md-5 col-12 col-md-6 col-lg-4 col-xl-3 categories filter-container">
+
+                    <p><strong>Lokalizacja: </strong></p>
+                    <ul>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=localization-group-filter filter-type="localization-group-filter" filter-value="2" filter-name="Cinema Planet">
+                                        <svg-icon name="filterDot" class=""></svg-icon>
+                                        Cinema Planet
+                                </button>
+                            </li>
+                    </ul>
+                </div>
+                <div class="p-3 p-md-5 col-12 col-md-6 col-lg-4 col-xl-3 categories filter-container">
+
+                    <p><strong> Podkategoria: </strong></p>
+                    <ul>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="3" filter-name="Komedia">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    Komedia
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="5" filter-name="Science-fiction">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    Science-fiction
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="2" filter-name="Dramat">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    Dramat
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="96" filter-name="Animacja">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    Animacja
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="4" filter-name="Horror">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    Horror
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="140" filter-name=" Horror / Sci-Fi">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                     Horror / Sci-Fi
+                                </button>
+                            </li>
+                    </ul>
+                </div>
+                <div class="p-3 p-md-5 col-12 col-md-6 col-lg-4 col-xl-3 categories filter-container">
+
+                    <p><strong>Odbiorca</strong></p>
+                    <ul>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=age-group-filter filter-type="age-group-filter" filter-value="12" filter-name="10">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    10
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=age-group-filter filter-type="age-group-filter" filter-value="11" filter-name="12">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    12
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=age-group-filter filter-type="age-group-filter" filter-value="10" filter-name="bez ograniczeń">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    bez ograniczeń
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=age-group-filter filter-type="age-group-filter" filter-value="18" filter-name="6">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    6
+                                </button>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+        </div>
+        <div class="movies-selected">
+            <div class="container">
+                <div class="row">
+                    <div class="col-12 movies-selected__filters">
+                        <ul class="js-filters-selected">
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <template id="js-filters-selected-template">
+            <li>
+                <button>
+                    <span>{{name}}</span>
+                    <svg-icon name="filterX"></svg-icon>
+                </button>
+            </li>
+        </template>
+
+    </div>
+
+    </div>
+</div>
+<div class="repertoire main-container container-max-width">
+    <div class="wrapper">
+        <div class="container" style="display:flex; flex-direction:column;">
+            <h1 class="sr-only">Lista wydarzeń:</h1>
+            <div class="float-right">
+                
+        <div class="dropdown sorting-buttons float-right btn">
+            <button class="btn dropdown-toggle event-sort-btn" type="button" id="dropdownSort" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="fas fa-exchange-alt fa-rotate-90">  </i>
+                Sortuj
+            </button>
+
+            <div class="dropdown-menu dropdown-menu-sort" aria-labelledby="dropdownSort">
+                    <a href="?sort=Name&amp;date=2026-09-26&amp;datestart=0"
+                       class="dropdown-item"
+                       style="font-size: 1rem">
+                        Tytuły rosnąco
+                    </a>
+                    <a href="?sort=NameDesc&amp;date=2026-09-26&amp;datestart=0"
+                       class="dropdown-item"
+                       style="font-size: 1rem">
+                        Tytuły malejąco
+                    </a>
+                    <a href="?sort=Date&amp;date=2026-09-26&amp;datestart=0"
+                       class="dropdown-item"
+                       style="font-size: 1rem">
+                        Data/godzina
+                    </a>
+            </div>
+        </div>
+
+            </div>
+
+
+
+    <div class="col-10">
+        <div class="row">
+            <div class="col-10">
+                <h2 class="movie-section">październik 2026</h2>
+            </div>
+        </div>
+    </div>
+
+<div class="movie-list">
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <button type="button" class="movies-movie__single__poster-button" onclick="showEventDetails('2774')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia 100 dni. Misja Zeus" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia 100 dni. Misja Zeus" data-toggle="tooltip" data-tooltip-trigger="hover focus" style="padding:0;border:0;background:none;width:100%;">
+                                    <img src="/MSI/Themes/light/images/placeholder-kino.png" alt="100 dni. Misja Zeus">
+                                </button>
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h3 class="movies-movie__single__title" title="100 dni. Misja Zeus">100 dni. Misja Zeus</h3>
+                    <ul class="movies-movie__single__moreinfo">
+                        <li>czas: 121 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button type="button" class="more js-more-info" onclick="showEventDetails('2774')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia 100 dni. Misja Zeus" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia 100 dni. Misja Zeus" data-toggle="tooltip" data-tooltip-trigger="hover focus">
+                            <span class="more-text-more">Więcej <i class="fas fa-caret-right" aria-hidden="true"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse2774)" event-filter="73922" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73922&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73922" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;100 dni. Misja Zeus&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="100 dni. Misja Zeus, termin: czwartek 1 października 2026, 15:50. Kliknij aby kupić bilet">
+01 paź 15:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2774)" event-filter="73921" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73921&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73921" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;100 dni. Misja Zeus&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="100 dni. Misja Zeus, termin: czwartek 1 października 2026, 17:30. Kliknij aby kupić bilet">
+01 paź 17:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2774)" event-filter="73920" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73920&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73920" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;100 dni. Misja Zeus&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="100 dni. Misja Zeus, termin: czwartek 1 października 2026, 19:40. Kliknij aby kupić bilet">
+01 paź 19:40    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse2774">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwuj
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse2774)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73922&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73922" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;100 dni. Misja Zeus&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="100 dni. Misja Zeus, termin: czwartek 1 października 2026, 15:50. Kliknij aby kupić bilet">
+01 paź 15:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2774)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73921&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73921" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;100 dni. Misja Zeus&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="100 dni. Misja Zeus, termin: czwartek 1 października 2026, 17:30. Kliknij aby kupić bilet">
+01 paź 17:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2774)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73920&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73920" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;100 dni. Misja Zeus&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="100 dni. Misja Zeus, termin: czwartek 1 października 2026, 19:40. Kliknij aby kupić bilet">
+01 paź 19:40    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse2774">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwuj
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <button type="button" class="movies-movie__single__poster-button" onclick="showEventDetails('2772')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Avengers: Koniec gry – wersja rozszerzona 2D dubbing" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Avengers: Koniec gry – wersja rozszerzona 2D dubbing" data-toggle="tooltip" data-tooltip-trigger="hover focus" style="padding:0;border:0;background:none;width:100%;">
+                                    <img src="/MSI/Themes/light/images/placeholder-kino.png" alt="Avengers: Koniec gry – wersja rozszerzona 2D dubbing">
+                                </button>
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h3 class="movies-movie__single__title" title="Avengers: Koniec gry – wersja rozszerzona 2D dubbing">Avengers: Koniec gry – wersja rozszerzona 2D dubbing</h3>
+                    <ul class="movies-movie__single__moreinfo">
+                        <li>czas: 200 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button type="button" class="more js-more-info" onclick="showEventDetails('2772')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Avengers: Koniec gry – wersja rozszerzona 2D dubbing" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Avengers: Koniec gry – wersja rozszerzona 2D dubbing" data-toggle="tooltip" data-tooltip-trigger="hover focus">
+                            <span class="more-text-more">Więcej <i class="fas fa-caret-right" aria-hidden="true"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse2772)" event-filter="73522" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73522&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73522" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Avengers: Koniec gry – wersja rozszerzona 2D dubbing&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Avengers: Koniec gry – wersja rozszerzona 2D dubbing, termin: czwartek 1 października 2026, 19:15. Kliknij aby kupić bilet">
+01 paź 19:15    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse2772">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwuj
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse2772)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73522&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73522" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Avengers: Koniec gry – wersja rozszerzona 2D dubbing&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Avengers: Koniec gry – wersja rozszerzona 2D dubbing, termin: czwartek 1 października 2026, 19:15. Kliknij aby kupić bilet">
+01 paź 19:15    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse2772">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwuj
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <button type="button" class="movies-movie__single__poster-button" onclick="showEventDetails('2770')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Lalka" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Lalka" data-toggle="tooltip" data-tooltip-trigger="hover focus" style="padding:0;border:0;background:none;width:100%;">
+                                    <img src="/MSI/Themes/light/images/placeholder-kino.png" alt="Lalka">
+                                </button>
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h3 class="movies-movie__single__title" title="Lalka">Lalka</h3>
+                    <ul class="movies-movie__single__moreinfo">
+                        <li>czas: 190 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button type="button" class="more js-more-info" onclick="showEventDetails('2770')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Lalka" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Lalka" data-toggle="tooltip" data-tooltip-trigger="hover focus">
+                            <span class="more-text-more">Więcej <i class="fas fa-caret-right" aria-hidden="true"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73484" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73484&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73484" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: czwartek 1 października 2026, 10:30. Kliknij aby kupić bilet">
+01 paź 10:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73943" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73943&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73943" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: czwartek 1 października 2026, 10:30. Kliknij aby kupić bilet">
+01 paź 10:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73485" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73485&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73485" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: czwartek 1 października 2026, 13:50. Kliknij aby kupić bilet">
+01 paź 13:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73486" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73486&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73486" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: czwartek 1 października 2026, 17:00. Kliknij aby kupić bilet">
+01 paź 17:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73487" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73487&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73487" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: czwartek 1 października 2026, 20:10. Kliknij aby kupić bilet">
+01 paź 20:10    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73488" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73488&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73488" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: piątek 2 października 2026, 10:30. Kliknij aby kupić bilet">
+02 paź 10:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73489" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73489&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73489" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: piątek 2 października 2026, 13:50. Kliknij aby kupić bilet">
+02 paź 13:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73490" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73490&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73490" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: piątek 2 października 2026, 17:00. Kliknij aby kupić bilet">
+02 paź 17:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73491" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73491&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73491" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: piątek 2 października 2026, 20:10. Kliknij aby kupić bilet">
+02 paź 20:10    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73492" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73492&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73492" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: sobota 3 października 2026, 10:30. Kliknij aby kupić bilet">
+03 paź 10:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73493" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73493&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73493" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: sobota 3 października 2026, 13:50. Kliknij aby kupić bilet">
+03 paź 13:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73494" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73494&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73494" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: sobota 3 października 2026, 17:00. Kliknij aby kupić bilet">
+03 paź 17:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73495" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73495&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73495" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: sobota 3 października 2026, 20:10. Kliknij aby kupić bilet">
+03 paź 20:10    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73496" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73496&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73496" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: niedziela 4 października 2026, 10:30. Kliknij aby kupić bilet">
+04 paź 10:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73497" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73497&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73497" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: niedziela 4 października 2026, 13:50. Kliknij aby kupić bilet">
+04 paź 13:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73498" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73498&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73498" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: niedziela 4 października 2026, 17:00. Kliknij aby kupić bilet">
+04 paź 17:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73499" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73499&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73499" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: niedziela 4 października 2026, 20:10. Kliknij aby kupić bilet">
+04 paź 20:10    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73500" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73500&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73500" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: poniedziałek 5 października 2026, 10:30. Kliknij aby kupić bilet">
+05 paź 10:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73501" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73501&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73501" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: poniedziałek 5 października 2026, 13:50. Kliknij aby kupić bilet">
+05 paź 13:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73502" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73502&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73502" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: poniedziałek 5 października 2026, 17:00. Kliknij aby kupić bilet">
+05 paź 17:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73503" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73503&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73503" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: poniedziałek 5 października 2026, 20:10. Kliknij aby kupić bilet">
+05 paź 20:10    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73504" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73504&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73504" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: wtorek 6 października 2026, 10:30. Kliknij aby kupić bilet">
+06 paź 10:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73505" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73505&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73505" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: wtorek 6 października 2026, 13:50. Kliknij aby kupić bilet">
+06 paź 13:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73506" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73506&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73506" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: wtorek 6 października 2026, 17:00. Kliknij aby kupić bilet">
+06 paź 17:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73507" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73507&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73507" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: wtorek 6 października 2026, 20:10. Kliknij aby kupić bilet">
+06 paź 20:10    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73508" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73508&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73508" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: środa 7 października 2026, 10:30. Kliknij aby kupić bilet">
+07 paź 10:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73509" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73509&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73509" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: środa 7 października 2026, 13:50. Kliknij aby kupić bilet">
+07 paź 13:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73510" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73510&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73510" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: środa 7 października 2026, 17:00. Kliknij aby kupić bilet">
+07 paź 17:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73511" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73511&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73511" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: środa 7 października 2026, 20:10. Kliknij aby kupić bilet">
+07 paź 20:10    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73512" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73512&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73512" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: czwartek 8 października 2026, 10:30. Kliknij aby kupić bilet">
+08 paź 10:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73513" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73513&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73513" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: czwartek 8 października 2026, 13:50. Kliknij aby kupić bilet">
+08 paź 13:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73514" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73514&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73514" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: czwartek 8 października 2026, 17:00. Kliknij aby kupić bilet">
+08 paź 17:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2770)" event-filter="73515" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73515&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73515" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: czwartek 8 października 2026, 20:10. Kliknij aby kupić bilet">
+08 paź 20:10    </a>
+
+                                                </li>
+
+                            </ul>
+                                <button class="movies-movie__single__options__add js-event-hours-more" aria-label="Pokaż więcej termin&#243;w" title="Pokaż więcej termin&#243;w" data-toggle="tooltip" data-tooltip-trigger="hover focus" data-more-showtimes="Pokaż więcej termin&#243;w" data-less-showtimes="Pokaż mniej termin&#243;w">
+                                    <span class="fa fa-plus-circle"></span>
+                                </button>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse2770">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwuj
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73484&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73484" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: czwartek 1 października 2026, 10:30. Kliknij aby kupić bilet">
+01 paź 10:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73943&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73943" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: czwartek 1 października 2026, 10:30. Kliknij aby kupić bilet">
+01 paź 10:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73485&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73485" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: czwartek 1 października 2026, 13:50. Kliknij aby kupić bilet">
+01 paź 13:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73486&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73486" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: czwartek 1 października 2026, 17:00. Kliknij aby kupić bilet">
+01 paź 17:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73487&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73487" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: czwartek 1 października 2026, 20:10. Kliknij aby kupić bilet">
+01 paź 20:10    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73488&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73488" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: piątek 2 października 2026, 10:30. Kliknij aby kupić bilet">
+02 paź 10:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73489&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73489" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: piątek 2 października 2026, 13:50. Kliknij aby kupić bilet">
+02 paź 13:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73490&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73490" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: piątek 2 października 2026, 17:00. Kliknij aby kupić bilet">
+02 paź 17:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73491&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73491" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: piątek 2 października 2026, 20:10. Kliknij aby kupić bilet">
+02 paź 20:10    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73492&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73492" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: sobota 3 października 2026, 10:30. Kliknij aby kupić bilet">
+03 paź 10:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73493&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73493" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: sobota 3 października 2026, 13:50. Kliknij aby kupić bilet">
+03 paź 13:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73494&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73494" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: sobota 3 października 2026, 17:00. Kliknij aby kupić bilet">
+03 paź 17:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73495&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73495" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: sobota 3 października 2026, 20:10. Kliknij aby kupić bilet">
+03 paź 20:10    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73496&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73496" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: niedziela 4 października 2026, 10:30. Kliknij aby kupić bilet">
+04 paź 10:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73497&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73497" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: niedziela 4 października 2026, 13:50. Kliknij aby kupić bilet">
+04 paź 13:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73498&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73498" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: niedziela 4 października 2026, 17:00. Kliknij aby kupić bilet">
+04 paź 17:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73499&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73499" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: niedziela 4 października 2026, 20:10. Kliknij aby kupić bilet">
+04 paź 20:10    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73500&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73500" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: poniedziałek 5 października 2026, 10:30. Kliknij aby kupić bilet">
+05 paź 10:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73501&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73501" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: poniedziałek 5 października 2026, 13:50. Kliknij aby kupić bilet">
+05 paź 13:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73502&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73502" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: poniedziałek 5 października 2026, 17:00. Kliknij aby kupić bilet">
+05 paź 17:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73503&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73503" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: poniedziałek 5 października 2026, 20:10. Kliknij aby kupić bilet">
+05 paź 20:10    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73504&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73504" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: wtorek 6 października 2026, 10:30. Kliknij aby kupić bilet">
+06 paź 10:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73505&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73505" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: wtorek 6 października 2026, 13:50. Kliknij aby kupić bilet">
+06 paź 13:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73506&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73506" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: wtorek 6 października 2026, 17:00. Kliknij aby kupić bilet">
+06 paź 17:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73507&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73507" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: wtorek 6 października 2026, 20:10. Kliknij aby kupić bilet">
+06 paź 20:10    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73508&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73508" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: środa 7 października 2026, 10:30. Kliknij aby kupić bilet">
+07 paź 10:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73509&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73509" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: środa 7 października 2026, 13:50. Kliknij aby kupić bilet">
+07 paź 13:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73510&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73510" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: środa 7 października 2026, 17:00. Kliknij aby kupić bilet">
+07 paź 17:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73511&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73511" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: środa 7 października 2026, 20:10. Kliknij aby kupić bilet">
+07 paź 20:10    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73512&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73512" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: czwartek 8 października 2026, 10:30. Kliknij aby kupić bilet">
+08 paź 10:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73513&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73513" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: czwartek 8 października 2026, 13:50. Kliknij aby kupić bilet">
+08 paź 13:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73514&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73514" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: czwartek 8 października 2026, 17:00. Kliknij aby kupić bilet">
+08 paź 17:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2770)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73515&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73515" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Lalka&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Lalka, termin: czwartek 8 października 2026, 20:10. Kliknij aby kupić bilet">
+08 paź 20:10    </a>
+
+                                                </li>
+
+                            </ul>
+                                <button class="movies-movie__single__options__add js-event-hours-more" aria-label="Pokaż więcej termin&#243;w" title="Pokaż więcej termin&#243;w" data-toggle="tooltip" data-tooltip-trigger="hover focus" data-more-showtimes="Pokaż więcej termin&#243;w" data-less-showtimes="Pokaż mniej termin&#243;w">
+                                    <span class="fa fa-plus-circle"></span>
+                                </button>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse2770">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwuj
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <button type="button" class="movies-movie__single__poster-button" onclick="showEventDetails('2781')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Luna i rozgadana świnka 2D dubbing" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Luna i rozgadana świnka 2D dubbing" data-toggle="tooltip" data-tooltip-trigger="hover focus" style="padding:0;border:0;background:none;width:100%;">
+                                    <img src="/MSI/Themes/light/images/placeholder-kino.png" alt="Luna i rozgadana świnka 2D dubbing">
+                                </button>
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h3 class="movies-movie__single__title" title="Luna i rozgadana świnka 2D dubbing">Luna i rozgadana świnka 2D dubbing</h3>
+                    <ul class="movies-movie__single__moreinfo">
+                        <li>czas: 115 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button type="button" class="more js-more-info" onclick="showEventDetails('2781')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Luna i rozgadana świnka 2D dubbing" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Luna i rozgadana świnka 2D dubbing" data-toggle="tooltip" data-tooltip-trigger="hover focus">
+                            <span class="more-text-more">Więcej <i class="fas fa-caret-right" aria-hidden="true"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse2781)" event-filter="73926" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73926&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73926" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Luna i rozgadana świnka 2D dubbing&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Luna i rozgadana świnka 2D dubbing, termin: czwartek 1 października 2026, 11:30. Kliknij aby kupić bilet">
+01 paź 11:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2781)" event-filter="73927" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73927&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73927" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Luna i rozgadana świnka 2D dubbing&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Luna i rozgadana świnka 2D dubbing, termin: czwartek 1 października 2026, 13:30. Kliknij aby kupić bilet">
+01 paź 13:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2781)" event-filter="73928" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73928&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73928" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Luna i rozgadana świnka 2D dubbing&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Luna i rozgadana świnka 2D dubbing, termin: czwartek 1 października 2026, 15:30. Kliknij aby kupić bilet">
+01 paź 15:30    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse2781">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwuj
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse2781)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73926&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73926" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Luna i rozgadana świnka 2D dubbing&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Luna i rozgadana świnka 2D dubbing, termin: czwartek 1 października 2026, 11:30. Kliknij aby kupić bilet">
+01 paź 11:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2781)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73927&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73927" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Luna i rozgadana świnka 2D dubbing&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Luna i rozgadana świnka 2D dubbing, termin: czwartek 1 października 2026, 13:30. Kliknij aby kupić bilet">
+01 paź 13:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2781)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73928&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73928" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Luna i rozgadana świnka 2D dubbing&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Luna i rozgadana świnka 2D dubbing, termin: czwartek 1 października 2026, 15:30. Kliknij aby kupić bilet">
+01 paź 15:30    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse2781">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwuj
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <button type="button" class="movies-movie__single__poster-button" onclick="showEventDetails('2778')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Planeta Kobiet - Jak żyć, żeby nie zwariować" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Planeta Kobiet - Jak żyć, żeby nie zwariować" data-toggle="tooltip" data-tooltip-trigger="hover focus" style="padding:0;border:0;background:none;width:100%;">
+                                    <img src="/MSI/Themes/light/images/placeholder-kino.png" alt="Planeta Kobiet - Jak żyć, żeby nie zwariować">
+                                </button>
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h3 class="movies-movie__single__title" title="Planeta Kobiet - Jak żyć, żeby nie zwariować">Planeta Kobiet - Jak żyć, żeby nie zwariować</h3>
+                    <ul class="movies-movie__single__moreinfo">
+                        <li>czas: 120 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button type="button" class="more js-more-info" onclick="showEventDetails('2778')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Planeta Kobiet - Jak żyć, żeby nie zwariować" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Planeta Kobiet - Jak żyć, żeby nie zwariować" data-toggle="tooltip" data-tooltip-trigger="hover focus">
+                            <span class="more-text-more">Więcej <i class="fas fa-caret-right" aria-hidden="true"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse2778)" event-filter="73676" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73676&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73676" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Planeta Kobiet - Jak żyć, żeby nie zwariować&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Planeta Kobiet - Jak żyć, żeby nie zwariować, termin: piątek 16 października 2026, 19:30. Kliknij aby kupić bilet">
+16 paź 19:30    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse2778">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwuj
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse2778)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73676&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73676" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Planeta Kobiet - Jak żyć, żeby nie zwariować&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Planeta Kobiet - Jak żyć, żeby nie zwariować, termin: piątek 16 października 2026, 19:30. Kliknij aby kupić bilet">
+16 paź 19:30    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse2778">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwuj
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <button type="button" class="movies-movie__single__poster-button" onclick="showEventDetails('2775')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Resident Evil" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Resident Evil" data-toggle="tooltip" data-tooltip-trigger="hover focus" style="padding:0;border:0;background:none;width:100%;">
+                                    <img src="/MSI/Themes/light/images/placeholder-kino.png" alt="Resident Evil">
+                                </button>
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h3 class="movies-movie__single__title" title="Resident Evil">Resident Evil</h3>
+                    <ul class="movies-movie__single__moreinfo">
+                        <li>czas: 120 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button type="button" class="more js-more-info" onclick="showEventDetails('2775')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Resident Evil" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Resident Evil" data-toggle="tooltip" data-tooltip-trigger="hover focus">
+                            <span class="more-text-more">Więcej <i class="fas fa-caret-right" aria-hidden="true"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse2775)" event-filter="73923" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73923&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73923" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Resident Evil&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Resident Evil, termin: czwartek 1 października 2026, 13:50. Kliknij aby kupić bilet">
+01 paź 13:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2775)" event-filter="73924" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73924&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73924" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Resident Evil&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Resident Evil, termin: czwartek 1 października 2026, 18:00. Kliknij aby kupić bilet">
+01 paź 18:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2775)" event-filter="73929" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73929&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73929" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Resident Evil&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Resident Evil, termin: czwartek 1 października 2026, 19:30. Kliknij aby kupić bilet">
+01 paź 19:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2775)" event-filter="73925" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73925&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73925" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Resident Evil&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Resident Evil, termin: czwartek 1 października 2026, 20:00. Kliknij aby kupić bilet">
+01 paź 20:00    </a>
+
+                                                </li>
+
+                            </ul>
+                                <button class="movies-movie__single__options__add js-event-hours-more" aria-label="Pokaż więcej termin&#243;w" title="Pokaż więcej termin&#243;w" data-toggle="tooltip" data-tooltip-trigger="hover focus" data-more-showtimes="Pokaż więcej termin&#243;w" data-less-showtimes="Pokaż mniej termin&#243;w">
+                                    <span class="fa fa-plus-circle"></span>
+                                </button>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse2775">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwuj
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse2775)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73923&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73923" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Resident Evil&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Resident Evil, termin: czwartek 1 października 2026, 13:50. Kliknij aby kupić bilet">
+01 paź 13:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2775)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73924&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73924" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Resident Evil&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Resident Evil, termin: czwartek 1 października 2026, 18:00. Kliknij aby kupić bilet">
+01 paź 18:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2775)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73929&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73929" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Resident Evil&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Resident Evil, termin: czwartek 1 października 2026, 19:30. Kliknij aby kupić bilet">
+01 paź 19:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2775)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73925&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73925" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Resident Evil&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Resident Evil, termin: czwartek 1 października 2026, 20:00. Kliknij aby kupić bilet">
+01 paź 20:00    </a>
+
+                                                </li>
+
+                            </ul>
+                                <button class="movies-movie__single__options__add js-event-hours-more" aria-label="Pokaż więcej termin&#243;w" title="Pokaż więcej termin&#243;w" data-toggle="tooltip" data-tooltip-trigger="hover focus" data-more-showtimes="Pokaż więcej termin&#243;w" data-less-showtimes="Pokaż mniej termin&#243;w">
+                                    <span class="fa fa-plus-circle"></span>
+                                </button>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse2775">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwuj
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <button type="button" class="movies-movie__single__poster-button" onclick="showEventDetails('2777')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Tedi i magiczna lampa 2D dubbing" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Tedi i magiczna lampa 2D dubbing" data-toggle="tooltip" data-tooltip-trigger="hover focus" style="padding:0;border:0;background:none;width:100%;">
+                                    <img src="/MSI/Themes/light/images/placeholder-kino.png" alt="Tedi i magiczna lampa 2D dubbing">
+                                </button>
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h3 class="movies-movie__single__title" title="Tedi i magiczna lampa 2D dubbing">Tedi i magiczna lampa 2D dubbing</h3>
+                    <ul class="movies-movie__single__moreinfo">
+                        <li>czas: 120 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button type="button" class="more js-more-info" onclick="showEventDetails('2777')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Tedi i magiczna lampa 2D dubbing" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Tedi i magiczna lampa 2D dubbing" data-toggle="tooltip" data-tooltip-trigger="hover focus">
+                            <span class="more-text-more">Więcej <i class="fas fa-caret-right" aria-hidden="true"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse2777)" event-filter="73944" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73944&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73944" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Tedi i magiczna lampa 2D dubbing&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Tedi i magiczna lampa 2D dubbing, termin: czwartek 1 października 2026, 09:00. Kliknij aby kupić bilet">
+01 paź 09:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2777)" event-filter="73913" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73913&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73913" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Tedi i magiczna lampa 2D dubbing&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Tedi i magiczna lampa 2D dubbing, termin: czwartek 1 października 2026, 10:40. Kliknij aby kupić bilet">
+01 paź 10:40    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2777)" event-filter="73914" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73914&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73914" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Tedi i magiczna lampa 2D dubbing&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Tedi i magiczna lampa 2D dubbing, termin: czwartek 1 października 2026, 12:45. Kliknij aby kupić bilet">
+01 paź 12:45    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2777)" event-filter="73915" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73915&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73915" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Tedi i magiczna lampa 2D dubbing&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Tedi i magiczna lampa 2D dubbing, termin: czwartek 1 października 2026, 14:50. Kliknij aby kupić bilet">
+01 paź 14:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2777)" event-filter="73916" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73916&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73916" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Tedi i magiczna lampa 2D dubbing&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Tedi i magiczna lampa 2D dubbing, termin: czwartek 1 października 2026, 17:00. Kliknij aby kupić bilet">
+01 paź 17:00    </a>
+
+                                                </li>
+
+                            </ul>
+                                <button class="movies-movie__single__options__add js-event-hours-more" aria-label="Pokaż więcej termin&#243;w" title="Pokaż więcej termin&#243;w" data-toggle="tooltip" data-tooltip-trigger="hover focus" data-more-showtimes="Pokaż więcej termin&#243;w" data-less-showtimes="Pokaż mniej termin&#243;w">
+                                    <span class="fa fa-plus-circle"></span>
+                                </button>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse2777">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwuj
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse2777)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73944&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73944" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Tedi i magiczna lampa 2D dubbing&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Tedi i magiczna lampa 2D dubbing, termin: czwartek 1 października 2026, 09:00. Kliknij aby kupić bilet">
+01 paź 09:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2777)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73913&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73913" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Tedi i magiczna lampa 2D dubbing&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Tedi i magiczna lampa 2D dubbing, termin: czwartek 1 października 2026, 10:40. Kliknij aby kupić bilet">
+01 paź 10:40    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2777)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73914&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73914" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Tedi i magiczna lampa 2D dubbing&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Tedi i magiczna lampa 2D dubbing, termin: czwartek 1 października 2026, 12:45. Kliknij aby kupić bilet">
+01 paź 12:45    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2777)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73915&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73915" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Tedi i magiczna lampa 2D dubbing&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Tedi i magiczna lampa 2D dubbing, termin: czwartek 1 października 2026, 14:50. Kliknij aby kupić bilet">
+01 paź 14:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2777)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73916&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73916" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Tedi i magiczna lampa 2D dubbing&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="Tedi i magiczna lampa 2D dubbing, termin: czwartek 1 października 2026, 17:00. Kliknij aby kupić bilet">
+01 paź 17:00    </a>
+
+                                                </li>
+
+                            </ul>
+                                <button class="movies-movie__single__options__add js-event-hours-more" aria-label="Pokaż więcej termin&#243;w" title="Pokaż więcej termin&#243;w" data-toggle="tooltip" data-tooltip-trigger="hover focus" data-more-showtimes="Pokaż więcej termin&#243;w" data-less-showtimes="Pokaż mniej termin&#243;w">
+                                    <span class="fa fa-plus-circle"></span>
+                                </button>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse2777">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwuj
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <button type="button" class="movies-movie__single__poster-button" onclick="showEventDetails('2780')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia W sercu dziczy" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia W sercu dziczy" data-toggle="tooltip" data-tooltip-trigger="hover focus" style="padding:0;border:0;background:none;width:100%;">
+                                    <img src="/MSI/Themes/light/images/placeholder-kino.png" alt="W sercu dziczy">
+                                </button>
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h3 class="movies-movie__single__title" title="W sercu dziczy">W sercu dziczy</h3>
+                    <ul class="movies-movie__single__moreinfo">
+                        <li>czas: 125 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button type="button" class="more js-more-info" onclick="showEventDetails('2780')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia W sercu dziczy" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia W sercu dziczy" data-toggle="tooltip" data-tooltip-trigger="hover focus">
+                            <span class="more-text-more">Więcej <i class="fas fa-caret-right" aria-hidden="true"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse2780)" event-filter="73917" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73917&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73917" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;W sercu dziczy&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="W sercu dziczy, termin: czwartek 1 października 2026, 15:20. Kliknij aby kupić bilet">
+01 paź 15:20    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2780)" event-filter="73930" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73930&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73930" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;W sercu dziczy&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="W sercu dziczy, termin: czwartek 1 października 2026, 17:15. Kliknij aby kupić bilet">
+01 paź 17:15    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2780)" event-filter="73918" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73918&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73918" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;W sercu dziczy&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="W sercu dziczy, termin: czwartek 1 października 2026, 17:30. Kliknij aby kupić bilet">
+01 paź 17:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2780)" event-filter="73919" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73919&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73919" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;W sercu dziczy&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="W sercu dziczy, termin: czwartek 1 października 2026, 19:45. Kliknij aby kupić bilet">
+01 paź 19:45    </a>
+
+                                                </li>
+
+                            </ul>
+                                <button class="movies-movie__single__options__add js-event-hours-more" aria-label="Pokaż więcej termin&#243;w" title="Pokaż więcej termin&#243;w" data-toggle="tooltip" data-tooltip-trigger="hover focus" data-more-showtimes="Pokaż więcej termin&#243;w" data-less-showtimes="Pokaż mniej termin&#243;w">
+                                    <span class="fa fa-plus-circle"></span>
+                                </button>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse2780">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwuj
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse2780)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73917&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73917" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;W sercu dziczy&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="W sercu dziczy, termin: czwartek 1 października 2026, 15:20. Kliknij aby kupić bilet">
+01 paź 15:20    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2780)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73930&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73930" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;W sercu dziczy&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="W sercu dziczy, termin: czwartek 1 października 2026, 17:15. Kliknij aby kupić bilet">
+01 paź 17:15    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2780)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73918&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73918" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;W sercu dziczy&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="W sercu dziczy, termin: czwartek 1 października 2026, 17:30. Kliknij aby kupić bilet">
+01 paź 17:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2780)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=73919&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-10" class="js-link-popup " data-event="73919" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;W sercu dziczy&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="W sercu dziczy, termin: czwartek 1 października 2026, 19:45. Kliknij aby kupić bilet">
+01 paź 19:45    </a>
+
+                                                </li>
+
+                            </ul>
+                                <button class="movies-movie__single__options__add js-event-hours-more" aria-label="Pokaż więcej termin&#243;w" title="Pokaż więcej termin&#243;w" data-toggle="tooltip" data-tooltip-trigger="hover focus" data-more-showtimes="Pokaż więcej termin&#243;w" data-less-showtimes="Pokaż mniej termin&#243;w">
+                                    <span class="fa fa-plus-circle"></span>
+                                </button>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse2780">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwuj
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+</div>
+
+
+
+            <div class="modal fade" id="eventDetailsModal" tabindex="-1" aria-labelledby="modalEventTitle" aria-describedby="eventDetailsModalBody">
+    <div class="modal-dialog modal-dialog-centered event-details">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Zamknij">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div id="eventDetailsModalBody" class="modal-body">
+                <div class="container">
+                    <div class="row">
+                        <div class="poster col-12 col-md-4 col-lg-3 mb-3 mb-md-0">
+                            <div class="modalEventPoster text-center">
+                                <img id="modalEventPoster" src="" alt="" />
+                            </div>
+                            <p class="modalEventYtLink mt-3 mb-0 font-weight-bold text-uppercase d-flex justify-content-center align-items-center">
+                                <a id="modalEventYtLink" class="d-flex justify-content-center align-items-center" href="" target="_blank" rel="noopener noreferrer" aria-label="Zobacz zwiastun:">
+                                    <span>Zobacz zwiastun:</span>
+                                    <i class="fa fa-play-circle ml-2" aria-hidden="true"></i>
+                                </a>
+                            </p>
+                        </div>
+                        <div class="details col-12 col-md-8 col-lg-9">
+                            <div id="modalEventTitle" class="modal-title modalEventTitle"></div>
+                            <div class="row mt-3 mb-4">
+                                <div class="modalEventPremiere col-12 col-md-6 mb-2 mb-md-0 d-flex align-items-center">
+                                    <div>
+                                        <i class="fa fa-calendar-alt" aria-hidden="true"></i>
+                                    </div>
+                                    <div class="pl-2 font-weight-bold">
+                                        <p class="text-uppercase m-0">Data premiery:</p>
+                                        <p id="modalEventPremiere" class="m-0"></p>
+                                    </div>
+                                </div>
+                                <div class="modalEventLength col-12 col-md-6 d-flex align-items-center">
+                                    <div>
+                                        <i class="fa fa-clock" aria-hidden="true"></i>
+                                    </div>
+                                    <div class="pl-2 font-weight-bold">
+                                        <p class="text-uppercase m-0">Czas trwania:</p>
+                                        <p id="modalEventLength" class="m-0"></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="modalEventDescription"><span id="modalEventDescription"></span></p>
+                            <p class="modalEventType mb-0">Gatunek: <strong id="modalEventType"></strong></p>
+                            <p class="modalEventAgeCategory mb-0">Ograniczenia wiekowe: <span id="modalEventAgeCategory"></span></p>
+                            <p class="modalEventAdditionalInfo mb-0">Wersja: <span id="modalEventAdditionalInfo"></span></p>
+                            <p class="modalEventWwwLink mb-0">Strona www: <strong><a id="modalEventWwwLink" href="" target="_blank" rel="noopener noreferrer" aria-label="Strona www:"></a></strong></p>
+                            <div class="col-xs-12 event-gallery-background" id="modalEventImageGallery">
+                                <h2 class=""><span class="fa fa-camera" aria-hidden="true"></span> Galeria</h2>
+                                <div id="modalEventImageGalleryItems" style="display: flex; flex-wrap: wrap;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-warning" data-dismiss="modal">Zamknij</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+        localStorage.removeItem('carouselIndex');
+    });
+</script>
+
+
+            <div class="row">
+            </div>
+        </main>
+    </div>
+
+    
+<footer class="footer"><div class="container"><div class="row"><div class="col-12 col-md-4 col-lg-4 col-xl-4"><section id="cms" class="hidden" data-document-link-suffix=" (plik dokumentu)" data-new-tab-suffix=" (otwiera sie w nowej karcie)"><div id="cmstitle" class="footer__section-title text-uppercase"></div><ul id="onas"></ul></section></div><div class="col-12 col-md-4 col-lg-4 col-xl-4 offset-xl-12"><div class="footer__section-title">Kontakt</div><ul><li><span class="fa fa-phone text-color" aria-hidden="true"></span> 32 832 16 15</li><li><span class="fa fa-envelope text-color" aria-hidden="true"></span><span class="word-wrap" style="word-wrap: break-word;"><a class="link" href="mailto:zabrze@planetcinema.pl ">zabrze@planetcinema.pl </a></span></li><li class="get-ticket"><a class="text-uppercase link" href="/MSI/mvc/pl/GetTicket/Index"><span class="fas fa-ticket-alt" aria-hidden="true"></span>Pobierz swoje bilety</a></li><li><a class="link" href="/MSI/mvc/pl/Sitemap/Index">Mapa strony</a></li></ul></div><div class="col-12 col-md-4 col-lg-3 col-xl-4 offset-xl-13"><ul class="footer__social"><li><a target="_blank" rel="noopener noreferrer" href="https://www.facebook.com/NowyWymiarKina/" title="Facebook (otwiera sie w nowej karcie)" class="fab fa-facebook-square fa-2x text-color"><span class="sr-only"><span lang="en">Facebook</span> (otwiera sie w nowej karcie)</span></a></li></ul><address class="footer__address"><div class="footer__section-title">Planet Cinema POLAND sp. z o.o</div><span class="fa fa-map-marker text-color" aria-hidden="true"></span> Plac Teatralny 12, 41-800  Zabrze<br><span class="fa fa-book text-color" aria-hidden="true"></span> 1070020876<br></address></div></div><div class="row justify-content-center"><div class="col-12 footer__info"><div id="footer-logos"></div></div></div></div></footer>
+
+
+
+    
+
+    <script id="repo-template" type="text/x-handlebars-template">
+        <div class="modal  fade in dialog" id="RepoModal" style="display: block">
+
+            <button id="trap-top-focus" type="button" title="Początek okna dialogowego" aria-label="Początek okna dialogowego" style="opacity:0;cursor:pointer;" tabindex="0">
+                Początek okna dialogowego
+            </button>
+            <div class="dialog-backdrop active fade in" style="bottom: 0">
+                <div class="modal-dialog" id="modalDialog" role="dialog" aria-modal="true">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close modal-Focus first-element-in-modal" data-dismiss="modal" aria-label="Zamknij" title="Zamknij" id="closeModalBtn">
+                                <span class="sr-only">Zamknij </span>
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                            <h3 class="modal-title dialog-title " tabindex="0">
+                                <span class="glyphicon glyphicon-tag"></span>
+                                {{Name}}
+                            </h3>
+                        </div>
+                        <div class="modal-body" style=" word-wrap:break-word;">
+                            <div class="media">
+                                {{#ifCond PosterId '>' 0}}
+                                <div class="media-left hidden-xs" tabindex="0">
+                                    <button type="button" class="modal-Focus btn btn-link p-0" aria-label="Data: {{Name}}">
+                                        <img src="/MSI/ImageData.ashx?id={{PosterId}}&amp;mode=thumb" alt="{{Name}}" class="" />
+                                    </button>
+                                </div>
+                                {{/ifCond}}
+                                <div class="media-body" style=" word-wrap:break-word;" tabindex="0">
+                                    Data: <strong class="dialog-strong">{{Date}}</strong>
+                                    {{#if Hour}}
+                                    <div>Godzina: <strong class="dialog-strong">{{Hour}}</strong></div>
+                                    {{/if}}
+                                    {{#if Description}}
+                                    <br />
+                                    <div class="hidden-xs">{{{Description}}}</div>
+                                    {{/if}}
+                                </div>
+                                <div class="modal-footer">
+                                    <div class="row">
+                                        <div class="col-sm-3">
+                                            <button type="button" class="btn btn-anuluj btn-block modal-Focus" data-dismiss="modal" aria-label="Zamknij" title="Zamknij">
+                                                <span class="sr-only">Zamknij  </span>
+                                                <span class="glyphicon glyphicon-remove"></span>ANULUJ
+                                            </button>
+                                        </div>
+
+                                        {{#if ShowFreeEventButton}}
+                                        <div class="col-sm-4">
+                                            <a href="{{ UrlBuy }}" class="btn btn-kup btn-block modal-Focus">
+                                                <span class="glyphicon glyphicon-star"></span>WYBIERAM
+                                            </a>
+                                        </div>
+                                        {{/if}}
+                                        {{#if ShowBuyButton}}
+                                        <div class="col-sm-4">
+                                            <a href="{{ UrlBuy }}" class="btn btn-kup btn-block  modal-Focus">
+                                                <span class="glyphicon glyphicon-credit-card"></span>KUP BILET
+                                            </a>
+                                        </div>
+                                        {{/if}}
+                                        {{#if ShowReservationButton}}
+                                        <div class="col-sm-5">
+                                            <a href="{{ UrlRez }}" class="btn btn-rezerwuj btn-block modal-Focus">
+                                                <span class="glyphicon glyphicon-star"></span>REZERWUJ MIEJSCE
+                                            </a>
+                                        </div>
+                                        {{/if}}
+
+                                    </div>
+                                    <div class="row" tabindex="0" id="modalLastItem">
+                                        <div class="col-12" style="margin-top: 15px; text-align: justify">
+                                            <div class="alert alert-warning last-element-on-modal" style="margin-bottom: 0">
+                                                Uwaga! W następnym kroku nie ma już możliwości wyboru pomiędzy Kupnem bilet&#243;w a Rezerwacją miejsc.
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="trap-down-focus" type="button" title="Koniec okna dialogowego" aria-label="Koniec okna dialogowego" style="opacity:0;cursor:pointer;position:absolute;left:-100px;">
+                Koniec okna dialogowego
+            </button>
+        </div>
+    </script>
+    <script type="text/javascript">
+        var RepertoireEvents = [{ 'Id': 73920, 'Name': '100 dni. Misja Zeus', 'Date': '01.10.2026', 'Hour': '19:40', 'PosterId': '0', 'Description': 'Kontynuacja jednego z najgłośniejszych młodzieżowych filmów ostatnich lat. Tym razem bohaterowie wychodzą poza szkolne mury, a stawka jest większa niż kiedykolwiek wcześniej - choć oni sami nie czują się na nią gotowi. Kapsel i jego ekipa stawiają pierwsze kroki w dorosłym życiu. Jedni ruszyli już dalej, inni próbują poukładać...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73921, 'Name': '100 dni. Misja Zeus', 'Date': '01.10.2026', 'Hour': '17:30', 'PosterId': '0', 'Description': 'Kontynuacja jednego z najgłośniejszych młodzieżowych filmów ostatnich lat. Tym razem bohaterowie wychodzą poza szkolne mury, a stawka jest większa niż kiedykolwiek wcześniej - choć oni sami nie czują się na nią gotowi. Kapsel i jego ekipa stawiają pierwsze kroki w dorosłym życiu. Jedni ruszyli już dalej, inni próbują poukładać...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73922, 'Name': '100 dni. Misja Zeus', 'Date': '01.10.2026', 'Hour': '15:50', 'PosterId': '0', 'Description': 'Kontynuacja jednego z najgłośniejszych młodzieżowych filmów ostatnich lat. Tym razem bohaterowie wychodzą poza szkolne mury, a stawka jest większa niż kiedykolwiek wcześniej - choć oni sami nie czują się na nią gotowi. Kapsel i jego ekipa stawiają pierwsze kroki w dorosłym życiu. Jedni ruszyli już dalej, inni próbują poukładać...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73522, 'Name': 'Avengers: Koniec gry – wersja rozszerzona 2D dubbing', 'Date': '01.10.2026', 'Hour': '19:15', 'PosterId': '0', 'Description': 'Avengers: Koniec gry – wersja rozszerzona to bezprecedensowa filmowa propozycja w nowej odsłonie opowiadająca historię wielkiego starcia superbohaterów z potężnym Thanosem.<br><br>Połowa populacji Wszechświata została unicestwiona, a drużyna Avengers rozbita. Najpotężniejsi ziemscy bohaterowie zrozumieją, jak krucha jest nasza...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73484, 'Name': 'Lalka', 'Date': '01.10.2026', 'Hour': '10:30', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73485, 'Name': 'Lalka', 'Date': '01.10.2026', 'Hour': '13:50', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73486, 'Name': 'Lalka', 'Date': '01.10.2026', 'Hour': '17:00', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73487, 'Name': 'Lalka', 'Date': '01.10.2026', 'Hour': '20:10', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73488, 'Name': 'Lalka', 'Date': '02.10.2026', 'Hour': '10:30', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73489, 'Name': 'Lalka', 'Date': '02.10.2026', 'Hour': '13:50', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73490, 'Name': 'Lalka', 'Date': '02.10.2026', 'Hour': '17:00', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73491, 'Name': 'Lalka', 'Date': '02.10.2026', 'Hour': '20:10', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73492, 'Name': 'Lalka', 'Date': '03.10.2026', 'Hour': '10:30', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73493, 'Name': 'Lalka', 'Date': '03.10.2026', 'Hour': '13:50', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73494, 'Name': 'Lalka', 'Date': '03.10.2026', 'Hour': '17:00', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73495, 'Name': 'Lalka', 'Date': '03.10.2026', 'Hour': '20:10', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73496, 'Name': 'Lalka', 'Date': '04.10.2026', 'Hour': '10:30', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73497, 'Name': 'Lalka', 'Date': '04.10.2026', 'Hour': '13:50', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73498, 'Name': 'Lalka', 'Date': '04.10.2026', 'Hour': '17:00', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73499, 'Name': 'Lalka', 'Date': '04.10.2026', 'Hour': '20:10', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73500, 'Name': 'Lalka', 'Date': '05.10.2026', 'Hour': '10:30', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73501, 'Name': 'Lalka', 'Date': '05.10.2026', 'Hour': '13:50', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73502, 'Name': 'Lalka', 'Date': '05.10.2026', 'Hour': '17:00', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73503, 'Name': 'Lalka', 'Date': '05.10.2026', 'Hour': '20:10', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73504, 'Name': 'Lalka', 'Date': '06.10.2026', 'Hour': '10:30', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73505, 'Name': 'Lalka', 'Date': '06.10.2026', 'Hour': '13:50', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73506, 'Name': 'Lalka', 'Date': '06.10.2026', 'Hour': '17:00', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73507, 'Name': 'Lalka', 'Date': '06.10.2026', 'Hour': '20:10', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73508, 'Name': 'Lalka', 'Date': '07.10.2026', 'Hour': '10:30', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73509, 'Name': 'Lalka', 'Date': '07.10.2026', 'Hour': '13:50', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73510, 'Name': 'Lalka', 'Date': '07.10.2026', 'Hour': '17:00', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73511, 'Name': 'Lalka', 'Date': '07.10.2026', 'Hour': '20:10', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73512, 'Name': 'Lalka', 'Date': '08.10.2026', 'Hour': '10:30', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73513, 'Name': 'Lalka', 'Date': '08.10.2026', 'Hour': '13:50', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73514, 'Name': 'Lalka', 'Date': '08.10.2026', 'Hour': '17:00', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73515, 'Name': 'Lalka', 'Date': '08.10.2026', 'Hour': '20:10', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73943, 'Name': 'Lalka', 'Date': '01.10.2026', 'Hour': '10:30', 'PosterId': '0', 'Description': 'Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje i wyobraźnię kolejnych pokoleń. Teraz ta ponadczasowa historia trafia na wielki ekran w nowej, spektakularnej, filmowej odsłonie. Nowa ekranizacja „Lalki” to opowiedziana ze współczesną wrażliwością przejmująca, uniwersalna historia o miłości i niespełnieniu, o aspiracjach...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73926, 'Name': 'Luna i rozgadana świnka 2D dubbing', 'Date': '01.10.2026', 'Hour': '11:30', 'PosterId': '0', 'Description': '12-letnia miłośniczka książek, której powierzono magiczne pióro, zdolne spełnić każde życzenie zapisane jego pomocą. Wraz ze swoją gadającą świnką morską wyrusza w niebezpieczną przygodę, by ocalić planetę przed zniszczeniem środowiska.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73927, 'Name': 'Luna i rozgadana świnka 2D dubbing', 'Date': '01.10.2026', 'Hour': '13:30', 'PosterId': '0', 'Description': '12-letnia miłośniczka książek, której powierzono magiczne pióro, zdolne spełnić każde życzenie zapisane jego pomocą. Wraz ze swoją gadającą świnką morską wyrusza w niebezpieczną przygodę, by ocalić planetę przed zniszczeniem środowiska.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73928, 'Name': 'Luna i rozgadana świnka 2D dubbing', 'Date': '01.10.2026', 'Hour': '15:30', 'PosterId': '0', 'Description': '12-letnia miłośniczka książek, której powierzono magiczne pióro, zdolne spełnić każde życzenie zapisane jego pomocą. Wraz ze swoją gadającą świnką morską wyrusza w niebezpieczną przygodę, by ocalić planetę przed zniszczeniem środowiska.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73676, 'Name': 'Planeta Kobiet - Jak żyć, żeby nie zwariować', 'Date': '16.10.2026', 'Hour': '19:30', 'PosterId': '0', 'Description': '<br>Myślicie, że łatwo jest być nowoczesną kobietą? Pomyślcie jeszcze raz.<br><br>Mąż się nie sprawdził. Kariera w gruzach. Dorastająca córka na okrągło obrażona. To świetny moment, żeby zacząć wreszcie żyć.<br><br>Komediowy małżeński rollercoaster wyreżyserowany przez … małżeństwo.<br><br>Błyskotliwa komedia dla poszukujących...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73923, 'Name': 'Resident Evil', 'Date': '01.10.2026', 'Hour': '13:50', 'PosterId': '0', 'Description': 'Zach Cregger („Zniknięcia”) prezentuje ekscytującą i przerażającą – nową wersję serii Resident Evil. To będzie zupełnie nowa historia. Poznamy Bryana (Austin Abrams),który nieświadomie wplątuje się w pełen akcji, nieustanny wyścig o przetrwanie.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73924, 'Name': 'Resident Evil', 'Date': '01.10.2026', 'Hour': '18:00', 'PosterId': '0', 'Description': 'Zach Cregger („Zniknięcia”) prezentuje ekscytującą i przerażającą – nową wersję serii Resident Evil. To będzie zupełnie nowa historia. Poznamy Bryana (Austin Abrams),który nieświadomie wplątuje się w pełen akcji, nieustanny wyścig o przetrwanie.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73925, 'Name': 'Resident Evil', 'Date': '01.10.2026', 'Hour': '20:00', 'PosterId': '0', 'Description': 'Zach Cregger („Zniknięcia”) prezentuje ekscytującą i przerażającą – nową wersję serii Resident Evil. To będzie zupełnie nowa historia. Poznamy Bryana (Austin Abrams),który nieświadomie wplątuje się w pełen akcji, nieustanny wyścig o przetrwanie.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73929, 'Name': 'Resident Evil', 'Date': '01.10.2026', 'Hour': '19:30', 'PosterId': '0', 'Description': 'Zach Cregger („Zniknięcia”) prezentuje ekscytującą i przerażającą – nową wersję serii Resident Evil. To będzie zupełnie nowa historia. Poznamy Bryana (Austin Abrams),który nieświadomie wplątuje się w pełen akcji, nieustanny wyścig o przetrwanie.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73913, 'Name': 'Tedi i magiczna lampa 2D dubbing', 'Date': '01.10.2026', 'Hour': '10:40', 'PosterId': '0', 'Description': 'Oli, nieustraszona dwuletnia córka Tadeo, sprawiła, że stał się on nadopiekuńczym ojcem, a urocza Mumia czuje się odsunięta na bok. Kiedy w Pałacu Buckingham znajdują...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73914, 'Name': 'Tedi i magiczna lampa 2D dubbing', 'Date': '01.10.2026', 'Hour': '12:45', 'PosterId': '0', 'Description': 'Oli, nieustraszona dwuletnia córka Tadeo, sprawiła, że stał się on nadopiekuńczym ojcem, a urocza Mumia czuje się odsunięta na bok. Kiedy w Pałacu Buckingham znajdują...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73915, 'Name': 'Tedi i magiczna lampa 2D dubbing', 'Date': '01.10.2026', 'Hour': '14:50', 'PosterId': '0', 'Description': 'Oli, nieustraszona dwuletnia córka Tadeo, sprawiła, że stał się on nadopiekuńczym ojcem, a urocza Mumia czuje się odsunięta na bok. Kiedy w Pałacu Buckingham znajdują...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73916, 'Name': 'Tedi i magiczna lampa 2D dubbing', 'Date': '01.10.2026', 'Hour': '17:00', 'PosterId': '0', 'Description': 'Oli, nieustraszona dwuletnia córka Tadeo, sprawiła, że stał się on nadopiekuńczym ojcem, a urocza Mumia czuje się odsunięta na bok. Kiedy w Pałacu Buckingham znajdują...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73944, 'Name': 'Tedi i magiczna lampa 2D dubbing', 'Date': '01.10.2026', 'Hour': '09:00', 'PosterId': '0', 'Description': 'Oli, nieustraszona dwuletnia córka Tadeo, sprawiła, że stał się on nadopiekuńczym ojcem, a urocza Mumia czuje się odsunięta na bok. Kiedy w Pałacu Buckingham znajdują...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73917, 'Name': 'W sercu dziczy', 'Date': '01.10.2026', 'Hour': '15:20', 'PosterId': '0', 'Description': 'To historia byłego oficera sił specjalnych Jamesa Belmonta (Brad Pitt) i jego psa o imieniu Odin, którzy walczą o przetrwanie po katastrofie samolotu w samym sercu bezlitosnej dziczy na Alasce.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73918, 'Name': 'W sercu dziczy', 'Date': '01.10.2026', 'Hour': '17:30', 'PosterId': '0', 'Description': 'To historia byłego oficera sił specjalnych Jamesa Belmonta (Brad Pitt) i jego psa o imieniu Odin, którzy walczą o przetrwanie po katastrofie samolotu w samym sercu bezlitosnej dziczy na Alasce.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73919, 'Name': 'W sercu dziczy', 'Date': '01.10.2026', 'Hour': '19:45', 'PosterId': '0', 'Description': 'To historia byłego oficera sił specjalnych Jamesa Belmonta (Brad Pitt) i jego psa o imieniu Odin, którzy walczą o przetrwanie po katastrofie samolotu w samym sercu bezlitosnej dziczy na Alasce.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 73930, 'Name': 'W sercu dziczy', 'Date': '01.10.2026', 'Hour': '17:15', 'PosterId': '0', 'Description': 'To historia byłego oficera sił specjalnych Jamesa Belmonta (Brad Pitt) i jego psa o imieniu Odin, którzy walczą o przetrwanie po katastrofie samolotu w samym sercu bezlitosnej dziczy na Alasce.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false}];
+    </script>
+<script>
+    $(document).ready(function () {
+        $("#RepoModal").on('shown.bs.modal', function () {
+            $(this).find('#closeModalBtn').focus();
+        });
+    });
+</script>
+
+
+            <script type="text/javascript" src="/MSI/Themes/light/Scripts/repertoire_filters.js?v=072126103006"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/glide.min.js?v=072126103006"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/jquery.countdown.min.js?v=072126103006"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/moment-with-locales.min.js?v=072126103006"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/bootstrap.bundle.min.js?v=072126103006"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/tempusdominus-bootstrap-4.min.js?v=072126103006"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/repertoire.js?v=072126103006"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/passes.js?v=072126103006"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/svgicons.class.js?v=072126103006"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/global.js?v=072126103006"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/main.js?v=080426034958"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/jquery-cookie.min.js?v=072126103006"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/cookies.js?v=072126103006"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/calendar.min.js?v=072126103006"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/cms.js?v=072126103006"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/jquery.inputmask.bundle.min.js?v=072126103006"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/slick.min.js?v=072126103006"></script>
+
+
+
+    <script>
+        getCms(currentLanguage);
+        getFooterImages();
+        initSkipLinks();
+    </script>
+
+    <script type="text/javascript">
+        (function ($) {
+            $(window).on('load', function () {
+                $('#preloader').fadeOut('slow', function () { $(this).remove(); });
+            });
+            $("#scrollToVodButton").click(function () {
+                $([document.documentElement, document.body]).animate({
+                    scrollTop: $("#eventsVod").offset().top
+                }, 2000);
+            });
+        })(jQuery);
+    </script>
+
+    <script type="text/javascript">
+        (function ($) {
+            var lng = "pl";
+            var theMonths;
+            var theDays;
+
+            theMonths = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
+
+            theDays = ["P", "W", "Ś", "C", "P", "S", "N"];
+
+            Global.init({
+                months: theMonths,
+                days: theDays,
+                allDatesUrl: window.location.protocol + "//" + window.location.host + "/MSI/mvc/pl/AllDates?sort=Name",
+                currentLocale: 'pl'
+            });
+
+            Filter.init({
+                currentLocale: 'pl',
+                getShortEventsWithFiltersUrl: window.location.protocol + "//" + window.location.host + "/MSI/mvc/pl/Repertoire/GetShortEventsWithFilters"
+            });
+        })(jQuery);
+    </script>
+
+    <script type="text/javascript">
+        $(window).on('load', function () {
+            $(".se-pre-con").fadeOut("slow");
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,2345 @@
+<!DOCTYPE html>
+<html lang="pl" dir="ltr">
+    <head>
+        <meta charset="utf-8">
+        <!-- Meta Title -->
+        <title>Kino Światowid Elbląg</title>
+        
+        <!-- Meta Description -->
+        <meta name="description" content="Kino Światowid Elbląg">
+        
+        <!-- viewport -->
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <!-- Font Awesome -->
+        
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css" integrity="sha512-xh6O/CkQoPOWDdYTDqeRdPCVd1SpvCA9XXcUnZS2FmJNp1coAFzvtCN9BmamE+4aHK8yyUHUSCcJHgXloTyT2A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+        <!-- CSS -->
+        <link rel="stylesheet" href="/css/app.min.css?1790170520">
+        <!-- Favicon -->
+        <!-- Flatpickr -->
+        <link rel="stylesheet" href="/js/flatpickr/flatpickr.min.css">
+        <!-- Google tag (gtag.js) -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-BQ31VTSGT7"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', 'G-BQ31VTSGT7');
+        </script>
+    </head>
+    <body>
+        <!-- Mobile Navigation -->
+        <div class="mobile-navigation">
+    
+
+    
+
+    <nav class="mobile-navigation__menu" id="mobile-navigation-menu">
+
+        <button class="" type="button" name="button" id="mobile-navigation-close-button">
+            <i class="fas fa-times"></i>
+            
+        </button>
+
+        
+        <ul><li><span>O kinie</span><ul><li><a href="http://kino.swiatowid.elblag.pl/9-historia">Historia</a></li><li><a href="http://kino.swiatowid.elblag.pl/10-sale">Sale</a></li><li><a href="http://kino.swiatowid.elblag.pl/11-wynajem-sal">Wynajem sal</a></li></ul></li><li><a href="http://kino.swiatowid.elblag.pl/2-repertuar">Repertuar</a></li><li><a href="http://kino.swiatowid.elblag.pl/3-zapowiedzi">Zapowiedzi</a></li><li><a href="http://kino.swiatowid.elblag.pl/4-cykle">Cykle</a><ul><li><a href="http://kino.swiatowid.elblag.pl/cykle/kategoria/7,the-met-opera">The Met Opera</a></li><li><a href="http://kino.swiatowid.elblag.pl/cykle/kategoria/9,wtorkowe-kino-dla-doroslych">Wtorkowe kino dla dorosłych</a></li><li><a href="http://kino.swiatowid.elblag.pl/cykle/kategoria/12,wystawy-na-ekranie">Wystawy na ekranie</a></li><li><a href="http://kino.swiatowid.elblag.pl/cykle/kategoria/13,elblag-na-duzym-ekranie">Elbląg na dużym ekranie</a></li><li><a href="http://kino.swiatowid.elblag.pl/cykle/kategoria/14,dkf">DKF</a></li><li><a href="http://kino.swiatowid.elblag.pl/cykle/kategoria/53,filmonas">#filmONAs</a></li><li><a href="http://kino.swiatowid.elblag.pl/cykle/kategoria/54,akademia-kina-wewnetrznego">Akademia Kina Wewnętrznego</a></li></ul></li><li><a href="http://kino.swiatowid.elblag.pl/5-wydarzenia">Wydarzenia</a></li><li><a href="http://kino.swiatowid.elblag.pl/6-edukacja">Edukacja</a><ul><li><a href="http://kino.swiatowid.elblag.pl/edukacja/kategoria/8,edukacja-mlode-horyzonty">Edukacja Młode Horyzonty</a></li><li><a href="http://kino.swiatowid.elblag.pl/edukacja/kategoria/15,poznajemy-kino">Poznajemy kino</a></li><li><a href="http://kino.swiatowid.elblag.pl/edukacja/kategoria/16,warsztaty-animacji-poklatkowej">Warsztaty animacji poklatkowej</a></li><li><a href="http://kino.swiatowid.elblag.pl/edukacja/kategoria/17,cisza-kamera-akcja-mlodziezowy-kod-filmowy">Cisza, kamera, akcja - młodzieżowy kod filmowy</a></li></ul></li><li><a href="http://kino.swiatowid.elblag.pl/7-cennik">Cennik</a></li><li><a href="http://kino.swiatowid.elblag.pl/8-kontakt">Kontakt</a></li><li><a href="http://kino.swiatowid.elblag.pl/13-urodzinki-w-kinie">Urodzinki w kinie</a></li><li><span>Projekty</span><ul><li><a href="http://kino.swiatowid.elblag.pl/22-nowe-kino-cyfrowe-w-duzej-sali-kina-swiatowid">Nowe kino cyfrowe w dużej sali Kina Światowid</a></li><li><a href="http://kino.swiatowid.elblag.pl/26-nowy-cykl-akademia-kina-wewnetrznego-2026">Nowy cykl - Akademia Kina Wewnętrznego 2026</a></li><li><a href="http://kino.swiatowid.elblag.pl/27-renowacja-foteli-kinowych-na-duzej-sali-kina-swiatowid">Renowacja foteli kinowych na dużej sali Kina Światowid</a></li></ul></li><li><span>Festiwal Filmów Familijnych</span><ul><li><a href="http://kino.swiatowid.elblag.pl/18-o-festiwalu">O festiwalu</a></li><li><a href="http://kino.swiatowid.elblag.pl/19-proranki-sensoryczne">Proranki sensoryczne</a></li><li><a href="http://kino.swiatowid.elblag.pl/20-program-festiwalu">Program festiwalu</a></li><li><a href="http://kino.swiatowid.elblag.pl/21-konkurs-plastyczny">Konkurs plastyczny</a></li><li><a href="http://kino.swiatowid.elblag.pl/23-podsumowanie">Podsumowanie</a></li><li><a href="http://kino.swiatowid.elblag.pl/16-koncert-zimowy">Koncert zimowy</a></li><li><a href="http://kino.swiatowid.elblag.pl/17-nabor-do-jury-festiwalowego">Nabór do jury festiwalowego!</a></li></ul></li><li><a href="http://kino.swiatowid.elblag.pl/28-letnia-mala-akademia-filmowa-2026">Letnia Mała Akademia Filmowa 2026</a></li><li><a href="http://kino.swiatowid.elblag.pl/29-kino-dostepne-20">Kino Dostępne 2.0</a></li></ul>
+
+    </nav>
+</div>
+        <!-- Header -->
+        <header class="header  header--sticky " id="header">
+            <div class="header__wrapper header__wrapper--top">
+                <div class="header__container">
+                    <div class="header__row">
+                        <div class="header__contact">
+                            <ul class="header-contact">
+                                <li>
+                                    <div class="">
+                                        <i class="fa-solid fa-location-dot"></i>
+                                        <span>Plac Jagiellończyka 1, 82-300 Elbląg</span>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="">
+                                        <i class="fa-solid fa-phone"></i>
+                                        <span>+48 55 611 20 56</span>
+                                    </div>
+                                </li>
+                                                            </ul>
+                        </div>
+                        <div class="header__wcag">
+                            <div class="wcag-control">
+    <ul>
+        <li id="wcag-control-contrast">
+            
+            <i class="fa-solid fa-eye-low-vision"></i>
+        </li>
+        <li id="wcag-control-normal">
+            
+            <i class="fa-solid fa-eye"></i>
+        </li>
+        <li id="wcag-control-font-increase">
+            
+            <i class="fa-solid fa-font"></i>+
+        </li>
+        <li id="wcag-control-font-decrease">
+            
+            <i class="fa-solid fa-font"></i>-
+        </li>
+        
+        <li>
+            <a href="#">
+                
+                <i class="fa-solid fa-universal-access"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="header__wrapper header__wrapper--bottom">
+                <div class="header__container">
+                    <div class="header__row">
+
+                        <!-- logo -->
+                        <div class="header__logo">
+                            <a href="http://kino.swiatowid.elblag.pl">
+                                <img class="logo" src="/img/logo.png" alt="Logo strony">
+                            </a>
+                        </div>
+
+                        <div class="header__navigation">
+                            <!-- Header Contact -->
+                            
+                                
+                                
+                            
+                            <!-- Menu -->
+                            <div class="header__menu">
+                                <nav class="menu">
+    
+    <ul><li><span>O kinie</span><ul><li><a href="http://kino.swiatowid.elblag.pl/9-historia">Historia</a></li><li><a href="http://kino.swiatowid.elblag.pl/10-sale">Sale</a></li><li><a href="http://kino.swiatowid.elblag.pl/11-wynajem-sal">Wynajem sal</a></li></ul></li><li><a href="http://kino.swiatowid.elblag.pl/2-repertuar">Repertuar</a></li><li><a href="http://kino.swiatowid.elblag.pl/3-zapowiedzi">Zapowiedzi</a></li><li><a href="http://kino.swiatowid.elblag.pl/4-cykle">Cykle</a><ul><li><a href="http://kino.swiatowid.elblag.pl/cykle/kategoria/7,the-met-opera">The Met Opera</a></li><li><a href="http://kino.swiatowid.elblag.pl/cykle/kategoria/9,wtorkowe-kino-dla-doroslych">Wtorkowe kino dla dorosłych</a></li><li><a href="http://kino.swiatowid.elblag.pl/cykle/kategoria/12,wystawy-na-ekranie">Wystawy na ekranie</a></li><li><a href="http://kino.swiatowid.elblag.pl/cykle/kategoria/13,elblag-na-duzym-ekranie">Elbląg na dużym ekranie</a></li><li><a href="http://kino.swiatowid.elblag.pl/cykle/kategoria/14,dkf">DKF</a></li><li><a href="http://kino.swiatowid.elblag.pl/cykle/kategoria/53,filmonas">#filmONAs</a></li><li><a href="http://kino.swiatowid.elblag.pl/cykle/kategoria/54,akademia-kina-wewnetrznego">Akademia Kina Wewnętrznego</a></li></ul></li><li><a href="http://kino.swiatowid.elblag.pl/5-wydarzenia">Wydarzenia</a></li><li><a href="http://kino.swiatowid.elblag.pl/6-edukacja">Edukacja</a><ul><li><a href="http://kino.swiatowid.elblag.pl/edukacja/kategoria/8,edukacja-mlode-horyzonty">Edukacja Młode Horyzonty</a></li><li><a href="http://kino.swiatowid.elblag.pl/edukacja/kategoria/15,poznajemy-kino">Poznajemy kino</a></li><li><a href="http://kino.swiatowid.elblag.pl/edukacja/kategoria/16,warsztaty-animacji-poklatkowej">Warsztaty animacji poklatkowej</a></li><li><a href="http://kino.swiatowid.elblag.pl/edukacja/kategoria/17,cisza-kamera-akcja-mlodziezowy-kod-filmowy">Cisza, kamera, akcja - młodzieżowy kod filmowy</a></li></ul></li><li><a href="http://kino.swiatowid.elblag.pl/7-cennik">Cennik</a></li><li><a href="http://kino.swiatowid.elblag.pl/8-kontakt">Kontakt</a></li><li><a href="http://kino.swiatowid.elblag.pl/13-urodzinki-w-kinie">Urodzinki w kinie</a></li><li><span>Projekty</span><ul><li><a href="http://kino.swiatowid.elblag.pl/22-nowe-kino-cyfrowe-w-duzej-sali-kina-swiatowid">Nowe kino cyfrowe w dużej sali Kina Światowid</a></li><li><a href="http://kino.swiatowid.elblag.pl/26-nowy-cykl-akademia-kina-wewnetrznego-2026">Nowy cykl - Akademia Kina Wewnętrznego 2026</a></li><li><a href="http://kino.swiatowid.elblag.pl/27-renowacja-foteli-kinowych-na-duzej-sali-kina-swiatowid">Renowacja foteli kinowych na dużej sali Kina Światowid</a></li></ul></li><li><span>Festiwal Filmów Familijnych</span><ul><li><a href="http://kino.swiatowid.elblag.pl/18-o-festiwalu">O festiwalu</a></li><li><a href="http://kino.swiatowid.elblag.pl/19-proranki-sensoryczne">Proranki sensoryczne</a></li><li><a href="http://kino.swiatowid.elblag.pl/20-program-festiwalu">Program festiwalu</a></li><li><a href="http://kino.swiatowid.elblag.pl/21-konkurs-plastyczny">Konkurs plastyczny</a></li><li><a href="http://kino.swiatowid.elblag.pl/23-podsumowanie">Podsumowanie</a></li><li><a href="http://kino.swiatowid.elblag.pl/16-koncert-zimowy">Koncert zimowy</a></li><li><a href="http://kino.swiatowid.elblag.pl/17-nabor-do-jury-festiwalowego">Nabór do jury festiwalowego!</a></li></ul></li><li><a href="http://kino.swiatowid.elblag.pl/28-letnia-mala-akademia-filmowa-2026">Letnia Mała Akademia Filmowa 2026</a></li><li><a href="http://kino.swiatowid.elblag.pl/29-kino-dostepne-20">Kino Dostępne 2.0</a></li></ul>
+</nav>
+                            </div>
+                            <!-- Social Media -->
+                                
+                                <!-- Languages -->
+                                
+                        </div>
+                    </div>
+
+                    <div class="header__search">
+                        <form method="GET" action="http://kino.swiatowid.elblag.pl/szukaj" accept-charset="UTF-8">
+<section class="search-form">
+    
+    <div class="search-form__input" id="search-form">
+        
+        <input placeholder="Znajdź na stronie / wpisz szukaną frazę" name="query" type="text">
+    </div>
+    <div class="search-form__button">
+        <button type="submit" name="button" style="background: none; border: none;">
+            <i class="fa-solid fa-magnifying-glass"></i>
+
+        </button>
+    </div>
+</section>
+</form>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="header__button">
+                <button class="" type="button" id="mobile-navigation-open-button">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+            </div>
+        </header>
+        <!-- Main Layout -->
+        <main class="main">
+
+            
+            
+            
+    <section class="page">
+
+        <div class="page__background">
+            <img src="/storage/pages/1704895918_659ea5ae54706.png" alt="Grafika strony Repertuar">
+        </div>
+
+        
+        
+
+        
+            
+                
+        
+        <div class="page__container">
+
+            <div class="page__title">
+                
+                
+                <h2 class="section-title">Repertuar</h2>
+            </div>
+
+            <div class="page__breadcrumbs">
+                
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            
+                                    <li class="breadcrumb-item"><a href="http://kino.swiatowid.elblag.pl">Główna</a></li>
+                
+            
+                                    <li class="breadcrumb-item active" aria-current="page">Repertuar</li>
+                
+                    </ol>
+    </nav>
+
+
+            </div>
+
+            <div class="page__content">
+                
+    
+
+    <div class="homepage-movies__container">
+        <ul class="homepage-movies__days" id="days-slider">
+    
+
+    
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-09-23">
+                <div class="">
+                    <span>środa</span>
+                    <span>23.09</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-09-24">
+                <div class="">
+                    <span>czwartek</span>
+                    <span>24.09</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-09-25">
+                <div class="--active">
+                    <span>piątek</span>
+                    <span>25.09</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-09-26">
+                <div class="">
+                    <span>sobota</span>
+                    <span>26.09</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-09-27">
+                <div class="">
+                    <span>niedziela</span>
+                    <span>27.09</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-09-28">
+                <div class="">
+                    <span>poniedziałek</span>
+                    <span>28.09</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-09-29">
+                <div class="">
+                    <span>wtorek</span>
+                    <span>29.09</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-09-30">
+                <div class="">
+                    <span>środa</span>
+                    <span>30.09</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-01">
+                <div class="">
+                    <span>czwartek</span>
+                    <span>1.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-02">
+                <div class="">
+                    <span>piątek</span>
+                    <span>2.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-03">
+                <div class="">
+                    <span>sobota</span>
+                    <span>3.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-04">
+                <div class="">
+                    <span>niedziela</span>
+                    <span>4.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-05">
+                <div class="">
+                    <span>poniedziałek</span>
+                    <span>5.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-06">
+                <div class="">
+                    <span>wtorek</span>
+                    <span>6.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-07">
+                <div class="">
+                    <span>środa</span>
+                    <span>7.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-08">
+                <div class="">
+                    <span>czwartek</span>
+                    <span>8.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-09">
+                <div class="">
+                    <span>piątek</span>
+                    <span>9.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-10">
+                <div class="">
+                    <span>sobota</span>
+                    <span>10.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-11">
+                <div class="">
+                    <span>niedziela</span>
+                    <span>11.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-12">
+                <div class="">
+                    <span>poniedziałek</span>
+                    <span>12.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-13">
+                <div class="">
+                    <span>wtorek</span>
+                    <span>13.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-14">
+                <div class="">
+                    <span>środa</span>
+                    <span>14.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-15">
+                <div class="">
+                    <span>czwartek</span>
+                    <span>15.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-16">
+                <div class="">
+                    <span>piątek</span>
+                    <span>16.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-17">
+                <div class="">
+                    <span>sobota</span>
+                    <span>17.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-18">
+                <div class="">
+                    <span>niedziela</span>
+                    <span>18.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-19">
+                <div class="">
+                    <span>poniedziałek</span>
+                    <span>19.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-20">
+                <div class="">
+                    <span>wtorek</span>
+                    <span>20.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-21">
+                <div class="">
+                    <span>środa</span>
+                    <span>21.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-22">
+                <div class="">
+                    <span>czwartek</span>
+                    <span>22.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-23">
+                <div class="">
+                    <span>piątek</span>
+                    <span>23.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-24">
+                <div class="">
+                    <span>sobota</span>
+                    <span>24.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-25">
+                <div class="">
+                    <span>niedziela</span>
+                    <span>25.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-26">
+                <div class="">
+                    <span>poniedziałek</span>
+                    <span>26.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-27">
+                <div class="">
+                    <span>wtorek</span>
+                    <span>27.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-28">
+                <div class="">
+                    <span>środa</span>
+                    <span>28.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-29">
+                <div class="">
+                    <span>czwartek</span>
+                    <span>29.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-30">
+                <div class="">
+                    <span>piątek</span>
+                    <span>30.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-10-31">
+                <div class="">
+                    <span>sobota</span>
+                    <span>31.10</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-01">
+                <div class="">
+                    <span>niedziela</span>
+                    <span>1.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-02">
+                <div class="">
+                    <span>poniedziałek</span>
+                    <span>2.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-03">
+                <div class="">
+                    <span>wtorek</span>
+                    <span>3.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-04">
+                <div class="">
+                    <span>środa</span>
+                    <span>4.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-05">
+                <div class="">
+                    <span>czwartek</span>
+                    <span>5.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-06">
+                <div class="">
+                    <span>piątek</span>
+                    <span>6.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-07">
+                <div class="">
+                    <span>sobota</span>
+                    <span>7.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-08">
+                <div class="">
+                    <span>niedziela</span>
+                    <span>8.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-09">
+                <div class="">
+                    <span>poniedziałek</span>
+                    <span>9.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-10">
+                <div class="">
+                    <span>wtorek</span>
+                    <span>10.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-11">
+                <div class="">
+                    <span>środa</span>
+                    <span>11.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-12">
+                <div class="">
+                    <span>czwartek</span>
+                    <span>12.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-13">
+                <div class="">
+                    <span>piątek</span>
+                    <span>13.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-14">
+                <div class="">
+                    <span>sobota</span>
+                    <span>14.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-15">
+                <div class="">
+                    <span>niedziela</span>
+                    <span>15.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-16">
+                <div class="">
+                    <span>poniedziałek</span>
+                    <span>16.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-17">
+                <div class="">
+                    <span>wtorek</span>
+                    <span>17.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-18">
+                <div class="">
+                    <span>środa</span>
+                    <span>18.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-19">
+                <div class="">
+                    <span>czwartek</span>
+                    <span>19.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-20">
+                <div class="">
+                    <span>piątek</span>
+                    <span>20.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-21">
+                <div class="">
+                    <span>sobota</span>
+                    <span>21.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-22">
+                <div class="">
+                    <span>niedziela</span>
+                    <span>22.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-23">
+                <div class="">
+                    <span>poniedziałek</span>
+                    <span>23.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-24">
+                <div class="">
+                    <span>wtorek</span>
+                    <span>24.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-25">
+                <div class="">
+                    <span>środa</span>
+                    <span>25.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-26">
+                <div class="">
+                    <span>czwartek</span>
+                    <span>26.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-27">
+                <div class="">
+                    <span>piątek</span>
+                    <span>27.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-28">
+                <div class="">
+                    <span>sobota</span>
+                    <span>28.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-29">
+                <div class="">
+                    <span>niedziela</span>
+                    <span>29.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-11-30">
+                <div class="">
+                    <span>poniedziałek</span>
+                    <span>30.11</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-01">
+                <div class="">
+                    <span>wtorek</span>
+                    <span>1.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-02">
+                <div class="">
+                    <span>środa</span>
+                    <span>2.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-03">
+                <div class="">
+                    <span>czwartek</span>
+                    <span>3.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-04">
+                <div class="">
+                    <span>piątek</span>
+                    <span>4.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-05">
+                <div class="">
+                    <span>sobota</span>
+                    <span>5.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-06">
+                <div class="">
+                    <span>niedziela</span>
+                    <span>6.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-07">
+                <div class="">
+                    <span>poniedziałek</span>
+                    <span>7.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-08">
+                <div class="">
+                    <span>wtorek</span>
+                    <span>8.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-09">
+                <div class="">
+                    <span>środa</span>
+                    <span>9.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-10">
+                <div class="">
+                    <span>czwartek</span>
+                    <span>10.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-11">
+                <div class="">
+                    <span>piątek</span>
+                    <span>11.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-12">
+                <div class="">
+                    <span>sobota</span>
+                    <span>12.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-13">
+                <div class="">
+                    <span>niedziela</span>
+                    <span>13.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-14">
+                <div class="">
+                    <span>poniedziałek</span>
+                    <span>14.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-15">
+                <div class="">
+                    <span>wtorek</span>
+                    <span>15.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-16">
+                <div class="">
+                    <span>środa</span>
+                    <span>16.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-17">
+                <div class="">
+                    <span>czwartek</span>
+                    <span>17.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-18">
+                <div class="">
+                    <span>piątek</span>
+                    <span>18.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-19">
+                <div class="">
+                    <span>sobota</span>
+                    <span>19.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-20">
+                <div class="">
+                    <span>niedziela</span>
+                    <span>20.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-21">
+                <div class="">
+                    <span>poniedziałek</span>
+                    <span>21.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-22">
+                <div class="">
+                    <span>wtorek</span>
+                    <span>22.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-23">
+                <div class="">
+                    <span>środa</span>
+                    <span>23.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-24">
+                <div class="">
+                    <span>czwartek</span>
+                    <span>24.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-25">
+                <div class="">
+                    <span>piątek</span>
+                    <span>25.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-26">
+                <div class="">
+                    <span>sobota</span>
+                    <span>26.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-27">
+                <div class="">
+                    <span>niedziela</span>
+                    <span>27.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-28">
+                <div class="">
+                    <span>poniedziałek</span>
+                    <span>28.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-29">
+                <div class="">
+                    <span>wtorek</span>
+                    <span>29.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-30">
+                <div class="">
+                    <span>środa</span>
+                    <span>30.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2026-12-31">
+                <div class="">
+                    <span>czwartek</span>
+                    <span>31.12</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-01">
+                <div class="">
+                    <span>piątek</span>
+                    <span>1.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-02">
+                <div class="">
+                    <span>sobota</span>
+                    <span>2.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-03">
+                <div class="">
+                    <span>niedziela</span>
+                    <span>3.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-04">
+                <div class="">
+                    <span>poniedziałek</span>
+                    <span>4.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-05">
+                <div class="">
+                    <span>wtorek</span>
+                    <span>5.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-06">
+                <div class="">
+                    <span>środa</span>
+                    <span>6.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-07">
+                <div class="">
+                    <span>czwartek</span>
+                    <span>7.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-08">
+                <div class="">
+                    <span>piątek</span>
+                    <span>8.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-09">
+                <div class="">
+                    <span>sobota</span>
+                    <span>9.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-10">
+                <div class="">
+                    <span>niedziela</span>
+                    <span>10.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-11">
+                <div class="">
+                    <span>poniedziałek</span>
+                    <span>11.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-12">
+                <div class="">
+                    <span>wtorek</span>
+                    <span>12.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-13">
+                <div class="">
+                    <span>środa</span>
+                    <span>13.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-14">
+                <div class="">
+                    <span>czwartek</span>
+                    <span>14.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-15">
+                <div class="">
+                    <span>piątek</span>
+                    <span>15.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-16">
+                <div class="">
+                    <span>sobota</span>
+                    <span>16.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-17">
+                <div class="">
+                    <span>niedziela</span>
+                    <span>17.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-18">
+                <div class="">
+                    <span>poniedziałek</span>
+                    <span>18.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-19">
+                <div class="">
+                    <span>wtorek</span>
+                    <span>19.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-20">
+                <div class="">
+                    <span>środa</span>
+                    <span>20.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-21">
+                <div class="">
+                    <span>czwartek</span>
+                    <span>21.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-22">
+                <div class="">
+                    <span>piątek</span>
+                    <span>22.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-23">
+                <div class="">
+                    <span>sobota</span>
+                    <span>23.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-24">
+                <div class="">
+                    <span>niedziela</span>
+                    <span>24.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-25">
+                <div class="">
+                    <span>poniedziałek</span>
+                    <span>25.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-26">
+                <div class="">
+                    <span>wtorek</span>
+                    <span>26.01</span>
+                </div>
+            </a>
+        </li>
+            <li>
+            <a href="http://kino.swiatowid.elblag.pl/repertuar?dzien=2027-01-27">
+                <div class="">
+                    <span>środa</span>
+                    <span>27.01</span>
+                </div>
+            </a>
+        </li>
+    </ul>
+    </div>
+
+    <ul class="homepage-movies__list">
+                    <li>
+                <div class="homepage-movies__container">
+                    <div class="movie-card">
+    <div class="movie-card__thumbnail">
+        <a href="http://kino.swiatowid.elblag.pl/repertuar/888,obcy">
+            <img src="/storage/movies/1789467760_6aa91c7089b47.jpg" alt="">
+        </a>
+    </div>
+    <div class="movie-card__body">
+        <a href="http://kino.swiatowid.elblag.pl/repertuar/888,obcy">
+            <h3 class="movie-card__title">Obcy</h3>
+        </a>
+        <p class="movie-card__description">
+                            dramat
+                                    ,
+                                            kryminał
+                                        
+             - 122 min - 15+</p>
+        <p class="movie-card__description">napisy</p>
+        
+        <article class="movie-card__lead">
+            „Obcy” jest historią Meursaulta, młodego mężczyzny, skromnego urzędnika, którego codziennej rutyny nie przerywa nawet śmierć matki. Wszystko zmienia się pewnego gorącego dnia, gdy na plaży dochodzi do tragicznego zdarzenia z jego udziałem. 
+ 
+Reżyser: François Ozon
+Produkcja: Francja 2025 
+Obsad...
+            
+        </article>
+        <ul class="movie-card__showtimes">
+                            <li>
+                    <div class="">
+                        <a href="https://bilet.swiatowid.elblag.pl/index.php/kup-bilet/obcy-2026-09-25-20-00" style="color: white;">
+                            20:00
+                        </a>
+                    </div>
+                </li>
+                    </ul>
+        <div class="movie-card__buttons">
+            <a class="movie-card__button" href="http://kino.swiatowid.elblag.pl/repertuar/888,obcy?dzien=2026-09-25">Więcej informacji</a>
+            <a class="movie-card__button" href="https://bilet.swiatowid.elblag.pl">Kup bilet</a>
+        </div>
+        
+    </div>
+</div>
+                </div>
+            </li>
+                    <li>
+                <div class="homepage-movies__container">
+                    <div class="movie-card">
+    <div class="movie-card__thumbnail">
+        <a href="http://kino.swiatowid.elblag.pl/repertuar/886,tony-ad">
+            <img src="/storage/movies/1788869324_6a9ffaccbe30c.jpg" alt="">
+        </a>
+    </div>
+    <div class="movie-card__body">
+        <a href="http://kino.swiatowid.elblag.pl/repertuar/886,tony-ad">
+            <h3 class="movie-card__title">Tony (AD)</h3>
+        </a>
+        <p class="movie-card__description">
+                            dramat
+                                    ,
+                                            biograficzny
+                                    ,
+                                            komedia
+                                        
+             - 106 min - 15+</p>
+        <p class="movie-card__description">napisy</p>
+        
+        <article class="movie-card__lead">
+            Upalne lato 1976 roku, Provincetown – miasto pulsujące wolnością, seksem i energią. Młody, marzący o karierze pisarza, Tony, by podreperować budżet, trafia na zmywak do restauracji serwującej owoce morza, prowadzonej przez tajemniczego szefa kuchni. W intensywnej, chaotycznej, a jednocześnie niezwyk...
+            
+        </article>
+        <ul class="movie-card__showtimes">
+                            <li>
+                    <div class="">
+                        <a href="https://bilet.swiatowid.elblag.pl/index.php/kup-bilet/tony-2026-09-19-13-15-2" style="color: white;">
+                            19:30
+                        </a>
+                    </div>
+                </li>
+                    </ul>
+        <div class="movie-card__buttons">
+            <a class="movie-card__button" href="http://kino.swiatowid.elblag.pl/repertuar/886,tony-ad?dzien=2026-09-25">Więcej informacji</a>
+            <a class="movie-card__button" href="https://bilet.swiatowid.elblag.pl/">Kup bilet</a>
+        </div>
+        
+    </div>
+</div>
+                </div>
+            </li>
+                    <li>
+                <div class="homepage-movies__container">
+                    <div class="movie-card">
+    <div class="movie-card__thumbnail">
+        <a href="http://kino.swiatowid.elblag.pl/repertuar/882,nasza-rewolucja-ad">
+            <img src="/storage/movies/1788268239_6a96cecfac808.png" alt="">
+        </a>
+    </div>
+    <div class="movie-card__body">
+        <a href="http://kino.swiatowid.elblag.pl/repertuar/882,nasza-rewolucja-ad">
+            <h3 class="movie-card__title">Nasza rewolucja (AD)</h3>
+        </a>
+        <p class="movie-card__description">
+                            dramat
+                                    ,
+                                            biograficzny
+                                        
+             - 125 min - 15+</p>
+        <p class="movie-card__description"></p>
+        
+        <article class="movie-card__lead">
+            On – żywiołowy, głośny, charyzmatyczny. Ona – odważna, delikatna, pełna ciepła. Bezgranicznie w sobie zakochani i przekonani, że razem mogą zmieniać świat – Jacek i Grażyna Kuroniowie. Rezygnują z prywatności, by oddać życie walce o wolność. Ich mieszkanie staje się "kwaterą główną" opozycji; miejsc...
+            
+        </article>
+        <ul class="movie-card__showtimes">
+                            <li>
+                    <div class="">
+                        <a href="https://bilet.swiatowid.elblag.pl/index.php/kup-bilet/nasza-rewolucja-2026-09-25-18-00" style="color: white;">
+                            18:00
+                        </a>
+                    </div>
+                </li>
+                    </ul>
+        <div class="movie-card__buttons">
+            <a class="movie-card__button" href="http://kino.swiatowid.elblag.pl/repertuar/882,nasza-rewolucja-ad?dzien=2026-09-25">Więcej informacji</a>
+            <a class="movie-card__button" href="https://bilet.swiatowid.elblag.pl">Kup bilet</a>
+        </div>
+        
+    </div>
+</div>
+                </div>
+            </li>
+                    <li>
+                <div class="homepage-movies__container">
+                    <div class="movie-card">
+    <div class="movie-card__thumbnail">
+        <a href="http://kino.swiatowid.elblag.pl/repertuar/876,jak-bert-to-wszystko-ogarnie">
+            <img src="/storage/movies/1788170724_6a9551e4977c9.jpg" alt="">
+        </a>
+    </div>
+    <div class="movie-card__body">
+        <a href="http://kino.swiatowid.elblag.pl/repertuar/876,jak-bert-to-wszystko-ogarnie">
+            <h3 class="movie-card__title">Jak Bert to wszystko ogarnie?</h3>
+        </a>
+        <p class="movie-card__description">
+                            dramat
+                                    ,
+                                            komedia
+                                        
+             - 83 min - 13+</p>
+        <p class="movie-card__description">dubbing</p>
+        
+        <article class="movie-card__lead">
+            Bert jest nastolatkiem i wraz ze swym najlepszym przyjacielem Ake rozpoczyna staż w restauracji. To także czas jego pierwszego zakochania się w dziewczynie z tego samego stażu. Ale Ake jest zakochany w tej samej dziewczynie co Bert. Jak z tego wybrnąć żeby zachować dziewczynę i najlepszego przyjacie...
+            
+        </article>
+        <ul class="movie-card__showtimes">
+                            <li>
+                    <div class="">
+                        <a href="https://bilet.swiatowid.elblag.pl/index.php/kup-bilet/jak-bert-to-wszystko-ogarnie-2026-09-25-15-45" style="color: white;">
+                            15:45
+                        </a>
+                    </div>
+                </li>
+                    </ul>
+        <div class="movie-card__buttons">
+            <a class="movie-card__button" href="http://kino.swiatowid.elblag.pl/repertuar/876,jak-bert-to-wszystko-ogarnie?dzien=2026-09-25">Więcej informacji</a>
+            <a class="movie-card__button" href="https://bilet.swiatowid.elblag.pl/">Kup bilet</a>
+        </div>
+        
+    </div>
+</div>
+                </div>
+            </li>
+                    <li>
+                <div class="homepage-movies__container">
+                    <div class="movie-card">
+    <div class="movie-card__thumbnail">
+        <a href="http://kino.swiatowid.elblag.pl/repertuar/865,luna-i-rozgadana-swinka">
+            <img src="/storage/movies/1786528504_6a7c42f8c0374.jpg" alt="">
+        </a>
+    </div>
+    <div class="movie-card__body">
+        <a href="http://kino.swiatowid.elblag.pl/repertuar/865,luna-i-rozgadana-swinka">
+            <h3 class="movie-card__title">Luna i rozgadana świnka</h3>
+        </a>
+        <p class="movie-card__description">
+                            familijny
+                                    ,
+                                            akcja, przygoda
+                                    ,
+                                            animacja
+                                        
+             - 90 min - 5+</p>
+        <p class="movie-card__description">dubbing</p>
+        
+        <article class="movie-card__lead">
+            Dwunastoletnia Luna, fanka serii książek o super-bohaterach walczących o środowisko, otrzymuje magiczne pióro od tajemniczego autora książek. Ten zaczarowany przedmiot sprawia, że wszystko, co napisze, staje się rzeczywistością. Dziewczynka odkrywa, jak potężna jest jego moc i rusza w niebezpieczną...
+            
+        </article>
+        <ul class="movie-card__showtimes">
+                            <li>
+                    <div class="">
+                        <a href="https://bilet.swiatowid.elblag.pl/index.php/kup-bilet/luna-i-rozgadana-swinka-2026-09-25-16-15" style="color: white;">
+                            16:15
+                        </a>
+                    </div>
+                </li>
+                    </ul>
+        <div class="movie-card__buttons">
+            <a class="movie-card__button" href="http://kino.swiatowid.elblag.pl/repertuar/865,luna-i-rozgadana-swinka?dzien=2026-09-25">Więcej informacji</a>
+            <a class="movie-card__button" href="https://bilet.swiatowid.elblag.pl/">Kup bilet</a>
+        </div>
+        
+    </div>
+</div>
+                </div>
+            </li>
+                    <li>
+                <div class="homepage-movies__container">
+                    <div class="movie-card">
+    <div class="movie-card__thumbnail">
+        <a href="http://kino.swiatowid.elblag.pl/repertuar/864,tedi-i-magiczna-lampa">
+            <img src="/storage/movies/1786524353_6a7c32c1b6c95.jpg" alt="">
+        </a>
+    </div>
+    <div class="movie-card__body">
+        <a href="http://kino.swiatowid.elblag.pl/repertuar/864,tedi-i-magiczna-lampa">
+            <h3 class="movie-card__title">Tedi i magiczna lampa</h3>
+        </a>
+        <p class="movie-card__description">
+                            akcja, przygoda
+                                    ,
+                                            komedia
+                                    ,
+                                            animacja
+                                        
+             - 90 min - 5+</p>
+        <p class="movie-card__description">dubbing</p>
+        
+        <article class="movie-card__lead">
+            Oli, nieustraszona dwuletnia córka Tediego, sprawiła, że stał się on nadopiekuńczym ojcem, a urocza Mumia czuje się odsunięta na bok. Kiedy w Pałacu Buckingham znajdują magiczną lampę, Mumia prosi ją o przeniesienie w czasie do Paititi w Peru w 1502 roku. Tedi, Sara i cała ekipa będą musieli podążyć...
+            
+        </article>
+        <ul class="movie-card__showtimes">
+                            <li>
+                    <div class="">
+                        <a href="https://bilet.swiatowid.elblag.pl/index.php/kup-bilet/tedi-i-magiczna-lampa-2026-09-18-14-00-7-1" style="color: white;">
+                            14:00
+                        </a>
+                    </div>
+                </li>
+                            <li>
+                    <div class="">
+                        <a href="https://bilet.swiatowid.elblag.pl/index.php/kup-bilet/tedi-i-magiczna-lampa-2026-09-18-14-00-7-2" style="color: white;">
+                            16:00
+                        </a>
+                    </div>
+                </li>
+                            <li>
+                    <div class="">
+                        <a href="https://bilet.swiatowid.elblag.pl/index.php/kup-bilet/tedi-i-magiczna-lampa-2026-09-18-14-00-7-3" style="color: white;">
+                            18:00
+                        </a>
+                    </div>
+                </li>
+                    </ul>
+        <div class="movie-card__buttons">
+            <a class="movie-card__button" href="http://kino.swiatowid.elblag.pl/repertuar/864,tedi-i-magiczna-lampa?dzien=2026-09-25">Więcej informacji</a>
+            <a class="movie-card__button" href="https://bilet.swiatowid.elblag.pl/">Kup bilet</a>
+        </div>
+        
+    </div>
+</div>
+                </div>
+            </li>
+                    <li>
+                <div class="homepage-movies__container">
+                    <div class="movie-card">
+    <div class="movie-card__thumbnail">
+        <a href="http://kino.swiatowid.elblag.pl/repertuar/851,folwark-zwierzecy">
+            <img src="/storage/movies/1785338856_6a6a1be8ad953.jpg" alt="">
+        </a>
+    </div>
+    <div class="movie-card__body">
+        <a href="http://kino.swiatowid.elblag.pl/repertuar/851,folwark-zwierzecy">
+            <h3 class="movie-card__title">Folwark zwierzęcy</h3>
+        </a>
+        <p class="movie-card__description">
+                            familijny
+                                    ,
+                                            akcja, przygoda
+                                    ,
+                                            animacja
+                                        
+             - 95 min - 6+</p>
+        <p class="movie-card__description">dubbing</p>
+        
+        <article class="movie-card__lead">
+            Gdy zwierzęta przejmują władzę nad farmą, wierzą, że wspólnie stworzą miejsce, w którym wszyscy będą równi i szczęśliwi. Z czasem jednak dobre intencje ustępują miejsca ambicji, a ci, którzy mieli służyć innym, zaczynają dbać przede wszystkim o własne interesy. Dawne zasady zostają zmienione, prawda...
+            
+        </article>
+        <ul class="movie-card__showtimes">
+                            <li>
+                    <div class="">
+                        <a href="https://bilet.swiatowid.elblag.pl/index.php/kup-bilet/folwark-zwierzecy-2026-09-18-15-45-3" style="color: white;">
+                            17:30
+                        </a>
+                    </div>
+                </li>
+                    </ul>
+        <div class="movie-card__buttons">
+            <a class="movie-card__button" href="http://kino.swiatowid.elblag.pl/repertuar/851,folwark-zwierzecy?dzien=2026-09-25">Więcej informacji</a>
+            <a class="movie-card__button" href="https://bilet.swiatowid.elblag.pl/">Kup bilet</a>
+        </div>
+        
+    </div>
+</div>
+                </div>
+            </li>
+                    <li>
+                <div class="homepage-movies__container">
+                    <div class="movie-card">
+    <div class="movie-card__thumbnail">
+        <a href="http://kino.swiatowid.elblag.pl/repertuar/848,powiedz-mi-co-czujesz-ad">
+            <img src="/storage/movies/1784542664_6a5df5c89000b.jpg" alt="">
+        </a>
+    </div>
+    <div class="movie-card__body">
+        <a href="http://kino.swiatowid.elblag.pl/repertuar/848,powiedz-mi-co-czujesz-ad">
+            <h3 class="movie-card__title">Powiedz mi, co czujesz (AD)</h3>
+        </a>
+        <p class="movie-card__description">
+                            dramat
+                                        
+             - 100 min - 16+</p>
+        <p class="movie-card__description"></p>
+        
+        <article class="movie-card__lead">
+            Bohaterowie mają po dwadzieścia lat. Ona tworzy nietypowy projekt SKUP ŁEZ, w którym płaci ludziom za ich… łzy. On - początkujący artysta - nie potrafi płakać. Ich uczucie rozwija się intensywnie i szybko, otwierając drogę do głębokiej przemiany, która okaże się jednym z najważniejszych doświadczeń...
+            
+        </article>
+        <ul class="movie-card__showtimes">
+                            <li>
+                    <div class="">
+                        <a href="https://bilet.swiatowid.elblag.pl/index.php/kup-bilet/powiedz-mi-co-czujesz-2026-09-18-20-00-3" style="color: white;">
+                            20:30
+                        </a>
+                    </div>
+                </li>
+                    </ul>
+        <div class="movie-card__buttons">
+            <a class="movie-card__button" href="http://kino.swiatowid.elblag.pl/repertuar/848,powiedz-mi-co-czujesz-ad?dzien=2026-09-25">Więcej informacji</a>
+            <a class="movie-card__button" href="https://bilet.swiatowid.elblag.pl/">Kup bilet</a>
+        </div>
+        
+    </div>
+</div>
+                </div>
+            </li>
+                    <li>
+                <div class="homepage-movies__container">
+                    <div class="movie-card">
+    <div class="movie-card__thumbnail">
+        <a href="http://kino.swiatowid.elblag.pl/repertuar/847,marsupilami">
+            <img src="/storage/movies/1784542051_6a5df3636fd3c.jpg" alt="">
+        </a>
+    </div>
+    <div class="movie-card__body">
+        <a href="http://kino.swiatowid.elblag.pl/repertuar/847,marsupilami">
+            <h3 class="movie-card__title">Marsupilami</h3>
+        </a>
+        <p class="movie-card__description">
+                            familijny
+                                    ,
+                                            akcja, przygoda
+                                        
+             - 99 min - 9+</p>
+        <p class="movie-card__description">dubbing</p>
+        
+        <article class="movie-card__lead">
+            Podczas rejsu all-inclusive David, Tess i ich synek odkrywają w swoim bagażu uroczego, żółtego stworka w czarne cętki, którego niewyobrażalnie długi ogon i nieposkromiony temperament w mgnieniu oka zamieniają rodzinne wakacje w totalny chaos – zwłaszcza gdy okazuje się, że nowego przyjaciela chłopca...
+            
+        </article>
+        <ul class="movie-card__showtimes">
+                            <li>
+                    <div class="">
+                        <a href="https://bilet.swiatowid.elblag.pl/index.php/kup-bilet/marsupilami-2026-09-25-13-45" style="color: white;">
+                            13:45
+                        </a>
+                    </div>
+                </li>
+                    </ul>
+        <div class="movie-card__buttons">
+            <a class="movie-card__button" href="http://kino.swiatowid.elblag.pl/repertuar/847,marsupilami?dzien=2026-09-25">Więcej informacji</a>
+            <a class="movie-card__button" href="https://bilet.swiatowid.elblag.pl/">Kup bilet</a>
+        </div>
+        
+    </div>
+</div>
+                </div>
+            </li>
+            </ul>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+            
+            <section class="homepage-announcements">
+                <div class="homepage-announcements__container">
+                    <h2 class="homepage-announcements__title">
+                        <strong>Wkrótce na naszych ekranach</strong>
+                    </h2>
+                </div>
+                <ul class="homepage-announcements__slider" id="homepage-announcements-slider">
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/880,exotic-ad">
+    <img class="announcement-card__image" src="/storage/movies/1788267595_6a96cc4bbc923.png" alt="">
+    <h3 class="announcement-card__title">Exotic (AD)</h3>
+    <article class="announcement-card__content">
+        Mila to dziewczyna, którą łatwo polubić. Ma 30 lat, trochę kompleksów, skłonność do analizowania wszystkiego i więcej czułości dla innych niż dla samej siebie. Kiedy przyjaciółka w ostatniej chwili odwołuje wspólny wyjazd, Mila mimo obaw jedzie sama na obóz pole dance.
+ 
+Reżyser: Sonja Orlewicz-Za...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 23.09</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/881,przez-sciane-ad">
+    <img class="announcement-card__image" src="/storage/movies/1788268071_6a96ce272a07d.png" alt="">
+    <h3 class="announcement-card__title">Przez ścianę (AD)</h3>
+    <article class="announcement-card__content">
+        W listopadzie 1947 roku Wiesława Pajdak zostaje aresztowana za działalność w podziemiu antykomunistycznym i trafia do więzienia na Rakowieckiej. Kilka dni później do celi obok trafia Jerzy Śmiechowski. Pewnej nocy rozpoczynają rozmowę przez ścianę za pomocą kodu Morse’a. Choć trudno w to uwierzyć, t...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 24.09</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/865,luna-i-rozgadana-swinka">
+    <img class="announcement-card__image" src="/storage/movies/1786528504_6a7c42f8c0374.jpg" alt="">
+    <h3 class="announcement-card__title">Luna i rozgadana świnka</h3>
+    <article class="announcement-card__content">
+        Dwunastoletnia Luna, fanka serii książek o super-bohaterach walczących o środowisko, otrzymuje magiczne pióro od tajemniczego autora książek. Ten zaczarowany przedmiot sprawia, że wszystko, co napisze, staje się rzeczywistością. Dziewczynka odkrywa, jak potężna jest jego moc i rusza w niebezpieczną...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 25.09</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/876,jak-bert-to-wszystko-ogarnie">
+    <img class="announcement-card__image" src="/storage/movies/1788170724_6a9551e4977c9.jpg" alt="">
+    <h3 class="announcement-card__title">Jak Bert to wszystko ogarnie?</h3>
+    <article class="announcement-card__content">
+        Bert jest nastolatkiem i wraz ze swym najlepszym przyjacielem Ake rozpoczyna staż w restauracji. To także czas jego pierwszego zakochania się w dziewczynie z tego samego stażu. Ale Ake jest zakochany w tej samej dziewczynie co Bert. Jak z tego wybrnąć żeby zachować dziewczynę i najlepszego przyjacie...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 25.09</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/882,nasza-rewolucja-ad">
+    <img class="announcement-card__image" src="/storage/movies/1788268239_6a96cecfac808.png" alt="">
+    <h3 class="announcement-card__title">Nasza rewolucja (AD)</h3>
+    <article class="announcement-card__content">
+        On – żywiołowy, głośny, charyzmatyczny. Ona – odważna, delikatna, pełna ciepła. Bezgranicznie w sobie zakochani i przekonani, że razem mogą zmieniać świat – Jacek i Grażyna Kuroniowie. Rezygnują z prywatności, by oddać życie walce o wolność. Ich mieszkanie staje się &quot;kwaterą główną&quot; opozycji; miejsc...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 25.09</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/883,violetta-villas-ad">
+    <img class="announcement-card__image" src="/storage/movies/1788268650_6a96d06a1f922.png" alt="">
+    <h3 class="announcement-card__title">Violetta Villas (AD)</h3>
+    <article class="announcement-card__content">
+        Historia najsłynniejszej w historii polskiej divy muzycznej, którą talent i pasja wyniosły na największe sceny Paryża i Las Vegas, opowiedziana z perspektywy jej syna – mimowolnego świadka narodzin i upadku gwiazdy. Walcząc o miłość matki, przegrywa z jej uzależnieniem od wolności, kariery i leków....
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 26.09</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/790,andre-rieu-niech-zyje-maastricht">
+    <img class="announcement-card__image" src="/storage/movies/1779344947_6a0ea6337f921.jpg" alt="">
+    <h3 class="announcement-card__title">André Rieu. Niech żyje Maastricht!</h3>
+    <article class="announcement-card__content">
+        Zasiądź z bliskimi w kinie, bo czeka na Was 20. już retransmisja letniego koncertu André Rieu z Maastricht! Tak, tak... W lipcu 2026 roku Maestro i jego ukochana Orkiestra Johanna Straussa po raz kolejny wystąpią na Vrijthof, słynnym placu tego urokliwego średniowiecznego miasteczka. Król Walca i je...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 28.09</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/873,lalka">
+    <img class="announcement-card__image" src="/storage/movies/1787296564_6a87fb34ccf40.jpg" alt="">
+    <h3 class="announcement-card__title">Lalka</h3>
+    <article class="announcement-card__content">
+        Warszawa końca XIX wieku. Serce Stanisława Wokulskiego owładnięte jest szaloną miłością do Izabeli Łęckiej. On, dzięki fortunie zdobytej na wojnie, powraca do kraju i postanawia wkroczyć do świata wyższych sfer, aby zdobyć rękę ukochanej. Ona jest olśniewająca i wyniosła, lecz mimo arystokratycznego...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 30.09</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/871,zapomniana-wyspa">
+    <img class="announcement-card__image" src="/storage/movies/1787235134_6a870b3e64764.jpg" alt="">
+    <h3 class="announcement-card__title">Zapomniana wyspa</h3>
+    <article class="announcement-card__content">
+        Jo i Raissie to przyjaciółki od najmłodszych lat, które właśnie kończą szkołę średnią i stoją u progu zupełnie nowych etapów życia. Podczas wspólnego świętowania ostatniego wieczoru przed rozstaniem dziewczyny przypadkiem odkrywają tajemniczy portal, który przenosi je na magiczną wyspę Nakali. To ni...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 02.10</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/872,verity-coraz-wiekszy-mrok">
+    <img class="announcement-card__image" src="/storage/movies/1787236104_6a870f08e1d77.jpg" alt="">
+    <h3 class="announcement-card__title">Verity. Coraz większy mrok</h3>
+    <article class="announcement-card__content">
+        Historia opowiada o znanej pisarce Verity Crawford oraz Lowen Ashleigh. Lowen przenosi się do odległej posiadłości Crawfordów, aby pisać jako ghostwriterka dla Verity. Lowen natrafia wśród notatek na niepublikowany wcześniej rękopis. Tekst, który miał nigdy nie ujrzeć światła dziennego, okazuje się...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 02.10</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/867,the-metropolitan-opera-cosi-fan-tutte">
+    <img class="announcement-card__image" src="/storage/movies/1786538305_6a7c69418eaf2.jpg" alt="">
+    <h3 class="announcement-card__title">The Metropolitan Opera: Cosi Fan Tutte</h3>
+    <article class="announcement-card__content">
+        Autor: Wolfgang Amadeus Mozart
+ 
+Obsada:
+Federica Lombardi (Fiordiligi), Samantha Hankey (Dorabella), Ana María Martínez (Despina), Duke Kim (Ferrando), Andrey Zhilikhovsky (Guglielmo), Gerald Finley (Don Alfonso)
+Twórcy:
+Nimrod David Pfeffer (dyrygent), Phelim McDermott (reżyseria), Tom Pye (s...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 03.10</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/893,akw-blisko">
+    <img class="announcement-card__image" src="/storage/movies/1789719130_6aacf25a211e2.jpg" alt="">
+    <h3 class="announcement-card__title">AKW: Blisko</h3>
+    <article class="announcement-card__content">
+        13-letni Léo i Rémi są nierozłączni. Towarzyszą sobie zarówno w ważnych życiowych wydarzeniach, jak i na co dzień. Wydawać by się mogło, że ich przyjaźni nic nie jest w stanie zagrozić. Jednak zawiść innych, pojawiające się plotki i typowe dla wieku dojrzewania zagubienie w świecie sprawiają, że w p...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 03.10</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/861,vincent-legenda-oceanu">
+    <img class="announcement-card__image" src="/storage/movies/1786515674_6a7c10da8af7e.jpg" alt="">
+    <h3 class="announcement-card__title">Vincent. Legenda oceanu</h3>
+    <article class="announcement-card__content">
+        Wielkie głębiny, jeszcze większe wyzwania i… humbak szukający własnego głosu! Nastoletni Vincent musi kontynuować misję swojego ojca, legendarnego Magicznego Wieloryba, którego śpiew chronił oceany. Niestety, zamiast tego niezwykłego daru ma jedynie wyjątkowy talent do… wpadania w tarapaty! Kiedy st...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 09.10</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/885,primetime">
+    <img class="announcement-card__image" src="/storage/movies/1788863148_6a9fe2ac2d327.jpg" alt="">
+    <h3 class="announcement-card__title">Primetime</h3>
+    <article class="announcement-card__content">
+        Chris Hansen, charyzmatyczny dziennikarz, wkracza do podziemnego świata przestępczego i pragnie zmienić oblicze telewizji. Z czasem jednak ulega własnej obsesji i w drodze na szczyt popularności zaczyna zatracać swój pierwotny cel.
+ 
+Reżyser: Lance Oppenheim
+Produkcja: USA 2026
+Obsada: Robert Pa...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 09.10</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/887,roza">
+    <img class="announcement-card__image" src="/storage/movies/1788870628_6a9fffe4ee4db.jpg" alt="">
+    <h3 class="announcement-card__title">Róża</h3>
+    <article class="announcement-card__content">
+        Do położonej na uboczu wsi przybywa naznaczony wojną żołnierz, który podaje się za spadkobiercę porzuconego gospodarstwa. Obcy budzi początkowo nieufność, ale szybko przekonuje do siebie wieśniaków dzięki przywiezionym dokumentom, niepospolitej pracowitości i gotowości, by podporządkować się surowym...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 09.10</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/895,wajda-re-wizje-bez-znieczulenia">
+    <img class="announcement-card__image" src="/storage/movies/1789737069_6aad386d06a1e.png" alt="">
+    <h3 class="announcement-card__title">WAJDA: re-wizje: Bez znieczulenia</h3>
+    <article class="announcement-card__content">
+        Apendyks do Polskiej Szkoły Filmowej. Nakręcony po latach powrót Andrzeja Wajdy do tematyki II wojny światowej, opisujący tym razem trudną do wyleczenia traumę po niedawnej tragedii. W wyzwolonym przez armię amerykańską obozie koncentracyjnym poznajemy grupkę Polaków, próbujących po wielu latach nie...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 15.10</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/870,baranek-shaun-i-kudlata-bestia">
+    <img class="announcement-card__image" src="/storage/movies/1787233842_6a870632854b6.jpg" alt="">
+    <h3 class="announcement-card__title">Baranek Shaun i kudłata bestia</h3>
+    <article class="announcement-card__content">
+        W wieczór Halloween na farmie Mossy Bottom ekscytacja przeradza się w przerażenie, gdy niezdarny Farmer niszczy pole dyniowe. Shaun próbuje naprawić to za pomocą eksperymentów naukowych, ale sytuacja wymyka się spod kontroli, gdy w lesie pojawia się dzika bestia...
+ 
+Reżyser: Steve Cox, Matthew Wa...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 16.10</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/877,czas-ktory-nie-nadszedl-ad">
+    <img class="announcement-card__image" src="/storage/movies/1788172186_6a95579a912af.jpg" alt="">
+    <h3 class="announcement-card__title">Czas, który nie nadszedł (AD)</h3>
+    <article class="announcement-card__content">
+        W świecie, w którym starzenie się stało się największym tabu, Sara i Oskar planowali zestarzeć się razem. On jednak – jak większość – poddał się rewolucyjnej kuracji antygeriatrycznej, zapewniającej młodość i miejsce w nowym społeczeństwie. Ona odmówiła, skazując się na życie w zamkniętym ośrodku iz...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 16.10</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/884,rozwazna-i-romantyczna">
+    <img class="announcement-card__image" src="/storage/movies/1788861374_6a9fdbbe62819.jpg" alt="">
+    <h3 class="announcement-card__title">Rozważna i romantyczna</h3>
+    <article class="announcement-card__content">
+        Akcja, osadzona w Anglii epoki georgiańskiej, podąża za losami zamożnego pana Dashwooda, który umiera, pozostawiając swoją drugą żonę oraz trzy córki w trudnej sytuacji finansowej. Kobiety przenoszą się do skromnej wiejskiej posiadłości, gdzie dwie starsze siostry rywalizują o względy różnych adorat...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 16.10</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/894,akw-powoli">
+    <img class="announcement-card__image" src="/storage/movies/1789719460_6aacf3a472401.png" alt="">
+    <h3 class="announcement-card__title">AKW: Powoli</h3>
+    <article class="announcement-card__content">
+        Elena jest tancerką, a Dovydas tłumaczem języka migowego. Oboje pracują ciałem, szukając najlepszego sposobu, by wyrazić – tańcem i ruchem dłoni – najsubtelniejsze sensy i najgłębsze emocje. Wydają się dla siebie stworzeni, ale Powoli zamiast happy endu wybiera status: „To skomplikowane”. Bo Elena u...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 17.10</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/862,jak-zyc-zeby-nie-zwariowac">
+    <img class="announcement-card__image" src="/storage/movies/1789736309_6aad35758be04.jpg" alt="">
+    <h3 class="announcement-card__title">Jak żyć, żeby nie zwariować</h3>
+    <article class="announcement-card__content">
+        Anka to ma fajne życie. Kochający mąż, udane dzieci, dobra praca i świetne mieszkanie w centrum. Co może pójść nie tak? Na przykład… wszystko. Mąż zdradza, praca odchodzi, dzieci mają humory, a mieszkaniem interesuje się komornik. Przed Anką zaskakująco prosty wybór: albo położy się i umrze z rozpac...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 23.10</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/866,supermocni">
+    <img class="announcement-card__image" src="/storage/movies/1786530878_6a7c4c3e6b8bf.jpg" alt="">
+    <h3 class="announcement-card__title">Supermocni</h3>
+    <article class="announcement-card__content">
+        Zośka jest trochę zwariowaną nastolatką, która najbardziej na świecie kocha swoje zwierzaki. Gdy pewnego dnia, w naukowym laboratorium jej mamy, dochodzi do małej demolki, a Zośka i zwierzaki stykają się z tajemniczą kosmiczną substancją, życie całej rodziny staje na głowie! Dziewczynka i jej pupile...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 23.10</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/890,vinski-i-skarb-wikingow">
+    <img class="announcement-card__image" src="/storage/movies/1789649392_6aabe1f0208ad.png" alt="">
+    <h3 class="announcement-card__title">Viński i skarb wikingów</h3>
+    <article class="announcement-card__content">
+        Gdy znika magiczny pył zapewniający Vinskiemu nadprzyrodzoną moc niewidzialności, miasteczko Hömpstad znowu staje w obliczu ogromnego zagrożenia. Nastoletni bohater będzie musiał odnaleźć złodzieja, aby odzyskać swoją moc.
+ 
+Reżyser: Juha Wuolijoki
+Produkcja: Finlandia 2026
+Obsada: Kuura Rossi,...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 23.10</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/892,everytime">
+    <img class="announcement-card__image" src="/storage/movies/1789715390_6aace3be01954.png" alt="">
+    <h3 class="announcement-card__title">Everytime</h3>
+    <article class="announcement-card__content">
+        Nastoletnia Jessie szykuje się do wakacyjnego wyjazdu z matką Ellą i młodszą siostrą. Tuż przed podróżą wymyka się na imprezę ze swoim chłopakiem Luxem. Noc kończy się tragedią. Rok później Ella i Melli kurczowo trzymają się codziennej rutyny. Jakoś sobie radzą, choć ból po stracie nie słabnie. Kied...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 23.10</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/896,w-tym-kraju-nie-ma-dobrych-mezczyzn">
+    <img class="announcement-card__image" src="/storage/movies/1789802097_6aae36710d0d2.jpg" alt="">
+    <h3 class="announcement-card__title">W tym kraju nie ma dobrych mężczyzn</h3>
+    <article class="announcement-card__content">
+        Kabul, tuż przed historycznym zwrotem akcji w 2021 roku. Naru (w tej roli sama reżyserka, Shahrbanoo Sadat) to 30-letnia, niezależna operatorka kamery w najważniejszej stacji telewizyjnej w mieście. Zmaga się z presją patriarchalnego społeczeństwa, uwięziona w nieszczęśliwym małżeństwie, z którego n...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 23.10</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/854,malujac-dusze-xx-wieku-pellizza-z-volpedo">
+    <img class="announcement-card__image" src="/storage/movies/1785923668_6a73085485bb1.jpg" alt="">
+    <h3 class="announcement-card__title">Malując duszę XX wieku: Pellizza z Volpedo</h3>
+    <article class="announcement-card__content">
+        Film opowiada historię burzliwego życia Giuseppe Pellizzy (1868–1907), wybitnego malarza dywizjonisty, autora słynnego obrazu „The Fourth Estate” („Czwarta władza”). Dzieło to, po raz pierwszy zaprezentowane publiczności podczas Quadriennale w Turynie w 1902 roku, dziś znajduje się w mediolańskiej G...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 28.10</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/891,sekretne-pietro">
+    <img class="announcement-card__image" src="/storage/movies/1789651071_6aabe87f1e8dd.png" alt="">
+    <h3 class="announcement-card__title">Sekretne piętro</h3>
+    <article class="announcement-card__content">
+        12-letni Karli szykuje się na najgorsze wakacje w swoim życiu. Trafia do starego, odciętego od internetu hotelu. Pewnego dnia wsiada do windy i dociera na piętro, które nie powinno istnieć... Przenosi się do 1938 roku. Poznaje tam żydowską dziewczynkę Hannę i jej przyjaciela Georga, z którymi wkrótc...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 30.10</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/897,kot-prot">
+    <img class="announcement-card__image" src="/storage/movies/1789996135_6ab12c67e3271.jpg" alt="">
+    <h3 class="announcement-card__title">Kot Prot</h3>
+    <article class="announcement-card__content">
+        Robiąc to, co robi najlepiej, Prot – któremu w oryginalnej wersji głosu użyczył Bill Hader – zaraża dzieci radością na swój prześmieszny, charakterystyczny i niespotykanie nonszalancki sposób. Zabiera też widzów w fantastyczną podróż po świecie, którego ci nigdy dotąd nie widzieli. W filmie nasz boh...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 06.11</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/889,strus-pedziwiatr-i-zemsta-kojota">
+    <img class="announcement-card__image" src="/storage/movies/1789646114_6aabd522bc0a6.jpg" alt="">
+    <h3 class="announcement-card__title">Struś Pędziwiatr i zemsta Kojota</h3>
+    <article class="announcement-card__content">
+        Wiluś Kojot od lat ściga Strusia Pędziwiatra. Takie hobby… na granicy obłędu. Zastawił na niego setki pułapek, przemierzył tysiące mil i wszystko na nic. I nagle olśnienie! Czy to przypadek, że w chwili każdej bolesnej porażki posługiwał się osławionymi produktami firmy Acme? Za stary z Wilusia kojo...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 11.11</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/855,lotto-i-berenson-splecione-losy-sladami-renesansowego-mistrza">
+    <img class="announcement-card__image" src="/storage/movies/1785923901_6a73093d653df.jpg" alt="">
+    <h3 class="announcement-card__title">Lotto i Berenson - splecione losy. Śladami renesansowego mistrza</h3>
+    <article class="announcement-card__content">
+         
+Lotto i Berenson – splecione losy. Śladami renesansowego mistrza to opowieść  o przenikających się losach Lorenza Lotta, zapomnianego szesnastowiecznego malarza, i Bernarda Berensona, krytyka sztuki, któremu zawdzięczamy odkrycie artysty na nowo. 
+Wyprodukowany przez 3D Produzioni i wyreżyserowa...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 25.11</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/856,cialo-i-braz-tajemnica-rzezb-z-riace">
+    <img class="announcement-card__image" src="/storage/movies/1785924082_6a7309f2be858.jpg" alt="">
+    <h3 class="announcement-card__title">Ciało i brąz. Tajemnica rzeźb z Riace</h3>
+    <article class="announcement-card__content">
+        Ciało i brąz. Tajemnica rzeźb z Riace to dokument, który opowiada o najlepiej na świecie zachowanych figurach z brązu: dwóch tajemniczych wojownikach, którzy spędziwszy dwa tysiące pięćset lat pod wodą, wyłonili się z morza w 1972 roku, u wybrzeży Riace.  Brązy z Riace są świadectwem przeszłości. Tw...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 23.12</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                            <li>
+                            <div class="announcement-card">
+    <a href="http://kino.swiatowid.elblag.pl/repertuar/857,caravaggio-w-rzymie-sztuka-i-jubileusz">
+    <img class="announcement-card__image" src="/storage/movies/1785924254_6a730a9e05d3a.jpg" alt="">
+    <h3 class="announcement-card__title">Caravaggio w Rzymie: Sztuka i Jubileusz</h3>
+    <article class="announcement-card__content">
+        Jak zauważa historyk sztuki Claudio Strinati: „Caravaggio malował uczucia, a Jubileusz był czasem uczuć, nie rozumu”. To właśnie w roku 1600, Roku Świętym, Michelangelo Merisi (1571–1610) ugruntował swoją pozycję jako artysta, prezentując dwa obrazy, które na zawsze zmieniły historię sztuki i jego ż...
+        
+        <b>więcej</b>
+    </article>
+    <div class="announcement-card__label">
+        <span>premiera  - 27.01</span>
+        
+    </div>
+    </a>
+</div>
+                        </li>
+                                    </ul>
+            </section>
+
+            
+            <section class="homepage-partners">
+                <div class="homepage-partners__container">
+                    
+                    <h2 class="section-title">Nasi <strong>partnerzy</strong></h2>
+                    <br><br>
+                    <ul class="homepage-partners__slider" id="partners-slider">
+                                                <li>
+                            <img src="/storage/partners/1702640466_657c3b52d57ac.jpg" alt="Polski Instytut Sztuki Filmowej">
+                        </li>
+                                            <li>
+                            <img src="/storage/partners/1702640475_657c3b5b8828c.jpg" alt="Stowarzyszenie kin studyjnych">
+                        </li>
+                                            <li>
+                            <img src="/storage/partners/1702640483_657c3b636f0ae.jpg" alt="Europa Cinemas">
+                        </li>
+                                            <li>
+                            <img src="/storage/partners/1702640491_657c3b6bb9609.jpg" alt="Kinads">
+                        </li>
+                                            <li>
+                            <img src="/storage/partners/1702640501_657c3b756234b.jpg" alt="CICAE">
+                        </li>
+                                            <li>
+                            <img src="/storage/partners/1745917752_6810973800d86.jpg" alt="Fundacja Kino Dostępne">
+                        </li>
+                                        </ul>
+                </div>
+            </section>
+
+            
+
+
+            
+
+            
+
+            
+            
+            
+
+            
+            
+            
+
+            
+
+            
+            
+
+            
+                    
+                
+
+        </main>
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer__wrapper">
+                <div class="footer__container">
+                    <div class="footer__row">
+                        
+                        
+                        
+                                                <div class="footer__logo">
+                            <div class="footer-logo">
+                                <img src="http://kino.swiatowid.elblag.pl/img/logo.png" alt="Logo w stopce strony">
+                            </div>
+                        </div>
+                        <div class="footer__content footer__content--2">
+                            <img src="/img/footer-logos.png" alt="">
+                            
+
+                        </div>
+                    </div>
+
+
+                    <div class="footer__row">
+                        <div class="footer__author">
+                            
+                            <p>Projekt i realizacja <b>Agencja Reklamowa <a href="https://aktywwwni.pl">aktywwwni.pl</b></a></p>
+                        </div>
+                    </div>
+
+
+
+                </div>
+            </div>
+            
+        </footer>
+
+        <!-- Orders Basket -->
+        
+
+        <!-- JQuery -->
+        <script src="https://code.jquery.com/jquery-3.5.1.js"
+            integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc="
+            crossorigin="anonymous"></script>
+        <!-- JQuery Migrate -->
+        <script src="https://code.jquery.com/jquery-migrate-3.3.1.js"
+            integrity="sha256-lGuUqJUPXJEMgQX/RRaM6mZkK6ono5i5bHuBME4qOCo="
+            crossorigin="anonymous"></script>
+        <!-- Slick -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.8.1/slick.css" integrity="sha512-wR4oNhLBHf7smjy0K4oqzdWumd+r5/+6QO/vDda76MW5iug4PT7v86FoEkySIJft3XA0Ae6axhIvHrqwm793Nw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.8.1/slick.min.js" integrity="sha512-XtmMtDEcNz2j7ekrtHvOVR4iwwaD6o/FUJe6+Zq+HgcCsk3kj4uSQQR8weQ2QVj1o0Pk6PwYLohm206ZzNfubg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+        <!-- Lightbox -->
+        <link rel="stylesheet" href="/js/lightbox/lightbox.min.css">
+        <script type="text/javascript" src="/js/lightbox/lightbox.min.js"></script>
+        <!-- WOW -->
+        <link rel="stylesheet" href="/js/wow/animate.min.css">
+        
+        <script src="/js/wow/wow.min.js"></script>
+        
+        <!-- Scripts -->
+        <script type="text/javascript" src="/js/app.js?1790170520"></script>
+        <!-- Flatpickr -->
+        <script src="/js/flatpickr/flatpickr.min.js"></script>
+        <script src="/js/flatpickr/pl.js"></script>
+        <script type="text/javascript">
+            $(".datepicker").flatpickr({
+                // altInput: true,
+                // altFormat: "F j, Y",
+                dateFormat: "Y-m-d",
+                locale: "pl",
+            });
+        </script>
+
+    </body>
+</html>

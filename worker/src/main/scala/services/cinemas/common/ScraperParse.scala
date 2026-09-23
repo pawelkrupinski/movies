@@ -152,6 +152,28 @@ private[cinemas] object ScraperParse {
   def upcomingMonthDate(dayMonth: MonthDay, today: LocalDate): Option[LocalDate] =
     upcomingDate(dayMonth, today, grace = Period.ofDays(today.getDayOfMonth - 1))
 
+  /** Every calendar day from `from` to `to` inclusive, at `time` — the
+    * "screens daily HH:MM from DD.MM.YYYY to DD.MM.YYYY" shape several small
+    * venues (Kino Narew, Kino Parczew) spell a multi-day run in, instead of
+    * listing each date separately. `to` before `from` yields empty rather
+    * than throwing, so a malformed pair drops the run instead of looping
+    * backwards. */
+  def dailyRange(from: LocalDate, to: LocalDate, time: LocalTime): Seq[LocalDateTime] =
+    if (to.isBefore(from)) Seq.empty
+    else Iterator.iterate(from)(_.plusDays(1)).takeWhile(!_.isAfter(to)).map(_.atTime(time)).toSeq
+
+  /** The `<br>`-separated lines of `el`'s text, trimmed and with blanks
+    * dropped — a small venue often packs a multi-line "Label: value" block
+    * or a run-per-line schedule into ONE `<br>`-joined paragraph, and jsoup's
+    * `.text()` alone fuses them with no separator. Inserts a sentinel text
+    * node after each `<br>` (on a clone, so the live DOM is untouched), then
+    * splits on it. */
+  def linesOf(el: Element): Seq[String] = {
+    val clone = el.clone()
+    clone.select("br").asScala.foreach(_.after("\u0001"))
+    clone.text().split('\u0001').iterator.map(_.trim).filter(_.nonEmpty).toSeq
+  }
+
   /** The URL inside a CSS `url(...)` value, unwrapping `'`, `"` or `&quot;`
     * quoting. `None` when `s` holds no `url(...)`. */
   def cssUrl(s: String): Option[String] =
