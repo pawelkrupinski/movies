@@ -12,15 +12,15 @@ import XCTest
 /// whole schedule.
 ///
 /// Driven warm (`KINOWO_UITEST_FIXTURE`) with a today+tomorrow fixture: every
-/// fixture film plays "Dziś" AND "Jutro", so tapping from the Dziś page and
-/// then seeing the "JUTRO" day block is the proof the prune was undone.
+/// fixture film plays today AND tomorrow, so tapping from the Dziś page and
+/// then seeing tomorrow's day block is the proof the prune was undone.
 final class DetailShowsAllDaysUITests: XCTestCase {
     var app: XCUIApplication!
 
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-UITests", "1"]
+        FixtureLaunch.pinCountryAndLanguage(app)
         app.launchEnvironment["KINOWO_UITEST_FIXTURE"] = "1"
         app.launchEnvironment["KINOWO_CLEAR_CITY"] = "1"
         app.launchEnvironment["KINOWO_FORCE_DETECTED_CITY"] = "warszawa"
@@ -52,13 +52,28 @@ final class DetailShowsAllDaysUITests: XCTestCase {
             .firstMatch
         XCTAssertTrue(detailTitle.waitForExistence(timeout: 10), "Detail screen never opened")
 
-        // The day blocks render their label uppercased (`day.label.uppercased()`).
+        // The day blocks render `DateLabel`'s long weekday + day + month,
+        // uppercased — "ŚRODA 23 WRZEŚNIA", not the server's "Dziś"/"Jutro".
         // The fixture film plays today AND tomorrow; the detail must show BOTH.
-        XCTAssertTrue(app.staticTexts["DZIŚ"].waitForExistence(timeout: 5),
+        XCTAssertTrue(dayBlock(offsetDays: 0).waitForExistence(timeout: 5),
                       "Detail is missing today's seanse block")
-        XCTAssertTrue(app.staticTexts["JUTRO"].waitForExistence(timeout: 5),
+        XCTAssertTrue(dayBlock(offsetDays: 1).waitForExistence(timeout: 5),
                       "Detail opened from the Dziś page shows only today — the full, "
                       + "all-days schedule was not resolved (the day-filter leaked into detail)")
+    }
+
+    /// The detail's day-block header for the fixture day `offsetDays` from now,
+    /// dated in Warsaw like the fixture itself (`DateFilter.iso`). Matched by
+    /// prefix so the " 2027"-style suffix `DateLabel` adds across a year end
+    /// doesn't matter.
+    private func dayBlock(offsetDays: Int) -> XCUIElement {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "pl")
+        formatter.timeZone = TimeZone(identifier: "Europe/Warsaw")
+        formatter.dateFormat = "EEEE d MMMM"
+        let day = Date().addingTimeInterval(Double(offsetDays) * 86_400)
+        let label = formatter.string(from: day).uppercased(with: Locale(identifier: "pl"))
+        return app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", label)).firstMatch
     }
 
     private func firstFilmCard() -> XCUIElement {
