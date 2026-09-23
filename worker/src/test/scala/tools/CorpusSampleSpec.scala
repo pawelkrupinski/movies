@@ -47,6 +47,37 @@ class CorpusSampleSpec extends AnyFlatSpec with Matchers {
     CorpusSample.pick(corpus, 2, new Random(1), titleNormalizer) should have size 2
   }
 
+  /** A wide release reaches thousands of venues: one presale drawn into the US sample
+   *  carried 96% of its showtimes and left the other 99 films a sliver. The draw keeps
+   *  such a film — it is a shape worth replaying — but from a bounded number of venues,
+   *  so no single pick decides how big the night's sample is. */
+  private val wide = models.Cinema.all.distinct.take(30).map(venue(_, "Doomsday"))
+
+  "draw" should "keep a wide release but from no more than the venue cap" in {
+    val sample = CorpusSample.draw(wide ++ corpus, 100, new Random(7), titleNormalizer, maxVenuesPerFilm = 3)
+
+    sample.flatMap(_.films.map(_.movie.title)).count(_ == "Doomsday") shouldBe 3
+    sample.count(_.films.exists(_.movie.title == "Doomsday")) shouldBe 3
+  }
+
+  it should "leave a film under the cap at every venue that reports it" in {
+    val sample = CorpusSample.draw(wide ++ corpus, 100, new Random(7), titleNormalizer, maxVenuesPerFilm = 3)
+
+    sample.flatMap(_.films.map(_.movie.title)).filter(_.equalsIgnoreCase("diuna")) should
+      contain theSameElementsAs Seq("Diuna", "DIUNA")
+  }
+
+  it should "drop a venue the cap left without films" in {
+    CorpusSample.draw(wide, 100, new Random(7), titleNormalizer, maxVenuesPerFilm = 3) should have size 3
+  }
+
+  it should "draw the same venues for the same seed" in {
+    def venuesOf(seed: Long) =
+      CorpusSample.draw(wide ++ corpus, 100, new Random(seed), titleNormalizer, maxVenuesPerFilm = 3).map(_.cinema)
+
+    venuesOf(11) shouldBe venuesOf(11)
+  }
+
   /** Sampled by FILM: a picked film arrives from EVERY cinema that reports it, spelt
    *  however each spells it. Picking listings instead would usually take one venue's
    *  copy and lose the cross-venue fold that makes the corpus interesting. */

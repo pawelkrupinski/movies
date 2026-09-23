@@ -20,8 +20,9 @@ import scala.util.Random
  * towards whichever chains sort early and would drop the multi-venue films that make
  * folding interesting; taking N listings at random would mostly take one cinema's
  * copy of a film and lose the cross-venue merge entirely. Picking films and then
- * keeping every listing of them preserves both — a sampled film arrives from all the
- * cinemas that report it, spelt however each of them spells it.
+ * keeping their listings preserves both — a sampled film arrives from the cinemas that
+ * report it, spelt however each of them spells it. From up to [[MaxVenuesPerFilm]] of
+ * them: a wide release keeps its fold without becoming the whole sample.
  */
 object CorpusSample {
 
@@ -77,6 +78,28 @@ object CorpusSample {
   }
 
   /**
+   * The most venues any one sampled film is replayed from.
+   *
+   * Venue counts are heavy-tailed: in the US corpus the median film plays at one venue
+   * and p90 at 25, while a wide release plays at 2,000 to 3,500. Kept whole, one such
+   * pick is most of the sample — "Avengers: Doomsday" was 326,176 of the night's
+   * showtimes, 96%, and the other 99 films were a sliver of the leg's runtime and of
+   * what it covered. Capped at roughly p90 the wide release still arrives from enough
+   * venues and spellings to exercise the cross-venue fold, and the sample stays within
+   * 100 × this many listings whichever films the night draws.
+   */
+  val MaxVenuesPerFilm = 25
+
+  /**
+   * The whole draw: `size` films ([[pick]]), their listings ([[trim]]), each from no
+   * more than `maxVenuesPerFilm` venues ([[capVenues]]). One `random` drives both
+   * choices, so a seed reproduces the sample exactly.
+   */
+  def draw(rows: Seq[ArchivedScrape], size: Int, random: Random, normalizer: TitleNormalizer,
+           maxVenuesPerFilm: Int = MaxVenuesPerFilm): Seq[ArchivedScrape] =
+    capVenues(trim(rows, pick(rows, size, random, normalizer), normalizer), maxVenuesPerFilm, random, normalizer)
+
+  /**
    * Keep only the listings for `keys`, and only the venues left holding any.
    *
    * A venue whose every film was dropped is removed rather than kept empty: the
@@ -87,11 +110,38 @@ object CorpusSample {
    * be a corpus in exactly the same sense the whole one is.
    */
   def trim(rows: Seq[ArchivedScrape], keys: Set[String], normalizer: TitleNormalizer): Seq[ArchivedScrape] =
-    rows.flatMap { row =>
+    keepListings(rows)((_, film) => keys.contains(keyOf(film, normalizer)))
+
+  /**
+   * Keep each film at no more than `maxVenues` of the venues reporting it, chosen by
+   * `random` from the venues in name order — so the choice depends on the seed and not
+   * on the order the archive happened to return its rows in. A film under the cap
+   * keeps every venue.
+   */
+  private[tools] def capVenues(rows: Seq[ArchivedScrape], maxVenues: Int, random: Random,
+                               normalizer: TitleNormalizer): Seq[ArchivedScrape] = {
+    val indexed = rows.toIndexedSeq
+    val venuesOf = indexed.indices
+      .flatMap(i => indexed(i).films.map(film => keyOf(film, normalizer) -> i))
+      .distinct
+      .groupMap(_._1)(_._2)
+    val kept = venuesOf.toSeq.sortBy(_._1).flatMap { (key, venues) =>
+      val chosen =
+        if (venues.sizeIs <= maxVenues) venues
+        else random.shuffle(venues.sortBy(i => indexed(i).cinema.displayName)).take(maxVenues)
+      chosen.map(key -> _)
+    }.toSet
+    keepListings(indexed)((venue, film) => kept.contains(keyOf(film, normalizer) -> venue))
+  }
+
+  /** Keep the listings `keep` accepts — given the row's position and the listing — and
+   *  only the venues left holding any. */
+  private def keepListings(rows: Seq[ArchivedScrape])(keep: (Int, models.CinemaMovie) => Boolean): Seq[ArchivedScrape] =
+    rows.zipWithIndex.flatMap { (row, venue) =>
       // `films` reads through `lastSuccess`, so the filter has to land there — that is
       // also what keeps the scrape's own `at` and `listingComplete` attached to the
       // listing they describe.
       row.lastSuccess.map(success => row.copy(
-        lastSuccess = Some(success.copy(films = success.films.filter(film => keys.contains(keyOf(film, normalizer)))))))
+        lastSuccess = Some(success.copy(films = success.films.filter(keep(venue, _))))))
     }.filter(_.films.nonEmpty)
 }

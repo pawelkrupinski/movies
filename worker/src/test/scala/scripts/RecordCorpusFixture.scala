@@ -75,13 +75,16 @@ object RecordCorpusFixture {
       val seed   = java.time.Instant.now().toEpochMilli
       // The corpus is this country's, so the sample must be drawn under its rules.
       val titles = services.movies.TitleNormalizer.forCountry(country)
-      val keys   = CorpusSample.pick(rows, CorpusSample.DefaultSize, new scala.util.Random(seed), titles)
-      val sample = CorpusSample.trim(rows, keys, titles)
+      val sample = CorpusSample.draw(rows, CorpusSample.DefaultSize, new scala.util.Random(seed), titles)
+      val keys   = CorpusSample.filmKeys(sample, titles).toSet
       val sampleKey  = s"${country.code}-sample"
       val samplePath = CorpusFixture.write(sampleKey, sample)
-      val sampleBaseline = ProdCoverageBaseline.write(sampleKey, ProdCoverage.of(database, onlySlotKeys = Some(CorpusSample.slotKeysOf(rows, keys, titles))))
+      // Slot keys of the SAMPLE, not of the whole corpus: a wide release is replayed from
+      // only the venues the draw kept, so the baseline counts prod's rows for those.
+      val sampleBaseline = ProdCoverageBaseline.write(sampleKey, ProdCoverage.of(database, onlySlotKeys = Some(CorpusSample.slotKeysOf(sample, keys, titles))))
       println(s"[corpus] sample seed $seed — ${keys.size} films drawn from ${CorpusSample.filmKeys(rows, titles).size}")
-      println(s"[corpus] wrote $samplePath — ${sample.size} venues, ${sample.map(_.films.size).sum} listings")
+      println(s"[corpus] wrote $samplePath — ${sample.size} venues, ${sample.map(_.films.size).sum} listings, " +
+              s"${sample.map(_.films.map(_.showtimes.size).sum).sum} showtimes")
       println(s"[corpus] wrote $sampleBaseline — prod's coverage of just those films")
     } finally client.close()
   }
