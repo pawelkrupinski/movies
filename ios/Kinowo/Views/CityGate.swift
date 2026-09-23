@@ -256,9 +256,9 @@ struct CityChoiceView: View {
 
     /// A query flattens the WHOLE country instead of narrowing just the level
     /// currently drilled into — see `Array<City>.searchRows(matching:inCountry:)`.
-    /// Only meaningful for a grouped country: Poland and Spain have no regions
-    /// to flatten, so their own per-level search above already reaches every
-    /// city.
+    /// Only meaningful for a grouped country: a country with no regions (Spain)
+    /// has nothing to flatten, so its own per-level search above already reaches
+    /// every city.
     private var searchingAcrossLevels: Bool {
         !regions.isEmpty && !query.trimmingCharacters(in: .whitespaces).isEmpty
     }

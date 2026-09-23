@@ -1,8 +1,9 @@
 import XCTest
 
 /// The manual city picker (`CityChoiceView`) carries a search field that
-/// narrows its 41-city list as you type — diacritic-insensitive, so "wroc"
-/// surfaces "Wrocław" and drops everything else.
+/// narrows the list as you type — diacritic-insensitive, so "wroc" surfaces
+/// "Wrocław" and drops everything else. Poland opens on its 16 voivodeships,
+/// so the query also flattens the groups to reach a city inside one.
 ///
 /// Reaches the picker deterministically: `KINOWO_CLEAR_CITY` shows the gate,
 /// `KINOWO_FORCE_DETECTED_CITY` injects a detected city (no CoreLocation
@@ -32,14 +33,15 @@ final class CityChoiceSearchUITests: XCTestCase {
     override func tearDownWithError() throws { app = nil }
 
     func testTypingNarrowsTheCityListDiacriticInsensitively() throws {
-        // "Białystok" leads the Polish-collated list, so it's on-screen before
-        // any query — proof the manual list rendered. (Wrocław sits far below
-        // the fold, hence not in the accessibility tree until filtered up.)
-        XCTAssertTrue(app.buttons["Białystok"].waitForExistence(timeout: 5),
+        // Poland is grouped by voivodeship, "Dolnośląskie" leading the
+        // Polish-collated rows, so it's on-screen before any query — proof the
+        // manual list rendered. (Wrocław sits inside that group, hence not in
+        // the accessibility tree until a query flattens it up.)
+        XCTAssertTrue(app.buttons["Dolnośląskie"].waitForExistence(timeout: 5),
                       "Manual city list never appeared")
 
         // "wroc" — typed without diacritics — narrows to Wrocław alone: it gets
-        // pulled into view, and the previously-visible Białystok drops out.
+        // pulled into view, and the previously-visible voivodeship drops out.
         let search = app.textFields[A11y.CityGate.searchField]
         XCTAssertTrue(search.waitForExistence(timeout: 5), "No search field on the picker")
         search.tap()
@@ -47,8 +49,8 @@ final class CityChoiceSearchUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["Wrocław"].waitForExistence(timeout: 3),
                       "Wrocław was filtered out by a query that should match it")
-        XCTAssertFalse(app.buttons["Białystok"].exists,
-                       "Białystok is still shown after searching 'wroc'")
+        XCTAssertFalse(app.buttons["Dolnośląskie"].exists,
+                       "Dolnośląskie is still shown after searching 'wroc'")
     }
 
     func testDiacriticTypedQueryFindsThePolishCity() throws {
@@ -60,7 +62,7 @@ final class CityChoiceSearchUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["Łódź"].waitForExistence(timeout: 3),
                       "'lodz' did not surface 'Łódź'")
-        // Białystok led the unfiltered list; "lodz" must have dropped it.
-        XCTAssertFalse(app.buttons["Białystok"].exists)
+        // Dolnośląskie led the unfiltered list; "lodz" must have dropped it.
+        XCTAssertFalse(app.buttons["Dolnośląskie"].exists)
     }
 }
