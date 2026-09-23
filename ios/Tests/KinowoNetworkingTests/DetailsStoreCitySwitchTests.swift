@@ -43,4 +43,27 @@ final class DetailsStoreCitySwitchTests: XCTestCase {
         XCTAssertNotNil(store.details(for: "New City Film"))
         XCTAssertEqual(DetailsCache.load(deployment: deployment, city: otherCity)?.map(\.title), ["New City Film"])
     }
+
+    /// A city switch drops the OUTGOING city's details at once, as
+    /// `RepertoireStore` drops its films — the detail screen must not show
+    /// the previous city's synopsis for a same-titled film while the new
+    /// city's fetch is in flight.
+    func testACitySwitchDropsThePreviousCitysDetailsImmediately() async throws {
+        let oldCity = [FilmDetails(title: "Shared Title", originalTitle: nil, synopsis: "old city", trailerURLs: [])]
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [URLProtocolStub.self]
+        let store = DetailsStore(base: deployment, citySlug: city, session: URLSession(configuration: config))
+        URLProtocolStub.handler = { _ in URLProtocolStub.Response(statusCode: 200, headers: [:], body: try! JSONEncoder().encode(oldCity)) }
+        await store.reload()
+        XCTAssertEqual(store.details(for: "Shared Title")?.synopsis, "old city")
+
+        URLProtocolStub.handler = { _ in
+            var response = URLProtocolStub.Response(statusCode: 200, headers: [:], body: Data("[]".utf8))
+            response.delay = 0.3
+            return response
+        }
+        store.use(citySlug: otherCity)
+
+        XCTAssertNil(store.details(for: "Shared Title"))
+    }
 }

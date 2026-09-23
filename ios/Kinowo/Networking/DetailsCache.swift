@@ -5,7 +5,8 @@ import Foundation
 /// (`details.json` / `details-meta.txt`) so the two endpoints' conditional-GET
 /// state never collides.
 enum DetailsCache {
-    private static let store = ConditionalPayloadCache<FilmDetails>(
+    /// The underlying cache, handed to the store's `ConditionalListEndpoint`.
+    static let store = ConditionalPayloadCache<FilmDetails>(
         bodyFile: "details.json", metaFile: "details-meta.txt"
     )
 

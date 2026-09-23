@@ -3,7 +3,8 @@ import Foundation
 /// On-disk cache of the repertoire payload — see `ConditionalPayloadCache` for
 /// why an entry is bound to the deployment AND the city that produced it.
 enum RepertoireCache {
-    private static let store = ConditionalPayloadCache<Film>(
+    /// The underlying cache, handed to the store's `ConditionalListEndpoint`.
+    static let store = ConditionalPayloadCache<Film>(
         bodyFile: "repertoire.json", metaFile: "repertoire-meta.txt"
     )
 

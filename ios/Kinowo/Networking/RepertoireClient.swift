@@ -30,9 +30,9 @@ final class RepertoireStore: ObservableObject {
     /// keeps the single-select pill bar.
     @Published private(set) var catalog: CinemaCatalog = .empty
 
-    private var base: URL
-    private var url: URL
-    private var citySlug: String
+    private let endpoint: ConditionalListEndpoint<Film>
+    private var base: URL { endpoint.base }
+    private var citySlug: String { endpoint.citySlug }
     /// The zone the on-foreground re-prune drops past showtimes on — the CITY's
     /// wall-clock (London on Europe/London, not Warsaw). Set from the country in
     /// `use(country:)`, which is the fallback, and overridden per city by
@@ -41,12 +41,9 @@ final class RepertoireStore: ObservableObject {
     /// three hours early. Defaults to Warsaw for the Poland-default init.
     private var timeZone: TimeZone = .warsaw
     private let session: URLSession
-    private var lastReloadedAt: Date?
     /// The city `catalog` was fetched for, so a static catalog isn't re-fetched
     /// on every stale-repertoire reload — only on an actual city/country switch.
     private var catalogCitySlug: String?
-
-    private let staleAfter: TimeInterval = 60
 
     /// `base` is the bare host (`https://kinowo.net`); the fetch URL is
     /// `…/{citySlug}/api/repertoire`. `citySlug` defaults to the fallback
@@ -54,9 +51,8 @@ final class RepertoireStore: ObservableObject {
     /// screen) keep working; the app points it at the resolved city via
     /// `use(citySlug:)` once the first-launch gate lands.
     init(base: URL = kinowoBaseURL, citySlug: String = City.default.slug, session: URLSession = .shared) {
-        self.base = base
-        self.citySlug = citySlug
-        self.url = City.apiURL(base: base, slug: citySlug, endpoint: "repertoire")
+        endpoint = ConditionalListEndpoint(
+            base: base, citySlug: citySlug, endpoint: "repertoire", cache: RepertoireCache.store, session: session)
         self.session = session
     }
 
@@ -69,11 +65,7 @@ final class RepertoireStore: ObservableObject {
         // Always adopt the country's zone (even if the URL is unchanged) so the
         // re-prune reasons in the right wall-clock.
         timeZone = country.timeZone
-        let next = City.apiURL(base: country.baseURL, slug: citySlug, endpoint: "repertoire")
-        guard next != url else { return }
-        base = country.baseURL
-        url = next
-        lastReloadedAt = nil
+        guard endpoint.repoint(base: country.baseURL) else { return }
         // The new deployment has its own cinema roster/areas — drop the stale one.
         catalog = .empty
         catalogCitySlug = nil
@@ -82,7 +74,7 @@ final class RepertoireStore: ObservableObject {
     }
 
     /// Re-point at a different city: rebuild the URL, drop the freshness
-    /// stamp so the next `reload`/`reloadIfStale` actually fetches, and
+    /// stamp (both in `ConditionalListEndpoint.repoint`) so the next `reload`/`reloadIfStale` actually fetches, and
     /// kick a reload so the grid swaps to the new city's repertoire.
     /// `timeZone` is the new city's own (`[City].zone(ofSlug:fallback:)`), which
     /// callers resolve against the catalog. It is adopted even when the URL is
@@ -90,11 +82,7 @@ final class RepertoireStore: ObservableObject {
     /// so the re-prune always reasons in the city actually being shown.
     func use(citySlug: String, timeZone: TimeZone? = nil) {
         if let timeZone { self.timeZone = timeZone }
-        let next = City.apiURL(base: base, slug: citySlug, endpoint: "repertoire")
-        guard next != url else { return }
-        url = next
-        self.citySlug = citySlug
-        lastReloadedAt = nil
+        guard endpoint.repoint(citySlug: citySlug) else { return }
         // A new city has its own cinemas/areas — clear so the split panel doesn't
         // briefly show the previous city's areas mid-switch.
         catalog = .empty
@@ -126,26 +114,22 @@ final class RepertoireStore: ObservableObject {
             films = RepertoireStore.uiTestFixture
             return
         }
-        if films.isEmpty, let cached = RepertoireCache.load(deployment: base, city: citySlug) {
+        if films.isEmpty, let cached = endpoint.cachedBody() {
             films = cached
         }
     }
 
     func reload(now: Date = Date()) async {
-        // Everything after an `await` below answers for THIS request's city
-        // and deployment, captured here. A city/country switch mid-fetch
-        // re-points `url` and kicks its own reload; this one's late response
-        // must then be dropped, not written into `films` under the new slug
-        // (and into the new city's disk cache).
-        let requestURL = url
-        let city = citySlug
-        let deployment = base
+        // A city/country switch mid-fetch re-points the endpoint and kicks its
+        // own reload; this one's late response comes back `.superseded` and
+        // must neither touch `films` nor clear the NEW request's spinner.
+        let requestURL = endpoint.url
         isLoading = true
         error = nil
-        defer { if url == requestURL { isLoading = false } }
+        defer { if endpoint.url == requestURL { isLoading = false } }
         // UI tests run against the in-memory fixture, never the network.
         if RepertoireStore.uiTestFixtureEnabled {
-            lastReloadedAt = now
+            endpoint.markReloaded(now: now)
             loadedCitySlug = citySlug
             return
         }
@@ -153,55 +137,35 @@ final class RepertoireStore: ObservableObject {
         // per city alongside the repertoire, independent of the listing's success.
         await fetchCatalogIfNeeded()
         do {
-            var request = URLRequest(url: requestURL)
-            request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
-            request.cachePolicy = .reloadIgnoringLocalCacheData
-            if let lm = RepertoireCache.lastModified(deployment: deployment, city: city) {
-                request.setValue(lm, forHTTPHeaderField: "If-Modified-Since")
-            }
-            let (data, response) = try await session.data(for: request)
-            guard url == requestURL else { return }
-            guard let http = response as? HTTPURLResponse else {
-                throw URLError(.badServerResponse)
-            }
-            if http.statusCode == 304 {
+            switch try await endpoint.fetch(now: now, callerIsEmpty: { films.isEmpty }) {
+            case .fresh(let decoded):
+                // Re-prune locally rather than trusting the server's own cutoff:
+                // a foreground reload runs `pruneStaleShowings()` first (see
+                // ContentView's scenePhase handler), and a response generated
+                // even a little earlier than it's applied here would otherwise
+                // silently undo that prune with a payload the server considered
+                // fresh at request time but that has since aged past 30 minutes.
+                films = decoded.prunedPastShowings(now: now, zone: timeZone)
+                loadedCitySlug = citySlug
+            case .notModified(let cached):
                 // 304 says the CACHED body is current — which is only the same
                 // thing as "`films` is current" if the cache was actually read
                 // into it. On a cold launch the disk read happens before the
                 // deep link re-points the store, so it can be skipped for the
-                // wrong city and leave `films` empty; taking 304 at face value
-                // then strands an empty grid on a city that has a full listing.
-                // Hydrate from the entry the conditional header spoke for.
+                // wrong city and leave `films` empty; `cached` is then the
+                // entry the conditional header spoke for.
                 //
                 // The disk entry holds the RAW payload from whenever it was
                 // last fetched, so it can carry screenings that have since
                 // crossed the 30-minute cutoff — re-prune it against the
                 // caller's own clock rather than trusting its age.
-                if let cached = RepertoireCache.bodyForNotModified(
-                    callerIsEmpty: films.isEmpty, deployment: deployment, city: city) {
-                    self.films = cached.prunedPastShowings(now: now, zone: timeZone)
-                }
-                self.loadedCitySlug = city
-                self.lastReloadedAt = now
-                return
+                if let cached { films = cached.prunedPastShowings(now: now, zone: timeZone) }
+                loadedCitySlug = citySlug
+            case .superseded:
+                break
             }
-            guard (200..<300).contains(http.statusCode) else {
-                throw URLError(.badServerResponse)
-            }
-            let decoded = try JSONDecoder().decode([Film].self, from: data)
-            // Re-prune locally rather than trusting the server's own cutoff:
-            // a foreground reload runs `pruneStaleShowings()` first (see
-            // ContentView's scenePhase handler), and a response generated
-            // even a little earlier than it's applied here would otherwise
-            // silently undo that prune with a payload the server considered
-            // fresh at request time but that has since aged past 30 minutes.
-            self.films = decoded.prunedPastShowings(now: now, zone: timeZone)
-            self.loadedCitySlug = city
-            self.lastReloadedAt = now
-            let lm = http.value(forHTTPHeaderField: "Last-Modified")
-            Task.detached { RepertoireCache.save(decoded, deployment: deployment, city: city, lastModified: lm) }
         } catch {
-            if url == requestURL { self.error = error }
+            self.error = error
         }
     }
 
@@ -229,9 +193,7 @@ final class RepertoireStore: ObservableObject {
     }
 
     func reloadIfStale(now: Date = Date()) async {
-        if let last = lastReloadedAt, now.timeIntervalSince(last) < staleAfter {
-            return
-        }
+        guard endpoint.isStale(now: now) else { return }
         await reload(now: now)
     }
 

@@ -9,9 +9,9 @@ import Foundation
 #endif
 
 /// Fetches `/{city}/api/details` and exposes a title → details lookup the
-/// detail screen reads synopsis + trailers from. Analogous to
-/// `RepertoireStore`: same User-Agent, cache policy, and Last-Modified
-/// conditional-GET + on-disk caching pattern, but keyed into a map so
+/// detail screen reads synopsis + trailers from. Shares the conditional GET,
+/// disk cache and switch handling with `RepertoireStore` through
+/// `ConditionalListEndpoint`, but keys the payload into a map so
 /// `FilmDetailView` can resolve a single film in O(1).
 ///
 /// The business logic — JSON decode and `keyedByTitle` — lives on
@@ -23,42 +23,37 @@ final class DetailsStore: ObservableObject {
     /// a synopsis or a trailer, so a missing key is the common case.
     @Published private(set) var byTitle: [String: FilmDetails] = [:]
 
-    private var base: URL
-    private var url: URL
-    private var citySlug: String
-    private let session: URLSession
-    private var lastReloadedAt: Date?
-
-    private let staleAfter: TimeInterval = 60
+    private let endpoint: ConditionalListEndpoint<FilmDetails>
 
     /// `base` is the bare host; the fetch URL is `…/{citySlug}/api/details`.
     /// Same city-qualification contract as `RepertoireStore`.
     init(base: URL = kinowoBaseURL, citySlug: String = City.default.slug, session: URLSession = .shared) {
-        self.base = base
-        self.citySlug = citySlug
-        self.url = City.apiURL(base: base, slug: citySlug, endpoint: "details")
-        self.session = session
+        endpoint = ConditionalListEndpoint(
+            base: base, citySlug: citySlug, endpoint: "details", cache: DetailsCache.store, session: session)
     }
 
-    /// Re-point at a different country's deployment: rebuild the base + URL and
-    /// force the next fetch (see `RepertoireStore.use(country:)`).
+    /// Re-point at a different country's deployment and reload (see
+    /// `RepertoireStore.use(country:)`).
     func use(country: Country) {
-        let next = City.apiURL(base: country.baseURL, slug: citySlug, endpoint: "details")
-        guard next != url else { return }
-        base = country.baseURL
-        url = next
-        lastReloadedAt = nil
+        guard endpoint.repoint(base: country.baseURL) else { return }
+        resetForCitySwitch()
         Task { await reload() }
     }
 
-    /// Re-point at a different city (see `RepertoireStore.use`).
+    /// Re-point at a different city and reload (see `RepertoireStore.use`).
     func use(citySlug: String) {
-        let next = City.apiURL(base: base, slug: citySlug, endpoint: "details")
-        guard next != url else { return }
-        url = next
-        self.citySlug = citySlug
-        lastReloadedAt = nil
+        guard endpoint.repoint(citySlug: citySlug) else { return }
+        resetForCitySwitch()
         Task { await reload() }
+    }
+
+    /// Drop the OUTGOING city's details, as `RepertoireStore` drops its films:
+    /// a same-titled film in the new city must not show the old city's
+    /// synopsis while the new fetch is in flight. A warm disk cache for the
+    /// new city refills it at once.
+    private func resetForCitySwitch() {
+        byTitle = [:]
+        loadCachedData()
     }
 
     /// Synopsis + trailers for a listing title, or `nil` when the
@@ -66,48 +61,18 @@ final class DetailsStore: ObservableObject {
     func details(for title: String) -> FilmDetails? { byTitle[title] }
 
     func loadCachedData() {
-        if byTitle.isEmpty, let cached = DetailsCache.load(deployment: base, city: citySlug) {
+        if byTitle.isEmpty, let cached = endpoint.cachedBody() {
             byTitle = cached.keyedByTitle()
         }
     }
 
     func reload(now: Date = Date()) async {
-        // As in `RepertoireStore.reload`: a switch mid-fetch re-points `url`,
-        // so a late response for the previous city is dropped rather than
-        // written into `byTitle` and the NEW city's disk cache.
-        let requestURL = url
-        let city = citySlug
-        let deployment = base
         do {
-            var request = URLRequest(url: requestURL)
-            request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
-            request.cachePolicy = .reloadIgnoringLocalCacheData
-            if let lm = DetailsCache.lastModified(deployment: deployment, city: city) {
-                request.setValue(lm, forHTTPHeaderField: "If-Modified-Since")
+            switch try await endpoint.fetch(now: now, callerIsEmpty: { byTitle.isEmpty }) {
+            case .fresh(let decoded):                 byTitle = decoded.keyedByTitle()
+            case .notModified(cached: let cached?):   byTitle = cached.keyedByTitle()
+            case .notModified(cached: nil), .superseded: break
             }
-            let (data, response) = try await session.data(for: request)
-            guard url == requestURL else { return }
-            guard let http = response as? HTTPURLResponse else {
-                throw URLError(.badServerResponse)
-            }
-            if http.statusCode == 304 {
-                // As in `RepertoireStore.reload`: 304 vouches for the CACHED
-                // body, so read it in when the in-memory map missed it.
-                if let cached = DetailsCache.bodyForNotModified(
-                    callerIsEmpty: byTitle.isEmpty, deployment: deployment, city: city) {
-                    self.byTitle = cached.keyedByTitle()
-                }
-                self.lastReloadedAt = now
-                return
-            }
-            guard (200..<300).contains(http.statusCode) else {
-                throw URLError(.badServerResponse)
-            }
-            let decoded = try JSONDecoder().decode([FilmDetails].self, from: data)
-            self.byTitle = decoded.keyedByTitle()
-            self.lastReloadedAt = now
-            let lm = http.value(forHTTPHeaderField: "Last-Modified")
-            Task.detached { DetailsCache.save(decoded, deployment: deployment, city: city, lastModified: lm) }
         } catch {
             // Details are non-essential — the listing still renders the
             // film without synopsis/trailers. Swallow the error rather
@@ -116,9 +81,7 @@ final class DetailsStore: ObservableObject {
     }
 
     func reloadIfStale(now: Date = Date()) async {
-        if let last = lastReloadedAt, now.timeIntervalSince(last) < staleAfter {
-            return
-        }
+        guard endpoint.isStale(now: now) else { return }
         await reload(now: now)
     }
 
