@@ -94,7 +94,10 @@ private[movies] final class ScrapeLanding(
   // `ScrapeGuardLedger` for why it must outlive the process. In-memory by default,
   // so every construction that doesn't care (tests included) is unchanged;
   // `CaffeineMovieCache` forwards the worker's durable one.
-  guardLedger: ScrapeGuardLedger = new InMemoryScrapeGuardLedger
+  guardLedger: ScrapeGuardLedger = new InMemoryScrapeGuardLedger,
+  // "Now" for the depth guard, which measures only showtimes still ahead of the
+  // venue's own city clock — see `upcomingShowtimes`.
+  clock: java.time.Clock = java.time.Clock.systemUTC()
 ) extends Logging {
 
   import store.{corpusIndex, normalizer}
@@ -111,6 +114,11 @@ private[movies] final class ScrapeLanding(
    *  unchanged venue, the overwhelmingly common case, costs the store nothing. */
   private def saveGuardState(cinema: Cinema, before: ScrapeGuardState, after: ScrapeGuardState): Unit =
     if (after != before) guardLedger.put(cinema, after)
+
+  /** The venue's own wall-clock time — `Showtime.dateTime` is city-local, so a bare UTC
+   *  "now" would misjudge every non-Polish venue by its zone offset. */
+  private def localNow(cinema: Cinema): java.time.LocalDateTime =
+    java.time.LocalDateTime.now(clock.withZone(models.City.forCinema(cinema).map(_.zoneId).getOrElse(clock.getZone)))
 
   /** The slot key for one cinema's report of a film under a given shown title.
    *  Every cinema slot is keyed by `(cinema, sanitize(title))` so a venue can hold
@@ -173,14 +181,20 @@ private[movies] final class ScrapeLanding(
     // lost whole dates). The verdict is `ScrapeHealth.depth`'s; this keeps the count
     // of consecutive rejections per venue, which is the only state involved.
     //
-    // Count via `slotShowtimeCount`, NOT `showtimes.size`: under the read-split every
+    // Count via `upcomingShowtimeCount`, NOT `showtimes.size`: under the read-split every
     // resident slot has been through `stripForCache` and carries `Nil` showtimes, so a
     // direct `.size` reads 0 for every cinema and the floor never engages — which made
     // this guard dead code in production while the specs, wiring no screenings
     // repository, kept their lists resident and passed regardless.
+    //
+    // And only showtimes still AHEAD of the venue's own clock, on both sides: a passed
+    // showtime is nothing the guard can protect, and counting it let a venue stuck on
+    // a stale listing (Braniewo's Baszta, still measured against another town's
+    // programme) keep a baseline that had long since run out.
+    val now                  = localNow(cinema)
     val knownCinemaShowtimes = corpusIndex.slotsOf(cinema).map { case (_, _, sd) =>
-      ShowtimesDigest.slotShowtimeCount(sd) }.sum
-    val batchShowtimes       = movies.iterator.map(_.showtimes.size).sum
+      ShowtimesDigest.upcomingShowtimeCount(sd, now) }.sum
+    val batchShowtimes       = movies.iterator.map(_.showtimes.count(_.dateTime.isAfter(now))).sum
     val depthVerdict =
       if (rewired) ScrapeHealth.Depth.Healthy
       else ScrapeHealth.depth(knownCinemaShowtimes, batchShowtimes, guardState.depthRejections,

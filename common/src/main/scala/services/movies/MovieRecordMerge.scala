@@ -190,7 +190,7 @@ object MovieRecordMerge {
       // re-stamps them on the way into the cache; carrying the richer side's forward
       // keeps a merged-but-not-yet-restripped slot self-consistent in the meantime.
       showtimesDigest = number(_.showtimesDigest),
-      showtimesCount  = number(_.showtimesCount),
+      showtimeStartMinutes = ranked.iterator.flatMap(_.showtimeStartMinutes).nextOption(),
       ageRating       = text(_.ageRating)
     )
   }
@@ -214,7 +214,7 @@ object MovieRecordMerge {
   /** A total order over a slot's identifying content — every field a disagreement
    *  could land on, so two slots compare equal here only when they would merge to the
    *  same thing anyway. Showtimes themselves are excluded (they are unioned, never
-   *  chosen), but their cache-only digest/count are not: those are the one pair
+   *  chosen), but their cache-only digest/starts are not: those are the one pair
    *  [[mergeSlot]] takes wholesale, so leaving them out would let two otherwise
    *  identical slots still resolve by argument order.
    *
@@ -222,7 +222,8 @@ object MovieRecordMerge {
    *  the next and make two different slots compare equal. */
   private def contentOrder(slot: SourceData): String =
     (texts(slot).map(_.getOrElse("")) ++
-     (numbers(slot) ++ Seq(slot.showtimesDigest, slot.showtimesCount)).map(_.fold("")(_.toString)) ++
+     (numbers(slot) :+ slot.showtimesDigest).map(_.fold("")(_.toString)) ++
+     Seq(slot.showtimeStartMinutes.fold("")(_.mkString(","))) ++
      lists(slot).map(_.mkString("\u001e"))
     ).mkString("\u001f")
 

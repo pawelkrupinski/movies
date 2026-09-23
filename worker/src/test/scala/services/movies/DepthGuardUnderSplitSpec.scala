@@ -131,14 +131,43 @@ class DepthGuardUnderSplitSpec extends AnyFlatSpec with Matchers {
     storedShowtimes(repository, "Film 20") shouldBe 0
   }
 
-  it should "keep a stripped slot's showtime count available to the guard" in {
-    // The mechanism the two specs above depend on, pinned directly: stripping for cache
-    // residency drops the list but must not drop how many there were.
+  it should "measure a venue against the showtimes it still has AHEAD, not the ones that have passed" in {
+    // A venue stuck on a stale listing: everything it stored is now behind the clock,
+    // so there is nothing left to protect. Counting those passed showtimes as the
+    // baseline held Braniewo's Baszta rejecting against another town's programme long
+    // after that programme had run out.
+    val clock      = new tools.MutableClock(java.time.Instant.parse("2027-06-08T00:00:00Z"))
+    val repository = splitRepository()
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = clock)
+
+    cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 12))   // all on 06-08
+    storedShowtimes(repository, "Film 1") shouldBe 12
+
+    clock.advance(java.time.Duration.ofHours(23))                                      // 06-08 23:00
+    val nextDay = (1 to 10).map { i =>
+      CinemaMovie(movie = Movie(s"Film $i", releaseYear = Some(2026)), cinema = Multikino,
+        posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil,
+        showtimes = Seq(showtime("2027-06-09T18:00"), showtime("2027-06-09T20:00")))
+    }
+    cache.recordCinemaScrape(Multikino, nextDay)
+    storedShowtimes(repository, "Film 1") shouldBe 2
+  }
+
+  it should "keep a stripped slot's upcoming showtime count available to the guard" in {
+    // The mechanism the specs above depend on, pinned directly: stripping for cache
+    // residency drops the list but must not drop when each showtime starts.
     val record   = MovieRecord(data = Map[Source, SourceData](
       Multikino -> SourceData(showtimes = Seq(showtime("2027-06-08T18:00"), showtime("2027-06-08T20:00")))))
-    val stripped = ShowtimesDigest.stripForCache(record)
+    val stripped = ShowtimesDigest.stripForCache(record).data.values.head
+    val full     = record.data.values.head
 
-    stripped.data.values.head.showtimes                       shouldBe empty
-    ShowtimesDigest.slotShowtimeCount(stripped.data.values.head) shouldBe 2
+    stripped.showtimes                          shouldBe empty
+    ShowtimesDigest.slotShowtimeCount(stripped) shouldBe 2
+
+    Seq(stripped, full).foreach { slot =>
+      ShowtimesDigest.upcomingShowtimeCount(slot, LocalDateTime.parse("2027-06-08T17:00")) shouldBe 2
+      ShowtimesDigest.upcomingShowtimeCount(slot, LocalDateTime.parse("2027-06-08T19:00")) shouldBe 1
+      ShowtimesDigest.upcomingShowtimeCount(slot, LocalDateTime.parse("2027-06-08T20:00")) shouldBe 0
+    }
   }
 }

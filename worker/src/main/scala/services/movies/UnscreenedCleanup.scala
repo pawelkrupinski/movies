@@ -119,13 +119,13 @@ class UnscreenedCleanup(cache: MovieCache, repository: MovieRepository) extends 
    *  (`najswietszeserce|2025`), and convicting on the missing title alone would have
    *  deleted a live film — the very failure this class exists to prevent.
    *
-   *  `showtimesCount` is why one predicate can serve BOTH witnesses. The cache-resident
+   *  `showtimeStartMinutes` is why one predicate can serve BOTH witnesses. The cache-resident
    *  view has been through `ShowtimesDigest.stripForCache`, which empties `showtimes` and
-   *  records the count it replaced — so the nominating side can still tell a slot that
+   *  records the starts it replaced — so the nominating side can still tell a slot that
    *  HAD showtimes from one that never did, and asks the same question of its own store
    *  that the repository asks of the durable one. */
   private def alive(slot: SourceData): Boolean =
-    slot.title.exists(_.trim.nonEmpty) || slot.showtimes.nonEmpty || slot.showtimesCount.exists(_ > 0)
+    slot.title.exists(_.trim.nonEmpty) || slot.showtimes.nonEmpty || slot.showtimeStartMinutes.exists(_.nonEmpty)
 
   private def label(key: CacheKey): String = s"${key.cleanTitle} (${key.year.getOrElse("—")})"
 

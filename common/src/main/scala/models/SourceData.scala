@@ -82,7 +82,13 @@ case class SourceData(
   // to `Nil`, so the count was always 0 and the guard's floor never engaged. Its
   // specs all ran without a screenings repository, which is the one shape that keeps
   // the lists resident, so they passed while production was unguarded.
-  showtimesCount:  Option[Int]    = None,
+  //
+  // Each showtime's START rather than a bare count, because the guard must measure
+  // only what is still AHEAD: a stored count also counted showtimes that had since
+  // passed, so a venue stuck on a stale listing kept a baseline its own clock had
+  // long run through. City-local wall-clock minutes since the epoch
+  // (`ShowtimesDigest.startMinute`), sorted — 4 bytes a screening, not a `Showtime`.
+  showtimeStartMinutes: Option[IArray[Int]] = None,
   // Age rating / certificate as the source labels it, verbatim per source (UK BBFC
   // "U"/"PG"/"12A"/"12"/"15"/"18"/"TBC"; other countries their own scheme). Cinema
   // slots carry it (the UK chains + Flicks expose it); `MovieRecord.ageRating` takes
@@ -96,7 +102,7 @@ case class SourceData(
   // fresh scrape is full, so a showtime-sensitive `==` would make them differ forever
   // (endless re-divert/re-fold churn). Showtime-CHANGE detection routes through the
   // digest (`ShowtimesDigest.leanEqual` / `slotOps`), never `==`. So `showtimes` and the
-  // transient `showtimesDigest` / `showtimesCount` are excluded from equals/hashCode.
+  // transient `showtimesDigest` / `showtimeStartMinutes` are excluded from equals/hashCode.
   //
   // `language` IS included, unlike those two: the cache write-guard skips the
   // repository write when the new record `==` the stored one, so a re-resolve that

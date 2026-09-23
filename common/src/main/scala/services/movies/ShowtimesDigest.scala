@@ -2,6 +2,8 @@ package services.movies
 
 import models.{MovieRecord, Showtime, SourceData}
 
+import java.time.{LocalDateTime, ZoneOffset}
+
 /** Groundwork for the index-only cache migration (Phase 1).
  *
  *  Today the write-through no-op guard compares a freshly-built `MovieRecord`
@@ -35,13 +37,30 @@ object ShowtimesDigest {
   def slotDigest(sd: SourceData): Int =
     if (sd.showtimes.nonEmpty) digest(sd.showtimes) else sd.showtimesDigest.getOrElse(EmptyDigest)
 
-  /** A slot's effective showtime COUNT: from resident showtimes when present, else the
-   *  stripped slot's stamped `showtimesCount`. The digest's counterpart — a hash can say
-   *  "these differ", only a count can say "there are a third as many", which is what the
-   *  degraded-scrape depth guard has to decide. `0` for a slot stripped before this field
-   *  existed, which reads as "nothing held" and simply lets the tick through. */
+  /** A showtime's start as the stripped slot keeps it: city-local wall-clock minutes
+   *  since the epoch. The offset is irrelevant — both sides of every comparison are
+   *  city-local — it only has to be the same one throughout. */
+  def startMinute(dateTime: LocalDateTime): Int = (dateTime.toEpochSecond(ZoneOffset.UTC) / 60).toInt
+
+  /** A slot's effective showtime COUNT, past ones included: from resident showtimes when
+   *  present, else the stripped slot's stamped starts. `0` for a slot stripped without
+   *  them. The depth guard wants [[upcomingShowtimeCount]] instead. */
   def slotShowtimeCount(sd: SourceData): Int =
-    if (sd.showtimes.nonEmpty) sd.showtimes.size else sd.showtimesCount.getOrElse(0)
+    if (sd.showtimes.nonEmpty) sd.showtimes.size else sd.showtimeStartMinutes.fold(0)(_.length)
+
+  /** How many of a slot's showtimes start AFTER `now` (city-local): from resident
+   *  showtimes when present, else the stripped slot's stamped starts. The digest's
+   *  counterpart — a hash can say "these differ", only a count can say "there are a
+   *  third as many", which is what the degraded-scrape depth guard has to decide —
+   *  and only the upcoming ones, since a passed showtime is nothing the guard can
+   *  protect. `0` for a slot stripped without starts, which reads as "nothing held"
+   *  and simply lets the tick through. */
+  def upcomingShowtimeCount(sd: SourceData, now: LocalDateTime): Int =
+    if (sd.showtimes.nonEmpty) sd.showtimes.count(_.dateTime.isAfter(now))
+    else sd.showtimeStartMinutes.fold(0) { starts =>
+      val cutoff = startMinute(now)
+      starts.length - starts.count(_ <= cutoff)
+    }
 
   /** Strip a record for cache residency: drop each slot's showtime LIST (they live in Mongo
    *  `screenings`), keep only its digest and count. Idempotent + authoritative. */
@@ -49,7 +68,7 @@ object ShowtimesDigest {
     record.copy(data = record.data.view.mapValues { sd =>
       if (sd.showtimes.isEmpty && sd.showtimesDigest.isDefined) sd
       else sd.copy(showtimes = Nil, showtimesDigest = Some(slotDigest(sd)),
-                   showtimesCount = Some(sd.showtimes.size))
+                   showtimeStartMinutes = Some(IArray.from(sd.showtimes.iterator.map(s => startMinute(s.dateTime))).sorted))
     }.toMap)
 
   /** Whole-record content digest, for a VIEWER that has to decide "did anything I
