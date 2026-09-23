@@ -106,8 +106,9 @@ object Cinema1Client {
 
   /** One screening → a `RawScreening`, or `None` on a malformed entry (missing
    *  id/movieId/screenId, or an unparseable `screeningTimeFrom`) — dropped
-   *  individually rather than failing the whole response. */
-  private[cinemas] def parseScreenings(raw: String): Seq[RawScreening] = Try {
+   *  individually rather than failing the whole response. A body that isn't a
+   *  JSON array at all THROWS — a failed read, not an empty listing (`[]`). */
+  private[cinemas] def parseScreenings(raw: String): Seq[RawScreening] =
     Json.parse(raw).as[JsArray].value.toSeq.flatMap { s =>
       for {
         id       <- (s \ "id").asOpt[String]
@@ -116,7 +117,6 @@ object Cinema1Client {
         dt       <- (s \ "screeningTimeFrom").asOpt[String].flatMap(t => Try(OffsetDateTime.parse(t).toLocalDateTime).toOption)
       } yield RawScreening(id, movieId, screenId, dt, formatOf(s))
     }
-  }.getOrElse(Seq.empty)
 
   // `printType` ("2D"/"3D"/…) is almost always the unremarkable "2D" default,
   // so only surface it when it's something else (matches CinemaCityClient's

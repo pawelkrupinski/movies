@@ -27,13 +27,14 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None, ti
   def fetch(cinemaId: String, cinema: Cinema): Seq[CinemaMovie] =
     reduce(dates(cinemaId).flatMap(d => fetchDay(cinemaId, cinema, d)))
 
-  /** The cinema's available screening dates = the chunk keys. Best-effort: an
-   *  empty/failed dates call yields no chunks (an empty scrape keeps the venue's
-   *  slots), matching the old behaviour. */
+  /** The cinema's available screening dates = the chunk keys. A well-formed
+   *  empty `dates` list is a venue with nothing scheduled (an empty plan); a
+   *  failed fetch or an unparseable body THROWS, so the planner publishes the
+   *  scrape as failed (red, with its cause) instead of as empty. */
   def dates(cinemaId: String): Seq[LocalDate] = {
     val datesUrl = s"$BaseApiUrl/dates/in-cinema/$cinemaId/until/$FarFuture?attr=&lang=pl_PL"
-    Try((Json.parse(http.get(datesUrl)) \ "body" \ "dates").as[Seq[String]]
-      .flatMap(d => Try(LocalDate.parse(d)).toOption)).getOrElse(Seq.empty)
+    (Json.parse(http.get(datesUrl)) \ "body" \ "dates").as[Seq[String]]
+      .flatMap(d => Try(LocalDate.parse(d)).toOption)
   }
 
   /** One day's film-events response → that day's films (bare, with that day's
@@ -81,16 +82,22 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None, ti
   /** Parse ONE day's `film-events` response into that day's bare movies: title/
    *  runtime/year/poster + the film-page link as filmUrl (the detail ref).
    *  Countries/genres/synopsis/cast/director/trailer are NOT in this JSON — they
-   *  come from the per-film page via `fetchFilmDetail` (deferred). A malformed
-   *  body yields no films (matching the old per-day `Try` swallow). */
-  private def parseDay(raw: String, cinema: Cinema): Seq[CinemaMovie] = Try {
+   *  come from the per-film page via `fetchFilmDetail` (deferred). A body that
+   *  doesn't parse THROWS, which reschedules just this day's chunk — it is a
+   *  failed read, not a day with nothing on (`films: []`). */
+  private def parseDay(raw: String, cinema: Cinema): Seq[CinemaMovie] = {
     val body   = Json.parse(raw) \ "body"
     val films  = (body \ "films").as[JsArray].value
     val events = (body \ "events").as[JsArray].value
 
-    val info: Map[String, FilmInfo] = films.iterator.map { film =>
-      (film \ "id").as[String] -> FilmInfo(
-        name           = (film \ "name").as[String],
+    // A malformed film or event is dropped on its own (asOpt), so one bad entry
+    // can't fail — and endlessly retry — a whole day that otherwise parses.
+    val info: Map[String, FilmInfo] = films.iterator.flatMap { film =>
+      for {
+        id   <- (film \ "id").asOpt[String]
+        name <- (film \ "name").asOpt[String]
+      } yield id -> FilmInfo(
+        name           = name,
         posterLink     = (film \ "posterLink").asOpt[String].filter(_.nonEmpty),
         filmLink       = (film \ "link").asOpt[String].filter(_.nonEmpty),
         runtimeMinutes = (film \ "length").asOpt[Int],
@@ -101,19 +108,20 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None, ti
     }.toMap
 
     val slotsByFilm = events.iterator.flatMap { event =>
-      val filmId     = (event \ "filmId").as[String]
-      val bookingUrl = (event \ "bookingLink").asOpt[String].filter(_.nonEmpty)
-      val room       = (event \ "auditorium").asOpt[String].filter(_.nonEmpty).map(CinemaCityClient.normalizeAuditorium)
-      val attrs      = (event \ "attributeIds").asOpt[Seq[String]].getOrElse(Seq.empty).toSet
-      // attrs is a kitchen-sink list (genre, 2d/3d, dubbed/subbed, IMAX, seating, age…);
-      // pick out the screen-feature tokens we display.
-      val format = List(
-        if (attrs.contains("imax")) Some("IMAX") else None,
-        if (attrs.contains("3d")) Some("3D") else if (attrs.contains("2d")) Some("2D") else None,
-        if (attrs.contains("dubbed")) Some("DUB") else if (attrs.contains("subbed")) Some("NAP") else None
-      ).flatten
-      Try(LocalDateTime.parse((event \ "eventDateTime").as[String])).toOption
-        .map(dt => filmId -> Showtime(dt, bookingUrl, room, format))
+      (event \ "filmId").asOpt[String].toSeq.flatMap { filmId =>
+        val bookingUrl = (event \ "bookingLink").asOpt[String].filter(_.nonEmpty)
+        val room       = (event \ "auditorium").asOpt[String].filter(_.nonEmpty).map(CinemaCityClient.normalizeAuditorium)
+        val attrs      = (event \ "attributeIds").asOpt[Seq[String]].getOrElse(Seq.empty).toSet
+        // attrs is a kitchen-sink list (genre, 2d/3d, dubbed/subbed, IMAX, seating, age…);
+        // pick out the screen-feature tokens we display.
+        val format = List(
+          if (attrs.contains("imax")) Some("IMAX") else None,
+          if (attrs.contains("3d")) Some("3D") else if (attrs.contains("2d")) Some("2D") else None,
+          if (attrs.contains("dubbed")) Some("DUB") else if (attrs.contains("subbed")) Some("NAP") else None
+        ).flatten
+        Try(LocalDateTime.parse((event \ "eventDateTime").as[String])).toOption
+          .map(dt => filmId -> Showtime(dt, bookingUrl, room, format))
+      }
     }.toSeq.groupBy(_._1)
 
     slotsByFilm.toSeq.flatMap { case (filmId, slots) =>
@@ -131,7 +139,7 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None, ti
           trailerUrl  = None)
       }
     }
-  }.getOrElse(Seq.empty)
+  }
 }
 
 object CinemaCityClient {

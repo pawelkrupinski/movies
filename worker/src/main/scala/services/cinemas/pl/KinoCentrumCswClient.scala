@@ -68,8 +68,10 @@ object KinoCentrumCswClient {
   )
 
   /** One entry → a `RawSlot`, or dropped individually on a malformed
-   *  `title`/`href`/`date`/`time` rather than failing the whole response. */
-  private[cinemas] def parseRepertoire(raw: String): Seq[RawSlot] = Try {
+   *  `title`/`href`/`date`/`time` rather than failing the whole response. A body
+   *  that isn't a JSON array at all (an error page, a WordPress error object)
+   *  THROWS — that is a failed read, not an empty repertoire, which `[]` is. */
+  private[cinemas] def parseRepertoire(raw: String): Seq[RawSlot] =
     Json.parse(raw).as[JsArray].value.toSeq.flatMap { s =>
       for {
         title <- (s \ "title").asOpt[String]
@@ -78,5 +80,4 @@ object KinoCentrumCswClient {
         time  <- (s \ "time").asOpt[String].flatMap(t => Try(java.time.LocalTime.parse(t)).toOption)
       } yield RawSlot(title, href, (s \ "ticketUrl").asOpt[String], LocalDateTime.of(date, time))
     }
-  }.getOrElse(Seq.empty)
 }
