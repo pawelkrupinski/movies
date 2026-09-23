@@ -366,31 +366,35 @@ groups:
       # failing to retire a card the incremental path should have taken back, which is the
       # defect this rule exists to surface.
       #
-      # THE ONE CARVE-OUT: a country that just restarted. Traced three US firings (2026-09-09,
-      # -14, -15, see `docs/read-model-convergence.md` and reference_readmodel_drift_boot_race
-      # memory) back to a worker-us/web-us pod restart in every case, with the prune counter flat
-      # at zero throughout each -- the freshly-booted pair's census and change-stream state took
-      # up to 30 minutes to re-sync, not a projection defect. This is NOT the "raise the
-      # threshold" move the paragraph above forbids: it does not touch the diff amount or the
-      # `for:` window, and it stands down only when BOTH sides agree there is nothing to find --
-      # no restart in the last 7 hours (`process_start_time_seconds`), OR the prune counter
-      # actually moved. A real prune-caused hole still pages even one second after a restart.
+      # THE ONE CARVE-OUT: A DIFFERENCE THAT BEGAN IN A BOOT RACE. Traced US firings (2026-09-09,
+      # -14, see `docs/read-model-convergence.md` and reference_readmodel_drift_boot_race memory)
+      # to a worker-us/web-us pod restart 1-8 minutes before the difference began, with the prune
+      # counter flat at zero throughout -- the freshly-booted pair's census and change-stream state
+      # re-syncing, not a projection defect. This is NOT the "raise the threshold" move the
+      # paragraph above forbids: it does not touch the diff amount or the `for:` window, and a
+      # prune that actually moved still pages one second after a restart.
       #
-      # THE WINDOW WAS 45 MINUTES; WIDENED TO 7 HOURS, 2026-09-17. Four more US episodes
-      # (09-16 19:14, 20:58, 09-17 07:00, 13:03 UTC) all had the SAME zero-prune signature the
-      # carve-out above exists for, but the 45-minute window never engaged: the gap between the
-      # last worker/web restart and the divergence's ONSET measured 1h30m-6h04m in every case --
-      # comfortably past 45 minutes, so by the time each episode started the pod no longer read
-      # as "just restarted" and the alert paged for four self-resolving, zero-data-loss episodes.
-      # 7 hours is the measured 6h04m worst case plus roughly an hour of margin -- not a guess at
-      # a bigger number, the smallest widening the actual data asks for. It does not weaken the
-      # prune-caused branch (still unconditional, still pages one second after a restart) and it
-      # does not touch the diff amount or `for:` window either, so a genuine "site missing cards
-      # for hours with nothing to explain it" still pages once uptime clears 7 hours. THIS
-      # CALIBRATION IS ALSO THIN -- four episodes, one country -- and should be revisited the
-      # same way the 45-minute one was if the true mechanism (still not established: a slower
-      # boot re-sync, or a periodic cadence unrelated to restarts at all) turns out to need more.
-      - alert: ReadModelServingDiffersFromCorpus
+      # KEYED ON ONSET, NOT ON UPTIME NOW (2026-09-23). The carve-out used to ask "was there a
+      # restart in the last 45 minutes", then (3669b4dc2) "in the last 7 hours". Neither is the
+      # question the boot race poses. Workers restart every ~5-6h by design and web pods on every
+      # deploy, so a 7-hour window meant "almost always" and the zero-prune branch almost never
+      # fired -- and a restart AFTER a difference began was treated as its excuse, which it cannot
+      # be. The question is: WHEN THIS DIFFERENCE BEGAN, had the pair just booted?
+      # `country:readmodel_serving_differs:uptime_at_onset_seconds` answers it by latching the
+      # country's lowest worker/web uptime at the first evaluation that sees a difference and
+      # carrying it (via its own previous sample) for as long as the difference lasts; it is
+      # absent whenever the two sides agree, so the next difference latches afresh. The 90s
+      # lookback spans a few 15s evaluations, so one missed scrape does not re-latch.
+      #
+      # 15 MINUTES IS THE MEASURED BOOT RACE. The traced episodes began 1-8 minutes after their
+      # restart; over 2026-09-16..23 (Prometheus, all five countries) differences lasting 5m+ were
+      # two to three times denser in the first 15 minutes of uptime than in any later 5-minute
+      # band, and the week's one 20m+ episode with a restart just before it (uk, 09-22) began 3
+      # minutes after it. The 09-15 San Francisco case (web restart 35 minutes earlier, a single
+      # +1 card) was already judged ordinary lag, not the race, and the four 09-16/17 US episodes
+      # the 7-hour widening was calibrated on began 68-274 minutes after their restart: none of
+      # them is a boot race, and this rule now pages for that shape again, as it should.
+      - record: country:readmodel_serving_differs:film_cities
         expr: >-
           (
             sum by (country) (
@@ -406,10 +410,21 @@ groups:
           and on (country) (
             sum by (country) (max by (country, city) (kinowo_web_movies_served{scope="all"})) > 0
           )
+
+      - record: country:readmodel_serving_differs:uptime_at_onset_seconds
+        expr: >-
+          (
+            last_over_time(country:readmodel_serving_differs:uptime_at_onset_seconds[90s])
+            or on (country)
+            min by (country) (time() - process_start_time_seconds{job=~"kinowo-worker|kinowo-web"})
+          )
+          and on (country) country:readmodel_serving_differs:film_cities
+
+      - alert: ReadModelServingDiffersFromCorpus
+        expr: >-
+          country:readmodel_serving_differs:film_cities
           and on (country) (
-            (
-              min by (country) (time() - process_start_time_seconds{job=~"kinowo-worker|kinowo-web"}) >= 25200
-            )
+            (country:readmodel_serving_differs:uptime_at_onset_seconds >= 900)
             or
             (
               sum by (country) (increase(kinowo_worker_readmodel_films_pruned_total[20m])) > 0
@@ -434,9 +449,10 @@ groups:
             a prune that removed anything is the incremental path failing to retire a card it
             stopped producing, which `docs/read-model-convergence.md` says must never happen. Do
             not widen this rule to make it quiet -- zero is the whole statement. (This alert
-            already stands down for the first 7 hours after a restart when that counter is
-            zero, so if it fired anyway, either there was no restart in that window or the
-            counter is genuinely nonzero -- treat it as real.)
+            stands down only when the difference BEGAN within 15 minutes of a worker/web restart
+            and that counter is zero -- the boot re-sync race -- so if it fired, the difference
+            started on a pair that had already settled, or the counter is genuinely nonzero:
+            treat it as real.)
 
       - alert: ReadModelServingShortOfCorpus
         expr: >-

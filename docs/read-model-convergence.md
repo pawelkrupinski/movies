@@ -61,3 +61,10 @@ a data-loss one — no card is permanently missing, it just takes longer than th
 diff query the alert annotation already gives, and `sum by (reason)
 (increase(kinowo_worker_readmodel_films_pruned_total{country="<country>"}[10m]))` staying
 at zero rules out the prune-side defect this doc otherwise describes.
+
+The alert itself now stands down for exactly this shape: a difference that BEGAN within
+15 minutes of a worker/web restart, with the prune counter at zero, never pages (the
+uptime at onset is latched by the recording rule
+`country:readmodel_serving_differs:uptime_at_onset_seconds`). A restart that lands after
+a difference began is not an excuse for it, so a difference that starts on a settled pair
+pages even if a pod restarts mid-episode. If it fired, the onset was not a boot race.
