@@ -16,8 +16,9 @@ object SearchTitles {
    *  `"Series: Film"` programme-banner colon ("Akademia Kina Polskiego:
    *  Człowiek z żelaza (1981) 4K" → "Człowiek z żelaza (1981) 4K") and the
    *  trailing-parenthetical-stripped form ("Ojczyzna (pokaz przedpremierowy)" →
-   *  "Ojczyzna"). Blanks and duplicates collapse. Callers verify each hit, so an
-   *  extra candidate can't mis-resolve onto a same-title different film. */
+   *  "Ojczyzna"). Blanks and duplicates collapse. Callers must verify a hit found via one
+   *  of these derived fragments — they are shorter, more generic strings than any
+   *  title a cinema printed (see [[wholeCandidates]]). */
   def candidates(title: String, originalTitle: Option[String], extraTitles: Iterable[String] = Nil): Seq[String] = {
     def deDecorate(t: String): Seq[String] = {
       val pipeParts       = if (t.contains(" | ")) t.split("""\s+\|\s+""").toIndexedSeq else Nil

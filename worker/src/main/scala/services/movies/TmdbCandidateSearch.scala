@@ -30,30 +30,18 @@ class TmdbCandidateSearch(
 
   // ── TMDB resolution ────────────────────────────────────────────────────────
 
-  // Resolution order:
-  //   1. Sister-row alias match — when another cache row sharing any title
-  //      alias (cleanTitle or `originalTitle` hint) has already been
-  //      TMDB-resolved, inherit that resolution. Avoids year-less search
-  //      collisions (Bez końca 1985 vs 2026, Belle 2013 vs Hosoda anime,
-  //      etc.). This is where the `originalTitle` hint pulls its weight.
-  //   2. Polish-localised TMDB title search, verified by director when the
-  //      cinema reported one (rejects same-title-different-film hits).
-  //   3. Director-page walk — when the cinema reports a director and the
-  //      title path either missed or returned a candidate with a different
-  //      director, search TMDB for the director by name and pick their
-  //      filmography entry whose year matches the cinema's. Solves the
-  //      Niedźwiedzica class of mis-resolution: Polish title "Niedźwiedzica"
-  //      maps to Grizzly Falls 1999 on TMDB, but the cinema's reported
-  //      director "Asgeir Helgestad" leads us to his 2026 film instead. When
-  //      the walk finds NOTHING for any reported director — TMDB's own
-  //      crew/person data doesn't credit them in a way the walk can find,
-  //      e.g. Queen: Hungarian Rhapsody – Live in Budapest '86 / director
-  //      János Zsombolyai, tmdbId 142773 — fall through to `searchYearExactTop`
-  //      (a year + EXACT title match, never consulting the director) so a row
-  //      the walk can't place still resolves when its own title search would
-  //      have been unambiguous anyway (see the comment beside its use in the
-  //      director-bearing branch below for why the looser `searchUnique` is
-  //      deliberately NOT reused here).
+  // Resolution order (no sister-row shortcut — every row resolves from its OWN
+  // titles, which keeps the outcome independent of enrichment order):
+  //   1. No director reported → a title search that is unambiguous: TMDB's single
+  //      hit (a de-decorated fragment's hit must also share a distinctive word with
+  //      that fragment), else a year-scoped search whose top hit is an exact title.
+  //   2. Director reported → walk the director's filmography (`directorWalk`) and
+  //      pick the title-matching credit; a search hit is never merely "verified by
+  //      director", which cannot separate two films by the same director. When the
+  //      walk finds NOTHING for every reported director, fall back to the exact-title
+  //      `searchYearExactTop` only (see its use in the director-bearing branch).
+  //   3. Only when search found nothing and the row has no tmdbId: exact reverse
+  //      lookups from an external id (IMDb `/find`, Letterboxd, Filmweb→Wikidata).
   //
   // The IMDb id is OPTIONAL: TMDB doesn't always have a cross-reference yet
   // (very recent releases — e.g. "Za duży na bajki 3" tmdbid 1484486 has no
@@ -61,12 +49,7 @@ class TmdbCandidateSearch(
   // still store the row (Filmweb / MC / RT all key off the title, not the
   // IMDb id); `ImdbIdMissing` fires from the async TMDB stage so
   // `ImdbRatings` can recover the id via IMDb's suggestion endpoint.
-  //
-  // A `tmdb.search(originalTitle, year)` fallback was previously inserted
-  // between (2) and (3). Audit on 356 films across 9 cinemas found 0 films
-  // with `originalTitle` set but no `director` — i.e. every film the
-  // fallback could uniquely help was also reachable via director-walk.
-  // Dropped to keep the chain minimal.
+
   def resolve(
     title:         String,
     year:          Option[Int],
@@ -329,7 +312,7 @@ class TmdbCandidateSearch(
           // title. CINEMA-only, like every other hint here — reading the merged
           // fields would hand the check the previous resolution's own numbers.
           rowDirectors.iterator
-            .flatMap(d => directorWalk(Some(d), effectiveYear, candidates, evidence.runtimes, evidence.cast, cinemaCandidates, cinemaTitleWeight).map(d -> _))
+            .flatMap(d => directorWalk(d, effectiveYear, candidates, evidence.runtimes, evidence.cast, cinemaCandidates, cinemaTitleWeight).map(d -> _))
             .nextOption()
             .map { case (d, hit) => searchBasis = Some(TmdbBasis.DirectorWalk); walkedBy = Some(d); hit }
             // Fallback, once EVERY reported director's walk has come back with
@@ -489,7 +472,7 @@ class TmdbCandidateSearch(
    *       2026) can't be disambiguated by year, so the walk abstains rather than
    *       guess the first — better no ratings than another film's ratings. */
   private def directorWalk(
-    director:         Option[String],
+    director:         String,
     year:             Option[Int],
     candidates:       Seq[String] = Nil,
     cinemaRuntimes:   Seq[Int] = Nil,
@@ -497,13 +480,13 @@ class TmdbCandidateSearch(
     cinemaCandidates: Seq[String] = Nil,
     cinemaTitleWeight: Map[String, Int] = Map.empty
   ): Option[TmdbClient.SearchResult] = {
-    director.flatMap { directory =>
+    {
       // Try each person the name could mean, in turn — TMDB's top hit is wrong
       // often enough (a credit-less duplicate stub, or an alias another director
       // lists) that trusting it costs the whole resolution now the walk is the
       // only resolver. A person whose filmography doesn't contain the film simply
       // yields nothing here, which is exactly the signal to try the next one.
-      tmdb.findPersonCandidates(stripImdbDisambiguator(directory.split(",").head.trim)).iterator.zipWithIndex.flatMap { case (personId, candidateIndex) =>
+      tmdb.findPersonCandidates(stripImdbDisambiguator(director.split(",").head.trim)).iterator.flatMap { personId =>
         // Directing credits first — the common case, unchanged. A cinema that
         // printed the WRITER instead ("Drzewo magii" is directed by Ben Gregor and
         // written by Simon Farnaby, and cinemas print either) would otherwise walk
@@ -666,7 +649,7 @@ class TmdbCandidateSearch(
           case _         => None         // 0 or >1 at the exact year, or no title corroboration → don't guess
         })
         byTitle.orElse(byYear).map { film =>
-          logger.info(s"Director-walk: '$directory' (person $personId) year=${year.getOrElse("?")} → tmdbId=${film.id} '${film.originalTitle.getOrElse(film.title)}'")
+          logger.info(s"Director-walk: '$director' (person $personId) year=${year.getOrElse("?")} → tmdbId=${film.id} '${film.originalTitle.getOrElse(film.title)}'")
           film
         }
       }.nextOption()
