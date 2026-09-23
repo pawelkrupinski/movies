@@ -305,22 +305,11 @@ struct CityChoiceView: View {
                         ForEach(searchRows, id: \.self) { row in
                             switch row {
                             case .region(let name):
-                                Button { region = name; subregion = nil; query = "" } label: {
-                                    self.row(name)
-                                }
-                                .foregroundStyle(.primary)
+                                rowButton(name) { region = name; subregion = nil; query = "" }
                             case .subregion(let name, let parentRegion):
-                                Button { region = parentRegion; subregion = name; query = "" } label: {
-                                    self.row(name)
-                                }
-                                .foregroundStyle(.primary)
+                                rowButton(name) { region = parentRegion; subregion = name; query = "" }
                             case .city(let city):
-                                Button {
-                                    choose(city)
-                                } label: {
-                                    self.row(city.name)
-                                }
-                                .foregroundStyle(.primary)
+                                rowButton(city.name) { choose(city) }
                             }
                         }
                     } header: {
@@ -328,25 +317,16 @@ struct CityChoiceView: View {
                     }
 
                     if searchRows.isEmpty {
-                        Text(String(format: localizedString("citygate.no_match", locale: locale), query))
-                            .foregroundStyle(.secondary)
+                        noMatchLabel("citygate.no_match")
                     }
                 } else if pickingRegion {
                     Section {
                         ForEach(topLevelRows, id: \.self) { row in
                             switch row {
                             case .heading(let name):
-                                Button { region = name; query = "" } label: {
-                                    self.row(name)
-                                }
-                                .foregroundStyle(.primary)
+                                rowButton(name) { region = name; query = "" }
                             case .city(let city):
-                                Button {
-                                    choose(city)
-                                } label: {
-                                    self.row(city.name)
-                                }
-                                .foregroundStyle(.primary)
+                                rowButton(city.name) { choose(city) }
                             }
                         }
                     } header: {
@@ -354,8 +334,7 @@ struct CityChoiceView: View {
                     }
 
                     if topLevelRows.isEmpty {
-                        Text(String(format: localizedString("citygate.no_region_match", locale: locale), query))
-                            .foregroundStyle(.secondary)
+                        noMatchLabel("citygate.no_region_match")
                     }
                 } else if subregion == nil {
                     // At the TOP of the section — above every row, not buried in
@@ -377,17 +356,9 @@ struct CityChoiceView: View {
                         ForEach(secondLevelRows, id: \.self) { row in
                             switch row {
                             case .heading(let name):
-                                Button { subregion = name; query = "" } label: {
-                                    self.row(name)
-                                }
-                                .foregroundStyle(.primary)
+                                rowButton(name) { subregion = name; query = "" }
                             case .city(let city):
-                                Button {
-                                    choose(city)
-                                } label: {
-                                    self.row(city.name)
-                                }
-                                .foregroundStyle(.primary)
+                                rowButton(city.name) { choose(city) }
                             }
                         }
                     } header: {
@@ -402,10 +373,7 @@ struct CityChoiceView: View {
                     }
 
                     if secondLevelRows.isEmpty {
-                        // Keeps the search field anchored (an empty List would let
-                        // it collapse) and tells the user nothing matched.
-                        Text(String(format: localizedString("citygate.no_match", locale: locale), query))
-                            .foregroundStyle(.secondary)
+                        noMatchLabel("citygate.no_match")
                     }
                 } else {
                     // Third step: browsing one subregion's cities. Same
@@ -420,20 +388,14 @@ struct CityChoiceView: View {
 
                     Section {
                         ForEach(visibleSubregionCities, id: \.slug) { city in
-                            Button {
-                                choose(city)
-                            } label: {
-                                row(city.name)
-                            }
-                            .foregroundStyle(.primary)
+                            rowButton(city.name) { choose(city) }
                         }
                     } header: {
                         Text(subregion ?? "")
                     }
 
                     if visibleSubregionCities.isEmpty {
-                        Text(String(format: localizedString("citygate.no_match", locale: locale), query))
-                            .foregroundStyle(.secondary)
+                        noMatchLabel("citygate.no_match")
                     }
                 }
             }
@@ -537,9 +499,7 @@ struct CityChoiceView: View {
                     let selected = country.code == prefs.selectedCountry.code
                     Button {
                         guard country != prefs.selectedCountry else { return }
-                        prefs.setCountry(country)
-                        store.use(country: country)
-                        details.use(country: country)
+                        switchCountry(to: country, prefs: prefs, store: store, details: details)
                     } label: {
                         // Looked up by code, not `country.displayName` — a
                         // country's NAME follows the resolved UI language
@@ -617,15 +577,26 @@ struct CityChoiceView: View {
         }
     }
 
-    /// One tappable row: a label and the disclosure chevron both steps use.
-    private func row(_ label: String) -> some View {
-        HStack {
-            Text(label)
-            Spacer()
-            Image(systemName: "chevron.right")
-                .font(.footnote)
-                .foregroundStyle(.tertiary)
+    /// The "nothing matches <query>" line under an empty step — also keeps the
+    /// search field anchored, since an empty `List` would let it collapse.
+    private func noMatchLabel(_ key: String) -> some View {
+        Text(String(format: localizedString(key, locale: locale), query))
+            .foregroundStyle(.secondary)
+    }
+
+    /// One tappable row — a label and the disclosure chevron — as every step
+    /// (and the flattened search) renders its regions, subregions and cities.
+    private func rowButton(_ label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Text(label)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.footnote)
+                    .foregroundStyle(.tertiary)
+            }
         }
+        .foregroundStyle(.primary)
     }
 
     /// Adopt the picked city, and settle the "nearer city" prompt for it —
@@ -640,10 +611,7 @@ struct CityChoiceView: View {
     /// this view only ever shows while `prefs.selectedCity` is still nil.
     private func choose(_ city: City) {
         if city.country != prefs.selectedCountry.code {
-            let country = catalog.country(code: city.country)
-            prefs.setCountry(country)
-            store.use(country: country)
-            details.use(country: country)
+            switchCountry(to: catalog.country(code: city.country), prefs: prefs, store: store, details: details)
         }
         switch City.switchPromptSuppression(chosenSlug: city.slug, nearestSlug: nearest?.slug) {
         case .seedKey(let key):

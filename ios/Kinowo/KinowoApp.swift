@@ -91,8 +91,8 @@ struct KinowoApp: App {
                 // every deployment — no per-country branching at all — so a
                 // country switch has nothing catalog-side that needs a rebuild
                 // to pick up. Repertoire data is re-pointed directly instead,
-                // by whoever actually changes country: `handleDeepLink` calls
-                // `store.use(citySlug:)`/`details.use(citySlug:)` itself, and
+                // by whoever actually changes country, through `switchCountry`
+                // (`handleDeepLink`, `CityChoiceView`), and
                 // `CityGate`'s own `ContentView().task(id: slug)` re-fires off
                 // the CITY slug the moment one is chosen for the new country —
                 // neither needs this tree torn down. Keying on country too
@@ -132,12 +132,14 @@ struct KinowoApp: App {
                                         languageTokens: { catalog.versionTokens(ofSlug: $0).accepted }) else { return }
         // A link on another country's deployment (showtimes-uk / showtimes-de)
         // must switch the country too, or the city would resolve against the
-        // wrong deployment's catalog. Setting it re-points `kinowoBaseURL`; the
-        // UI language is unaffected — it's a fully independent preference (see
-        // `LanguageSelection`), so a cross-country link never changes it. No-ops
-        // when already in that country (e.g. a same-country kinowo.net link).
-        if let countryCode = catalog.cities.country(ofSlug: link.citySlug) {
-            prefs.setCountry(catalog.country(code: countryCode))
+        // wrong deployment's catalog — and the stores must be re-pointed at
+        // that deployment too (`switchCountry`), or `use(citySlug:)` below
+        // fetches the new country's city from the old one. The UI language is
+        // unaffected — it's a fully independent preference (see
+        // `LanguageSelection`), so a cross-country link never changes it.
+        if let countryCode = catalog.cities.country(ofSlug: link.citySlug),
+           countryCode != prefs.selectedCountry.code {
+            switchCountry(to: catalog.country(code: countryCode), prefs: prefs, store: store, details: details)
         }
         if link.citySlug != prefs.selectedCity {
             prefs.setCity(link.citySlug)
