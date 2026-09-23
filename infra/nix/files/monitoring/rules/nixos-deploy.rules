@@ -135,6 +135,53 @@ groups:
             it really is acceptable on this host. LEAVING IT BLOCKED IS A CHOICE, not a stable
             state: every later merge queues behind it.
 
+      # THE SAME-DAY TIER OF `AutoApplyBlocked`, added after the 2026-09-23 HSTS change was refused
+      # on k3s-worker-1 (`units_would_change`: caddy.service) and nothing said so. The day above
+      # is right for a PAGE and wrong as the only word: over the 30 days before, nine blocks lasted
+      # 2-9 hours and not one reached 24h, so `AutoApplyBlocked` never fired while every one of
+      # them held a merge back. An hour is past any ordinary pass (the path unit fires within a
+      # second of staging, the timer every 30 minutes) and short enough that whoever merged is
+      # still at the keyboard. It fires ONCE (warnings re-nag at 12h) and the day tier repeats it,
+      # so a block that is a deliberate choice costs two messages, not a stream.
+      - alert: AutoApplyRefusingChange
+        expr: nixos_auto_apply_blocked_reason == 1
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} has refused to auto-apply for an hour ({{ $labels.reason }})"
+          description: >-
+            A merged change is staged on this host and the applier will not activate it on its
+            own, so it is not live -- and every later merge for this host queues behind it.
+            `journalctl -u nixos-auto-apply -n 50` names the unit; switch by hand or add it to
+            `fleet.autoApply.restartableUnits`. `AutoApplyBlocked` repeats this at a day.
+
+      # "CONFIG PUSHED BUT NOT LIVE", FOR EVERY REASON THE APPLIER IS NOT ANNOUNCING ITSELF. The
+      # ordinary stage-to-switch gap is seconds, so two hours of `staged_pending` is a merge that
+      # is not deploying. Two exclusions keep it to news:
+      #   - a host that is BLOCKED already has `AutoApplyRefusingChange` saying why, an hour
+      #     earlier -- one cause, one message;
+      #   - a host EXCLUDED on purpose publishes `nixos_auto_apply_excluded` and is staged-but-not-
+      #     running by design; `StagedClosureNotActivated` below stays its daily reminder.
+      # What is left is the applier not DECIDING: a dead path unit, a pass that ends `undetermined`
+      # every time, a host that cannot fetch the closure -- `AutoApplyStalled` only catches the
+      # first of those, and only at three hours.
+      - alert: StagedClosureNotLive
+        expr: >-
+          nixos_staged_pending == 1
+          unless on (host) (nixos_auto_apply_blocked_reason == 1)
+          unless on (host) (nixos_auto_apply_excluded == 1)
+        for: 2h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} has had a staged closure it is not running for 2 hours"
+          description: >-
+            CI staged a closure here two hours ago and the host is still on the old one, and the
+            applier has NOT said it is blocked -- so it is not deciding at all. Check
+            `AutoApplyStalled` and `journalctl -u nixos-auto-apply -n 200`; a pass that ends
+            `undetermined` every time looks exactly like this.
+
       - alert: StagedClosureNotActivated
         expr: nixos_staged_pending == 1
         # A DAY, matching `AutoApplyBlocked`. These two overlap on purpose and answer different

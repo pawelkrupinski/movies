@@ -60,6 +60,12 @@ tests:
         alertname: StagedClosureNotActivated
         exp_alerts: []
       - eval_time: 20m
+        alertname: AutoApplyRefusingChange
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: StagedClosureNotLive
+        exp_alerts: []
+      - eval_time: 20m
         alertname: RebootOwed
         exp_alerts: []
       - eval_time: 20m
@@ -298,4 +304,95 @@ tests:
                 `fleet_nix_gc_system_generations` says how many generations are currently retained.
       - eval_time: 4d
         alertname: NixGarbageCollectionMetricAbsent
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE 2026-09-23 HSTS REFUSAL, AS AN HOUR RATHER THAN A DAY. k3s-worker-1 was blocked
+  # (`units_would_change`: caddy.service) at 12:52 and stayed blocked until a person happened to
+  # look. `AutoApplyBlocked` waits a day; over the 30 days before it, nine blocks lasted 2-9h and
+  # none reached 24h, so that rule never fired once while every one of them held a merge back.
+  # The hour tier says so the same afternoon. Fifty minutes is quiet, seventy fires.
+  #
+  # `StagedClosureNotLive` must stay SILENT here even three hours in: the host IS staged-but-not-
+  # running, but the reason is already being announced by the blocked alert, and one cause
+  # should be one message.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'nixos_auto_apply_blocked_reason{host="k3s-worker-1",reason="units_would_change"}'
+        values: '1+0x300'
+      - series: 'nixos_staged_pending{host="k3s-worker-1"}'
+        values: '1+0x300'
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: AutoApplyRefusingChange
+        exp_alerts: []
+      - eval_time: 70m
+        alertname: AutoApplyRefusingChange
+        exp_alerts:
+          - exp_labels:
+              host: k3s-worker-1
+              reason: units_would_change
+              severity: warning
+            exp_annotations:
+              summary: "k3s-worker-1 has refused to auto-apply for an hour (units_would_change)"
+              description: >-
+                A merged change is staged on this host and the applier will not activate it on its
+                own, so it is not live -- and every later merge for this host queues behind it.
+                `journalctl -u nixos-auto-apply -n 50` names the unit; switch by hand or add it to
+                `fleet.autoApply.restartableUnits`. `AutoApplyBlocked` repeats this at a day.
+      - eval_time: 3h
+        alertname: StagedClosureNotLive
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # STAGED BUT NOT LIVE FOR ANY OTHER REASON -- the applier never judged it (a dead path unit, a
+  # pass that keeps ending `undetermined`), so no `blocked` series says anything. The ordinary
+  # stage-to-switch gap is seconds, so two hours of it is a merge that is not deploying. Quiet at
+  # 110 minutes, firing at 130.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'nixos_auto_apply_blocked_reason{host="mongo-1",reason="units_would_change"}'
+        values: '0+0x300'
+      - series: 'nixos_staged_pending{host="mongo-1"}'
+        values: '1+0x300'
+    alert_rule_test:
+      - eval_time: 110m
+        alertname: StagedClosureNotLive
+        exp_alerts: []
+      - eval_time: 130m
+        alertname: StagedClosureNotLive
+        exp_alerts:
+          - exp_labels:
+              host: mongo-1
+              severity: warning
+            exp_annotations:
+              summary: "mongo-1 has had a staged closure it is not running for 2 hours"
+              description: >-
+                CI staged a closure here two hours ago and the host is still on the old one, and the
+                applier has NOT said it is blocked -- so it is not deciding at all. Check
+                `AutoApplyStalled` and `journalctl -u nixos-auto-apply -n 200`; a pass that ends
+                `undetermined` every time looks exactly like this.
+      - eval_time: 130m
+        alertname: AutoApplyRefusingChange
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A HOST EXCLUDED FROM AUTO-APPLY ON PURPOSE is staged-but-not-running by design, and says so
+  # with `nixos_auto_apply_excluded`. The two-hour tier must not nag it; the day-long
+  # `StagedClosureNotActivated` stays the one reminder such a host gets.
+  # And a normal deploy -- pending for five minutes, then switched -- fires nothing.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'nixos_staged_pending{host="monitoring-1"}'
+        values: '1+0x300'
+      - series: 'nixos_auto_apply_excluded{host="monitoring-1",reason="hand-applied while the alerting is reworked"}'
+        values: '1+0x300'
+      - series: 'nixos_staged_pending{host="mongo-1"}'
+        values: '1+0x5 0+0x295'
+    alert_rule_test:
+      - eval_time: 4h
+        alertname: StagedClosureNotLive
         exp_alerts: []
