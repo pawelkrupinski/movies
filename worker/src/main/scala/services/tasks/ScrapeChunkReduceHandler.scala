@@ -56,8 +56,7 @@ class ScrapeChunkReduceHandler(
         val expected = run.get.expectedKeys.toSet
         val missing  = expected.diff(stored.keySet)
         try {
-          publishScrape(new PreScrapedCinemaScraper(scraper.cinema, scraper.scrapeHosts, scraper.chain,
-            () => movies, listingComplete = missing.isEmpty))
+          publishScrape(PreScrapedCinemaScraper.of(scraper, () => movies, listingComplete = missing.isEmpty))
           val horizon = VenueScrapeCadence.remainingHorizonOf(scraper.cinema, movies, clock)
           scrapeFreshness.succeeded(ScrapeCinemaHandler.dedupKey(scraper.cinema), Some(horizon))
           store.completeRun(cinema, runId)

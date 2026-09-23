@@ -59,7 +59,10 @@ trait CorpusWiring { self: WorkerWiring =>
     new CaffeineMovieCache(movieRepository, eventBus, staging = Some(stagingRepository),
       retrigger = enrichmentRetrigger, mergeMetrics = taskMetrics, cacheMetrics = taskMetrics,
       enrichmentLanguage = country.language, screeningTokens = screeningTokens, normalizer = titleNormalizer,
-      scrapeLandingMetrics = taskMetrics)
+      scrapeLandingMetrics = taskMetrics,
+      // Durable, so the guards' grace and each venue's recorded source survive a
+      // rollout — held in memory they reset on every pod change.
+      scrapeGuardLedger = new services.scrapes.MongoScrapeGuardLedger(mongoConnection.database))
 
   // This deployment's badge vocabulary. One instance, shared by every path that
   // writes a `Showtime.format`, so the cache and the two detail-merge paths

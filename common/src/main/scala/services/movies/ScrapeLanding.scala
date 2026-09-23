@@ -89,19 +89,15 @@ private[movies] final class ScrapeLanding(
   // Guard-verdict + silent-write-skip counters — see `ScrapeLandingMetrics` for why
   // these exist. `CaffeineMovieCache` wires the Prometheus-backed instance; every
   // other construction (tests included) gets the noop.
-  metrics: ScrapeLandingMetrics = ScrapeLandingMetrics.noop
+  metrics: ScrapeLandingMetrics = ScrapeLandingMetrics.noop,
+  // Where the guards keep their per-venue state between ticks — see
+  // `ScrapeGuardLedger` for why it must outlive the process. In-memory by default,
+  // so every construction that doesn't care (tests included) is unchanged;
+  // `CaffeineMovieCache` forwards the worker's durable one.
+  guardLedger: ScrapeGuardLedger = new InMemoryScrapeGuardLedger
 ) extends Logging {
 
   import store.{corpusIndex, normalizer}
-
-  // The thresholds behind the two scrape-health guards live with the guards in
-  // `ScrapeHealth`; this cache keeps only the one piece of state each needs — how
-  // many ticks running it has rejected a venue. Two independent counters: a venue
-  // can be thin on showtimes (depth) while its film/slot count still looks plausible
-  // (breadth), or vice versa (Kino Aurum, 2026-09-13 — a stable 11-film board sitting
-  // on 57 accumulated slot-keys), so one guard's grace must never reset the other's.
-  private val depthRejections   = scala.collection.concurrent.TrieMap.empty[String, Int]
-  private val breadthRejections = scala.collection.concurrent.TrieMap.empty[String, Int]
 
   // Fires the cold-mirror sync at most once, on the FIRST scrape (see
   // `recordCinemaScrape`). One-shot so the sync can't re-trigger at an
@@ -110,6 +106,11 @@ private[movies] final class ScrapeLanding(
   // with no change stream (its mirror lags the repo), where re-checking would make
   // the staging path order-dependent (StagingOrderDeterminismSpec).
   private val coldMirrorSyncArmed = new java.util.concurrent.atomic.AtomicBoolean(true)
+
+  /** Write the venue's guard state only when it changed — a healthy tick of an
+   *  unchanged venue, the overwhelmingly common case, costs the store nothing. */
+  private def saveGuardState(cinema: Cinema, before: ScrapeGuardState, after: ScrapeGuardState): Unit =
+    if (after != before) guardLedger.put(cinema, after)
 
   /** The slot key for one cinema's report of a film under a given shown title.
    *  Every cinema slot is keyed by `(cinema, sanitize(title))` so a venue can hold
@@ -146,7 +147,8 @@ private[movies] final class ScrapeLanding(
    *  `UnscreenedCleanup`; a film that returns after the prune ran will
    *  re-pay the full enrichment cost on its next scrape. */
   def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie],
-                         listingIsComplete: Boolean = true): Seq[(CinemaMovie, CacheKey, Boolean)] = {
+                         listingIsComplete: Boolean = true,
+                         sourceKey: Option[String] = None): Seq[(CinemaMovie, CacheKey, Boolean)] = {
     // Empty `movies` is almost always a silent scraper failure (Cloudflare
     // challenge, parser regex mismatch, proxy 503, blank HTML), not a
     // cinema that's genuinely showing zero films right now. Without this
@@ -155,6 +157,16 @@ private[movies] final class ScrapeLanding(
     // — producing the visible "row appears and disappears" flicker. Bail out
     // and trust the slot data we have until the next non-empty tick.
     if (movies.isEmpty) return Seq.empty
+
+    // The guards' state for this venue — two independent counters, since a venue can
+    // be thin on showtimes (depth) while its film/slot count still looks plausible
+    // (breadth), or vice versa (Kino Aurum, 2026-09-13), so one guard's grace must
+    // never reset the other's; plus the source its stored listing came from. A tick
+    // from a DIFFERENT source is a rewire, and both guards stand aside for it: they
+    // measure against the old source's rows, which say nothing about the new one.
+    val guardState = guardLedger.get(cinema)
+    val rewired    = ScrapeHealth.isRewire(guardState.sourceKey, sourceKey)
+    if (rewired) RemovalAudit.scrapeRewired(cinema.displayName, guardState.sourceKey, sourceKey)
 
     // DEPTH guard — the same "trust what we have" bail as above, on the axis
     // neither that check nor the breadth guard below can see (a chunked fetch that
@@ -169,10 +181,15 @@ private[movies] final class ScrapeLanding(
     val knownCinemaShowtimes = corpusIndex.slotsOf(cinema).map { case (_, _, sd) =>
       ShowtimesDigest.slotShowtimeCount(sd) }.sum
     val batchShowtimes       = movies.iterator.map(_.showtimes.size).sum
-    ScrapeHealth.depth(knownCinemaShowtimes, batchShowtimes, depthRejections.getOrElse(cinema.displayName, 0),
-      maxConsecutiveGuardRejections) match {
+    val depthVerdict =
+      if (rewired) ScrapeHealth.Depth.Healthy
+      else ScrapeHealth.depth(knownCinemaShowtimes, batchShowtimes, guardState.depthRejections,
+        maxConsecutiveGuardRejections)
+    depthVerdict match {
       case ScrapeHealth.Depth.Reject(consecutive) =>
-        depthRejections.put(cinema.displayName, consecutive)
+        // The tick is discarded, so nothing else about the venue changes — least of
+        // all its recorded source.
+        saveGuardState(cinema, guardState, guardState.copy(depthRejections = consecutive))
         metrics.recordGuardVerdict(ScrapeLandingMetrics.Guard.Depth, ScrapeLandingMetrics.Verdict.Reject)
         RemovalAudit.scrapeDepthGuarded(cinema.displayName, batchShowtimes, knownCinemaShowtimes, consecutive)
         return Seq.empty
@@ -181,9 +198,7 @@ private[movies] final class ScrapeLanding(
         // the smaller board land, rather than serving showtimes that no longer exist.
         metrics.recordGuardVerdict(ScrapeLandingMetrics.Guard.Depth, ScrapeLandingMetrics.Verdict.Accept)
         RemovalAudit.scrapeDepthAccepted(cinema.displayName, batchShowtimes, knownCinemaShowtimes, consecutive)
-        depthRejections.remove(cinema.displayName)
-      case ScrapeHealth.Depth.Healthy =>
-        depthRejections.remove(cinema.displayName)
+      case ScrapeHealth.Depth.Healthy => ()
     }
 
     // Cold-mirror guard (only matters when diversion is wired). The newcomer test
@@ -238,18 +253,27 @@ private[movies] final class ScrapeLanding(
     // FOREVER: the ratio can never clear the floor while the very thing that would
     // shrink `knownCinemaSlots` back down is the prune this guard keeps skipping.
     val knownCinemaSlots = corpusIndex.slotsOf(cinema).size
-    val breadthVerdict = ScrapeHealth.breadth(knownCinemaSlots, deduped.size, listingIsComplete,
-      breadthRejections.getOrElse(cinema.displayName, 0), maxConsecutiveGuardRejections)
-    breadthVerdict match {
+    //
+    // A rewire skips it like the depth guard: the old source's films are exactly what
+    // the prune must retire, however few the new source lists.
+    val breadthVerdict =
+      if (rewired) ScrapeHealth.Breadth.Healthy
+      else ScrapeHealth.breadth(knownCinemaSlots, deduped.size, listingIsComplete,
+        guardState.breadthRejections, maxConsecutiveGuardRejections)
+    val breadthRejections = breadthVerdict match {
       case ScrapeHealth.Breadth.Reject(consecutive) =>
-        breadthRejections.put(cinema.displayName, consecutive)
         metrics.recordGuardVerdict(ScrapeLandingMetrics.Guard.Breadth, ScrapeLandingMetrics.Verdict.Reject)
+        consecutive
       case ScrapeHealth.Breadth.AcceptDegraded(_) =>
-        breadthRejections.remove(cinema.displayName)
         metrics.recordGuardVerdict(ScrapeLandingMetrics.Guard.Breadth, ScrapeLandingMetrics.Verdict.Accept)
-      case ScrapeHealth.Breadth.Healthy =>
-        breadthRejections.remove(cinema.displayName)
+        0
+      case ScrapeHealth.Breadth.Healthy => 0
     }
+    // The listing lands from here on, so its source becomes the venue's recorded one —
+    // including on a legacy venue that had none. A scrape that reports no key keeps
+    // whatever was recorded.
+    saveGuardState(cinema, guardState, ScrapeGuardState(
+      sourceKey = sourceKey.orElse(guardState.sourceKey), depthRejections = 0, breadthRejections = breadthRejections))
     // Only `Reject` skips the prune below — `AcceptDegraded` means the guard gave
     // up on treating this as a bad fetch, so it prunes exactly like `Healthy` does.
     val scrapeLooksPartial = breadthVerdict.isInstanceOf[ScrapeHealth.Breadth.Reject]

@@ -146,6 +146,14 @@ object RemovalAudit {
     logger.warn(s"[scrape-depth] cinema='$cinema' ACCEPTED a sustained reduction after " +
       s"$consecutive consecutive rejections: batch=$batchShowtimes vs known=$knownShowtimes reason=depth-guard-exhausted")
 
+  /** A venue's scrape came from a different upstream listing than its stored one: the
+   *  venue was rewired, so both guards stand aside and this listing becomes the new
+   *  baseline, retiring the old source's rows. WARN, like the guard lines it stands in
+   *  for — it is the one path by which a thin listing lands unguarded. */
+  def scrapeRewired(cinema: String, from: Option[String], to: Option[String]): Unit =
+    logger.warn(s"[scrape-depth] cinema='$cinema' REWIRED ${from.getOrElse("?")} -> ${to.getOrElse("?")}: " +
+      "guards skipped, listing lands as the new baseline reason=source-rewired")
+
   /** All of a film's screening slots cleared at once (`whole` = the slot map was
    *  empty, so every slot went) — INFO; a partial stale-slot trim on a healthy
    *  write is routine — DEBUG. */

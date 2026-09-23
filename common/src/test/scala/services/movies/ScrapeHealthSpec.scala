@@ -27,6 +27,20 @@ class ScrapeHealthSpec extends AnyFlatSpec with Matchers {
     ScrapeHealth.depth(100, 104, 0) shouldBe Depth.Healthy
   }
 
+  "a rewire" should "be a change between two known source keys" in {
+    // Braniewo's Baszta, 2026-09-23: moved off bilety24 organiser 477 (Sroda's
+    // programme) onto its own Filmweb listing.
+    ScrapeHealth.isRewire(stored = Some("bilety24.pl/organizator/477"), current = Some("filmweb.pl/cinema/2352")) shouldBe true
+    ScrapeHealth.isRewire(stored = Some("filmweb.pl/cinema/2352"), current = Some("filmweb.pl/cinema/2352")) shouldBe false
+  }
+
+  it should "never be inferred from a venue with no recorded key" in {
+    // Legacy rows predate the ledger: an unknown past is not evidence of a change,
+    // and the guards must keep protecting the venue until a key is recorded.
+    ScrapeHealth.isRewire(stored = None, current = Some("filmweb.pl/cinema/2352")) shouldBe false
+    ScrapeHealth.isRewire(stored = Some("filmweb.pl/cinema/2352"), current = None) shouldBe false
+  }
+
   "the breadth guard" should "trust a caller that says the listing is short" in {
     ScrapeHealth.looksPartial(knownSlots = 2, batchSlots = 2, listingIsComplete = false) shouldBe true
   }

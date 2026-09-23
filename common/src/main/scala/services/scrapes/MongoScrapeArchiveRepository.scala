@@ -1,7 +1,9 @@
 package services.scrapes
 
 import com.mongodb.WriteConcern
-import com.mongodb.client.model.{ReplaceOptions, UpdateOptions}
+import com.mongodb.client.model.UpdateOptions
+import org.bson.{BsonDocument, BsonDocumentWriter}
+import org.bson.codecs.EncoderContext
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import org.bson.codecs.configuration.CodecRegistry
 import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders, fromRegistries}
@@ -15,6 +17,7 @@ import services.movies.JavaTimeCodecs
 import java.time.Instant
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 /** Storage mirror of one `CinemaMovie`. Identical to the domain type minus
@@ -130,7 +133,7 @@ object ScrapeArchiveCodecs {
  * per cinema, its listing replaced on every scrape that has content.
  *
  * Exactly one worker writes a given country's database, so a successful scrape
- * replaces its row outright. A barren attempt is a CONDITIONAL update instead
+ * overwrites its row's listing outright. A barren attempt is a CONDITIONAL update instead
  * (`scrapedAt < at`), which both enforces the "only if newer" rule and keeps it
  * atomic — the alternative, read-then-write, could drop a listing that landed in
  * between.
@@ -154,11 +157,21 @@ class MongoScrapeArchiveRepository(sharedDb: Option[MongoDatabase]) extends Scra
 
   def enabled: Boolean = coll.isDefined
 
+  /** `$set`s the listing's fields and drops the barren marker, rather than replacing
+   *  the row: the row also carries fields this repository does not own (the scrape
+   *  guards' state, `MongoScrapeGuardLedger`), which a replace on every scrape would
+   *  wipe. */
   protected def storeSuccess(cinema: Cinema, city: Option[String], scrape: SuccessfulScrape): Unit =
     coll.foreach { c =>
-      val dto = StoredScrapeDto.fromSuccess(cinema, city, scrape)
+      val dto     = StoredScrapeDto.fromSuccess(cinema, city, scrape)
+      val encoded = new BsonDocument()
+      ScrapeArchiveCodecs.registry.get(classOf[StoredScrapeDto])
+        .encode(new BsonDocumentWriter(encoded), dto, EncoderContext.builder().build())
+      val fields  = encoded.entrySet().asScala.toSeq.filterNot(_.getKey == "_id")
+        .map(e => Updates.set(e.getKey, e.getValue))
       guard(cinema, "record") {
-        Await.result(c.replaceOne(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true)).toFuture(), 30.seconds)
+        Await.result(c.updateOne(Filters.eq("_id", dto._id), Updates.combine((fields :+ Updates.unset("lastBarren"))*),
+          new UpdateOptions().upsert(true)).toFuture(), 30.seconds)
       }
     }
 

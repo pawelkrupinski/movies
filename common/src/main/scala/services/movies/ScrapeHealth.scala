@@ -5,9 +5,10 @@ import scala.concurrent.duration._
 /**
  * Is this tick's listing a believable picture of the venue's board, or a degraded
  * fetch to be ignored? Two pure verdicts, one per axis, with the thresholds beside
- * them. `MovieCache.recordCinemaScrape` asks both before it writes anything and
- * keeps the only state involved — how many ticks in a row the depth guard has
- * rejected a venue — so the decision itself is a function of the counts.
+ * them. `MovieCache.recordCinemaScrape` asks both before it writes anything, and
+ * the only state involved — how many ticks in a row each guard has rejected a
+ * venue, and which source its stored listing came from — is kept in a
+ * [[ScrapeGuardLedger]], so each decision itself is a function of the counts.
  *
  * Both guards exist because an empty or thin listing is almost always a silent
  * scraper failure (Cloudflare challenge, parser mismatch, proxy 503, a chunked
@@ -122,6 +123,21 @@ object ScrapeHealth {
       if (knownSlots >= MinSlotsForShrinkGuard) batchSlots < knownSlots * PruneFloorRatio
       else knownSlots - batchSlots >= MinAbsoluteDropForShrinkGuard
     }
+
+  /** Is this tick from a different upstream listing than the one the venue's stored
+   *  corpus came from? Then neither guard applies: both measure the tick against
+   *  what is stored, and what is stored is the OLD source's programme — no evidence
+   *  about how complete the new source's listing is. Braniewo's Baszta, 2026-09-23:
+   *  moved from bilety24 organiser 477 (another town's cinema, 77 showtimes) to its
+   *  own Filmweb page (3), and the depth guard discarded every hourly tick against
+   *  the wrong cinema's showtimes.
+   *
+   *  Only a change between two KNOWN keys counts. A venue with no recorded key
+   *  (landed before keys were recorded) or a scrape reporting none is not evidence
+   *  of a rewire, and treating it as one would switch the guards off for every
+   *  venue on the first tick after this shipped. */
+  def isRewire(stored: Option[String], current: Option[String]): Boolean =
+    stored.isDefined && current.isDefined && stored != current
 
   /** The breadth guard's answer for one tick, stateful the same way [[Depth]] is. */
   enum Breadth {

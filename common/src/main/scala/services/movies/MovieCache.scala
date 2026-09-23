@@ -113,9 +113,15 @@ trait MovieCache extends MovieCacheReader {
    *  because a film missing from a listing nobody finished is not evidence that it stopped
    *  screening. Every scrape DECORATOR must forward this
    *  ([[services.cinemas.common.DelegatingCinemaScraper]]); one that answers the default
-   *  instead silently turns the guard off. */
+   *  instead silently turns the guard off.
+   *
+   *  `sourceKey` names the upstream listing this scrape read (`CinemaScraper.sourceKey`).
+   *  When it differs from the one the venue's stored listing came from, the venue has
+   *  been rewired and the scrape lands as its new baseline, guards skipped
+   *  ([[ScrapeHealth.isRewire]]). `None` never counts as a change. */
   def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie],
-                         listingIsComplete: Boolean = true): Seq[(CinemaMovie, CacheKey, Boolean)]
+                         listingIsComplete: Boolean = true,
+                         sourceKey: Option[String] = None): Seq[(CinemaMovie, CacheKey, Boolean)]
 
   /** Reload the positive cache from the repository: drop every in-memory positive
    *  entry, then `repository.findAll()` and put each row. Returns the number of
@@ -288,7 +294,11 @@ class CaffeineMovieCache(
   maxConsecutiveGuardRejections: Int = ScrapeHealth.maxRejectionsFor(services.freshness.Freshness.defaultScrapeTtl),
   // Guard-verdict + silent-write-skip counters, forwarded verbatim to `ScrapeLanding`
   // — see `ScrapeLandingMetrics`. No-op for web/tests; the worker wires `WorkerTaskMetrics`.
-  scrapeLandingMetrics: ScrapeLandingMetrics = ScrapeLandingMetrics.noop
+  scrapeLandingMetrics: ScrapeLandingMetrics = ScrapeLandingMetrics.noop,
+  // Where `ScrapeLanding`'s guards keep their per-venue state (rejection counts and the
+  // venue's recorded source), forwarded verbatim to it. In-memory by default; the
+  // worker wires the durable `MongoScrapeGuardLedger` so the state survives a restart.
+  scrapeGuardLedger: ScrapeGuardLedger = new InMemoryScrapeGuardLedger
 ) extends MovieCache with LandingStore with Stoppable with Logging {
 
   // Supplies `CacheKey.apply` throughout this class, so a key can never be built
@@ -1160,14 +1170,15 @@ class CaffeineMovieCache(
    *  the landing reads nothing from it until the first scrape, so the not-yet-built
    *  `this` it receives is never observed. */
   private val landing = new ScrapeLanding(this, repository, staging, bus, screeningTokens, enrichmentLanguage,
-    maxConsecutiveGuardRejections, scrapeLandingMetrics)
+    maxConsecutiveGuardRejections, scrapeLandingMetrics, scrapeGuardLedger)
   /** [[LandingStore]]: how many rows are resident — zero is the cold mirror the
    *  landing's first scrape guards against. */
   private[services] def residentCount: Long = positive.estimatedSize()
 
   def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie],
-                         listingIsComplete: Boolean = true): Seq[(CinemaMovie, CacheKey, Boolean)] =
-    landing.recordCinemaScrape(cinema, movies, listingIsComplete)
+                         listingIsComplete: Boolean = true,
+                         sourceKey: Option[String] = None): Seq[(CinemaMovie, CacheKey, Boolean)] =
+    landing.recordCinemaScrape(cinema, movies, listingIsComplete, sourceKey)
 
   def hasResolvedSiblingByTitle(rawTitle: String): Boolean =
     corpusIndex.entriesFor(normalizer.sanitize(rawTitle)).exists { case (_, e) => e.tmdbId.isDefined }

@@ -98,7 +98,7 @@ class ChunkScrapePlanner(
    *  repertoire, so it counts as a SUCCESSFUL scrape and advances the due schedule.
    *  (Uptime still records it white — empty is visible, just not overdue.) */
   private def publishEmpty(scraper: ChunkedCinemaScraper): Unit = {
-    try publishScrape(new PreScrapedCinemaScraper(scraper.cinema, scraper.scrapeHosts, scraper.chain, () => Seq.empty))
+    try publishScrape(PreScrapedCinemaScraper.of(scraper, () => Seq.empty))
     catch { case _: Exception => () }
     // Deliberately NOT fed to VenueScrapeCadence: that mechanism is for a venue
     // with SOME showtimes about to run dry, not one advertising nothing at all.
@@ -111,7 +111,7 @@ class ChunkScrapePlanner(
 
   private def publishFailure(scraper: ChunkedCinemaScraper, e: Exception): Unit = {
     logger.warn(s"chunked plan for ${scraper.cinema.displayName} failed: ${e.getMessage}")
-    try publishScrape(new PreScrapedCinemaScraper(scraper.cinema, scraper.scrapeHosts, scraper.chain, () => throw e))
+    try publishScrape(PreScrapedCinemaScraper.of(scraper, () => throw e))
     catch { case _: Exception => () }
     scrapeFreshness.failed(ScrapeCinemaHandler.dedupKey(scraper.cinema))
   }

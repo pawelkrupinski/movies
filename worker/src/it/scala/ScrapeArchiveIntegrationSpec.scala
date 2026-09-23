@@ -5,7 +5,8 @@ import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt, ScrapeOutcome}
+import services.movies.ScrapeGuardState
+import services.scrapes.{MongoScrapeArchiveRepository, MongoScrapeGuardLedger, ScrapeArchiveRepository, ScrapeAttempt, ScrapeOutcome}
 import tools.Env
 
 import java.time.{Instant, LocalDateTime}
@@ -243,5 +244,50 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers {
     repository.record(scraped(Noon, Seq(minimal)))
     repository.find(Multikino) shouldBe None
     repository.findAll()       shouldBe empty
+  }
+
+  "MongoScrapeGuardLedger" should "round-trip a venue's guard state, and read Fresh for one it never saw" in {
+    purge()
+    try {
+      val ledger = new MongoScrapeGuardLedger(Some(db))
+      ledger.get(Multikino) shouldBe ScrapeGuardState.Fresh
+      new MongoScrapeArchiveRepository(Some(db)).record(scraped(Morning, Seq(minimal)))
+      ledger.get(Multikino) shouldBe ScrapeGuardState.Fresh
+      val state = ScrapeGuardState(Some("filmweb.pl/cinema/2352"), depthRejections = 2, breadthRejections = 1)
+      ledger.put(Multikino, state)
+      // A second instance: what a restarted worker would read.
+      new MongoScrapeGuardLedger(Some(db)).get(Multikino) shouldBe state
+    } finally purge()
+  }
+
+  it should "never create an archive row of its own" in {
+    purge()
+    try {
+      new MongoScrapeGuardLedger(Some(db)).put(Multikino, ScrapeGuardState(Some("filmweb.pl/cinema/2352")))
+      rowCount() shouldBe 0
+    } finally purge()
+  }
+
+  it should "survive the archive recording each scrape into the same row" in {
+    // The archive writes EVERY tick (before the guards run), so a wholesale row
+    // replace would wipe the guard state on every scrape and reset the grace again.
+    purge()
+    try {
+      val archive = new MongoScrapeArchiveRepository(Some(db))
+      val ledger  = new MongoScrapeGuardLedger(Some(db))
+      archive.record(scraped(Morning, Seq(minimal)))
+      val state = ScrapeGuardState(Some("filmweb.pl/cinema/2352"), depthRejections = 1)
+      ledger.put(Multikino, state)
+
+      archive.record(scraped(Noon, Seq(fullyPopulated)))
+      archive.record(blank(Evening))
+
+      ledger.get(Multikino) shouldBe state
+      val row = archive.find(Multikino).get
+      row.films.map(_.movie.title) shouldBe Seq("Diuna")
+      row.outcome shouldBe ScrapeOutcome.Empty
+      archive.findAll().map(_.cinema) should contain(Multikino)
+      rowCount() shouldBe 1
+    } finally purge()
   }
 }
