@@ -128,39 +128,62 @@ object ReadModelProjection {
    *  per-variant split (only the slots that reported one display title). Within a
    *  variant a venue has at most one slot, so no two screenings collide on `_id`. */
   private def screeningsFor(showings: Seq[(Cinema, SourceData)], fid: String): Seq[CityScreening] =
+    venuesFor(showings, fid).map(_.screening)
+
+  /** The venues [[screeningsFor]] builds a row for, each with its inputs gathered but the
+   *  row not yet built — what lets the projector skip building a venue whose inputs it has
+   *  already written.
+   *
+   *  ONE ROW PER (card, city, cinema), CARRYING EVERY SLOT'S SHOWTIMES. A venue can hold
+   *  TWO slots of one film whose keys differ but whose titles now agree — the venue
+   *  re-listed the film and the old slot key outlived the rename, so `movie_slots` holds
+   *  both `…␟terminator2dziensadu` and `…␟terminator2dziensadu35rocznica`, each titled
+   *  "Terminator 2: Dzień sądu 35. Rocznica". Both land in the same display-title variant
+   *  and compose the same `_id`, and this used to build one `CityScreening` per slot: the
+   *  later one won whichever map the caller folded them into, and when the loser was the
+   *  slot the scrape had just refreshed, the site served the DEAD half. Measured on
+   *  production 2026-09-08 — nine Polish cities each serving one film with no showtimes
+   *  while the corpus had them, for days, invisible to the prune (the row exists) and to
+   *  the heal (its id exists). Unioning is the only answer that cannot lose a showtime and
+   *  does not depend on which slot came first; a venue with one slot, the overwhelming
+   *  case, is untouched by it. */
+  private def venuesFor(showings: Seq[(Cinema, SourceData)], fid: String): Seq[VenueScreening] =
     showings.flatMap { case (cinema, slot) =>
       if (slot.showtimes.isEmpty) None
       else City.forCinema(cinema).map(city => (s"$fid|${city.slug}|${cinema.displayName}", city, cinema, slot))
     }
-      // ONE ROW PER (card, city, cinema), CARRYING EVERY SLOT'S SHOWTIMES. A venue can hold
-      // TWO slots of one film whose keys differ but whose titles now agree — the venue
-      // re-listed the film and the old slot key outlived the rename, so `movie_slots` holds
-      // both `…␟terminator2dziensadu` and `…␟terminator2dziensadu35rocznica`, each titled
-      // "Terminator 2: Dzień sądu 35. Rocznica". Both land in the same display-title variant
-      // and compose the same `_id`, and this used to build one `CityScreening` per slot: the
-      // later one won whichever map the caller folded them into, and when the loser was the
-      // slot the scrape had just refreshed, the site served the DEAD half. Measured on
-      // production 2026-09-08 — nine Polish cities each serving one film with no showtimes
-      // while the corpus had them, for days, invisible to the prune (the row exists) and to
-      // the heal (its id exists). Unioning is the only answer that cannot lose a showtime and
-      // does not depend on which slot came first; a venue with one slot, the overwhelming
-      // case, is untouched by it.
       .groupBy(_._1).toSeq
       .map { case (id, entries) =>
         val (_, city, cinema, _) = entries.head
-        CityScreening(
-          _id       = id,
-          filmId    = fid,
-          city      = city.slug,
-          cinema    = cinema.displayName,
-          // The first slot that names one, in the slots' own order, so a rename that drops
-          // the link does not blank an address the other slot still carries.
-          filmUrl   = entries.iterator.flatMap { case (_, _, _, slot) => slot.filmUrl }.nextOption(),
-          showtimes = entries.flatMap { case (_, _, _, slot) => slot.showtimes }.distinct
-            .sortBy(st => (st.dateTime.toString, st.bookingUrl.getOrElse(""), st.format.mkString(",")))
-        )
+        new VenueScreening(id, fid, city, cinema, entries.map(_._4))
       }
       .sortBy(_._id)
+
+  /** One venue's screenings row, before it is built: its id and EVERYTHING the row is
+   *  built from — the card, the city, the cinema and the venue's slots in this variant, in
+   *  the slots' own order. The row is a pure function of those, so two venues with equal
+   *  [[inputHash]]es build equal rows (bar a 32-bit collision, which leaves one row stale
+   *  until its venue changes again — the tolerance the projector's hash diff already has). */
+  final class VenueScreening private[readmodel] (val _id: String, fid: String, city: City, cinema: Cinema, slots: Seq[SourceData]) {
+    /** Over the fields the row reads, spelled out: `SourceData`'s own hash deliberately
+     *  leaves its showtimes out (identity is showtime-agnostic), so hashing the slots whole
+     *  would call a showtime change "unchanged" — exactly the change this must see. */
+    def inputHash: Int = (fid, city.slug, cinema.displayName, slots.map(slot => (slot.filmUrl, slot.showtimes))).##
+
+    /** Showtimes are sorted into a canonical order so the row is a pure function of the
+     *  showtime SET, not of upstream scrape order. */
+    def screening: CityScreening = CityScreening(
+      _id       = _id,
+      filmId    = fid,
+      city      = city.slug,
+      cinema    = cinema.displayName,
+      // The first slot that names one, in the slots' own order, so a rename that drops
+      // the link does not blank an address the other slot still carries.
+      filmUrl   = slots.iterator.flatMap(_.filmUrl).nextOption(),
+      showtimes = slots.flatMap(_.showtimes).distinct
+        .sortBy(st => (st.dateTime.toString, st.bookingUrl.getOrElse(""), st.format.mkString(",")))
+    )
+  }
 
   /** One display-title variant of a SPLIT row: the slot keys that reported the title,
    *  the record scoped to them, the title the card shows and the card's id — each
@@ -206,12 +229,16 @@ object ReadModelProjection {
      *  variant. The unsplit row yields exactly [[project]]'s pair; a multi-title record
      *  fans out into several cards that share year/director/cast/ratings but carry
      *  their own title, synopsis and screening subset. */
-    def projectAll: Seq[(ResolvedMovie, Seq[CityScreening])] =
-      if (split.isEmpty) Seq(project(stored, normalizer))
+    def projectAll: Seq[(ResolvedMovie, Seq[CityScreening])] = moviesAll.zip(screeningsAll)
+
+    /** The METADATA half of [[projectAll]] — one card per display-title variant, in the
+     *  same order — without building a single screenings row. */
+    def moviesAll: Seq[ResolvedMovie] =
+      if (split.isEmpty) Seq(resolve(stored, normalizer))
       else {
         // The shared facts are one `resolve` of the whole record, not one per card.
         val shared = resolve(stored, normalizer)
-        split.map(projectVariant(stored, shared, _))
+        split.map(variantMovie(stored, shared, _))
       }
 
     /** The SCREENINGS half of [[projectAll]] — one screenings list per display-title
@@ -221,9 +248,13 @@ object ReadModelProjection {
      *  buckets — the source-films census counts qualifying cards per city and never
      *  looks at the metadata half, so re-projecting it over the whole corpus on a timer
      *  was pure waste. */
-    def screeningsAll: Seq[Seq[CityScreening]] =
-      if (split.isEmpty) Seq(screenings(stored, normalizer))
-      else split.map(variant => screeningsFor(variant.scoped.cinemaShowings, variant.filmId))
+    def screeningsAll: Seq[Seq[CityScreening]] = venuesAll.map(_.map(_.screening))
+
+    /** [[screeningsAll]] with each row's inputs gathered but the row not yet built — so a
+     *  caller that already wrote a venue's row from the same inputs can skip building it. */
+    def venuesAll: Seq[Seq[VenueScreening]] =
+      if (split.isEmpty) Seq(venuesFor(stored.record.cinemaShowings, filmId(stored, normalizer)))
+      else split.map(variant => venuesFor(variant.scoped.cinemaShowings, variant.filmId))
   }
 
   /** Partition a row's cinema slots by the SANITIZED form of their reported title —
@@ -270,14 +301,14 @@ object ReadModelProjection {
   def screeningsAll(stored: StoredMovieRecord, normalizer: TitleNormalizer): Seq[Seq[CityScreening]] =
     partition(stored, normalizer).screeningsAll
 
-  /** Project one display-title variant. Shared facts (poster, year, genres,
+  /** The card of one display-title variant. Shared facts (poster, year, genres,
    *  countries, director, cast, runtime, trailers, rating values, weighted
    *  rating) come from `shared`, the [[resolve]] of the FULL record; only the
-   *  title, the synopsis pool (this variant's cinemas + the shared TMDB/IMDb
-   *  fallback) and the screening subset are scoped to the group. */
-  private def projectVariant(stored: StoredMovieRecord, shared: ResolvedMovie, variant: Variant): (ResolvedMovie, Seq[CityScreening]) = {
-    val r     = stored.record
-    val movie = shared.copy(
+   *  title and the synopsis pool (this variant's cinemas + the shared TMDB/IMDb
+   *  fallback) are scoped to the group. Its screenings come from [[Partition.venuesAll]]. */
+  private def variantMovie(stored: StoredMovieRecord, shared: ResolvedMovie, variant: Variant): ResolvedMovie = {
+    val r = stored.record
+    shared.copy(
       _id            = variant.filmId,
       title          = variant.title,
       originalTitle  = r.distinctOriginalTitle(variant.title),
@@ -292,7 +323,6 @@ object ReadModelProjection {
       // should come from the cinema actually shown in the variant.
       ageRating      = variant.scoped.ageRating
     )
-    (movie, screeningsFor(variant.scoped.cinemaShowings, variant.filmId))
   }
 
   /** Both halves of the projection for ONE display-title variant — the

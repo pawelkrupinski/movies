@@ -81,7 +81,8 @@ class ReadModelProjector(
   // retire the variant card a vanished listing no longer earns, and a delete event retire
   // every card of a row that was merged away — so the prune finds nothing (the rule).
   private val lastCardsByRow = scala.collection.mutable.Map.empty[String, Set[String]]
-  private val lastScreenings = scala.collection.mutable.Map.empty[String, Map[String, Int]]
+  // Per card: what was last written for each of its screenings rows — see [[WrittenScreening]].
+  private val lastScreenings = scala.collection.mutable.Map.empty[String, Map[String, WrittenScreening]]
   // Metadata-reuse cache (optimisation #1): per SOURCE ROW (keyed by the anchor
   // `ReadModelProjection.filmId`, stable across the display-title split), the
   // `metadataHash` of the last projection plus the projected `ResolvedMovie` variant(s)
@@ -160,7 +161,7 @@ class ReadModelProjector(
     // be compared against process CPU is the CPU one — see `recordProject`.
     val wallStart = System.nanoTime()
     val cpuStart  = cpuClock.nanos()
-    val variants  = projectReusingMetadata(partition)
+    val variants  = projectReusingMetadata(partition).map { (movie, venues) => (movie, planScreenings(movie._id, venues)) }
     metrics.recordProject(
       wallSeconds = (System.nanoTime() - wallStart) / 1e9,
       cpuSeconds  = (cpuClock.nanos() - cpuStart) / 1e9
@@ -207,12 +208,12 @@ class ReadModelProjector(
   // cinema — the overwhelming common case under reproject/enrich showtime churn). Correctness:
   // an unchanged `metadataHash` guarantees an unchanged metadata output AND an unchanged
   // display-title variant partition (the hash covers the whole record bar showtimes, and no
-  // metadata accessor reads showtimes), so `screeningsAll` — the SAME partition's variants in
+  // metadata accessor reads showtimes), so `venuesAll` — the SAME partition's variants in
   // the SAME order — lines up 1:1 with the cached movie(s). The size guard is a
-  // belt-and-suspenders fallback to a full re-projection: it can never pair a movie with the
-  // wrong screenings. `screeningsAll` is byte-identical to `projectAll.map(_._2)` but skips
-  // the resolve/synopsisByCity/ratings work — that skip is the whole optimisation.
-  private def projectReusingMetadata(partition: ReadModelProjection.Partition): Seq[(ResolvedMovie, Seq[CityScreening])] = {
+  // belt-and-suspenders fallback to recomputing: it can never pair a movie with the wrong
+  // screenings. Reusing skips the resolve/synopsisByCity/ratings work; the venues' rows are
+  // built (or not) afterwards, by `planScreenings`.
+  private def projectReusingMetadata(partition: ReadModelProjection.Partition): Seq[(ResolvedMovie, Seq[ReadModelProjection.VenueScreening])] = {
     val stored = partition.stored
     // Keyed by the SOURCE ROW (`persistedId`, unique per `movies` document), NOT by the
     // projected `ReadModelProjection.filmId`: that id keys on `resolvedYear` and so
@@ -224,30 +225,54 @@ class ReadModelProjector(
     // row's entry its own.
     val rowKey = stored.id.value
     val hash   = ReadModelProjection.metadataHash(stored)
-    lastMetadata.get(rowKey) match {
-      case Some((cachedHash, movies)) if cachedHash == hash =>
-        val screenings = partition.screeningsAll
-        if (screenings.sizeIs == movies.size) {
-          metrics.recordMetadataProjection(reused = true)
-          movies.zip(screenings)
-        } else recomputeMetadata(rowKey, hash, partition)
-      case _ => recomputeMetadata(rowKey, hash, partition)
+    val venues = partition.venuesAll
+    val movies = lastMetadata.get(rowKey) match {
+      case Some((cachedHash, cached)) if cachedHash == hash && venues.sizeIs == cached.size =>
+        metrics.recordMetadataProjection(reused = true)
+        cached
+      case _ =>
+        val recomputed = partition.moviesAll
+        lastMetadata.update(rowKey, hash -> recomputed)
+        metrics.recordMetadataProjection(reused = false)
+        recomputed
     }
+    movies.zip(venues)
   }
 
-  private def recomputeMetadata(rowKey: String, hash: Int, partition: ReadModelProjection.Partition): Seq[(ResolvedMovie, Seq[CityScreening])] = {
-    val variants = partition.projectAll
-    lastMetadata.update(rowKey, hash -> variants.map(_._1))
-    metrics.recordMetadataProjection(reused = false)
-    variants
+  /** Caller holds `lock`. Build the screenings rows of one card — but only for the venues
+   *  whose inputs moved since their row was written. A venue whose [[WrittenScreening]]
+   *  carries the same input hash already has exactly the row it would build, so it is
+   *  carried as `None`: still a live id (not deleted), not rebuilt, not rewritten. This is
+   *  what turns a showtime change at one venue of a wide release from thousands of rows
+   *  built into one. A memo that cannot vouch — seeded from the read model at boot, or
+   *  dropped by a heal — has no input hash, so every such venue is rebuilt. */
+  private def planScreenings(filmId: String, venues: Seq[ReadModelProjection.VenueScreening]): Seq[PlannedScreening] = {
+    val previous = lastScreenings.getOrElse(filmId, Map.empty)
+    val planned  = venues.map { venue =>
+      val input = venue.inputHash
+      val built = if (previous.get(venue._id).exists(_.input.contains(input))) None else Some(venue.screening)
+      PlannedScreening(venue._id, input, built)
+    }
+    val rebuilt = planned.count(_.built.isDefined)
+    metrics.recordVenueProjection(rebuilt = rebuilt, reused = planned.size - rebuilt)
+    planned
   }
 
   /** Returns the number of screening documents written (upserts + deletes). */
-  private def diffScreenings(filmId: String, next: Seq[CityScreening]): Int = {
-    val nextById = next.map(s => s._id -> s).toMap
+  private def diffScreenings(filmId: String, next: Seq[PlannedScreening]): Int = {
     val previous = lastScreenings.getOrElse(filmId, Map.empty)
     var upserted = 0
-    nextById.foreach { case (id, s) => if (!previous.get(id).contains(s.##)) { writer.upsertScreening(s); upserted += 1 } }
+    val nextById = next.map { planned =>
+      val output = planned.built match {
+        case Some(s) =>
+          val hash = s.##
+          if (!previous.get(planned._id).exists(_.output == hash)) { writer.upsertScreening(s); upserted += 1 }
+          hash
+        // Not rebuilt: `planScreenings` only skips a venue whose entry vouches for its row.
+        case None => previous(planned._id).output
+      }
+      planned._id -> WrittenScreening(output, Some(planned.input))
+    }.toMap
     val deletes = previous.keysIterator.filterNot(nextById.contains).toSeq
     deletes.foreach(writer.deleteScreening)
     if (upserted > 0)        metrics.recordWrite(Target.Screening, Op.Upsert, upserted)
@@ -259,7 +284,7 @@ class ReadModelProjector(
       services.movies.RemovalAudit.screeningsCleared("read-model.diff", filmId, deletes.size,
         whole = nextById.isEmpty, reason = "reproject-trim")
     }
-    if (nextById.isEmpty) lastScreenings.remove(filmId) else lastScreenings.update(filmId, nextById.view.mapValues(_.##).toMap)
+    if (nextById.isEmpty) lastScreenings.remove(filmId) else lastScreenings.update(filmId, nextById)
     upserted + deletes.size
   }
 
@@ -499,7 +524,9 @@ class ReadModelProjector(
     lock.synchronized {
       reader.findAllMovies().foreach(m => lastMovie.update(m._id, CardHash.of(m)))
       reader.findAllScreenings().groupBy(_.filmId).foreach { case (fid, ss) =>
-        lastScreenings.update(fid, ss.map(s => s._id -> s.##).toMap)
+        // The content is known, the slots it was built from are not: no input hash, so the
+        // first projection of each venue rebuilds it rather than trusting it.
+        lastScreenings.update(fid, ss.map(s => s._id -> WrittenScreening(s.##, input = None)).toMap)
       }
     }
     healMissingCards()
@@ -601,6 +628,16 @@ object ReadModelProjector {
     ids.take(LoggedIdsPerLine).mkString(", ") +
       (if (ids.sizeIs > LoggedIdsPerLine) s" (+${ids.size - LoggedIdsPerLine} more)" else "")
 }
+
+/** What the projector remembers about a written screenings row: the hash of the row
+ *  itself (`output`, the minimal-write diff) and of the inputs it was built from
+ *  (`input`, [[ReadModelProjection.VenueScreening.inputHash]]) — `None` when this process
+ *  did not build it, so nothing vouches that the current inputs would build it again. */
+private[readmodel] final case class WrittenScreening(output: Int, input: Option[Int])
+
+/** One venue's screenings row as a projection plans it: rebuilt (`built`), or carried
+ *  unbuilt because the row written from the same `input` is still current. */
+private[readmodel] final case class PlannedScreening(_id: String, input: Int, built: Option[CityScreening])
 
 /** What the projector remembers about a written card: one hash per part, so the next
  *  write can name the parts that moved ([[ReadModelProjectionMetrics.CardPart]]). Equal

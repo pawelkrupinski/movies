@@ -27,6 +27,7 @@ class ReadModelConvergenceSpec extends AnyFlatSpec with Matchers {
     def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit = ()
     def recordWriteBurst(seconds: Double): Unit                     = ()
     def recordMetadataProjection(reused: Boolean): Unit           = ()
+    def recordVenueProjection(rebuilt: Int, reused: Int): Unit     = ()
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = ()
     def recordCatchUp(rows: Int): Unit                              = ()
     def recordHeal(trigger: String, rows: Int): Unit                = ()

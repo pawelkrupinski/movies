@@ -62,6 +62,9 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     }
     def recordWriteBurst(seconds: Double): Unit                   = writeBurstSeconds += seconds
     def recordMetadataProjection(reused: Boolean): Unit          = if (reused) metadataReused += 1 else metadataRecomputed += 1
+    var venuesRebuilt = 0
+    var venuesReused  = 0
+    def recordVenueProjection(rebuilt: Int, reused: Int): Unit   = { venuesRebuilt += rebuilt; venuesReused += reused }
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = sweeps += (kind -> didWork)
     val caughtUp = scala.collection.mutable.Buffer.empty[Int]
     def recordCatchUp(rows: Int): Unit                             = caughtUp += rows
@@ -326,6 +329,95 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     withClue("a new city is a metadata change → must recompute, never reuse: ") {
       m.metadataReused     shouldBe 0
       m.metadataRecomputed shouldBe 2
+    }
+  }
+
+  // ── Venue reuse: a change at one venue rebuilds that venue's screenings row only ──
+  // A wide US release carries thousands of venues, and building every one of their rows —
+  // union, dedupe and sort each venue's showtimes — was most of the ~2s a scrape wave's
+  // re-projection of such a film cost on the single apply thread, to write the ONE row
+  // that moved. A row is a pure function of its card, venue and that venue's slots, so a
+  // venue whose slots are unchanged since its row was written keeps it without a rebuild.
+  // Two venues in each of three cities.
+  private val venues = Cinema.all.distinct
+    .flatMap(c => City.forCinema(c).map(_.slug -> c))
+    .groupMap(_._1)(_._2).toSeq.sortBy(_._1).take(3).flatMap(_._2.take(2))
+
+  private def venueSlot(title: String, showtimes: Seq[Showtime], url: String = "https://x/foo") =
+    SourceData(title = Some(title), releaseYear = Some(2024), filmUrl = Some(url), showtimes = showtimes)
+
+  "a showtime change at one venue of several" should "rebuild only that venue's screenings row" in {
+    val repository = new InMemoryMovieRepository(); val rm = new InMemoryReadModelRepository()
+    val m = new RecordingMetrics()
+    val projector = new ReadModelProjector(repository, rm, rm, m)
+    def row(extra: Seq[Showtime]) = stored(MovieRecord(tmdbId = Some(1), data = venues.take(3).zipWithIndex.map { (cinema, i) =>
+      (cinema: Source) -> venueSlot("Foo", Seq(at("2026-06-12T20:00")) ++ (if (i == 1) extra else Nil)) }.toMap))
+
+    projector.onMovieUpsert(row(Nil))
+    m.venuesRebuilt shouldBe 3
+    projector.onMovieUpsert(row(Seq(at("2026-06-13T18:00"))))
+
+    withClue("only the venue whose showtimes moved is rebuilt: ") {
+      m.venuesRebuilt shouldBe 4
+      m.venuesReused  shouldBe 2
+    }
+    rm.screeningUpserts should have size 4
+  }
+
+  it should "rebuild every venue again once the memo no longer vouches for what was written" in {
+    // Seeded from the read model after a restart, the memo knows each row's CONTENT but
+    // not the slots it was built from — so nothing may be skipped on that say-so.
+    val repository = new InMemoryMovieRepository(); val rm = new InMemoryReadModelRepository()
+    val record = MovieRecord(tmdbId = Some(1), data = venues.take(3).map(c => (c: Source) -> venueSlot("Foo", Seq(at("2026-06-12T20:00")))).toMap)
+    new ReadModelProjector(repository, rm, rm).onMovieUpsert(stored(record))
+    val m = new RecordingMetrics()
+    val restarted = new ReadModelProjector(repository, rm, rm, m)
+    restarted.start()
+    restarted.onMovieUpsert(stored(record))
+
+    m.venuesRebuilt shouldBe 3
+    rm.screeningUpserts should have size 3   // rebuilt, but identical, so nothing rewritten
+    restarted.stop()
+  }
+
+  /** The equivalence the venue reuse rests on, over random edit sequences: whatever an
+   *  incremental projector has been through, the read model it leaves is exactly what a
+   *  FRESH projector writes for the final row — cards, screenings rows and their content.
+   *  The edits cover every input a screenings row reads (showtimes, the link, a venue
+   *  joining, emptying or leaving) and the ones that re-shape the row around it (a slot's
+   *  title splitting it into a variant card and back, a rating change recomputing the
+   *  metadata), interleaved with the prune that edits the memo from outside. */
+  "an incrementally projected row" should "leave the same read model a fresh projection writes" in {
+    val titles = Seq("Foo", "FOO", "Foo Bar")
+    val times  = Seq("2026-06-12T20:00", "2026-06-12T22:30", "2026-06-13T18:00", "2026-06-14T11:15").map(at)
+    (1 to 40).foreach { seed =>
+      val random = new scala.util.Random(seed)
+      val repository = new InMemoryMovieRepository(); val rm = new InMemoryReadModelRepository()
+      val projector = new ReadModelProjector(repository, rm, rm)
+      var data   = venues.take(4).map(c => (c: Source) -> venueSlot("Foo", times.take(1))).toMap
+      var rating = Some(7.0)
+      (1 to 25).foreach { step =>
+        val cinema: Source = venues(random.nextInt(venues.size))
+        random.nextInt(7) match {
+          case 0 => data = data.updated(cinema, venueSlot(titles(random.nextInt(titles.size)), random.shuffle(times).take(1 + random.nextInt(3))))
+          case 1 => data.get(cinema).foreach(slot => data = data.updated(cinema, slot.copy(showtimes = random.shuffle(times).take(random.nextInt(4)))))
+          case 2 => data.get(cinema).foreach(slot => data = data.updated(cinema, slot.copy(filmUrl = Some(s"https://x/$step"))))
+          case 3 => data.get(cinema).foreach(slot => data = data.updated(cinema, slot.copy(title = Some(titles(random.nextInt(titles.size))))))
+          case 4 => if (data.sizeIs > 1) data = data - cinema
+          case 5 => rating = Some(random.nextInt(10).toDouble)
+          case _ => projector.pruneOrphans()
+        }
+        val row = stored(MovieRecord(imdbRating = rating, tmdbId = Some(1), data = data))
+        repository.upsert(row.title, row.year, row.record)
+        projector.onMovieUpsert(row)
+
+        val fresh = new InMemoryReadModelRepository()
+        new ReadModelProjector(new InMemoryMovieRepository(), fresh, fresh).onMovieUpsert(row)
+        withClue(s"seed $seed, step $step: ") {
+          rm.findAllMovies().sortBy(_._id)         shouldBe fresh.findAllMovies().sortBy(_._id)
+          rm.findAllScreenings().sortBy(_._id)     shouldBe fresh.findAllScreenings().sortBy(_._id)
+        }
+      }
     }
   }
 

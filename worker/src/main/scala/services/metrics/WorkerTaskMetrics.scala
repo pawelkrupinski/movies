@@ -89,6 +89,7 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
     series.recordProject(countryCode, wallSeconds, cpuSeconds)
   def recordWriteBurst(seconds: Double): Unit                    = series.recordWriteBurst(countryCode, seconds)
   def recordMetadataProjection(reused: Boolean): Unit           = series.recordMetadataProjection(countryCode, reused)
+  def recordVenueProjection(rebuilt: Int, reused: Int): Unit     = series.recordVenueProjection(countryCode, rebuilt, reused)
   def recordReconcileSweep(kind: String, didWork: Boolean): Unit = series.recordReconcileSweep(countryCode, kind, didWork)
   def recordHeal(trigger: String, rows: Int): Unit              = series.recordHeal(countryCode, trigger, rows)
 
@@ -348,6 +349,12 @@ object WorkerTaskMetrics {
       .labelNames("country", "outcome")
       .register(registry)
 
+    private val readModelVenueProjections = Counter.builder()
+      .name("kinowo_worker_readmodel_venue_projections")
+      .help("Venues' screenings rows a projection considered, by country and whether the row was REBUILT (outcome=rebuilt — the venue's slots moved since the row was written, or this process never wrote it) or kept unbuilt (outcome=reused). A showtime change at one venue of a wide release is one rebuilt against thousands reused.")
+      .labelNames("country", "outcome")
+      .register(registry)
+
     private val cacheRehydrateChanges = Counter.builder()
       .name("kinowo_worker_cache_rehydrate_changes")
       .help("Rows the MovieCache's periodic backstop rehydrate (full findAll reload) caught that the INCREMENTAL change stream missed, by country and kind (changed=a put whose cached value differed = a missed upsert; deleted=a key gone from Mongo the delete-apply didn't drop). After resume-token persistence + cache delete-apply this should be ~0 in steady state; a rate flat at 0 proves the 30-min rehydrate is redundant and can be retired. NOTE: the one-time BOOT hydrate counts EVERY row as changed — read the rate over steady state, not the raw counter.")
@@ -465,6 +472,7 @@ object WorkerTaskMetrics {
         readModelProjectDuration.labelValues(c).observe(0.0) // materialize the histogram (_sum/_count/_bucket) from boot — no Grafana gap
         readModelWriteBurst.labelValues(c).observe(0.0)      // ditto — the write-phase half of that same answer
         ReadModelProjectionMetrics.MetadataOutcomes.foreach(o => readModelMetadataProjections.labelValues(c, o))
+        ReadModelProjectionMetrics.VenueOutcomes.foreach(o => readModelVenueProjections.labelValues(c, o))
         ReadModelProjectionMetrics.ReconcileKinds.foreach(k =>
           Seq("true", "false").foreach(w => readModelReconcileSweeps.labelValues(c, k, w)))
         Seq("changed", "deleted").foreach(k => cacheRehydrateChanges.labelValues(c, k))
@@ -538,6 +546,11 @@ object WorkerTaskMetrics {
       readModelMetadataProjections.labelValues(country,
         if (reused) ReadModelProjectionMetrics.MetadataOutcome.Reused
         else ReadModelProjectionMetrics.MetadataOutcome.Recomputed).inc()
+
+    def recordVenueProjection(country: String, rebuilt: Int, reused: Int): Unit = {
+      if (rebuilt > 0) readModelVenueProjections.labelValues(country, ReadModelProjectionMetrics.VenueOutcome.Rebuilt).inc(rebuilt.toDouble)
+      if (reused > 0)  readModelVenueProjections.labelValues(country, ReadModelProjectionMetrics.VenueOutcome.Reused).inc(reused.toDouble)
+    }
 
     def recordReconcileSweep(country: String, kind: String, didWork: Boolean): Unit =
       readModelReconcileSweeps.labelValues(country, kind, didWork.toString).inc()

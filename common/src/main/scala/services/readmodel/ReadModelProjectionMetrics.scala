@@ -78,6 +78,13 @@ trait ReadModelProjectionMetrics {
    *  showtime-churn the reproject/enrich pipeline generates is the whole point. */
   def recordMetadataProjection(reused: Boolean): Unit
 
+  /** One projection's screenings half: how many venues' rows it REBUILT (the venue's slots
+   *  moved since its row was written, or this process never wrote it) and how many it
+   *  REUSED unbuilt. A showtime change at one venue of a wide release should read
+   *  rebuilt=1 against thousands reused — the building, not the writing, was what made
+   *  such a film's re-projection cost seconds on the apply thread. */
+  def recordVenueProjection(rebuilt: Int, reused: Int): Unit
+
   /** One orphan-prune sweep finished. `didWork` is whether it pruned at least one
    *  document — the deletes/re-keys the change stream can't deliver. (Only the prune
    *  is metered now; the full re-projection was retired, and with it its did_work
@@ -126,6 +133,7 @@ object ReadModelProjectionMetrics {
   object HealTrigger { val Sweep = "sweep"; val Boot = "boot" }
   /** `outcome` label values for the metadata-projection counter. */
   object MetadataOutcome { val Reused = "reused"; val Recomputed = "recomputed" }
+  object VenueOutcome { val Rebuilt = "rebuilt"; val Reused = "reused" }
   /** The parts of a card a rewrite can move, each a group of fields that change together. */
   object CardPart {
     val Title = "title"; val Poster = "poster"; val Facts = "facts"; val Synopsis = "synopsis"
@@ -141,6 +149,7 @@ object ReadModelProjectionMetrics {
   val RetireReasons: Seq[String]  = Seq(RetireReason.VariantGone, RetireReason.RowDeleted, RetireReason.RowUnready)
   val HealTriggers: Seq[String]   = Seq(HealTrigger.Sweep, HealTrigger.Boot)
   val MetadataOutcomes: Seq[String] = Seq(MetadataOutcome.Reused, MetadataOutcome.Recomputed)
+  val VenueOutcomes: Seq[String] = Seq(VenueOutcome.Rebuilt, VenueOutcome.Reused)
   val CardParts: Seq[String] = Seq(CardPart.Title, CardPart.Poster, CardPart.Facts, CardPart.Synopsis,
     CardPart.SynopsisByCity, CardPart.Ratings, CardPart.Trailers, CardPart.AgeRating)
   val CardWriteCauses: Seq[String] = Seq(CardWriteCause.New, CardWriteCause.Multiple) ++ CardParts
@@ -157,6 +166,7 @@ object ReadModelProjectionMetrics {
     def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit = ()
     def recordWriteBurst(seconds: Double): Unit                       = ()
     def recordMetadataProjection(reused: Boolean): Unit           = ()
+    def recordVenueProjection(rebuilt: Int, reused: Int): Unit     = ()
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = ()
     def recordCatchUp(rows: Int): Unit                              = ()
     def recordHeal(trigger: String, rows: Int): Unit                = ()

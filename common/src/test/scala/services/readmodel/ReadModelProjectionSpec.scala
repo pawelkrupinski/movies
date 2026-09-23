@@ -301,6 +301,29 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     partition.screeningsAll shouldBe ReadModelProjection.screeningsAll(twoTitleStored, titleNormalizer)
   }
 
+  /** The projector skips BUILDING a venue's row whose input hash matches the one it last
+   *  wrote from, so the hash must move with every input the row reads — and only with those. */
+  "venuesAll" should "build exactly screeningsAll's rows" in {
+    ReadModelProjection.partition(twoTitleStored, titleNormalizer).venuesAll.map(_.map(_.screening)) shouldBe
+      ReadModelProjection.screeningsAll(twoTitleStored, titleNormalizer)
+  }
+
+  it should "move a venue's input hash with its showtimes and its link, and not with another venue" in {
+    def hashes(r: MovieRecord) =
+      ReadModelProjection.partition(StoredMovieRecord("Skazani na Shawshank", Some(1994), r), titleNormalizer)
+        .venuesAll.flatten.map(v => v._id -> v.inputHash).toMap
+    def edited(f: SourceData => SourceData) = record.copy(data = record.data.updated(Multikino, f(record.data(Multikino))))
+    val base   = hashes(record)
+    val moved  = hashes(edited(slot => slot.copy(showtimes = slot.showtimes :+ at("2026-06-14T10:00"))))
+    val link   = hashes(edited(_.copy(filmUrl = Some("https://mk/other"))))
+    val (multikino, helios) = base.keys.partition(_.contains("Multikino")) match { case (m, h) => (m.head, h.head) }
+
+    hashes(record)     shouldBe base
+    moved(multikino)   should not be base(multikino)
+    link(multikino)    should not be base(multikino)
+    moved(helios)      shouldBe base(helios)
+  }
+
   "screeningsAll" should "return exactly projectAll's screenings (metadata-free), for single- and multi-variant rows" in {
     // The source-films census counts off screeningsAll instead of projectAll to skip
     // the unused ResolvedMovie work; the counts only stay identical if the screenings do.
