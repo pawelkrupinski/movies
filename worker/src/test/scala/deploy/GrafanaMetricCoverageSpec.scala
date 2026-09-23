@@ -102,6 +102,11 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     "kinowo_uptime_recent_successes",
     "kinowo_uptime_recent_failures",
     "kinowo_uptime_recent_zeroes",
+    // Hand-rendered by `MetricsController` beside the uptime gauges, per shared
+    // scraper client: the pair `ChainFallbackSaturated` (chain-fallback.rules)
+    // divides. Missing from this list, they were the one alert input charted nowhere.
+    "kinowo_fallback_active_venues",
+    "kinowo_fallback_total_venues",
     // The legacy `PUT /api/me/state` retirement signal — see
     // `services.metrics.LegacyUserStateMetrics`'s class doc. Charted on
     // kinowo-http.json as `time() - kinowo_web_legacy_userstate_put_last_called_seconds`;

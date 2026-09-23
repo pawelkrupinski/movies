@@ -649,6 +649,59 @@
               }
             }
           ]
+        },
+        {
+          "id": 9023,
+          "title": "Shared scraper clients — share of each chain's venues riding the aggregator fallback (web tier · all countries)",
+          "description": "kinowo_fallback_active_venues / kinowo_fallback_total_venues per shared scraper client (MetricsController, from the same per-client grouping /uptime's 'Aggregator fallback' section renders; bespoke single-venue clients are excluded at the source). This is what ChainFallbackSaturated (chain-fallback.rules) reads: over 50% for an hour, on a client with at least 5 venues, pages. A line climbing to 100% is a whole scraper client broken with every venue quietly failed over — the 2026-09-17 Cineworld shape, invisible on every cinema bar because nothing is actually down. Which venues, since when and why is a question for that country's /uptime page.",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 77
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "custom": {
+                "spanNulls": 300000,
+                "drawStyle": "line",
+                "fillOpacity": 0
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 0.5
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "kinowo_fallback_active_venues / (kinowo_fallback_total_venues > 0)",
+              "legendFormat": "{{country}} · {{client}}",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            }
+          ]
         }
       ],
       "gridPos": {
