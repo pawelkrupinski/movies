@@ -93,7 +93,6 @@ final class CatalogStore: ObservableObject {
 
     // MARK: - Per-country query passthroughs (delegating to the pure helpers)
 
-    func sorted(inCountry code: String) -> [City] { cities.sortedForPicker(inCountry: code) }
     func matching(_ query: String, inCountry code: String) -> [City] { cities.matching(query, inCountry: code) }
     func regions(inCountry code: String) -> [String] { cities.regions(inCountry: code) }
     func topLevelRows(matching query: String, inCountry code: String) -> [City.PickerRow] {

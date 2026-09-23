@@ -477,7 +477,7 @@ struct FiltersSheet: View {
 
     private func computeCurrentCityLabel() -> String {
         let slug = prefs.selectedCity ?? catalog.defaultCity(inCountry: prefs.selectedCountry.code)?.slug ?? City.default.slug
-        let cityName = catalog.sorted(inCountry: prefs.selectedCountry.code).first { $0.slug == slug }?.name ?? slug
+        let cityName = catalog.cities.first { $0.slug == slug }?.name ?? slug
         // The city half stays the city's own name (never translated — see
         // `CityGate`'s country pill); the country half shares
         // `CountryDisplayName.localized` with the picker, rather than its own

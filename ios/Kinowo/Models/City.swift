@@ -544,11 +544,7 @@ extension Array where Element == City {
     /// The city IN `countryCode` nearest the coordinate, or `nil` beyond 100 km.
     /// Scoped so a Polish fix never resolves to a UK region, or vice versa.
     func nearestWithin100km(lat: Double, lon: Double, inCountry countryCode: String) -> City? {
-        let ranked = inCountry(countryCode)
-            .map { (city: $0, km: City.haversineKm(latitude1: lat, longitude1: lon, latitude2: $0.lat, longitude2: $0.lon)) }
-            .min { $0.km < $1.km }
-        guard let nearest = ranked, nearest.km <= 100 else { return nil }
-        return nearest.city
+        inCountry(countryCode).nearestWithin100km(lat: lat, lon: lon)
     }
 
     /// The city nearest the coordinate across EVERY country this list carries,
