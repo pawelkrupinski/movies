@@ -1,7 +1,9 @@
 package services.cinemas.roster
 
-import models.{Cinema, FloraCinemaHelston, KinoMikro, MikroBronowice, OdeonCinemaChelmsford, OdeonCinemaColchester,
-  RitzBurnhamOnSea, RoyalStIvesCinema, TheAvenueCinemaMinehead, WTWLighthouseNewquay, WTWWhiteRiverCinema, WestwayCinemaFrome}
+import models.{BakerStreetCinemaAbergavenny, Cinema, ColiseumCinemaBrecon, FloraCinemaHelston, KinoMikro, MerlinWellesleyWellington,
+  MikroBronowice, OdeonCinemaChelmsford, OdeonCinemaColchester, OdeonCinemaLlanelli, OdeonCinemaNewark, OdeonCinemaSwadlincote,
+  RitzBurnhamOnSea, RoyalStIvesCinema, TheAvenueCinemaMinehead, TivoliTiverton, WTWLighthouseNewquay, WTWWhiteRiverCinema,
+  WestwayCinemaFrome}
 
 /**
  * Pairs of roster venues that LOOK like one screen listed twice — by name (the offline roster
@@ -10,9 +12,10 @@ import models.{Cinema, FloraCinemaHelston, KinoMikro, MikroBronowice, OdeonCinem
  * other and the reason is written down once.
  *
  * The programme matches below were each checked against prod (2026-09-23): the two venues are
- * in different towns, and their showtimes book through two different per-venue ticketing ids,
- * so the upstream holds two listings that a small chain (or an operator running two screens)
- * happens to programme alike. Generated-roster venues (Germany, Spain, the US) have no case
+ * in different towns (in the second block, different CITIES — the census's cross-city scope),
+ * and their showtimes book through two different per-venue ticketing ids, so the upstream
+ * holds two listings that a small chain (or an operator running two screens) happens to
+ * programme alike. Generated-roster venues (Germany, Spain, the US) have no case
  * object, so they are named by the display name they are stored under.
  */
 object DistinctVenuePairs {
@@ -42,6 +45,23 @@ object DistinctVenuePairs {
     named("Blaine Theatre Boscobel", "Dodge Theatre"),
     // Wunderland's North Portland (Avalon) and Beaverton houses, one second-run slate
     named("Avalon Theatre Portland", "Beaverton Wunderland"),
+
+    // ── Two cities, 95%+ alike (the census's cross-city scope) ──
+    // Abergavenny and Brecon: internet-ticketing sites BAKABE vs COLBRE, own perfcodes
+    Set(BakerStreetCinemaAbergavenny, ColiseumCinemaBrecon),
+    // Merlin Cinemas, Wellington and Tiverton: admit-one merlinwellington vs merlintiverton
+    Set(MerlinWellesleyWellington, TivoliTiverton),
+    // Odeon's template schedule: showtime ids 760-* (Llanelli), 757-* (Newark), 759-* (Swadlincote)
+    Set(OdeonCinemaLlanelli, OdeonCinemaNewark),
+    Set(OdeonCinemaLlanelli, OdeonCinemaSwadlincote),
+    // One Illinois/Iowa operator's small towns: internet-ticketing FOXFOR, MAJCAN, TAYTAY
+    named("Fox Theatre Fort Madison", "Majestic Theatre of Canton"),
+    named("Fox Theatre Fort Madison", "Taylorville Cinema"),
+    named("Majestic Theatre of Canton", "Taylorville Cinema"),
+    // Three Rau's Entertainment, Shenandoah and Le Mars IA: ticket sites 00001-00002 vs 00001-00003
+    named("Legacy Theatre Shenandoah", "Royal 3 Cinema Le Mars"),
+    // RMC Stadium, Jacksonville and Waterloo IL: formovietickets rtn 39924 vs 14446
+    named("RMC Jacksonville", "RMC Waterloo Cinema"),
   )
 
   def contains(a: Cinema, b: Cinema): Boolean = all(Set(a, b))

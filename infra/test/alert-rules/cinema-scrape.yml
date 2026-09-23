@@ -254,14 +254,19 @@ tests:
                 in the list means rows were written into the wrong database.
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
-  # DUPLICATE VENUES: A DAY OF OVERLAP FIRES, AN EVENING OF IT DOES NOT. PL holds one pair for
-  # 25 hours; UK holds two for 6 hours and then its programmes diverge.
+  # DUPLICATE VENUES: A DAY OF OVERLAP FIRES, AN EVENING OF IT DOES NOT, PER SCOPE. PL holds one
+  # same-city pair for 25 hours; US one cross-city pair for 25 hours (its same-city count stays
+  # zero, so only the cross_city series fires); UK holds two for 6 hours and then diverges.
   # ────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 1m
     input_series:
-      - series: 'kinowo_worker_duplicate_venue_pairs{country="pl",job="kinowo-worker"}'
+      - series: 'kinowo_worker_duplicate_venue_pairs{country="pl",scope="same_city",job="kinowo-worker"}'
         values: '1x1560'
-      - series: 'kinowo_worker_duplicate_venue_pairs{country="uk",job="kinowo-worker"}'
+      - series: 'kinowo_worker_duplicate_venue_pairs{country="us",scope="cross_city",job="kinowo-worker"}'
+        values: '1x1560'
+      - series: 'kinowo_worker_duplicate_venue_pairs{country="us",scope="same_city",job="kinowo-worker"}'
+        values: '0x1560'
+      - series: 'kinowo_worker_duplicate_venue_pairs{country="uk",scope="same_city",job="kinowo-worker"}'
         values: '2x360 0x1200'
     alert_rule_test:
       - eval_time: 23h
@@ -272,16 +277,36 @@ tests:
         exp_alerts:
           - exp_labels:
               country: pl
+              scope: same_city
               severity: warning
             exp_annotations:
-              summary: "1 venue pair(s) in pl have shared 90%+ of their programme for a day"
+              summary: "1 same_city venue pair(s) in pl have shared their programme for a day"
               description: >-
-                Two roster venues in one "pl" city have listed (nearly) the same upcoming
-                films at the same start times for 24 hours -- one screen listed twice under two names,
-                or two venues wired to one upstream listing. The worker's WARN line "duplicate-venue
-                census (pl)" names the pairs. Compare each pair's sources in
-                CinemaScraperCatalog: the same upstream programme behind two names is a wiring bug to
-                fix; a chain genuinely running one programme in two towns of one region goes on
+                Two roster venues in "pl" have listed (nearly) the same upcoming films
+                at the same start times for 24 hours. same_city (90%+, one city): one screen listed
+                twice under two names, or two venues wired to one upstream listing. cross_city (95%+,
+                no city in common): one venue's feed listed under another's name. The worker's WARN
+                line "duplicate-venue census (pl, same_city)" names the
+                pairs. Compare each pair's booking links and sources in CinemaScraperCatalog: one
+                upstream programme behind two names is a wiring bug to fix (or a venue with no feed
+                of its own to drop); a chain genuinely running one programme in two towns goes on
+                `services.cinemas.roster.DistinctVenuePairs` with its reason, which clears it here and
+                in the offline roster audit alike.
+          - exp_labels:
+              country: us
+              scope: cross_city
+              severity: warning
+            exp_annotations:
+              summary: "1 cross_city venue pair(s) in us have shared their programme for a day"
+              description: >-
+                Two roster venues in "us" have listed (nearly) the same upcoming films
+                at the same start times for 24 hours. same_city (90%+, one city): one screen listed
+                twice under two names, or two venues wired to one upstream listing. cross_city (95%+,
+                no city in common): one venue's feed listed under another's name. The worker's WARN
+                line "duplicate-venue census (us, cross_city)" names the
+                pairs. Compare each pair's booking links and sources in CinemaScraperCatalog: one
+                upstream programme behind two names is a wiring bug to fix (or a venue with no feed
+                of its own to drop); a chain genuinely running one programme in two towns goes on
                 `services.cinemas.roster.DistinctVenuePairs` with its reason, which clears it here and
                 in the offline roster audit alike.
 

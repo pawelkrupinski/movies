@@ -20,10 +20,15 @@ import java.time.{Clock, LocalDateTime, ZoneOffset}
  * when the shared part is at least [[DuplicateVenueCensus.MinOverlap]] of the LARGER set — both
  * ways, so a small venue whose few showtimes a multiplex happens to share never matches.
  *
- * Same city only: a chain can run one national programme at the same times in two towns, which
- * is two screens. Venues with fewer than [[DuplicateVenueCensus.MinShowtimes]] upcoming
- * showtimes are skipped — six identical showtimes in two unrelated towns happen by chance. A
- * pair on [[DistinctVenuePairs]] (shared with the offline audit) is genuinely two screens.
+ * Two scopes, one label each. `same_city`: a pair listed in one city at 90%+ — a chain can run
+ * one national programme at the same times in two towns, which is two screens, so across cities
+ * that bar would mostly count chain-mates. `cross_city`: a pair with NO city in common at 95%+
+ * and at least [[DuplicateVenueCensus.CrossCityMinShowtimes]] showtimes each — an aggregator
+ * feeding one venue's programme under another venue's name, far away (Flicks gave the Syracuse
+ * IN Pickwick the Park Ridge IL one's, 216/216). Venues with fewer than
+ * [[DuplicateVenueCensus.MinShowtimes]] upcoming showtimes are skipped — six identical
+ * showtimes in two unrelated towns happen by chance. A pair on [[DistinctVenuePairs]] (shared
+ * with the offline audit) is genuinely two screens, in either scope.
  *
  * Rides the shared [[WorkerCorpusScan]] pass, so it costs no reads of its own. Each start time
  * is folded to one primitive `Long` per (film, minute) — no boxing — because the US pass holds
@@ -40,9 +45,9 @@ class DuplicateVenueCensus(pairs: Gauge, country: Country, clock: Clock = Clock.
   // compared against another programme on the SAME clock is unaffected by the offset anyway.
   private val zone       = country.cities.headOption.map(_.zoneId).getOrElse(ZoneOffset.UTC)
   private val cityVenues = country.cities.map(_.cinemas.distinct)
-  @volatile private var reported: Set[(String, String)] = Set.empty
+  @volatile private var reported: Map[String, Set[(String, String)]] = Map.empty
 
-  pairs.labelValues(countryCode).set(0.0)
+  Scopes.foreach(scope => pairs.labelValues(countryCode, scope).set(0.0))
 
   def startSample(): CorpusRowSampler = new CorpusRowSampler {
     private val now       = LocalDateTime.now(clock.withZone(zone))
@@ -60,16 +65,21 @@ class DuplicateVenueCensus(pairs: Gauge, country: Country, clock: Clock = Clock.
     }
 
     def publish(scanComplete: Boolean): Unit = if (scanComplete) {
-      val sets  = programme.view.mapValues(b => sortedDistinct(b.result())).toMap
-      val found = overlapping(sets, cityVenues)
-      pairs.labelValues(countryCode).set(found.size.toDouble)
+      val sets = programme.view.mapValues(b => sortedDistinct(b.result())).toMap
+      publishScope(SameCity, overlapping(sets, cityVenues), MinOverlap, "one screen listed twice?")
+      publishScope(CrossCity, overlappingAcrossCities(sets, cityVenues), CrossCityMinOverlap,
+        "one venue's feed under another's name?")
+    }
+
+    private def publishScope(scope: String, found: Set[(Cinema, Cinema)], bar: Double, question: String): Unit = {
+      pairs.labelValues(countryCode, scope).set(found.size.toDouble)
       val named = found.map { case (a, b) => (a.displayName, b.displayName) }
-      if (named != reported) {
+      if (!reported.get(scope).contains(named)) {
         if (named.nonEmpty)
-          logger.warn(s"duplicate-venue census ($countryCode): ${named.size} same-city venue pair(s) share " +
-            s"${(MinOverlap * 100).round}%+ of their upcoming programme — one screen listed twice? " +
+          logger.warn(s"duplicate-venue census ($countryCode, $scope): ${named.size} venue pair(s) share " +
+            s"${(bar * 100).round}%+ of their upcoming programme — $question " +
             named.toSeq.sorted.map { case (a, b) => s"'$a' / '$b'" }.mkString(", "))
-        reported = named
+        reported = reported.updated(scope, named)
       }
     }
   }
@@ -84,11 +94,20 @@ object DuplicateVenueCensus {
   /** Below this many upcoming showtimes a venue's programme is too small to tell from chance. */
   val MinShowtimes: Int = 5
 
+  /** Across cities a chain's template schedule reaches 90% often (Odeon's run ~95%), so the bar
+   *  is higher and the programme larger: a feed mix-up is identical, not merely alike. */
+  val CrossCityMinOverlap: Double = 0.95
+  val CrossCityMinShowtimes: Int  = 20
+
+  val SameCity  = "same_city"
+  val CrossCity = "cross_city"
+  val Scopes: Seq[String] = Seq(SameCity, CrossCity)
+
   def gauge(registry: PrometheusRegistry): Gauge =
     Gauge.builder()
       .name(Name)
-      .help("Pairs of roster venues in one city whose upcoming (film, start time) programmes overlap by 90% or more of the larger one, per country — one screen listed twice under two names, which the name-based roster audit cannot see. Venues with fewer than 5 upcoming showtimes are skipped; pairs on DistinctVenuePairs are genuinely two screens. Zero is healthy; the worker's WARN line names the pairs. Off the shared 5-min corpus scan. Alerted by DuplicateVenueListing.")
-      .labelNames("country")
+      .help("Pairs of roster venues whose upcoming (film, start time) programmes are (nearly) the same, per country and scope. scope=same_city: two venues of one city overlapping by 90%+ of the larger programme — one screen listed twice under two names, which the name-based roster audit cannot see. scope=cross_city: two venues sharing no city, each with 20+ showtimes, overlapping by 95%+ — one venue's feed listed under another's name. Venues with fewer than 5 upcoming showtimes are skipped; pairs on DistinctVenuePairs are genuinely two screens. Zero is healthy; the worker's WARN line names the pairs. Off the shared 5-min corpus scan. Alerted by DuplicateVenueListing.")
+      .labelNames("country", "scope")
       .register(registry)
 
   /** Every same-city pair (each pair once, however many cities list both) whose sorted,
@@ -109,6 +128,40 @@ object DuplicateVenueCensus {
       }
     }
     found.toSet
+  }
+
+  /** Every pair of venues that share NO city, each with at least [[CrossCityMinShowtimes]]
+   *  showtimes, whose programmes overlap by [[CrossCityMinOverlap]] of the larger, skipping pairs
+   *  on [[DistinctVenuePairs]].
+   *
+   *  All pairs of the US's ~4,000 venues is 8M merges, so candidates come from a prefix-filter
+   *  join instead: order every key by how many venues hold it (rarest first); a pair sharing
+   *  `t` of its keys must share one of the first `n - t + 1` keys of each set, so only venues
+   *  meeting in those short, rare prefixes are merged. Exact, not approximate. */
+  private[metrics] def overlappingAcrossCities(programmes: Map[Cinema, Array[Long]], cities: Seq[Seq[Cinema]]): Set[(Cinema, Cinema)] = {
+    val cityOf  = cities.zipWithIndex.flatMap { case (venues, i) => venues.map(_ -> i) }.groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap
+    val venues  = programmes.iterator.filter { case (v, keys) => keys.length >= CrossCityMinShowtimes && cityOf.contains(v) }.toIndexedSeq
+    val holders = scala.collection.mutable.HashMap.empty[Long, Int]
+    venues.foreach { case (_, keys) => keys.foreach(k => holders.update(k, holders.getOrElse(k, 0) + 1)) }
+    val index   = scala.collection.mutable.HashMap.empty[Long, scala.collection.mutable.ArrayBuffer[Int]]
+    venues.indices.foreach { i =>
+      val keys   = venues(i)._2
+      val prefix = keys.length - math.ceil(CrossCityMinOverlap * keys.length).toInt + 1
+      keys.sortBy(k => (holders(k), k)).iterator.take(prefix)
+        .foreach(k => index.getOrElseUpdate(k, scala.collection.mutable.ArrayBuffer.empty) += i)
+    }
+    val candidates = scala.collection.mutable.HashSet.empty[(Int, Int)]
+    index.valuesIterator.foreach { held =>
+      for { x <- held.indices; y <- (x + 1) until held.size } candidates += ((held(x) min held(y), held(x) max held(y)))
+    }
+    candidates.iterator.flatMap { case (i, j) =>
+      val (a, as) = venues(i)
+      val (b, bs) = venues(j)
+      val apart   = (cityOf(a) intersect cityOf(b)).isEmpty
+      if (apart && shared(as, bs) >= CrossCityMinOverlap * math.max(as.length, bs.length) && !DistinctVenuePairs.contains(a, b))
+        Some(if (a.displayName <= b.displayName) (a, b) else (b, a))
+      else None
+    }.toSet
   }
 
   /** `keys` sorted and de-duplicated in place, primitive throughout. */

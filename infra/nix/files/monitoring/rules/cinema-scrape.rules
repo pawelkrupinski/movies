@@ -201,42 +201,41 @@ groups:
             in the list means rows were written into the wrong database.
 
       # -----------------------------------------------------------------------------------------
-      # ONE SCREEN, TWO NAMES.
+      # ONE SCREEN, TWO NAMES -- OR ONE VENUE'S FEED UNDER ANOTHER'S.
       #
-      # `kinowo_worker_duplicate_venue_pairs` counts same-city roster venue pairs whose upcoming
-      # (film, start time) programmes overlap by 90%+ of the larger one (DuplicateVenueCensus, off
-      # the 5-minute corpus scan; venues under 5 upcoming showtimes skipped; pairs on
-      # `DistinctVenuePairs` cleared). Two roster venues were once the same screen under two names
-      # with identical showtimes and nothing noticed: the offline roster audit compares NAMES, and
-      # two names that share nothing pass it. A programme cannot differ between two listings of
-      # one screen.
+      # `kinowo_worker_duplicate_venue_pairs` counts roster venue pairs whose upcoming (film,
+      # start time) programmes are (nearly) the same (DuplicateVenueCensus, off the 5-minute corpus
+      # scan; venues under 5 upcoming showtimes skipped; pairs on `DistinctVenuePairs` cleared),
+      # in two scopes. scope="same_city": two venues of one city at 90%+ of the larger programme
+      # -- the same screen under two names, which the name-based roster audit cannot see.
+      # scope="cross_city": two venues sharing no city, 20+ showtimes each, at 95%+ -- an
+      # aggregator feeding one venue's programme under another's name far away (Flicks gave the
+      # Syracuse IN Pickwick the Park Ridge IL one's, 216 of 216). The cross-city bar is higher
+      # because a chain's template schedule (Odeon) runs near 90% between towns.
       #
       # TWENTY-FOUR HOURS: programmes move with every scrape, and a pair that matches for a day
       # is not a coincidence of one evening's schedule.
       #
-      # IT WOULD FIRE TODAY, in four countries. Measured against prod on 2026-09-23: PL 1 pair
-      # (konin: Kino Studyjne Centrum / Kino nad Wartą, 47 of 47 identical -- the Koło venue
-      # showing Konin's programme), UK 5 (somerset: The Avenue Minehead / Westway Frome 83/83,
-      # Ritz Burnham-on-Sea / Avenue Minehead; cornwall: WTW Lighthouse / WTW White River, Flora
-      # Helston / Royal St Ives; essex: Odeon Chelmsford / Colchester at 90%), ES 1 (badajoz: Cines
-      # Victoria Don Benito / Mérida 154/155), US 6 (portland x2, boston's two Jordan's IMAX,
-      # jacksonville-north-carolina, southwest-wisconsin), DE 0. Each is either a wiring bug or a
-      # chain running one programme in two towns of one region; the second kind belongs on
-      # `DistinctVenuePairs` with its reason, the first is the bug this exists to find.
+      # Measured against prod on 2026-09-23 it would have fired in five countries; every pair is
+      # now either fixed at its source (Koło's Kino nad Wartą repeating Konin's; the Syracuse
+      # Pickwick; Braniewo's Baszta repeating Środa's, fixed that morning) or on
+      # `DistinctVenuePairs` with its ticketing evidence (chain-mates in both scopes).
       - alert: DuplicateVenueListing
-        expr: max by (country) (kinowo_worker_duplicate_venue_pairs) > 0
+        expr: max by (country, scope) (kinowo_worker_duplicate_venue_pairs) > 0
         for: 24h
         labels:
           severity: warning
         annotations:
-          summary: "{{ $value }} venue pair(s) in {{ $labels.country }} have shared 90%+ of their programme for a day"
+          summary: "{{ $value }} {{ $labels.scope }} venue pair(s) in {{ $labels.country }} have shared their programme for a day"
           description: >-
-            Two roster venues in one "{{ $labels.country }}" city have listed (nearly) the same upcoming
-            films at the same start times for 24 hours -- one screen listed twice under two names,
-            or two venues wired to one upstream listing. The worker's WARN line "duplicate-venue
-            census ({{ $labels.country }})" names the pairs. Compare each pair's sources in
-            CinemaScraperCatalog: the same upstream programme behind two names is a wiring bug to
-            fix; a chain genuinely running one programme in two towns of one region goes on
+            Two roster venues in "{{ $labels.country }}" have listed (nearly) the same upcoming films
+            at the same start times for 24 hours. same_city (90%+, one city): one screen listed
+            twice under two names, or two venues wired to one upstream listing. cross_city (95%+,
+            no city in common): one venue's feed listed under another's name. The worker's WARN
+            line "duplicate-venue census ({{ $labels.country }}, {{ $labels.scope }})" names the
+            pairs. Compare each pair's booking links and sources in CinemaScraperCatalog: one
+            upstream programme behind two names is a wiring bug to fix (or a venue with no feed
+            of its own to drop); a chain genuinely running one programme in two towns goes on
             `services.cinemas.roster.DistinctVenuePairs` with its reason, which clears it here and
             in the offline roster audit alike.
 

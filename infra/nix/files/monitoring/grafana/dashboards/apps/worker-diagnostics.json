@@ -1599,8 +1599,8 @@
     },
     {
       "id": 31,
-      "title": "Same-city venue pairs sharing 90%+ of their programme, by country",
-      "description": "`kinowo_worker_duplicate_venue_pairs`: pairs of roster venues in one city whose upcoming (film, start time) programmes overlap by 90% or more of the larger one (DuplicateVenueCensus, off the 5-min corpus scan). Venues under 5 upcoming showtimes are skipped; pairs on `services.cinemas.roster.DistinctVenuePairs` are cleared. ZERO IS HEALTHY.\n\nWhat it catches: one screen listed twice under two names, or two venues wired to one upstream listing — which the name-based offline roster audit cannot see when the names share nothing. The worker's WARN line \"duplicate-venue census (<country>)\" names the pairs whenever the set changes. A chain running one programme in two towns of one region also matches; clear those on DistinctVenuePairs with the reason. Alerted by DuplicateVenueListing (above zero for 24h).",
+      "title": "Venue pairs sharing their programme, by country and scope",
+      "description": "`kinowo_worker_duplicate_venue_pairs`: pairs of roster venues whose upcoming (film, start time) programmes are (nearly) the same (DuplicateVenueCensus, off the 5-min corpus scan), by scope. scope=same_city: two venues of one city overlapping by 90%+ of the larger programme \u2014 one screen listed twice under two names, or two venues wired to one upstream listing, which the name-based offline roster audit cannot see. scope=cross_city: two venues sharing no city, 20+ showtimes each, at 95%+ \u2014 one venue's feed listed under another's name (Flicks once gave Syracuse IN's Pickwick the Park Ridge IL one's). Venues under 5 upcoming showtimes are skipped; pairs on `services.cinemas.roster.DistinctVenuePairs` are cleared. ZERO IS HEALTHY.\n\nThe worker's WARN line \"duplicate-venue census (<country>, <scope>)\" names the pairs whenever the set changes. A chain running one programme in two towns also matches; clear those on DistinctVenuePairs with the reason. Alerted by DuplicateVenueListing (above zero for 24h).",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -1643,8 +1643,8 @@
             "type": "prometheus",
             "uid": "local-prometheus"
           },
-          "expr": "max by (country) (kinowo_worker_duplicate_venue_pairs{country=~\"$country\"})",
-          "legendFormat": "{{country}}"
+          "expr": "max by (country, scope) (kinowo_worker_duplicate_venue_pairs{country=~\"$country\"})",
+          "legendFormat": "{{country}} {{scope}}"
         }
       ]
     },
