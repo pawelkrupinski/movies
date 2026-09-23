@@ -1,5 +1,6 @@
 package pl.kinowo.data
 
+import pl.kinowo.runCatchingCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,7 +49,7 @@ class CatalogRepository(
      *  a 200 replaces + persists it. Any failure (offline/transient) is swallowed
      *  so whatever is loaded (persisted, seed, or fallback) stands. */
     suspend fun reload() {
-        runCatching {
+        runCatchingCancellable {
             val fetched = api.fetchCatalog(etag)
             if (fetched.notModified) return
             val body = fetched.body ?: return

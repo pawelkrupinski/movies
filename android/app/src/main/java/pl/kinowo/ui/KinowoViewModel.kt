@@ -1,5 +1,6 @@
 package pl.kinowo.ui
 
+import pl.kinowo.runCatchingCancellable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -389,7 +390,7 @@ class KinowoViewModel(
         if (catalogCitySlug != citySlug) {
             _catalog.value = CinemaCatalog.EMPTY   // don't show the old city's areas mid-switch
             launch {
-                runCatching { catalogApi.fetchCinemas(citySlug) }.getOrNull()?.let {
+                runCatchingCancellable { catalogApi.fetchCinemas(citySlug) }.getOrNull()?.let {
                     _catalog.value = it
                     catalogCitySlug = citySlug
                 }

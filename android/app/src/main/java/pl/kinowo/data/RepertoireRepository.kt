@@ -1,6 +1,7 @@
 package pl.kinowo.data
 
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import pl.kinowo.filter.WARSAW
@@ -77,6 +78,8 @@ class RepertoireRepository(
             _loadedCity.value = citySlug
             lastReloadedAt = now
             cache.save(citySlug, films, result.lastModified)
+        } catch (e: CancellationException) {
+            throw e // a superseded reload (city switch), not a failure
         } catch (e: Exception) {
             _error.value = e.message ?: e.toString()
         } finally {

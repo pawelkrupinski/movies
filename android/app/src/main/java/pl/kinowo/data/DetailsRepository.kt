@@ -1,5 +1,6 @@
 package pl.kinowo.data
 
+import pl.kinowo.runCatchingCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,7 +33,9 @@ class DetailsRepository(
     }
 
     suspend fun reload(citySlug: String, now: Instant = Instant.now()) {
-        try {
+        // Details are non-critical; on failure the detail screen falls back to
+        // the listing-derived fields (poster, ratings, showings, cinema links).
+        runCatchingCancellable {
             val result = api.fetchDetails(citySlug, cache.lastModifiedFor(citySlug))
             if (result.notModified) {
                 lastReloadedAt = now
@@ -42,9 +45,6 @@ class DetailsRepository(
             _byTitle.value = details.associateBy(FilmDetails::title)
             lastReloadedAt = now
             cache.save(citySlug, details, result.lastModified)
-        } catch (_: Exception) {
-            // Details are non-critical; the detail screen falls back to the
-            // listing-derived fields (poster, ratings, showings, cinema links).
         }
     }
 

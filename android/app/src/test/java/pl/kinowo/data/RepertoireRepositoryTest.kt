@@ -163,4 +163,28 @@ class RepertoireRepositoryTest {
         assertEquals(LM, api.lastIfModifiedSince)   // conditional header replayed
         assertEquals(poznan, repository.films.value)      // 304 keeps the (correct) cached city
     }
+
+    /** A reload cancelled mid-fetch — `collectLatest` does this on every city
+     *  switch — is not a failure: it must not surface the cancellation as the
+     *  grid's error message, and must let the cancellation propagate. */
+    @Test
+    fun `a cancelled reload reports no error`() = runBlocking {
+        val parked = CompletableDeferred<Unit>()
+        val api = object : RepertoireApi {
+            override suspend fun fetchRepertoire(citySlug: String, ifModifiedSince: String?): KinowoApi.Fetched<Film> {
+                parked.complete(Unit)
+                kotlinx.coroutines.awaitCancellation()
+            }
+        }
+        val repository = RepertoireRepository(api, cache())
+        var completedNormally = false
+        val job = launch { repository.reload("poznan"); completedNormally = true }
+        parked.await()
+
+        job.cancel()
+        job.join()
+
+        assertNull(repository.error.value)
+        assertEquals(false, completedNormally)
+    }
 }

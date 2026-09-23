@@ -1,5 +1,6 @@
 package pl.kinowo.auth
 
+import pl.kinowo.runCatchingCancellable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
@@ -113,7 +114,8 @@ class StateSyncService(
     private suspend fun currentCountry(): String = Country.byCode(prefs.selectedCountryCode.first()).code
 
     private suspend fun reconcile(country: String) {
-        try {
+        // A network error leaves local state authoritative: prefs + flags untouched.
+        runCatchingCancellable {
             if (prefs.isHiddenFilmsMigrated(country)) {
                 when (val result = client.fetch(country, prefs.hiddenFilmsEtag(country), prefs.hiddenFilmsLastModified(country))) {
                     is HiddenFilmsFetchResult.NotModified -> Unit
@@ -134,8 +136,6 @@ class StateSyncService(
                 latest?.let { prefs.setHiddenFilmsValidators(country, it.etag, it.lastModified) }
                 prefs.setHiddenFilmsMigrated(country, true)
             }
-        } catch (_: Exception) {
-            // Network error — local state is authoritative; leave prefs + flags alone.
         }
     }
 
@@ -149,16 +149,15 @@ class StateSyncService(
      *  response never carries `language` at all, only [LanguageClient]'s does. */
     private suspend fun reconcileLanguage() {
         if (!loggedIn) return
-        try {
+        // A network error leaves local state authoritative: prefs untouched.
+        runCatchingCancellable {
             val remoteLang = languageClient.fetch()
             val localLang = prefs.selectedLanguageTag.first()
             if (remoteLang != null && remoteLang != localLang) {
                 prefs.setLanguageTag(remoteLang)
             } else if (remoteLang == null && localLang != null) {
-                runCatching { languageClient.push(localLang) }
+                languageClient.push(localLang)
             }
-        } catch (_: Exception) {
-            // Network error — local state is authoritative; leave prefs alone.
         }
     }
 
@@ -173,7 +172,7 @@ class StateSyncService(
             .drop(1)
             .debounce(LANGUAGE_DEBOUNCE_MS)
             .collect { tag ->
-                if (loggedIn && tag != null) runCatching { languageClient.push(tag) }
+                if (loggedIn && tag != null) runCatchingCancellable { languageClient.push(tag) }
             }
     }
 
@@ -190,7 +189,7 @@ class StateSyncService(
         if (!loggedIn) return
         scope.launch {
             val country = currentCountry()
-            runCatching { write(country) }
+            runCatchingCancellable { write(country) }
                 .onSuccess { prefs.setHiddenFilmsValidators(country, it.etag, it.lastModified) }
         }
     }

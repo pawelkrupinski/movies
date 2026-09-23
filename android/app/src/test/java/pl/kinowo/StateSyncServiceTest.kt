@@ -2,6 +2,7 @@ package pl.kinowo
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -343,6 +344,23 @@ class StateSyncServiceTest {
         runCurrent()
 
         assertEquals(1, languageClient.pushCount)
+    }
+
+    /** A reconcile cancelled mid-fetch (the ViewModel cleared on a country
+     *  switch) must propagate the cancellation, not return as if it finished. */
+    @Test
+    fun aCancelledReconcileDoesNotCompleteNormally() = runTest(UnconfinedTestDispatcher()) {
+        prefs.countryState.value = "pl"
+        client.beforeFetch = { kotlinx.coroutines.awaitCancellation() }
+        val service = StateSyncService(prefs, userFlow, client, languageClient, backgroundScope)
+        var completedNormally = false
+        val job = launch { service.reconcileCurrentCountry(); completedNormally = true }
+        runCurrent()
+
+        job.cancel()
+        runCurrent()
+
+        assertEquals(false, completedNormally)
     }
 
     // ── Language sync — a scalar, so no migration-flag dance, and its own
