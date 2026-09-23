@@ -148,8 +148,9 @@ object SequelMarker {
    *  they only share the franchise's own opening. UK convergence, 2026-09-16,
    *  round two: closing the containment edge for Catching Fire alone left this
    *  gap, which surfaced as Catching Fire's screenings folding onto whichever
-   *  Mockingjay part `directorWalk` resolved first, instead of the original film. */
-  /** `private[movies]` so `FilmCanonicalizer`'s tmdbId/imdbId-sharing folds can ask
+   *  Mockingjay part `directorWalk` resolved first, instead of the original film.
+   *
+   *  `private[movies]` so `FilmCanonicalizer`'s tmdbId/imdbId-sharing folds can ask
    *  this ALONE, without the general ordinal/containment logic below — those are
    *  vetted against clean TMDB candidate titles (`directorWalk`) or an
    *  already-resolved base (the containment edge), and misfire on raw, messy
@@ -162,6 +163,15 @@ object SequelMarker {
       a.drop(base.length) != b.drop(base.length) &&
       namesAnotherEntry(base, a) && namesAnotherEntry(base, b)
     }
+
+  /** [[curatedSiblings]] over two sets of raw title strings: does any title on one
+   *  side name a different curated-franchise entry from any title on the other?
+   *  The shape both `FilmCanonicalizer`'s id-sharing fold guard and
+   *  `MixedFilmDetector.conflicting` ask of cinema-published titles. */
+  private[movies] def curatedSiblingTitles(a: Iterable[String], b: Iterable[String]): Boolean = {
+    val bTokens = b.iterator.map(TitleContainment.tokens).toSeq
+    a.iterator.map(TitleContainment.tokens).exists(at => bTokens.exists(curatedSiblings(at, _)))
+  }
 
   /** Symmetric check: do `a` and `b` name two DIFFERENT instalments of the same
    *  series — two curated siblings of one franchise base ([[curatedSiblings]]),

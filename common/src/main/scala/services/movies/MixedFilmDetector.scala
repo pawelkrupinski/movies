@@ -185,12 +185,9 @@ object MixedFilmDetector {
    *  publishes. This is what lets `MixedFilmSplitter` (already run every settle,
    *  no new sweep needed) find and re-divert it once deployed. */
   private def curatedSiblingGroups(a: Group, b: Group): Boolean = {
-    def rawTitleTokens(g: Group): Set[Seq[String]] =
-      g.slots.flatMap { case (_, sd) => sd.title.toSeq ++ sd.originalTitle.toSeq }
-        .map(TitleContainment.tokens).toSet
-    val aTokens = rawTitleTokens(a)
-    val bTokens = rawTitleTokens(b)
-    aTokens.exists(at => bTokens.exists(bt => SequelMarker.curatedSiblings(at, bt)))
+    def rawTitles(g: Group): Set[String] =
+      g.slots.flatMap { case (_, sd) => sd.title.toSeq ++ sd.originalTitle.toSeq }.toSet
+    SequelMarker.curatedSiblingTitles(rawTitles(a), rawTitles(b))
   }
 
   /** A film beside its own numbered SEQUEL — the one pair `titlesDiffer` structurally

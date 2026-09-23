@@ -140,11 +140,8 @@ object FilmCanonicalizer {
     // mis-resolved (before `TmdbCandidateSearch`'s own `SequelMarker` guard existed)
     // to the SAME wrong tmdbId, which this fold then waved together because Odeon's
     // listings publish no `originalTitle`/runtime/year for either side.
-    def curatedFranchiseSiblings(a: MovieRecord, b: MovieRecord): Boolean = {
-      val aTokens = a.evidence.titles.map(TitleContainment.tokens)
-      val bTokens = b.evidence.titles.map(TitleContainment.tokens)
-      aTokens.exists(at => bTokens.exists(bt => SequelMarker.curatedSiblings(at, bt)))
-    }
+    def curatedFranchiseSiblings(a: MovieRecord, b: MovieRecord): Boolean =
+      SequelMarker.curatedSiblingTitles(a.evidence.titles, b.evidence.titles)
     def differ(a: Identified, b: Identified): Boolean =
       MixedFilmDetector.describeDifferentFilms(a.identity, b.identity) || curatedFranchiseSiblings(a.row._2, b.row._2)
 
