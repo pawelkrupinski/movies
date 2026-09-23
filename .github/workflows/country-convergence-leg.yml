@@ -148,6 +148,11 @@ env:
     # into a called workflow, and `convergence-setup` reads this variable.
     FIXTURE_RELEASE_TAG: convergence-fixtures
 
+# Least privilege by default: every job that needs more than reading the
+# repository grants it at job level.
+permissions:
+    contents: read
+
 jobs:
     # THE GATE. A ~100-film leg, ahead of the full run on the same country.
     #

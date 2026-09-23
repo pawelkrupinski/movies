@@ -55,10 +55,20 @@ concurrency:
 # once green, deploy. `secrets: inherit` hands the called workflow the
 # ZYTE / TMDB / MONGODB secrets its test jobs need.
 #
+# Least privilege by default: every job that needs more than reading the
+# repository grants it at job level.
+permissions:
+    contents: read
+
 jobs:
     ci:
         uses: ./.github/workflows/ci.yml
         secrets: inherit
+        # ci.yml's jobs post JUnit check-runs; a called workflow can only
+        # narrow its caller's token, never widen it.
+        permissions:
+            contents: read
+            checks: write
 
     # Take the runners back from an in-flight convergence run, so this push's jobs
     # do not queue behind it. No `needs:` — it starts with ci's jobs and is

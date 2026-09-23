@@ -72,6 +72,11 @@ concurrency:
     # be what set this file apart and no longer is.
     cancel-in-progress: false
 
+# Least privilege by default: every job that needs more than reading the
+# repository grants it at job level.
+permissions:
+    contents: read
+
 jobs:
     # A one-row matrix rather than a bare `with:` block, so this caller and the shared
     # one stay the same SHAPE: `ConvergenceLegWiringSpec` reads both callers' matrix

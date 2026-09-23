@@ -130,6 +130,11 @@ concurrency:
   group: nix-stage-closures-${{ github.ref }}
   cancel-in-progress: false
 
+# Least privilege by default: every job that needs more than reading the
+# repository grants it at job level.
+permissions:
+  contents: read
+
 jobs:
   # EVERY HOST MUST STILL EVALUATE, and this is the only job that runs on a pull request.
   #

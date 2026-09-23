@@ -15,6 +15,11 @@ on:
     # Manual trigger for an on-demand run.
     workflow_dispatch:
 
+# Least privilege by default: every job that needs more than reading the
+# repository grants it at job level.
+permissions:
+    contents: read
+
 jobs:
     filmweb-diff:
         runs-on: ubuntu-latest

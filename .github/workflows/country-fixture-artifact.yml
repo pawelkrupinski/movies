@@ -57,6 +57,11 @@ on:
                 type: choice
                 options: [pl, de, uk, us, es]
 
+# Least privilege by default: every job that needs more than reading the
+# repository grants it at job level.
+permissions:
+    contents: read
+
 jobs:
     record-country-fixture:
         runs-on: ubuntu-latest

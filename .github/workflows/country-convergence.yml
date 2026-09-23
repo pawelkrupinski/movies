@@ -79,6 +79,11 @@ concurrency:
     # optimisation. (ConvergenceConcurrencyConfigSpec, CiRunnerBudgetSpec)
     cancel-in-progress: false
 
+# Least privilege by default: every job that needs more than reading the
+# repository grants it at job level.
+permissions:
+    contents: read
+
 jobs:
     # One call per country, each carrying its own sample → convergence chain, so a
     # country's full leg waits on ITS OWN sample and nothing else.
