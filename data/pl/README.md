@@ -4,7 +4,10 @@ Poland's pages named no town but Trójmiasto's, on the assumption that a Polish
 city page covers one town. It is not true of most of the 65: `/tarnow/` lists
 cinemas in Biecz, Gorlice, Bochnia, Brzesko, Tuchów, Solec-Zdrój and Dąbrowa
 Tarnowska, `/walbrzych/` reaches Kłodzko, Świdnica and Dzierżoniów, and
-`/wloclawek/` reaches Płock, which is its own city elsewhere in the roster.
+`/wloclawek/` reaches Sierpc, Lipno and Gostynin. (It also reached Płock's Kino
+za Rogiem until 2026-09-23, though Płock is its own city page; the roster audit
+in `CinemaRosterAuditSpec` now refuses a venue filed under a neighbour of a town
+that has its own page.)
 
 Unlike the UK — the other hand-written roster, whose towns had to be harvested
 off Flicks — Poland needed no harvest, because the answer was already written

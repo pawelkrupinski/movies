@@ -1,0 +1,53 @@
+# bilety24 organiser slugs we once wired that bilety24 now only 301s to the
+# organiser's current slug (same trailing id). CinemaRosterAuditSpec refuses
+# them: a venue addressed through someone else's redirect breaks the day the
+# redirect goes. Harvested from the catalog's git history, 2026-09-23.
+barlinecki-osrodek-kultury-kino-panorama-1052
+bogatynski-osrodek-kultury-kino-kadr-1659
+boleslawiecki-osrodek-kultury-miedzynarodowe-centrum-ceramiki-kino-forum-1586
+brzeskie-centrum-kultury-kino-centrum-1672
+centrum-kultury-muza-w-lubinie-1375
+chodzieski-dom-kultury-kino-notec-591
+fundacja-kina-zeglarz-1224
+gok-kino-mewa-budzyn-685
+kino-bajka-w-kluczborku-1467
+kino-baszta-w-srodzie-wlkp-477
+kino-centrum-w-bialogardzie-1685
+kino-centrum-w-lisiej-gorze-1658
+kino-echo-w-jarocinie-1159
+kino-etiuda-mck-ostrowiec-1389
+kino-gornik-szydlowiec-1320
+kino-grodziskiego-centrum-kultury-1231
+kino-hel-dom-kultury-w-pleszewie-1255
+kino-jantar-w-ostrolece-1068
+kino-kultura-dom-kultury-w-goldapi-1089
+kino-kutnowskiego-domu-kultury-1474
+kino-lewart-w-lubartowie-1382
+kino-lydynia-w-ciechanowie-1307
+kino-mdk-w-wagrowcu-623
+kino-mewa-zlocieniecki-osrodek-kultury-1710
+kino-mokis-w-olesnicy-1193
+kino-narie-w-moragu-1682
+kino-odra-w-olawie-1498
+kino-piast-w-ostrzeszowie-601
+kino-pionier-w-zarach-1492
+kino-pod-kopula-679
+kino-polonia-w-trzebnicy-1090
+kino-sniezka-w-rabce-zdroj-625
+kino-sokol-w-dabrowie-tarnowskiej-1303
+kino-swiatowid-mdk-w-przasnyszu-1482
+kino-teatr-baltyk-rypinski-dom-kultury-1053
+kino-teatr-czyn-w-poniatowej-1220
+kino-trojka-we-wrzesni-475
+kino-wawel-w-lubaniu-1489
+kino-wazka-malopolskie-centrum-dzwieku-i-slowa-1273
+kino-wisla-w-brzeszczach-1539
+kino-za-rogiem-w-brusach-1410
+kinoteatr-harmonia-w-nowym-miescie-lubawskim-1291
+leborskie-centrum-kultury-kino-fregata-1683
+mck-kino-swiatowid-w-czarnkowie-831
+miejski-dom-kultury-w-stalowej-woli-1419
+miejski-osrodek-kultury-w-mszanie-dolnej-kino-lubon-2-0-1549
+miejskie-centrum-kultury-czytelnictwa-i-edukacji-w-grybowie-1321
+nck-w-wieleniu-kino-za-rogiem-1344
+teatr-miejski-w-lesznie-kino-1653

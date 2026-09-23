@@ -2332,13 +2332,6 @@
  },
  {
   "citySlug": "wloclawek",
-  "cinemaObject": "KinoZaRogiem",
-  "displayName": "Kino za Rogiem",
-  "town": "Płock",
-  "annotation": "Płock — filmweb 1949"
- },
- {
-  "citySlug": "wloclawek",
   "cinemaObject": "KinoBaltykRypin",
   "displayName": "Kino Bałtyk Rypin",
   "town": "Rypin",
@@ -2434,6 +2427,13 @@
   "displayName": "Kino Przedwiośnie",
   "town": "Płock",
   "annotation": "Płock — novekino"
+ },
+ {
+  "citySlug": "plock",
+  "cinemaObject": "KinoZaRogiem",
+  "displayName": "Kino za Rogiem",
+  "town": "Płock",
+  "annotation": "Płock — filmweb 1949"
  },
  {
   "citySlug": "plock",

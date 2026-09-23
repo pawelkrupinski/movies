@@ -46939,9 +46939,9 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "f3bc304071676e29~truposzjimjarmusch|wloclawek|Kino za Rogiem",
+    "_id" : "f3bc304071676e29~truposzjimjarmusch|plock|Kino za Rogiem",
     "filmId" : "f3bc304071676e29~truposzjimjarmusch",
-    "city" : "wloclawek",
+    "city" : "plock",
     "cinema" : "Kino za Rogiem",
     "showtimes" : [ {
       "dateTime" : "2026-06-27T16:00:00",
@@ -48820,9 +48820,9 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "f42d832ff289dead|wloclawek|Kino za Rogiem",
+    "_id" : "f42d832ff289dead|plock|Kino za Rogiem",
     "filmId" : "f42d832ff289dead",
-    "city" : "wloclawek",
+    "city" : "plock",
     "cinema" : "Kino za Rogiem",
     "showtimes" : [ {
       "dateTime" : "2026-06-20T18:00:00",
@@ -65521,9 +65521,9 @@
       "format" : [ "2D", "DUB" ]
     } ]
   }, {
-    "_id" : "f44185c33505e5ce|wloclawek|Kino za Rogiem",
+    "_id" : "f44185c33505e5ce|plock|Kino za Rogiem",
     "filmId" : "f44185c33505e5ce",
-    "city" : "wloclawek",
+    "city" : "plock",
     "cinema" : "Kino za Rogiem",
     "showtimes" : [ {
       "dateTime" : "2026-06-13T16:00:00",
@@ -100777,9 +100777,9 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "f6a9ad88aba895b1|wloclawek|Kino za Rogiem",
+    "_id" : "f6a9ad88aba895b1|plock|Kino za Rogiem",
     "filmId" : "f6a9ad88aba895b1",
-    "city" : "wloclawek",
+    "city" : "plock",
     "cinema" : "Kino za Rogiem",
     "showtimes" : [ {
       "dateTime" : "2026-06-13T15:30:00",
@@ -110289,9 +110289,9 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "f7c09cd31e046e90~nocnaziemijimjarmusch|wloclawek|Kino za Rogiem",
+    "_id" : "f7c09cd31e046e90~nocnaziemijimjarmusch|plock|Kino za Rogiem",
     "filmId" : "f7c09cd31e046e90~nocnaziemijimjarmusch",
-    "city" : "wloclawek",
+    "city" : "plock",
     "cinema" : "Kino za Rogiem",
     "showtimes" : [ {
       "dateTime" : "2026-06-24T18:00:00",
@@ -153814,9 +153814,9 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "fa5c5dc0905c6cda|wloclawek|Kino za Rogiem",
+    "_id" : "fa5c5dc0905c6cda|plock|Kino za Rogiem",
     "filmId" : "fa5c5dc0905c6cda",
-    "city" : "wloclawek",
+    "city" : "plock",
     "cinema" : "Kino za Rogiem",
     "showtimes" : [ {
       "dateTime" : "2026-06-27T18:00:00",
@@ -194869,9 +194869,9 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "fd9e99170a2d5828|wloclawek|Kino za Rogiem",
+    "_id" : "fd9e99170a2d5828|plock|Kino za Rogiem",
     "filmId" : "fd9e99170a2d5828",
-    "city" : "wloclawek",
+    "city" : "plock",
     "cinema" : "Kino za Rogiem",
     "showtimes" : [ {
       "dateTime" : "2026-06-20T16:00:00",
@@ -198236,9 +198236,9 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "fee8670dcee948a4|wloclawek|Kino za Rogiem",
+    "_id" : "fee8670dcee948a4|plock|Kino za Rogiem",
     "filmId" : "fee8670dcee948a4",
-    "city" : "wloclawek",
+    "city" : "plock",
     "cinema" : "Kino za Rogiem",
     "showtimes" : [ {
       "dateTime" : "2026-06-17T18:00:00",
@@ -200172,9 +200172,9 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "ffe4d506ba60366d~nieustajacewakacjejimjarmusch|wloclawek|Kino za Rogiem",
+    "_id" : "ffe4d506ba60366d~nieustajacewakacjejimjarmusch|plock|Kino za Rogiem",
     "filmId" : "ffe4d506ba60366d~nieustajacewakacjejimjarmusch",
-    "city" : "wloclawek",
+    "city" : "plock",
     "cinema" : "Kino za Rogiem",
     "showtimes" : [ {
       "dateTime" : "2026-06-13T18:00:00",

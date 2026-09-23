@@ -120,6 +120,18 @@ sealed abstract class City(
   /** The covered towns OTHER than the city itself — empty for the ordinary
    *  one-town city, and the whole reason a multi-town page needs extra words. */
   final def otherCoveredPlaces: Seq[String] = coveredPlaces.filterNot(_ == labels.nominative)
+  /** The town(s) one of this city's venues may sit in: the venue table's town
+   *  when it names one, else the city's own [[homeTowns]]. Meaningful for the two
+   *  HAND-WRITTEN rosters (Poland, the UK), whose out-of-town venues the table
+   *  annotates; the generated rosters keep their towns in the roster tuple.
+   *  Read by the roster audits, which compare it with the town a venue's source
+   *  publishes. */
+  final def townsOf(cinema: Cinema): Seq[String] =
+    VenueTowns.byDisplayName.get(cinema.displayName).fold(homeTowns)(Seq(_))
+  /** The towns an unannotated venue of this city sits in — the city itself,
+   *  unless the city is a conurbation under a name no venue gives as its town
+   *  (see [[Trojmiasto]]). */
+  def homeTowns: Seq[String] = Seq(labels.nominative)
   /** "Repertuar kin …" locative phrase, in this city's country language.
    *  Polish declines ("w Poznaniu", "we Wrocławiu"); English (and any other
    *  non-declining language) reads "in London". Delegated to [[CityGrammar]] so
@@ -246,7 +258,9 @@ case object Trojmiasto extends City(
    *  searches a cinema by: only "Gdańsk" appeared on the page, inside
    *  `Multikino Gdańsk`. */
   override protected val extraPlaces: Seq[String] =
-    (Seq("Gdańsk", "Gdynia", "Sopot", "Rumia", "Wejherowo", "Pruszcz Gdański") ++ VenueTowns.of(cinemas)).distinct
+    (homeTowns ++ Seq("Rumia", "Wejherowo", "Pruszcz Gdański") ++ VenueTowns.of(cinemas)).distinct
+  /** No venue sits in "Trójmiasto": the unannotated ones are in its three towns. */
+  override def homeTowns: Seq[String] = Seq("Gdańsk", "Gdynia", "Sopot")
 }
 
 case object Bydgoszcz extends City(
