@@ -3,9 +3,9 @@ package pl.kinowo.data
 import android.content.Context
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.runBlocking
 import org.junit.rules.ExternalResource
-import org.robolectric.Shadows.shadowOf
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -14,7 +14,10 @@ import java.util.concurrent.atomic.AtomicReference
  * The `kinowo_prefs` DataStore is a process singleton, so under Robolectric
  * every test class in a Gradle fork shares one store: without this, a test
  * asserting "null until set" passes or fails depending on which test happened
- * to write before it.
+ * to write before it. On a device it is worse: every instrumented test runs
+ * in one app process AND the store persists on disk between runs, so a
+ * country an earlier test switched to silently becomes the next test's
+ * starting country.
  *
  * Write through [write] whenever app code may be writing too (a live
  * ViewModel or activity). DataStore runs an `edit` transform in the CALLER's
@@ -24,7 +27,9 @@ import java.util.concurrent.atomic.AtomicReference
  * queued when the test ends is discarded with the Looper — wedging the lock
  * for every later test in the fork. [write] runs off-thread and pumps Main
  * until done; the teardown wipe goes through it, so it also proves the lock
- * free before the next test starts.
+ * free before the next test starts. Main needs pumping only when the test
+ * itself runs ON it (Robolectric); on a device the test thread is the
+ * instrumentation thread and Main runs by itself.
  */
 class FreshUserPreferences : ExternalResource() {
 
@@ -41,7 +46,7 @@ class FreshUserPreferences : ExternalResource() {
         val deadline = System.currentTimeMillis() + TIMEOUT_MS
         while (outcome.get() == null) {
             check(System.currentTimeMillis() < deadline) { "DataStore write still blocked after ${TIMEOUT_MS}ms" }
-            shadowOf(Looper.getMainLooper()).idle()
+            if (Looper.myLooper() == Looper.getMainLooper()) InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             Thread.sleep(5)
         }
         outcome.get()!!.getOrThrow()

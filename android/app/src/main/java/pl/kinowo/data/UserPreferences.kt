@@ -264,8 +264,9 @@ class UserPreferences(private val context: Context) : SyncPrefs {
     }
 
     /** The DataStore is a process singleton, shared by every Robolectric
-     *  test in a Gradle fork — the tests' `FreshUserPreferences` rule wipes
-     *  it around each test. */
+     *  test in a Gradle fork and by every instrumented test on a device (where
+     *  it also outlives the run) — the tests' `FreshUserPreferences` rule
+     *  wipes it around each test. */
     @androidx.annotation.VisibleForTesting
     internal suspend fun clearAllForTest() {
         context.dataStore.edit { it.clear() }

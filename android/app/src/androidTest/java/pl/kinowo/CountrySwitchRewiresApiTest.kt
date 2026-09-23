@@ -10,8 +10,10 @@ import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertNotSame
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import pl.kinowo.data.FreshUserPreferences
 import pl.kinowo.data.UserPreferences
 import pl.kinowo.ui.KinowoViewModel
 
@@ -40,6 +42,12 @@ import pl.kinowo.ui.KinowoViewModel
  */
 @RunWith(AndroidJUnit4::class)
 class CountrySwitchRewiresApiTest {
+
+    // Start on an EMPTY prefs store and leave it empty: every instrumented test
+    // shares one app process and the store persists across runs, so a country
+    // or city another test left behind would otherwise be this test's start.
+    @get:Rule(order = 0)
+    val fresh = FreshUserPreferences()
 
     // MainActivity requests approximate location on launch; pre-grant it so the
     // system dialog never steals focus (which would leave the activity paused and

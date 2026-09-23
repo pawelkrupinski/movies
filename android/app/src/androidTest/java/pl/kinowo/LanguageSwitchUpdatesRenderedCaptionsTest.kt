@@ -14,6 +14,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import pl.kinowo.data.FreshUserPreferences
 import pl.kinowo.data.UserPreferences
 
 /**
@@ -42,12 +43,18 @@ import pl.kinowo.data.UserPreferences
 @RunWith(AndroidJUnit4::class)
 class LanguageSwitchUpdatesRenderedCaptionsTest {
 
+    // Start on an EMPTY prefs store and leave it empty: every instrumented test
+    // shares one app process and the store persists across runs, so a country
+    // or city another test left behind would otherwise be this test's start.
+    @get:Rule(order = 0)
+    val fresh = FreshUserPreferences()
+
     // createEmptyComposeRule (rather than createAndroidComposeRule<MainActivity>)
     // so the language pref can be persisted BEFORE the activity is launched
     // manually below — mirroring LanguageSwitchKeepsRetainedViewModelTest. It
     // still gives the Compose test APIs (onNodeWithText, waitUntil, ...) against
     // whichever Compose hierarchy is currently active in the process.
-    @get:Rule
+    @get:Rule(order = 1)
     val compose = createEmptyComposeRule()
 
     // MainActivity requests approximate location on launch; pre-grant it so the

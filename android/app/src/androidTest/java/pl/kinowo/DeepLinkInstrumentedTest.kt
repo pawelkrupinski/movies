@@ -14,6 +14,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import pl.kinowo.data.JsonListCache
 import pl.kinowo.data.RepertoireRepository
+import pl.kinowo.data.FreshUserPreferences
 import pl.kinowo.data.UserPreferences
 import pl.kinowo.model.CinemaShowings
 import pl.kinowo.model.DayShowings
@@ -48,7 +49,13 @@ import java.time.format.DateTimeFormatter
 @RunWith(AndroidJUnit4::class)
 class DeepLinkInstrumentedTest {
 
-    @get:Rule
+    // Start on an EMPTY prefs store and leave it empty: every instrumented test
+    // shares one app process and the store persists across runs, so a country
+    // or city another test left behind would otherwise be this test's start.
+    @get:Rule(order = 0)
+    val fresh = FreshUserPreferences()
+
+    @get:Rule(order = 1)
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     private val target = "2046" // warszawa-only film, absent from the poznań list
