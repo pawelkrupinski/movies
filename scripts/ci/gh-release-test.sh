@@ -17,6 +17,7 @@ n=$(($(cat "$STUB_COUNT") + 1)); echo "$n" > "$STUB_COUNT"
 if [ "$n" -le "${STUB_FAILS:-0}" ]; then echo "$STUB_ERR" >&2; exit 1; fi
 # `view` of a release the stub was told is missing answers the way gh does: no HTTP code.
 if [ "$2" = "view" ] && [ -n "${STUB_MISSING:-}" ]; then echo "release not found" >&2; exit 1; fi
+if [ "$1" = "api" ] && [ -n "${STUB_FAIL_API:-}" ]; then echo "HTTP 403: Resource not accessible by integration" >&2; exit 1; fi
 echo "ok: $*"
 STUB
 chmod +x "$stub_dir/gh"
@@ -75,19 +76,24 @@ publish() {
   reset; export STUB_FAILS="$1" STUB_ERR="$2" STUB_MISSING="$3"
   PATH="$stub_dir:$PATH" bash "$REPO_ROOT/scripts/ci/publish-rolling-release.sh" \
     rolling "Rolling (latest)" "notes" "$stub_dir/a.apk" "$stub_dir/a.aab" >/dev/null 2>&1
-  echo "$? $(cut -d' ' -f2 "$STUB_LOG" | tr '\n' ' ')"
+  echo "$? $(awk '{ printf "%s ", ($1 == "release") ? $2 : $1 }' "$STUB_LOG")"
 }
 
-check "an existing rolling release is edited, never recreated, then its assets clobbered" \
-  "0 view edit upload " "$(publish 0 '' '')"
+check "an existing rolling release is edited, never recreated, its assets clobbered, then its tag moved" \
+  "0 view edit upload api " "$(publish 0 '' '')"
 check "a missing one is created" "0 view create upload " "$(publish 0 '' yes)"
 check "a transient failure of the existence check is retried, not mistaken for a missing release" \
-  "0 view view edit upload " "$(publish 1 'HTTP 502: Bad Gateway' '')"
+  "0 view view edit upload api " "$(publish 1 'HTTP 502: Bad Gateway' '')"
 check "a refused 403 on the existence check fails, never answered with a create" \
   "1 view " "$(publish 1 'HTTP 403: Resource not accessible by integration' '')"
 check "the edit retargets the release at this commit, as a prerelease" \
   "release edit rolling --repo o/r --target abc1234def --prerelease --notes notes" \
   "$(publish 0 '' '' >/dev/null; grep '^release edit' "$STUB_LOG")"
+check "an existing release's tag is force-moved to this commit, since --target moves only a new tag" \
+  "api -X PATCH repos/o/r/git/refs/tags/rolling -f sha=abc1234def -F force=true" \
+  "$(publish 0 '' '' >/dev/null; grep '^api' "$STUB_LOG")"
+check "a refused tag move (assets already out) fails the publish rather than leaving the tag silently stale" \
+  "1 view edit upload api " "$(STUB_FAIL_API=yes publish 0 '' '')"
 check "the upload clobbers every asset given" \
   "release upload rolling --repo o/r --clobber $stub_dir/a.apk $stub_dir/a.aab" \
   "$(publish 0 '' '' >/dev/null; grep '^release upload' "$STUB_LOG")"

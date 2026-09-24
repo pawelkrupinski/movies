@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Point a rolling prerelease at this commit and replace its assets.
+# Point a rolling prerelease — and its git tag — at this commit and replace its assets.
 #
 # An UPSERT, never delete + recreate: deleting the release (with --cleanup-tag) opens a window
 # in which the tag does not exist, which is what the 2026-09-04 403 hit. `view` decides edit vs
@@ -24,13 +24,23 @@ sha="${GITHUB_SHA:?}"
 
 # Only gh's own "release not found" means create: any other failed view (a refused 403) is
 # the error to report, not a cue to create a release whose tag already exists.
+moved_by_create=no
 if view_err="$("$release" view "$tag" --repo "$repo" 2>&1 >/dev/null)"; then
   "$release" edit "$tag" --repo "$repo" --target "$sha" --prerelease --notes "$notes"
 elif grep -q 'release not found' <<< "$view_err"; then
   "$release" create "$tag" --repo "$repo" --target "$sha" --prerelease \
     --title "$title" --notes "$notes"
+  moved_by_create=yes
 else
   printf '%s\n' "$view_err" >&2
   exit 1
 fi
 "$release" upload "$tag" --repo "$repo" --clobber "$@"
+# `--target` only places a tag that does not exist yet (GitHub ignores target_commitish for an
+# existing one), so an edited release kept its tag on the commit it was first created at —
+# android-latest sat on 199465a from 09-04 while its assets moved on. Force-move the tag last,
+# once the assets are out, so a refused move cannot withhold the build — but still fails the
+# step rather than leaving the tag silently stale.
+if [ "$moved_by_create" = no ]; then
+  gh api -X PATCH "repos/$repo/git/refs/tags/$tag" -f sha="$sha" -F force=true >/dev/null
+fi

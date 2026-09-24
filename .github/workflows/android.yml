@@ -371,8 +371,8 @@ jobs:
             # Only on main pushes / manual runs — never on PRs. Each run edits
             # the same release in place and --clobbers its assets (a rolling
             # "latest", not a versioned release); its notes name the commit.
-            # The git tag itself stays where the release was first created —
-            # `--target` only moves a tag that does not exist yet. Marked
+            # The script also force-moves the git tag to this commit, since
+            # `--target` alone only places a tag that does not exist yet. Marked
             # prerelease so it stays out of the repo's "Latest release" slot.
             # Requires the KINOWO_RELEASE_* signing secrets: an unsigned APK
             # won't install, so we fail loudly rather than publish a dud.
