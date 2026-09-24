@@ -328,6 +328,24 @@ confirmation per the rule above; downtime is recoverable, data isn't.
 If you commit but defer the push for some reason, say so in the same
 message so I don't have to ask "did you push?"
 
+### Batch pushes to main
+
+A push to `main` starts ~20 jobs and a newer push CANCELS the run in
+flight (`main.yml`'s `cancel-in-progress: true`); 38% of Main runs in
+the four weeks to 2026-09-24 ended that way. That is kept on purpose:
+the superseding run tests a superset of the cancelled commit, Actions
+minutes cost nothing on this public repo, and letting runs finish would
+either make every push wait behind the previous one's ~12 minutes or,
+run side by side, break the 20-runner budget (`CiRunnerBudgetSpec`). What it costs is signal: a
+cancelled run says nothing about its commit. So batch instead:
+
+- Push when a coherent change is locally green, not after every
+  commit. Several commits in one push are one run.
+- If a run for your previous push is under ~10 minutes old, prefer to
+  keep committing and push once, rather than cancel it minutes from
+  its answer.
+- Judge `main` by the newest COMPLETED run, never by a cancelled one.
+
 ## Extract repeated patterns into a shared abstraction
 
 If you find yourself writing the same shape of code in a second place —
