@@ -46,4 +46,52 @@ class ScrapeLandingSpec extends AnyFlatSpec with Matchers {
     // Written through the store's funnel, so the repository holds it too.
     repository.findAll().map(_.record.cinemaShowings.map(_._1).toSet) shouldBe Seq(Set(KinoMuza, Helios))
   }
+
+  // A DETAIL-ONLY SLOT is a venue's slot its listing never wrote: the detail handler merges
+  // into `SourceData()` when the row holds no slot of that venue, which leaves no `title` —
+  // every listing write sets one. One shared bilety24 detail group wrote every bilety24
+  // film's detail onto Janosik's slot (7b225cab2 stopped new ones), so production rows carry
+  // such phantoms. They are no evidence of what the venue lists: they must neither inflate
+  // the breadth guard (which then skips the prune that would clear them) nor survive a tick
+  // of that venue, whatever the guard says about its real slots.
+  it should "drop the venue's detail-only slots on its next scrape, even while the breadth guard spares its real ones" in {
+    def rig() = {
+      val repository = new InMemoryMovieRepository
+      val store      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+      val landing    = new ScrapeLanding(store, repository, None, new InProcessEventBus(),
+        ScreeningTokens.Default, CountryNames.DefaultLanguage)
+      (store, landing)
+    }
+    def row(title: String, slots: (Source, SourceData)*) =
+      MovieRecord(tmdbId = Some(title.hashCode.abs), data = Map[Source, SourceData](
+        Tmdb -> SourceData(title = Some(title), releaseYear = Some(2026))) ++ slots)
+    def listed(title: String)  = CinemaShowing.keyFor(Helios, title, titleNormalizer) -> SourceData(title = Some(title), releaseYear = Some(2026))
+    def phantom(title: String) = CinemaShowing.keyFor(Helios, title, titleNormalizer) -> SourceData(synopsis = Some("Bałtyk's film, not ours"))
+    def muza(title: String)    = CinemaShowing.keyFor(KinoMuza, title, titleNormalizer) -> SourceData(title = Some(title), releaseYear = Some(2026))
+    def heliosSlots(store: CaffeineMovieCache, title: String) =
+      store.get(CacheKey(title, Some(2026), titleNormalizer)).toSeq.flatMap(_.data.keys.filter(s => Source.cinemaOf(s).contains(Helios)))
+
+    val shown    = Seq("Alpha", "Beta", "Gamma")
+    val phantoms = (1 to 10).map(i => s"Other Film $i")
+
+    // Healthy venue: it still lists everything it really showed.
+    {
+      val (store, landing) = rig()
+      shown.foreach(t => store.put(CacheKey(t, Some(2026), titleNormalizer), row(t, listed(t))))
+      phantoms.foreach(t => store.put(CacheKey(t, Some(2026), titleNormalizer), row(t, muza(t), phantom(t))))
+      landing.recordCinemaScrape(Helios, shown.map(t => scrape(Helios, t).copy(movie = Movie(title = t, releaseYear = Some(2026)))))
+      phantoms.foreach(t => withClue(s"$t: ")(heliosSlots(store, t) shouldBe empty))
+      shown.foreach(t => withClue(s"$t: ")(heliosSlots(store, t) should not be empty))
+    }
+    // A thin tick the breadth guard holds: its real slots are spared, the phantoms still go.
+    {
+      val (store, landing) = rig()
+      val formerlyShown = (1 to 10).map(i => s"Shown $i")
+      (shown ++ formerlyShown).foreach(t => store.put(CacheKey(t, Some(2026), titleNormalizer), row(t, listed(t))))
+      phantoms.foreach(t => store.put(CacheKey(t, Some(2026), titleNormalizer), row(t, muza(t), phantom(t))))
+      landing.recordCinemaScrape(Helios, shown.map(t => scrape(Helios, t).copy(movie = Movie(title = t, releaseYear = Some(2026)))))
+      formerlyShown.foreach(t => withClue(s"$t (guard-spared): ")(heliosSlots(store, t) should not be empty))
+      phantoms.foreach(t => withClue(s"$t: ")(heliosSlots(store, t) shouldBe empty))
+    }
+  }
 }

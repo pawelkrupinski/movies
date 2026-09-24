@@ -294,7 +294,11 @@ private[movies] final class ScrapeLanding(
     // never pruned — Kino Aurum, 57 slot-keys against an 11-film board) wedges here
     // FOREVER: the ratio can never clear the floor while the very thing that would
     // shrink `knownCinemaSlots` back down is the prune this guard keeps skipping.
-    val knownCinemaSlots = corpusIndex.slotsOf(cinema).size
+    //
+    // Only slots the venue's LISTING wrote count: a detail-only slot (see
+    // `ScrapeLanding.isDetailOnly`) is no evidence of what the venue lists, and a pile of
+    // them held this guard shut over the very prune that clears them.
+    val knownCinemaSlots = corpusIndex.slotsOf(cinema).count { case (_, _, sd) => !ScrapeLanding.isDetailOnly(sd) }
     //
     // A rewire skips it like the depth guard: the old source's films are exactly what
     // the prune must retire, however few the new source lists.
@@ -756,6 +760,15 @@ private[movies] final class ScrapeLanding(
         // degraded-tick episode is on the record even though nothing was removed.
         RemovalAudit.scrapePruneSkipped(cinema.displayName, batchFilms = deduped.size,
           knownSlots = knownCinemaSlots, consecutive, reason = "partial-scrape-guard")
+        // What the guard spares is the venue's LISTED films a thin tick failed to mention.
+        // A detail-only slot was never listed, so a thin tick is no reason to keep it.
+        val phantoms = corpusIndex.slotsOf(cinema).iterator
+          .collect { case (k, s, sd) if ScrapeLanding.isDetailOnly(sd) && !touchedSlots.contains(sd) => k -> s }
+          .toList.groupBy(_._1).view.mapValues(_.map(_._2).toSet).toList
+        phantoms.foreach { case (k, stale) => dropCinemaSlots(k, _ => stale) }
+        RemovalAudit.scrapePruned(cinema.displayName, films = phantoms.size, slots = phantoms.iterator.map(_._2.size).sum,
+          sampleFilmIds = phantoms.map { case (k, _) => s"${k.cleanTitle} (${k.year.getOrElse("—")})" },
+          reason = "detail-only-slot")
       case ScrapeHealth.Breadth.AcceptDegraded(consecutive) =>
         // Sustained across enough ticks to stop being a bad-fetch guess — the prune
         // finally runs, so log that it is about to let go of whatever this venue's
@@ -1120,4 +1133,14 @@ private[movies] final class ScrapeLanding(
       .flatMap(FilmCanonicalizer.clusterByFilm(_, normalizer))
       .exists(cluster => cluster.exists(_._1 == primary) && cluster.exists(_._1 == key))
   }
+}
+
+private[movies] object ScrapeLanding {
+  /** A venue slot its LISTING never wrote: every listing write sets `title` (the shown
+   *  title), and the only other writer of a venue slot — a detail merge landing on a row
+   *  that holds no slot of that venue — starts from an empty `SourceData`, so it has none.
+   *  Such a slot is no evidence of what the venue lists. A shared detail group wrote one
+   *  onto a bilety24 venue for every bilety24 film (fixed in 7b225cab2); the venue's next
+   *  scrape drops them. */
+  def isDetailOnly(slot: SourceData): Boolean = slot.title.isEmpty
 }
