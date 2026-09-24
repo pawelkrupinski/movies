@@ -64,6 +64,14 @@ interface SyncPrefs {
      *  which this never carries, comes from instead). */
     val selectedLanguageTag: Flow<String?>
     suspend fun setLanguageTag(tag: String)
+
+    /** A language pick the account hasn't confirmed yet — its debounced push
+     *  is still waiting, or it failed. Persisted so a pick whose push never
+     *  landed (the app killed inside the debounce, or offline) is still pushed
+     *  after a relaunch instead of losing to the account's older value. See
+     *  [pl.kinowo.auth.StateSyncService]; mirrors iOS `pendingLanguagePush`. */
+    suspend fun pendingLanguagePush(): String?
+    suspend fun setPendingLanguagePush(tag: String?)
 }
 
 /**
@@ -195,6 +203,15 @@ class UserPreferences(private val context: Context) : SyncPrefs {
 
     override suspend fun setLanguageTag(tag: String) {
         context.dataStore.edit { prefs -> prefs[KEY_LANGUAGE] = tag }
+    }
+
+    override suspend fun pendingLanguagePush(): String? =
+        context.dataStore.data.first()[KEY_PENDING_LANGUAGE]
+
+    override suspend fun setPendingLanguagePush(tag: String?) {
+        context.dataStore.edit { prefs ->
+            if (tag == null) prefs.remove(KEY_PENDING_LANGUAGE) else prefs[KEY_PENDING_LANGUAGE] = tag
+        }
     }
 
     /** The persisted language tag read synchronously, or null if none. Used at
@@ -368,6 +385,7 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         val KEY_CITY = stringPreferencesKey("selectedCity")
         val KEY_COUNTRY = stringPreferencesKey("selectedCountryCode")
         val KEY_LANGUAGE = stringPreferencesKey("selectedLanguageTag")
+        val KEY_PENDING_LANGUAGE = stringPreferencesKey("pendingLanguagePush")
         val KEY_CITY_SWITCH_PROMPT = stringPreferencesKey("citySwitchPromptKey")
         val KEY_SWIPED = booleanPreferencesKey("swipedScreens")
         val KEY_HINT_DATE = stringPreferencesKey("swipeHintShownDate")

@@ -423,6 +423,111 @@ class StateSyncServiceTest {
 
         assertEquals("de", languageClient.lastPushed)
     }
+
+    /** A pick recreates the activity, whose onResume reconciles inside the
+     *  400 ms push debounce: the fetch still returns the account's OLDER pick.
+     *  It used to be written over the new one (and pushed back) — the pending
+     *  pick must win and reach the server instead. Mirrors iOS. */
+    @Test
+    fun reconcileRightAfterAPickKeepsThePickAndPushesIt() = runTest(UnconfinedTestDispatcher()) {
+        languageClient.remote = "de"
+        val service = startService()
+        login()
+        advanceUntilIdle()
+        assertEquals("de", prefs.languageState.value)
+
+        prefs.setLanguageTag("es")
+        service.reconcileCurrentCountry()
+        advanceTimeBy(1_000)
+        runCurrent()
+
+        assertEquals("es", prefs.languageState.value)
+        assertEquals("es", languageClient.remote)
+        assertEquals(listOf("es"), languageClient.pushes)
+    }
+
+    /** Adopting the account's pick on a resume reconcile (another device
+     *  changed it) is not a local pick: it must not be echoed back. */
+    @Test
+    fun adoptingTheAccountLanguageDoesNotPushItBack() = runTest(UnconfinedTestDispatcher()) {
+        languageClient.remote = "de"
+        val service = startService()
+        login()
+        advanceUntilIdle()
+
+        languageClient.remote = "pl"
+        service.reconcileCurrentCountry()
+        advanceTimeBy(1_000)
+        runCurrent()
+
+        assertEquals("pl", prefs.languageState.value)
+        assertEquals(emptyList<String>(), languageClient.pushes)
+    }
+
+    /** A push the server rejected is still pending: the next reconcile
+     *  retries it rather than adopting the account's older value. */
+    @Test
+    fun aFailedLanguagePushIsRetriedOnTheNextReconcile() = runTest(UnconfinedTestDispatcher()) {
+        languageClient.remote = "de"
+        val service = startService()
+        login()
+        advanceUntilIdle()
+
+        languageClient.shouldFailPush = true
+        prefs.setLanguageTag("es")
+        advanceTimeBy(500)
+        runCurrent()
+        assertEquals(1, languageClient.pushAttempts)
+
+        languageClient.shouldFailPush = false
+        service.reconcileCurrentCountry()
+
+        assertEquals("es", prefs.languageState.value)
+        assertEquals("es", languageClient.remote)
+    }
+
+    /** A pick whose push failed survives a relaunch: the next session's login
+     *  reconcile pushes it instead of restoring the account's older value. */
+    @Test
+    fun aFailedLanguagePushSurvivesARelaunch() = runTest(UnconfinedTestDispatcher()) {
+        languageClient.remote = "de"
+        startService()
+        login()
+        advanceUntilIdle()
+        languageClient.shouldFailPush = true
+        prefs.setLanguageTag("es")
+        advanceTimeBy(500)
+        runCurrent()
+        languageClient.shouldFailPush = false
+
+        // Relaunch: the same persisted prefs, a fresh service and a restored session.
+        val relaunchedUser = MutableStateFlow<UserProfile?>(null)
+        StateSyncService(prefs, relaunchedUser, client, languageClient, backgroundScope).start()
+        relaunchedUser.value = userFlow.value
+        advanceUntilIdle()
+
+        assertEquals("es", languageClient.remote)
+        assertEquals("es", prefs.languageState.value)
+    }
+
+    /** A genuine logout forgets the unsent pick — the next sign-in may be a
+     *  different account, which must not inherit it. */
+    @Test
+    fun logoutForgetsAnUnsentLanguagePick() = runTest(UnconfinedTestDispatcher()) {
+        languageClient.remote = "de"
+        startService()
+        login()
+        advanceUntilIdle()
+        languageClient.shouldFailPush = true
+        prefs.setLanguageTag("es")
+        runCurrent()
+        assertEquals("es", prefs.pendingLanguagePush())
+
+        userFlow.value = null
+        advanceUntilIdle()
+
+        assertNull(prefs.pendingLanguagePush())
+    }
 }
 
 private class FakeSyncPrefs : SyncPrefs {
@@ -461,6 +566,10 @@ private class FakeSyncPrefs : SyncPrefs {
 
     override val selectedLanguageTag = languageState
     override suspend fun setLanguageTag(tag: String) { languageState.value = tag }
+
+    private var pendingLanguage: String? = null
+    override suspend fun pendingLanguagePush(): String? = pendingLanguage
+    override suspend fun setPendingLanguagePush(tag: String?) { pendingLanguage = tag }
 }
 
 private class FakeHiddenFilmsClient : HiddenFilmsClient {
@@ -500,11 +609,25 @@ private class FakeHiddenFilmsClient : HiddenFilmsClient {
     }
 }
 
+/** The account's stored pick behind a fake `/api/me/state`: a successful
+ *  push updates [remote], as the server does. Mirrors iOS `FakeLanguageClient`. */
 private class FakeLanguageClient : LanguageClient {
     var remote: String? = null
+    var shouldFailPush = false
+    /** Every push that SUCCEEDED, in order. */
+    val pushes = mutableListOf<String>()
     var lastPushed: String? = null
     var pushCount = 0
+    /** Every push attempt, failed or not. */
+    var pushAttempts = 0
 
     override suspend fun fetch(): String? = remote
-    override suspend fun push(language: String) { lastPushed = language; pushCount++ }
+    override suspend fun push(language: String) {
+        pushAttempts++
+        if (shouldFailPush) throw IOException("HTTP 503")
+        pushes += language
+        remote = language
+        lastPushed = language
+        pushCount++
+    }
 }

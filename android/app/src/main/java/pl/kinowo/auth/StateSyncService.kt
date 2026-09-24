@@ -3,8 +3,9 @@ package pl.kinowo.auth
 import pl.kinowo.runCatchingCancellable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -53,7 +54,9 @@ import pl.kinowo.model.Country
  * [reconcileLanguage] for why a scalar pick doesn't need the two-phase dance
  * the sets do. It reconciles at the SAME triggers as hiddenFilms (login,
  * resume, country switch) but as its own independent step, and pushes a
- * local change on its own debounce — see [observeLanguage].
+ * local change on its own debounce — see [observeLanguage] — never echoing
+ * back a value it just adopted from the server, and never letting the
+ * account's older value overwrite a pick it hasn't confirmed yet.
  */
 class StateSyncService(
     private val prefs: SyncPrefs,
@@ -64,6 +67,11 @@ class StateSyncService(
 ) {
     @Volatile private var loggedIn = false
     private var syncJob: Job? = null
+    private var languagePushJob: Job? = null
+    /** The language the account is known to hold — last fetched or
+     *  successfully pushed. A local change to this value merely adopted the
+     *  server's pick, so it is never pushed back. */
+    @Volatile private var accountLanguage: String? = null
 
     /** Begin observing the auth state. Idempotent enough for a single call
      *  from the composition root. */
@@ -79,10 +87,19 @@ class StateSyncService(
                     // session restores — otherwise every cold start would
                     // re-run the first-login union instead of treating the
                     // server as authoritative.
-                    if (loggedIn) prefs.clearHiddenFilmsSyncState()
+                    // The same goes for an unsent language pick: it is
+                    // persisted precisely so the session restore after a
+                    // relaunch can still push it.
+                    if (loggedIn) {
+                        prefs.clearHiddenFilmsSyncState()
+                        prefs.setPendingLanguagePush(null)
+                    }
                     loggedIn = false
                     syncJob?.cancel()
                     syncJob = null
+                    languagePushJob?.cancel()
+                    languagePushJob = null
+                    accountLanguage = null
                 }
             }
         }
@@ -146,33 +163,70 @@ class StateSyncService(
      *  explicit pick wins whenever it has one (restored on login, per spec);
      *  otherwise this device's own explicit pick, if any, becomes the
      *  account's. A separate fetch from [reconcile]'s — [HiddenFilmsClient]'s
-     *  response never carries `language` at all, only [LanguageClient]'s does. */
+     *  response never carries `language` at all, only [LanguageClient]'s does.
+     *
+     *  The one exception is a PENDING local pick (see
+     *  [SyncPrefs.pendingLanguagePush]): it is newer than anything the account
+     *  holds, so it is pushed rather than overwritten — whether it was made
+     *  just before this reconcile (a pick recreates the activity, whose
+     *  onResume reconciles inside the push debounce), while the fetch was in
+     *  flight, or its push failed. Mirrors iOS `reconcileLanguage`. */
     private suspend fun reconcileLanguage() {
         if (!loggedIn) return
+        prefs.pendingLanguagePush()?.let { return pushLanguage(it) }
         // A network error leaves local state authoritative: prefs untouched.
         runCatchingCancellable {
             val remoteLang = languageClient.fetch()
+            prefs.pendingLanguagePush()?.let { return pushLanguage(it) }
             val localLang = prefs.selectedLanguageTag.first()
-            if (remoteLang != null && remoteLang != localLang) {
-                prefs.setLanguageTag(remoteLang)
-            } else if (remoteLang == null && localLang != null) {
-                languageClient.push(localLang)
+            if (remoteLang != null) {
+                accountLanguage = remoteLang
+                if (remoteLang != localLang) prefs.setLanguageTag(remoteLang)
+            } else if (localLang != null) {
+                prefs.setPendingLanguagePush(localLang)
+                pushLanguage(localLang)
             }
         }
     }
 
-    /** Push a local language change as soon as it happens — same immediate,
-     *  no-debounce-batching reasoning [hide]/[unhide]/[clear] already have,
-     *  though a picker choice is rare enough that batching was never really
-     *  the point; matches the shape all the same. `drop(1)` skips the
-     *  current (post-reconcile) value so this only reacts to a REAL local
-     *  change, not the one [reconcileLanguage] itself might have just made. */
+    /** Push [language] now, superseding any debounced push. On success the
+     *  account holds it; on failure it stays pending, and the next reconcile
+     *  (resume, login) retries it — the same self-heal the hiddenFilms writes
+     *  rely on. */
+    private suspend fun pushLanguage(language: String) {
+        languagePushJob?.cancel()
+        languagePushJob = null
+        runCatchingCancellable { languageClient.push(language) }.onSuccess {
+            accountLanguage = language
+            if (prefs.pendingLanguagePush() == language) prefs.setPendingLanguagePush(null)
+        }
+    }
+
+    /** React to every local language change after the login reconcile. A
+     *  change to [accountLanguage] merely adopted the server's pick (or went
+     *  back to it), so it is never echoed; anything else is a local pick,
+     *  marked pending and pushed after a 400 ms debounce so a rapid run of
+     *  picker taps folds into one PUT. `distinctUntilChanged` because the
+     *  DataStore flow re-emits the same tag on every prefs write (including
+     *  the pending-pick write below); `drop(1)` skips the current
+     *  (post-reconcile) value. */
     private suspend fun observeLanguage() {
         prefs.selectedLanguageTag
+            .distinctUntilChanged()
             .drop(1)
-            .debounce(LANGUAGE_DEBOUNCE_MS)
             .collect { tag ->
-                if (loggedIn && tag != null) runCatchingCancellable { languageClient.push(tag) }
+                if (tag == null) return@collect
+                languagePushJob?.cancel()
+                languagePushJob = null
+                if (tag == accountLanguage) {
+                    prefs.setPendingLanguagePush(null)
+                } else {
+                    prefs.setPendingLanguagePush(tag)
+                    languagePushJob = scope.launch {
+                        delay(LANGUAGE_DEBOUNCE_MS)
+                        if (loggedIn) prefs.pendingLanguagePush()?.let { pushLanguage(it) }
+                    }
+                }
             }
     }
 
