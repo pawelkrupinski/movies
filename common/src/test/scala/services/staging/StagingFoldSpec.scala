@@ -212,6 +212,43 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     plan.stagingDeletes should have size cinemas.size
   }
 
+  it should "keep two unresolved films apart when their venues bracket different years and nothing resolved" in {
+    // US hard cluster: Bright Star and four Rooftop venues list "It (1990)" (Wallace's
+    // miniseries), Alamo lists "IT (2017)". Staging files every row under the year it
+    // PUBLISHED — none — so incubating together they folded into one yearless row, while
+    // arriving apart (the first venue settled, the rest landing on top) they became two:
+    // the settle re-keys a lone "IT (2017)" row onto 2017, and "It (1990)" then lands at
+    // 1990. TMDB names neither, so nothing but the brackets tells them apart — and with
+    // no resolution in the group there is nothing a printed year can mislead (the Queen
+    // Budapest loss below needed a resolved film to split off from). Keyed at their
+    // brackets, the fold reaches the same two rows the split arrival does — also when the
+    // venues fold one at a time, each onto the unresolved row the previous one left.
+    def unresolved(cinema: Source, title: String) = StagingRecord(cinema, title, None, MovieRecord(
+      tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy),
+      data = Map[Source, SourceData](cinema -> SourceData(title = Some(title)))), titleNormalizer)
+
+    val plan = StagingFold.planGroup(Seq(unresolved(Helios, "It (1990)"), unresolved(Multikino, "IT (2017)")),
+      moviesRows = Seq.empty, titleNormalizer)
+    settleIsANoOpAfterFold(plan)
+    plan.moviesUpserts.map { case (_, k, r) => k.year -> r.data.keySet }.toSet shouldBe
+      Set(Some(1990) -> Set[Source](Helios), Some(2017) -> Set[Source](Multikino))
+
+    // One venue at a time: the first row's fold leaves a movies row keyed at its bracket,
+    // and the second folds beside it rather than onto it.
+    val first = StagingFold.planGroup(Seq(unresolved(Helios, "It (1990)")), moviesRows = Seq.empty, titleNormalizer)
+    first.moviesUpserts.map(_._2.year) shouldBe Seq(Some(1990))
+    val (firstId, firstKey, firstRecord) = first.moviesUpserts.head
+    val second = StagingFold.planGroup(Seq(unresolved(Multikino, "IT (2017)")),
+      Seq(StoredMovieRecord(firstKey.cleanTitle, firstKey.year, firstRecord, firstId)), titleNormalizer)
+    second.moviesUpserts.map { case (_, k, r) => k.year -> r.data.keySet }.toSet shouldBe
+      Set(Some(1990) -> Set[Source](Helios), Some(2017) -> Set[Source](Multikino))
+
+    // One bracketed year beside bare listings is still one film.
+    val titanic = StagingFold.planGroup(Seq(unresolved(Helios, "Titanic (1997)"), unresolved(Multikino, "Titanic")),
+      moviesRows = Seq.empty, titleNormalizer)
+    titanic.moviesUpserts.map(_._3.data.keySet) shouldBe Seq(Set[Source](Helios, Multikino))
+  }
+
   it should "fold a repertory revival's rebroadcast year onto the same film, not split it out" in {
     // THE QUEEN BUDAPEST REGRESSION (2026-09-08). A Cinema City venue advertised its
     // 2026 anniversary screening of the 2012 concert film as "Queen Budapest (2026)"

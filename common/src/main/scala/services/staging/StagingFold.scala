@@ -1,7 +1,7 @@
 package services.staging
 
 import models.MovieRecord
-import services.movies.{CacheKey, FilmCanonicalizer, MovieRecordMerge, StoredMovieRecord, TitleNormalizer, FilmId}
+import services.movies.{CacheKey, EmbeddedYear, FilmCanonicalizer, MovieRecordMerge, StoredMovieRecord, TitleNormalizer, FilmId}
 
 /**
  * The PURE decision half of folding a newcomer's staging rows into `movies`,
@@ -218,7 +218,21 @@ object StagingFold {
     // that then collapses onto the same `(sanitize, None)` key and clobbers all but
     // one — dropping every cinema's slot but one for the all-yearless events
     // (Maraton Horrorów, Filmowe Poranki).
-    val stagingByKey = stagingRows.groupBy(r => CacheKey(r.title, r.year, normalizer)).toSeq.map {
+    //
+    // In a group where NOTHING resolved, a yearless row is keyed at the year its own title
+    // brackets — the year the settle's `backfillEmbeddedYears` gives a lone row anyway, so
+    // filing it here changes nothing for one film. It matters for two: "It (1990)" and
+    // "IT (2017)", neither of which TMDB names, used to incubate yearless, union into one
+    // row and stay there (two brackets are no year to backfill), while arriving apart the
+    // settle keyed each at its own bracket — the settled corpus depended on arrival order.
+    // A resolved group never takes this path: there a bracket can be an EVENT year that
+    // splits a venue off its film (Queen Budapest (2026), 3e4cbb3c5). And "Titanic (1997)"
+    // beside a bare "Titanic" stays one row: rule 4 folds the bare listing onto the only
+    // film there is.
+    val nothingResolved = stagingRows.forall(_.record.tmdbId.isEmpty) && moviesRows.forall(_.record.tmdbId.isEmpty)
+    def fileYear(r: StagingRecord): Option[Int] =
+      r.year.orElse(if (nothingResolved) EmbeddedYear.of(r.title) else None)
+    val stagingByKey = stagingRows.groupBy(r => CacheKey(r.title, fileYear(r), normalizer)).toSeq.map {
       case (key, rows) => key -> MovieRecordMerge.unionAll(rows.map(_.record))
     }
     val moviesByKey = moviesRows.map(r => CacheKey(r.title, r.year, normalizer) -> r.record)
