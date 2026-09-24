@@ -64,6 +64,14 @@ class FilmwebShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
     thirteen.bookingUrl.value should startWith("https://www.multikino.pl/rezerwacja-biletow/")
   }
 
+  it should "build the poster on Filmweb's film-poster bucket, at the 500×720 size" in {
+    // posterPath "/05/82/582/6932869_1.$.jpg". The `ppo` bucket every poster was built on
+    // answers 403 AccessDenied for all of them (checked 2026-09-24); `fpo` serves them, and size
+    // 3 is 500×720 where size 2 is a 140×200 thumbnail.
+    client.fetch().find(_.movie.title == "Kosmiczny mecz").value.posterUrl shouldBe
+      Some("https://fwcdn.pl/fpo/05/82/582/6932869_1.3.jpg")
+  }
+
   it should "carry Filmweb's originalTitle as a TMDB hint, but only when it differs from the title" in {
     val movies = client.fetch()
 

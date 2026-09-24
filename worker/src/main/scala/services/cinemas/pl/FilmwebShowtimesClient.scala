@@ -33,7 +33,7 @@ import scala.util.{Failure, Try}
  *        language version.
  *   2. GET /api/v1/title/{filmId}/info
  *      → { title, posterPath, year, ... }. Poster URL is
- *        `https://fwcdn.pl/ppo` + `posterPath.replace("$","2")`.
+ *        `https://fwcdn.pl/fpo` + `posterPath.replace("$","3")`.
  *
  * `cinemaId` is Filmweb's INTERNAL cinema id (Poznań: Multikino=633, Kino
  * Muza=75, Rialto=78), distinct from the `/showtimes/<City>/<Name>-<id>` URL
@@ -179,7 +179,7 @@ class FilmwebShowtimesClient(
 
 object FilmwebShowtimesClient extends play.api.Logging {
   private val ApiBase     = "https://www.filmweb.pl/api/v1"
-  private val PosterBase  = "https://fwcdn.pl/ppo"
+  private val PosterBase  = "https://fwcdn.pl/fpo"
 
   def cinemaInfoUrl(cinemaId: Int): String = s"$ApiBase/cinema/$cinemaId/info"
 
@@ -249,10 +249,12 @@ object FilmwebShowtimesClient extends play.api.Logging {
    *  hints those rows need come from TMDB enrichment, not the cinema). */
   def isFilmwebFilmUrl(url: String): Boolean = url.contains("filmweb.pl/film/")
 
-  /** Poster URL the way the old client built it: prepend the CDN base and
-   *  swap the `$` size-placeholder for `2` (medium poster). */
+  /** Poster URL: prepend the film-poster bucket and swap the `$` size placeholder for `3`
+   *  (500×720; `2` is a 140×200 thumbnail). The `ppo` bucket this was once built on answers 403
+   *  AccessDenied for every poster (checked 2026-09-24), which took out every Filmweb-scraped
+   *  poster on the web and every share card that had only those. */
   def posterUrlFor(posterPath: String): String =
-    PosterBase + posterPath.replace("$", "2")
+    PosterBase + posterPath.replace("$", "3")
 
   private def formatTokens(js: JsValue): List[String] =
     VersionTokens.collect { case (field, token) if (js \ field).asOpt[String].exists(_.nonEmpty) => token }.toList
