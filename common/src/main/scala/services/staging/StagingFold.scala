@@ -134,6 +134,29 @@ object StagingFold {
   ) {
     /** The surviving rows by key, for callers that hand them on to the cache. */
     def folded: Seq[(CacheKey, MovieRecord)] = moviesUpserts.map { case (_, k, r) => k -> r }
+
+    /** Apply the plan through `writes`, in the ONE order both folders must use: retired
+     *  `movies` rows first, then the survivors, then the consumed staging rows.
+     *
+     *  Retired rows go first because a survivor very often takes over exactly their identity,
+     *  and both are UNIQUE: a decorated spelling's row folding into a sibling that already
+     *  carries the tmdbId, or `foo|` re-keyed onto `foo|2026`. Written first, the survivor
+     *  collided with the row it replaces — `E11000 … tmdbId_1` inside the Mongo fold's own
+     *  transaction, identical on every retry, and in memory a refused write followed by the
+     *  delete of the one row that held the film (`InMemoryStagingFolderSpec`,
+     *  `StagingFoldConcurrentTmdbRaceIntegrationSpec`). */
+    def applyTo(writes: PlanWrites): Unit = {
+      moviesDeletes.foreach(writes.deleteMovie)
+      moviesUpserts.foreach { case (id, key, record) => writes.writeMovie(id, key, record) }
+      stagingDeletes.foreach(writes.deleteStaging)
+    }
+  }
+
+  /** Where a [[Plan]] lands: a Mongo transaction, or the in-memory repositories. */
+  trait PlanWrites {
+    def deleteMovie(id: FilmId): Unit
+    def writeMovie(id: FilmId, key: CacheKey, record: MovieRecord): Unit
+    def deleteStaging(row: StagingRecord): Unit
   }
 
   /** The TMDB ids carried by a group's rows. A folder loads existing `movies` rows

@@ -94,9 +94,11 @@ class InMemoryStagingFolder(
       // A retirement is a merge: carry the loser's side rows onto the winner before the
       // loser goes — the same rule `MongoStagingFolder.migrateRetiredSideRows` follows.
       plan.retirements.foreach { case (loser, winner) => movieRepository.moveFilm(loser, winner) }
-      plan.moviesUpserts.foreach { case (id, k, record) => movieRepository.upsert(id, k, record) }
-      plan.moviesDeletes.foreach(movieRepository.delete)
-      plan.stagingDeletes.foreach(stagingRepository.deleteRow)
+      plan.applyTo(new StagingFold.PlanWrites {
+        def deleteMovie(id: FilmId): Unit = { movieRepository.delete(id); () }
+        def writeMovie(id: FilmId, key: CacheKey, record: MovieRecord): Unit = { movieRepository.upsert(id, key, record); () }
+        def deleteStaging(row: StagingRecord): Unit = { stagingRepository.deleteRow(row); () }
+      })
       logger.info(s"Folded group '$cleanTitle': ${stagingRows.size} staging row(s) → ${plan.moviesUpserts.size} movies row(s).")
       plan.newPromotions
     }

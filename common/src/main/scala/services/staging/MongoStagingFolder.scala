@@ -460,35 +460,28 @@ class MongoStagingFolder(
         // minted for an earlier cluster — see `planGroup`'s `fresh` doc comment.
         fresh = (key, mintedSoFar) => FilmId.fresh(key,
           taken = id => mintedSoFar.contains(id) || await(movies.countDocuments(session, Filters.eq("_id", id.value)).toFuture()) > 0))
-      // Delete the retired `movies` rows ONLY — never their side-collection rows.
-      //
-      // Taking the cinemas along looks right (that is what `MovieRepository.delete` does,
-      // and it is why orphans accumulate here) but it is wrong for THIS caller, because
-      // most of `moviesDeletes` are not films leaving — they are films being RE-KEYED.
-      // `planGroup` collapses `foo|` onto `foo|2026` once TMDB concludes the year: the
-      // winner is upserted below, the old key lands here, and the film's showtimes are
-      // still stored under the OLD id. The winner's side rows are not written by this
-      // transaction at all — they materialise later, when `MovieRepository.upsert` next
-      // writes that film. Deleting the loser's rows therefore destroys the showtimes in
-      // the window between the two, and the read model re-projects the film with none.
-      //
-      // Shipped @8033e39c6 and reverted the same day: it ran into the tail of the staging
-      // backlog draining (PL alone folded 1,100+ rows, i.e. a re-key wave) and took prod
-      // PL from 39,413 upcoming showtimes to 18,161 and UK from 22,250 to 7,226 before it
-      // was pulled. The orphans it was meant to stop are inert rows nothing reads;
-      // `scripts.ReapOrphanedFilmRows` clears them without racing a re-key. Making the
-      // fold side-aware means MIGRATING the loser's rows onto the winner, not deleting
-      // them — a real change, not a delete.
-      plan.moviesDeletes.foreach(id =>
-        await(movies.deleteOne(session, Filters.eq("_id", id.value)).toFuture()))
-      // Deleted BEFORE the upserts. A retired row still holds its `tmdbId` and `key`, both under
-      // UNIQUE indexes, and the survivor very often takes over exactly those: a decorated
-      // spelling's fresh row folding into a sibling that already carries the tmdbId, or `foo|`
-      // re-keyed onto `foo|2026`. Written first, the survivor collided with the row it was
-      // replacing — `E11000 … tmdbId_1` inside this very transaction, identical on every retry,
-      // so the fold abandoned and rescheduled forever (StagingFoldConcurrentTmdbRaceIntegrationSpec).
-      plan.moviesUpserts.foreach { case (film, k, record) =>
-        val id = film.value
+      // In `Plan.applyTo`'s order — retired rows before the survivors that take over their
+      // identity; see there for the E11000 that the other order raised inside this transaction.
+      plan.applyTo(new StagingFold.PlanWrites {
+        // The retired `movies` row ONLY — never its side-collection rows.
+        //
+        // Taking the cinemas along looks right (that is what `MovieRepository.delete` does,
+        // and it is why orphans accumulate here) but it is wrong for THIS caller, because
+        // most of `moviesDeletes` are not films leaving — they are films being RE-KEYED.
+        // `planGroup` collapses `foo|` onto `foo|2026` once TMDB concludes the year: the
+        // winner is upserted in this transaction, the old key retired, and the film's
+        // showtimes are still stored under the OLD id. The winner's side rows are not written
+        // by this transaction at all — they materialise later, when `MovieRepository.upsert`
+        // next writes that film. Deleting the loser's rows therefore destroys the showtimes in
+        // the window between the two, and the read model re-projects the film with none.
+        //
+        // Shipped @8033e39c6 and reverted the same day: it ran into the tail of the staging
+        // backlog draining (PL alone folded 1,100+ rows, i.e. a re-key wave) and took prod
+        // PL from 39,413 upcoming showtimes to 18,161 and UK from 22,250 to 7,226 before it
+        // was pulled. `migrateRetiredSideRows` carries them onto the winner after the commit.
+        def deleteMovie(id: FilmId): Unit = {
+          await(movies.deleteOne(session, Filters.eq("_id", id.value)).toFuture()); ()
+        }
         // The SAME shape `MovieRepository.upsert` would have written. This write is
         // direct — the upserts and the staging deletes have to commit in one session
         // and the repository's write path is not session-aware — so the storage rule
@@ -500,12 +493,16 @@ class MongoStagingFolder(
         // The in-memory `record` keeps its showtimes: `completeSideCollections` writes
         // it through the repository straight after, which is what files them into
         // `screenings`.
-        val forStorage = record.copy(data = movieRepository.slotsForStorage(record.data))
-        await(movies.replaceOne(session, Filters.eq("_id", id),
-          StoredMovieDto.fromDomain(id, StoredMovieRecord.keyFor(k), forStorage, writtenAt), new ReplaceOptions().upsert(true)).toFuture())
-      }
-      plan.stagingDeletes.foreach(r =>
-        await(staging.deleteOne(session, Filters.eq("_id", r.id)).toFuture()))
+        def writeMovie(film: FilmId, k: CacheKey, record: MovieRecord): Unit = {
+          val forStorage = record.copy(data = movieRepository.slotsForStorage(record.data))
+          await(movies.replaceOne(session, Filters.eq("_id", film.value),
+            StoredMovieDto.fromDomain(film.value, StoredMovieRecord.keyFor(k), forStorage, writtenAt),
+            new ReplaceOptions().upsert(true)).toFuture()); ()
+        }
+        def deleteStaging(r: StagingRecord): Unit = {
+          await(staging.deleteOne(session, Filters.eq("_id", r.id)).toFuture()); ()
+        }
+      })
       // These `movies` deletes bypass MovieRepository.delete (direct in-txn deleteOne),
       // so audit them here — the fold losers a group merge removes from the corpus.
       if (plan.moviesDeletes.nonEmpty) {

@@ -163,4 +163,30 @@ class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
     movies.findAll().head.record.data.keySet shouldBe Set(Helios, Multikino, Tmdb) // both languages' cinemas
     settleIsANoOpOver(movies)
   }
+
+  // The in-memory twin of `StagingFoldConcurrentTmdbRaceIntegrationSpec`'s merge-order case:
+  // an unresolved spelling folds INTO a sibling that already holds the tmdbId. The survivor
+  // takes over the retired row's tmdbId, so the retired row has to go first — written first,
+  // the survivor collides with it (the unique index in Mongo; `IdentityHeld` here), and the
+  // fold then deletes the one row that held the film.
+  it should "retire the rows it folds away before writing the survivor that takes their identity" in {
+    val staging = new InMemoryStagingRepository
+    val movies  = new InMemoryMovieRepository
+    val tmdbId  = 424353
+    val folder  = new InMemoryStagingFolder(staging, movies)
+    def concluded(cinema: Source, title: String) =
+      MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](cinema -> SourceData(title = Some(title))))
+    staging.upsert(Multikino, "Lalka reż. mergeorder", Some(2026), concluded(Multikino, "Lalka reż. mergeorder"))
+    folder.foldGroup("Lalka reż. mergeorder")
+    // The later spelling was promoted before TMDB answered, so it already has a bare row.
+    movies.upsert("Ladies Night - Mergeorder", Some(2026),
+      MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some("Ladies Night - Mergeorder")))))
+    staging.upsert(Helios, "Ladies Night - Mergeorder", Some(2026), concluded(Helios, "Ladies Night - Mergeorder"))
+
+    folder.foldGroup("Ladies Night - Mergeorder")
+
+    val holders = movies.findAll().filter(_.record.tmdbId.contains(tmdbId))
+    withClue(s"rows: ${movies.findAll().map(r => (r.id, r.record.tmdbId))}\n") { holders should have size 1 }
+    holders.head.record.cinemaData.keySet shouldBe Set(Multikino, Helios)
+  }
 }
