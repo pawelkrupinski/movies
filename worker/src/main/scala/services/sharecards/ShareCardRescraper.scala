@@ -56,7 +56,14 @@ class ShareCardRescraper(graph: Option[FacebookGraph], reader: ReadModelReader, 
       metrics.rescrape(ShareCardMetrics.RescrapeOutcome.Disabled)
       true
     case Some(facebook) =>
-      val urls = pageUrls(filmId)
+      // A read that failed has no pages to ask for, and "none of them failed" would then
+      // hold for a re-scrape that never ran: retry instead.
+      val urls = scala.util.Try(pageUrls(filmId)) match {
+        case scala.util.Success(read) => read
+        case scala.util.Failure(e) =>
+          logger.info(s"share card: re-scrape of $filmId deferred, its pages could not be read: ${e.getMessage}")
+          return false
+      }
       val failures = urls.flatMap(url => facebook.scrape(url).left.toOption.map(url -> _))
       metrics.rescrape(ShareCardMetrics.RescrapeOutcome.Sent)
       failures.foreach { case (url, why) =>
@@ -66,10 +73,13 @@ class ShareCardRescraper(graph: Option[FacebookGraph], reader: ReadModelReader, 
       failures.isEmpty
   }
 
-  /** The film's page in every city it screens in, on the country's public origin. */
+  /** The film's page in every city it screens in, on the country's public origin. THROWS
+   *  when the read model cannot be read — an empty list is "no page to refresh". */
   private[sharecards] def pageUrls(filmId: String): Seq[String] = {
+    val (refs, refsRead) = reader.findAllScreeningRefsChecked()
+    if (!refsRead) throw new IllegalStateException("web_screenings read incomplete")
     val slug   = slugFor(filmId)
-    val cities = reader.findAllScreeningRefs().iterator.filter(_.filmId == filmId)
+    val cities = refs.iterator.filter(_.filmId == filmId)
       .map(_._id.stripPrefix(s"$filmId|").takeWhile(_ != '|')).toSet
     (for {
       origin <- country.webOrigin.toSeq
@@ -86,7 +96,9 @@ class ShareCardRescraper(graph: Option[FacebookGraph], reader: ReadModelReader, 
     val fresh = slugs.filter { case (_, at) => clock.instant().isBefore(at.plusMillis(ShareCardRescraper.SlugsFor.toMillis)) }
       .map(_._1).filter(_.slugFor(filmId).isDefined)
     fresh.getOrElse {
-      val read = FilmSlugs(reader.findAllMovies())
+      val (movies, complete) = reader.findAllMoviesChecked()
+      if (!complete) throw new IllegalStateException("web_movies read incomplete")
+      val read = FilmSlugs(movies)
       slugs = Some(read -> clock.instant())
       read
     }.slugFor(filmId)

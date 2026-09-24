@@ -119,6 +119,26 @@ class ShareCardRescraperSpec extends AnyFlatSpec with Matchers {
     new ShareCardRescraper(None, rig.readModel, Country.default, rig.metrics, rig.clock).rescrape(movie._id) shouldBe true
   }
 
+  // The page list comes from the read model. A read that failed produced no pages, so "no
+  // request failed" held and a re-scrape that never ran was reported done.
+  it should "ask to be retried, not report done, when the read model could not be read" in {
+    Seq(false, true).foreach { screeningsReadable =>
+      val readModel = new services.readmodel.UnreadableReadModelRepository
+      readModel.failingReads = false
+      val rig   = new Rig(readModel = readModel)
+      val movie = film()
+      readModel.upsertMovie(movie); readModel.upsertScreening(screening(movie._id))
+      val graph = new CountingGraph
+      val rescraper = new ShareCardRescraper(Some(graph), readModel, Country.default, rig.metrics, rig.clock)
+      readModel.failingReads = true
+      readModel.screeningsReadable = screeningsReadable   // true: only web_movies (the slugs) is unreadable
+      withClue(s"screeningsReadable=$screeningsReadable: ") {
+        rescraper.rescrape(movie._id) shouldBe false
+        graph.urls shouldBe empty
+      }
+    }
+  }
+
   it should "read the film slugs once for a burst of re-scrapes, and again for a film they lack" in {
     val rig = new Rig
     val first  = film()
