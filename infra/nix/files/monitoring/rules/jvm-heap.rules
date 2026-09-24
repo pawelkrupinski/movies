@@ -165,3 +165,29 @@ groups:
             og-image request rate in /var/log/caddy/access-*.log on k3s-worker-1 and
             `kinowo_web_cache_entries{cache="og_card_film"}` climbing. Raising the limit only buys
             time if the growth is unbounded.
+
+      # A JVM WROTE A HEAP DUMP, i.e. it died of (or was about to die of) heap exhaustion and left
+      # the evidence on k3s-worker-1. `ExitOnOutOfMemoryError` makes a heap OOM a clean exit and a
+      # quiet restart, so without this the dump is the only trace -- and the budget keeps just the
+      # 3 newest per app-country, so a crash loop rotates the first, most telling one away.
+      #
+      # THE NEWEST WRITE TIME MOVED FORWARD, not "a dump exists": the timer republishes the same
+      # value every 15 minutes, so existence would page for ever. It only ever increases (the prune
+      # deletes oldest first, and compression keeps the mtime). 0 means an empty directory, so the
+      # first dump in a directory is 0 -> T and fires like any other. The 30m window spans two
+      # timer runs, so one missed scrape cannot swallow it; the rule resolves by itself once the
+      # value has been flat for that long, which is right for an event.
+      - alert: HeapDumpWritten
+        expr: >-
+          kinowo_heapdumps_newest_timestamp_seconds
+            > (kinowo_heapdumps_newest_timestamp_seconds offset 30m)
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.dir }} wrote a heap dump on {{ $labels.host }}"
+          description: >-
+            A {{ $labels.dir }} JVM wrote a heap dump -- a heap OOM (or the worker's liveness
+            watchdog catching a wedged heap), which restarts the container quietly. The dump is in
+            /var/lib/kinowo/heapdumps/{{ $labels.dir }}/ on k3s-worker-1 and only the 3 newest per
+            directory are kept, so COPY IT OFF FIRST: see docs/heap-dumps.md for scp and reading
+            it. `kinowo_heapdumps_files` and `kinowo_heapdumps_bytes` say what is held.

@@ -159,3 +159,41 @@ tests:
             exp_annotations:
               summary: "worker-uk RSS is 94.06% of its container memory limit"
               description: "The process is close to the cgroup limit, and the kernel -- not the JVM -- decides what happens next: an OOM kill with no heap dump and no log line. Find WHICH memory grew before resizing anything. Heap, non-heap pools and direct buffers are `jvm_memory_committed_bytes` and `jvm_buffer_pool_used_bytes{pool=\"direct\"}`; RSS minus their sum is memory NO JVM POOL SEES (native allocations: image decoding, fonts, glibc arenas). On web that has been the og-image share cards under a crawler sweep -- check the og-image request rate in /var/log/caddy/access-*.log on k3s-worker-1 and `kinowo_web_cache_entries{cache=\"og_card_film\"}` climbing. Raising the limit only buys time if the growth is unbounded."
+
+  # HeapDumpWritten -- web-pl's directory is empty (0) until a dump lands 1h in; worker-us holds an
+  # old dump the whole time and the timer keeps republishing it. Only the MOVE may fire, only for
+  # the directory that moved, and it must resolve once the value has been flat for 30m.
+  - interval: 15m
+    input_series:
+      - series: 'kinowo_heapdumps_newest_timestamp_seconds{host="k3s-worker-1",dir="web-pl"}'
+        values: '0 0 0 0 1790000000 1790000000 1790000000 1790000000 1790000000'
+      - series: 'kinowo_heapdumps_newest_timestamp_seconds{host="k3s-worker-1",dir="worker-us"}'
+        values: '1756900000+0x8'
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: HeapDumpWritten
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: HeapDumpWritten
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              host: k3s-worker-1
+              dir: web-pl
+            exp_annotations:
+              summary: "web-pl wrote a heap dump on k3s-worker-1"
+              description: "A web-pl JVM wrote a heap dump -- a heap OOM (or the worker's liveness watchdog catching a wedged heap), which restarts the container quietly. The dump is in /var/lib/kinowo/heapdumps/web-pl/ on k3s-worker-1 and only the 3 newest per directory are kept, so COPY IT OFF FIRST: see docs/heap-dumps.md for scp and reading it. `kinowo_heapdumps_files` and `kinowo_heapdumps_bytes` say what is held."
+      - eval_time: 1h15m
+        alertname: HeapDumpWritten
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              host: k3s-worker-1
+              dir: web-pl
+            exp_annotations:
+              summary: "web-pl wrote a heap dump on k3s-worker-1"
+              description: "A web-pl JVM wrote a heap dump -- a heap OOM (or the worker's liveness watchdog catching a wedged heap), which restarts the container quietly. The dump is in /var/lib/kinowo/heapdumps/web-pl/ on k3s-worker-1 and only the 3 newest per directory are kept, so COPY IT OFF FIRST: see docs/heap-dumps.md for scp and reading it. `kinowo_heapdumps_files` and `kinowo_heapdumps_bytes` say what is held."
+      # Flat for 30m: resolved. And the republished old worker-us dump never fired at all.
+      - eval_time: 1h45m
+        alertname: HeapDumpWritten
+        exp_alerts: []

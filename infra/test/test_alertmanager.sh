@@ -187,6 +187,9 @@ route_is telegram-and-email alertname=ChainFallbackSaturated severity=warning co
 # Paid egress returning nothing is the same "silent, sustained, costs money" shape as the proxy
 # falling back to Zyte above, so it earns the same mailbox. See residential-proxy.rules.
 route_is telegram-and-email alertname=PaidEgressFailing severity=warning country=uk
+# A heap dump is written once per death and rotated away by the budget after three, so it is worth
+# the mailbox: a chat message scrolled past is a dump nobody copied off the node.
+route_is telegram-and-email alertname=HeapDumpWritten severity=warning host=k3s-worker-1 dir=web-pl
 
 # THE REST OF THE READ-MODEL FAMILY MUST *NOT* HAVE FOLLOWED THEM INTO THE MAILBOX. This is the
 # assertion that fails if somebody later replaces the two names above with a `ReadModel.*` prefix,
