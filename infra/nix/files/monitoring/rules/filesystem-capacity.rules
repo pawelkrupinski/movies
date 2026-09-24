@@ -184,17 +184,23 @@ groups:
             write; confirm against a longer window before acting.
 
       # -----------------------------------------------------------------------------------------
-      # THE SAME TREND ON A ONE-DAY HORIZON, and deliberately WITHOUT the 40%-free gate above.
+      # THE SAME TREND ON A THREE-DAY HORIZON, and deliberately WITHOUT the 40%-free gate above.
       # Added 2026-09-24 with the share cards, which the workers write onto k3s-worker-1's root
-      # (/var/lib/kinowo) -- a 150G disk at 90% free, where the seven-day rule stays silent until
+      # (/var/lib/kinowo) -- a 160G disk at ~90% free, where the seven-day rule stays silent until
       # 40% is left. That gate is right for a slow drift; it is blind to a RUNAWAY writer (a budget
-      # check that stopped pruning, a render loop) that could empty a mostly-free disk inside a day
-      # without ever tripping a level rule until it was nearly over. A day's horizon needs no gate:
-      # the slope that projects a 150G disk to zero in 24h is ~5 GB an hour, which nothing ordinary
-      # on this fleet writes. Critical, because it means acting today, and the inhibition in
-      # alertmanager.yaml then folds the seven-day warning for the same mount into this one.
-      # Fleet-wide rather than one host: every disk deserves the runaway check, and a mount nobody
-      # listed is watched by default, as with every rule in this file.
+      # check that stopped pruning, a render loop) that could empty a mostly-free disk inside a few
+      # days without ever tripping a level rule until it was nearly over. Fleet-wide rather than
+      # one host: every disk deserves the runaway check, and a mount nobody listed is watched by
+      # default, as with every rule in this file.
+      #
+      # A WARNING, NOT A PAGE. With no gate, three days is a low bar -- ~1.9 GB an hour off
+      # k3s-worker-1's 135G free -- and ordinary work clears it: replayed over the 60 days to
+      # 2026-09-24 this expression held for an hour EIGHT times (k3s-worker-1's / on 08-30, 09-03,
+      # 09-04 and 09-23: deploy-day image pulls, each reclaimed by the kubelet's image GC before it
+      # mattered; mongo-1's / and /var/lib/mongodb on 08-29 and mongo-2's data disk on 09-01), while
+      # no disk on the fleet went below 30% free. So it is the email + Telegram warning route with a
+      # 12h repeat, not an hourly critical -- a runaway still leaves most of three days to act in,
+      # and FilesystemSpaceCritical is the page if it gets that far.
       #
       # RESTART-SAFE BY CONSTRUCTION: `predict_linear` over six hours fits whatever samples the
       # window holds, so a node_exporter restart's few missing scrapes leave the fit, and the one-
@@ -206,10 +212,10 @@ groups:
             node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"}[6h],
             3 * 24 * 3600) < 0
         # AN HOUR, so a single bulk write -- an image pull, a restore -- has to keep going at that
-        # rate for an hour before it pages, while a real runaway still leaves most of three days.
+        # rate for an hour before it warns, while a real runaway still leaves most of three days.
         for: 1h
         labels:
-          severity: critical
+          severity: warning
         annotations:
           summary: "{{ $labels.mountpoint }} on {{ $labels.host }} is on course to fill within 3 days"
           description: >-

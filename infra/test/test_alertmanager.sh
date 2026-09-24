@@ -144,7 +144,7 @@ route_is telegram-and-email alertname=FilesystemSpaceCritical severity=critical 
 route_is telegram-and-email alertname=FilesystemInodesLow severity=warning host=k3s-worker-1 mountpoint=/
 route_is telegram-and-email alertname=FilesystemWillFillWithin7Days severity=warning host=mongo-1
 # The runaway-writer projection added with the share cards, on the host whose root holds them.
-route_is telegram-and-email alertname=FilesystemWillFillWithin3Days severity=critical host=k3s-worker-1 mountpoint=/
+route_is telegram-and-email alertname=FilesystemWillFillWithin3Days severity=warning host=k3s-worker-1 mountpoint=/
 # "nothing is watching any disk" belongs with the disk alerts, and carries no host label.
 route_is telegram-and-email alertname=FilesystemMetricsAbsent severity=warning
 # LIVES IN host-health.rules, NOT WITH THE OTHER SIX, so it is the one the prefix catches that a
