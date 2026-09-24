@@ -149,7 +149,7 @@ class SlotsRepositorySpec extends AnyFlatSpec with Matchers {
     val r     = repo
     val rings = new java.util.concurrent.atomic.AtomicInteger(0)
     val last  = new java.util.concurrent.atomic.AtomicReference[String]("")
-    val handle = r.watch(filmId => { rings.incrementAndGet(); last.set(filmId) }).get
+    val handle = r.watchApplied((filmId, applied) => { rings.incrementAndGet(); last.set(filmId); applied() }).get
 
     r.upsertSlot("f1", "a", sd("A"))
     rings.get() shouldBe 1

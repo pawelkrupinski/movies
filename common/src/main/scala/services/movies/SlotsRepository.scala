@@ -133,12 +133,6 @@ trait SlotsRepository extends SlotKeyedRows {
   def watchApplied(onChange: (String, () => Unit) => Unit,
                    demand:   ChangeStreamDemand = ChangeStreamDemand.unbounded): Option[AutoCloseable] = None
 
-  /** [[watchApplied]] for a caller that applies inline: each ring counts as applied the
-   *  moment `onChange` returns. Final so a decorator overrides the one real method. */
-  final def watch(onChange: String => Unit,
-                  demand:   ChangeStreamDemand = ChangeStreamDemand.unbounded): Option[AutoCloseable] =
-    watchApplied((filmId, applied) => { onChange(filmId); applied() }, demand)
-
   def close(): Unit = ()
 }
 

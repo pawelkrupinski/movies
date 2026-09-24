@@ -581,9 +581,10 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       Seq(filmA, filmB, filmC, filmWarm).foreach(repo1.deleteFilm)
       val gotA  = new CountDownLatch(1)
       val gotWarm = new CountDownLatch(1)
-      val handle1 = repo1.watch { fid =>
+      val handle1 = repo1.watchApplied { (fid, applied) =>
         if (fid == filmWarm) gotWarm.countDown()
         if (fid == filmA) gotA.countDown()
+        applied()
       }
       handle1 should not be empty
       try {
@@ -614,7 +615,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         val repo2   = new MongoScreeningsRepository(Some(db), persistResumeToken = true)
         val seen    = ConcurrentHashMap.newKeySet[String]()
         val gotBC   = new CountDownLatch(2)
-        val handle2 = repo2.watch(fid => if ((fid == filmB || fid == filmC) && seen.add(fid)) gotBC.countDown())
+        val handle2 = repo2.watchApplied((fid, applied) => { if ((fid == filmB || fid == filmC) && seen.add(fid)) gotBC.countDown(); applied() })
         try {
           // No fresh write: B and C are delivered purely by resuming past the token.
           gotBC.await(15, TimeUnit.SECONDS) shouldBe true
@@ -708,7 +709,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val repo   = new MongoScreeningsRepository(Some(db), metrics = sink)
     val film   = "__it-screenings-metrics__"
     val seen   = new CountDownLatch(1)
-    val handle = repo.watch(fid => if (fid == film) seen.countDown())
+    val handle = repo.watchApplied((fid, applied) => { if (fid == film) seen.countDown(); applied() })
     handle should not be empty
     try {
       // Write until one comes back rather than napping at the stream — the same
@@ -981,9 +982,10 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val tripwire = new CountDownLatch(1)
     // Both latches and the counter are fed from ONE watcher, so they see one cursor's
     // ordering. Nothing here reads Mongo — the callback runs on the driver's event loop.
-    val handle   = repo.watch { fid =>
+    val handle   = repo.watchApplied { (fid, applied) =>
       if (fid == film)  { rings.incrementAndGet(); warmed.countDown() }
       if (fid == after) tripwire.countDown()
+      applied()
     }
     handle should not be empty
     try {

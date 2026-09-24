@@ -85,7 +85,7 @@ class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
     val repo  = new InMemoryScreeningsRepository
     val rings = new AtomicInteger(0)
     val lastFilm = new java.util.concurrent.atomic.AtomicReference[String]("")
-    val handle = repo.watch(filmId => { rings.incrementAndGet(); lastFilm.set(filmId) }).get
+    val handle = repo.watchApplied((filmId, applied) => { rings.incrementAndGet(); lastFilm.set(filmId); applied() }).get
 
     repo.upsertSlot("f|2026", "A␟f", Seq(st(10)))
     rings.get()    shouldBe 1
