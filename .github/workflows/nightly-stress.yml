@@ -1,0 +1,131 @@
+name: Nightly stress
+
+# The tests whose failures are a matter of LUCK, run enough times for luck to run out.
+#
+# Eight Main runs and four Android runs in the four weeks to 2026-09-24 went green on a rerun of
+# the same commit. Each was a race or a timing assumption that a single push-time run meets once
+# in dozens; the push that meets it goes red, a rerun turns it green, and nothing is learned.
+# Here the same code meets it every night, with a count:
+#
+#   races           the race / concurrency harnesses (scripts/ci/stress-races.sh — the list is
+#                   there), in-JVM and against a real Mongo replica set, 50 times over;
+#   webkit-phones   the Playwright WebKit phone projects — the slowest, most timing-sensitive
+#                   rows of ci.yml — with --repeat-each 5, sharded four ways.
+#
+# The sync-model property suites (Android StateSyncModelTest, iOS StateSyncModelTests) already
+# run at 100x / 10x their push seed counts in order-independence.yml, and every androidTest class
+# on the emulator there too, so they are not repeated here.
+#
+# A failure is reported like every scheduled run: an owner-assigned issue, closed by the next
+# green night (report-scheduled-run, ScheduledRunReportSpec).
+on:
+    schedule:
+        - cron: '30 1 * * *'
+    workflow_dispatch:
+        inputs:
+            iterations:
+                description: 'How many times to run the race harnesses'
+                required: false
+                default: '50'
+
+# Tonight's run finishes; a hand-dispatched one queues behind it.
+concurrency:
+    group: nightly-stress
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+jobs:
+    races:
+        runs-on: ubuntu-latest
+        # ~25s an iteration for the in-JVM set measured locally, the Mongo set more; 50 of both
+        # fit well inside this, and a hung harness still stops.
+        timeout-minutes: 180
+        steps:
+            - uses: actions/checkout@v5
+
+            # A single-node replica set, as ci.yml's integration-test job starts it (change
+            # streams and transactions need one).
+            - name: Start MongoDB (single-node replica set)
+              run: |
+                  docker run -d --name mongo -p 27017:27017 mongo:7 --replSet rs0
+                  until docker exec mongo mongosh --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do sleep 1; done
+                  docker exec mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'
+                  until docker exec mongo mongosh --quiet --eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; do sleep 1; done
+
+            - uses: actions/setup-java@v5
+              with:
+                  distribution: temurin
+                  java-version: 25
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+
+            # Read-only use of the integration-test job's zinc cache: this job compiles the same
+            # scopes, and has no business writing a key the push-time jobs own.
+            - uses: actions/cache/restore@v5
+              with:
+                  path: |
+                      project/target
+                      project/project/target
+                      */target/scala-*
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**') }}
+                  restore-keys: |
+                      sbt-target-${{ runner.os }}-
+
+            - name: Race harnesses, many times over
+              env:
+                  ITERATIONS: ${{ inputs.iterations || '50' }}
+                  MONGODB_URI: mongodb://127.0.0.1:27017/kinowo?directConnection=true
+                  MONGODB_DB: kinowo
+              run: scripts/ci/stress-races.sh "$ITERATIONS" all
+
+            - name: Upload the failing iterations' reports
+              if: failure()
+              uses: actions/upload-artifact@v6
+              with:
+                  name: stress-races
+                  path: target/stress-races
+                  if-no-files-found: ignore
+
+    webkit-phones:
+        name: webkit phones x5 (${{ matrix.shard }})
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - { shard: 1/4, label: webkit-stress-1-4 }
+                    - { shard: 2/4, label: webkit-stress-2-4 }
+                    - { shard: 3/4, label: webkit-stress-3-4 }
+                    - { shard: 4/4, label: webkit-stress-4-4 }
+        runs-on: ubuntu-latest
+        timeout-minutes: 90
+        permissions:
+            contents: read
+            checks: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/run-page-test
+              with:
+                  kind:       playwright
+                  browsers:   webkit
+                  label:      ${{ matrix.label }}
+                  runs:       'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max* ; ; axe-core|@agnostic ; ${{ matrix.shard }}'
+                  extra-args: --repeat-each 5
+
+    # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
+    # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
+    report:
+        needs: [races, webkit-phones]
+        if: always() && !cancelled() && github.event_name == 'schedule'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}

@@ -94,11 +94,33 @@ jobs:
     preflight:
         runs-on: ubuntu-latest
         timeout-minutes: 5
+        outputs:
+            emulator: ${{ steps.android.outputs.changed }}
         steps:
             - uses: actions/checkout@v5
               with:
-                  sparse-checkout: scripts/ci
+                  sparse-checkout: |
+                      scripts/ci
+                      .github/actions/changed-paths
                   sparse-checkout-cone-mode: false
+
+            # Whether the `instrumented` emulator lane runs — see the note over that job. The base
+            # commit is fetched treeless-shallow: changed-paths only diffs names.
+            - name: Fetch this push's base, for the emulator filter
+              if: github.event_name == 'push'
+              env:
+                  BASE: ${{ github.event.before }}
+              run: |
+                  if [ -n "$BASE" ] && [ "$BASE" != 0000000000000000000000000000000000000000 ]; then
+                      git fetch --no-tags --depth=1 --filter=blob:none origin "$BASE"
+                  fi
+
+            - name: Did this push touch the app?
+              id: android
+              uses: ./.github/actions/changed-paths
+              with:
+                  patterns: |
+                      android/**
 
             # The same SDK set-up `build` uses, so the licence checked is the one it will see.
             - name: Set up Android SDK
@@ -417,8 +439,16 @@ jobs:
     # starts at t=0 is the costly kind), a red unit suite skips the slower
     # emulator boot, and the build job's Play publish / rolling releases are
     # NOT gated on this lane, since they run inside `build` before it starts.
+    #
+    # ONLY WHEN THE APP CHANGED, not on every push this workflow runs for. The workflow also
+    # triggers on the release and store scripts, which cannot change what runs on a device, and in
+    # its first four weeks the lane caught no bug — its one red run was an adb flake. A push
+    # touching android/** (and any PR or hand dispatch, which changed-paths treats as all
+    # changed) still runs it; every androidTest class also runs on the emulator NIGHTLY, each
+    # alone, in order-independence.yml's android-instrumented leg.
     instrumented:
-        needs: build
+        needs: [preflight, build]
+        if: needs.preflight.outputs.emulator == 'true'
         runs-on: ubuntu-latest
         timeout-minutes: 35
         permissions:

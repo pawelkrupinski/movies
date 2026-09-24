@@ -51,6 +51,13 @@ inputs:
       non-zero if any did — so one broken slice can't hide the other's
       result.
     required: false
+  extra-args:
+    description: >-
+      Extra flags for every playwright invocation in `runs`, e.g. `--repeat-each 5` for the
+      nightly stress rows. Not passed to the flake reruns, which run each failed test three times
+      of their own.
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -279,6 +286,7 @@ runs:
       env:
         PW_RUNS: ${{ inputs.runs }}
         PW_LABEL: ${{ inputs.label }}
+        PW_EXTRA: ${{ inputs.extra-args }}
       run: |
         cd page-tests-playwright
         # `set -f` so the shell never glob-expands a project pattern
@@ -315,7 +323,7 @@ runs:
             export PLAYWRIGHT_JUNIT_OUTPUT_NAME="reports/junit-$i.xml"
             export PLAYWRIGHT_HTML_OUTPUT_DIR="reports/html-$i"
             echo "::group::playwright run $i — project=$project grep=$grep_pattern grep-invert=$grep_invert shard=$shard"
-            if ! eval npx playwright test $PROJECT_FLAGS $GREP_INVERT_FLAG $GREP_FLAG $SHARD_FLAG; then
+            if ! eval npx playwright test $PROJECT_FLAGS $GREP_INVERT_FLAG $GREP_FLAG $SHARD_FLAG $PW_EXTRA; then
                 status=1
                 echo "::endgroup::"
                 echo "::group::playwright run $i — its failed tests again, three times each"
