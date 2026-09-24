@@ -49,6 +49,18 @@ class DuplicateVenueCensusSpec extends AnyFlatSpec with Matchers {
 
   private def crossCity(rows: StoredMovieRecord*): Double = census(rows, scope = DuplicateVenueCensus.CrossCity)
 
+  /** The pairs, named as the generated rosters store them, that the census still counts when each
+   *  pair lists one identical 20-showtime programme -- in the scope the roster puts them in. */
+  private def countedPairs(country: Country, pairs: Seq[(String, String)]): Seq[String] =
+    pairs.flatMap { case (a, b) =>
+      val (x, y) = (Cinema.byDisplayName(a), Cinema.byDisplayName(b))
+      val scope =
+        if ((citiesOf(country, x) intersect citiesOf(country, y)).nonEmpty) DuplicateVenueCensus.SameCity
+        else DuplicateVenueCensus.CrossCity
+      val counted = census(Seq(row("Foo", x -> times(20), y -> times(20))), country = country, scope = scope)
+      Option.when(counted != 0.0)(s"$a / $b ($scope): $counted")
+    }
+
   "DuplicateVenueCensus" should "count two venues in one city whose upcoming programmes overlap by 90% or more" in {
     census(Seq(
       row("Foo", first -> times(10), second -> times(10), third -> times(10, from = 20)),
@@ -123,21 +135,27 @@ class DuplicateVenueCensusSpec extends AnyFlatSpec with Matchers {
   // books through its own home.caribbeancinemas.com/<venue>/checkout — and Auburn/Canandaigua NY,
   // formovietickets chain rochester rtn 104446 vs 346993.
   it should "not count two houses of a chain that programmes all of them alike, nor Auburn and Canandaigua" in {
-    val us = Country.UnitedStates
-    def venue(name: String): Cinema = Cinema.byDisplayName(name)
-    def scopeOf(a: Cinema, b: Cinema) =
-      if ((citiesOf(us, a) intersect citiesOf(us, b)).nonEmpty) DuplicateVenueCensus.SameCity else DuplicateVenueCensus.CrossCity
-    val pairs = Seq(
+    val counted = countedPairs(Country.UnitedStates, Seq(
       "Caribbean Cinemas Plaza Escorial" -> "Caribbean Cinemas Plaza Guayama",
       "Caribbean Cinemas Distrito VIP Cinemas" -> "Caribbean Cinemas Las Piedras",
       "Caribbean Cinemas Plaza Cayey" -> "Caribbean Cinemas The Outlet 66",
       "Caribbean Cinemas Arecibo" -> "Caribbean Cinemas Western Plaza",
       "Caribbean Cinemas Aguadilla Mall" -> "Caribbean Cinemas Metro",
-      "Auburn Movieplex" -> "Canandaigua Theaters")
-    val counted = pairs.map { case (a, b) =>
-      s"$a / $b" -> census(Seq(row("Foo", venue(a) -> times(20), venue(b) -> times(20))), country = us, scope = scopeOf(venue(a), venue(b)))
-    }
-    withClue(counted.filter(_._2 != 0.0).mkString("\n")) { all(counted.map(_._2)) shouldBe 0.0 }
+      "Auburn Movieplex" -> "Canandaigua Theaters"))
+    withClue(counted.mkString("\n")) { counted shouldBe empty }
+  }
+
+  // The cross-city pairs pending from 2026-09-24 (DuplicateVenueListing{us} from 10:19Z, {de} from
+  // 16:01Z), each two real houses on one programme, checked against the upstream 2026-09-24:
+  // Phoenix Theatres' Clarksville TN and Monroe MI (Flicks venues phoenix-theatres-governors-square
+  // vs phoenix-theatres-mall-of-monroe, their 09-25 grids identical to the minute), and Dersa's
+  // Damme house and Kinocenter Rahden, 90 km apart (Filmstarts theatres A0438 vs A1730, the same
+  // nine films at the same times).
+  it should "not count Phoenix Theatres' Clarksville and Monroe houses, nor Dersa in Damme and Kinocenter Rahden" in {
+    val counted =
+      countedPairs(Country.UnitedStates, Seq("Phoenix Theatres Governors Square" -> "Phoenix Theatres Mall of Monroe")) ++
+        countedPairs(Country.Germany, Seq("Dersa Kino-Center" -> "Kinocenter Rahden"))
+    withClue(counted.mkString("\n")) { counted shouldBe empty }
   }
 
   it should "list only pairs of two venues on one country's roster, so no entry is dead" in {

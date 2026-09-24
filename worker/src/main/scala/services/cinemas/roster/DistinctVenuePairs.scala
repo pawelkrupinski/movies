@@ -70,6 +70,11 @@ object DistinctVenuePairs extends Logging {
     ("RMC Jacksonville", "RMC Waterloo Cinema"),
     // Auburn and Canandaigua NY: formovietickets chain rochester, rtn 104446 vs 346993
     ("Auburn Movieplex", "Canandaigua Theaters"),
+    // Phoenix Theatres' one grid in Clarksville TN and Monroe MI: Flicks venues
+    // phoenix-theatres-governors-square vs phoenix-theatres-mall-of-monroe (checked 2026-09-24)
+    ("Phoenix Theatres Governors Square", "Phoenix Theatres Mall of Monroe"),
+    // Dersa in Damme and Kinocenter Rahden, 90 km apart: Filmstarts theatres A0438 vs A1730
+    ("Dersa Kino-Center", "Kinocenter Rahden"),
   )
 
   /** Chains that programme EVERY house alike, by the display-name prefix their venues share: any
