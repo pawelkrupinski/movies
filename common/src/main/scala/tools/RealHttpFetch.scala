@@ -92,17 +92,13 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
   }
 
   override def get(url: String, headers: Map[String, String]): String =
-    sendLogged("GET", url, clientFor(url).send(buildRequest(url, headers), HttpResponse.BodyHandlers.ofByteArray()))
+    checkStatus("GET", url, sendLogged("GET", url, clientFor(url).send(buildRequest(url, headers), HttpResponse.BodyHandlers.ofByteArray())))
 
   /** GET, also reporting the URL the redirects ended on — for a caller that
    *  must know whether the address it holds is the one the upstream serves (the
    *  roster audit's stale-slug check). Same status handling as `get`. */
   def getPage(url: String): FetchedPage = {
-    val response = try clientFor(url).send(buildRequest(url), HttpResponse.BodyHandlers.ofByteArray()) catch {
-      case exception: Throwable =>
-        logFailure("GET", url, exception)
-        throw exception
-    }
+    val response = sendLogged("GET", url, clientFor(url).send(buildRequest(url), HttpResponse.BodyHandlers.ofByteArray()))
     FetchedPage(response.uri().toString, checkStatus("GET", url, response))
   }
 
@@ -117,7 +113,7 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
       }
 
   override def post(url: String, body: String, contentType: String = "application/json"): String =
-    sendLogged("POST", url, clientFor(url).send(postRequest(url, body, contentType), HttpResponse.BodyHandlers.ofByteArray()))
+    checkStatus("POST", url, sendLogged("POST", url, clientFor(url).send(postRequest(url, body, contentType), HttpResponse.BodyHandlers.ofByteArray())))
 
   /** Package-private so the spec can assert what actually goes on the wire — the
    *  header a host policy demands is only observable on the built request. */
@@ -158,14 +154,14 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
   //     slug doesn't exist" signal; WARN-ing every probe miss would flood
   //     the logs with hundreds of expected 404s per refresh tick.
 
-  private def sendLogged(method: String, url: String, send: => HttpResponse[Array[Byte]]): String = {
-    val response = try send catch {
+  /** `send`, logging a transport failure before it propagates. The response is
+   *  returned unchecked — the caller runs [[checkStatus]]. */
+  private def sendLogged(method: String, url: String, send: => HttpResponse[Array[Byte]]): HttpResponse[Array[Byte]] =
+    try send catch {
       case exception: Throwable =>
         logFailure(method, url, exception)
         throw exception
     }
-    checkStatus(method, url, response)
-  }
 
   private def checkStatus(method: String, url: String, response: HttpResponse[Array[Byte]]): String = {
     val code = response.statusCode()
