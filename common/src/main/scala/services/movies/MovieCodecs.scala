@@ -171,8 +171,12 @@ object MovieCodecs {
   private class BackwardCompatibleSourceDataCodec extends Codec[SourceData] {
     override def getEncoderClass: Class[SourceData] = classOf[SourceData]
 
+    // The cache-only fields (`showtimesDigest`, `showtimeStartMinutes`) are dropped on
+    // the way out: `decode` never reads them back, and a cache-stripped record is
+    // written through here routinely. `showtimeStartMinutes` is an `IArray[Int]` with no
+    // BSON codec at all, so letting it through failed every such `upsert`/`replaceFilm`.
     override def encode(w: BsonWriter, v: SourceData, c: EncoderContext): Unit =
-      macroSourceDataCodec.encode(w, v, c)
+      macroSourceDataCodec.encode(w, v.copy(showtimesDigest = None, showtimeStartMinutes = None), c)
 
     override def decode(r: BsonReader, c: DecoderContext): SourceData = {
       val document = org.bson.codecs.BsonDocumentCodec().decode(r, c)

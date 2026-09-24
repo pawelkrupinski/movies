@@ -2227,6 +2227,38 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     } finally { slots.deleteFilm(id); scr.deleteFilm(id); client.close() }
   }
 
+  // Every ordinary enrichment/merge write carries the CACHE's shape — showtimes stripped,
+  // `showtimesDigest` + `showtimeStartMinutes` stamped. The latter is an `IArray[Int]` the
+  // BSON registry has no codec for, and because the repository's writes are Try-guarded the
+  // failure was only a WARN: on 2026-09-23 the UK + US convergence legs lost the merged
+  // "RBO Cinema Season 2026-27: Tosca" row this way and re-keyed it on the next settle.
+  it should "persist a cache-stripped record through upsert, slots included" in {
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, ShowtimesDigest}
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val slots  = new MongoSlotsRepository(Some(db))
+    val title  = "__integration-test-rbo-cinema-season-2026-27-tosca__"
+    val year   = Some(1941)
+    val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
+    val when   = java.time.LocalDateTime.now().plusDays(1).withHour(19).withMinute(15).withSecond(0).withNano(0)
+    val repository = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer)
+    try {
+      val live = MovieRecord(imdbId = Some("tt0033177"), data = Map[Source, SourceData](
+        Multikino -> SourceData(title = Some("RBO Cinema Season 2026-27: Tosca"), showtimes = Seq(Showtime(when, None)))))
+      repository.upsert(title, year, live)
+      // A slot that CHANGED (here its synopsis), so `movie_slots` has to take the row.
+      val synopsis = "Puccini's thriller, live from Covent Garden."
+      repository.upsert(title, year, ShowtimesDigest.stripForCache(live.copy(imdbRating = Some(6.0),
+        data = live.data.view.mapValues(_.copy(synopsis = Some(synopsis))).toMap)))
+
+      val stored = repository.findById(FilmId(id)).map(_.record)
+      stored.flatMap(_.imdbRating) shouldBe Some(6.0)
+      stored.flatMap(_.cinemaData.get(Multikino)).flatMap(_.synopsis) shouldBe Some(synopsis)
+      scr.findForFilm(id).keySet should have size 1
+    } finally { slots.deleteFilm(id); scr.deleteFilm(id); repository.delete(title, year); client.close() }
+  }
+
   // The change stream used to open with `request(Long.MaxValue)` while the apply that
   // consumes it is ONE thread doing a blocking stitch read per event. Producer and
   // consumer were coupled by nothing, so a consumer slower than the write rate grew an

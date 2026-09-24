@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{CinemaShowing, Helios, Imdb, Multikino, MovieRecord, Showtime, Source, SourceData, Tmdb}
+import models.{CinemaShowing, CurzonCinemaAldgate, Helios, Imdb, Multikino, MovieRecord, Showtime, Source, SourceData, Tmdb}
 import org.bson.{BsonDocument, BsonDocumentReader, BsonDocumentWriter}
 import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -112,6 +112,35 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     back.record.metacriticUrl      shouldBe None
     back.record.rottenTomatoesUrl  shouldBe None
     back.record.data               shouldBe Map.empty
+  }
+
+  // The 2026-09-23 UK + US convergence failure: the depth guard's cache-only
+  // `showtimeStartMinutes` (an `IArray[Int]`, i.e. `int[]`) has no BSON codec, so every
+  // `upsert` / `replaceFilm` of a cache-stripped record threw "Can't find a codec for
+  // class [I" — the merged Tosca/Carmen rows never reached Mongo, and the next settle
+  // re-keyed them from the stale stored copy. The cache-only fields must not reach the
+  // wire at all: the decoder ignores them, so writing them was never more than dead bytes.
+  it should "write a cache-stripped slot without its cache-only showtime fields" in {
+    val slot = SourceData(
+      title     = Some("RBO Cinema Season 2026-27: Tosca"),
+      showtimes = Seq(Showtime(LocalDateTime.of(2026, 10, 1, 19, 15), None, None, Nil), Showtime(LocalDateTime.of(2026, 10, 4, 14, 0), None, None, Nil))
+    )
+    val stripped = ShowtimesDigest.stripForCache(MovieRecord(data = Map[Source, SourceData](CurzonCinemaAldgate -> slot)))
+    stripped.data(CurzonCinemaAldgate).showtimeStartMinutes.map(_.length) shouldBe Some(2)
+
+    val movieDocument = new BsonDocument()
+    codec.encode(new BsonDocumentWriter(movieDocument),
+      StoredMovieDto.fromDomain("rbo cinema season 2026 27 tosca|1941", stripped, Instant.now()), EncoderContext.builder().build())
+    val wireSlot = movieDocument.getDocument("sourceData").getDocument(CurzonCinemaAldgate.displayName)
+    wireSlot.getString("title").getValue shouldBe "RBO Cinema Season 2026-27: Tosca"
+    wireSlot.containsKey("showtimeStartMinutes") shouldBe false
+    wireSlot.containsKey("showtimesDigest")      shouldBe false
+
+    val slotDocument = new BsonDocument()
+    MovieCodecs.registry.get(classOf[StoredSlotDto]).encode(new BsonDocumentWriter(slotDocument),
+      StoredSlotDto("f70ff0063afcb515|curzon", "f70ff0063afcb515", CurzonCinemaAldgate.displayName,
+        stripped.data(CurzonCinemaAldgate), Instant.now()), EncoderContext.builder().build())
+    slotDocument.getDocument("slot").containsKey("showtimeStartMinutes") shouldBe false
   }
 
   it should "round-trip a Map[Source, SourceData] with mixed Source variants" in {
