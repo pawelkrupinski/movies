@@ -192,6 +192,14 @@ else
   failed=1
 fi
 
+step "synthetic probes"
+if out="$(bash test/test_synthetic_probes.sh 2>&1)"; then
+  echo "$out" | tail -1
+else
+  echo "$out"
+  failed=1
+fi
+
 step "public proxy behaviour"
 # THE ONE MODULE HERE WHOSE OUTPUT IS A REQUEST-MATCHING DECISION, and `nix eval` cannot ask it
 # anything. The facet throttle sits one character away from the film pages (`/{city}/movies` vs

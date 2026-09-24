@@ -1,0 +1,105 @@
+---
+# THE SITE AS A VISITOR SEES IT: blackbox_exporter on monitoring-1 fetching the public URLs over
+# the internet, through Cloudflare (nix/modules/roles/synthetic-probes.nix).
+#
+# WHY THIS FILE EXISTS WHEN web-errors.rules ALREADY DOES. Every web alert reads a counter the
+# application increments, so it can only see a request that REACHED a pod. An expired origin
+# certificate, a Caddy vhost that stopped matching, a Cloudflare rule that challenges real
+# browsers, a country prefix routed to the wrong NodePort, the node itself unreachable: on each,
+# nothing arrives to be counted, every web counter stays clean, and the site is down. These rules
+# are the only ones here that ask the question from the outside.
+#
+# THE TARGETS carry `country` (or `all` for showtimes.cc's picker) and `kind`: `front-door`,
+# `country-root`, `city`, and the discovered `film` and `share-card`. `instance` is the URL.
+#
+# NOT REPLAYED AGAINST HISTORY, because there is none: the exporter is new with this file. The
+# thresholds are argued below, and the first fortnight of `probe_duration_seconds` is what to check
+# them against.
+#
+# ⚠️ UNTIL monitoring-1's ADDRESS IS ALLOW-LISTED IN CLOUDFLARE, EVERY PROBE FAILS. Bot Fight Mode
+# answers a Hetzner address with a 403 challenge whatever the User-Agent. If ProbeFailing fires for
+# every URL at once, with `probe_http_status_code` 403, that is the missing IP Access Rule, not an
+# outage.
+groups:
+  - name: synthetic-probes
+    rules:
+      # FIVE MINUTES: five one-minute probes failing in a row. One failed fetch is the internet;
+      # five is the site, or the path to it. Short, because this is the alert for "a visitor gets
+      # nothing", and critical for the same reason.
+      - alert: ProbeFailing
+        expr: probe_success == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.instance }} has failed from outside for 5 minutes"
+          description: >-
+            blackbox_exporter on monitoring-1 has been unable to fetch {{ $labels.instance }}
+            ({{ $labels.kind }}, {{ $labels.country }}) through Cloudflare for five minutes.
+            `probe_http_status_code` for this instance says which kind: 403 on EVERY probe at once
+            is Cloudflare challenging monitoring-1 (its IP Access Rule is missing or was removed);
+            5xx is the origin (Caddy or the pod -- check `WebServerErrorsServed` and the pod's
+            readiness); 0 is no HTTP answer at all (DNS, TLS, or the node unreachable --
+            `probe_failed_due_to_regex` 1 means a 200 that stopped short of `</html>`). A `film` or
+            `share-card` target that 404s alone is a film that left the schedule and a discovery
+            that has not replaced it -- `ProbeDiscoveryStale` fires alongside if so.
+
+      # FOUR SECONDS, AVERAGED OVER TEN MINUTES AND HELD TEN MORE. The same pages answer in
+      # 0.2-0.5s from a laptop and from the fleet's own egress (measured 2026-09-24, 184KB film
+      # page included), so four seconds is eight times the normal path and well short of the 12s
+      # probe timeout -- slow enough to be a real degradation a visitor feels, not a slow minute.
+      # Successful probes only: a failing one is ProbeFailing's, and its timeout would otherwise
+      # read as slowness.
+      - alert: ProbeSlow
+        expr: >-
+          avg_over_time(probe_duration_seconds[10m]) > 4
+            and on (instance) probe_success == 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} is taking {{ $value | humanize }}s to fetch from outside"
+          description: >-
+            {{ $labels.instance }} ({{ $labels.kind }}, {{ $labels.country }}) answers, but has
+            averaged over four seconds for twenty minutes against a normal half second.
+            `probe_http_duration_seconds` splits the time by phase: `connect`/`tls` is the path to
+            Cloudflare, `processing` is the origin. If processing dominates, `WebPageLatencyHigh`
+            should agree from inside; if it does not, the time is going between Cloudflare and
+            Caddy.
+
+      # THE FILM AND SHARE-CARD TARGETS ARE ONLY AS GOOD AS THEIR DISCOVERY. It runs every two
+      # minutes and publishes a timestamp only when it found a live film for every country, so
+      # fifteen minutes is seven runs in a row that did not -- a city page that lists no films, or
+      # one that stopped answering. While it lasts, the film probes point at whatever was found
+      # last, which will 404 as soon as that film leaves the schedule.
+      - alert: ProbeDiscoveryStale
+        expr: >-
+          (time() - kinowo_synthetic_probe_discovery_last_success_timestamp_seconds > 15 * 60)
+            or absent(kinowo_synthetic_probe_discovery_last_success_timestamp_seconds)
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "The synthetic probes have not found a live film page for every country in 15 minutes"
+          description: >-
+            `synthetic-probe-targets` on monitoring-1 has not completed a discovery, so the `film`
+            and `share-card` probes are aimed at pages found earlier (or at none, if it has never
+            run). `journalctl -u synthetic-probe-targets -n 50` names the country and the reason:
+            a city page that did not answer, or one that lists no film. An ABSENT timestamp means
+            it has never succeeded on this host -- most likely the unit was never switched in, or
+            Cloudflare is still challenging monitoring-1.
+
+      - alert: ProbeResultsAbsent
+        expr: absent(probe_success)
+        # THIRTY MINUTES, matching every other `absent()` companion in this directory.
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Nothing is reporting the synthetic probes"
+          description: >-
+            `ProbeFailing` is a comparison and cannot fire without `probe_success`, so the site is
+            unwatched from outside. Either the `blackbox` scrape job is missing from
+            /etc/prometheus/scrape.d/ (`fleet.syntheticProbes.enable` off, or the host never
+            switched to the closure that adds it), or blackbox_exporter is down -- in which case
+            `TargetDown` for job `blackbox` says so first. IT DOES NOT MEAN THE SITE IS UP.

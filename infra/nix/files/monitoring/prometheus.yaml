@@ -44,6 +44,7 @@ rule_files:
   - "/etc/prometheus/rules/residential-proxy.rules"
   - "/etc/prometheus/rules/runtime-invariants.rules"
   - "/etc/prometheus/rules/share-cards.rules"
+  - "/etc/prometheus/rules/synthetic-probes.rules"
   - "/etc/prometheus/rules/web-errors.rules"
   - "/etc/prometheus/rules/web-latency.rules"
   - "/etc/prometheus/rules/web-page-weight.rules"

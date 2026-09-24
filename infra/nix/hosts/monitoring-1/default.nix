@@ -24,6 +24,7 @@ in
     ../../modules/roles/google-sso.nix
     ../../modules/roles/k8s-deploy.nix
     ../../modules/roles/prometheus.nix
+    ../../modules/roles/synthetic-probes.nix
     ../../modules/roles/grafana.nix
     ../../modules/roles/k3s-server.nix
     ../../modules/roles/victoria-logs.nix
@@ -82,6 +83,35 @@ in
     # module's ssh-tunnel default, so the link opens straight from a phone or any other device
     # without a laptop holding a tunnel open for it to work.
     externalUrl = "https://alertmanager.kinowo.net";
+  };
+
+  # THE SITE, FETCHED FROM OUTSIDE THE CLUSTER, THROUGH CLOUDFLARE. See roles/synthetic-probes.nix,
+  # including the two hand steps it needs (a Cloudflare IP Access Rule for 128.140.49.167 on both
+  # zones, and the first switch). One door per brand, each country's root, and each country's
+  # biggest city; a live film page and its share card per country are discovered from the same
+  # city pages.
+  fleet.syntheticProbes = {
+    enable = true;
+    targets = [
+      { url = "https://kinowo.net/"; country = "pl"; kind = "front-door"; }
+      { url = "https://showtimes.cc/"; country = "all"; kind = "front-door"; }
+      { url = "https://showtimes.cc/uk/"; country = "uk"; kind = "country-root"; }
+      { url = "https://showtimes.cc/de/"; country = "de"; kind = "country-root"; }
+      { url = "https://showtimes.cc/us/"; country = "us"; kind = "country-root"; }
+      { url = "https://showtimes.cc/es/"; country = "es"; kind = "country-root"; }
+      { url = "https://kinowo.net/warszawa/"; country = "pl"; kind = "city"; }
+      { url = "https://showtimes.cc/uk/london/"; country = "uk"; kind = "city"; }
+      { url = "https://showtimes.cc/de/berlin/"; country = "de"; kind = "city"; }
+      { url = "https://showtimes.cc/us/new-york/"; country = "us"; kind = "city"; }
+      { url = "https://showtimes.cc/es/madrid/"; country = "es"; kind = "city"; }
+    ];
+    discoverFrom = {
+      pl = "https://kinowo.net/warszawa/";
+      uk = "https://showtimes.cc/uk/london/";
+      de = "https://showtimes.cc/de/berlin/";
+      us = "https://showtimes.cc/us/new-york/";
+      es = "https://showtimes.cc/es/madrid/";
+    };
   };
 
   # GRAFANA AND PROMETHEUS MAY BE BOUNCED BY AN UNATTENDED SWITCH ON THIS HOST, AND NOTHING ELSE MAY.

@@ -208,6 +208,10 @@ let
     # ARE THE FILM SHARE CARDS WITHIN THEIR DISK BUDGET, and are their poster upstreams answering.
     # The worker renders the cards (and caches posters) onto k3s-worker-1's disk under one budget.
     "share-cards"
+    # IS THE SITE ANSWERING FROM OUTSIDE. blackbox_exporter's verdicts on the public URLs, fetched
+    # through Cloudflare (roles/synthetic-probes.nix) -- the one view no pod metric can give,
+    # because the failures it catches are requests that never reach a pod.
+    "synthetic-probes"
     # IS THE SITE ANSWERING. Every other file here watches a machine or a process, all of which can
     # be green while the web tier serves a 500 to every visitor. Added after the "Error share" panel
     # spent an afternoon at 25% with nothing failing -- the file explains why the 4xx half of that
@@ -658,6 +662,7 @@ in
         config.environment.etc."prometheus/scrape.d/node-targets.yaml".text
         config.environment.etc."prometheus/scrape.d/mongodb-targets.yaml".text
         config.environment.etc."prometheus/scrape.d/kube-state-metrics-targets.yaml".text
+        config.environment.etc."prometheus/scrape.d/flux-targets.yaml".text
         config.environment.etc."prometheus/scrape.d/kinowo-apps.yaml".source
       ]
       ++ map (n: config.environment.etc."prometheus/rules/${n}.rules".source) ruleNames;

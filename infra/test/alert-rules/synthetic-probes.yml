@@ -1,0 +1,148 @@
+# UNIT TESTS FOR THE SYNTHETIC PROBES (nix/files/monitoring/rules/synthetic-probes.rules).
+#
+# The rules are new with blackbox_exporter, so there is no incident history to replay; what these
+# pin is the shape each rule claims: five failed fetches in a row page and one does not, a slow
+# page warns only while it is succeeding, and the film-discovery timestamp and the probe series
+# are each watched for going stale or missing.
+rule_files:
+  - ../../nix/files/monitoring/rules/synthetic-probes.rules
+
+evaluation_interval: 1m
+
+tests:
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE FRONT DOOR STOPS ANSWERING at 6m and stays down: five one-minute probes later it pages. A
+  # single failed probe on London at 3m is the internet, not the site, and must not.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: five failed probes in a row fire, one does not
+    input_series:
+      - series: 'probe_success{instance="https://kinowo.net/",job="blackbox",country="pl",kind="front-door"}'
+        values: '1x5 0x25'
+      - series: 'probe_success{instance="https://showtimes.cc/uk/london/",job="blackbox",country="uk",kind="city"}'
+        values: '1x2 0 1x27'
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: ProbeFailing
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: ProbeFailing
+        exp_alerts:
+          - exp_labels:
+              country: "pl"
+              instance: "https://kinowo.net/"
+              job: "blackbox"
+              kind: "front-door"
+              severity: "critical"
+            exp_annotations:
+              summary: "https://kinowo.net/ has failed from outside for 5 minutes"
+              description: "blackbox_exporter on monitoring-1 has been unable to fetch https://kinowo.net/ (front-door, pl) through Cloudflare for five minutes. `probe_http_status_code` for this instance says which kind: 403 on EVERY probe at once is Cloudflare challenging monitoring-1 (its IP Access Rule is missing or was removed); 5xx is the origin (Caddy or the pod -- check `WebServerErrorsServed` and the pod's readiness); 0 is no HTTP answer at all (DNS, TLS, or the node unreachable -- `probe_failed_due_to_regex` 1 means a 200 that stopped short of `</html>`). A `film` or `share-card` target that 404s alone is a film that left the schedule and a discovery that has not replaced it -- `ProbeDiscoveryStale` fires alongside if so."
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A PAGE THAT ANSWERS SLOWLY. London takes 5s a fetch and succeeds: past the 4s average for twenty
+  # minutes it warns. The front door takes 12s because it is timing out -- ProbeFailing's, not this
+  # one's -- and Berlin's 0.4s is the normal path.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a slow successful page warns, a failing or fast one does not
+    input_series:
+      - series: 'probe_success{instance="https://showtimes.cc/uk/london/",job="blackbox",country="uk",kind="city"}'
+        values: '1x40'
+      - series: 'probe_duration_seconds{instance="https://showtimes.cc/uk/london/",job="blackbox",country="uk",kind="city"}'
+        values: '5x40'
+      - series: 'probe_success{instance="https://kinowo.net/",job="blackbox",country="pl",kind="front-door"}'
+        values: '0x40'
+      - series: 'probe_duration_seconds{instance="https://kinowo.net/",job="blackbox",country="pl",kind="front-door"}'
+        values: '12x40'
+      - series: 'probe_success{instance="https://showtimes.cc/de/berlin/",job="blackbox",country="de",kind="city"}'
+        values: '1x40'
+      - series: 'probe_duration_seconds{instance="https://showtimes.cc/de/berlin/",job="blackbox",country="de",kind="city"}'
+        values: '0.4x40'
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: ProbeSlow
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: ProbeSlow
+        exp_alerts:
+          - exp_labels:
+              country: "uk"
+              instance: "https://showtimes.cc/uk/london/"
+              job: "blackbox"
+              kind: "city"
+              severity: "warning"
+            exp_annotations:
+              summary: "https://showtimes.cc/uk/london/ is taking 5s to fetch from outside"
+              description: "https://showtimes.cc/uk/london/ (city, uk) answers, but has averaged over four seconds for twenty minutes against a normal half second. `probe_http_duration_seconds` splits the time by phase: `connect`/`tls` is the path to Cloudflare, `processing` is the origin. If processing dominates, `WebPageLatencyHigh` should agree from inside; if it does not, the time is going between Cloudflare and Caddy."
+      - eval_time: 35m
+        alertname: ProbeResultsAbsent
+        exp_alerts: []
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # FILM DISCOVERY. monitoring-1's discovery last succeeded at t=0 and never again: fifteen minutes
+  # stale plus fifteen held, it warns at 31m.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a discovery that stopped succeeding fires
+    input_series:
+      - series: 'kinowo_synthetic_probe_discovery_last_success_timestamp_seconds{host="monitoring-1",job="node",instance="10.20.0.11:9100"}'
+        values: '0x40'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: ProbeDiscoveryStale
+        exp_alerts: []
+      - eval_time: 35m
+        alertname: ProbeDiscoveryStale
+        exp_alerts:
+          - exp_labels:
+              host: "monitoring-1"
+              instance: "10.20.0.11:9100"
+              job: "node"
+              severity: "warning"
+            exp_annotations:
+              summary: "The synthetic probes have not found a live film page for every country in 15 minutes"
+              description: "`synthetic-probe-targets` on monitoring-1 has not completed a discovery, so the `film` and `share-card` probes are aimed at pages found earlier (or at none, if it has never run). `journalctl -u synthetic-probe-targets -n 50` names the country and the reason: a city page that did not answer, or one that lists no film. An ABSENT timestamp means it has never succeeded on this host -- most likely the unit was never switched in, or Cloudflare is still challenging monitoring-1."
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # ...a discovery succeeding every two minutes stays quiet...
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 2m
+    name: a discovery that keeps succeeding is quiet
+    input_series:
+      - series: 'kinowo_synthetic_probe_discovery_last_success_timestamp_seconds{host="monitoring-1",job="node",instance="10.20.0.11:9100"}'
+        values: '0+120x30'
+      - series: 'probe_success{instance="https://kinowo.net/",job="blackbox",country="pl",kind="front-door"}'
+        values: '1x30'
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: ProbeDiscoveryStale
+        exp_alerts: []
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # ...and a host where neither has ever reported -- the state before the first switch, or with
+  # Cloudflare still challenging monitoring-1 -- fires both companions after their holds.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: nothing reporting fires both companions
+    input_series:
+      - series: 'up{job="node",host="monitoring-1"}'
+        values: '1x40'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: ProbeDiscoveryStale
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+            exp_annotations:
+              summary: "The synthetic probes have not found a live film page for every country in 15 minutes"
+              description: "`synthetic-probe-targets` on monitoring-1 has not completed a discovery, so the `film` and `share-card` probes are aimed at pages found earlier (or at none, if it has never run). `journalctl -u synthetic-probe-targets -n 50` names the country and the reason: a city page that did not answer, or one that lists no film. An ABSENT timestamp means it has never succeeded on this host -- most likely the unit was never switched in, or Cloudflare is still challenging monitoring-1."
+      - eval_time: 20m
+        alertname: ProbeResultsAbsent
+        exp_alerts: []
+      - eval_time: 35m
+        alertname: ProbeResultsAbsent
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+            exp_annotations:
+              summary: "Nothing is reporting the synthetic probes"
+              description: "`ProbeFailing` is a comparison and cannot fire without `probe_success`, so the site is unwatched from outside. Either the `blackbox` scrape job is missing from /etc/prometheus/scrape.d/ (`fleet.syntheticProbes.enable` off, or the host never switched to the closure that adds it), or blackbox_exporter is down -- in which case `TargetDown` for job `blackbox` says so first. IT DOES NOT MEAN THE SITE IS UP."
+      - eval_time: 35m
+        alertname: ProbeFailing
+        exp_alerts: []

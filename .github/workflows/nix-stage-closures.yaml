@@ -197,6 +197,12 @@ jobs:
           python3 -c 'import yaml' 2>/dev/null || pip3 install --quiet --disable-pip-version-check --break-system-packages pyyaml
           bash test/test_alertmanager.sh
 
+      # The synthetic probes' film discovery (against a stub curl) and the `blackbox` scrape job
+      # monitoring-1 would install (nix eval + promtool). See test/test_synthetic_probes.sh.
+      - name: The synthetic probes discover live film pages and probe them through Cloudflare
+        working-directory: infra
+        run: bash test/test_synthetic_probes.sh
+
       # Instant, pure-python, and the gate that decides whether the fleet applies its own closures:
       # one missing "s" in its regex once turned a new secret into a host that refused every staged
       # change until a person logged in. It runs in bin/check and ran nowhere else.
