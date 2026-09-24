@@ -164,6 +164,20 @@ tests:
                 `store_failure` (Mongo threw -- the web log has `UserStateRepository.… failed`) or
                 `unavailable` (the pod has no users store at all).
 
+  # READS ARE NOT WRITES. GET /api/me/:country/hidden-films answering 5xx to half its requests is
+  # a page that cannot show the hides, not a write that failed to stick, which is all this rule
+  # claims. Silent.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_http_requests_total{country="uk",job="kinowo-web",route="/api/me/:country/hidden-films",method="GET",status="5xx"}'
+        values: '0+1x40'
+      - series: 'kinowo_web_http_requests_total{country="uk",job="kinowo-web",route="/api/me/:country/hidden-films",method="GET",status="2xx"}'
+        values: '0+1x40'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: UserStateWritesFailing
+        exp_alerts: []
+
   # ONE 5xx IS NOT A PATTERN: a single 503 on a route that saw four requests in half an hour is a
   # 25% share and must stay silent, because it is below the three-error floor.
   - interval: 5m
