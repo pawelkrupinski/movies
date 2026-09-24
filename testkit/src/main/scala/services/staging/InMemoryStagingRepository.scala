@@ -106,6 +106,18 @@ class InMemoryStagingRepository(
 
   override def holdsAnchor(anchor: String): Boolean = lock.synchronized(idsByAnchor.contains(anchor))
 
+  override def cinemasUnder(anchor: String): Set[Source] = lock.synchronized {
+    idsByAnchor.get(anchor).toSet.flatMap(_.flatMap(StagingRecord.cinemaOfId))
+  }
+
+  /** The intersection of the two indexes, as `MongoStagingRepository` answers it — the
+   *  staging detail step asks it once per venue, and filtering the film's whole group
+   *  instead is quadratic in its venues. */
+  override def findByCinemaAndAnchor(cinema: Source, anchor: String): Seq[StagingRecord] = lock.synchronized {
+    val ofCinema = models.Source.cinemaOf(cinema).flatMap(idsByCinema.get).getOrElse(mutable.Set.empty[String])
+    idsByAnchor.get(anchor).toSeq.flatMap(_.filter(ofCinema.contains).toSeq.sorted.flatMap(store.get)).filter(_.cinema == cinema)
+  }
+
   def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = lock.synchronized {
     val id       = StagingRecord.idFor(cinema, title, year, normalizer)
     val existing = store.get(id)

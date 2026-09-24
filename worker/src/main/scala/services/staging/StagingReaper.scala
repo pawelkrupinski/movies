@@ -61,8 +61,34 @@ class StagingReaper(
    *  `StagingFold` (terminal — the fold deletes the rows) and every non-staging
    *  task type. */
   def onTaskFinished: PartialFunction[DomainEvent, Unit] = {
-    case TaskFinished(t, _, payload) if chainable(t) => enqueueNext(StagingTaskKeys.anchorOf(payload, staging.normalizer)); ()
+    case TaskFinished(TaskType.StagingDetail, _, payload) => afterDetail(payload); ()
+    case TaskFinished(t, _, payload) if chainable(t)      => enqueueNext(StagingTaskKeys.anchorOf(payload, staging.normalizer)); ()
   }
+
+  /** One venue's detail step finished. The film moves on only once EVERY venue's has,
+   *  and which venues still owe it is answerable off the repository's index
+   *  ([[StagingRepository.cinemasUnder]]) — so only the finish that leaves none owing
+   *  pays the whole-group read [[enqueueNext]] makes. Reading the group on every finish
+   *  was one decode of every venue's row per venue: 52,000 rows for a film at 160.
+   *
+   *  While some venue still owes detail, its task is (re-)enqueued, exactly as the
+   *  Detail step would — the queue dedups one already waiting — so a venue that JOINED
+   *  after the chain's kick (a join no longer kicks, see `ScrapeLanding`) is picked up
+   *  on the next finish rather than left to the backstop. The Detail step also required
+   *  the group to be unresolved; a group resolved while a venue's detail marker lapsed
+   *  gets that venue's detail refetched first, and the finish that follows advances it
+   *  the same way. */
+  private[staging] def afterDetail(payload: Map[String, String]): Int = {
+    val anchor  = StagingTaskKeys.anchorOf(payload, staging.normalizer)
+    val owing   = staging.cinemasUnder(anchor).filterNot(steps.detailReadyAt(anchor, _))
+    if (owing.isEmpty) enqueueNext(anchor)
+    else enqueueDetail(StagingTaskKeys.titleOf(payload), owing.toSeq.sortBy(_.displayName))
+  }
+
+  private def enqueueDetail(title: String, cinemas: Seq[models.Source]): Int =
+    cinemas.count(c =>
+      added(queue.enqueue(TaskType.StagingDetail, StagingTaskKeys.detailDedup(title, c.displayName, staging.normalizer),
+        StagingTaskKeys.detailPayload(title, c.displayName, staging.normalizer))))
 
   /** Advance the chain the moment a brand-new film lands in `pending_movies` —
    *  the initial kick that would otherwise wait for the next backstop tick. Same
@@ -116,9 +142,7 @@ class StagingReaper(
       case (Some(title), Some(StagingStep.Detail)) =>
         // Some hint-combination still owes detail: finish each unready cinema's
         // detail first (one task per cinema).
-        rows.filterNot(steps.detailReady).map(_.cinema).distinct.count(c =>
-          added(queue.enqueue(TaskType.StagingDetail, StagingTaskKeys.detailDedup(title, c.displayName, staging.normalizer),
-            StagingTaskKeys.detailPayload(title, c.displayName, staging.normalizer))))
+        enqueueDetail(title, rows.filterNot(steps.detailReady).map(_.cinema).distinct)
       case (Some(title), Some(StagingStep.ResolveTmdb)) =>
         countOne(queue.enqueue(TaskType.StagingResolveTmdb,
           StagingTaskKeys.resolveTmdbDedup(title, staging.normalizer), StagingTaskKeys.titlePayload(title)))

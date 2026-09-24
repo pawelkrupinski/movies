@@ -67,8 +67,12 @@ class StagingSteps(
    *  non-deferring cinema (display-only, e.g. Kino Muza) marks fresh even if its
    *  fetch failed — its detail never BLOCKS, but it's still fetched first. A cinema
    *  with no enricher at all has no detail to wait for. */
-  def detailReady(row: StagingRecord): Boolean = enricherFor(row.cinema) match {
-    case Some(_) => freshness.isFresh(StagingTaskKeys.detailKey(normalizer.sanitize(row.title), row.cinema.displayName), FreshnessKind.DetailEnrich)
+  def detailReady(row: StagingRecord): Boolean = detailReadyAt(normalizer.sanitize(row.title), row.cinema)
+
+  /** [[detailReady]] for the film at `anchor` and one of its venues — all it reads of a
+   *  row, so it can be asked of a venue without decoding that venue's row. */
+  def detailReadyAt(anchor: String, cinema: Source): Boolean = enricherFor(cinema) match {
+    case Some(_) => freshness.isFresh(StagingTaskKeys.detailKey(anchor, cinema.displayName), FreshnessKind.DetailEnrich)
     case None    => true
   }
 

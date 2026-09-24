@@ -2,86 +2,106 @@ package services.staging
 
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
-import services.freshness.InMemoryFreshnessStore
-import services.movies.{CacheKey, InMemoryMovieRepository}
-import models.{Cinema, Helios, MovieRecord, Source, SourceData}
-import services.tasks.{HandlerOutcome, InMemoryTaskQueue, TaskHandler}
-import services.events.{DomainEvent, InProcessEventBus, StagingFilmEnriched, TaskFinished}
+import models.{Cinema, Helios, MovieRecord}
+import services.movies.CacheKey
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
-import services.cinemas.common.{DetailEnricher, FilmDetail}
-
-import scala.collection.mutable.ListBuffer
-import scala.concurrent.duration._
 
 /**
  * End-to-end: a newcomer in `pending_movies` is driven through the durable queue
  * — StagingDetail → StagingResolveTmdb → StagingResolveImdbId → StagingFold — by
- * the real handlers + `StagingReaper`, and lands in `movies`. The pump stands in
- * for the prod `TaskWorker`: claim → handle → complete → announce (`onTaskFinished`),
- * which enqueues the next step for the same loop to pick up. The fold is wired the
- * production way: the handler publishes `StagingFilmEnriched`, the folder subscribes.
+ * the real handlers + `StagingReaper`, and lands in `movies` — wired and pumped by
+ * [[StagingChain]], which stands in for the prod `TaskWorker`.
  */
 class StagingQueueEndToEndSpec extends AnyFlatSpec with Matchers {
-
-  private class FakeEnricher(val cinema: Cinema, detail: Option[FilmDetail]) extends DetailEnricher {
-    def detailGroup = "fake"
-    def fetchFilmDetail(ref: String): Option[FilmDetail] = detail
-  }
+  import StagingChain.{CountingEnricher, listing}
 
   "the queue-driven staging chain" should "incubate a newcomer all the way into movies" in {
-    val staging   = new InMemoryStagingRepository
-    val movies    = new InMemoryMovieRepository
-    val queue     = new InMemoryTaskQueue
-    val bus       = new InProcessEventBus
-    // Wired the production way (see WorkerWiring): the fold subscriber folds on the
-    // event and announces the brand-new films it introduced, which production
-    // turns into rating enqueues. Here we capture the keys to prove the newcomer
-    // graduates as a promotion.
-    val promoted  = ListBuffer.empty[CacheKey]
-    bus.subscribe(new FoldOnStagingEnriched(
-      new InMemoryStagingFolder(staging, movies), staging, (key, _) => promoted += key).onStagingFilmEnriched)
-
     // A deferred-detail cinema (Helios) scrapes the film bare with a filmUrl; its
     // detail page supplies a director hint; TMDB resolves to a tmdbId but ships no
     // imdb cross-reference, so the imdb step must recover it.
-    staging.upsert(Helios, "Newcomer", Some(2026),
-      MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some("Newcomer"), filmUrl = Some("u")))))
-    val steps = new StagingSteps(staging, Seq(new FakeEnricher(Helios, Some(FilmDetail(director = Seq("Jane Doe"))))),
-      resolveStaging = (_, _, r) => Some(r.copy(tmdbId = Some(1275779))),    // hit, imdb empty
-      recoverImdbId  = (_, _, _) => Some("tt1275779"),
-      freshness      = new InMemoryFreshnessStore)
-    val reaper = new StagingReaper(steps, queue, staging)
+    val chain = new StagingChain(new InMemoryStagingRepository, Seq(new CountingEnricher(Helios)))
+    chain.staging.upsert(Helios, "Newcomer", Some(2026), listing(Helios, "Newcomer"))
 
-    val handlers: Map[services.tasks.TaskType, TaskHandler] = Seq[TaskHandler](
-      new StagingDetailHandler(steps),
-      new StagingResolveTmdbHandler(steps),
-      new StagingResolveImdbIdHandler(steps),
-      new StagingFoldHandler(t => bus.publish(StagingFilmEnriched(t)))
-    ).map(h => h.taskType -> h).toMap
+    // Kick the chain, then drain — completing a step announces it, which enqueues the
+    // next step for this same claim-loop.
+    chain.reaper.tick()
+    chain.pump()
 
-    // Pump: kick the chain, then drain — completing a step announces it, which
-    // enqueues the next step for this same claim-loop. Bounded so a bug can't hang.
-    reaper.tick()
-    var guard = 0
-    Iterator.continually(queue.claim("w", 5.minutes)).takeWhile(t => t.isDefined && guard < 50).flatten.foreach { task =>
-      guard += 1
-      handlers(task.taskType).handle(task) match {
-        case HandlerOutcome.Done | HandlerOutcome.Skipped =>
-          queue.complete(task.id, "w")
-          reaper.onTaskFinished.applyOrElse(TaskFinished(task.taskType, task.dedupKey, task.payload), (_: DomainEvent) => ())
-        // Reschedule or Deferred — the step didn't finish, so return it and let the
-        // guard bound the pump.
-        case _ => queue.release(task.id, "w", None, None)
-      }
-    }
-
-    val folded = movies.findAll()
+    val folded = chain.movies.findAll()
     folded.map(_.title) shouldBe Seq("Newcomer")
     folded.head.record.tmdbId shouldBe Some(1275779)
     folded.head.record.imdbId shouldBe Some("tt1275779")
     folded.head.record.director should contain("Jane Doe")           // detail hint carried through the fold
-    staging.findAll() shouldBe empty                                  // graduated out of pending_movies
-    promoted shouldBe Seq(CacheKey("Newcomer", Some(2026), titleNormalizer))           // surfaced as a promotion → ratings scheduled
+    chain.staging.findAll() shouldBe empty                            // graduated out of pending_movies
+    // Wired the production way (see WorkerWiring): the fold announces the brand-new
+    // films it introduced, which production turns into rating enqueues.
+    chain.promoted shouldBe Seq(CacheKey("Newcomer", Some(2026), titleNormalizer))
+  }
+
+  /**
+   * A film's staging group is read a number of times LINEAR in its detail venues.
+   *
+   * THE BUG THIS PINS. Every venue's finished detail step made the reaper re-read the
+   * film's WHOLE group to learn whether any venue still owed detail — one decode of every
+   * venue's row per venue, O(venues²): 52,000 rows for a film at 160 detail venues. Only
+   * the finish that leaves no venue owing advances the film, and which venues owe is
+   * answerable off the repository's index (`cinemasUnder`), so only that finish reads
+   * the group. Counted as rows the group reads return — Mongo's decodes — not timed.
+   */
+  it should "read a film's staging group linearly in its detail venues, not once per venue" in {
+    def rowsDecoded(venueCount: Int): Int = {
+      var decoded = 0
+      val staging = new InMemoryStagingRepository {
+        override def findByAnchor(anchor: String): Seq[StagingRecord] = {
+          val rows = super.findByAnchor(anchor); decoded += rows.size; rows
+        }
+      }
+      val venues = Cinema.all.distinct.take(venueCount)
+      val chain  = new StagingChain(staging, venues.map(new CountingEnricher(_)))
+      venues.foreach(v => staging.upsert(v, "Newcomer", Some(2026), listing(v, "Newcomer")))
+      chain.reaper.tick()
+      chain.pump(limit = 10 * venueCount)
+      // It must actually have folded — a chain that stalled would read little and pass.
+      withClue("the film must have graduated: ") { chain.movies.findAll().map(_.title) shouldBe Seq("Newcomer") }
+      decoded
+    }
+    val small = rowsDecoded(40)
+    val large = rowsDecoded(160)
+    withClue(s"40 detail venues decoded $small staging row(s); 160 decoded $large — " +
+      "a group read per finished detail step is O(venues²): ") {
+      large should be <= 8 * 160
+      large.toDouble / small should be <= 4.5
+    }
+  }
+
+  /**
+   * Reading the group only on the LAST detail finish must not change what the chain
+   * does: a venue that JOINS mid-chain (a join does not kick the chain) still has its
+   * detail fetched, without waiting for the backstop tick, and the film folds exactly as
+   * it does when every venue staged it before the kick.
+   */
+  it should "fetch a mid-chain joiner's detail and fold exactly as if it had been there from the kick" in {
+    val venues = Cinema.all.distinct.take(7)
+    def run(joinAfter: Option[Int]): (Seq[(String, Option[Int], MovieRecord)], Map[Cinema, Int]) = {
+      val enrichers = venues.map(new CountingEnricher(_))
+      val chain     = new StagingChain(new InMemoryStagingRepository, enrichers)
+      val (initial, joiner) = if (joinAfter.isDefined) (venues.init, venues.lastOption) else (venues, None)
+      initial.foreach(v => chain.staging.upsert(v, "Newcomer", Some(2026), listing(v, "Newcomer")))
+      chain.reaper.tick()
+      joinAfter.foreach { n =>
+        chain.pump(limit = n)
+        joiner.foreach(v => chain.staging.upsert(v, "Newcomer", Some(2026), listing(v, "Newcomer")))
+      }
+      chain.pump(limit = 200)
+      (chain.movies.findAll().map(r => (r.title, r.year, r.record)), enrichers.map(e => e.cinema -> e.fetches).toMap)
+    }
+    val (reference, _)      = run(joinAfter = None)
+    val (joined, fetches)   = run(joinAfter = Some(2))
+    withClue("every venue's detail fetched once, the joiner's included: ") { fetches shouldBe venues.map(_ -> 1).toMap }
+    withClue("and the fold is the one a from-the-kick venue set produces: ") {
+      joined shouldBe reference
+      joined.map(_._1) shouldBe Seq("Newcomer")
+    }
   }
 }

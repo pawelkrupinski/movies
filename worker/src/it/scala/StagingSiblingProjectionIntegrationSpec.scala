@@ -234,6 +234,35 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
     } finally Await.result(staged.deleteMany(Filters.empty()).toFuture(), 30.seconds)
   }
 
+  /** The detail half of the same chain against Mongo: each venue's finished detail step
+   *  used to make the reaper fetch the film's whole group to learn whether any venue
+   *  still owed detail — O(venues²) fetches per film. Only the finish that leaves none
+   *  owing reads it now; the rest ask `cinemasUnder`, off the index.
+   *  (Unit twin: `StagingQueueEndToEndSpec`.) */
+  "a film's detail chain" should "fetch its staging rows linearly in its detail venues" in {
+    def rowsFetched(venueCount: Int): Int = {
+      Await.result(staged.deleteMany(Filters.empty()).toFuture(), 30.seconds)
+      val counting = new FetchCountingStagingRepository
+      val venues   = models.Cinema.all.distinct.take(venueCount)
+      val chain    = new services.staging.StagingChain(counting, venues.map(new services.staging.StagingChain.CountingEnricher(_)))
+      venues.foreach(v => counting.upsert(v, "Presale Blockbuster", Some(2026), services.staging.StagingChain.listing(v, "Presale Blockbuster")))
+      counting.fetchedIds = 0
+      chain.reaper.tick()
+      chain.pump(limit = 10 * venueCount)
+      withClue("the film must have graduated: ") { chain.movies.findAll() should have size 1 }
+      counting.fetchedIds
+    }
+    try {
+      val small = rowsFetched(20)
+      val large = rowsFetched(80)
+      withClue(s"20 detail venues fetched $small staging row(s); 80 fetched $large — " +
+        "a group read per finished detail step is O(venues²): ") {
+        large should be <= 8 * 80
+        large.toDouble / small should be <= 4.5
+      }
+    } finally Await.result(staged.deleteMany(Filters.empty()).toFuture(), 30.seconds)
+  }
+
   // The invariant an override must hold: answer EXACTLY what filtering `findAll` answers.
   // A previous attempt inferred the anchor from the `_id` — which holds the sanitized
   // title from the row's first write — and silently returned nothing once titles were

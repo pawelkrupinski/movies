@@ -56,11 +56,18 @@ object StagingRecord {
     val lastSep  = id.lastIndexOf('|')
     if (firstSep < 0 || lastSep <= firstSep) None
     else {
-      val cinemaName = id.substring(0, firstSep)
-      val prefix     = id.substring(firstSep + 1, lastSep)
-      val year       = id.substring(lastSep + 1).toIntOption
-      Source.byDisplayName.get(cinemaName).map(src => StagingRecord(src, record.displayTitle(prefix, normalizer), year, record, id))
+      val prefix = id.substring(firstSep + 1, lastSep)
+      val year   = id.substring(lastSep + 1).toIntOption
+      cinemaOfId(id).map(src => StagingRecord(src, record.displayTitle(prefix, normalizer), year, record, id))
     }
+  }
+
+  /** The cinema a staging `_id` names — [[fromStorage]]'s cinema, read without the
+   *  record. None for a malformed id or an unknown (dropped/renamed) cinema. */
+  def cinemaOfId(id: String): Option[Source] = {
+    val firstSep = id.indexOf('|')
+    if (firstSep < 0 || id.lastIndexOf('|') <= firstSep) None
+    else Source.byDisplayName.get(id.substring(0, firstSep))
   }
 }
 
@@ -112,6 +119,17 @@ trait StagingRepository {
    * every earlier venue's row, showtimes included.
    */
   def holdsAnchor(anchor: String): Boolean = findByAnchor(anchor).nonEmpty
+
+  /**
+   * The venues with a row staged under `anchor` — [[findByAnchor]]'s cinemas, asked
+   * without decoding the group.
+   *
+   * The staging reaper asks it every time one venue's detail step finishes, to learn
+   * whether any venue still owes detail. Answered by fetching the group, that is one
+   * whole-group decode per venue — O(venues²) per film, 52,000 row reads for a film at
+   * 160 detail venues — to decide a step only the LAST finishing venue can advance.
+   */
+  def cinemasUnder(anchor: String): Set[Source] = findByAnchor(anchor).map(_.cinema).toSet
 
   /**
    * The rows of ONE cinema — what a scrape tick needs to carry a newcomer's prior slot
@@ -491,6 +509,16 @@ class MongoStagingRepository(
     ensureAnchorIndex()
     Option(idsByAnchor.get(anchor)).exists(!_.isEmpty)
   }
+
+  /** Off the anchor index and the `_id`s themselves: no fetch, no decode. A stale entry
+   *  can only name a venue whose row is gone — its detail task then finds no rows and
+   *  finishes at once — never hide one the group read would return. */
+  override def cinemasUnder(anchor: String): Set[Source] =
+    if (coll.isEmpty) Set.empty
+    else {
+      ensureAnchorIndex()
+      bucketIds(idsByAnchor, anchor).flatMap(StagingRecord.cinemaOfId).toSet
+    }
 
   /** Decoded rows are re-checked against `anchor` before being returned, so a stale index
    *  entry can only ever cost a wasted fetch — never a wrong row. */
