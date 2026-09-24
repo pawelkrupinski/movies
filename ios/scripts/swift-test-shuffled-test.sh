@@ -16,7 +16,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 printf '\033[36m▸\033[0m swift-test-shuffled.sh\n'
 
-shim="$(mktemp -d -t swift-test-shuffled-shim)"
+shim="$(mktemp -d)"
 trap 'rm -rf "$shim"' EXIT
 # `swift build` and `swift test list` answer from SHIM_TESTS; `swift test
 # --filter <pattern>` reports by the test the pattern names: *Ghost* matches

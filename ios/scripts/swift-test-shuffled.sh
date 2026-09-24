@@ -24,7 +24,7 @@ ordered="$(printf '%s\n' "$tests" | seeded_order "$seed")"
 count="$(printf '%s\n' "$ordered" | wc -l | tr -d ' ')"
 echo "swift-test-shuffled: seed $seed — $count cases, each alone — reproduce with ios/scripts/swift-test-shuffled.sh $seed"
 
-log="$(mktemp -t swift-test-shuffled)"
+log="$(mktemp)"
 failed=()
 while IFS= read -r test; do
     pattern="^$(printf '%s' "$test" | sed 's/[.[\*^$()+?{}|]/\\&/g')\$"
