@@ -41,7 +41,6 @@ class WarmResolutionCacheSpec extends AnyFlatSpec with Matchers {
    *  determinism specs use (`ScrapeOrderDeterminismSpec`), for the same reason. */
   private class CitySlice extends FixtureTestWiring(Fixture) {
     override def scrapeCities: Set[String] = Set("poznan")
-    override lazy val backgroundBudget: tools.ExecutionBudget = new tools.SameThreadExecutionBudget
   }
 
   /** Production's cache, with an in-memory store where production keeps a Mongo collection.
@@ -61,8 +60,24 @@ class WarmResolutionCacheSpec extends AnyFlatSpec with Matchers {
     w
   }
 
+  /** Every row, with its id replaced by its stored KEY. A film's id is opaque and permanent —
+   *  it is minted from whichever spelling is seen FIRST and a fold keeps it (see `FilmId`) —
+   *  so two runs whose parallel enrichment lands in different orders legitimately id the same
+   *  film differently ('Nowa fala' vs 'Unlimited Show - Nowa Fala', tmdbId 1254808:
+   *  `SharedTmdbIdArrivalOrderSpec`). Comparing ids made this spec fail one run in five on
+   *  that alone; the key and everything else must still agree exactly. */
   private def corpus(w: FixtureTestWiring): Seq[StoredMovieRecord] =
-    w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
+    w.movieRepository.findAll().map(r => r.copy(id = FilmId(r.key(w.movieRepository.normalizer))))
+      .sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
+
+  /** The read model's cards, re-addressed from film id to stored key the same way. */
+  private def readModel(w: FixtureTestWiring) = {
+    val keyOf = w.movieRepository.findAll().map(r => r.id.value -> r.key(w.movieRepository.normalizer)).toMap
+    w.readModelRepository.findAllMovies().map { m =>
+      val (film, variant) = m._id.span(_ != '~')
+      m.copy(_id = keyOf.getOrElse(film, film) + variant)
+    }.sortBy(_._id)
+  }
 
   /** Every field that moved, per film — `CorpusDiff.records` compares only the fields a
    *  scrape moves, and what a resolution writes (its basis, its attempt) is not among them. */
@@ -91,7 +106,7 @@ class WarmResolutionCacheSpec extends AnyFlatSpec with Matchers {
       warmCorpus shouldBe coldCorpus
     }
     withClue("memoising the resolutions changed the read model the site serves: ") {
-      warm.readModelRepository.findAllMovies().sortBy(_._id) shouldBe cold.readModelRepository.findAllMovies().sortBy(_._id)
+      readModel(warm) shouldBe readModel(cold)
     }
   }
 
