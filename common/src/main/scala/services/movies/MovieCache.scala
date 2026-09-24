@@ -568,14 +568,16 @@ class CaffeineMovieCache(
       // `clean` may carry stripped slots (folds/canonicalize read from the stripped cache);
       // `upsert` re-stitches those from the film's screenings so a full write never deletes them.
       val outcome = repository.upsert(id, key, clean)
-      if (outcome.failed) {
-        // …and a write that FAILED leaves the cache as it was before it. Kept, the unwritten
-        // row made every later identical scrape diff as a no-op (`putIfPresent`'s write guard
-        // compares against it), so the write was never retried: on 2026-09-24 a codec bug
-        // failed 34 upserts over ~6h and two new films never reached the site until a restart.
-        // Rolled back, the next scrape finds the row as Mongo has it — absent for a new film,
-        // so it `put`s again — and retries. Only if the entry is still the one written here:
-        // a concurrent writer or an eviction may have replaced it since. The failure itself is
+      if (outcome.failed || outcome == WriteOutcome.IdentityHeld) {
+        // …and a write that FAILED — or that `movies` DECLINED because another document holds
+        // the key or tmdbId, which writes nothing just the same — leaves the cache as it was
+        // before it. Kept, the unwritten row made every later identical scrape diff as a no-op
+        // (`putIfPresent`'s write guard compares against it), so the write was never retried:
+        // on 2026-09-24 a codec bug failed 34 upserts over ~6h and two new films never reached
+        // the site until a restart. Rolled back, the next scrape finds the row as Mongo has it
+        // — absent for a new film, so it `put`s again — and retries (a held identity is usually
+        // a merge's losers, gone by then). Only if the entry is still the one written here: a
+        // concurrent writer or an eviction may have replaced it since. A failure itself is
         // logged and counted by the repository.
         prior match {
           case Some(previous) => if (positive.asMap().replace(key, cached, previous)) corpusIndex.put(key, previous, id)
@@ -1215,11 +1217,14 @@ class CaffeineMovieCache(
                 mergeMetrics.recordRekey(reason)
                 logger.info(s"retitle ${StoredMovieRecord.keyFor(oldKey)} -> ${StoredMovieRecord.keyFor(newKey)} ($id, $reason)")
               }
-              // A retitle whose write FAILED is still stored under the old key: put the row
-              // back there, or the cache holds it under neither key while Mongo holds it under
-              // the old one — and a scrape standing on the new key then strips the old row's
-              // slots as if the retitle had landed.
-              if (putAs(newKey, updated, id).failed && oldKey != newKey && !positive.asMap().containsKey(oldKey))
+              // A retitle whose write did not land — it failed, or it was declined and the
+              // new key does not hold this film — is still stored under the old key: put the
+              // row back there, or the cache holds it under neither key while Mongo holds it
+              // under the old one, and a scrape standing on the new key then strips the old
+              // row's slots as if the retitle had landed.
+              val outcome = putAs(newKey, updated, id)
+              if (outcome != WriteOutcome.Written && oldKey != newKey && !corpusIndex.idOf(newKey).contains(id) &&
+                  !positive.asMap().containsKey(oldKey))
                 resident.foreach(store(oldKey, _, id))
           }
       }

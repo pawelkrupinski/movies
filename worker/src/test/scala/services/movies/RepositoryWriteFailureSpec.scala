@@ -63,6 +63,40 @@ class RepositoryWriteFailureSpec extends AnyFlatSpec with Matchers with LoneElem
     cache.get(key) should not be empty
   }
 
+  // Declined is not written either: `movies` refused the row because another document holds
+  // its key or tmdbId. Kept resident, the unwritten row made every identical re-scrape diff as a
+  // no-op, exactly as a thrown write did — so it is rolled back the same way.
+  "a new film whose upsert is declined for a held identity" should "be rolled out of the cache, and written by the next identical scrape" in {
+    val repository = new IdentityHeldMovieRepository
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = specClock)
+    val key        = cache.keyOf("Nowy Film", Some(2026))
+
+    cache.recordCinemaScrape(Multikino, Seq(listing("Nowy Film")))
+
+    withClue("a row the store declined must not stay resident: ")(cache.get(key) shouldBe None)
+    repository.findAll() shouldBe empty
+
+    repository.declining = false
+    cache.recordCinemaScrape(Multikino, Seq(listing("Nowy Film")))
+
+    withClue("the identical re-scrape must retry the write, not skip it: ")(
+      repository.findAll().map(_.title) shouldBe Seq("Nowy Film"))
+  }
+
+  "a retitle whose write is declined for a held identity" should "leave the row resident under its old key" in {
+    val repository = new IdentityHeldMovieRepository
+    repository.declining = false
+    val cache  = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = specClock)
+    val before = cache.keyOf("Mroz", None)
+    cache.put(before, MovieRecord(imdbId = Some("tt0000001")))
+
+    repository.declining = true
+    cache.rekey(before, cache.keyOf("Mroz", Some(2026)), identity, RekeyReason.ResolvedYear)
+
+    withClue("Mongo still holds the row under its old key, so the cache must too: ")(
+      cache.get(before).flatMap(_.imdbId) shouldBe Some("tt0000001"))
+  }
+
   "an existing film whose new slot's write throws" should "keep the pre-update row, and land the slot on the next identical scrape" in {
     val metrics    = new RecordingWriteMetrics
     val slots      = new ThrowingSlotsRepository(metrics)

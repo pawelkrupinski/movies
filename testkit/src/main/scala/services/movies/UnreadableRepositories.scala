@@ -120,6 +120,19 @@ class UnreadableByIdMovieRepository(seed: Seq[(String, Option[Int], MovieRecord)
     if (failing) (None, false) else super.findByKeyChecked(key)
 }
 
+/** A [[MovieRepository]] whose whole-record `upsert` is DECLINED while `declining` — what
+ *  `MongoMovieRepository.upsert` answers when another document already holds the key or
+ *  tmdbId ([[WriteOutcome.IdentityHeld]]): nothing threw, and nothing was written. Every other
+ *  operation is real; `canMoveFilm` false makes every film move fail, as a degraded Mongo does. */
+class IdentityHeldMovieRepository extends InMemoryMovieRepository with FailsOnPurpose {
+  @volatile var declining: Boolean   = true
+  @volatile var canMoveFilm: Boolean = true
+  override def upsert(film: FilmId, key: CacheKey, e: MovieRecord): WriteOutcome =
+    if (declining) WriteOutcome.IdentityHeld else super.upsert(film, key, e)
+  override def moveFilm(oldFilm: FilmId, newFilm: FilmId): Boolean =
+    oldFilm == newFilm || (canMoveFilm && super.moveFilm(oldFilm, newFilm))
+}
+
 /** The exception a write THROWS in the doubles below — the 2026-09-24 incident's shape, a
  *  codec that could not encode the document. */
 private[movies] object SimulatedCodecFailure {

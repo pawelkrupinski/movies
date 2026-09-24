@@ -17,9 +17,11 @@ import scala.util.control.NonFatal
  * new films never reached the site until a restart, and no metric moved.
  *
  *  - [[WriteOutcome.Written]] — the write landed, or the store already held exactly this.
- *  - [[WriteOutcome.Declined]] — the store deliberately did not write, and repeating the
- *    identical write would be declined again: another document holds the key, the client
- *    is closing, no store is configured. Not a failure; nothing is counted or rolled back.
+ *  - [[WriteOutcome.Declined]] — the store deliberately did not write: another document
+ *    holds the key, the client is closing, no store is configured. Not a failure, so nothing
+ *    is counted — but nothing was written either, so no caller may treat it as landed, and
+ *    `MovieCache` rolls a row `movies` declined for a held identity back out of the cache
+ *    (the holder is usually a merge's loser, gone by the next attempt).
  *  - [[WriteOutcome.Failed]] — the write threw. Counted by
  *    `kinowo_worker_repository_write_failed_total`, and a caller that has already updated
  *    an in-memory copy must roll it back so the next identical write is retried.
