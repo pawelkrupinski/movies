@@ -208,7 +208,13 @@ class InMemoryMovieRepository(
     val now  = clock.instant()
     val plan = MoviesUpsert.plan(id, storedKey, e, restitched, slotsLanded, stripFor,
       scala.util.Success(previous.map(p => StoredMovieDto.fromDomain(id, p.key(normalizer), p.record, now))), now)
-    if (!plan.unchanged || sideRowsOf(id) != sidesBefore) {
+    // Inline showtimes compared too: the document `plan` compares carries none, which is right
+    // when they live in `screenings` and wrong for a fake with no screenings store, where they
+    // are part of the row — a board coming back on screen is a change there. (`SourceData`'s
+    // own equality is showtime-agnostic by design, so the row cannot be compared whole.)
+    val inlineShowtimesMoved = screenings.isEmpty &&
+      !previous.map(_.record.data).map(ScreeningsSplit.showtimesOf).contains(ScreeningsSplit.showtimesOf(row.record.data))
+    if (!plan.unchanged || inlineShowtimesMoved || sideRowsOf(id) != sidesBefore) {
       put(id, row)
       notifyWatcher(id, t, y, e)
     }
