@@ -91,6 +91,9 @@ class ShareCardJanitor(
         .foreach(delete(_, PruneReason.Unreferenced))
       files.filter(file => file.kind == Kind.Base && !file.temp && old(file) && !baseOf(file.name))
         .foreach(delete(_, PruneReason.Unreferenced))
+      // First-publish markers only matter for a week; a film gone from the screens needs none.
+      store.publishedMarkers().filter { case (token, at, _) => at.isBefore(cutoff) && !tokens(token) }
+        .foreach { case (_, _, path) => java.nio.file.Files.deleteIfExists(path) }
     }
 
     val remaining = files.filterNot(file => deleted(file.path))

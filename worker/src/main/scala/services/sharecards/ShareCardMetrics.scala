@@ -78,7 +78,7 @@ object ShareCardMetrics {
       .help("Poster fetch + decode on a cache miss: ok, or failed (every candidate unreachable, oversized or undecodable).")
       .labelNames("country", "result").register(registry)
     private[ShareCardMetrics] val rescrapes = Counter.builder().name("kinowo_worker_share_cards_rescrape")
-      .help("Facebook re-scrape requests for film pages published before their card: sent, failed, or disabled (no app credentials).")
+      .help("Facebook re-scrape requests for a film's pages — published before its card, or its card changed in its first week: sent, failed, or disabled (no app credentials).")
       .labelNames("country", "outcome").register(registry)
 
     for (c <- countryCodes) {

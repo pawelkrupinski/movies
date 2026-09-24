@@ -60,6 +60,7 @@ class ShareCardService(
   def readyToPublish(movie: ResolvedMovie): Boolean = existing(inputs(movie)).isDefined
 
   def requestFirstCard(movie: ResolvedMovie, until: Instant): Unit = {
+    store.markPublished(ShareCardFile.token(movie._id))
     enqueueRender(inputs(movie), Seq(ShareCardReason.NewFilm), first = true)
     // One task per hold, keyed by its end, so a hold renewed after a restart gets its own.
     queue.enqueue(TaskType.ReleaseShareCardHold, s"share-card-hold|${movie._id}|${until.toEpochMilli}",
@@ -81,11 +82,20 @@ class ShareCardService(
   private def candidatePosterHashes(next: ShareCardInputs): Seq[String] =
     if (next.posterUrls.isEmpty) Seq(ShareCardFile.posterHash(None)) else next.posterUrls.map(url => ShareCardFile.posterHash(Some(url)))
 
-  def onPendingCardLanded(filmId: String): Unit = {
+  def onPendingCardLanded(filmId: String): Unit = rescrape(filmId)
+
+  /** Ask Facebook to fetch the film's pages again — no sooner than [[RescrapeDelay]] from now, by
+   *  when the card the pages name is on `web_movies`, and spaced [[RescrapeSpacing]] from the last. */
+  private def rescrape(filmId: String): Unit = {
     queue.enqueue(TaskType.RescrapeShareCard, s"share-card-rescrape|$filmId", Map("filmId" -> filmId),
       submittedAt = clock.instant(), notBefore = Some(nextRescrapeSlot()))
     ()
   }
+
+  /** True for a film first published by the gate less than [[RecentWindow]] ago — the films people
+   *  are sharing, whose previews are worth refreshing when the card changes. */
+  private def recent(filmId: String): Boolean =
+    store.publishedAt(ShareCardFile.token(filmId)).exists(_.isAfter(clock.instant().minusMillis(RecentWindow.toMillis)))
 
   /** Why `next` needs a render: `poster` when the poster its card was drawn from is no longer a
    *  candidate, plus the drawn parts that moved since this process last saw the card (`template`
@@ -133,7 +143,9 @@ class ShareCardService(
     }
     card.foreach { name =>
       fingerprints.put(next.filmId, next.fingerprint)
-      lastKnown.put(next.filmId, name)
+      val before = Option(lastKnown.put(next.filmId, name))
+      // A recent film's card URL changed: its previews show the old one.
+      if (outcome == Outcome.Rendered && before.exists(_ != name) && recent(next.filmId)) rescrape(next.filmId)
     }
     metrics.render(outcome, reasons)
     outcome
@@ -178,7 +190,7 @@ class ShareCardService(
   // look like abuse to the Graph API.
   private var lastRescrapeSlot = Instant.EPOCH
   private def nextRescrapeSlot(): Instant = synchronized {
-    val slot = Seq(clock.instant(), lastRescrapeSlot.plusMillis(RescrapeSpacing.toMillis)).max
+    val slot = Seq(clock.instant().plusMillis(RescrapeDelay.toMillis), lastRescrapeSlot.plusMillis(RescrapeSpacing.toMillis)).max
     lastRescrapeSlot = slot
     slot
   }
@@ -194,6 +206,13 @@ object ShareCardService {
 
   /** At most one Facebook re-scrape every 10 seconds per process. */
   val RescrapeSpacing: FiniteDuration = 10.seconds
+
+  /** A re-scrape waits this long: the card's `web_movies` document is rewritten when its render task
+   *  completes, and Facebook must find the new URL, not the old. */
+  val RescrapeDelay: FiniteDuration = 1.minute
+
+  /** A card change re-scrapes a film's pages during its first week after first publication. */
+  val RecentWindow: FiniteDuration = 7.days
 
   def reasons(payload: Map[String, String]): Seq[String] =
     payload.get(ReasonsKey).toSeq.flatMap(_.split(',')).filter(ShareCardReason.all.contains) match {

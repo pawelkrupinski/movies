@@ -2284,8 +2284,8 @@
     },
     {
       "id": 41,
-      "title": "Facebook re-scrapes of films published before their card",
-      "description": "`kinowo_worker_share_cards_rescrape_total{outcome}`: when the first-publish gate times out, a film goes public with the fallback image and Facebook may cache that for a month; once its card lands the worker asks the Graph API to re-scrape the film's city pages. sent = requests made, failed = pages Facebook refused (retried), disabled = the worker has no FACEBOOK_APP_ID / FACEBOOK_APP_SECRET, so nothing was sent. Should be near zero: a steady line means cards are routinely slower than the hold.",
+      "title": "Facebook re-scrapes of film pages — pending cards landed, and recent films whose card changed",
+      "description": "`kinowo_worker_share_cards_rescrape_total{outcome}`: the worker asks the Graph API to re-scrape a film's city pages (a) when a film published without its card (the first-publish gate timed out, so Facebook may have cached the fallback for a month) finally gets one, and (b) when the card of a film in its first week after first publication changes (a ratings update, a new poster) -- those are the films people share. At most one request per 10 s per process, each at least a minute after the card changed. sent = requests made, failed = pages Facebook refused (retried), disabled = the worker has no FACEBOOK_APP_ID / FACEBOOK_APP_SECRET, so nothing was sent. A steady (a) line means cards are routinely slower than the hold.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",

@@ -31,12 +31,14 @@ class ShareCardStore(val root: Path) {
 
   private val posters = root.resolve(PosterDir)
   private val bases   = root.resolve(BaseDir)
+  private val published = root.resolve(PublishedDir)
 
   /** True when this process can write the directory — false in a test or dev JVM with no mount,
    *  which then runs without share cards. */
   def usable: Boolean = Try {
     Files.createDirectories(posters)
     Files.createDirectories(bases)
+    Files.createDirectories(published)
     Files.isDirectory(root) && Files.isWritable(root) && Files.isWritable(posters) && Files.isWritable(bases)
   }.getOrElse(false)
 
@@ -45,6 +47,25 @@ class ShareCardStore(val root: Path) {
   def basePath(key: String): Path   = bases.resolve(s"$key.jpg")
 
   def cardExists(name: String): Boolean = Files.isRegularFile(cardPath(name))
+
+  /** The empty file whose mtime is when the film with `token` was first published by the
+   *  first-publish gate (films that predate it have none). */
+  def publishedMarker(token: String): Path = published.resolve(token)
+
+  /** Record that the film with `token` is being published for the first time — the first call
+   *  wins, so the time is the first replica's. */
+  def markPublished(token: String): Unit =
+    try { Files.createFile(publishedMarker(token)); () }
+    catch { case _: java.nio.file.FileAlreadyExistsException => (); case _: IOException => () }
+
+  def publishedAt(token: String): Option[Instant] =
+    Try(Files.getLastModifiedTime(publishedMarker(token)).toInstant).toOption
+
+  /** Every first-publish marker: film token and when. */
+  def publishedMarkers(): Seq[(String, Instant, Path)] =
+    if (!Files.isDirectory(published)) Nil
+    else Using.resource(Files.list(published))(_.iterator.asScala.toList).flatMap(path =>
+      Try((path.getFileName.toString, Files.getLastModifiedTime(path).toInstant, path)).toOption)
 
   /** Every file in the directory and the poster cache, with the facts the janitor decides on. A
    *  file deleted by someone else mid-listing is skipped. */
@@ -87,6 +108,8 @@ object ShareCardStore {
   val PosterDir = ".posters"
   /** The card BASES' subdirectory (a card without its rating badges) — a dot directory too. */
   val BaseDir = ".base"
+  /** First-publish markers, one empty file per film — a dot directory too. */
+  val PublishedDir = ".published"
   val PosterExtension = "jpg"
   val TempSuffix = ".tmp"
 

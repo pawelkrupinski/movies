@@ -73,6 +73,16 @@ class ShareCardJanitorSpec extends AnyFlatSpec with Matchers {
     exists(card("fgone", "a")) shouldBe true
   }
 
+  it should "drop the first-publish marker of a film gone from the screens, and keep a live film's" in new Setup {
+    readModel.upsertMovie(movie("flive", card("flive", "a"))); readModel.upsertScreening(screening("flive"))
+    Seq("flive", "fgone").foreach { token =>
+      store.markPublished(token)
+      Files.setLastModifiedTime(store.publishedMarker(token), FileTime.from(old))
+    }
+    janitor().prune()
+    store.publishedMarkers().map(_._1) shouldBe Seq("flive")
+  }
+
   "The budget" should "count cards and posters together and evict the oldest unreferenced files first" in new Setup {
     readModel.upsertMovie(movie("flive", card("flive", "a"), posterUrl = "https://cdn.example/live.jpg"))
     readModel.upsertScreening(screening("flive"))

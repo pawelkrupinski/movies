@@ -42,9 +42,10 @@ object FacebookGraph {
 }
 
 /**
- * The `RescrapeShareCard` task's work: once a film published without its card (the first-publish
- * gate timed out) has one, ask Facebook to re-scrape each of its city pages, so the fallback image
- * it may have cached is replaced. Spaced out at enqueue ([[ShareCardService.RescrapeSpacing]]).
+ * The `RescrapeShareCard` task's work: ask Facebook to re-scrape each of a film's city pages, so a
+ * preview it cached is replaced — once a film published without its card (the first-publish gate
+ * timed out) has one, and when the card of a film in its first week changes. Spaced out at enqueue
+ * ([[ShareCardService.RescrapeSpacing]]).
  */
 class ShareCardRescraper(graph: Option[FacebookGraph], reader: ReadModelReader, country: Country,
                          metrics: ShareCardMetrics) extends Logging {
