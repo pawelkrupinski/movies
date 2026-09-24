@@ -46,6 +46,12 @@ object OgCardRenderer {
   // the whole card height, so it's as large as a 2:3 poster can be here.
   private val PosterH = Height               // 630
   private val PosterW = (Height * 2) / 3     // 420 — 2:3 at full height
+
+  /** The LARGEST box any card cover-scales a poster into (the film card's full-bleed column; the
+   *  city card's columns are smaller). [[PosterImageLoader]] decodes posters subsampled to the
+   *  smallest size that still covers it, so no card ever upscales a poster. */
+  val PosterSlotWidth: Int  = PosterW
+  val PosterSlotHeight: Int = PosterH
   private val Gutter  = 48
   private val PosterTextX = PosterW + Gutter // text column when a poster is shown
 
