@@ -2,6 +2,7 @@ package pl.kinowo.auth
 
 import pl.kinowo.runCatchingCancellable
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
@@ -114,8 +115,12 @@ class StateSyncService(
     private fun onLogin() {
         syncJob?.cancel()
         syncJob = scope.launch {
+            // Observe local picks BEFORE the login reconcile (UNDISPATCHED, so
+            // it has subscribed by the time the reconcile starts): a pick made
+            // while its fetch is in flight must already be pending, or the
+            // account's older value would overwrite it. Mirrors iOS.
+            launch(start = CoroutineStart.UNDISPATCHED) { observeLanguage() }
             reconcileCurrentCountry() // also reconciles language — see its doc
-            observeLanguage()
         }
     }
 

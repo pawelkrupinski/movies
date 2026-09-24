@@ -609,6 +609,29 @@ class StateSyncServiceTest {
         assertEquals("de", languageClient.remote)
     }
 
+    /** A pick made while the LOGIN reconcile's fetch is in flight: the
+     *  observer used to start only after that reconcile, so the pick was never
+     *  marked pending and the account's older value overwrote it. Mirrors iOS. */
+    @Test
+    fun aPickDuringTheLoginFetchIsKeptAndPushed() = runTest(UnconfinedTestDispatcher()) {
+        languageClient.remote = "de"
+        val gate = CompletableDeferred<Unit>()
+        languageClient.beforeFetch = { gate.await() }
+        startService()
+        login()
+        runCurrent()
+
+        prefs.setLanguageTag("es")
+        runCurrent()
+        languageClient.beforeFetch = {}
+        gate.complete(Unit)
+        advanceTimeBy(1_000)
+        runCurrent()
+
+        assertEquals("es", prefs.languageState.value)
+        assertEquals("es", languageClient.remote)
+    }
+
     /** A genuine logout forgets the unsent pick — the next sign-in may be a
      *  different account, which must not inherit it. */
     @Test

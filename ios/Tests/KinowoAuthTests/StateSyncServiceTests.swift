@@ -288,6 +288,26 @@ final class StateSyncServiceTests: XCTestCase {
         _ = sync
     }
 
+    /// A pick made while the LOGIN reconcile's fetch is in flight: the
+    /// observers used to start only after that reconcile, so the pick was
+    /// never marked pending and the account's older value overwrote it.
+    func testAPickDuringTheLoginFetchIsKeptAndPushed() async throws {
+        languageClient.remote = "de"
+        let gate = AsyncGate()
+        languageClient.beforeFetch = { await gate.wait() }
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.languageClient.fetchesStarted == 1 }
+
+        prefs.setLanguage("es")
+        languageClient.beforeFetch = nil
+        await gate.open()
+
+        try await waitUntil { self.languageClient.remote == "es" }
+        XCTAssertEqual(prefs.selectedLanguage, "es")
+        _ = sync
+    }
+
     /// A genuine logout forgets the unsent pick — the next sign-in may be a
     /// different account, which must not inherit it.
     func testLogoutForgetsAnUnsentLanguagePick() async throws {
@@ -696,8 +716,10 @@ final class FakeLanguageClient: LanguageClient {
     /// Awaited at the start of a fetch — holds it "in flight".
     var beforeFetch: (() async -> Void)?
     private(set) var pushesStarted = 0
+    private(set) var fetchesStarted = 0
 
     func fetch() async throws -> String? {
+        fetchesStarted += 1
         if let beforeFetch { await beforeFetch() }
         return remote
     }

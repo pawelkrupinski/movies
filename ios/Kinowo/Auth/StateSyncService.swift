@@ -111,9 +111,12 @@ final class StateSyncService: ObservableObject {
     private func onLogin() {
         syncTask = Task { [weak self] in
             guard let self else { return }
+            // Observe local edits BEFORE the login reconcile: a pick or hide
+            // made while its fetch is in flight must already be pending, or
+            // the account's older state would overwrite it.
+            self.observeLocalChanges()
             await self.reconcileLanguage()
             await self.reconcile(country: self.prefs.selectedCountry.code)
-            self.observeLocalChanges()
             self.observeCountryChanges()
         }
     }
