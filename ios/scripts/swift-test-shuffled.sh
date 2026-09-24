@@ -14,14 +14,13 @@
 set -uo pipefail
 seed="${1:?usage: swift-test-shuffled.sh <seed>}"
 package="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$package/../scripts/seeded-order.sh"
 
 swift build --package-path "$package" --build-tests || exit 1
 tests="$(swift test list --package-path "$package" --skip-build)" || exit 1
 [ -n "$tests" ] || { echo "swift-test-shuffled: no tests listed" >&2; exit 1; }
 
-# A seeded order: awk's srand(seed) keys each case, sort orders by the key.
-ordered="$(printf '%s\n' "$tests" | awk -v seed="$seed" 'BEGIN { srand(seed) } NF { printf "%.15f\t%s\n", rand(), $0 }' \
-    | sort -n | cut -f2-)"
+ordered="$(printf '%s\n' "$tests" | seeded_order "$seed")"
 count="$(printf '%s\n' "$ordered" | wc -l | tr -d ' ')"
 echo "swift-test-shuffled: seed $seed — $count cases, each alone — reproduce with ios/scripts/swift-test-shuffled.sh $seed"
 

@@ -15,13 +15,13 @@ set -uo pipefail
 seed="${1:?usage: devtest-shuffled.sh <seed> [--skip-live-youtube]}"
 shift
 android="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$android/../scripts/seeded-order.sh"
 sources="$android/app/src/androidTest/java"
 
 # Every file with a JUnit @Test, as a class name (one top-level test class per file).
 classes="$(grep -rl --include='*.kt' '@Test' "$sources" | sed -e "s|^$sources/||" -e 's|\.kt$||' -e 's|/|.|g' | sort)"
 [ -n "$classes" ] || { echo "devtest-shuffled: no androidTest classes under $sources" >&2; exit 1; }
-ordered="$(printf '%s\n' "$classes" | awk -v seed="$seed" 'BEGIN { srand(seed) } NF { printf "%.15f\t%s\n", rand(), $0 }' \
-    | sort -n | cut -f2-)"
+ordered="$(printf '%s\n' "$classes" | seeded_order "$seed")"
 count="$(printf '%s\n' "$ordered" | wc -l | tr -d ' ')"
 echo "devtest-shuffled: seed $seed — $count classes, each alone — reproduce with android/scripts/devtest-shuffled.sh $seed $*"
 
