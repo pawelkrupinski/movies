@@ -369,9 +369,10 @@ class ReadModelProjector(
     // The screenings rows as they are before this sweep, read once for the venue heal and
     // the prune alike. A venue the source lists (a cinema slot) with no row here is healed
     // like a missing card: a slot written after the row's last projection stayed invisible
-    // while nothing else touched the row. A read that fails heals no venue this tick.
+    // while nothing else touched the row. A read that fails — or stops short, which the keyset
+    // scan reports as EMPTY — heals no venue this tick: "no rows" is not "could not read them".
     val screeningRefsBefore: Option[Seq[ScreeningRef]] =
-      if (reproject) None else Try(reader.findAllScreeningRefs()).toOption
+      if (reproject) None else Try(reader.findAllScreeningRefsChecked()).toOption.collect { case (refs, true) => refs }
     val screeningsBefore = screeningRefsBefore.map(_.map(_._id).toSet)
     val healed = scala.collection.mutable.ArrayBuffer.empty[String]
     var healChecks = 0
@@ -561,7 +562,7 @@ class ReadModelProjector(
   private def healMissingCards(): Unit = Try {
     val (cardsSeq, cardsRead) = reader.findAllMovieIdsChecked()
     val cards = cardsSeq.toSet
-    val venues = Try(reader.findAllScreeningRefs().map(_._id).toSet).toOption
+    val venues = Try(reader.findAllScreeningRefsChecked()).toOption.collect { case (refs, true) => refs.map(_._id).toSet }
     // The check reads slots only (ids derive from the slot titles, never from a
     // showtime); the few rows it names are then read whole, showtimes included. An
     // incomplete card read heals nothing: "no cards" and "could not read" differ.

@@ -142,19 +142,14 @@ class MongoReadModelRepository(
    * largest collection we hold (a country's showtimes, hundreds of thousands of
    * rows), so it is the likeliest of all of them to hit it.
    *
-   * An incomplete scan yields `Seq.empty`, which is the SAFE direction here: the
-   * prune deletes read-model rows absent from the source, so fewer ids means fewer
-   * deletions, never spurious ones. It is logged loudly all the same, because the
-   * quiet version of this failure is a prune that stops working and lets stale
-   * cards accumulate with nothing but a `warn` to show for it.
+   * An incomplete scan yields `Seq.empty` and says so (`false`). Empty is the SAFE
+   * direction for the prune — it deletes read-model rows absent from the source, so
+   * fewer ids means fewer deletions — but NOT for a heal, which reads empty as "every
+   * card / venue is missing" and rewrites the corpus; so every caller gets the flag.
+   * It is logged loudly all the same, because the quiet version of this failure is a
+   * prune that stops working and lets stale cards accumulate with nothing but a `warn`
+   * to show for it.
    */
-  private def pagedIds[A](
-    collection: Option[MongoCollection[?]],
-    label:      String,
-    projection: org.bson.conversions.Bson
-  )(decode: BsonDocument => A): Seq[A] =
-    pagedIdsChecked(collection, label, projection)(decode)._1
-
   private def pagedIdsChecked[A](
     collection: Option[MongoCollection[?]],
     label:      String,
@@ -187,8 +182,8 @@ class MongoReadModelRepository(
   override def findAllMovieIdsChecked(): (Seq[String], Boolean) =
     pagedIdsChecked(movies, "ReadModelRepository.findAllMovieIds", Projections.include("_id"))(_.getString("_id").getValue)
 
-  override def findAllScreeningRefs(): Seq[ScreeningRef] =
-    pagedIds(screenings, "ReadModelRepository.findAllScreeningRefs", Projections.include("_id", "filmId"))(d =>
+  override def findAllScreeningRefsChecked(): (Seq[ScreeningRef], Boolean) =
+    pagedIdsChecked(screenings, "ReadModelRepository.findAllScreeningRefs", Projections.include("_id", "filmId"))(d =>
       ScreeningRef(d.getString("_id").getValue, d.getString("filmId").getValue))
 
   // Server-side document counts — the read model's cheap integrity probe. These

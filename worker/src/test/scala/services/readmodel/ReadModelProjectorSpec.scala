@@ -1098,6 +1098,32 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     projector.stop()
   }
 
+  // …AND THE SAME FOR THE SCREENINGS. `findAllScreeningRefs` returns EMPTY when its keyset scan
+  // gives up (MongoReadModelRepository.pagedIds), and the venue heals took that as "no venue has
+  // a row": every ready row healed, each venue's memo dropped and its row rewritten — the whole
+  // `web_screenings` collection (113k rows in the US) in one sweep, each counted as a heal.
+  "a screenings read that did not complete" should "heal no venue" in {
+    val repository = new InMemoryMovieRepository()
+    val blind = new InMemoryReadModelRepository() {
+      override def findAllScreeningRefsChecked(): (Seq[ScreeningRef], Boolean) = (Seq.empty, false)
+      override def findAllScreeningRefs(): Seq[ScreeningRef] = Seq.empty
+    }
+    val m = new RecordingMetrics()
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    val previous = new ReadModelProjector(repository, blind, blind)
+    previous.onMovieUpsert(repository.findAll().head)
+    previous.stop()
+    val before = blind.screeningUpserts.size
+    val projector = new ReadModelProjector(repository, blind, blind, m, scheduler = new CapturingScheduler)
+
+    projector.start()                                // boot heal: cannot see the venues → nothing
+    projector.pruneOrphans()                         // sweep heal: the same
+
+    blind.screeningUpserts should have size before
+    m.heals.filter(_._2 > 0) shouldBe empty
+    projector.stop()
+  }
+
   "a screenings write that throws" should "leave the card un-remembered so the next projection retries it" in {
     val repository = new InMemoryMovieRepository()
     val flaky = new InMemoryReadModelRepository() {

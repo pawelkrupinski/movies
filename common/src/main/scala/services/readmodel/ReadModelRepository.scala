@@ -74,7 +74,13 @@ trait ReadModelReader {
    *  derives from [[findAllScreenings]]; the Mongo store projects `{_id, filmId}`
    *  so 6k+ screening documents collapse to a few id strings instead of full
    *  `CityScreening` payloads on the heap. */
-  def findAllScreeningRefs(): Seq[ScreeningRef] = findAllScreenings().map(s => ScreeningRef(s._id, s.filmId))
+  def findAllScreeningRefs(): Seq[ScreeningRef] = findAllScreeningRefsChecked()._1
+
+  /** Like [[findAllScreeningRefs]] but says whether the READ was complete — the venue heals'
+   *  counterpart of [[findAllMovieIdsChecked]]: an incomplete scan returns empty, which a heal
+   *  must not read as "no venue has a row". The in-memory store cannot fail. */
+  def findAllScreeningRefsChecked(): (Seq[ScreeningRef], Boolean) =
+    (findAllScreenings().map(s => ScreeningRef(s._id, s.filmId)), true)
 
   def countMovies(): Long
   def countScreenings(): Long
