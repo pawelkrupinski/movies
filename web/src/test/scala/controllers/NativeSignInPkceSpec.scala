@@ -88,7 +88,31 @@ class NativeSignInPkceSpec extends AnyFlatSpec with Matchers {
     exchange(ctl, Json.obj("code" -> deepLinkCode(ctl, ""), "verifier" -> Verifier)) shouldBe UNAUTHORIZED
   }
 
-  "/auth/:provider/start" should "refuse a challenge that is not a base64url SHA-256" in {
+  // Android's Custom Tab shares Chrome's cookie jar: a native flow abandoned at
+  // the provider leaves its keys in the session, and the next start in that
+  // browser must not inherit them.
+  "/auth/:provider/start" should "not let an abandoned native flow's keys ride into a later web sign-in" in {
+    val ctl       = controller()
+    val abandoned = session(ctl.start("google")(FakeRequest("GET",
+      s"/auth/google/start?platform=android&challenge=${challengeOf(Verifier)}")))
+    val web   = ctl.start("google")(FakeRequest("GET", "/auth/google/start").withSession(abandoned.data.toSeq*))
+    val sess  = session(web)
+    sess.get("mobileClient") shouldBe None
+    sess.get(AuthController.MobileChallengeKey) shouldBe None
+    val back = ctl.callback("google")(FakeRequest("GET", s"/auth/google/callback?code=C&state=${sess.get("oauthState").value}")
+      .withSession(sess.data.toSeq*))
+    redirectLocation(back).value should not startWith "kinowo://"
+  }
+
+  it should "not stamp an abandoned flow's challenge on a later challenge-less native code" in {
+    val ctl       = controller()
+    val abandoned = session(ctl.start("google")(FakeRequest("GET",
+      s"/auth/google/start?platform=android&challenge=${challengeOf(Verifier)}")))
+    session(ctl.start("google")(FakeRequest("GET", "/auth/google/start?platform=android")
+      .withSession(abandoned.data.toSeq*))).get(AuthController.MobileChallengeKey) shouldBe None
+  }
+
+  it should "refuse a challenge that is not a base64url SHA-256" in {
     val ctl = controller()
     for (bad <- Seq("short", "=" * 43, "a" * 44))
       status(ctl.start("google")(FakeRequest("GET", s"/auth/google/start?platform=android&challenge=$bad"))) shouldBe BAD_REQUEST

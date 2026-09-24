@@ -104,8 +104,11 @@ class AuthController(
         if (challenge.exists(c => !AuthExchangeCodes.ChallengePattern.matches(c)))
           BadRequest("challenge must be base64url(SHA-256(verifier)), unpadded")
         else
+          // A start is a NEW flow: an earlier native one abandoned at the
+          // provider must not lend it `mobileClient` or its challenge — Android's
+          // Custom Tab shares the browser's cookie jar with ordinary web visits.
           Redirect(p.authUrl(state, redirectUri))
-            .withSession(request.session
+            .withSession(request.session - "mobileClient" - AuthController.MobileChallengeKey
               + ("oauthState"     -> state)
               + ("oauthProvider"  -> provider)
               + ("oauthStateTimestamp"   -> clock.instant().toEpochMilli.toString)
