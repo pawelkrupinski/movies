@@ -33,9 +33,11 @@ import ConcurrentFoldRaceHarness.RaceGroup
  * of transactions on a single-node local replica set collides as a transient `WriteConflict`
  * (retried long before this fix), never a clean post-commit `E11000`. They prove what they
  * honestly can — that the retry loop converges racing folds for one tmdbId to a single row with
- * every anchor's cinema, whichever error fires. `StagingFoldOutcomeSpec` pins the decision
- * itself. The merge-order test at the bottom is a second, non-racing way to the same error that
- * the retry could not fix: see its comment.
+ * every anchor's cinema, whichever error fires. The FORCED test at the bottom drives the prod
+ * interleaving deterministically (the winner commits inside the loser's planning read) and is
+ * the one that fails when the tmdbId retry is reverted; `StagingFoldOutcomeSpec` pins the pure
+ * decision alongside it. The merge-order test beside it is a second, non-racing way to the
+ * same error that the retry could not fix: see its comment.
  *
  * The concurrency plumbing (seed, barrier, thread, join, collect) lives in
  * `ConcurrentFoldRaceHarness`, shared with the three-way race below.
@@ -153,6 +155,57 @@ class StagingFoldConcurrentTmdbRaceIntegrationSpec extends AnyFlatSpec with Matc
       val (winnerTitle, loserTitle, _) = seedWinnerAndResolvingLoser(fold, tmdbId, "mergeorder")
       fold.folder().foldGroup(winnerTitle)
       noException should be thrownBy fold.folder().foldGroup(loserTitle)
+      assertOneFilmWithBothCinemas(fold, tmdbId)
+    }
+  }
+
+  // THE prod interleaving, forced rather than raced. The two race tests above cannot reproduce
+  // it: on a single-node replica set a sibling that commits AFTER the loser's snapshot always
+  // surfaces as a transient `WriteConflict` (retried long before a42086081), and one that
+  // commits BEFORE it is visible to the loser's sibling lookup, which then merges instead of
+  // inserting. Prod's `E11000 … index: tmdbId_1` needs the loser's reads to miss a row its
+  // write then collides with — a window a multi-node set's lagging majority point may open and
+  // a loopback single node does not (probed 2026-09-24: every in-transaction collision after
+  // the snapshot was a WriteConflict; test commands, and so failpoints, are off).
+  //
+  // So the harness drives the ORDER instead of hoping for it: the loser starts planning, the
+  // winner folds and commits inside the loser's planning read, and the loser's attempt then
+  // fails with the server's own duplicate-key error for that very tmdbId — raised by the real
+  // unique index, not constructed. What is under test is what `MongoStagingFolder` does next:
+  // before a42086081 it abandoned on attempt 1 and rethrew; it must abort, re-read with the
+  // winner visible, and merge into it.
+  it should "retry, not abandon, a fold whose write loses the tmdbId index to a sibling that " +
+    "committed while it was planning — and converge onto the winner's row" in {
+    FoldFixture.withFold("staging-fold-tmdb-race-e11000") { fold =>
+      import org.mongodb.scala.SingleObservableFuture
+      import org.mongodb.scala.bson.collection.immutable.Document
+      import services.movies.SingleCountryNormalizer.titleNormalizer
+      import services.movies.FilmId
+
+      val tmdbId = 424352
+      val (winnerTitle, loserTitle, _) = seedWinnerAndResolvingLoser(fold, tmdbId, "forcedrace")
+      val winnerRepo = fold.splitAwareRepository
+
+      // The loser reads its own unresolved row back through the repository mid-plan
+      // (`stitchedCinemaTitles`) — after its snapshot, before its write: that is where the
+      // winner gets to commit.
+      @volatile var armed = true
+      val loserRepo = new services.movies.MongoMovieRepository(Some(fold.db), fallbackToOwnInit = false,
+        normalizer = titleNormalizer, screenings = Some(fold.screenings), slots = Some(fold.slots)) {
+        override def findByIdChecked(id: FilmId) = {
+          if (armed) {
+            armed = false
+            fold.folder(winnerRepo).foldGroup(winnerTitle)
+            // The collision the loser's write now hits, as the server words it.
+            Await.result(fold.movies.insertOne(Document("_id" -> "__e11000-probe__", "tmdbId" -> tmdbId)).toFuture(), 10.seconds)
+            fail("the tmdbId unique index let a second document for one tmdbId in")
+          }
+          super.findByIdChecked(id)
+        }
+      }
+
+      noException should be thrownBy fold.folder(loserRepo).foldGroup(loserTitle)
+      withClue("the winner never got to commit mid-plan, so this asserted nothing: ") { armed shouldBe false }
       assertOneFilmWithBothCinemas(fold, tmdbId)
     }
   }
