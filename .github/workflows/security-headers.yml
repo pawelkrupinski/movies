@@ -5,9 +5,9 @@ name: Security headers (live)
 #   - no `Access-Control-Allow-Credentials: true` for a foreign Origin on /api/me (it once granted
 #     credentials to any origin);
 #   - HSTS max-age of at least a year (it was one week);
-#   - `Secure` on the session cookie, enforced once the repository variable
-#     REQUIRE_SECURE_SESSION_COOKIE is 'true' -- set it when KINOWO_SESSION_SECURE goes live;
-#     until then a missing `Secure` is a warning annotation.
+#   - `Secure` on the session cookie, enforced while the repository variable
+#     REQUIRE_SECURE_SESSION_COOKIE is 'true' (it is: KINOWO_SESSION_SECURE is live on both
+#     hosts); unset, a missing `Secure` is only a warning annotation.
 #
 # Header values are the one layer no test here renders: they are set by Play, Caddy and
 # Cloudflare together, on the real hosts only. So this is a synthetic check, not a unit test, and

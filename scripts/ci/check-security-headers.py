@@ -13,9 +13,9 @@ What it asserts, per host (kinowo.net, showtimes.cc):
      public API -- and browsers refuse to combine `*` with credentials anyway.
   2. `Strict-Transport-Security` with `max-age` of at least one year, on every response checked.
   3. The session cookie (`PLAY_SESSION`, set by /auth/google/start) carries `Secure` -- ENFORCED
-     only when REQUIRE_SECURE_SESSION_COOKIE=true, because `KINOWO_SESSION_SECURE` is not live yet;
-     until then a missing `Secure` is printed as a GitHub warning, so flipping the variable is
-     the whole of turning it on.
+     when REQUIRE_SECURE_SESSION_COOKIE=true, which the workflow sets now that
+     `KINOWO_SESSION_SECURE` is live on both hosts; without it a missing `Secure` is only a
+     GitHub warning (for a run against a host that has not turned it on).
 
 AN UNREACHABLE ORIGIN IS A FAILURE, NOT A PASS. GitHub's runners are Cloudflare Bot-Fight-Mode
 material on both zones (2026-09-15), and a challenge page carries none of the headers checked
@@ -145,7 +145,7 @@ def main(argv):
         failures += host_failures
         warnings += host_warnings
     for warning in warnings:
-        print("::warning::%s (set REQUIRE_SECURE_SESSION_COOKIE=true once KINOWO_SESSION_SECURE is live)" % warning)
+        print("::warning::%s (REQUIRE_SECURE_SESSION_COOKIE is not set, so this is not enforced)" % warning)
     for failure in failures:
         print("::error::%s" % failure)
     if not failures:

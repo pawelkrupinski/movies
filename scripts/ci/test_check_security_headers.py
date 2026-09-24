@@ -29,8 +29,8 @@ API_ME_CREDENTIALED = [
 ]
 # A Cloudflare Bot-Fight challenge: none of the headers checked, so it must NOT pass.
 CHALLENGE = [("cf-mitigated", "challenge"), ("content-type", "text/html")]
-# /auth/google/start today: session cookie without Secure (KINOWO_SESSION_SECURE not yet live).
-SESSION_TODAY = [
+# /auth/google/start before KINOWO_SESSION_SECURE went live: session cookie without Secure.
+SESSION_WITHOUT_SECURE = [
     ("strict-transport-security", "max-age=31536000"),
     ("set-cookie", "PLAY_SESSION=eyJ0; Max-Age=7776000; Expires=Tue, 22 Dec 2026 14:45:27 GMT; SameSite=Lax; Path=/; HTTPOnly"),
 ]
@@ -77,12 +77,12 @@ class Hsts(unittest.TestCase):
 
 class SessionCookie(unittest.TestCase):
     def test_not_secure_is_a_warning_until_required(self):
-        failures, warnings = check.evaluate_session_cookie("start", 303, SESSION_TODAY, require_secure=False)
+        failures, warnings = check.evaluate_session_cookie("start", 303, SESSION_WITHOUT_SECURE, require_secure=False)
         self.assertEqual(failures, [])
         self.assertEqual(len(warnings), 1)
 
     def test_not_secure_fails_once_required(self):
-        failures, warnings = check.evaluate_session_cookie("start", 303, SESSION_TODAY, require_secure=True)
+        failures, warnings = check.evaluate_session_cookie("start", 303, SESSION_WITHOUT_SECURE, require_secure=True)
         self.assertEqual(len(failures), 1)
         self.assertIn("not Secure", failures[0])
 
@@ -90,7 +90,7 @@ class SessionCookie(unittest.TestCase):
         self.assertEqual(check.evaluate_session_cookie("start", 303, SESSION_SECURE, require_secure=True), ([], []))
 
     def test_a_missing_session_cookie_fails_rather_than_passing(self):
-        failures, _ = check.evaluate_session_cookie("start", 303, SESSION_TODAY[:1], require_secure=True)
+        failures, _ = check.evaluate_session_cookie("start", 303, SESSION_WITHOUT_SECURE[:1], require_secure=True)
         self.assertEqual(len(failures), 1)
 
     def test_a_non_redirect_fails(self):
