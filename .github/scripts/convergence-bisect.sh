@@ -135,12 +135,16 @@ EOF
     else
         verdict "Stopped after $(cat "$counter") replay(s) (cap: ${MAX_STEPS:-3} replays, ${BUDGET_MINUTES:-90} min). The first bad commit is one of:" ""
         # shellcheck disable=SC2086
+        # A skipped commit stays listed: the step could not test it, so it may well be the
+        # first bad one (bisect itself names it among the candidates when only skips remain).
         git rev-list --first-parent "$newest_bad" $goods -- "${specs[@]}" | while read -r sha; do
-            if printf '%s\n' "$skips" | grep -qx "$sha"; then continue; fi
-            verdict "- $(git log -1 --format='`%h` %s (%an)' "$sha")"
+            local note=""
+            if printf '%s\n' "$skips" | grep -qx "$sha"; then note=" — untested (the sample could not run here)"; fi
+            verdict "- $(git log -1 --format='`%h` %s (%an)' "$sha")$note"
         done
     fi
     git bisect reset >/dev/null 2>&1 || true
+    rm -f "$counter" "$wrapper"
 }
 
 finish_exact() {

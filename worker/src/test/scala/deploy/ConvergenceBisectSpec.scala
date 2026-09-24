@@ -25,8 +25,9 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers {
   private val PathsFile  = Paths.get(".github/convergence-paths.txt").toAbsolutePath
 
   /** A main line of six pipeline commits with two app-only commits between them; the bug
-   *  lands in pipeline commit number `badAt` (1-based) and stays. */
-  private final class History(badAt: Int) {
+   *  lands in pipeline commit number `badAt` (1-based) and stays. The step cannot test the
+   *  pipeline commits numbered in `untestable` (exit 125, bisect's "skip"). */
+  private final class History(badAt: Int, untestable: Set[Int] = Set.empty) {
     val repo = new ScratchGitRepository
     val good: String = repo.commit("base", "worker/src/main/State.scala" -> "ok\n")
     private val pipeline = (1 to 6).map { n =>
@@ -42,8 +43,11 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers {
     /** Exits 1 (bad) once the bug is in, 0 before; logs the subject of every commit it
      *  was asked to replay. */
     val steps: Path = Files.createTempFile("bisect-steps", ".log")
+    private val skipped =
+      if (untestable.isEmpty) "__none__" else untestable.map(n => s"\"pipeline change $n\"").mkString("|")
     val step: Path = repo.script("step.sh",
       s"""git log -1 --format=%s >> "$steps"
+         |case "$$(git log -1 --format=%s)" in $skipped) exit 125 ;; esac
          |grep -q bad worker/src/main/State.scala && exit 1 || exit 0
          |""".stripMargin)
     def tested: Seq[String] = Files.readString(steps).linesIterator.toSeq
@@ -97,6 +101,18 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers {
     verdict should include("Stopped after 1 replay(s)")
     verdict should include(short(history.firstBad))
     verdict should not include "ios: tweak"
+  }
+
+  it should "keep a skipped commit in the reported range, since it may be the first bad one" in {
+    val history = new History(badAt = 4, untestable = Set(4))
+    val (status, verdict, pinned) = bisect(history, history.good, history.bad, "MAX_STEPS" -> "6")
+
+    status shouldBe 0
+    pinned shouldBe None
+    verdict should include("The first bad commit is one of:")
+    verdict should include(short(history.firstBad))
+    verdict should include("pipeline change 4")
+    verdict should include("untested")
   }
 
   it should "not start a replay the budget cannot fit" in {
