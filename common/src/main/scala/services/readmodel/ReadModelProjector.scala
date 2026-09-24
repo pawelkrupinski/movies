@@ -100,7 +100,7 @@ class ReadModelProjector(
   // bytes per doc) this holds the ResolvedMovie object graph resident — but only for rows
   // actually projected, ~corpus-sized (few MB on the 320m heap), and evicted on prune.
   private val lastMetadata   = scala.collection.mutable.Map.empty[String, (Int, Seq[ResolvedMovie])]
-  // THE FIRST-PUBLISH GATE. Per card never yet written: its source row and the instant its hold
+  // THE FIRST-PUBLISH GATE. Per card not yet served (see `gate`): its source row and the instant its hold
   // ends. A link-preview scraper caches `og:image` for about a month on its first fetch, so a card
   // must not go public before its share card exists — but no film waits longer than
   // `firstCardHold` for one (see [[releaseExpiredHolds]]).
