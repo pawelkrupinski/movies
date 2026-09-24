@@ -32,14 +32,37 @@ release() {
   echo "$? $(wc -l < "$STUB_LOG" | tr -d ' ')"
 }
 
-check "a transient 403 is retried and then succeeds" "0 2" \
-  "$(release 1 'HTTP 403: Resource not accessible by integration (https://api.github.com/repos/o/r/releases/1)' edit t)"
-check "a 409 conflict is retried" "0 3" "$(release 2 'HTTP 409: Conflict' upload t f)"
-check "a 5xx is retried" "0 2" "$(release 1 'HTTP 502: Bad Gateway' create t)"
-check "a 403 that never clears gives up after four attempts, failing" "1 4" \
-  "$(release 99 'HTTP 403: Resource not accessible by integration' edit t)"
-check "a 404 is NOT retried — it is an answer, not a race" "1 1" "$(release 1 'HTTP 404: Not Found' view t)"
-check "a 422 validation error is NOT retried" "1 1" "$(release 1 'HTTP 422: Validation Failed' create t)"
+# Every `github-release` row of the shared retry-classification table, fed through the script
+# as the stderr gh prints for it: a transient one is retried once and succeeds (2 calls), a
+# permanent one fails on the first call.
+table="$REPO_ROOT/test/resources/retry-classification.json"
+stderr_for() {
+  case "$1" in
+    resource-not-accessible-by-integration)
+      echo 'HTTP 403: Resource not accessible by integration (https://api.github.com/repos/o/r/releases/1)' ;;
+    secondary-rate-limit) echo 'HTTP 403: You have exceeded a secondary rate limit. Please wait a few minutes before you try again.' ;;
+    release-not-found)    echo 'release not found' ;;
+    http:*)               echo "HTTP ${1#http:}: Something (https://api.github.com/repos/o/r/releases/1)" ;;
+    *)                    echo "no sample stderr for '$1'" >&2; return 1 ;;
+  esac
+}
+rows=0
+while IFS=$'\t' read -r error verdict; do
+  rows=$((rows + 1))
+  sample="$(stderr_for "$error")" || { check "table row $error has a sample stderr" yes no; continue; }
+  case "$verdict" in
+    transient) expected="0 2" ;;
+    *)         expected="1 1" ;;
+  esac
+  check "github-release/$error is $verdict" "$expected" "$(release 1 "$sample" edit t)"
+done < <(jq -r '.rows[] | select(.source == "github-release") | [.error, .verdict] | @tsv' "$table")
+check "the table has github-release rows to hold the script to" yes "$([ "$rows" -gt 0 ] && echo yes || echo no)"
+
+check "a transient failure that never clears gives up after four attempts, failing" "1 4" \
+  "$(release 99 'HTTP 502: Bad Gateway' edit t)"
+check "the refused 403 says it is a permission verdict and names the grant" "1" \
+  "$(reset; STUB_FAILS=1 STUB_ERR='HTTP 403: Resource not accessible by integration' PATH="$stub_dir:$PATH" \
+      bash "$REPO_ROOT/scripts/ci/gh-release.sh" edit t 2>&1 >/dev/null | grep -c '::error::.*not retried.*contents: write')"
 check "the arguments reach gh unchanged, under 'release'" "release edit t --notes a b" \
   "$(reset; STUB_FAILS=0 PATH="$stub_dir:$PATH" bash "$REPO_ROOT/scripts/ci/gh-release.sh" edit t --notes "a b" >/dev/null; cat "$STUB_LOG")"
 check "gh's stdout passes through" "ok: release view t" \
@@ -58,8 +81,10 @@ publish() {
 check "an existing rolling release is edited, never recreated, then its assets clobbered" \
   "0 view edit upload " "$(publish 0 '' '')"
 check "a missing one is created" "0 view create upload " "$(publish 0 '' yes)"
-check "a 403 on the existence check is retried, not mistaken for a missing release" \
-  "0 view view edit upload " "$(publish 1 'HTTP 403: Resource not accessible by integration' '')"
+check "a transient failure of the existence check is retried, not mistaken for a missing release" \
+  "0 view view edit upload " "$(publish 1 'HTTP 502: Bad Gateway' '')"
+check "a refused 403 on the existence check fails, never answered with a create" \
+  "1 view " "$(publish 1 'HTTP 403: Resource not accessible by integration' '')"
 check "the edit retargets the release at this commit, as a prerelease" \
   "release edit rolling --repo o/r --target abc1234def --prerelease --notes notes" \
   "$(publish 0 '' '' >/dev/null; grep '^release edit' "$STUB_LOG")"

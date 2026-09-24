@@ -1,5 +1,5 @@
 {
-  "about": "THE retry/error classification every layer agrees on. One row per (source, error): what a failure of that kind MEANS, whatever code meets it. permanent = the answer is final; remember it, never retry it. transient = says something about right now; retry it with backoff, and it counts against whoever answered. provider = a paid egress route (Zyte, Decodo) failing on its own account; try another route or retry later, but it never counts against the origin or venue. Specs in Scala (worker RetryClassificationSpec, web PageJsBehaviourSpec), Swift (RetryClassificationTableTests) and Kotlin (RetryClassificationTableTest) load this file and assert the production classifiers agree row by row; `consumers` names the platforms whose code enforces a source. Change a verdict here and in the code together.",
+  "about": "THE retry/error classification every layer agrees on. One row per (source, error): what a failure of that kind MEANS, whatever code meets it. permanent = the answer is final; remember it, never retry it. transient = says something about right now; retry it with backoff, and it counts against whoever answered. provider = a paid egress route (Zyte, Decodo) failing on its own account; try another route or retry later, but it never counts against the origin or venue. Specs in Scala (worker RetryClassificationSpec, web PageJsBehaviourSpec), Swift (RetryClassificationTableTests), Kotlin (RetryClassificationTableTest) and shell (scripts/ci/gh-release-test.sh) load this file and assert the production classifiers agree row by row; `consumers` names the platforms whose code enforces a source. Change a verdict here and in the code together.",
   "verdicts": ["permanent", "transient", "provider"],
   "sources": {
     "origin": {
@@ -29,6 +29,10 @@
     "user-state:hidden-films-write": {
       "about": "The app server's answer to a hidden-films PUT/DELETE. UserStateController refuses for good only with 400 (over-long title, unknown country) and 413 (full bucket); a 403 is as likely a Cloudflare challenge in front of the app (f3fb9230e). A permanent refusal is dropped from the pending queue (web _hiddenFilmsWriteRefused, the apps' HiddenFilmsWriteRefused); anything else is resent on the next reconcile.",
       "consumers": ["web", "ios", "android"]
+    },
+    "github-release": {
+      "about": "GitHub's answer to a `gh release` call in CI (scripts/ci/gh-release.sh, publishing the rolling android-latest / android-tune-latest releases). `Resource not accessible by integration` is the token refused this request: four attempts over 40s met the same one on 2026-09-24 (run 36018126285), so it is failed fast with a message naming the grant, never retried. Held to this table by scripts/ci/gh-release-test.sh.",
+      "consumers": ["ci"]
     },
     "user-state:language-push": {
       "about": "The app server's answer to a language PUT. Only the 400 UserStateController.put answers for an unknown language is for good (78a6c72a2).",
@@ -97,6 +101,16 @@
     { "source": "user-state:hidden-films-write", "error": "http:500", "verdict": "transient" },
     { "source": "user-state:hidden-films-write", "error": "http:502", "verdict": "transient" },
     { "source": "user-state:hidden-films-write", "error": "http:503", "verdict": "transient" },
+
+    { "source": "github-release", "error": "resource-not-accessible-by-integration", "verdict": "permanent", "note": "HTTP 403: the token's grant, not the moment" },
+    { "source": "github-release", "error": "secondary-rate-limit", "verdict": "transient", "note": "HTTP 403: You have exceeded a secondary rate limit" },
+    { "source": "github-release", "error": "release-not-found", "verdict": "permanent", "note": "gh release view's answer, with no HTTP code" },
+    { "source": "github-release", "error": "http:404", "verdict": "permanent" },
+    { "source": "github-release", "error": "http:409", "verdict": "transient", "note": "a concurrent write to the same release or asset" },
+    { "source": "github-release", "error": "http:422", "verdict": "permanent" },
+    { "source": "github-release", "error": "http:500", "verdict": "transient" },
+    { "source": "github-release", "error": "http:502", "verdict": "transient" },
+    { "source": "github-release", "error": "http:503", "verdict": "transient" },
 
     { "source": "user-state:language-push", "error": "http:400", "verdict": "permanent" },
     { "source": "user-state:language-push", "error": "http:401", "verdict": "transient" },
