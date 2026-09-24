@@ -166,6 +166,13 @@ object Chrome {
     try serverSocket.getLocalPort finally serverSocket.close()
   }
 
+  /** `scheme://host[:port]` of `url` — the key Chrome's per-origin storage is filed under. */
+  private[tools] def originOf(url: String): String = {
+    val uri  = URI.create(url)
+    val port = if (uri.getPort == -1) "" else s":${uri.getPort}"
+    s"${uri.getScheme}://${uri.getHost}$port"
+  }
+
   private[tools] def httpGet(url: String): String = {
     val client = HttpClient.newHttpClient()
     val request = HttpRequest.newBuilder(URI.create(url))
@@ -197,6 +204,13 @@ class Chrome private[tools] (
    *  is loaded synchronously — `body` runs after `document.readyState`
    *  is `complete`, so DOMContentLoaded handlers (buildIndex, the
    *  boot-time applyFilters() in _sharedJs) have fired.
+   *
+   *  The tab starts on an origin with EMPTY localStorage. A fresh tab is
+   *  not a fresh origin: every tab on one test server shares one store, so
+   *  whatever an earlier test left there (a `disabledCinemas` list switching
+   *  off every cinema on the grid, a sync flag a wait then trusted) leaked
+   *  into whichever test ran next — a test passed alone and failed in a
+   *  group. `reload()` inside one test keeps its store, as a browser does.
    *
    *  When `tryStart` was given a `proxy`, this also enables `Fetch` with
    *  `handleAuthRequests`, which surfaces the proxy's 407 as a
@@ -259,6 +273,7 @@ class Chrome private[tools] (
         }
         page.send("Fetch.enable", Json.obj("handleAuthRequests" -> true, "patterns" -> Json.arr(Json.obj("urlPattern" -> "*"))))
       }
+      page.send("Storage.clearDataForOrigin", Json.obj("origin" -> Chrome.originOf(url), "storageTypes" -> "local_storage"))
       page.send("Page.navigate", Json.obj("url" -> url))
       // Wait for DOMContentLoaded so any inline `addEventListener
       // ('DOMContentLoaded', …)` registrations have fired. A short poll
