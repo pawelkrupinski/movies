@@ -43,7 +43,8 @@ class ShareCardBackfill(
   // Each film's card inputs as the sweep read them, with its card's version on disk then.
   private var pending   = List.empty[Swept]
   // Films whose card was drawn without a poster because every poster failed: re-tried once per
-  // sweep (a day), which is the backoff — a cinema origin that was down usually comes back.
+  // sweep — a day, and at every boot, whose first tick sweeps — which is the backoff: a cinema
+  // origin that was down usually comes back.
   private var posterless = List.empty[ShareCardInputs]
   private var expected  = Seq.empty[Swept]
   private var lastSweep = Option.empty[Instant]
