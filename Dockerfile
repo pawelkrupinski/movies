@@ -69,7 +69,8 @@ EXPOSE 9000
 # native-OOM line (`Native memory allocation (mmap/malloc) failed…`) and, on a clean
 # SIGTERM restart, the `-XX:+PrintNMTStatistics` summary — otherwise goes only to the
 # container stderr → `kubectl logs`, whose short retention rolls away before the ~5 h
-# OOM can be read. Append it to /data/logs/worker-stderr.log so the pre-death readout
+# OOM can be read. Append it to /data/logs/$BIN-stderr.log (web-stderr.log or
+# worker-stderr.log, so neither app's readout is mistaken for the other's) so the pre-death readout
 # SURVIVES the restart. `launch()` keeps the `exec` (JVM stays PID-adjacent, receives
 # SIGTERM directly for the graceful NMT dump) while the redirect at the call site
 # hands the JVM an fd-2 pointing at the durable file — on web too, whose /data is an
@@ -82,15 +83,16 @@ CMD mkdir -p /data/heapdumps /data/logs 2>/dev/null; \
     bin/heap-dumps.sh prune /data/heapdumps || true; \
     if dump=$(bin/heap-dumps.sh dump-file /data/heapdumps); then export JAVA_OPTS="$JAVA_OPTS -XX:HeapDumpPath=$dump"; fi; \
     if [ -d /data/logs ]; then ls -1t /data/logs/hs_err_*.log 2>/dev/null | tail -n +4 | xargs -r rm -f; fi; \
-    if [ -f /data/logs/worker-stderr.log ] && [ "$(wc -c < /data/logs/worker-stderr.log)" -gt 16777216 ]; then \
-      tail -c 4194304 /data/logs/worker-stderr.log > /data/logs/worker-stderr.log.tmp && mv /data/logs/worker-stderr.log.tmp /data/logs/worker-stderr.log; fi; \
+    stderr_log=/data/logs/$BIN-stderr.log; \
+    if [ -f "$stderr_log" ] && [ "$(wc -c < "$stderr_log")" -gt 16777216 ]; then \
+      tail -c 4194304 "$stderr_log" > "$stderr_log.tmp" && mv "$stderr_log.tmp" "$stderr_log"; fi; \
     rm -rf /data/jfr 2>/dev/null; \
     launch() { exec bin/$BIN \
     -Dplay.http.secret.key="${APPLICATION_SECRET}" \
     -Dplay.server.http.address=0.0.0.0 \
     -Dhttp.address=0.0.0.0 \
     -Dpidfile.path=/dev/null; }; \
-    if [ -d /data ]; then mkdir -p /data/logs; launch 2>> /data/logs/worker-stderr.log; else launch; fi
+    if [ -d /data ]; then mkdir -p /data/logs; launch 2>> "$stderr_log"; else launch; fi
     # JVM sizing (heap/GC/non-heap caps) is now per-app via `JAVA_OPTS` — the
     # launcher reads it — set in each tier+country's k3s overlay (and in `fly.toml`
     # for the retired `kinowo` redirect host), so every app can be sized

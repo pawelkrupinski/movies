@@ -24,9 +24,16 @@ import org.scalatest.matchers.should.Matchers
 class WorkerDurableDiagnosticsConfigSpec extends AnyFlatSpec with Matchers {
   private lazy val dockerfile = RepoFile.read("Dockerfile")
 
-  "the Dockerfile CMD" should "redirect the worker JVM's stderr to a durable /data/logs file" in {
+  "the Dockerfile CMD" should "redirect the JVM's stderr to a durable /data/logs file" in {
     // Appended so the pre-death readout survives across the restart.
-    dockerfile should include ("2>> /data/logs/worker-stderr.log")
+    dockerfile should include ("""2>> "$stderr_log"""")
+  }
+
+  it should "name that file for the app it belongs to, so web's crash log does not read as the worker's" in {
+    // One image runs both apps; the file was `worker-stderr.log` on web too, so a web
+    // readout was filed, searched for and read as a worker one.
+    dockerfile should include ("stderr_log=/data/logs/$BIN-stderr.log")
+    dockerfile should not include ("/data/logs/worker-stderr.log")
   }
 
   it should "keep the exec so the JVM stays PID-adjacent and receives SIGTERM directly" in {

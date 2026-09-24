@@ -288,8 +288,8 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
    *  shows up here rather than in an eviction. */
   private lazy val scratchWorstMib: Int = {
     val cmd       = RepoFile.read("Dockerfile")
-    val stderrCap = """worker-stderr\.log\)" -gt (\d+)""".r.findFirstMatchIn(cmd)
-      .getOrElse(fail("the Dockerfile no longer caps /data/logs/worker-stderr.log on boot")).group(1).toLong
+    val stderrCap = """\$stderr_log"\)" -gt (\d+)""".r.findFirstMatchIn(cmd)
+      .getOrElse(fail("the Dockerfile no longer caps /data/logs/<app>-stderr.log on boot")).group(1).toLong
     val hsErrKept = """hs_err_\*\.log.*tail -n \+(\d+)""".r.findFirstMatchIn(cmd)
       .getOrElse(fail("the Dockerfile no longer prunes /data/logs/hs_err_*.log on boot")).group(1).toInt - 1
     (2 * stderrCap / (1024 * 1024)).toInt + (hsErrKept + 1) * HsErrAllowanceMib
