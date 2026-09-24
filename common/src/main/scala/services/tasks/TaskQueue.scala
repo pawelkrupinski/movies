@@ -242,8 +242,20 @@ case class TaskSummary(
   attempts:       Int,
   workerId:       Option[String],
   leaseExpiresAt: Option[Instant],
-  lastError:      Option[String]
-)
+  lastError:      Option[String],
+  // The retry-backoff / staggered-enqueue gate: `claim` skips the task until then.
+  nextEligibleAt: Option[Instant] = None
+) {
+  /** Claimable at `now` — waiting and past any `nextEligibleAt` gate. */
+  def claimableAt(now: Instant): Boolean =
+    state == TaskState.Waiting && !nextEligibleAt.exists(_.isAfter(now))
+
+  /** When the task last became claimable: the later of its submission and its
+   *  eligibility gate. Head-of-line latency counts from here, not from
+   *  `submittedAt`, or a task the queue is deliberately holding back in retry
+   *  backoff reads as one the pool cannot reach. */
+  def claimableSince: Instant = nextEligibleAt.filter(_.isAfter(submittedAt)).getOrElse(submittedAt)
+}
 
 /** A point-in-time view of the queue for the monitoring page. */
 case class QueueSnapshot(counts: Map[String, Long], active: Seq[TaskSummary])

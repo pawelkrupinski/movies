@@ -212,6 +212,16 @@ class InMemoryTaskQueueSpec extends AnyFlatSpec with Matchers {
     active.head.state shouldBe TaskState.WorkedOn
   }
 
+  // The head-of-line gauge reads this to tell a task held in backoff from one the
+  // pool has not reached (see WorkerTaskMetrics.refreshQueueGauges).
+  it should "carry each waiting task's eligibility gate in the monitor snapshot" in {
+    val q = new InMemoryTaskQueue
+    q.enqueue(ScrapeCinema, "scrape|gated", submittedAt = t0, notBefore = Some(t0.plusSeconds(600)))
+    q.enqueue(ImdbRating, "imdb|open", submittedAt = t0)
+    q.monitor().active.map(t => t.dedupKey -> t.nextEligibleAt).toMap shouldBe
+      Map("scrape|gated" -> Some(t0.plusSeconds(600)), "imdb|open" -> None)
+  }
+
   it should "cap the listed active tasks at activeLimit while still counting all" in {
     val q = new InMemoryTaskQueue
     (1 to 5).foreach(i => q.enqueue(ScrapeCinema, s"scrape|$i", submittedAt = t0.plusSeconds(i.toLong)))

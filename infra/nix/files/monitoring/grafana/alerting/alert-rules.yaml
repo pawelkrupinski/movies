@@ -1159,6 +1159,14 @@ groups:
       # (465s, already recovering) rather than, say, a single country's reaper
       # wedged. Grouping makes this a per-country multi-instance alert like every
       # other rule in this file that reads a country-labelled gauge.
+      #
+      # The GAUGE was re-based 2026-09-24 (the rule is unchanged). Every episode
+      # between 09-18 and 09-22 (uk ScrapeChunk up to 1601s, es ResolveTmdb up to
+      # 6239s) was ONE task retrying against a permanent failure — Odeon chunks whose
+      # origin 404 the fallback chain masked, a ResolveTmdb whose re-key tripped a
+      # `require` — while the pool sat idle (worked_on 0-3 of 4). The gauge aged tasks
+      # from `submittedAt`, so a task parked in backoff read as starvation. It now
+      # counts only claimable tasks, from when each became claimable.
       - uid: kinowo-worker-task-age-high
         title: Worker task queue head-of-line age high
         condition: C
@@ -1167,7 +1175,7 @@ groups:
         execErrState: OK
         annotations:
           summary: '{{ $labels.country }} worker: oldest waiting task > 10min — the queue is not draining'
-          description: '{{ $labels.country }}''s kinowo_worker_queue_oldest_waiting_age_seconds > 600 for 5m: the head of the task queue has been waiting over ten minutes, so the worker pool is not keeping up (a CPU-credit throttle spiral, a wedged reaper, a slow-host backlog, or an egress path — e.g. the Decodo proxy — failing broadly enough to starve every task type sharing the pool). The earliest signal of the sustained-throttle failure mode.'
+          description: '{{ $labels.country }}''s kinowo_worker_queue_oldest_waiting_age_seconds > 600 for 5m: a CLAIMABLE task has waited over ten minutes for a worker (the gauge counts from when a task became claimable and skips tasks parked in retry backoff, so one task retrying against a failing upstream no longer trips this — that reads on WorkerTasksFailingRepeatedly and the exhausted/rescheduled finish counters), so the worker pool is not keeping up (a CPU-credit throttle spiral, a wedged reaper, a slow-host backlog, or an egress path — e.g. the Decodo proxy — failing broadly enough to starve every task type sharing the pool). The earliest signal of the sustained-throttle failure mode.'
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }

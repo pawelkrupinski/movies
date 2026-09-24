@@ -207,7 +207,7 @@ object WorkerTaskMetrics {
 
     private val oldestWaitingAge = Gauge.builder()
       .name("kinowo_worker_queue_oldest_waiting_age_seconds")
-      .help("Age of the oldest waiting task per country and type — head-of-line latency / starvation signal.")
+      .help("Seconds the oldest CLAIMABLE waiting task per country and type has been claimable (tasks held in retry backoff or not yet due are excluded) — head-of-line latency / starvation signal.")
       .labelNames("country", "task_type")
       .register(registry)
 
@@ -647,7 +647,11 @@ object WorkerTaskMetrics {
       TaskType.all.foreach { t =>
         val rows = waiting.getOrElse(t.name, Nil)
         waitingByType.labelValues(country, t.name).set(rows.size.toDouble)
-        val age = rows.map(_.submittedAt).minOption
+        // Head-of-line age counts only CLAIMABLE rows, from when each became claimable:
+        // a row parked in retry backoff (or a staggered chunk not yet due) is being held
+        // back on purpose, and aging it from `submittedAt` made one retrying task read as
+        // a pool that could not keep up (UK/ES 2026-09-18..22, pool idle throughout).
+        val age = rows.filter(_.claimableAt(now)).map(_.claimableSince).minOption
           .map(oldest => math.max(0L, now.getEpochSecond - oldest.getEpochSecond).toDouble)
           .getOrElse(0.0)
         oldestWaitingAge.labelValues(country, t.name).set(age)

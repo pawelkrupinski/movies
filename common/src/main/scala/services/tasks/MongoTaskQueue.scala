@@ -325,7 +325,8 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
     attempts       = document.getInteger("attempts", 0),
     workerId       = Option(document.getString("workerId")),
     leaseExpiresAt = Option(document.getDate("leaseExpiresAt")).map(d => Instant.ofEpochMilli(d.getTime)),
-    lastError      = Option(document.getString("lastError"))
+    lastError      = Option(document.getString("lastError")),
+    nextEligibleAt = Option(document.getDate("nextEligibleAt")).map(d => Instant.ofEpochMilli(d.getTime))
   )
 
   private def payloadDocument(payload: Map[String, String]): org.mongodb.scala.bson.BsonDocument = {

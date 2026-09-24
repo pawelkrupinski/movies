@@ -27,9 +27,9 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
 
   private def task(t: TaskType) = Task("id", t, "dedup", Map.empty, attempts = 1)
 
-  private def summary(taskType: TaskType, state: String, submittedAt: Instant) =
+  private def summary(taskType: TaskType, state: String, submittedAt: Instant, nextEligibleAt: Option[Instant] = None) =
     TaskSummary("id", taskType.name, "dedup", state, submittedAt, attempts = 1,
-      workerId = None, leaseExpiresAt = None, lastError = None)
+      workerId = None, leaseExpiresAt = None, lastError = None, nextEligibleAt = nextEligibleAt)
 
   private val emptySnapshot = QueueSnapshot(Map.empty, Nil)
   private val noStaging      = Map.empty[StagingStep, Int]
@@ -207,6 +207,30 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     out should include ("""kinowo_worker_queue_oldest_waiting_age_seconds{country="pl",task_type="ScrapeCinema"} 90""")
     // The pool is a single shared budget across countries, so pool_size is unlabelled.
     out should include ("kinowo_worker_pool_size 4")
+  }
+
+  // The 2026-09-18..22 `Worker task queue head-of-line age high` episodes (UK ScrapeChunk
+  // up to 1601s, ES ResolveTmdb up to 6239s) were ONE task each, sitting out its retry
+  // backoff while the pool idled (worked_on 0-3 of 4): the gauge aged tasks from
+  // `submittedAt`, so a task the queue was deliberately holding back read as one the
+  // pool could not reach. Head-of-line age is how long CLAIMABLE work has waited.
+  it should "age the head of line from when a task became claimable, not from when it was submitted" in {
+    val (_, series) = newPl()
+    val snapshot = QueueSnapshot(
+      counts = Map(TaskState.Waiting -> 3L),
+      active = Seq(
+        // Submitted 25 min ago, parked in backoff until 5 min from now: not claimable, not queued behind anything.
+        summary(TaskType.ScrapeChunk, TaskState.Waiting, now.minusSeconds(1500), Some(now.plusSeconds(300))),
+        // Submitted 25 min ago, its backoff ran out 40s ago: it has waited on the pool for 40s.
+        summary(TaskType.ScrapeChunk, TaskState.Waiting, now.minusSeconds(1500), Some(now.minusSeconds(40))),
+        // Only ever parked: nothing claimable of this type at all.
+        summary(TaskType.ResolveTmdb, TaskState.Waiting, now.minusSeconds(6000), Some(now.plusSeconds(1800)))
+      ))
+
+    val out = scrapePl(series, snapshot)
+
+    out should include ("""kinowo_worker_queue_oldest_waiting_age_seconds{country="pl",task_type="ScrapeChunk"} 40""")
+    out should include ("""kinowo_worker_queue_oldest_waiting_age_seconds{country="pl",task_type="ResolveTmdb"} 0""")
   }
 
   it should "seed every task type to 0 so the series exists from boot" in {

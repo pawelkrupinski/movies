@@ -127,7 +127,7 @@ class InMemoryTaskQueue extends TaskQueue {
       .sortBy(r => (TaskState.activeByPriority.indexOf(r.state), r.submittedAt))
       .take(activeLimit)
       .map(r => TaskSummary(r.id, r.taskType.name, r.dedupKey, r.state, r.submittedAt,
-        r.attempts, r.workerId, r.leaseExpiresAt, None))
+        r.attempts, r.workerId, r.leaseExpiresAt, None, r.nextEligibleAt))
     QueueSnapshot(counts, active)
   }
 

@@ -193,6 +193,16 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     claimableKeysAt(eligibleAt) should contain (key)
   }
 
+  // The head-of-line gauge reads the gate off the monitor snapshot to tell a task held
+  // back on purpose from one the pool has not reached — only real Mongo proves the
+  // document field and the summary's decode agree.
+  it should "carry a waiting task's eligibility gate in the monitor snapshot" in {
+    val key        = s"chunk|it-monitor-gate-${System.nanoTime()}"
+    val eligibleAt = Instant.now().plusSeconds(3600).truncatedTo(java.time.temporal.ChronoUnit.MILLIS)
+    queue.enqueue(TaskType.ScrapeChunk, key, submittedAt = t0, notBefore = Some(eligibleAt)) shouldBe EnqueueResult.Added
+    queue.monitor(5000).active.find(_.dedupKey == key).flatMap(_.nextEligibleAt) shouldBe Some(eligibleAt)
+  }
+
   /** Every dedupKey the queue will hand out at `now` (drains the eligible set,
    *  leasing each — harmless, the sentinel collection is dropped in afterAll). */
   private def claimableKeysAt(now: Instant): Set[String] = {
