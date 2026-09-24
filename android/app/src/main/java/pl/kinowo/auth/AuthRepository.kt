@@ -33,6 +33,7 @@ class AuthRepository(
     private val client: OkHttpClient,
     private val cookieJar: PersistentCookieJar,
     internal val baseUrl: String,
+    private val pendingVerifier: PendingVerifierStore,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -42,13 +43,25 @@ class AuthRepository(
     /** Open the provider's web consent flow. The result returns via the
      *  `kinowo://auth-done` deep link → [exchangeCode]. */
     fun startWebSignIn(context: Context, provider: String) {
-        val url = "$baseUrl/auth/$provider/start?platform=android"
-        CustomTabsIntent.Builder().build().launchUrl(context, Uri.parse(url))
+        CustomTabsIntent.Builder().build().launchUrl(context, Uri.parse(webSignInUrl(provider)))
     }
 
-    /** Redeem the one-shot code from the deep link for a session. */
-    suspend fun exchangeCode(code: String) =
-        adoptProfileFrom(post("auth/exchange", json.encodeToString(CodeRequest(code))))
+    /** The consent-flow URL for [provider], carrying the S256 challenge of a
+     *  fresh verifier this call keeps for [exchangeCode] (see [PkceVerifier]). */
+    internal fun webSignInUrl(provider: String): String {
+        val verifier = PkceVerifier.newVerifier()
+        pendingVerifier.put(verifier)
+        return "$baseUrl/auth/$provider/start?platform=android&challenge=${PkceVerifier.challenge(verifier)}"
+    }
+
+    /** Redeem the one-shot code from the deep link for a session — only for a
+     *  sign-in this app started: without its verifier the code is somebody
+     *  else's (a link sent to sign this app into THEIR account), so it is not
+     *  even presented. */
+    suspend fun exchangeCode(code: String) {
+        val verifier = pendingVerifier.take() ?: return
+        adoptProfileFrom(post("auth/exchange", json.encodeToString(CodeRequest(code, verifier))))
+    }
 
     /** Re-hydrate the user from a cookie persisted across launches. */
     suspend fun checkSession() = adoptProfileFrom(
@@ -102,7 +115,7 @@ class AuthRepository(
             .build()
 
     @Serializable
-    private data class CodeRequest(val code: String)
+    private data class CodeRequest(val code: String, val verifier: String)
 
     private companion object {
         const val UA = "KinowoAndroid/1.0"

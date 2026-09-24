@@ -35,6 +35,7 @@ let authTargets: [Target] = [
             "Auth/HiddenFilmsClient.swift",
             "Auth/LanguageClient.swift",
             "Auth/StateSyncService.swift",
+            "Auth/PkceVerifier.swift",
             "Storage/UserPreferences.swift",
             // The country registry + persisted selection: `kinowoBaseURL`
             // (UserProfile) and `UserPreferences` route the API base URL and

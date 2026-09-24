@@ -44,7 +44,8 @@ class AuthRepositoryFailureTest {
         client,
         PersistentCookieJar(ApplicationProvider.getApplicationContext()),
         baseUrl,
-    )
+        SharedPrefsPendingVerifierStore(ApplicationProvider.getApplicationContext()),
+    ).also { it.webSignInUrl("google") } // a sign-in in flight, so exchangeCode really calls out
 
     @Test
     fun exchangeCodeSurvivesAnUnreachableServer() = runBlocking {

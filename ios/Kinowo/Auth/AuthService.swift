@@ -35,10 +35,11 @@ final class AuthService: NSObject, ObservableObject {
         citySwitchSuppressor.suppressNextCheck()
         isLoading = true
         defer { isLoading = false }
-        let startURL = kinowoBaseURL.appendingPathComponent("auth/\(provider)/start")
-        var components = URLComponents(url: startURL, resolvingAgainstBaseURL: false)!
-        components.queryItems = [URLQueryItem(name: "platform", value: "ios")]
-        guard let url = components.url else { return }
+        // The PKCE-style verifier (see `PkceVerifier`): only its challenge
+        // leaves the app now; the verifier itself goes to `/auth/exchange`, and
+        // lives exactly as long as this sign-in.
+        let verifier = PkceVerifier.newVerifier()
+        guard let url = NativeSignIn.startURL(base: kinowoBaseURL, provider: provider, verifier: verifier) else { return }
         do {
             let callbackURL = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<URL, Error>) in
                 let webAuth = ASWebAuthenticationSession(url: url, callbackURLScheme: "kinowo") { [weak self] url, error in
@@ -54,7 +55,7 @@ final class AuthService: NSObject, ObservableObject {
             }
             if let code = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false)?
                 .queryItems?.first(where: { $0.name == "code" })?.value {
-                try await exchangeCode(code)
+                try await exchangeCode(code, verifier: verifier)
             }
         } catch {
             // User cancelled
@@ -96,11 +97,11 @@ final class AuthService: NSObject, ObservableObject {
 
     // MARK: - Server communication
 
-    private func exchangeCode(_ code: String) async throws {
+    private func exchangeCode(_ code: String, verifier: String) async throws {
         var request = URLRequest(url: kinowoBaseURL.appendingPathComponent("auth/exchange"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONEncoder().encode(["code": code])
+        request.httpBody = try NativeSignIn.exchangeBody(code: code, verifier: verifier)
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw URLError(.userAuthenticationRequired)

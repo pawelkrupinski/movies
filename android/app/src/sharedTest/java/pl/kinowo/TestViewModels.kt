@@ -3,6 +3,7 @@ package pl.kinowo
 import android.content.Context
 import okhttp3.OkHttpClient
 import pl.kinowo.auth.AuthRepository
+import pl.kinowo.auth.SharedPrefsPendingVerifierStore
 import pl.kinowo.auth.HiddenFilmsClient
 import pl.kinowo.auth.HiddenFilmsFetchResult
 import pl.kinowo.auth.HiddenFilmsState
@@ -61,7 +62,8 @@ fun testKinowoViewModel(
         repository = repository ?: RepertoireRepository(api, JsonListCache(context.cacheDir, "repertoire", Film.serializer())),
         detailsRepository = DetailsRepository(api, JsonListCache(context.cacheDir, "details", FilmDetails.serializer())),
         prefs = prefs,
-        authRepository = AuthRepository(http, PersistentCookieJar(context), baseUrl = UNREACHABLE_BASE_URL),
+        authRepository = AuthRepository(http, PersistentCookieJar(context), baseUrl = UNREACHABLE_BASE_URL,
+            pendingVerifier = SharedPrefsPendingVerifierStore(context)),
         hiddenFilmsClient = hiddenFilmsClient,
         languageClient = NoopLanguageClient,
         catalogApi = CinemaCatalogApi { CinemaCatalog.EMPTY },

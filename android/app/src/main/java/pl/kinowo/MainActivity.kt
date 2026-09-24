@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import okhttp3.OkHttpClient
 import pl.kinowo.auth.AuthRepository
+import pl.kinowo.auth.SharedPrefsPendingVerifierStore
 import pl.kinowo.auth.HttpHiddenFilmsClient
 import pl.kinowo.auth.HttpLanguageClient
 import pl.kinowo.data.CatalogCache
@@ -209,7 +210,8 @@ internal fun kinowoViewModelFactory(context: Context, country: Country): KinowoV
     val api = KinowoApi(baseUrl = country.baseUrl, client = httpClient)
     val repository = RepertoireRepository(api, JsonListCache(context.cacheDir, "repertoire", Film.serializer()))
     val detailsRepository = DetailsRepository(api, JsonListCache(context.cacheDir, "details", FilmDetails.serializer()))
-    val authRepository = AuthRepository(httpClient, cookieJar, baseUrl = country.baseUrl)
+    val authRepository = AuthRepository(httpClient, cookieJar, baseUrl = country.baseUrl,
+        pendingVerifier = SharedPrefsPendingVerifierStore(context))
     val hiddenFilmsClient = HttpHiddenFilmsClient(baseUrl = country.baseUrl, client = httpClient)
     val languageClient = HttpLanguageClient(baseUrl = country.baseUrl, client = httpClient)
     // The country/city catalog: seeded from the bundled assets snapshot (so a
