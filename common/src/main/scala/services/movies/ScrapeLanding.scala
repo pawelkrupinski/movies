@@ -247,8 +247,23 @@ private[movies] final class ScrapeLanding(
     // lands, so the sync fires and warms the mirror for the rest; a fresh harness starts
     // with an empty repo, so the first scrape no-ops and the latch disarms — the sync can
     // never fire at a later, arrival-order-dependent scrape (StagingOrderDeterminismSpec).
-    if (staging.isDefined && coldMirrorSyncArmed.getAndSet(false)
-        && store.residentCount == 0 && repository.findAll().nonEmpty) store.rehydrate()
+    //
+    // A corpus read that FAILED is neither: it says nothing about whether the corpus is
+    // empty. The tick is discarded — landing it on a cold mirror would divert every known
+    // film — and the latch stays armed, so the next scrape tries the sync again.
+    if (staging.isDefined && coldMirrorSyncArmed.get()) {
+      if (store.residentCount != 0) coldMirrorSyncArmed.set(false)
+      else {
+        val (corpus, complete) = repository.findAllChecked()
+        if (!complete) {
+          logger.warn(s"${cinema.displayName}: scrape discarded — the movies mirror is cold and the corpus " +
+            "could not be read to warm it; the next scrape retries the sync.")
+          return Seq.empty
+        }
+        coldMirrorSyncArmed.set(false)
+        if (corpus.nonEmpty) store.rehydrate()
+      }
+    }
 
     // The listing as this cache records it — titles cleaned by the venue's rules,
     // every screening badged through the shared vocabulary, the venue's several rows

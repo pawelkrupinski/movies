@@ -36,6 +36,9 @@ class ColdMirrorReDivertSpec extends AnyFlatSpec with Matchers {
     extends InMemoryMovieRepository(seed) {
     @volatile var blackout: Boolean = true
     override def findAll(): Seq[StoredMovieRecord] = if (blackout) Seq.empty else super.findAll()
+    // What `MongoMovieRepository` reports for the same blackout: nothing, and incomplete.
+    override def findAllChecked(): (Seq[StoredMovieRecord], Boolean) =
+      if (blackout) (Seq.empty, false) else super.findAllChecked()
   }
 
   private def knownRow: MovieRecord =
@@ -67,6 +70,26 @@ class ColdMirrorReDivertSpec extends AnyFlatSpec with Matchers {
         "was cold at scrape time — that mass re-divert on every reboot IS the corpus flap. Staging delta: " +
         s"$diverted\n") {
       diverted shouldBe empty
+    }
+  }
+
+  // The same cold mirror with Mongo STILL unreadable when the first scrape lands. The sync's
+  // `findAll` came back empty, which read as "the corpus is genuinely empty": the one-shot
+  // latch disarmed for good, and every known film the scrape carried was diverted.
+  it should "neither divert nor disarm the cold-mirror sync when the corpus read FAILED, and sync on the next scrape" in {
+    val staging = new InMemoryStagingRepository
+    val repo    = new BootBlackoutRepository(Seq(("Toy Story 5", Some(2026), knownRow)))
+    val cache   = new CaffeineMovieCache(repo, staging = Some(staging), normalizer = titleNormalizer)
+
+    cache.recordCinemaScrape(cinema, Seq(scrape("Toy Story 5")))   // Mongo still down
+    withClue("the tick landed on an unreadable corpus and diverted a known film: ") {
+      staging.findAll() shouldBe empty
+    }
+
+    repo.blackout = false
+    cache.recordCinemaScrape(cinema, Seq(scrape("Toy Story 5")))   // Mongo back: the sync must still fire
+    withClue("the sync latch disarmed on the failed read, so the recovered corpus was never synced: ") {
+      staging.findAll() shouldBe empty
     }
   }
 }

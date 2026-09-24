@@ -135,6 +135,11 @@ trait MovieRepository {
   /** Snapshot of every persisted record. Returns empty when disabled. */
   def findAll(): Seq[StoredMovieRecord]
 
+  /** [[findAll]] and whether the scan was COMPLETE. `findAll` answers an incomplete scan
+   *  with `Seq.empty`, which a caller deciding "is the corpus empty?" must not take at its
+   *  word. The in-memory store cannot fail, so the default reports `true`. */
+  def findAllChecked(): (Seq[StoredMovieRecord], Boolean) = (findAll(), true)
+
   /** The single row stored under this exact `_id` (the [[StoredMovieRecord.idOf]]
    *  form), or `None` when absent. Lets the dev `/debug` page render ONE row's
    *  heavy per-source breakdown lazily, on expand, instead of every row's
@@ -619,12 +624,14 @@ class MongoMovieRepository(
    *  acting on a partial corpus. The 60s per-batch timeout (vs the 10s on point writes)
    *  still covers a cold WiredTiger first read after a process boot (10–20 s even when
    *  steady-state finds are <100 ms). */
-  def findAll(): Seq[StoredMovieRecord] = coll match {
+  def findAll(): Seq[StoredMovieRecord] = findAllChecked()._1
+
+  override def findAllChecked(): (Seq[StoredMovieRecord], Boolean) = coll match {
     case Some(_) =>
       val buf      = Vector.newBuilder[StoredMovieRecord]
       val complete = scanStitched(batch => buf ++= batch)
-      if (complete) buf.result() else Seq.empty
-    case None => Seq.empty
+      if (complete) (buf.result(), true) else (Seq.empty, false)
+    case None => (Seq.empty, true)
   }
 
   /** The ONE stitched corpus scan — keyset-paged movies + showtimes re-injected from
