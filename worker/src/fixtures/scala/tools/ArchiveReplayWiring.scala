@@ -29,8 +29,20 @@ class ArchiveReplayWiring(
   // REQUIRED, and always a real database. There is no in-memory storage to default
   // to any more: a fixpoint proved over a map says nothing about codecs, paged scans
   // or a transactional staging fold, and every one of those has shipped a bug here.
-  storage:          ConvergenceStorage
+  storage:          ConvergenceStorage,
+  // Some(...) makes the run HERMETIC: the wire itself is replaced (see `realHttpLeaf`),
+  // so nothing the recorded tree and remembered verdicts cannot answer is fetched, and
+  // every such request is named here instead. None is the RECORDING run, which fills
+  // those gaps live and writes them down for the hermetic runs that follow.
+  hermetic:         Option[MissingFixtures] = None
 ) extends WorkerWiring(country) with TestWiring {
+
+  /** The one seam a hermetic run changes. Every chain above the wire — fixtures first,
+   *  remembered verdicts, recorder, throttles, breakers — is built exactly as the
+   *  recording run builds it, so the two can only differ in whether a request that
+   *  falls through all of them reaches the network. */
+  override protected def realHttpLeaf: HttpFetch =
+    hermetic.fold(super.realHttpLeaf)(new HermeticHttpLeaf(_))
 
   /** The tree both chains replay from and record into — named by the environment when a
    *  run wants a particular one, and by the country otherwise. Read ONCE so the two
@@ -68,12 +80,20 @@ class ArchiveReplayWiring(
    * TMDB/IMDb/RT ones and one artifact is easier to keep honest than two. `strict = true`
    * for the same reason it is there: a synthesised empty answer would be
    * indistinguishable from a real one and the live leg would never be reached.
+   *
+   * The live leg goes through the SAME remembered-verdict cache as enrichment. A detail
+   * page that answered nothing — Cineworld's box-office API answers a runner 403 — left no
+   * response for the recorder to write, so the tree could never say what the recording
+   * run saw for it, and a hermetic replay of the UK sample stopped on exactly that request.
+   * Remembered, it replays the way it failed.
    */
-  override lazy val httoFetch: HttpFetch =
+  override lazy val httoFetch: HttpFetch = {
+    val live = phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Scrape)
     new FallbackHttpFetch(Seq(
       "detail-fixtures" -> new clients.tools.FakeHttpFetch(fixtureDirectory, strict = true, foldYear = false),
       "detail-live"     -> new clients.tools.RecordingHttpFetch(
-        fixtureDirectory, phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Scrape), foldYear = false)))
+        fixtureDirectory, enrichmentCache.fold(live)(new CachingEnrichmentFetch(_, live)), foldYear = false)))
+  }
   override lazy val multikinoFetch: HttpFetch  = httoFetch
   override lazy val biletynaFetch: HttpFetch   = httoFetch
   override lazy val zyteFetch: HttpFetch       = httoFetch
@@ -225,6 +245,14 @@ object ArchiveReplayWiring {
    *  shared one restored from a CI cache. Only ever an override: unset means the
    *  country's own tree, not a different way of running. */
   val FixturesVar = "KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES"
+
+  /** `true` makes a convergence leg HERMETIC: no live fill, no expiry, and a missing
+   *  fixture fails the leg naming it. Set by every dispatched / branch / nightly leg;
+   *  left unset only by the RECORDING legs of `Record scrape fixtures`, which are the one
+   *  place the tree is allowed to grow. */
+  val HermeticVar = "KINOWO_CONVERGENCE_HERMETIC"
+
+  def hermeticFromEnv: Boolean = Env.get(HermeticVar).exists(_.trim.equalsIgnoreCase("true"))
 
   /**
    * The fixture tree a country's replay reads and records: `enrichment-pl`,

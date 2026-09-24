@@ -333,6 +333,59 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
     cache.statistics.transient shouldBe 1
   }
 
+  // A HERMETIC replay can only answer what the recording wrote down, and a transient
+  // failure left unwritten is a request the replay has no answer for: measured on Poland's
+  // and the UK's samples, every gap a hermetic replay of the published tree hit was one of
+  // those (OMDb over quota, Cinemeta 504s, a Cineworld 403). So a RECORDING run writes them
+  // down — and still asks them again next time, exactly as if it had not.
+  transientCases.foreach { case (label, boom) =>
+    it should s"write a $label failure down for a hermetic replay, but ask it again on the next recording" in {
+      val store = new InMemoryEnrichmentCacheStore()
+      val recording = new CachingEnrichmentFetch(
+        new EnrichmentCache(store, persistSuccesses = false, transients = EnrichmentCache.Transients.Recorded),
+        new ScriptedHttpFetch(Map("https://example.test/t" -> boom)))
+      the [Exception] thrownBy recording.get("https://example.test/t")
+      withClue("recorded for the hermetic replay: ") { store.writes shouldBe 1 }
+
+      val nextRecording = new EnrichmentCache(store, persistSuccesses = false, transients = EnrichmentCache.Transients.Recorded)
+      withClue("the next recording must not preload it: ") { nextRecording.preload() shouldBe 0 }
+      val delegate = new ScriptedHttpFetch(Map("https://example.test/t" -> (() => "answered")))
+      new CachingEnrichmentFetch(nextRecording, delegate).get("https://example.test/t") shouldBe "answered"
+      delegate.calls shouldBe 1
+    }
+
+    it should s"replay a recorded $label failure in a hermetic run without asking" in {
+      val store = new InMemoryEnrichmentCacheStore()
+      val recording = new CachingEnrichmentFetch(
+        new EnrichmentCache(store, persistSuccesses = false, transients = EnrichmentCache.Transients.Recorded),
+        new ScriptedHttpFetch(Map("https://example.test/t" -> boom)))
+      val original = the [Exception] thrownBy recording.get("https://example.test/t")
+
+      val hermetic = new EnrichmentCache(store, persistSuccesses = false, transients = EnrichmentCache.Transients.Replayed)
+      hermetic.preload() shouldBe 1
+      val delegate = new ScriptedHttpFetch(Map.empty)
+      val replayed = the [Exception] thrownBy new CachingEnrichmentFetch(hermetic, delegate).get("https://example.test/t")
+
+      delegate.calls shouldBe 0
+      original match {
+        case status: HttpStatusException => replayed.asInstanceOf[HttpStatusException].code shouldBe status.code
+        case other                       => replayed.getMessage should include(other.getClass.getName)
+      }
+    }
+  }
+
+  // A hermetic run's own refusals are transient too — and must never be written down, or
+  // the next recording would inherit a tree polluted with "the network was switched off".
+  it should "never write a failure down in a hermetic run" in {
+    val store = new InMemoryEnrichmentCacheStore()
+    val fetch = new CachingEnrichmentFetch(
+      new EnrichmentCache(store, persistSuccesses = false, transients = EnrichmentCache.Transients.Replayed),
+      new HermeticHttpLeaf(new MissingFixtures))
+
+    a [MissingFixtureException] should be thrownBy fetch.get("https://example.test/t")
+    store.writes shouldBe 0
+  }
+
   // Where a recording fixture tree is on disk, every successful response is already
   // written there — `RecordingHttpFetch` covers get, getBytes and post, and `getAsync`
   // delegates to `get`. Keeping a second copy in the cache tripled a country's tarball

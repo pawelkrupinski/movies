@@ -120,6 +120,11 @@ object FileEnrichmentCacheStore {
    */
   val Ttl: FiniteDuration = EnrichmentFreshness.Ttl
 
+  /** For a HERMETIC replay, which must see every verdict the recording left however old
+   *  it is — expiring one there would turn it into a refused fetch. A century, rather than
+   *  an infinite duration, because `loadAll` subtracts it from the clock. */
+  val NeverExpires: FiniteDuration = 36500.days
+
   private def hash(key: String): String = {
     val digest = java.security.MessageDigest.getInstance("SHA-256")
       .digest(key.getBytes(StandardCharsets.UTF_8))

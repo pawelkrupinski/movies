@@ -13,7 +13,7 @@ import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
 import services.titlerules.TitleRuleSet
 import tools.{ArchiveReplayWiring, ConvergenceStorage, CorpusCoverage, CorpusFixture, CorpusProvenance, CountryScrapeCorpus,
-  EnrichmentCache, EnrichmentFreshness, Env, FileEnrichmentCacheStore, PhaseTimer, ProdCoverageBaseline,
+  EnrichmentCache, EnrichmentFreshness, Env, FileEnrichmentCacheStore, MissingFixtures, PhaseTimer, ProdCoverageBaseline,
   SameThreadExecutionBudget}
 
 import java.time.{Instant, LocalDateTime}
@@ -99,11 +99,39 @@ abstract class CountryConvergenceBehaviour(
    *  and was bisected through commits first). */
   @volatile private var corpusProvenance: Option[CorpusProvenance] = None
 
-  override def withFixture(test: NoArgTest): Outcome = super.withFixture(test) match {
-    case Failed(e: TestFailedException) =>
-      corpusProvenance.fold(Failed(e))(p => Failed(e.modifyMessage(_.map(m => s"$m\n${p.verdict}"))))
-    case other => other
-  }
+  override def withFixture(test: NoArgTest): Outcome =
+    // A hermetic gap found by an EARLIER test fails this one before it boots anything: the
+    // shared boot is a lazy val, and a lazy val whose initialiser threw runs again on the
+    // next access — so without this a gap found in the boot would cost a second boot to be
+    // reported a second time.
+    hermeticGaps.fold(super.withFixture(test) match {
+      case Failed(e: TestFailedException) =>
+        corpusProvenance.fold(Failed(e))(p => Failed(e.modifyMessage(_.map(m => s"$m\n${p.verdict}"))))
+      // A test whose body passed over a request the tree could not answer proved nothing
+      // about the recording — its green came from a refused fetch.
+      case other => hermeticGaps.fold(other)(Failed(_))
+    })(Failed(_))
+
+  /** Every request this hermetic run could not replay, as the failure that names them —
+   *  or `None` when there were none, or when the run is a RECORDING one (which fills the
+   *  gaps live instead). */
+  private def hermeticGaps: Option[IllegalStateException] =
+    missingFixtures.filterNot(_.isEmpty).map(m => new IllegalStateException(m.report(fixtureDirectory)))
+
+  /** Fail the leg NOW if the phase just run met a gap in the recording, rather than letting
+   *  it spend the rest of its budget replaying over refused fetches. */
+  private def requireHermetic(): Unit = hermeticGaps.foreach(gap => throw gap)
+
+  /**
+   * Set when the leg is HERMETIC (`KINOWO_CONVERGENCE_HERMETIC=true`), and shared by the
+   * boot and every replay pass: the wiring's network leaf refuses every request and records
+   * it here. Hermetic is how every leg that renders a VERDICT runs — dispatched, nightly,
+   * on a branch — because a verdict that depends on Cinemeta answering, a Metacritic
+   * timeout or a free-tier OMDb quota is a flake, not a verdict. Only the recording legs
+   * (`Record scrape fixtures`) run without it, and they are what writes the tree.
+   */
+  private lazy val missingFixtures: Option[MissingFixtures] =
+    Option.when(ArchiveReplayWiring.hermeticFromEnv)(new MissingFixtures)
 
   private def recordCorpusProvenance(rows: Seq[services.scrapes.ArchivedScrape]): Unit = {
     val provenance = CorpusProvenance.of(corpusKey, rows, Env.get)
@@ -184,7 +212,12 @@ abstract class CountryConvergenceBehaviour(
         s"TMDB_API_KEY is not set, so ${country.displayName} would resolve nothing: TmdbClient.search " +
         "short-circuits on a missing key without reaching the fixture tree at all. Symlink .env.local into " +
         "the working directory (see this suite's scaladoc) and re-run.")
-    new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(fixtureDirectory))
+    // A hermetic run never expires a remembered verdict: freshness is the RECORDING run's
+    // job, and an entry that ages out between the recording and a replay of it would turn
+    // into a refused fetch the recording never saw.
+    val beside = FileEnrichmentCacheStore.beside(fixtureDirectory)
+    missingFixtures.fold(new FileEnrichmentCacheStore(beside))(_ =>
+      new FileEnrichmentCacheStore(beside, FileEnrichmentCacheStore.NeverExpires))
   }
 
   /** The same tree [[ArchiveReplayWiring]] replays and records into, asked the same way,
@@ -196,7 +229,10 @@ abstract class CountryConvergenceBehaviour(
    *  once isn't replayed for ever. The verdict cache expires itself on read; this is the
    *  half nothing used to expire at all. */
   private lazy val expireStaleFixtures: Int =
-    step("expireStaleEnrichment")(
+    // Never in a hermetic run, for the reason the store above never expires: the tree it
+    // replays is the one the recorder left, whole, however old.
+    if (missingFixtures.isDefined) 0
+    else step("expireStaleEnrichment")(
       EnrichmentFreshness.prune(java.nio.file.Paths.get(clients.tools.FakeHttpFetch.rootFor(fixtureDirectory))))
 
   /**
@@ -227,7 +263,12 @@ abstract class CountryConvergenceBehaviour(
     // response into the fixture tree and the tree is consulted first, so a copy in the
     // cache could not be read — it only made the artifact three times larger. What the
     // cache is for is the half the tree cannot hold, the remembered FAILURES.
-    val cache  = new EnrichmentCache(store, persistSuccesses = false)
+    //
+    // Transient failures are RECORDED by a recording run and REPLAYED by a hermetic one: the
+    // recording is only a complete record of what the pipeline asked if it holds the
+    // requests that failed as well as those that answered.
+    val cache  = new EnrichmentCache(store, persistSuccesses = false,
+      transients = missingFixtures.fold(EnrichmentCache.Transients.Recorded)(_ => EnrichmentCache.Transients.Replayed))
     val loaded = step("preloadEnrichmentCache")(cache.preload())
     info(s"${country.displayName}: enrichment cache preloaded with $loaded entries from ${store.root}")
     cache
@@ -334,7 +375,7 @@ abstract class CountryConvergenceBehaviour(
     val archive = storage.archive
     val seeded   = seedArchive(archive)
     val merges   = new CountingMergeMetrics
-    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), storage) {
+    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), storage, missingFixtures) {
       // `mergeMetrics` is the ONLY thing this override exists to change — everything
       // else must stay as `WorkerWiring` builds it. `enrichmentLanguage` went missing
       // here and nowhere else: the cache the replay passes use (see `replay`) keeps
@@ -357,6 +398,13 @@ abstract class CountryConvergenceBehaviour(
     info(s"${country.displayName}: $seeded cinemas replayed from cinema_scrapes, " +
          s"${w.archivedListings.values.map(_.size).sum} film listings")
     bootSettled(w)
+    info(s"${country.displayName}: " + missingFixtures.fold("RECORDING run — requests the tree lacks are fetched live and recorded")(
+      m => s"HERMETIC run — ${m.size} request(s) the recorded tree could not answer"))
+    requireHermetic()
+    // Read by `convergence-publish`: a RECORDING leg pins its tree as the hermetic pair only
+    // once every request of the boot was answered or remembered. `println`, not `info`, so
+    // it is in the log even when the suite is killed later.
+    println(s"[${country.code}] ${CountryConvergenceBehaviour.BootComplete}")
     // ONE read of the corpus for all four of these, not one each.
     //
     // They describe the SAME post-boot state — coverage, coverage conditioned on a
@@ -965,7 +1013,7 @@ abstract class CountryConvergenceBehaviour(
     val scope = s"${country.code}p${seed - OrderSeed}"
     val passStorage = ConvergenceStorage.fromEnv(scope, TitleNormalizer.forCountry(country))
     passStorages.synchronized(passStorages += passStorage)
-    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage) {
+    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage, missingFixtures) {
       override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
     }
     val ready = mutable.ListBuffer.empty[MovieDetailsComplete]
@@ -1291,4 +1339,9 @@ abstract class CountryConvergenceBehaviour(
     }
   }
 
+}
+
+object CountryConvergenceBehaviour {
+  /** The line a finished boot prints; `.github/actions/convergence-publish` greps for it. */
+  val BootComplete = "boot complete"
 }

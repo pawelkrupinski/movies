@@ -261,4 +261,92 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
 
     leaf.calls shouldBe 1
   }
+
+  // ── Hermetic replay ────────────────────────────────────────────────────────────────────
+  //
+  // A verdict leg must not depend on the network: a UK boot made 345 live fills of which 63
+  // failed, Cinemeta answered 504s and Metacritic timed out, and each of those was a flake
+  // in a suite whose one claim is that the same inputs give the same outputs. Hermetic
+  // replaces the WIRE — nothing above it — so the tests below build the hermetic wiring
+  // WITHOUT overriding `realHttpLeaf`: the leaf under test is the one the wiring chooses.
+
+  private def hermeticWiring(cache: Option[EnrichmentCache], missing: MissingFixtures): ArchiveReplayWiring =
+    new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, cache, FetchOnlyStorage, Some(missing))
+
+  "a hermetic archive replay" should "refuse an unrecorded enrichment request and name its fixture" in {
+    val missing = new MissingFixtures
+    val wiring  = hermeticWiring(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), missing)
+    val url     = "https://www.omdbapi.com/?t=Dune&type=movie&apikey=secret"
+
+    an [Exception] should be thrownBy wiring.enrichmentFetch.get(url)
+
+    missing.keys.map(_._1) shouldBe Seq(clients.tools.RecordingHttpFetch.fixtureKey(url, foldYear = false))
+    withClue("the credential must not reach the report: ") { missing.report(fixtureTree) should not include "secret" }
+    withClue("a refused request records nothing: ") { recordedFiles shouldBe 0L }
+  }
+
+  it should "refuse an unrecorded cinema detail page the same way" in {
+    val missing = new MissingFixtures
+    val wiring  = hermeticWiring(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), missing)
+
+    an [Exception] should be thrownBy wiring.httoFetch.get("https://cinema.test/film/dune")
+
+    missing.keys.map(_._1) shouldBe Seq("cinema.test/film/dune")
+  }
+
+  it should "answer what the recording holds without refusing anything" in {
+    // Record through a RECORDING wiring on the same tree, exactly as the recorder would.
+    val leaf = new CountingLeaf
+    wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), leaf)
+      .enrichmentFetch.get("https://api.themoviedb.org/3/search/movie?query=dune")
+    val missing = new MissingFixtures
+
+    hermeticWiring(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), missing)
+      .enrichmentFetch.get("https://api.themoviedb.org/3/search/movie?query=dune") shouldBe
+      "body for https://api.themoviedb.org/3/search/movie?query=dune"
+    missing.isEmpty shouldBe true
+  }
+
+  // The recording is only complete if it holds what FAILED too: measured on Poland's and
+  // the UK's samples, every request a hermetic replay of the published tree could not
+  // answer was one its recording run had seen fail (OMDb over quota, a Cinemeta 504, a
+  // Cineworld 403) and — being transient — never written down.
+  it should "replay a failure the recording remembered, without refusing it" in {
+    val store = new InMemoryEnrichmentCacheStore()
+    val throwing = new CountingLeaf {
+      override def get(url: String): String = { super.get(url); throw new HttpStatusException(403, "GET", url, None) }
+    }
+    val recording = wiringWith(Some(new EnrichmentCache(store, persistSuccesses = false,
+      transients = EnrichmentCache.Transients.Recorded)), throwing)
+    an [Exception] should be thrownBy recording.httoFetch.get("https://www.cineworld.test/api/movies?ids=1")
+    an [Exception] should be thrownBy recording.enrichmentFetch.get("https://www.omdbapi.com/?t=Dune")
+    throwing.calls shouldBe 2
+
+    val replayed = new EnrichmentCache(store, persistSuccesses = false, transients = EnrichmentCache.Transients.Replayed)
+    replayed.preload()
+    val missing = new MissingFixtures
+    val hermetic = hermeticWiring(Some(replayed), missing)
+
+    // Failing the way the recording saw them fail — the remembered 403, not a refusal.
+    (the [Exception] thrownBy hermetic.httoFetch.get("https://www.cineworld.test/api/movies?ids=1"))
+      .getMessage should include("HTTP 403")
+    (the [Exception] thrownBy hermetic.enrichmentFetch.get("https://www.omdbapi.com/?t=Dune"))
+      .getMessage should include("HTTP 403")
+    missing.isEmpty shouldBe true
+  }
+
+  // A detail page that answered nothing used to be asked again on every call: the detail
+  // chain had no verdict cache, so the recorder had nothing to write and the tree could
+  // never say what the recording saw.
+  "the archive replay wiring" should "remember a failed detail page for the rest of the run" in {
+    val throwing = new CountingLeaf {
+      override def get(url: String): String = { super.get(url); throw new HttpStatusException(404, "GET", url, None) }
+    }
+    val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), throwing)
+
+    an [Exception] should be thrownBy wiring.httoFetch.get("https://cinema.test/film/gone")
+    an [Exception] should be thrownBy wiring.httoFetch.get("https://cinema.test/film/gone")
+
+    throwing.calls shouldBe 1
+  }
 }

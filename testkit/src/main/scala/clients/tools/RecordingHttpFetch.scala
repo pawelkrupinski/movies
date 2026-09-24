@@ -63,19 +63,8 @@ class RecordingHttpFetch(fixtureDirectory: String, delegate: HttpFetch, foldYear
     content
   }
 
-  private def fileFor(url: String, body: Option[String] = None): File = {
-    val uri = new URI(url)
-    val path = uri.getPath.stripPrefix("/")
-    // Suffix with a fingerprint of the query string, so distinct queries
-    // to the same path (`/3/search/movie?query=Prada` vs `…?query=Belle`,
-    // `/api/v1/live/search?query=Foo` vs `…?query=Bar`) get distinct
-    // fixture files instead of overwriting each other. `RecordingHttpFetch`
-    // used to key by path alone — Prada's search response was therefore
-    // lost when the next query overwrote `/3/search/movie`.
-    val querySuffix = Option(uri.getRawQuery).map(q => s".${RecordingHttpFetch.stableQueryFingerprint(q, foldYear)}").getOrElse("")
-    val bodySuffix  = body.map(b => s".${b.hashCode.toHexString}").getOrElse("")
-    new File(s"$fixtureRoot/${uri.getHost}/$path$querySuffix$bodySuffix")
-  }
+  private def fileFor(url: String, body: Option[String] = None): File =
+    new File(s"$fixtureRoot/${RecordingHttpFetch.fixtureKey(url, body, foldYear)}")
 
   /** Hash the query string with rotating auth parameters (`api_key`,
    *  `access_token`, …) stripped, so the same query produces the same
@@ -186,4 +175,22 @@ object RecordingHttpFetch {
   }
 
   private val YearParameters = Set("year", "primary_release_year")
+
+  /** Where, relative to a tree's root, the recorder writes the response to this request:
+   *  `host/path` plus the query fingerprint and the POST body hash. The ONE spelling of a
+   *  fixture's name, so a replay that finds nothing can say exactly which file it wanted
+   *  (`HermeticHttpLeaf`) rather than leaving a URL for somebody to fingerprint by hand. */
+  def fixtureKey(url: String, body: Option[String] = None, foldYear: Boolean = true): String = {
+    val uri = new URI(url)
+    val path = uri.getPath.stripPrefix("/")
+    // Suffix with a fingerprint of the query string, so distinct queries
+    // to the same path (`/3/search/movie?query=Prada` vs `…?query=Belle`,
+    // `/api/v1/live/search?query=Foo` vs `…?query=Bar`) get distinct
+    // fixture files instead of overwriting each other. `RecordingHttpFetch`
+    // used to key by path alone — Prada's search response was therefore
+    // lost when the next query overwrote `/3/search/movie`.
+    val querySuffix = Option(uri.getRawQuery).map(q => s".${stableQueryFingerprint(q, foldYear)}").getOrElse("")
+    val bodySuffix  = body.map(b => s".${b.hashCode.toHexString}").getOrElse("")
+    s"${uri.getHost}/$path$querySuffix$bodySuffix"
+  }
 }

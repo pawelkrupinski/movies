@@ -34,7 +34,10 @@ class EnrichmentCache(
   // all. It tripled a country's tarball — the UK reached 434 MB — to store answers
   // nothing would ever read. What only the cache can hold is a verdict no response
   // ever arrived for, and those are still persisted either way.
-  persistSuccesses: Boolean = true
+  persistSuccesses: Boolean = true,
+  // What happens to a failure that says nothing permanent about its URL (a 429, a 503,
+  // a timeout) once this run is over. See [[EnrichmentCache.Transients]].
+  transients: EnrichmentCache.Transients = EnrichmentCache.Transients.Forgotten
 ) extends Logging {
 
   private val entries      = new ConcurrentHashMap[String, CachedResponse]()
@@ -57,7 +60,9 @@ class EnrichmentCache(
    * Returns the number of entries loaded.
    */
   def preload(): Int = {
-    val loaded = store.loadAll()
+    val loaded = store.loadAll().filter { case (_, response) =>
+      EnrichmentCache.isDurable(response) || transients == EnrichmentCache.Transients.Replayed
+    }
     loaded.foreach { case (key, response) => entries.put(key, response) }
     loaded.size
   }
@@ -94,20 +99,19 @@ class EnrichmentCache(
       case _: CachedResponse.Failed => failureCount.incrementAndGet()
       case _                        => ()
     }
+    // Counted only for a failure the next RECORDING run will ask again — whether or not it
+    // is written down for a hermetic replay. A success skipped because the fixture tree
+    // holds it isn't "not remembered" in any lossy sense, and counting it here would read
+    // as a coverage problem.
+    if (!EnrichmentCache.isDurable(response)) transientCount.incrementAndGet()
     if (worthPersisting(response)) writeThrough(key, response)
-    else response match {
-      // Counted only for a failure deliberately left retryable. A success skipped
-      // because the fixture tree holds it isn't "not remembered" in any lossy sense,
-      // and counting it here would read as a coverage problem.
-      case _: CachedResponse.Failed => transientCount.incrementAndGet(); ()
-      case _                        => ()
-    }
   }
 
   /** Whether this outcome earns a place in the store: a failure only when its status is
    *  a verdict about the URL, a success only when nothing else is already recording it. */
   private def worthPersisting(response: CachedResponse): Boolean = response match {
-    case failed: CachedResponse.Failed => EnrichmentCache.isDurable(failed)
+    case failed: CachedResponse.Failed =>
+      EnrichmentCache.isDurable(failed) || transients == EnrichmentCache.Transients.Recorded
     case _                             => persistSuccesses
   }
 
@@ -177,6 +181,26 @@ class EnrichmentCache(
 object EnrichmentCache {
 
   /**
+   * The fate of a TRANSIENT failure — a 429, a 503, a Cloudflare 403, a timeout — beyond
+   * the run that saw it. Within the run it is always remembered in memory (see `remember`).
+   *
+   * Three answers because there are three kinds of run, and they want opposite things:
+   *
+   *  - `Forgotten`: never written down. The default, and what a cache with no hermetic
+   *    replay behind it wants — the next run simply asks again.
+   *  - `Recorded`: written down, but NOT preloaded by the next recording run, which still
+   *    asks again exactly as `Forgotten` would. What it buys is the hermetic replay below:
+   *    the recording is only a complete record of what the pipeline asked if it holds the
+   *    requests that failed too. Measured on Poland's sample before this existed: all 11
+   *    requests a hermetic replay could not answer were ones the recording run had seen
+   *    fail — OMDb over its free quota, Cinemeta 504s, a Metacritic timeout.
+   *  - `Replayed`: preloaded like a verdict, so a hermetic run fails each such request
+   *    exactly the way the recording run saw it fail — deterministically, with no network.
+   *    Never written: a hermetic run does not grow the tree.
+   */
+  enum Transients { case Forgotten, Recorded, Replayed }
+
+  /**
    * The failure statuses that are a VERDICT about the URL rather than a report about
    * the moment, and so the only ones worth carrying to the next run.
    *
@@ -210,13 +234,13 @@ object EnrichmentCache {
    *  which dropped and reconnected is picked back up within the same phase. */
   val WriteSuspension: FiniteDuration = 1.minute
 
-  /** `transient` is the count of failures deliberately NOT carried to the next run.
+  /** `transient` is the count of failures the next RECORDING run asks again.
    *  Reported because a run whose transient count is out of all proportion to its
    *  corpus was rate-limited, and that explains a coverage dip that would otherwise
    *  look like a resolver regression. */
   final case class Statistics(hits: Int, fills: Int, failures: Int, entries: Int, transient: Int = 0) {
     override def toString: String =
-      s"$hits hits, $fills live fills ($failures failed, $transient transient — not remembered), " +
+      s"$hits hits, $fills live fills ($failures failed, $transient transient — asked again by the next recording), " +
       s"$entries entries held"
   }
 }
