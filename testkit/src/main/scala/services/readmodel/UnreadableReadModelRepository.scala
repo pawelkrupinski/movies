@@ -1,6 +1,7 @@
 package services.readmodel
 
 import models.{CityScreening, ResolvedMovie}
+import tools.contracts.FailsOnPurpose
 
 /**
  * A [[ReadModelReader]] whose whole-collection reads fail while the collections are
@@ -16,7 +17,7 @@ import models.{CityScreening, ResolvedMovie}
  * Writes and watches delegate to the real in-memory store, so a spec can seed a corpus, fail
  * only the reads, and then restore them with [[healReads]].
  */
-class UnreadableReadModelRepository extends InMemoryReadModelRepository {
+class UnreadableReadModelRepository extends InMemoryReadModelRepository with FailsOnPurpose {
   @volatile var failingReads: Boolean = true
 
   /** Let the whole-collection reads see the store again — a recovered Mongo. */

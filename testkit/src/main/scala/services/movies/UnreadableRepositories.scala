@@ -1,6 +1,7 @@
 package services.movies
 
 import models.{MovieRecord, Showtime, SourceData}
+import tools.contracts.FailsOnPurpose
 
 /**
  * Test doubles for the ONE thing every "checked" read contract exists to express: a read
@@ -16,7 +17,7 @@ import models.{MovieRecord, Showtime, SourceData}
 
 /** A [[SlotsRepository]] whose reads always fail — empty result, `complete = false`.
  *  Writes still land, so a spec can seed state and then fail only the read. */
-class UnreadableSlotsRepository extends InMemorySlotsRepository {
+class UnreadableSlotsRepository extends InMemorySlotsRepository with FailsOnPurpose {
   override def findForFilmChecked(filmId: String): (Map[String, SourceData], Boolean) = (Map.empty, false)
   override def findAllChecked(): (Map[String, Map[String, SourceData]], Boolean)      = (Map.empty, false)
 }
@@ -26,7 +27,7 @@ class UnreadableSlotsRepository extends InMemorySlotsRepository {
  *  screenings and then fail only the read. Decorates rather than extends the in-memory
  *  store so an integration spec can fail the read in front of the REAL Mongo repository. */
 class UnreadableScreeningsRepository(store: ScreeningsRepository = new InMemoryScreeningsRepository)
-  extends ScreeningsRepository {
+  extends ScreeningsRepository with FailsOnPurpose {
   def findForFilmChecked(filmId: String): (Map[String, Seq[Showtime]], Boolean) = (Map.empty, false)
   def findAll(): Map[String, Map[String, Seq[Showtime]]]                        = store.findAll()
   def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]],
@@ -68,7 +69,7 @@ object SimulatedWriteFailure {
 /** A [[SlotsRepository]] whose WRITES always fail. The mirror-image guard: `upsert` may
  *  only drop a film's embedded copy once its slots have actually landed, so a store that
  *  reports every write as failed is what proves the embedded copy is kept. */
-class UnwritableSlotsRepository extends InMemorySlotsRepository {
+class UnwritableSlotsRepository extends InMemorySlotsRepository with FailsOnPurpose {
   override def replaceFilm(filmId: String, slots: Map[String, SourceData],
                            stored: Option[Map[String, SourceData]] = None): WriteOutcome =
     SimulatedWriteFailure(SlotsRepository.Collection, "replaceFilm")
@@ -83,14 +84,14 @@ class UnwritableSlotsRepository extends InMemorySlotsRepository {
  *  does. `delivered` defaults to none — the shape where a caller sees `films = 0` and must
  *  not mistake it for an empty corpus. */
 class IncompleteScanMovieRepository(delivered: Seq[(String, Option[Int], MovieRecord)] = Seq.empty)
-  extends InMemoryMovieRepository(delivered) {
+  extends InMemoryMovieRepository(delivered) with FailsOnPurpose {
   override def foreachRecord(f: StoredMovieRecord => Unit): Boolean = { super.foreachRecord(f); false }
 }
 
 /** A [[ScreeningsRepository]] whose WRITES fail. A caller that copies rows to a new id and
  *  then deletes the old ones must verify the copy landed; a Mongo transaction would not
  *  save it, since the repository catches the exception and nothing rolls back. */
-class UnwritableScreeningsRepository extends InMemoryScreeningsRepository {
+class UnwritableScreeningsRepository extends InMemoryScreeningsRepository with FailsOnPurpose {
   /** Populate a film's rows, bypassing the write block — so a spec can set up the state a
    *  failed copy is supposed to preserve. */
   def seed(filmId: String, slots: Map[String, Seq[models.Showtime]]): Unit = {
@@ -111,7 +112,7 @@ class UnwritableScreeningsRepository extends InMemoryScreeningsRepository {
  *  `findAll` deliberately keeps working — the corruption this exposes is a WRITE built on a
  *  failed point read, so the spec must still be able to see what the write did. */
 class UnreadableByIdMovieRepository(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty)
-  extends InMemoryMovieRepository(seed) {
+  extends InMemoryMovieRepository(seed) with FailsOnPurpose {
   @volatile var failing: Boolean = true
   override def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) =
     if (failing) (None, false) else super.findByIdChecked(id)
