@@ -59,8 +59,6 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
       "rule 2 compares literals with today on purpose (see the class doc)",
     "common/src/test/scala/tools/TlsTrustSpec.scala" ->
       "documents that a pinned certificate really is expired — a statement about today by design",
-    "worker/src/test/scala/services/cinemas/ScriptedCinemaScraper.scala" ->
-      "a filler showtime for scripted listings fed through caches on the system clock",
     "worker/src/fixtures/scala/tools/FileEnrichmentCacheStore.scala"    -> FileAges,
     "worker/src/test/scala/tools/FileEnrichmentCacheStoreSpec.scala"    -> FileAges,
     "worker/src/test/scala/tools/EnrichmentFreshnessSpec.scala"         -> FileAges

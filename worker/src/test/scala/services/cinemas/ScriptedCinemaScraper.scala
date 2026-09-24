@@ -23,7 +23,7 @@ object ScriptedCinemaScraper {
       synopsis  = None,
       cast      = Seq.empty,
       director  = Seq.empty,
-      showtimes = Seq(Showtime(LocalDateTime.now(), Some("https://book")))
+      showtimes = Seq(Showtime(LocalDateTime.parse("2026-06-10T18:00"), Some("https://book")))
     )
   )
 
