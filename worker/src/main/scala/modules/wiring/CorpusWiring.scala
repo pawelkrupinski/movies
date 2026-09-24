@@ -43,7 +43,7 @@ trait CorpusWiring { self: WorkerWiring =>
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(
     mongoConnection.database, fallbackToOwnInit = false, changeStreamMetrics = taskMetrics.movieChangeMetrics,
     screeningsMetrics = taskMetrics, slotsMetrics = taskMetrics.slotsChangeMetrics,
-    writeMetrics = taskMetrics,
+    writeMetrics = taskMetrics, decodeFailures = taskMetrics,
     normalizer = titleNormalizer,
     screenings = Some(screeningsRepository),
     slots = Some(slotsRepository),

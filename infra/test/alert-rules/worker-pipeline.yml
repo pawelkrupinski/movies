@@ -512,8 +512,8 @@ tests:
         exp_alerts:
           - exp_labels: { severity: warning, country: pl, collection: web_movies }
             exp_annotations:
-              summary: "pl: documents in web_movies could not be decoded and were skipped"
-              description: "A full scan of `web_movies` skipped at least one document in the last hour because it could not be decoded, so the process that read it serves or projects without that film or screening. The WARN line names each one (\"skipping undecodable document _id=...\"), with the exception; the worker diagnostics dashboard (\"Documents skipped as UNDECODABLE\") says whether the worker, the web or both saw it. A wrong-typed field is usually a writer that changed shape: the projector's reconcile rewrites the document once the writer is fixed."
+              summary: "pl: documents in web_movies could not be decoded"
+              description: "A full scan of `web_movies` skipped at least one document in the last hour because it could not be decoded, so the process that read it serves or projects without that film or screening. The WARN line names each one (\"skipping undecodable document _id=...\"), with the exception; the worker diagnostics dashboard (\"Documents skipped as UNDECODABLE\") says whether the worker, the web or both saw it. A wrong-typed field is usually a writer that changed shape: the projector's reconcile rewrites the document once the writer is fixed. In `movies` nothing is skipped: every read that meets the document FAILS (its film's point read, and the whole corpus scan), and the WARN line is that read's failure — fix or remove the document by hand."
       - eval_time: 80m
         alertname: DocumentsUndecodable
         exp_alerts: []
@@ -529,8 +529,8 @@ tests:
         exp_alerts:
           - exp_labels: { severity: warning, country: de, collection: web_screenings }
             exp_annotations:
-              summary: "de: documents in web_screenings could not be decoded and were skipped"
-              description: "A full scan of `web_screenings` skipped at least one document in the last hour because it could not be decoded, so the process that read it serves or projects without that film or screening. The WARN line names each one (\"skipping undecodable document _id=...\"), with the exception; the worker diagnostics dashboard (\"Documents skipped as UNDECODABLE\") says whether the worker, the web or both saw it. A wrong-typed field is usually a writer that changed shape: the projector's reconcile rewrites the document once the writer is fixed."
+              summary: "de: documents in web_screenings could not be decoded"
+              description: "A full scan of `web_screenings` skipped at least one document in the last hour because it could not be decoded, so the process that read it serves or projects without that film or screening. The WARN line names each one (\"skipping undecodable document _id=...\"), with the exception; the worker diagnostics dashboard (\"Documents skipped as UNDECODABLE\") says whether the worker, the web or both saw it. A wrong-typed field is usually a writer that changed shape: the projector's reconcile rewrites the document once the writer is fixed. In `movies` nothing is skipped: every read that meets the document FAILS (its film's point read, and the whole corpus scan), and the WARN line is that read's failure — fix or remove the document by hand."
 
   # HEALTHY: every series seeded at 0 and flat for two hours, in both processes -- silent.
   - interval: 1m

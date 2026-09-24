@@ -496,7 +496,10 @@ class MongoMovieRepository(
   // its own collection label. See [[SideCollectionChangeMetrics]].
   slotsMetrics: SideCollectionChangeMetrics = SideCollectionChangeMetrics.noop,
   // Where a write that THREW is counted — see [[WriteOutcome]]. Noop for scripts/web/tests.
-  writeMetrics: RepositoryWriteMetrics = RepositoryWriteMetrics.noop
+  writeMetrics: RepositoryWriteMetrics = RepositoryWriteMetrics.noop,
+  // Where a `movies` document the codec could not decode is counted — the same counter as the
+  // read model's skipped documents. Noop for scripts/web/tests.
+  decodeFailures: services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop
 ) extends MovieRepository with KeyAddressedMovieWrites with Logging {
 
 
@@ -723,9 +726,11 @@ class MongoMovieRepository(
           Await.result(
             c.find(page).sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds)
         },
-        onIncomplete   = exception =>
+        onIncomplete   = exception => {
           logger.warn(s"MovieRepository keyset scan failed after retries: " +
             s"${exception.getClass.getSimpleName}: ${exception.getMessage} — scan incomplete")
+          countIfUndecodable(exception)
+        }
       )(onBatch)
     case None => false
   }
@@ -744,6 +749,12 @@ class MongoMovieRepository(
   override def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) =
     findOneChecked(Filters.eq("key", StoredMovieRecord.keyFor(key)), s"findByKey(${StoredMovieRecord.keyFor(key)})")
 
+  /** A read that failed on a document the codec refused: counted, since it fails every read that
+   *  meets it (one such document leaves the whole corpus scan incomplete) and is otherwise a WARN. */
+  private def countIfUndecodable(failure: Throwable): Unit =
+    if (services.readmodel.DecodeFailureMetrics.isDecodeFailure(failure))
+      decodeFailures.recordDecodeFailure(services.readmodel.DecodeFailureMetrics.SourceMoviesCollection)
+
   private def findOneChecked(filter: Bson, what: String): (Option[StoredMovieRecord], Boolean) = coll match {
     case Some(c) =>
       Try(Option(Await.result(c.find(filter).first().toFuture(), 10.seconds))) match {
@@ -755,6 +766,7 @@ class MongoMovieRepository(
           }
         case scala.util.Failure(exception) =>
           logger.warn(s"MovieRepository.$what failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
+          countIfUndecodable(exception)
           (None, false)
       }
     case None => (None, true)
