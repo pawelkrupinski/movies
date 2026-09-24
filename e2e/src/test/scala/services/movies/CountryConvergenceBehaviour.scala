@@ -13,7 +13,7 @@ import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
 import services.titlerules.TitleRuleSet
 import tools.{ArchiveReplayWiring, ConvergenceStorage, CorpusCoverage, CorpusFixture, CorpusProvenance, CountryScrapeCorpus,
-  EnrichmentCache, EnrichmentFreshness, Env, FileEnrichmentCacheStore, FixpointPass, MissingFixtures, PhaseTimer, ProdCoverageBaseline,
+  ChurnLedger, EnrichmentCache, EnrichmentFreshness, Env, FileEnrichmentCacheStore, FixpointPass, MissingFixtures, PhaseTimer, ProdCoverageBaseline,
   SameThreadExecutionBudget}
 
 import java.time.{Instant, LocalDateTime}
@@ -982,13 +982,26 @@ abstract class CountryConvergenceBehaviour(
       FixpointPass.attachProjector(w)
       FixpointPass.run(w)
       FixpointPass.awaitStreamsQuiet(w)
+      //
+      // A RECORDING leg (not hermetic) is the one exception, and only when the measured tick
+      // itself went to the network: there the input is not identical by construction — a
+      // detail page that failed live last tick (Cineworld's API answers runners 403 on and
+      // off) is retried and may answer this time, and the film it fills is a real write. The
+      // hermetic replay of the same recording is where this pass is a verdict; a recording
+      // tick that made no live request is still held to it.
       val corpusWrites = storage.corpusWrites()
-      try FixpointPass.ledger(w, corpusWrites)
-        .assertNoChurn(s"a further full tick over ${country.displayName}'s unchanged corpus") {
-          FixpointPass.run(w)
-          FixpointPass.awaitStreamsQuiet(w)
-        }
-      finally corpusWrites.foreach(_.close())
+      try {
+        val label = s"a further full tick over ${country.displayName}'s unchanged corpus"
+        val liveRequests = FixpointPass.liveRequests(w)
+        val ledger = FixpointPass.ledger(w, corpusWrites)
+        val before = liveRequests()
+        val moved  = ledger.churnOf { FixpointPass.run(w); FixpointPass.awaitStreamsQuiet(w) }
+        val live   = liveRequests() - before
+        if (moved.nonEmpty && missingFixtures.isEmpty && live > 0)
+          info(s"$label moved while recording, after $live live request(s) — not a verdict here, " +
+               s"the hermetic replay is:\n${ChurnLedger.describe(moved)}")
+        else ledger.failIfMoved(label, moved)
+      } finally corpusWrites.foreach(_.close())
     }
   }
 

@@ -79,13 +79,14 @@ final class ChurnLedger {
 
   /** Run `pass` and fail, naming every axis that moved, unless it did no work at all.
    *  `label` says what the pass was, so a failure reads as a sentence. */
-  def assertNoChurn(label: String)(pass: => Unit): Unit = {
-    val moved = churnOf(pass)
+  def assertNoChurn(label: String)(pass: => Unit): Unit = failIfMoved(label, churnOf(pass))
+
+  /** The failure [[assertNoChurn]] raises, for a caller that measured the pass itself. */
+  def failIfMoved(label: String, moved: Map[String, Double]): Unit =
     if (moved.nonEmpty)
       org.scalatest.Assertions.fail(
         s"$label did work over input that had not changed — every axis below should have stayed at zero:\n" +
           ChurnLedger.describe(moved) + context.map(_()).filter(_.nonEmpty).map("\n" + _).mkString)
-  }
 }
 
 object ChurnLedger {

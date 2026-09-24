@@ -18,10 +18,10 @@ import scala.concurrent.duration._
  *   1. scrape landing — every venue re-reports the listing it reported last time;
  *   2. the staging fold — whatever the landing diverted incubates and graduates;
  *   3. the settle — both halves, as the periodic SettleReaper runs them;
- *   4. projection — the change stream re-projects what was written (see
- *      [[attachProjector]]), then the 30-minute prune/heal/drift sweep runs;
- *   5. enrichment re-dispatch — one whole period of the TMDB re-try sweep, then the
- *      rating reaper's walk drained to quiescence.
+ *   4. enrichment re-dispatch — one whole period of the TMDB re-try sweep, then the
+ *      rating reaper's walk drained to quiescence;
+ *   5. projection — the change stream re-projects what was written all along (see
+ *      [[attachProjector]]), and the 30-minute prune/heal/drift sweep runs last.
  * Operator-triggered bulk walks are not part of a tick and are left to their own specs.
  */
 object FixpointPass {
@@ -103,13 +103,25 @@ object FixpointPass {
     ledger
   }
 
+  /** Outbound requests that reached the network — the wiring's own `kinowo_worker_http`
+   *  counter, which sits under every cache and fixture layer, so a replayed answer does not
+   *  count and a live one does. */
+  def liveRequests(w: TestWiring): () => Double =
+    () => ChurnLedger.countersOf(w.workerMetrics.registry, Set("kinowo_worker_http"), (_, _) => true).values.sum
+
   /** Subscribe the read-model projector to the `movies` change stream, as production does.
    *  A harness that projects only by `reconcile()` sees every row re-projected whether or
    *  not it changed; attached, a projection happens only when a write asked for one — so a
    *  projection during a no-op pass is itself the signal. */
   def attachProjector(w: TestWiring): Unit = {
     w.movieRepository.watchChanges(w.readModelProjector.onMovieUpsert, w.readModelProjector.onMovieDelete)
-    ()
+    // …and bring the read model up to the corpus it is attached to. Production's projector is
+    // subscribed from boot; a harness that attaches it late has rows written while nothing
+    // listened, and the tick after attaching would otherwise spend itself projecting THOSE —
+    // a first projection, then the heal's first look at what it changed — which is catching
+    // up with the harness, not a tick. Found on the UK sample leg: 99 rows written before
+    // attaching, projected by the first tick's sweep, then looked at again by the second's.
+    w.readModelProjector.reconcile()
   }
 
   /** One production tick over whatever the wiring's scrapers report. */
@@ -123,10 +135,14 @@ object FixpointPass {
     // the harness's rating drain below completes any task it has no handler for, so
     // leaving them queued would drop them unworked and re-ask them on every pass.
     w.enrichDetailsSync()
-    w.readModelProjector.pruneOrphans()
     services.tasks.ReaperSweeps.unresolvedTmdbPeriod(w.unresolvedTmdbReaper, w.clock.instant())
     w.drainServices()
     w.enrichRatingsSync()
+    // The sweep LAST, so it takes its first look at whatever this tick changed within the
+    // tick. Run before the re-dispatch, a row the TMDB re-try made ready here was projected
+    // off the stream and first swept by the NEXT tick — whose heal then looked at its spent
+    // slots for the first time and read as churn (2 UK rows with 23-25 spent venues each).
+    w.readModelProjector.pruneOrphans()
   }
 
   /** Wait until Mongo's change streams have delivered and applied what the last pass wrote:
