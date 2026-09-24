@@ -210,6 +210,17 @@ runs:
         .github/scripts/fixture-server.sh await /tmp/fixture-server
         echo "KINOWO_BASE_URL=http://127.0.0.1:$(cat /tmp/fixture-server/port)" >> $GITHUB_ENV
 
+    # A fresh runner starts with an empty Mesa shader cache. Without it, every
+    # worker in a shard's first batch compiles the same llvmpipe shaders on
+    # its first frame, all at the same time. That cost 8–10s of a 30s test
+    # budget and timed out `search-tap-dismiss.spec.ts:28` (run 35996722720).
+    # One serial render of the real listing per engine (~3s) builds the cache
+    # before any test's clock starts. See `warm-browsers.mjs`.
+    - name: Warm browser caches
+      if: inputs.kind == 'playwright'
+      shell: bash
+      run: cd page-tests-playwright && node warm-browsers.mjs ${{ inputs.browsers }}
+
     # Point CdpDriver at the matrix-installed browser via env var.
     # The driver also prints the resolved browser version to stderr
     # at boot, so a failure has the version diff in its log without
