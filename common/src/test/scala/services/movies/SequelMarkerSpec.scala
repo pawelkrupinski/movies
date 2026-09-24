@@ -176,4 +176,20 @@ class SequelMarkerSpec extends AnyFlatSpec with Matchers {
     siblings("The Hunger Games: Mockingjay - Part 1 (2026)", "The Hunger Games: Mockingjay - Part 2") shouldBe true
     siblings("The Hunger Games: Mockingjay - Part 1 (2026)", "The Hunger Games: Catching Fire") shouldBe true
   }
+
+  // HardClusterConvergenceIntegrationSpec, 2026-09-24: Vue lists the franchise's 2023
+  // entry as "The Hunger Games: The Ballad of Songbirds and Snakes (2023)". The curated
+  // subtitle had to be ALL of the extras, so the bracketed year made it read as a plain
+  // decoration of the 2012 original, and a Vue venue landed on that row whenever the
+  // original was settled before the Ballad arrived.
+  it should "still name a curated entry when a year or rerelease note trails its subtitle" in {
+    anotherEntry("The Hunger Games", "The Hunger Games: The Ballad of Songbirds and Snakes (2023)") shouldBe true
+    anotherEntry("The Hunger Games", "The Hunger Games: Catching Fire (2026)") shouldBe true
+    anotherEntry("The Hunger Games", "The Hunger Games: Catching Fire Re-Release") shouldBe true
+    def siblings(a: String, b: String) = SequelMarker.curatedSiblingTitles(Seq(a), Seq(b))
+    siblings("The Hunger Games: The Ballad of Songbirds and Snakes (2023)",
+             "The Hunger Games: The Ballad of Songbirds & Snakes") shouldBe false
+    siblings("The Hunger Games: Catching Fire (2026)", "The Hunger Games: Catching Fire") shouldBe false
+    siblings("The Hunger Games: Catching Fire (2026)", "The Hunger Games: Mockingjay - Part 1") shouldBe true
+  }
 }

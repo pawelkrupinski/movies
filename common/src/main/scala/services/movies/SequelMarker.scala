@@ -136,9 +136,18 @@ object SequelMarker {
       case Seq(marker, ordinal) => PartMarkers.contains(marker) && (isOrdinal(ordinal) || WordOrdinals.contains(ordinal))
       case _                    => false
     }
-    val knownSubtitle = KnownFranchiseSubtitles.get(base).exists(_.contains(extras))
+    val knownSubtitle = curatedSubtitle(base, extras).isDefined
     ordinalRightAfterBase || partThenOrdinal || knownSubtitle
   }
+
+  /** The curated subtitle `extras` (the tokens after a franchise `base`) OPENS with, if
+   *  any — the longest, so "songbirds and snakes" wins over a shorter overlapping entry.
+   *  A prefix, not the whole of `extras`: whatever trails the subtitle — a year a venue
+   *  brackets onto a rerelease, "Re-Release" — does not make it a different entry, and
+   *  an exact match let "The Hunger Games: The Ballad of Songbirds and Snakes (2023)"
+   *  read as a decoration of the 2012 original and land a Vue venue's screenings on it. */
+  private def curatedSubtitle(base: Seq[String], extras: Seq[String]): Option[Seq[String]] =
+    KnownFranchiseSubtitles.get(base).flatMap(_.filter(extras.startsWith(_)).maxByOption(_.length))
 
   /** True when `a` and `b` share a CURATED franchise base as a common prefix and
    *  each independently qualifies, against that base, as [[namesAnotherEntry]] —
@@ -193,7 +202,7 @@ object SequelMarker {
    *  part of which entry it is. */
   private def entryNamed(base: Seq[String], whole: Seq[String]): Option[Entry] = {
     val extras = whole.drop(base.length)
-    val subtitle = KnownFranchiseSubtitles.get(base).filter(_.contains(extras)).map(_ => Entry(extras.filterNot(_ == "and"), None))
+    val subtitle = curatedSubtitle(base, extras).map(s => Entry(s.filterNot(_ == "and"), None))
     def partThenOrdinal = extras.indices.iterator.flatMap { at =>
       extras.lift(at).filter(PartMarkers.contains)
         .flatMap(_ => extras.lift(at + 1).flatMap(ordinalValue))
