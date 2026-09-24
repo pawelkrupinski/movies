@@ -275,6 +275,21 @@ else
   failed=1
 fi
 
+step "heap-dump budget"
+# The prune every kinowo pod runs before its JVM starts, and the node's timer runs over all of them.
+# Its other test is "OOM a production JVM and look". See nix/files/heap-dumps.sh.
+if [ -f test/test_heap_dumps.sh ]; then
+  if out="$(bash test/test_heap_dumps.sh 2>&1)"; then
+    echo "$out" | tail -1 | sed 's/^/  /'
+  else
+    echo "$out" | sed 's/^/  /'
+    failed=1
+  fi
+else
+  echo "  FAILED test/test_heap_dumps.sh is missing"
+  failed=1
+fi
+
 step "systemd key placement"
 # SYSTEMD IGNORES A KEY IT DOES NOT RECOGNISE, WHICH IS WHY THIS NEEDS CHECKING AT ALL.
 #

@@ -32,6 +32,7 @@
     ./firewall.nix
     ./nix-gc.nix
     ./container-image-gc.nix
+    ./heap-dumps.nix
     ./observability.nix
     ./deploy-staging.nix
     ./auto-apply.nix

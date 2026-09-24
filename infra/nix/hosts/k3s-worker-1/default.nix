@@ -49,6 +49,11 @@
 
   fleet.firewall.k3sAgent = true;
 
+  # THE kinowo PODS' HEAP DUMPS: the hostPath they mount (/var/lib/kinowo/heapdumps), and the timer
+  # that holds it to its budget and publishes kinowo_heapdumps_* -- see modules/fleet/heap-dumps.nix.
+  # Here, not fleet-wide, because this is the node every web and worker pod is pinned to.
+  fleet.heapDumps.enable = true;
+
   # SHIP THE JOURNAL *AND* THE POD LOGS TO monitoring-1. The second half is the point on this host:
   # containerd writes container stdout/stderr to /var/log/pods and NOT to the journal, so a shipper
   # with only the journal source would send k3s's own units and nothing the cluster runs -- which is

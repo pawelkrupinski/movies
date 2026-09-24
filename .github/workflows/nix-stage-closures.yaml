@@ -227,6 +227,10 @@ jobs:
         working-directory: infra
         run: bash test/test_reboot_required.sh
 
+      - name: The heap-dump budget keeps the newest, never an in-progress dump, and stays bounded
+        working-directory: infra
+        run: bash test/test_heap_dumps.sh
+
       - name: The fleet dashboard renders what the fleet reports
         working-directory: infra
         run: python3 version-dashboard/test_app.py
