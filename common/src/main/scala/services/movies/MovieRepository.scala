@@ -530,12 +530,13 @@ class MongoMovieRepository(
    *  from `screenings` — the per-film read-stitch shared by [[findById]] and the
    *  change-stream fan-out. Slots first: the showtime stitch keys off the slot map.
    *
-   *  `None` when the SLOT read failed. A migrated film's `movies` document holds no
-   *  cinemas of its own, so a failed slot read would decode to a film with none at all —
-   *  and this is precisely the record the change-stream fan-out hands the read-model
-   *  projector, whose `diffScreenings` then deletes every `web_screening` the film has.
-   *  Declining to produce a record costs one missed re-projection, which the film's next
-   *  write repeats; producing an empty one empties a live film off the site. */
+   *  `None` when the SLOT or the SCREENINGS read failed. A migrated film's `movies`
+   *  document holds no cinemas of its own, so a failed slot read would decode to a film
+   *  with none at all, and a failed screenings read to one whose every cinema has no
+   *  showtimes — and this is precisely the record the change-stream fan-out hands the
+   *  read-model projector, whose `diffScreenings` then deletes every `web_screening` the
+   *  film has. Declining to produce a record costs one missed re-projection, which the
+   *  film's next write repeats; producing an empty one empties a live film off the site. */
   private def decodeStitched(dto: StoredMovieDto): Option[StoredMovieRecord] = {
     val (storedSlots, slotsRead) = slots.map(_.findForFilmChecked(dto._id))
       .getOrElse((Map.empty[String, SourceData], true))
@@ -543,8 +544,15 @@ class MongoMovieRepository(
       logger.warn(s"MovieRepository: skipping ${dto._id} — its movie_slots read failed, and serving the row " +
         "without them would present a live film as having no cinemas.")
       None
-    } else Some(stitchRow(StoredMovieDto.toDomain(dto, normalizer),
-      screenings.map(_.findForFilm(dto._id)).getOrElse(Map.empty), storedSlots))
+    } else {
+      val (storedShowtimes, showtimesRead) = screenings.map(_.findForFilmChecked(dto._id))
+        .getOrElse((Map.empty[String, Seq[Showtime]], true))
+      if (!showtimesRead) {
+        logger.warn(s"MovieRepository: skipping ${dto._id} — its screenings read failed, and serving the row " +
+          "without them would present a live film as having no showtimes.")
+        None
+      } else Some(stitchRow(StoredMovieDto.toDomain(dto, normalizer), storedShowtimes, storedSlots))
+    }
   }
 
   // Lazy so subclasses that override every wire method (e.g.
@@ -725,7 +733,7 @@ class MongoMovieRepository(
         case scala.util.Success(Some(dto)) =>
           decodeStitched(dto) match {
             case some @ Some(_) => (some, true)
-            case None           => (None, false)             // slots unreadable
+            case None           => (None, false)             // slots or screenings unreadable
           }
         case scala.util.Failure(exception) =>
           logger.warn(s"MovieRepository.$what failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")

@@ -2138,6 +2138,33 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     } finally { slots.deleteFilm(id); scr.deleteFilm(id); client.close() }
   }
 
+  // The same refusal one collection over: the screenings read in the same stitch was the
+  // UNCHECKED `findForFilm`, so a failed read decoded to a film whose every cinema had no
+  // showtimes — the record the projector reads as "delete every web_screening".
+  it should "refuse to decode a film at all when its screenings read fails" in {
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord,
+      UnreadableScreeningsRepository}
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val slots  = new MongoSlotsRepository(Some(db))
+    val title  = "__integration-test-screenings-readfail__"
+    val year   = Some(1910)
+    val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
+    val when   = java.time.LocalDateTime.of(2026, 9, 24, 20, 0)
+    try {
+      val repo = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer)
+      repo.upsert(title, year, MovieRecord(imdbId = Some("tt0000082"),
+        data = Map[Source, SourceData](Multikino -> SourceData(title = Some("live cinema"), showtimes = Seq(Showtime(when, None))))))
+      repo.findById(FilmId(id)).map(_.record.data.values.flatMap(_.showtimes).size) shouldBe Some(1)
+
+      val blindRepo = new MongoMovieRepository(Some(db), screenings = Some(new UnreadableScreeningsRepository(scr)),
+        slots = Some(slots), normalizer = titleNormalizer)
+      // None, NOT the film with its cinema and no showtimes.
+      blindRepo.findByIdChecked(FilmId(id)) shouldBe ((None, false))
+    } finally { slots.deleteFilm(id); scr.deleteFilm(id); client.close() }
+  }
+
   // END TO END, against real Mongo: the whole 2026-07-27 failure in one test.
   //
   // The unit specs pin each link — a failed read reports itself, a scrape defers on one —
