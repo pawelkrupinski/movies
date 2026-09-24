@@ -69,7 +69,10 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
     "RepositoryWriteFailureIntegrationSpec", "RetiredVenueRowsIntegrationSpec", "RetryResolveServingIntegrationSpec", "ScanStitchedPagingSpec",
     "ScreeningsRewriteOnUpsertIntegrationSpec", "SideRowIdScanPagingSpec", "SlotsWatchProjectionIntegrationSpec",
     "StagingFoldIntegrationSpec", "UnreadyRoundTripProjectionIntegrationSpec"
-  ).map(spec => s"worker/src/it/scala/$spec.scala" -> MongoPath)
+  ).map(spec => s"worker/src/it/scala/$spec.scala" -> MongoPath) ++ Map(
+    // Claims from the real Mongo queue, whose enqueue stamps `submittedAt` with the system clock.
+    "worker/src/it/scala/contracts/ResolveDispatcherContractSpec.scala" -> MongoPath
+  )
 
   private def scalaFiles(roots: Seq[String]): Seq[Path] =
     roots.map(Paths.get(_)).filter(Files.isDirectory(_)).flatMap { root =>
