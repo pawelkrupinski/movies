@@ -108,3 +108,60 @@ groups:
             actually moved: with no full GC under it the floor is uncollected garbage, not the live
             set. worker-pl paged here on 2026-09-05 carrying the fleet's SMALLEST corpus, because a
             cache bounded by entry count held 228 MiB of HTML; the fix was the cache, not the heap.
+
+      # IS A JVM'S WHOLE PROCESS ABOUT TO OUTGROW ITS CONTAINER -- the failure the rule above
+      # CANNOT see.
+      #
+      # `-XX:+ExitOnOutOfMemoryError` turns heap exhaustion into a clean exit, so a container that
+      # is OOM-KILLED grew past its cgroup limit OUTSIDE the heap: metaspace, code cache, direct
+      # buffers, thread stacks, GC structures, and -- the one that has actually happened -- malloc'd
+      # memory no JVM pool reports at all. web-pl was killed seven times on 2026-09-21 17:01-18:25Z
+      # while AhrefsBot swept the film share cards: every progressive-JPEG poster decode holds a
+      # native buffer the size of the whole image, RSS climbed to ~0.87 of the 1 GiB limit, and 445 MB
+      # of it belonged to no pool. Heap stayed under -Xmx the whole time, so JvmOldGenNearCap was
+      # silent, and the first signal was K3sContainerOOMKilled -- after the fact.
+      #
+      # RSS AGAINST THE POD'S OWN LIMIT, read from kube-state-metrics so an overlay that resizes a
+      # limit moves the threshold with it. The app series carry `tier`/`country` from the scrape
+      # config; the limit series carry `container` (= tier) and a pod name that holds the country,
+      # so both are lifted into labels to join on. `max by` because a rolling deploy briefly has two
+      # pods (and two limit series) per country.
+      #
+      # THE THRESHOLDS ARE PER TIER AND MEASURED, 2026-09-24, over the preceding 7 days of
+      # healthy pods: web RSS/limit median 0.68-0.77 and max 0.81 (web-us); worker median 0.62-0.81
+      # and max 0.86 (worker-pl). The workers run with MALLOC_ARENA_MAX=2 and a trim threshold, so
+      # their RSS sits higher but returns memory; web does not yet. In the 09-21 crash loop web-pl
+      # read 0.83-0.87 for the 5-10 minutes before each kill, so 0.82 for 3m fires with minutes to
+      # spare on the kills that grew rather than jumped. A single decode storm can still go from
+      # quiet to killed between two 30s scrapes; nothing sampled can promise to see that one.
+      - alert: JvmResidentNearContainerLimit
+        expr: >-
+          (
+            max by (tier, country) (process_resident_memory_bytes{job=~"kinowo-web|kinowo-worker"})
+              / on (tier, country)
+            max by (tier, country) (
+              label_replace(
+                label_replace(kube_pod_container_resource_limits{namespace="kinowo", resource="memory", container=~"web|worker"},
+                  "tier", "$1", "container", "(.*)"),
+                "country", "$1", "pod", "(?:web|worker)-([a-z]+)-.*")
+            )
+          ) > on (tier) group_left()
+          (
+            label_replace(vector(0.82), "tier", "web", "", "")
+              or label_replace(vector(0.92), "tier", "worker", "", "")
+          )
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.tier }}-{{ $labels.country }} RSS is {{ $value | humanizePercentage }} of its container memory limit"
+          description: >-
+            The process is close to the cgroup limit, and the kernel -- not the JVM -- decides what
+            happens next: an OOM kill with no heap dump and no log line. Find WHICH memory grew
+            before resizing anything. Heap, non-heap pools and direct buffers are
+            `jvm_memory_committed_bytes` and `jvm_buffer_pool_used_bytes{pool="direct"}`; RSS minus
+            their sum is memory NO JVM POOL SEES (native allocations: image decoding, fonts, glibc
+            arenas). On web that has been the og-image share cards under a crawler sweep -- check the
+            og-image request rate in /var/log/caddy/access-*.log on k3s-worker-1 and
+            `kinowo_web_cache_entries{cache="og_card_film"}` climbing. Raising the limit only buys
+            time if the growth is unbounded.
