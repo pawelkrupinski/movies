@@ -584,7 +584,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val clock      = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
     val repository = new InMemoryMovieRepository(clock = clock)
     val rm         = new InMemoryReadModelRepository()
-    val m          = new RecordingMetrics()
+    val m          = new RecordingReadModelProjectionMetrics()
     val projector  = new ReadModelProjector(repository, rm, rm, m)
     repository.changeStreamLiveness.watching(ChangeStreamLiveness.Movies)   // open, and never delivers:
     // every write below goes past the cursor, as a stalled one lets it
@@ -616,7 +616,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
       override def upsertMovie(movie: ResolvedMovie): Unit =
         if (failing) throw new RuntimeException("read model unreachable") else super.upsertMovie(movie)
     }
-    val m         = new RecordingMetrics()
+    val m         = new RecordingReadModelProjectionMetrics()
     val projector = new ReadModelProjector(repository, rm, rm, m)
     repository.changeStreamLiveness.watching(ChangeStreamLiveness.Movies)
     clock.advanceSeconds(60)
