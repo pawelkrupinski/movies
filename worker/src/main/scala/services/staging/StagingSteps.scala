@@ -38,7 +38,10 @@ class StagingSteps(
   // The country's badge vocabulary, for the detail-page `format` merged in
   // `enrichDetail` — the staging path writes through the repository rather than
   // the cache, so it carries its own copy of the same wiring.
-  screeningTokens:   services.movies.ScreeningTokens = services.movies.ScreeningTokens.Default
+  screeningTokens:   services.movies.ScreeningTokens = services.movies.ScreeningTokens.Default,
+  // Times how long a film's resolve has been failing (see `StagingSteps.TransientResolveCeiling`)
+  // and stamps the attempt that concludes it. The fixture harness fixes it.
+  clock:             java.time.Clock = java.time.Clock.systemUTC()
 ) extends Logging {
   // The staging rows anchor under their repository's country rules — take them
   // from it rather than a second copy that could disagree.
@@ -193,25 +196,45 @@ class StagingSteps(
       // arrived when the reaper first fired, then was never revisited
       // (StagingOrderDeterminismSpec). `hintGroupKey` drops the stamped `Tmdb`
       // slot so a concluded row keeps grouping with its still-arriving siblings.
+      val failingSince = failureStartOf(anchor)
       val outcomes = fresh.groupBy(hintGroupKey).values.toSeq
         .filter(_.exists(!_.record.tmdbConcluded))
-        .map(resolveAndStampGroup)
-      if (outcomes.contains(TransientFailure)) TransientFailure else Resolved
+        .map(resolveAndStampGroup(_, failingSince))
+      if (outcomes.contains(TransientFailure)) {
+        // The failure clock starts at the FIRST failure and outlives task attempts, restarts
+        // and re-enqueues — it lives in the durable freshness store, not on the task.
+        if (failingSince.isEmpty) freshness.markFresh(failingKey(anchor), FreshnessKind.TmdbResolve, clock.instant())
+        TransientFailure
+      } else {
+        if (failingSince.isDefined) freshness.invalidate(failingKey(anchor))
+        Resolved
+      }
     }
   }
 
+  /** When the film's resolve started failing transiently, if it is failing. */
+  private def failureStartOf(anchor: String): Option[java.time.Instant] = freshness.lastFetchedAt(failingKey(anchor))
+  private def failingKey(anchor: String): String = s"staging-tmdb-failing|$anchor"
+
   /** Resolve + stamp one hint-combination's rows. A lookup that FAILED (`None`) is always
-   *  transient — `resolveStaging` concludes a definitive failure itself — so it is retried,
-   *  never concluded: a retry budget that concluded it as no-match turned a TMDB blip into a
-   *  film hidden as unresolved until the next day's re-try. A film that keeps failing stays
-   *  in staging, where StagingStuckAlerter names it. */
-  private def resolveAndStampGroup(group: Seq[StagingRecord]): ResolveResult = {
+   *  transient — `resolveStaging` concludes a definitive failure itself — so it is retried: a
+   *  retry budget of six claims once turned every TMDB blip into a film concluded no-match.
+   *  Until it has been failing for [[StagingSteps.TransientResolveCeiling]]: a film is invisible
+   *  while it sits in staging, so past that it is folded as an UNANSWERED no-match
+   *  (`TmdbAttempt.unanswered`), which its next resolve searches past. */
+  private def resolveAndStampGroup(group: Seq[StagingRecord], failingSince: Option[java.time.Instant]): ResolveResult = {
     val resolveYear = group.flatMap(_.year).minOption
     // Resolve from CINEMA hints only — drop any stale stamped `Tmdb` slot a prior
     // (partial-group) resolution left on a concluded row, so a re-resolution is a
     // pure function of the cinemas' own data, not the answer it's replacing.
     val mergedHints = MovieRecordMerge.unionAll(group.map(r => r.record.copy(data = r.record.data - Tmdb)))
     resolveStaging(group.head.title, resolveYear, mergedHints) match {
+      case None if failingSince.exists(since => !clock.instant().isBefore(since.plusMillis(TransientResolveCeiling.toMillis))) =>
+        val unanswered = services.resolution.TmdbAttempt.unanswered(clock.instant())
+        group.foreach(r => stagingRepository.upsertRow(r.copy(record = r.record.copy(tmdbAttempt = Some(unanswered)))))
+        logger.warn(s"Staging: TMDB resolve for '${group.head.title}' (${resolveYear.getOrElse("?")}) has failed since " +
+          s"${failingSince.get} — folding it as an unanswered no-match rather than keep it off the site; its next resolve searches again.")
+        Resolved
       case None => TransientFailure
       case Some(resolved) =>
         val tmdbSlot = resolved.data.get(Tmdb)
@@ -329,6 +352,14 @@ class StagingSteps(
 }
 
 object StagingSteps {
+  /** How long a film's staging resolve may keep failing TRANSIENTLY before it is folded as an
+   *  unanswered no-match rather than kept in staging — where it is invisible on the site.
+   *  Six hours: past the queue's own retry span (12 claims ≈ 2.3h) and the TMDB outages seen
+   *  so far, so a blip or an ordinary outage only ever DELAYS a film; short enough that a
+   *  lookup failing for good (one person's credits 5xx-ing for days) costs a new film a few
+   *  hours of invisibility, not its whole run. The unanswered attempt covers no evidence, so
+   *  the row's next resolve — its next scrape's, or the daily re-try — searches again. */
+  val TransientResolveCeiling: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(6, "hours")
   /** What `resolveAndStamp` decided — drives the handler's outcome + the reaper. */
   sealed trait ResolveResult
   case object Resolved         extends ResolveResult  // stamped a hit or tmdbNoMatch — film is concluded

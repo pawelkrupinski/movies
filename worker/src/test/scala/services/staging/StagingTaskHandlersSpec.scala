@@ -4,6 +4,7 @@ import models.{Cinema, CinemaShowing, Helios, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.freshness.InMemoryFreshnessStore
+import services.resolution.TmdbAttempt
 import services.tasks.{HandlerOutcome, StagingTaskKeys, Task, TaskType}
 import services.cinemas.common.{DetailEnricher, FilmDetail}
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -27,8 +28,9 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
 
   private def steps(repository: InMemoryStagingRepository, enrichers: Seq[DetailEnricher],
                     resolve: (String, Option[Int], MovieRecord) => Option[MovieRecord],
-                    recover: (String, Option[Int], models.MovieRecord) => Option[String] = (_, _, _) => None) =
-    new StagingSteps(repository, enrichers, resolve, recover, new InMemoryFreshnessStore)
+                    recover: (String, Option[Int], models.MovieRecord) => Option[String] = (_, _, _) => None,
+                    clock: java.time.Clock = java.time.Clock.systemUTC()) =
+    new StagingSteps(repository, enrichers, resolve, recover, new InMemoryFreshnessStore, clock = clock)
 
   "StagingDetailHandler" should "fetch the cinema's detail and report Done" in {
     val repository = new InMemoryStagingRepository
@@ -105,23 +107,46 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
     repository.findAll().head.record.tmdbConcluded shouldBe false      // still owed, so the reaper re-enqueues it
   }
 
-  it should "never conclude a film on a failed resolve, however many attempts it has had" in {
-    // `resolveStaging` answers None only for a TRANSIENT failure — a definitive TMDB miss comes
-    // back concluded (`MovieService.resolveStagingRecord`). Concluding it as no-match after a
-    // retry budget (six claims, ~2.5 min) turned a TMDB blip into a film hidden as unresolved
-    // for up to a day. It is retried instead: the queue's backoff, then the reaper's backstop,
-    // with StagingStuckAlerter watching a film that stays unconcluded.
+  // `resolveStaging` answers None only for a TRANSIENT failure — a definitive TMDB miss comes back
+  // concluded (`MovieService.resolveStagingRecord`). A six-claim give-up budget (~2.5 min) once
+  // turned every TMDB blip into a film concluded no-match; retrying for ever instead keeps a film
+  // whose lookup fails for days in staging, invisible. Between the two: a failure is retried until
+  // it has lasted `TransientResolveCeiling` (timed from its FIRST failure, across task attempts,
+  // restarts and re-enqueues), then folded as an unanswered no-match its next resolve re-tries.
+  it should "retry a transient failure shorter than the ceiling, however many attempts it takes" in {
     val repository = new InMemoryStagingRepository
     repository.upsert(Helios, "Throwy Film", Some(2026), listingRow("Throwy Film"))
-    val handler = new StagingResolveTmdbHandler(steps(repository, Seq.empty, (_, _, _) => None))
+    val clock   = new tools.MutableClock(java.time.Instant.parse("2026-09-24T12:00:00Z"))
+    var answer  = Option.empty[MovieRecord]
+    val handler = new StagingResolveTmdbHandler(steps(repository, Seq.empty, (_, _, r) => answer.map(_ => r.copy(tmdbId = Some(9))), clock = clock))
     val payload = StagingTaskKeys.titlePayload("Throwy Film")
 
     Seq(1, 6, 12, 50).foreach { attempts =>
       handler.handle(task(TaskType.StagingResolveTmdb, payload, attempts = attempts)) shouldBe a[HandlerOutcome.Reschedule]
+      clock.advanceSeconds(StagingSteps.TransientResolveCeiling.toSeconds / 5)
     }
+    repository.findAll().head.record.tmdbConcluded shouldBe false
+    // TMDB answers inside the ceiling: resolved on its answer.
+    answer = Some(MovieRecord())
+    handler.handle(task(TaskType.StagingResolveTmdb, payload)) shouldBe HandlerOutcome.Done
+    repository.findAll().head.record.tmdbId shouldBe Some(9)
+  }
+
+  it should "fold a film as an unanswered no-match once its resolve has failed for longer than the ceiling" in {
+    val repository = new InMemoryStagingRepository
+    repository.upsert(Helios, "Throwy Film", Some(2026), listingRow("Throwy Film"))
+    val clock   = new tools.MutableClock(java.time.Instant.parse("2026-09-24T12:00:00Z"))
+    val handler = new StagingResolveTmdbHandler(steps(repository, Seq.empty, (_, _, _) => None, clock = clock))
+    val payload = StagingTaskKeys.titlePayload("Throwy Film")
+
+    handler.handle(task(TaskType.StagingResolveTmdb, payload)) shouldBe a[HandlerOutcome.Reschedule]
+    clock.advanceSeconds(StagingSteps.TransientResolveCeiling.toSeconds + 1)
+    handler.handle(task(TaskType.StagingResolveTmdb, payload)) shouldBe HandlerOutcome.Done
     val row = repository.findAll().head
-    row.record.tmdbNoMatch shouldBe false
-    row.record.tmdbConcluded shouldBe false
+    row.record.tmdbNoMatch shouldBe true
+    // Unanswered, not a miss: it covers no evidence, so the row's next resolve searches again.
+    val attempt = row.record.tmdbAttempt.getOrElse(fail("no attempt stamped"))
+    attempt.covers(TmdbAttempt.on(row.record.evidence, row.record.resolverOriginalTitles, clock.instant()).evidence, clock.instant()) shouldBe false
   }
 
   "StagingResolveImdbIdHandler" should "recover + stamp the imdbId and report Done" in {

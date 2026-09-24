@@ -43,12 +43,13 @@ object StagingDetailHandler {
 
 /** STEP 2: resolve the film against TMDB once and stamp the outcome. A failed lookup
  *  (`TransientFailure`) reschedules with the queue's exponential backoff, and past the
- *  queue's own attempts the reaper's backstop re-enqueues it: it is NEVER concluded as a
- *  no-match. A definitive TMDB answer — a miss, or its "not found" — already comes back
- *  concluded from `MovieService.resolveStagingRecord`; what fails here is an outage or a
- *  rate limit, which says nothing about the film. (A six-claim give-up budget used to
- *  conclude it, so a ~2.5-minute TMDB blip hid new films as unresolved until the daily
- *  re-try.) A film that keeps failing stays in staging, where StagingStuckAlerter names it.
+ *  queue's own attempts the reaper's backstop re-enqueues it. A definitive TMDB answer — a
+ *  miss, or its "not found" — already comes back concluded from
+ *  `MovieService.resolveStagingRecord`; what fails here is an outage or a rate limit, which
+ *  says nothing about the film, so it is not concluded on — until it has failed for
+ *  `StagingSteps.TransientResolveCeiling`, when the film is folded as an unanswered no-match
+ *  rather than kept invisible. (A six-claim give-up budget used to conclude it, so a
+ *  ~2.5-minute TMDB blip hid new films as unresolved until the daily re-try.)
  *
  *  Detail still outstanding is NOT a failure, so it completes (`Skipped`) rather
  *  than rescheduling: this task simply isn't due yet, and `StagingReaper` — the

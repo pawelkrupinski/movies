@@ -38,6 +38,12 @@ object TmdbAttempt {
    *  than any window. */
   val Legacy: TmdbAttempt = TmdbAttempt("", Instant.EPOCH)
 
+  /** A no-match concluded WITHOUT an answer: TMDB kept failing and the film was folded rather
+   *  than hidden (see `StagingSteps.TransientResolveCeiling`). It fingerprints no evidence, so it
+   *  covers none — the row's next resolve searches again, whatever its inputs. */
+  def unanswered(at: Instant): TmdbAttempt = TmdbAttempt(Unanswered, at)
+  private val Unanswered = "unanswered"
+
   /** What a resolution attempt actually consumed: the cinemas' evidence and the
    *  extra search terms mined from derived slots (a Filmweb-supplied original
    *  title is a legitimate SEARCH input even though it is no evidence). Sorted
