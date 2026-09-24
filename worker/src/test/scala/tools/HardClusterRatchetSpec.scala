@@ -27,13 +27,10 @@ class HardClusterRatchetSpec extends AnyFlatSpec with Matchers {
       val country = Country.byCode(code).getOrElse(fail(s"seed for an unknown country '$code'"))
       val corpus  = CorpusFixture.read(HardClusters.corpusKey(country))
       countrySeeds.filter(seed => HardClusters.select(country, corpus, Seq(seed), budget = 0)._1.isEmpty)
-        .map(seed => code -> seed.title)
-    }.toSet
-    withClue("seeds whose listings the corpus does not hold — re-record with scripts/hard-clusters.sh: ") {
-      (missing -- HardClusterExemptions.SeedsWithoutCluster) shouldBe empty
+        .map(seed => s"$code: ${seed.title}")
     }
-    withClue("seeds the corpus holds again — drop them from HardClusterExemptions.SeedsWithoutCluster: ") {
-      (HardClusterExemptions.SeedsWithoutCluster -- missing) shouldBe empty
+    withClue("seeds whose listings the corpus does not hold — re-record with scripts/hard-clusters.sh: ") {
+      missing shouldBe empty
     }
   }
 

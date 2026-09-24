@@ -1,10 +1,7 @@
 # country	title	reason — see tools.HardClusters. Grown by scripts/hard-clusters.sh; never hand-pruned.
 uk	The Hunger Games	finding
-uk	Bring It On	finding
 pl	Lalka	finding
 pl	Opętanie	finding
-pl	Robin Hood: Koniec legendy	finding
-pl	Głos Hind Rajab	finding
 pl	Caravaggio. Arcydzieła niepokornego geniusza	finding
 pl	Zawieście czerwone latarnie	finding
 uk	RBO Cinema Season 2026-27: Tosca	finding
@@ -14,8 +11,6 @@ us	It	finding
 us	RBO Cinema Season 2026-27: Tosca	finding
 us	The Hunger Games	finding
 de	B-Movie: Lust & Sound in West-Berlin 1979-1989	finding
-de	Blood & Sinners	finding
-de	Die einfachen Dinge	finding
 pl	Ghost in the Shell	finding
 pl	Uwierz w ducha	finding
 pl	Obcy	finding
@@ -54,3 +49,6 @@ es	Resident Evil	wide
 es	El ser querido	wide
 pl	avengerskoniecgryrerelease	finding
 pl	Avengers: Koniec Gry (re-release)	finding
+de	Blood & Sinners	finding
+pl	Robin Hood: Koniec legendy	finding
+pl	Głos Hind Rajab	finding

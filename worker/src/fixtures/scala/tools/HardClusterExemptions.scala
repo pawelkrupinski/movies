@@ -27,20 +27,14 @@ object HardClusterExemptions {
   val MaxEntries = 0
 
   /** The hard-cluster seeds the corpus fixture holds a cluster for — the fixture only grows
-   *  (`scripts/hard-clusters.sh` appends, never prunes), so the floor only rises. */
-  val MinSeeds = 55
-
-  /** Seeds the recorded corpus holds NO listing for — found when `HardClusterRatchetSpec` first
-   *  looked (2026-09-24): the ratchet appended them from a failed leg's findings, but the
-   *  corpus they were recorded against no longer carried those films. Replayed, they check
-   *  nothing. Re-recording the corpus (scripts/hard-clusters.sh against a current archive) is
-   *  the fix; the same ratchet — an entry that finds its cluster again fails the guard. */
-  val SeedsWithoutCluster: Set[(String, String)] = Set(
-    "uk" -> "Bring It On",
-    "de" -> "Blood & Sinners",
-    "de" -> "Die einfachen Dinge",
-    "pl" -> "Robin Hood: Koniec legendy",
-    "pl" -> "Głos Hind Rajab")
+   *  (`scripts/hard-clusters.sh` appends, never prunes), so the floor only rises.
+   *
+   *  53, not 55: two seeds were DROPPED on 2026-09-24, the one deliberate exception. The ratchet
+   *  had appended them from a failed leg's findings, but no recorded corpus — the fixture, nor
+   *  the newest full UK/DE recordings (run 35943410096) — holds a single listing of them, so
+   *  they checked nothing: UK "Bring It On" and DE "Die einfachen Dinge", both off every screen
+   *  by then. Three others missing from the fixture were re-extended from the full corpora. */
+  val MinSeeds = 53
 
   def all: Seq[(String, String)] =
     (SplitArrivalDivergences.toSeq ++ RescrapeChurn.toSeq).flatMap { case (code, keys) => keys.toSeq.map(code -> _) }
