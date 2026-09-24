@@ -14,35 +14,15 @@ import services.movies.TitleNormalizer
 object OgCardAssembly {
 
   /** Build the `og:description` / `twitter:description` text for the film
-   * page. Format: rating summary ("IMDb 8.7 · RT 86% · Metacritic 79 ·
-   * Filmweb 7.5") prefixed to the synopsis, truncated to keep WhatsApp /
-   * Messenger / Telegram previews readable. Skips ratings that aren't set;
-   * the whole string may be empty for films with no enrichment + no
-   * synopsis. */
+   * page: the synopsis alone, truncated to keep WhatsApp / Messenger /
+   * Telegram previews readable. Ratings stay off it — the OG card image
+   * already carries them as badges. Empty for films with no synopsis. */
   def previewDescription(film: FilmSchedule): String = {
-    val ratings  = ratingTokens(film).mkString(" · ")
     // og:description is plain text — drop the markdown emphasis markers.
     val synopsis = tools.SynopsisMarkdown.strip(film.synopsis.getOrElse("")).trim
-    val joined =
-      if (ratings.nonEmpty && synopsis.nonEmpty) ratings + " — " + synopsis
-      else if (ratings.nonEmpty) ratings
-      else synopsis
     // 300 chars is the practical cap most preview UIs render before
     // truncating; we add an ellipsis to make truncation visible.
-    if (joined.length > 300) joined.take(297) + "…" else joined
-  }
-
-  /** The rating summary as individual tokens ("IMDb 8.8", "RT 87%", …),
-   *  skipping sources that aren't set. Feeds the text `og:description`
-   *  ([[previewDescription]], joined with " · "). */
-  def ratingTokens(film: FilmSchedule): Seq[String] = {
-    val ratings = film.resolved.ratings
-    Seq(
-      ratings.imdb.map(x => f"IMDb $x%.1f"),
-      ratings.rottenTomatoes.map(s => s"RT $s%"),
-      ratings.metascore.map(s => s"Metacritic $s"),
-      ratings.filmweb.map(x => f"Filmweb $x%.1f")
-    ).flatten
+    if (synopsis.length > 300) synopsis.take(297) + "…" else synopsis
   }
 
   /** The rating badges for the OG-card image — the same per-source brand-coloured

@@ -40,7 +40,7 @@ class FilmPreviewMetaSpec extends AnyFlatSpec with Matchers {
 
   private def render(film: FilmSchedule, imageUrl: String = ogImageUrl): String =
     views.html.film(film, "https://kinowo.net/poznan/movie?title=Incepcja",
-      ogDescription = "IMDb 8.8 · RT 87% — synopsis", ogImageUrl = imageUrl, devMode = false).body
+      ogDescription = "synopsis", ogImageUrl = imageUrl, devMode = false).body
 
   "the film preview" should "point og:image + twitter:image at the server-rendered composite card" in {
     val html = render(sample)
@@ -78,7 +78,7 @@ class FilmPreviewMetaSpec extends AnyFlatSpec with Matchers {
   it should "render in English for an English (UK) deployment" in {
     val html = views.html.film(
       sample, "https://kinowo.net/london/movie?title=Incepcja",
-      ogDescription = "IMDb 8.8 · RT 87% — synopsis", ogImageUrl = ogImageUrl,
+      ogDescription = "synopsis", ogImageUrl = ogImageUrl,
     )(London, TestMessages.forLang("en")).body
     html should include ("<title>Incepcja (2010) – showtimes London | Showtimes</title>")
     html should include ("""<meta property="og:site_name"   content="Cinema listings London">""")

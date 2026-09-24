@@ -92,22 +92,12 @@ class OgCardAssemblySpec extends AnyFlatSpec with Matchers {
     OgCardAssembly.dailyCardFilms(pool, epochDay = 9, count = 5, titleNormalizer).map(_.movie.title) should contain ("Film 50")
   }
 
-  "ratingTokens" should "emit a token per set source, skipping the unset ones" in {
-    OgCardAssembly.ratingTokens(ratedSched("X", ratings(imdb = Some(8.8), rt = Some(87)))) shouldBe
-      Seq("IMDb 8.8", "RT 87%")
-    OgCardAssembly.ratingTokens(ratedSched("Y",
-      ratings(imdb = Some(7.0), metascore = Some(74), rt = Some(90), filmweb = Some(6.5)))) shouldBe
-      Seq("IMDb 7.0", "RT 90%", "Metacritic 74", "Filmweb 6.5")
-    OgCardAssembly.ratingTokens(ratedSched("Z", ratings())) shouldBe empty
-  }
-
-  "previewDescription" should "join the rating summary and synopsis, or fall back to whichever is present" in {
+  "previewDescription" should "carry only the synopsis, never the ratings" in {
     OgCardAssembly.previewDescription(
-      ratedSched("X", ratings(imdb = Some(8.8)), synopsis = Some("Sen w śnie."))) shouldBe
-      "IMDb 8.8 — Sen w śnie."
-    OgCardAssembly.previewDescription(ratedSched("X", ratings(imdb = Some(8.8)))) shouldBe "IMDb 8.8"
+      ratedSched("X", ratings(imdb = Some(8.8), rt = Some(87)), synopsis = Some("Sen w śnie."))) shouldBe
+      "Sen w śnie."
+    OgCardAssembly.previewDescription(ratedSched("X", ratings(imdb = Some(8.8)))) shouldBe ""
     OgCardAssembly.previewDescription(
       ratedSched("X", ratings(), synopsis = Some("Tylko opis."))) shouldBe "Tylko opis."
-    OgCardAssembly.previewDescription(ratedSched("X", ratings())) shouldBe ""
   }
 }
