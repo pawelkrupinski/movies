@@ -40,18 +40,18 @@ class DebugStreamController(
     DevMode.gate(environment)(Ok.chunked(eventSource(request)).as("text/event-stream"))
   }
 
-  // The country these SSE frames render under. /debug is a single-country page,
-  // so both frame renderers share one instance rather than each deriving its own.
-  private val frameCity: models.City = models.City.all.head
-  private val frameNormalizer: services.movies.TitleNormalizer =
-    services.movies.TitleNormalizer.forCountry(models.Country.of(frameCity))
+  // The frames render under the country the connection WATCHES — its stack's own title rules
+  // and one of its own cities. They used to render under `City.all.head` (Poznań) and Poland's
+  // rules in every deployment, so a UK /debug stream keyed its rows with Polish sanitizing.
+  private def frameCity(country: models.Country): models.City = country.cities.head
 
   /** SSE frame for an upserted row: render `_debugRow` to HTML and ship it with
    *  the row's `_id` so the page can replace-or-insert it. The row's details cell
    *  ships empty (lazily fetched on expand), so no cinema-URL map is needed. */
-  private[controllers] def upsertFrame(row: StoredMovieRecord): String = {
-    implicit val city: models.City = frameCity
-    val html = views.html._debugRow(row, frameNormalizer).body
+  private[controllers] def upsertFrame(row: StoredMovieRecord, country: models.Country,
+                                       normalizer: services.movies.TitleNormalizer): String = {
+    implicit val city: models.City = frameCity(country)
+    val html = views.html._debugRow(row, normalizer).body
     s"data: ${Json.stringify(Json.obj("type" -> "upsert", "id" -> row.id.value, "html" -> html))}\n\n"
   }
 
@@ -61,8 +61,8 @@ class DebugStreamController(
 
   /** SSE frame for an upserted staging row: render `_stagingRow` and ship it with
    *  the row's `pending_movies` `_id` so the page can replace-or-insert it. */
-  private[controllers] def stagingUpsertFrame(row: StagingRecord): String = {
-    val html = views.html._stagingRow(row, frameNormalizer.sanitize(row.title)).body
+  private[controllers] def stagingUpsertFrame(row: StagingRecord, normalizer: services.movies.TitleNormalizer): String = {
+    val html = views.html._stagingRow(row, normalizer.sanitize(row.title)).body
     s"data: ${Json.stringify(Json.obj("type" -> "staging-upsert", "id" -> row.id, "html" -> html))}\n\n"
   }
 
@@ -74,16 +74,18 @@ class DebugStreamController(
    *  closed when the browser disconnects (watchTermination). A Mongo without a
    *  replica set just errors the streams — the page keeps its static tables. */
   private[controllers] def eventSource(request: RequestHeader): Source[String, NotUsed] = {
-    val stack = debugCountries.stackFor(debugCountries.resolve(request))
+    val country    = debugCountries.resolve(request)
+    val stack      = debugCountries.stackFor(country)
+    val normalizer = stack.movieRepository.normalizer
     val (queue, source) =
       Source.queue[String](DebugStreamController.BufferSize, OverflowStrategy.dropHead).preMaterialize()
     val watches: Seq[AutoCloseable] = Seq(
       stack.movieRepository.watchChanges(
-        onUpsert = row => { queue.offer(upsertFrame(row)); () },
+        onUpsert = row => { queue.offer(upsertFrame(row, country, normalizer)); () },
         onDelete = id  => { queue.offer(deleteFrame(id.value)); () }
       ),
       stack.stagingRepository.watchChanges(
-        onUpsert = row => { queue.offer(stagingUpsertFrame(row)); () },
+        onUpsert = row => { queue.offer(stagingUpsertFrame(row, normalizer)); () },
         onDelete = id  => { queue.offer(stagingDeleteFrame(id)); () }
       )
     ).flatten

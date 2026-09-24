@@ -146,8 +146,12 @@ class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers {
     val city = cityOf(country)
 
     s"The $code web wiring" should "hold no other country anywhere in its graph" in asDeployment(country) { wiring =>
-      Seq(wiring.movieController, wiring.landingController, wiring.metricsController, wiring.uptimeController,
-        wiring.debugController, wiring.authController, wiring.supportController, wiring.userStateController)
+      // Every member the wiring declares, not a hand-kept list of controllers: a component
+      // added tomorrow is walked without anyone naming it here.
+      val unbuilt = ObjectGraph.forceLazyMembers(wiring)
+      withClue(s"members the walk cannot see because they failed to build: ${unbuilt.map { case (n, e) => s"$n: $e" }.mkString("; ")}\n") {
+        unbuilt shouldBe empty
+      }
       val strays = ObjectGraph.collect(wiring) { case c: Country => c }.collect {
         case (path, c) if c != country => s"$path -> ${c.code}"
       }
