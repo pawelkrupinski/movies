@@ -24,11 +24,13 @@ object DateFormatter {
     "lipca", "sierpnia", "września", "października", "listopada", "grudnia"
   )
 
-  def format(date: LocalDate): String = format(date, models.Country.fromEnv.language)
+  /** `date`'s label as seen from `today` — the year is spelled out only when it is not
+   *  `today`'s. `today` comes from the caller's clock (a schedule's `asOf`), never the
+   *  system's: a label must not change with the day a test happens to run. */
+  def format(date: LocalDate, today: LocalDate): String = format(date, today, models.Country.fromEnv.language)
 
-  def format(date: LocalDate, locale: Locale): String = {
-    val currentYear = LocalDate.now().getYear
-    val yearSuffix  = if (date.getYear == currentYear) "" else s" ${date.getYear}"
+  def format(date: LocalDate, today: LocalDate, locale: Locale): String = {
+    val yearSuffix  = if (date.getYear == today.getYear) "" else s" ${date.getYear}"
     val dayName     =
       if (locale.getLanguage == "pl") polishDays(date.getDayOfWeek.getValue - 1).capitalize
       else date.getDayOfWeek.getDisplayName(TextStyle.FULL, locale).capitalize

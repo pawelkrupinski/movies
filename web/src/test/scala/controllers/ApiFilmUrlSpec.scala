@@ -42,7 +42,8 @@ class ApiFilmUrlSpec extends AnyFlatSpec with Matchers {
         MovieRecord(imdbId = Some("tt0000001"), data = Map[Source, SourceData](
           Helios -> SourceData(posterUrl = Some(ScrapedPoster)),
           Tmdb   -> SourceData(posterUrl = Some("https://image.tmdb.org/t/p/original/ok.jpg"))))),
-      slug           = FilmHref.slugOf("Milcząca przyjaciółka")
+      slug           = FilmHref.slugOf("Milcząca przyjaciółka"),
+      asOf           = LocalDate.of(2026, 6, 4)
     )
 
   /** Every string under a key that names a URL, anywhere in the tree. */

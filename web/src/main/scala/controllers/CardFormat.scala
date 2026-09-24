@@ -18,9 +18,9 @@ object CardFormat {
   def time(dateTime: LocalDateTime): String = dateTime.format(TimeFmt)
 
   /** A long Polish date label ("Czwartek 4 czerwca", year appended only when it
-   *  isn't the current year). Shown on the listing date headers, the JSON API's
-   *  day labels, and the city OG card. */
-  def date(d: LocalDate): String = DateFormatter.format(d)
+   *  isn't `today`'s). Shown on the listing date headers, the JSON API's day
+   *  labels, and the city OG card, each passing its schedule's `asOf`. */
+  def date(d: LocalDate, today: LocalDate): String = DateFormatter.format(d, today)
 
   /** The compact runtime pill text the card / detail templates render between
    *  `<span class="pill runtime">…</span>` — "2h" when the minutes part is zero,

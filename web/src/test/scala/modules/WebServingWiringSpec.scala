@@ -2,12 +2,9 @@ package modules
 
 
 import models.MovieRecord
+import services.MongoConnection
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.MongoConnection
-import services.movies.{InMemoryMovieRepository, StoredMovieRecord}
-import services.readmodel.{InMemoryReadModelRepository, ReadModelProjection, ReadModelReader}
-import play.api.test.Helpers.stubControllerComponents
 
 /**
  * Guards the read/write split invariant: **the serving app cannot and does not
@@ -46,46 +43,17 @@ class WebServingWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   // ── 2. Warm-cache-without-scrape ─────────────────────────────────────────
-  // A minimal `Wiring` wired against a DISABLED Mongo + an in-memory repository, so
+  // `TestWebWiring`: the real `Wiring` over a DISABLED Mongo + an in-memory repository, so
   // `boot()` exercises the real start path (`mongoConnection.database`,
   // `movieCache.start()`) without touching a cluster. Whatever the cache holds
   // after boot came from the repository alone — there is no scrape path to add more.
-
-  private class TestWiring(seed: Seq[(String, Option[Int], MovieRecord)]) extends Wiring {
-    // A connection with no URI never dials Mongo; `required = false` keeps the
-    // disabled state a silent no-op rather than a boot failure.
-    override lazy val mongoConnection: MongoConnection =
-      new MongoConnection(uri = None, dbName = "kinowo", required = false)
-    override lazy val movieRepository = new InMemoryMovieRepository(seed)
-    // The serving read path is `webReadModel` over `readModelRepository` (the
-    // worker-populated web_movies / web_screenings). Seed that — projected
-    // through the real `ReadModelProjection`, exactly as the worker writes it —
-    // so boot's hydrate has the same single fill path production does.
-    override lazy val readModelRepository: ReadModelReader = {
-      val store = new InMemoryReadModelRepository()
-      seed.foreach { case (title, year, record) =>
-        val stored = StoredMovieRecord(title, year, record)
-        store.upsertMovie(ReadModelProjection.resolve(stored, titleNormalizer))
-        ReadModelProjection.screenings(stored, titleNormalizer).foreach(store.upsertScreening)
-      }
-      store
-    }
-
-    val controllerComponents = stubControllerComponents()
-    def environmentMode       = play.api.Mode.Test
-    def messagesApi           = testsupport.TestMessages.messagesApi
-    implicit def materializer: org.apache.pekko.stream.Materializer = null
-
-    /** Expose the protected data-layer start so the test can drive it. */
-    def boot(): Unit = start()
-  }
 
   private val seededRecord = MovieRecord(tmdbId = Some(42))
 
   "The serving cache" should "hold exactly the rows already in the repository after boot" in {
     // Seed one row, boot, and assert the cache surfaces it — proving boot
     // hydrates from the repository (the only fill path the serving app has).
-    val wiring = new TestWiring(Seq(("Drzewo Magii", Some(2024), seededRecord)))
+    val wiring = new TestWebWiring(Seq(("Drzewo Magii", Some(2024), seededRecord)))
     wiring.boot()
 
     val movies = wiring.webReadModel.allMovies()
@@ -96,7 +64,7 @@ class WebServingWiringSpec extends AnyFlatSpec with Matchers {
     // Empty repository → boot → empty cache. If the serving process had any scrape
     // path wired in, this is where it would surface a row out of nowhere. It
     // doesn't, so the cache stays empty.
-    val wiring = new TestWiring(Seq.empty)
+    val wiring = new TestWebWiring(Seq.empty)
     wiring.boot()
 
     wiring.webReadModel.allMovies() shouldBe empty

@@ -45,7 +45,7 @@ trait MetricsWiring { self: Wiring =>
     "response"     -> (() => encodedResponseCache.occupancy),
     "og_card_film" -> (() => ogCardService.cacheOccupancy),
     "og_card_city" -> (() => cityOgCardService.cacheOccupancy)))
-  lazy val metricsController = new MetricsController(controllerComponents, uptimeMonitor, filmwebFallbackStore, webMovieMetrics, webJvmMetrics, metricsCountry.code)
+  lazy val metricsController = new MetricsController(controllerComponents, uptimeMonitor, filmwebFallbackStore, webMovieMetrics, webJvmMetrics, metricsCountry.code, clock)
   // Retirement signal for the legacy PUT /api/me/state — see the class doc.
   // Safe as `lazy`, unlike webHostMetrics/webCacheMetrics above: userStateController
   // (below, in UsersWiring) holds a reference and is itself forced at boot by

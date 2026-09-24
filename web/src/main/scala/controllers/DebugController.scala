@@ -52,6 +52,8 @@ class DebugController(cc: ControllerComponents,
                       // spec can exercise another country's host without mutating
                       // the process-global env that parallel suites share.
                       servingCountry: models.Country = models.Country.fromEnv,
+                      // What "now" is for the pages' own age readings (the mirror badge, cadence).
+                      clock: java.time.Clock = java.time.Clock.systemUTC(),
                      )(implicit messages: play.api.i18n.Messages) extends AbstractController(cc) {
 
   private val normalizer: TitleNormalizer = TitleNormalizer.forCountry(servingCountry)
@@ -114,7 +116,7 @@ class DebugController(cc: ControllerComponents,
    *  stale is exactly the thing this exists to stop. `None` in prod, where the
    *  pages read the source and there is no copy to be behind. */
   private def mirrorAge(stack: DebugStack): Option[services.MirrorFreshness.Age] =
-    services.MirrorFreshness.describe(stack.mirrorFreshness.newestUpdate(), java.time.Instant.now())
+    services.MirrorFreshness.describe(stack.mirrorFreshness.newestUpdate(), clock.instant())
 
   /** Dev-only: the per-(rating source, film) adaptive refresh cadence. Films are
    *  grouped by their current refresh interval, slowest (most backed-off / stable)
@@ -130,7 +132,7 @@ class DebugController(cc: ControllerComponents,
       val (records, rows) = Await.result(recordsFuture.zip(titlesFuture), 70.seconds)
       val titleByTmdb = rows.flatMap(r => r.record.tmdbId.map(_ -> r.title)).toMap
       implicit val c: City = City.all.head   // only for the shared debug navbar's city link
-      Ok(views.html.cadence(services.cadence.CadenceReport.build(records, titleByTmdb.get), java.time.Instant.now(),
+      Ok(views.html.cadence(services.cadence.CadenceReport.build(records, titleByTmdb.get), clock.instant(),
         current = country, sameOrigin = debugCountries.switchable, mirror = mirrorAge(stack)))
         .withCookies(debugCountries.selectionCookie(request).toSeq*)
     }
@@ -401,7 +403,8 @@ object DebugController {
         cinemaFilmUrls = Seq.empty,
         showings       = showings,
         resolved       = resolved,
-        slug           = FilmHref.slugOf(resolved.title)
+        slug           = FilmHref.slugOf(resolved.title),
+        asOf           = base
       )
 
     val rich = film(

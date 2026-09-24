@@ -42,7 +42,8 @@ class OutboundLinkRelSpec extends AnyFlatSpec with Matchers {
         Showtime(baseTime, Some("https://helios.pl/book/1"), Some("Sala 1"), List("2D"))
       )))),
       resolved       = TestReadModel.resolved("Test movie", None, MovieRecord()),
-      slug           = controllers.FilmHref.slugOf("Test movie")
+      slug           = controllers.FilmHref.slugOf("Test movie"),
+      asOf           = LocalDate.of(2026, 5, 13)
     )
 
   // Every `<a>` pointing off-site must be nofollowed; nothing internal may be.

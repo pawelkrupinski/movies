@@ -54,12 +54,13 @@ import services.metrics.WebJvmMetrics
  * is to full.
  */
 class MetricsController(cc: ControllerComponents, monitor: UptimeMonitor, fallbackStore: FallbackStore,
-  movieMetrics: WebMovieMetrics, jvmMetrics: WebJvmMetrics, country: String = Country.default.code) extends AbstractController(cc) {
+  movieMetrics: WebMovieMetrics, jvmMetrics: WebJvmMetrics, country: String = Country.default.code,
+  clock: java.time.Clock = java.time.Clock.systemUTC()) extends AbstractController(cc) {
   def metrics: Action[AnyContent] = Action {
     // Windowed AND summed by the monitor, not here. Pulling each service's full
     // `history` to sum it in the controller is what OOM-killed `web-us` on a
     // 30-second scrape loop — see `UptimeMonitor.recentTotals`.
-    val totals = monitor.recentTotals(System.currentTimeMillis() - MetricsController.RecentWindowMs)
+    val totals = monitor.recentTotals(clock.millis() - MetricsController.RecentWindowMs)
     // Both already cheap, in-memory reads: `serviceTagsSnapshot()` is the
     // monitor's own polled-every-5-minutes map, and `findAll()` is
     // `FallbackStore`'s in-process mirror (see its own class doc) — neither

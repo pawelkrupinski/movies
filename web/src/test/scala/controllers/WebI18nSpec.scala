@@ -159,11 +159,11 @@ class WebI18nSpec extends AnyFlatSpec with Matchers {
 
   "DateFormatter" should "keep Polish byte-identical (genitive month)" in {
     val d = LocalDate.of(2026, 6, 4)
-    DateFormatter.format(d, Locale.forLanguageTag("pl-PL")) shouldBe "Czwartek 4 czerwca"
+    DateFormatter.format(d, d, Locale.forLanguageTag("pl-PL")) shouldBe "Czwartek 4 czerwca"
   }
 
   it should "render other languages via their locale" in {
     val d = LocalDate.of(2026, 6, 4)
-    DateFormatter.format(d, Locale.ENGLISH) shouldBe "Thursday 4 June"
+    DateFormatter.format(d, d, Locale.ENGLISH) shouldBe "Thursday 4 June"
   }
 }

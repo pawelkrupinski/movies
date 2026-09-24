@@ -95,7 +95,7 @@ trait DebugWiring { self: Wiring =>
           new services.attempts.MongoEnrichmentAttemptReader(conn.database),
           readModelMovies       = () => reader.findAllMovies(),
           readModelScreenings   = () => reader.findAllScreenings(),
-          readModelLastModified = () => java.time.Instant.now(),
+          readModelLastModified = () => clock.instant(),
           mirrorFreshness       = mirrorFreshnessOf(conn))
         (country, conn, stack)
       }
@@ -106,7 +106,7 @@ trait DebugWiring { self: Wiring =>
       devMode = environmentMode != Mode.Prod)
 
   lazy val debugController  = new DebugController(controllerComponents, debugCountries, webReadModel, adminAction, environmentMode,
-    cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()))
+    cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()), clock = clock)
   // Dev-only SSE feed for the /debug live view; watches the SELECTED country's
   // `movies` + `pending_movies` via the same per-country stacks the /debug page
   // renders from. The live row's details cell ships empty (lazily fetched on

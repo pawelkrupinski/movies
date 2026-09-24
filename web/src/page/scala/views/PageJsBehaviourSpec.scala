@@ -3111,12 +3111,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/") { page =>
       val isoDate = page.evalString("document.querySelector('.date-group[data-date]').dataset.date")
       val before  = page.evalString("document.querySelector('.date-group[data-date] .date-label').textContent")
-      before shouldBe controllers.DateFormatter.format(LocalDate.parse(isoDate), Locale.forLanguageTag("pl"))
+      before shouldBe controllers.DateFormatter.format(LocalDate.parse(isoDate), LocalDate.parse(isoDate), Locale.forLanguageTag("pl"))
 
       page.eval("applyLanguage('en')")
 
       val after = page.evalString("document.querySelector('.date-group[data-date] .date-label').textContent")
-      after shouldBe controllers.DateFormatter.format(LocalDate.parse(isoDate), Locale.ENGLISH)
+      after shouldBe controllers.DateFormatter.format(LocalDate.parse(isoDate), LocalDate.parse(isoDate), Locale.ENGLISH)
       after should not be before
     }
   }
@@ -3139,7 +3139,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val isoDate = page.evalString("document.querySelector('.date-group[data-date]').dataset.date")
       val label   = page.evalString("document.querySelector('.date-group[data-date] .date-label').textContent")
       try {
-        label shouldBe controllers.DateFormatter.format(LocalDate.parse(isoDate), Locale.ENGLISH)
+        label shouldBe controllers.DateFormatter.format(LocalDate.parse(isoDate), LocalDate.parse(isoDate), Locale.ENGLISH)
       } finally {
         page.eval("localStorage.removeItem('kinowo_lang')")
       }

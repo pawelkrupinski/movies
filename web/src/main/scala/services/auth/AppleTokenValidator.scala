@@ -8,7 +8,7 @@ import java.security.KeyFactory
 import java.security.spec.RSAPublicKeySpec
 import java.util.Base64
 
-class AppleTokenValidator(http: HttpFetch, bundleId: String) {
+class AppleTokenValidator(http: HttpFetch, bundleId: String, clock: java.time.Clock = java.time.Clock.systemUTC()) {
 
   @volatile private var cachedKeys: Map[String, java.security.PublicKey] = Map.empty
   @volatile private var keysLoadedAt: Long = 0
@@ -41,7 +41,7 @@ class AppleTokenValidator(http: HttpFetch, bundleId: String) {
     if (aud != bundleId)
       throw new RuntimeException(s"Apple JWT aud mismatch: expected $bundleId, got $aud")
     val exp = (claimsJson \ "exp").asOpt[Long].getOrElse(0L)
-    if (exp * 1000 < System.currentTimeMillis())
+    if (exp * 1000 < clock.millis())
       throw new RuntimeException("Apple JWT expired")
 
     OauthProfile(
@@ -54,7 +54,7 @@ class AppleTokenValidator(http: HttpFetch, bundleId: String) {
   }
 
   private def getKey(kid: String): java.security.PublicKey = {
-    if (System.currentTimeMillis() - keysLoadedAt > keysCacheTtl || !cachedKeys.contains(kid)) {
+    if (clock.millis() - keysLoadedAt > keysCacheTtl || !cachedKeys.contains(kid)) {
       refreshKeys()
     }
     cachedKeys.getOrElse(kid, throw new RuntimeException(s"Apple JWKS key not found for kid=$kid"))
@@ -76,6 +76,6 @@ class AppleTokenValidator(http: HttpFetch, bundleId: String) {
         kid -> KeyFactory.getInstance("RSA").generatePublic(spec)
       }
     }.toMap
-    keysLoadedAt = System.currentTimeMillis()
+    keysLoadedAt = clock.millis()
   }
 }

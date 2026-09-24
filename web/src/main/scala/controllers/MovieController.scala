@@ -125,7 +125,7 @@ object ApiFilm {
       showings         = fs.showings.map { case (date, cinemas) =>
         ApiDayShowings(
           date    = date.toString,
-          label   = CardFormat.date(date),
+          label   = CardFormat.date(date, fs.asOf),
           cinemas = cinemas.map { cs =>
             ApiCinemaShowings(
               cinema    = cs.cinema.displayName,
@@ -164,7 +164,11 @@ case class FilmSchedule(
                          // those with the legacy query form. Carried on the schedule rather
                          // than re-derived per call site so the card link, the canonical
                          // og:url, the sitemap and the JSON-LD can't disagree.
-                         slug: Option[String]
+                         slug: Option[String],
+                         // The day, in the city's zone, this schedule was cut against: what
+                         // "upcoming" meant, and the year its date labels are read from
+                         // (`CardFormat.date`). From the service's clock, never the system's.
+                         asOf: LocalDate
                        )
 
 /**
@@ -251,7 +255,7 @@ class MovieControllerService(
             screenings
               .flatMap(sc => MovieControllerService.cinemaByName(sc.cinema).flatMap(c => sc.filmUrl.map(c -> _)))
               .sortBy(_._1.displayName)
-          Some((earliest, filmSchedule(resolved, cinemaFilmUrls, byDate, city)))
+          Some((earliest, filmSchedule(resolved, cinemaFilmUrls, byDate, city, now.toLocalDate)))
         }
       }
     }.sortBy { case (earliest, fs) => (earliest, fs.movie.title) }.map(_._2)
@@ -263,7 +267,8 @@ class MovieControllerService(
   private def filmSchedule(resolved: ResolvedMovie,
                            cinemaFilmUrls: Seq[(Cinema, String)],
                            showings: Seq[(LocalDate, Seq[CinemaShowtimes])],
-                           city: City): FilmSchedule =
+                           city: City,
+                           asOf: LocalDate): FilmSchedule =
     FilmSchedule(
       movie = Movie(resolved.title, resolved.runtimeMinutes, resolved.releaseYear, countries = resolved.countries, genres = resolved.genres),
       posterUrl = resolved.posterUrl,
@@ -273,7 +278,8 @@ class MovieControllerService(
       cinemaFilmUrls = cinemaFilmUrls,
       showings = showings,
       resolved = resolved,
-      slug = readModel.filmSlugs.slugFor(resolved._id)
+      slug = readModel.filmSlugs.slugFor(resolved._id),
+      asOf = asOf
     )
 
   def film(city: City, title: String): Option[FilmSchedule] = {
@@ -355,7 +361,7 @@ class MovieControllerService(
     resolved.map { movie =>
       logger.warn(s"film deep-link served from the read model without a live ${city.slug} schedule " +
         s"(reprojection/rekey gap or ended run): $reference filmId=${movie._id}")
-      filmSchedule(movie, cinemaFilmUrls = Seq.empty, showings = Seq.empty, city)
+      filmSchedule(movie, cinemaFilmUrls = Seq.empty, showings = Seq.empty, city, nowIn(city).toLocalDate)
     }
 }
 

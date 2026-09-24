@@ -35,7 +35,8 @@ class FilmPreviewMetaSpec extends AnyFlatSpec with Matchers {
         Showtime(LocalDateTime.of(2026, 6, 4, 18, 0), Some("https://example.test/book"), Some("Sala 1"), List("2D"))
       )))),
       resolved       = TestReadModel.resolved("Incepcja", Some(2010), MovieRecord(imdbId = Some("tt1375666"), imdbRating = Some(8.8), rottenTomatoes = Some(87))),
-      slug           = controllers.FilmHref.slugOf("Incepcja")
+      slug           = controllers.FilmHref.slugOf("Incepcja"),
+      asOf           = LocalDate.of(2026, 6, 4)
     )
 
   private def render(film: FilmSchedule, imageUrl: String = ogImageUrl): String =

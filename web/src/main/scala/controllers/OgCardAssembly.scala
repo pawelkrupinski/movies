@@ -93,7 +93,7 @@ object OgCardAssembly {
       film.movie.releaseYear.map(_.toString).toSeq ++
       film.movie.genres.take(2)
     val (dayLabel, cinemas) = film.showings.headOption.map { case (date, css) =>
-      CardFormat.date(date) -> css.take(2).map { cs =>
+      CardFormat.date(date, film.asOf) -> css.take(2).map { cs =>
         cs.cinema.displayName -> cs.showtimes.take(6).map { st =>
           val time = CardFormat.time(st.dateTime)
           st.format.headOption.filter(_.nonEmpty).fold(time)(fmt => s"$time $fmt")

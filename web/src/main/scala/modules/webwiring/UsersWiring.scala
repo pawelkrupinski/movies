@@ -55,7 +55,7 @@ trait UsersWiring { self: Wiring =>
 
   lazy val appleTokenValidator: Option[AppleTokenValidator] =
     Env.get("APPLE_BUNDLE_ID").orElse(Some("dev.kinowo.Kinowo"))
-      .map(bundleId => new AppleTokenValidator(httoFetch, bundleId))
+      .map(bundleId => new AppleTokenValidator(httoFetch, bundleId, clock))
 
   // One-shot sign-in codes for the two handoffs a session cookie cannot make:
   // the native apps' `kinowo://` deep link, and the country switch across the
@@ -67,9 +67,9 @@ trait UsersWiring { self: Wiring =>
   // on the same pod.
   lazy val authExchangeCodes: AuthExchangeCodes = new AuthExchangeCodes(
     usersConnection.database.fold[AuthExchangeCodeStore](new InMemoryAuthExchangeCodeStore)(
-      database => new MongoAuthExchangeCodeStore(Some(database))))
+      database => new MongoAuthExchangeCodeStore(Some(database))), clock)
 
-  lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepository, authExchangeCodes, models.Country.fromEnv, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
+  lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepository, authExchangeCodes, models.Country.fromEnv, googleTokenValidator, facebookTokenValidator, appleTokenValidator, clock)
   lazy val accountDeletion   = new AccountDeletion(userRepository, userStateRepository)
   lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, accountDeletion, userChangeTimeCache, legacyUserStateMetrics, userRepository, clock)
   lazy val facebookDataDeletionController =

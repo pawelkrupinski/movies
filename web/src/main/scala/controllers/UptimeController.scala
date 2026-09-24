@@ -14,7 +14,7 @@ import java.time.format.DateTimeFormatter
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monitor: UptimeMonitor, filmwebFallback: FallbackStore, country: models.Country)(using mat: Materializer) extends AbstractController(cc) {
+class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monitor: UptimeMonitor, filmwebFallback: FallbackStore, country: models.Country, clock: java.time.Clock = java.time.Clock.systemUTC())(using mat: Materializer) extends AbstractController(cc) {
 
   /** Bounds the rows an anonymous `imgEvent` caller can create — see the
    *  endpoint's own comment for why it is anonymous at all. */
@@ -102,7 +102,7 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
   }
 
   def index: Action[AnyContent] = adminAction {
-    val now = System.currentTimeMillis()
+    val now = clock.millis()
     val currentBucket = bucketTimestamp(now)
     val slots = (0 until MaxBuckets).reverse.map(i => currentBucket - i * BucketDurationMs)
     val active = monitor.services

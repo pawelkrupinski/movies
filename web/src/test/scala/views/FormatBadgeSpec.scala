@@ -31,7 +31,8 @@ class FormatBadgeSpec extends AnyFlatSpec with Matchers {
       cinemaFilmUrls = Nil,
       showings       = Seq(LocalDate.of(2026, 5, 13) -> Seq(CinemaShowtimes(Helios, showtimes))),
       resolved       = TestReadModel.resolved("Test movie", None, record),
-      slug           = controllers.FilmHref.slugOf("Test movie")
+      slug           = controllers.FilmHref.slugOf("Test movie"),
+      asOf           = LocalDate.of(2026, 5, 13)
     )
   }
 

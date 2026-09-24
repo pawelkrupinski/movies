@@ -30,7 +30,8 @@ class CorpusComparisonSpec extends AnyFlatSpec with Matchers {
   private def row(title: String): FilmSchedule =
     FilmSchedule(Movie(title), posterUrl = None, synopsis = None, cast = Nil, director = Nil,
       cinemaFilmUrls = Nil, showings = Nil,
-      resolved = TestReadModel.resolved(title, None, MovieRecord()), slug = Some(title))
+      resolved = TestReadModel.resolved(title, None, MovieRecord()), slug = Some(title),
+      asOf = java.time.LocalDate.of(2026, 6, 8))
 
   private def corpus(titles: String*): ReplayCorpus =
     ReplayCorpus(records = Nil, screenings = Map.empty, rows = titles.map(row))

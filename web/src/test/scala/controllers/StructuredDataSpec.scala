@@ -50,6 +50,7 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
       cast = Seq("Timothée Chalamet", "Zendaya"), director = Seq("Denis Villeneuve"),
       cinemaFilmUrls = Nil, showings = byDate, resolved = resolved(title, r),
       slug = slugOverride.orElse(FilmHref.slugOf(title)),
+      asOf = java.time.LocalDate.of(2026, 6, 4),
     )
   }
 

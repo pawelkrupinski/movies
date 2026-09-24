@@ -48,7 +48,8 @@ class CinemaFoldSpec extends AnyFlatSpec with Matchers {
           CinemaShowtimes(c, Seq(Showtime(baseTime.plusDays(day), None, Some("Sala 1"), List("2D")))))
       },
       resolved       = TestReadModel.resolved("Test movie", None, MovieRecord()),
-      slug           = controllers.FilmHref.slugOf("Test movie")
+      slug           = controllers.FilmHref.slugOf("Test movie"),
+      asOf           = date
     )
   }
 

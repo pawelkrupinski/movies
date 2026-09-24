@@ -34,7 +34,8 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
       )))
     ),
     resolved       = TestReadModel.resolved(title, None, MovieRecord()),
-    slug           = slugOverride.orElse(FilmHref.slugOf(title))
+    slug           = slugOverride.orElse(FilmHref.slugOf(title)),
+    asOf           = LocalDate.of(2026, 5, 17)
   )
 
   private val entries: Seq[(City, Seq[FilmSchedule])] = Seq(

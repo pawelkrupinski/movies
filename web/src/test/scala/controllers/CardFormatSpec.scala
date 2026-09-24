@@ -18,7 +18,13 @@ class CardFormatSpec extends AnyFlatSpec with Matchers {
 
   "date" should "match DateFormatter's long Polish label" in {
     val d = LocalDate.of(2026, 6, 4)
-    CardFormat.date(d) shouldBe DateFormatter.format(d)
+    CardFormat.date(d, d) shouldBe DateFormatter.format(d, d)
+  }
+
+  it should "spell out the year only when the date is not in today's year" in {
+    val d = LocalDate.of(2027, 1, 2)
+    CardFormat.date(d, LocalDate.of(2027, 1, 1)) should not include "2027"
+    CardFormat.date(d, LocalDate.of(2026, 12, 30)) should endWith (" 2027")
   }
 
   "runtimePill" should "render the pill form, dropping a whole-hour minutes part" in {
