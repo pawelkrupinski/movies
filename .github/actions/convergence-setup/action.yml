@@ -17,6 +17,25 @@ inputs:
   token:
     description: A token that can read this repo's runs and releases.
     required: true
+  mode:
+    description: "`hermetic` restores the PINNED recorded pair; `record` the newest corpus and the working tree."
+    required: false
+    default: hermetic
+  corpus-run:
+    description: The `Record scrape fixtures` run whose corpus to restore (a recording leg's own recorder run).
+    required: false
+    default: ''
+  hermetic-pair:
+    description: >-
+      `<corpus run> <recorded at> <tree asset>` — a pair an earlier job of this run already
+      resolved, so every job of one leg replays the same one. Empty resolves it afresh.
+    required: false
+    default: ''
+
+outputs:
+  hermetic-pair:
+    description: The recorded pair this job restored (hermetic mode), for the jobs after it.
+    value: ${{ steps.pair.outputs.pair }}
 
 runs:
   using: composite
@@ -67,6 +86,60 @@ runs:
     #
     # Same lesson as the enrichment trees a few steps above: an artifact has its
     # own retention and cannot be evicted to make room for a build cache.
+    # WHICH recording to replay, decided once and before anything is downloaded.
+    #
+    # A HERMETIC leg replays a PAIR: a corpus and the enrichment tree recorded against it,
+    # pinned together by the recording leg that completed the boot over that corpus
+    # (`convergence-publish`) as `hermetic-<code>.txt` → `<corpus run> <recorded at> <tree
+    # asset>`. The two only mean anything together — a newer corpus beside an older tree is a
+    # set of requests nobody recorded, which a hermetic leg would (correctly) refuse. No pin
+    # yet is a hard failure, never a quiet fall-back to live filling: the fix is one dispatch
+    # of `Record scrape fixtures`, and the message says so.
+    #
+    # A RECORDING leg takes the corpus it is given (its own recorder run) or the newest, and
+    # the working tree — the one it extends.
+    - name: Resolve the recorded pair to replay
+      id: pair
+      shell: bash
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+          MODE: ${{ inputs.mode }}
+          GIVEN: ${{ inputs.hermetic-pair }}
+          CORPUS_RUN: ${{ inputs.corpus-run }}
+      run: |
+          set -uo pipefail
+          if [ "$MODE" = "record" ]; then
+              [ -n "$CORPUS_RUN" ] && echo "KINOWO_CONVERGENCE_PIN_CORPUS_RUN=$CORPUS_RUN" >> "$GITHUB_ENV"
+              echo "KINOWO_CONVERGENCE_TREE_ASSET=enrichment-${{ inputs.code }}.tar.gz" >> "$GITHUB_ENV"
+              echo "recording leg: corpus ${CORPUS_RUN:-newest}, working tree enrichment-${{ inputs.code }}.tar.gz"
+              exit 0
+          fi
+          pair="$GIVEN"
+          if [ -z "$pair" ]; then
+              marker="hermetic-${{ inputs.code }}.txt"
+              if gh release download "$FIXTURE_RELEASE_TAG" --pattern "$marker" --dir hermetic-marker --clobber 2>/dev/null; then
+                  pair=$(head -1 "hermetic-marker/$marker")
+              fi
+          fi
+          read -r corpus recorded tree <<< "$pair"
+          if [ -z "${tree:-}" ]; then
+              echo "::error::No recorded pair pinned for ${{ inputs.code }} (release asset hermetic-${{ inputs.code }}.txt) — a hermetic leg replays nothing else. Record one: gh workflow run \"Record scrape fixtures\" --ref main"
+              exit 1
+          fi
+          echo "hermetic leg: corpus from recording run $corpus ($recorded), tree $tree"
+          echo "KINOWO_CONVERGENCE_PIN_CORPUS_RUN=$corpus" >> "$GITHUB_ENV"
+          echo "KINOWO_CONVERGENCE_TREE_ASSET=$tree" >> "$GITHUB_ENV"
+          echo "pair=$pair" >> "$GITHUB_OUTPUT"
+
+    # A recorder's own run: its artifact is from THIS run, which `gh run download` cannot
+    # read until the run is over, and `download-artifact` can.
+    - name: Restore the corpus this recorder run just captured
+      if: inputs.corpus-run == github.run_id
+      uses: actions/download-artifact@v6
+      with:
+          name: scrape-fixtures-${{ inputs.code }}
+          path: scrape-archive
+
     - name: Restore the recorded scrape corpus
       shell: bash
       continue-on-error: true
@@ -75,6 +148,26 @@ runs:
       run: |
           set -uo pipefail
           mkdir -p scrape-archive
+          pinned="${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}"
+          if [ -n "$pinned" ] && [ "$pinned" = "${{ github.run_id }}" ]; then
+              echo "scrape corpus from this recorder run $pinned"
+              echo "KINOWO_CONVERGENCE_CORPUS_RUN=$pinned" >> "$GITHUB_ENV"
+              echo "KINOWO_CONVERGENCE_CORPUS_RECORDED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+              ls -l scrape-archive/
+              exit 0
+          fi
+          if [ -n "$pinned" ]; then
+              if gh run download "$pinned" --name "scrape-fixtures-${{ inputs.code }}" --dir scrape-archive 2>/dev/null; then
+                  recorded=$(gh run view "$pinned" --json createdAt --jq .createdAt 2>/dev/null || echo unknown)
+                  echo "scrape corpus from PINNED recording run $pinned ($recorded)"
+                  echo "KINOWO_CONVERGENCE_CORPUS_RUN=$pinned" >> "$GITHUB_ENV"
+                  echo "KINOWO_CONVERGENCE_CORPUS_RECORDED_AT=$recorded" >> "$GITHUB_ENV"
+                  ls -l scrape-archive/
+              else
+                  echo "::error::recording run $pinned's corpus is no longer downloadable — the pinned pair has expired; re-run Record scrape fixtures"
+              fi
+              exit 0
+          fi
           # `id recordedAt` per line; the pair is exported so the spec can say WHICH
           # corpus it replayed (`CorpusProvenance`) and a green leg can record it.
           while read -r run recorded; do
@@ -154,11 +247,20 @@ runs:
           # FIXTURE_RELEASE_TAG comes from the workflow-level `env`, which is
           # exported into every step's shell.
           TAG="$FIXTURE_RELEASE_TAG"
+          # The pinned pair's tree for a hermetic leg, the working tree for a recording one
+          # (see "Resolve the recorded pair"). Unpacked under the working tree's name either
+          # way — the tarball's paths are what place it, not the asset's name.
+          ASSET="${KINOWO_CONVERGENCE_TREE_ASSET:-enrichment-${{ inputs.code }}.tar.gz}"
           mkdir -p enrichment-archive
-          if gh release download "$TAG" --pattern "enrichment-${{ inputs.code }}.tar.gz" \
-             --dir enrichment-archive --clobber 2>/dev/null; then
-              echo "enrichment tree from release $TAG"
+          if gh release download "$TAG" --pattern "$ASSET" --dir enrichment-archive --clobber 2>/dev/null; then
+              [ "$ASSET" = "enrichment-${{ inputs.code }}.tar.gz" ] || \
+                  mv "enrichment-archive/$ASSET" "enrichment-archive/enrichment-${{ inputs.code }}.tar.gz"
+              echo "enrichment tree $ASSET from release $TAG"
               ls -l enrichment-archive/
+              exit 0
+          fi
+          if [ "${{ inputs.mode }}" != "record" ]; then
+              echo "::error::the pinned tree $ASSET is not in release $TAG — a hermetic leg replays nothing else"
               exit 0
           fi
 

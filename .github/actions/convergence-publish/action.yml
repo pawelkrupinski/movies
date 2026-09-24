@@ -33,6 +33,23 @@ inputs:
       replayed as the country's last green one. The sample gate never passes it.
     required: false
     default: 'false'
+  mode:
+    description: >-
+      `hermetic` publishes no tree — a verdict leg fills nothing, so it has nothing to add and
+      must not replace the pair other legs replay. `record` publishes the working tree, and
+      pins it as the hermetic pair when `complete`.
+    required: false
+    default: record
+  complete:
+    description: >-
+      'true' when a RECORDING full leg's suite ran to the end; the tree is then pinned as the
+      pair hermetic legs replay — if the log also shows the boot finished.
+    required: false
+    default: 'false'
+  log:
+    description: The suite log, read for the boot-complete line.
+    required: false
+    default: convergence.log
 
 runs:
   using: composite
@@ -55,6 +72,7 @@ runs:
     # `EnrichmentTreePackingSpec` can run the real thing against a fabricated tree —
     # including the "nothing recorded yet" case a new country starts in.
     - name: Pack the enrichment fixtures this leg recorded
+      if: inputs.mode == 'record'
       shell: bash
       run: |
           .github/scripts/pack-enrichment-tree.sh \
@@ -82,7 +100,7 @@ runs:
     # it recorded) but never overwrites the tree every main run restores with a capture
     # made by code main has not run. (ConvergencePublishMainOnlySpec)
     - name: Publish the tree to the rolling release
-      if: github.ref == 'refs/heads/main'
+      if: github.ref == 'refs/heads/main' && inputs.mode == 'record'
       shell: bash
       env:
           GH_TOKEN: ${{ inputs.token }}
@@ -123,3 +141,46 @@ runs:
           marker="corpus-green-${{ inputs.code }}.txt"
           echo "$KINOWO_CONVERGENCE_CORPUS_RUN $KINOWO_CONVERGENCE_CORPUS_RECORDED_AT" > "$marker"
           scripts/ci/gh-release.sh upload "$FIXTURE_RELEASE_TAG" "$marker" --clobber
+
+    # THE HERMETIC PAIR — what every verdict leg replays, and the reason a verdict no longer
+    # depends on the network.
+    #
+    # Pinned only by a RECORDING full leg whose boot finished: by then every request the
+    # corpus makes has been answered live and recorded, or failed and been remembered as the
+    # failure it was (`EnrichmentCache.Transients.Recorded`), so a hermetic replay of this
+    # corpus asks the tree nothing it cannot answer. A leg that ran out of time before that
+    # leaves the previous pin alone — a hermetic leg must never replay a half-recorded pair.
+    #
+    # A COPY under a name carrying the corpus run, never the working asset: the recorder
+    # keeps extending `enrichment-<code>.tar.gz` (the sample publishes it before the full leg
+    # has recorded anything), and a hermetic leg reading that mid-recording would replay a
+    # tree the other half of its pair was never recorded into. The pin is written LAST, so a
+    # reader sees either the old pair or the new one, and the previous pair's tree is kept
+    # so a leg (or a bisect) that read the old pin a moment ago can still download it.
+    - name: Pin this recording as the pair hermetic legs replay
+      if: github.ref == 'refs/heads/main' && inputs.mode == 'record' && inputs.complete == 'true' && env.KINOWO_CONVERGENCE_CORPUS_RUN != ''
+      shell: bash
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+      run: |
+          set -uo pipefail
+          code="${{ inputs.code }}"
+          if ! grep -q "^\[$code\] boot complete" "${{ inputs.log }}" 2>/dev/null; then
+              echo "the boot did not finish — the pinned pair stays as it was"
+              exit 0
+          fi
+          archive="enrichment-upload/enrichment-$code.tar.gz"
+          [ -f "$archive" ] || { echo "nothing packed — the pinned pair stays as it was"; exit 0; }
+          pinned="enrichment-$code-$KINOWO_CONVERGENCE_CORPUS_RUN.tar.gz"
+          cp "$archive" "enrichment-upload/$pinned"
+          RELEASE=scripts/ci/gh-release.sh
+          "$RELEASE" upload "$FIXTURE_RELEASE_TAG" "enrichment-upload/$pinned" --clobber || exit 1
+          marker="hermetic-$code.txt"
+          echo "$KINOWO_CONVERGENCE_CORPUS_RUN $KINOWO_CONVERGENCE_CORPUS_RECORDED_AT $pinned" > "$marker"
+          "$RELEASE" upload "$FIXTURE_RELEASE_TAG" "$marker" --clobber || exit 1
+          echo "pinned $pinned as $code's hermetic pair"
+          # Keep this pair and the one before it; older pinned trees are dead weight.
+          gh release view "$FIXTURE_RELEASE_TAG" --json assets \
+                  --jq ".assets[] | select(.name | test(\"^enrichment-$code-[0-9]+\\\\.tar\\\\.gz$\")) | [.createdAt, .name] | @tsv" \
+              | sort -r | tail -n +3 | cut -f2 \
+              | while read -r stale; do "$RELEASE" delete-asset "$FIXTURE_RELEASE_TAG" "$stale" -y || true; done

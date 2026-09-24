@@ -426,7 +426,9 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   it should "carry only the phase in its matrix, and pick the rest off the leg's inputs" in {
     val block = RepoFile.block(leg, "convergence")
     block should include("name: ${{ matrix.phase }}")
-    block should not include "needs.sample.outputs"
+    // The MATRIX may not be planned off the sample. The job does read one sample output —
+    // the recorded pair it replayed, so both jobs replay the same one (HermeticConvergenceWiringSpec).
+    RepoFile.block(block, "strategy") should not include "needs.sample.outputs"
   }
 
   /** Both rows carry their OWN budgets — the caller's `orderJob`/`orderSuite` — and a

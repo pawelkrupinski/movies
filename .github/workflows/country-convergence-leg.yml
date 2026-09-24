@@ -138,6 +138,35 @@ on:
                 required: false
                 type: string
                 default: 4g
+            # HERMETIC OR RECORDING — the one switch between a leg that renders a verdict and
+            # a leg that writes the fixtures verdicts are rendered from.
+            #
+            # `hermetic` (every dispatched, nightly and branch leg): the network leaf is
+            # replaced, so the leg replays ONLY the recorded pair — the corpus and the
+            # enrichment tree `Record scrape fixtures` recorded together — and a request the
+            # pair cannot answer fails the leg naming the missing fixture instead of filling
+            # it live. No expiry, no publish: a verdict leg never changes its own inputs.
+            # Live fills inside verdict legs were a flake source of their own — a UK boot
+            # making 345 live fills of which 63 failed, Cinemeta 504s, Metacritic timeouts,
+            # sample legs running into their 60-minute ceiling (runs 35870834558,
+            # 35918752050) — and a hermetic sample boots in seconds rather than minutes.
+            #
+            # `record` (only `Record scrape fixtures`): the old behaviour — expire, fill live,
+            # record, publish — plus the transient failures a hermetic replay needs, and the
+            # PINNED pair the hermetic legs replay once the full leg's boot is complete.
+            mode:
+                description: "`hermetic` (replay the recorded pair, never the network) or `record` (fill and publish it)."
+                required: false
+                type: string
+                default: hermetic
+            corpus-run:
+                description: >-
+                    The `Record scrape fixtures` run whose corpus a RECORDING leg replays — the
+                    recorder passes its own run. Empty takes the newest (record) or the pinned
+                    pair's (hermetic).
+                required: false
+                type: string
+                default: ''
 
 env:
     # The rolling release the per-country fixture trees live in. One tag, three assets,
@@ -198,12 +227,19 @@ jobs:
             contents: write
             checks: write
             actions: read
+        # The recorded pair this sample replayed, so the full leg replays the
+        # SAME one even if the recorder pins a new pair while this leg is running.
+        outputs:
+            pair: ${{ steps.setup.outputs.hermetic-pair }}
         steps:
             - uses: actions/checkout@v5
             - uses: ./.github/actions/convergence-setup
+              id: setup
               with:
-                  code:  ${{ inputs.code }}
-                  token: ${{ secrets.GITHUB_TOKEN }}
+                  code:       ${{ inputs.code }}
+                  token:      ${{ secrets.GITHUB_TOKEN }}
+                  mode:       ${{ inputs.mode }}
+                  corpus-run: ${{ inputs.corpus-run }}
 
             # Bounded BELOW the job's ceiling, for the reason spelled out over the full
             # leg's suite step: a job that hits its own `timeout-minutes` is CANCELLED,
@@ -225,6 +261,7 @@ jobs:
                   TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
                   OMDB_API_KEY:     ${{ secrets.OMDB_API_KEY }}
                   KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
+                  KINOWO_CONVERGENCE_HERMETIC: ${{ inputs.mode == 'hermetic' }}
 
             # The gate REPLAYS the tree and — until now — extended it only in the
             # runner's filesystem, which is discarded with the runner. Every recorded
@@ -232,11 +269,15 @@ jobs:
             # leg refreshes is a tree that goes empty five days after that leg last ran;
             # and the full leg runs only behind this one. Publishing here is what stops
             # a red sample from being self-perpetuating.
+            #
+            # RECORDING legs only: a hermetic leg fills nothing, so it has nothing to publish.
             - uses: ./.github/actions/convergence-publish
-              if: always()
+              if: always() && inputs.mode == 'record'
               with:
                   code:  ${{ inputs.code }}
                   token: ${{ secrets.GITHUB_TOKEN }}
+                  mode:  ${{ inputs.mode }}
+
 
     # THE RUN BEHIND THE GATE — one PHASE per row: `convergence` for every country, plus
     # `order-independence` for the one whose corpus no longer fits in a single job.
@@ -270,6 +311,10 @@ jobs:
     convergence:
         name: ${{ matrix.phase }}
         needs: sample
+        # Behind a GREEN sample for a verdict. A RECORDING leg runs whatever the sample said:
+        # its job is to refresh the whole corpus's tree, and a red sample is no reason to
+        # leave the fixtures every hermetic leg replays a night staler.
+        if: ${{ !cancelled() && (needs.sample.result == 'success' || inputs.mode == 'record') }}
         strategy:
             fail-fast: false
             matrix:
@@ -299,8 +344,11 @@ jobs:
             - uses: actions/checkout@v5
             - uses: ./.github/actions/convergence-setup
               with:
-                  code:  ${{ inputs.code }}
-                  token: ${{ secrets.GITHUB_TOKEN }}
+                  code:          ${{ inputs.code }}
+                  token:         ${{ secrets.GITHUB_TOKEN }}
+                  mode:          ${{ inputs.mode }}
+                  corpus-run:    ${{ inputs.corpus-run }}
+                  hermetic-pair: ${{ needs.sample.outputs.pair }}
 
             # Bounded BELOW the job's ceiling, on purpose — the single most important line
             # in this file for a leg that runs long. Both numbers moved up together (from
@@ -360,8 +408,10 @@ jobs:
                   # Without a real key TmdbClient short-circuits and nothing resolves,
                   # so the real corpus would buy nothing over the generated one.
                   # Replay recorded enrichment answers first; anything genuinely new
-                  # falls through to the live chain and is recorded for the next run.
+                  # falls through to the live chain and is recorded for the next run —
+                  # in a RECORDING leg. A hermetic one refuses that request and names it.
                   KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
+                  KINOWO_CONVERGENCE_HERMETIC: ${{ inputs.mode == 'hermetic' }}
                   TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
                   # The OMDb rung of ImdbIdResolver is gated on this key
                   # (`omdb = Env.get("OMDB_API_KEY").map(...)`), so without it the
@@ -423,9 +473,18 @@ jobs:
             # next run restores a truncated tree. The replay row has nothing to publish
             # anyway: its replays share the preloaded cache, and the leg that recorded that
             # cache measured 4 live fills across the whole run.
+            #
+            # `complete` is what lets a RECORDING leg pin the tree it leaves as the pair every
+            # hermetic leg replays: the boot answered every request the corpus makes (live,
+            # or remembered as the failure it was) only if it got to the end. A leg that ran
+            # out of time before then still publishes its working tree, so the next
+            # recording resumes from it — but a hermetic leg must never replay a half-recorded
+            # pair. Replays re-ask nothing: they share the boot's cache.
             - uses: ./.github/actions/convergence-publish
               if: always() && matrix.phase == 'convergence'
               with:
-                  code:  ${{ inputs.code }}
+                  code: ${{ inputs.code }}
                   token: ${{ secrets.GITHUB_TOKEN }}
                   green: ${{ steps.suite.outcome == 'success' }}
+                  mode: ${{ inputs.mode }}
+                  complete: ${{ inputs.mode == 'record' && steps.suite.outcome != 'cancelled' }}

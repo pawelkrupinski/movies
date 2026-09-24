@@ -12,6 +12,12 @@
 # local copy is invisible: the run simply refetches whatever it lacks and looks fine while
 # testing different inputs from the ones CI tested.
 #
+# CI's verdict legs are HERMETIC: they replay the corpus + tree PAIR `Record scrape
+# fixtures` pinned (`hermetic-<code>.txt` in the same release) and never touch the network.
+# This does the same whenever a pair is pinned, so a local run answers exactly the question
+# the CI leg did — offline, in minutes, and failing by name on anything the pair lacks.
+# With no pair pinned yet it falls back to the old behaviour: the working tree, filled live.
+#
 #   scripts/convergence-local.sh pl
 #
 # Every collection runs on a real MongoDB — there is no in-memory mode, here or in CI.
@@ -34,12 +40,23 @@ esac
 RELEASE_TAG=convergence-fixtures
 TREE="test/resources/fixtures/enrichment-$CODE"
 
-echo "==> fetching $RELEASE_TAG / enrichment-$CODE.tar.gz"
 STAGE=$(mktemp -d)
 trap 'rm -rf "$STAGE"' EXIT
-if gh release download "$RELEASE_TAG" --pattern "enrichment-$CODE.tar.gz" --dir "$STAGE" --clobber; then
+ASSET="enrichment-$CODE.tar.gz"
+HERMETIC=false
+if gh release download "$RELEASE_TAG" --pattern "hermetic-$CODE.txt" --dir "$STAGE" --clobber 2>/dev/null; then
+    read -r CORPUS_RUN RECORDED_AT PINNED < "$STAGE/hermetic-$CODE.txt"
+    echo "==> replaying the pinned pair: corpus from recording run $CORPUS_RUN ($RECORDED_AT), tree $PINNED"
+    gh run download "$CORPUS_RUN" --name "scrape-fixtures-$CODE" --dir "$STAGE"
+    tar -xzf "$STAGE/scrapes-$CODE.tar.gz"
+    echo "    (overwrites any committed corpus for $CODE — 'git checkout -- test/resources/fixtures/corpus' restores it)"
+    ASSET="$PINNED"
+    HERMETIC=true
+fi
+echo "==> fetching $RELEASE_TAG / $ASSET"
+if gh release download "$RELEASE_TAG" --pattern "$ASSET" --dir "$STAGE" --clobber; then
     rm -rf "$TREE"
-    tar -xzf "$STAGE/enrichment-$CODE.tar.gz"
+    tar -xzf "$STAGE/$ASSET"
     echo "    $(find "$TREE" -type f -not -path '*/.enrichment-cache/*' | wc -l | tr -d ' ') recorded responses, \
 $( { find "$TREE/.enrichment-cache" -name '*.entry' 2>/dev/null || true; } | wc -l | tr -d ' ') remembered verdicts"
 else
@@ -75,6 +92,7 @@ echo "    every repository will run on it"
 
 export KINOWO_COUNTRY="$CODE" KINOWO_COUNTRIES="$CODE"
 export KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES="enrichment-$CODE"
+export KINOWO_CONVERGENCE_HERMETIC="$HERMETIC"
 
 echo "==> sbt $SPEC"
 echo "    watch: '[$CODE] <phase> done in Ns', 'scraped N/M', 'staging round N: A → B rows', 'coverage — N films'"

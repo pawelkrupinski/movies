@@ -2,12 +2,12 @@
 # Nightly capture of every country's REAL `cinema_scrapes` into a fixture file,
 # stored in the actions cache for the convergence legs to replay.
 #
-# Separate from the enrichment capture because the two have nothing in common but
-# a destination. This one reads one Mongo collection and is done in minutes; the
-# enrichment capture depends on what a convergence run discovered and therefore
-# runs after it. Bundling them meant recording a corpus cost a full convergence
-# run — scrape, fold, settle, project, enrich, three order-independence passes —
-# to obtain something a single collection read produces.
+# The enrichment capture follows it in the SAME run (the `enrichment` jobs below) but
+# stays out of its way: the corpus is recorded and uploaded in minutes by the `record`
+# jobs, and only then does each country's convergence leg run in RECORDING mode over that
+# exact corpus, filling its enrichment tree live and pinning corpus + tree as the pair the
+# hermetic verdict legs replay. The two only mean anything together, which is why they are
+# recorded in one run rather than on two schedules that drift.
 #
 # Fetching the corpus INSIDE a leg is what every convergence failure traced back
 # to: prod Mongo is not reachable from a runner without a hop, and the leg met pages
@@ -45,7 +45,10 @@ on:
 
 concurrency:
     group: record-scrape-fixtures-${{ github.ref }}
-    cancel-in-progress: true
+    # NOT `true` any more: this workflow now also RECORDS the enrichment trees (the
+    # `enrichment` jobs below), hours of paid-for live fills that a manual re-record
+    # dispatched mid-run would have thrown away. A second run queues behind the first.
+    cancel-in-progress: false
 
 # Least privilege by default: every job that needs more than reading the
 # repository grants it at job level.
@@ -161,10 +164,59 @@ jobs:
                   overwrite: true
                   if-no-files-found: warn
 
+    # THE ENRICHMENT RECORDING — the only place the convergence fixture trees grow.
+    #
+    # Every convergence leg that renders a verdict is HERMETIC (`country-convergence-leg.yml`,
+    # `mode`): it replays a recorded corpus and the enrichment tree recorded against it, and
+    # never touches the network. Something still has to fill that tree for each night's new
+    # corpus, and it is this: the same leg in `record` mode, over the corpus the job above
+    # just captured — expire what is past its lifetime, fill every gap live, remember every
+    # failure, publish the working tree, and once the full leg's boot is complete pin
+    # corpus + tree as the PAIR the hermetic legs replay from then on.
+    #
+    # Here rather than on the convergence schedule, because a recording belongs with the
+    # corpus it records against: pinned to this run's corpus, a new corpus and its tree
+    # reach the verdict legs together or not at all.
+    #
+    # The United States runs without its split-out order-independence row: a recording
+    # needs the boot, which is where every request is made; the replays re-ask nothing.
+    enrichment:
+        name: enrichment (${{ matrix.country }})
+        needs: record
+        if: ${{ !cancelled() }}
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
+                    - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample, job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
+                    - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample,      job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
+                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
+                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 330, suite: 315, sampleJob: 75, sampleSuite: 60, heap: 10g }
+        uses: ./.github/workflows/country-convergence-leg.yml
+        permissions:
+            contents: write
+            checks: write
+            actions: read
+        with:
+            mode:           record
+            corpus-run:     ${{ github.run_id }}
+            country:        ${{ matrix.country }}
+            code:           ${{ matrix.code }}
+            sample-command: ${{ matrix.sample }}
+            command:        ${{ matrix.cmd }}
+            job-timeout-minutes:           ${{ matrix.job }}
+            suite-timeout-minutes:         ${{ matrix.suite }}
+            sample-job-timeout-minutes:    ${{ matrix.sampleJob }}
+            sample-suite-timeout-minutes:  ${{ matrix.sampleSuite }}
+            heap:                          ${{ matrix.heap }}
+        # TMDB_API_KEY / OMDB_API_KEY for the live fills, and the GITHUB_TOKEN the setup reads.
+        secrets: inherit
+
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
     report:
-        needs: record
+        needs: [record, enrichment]
         if: always() && !cancelled() && github.event_name == 'schedule'
         runs-on: ubuntu-latest
         timeout-minutes: 5

@@ -142,14 +142,11 @@ jobs:
         # TMDB_API_KEY / OMDB_API_KEY, and the GITHUB_TOKEN the setup action reads.
         secrets: inherit
 
-    # There is no `record-enrichment` job any more. It dispatched `Record enrichment
-    # fixtures`, which opens a tunnel to the shared Mongo cache and dumps it back out
-    # as files — a round trip that only made sense while the legs wrote their fills
-    # INTO that cache. They no longer do (see the called workflow's env block); each
-    # leg now publishes the fixture tree it recorded directly, so the recorder would
-    # have dumped an ever-staler snapshot over a tunnel, on top of a capture that is
-    # already newer. The workflow itself stays, dispatch-only, as the way to re-cut a
-    # country's fixtures from the cache by hand.
+    # There is no `record-enrichment` job here, and these legs record nothing: they are
+    # HERMETIC (the leg's `mode` input, default), replaying the corpus + enrichment tree PAIR
+    # that `Record scrape fixtures` records and pins nightly. Recording lives there, beside
+    # the corpus it records against — see its `enrichment` jobs. `Record enrichment
+    # fixtures`, which dumped the old shared Mongo cache over a tunnel, stays dispatch-only.
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
