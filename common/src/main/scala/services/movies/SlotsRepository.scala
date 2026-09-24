@@ -443,11 +443,13 @@ class MongoSlotsRepository(
   def filmIdsChecked(): (Set[String], Boolean) =
     coll.fold((Set.empty[String], true))(SlotKeyed.distinctFilmIdsChecked(_, "SlotsRepository", logger.warn(_)))
 
+  private val idPaging = SlotKeyed.Paging(findAllBatchSize, findAllBatchAttempts, findAllBatchBackoff)
+
   def rowIdsChecked(): (Set[String], Boolean) =
-    coll.fold((Set.empty[String], true))(SlotKeyed.rowIdsChecked(_, "SlotsRepository", logger.warn(_)))
+    coll.fold((Set.empty[String], true))(SlotKeyed.rowIdsChecked(_, "SlotsRepository", logger.warn(_), idPaging))
 
   def rowWrittenAtChecked(): (Map[String, java.time.Instant], Boolean) =
-    coll.fold((Map.empty[String, java.time.Instant], true))(SlotKeyed.rowWrittenAtChecked(_, "SlotsRepository", logger.warn(_)))
+    coll.fold((Map.empty[String, java.time.Instant], true))(SlotKeyed.rowWrittenAtChecked(_, "SlotsRepository", logger.warn(_), idPaging))
 
   def deleteRows(ids: Set[String]): Long =
     coll.fold(0L)(SlotKeyed.deleteRows(_, ids, "SlotsRepository", logger.warn(_)))

@@ -129,33 +129,52 @@ object SlotKeyed {
   /** [[SlotKeyedRows.rowIdsChecked]] for a Mongo side collection: the `_id`s alone, projected
    *  server-side, so the showtimes never cross the wire. Same failure contract as
    *  [[distinctFilmIdsChecked]]. */
-  def rowIdsChecked[T](c: MongoCollection[T], label: String, warn: String => Unit): (Set[String], Boolean) =
-    Try(Await.result(c.find[Document]().projection(Projections.include("_id")).toFuture(), 120.seconds)) match {
-      case Success(docs) =>
-        (docs.flatMap(_.get("_id")).collect { case id if id.isString => id.asString.getValue }.toSet, true)
-      case Failure(exception) =>
-        warn(s"$label.rowIds failed: ${exception.getClass.getSimpleName}: ${exception.getMessage} — " +
-          "reporting the read as incomplete.")
-        (Set.empty, false)
-    }
+  def rowIdsChecked[T](c: MongoCollection[T], label: String, warn: String => Unit,
+                       paging: Paging): (Set[String], Boolean) = {
+    val (docs, read) = projectedRowsChecked(c, s"$label.rowIds", warn, paging, Projections.include("_id"))
+    (docs.flatMap(idOfDoc).toSet, read)
+  }
 
   /** [[SlotKeyedRows.rowWrittenAtChecked]] for a Mongo side collection: `_id` + `updatedAt`
    *  projected server-side. A row with no `updatedAt` (none is written without one) reads as
    *  the epoch — as old as it gets, since nothing current could have written it. */
-  def rowWrittenAtChecked[T](c: MongoCollection[T], label: String, warn: String => Unit): (Map[String, Instant], Boolean) =
-    Try(Await.result(c.find[Document]().projection(Projections.include("_id", "updatedAt")).toFuture(), 120.seconds)) match {
-      case Success(docs) =>
-        (docs.flatMap { d =>
-          d.get("_id").collect { case id if id.isString =>
-            id.asString.getValue -> d.get("updatedAt").collect { case at if at.isDateTime =>
-              Instant.ofEpochMilli(at.asDateTime.getValue) }.getOrElse(Instant.EPOCH)
-          }
-        }.toMap, true)
-      case Failure(exception) =>
-        warn(s"$label.rowWrittenAt failed: ${exception.getClass.getSimpleName}: ${exception.getMessage} — " +
+  def rowWrittenAtChecked[T](c: MongoCollection[T], label: String, warn: String => Unit,
+                             paging: Paging): (Map[String, Instant], Boolean) = {
+    val (docs, read) = projectedRowsChecked(c, s"$label.rowWrittenAt", warn, paging, Projections.include("_id", "updatedAt"))
+    (docs.flatMap { d =>
+      idOfDoc(d).map(_ -> d.get("updatedAt").collect { case at if at.isDateTime =>
+        Instant.ofEpochMilli(at.asDateTime.getValue) }.getOrElse(Instant.EPOCH))
+    }.toMap, read)
+  }
+
+  /** How a whole-collection read of a side collection pages — the store's own keyset page
+   *  size and retry budget. */
+  final case class Paging(batchSize: Int, attempts: Int, backoff: FiniteDuration)
+
+  private def idOfDoc(d: Document): Option[String] =
+    d.get("_id").collect { case id if id.isString => id.asString.getValue }
+
+  /** Every row of `c`, `projection` only, read in keyset pages ([[KeysetScan]]) — never one
+   *  unbounded `find()`, the shape that overflowed the async driver's completion chain on
+   *  `movies` and then `screenings`. An incomplete scan reports `false` and no rows. */
+  private def projectedRowsChecked[T](c: MongoCollection[T], label: String, warn: String => Unit,
+                                      paging: Paging, projection: Bson): (Seq[Document], Boolean) = {
+    val buf = Vector.newBuilder[Document]
+    val complete = KeysetScan.scan[Document](
+      label          = label,
+      batchSize      = paging.batchSize,
+      maxAttempts    = paging.attempts,
+      initialBackoff = paging.backoff,
+      keyOf          = d => idOfDoc(d).getOrElse(throw new IllegalStateException(s"$label: a row whose _id is not a string")),
+      fetchPage      = (afterId, limit) => Await.result(
+        c.find[Document](afterId.fold(Filters.empty())(Filters.gt("_id", _))).projection(projection)
+          .sort(org.mongodb.scala.model.Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds),
+      onIncomplete   = exception =>
+        warn(s"$label failed: ${exception.getClass.getSimpleName}: ${exception.getMessage} — " +
           "reporting the read as incomplete.")
-        (Map.empty, false)
-    }
+    )(buf ++= _)
+    if (complete) (buf.result(), true) else (Seq.empty, false)
+  }
 
   /** [[SlotKeyedRows.deleteRows]] for a Mongo side collection: one `_id $in` delete. */
   def deleteRows[T](c: MongoCollection[T], ids: Set[String], label: String, warn: String => Unit): Long =
