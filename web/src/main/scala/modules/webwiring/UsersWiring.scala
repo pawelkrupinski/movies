@@ -71,7 +71,7 @@ trait UsersWiring { self: Wiring =>
 
   lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepository, authExchangeCodes, models.Country.fromEnv, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
   lazy val accountDeletion   = new AccountDeletion(userRepository, userStateRepository)
-  lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, accountDeletion, userChangeTimeCache, legacyUserStateMetrics, userRepository)
+  lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, accountDeletion, userChangeTimeCache, legacyUserStateMetrics, userRepository, clock)
   lazy val facebookDataDeletionController =
     new FacebookDataDeletionController(controllerComponents, Env.get("FACEBOOK_APP_SECRET"), userRepository, accountDeletion)
 }

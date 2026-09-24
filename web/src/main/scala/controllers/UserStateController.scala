@@ -42,7 +42,9 @@ class UserStateController(
   accountDeletion:      AccountDeletion,
   userChangeTimeCache:  UserChangeTimeCache,
   legacyUserStateMetrics: LegacyUserStateMetrics,
-  userRepository:       UserRepository
+  userRepository:       UserRepository,
+  // Stamps every change; the stored stamps' newer-than rules compare against it.
+  clock:                java.time.Clock = java.time.Clock.systemUTC()
 ) extends AbstractController(cc) {
   import UserStateController._
 
@@ -206,7 +208,7 @@ class UserStateController(
    *  same "every write bumps it" behaviour the legacy PUT has. A 503 when the
    *  store could not write at all. */
   private def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange)(respond: (Set[String], Instant) => Result): Result =
-    userStateRepository.changeHiddenFilms(userId, country, change, Instant.now()) match {
+    userStateRepository.changeHiddenFilms(userId, country, change, clock.instant()) match {
       case Some(state) => respond(state.hiddenFilmsByCountry.getOrElse(country, Set.empty), state.updatedAt)
       case None        => ServiceUnavailable(Json.obj("error" -> "hidden films could not be saved — retry"))
     }
@@ -239,7 +241,7 @@ class UserStateController(
           case Right(patch) if (patch.hiddenFilms ++ patch.disabledCinemas).exists(_.size > MaxHiddenPerCountry) =>
             EntityTooLarge(Json.obj("error" -> s"at most $MaxHiddenPerCountry entries per set"))
           case Right(patch) =>
-            userStateRepository.patchLegacyState(userId, patch, Instant.now())
+            userStateRepository.patchLegacyState(userId, patch, clock.instant())
               .fold(ServiceUnavailable(Json.obj("error" -> "state could not be saved — retry")))(state => Ok(toJson(state)))
         }
     })

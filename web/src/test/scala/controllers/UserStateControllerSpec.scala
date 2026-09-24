@@ -15,6 +15,9 @@ import java.time.Instant
 
 class UserStateControllerSpec extends AnyFlatSpec with Matchers {
 
+  // The controller stamps changes on this clock; the rows a test seeds are stamped from it too.
+  private val specClock = java.time.Clock.fixed(Instant.parse("2026-06-01T10:00:00Z"), java.time.ZoneOffset.UTC)
+
   // Every action now routes through `SignedInUser` (see `signedInUserId`),
   // not just a bare session `userId` claim — so a test session names a real
   // row here, or the request 401s regardless of what the session carries.
@@ -22,7 +25,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   private def testUser(id: String): models.User = models.User(
     id = id, provider = "google", providerSub = s"G-$id",
     email = Some(s"$id@example.com"), displayName = Some(id), avatarUrl = None,
-    createdAt = Instant.now(), lastSeenAt = Instant.now()
+    createdAt = specClock.instant(), lastSeenAt = specClock.instant()
   )
 
   private def fixture(
@@ -35,7 +38,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     userRepository.upsert(testUser("u1")) // the suite's default signed-in identity
     prefilled.foreach(stateRepository.upsert)
     val accountDeletion = new AccountDeletion(userRepository, stateRepository)
-    (new UserStateController(Helpers.stubControllerComponents(), stateRepository, accountDeletion, changeTimeCache, legacyMetrics, userRepository), stateRepository, userRepository)
+    (new UserStateController(Helpers.stubControllerComponents(), stateRepository, accountDeletion, changeTimeCache, legacyMetrics, userRepository, specClock), stateRepository, userRepository)
   }
 
   /** Counts `find` calls so a fast-path test can prove storage was never
@@ -126,7 +129,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return a stored language pick" in {
-    val stored = UserState("u1", Set.empty, Set.empty, Instant.now(), language = Some("de"))
+    val stored = UserState("u1", Set.empty, Set.empty, specClock.instant(), language = Some("de"))
     val (ctl, _, _) = fixture(Some(stored))
     val request  = FakeRequest("GET", "/api/me/state").withSession("userId" -> "u1")
     val result   = ctl.get()(request)
@@ -287,7 +290,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "bump updatedAt past the stored one even within the same millisecond" in {
-    val stamp = Instant.now().plusSeconds(3600).truncatedTo(java.time.temporal.ChronoUnit.MILLIS) // "now" is behind the row: only the +1ms rule can move it
+    val stamp = specClock.instant().plusSeconds(3600).truncatedTo(java.time.temporal.ChronoUnit.MILLIS) // "now" is behind the row: only the +1ms rule can move it
     val (ctl, repository, _) = fixture(Some(storedFor("pl", "Madagaskar").copy(updatedAt = stamp)))
     val result = ctl.unhideFilm("pl", "Never Hidden")(FakeRequest("DELETE", "/api/me/pl/hidden-films/x").withSession("userId" -> "u1"))
 
@@ -403,7 +406,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "add the title to that country's bucket, leaving other countries untouched" in {
-    val stored = UserState("u1", Set.empty, Set.empty, Instant.now(), Map("us" -> Set("Sing")))
+    val stored = UserState("u1", Set.empty, Set.empty, specClock.instant(), Map("us" -> Set("Sing")))
     val (ctl, repository, _) = fixture(Some(stored))
     val result = ctl.hideFilm("pl", "Madagaskar")(FakeRequest("PUT", "/api/me/pl/hidden-films/Madagaskar").withSession("userId" -> "u1"))
 
@@ -441,7 +444,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "remove the title from that country's bucket, leaving other countries untouched" in {
-    val stored = UserState("u1", Set.empty, Set.empty, Instant.now(), Map("pl" -> Set("Madagaskar", "Sing"), "us" -> Set("Sing")))
+    val stored = UserState("u1", Set.empty, Set.empty, specClock.instant(), Map("pl" -> Set("Madagaskar", "Sing"), "us" -> Set("Sing")))
     val (ctl, repository, _) = fixture(Some(stored))
     val result = ctl.unhideFilm("pl", "Sing")(FakeRequest("DELETE", "/api/me/pl/hidden-films/Sing").withSession("userId" -> "u1"))
 
@@ -472,7 +475,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "empty only THAT country's bucket, leaving other countries untouched" in {
-    val stored = UserState("u1", Set.empty, Set.empty, Instant.now(), Map("pl" -> Set("Madagaskar", "Sing"), "us" -> Set("Sing")))
+    val stored = UserState("u1", Set.empty, Set.empty, specClock.instant(), Map("pl" -> Set("Madagaskar", "Sing"), "us" -> Set("Sing")))
     val (ctl, repository, _) = fixture(Some(stored))
     val result = ctl.clearHiddenFilms("pl")(FakeRequest("DELETE", "/api/me/pl/hidden-films").withSession("userId" -> "u1"))
 
@@ -530,7 +533,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "replace the user's state with the request body" in {
-    val initial = UserState("u1", Set("OLD"), Set.empty, Instant.now())
+    val initial = UserState("u1", Set("OLD"), Set.empty, specClock.instant())
     val (ctl, repository, _) = fixture(Some(initial))
     val request = FakeRequest("PUT", "/api/me/state")
       .withSession("userId" -> "u1")
@@ -556,7 +559,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
       userId          = "u1",
       hiddenFilms     = Set("OLD HIDE"),
       disabledCinemas = Set("OLD CINEMA"),
-      updatedAt       = Instant.now()
+      updatedAt       = specClock.instant()
     )
     val (ctl, repository, _) = fixture(Some(initial))
     val request = FakeRequest("PUT", "/api/me/state")
@@ -570,7 +573,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still clear a field when the body sends it as an explicit empty array" in {
-    val initial = UserState("u1", Set("H"), Set("C"), Instant.now())
+    val initial = UserState("u1", Set("H"), Set("C"), specClock.instant())
     val (ctl, repository, _) = fixture(Some(initial))
     val request = FakeRequest("PUT", "/api/me/state")
       .withSession("userId" -> "u1")
@@ -590,7 +593,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "preserve a stored language the body omits, same as the sets" in {
-    val initial = UserState("u1", Set.empty, Set.empty, Instant.now(), language = Some("de"))
+    val initial = UserState("u1", Set.empty, Set.empty, specClock.instant(), language = Some("de"))
     val (ctl, repository, _) = fixture(Some(initial))
     val request = FakeRequest("PUT", "/api/me/state")
       .withSession("userId" -> "u1")
@@ -600,7 +603,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "clear a stored language when the body sends it as explicit null" in {
-    val initial = UserState("u1", Set.empty, Set.empty, Instant.now(), language = Some("de"))
+    val initial = UserState("u1", Set.empty, Set.empty, specClock.instant(), language = Some("de"))
     val (ctl, repository, _) = fixture(Some(initial))
     val request = FakeRequest("PUT", "/api/me/state")
       .withSession("userId" -> "u1")
@@ -649,7 +652,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "remove the user + state rows AND clear the session" in {
-    val initialState = UserState("u1", Set("Conclave"), Set.empty, Instant.now())
+    val initialState = UserState("u1", Set("Conclave"), Set.empty, specClock.instant())
     // `fixture` already seeds "u1" (needed for the request itself to pass
     // `SignedInUser`) — this just confirms deletion actually removes it.
     val (ctl, stateRepository, userRepository) = fixture(Some(initialState))
@@ -668,7 +671,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   // ── Pure helpers (also covered indirectly by the action specs above) ────
 
   "UserStateController.fromJson" should "keep base fields the body omits and overwrite the ones it sends" in {
-    val base = UserState("u1", Set("H"), Set("D"), Instant.now())
+    val base = UserState("u1", Set("H"), Set("D"), specClock.instant())
     UserStateController.fromJson(Json.obj("hiddenFilms" -> Json.arr("H2"))).map(_.applyTo(base)) match {
       case Right(s) =>
         s.hiddenFilms     shouldBe Set("H2")  // present → overwritten
@@ -681,7 +684,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   // either direction. Were the patch ever to build a fresh `UserState` instead of copying the
   // stored one, the constructor's `Map.empty` default would silently wipe every per-country hide.
   it should "never wipe hiddenFilmsByCountry — a field this legacy body can't even express" in {
-    val base = UserState("u1", Set("H"), Set("D"), Instant.now(), Map("pl" -> Set("Kept Across A Legacy PUT")))
+    val base = UserState("u1", Set("H"), Set("D"), specClock.instant(), Map("pl" -> Set("Kept Across A Legacy PUT")))
     UserStateController.fromJson(Json.obj("hiddenFilms" -> Json.arr("H2"))).map(_.applyTo(base)) match {
       case Right(s)      => s.hiddenFilmsByCountry shouldBe base.hiddenFilmsByCountry
       case Left(reason)  => fail(s"expected Right, got Left($reason)")
