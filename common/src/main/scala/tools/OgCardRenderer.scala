@@ -19,7 +19,7 @@ import javax.imageio.{IIOImage, ImageIO, ImageWriteParam}
  * crop a no-op and puts the ratings *inside* the picture, so they always show.
  *
  * Pure: card data + an optional already-decoded poster in, PNG bytes out. No
- * HTTP and no Mongo — the poster fetch + memoisation live in [[OgCardService]]
+ * HTTP and no Mongo — the poster fetch lives in [[PosterImageLoader]]
  * so this stays trivially unit-testable (render to a BufferedImage, sample
  * pixels).
  *
@@ -432,8 +432,8 @@ object OgCardRenderer {
    *  colour to keep crisp, and the consumers are Facebook, Slack and iMessage
    *  previews that re-encode it anyway.
    *
-   *  THE SIZE IS A HEAP PROBLEM AND NOT ONLY A BANDWIDTH ONE. [[OgCardCache]]
-   *  holds rendered cards, so at 785 KB a crawler sweeping the share cards
+   *  THE SIZE IS A HEAP PROBLEM AND NOT ONLY A BANDWIDTH ONE. The web's card cache
+   *  held rendered cards, so at 785 KB a crawler sweeping the share cards
    *  fills it with hundreds of megabytes of live byte arrays -- which is what
    *  happened on 2026-09-04, when the old-gen floor on web-uk went from 29% to
    *  71% of its cap within two hours of the sweep starting.

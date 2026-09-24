@@ -28,10 +28,9 @@ class PosterImageLoader(posters: PosterFetch, gate: PosterDecodeGate = PosterDec
    *
    *  The PRIMARY candidate (index 0) is tried ALONE first: most films' primary
    *  poster works, so the common case stays exactly as cheap as one fetch —
-   *  see OgCardServiceSpec's "stop at the first candidate that loads, leaving
-   *  later fallbacks unfetched". Only once the primary has failed (often a
+   *  see PosterImageLoaderSpec. Only once the primary has failed (often a
    *  Multikino origin Cloudflare 403s our datacentre IP — see
-   *  [[OgCardService.card]]'s doc) are the REMAINING fallback candidates
+   *  [[PosterFetch]]) are the REMAINING fallback candidates
    *  raced CONCURRENTLY rather than walked one at a time: those are real
    *  cinema origins with a legitimately slow (~6-7s) cold connect (see
    *  [[PosterFetch]]), and trying several of them in sequence is what drove

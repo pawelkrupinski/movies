@@ -120,7 +120,7 @@ object PosterProxy {
     weserv(url, TargetWidth, TargetHeight, "webp").getOrElse(url)
 
   /** A poster URL sized + re-encoded for the server-side OG-card compositor
-   *  ([[OgCardService]]). Used only as a *fallback* — [[OgCardService]] now
+   *  ([[PosterImageLoader]]). Used only as a *fallback* — the loader now
    *  decodes the origin directly (the TwelveMonkeys imageio-webp reader handles
    *  the webp that cinema CDNs serve), and reaches here for the rare origin
    *  ImageIO still can't read. Asks weserv for JPEG to be safe, and targets a

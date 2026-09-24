@@ -130,6 +130,9 @@ lazy val common = (project in file("common"))
       mongoScalaDriver,
       Dependencies.caffeine,   // qualified: Play's autoImport also defines `caffeine`
       jsoup,
+      // webp ImageReader for the share-card compositor (tools.OgCardRenderer +
+      // PosterImageLoader), which the worker renders cards with and the web its city card.
+      imageioWebp,
       // Prometheus client. Lives here, not in one app, because BOTH deployed
       // JVMs expose exposition text on their own /metrics: the worker's task
       // pipeline and the web app's uptime/served gauges + JVM resource
@@ -303,10 +306,9 @@ lazy val web = (project in file("web"))
         (Compile / resourceManaged).value,
       ))
     }.taskValue,
-    // mongo-scala-driver, caffeine and jsoup come transitively via `common`.
+    // mongo-scala-driver, caffeine, jsoup and the webp reader come transitively via `common`.
     libraryDependencies ++= Seq(
       jsoup,                 // also used directly in views/helpers
-      imageioWebp,           // webp ImageReader for the OG-card compositor
       sentryLogback,         // error reporting
       scalatestPlay % Test
     ),
