@@ -586,9 +586,12 @@ class ReadModelProjector(
     // Whole rows (showtimes included) from a full stitch, so the projection is the one the
     // stream would have made. Independent of `scanComplete`: it is its own bounded read, and a
     // stale card is a stale card whether or not the prune could run.
-    // While the cursor STAYS dead the same rows are re-read every sweep (the floor does not
-    // move until something is delivered); the projection diff makes those writes no-ops, and
-    // the alert on the cursor's age is what ends the state. Only while a movies cursor is
+    // A catch-up that re-projected every row it read raises the floor to the instant its read
+    // started, so while the cursor STAYS dead each sweep reads only what was written since the
+    // last one — not the same rows again, which on a cursor subscribed after the corpus was
+    // written was the whole corpus every sweep. A row whose projection threw holds the floor
+    // where it was, so the next sweep reads it again. The alert on the cursor's age (the
+    // DELIVERY floor, which a catch-up never moves) is what ends the state. Only while a movies cursor is
     // SUBSCRIBED: a repository that never opened one (a test wiring, a Mongo-less boot) has
     // promised no deliveries, and the prune must stay the id-only sweep it is there.
     // THE ROLLING CONTENT CHECK: one slice of the corpus per sweep, read whole and
@@ -614,13 +617,16 @@ class ReadModelProjector(
     var caughtUp = 0
     val liveness = movieRepository.changeStreamLiveness
     if (!reproject && liveness.isWatching(ChangeStreamLiveness.Movies)) {
-      val since = liveness.lastDeliveredOrOpened(ChangeStreamLiveness.Movies)
-      movieRepository.foreachRecordUpdatedSince(since) { row =>
+      val readFrom = liveness.now()
+      val since    = liveness.catchUpFloor(ChangeStreamLiveness.Movies)
+      var failed   = false
+      val complete = movieRepository.foreachRecordUpdatedSince(since) { row =>
         if (row.record.readyToProject)
           continuing(s"read-model $kind: a row written since the change stream last delivered failed to project") {
             project(ReadModelProjection.partition(row, normalizer)); caughtUp += 1
-          }
+          }.getOrElse { failed = true }
       }
+      if (complete && !failed) liveness.caughtUp(ChangeStreamLiveness.Movies, readFrom)
       metrics.recordCatchUp(caughtUp)
       if (caughtUp > 0)
         logger.warn(s"read-model $kind sweep: re-projected $caughtUp row(s) written since the movies change stream last " +

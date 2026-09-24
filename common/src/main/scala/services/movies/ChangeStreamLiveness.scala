@@ -17,8 +17,9 @@ import java.util.concurrent.atomic.AtomicLong
  * migration the worker's stream sat dead for hours behind green panels.
  *
  * So the instant of the last DELIVERED event is kept per cursor, and the AGE of it —
- * computed against `now` when asked, never stored — is what a gauge exports and what the
- * read-model catch-up compares `movies.updatedAt` against. A cursor that never delivered
+ * computed against `now` when asked, never stored — is what a gauge exports, and the
+ * instant itself is the floor the read-model catch-up reads `movies.updatedAt` from (raised
+ * past it by a catch-up that finished — see [[catchUpFloor]]). A cursor that never delivered
  * ages from the moment this was created (the process boot, in production): "never" is
  * not "zero", and a stream that fails to start is the loudest case of a silent one.
  *
@@ -60,6 +61,28 @@ final class ChangeStreamLiveness(clock: Clock = Clock.systemUTC()) {
   /** The floor for "what did this cursor miss": its last delivery, or the open when it
    *  never delivered — everything written since then is unproven. */
   def lastDeliveredOrOpened(collection: String): Instant = lastDelivered(collection).getOrElse(openedAt)
+
+  // Per cursor: the instant a catch-up read started whose every row was re-projected — what
+  // the catch-up itself has proven, which the delivery floor alone never learns. Kept apart
+  // from `last` so that a catch-up never makes a dead cursor LOOK alive to the age gauge.
+  private val caughtUpThrough = new ConcurrentHashMap[String, Instant]()
+
+  /** The instant a catch-up read about to start should hand back to [[caughtUp]]. From this
+   *  clock, because it is compared against `updatedAt`, which is stamped by the same one. */
+  def now(): Instant = clock.instant()
+
+  /** The floor for the next catch-up read: the later of the cursor's last delivery (or its
+   *  open) and the start of the last catch-up that re-projected everything it read. Without
+   *  the second, a cursor that stays silent has every sweep re-read the same rows. */
+  def catchUpFloor(collection: String): Instant = {
+    val delivered = lastDeliveredOrOpened(collection)
+    Option(caughtUpThrough.get(collection)).filter(_.isAfter(delivered)).getOrElse(delivered)
+  }
+
+  /** A catch-up read started at `readFrom` re-projected every row it returned. */
+  def caughtUp(collection: String, readFrom: Instant): Unit = {
+    caughtUpThrough.merge(collection, readFrom, (held, next) => if (next.isAfter(held)) next else held); ()
+  }
 
   /** Seconds between the last delivered event (or the open) and `now`. Computed on demand
    *  so that a stalled cursor's age keeps GROWING on every scrape. */

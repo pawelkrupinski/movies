@@ -612,6 +612,61 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     m.caughtUp shouldBe Seq(1)
   }
 
+  // A cursor that stays silent does not move the delivery floor, so the sweep used to re-read
+  // and re-project the SAME rows every 30 minutes — and on a cursor subscribed after the corpus
+  // was written, the whole corpus, every sweep (the convergence legs' fixpoint tick, 2026-09-24).
+  it should "catch a silent cursor's missed row up once, then only rows written after that" in {
+    val clock      = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
+    val repository = new InMemoryMovieRepository(clock = clock)
+    val rm         = new InMemoryReadModelRepository()
+    val m          = new RecordingMetrics()
+    val projector  = new ReadModelProjector(repository, rm, rm, m)
+    repository.changeStreamLiveness.watching(ChangeStreamLiveness.Movies)   // open, and never delivers:
+    // every write below goes past the cursor, as a stalled one lets it
+    clock.advanceSeconds(60)
+    repository.putEmbeddedOutOfBand("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    clock.advanceSeconds(60)
+    projector.pruneOrphans()
+    m.caughtUp.last shouldBe 1
+
+    clock.advanceSeconds(60)
+    projector.pruneOrphans()
+    withClue("nothing was written since the last catch-up, so there is nothing to catch up: ") {
+      m.caughtUp.last shouldBe 0
+    }
+
+    clock.advanceSeconds(60)
+    repository.putEmbeddedOutOfBand("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-12T20:00"))))
+    clock.advanceSeconds(60)
+    projector.pruneOrphans()
+    m.caughtUp.last shouldBe 1
+    rm.movieUpserts should have size 2                       // Foo once, then Bar — never Foo again
+  }
+
+  it should "re-read a caught-up row whose projection failed on the next sweep" in {
+    val clock      = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
+    val repository = new InMemoryMovieRepository(clock = clock)
+    var failing    = true
+    val rm = new InMemoryReadModelRepository {
+      override def upsertMovie(movie: ResolvedMovie): Unit =
+        if (failing) throw new RuntimeException("read model unreachable") else super.upsertMovie(movie)
+    }
+    val m         = new RecordingMetrics()
+    val projector = new ReadModelProjector(repository, rm, rm, m)
+    repository.changeStreamLiveness.watching(ChangeStreamLiveness.Movies)
+    clock.advanceSeconds(60)
+    repository.putEmbeddedOutOfBand("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    clock.advanceSeconds(60)
+    projector.pruneOrphans()                                 // the write throws: Foo is still stale
+
+    failing = false
+    clock.advanceSeconds(60)
+    projector.pruneOrphans()
+    withClue("a row the catch-up failed to project must be read again: ") {
+      rm.movieUpserts.map(_.title) should contain ("Foo")
+    }
+  }
+
   it should "not re-project a changed row the cursor did deliver" in {
     val (projector, repository, rm) = fixture()
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
