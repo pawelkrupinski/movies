@@ -68,6 +68,17 @@ object DistinctVenuePairs extends Logging {
     ("Legacy Theatre Shenandoah", "Royal 3 Cinema Le Mars"),
     // RMC Stadium, Jacksonville and Waterloo IL: formovietickets rtn 39924 vs 14446
     ("RMC Jacksonville", "RMC Waterloo Cinema"),
+    // Auburn and Canandaigua NY: formovietickets chain rochester, rtn 104446 vs 346993
+    ("Auburn Movieplex", "Canandaigua Theaters"),
+  )
+
+  /** Chains that programme EVERY house alike, by the display-name prefix their venues share: any
+   *  two of them are two venues, whichever pairs a given week's slate happens to push over the bar.
+   *  Listing such a chain pair by pair would mean hundreds of entries, and missing one re-fires. */
+  private val uniformChains: Seq[String] = Seq(
+    // Caribbean Cinemas' ~28 Puerto Rico houses, most filed under the San Juan metro: each books
+    // through its own home.caribbeancinemas.com/<venue>/checkout (checked 2026-09-24).
+    "Caribbean Cinemas ",
   )
 
   /** Names in [[byName]] the roster no longer holds — a regeneration renamed or dropped the
@@ -80,7 +91,8 @@ object DistinctVenuePairs extends Logging {
 
   val all: Set[Set[Cinema]] = cased ++ resolved._1
 
-  def contains(a: Cinema, b: Cinema): Boolean = all(Set(a, b))
+  def contains(a: Cinema, b: Cinema): Boolean =
+    all(Set(a, b)) || a != b && uniformChains.exists(chain => a.displayName.startsWith(chain) && b.displayName.startsWith(chain))
 
   /** Each named pair whose venues `lookup` finds, and every name it does not. */
   private[services] def resolve(named: Seq[(String, String)], lookup: String => Option[Cinema]): (Set[Set[Cinema]], Seq[String]) = {

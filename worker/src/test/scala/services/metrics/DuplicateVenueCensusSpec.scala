@@ -117,6 +117,29 @@ class DuplicateVenueCensusSpec extends AnyFlatSpec with Matchers {
     withClue(found.filter(_._2 != 0.0).mkString("\n")) { all(found.map(_._2)) shouldBe 0.0 }
   }
 
+  // The US pairs the census held from 2026-09-24 00:31Z (DuplicateVenueListing{us} pending in
+  // both scopes): Caribbean Cinemas' Puerto Rico houses, which the roster files under one metro
+  // city and the chain programmes alike island-wide, rotating which pairs cross the bar — each
+  // books through its own home.caribbeancinemas.com/<venue>/checkout — and Auburn/Canandaigua NY,
+  // formovietickets chain rochester rtn 104446 vs 346993.
+  it should "not count two houses of a chain that programmes all of them alike, nor Auburn and Canandaigua" in {
+    val us = Country.UnitedStates
+    def venue(name: String): Cinema = Cinema.byDisplayName(name)
+    def scopeOf(a: Cinema, b: Cinema) =
+      if ((citiesOf(us, a) intersect citiesOf(us, b)).nonEmpty) DuplicateVenueCensus.SameCity else DuplicateVenueCensus.CrossCity
+    val pairs = Seq(
+      "Caribbean Cinemas Plaza Escorial" -> "Caribbean Cinemas Plaza Guayama",
+      "Caribbean Cinemas Distrito VIP Cinemas" -> "Caribbean Cinemas Las Piedras",
+      "Caribbean Cinemas Plaza Cayey" -> "Caribbean Cinemas The Outlet 66",
+      "Caribbean Cinemas Arecibo" -> "Caribbean Cinemas Western Plaza",
+      "Caribbean Cinemas Aguadilla Mall" -> "Caribbean Cinemas Metro",
+      "Auburn Movieplex" -> "Canandaigua Theaters")
+    val counted = pairs.map { case (a, b) =>
+      s"$a / $b" -> census(Seq(row("Foo", venue(a) -> times(20), venue(b) -> times(20))), country = us, scope = scopeOf(venue(a), venue(b)))
+    }
+    withClue(counted.filter(_._2 != 0.0).mkString("\n")) { all(counted.map(_._2)) shouldBe 0.0 }
+  }
+
   it should "list only pairs of two venues on one country's roster, so no entry is dead" in {
     val dead = services.cinemas.roster.DistinctVenuePairs.all.filterNot { p =>
       p.size == 2 && Country.all.exists(c => p.forall(v => citiesOf(c, v).nonEmpty))
