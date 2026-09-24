@@ -39,18 +39,28 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
 
   private val MainRoots = Seq("common/src/main", "web/src/main", "worker/src/main")
 
-  private val Empty: String =
-    """(?:(?:Seq|List|Vector|Map|Set|Iterable)\.empty(?:\[[^\]]*\])?|Nil|(?:Seq|List|Vector|Map|Set)\(\)|""" +
+  // A type argument may nest one level (`Map.empty[String, Seq[Int]]`).
+  private val TypeArgs = """(?:\[(?:[^\[\]]|\[[^\]]*\])*\])?"""
+  private val BareEmpty: String =
+    """(?:(?:Seq|List|Vector|Map|Set|Iterable|Option)\.empty""" + TypeArgs + """|Nil|(?:Seq|List|Vector|Map|Set)\(\)|""" +
       """0|0L|0\.0|false|None|""|Json\.obj\(\))"""
+  // …or that value already completed, as a `recoverWith` answers: `Future.successful(Nil)`.
+  private val Empty: String = """(?:""" + BareEmpty + """|Future\.successful\(\s*""" + BareEmpty + """\s*\))"""
 
   private val TryOpen: Regex     = """\bTry\s*[({]""".r
   // What a `Try(...)` may be followed by to answer its failure with `<empty>`: `.getOrElse`,
   // `.toOption.getOrElse`, `.toOption.fold(<empty>)(…)` (eebd3eef9's exact shape), and
   // `.fold(_ => <empty>, …)`.
-  private val EmptyOnFailure     = ("""^\s*(?:(?:\.toOption\s*)?\.getOrElse\s*\(\s*""" + Empty + """\s*\)""" +
+  // Any chain of calls may sit between the `Try(...)` and the answer — `.map(f).getOrElse(Nil)`
+  // is the same swallow as `.getOrElse(Nil)` — so the prefix is walked with [[afterChain]];
+  // the answer may be braced (`.getOrElse { Nil }`).
+  private val EmptyOnFailure     = ("""^\s*(?:(?:\.toOption\s*)?\.getOrElse\s*[({]\s*""" + Empty + """\s*[)}]""" +
     """|\.toOption\s*\.fold\s*\(\s*""" + Empty + """\s*\)""" +
     """|\.fold\s*\(\s*\w+\s*=>\s*""" + Empty + """\s*,)""").r
-  private val HandlerCase: Regex = """\bcase\s+(_|NonFatal\(\s*\w+\s*\)|\w+\s*:\s*(?:Throwable|Exception|\w+Exception))\s*=>""".r
+  // `_` and a bare binder (`case e =>`) are handlers only inside catch/recover; `Failure(_)` is
+  // one wherever it matches a `Try`.
+  private val HandlerCase: Regex = """\bcase\s+(_|[a-z]\w*|Failure\(\s*\w+\s*\)|NonFatal\(\s*\w+\s*\)|\w+\s*:\s*(?:Throwable|Exception|\w+Exception))\s*=>""".r
+  private val BlockOnlyHandler: Regex = """_|[a-z]\w*""".r
   private val HandlerBlock       = """(?:\bcatch|\brecover|\brecoverWith)\s*$""".r
   private val EmptyLine          = ("""^""" + Empty + """$""").r
 
@@ -107,10 +117,10 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("common/src/main/scala/services/tasks/MongoTaskQueue.scala", "reapExpiredLeases",
       "case exception: Throwable =>") ->
       "the count only decides whether to ring the doorbell early; a failed reap is retried on the next tick",
-    ("common/src/main/scala/services/titlerules/TitleRule.scala", "appliesTo",
+    ("common/src/main/scala/services/titlerules/TitleRule.scala", "compiled",
       "try Some(new Regex(pattern)) catch { case _: Throwable => None }") ->
       "an invalid (half-typed) pattern disables only its own rule, and is surfaced to the editor through patternValid",
-    ("common/src/main/scala/tools/Env.scala", "positiveLong",
+    ("common/src/main/scala/tools/Env.scala", "fileVars",
       "Try {") ->
       ".env.local is a developer convenience: absent or unreadable means no local overrides",
     ("common/src/main/scala/tools/MonitoringHttpFetch.scala", "classify",
@@ -122,7 +132,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("web/src/main/scala/services/users/UserRepository.scala", "revokeSessions",
       ".recover { case exception: Throwable =>") ->
       "None is \"not revoked\", and the caller answers 503 (AuthController.revokeAllSessions)",
-    ("worker/src/main/scala/modules/wiring/ScrapeWiring.scala", "scrapeAttemptCeiling",
+    ("worker/src/main/scala/modules/wiring/ScrapeWiring.scala", "filmwebFallbackIds",
       "else scala.util.Try(new FilmwebCinemaIdResolver(httoFetch).resolveAll())") ->
       "boot must not fail on Filmweb: with no fallback ids every SourceFallbackScraper serves its primary's real outcome, never an empty success",
     ("worker/src/main/scala/services/cinemas/pl/BokClient.scala", "fetch",
@@ -175,7 +185,74 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
       "a file that could not be deleted is reported as not deleted, which is what happened",
     ("worker/src/main/scala/services/tasks/ScrapeReaper.scala", "venuesWithin",
       "val n = Try(enqueueUpTo(group, group.size)).getOrElse(0)") ->
-      "the count only feeds an INFO line; a failed enqueue is reported by the queue itself (EnqueueResult.Failed, logged and metered)"
+      "the count only feeds an INFO line; a failed enqueue is reported by the queue itself (EnqueueResult.Failed, logged and metered)",
+    // ── found once the lint saw chained calls, braces, `Failure(_)`, bare binders and `;` bodies ──
+    ("common/src/main/scala/services/MirrorFreshness.scala", "newestIn",
+      ".recover { case exception => logger.debug(s\"Mirror freshness read failed: ${exception.getMessage}\"); Seq.empty }") ->
+      "the local mirror's age for a dev page: None renders as unknown age, and nothing is decided from it",
+    ("common/src/main/scala/services/MongoTtlIndex.scala", "currentExpiry",
+      "}.recover { case exception =>") ->
+      "KNOWN, follow-up: a failed index read reads as un-indexed, so reconcile drops and rebuilds a TTL index that may be fine — costly, never lossy",
+    ("common/src/main/scala/services/attempts/EnrichmentAttemptStore.scala", "forKeys",
+      ".recover { case e => logger.warn(s\"Enrichment-attempt lookup failed: ${e.getMessage}\"); Map.empty }") ->
+      "KNOWN, follow-up: feeds only the operator attempt report (FilmAttemptReport), which then shows no attempts instead of saying it could not read them",
+    ("common/src/main/scala/services/cadence/RatingCadenceStore.scala", "forKeys",
+      ".recover { case e => logger.warn(s\"Rating-cadence lookup failed: ${e.getMessage}\"); Map.empty }") ->
+      "KNOWN, follow-up: feeds only the operator attempt report (FilmAttemptReport), which then shows no cadence instead of saying it could not read it",
+    ("common/src/main/scala/services/readmodel/MongoReadModelRepository.scala", "findCard",
+      "case Failure(exception) =>") ->
+      "read only by ReadModelContentAudit, which skips a card it could not read and audits it on the next pass",
+    ("common/src/main/scala/services/readmodel/MongoReadModelRepository.scala", "streamCheckpoint",
+      "case Failure(exception) =>") ->
+      "None is the documented \"watch from now\"; the projector's boot reconcile covers the gap either way",
+    ("common/src/main/scala/services/resolution/ResolutionStore.scala", "removeForFilm",
+      "}.recover { case exception =>") ->
+      "the count only feeds an INFO line; a forget that failed leaves the entry, which the next forget retries",
+    ("common/src/main/scala/services/resolution/ResolutionStore.scala", "removeAll",
+      "}.recover { case exception =>") ->
+      "the count only feeds an INFO line; a clear that failed leaves the entries, logged at WARN",
+    ("common/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala", "guard",
+      "case Failure(e)     =>") ->
+      "the archive is a record of a scrape that already happened: None is \"not archived\", never read as an empty scrape",
+    ("common/src/main/scala/services/scrapes/MongoScrapeGuardLedger.scala", "attempt",
+      "case Failure(e)     =>") ->
+      "KNOWN, follow-up: a failed ledger read reads as no history, so the empty-scrape guard judges on less evidence",
+    ("common/src/main/scala/services/tasks/MongoBulkTaskResultStore.scala", "latest",
+      ".recover { case exception =>") ->
+      "the /tasks page's last-results panel: an unreadable store shows no results, and nothing is decided from it",
+    ("common/src/main/scala/tools/HeapDumper.scala", "dump",
+      "case Failure(e) =>") ->
+      "None is \"no dump was written\", which is what happened; the restart proceeds either way",
+    ("web/src/main/scala/services/auth/MongoAuthExchangeCodeStore.scala", "remove",
+      ".recover { case exception =>") ->
+      "an exchange code that cannot be redeemed fails the sign-in, which the user retries — the safe direction for auth",
+    ("worker/src/main/scala/services/cinemas/common/DetailFetchOutcome.scala", "transientToNone",
+      "case Failure(_)     => None") ->
+      "its contract: a TRANSIENT failure is \"no detail this time\" and retried next tick; a durable one is rethrown above",
+    ("worker/src/main/scala/services/cinemas/pl/HeliosClient.scala", "parseApiScreenings",
+      "Try(Json.parse(body).as[JsArray]).map { array =>") ->
+      "room/format enrichment of screenings the NUXT listing already carries: a malformed body loses rooms, not screenings",
+    ("worker/src/main/scala/services/cinemas/pl/HeliosClient.scala", "parseEventScreenings",
+      "Try(Json.parse(body).as[JsArray]).map { array =>") ->
+      "room/format enrichment of screenings the NUXT listing already carries: a malformed body loses rooms, not screenings",
+    ("worker/src/main/scala/services/movies/MovieService.scala", "missed",
+      "case Failure(exception) =>") ->
+      "false is \"did not resolve\", which is true; the row stays unresolved and the reaper retries it",
+    ("worker/src/main/scala/services/movies/MovieService.scala", "resolveStagingRecord",
+      "case Failure(exception) =>") ->
+      "None is \"not concluded\": the staging row stays and the staging reaper retries it, as for a miss before TMDB answered",
+    ("worker/src/main/scala/services/sharecards/ShareCardService.scala", "withPoster",
+      "Try(onBase(next, first).orElse(rebuildBase(next, first, retry))).recover { case e: Exception =>") ->
+      "None is \"not drawn\": the card keeps its previous version and the failure is counted and retried",
+    ("worker/src/main/scala/services/tasks/MongoChunkScrapeStore.scala", "startRun",
+      "case e: Throwable => logger.warn(s\"startRun insert for $cinema failed: ${e.getMessage}\"); false") ->
+      "false is \"not inserted\"; the supersede step below then decides, and a run that cannot start is skipped this tick",
+    ("worker/src/main/scala/services/tasks/MongoChunkScrapeStore.scala", "startRun",
+      "}.recover { case e => logger.warn(s\"startRun replace for $cinema failed: ${e.getMessage}\"); None }") ->
+      "None is \"no run started\": the chunked scrape is skipped this tick and the next reaper tick tries again",
+    ("worker/src/main/scala/tools/ParallelDetailFetch.scala", "timed",
+      "case _: TimeoutException     => attempt.cancel(true); timedOut.add(url); None") ->
+      "a timed-out fetch is recorded in `timedOut`, which the caller reports and meters; None only drops it from the results"
   )
 
   private def scalaFiles(roots: Seq[String]): Seq[Path] =
@@ -268,12 +345,32 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     src.substring(from)
   }
 
+  /** Skip the `.name(args)` / `.name` calls chained after a `Try(...)`, stopping at the answer
+   *  this lint looks for (`getOrElse`, `toOption`, `fold`) or a `recover` — the offset it starts at. */
+  private def afterChain(src: String, from: Int): Int = {
+    val Call = """^\s*\.\s*(\w+)""".r
+    var i = from
+    var more = true
+    while (more) Call.findPrefixMatchOf(src.substring(i)) match {
+      // …and at a `recover`: its handler is judged by the handler rule, once, not twice.
+      case Some(m) if !Set("getOrElse", "toOption", "fold", "recover", "recoverWith")(m.group(1)) =>
+        val after = i + m.end
+        val next  = src.indexWhere(c => !c.isWhitespace, after)
+        i = if (next >= 0 && (src(next) == '(' || src(next) == '{')) closing(src, next) + 1 else after
+      case _ => more = false
+    }
+    i
+  }
+
   private final case class Site(file: String, line: Int, owner: String, text: String) {
     def key: (String, String, String) = (file, owner, text)
     override def toString = s"$file:$line  (in $owner)  $text"
   }
 
-  private val Def: Regex = """\bdef\s+([\w$]+)""".r
+  // A site's owner: the method it is in, or the member `val`/`lazy val` it initialises (a
+  // local `val` inside a method is not an owner — the method is). Member-level is judged by
+  // indentation: at most one level in from its class.
+  private val Def: Regex = """(?m)(?:\bdef\s+([\w$]+)|^ {0,2}(?:(?:private|protected|override|final|lazy|implicit)(?:\[\w+\])?\s+)*(?:val|var)\s+([\w$]+))""".r
 
   private def swallows(file: String, raw: String): Seq[Site] = {
     val src = withoutComments(raw)
@@ -284,17 +381,18 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
       // The site's method, near enough to key on: the `def` its own line declares
       // (`def usable: Boolean = Try {`), else the last one above it.
       val owner  = Def.findFirstMatchIn(lines(n)).orElse(Def.findAllMatchIn(before).toSeq.lastOption)
-        .map(_.group(1)).getOrElse("<class body>")
+        .map(m => Option(m.group(1)).getOrElse(m.group(2))).getOrElse("<class body>")
       Site(file, n + 1, owner, lines(n).trim)
     }
     val tries = TryOpen.findAllMatchIn(src).flatMap { m =>
       val close = closing(src, m.end - 1)
-      Option.when(close > 0 && EmptyOnFailure.findPrefixOf(src.substring(close + 1)).isDefined)(site(m.start))
+      Option.when(close > 0 && EmptyOnFailure.findPrefixOf(src.substring(afterChain(src, close + 1))).isDefined)(site(m.start))
     }
     val handlers = HandlerCase.findAllMatchIn(src).flatMap { m =>
       val brace   = enclosingBrace(src, m.start)
-      val handler = m.group(1) != "_" || (brace > 0 && HandlerBlock.findFirstIn(src.substring(0, brace)).isDefined)
-      val last    = caseBody(src, m.end).split("\n").map(_.trim).filter(_.nonEmpty).lastOption
+      val handler = !BlockOnlyHandler.matches(m.group(1)) || (brace > 0 && HandlerBlock.findFirstIn(src.substring(0, brace)).isDefined)
+      // The body's LAST statement, whether statements are split by lines or by `;`.
+      val last    = caseBody(src, m.end).split("[\n;]").map(_.trim).filter(_.nonEmpty).lastOption
       Option.when(handler && last.exists(l => EmptyLine.matches(l)))(site(m.start))
     }
     (tries ++ handlers).toSeq.sortBy(_.line)
@@ -321,6 +419,22 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  "The owner of a site" should "be the member val it initialises, not the def above it" in {
+    val src =
+      """object A {
+        |  def before(): Int = 1
+        |  private lazy val vars: Map[String, String] =
+        |    Try {
+        |      read()
+        |    }.getOrElse(Map.empty)
+        |  def after(): Int = {
+        |    val local = Try(x()).getOrElse(0)
+        |    local
+        |  }
+        |}""".stripMargin
+    swallows("A.scala", src).map(_.owner) shouldBe Seq("vars", "after")
+  }
+
   "The lint" should "flag both shapes, and nothing in a comment" in {
     val src =
       """object A {
@@ -336,7 +450,16 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
         |  val f = Try(parse(s)).getOrElse(fallback)
         |  val g = Try(count()).toOption.fold(0)(_.toInt)
         |  val h = Try(count()).fold(_ => Nil, rows => rows)
+        |  val i = Try(http.get(u)).map(identity).getOrElse("")
+        |  val j = Try(rows()).getOrElse { Nil }
+        |  val k = Try(rows()) match { case Failure(_) => Seq.empty; case Success(r) => r }
+        |  val l = f.recover { case e => Nil }
+        |  val m = f.recover { case e: Exception => log(e); Nil }
+        |  val n = f.recoverWith { case NonFatal(e) => Future.successful(Nil) }
+        |  val o = Try(index()).getOrElse(Map.empty[String, Seq[Int]])
+        |  val p = Try(pick()).getOrElse(Option.empty[String])
+        |  val q = rows match { case row => row }
         |}""".stripMargin
-    swallows("A.scala", src).map(_.line) shouldBe Seq(2, 3, 4, 8, 12, 13)
+    swallows("A.scala", src).map(_.line) shouldBe Seq(2, 3, 4, 8, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21)
   }
 }
