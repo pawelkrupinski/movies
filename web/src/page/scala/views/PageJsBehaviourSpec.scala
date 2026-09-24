@@ -144,17 +144,17 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         schedules.find(s => tools.Slugify(s.movie.title) == slug) match {
           case Some(s) =>
             views.html.film(s, s"http://test.local/movie/$slug",
-              ogDescription = "", ogImageUrl = controllers.ShareCardUrl.forFilm(s.resolved, city, "http://test.local"),
+              ogDescription = "", ogImageUrl = controllers.ShareCardUrl.forFilm(s.resolved, city),
               devMode = false).body
           case None    => "<html><body>Film not found</body></html>"
         }
       // The first fixture film once the worker has drawn its share card: `og:image` names the
-      // card on the request's host instead of the city's static card.
+      // card on the country's host instead of the city's static card.
       val shareCardFilmHtml: String = {
         val s = schedules.head
         val withCard = s.copy(resolved = s.resolved.copy(shareCard = Some(PageJsBehaviourSpec.ShareCardFile)))
         views.html.film(withCard, "http://test.local/movie-share-card", ogDescription = "",
-          ogImageUrl = controllers.ShareCardUrl.forFilm(withCard.resolved, city, "http://test.local"), devMode = false).body
+          ogImageUrl = controllers.ShareCardUrl.forFilm(withCard.resolved, city), devMode = false).body
       }
       // A purpose-built /movie render for the cinema-fold test: the Poznań
       // fixture corpus tops out at a handful of venues a day, but the fold
@@ -2311,9 +2311,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  it should "name the film's share card on the request's host once the worker has drawn it" in {
+  it should "name the film's share card on the country's host once the worker has drawn it" in {
     onPath("/movie-share-card") { page =>
-      ogImage(page) shouldBe s"http://test.local/share-cards/pl/${PageJsBehaviourSpec.ShareCardFile}"
+      ogImage(page) shouldBe s"https://kinowo.net/share-cards/pl/${PageJsBehaviourSpec.ShareCardFile}"
     }
   }
 

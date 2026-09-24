@@ -44,8 +44,18 @@ class ShareCardOgImageSpec extends AnyFlatSpec with Matchers {
     """<meta property="og:image"\s+content="([^"]+)">""".r
       .findFirstMatchIn(contentAsString(controller().filmBySlug("poznan", slug).apply(request))).map(_.group(1))
 
-  "A film page" should "point og:image at its share card on the request's host" in {
+  "A film page" should "point og:image at its share card on its country's host" in {
     ogImage("diuna") shouldBe Some(s"https://kinowo.net/share-cards/pl/$card")
+  }
+
+  // The request's host is whatever vhost the proxy matched (the Polish pods answer both
+  // kinowo.net and the showtimes.cc front door) and, off the proxy, whatever a client sent.
+  // A preview card's address is the country's, like the city card it falls back to.
+  it should "name its share card on the country's host whatever host the request arrived on" in {
+    val html = contentAsString(controller().filmBySlug("poznan", "diuna").apply(
+      request.withHeaders("X-Forwarded-Host" -> "attacker.example")))
+    """<meta property="og:image"\s+content="([^"]+)">""".r.findFirstMatchIn(html).map(_.group(1)) shouldBe
+      Some(s"https://kinowo.net/share-cards/pl/$card")
   }
 
   it should "fall back to the city's card while the film has none" in {

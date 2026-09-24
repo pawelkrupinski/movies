@@ -882,7 +882,7 @@ class MovieController( cc: ControllerComponents,
     // (Play 3.0's `request.secure` ignores the `trustedProxies` knob on this Fly
     // setup) is in one place.
     val canonicalUrl = PageMeta.origin(request) + FilmHref.forSlug(schedule.slug, schedule.movie.title)
-    val ogImageUrl   = shareCardUrl(schedule, request)
+    val ogImageUrl   = shareCardUrl(schedule)
     // Sibling cities currently showing this same film — the cross-links a
     // near-duplicate per-city page needs so it isn't only reachable through
     // the sitemap. See [[MovieControllerService.citiesShowing]].
@@ -901,16 +901,16 @@ class MovieController( cc: ControllerComponents,
   }
 
   /** The film's share card, or the city's while it has none — see [[ShareCardUrl]]. */
-  private def shareCardUrl(schedule: FilmSchedule, request: RequestHeader)(implicit c: City): String =
-    ShareCardUrl.forFilm(schedule.resolved, c, PageMeta.origin(request))
+  private def shareCardUrl(schedule: FilmSchedule)(implicit c: City): String =
+    ShareCardUrl.forFilm(schedule.resolved, c)
 
   /** `/:city/movie/og-image?title=…` — the film card's old, web-rendered address. Link previews
    *  already cached it, so it stays, as a temporary redirect to the image the page names now: the
    *  worker's share card, or the city's static card. Temporary because that target changes with
    *  every card version, and a film on the city card today gets its own later. The web decodes no image. */
-  def ogImage(city: String, title: String): Action[AnyContent] = Action { request =>
+  def ogImage(city: String, title: String): Action[AnyContent] = Action {
     withCity(city) { c =>
-      Found(movieControllerService.film(c, title).fold(ShareCardUrl.city(c))(shareCardUrl(_, request)(using c)))
+      Found(movieControllerService.film(c, title).fold(ShareCardUrl.city(c))(shareCardUrl(_)(using c)))
     }
   }
 
