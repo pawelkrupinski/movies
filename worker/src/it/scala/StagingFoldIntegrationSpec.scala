@@ -243,6 +243,28 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  /** The landed check reads what the commit WOULD have left behind — which a COMPETING fold of
+   *  the same group leaves too: the staging rows gone, the film written under the same
+   *  deterministic id. Taking that for its own commit reports a fold this attempt never made
+   *  and finishes it with this attempt's (aborted) plan. It must recognise only its own writes. */
+  it should "not take a competing fold's drain of the group for its own unknown commit" in {
+    FoldFixture.withFold("staging-fold") { fold =>
+      seedConcludedNewcomer(fold.staging)
+      val commits = new java.util.concurrent.atomic.AtomicInteger(0)
+      val competitorFolded: org.mongodb.scala.ClientSession => Unit = session => {
+        if (commits.incrementAndGet() == 1) { // the commit retries re-enter here; abort and compete once
+          services.staging.MongoStagingFolder.abortTransaction(session)
+          fold.folder().foldGroup(newcomerTitle) // another worker folds the group and commits
+        }
+        val e = new com.mongodb.MongoException("simulated lost commit reply")
+        e.addLabel(com.mongodb.MongoException.UNKNOWN_TRANSACTION_COMMIT_RESULT_LABEL)
+        throw e
+      }
+
+      a[com.mongodb.MongoException] should be thrownBy fold.folder(commit = competitorFolded).foldGroup(newcomerTitle)
+    }
+  }
+
   /** A commit that FAILED with a transient error: the transaction did not land, so the whole
    *  attempt re-runs — exactly what a transient error in the body gets. */
   it should "re-run the transaction when its commit fails with a transient error" in {

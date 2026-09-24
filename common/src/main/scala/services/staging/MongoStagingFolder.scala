@@ -117,10 +117,13 @@ class MongoStagingFolder(
       // never wrote, and `upsert` resurrecting a `movies` document from pre-conflict content.
       // Carrying the plan alongside the result makes the applied plan definitionally the one
       // the committed attempt produced.
-      val outcome = Try(foldOnce(session, movies, staging, cleanTitle, candidateIds))
+      // Stamped on every document this attempt writes, so the landed check below can tell
+      // ITS writes from a competing fold's (BSON dates hold milliseconds).
+      val writtenAt = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS)
+      val outcome = Try(foldOnce(session, movies, staging, cleanTitle, candidateIds, writtenAt))
       StagingFold.nextAfterAttempt(outcome.map(_.newPromotions), attempt, maxRetries) match {
         case StagingFold.Next.Commit(newPromotions) =>
-          commitWithRetry(session, cleanTitle, attempt, outcome.toOption, movies, staging) match {
+          commitWithRetry(session, cleanTitle, attempt, outcome.toOption, writtenAt, movies, staging) match {
             case None =>
               val plan = outcome.toOption
               // Migrate BEFORE completing: `upsert` re-stitches a stripped slot from the
@@ -171,6 +174,7 @@ class MongoStagingFolder(
    *  idempotent for a transaction that did commit. */
   private def commitWithRetry(session: ClientSession, cleanTitle: String, attempt: Int,
                               plan: Option[StagingFold.Plan],
+                              writtenAt: Instant,
                               movies: MongoCollection[StoredMovieDto],
                               staging: MongoCollection[StoredMovieDto]): Option[Throwable] = {
     var commitAttempt = 0
@@ -192,7 +196,7 @@ class MongoStagingFolder(
               // reply was lost, or whose wait timed out, may have landed. Rescheduling one that
               // did finds the group drained and never runs the post-commit steps, so look at
               // what the transaction would have left behind before calling it a failure.
-              if (plan.exists(landed(_, movies, staging))) {
+              if (plan.exists(landed(_, writtenAt, movies, staging))) {
                 logger.warn(s"Staging fold '$cleanTitle' commit reported ${cause.getMessage}, but its writes are " +
                   "in place — it committed; finishing the fold.")
                 outcome = Some(None)
@@ -209,17 +213,26 @@ class MongoStagingFolder(
 
   /** Whether `plan`'s transaction is VISIBLE as committed, read outside its session: every
    *  staging row it deleted is gone, every film it retired is gone, and every film it wrote
-   *  is there. All-or-nothing is the transaction's own guarantee, so one miss means it did
-   *  not land. A read that fails says nothing, and reads as "not landed" — the task
-   *  reschedules, exactly as it did before this check. */
-  private def landed(plan: StagingFold.Plan, movies: MongoCollection[StoredMovieDto],
+   *  is there CARRYING THIS ATTEMPT'S `writtenAt`. All-or-nothing is the transaction's own
+   *  guarantee, so one miss means it did not land.
+   *
+   *  The stamp is what makes the answer this attempt's: a COMPETING fold of the same group
+   *  drains the same staging rows and writes the same films under the same deterministic
+   *  ids, and without it that read as this commit having landed — finishing the fold with an
+   *  aborted attempt's plan. Read at MAJORITY, so a commit visible only on the primary, which
+   *  an election could still roll back, is not taken as landed either. A read that fails says
+   *  nothing, and reads as "not landed" — the task reschedules. */
+  private def landed(plan: StagingFold.Plan, writtenAt: Instant, movies: MongoCollection[StoredMovieDto],
                      staging: MongoCollection[StoredMovieDto]): Boolean = Try {
-    def count(c: MongoCollection[StoredMovieDto], ids: Seq[String]): Long =
-      if (ids.isEmpty) 0L else await(c.countDocuments(Filters.in("_id", ids*)).toFuture())
+    val majority = com.mongodb.ReadConcern.MAJORITY
+    def count(c: MongoCollection[StoredMovieDto], ids: Seq[String], also: Option[org.bson.conversions.Bson] = None): Long =
+      if (ids.isEmpty) 0L
+      else await(c.withReadConcern(majority).countDocuments(
+        (Filters.in("_id", ids*) +: also.toSeq).reduce((a, b) => Filters.and(a, b))).toFuture())
     val written = plan.moviesUpserts.map(_._1.value).distinct
     count(staging, plan.stagingDeletes.map(_.id)) == 0 &&
       count(movies, plan.moviesDeletes.map(_.value)) == 0 &&
-      count(movies, written) == written.size
+      count(movies, written, Some(Filters.eq("updatedAt", java.util.Date.from(writtenAt)))) == written.size
   }.getOrElse(false)
 
   /** Write each folded film AGAIN, through the repository's own protocol, so it ends up
@@ -392,7 +405,8 @@ class MongoStagingFolder(
     movies:     MongoCollection[StoredMovieDto],
     staging:    MongoCollection[StoredMovieDto],
     cleanTitle: String,
-    candidateIds: Option[Set[String]]
+    candidateIds: Option[Set[String]],
+    writtenAt:  Instant
     // Returns the whole PLAN, not just the promotions: the caller finishes the written films
     // through the repository and migrates the retired rows once the transaction commits, and
     // tying those to the attempt's own return value is what stops an abandoned attempt's plan
@@ -459,7 +473,7 @@ class MongoStagingFolder(
         // `screenings`.
         val forStorage = record.copy(data = movieRepository.slotsForStorage(record.data))
         await(movies.replaceOne(session, Filters.eq("_id", id),
-          StoredMovieDto.fromDomain(id, StoredMovieRecord.keyFor(k), forStorage, Instant.now()), new ReplaceOptions().upsert(true)).toFuture())
+          StoredMovieDto.fromDomain(id, StoredMovieRecord.keyFor(k), forStorage, writtenAt), new ReplaceOptions().upsert(true)).toFuture())
       }
       // Delete the retired `movies` rows ONLY — never their side-collection rows.
       //
@@ -506,6 +520,10 @@ object MongoStagingFolder {
   /** Production's `commit`: commit the session's transaction and wait for the reply. */
   def commitTransaction(session: ClientSession): Unit =
     Await.result(publisherToFuture(session.commitTransaction()), 10.seconds)
+
+  /** Abort `session`'s transaction — for a spec's commit hook standing in for one that never landed. */
+  def abortTransaction(session: ClientSession): Unit =
+    Await.result(publisherToFuture(session.abortTransaction()), 10.seconds)
 
   /** Adapt a reactive-streams `Publisher` (what `ClientSession.commitTransaction`
    *  / `abortTransaction` return — raw Java publishers, not scala Observables) to
