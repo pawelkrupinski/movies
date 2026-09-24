@@ -114,6 +114,18 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
+   * The heap-dump budget script lives under infra/ (the Nix flake root, so the node's timer can run
+   * the same file) but is copied into BOTH images as `bin/heap-dumps.sh` by build.sbt. A change to
+   * it changes both deployable artifacts, so it must redeploy both -- or the pods would keep
+   * pruning by the old rules while the node prunes by the new ones.
+   */
+  it should "redeploy both tiers when the heap-dump script both images ship moves" in {
+    val script = Seq("infra/nix/files/heap-dumps.sh")
+    matches(webFilter, script) shouldBe true
+    matches(workerFilter, script) shouldBe true
+  }
+
+  /**
    * And the two lists must not converge. The web sources pattern appearing in the
    * worker's set is the one edit that would make every web push restart the worker
    * while every assertion above still passed on the day it was made — the

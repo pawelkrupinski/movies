@@ -62,6 +62,15 @@ lazy val noApiDocs = Seq(
   Compile / doc / sources := Nil,
 )
 
+// The heap-dump budget script, shipped in BOTH deployable dists as `bin/heap-dumps.sh`. The
+// Dockerfile CMD runs it before the JVM starts (prune this pod's dump directory, then name a
+// unique -XX:HeapDumpPath file for this start). It lives under infra/ because the node's
+// systemd timer runs the SAME file and the Nix flake root is infra/ -- one copy, two callers.
+lazy val heapDumpScript = Seq(
+  Universal / mappings +=
+    ((LocalRootProject / baseDirectory).value / "infra" / "nix" / "files" / "heap-dumps.sh") -> "bin/heap-dumps.sh",
+)
+
 // Integration tests (it/scala) and page-regression tests (page/scala) run under
 // their own sbt configurations so CI can dispatch them as separate jobs. Both
 // `extend Test` to reuse helpers from test/scala. Defined here because both the
@@ -229,7 +238,7 @@ lazy val worker = (project in file("worker"))
   .settings(itReportSettings)
   // Fails the it run when a repository write failed and was swallowed into a WARN.
   .settings(WriteFailureTripwire.settings(IntegrationTest))
-  .settings(noApiDocs)
+  .settings(noApiDocs, heapDumpScript)
 
 // ── Web app (content serving) ────────────────────────────────────────────────
 
@@ -306,7 +315,7 @@ lazy val web = (project in file("web"))
   .settings(unitReportSettings, testOrderSettings)
   .settings(itReportSettings)
   .settings(WriteFailureTripwire.settings(IntegrationTest))
-  .settings(noApiDocs)
+  .settings(noApiDocs, heapDumpScript)
 
 // ── End-to-end test module (not deployed) ────────────────────────────────────
 //

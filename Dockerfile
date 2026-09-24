@@ -36,36 +36,28 @@ COPY stage/ ./
 # by re-applying 0755.
 RUN chmod +x bin/*
 EXPOSE 9000
-# Boot-prune the /data volume. Both tiers now: web gained an emptyDir at /data so
-# its OOMs leave a dump behind too, and the `mkdir -p` below is what makes the
-# JVM's -XX:HeapDumpPath directory exist before it has to write into it.
-# HeapDumpOnOutOfMemoryError writes a ~11MB dump per OOM and never cleans up; a
-# 2026-07-09 investigation found /data 100% full (750MB of stale dumps), which
-# blocks new dumps + log writes. Keep the 3 newest hs_err crash logs, drop the retired
-# JFR repo dir, and keep exactly ONE heap dump — sized against the volume itself.
+# HEAP DUMPS: bounded, uniquely named, and on a volume that outlives the pod.
 #
-# THE RETENTION IS DERIVED, NOT CONFIGURED, and that is the point. It was briefly a
-# `HEAPDUMP_KEEP` env var, which made it a ConfigMap value — and a ConfigMap value on this
-# fleet reaches the cluster only when somebody applies it by hand, because the deploy
-# endpoint can only set an image. A number that guards against an eviction is a poor
-# candidate for a number that silently keeps its old value. Read from `df` it ships with
-# the image, which DOES deploy, and it cannot drift.
+# /data/heapdumps is a hostPath on k3s-worker-1 (/var/lib/kinowo/heapdumps/<app>-<country>/,
+# mounted through a per-app-country subPath in the GitOps manifests), so a dump survives the pod
+# being replaced -- web-pl's heap OOM on 2026-09-23 was lost with its emptyDir. Before the JVM
+# starts, `bin/heap-dumps.sh` (infra/nix/files/heap-dumps.sh, copied in by build.sbt) does two
+# things, and the node's `kinowo-heap-dumps` timer repeats the budget independently of restarts:
 #
-# The rule: keep the newest dump, and only while it leaves room for the next one (half the
-# volume). A dump is roughly the LIVE SET — ~600MB for web-us against a 2Gi volume, ~11MB
-# for a worker — so this holds without anyone re-measuring it when a heap or a corpus
-# moves. An emptyDir over its sizeLimit gets the POD EVICTED, and losing the public tier
-# to its own forensics is a worse failure than the one the dump explains.
+#   prune      keep the 3 newest dumps and at most 4 GiB in THIS app-country's directory, oldest
+#              deleted first, never touching a file written in the last 10 minutes (it may be
+#              another pod's dump in progress). It logs `heap-dumps: dir=... files=N bytes=B`.
+#              A failure here must never block a boot, hence the `|| true`.
+#   dump-file  names this start's -XX:HeapDumpPath FILE: <app>-<country>_<pod>_<start UTC>.hprof.
+#              Appended to JAVA_OPTS, so it overrides the ConfigMap's directory-form flag (the
+#              last -XX occurrence wins). A DIRECTORY there makes the JVM pick
+#              `java_pid<pid>.hprof`, which in a container is always java_pid1.hprof -- and the JVM
+#              refuses to overwrite it, so every OOM after the first wrote NOTHING (worker-us,
+#              2026-09-03). The prune still renames a leftover java_pid1.hprof to its write time.
 #
-# ROTATE THE FIXED-NAME DUMP FIRST, or the prune below never fires and every OOM
-# after the first writes NOTHING. `-XX:HeapDumpPath=/data/heapdumps` names a
-# DIRECTORY, so the JVM picks the filename itself: `java_pid<pid>.hprof`. In a
-# container the JVM is always pid 1, so that name is a CONSTANT — there is only
-# ever one dump, `tail -n +4` never selects it, and the JVM refuses to overwrite
-# an existing file ("Unable to create /data/heapdumps/java_pid1.hprof: File
-# exists"). That is exactly what swallowed the dump for worker-us's
-# 2026-09-03T03:40 heap OOM. Renaming it to a timestamp on boot both preserves
-# the dump and gives the keep-3-newest prune the distinct names it assumes.
+# The budget lives in the script rather than a ConfigMap on purpose: a ConfigMap value on this
+# fleet reaches the cluster only when somebody applies it by hand, and the image DOES deploy.
+# See docs/heap-dumps.md for fetching a dump.
 #
 # DURABLE STDERR (worker only): the JVM's dying stderr — the `ExitOnOutOfMemoryError`
 # native-OOM line (`Native memory allocation (mmap/malloc) failed…`) and, on a clean
@@ -79,8 +71,8 @@ EXPOSE 9000
 # a crash-loop can't fill /data (keep the last ~4 MB). Hard JVM crashes (SIGSEGV) go
 # to -XX:ErrorFile=/data/logs/hs_err_%p.log (set in each k3s overlay's JAVA_OPTS).
 CMD mkdir -p /data/heapdumps /data/logs 2>/dev/null; \
-    if [ -f /data/heapdumps/java_pid1.hprof ]; then mv /data/heapdumps/java_pid1.hprof "/data/heapdumps/oom-$(date -u +%Y%m%dT%H%M%SZ).hprof"; fi; \
-    if [ -d /data/heapdumps ]; then half=$(( $(df -Pk /data/heapdumps | awk 'NR==2{print $2}') / 2 )); newest=$(ls -1t /data/heapdumps/*.hprof 2>/dev/null | head -1); for f in /data/heapdumps/*.hprof; do [ -e "$f" ] || continue; if [ "$f" != "$newest" ]; then rm -f "$f"; elif [ "$(du -k "$f" | cut -f1)" -gt "$half" ]; then rm -f "$f"; fi; done; fi; \
+    bin/heap-dumps.sh prune /data/heapdumps || true; \
+    if dump=$(bin/heap-dumps.sh dump-file /data/heapdumps); then export JAVA_OPTS="$JAVA_OPTS -XX:HeapDumpPath=$dump"; fi; \
     if [ -d /data/logs ]; then ls -1t /data/logs/hs_err_*.log 2>/dev/null | tail -n +4 | xargs -r rm -f; fi; \
     if [ -f /data/logs/worker-stderr.log ] && [ "$(wc -c < /data/logs/worker-stderr.log)" -gt 16777216 ]; then \
       tail -c 4194304 /data/logs/worker-stderr.log > /data/logs/worker-stderr.log.tmp && mv /data/logs/worker-stderr.log.tmp /data/logs/worker-stderr.log; fi; \

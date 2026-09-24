@@ -344,6 +344,7 @@ jobs:
                       build.sbt
                       project/**
                       Dockerfile
+                      infra/nix/files/heap-dumps.sh
                       .github/workflows/main.yml
                       .github/actions/changed-paths/**
 
@@ -540,6 +541,7 @@ jobs:
                       build.sbt
                       project/**
                       Dockerfile
+                      infra/nix/files/heap-dumps.sh
                       .github/workflows/main.yml
                       .github/actions/changed-paths/**
 
