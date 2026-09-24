@@ -82,19 +82,20 @@ groups:
       # of the tier's traffic, so every write could fail without moving a tier-wide 2%. This asks
       # the question per `route`: at least THREE 5xx in 30 minutes (so one unlucky request on a
       # quiet route is not a pattern) and over 10% of that route's responses. 4xx never counts --
-      # GET /api/me answers 401 to every anonymous visitor, by design.
+      # GET /api/me answers 401 to every anonymous visitor, by design. `.*/api/me` because the
+      # Showtimes countries are mounted and `route` carries the mount (`/uk/api/me/...`).
       #
       # A warning, not a page: it is a few people's hidden films, not the site. `for: 10m` on top
       # of the 30-minute window so a rolling deploy's brief 5xx does not qualify.
       - alert: UserStateWritesFailing
         expr: >-
           (
-            sum by (country, route) (increase(kinowo_web_http_requests_total{job="kinowo-web",route=~"/api/me.*",status="5xx"}[30m]))
+            sum by (country, route) (increase(kinowo_web_http_requests_total{job="kinowo-web",route=~".*/api/me.*",status="5xx"}[30m]))
               / on (country, route)
-            sum by (country, route) (increase(kinowo_web_http_requests_total{job="kinowo-web",route=~"/api/me.*"}[30m]))
+            sum by (country, route) (increase(kinowo_web_http_requests_total{job="kinowo-web",route=~".*/api/me.*"}[30m]))
           ) > 0.1
           and on (country, route)
-          sum by (country, route) (increase(kinowo_web_http_requests_total{job="kinowo-web",route=~"/api/me.*",status="5xx"}[30m])) >= 3
+          sum by (country, route) (increase(kinowo_web_http_requests_total{job="kinowo-web",route=~".*/api/me.*",status="5xx"}[30m])) >= 3
         for: 10m
         labels:
           severity: warning

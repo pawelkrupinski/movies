@@ -1161,7 +1161,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (route, status) (increase(kinowo_web_http_requests_total{job=\"kinowo-web\",route=~\"/api/me.*\"}[$__rate_interval])) > 0",
+          "expr": "sum by (route, status) (increase(kinowo_web_http_requests_total{job=\"kinowo-web\",route=~\".*/api/me.*\"}[$__rate_interval])) > 0",
           "legendFormat": "{{route}} {{status}}",
           "datasource": {
             "type": "prometheus",
