@@ -341,6 +341,31 @@ final class StateSyncServiceTests: XCTestCase {
         XCTAssertEqual(languageClient.remote, "de")
     }
 
+    /// A pick made while another pick's push is still on the wire waits for
+    /// it: two PUTs in flight at once could land in either order, leaving the
+    /// account on the older pick. One push at a time; the latest pick wins.
+    func testLanguagePushesAreSentOneAtATimeAndTheLatestWins() async throws {
+        languageClient.remote = "de"
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.selectedLanguage == "de" }
+        try await Task.sleep(for: .milliseconds(100))
+
+        let gate = AsyncGate()
+        languageClient.beforePushResponse = { await gate.wait() }
+        prefs.setLanguage("es")
+        try await waitUntil { self.languageClient.pushesStarted == 1 }
+        prefs.setLanguage("fr")
+        try await Task.sleep(for: .milliseconds(600)) // past the debounce
+        XCTAssertEqual(languageClient.pushesStarted, 1)
+        await gate.open()
+
+        try await waitUntil { self.languageClient.remote == "fr" && self.languageClient.inFlight == 0 }
+        XCTAssertEqual(languageClient.maxPushesInFlight, 1)
+        XCTAssertEqual(languageClient.pushes, ["es", "fr"])
+        _ = sync
+    }
+
     /// A pick made while the LOGIN reconcile's fetch is in flight: the
     /// observers used to start only after that reconcile, so the pick was
     /// never marked pending and the account's older value overwrote it.

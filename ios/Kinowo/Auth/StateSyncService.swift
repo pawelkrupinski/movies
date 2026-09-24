@@ -48,8 +48,10 @@ final class StateSyncService: ObservableObject {
     private var prefsCancellables = Set<AnyCancellable>()
     private var syncTask: Task<Void, Never>?
     private var debounceWorkItem: DispatchWorkItem?
-    /// How many language pushes are on the wire — see `languageChanged`.
-    private var languagePushesInFlight = 0
+    /// The language push on the wire, if any — see `sendPendingLanguage`.
+    private var languageSendTask: Task<Void, Never>?
+    /// Set while `adopt` writes the account's pick — see there.
+    private var adopting = false
     /// The hiddenFilms queue flush in progress, if any — see `sendPendingChanges`.
     private var flushTask: Task<Bool, Never>?
     /// The language the account is known to hold — last fetched or
@@ -216,57 +218,68 @@ final class StateSyncService: ObservableObject {
     /// the push debounce), while the fetch was in flight, or its push failed.
     private func reconcileLanguage() async {
         guard isLoggedIn else { return }
-        if let pending = pendingLanguage { return await pushLanguage(pending) }
+        if pendingLanguage != nil { return await sendPendingLanguage() }
         do {
             let remoteLanguage = try await languageClient.fetch()
-            if let pending = pendingLanguage { return await pushLanguage(pending) }
+            if pendingLanguage != nil { return await sendPendingLanguage() }
             if let remoteLanguage {
                 adopt(remoteLanguage)
             } else if let explicit = prefs.explicitLanguage {
                 pendingLanguage = explicit
-                await pushLanguage(explicit)
+                await sendPendingLanguage()
             }
         } catch {
             // Network error — local state is authoritative; leave prefs alone.
         }
     }
 
-    /// Push `language` now, superseding any debounced push. On success the
-    /// account holds it; on failure it stays pending, and the next reconcile
-    /// (resume, country switch, next login) retries it — the same self-heal
-    /// the hiddenFilms writes rely on.
-    private func pushLanguage(_ language: String) async {
+    /// Send the pending pick now, superseding any debounce, ONE push at a
+    /// time: a caller arriving while another push is on the wire waits for
+    /// it, and that push's loop then sends whatever is pending by then — so
+    /// two PUTs never race and the latest pick is the one the account ends
+    /// on. On success the account holds the sent value, and a pick made
+    /// meanwhile is sent next; on a transient failure the pick stays pending,
+    /// and the next reconcile (resume, country switch, next login) retries it —
+    /// the same self-heal the hiddenFilms writes rely on; a permanent refusal
+    /// (`LanguagePushRefused`) drops it and takes the account's pick instead.
+    private func sendPendingLanguage() async {
         debounceWorkItem?.cancel()
         debounceWorkItem = nil
-        languagePushesInFlight += 1
-        defer { languagePushesInFlight -= 1 }
-        do {
-            try await languageClient.push(language)
-            accountLanguage = language
-            if pendingLanguage == language { pendingLanguage = nil }
-        } catch is LanguagePushRefused {
-            // Refused for good: it can never land, so stop owing it, and take
-            // the account's pick instead — never pushing this one back.
-            if pendingLanguage == language {
-                pendingLanguage = nil
-                if let remote = try? await languageClient.fetch() { adopt(remote) }
+        if let running = languageSendTask { return await running.value }
+        let task = Task { @MainActor [weak self] in
+            while let self, self.isLoggedIn, let pending = self.pendingLanguage {
+                do {
+                    try await self.languageClient.push(pending)
+                } catch is LanguagePushRefused {
+                    // Refused for good: it can never land, so stop owing it, and
+                    // take the account's pick instead — never pushing this one back.
+                    if self.pendingLanguage == pending {
+                        self.pendingLanguage = nil
+                        if let remote = try? await self.languageClient.fetch() { self.adopt(remote) }
+                    }
+                    break
+                } catch {
+                    break
+                }
+                self.accountLanguage = pending
+                if self.pendingLanguage == pending { self.pendingLanguage = nil }
             }
-            return
-        } catch {
-            // Left pending — see above.
-            return
+            self?.languageSendTask = nil
         }
-        // The user moved on while this push was in flight — `languageChanged`
-        // kept that pick pending — so send it now.
-        if let pending = pendingLanguage, pending != language, isLoggedIn {
-            await pushLanguage(pending)
-        }
+        languageSendTask = task
+        await task.value
     }
 
     /// Take the account's pick as this device's.
     private func adopt(_ remoteLanguage: String) {
         accountLanguage = remoteLanguage
-        if remoteLanguage != prefs.selectedLanguage { prefs.setLanguage(remoteLanguage) }
+        guard remoteLanguage != prefs.selectedLanguage else { return }
+        // Not a pick: `languageChanged` hears it synchronously and must not
+        // queue it — even from inside a send, where a pick back to the
+        // account's value is otherwise kept pending.
+        adopting = true
+        defer { adopting = false }
+        prefs.setLanguage(remoteLanguage)
     }
 
     /// Push every local hide/unhide/clear-all immediately — see the class
@@ -340,10 +353,10 @@ final class StateSyncService: ObservableObject {
     }
 
     private func languageChanged(to language: String) {
+        guard !adopting else { return }
         // A push on the wire may already have reached the server, so a pick
-        // back to `accountLanguage` must be kept pending and sent after it —
-        // even when that push then fails (its response lost, not its effect).
-        guard language != accountLanguage || languagePushesInFlight > 0 else {
+        // back to `accountLanguage` must be sent after it too.
+        guard language != accountLanguage || languageSendTask != nil else {
             // Back on (or adopted) what the account already holds — nothing to push.
             pendingLanguage = nil
             debounceWorkItem?.cancel()
@@ -360,8 +373,8 @@ final class StateSyncService: ObservableObject {
         debounceWorkItem?.cancel()
         let item = DispatchWorkItem { [weak self] in
             Task { @MainActor [weak self] in
-                guard let self, self.isLoggedIn, let pending = self.pendingLanguage else { return }
-                await self.pushLanguage(pending)
+                guard let self, self.isLoggedIn else { return }
+                await self.sendPendingLanguage()
             }
         }
         debounceWorkItem = item

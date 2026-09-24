@@ -688,6 +688,34 @@ class StateSyncServiceTest {
         assertEquals("de", languageClient.remote)
     }
 
+    /** A pick made while another pick's push is still on the wire waits for
+     *  it: two PUTs in flight at once could land in either order, leaving the
+     *  account on the older pick. One push at a time; the latest pick wins.
+     *  Mirrors iOS. */
+    @Test
+    fun languagePushesAreSentOneAtATimeAndTheLatestWins() = runTest(UnconfinedTestDispatcher()) {
+        languageClient.remote = "de"
+        startService()
+        login()
+        advanceUntilIdle()
+
+        val gate = CompletableDeferred<Unit>()
+        languageClient.beforePushResponse = { gate.await() }
+        prefs.setLanguageTag("es")
+        advanceTimeBy(500)
+        runCurrent()
+        prefs.setLanguageTag("fr")
+        advanceTimeBy(1_000)
+        runCurrent()
+        assertEquals(1, languageClient.pushAttempts)
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals("fr", languageClient.remote)
+        assertEquals(1, languageClient.maxPushesInFlight)
+        assertEquals(listOf("es", "fr"), languageClient.pushes)
+    }
+
     /** Picking back to the account's language INSIDE the debounce — nothing
      *  has been sent yet — leaves nothing to push, as on iOS. Only a push
      *  already on the wire makes the pick-back worth sending. */

@@ -72,7 +72,12 @@ class StateSyncService(
 ) {
     @Volatile private var loggedIn = false
     private var syncJob: Job? = null
-    private var languagePushJob: Job? = null
+    /** The 400 ms wait before a local pick is sent — only ever the wait: the
+     *  send runs outside it, so cancelling a debounce never abandons a push
+     *  that may already have reached the server. */
+    private var languageDebounceJob: Job? = null
+    /** One language push on the wire at a time — see [sendPendingLanguage]. */
+    private val languageSendMutex = Mutex()
     /** Serialises every read-modify-write of the persisted hiddenFilms queue. */
     private val queueMutex = Mutex()
     /** Serialises the flushes, so no queued edit is sent twice. Never held
@@ -109,8 +114,8 @@ class StateSyncService(
                     loggedIn = false
                     syncJob?.cancel()
                     syncJob = null
-                    languagePushJob?.cancel()
-                    languagePushJob = null
+                    languageDebounceJob?.cancel()
+                    languageDebounceJob = null
                     accountLanguage = null
                 }
             }
@@ -203,46 +208,53 @@ class StateSyncService(
      *  flight, or its push failed. Mirrors iOS `reconcileLanguage`. */
     private suspend fun reconcileLanguage() {
         if (!loggedIn) return
-        prefs.pendingLanguagePush()?.let { return pushLanguage(it) }
+        if (prefs.pendingLanguagePush() != null) return sendPendingLanguage()
         // A network error leaves local state authoritative: prefs untouched.
         runCatchingCancellable {
             val remoteLang = languageClient.fetch()
-            prefs.pendingLanguagePush()?.let { return pushLanguage(it) }
+            if (prefs.pendingLanguagePush() != null) return sendPendingLanguage()
             val localLang = prefs.selectedLanguageTag.first()
             if (remoteLang != null) {
                 adopt(remoteLang)
             } else if (localLang != null) {
                 prefs.setPendingLanguagePush(localLang)
-                pushLanguage(localLang)
+                sendPendingLanguage()
             }
         }
     }
 
-    /** Push [language] now, superseding any debounced push. On success the
-     *  account holds it; on failure it stays pending, and the next reconcile
+    /** Send the pending pick now, superseding any debounce, ONE push at a
+     *  time: a caller arriving while another push is on the wire waits for it,
+     *  then sends whatever is pending by then — so two PUTs never race and the
+     *  latest pick is the one the account ends on. On success the account
+     *  holds the sent value, and a pick made meanwhile is sent next; on a
+     *  transient failure the pick stays pending, and the next reconcile
      *  (resume, login) retries it — the same self-heal the hiddenFilms writes
-     *  rely on. */
-    private suspend fun pushLanguage(language: String) {
-        languagePushJob?.cancel()
-        languagePushJob = null
-        sendLanguage(language)
-    }
-
-    /** The push itself — called directly by the debounced job, which must
-     *  not cancel itself the way [pushLanguage] cancels it. */
-    private suspend fun sendLanguage(language: String) {
-        languageSendInFlight = true
-        runCatchingCancellable {
-            try { languageClient.push(language) } finally { languageSendInFlight = false }
-        }.onSuccess {
-            accountLanguage = language
-            if (prefs.pendingLanguagePush() == language) prefs.setPendingLanguagePush(null)
-        }.onFailure { failure ->
-            // Refused for good: it can never land, so stop owing it, and take
-            // the account's pick instead — never pushing this one back.
-            if (failure is LanguagePushRefused && prefs.pendingLanguagePush() == language) {
-                prefs.setPendingLanguagePush(null)
-                runCatchingCancellable { languageClient.fetch() }.getOrNull()?.let { adopt(it) }
+     *  rely on; a permanent refusal ([LanguagePushRefused]) drops it and takes
+     *  the account's pick instead. */
+    private suspend fun sendPendingLanguage() {
+        languageDebounceJob?.cancel()
+        languageDebounceJob = null
+        languageSendMutex.withLock {
+            while (loggedIn) {
+                val pending = prefs.pendingLanguagePush() ?: return
+                languageSendInFlight = true
+                runCatchingCancellable {
+                    try { languageClient.push(pending) } finally { languageSendInFlight = false }
+                }.onFailure { failure ->
+                    // Refused for good: it can never land, so stop owing it, and
+                    // take the account's pick instead — never pushing this one back.
+                    if (failure is LanguagePushRefused && prefs.pendingLanguagePush() == pending) {
+                        prefs.setPendingLanguagePush(null)
+                        runCatchingCancellable { languageClient.fetch() }.getOrNull()?.let { adopt(it) }
+                    }
+                    return
+                }
+                accountLanguage = pending
+                if (prefs.pendingLanguagePush() == pending) {
+                    prefs.setPendingLanguagePush(null)
+                    return
+                }
             }
         }
     }
@@ -256,8 +268,8 @@ class StateSyncService(
     /** React to every local language change after the login reconcile. A
      *  change to [accountLanguage] merely adopted the server's pick (or went
      *  back to it with no other pick's push on the wire), so it is never
-     *  echoed; anything else is a local pick, marked pending and pushed after a 400 ms debounce so a rapid run of
-     *  picker taps folds into one PUT. `distinctUntilChanged` because the
+     *  echoed; anything else is a local pick, marked pending and pushed after
+     *  a 400 ms debounce so a rapid run of picker taps folds into one PUT. `distinctUntilChanged` because the
      *  DataStore flow re-emits the same tag on every prefs write (including
      *  the pending-pick write below); `drop(1)` skips the current
      *  (post-reconcile) value. */
@@ -267,19 +279,17 @@ class StateSyncService(
             .drop(1)
             .collect { tag ->
                 if (tag == null) return@collect
-                // A push still running may already have reached the server —
-                // cancelling the coroutine can't un-send a blocking OkHttp
-                // call — so a pick back to [accountLanguage] must be sent too.
-                val pushInFlight = languageSendInFlight
-                languagePushJob?.cancel()
-                languagePushJob = null
-                if (tag == accountLanguage && !pushInFlight) {
+                // A push on the wire may already have reached the server, so
+                // a pick back to [accountLanguage] must be sent after it too.
+                languageDebounceJob?.cancel()
+                languageDebounceJob = null
+                if (tag == accountLanguage && !languageSendInFlight) {
                     prefs.setPendingLanguagePush(null)
                 } else {
                     prefs.setPendingLanguagePush(tag)
-                    languagePushJob = scope.launch {
+                    languageDebounceJob = scope.launch {
                         delay(LANGUAGE_DEBOUNCE_MS)
-                        if (loggedIn) prefs.pendingLanguagePush()?.let { sendLanguage(it) }
+                        scope.launch { sendPendingLanguage() }
                     }
                 }
             }
