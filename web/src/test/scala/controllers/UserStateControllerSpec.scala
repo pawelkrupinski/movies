@@ -32,9 +32,9 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     prefilled:       Option[UserState] = None,
     changeTimeCache: UserChangeTimeCache = NoUserChangeTimeCache,
     stateRepository: InMemoryUserStateRepository = new InMemoryUserStateRepository,
-    legacyMetrics:   LegacyUserStateMetrics = new LegacyUserStateMetrics(new PrometheusRegistry(), "pl", specClock)
+    legacyMetrics:   LegacyUserStateMetrics = new LegacyUserStateMetrics(new PrometheusRegistry(), "pl", specClock),
+    userRepository:  InMemoryUserRepository = new InMemoryUserRepository
   ): (UserStateController, InMemoryUserStateRepository, InMemoryUserRepository) = {
-    val userRepository  = new InMemoryUserRepository
     userRepository.upsert(testUser("u1")) // the suite's default signed-in identity
     prefilled.foreach(stateRepository.upsert)
     val accountDeletion = new AccountDeletion(userRepository, stateRepository)
@@ -167,6 +167,27 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     val hidden = callHiddenFilms(ctl)
     status(hidden) shouldBe SERVICE_UNAVAILABLE
     header("ETag", hidden) shouldBe None
+  }
+
+  // The session's user row could not be READ: not "signed out" (a 401 the apps act on), and
+  // not the framework's bare 500 without the per-user Cache-Control — a 503 to retry.
+  "every /api/me state endpoint" should "503, marked per-user, when the signed-in user cannot be looked up" in {
+    val (ctl, _, _) = fixture(userRepository = new services.users.FailingReadUserRepository)
+    def signedIn(method: String, path: String) = FakeRequest(method, path).withSession("userId" -> "u1")
+    Seq(
+      "get"          -> ctl.get()(signedIn("GET", "/api/me/state")),
+      "hiddenFilms"  -> ctl.hiddenFilms("pl")(signedIn("GET", "/api/me/pl/hidden-films")),
+      "hideFilm"     -> ctl.hideFilm("pl", "Diuna")(signedIn("PUT", "/api/me/pl/hidden-films/Diuna")),
+      "unhideFilm"   -> ctl.unhideFilm("pl", "Diuna")(signedIn("DELETE", "/api/me/pl/hidden-films/Diuna")),
+      "clear"        -> ctl.clearHiddenFilms("pl")(signedIn("DELETE", "/api/me/pl/hidden-films")),
+      "put"          -> ctl.put()(signedIn("PUT", "/api/me/state").withBody(Json.obj("language" -> "pl"))),
+      "deleteAccount"-> ctl.deleteAccount()(signedIn("DELETE", "/api/me"))
+    ).foreach { case (action, result) =>
+      withClue(s"$action: ") {
+        status(result) shouldBe SERVICE_UNAVAILABLE
+        header("Cache-Control", result) shouldBe Some(PerUserResponse.CacheControl)
+      }
+    }
   }
 
   "GET /api/me/:country/hidden-films" should "401 anonymous requests" in {
