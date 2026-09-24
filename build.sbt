@@ -85,6 +85,26 @@ lazy val unitReportSettings = Seq(
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u",
     ((LocalRootProject / baseDirectory).value / "target" / "test-reports" / "unit").toString)
 )
+// ORDER INDEPENDENCE. Unit specs share one JVM per module, so a spec that only passes
+// because another ran first — or never ran first — passes forever in discovery order.
+// `TEST_ORDER_SEED=<n>` runs every module's unit suites one at a time in an order shuffled
+// by that seed (`reverse` for plain reversed order); unset, nothing changes. The nightly
+// order-independence workflow sets it; reproduce a failure with the seed it prints:
+//     TEST_ORDER_SEED=<n> sbt testUnitNoE2e
+lazy val testOrderSettings: Seq[Setting[?]] = sys.env.get("TEST_ORDER_SEED").toSeq.flatMap { seed =>
+  Seq(
+    Test / parallelExecution := false,
+    Test / definedTests := {
+      val suites = (Test / definedTests).value.sortBy(_.name)
+      val ordered =
+        if (seed == "reverse") suites.reverse
+        else new scala.util.Random(seed.toLong).shuffle(suites)
+      streams.value.log.info(s"TEST_ORDER_SEED=$seed: ${thisProject.value.id} runs ${ordered.size} suites in that order")
+      ordered
+    }
+  )
+}
+
 lazy val itReportSettings = Seq(
   IntegrationTest / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u",
     ((LocalRootProject / baseDirectory).value / "target" / "test-reports" / "it").toString)
@@ -118,7 +138,7 @@ lazy val common = (project in file("common"))
       scalatestScalaCheck % Test,
     )
   )
-  .settings(unitReportSettings)
+  .settings(unitReportSettings, testOrderSettings)
   .settings(noApiDocs)
 
 // ── Shared test support (not deployed) ───────────────────────────────────────
@@ -132,6 +152,7 @@ lazy val common = (project in file("common"))
 // the compile classpath because Eventually returns an `org.scalatest.Assertion`.
 lazy val testkit = (project in file("testkit"))
   .dependsOn(common)
+  .settings(testOrderSettings)
   .settings(
     name := "testkit",
     publish / skip := true,
@@ -204,7 +225,7 @@ lazy val worker = (project in file("worker"))
       scalatestScalaCheck % Test,
     )
   )
-  .settings(unitReportSettings)
+  .settings(unitReportSettings, testOrderSettings)
   .settings(itReportSettings)
   .settings(noApiDocs)
 
@@ -280,7 +301,7 @@ lazy val web = (project in file("web"))
     ),
     // Test = src/test/scala (sbt default, now that PlayLayoutPlugin is off).
   )
-  .settings(unitReportSettings)
+  .settings(unitReportSettings, testOrderSettings)
   .settings(itReportSettings)
   .settings(noApiDocs)
 
@@ -303,7 +324,7 @@ lazy val e2e = (project in file("e2e"))
     libraryDependencies += scalatestPlay % Test,
   )
   .settings(noApiDocs)
-  .settings(unitReportSettings)
+  .settings(unitReportSettings, testOrderSettings)
 
 // ── Root aggregator (no sources) ─────────────────────────────────────────────
 

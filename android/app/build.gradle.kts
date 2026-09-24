@@ -848,4 +848,17 @@ tasks.withType<Test>().configureEach {
     inputs.dir(layout.projectDirectory.dir("src/main/play"))
         .withPropertyName("playStoreMetadata")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+
+    // ORDER INDEPENDENCE (the nightly order-independence workflow). With
+    // `-PtestOrderSeed=<n>` the run is ShuffledOrderSuite alone — every unit test, classes
+    // and methods reordered by the seed, in one JVM as usual. Without it that suite is
+    // excluded, so an ordinary run executes each test exactly once, in Gradle's order.
+    val testOrderSeed = providers.gradleProperty("testOrderSeed").orNull
+    if (testOrderSeed == null) {
+        exclude("**/ShuffledOrderSuite*")
+    } else {
+        systemProperty("kinowo.testOrderSeed", testOrderSeed)
+        filter.includeTestsMatching("pl.kinowo.order.ShuffledOrderSuite")
+        outputs.upToDateWhen { false }
+    }
 }

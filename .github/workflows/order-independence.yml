@@ -1,0 +1,201 @@
+name: Order independence
+
+# Nightly: run the suites in an order they never meet on push, so a test that passes only
+# because of what ran before it (or fails only after something else) is caught the night it
+# lands, not the day a harmless rename reshuffles the order.
+#
+# The leaks this is for, all found by accident (2026-09-23):
+#   - Android: the prefs DataStore is one process-wide singleton under Robolectric, so
+#     "null until set" assertions passed or failed by which test wrote first (40ffc4b55).
+#   - Android on-device: CountrySwitchRewiresApiTest's "uk" became DeepLinkInstrumentedTest's
+#     starting country (dbfebcfc6).
+#   - iOS: a country/language one UI test chose leaked into the next.
+#
+# Three legs:
+#   scala    every module's unit specs one suite at a time, reversed and shuffled
+#            (TEST_ORDER_SEED — see testOrderSettings in build.sbt).
+#   android  every Robolectric test, classes AND methods reordered by a seed
+#            (-PtestOrderSeed — see ShuffledOrderSuite).
+#   ios      every XCUITest class ALONE, in its own xcodebuild run: a class that only
+#            passes after another has set state up fails here.
+#
+# A failure prints its seed; replay it locally with the command in the job summary, or
+# re-run this workflow by hand with that seed.
+on:
+    schedule:
+        - cron: '40 2 * * *'
+    workflow_dispatch:
+        inputs:
+            seed:
+                description: 'Order seed to replay (a number); empty draws a new one'
+                required: false
+                default: ''
+
+permissions:
+    contents: read
+
+jobs:
+    scala:
+        name: scala (${{ matrix.order }})
+        runs-on: ubuntu-latest
+        timeout-minutes: 90
+        strategy:
+            fail-fast: false
+            matrix:
+                order: [reverse, shuffled]
+        steps:
+            - uses: actions/checkout@v5
+
+            # The deploy specs read the GitOps manifests at their old path — see ci.yml's
+            # `test` job for why this checkout lands exactly here.
+            - uses: actions/checkout@v5
+              with:
+                  repository: pawelkrupinski/movies-gitops
+                  path: infra/kubernetes
+
+            - uses: actions/setup-java@v5
+              with:
+                  distribution: temurin
+                  java-version: 25
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+
+            - name: Pick the order
+              id: order
+              env:
+                  ORDER: ${{ matrix.order }}
+                  REQUESTED: ${{ inputs.seed }}
+              run: |
+                  if [ "$ORDER" = reverse ]; then seed=reverse; else seed="${REQUESTED:-$GITHUB_RUN_ID}"; fi
+                  echo "seed=$seed" >> "$GITHUB_OUTPUT"
+                  echo "Scala unit specs, suite order \`$seed\` — replay: \`TEST_ORDER_SEED=$seed sbt testUnitNoE2e\`" >> "$GITHUB_STEP_SUMMARY"
+
+            # Same env as ci.yml's unit run, so a spec that needs a key behaves as it does there.
+            - name: Unit specs, one suite at a time in that order
+              run: sbt testUnitNoE2e
+              env:
+                  TEST_ORDER_SEED: ${{ steps.order.outputs.seed }}
+                  ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
+                  TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
+                  MONGODB_URI:     ${{ secrets.MONGODB_URI }}
+                  MONGODB_DB:      ${{ secrets.MONGODB_DB }}
+
+    android:
+        runs-on: ubuntu-latest
+        timeout-minutes: 45
+        defaults:
+            run:
+                working-directory: android
+        steps:
+            - uses: actions/checkout@v5
+
+            - name: Set up JDK 17
+              uses: actions/setup-java@v5
+              with:
+                  distribution: temurin
+                  java-version: '17'
+
+            # platform-tools only, as android.yml's JVM-only lane: the default `tools`
+            # package drags in the emulator, whose download flakily corrupts.
+            - name: Set up Android SDK
+              uses: android-actions/setup-android@v3
+              with:
+                  packages: platform-tools
+
+            - name: Set up Gradle
+              uses: gradle/actions/setup-gradle@v4
+
+            - name: Robolectric tests, classes and methods in a seeded order
+              env:
+                  REQUESTED: ${{ inputs.seed }}
+              run: |
+                  seed="${REQUESTED:-$GITHUB_RUN_ID}"
+                  echo "Android unit tests, seed \`$seed\` — replay: \`./gradlew testDebugUnitTest -PtestOrderSeed=$seed\`" >> "$GITHUB_STEP_SUMMARY"
+                  ./gradlew --no-daemon testDebugUnitTest -PtestOrderSeed="$seed"
+
+            - name: Upload the test report
+              if: failure()
+              uses: actions/upload-artifact@v6
+              with:
+                  name: android-order-independence-report
+                  path: android/app/build/reports/tests/testDebugUnitTest
+                  if-no-files-found: ignore
+
+    ios:
+        runs-on: macos-latest
+        timeout-minutes: 150
+        env:
+            DESTINATION: 'platform=iOS Simulator,name=iPhone 15,OS=latest'
+        steps:
+            - uses: actions/checkout@v5
+
+            - uses: maxim-lobanov/setup-xcode@v1
+              with:
+                  xcode-version: latest-stable
+
+            - name: Build for testing
+              run: |
+                  xcodebuild build-for-testing \
+                      -project ios/Kinowo.xcodeproj \
+                      -scheme Kinowo \
+                      -destination "$DESTINATION" \
+                      -derivedDataPath build/dd \
+                      CODE_SIGNING_ALLOWED=NO
+
+            # Each XCUITest class on its own, so none can lean on state another left behind.
+            # Every class runs even after a failure; the job fails at the end, naming them.
+            - name: Every XCUITest class alone
+              run: |
+                  set -uo pipefail
+                  mkdir -p build/alone
+                  classes=$(grep -hoE 'class[[:space:]]+[A-Za-z0-9_]+[[:space:]]*:[[:space:]]*XCTestCase' ios/KinowoUITests/*.swift \
+                      | sed -E 's/class[[:space:]]+([A-Za-z0-9_]+).*/\1/' | sort -u)
+                  [ -n "$classes" ] || { echo "::error::no XCUITest classes found in ios/KinowoUITests"; exit 1; }
+                  failed=""
+                  for class in $classes; do
+                      echo "::group::$class"
+                      if xcodebuild test-without-building \
+                          -project ios/Kinowo.xcodeproj \
+                          -scheme Kinowo \
+                          -destination "$DESTINATION" \
+                          -derivedDataPath build/dd \
+                          -only-testing:"KinowoUITests/$class" \
+                          -resultBundlePath "build/alone/$class.xcresult" \
+                          CODE_SIGNING_ALLOWED=NO > "build/alone/$class.log" 2>&1; then
+                          echo "$class passed alone"
+                      else
+                          tail -80 "build/alone/$class.log"
+                          failed="$failed $class"
+                      fi
+                      echo "::endgroup::"
+                  done
+                  if [ -n "$failed" ]; then
+                      echo "XCUITest classes that fail when run alone:$failed" >> "$GITHUB_STEP_SUMMARY"
+                      echo "::error::XCUITest classes that fail when run alone:$failed"
+                      exit 1
+                  fi
+
+            - name: Upload the result bundles
+              if: failure()
+              uses: actions/upload-artifact@v6
+              with:
+                  name: ios-alone-results
+                  path: build/alone
+                  if-no-files-found: ignore
+
+    # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
+    # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
+    report:
+        needs: [scala, android, ios]
+        if: always() && !cancelled() && github.event_name == 'schedule'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}
