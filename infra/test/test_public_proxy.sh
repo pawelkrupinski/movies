@@ -278,9 +278,15 @@ card 200 "$port" "/share-cards/uk/h0123456789abcdef0123.jpg" "...for a path-moun
 card 200 "$www_port" "/share-cards/pl/f0123456789abcd.jpg" "...and on the www. vhost, which redirects everything ELSE" CARD-PL
 card 200 "$port" "/share-cards/pl/f0123456789abcd.jpg?v=0123456789abcdef" "the ?v= a page names is ignored: the one file per film is served" CARD-PL
 card 200 "$port" "/share-cards/pl/f0123456789abcd.jpg?v=ffffffffffffffff" "...and a STALE ?v= gets the latest card, not a 404" CARD-PL
+cc="$(header_of "$port" "/share-cards/pl/f0123456789abcd.jpg?v=0123456789abcdef" Cache-Control)"
+if [ "$cc" = "public, max-age=31536000, immutable" ]; then echo "  ok  a versioned card is cached for a year as immutable (its ?v= names its content)"
+else echo "  FAILED Cache-Control for ?v= was '$cc'"; failed=1; fi
 cc="$(header_of "$port" "/share-cards/pl/f0123456789abcd.jpg" Cache-Control)"
-if [ "$cc" = "public, max-age=31536000, immutable" ]; then echo "  ok  the card is cached for a year as immutable (its ?v= names its content)"
-else echo "  FAILED Cache-Control was '$cc'"; failed=1; fi
+if [ "$cc" = "public, max-age=300" ]; then echo "  ok  ...but the BARE path, whose file every re-render replaces, only for five minutes"
+else echo "  FAILED Cache-Control for the bare path was '$cc', wanted public, max-age=300"; failed=1; fi
+cc="$(header_of "$port" "/share-cards/pl/f0123456789abcd.jpg?utm_source=x" Cache-Control)"
+if [ "$cc" = "public, max-age=300" ]; then echo "  ok  ...and so is one with another query but no v"
+else echo "  FAILED Cache-Control without v was '$cc', wanted public, max-age=300"; failed=1; fi
 ct="$(header_of "$port" "/share-cards/pl/f0123456789abcd.jpg" Content-Type)"
 if [ "$ct" = "image/jpeg" ]; then echo "  ok  ...as image/jpeg"
 else echo "  FAILED Content-Type was '$ct', wanted image/jpeg"; failed=1; fi

@@ -266,8 +266,10 @@ in
 
               WHAT IT ANSWERS, and test_public_proxy.sh asks each of these of the real Caddy:
                 - a file that exists, at exactly `/share-cards/<two lowercase letters>/<name>.jpg`,
-                  whatever its query string, with `Cache-Control: public, max-age=31536000,
-                  immutable`. Immutable is true PER URL: the `?v=<version>` names the card's
+                  whatever its query string. With `?v=` it is `Cache-Control: public,
+                  max-age=31536000, immutable`; without one (nothing the site links to -- a crawler
+                  guessing the path) `public, max-age=300`, since the file behind the bare path
+                  changes with every re-render. Immutable is true PER URL: the `?v=<version>` names the card's
                   content, a changed card gets a new `v`, and Cloudflare keys its cache on the whole
                   URL, query included (checked 2026-09-24: `?v=a` MISS then HIT, `?v=b` MISS). A
                   stale `v` still gets the latest bytes, which is what a preview wants;
@@ -489,7 +491,21 @@ in
                   path_regexp ^/[a-z]{2}/[A-Za-z0-9_-][A-Za-z0-9._-]*\.jpg$
                   file
                 }
-                header @shareCard Cache-Control "public, max-age=31536000, immutable"
+                # Immutable only for a VERSIONED URL: the path is the film's one card file, rewritten
+                # on every re-render, so a bare request (a crawler guessing the path) gets a short
+                # cache -- Cloudflare would otherwise pin its bytes for a year.
+                @shareCardVersioned {
+                  path_regexp ^/[a-z]{2}/[A-Za-z0-9_-][A-Za-z0-9._-]*\.jpg$
+                  file
+                  query v=*
+                }
+                @shareCardBare {
+                  path_regexp ^/[a-z]{2}/[A-Za-z0-9_-][A-Za-z0-9._-]*\.jpg$
+                  file
+                  not query v=*
+                }
+                header @shareCardVersioned Cache-Control "public, max-age=31536000, immutable"
+                header @shareCardBare Cache-Control "public, max-age=300"
                 header @shareCard Content-Type image/jpeg
                 file_server @shareCard
                 respond 404
