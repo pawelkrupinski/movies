@@ -9299,6 +9299,12 @@
     "vips_cap"
    ]
   },
+  "kinowo_worker_share_cards_poster_load_total": {
+   "result": [
+    "failed",
+    "ok"
+   ]
+  },
   "kinowo_worker_tasks_enqueued_total": {
    "result": [
     "added",

@@ -45,6 +45,18 @@ class ShareCardPostersSpec extends AnyFlatSpec with Matchers {
     rig.download.calls.get(url).get shouldBe 1
   }
 
+  "A film's poster load" should "count once per film: a failing primary whose fallback works is no failure" in {
+    val primary  = "https://multikino.example/403.jpg"
+    val series   = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
+    val download = new CountingDownload(failing = Set(primary, "https://gone.example/a.jpg", "https://gone.example/b.jpg"))
+    val posters  = new ShareCardPosters(tempStore(), download, javaShrinker, series.forCountry("pl"))
+
+    posters.load(film1, Seq(primary, url)) shouldBe defined
+    posters.load("fother", Seq("https://gone.example/a.jpg", "https://gone.example/b.jpg")) shouldBe None
+    (series.posterLoadCount("pl", ok = true), series.posterLoadCount("pl", ok = false)) shouldBe ((1.0, 1.0))
+    PosterFailure.all.map(series.posterFetchCount("pl", _)).sum shouldBe 3.0   // the per-URL detail stays
+  }
+
   "A poster download" should "be abandoned at the byte cap instead of written out" in {
     val body = new Array[Byte](10 * 1024)
     PosterPipeline.copyCapped(new ByteArrayInputStream(body), maxBytes = 4096) shouldBe Left(PosterFailure.TooLarge)

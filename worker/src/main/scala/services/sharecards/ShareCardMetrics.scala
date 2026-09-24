@@ -24,6 +24,7 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
  *  - `kinowo_worker_share_cards_pruned_total{kind,reason}` — deletions by the prune and the budget.
  *  - `kinowo_worker_share_cards_poster_cache_total{result}` — poster cache hits and misses.
  *  - `kinowo_worker_share_cards_poster_fetch_total{result,reason}` — a miss's download + shrink, ok or failed and why.
+ *  - `kinowo_worker_share_cards_poster_load_total{result}` — the same miss once per FILM: did any candidate work.
  *  - `kinowo_worker_share_cards_rescrape_total{outcome}` — Facebook re-scrape requests.
  */
 object ShareCardMetrics {
@@ -80,6 +81,9 @@ object ShareCardMetrics {
     private[ShareCardMetrics] val posterFetch = Counter.builder().name("kinowo_worker_share_cards_poster_fetch")
       .help("Poster fetch + decode on a cache miss per candidate URL: ok, or failed with why (http_4xx, http_5xx, timeout, too_large, decode_error, vips_cap, progressive_estimate, …).")
       .labelNames("country", "result", "reason").register(registry)
+    private[ShareCardMetrics] val posterLoad = Counter.builder().name("kinowo_worker_share_cards_poster_load")
+      .help("A film's poster on a cache miss, once per FILM: ok when any candidate URL worked, failed when none did (the film's card is then drawn without one). poster_fetch counts the URLs.")
+      .labelNames("country", "result").register(registry)
     private[ShareCardMetrics] val rescrapes = Counter.builder().name("kinowo_worker_share_cards_rescrape")
       .help("Facebook re-scrape requests for a film's pages — published before its card, or its card changed in its first week: sent, failed, or disabled (no app credentials).")
       .labelNames("country", "outcome").register(registry)
@@ -93,6 +97,7 @@ object ShareCardMetrics {
       for (r <- Seq("hit", "miss")) posterCache.labelValues(c, r)
       posterFetch.labelValues(c, "ok", PosterFailure.None)
       PosterFailure.all.foreach(posterFetch.labelValues(c, "failed", _))
+      for (r <- Seq("ok", "failed")) posterLoad.labelValues(c, r)
       RescrapeOutcome.all.foreach(rescrapes.labelValues(c, _))
     }
 
@@ -105,6 +110,8 @@ object ShareCardMetrics {
     /** Test seam: how many poster fetches ended `ok` or failed. */
     private[sharecards] def posterFetchCount(country: String, reason: String): Double =
       posterFetch.labelValues(country, if (reason == PosterFailure.None) "ok" else "failed", reason).get()
+    /** Test seam: how many films' poster loads ended `ok` or failed. */
+    private[sharecards] def posterLoadCount(country: String, ok: Boolean): Double = posterLoad.labelValues(country, if (ok) "ok" else "failed").get()
     /** Test seam: renders counted by outcome and reason. */
     private[sharecards] def renderCount(country: String, outcome: String, reason: String): Double = renders.labelValues(country, outcome, reason).get()
   }
@@ -123,6 +130,8 @@ final class ShareCardMetrics private[sharecards] (country: String, series: Optio
   /** A poster fetch's outcome: [[PosterFailure.None]] for one that worked, else why it failed. */
   def posterFetch(reason: String): Unit =
     series.foreach(_.posterFetch.labelValues(country, if (reason == PosterFailure.None) "ok" else "failed", reason).inc())
+  /** A film's poster load on a cache miss: did any of its candidates work. */
+  def posterLoad(ok: Boolean): Unit = series.foreach(_.posterLoad.labelValues(country, if (ok) "ok" else "failed").inc())
   def rescrape(outcome: String): Unit = series.foreach(_.rescrapes.labelValues(country, outcome).inc())
   def coverage(ratio: Double): Unit = series.foreach(_.coverage.labelValues(country).set(ratio))
 

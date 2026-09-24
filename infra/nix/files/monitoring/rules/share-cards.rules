@@ -71,27 +71,30 @@ groups:
             disk, FilesystemSpaceLow on k3s-worker-1), or find why the corpus holds more films on
             screen than before.
 
-      # POSTER UPSTREAMS FAILING. A cache miss fetches and decodes a poster; when most of those fail
-      # the new cards cannot be drawn and films are published with the fallback image. At least ten
-      # attempts in the window, so two failures out of three at 4am is not a page.
+      # POSTER UPSTREAMS FAILING. A cache miss fetches and decodes a film's poster, walking its
+      # candidates (the primary, then the cinema fallbacks); when most FILMS end with none, the new
+      # cards are drawn without a poster. Counted per film (`poster_load`), not per URL
+      # (`poster_fetch`): a primary that always fails -- a Multikino origin refusing the datacentre --
+      # beside a fallback that works is a healthy film, and per URL it read as a 50% failure. At
+      # least ten films in the window, so two failures out of three at 4am is not a page.
       - alert: ShareCardPosterFetchFailing
         expr: >-
           (
-            sum by (country) (increase(kinowo_worker_share_cards_poster_fetch_total{result="failed"}[30m]))
-            / sum by (country) (increase(kinowo_worker_share_cards_poster_fetch_total[30m]))
+            sum by (country) (increase(kinowo_worker_share_cards_poster_load_total{result="failed"}[30m]))
+            / sum by (country) (increase(kinowo_worker_share_cards_poster_load_total[30m]))
           ) > 0.5
-          and on (country) sum by (country) (increase(kinowo_worker_share_cards_poster_fetch_total[30m])) >= 10
+          and on (country) sum by (country) (increase(kinowo_worker_share_cards_poster_load_total[30m])) >= 10
         for: 30m
         labels:
           severity: warning
         annotations:
-          summary: "{{ $labels.country }}'s share-card poster fetches are failing ({{ $value | humanizePercentage }})"
+          summary: "{{ $labels.country }}'s share-card posters are failing for {{ $value | humanizePercentage }} of films"
           description: >-
-            More than half of the poster downloads + decodes behind new share cards failed over the
-            last half hour. Each failure is one poster URL of a film (all its renditions, e.g. TMDB
-            w780 then the original) unreachable, over the 50 MB download cap, or undecodable. A film
-            none of whose posters work gets a card WITHOUT a poster meanwhile, re-tried daily. The
-            counter's `reason` label says why (http_4xx, http_5xx, timeout, too_large, decode_error,
-            vips_cap, progressive_estimate, ...), and the worker logs `share card: poster for <film>
-            from <host> failed: <reason>` -- check whether one host or one reason dominates;
-            `kinowo_worker_http_total` does not see these fetches.
+            For more than half of the films whose poster was fetched over the last half hour, not one
+            poster URL worked -- every candidate (all its renditions, e.g. TMDB w780 then the
+            original) unreachable, over the 50 MB download cap, or undecodable. Those films get a card
+            WITHOUT a poster meanwhile, re-tried daily. `kinowo_worker_share_cards_poster_fetch_total`
+            counts the URLs, with a `reason` label saying why (http_4xx, http_5xx, timeout, too_large,
+            decode_error, vips_cap, progressive_estimate, ...), and the worker logs `share card: poster
+            for <film> from <host> failed: <reason>` -- check whether one host or one reason
+            dominates; `kinowo_worker_http_total` does not see these fetches.

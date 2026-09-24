@@ -316,7 +316,9 @@ class ShareCardPosters(store: ShareCardStore, download: PosterDownload, shrinker
       case hit @ Some(_) => metrics.posterCache(hit = true); hit
       case None =>
         metrics.posterCache(hit = false)
-        candidates.iterator.flatMap(url => fetchAndCache(filmId, url).map(url -> _)).nextOption()
+        val loaded = candidates.iterator.flatMap(url => fetchAndCache(filmId, url).map(url -> _)).nextOption()
+        if (candidates.nonEmpty) metrics.posterLoad(ok = loaded.isDefined)
+        loaded
     }
 
   private def cached(filmId: String, candidates: Seq[String]): Option[(String, BufferedImage)] = {
