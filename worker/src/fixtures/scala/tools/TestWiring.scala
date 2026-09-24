@@ -75,7 +75,7 @@ trait TestWiring extends WorkerWiring {
     case TaskType.EnrichDetails                                    => Some(detailDueWindow)
     case rating if ReaskCountingTaskQueue.StampedTypes(rating)     => Some(ratingDueWindow)
     case _                                                         => None
-  })
+  }, now = () => clock.instant())
   override lazy val taskQueue: TaskQueue = new services.metrics.MeteredTaskQueue(reaskCountingQueue, taskMetrics)
   override lazy val freshnessStore: FreshnessStore = new InMemoryFreshnessStore
 

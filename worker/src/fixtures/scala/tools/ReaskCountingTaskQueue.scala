@@ -29,9 +29,9 @@ import scala.jdk.CollectionConverters._
  */
 final class ReaskCountingTaskQueue(delegate: TaskQueue, freshness: => FreshnessStore,
                                    dueWindowFor: TaskType => Option[DueWindow],
-                                   // The producers gate on the system clock (no Clock seam on the
-                                   // detail/rating enqueue path), so "is it due?" must be asked of it too.
-                                   now: () => Instant = () => Instant.now()) extends TaskQueue {
+                                   // The clock the producers gate on — the wiring's — so "is it
+                                   // due?" is asked of the same instant they asked it of.
+                                   now: () => Instant) extends TaskQueue {
   private val reasks = new ConcurrentHashMap[TaskType, AtomicLong]()
 
   private val examples = new java.util.concurrent.ConcurrentLinkedQueue[String]()

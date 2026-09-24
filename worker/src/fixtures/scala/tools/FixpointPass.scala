@@ -78,6 +78,10 @@ object FixpointPass {
   def ledger(w: TestWiring, oplog: Option[OplogWrites] = None): ChurnLedger = {
     val ledger = new ChurnLedger()
       .registry(w.workerMetrics.registry, WorkFamilies, isWork)
+      // The stamped task types `isWork` leaves out of `tasks_enqueued` are counted HERE, or
+      // nowhere: without this probe a producer that went round its due gate was invisible.
+      .counters(() => w.reaskCountingQueue.reasked.map { case (t, n) => s"re-asked ${t.name}" -> n.toDouble })
+      .explain(w.reaskCountingQueue.reaskedKeys.mkString("re-asked keys: ", ", ", ""))
     oplog match {
       case Some(writes) => ledger.counter("corpus writes (oplog)")(writes.count())
       case None =>

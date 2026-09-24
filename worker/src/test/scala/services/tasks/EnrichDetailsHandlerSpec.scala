@@ -72,7 +72,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     slot.flatMap(_.synopsis) shouldBe Some("A great film")
     slot.map(_.cast)         shouldBe Some(Seq("Zendaya"))
     slot.map(_.showtimes.size) shouldBe Some(1) // showtimes from the scrape preserved
-    fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich) shouldBe true
+    fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich, specClock.instant()) shouldBe true
     successes(uptime, EnrichmentService) shouldBe 1 // recorded under "<cinema>|enrichment"
   }
 
@@ -218,7 +218,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
 
     h.handle(task) shouldBe Done
-    fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich) shouldBe false
+    fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich, specClock.instant()) shouldBe false
     cache.get(cache.keyOf("Dune", None)).flatMap(_.data.get(KinoApollo)).flatMap(_.synopsis) shouldBe None
     failures(uptime, EnrichmentService) shouldBe 1 // red/yellow on the enrichment bar
   }
@@ -238,7 +238,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
 
     h.handle(task) shouldBe Done
-    fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich) shouldBe true
+    fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich, specClock.instant()) shouldBe true
     failures(uptime, EnrichmentService) shouldBe 1 // still reported — once per window, not once a minute
     // Stamping is "we asked", never "we have data": no detail is invented for the row.
     cache.get(cache.keyOf("Dune", None)).flatMap(_.cinemaData.get(KinoApollo)).flatMap(_.synopsis) shouldBe None
@@ -260,7 +260,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
 
     h.handle(task) shouldBe Done
-    fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich) shouldBe false
+    fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich, specClock.instant()) shouldBe false
     failures(uptime, EnrichmentService) shouldBe 1
     h.handle(task) shouldBe Done // still due, fetched again
     enricher.calls shouldBe 2

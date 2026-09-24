@@ -663,7 +663,8 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), bus, normalizer = titleNormalizer, clock = specClock)
     val queue   = new InMemoryTaskQueue
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo")
-    bus.subscribe(new DetailTaskEnqueuer(enricher, cache, queue, new InMemoryFreshnessStore).onCinemaMovieAdded)
+    bus.subscribe(new DetailTaskEnqueuer(enricher, cache, queue, new InMemoryFreshnessStore,
+      java.time.Clock.fixed(java.time.Instant.parse("2026-06-08T12:00:00Z"), java.time.ZoneOffset.UTC)).onCinemaMovieAdded)
 
     new CinemaScrapeRunner(cache, bus, Set.empty).run(new FakeScraper(KinoApollo, movieWithRef(KinoApollo)))
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L

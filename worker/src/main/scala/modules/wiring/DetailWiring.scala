@@ -46,7 +46,7 @@ trait DetailWiring { self: WorkerWiring =>
   // gate) so they agree on "due" — see [[services.tasks.DueWindow]].
   lazy val enrichDetailsHandler = new EnrichDetailsHandler(
     detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache,
-    freshnessStore, uptimeMonitor, eventBus, detailDueWindow,
+    freshnessStore, uptimeMonitor, eventBus, detailDueWindow, clock = clock,
     screeningTokens = screeningTokens
   )
   // Detail enqueue is event-driven: one enqueuer per deferred cinema fires the
@@ -56,7 +56,7 @@ trait DetailWiring { self: WorkerWiring =>
   // EnrichDetails in one tick, which cascaded into the ResolveTmdb/rating bursts
   // that pinned the shared-CPU credit). Same lever as the scrape/rating reapers.
   lazy val detailEnqueuers: Seq[DetailTaskEnqueuer] =
-    detailEnrichers.map(de => new DetailTaskEnqueuer(de, movieCache, taskQueue, freshnessStore))
+    detailEnrichers.map(de => new DetailTaskEnqueuer(de, movieCache, taskQueue, freshnessStore, clock))
   def maxDetailEnqueuePerTick: Int = Env.positiveLong("KINOWO_DETAIL_MAX_ENQUEUE_PER_TICK", 50L).toInt
   // How often the detail reaper wakes to enqueue the now-due slice (the spread
   // granularity). Finer = flatter per-minute `EnrichDetails` trickle on the
@@ -66,5 +66,5 @@ trait DetailWiring { self: WorkerWiring =>
     Env.positiveLong("KINOWO_DETAIL_TICK_INTERVAL_SECONDS", DetailReaper.DefaultTickInterval.toSeconds).seconds
   lazy val detailReaper = new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore, eventBus,
     dueWindow = detailDueWindow, tickInterval = detailTickInterval, maxEnqueuePerTick = maxDetailEnqueuePerTick,
-    runStore = scheduledRunStore)
+    runStore = scheduledRunStore, clock = clock)
 }

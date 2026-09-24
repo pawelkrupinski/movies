@@ -84,10 +84,10 @@ trait ResolutionWiring { self: WorkerWiring =>
     // enqueuer the EnrichmentReaper walks the corpus with, so a newcomer and a
     // reaper sweep share the eligibility + due gate. A fold is a trickle, so this
     // doesn't recreate the old TmdbResolved corpus-wide burst.
-    enqueueNewcomerRatings = (key, record) => { ratingEnqueuer.enqueueDueFor(key, record, java.time.Instant.now()); () },
+    enqueueNewcomerRatings = (key, record) => { ratingEnqueuer.enqueueDueFor(key, record, clock.instant()); () },
     // A (re)resolve forces every rating source due again — heals the scores a forced
     // re-resolve strips, which the cadence would otherwise keep from re-fetching.
-    forceRatingRefresh = (key, record) => { ratingEnqueuer.enqueueDueFor(key, record, java.time.Instant.now(), force = true); () },
+    forceRatingRefresh = (key, record) => { ratingEnqueuer.enqueueDueFor(key, record, clock.instant(), force = true); () },
     forgetResolutions = cleanTitle => resolutionCaches.foreach(_.forget(cleanTitle)),
     letterboxdIdResolver = Some(letterboxdIdResolver),
     // Same WikidataClient ImdbIdResolver uses — lets a tmdbId-less row with a

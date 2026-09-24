@@ -14,12 +14,14 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class DetailTaskEnqueuerSpec extends AnyFlatSpec with Matchers {
 
+  private val clock = java.time.Clock.fixed(java.time.Instant.parse("2026-06-08T12:00:00Z"), java.time.ZoneOffset.UTC)
+
   private def fixture = {
     val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer)
     val queue    = new InMemoryTaskQueue
     val fresh    = new InMemoryFreshnessStore
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo")
-    val enqueuer = new DetailTaskEnqueuer(enricher, cache, queue, fresh)
+    val enqueuer = new DetailTaskEnqueuer(enricher, cache, queue, fresh, clock)
     (cache, queue, fresh, enqueuer)
   }
 
@@ -48,7 +50,7 @@ class DetailTaskEnqueuerSpec extends AnyFlatSpec with Matchers {
 
   it should "not enqueue when the detail is already fresh" in {
     val (cache, queue, fresh, enqueuer) = fixture
-    fresh.markFresh(EnrichDetailsTasks.dedupKey("kino-apollo", cache.keyOf("Dune", None)), FreshnessKind.DetailEnrich)
+    fresh.markFresh(EnrichDetailsTasks.dedupKey("kino-apollo", cache.keyOf("Dune", None)), FreshnessKind.DetailEnrich, clock.instant())
     enqueuer.onCinemaMovieAdded(CinemaMovieAdded(KinoApollo, "Dune", None, Some("http://ref")))
     waiting(queue) shouldBe 0L
   }

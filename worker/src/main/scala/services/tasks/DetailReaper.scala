@@ -197,7 +197,7 @@ class DetailReaper(
     cinemaData.keysIterator.exists { venue =>
       enrichersByCinema.getOrElse(venue, Nil).exists { e =>
         e.nativeDetailRefIn(cinemaData).isDefined &&
-          !freshness.isFresh(EnrichDetailsTasks.dedupKey(e.detailGroup, key), FreshnessKind.DetailEnrich)
+          !freshness.isFresh(EnrichDetailsTasks.dedupKey(e.detailGroup, key), FreshnessKind.DetailEnrich, clock.instant())
       }
     }
   }

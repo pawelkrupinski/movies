@@ -21,12 +21,15 @@ class DetailTaskEnqueuer(
   enricher:  DetailEnricher,
   cache:     MovieCacheReader,
   queue:     TaskQueue,
-  freshness: FreshnessStore
+  freshness: FreshnessStore,
+  // The worker's one clock: "stale" has to be judged on the instant the reaper and the
+  // handler judge "due" on, or the two disagree about the same stamp.
+  clock:     java.time.Clock
 ) {
 
   val onCinemaMovieAdded: PartialFunction[DomainEvent, Unit] = {
     case CinemaMovieAdded(c, title, year, Some(ref)) if c == enricher.cinema =>
-      EnrichDetailsTasks.enqueueIfStale(queue, freshness, enricher, cache.keyOf(title, year), ref)
+      EnrichDetailsTasks.enqueueIfStale(queue, freshness, enricher, cache.keyOf(title, year), ref, clock.instant())
       ()
   }
 }

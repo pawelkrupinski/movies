@@ -46,9 +46,10 @@ object EnrichDetailsTasks {
    *  [[enqueueIfDue]] instead — it must gate on the same [[DueWindow]] the handler
    *  re-gates on, or it churns the queue. (`!isFresh ⟹ isDue`, so a task these
    *  one-shot paths enqueue is always still due at the handler — never churned.) */
-  def enqueueIfStale(queue: TaskQueue, freshness: FreshnessStore, enricher: DetailEnricher, key: CacheKey, ref: String): Boolean = {
+  def enqueueIfStale(queue: TaskQueue, freshness: FreshnessStore, enricher: DetailEnricher, key: CacheKey, ref: String,
+                     now: Instant): Boolean = {
     val dk = dedupKey(enricher.detailGroup, key)
-    !freshness.isFresh(dk, FreshnessKind.DetailEnrich) &&
+    !freshness.isFresh(dk, FreshnessKind.DetailEnrich, now) &&
       queue.enqueue(TaskType.EnrichDetails, dk, payload(enricher, key, ref)) == EnqueueResult.Added
   }
 
@@ -147,7 +148,7 @@ class EnrichDetailsHandler(
             // cleared, so it stayed out of the read model — invisible on the site —
             // permanently. `reapStuckPending` can now let it through.
             uptime.recordFailure(service, s"detail page gone (HTTP $code) for $label")
-            freshness.markFresh(key, FreshnessKind.DetailEnrich)
+            freshness.markFresh(key, FreshnessKind.DetailEnrich, clock.instant())
             Done
           case DetailFetchOutcome.Fetched(detail) =>
             val title  = task.payload.getOrElse(EnrichDetailsTasks.TitleKey, "")
@@ -216,8 +217,8 @@ class EnrichDetailsHandler(
                                     else detail.mergeInto(existing, screeningTokens)
                                   })),
                 detailPending = false))
-            freshness.markFresh(key, FreshnessKind.DetailEnrich)
-            if (merged) freshness.markFresh(EnrichDetailsTasks.readMarker(key), FreshnessKind.DetailEnrich)
+            freshness.markFresh(key, FreshnessKind.DetailEnrich, clock.instant())
+            if (merged) freshness.markFresh(EnrichDetailsTasks.readMarker(key), FreshnessKind.DetailEnrich, clock.instant())
             uptime.recordSuccess(service)
             // The detail just landed → enrich the film now, with the better hints.
             if (wasPending) bus.publish(MovieDetailsComplete.forRow(title, year, cache.get(rowKey)))
