@@ -367,6 +367,39 @@ final class StateSyncServiceTests: XCTestCase {
         _ = sync
     }
 
+    /// A pick whose debounce fires while an earlier pick's push is on the
+    /// wire waits for that push — and must still be sent when that push
+    /// FAILS: the failure was the older pick's, not this one's. It used to
+    /// wait on the failed send and then give up, leaving the newer pick
+    /// unsent until the next reconcile. Mirrors Android, whose waiter takes
+    /// the send lock after the failure and sends it.
+    func testAPickWaitingOnAFailedPushIsSentAfterIt() async throws {
+        languageClient.remote = "de"
+        let debounce = ManualDebounceScheduler()
+        let sync = StateSyncService(prefs: prefs, userPublisher: userSubject.eraseToAnyPublisher(),
+                                    client: client, languageClient: languageClient, debounceScheduler: debounce)
+        login()
+        try await waitUntil { self.prefs.selectedLanguage == "de" && self.languageClient.inFlight == 0 }
+
+        // Only the held push fails: it arms the failure once released, and
+        // disarms it as it answers.
+        let gate = AsyncGate()
+        languageClient.beforePush = { await gate.wait(); self.languageClient.shouldFailPush = true }
+        languageClient.onPush = { _ in self.languageClient.shouldFailPush = false }
+        prefs.setLanguage("es")
+        debounce.fireAll()
+        try await waitUntil { self.languageClient.pushesStarted == 1 }
+        languageClient.beforePush = nil
+        prefs.setLanguage("fr")
+        debounce.fireAll()
+        await Task.yield()
+        await gate.open()
+
+        try await waitUntil { self.languageClient.pushes == ["fr"] && self.languageClient.inFlight == 0 }
+        XCTAssertEqual(languageClient.remote, "fr")
+        _ = sync
+    }
+
     /// A pick made AND sent while a reconcile's fetch is on the wire: the
     /// fetch's answer predates it, so adopting that answer would put the
     /// account's older pick back over the one it just confirmed. Mirrors Android.

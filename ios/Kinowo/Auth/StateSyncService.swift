@@ -261,7 +261,12 @@ final class StateSyncService: ObservableObject {
     /// (`LanguagePushRefused`) drops it and takes the account's pick instead.
     private func sendPendingLanguage() async {
         pendingDebounce = nil
-        if let running = languageSendTask { return await running.value }
+        // Wait out the send on the wire, then send what is still pending: that
+        // send's loop picks up a pick made meanwhile only when it succeeds — a
+        // failure was the older pick's, not this one's. Android's waiters do the
+        // same through `languageSendMutex`.
+        while let running = languageSendTask { await running.value }
+        guard isLoggedIn, pendingLanguage != nil else { return }
         let task = Task { @MainActor [weak self] in
             while let self, self.isLoggedIn, let pending = self.pendingLanguage {
                 let picksBeforeSend = self.languagePicks

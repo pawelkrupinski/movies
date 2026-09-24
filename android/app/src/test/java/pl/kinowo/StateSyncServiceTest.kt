@@ -683,10 +683,6 @@ class StateSyncServiceTest {
         assertEquals("es", prefs.languageState.value)
     }
 
-    /** Picking back to the account's language while another pick's push is
-     *  still in flight: the pick-back matches what the account held when it
-     *  was made, so nothing was sent for it, and the in-flight push then left
-     *  the server on the abandoned pick. The final pick must win. Mirrors iOS. */
     /** Picking back while another pick's push is in flight, when that push
      *  then fails AFTER the server applied it: the account now holds the
      *  abandoned pick, so the pick-back must stay pending and win the next
@@ -743,6 +739,33 @@ class StateSyncServiceTest {
         assertEquals("fr", languageClient.remote)
         assertEquals(1, languageClient.maxPushesInFlight)
         assertEquals(listOf("es", "fr"), languageClient.pushes)
+    }
+
+    /** A pick whose debounce ends while an earlier pick's push is on the wire
+     *  waits for that push — and is still sent when that push FAILS: the
+     *  failure was the older pick's, not this one's. Mirrors iOS. */
+    @Test
+    fun aPickWaitingOnAFailedPushIsSentAfterIt() = runTest(UnconfinedTestDispatcher()) {
+        languageClient.remote = "de"
+        startService()
+        login()
+        advanceUntilIdle()
+
+        val gate = CompletableDeferred<Unit>()
+        languageClient.beforePushResponse = { gate.await(); throw IOException("connection lost") }
+        prefs.setLanguageTag("es")
+        advanceTimeBy(500)
+        runCurrent()
+        languageClient.beforePushResponse = {}
+        prefs.setLanguageTag("fr")
+        advanceTimeBy(1_000)
+        runCurrent()
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals("fr", languageClient.remote)
+        assertEquals(listOf("fr"), languageClient.pushes)
+        assertNull(prefs.pendingLanguagePush())
     }
 
     /** A pick made AND sent while a reconcile's fetch is on the wire: the
@@ -820,6 +843,10 @@ class StateSyncServiceTest {
         assertNull(prefs.pendingLanguagePush())
     }
 
+    /** Picking back to the account's language while another pick's push is
+     *  still in flight: the pick-back matches what the account held when it
+     *  was made, so nothing was sent for it, and the in-flight push then left
+     *  the server on the abandoned pick. The final pick must win. Mirrors iOS. */
     @Test
     fun pickingBackWhileAPushIsInFlightEndsOnTheFinalPick() = runTest(UnconfinedTestDispatcher()) {
         languageClient.remote = "de"
