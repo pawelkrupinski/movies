@@ -11,6 +11,9 @@ common/src/main/**
 worker/src/main/**
 worker/src/fixtures/**
 testkit/src/main/**
+# e2e dependsOn(web): the legs read their schedules through the web's read model and
+# MovieControllerService. Templates and assets cannot move a verdict; the Scala can.
+web/src/main/scala/**
 e2e/**
 build.sbt
 project/**

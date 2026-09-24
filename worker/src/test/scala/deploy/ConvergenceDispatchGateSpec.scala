@@ -55,6 +55,15 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers {
     kick(repo, head, lastRun = base) shouldBe Seq("Country convergence", "US convergence")
   }
 
+  // e2e depends on web: the legs project and read their schedules through the web's own
+  // read model and `MovieControllerService`, so a web-only change can move a verdict.
+  it should "dispatch for a push that touches the web code the legs read their schedules through" in {
+    val (repo, base) = repoWithBase()
+    val head = repo.commit("web", "web/src/main/scala/controllers/MovieControllerService.scala" -> "// v2\n")
+
+    kick(repo, head, lastRun = base) should have size 2
+  }
+
   // The base is the suite's last run, not the push's parent: Main's own lane cancels
   // superseded pushes, so a pipeline commit can sit in an EARLIER push whose Main run never
   // reached the dispatch — and a diff from this push's parent would never see it.
