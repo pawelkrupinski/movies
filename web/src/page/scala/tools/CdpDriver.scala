@@ -28,7 +28,8 @@ import java.util.concurrent.{CompletableFuture, ConcurrentHashMap, Executors, Ti
  * isolated tab. The tab is closed at the end of each block; the Chrome
  * process is closed when the spec finishes. `tryStart` returns `None`
  * when Chrome isn't installed locally — callers should `cancel` cleanly
- * so CI that lacks a browser doesn't fail the whole suite.
+ * so CI that lacks a browser doesn't fail the whole suite — and THROWS
+ * when an installed Chrome fails to start, which is a failure.
  */
 object Chrome {
 
@@ -100,7 +101,6 @@ object Chrome {
    *  string substitution is enough — no launch-flag/stealth arms race
    *  needed. */
   def tryStart(proxy: Option[ProxyConfig] = None, spoofHeadlessUserAgent: Boolean = false): Option[Chrome] = findExecutable().flatMap { exe =>
-    val port    = findFreePort()
     val userDirectory = Files.createTempDirectory("chrome-cdp-test-")
     val pb = new ProcessBuilder(
       (Seq(
@@ -118,7 +118,9 @@ object Chrome {
         // WebSocket handshakes from clients that don't send an Origin
         // header (our java.net.http.WebSocket doesn't) with a 403.
         "--remote-allow-origins=*",
-        s"--remote-debugging-port=$port",
+        // 0: CHROME picks a free port and binds it in one step, and writes it to
+        // `DevToolsActivePort` in its own profile — see `activePort`.
+        "--remote-debugging-port=0",
         s"--user-data-dir=${userDirectory.toString}"
       ) ++ proxy.map(p => s"--proxy-server=http://${p.host}:${p.port}")
         ++ Seq("about:blank"))*
@@ -130,24 +132,15 @@ object Chrome {
       val buf = new Array[Byte](4096)
       try while (in.read(buf) >= 0) () catch { case _: Throwable => () }
     }, "chrome-stdout-drain").start()
-    val deadline = System.nanoTime() / 1000000 + 10_000
-    var ready = false
-    while (!ready && System.nanoTime() / 1000000 < deadline) {
-      try {
-        httpGet(s"http://localhost:$port/json/version")
-        ready = true
-      } catch {
-        case _: Throwable => Thread.sleep(100)
-      }
-    }
-    if (ready) {
+    activePort(process, userDirectory) match {
+    case Some(port) =>
       // Print the Chrome version + binary path to the test log so any
       // "passes locally / fails on CI" failure has a one-liner diff on
       // the version that ran. Chrome's `/json/version` endpoint returns
       // it as JSON. See [[feedback-ci-chrome-version-drift]].
       var userAgentOverride: Option[String] = None
       try {
-        val info = httpGet(s"http://localhost:$port/json/version")
+        val info = httpGet(s"http://$Loopback:$port/json/version")
         val version = """"Browser":\s*"([^"]+)"""".r.findFirstMatchIn(info).map(_.group(1)).getOrElse("unknown")
         System.err.println(s"[CdpDriver] Chrome=$version path=$exe")
         if (spoofHeadlessUserAgent)
@@ -155,15 +148,62 @@ object Chrome {
             .map(_.group(1).replace("HeadlessChrome", "Chrome"))
       } catch { case _: Throwable => () }
       Some(new Chrome(process, port, userDirectory, proxy, userAgentOverride))
-    } else {
+    case None =>
+      // Installed but not started is a FAILURE, not "Chrome not installed": callers
+      // cancel on None, which hid a start that timed out as a skipped spec.
+      val exited = Option.when(!process.isAlive)(process.exitValue())
       process.destroyForcibly()
-      None
+      deleteProfile(userDirectory)
+      throw new IllegalStateException(
+        s"Chrome at $exe did not open its DevTools port within ${LaunchTimeoutMs / 1000}s" +
+          exited.fold("")(code => s" (exited with $code)"))
     }
   }
 
-  private def findFreePort(): Int = {
-    val serverSocket = new java.net.ServerSocket(0)
-    try serverSocket.getLocalPort finally serverSocket.close()
+  private[tools] def deleteProfile(profile: Path): Unit =
+    try Files.walk(profile).sorted(Comparator.reverseOrder()).forEach(p =>
+      try Files.deleteIfExists(p) catch { case _: Throwable => () })
+    catch { case _: Throwable => () }
+
+  /** The address DevTools listens on: an explicit IPv4 loopback, never `localhost`,
+   *  which may resolve to `::1` — the family a Chrome falls back to when the IPv4 port
+   *  is taken. */
+  private[tools] val Loopback = "127.0.0.1"
+
+  /** How long a launch may take to open its DevTools port. Generous: on a machine
+   *  running several agents' builds a cold Chrome start took over the old 10s, and
+   *  the spec then cancelled as "Chrome not installed". */
+  private val LaunchTimeoutMs = 45_000
+
+  /** The DevTools port `process` bound, read from `DevToolsActivePort` in its OWN
+   *  profile directory — so it is this process's port and no other's.
+   *
+   *  It used to be chosen here (bind port 0, read it, close, pass it to Chrome) and
+   *  probed at `localhost`. Between the close and Chrome's bind, any process could take
+   *  the port — another agent's Chrome among them. Chrome then logs `bind() failed:
+   *  Address already in use`, listens on `[::1]` instead and runs on, while the probe
+   *  reached the OTHER Chrome over IPv4 and drove it: tabs opened in a stranger's
+   *  browser, until its owner's spec finished and closed it under ours ("Output
+   *  closed" mid-run). A port taken by anything else read as a Chrome that never
+   *  started, and the spec cancelled. Reproduced by hand: a second Chrome given a
+   *  held port answered on ::1 while `/json/version` on the port was the first's.
+   *
+   *  None when the process exits or the deadline passes first. */
+  private[tools] def activePort(process: Process, profile: Path): Option[Int] = {
+    val file     = profile.resolve("DevToolsActivePort")
+    val deadline = System.nanoTime() / 1000000 + LaunchTimeoutMs
+    var port     = Option.empty[(Int, String)]
+    while (port.isEmpty && process.isAlive && System.nanoTime() / 1000000 < deadline) {
+      port = scala.util.Try(Files.readAllLines(file)).toOption.collect {
+        case lines if lines.size >= 2 && lines.get(0).trim.forall(_.isDigit) && lines.get(0).trim.nonEmpty =>
+          (lines.get(0).trim.toInt, lines.get(1).trim)
+      }
+      if (port.isEmpty) Thread.sleep(50)
+    }
+    // Answering, and as the browser that wrote the file: its own browser endpoint.
+    port.filter { case (p, browserPath) =>
+      scala.util.Try(httpGet(s"http://$Loopback:$p/json/version")).toOption.exists(_.contains(s"$p$browserPath"))
+    }.map(_._1)
   }
 
   /** `scheme://host[:port]` of `url` — the key Chrome's per-origin storage is filed under. */
@@ -199,6 +239,9 @@ class Chrome private[tools] (
                               proxy: Option[Chrome.ProxyConfig] = None,
                               userAgentOverride: Option[String] = None
                             ) extends AutoCloseable {
+  /** For the launch spec: which browser process and DevTools port this driver holds. */
+  private[tools] def browserPid: Long = process.pid()
+  private[tools] def debuggingPort: Int = port
 
   /** Open `url` in a fresh tab, run `body`, then close the tab. The page
    *  is loaded synchronously — `body` runs after `document.readyState`
@@ -235,7 +278,7 @@ class Chrome private[tools] (
     // queries that look like phantom page failures. Driving the navigation
     // through `Page.navigate` over CDP is the supported path that doesn't
     // depend on the legacy query-string URL.
-    val newTab = Json.parse(Chrome.httpPut(s"http://localhost:$port/json/new"))
+    val newTab = Json.parse(Chrome.httpPut(s"http://${Chrome.Loopback}:$port/json/new"))
     val wsUrl  = (newTab \ "webSocketDebuggerUrl").as[String]
     val tabId  = (newTab \ "id").as[String]
     val page = new CdpPage(URI.create(wsUrl))
@@ -282,7 +325,7 @@ class Chrome private[tools] (
       body(page)
     } finally {
       try page.close() catch { case _: Throwable => () }
-      try Chrome.httpGet(s"http://localhost:$port/json/close/$tabId") catch { case _: Throwable => () }
+      try Chrome.httpGet(s"http://${Chrome.Loopback}:$port/json/close/$tabId") catch { case _: Throwable => () }
     }
   }
 
@@ -292,11 +335,7 @@ class Chrome private[tools] (
     // Best-effort cleanup of the temp user-data directory. Don't fail the
     // spec if a lock file lingers — Chrome occasionally holds one open
     // for a tick after the process exits.
-    try {
-      Files.walk(userDataDirectory).sorted(Comparator.reverseOrder()).forEach(p =>
-        try Files.deleteIfExists(p) catch { case _: Throwable => () }
-      )
-    } catch { case _: Throwable => () }
+    Chrome.deleteProfile(userDataDirectory)
   }
 }
 
@@ -357,6 +396,11 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
           val message = Json.parse(text)
           (message \ "id").asOpt[Int] match {
             case Some(id) => Option(pending.remove(id)).foreach(_.complete(message))
+            // Chrome's own word that this page's target is gone (closed, or its
+            // renderer crashed): the socket may stay open, and nothing sent on it will
+            // ever be answered.
+            case None if (message \ "method").asOpt[String].contains("Inspector.detached") =>
+              connectionLost(s"Inspector.detached: ${(message \ "params" \ "reason").asOpt[String].getOrElse("?")}")
             case None     =>
               for {
                 method  <- (message \ "method").asOpt[String]
