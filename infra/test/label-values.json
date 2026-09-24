@@ -9571,6 +9571,8 @@
     "halt.target",
     "k3s.service",
     "kexec.target",
+    "kinowo-heap-dumps.service",
+    "kinowo-heap-dumps.timer",
     "kmod-static-nodes.service",
     "lastlog2-import.service",
     "linger-users.service",
@@ -9757,7 +9759,10 @@
     "mongodb",
     "node",
     "prometheus"
-   ]
+   ],
+   "role": {
+    "same_as": "node_systemd_unit_state"
+   }
   }
  },
  "window_days": 14

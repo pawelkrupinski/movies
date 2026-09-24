@@ -197,3 +197,69 @@ tests:
       - eval_time: 1h45m
         alertname: HeapDumpWritten
         exp_alerts: []
+
+  # THE TIMER BEHIND HeapDumpWritten. That rule reads a textfile the node's kinowo-heap-dumps timer
+  # writes, so a timer that stops -- or a node whose first, hand-applied switch never happened
+  # (docs/heap-dumps.md) -- leaves it unable to fire and the budget unenforced, and nothing else
+  # says so. The timer runs every 15 minutes: it publishes 0..45m, then stops.
+  - interval: 15m
+    input_series:
+      - series: 'kinowo_heapdumps_prune_last_success_timestamp_seconds{host="k3s-worker-1",job="node",role="k3s-worker"}'
+        values: '0 900 1800 2700 2700+0x16'
+    alert_rule_test:
+      # An hour after its last run: a few missed passes are not yet a stopped timer.
+      - eval_time: 1h45m
+        alertname: HeapDumpBudgetStale
+        exp_alerts: []
+      - eval_time: 3h
+        alertname: HeapDumpBudgetStale
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              host: k3s-worker-1
+              job: node
+              role: k3s-worker
+            exp_annotations:
+              summary: "k3s-worker-1 has not pruned or reported its heap dumps for over 2 hours"
+              description: "The kinowo-heap-dumps timer holds the node's heap dumps to their budget and publishes the `kinowo_heapdumps_*` series HeapDumpWritten reads, so while it is stopped a new dump neither alerts nor is bounded by anything but each container's own boot prune. `systemctl status kinowo-heap-dumps.service kinowo-heap-dumps.timer` and `journalctl -u kinowo-heap-dumps` on the node; the script is infra/nix/files/heap-dumps.sh."
+
+  # ...and the node that never published it at all: the k3s worker fires, the k3s SERVER on
+  # monitoring-1 (which runs k3s.service too, but hosts no kinowo pod) and mongo-1 never do.
+  - interval: 1m
+    input_series:
+      - series: 'up{host="k3s-worker-1",instance="10.20.0.12:9100",job="node",role="k3s-worker"}'
+        values: '1+0x150'
+      - series: 'up{host="monitoring-1",instance="10.20.0.11:9100",job="node",role="monitoring"}'
+        values: '1+0x150'
+      - series: 'up{host="mongo-1",instance="10.20.0.13:9100",job="node",role="mongodb"}'
+        values: '1+0x150'
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: HeapDumpBudgetMetricAbsent
+        exp_alerts: []
+      - eval_time: 1h15m
+        alertname: HeapDumpBudgetMetricAbsent
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              host: k3s-worker-1
+              instance: 10.20.0.12:9100
+              job: node
+              role: k3s-worker
+            exp_annotations:
+              summary: "k3s-worker-1 has never reported its heap-dump budget"
+              description: "HeapDumpBudgetStale and HeapDumpWritten are comparisons and cannot fire without the `kinowo_heapdumps_*` series, so a heap dump on this node would land unannounced. Either `fleet.heapDumps.enable` is off here or its units were never switched in -- auto-apply refuses the switch that first introduces them; docs/heap-dumps.md has the command. AN ABSENT SERIES IS NOT A NODE WITH NO DUMPS."
+
+  - interval: 1m
+    input_series:
+      - series: 'up{host="k3s-worker-1",instance="10.20.0.12:9100",job="node",role="k3s-worker"}'
+        values: '1+0x150'
+      - series: 'kinowo_heapdumps_prune_last_success_timestamp_seconds{host="k3s-worker-1",instance="10.20.0.12:9100",job="node",role="k3s-worker"}'
+        values: '0+60x150'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: HeapDumpBudgetMetricAbsent
+        exp_alerts: []
+      - eval_time: 2h
+        alertname: HeapDumpBudgetStale
+        exp_alerts: []

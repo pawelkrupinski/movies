@@ -191,3 +191,47 @@ groups:
             /var/lib/kinowo/heapdumps/{{ $labels.dir }}/ on k3s-worker-1 and only the 3 newest per
             directory are kept, so COPY IT OFF FIRST: see docs/heap-dumps.md for scp and reading
             it. `kinowo_heapdumps_files` and `kinowo_heapdumps_bytes` say what is held.
+
+      # THE TIMER HeapDumpWritten STANDS ON. That rule, and the node-wide budget, both come from
+      # the kinowo-heap-dumps timer (modules/fleet/heap-dumps.nix), so a timer that stops leaves a
+      # dump that lands unannounced and a hostPath bounded only by each container's boot prune --
+      # the same "the collector stopped" shape ContainerImageGarbageCollectionStale watches for
+      # the image store, on a 15-minute timer instead of a daily one. TWO HOURS is eight missed
+      # runs (a run may take up to its 30-minute TimeoutStartSec after a crash loop), so a slow
+      # pass or a node reboot does not page.
+      - alert: HeapDumpBudgetStale
+        expr: time() - kinowo_heapdumps_prune_last_success_timestamp_seconds > 2 * 3600
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} has not pruned or reported its heap dumps for over 2 hours"
+          description: >-
+            The kinowo-heap-dumps timer holds the node's heap dumps to their budget and publishes
+            the `kinowo_heapdumps_*` series HeapDumpWritten reads, so while it is stopped a new
+            dump neither alerts nor is bounded by anything but each container's own boot prune.
+            `systemctl status kinowo-heap-dumps.service kinowo-heap-dumps.timer` and
+            `journalctl -u kinowo-heap-dumps` on the node; the script is
+            infra/nix/files/heap-dumps.sh.
+
+      # ...AND THE NODE THAT NEVER PUBLISHED IT. The rule above is a comparison and cannot fire on
+      # a series that is not there -- which is exactly the state a new unit leaves the node in
+      # until somebody switches it in by hand, since auto-apply refuses the switch that first
+      # introduces a unit. Joined on `role="k3s-worker"`, the node every kinowo pod is pinned to
+      # and the only one with `fleet.heapDumps.enable`: `k3s.service` would not do, monitoring-1
+      # runs the k3s SERVER and hosts no kinowo pod. An hour covers the first run plus its
+      # randomised delay.
+      - alert: HeapDumpBudgetMetricAbsent
+        expr: >-
+          up{job="node",role="k3s-worker"} == 1
+            unless on (host) kinowo_heapdumps_prune_last_success_timestamp_seconds
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} has never reported its heap-dump budget"
+          description: >-
+            HeapDumpBudgetStale and HeapDumpWritten are comparisons and cannot fire without the
+            `kinowo_heapdumps_*` series, so a heap dump on this node would land unannounced.
+            Either `fleet.heapDumps.enable` is off here or its units were never switched in --
+            auto-apply refuses the switch that first introduces them; docs/heap-dumps.md has the
+            command. AN ABSENT SERIES IS NOT A NODE WITH NO DUMPS.
