@@ -4,6 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.nio.file.{Files, Paths}
+import scala.jdk.CollectionConverters.*
 import scala.sys.process.*
 
 /**
@@ -72,6 +73,38 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers {
     val head = repo.commit("web", "web/src/main/scala/controllers/MovieControllerService.scala" -> "// v2\n")
 
     kick(repo, head, lastRun = base) should have size 2
+  }
+
+  it should "not dispatch for web code the legs never read" in {
+    val (repo, base) = repoWithBase()
+    val head = repo.commit("web", "web/src/main/scala/controllers/MovieController.scala" -> "// v2\n",
+      "web/src/main/twirl/views/film.scala.html" -> "<p>v2</p>\n")
+
+    kick(repo, head, lastRun = base) shouldBe empty
+  }
+
+  // The list names web sources one by one, so a dependency added to the schedule reader
+  // tomorrow must be listed too: every web source it reaches, by the top-level names it
+  // mentions, transitively.
+  it should "list every web source the legs' schedule reader reaches" in {
+    val sources = java.nio.file.Files.walk(Paths.get("web/src/main/scala")).iterator().asScala
+      .filter(_.toString.endsWith(".scala")).map(p => p.toString -> Files.readString(p)).toMap
+    val Defined = """(?m)^(?:(?:final|sealed|abstract|private(?:\[\w+\])?|implicit)\s+)*(?:case\s+class|class|object|trait|enum)\s+(\w+)""".r
+    val definedIn: Map[String, Set[String]] = sources.toSeq
+      .flatMap { case (path, src) => Defined.findAllMatchIn(src).map(_.group(1) -> path) }
+      .groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap
+    def withoutComments(src: String) = src.replaceAll("(?s)/\\*.*?\\*/", "").replaceAll("//[^\n]*", "")
+    val start   = "web/src/main/scala/controllers/MovieControllerService.scala"
+    val reached = Iterator.iterate((Set(start), Set(start))) { case (seen, frontier) =>
+      val next = frontier.flatMap(f => """\b[A-Z]\w*\b""".r.findAllIn(withoutComments(sources(f))))
+        .flatMap(definedIn.getOrElse(_, Set.empty)) -- seen
+      (seen ++ next, next)
+    }.dropWhile(_._2.nonEmpty).next()._1
+
+    val listed = Files.readAllLines(Paths.get(".github/convergence-paths.txt")).asScala.map(_.trim)
+      .filterNot(l => l.isEmpty || l.startsWith("#")).toSeq
+    def covered(path: String) = listed.exists(p => if (p.endsWith("/**")) path.startsWith(p.stripSuffix("**")) else path == p)
+    reached.filterNot(covered) shouldBe empty
   }
 
   // The base is the suite's last run, not the push's parent: Main's own lane cancels
