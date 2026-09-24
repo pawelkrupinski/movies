@@ -121,6 +121,14 @@ sbt 'e2e/testOnly services.movies.FilmScheduleEndToEndSpec'   # writes it, fails
 sbt 'e2e/testOnly services.movies.FilmScheduleEndToEndSpec'   # re-run: must pass (stable)
 ```
 
+Both runs also rewrite `read-model-snapshot.inputs.sha256` beside it: a hash of the
+fixture corpus the snapshot was just proven against (`scripts/read-model-snapshot-inputs.sh`).
+Commit it with the snapshot. The pre-push hook and ci.yml's `test` job compare it against
+the corpus in under a second, so a recorded or deleted fixture that skipped this
+regeneration fails there instead of ten minutes into the e2e shard. A corpus edit that
+did not move the snapshot (dropping captures nothing replays) still needs the rewritten
+stamp committed; one passing run of the spec produces it.
+
 Then regenerate the `expected-*.html` per the section above if rendering shifted,
 and commit all of them together with the production change. Consumers fall back
 to the full pipeline boot when the file is absent, so a forgotten regen is slow,

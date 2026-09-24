@@ -381,6 +381,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     if (!Files.exists(snapshotPath)) {
       Files.createDirectories(snapshotPath.getParent)
       Files.write(snapshotPath, actual.getBytes(StandardCharsets.UTF_8))
+      stampSnapshotInputs()
       fail(s"Read-model snapshot didn't exist — wrote $snapshotPath. Review, commit, and re-run.")
     }
     val expected = new String(Files.readAllBytes(snapshotPath), StandardCharsets.UTF_8)
@@ -396,6 +397,18 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     ) {
       modIds(actual) shouldBe modIds(expected)
     }
+    // Proven equal to what the pipeline makes of THIS corpus, so this is the corpus the
+    // snapshot is fresh for: re-stamp it. A corpus edit whose output did not move (a capture
+    // nothing replays, dropped) needs only this rewrite committed; CI's tree-unchanged check
+    // after the e2e run fails until it is.
+    stampSnapshotInputs()
+  }
+
+  /** The input stamp beside the snapshot — see scripts/read-model-snapshot-inputs.sh, which
+   *  the pre-push hook and ci.yml's `test` job check in seconds. */
+  private def stampSnapshotInputs(): Unit = {
+    val exit = scala.sys.process.Process(Seq("scripts/read-model-snapshot-inputs.sh", "write")).!
+    withClue("scripts/read-model-snapshot-inputs.sh write: ")(exit shouldBe 0)
   }
 
   // Corpus-wide invariants the fold's SETTLE step is supposed to leave standing —

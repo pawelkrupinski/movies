@@ -144,6 +144,12 @@ jobs:
                   python3 -m pip install --quiet timezonefinder
                   scripts/ci/generated-artefacts-drift.sh
 
+            # A fixture-corpus edit that skipped the read-model snapshot's regeneration, in
+            # half a second instead of the e2e shard's ~110s corpus replay. See
+            # scripts/read-model-snapshot-inputs.sh for what the stamp does and does not cover.
+            - name: The read-model snapshot is stamped for this fixture corpus
+              run: scripts/read-model-snapshot-inputs.sh check HEAD
+
             - uses: actions/setup-java@v5
               with:
                   distribution: temurin
