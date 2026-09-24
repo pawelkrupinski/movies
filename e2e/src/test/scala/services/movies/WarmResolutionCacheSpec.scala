@@ -32,8 +32,16 @@ class WarmResolutionCacheSpec extends AnyFlatSpec with Matchers {
 
   private val Fixture = "08-06-2026"
 
+  /** Enrichment pinned to the calling thread. The spec compares TWO independent runs of the
+   *  pipeline, which is only a comparison of the caches when nothing else differs between them —
+   *  and on the default parallel budget something does: the order concurrent resolutions land in.
+   *  Two spellings of one film that resolve to the same tmdbId ('Nowa fala' and 'Unlimited Show -
+   *  Nowa Fala') then fold onto whichever landed first, so the two runs kept different ids for
+   *  the same film about one run in five, and the spec blamed the cache for it. The same pin the
+   *  determinism specs use (`ScrapeOrderDeterminismSpec`), for the same reason. */
   private class CitySlice extends FixtureTestWiring(Fixture) {
     override def scrapeCities: Set[String] = Set("poznan")
+    override lazy val backgroundBudget: tools.ExecutionBudget = new tools.SameThreadExecutionBudget
   }
 
   /** Production's cache, with an in-memory store where production keeps a Mongo collection.
