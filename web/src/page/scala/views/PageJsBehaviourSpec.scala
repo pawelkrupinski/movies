@@ -1083,6 +1083,38 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // A push that never answers used to hold every later pick behind it for the life
+  // of the page. It gives up after LANGUAGE_PUSH_TIMEOUT_MS (shortened here by
+  // speeding up that one timer), and the next pick goes out.
+  it should "give up on a language push that never answers, so the next pick still goes out" in {
+    onLoggedInIndex { page =>
+      awaitOwnReconcile(page)
+      try {
+        page.eval(
+          "window._realFetch = window.fetch; window._realSetTimeout = window.setTimeout; window._langPuts = [];" +
+          "window.setTimeout = function (fn, ms) { return window._realSetTimeout.apply(window, [fn, ms === 10000 ? 50 : ms].concat([].slice.call(arguments, 2))); };" +
+          "window.fetch = function (url, opts) {" +
+          "  if (!/\\/api\\/me\\/state$/.test(String(url)) || !opts || opts.method !== 'PUT') return window._realFetch(url, opts);" +
+          "  window._langPuts.push(JSON.parse(opts.body).language);" +
+          "  if (window._langPuts.length === 1) return new Promise((resolve, reject) => {" +
+          "    if (opts.signal) opts.signal.addEventListener('abort', () => reject(new DOMException('timed out', 'AbortError')));" +
+          "  });" +
+          "  return Promise.resolve(new Response(null, { status: 204 }));" +
+          "}; 0")
+        page.eval("onLanguageChange('es')")
+        page.waitFor("window._langPuts.length === 1", timeoutMs = 5000)
+        page.eval("onLanguageChange('de')")
+        page.waitFor("window._langPuts.length === 2", timeoutMs = 5000)
+        page.evalString("JSON.stringify(window._langPuts)") shouldBe """["es","de"]"""
+        page.waitFor("localStorage.getItem('kinowo_lang_pending') === null", timeoutMs = 5000)
+      } finally {
+        page.eval("if (window._realFetch) window.fetch = window._realFetch; " +
+                  "if (window._realSetTimeout) window.setTimeout = window._realSetTimeout; " +
+                  "localStorage.removeItem('kinowo_lang'); localStorage.removeItem('kinowo_lang_pending'); 0")
+      }
+    }
+  }
+
   // ── the dynamic picker: static fallback replaced by JS on load ──────────
 
   "the landing page" should "hide the static, no-JS city list and mount the dynamic picker in its place" in {

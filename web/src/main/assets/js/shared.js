@@ -2469,6 +2469,12 @@
   // two concurrent PUTs can land in either order and leave the account on the
   // older pick (the apps' `sendPendingLanguage`). The unload flush alone goes
   // straight out — nothing chained behind a response runs once the page is gone.
+  //
+  // Each chained push gives up after LANGUAGE_PUSH_TIMEOUT_MS: one that hangs would
+  // otherwise hold every later pick behind it for the life of the page. Given up is
+  // "not confirmed", like offline — the pick stays pending and the next push or
+  // reconcile resends it.
+  const LANGUAGE_PUSH_TIMEOUT_MS = 10000;
   let _languagePush = Promise.resolve();
   function pushStateToServer(opts) {
     _serverSyncTimer = 0;
@@ -2479,12 +2485,15 @@
   function _sendLanguage(keepalive) {
     const lang = (() => { try { return localStorage.getItem('kinowo_lang'); } catch { return null; } })();
     if (!lang) return; // nothing left to push
+    const abort = new AbortController();
+    const giveUp = setTimeout(() => abort.abort(), LANGUAGE_PUSH_TIMEOUT_MS);
     return fetch(mountPrefix() + '/api/me/state', {
       method:  'PUT',
       headers: { 'Content-Type': 'application/json' },
       // `keepalive` lets the request outlive an unloading document so the
       // pagehide flush below isn't dropped mid-navigation.
       keepalive: keepalive,
+      signal:  abort.signal,
       body:    JSON.stringify({ language: lang })
     }).then(resp => {
       // Landed: the account holds it — unless a newer pick is already owed.
@@ -2496,7 +2505,8 @@
         _setPendingLanguage(null);
         reconcileLanguage({ adoptOnly: true });
       }
-    }).catch(() => { /* offline — still pending, the next reconcile resends it */ });
+    }).catch(() => { /* offline or timed out — still pending, the next reconcile resends it */ })
+      .finally(() => clearTimeout(giveUp));
   }
 
   // Flush a still-pending debounced language push synchronously as the page
