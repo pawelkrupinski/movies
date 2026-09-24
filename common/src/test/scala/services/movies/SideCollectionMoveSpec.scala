@@ -31,10 +31,10 @@ class SideCollectionMoveSpec extends AnyFlatSpec with Matchers {
     def read(id: String): (Map[String, Seq[Showtime]], Boolean) =
       if (unreadable(id)) (Map.empty, false) else (rows.getOrElse(id, Map.empty), true)
     /** Mirrors `replaceFilm`: upsert what is named, drop every key that is not. */
-    def replace(id: String, payload: Map[String, Seq[Showtime]]): Boolean = {
-      if (payload.isEmpty) rows.remove(id) else rows.update(id, payload); true
+    def replace(id: String, payload: Map[String, Seq[Showtime]]): WriteOutcome = {
+      if (payload.isEmpty) rows.remove(id) else rows.update(id, payload); WriteOutcome.Written
     }
-    def deleteFilm(id: String): Unit = { rows.remove(id); deleted ::= id }
+    def deleteFilm(id: String): WriteOutcome = { rows.remove(id); deleted ::= id; WriteOutcome.Written }
     def move(oldId: String, newId: String): Boolean =
       SideCollectionMove.move[Seq[Showtime]](oldId, newId, read, replace, deleteFilm)
   }
@@ -83,7 +83,8 @@ class SideCollectionMoveSpec extends AnyFlatSpec with Matchers {
 
   it should "refuse when the write did not land" in {
     val store = new Store() {
-      override def replace(id: String, payload: Map[String, Seq[Showtime]]): Boolean = false
+      override def replace(id: String, payload: Map[String, Seq[Showtime]]): WriteOutcome =
+        WriteOutcome.Failed("screenings", "replaceFilm", new RuntimeException("simulated"))
     }
     store.rows("old|") = Map("Kino A" -> times)
 

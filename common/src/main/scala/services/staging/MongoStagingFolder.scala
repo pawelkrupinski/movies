@@ -8,7 +8,7 @@ import org.reactivestreams.{Publisher, Subscriber, Subscription}
 import models.MovieRecord
 import play.api.Logging
 import services.MongoConnection
-import services.movies.{CacheKey, MovieCodecs, MovieRecordMerge, StoredMovieDto, StoredMovieRecord, TitleNormalizer, FilmId}
+import services.movies.{CacheKey, MovieCodecs, MovieRecordMerge, StoredMovieDto, StoredMovieRecord, TitleNormalizer, FilmId, WriteOutcome}
 
 import java.time.Instant
 import scala.concurrent.Await
@@ -290,10 +290,12 @@ class MongoStagingFolder(
           // supposed to preserve. `union` takes the canonical's metadata and the union of
           // the boards, which is the rule the rest of the pipeline already merges by.
           val complete = existing.map(e => MovieRecordMerge.union(record, e.record)).getOrElse(record)
-          Try(movieRepository.upsert(id, key, complete)).failed.foreach { e =>
-            logger.warn(s"Staging fold: '${key.cleanTitle}' (${key.year.getOrElse("—")}) committed, but its " +
-              s"slots/screenings write failed (${e.getClass.getSimpleName}: ${e.getMessage}) — the film holds " +
-              "no showtimes until its next scrape rewrites it.")
+          movieRepository.upsert(id, key, complete) match {
+            case WriteOutcome.Failed(_, _, e) =>
+              logger.warn(s"Staging fold: '${key.cleanTitle}' (${key.year.getOrElse("—")}) committed, but its " +
+                s"slots/screenings write failed (${e.getClass.getSimpleName}: ${e.getMessage}) — the film holds " +
+                "no showtimes until its next scrape rewrites it.")
+            case _ => ()
           }
         }
       }

@@ -2,6 +2,7 @@ package services.staging
 
 import models.{MovieRecord, Source}
 import play.api.Logging
+import services.movies.WriteOutcome
 
 import scala.collection.mutable
 
@@ -118,7 +119,7 @@ class InMemoryStagingRepository(
     idsByAnchor.get(anchor).toSeq.flatMap(_.filter(ofCinema.contains).toSeq.sorted.flatMap(store.get)).filter(_.cinema == cinema)
   }
 
-  def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = lock.synchronized {
+  def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): WriteOutcome = lock.synchronized {
     val id       = StagingRecord.idFor(cinema, title, year, normalizer)
     val existing = store.get(id)
     // On a fresh INSERT only, warn if the same (cinema, sanitized title) is already
@@ -132,24 +133,28 @@ class InMemoryStagingRepository(
     val built  = put(id, merged)
     upserts.append((cinema, title, year, record))
     upsertWatcher.foreach(w => built.foreach(w))
+    WriteOutcome.Written
   }
 
-  override def upsertRow(row: StagingRecord): Unit = lock.synchronized {
+  override def upsertRow(row: StagingRecord): WriteOutcome = lock.synchronized {
     val built = put(row.id, row.record)
     upserts.append((row.cinema, row.title, row.year, row.record))
     upsertWatcher.foreach(w => built.foreach(w))
+    WriteOutcome.Written
   }
 
-  def delete(cinema: Source, title: String, year: Option[Int]): Unit = lock.synchronized {
+  def delete(cinema: Source, title: String, year: Option[Int]): WriteOutcome = lock.synchronized {
     drop(StagingRecord.idFor(cinema, title, year, normalizer))
     deletes.append((cinema, title, year))
     deleteWatcher.foreach(_(StagingRecord.idFor(cinema, title, year, normalizer)))
+    WriteOutcome.Written
   }
 
-  override def deleteRow(row: StagingRecord): Unit = lock.synchronized {
+  override def deleteRow(row: StagingRecord): WriteOutcome = lock.synchronized {
     drop(row.id)
     deletes.append((row.cinema, row.title, row.year))
     deleteWatcher.foreach(_(row.id))
+    WriteOutcome.Written
   }
 
   override def watchChanges(onUpsert: StagingRecord => Unit, onDelete: String => Unit): Option[AutoCloseable] = {

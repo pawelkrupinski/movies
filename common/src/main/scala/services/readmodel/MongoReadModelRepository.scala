@@ -10,7 +10,7 @@ import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.{Filters, Projections, Sorts}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import play.api.Logging
-import services.movies.KeysetScan
+import services.movies.{KeysetScan, RepositoryWrite}
 
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 import scala.concurrent.Await
@@ -223,7 +223,7 @@ class MongoReadModelRepository(
       Await.result(c.replaceOne(Filters.eq("_id", id), document, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
       ()
     }.recover {
-      case exception: Throwable if isClusterClosed(exception) => ()
+      case exception: Throwable if RepositoryWrite.isClientClosed(exception) => ()
       case exception: Throwable => logger.warn(s"ReadModelRepository.$op($id) failed: ${exception.getMessage}")
     }
   }
@@ -233,7 +233,7 @@ class MongoReadModelRepository(
       Await.result(c.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds)
       ()
     }.recover {
-      case exception: Throwable if isClusterClosed(exception) => ()
+      case exception: Throwable if RepositoryWrite.isClientClosed(exception) => ()
       case exception: Throwable => logger.warn(s"ReadModelRepository.$op($id) failed: ${exception.getMessage}")
     }
   }
@@ -279,9 +279,6 @@ class MongoReadModelRepository(
 
   // Shared MongoClient owned by `MongoConnection`; this repository doesn't close it.
   def close(): Unit = ()
-
-  private def isClusterClosed(exception: Throwable): Boolean =
-    Option(exception.getMessage).exists(_.contains("state should be: open"))
 }
 
 object MongoReadModelRepository {

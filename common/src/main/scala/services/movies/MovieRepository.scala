@@ -256,11 +256,9 @@ trait MovieRepository {
    *  timestamp can only over-approximate "changed since", never under. */
   def foreachRecordUpdatedSince(since: java.time.Instant)(f: StoredMovieRecord => Unit): Boolean = foreachRecord(f)
 
-  /** Remove every record matching the given (title, year). Best-effort —
-   *  failures are logged, never thrown. */
-  /** Remove the film stored under this id, with its side-collection rows. Best-effort
-   *  — failures are logged, never thrown. */
-  def delete(id: FilmId): Unit
+  /** Remove the film stored under this id, with its side-collection rows. Never
+   *  throws: a failure is logged, counted and reported as [[WriteOutcome.Failed]]. */
+  def delete(id: FilmId): WriteOutcome
 
   /** Move a film's SIDE-COLLECTION rows (`screenings`, `movie_slots`) from one document
    *  id to another — a MERGE of two documents that turned out to be one film (the
@@ -296,12 +294,15 @@ trait MovieRepository {
 
   /** Write-through upsert of the film `id`, stored under the lookup key
    *  `sanitize(title)|year`. The same id under a new key is a RETITLE — the document
-   *  stays, its `key` moves. Best-effort — failures are logged, never thrown. */
-  def upsert(id: FilmId, key: CacheKey, e: MovieRecord): Unit
+   *  stays, its `key` moves. Never throws: a failure is logged, counted and reported as
+   *  [[WriteOutcome.Failed]] — including a failed side-collection write, since the next
+   *  identical upsert is what retries it — and a caller holding an in-memory copy of the
+   *  row must roll that copy back on one (see `MovieCache.persist`). */
+  def upsert(id: FilmId, key: CacheKey, e: MovieRecord): WriteOutcome
 
   /** [[upsert]] for a caller outside `services` that holds only a title and year (a
    *  fixture re-seeding rows it read back); the key is derived by this store's rules. */
-  def upsert(id: FilmId, title: String, year: Option[Int], e: MovieRecord): Unit =
+  def upsert(id: FilmId, title: String, year: Option[Int], e: MovieRecord): WriteOutcome =
     upsert(id, CacheKey(title, year, normalizer), e)
 
   def updateIfPresent(id: FilmId, key: CacheKey, before: MovieRecord, after: MovieRecord): Boolean
@@ -354,22 +355,22 @@ trait MovieRepository {
  * — a failed read is not "absent", and writing could make a second document.
  */
 trait KeyAddressedMovieWrites { self: MovieRepository =>
-  def upsert(title: String, year: Option[Int], e: MovieRecord): Unit = {
+  def upsert(title: String, year: Option[Int], e: MovieRecord): WriteOutcome = {
     val key = CacheKey(title, year, normalizer)
     findByKeyChecked(key) match {
       case (Some(row), _) => upsert(row.id, key, e)
       case (None, true)   =>
         val taken: FilmId => Boolean = id => findByIdChecked(id)._1.isDefined
         upsert(Some(FilmId.legacy(key)).filterNot(taken).getOrElse(FilmId.fresh(key, taken)), key, e)
-      case (None, false)  => ()
+      case (None, false)  => WriteOutcome.Declined("key-unreadable")
     }
   }
 
   def updateIfPresent(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord): Boolean =
     findByKeyChecked(CacheKey(title, year, normalizer))._1.exists(row => updateIfPresent(row.id, row.cacheKey(normalizer), before, after))
 
-  def delete(title: String, year: Option[Int]): Unit =
-    findByKeyChecked(CacheKey(title, year, normalizer))._1.foreach(row => delete(row.id))
+  def delete(title: String, year: Option[Int]): WriteOutcome =
+    findByKeyChecked(CacheKey(title, year, normalizer))._1.fold[WriteOutcome](WriteOutcome.Written)(row => delete(row.id))
 }
 
 object MovieRepository {
@@ -477,7 +478,9 @@ class MongoMovieRepository(
   screeningsMetrics: ScreeningsMetrics = ScreeningsMetrics.noop,
   // The same for the SLOTS cursor — the third stream on the same projector, counted under
   // its own collection label. See [[SideCollectionChangeMetrics]].
-  slotsMetrics: SideCollectionChangeMetrics = SideCollectionChangeMetrics.noop
+  slotsMetrics: SideCollectionChangeMetrics = SideCollectionChangeMetrics.noop,
+  // Where a write that THREW is counted — see [[WriteOutcome]]. Noop for scripts/web/tests.
+  writeMetrics: RepositoryWriteMetrics = RepositoryWriteMetrics.noop
 ) extends MovieRepository with KeyAddressedMovieWrites with Logging {
 
 
@@ -810,17 +813,17 @@ class MongoMovieRepository(
     scanStitched(_.foreach(f), filter = Filters.gt("updatedAt", BsonDateTime(since.toEpochMilli)))
 
   /** Remove the film `id` with its side-collection rows. */
-  def delete(id: FilmId): Unit = coll.foreach { c =>
-    Try {
+  def delete(id: FilmId): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
+    write("delete", s"MovieRepository.delete($id)") {
       val deleted = Await.result(c.deleteOne(Filters.eq("_id", id.value)).toFuture(), 10.seconds).getDeletedCount
       if (deleted > 0) RemovalAudit.filmRemoved("movies.delete", id.value, reason = "by-id")
-      screenings.foreach(_.deleteFilm(id.value))
-      slots.foreach(_.deleteFilm(id.value))
-      ()
-    }.recover {
-      case exception: Throwable => logger.warn(s"MovieRepository.delete($id) failed: ${exception.getMessage}")
+      WriteOutcome.all(screenings.map(_.deleteFilm(id.value)) ++ slots.map(_.deleteFilm(id.value)))
     }
   }
+
+  /** Every write's exception handling — see [[RepositoryWrite]]. */
+  private def write(op: String, what: => String)(body: => WriteOutcome): WriteOutcome =
+    RepositoryWrite.attempt(MovieRepository.Collection, op, what, writeMetrics, logger)(body)
 
   /** The sweep is [[StrandedSideRows.sweep]]'s; this store only supplies the live `_id`
    *  set, read through the same keyset paging as every other corpus scan but projected
@@ -859,7 +862,7 @@ class MongoMovieRepository(
     val screeningsMoved = screenings.forall(s => SideCollectionMove.move[Seq[Showtime]](
       oldId, newId,
       read       = s.findForFilmChecked,
-      replace    = (id, rows) => { s.replaceFilm(id, rows); true },
+      replace    = s.replaceFilm(_, _),
       deleteFilm = s.deleteFilm,
       onSkip     = message => logger.warn(s"merge $oldId -> $newId (screenings): $message."),
       onMoved    = moved => logger.info(s"merge $oldId -> $newId: carried $moved screenings slot(s) across.")))
@@ -872,7 +875,7 @@ class MongoMovieRepository(
     screeningsMoved && slotsMoved
   }
 
-  def upsert(film: FilmId, cacheKey: CacheKey, e: MovieRecord): Unit = coll.foreach { c =>
+  def upsert(film: FilmId, cacheKey: CacheKey, e: MovieRecord): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
     val id    = film.value
     val key   = StoredMovieRecord.keyFor(cacheKey)
     val title = cacheKey.cleanTitle
@@ -916,13 +919,14 @@ class MongoMovieRepository(
     if (collidesWithAnother) {
       logger.warn(s"MovieRepository.upsert($title, $year) refused: another document already holds its " +
         s"key or its tmdbId=${e.tmdbId.getOrElse("?")} — the film keeps its previous document")
+      WriteOutcome.Declined("identity-held-by-another-document")
     } else {
       // Slots go FIRST, and `movies` only drops its embedded copy once they have actually
       // landed. Dropping it on a FAILED slot write would leave the film with no cinemas in
-      // either place — the one way this migration can lose data — and a slots failure is
-      // deliberately swallowed so it can't break the movies write, so the write itself has
-      // to report back. A film whose slot write failed simply keeps the embedded map and is
-      // retried on the next scrape.
+      // either place — the one way this migration can lose data — and a slots failure never
+      // throws, so it can't break the movies write, so the write itself has to report back. A
+      // film whose slot write failed keeps the embedded map, and this upsert reports the
+      // failure so the caller's next identical scrape retries it.
       // Skip the write when the stored rows already match. `upsert` is the whole-record
       // path every scrape merge takes, and `replaceFilm` rewrites EVERY row of the film —
       // 471 of them for a film showing across the UK — so a scrape that changed only
@@ -934,7 +938,7 @@ class MongoMovieRepository(
       // still safe to drop. A failed read returns empty, which reads as "differs" and
       // writes — the safe direction.
       val slotPayload = SlotsRepository.slotsOf(restitched)
-      val slotsLanded = slots.exists { s =>
+      val slotsWrite = slots.map { s =>
         // ONE read, used twice. It answers "is anything different at all" (skip the write
         // entirely) and, handed on, "which rows are different" (write only those) — which
         // `replaceFilm` would otherwise have to go and ask again, on the hottest write path
@@ -949,19 +953,36 @@ class MongoMovieRepository(
         // reads again and writes it. Not worth a transaction on the hottest write path.
         SlotsRepository.applyFilm(s, id, slotPayload)
       }
+      val slotsLanded = slotsWrite.contains(WriteOutcome.Written)
       val now  = Instant.now()
       val opts = new ReplaceOptions().upsert(true)
       // What to write, and whether the stored document already equals it — the decision is
       // `MoviesUpsert`'s, so it is unit-tested apart from the three reads that feed it.
       val plan = MoviesUpsert.plan(id, key, e, restitched, slotsLanded, slotsForStorage, stored, now)
-      Try {
-        if (!plan.unchanged) Await.result(c.replaceOne(Filters.eq("_id", id), plan.document, opts).toFuture(), 10.seconds)
-        // Write this film's cinema showtimes to `screenings` (their authority). `replaceFilm`
+      // A failed slots write is reported too, after the movies half has had its go: the
+      // embedded copy kept the film's cinemas, but only a retry lands the rows themselves, and
+      // the caller retries only a write it was told FAILED.
+      val moviesWrite = write("upsert", s"MovieRepository.upsert($title, $year)") {
+        val moviesLanded = plan.unchanged ||
+          Try(Await.result(c.replaceOne(Filters.eq("_id", id), plan.document, opts).toFuture(), 10.seconds)).map(_ => true).recover {
+            case exception: Throwable if isDuplicateKey(exception) =>
+              // The pre-check above catches every collision this read could see; this remains as
+              // defence for the residual race it cannot — a sibling document landing the same
+              // key/tmdbId between that read and this write. Slots have already landed in that
+              // narrow window, same as before this guard existed, which is the accepted "one
+              // delayed row" trade the slots guard above already makes on this same write path.
+              logger.warn(s"MovieRepository.upsert($title, $year) refused: another document already holds its " +
+                s"key or its tmdbId=${e.tmdbId.getOrElse("?")} — the film keeps its previous document (${exception.getMessage})")
+              false
+          }.get
+        if (!moviesLanded) WriteOutcome.Declined("identity-held-by-another-document")
+        else
+          // Write this film's cinema showtimes to `screenings` (their authority). `replaceFilm`
         // is upsert PLUS a delete of every slot the record doesn't name, so it may only run on
         // a record we know is complete. When the re-stitch read failed we still write what this
         // tick positively carries, but never the delete half — a slot we simply could not read
         // is not a slot that stopped screening.
-        screenings.foreach { s =>
+        screenings.fold[WriteOutcome](WriteOutcome.Written) { s =>
           val showtimes = ScreeningsSplit.showtimesOf(restitched)
           // Skip the whole call when the stored rows already match — the same guard the slots
           // write above has, and here it is FREE: `reStitchChecked` has already read these
@@ -983,24 +1004,8 @@ class MongoMovieRepository(
           // in `ScreeningsSplit.applyFilm` so the in-memory repository makes the same one.
           ScreeningsSplit.applyFilm(s, id, showtimes, stitch)
         }
-        ()
-      }.recover {
-        case exception: Throwable if isClusterClosed(exception) =>
-          // Shutdown race — the lifecycle closed the MongoClient while a worker
-          // was still mid-write. Harmless: the in-memory cache already has the
-          // value and the next refresh will persist it.
-          logger.debug(s"MovieRepository.upsert($title, $year) skipped — Mongo client closing.")
-        case exception: Throwable if isDuplicateKey(exception) =>
-          // The pre-check above catches every collision this read could see; this remains as
-          // defence for the residual race it cannot — a sibling document landing the same
-          // key/tmdbId between that read and this write. Slots have already landed in that
-          // narrow window, same as before this guard existed, which is the accepted "one
-          // delayed row" trade the slots guard above already makes on this same write path.
-          logger.warn(s"MovieRepository.upsert($title, $year) refused: another document already holds its " +
-            s"key or its tmdbId=${e.tmdbId.getOrElse("?")} — the film keeps its previous document (${exception.getMessage})")
-        case exception: Throwable =>
-          logger.warn(s"MovieRepository.upsert($title, $year) failed: ${exception.getMessage}")
       }
+      WriteOutcome.all(moviesWrite +: slotsWrite.toSeq)
     }
   }
 
@@ -1034,8 +1039,11 @@ class MongoMovieRepository(
       // already-correct value it had before.
       val rawPatch = MovieRecordPatch.diff(before.copy(data = slotsForStorage(before.data)), strippedAfter)
       val patch    = if (slots.isDefined) rawPatch.copy(data = Map.empty) else rawPatch
+      // `false` for an absent row AND for a failed write — both mean the store does not hold
+      // `after`, and `MovieCache.putIfPresent` rolls its copy back on either. A side-collection
+      // write that failed counts: its row is what the next identical update retries.
       if (patch.isEmpty && ops.isEmpty && slotWrites.isEmpty) true
-      else Try {
+      else write("updateIfPresent", s"MovieRepository.updateIfPresent($title, $year)") {
         // MongoDB update-operator paths treat '.' as a nesting separator, so a
         // per-source `$set` on `sourceData.<displayName>` is rejected when a source's
         // displayName has a dot ("Helios Ostrów Wlkp."); fall back to a conditional
@@ -1072,26 +1080,17 @@ class MongoMovieRepository(
         // Present when the movies write matched, OR a side-collection-only change (no movies
         // write, None); false only on Some(0) — the row is absent, so don't apply the
         // side-collection deltas (no orphan rows) and report not-present.
-        val present = moviesMatched.forall(_ > 0)
-        if (present) screenings.foreach { s =>
-          ops.foreach {
+        if (!moviesMatched.forall(_ > 0)) WriteOutcome.Declined("absent")
+        else WriteOutcome.all(
+          screenings.toSeq.flatMap(s => ops.map {
             case (k, Some(st)) => s.upsertSlot(id, k, st)
             case (k, None)     => s.deleteSlot(id, k)
-          }
-        }
-        if (present) slots.foreach { s =>
-          slotWrites.foreach {
+          }) ++
+          slots.toSeq.flatMap(s => slotWrites.map {
             case (k, Some(sd)) => s.upsertSlot(id, k, sd)
             case (k, None)     => s.deleteSlot(id, k)
-          }
-        }
-        present
-      }.recover {
-        case exception: Throwable if isClusterClosed(exception) => false
-        case exception: Throwable =>
-          logger.warn(s"MovieRepository.updateIfPresent($title, $year) failed: ${exception.getMessage}")
-          false
-      }.getOrElse(false)
+          }))
+      } == WriteOutcome.Written
   }
 
   /** The full-document replacement to write in the dotted-displayName fallback of
@@ -1297,9 +1296,5 @@ class MongoMovieRepository(
         }
     }
 
-  // The driver throws IllegalStateException("state should be: open") from
-  // BaseCluster / DefaultConnectionPool once MongoClient.close() has fired.
-  private def isClusterClosed(exception: Throwable): Boolean =
-    Option(exception.getMessage).exists(_.contains("state should be: open"))
 
 }

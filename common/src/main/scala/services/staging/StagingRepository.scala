@@ -7,7 +7,7 @@ import models.{MovieRecord, Source}
 import org.mongodb.scala.model.{Filters, Sorts}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, Observer, SingleObservableFuture, Subscription}
 import play.api.Logging
-import services.movies.{MovieCodecs, StoredMovieDto, TitleNormalizer}
+import services.movies.{MovieCodecs, RepositoryWrite, RepositoryWriteMetrics, StoredMovieDto, TitleNormalizer, WriteOutcome}
 
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference
@@ -172,8 +172,9 @@ trait StagingRepository {
    *  year)` — the scrape-divert path, called on every tick a newcomer is still
    *  incubating. When the row already exists, its enrichment is carried forward
    *  (`carryForwardEnrichment`) so a re-scrape only refreshes the cinema slot and
-   *  can't blank the resolve step's stamp. Best-effort — never throws. */
-  def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit
+   *  can't blank the resolve step's stamp. Never throws: a failure is logged, counted
+   *  and reported as [[WriteOutcome.Failed]]. */
+  def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): WriteOutcome
 
   /**
    * Stage every row ONE venue's scrape diverted, in one pass.
@@ -191,24 +192,25 @@ trait StagingRepository {
    * round trips the same writes take.
    *
    * Best-effort per row, like [[upsert]]: one row that cannot be written must not cost
-   * the venue its other fifteen.
+   * the venue its other fifteen. Reports the first row's failure, after every row has had
+   * its go.
    */
-  def upsertAll(rows: Seq[(Source, String, Option[Int], MovieRecord)]): Unit =
-    rows.foreach { case (cinema, title, year, record) => upsert(cinema, title, year, record) }
+  def upsertAll(rows: Seq[(Source, String, Option[Int], MovieRecord)]): WriteOutcome =
+    WriteOutcome.all(rows.map { case (cinema, title, year, record) => upsert(cinema, title, year, record) })
 
   /** Write `row.record` back under the row's PERSISTED `id`. Use to re-stamp an
    *  EXISTING row (detail/resolve/imdb) so a title whose casing drifted updates
    *  the SAME row instead of spawning a duplicate. The real impls key by `row.id`;
    *  this default delegation suffices for lightweight stubs and for rows that never
-   *  drift (`id == idFor(cinema, title, year)`). Best-effort — never throws. */
-  def upsertRow(row: StagingRecord): Unit = upsert(row.cinema, row.title, row.year, row.record)
+   *  drift (`id == idFor(cinema, title, year)`). Never throws — see [[upsert]]. */
+  def upsertRow(row: StagingRecord): WriteOutcome = upsert(row.cinema, row.title, row.year, row.record)
 
-  /** Remove one cinema's row by `idFor(cinema, title, year)`. Best-effort. */
-  def delete(cinema: Source, title: String, year: Option[Int]): Unit
+  /** Remove one cinema's row by `idFor(cinema, title, year)`. Never throws. */
+  def delete(cinema: Source, title: String, year: Option[Int]): WriteOutcome
 
   /** Remove an EXISTING row by its persisted `id` (drift-proof in the real impls;
-   *  the default delegation is correct for non-drifting rows). Best-effort. */
-  def deleteRow(row: StagingRecord): Unit = delete(row.cinema, row.title, row.year)
+   *  the default delegation is correct for non-drifting rows). Never throws. */
+  def deleteRow(row: StagingRecord): WriteOutcome = delete(row.cinema, row.title, row.year)
 
   /** Stream inserts/updates (`onUpsert`) and deletes (`onDelete`, given the row's
    *  `_id`) so consumers can react as newcomers land and graduate. Best-effort;
@@ -295,8 +297,8 @@ object StagingRepository {
     // inherited by omission.
     val normalizer: TitleNormalizer = TitleNormalizer.deployment
     def findAll(): Seq[StagingRecord] = Seq.empty
-    def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = ()
-    def delete(cinema: Source, title: String, year: Option[Int]): Unit = ()
+    def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): WriteOutcome = WriteOutcome.Declined("no-store")
+    def delete(cinema: Source, title: String, year: Option[Int]): WriteOutcome = WriteOutcome.Declined("no-store")
   }
 }
 
@@ -312,7 +314,9 @@ class MongoStagingRepository(
   sharedDb: Option[MongoDatabase] = None,
   // See `StagingRepository.normalizer` — the rules that anchor a row's `_id`.
   // REQUIRED here: production persistence must never fall back.
-  override val normalizer: TitleNormalizer
+  override val normalizer: TitleNormalizer,
+  // Where a write that THREW is counted — see [[WriteOutcome]].
+  writeMetrics: RepositoryWriteMetrics = RepositoryWriteMetrics.noop
 ) extends StagingRepository with Logging {
 
 
@@ -541,7 +545,7 @@ class MongoStagingRepository(
     }
   }
 
-  def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = {
+  def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): WriteOutcome = {
     val id       = StagingRecord.idFor(cinema, title, year, normalizer)
     val existing = recordAt(id)
     // On a fresh INSERT only (not the per-tick re-divert of an existing row), warn
@@ -574,7 +578,7 @@ class MongoStagingRepository(
     bucketIds(idsByCinemaTitle, StagingRepository.cinemaTitlePrefix(id)).filterNot(_ == id)
   }
 
-  override def upsertRow(row: StagingRecord): Unit = upsertId(row.id, row.record)
+  override def upsertRow(row: StagingRecord): WriteOutcome = upsertId(row.id, row.record)
 
   /** The `MovieRecord` currently stored under `id`, if any. Used to preserve
    *  enrichment across a re-scrape. Best-effort — None on any read failure. */
@@ -599,8 +603,9 @@ class MongoStagingRepository(
    *    other shape this repository has shipped. On any bulk failure it re-runs the rows
    *    ONE AT A TIME, so a poison row costs itself and nothing else.
    */
-  override def upsertAll(rows: Seq[(Source, String, Option[Int], MovieRecord)]): Unit =
-    if (rows.nonEmpty) coll.foreach { c =>
+  override def upsertAll(rows: Seq[(Source, String, Option[Int], MovieRecord)]): WriteOutcome =
+    if (rows.isEmpty) WriteOutcome.Written
+    else coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
       ensureAnchorIndex()
       val keyed = rows.map { case (cinema, title, year, record) =>
         StagingRecord.idFor(cinema, title, year, normalizer) -> record
@@ -625,51 +630,54 @@ class MongoStagingRepository(
             pending.update(id, prior.fold(record)(StagingRepository.carryForwardEnrichment(_, record)))
           }
           val writes = pending.toSeq.map { case (id, record) =>
-            ReplaceOneModel(Filters.eq("_id", id), stagedDto(id, record), new ReplaceOptions().upsert(true))
+            ReplaceOneModel(Filters.eq("_id", id), StoredMovieDto.fromDomain(id, record, Instant.now()), new ReplaceOptions().upsert(true))
           }
-          Try(Await.result(c.bulkWrite(writes, new BulkWriteOptions().ordered(false)).toFuture(), 30.seconds))
-            .recover { case exception =>
+          Try(Await.result(c.bulkWrite(writes, new BulkWriteOptions().ordered(false)).toFuture(), 30.seconds)) match {
+            case Success(_) =>
+              pending.foreach { case (id, record) => indexStaged(id, record) }
+              WriteOutcome.Written
+            case Failure(exception) =>
               logger.warn(s"StagingRepository.upsertAll bulk write of ${writes.size} row(s) failed: " +
                 s"${exception.getClass.getSimpleName}: ${exception.getMessage} — retrying them one at a time")
-              pending.foreach { case (id, record) => upsertId(id, record) }
-            }
+              WriteOutcome.all(pending.toSeq.map { case (id, record) => upsertId(id, record) })
+          }
       }
     }
 
-  /** File the row under every index and render its document — the half of a write that is
-   *  the same whether one row is going out or a whole venue's. Both halves of the row
-   *  index move with the write, or `findByAnchor` / `findByCinema` answer from a snapshot
-   *  that predates it. */
-  private def stagedDto(id: String, record: MovieRecord): StoredMovieDto = {
+  /** File a WRITTEN row under every index. Both halves of the row index move with the
+   *  write, or `findByAnchor` / `findByCinema` answer from a snapshot that predates it —
+   *  and only once it has landed, or they name a row the collection never took. */
+  private def indexStaged(id: String, record: MovieRecord): Unit =
     StagingRecord.fromStorage(id, record, normalizer).foreach(row =>
       indexRow(id, normalizer.sanitize(row.title), models.Source.cinemaOf(row.cinema)))
-    StoredMovieDto.fromDomain(id, record, Instant.now())
-  }
 
-  private def upsertId(id: String, record: MovieRecord): Unit = coll.foreach { c =>
-    val dto = stagedDto(id, record)
-    Try {
-      Await.result(c.replaceOne(Filters.eq("_id", id), dto, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
-      ()
-    }.recover {
-      case exception: Throwable => logger.warn(s"StagingRepository.upsert($id) failed: ${exception.getMessage}")
+  private def upsertId(id: String, record: MovieRecord): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
+    write("upsert", s"StagingRepository.upsert($id)") {
+      Await.result(c.replaceOne(Filters.eq("_id", id), StoredMovieDto.fromDomain(id, record, Instant.now()),
+        new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
+      indexStaged(id, record)
+      WriteOutcome.Written
     }
   }
 
-  def delete(cinema: Source, title: String, year: Option[Int]): Unit =
+  def delete(cinema: Source, title: String, year: Option[Int]): WriteOutcome =
     deleteId(StagingRecord.idFor(cinema, title, year, normalizer))
 
-  override def deleteRow(row: StagingRecord): Unit = deleteId(row.id)
+  override def deleteRow(row: StagingRecord): WriteOutcome = deleteId(row.id)
 
-  private def deleteId(id: String): Unit = coll.foreach { c =>
-    unindexRow(id)
-    Try {
+  // Unindexed only once the delete has landed: a row whose delete failed is still there,
+  // and must stay findable by the reads that walk the index.
+  private def deleteId(id: String): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
+    write("delete", s"StagingRepository.delete($id)") {
       Await.result(c.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds)
-      ()
-    }.recover {
-      case exception: Throwable => logger.warn(s"StagingRepository.delete($id) failed: ${exception.getMessage}")
+      unindexRow(id)
+      WriteOutcome.Written
     }
   }
+
+  /** Every write's exception handling — see [[RepositoryWrite]]. */
+  private def write(op: String, what: => String)(body: => WriteOutcome): WriteOutcome =
+    RepositoryWrite.attempt(StagingRepository.Collection, op, what, writeMetrics, logger)(body)
 
   override def watchChanges(onUpsert: StagingRecord => Unit, onDelete: String => Unit): Option[AutoCloseable] = coll.map { c =>
     val subRef = new AtomicReference[Subscription]()

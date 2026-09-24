@@ -1,7 +1,7 @@
 package integration
 
 import models.{Showtime, SourceData}
-import services.movies.{ChangeStreamDemand, ScreeningsRepository, SlotsRepository}
+import services.movies.{ChangeStreamDemand, ScreeningsRepository, SlotsRepository, WriteOutcome}
 
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -31,7 +31,7 @@ final class CountingScreeningsRepository(underlying: ScreeningsRepository) exten
   val findAllCalls     = new AtomicInteger(0)
 
   def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]],
-                  stored: Option[Map[String, Seq[Showtime]]] = None): Unit = {
+                  stored: Option[Map[String, Seq[Showtime]]] = None): WriteOutcome = {
     replaceFilmCalls.incrementAndGet()
     underlying.replaceFilm(filmId, slots, stored)
   }
@@ -46,10 +46,10 @@ final class CountingScreeningsRepository(underlying: ScreeningsRepository) exten
     findAllCalls.incrementAndGet()
     underlying.findAll()
   }
-  def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): Unit =
+  def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): WriteOutcome =
     underlying.upsertSlot(filmId, slotKey, showtimes)
-  def deleteSlot(filmId: String, slotKey: String): Unit = underlying.deleteSlot(filmId, slotKey)
-  def deleteFilm(filmId: String): Unit                  = underlying.deleteFilm(filmId)
+  def deleteSlot(filmId: String, slotKey: String): WriteOutcome = underlying.deleteSlot(filmId, slotKey)
+  def deleteFilm(filmId: String): WriteOutcome                  = underlying.deleteFilm(filmId)
   def filmIdsChecked(): (Set[String], Boolean)          = underlying.filmIdsChecked()
   def deleteFilms(filmIds: Set[String]): Long           = underlying.deleteFilms(filmIds)
   def rowIdsChecked(): (Set[String], Boolean)           = underlying.rowIdsChecked()
@@ -79,14 +79,14 @@ final class CountingSlotsRepository(underlying: SlotsRepository) extends SlotsRe
     underlying.findAllChecked()
   }
   def replaceFilm(filmId: String, slots: Map[String, SourceData],
-                  stored: Option[Map[String, SourceData]] = None): Boolean = {
+                  stored: Option[Map[String, SourceData]] = None): WriteOutcome = {
     replaceFilmCalls.incrementAndGet()
     underlying.replaceFilm(filmId, slots, stored)
   }
-  def upsertSlot(filmId: String, slotKey: String, slot: SourceData): Unit =
+  def upsertSlot(filmId: String, slotKey: String, slot: SourceData): WriteOutcome =
     underlying.upsertSlot(filmId, slotKey, slot)
-  def deleteSlot(filmId: String, slotKey: String): Unit = underlying.deleteSlot(filmId, slotKey)
-  def deleteFilm(filmId: String): Unit                  = underlying.deleteFilm(filmId)
+  def deleteSlot(filmId: String, slotKey: String): WriteOutcome = underlying.deleteSlot(filmId, slotKey)
+  def deleteFilm(filmId: String): WriteOutcome                  = underlying.deleteFilm(filmId)
   def filmIdsChecked(): (Set[String], Boolean)          = underlying.filmIdsChecked()
   def deleteFilms(filmIds: Set[String]): Long           = underlying.deleteFilms(filmIds)
   def rowIdsChecked(): (Set[String], Boolean)           = underlying.rowIdsChecked()

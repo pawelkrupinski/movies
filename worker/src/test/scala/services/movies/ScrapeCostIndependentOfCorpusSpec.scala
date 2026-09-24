@@ -170,7 +170,7 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
       var batches    = 0
       var staged     = 0
       val staging = new InMemoryStagingRepository(normalizer = normalizer) {
-        override def upsertAll(rows: Seq[(Source, String, Option[Int], MovieRecord)]): Unit = {
+        override def upsertAll(rows: Seq[(Source, String, Option[Int], MovieRecord)]): WriteOutcome = {
           batches += 1; staged += rows.size; super.upsertAll(rows)
         }
       }

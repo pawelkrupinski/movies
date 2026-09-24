@@ -22,7 +22,7 @@ import scala.concurrent.duration.FiniteDuration
 trait StagingWiring { self: WorkerWiring =>
 
   lazy val stagingRepository: StagingRepository =
-    new MongoStagingRepository(mongoConnection.database, normalizer = titleNormalizer)
+    new MongoStagingRepository(mongoConnection.database, normalizer = titleNormalizer, writeMetrics = taskMetrics)
   lazy val stagingFolder: StagingFolder = new MongoStagingFolder(mongoConnection, titleNormalizer, movieRepository)
   // What a concluded newcomer's `StagingFilmEnriched` does: the group-scoped fold,
   // then `announceResolvedNewMovie` for each brand-new film it introduced (resolution

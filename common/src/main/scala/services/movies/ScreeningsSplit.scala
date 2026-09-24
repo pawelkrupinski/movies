@@ -56,9 +56,10 @@ object ScreeningsSplit {
    *  - otherwise replace, handing on the rows already read rather than making it read again.
    */
   def applyFilm(screenings: ScreeningsRepository, filmId: String,
-                showtimes: Map[String, Seq[Showtime]], stitch: ReStitched): Unit =
-    if (!stitch.complete) showtimes.foreach { case (slotKey, st) => screenings.upsertSlot(filmId, slotKey, st) }
+                showtimes: Map[String, Seq[Showtime]], stitch: ReStitched): WriteOutcome =
+    if (!stitch.complete) WriteOutcome.all(showtimes.map { case (slotKey, st) => screenings.upsertSlot(filmId, slotKey, st) })
     else if (showtimes != stitch.stored) screenings.replaceFilm(filmId, showtimes, Some(stitch.stored))
+    else WriteOutcome.Written
 
   /** [[reStitch]] plus whether the screenings read that fed it SAW the film. A
    *  `complete = false` means the stripped slots could not be refilled, so the result

@@ -15,8 +15,8 @@ class StoredRowsRepository(rows: => Seq[StoredMovieRecord],
   val upserts = mutable.ListBuffer.empty[(FilmId, String, MovieRecord)]
   def enabled: Boolean = true
   def findAll(): Seq[StoredMovieRecord] = rows
-  def delete(id: FilmId): Unit = ()
-  def upsert(id: FilmId, key: CacheKey, e: MovieRecord): Unit = { upserts += ((id, key.cleanTitle, e)); () }
+  def delete(id: FilmId): WriteOutcome = WriteOutcome.Written
+  def upsert(id: FilmId, key: CacheKey, e: MovieRecord): WriteOutcome = { upserts += ((id, key.cleanTitle, e)); WriteOutcome.Written }
   def updateIfPresent(id: FilmId, key: CacheKey, before: MovieRecord, after: MovieRecord): Boolean = false
   override def close(): Unit = ()
 }

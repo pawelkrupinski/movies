@@ -82,7 +82,7 @@ class FoldOnUnreadableRowSpec extends AnyFlatSpec with Matchers {
       }
       out
     }
-    override def upsert(t: String, y: Option[Int], e: models.MovieRecord): Unit = {
+    override def upsert(t: String, y: Option[Int], e: models.MovieRecord): services.movies.WriteOutcome = {
       completionWrites.incrementAndGet()
       super.upsert(t, y, e)
     }

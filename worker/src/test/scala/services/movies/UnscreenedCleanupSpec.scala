@@ -73,10 +73,10 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     override def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) = (None, false)
     def enabled: Boolean                                              = true
     def findAll(): Seq[StoredMovieRecord]                             = delegate.findAll()
-    def upsert(id: FilmId, key: CacheKey, e: MovieRecord): Unit = delegate.upsert(id, key, e)
+    def upsert(id: FilmId, key: CacheKey, e: MovieRecord): WriteOutcome = delegate.upsert(id, key, e)
     def updateIfPresent(id: FilmId, key: CacheKey, before: MovieRecord, after: MovieRecord): Boolean =
       delegate.updateIfPresent(id, key, before, after)
-    def delete(id: FilmId): Unit                                      = delegate.delete(id)
+    def delete(id: FilmId): WriteOutcome                              = delegate.delete(id)
     def close(): Unit                                                 = ()
   }
 

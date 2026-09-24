@@ -92,21 +92,21 @@ trait SlotsRepository extends SlotKeyedRows {
   /** Set a film's slots to EXACTLY `slots` — upsert those present, delete any no
    *  longer present. The whole-record write path.
    *
-   *  Returns whether the write actually landed. The caller uses that to decide
-   *  whether it may drop the embedded copy from the `movies` document: dropping it
-   *  after a FAILED slot write would leave the film with no cinemas anywhere. A
-   *  store that cannot fail (in-memory) always reports true. */
+   *  Returns whether the write actually landed — only [[WriteOutcome.Written]] did. The
+   *  caller uses that to decide whether it may drop the embedded copy from the `movies`
+   *  document: dropping it after a FAILED slot write would leave the film with no cinemas
+   *  anywhere. A store that cannot fail (in-memory) always reports `Written`. */
   def replaceFilm(filmId: String, slots: Map[String, SourceData],
-                  stored: Option[Map[String, SourceData]] = None): Boolean
+                  stored: Option[Map[String, SourceData]] = None): WriteOutcome
 
   /** Upsert one slot — the per-slot patch write path. */
-  def upsertSlot(filmId: String, slotKey: String, slot: SourceData): Unit
+  def upsertSlot(filmId: String, slotKey: String, slot: SourceData): WriteOutcome
 
   /** Drop one slot (it left the film's listings). */
-  def deleteSlot(filmId: String, slotKey: String): Unit
+  def deleteSlot(filmId: String, slotKey: String): WriteOutcome
 
   /** Drop all of a film's slots (the film was deleted, or merged away). */
-  def deleteFilm(filmId: String): Unit
+  def deleteFilm(filmId: String): WriteOutcome
 
   /** Push: ring `onChange(filmId)` whenever a film's slots actually change, so the
    *  change-stream fanout can re-read + re-dispatch that film. A no-op write (an
@@ -156,17 +156,19 @@ class InMemorySlotsRepository(clock: () => java.time.Instant = () => java.time.I
   // `stored` is ignored: this store's rows are already in memory, so re-reading them is
   // free and the parameter exists only to honour the trait (see the screenings twin).
   def replaceFilm(filmId: String, slots: Map[String, SourceData],
-                  stored: Option[Map[String, SourceData]] = None): Boolean = {
+                  stored: Option[Map[String, SourceData]] = None): WriteOutcome = {
     rows.replaceFilm(filmId, roster.writable(SlotsRepository.Collection, filmId, rows.forFilm(filmId), slots))
-    true   // an in-memory store cannot fail to write
+    WriteOutcome.Written   // an in-memory store cannot fail to write
   }
 
-  def upsertSlot(filmId: String, slotKey: String, slot: SourceData): Unit =
+  def upsertSlot(filmId: String, slotKey: String, slot: SourceData): WriteOutcome = {
     if (roster.admitsWrite(SlotsRepository.Collection, filmId, slotKey)) rows.upsert(filmId, slotKey, slot)
+    WriteOutcome.Written
+  }
 
-  def deleteSlot(filmId: String, slotKey: String): Unit = rows.delete(filmId, slotKey)
+  def deleteSlot(filmId: String, slotKey: String): WriteOutcome = { rows.delete(filmId, slotKey); WriteOutcome.Written }
 
-  def deleteFilm(filmId: String): Unit = rows.deleteFilm(filmId)
+  def deleteFilm(filmId: String): WriteOutcome = { rows.deleteFilm(filmId); WriteOutcome.Written }
 
   def filmIdsChecked(): (Set[String], Boolean) = (rows.all().keySet, true)
 
@@ -196,17 +198,17 @@ object SlotsRepository {
    * in-memory one had already drifted into the unchecked read this exists to avoid.
    *
    * THE RETURN VALUE IS LOAD-BEARING and is why this is not fire-and-forget: `upsert` drops the
-   * film's embedded slot map from `movies` only once the slots have landed, so answering `true`
-   * for a write that failed loses the film's cinemas from BOTH places. A slots failure is
-   * swallowed so it cannot break the movies write, which is exactly why the write has to report.
+   * film's embedded slot map from `movies` only once the slots have landed, so answering
+   * `Written` for a write that failed loses the film's cinemas from BOTH places. A slots failure
+   * never throws, so it cannot break the movies write, which is exactly why the write has to report.
    *
    * The read is `findForFilmChecked`, never the plain one: a FAILED read returns an empty map,
    * and an empty map equals an empty payload — so the unchecked form answers "already landed" for
    * a film it could not read, on the one path where that answer deletes data.
    */
-  def applyFilm(slots: SlotsRepository, filmId: String, payload: Map[String, SourceData]): Boolean = {
+  def applyFilm(slots: SlotsRepository, filmId: String, payload: Map[String, SourceData]): WriteOutcome = {
     val (current, readOk) = slots.findForFilmChecked(filmId)
-    if (readOk && current == payload) true
+    if (readOk && current == payload) WriteOutcome.Written
     else slots.replaceFilm(filmId, payload, if (readOk) Some(current) else None)
   }
 
@@ -279,8 +281,8 @@ case class StoredSlotDto(
 /**
  * Mongo-backed `SlotsRepository`, collection `movie_slots`. Relaxed write concern
  * like `movies` / `screenings` (re-scraped continuously; a lost write self-heals on
- * the next scrape). Every method is defensively `Try`-guarded so a slots failure can
- * never break the caller's `movies` write.
+ * the next scrape). No write throws — each reports a [[WriteOutcome]] — so a slots
+ * failure can never break the caller's `movies` write, and never passes for a landed one.
  */
 class MongoSlotsRepository(
   sharedDb: Option[MongoDatabase],
@@ -299,7 +301,9 @@ class MongoSlotsRepository(
   metrics:              SideCollectionChangeMetrics = SideCollectionChangeMetrics.noop,
   // The venues this database may hold rows under — the worker passes its country's, so a
   // process on the wrong database cannot land a foreign venue. See [[VenueRoster]].
-  roster:               VenueRoster    = VenueRoster.Unrestricted
+  roster:               VenueRoster    = VenueRoster.Unrestricted,
+  // Where a write that THREW is counted — see [[WriteOutcome]].
+  writeMetrics:         RepositoryWriteMetrics = RepositoryWriteMetrics.noop
 ) extends SlotsRepository with Logging {
   import SlotKeyed.idOf
 
@@ -373,8 +377,8 @@ class MongoSlotsRepository(
    *  [[MongoScreeningsRepository.replaceFilm]], including the `$nin: []` edge case where
    *  an EMPTY `slots` clears every slot of the film. */
   def replaceFilm(filmId: String, slots: Map[String, SourceData],
-                  stored: Option[Map[String, SourceData]] = None): Boolean = coll.fold(false) { c =>
-    Try {
+                  stored: Option[Map[String, SourceData]] = None): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
+    write("replaceFilm", s"SlotsRepository.replaceFilm($filmId)") {
       val now     = Instant.now()
       // Rewrite only the rows that MOVED — the same guard `MongoScreeningsRepository.replaceFilm`
       // carries, and for the same reason one collection over: this method is film-wide while its
@@ -399,24 +403,26 @@ class MongoSlotsRepository(
       if (result.getDeletedCount > 0)
         RemovalAudit.screeningsCleared("movie_slots.replaceFilm", filmId, result.getDeletedCount.toInt,
           whole = slots.isEmpty, reason = "stale-slot-prune", what = "slots")
-      true
-    }.recover { case e =>
-      logger.warn(s"SlotsRepository.replaceFilm($filmId) failed: ${e.getMessage}")
-      false
-    }.getOrElse(false)
+      WriteOutcome.Written
+    }
   }
 
-  def upsertSlot(filmId: String, slotKey: String, slot: SourceData): Unit = coll.foreach { c =>
+  def upsertSlot(filmId: String, slotKey: String, slot: SourceData): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
     // Same no-op guard as `replaceFilm`, at this method's granularity: a point read on the
     // composite `_id`. A row that already holds exactly what we would write must not be written.
     // A read that fails, and a row that is absent, both read as "differs" and write.
-    Try {
+    write("upsertSlot", s"SlotsRepository.upsertSlot($filmId,$slotKey)") {
       if (roster.admitsWrite(SlotsRepository.Collection, filmId, slotKey) && !storedSlot(c, filmId, slotKey).contains(slot)) {
         val dto = StoredSlotDto(idOf(filmId, slotKey), filmId, slotKey, slot, Instant.now())
-        Await.result(c.replaceOne(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds); ()
+        Await.result(c.replaceOne(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
       }
-    }.recover { case e => logger.warn(s"SlotsRepository.upsertSlot($filmId,$slotKey) failed: ${e.getMessage}") }
+      WriteOutcome.Written
+    }
   }
+
+  /** Every write's exception handling — see [[RepositoryWrite]]. */
+  private def write(op: String, what: => String)(body: => WriteOutcome): WriteOutcome =
+    RepositoryWrite.attempt(SlotsRepository.Collection, op, what, writeMetrics, logger)(body)
 
   /** One row's stored slot, or None when it is absent OR unreadable — the two cases `upsertSlot`
    *  treats alike, because both mean "we cannot say this write is redundant". */
@@ -424,20 +430,22 @@ class MongoSlotsRepository(
     Try(Await.result(c.find(Filters.eq("_id", idOf(filmId, slotKey))).first().toFuture(), 10.seconds))
       .toOption.flatMap(Option(_)).map(_.slot)
 
-  def deleteSlot(filmId: String, slotKey: String): Unit = coll.foreach { c =>
-    Try {
+  def deleteSlot(filmId: String, slotKey: String): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
+    write("deleteSlot", s"SlotsRepository.deleteSlot($filmId,$slotKey)") {
       Await.result(c.deleteOne(Filters.eq("_id", idOf(filmId, slotKey))).toFuture(), 10.seconds)
       RemovalAudit.slotRemoved("movie_slots.deleteSlot", filmId, slotKey, "slot-deleted")
-    }.recover { case e => logger.warn(s"SlotsRepository.deleteSlot($filmId,$slotKey) failed: ${e.getMessage}") }
+      WriteOutcome.Written
+    }
   }
 
-  def deleteFilm(filmId: String): Unit = coll.foreach { c =>
-    Try {
+  def deleteFilm(filmId: String): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
+    write("deleteFilm", s"SlotsRepository.deleteFilm($filmId)") {
       val deleted = Await.result(c.deleteMany(SlotKeyed.filmFilter(filmId)).toFuture(), 10.seconds).getDeletedCount
       if (deleted > 0)
         RemovalAudit.screeningsCleared("movie_slots.deleteFilm", filmId, deleted.toInt, whole = true,
           reason = "film-deleted", what = "slots")
-    }.recover { case e => logger.warn(s"SlotsRepository.deleteFilm($filmId) failed: ${e.getMessage}") }
+      WriteOutcome.Written
+    }
   }
 
   def filmIdsChecked(): (Set[String], Boolean) =

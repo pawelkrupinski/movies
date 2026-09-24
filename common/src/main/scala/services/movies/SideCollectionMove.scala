@@ -21,9 +21,9 @@ package services.movies
  *     This is the case a bare `findForFilm` could not express and the one that made the
  *     move destructive in exactly the situation it exists to protect.
  *  4. Write, then VERIFY at the destination before deleting the source. `replaceFilm`
- *     swallows its own failures, so a copy can silently not happen while the delete
- *     proceeds; a Mongo transaction would not help, because there is no exception and no
- *     rollback to trigger. Verify BOTH directions — the moved keys arrived AND the
+ *     reports a failure it caught, but a write it reports as landed is still read back:
+ *     a Mongo transaction would not help, because the repository catches the exception
+ *     and there is no rollback to trigger. Verify BOTH directions — the moved keys arrived AND the
  *     destination's own keys survived — so a partial write can't pass by naming only what
  *     it added.
  *
@@ -37,8 +37,8 @@ object SideCollectionMove {
     oldId:      String,
     newId:      String,
     read:       String => (Map[String, A], Boolean),
-    replace:    (String, Map[String, A]) => Boolean,
-    deleteFilm: String => Unit,
+    replace:    (String, Map[String, A]) => WriteOutcome,
+    deleteFilm: String => WriteOutcome,
     onSkip:     String => Unit = _ => (),
     onMoved:    Int => Unit    = _ => ()
   ): Boolean = {
@@ -55,7 +55,7 @@ object SideCollectionMove {
           "would delete them, so the rename waits for a readable one")
         false
       } else {
-        val landed = replace(newId, destination ++ moving)
+        val landed = replace(newId, destination ++ moving) == WriteOutcome.Written
         val (after, afterRead) = read(newId)
         val complete = landed && afterRead &&
           moving.keySet.subsetOf(after.keySet) && destination.keySet.subsetOf(after.keySet)

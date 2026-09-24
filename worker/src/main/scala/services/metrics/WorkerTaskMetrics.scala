@@ -3,7 +3,7 @@ package services.metrics
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
-import services.movies.{CacheSyncMetrics, ResolveDuplicateMetrics, ChangeStreamLiveness, ChangeStreamMetrics, MergeMetrics, MergeReason, RekeyReason, ScrapeLandingMetrics, ScreeningsMetrics, SideCollectionChangeMetrics, SplitMetrics}
+import services.movies.{CacheSyncMetrics, RepositoryWriteMetrics, ResolveDuplicateMetrics, ChangeStreamLiveness, ChangeStreamMetrics, MergeMetrics, MergeReason, RekeyReason, ScrapeLandingMetrics, ScreeningsMetrics, SideCollectionChangeMetrics, SplitMetrics}
 import services.readmodel.ReadModelProjectionMetrics
 import services.staging.{StagingMetrics, StagingStep}
 import services.tasks.{QueueSnapshot, RatingLatencyMetrics, ResolveMode, Task, TaskState, TaskType}
@@ -68,7 +68,7 @@ object TaskObserver {
  * gauges are refreshed from a per-country `QueueSnapshot` each `Series.scrape()`.
  */
 class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
-  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ScrapeLandingMetrics with ResolveDuplicateMetrics with StagingMetrics {
+  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ScrapeLandingMetrics with ResolveDuplicateMetrics with StagingMetrics with RepositoryWriteMetrics {
 
   // ── RatingLatencyMetrics ────────────────────────────────────────────────────
   def recordFirstRatingDelay(site: String, seconds: Double): Unit = series.recordFirstRatingDelay(countryCode, site, seconds)
@@ -105,6 +105,10 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   // ── ScrapeLandingMetrics ────────────────────────────────────────────────────
   def recordGuardVerdict(guard: String, verdict: String): Unit = series.recordScrapeGuardVerdict(countryCode, guard, verdict)
   def recordWriteSkipped(reason: String): Unit                 = series.recordScrapeWriteSkipped(countryCode, reason)
+
+  // ── RepositoryWriteMetrics ──────────────────────────────────────────────────
+  def recordWriteFailed(collection: String, op: String, exception: String): Unit =
+    series.recordRepositoryWriteFailed(countryCode, collection, op, exception)
 
   // ── ChangeStreamMetrics for `movies` ────────────────────────────────────────
   // A separate object rather than a direct mixin: `ChangeStreamMetrics.recordCoalescedChange`
@@ -449,6 +453,12 @@ object WorkerTaskMetrics {
       .labelNames("country", "reason")
       .register(registry)
 
+    private val repositoryWriteFailed = Counter.builder()
+      .name("kinowo_worker_repository_write_failed")
+      .help("A MovieRepository / SlotsRepository / ScreeningsRepository / StagingRepository write that THREW, by country, collection (movies|movie_slots|screenings|pending_movies), op (upsert, replaceFilm, upsertSlot, updateIfPresent, delete, ...) and exception (the class's simple name). ZERO IS THE HEALTHY READING. Added 2026-09-24: a codec bug failed 34 upserts over ~6h and every one was logged at WARN and returned Unit, while the cache kept the unwritten row, so two new films never reached the site until a restart and nothing counted it. Every failure is also a WARN line naming the film; the cache rolls the row back so the next identical scrape retries. Alerted by RepositoryWritesFailing (worker-pipeline.rules). Series appear on the first failure, not at boot: the exception label is open-ended.")
+      .labelNames("country", "collection", "op", "exception")
+      .register(registry)
+
     seed()
 
     /** Materialize every series at 0 for every country so it exists from boot (no
@@ -593,6 +603,10 @@ object WorkerTaskMetrics {
       scrapeGuardVerdicts.labelValues(country, guard, verdict).inc()
     def recordScrapeWriteSkipped(country: String, reason: String): Unit =
       scrapeWriteSkipped.labelValues(country, reason).inc()
+
+    // ── RepositoryWriteMetrics ─────────────────────────────────────────────────
+    def recordRepositoryWriteFailed(country: String, collection: String, op: String, exception: String): Unit =
+      repositoryWriteFailed.labelValues(country, collection, op, exception).inc()
 
     // ── ChangeStreamMetrics ────────────────────────────────────────────────────
     def recordEvent(country: String, op: String): Unit       = changeEvents.labelValues(country, op).inc()

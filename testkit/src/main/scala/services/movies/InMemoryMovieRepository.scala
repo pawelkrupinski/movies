@@ -154,17 +154,17 @@ class InMemoryMovieRepository(
    *  checked reads a subclass may be failing on purpose. A spec's seed is an out-of-band
    *  write to the storage itself, and must land whatever the fake is telling the cache
    *  about its reads. */
-  override def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = lock.synchronized {
+  override def upsert(t: String, y: Option[Int], e: MovieRecord): WriteOutcome = lock.synchronized {
     upsert(FilmId(idOf(t, y)), CacheKey(t, y, normalizer), e)
   }
   override def updateIfPresent(t: String, y: Option[Int], before: MovieRecord, after: MovieRecord): Boolean = lock.synchronized {
     updateIfPresent(FilmId(idOf(t, y)), CacheKey(t, y, normalizer), before, after)
   }
-  override def delete(t: String, y: Option[Int]): Unit = lock.synchronized {
+  override def delete(t: String, y: Option[Int]): WriteOutcome = lock.synchronized {
     delete(FilmId(idOf(t, y)))
   }
 
-  def upsert(film: FilmId, key: CacheKey, e: MovieRecord): Unit = lock.synchronized {
+  def upsert(film: FilmId, key: CacheKey, e: MovieRecord): WriteOutcome = lock.synchronized {
     val id = film.value
     val (t, y) = (key.cleanTitle, key.year)
     val storedKey = StoredMovieRecord.keyFor(key)
@@ -188,15 +188,17 @@ class InMemoryMovieRepository(
     // dropping it on a failed slot write is the one way this migration loses a film's
     // cinemas outright.
     val slotPayload = SlotsRepository.slotsOf(restitched)
-    val slotsLanded = slots.exists(SlotsRepository.applyFilm(_, id, slotPayload))
+    val slotsWrite  = slots.map(SlotsRepository.applyFilm(_, id, slotPayload))
+    val slotsLanded = slotsWrite.contains(WriteOutcome.Written)
     val dataForMovies =
       if (slotsLanded) Map.empty[Source, SourceData]
       else if (screenings.isEmpty) restitched
       else ScreeningsSplit.stripShowtimes(restitched)
     put(id, StoredMovieRecord(t, y, e.copy(data = dataForMovies), film, Some(storedKey)))
-    screenings.foreach(ScreeningsSplit.applyFilm(_, id, ScreeningsSplit.showtimesOf(restitched), stitch))
+    val screeningsWrite = screenings.map(ScreeningsSplit.applyFilm(_, id, ScreeningsSplit.showtimesOf(restitched), stitch))
     upserts.append((t, y, e))
     notifyWatcher(id, t, y, e)
+    WriteOutcome.all(screeningsWrite.toSeq ++ slotsWrite)
   }
 
   /** Carry a film's screenings AND slots across a re-key / fold. Both stores move, or a
@@ -213,7 +215,7 @@ class InMemoryMovieRepository(
       val screeningsMoved = screenings.forall(s => SideCollectionMove.move[Seq[models.Showtime]](
         oldId, newId,
         read       = s.findForFilmChecked,
-        replace    = (id, rows) => { s.replaceFilm(id, rows); true },
+        replace    = s.replaceFilm(_, _),
         deleteFilm = s.deleteFilm))
       val slotsMoved = slots.forall(sl => SideCollectionMove.move[SourceData](
         oldId, newId,
@@ -250,32 +252,35 @@ class InMemoryMovieRepository(
         // MongoMovieRepository does (no pure-`updatedAt` no-op event).
         if (patch.isEmpty && showtimeOps.isEmpty && slotOps.isEmpty) true
         else {
-          screenings.foreach(s => showtimeOps.foreach {
-            case (k, Some(times)) => s.upsertSlot(id, k, times)
-            case (k, None)        => s.deleteSlot(id, k)
-          })
-          slots.foreach(sl => slotOps.foreach {
-            case (k, Some(sd)) => sl.upsertSlot(id, k, sd)
-            case (k, None)     => sl.deleteSlot(id, k)
-          })
+          val sideWrites =
+            screenings.toSeq.flatMap(s => showtimeOps.map {
+              case (k, Some(times)) => s.upsertSlot(id, k, times)
+              case (k, None)        => s.deleteSlot(id, k)
+            }) ++
+            slots.toSeq.flatMap(sl => slotOps.map {
+              case (k, Some(sd)) => sl.upsertSlot(id, k, sd)
+              case (k, None)     => sl.deleteSlot(id, k)
+            })
           val merged = patch.applyTo(stored.record)
           put(id, StoredMovieRecord(t, y, merged, film, Some(StoredMovieRecord.keyFor(key))))
           upserts.append((t, y, merged))
           notifyWatcher(id, t, y, merged)
-          true
+          // As production: a side write that failed means the store does not hold `after`.
+          WriteOutcome.all(sideWrites) == WriteOutcome.Written
         }
     }
   }
 
-  def delete(film: FilmId): Unit = lock.synchronized {
+  def delete(film: FilmId): WriteOutcome = lock.synchronized {
     val id = film.value
     updatedAtById.remove(id)
-    store.remove(id).foreach { removed =>
-      screenings.foreach(_.deleteFilm(id))   // the cascade the real repository owns
-      slots.foreach(_.deleteFilm(id))
+    store.remove(id).fold[WriteOutcome](WriteOutcome.Written) { removed =>
+      // the cascade the real repository owns
+      val sideDeletes = screenings.map(_.deleteFilm(id)) ++ slots.map(_.deleteFilm(id))
       deletes.append((removed.title, removed.year))
       changeStreamLiveness.delivered(ChangeStreamLiveness.Movies)
       changes.dispatchDelete(id)
+      WriteOutcome.all(sideDeletes)
     }
   }
 

@@ -129,8 +129,8 @@ class DebugControllerSpec extends AnyFlatSpec with Matchers {
       val normalizer: services.movies.TitleNormalizer = titleNormalizer
       def enabled: Boolean = true
       def findAll(): Seq[services.staging.StagingRecord] = { rendezvous(); Seq.empty }
-      def upsert(cinema: models.Source, title: String, year: Option[Int], record: MovieRecord): Unit = ()
-      def delete(cinema: models.Source, title: String, year: Option[Int]): Unit = ()
+      def upsert(cinema: models.Source, title: String, year: Option[Int], record: MovieRecord): services.movies.WriteOutcome = services.movies.WriteOutcome.Written
+      def delete(cinema: models.Source, title: String, year: Option[Int]): services.movies.WriteOutcome = services.movies.WriteOutcome.Written
     }
 
     val ctrl = TestDebugController.build(records, Mode.Dev,

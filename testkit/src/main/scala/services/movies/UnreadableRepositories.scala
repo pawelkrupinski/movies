@@ -30,10 +30,10 @@ class UnreadableScreeningsRepository(store: ScreeningsRepository = new InMemoryS
   def findForFilmChecked(filmId: String): (Map[String, Seq[Showtime]], Boolean) = (Map.empty, false)
   def findAll(): Map[String, Map[String, Seq[Showtime]]]                        = store.findAll()
   def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]],
-                  stored: Option[Map[String, Seq[Showtime]]] = None): Unit      = store.replaceFilm(filmId, slots, stored)
-  def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): Unit = store.upsertSlot(filmId, slotKey, showtimes)
-  def deleteSlot(filmId: String, slotKey: String): Unit                         = store.deleteSlot(filmId, slotKey)
-  def deleteFilm(filmId: String): Unit                                          = store.deleteFilm(filmId)
+                  stored: Option[Map[String, Seq[Showtime]]] = None): WriteOutcome      = store.replaceFilm(filmId, slots, stored)
+  def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): WriteOutcome = store.upsertSlot(filmId, slotKey, showtimes)
+  def deleteSlot(filmId: String, slotKey: String): WriteOutcome                         = store.deleteSlot(filmId, slotKey)
+  def deleteFilm(filmId: String): WriteOutcome                                          = store.deleteFilm(filmId)
   def deleteFilms(filmIds: Set[String]): Long                                   = store.deleteFilms(filmIds)
   /** A READ, so it fails like the others: the stranded-row sweep must skip this store,
    *  not clear it on the strength of an id list it never saw. */
@@ -58,14 +58,24 @@ class UnreadableScreeningsRepository(store: ScreeningsRepository = new InMemoryS
   override def close(): Unit = store.close()
 }
 
+/** A write that failed the way a caught repository exception reports it — for the
+ *  doubles below, which have no store to throw from. */
+object SimulatedWriteFailure {
+  def apply(collection: String, op: String): WriteOutcome =
+    WriteOutcome.Failed(collection, op, new RuntimeException(s"simulated $collection.$op failure"))
+}
+
 /** A [[SlotsRepository]] whose WRITES always fail. The mirror-image guard: `upsert` may
  *  only drop a film's embedded copy once its slots have actually landed, so a store that
  *  reports every write as failed is what proves the embedded copy is kept. */
 class UnwritableSlotsRepository extends InMemorySlotsRepository {
   override def replaceFilm(filmId: String, slots: Map[String, SourceData],
-                           stored: Option[Map[String, SourceData]] = None): Boolean = false
-  override def upsertSlot(filmId: String, slotKey: String, slot: SourceData): Unit   = ()
-  override def deleteSlot(filmId: String, slotKey: String): Unit                     = ()
+                           stored: Option[Map[String, SourceData]] = None): WriteOutcome =
+    SimulatedWriteFailure(SlotsRepository.Collection, "replaceFilm")
+  override def upsertSlot(filmId: String, slotKey: String, slot: SourceData): WriteOutcome =
+    SimulatedWriteFailure(SlotsRepository.Collection, "upsertSlot")
+  override def deleteSlot(filmId: String, slotKey: String): WriteOutcome =
+    SimulatedWriteFailure(SlotsRepository.Collection, "deleteSlot")
 }
 
 /** A [[MovieRepository]] whose corpus scan stops short: it delivers `delivered` rows and
@@ -77,18 +87,20 @@ class IncompleteScanMovieRepository(delivered: Seq[(String, Option[Int], MovieRe
   override def foreachRecord(f: StoredMovieRecord => Unit): Boolean = { super.foreachRecord(f); false }
 }
 
-/** A [[ScreeningsRepository]] whose WRITES silently fail — which is the real shape here,
- *  because `replaceFilm` returns `Unit` and swallows its own errors. A caller that copies
- *  rows to a new id and then deletes the old ones must verify the copy landed; a Mongo
- *  transaction would not save it, since nothing throws and nothing rolls back. */
+/** A [[ScreeningsRepository]] whose WRITES fail. A caller that copies rows to a new id and
+ *  then deletes the old ones must verify the copy landed; a Mongo transaction would not
+ *  save it, since the repository catches the exception and nothing rolls back. */
 class UnwritableScreeningsRepository extends InMemoryScreeningsRepository {
   /** Populate a film's rows, bypassing the write block — so a spec can set up the state a
    *  failed copy is supposed to preserve. */
-  def seed(filmId: String, slots: Map[String, Seq[models.Showtime]]): Unit =
-    super.replaceFilm(filmId, slots)
+  def seed(filmId: String, slots: Map[String, Seq[models.Showtime]]): Unit = {
+    super.replaceFilm(filmId, slots); ()
+  }
   override def replaceFilm(filmId: String, slots: Map[String, Seq[models.Showtime]],
-                           stored: Option[Map[String, Seq[models.Showtime]]] = None): Unit = ()
-  override def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[models.Showtime]): Unit = ()
+                           stored: Option[Map[String, Seq[models.Showtime]]] = None): WriteOutcome =
+    SimulatedWriteFailure(ScreeningsRepository.Collection, "replaceFilm")
+  override def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[models.Showtime]): WriteOutcome =
+    SimulatedWriteFailure(ScreeningsRepository.Collection, "upsertSlot")
 }
 
 /** A [[MovieRepository]] whose BY-ID read fails while the row is genuinely there, and whose
@@ -105,4 +117,42 @@ class UnreadableByIdMovieRepository(seed: Seq[(String, Option[Int], MovieRecord)
     if (failing) (None, false) else super.findByIdChecked(id)
   override def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) =
     if (failing) (None, false) else super.findByKeyChecked(key)
+}
+
+/** The exception a write THROWS in the doubles below — the 2026-09-24 incident's shape, a
+ *  codec that could not encode the document. */
+private[movies] object SimulatedCodecFailure {
+  def apply(): Throwable = new org.bson.codecs.configuration.CodecConfigurationException("simulated codec failure")
+}
+
+/** A [[MovieRepository]] whose whole-record `upsert` THROWS while `failing` — the incident
+ *  shape — routed through [[RepositoryWrite]] exactly as `MongoMovieRepository`'s writes
+ *  are, so the failure is logged, counted and reported the production way rather than by a
+ *  rule this double would have to restate. */
+class ThrowingUpsertMovieRepository(metrics: RepositoryWriteMetrics,
+                                    screenings: Option[ScreeningsRepository] = None,
+                                    slots: Option[SlotsRepository] = None)
+  extends InMemoryMovieRepository(screenings = screenings, slots = slots) {
+  @volatile var failing: Boolean = true
+  private val log = play.api.Logger(getClass)
+  override def upsert(film: FilmId, key: CacheKey, e: MovieRecord): WriteOutcome =
+    RepositoryWrite.attempt(MovieRepository.Collection, "upsert", s"upsert(${key.cleanTitle})", metrics, log) {
+      if (failing) throw SimulatedCodecFailure() else super.upsert(film, key, e)
+    }
+}
+
+/** A [[SlotsRepository]] whose per-slot and whole-film writes THROW while `failing`, through
+ *  [[RepositoryWrite]] like `MongoSlotsRepository`'s. */
+class ThrowingSlotsRepository(metrics: RepositoryWriteMetrics) extends InMemorySlotsRepository {
+  @volatile var failing: Boolean = true
+  private val log = play.api.Logger(getClass)
+  private def write(op: String)(body: => WriteOutcome): WriteOutcome =
+    RepositoryWrite.attempt(SlotsRepository.Collection, op, s"slots.$op", metrics, log) {
+      if (failing) throw SimulatedCodecFailure() else body
+    }
+  override def replaceFilm(filmId: String, slots: Map[String, SourceData],
+                           stored: Option[Map[String, SourceData]] = None): WriteOutcome =
+    write("replaceFilm")(super.replaceFilm(filmId, slots, stored))
+  override def upsertSlot(filmId: String, slotKey: String, slot: SourceData): WriteOutcome =
+    write("upsertSlot")(super.upsertSlot(filmId, slotKey, slot))
 }

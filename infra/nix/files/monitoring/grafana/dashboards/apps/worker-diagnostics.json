@@ -1849,6 +1849,57 @@
           "legendFormat": "{{country}} kicks/min"
         }
       ]
+    },
+    {
+      "id": 35,
+      "title": "Repository writes that FAILED — by country, collection, op and exception",
+      "description": "`kinowo_worker_repository_write_failed_total`: a movies / movie_slots / screenings / pending_movies write that THREW (every Mongo repository write goes through services.movies.RepositoryWrite). ZERO IS THE HEALTHY READING. Each failure is also a WARN line naming the film, and the cache rolls the row back so the next identical scrape retries the write — so a short blip heals itself, while a sustained line is a write that keeps failing (a codec that cannot encode a field, a validator, a full disk). Alerted by RepositoryWritesFailing (worker-pipeline.rules). Added 2026-09-24: a codec bug failed 34 upserts over ~6h with nothing counting it, and two new films never reached the site until a restart. The exception label is the class's simple name; a series appears on its first failure, not at boot.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 185
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country, collection, op, exception) (increase(kinowo_worker_repository_write_failed_total{country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} {{collection}}.{{op}} {{exception}}"
+        }
+      ]
     }
   ],
   "description": "Why a worker is misbehaving, once the application-health dashboard has told you that one is. There are FIVE workers — pl, uk, de, us and es, each its own k3s Deployment — so every panel is scoped by the Country variable and carries the country in its legend; pick one to isolate it, or All to compare. Memory (heap, NMT native categories, the off-book gap, buffers, and the pod's real cgroup limit from kube-state-metrics), CPU split by JIT and GC, GC frequency, restarts, resolution-cache hit rates, and the error shape of the outbound HTTP the scrape and enrichment phases depend on. All from each worker's own /metrics on k3s via local-prometheus. There is no CPU-credit panel: shared-CPU credit was a Fly billing concept and the whole throttle path it drove was deleted on 2026-09-04, so no series behind it exists. · NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still — the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",
