@@ -42,7 +42,7 @@ class ShareCardService(
   private val fingerprints = new ConcurrentHashMap[String, ShareCardFingerprint]()
 
   /** The version of the film's card on disk, whatever it was drawn from. */
-  private def onDisk(filmId: String): Option[String] = store.version(store.cardPath(filmId))
+  def onDisk(filmId: String): Option[String] = store.version(store.cardPath(filmId))
 
   /** The card's version when it is current for exactly these inputs. */
   def existing(next: ShareCardInputs): Option[String] = onDisk(next.filmId).filter(next.acceptableVersions.contains)

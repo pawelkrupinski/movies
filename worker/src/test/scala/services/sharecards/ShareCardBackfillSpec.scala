@@ -45,6 +45,25 @@ class ShareCardBackfillSpec extends AnyFlatSpec with Matchers {
     snapshot shouldBe 0.5
   }
 
+  it should "leave a film whose card was re-rendered since the sweep to the projection, and count it covered" in {
+    val rig = new Rig
+    val films = seed(rig, 3)
+    val series = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
+    val backfill = new ShareCardBackfill(rig.service, rig.readModel, rig.queue, series.forCountry("pl"), rig.clock, batch = 1, maxBacklog = 10)
+    backfill.tick() shouldBe 1                                               // the sweep: all three missing
+    drain(rig.queue)
+    // The second film's rating moved after the sweep; the projection rendered its card for the
+    // new inputs. The sweep's inputs for it are stale: rendering them would overwrite that card
+    // with an older picture, under a URL whose version names the newer one.
+    val moved = films(1).copy(ratings = films(1).ratings.copy(imdb = Some(8.4)))
+    rig.readModel.upsertMovie(moved)
+    rig.service.render(rig.service.inputs(moved), Seq(ShareCardReason.Ratings))
+    backfill.tick() shouldBe 1
+    backfill.tick() shouldBe 0
+    drain(rig.queue).map(_.payload("filmId")) shouldBe Seq(films(2)._id)
+    series.coverageFor("pl") shouldBe 1.0 / 3
+  }
+
   "A finished render" should "re-project its film, or end a first card's hold when no card could be made" in {
     val rig = new Rig
     val refreshed, released = collection.mutable.Buffer.empty[String]
