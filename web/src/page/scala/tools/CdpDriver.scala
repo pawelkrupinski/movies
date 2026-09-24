@@ -306,6 +306,9 @@ class Chrome private[tools] (
  *  for `Fetch.authRequired`, which Chrome sends on its own initiative
  *  rather than in reply to any call this driver made. */
 class CdpPage private[tools] (uri: URI) extends AutoCloseable {
+  /** Why Chrome's end of this connection went away, once it has: every later call
+   *  fails naming it (see [[send]]). */
+  @volatile private var lostBecause: Option[String] = None
   private val idGen = new AtomicInteger(0)
   private val pending = new ConcurrentHashMap[Int, CompletableFuture[JsValue]]()
   private val eventHandlers = new ConcurrentHashMap[String, JsValue => Unit]()
@@ -340,6 +343,12 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
     .connectTimeout(Duration.ofSeconds(5))
     .buildAsync(uri, new Listener {
       override def onOpen(ws: WebSocket): Unit = { ws.request(Long.MaxValue); super.onOpen(ws) }
+      override def onClose(ws: WebSocket, statusCode: Int, reason: String): java.util.concurrent.CompletionStage[?] = {
+        connectionLost(s"close frame $statusCode${Option(reason).filter(_.nonEmpty).fold("")(r => s" ($r)")}")
+        null
+      }
+      override def onError(ws: WebSocket, error: Throwable): Unit =
+        connectionLost(s"${error.getClass.getSimpleName}: ${error.getMessage}")
       override def onText(ws: WebSocket, data: CharSequence, last: Boolean): java.util.concurrent.CompletionStage[?] = {
         buffer.append(data)
         if (last) {
@@ -394,16 +403,41 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
   /** Issue a CDP method call and return the `result` field of the reply.
    *  Blocks the caller until the reply arrives or 30s elapses. */
   def send(method: String, parameters: JsValue = Json.obj()): JsValue = {
+    lostBecause.foreach(why => throw lost(method, why))
     val id  = idGen.incrementAndGet()
     val fut = new CompletableFuture[JsValue]()
     pending.put(id, fut)
     val message = Json.obj("id" -> id, "method" -> method, "params" -> parameters).toString
-    sendLock.synchronized { ws.sendText(message, true).get(5, TimeUnit.SECONDS) }
-    val reply = fut.get(30, TimeUnit.SECONDS)
+    val reply =
+      try {
+        sendLock.synchronized { ws.sendText(message, true).get(5, TimeUnit.SECONDS) }
+        fut.get(30, TimeUnit.SECONDS)
+      } catch {
+        case e: java.util.concurrent.ExecutionException if lostBecause.isDefined || ws.isOutputClosed =>
+          throw lost(method, lostBecause.getOrElse(String.valueOf(e.getCause)))
+      }
     (reply \ "error").asOpt[JsValue].foreach { err =>
       throw new RuntimeException(s"CDP error from $method: ${Json.stringify(err)}")
     }
     (reply \ "result").asOpt[JsValue].getOrElse(Json.obj())
+  }
+
+  private def connectionLost(why: String): Unit = {
+    if (lostBecause.isEmpty) lostBecause = Some(why)
+    // Every call still waiting on a reply fails now, not at its 30s timeout.
+    pending.values.forEach(_.completeExceptionally(new java.io.IOException(why)))
+    pending.clear()
+  }
+
+  private def lost(method: String, why: String) =
+    new RuntimeException(s"Chrome closed this page's DevTools connection before $method could run ($why) — " +
+      "the tab or its renderer is gone (crashed, killed, or closed): not an assertion about the page.")
+
+  /** Destroy this page's target from Chrome's side, as a crash or an outside kill
+   *  would — for the spec that the next call says so. */
+  private[tools] def closeTargetFromChrome(): Unit = {
+    val id = uri.getPath.split('/').last
+    Chrome.httpGet(s"http://${uri.getHost}:${uri.getPort}/json/close/$id")
   }
 
   /** Evaluate `js` in the page and return the unwrapped value. Throws if
