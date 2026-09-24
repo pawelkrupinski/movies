@@ -40,7 +40,10 @@ fi
 # existing one), so an edited release kept its tag on the commit it was first created at —
 # android-latest sat on 199465a from 09-04 while its assets moved on. Force-move the tag last,
 # once the assets are out, so a refused move cannot withhold the build — but still fails the
-# step rather than leaving the tag silently stale.
+# step rather than leaving the tag silently stale. Through the REST refs API, never `git push`:
+# GITHUB_TOKEN has no `workflows` permission, and GitHub refuses its tag PUSH whenever the
+# range touches .github/workflows; the refs API is not held to that — run 36030022187 moved
+# android-latest 199465a → ed300da54 over a range full of workflow edits.
 if [ "$moved_by_create" = no ]; then
   gh api -X PATCH "repos/$repo/git/refs/tags/$tag" -f sha="$sha" -F force=true >/dev/null
 fi
