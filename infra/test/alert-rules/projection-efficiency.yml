@@ -1,0 +1,344 @@
+# UNIT TESTS FOR THE PROJECTION-EFFICIENCY ALERTS (the `projection-efficiency` group).
+#
+# Each rule gets three questions: does it fire on the PRE-FIX shape (the behaviour before
+# 2026-09-23 that it exists to catch), does it stay quiet on TODAY's measured baseline, and what
+# does a WORKER RESTART do to it (~3 minutes of absent series and a counter reset, ~16 times on a
+# deploy day). The input numbers are the production readings quoted in the rule comments, not
+# invented ones.
+rule_files:
+  - ../../nix/files/monitoring/rules/read-model-projection.rules
+
+evaluation_interval: 1m
+
+tests:
+  # ---------------------------------------------------------------------------------------------
+  # VENUE REBUILD SHARE. Pre-fix: every venue row rebuilt, none reused -- a share of exactly 1 at
+  # the US's ~1,000 rows/s. The uptime gate holds it for 3h after boot, then the 30m `for:`.
+  - interval: 1m
+    input_series:
+      - series: 'process_start_time_seconds{country="us",instance="kinowo-worker-us",job="kinowo-worker"}'
+        values: '0x400'
+      - series: 'kinowo_worker_readmodel_venue_projections_total{country="us",job="kinowo-worker",outcome="rebuilt"}'
+        values: '0+60000x400'
+      - series: 'kinowo_worker_readmodel_venue_projections_total{country="us",job="kinowo-worker",outcome="reused"}'
+        values: '0x400'
+    alert_rule_test:
+      # Inside the boot gate: the share is 1, and still nothing -- a fresh worker rebuilds everything.
+      - eval_time: 2h
+        alertname: ReadModelVenueRebuildShareHigh
+        exp_alerts: []
+      # Gate opened at 3h, still inside `for: 30m`.
+      - eval_time: 3h20m
+        alertname: ReadModelVenueRebuildShareHigh
+        exp_alerts: []
+      - eval_time: 4h
+        alertname: ReadModelVenueRebuildShareHigh
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+              country: "us"
+            exp_annotations:
+              summary: "us is rebuilding 100% of the venue rows it projects"
+              description: "More than half of the screenings rows the read-model projector considered in \"us\" over the last hour were REBUILT rather than reused, three hours after the worker booted. Warm, this share sits at 0.1-3%: a showtime change at one venue rebuilds that venue's row and reuses the rest. Near 100% means the per-row input hash stopped matching, and every projection is rebuilding the whole film again -- the pre-2026-09-23 behaviour that held the single apply thread ~2s per wide US film. Panel 33 on the worker diagnostics dashboard draws rebuilt against reused; panel 8's write-burst line should be climbing with it. Look at what changed in `ReadModelProjection`'s slot hash or in the memo `ReadModelProjector` keeps (a field added to the hashed input that differs on every read, e.g. an unordered collection or a timestamp, is the usual shape)."
+
+  # TODAY, WARM: US 1 row rebuilt per 1,000 reused (it measured 0.001-0.002). Quiet.
+  - interval: 1m
+    input_series:
+      - series: 'process_start_time_seconds{country="us",instance="kinowo-worker-us",job="kinowo-worker"}'
+        values: '0x400'
+      - series: 'kinowo_worker_readmodel_venue_projections_total{country="us",job="kinowo-worker",outcome="rebuilt"}'
+        values: '0+60x400'
+      - series: 'kinowo_worker_readmodel_venue_projections_total{country="us",job="kinowo-worker",outcome="reused"}'
+        values: '0+60000x400'
+    alert_rule_test:
+      - eval_time: 6h
+        alertname: ReadModelVenueRebuildShareHigh
+        exp_alerts: []
+
+  # THE BOOT TRANSIENT THE GATE EXISTS FOR. DE after the 2026-09-23 boot: a first-projection-since-
+  # boot rebuilds every venue, so the share runs ~0.9 for two hours (it read 0.44 and 0.32 hourly)
+  # before settling near 0.02. Without the gate this pages at 1h30m on every deploy.
+  - interval: 1m
+    input_series:
+      - series: 'process_start_time_seconds{country="de",instance="kinowo-worker-de",job="kinowo-worker"}'
+        values: '0x400'
+      - series: 'kinowo_worker_readmodel_venue_projections_total{country="de",job="kinowo-worker",outcome="rebuilt"}'
+        values: '0+54x120 6480+1x280'
+      - series: 'kinowo_worker_readmodel_venue_projections_total{country="de",job="kinowo-worker",outcome="reused"}'
+        values: '0+6x120 720+59x280'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: ReadModelVenueRebuildShareHigh
+        exp_alerts: []
+      - eval_time: 4h
+        alertname: ReadModelVenueRebuildShareHigh
+        exp_alerts: []
+
+  # A RESTART, ON A WORKER WHOSE SCOPING IS BROKEN. Paging at 5h; the pod restarts at 6h (series
+  # absent for 2 minutes, counters and start time reset). The post-restart reading is boot seeding,
+  # not evidence, so the rule goes quiet -- and pages again once the new process is 3.5h old.
+  - interval: 1m
+    input_series:
+      - series: 'process_start_time_seconds{country="us",instance="kinowo-worker-us",job="kinowo-worker"}'
+        values: '0x359 _x2 21780x300'
+      - series: 'kinowo_worker_readmodel_venue_projections_total{country="us",job="kinowo-worker",outcome="rebuilt"}'
+        values: '0+60000x359 _x2 0+60000x300'
+      - series: 'kinowo_worker_readmodel_venue_projections_total{country="us",job="kinowo-worker",outcome="reused"}'
+        values: '0x359 _x2 0x300'
+    alert_rule_test:
+      - eval_time: 5h
+        alertname: ReadModelVenueRebuildShareHigh
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+              country: "us"
+            exp_annotations:
+              summary: "us is rebuilding 100% of the venue rows it projects"
+              description: "More than half of the screenings rows the read-model projector considered in \"us\" over the last hour were REBUILT rather than reused, three hours after the worker booted. Warm, this share sits at 0.1-3%: a showtime change at one venue rebuilds that venue's row and reuses the rest. Near 100% means the per-row input hash stopped matching, and every projection is rebuilding the whole film again -- the pre-2026-09-23 behaviour that held the single apply thread ~2s per wide US film. Panel 33 on the worker diagnostics dashboard draws rebuilt against reused; panel 8's write-burst line should be climbing with it. Look at what changed in `ReadModelProjection`'s slot hash or in the memo `ReadModelProjector` keeps (a field added to the hashed input that differs on every read, e.g. an unordered collection or a timestamp, is the usual shape)."
+      - eval_time: 7h
+        alertname: ReadModelVenueRebuildShareHigh
+        exp_alerts: []
+      - eval_time: 10h
+        alertname: ReadModelVenueRebuildShareHigh
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+              country: "us"
+            exp_annotations:
+              summary: "us is rebuilding 100% of the venue rows it projects"
+              description: "More than half of the screenings rows the read-model projector considered in \"us\" over the last hour were REBUILT rather than reused, three hours after the worker booted. Warm, this share sits at 0.1-3%: a showtime change at one venue rebuilds that venue's row and reuses the rest. Near 100% means the per-row input hash stopped matching, and every projection is rebuilding the whole film again -- the pre-2026-09-23 behaviour that held the single apply thread ~2s per wide US film. Panel 33 on the worker diagnostics dashboard draws rebuilt against reused; panel 8's write-burst line should be climbing with it. Look at what changed in `ReadModelProjection`'s slot hash or in the memo `ReadModelProjector` keeps (a field added to the hashed input that differs on every read, e.g. an unordered collection or a timestamp, is the usual shape)."
+
+  # ---------------------------------------------------------------------------------------------
+  # WRITE WORK PER PROJECTION. Pre-fix US: 40 ms per call at ~1 call/s (it read 27-47 ms).
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_readmodel_write_burst_seconds_sum{country="us",job="kinowo-worker"}'
+        values: '0+2.4x400'
+      - series: 'kinowo_worker_readmodel_write_burst_seconds_count{country="us",job="kinowo-worker"}'
+        values: '0+60x400'
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: ReadModelProjectionWritePerCallHigh
+        exp_alerts: []
+      - eval_time: 2h
+        alertname: ReadModelProjectionWritePerCallHigh
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+              country: "us"
+            exp_annotations:
+              summary: "us's read-model projections spend 40ms writing per call"
+              description: "The write half of a read-model projection in \"us\" has averaged over 20 ms per call for the last 3h, for an hour. Every country runs at 3-7 ms since the 2026-09-23 venue-scoping fix; the US ran at 27-47 ms before it, when every venue change rebuilt and re-diffed the film's whole screenings set. Check panel 33 first: a rebuilt line tracking reused means scoping broke again (ReadModelVenueRebuildShareHigh fires too, 3h after a boot). If rebuilt is low, the cost moved into the writes themselves -- the Mongo round-trips of `diffScreenings` (panel 8 dashed line against the solid compute line), a slow mongod, or a film's city fan-out."
+
+  # TODAY: US 7 ms per call (it read 6.2-7.5 ms since the fix), UK 10.8 ms -- the worst any
+  # country read all week, pre-fix US aside. Both quiet.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_readmodel_write_burst_seconds_sum{country="us",job="kinowo-worker"}'
+        values: '0+0.42x400'
+      - series: 'kinowo_worker_readmodel_write_burst_seconds_count{country="us",job="kinowo-worker"}'
+        values: '0+60x400'
+      - series: 'kinowo_worker_readmodel_write_burst_seconds_sum{country="uk",job="kinowo-worker"}'
+        values: '0+0.162x400'
+      - series: 'kinowo_worker_readmodel_write_burst_seconds_count{country="uk",job="kinowo-worker"}'
+        values: '0+15x400'
+    alert_rule_test:
+      - eval_time: 6h
+        alertname: ReadModelProjectionWritePerCallHigh
+        exp_alerts: []
+
+  # A HANDFUL OF SLOW CALLS IS NOT A RATE. One 50 ms call every ten minutes: the mean is over the
+  # threshold, the volume is far under the floor.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_readmodel_write_burst_seconds_sum{country="es",job="kinowo-worker"}'
+        values: '0+0.005x400'
+      - series: 'kinowo_worker_readmodel_write_burst_seconds_count{country="es",job="kinowo-worker"}'
+        values: '0+0.1x400'
+    alert_rule_test:
+      - eval_time: 6h
+        alertname: ReadModelProjectionWritePerCallHigh
+        exp_alerts: []
+
+  # THROUGH A RESTART. The pre-fix shape, with the worker restarting at 2h: 2 minutes absent and
+  # both counters back to zero. The 3h window absorbs it and the page does not drop.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_readmodel_write_burst_seconds_sum{country="us",job="kinowo-worker"}'
+        values: '0+2.4x119 _x2 0+2.4x200'
+      - series: 'kinowo_worker_readmodel_write_burst_seconds_count{country="us",job="kinowo-worker"}'
+        values: '0+60x119 _x2 0+60x200'
+    alert_rule_test:
+      - eval_time: 2h1m
+        alertname: ReadModelProjectionWritePerCallHigh
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+              country: "us"
+            exp_annotations:
+              summary: "us's read-model projections spend 40ms writing per call"
+              description: "The write half of a read-model projection in \"us\" has averaged over 20 ms per call for the last 3h, for an hour. Every country runs at 3-7 ms since the 2026-09-23 venue-scoping fix; the US ran at 27-47 ms before it, when every venue change rebuilt and re-diffed the film's whole screenings set. Check panel 33 first: a rebuilt line tracking reused means scoping broke again (ReadModelVenueRebuildShareHigh fires too, 3h after a boot). If rebuilt is low, the cost moved into the writes themselves -- the Mongo round-trips of `diffScreenings` (panel 8 dashed line against the solid compute line), a slow mongod, or a film's city fan-out."
+      - eval_time: 2h30m
+        alertname: ReadModelProjectionWritePerCallHigh
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+              country: "us"
+            exp_annotations:
+              summary: "us's read-model projections spend 40ms writing per call"
+              description: "The write half of a read-model projection in \"us\" has averaged over 20 ms per call for the last 3h, for an hour. Every country runs at 3-7 ms since the 2026-09-23 venue-scoping fix; the US ran at 27-47 ms before it, when every venue change rebuilt and re-diffed the film's whole screenings set. Check panel 33 first: a rebuilt line tracking reused means scoping broke again (ReadModelVenueRebuildShareHigh fires too, 3h after a boot). If rebuilt is low, the cost moved into the writes themselves -- the Mongo round-trips of `diffScreenings` (panel 8 dashed line against the solid compute line), a slow mongod, or a film's city fan-out."
+
+  # ---------------------------------------------------------------------------------------------
+  # STAGING ROWS PER NEWCOMER KICK. Pre-fix: every one of a 2,441-venue presale's venues kicks,
+  # and the k-th decodes k rows -- 1,220 per kick, at 10 kicks a minute.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_staging_newcomer_kicks_total{country="us",job="kinowo-worker"}'
+        values: '0+10x400'
+      - series: 'kinowo_worker_staging_newcomer_kick_rows_total{country="us",job="kinowo-worker"}'
+        values: '0+12200x400'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: StagingNewcomerKickReadsWide
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: StagingNewcomerKickReadsWide
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+              country: "us"
+            exp_annotations:
+              summary: "us's staging kicks decode 1220 rows each"
+              description: "Each `StagingNewcomerDiverted` the StagingReaper handled in \"us\" over the last 6h decoded 1220 staging rows on average; a kick should only fire for a film NEW to staging, whose group is one venue's row. A wide average means kicks are firing for venues JOINING a film already incubating, and each re-reads the whole group -- quadratic in a wide release's venue count, the shape that took the US scrape tick from 27s to 1,419s on 2026-09-23. Panel 34 on the worker diagnostics dashboard draws rows/kick against kicks/min. Look at the newcomer test in `ScrapeLanding` (`newlyDiverted`, which must ask `StagingRepository.holdsAnchor` across every cinema, not just this venue's prior rows) and at `MongoStagingRepository`'s anchor index, a stale-empty answer from which reads as \"new\" for every venue."
+
+  # TODAY'S SHAPE: a kick only for a film new to staging, whose group is its one venue's row --
+  # 1.3 rows/kick allowing for year-variant rows and venues landing the same new film at once.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_staging_newcomer_kicks_total{country="us",job="kinowo-worker"}'
+        values: '0+1x400'
+      - series: 'kinowo_worker_staging_newcomer_kick_rows_total{country="us",job="kinowo-worker"}'
+        values: '0+1.3x400'
+    alert_rule_test:
+      - eval_time: 6h
+        alertname: StagingNewcomerKickReadsWide
+        exp_alerts: []
+
+  # ONE WIDE KICK IS NOT A PATTERN. A quiet country's single kick that found 400 rows (a late
+  # event, a concurrent wave): the average is huge, the kick count is 1. Quiet.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_staging_newcomer_kicks_total{country="de",job="kinowo-worker"}'
+        values: '0x100 1x300'
+      - series: 'kinowo_worker_staging_newcomer_kick_rows_total{country="de",job="kinowo-worker"}'
+        values: '0x100 400x300'
+    alert_rule_test:
+      - eval_time: 6h
+        alertname: StagingNewcomerKickReadsWide
+        exp_alerts: []
+
+  # THROUGH A RESTART: the pre-fix shape, the pod restarting at 2h. increase() over 6h absorbs the
+  # reset and the gap; the page holds.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_staging_newcomer_kicks_total{country="us",job="kinowo-worker"}'
+        values: '0+10x119 _x2 0+10x200'
+      - series: 'kinowo_worker_staging_newcomer_kick_rows_total{country="us",job="kinowo-worker"}'
+        values: '0+12200x119 _x2 0+12200x200'
+    alert_rule_test:
+      - eval_time: 2h1m
+        alertname: StagingNewcomerKickReadsWide
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+              country: "us"
+            exp_annotations:
+              summary: "us's staging kicks decode 1220 rows each"
+              description: "Each `StagingNewcomerDiverted` the StagingReaper handled in \"us\" over the last 6h decoded 1220 staging rows on average; a kick should only fire for a film NEW to staging, whose group is one venue's row. A wide average means kicks are firing for venues JOINING a film already incubating, and each re-reads the whole group -- quadratic in a wide release's venue count, the shape that took the US scrape tick from 27s to 1,419s on 2026-09-23. Panel 34 on the worker diagnostics dashboard draws rows/kick against kicks/min. Look at the newcomer test in `ScrapeLanding` (`newlyDiverted`, which must ask `StagingRepository.holdsAnchor` across every cinema, not just this venue's prior rows) and at `MongoStagingRepository`'s anchor index, a stale-empty answer from which reads as \"new\" for every venue."
+      - eval_time: 3h
+        alertname: StagingNewcomerKickReadsWide
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+              country: "us"
+            exp_annotations:
+              summary: "us's staging kicks decode 1220 rows each"
+              description: "Each `StagingNewcomerDiverted` the StagingReaper handled in \"us\" over the last 6h decoded 1220 staging rows on average; a kick should only fire for a film NEW to staging, whose group is one venue's row. A wide average means kicks are firing for venues JOINING a film already incubating, and each re-reads the whole group -- quadratic in a wide release's venue count, the shape that took the US scrape tick from 27s to 1,419s on 2026-09-23. Panel 34 on the worker diagnostics dashboard draws rows/kick against kicks/min. Look at the newcomer test in `ScrapeLanding` (`newlyDiverted`, which must ask `StagingRepository.holdsAnchor` across every cinema, not just this venue's prior rows) and at `MongoStagingRepository`'s anchor index, a stale-empty answer from which reads as \"new\" for every venue."
+
+  # ---------------------------------------------------------------------------------------------
+  # APPLY THREAD FALLING BEHIND. A full stall from minute 31: the oldest event's wait climbs one
+  # second per second. The early tier pages at ~38m; ChangeStreamApplyLagging not until ~50m.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_change_stream_apply_lag_seconds{collection="screenings",country="us",job="kinowo-worker"}'
+        values: '5x30 65+60x40'
+    alert_rule_test:
+      - eval_time: 36m
+        alertname: ChangeStreamApplyFallingBehind
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: ChangeStreamApplyFallingBehind
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+              country: "us"
+              collection: "screenings"
+            exp_annotations:
+              summary: "us's screenings change events have waited 10m 5s and the wait is growing"
+              description: "The oldest unapplied `screenings` change event in \"us\" has waited over 3 minutes and the wait has kept growing for 5 minutes: the single apply thread is getting through less than arrives. Healthy, the worst wait all week was 13s. This is the early warning for ChangeStreamApplyLagging (10 minutes, held 10). Panel 28 on the worker diagnostics dashboard draws the wait and the pending count. If a scrape wave is in flight, panel 8 (projection compute vs write per call) and panel 33 (venue rows rebuilt vs reused) say whether each apply got more expensive -- ReadModelProjectionWritePerCallHigh is the slower, surer reading of the same thing. Otherwise look for the apply blocked on the projection lock or a Mongo read, as for ChangeStreamApplyLagging."
+      - eval_time: 40m
+        alertname: ChangeStreamApplyLagging
+        exp_alerts: []
+
+  # TODAY: a scrape wave's backlog peaking at 13s (the week's worst, US) and draining. Quiet.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_change_stream_apply_lag_seconds{collection="screenings",country="us",job="kinowo-worker"}'
+        values: '0x20 4 9 13 7 2 0x100'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: ChangeStreamApplyFallingBehind
+        exp_alerts: []
+      - eval_time: 2h
+        alertname: ChangeStreamApplyFallingBehind
+        exp_alerts: []
+
+  # A BIG BACKLOG THAT IS ALREADY DRAINING: 7 minutes old and shrinking 5s a minute. Over the level
+  # threshold throughout, but the thread is winning -- this is ChangeStreamApplyLagging's business
+  # if it lasts, not the early tier's.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_change_stream_apply_lag_seconds{collection="movies",country="uk",job="kinowo-worker"}'
+        values: '420-5x40'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: ChangeStreamApplyFallingBehind
+        exp_alerts: []
+
+  # MISSED SCRAPES MID-STALL. The same stall, with the gauge absent for two scrapes at 42-43m. The
+  # page raised at 38m must not drop and re-arm its 5m hold; in the gap it reports the last wait seen (665s).
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_change_stream_apply_lag_seconds{collection="screenings",country="us",job="kinowo-worker"}'
+        values: '5x30 65+60x10 _x2 845+60x20'
+    alert_rule_test:
+      - eval_time: 43m
+        alertname: ChangeStreamApplyFallingBehind
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+              country: "us"
+              collection: "screenings"
+            exp_annotations:
+              summary: "us's screenings change events have waited 11m 5s and the wait is growing"
+              description: "The oldest unapplied `screenings` change event in \"us\" has waited over 3 minutes and the wait has kept growing for 5 minutes: the single apply thread is getting through less than arrives. Healthy, the worst wait all week was 13s. This is the early warning for ChangeStreamApplyLagging (10 minutes, held 10). Panel 28 on the worker diagnostics dashboard draws the wait and the pending count. If a scrape wave is in flight, panel 8 (projection compute vs write per call) and panel 33 (venue rows rebuilt vs reused) say whether each apply got more expensive -- ReadModelProjectionWritePerCallHigh is the slower, surer reading of the same thing. Otherwise look for the apply blocked on the projection lock or a Mongo read, as for ChangeStreamApplyLagging."
+      - eval_time: 45m
+        alertname: ChangeStreamApplyFallingBehind
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+              country: "us"
+              collection: "screenings"
+            exp_annotations:
+              summary: "us's screenings change events have waited 15m 5s and the wait is growing"
+              description: "The oldest unapplied `screenings` change event in \"us\" has waited over 3 minutes and the wait has kept growing for 5 minutes: the single apply thread is getting through less than arrives. Healthy, the worst wait all week was 13s. This is the early warning for ChangeStreamApplyLagging (10 minutes, held 10). Panel 28 on the worker diagnostics dashboard draws the wait and the pending count. If a scrape wave is in flight, panel 8 (projection compute vs write per call) and panel 33 (venue rows rebuilt vs reused) say whether each apply got more expensive -- ReadModelProjectionWritePerCallHigh is the slower, surer reading of the same thing. Otherwise look for the apply blocked on the projection lock or a Mongo read, as for ChangeStreamApplyLagging."
