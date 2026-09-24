@@ -33,6 +33,21 @@ Exact commands, the module-scoping variants, and the `testOnly` / `-z`
 narrowing that cuts a run from minutes to seconds are in the
 `test-layers` skill.
 
+**The pre-push hook** (`scripts/hooks/pre-push`; install once per clone
+with `scripts/install-hooks.sh`, which sets the shared, relative
+`core.hooksPath=scripts/hooks` so every worktree runs its own checkout's
+copy) runs the checks that otherwise fail CI in seconds, selected by the
+paths the push changes: ESLint on web JS, the generated-roster drift
+check, the read-model snapshot's input stamp, the wall-clock and
+metric-coverage lints (one warm `sbt` run, ~55s), actionlint on
+workflows, shellcheck on scripts (only warnings the push adds), and
+`scripts/ios-compile-check.sh` on `ios/**` — the SwiftUI app target via
+`xcodebuild` and the SwiftPM package on Linux via Docker, the two
+compiles a Mac's `swift test` misses. It complements the layers above;
+it replaces none of them. Bypass: `PREPUSH_SKIP="ios sbt" git push`
+skips named checks, `git push --no-verify` skips all of them — say so
+when you do.
+
 You should run **all** the layers that match the change. Run them
 **in parallel** when there are no dependencies (separate `Bash`
 tool calls in the same message), but do **not** split the runs into

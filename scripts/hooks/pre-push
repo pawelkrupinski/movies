@@ -1,0 +1,201 @@
+#!/usr/bin/env bash
+# PRE-PUSH: the checks that fail CI in seconds, run here in seconds, for what this push changes.
+#
+# About one CI failure in nine over four weeks (2026-08-27 → 09-24) was a lint or a generated
+# artefact: nothing a ten-minute pipeline needed to discover. Each check below runs only when the
+# push touches the paths it guards, so a typical push costs a few seconds and a Scala push well
+# under a minute on a warm build:
+#
+#   `eslint`      web/src/main/assets/js/**, eslint.config.js, package*.json
+#   `drift`       the generated roster chain (scripts/ci/generated-artefacts-drift.sh)
+#   `snapshot`    the read-model snapshot's input stamp (scripts/read-model-snapshot-inputs.sh)
+#   `sbt`         NoWallClockInTestsSpec, NoWallClockInClientsSpec, and the two Grafana
+#                 metric-coverage specs, in ONE sbt run, on any Scala or dashboard change
+#   `actionlint`  changed workflow files (with shellcheck over their `run:` blocks)
+#   `shellcheck`  changed *.sh and hook scripts — fails only on warnings the push ADDS, so a
+#                 file that was already noisy can still be edited
+#   `ios`         scripts/ios-compile-check.sh (app target + Linux SwiftPM) on ios/** — this one
+#                 is minutes, not seconds, and only runs for iOS pushes
+#
+# BYPASS: `git push --no-verify` skips the whole hook. `PREPUSH_SKIP="ios sbt" git push` skips
+# the named checks. A tool that is not installed (actionlint, shellcheck, Docker, Xcode) is
+# skipped with a warning, never silently.
+#
+# INSTALL: scripts/install-hooks.sh (sets core.hooksPath=scripts/hooks, which every worktree of
+# this clone shares; the path is relative, so each worktree runs its own checkout's hook).
+#
+# DRY RUN / TEST: `scripts/hooks/pre-push --plan < paths` prints the checks a list of changed
+# paths selects, without running them (scripts/hooks/pre-push-test.sh). `--range A..B` runs the
+# hook for the commits in A..B (diffed from their merge-base) instead of reading git's stdin.
+set -uo pipefail
+
+root="$(git rev-parse --show-toplevel)" || exit 1
+cd "$root" || exit 1
+
+Zero=0000000000000000000000000000000000000000
+
+# ── Which checks a set of changed paths selects ─────────────────────────────────────────────────
+# One line per path on stdin; prints the selected check names, one per line, in run order.
+plan() {
+    local eslint=0 drift=0 snapshot=0 sbt=0 actionlint=0 shellcheck=0 ios=0 path
+    while IFS= read -r path; do
+        case "$path" in
+            web/src/main/assets/js/*.js|eslint.config.js|package.json|package-lock.json) eslint=1 ;;
+        esac
+        case "$path" in
+            common/src/main/scala/models/*|data/*|android/app/src/main/java/pl/kinowo/model/City.kt|ios/Kinowo/Models/City.swift|scripts/ci/generated-artefacts-drift.sh) drift=1 ;;
+        esac
+        case "$path" in
+            test/resources/fixtures/08-06-2026/*|scripts/read-model-snapshot-inputs.sh) snapshot=1 ;;
+        esac
+        case "$path" in
+            *.scala|*.java|build.sbt|project/*|infra/nix/files/monitoring/grafana/dashboards/*) sbt=1 ;;
+        esac
+        case "$path" in
+            .github/workflows/*.yml|.github/workflows/*.yaml) actionlint=1 ;;
+        esac
+        case "$path" in
+            *.sh|scripts/hooks/*) shellcheck=1 ;;
+        esac
+        case "$path" in
+            ios/*) ios=1 ;;
+        esac
+    done
+    [ $eslint = 1 ] && echo eslint
+    [ $drift = 1 ] && echo drift
+    [ $snapshot = 1 ] && echo snapshot
+    [ $actionlint = 1 ] && echo actionlint
+    [ $shellcheck = 1 ] && echo shellcheck
+    [ $sbt = 1 ] && echo sbt
+    [ $ios = 1 ] && echo ios
+    return 0
+}
+
+if [ "${1:-}" = "--plan" ]; then
+    plan
+    exit 0
+fi
+
+# ── What is being pushed ────────────────────────────────────────────────────────────────────────
+# git feeds "<local ref> <local sha> <remote ref> <remote sha>" per pushed ref. The base for a new
+# remote branch (or a remote sha this clone has never fetched) is its merge-base with origin/main.
+base_for() {
+    local local_sha="$1" remote_sha="$2"
+    if [ "$remote_sha" != "$Zero" ] && git cat-file -e "$remote_sha^{commit}" 2>/dev/null; then
+        echo "$remote_sha"
+    else
+        git merge-base "$local_sha" origin/main 2>/dev/null || true
+    fi
+}
+
+ranges=()
+if [ "${1:-}" = "--range" ]; then
+    ranges+=("${2:?--range A..B}")
+else
+    while read -r _local_ref local_sha _remote_ref remote_sha; do
+        [ "$local_sha" = "$Zero" ] && continue   # deleting a remote ref: nothing to check
+        base="$(base_for "$local_sha" "$remote_sha")"
+        [ -n "$base" ] && ranges+=("$base..$local_sha")
+    done
+fi
+[ "${#ranges[@]}" -eq 0 ] && exit 0
+
+# THREE dots: what the pushed commits changed since they left the base, not how the two tips
+# differ. A fetch by any agent moves origin/main under every worktree of this clone, and a two-dot
+# diff would count those newer commits of main as this push's changes.
+changed="$(for r in "${ranges[@]}"; do git diff --name-only --diff-filter=d "${r/../...}"; done | LC_ALL=C sort -u)"
+[ -z "$changed" ] && exit 0
+head_sha="${ranges[${#ranges[@]}-1]##*..}"
+base_sha="${ranges[0]%%..*}"
+
+checks="$(printf '%s\n' "$changed" | plan)"
+[ -z "$checks" ] && exit 0
+
+# ── Running them ────────────────────────────────────────────────────────────────────────────────
+log()  { printf '\033[36m▸ pre-push\033[0m %s\n' "$*"; }
+warn() { printf '\033[33m! pre-push\033[0m %s\n' "$*" >&2; }
+skipped() { case " ${PREPUSH_SKIP:-} " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
+changed_matching() { printf '%s\n' "$changed" | grep -E "$1" || true; }
+
+check_eslint() {
+    if [ ! -x node_modules/.bin/eslint ]; then
+        log "installing ESLint (npm ci, once per worktree)"
+        npm ci --no-audit --no-fund --silent >/dev/null || return 1
+    fi
+    npm run --silent lint
+}
+
+check_drift() {
+    # GeoNames' Polish gazetteer, kept in the shared git dir so every worktree downloads it once.
+    GEONAMES_CACHE="$(git rev-parse --path-format=absolute --git-common-dir)/kinowo-cache/geonames" \
+        scripts/ci/generated-artefacts-drift.sh > "$tmp/drift.log" 2>&1 \
+        || { sed -n '/::error::/,$p' "$tmp/drift.log" | head -80 >&2; return 1; }
+}
+
+check_snapshot() {
+    scripts/read-model-snapshot-inputs.sh check "$head_sha"
+}
+
+check_actionlint() {
+    command -v actionlint >/dev/null || { warn "actionlint not installed (brew install actionlint) — SKIPPED"; return 0; }
+    local files
+    files="$(changed_matching '^\.github/workflows/.*\.ya?ml$')"
+    # shellcheck disable=SC2086 # workflow file names carry no spaces
+    SHELLCHECK_OPTS='-S warning' actionlint $files
+}
+
+# Fail on a warning the push ADDS: count each changed script's warnings at the base and at HEAD.
+check_shellcheck() {
+    command -v shellcheck >/dev/null || { warn "shellcheck not installed (brew install shellcheck) — SKIPPED"; return 0; }
+    local f before after rc=0
+    for f in $(changed_matching '(\.sh$|^scripts/hooks/)'); do
+        [ -f "$f" ] || continue
+        after="$(shellcheck -S warning -f gcc "$f" 2>/dev/null | wc -l | tr -d ' ')"
+        if git cat-file -e "$base_sha:$f" 2>/dev/null; then
+            git show "$base_sha:$f" > "$tmp/base.sh"
+            before="$(cd "$(dirname "$f")" && shellcheck -S warning -f gcc "$tmp/base.sh" 2>/dev/null | wc -l | tr -d ' ')"
+        else
+            before=0
+        fi
+        if [ "$after" -gt "$before" ]; then
+            warn "$f: shellcheck warnings $before → $after"
+            shellcheck -S warning "$f" >&2
+            rc=1
+        fi
+    done
+    return $rc
+}
+
+check_sbt() {
+    command -v sbt >/dev/null || { warn "sbt not installed — SKIPPED"; return 0; }
+    sbt -batch -Dsbt.server.forcestart=false \
+        "worker/Test/testOnly tools.NoWallClockInTestsSpec services.cinemas.NoWallClockInClientsSpec deploy.GrafanaMetricCoverageSpec" \
+        "web/Test/testOnly deploy.GrafanaWebMetricCoverageSpec" > "$tmp/sbt.log" 2>&1 \
+        || { grep -E '\*\*\* FAILED|\[error\]|should|Error' "$tmp/sbt.log" | head -60 >&2; warn "full log: $tmp/sbt.log"; return 1; }
+}
+
+check_ios() {
+    scripts/ios-compile-check.sh
+}
+
+tmp="$(mktemp -d)"
+failed=""
+started=$SECONDS
+log "$(printf '%s' "$checks" | tr '\n' ' ') — for $(printf '%s\n' "$changed" | wc -l | tr -d ' ') changed path(s)"
+for check in $checks; do
+    if skipped "$check"; then warn "$check SKIPPED (PREPUSH_SKIP)"; continue; fi
+    t0=$SECONDS
+    if "check_$check"; then
+        log "$check ok ($((SECONDS - t0))s)"
+    else
+        warn "$check FAILED ($((SECONDS - t0))s)"
+        failed="$failed $check"
+    fi
+done
+
+if [ -n "$failed" ]; then
+    warn "blocked by:$failed ($((SECONDS - started))s). Fix, or bypass with PREPUSH_SKIP=\"${failed# }\" / --no-verify."
+    exit 1
+fi
+rm -rf "$tmp"
+log "all clear ($((SECONDS - started))s)"
