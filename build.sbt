@@ -131,7 +131,7 @@ lazy val common = (project in file("common"))
       Dependencies.caffeine,   // qualified: Play's autoImport also defines `caffeine`
       jsoup,
       // webp ImageReader for the share-card compositor (tools.OgCardRenderer +
-      // PosterImageLoader), which the worker renders cards with and the web its city card.
+      // PosterDecode), which only the worker renders cards with now: the web links to them.
       imageioWebp,
       // Prometheus client. Lives here, not in one app, because BOTH deployed
       // JVMs expose exposition text on their own /metrics: the worker's task
