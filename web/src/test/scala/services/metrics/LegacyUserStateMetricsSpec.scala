@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 
 import tools.MutableClock
 
-import java.time.{Clock, Duration, Instant}
+import java.time.{Duration, Instant}
 
 class LegacyUserStateMetricsSpec extends AnyFlatSpec with Matchers {
 
@@ -16,7 +16,7 @@ class LegacyUserStateMetricsSpec extends AnyFlatSpec with Matchers {
 
   "LegacyUserStateMetrics" should "publish no series before the first recorded call" in {
     val registry = new PrometheusRegistry()
-    new LegacyUserStateMetrics(registry, "pl", Clock.systemUTC())
+    new LegacyUserStateMetrics(registry, "pl", java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
     PrometheusExposition.render(registry) should not include GaugeName
   }
 
