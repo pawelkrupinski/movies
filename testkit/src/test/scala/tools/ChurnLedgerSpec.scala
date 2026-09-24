@@ -26,6 +26,23 @@ class ChurnLedgerSpec extends AnyFlatSpec with Matchers {
     ledger.churnOf(()) shouldBe empty
   }
 
+  // A registry several countries' wirings share (one JVM, one default registry) must not let
+  // one country's series overwrite another's once the label is gone.
+  it should "keep the country label when the registry holds more than one country" in {
+    val (registry, merges) = registryWith()
+    merges.labelValues("pl", "canonicalize").inc()
+    merges.labelValues("uk", "canonicalize").inc()
+    val ledger = new ChurnLedger().registry(registry, Set("kinowo_worker_merges"))
+
+    ledger.churnOf { merges.labelValues("pl", "canonicalize").inc(2); merges.labelValues("uk", "canonicalize").inc(3) } shouldBe
+      Map("kinowo_worker_merges{country=pl,reason=canonicalize}" -> 2.0,
+          "kinowo_worker_merges{country=uk,reason=canonicalize}" -> 3.0)
+  }
+
+  it should "print a series that went DOWN with its own sign" in {
+    ChurnLedger.describe(Map("writes" -> -3.0)) should (include("-3") and not include("+-"))
+  }
+
   it should "leave out the series `keep` says are not work" in {
     val (registry, merges) = registryWith()
     val ledger = new ChurnLedger().registry(registry, Set("kinowo_worker_merges"),

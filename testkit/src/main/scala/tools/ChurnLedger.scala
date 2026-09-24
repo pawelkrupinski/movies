@@ -24,7 +24,7 @@ import scala.jdk.CollectionConverters._
  * (`emissions shouldBe 0`) is blind to the other eight.
  *
  * A probe is anything that yields named, monotonically increasing values: a Prometheus
- * registry (every labelled series of the chosen families, the country label dropped), a
+ * registry (every labelled series of the chosen families, the country label dropped while it holds one country), a
  * change-stream subscription (one increment per delivery), or a plain closure over a
  * counter a decorator keeps. `churnOf(pass)` reads every probe before and after the pass
  * and returns the series that moved.
@@ -50,7 +50,7 @@ final class ChurnLedger {
   }
 
   /** Every counter series of `families` in `registry`, keyed `family{label=value,…}` with the
-   *  `country` label dropped (a ledger is per wiring, and a wiring is per country). `keep`
+   *  `country` label dropped while the registry holds one country (see [[ChurnLedger.countersOf]]). `keep`
    *  narrows a family to the series that mean work — `tasks_enqueued{result=deduped}` is a
    *  no-op the queue refused, not a dispatch. */
   def registry(registry: PrometheusRegistry, families: Set[String],
@@ -99,18 +99,25 @@ object ChurnLedger {
   /** One line per moved series, largest first, for a failure message. */
   def describe(moved: Map[String, Double]): String =
     moved.toSeq.sortBy { case (k, v) => (-v, k) }
-      .map { case (k, v) => f"  $k%-70s +${v.toLong}%d" }.mkString("\n")
+      .map { case (k, v) => f"  $k%-70s ${v.toLong}%+d" }.mkString("\n")
 
+  /** The `country` label is dropped only while the registry holds ONE country: a ledger is
+   *  usually per wiring and a wiring per country, and the label is then noise. Several
+   *  countries sharing a registry keep it, or one country's series would overwrite another's
+   *  under the same stripped name. */
   def countersOf(registry: PrometheusRegistry, families: Set[String],
-                                keep: (String, Labels) => Boolean): Map[String, Double] =
-    registry.scrape().asScala.iterator.collect {
+                                keep: (String, Labels) => Boolean): Map[String, Double] = {
+    val points = registry.scrape().asScala.iterator.collect {
       case counter: CounterSnapshot if families.contains(counter.getMetadata.getName) => counter
     }.flatMap { counter =>
       val family = counter.getMetadata.getName
-      counter.getDataPoints.asScala.iterator.filter(point => keep(family, point.getLabels)).map { point =>
-        val labels = point.getLabels.asScala.iterator.filterNot(_.getName == "country")
-          .map(l => s"${l.getName}=${l.getValue}").mkString(",")
-        (if (labels.isEmpty) family else s"$family{$labels}") -> point.getValue
-      }
+      counter.getDataPoints.asScala.iterator.filter(point => keep(family, point.getLabels)).map(family -> _)
+    }.toSeq
+    val oneCountry = points.flatMap { case (_, point) => Option(point.getLabels.get("country")) }.distinct.sizeIs <= 1
+    points.map { case (family, point) =>
+      val labels = point.getLabels.asScala.iterator.filterNot(l => oneCountry && l.getName == "country")
+        .map(l => s"${l.getName}=${l.getValue}").mkString(",")
+      (if (labels.isEmpty) family else s"$family{$labels}") -> point.getValue
     }.toMap
+  }
 }
