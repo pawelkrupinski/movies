@@ -24,7 +24,10 @@ import Combine
 /// the write" gap the debounce used to risk: there's no window to lose.
 /// Each edit is queued (persisted) before it is sent and dequeued once the
 /// server accepts it, so a write that failed — offline, or the app killed
-/// mid-request — is re-sent by the next reconcile before it fetches.
+/// mid-request — is re-sent by the next reconcile before it fetches. One the
+/// server refuses for good (`HiddenFilmsWriteRefused`) is dequeued too, as the
+/// web drops it: resent, it would only be refused again, and hold back every
+/// edit behind it.
 ///
 /// The language pick rides the LEGACY `/api/me/state` document instead (via
 /// `LanguageClient` — there's no granular endpoint for a single scalar), and
@@ -193,10 +196,21 @@ final class StateSyncService: ObservableObject {
                 prefs.setHiddenFilms(local.union(remote.hiddenFilms), country: country)
 
                 var latest = remote
+                var refused = false
                 for title in localOnly {
-                    latest = try await client.hide(country: country, title: title)
+                    do {
+                        latest = try await client.hide(country: country, title: title)
+                    } catch is HiddenFilmsWriteRefused {
+                        refused = true
+                    }
                 }
-                prefs.setHiddenFilmsValidators(country: country, etag: latest.etag, lastModified: latest.lastModified)
+                // A refused title stays in the local list only, so the server's
+                // validators no longer describe it: the next fetch replaces it.
+                if refused {
+                    prefs.clearHiddenFilmsValidators(country: country)
+                } else {
+                    prefs.setHiddenFilmsValidators(country: country, etag: latest.etag, lastModified: latest.lastModified)
+                }
             }
             prefs.setHiddenFilmsMigrated(country: country)
         } catch {
@@ -335,7 +349,7 @@ final class StateSyncService: ObservableObject {
 
     /// Queue the edit (persisted — see `UserPreferences.pendingHiddenFilmsChanges`)
     /// and send the queue. One that fails stays queued; the next reconcile
-    /// re-sends it before fetching.
+    /// re-sends it before fetching — unless it was refused for good.
     private func push(_ change: HiddenFilmsChange) {
         guard isLoggedIn else { return }
         let country = prefs.selectedCountry.code
@@ -349,7 +363,10 @@ final class StateSyncService: ObservableObject {
     /// response's validators are kept only when its set is exactly the local
     /// bucket — otherwise (another device changed the set, or more edits are
     /// still queued) they would vouch for a set this device doesn't hold, and
-    /// are dropped so the next fetch is unconditional.
+    /// are dropped so the next fetch is unconditional. An edit refused for
+    /// good (`HiddenFilmsWriteRefused`) is dequeued unsent, and drops the
+    /// validators the same way: the local list now holds what the server
+    /// never will, and the next fetch replaces it.
     private func sendPendingChanges(country: String) async -> Bool {
         let previous = flushTask
         let task = Task { @MainActor [weak self] () -> Bool in
@@ -358,13 +375,15 @@ final class StateSyncService: ObservableObject {
             let startedIn = self.session
             while let change = self.prefs.pendingHiddenFilmsChanges(country: country).first {
                 guard self.isLoggedIn else { return false }
-                let result: HiddenFilmsResult
+                let result: HiddenFilmsResult?
                 do {
                     switch change {
                     case .hidden(let title):   result = try await self.client.hide(country: country, title: title)
                     case .unhidden(let title): result = try await self.client.unhide(country: country, title: title)
                     case .clearedAll:          result = try await self.client.clear(country: country)
                     }
+                } catch is HiddenFilmsWriteRefused {
+                    result = nil
                 } catch {
                     return false
                 }
@@ -372,7 +391,7 @@ final class StateSyncService: ObservableObject {
                 guard self.session == startedIn else { return false }
                 let remaining = Array(self.prefs.pendingHiddenFilmsChanges(country: country).dropFirst())
                 self.prefs.setPendingHiddenFilmsChanges(remaining, country: country)
-                if remaining.isEmpty, result.hiddenFilms == self.prefs.hiddenFilms(country: country) {
+                if let result, remaining.isEmpty, result.hiddenFilms == self.prefs.hiddenFilms(country: country) {
                     self.prefs.setHiddenFilmsValidators(country: country, etag: result.etag, lastModified: result.lastModified)
                 } else {
                     self.prefs.clearHiddenFilmsValidators(country: country)

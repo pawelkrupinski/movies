@@ -2316,8 +2316,8 @@
   // Whether a hidden-films write was refused for good: only the controller's own
   // refusals — 400 (over-long title, unknown country) and 413 (full bucket).
   // Anything else may land if sent again; a 403 in particular is as likely a
-  // Cloudflare challenge in front of the app as anything the app said. The
-  // apps resend every failed write.
+  // Cloudflare challenge in front of the app as anything the app said. Same
+  // rule as both apps' `HiddenFilmsWriteRefused`.
   function _hiddenFilmsWriteRefused(status) { return status === 400 || status === 413; }
   // Whether a language push was refused for good: only a 400, which is what
   // `UserStateController.put` answers for a language it does not know. Same

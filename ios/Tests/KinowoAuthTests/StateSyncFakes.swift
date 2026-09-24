@@ -9,11 +9,14 @@ import Combine
 /// The per-country hidden-films endpoints as the server behaves: each bucket
 /// is a set, every write applies to it and answers with the resulting set and
 /// a validator derived from its content, a conditional fetch naming the
-/// current validator is a 304, a signed-out session is refused, and an offline
-/// one fails. Tests change the account by editing `remote` — as another device
-/// would — never by scripting responses.
+/// current validator is a 304, a signed-out session is refused, an offline
+/// one fails, and a hide of a title over `maxTitleLength` is refused for good
+/// (`UserStateController.hideFilm`'s 400). Tests change the account by editing
+/// `remote` — as another device would — never by scripting responses.
 @MainActor
 final class FakeHiddenFilmsClient: HiddenFilmsClient {
+    /// `UserStateController.MaxTitleLength`.
+    static let maxTitleLength = 500
     var remote: [String: Set<String>] = [:]
     var shouldFailFetch = false
     /// Fail every hide/unhide/clear AFTER recording the call.
@@ -64,7 +67,7 @@ final class FakeHiddenFilmsClient: HiddenFilmsClient {
     func hide(country: String, title: String) async throws -> HiddenFilmsResult {
         hideCalls.append((country, title))
         defer { onHide?() }
-        return try await write(country) { $0.insert(title) }
+        return try await write(country, refusedWith: title.count > Self.maxTitleLength ? 400 : nil) { $0.insert(title) }
     }
 
     func unhide(country: String, title: String) async throws -> HiddenFilmsResult {
@@ -80,12 +83,14 @@ final class FakeHiddenFilmsClient: HiddenFilmsClient {
     }
 
     /// One write: in flight across a suspension point, like a real request.
-    private func write(_ country: String, _ change: (inout Set<String>) -> Void) async throws -> HiddenFilmsResult {
+    private func write(_ country: String, refusedWith refusal: Int? = nil,
+                       _ change: (inout Set<String>) -> Void) async throws -> HiddenFilmsResult {
         inFlight += 1
         defer { inFlight -= 1 }
         await Task.yield()
         if shouldFailWrite { throw URLError(.notConnectedToInternet) }
         if !signedIn { throw URLError(.userAuthenticationRequired) }
+        if let refusal { throw HiddenFilmsWriteRefused(statusCode: refusal) }
         change(&remote[country, default: []])
         let answer = state(country)
         if let beforeWriteResponse { await beforeWriteResponse() }

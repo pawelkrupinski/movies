@@ -27,8 +27,8 @@
       "consumers": ["worker"]
     },
     "user-state:hidden-films-write": {
-      "about": "The app server's answer to a hidden-films PUT/DELETE. UserStateController refuses for good only with 400 (over-long title, unknown country) and 413 (full bucket); a 403 is as likely a Cloudflare challenge in front of the app (f3fb9230e). The apps resend every failed write on the next reconcile and draw no permanent line yet.",
-      "consumers": ["web"]
+      "about": "The app server's answer to a hidden-films PUT/DELETE. UserStateController refuses for good only with 400 (over-long title, unknown country) and 413 (full bucket); a 403 is as likely a Cloudflare challenge in front of the app (f3fb9230e). A permanent refusal is dropped from the pending queue (web _hiddenFilmsWriteRefused, the apps' HiddenFilmsWriteRefused); anything else is resent on the next reconcile.",
+      "consumers": ["web", "ios", "android"]
     },
     "user-state:language-push": {
       "about": "The app server's answer to a language PUT. Only the 400 UserStateController.put answers for an unknown language is for good (78a6c72a2).",

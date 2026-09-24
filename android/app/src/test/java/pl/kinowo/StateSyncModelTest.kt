@@ -27,9 +27,11 @@ import java.util.Random
  * Model-based test of [StateSyncService]: seeded random sequences of what a
  * user, the network and the account's other devices do, checked against the
  * sync's invariants. The same alphabet and invariants run against iOS
- * (`StateSyncModelTests`) and the web (`HiddenFilmsSyncModelSpec`).
+ * (`StateSyncModelTests`) and, less the refused hide, the web
+ * (`HiddenFilmsSyncModelSpec`).
  *
- * THE ALPHABET: switch country, hide, unhide, clear, login, logout, resume (a
+ * THE ALPHABET: switch country, hide, a hide the server refuses for good (a
+ * title over its length bound), unhide, clear, login, logout, resume (a
  * reconcile — the server answers 304 or 200 by its own content validator),
  * another device hiding / unhiding a title, the network going down, the
  * network coming back (reconnect + resume), a local language pick, another
@@ -88,6 +90,14 @@ class StateSyncModelTest {
         SyncModel.violationOf(events)?.let { fail(it) }
     }
 
+    /** A hide refused for good sat at the head of the queue forever, holding
+     *  every later edit back and the list off the server's. */
+    @Test
+    fun aRefusedHideDoesNotHoldTheQueue() {
+        val events = listOf(SyncEvent.Login, SyncEvent.HideRefused, SyncEvent.Hide, SyncEvent.Resume)
+        SyncModel.violationOf(events)?.let { fail(it) }
+    }
+
     /** Seed 768: a pick back to the account's language after another pick's
      *  push FAILED was dropped as "nothing to send" — but a failed push leaves
      *  the account unknown (another device had moved it on meanwhile). */
@@ -137,6 +147,8 @@ class StateSyncModelTest {
 sealed interface SyncEvent {
     data class SwitchCountry(val country: String) : SyncEvent
     data object Hide : SyncEvent
+    /** A hide the server refuses for good: a title over its length bound. */
+    data object HideRefused : SyncEvent
     data class Unhide(val pick: Int) : SyncEvent
     data object Clear : SyncEvent
     data object Login : SyncEvent
@@ -168,7 +180,8 @@ object SyncModel {
         fun country() = Countries[random.nextInt(Countries.size)]
         return List(Length) {
             when (random.nextInt(108)) {
-                in 0..19 -> SyncEvent.Hide
+                in 0..17 -> SyncEvent.Hide
+                in 18..19 -> SyncEvent.HideRefused
                 in 20..31 -> SyncEvent.Unhide(random.nextInt(8))
                 in 32..35 -> SyncEvent.Clear
                 in 36..45 -> SyncEvent.SwitchCountry(country())
@@ -270,6 +283,13 @@ object SyncModel {
                     prefs.setHiddenFilms(country, prefs.hiddenFilmsFor(country) + title)
                     service.hide(title)
                     if (signedIn) expect(country, title, hidden = true)
+                }
+                SyncEvent.HideRefused -> {
+                    // The server never stores it, so it must end up nowhere.
+                    val title = "$country-${++minted}-" + "x".repeat(FakeHiddenFilmsClient.MaxTitleLength)
+                    prefs.setHiddenFilms(country, prefs.hiddenFilmsFor(country) + title)
+                    service.hide(title)
+                    expect(country, title, hidden = false)
                 }
                 is SyncEvent.Unhide -> {
                     val local = prefs.hiddenFilmsFor(country).sorted()

@@ -46,6 +46,20 @@ interface HiddenFilmsClient {
     suspend fun clear(country: String): HiddenFilmsState
 }
 
+/** The server refused a hidden-films write for good — only
+ *  `UserStateController`'s own refusals: a 400 (a title over its length bound,
+ *  or a country it does not know) or a 413 (the country's bucket is full). No
+ *  amount of resending changes either, so the caller stops owing the write.
+ *  Every other failure is retried: a 403 in particular is as likely a
+ *  Cloudflare challenge in front of the app as anything the app said. Same
+ *  rule as iOS `HiddenFilmsWriteRefused` and the web's
+ *  `_hiddenFilmsWriteRefused`. */
+class HiddenFilmsWriteRefused(val statusCode: Int) : IOException("HTTP $statusCode") {
+    companion object {
+        fun isPermanent(statusCode: Int): Boolean = statusCode == 400 || statusCode == 413
+    }
+}
+
 class HttpHiddenFilmsClient(
     internal val baseUrl: String,
     private val client: OkHttpClient,
@@ -84,6 +98,7 @@ class HttpHiddenFilmsClient(
     private suspend fun write(builder: Request.Builder): HiddenFilmsState = withContext(Dispatchers.IO) {
         val request = builder.header("User-Agent", UA).build()
         client.newCall(request).execute().use { response ->
+            if (HiddenFilmsWriteRefused.isPermanent(response.code)) throw HiddenFilmsWriteRefused(response.code)
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
             parse(response)
         }

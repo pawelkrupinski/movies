@@ -33,7 +33,28 @@ protocol HiddenFilmsClient: AnyObject {
     func clear(country: String) async throws -> HiddenFilmsResult
 }
 
+/// The server refused a hidden-films write for good — only
+/// `UserStateController`'s own refusals: a 400 (a title over its length bound,
+/// or a country it does not know) or a 413 (the country's bucket is full). No
+/// amount of resending changes either, so the caller stops owing the write.
+/// Every other failure is retried: a 403 in particular is as likely a
+/// Cloudflare challenge in front of the app as anything the app said. Same
+/// rule as Android's `HiddenFilmsWriteRefused` and the web's
+/// `_hiddenFilmsWriteRefused`.
+struct HiddenFilmsWriteRefused: Error, Equatable {
+    let statusCode: Int
+
+    static func isPermanent(_ statusCode: Int) -> Bool {
+        statusCode == 400 || statusCode == 413
+    }
+}
+
 final class HttpHiddenFilmsClient: HiddenFilmsClient {
+    private let session: URLSession
+
+    init(session: URLSession = .shared) {
+        self.session = session
+    }
 
     func fetch(country: String, etag: String?, lastModified: String?) async throws -> HiddenFilmsFetchResult {
         var request = URLRequest(url: Self.url(country: country))
@@ -46,7 +67,7 @@ final class HttpHiddenFilmsClient: HiddenFilmsClient {
         // cheap path.
         if let lastModified { request.setValue(lastModified, forHTTPHeaderField: "If-Modified-Since") }
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         if http.statusCode == 304 { return .notModified }
         guard http.statusCode == 200 else { throw URLError(.userAuthenticationRequired) }
@@ -64,19 +85,27 @@ final class HttpHiddenFilmsClient: HiddenFilmsClient {
     func clear(country: String) async throws -> HiddenFilmsResult {
         var request = URLRequest(url: Self.url(country: country))
         request.httpMethod = "DELETE"
-        Self.applyCommonHeaders(&request)
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw URLError(.userAuthenticationRequired) }
-        return try Self.decode(data: data, response: http)
+        return try await send(request)
     }
 
     private func write(method: String, country: String, title: String) async throws -> HiddenFilmsResult {
         let encodedTitle = title.addingPercentEncoding(withAllowedCharacters: Self.titleAllowed) ?? title
         var request = URLRequest(url: Self.url(country: country, encodedTitleSegment: encodedTitle))
         request.httpMethod = method
+        return try await send(request)
+    }
+
+    /// One write: the resulting state, `HiddenFilmsWriteRefused` when the
+    /// server will never accept it, any other error when a resend may land.
+    private func send(_ request: URLRequest) async throws -> HiddenFilmsResult {
+        var request = request
         Self.applyCommonHeaders(&request)
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw URLError(.userAuthenticationRequired) }
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+        guard http.statusCode == 200 else {
+            if HiddenFilmsWriteRefused.isPermanent(http.statusCode) { throw HiddenFilmsWriteRefused(statusCode: http.statusCode) }
+            throw URLError(.userAuthenticationRequired)
+        }
         return try Self.decode(data: data, response: http)
     }
 

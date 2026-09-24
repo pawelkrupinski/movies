@@ -51,7 +51,9 @@ import pl.kinowo.model.Country
  * offline behaviour iOS has. Each write is queued (persisted) before it is
  * sent and dequeued once the server accepts it, so one that failed — offline,
  * or the process killed mid-request — is re-sent by the next reconcile
- * (login, resume) before it fetches.
+ * (login, resume) before it fetches. One the server refuses for good
+ * ([HiddenFilmsWriteRefused]) is dequeued too, as the web drops it: resent,
+ * it would only be refused again, and hold back every edit behind it.
  *
  * The language pick rides the LEGACY `/api/me/state` document instead (via
  * [LanguageClient] — there's no granular endpoint for a single scalar), and
@@ -186,8 +188,18 @@ class StateSyncService(
                 if (merged != local) prefs.setHiddenFilms(country, merged)
 
                 var latest = remote
-                (local - (remote?.hiddenFilms ?: emptySet())).forEach { title -> latest = client.hide(country, title) }
-                latest?.let { prefs.setHiddenFilmsValidators(country, it.etag, it.lastModified) }
+                var refused = false
+                (local - (remote?.hiddenFilms ?: emptySet())).forEach { title ->
+                    try {
+                        latest = client.hide(country, title)
+                    } catch (_: HiddenFilmsWriteRefused) {
+                        refused = true
+                    }
+                }
+                // A refused title stays in the local list only, so the server's
+                // validators no longer describe it: the next fetch replaces it.
+                if (refused) prefs.setHiddenFilmsValidators(country, null, null)
+                else latest?.let { prefs.setHiddenFilmsValidators(country, it.etag, it.lastModified) }
                 prefs.setHiddenFilmsMigrated(country, true)
             }
         }
@@ -330,7 +342,7 @@ class StateSyncService(
 
     /** Queue [op] (persisted — see [SyncPrefs.pendingHiddenFilmsOps]) and send
      *  the queue. One that fails stays queued; the next reconcile re-sends it
-     *  before fetching. */
+     *  before fetching — unless it was refused for good. */
     private fun push(op: HiddenFilmsOp) {
         if (!loggedIn) return
         // UNDISPATCHED, so the (fair) queue lock is requested in call order and
@@ -348,7 +360,10 @@ class StateSyncService(
      *  validators are kept only when its set is exactly the local bucket —
      *  otherwise (another device changed the set, or more edits are still
      *  queued) they would vouch for a set this device doesn't hold, and are
-     *  dropped so the next fetch is unconditional. Mirrors iOS
+     *  dropped so the next fetch is unconditional. An edit refused for good
+     *  ([HiddenFilmsWriteRefused]) is dequeued unsent, and drops the
+     *  validators the same way: the local list now holds what the server
+     *  never will, and the next fetch replaces it. Mirrors iOS
      *  `sendPendingChanges`. */
     private suspend fun sendPendingOps(country: String): Boolean = flushMutex.withLock {
         val startedIn = session
@@ -361,13 +376,13 @@ class StateSyncService(
                     is HiddenFilmsOp.Unhide -> client.unhide(country, op.title)
                     HiddenFilmsOp.Clear -> client.clear(country)
                 }
-            }.getOrElse { return@withLock false }
+            }.getOrElse { failure -> if (failure is HiddenFilmsWriteRefused) null else return@withLock false }
             // A logout while it was on the wire forgot the queue it came from.
             if (session != startedIn) return@withLock false
             val remaining = queueMutex.withLock {
                 prefs.pendingHiddenFilmsOps(country).drop(1).also { prefs.setPendingHiddenFilmsOps(country, it) }
             }
-            if (remaining.isEmpty() && result.hiddenFilms == prefs.hiddenFilmsFor(country)) {
+            if (result != null && remaining.isEmpty() && result.hiddenFilms == prefs.hiddenFilmsFor(country)) {
                 prefs.setHiddenFilmsValidators(country, result.etag, result.lastModified)
             } else {
                 prefs.setHiddenFilmsValidators(country, null, null)

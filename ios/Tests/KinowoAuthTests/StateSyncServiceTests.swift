@@ -237,6 +237,49 @@ final class StateSyncServiceTests: XCTestCase {
         _ = sync
     }
 
+    /// A hide the server refuses for good (a title over its length bound: a
+    /// 400) can never land: kept queued, it was re-sent on every reconcile and
+    /// held back every edit queued behind it, and the reconcile never fetched
+    /// again. It is dropped — as the web drops it — the edits behind it land,
+    /// and the server's list replaces the title nobody will ever store.
+    func testAHideRefusedForGoodIsDroppedAndTheEditsBehindItLand() async throws {
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+
+        let overLong = String(repeating: "x", count: FakeHiddenFilmsClient.maxTitleLength + 1)
+        prefs.hide(overLong)
+        prefs.hide("Film A")
+        try await waitUntil { self.client.remote[self.pl] == ["Film A"] }
+        try await waitUntil { self.prefs.pendingHiddenFilmsChanges(country: self.pl).isEmpty }
+
+        let refusedSends = client.hideCalls.filter { $0.title == overLong }.count
+        await sync.reconcileCurrentCountry()
+        XCTAssertEqual(client.hideCalls.filter { $0.title == overLong }.count, refusedSends,
+                       "the refused hide must not be sent again")
+        XCTAssertEqual(prefs.hiddenFilms(country: pl), ["Film A"])
+        _ = sync
+    }
+
+    /// The same refusal met by a first sign-in's union: it must not stop the
+    /// country migrating (every later reconcile would redo the union and meet
+    /// it again), and the list still ends on the server's.
+    func testAHideRefusedForGoodInTheFirstSyncUnionStillMigrates() async throws {
+        let overLong = String(repeating: "x", count: FakeHiddenFilmsClient.maxTitleLength + 1)
+        prefs.hide(overLong)
+        prefs.hide("Film A")
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        XCTAssertEqual(client.remote[pl], ["Film A"])
+
+        await sync.reconcileCurrentCountry()
+        XCTAssertEqual(prefs.hiddenFilms(country: pl), ["Film A"])
+        XCTAssertEqual(client.hideCalls.filter { $0.title == overLong }.count, 1,
+                       "the refused hide must not be sent again")
+        _ = sync
+    }
+
     /// A push the server refuses for good (a language this server does not
     /// know) can never land: kept pending, it was re-pushed on every reconcile
     /// and the account's own pick never came back. It is dropped, and the

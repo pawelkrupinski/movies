@@ -8,6 +8,7 @@ import kotlinx.coroutines.withContext
 import pl.kinowo.auth.HiddenFilmsClient
 import pl.kinowo.auth.HiddenFilmsFetchResult
 import pl.kinowo.auth.HiddenFilmsState
+import pl.kinowo.auth.HiddenFilmsWriteRefused
 import pl.kinowo.auth.LanguageClient
 import pl.kinowo.auth.LanguagePushRefused
 import pl.kinowo.data.HiddenFilmsOp
@@ -68,8 +69,9 @@ internal class FakeSyncPrefs : SyncPrefs {
 /** The per-country hidden-films endpoints as the server behaves: each bucket
  *  is a set, every write applies to it and answers with the resulting set and
  *  a validator derived from its content, a conditional fetch naming the
- *  current validator is a 304, a signed-out session is refused, and an
- *  offline one fails. Tests change the account by editing [remote] — as
+ *  current validator is a 304, a signed-out session is refused, an offline
+ *  one fails, and a hide of a title over [MaxTitleLength] is refused for good
+ *  (`UserStateController.hideFilm`'s 400). Tests change the account by editing [remote] — as
  *  another device would — never by scripting responses. Mirrors iOS
  *  `FakeHiddenFilmsClient`. */
 internal class FakeHiddenFilmsClient : HiddenFilmsClient {
@@ -112,6 +114,7 @@ internal class FakeHiddenFilmsClient : HiddenFilmsClient {
         hideCalls += title to country
         if (shouldFailWrite) throw IOException("no network")
         if (!signedIn) throw IOException("HTTP 401")
+        if (title.length > MaxTitleLength) throw HiddenFilmsWriteRefused(400)
         remote[country] = (remote[country] ?: emptySet()) + title
         return state(country).also { beforeWriteResponse() }
     }
@@ -130,6 +133,11 @@ internal class FakeHiddenFilmsClient : HiddenFilmsClient {
         if (!signedIn) throw IOException("HTTP 401")
         remote[country] = emptySet()
         return state(country).also { beforeWriteResponse() }
+    }
+
+    companion object {
+        /** `UserStateController.MaxTitleLength`. */
+        const val MaxTitleLength = 500
     }
 }
 

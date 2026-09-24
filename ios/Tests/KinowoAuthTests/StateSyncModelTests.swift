@@ -5,9 +5,11 @@ import Combine
 /// Model-based test of `StateSyncService`: seeded random sequences of what a
 /// user, the network and the account's other devices do, checked against the
 /// sync's invariants. The same alphabet and invariants run against Android
-/// (`StateSyncModelTest`) and the web (`HiddenFilmsSyncModelSpec`).
+/// (`StateSyncModelTest`) and, less the refused hide, the web
+/// (`HiddenFilmsSyncModelSpec`).
 ///
-/// THE ALPHABET: switch country, hide, unhide, clear, login, logout, resume (a
+/// THE ALPHABET: switch country, hide, a hide the server refuses for good (a
+/// title over its length bound), unhide, clear, login, logout, resume (a
 /// reconcile — the server answers 304 or 200 by its own content validator),
 /// another device hiding / unhiding a title, the network going down, the
 /// network coming back (reconnect + resume), a local language pick, another
@@ -58,6 +60,13 @@ final class StateSyncModelTests: XCTestCase {
     // ec3af46b0), and a language pick still unsent at a logout.
     func testAFailedUnhideIsResentAfterReconnect() async {
         let violation = await SyncModel.violation(of: [.login, .hide, .networkDown, .unhide(0), .reconnect])
+        XCTAssertNil(violation)
+    }
+
+    /// A hide refused for good sat at the head of the queue forever, holding
+    /// every later edit back and the list off the server's.
+    func testARefusedHideDoesNotHoldTheQueue() async {
+        let violation = await SyncModel.violation(of: [.login, .hideRefused, .hide, .resume])
         XCTAssertNil(violation)
     }
 
@@ -113,7 +122,7 @@ final class StateSyncModelTests: XCTestCase {
 /// One step of a generated sequence. Picks are indices resolved against the
 /// state when the event runs, so a shrunk sequence stays runnable.
 enum SyncEvent: CustomStringConvertible, Equatable {
-    case switchCountry(String), hide, unhide(Int), clear, login, logout, resume
+    case switchCountry(String), hide, hideRefused, unhide(Int), clear, login, logout, resume
     case remoteHide(String), remoteUnhide(String, Int), networkDown, reconnect
     case pickLanguage(String), remoteLanguage(String)
     /// From now on every response is held on the wire — the server has
@@ -127,6 +136,7 @@ enum SyncEvent: CustomStringConvertible, Equatable {
         switch self {
         case .switchCountry(let c):      return "SwitchCountry(\(c))"
         case .hide:                      return "Hide"
+        case .hideRefused:               return "HideRefused"
         case .unhide(let p):             return "Unhide(\(p))"
         case .clear:                     return "Clear"
         case .login:                     return "Login"
@@ -170,7 +180,8 @@ enum SyncModel {
             let pick = random.next(8)
             let language = languages[random.next(languages.count)]
             switch random.next(108) {
-            case 0...19:  return .hide
+            case 0...17:  return .hide
+            case 18...19: return .hideRefused
             case 20...31: return .unhide(pick)
             case 32...35: return .clear
             case 36...45: return .switchCountry(country)
@@ -292,6 +303,12 @@ enum SyncModel {
                 let title = "\(country)-\(minted)"
                 prefs.hide(title)
                 if signedIn { expect(country, title, hidden: true) }
+            case .hideRefused:
+                // The server never stores it, so it must end up nowhere.
+                minted += 1
+                let title = "\(country)-\(minted)-" + String(repeating: "x", count: FakeHiddenFilmsClient.maxTitleLength)
+                prefs.hide(title)
+                expect(country, title, hidden: false)
             case .unhide(let pick):
                 let local = prefs.hiddenFilms(country: country).sorted()
                 guard !local.isEmpty else { return }

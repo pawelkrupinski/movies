@@ -635,6 +635,52 @@ class StateSyncServiceTest {
         assertEquals("es", languageClient.remote)
     }
 
+    /** A hide the server refuses for good (a title over its length bound: a
+     *  400) can never land: kept queued, it was re-sent on every reconcile and
+     *  held back every edit queued behind it, and the reconcile never fetched
+     *  again. It is dropped — as the web drops it — the edits behind it land,
+     *  and the server's list replaces the title nobody will ever store. */
+    @Test
+    fun aHideRefusedForGoodIsDroppedAndTheEditsBehindItLand() = runTest(UnconfinedTestDispatcher()) {
+        prefs.countryState.value = "pl"
+        val service = startService()
+        login()
+        advanceUntilIdle()
+
+        val overLong = "x".repeat(FakeHiddenFilmsClient.MaxTitleLength + 1)
+        prefs.hiddenByCountry["pl"] = setOf(overLong)
+        service.hide(overLong)
+        prefs.hiddenByCountry["pl"] = setOf(overLong, "Film A")
+        service.hide("Film A")
+        advanceUntilIdle()
+        assertEquals(setOf("Film A"), client.remote["pl"])
+        assertEquals(emptyList<HiddenFilmsOp>(), prefs.pendingHiddenFilmsOps("pl"))
+
+        val refusedSends = client.hideCalls.count { it.first == overLong }
+        service.reconcileCurrentCountry()
+        assertEquals("the refused hide must not be sent again", refusedSends, client.hideCalls.count { it.first == overLong })
+        assertEquals(setOf("Film A"), prefs.hiddenState)
+    }
+
+    /** The same refusal met by a first sign-in's union: it must not stop the
+     *  country migrating (every later reconcile would redo the union and meet
+     *  it again), and the list still ends on the server's. */
+    @Test
+    fun aHideRefusedForGoodInTheFirstSyncUnionStillMigrates() = runTest(UnconfinedTestDispatcher()) {
+        prefs.countryState.value = "pl"
+        val overLong = "x".repeat(FakeHiddenFilmsClient.MaxTitleLength + 1)
+        prefs.hiddenByCountry["pl"] = setOf(overLong, "Film A")
+        val service = startService()
+        login()
+        advanceUntilIdle()
+        assertTrue(prefs.isHiddenFilmsMigrated("pl"))
+        assertEquals(setOf("Film A"), client.remote["pl"])
+
+        service.reconcileCurrentCountry()
+        assertEquals(setOf("Film A"), prefs.hiddenState)
+        assertEquals("the refused hide must not be sent again", 1, client.hideCalls.count { it.first == overLong })
+    }
+
     /** A push the server refuses for good (a language it does not know) can
      *  never land: kept pending, it was re-pushed on every reconcile and the
      *  account's own pick never came back. It is dropped, and the account's
