@@ -186,4 +186,9 @@ class SlotsRepositorySpec extends AnyFlatSpec with Matchers {
     SlotKeyed.filmIdOf(SlotKeyed.idOf(weird, "slot")) shouldBe "film"   // documents the known limit
     SlotKeyed.idOf("f1", "a") shouldBe s"f1${SlotKeyed.IdSep}a"
   }
+
+  it should "split back into the film id and slot key it was built from" in {
+    val id = SlotKeyed.idOf("film|2026", s"Kino Muza\u241fDune")
+    (SlotKeyed.filmIdOf(id), SlotKeyed.slotKeyOf(id)) shouldBe ("film|2026", s"Kino Muza\u241fDune")
+  }
 }

@@ -64,6 +64,9 @@ object SlotKeyed {
    *  carries no post-image, recovers which film changed. */
   def filmIdOf(compositeId: String): String = compositeId.takeWhile(_ != IdSep)
 
+  /** The slot-key suffix of a composite `_id` — [[idOf]]'s other half. */
+  def slotKeyOf(compositeId: String): String = compositeId.drop(filmIdOf(compositeId).length + 1)
+
   /** Every stored row of one film, in either side collection — the per-film read/delete
    *  predicate. Shared so a caller that reaches a side collection directly (the staging
    *  fold, which deletes `movies` rows inside its own transaction and must take their

@@ -72,7 +72,7 @@ object RetiredVenueRows {
 
   /** The venue a side-collection row is filed under, from its composite `_id`. */
   def venueOf(rowId: String): String =
-    VenueRoster.venueOf(rowId.drop(SlotKeyed.filmIdOf(rowId).length + 1))
+    VenueRoster.venueOf(SlotKeyed.slotKeyOf(rowId))
 
   def sweep(screenings: Option[SlotKeyedRows], slots: Option[SlotKeyedRows], roster: Set[String],
             now: Instant = Instant.now(), grace: FiniteDuration = Grace): RetiredVenueRows =

@@ -76,10 +76,7 @@ final class InMemorySlotRows[A](clock: () => Instant = () => Instant.now()) {
   /** Drop the rows with exactly these composite `_id`s; returns how many existed. */
   def deleteRows(ids: Set[String]): Long = {
     val present = ids.filter(writtenAt().contains)
-    present.foreach { id =>
-      val filmId = SlotKeyed.filmIdOf(id)
-      delete(filmId, id.drop(filmId.length + 1))
-    }
+    present.foreach(id => delete(SlotKeyed.filmIdOf(id), SlotKeyed.slotKeyOf(id)))
     present.size.toLong
   }
 

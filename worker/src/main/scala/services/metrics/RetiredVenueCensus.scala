@@ -65,7 +65,7 @@ class RetiredVenueCensus(
   private def futureOf(retiredRows: Set[String]): Option[Int] =
     if (retiredRows.isEmpty) Some(0)
     else {
-      val slotKeysByFilm = retiredRows.groupMap(SlotKeyed.filmIdOf)(id => id.drop(SlotKeyed.filmIdOf(id).length + 1))
+      val slotKeysByFilm = retiredRows.groupMap(SlotKeyed.filmIdOf)(SlotKeyed.slotKeyOf)
       val (byFilm, read) = screenings.findForFilmsChecked(slotKeysByFilm.keySet)
       Option.when(read) {
         val now = LocalDateTime.now(clock.withZone(zone))
