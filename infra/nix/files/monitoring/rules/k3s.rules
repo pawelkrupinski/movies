@@ -325,8 +325,9 @@ groups:
       #
       # NO `for:`: a restart is an event, already over by the time it is counted. The 15m window is
       # how long it stays visible, and the alert resolves on its own once it has passed.
-      # Replayed over 2026-09-10..09-24: six episodes, each one of the self-exits above, 11-19
-      # minutes long, nothing else.
+      # Replayed over 2026-09-10..09-24 at a one-minute step: seven episodes, 4-15 minutes long,
+      # covering exactly the six self-exits above and nothing else -- web-pl's on 09-21 reads as two
+      # (17:12-17:25 and 17:27-17:30) because the series is missing for the one sample between.
       - alert: WebRestartNotOOMKilled
         expr: >-
           (increase(kube_pod_container_status_restarts_total{namespace="kinowo",container="web"}[15m]) > 0)
