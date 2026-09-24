@@ -621,9 +621,12 @@ private[movies] final class ScrapeLanding(
                 case (row, true) =>
                   val base = row.getOrElse(MovieRecord())
                   // Its RESULT, not `true` — the same reason as `putIfPresent` above: a write
-                  // that FAILED left the slot nowhere (the cache rolled it back), and the move
-                  // below would then strip it off the row that still holds it.
-                  !store.put(key, base.copy(data = base.data + (slotKey -> slot))).failed
+                  // that did not LAND left the slot nowhere new, and the move below would then
+                  // strip it off the row that still holds it. Only `Written` landed: a DECLINED
+                  // write threw nothing but stored nothing either — the cache refusing a key
+                  // another film holds, an unreadable key or a fold whose side rows could not be
+                  // carried, and `movies` refusing an identity another document holds.
+                  store.put(key, base.copy(data = base.data + (slotKey -> slot))) == WriteOutcome.Written
               }
           }
           // This tick just decided which film this (cinema, title) belongs to, so

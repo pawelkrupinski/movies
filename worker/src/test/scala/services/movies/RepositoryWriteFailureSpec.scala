@@ -178,4 +178,26 @@ class RepositoryWriteFailureSpec extends AnyFlatSpec with Matchers with LoneElem
       "anywhere new, so the row holding it must keep it: ")(
       multikinoOnHolder should contain (Multikino))
   }
+
+  // The same move after a first-time write `movies` DECLINED: nothing threw, but the slot is
+  // stored nowhere new, so stripping it off the row that holds it deletes the venue's showtimes.
+  "a first-time write that is declined" should "not strip the venue's slot off the row that still holds it" in {
+    val repository = new IdentityHeldMovieRepository
+    repository.declining = false
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = specClock)
+    def listingOf(title: String, year: Option[Int]) = listing(title).copy(movie = Movie(title, releaseYear = year))
+    cache.recordCinemaScrape(Multikino,
+      listingOf("Zaproszenie", None) +: (1 to 9).map(i => listingOf(s"Filler $i", None)))
+    def storedZaproszenieCinemas = repository.findAll().filter(_.title == "Zaproszenie")
+      .flatMap(_.record.data.keys).flatMap(Source.cinemaOf)
+    storedZaproszenieCinemas should contain (Multikino)
+
+    repository.canMoveFilm = false
+    repository.declining   = true
+    cache.recordCinemaScrape(Multikino, Seq(listingOf("Zaproszenie", Some(2026))))
+
+    withClue(s"rows: ${repository.findAll().map(r => (r.title, r.year, r.record.data.keySet))}; the slot landed " +
+      "nowhere new, so the stored row holding it must keep it: ")(
+      storedZaproszenieCinemas should contain (Multikino))
+  }
 }
