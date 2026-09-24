@@ -255,23 +255,24 @@ jobs:
         runs-on: ubuntu-latest
         permissions:
             actions: write
+            contents: read
         steps:
-            - name: Start the country convergence suite
+            # Full history, BLOBLESS: the gate diffs this push against the head of each
+            # suite's newest run, which can be several pushes back.
+            - uses: actions/checkout@v5
+              with:
+                  fetch-depth: 0
+                  filter: blob:none
+            # Only for a push that can change a verdict (`.github/convergence-paths.txt`).
+            # Each lane keeps one run pending and every newer dispatch replaces it, so
+            # dispatching for an app- or docs-only push used to evict the pending run of the
+            # pipeline commit before it — see the script's header for the measurement.
+            # Two lanes, two dispatches: the US runs the same leg from its own workflow.
+            - name: Start the convergence suites this push can change
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   GH_REPO: ${{ github.repository }}
-              run: |
-                  set -euo pipefail
-                  echo "ci green for ${GITHUB_SHA:0:9} — dispatching Country convergence"
-                  gh workflow run "Country convergence" --ref "${GITHUB_REF_NAME}"
-                  # Two lanes, two dispatches. The US runs the same leg from its own
-                  # workflow, on a lane that does NOT cancel in progress — so this
-                  # dispatch usually finds a run already in flight and simply queues
-                  # behind it, replacing whatever was queued before. That is the
-                  # intended shape: finish the run that is going, then pick up the
-                  # newest commit and drop the rest.
-                  echo "ci green for ${GITHUB_SHA:0:9} — dispatching US convergence"
-                  gh workflow run "US convergence" --ref "${GITHUB_REF_NAME}"
+              run: .github/scripts/kick-convergence.sh "$GITHUB_SHA" "$GITHUB_REF_NAME" "Country convergence" "US convergence"
 
     # ── The k3s tiers ────────────────────────────────────────────────────────────────────────────
     #

@@ -34,8 +34,9 @@ class DeployParallelismConfigSpec extends AnyFlatSpec with Matchers {
     job("deploy") should not include "concurrency:"
   }
 
+  // Through the pipeline-path gate (ConvergenceDispatchGateSpec), which names each suite.
   it should "dispatch the country convergence suite" in {
-    job("kick-convergence") should include("""gh workflow run "Country convergence"""")
+    job("kick-convergence") should include("""kick-convergence.sh "$GITHUB_SHA" "$GITHUB_REF_NAME" "Country convergence"""")
   }
 
   /**
@@ -48,7 +49,7 @@ class DeployParallelismConfigSpec extends AnyFlatSpec with Matchers {
    * asked whether it converges, exactly as it was before it had a leg at all.
    */
   it should "dispatch the US convergence build alongside it" in {
-    job("kick-convergence") should include("""gh workflow run "US convergence"""")
+    job("kick-convergence") should include(""""Country convergence" "US convergence"""")
   }
 
   /**
