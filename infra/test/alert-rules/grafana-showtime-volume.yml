@@ -48,12 +48,12 @@ tests:
             value: 2000
 
       # The de-duplicated numerator is the truth the whole time -- during the overlap and after it.
-      - expr: 'sum by (country) (max by (country, city) (kinowo_worker_showtimes))'
+      - expr: 'sum by (country) (max by (country, city) (last_over_time(kinowo_worker_showtimes[10m])))'
         eval_time: 30m
         exp_samples:
           - labels: '{country="pl"}'
             value: 1000
-      - expr: 'sum by (country) (max by (country, city) (kinowo_worker_showtimes))'
+      - expr: 'sum by (country) (max by (country, city) (last_over_time(kinowo_worker_showtimes[10m])))'
         eval_time: 90m
         exp_samples:
           - labels: '{country="pl"}'
@@ -70,7 +70,7 @@ tests:
       # AND THE RULE AS IT NOW READS: a flat 1.0, because the doubled sample never entered the
       # baseline. Exactly 1 and not merely "above 0.6" -- the point is that the artefact is gone,
       # not that it was trimmed back under the threshold.
-      - expr: 'sum by (country) (max by (country, city) (kinowo_worker_showtimes)) / clamp_min(max_over_time(sum by (country) (max by (country, city) (kinowo_worker_showtimes))[6h:10m]), 1)'
+      - expr: 'sum by (country) (max by (country, city) (last_over_time(kinowo_worker_showtimes[10m]))) / clamp_min(max_over_time(sum by (country) (max by (country, city) (last_over_time(kinowo_worker_showtimes[10m])))[6h:10m]), 1)'
         eval_time: 90m
         exp_samples:
           - labels: '{country="pl"}'
@@ -91,13 +91,32 @@ tests:
       - series: 'kinowo_worker_showtimes{country="uk",city="manchester",instance="kinowo-worker-uk",job="kinowo-worker"}'
         values: '1000x59 100x121'
     promql_expr_test:
-      - expr: 'sum by (country) (max by (country, city) (kinowo_worker_showtimes)) / clamp_min(max_over_time(sum by (country) (max by (country, city) (kinowo_worker_showtimes))[6h:10m]), 1)'
+      - expr: 'sum by (country) (max by (country, city) (last_over_time(kinowo_worker_showtimes[10m]))) / clamp_min(max_over_time(sum by (country) (max by (country, city) (last_over_time(kinowo_worker_showtimes[10m])))[6h:10m]), 1)'
         eval_time: 55m
         exp_samples:
           - labels: '{country="uk"}'
             value: 1
-      - expr: 'sum by (country) (max by (country, city) (kinowo_worker_showtimes)) / clamp_min(max_over_time(sum by (country) (max by (country, city) (kinowo_worker_showtimes))[6h:10m]), 1)'
+      - expr: 'sum by (country) (max by (country, city) (last_over_time(kinowo_worker_showtimes[10m]))) / clamp_min(max_over_time(sum by (country) (max by (country, city) (last_over_time(kinowo_worker_showtimes[10m])))[6h:10m]), 1)'
         eval_time: 90m
+        exp_samples:
+          - labels: '{country="uk"}'
+            value: 0.55
+
+  # ── A COLLAPSE STAYS VISIBLE THROUGH A WORKER RESTART ─────────────────────────────────────────
+  # The same UK collapse, with the worker restarting at 100m: every series carries a staleness
+  # marker and then nothing for three minutes. Read raw, the expression returned NO series for the
+  # country inside that gap, Grafana resolved the instance (MissingSeries) and the 30m hold began
+  # again -- with ~16 worker restarts on a deploy day, a collapse could go unpaged all day. Read
+  # through last_over_time(...[10m]), the ratio holds at 0.55 in the middle of the gap.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_showtimes{country="uk",city="london",instance="kinowo-worker-uk",job="kinowo-worker"}'
+        values: '1000x100 stale _x2 1000x77'
+      - series: 'kinowo_worker_showtimes{country="uk",city="manchester",instance="kinowo-worker-uk",job="kinowo-worker"}'
+        values: '1000x59 100x40 stale _x2 100x77'
+    promql_expr_test:
+      - expr: 'sum by (country) (max by (country, city) (last_over_time(kinowo_worker_showtimes[10m]))) / clamp_min(max_over_time(sum by (country) (max by (country, city) (last_over_time(kinowo_worker_showtimes[10m])))[6h:10m]), 1)'
+        eval_time: 102m
         exp_samples:
           - labels: '{country="uk"}'
             value: 0.55

@@ -217,12 +217,14 @@ groups:
           (
             (
               sum by (country) (increase(kinowo_worker_readmodel_films_pruned_total[1h]))
-              / max by (country) (kinowo_worker_corpus_movies{subset="total"})
+              / max by (country) (last_over_time(kinowo_worker_corpus_movies{subset="total"}[10m]))
             ) > 0.3
           )
-          and on (country) (max by (country) (kinowo_worker_corpus_movies{subset="total"}) > 0)
+          and on (country) (max by (country) (last_over_time(kinowo_worker_corpus_movies{subset="total"}[10m])) > 0)
         # The increase window is already an hour, so this is not waiting for the condition to be
-        # real -- it is confirming the ratio is not a single scrape-boundary sample.
+        # real -- it is confirming the ratio is not a single scrape-boundary sample. The census
+        # denominator is read through `last_over_time(...[10m])` so a worker restart's ~3m gap does
+        # not drop the pending alert (test_alert_rule_coverage.py).
         for: 15m
         labels:
           severity: critical
@@ -669,16 +671,18 @@ groups:
       - alert: ChangeStreamMoviesCursorSilent
         expr: >-
           (
-            kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="de"} > 72000
-            or kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="es"} > 50400
-            or kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="pl"} > 7200
-            or kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="uk"} > 50400
-            or kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="us"} > 100800
+            last_over_time(kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="de"}[10m]) > 72000
+            or last_over_time(kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="es"}[10m]) > 50400
+            or last_over_time(kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="pl"}[10m]) > 7200
+            or last_over_time(kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="uk"}[10m]) > 50400
+            or last_over_time(kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="us"}[10m]) > 100800
           )
           and on (country)
           (sum by (country) (changes(kinowo_worker_corpus_movies[1h])) > 0)
         # THIRTY MINUTES filters scrape jitter, not a restart: the age restarts from zero at boot
         # (it counts from the process start until the first delivery), so a rollout cannot spike it.
+        # `last_over_time(...[10m])` so the restart's ~3m gap alone does not drop a pending alert --
+        # only the rebooted cursor's fresh, low age does (test_alert_rule_coverage.py).
         for: 30m
         labels:
           severity: warning

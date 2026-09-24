@@ -104,12 +104,13 @@ object RepoFile {
       .map(_.toInt)
 
   /** The per-country thresholds an alert file spells for `metric`, in the unit the metric
-   *  carries: every `metric{...country="xx"...} > N` clause, keyed by country. The shape
+   *  carries: every `metric{...country="xx"...} > N` clause -- bare, or bridged over a worker
+   *  restart as `last_over_time(metric{...}[10m]) > N` -- keyed by country. The shape
    *  both cadence-derived alerts take (`CinemaScrapeOldestAgeHigh`,
    *  `ChangeStreamMoviesCursorSilent`), because PromQL cannot read a ConfigMap and each
    *  country's literal has to be pinned to the overlay it was derived from. */
   def perCountryThresholds(rules: String, metric: String): Map[String, Long] =
-    (java.util.regex.Pattern.quote(metric) + """\{([^}]*)\}\s*>\s*(\d+)""").r
+    (java.util.regex.Pattern.quote(metric) + """\{([^}]*)\}(?:\[[^\]]*\]\))?\s*>\s*(\d+)""").r
       .findAllMatchIn(rules)
       .flatMap(m => """country="([a-z]+)"""".r.findFirstMatchIn(m.group(1)).map(_.group(1) -> m.group(2).toLong))
       .toMap

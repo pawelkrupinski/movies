@@ -963,6 +963,11 @@ groups:
       # went below only for the UK, only during the incident (floor 0.09) — so
       # 0.6 has real margin on both sides. `for: 30m` rides out the re-climb
       # after a worker restart, which walks the gauge back up from a cold scan.
+      # The gauge is read through last_over_time(...[10m]) because the restart
+      # itself leaves it absent for ~3 minutes: the query returns no series for
+      # the country, Grafana resolves the instance as MissingSeries, and the
+      # 30m hold starts over -- on a deploy day it could never complete
+      # (infra/test/test_alert_rule_coverage.py).
       - uid: kinowo-showtime-volume-collapsed
         title: Showtime volume collapsed (country)
         condition: C
@@ -973,7 +978,7 @@ groups:
           severity: critical
         annotations:
           summary: '{{ $labels.country }} is serving under 60% of its 6h peak showtime volume'
-          description: 'sum by (country) (max by (country, city) (kinowo_worker_showtimes)) for "{{ $labels.country }}" has been below 60% of its own 6h peak for 30m — upcoming showtimes are disappearing without whole films disappearing with them, so the film-count alerts stay green. Check the "total upcoming showtimes served" panel on the Fly-health dashboard scoped to this country, compare kinowo_worker_corpus_movies (flat corpus + falling slots = the slots are being lost in projection/storage, not in scraping), and check the worker''s removal audit for scrape-prune / reproject-trim bursts. See project_uk_slot_volume_collapse.'
+          description: 'sum by (country) (max by (country, city) (last_over_time(kinowo_worker_showtimes[10m]))) for "{{ $labels.country }}" has been below 60% of its own 6h peak for 30m — upcoming showtimes are disappearing without whole films disappearing with them, so the film-count alerts stay green. Check the "total upcoming showtimes served" panel on the Fly-health dashboard scoped to this country, compare kinowo_worker_corpus_movies (flat corpus + falling slots = the slots are being lost in projection/storage, not in scraping), and check the worker''s removal audit for scrape-prune / reproject-trim bursts. See project_uk_slot_volume_collapse.'
         data:
           - refId: A
             relativeTimeRange: { from: 21600, to: 0 }
@@ -981,7 +986,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
-              expr: 'sum by (country) (max by (country, city) (kinowo_worker_showtimes)) / clamp_min(max_over_time(sum by (country) (max by (country, city) (kinowo_worker_showtimes))[6h:10m]), 1)'
+              expr: 'sum by (country) (max by (country, city) (last_over_time(kinowo_worker_showtimes[10m]))) / clamp_min(max_over_time(sum by (country) (max by (country, city) (last_over_time(kinowo_worker_showtimes[10m])))[6h:10m]), 1)'
               instant: true
               range: false
               intervalMs: 1000

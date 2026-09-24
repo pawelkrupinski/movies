@@ -85,6 +85,39 @@ tests:
                 the cadence is the lever, and `WorkerScrapeCadenceConfigSpec` asserts the arithmetic.
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE SAME PL BREACH, THROUGH A WORKER RESTART. The pod change at 40m leaves the gauge absent
+  # for three minutes -- a staleness marker, then nothing -- and the census comes back reading
+  # the same age from the freshness mirror. Read raw, the gap emptied the result, dropped the
+  # pending alert, and the thirty-minute hold started over at 44m, so a country whose worker
+  # restarted every half hour (a deploy day) never paged at all.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_cinema_scrape_oldest_age_seconds{country="pl"}'
+        values: '7200x40 stale _x2 7200x77'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: CinemaScrapeOldestAgeHigh
+        exp_alerts:
+          - exp_labels:
+              country: pl
+              severity: warning
+            exp_annotations:
+              summary: "pl's oldest cinema has not scraped in 2h 0m 0s"
+              description: >-
+                The least recently scraped cinema in "pl" is past 1.5x that country's
+                KINOWO_SCRAPE_FRESHNESS_MINUTES window, so the sweep is not keeping up with its own cadence.
+                Read the shape before reading the number: a line climbing in a straight diagonal is ONE
+                cinema failing every attempt (a failed scrape does not mark freshness, so it stays stale for
+                ever and drags the maximum with it), while an oscillating but high ceiling is the whole
+                sweep running slower than its window -- a slow upstream, a pacing change, or a roster that
+                grew. Panel 58 on the application dashboard draws it. Check the worker's logs for a venue
+                erroring on every pass, and `RealHttpFetch.HostPolicies` for a pace that has been tightened
+                without the cadence being widened to match; that pairing is what put DE 4x over its window
+                in July 2026 with every other panel clean. If the sweep is simply too slow for the window,
+                the cadence is the lever, and `WorkerScrapeCadenceConfigSpec` asserts the arithmetic.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
   # THE OR-CHAIN YIELDS ONE ALERT PER BREACHING COUNTRY. DE and UK are both past their lines
   # at once; the header promises "five times with five names rather than once with none", and
   # this is the two-name version of that promise.

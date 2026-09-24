@@ -141,7 +141,7 @@ class GrafanaShowtimeVolumeAlertSpec extends AnyFlatSpec with Matchers {
           "depth; trimming the outlier out of the baseline afterwards leaves the numerator wrong " +
           "and the next artefact unguarded. "
       ) {
-        expr should include(s"max by (country, city) (${WorkerShowtimesMetrics.Name}")
+        expr should include(s"max by (country, city) (last_over_time(${WorkerShowtimesMetrics.Name}[")
       }
     }
   }

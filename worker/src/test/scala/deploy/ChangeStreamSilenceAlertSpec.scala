@@ -65,7 +65,7 @@ class ChangeStreamSilenceAlertSpec extends AnyFlatSpec with Matchers {
     // The `screenings` and `movie_slots` cursors legitimately go quiet for a whole sweep, and
     // the census the rule is gated on counts the `movies` collection. A clause without the
     // collection label would fire on a quiet slots cursor.
-    val clauses = (java.util.regex.Pattern.quote(Metric) + """\{([^}]*)\}\s*>""").r
+    val clauses = (java.util.regex.Pattern.quote(Metric) + """\{([^}]*)\}(?:\[[^\]]*\]\))?\s*>""").r
       .findAllMatchIn(rules).map(_.group(1)).toSeq
     clauses should not be empty
     clauses.foreach(labels => withClue(s"clause `$labels` does not pin collection=\"movies\": ") {

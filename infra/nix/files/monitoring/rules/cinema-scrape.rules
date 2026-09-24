@@ -75,16 +75,18 @@ groups:
       # overlay has a clause here, so it cannot happen quietly.
       - alert: CinemaScrapeOldestAgeHigh
         expr: >-
-          kinowo_worker_cinema_scrape_oldest_age_seconds{country="de"} > 54000
-          or kinowo_worker_cinema_scrape_oldest_age_seconds{country="es"} > 37800
-          or kinowo_worker_cinema_scrape_oldest_age_seconds{country="pl"} > 5400
-          or kinowo_worker_cinema_scrape_oldest_age_seconds{country="uk"} > 37800
-          or kinowo_worker_cinema_scrape_oldest_age_seconds{country="us"} > 75600
+          last_over_time(kinowo_worker_cinema_scrape_oldest_age_seconds{country="de"}[10m]) > 54000
+          or last_over_time(kinowo_worker_cinema_scrape_oldest_age_seconds{country="es"}[10m]) > 37800
+          or last_over_time(kinowo_worker_cinema_scrape_oldest_age_seconds{country="pl"}[10m]) > 5400
+          or last_over_time(kinowo_worker_cinema_scrape_oldest_age_seconds{country="uk"}[10m]) > 37800
+          or last_over_time(kinowo_worker_cinema_scrape_oldest_age_seconds{country="us"}[10m]) > 75600
         # THIRTY MINUTES, and it is doing less work than it looks like. Once the oldest cinema is
         # past 1.5x its window the number only climbs -- a failed scrape deliberately does not mark
         # freshness, so nothing resets it until that venue is scraped successfully. The `for:` is
         # therefore not waiting for the condition to persist, it is filtering the one-sample spike
         # a worker restart can leave while the census re-reads the freshness mirror.
+        # `last_over_time(...[10m])` so the ~3 minutes a restart leaves the gauge absent do not
+        # drop the pending alert and start the thirty minutes over (test_alert_rule_coverage.py).
         for: 30m
         labels:
           severity: warning

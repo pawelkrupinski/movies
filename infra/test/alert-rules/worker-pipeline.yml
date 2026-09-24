@@ -56,18 +56,20 @@ tests:
   # minute hole in the scrape, and an emptied result vector resets a `for:` timer to zero -- so a
   # rule needing a full uninterrupted hour would be reset before it ever completed.
   #
-  # IT DOES NOT, AND THE REASON IS THE 5-MINUTE LOOKBACK. Prometheus answers an instant query from
-  # the most recent sample within `--query.lookback-delta` (5m by default), so a two-minute hole
-  # does not empty anything -- the series simply carries its last value across the gap. Only an
-  # outage longer than five minutes would reset the timer, and at that length `WorkerDown` is
-  # already firing and is the alert you want. The gap below is two samples, the shape a real
-  # rollout leaves; the rule must still fire at t=90m exactly as it does without it.
+  # IT DOES NOT, BECAUSE `deriv(...[1h])` IS A RANGE FUNCTION: it fits a line through whatever
+  # samples the hour holds, and a three-minute hole just leaves three fewer of them. (This case
+  # used to credit the 5-minute lookback and model the hole as bare missing samples. That was
+  # wrong about the rollout: a vanished target's series get a STALENESS MARKER, which ends the
+  # lookback at once, so a raw gauge read at an instant IS emptied by the gap -- which is what
+  # silently reset six long-held worker-gauge alerts until 2026-09-23. The hole below starts with
+  # that marker, the shape a real rollout leaves; the rule must still fire at t=90m exactly as it
+  # does without it.)
   - interval: 1m
     input_series:
       - series: 'kinowo_worker_queue_depth{country="uk",state="waiting",job="kinowo-worker"}'
-        values: '100+6x40 _x2 358+6x107'
+        values: '100+6x40 stale _x1 358+6x107'
       - series: 'kinowo_worker_tasks_started_total{country="uk",job="kinowo-worker",task_type="ScrapeChunk"}'
-        values: '0+60x40 _x2 2580+60x107'
+        values: '0+60x40 stale _x1 2580+60x107'
     alert_rule_test:
       - eval_time: 30m
         alertname: WorkerQueueGrowingUnbounded
