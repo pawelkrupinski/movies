@@ -1299,6 +1299,61 @@
               }
             }
           ]
+        },
+        {
+          "id": 9024,
+          "title": "Worker — longest backoff hold by type (s)",
+          "description": "The other half of the head-of-line age beside it: the longest REMAINING hold among waiting tasks the queue is deliberately holding back (retry backoff, a Deferred's instant, a staggered chunk not yet due), which that panel leaves out. Every hold is capped at 30 minutes (TaskWorker.MaxBackoff), so the healthy line is a sawtooth under the 1800s threshold; anything above it is a task parked past the cap, alerted as WorkerTaskParkedTooLong. Empty is the all-clear: the `> 0` filter hides the flat zero every type publishes when nothing is held.",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 145
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "min": 0,
+              "custom": {
+                "spanNulls": 300000,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "thresholdsStyle": {
+                  "mode": "line"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1860
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "max by (country, task_type) (kinowo_worker_queue_parked_max_seconds{country=~\"$country\"}) > 0",
+              "legendFormat": "{{country}} {{task_type}}",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            }
+          ]
         }
       ],
       "gridPos": {

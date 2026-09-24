@@ -272,6 +272,35 @@ groups:
             hit the same failure until the bug is fixed.
 
       # -----------------------------------------------------------------------------------------
+      # 5c. A TASK PARKED PAST THE BACKOFF CAP. The queue holds a task back after a failure (the
+      # retry backoff, capped at 30 minutes), after a Deferred (until the instant its handler names,
+      # clamped to the same cap), and a staggered chunk until its slot (at most 5 minutes). The
+      # head-of-line age leaves every held-back task out on purpose, so a task parked for hours --
+      # the "parked in backoff for ever" class -- sat on no gauge at all.
+      # `kinowo_worker_queue_parked_max_seconds` is the longest REMAINING hold per (country, type);
+      # every path that sets a hold is bounded by the cap, so its healthy ceiling is 1800 and
+      # anything above it is a hold nothing in the code should have produced.
+      #
+      # 1860 is the cap plus a minute for the gap between the pod that released the task and the
+      # pod that samples it. `max by` because every worker pod of a country samples the same queue.
+      # The hold falls one second per second, so `for: 2m` fires only for a task parked at least
+      # 2m past the cap and rides over a single odd sample.
+      - alert: WorkerTaskParkedTooLong
+        expr: max by (country, task_type) (kinowo_worker_queue_parked_max_seconds) > 1860
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }} has a {{ $labels.task_type }} task parked past the 30-minute backoff cap"
+          description: >-
+            A waiting `{{ $labels.task_type }}` task is held back from claim for another
+            {{ $value | humanizeDuration }}, past the 30-minute cap every retry backoff, Deferred and
+            chunk stagger is held to (TaskWorker.MaxBackoff). Nothing will run it until then. Find it on
+            the worker's /tasks page (its next-eligible time is the far one) and look at what released
+            it: a handler naming a far-off instant through a path that skips the clamp, or a queue
+            write setting `nextEligibleAt` directly.
+
+      # -----------------------------------------------------------------------------------------
       # THE COMPANION. Rules 1 and 2 are comparisons against a series, and a comparison cannot fire
       # when its series is gone -- so a worker that stops publishing its queue gauges would leave
       # both silent, which is indistinguishable from a queue that is behaving. `WorkerDown` covers

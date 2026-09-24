@@ -233,6 +233,28 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     out should include ("""kinowo_worker_queue_oldest_waiting_age_seconds{country="pl",task_type="ResolveTmdb"} 0""")
   }
 
+  // The head-of-line age leaves held-back tasks out on purpose, so a task parked far past
+  // the backoff cap — the "parked in backoff forever" class — was visible on no gauge at all.
+  it should "expose the longest remaining hold among held-back tasks, 0 when none is held" in {
+    val (_, series) = newPl()
+    val snapshot = QueueSnapshot(
+      counts = Map(TaskState.Waiting -> 4L),
+      active = Seq(
+        summary(TaskType.ScrapeChunk, TaskState.Waiting, now.minusSeconds(1500), Some(now.plusSeconds(300))),
+        summary(TaskType.ScrapeChunk, TaskState.Waiting, now.minusSeconds(1500), Some(now.plusSeconds(1200))),
+        // Its hold has already run out: claimable, not parked.
+        summary(TaskType.ResolveTmdb, TaskState.Waiting, now.minusSeconds(6000), Some(now.minusSeconds(40))),
+        summary(TaskType.EnrichDetails, TaskState.Waiting, now.minusSeconds(60), None)
+      ))
+
+    val out = scrapePl(series, snapshot)
+
+    out should include ("""kinowo_worker_queue_parked_max_seconds{country="pl",task_type="ScrapeChunk"} 1200""")
+    out should include ("""kinowo_worker_queue_parked_max_seconds{country="pl",task_type="ResolveTmdb"} 0""")
+    out should include ("""kinowo_worker_queue_parked_max_seconds{country="pl",task_type="EnrichDetails"} 0""")
+    out should include ("""kinowo_worker_queue_parked_max_seconds{country="pl",task_type="StagingFold"} 0""")
+  }
+
   it should "seed every task type to 0 so the series exists from boot" in {
     val (_, series) = newPl()
     val out = scrapePl(series)

@@ -216,6 +216,16 @@ object WorkerTaskMetrics {
       .labelNames("country", "task_type")
       .register(registry)
 
+    // The mirror of the head-of-line age: that one counts only CLAIMABLE rows, so a task the
+    // queue holds back is invisible to it by design. This is the longest remaining hold among
+    // the held-back rows — never more than TaskWorker.MaxBackoff unless something parked a
+    // task past the cap (alerted as WorkerTaskParkedTooLong).
+    private val parkedMax = Gauge.builder()
+      .name("kinowo_worker_queue_parked_max_seconds")
+      .help("Longest remaining hold, in seconds, among waiting tasks per country and type that the queue is holding back (retry backoff, a Deferred's instant, a staggered chunk not yet due); 0 when none is held. Bounded by TaskWorker.MaxBackoff (1800s) by construction, so a value above it means a task parked past the cap. Sampled from the bounded active snapshot.")
+      .labelNames("country", "task_type")
+      .register(registry)
+
     // The worker pool is a single SharedExecutionBudget across all countries, so
     // this is a process-level gauge with no country label (pairing it per-country
     // would misleadingly imply a per-country pool).
@@ -479,6 +489,7 @@ object WorkerTaskMetrics {
           duration.labelValues(c, t.name)
           waitingByType.labelValues(c, t.name).set(0.0)
           oldestWaitingAge.labelValues(c, t.name).set(0.0)
+          parkedMax.labelValues(c, t.name).set(0.0)
         }
         RatingSites.foreach(s => ratingFirstAttemptDelay.labelValues(c, s))
         QueueStates.foreach(s => queueDepth.labelValues(c, s).set(0.0))
@@ -683,6 +694,9 @@ object WorkerTaskMetrics {
           .map(oldest => math.max(0L, now.getEpochSecond - oldest.getEpochSecond).toDouble)
           .getOrElse(0.0)
         oldestWaitingAge.labelValues(country, t.name).set(age)
+        val parked = rows.flatMap(_.nextEligibleAt).filter(_.isAfter(now))
+          .map(until => until.getEpochSecond - now.getEpochSecond).maxOption.getOrElse(0L)
+        parkedMax.labelValues(country, t.name).set(parked.toDouble)
       }
     }
   }

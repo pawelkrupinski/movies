@@ -415,3 +415,51 @@ tests:
             exp_annotations:
               summary: "de's worker has been failing repository writes for 10 minutes"
               description: "Writes to `movies`, `movie_slots`, `screenings` or `pending_movies` are throwing. Nothing is lost silently -- each failed row is rolled out of the worker's cache and retried by its next scrape -- but until the cause clears, new films and changed showtimes do not reach the site. The worker's WARN lines name each write (`MovieRepository.upsert(<title>, <year>) failed: ...`), and the counter's `collection`, `op` and `exception` labels (worker diagnostics dashboard, \"Repository writes that FAILED\") say which store and why: a codec exception is a model field the DTO cannot encode, a MongoWriteException a validator or duplicate key, a timeout the database itself."
+
+  # A TASK PARKED PAST THE CAP. A Deferred that named an instant six hours out, before
+  # TaskWorker clamped it: the hold falls a second per second from 21600. Fires once the
+  # `for: 2m` is up, per (country, task_type), however many worker pods sample the queue.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_queue_parked_max_seconds{country="uk",job="kinowo-worker",pod="worker-uk-a",task_type="ScrapeChunk"}'
+        values: '21600-60x30'
+      - series: 'kinowo_worker_queue_parked_max_seconds{country="uk",job="kinowo-worker",pod="worker-uk-b",task_type="ScrapeChunk"}'
+        values: '21600-60x30'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: WorkerTaskParkedTooLong
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: WorkerTaskParkedTooLong
+        exp_alerts:
+          - exp_labels: { severity: warning, country: uk, task_type: ScrapeChunk }
+            exp_annotations:
+              summary: "uk has a ScrapeChunk task parked past the 30-minute backoff cap"
+              description: "A waiting `ScrapeChunk` task is held back from claim for another 5h 55m 0s, past the 30-minute cap every retry backoff, Deferred and chunk stagger is held to (TaskWorker.MaxBackoff). Nothing will run it until then. Find it on the worker's /tasks page (its next-eligible time is the far one) and look at what released it: a handler naming a far-off instant through a path that skips the clamp, or a queue write setting `nextEligibleAt` directly."
+
+  # QUIET: the healthy ceiling. A task released at the full 30-minute backoff reads 1800 and
+  # falls; a fresh one lands at 1800 again (the sawtooth of a retrying task), a staggered chunk
+  # reads under 300, and the seeded 0 is always there. None of it may fire.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_queue_parked_max_seconds{country="es",job="kinowo-worker",task_type="ResolveTmdb"}'
+        values: '1800-60x29 1800-60x29 1800-60x20'
+      - series: 'kinowo_worker_queue_parked_max_seconds{country="pl",job="kinowo-worker",task_type="ScrapeChunk"}'
+        values: '300-10x30 300-10x30'
+      - series: 'kinowo_worker_queue_parked_max_seconds{country="de",job="kinowo-worker",task_type="StagingFold"}'
+        values: '0x80'
+    alert_rule_test:
+      - eval_time: 75m
+        alertname: WorkerTaskParkedTooLong
+        exp_alerts: []
+
+  # QUIET: at the margin. 1860 exactly (the cap plus the minute of pod clock gap) is not above
+  # it, and a single sample above it that falls back under inside the `for:` never fires.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_queue_parked_max_seconds{country="us",job="kinowo-worker",task_type="EnrichDetails"}'
+        values: '1860x10 1900 1700 1640 1580 1520 1460x10'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: WorkerTaskParkedTooLong
+        exp_alerts: []
