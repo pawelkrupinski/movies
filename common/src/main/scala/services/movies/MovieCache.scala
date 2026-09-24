@@ -684,7 +684,7 @@ class CaffeineMovieCache(
       // year wins over a title annotation, exactly as `recordCinemaScrape` orders
       // them). Scan the raw slot spellings: the canonical key strips the annotation.
       case (key, rec) if key.year.isEmpty =>
-        EmbeddedYear.ofAll(rec.data.values.flatMap(sd => sd.rawTitle ++ sd.title)).flatMap { year =>
+        EmbeddedYear.ofAll(EmbeddedYear.slotTitles(rec)).flatMap { year =>
           val newKey = keyOf(key.cleanTitle, Some(year))
           Option.when(newKey != key) {
             // Merge into any existing occupant of the target year-key so a sister

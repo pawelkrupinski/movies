@@ -244,9 +244,16 @@ class ImdbClient(http: HttpFetch) {
       // applies to a multi-hit yearless search on the TMDB side. A wrong id here is not a
       // wrong rating, it is the wrong FILM: it drives the year, director, cast and every
       // rating lookup downstream.
+      //
+      // One title match is not "unambiguous" either when IMDb itself ranks a DIFFERENT
+      // film above it: the endpoint matches the query against AKAs too, and never shows
+      // them, so a local title that is another film's AKA looks like one exact hit further
+      // down. "Opętanie" answers Żuławski's "Possession" (1981) first — its Polish title —
+      // and a 1973 TV film of that exact name at rank ~1M; binding the latter misnamed a
+      // 4K revival of the former.
       val exact =
         if (year.isDefined) ranked.headOption.map(_.id)
-        else if (titleMatches.sizeIs == 1) titleMatches.headOption.map(_.id)
+        else if (titleMatches.sizeIs == 1 && movies.headOption.contains(titleMatches.head)) titleMatches.headOption.map(_.id)
         else None
       // Foreign-title fallback: when nothing matches the local title, accept
       // IMDb's #1 movie suggestion only if its year corroborates the one TMDB

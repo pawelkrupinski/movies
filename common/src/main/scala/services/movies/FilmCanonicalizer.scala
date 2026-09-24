@@ -232,10 +232,17 @@ object FilmCanonicalizer {
    *  uses)? Never when the row's title carries its OWN delimited year that disagrees
    *  with the cluster's — "It (1990)" beside a resolved 2017 "It" is the different
    *  film `EmbeddedYear` exists to keep apart, and a plain year is not a sequel marker
-   *  `TitleContainment` would see. */
+   *  `TitleContainment` would see — UNLESS the venue's published runtime agrees with
+   *  the film's. A printed year alone cannot tell a release year from the event year a
+   *  rerelease season brackets on (Odeon's "The Hunger Games: Catching Fire (2026)",
+   *  146 minutes like TMDB's 2013 film; reverts 829eb309d / 3e4cbb3c5 are what trusting
+   *  the text cost), so the veto needs a second, independent signal to stand down:
+   *  the same runtime waiver [[contradictsHome]] gives a rule-4 straggler. Wallace's
+   *  "It" runs 168 minutes against Muschietti's 135 and stays apart. */
   private def decoratesResolvedCluster(c: Cluster, row: Row, normalizer: TitleNormalizer): Boolean = {
     val whole              = TitleContainment.tokens(row._1.cleanTitle)
-    val ownYearContradicts = EmbeddedYear.of(row._1.cleanTitle).exists(y => !c.refYear.contains(y))
+    val ownYearContradicts = EmbeddedYear.of(row._1.cleanTitle).exists(y => !c.refYear.contains(y)) &&
+      !MixedFilmDetector.runtimesAgree(row._2.evidence.runtimes, tmdbRuntime(c).toSeq)
     val clusterTitles      = c.rows.flatMap { case (k, e) => (e.tmdbTitleAliases + k.cleanTitle).toSeq }.distinct.map(TitleContainment.tokens)
     !ownYearContradicts && whole.nonEmpty &&
       clusterTitles.exists(base => TitleContainment.decorates(base, whole)) &&
@@ -276,6 +283,11 @@ object FilmCanonicalizer {
     }
   }
 
+  /** The runtime TMDB gives a cluster's film — the reference a row's published runtime
+   *  is measured against. */
+  private def tmdbRuntime(c: Cluster): Option[Int] =
+    c.rows.flatMap(_._2.data.get(Tmdb).flatMap(_.runtimeMinutes)).headOption
+
   /** Does a yearless straggler's OWN published evidence contradict the film rule 4
    *  would fold it into? Title-silent venues are the norm (and not evidence), but a
    *  published year or runtime is: DE "Hope" (2026-09-16) folded a 2014 91-minute
@@ -290,7 +302,7 @@ object FilmCanonicalizer {
    *   - A differing published original title (`MixedFilmDetector`). */
   private def contradictsHome(home: Cluster, row: Row, normalizer: TitleNormalizer): Boolean = {
     val ev              = row._2.evidence
-    val homeRuntime     = home.rows.flatMap(_._2.data.get(Tmdb).flatMap(_.runtimeMinutes)).headOption
+    val homeRuntime     = tmdbRuntime(home)
     val yearContradicts = YearWindow.contradicts(ev.years, home.refYear, YearWindow.SlotYearImplausibility)
     val runtimeAgrees   = MixedFilmDetector.runtimesAgree(ev.runtimes, homeRuntime.toSeq)
     (yearContradicts && !runtimeAgrees) ||

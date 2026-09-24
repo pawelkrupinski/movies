@@ -423,6 +423,26 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     clusters should have size 2
   }
 
+  it should "reclaim a rerelease whose OWN bracketed year disagrees when its published runtime matches the resolved film's" in {
+    // UK hard cluster: Odeon's rerelease season brackets the SEASON's year onto a 2013
+    // film — "The Hunger Games: Catching Fire (2026)", 146 minutes, as TMDB has it. Arriving
+    // after the 2013 row settled it resolves alone, TMDB has no 2026 film of that name,
+    // and the own-year guard above refused it: an unresolved duplicate card. The printed
+    // year alone cannot tell a release year from an event year (829eb309d, 3e4cbb3c5);
+    // the runtime can — Wallace's "It" runs 168 minutes against Muschietti's 135.
+    def withRuntime(row: CanonicalizerRows.Row, source: Source, minutes: Int): CanonicalizerRows.Row =
+      row._1 -> row._2.copy(data = row._2.data.updatedWith(source)(_.map(_.copy(runtimeMinutes = Some(minutes)))))
+    val catchingFire = withRuntime(resolved("The Hunger Games: Catching Fire", tmdbId = 101299, tmdbYear = 2013, cinema = Helios), Tmdb, 146)
+    val rerelease    = withRuntime(unresolved("The Hunger Games: Catching Fire (2026)", Some(2026), cinema = Kinoteka), Kinoteka, 146)
+    Seq(Seq(catchingFire, rerelease), Seq(rerelease, catchingFire)).foreach { ordered =>
+      FilmCanonicalizer.clusterByFilm(ordered, titleNormalizer) should have size 1
+    }
+    // The same shape with the runtimes disagreeing is still two films.
+    val it1990 = withRuntime(unresolved("It (1990)", Some(1990), cinema = Kinoteka), Kinoteka, 168)
+    val it2017 = withRuntime(resolved("It", tmdbId = 346364, tmdbYear = 2017, cinema = Helios), Tmdb, 135)
+    FilmCanonicalizer.clusterByFilm(Seq(it2017, it1990), titleNormalizer) should have size 2
+  }
+
   it should "not reclaim a year-window orphan whose decoration match is refused by MixedFilmDetector's own contradiction" in {
     // The decoration-match mirror of the "Obcy" contradiction case above: a
     // cinema-published original title + runtime that plainly names a DIFFERENT

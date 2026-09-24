@@ -248,42 +248,22 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
   }
 
   /**
-   * Divergences this spec found on its first run that are REAL and NOT YET FIXED, each
-   * confined to the SPLIT arrival (the permutations agree) — so the rest of the claim can
-   * guard everything else meanwhile. Keyed by country code, then the film's stored title
-   * key; a film listed here is left out of the split-vs-reference comparison only.
+   * Divergences that are REAL and NOT YET FIXED, each confined to the SPLIT arrival (the
+   * permutations agree) — so the rest of the claim can guard everything else meanwhile.
+   * Keyed by country code, then the film's stored title key; a film listed here is left
+   * out of the split-vs-reference comparison only. Empty since the three the spec found
+   * on its first run were fixed (UK decorated-year rereleases, PL "Opętanie | klasyka
+   * w 4k", US "It").
    *
    * A ratchet, not an allowlist: an entry that no longer diverges FAILS the spec, so a
    * fix has to delete its entry and cannot leave the exemption behind to hide the next
    * regression. Never add to it to get a build green — add the fix.
    */
+  private val KnownSplitArrivalDivergences: Map[String, Set[String]] = Map.empty
+
   /** The rescrape twin of [[KnownSplitArrivalDivergences]], keyed by sanitized title — the
    *  same ratchet: a listed film that stops churning fails the spec. */
-  private val KnownRescrapeChurn: Map[String, Set[String]] = Map(
-    // "IT (2017)" and "It (1990)" sanitize to one anchor, incubate yearless together and
-    // fold into ONE unresolved row; the next identical rescrape re-keys it to 1990 (the
-    // landing reads the bracketed year, the staging divert does not). Filing staging rows
-    // under the printed year fixed this and was reverted (829eb309d): some venues print an
-    // EVENT year on an old film, and 5,235 Polish screenings were lost. Needs corroboration
-    // beyond the title text; the full US leg has carried this loop since 2026-09-07.
-    "us" -> Set("it")
-  )
-
-  private val KnownSplitArrivalDivergences: Map[String, Set[String]] = Map(
-    // Odeon's rerelease pages bracket the SEASON's year onto a 2013 film ("The Hunger
-    // Games: Catching Fire (2026)", "... Mockingjay - Part 2 (2026)"). Arriving beside the bare listing it folds into the
-    // group that resolves to 2013; arriving after the 2013 row has settled it resolves
-    // alone, TMDB has no 2026 film of that name, and the year-window reclaim refuses it
-    // because its own bracketed year disagrees — the guard that keeps "It (1990)" apart
-    // from "It" (2017), and the reason 829eb309d/3e4cbb3c5 could not simply trust the
-    // printed year. An unresolved duplicate card.
-    "uk" -> Set("thehungergamescatchingfire", "thehungergamesmockingjaypart2"),
-    // "Opętanie | klasyka w 4k" (Kino 1410, no director or year): TMDB rightly refuses
-    // the bare "Opętanie" as ambiguous, and the staging IMDb recovery then takes the
-    // suggestion endpoint's first hit — a 1973 film — for it. Arriving after Żuławski's
-    // 1981 row has settled, the landing puts it on that row instead.
-    "pl" -> Set("opetanie", "opetanieklasykaw4k")
-  )
+  private val KnownRescrapeChurn: Map[String, Set[String]] = Map.empty
 
   countries.foreach { country =>
     val name = country.displayName

@@ -549,8 +549,18 @@ private[movies] final class ScrapeLanding(
                 // that all-caps / lower-year key — the "PÓŁNOC, PÓŁNOCNY ZACHÓD"
                 // (1957) re-casing of "Północ, północny zachód" (TMDB 1959). The
                 // cinema slot still merges in; only the row's own key is preserved.
-                val existingResolved = store.get(existingKey).exists(_.tmdbId.isDefined)
-                if (existingResolved) existingKey
+                val existingRow      = store.get(existingKey)
+                val existingResolved = existingRow.exists(_.tmdbId.isDefined)
+                // Nor onto a year the row's own venues DISPUTE. A yearless row whose
+                // slots bracket two different years ("It (1990)" beside "IT (2017)",
+                // folded together before either resolved) is yearless because the
+                // settle's `backfillEmbeddedYears` reads all its titles and finds no one
+                // year; promoting it on ONE listing's bracket re-keyed it on every
+                // identical rescrape (the US hard-cluster churn). The same reading here
+                // keeps the landing and the settle agreeing on where the row lives.
+                val yearDisputed = existingKey.year.isEmpty && EmbeddedYear.of(displayTitle).isDefined &&
+                  EmbeddedYear.ofAll(existingRow.toSeq.flatMap(EmbeddedYear.slotTitles) :+ displayTitle).isEmpty
+                if (existingResolved || yearDisputed) existingKey
                 else {
                   val canonical = Seq(primary, existingKey).minBy(FilmCanonicalizer.canonicalRank)
                   if (canonical != existingKey) store.rekey(existingKey, canonical, identity, RekeyReason.ScrapeVariant)

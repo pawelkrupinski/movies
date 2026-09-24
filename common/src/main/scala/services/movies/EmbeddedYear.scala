@@ -43,6 +43,11 @@ object EmbeddedYear {
   /** Varargs convenience for the common "scan these few title spellings" call. */
   def of(titles: String*): Option[Int] = ofAll(titles)
 
+  /** Every spelling a row's slots carry — the raw scraped title and the cleaned one —
+   *  which is where a bracketed year survives once the key has stripped it. */
+  def slotTitles(record: models.MovieRecord): Iterable[String] =
+    record.data.values.flatMap(sd => sd.rawTitle ++ sd.title)
+
   def ofAll(titles: Iterable[String], maxYear: Int = java.time.Year.now().getValue + 1): Option[Int] = {
     val years = titles.iterator
       .flatMap(Delimited.findAllMatchIn)

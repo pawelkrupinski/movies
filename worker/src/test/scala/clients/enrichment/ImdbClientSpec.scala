@@ -109,6 +109,19 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
     client.parseSuggestions(body, "Arco", None) shouldBe Some("tt14883538")
   }
 
+  /** The PL hard cluster "Opętanie | klasyka w 4k" (Kino 1410, no year, no director):
+   *  TMDB rightly refused the bare "Opętanie" as ambiguous, and this path then bound the
+   *  one exact-title hit — a 1973 TV film at rank ~1M — although IMDb's TOP answer to the
+   *  query is Żuławski's "Possession" (1981), whose Polish AKA is exactly the query. The
+   *  AKA never appears in the payload, so the exact match was one film pretending to be
+   *  the only one. Recorded from the hard-clusters PL responses (same URL). */
+  it should "refuse a yearless query whose one exact match is outranked by IMDb's own top answer" in {
+    val body = loadFixture("/fixtures/imdb/suggestion_opetanie.json")
+    client.parseSuggestions(body, "Opętanie", None) shouldBe None
+    // With a year the ranking is evidence again, and it still binds.
+    client.parseSuggestions(body, "Opętanie", Some(1973)) shouldBe Some("tt0070486")
+  }
+
   it should "filter out non-movie entries (video games, TV series) even when the title matches" in {
     val body =
       """{"d":[

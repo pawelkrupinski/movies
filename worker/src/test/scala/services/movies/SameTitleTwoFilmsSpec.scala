@@ -426,4 +426,41 @@ class SameTitleTwoFilmsSpec extends AnyFlatSpec with Matchers {
     itCinemas(c, 2017) should contain(Multikino)
     itCinemas(c, 1990) shouldBe empty
   }
+
+  // US hard cluster, `KnownRescrapeChurn`: before either resolves, "It (1990)" and
+  // "IT (2017)" incubate yearless together (staging files by the PUBLISHED year, none
+  // here) and fold into ONE unresolved row. The settle leaves it yearless —
+  // `backfillEmbeddedYears` reads every slot's title and two bracketed years are no year
+  // — and the next identical rescrape re-keyed it onto 1990, because the landing read
+  // ONE listing's bracket and promoted the whole row, the 2017 venue with it. Nothing
+  // new was learned between the two, so the row must stay where the settle put it.
+  "an unresolved row whose venues bracket two different years" should
+    "not be re-keyed onto one venue's printed year by an identical rescrape" in {
+    val c = cache()
+    def slot(title: String, runtime: Option[Int]) =
+      SourceData(title = Some(title), runtimeMinutes = runtime, showtimes = Seq(Showtime(When, bookingUrl = None)))
+    c.put(c.keyOf("It", None), MovieRecord(data = Map[Source, SourceData](
+      (Multikino: Source) -> slot("It (1990)", Some(168)),
+      (Helios: Source)    -> slot("IT (2017)", None))))
+
+    c.recordCinemaScrape(Multikino, Seq(flicksListing(Multikino, "It (1990)", 168, "").copy(director = Nil)))
+    c.recordCinemaScrape(Helios, Seq(flicksListing(Helios, "IT (2017)", 0, "").copy(director = Nil,
+      movie = Movie(title = "IT (2017)", releaseYear = None, runtimeMinutes = None))))
+
+    itCinemas(c, 1990) shouldBe empty
+    itCinemas(c, 2017) shouldBe empty
+    c.get(c.keyOf("It", None)).map(_.cinemaData.keySet) shouldBe Some(Set(Multikino, Helios))
+  }
+
+  // The guard on the guard: a row whose venues bracket ONE year still takes it, as the
+  // settle's own backfill would.
+  it should "still take the year when every venue on the row brackets the same one" in {
+    val c = cache()
+    c.put(c.keyOf("It", None), MovieRecord(data = Map[Source, SourceData](
+      (Helios: Source) -> SourceData(title = Some("It"), showtimes = Seq(Showtime(When, bookingUrl = None))))))
+
+    c.recordCinemaScrape(Multikino, Seq(flicksListing(Multikino, "It (1990)", 168, "").copy(director = Nil)))
+
+    itCinemas(c, 1990) should contain allOf (Multikino, Helios)
+  }
 }
