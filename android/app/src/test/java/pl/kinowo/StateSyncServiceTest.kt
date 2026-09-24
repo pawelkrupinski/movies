@@ -714,6 +714,31 @@ class StateSyncServiceTest {
         assertEquals(listOf("es", "fr"), languageClient.pushes)
     }
 
+    /** A pick made AND sent while a reconcile's fetch is on the wire: the
+     *  fetch's answer predates it, so adopting that answer would put the
+     *  account's older pick back over the one it just confirmed. Mirrors iOS. */
+    @Test
+    fun aPickSentDuringAReconcileFetchSurvivesItsAnswer() = runTest(UnconfinedTestDispatcher()) {
+        languageClient.remote = "de"
+        val service = startService()
+        login()
+        advanceUntilIdle()
+
+        val gate = CompletableDeferred<Unit>()
+        languageClient.beforeFetchResponse = { gate.await() }
+        launch { service.reconcileCurrentCountry() }
+        runCurrent() // the fetch has read "de" and is parked
+        prefs.setLanguageTag("es")
+        advanceTimeBy(500)
+        runCurrent()
+        assertEquals("es", languageClient.remote)
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals("es", prefs.languageState.value)
+        assertEquals("es", languageClient.remote)
+    }
+
     /** Picking back to the account's language INSIDE the debounce — nothing
      *  has been sent yet — leaves nothing to push, as on iOS. Only a push
      *  already on the wire makes the pick-back worth sending. */

@@ -156,12 +156,14 @@ internal class FakeLanguageClient : LanguageClient {
     var beforePushResponse: suspend () -> Unit = {}
     /** Awaited at the start of a fetch — holds it "in flight". */
     var beforeFetch: suspend () -> Unit = {}
+    /** Awaited after a fetch has read the account's pick, before it answers. */
+    var beforeFetchResponse: suspend () -> Unit = {}
 
     override suspend fun fetch(): String? {
         beforeFetch()
         if (shouldFailFetch) throw IOException("no network")
         if (!signedIn) throw IOException("HTTP 401")
-        return remote
+        return remote.also { beforeFetchResponse() }
     }
     private var pushesInFlight = 0
     /** The most pushes ever on the wire at once. */

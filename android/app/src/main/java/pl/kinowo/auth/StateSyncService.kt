@@ -78,6 +78,9 @@ class StateSyncService(
     private var languageDebounceJob: Job? = null
     /** One language push on the wire at a time — see [sendPendingLanguage]. */
     private val languageSendMutex = Mutex()
+    /** Counts the language pushes the server confirmed, so a reconcile can
+     *  tell that one landed while its fetch was on the wire. */
+    @Volatile private var languagePushesConfirmed = 0
     /** Serialises every read-modify-write of the persisted hiddenFilms queue. */
     private val queueMutex = Mutex()
     /** Serialises the flushes, so no queued edit is sent twice. Never held
@@ -205,14 +208,19 @@ class StateSyncService(
      *  holds, so it is pushed rather than overwritten — whether it was made
      *  just before this reconcile (a pick recreates the activity, whose
      *  onResume reconciles inside the push debounce), while the fetch was in
-     *  flight, or its push failed. Mirrors iOS `reconcileLanguage`. */
+     *  flight, or its push failed — and a pick SENT while the fetch was in
+     *  flight makes its answer stale, so it is dropped. Mirrors iOS
+     *  `reconcileLanguage`. */
     private suspend fun reconcileLanguage() {
         if (!loggedIn) return
         if (prefs.pendingLanguagePush() != null) return sendPendingLanguage()
         // A network error leaves local state authoritative: prefs untouched.
+        val confirmedBeforeFetch = languagePushesConfirmed
         runCatchingCancellable {
             val remoteLang = languageClient.fetch()
             if (prefs.pendingLanguagePush() != null) return sendPendingLanguage()
+            // A pick sent while the fetch was on the wire is newer than its answer.
+            if (languagePushesConfirmed != confirmedBeforeFetch) return
             val localLang = prefs.selectedLanguageTag.first()
             if (remoteLang != null) {
                 adopt(remoteLang)
@@ -254,6 +262,7 @@ class StateSyncService(
                     return
                 }
                 accountLanguage = pending
+                languagePushesConfirmed++
                 if (prefs.pendingLanguagePush() == pending) {
                     prefs.setPendingLanguagePush(null)
                     return

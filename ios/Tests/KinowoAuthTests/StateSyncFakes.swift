@@ -117,6 +117,8 @@ final class FakeLanguageClient: LanguageClient {
     var beforePush: (() async -> Void)?
     /// Awaited at the start of a fetch — holds it "in flight".
     var beforeFetch: (() async -> Void)?
+    /// Awaited after a fetch has read the account's pick, before it answers.
+    var beforeFetchResponse: (() async -> Void)?
     /// Awaited once a push has REACHED the server (the account holds its
     /// value), before the response — throwing from it models a response lost
     /// after the server applied the push.
@@ -135,7 +137,9 @@ final class FakeLanguageClient: LanguageClient {
         await Task.yield()
         if shouldFailFetch { throw URLError(.notConnectedToInternet) }
         if !signedIn { throw URLError(.userAuthenticationRequired) }
-        return remote
+        let answer = remote
+        if let beforeFetchResponse { await beforeFetchResponse() }
+        return answer
     }
 
     func push(_ language: String) async throws {

@@ -366,6 +366,31 @@ final class StateSyncServiceTests: XCTestCase {
         _ = sync
     }
 
+    /// A pick made AND sent while a reconcile's fetch is on the wire: the
+    /// fetch's answer predates it, so adopting that answer would put the
+    /// account's older pick back over the one it just confirmed. Mirrors Android.
+    func testAPickSentDuringAReconcileFetchSurvivesItsAnswer() async throws {
+        languageClient.remote = "de"
+        let debounce = ManualDebounceScheduler()
+        let sync = StateSyncService(prefs: prefs, userPublisher: userSubject.eraseToAnyPublisher(),
+                                    client: client, languageClient: languageClient, debounceScheduler: debounce)
+        login()
+        try await waitUntil { self.prefs.selectedLanguage == "de" && self.languageClient.inFlight == 0 }
+
+        let gate = AsyncGate()
+        languageClient.beforeFetchResponse = { await gate.wait() }
+        let reconcile = Task { await sync.reconcileCurrentCountry() }
+        try await waitUntil { self.languageClient.fetchesStarted == 2 && self.languageClient.inFlight == 1 }
+        prefs.setLanguage("es")
+        debounce.fireAll()
+        try await waitUntil { self.languageClient.pushes == ["es"] }
+        await gate.open()
+        await reconcile.value
+
+        XCTAssertEqual(prefs.selectedLanguage, "es")
+        XCTAssertEqual(languageClient.remote, "es")
+    }
+
     /// A pick made while the LOGIN reconcile's fetch is in flight: the
     /// observers used to start only after that reconcile, so the pick was
     /// never marked pending and the account's older value overwrote it.

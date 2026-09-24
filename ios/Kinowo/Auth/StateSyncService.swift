@@ -53,6 +53,9 @@ final class StateSyncService: ObservableObject {
     private var languageSendTask: Task<Void, Never>?
     /// Set while `adopt` writes the account's pick — see there.
     private var adopting = false
+    /// Counts the language pushes the server confirmed, so a reconcile can
+    /// tell that one landed while its fetch was on the wire.
+    private var languagePushesConfirmed = 0
     /// The hiddenFilms queue flush in progress, if any — see `sendPendingChanges`.
     private var flushTask: Task<Bool, Never>?
     /// The language the account is known to hold — last fetched or
@@ -217,13 +220,18 @@ final class StateSyncService: ObservableObject {
     /// The one exception is a PENDING local pick (see `pendingLanguage`): it
     /// is newer than anything the account holds, so it is pushed rather than
     /// overwritten — whether it was made just before this reconcile (inside
-    /// the push debounce), while the fetch was in flight, or its push failed.
+    /// the push debounce), while the fetch was in flight, or its push failed —
+    /// and a pick SENT while the fetch was in flight makes its answer stale,
+    /// so it is dropped.
     private func reconcileLanguage() async {
         guard isLoggedIn else { return }
         if pendingLanguage != nil { return await sendPendingLanguage() }
+        let confirmedBeforeFetch = languagePushesConfirmed
         do {
             let remoteLanguage = try await languageClient.fetch()
             if pendingLanguage != nil { return await sendPendingLanguage() }
+            // A pick sent while the fetch was on the wire is newer than its answer.
+            guard languagePushesConfirmed == confirmedBeforeFetch else { return }
             if let remoteLanguage {
                 adopt(remoteLanguage)
             } else if let explicit = prefs.explicitLanguage {
@@ -267,6 +275,7 @@ final class StateSyncService: ObservableObject {
                     break
                 }
                 self.accountLanguage = pending
+                self.languagePushesConfirmed += 1
                 if self.pendingLanguage == pending { self.pendingLanguage = nil }
             }
             self?.languageSendTask = nil
