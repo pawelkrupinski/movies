@@ -24,7 +24,10 @@ class TasksControllerSpec extends AnyFlatSpec with Matchers {
 
   private def controller(queue: InMemoryTaskQueue, gate: AdminAction = TestAdminAction(),
                          results: BulkTaskResultStore = new InMemoryBulkTaskResultStore) =
-    new TasksController(Helpers.stubControllerComponents(), gate, queue, results)
+    new TasksController(Helpers.stubControllerComponents(), gate, queue, results, specClock)
+
+  // The server time the controller reports, a minute after the tasks are submitted.
+  private val specClock = java.time.Clock.fixed(t0.plusSeconds(60), java.time.ZoneOffset.UTC)
 
   private val adminSession = FakeRequest().withSession("userId" -> TestAdminAction.AdminUserId)
 
@@ -71,11 +74,7 @@ class TasksControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "carry a server timestamp so the page can tick task ages locally" in {
-    val before = System.currentTimeMillis()
-    val json = dataJson(new InMemoryTaskQueue)
-    val now = (json \ "now").as[Long]
-    now should be >= before
-    now should be <= System.currentTimeMillis()
+    (dataJson(new InMemoryTaskQueue) \ "now").as[Long] shouldBe specClock.millis()
   }
 
   it should "report an empty queue as zero active tasks" in {

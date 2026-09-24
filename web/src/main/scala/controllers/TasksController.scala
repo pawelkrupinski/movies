@@ -15,7 +15,9 @@ import services.tasks.{BulkTaskResult, BulkTaskResultStore, EnqueueResult, Enric
  * every task transition 24/7 even with nobody watching.
  */
 class TasksController(cc: ControllerComponents, adminAction: AdminAction, queue: TaskQueue,
-                      bulkResults: BulkTaskResultStore) extends AbstractController(cc) {
+                      bulkResults: BulkTaskResultStore,
+                      // The server time the page ticks task ages from.
+                      clock: java.time.Clock = java.time.Clock.systemUTC()) extends AbstractController(cc) {
 
   /** Cap on the live rows returned per poll — enough to see the head of a
    *  backed-up queue without an unbounded scan. */
@@ -61,7 +63,7 @@ class TasksController(cc: ControllerComponents, adminAction: AdminAction, queue:
   }
 
   private def snapshotJson(snap: QueueSnapshot): JsObject = Json.obj(
-    "now"     -> System.currentTimeMillis(),
+    "now"     -> clock.millis(),
     "counts"  -> Json.toJson(snap.counts),
     "shown"   -> snap.active.size,
     "limit"   -> ActiveLimit,
