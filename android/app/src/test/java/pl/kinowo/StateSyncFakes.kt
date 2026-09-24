@@ -63,6 +63,13 @@ internal class FakeSyncPrefs : SyncPrefs {
     override suspend fun setPendingLanguagePush(tag: String?) { pendingLanguage = tag }
 }
 
+/** The per-country hidden-films endpoints as the server behaves: each bucket
+ *  is a set, every write applies to it and answers with the resulting set and
+ *  a validator derived from its content, a conditional fetch naming the
+ *  current validator is a 304, a signed-out session is refused, and an
+ *  offline one fails. Tests change the account by editing [remote] — as
+ *  another device would — never by scripting responses. Mirrors iOS
+ *  `FakeHiddenFilmsClient`. */
 internal class FakeHiddenFilmsClient : HiddenFilmsClient {
     val remote = mutableMapOf<String, Set<String>>()
     val hideCalls = mutableListOf<Pair<String, String>>() // (title, country)
@@ -75,16 +82,12 @@ internal class FakeHiddenFilmsClient : HiddenFilmsClient {
     /** Whether the session this client sends is signed in. A signed-out one is
      *  answered 401 — which the real client throws on — for every call. */
     var signedIn = true
-    /** Answer 304 to ANY conditional fetch, whatever it names. The real server
-     *  only does so when the validator matches — which this fake also does, see
-     *  [fetch]. */
-    var notModified = false
     var beforeFetch: suspend () -> Unit = {}
     /** Awaited after a fetch has read the server's set, before it answers —
      *  holds a response "on the wire" while the set changes underneath it. */
     var beforeFetchResponse: suspend () -> Unit = {}
-    /** Awaited once a hide/unhide/clear has been recorded — holds it in flight. */
-    var beforeWrite: suspend () -> Unit = {}
+    /** Awaited once a hide/unhide/clear has been APPLIED, before it answers. */
+    var beforeWriteResponse: suspend () -> Unit = {}
 
     /** The validator the server would hand out for [country]'s current set:
      *  derived from the content, as `UserStateController`'s strong ETag is. */
@@ -97,7 +100,7 @@ internal class FakeHiddenFilmsClient : HiddenFilmsClient {
         beforeFetch()
         if (shouldFailFetch) throw IOException("no network")
         if (!signedIn) throw IOException("HTTP 401")
-        val answer = if (etag != null && (notModified || etag == etagOf(country))) HiddenFilmsFetchResult.NotModified
+        val answer = if (etag != null && etag == etagOf(country)) HiddenFilmsFetchResult.NotModified
             else HiddenFilmsFetchResult.Changed(state(country))
         beforeFetchResponse()
         return answer
@@ -105,29 +108,26 @@ internal class FakeHiddenFilmsClient : HiddenFilmsClient {
 
     override suspend fun hide(country: String, title: String): HiddenFilmsState {
         hideCalls += title to country
-        beforeWrite()
         if (shouldFailWrite) throw IOException("no network")
         if (!signedIn) throw IOException("HTTP 401")
         remote[country] = (remote[country] ?: emptySet()) + title
-        return state(country)
+        return state(country).also { beforeWriteResponse() }
     }
 
     override suspend fun unhide(country: String, title: String): HiddenFilmsState {
         unhideCalls += title to country
-        beforeWrite()
         if (shouldFailWrite) throw IOException("no network")
         if (!signedIn) throw IOException("HTTP 401")
         remote[country] = (remote[country] ?: emptySet()) - title
-        return state(country)
+        return state(country).also { beforeWriteResponse() }
     }
 
     override suspend fun clear(country: String): HiddenFilmsState {
         clearCalls += country
-        beforeWrite()
         if (shouldFailWrite) throw IOException("no network")
         if (!signedIn) throw IOException("HTTP 401")
         remote[country] = emptySet()
-        return state(country)
+        return state(country).also { beforeWriteResponse() }
     }
 }
 

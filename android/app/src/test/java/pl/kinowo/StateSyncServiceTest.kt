@@ -236,7 +236,6 @@ class StateSyncServiceTest {
     @Test
     fun aFailedHidePushIsResentOnTheNextReconcile() = runTest(UnconfinedTestDispatcher()) {
         prefs.countryState.value = "pl"
-        client.notModified = true
         val service = startService()
         login()
         advanceUntilIdle()
@@ -364,7 +363,6 @@ class StateSyncServiceTest {
         advanceUntilIdle()
         prefs.setHiddenFilms("uk", setOf("Film UK"))
 
-        client.notModified = true
         val service = StateSyncService(prefs, userFlow, client, languageClient, backgroundScope)
         service.reconcileCurrentCountry()
 
@@ -434,7 +432,7 @@ class StateSyncServiceTest {
         advanceUntilIdle()
 
         val gate = CompletableDeferred<Unit>()
-        client.beforeWrite = { gate.await() }
+        client.beforeWriteResponse = { gate.await() }
         service.hide("First")
         runCurrent() // First is on the wire
         service.hide("Second")

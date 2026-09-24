@@ -159,7 +159,7 @@ enum SyncModel {
         private let suite = "StateSyncModel-\(UUID().uuidString)"
         private let defaults: UserDefaults
         private let prefs: UserPreferences
-        private let server = ModelHiddenFilmsServer()
+        private let server = FakeHiddenFilmsClient()
         private let languageClient = FakeLanguageClient()
         private let user = CurrentValueSubject<UserProfile?, Never>(nil)
         private var service: StateSyncService?
@@ -240,14 +240,14 @@ enum SyncModel {
             case .remoteHide(let c):
                 minted += 1
                 let title = "\(c)-r\(minted)"
-                server.buckets[c, default: []].insert(title)
+                server.remote[c, default: []].insert(title)
                 // A clear this device still owes the account lands after it.
                 if !prefs.pendingHiddenFilmsChanges(country: c).contains(.clearedAll) { expect(c, title, hidden: true) }
             case .remoteUnhide(let c, let pick):
-                let remote = (server.buckets[c] ?? []).sorted()
+                let remote = (server.remote[c] ?? []).sorted()
                 guard !remote.isEmpty else { return }
                 let title = remote[pick % remote.count]
-                server.buckets[c]?.remove(title)
+                server.remote[c]?.remove(title)
                 // A first sync's union may legitimately bring it back.
                 unconstrain(c, title)
             case .networkDown:
@@ -287,7 +287,8 @@ enum SyncModel {
         }
 
         private func network(up: Bool) {
-            server.offline = !up
+            server.shouldFailFetch = !up
+            server.shouldFailWrite = !up
             languageClient.shouldFailFetch = !up
             languageClient.shouldFailPush = !up
         }
@@ -320,7 +321,7 @@ enum SyncModel {
 
         private func isolationViolation() -> String? {
             for c in SyncModel.countries {
-                let foreignRemote = (server.buckets[c] ?? []).filter { !$0.hasPrefix("\(c)-") }
+                let foreignRemote = (server.remote[c] ?? []).filter { !$0.hasPrefix("\(c)-") }
                 if !foreignRemote.isEmpty { return "server bucket '\(c)' holds another country's titles \(foreignRemote.sorted())" }
                 let foreignLocal = prefs.hiddenFilms(country: c).filter { !$0.hasPrefix("\(c)-") }
                 if !foreignLocal.isEmpty { return "local list '\(c)' holds another country's titles \(foreignLocal.sorted())" }
@@ -331,7 +332,7 @@ enum SyncModel {
         private func convergenceViolation() -> String? {
             for c in SyncModel.countries {
                 let local = prefs.hiddenFilms(country: c)
-                let remote = server.buckets[c] ?? []
+                let remote = server.remote[c] ?? []
                 if local != remote { return "after settling, '\(c)' local \(local.sorted()) != server \(remote.sorted())" }
                 let lost = (mustHave[c] ?? []).subtracting(remote)
                 if !lost.isEmpty { return "after settling, '\(c)' lost hides \(lost.sorted()) (server \(remote.sorted()))" }
@@ -346,49 +347,5 @@ enum SyncModel {
             }
             return nil
         }
-    }
-}
-
-/// The per-country hidden-films endpoints as the server behaves: each bucket
-/// is a set, every write answers with the resulting set and a validator
-/// derived from its content, a conditional fetch naming the current validator
-/// is a 304, a signed-out session is refused, and an offline one fails.
-@MainActor
-final class ModelHiddenFilmsServer: HiddenFilmsClient {
-    var buckets: [String: Set<String>] = [:]
-    var signedIn = true
-    var offline = false
-    private(set) var inFlight = 0
-
-    private func etag(_ country: String) -> String { "\"\((buckets[country] ?? []).sorted().joined(separator: "|").hashValue)\"" }
-
-    private func result(_ country: String) -> HiddenFilmsResult {
-        HiddenFilmsResult(hiddenFilms: buckets[country] ?? [], etag: etag(country), lastModified: "Tue, 19 May 2026 12:00:00 GMT")
-    }
-
-    /// One request: in flight across a suspension point, like a real one.
-    private func request<T>(_ body: () -> T) async throws -> T {
-        inFlight += 1
-        defer { inFlight -= 1 }
-        await Task.yield()
-        if offline { throw URLError(.notConnectedToInternet) }
-        if !signedIn { throw URLError(.userAuthenticationRequired) }
-        return body()
-    }
-
-    func fetch(country: String, etag sent: String?, lastModified: String?) async throws -> HiddenFilmsFetchResult {
-        try await request { sent != nil && sent == etag(country) ? .notModified : .current(result(country)) }
-    }
-
-    func hide(country: String, title: String) async throws -> HiddenFilmsResult {
-        try await request { buckets[country, default: []].insert(title); return result(country) }
-    }
-
-    func unhide(country: String, title: String) async throws -> HiddenFilmsResult {
-        try await request { buckets[country]?.remove(title); return result(country) }
-    }
-
-    func clear(country: String) async throws -> HiddenFilmsResult {
-        try await request { buckets[country] = []; return result(country) }
     }
 }
