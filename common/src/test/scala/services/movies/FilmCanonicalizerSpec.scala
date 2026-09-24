@@ -8,24 +8,7 @@ import org.scalatest.matchers.should.Matchers
 
 class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
 
-  private def key(title: String, year: Option[Int]): CacheKey = CacheKey(title, year, titleNormalizer)
-
-  /** A resolved row: carries a tmdbId and a Tmdb slot whose releaseYear IS the
-   *  cluster's authoritative tmdbYear. */
-  private def resolved(title: String, tmdbId: Int, tmdbYear: Int, cinema: Source): (CacheKey, MovieRecord) =
-    key(title, Some(tmdbYear)) -> MovieRecord(
-      tmdbId = Some(tmdbId),
-      data = Map[Source, SourceData](
-        Tmdb   -> SourceData(releaseYear = Some(tmdbYear)),
-        cinema -> SourceData(title = Some(title), releaseYear = Some(tmdbYear))
-      )
-    )
-
-  /** An unresolved, year-bearing cinema row. */
-  private def unresolved(title: String, year: Option[Int], cinema: Source): (CacheKey, MovieRecord) =
-    key(title, year) -> MovieRecord(
-      data = Map[Source, SourceData](cinema -> SourceData(title = Some(title), releaseYear = year))
-    )
+  import CanonicalizerRows.{cacheKey, published, resolved, unresolved}
 
   /** A resolved row keyed under `keyTitle` for a film TMDB knows as `tmdbTitle`
    *  (Polish) / `originalTitle`, reported by `cinema` as `cinemaTitle`. Used to
@@ -35,7 +18,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     tmdbTitle: String, originalTitle: String, cinema: Source, cinemaTitle: String,
     englishTitle: Option[String] = None
   ): (CacheKey, MovieRecord) =
-    key(keyTitle, Some(tmdbYear)) -> MovieRecord(
+    cacheKey(keyTitle, Some(tmdbYear)) -> MovieRecord(
       tmdbId = Some(tmdbId),
       data = Map[Source, SourceData](
         Tmdb   -> SourceData(title = Some(tmdbTitle), originalTitle = Some(originalTitle),
@@ -43,18 +26,6 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
         cinema -> SourceData(title = Some(cinemaTitle), releaseYear = Some(tmdbYear))
       )
     )
-
-  /** A resolved row whose cinema PUBLISHED an original title and a runtime — the
-   *  evidence `MixedFilmDetector` reads when the fold asks whether two rows describe
-   *  different films. */
-  private def published(title: String, tmdbId: Int, tmdbYear: Int, cinema: Source,
-                        originalTitle: String, runtime: Int, imdbId: Option[String] = None): (CacheKey, MovieRecord) =
-    key(title, Some(tmdbYear)) -> MovieRecord(
-      tmdbId = Some(tmdbId), imdbId = imdbId,
-      data = Map[Source, SourceData](
-        Tmdb   -> SourceData(releaseYear = Some(tmdbYear)),
-        cinema -> SourceData(title = Some(title), releaseYear = Some(tmdbYear),
-                             originalTitle = Some(originalTitle), runtimeMinutes = Some(runtime))))
 
   "canonical" should "collapse a ±1-year unresolved + resolved cluster onto the resolved year and unioned cinemas" in {
     // Helios resolved the film to TMDB year 2026; Multikino stranded a 2025
@@ -169,7 +140,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // NOT adopt that provisional slot year as its key — that would make it a
     // year-bearing movies row its resolved siblings can no longer absorb (the
     // order-dependent "Głos Hind Rajab" / Kino Amondo split). It stays yearless.
-    val row = key("Głos Hind Rajab", None) -> MovieRecord(
+    val row = cacheKey("Głos Hind Rajab", None) -> MovieRecord(
       data = Map[Source, SourceData](Helios -> SourceData(title = Some("Głos Hind Rajab"), releaseYear = Some(2022))))
     val (canonicalKey, _) = FilmCanonicalizer.canonical(Seq(row), titleNormalizer)
     canonicalKey.year shouldBe None
@@ -182,7 +153,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // regardless of insertion (fold) order.
     val group = Seq(
       resolved("Głos Hind Rajab", tmdbId = 1480382, tmdbYear = 2025, cinema = KinoMuza),
-      key("Głos Hind Rajab", None) -> MovieRecord(
+      cacheKey("Głos Hind Rajab", None) -> MovieRecord(
         data = Map[Source, SourceData](KinoMuzeumGdansk -> SourceData(title = Some("Głos Hind Rajab"), releaseYear = Some(2022))))
     )
     Seq(group, group.reverse).foreach { ordered =>
@@ -203,7 +174,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // (contrast the Δ3 "Głos Hind Rajab" case above, which must).
     val group = Seq(
       resolved("Hope", tmdbId = 1058424, tmdbYear = 2026, cinema = Helios),
-      key("Hope", None) -> MovieRecord(
+      cacheKey("Hope", None) -> MovieRecord(
         data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Hope"), releaseYear = Some(2014), runtimeMinutes = Some(91))))
     )
     val clusters = FilmCanonicalizer.clusterByFilm(group, titleNormalizer)
@@ -213,7 +184,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
   it should "fold a yearless-key row within the WIDER rule-4 slot-year tolerance, and refuse just past it" in {
     def clustersFor(slotYear: Int) = FilmCanonicalizer.clusterByFilm(Seq(
       resolved("Hope", tmdbId = 1058424, tmdbYear = 2026, cinema = Helios),
-      key("Hope", None) -> MovieRecord(
+      cacheKey("Hope", None) -> MovieRecord(
         data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Hope"), releaseYear = Some(slotYear))))
     ), titleNormalizer)
     withClue("five years off: ") { clustersFor(2021) should have size 1 }
@@ -234,10 +205,10 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // "Hope" above, whose stragglers published no runtime the resolved film agreed
     // with either).
     val group = Seq(
-      key("Happy Together", Some(1997)) -> MovieRecord(
+      cacheKey("Happy Together", Some(1997)) -> MovieRecord(
         tmdbId = Some(1013),
         data = Map[Source, SourceData](Tmdb -> SourceData(releaseYear = Some(1997), runtimeMinutes = Some(96)))),
-      key("Happy Together", None) -> MovieRecord(
+      cacheKey("Happy Together", None) -> MovieRecord(
         data = Map[Source, SourceData](Kinoteka ->
           SourceData(title = Some("Happy Together"), releaseYear = Some(2026), runtimeMinutes = Some(96))))
     )
@@ -252,10 +223,10 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // tolerance does NOT get waived just because it names SOME runtime — only a
     // CLOSELY AGREEING one is evidence of the same film.
     val group = Seq(
-      key("Happy Together", Some(1997)) -> MovieRecord(
+      cacheKey("Happy Together", Some(1997)) -> MovieRecord(
         tmdbId = Some(1013),
         data = Map[Source, SourceData](Tmdb -> SourceData(releaseYear = Some(1997), runtimeMinutes = Some(96)))),
-      key("Happy Together", None) -> MovieRecord(
+      cacheKey("Happy Together", None) -> MovieRecord(
         data = Map[Source, SourceData](Kinoteka ->
           SourceData(title = Some("Happy Together"), releaseYear = Some(2026), runtimeMinutes = Some(150))))
     )
@@ -270,7 +241,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // year gap, is what refuses this one.
     val group = Seq(
       published("Obcy", tmdbId = 7183, tmdbYear = 2025, cinema = Helios, originalTitle = "L'étranger", runtime = 120),
-      key("Obcy", None) -> MovieRecord(
+      cacheKey("Obcy", None) -> MovieRecord(
         data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Obcy"), originalTitle = Some("I Was A Stranger"), runtimeMinutes = Some(103))))
     )
     val clusters = FilmCanonicalizer.clusterByFilm(group, titleNormalizer)
@@ -287,11 +258,11 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // provable duplicate.
     val text = "Every year in the ruins of what was once North America..."
     val group = Seq(
-      key("The Hunger Games", Some(2012)) -> MovieRecord(
+      cacheKey("The Hunger Games", Some(2012)) -> MovieRecord(
         tmdbId = Some(70160),
         data = Map[Source, SourceData](Tmdb -> SourceData(releaseYear = Some(2012))),
         retainedSynopses = Map[Source, String](Helios -> text)),
-      key("The Hunger Games", Some(2026)) -> MovieRecord(
+      cacheKey("The Hunger Games", Some(2026)) -> MovieRecord(
         retainedSynopses = Map[Source, String](Helios -> text))
     )
     Seq(group, group.reverse).foreach { ordered =>
@@ -310,13 +281,13 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // year window exists to keep apart, not proof of one film.
     val text = "A shared enrichment synopsis for a same-titled film."
     val group = Seq(
-      key("It", Some(2017)) -> MovieRecord(
+      cacheKey("It", Some(2017)) -> MovieRecord(
         tmdbId = Some(346364),
         data = Map[Source, SourceData](
           Tmdb    -> SourceData(releaseYear = Some(2017)),
           Helios  -> SourceData(title = Some("It"), releaseYear = Some(2017)),
           Filmweb -> SourceData(synopsis = Some(text)))),
-      key("It", Some(1990)) -> MovieRecord(
+      cacheKey("It", Some(1990)) -> MovieRecord(
         data = Map[Source, SourceData](
           Multikino -> SourceData(title = Some("It"), releaseYear = Some(1990)),
           Filmweb   -> SourceData(synopsis = Some(text))))
@@ -336,7 +307,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     val group = Seq(
       resolved("Hope", tmdbId = 1058424, tmdbYear = 2026, cinema = Helios),
       unresolved("Hope", Some(2010), cinema = Multikino),
-      key("Hope", None) -> MovieRecord(
+      cacheKey("Hope", None) -> MovieRecord(
         data = Map[Source, SourceData](Kinoteka -> SourceData(title = Some("Hope"))))
     )
     Seq(group, group.reverse).foreach { ordered =>
@@ -353,7 +324,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // each. A bare, yearless listing is either film, so picking the lower year would
     // be a guess the row then inherits — refuse, exactly as rule 4 does for two
     // resolved films.
-    val straggler = key("Diuna", None) -> MovieRecord(
+    val straggler = cacheKey("Diuna", None) -> MovieRecord(
       data = Map[Source, SourceData](Kinoteka -> SourceData(title = Some("Diuna"))))
     val group = Seq(
       unresolved("Diuna", Some(1984), cinema = Helios),
@@ -373,7 +344,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     val group = Seq(
       unresolved("Diuna", Some(2021), cinema = Helios),
       unresolved("Diuna", Some(2022), cinema = Multikino),
-      key("Diuna", None) -> MovieRecord(
+      cacheKey("Diuna", None) -> MovieRecord(
         data = Map[Source, SourceData](Kinoteka -> SourceData(title = Some("Diuna"))))
     )
     FilmCanonicalizer.clusterByFilm(group, titleNormalizer) should have size 1
@@ -382,13 +353,13 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
   it should "refuse to reclaim an orphan whose identical text happens to sit on TWO resolved clusters (ambiguous)" in {
     val text = "Some verbatim synopsis text shared by coincidence."
     val group = Seq(
-      key("Film X", Some(2000)) -> MovieRecord(
+      cacheKey("Film X", Some(2000)) -> MovieRecord(
         tmdbId = Some(1), data = Map[Source, SourceData](Tmdb -> SourceData(releaseYear = Some(2000))),
         retainedSynopses = Map[Source, String](Helios -> text)),
-      key("Film X", Some(2010)) -> MovieRecord(
+      cacheKey("Film X", Some(2010)) -> MovieRecord(
         tmdbId = Some(2), data = Map[Source, SourceData](Tmdb -> SourceData(releaseYear = Some(2010))),
         retainedSynopses = Map[Source, String](Multikino -> text)),
-      key("Film X", Some(2030)) -> MovieRecord(
+      cacheKey("Film X", Some(2030)) -> MovieRecord(
         retainedSynopses = Map[Source, String](Helios -> text, Multikino -> text))
     )
     val clusters = FilmCanonicalizer.clusterByFilm(group, titleNormalizer)
@@ -461,7 +432,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // window, which would otherwise attach it regardless of this test's point.
     val group = Seq(
       published("Obcy", tmdbId = 7183, tmdbYear = 1969, cinema = Helios, originalTitle = "L'étranger", runtime = 120),
-      key("Obcy - pokaz przedpremierowy", Some(2026)) -> MovieRecord(
+      cacheKey("Obcy - pokaz przedpremierowy", Some(2026)) -> MovieRecord(
         data = Map[Source, SourceData](Kinoteka ->
           SourceData(title = Some("Obcy - pokaz przedpremierowy"), originalTitle = Some("I Was A Stranger"), runtimeMinutes = Some(103))))
     )
@@ -656,13 +627,13 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // again — forever. The Poland convergence leg failed on precisely that loop,
     // on the "a further settle splits nothing" assertion.
     val rows = Seq(
-      key("Obcy", Some(2025)) -> MovieRecord(
+      cacheKey("Obcy", Some(2025)) -> MovieRecord(
         tmdbId = Some(1429348),
         data = Map[Source, SourceData](
           Tmdb      -> SourceData(releaseYear = Some(2025)),
           Multikino -> SourceData(title = Some("Obcy"), originalTitle = Some("L'étranger"),
                                   runtimeMinutes = Some(122), releaseYear = Some(2025)))),
-      key("Ktoś całkiem obcy", Some(2024)) -> MovieRecord(
+      cacheKey("Ktoś całkiem obcy", Some(2024)) -> MovieRecord(
         data = Map[Source, SourceData](
           KinoPionier -> SourceData(title = Some("KTOŚ CAŁKIEM OBCY"), originalTitle = Some("I Was A Stranger"),
                                     runtimeMinutes = Some(103), releaseYear = Some(2024))))
@@ -683,19 +654,19 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // RESOLVED row keyed by that very title (the 2007 *Perfect Stranger*), so it is a
     // film's own name rather than a decoration of the shorter "Obcy".
     val rows = Seq(
-      key("Obcy", Some(2025)) -> MovieRecord(
+      cacheKey("Obcy", Some(2025)) -> MovieRecord(
         tmdbId = Some(1429348),
         data = Map[Source, SourceData](
           Tmdb      -> SourceData(releaseYear = Some(2025)),
           Multikino -> SourceData(title = Some("Obcy"), originalTitle = Some("L'étranger"),
                                   runtimeMinutes = Some(122), releaseYear = Some(2025)))),
-      key("Ktoś całkiem obcy", Some(2007)) -> MovieRecord(
+      cacheKey("Ktoś całkiem obcy", Some(2007)) -> MovieRecord(
         tmdbId = Some(7183),
         data = Map[Source, SourceData](
           Tmdb     -> SourceData(releaseYear = Some(2007)),
           KinoLuna -> SourceData(title = Some("Ktoś całkiem obcy")))),
       // Exactly what Cinema City publishes: a year, a runtime, and no original title.
-      key("Ktoś całkiem obcy", Some(2024)) -> MovieRecord(
+      cacheKey("Ktoś całkiem obcy", Some(2024)) -> MovieRecord(
         data = Map[Source, SourceData](
           CinemaCityArkadia -> SourceData(title = Some("Ktoś całkiem obcy"),
                                           runtimeMinutes = Some(104), releaseYear = Some(2024))))
@@ -719,13 +690,13 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // edition publishes the same original title and runtime as its base, so it
     // still folds — the edge keeps doing its job.
     val rows = Seq(
-      key("Obcy", Some(2025)) -> MovieRecord(
+      cacheKey("Obcy", Some(2025)) -> MovieRecord(
         tmdbId = Some(1429348),
         data = Map[Source, SourceData](
           Tmdb      -> SourceData(releaseYear = Some(2025)),
           Multikino -> SourceData(title = Some("Obcy"), originalTitle = Some("L'étranger"),
                                   runtimeMinutes = Some(122), releaseYear = Some(2025)))),
-      key("Nocny pokaz Obcy", None) -> MovieRecord(
+      cacheKey("Nocny pokaz Obcy", None) -> MovieRecord(
         data = Map[Source, SourceData](
           KinoPionier -> SourceData(title = Some("Nocny pokaz Obcy"), originalTitle = Some("L'étranger"),
                                     runtimeMinutes = Some(122))))
@@ -885,7 +856,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // legitimate "Zaplątani"/"Tangled" case right below. Only `SequelMarker`'s
     // curated Hunger Games siblings list can tell these apart from bare titles alone.
     val bareCinemaSlot = (title: String, cinema: Source) =>
-      key(title, Some(2026)) -> MovieRecord(
+      cacheKey(title, Some(2026)) -> MovieRecord(
         tmdbId = Some(1300968),
         data = Map[Source, SourceData](
           Tmdb   -> SourceData(releaseYear = Some(2026)),
@@ -905,7 +876,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // films). What the curated gate protects against is an UNCURATED title merely
     // ending in a number, never this genuine same-franchise numbered pair.
     val bareCinemaSlot = (title: String, cinema: Source) =>
-      key(title, Some(2026)) -> MovieRecord(
+      cacheKey(title, Some(2026)) -> MovieRecord(
         tmdbId = Some(1300968),
         data = Map[Source, SourceData](
           Tmdb   -> SourceData(releaseYear = Some(2026)),
@@ -924,7 +895,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // ordinary cinema title text (a disambiguator, a re-run marker, anything) must
     // NOT be read as a sequel split — only a CURATED base's own known siblings may.
     val bareCinemaSlot = (title: String, cinema: Source) =>
-      key(title, Some(2025)) -> MovieRecord(
+      cacheKey(title, Some(2025)) -> MovieRecord(
         tmdbId = Some(700),
         data = Map[Source, SourceData](
           Tmdb   -> SourceData(releaseYear = Some(2025)),
@@ -953,7 +924,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // to that cross-sanitize title would re-key the dub onto the base and collapse
     // it; the slot title must be ignored because it doesn't match the variant.
     val cluster = Seq(
-      key("Straszny film ukraiński dubbing", Some(2026)) -> MovieRecord(
+      cacheKey("Straszny film ukraiński dubbing", Some(2026)) -> MovieRecord(
         tmdbId = Some(12345),
         data = Map[Source, SourceData](
           Tmdb   -> SourceData(title = Some("Straszny film"), releaseYear = Some(2026)),
