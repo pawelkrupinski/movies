@@ -26,7 +26,9 @@ class RepositoryWriteFailureSpec extends AnyFlatSpec with Matchers with LoneElem
       failures :+= ((collection, op, exception))
   }
 
-  private val showtime = Showtime(LocalDateTime.now().plusDays(1).withHour(20), bookingUrl = None)
+  // The caches run at a fixed instant and the showtime sits a day after it.
+  private val specClock = java.time.Clock.fixed(java.time.Instant.parse("2026-06-01T10:00:00Z"), java.time.ZoneOffset.UTC)
+  private val showtime  = Showtime(LocalDateTime.now(specClock).plusDays(1).withHour(20), bookingUrl = None)
 
   private def listing(title: String) = CinemaMovie(
     movie = Movie(title, releaseYear = Some(2026)), cinema = Multikino,
@@ -35,7 +37,7 @@ class RepositoryWriteFailureSpec extends AnyFlatSpec with Matchers with LoneElem
   "a new film whose upsert throws" should "be counted, rolled out of the cache, and written by the next identical scrape" in {
     val metrics    = new RecordingWriteMetrics
     val repository = new ThrowingUpsertMovieRepository(metrics)
-    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = specClock)
     val key        = cache.keyOf("Nowy Film", Some(2026))
 
     cache.recordCinemaScrape(Multikino, Seq(listing("Nowy Film")))
@@ -59,7 +61,7 @@ class RepositoryWriteFailureSpec extends AnyFlatSpec with Matchers with LoneElem
     slots.failing  = false
     val repository = new InMemoryMovieRepository(
       screenings = Some(new InMemoryScreeningsRepository), slots = Some(slots))
-    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = specClock)
     cache.recordCinemaScrape(Multikino, Seq(listing("Stary Film")))
     val key        = cache.keyOf("Stary Film", Some(2026))
     val id         = repository.findAll().map(_.id).loneElement

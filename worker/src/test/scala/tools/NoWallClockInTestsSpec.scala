@@ -89,7 +89,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
     "FoldFixture", "FreshnessStoreIntegrationSpec", "MergeScreeningsIntegrationSpec", "MongoTaskQueueIntegrationSpec",
     "MoveFilmDurabilitySpec", "MovieRepositoryIntegrationSpec", "MovieRepositoryUpdatedSinceIntegrationSpec",
     "MoviesWriteSkippedWhenUnchangedIntegrationSpec", "ProdCoverageIntegrationSpec", "RekeyScreeningsIntegrationSpec",
-    "RetiredVenueRowsIntegrationSpec", "RetryResolveServingIntegrationSpec", "ScanStitchedPagingSpec",
+    "RepositoryWriteFailureIntegrationSpec", "RetiredVenueRowsIntegrationSpec", "RetryResolveServingIntegrationSpec", "ScanStitchedPagingSpec",
     "ScreeningsRewriteOnUpsertIntegrationSpec", "SideRowIdScanPagingSpec", "SlotsWatchProjectionIntegrationSpec",
     "StagingFoldIntegrationSpec", "UnreadyRoundTripProjectionIntegrationSpec"
   ).map(spec => s"worker/src/it/scala/$spec.scala" -> MongoPath)
