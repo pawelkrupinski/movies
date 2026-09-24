@@ -4,10 +4,11 @@
 # this host, k3s-worker-1); two exporters that speak for something the host cannot -- mongodb_exporter
 # on mongo-1 for what mongod thinks it is, and kube-state-metrics through a NodePort for what the
 # k3s cluster thinks it is; its own three processes; and the application pods themselves, over
-# their NodePorts. NOTHING WATCHES THIS HOST FROM OUTSIDE. That is the standing weakness
-# of a single monitoring node and it is not solved here; what IS done is that Alertmanager's own
-# delivery path is exercised by a rule (see monitoring-self.rules), so a Telegram route that has
-# quietly stopped working is discovered by a heartbeat rather than by the first real incident.
+# their NodePorts. WHAT WATCHES THIS HOST FROM OUTSIDE is the dead-man's switch: Alertmanager's own
+# delivery path is exercised by an always-firing rule (see monitoring-self.rules), delivered daily
+# to Telegram and -- once `deadMansSwitch.enable` is on -- every five minutes to an external check
+# that alerts on its own when the posts stop, which is the only way a dead monitoring-1 is noticed
+# by anything but a person missing a message.
 #
 # ------------------------------------------------------------------------------------------------
 # WHY THIS PROCESS OUTRANKS ITS NEIGHBOUR
@@ -38,8 +39,16 @@ let
   # later and forgets to render. An unsubstituted `@LISTEN_ADDRESS@` would otherwise reach
   # Prometheus as a literal hostname, and a scrape of a host that does not resolve is a target
   # that is simply down -- which reads as a machine problem.
+  #
+  # THE DEAD-MAN'S SWITCH BLOCK is cut out of alertmanager.yaml (between its BEGIN/END markers)
+  # while `deadMansSwitch.enable` is off, rather than rendered against a secret that does not exist
+  # yet -- a webhook with no URL file fails every send and pages `AlertmanagerNotificationsFailing`.
+  # Files without the markers pass through the `sed` untouched.
   render = name: src: pkgs.runCommand name { } ''
-    substitute ${src} $out \
+    ${if cfg.deadMansSwitch.enable
+      then "cp ${src} source"
+      else "sed '/# BEGIN dead-mans-switch/,/# END dead-mans-switch/d' ${src} > source"}
+    substitute source $out \
       --replace-quiet '@LISTEN_ADDRESS@' '${cfg.listenAddress}' \
       --replace-quiet '@GRAFANA_PORT@' '${toString cfg.grafanaPort}' \
       --replace-quiet '@TELEGRAM_BOT_TOKEN_FILE@' '${cfg.telegramBotTokenFile}' \
@@ -47,7 +56,8 @@ let
       --replace-quiet '@SMTP_USERNAME@' '${cfg.smtpUsername}' \
       --replace-quiet '@SMTP_PASSWORD_FILE@' '${cfg.smtpPasswordFile}' \
       --replace-quiet '@ALERT_EMAIL_FROM@' '${cfg.alertEmailFrom}' \
-      --replace-quiet '@ALERT_EMAIL_TO@' '${cfg.alertEmailTo}'
+      --replace-quiet '@ALERT_EMAIL_TO@' '${cfg.alertEmailTo}' ${lib.optionalString cfg.deadMansSwitch.enable
+        "--replace-quiet '@DEAD_MANS_SWITCH_URL_FILE@' '${cfg.deadMansSwitch.pingUrlFile}'"}
     if grep -nE '@[A-Z0-9_]+@' $out; then
       echo "render: ${name} still carries an unsubstituted placeholder (above)." >&2
       exit 1
@@ -322,6 +332,35 @@ in
       default = config.sops.secrets."alertmanager/telegram-bot-token".path;
       defaultText = ''config.sops.secrets."alertmanager/telegram-bot-token".path'';
       description = "Path to the @kinowobot bot token, from sops-nix. Alertmanager reads it at send time.";
+    };
+
+    # ── THE DEAD-MAN'S SWITCH ──────────────────────────────────────────────────────────────────
+    deadMansSwitch = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+        Post the always-firing `MonitoringHeartbeat` every five minutes to an external check
+        that alerts when the posts STOP -- the only alert on this fleet that still arrives when
+        monitoring-1 itself is gone.
+
+        ONE-TIME SETUP, before turning this on (nothing here can do it, and no credential is
+        invented for it):
+          1. Create a check at healthchecks.io (or any service taking a ping POST): period 5
+             minutes, grace 10 minutes, notifying by email and Telegram -- NOT through this
+             fleet's Alertmanager, which is what it watches.
+          2. Put its ping URL in nix/secrets/monitoring-1.yaml as
+             `alertmanager/dead-mans-switch-url` (`sops nix/secrets/monitoring-1.yaml`).
+          3. Set `fleet.prometheus.deadMansSwitch.enable = true;` in hosts/monitoring-1.
+        The check turns red about fifteen minutes after anything on the path stops.
+      '';
+      };
+      pingUrlFile = lib.mkOption {
+        type = lib.types.str;
+        default = config.sops.secrets."alertmanager/dead-mans-switch-url".path;
+        defaultText = ''config.sops.secrets."alertmanager/dead-mans-switch-url".path'';
+        description = "The file holding the check's ping URL. Alertmanager reads it at send time.";
+      };
     };
 
     # ── THE EMAIL PATH ─────────────────────────────────────────────────────────────────────────
@@ -608,6 +647,11 @@ in
     # Same shape, same reason, for the SMTP relay's API key: owned by the process that reads it,
     # read at send time, never interpolated into a config file.
     sops.secrets."alertmanager/smtp-password" = { owner = "alertmanager"; mode = "0400"; };
+    # The dead-man's switch ping URL is a credential too (whoever holds it can keep the check
+    # green), so it gets the same treatment -- declared only when the switch is on, because sops-nix
+    # fails activation on a key the file does not have.
+    sops.secrets."alertmanager/dead-mans-switch-url" = lib.mkIf cfg.deadMansSwitch.enable
+      { owner = "alertmanager"; mode = "0400"; };
 
     users.users.prometheus = { isSystemUser = true; group = "prometheus"; description = "Prometheus"; };
     users.groups.prometheus = { };

@@ -58,7 +58,7 @@ if ! (command -v amtool && command -v alertmanager) >/dev/null 2>&1; then
 fi
 
 rendered="$(mktemp)"
-trap 'rm -f "$rendered"' EXIT
+trap 'rm -f "$rendered" "${rendered_without_switch:-}"' EXIT
 
 sed -e 's|@TELEGRAM_BOT_TOKEN_FILE@|/run/secrets/telegram|g' \
     -e 's|@SMTP_SMARTHOST@|smtp.example.invalid:587|g' \
@@ -66,8 +66,20 @@ sed -e 's|@TELEGRAM_BOT_TOKEN_FILE@|/run/secrets/telegram|g' \
     -e 's|@SMTP_PASSWORD_FILE@|/run/secrets/smtp|g' \
     -e 's|@ALERT_EMAIL_FROM@|alerts@example.invalid|g' \
     -e 's|@ALERT_EMAIL_TO@|operator@example.invalid|g' \
+    -e 's|@DEAD_MANS_SWITCH_URL_FILE@|/run/secrets/dead-mans-switch-url|g' \
     "$infra/nix/files/monitoring/alertmanager.yaml" > "$rendered"
 
+# THE SAME FILE AS THE FLEET RENDERS IT WHILE `fleet.prometheus.deadMansSwitch.enable` IS OFF:
+# roles/prometheus.nix cuts the BEGIN/END block out with this exact `sed`. Both shapes must parse
+# and route, because the fleet runs the second one until somebody finishes the one-time setup.
+rendered_without_switch="$(mktemp)"
+strip_switch="sed '/# BEGIN dead-mans-switch/,/# END dead-mans-switch/d'"
+eval "$strip_switch" '"$rendered"' > "$rendered_without_switch"
+if ! grep -qF "$strip_switch" "$infra/nix/modules/roles/prometheus.nix"; then
+  echo "  FAILED roles/prometheus.nix no longer strips the dead-man's switch block with: $strip_switch"
+  echo "         This test renders the switched-off shape with that command; keep the two identical."
+  failed=1
+fi
 
 if grep -nE '@[A-Z0-9_]+@' "$rendered"; then
   echo "  FAILED alertmanager.yaml carries a placeholder this test does not substitute (above)."
@@ -111,6 +123,13 @@ if out="$(amtool check-config "$rendered" 2>&1)"; then
   echo "  ok  alertmanager.yaml parses, and every receiver and template with it"
 else
   echo "  FAILED amtool check-config rejected alertmanager.yaml:"
+  printf '         %s\n' "$out"
+  failed=1
+fi
+if out="$(amtool check-config "$rendered_without_switch" 2>&1)"; then
+  echo "  ok  alertmanager.yaml parses with the dead-man's switch block cut out, as the fleet renders it while it is off"
+else
+  echo "  FAILED amtool check-config rejected alertmanager.yaml without the dead-man's switch block:"
   printf '         %s\n' "$out"
   failed=1
 fi
@@ -229,7 +248,12 @@ route_is telegram alertname=JvmHeapHigh severity=warning host=k3s-worker-1
 
 # The dead-man's handle keeps its own receiver: it must not acquire `send_resolved`, and it must
 # not start arriving by email every day.
+# THE DEAD-MAN'S SWITCH: the heartbeat goes to the external check AND (via `continue`) to the daily
+# Telegram message -- and, with the block cut out, to Telegram alone rather than to nowhere.
+route_is dead-mans-switch,telegram-heartbeat alertname=MonitoringHeartbeat
+rendered_on="$rendered"; rendered="$rendered_without_switch"
 route_is telegram-heartbeat alertname=MonitoringHeartbeat
+rendered="$rendered_on"
 
 # THE 2026-09-24 GAP AUDIT'S ALERTS reach the mailbox as well as Telegram.
 route_is telegram-and-email alertname=WebRestartNotOOMKilled severity=critical namespace=kinowo pod=web-pl-5c55479c9c-xxn56
@@ -329,9 +353,9 @@ fi
 step "inhibition (live Alertmanager)"
 
 am_dir="$(mktemp -d)"
-trap 'rm -rf "$am_dir"; rm -f "$rendered"' EXIT INT TERM
+trap 'rm -rf "$am_dir"; rm -f "$rendered" "$rendered_without_switch"' EXIT INT TERM
 am_config="$am_dir/alertmanager.yaml"
-: > "$am_dir/telegram"; : > "$am_dir/smtp"
+: > "$am_dir/telegram"; : > "$am_dir/smtp"; echo "http://127.0.0.1:1/" > "$am_dir/dead-mans-switch-url"
 
 # The same substitution the render above does, but pointing every outbound leg at a dead local
 # port and the secret files at real (empty) ones, so the process starts and notifies nowhere.
@@ -341,6 +365,7 @@ sed -e "s|@TELEGRAM_BOT_TOKEN_FILE@|$am_dir/telegram|g" \
     -e "s|@SMTP_PASSWORD_FILE@|$am_dir/smtp|g" \
     -e 's|@ALERT_EMAIL_FROM@|alerts@example.invalid|g' \
     -e 's|@ALERT_EMAIL_TO@|operator@example.invalid|g' \
+    -e "s|@DEAD_MANS_SWITCH_URL_FILE@|$am_dir/dead-mans-switch-url|g" \
     "$infra/nix/files/monitoring/alertmanager.yaml" \
   | awk '{ print }
          /^[[:space:]]*- bot_token_file:/ { match($0, /^[[:space:]]*/); print substr($0, 1, RLENGTH) "  api_url: http://127.0.0.1:1" }' \
@@ -354,7 +379,7 @@ alertmanager --config.file="$am_config" --storage.path="$am_dir/data" \
 am_pid=$!
 # INT AND TERM AS WELL AS EXIT. A non-interactive bash killed by Ctrl-C does not run an EXIT trap,
 # so without these a cancelled run leaves an Alertmanager holding a port and a temp tree behind it.
-trap 'kill "$am_pid" 2>/dev/null; rm -rf "$am_dir"; rm -f "$rendered"' EXIT INT TERM
+trap 'kill "$am_pid" 2>/dev/null; rm -rf "$am_dir"; rm -f "$rendered" "$rendered_without_switch"' EXIT INT TERM
 
 if python3 "$here/inhibition_cases.py" "$am_port"; then
   :

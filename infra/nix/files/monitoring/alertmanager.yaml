@@ -60,6 +60,28 @@ route:
     #
     # `send_resolved` is off for this receiver: the heartbeat never resolves, and a "resolved"
     # message for it would only ever mean Prometheus stopped evaluating.
+    #
+    # ...AND ITS ABSENCE IS ALSO WATCHED BY SOMETHING THAT IS NOT A PERSON. A daily message whose
+    # absence is the alarm relies on somebody noticing a message that did not arrive, which is the
+    # one thing people are worst at -- and if monitoring-1 itself is down, nothing on this fleet
+    # can say so. The route below (FIRST, with `continue: true`, so the daily Telegram message
+    # above still goes out) posts the same heartbeat every five minutes to an external dead-man's
+    # switch, a healthchecks.io check that alerts on its OWN channels when the posts stop: host
+    # down, Prometheus not evaluating, Alertmanager not sending, egress gone -- all of them. The
+    # ping URL is the check's secret, read from a sops file at send time like the bot token.
+    #
+    # THE BLOCK IS STRIPPED AT RENDER TIME until `fleet.prometheus.deadMansSwitch.enable` is on
+    # (roles/prometheus.nix), so the fleet does not post to a check nobody has created. The
+    # one-time setup is listed at that option.
+    # BEGIN dead-mans-switch
+    - matchers:
+        - alertname = "MonitoringHeartbeat"
+      receiver: dead-mans-switch
+      group_wait: 0s
+      group_interval: 1m
+      repeat_interval: 5m
+      continue: true
+    # END dead-mans-switch
     - matchers:
         - alertname = "MonitoringHeartbeat"
       receiver: telegram-heartbeat
@@ -293,6 +315,16 @@ receivers:
 
           {{ end }}
           Silence or inspect: {{ .ExternalURL }}
+
+  # BEGIN dead-mans-switch
+  # A PLAIN WEBHOOK, because the external check only needs the POST to arrive; the body is ignored.
+  # `url_file` keeps the ping URL -- which IS the credential: anyone holding it can keep the check
+  # green -- out of this world-readable document.
+  - name: dead-mans-switch
+    webhook_configs:
+      - url_file: "@DEAD_MANS_SWITCH_URL_FILE@"
+        send_resolved: false
+  # END dead-mans-switch
 
   - name: telegram-heartbeat
     telegram_configs:

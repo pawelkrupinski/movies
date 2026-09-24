@@ -9,8 +9,11 @@
 # THE LIMIT OF THAT ATTEMPT, STATED HONESTLY: a single monitoring host cannot fully watch itself.
 # If this machine is off, nothing here fires, and nothing outside it notices. The heartbeat below
 # is the only rule that turns that into a positive signal -- it moves the question from "have I
-# seen an alert?" (unanswerable) to "have I seen today's heartbeat?" (answerable). A second
-# monitoring endpoint elsewhere would be the real fix and does not exist.
+# seen an alert?" (unanswerable) to "have I seen today's heartbeat?" (answerable). The same
+# heartbeat also goes every five minutes to an external dead-man's switch (alertmanager.yaml's
+# `dead-mans-switch` receiver, `fleet.prometheus.deadMansSwitch` in roles/prometheus.nix), which
+# alerts on its own channels when it stops -- so the absence is noticed by a machine, not only by
+# a person who happens to miss a daily message.
 #
 # POST-MIGRATION AUDIT (2026-08-29): EVERY RULE HERE KEPT. A `FlyFederationDown` was kept then and
 # deleted on 2026-09-04 with the federation job it watched; see the tombstone where it stood.
@@ -20,7 +23,8 @@ groups:
       # -------------------------------------------------------------------------------------------
       # THE DEAD-MAN'S HANDLE. Fires permanently, on purpose.
       #
-      # Alertmanager's route for it (alertmanager.yaml) delivers it once every 24 hours. What it
+      # Alertmanager's routes for it (alertmanager.yaml) deliver it once every 24 hours to Telegram
+      # and every five minutes to the external dead-man's switch, once that is enabled. What it
       # proves, end to end, is: Prometheus is evaluating rules, Alertmanager is receiving them, the
       # Telegram bot token is still valid, and the bot is still in the channel. NONE of those is
       # proven by any other alert -- a revoked token or a bot removed from the group presents as
