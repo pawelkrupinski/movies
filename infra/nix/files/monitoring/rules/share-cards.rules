@@ -125,9 +125,9 @@ groups:
             (2026-09-24: pl, the slowest, in 2h20m), so the backfill is not keeping up or not
             running. Read `kinowo_worker_share_cards_render_total` by outcome: quiet means no
             renders are being queued (is the ShareCardBackfill task running?); busy with `failed`
-            means ShareCardRendersFailing is the alert to read. Every uncovered film keeps the city
-            fallback card, and the web switches og:image to film cards only while every country is
-            at 99% or more.
+            means ShareCardRendersFailing is the alert to read. An uncovered film's page names the
+            card drawn for its previous inputs, or the city's static card if it never had one
+            (web ShareCardUrl), and link previews keep whichever they fetch.
 
       # THE GAUGE ABOVE IS GONE WHILE THE WORKER IS UP. Per country, not `absent()` over the whole
       # metric: one country's backfill not running must not hide behind the others' series. A
