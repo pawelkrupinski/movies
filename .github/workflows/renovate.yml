@@ -48,3 +48,19 @@ jobs:
                   # "gradleWrapper is not permitted in the allowedUnsafeExecutions".
                   RENOVATE_ALLOWED_UNSAFE_EXECUTIONS: '["gradleWrapper"]'
                   LOG_LEVEL: info
+
+    # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
+    # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
+    report:
+        needs: renovate
+        if: always() && !cancelled() && github.event_name == 'schedule'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}
