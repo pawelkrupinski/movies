@@ -36,9 +36,10 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
     def onRetired(filmId: String): Unit                    = retired += filmId
   }
 
-  private def slot = SourceData(title = Some("Foo"), releaseYear = Some(2024), filmUrl = Some("https://mk/foo"),
-    showtimes = Seq(Showtime(LocalDateTime.parse("2026-06-02T18:00"), None)))
-  private def record(rating: Double) = MovieRecord(imdbRating = Some(rating), tmdbId = Some(1), data = Map[Source, SourceData](Multikino -> slot))
+  private def slot(screened: Boolean = true) = SourceData(title = Some("Foo"), releaseYear = Some(2024), filmUrl = Some("https://mk/foo"),
+    showtimes = if (screened) Seq(Showtime(LocalDateTime.parse("2026-06-02T18:00"), None)) else Nil)
+  private def record(rating: Double, screened: Boolean = true) =
+    MovieRecord(imdbRating = Some(rating), tmdbId = Some(1), data = Map[Source, SourceData](Multikino -> slot(screened)))
 
   private class Setup {
     val clock      = new StepClock(T0)
@@ -46,8 +47,8 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository()
     val readModel  = new InMemoryReadModelRepository()
     val projector  = new ReadModelProjector(repository, readModel, readModel, shareCards = ledger, firstCardHold = 2.minutes, clock = clock)
-    def upsert(rating: Double): String = {
-      repository.upsert("Foo", Some(2024), record(rating))
+    def upsert(rating: Double, screened: Boolean = true): String = {
+      repository.upsert("Foo", Some(2024), record(rating, screened))
       val row = repository.findAll().head
       projector.onMovieUpsert(row)
       ReadModelProjection.filmId(row, titleNormalizer)
@@ -107,6 +108,40 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
     ledger.projected.toSeq shouldBe Seq(id)
     ledger.requested shouldBe empty
     projector.heldCards shouldBe empty
+  }
+
+  "A film whose document exists but that is on no screen" should "be held like a new film when it comes back on screen" in new Setup {
+    // Published once, then off the screens: the daily prune has retired its card since.
+    val id = upsert(7.5)
+    ledger.cards = Map(id -> "card.jpg?v=0")
+    projector.refreshShareCard(id)
+    upsert(7.5, screened = false)
+    readModel.findAllScreenings() shouldBe empty
+    ledger.cards = Map.empty
+    ledger.requested.clear()
+    ledger.projected.clear()
+
+    // Back on screen with an unchanged document: nothing may serve it before its card exists.
+    upsert(7.5)
+    readModel.findAllScreenings() shouldBe empty
+    ledger.requested.map(_._1).toSeq shouldBe Seq(id)
+    ledger.retired shouldBe empty
+    published(id) should not be empty                 // the unserved document is left alone
+
+    ledger.cards = Map(id -> "card.jpg?v=1")
+    projector.refreshShareCard(id)
+    published(id).map(_.shareCard) shouldBe Some(Some("card.jpg?v=1"))
+    readModel.findAllScreenings() should not be empty
+  }
+
+  "A film first published with no screenings" should "be held when its first screenings arrive" in new Setup {
+    val id = upsert(7.5, screened = false)
+    published(id) should not be empty
+    ledger.requested shouldBe empty
+
+    upsert(7.5)
+    readModel.findAllScreenings() shouldBe empty
+    ledger.requested.map(_._1).toSeq shouldBe Seq(id)
   }
 
   "A film dropped from the read model" should "have its share-card files retired at once" in new Setup {

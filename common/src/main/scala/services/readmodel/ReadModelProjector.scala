@@ -217,9 +217,12 @@ class ReadModelProjector(
     // A variant card this row produced last time and no longer does — its decorated
     // listing vanished — is retired here, by the path that knows, not by the prune. A card
     // still held by the first-publish gate was never produced.
+    // A card held back while its unserved document stands (see `gate`) is not gone either.
     val produced = publish.map(_._1._id).toSet
-    lastCardsByRow.get(rowId).foreach(before => (before -- produced).foreach(retireCard(_, RetireReason.VariantGone)))
-    lastCardsByRow.update(rowId, produced)
+    val before   = lastCardsByRow.getOrElse(rowId, Set.empty)
+    val kept     = produced ++ before.filter(held.contains)
+    (before -- kept).foreach(retireCard(_, RetireReason.VariantGone))
+    lastCardsByRow.update(rowId, kept)
     metrics.recordWriteBurst((System.nanoTime() - writeStart) / 1e9)
     written
   }
@@ -227,14 +230,18 @@ class ReadModelProjector(
   /** Caller holds `lock`. The document to write for `projected` — its share card filled in — or
    *  None while the first-publish gate holds it back.
    *
-   *  Only a card this process has never written (and the read model does not hold — `lastMovie`
-   *  is seeded from it) that has screenings is gated: a card whose inputs merely CHANGE keeps its
+   *  Only a card that is about to be SERVED for the first time — it has screenings, and this process
+   *  has never written it with any (the read model does not hold it served: `lastMovie` and
+   *  `lastScreenings` are seeded from it) — is gated: a card whose inputs merely CHANGE keeps its
    *  current share card until the new one exists, which [[ShareCardLedger.current]] already
-   *  answers. A held card is asked for its share card on every projection, and published with
-   *  `shareCardPending` once its hold has run out. */
+   *  answers. That covers a film coming BACK on screen: its document outlived its screenings (and
+   *  the daily prune its card), and nothing about the document changes when they return. A held
+   *  card is asked for its share card on every projection, and published with `shareCardPending`
+   *  once its hold has run out. */
   private def gate(rowId: String, projected: ResolvedMovie, screened: Boolean, now: Long): Option[ResolvedMovie] = {
     val id       = projected._id
-    val firstOne = screened && !lastMovie.contains(id) && !shareCards.readyToPublish(projected)
+    val served   = lastMovie.contains(id) && lastScreenings.get(id).exists(_.nonEmpty)
+    val firstOne = screened && !served && !shareCards.readyToPublish(projected)
     val hold     = Option.when(firstOne)(held.getOrElseUpdate(id, HeldCard(rowId, now + firstCardHold.toMillis)))
     if (!firstOne) held.remove(id)
     val expired  = hold.exists(_.until <= now)
