@@ -94,8 +94,13 @@ trait ReadModelReader {
 
 /**
  * Write side of the denormalised read model — what the **worker's projector**
- * depends on. Each write is keyed by the document's own `_id`, best-effort
- * (failures logged, never thrown), mirroring `MovieRepository`'s contract.
+ * depends on. Each write is keyed by the document's own `_id`, and a write that
+ * FAILED THROWS: the projector remembers each card and venue it wrote and skips an
+ * identical projection next time, so a failure swallowed here left it remembering a
+ * document the store never took — skipped by every later projection, written only by
+ * the sweep's heal or content slice. Thrown, the projector forgets it and the row's
+ * next change retries it. (`MovieRepository` answers a `WriteOutcome` instead; the
+ * projector's only need is "did it land", which a throw already carries.)
  */
 trait ReadModelWriter {
   def enabled: Boolean
