@@ -669,10 +669,15 @@ class TmdbCandidateSearch(
    *  year (a remake is years apart); this only fuses true duplicates. Reads the
    *  same filmographies the walk does ([[personFilmographies]] — every candidate
    *  person, writer credits when they directed nothing), so a film the walk can
-   *  find is a film the collapse can see.
+   *  find is a film the collapse can see — but only the one person's whose credits
+   *  hold the resolved film, never a namesake's.
    *  Order-independent — see `StagingOrderDeterminismSpec`. */
   private def collapseDirectorDuplicate(id: Int, directors: Seq[String]): Int = {
-    val credits = directors.iterator.flatMap(personFilmographies).flatMap(_._2).toSeq.distinctBy(_.id)
+    // Only the filmography that HOLDS the resolved film: the name's other people are
+    // namesakes, and one of them can own a same-title film a year off with a lower id.
+    val credits = directors.iterator
+      .flatMap(personFilmographies(_).map(_._2).find(_.exists(_.id == id)))
+      .flatten.toSeq.distinctBy(_.id)
     credits.find(_.id == id).fold(id) { resolved =>
       // `minOption.getOrElse(id)`, not `.min`: the adjacency filter is EMPTY
       // whenever the resolved credit carries no TMDB release year (its own

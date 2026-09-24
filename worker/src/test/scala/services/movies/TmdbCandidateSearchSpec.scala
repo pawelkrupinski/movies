@@ -67,6 +67,37 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
       .resolve("Gourou", Some(2026), row).map(_._1) shouldBe Some(low)
   }
 
+  it should "not collapse onto a NAMESAKE's same-title film from the adjacent year" in {
+    // TMDB answers a director's name with every person of that name. The collapse pools
+    // credits only to find DUPLICATES of the film the row resolved to, so they must come
+    // from the person whose filmography holds that film — pooling a namesake's writing
+    // credits let an unrelated lower-id "Home" (2024) take over the resolved one (2025).
+    val (resolved, namesakes) = (900001, 100001)
+    def details(id: Int, date: String) =
+      s"""{"id":$id,"title":"Home","original_title":"Home","release_date":"$date","runtime":95,"credits":{"crew":[],"cast":[]}}"""
+    val tmdb = new TmdbClient(http = new StubFetch(Map(
+      "query=Anna+Nowak"             -> """{"results":[
+        |{"id":7001,"name":"Anna Nowak","known_for_department":"Directing"},
+        |{"id":7002,"name":"Anna Nowak","known_for_department":"Writing"}]}""".stripMargin,
+      "/person/7001/movie_credits"   -> s"""{"crew":[
+        |{"id":$resolved,"title":"Home","original_title":"Home","release_date":"2025-03-01","department":"Directing","job":"Director"}
+        |]}""".stripMargin,
+      "/person/7002/movie_credits"   -> s"""{"crew":[
+        |{"id":$namesakes,"title":"Home","original_title":"Home","release_date":"2024-11-20","department":"Writing","job":"Screenplay"}
+        |]}""".stripMargin,
+      s"/movie/$resolved?"           -> details(resolved, "2025-03-01"),
+      s"/movie/$namesakes?"          -> details(namesakes, "2024-11-20")
+    )), apiKey = Some("stub"))
+    val cachedResolved = new ResolutionCache {
+      def getOrResolve(hintKey: String)(resolve: => Option[String]): Option[String] = Some(resolved.toString)
+    }
+    val row = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("Home"), director = Seq("Anna Nowak"))))
+
+    new TmdbCandidateSearch(tmdb, titleNormalizer, cachedResolved, letterboxdIdResolver = None, wikidata = None)
+      .resolve("Home", Some(2025), row).map(_._1) shouldBe Some(resolved)
+  }
+
   it should "refuse to guess for a bare title the search cannot narrow to one film" in {
     val tmdb = new TmdbClient(http = new StubFetch(Map(
       "/search/movie" -> """{"results":[
