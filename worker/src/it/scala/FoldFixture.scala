@@ -68,9 +68,10 @@ object FoldFixture {
     /** The folder as production wires it, or over a repository a spec supplies to inject a
      *  failure (see `FoldOnUnreadableRowSpec`). */
     def folder(repository: MovieRepository = splitAwareRepository, maxRetries: Int = 3,
-               commit: org.mongodb.scala.ClientSession => Unit = MongoStagingFolder.commitTransaction): MongoStagingFolder =
+               commit: org.mongodb.scala.ClientSession => Unit = MongoStagingFolder.commitTransaction,
+               clock: java.time.Clock = java.time.Clock.systemUTC()): MongoStagingFolder =
       new MongoStagingFolder(connection, normalizer = titleNormalizer, movieRepository = repository,
-        maxRetries = maxRetries, commit = commit)
+        maxRetries = maxRetries, commit = commit, clock = clock)
 
     /** A MIGRATED film: a raw `movies` document carrying NO `sourceData`, which is the shape
      *  prod's corpus is converging to and the one that makes the fold blind to the film's

@@ -23,7 +23,7 @@ trait StagingWiring { self: WorkerWiring =>
 
   lazy val stagingRepository: StagingRepository =
     new MongoStagingRepository(mongoConnection.database, normalizer = titleNormalizer, writeMetrics = taskMetrics)
-  lazy val stagingFolder: StagingFolder = new MongoStagingFolder(mongoConnection, titleNormalizer, movieRepository)
+  lazy val stagingFolder: StagingFolder = new MongoStagingFolder(mongoConnection, titleNormalizer, movieRepository, clock = clock)
   // What a concluded newcomer's `StagingFilmEnriched` does: the group-scoped fold,
   // then `announceResolvedNewMovie` for each brand-new film it introduced (resolution
   // outcome re-published, ratings enqueued). The decision is the class's; this is

@@ -60,7 +60,9 @@ class MongoStagingFolder(
   sleep: Long => Unit = Thread.sleep,
   /** Commits the session's transaction — a seam so a spec can make a commit's reply go
    *  missing (or fail transiently) after, or instead of, the real commit. */
-  commit: ClientSession => Unit = MongoStagingFolder.commitTransaction
+  commit: ClientSession => Unit = MongoStagingFolder.commitTransaction,
+  /** Stamps each attempt's `writtenAt` — the worker's one clock, so a spec can pin it. */
+  clock: java.time.Clock = java.time.Clock.systemUTC()
 ) extends StagingFolder with Logging {
 
 
@@ -119,7 +121,7 @@ class MongoStagingFolder(
       // the committed attempt produced.
       // Stamped on every document this attempt writes, so the landed check below can tell
       // ITS writes from a competing fold's (BSON dates hold milliseconds).
-      val writtenAt = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS)
+      val writtenAt = clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MILLIS)
       val outcome = Try(foldOnce(session, movies, staging, cleanTitle, candidateIds, writtenAt))
       StagingFold.nextAfterAttempt(outcome.map(_.newPromotions), attempt, maxRetries) match {
         case StagingFold.Next.Commit(newPromotions) =>

@@ -152,6 +152,29 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
       }
   }
 
+  /** Each attempt stamps what it writes with `writtenAt`, which the unknown-commit check then
+   *  looks for — taken from the worker's one clock, not the system's, like every other stamp. */
+  it should "stamp the films a fold writes from its injected clock" in {
+    FoldFixture.withFold("staging-fold") { fold =>
+      import fold.{movies, staging}
+      seedConcludedNewcomer(staging)
+      val pinned  = java.time.Instant.parse("2020-03-01T12:00:00Z")
+      val stamped = new java.util.concurrent.ConcurrentLinkedQueue[java.util.Date]()
+      val observe: org.mongodb.scala.ClientSession => Unit = session => {
+        services.staging.MongoStagingFolder.commitTransaction(session)
+        // Read right after the commit, before the completion rewrites the films its own way.
+        Await.result(movies.find(Filters.regex("key", s"^${titleNormalizer.sanitize(newcomerTitle)}\\|")).toFuture(), 10.seconds)
+          .foreach(_.get("updatedAt").foreach(v => stamped.add(new java.util.Date(v.asDateTime().getValue))))
+      }
+
+      fold.folder(commit = observe, clock = java.time.Clock.fixed(pinned, java.time.ZoneOffset.UTC)).foldGroup(newcomerTitle)
+
+      import scala.jdk.CollectionConverters._
+      stamped.asScala.toSeq should not be empty
+      stamped.asScala.toSeq.map(_.toInstant).distinct shouldBe Seq(pinned)
+    }
+  }
+
   /** A COMMIT WHOSE REPLY WAS LOST. The server committed; the driver saw a network error
    *  and labelled it `UnknownTransactionCommitResult`. Rethrowing it rescheduled a fold that
    *  had already happened — whose retry then found the group drained and did nothing — so
