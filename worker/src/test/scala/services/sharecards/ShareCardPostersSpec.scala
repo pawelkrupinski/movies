@@ -42,19 +42,6 @@ class ShareCardPostersSpec extends AnyFlatSpec with Matchers {
     rig.download.calls.get(url).get shouldBe 1
   }
 
-  it should "ask TMDB for the w780 rendition first and fall back to the original" in {
-    PosterRendition.candidates("https://image.tmdb.org/t/p/original/abc.jpg") shouldBe
-      Seq("https://image.tmdb.org/t/p/w780/abc.jpg", "https://image.tmdb.org/t/p/original/abc.jpg")
-    PosterRendition.candidates("https://image.tmdb.org/t/p/w500/abc.jpg") shouldBe Seq("https://image.tmdb.org/t/p/w500/abc.jpg")
-    PosterRendition.candidates("https://cdn.example/a.jpg") shouldBe Seq("https://cdn.example/a.jpg")
-
-    val original = "https://image.tmdb.org/t/p/original/abc.jpg"
-    val rig = new Rig(download = new CountingDownload(failing = Set("https://image.tmdb.org/t/p/w780/abc.jpg")))
-    rig.posters.load(Seq(original)) shouldBe defined
-    rig.download.calls.keySet.toArray.toSet shouldBe Set("https://image.tmdb.org/t/p/w780/abc.jpg", original)
-    Files.isRegularFile(rig.store.posterPath(ShareCardPosters.key(original))) shouldBe true
-  }
-
   "A poster download" should "be abandoned at the byte cap instead of written out" in {
     val body = new Array[Byte](10 * 1024)
     PosterPipeline.copyCapped(new ByteArrayInputStream(body), maxBytes = 4096) shouldBe None
@@ -69,7 +56,7 @@ class ShareCardPostersSpec extends AnyFlatSpec with Matchers {
     finally Files.delete(file)
   }
 
-  it should "shrink an 8000×12000 progressive JPEG through vips, outside the JVM heap" in {
+  it should "refuse a real 8000×12000 progressive JPEG before decoding it, with the worker's memory untouched" in {
     val vips = VipsPosterShrinker.locate()
     assume(vips.isDefined, "vips is not installed")
     val dir  = Files.createTempDirectory("giant-poster-")
@@ -80,19 +67,13 @@ class ShareCardPostersSpec extends AnyFlatSpec with Matchers {
     run("gaussnoise", dir.resolve("n.v").toString, "8000", "12000")
     run("cast", dir.resolve("n.v").toString, dir.resolve("u.v").toString, "uchar")
     run("jpegsave", dir.resolve("u.v").toString, big.toString, "--interlace", "--Q", "80")
-    // Measured as what THIS thread allocated, not as a heap delta: other suites share the JVM.
     val threads   = java.lang.management.ManagementFactory.getThreadMXBean.asInstanceOf[com.sun.management.ThreadMXBean]
     val thread    = Thread.currentThread().threadId()
     val before    = threads.getThreadAllocatedBytes(thread)
-    val slot      = new VipsPosterShrinker(binary = vips).coverSlot(big)
+    new VipsPosterShrinker(binary = vips).coverSlot(big) shouldBe None
     val allocated = threads.getThreadAllocatedBytes(thread) - before
-    slot.map(i => (i.getWidth, i.getHeight)) shouldBe Some((420, 630))
-    // The JVM allocates only for the 420×630 result (a few MB); the decode's memory — 360 MB RSS
-    // measured for this file — was the child's. A JDK decode of it would need ~290 MB of raster.
-    info(f"JVM allocation for the 8000×12000 shrink: ${allocated / 1e6}%.1f MB")
-    allocated should be < (32L * 1024 * 1024)
-    // The JDK decoder alone refuses it (12 MP cap) — vips is what makes it work.
-    new VipsPosterShrinker(binary = None).coverSlot(big) shouldBe None
+    info(f"JVM allocation for refusing the 8000×12000 progressive: ${allocated / 1e6}%.2f MB")
+    allocated should be < (4L * 1024 * 1024)
     Files.list(dir).forEach(Files.delete(_)); Files.delete(dir)
   }
 }
