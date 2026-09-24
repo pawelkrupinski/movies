@@ -45,10 +45,13 @@ public struct RetryClassificationTable: Decodable {
         Set(sources.filter { $0.value.consumers.contains(platform) }.map(\.key))
     }
 
-    /// `test/resources/retry-classification.json` — this file sits at
-    /// `ios/Tests/KinowoTestSupport/`, four levels below the repo root.
-    public static func load(file: StaticString = #filePath) throws -> RetryClassificationTable {
-        let root = URL(fileURLWithPath: "\(file)")
+    /// `test/resources/retry-classification.json` — found from THIS file,
+    /// which sits at `ios/Tests/KinowoTestSupport/`, four levels below the
+    /// repo root. (`#filePath` in the body, not as a default argument: there
+    /// it would take each caller's path, and work only while every caller
+    /// happens to sit at the same depth.)
+    public static func load() throws -> RetryClassificationTable {
+        let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()   // KinowoTestSupport
             .deletingLastPathComponent()   // Tests
             .deletingLastPathComponent()   // ios

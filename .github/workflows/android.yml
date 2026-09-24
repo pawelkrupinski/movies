@@ -5,7 +5,7 @@ on:
         paths:
             - 'android/**'
             - '.github/workflows/android.yml'
-            # The retry-classification table the language-push tests hold the app's rule to.
+            # The retry-classification table the language-push and hidden-films tests hold the app's rules to.
             - 'test/resources/retry-classification.json'
             # The store-script helper tests below live here and in ios/scripts,
             # and the lookup tables they guard are SHARED with the iOS capture.
@@ -34,7 +34,7 @@ on:
         paths:
             - 'android/**'
             - '.github/workflows/android.yml'
-            # The retry-classification table the language-push tests hold the app's rule to.
+            # The retry-classification table the language-push and hidden-films tests hold the app's rules to.
             - 'test/resources/retry-classification.json'
             # The store-script helper tests below live here and in ios/scripts,
             # and the lookup tables they guard are SHARED with the iOS capture.

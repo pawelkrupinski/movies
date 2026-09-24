@@ -266,12 +266,13 @@ final class StateSyncService: ObservableObject {
 
     /// Send the pending pick now, superseding any debounce, ONE push at a
     /// time: a caller arriving while another push is on the wire waits for
-    /// it, and that push's loop then sends whatever is pending by then — so
-    /// two PUTs never race and the latest pick is the one the account ends
-    /// on. On success the account holds the sent value, and a pick made
-    /// meanwhile is sent next; on a transient failure the pick stays pending,
-    /// and the next reconcile (resume, country switch, next login) retries it —
-    /// the same self-heal the hiddenFilms writes rely on; a permanent refusal
+    /// it, then sends whatever is still pending — so two PUTs never race and
+    /// the latest pick is the one the account ends on. On success the account
+    /// holds the sent value, and the same push's loop sends a pick made
+    /// meanwhile; on a transient failure the pick stays pending, and a caller
+    /// that waited on that push sends it straight away, or else the next
+    /// reconcile (resume, country switch, next login) retries it — the same
+    /// self-heal the hiddenFilms writes rely on; a permanent refusal
     /// (`LanguagePushRefused`) drops it and takes the account's pick instead.
     private func sendPendingLanguage() async {
         pendingDebounce = nil
