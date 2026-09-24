@@ -52,14 +52,19 @@ object KeysetScan {
     var more                    = true
     var complete                = true
     while (more) {
-      Try(RetryWithBackoff(
-        label          = label,
-        maxAttempts    = maxAttempts,
-        initialBackoff = initialBackoff
-      )(fetchPage(afterId, batchSize))) match {
-        case Success(batch) =>
+      // The page AND where the next one starts are the read: a last row whose key cannot be
+      // taken is a scan that cannot continue, so it is incomplete like a failed fetch.
+      Try {
+        val batch = RetryWithBackoff(
+          label          = label,
+          maxAttempts    = maxAttempts,
+          initialBackoff = initialBackoff
+        )(fetchPage(afterId, batchSize))
+        (batch, batch.lastOption.map(keyOf))
+      } match {
+        case Success((batch, nextAfter)) =>
           onBatch(batch)   // outside the Try: a consumer failure is not a read failure
-          afterId = batch.lastOption.map(keyOf)
+          afterId = nextAfter
           more    = batch.sizeIs == batchSize
         case Failure(exception) =>
           onIncomplete(exception)

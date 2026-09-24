@@ -116,4 +116,22 @@ class KeysetScanSpec extends AnyFlatSpec with Matchers {
     notified shouldBe None      // not reported as an incomplete read
     pagesFetched shouldBe 2     // and not retried as one: the consumer saw each page once
   }
+
+  // Where the next page starts is part of READING the page: a row whose `_id` is not the
+  // shape the caller's `keyOf` expects (a `getString("_id")` on an ObjectId) is a read that
+  // cannot continue — incomplete, so a pruning caller skips — not a consumer bug.
+  it should "report a page whose last key cannot be read as an incomplete scan" in {
+    var notified: Option[Throwable] = None
+    val complete = KeysetScan.scan[String](
+      label          = "test",
+      batchSize      = 2,
+      maxAttempts    = 1,
+      initialBackoff = 1.milli,
+      keyOf          = id => if (id == "b") throw new ClassCastException("ObjectId is not a String") else id,
+      fetchPage      = collectionOf("a", "b", "c", "d"),
+      onIncomplete   = e => notified = Some(e)
+    )(_ => ())
+    complete shouldBe false
+    notified.map(_.getMessage) shouldBe Some("ObjectId is not a String")
+  }
 }
