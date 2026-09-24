@@ -61,6 +61,12 @@ object EnrichTaskKeys {
     case ResolveMode.Force     => Map(ForceKey -> "true")
   }
 
+  /** The mode a waiting resolve runs in once a `incoming` dispatch has been merged into it —
+   *  the payload merge `TaskQueue.amendWaiting` performs, read back. Never lower than
+   *  `waiting`: Force beats RetryMiss beats Normal. */
+  def raisedMode(waiting: ResolveMode, incoming: ResolveMode): ResolveMode =
+    modeOf(modeFields(waiting) ++ modeFields(incoming))
+
   def titleOf(payload: Map[String, String]): String = payload.getOrElse(TitleKey, "")
   def yearOf(payload: Map[String, String]): Option[Int] =
     payload.get(YearKey).filter(_.nonEmpty).flatMap(_.toIntOption)

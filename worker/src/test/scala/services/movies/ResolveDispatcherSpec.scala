@@ -133,6 +133,49 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // The queue's rule, inline: a re-try that finds its key's resolve still WAITING (submitted,
+  // not started — the pool is busy) raises that resolve's mode instead of being dropped.
+  it should "upgrade a WAITING resolve to a re-try's mode, as the queue does" in {
+    val ec      = DaemonExecutors.boundedEC("inline-dispatch-upgrade", 1)
+    val release = new CountDownLatch(1)
+    val ranWith = new java.util.concurrent.ConcurrentHashMap[String, ResolveMode]()
+    val done    = new CountDownLatch(2)
+    val d = new InlineResolveDispatcher(ec, keyOf, (title, _, _, _, mode) => {
+      if (title == "Busy") release.await(5, java.util.concurrent.TimeUnit.SECONDS)
+      ranWith.put(title, mode); done.countDown()
+    })
+    try {
+      d.dispatch("Busy", Some(2020), None, None)                         // occupies the pool's one slot
+      d.dispatch("Tosca", None, None, None)                              // waits behind it
+      d.dispatch("Tosca", None, None, None, ResolveMode.RetryMiss)       // must raise the waiting one
+      d.dispatch("Tosca", None, None, None)                              // and a plain one never lowers it
+      release.countDown()
+      done.await(5, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
+      d.stop()
+      ranWith.get("Tosca") shouldBe ResolveMode.RetryMiss
+    } finally { release.countDown(); if (!ec.isShutdown) ec.shutdown() }
+  }
+
+  it should "count each re-try that landed on a pending resolve as upgraded, or not once it has started" in {
+    val ec       = DaemonExecutors.boundedEC("inline-dispatch-dup-metrics", 1)
+    val release  = new CountDownLatch(1)
+    val started  = new CountDownLatch(1)
+    val recorded = new java.util.concurrent.ConcurrentLinkedQueue[(ResolveMode, Boolean)]()
+    val d = new InlineResolveDispatcher(ec, keyOf, (title, _, _, _, _) =>
+      if (title == "Tosca") { started.countDown(); release.await(5, java.util.concurrent.TimeUnit.SECONDS) },
+      duplicates = (mode, upgraded) => { recorded.add(mode -> upgraded); () })
+    try {
+      d.dispatch("Tosca", None, None, None)
+      started.await(5, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
+      d.dispatch("Tosca", None, None, None, ResolveMode.Force)      // running → not upgraded
+      d.dispatch("Tosca", None, None, None)                         // a plain duplicate: not counted
+      release.countDown()
+      d.stop()
+      import scala.jdk.CollectionConverters._
+      recorded.asScala.toSeq shouldBe Seq(ResolveMode.Force -> false)
+    } finally { release.countDown(); if (!ec.isShutdown) ec.shutdown() }
+  }
+
   it should "drain so an in-flight resolve completes on stop()" in {
     val ec        = DaemonExecutors.boundedEC("inline-dispatch-drain", 4)
     val completed = new AtomicInteger(0)

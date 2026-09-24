@@ -44,11 +44,21 @@ class QueueResolveDispatcher(queue: TaskQueue, duplicates: ResolveDuplicateMetri
     val dedupKey = EnrichTaskKeys.resolveTmdbDedup(title, year)
     queue.enqueue(TaskType.ResolveTmdb, dedupKey,
       EnrichTaskKeys.resolveTmdbPayload(title, year, director, originalTitle, mode)) match {
-      case EnqueueResult.Duplicate if mode != ResolveMode.Normal =>
-        duplicates.recordDuplicate(mode, upgraded = queue.amendWaiting(dedupKey, EnrichTaskKeys.modeFields(mode)))
+      case EnqueueResult.Duplicate =>
+        ResolveDispatcher.onDuplicate(mode, duplicates)(queue.amendWaiting(dedupKey, EnrichTaskKeys.modeFields(mode)))
       case _ => ()
     }
   }
+}
+
+object ResolveDispatcher {
+  /** THE duplicate rule both dispatchers follow: a dispatch that finds its row's resolve
+   *  already pending tries to `raise` the pending one to its mode — which succeeds only while
+   *  that resolve is still WAITING, and never lowers a mode (see [[EnrichTaskKeys.raisedMode]])
+   *  — and a re-try's outcome is counted. A plain duplicate adds nothing to raise, so it is
+   *  neither attempted nor counted. */
+  def onDuplicate(mode: ResolveMode, duplicates: ResolveDuplicateMetrics)(raise: => Boolean): Unit =
+    if (mode != ResolveMode.Normal) duplicates.recordDuplicate(mode, upgraded = raise)
 }
 
 /** What became of a re-try (RetryMiss / Force) resolve that found its film's resolve already
@@ -68,11 +78,15 @@ object ResolveDuplicateMetrics {
  *  resolve INLINE on `ec`, deduped by the row's `CacheKey` via `dedupKey` so the
  *  same key doesn't run twice concurrently (the task queue's job in production). */
 class InlineResolveDispatcher(
-  ec:       ExecutionContextExecutorService,
-  dedupKey: (String, Option[Int]) => CacheKey,
-  resolve:  (String, Option[Int], Option[String], Option[String], ResolveMode) => Unit
+  ec:         ExecutionContextExecutorService,
+  dedupKey:   (String, Option[Int]) => CacheKey,
+  resolve:    (String, Option[Int], Option[String], Option[String], ResolveMode) => Unit,
+  duplicates: ResolveDuplicateMetrics = ResolveDuplicateMetrics.noop
 ) extends ResolveDispatcher {
-  private val pending = ConcurrentHashMap.newKeySet[CacheKey]()
+  // Each pending key's state, mirroring a queued task's: `Some(mode)` while it WAITS for a
+  // pool slot (a duplicate may still raise its mode, as `amendWaiting` does), `None` once it
+  // is RUNNING with the mode it started with (a duplicate is too late, as for a claimed task).
+  private val pending = new ConcurrentHashMap[CacheKey, Option[ResolveMode]]()
   private val pool    = new tools.DrainablePool(ec)
 
   def dispatch(title:         String,
@@ -81,8 +95,23 @@ class InlineResolveDispatcher(
                director:      Option[String],
                mode:          ResolveMode): Unit = {
     val key = dedupKey(title, year)
-    if (pending.add(key))
-      pool.submit(try resolve(title, year, originalTitle, director, mode) finally { pending.remove(key); () })
+    // One atomic step decides new / waiting / running, so a dispatch can never slip between
+    // a resolve finishing and its key being freed.
+    var submit = false
+    var raised = false
+    pending.compute(key, (_, state) => state match {
+      case null           => submit = true; Some(mode)
+      case Some(waiting)  => val next = EnrichTaskKeys.raisedMode(waiting, mode); raised = next != waiting; Some(next)
+      case running @ None => running
+    })
+    if (submit)
+      pool.submit {
+        // Take the (possibly raised) mode and mark the key running in one step, so a
+        // duplicate lands either before (and raises it) or after (and is too late).
+        val started = Option(pending.replace(key, None)).flatten.getOrElse(mode)
+        try resolve(title, year, originalTitle, director, started) finally { pending.remove(key); () }
+      }
+    else ResolveDispatcher.onDuplicate(mode, duplicates)(raised)
   }
 
   override def drain(): Unit = pool.drain()
