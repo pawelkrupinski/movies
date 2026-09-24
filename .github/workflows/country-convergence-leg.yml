@@ -290,6 +290,14 @@ jobs:
                   pair:           ${{ steps.setup.outputs.hermetic-pair }}
                   sample-failed:  'true'
 
+            - uses: ./.github/actions/hard-clusters-ratchet
+              if: failure()
+              with:
+                  code:  ${{ inputs.code }}
+                  log:   convergence-sample.log
+                  name:  ${{ inputs.code }}-sample
+                  token: ${{ secrets.GITHUB_TOKEN }}
+
     # THE RUN BEHIND THE GATE — one PHASE per row: `convergence` for every country, plus
     # `order-independence` for the one whose corpus no longer fits in a single job.
     #
@@ -512,3 +520,13 @@ jobs:
                   step-minutes:   ${{ inputs.sample-suite-timeout-minutes }}
                   pair:           ${{ needs.sample.outputs.pair }}
                   sample-failed:  'false'
+
+            # Only on a red leg, and after the publish so it can never cost the tree:
+            # the films this leg named become clusters the itAll layer checks on every
+            # push. See the action.
+            - uses: ./.github/actions/hard-clusters-ratchet
+              if: failure()
+              with:
+                  code:  ${{ inputs.code }}
+                  name:  ${{ inputs.code }}-${{ matrix.phase }}
+                  token: ${{ secrets.GITHUB_TOKEN }}

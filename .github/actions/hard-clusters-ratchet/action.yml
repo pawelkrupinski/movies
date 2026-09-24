@@ -1,0 +1,73 @@
+#
+# The ratchet from a red convergence leg into the itAll layer.
+#
+# A full leg takes 1.5-5 hours to name a film that folds by arrival order, churns on a
+# rescrape or splits on a settle — and until now it named it only in a log. This takes
+# the films a failed leg names (scripts/convergence-findings.py), adds their clusters to
+# the hard-cluster fixture (`tools.HardClusters`), re-records the answers those clusters
+# need, and hands the result back as an artifact whose files drop straight into
+# test/resources/fixtures/corpus/. Committed with the fix, the cluster is checked by
+# `HardClusterConvergenceIntegrationSpec` on every push from then on.
+#
+# Cheap by construction: it runs only on a FAILED leg, reuses the corpus, the enrichment
+# tree, the Mongo container and the warm sbt the leg already has, and replays one
+# country's few hundred listings (a couple of minutes). It never fails the job — the leg
+# is already red for the reason that matters.
+#
+name: Hard-cluster ratchet
+description: Add the films a failed convergence leg named to the hard-cluster fixture, as an artifact.
+
+inputs:
+    code:
+        description: The country's two-letter code.
+        required: true
+    log:
+        description: The tee'd suite log the findings are read from.
+        required: false
+        default: convergence.log
+    name:
+        description: Suffix for the uploaded artifact, unique per job.
+        required: true
+    token:
+        description: A token that can read this repo's runs and releases, for an input the leg did not restore.
+        required: true
+
+runs:
+    using: composite
+    steps:
+        - name: Grow the hard-cluster fixture from this leg's findings
+          id: ratchet
+          shell: bash
+          continue-on-error: true
+          timeout-minutes: 20
+          env:
+              MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
+              GH_TOKEN: ${{ inputs.token }}
+              KINOWO_HARD_CLUSTERS_CORPUS_DIR: test/resources/fixtures/corpus
+          run: |
+              set -uo pipefail
+              [ -s "${{ inputs.log }}" ] || { echo "no suite log — nothing to read"; exit 0; }
+              scripts/hard-clusters.sh ratchet "${{ inputs.code }}" "${{ inputs.log }}" 2>&1 | tee hard-clusters-ratchet.log
+              mkdir -p hard-clusters-out
+              git status --porcelain -- 'test/resources/fixtures/corpus/*hard-clusters*' \
+                | awk '{print $2}' | xargs -r -I{} cp {} hard-clusters-out/
+              if [ -n "$(ls -A hard-clusters-out)" ]; then
+                  {
+                      echo "### hard-cluster ratchet (${{ inputs.code }})"
+                      echo
+                      echo "The films this leg named, added to the itAll hard-cluster fixture. Download the"
+                      echo "\`hard-clusters-${{ inputs.name }}\` artifact into \`test/resources/fixtures/corpus/\`"
+                      echo "and commit it with the fix."
+                      echo
+                      echo '```'
+                      grep -E '^\s+[a-z]{2}\s' hard-clusters-ratchet.log | head -40 || true
+                      echo '```'
+                  } >> "$GITHUB_STEP_SUMMARY"
+              fi
+        - uses: actions/upload-artifact@v6
+          if: always()
+          with:
+              name: hard-clusters-${{ inputs.name }}
+              path: hard-clusters-out/
+              if-no-files-found: ignore
+              retention-days: 30
