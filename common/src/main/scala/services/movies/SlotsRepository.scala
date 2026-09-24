@@ -157,12 +157,12 @@ class InMemorySlotsRepository(clock: () => java.time.Instant = () => java.time.I
   // free and the parameter exists only to honour the trait (see the screenings twin).
   def replaceFilm(filmId: String, slots: Map[String, SourceData],
                   stored: Option[Map[String, SourceData]] = None): WriteOutcome = {
-    rows.replaceFilm(filmId, roster.writable(SlotsRepository.Collection, filmId, rows.forFilm(filmId), slots))
+    rows.replaceFilm(filmId, roster.writable(SlotsRepository.Collection, filmId, rows.forFilm(filmId), slots.view.mapValues(_.persisted).toMap))
     WriteOutcome.Written   // an in-memory store cannot fail to write
   }
 
   def upsertSlot(filmId: String, slotKey: String, slot: SourceData): WriteOutcome = {
-    if (roster.admitsWrite(SlotsRepository.Collection, filmId, slotKey)) rows.upsert(filmId, slotKey, slot)
+    if (roster.admitsWrite(SlotsRepository.Collection, filmId, slotKey)) rows.upsert(filmId, slotKey, slot.persisted)
     WriteOutcome.Written
   }
 

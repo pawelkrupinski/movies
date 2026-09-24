@@ -127,6 +127,12 @@ case class SourceData(
    *  a slot's language against a deployment's wants this, not the raw `language`:
    *  `None` is not "unknown", it is `pl-PL`. */
   def fetchedLanguageTag: String = language.getOrElse(SourceData.LegacyLanguageTag)
+
+  /** This slot as a store keeps it: without the CACHE-ONLY `showtimesDigest` /
+   *  `showtimeStartMinutes`, which no read ever gets back from Mongo. Every store applies it
+   *  on write — `MovieCodecs` and `InMemorySlotsRepository` alike — so a fake cannot hand a
+   *  reader a digest production would not. */
+  def persisted: SourceData = copy(showtimesDigest = None, showtimeStartMinutes = None)
 }
 
 object SourceData {
