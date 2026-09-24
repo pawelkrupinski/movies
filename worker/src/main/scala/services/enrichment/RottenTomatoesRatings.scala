@@ -111,7 +111,7 @@ class RottenTomatoesRatings(
       urlOf         = _.rottenTomatoesUrl,
       scoreOf       = _.rottenTomatoes,
       rediscoverUrl = (key, row) => Success(resolveAndPersistUrl(key, row).isDefined),
-      fetchScore    = (key, url) => tomatometerIfThisFilm(key, url).flatten,
+      fetchScore    = tomatometerIfThisFilm,
       withScore     = withTomatometer,
       badge         = badge
     )

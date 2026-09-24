@@ -131,8 +131,10 @@ abstract class CacheRefresher(
    *  @param rediscoverUrl step 1 — re-derive and persist the URL. Runs only for
    *                       rows with a tmdbId; `Success(true)` when a URL was
    *                       found.
-   *  @param fetchScore    step 2 — read the score off the row's URL (the key lets a
-   *                       source reject a page that names a different film).
+   *  @param fetchScore    step 2 — read the score off the row's URL: `Some(score)` (itself
+   *                       `None` for a page with no score), or `None` when the source
+   *                       REJECTED the page as a different film's (the key lets it tell) —
+   *                       no verdict on the score, so nothing is written or counted.
    *  @param withScore     write a fresh score onto the live row.
    *  @param badge         the displayed value a fresh score becomes — what the
    *                       cadence is told.
@@ -143,7 +145,7 @@ abstract class CacheRefresher(
     urlOf:         MovieRecord => Option[String],
     scoreOf:       MovieRecord => Option[A],
     rediscoverUrl: (CacheKey, MovieRecord) => Try[Boolean],
-    fetchScore:    (CacheKey, String) => Option[A],
+    fetchScore:    (CacheKey, String) => Option[Option[A]],
     withScore:     (MovieRecord, Option[A]) => MovieRecord,
     badge:         A => String,
     changedNoun:   String = "score(s)"
@@ -173,7 +175,7 @@ abstract class CacheRefresher(
       val current = cache.get(key).getOrElse(enrichment)
       urlOf(current).foreach { url =>
         Try(fetchScore(key, url)) match {
-          case Success(fresh) if fresh != scoreOf(current) =>
+          case Success(Some(fresh)) if fresh != scoreOf(current) =>
             logger.debug(s"$walkLabel: ${key.cleanTitle} $url ${scoreOf(current).getOrElse("—")} → ${fresh.getOrElse("—")}")
             cache.putIfPresent(key, withScore(_, fresh))
             fresh.foreach(s => recordCadenceChange(key, enrichment.tmdbId, Some(badge(s))))

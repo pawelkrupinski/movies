@@ -249,6 +249,22 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     row.flatMap(_.rottenTomatoes) shouldBe None
   }
 
+  it should "not count a wrong-film page as a score change, nor write a second time for it" in {
+    // The drop is the one write a namesake's page earns. The walk used to read the rejected
+    // page as a score that moved to "none" and write that too, counting it as changed.
+    val url = "https://www.rottentomatoes.com/m/the_invite"
+    val repository = new InMemoryMovieRepository(Seq(("Zaproszenie", Some(1986), mkEnrichment(Some(url), score = Some(50)))))
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None),
+      rtClient(Map(url -> pageWithScoreAndYear(96, 2026))))
+    repository.upserts.clear()
+
+    val result = ratings.refreshAll()
+
+    result.changed shouldBe Some(0)
+    repository.upserts.size shouldBe 1 // the drop, and nothing after it
+  }
+
   it should "skip rows without an RT URL (no GET issued, no exception)" in {
     val urlA = "https://www.rottentomatoes.com/m/a"
     val repository = new InMemoryMovieRepository(Seq(
