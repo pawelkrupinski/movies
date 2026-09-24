@@ -109,6 +109,14 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
   "A detail cache whose TTL has changed" should "reap on the NEW duration, not the one it was first indexed with" in {
     val name = s"__integration_test_detail_ttl_${System.nanoTime()}"
     try {
+      // The collection exists before its first owner, as every production one does after its
+      // first boot. On a MISSING collection the first owner's `createIndex` also creates it, and
+      // the index shows in `listIndexes` while that command is still in flight: the second owner
+      // then drops against a collection `dropIndexes` cannot see yet (NamespaceNotFound, which the
+      // driver swallows), and its create hits the 6h index — IndexOptionsConflict. Measured with
+      // this exact sequence in a loop: 8 of 60 on a missing collection, 0 of 150 on an existing one.
+      // It is the two owners overlapping, which production never does: one worker owns each cache.
+      Await.result(db.createCollection(name).toFuture(), 10.seconds)
       new MongoCachingDetailFetch(new CountingFetch, Some(db), 6.hours, name)
       awaitExpiry(name, 6.hours.toSeconds)
 

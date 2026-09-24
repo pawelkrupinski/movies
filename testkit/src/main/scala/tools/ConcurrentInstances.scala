@@ -47,12 +47,13 @@ object ConcurrentInstances {
         Option(event.getCommand.get(event.getCommandName)).collect { case name: org.bson.BsonString => name.getValue }
           .foreach(started.put(event.getRequestId, _))
       }
-      override def commandSucceeded(event: CommandSucceededEvent): Unit = finish(event.getRequestId, event.getCommandName, succeeded = true)
-      override def commandFailed(event: CommandFailedEvent): Unit = finish(event.getRequestId, event.getCommandName, succeeded = false)
+      override def commandSucceeded(event: CommandSucceededEvent): Unit = finish(event.getRequestId, event.getCommandName, None)
+      override def commandFailed(event: CommandFailedEvent): Unit =
+        finish(event.getRequestId, event.getCommandName, Some(Option(event.getThrowable.getMessage).getOrElse(event.getThrowable.toString)))
     }
 
-    private def finish(requestId: Int, command: String, succeeded: Boolean): Unit = {
-      sent.add(SentCommand(command, Option(started.remove(requestId)), succeeded))
+    private def finish(requestId: Int, command: String, failure: Option[String]): Unit = {
+      sent.add(SentCommand(command, Option(started.remove(requestId)), failure))
       ()
     }
 
@@ -74,7 +75,10 @@ object ConcurrentInstances {
     def close(): Unit = client.close()
   }
 
-  final case class SentCommand(name: String, collection: Option[String], succeeded: Boolean)
+  /** A command one pod sent: its name, the collection it named, and the server's error if it failed. */
+  final case class SentCommand(name: String, collection: Option[String], failure: Option[String]) {
+    def succeeded: Boolean = failure.isEmpty
+  }
 
   private val IndexCommands = Set("createIndexes", "dropIndexes")
 
