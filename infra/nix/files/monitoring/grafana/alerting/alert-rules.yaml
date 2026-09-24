@@ -715,12 +715,25 @@ groups:
       # web-side ratio the page reports — the corpus term only decides which
       # cities survive the join, exactly as kinowo-movies-served-city-empty's own
       # `and on (city) (... > 0)` decides membership without changing query A's
-      # value. A city with no corpus series at all is unaffected (`unless` finds
-      # nothing to exclude), which is the conservative direction: a missing
-      # per-city corpus reading inside an otherwise-healthy gauge falls back to
-      # the pre-discriminant behaviour rather than going silently blind, and a
+      # value. A city that has NEVER had a corpus series in the last hour is
+      # unaffected (`unless` finds nothing to exclude), which is the
+      # conservative direction: it falls back to the pre-discriminant behaviour
+      # rather than going silently blind. One whose series was there and went
+      # is excluded — see "A PAGE THAT LEFT THE ROSTER" below — and a
       # fleet-wide corpus outage is `ReadModelServedGaugesAbsent`'s alarm to
       # raise, not this rule's.
+      #
+      # A PAGE THAT LEFT THE ROSTER, added 2026-09-24. The trailing
+      # `unless on (city) (max_over_time(worker[1h]) unless on (city) worker)`
+      # drops a city whose corpus series existed in the last hour and is gone
+      # now. The Polish re-cluster (2026-09-23 18:22Z) retired `ketrzyn` and
+      # `starogard-gdanski` (`PolishPages.retired`): the worker stopped counting
+      # them, the web read 0 for ten minutes before its series went too, and
+      # with no corpus series left the gate above had nothing to exclude — both
+      # paged, then "resolved" through MissingSeries, while every film had moved
+      # to gizycko / tczew. A city the worker stopped counting has left the
+      # roster, not broken; a worker that stopped counting EVERY city is
+      # ReadModelServedGaugesAbsent's alarm.
       # Guarded by worker deploy.GrafanaServedSwingScopeSpec and
       # deploy.GrafanaServedSwingCorpusDiscriminantSpec.
       - uid: kinowo-movies-served-swing
@@ -733,7 +746,7 @@ groups:
           severity: warning
         annotations:
           summary: '{{ $labels.city }} ({{ $labels.scope }}) film count dropped sharply vs its 1h average'
-          description: 'kinowo_web_movies_served for city "{{ $labels.city }}" scope "{{ $labels.scope }}" has fallen >50% and >=4 films below its trailing 1h average, WHILE the corpus side (kinowo_worker_movies_served) for the same city did NOT fall by the same margin — the read-model-outage shape (a malformed web_movies row, or a prune that should not have fired) where the corpus still has what the web stopped serving. A city whose corpus thinned in lockstep (a thin single-venue listing running out between scrapes, or a legitimate scrape-prune) does not page here any more — check kinowo_worker_readmodel_films_pruned_total{city="{{ $labels.city }}"} by reason if that still needs confirming. Jumps do NOT page: a count doubling is a weekly programme landing. Check https://kinowo.net/{{ $labels.city }}/ and the "films served per city" dashboard panel, and read the alert time in the CITY''s timezone before calling it a rollover.'
+          description: 'kinowo_web_movies_served for city "{{ $labels.city }}" scope "{{ $labels.scope }}" has fallen >50% and >=4 films below its trailing 1h average, WHILE the corpus side (kinowo_worker_movies_served) for the same city did NOT fall by the same margin — the read-model-outage shape (a malformed web_movies row, or a prune that should not have fired) where the corpus still has what the web stopped serving. A city whose corpus thinned in lockstep (a thin single-venue listing running out between scrapes, or a legitimate scrape-prune) does not page here any more, nor does a city whose corpus series vanished in the last hour (a page retired or merged by a roster change) — check kinowo_worker_readmodel_films_pruned_total{city="{{ $labels.city }}"} by reason if that still needs confirming. Jumps do NOT page: a count doubling is a weekly programme landing. Check https://kinowo.net/{{ $labels.city }}/ and the "films served per city" dashboard panel, and read the alert time in the CITY''s timezone before calling it a rollover.'
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
@@ -741,7 +754,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
-              expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5)'
+              expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5) unless on (city) (max_over_time(kinowo_worker_movies_served{scope="all"}[1h]) unless on (city) kinowo_worker_movies_served{scope="all"})'
               instant: true
               range: false
               intervalMs: 1000
