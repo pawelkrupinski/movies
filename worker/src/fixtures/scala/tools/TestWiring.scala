@@ -338,9 +338,7 @@ trait TestWiring extends WorkerWiring {
    * only what production gets from its clock: repetition until quiescent.
    */
   def enrichRatingsSync(): Unit = {
-    var round = 0
-    var worked = true
-    while (worked) {
+    UntilQuiet(s"[${country.code}] the rating phase", UntilQuiet.MaxRatingRounds) { round =>
       // `enrichmentReaper.tick` is `private[tasks]`, so the harness supplies the walk
       // the reaper would have done and hands each row to the SAME enqueuer the reaper
       // uses. Eligibility, the due window and the dedup keys all stay where production
@@ -350,10 +348,10 @@ trait TestWiring extends WorkerWiring {
         .sortBy(row => (row.title, row.year.map(_.toString).getOrElse("")))
         .foreach(row => movieService.enqueueRatingsFor(row.title, row.year))
       val done = drainRatingQueueOnce()
-      round += 1
-      worked = done > 0
       if (done > 0) println(s"[${country.code}] rating round $round: $done task(s)")
+      done
     }
+    ()
   }
 
   private lazy val ratingHandlerByType = ratingHandlers.map(h => h.taskType -> h).toMap
