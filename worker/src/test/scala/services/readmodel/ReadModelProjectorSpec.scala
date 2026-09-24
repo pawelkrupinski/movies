@@ -1170,6 +1170,31 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     projector.stop()
   }
 
+  // A read-model write THROWS on failure now (so the projector forgets what it did not write),
+  // and the sweep's prune deletes one card at a time. One refused delete must cost that card
+  // alone: thrown out of the loop, it skipped every other orphan, the orphan screenings, the
+  // content slice, the silent-stream catch-up and every metric the sweep records.
+  "a card delete that throws in the prune" should "not stop the rest of the sweep" in {
+    val repository = new InMemoryMovieRepository()
+    val flaky = new InMemoryReadModelRepository() {
+      override def deleteMovie(id: String): Unit =
+        if (id == "bar|2024") throw new RuntimeException("simulated read-model delete failure")
+        else super.deleteMovie(id)
+    }
+    val m = new RecordingMetrics()
+    val projector = new ReadModelProjector(repository, flaky, flaky, m)
+    repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00"))))
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    projector.reconcile()
+    repository.delete("Bar", Some(2024))
+    repository.delete("Foo", Some(2024))
+
+    noException should be thrownBy projector.pruneOrphans()
+    flaky.findAllMovieIds() shouldBe Seq("bar|2024")          // only the refused one is left
+    m.sweeps.last shouldBe (ReconcileKind.Prune -> true)
+    projector.stop()
+  }
+
   "start" should "schedule the orphan prune but NOT a periodic reproject" in {
     val fakeScheduler = new CapturingScheduler
     val repository = new InMemoryMovieRepository()

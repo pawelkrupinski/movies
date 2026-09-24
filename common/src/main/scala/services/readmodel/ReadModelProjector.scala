@@ -481,9 +481,7 @@ class ReadModelProjector(
         liveRowIds  += row.id
         if (!lastCardsByRow.contains(row.id.value)) lastCardsByRow.update(row.id.value, ids.toSet)
         if (reproject)
-          try reprojected += project(partition)
-          catch { case exception: Throwable =>
-            logger.warn(s"read-model $kind: a row failed to project, continuing: ${exception.getMessage}") }
+          continuing(s"read-model $kind: a row failed to project")(reprojected += project(partition))
         else if (cardsRead) {
           val metadataHash = ReadModelProjection.metadataHash(row)
           val absentCards  = ids.filterNot(cardsBefore)
@@ -491,12 +489,12 @@ class ReadModelProjector(
             if (healedClean.get(row.id.value).contains(metadataHash)) Seq.empty   // looked already; nothing to write
             else screeningsBefore.fold(Seq.empty[String])(has => partition.screeningIds.filterNot(has))
           if (absentCards.nonEmpty || absentVenues.nonEmpty)
-            try heal(row.id, metadataHash, absentCards, absentVenues).foreach { repaired =>
-              healChecks += 1
-              if (repaired) healed += row.id.value
+            continuing(s"read-model $kind: a row missing a projection failed to project") {
+              heal(row.id, metadataHash, absentCards, absentVenues).foreach { repaired =>
+                healChecks += 1
+                if (repaired) healed += row.id.value
+              }
             }
-            catch { case exception: Throwable =>
-              logger.warn(s"read-model $kind: a row missing a projection failed to project, continuing: ${exception.getMessage}") }
         }
       }
     }
@@ -513,10 +511,14 @@ class ReadModelProjector(
         "skipping the prune this tick to avoid deleting live read-model rows; will retry next tick.")
     } else {
       // Prune off id-only projections — the prune reads ids/filmIds, never payloads.
+      // Each delete guarded: a read-model write THROWS on failure, and one refused delete must
+      // not skip every other orphan, the content slice, the catch-up and the sweep's metrics.
       reader.findAllMovieIds().iterator.filterNot(liveIds).foreach { id =>
         val rowOfCard = id.takeWhile(_ != '~')
-        deleteFilm(id, if (liveRowKeys(rowOfCard)) PruneReason.VariantGone else PruneReason.RowGone)
-        prunedFilms += 1
+        continuing(s"read-model $kind: pruning card $id failed") {
+          deleteFilm(id, if (liveRowKeys(rowOfCard)) PruneReason.VariantGone else PruneReason.RowGone)
+          prunedFilms += 1
+        }
       }
       // Drop metadata cached for source rows that no longer exist. Only reachable on a
       // COMPLETE scan — on a truncated one `liveRowKeys` is partial and this would evict
@@ -525,10 +527,12 @@ class ReadModelProjector(
       lastCardsByRow.filterInPlace((rowKey, _) => liveRowKeys(rowKey))
       healedClean.filterInPlace((rowKey, _) => liveRowKeys(rowKey))
       screeningRefsBefore.getOrElse(reader.findAllScreeningRefs()).iterator.filterNot(ref => liveIds(ref.filmId)).foreach { ref =>
-        writer.deleteScreening(ref._id)
-        metrics.recordWrite(Target.Screening, Op.Delete, 1)
-        lastScreenings.updateWith(ref.filmId)(_.map(_ - ref._id).filter(_.nonEmpty))
-        prunedScreenings += 1
+        continuing(s"read-model $kind: pruning screening ${ref._id} failed") {
+          writer.deleteScreening(ref._id)
+          metrics.recordWrite(Target.Screening, Op.Delete, 1)
+          lastScreenings.updateWith(ref.filmId)(_.map(_ - ref._id).filter(_.nonEmpty))
+          prunedScreenings += 1
+        }
       }
     }
     // THE SELF-HEAL FOR A SILENT CHANGE STREAM (prune only). A terminal cursor error reopens
@@ -555,9 +559,9 @@ class ReadModelProjector(
     if (!reproject && scanComplete) {
       val slice = math.floorMod(sweepCount, ContentSlices.toLong).toInt
       liveRowIds.iterator.filter(id => math.floorMod(id.value.##.toLong, ContentSlices.toLong).toInt == slice).foreach { id =>
-        try movieRepository.findById(id).foreach(row => drifted += project(ReadModelProjection.partition(row, normalizer)))
-        catch { case exception: Throwable =>
-          logger.warn(s"read-model $kind: a row in the content slice failed to project, continuing: ${exception.getMessage}") }
+        continuing(s"read-model $kind: a row in the content slice failed to project") {
+          movieRepository.findById(id).foreach(row => drifted += project(ReadModelProjection.partition(row, normalizer)))
+        }
       }
       if (drifted > 0)
         logger.warn(s"read-model $kind sweep: content check slice $slice of $ContentSlices rewrote $drifted document(s) — " +
@@ -572,9 +576,9 @@ class ReadModelProjector(
       val since = liveness.lastDeliveredOrOpened(ChangeStreamLiveness.Movies)
       movieRepository.foreachRecordUpdatedSince(since) { row =>
         if (row.record.readyToProject)
-          try { project(ReadModelProjection.partition(row, normalizer)); caughtUp += 1 }
-          catch { case exception: Throwable =>
-            logger.warn(s"read-model $kind: a row written since the change stream last delivered failed to project, continuing: ${exception.getMessage}") }
+          continuing(s"read-model $kind: a row written since the change stream last delivered failed to project") {
+            project(ReadModelProjection.partition(row, normalizer)); caughtUp += 1
+          }
       }
       metrics.recordCatchUp(caughtUp)
       if (caughtUp > 0)
@@ -672,8 +676,10 @@ class ReadModelProjector(
       }
     }
     if (!cardsRead) logger.warn("read model: the card ids could not be read at boot — nothing healed; the prune sweep retries.")
+    // Each row guarded, as in the sweep: one failed write must not leave every later row unhealed.
     val projected = missing.flatMap { case (id, metadataHash, absentCards, absentVenues) =>
-      lock.synchronized(heal(id, metadataHash, absentCards, absentVenues)).map(id.value -> _) }
+      continuing(s"read model: healing $id at boot failed")(lock.synchronized(heal(id, metadataHash, absentCards, absentVenues)))
+        .flatten.map(id.value -> _) }
     val healed = projected.collect { case (id, true) => id }
     metrics.recordHealCheck(HealTrigger.Boot, projected.size)
     if (healed.nonEmpty) {
@@ -720,6 +726,14 @@ class ReadModelProjector(
       Option.when(whole.record.readyToProject)(repaired)
     }
   }
+
+  /** Run one per-row step of a pass over many rows; a throw is logged and costs that row alone. */
+  private def continuing[A](failure: => String)(step: => A): Option[A] =
+    try Some(step)
+    catch { case scala.util.control.NonFatal(exception) =>
+      logger.warn(s"$failure, continuing: ${exception.getMessage}")
+      None
+    }
 
   private def forgetCard(filmId: String): Unit = {
     lastMovie.remove(filmId)
