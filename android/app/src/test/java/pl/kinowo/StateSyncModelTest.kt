@@ -8,7 +8,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.fail
 import org.junit.Test
@@ -55,7 +57,8 @@ class StateSyncModelTest {
 
     @Test
     fun randomSequencesKeepTheSyncInvariants() {
-        for (seed in 1L..Seeds) {
+        val seeds = System.getProperty("kinowo.syncModelSeeds")?.toLongOrNull() ?: DefaultSeeds
+        for (seed in 1L..seeds) {
             val events = SyncModel.generate(seed)
             val violation = SyncModel.violationOf(events) ?: continue
             val minimal = SyncModel.minimise(events)
@@ -83,7 +86,8 @@ class StateSyncModelTest {
     }
 
     private companion object {
-        const val Seeds = 300L
+        /** A push-sized run; the nightly one passes `-PsyncModelSeeds`. */
+        const val DefaultSeeds = 200L
     }
 }
 
@@ -186,7 +190,7 @@ object SyncModel {
             rebuild()
             events.forEachIndexed { index, event ->
                 apply(event)
-                test.advanceUntilIdle()
+                quiesce()
                 isolationViolation()?.let { return "after event #$index $event: $it" }
             }
             settle()
@@ -278,6 +282,16 @@ object SyncModel {
             serviceScope!!.launch { service.reconcileCurrentCountry() }
         }
 
+        /** Let everything the event started run out — past the service's
+         *  400 ms language debounce too: it runs in the background scope,
+         *  whose delays `advanceUntilIdle` alone never advances. */
+        private fun quiesce() {
+            test.advanceUntilIdle()
+            test.advanceTimeBy(1_000)
+            test.runCurrent()
+            test.advanceUntilIdle()
+        }
+
         /** What the server makes of this device's session cookie. */
         private fun session(signedIn: Boolean) {
             client.signedIn = signedIn
@@ -306,9 +320,9 @@ object SyncModel {
         private suspend fun settle() {
             network(up = true)
             if (!signedIn) apply(SyncEvent.Login)
-            test.advanceUntilIdle()
+            quiesce()
             repeat(2) {
-                Countries.forEach { c -> apply(SyncEvent.SwitchCountry(c)); test.advanceUntilIdle() }
+                Countries.forEach { c -> apply(SyncEvent.SwitchCountry(c)); quiesce() }
             }
         }
 

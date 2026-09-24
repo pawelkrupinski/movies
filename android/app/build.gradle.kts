@@ -853,6 +853,10 @@ tasks.withType<Test>().configureEach {
     // `-PtestOrderSeed=<n>` the run is ShuffledOrderSuite alone — every unit test, classes
     // and methods reordered by the seed, in one JVM as usual. Without it that suite is
     // excluded, so an ordinary run executes each test exactly once, in Gradle's order.
+    // How many seeded sequences StateSyncModelTest runs (`-PsyncModelSeeds=<n>`;
+    // the nightly run sets thousands). The same knob as iOS `SYNC_MODEL_SEEDS`.
+    providers.gradleProperty("syncModelSeeds").orNull?.let { systemProperty("kinowo.syncModelSeeds", it) }
+
     val testOrderSeed = providers.gradleProperty("testOrderSeed").orNull
     if (testOrderSeed == null) {
         exclude("**/ShuffledOrderSuite*")

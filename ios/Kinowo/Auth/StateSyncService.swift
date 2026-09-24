@@ -47,7 +47,8 @@ final class StateSyncService: ObservableObject {
     private var authCancellable: AnyCancellable?
     private var prefsCancellables = Set<AnyCancellable>()
     private var syncTask: Task<Void, Never>?
-    private var debounceWorkItem: DispatchWorkItem?
+    private let debounceScheduler: DebounceScheduler
+    private var pendingDebounce: AnyCancellable?
     /// The language push on the wire, if any — see `sendPendingLanguage`.
     private var languageSendTask: Task<Void, Never>?
     /// Set while `adopt` writes the account's pick — see there.
@@ -71,11 +72,13 @@ final class StateSyncService: ObservableObject {
         prefs: UserPreferences,
         userPublisher: AnyPublisher<UserProfile?, Never>,
         client: HiddenFilmsClient,
-        languageClient: LanguageClient
+        languageClient: LanguageClient,
+        debounceScheduler: DebounceScheduler = MainQueueDebounceScheduler()
     ) {
         self.prefs = prefs
         self.client = client
         self.languageClient = languageClient
+        self.debounceScheduler = debounceScheduler
         observeUser(userPublisher)
     }
 
@@ -128,8 +131,7 @@ final class StateSyncService: ObservableObject {
     private func cancelSync() {
         syncTask?.cancel()
         syncTask = nil
-        debounceWorkItem?.cancel()
-        debounceWorkItem = nil
+        pendingDebounce = nil
         accountLanguage = nil
         prefsCancellables.removeAll()
     }
@@ -243,8 +245,7 @@ final class StateSyncService: ObservableObject {
     /// the same self-heal the hiddenFilms writes rely on; a permanent refusal
     /// (`LanguagePushRefused`) drops it and takes the account's pick instead.
     private func sendPendingLanguage() async {
-        debounceWorkItem?.cancel()
-        debounceWorkItem = nil
+        pendingDebounce = nil
         if let running = languageSendTask { return await running.value }
         let task = Task { @MainActor [weak self] in
             while let self, self.isLoggedIn, let pending = self.pendingLanguage {
@@ -359,8 +360,7 @@ final class StateSyncService: ObservableObject {
         guard language != accountLanguage || languageSendTask != nil else {
             // Back on (or adopted) what the account already holds — nothing to push.
             pendingLanguage = nil
-            debounceWorkItem?.cancel()
-            debounceWorkItem = nil
+            pendingDebounce = nil
             return
         }
         pendingLanguage = language
@@ -370,15 +370,12 @@ final class StateSyncService: ObservableObject {
     /// Debounced push of `pendingLanguage` — 400ms, long enough that a rapid
     /// run of picker taps folds into one PUT.
     private func schedulePush() {
-        debounceWorkItem?.cancel()
-        let item = DispatchWorkItem { [weak self] in
+        pendingDebounce = debounceScheduler.schedule(after: 0.4) { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self, self.isLoggedIn else { return }
                 await self.sendPendingLanguage()
             }
         }
-        debounceWorkItem = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: item)
     }
 
     /// A country switch reconciles that country the same way login does —
@@ -395,5 +392,21 @@ final class StateSyncService: ObservableObject {
                 Task { await self.reconcile(country: country.code) }
             }
             .store(in: &prefsCancellables)
+    }
+}
+
+/// The clock behind the language push's debounce: runs `action` on the main
+/// actor after `delay` seconds, unless the returned token is cancelled or
+/// released first. Injected so a test can fire it without waiting.
+protocol DebounceScheduler {
+    @MainActor func schedule(after delay: TimeInterval, _ action: @escaping @MainActor () -> Void) -> AnyCancellable
+}
+
+/// The production clock — the main queue's.
+struct MainQueueDebounceScheduler: DebounceScheduler {
+    @MainActor func schedule(after delay: TimeInterval, _ action: @escaping @MainActor () -> Void) -> AnyCancellable {
+        let item = DispatchWorkItem { MainActor.assumeIsolated { action() } }
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
+        return AnyCancellable { item.cancel() }
     }
 }

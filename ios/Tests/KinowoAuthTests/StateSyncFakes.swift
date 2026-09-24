@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 @testable import KinowoAuth
 
 // In-memory stand-ins for StateSyncService's collaborators, shared by its
@@ -168,5 +169,29 @@ actor AsyncGate {
         isOpen = true
         waiters.forEach { $0.resume() }
         waiters.removeAll()
+    }
+}
+
+/// The language debounce's clock, advanced by hand: nothing fires until the
+/// test says so, and then everything scheduled fires at once.
+@MainActor
+final class ManualDebounceScheduler: DebounceScheduler {
+    private var scheduled: [(id: Int, action: @MainActor () -> Void)] = []
+    private var nextID = 0
+
+    var hasPending: Bool { !scheduled.isEmpty }
+
+    func schedule(after delay: TimeInterval, _ action: @escaping @MainActor () -> Void) -> AnyCancellable {
+        nextID += 1
+        let id = nextID
+        scheduled.append((id, action))
+        return AnyCancellable { [weak self] in MainActor.assumeIsolated { self?.scheduled.removeAll { $0.id == id } } }
+    }
+
+    /// Fire everything scheduled so far, as if its delay had elapsed.
+    func fireAll() {
+        let due = scheduled
+        scheduled = []
+        due.forEach { $0.action() }
     }
 }

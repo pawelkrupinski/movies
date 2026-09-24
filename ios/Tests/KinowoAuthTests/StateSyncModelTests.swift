@@ -29,9 +29,11 @@ import Combine
 @MainActor
 final class StateSyncModelTests: XCTestCase {
 
-    /// Fewer than Android's 300: the service's own 400 ms language debounce runs
-    /// on the real clock here.
-    private static let seeds: ClosedRange<UInt64> = 1...40
+    /// How many seeds to run: `SYNC_MODEL_SEEDS` (the nightly run sets
+    /// thousands), else a push-sized default. The same knob as Android's
+    /// `-PsyncModelSeeds`.
+    private static let seeds: ClosedRange<UInt64> =
+        1...(ProcessInfo.processInfo.environment["SYNC_MODEL_SEEDS"].flatMap(UInt64.init) ?? 200)
 
     func testRandomSequencesKeepTheSyncInvariants() async throws {
         for seed in Self.seeds {
@@ -161,6 +163,7 @@ enum SyncModel {
         private let prefs: UserPreferences
         private let server = FakeHiddenFilmsClient()
         private let languageClient = FakeLanguageClient()
+        private let debounce = ManualDebounceScheduler()
         private let user = CurrentValueSubject<UserProfile?, Never>(nil)
         private var service: StateSyncService?
 
@@ -183,10 +186,10 @@ enum SyncModel {
 
         func play(_ events: [SyncEvent]) async -> String? {
             service = StateSyncService(prefs: prefs, userPublisher: user.eraseToAnyPublisher(),
-                                       client: server, languageClient: languageClient)
+                                       client: server, languageClient: languageClient, debounceScheduler: debounce)
             for (index, event) in events.enumerated() {
                 await apply(event)
-                await quiesce(after: event)
+                await quiesce()
                 if let violation = isolationViolation() { return "after event #\(index) \(event): \(violation)" }
             }
             await settle()
@@ -269,14 +272,22 @@ enum SyncModel {
         }
 
         /// Let every Task, main-queue hop and in-flight fake call the event
-        /// started run out — past the service's 400 ms language debounce when
-        /// the event could have armed it.
-        private func quiesce(after event: SyncEvent) async {
-            if case .pickLanguage = event { try? await Task.sleep(for: .milliseconds(450)) }
-            var idle = 0
-            while idle < 3 {
-                try? await Task.sleep(for: .milliseconds(2))
-                idle = (server.inFlight == 0 && languageClient.inFlight == 0) ? idle + 1 : 0
+        /// started run out, firing the language debounce whenever one is
+        /// armed. No wall clock: everything here runs on the main actor, whose
+        /// queue is FIFO, so yielding until nothing is in flight for a good
+        /// run of turns is both deterministic and fast.
+        private func quiesce() async {
+            var idleTurns = 0
+            var turns = 0
+            while idleTurns < 20, turns < 100_000 {
+                turns += 1
+                await Task.yield()
+                if debounce.hasPending {
+                    debounce.fireAll()
+                    idleTurns = 0
+                } else {
+                    idleTurns = (server.inFlight == 0 && languageClient.inFlight == 0) ? idleTurns + 1 : 0
+                }
             }
         }
 
@@ -308,13 +319,13 @@ enum SyncModel {
         private func settle() async {
             network(up: true)
             if !signedIn { await apply(.login) }
-            await quiesce(after: .login)
+            await quiesce()
             for _ in 0..<2 {
                 for c in SyncModel.countries {
                     await apply(.switchCountry(c))
-                    await quiesce(after: .resume)
+                    await quiesce()
                     await apply(.resume)
-                    await quiesce(after: .resume)
+                    await quiesce()
                 }
             }
         }
