@@ -58,23 +58,10 @@ class UserStateController(
   // and write this endpoint's state indefinitely; `SignedInUser` is the one
   // place that knows how to tell a still-valid cookie from a stale one.
   //
-  // A user row that could not be READ is neither: it throws `UserLookupFailed`,
-  // which `perUser` answers with a 503 to retry — never a 401 the apps would
-  // act on as "signed out", nor the framework's bare 500.
+  // A user row that could not be READ is neither: `SignedInUser` throws, and
+  // every action answers through `SignedInUser.answering`, a per-user 503.
   private def signedInUserId(request: RequestHeader): Option[String] =
-    try SignedInUser(request, userRepository).map(_.id)
-    catch { case scala.util.control.NonFatal(e) => throw UserLookupFailed(e) }
-
-  /** `PerUserResponse` over `result`, or a per-user 503 when the session's user
-   *  could not be looked up. */
-  private def perUser(result: => Result): Result =
-    PerUserResponse(
-      try result
-      catch {
-        case UserLookupFailed(e) =>
-          logger.warn(s"UserStateController: signed-in user unreadable: ${e.getClass.getSimpleName}: ${e.getMessage}")
-          ServiceUnavailable(Json.obj("error" -> "user unavailable"))
-      })
+    SignedInUser(request, userRepository).map(_.id)
 
   /** `onRead` over this user's stored state — an empty one when they have none yet — or
    *  a 503 when it could not be READ. The empty state is a real answer ("nothing hidden"),
@@ -92,7 +79,7 @@ class UserStateController(
   // at all, these endpoints and `/api/me` are the ENTIRE per-user surface, and a
   // cached copy of one is the whole privacy failure the split was meant to end.
   def get(): Action[AnyContent] = Action { request =>
-    perUser(signedInUserId(request) match {
+    SignedInUser.answering(signedInUserId(request) match {
       case None         => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(userId) =>
         readState(userId)(state => Ok(toJson(state)))
@@ -128,7 +115,7 @@ class UserStateController(
    *  through to `userStateRepository`.
    */
   def hiddenFilms(country: String): Action[AnyContent] = Action { request =>
-    perUser((signedInUserId(request), models.Country.byCode(country)) match {
+    SignedInUser.answering((signedInUserId(request), models.Country.byCode(country)) match {
       case (None, _)             => Unauthorized(Json.obj("error" -> "not logged in"))
       case (Some(_), None)       => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
       case (Some(userId), Some(country)) =>
@@ -190,7 +177,7 @@ class UserStateController(
    *  write (see `HiddenFilmsChange.Hide`), so parallel hides can't overshoot it;
    *  the title missing from the bucket the store answers with is the refusal. */
   def hideFilm(country: String, title: String): Action[AnyContent] = Action { request =>
-    perUser((signedInUserId(request), models.Country.byCode(country)) match {
+    SignedInUser.answering((signedInUserId(request), models.Country.byCode(country)) match {
       case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
       case (Some(_), None) => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
       case (Some(_), Some(_)) if title.length > MaxTitleLength =>
@@ -207,7 +194,7 @@ class UserStateController(
    *  Idempotent: unhiding a title that was never hidden (or already unhidden)
    *  is a no-op success. See `hideFilm` for the encoding note and response shape. */
   def unhideFilm(country: String, title: String): Action[AnyContent] = Action { request =>
-    perUser((signedInUserId(request), models.Country.byCode(country)) match {
+    SignedInUser.answering((signedInUserId(request), models.Country.byCode(country)) match {
       case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
       case (Some(_), None) => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
       case (Some(userId), Some(c)) =>
@@ -220,7 +207,7 @@ class UserStateController(
    *  narrower than "clear everything", matching how `hiddenFilms()` reads
    *  only one country at a time. */
   def clearHiddenFilms(country: String): Action[AnyContent] = Action { request =>
-    perUser((signedInUserId(request), models.Country.byCode(country)) match {
+    SignedInUser.answering((signedInUserId(request), models.Country.byCode(country)) match {
       case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
       case (Some(_), None) => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
       case (Some(userId), Some(c)) =>
@@ -257,7 +244,7 @@ class UserStateController(
     // shared.js PUTs it on every pick) and would pin the gauge at "just now"
     // forever. See LegacyUserStateMetrics.
     if (!isLanguageOnly(request.body)) legacyUserStateMetrics.recordPutCall()
-    perUser(signedInUserId(request) match {
+    SignedInUser.answering(signedInUserId(request) match {
       case None         => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(userId) =>
         // PUT is a partial update over the stored row (see fromJson): fields
@@ -286,7 +273,7 @@ class UserStateController(
    *  with the session cleared. The response carries no body so a fetch
    *  call doesn't need a parser. */
   def deleteAccount(): Action[AnyContent] = Action { request =>
-    perUser(signedInUserId(request) match {
+    SignedInUser.answering(signedInUserId(request) match {
       case None         => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(userId) =>
         accountDeletion.delete(userId)
@@ -296,9 +283,6 @@ class UserStateController(
 }
 
 object UserStateController {
-
-  /** The session's user row could not be read — see `signedInUserId`. */
-  private final case class UserLookupFailed(cause: Throwable) extends RuntimeException(cause)
 
   /** Longest title a per-country hide accepts — far past any real one (the
    *  longest in the corpus is under 200 characters), short of anything that is

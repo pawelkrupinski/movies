@@ -1,8 +1,12 @@
 package controllers
 
 import models.User
-import play.api.mvc.{RequestHeader, Session}
+import play.api.Logging
+import play.api.libs.json.Json
+import play.api.mvc.{RequestHeader, Result, Results, Session}
 import services.users.UserRepository
+
+import scala.util.control.NonFatal
 
 /**
  * Who is signed in on this request — the one place that turns the session's
@@ -28,7 +32,7 @@ import services.users.UserRepository
  * revoked cookie working on every OTHER pod, and signed the revoking device
  * out of them, for as long as the copy lived.
  */
-object SignedInUser {
+object SignedInUser extends Logging {
 
   /** Set on a successful sign-in, dropped on logout. The user's row id. */
   val UserIdKey = "userId"
@@ -38,11 +42,32 @@ object SignedInUser {
 
   /** The signed-in user, or `None` for an anonymous browser, a session whose
    *  user row has since been deleted, or a session revoked since it was
-   *  issued (`sessionVersion` mismatch) — a stale cookie is logged out. */
+   *  issued (`sessionVersion` mismatch) — a stale cookie is logged out.
+   *
+   *  A row that could not be READ is none of those: it throws [[LookupFailed]],
+   *  which [[answering]] turns into a 503 to retry. */
   def apply(request: RequestHeader, users: UserRepository): Option[User] =
     request.session.get(UserIdKey)
-      .flatMap(users.findById)
+      .flatMap(id =>
+        try users.findById(id)
+        catch { case NonFatal(e) => throw LookupFailed(e) })
       .filter(_.sessionVersion == sessionVersionOf(request.session))
+
+  /** The session's user row could not be read — see [[apply]]. */
+  final case class LookupFailed(cause: Throwable) extends RuntimeException(cause)
+
+  /** `result`, marked per-user, or a per-user 503 when computing it met a user
+   *  row that could not be read: not "signed out" (a 401 the apps act on), and
+   *  not the framework's bare 500. Every action that looks the session up
+   *  answers through this. */
+  def answering(result: => Result): Result =
+    PerUserResponse(
+      try result
+      catch {
+        case LookupFailed(e) =>
+          logger.warn(s"SignedInUser: user unreadable: ${e.getClass.getSimpleName}: ${e.getMessage}")
+          Results.ServiceUnavailable(Json.obj("error" -> "user unavailable"))
+      })
 
   /** `session`, carrying `user`. Callers that mean to discard everything else
    *  pass an empty `Session()`; callers continuing an existing one pass it. */

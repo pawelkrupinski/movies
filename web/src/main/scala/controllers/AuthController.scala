@@ -342,7 +342,7 @@ class AuthController(
    *  is the one nothing may keep a copy of — a stored 200 is an avatar rebuilt
    *  after a sign-out, or on a device the answer was never for. */
   def me(): Action[AnyContent] = Action { request =>
-    PerUserResponse(SignedInUser(request, userRepository) match {
+    SignedInUser.answering(SignedInUser(request, userRepository) match {
       case None => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(user) => Ok(AuthController.userJson(user))
     })
@@ -358,7 +358,7 @@ class AuthController(
    *  version lives on the row, not the cookie, so bumping it once is already
    *  visible to every deployment's next check. */
   def revokeSessions(): Action[AnyContent] = Action { request =>
-    PerUserResponse(SignedInUser(request, userRepository) match {
+    SignedInUser.answering(SignedInUser(request, userRepository) match {
       case None => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(user) =>
         userRepository.revokeSessions(user.id) match {
@@ -499,7 +499,7 @@ class AuthController(
     // reaches the far landing knowing they chose it — same as the signed-out
     // switch, which navigates there directly.
     val pick = if (LandingController.picksCity(request)) LandingController.PickCityQuery else ""
-    AuthController.handoffTarget(request.getQueryString("to")) match {
+    SignedInUser.answering(AuthController.handoffTarget(request.getQueryString("to")) match {
       case None =>
         logger.warn(s"SSO start refused: '${request.getQueryString("to").getOrElse("")}' is not a deployed country.")
         BadRequest("Unknown country")
@@ -538,7 +538,7 @@ class AuthController(
                 uncacheable(Redirect(s"$target${AuthController.SsoFinishPath}${AuthController.query(("code" -> code) +: onward)}"))
             }
         }
-    }
+    })
   }
 
   /** Receive a session handed over by [[ssoStart]] on another domain.

@@ -26,8 +26,11 @@ class AdminAction(
     if (request.session.get(SignedInUser.UserIdKey).isEmpty)
       Future.successful(Results.Unauthorized("Not logged in."))
     else
-      SignedInUser(request, userRepository).filter(_.email.exists(adminAllowlist.contains)) match {
-        case Some(_) => block(request)
-        case None    => Future.successful(Results.Forbidden("Not an admin."))
+      scala.util.Try(SignedInUser(request, userRepository)) match {
+        case scala.util.Success(user) if user.exists(_.email.exists(adminAllowlist.contains)) => block(request)
+        case scala.util.Success(_) => Future.successful(Results.Forbidden("Not an admin."))
+        // Unreadable, not "not an admin": answered as every session lookup is.
+        case scala.util.Failure(e: SignedInUser.LookupFailed) => Future.successful(SignedInUser.answering(throw e))
+        case scala.util.Failure(e) => Future.failed(e)
       }
 }
