@@ -2,7 +2,7 @@ package tools
 
 import play.api.Logging
 
-import java.util.concurrent.{Callable, ExecutionException, TimeUnit, TimeoutException}
+import java.util.concurrent.{Callable, ExecutionException, TimeUnit, TimeoutException, Future as JavaFuture}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.jdk.CollectionConverters._
@@ -59,6 +59,16 @@ object ParallelDetailFetch extends Logging {
     keys:          Seq[K],
     timeout:       FiniteDuration,
     maxConcurrent: Int = 2
+  )(urlOf: K => String)(fetch: String => T): Map[K, T] =
+    timed(label, keys, timeout, maxConcurrent, FetchClock.System)(urlOf)(fetch)
+
+  /** [[keyed]] on `clock`, which tests replace to run the per-fetch timeout on virtual time. */
+  private[tools] def timed[K, T](
+    label:         String,
+    keys:          Seq[K],
+    timeout:       FiniteDuration,
+    maxConcurrent: Int,
+    clock:         FetchClock
   )(urlOf: K => String)(fetch: String => T): Map[K, T] = {
     val distinct = keys.distinct
     if (distinct.isEmpty) return Map.empty
@@ -68,14 +78,15 @@ object ParallelDetailFetch extends Logging {
     // slot can time it out and move on; an overrunning fetch is interrupted and
     // its (daemon) thread abandoned.
     val fetchThreads = DaemonExecutors.virtualThreadExecutor(s"$label-fetch")
-    val t0 = System.currentTimeMillis()
+    val t0 = clock.nowMillis()
     val timedOut = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
     try {
       val futures = distinct.map { key =>
         val url = urlOf(key)
         Future {
-          val attempt = fetchThreads.submit((() => fetch(url)): Callable[T])
-          try Some(key -> attempt.get(timeout.toMillis, TimeUnit.MILLISECONDS))
+          val deadline = clock.nowMillis() + timeout.toMillis   // this fetch's own start, not the batch's
+          val attempt  = fetchThreads.submit((() => fetch(url)): Callable[T])
+          try Some(key -> clock.await(attempt, deadline))
           catch {
             case _: TimeoutException     => attempt.cancel(true); timedOut.add(url); None
             case e: ExecutionException   => throw e.getCause
@@ -85,10 +96,25 @@ object ParallelDetailFetch extends Logging {
       // Every fetch is bounded by `timeout` from its own start, so the batch
       // settles within ceil(n / maxConcurrent) × timeout — no batch deadline needed.
       val result = Await.result(Future.sequence(futures)(using implicitly, executionContext), Duration.Inf).flatten.toMap
-      val elapsed = System.currentTimeMillis() - t0
+      val elapsed = clock.nowMillis() - t0
       if (timedOut.isEmpty) logger.debug(s"$label: fetched ${result.size} detail pages in ${elapsed}ms")
       else logger.warn(s"$label: ${timedOut.size}/${distinct.size} detail pages timed out after $timeout (${elapsed}ms total): ${timedOut.asScala.mkString(", ")}")
       result
     } finally { executionContext.shutdown(); fetchThreads.shutdown() }
+  }
+}
+
+/** Where [[ParallelDetailFetch]] reads the time and waits out a fetch's budget. */
+private[tools] trait FetchClock {
+  def nowMillis(): Long
+  /** `attempt`'s result, or a [[TimeoutException]] if it is not done by `deadlineMillis`. */
+  def await[T](attempt: JavaFuture[T], deadlineMillis: Long): T
+}
+
+private[tools] object FetchClock {
+  val System: FetchClock = new FetchClock {
+    def nowMillis(): Long = java.lang.System.currentTimeMillis()
+    def await[T](attempt: JavaFuture[T], deadlineMillis: Long): T =
+      attempt.get(math.max(0L, deadlineMillis - nowMillis()), TimeUnit.MILLISECONDS)
   }
 }
