@@ -4,6 +4,7 @@ import models.{BakerStreetCinemaAbergavenny, Cinema, ColiseumCinemaBrecon, Flora
   MikroBronowice, OdeonCinemaChelmsford, OdeonCinemaColchester, OdeonCinemaLlanelli, OdeonCinemaNewark, OdeonCinemaSwadlincote,
   RitzBurnhamOnSea, RoyalStIvesCinema, TheAvenueCinemaMinehead, TivoliTiverton, WTWLighthouseNewquay, WTWWhiteRiverCinema,
   WestwayCinemaFrome}
+import play.api.Logging
 
 /**
  * Pairs of roster venues that LOOK like one screen listed twice — by name (the offline roster
@@ -16,10 +17,11 @@ import models.{BakerStreetCinemaAbergavenny, Cinema, ColiseumCinemaBrecon, Flora
  * and their showtimes book through two different per-venue ticketing ids, so the upstream
  * holds two listings that a small chain (or an operator running two screens) happens to
  * programme alike. Generated-roster venues (Germany, Spain, the US) have no case
- * object, so they are named by the display name they are stored under.
+ * object, so they are named by the display name they are stored under — and a
+ * name a roster regeneration dropped is logged and skipped, never a failed load.
  */
-object DistinctVenuePairs {
-  val all: Set[Set[Cinema]] = Set(
+object DistinctVenuePairs extends Logging {
+  private val cased: Set[Set[Cinema]] = Set(
     Set(KinoMikro, MikroBronowice),   // Kino Mikro (Juliusza Lea) and its second screen in Bronowice
     // Merlin Cinemas, Helston and St Ives: admit-one merlinhelston vs merlinstives
     Set(FloraCinemaHelston, RoyalStIvesCinema),
@@ -31,20 +33,6 @@ object DistinctVenuePairs {
     Set(RitzBurnhamOnSea, TheAvenueCinemaMinehead),
     Set(RitzBurnhamOnSea, WestwayCinemaFrome),
     Set(TheAvenueCinemaMinehead, WestwayCinemaFrome),
-    // Cineplex on Lake Constance and in the Hegau: Filmstarts theatres A0313 vs A0323
-    named("Cineplex Friedrichshafen", "Cineplex Singen"),
-    // Cines Victoria, Extremadura: theatres E0372 (Don Benito) vs E0383 (Mérida)
-    named("Cines Victoria Don Benito", "Cines Victoria Mérida"),
-    // Atlantic Beach and Emerald Isle, NC: formovietickets chains atlanticstation vs emeraldplantaion
-    named("Atlantic Station Cinema", "Emerald Plantation Cinemas"),
-    // Jordan's Furniture's two IMAX domes, Natick and Reading, sharing one release slate
-    named("IMAX 3D Natick (Jordan's)", "IMAX 3D Reading (Jordan's)"),
-    // St Helens and Gresham, OR: formovietickets chains columbiatheatre vs mthood
-    named("Columbia St Helens", "Mt Hood Theatre Gresham"),
-    // State Theatres in Boscobel and Dodgeville, WI: booking sites 24552 vs 80756
-    named("Blaine Theatre Boscobel", "Dodge Theatre"),
-    // Wunderland's North Portland (Avalon) and Beaverton houses, one second-run slate
-    named("Avalon Theatre Portland", "Beaverton Wunderland"),
 
     // ── Two cities, 95%+ alike (the census's cross-city scope) ──
     // Abergavenny and Brecon: internet-ticketing sites BAKABE vs COLBRE, own perfcodes
@@ -54,20 +42,50 @@ object DistinctVenuePairs {
     // Odeon's template schedule: showtime ids 760-* (Llanelli), 757-* (Newark), 759-* (Swadlincote)
     Set(OdeonCinemaLlanelli, OdeonCinemaNewark),
     Set(OdeonCinemaLlanelli, OdeonCinemaSwadlincote),
-    // One Illinois/Iowa operator's small towns: internet-ticketing FOXFOR, MAJCAN, TAYTAY
-    named("Fox Theatre Fort Madison", "Majestic Theatre of Canton"),
-    named("Fox Theatre Fort Madison", "Taylorville Cinema"),
-    named("Majestic Theatre of Canton", "Taylorville Cinema"),
-    // Three Rau's Entertainment, Shenandoah and Le Mars IA: ticket sites 00001-00002 vs 00001-00003
-    named("Legacy Theatre Shenandoah", "Royal 3 Cinema Le Mars"),
-    // RMC Stadium, Jacksonville and Waterloo IL: formovietickets rtn 39924 vs 14446
-    named("RMC Jacksonville", "RMC Waterloo Cinema"),
   )
+
+  /** Generated-roster pairs (Germany, Spain, the US), by the display name each is stored under. */
+  private val byName: Seq[(String, String)] = Seq(
+    // Cineplex on Lake Constance and in the Hegau: Filmstarts theatres A0313 vs A0323
+    ("Cineplex Friedrichshafen", "Cineplex Singen"),
+    // Cines Victoria, Extremadura: theatres E0372 (Don Benito) vs E0383 (Mérida)
+    ("Cines Victoria Don Benito", "Cines Victoria Mérida"),
+    // Atlantic Beach and Emerald Isle, NC: formovietickets chains atlanticstation vs emeraldplantaion
+    ("Atlantic Station Cinema", "Emerald Plantation Cinemas"),
+    // Jordan's Furniture's two IMAX domes, Natick and Reading, sharing one release slate
+    ("IMAX 3D Natick (Jordan's)", "IMAX 3D Reading (Jordan's)"),
+    // St Helens and Gresham, OR: formovietickets chains columbiatheatre vs mthood
+    ("Columbia St Helens", "Mt Hood Theatre Gresham"),
+    // State Theatres in Boscobel and Dodgeville, WI: booking sites 24552 vs 80756
+    ("Blaine Theatre Boscobel", "Dodge Theatre"),
+    // Wunderland's North Portland (Avalon) and Beaverton houses, one second-run slate
+    ("Avalon Theatre Portland", "Beaverton Wunderland"),
+    // One Illinois/Iowa operator's small towns: internet-ticketing FOXFOR, MAJCAN, TAYTAY
+    ("Fox Theatre Fort Madison", "Majestic Theatre of Canton"),
+    ("Fox Theatre Fort Madison", "Taylorville Cinema"),
+    ("Majestic Theatre of Canton", "Taylorville Cinema"),
+    // Three Rau's Entertainment, Shenandoah and Le Mars IA: ticket sites 00001-00002 vs 00001-00003
+    ("Legacy Theatre Shenandoah", "Royal 3 Cinema Le Mars"),
+    // RMC Stadium, Jacksonville and Waterloo IL: formovietickets rtn 39924 vs 14446
+    ("RMC Jacksonville", "RMC Waterloo Cinema"),
+  )
+
+  /** Names in [[byName]] the roster no longer holds — a regeneration renamed or dropped the
+   *  venue. Their pairs are left out rather than failing the worker's load; the census may
+   *  then count that pair again, and `DuplicateVenueCensusSpec` fails until the entry is fixed. */
+  private val resolved: (Set[Set[Cinema]], Seq[String]) = resolve(byName, Cinema.byDisplayName.get)
+  val unresolved: Seq[String] = resolved._2
+  if (unresolved.nonEmpty)
+    logger.warn(s"DistinctVenuePairs: ${unresolved.size} venue name(s) on no roster, their pairs ignored: ${unresolved.mkString(", ")}")
+
+  val all: Set[Set[Cinema]] = cased ++ resolved._1
 
   def contains(a: Cinema, b: Cinema): Boolean = all(Set(a, b))
 
-  /** A generated-roster pair by stored display name — throws at load if either is gone, so a
-   *  roster regeneration that renames one fails the build (`DuplicateVenueCensusSpec`) rather
-   *  than silently dropping the entry. */
-  private def named(a: String, b: String): Set[Cinema] = Set(Cinema.byDisplayName(a), Cinema.byDisplayName(b))
+  /** Each named pair whose venues `lookup` finds, and every name it does not. */
+  private[services] def resolve(named: Seq[(String, String)], lookup: String => Option[Cinema]): (Set[Set[Cinema]], Seq[String]) = {
+    val pairs   = named.flatMap { case (a, b) => for (x <- lookup(a); y <- lookup(b)) yield Set(x, y) }.toSet
+    val missing = named.flatMap { case (a, b) => Seq(a, b) }.distinct.filter(lookup(_).isEmpty)
+    (pairs, missing)
+  }
 }

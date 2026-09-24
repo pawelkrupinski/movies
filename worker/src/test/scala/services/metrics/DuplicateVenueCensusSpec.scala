@@ -124,6 +124,15 @@ class DuplicateVenueCensusSpec extends AnyFlatSpec with Matchers {
     withClue(dead.map(_.map(_.displayName)).mkString("\n")) { dead shouldBe empty }
   }
 
+  // A name the generated rosters no longer hold must not throw when the worker loads the
+  // list (it would take the census down on every tick); it is skipped, and named here.
+  it should "skip a DistinctVenuePairs name no roster holds, instead of failing the load" in {
+    val lookup = Map("Here" -> first, "Also here" -> second).get
+    services.cinemas.roster.DistinctVenuePairs.resolve(Seq("Here" -> "Also here", "Here" -> "Renamed away"), lookup) shouldBe
+      (Set(Set(first, second)), Seq("Renamed away"))
+    services.cinemas.roster.DistinctVenuePairs.unresolved shouldBe empty
+  }
+
   it should "publish nothing from a partial scan" in {
     census(Seq(row("Foo", first -> times(10), second -> times(10))), complete = false, preset = Some(3.0)) shouldBe 3.0
   }
