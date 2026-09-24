@@ -202,7 +202,10 @@ jobs:
     enrichment:
         name: enrichment (${{ matrix.country }})
         needs: [preflight, record]
-        if: ${{ !cancelled() }}
+        # Past a failed `record` leg (the other countries' corpora are still worth a tree), but
+        # never past a failed preflight: that skips `record` too, and `!cancelled()` alone would
+        # start five legs of up to 330 minutes without the TMDB key or a corpus.
+        if: ${{ !cancelled() && needs.preflight.result == 'success' }}
         strategy:
             fail-fast: false
             matrix:

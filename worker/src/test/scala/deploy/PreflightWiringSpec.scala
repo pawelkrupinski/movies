@@ -18,7 +18,9 @@ import org.scalatest.matchers.should.Matchers
  *     empty and fail every run — or, checked for the wrong name, pass while the real one is
  *     missing);
  *   - every OTHER job that reads one of those secrets needs `preflight`, directly or through
- *     a job that does, so none can start its long work before the check has passed.
+ *     a job that does, so none can start its long work before the check has passed;
+ *   - and none of those jobs overrides that wait with a status function (`!cancelled()`,
+ *     `always()`) in its `if:` without also asking whether the preflight succeeded.
  *
  * A job calling a reusable workflow with `secrets: inherit` counts as reading what that workflow reads.
  */
@@ -53,6 +55,15 @@ class PreflightWiringSpec extends AnyFlatSpec with Matchers {
 
   private def secretsNamed(text: String): Set[String] =
     """secrets\.([A-Z][A-Z0-9_]*)""".r.findAllMatchIn(text).map(_.group(1)).toSet
+
+  /** The job's own `if:` — at the indentation of its other keys, never a step's. */
+  private def jobIf(job: String): Option[String] = {
+    val keyIndent = job.linesIterator.drop(1).find(_.trim.nonEmpty).map(_.takeWhile(_ == ' ').length)
+    job.linesIterator.collectFirst {
+      case line if keyIndent.contains(line.takeWhile(_ == ' ').length) && line.trim.startsWith("if: ") =>
+        line.trim.stripPrefix("if: ")
+    }
+  }
 
   /** A job calling a reusable workflow with `secrets: inherit` reads whatever that workflow reads. */
   private def secretsRead(job: String): Set[String] = {
@@ -101,6 +112,19 @@ class PreflightWiringSpec extends AnyFlatSpec with Matchers {
         case (name, body) if name != "preflight" && (secretsRead(body) & guardedSecrets).nonEmpty && !waitsForPreflight(name) => name
       }
       withClue("jobs reading a preflight-checked secret without waiting for it: ")(unguarded shouldBe empty)
+    }
+
+    // A status function in `if:` (`!cancelled()`, `always()`, `failure()`) replaces the implicit
+    // `success()` over `needs`, so waiting alone no longer stops the job: a failed preflight
+    // skips its dependants and the job starts anyway, without the secret. It has to ask.
+    it should "not start a job reading an asserted secret once the preflight has failed" in {
+      val guardedSecrets = asserted(preflight)
+      val StatusFunction = """(always|cancelled|failure)\(\)""".r
+      val ungated = all.collect {
+        case (name, body) if name != "preflight" && (secretsRead(body) & guardedSecrets).nonEmpty &&
+            jobIf(body).exists(cond => StatusFunction.findFirstIn(cond).isDefined && !cond.contains("needs.preflight.result == 'success'")) => name
+      }
+      withClue("jobs whose `if:` lets them run past a failed preflight: ")(ungated shouldBe empty)
     }
   }
 }
