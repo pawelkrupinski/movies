@@ -303,7 +303,9 @@ class MongoSlotsRepository(
   // process on the wrong database cannot land a foreign venue. See [[VenueRoster]].
   roster:               VenueRoster    = VenueRoster.Unrestricted,
   // Where a write that THREW is counted — see [[WriteOutcome]].
-  writeMetrics:         RepositoryWriteMetrics = RepositoryWriteMetrics.noop
+  writeMetrics:         RepositoryWriteMetrics = RepositoryWriteMetrics.noop,
+  // Where a row this store's change stream could not decode is counted — see [[ChangeEventDecoder]].
+  decodeFailures:       services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop
 ) extends SlotsRepository with Logging {
   import SlotKeyed.idOf
 
@@ -469,7 +471,7 @@ class MongoSlotsRepository(
    *  [[SideCollectionWatch]], shared with `screenings`, under this collection's own
    *  persisted resume token. */
   private lazy val changes: Option[SideCollectionWatch[StoredSlotDto]] =
-    coll.map(c => new SideCollectionWatch(SlotsRepository.Collection, c, _.filmId, resumeToken, metrics))
+    coll.map(c => new SideCollectionWatch(SlotsRepository.Collection, c, _.filmId, resumeToken, metrics, decodeFailures))
 
   override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
     changes.map(_.watch(onChange, demand))

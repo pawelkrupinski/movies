@@ -224,7 +224,9 @@ class MongoScreeningsRepository(
   // process on the wrong database cannot land a foreign venue. See [[VenueRoster]].
   roster:               VenueRoster       = VenueRoster.Unrestricted,
   // Where a write that THREW is counted — see [[WriteOutcome]].
-  writeMetrics:         RepositoryWriteMetrics = RepositoryWriteMetrics.noop
+  writeMetrics:         RepositoryWriteMetrics = RepositoryWriteMetrics.noop,
+  // Where a row this store's change stream could not decode is counted — see [[ChangeEventDecoder]].
+  decodeFailures:       services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop
 ) extends ScreeningsRepository with Logging {
   import ScreeningsRepository.IdSep
 
@@ -430,7 +432,7 @@ class MongoScreeningsRepository(
    *  reopen, metrics, the delete's `_id` parse — is [[SideCollectionWatch]], shared with
    *  `movie_slots`. */
   private lazy val changes: Option[SideCollectionWatch[StoredScreeningsDto]] =
-    coll.map(c => new SideCollectionWatch(ScreeningsRepository.Collection, c, _.filmId, resumeToken, metrics))
+    coll.map(c => new SideCollectionWatch(ScreeningsRepository.Collection, c, _.filmId, resumeToken, metrics, decodeFailures))
 
   override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
     changes.map(_.watch(onChange, demand))

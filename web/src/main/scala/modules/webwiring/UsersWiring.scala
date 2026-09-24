@@ -18,7 +18,7 @@ trait UsersWiring { self: Wiring =>
   lazy val httoFetch: HttpFetch = new MonitoringHttpFetch(new RealHttpFetch(), uptimeMonitor)
 
   lazy val userRepository:      UserRepository      = UsersWiring.podUserRepository(new MongoUserRepository(usersConnection.database, fallbackToOwnInit = false))
-  lazy val userStateRepository: UserStateRepository = UsersWiring.podUserStateRepository(new MongoUserStateRepository(usersConnection.database, fallbackToOwnInit = false, writeOutcomes = userStateWriteMetrics, indexHealth = userStateIndexMetrics))
+  lazy val userStateRepository: UserStateRepository = UsersWiring.podUserStateRepository(new MongoUserStateRepository(usersConnection.database, fallbackToOwnInit = false, writeOutcomes = userStateWriteMetrics, indexHealth = userStateIndexMetrics, decodeFailures = webDecodeFailureMetrics))
 
   // The last-1000-active-users change-time cache behind `hiddenFilms()`'s
   // fast path — see `CaffeineUserChangeTimeCache`'s doc comment for why it

@@ -8,7 +8,7 @@ import org.bson.{BsonArray, BsonDateTime, BsonDocument, BsonInt32, BsonString, B
 import org.mongodb.scala.model.{Aggregates, Field, Filters}
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, Observer, SingleObservableFuture, Subscription}
 import play.api.Logging
-import services.movies.{ChangeStreamLiveness, ChangeStreamReopen}
+import services.movies.{ChangeEventDecoder, ChangeStreamLiveness, ChangeStreamReopen}
 import tools.Env
 
 import scala.concurrent.Await
@@ -106,7 +106,10 @@ class MongoUserStateRepository(
   // `UserStateWriteMetrics` in production.
   writeOutcomes: UserStateWriteOutcomes = UserStateWriteOutcomes.none,
   // Whether the unique `userId` index is in place — the web's `UserStateIndexMetrics`.
-  indexHealth: UserStateIndexHealth = UserStateIndexHealth.none
+  indexHealth: UserStateIndexHealth = UserStateIndexHealth.none,
+  // Where a row the change stream could not decode is counted — the web's decode-failure
+  // counter in production. See [[services.movies.ChangeEventDecoder]].
+  decodeFailures: services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop
 ) extends UserStateRepository with Logging {
   import UserStateWriteOutcomes.{Endpoint, Outcome}
 
@@ -251,24 +254,28 @@ class MongoUserStateRepository(
    *  only cleared what was cached THEN, not what callers cached during the gap. So a reopen
    *  reports losing track again, once the new cursor is live. */
   private def subscribe(reopened: Boolean): Unit = coll.foreach { c =>
-    c.watch().fullDocument(FullDocument.UPDATE_LOOKUP).subscribe(new Observer[ChangeStreamDocument[UserState]] {
+    // Decoded here rather than in the driver: one row the codec refuses used to END the cursor.
+    val decoder = ChangeEventDecoder.of[UserState](UserStateRepository.Collection, c.codecRegistry, decodeFailures)
+    c.watch[BsonDocument]().fullDocument(FullDocument.UPDATE_LOOKUP).subscribe(new Observer[ChangeStreamDocument[BsonDocument]] {
       override def onSubscribe(s: Subscription): Unit = {
         subscription = Some(s)
         s.request(Long.MaxValue)
         liveness.watching(UserStateRepository.Collection)
         if (reopened) listener.foreach { case (_, _, onLostTrack) => onLostTrack() }
       }
-      override def onNext(change: ChangeStreamDocument[UserState]): Unit = {
+      override def onNext(change: ChangeStreamDocument[BsonDocument]): Unit = {
         reopen.opened()
         liveness.delivered(UserStateRepository.Collection)
-        (Option(change.getFullDocument), listener) match {
-          case (Some(state), Some((onUpsert, _, _))) => onUpsert(state)
+        (decoder.postImage(change), listener) match {
+          case (ChangeEventDecoder.PostImage.Present(state), Some((onUpsert, _, _))) => onUpsert(state)
+          // A row changed and we cannot say whose, or what to: stop vouching, as for a delete.
+          case (ChangeEventDecoder.PostImage.Undecodable, Some((_, _, onLostTrack))) => onLostTrack()
           // A delete carries only its documentKey — and a row's `_id` is a driver-generated
           // ObjectId, not the userId, so the key cannot say WHOSE row went (and there is no
           // pre-image to ask). Deletes are rare (account deletion), so rather than enable
           // collection pre-images, report "can no longer vouch for what changed" — the same
           // signal as a dead cursor, which makes the change-time cache drop everything.
-          case (None, Some((_, onDelete, onLostTrack))) =>
+          case (ChangeEventDecoder.PostImage.Absent, Some((_, onDelete, onLostTrack))) =>
             Option(change.getDocumentKey).flatMap(k => Option(k.get("userId")))
               .fold(onLostTrack())(v => onDelete(if (v.isString) v.asString.getValue else v.toString))
           case _ => ()

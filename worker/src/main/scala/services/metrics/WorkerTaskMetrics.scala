@@ -503,7 +503,7 @@ object WorkerTaskMetrics {
 
     private val decodeFailures = Counter.builder()
       .name("kinowo_worker_decode_failures")
-      .help("Documents that could not be decoded, by country and collection. web_movies|web_screenings: SKIPPED by a whole-collection scan, a film or screening the reader goes without while the rest of its page is kept. movies: a read that FAILED on it — a point read answering unreadable, or the whole corpus scan left incomplete. ZERO IS THE HEALTHY READING; each was a WARN line and nothing else before 2026-09-24. Alerted by DocumentsUndecodable (worker-pipeline.rules). Seeded at 0 per collection so increase() sees the first skip.")
+      .help("Documents that could not be decoded, by country and collection. web_movies|web_screenings: SKIPPED by a whole-collection scan, a film or screening the reader goes without while the rest of its page is kept. movies: a read that FAILED on it — a point read answering unreadable, or the whole corpus scan left incomplete. movies|screenings|movie_slots from a change stream: a post-image it SKIPPED (not applied) rather than end its cursor on, which before 2026-09-24 killed the stream for good. ZERO IS THE HEALTHY READING; each was a WARN line and nothing else before 2026-09-24. Alerted by DocumentsUndecodable (worker-pipeline.rules). Seeded at 0 per collection so increase() sees the first skip.")
       .labelNames("country", "collection")
       .register(registry)
 

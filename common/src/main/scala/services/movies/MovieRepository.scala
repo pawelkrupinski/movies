@@ -1205,7 +1205,8 @@ class MongoMovieRepository(
       changeStreamMetrics = changeStreamMetrics,
       screeningsMetrics   = screeningsMetrics,
       slotsMetrics        = slotsMetrics,
-      changeDemandWindow  = changeDemandWindow)
+      changeDemandWindow  = changeDemandWindow,
+      decodeFailures      = decodeFailures)
   }
 
   /** Change events handed to the apply thread but not yet applied — see

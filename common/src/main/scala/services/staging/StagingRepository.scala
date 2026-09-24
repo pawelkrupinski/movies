@@ -7,7 +7,7 @@ import models.{MovieRecord, Source}
 import org.mongodb.scala.model.{Filters, Sorts}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, Observer, SingleObservableFuture, Subscription}
 import play.api.Logging
-import services.movies.{MovieCodecs, RepositoryWrite, RepositoryWriteMetrics, StoredMovieDto, TitleNormalizer, WriteOutcome}
+import services.movies.{ChangeEventDecoder, MovieCodecs, RepositoryWrite, RepositoryWriteMetrics, StoredMovieDto, TitleNormalizer, WriteOutcome}
 
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference
@@ -322,7 +322,9 @@ class MongoStagingRepository(
   // REQUIRED here: production persistence must never fall back.
   override val normalizer: TitleNormalizer,
   // Where a write that THREW is counted — see [[WriteOutcome]].
-  writeMetrics: RepositoryWriteMetrics = RepositoryWriteMetrics.noop
+  writeMetrics: RepositoryWriteMetrics = RepositoryWriteMetrics.noop,
+  // Where a row the change stream could not decode is counted — see [[services.movies.ChangeEventDecoder]].
+  decodeFailures: services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop
 ) extends StagingRepository with Logging {
 
 
@@ -689,15 +691,19 @@ class MongoStagingRepository(
 
   override def watchChanges(onUpsert: StagingRecord => Unit, onDelete: String => Unit): Option[AutoCloseable] = coll.map { c =>
     val subRef = new AtomicReference[Subscription]()
-    c.watch().fullDocument(FullDocument.UPDATE_LOOKUP)
-      .subscribe(new Observer[ChangeStreamDocument[StoredMovieDto]] {
+    // Decoded here rather than in the driver, so a row the codec refuses is skipped (counted and
+    // logged) instead of ending the cursor — see [[services.movies.ChangeEventDecoder]].
+    val decoder = ChangeEventDecoder.of[StoredMovieDto](StagingRepository.Collection, MovieCodecs.registry, decodeFailures)
+    c.watch[org.bson.BsonDocument]().fullDocument(FullDocument.UPDATE_LOOKUP)
+      .subscribe(new Observer[ChangeStreamDocument[org.bson.BsonDocument]] {
         override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }
-        override def onNext(change: ChangeStreamDocument[StoredMovieDto]): Unit =
-          try Option(change.getFullDocument) match {
-            case Some(dto) => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto, normalizer).record, normalizer).foreach(onUpsert)
+        override def onNext(change: ChangeStreamDocument[org.bson.BsonDocument]): Unit =
+          try decoder.postImage(change) match {
+            case ChangeEventDecoder.PostImage.Present(dto) => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto, normalizer).record, normalizer).foreach(onUpsert)
             // A delete (or drop/invalidate) carries no full document — the change's
             // document key holds the `_id` of the row that graduated/left.
-            case None => Option(change.getDocumentKey).map(_.getString("_id").getValue).foreach(onDelete)
+            case ChangeEventDecoder.PostImage.Absent => Option(change.getDocumentKey).map(_.getString("_id").getValue).foreach(onDelete)
+            case ChangeEventDecoder.PostImage.Undecodable => ()
           }
           catch { case exception: Throwable => logger.warn(s"StagingRepository change-stream apply failed: ${exception.getMessage}") }
         override def onError(e: Throwable): Unit =

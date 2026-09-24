@@ -19,7 +19,7 @@ trait CorpusWiring { self: WorkerWiring =>
     // writes only `screenings`, so without this a restart drops showtime edits made while
     // down and only the full reproject catches them — the gap that kept it non-redundant.
     new MongoScreeningsRepository(mongoConnection.database, persistResumeToken = true,
-      metrics = taskMetrics, roster = VenueRoster.of(country), writeMetrics = taskMetrics)
+      metrics = taskMetrics, roster = VenueRoster.of(country), writeMetrics = taskMetrics, decodeFailures = taskMetrics)
   // Slot split: the per-cinema SourceData lives in `movie_slots`, one row per slot,
   // for the same reason showtimes moved to `screenings` — an UPDATE_LOOKUP change event
   // otherwise carries the whole film document, and those documents queue up on an
@@ -30,7 +30,7 @@ trait CorpusWiring { self: WorkerWiring =>
     // lands without a `movies` write whenever the film document is unchanged, so this is the
     // third cursor on the projector and a restart must replay it too.
     new MongoSlotsRepository(mongoConnection.database, persistResumeToken = true,
-      metrics = taskMetrics.slotsChangeMetrics, roster = VenueRoster.of(country), writeMetrics = taskMetrics)
+      metrics = taskMetrics.slotsChangeMetrics, roster = VenueRoster.of(country), writeMetrics = taskMetrics, decodeFailures = taskMetrics)
   /** This wiring's country's title rules — the ONE instance every component below
    *  keys through, so a worker running several countries cannot fold one country's
    *  titles with another's. Passing it explicitly (rather than letting each

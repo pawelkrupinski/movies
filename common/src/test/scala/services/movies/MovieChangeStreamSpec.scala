@@ -29,17 +29,18 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   private final class HandFedSource extends MovieChangeStream.Source {
     val opens    = mutable.Buffer.empty[Option[BsonDocument]]
     @volatile var unsubscribed = false
-    private var observer: Observer[ChangeStreamDocument[StoredMovieDto]] = null
-    override def open(resumeAfter: Option[BsonDocument], o: Observer[ChangeStreamDocument[StoredMovieDto]]): Unit = {
+    val requested = new java.util.concurrent.atomic.AtomicLong(0)
+    private var observer: Observer[ChangeStreamDocument[BsonDocument]] = null
+    override def open(resumeAfter: Option[BsonDocument], o: Observer[ChangeStreamDocument[BsonDocument]]): Unit = {
       opens += resumeAfter
       observer = o
       o.onSubscribe(new Subscription {
-        override def request(n: Long): Unit  = ()
+        override def request(n: Long): Unit  = { requested.addAndGet(n); () }
         override def unsubscribe(): Unit     = unsubscribed = true
         override def isUnsubscribed: Boolean = unsubscribed
       })
     }
-    def emit(change: ChangeStreamDocument[StoredMovieDto]): Unit = observer.onNext(change)
+    def emit(change: ChangeStreamDocument[BsonDocument]): Unit = observer.onNext(change)
     def fail(e: Throwable): Unit                                  = observer.onError(e)
   }
 
@@ -52,8 +53,18 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     def recordCoalescedChange(): Unit                  = coalesced.incrementAndGet()
   }
 
-  private def event(op: String, id: String, fullDocument: StoredMovieDto) =
-    new ChangeStreamDocument[StoredMovieDto](op, new BsonDocument("_data", new BsonString(s"token-$id")),
+  // The source hands post-images over UNDECODED (the stream decodes them), so encode the dto
+  // the way the collection stores it.
+  private def event(op: String, id: String, fullDocument: StoredMovieDto): ChangeStreamDocument[BsonDocument] =
+    rawEvent(op, id, Option(fullDocument).map { dto =>
+      val out = new BsonDocument()
+      MovieCodecs.registry.get(classOf[StoredMovieDto]).encode(new org.bson.BsonDocumentWriter(out), dto,
+        org.bson.codecs.EncoderContext.builder().build())
+      out
+    }.orNull)
+
+  private def rawEvent(op: String, id: String, fullDocument: BsonDocument) =
+    new ChangeStreamDocument[BsonDocument](op, new BsonDocument("_data", new BsonString(s"token-$id")),
       null, null, null, fullDocument, null, new BsonDocument("_id", new BsonString(id)),
       null, null, null, null, null, null, null)
 
@@ -82,6 +93,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     slotsMetrics:        SideCollectionChangeMetrics = SideCollectionChangeMetrics.noop,
     changeStreamMetrics: ChangeStreamMetrics         = ChangeStreamMetrics.noop,
     clock:               Clock                       = Clock.systemUTC(),
+    decodeFailures:      services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop,
     resumeToken:         ChangeStreamResumeToken     = new ChangeStreamResumeToken("movies", database = None, enabled = false),
     rereadRetryMillis:   Long                        = 20L
   ) = new MovieChangeStream(
@@ -95,7 +107,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     slotsMetrics        = slotsMetrics,
     changeDemandWindow  = ChangeStreamDemand.DefaultWindow,
     clock               = clock,
-    rereadRetryMillis   = rereadRetryMillis)
+    rereadRetryMillis   = rereadRetryMillis,
+    decodeFailures      = decodeFailures)
 
   "MovieChangeStream" should "open one cursor for two listeners and fan each re-read upsert out to both" in {
     val source = new HandFedSource
@@ -118,6 +131,30 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     } finally { handleA.close(); handleB.close(); under.close() }
 
     under.isWatching shouldBe false // last listener gone — cursor stopped
+  }
+
+  // One document the codec refuses used to END the cursor: the driver decoded post-images, and
+  // a stream resuming from a persisted token met the same document on every reopen. Now it is
+  // one skipped event — counted, its demand released, its position NOT acknowledged (it was
+  // not applied) — and the next event is applied as usual.
+  it should "skip a post-image it cannot decode, counting it, and keep applying the events after it" in {
+    val source    = new HandFedSource
+    val counted   = mutable.Buffer.empty[String]
+    val token     = new ChangeStreamResumeToken("movies", database = None, enabled = false)
+    val under     = stream(source, resumeToken = token, decodeFailures = collection => { counted.synchronized(counted += collection); () })
+    val delivered = new CountDownLatch(1)
+    val handle    = under.watch(r => if (r.id.value == "good|2024") delivered.countDown(), _ => ())
+    try {
+      val before = source.requested.get()
+      source.emit(rawEvent("insert", "bad|2024", new BsonDocument("_id", new BsonString("bad|2024"))
+        .append("sourceData", new BsonString("not a document"))))
+      counted.synchronized(counted.toSeq) shouldBe Seq("movies")
+      source.requested.get() shouldBe before + 1 // its unit of demand released — no apply will release it
+      token.current shouldBe None                 // …and its position not acknowledged
+
+      source.emit(event("insert", "good|2024", StoredMovieDto.fromDomain("good|2024", MovieRecord(), Instant.EPOCH)))
+      delivered.await(5, TimeUnit.SECONDS) shouldBe true
+    } finally { handle.close(); under.close() }
   }
 
   it should "surface a delete, which carries no post-image, to every listener by its _id" in {

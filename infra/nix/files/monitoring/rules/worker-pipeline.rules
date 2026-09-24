@@ -420,4 +420,5 @@ groups:
             usually a writer that changed shape: the projector's reconcile rewrites the document
             once the writer is fixed. In `movies` nothing is skipped: every read that meets the
             document FAILS (its film's point read, and the whole corpus scan), and the WARN line is
-            that read's failure — fix or remove the document by hand.
+            that read's failure — fix or remove the document by hand. A change stream that meets
+            one skips that event ("skipping undecodable document", rate-limited) and stays open.

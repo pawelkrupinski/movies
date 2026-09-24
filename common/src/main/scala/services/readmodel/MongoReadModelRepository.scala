@@ -288,21 +288,26 @@ class MongoReadModelRepository(
   /** Route each insert / update / replace to `onUpsert` (full post-image via
    *  `UPDATE_LOOKUP`) and each delete to `onDelete(_id)`. The driver auto-
    *  resumes across transient blips; a terminal error flips `live` to false so
-   *  the caller's periodic reload takes over. Requires a replica set. */
+   *  the caller's periodic reload takes over. Requires a replica set.
+   *
+   *  A document the codec refuses is SKIPPED and counted, never the end of the stream — see
+   *  [[services.movies.ChangeEventDecoder]]: decoded inside the driver, one such document
+   *  ended the cursor, and every later write waited on the periodic reload. */
   private def watch[T: ClassTag](coll: MongoCollection[T], onUpsert: T => Unit, onDelete: String => Unit, label: String,
                                  from: Option[StreamCheckpoint]): StreamSubscription = {
     val subRef = new AtomicReference[Subscription]()
     val alive  = new AtomicBoolean(true)
-    val stream = coll.watch().fullDocument(FullDocument.UPDATE_LOOKUP)
+    val decoder = services.movies.ChangeEventDecoder.of[T](label, coll.codecRegistry, decodeFailures)
+    val stream = coll.watch[org.bson.BsonDocument]().fullDocument(FullDocument.UPDATE_LOOKUP)
     from.fold(stream)(checkpoint => stream.startAtOperationTime(new BsonTimestamp(checkpoint.value)))
-      .subscribe(new Observer[ChangeStreamDocument[T]] {
+      .subscribe(new Observer[ChangeStreamDocument[org.bson.BsonDocument]] {
         override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }
-        override def onNext(change: ChangeStreamDocument[T]): Unit = change.getOperationType match {
+        override def onNext(change: ChangeStreamDocument[org.bson.BsonDocument]): Unit = change.getOperationType match {
           case OperationType.DELETE =>
             Option(change.getDocumentKey).flatMap(k => Option(k.getString("_id")))
               .foreach(v => try onDelete(v.getValue) catch { case exception: Throwable => logger.warn(s"$label delete-apply failed: ${exception.getMessage}") })
           case _ =>
-            Option(change.getFullDocument)
+            decoder.postImage(change).presentOption
               .foreach(d => try onUpsert(d) catch { case exception: Throwable => logger.warn(s"$label upsert-apply failed: ${exception.getMessage}") })
         }
         override def onError(e: Throwable): Unit = {

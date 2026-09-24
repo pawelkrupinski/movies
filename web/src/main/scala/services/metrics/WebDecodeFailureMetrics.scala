@@ -7,7 +7,8 @@ import services.readmodel.DecodeFailureMetrics
 /**
  * `kinowo_web_decode_failures_total{country, collection}` — documents the web's read-model
  * scans skipped as undecodable (a film or screening every pod serving from that scan goes
- * without), and `movies` documents its reads of the movies mirror failed on. The worker counts its own scans under `kinowo_worker_decode_failures_total`;
+ * without), `movies` documents its reads of the movies mirror failed on, and post-images a change
+ * stream (web_movies, web_screenings, userStates) skipped rather than end its cursor on. The worker counts its own scans under `kinowo_worker_decode_failures_total`;
  * `DocumentsUndecodable` (worker-pipeline.rules) alerts on either. Seeded at 0.
  */
 class WebDecodeFailureMetrics(registry: PrometheusRegistry, country: String) extends DecodeFailureMetrics {
@@ -17,7 +18,8 @@ class WebDecodeFailureMetrics(registry: PrometheusRegistry, country: String) ext
     .name("kinowo_web_decode_failures")
     .help("Documents that could not be decoded, by country and collection. web_movies|web_screenings: SKIPPED by a " +
       "read-model scan, a film or screening the web serves without. movies: a read of the movies mirror that FAILED " +
-      "on it. ZERO IS THE HEALTHY READING.")
+      "on it. Any collection, from a change stream: a post-image it skipped (the event is not applied, the stream stays " +
+      "open). ZERO IS THE HEALTHY READING.")
     .labelNames("country", "collection")
     .register(registry)
 

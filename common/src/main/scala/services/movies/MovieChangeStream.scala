@@ -64,7 +64,9 @@ final class MovieChangeStream(
   clock:               java.time.Clock = java.time.Clock.systemUTC(),
   // How long after a failed re-read the film is read again — see `applyReread`. Doubled per
   // failure up to `RereadRetryMaxMillis`; a spec shortens it, production never passes it.
-  rereadRetryMillis:   Long = MovieChangeStream.RereadRetryMillis
+  rereadRetryMillis:   Long = MovieChangeStream.RereadRetryMillis,
+  // Where a `movies` post-image the codec refuses is counted — see [[ChangeEventDecoder]].
+  decodeFailures:      services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop
 ) extends Logging with AutoCloseable {
 
   /** When each cursor last DELIVERED an event — the liveness signal an open-but-silent
@@ -73,6 +75,9 @@ final class MovieChangeStream(
    *  round to. See [[ChangeStreamLiveness]]. */
   val liveness = new ChangeStreamLiveness(clock)
 
+  // Post-images arrive undecoded (see `Source`) and are decoded here, so a document the codec
+  // refuses is one skipped event rather than the end of the cursor.
+  private val postImages   = ChangeEventDecoder.of[StoredMovieDto](ChangeStreamLiveness.Movies, MovieCodecs.registry, decodeFailures)
   private val movieChanges = new ChangeStreamFanout[StoredMovieRecord]("MovieRepository")
   private val changeSub    = new AtomicReference[Subscription]()
   private val changeLock   = new AnyRef
@@ -319,11 +324,11 @@ final class MovieChangeStream(
       // Resume from the last persisted token if we have one (a restart / prior terminal
       // error) so events missed while down are replayed; else open at "now".
       val resumeFrom = resumeToken.load()
-      source.open(resumeFrom, new Observer[ChangeStreamDocument[StoredMovieDto]] {
+      source.open(resumeFrom, new Observer[ChangeStreamDocument[BsonDocument]] {
         override def onSubscribe(s: Subscription): Unit = {
           changeSub.set(s); moviesDemand.opened(s); liveness.watching(ChangeStreamLiveness.Movies)
         }
-        override def onNext(change: ChangeStreamDocument[StoredMovieDto]): Unit = {
+        override def onNext(change: ChangeStreamDocument[BsonDocument]): Unit = {
           changeReopen.opened() // a delivered event is what proves the cursor healthy — reset the backoff
           liveness.delivered(ChangeStreamLiveness.Movies)
           recordChangeMetrics(change)
@@ -334,12 +339,11 @@ final class MovieChangeStream(
           // a `clear()` (invalid token) landing while this event is still queued.
           val token      = change.getResumeToken
           val generation = resumeToken.generation
-          val fullDocument = Option(change.getFullDocument)
           val deletedId    = Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
             .map(v => if (v.isString) v.asString.getValue else v.toString)
           // Apply OFF the Netty I/O loop: the stitch read + projection must not run
           // there (they made the loops contend + spin — see `changeApply`).
-          fullDocument match {
+          postImages.postImage(change) match {
             // The movies doc has no showtimes — reread the film STITCHED (via `reread`, the
             // same by-id read the side cursors use) before fanning out, so consumers get a
             // full row. A failed read fans out NOTHING (an empty-cinema record here is what the
@@ -361,7 +365,7 @@ final class MovieChangeStream(
             // content silently lost, since nothing about that path re-read `movies` itself.
             // `reread` closes that window the same way the side cursors' own re-read already
             // does, at the cost of one extra point read per movies apply.)
-            case Some(dto) =>
+            case ChangeEventDecoder.PostImage.Present(dto) =>
               if (sideApplyPending.add(dto._id))
                 applyOffLoop(ChangeStreamLiveness.Movies, moviesDemand) {
                   sideApplyPending.remove(dto._id)
@@ -382,12 +386,19 @@ final class MovieChangeStream(
             // the earlier apply would dispatch the re-created film first and the delete last,
             // leaving every listener on "deleted" for a film that exists. (The earlier apply's own
             // `remove` may then clear the later one's marker; that only costs an extra apply.)
-            case None =>
+            case ChangeEventDecoder.PostImage.Absent =>
               deletedId.foreach(sideApplyPending.remove)
               applyOffLoop(ChangeStreamLiveness.Movies, moviesDemand) {
                 deletedId.foreach(movieChanges.dispatchDelete)
                 if (!moviesHold.held) advanceMovies(token, generation)
               }
+            // A document the codec refuses (counted and logged by the decoder). Nothing to apply,
+            // and it must not END the cursor: decoded inside the driver, it did — and a cursor
+            // resuming from a persisted token met it again on every reopen, dead for good. Its
+            // demand is released; its position is NOT acknowledged, since nothing was applied —
+            // the next applied event moves past it, and a restart replays it into the same skip.
+            case ChangeEventDecoder.PostImage.Undecodable =>
+              moviesDemand.applied()
           }
         }
         override def onError(e: Throwable): Unit = {
@@ -431,7 +442,7 @@ final class MovieChangeStream(
   /** Count each change event by op, and each UPDATE by which field kind changed,
    *  onto the injected sink (noop unless the worker wired the Prometheus one). Best
    *  effort — instrumentation must never break the stream. */
-  private def recordChangeMetrics(change: ChangeStreamDocument[StoredMovieDto]): Unit = Try {
+  private def recordChangeMetrics(change: ChangeStreamDocument[BsonDocument]): Unit = Try {
     import scala.jdk.CollectionConverters._
     val op = ChangeStreamMetrics.normalizeOp(Option(change.getOperationType).map(_.getValue).getOrElse(""))
     changeStreamMetrics.recordEvent(op)
@@ -476,16 +487,18 @@ object MovieChangeStream {
   private[movies] val CloseDrainSeconds   = 10L
 
   /** Where the `movies` events come from. `resumeAfter` is the persisted position to
-   *  reopen from (None opens at "now"); the observer receives every delivered change. */
+   *  reopen from (None opens at "now"); the observer receives every delivered change, its
+   *  post-image UNDECODED — the stream decodes it, so a document the codec refuses cannot
+   *  end the cursor (see [[ChangeEventDecoder]]). */
   trait Source {
-    def open(resumeAfter: Option[BsonDocument], observer: Observer[ChangeStreamDocument[StoredMovieDto]]): Unit
+    def open(resumeAfter: Option[BsonDocument], observer: Observer[ChangeStreamDocument[BsonDocument]]): Unit
   }
 
   object Source {
     /** Production: the collection's own change stream, with post-images looked up. */
     def ofCollection(c: MongoCollection[StoredMovieDto]): Source = new Source {
-      override def open(resumeAfter: Option[BsonDocument], observer: Observer[ChangeStreamDocument[StoredMovieDto]]): Unit = {
-        val base = c.watch().fullDocument(FullDocument.UPDATE_LOOKUP)
+      override def open(resumeAfter: Option[BsonDocument], observer: Observer[ChangeStreamDocument[BsonDocument]]): Unit = {
+        val base = c.watch[BsonDocument]().fullDocument(FullDocument.UPDATE_LOOKUP)
         resumeAfter.fold(base)(t => base.resumeAfter(Document(t))).subscribe(observer)
       }
     }
