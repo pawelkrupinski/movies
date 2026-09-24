@@ -28,10 +28,17 @@ class LogCaptureSpec extends AnyFlatSpec with Matchers {
 
   private val Logger = "kinowo.log-capture-spec"
 
+  // A PRIVATE logback context, not `LoggerFactory.getLogger`: while SLF4J is still initialising
+  // (another suite in the same JVM triggering it concurrently) the factory hands out
+  // `SubstituteLogger`s, and casting one to logback's Logger threw ClassCastException on CI
+  // (2026-09-24). The collector under test never looks at the event's logger, so it need not
+  // come from the global factory.
+  private val context = new ch.qos.logback.classic.LoggerContext()
+
   private def event(message: String): ILoggingEvent =
     new LoggingEvent(
       classOf[LogCaptureSpec].getName,
-      LoggerFactory.getLogger(Logger).asInstanceOf[ch.qos.logback.classic.Logger],
+      context.getLogger(Logger),
       Level.INFO,
       message,
       null,
@@ -90,7 +97,7 @@ class LogCaptureSpec extends AnyFlatSpec with Matchers {
   it should "leave the logger's level alone unless asked to change it" in {
     // The ROOT-appender specs assert that the CONFIGURED level lets an audit line
     // through; a capture that forced DEBUG would answer their question for them.
-    val logger = LoggerFactory.getLogger(Logger).asInstanceOf[ch.qos.logback.classic.Logger]
+    val logger = LogCapture.logbackLogger(Logger)
     logger.setLevel(Level.WARN)
     try {
       LogCapture.capture(Logger)(logger.info("suppressed")) shouldBe empty

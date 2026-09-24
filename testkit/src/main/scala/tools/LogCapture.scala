@@ -57,7 +57,7 @@ object LogCapture {
    *  `common/testOnly services.movies.*` on 2026-09-06. Once initialisation completes
    *  `getLogger` returns the real logger, so this waits for it; when it is already
    *  done (every call but the first), the loop body never runs. */
-  private def logbackLogger(name: String): LogbackLogger = {
+  def logbackLogger(name: String): LogbackLogger = {
     val deadline = System.nanoTime() + 5L * 1000000000L
     var logger   = LoggerFactory.getLogger(name)
     while (!logger.isInstanceOf[LogbackLogger] && System.nanoTime() < deadline) {

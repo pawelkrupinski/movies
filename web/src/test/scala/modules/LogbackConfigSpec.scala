@@ -4,14 +4,12 @@ import ch.qos.logback.classic.{Level, Logger}
 import controllers.RetiredAccessLog
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.slf4j.LoggerFactory
 import services.movies.RemovalAudit
 import tools.LogCapture
 
 class LogbackConfigSpec extends AnyFlatSpec with Matchers {
 
-  private val root = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME)
-    .asInstanceOf[Logger]
+  private val root: Logger = LogCapture.logbackLogger(org.slf4j.Logger.ROOT_LOGGER_NAME)
 
   private def appenderNames: Seq[String] = {
     val it = root.iteratorForAppenders()
