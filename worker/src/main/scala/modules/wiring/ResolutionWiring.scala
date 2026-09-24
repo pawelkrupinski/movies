@@ -116,10 +116,11 @@ trait ResolutionWiring { self: WorkerWiring =>
   // reaper does — the leftover stays due and re-tries next period.
   def maxTmdbRetryEnqueuePerTick: Int = Env.positiveLong("KINOWO_TMDB_RETRY_MAX_ENQUEUE_PER_TICK", 100L).toInt
   lazy val unresolvedTmdbReaper = new UnresolvedTmdbReaper(movieCache, movieService.retryResolve,
-    // `forceResolve` + `country` drive the stale-language sweep: a row whose Tmdb slot
-    // was fetched in another deployment's language gets re-resolved so its title /
-    // synopsis / genres come back in this country's own.
-    forceRetry = movieService.forceResolve, refill = movieService.refillTmdbSlot, country = country,
+    // `reexamineResolution` + `country` drive the stale-language and misresolution
+    // sweeps: a row whose Tmdb slot was fetched in another deployment's language gets its
+    // slot re-fetched in this country's own, and a doubted resolution is re-asked — and
+    // forced only when the answer is a different film.
+    forceRetry = movieService.reexamineResolution, refill = movieService.refillTmdbSlot, country = country,
     // A cinema-vs-resolution DIRECTOR disagreement is confirmed against the film's
     // TMDB crew before the sweep acts: the venue crediting a film's other director,
     // or the person behind a pseudonym, is not a wrong film, and re-resolving a

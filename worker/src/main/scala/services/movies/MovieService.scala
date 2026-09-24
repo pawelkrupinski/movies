@@ -889,6 +889,36 @@ class MovieService(
   def forceResolve(key: CacheKey): Unit =
     cache.get(key).foreach(dispatchWithHints(key, _, ResolveMode.Force))
 
+  /** Re-examine a RESOLVED row whose resolution the misresolution sweep
+   *  ([[services.tasks.UnresolvedTmdbReaper]]) doubts — its cinemas contradict it, it was
+   *  concluded on weaker evidence than it now holds, or its slot is in another language.
+   *
+   *  Asks first, then acts. The question — which film do the row's own cinemas name? — is
+   *  answered off its scraped data without writing anything (the same cache-free resolve
+   *  staging uses, past the memoised id). Only a DIFFERENT film takes the forced path,
+   *  which strips the row to its cinema slots so a self-locked wrong key cannot re-confirm
+   *  itself. The same film keeps its ratings and has its `Tmdb` slot refreshed by id,
+   *  which rewrites nothing unless the slot actually changed (a stale language). So does
+   *  a row whose cinemas name NO film: forcing it would strip the id, find nothing, and
+   *  leave an unresolved row the read model prunes — a wrong film is the lesser harm
+   *  (UK "Matilda: The Musical", stripped, folded away and re-created every sweep).
+   *
+   *  Forcing unconditionally was a loop: DE "Überleben" (2020) credits a director TMDB
+   *  does not, so every sweep stripped the row, re-found the same film, re-fetched its
+   *  ratings, and left it flagged for the next sweep — ten writes a period, for ever. */
+  def reexamineResolution(key: CacheKey): Unit =
+    cache.get(key).filter(_.tmdbId.isDefined).foreach { row =>
+      val scraped = row.scrapedOnly
+      tmdbIdCache.forget(key.cleanTitle)
+      resolveStagingRecord(key.cleanTitle, scraped.resolvedYear, scraped).map(_.tmdbId).foreach {
+        case Some(other) if !row.tmdbId.contains(other) => forceResolve(key)
+        case reached =>
+          logger.info(s"TMDB re-examine: '${key.cleanTitle}' (${key.year.getOrElse("?")}) — its cinemas name " +
+                      reached.fold("no film")(id => s"tmdbId=$id") + s"; keeping tmdbId=${row.tmdbId.get} and its ratings.")
+          rewriteTmdbSlot(key, row)
+      }
+    }
+
   /** Give a RESOLVED row back the `Tmdb` slot it has lost, by id — no search.
    *
    *  A row that carries a `tmdbId` but no `Tmdb` slot renders without TMDB's poster,
@@ -905,13 +935,17 @@ class MovieService(
    *  Returns true when a slot was written; false when the row needs no refill or TMDB
    *  could not answer (the reaper sees it again next period). */
   def refillTmdbSlot(key: CacheKey): Boolean =
-    cache.get(key).filter(e => e.tmdbId.isDefined && !e.data.contains(Tmdb)).exists { e =>
-      val tmdbId = e.tmdbId.get
-      tmdb.fullDetails(tmdbId).exists { details =>
-        val ids = Try(tmdb.externalIds(tmdbId)).getOrElse(TmdbClient.ExternalIds(e.imdbId, e.wikidataId))
-        cache.putIfPresent(key, cur => buildResolvedRecord(tmdbId, hit = None, ids, Some(details), cur, basis = None))
-      }
+    cache.get(key).filter(e => e.tmdbId.isDefined && !e.data.contains(Tmdb)).exists(rewriteTmdbSlot(key, _))
+
+  /** Fetch a resolved row's `Tmdb` slot by its own id and write it through the resolution
+   *  builder, ratings and cinemas carried forward. False when TMDB could not answer. */
+  private def rewriteTmdbSlot(key: CacheKey, e: MovieRecord): Boolean = {
+    val tmdbId = e.tmdbId.get
+    tmdb.fullDetails(tmdbId).exists { details =>
+      val ids = Try(tmdb.externalIds(tmdbId)).getOrElse(TmdbClient.ExternalIds(e.imdbId, e.wikidataId))
+      cache.putIfPresent(key, cur => buildResolvedRecord(tmdbId, hit = None, ids, Some(details), cur, basis = None))
     }
+  }
 
   /** Dispatch a row's TMDB resolution with its `data`-merged director +
    *  originalTitle hints (the only path `directorWalk` can fire on for films
