@@ -396,10 +396,9 @@ class AuthController(
    *  visitor back where they pressed the button.
    *
    *  Never propagates onwards — this IS the propagation — so the pair cannot
-   *  ping-pong. Reachable by GET because it is the second leg of a redirect,
-   *  which does mean a third-party page can log somebody out by embedding it;
-   *  the same is already true of the POST logout by design (see the form's note
-   *  in `_navbar`), and logging a visitor OUT is the whole of what it can do. */
+   *  ping-pong. Reachable by GET because it is the second leg of a redirect —
+   *  which any page could otherwise embed, so the route is `siteonly` and
+   *  `CrossSiteWriteFilter` refuses it unless it came from one of our own pages. */
   def ssoLogout(): Action[AnyContent] = Action { request =>
     val back = AuthController.switchTarget(request.getQueryString("next")).map(_ + "/")
       .getOrElse(routes.LandingController.index().url)

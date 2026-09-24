@@ -82,6 +82,22 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     ("POST",   "/admin/config/reset")                    -> Protection(Auth.Admin,    Csrf.CrossSiteFilter),
   )
 
+  /** Every GET that changes a visitor's session, and what keeps another site's page
+   *  from driving it. A GET is exactly what a foreign `<img>` or link can issue. */
+  private val StateChangingGets: Map[(String, String), GetGuard] = Map(
+    // The far half of a logout, reached by redirect from our OTHER domain — so
+    // cross-site by nature, but only ever from a page of ours.
+    ("GET", "/auth/sso/logout")          -> GetGuard.SiteOnly,
+    // The cross-domain sign-in legs: the binding each code is minted for is the
+    // guard (AuthCodeBindingPropertySpec), and they cross sites by design.
+    ("GET", "/auth/sso/start")           -> GetGuard.HandoffBinding,
+    ("GET", "/auth/sso/finish")          -> GetGuard.HandoffBinding,
+    // OAuth: the `state` round trip through the session binds the callback to
+    // the browser that started it (AuthControllerSpec).
+    ("GET", "/auth/:provider/start")     -> GetGuard.OauthState,
+    ("GET", "/auth/:provider/callback")  -> GetGuard.OauthState,
+  )
+
   // ── The application under test: the real router, the real chain ────────────
 
   private val context = ApplicationLoader.Context.create(Environment.simple())
@@ -273,6 +289,47 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     }
   }
 
+  "every state-changing GET" should "be a route the router serves, marked `siteonly` exactly when declared so" in {
+    withClue("declared but not served: ") { (StateChangingGets.keySet -- served.filter(_._1 == "GET").toSet) shouldBe empty }
+    // Read off the routes file itself: most GET handlers are not wired here, so the
+    // router cannot be asked for their tags. A modifier binds to the NEXT route line.
+    val lines = scala.io.Source.fromResource("routes").getLines().map(_.trim).filter(l => l.nonEmpty && !l.startsWith("#")).toSeq
+    val marked = lines.sliding(2).collect {
+      case Seq(modifier, route) if modifier.startsWith("+") && modifier.split("\\s+").contains("siteonly") =>
+        val Array(verb, path) = route.split("\\s+").take(2)
+        verb -> path
+    }.toSet
+    marked shouldBe StateChangingGets.collect { case (route, GetGuard.SiteOnly) => route }.toSet
+  }
+
+  it should "refuse another site's page before its controller when it is `siteonly`" in {
+    StateChangingGets.collect { case (route, GetGuard.SiteOnly) => route }.foreach { case (verb, path) =>
+      Seq(
+        Seq("Sec-Fetch-Site" -> "cross-site", "Referer" -> "https://evil.example/page"),
+        Seq("Sec-Fetch-Site" -> "cross-site"),                 // referrer stripped
+        Seq("Referer" -> "https://evil.example/page")          // no Fetch Metadata
+      ).foreach { headers =>
+        val outcome = dispatch(signedInAsAdmin(FakeRequest(verb, concrete(path)).withHeaders(headers*)))
+        withClue(s"$verb $path $headers: ") {
+          outcome.reachedController shouldBe false
+          outcome.status shouldBe 403
+        }
+      }
+    }
+  }
+
+  // The positive control: the SSO logout's legitimate caller is our other domain.
+  it should "let our own pages, on either domain, reach a `siteonly` GET" in {
+    StateChangingGets.collect { case (route, GetGuard.SiteOnly) => route }.foreach { case (verb, path) =>
+      (models.Country.deployedOrigins.toSeq.map(origin => Seq("Sec-Fetch-Site" -> "cross-site", "Referer" -> s"$origin/")) :+
+        Seq("Sec-Fetch-Site" -> "same-origin")).foreach { headers =>
+        withClue(s"$verb $path $headers: ") {
+          dispatch(signedInAsAdmin(FakeRequest(verb, concrete(path)).withHeaders(headers*))).reachedController shouldBe true
+        }
+      }
+    }
+  }
+
   "every route" should "never grant a foreign origin credentials, on a preflight or on the request itself" in {
     served.foreach { case (verb, path) =>
       val preflight = Await.result(Filters(Terminal, chain*)(FakeRequest("OPTIONS", concrete(path)).withHeaders(
@@ -308,6 +365,17 @@ object RouteProtectionMatrixSpec {
     case CrossSiteFilter
     /** Play's CSRF token check applies. No route uses it today. */
     case PlayToken
+  }
+
+  /** What keeps another site from driving a state-changing GET. */
+  enum GetGuard {
+    /** `+ siteonly`: `CrossSiteWriteFilter` refuses it unless the page it came
+     *  from is one of our deployed origins. */
+    case SiteOnly
+    /** A one-shot code bound to the browser that spends it. */
+    case HandoffBinding
+    /** The OAuth `state` held in the starting browser's session. */
+    case OauthState
   }
 
   final case class Protection(auth: Auth, csrf: Csrf)

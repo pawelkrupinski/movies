@@ -121,7 +121,10 @@ GET     /auth/sso/start             controllers.AuthController.ssoStart()
 GET     /auth/sso/finish            controllers.AuthController.ssoFinish()
 # The far half of a logout. The sign-in pairing establishes a session on BOTH
 # domains, so clearing one would leave the visitor signed out where they pressed
-# the button and signed in a domain away.
+# the button and signed in a domain away. `siteonly`: a GET any page can embed, so
+# `CrossSiteWriteFilter` refuses it unless it came from one of OUR pages
+# (`RouteProtectionMatrixSpec` pins which GETs carry it).
++ siteonly
 GET     /auth/sso/logout            controllers.AuthController.ssoLogout()
 
 GET     /auth/:provider/start       controllers.AuthController.start(provider: String)

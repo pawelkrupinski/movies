@@ -27,17 +27,33 @@ import scala.concurrent.Future
  * origin. A request naming no page at all — the native apps (URLSession / OkHttp),
  * Meta's data-deletion callback — passes untouched, as before. Reads and CORS
  * preflights pass.
+ *
+ * A GET that changes session state is a write any page can issue with an `<img>`,
+ * so its route carries the `siteonly` modifier and is held to the same rule — with
+ * one allowance: it may come from ANY of our deployed origins, since the far half
+ * of a sign-out (`/auth/sso/logout`) is reached by redirect from our other domain,
+ * which the browser rightly calls cross-site. A cross-site one naming no page (a
+ * stripped referrer) is refused: that is also how a forged one would arrive.
  */
 class CrossSiteWriteFilter()(implicit override val mat: Materializer) extends Filter {
 
   override def apply(next: RequestHeader => Future[Result])(request: RequestHeader): Future[Result] =
     if (CrossSiteWriteFilter.UnsafeMethods(request.method) && CrossSiteWriteFilter.crossSite(request))
       Future.successful(Results.Forbidden("Cross-site write refused."))
+    else if (CrossSiteWriteFilter.siteOnly(request) && CrossSiteWriteFilter.crossSite(request) &&
+             !CrossSiteWriteFilter.namedOrigin(request).exists(models.Country.deployedOrigins))
+      Future.successful(Results.Forbidden("Cross-site request refused."))
     else next(request)
 }
 
 object CrossSiteWriteFilter {
   private val UnsafeMethods = Set("POST", "PUT", "PATCH", "DELETE")
+
+  /** The route modifier marking a GET that changes session state. */
+  val SiteOnlyModifier = "siteonly"
+
+  private def siteOnly(request: RequestHeader): Boolean =
+    request.attrs.get(play.api.routing.Router.Attrs.HandlerDef).exists(_.modifiers.contains(SiteOnlyModifier))
 
   /** Whether `request` came from another site's page — see the class doc. */
   private[modules] def crossSite(request: RequestHeader): Boolean =
