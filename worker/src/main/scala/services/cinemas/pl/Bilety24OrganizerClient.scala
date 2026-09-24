@@ -56,7 +56,12 @@ class Bilety24OrganizerClient(http: HttpFetch, organizerUrl: String, override va
   override def sourceKey: Option[String] =
     Bilety24OrganizerClient.organiserId(organizerUrl).map(id => s"bilety24.pl/kino/organizator/$id")
 
-  override val detailGroup: String = "bilety24-organizer"
+  // Per VENUE, not per portal: each venue is standalone (its detail lands on its own
+  // slot, `detailTarget` = `cinema`), and the handler finds the enricher by this
+  // group. One shared "bilety24-organizer" group collapsed every venue onto
+  // whichever the handler's map kept, so every bilety24 film's detail was written to
+  // that one cinema's slot — a phantom "Janosik" on films Janosik never showed.
+  override val detailGroup: String = s"bilety24-organizer-${cinema.slug}"
 
   // The detail is purely display enrichment (synopsis + poster); the listing
   // already carries the only identity the page has (the title), so the row

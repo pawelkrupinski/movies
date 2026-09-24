@@ -537,4 +537,19 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       }
     }
   }
+
+  // The EnrichDetails handler looks an enricher up BY `detailGroup` and writes the
+  // fetched detail to THAT enricher's `detailTarget`. Two standalone venues sharing a
+  // group therefore collapse to whichever the map kept last, and every other venue's
+  // film detail lands on that one cinema's slot: every bilety24-hosted film grew a
+  // phantom "Janosik" (Żywiec) cinema, in some arrival orders and not others — found by
+  // HardClusterConvergenceIntegrationSpec as a Bałtyk (Rybnik) listing.
+  it should "never let two detail enrichers that write to different targets share a detail group" in {
+    import services.cinemas.common.DetailEnricher
+    val clashes = catalog().all.collect { case de: DetailEnricher => de }
+      .groupBy(_.detailGroup).toSeq.sortBy(_._1)
+      .collect { case (group, enrichers) if enrichers.map(_.detailTarget).distinct.size > 1 =>
+        s"$group -> ${enrichers.map(_.detailTarget.displayName).distinct.sorted.take(4).mkString(", ")}" }
+    clashes shouldBe empty
+  }
 }
