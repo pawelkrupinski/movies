@@ -90,6 +90,14 @@ trait EgressWiring { self: WorkerWiring =>
 
   lazy val multikinoFetch: HttpFetch =
     proxyPrimary(MultikinoClient.fetchFor(httoFetch, zyteMeter), warmUrl = Some(MultikinoClient.HomeUrl))
+  // The same route for Multikino's share-card POSTERS, but NOT metered to the "Residential proxy"
+  // /uptime row: that row says how often the SCRAPES fall back to Zyte, and a poster the origin
+  // refuses through the proxy is not the proxy failing. Its own breaker too, so poster failures
+  // never open the scrapes'. The paid-egress counters still see it: it is paid for.
+  lazy val multikinoPosterFetch: HttpFetch = {
+    val fallback = MultikinoClient.fetchFor(httoFetch, zyteMeter)
+    proxyShards.fold(fallback)(EgressWiring.proxyPrimary(_, fallback, Some(MultikinoClient.HomeUrl), meter = decodoMeter))
+  }
   // Zyte residential egress → direct fallback (Zyte only when ZYTE_API_KEY is set).
   lazy val zyteFetch: HttpFetch = ZyteFallback.fetchFor(httoFetch, meter = zyteMeter)
   // biletyna.pl 403s our datacenter IP; residential proxy primary, Zyte fallback.

@@ -55,6 +55,9 @@ class ShareCardStore(val root: Path) {
   def cardPath(filmId: String): Path   = root.resolve(ShareCardFile.name(filmId))
   def basePath(filmId: String): Path   = bases.resolve(ShareCardFile.name(filmId))
   def posterPath(filmId: String): Path = posters.resolve(ShareCardFile.name(filmId))
+  /** Where a paid poster route remembers the posters that failed (see `RememberedFailurePosterDownload`):
+   *  a dot directory under the poster cache, which the janitor's listing does not descend into. */
+  def failedPosters: Path = posters.resolve(".failed")
 
   /** The version a file was written with ([[writeAtomically]]), or None when it is absent. */
   def version(path: Path): Option[String] = stamp(path).get("v")

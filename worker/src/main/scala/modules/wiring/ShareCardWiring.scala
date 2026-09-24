@@ -29,9 +29,12 @@ trait ShareCardWiring { self: WorkerWiring =>
   lazy val shareCardBudgetBytes: Long = Env.positiveLong("KINOWO_SHARE_CARD_BUDGET_MB", 1024L) * 1024 * 1024
 
   /** Posters download directly, except a Cloudflare-blocked site's, which go through the egress
-   *  its scrapes use: Multikino 403s the worker's IP on every poster as on its pages. */
+   *  its scrapes use: Multikino 403s the worker's IP on every poster as on its pages. That route
+   *  is PAID (the proxy, Zyte behind it), so a poster that fails on it is remembered rather than
+   *  asked for again by every render and every daily backfill. */
   private lazy val posterDownload: PosterDownload = PosterDownload.routed(new HttpPosterDownload(), Map(
-    java.net.URI.create(services.cinemas.pl.MultikinoClient.HomeUrl).getHost -> new EgressPosterDownload(multikinoFetch)))
+    java.net.URI.create(services.cinemas.pl.MultikinoClient.HomeUrl).getHost ->
+      new RememberedFailurePosterDownload(new EgressPosterDownload(multikinoPosterFetch), shareCardStore.failedPosters, clock)))
 
   lazy val shareCardService: ShareCardService = new ShareCardService(
     country, shareCardStore,

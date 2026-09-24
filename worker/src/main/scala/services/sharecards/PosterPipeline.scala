@@ -142,6 +142,65 @@ class EgressPosterDownload(http: tools.HttpFetch, maxBytes: Long = PosterPipelin
     }
 }
 
+/** [[PosterDownload]] for a PAID route that remembers each failed poster for a while and answers
+ *  it from the memory, without the request: a Multikino poster that 403s through the residential
+ *  proxy falls back to Zyte, billed per request, and the daily posterless backfill asked for the
+ *  same dead poster every day. A refusal (4xx) is remembered for [[RememberedFailurePosterDownload.RefusedFor]],
+ *  any other failure for [[RememberedFailurePosterDownload.FailedFor]]; a success forgets it.
+ *
+ *  The memory is one empty file per failed URL in `dir` (named by the URL's hash, its reason in
+ *  the name, its age the file's modified time), so a restart does not forget it and every replica
+ *  of the country shares it. An expired entry is removed when next read. */
+class RememberedFailurePosterDownload(delegate: PosterDownload, dir: Path, clock: java.time.Clock) extends PosterDownload {
+  import RememberedFailurePosterDownload.*
+
+  def fetch(url: String): Either[String, Path] =
+    remembered(url).map(Left(_)).getOrElse {
+      val result = delegate.fetch(url)
+      result match {
+        case Left(reason) => remember(url, reason)
+        case Right(_)     => forget(url)
+      }
+      result
+    }
+
+  private def entries(url: String): Seq[Path] = {
+    import scala.jdk.CollectionConverters.*
+    val prefix = tools.Digest.sha256Hex(url).take(16) + "."
+    Try(Using.resource(Files.list(dir))(_.iterator.asScala.filter(_.getFileName.toString.startsWith(prefix)).toList))
+      .getOrElse(Nil)
+  }
+
+  private def remembered(url: String): Option[String] =
+    entries(url).flatMap { entry =>
+      val reason = entry.getFileName.toString.dropWhile(_ != '.').drop(1)
+      val alive  = Try(Files.getLastModifiedTime(entry).toInstant).toOption
+        .exists(at => clock.instant().isBefore(at.plusMillis(forReason(reason).toMillis)))
+      if (!alive) Try(Files.deleteIfExists(entry))
+      Option.when(alive)(reason)
+    }.headOption
+
+  private def remember(url: String, reason: String): Unit = Try {
+    forget(url)
+    Files.createDirectories(dir)
+    val entry = dir.resolve(s"${tools.Digest.sha256Hex(url).take(16)}.$reason")
+    Files.write(entry, Array.emptyByteArray)
+    Files.setLastModifiedTime(entry, java.nio.file.attribute.FileTime.from(clock.instant()))
+  }
+
+  private def forget(url: String): Unit = entries(url).foreach(entry => Try(Files.deleteIfExists(entry)))
+}
+
+object RememberedFailurePosterDownload {
+  import scala.concurrent.duration.*
+  /** A poster the origin refused: it will not start working tomorrow. */
+  val RefusedFor: FiniteDuration = 14.days
+  /** Any other failure (a timeout, a 5xx, the proxy): long enough that the daily backfill skips it. */
+  val FailedFor: FiniteDuration  = 3.days
+
+  private def forReason(reason: String): FiniteDuration = if (reason == PosterFailure.Http4xx) RefusedFor else FailedFor
+}
+
 /** [[PosterDownload]] over the JDK client: a generous connect budget (some cinema origins take
  *  ~6-7s to a cold TLS connect, past the scrapers' tight 5s), a bounded request time, and a byte
  *  cap enforced while streaming, so a multi-hundred-megabyte "poster" is abandoned at the cap
