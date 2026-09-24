@@ -47,3 +47,21 @@ tests:
           # clause) this test fails on the extra, unlisted series.
           - labels: 'kinowo_web_movies_served{scope="all",city="hadbug",country="pl"}'
             value: 0
+
+  # ── A SERVING CITY AND A CITY THAT NEVER WAS ACTIVE ARE BOTH SILENT ─────────────────────────────
+  # "steady" serves 4 films throughout; "tiny" has served at most 2 in the last day, under the >= 4
+  # activity floor, and is now at 0 -- a venue between programmes, not a broken city.
+  - interval: 10m
+    input_series:
+      - series: 'kinowo_web_movies_served{scope="all",city="steady",country="pl"}'
+        values: '4x156'
+      - series: 'kinowo_worker_movies_served{scope="all",city="steady",country="pl"}'
+        values: '4x156'
+      - series: 'kinowo_web_movies_served{scope="all",city="tiny",country="pl"}'
+        values: '2x146 0x10'
+      - series: 'kinowo_worker_movies_served{scope="all",city="tiny",country="pl"}'
+        values: '2x156'
+    promql_expr_test:
+      - expr: '(kinowo_web_movies_served{scope="all"} == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (city) (max by (city) (kinowo_worker_movies_served{scope="all"}) > 0)'
+        eval_time: 1550m
+        exp_samples: []

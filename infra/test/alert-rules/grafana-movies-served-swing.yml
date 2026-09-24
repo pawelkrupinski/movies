@@ -51,3 +51,21 @@ tests:
           # extra, unlisted series.
           - labels: '{scope="all",city="hadbug",country="pl"}'
             value: 1
+
+  # ── A STEADY CITY IS SILENT ──────────────────────────────────────────────────────────────────────
+  # Both sides flat at 8 films for the whole window, and a small dip of 2 (under the >=4 floor)
+  # elsewhere: no series at all comes out, so Grafana has nothing to hold against the threshold.
+  - interval: 10m
+    input_series:
+      - series: 'kinowo_web_movies_served{scope="all",city="steady",country="pl"}'
+        values: '8x310'
+      - series: 'kinowo_worker_movies_served{scope="all",city="steady",country="pl"}'
+        values: '8x310'
+      - series: 'kinowo_web_movies_served{scope="all",city="dipped",country="pl"}'
+        values: '8x300 6x10'
+      - series: 'kinowo_worker_movies_served{scope="all",city="dipped",country="pl"}'
+        values: '8x310'
+    promql_expr_test:
+      - expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5)'
+        eval_time: 3010m
+        exp_samples: []

@@ -1,4 +1,4 @@
-# UNIT TESTS FOR THE CONTAINER IMAGE COLLECTOR'S ALERTS.
+# UNIT TESTS FOR THE K3S RULES, first written for the container image collector's alerts.
 #
 # These two rules exist because `FilesystemWillFillWithin7Days` fired on k3s-worker-1 on
 # 2026-09-05 with 73G of the root disk held by 209 containerd images, nine of which were in use.
@@ -133,3 +133,221 @@ tests:
       - eval_time: 3d
         alertname: ContainerImageGarbageCollectionMetricAbsent
         exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A HEALTHY CLUSTER, WHICH EVERY K3S AND KUBE-STATE-METRICS RULE MUST LEAVE SILENT. Both k3s
+  # units active, the node Ready, every Deployment at its replica count, no container waiting or
+  # OOM-killed, and kube-state-metrics answering -- the steady state these rules page away from.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a healthy cluster is silent
+    input_series:
+      - series: 'node_systemd_unit_state{name="k3s.service",state="active",role="monitoring",host="monitoring-1"}'
+        values: '1x60'
+      - series: 'node_systemd_unit_state{name="k3s.service",state="active",role="k3s-worker",host="k3s-worker-1"}'
+        values: '1x60'
+      - series: 'kube_node_info{node="k3s-worker-1"}'
+        values: '1x60'
+      - series: 'kube_node_status_condition{condition="Ready",status="true",node="k3s-worker-1"}'
+        values: '1x60'
+      - series: 'kube_deployment_spec_replicas{namespace="kinowo",deployment="web"}'
+        values: '2x60'
+      - series: 'kube_deployment_status_replicas_ready{namespace="kinowo",deployment="web"}'
+        values: '2x60'
+      - series: 'kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff",namespace="kinowo",pod="worker-pl-5d8f",container="worker"}'
+        values: '0x60'
+      - series: 'kube_pod_container_status_last_terminated_reason{reason="OOMKilled",namespace="kinowo",pod="worker-pl-5d8f",container="worker"}'
+        values: '1x60'
+      - series: 'kube_pod_container_status_restarts_total{namespace="kinowo",pod="worker-pl-5d8f",container="worker"}'
+        values: '3x60'
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: K3sServerNotRunning
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: K3sAgentNotRunning
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: K3sUnitStateAbsent
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: K3sNodeNotReady
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: K3sDeploymentReplicasMissing
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: K3sPodCrashLooping
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: K3sContainerOOMKilled
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: KubeStateMetricsSeriesAbsent
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE CONTROL PLANE STOPS on monitoring-1 at 11m, and the agent on the worker at the same
+  # moment. The server pages after its 5m hold; the agent, which a rolling restart of k3s itself
+  # takes down for minutes, waits 10m -- so at 18m only the server is firing.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: stopped k3s units fire after their holds
+    input_series:
+      - series: 'node_systemd_unit_state{name="k3s.service",state="active",role="monitoring",host="monitoring-1"}'
+        values: '1x10 0x30'
+      - series: 'node_systemd_unit_state{name="k3s.service",state="active",role="k3s-worker",host="k3s-worker-1"}'
+        values: '1x10 0x30'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: K3sServerNotRunning
+        exp_alerts: []
+      - eval_time: 18m
+        alertname: K3sServerNotRunning
+        exp_alerts:
+          - exp_labels:
+              host: "monitoring-1"
+              name: "k3s.service"
+              role: "monitoring"
+              severity: "critical"
+              state: "active"
+            exp_annotations:
+              description: "No API server: nothing can be scheduled, `kubectl` does not answer, and the agent on k3s-worker-1 will go NotReady on its own once its lease expires. `journalctl -u k3s -n 200`. REMEMBER WHERE THIS PROCESS SITS IN THE QUEUE: k3s runs on the monitoring host with `CPUWeight = 100` against Prometheus's 400 and Alertmanager's 300 (roles/k3s-server.nix says so on its own unit, roles/prometheus.nix on the others), so a starved monitoring-1 sheds k3s FIRST, by design. If this fires alongside `CpuBusySustained` or a memory alert on the same host, the CPU weighting worked and k3s is the symptom rather than the cause."
+              summary: "The k3s control plane is not running on monitoring-1"
+      - eval_time: 18m
+        alertname: K3sAgentNotRunning
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: K3sAgentNotRunning
+        exp_alerts:
+          - exp_labels:
+              host: "k3s-worker-1"
+              name: "k3s.service"
+              role: "k3s-worker"
+              severity: "warning"
+              state: "active"
+            exp_annotations:
+              description: "A WARNING ONLY BECAUSE THIS NODE IS IDLE. k3s-worker-1 is an 8-core cx43 bought ahead of the workloads that will move onto it, and it currently runs none -- so an agent that is down costs nothing today. The moment anything real is scheduled there, raise this to critical and shorten the `for:`; leaving a warning on a node that serves traffic is how an outage gets found by a user. Check that the control plane is up first (see `K3sServerNotRunning`): an agent whose server is gone stops for a reason that is not its own."
+              summary: "The k3s agent is not running on k3s-worker-1"
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # NOTHING REPORTS AT ALL: no k3s unit state and no kube-state-metrics. Both absent() rules
+  # hold for 30m, so they are silent at 20m and firing at 40m.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: missing k3s unit state and kube-state-metrics fire after 30m
+    input_series:
+      - series: 'node_systemd_unit_state{name="sshd.service",state="active",role="k3s-worker",host="k3s-worker-1"}'
+        values: '1x60'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: K3sUnitStateAbsent
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: K3sUnitStateAbsent
+        exp_alerts:
+          - exp_labels:
+              name: "k3s.service"
+              severity: "warning"
+            exp_annotations:
+              description: "Both k3s alerts are comparisons and cannot fire without this series, so the only view of k3s that survives the control plane being gone has itself gone. kube-state-metrics does NOT cover this: it learns everything from the apiserver, so it goes quiet in exactly the case these two rules exist for. The likely causes are node_exporter's systemd collector being off, or both k3s hosts having dropped out of scrape. IT DOES NOT MEAN K3S IS RUNNING."
+              summary: "Nothing is reporting the state of any k3s unit"
+      - eval_time: 20m
+        alertname: KubeStateMetricsSeriesAbsent
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: KubeStateMetricsSeriesAbsent
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+            exp_annotations:
+              description: "Every rule in this group is a comparison and none of them can fire without kube-state-metrics, so the cluster's workloads are currently unwatched -- node conditions, replica counts, crash loops and OOM kills all included. If `TargetDown` is silent alongside this, the exporter IS answering and the problem is inside it: either the ClusterRole in movies-gitops/kube-state-metrics/rbac.yaml no longer grants `nodes`, or the `--resources=` list in the Deployment stopped naming them, or the image was bumped across a rename. Those two files are written to agree with each other and nothing enforces it. IT DOES NOT MEAN THE CLUSTER IS HEALTHY."
+              summary: "Nothing is reporting Kubernetes object state"
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A NODE GOES NOT-READY, A DEPLOYMENT FALLS A REPLICA SHORT, AND A CONTAINER CRASH-LOOPS, all
+  # from 11m. Each is quiet before it happens and fires once its own hold has run.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a not-ready node, a short deployment and a crash loop fire after their holds
+    input_series:
+      - series: 'kube_node_status_condition{condition="Ready",status="true",node="k3s-worker-1"}'
+        values: '1x10 0x30'
+      - series: 'kube_deployment_spec_replicas{namespace="kinowo",deployment="web"}'
+        values: '2x40'
+      - series: 'kube_deployment_status_replicas_ready{namespace="kinowo",deployment="web"}'
+        values: '2x10 1x30'
+      - series: 'kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff",namespace="kinowo",pod="worker-pl-5d8f",container="worker"}'
+        values: '0x10 1x30'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: K3sNodeNotReady
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: K3sNodeNotReady
+        exp_alerts:
+          - exp_labels:
+              condition: "Ready"
+              node: "k3s-worker-1"
+              severity: "warning"
+              status: "true"
+            exp_annotations:
+              description: "CHECK `K3sServerNotRunning` AND `K3sAgentNotRunning` FIRST. This rule reads the apiserver's opinion; those two read the machines directly, and a node that is NotReady because its k3s unit is dead is one fact reported twice. A node NotReady with both of those silent is the interesting case -- the unit is running and the kubelet is failing its own checks, for which `journalctl -u k3s -n 200` on that node is the first command. SEVERITY IS A WARNING BECAUSE OF WHAT IS SCHEDULED HERE TODAY, matching `K3sAgentNotRunning`'s reasoning in the group above; if that rule is ever raised to critical, raise this one in the same commit."
+              summary: "Kubernetes node k3s-worker-1 is not Ready"
+      - eval_time: 20m
+        alertname: K3sDeploymentReplicasMissing
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: K3sDeploymentReplicasMissing
+        exp_alerts:
+          - exp_labels:
+              deployment: "web"
+              namespace: "kinowo"
+              severity: "warning"
+            exp_annotations:
+              description: "A rollout that has not converged. `kubectl -n kinowo describe deployment web` and then `describe pod` on the pending replica; the three causes worth ruling out in order are an image that cannot be pulled (the `ghcr-pull` secret is a read:packages token created out of band and is not in git -- see movies-gitops/worker/README.md), a PersistentVolumeClaim that cannot bind, and a pod that cannot be scheduled at all. THAT LAST ONE IS A REAL CONSTRAINT ON THIS CLUSTER, not a hypothetical: monitoring-1 is tainted NoSchedule as the control plane, so there is one schedulable node, and a pod holding a local-path PVC cannot move off it."
+              summary: "Deployment kinowo/web has 1 replica(s) short"
+      - eval_time: 10m
+        alertname: K3sPodCrashLooping
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: K3sPodCrashLooping
+        exp_alerts:
+          - exp_labels:
+              container: "worker"
+              namespace: "kinowo"
+              pod: "worker-pl-5d8f"
+              reason: "CrashLoopBackOff"
+              severity: "warning"
+            exp_annotations:
+              description: "The container starts, exits, and is restarted with increasing backoff. `kubectl -n kinowo logs worker-pl-5d8f -c worker --previous` is the command that shows WHY -- the current logs are from the attempt that has not failed yet. IF THIS IS THE WORKER, note that its own startup path is slow by design (a generous startupProbe covers a Mongo hydrate that can take minutes) and that `-XX:+ExitOnOutOfMemoryError` is set, so a heap problem presents as a clean exit and a restart loop rather than as an OOM kill. Check `K3sContainerOOMKilled` below to tell the two apart."
+              summary: "kinowo/worker-pl-5d8f container worker is in CrashLoopBackOff"
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # AN OOM KILL THAT RESTARTS THE CONTAINER. The last-terminated reason has read OOMKilled all
+  # along -- a kill from long ago, which the healthy case shows must NOT fire -- and the restart
+  # counter moves at 11m. That movement is what makes it news.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: an OOM-killed container restarting fires
+    input_series:
+      - series: 'kube_pod_container_status_last_terminated_reason{reason="OOMKilled",namespace="kinowo",pod="worker-pl-5d8f",container="worker"}'
+        values: '1x40'
+      - series: 'kube_pod_container_status_restarts_total{namespace="kinowo",pod="worker-pl-5d8f",container="worker"}'
+        values: '3x10 4x30'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: K3sContainerOOMKilled
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: K3sContainerOOMKilled
+        exp_alerts:
+          - exp_labels:
+              container: "worker"
+              namespace: "kinowo"
+              pod: "worker-pl-5d8f"
+              reason: "OOMKilled"
+              severity: "warning"
+            exp_annotations:
+              description: "THE CGROUP LIMIT KILLED IT, WHICH IS NOT THE SAME AS THE NODE RUNNING OUT OF MEMORY -- k3s-worker-1 has 16GB and one workload. Check the container's `resources.limits.memory` first; the limit is the number that decided this. FOR A JVM CONTAINER, an OOM kill means the process grew past its limit in NATIVE memory rather than heap, because `-XX:+ExitOnOutOfMemoryError` makes a heap exhaustion a clean exit instead -- so look at metaspace, direct buffers and thread stacks, not `-Xmx`. If the host itself is under memory pressure, `MemoryAvailableLow` in host-health.rules will be firing alongside this and it is the one to read first."
+              summary: "kinowo/worker-pl-5d8f container worker was OOMKilled"

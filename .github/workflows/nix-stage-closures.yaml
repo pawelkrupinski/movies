@@ -163,7 +163,11 @@ jobs:
       # bin/check does -- see infra/test/test_alert_rules.sh for why parsing was not enough.
       - name: Alerting rules behave as their names claim
         working-directory: infra
-        run: bash test/test_alert_rules.sh
+        # PyYAML for the coverage and label-shape checks the script ends with -- installed, not
+        # guarded, for the same reason as the Alertmanager step below.
+        run: |
+          python3 -c 'import yaml' 2>/dev/null || pip3 install --quiet --disable-pip-version-check --break-system-packages pyyaml
+          bash test/test_alert_rules.sh
 
       # SAME REASON, DIFFERENT FILE. `nix eval` proves the vhost renders; it cannot ask what the
       # rendered matcher answers, and the facet throttle sits one character from the film pages

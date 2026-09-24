@@ -112,4 +112,18 @@ for suite in "$here"/alert-rules/*.yml; do
   fi
 done
 
+# ── WHAT THE SUITES COVER ─────────────────────────────────────────────────────────────────────────
+# The loop above asks each case whether it passes; this asks whether the cases that exist are the
+# ones that matter: every alert has a firing and a quiet case, and a long hold over a worker gauge
+# rides out a restart.
+for check in test_alert_rule_coverage.py; do
+  if out="$(python3 "$here/$check" 2>&1)"; then
+    echo "  ok  $check"
+  else
+    echo "  FAILED $check"
+    echo "$out" | sed 's/^/         /'
+    failed=1
+  fi
+done
+
 exit "$failed"
