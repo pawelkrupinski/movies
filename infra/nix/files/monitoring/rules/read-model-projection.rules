@@ -399,18 +399,24 @@ groups:
       # +1 card) was already judged ordinary lag, not the race, and the four 09-16/17 US episodes
       # the 7-hour widening was calibrated on began 68-274 minutes after their restart: none of
       # them is a boot race, and this rule now pages for that shape again, as it should.
+      #
+      # The WORKER side is read through `last_over_time(...[10m])`, as in
+      # ReadModelServingShortOfCorpus below, and here it is load-bearing for the latch: each worker
+      # restart leaves its gauge absent for ~3 minutes, which made this series absent, which let
+      # the onset latch lapse -- so a difference that began on a settled pair re-latched on the NEW
+      # pod's uptime once it came back and stood down for the rest of the episode.
       - record: country:readmodel_serving_differs:film_cities
         expr: >-
           (
             sum by (country) (
               abs(
-                max by (country, city) (kinowo_worker_movies_served{scope="all"})
+                max by (country, city) (last_over_time(kinowo_worker_movies_served{scope="all"}[10m]))
                 - max by (country, city) (kinowo_web_movies_served{scope="all"})
               )
             ) > 0
           )
           and on (country) (
-            sum by (country) (max by (country, city) (kinowo_worker_movies_served{scope="all"})) > 0
+            sum by (country) (max by (country, city) (last_over_time(kinowo_worker_movies_served{scope="all"}[10m]))) > 0
           )
           and on (country) (
             sum by (country) (max by (country, city) (kinowo_web_movies_served{scope="all"})) > 0

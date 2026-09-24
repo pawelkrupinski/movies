@@ -380,15 +380,18 @@ tests:
   # branch almost never fired. Here the difference begins at 180min, five hours into worker-us's
   # uptime (nothing a boot race explains), pages at 200min, and worker-us then restarts at 240min.
   # The restart is AFTER the onset, so it explains nothing about why the pair diverged, and the
-  # alert must keep firing through it.
+  # alert must keep firing through it. The restart is replayed as it really lands: the worker is
+  # `replicas: 1` + `Recreate`, so its gauges go stale for ~3 minutes before the new pod's first
+  # scrape. Without the bridge that gap ended the difference, the onset re-latched on the new
+  # pod's 3-minute uptime, and a settled pair's real difference was silenced for good.
   - interval: 1m
     input_series:
       - series: 'kinowo_worker_movies_served{country="us",city="chicago",instance="kinowo-worker-us",job="kinowo-worker",scope="all"}'
-        values: '600x300'
+        values: '600x239 stale _x2 600x57'
       - series: 'kinowo_web_movies_served{country="us",city="chicago",instance="kinowo-web-us",job="kinowo-web",scope="all"}'
         values: '600x179 598x121'
       - series: 'process_start_time_seconds{country="us",instance="kinowo-worker-us",job="kinowo-worker"}'
-        values: '-7200x239 14400x60'
+        values: '-7200x239 stale _x2 14400x57'
       - series: 'process_start_time_seconds{country="us",instance="kinowo-web-us",job="kinowo-web"}'
         values: '-86400x300'
       - series: 'kinowo_worker_readmodel_films_pruned_total{country="us",reason="row-gone"}'
