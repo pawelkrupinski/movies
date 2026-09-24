@@ -67,7 +67,7 @@ class ShareCardBackfillSpec extends AnyFlatSpec with Matchers {
   "A finished render" should "re-project its film, or end a first card's hold when no card could be made" in {
     val rig = new Rig
     val refreshed, released = collection.mutable.Buffer.empty[String]
-    val followUp = new ShareCardFollowUp(rig.store, refreshed += _, released += _)
+    val followUp = new ShareCardFollowUp(rig.store, rig.service.superseded, refreshed += _, released += _)
     val made   = rig.service.inputs(film())
     val failed = rig.service.inputs(film(id = "fnoposter", poster = "https://gone.example/p.jpg"))
     rig.service.render(made, Seq(ShareCardReason.NewFilm))

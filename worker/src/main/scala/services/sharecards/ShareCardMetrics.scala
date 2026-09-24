@@ -31,7 +31,9 @@ object ShareCardMetrics {
     val Rendered = "rendered"; val Existing = "existing"; val Failed = "failed"
     /** Every poster failed: a card without one, kept until a poster works (see ShareCardBackfill). */
     val RenderedNoPoster = "rendered_no_poster"
-    val all: Seq[String] = Seq(Rendered, RenderedNoPoster, Existing, Failed)
+    /** A newer request replaced these inputs before their render ran: nothing drawn. */
+    val Superseded = "superseded"
+    val all: Seq[String] = Seq(Rendered, RenderedNoPoster, Existing, Failed, Superseded)
   }
   object PruneReason {
     val Retired = "retired"; val Budget = "budget"; val Temp = "temp"
@@ -64,7 +66,7 @@ object ShareCardMetrics {
       .help("Films on screen whose share card for their current inputs exists, over films on screen.")
       .labelNames("country").register(registry)
     private[ShareCardMetrics] val renders = Counter.builder().name("kinowo_worker_share_cards_render")
-      .help("Share-card render attempts by outcome (rendered, existing, failed) and reason (new_film, backfill, or the input part that moved).")
+      .help("Share-card render attempts by outcome (rendered, rendered_no_poster, existing, failed, superseded) and reason (new_film, backfill, or the input part that moved).")
       .labelNames("country", "outcome", "reason").register(registry)
     private[ShareCardMetrics] val paths = Counter.builder().name("kinowo_worker_share_cards_render_path")
       .help("Cards drawn, by how: base_hit (a cached base plus the badges — a ratings change), base_rebuild (the base redrawn from the cached poster), full (a posterless card, drawn whole).")

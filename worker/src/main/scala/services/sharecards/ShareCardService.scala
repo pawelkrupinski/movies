@@ -73,11 +73,43 @@ class ShareCardService(
     if (screened) request(inputs(movie))
 
   /** Ask for the card of `next` — nothing when it is current, a render otherwise. What a projection
-   *  and the backfill both call. */
-  def request(next: ShareCardInputs, fallback: String = ShareCardReason.Backfill): Option[EnqueueResult] =
+   *  and the backfill both call; `askedAt` is when `next` was read (the backfill's sweep, which may
+   *  be a day old), so an older read never supersedes a newer one ([[renderIfLatest]]). */
+  def request(next: ShareCardInputs, fallback: String = ShareCardReason.Backfill,
+              askedAt: Instant = clock.instant()): Option[EnqueueResult] =
     existing(next) match {
-      case Some(_) => fingerprints.put(next.filmId, next.fingerprint); None
-      case None    => Some(enqueueRender(next, reasonsFor(next, fallback)))
+      case Some(_) => ask(next, askedAt); fingerprints.put(next.filmId, next.fingerprint); None
+      case None    => Some(enqueueRender(next, reasonsFor(next, fallback), askedAt = askedAt))
+    }
+
+  // THE LATEST ASK PER FILM. A film's card is one file at one URL naming its version, overwritten by
+  // every render, and renders run on several threads: a render of inputs that a newer request has
+  // replaced must not land, or — finishing after the newer one — it puts the older picture under
+  // the URL `web_movies` names for the newer version, which a preview cache keeps for a year. Kept
+  // per process: the worker is one replica, and after a restart nothing is superseded until asked.
+  private val latestAsk = new ConcurrentHashMap[String, ShareCardService.Ask]()
+  private def ask(next: ShareCardInputs, at: Instant): Unit = {
+    latestAsk.merge(next.filmId, ShareCardService.Ask(renderKey(next), at), (had, now) => if (now.at.isBefore(had.at)) had else now)
+    ()
+  }
+
+  /** True when a newer request for the film asked for other inputs than `next`. */
+  def superseded(next: ShareCardInputs): Boolean = Option(latestAsk.get(next.filmId)).exists(_.key != renderKey(next))
+
+  /** What one render draws: the drawn inputs and the poster candidates it may choose from. */
+  private def renderKey(next: ShareCardInputs): String =
+    s"${next.drawnHash}|${Digest.sha256Hex(next.posterUrls.mkString("\n")).take(8)}"
+
+  // One render of a film at a time, so the supersession check and the write it guards cannot
+  // interleave with another render of the film. Striped: a lock per film would never be freed.
+  private val renderLocks = Array.fill(64)(new Object)
+
+  /** The render task's entry: [[render]], unless a newer request superseded `next` (`superseded`,
+   *  nothing drawn). */
+  def renderIfLatest(next: ShareCardInputs, reasons: Seq[String], first: Boolean = false, retryPoster: Boolean = false): String =
+    renderLocks(Math.floorMod(next.filmId.hashCode, renderLocks.length)).synchronized {
+      if (!superseded(next)) render(next, reasons, first, retryPoster)
+      else { metrics.render(ShareCardMetrics.Outcome.Superseded, reasons); ShareCardMetrics.Outcome.Superseded }
     }
 
   def onPendingCardLanded(filmId: String): Unit = rescrape(filmId)
@@ -88,6 +120,7 @@ class ShareCardService(
     val gone = store.deleteFilm(filmId, olderThan = clock.instant().minusMillis(ShareCardJanitor.Grace.toMillis))
     gone.foreach(metrics.pruned(_, ShareCardMetrics.PruneReason.Retired))
     fingerprints.remove(filmId)
+    latestAsk.remove(filmId)
     ()
   }
 
@@ -126,10 +159,11 @@ class ShareCardService(
     if (next.posterUrls.isEmpty) Seq(ShareCardFile.posterHash(None)) else next.posterUrls.map(url => ShareCardFile.posterHash(Some(url)))
 
   /** Queue a render of `next`. A first card is placed ahead of the queue's backlog. */
-  def enqueueRender(next: ShareCardInputs, reasons: Seq[String], first: Boolean = false): EnqueueResult = {
+  def enqueueRender(next: ShareCardInputs, reasons: Seq[String], first: Boolean = false,
+                    askedAt: Instant = clock.instant()): EnqueueResult = {
     val now = clock.instant()
-    val candidates = Digest.sha256Hex(next.posterUrls.mkString("\n")).take(8)
-    queue.enqueue(TaskType.RenderShareCard, s"share-card|${next.filmId}|${next.drawnHash}|$candidates",
+    ask(next, askedAt)
+    queue.enqueue(TaskType.RenderShareCard, s"share-card|${next.filmId}|${renderKey(next)}",
       next.toPayload ++ Map(ReasonsKey -> reasons.mkString(","), FirstKey -> first.toString),
       submittedAt = if (first) now.minusSeconds(FirstCardHeadStart.toSeconds) else now)
   }
@@ -225,6 +259,8 @@ class ShareCardService(
 }
 
 object ShareCardService {
+  private final case class Ask(key: String, at: Instant)
+
   val ReasonsKey = "reasons"
   val FirstKey   = "first"
   /** On a render that re-tries the posters of a card drawn without one. */

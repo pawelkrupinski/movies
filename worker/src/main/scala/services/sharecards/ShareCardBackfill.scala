@@ -60,7 +60,7 @@ class ShareCardBackfill(
       // `lacksPoster` holds only while the card on disk is still the sweep's inputs' own.
       val (retry, rest) = posterless.filter(service.lacksPoster).splitAt(math.max(room - next.size, 0))
       posterless = rest
-      next.count(film => service.request(film.inputs).contains(EnqueueResult.Added)) +
+      next.count(film => service.request(film.inputs, askedAt = film.sweptAt).contains(EnqueueResult.Added)) +
         retry.count(in => service.retryPoster(in) == EnqueueResult.Added)
     }
   }
@@ -72,21 +72,22 @@ class ShareCardBackfill(
   }
 
   private def sweep(): Unit = {
+    val sweptAt                = clock.instant()
     val (screenings, complete) = reader.findAllScreeningRefsChecked()
     if (complete) {
       val screened = screenings.iterator.map(_.filmId).toSet
       expected  = reader.findAllMovies().filter(movie => screened(movie._id))
-        .map(movie => Swept(service.inputs(movie), service.onDisk(movie._id)))
+        .map(movie => Swept(service.inputs(movie), service.onDisk(movie._id), sweptAt))
       pending   = expected.filterNot(covered).toList
       posterless = expected.map(_.inputs).filter(service.lacksPoster).toList
-      lastSweep = Some(clock.instant())
+      lastSweep = Some(sweptAt)
       logger.info(s"share cards backfill: ${pending.size} of ${expected.size} cards missing, ${posterless.size} drawn without their poster.")
     } else logger.warn("share cards backfill: web_screenings read incomplete — sweep skipped, retried next tick.")
   }
 }
 
 object ShareCardBackfill {
-  private final case class Swept(inputs: ShareCardInputs, cardAtSweep: Option[String])
+  private final case class Swept(inputs: ShareCardInputs, cardAtSweep: Option[String], sweptAt: Instant)
 
   /** Renders enqueued per tick at most. */
   val Batch: Int      = tools.Env.positiveInt("KINOWO_SHARE_CARD_BACKFILL_BATCH", 20)

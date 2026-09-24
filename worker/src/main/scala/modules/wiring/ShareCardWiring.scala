@@ -44,7 +44,7 @@ trait ShareCardWiring { self: WorkerWiring =>
     new ShareCardBackfill(shareCardService, readModelRepository, taskQueue, shareCardMetrics, clock)
 
   lazy val shareCardFollowUp: ShareCardFollowUp =
-    new ShareCardFollowUp(shareCardStore, readModelProjector.refreshShareCard, readModelProjector.releaseShareCardHold)
+    new ShareCardFollowUp(shareCardStore, shareCardService.superseded, readModelProjector.refreshShareCard, readModelProjector.releaseShareCardHold)
 
   lazy val shareCardHandlers: Seq[TaskHandler] =
     if (!shareCardsEnabled) Nil

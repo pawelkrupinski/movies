@@ -9,9 +9,10 @@ class RenderShareCardHandler(service: ShareCardService, maxAttempts: Int = 3) ex
   val taskType: TaskType = TaskType.RenderShareCard
   def handle(task: Task): HandlerOutcome =
     ShareCardInputs.fromPayload(task.payload).fold[HandlerOutcome](HandlerOutcome.Skipped) { inputs =>
-      service.render(inputs, ShareCardService.reasons(task.payload), first = task.payload.get(ShareCardService.FirstKey).contains("true"),
+      service.renderIfLatest(inputs, ShareCardService.reasons(task.payload), first = task.payload.get(ShareCardService.FirstKey).contains("true"),
         retryPoster = task.payload.get(ShareCardService.RetryPosterKey).contains("true")) match {
         case ShareCardMetrics.Outcome.Failed if task.attempts < maxAttempts => HandlerOutcome.Reschedule(Some("the card could not be drawn"))
+        case ShareCardMetrics.Outcome.Superseded => HandlerOutcome.Skipped
         case _ => HandlerOutcome.Done
       }
     }
@@ -58,14 +59,16 @@ class RescrapeShareCardHandler(rescraper: ShareCardRescraper, maxAttempts: Int =
 /**
  * What a finished render sets off, on the task framework's completion event: re-project the film,
  * so its `web_movies` document points at the new card — and, for a card the first-publish gate is
- * holding, publishes the film. A first card that could not be made at all ends its hold at once.
+ * holding, publishes the film. A first card that could not be made at all ends its hold at once —
+ * unless a newer request superseded it (`superseded`): that request's render ends the hold.
  */
-class ShareCardFollowUp(store: ShareCardStore, refresh: String => Unit, releaseHold: String => Unit) {
+class ShareCardFollowUp(store: ShareCardStore, superseded: ShareCardInputs => Boolean,
+                        refresh: String => Unit, releaseHold: String => Unit) {
   def onTaskFinished: PartialFunction[DomainEvent, Unit] = {
     case TaskFinished(TaskType.RenderShareCard, _, payload) =>
       ShareCardInputs.fromPayload(payload).foreach { inputs =>
         if (store.version(store.cardPath(inputs.filmId)).exists(inputs.acceptableVersions.contains)) refresh(inputs.filmId)
-        else if (payload.get(ShareCardService.FirstKey).contains("true")) releaseHold(inputs.filmId)
+        else if (payload.get(ShareCardService.FirstKey).contains("true") && !superseded(inputs)) releaseHold(inputs.filmId)
       }
   }
 }
