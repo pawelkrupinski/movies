@@ -38,8 +38,9 @@ runs:
         - name: Grow the hard-cluster fixture from this leg's findings
           id: ratchet
           shell: bash
+          # No `timeout-minutes`: a composite action's steps reject it (the whole action then
+          # fails to load), so the ratchet is bounded by `timeout` instead.
           continue-on-error: true
-          timeout-minutes: 20
           env:
               MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
               GH_TOKEN: ${{ inputs.token }}
@@ -47,7 +48,7 @@ runs:
           run: |
               set -uo pipefail
               [ -s "${{ inputs.log }}" ] || { echo "no suite log — nothing to read"; exit 0; }
-              scripts/hard-clusters.sh ratchet "${{ inputs.code }}" "${{ inputs.log }}" 2>&1 | tee hard-clusters-ratchet.log
+              timeout 20m scripts/hard-clusters.sh ratchet "${{ inputs.code }}" "${{ inputs.log }}" 2>&1 | tee hard-clusters-ratchet.log
               mkdir -p hard-clusters-out
               git status --porcelain -- 'test/resources/fixtures/corpus/*hard-clusters*' \
                 | awk '{print $2}' | xargs -r -I{} cp {} hard-clusters-out/
