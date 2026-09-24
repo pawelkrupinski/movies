@@ -140,7 +140,9 @@ class ReadModelProjector(
       project(ReadModelProjection.partition(stored, normalizer))
       // A second way out of a first-publish hold besides the task scheduled for its end: that
       // task may be claimed by a replica other than the one holding the card.
-      if (held.nonEmpty) releaseExpiredHolds()
+      // A row it could not read keeps its hold for the next sweep — see `releaseExpired`.
+      if (held.nonEmpty) releaseExpired()
+      ()
     }
 
   /** A row deleted or merged away: every card it produced goes with it, now — not at the
@@ -280,12 +282,26 @@ class ReadModelProjector(
   /** Publish every held card whose hold has run out — asked by the task the ledger schedules for
    *  the end of each hold, so a card whose render never finishes (or whose row never changes
    *  again) still goes public after `firstCardHold`. */
-  def releaseExpiredHolds(): Unit = lock.synchronized {
+  def releaseExpiredHolds(): Unit = {
+    val unread = releaseExpired()
+    // Throw so the task that asked retries: the holds are still there to release.
+    if (unread.nonEmpty)
+      throw new IllegalStateException(s"could not read ${unread.size} held row(s) to publish (${unread.take(5).mkString(", ")}); holds kept")
+  }
+
+  /** Publish every expired hold whose row reads, drop the ones whose row is GONE, and keep —
+   *  returning — the ones whose row could not be READ. That last case used to count as gone:
+   *  the hold was dropped, and the card was never published. */
+  private def releaseExpired(): Set[String] = lock.synchronized {
     val now  = clock.millis()
     val rows = held.valuesIterator.filter(_.until <= now).map(_.row).toSet
-    rows.foreach(row => movieRepository.findById(services.movies.FilmId(row)).fold {
-      held.filterInPlace((_, card) => card.row != row)   // the row is gone: nothing left to publish
-    }(whole => project(ReadModelProjection.partition(whole, normalizer))))
+    rows.filter { row =>
+      movieRepository.findByIdChecked(services.movies.FilmId(row)) match {
+        case (Some(whole), _) => project(ReadModelProjection.partition(whole, normalizer)); false
+        case (None, true)     => held.filterInPlace((_, card) => card.row != row); false   // gone: nothing to publish
+        case (None, false)    => true                                                       // unreadable: keep the hold
+      }
+    }
   }
 
   /** Test seam: the cards the first-publish gate is holding. */

@@ -41,10 +41,9 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
   private def record(rating: Double, screened: Boolean = true) =
     MovieRecord(imdbRating = Some(rating), tmdbId = Some(1), data = Map[Source, SourceData](Multikino -> slot(screened)))
 
-  private class Setup {
+  private class Setup(val repository: InMemoryMovieRepository = new InMemoryMovieRepository()) {
     val clock      = new StepClock(T0)
     val ledger     = new ScriptedLedger
-    val repository = new InMemoryMovieRepository()
     val readModel  = new InMemoryReadModelRepository()
     val projector  = new ReadModelProjector(repository, readModel, readModel, shareCards = ledger, firstCardHold = 2.minutes, clock = clock)
     def upsert(rating: Double, screened: Boolean = true): String = {
@@ -78,6 +77,23 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
     clock.now = T0.plusSeconds(120)
     projector.releaseExpiredHolds()
     published(id).map(m => (m.shareCard, m.shareCardPending)) shouldBe Some((None, true))
+  }
+
+  it should "keep its hold, not drop it, when its row cannot be read as the hold runs out" in {
+    val unreadable = new services.movies.UnreadableByIdMovieRepository()
+    unreadable.failing = false
+    new Setup(unreadable) {
+      val id = upsert(7.5)
+      clock.now = T0.plusSeconds(120)
+      unreadable.failing = true
+      // Unread is not gone: the task must fail (and retry), not forget the card.
+      an[IllegalStateException] should be thrownBy projector.releaseExpiredHolds()
+      published(id) shouldBe None
+
+      unreadable.failing = false
+      projector.releaseExpiredHolds()
+      published(id).map(_.shareCardPending) shouldBe Some(true)
+    }
   }
 
   it should "lose its pending mark, and have the scrapers told, when its card finally lands" in new Setup {
