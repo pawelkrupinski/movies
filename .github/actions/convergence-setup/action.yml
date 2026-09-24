@@ -75,16 +75,49 @@ runs:
       run: |
           set -uo pipefail
           mkdir -p scrape-archive
-          for run in $(gh run list --workflow "Record scrape fixtures" --status success \
-                       --limit 10 --json databaseId --jq '.[].databaseId' 2>/dev/null); do
+          # `id recordedAt` per line; the pair is exported so the spec can say WHICH
+          # corpus it replayed (`CorpusProvenance`) and a green leg can record it.
+          while read -r run recorded; do
               if gh run download "$run" --name "scrape-fixtures-${{ inputs.code }}" \
                  --dir scrape-archive 2>/dev/null; then
-                  echo "scrape corpus from recording run $run"
+                  echo "scrape corpus from recording run $run ($recorded)"
+                  echo "KINOWO_CONVERGENCE_CORPUS_RUN=$run" >> "$GITHUB_ENV"
+                  echo "KINOWO_CONVERGENCE_CORPUS_RECORDED_AT=$recorded" >> "$GITHUB_ENV"
                   ls -l scrape-archive/
                   exit 0
               fi
-          done
+          done < <(gh run list --workflow "Record scrape fixtures" --status success \
+                       --limit 10 --json databaseId,createdAt --jq '.[] | "\(.databaseId) \(.createdAt)"' 2>/dev/null)
           echo "no recorded scrape corpus for ${{ inputs.code }} — the leg will fail and say so"
+
+    # The corpus this country's last GREEN full leg replayed — recorded by that leg as
+    # `corpus-green-<code>.txt` in the fixture release — and, when today's differs, that
+    # corpus itself, unpacked aside so the spec can diff the two (`CorpusProvenance`).
+    # A red leg on a changed corpus then says so in its failure message instead of
+    # sending the next person bisecting commits for a data change. Never fails the leg:
+    # no marker yet, or an expired artifact, only makes the verdict less specific.
+    - name: Restore the last green leg's corpus for the provenance diff
+      shell: bash
+      continue-on-error: true
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+      run: |
+          set -uo pipefail
+          marker="corpus-green-${{ inputs.code }}.txt"
+          gh release download "$FIXTURE_RELEASE_TAG" --pattern "$marker" --dir green-marker --clobber 2>/dev/null \
+              || { echo "no $marker yet — no last-green corpus to compare against"; exit 0; }
+          read -r green recorded < "green-marker/$marker"
+          echo "last green ${{ inputs.code }} leg replayed recording run $green ($recorded)"
+          echo "KINOWO_CONVERGENCE_GREEN_CORPUS_RUN=$green" >> "$GITHUB_ENV"
+          echo "KINOWO_CONVERGENCE_GREEN_CORPUS_RECORDED_AT=$recorded" >> "$GITHUB_ENV"
+          [ "$green" = "${KINOWO_CONVERGENCE_CORPUS_RUN:-}" ] && { echo "same corpus as today"; exit 0; }
+          if gh run download "$green" --name "scrape-fixtures-${{ inputs.code }}" --dir green-archive 2>/dev/null; then
+              mkdir -p green-corpus
+              tar -xzf "green-archive/scrapes-${{ inputs.code }}.tar.gz" -C green-corpus
+              echo "KINOWO_CONVERGENCE_GREEN_CORPUS_DIR=$PWD/green-corpus/test/resources/fixtures/corpus" >> "$GITHUB_ENV"
+          else
+              echo "recording run $green's corpus is no longer downloadable — no diff"
+          fi
 
     # The enrichment tree — recorded responses AND the remembered-answer cache —
     # lives in a ROLLING RELEASE, one asset per country, overwritten in place.

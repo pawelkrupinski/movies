@@ -5,13 +5,14 @@ import clients.TmdbClient
 import controllers.MovieControllerService
 import models.{Cinema, Country, MovieRecord}
 import org.mongodb.scala.MongoClient
-import org.scalatest.BeforeAndAfterAll
+import org.scalatest.{BeforeAndAfterAll, Failed, Outcome}
+import org.scalatest.exceptions.TestFailedException
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
 import services.titlerules.TitleRuleSet
-import tools.{ArchiveReplayWiring, ConvergenceStorage, CorpusCoverage, CorpusFixture, CountryScrapeCorpus,
+import tools.{ArchiveReplayWiring, ConvergenceStorage, CorpusCoverage, CorpusFixture, CorpusProvenance, CountryScrapeCorpus,
   EnrichmentCache, EnrichmentFreshness, Env, FileEnrichmentCacheStore, PhaseTimer, ProdCoverageBaseline,
   SameThreadExecutionBudget}
 
@@ -91,6 +92,29 @@ abstract class CountryConvergenceBehaviour(
    */
   replayGuard: FiniteDuration = ParallelReplays.DefaultWithin
 ) extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+
+  /** Which recorded corpus this leg replayed, against the one its last green leg did —
+   *  set once the corpus is read. Every failure carries its verdict, so a red leg says up
+   *  front whether the DATA moved under it (run 35948292875's UK leg went red on new data
+   *  and was bisected through commits first). */
+  @volatile private var corpusProvenance: Option[CorpusProvenance] = None
+
+  override def withFixture(test: NoArgTest): Outcome = super.withFixture(test) match {
+    case Failed(e: TestFailedException) =>
+      corpusProvenance.fold(Failed(e))(p => Failed(e.modifyMessage(_.map(m => s"$m\n${p.verdict}"))))
+    case other => other
+  }
+
+  private def recordCorpusProvenance(rows: Seq[services.scrapes.ArchivedScrape]): Unit = {
+    val provenance = CorpusProvenance.of(corpusKey, rows, Env.get)
+    corpusProvenance = Some(provenance)
+    info(s"${country.displayName}: ${provenance.verdict}")
+    Env.get("GITHUB_STEP_SUMMARY").foreach { summary =>
+      Try(java.nio.file.Files.writeString(java.nio.file.Paths.get(summary),
+        provenance.markdown(corpusKey) + "\n\n",
+        java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND))
+    }
+  }
 
   override def afterAll(): Unit = {
     enrichmentCacheStore.close()
@@ -604,6 +628,7 @@ abstract class CountryConvergenceBehaviour(
       // divergence found against the live read could not be re-examined afterwards.
       val rows = step("readCorpusFixture")(CorpusFixture.read(corpusKey))
       info(s"${country.displayName}: replayed ${rows.size} archived scrapes from ${CorpusFixture.pathFor(corpusKey)}")
+      recordCorpusProvenance(rows)
       rows
     } else fetchAndCaptureCorpus
 

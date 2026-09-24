@@ -33,4 +33,16 @@ class ConvergencePublishMainOnlySpec extends AnyFlatSpec with Matchers {
           l.contains("gh-release.sh")))
     writers shouldBe empty
   }
+
+  // The last-green corpus marker `CorpusProvenance` diffs against: only a main full leg
+  // whose suite PASSED may write it, and setup must read back the same name.
+  "the green-corpus marker" should "be written only by a passing main full leg, under the name setup reads" in {
+    val record = RepoFile.step(action, "Record the corpus this green leg replayed")
+    record should include(MainOnly.stripPrefix("if: "))
+    record should include("inputs.green == 'true'")
+    record should include("corpus-green-${{ inputs.code }}.txt")
+    RepoFile.read(".github/actions/convergence-setup/action.yml") should include("corpus-green-${{ inputs.code }}.txt")
+    val leg = RepoFile.read(".github/workflows/country-convergence-leg.yml")
+    leg.split("\\n").count(_.contains("green: ${{ steps.suite.outcome == 'success' }}")) shouldBe 1
+  }
 }

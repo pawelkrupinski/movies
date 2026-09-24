@@ -428,3 +428,4 @@ jobs:
               with:
                   code:  ${{ inputs.code }}
                   token: ${{ secrets.GITHUB_TOKEN }}
+                  green: ${{ steps.suite.outcome == 'success' }}

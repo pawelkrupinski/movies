@@ -79,8 +79,12 @@ object CorpusFixture {
     path
   }
 
-  def read(countryCode: String): Seq[ArchivedScrape] = {
-    val in = new GZIPInputStream(Files.newInputStream(pathFor(countryCode)))
+  def read(countryCode: String): Seq[ArchivedScrape] = readFrom(pathFor(countryCode))
+
+  /** A corpus fixture from anywhere — [[CorpusProvenance]] reads the last green leg's
+   *  copy from beside the checkout, not from `pathFor`. */
+  def readFrom(path: Path): Seq[ArchivedScrape] = {
+    val in = new GZIPInputStream(Files.newInputStream(path))
     val bytes = try in.readAllBytes() finally in.close()
     parse(new String(bytes, java.nio.charset.StandardCharsets.UTF_8))
   }

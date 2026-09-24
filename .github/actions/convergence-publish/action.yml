@@ -27,6 +27,12 @@ inputs:
   token:
     description: A token that can write this repo's releases.
     required: true
+  green:
+    description: >-
+      'true' when this is a FULL leg whose suite passed — it then records which corpus it
+      replayed as the country's last green one. The sample gate never passes it.
+    required: false
+    default: 'false'
 
 runs:
   using: composite
@@ -102,3 +108,18 @@ runs:
           Not a version of anything; do not treat as a release." || true
           "$RELEASE" upload "$TAG" "$ARCHIVE" --clobber
           echo "published $ARCHIVE to release $TAG"
+
+    # Which corpus this GREEN full leg replayed, as `corpus-green-<code>.txt` beside the
+    # tree — `convergence-setup` reads it back so the next leg can diff its corpus against
+    # the last one the pipeline converged on (`CorpusProvenance`). Main only, like the
+    # tree: a branch run's green says nothing about main.
+    - name: Record the corpus this green leg replayed
+      if: github.ref == 'refs/heads/main' && inputs.green == 'true' && env.KINOWO_CONVERGENCE_CORPUS_RUN != ''
+      shell: bash
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+      run: |
+          set -uo pipefail
+          marker="corpus-green-${{ inputs.code }}.txt"
+          echo "$KINOWO_CONVERGENCE_CORPUS_RUN $KINOWO_CONVERGENCE_CORPUS_RECORDED_AT" > "$marker"
+          scripts/ci/gh-release.sh upload "$FIXTURE_RELEASE_TAG" "$marker" --clobber
