@@ -42,9 +42,15 @@ object CinemaClientMarkers {
       (if (inFallback) Set(FilmwebFallbackTag) else Set.empty[String])
 
   /** The raw scraper's client class as the marker label. For the multi-venue
-   *  chains this is the per-venue adapter (`CinemaCityScraper`); for everything
-   *  else it's the client itself (`FilmwebShowtimesClient`, `RialtoClient`, …). */
-  private def clientOf(scraper: CinemaScraper): String = scraper.getClass.getSimpleName
+   *  chains this is the per-venue adapter (`CinemaCityScraper`); for a venue read
+   *  off several listings ([[MultiListingScraper]]) it is the client reading them
+   *  (`BiletynaClient` for Końskie's two halls), not the combinator; for
+   *  everything else it's the client itself (`FilmwebShowtimesClient`,
+   *  `RialtoClient`, …). */
+  private def clientOf(scraper: CinemaScraper): String = scraper match {
+    case venue: MultiListingScraper => clientOf(venue.listings.head)
+    case single                     => single.getClass.getSimpleName
+  }
 
   /** `cinema displayName -> "<kind>:<ClientClass>"`, derived from the raw
    *  (unwrapped) scrapers. Reusability is counted over `scrapers`, so pass the
