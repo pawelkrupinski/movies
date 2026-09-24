@@ -82,6 +82,9 @@ class MongoConnection(
   // torn down — plus every test that exercises the degraded path would leak a
   // retry thread for the rest of the JVM's life.
   @volatile private var closed = false
+  // Makes a close and the reconnect's publish one step each — see `close()`. Declared before
+  // `initResult`, like `closed`: the reconnect thread starts in the constructor and reads both.
+  private val publishLock = new AnyRef
 
   // Eager — connecting now (at construction) surfaces wiring / network
   // problems at boot rather than at the first request. `Wiring` touches
@@ -107,9 +110,13 @@ class MongoConnection(
 
   // Only close a client WE built. A `sharedClient` is owned by the caller
   // (WorkerMain closes it once, after every borrowing connection is stopped).
+  //
+  // Under `publishLock`, with the reconnect's publish: `closed` and `initResult` are two
+  // fields, and a close landing between the reconnect's check of the one and its write of the
+  // other found no client to close, while the reconnect published one nobody would close.
   def close(): Unit = {
-    closed = true
-    if (sharedClient.isEmpty) initResult._1.foreach(_.close())
+    val built = publishLock.synchronized { closed = true; initResult._1 }
+    if (sharedClient.isEmpty) built.foreach(_.close())
   }
 
   /** Start a fresh `ClientSession` for a multi-document transaction (the staging
@@ -159,12 +166,10 @@ class MongoConnection(
               case Success((client, db)) =>
                 // Re-check under the close flag: `close()` may have landed while the
                 // probe was in flight, and publishing here would hand the owner a
-                // client it will never close.
-                if (closed) client.close()
-                else {
-                  initResult = (Some(client), Some(db))
-                  logger.info(s"MongoConnection to $dbName RECOVERED — serving from the database again.")
-                }
+                // client it will never close. One step with `close()` — see there.
+                val published = publishLock.synchronized { if (!closed) initResult = (Some(client), Some(db)); !closed }
+                if (published) logger.info(s"MongoConnection to $dbName RECOVERED — serving from the database again.")
+                else if (sharedClient.isEmpty) client.close()
               case Failure(exception) if !MongoConnection.isTransient(exception) =>
                 // Reachable, but refused for good — the `onConnected` claim found another
                 // country's database. Stay degraded: publishing it would let writes through.

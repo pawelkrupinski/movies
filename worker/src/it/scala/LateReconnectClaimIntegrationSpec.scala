@@ -8,6 +8,7 @@ import org.scalatest.time.{Seconds, Span}
 import tools.Env
 
 import java.net.{InetSocketAddress, ServerSocket, Socket, URI}
+import org.mongodb.scala.SingleObservableFuture
 import scala.concurrent.duration._
 
 /** A worker whose Mongo is UNREACHABLE at boot starts degraded and reconnects in the
@@ -41,6 +42,30 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
         german.database shouldBe None
         new DatabaseOwner(db).owner() shouldBe Some(Country.Poland.code)
       } finally { german.close(); polish.close(); forwarder.close() }
+    }
+
+  // A connection bound to a SHARED client does not own it (the worker closes it once, after
+  // every borrowing connection). A close landing while the reconnect's probe was in flight
+  // made the reconnect close "its" client — the shared one, under every other country.
+  "a reconnect that finds its connection closed" should "leave a shared client it does not own open" in
+    tools.IntegrationCorpusDatabase.withDatabase(uri, "late-reconnect-shared") { db =>
+      val shared   = org.mongodb.scala.MongoClient(uri)
+      val attempts = new java.util.concurrent.atomic.AtomicInteger(0)
+      val probed   = new java.util.concurrent.CountDownLatch(1)
+      @volatile var connection: MongoConnection = null
+      try {
+        connection = new MongoConnection(Some(uri), db.name, required = true, probeTimeout = 2.seconds,
+          sharedClient = Some(shared),
+          onConnected = _ =>
+            if (attempts.incrementAndGet() == 1) throw new com.mongodb.MongoTimeoutException("unreachable at boot")
+            else { connection.close(); probed.countDown() })   // the owner closes it mid-probe
+        connection.database shouldBe None
+        probed.await(30, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
+        Thread.sleep(500)                                     // let the reconnect finish its step
+        connection.database shouldBe None
+        noException should be thrownBy
+          scala.concurrent.Await.result(shared.getDatabase(db.name).getCollection("movies").countDocuments().toFuture(), 5.seconds)
+      } finally shared.close()
     }
 
   private def freePort(): Int = { val s = new ServerSocket(0); try s.getLocalPort finally s.close() }
