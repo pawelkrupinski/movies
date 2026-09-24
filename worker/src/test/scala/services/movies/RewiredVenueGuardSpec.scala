@@ -4,7 +4,6 @@ import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.time.LocalDateTime
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -25,8 +24,7 @@ class RewiredVenueGuardSpec extends AnyFlatSpec with Matchers {
 
   private def scrape(films: Int, showtimesEach: Int, firstFilm: Int = 1): Seq[CinemaMovie] =
     (firstFilm until firstFilm + films).map { i =>
-      val times = (0 until showtimesEach).map(n =>
-        Showtime(LocalDateTime.parse(f"2027-06-${8 + n / 12}%02dT${8 + n % 12}%02d:00"), None))
+      val times = DepthGuardTime.showtimes(showtimesEach)
       CinemaMovie(movie = Movie(s"Film $i", releaseYear = Some(2026)), cinema = Multikino,
         posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil, showtimes = times)
     }
@@ -39,7 +37,8 @@ class RewiredVenueGuardSpec extends AnyFlatSpec with Matchers {
       .map(_.record.data.values.map(_.showtimes.size).sum).getOrElse(0)
 
   private def cacheOver(repository: InMemoryMovieRepository, ledger: ScrapeGuardLedger) =
-    new CaffeineMovieCache(repository, normalizer = titleNormalizer, scrapeGuardLedger = ledger)
+    new CaffeineMovieCache(repository, normalizer = titleNormalizer, scrapeGuardLedger = ledger,
+      clock = DepthGuardTime.clock)
 
   "a venue rewired to a new source" should "take the new source's thin listing as its baseline at once" in {
     val repository = splitRepository()
@@ -134,7 +133,7 @@ class RewiredVenueGuardSpec extends AnyFlatSpec with Matchers {
     // 2 + 2 slow-cadence ticks elsewhere), keeping the old source's films on the site
     // for twice the hold either guard is sized for.
     val repository = splitRepository()
-    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer,
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = DepthGuardTime.clock,
       maxConsecutiveGuardRejections = ScrapeHealth.MaxConsecutiveDepthRejections)
 
     cache.recordCinemaScrape(Multikino, scrape(films = 10, showtimesEach = 8))

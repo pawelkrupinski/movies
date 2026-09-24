@@ -27,7 +27,7 @@ class DepthGuardUnderSplitSpec extends AnyFlatSpec with Matchers {
   /** `films` slots at Multikino, each carrying `showtimesEach` distinct screenings. */
   private def deepScrape(films: Int, showtimesEach: Int): Seq[CinemaMovie] =
     (1 to films).map { i =>
-      val times = (0 until showtimesEach).map(n => showtime(f"2027-06-${8 + n / 12}%02dT${8 + n % 12}%02d:00"))
+      val times = DepthGuardTime.showtimes(showtimesEach)
       CinemaMovie(movie = Movie(s"Film $i", releaseYear = Some(2026)), cinema = Multikino,
         posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil,
         showtimes = times)
@@ -44,7 +44,7 @@ class DepthGuardUnderSplitSpec extends AnyFlatSpec with Matchers {
 
   it should "discard a depth-degraded tick when showtimes and slots live in their own collections" in {
     val repository = splitRepository()
-    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = DepthGuardTime.clock)
 
     cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 12))
     storedShowtimes(repository, "Film 1") shouldBe 12
@@ -57,7 +57,7 @@ class DepthGuardUnderSplitSpec extends AnyFlatSpec with Matchers {
 
   it should "still apply a plausible shrink under the split (a real schedule change)" in {
     val repository = splitRepository()
-    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = DepthGuardTime.clock)
 
     cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 12))
     cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 10))
@@ -71,7 +71,7 @@ class DepthGuardUnderSplitSpec extends AnyFlatSpec with Matchers {
     // smaller cap through `CaffeineMovieCache` accepts the degraded listing on the
     // SECOND thin tick instead of the fourth.
     val repository = splitRepository()
-    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer,
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = DepthGuardTime.clock,
       maxConsecutiveGuardRejections = 1)
 
     cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 12))
@@ -87,7 +87,7 @@ class DepthGuardUnderSplitSpec extends AnyFlatSpec with Matchers {
     // existing "discard a depth-degraded tick" spec above — the default threads
     // through unchanged.
     val repository = splitRepository()
-    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = DepthGuardTime.clock)
 
     cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 12))
     cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 1))
@@ -104,7 +104,7 @@ class DepthGuardUnderSplitSpec extends AnyFlatSpec with Matchers {
     // carrying MORE showtimes so total showtimes stay well above the DEPTH floor
     // throughout — this spec isolates the breadth guard alone.
     val repository = splitRepository()
-    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = DepthGuardTime.clock)
 
     cache.recordCinemaScrape(Multikino, deepScrape(films = 20, showtimesEach = 12))
     storedShowtimes(repository, "Film 1")  shouldBe 12

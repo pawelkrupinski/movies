@@ -1203,17 +1203,14 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
    *  (spread across days so the count scales past a single day's opening hours). */
   private def deepScrape(films: Int, showtimesEach: Int): Seq[CinemaMovie] =
     (1 to films).map { i =>
-      val times = (0 until showtimesEach).map { n =>
-        showtime(f"2027-06-${8 + n / 12}%02dT${8 + n % 12}%02d:00")
-      }
-      cinemaMovie(s"Film $i", Multikino, showtimes = times)
+      cinemaMovie(s"Film $i", Multikino, showtimes = DepthGuardTime.showtimes(showtimesEach))
     }
 
   private def multikinoShowtimeCount(cache: CaffeineMovieCache, title: String): Int =
     multikinoSlot(cache, title).map(_.showtimes.size).getOrElse(0)
 
   it should "keep a cinema's stored showtimes when a scrape returns every film but only a fraction of their screenings (a chunked scrape that lost most of its dates)" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer, clock = DepthGuardTime.clock)
     cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 12))
     multikinoShowtimeCount(cache, "Film 1") shouldBe 12
     // Next tick: all ten films still listed — so the FILM-count guard sees a full
@@ -1226,7 +1223,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still apply a scrape whose showtimes shrink plausibly (a real schedule change, not a degraded fetch)" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer, clock = DepthGuardTime.clock)
     cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 12))
     // Ten of twelve screenings kept — well inside what a real week-turn does, and
     // far above the degraded-fetch floor — so the write lands normally.
@@ -1235,7 +1232,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still apply a deep drop on a board too small for the shrink to be implausible" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer, clock = DepthGuardTime.clock)
     // A handful of screenings total — a small venue really can go from three
     // showings to one between ticks, so this must land rather than linger.
     cache.recordCinemaScrape(Multikino, deepScrape(films = 2, showtimesEach = 3))
@@ -1267,7 +1264,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // tight, but a cinema legitimately halving its board is under-sampled, which is
   // exactly what `MinShowtimesForDepthGuard` exists to keep out of range.
   it should "let a sustained reduction through rather than freezing a cinema on stale future showtimes" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer, clock = DepthGuardTime.clock)
     cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 12))
     // A board that really did halve keeps reporting the smaller schedule. The first
     // few ticks are treated as a degraded fetch, but the guard must eventually
@@ -1277,7 +1274,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "reset its patience after any healthy tick, so an intermittent bad fetch never accumulates" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer, clock = DepthGuardTime.clock)
     cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 12))
     // Degraded, healthy, degraded, healthy… — the shape of the 2026-07-27 incident,
     // where bad ticks were interspersed with complete runs. The count must never
@@ -1298,7 +1295,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   it should "apply every ratio measured on a healthy cinema and discard every degraded one" in {
     val stored = 100 // one slot, comfortably over MinShowtimesForDepthGuard
     def tickAt(ratio: Double): Int = {
-      val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+      val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer, clock = DepthGuardTime.clock)
       val incoming = (stored * ratio).round.toInt
       cache.recordCinemaScrape(Multikino, deepScrape(films = 1, showtimesEach = stored))
       cache.recordCinemaScrape(Multikino, deepScrape(films = 1, showtimesEach = incoming))
