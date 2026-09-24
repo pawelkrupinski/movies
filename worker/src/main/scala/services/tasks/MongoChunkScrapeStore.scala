@@ -72,8 +72,12 @@ class MongoChunkScrapeStore(db: Option[MongoDatabase] = None) extends ChunkScrap
       }
     }
 
+  // READS PROPAGATE a failure. Each answered "nothing" before, and each "nothing" is acted
+  // on: no active run reads as superseded (the chunk is skipped) or as room for a new run;
+  // no stored chunks let the reduce publish an empty/partial listing and then complete the
+  // run, deleting the chunks it never read. A throw fails the task, which retries.
   def activeRun(cinema: String): Option[ChunkRun] = runs.flatMap { c =>
-    Try(Await.result(c.find(Filters.eq("_id", cinema)).headOption(), 10.seconds)).toOption.flatten.map(toRun)
+    Await.result(c.find(Filters.eq("_id", cinema)).headOption(), 10.seconds).map(toRun)
   }
 
   def storeChunk(cinema: String, runId: String, key: String, valueJson: String, now: Instant): Unit = chunks.foreach { c =>
@@ -93,12 +97,11 @@ class MongoChunkScrapeStore(db: Option[MongoDatabase] = None) extends ChunkScrap
     loadDocs(cinema, runId).map(d => d.getString("key") -> d.getString("value")).toMap
 
   private def loadDocs(cinema: String, runId: String): Seq[Document] = chunks.toSeq.flatMap { c =>
-    Try(Await.result(c.find(Filters.and(Filters.eq("cinema", cinema), Filters.eq("runId", runId))).toFuture(), 10.seconds))
-      .getOrElse(Seq.empty)
+    Await.result(c.find(Filters.and(Filters.eq("cinema", cinema), Filters.eq("runId", runId))).toFuture(), 10.seconds)
   }
 
   def activeRuns(): Seq[ChunkRun] = runs.toSeq.flatMap { c =>
-    Try(Await.result(c.find().toFuture(), 10.seconds).map(toRun)).getOrElse(Seq.empty)
+    Await.result(c.find().toFuture(), 10.seconds).map(toRun)
   }
 
   def completeRun(cinema: String, runId: String): Unit = {

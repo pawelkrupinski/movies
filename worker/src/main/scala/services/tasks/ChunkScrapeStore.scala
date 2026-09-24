@@ -52,7 +52,8 @@ trait ChunkScrapeStore {
    *  time). A stale (abandoned) active run is superseded by the new one. */
   def startRun(cinema: String, expectedKeys: Seq[String], now: Instant, staleAfter: FiniteDuration): Option[String]
 
-  /** The cinema's current active run, if any. */
+  /** The cinema's current active run, if any. Like every read here, THROWS when the
+   *  store cannot be read: "no run" and "no chunks" are answers callers act on. */
   def activeRun(cinema: String): Option[ChunkRun]
 
   /** Store (idempotently) one chunk's serialised slice. A no-op if the run is no

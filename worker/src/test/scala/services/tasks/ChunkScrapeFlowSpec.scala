@@ -17,7 +17,7 @@ import scala.concurrent.duration._
  * fake `ChunkedCinemaScraper` stands in. Covers the happy path, per-chunk retry,
  * the supersession/conflict guard, and partial reduce on an abandoned run.
  */
-class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers {
+class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.OptionValues {
   import HandlerOutcome._
 
   private val cinema = Multikino
@@ -61,9 +61,9 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers {
   }
 
   private class Harness(scraper: FakeChunked, clock: Clock = Clock.fixed(now, ZoneOffset.UTC),
-                         venueCadenceDefault: FiniteDuration = 14.hours) {
+                         venueCadenceDefault: FiniteDuration = 14.hours,
+                         val store: InMemoryChunkScrapeStore = new InMemoryChunkScrapeStore) {
     val queue     = new InMemoryTaskQueue
-    val store     = new InMemoryChunkScrapeStore
     val freshness = new InMemoryFreshnessStore
     val venueCadence = new VenueCadenceStore(venueCadenceDefault)
     val published = mutable.ListBuffer.empty[Seq[CinemaMovie]]
@@ -120,6 +120,29 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers {
     byTitle shouldBe Map("Dune" -> 2, "Wicked" -> 1) // Dune merged across both days
     h.freshness.isFresh(ScrapeCinemaHandler.dedupKey(cinema), FreshnessKind.CinemaScrape, now) shouldBe true
     h.store.activeRun(cinemaName) shouldBe None // run cleaned up
+  }
+
+  it should "not publish or complete a run whose chunks it could not read — the reduce retries" in {
+    val store = new FailingReadChunkScrapeStore
+    val h = new Harness(new FakeChunked(Map("2026-06-25" -> Seq(film("Dune", 25)))), store = store)
+    h.planner.plan(cinemaName) shouldBe 1
+    // Run the chunk with the store readable, which enqueues the reduce…
+    val chunk = h.queue.claim("w", 30.seconds, now).value
+    h.chunkH.handle(chunk) shouldBe Done
+    h.queue.complete(chunk.id, "w")
+    h.coord.onTaskFinished(TaskFinished(chunk.taskType, chunk.dedupKey, chunk.payload))
+    val reduce = h.queue.claim("w", 30.seconds, now).value
+    reduce.taskType shouldBe TaskType.ScrapeChunkReduce
+
+    // …then blind the reduce's reads: it must fail, not publish "nothing" and clean up.
+    store.failingReads = true
+    scala.util.Try(h.reduceH.handle(reduce)).toOption should not contain Done
+    h.published shouldBe empty
+
+    store.failingReads = false
+    h.store.activeRun(cinemaName) should not be empty // the chunks are still there to retry
+    h.reduceH.handle(reduce) shouldBe Done
+    h.published.map(_.map(_.movie.title)) shouldBe Seq(Seq("Dune"))
   }
 
   // The chunked reduce path is `ScrapeChunkReduceHandler`'s own terminal-success
