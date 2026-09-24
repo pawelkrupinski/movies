@@ -76,7 +76,10 @@ class WarmResolutionCacheSpec extends AnyFlatSpec with Matchers {
     val (coldCorpus, warmCorpus) = (corpus(cold), corpus(warm))
     coldCorpus should not be empty
     withClue(s"memoising the resolutions changed what the pipeline concluded:\n" +
-             s"${CorpusDiff.records(coldCorpus, warmCorpus, "passthrough", "memoised")}\n") {
+             s"${CorpusDiff.records(coldCorpus, warmCorpus, "passthrough", "memoised")}\n" +
+             // …and by id: `CorpusDiff` compares only the fields a scrape moves, so a film that is
+             // simply ABSENT from one side, or differs in its resolution, printed nothing at all.
+             s"${differences(coldCorpus, warmCorpus)}\n${differences(warmCorpus, coldCorpus)}\n") {
       warmCorpus shouldBe coldCorpus
     }
     withClue("memoising the resolutions changed the read model the site serves: ") {
@@ -123,8 +126,12 @@ class WarmResolutionCacheSpec extends AnyFlatSpec with Matchers {
     corpus(w)
   }
 
+  // Its OWN wiring, not the shared `warm`: the re-ask above strips and re-resolves every row of
+  // that one, so measuring it here measured whatever the re-ask left behind — and only when the
+  // specs ran in file order. Run alone (`-z`), the same test measured a different pass.
   it should "do no work at all on a second tick, every lookup answered from its warm cache" in {
-    FixpointPass.ledger(warm).assertNoChurn("a tick over unchanged input with every resolution cache warm")(
-      FixpointPass.run(warm))
+    val settled = settle(new WarmCitySlice)
+    FixpointPass.ledger(settled).assertNoChurn("a tick over unchanged input with every resolution cache warm")(
+      FixpointPass.run(settled))
   }
 }
