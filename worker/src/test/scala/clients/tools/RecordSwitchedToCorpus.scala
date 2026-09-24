@@ -12,19 +12,23 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 /** One-shot: record the own-site responses of the cinemas switched off Filmweb
  *  into the 08-06-2026 whole-corpus fixture set, so the e2e + page snapshots
  *  render their real films. Run:
- *    sbt 'worker/Test/runMain clients.tools.RecordSwitchedToCorpus'
- *  then delete + regenerate the snapshots. today is pinned to the capture date. */
+ *    sbt 'worker/Test/runMain clients.tools.RecordSwitchedToCorpus [Label ...]'
+ *  then delete + regenerate the snapshots. today is pinned to the capture date.
+ *  Labels (the first column below, e.g. `KinoNadWarta`) record just those venues;
+ *  none records them all. */
 object RecordSwitchedToCorpus {
   def main(args: Array[String]): Unit = {
     val record   = new RecordingHttpFetch("08-06-2026", new RealHttpFetch())
     val today = LocalDate.of(2026, 6, 8)
+    val only = args.toSet
     def rep(label: String)(n: => Int): Unit =
-      println(f"$label%-34s ${Try(n).fold(e => s"FAIL ${e.getClass.getSimpleName}", x => s"$x films")}")
-    rep("KinoEcho")(new Bilety24OrganizerClient(record, "https://www.bilety24.pl/kino/organizator/kino-echo-w-jarocinie-1159", KinoEcho, titles = titleNormalizer).fetch().size)
+      if (only.isEmpty || only(label)) println(f"$label%-34s ${Try(n).fold(e => s"FAIL ${e.getClass.getSimpleName}", x => s"$x films")}")
+    rep("KinoNadWarta")(new Bilety24OrganizerClient(record, "https://www.bilety24.pl/kino/organizator/miejski-dom-kultury-w-kole-1621", KinoNadWarta, titles = titleNormalizer).fetch().size)
+    rep("KinoEcho")(new Bilety24OrganizerClient(record, "https://www.bilety24.pl/kino/organizator/kino-echo-1159", KinoEcho, titles = titleNormalizer).fetch().size)
     rep("KinoBajkaKluczbork")(new Bilety24OrganizerClient(record, "https://www.bilety24.pl/kino/organizator/centrum-aktywnosci-lokalnej-w-kluczborku-kino-bajka-1467", KinoBajkaKluczbork, titles = titleNormalizer).fetch().size)
-    rep("KinoLewart")(new Bilety24OrganizerClient(record, "https://www.bilety24.pl/kino/organizator/kino-lewart-w-lubartowie-1382", KinoLewart, titles = titleNormalizer).fetch().size)
+    rep("KinoLewart")(new Bilety24OrganizerClient(record, "https://www.bilety24.pl/kino/organizator/lubartowski-osrodek-kultury-1382", KinoLewart, titles = titleNormalizer).fetch().size)
     rep("KinoWawel")(new Bilety24OrganizerClient(record, "https://www.bilety24.pl/kino/organizator/kino-wawel-1489", KinoWawel, titles = titleNormalizer).fetch().size)
-    rep("KinoMuzaLubin")(new Bilety24OrganizerClient(record, "https://www.bilety24.pl/kino/organizator/centrum-kultury-muza-w-lubinie-1375", KinoMuzaLubin, titles = titleNormalizer).fetch().size)
+    rep("KinoMuzaLubin")(new Bilety24OrganizerClient(record, "https://www.bilety24.pl/kino/organizator/centrum-kultury-muza-w-lubinie-dolny-slask-1375", KinoMuzaLubin, titles = titleNormalizer).fetch().size)
     rep("KinoFregata")(new Bilety24OrganizerClient(record, "https://www.bilety24.pl/kino/organizator/leborskie-centrum-kultury-fregata-1683", KinoFregata, titles = titleNormalizer).fetch().size)
     rep("KinoNarie")(new Bilety24OrganizerClient(record, "https://www.bilety24.pl/kino/organizator/moraski-dom-kultury-1682", KinoNarie, titles = titleNormalizer).fetch().size)
     rep("KinoPiastOstrzeszow")(new Bilety24OrganizerClient(record, "https://www.bilety24.pl/kino/organizator/ostrzeszowskie-centrum-kultury-601", KinoPiastOstrzeszow, titles = titleNormalizer).fetch().size)

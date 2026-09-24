@@ -121201,6 +121201,25 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "f95f2a027853d7d0|turek|Kino nad Wartą",
+    "filmId" : "f95f2a027853d7d0",
+    "city" : "turek",
+    "cinema" : "Kino nad Wartą",
+    "filmUrl" : "https://www.bilety24.pl/kino/1621-mistyczka-165122?id=991481",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-22T18:00:00",
+      "bookingUrl" : "https://www.bilety24.pl/kino/1621-mistyczka-165122?id=991481",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-23T18:00:00",
+      "bookingUrl" : "https://www.bilety24.pl/kino/1621-mistyczka-165122?id=991483",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-26T18:00:00",
+      "bookingUrl" : "https://www.bilety24.pl/kino/1621-mistyczka-165122?id=991482",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "f962cee30a151340|boleslawiec|Forum",
     "filmId" : "f962cee30a151340",
     "city" : "boleslawiec",
@@ -171912,6 +171931,17 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "fc293a8cc1a0f2e5|turek|Kino nad Wartą",
+    "filmId" : "fc293a8cc1a0f2e5",
+    "city" : "turek",
+    "cinema" : "Kino nad Wartą",
+    "filmUrl" : "https://www.bilety24.pl/kino/1621-vaiana-162572?id=975370",
+    "showtimes" : [ {
+      "dateTime" : "2026-09-24T16:30:00",
+      "bookingUrl" : "https://www.bilety24.pl/kino/1621-vaiana-162572?id=975370",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "fc2e82ad9aa8870f|warszawa|Kinoteka",
     "filmId" : "fc2e82ad9aa8870f",
     "city" : "warszawa",
@@ -194558,6 +194588,81 @@
       "dateTime" : "2026-10-08T19:30:00",
       "bookingUrl" : "https://bilety.cinemaone.pl/pl/screen?screeningId=c99a470c-f674-4318-8207-fe630ab95bfe&cinemaId=8d3b10d9-f892-4f57-bf74-9f86905ce3ea",
       "room" : "Sala 3",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "ff9682dec3985ae2|turek|Kino nad Wartą",
+    "filmId" : "ff9682dec3985ae2",
+    "city" : "turek",
+    "cinema" : "Kino nad Wartą",
+    "filmUrl" : "https://www.bilety24.pl/kino/1621-lalka-164633?id=988001",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-01T15:30:00",
+      "bookingUrl" : "https://www.bilety24.pl/kino/1621-lalka-164633?id=988001",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-01T18:30:00",
+      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1621-lalka-164633?id=988008",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-02T15:30:00",
+      "bookingUrl" : "https://www.bilety24.pl/kino/1621-lalka-164633?id=988002",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-02T18:30:00",
+      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1621-lalka-164633?id=988010",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-04T15:30:00",
+      "bookingUrl" : "https://www.bilety24.pl/kino/1621-lalka-164633?id=988003",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-04T18:30:00",
+      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1621-lalka-164633?id=988011",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-05T15:30:00",
+      "bookingUrl" : "https://www.bilety24.pl/kino/1621-lalka-164633?id=988004",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-05T18:30:00",
+      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1621-lalka-164633?id=988012",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-08T15:30:00",
+      "bookingUrl" : "https://www.bilety24.pl/kino/1621-lalka-164633?id=988005",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-08T18:30:00",
+      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1621-lalka-164633?id=988013",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-09T15:30:00",
+      "bookingUrl" : "https://www.bilety24.pl/kino/1621-lalka-164633?id=988006",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-09T18:30:00",
+      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1621-lalka-164633?id=988014",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-12T15:30:00",
+      "bookingUrl" : "https://www.bilety24.pl/kino/1621-lalka-164633?id=988007",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-12T18:30:00",
+      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1621-lalka-164633?id=988015",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-15T18:00:00",
+      "bookingUrl" : "https://www.bilety24.pl/kino/1621-lalka-164633?id=988016",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-17T18:00:00",
+      "bookingUrl" : "https://www.bilety24.pl/kino/1621-lalka-164633?id=988017",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-18T18:00:00",
+      "bookingUrl" : "https://www.bilety24.pl/kino/1621-lalka-164633?id=988018",
       "format" : [ ]
     } ]
   }, {
