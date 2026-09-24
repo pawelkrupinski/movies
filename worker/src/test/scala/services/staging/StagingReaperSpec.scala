@@ -176,6 +176,13 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
     )
   }
 
+  "stepCounts" should "throw on an incomplete staging scan rather than report its missing rows as zero" in {
+    val repository = new UnreadableStagingRepository
+    val steps      = new StagingSteps(repository, Seq(enricher), (_, _, _) => None, (_, _, _) => None, new InMemoryFreshnessStore)
+    val reaper     = new StagingReaper(steps, new InMemoryTaskQueue, repository)
+    an[IllegalStateException] should be thrownBy reaper.stepCounts()
+  }
+
   "tick" should "scan the repository ONCE regardless of how many distinct films are staged" in {
     // The old `enqueueNext(anchor)` re-scanned via `rowsFor` per distinct anchor,
     // so a tick over N films did 1 + N full `findAll`s; the snapshot rewrite does 1.

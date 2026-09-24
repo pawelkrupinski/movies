@@ -188,13 +188,19 @@ class StagingReaper(
    *  `findAll()`; counts DISTINCT films (a film's multiple cinema rows count
    *  once, keyed by `sanitize(title)` like the chain). Reuses [[stepFor]] so it
    *  agrees with what the reaper will actually enqueue. */
-  def stepCounts(): Map[StagingStep, Int] =
-    staging.findAll()
+  def stepCounts(): Map[StagingStep, Int] = {
+    val (rows, complete) = staging.findAllChecked()
+    // THROWS on an incomplete scan: the missing rows would count as zero, and the gauge
+    // read "staging drained" while it could not be read. The metrics render keeps its last
+    // good sample instead (`MetricsSnapshotCache`).
+    if (!complete) throw new IllegalStateException(s"staging read incomplete (${rows.size} row(s) seen) — step counts unknown")
+    rows
       .groupBy(r => normalizer.sanitize(r.title))
       .toSeq
       .flatMap { case (anchor, rows) => stepFor(rows, anchor) }
       .groupBy(identity)
       .map { case (step, occurrences) => step -> occurrences.size }
+  }
 
   private def added(r: EnqueueResult): Boolean = r == EnqueueResult.Added
   private def countOne(r: EnqueueResult): Int = if (added(r)) 1 else 0

@@ -86,6 +86,12 @@ trait StagingRepository {
   /** Every staging row, ordered by `_id`. Returns empty when disabled. */
   def findAll(): Seq[StagingRecord]
 
+  /** [[findAll]] and whether the scan was COMPLETE. An incomplete scan returns the rows it
+   *  managed, and a caller deciding from the whole set — a gauge, the stuck-alerter's
+   *  "this row resolved" — must not read the missing rows as absent. The in-memory store
+   *  cannot fail, so the default reports `true`. */
+  def findAllChecked(): (Seq[StagingRecord], Boolean) = (findAll(), true)
+
   /**
    * The rows of ONE film — the sanitized-title anchor the staging state machine works on.
    *
@@ -344,8 +350,10 @@ class MongoStagingRepository(
    * scan now says so at WARN with the count it managed, rather than returning a
    * confident empty list.
    */
-  def findAll(): Seq[StagingRecord] = coll match {
-    case None => Seq.empty
+  def findAll(): Seq[StagingRecord] = findAllChecked()._1
+
+  override def findAllChecked(): (Seq[StagingRecord], Boolean) = coll match {
+    case None => (Seq.empty, true)
     case Some(c) =>
       val buf = Vector.newBuilder[StagingRecord]
       val complete = services.movies.KeysetScan.scan[StoredMovieDto](
@@ -366,7 +374,7 @@ class MongoStagingRepository(
 
       val records = buf.result()
       if (!complete) logger.warn(s"StagingRepository.findAll returned ${records.size} record(s) from an INCOMPLETE scan")
-      records
+      (records, complete)
   }
 
   /**

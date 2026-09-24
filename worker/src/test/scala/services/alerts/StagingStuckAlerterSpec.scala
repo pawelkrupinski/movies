@@ -69,6 +69,23 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
     sent.size shouldBe 1
   }
 
+  it should "skip a pass whose staging scan was incomplete, not read the unseen rows as resolved" in {
+    val clock      = new MutableClock(Start)
+    val repository = new services.staging.UnreadableStagingRepository(Seq(staged(Helios, "Brand New Film", Some(2026))))
+    repository.failing = false
+    val (a, sent)  = newAlerter(repository, clock)
+    a.runOnce() shouldBe None                // first seen at Start
+
+    clock.advance(30.minutes)
+    repository.failing = true
+    a.runOnce() shouldBe None                // unreadable: nothing concluded about the row
+
+    clock.advance(31.minutes)                // 61m since first seen
+    repository.failing = false
+    a.runOnce() should not be empty          // alerts on time — the blind pass did not restart its hour
+    sent.size shouldBe 1
+  }
+
   it should "never alert on a concluded row (TMDB hit or definitive no-match)" in {
     val clock = new MutableClock(Start)
     val repository  = new InMemoryStagingRepository(Seq(

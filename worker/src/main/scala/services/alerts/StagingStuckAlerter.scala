@@ -67,8 +67,19 @@ class StagingStuckAlerter(
    *  exposed for tests. `synchronized` so a test's manual `runOnce` can't race a
    *  scheduled tick. */
   private[alerts] def runOnce(): Option[String] = synchronized {
+    val (rows, complete) = stagingRepository.findAllChecked()
+    // An incomplete scan skips the pass: a row it missed would read as resolved — its
+    // first-seen time dropped, so its alert restarts the hour, or re-fires once seen again.
+    if (complete) scan(rows)
+    else {
+      logger.warn(s"StagingStuckAlerter: staging read incomplete (${rows.size} row(s)) — pass skipped.")
+      None
+    }
+  }
+
+  private def scan(rows: Seq[StagingRecord]): Option[String] = {
     val now        = clock.instant()
-    val unresolved = stagingRepository.findAll().filterNot(_.record.tmdbConcluded)
+    val unresolved = rows.filterNot(_.record.tmdbConcluded)
     val currentIds = unresolved.map(idOf).toSet
 
     // Drop rows that resolved or vanished since last pass — frees them to re-alert.
