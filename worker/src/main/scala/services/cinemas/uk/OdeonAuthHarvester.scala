@@ -3,7 +3,7 @@ package services.cinemas.uk
 import play.api.libs.json.Json
 import play.api.Logging
 import services.cinemas.common.ZyteClient
-import tools.{HttpOutcome, HttpOutcomeRecorder, HttpStatusException}
+import tools.{EgressProviderException, HttpOutcome, HttpOutcomeRecorder}
 
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
@@ -130,7 +130,7 @@ object OdeonAuthHarvester {
         meter.record(HttpOutcome.Success)
         (Json.parse(body) \ "browserHtml").asOpt[String]
       } else {
-        meter.record(HttpOutcome.classify(new HttpStatusException(status, "POST", ZyteEndpoint, None)))
+        meter.record(HttpOutcome.classify(new EgressProviderException(status, s"Zyte http=$status for $ZyteEndpoint")))
         None
       }
     } catch {

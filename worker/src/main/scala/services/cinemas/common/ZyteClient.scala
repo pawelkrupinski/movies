@@ -2,7 +2,7 @@ package services.cinemas.common
 
 import play.api.Logging
 import play.api.libs.json.{JsString, Json}
-import tools.HttpStatusException
+import tools.{EgressProviderException, HttpStatusException}
 
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
@@ -100,10 +100,7 @@ class ZyteClient(httpClient: HttpClient, apiKey: String) extends Logging {
       .build()
 
     val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-    if (response.statusCode() != 200)
-      throw new ZyteStatusException(response.statusCode(), targetUrl,
-        s"Zyte http=${response.statusCode()} for $targetUrl: ${response.body().take(200)}")
-    response.body()
+    ZyteClient.apiBodyOrThrow(response.statusCode(), response.body(), targetUrl)
   }
 }
 
@@ -130,6 +127,12 @@ object ZyteClient {
         Json.toJson(headers.toSeq.map { case (name, value) => Json.obj("name" -> name, "value" -> value) }))
     withHeaders.toString
   }
+
+  /** Zyte's own answer to an `/extract` POST: its JSON body on 200, or a throw
+   *  naming Zyte's status (401 a bad key, 429 its throttle, 520 a ban). */
+  def apiBodyOrThrow(zyteStatus: Int, zyteBody: String, targetUrl: String): String =
+    if (zyteStatus == 200) zyteBody
+    else throw new ZyteApiException(zyteStatus, s"Zyte http=$zyteStatus for $targetUrl: ${zyteBody.take(200)}")
 
   /** Pull the upstream HTTP status code from a Zyte extract response.
    *  Defaults to -1 when absent (treated by callers as an error).
@@ -159,8 +162,12 @@ object ZyteClient {
   /** [[bodyOrThrow]] without the UTF-8 decode — the upstream's exact bytes. */
   def bodyBytesOrThrow(zyteJson: String, targetUrl: String): Array[Byte] = {
     val status = extractStatus(zyteJson)
+    // The origin's own status, relayed: the origin's verdict, so an HttpStatusException.
+    // No status at all (-1) is Zyte failing to say, which is Zyte's failure.
+    if (status < 0)
+      throw new ZyteApiException(status, s"Zyte API call returned upstream status=$status for $targetUrl")
     if (status < 200 || status >= 300)
-      throw new ZyteStatusException(status, targetUrl, s"Zyte API call returned upstream status=$status for $targetUrl")
+      throw new ZyteOriginStatusException(status, targetUrl, s"Zyte API call returned upstream status=$status for $targetUrl")
     extractBodyBytes(zyteJson).getOrElse(
       throw new RuntimeException(s"Zyte response missing httpResponseBody for $targetUrl")
     )
@@ -173,13 +180,16 @@ object ZyteClient {
     "Basic " + Base64.getEncoder.encodeToString(s"$apiKey:".getBytes(StandardCharsets.UTF_8))
 }
 
-/** A Zyte call that did not yield a usable body, carrying the status that says
- *  why — Zyte's own (`Zyte http=…`: 401 a bad key, 429 its throttle, 520 a ban)
- *  or the upstream's (`upstream status=…`, -1 when Zyte reported none). Typed as
- *  an [[HttpStatusException]] so [[tools.HttpOutcome.classify]] can class it for
- *  the paid-egress counter; the message is the one these failures always had,
- *  because it is what /uptime shows and what people search the logs for. */
-class ZyteStatusException(code: Int, targetUrl: String, message: String)
+/** The ORIGIN's non-2xx status, relayed by Zyte — the origin's verdict, so an
+ *  [[HttpStatusException]] every status-aware caller may act on (a 404/410 is as
+ *  durable through Zyte as fetched directly). The message is the one these
+ *  failures always had: it is what /uptime shows and what people search for. */
+class ZyteOriginStatusException(code: Int, targetUrl: String, message: String)
     extends HttpStatusException(code, "GET", targetUrl, None) {
   override def getMessage: String = message
 }
+
+/** Zyte ITSELF failing — its API answering non-200 (401 a bad key, 429 its
+ *  throttle, 520 a ban), or naming no origin status. Zyte's status, never the
+ *  origin's: see [[tools.EgressProviderException]]. */
+class ZyteApiException(zyteStatus: Int, message: String) extends EgressProviderException(zyteStatus, message)

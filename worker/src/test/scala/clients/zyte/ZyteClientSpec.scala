@@ -2,8 +2,8 @@ package clients.zyte
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
-import services.cinemas.common.ZyteClient
-import tools.HttpOutcome
+import services.cinemas.common.{DetailFetchOutcome, ZyteClient}
+import tools.{HttpOutcome, HttpStatusException}
 
 import java.nio.charset.StandardCharsets
 import java.util.Base64
@@ -68,7 +68,45 @@ class ZyteClientSpec extends AnyFlatSpec with Matchers {
     exception.getMessage shouldBe "Zyte API call returned upstream status=401 for https://vwc.odeon.co.uk/x"
   }
 
-  it should "throw when the body is missing even on a 2xx status" in {
+  // An ORIGIN status relayed by Zyte is the origin's answer: a 404/410 via Zyte
+  // is as durable as one fetched directly, so a detail cache stamps it gone.
+  it should "surface an origin 404 relayed by Zyte as the origin's own status" in {
+    val json    = """{"statusCode":404,"httpResponseBody":""}"""
+    val failure = the[HttpStatusException] thrownBy ZyteClient.bodyOrThrow(json, "https://biletyna.pl/gone")
+    failure.code shouldBe 404
+    a[HttpStatusException] should be thrownBy DetailFetchOutcome.transientToNone(ZyteClient.bodyOrThrow(json, "https://biletyna.pl/gone"))
+  }
+
+  // Zyte naming no origin status at all is Zyte's failure, not an origin answer.
+  it should "not dress a missing origin status up as an HTTP status" in {
+    val failure = the[RuntimeException] thrownBy ZyteClient.bodyOrThrow("""{"httpResponseBody":""}""", "https://x.pl/")
+    failure should not be a[HttpStatusException]
+  }
+
+  // Zyte's OWN status (its API answering non-200) says nothing about the origin.
+  // As an HttpStatusException, Zyte's 429 opened the origin host's breaker and
+  // throttled it, Zyte's 403 counted as the origin blocking us, and a Zyte 404/410
+  // got a detail page stamped gone for good.
+  "apiBodyOrThrow" should "return Zyte's JSON on 200" in {
+    ZyteClient.apiBodyOrThrow(200, "{}", "https://x.pl/") shouldBe "{}"
+  }
+
+  it should "throw Zyte's own failures as the provider's, never as the origin's status" in {
+    Seq(401 -> HttpOutcome.Http401, 403 -> HttpOutcome.Http403, 404 -> HttpOutcome.Http404,
+        429 -> HttpOutcome.Http429, 520 -> HttpOutcome.Http5xx).foreach { case (status, outcome) =>
+      val failure = the[RuntimeException] thrownBy ZyteClient.apiBodyOrThrow(status, "ban", "https://x.pl/")
+      withClue(s"Zyte $status: ") {
+        failure should not be a[HttpStatusException]
+        failure.getMessage shouldBe s"Zyte http=$status for https://x.pl/: ban"
+        // Still classed by Zyte's status on the paid-egress counter.
+        HttpOutcome.classify(failure) shouldBe outcome
+        // A transient for the detail fetch: retried, never stamped gone.
+        DetailFetchOutcome.transientToNone(ZyteClient.apiBodyOrThrow(status, "ban", "https://x.pl/")) shouldBe None
+      }
+    }
+  }
+
+  "bodyOrThrow" should "throw when the body is missing even on a 2xx status" in {
     val json = """{"statusCode":200,"browserHtml":"<html></html>"}"""
     the[RuntimeException] thrownBy ZyteClient.bodyOrThrow(json, "x") should have message
       "Zyte response missing httpResponseBody for x"

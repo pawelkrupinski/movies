@@ -54,9 +54,9 @@ object HttpOutcome {
    *  (so the timeout case catches both); the connection-layer errors are all
    *  `IOException` subtypes, checked before the generic `IOException` fallback. */
   def classify(t: Throwable): String = t match {
-    case e: HttpStatusException if e.code >= 400 && e.code < 500 => Named4xx.getOrElse(e.code, Http4xx)
-    case e: HttpStatusException if e.code >= 500 && e.code < 600 => Http5xx
-    case _: HttpStatusException                                => Other
+    case e: HttpStatusException                                => byStatus(e.code)
+    // The provider's own status, for the paid-egress counter — see EgressProviderException.
+    case e: EgressProviderException                            => byStatus(e.providerStatus)
     case _: java.net.http.HttpTimeoutException                => Timeout
     case _: java.net.ConnectException                         => ConnectionError
     case _: java.net.UnknownHostException                     => ConnectionError
@@ -65,6 +65,11 @@ object HttpOutcome {
     case _: java.io.IOException                               => ConnectionError
     case _                                                    => Other
   }
+
+  private def byStatus(code: Int): String =
+    if (code >= 400 && code < 500) Named4xx.getOrElse(code, Http4xx)
+    else if (code >= 500 && code < 600) Http5xx
+    else Other
 }
 
 /**
