@@ -2,7 +2,6 @@ package pl.kinowo.auth
 
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
-import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -11,6 +10,7 @@ import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 import pl.kinowo.contracts.RetryClassificationTable
+import pl.kinowo.contracts.answerEveryRequestWith
 
 /** [HttpLanguageClient.push] tells a pick the server refuses for good (a
  *  language it does not know) from a failure worth retrying, so
@@ -46,7 +46,7 @@ class HttpLanguageClientTest {
         for (row in rows) {
             val status = requireNotNull(row.status) { "$row names no status" }
             assertEquals("$row", row.isPermanent, LanguagePushRefused.isPermanent(status))
-            server.enqueue(MockResponse().setResponseCode(status))
+            server.answerEveryRequestWith(status)
             try {
                 client.push("de")
                 fail("a $status must not read as a successful push")
