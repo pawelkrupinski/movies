@@ -53,7 +53,7 @@ final class MovieChangeStream(
   source:              MovieChangeStream.Source,
   screenings:          Option[ScreeningsRepository],
   slots:               Option[SlotsRepository],
-  reread:              String => Option[StoredMovieRecord],
+  reread:              String => (Option[StoredMovieRecord], Boolean),
   resumeToken:         ChangeStreamResumeToken,
   changeStreamMetrics: ChangeStreamMetrics,
   screeningsMetrics:   SideCollectionChangeMetrics,
@@ -126,6 +126,8 @@ final class MovieChangeStream(
     open:       ((String, () => Unit) => Unit, ChangeStreamDemand) => Option[AutoCloseable]
   ) {
     val demand = new ChangeStreamDemand(changeDemandWindow)
+    /** Set by this cursor's first apply whose re-read failed — see [[applyReread]]. */
+    val held   = new java.util.concurrent.atomic.AtomicBoolean(false)
     private val handle = new AtomicReference[Option[AutoCloseable]](None)
 
     // The re-read is a BLOCKING read, so it (and the fanout) run on `changeApply`, never
@@ -171,15 +173,52 @@ final class MovieChangeStream(
       if (sideApplyPending.add(filmId))
         applyOffLoop(collection, demand) {
           sideApplyPending.remove(filmId)
-          val film = reread(filmId)
-          applied() // this cursor's resume position moves only now — see `SideCollectionWatch`
-          film.foreach(movieChanges.dispatchUpsert)
+          // this cursor's resume position moves only once the film is fanned out — see
+          // `SideCollectionWatch` and `applyReread`
+          applyReread(filmId, held, collection)(applied)
         }
       else {
         metrics.recordCoalescedChange()
         demand.applied()
       }
     }
+  }
+
+  /** Set by the `movies` cursor's first apply whose re-read failed — see [[applyReread]]. */
+  private val moviesHeld = new java.util.concurrent.atomic.AtomicBoolean(false)
+
+  private def advanceMovies(token: BsonDocument, generation: Long): Unit = {
+    resumeToken.advance(token, generation)
+    resumeToken.save(force = false) // time-throttled, fire-and-forget
+  }
+
+  /** One apply's re-read and fan-out, then `acknowledge` — the cursor's resume position moves
+   *  only once the event is fully APPLIED, listeners included, so a shutdown cutting a fan-out
+   *  short cannot have persisted its position first.
+   *
+   *  A re-read that FAILED is not a film that is gone ([[MovieRepository.findByIdChecked]]):
+   *  nothing is fanned out, and the event is NOT applied. It is retried briefly (most failures
+   *  are a blip), and if it still fails the cursor is HELD: no later event is acknowledged for
+   *  the rest of this process either, because each cursor has ONE position and acknowledging a
+   *  later event moves it past the failed one just the same. A held cursor keeps applying —
+   *  the site stays live — and a restart resumes from before the failure and replays it (a
+   *  harmless re-read of everything since). If that replay has fallen out of the oplog window,
+   *  the invalid-token path starts fresh and the periodic backstop resyncs, as for any gap. */
+  private def applyReread(filmId: String, held: java.util.concurrent.atomic.AtomicBoolean, cursor: String)
+                         (acknowledge: () => Unit): Unit = {
+    var attempt = 1
+    var (film, read) = reread(filmId)
+    while (!read && attempt < MovieChangeStream.RereadAttempts) {
+      Thread.sleep(MovieChangeStream.RereadBackoffMillis * attempt)
+      attempt += 1
+      val next = reread(filmId); film = next._1; read = next._2
+    }
+    if (read) {
+      film.foreach(movieChanges.dispatchUpsert)
+      if (!held.get()) acknowledge()
+    } else if (!held.getAndSet(true))
+      logger.warn(s"MovieRepository change stream ($cursor): re-reading $filmId failed $attempt time(s) — its change " +
+        "is NOT applied, and this cursor's resume position is held from here on so a restart replays it.")
   }
 
   // Read-split only: a showtime change writes only `screenings` and a venue's slot only
@@ -226,8 +265,7 @@ final class MovieChangeStream(
           liveness.delivered(ChangeStreamLiveness.Movies)
           recordChangeMetrics(change)
           // The resume position moves only once this event is APPLIED — in its apply task,
-          // before the fan-out, so a consumer signal (a downstream latch / write) can never
-          // observe an event before the token moves. Advancing HERE, at delivery, persisted a
+          // AFTER the fan-out (see `applyReread`). Advancing HERE, at delivery, persisted a
           // position past every delivered-but-queued event (up to a demand window of them), so a
           // restart resumed after events that were never applied. The generation guards against
           // a `clear()` (invalid token) landing while this event is still queued.
@@ -241,8 +279,8 @@ final class MovieChangeStream(
           fullDocument match {
             // The movies doc has no showtimes — reread the film STITCHED (via `reread`, the
             // same by-id read the side cursors use) before fanning out, so consumers get a
-            // full row. A failed slot read yields None and we fan out NOTHING: an empty-cinema
-            // record here is what the projector turns into a screenings wipe.
+            // full row. A failed read fans out NOTHING (an empty-cinema record here is what the
+            // projector turns into a screenings wipe) and holds the position — see `applyReread`.
             //
             // COALESCE with a same-film apply already queued — by an earlier movies event,
             // or by the screenings/movie_slots cursors sharing this pending set. This is the
@@ -264,10 +302,7 @@ final class MovieChangeStream(
               if (sideApplyPending.add(dto._id))
                 applyOffLoop(ChangeStreamLiveness.Movies, moviesDemand) {
                   sideApplyPending.remove(dto._id)
-                  val film = reread(dto._id)
-                  resumeToken.advance(token, generation)
-                  film.foreach(movieChanges.dispatchUpsert)
-                  resumeToken.save(force = false) // time-throttled, fire-and-forget
+                  applyReread(dto._id, moviesHeld, ChangeStreamLiveness.Movies)(() => advanceMovies(token, generation))
                 }
               else { // not advanced — see `SideCursor.applyChange` on why a coalesced event must not be
                 changeStreamMetrics.recordCoalescedChange()
@@ -287,9 +322,8 @@ final class MovieChangeStream(
             case None =>
               deletedId.foreach(sideApplyPending.remove)
               applyOffLoop(ChangeStreamLiveness.Movies, moviesDemand) {
-                resumeToken.advance(token, generation)
                 deletedId.foreach(movieChanges.dispatchDelete)
-                resumeToken.save(force = false) // time-throttled, fire-and-forget
+                if (!moviesHeld.get()) advanceMovies(token, generation)
               }
           }
         }
@@ -349,17 +383,31 @@ final class MovieChangeStream(
   /** Tear the subscription down for good: no more reopens, the final resume position
    *  persisted synchronously, every demand window closed, the apply thread stopped. */
   override def close(): Unit = changeLock.synchronized {
-    changeReopen.close(); resumeToken.save(force = true)
+    changeReopen.close()
     Option(changeSub.getAndSet(null)).foreach(_.unsubscribe())
     moviesDemand.closed()
+    // Let the applies already queued FINISH (bounded) before the final positions are saved:
+    // saved first, a position misses them; and the apply thread is a daemon, so JVM exit
+    // would otherwise cut a fan-out short.
+    changeApply.shutdown()
+    if (!changeApply.awaitTermination(MovieChangeStream.CloseDrainSeconds, java.util.concurrent.TimeUnit.SECONDS))
+      logger.warn(s"MovieRepository change stream: applies still running after ${MovieChangeStream.CloseDrainSeconds}s " +
+        "at close — saving the positions they have reached; a restart replays the rest.")
+    resumeToken.save(force = true)
     // Each side handle stops its own reopen driver too — left open, a Mongo side cursor whose
     // client is closed under it would fail and reschedule its reopen for the life of the JVM.
+    // Closing one persists its final position, so it comes after the drain as well.
     sideCursors.foreach(_.close())
-    changeApply.shutdown()
   }
 }
 
 object MovieChangeStream {
+  /** How many times an apply re-reads a film whose read failed before holding its cursor. */
+  private[movies] val RereadAttempts      = 3
+  private[movies] val RereadBackoffMillis = 100L
+  /** How long `close()` waits for queued applies before saving the final positions. */
+  private[movies] val CloseDrainSeconds   = 10L
+
   /** Where the `movies` events come from. `resumeAfter` is the persisted position to
    *  reopen from (None opens at "now"); the observer receives every delivered change. */
   trait Source {

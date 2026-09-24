@@ -59,8 +59,7 @@ class ChangeStreamResumeToken(streamId: String, database: Option[MongoDatabase],
   def generation: Long = generations.get()
 
   /** Record `token` as the position to resume AFTER — call once its event has been
-   *  APPLIED (and before fanning it out, so a consumer signal can never observe an event
-   *  before the position moves). A token delivered before the last [[clear]] is ignored. */
+   *  APPLIED, fan-out included. A token delivered before the last [[clear]] is ignored. */
   def advance(token: BsonDocument, deliveredAt: Long): Unit = synchronized {
     if (deliveredAt == generations.get()) lastToken.set(token)
   }

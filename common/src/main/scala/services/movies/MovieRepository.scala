@@ -1163,7 +1163,7 @@ class MongoMovieRepository(
       source              = MovieChangeStream.Source.ofCollection(c),
       screenings          = screenings,
       slots               = slots,
-      reread              = id => findById(FilmId(id)),
+      reread              = id => findByIdChecked(FilmId(id)),
       // The shared cursor reopens (after a terminal error, and — the big win — after a WORKER
       // RESTART) from the last-seen token instead of "now", REPLAYING writes that landed while
       // this process was down — the gap the consumers' periodic backstops exist for. See

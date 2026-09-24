@@ -75,6 +75,9 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     screenings:        Option[ScreeningsRepository]        = None,
     slots:             Option[SlotsRepository]             = None,
     reread:            String => Option[StoredMovieRecord] = id => Some(recordOf(id)),
+    // The checked form production passes: `(row, read succeeded)`. Defaults to `reread`,
+    // which cannot fail.
+    rereadChecked:     Option[String => (Option[StoredMovieRecord], Boolean)] = None,
     screeningsMetrics:   SideCollectionChangeMetrics = ScreeningsMetrics.noop,
     slotsMetrics:        SideCollectionChangeMetrics = SideCollectionChangeMetrics.noop,
     changeStreamMetrics: ChangeStreamMetrics         = ChangeStreamMetrics.noop,
@@ -84,7 +87,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     source              = source,
     screenings          = screenings,
     slots               = slots,
-    reread              = reread,
+    reread              = rereadChecked.getOrElse(id => (reread(id), true)),
     resumeToken         = resumeToken,
     changeStreamMetrics = changeStreamMetrics,
     screeningsMetrics   = screeningsMetrics,
@@ -356,8 +359,95 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
 
       gate.countDown()
       applied.await(5, TimeUnit.SECONDS) shouldBe true
-      token.current shouldBe Some(new BsonDocument("_data", new BsonString("token-film|2024")))
+      eventually(token.current shouldBe Some(new BsonDocument("_data", new BsonString("token-film|2024"))))
     } finally { handle.close(); under.close() }
+  }
+
+  // An event is APPLIED once its fan-out has run, not once its re-read has: a position that
+  // moves before the listeners do is persisted by a shutdown that cuts the fan-out short.
+  it should "not move the resume position while the event's fan-out is still running" in {
+    val source   = new HandFedSource
+    val token    = new ChangeStreamResumeToken("movies", database = None, enabled = false)
+    val under    = stream(source, resumeToken = token)
+    val entered  = new CountDownLatch(1)
+    val release  = new CountDownLatch(1)
+
+    val handle = under.watch(_ => { entered.countDown(); release.await(5, TimeUnit.SECONDS) }, _ => ())
+    try {
+      source.emit(event("insert", "film|2024", StoredMovieDto.fromDomain("film|2024", MovieRecord(), Instant.EPOCH)))
+      entered.await(5, TimeUnit.SECONDS) shouldBe true
+      token.current shouldBe None // the listener has not finished — the event is not applied yet
+      release.countDown()
+      eventually(token.current shouldBe Some(new BsonDocument("_data", new BsonString("token-film|2024"))))
+    } finally { release.countDown(); handle.close(); under.close() }
+  }
+
+  // A re-read that FAILED is not a film that is gone (reference_failed_read_is_not_data): the
+  // event was not applied, so neither its position nor any LATER one may be persisted — a later
+  // acknowledgement moves the same single position past it. Held, a restart replays from before
+  // the failure; advanced, it is lost for good.
+  it should "hold the resume position once an event's re-read fails, even past later applied events" in {
+    val source    = new HandFedSource
+    val token     = new ChangeStreamResumeToken("movies", database = None, enabled = false)
+    val delivered = new java.util.concurrent.LinkedBlockingQueue[String]()
+    val under     = stream(source, resumeToken = token,
+      rereadChecked = Some(id => if (id == "broken|2024") (None, false) else (Some(recordOf(id)), true)))
+
+    val handle = under.watch(r => delivered.put(r.id.value), _ => ())
+    try {
+      source.emit(event("insert", "good|2024", StoredMovieDto.fromDomain("good|2024", MovieRecord(), Instant.EPOCH)))
+      delivered.poll(5, TimeUnit.SECONDS) shouldBe "good|2024"
+      eventually(token.current shouldBe Some(new BsonDocument("_data", new BsonString("token-good|2024"))))
+
+      source.emit(event("insert", "broken|2024", StoredMovieDto.fromDomain("broken|2024", MovieRecord(), Instant.EPOCH)))
+      source.emit(event("insert", "later|2024", StoredMovieDto.fromDomain("later|2024", MovieRecord(), Instant.EPOCH)))
+      delivered.poll(5, TimeUnit.SECONDS) shouldBe "later|2024" // the failed read fanned nothing out
+
+      token.current shouldBe Some(new BsonDocument("_data", new BsonString("token-good|2024")))
+    } finally { handle.close(); under.close() }
+  }
+
+  it should "not acknowledge a side-collection event whose re-read failed" in {
+    val source = new HandFedSource
+    @volatile var ring: (String, () => Unit) => Unit = null
+    val slots = new InMemorySlotsRepository {
+      override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] = {
+        ring = onChange
+        Some(new AutoCloseable { override def close(): Unit = () })
+      }
+    }
+    val acks      = new java.util.concurrent.ConcurrentLinkedQueue[String]()
+    val delivered = new java.util.concurrent.LinkedBlockingQueue[String]()
+    val under = stream(source, slots = Some(slots),
+      rereadChecked = Some(id => if (id == "broken|2024") (None, false) else (Some(recordOf(id)), true)))
+
+    val handle = under.watch(r => delivered.put(r.id.value), _ => ())
+    try {
+      ring("broken|2024", () => acks.add("broken"))
+      ring("later|2024", () => acks.add("later"))
+      delivered.poll(5, TimeUnit.SECONDS) shouldBe "later|2024"
+      import scala.jdk.CollectionConverters._
+      acks.asScala.toSeq shouldBe empty // held: acknowledging "later" would move the position past "broken"
+    } finally { handle.close(); under.close() }
+  }
+
+  // A clean shutdown persists the final position. Taken while an apply is still running, it
+  // either misses that event (saved before it) or — worse, were the token to move first — keeps
+  // a position whose event the dying JVM never finished. Close waits for the in-flight apply.
+  it should "let an in-flight apply finish before close() returns" in {
+    val source   = new HandFedSource
+    val token    = new ChangeStreamResumeToken("movies", database = None, enabled = false)
+    val under    = stream(source, resumeToken = token)
+    val entered  = new CountDownLatch(1)
+    @volatile var finished = false
+
+    under.watch(_ => { entered.countDown(); Thread.sleep(300); finished = true }, _ => ())
+    source.emit(event("insert", "film|2024", StoredMovieDto.fromDomain("film|2024", MovieRecord(), Instant.EPOCH)))
+    entered.await(5, TimeUnit.SECONDS) shouldBe true
+
+    under.close()
+    finished shouldBe true
+    token.current shouldBe Some(new BsonDocument("_data", new BsonString("token-film|2024")))
   }
 
   it should "not re-arm a token that an invalid-token error cleared while its event was still queued" in {
