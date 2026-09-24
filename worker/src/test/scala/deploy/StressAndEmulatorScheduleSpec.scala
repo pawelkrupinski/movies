@@ -52,7 +52,20 @@ class StressAndEmulatorScheduleSpec extends AnyFlatSpec with Matchers {
     stress should include("webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*")
   }
 
-  "android.yml" should "run the emulator lane only when android/** changed" in {
+  // The workflow's lane cancels a run in progress for a newer push: a push touching only
+  // scripts/ cancelling one that touched android/** would, diffed from its own `before`,
+  // never run the emulator for that app change. The base is the last run that FINISHED.
+  "android.yml" should "gate the emulator lane on what changed since the last successful run, not this push's before" in {
+    val preflight = RepoFile.block(RepoFile.block(android, "jobs"), "preflight")
+    val gate      = RepoFile.step(preflight, "Did this push touch the app?")
+    gate should include("base: ${{ steps.base.outputs.sha }}")
+    val base = RepoFile.stepScript(preflight, "The last successful run's commit, for the emulator filter")
+    base should include("--status success")
+    base should include("--branch main")
+    RepoFile.block(preflight, "permissions") should include("actions: read")
+  }
+
+  it should "run the emulator lane only when the app or its own workflow changed" in {
     val instrumented = RepoFile.block(RepoFile.block(android, "jobs"), "instrumented")
     instrumented should include("if: needs.preflight.outputs.emulator == 'true'")
     val preflight = RepoFile.block(RepoFile.block(android, "jobs"), "preflight")
@@ -61,7 +74,7 @@ class StressAndEmulatorScheduleSpec extends AnyFlatSpec with Matchers {
     val at       = lines.indexWhere(_.trim == "patterns: |")
     val indent   = lines(at).takeWhile(_ == ' ').length
     val patterns = lines.drop(at + 1).takeWhile(l => l.takeWhile(_ == ' ').length > indent).map(_.trim)
-    patterns shouldBe Seq("android/**")
+    patterns shouldBe Seq("android/**", ".github/workflows/android.yml")
   }
 
   "order-independence.yml" should "still run every androidTest class on the emulator nightly" in {

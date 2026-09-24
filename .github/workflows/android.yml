@@ -96,6 +96,10 @@ jobs:
     preflight:
         runs-on: ubuntu-latest
         timeout-minutes: 5
+        permissions:
+            contents: read
+            # The last successful run, for the emulator filter's base.
+            actions: read
         outputs:
             emulator: ${{ steps.android.outputs.changed }}
         steps:
@@ -107,22 +111,34 @@ jobs:
                   sparse-checkout-cone-mode: false
 
             # Whether the `instrumented` emulator lane runs — see the note over that job. The base
+            # is the head of the last SUCCESSFUL run on main, not this push's `before`: this
+            # workflow's lane cancels a run in progress for a newer push, and a scripts-only push
+            # cancelling an app push would otherwise never run the emulator for the app change.
+            # Empty (a PR, a dispatch, no earlier success) treats everything as changed. The
             # commit is fetched treeless-shallow: changed-paths only diffs names.
-            - name: Fetch this push's base, for the emulator filter
+            - name: The last successful run's commit, for the emulator filter
+              id: base
               if: github.event_name == 'push'
               env:
-                  BASE: ${{ github.event.before }}
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GH_REPO: ${{ github.repository }}
               run: |
-                  if [ -n "$BASE" ] && [ "$BASE" != 0000000000000000000000000000000000000000 ]; then
-                      git fetch --no-tags --depth=1 --filter=blob:none origin "$BASE"
+                  sha=$(gh run list --workflow android.yml --branch main --status success --limit 1 \
+                            --json headSha --jq '.[0].headSha // ""' || true)
+                  if [ -n "$sha" ] && git fetch --no-tags --depth=1 --filter=blob:none origin "$sha"; then
+                      echo "sha=$sha" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "no earlier successful run to diff against — the emulator lane runs"
                   fi
 
             - name: Did this push touch the app?
               id: android
               uses: ./.github/actions/changed-paths
               with:
+                  base: ${{ steps.base.outputs.sha }}
                   patterns: |
                       android/**
+                      .github/workflows/android.yml
 
             # The same SDK set-up `build` uses, so the licence checked is the one it will see.
             - name: Set up Android SDK
@@ -446,8 +462,9 @@ jobs:
     # ONLY WHEN THE APP CHANGED, not on every push this workflow runs for. The workflow also
     # triggers on the release and store scripts, which cannot change what runs on a device, and in
     # its first four weeks the lane caught no bug — its one red run was an adb flake. A push
-    # touching android/** (and any PR or hand dispatch, which changed-paths treats as all
-    # changed) still runs it; every androidTest class also runs on the emulator NIGHTLY, each
+    # whose range since the last SUCCESSFUL run touches android/** or this file (and any PR or
+    # hand dispatch, which changed-paths treats as all changed) still runs it — a cancelled
+    # app push's change stays in that range; every androidTest class also runs on the emulator NIGHTLY, each
     # alone, in order-independence.yml's android-instrumented leg.
     instrumented:
         needs: [preflight, build]
