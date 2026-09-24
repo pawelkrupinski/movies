@@ -264,6 +264,30 @@ final class StateSyncServiceTests: XCTestCase {
         _ = (sync1, sync2)
     }
 
+    /// Picking back to the account's language while another pick's push is
+    /// still in flight: the pick-back matches what the account held when it
+    /// was made, so nothing was sent for it, and the in-flight push then
+    /// left the server on the abandoned pick. The final pick must win.
+    func testPickingBackWhileAPushIsInFlightEndsOnTheFinalPick() async throws {
+        languageClient.remote = "de"
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.selectedLanguage == "de" }
+        try await Task.sleep(for: .milliseconds(100))
+
+        let gate = AsyncGate()
+        languageClient.beforePush = { await gate.wait() }
+        prefs.setLanguage("es")
+        try await waitUntil { self.languageClient.pushesStarted == 1 }
+        prefs.setLanguage("de")
+        languageClient.beforePush = nil
+        await gate.open()
+
+        try await waitUntil { self.languageClient.pushes.last == "de" }
+        XCTAssertEqual(languageClient.remote, "de")
+        _ = sync
+    }
+
     /// A genuine logout forgets the unsent pick — the next sign-in may be a
     /// different account, which must not inherit it.
     func testLogoutForgetsAnUnsentLanguagePick() async throws {
@@ -667,13 +691,40 @@ final class FakeLanguageClient: LanguageClient {
     var lastPushed: String? { pushes.last }
     /// Called on every push attempt, failed or not.
     var onPush: ((String) -> Void)?
+    /// Awaited at the start of a push — holds it "in flight".
+    var beforePush: (() async -> Void)?
+    /// Awaited at the start of a fetch — holds it "in flight".
+    var beforeFetch: (() async -> Void)?
+    private(set) var pushesStarted = 0
 
-    func fetch() async throws -> String? { remote }
+    func fetch() async throws -> String? {
+        if let beforeFetch { await beforeFetch() }
+        return remote
+    }
 
     func push(_ language: String) async throws {
+        pushesStarted += 1
+        if let beforePush { await beforePush() }
         defer { onPush?(language) }
         if shouldFailPush { throw URLError(.badServerResponse) }
         pushes.append(language)
         remote = language
+    }
+}
+
+/// A one-shot latch: `wait()` suspends until `open()`.
+actor AsyncGate {
+    private var isOpen = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func wait() async {
+        if isOpen { return }
+        await withCheckedContinuation { waiters.append($0) }
+    }
+
+    func open() {
+        isOpen = true
+        waiters.forEach { $0.resume() }
+        waiters.removeAll()
     }
 }

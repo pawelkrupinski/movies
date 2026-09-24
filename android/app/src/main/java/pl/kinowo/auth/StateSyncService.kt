@@ -205,6 +205,12 @@ class StateSyncService(
     private suspend fun pushLanguage(language: String) {
         languagePushJob?.cancel()
         languagePushJob = null
+        sendLanguage(language)
+    }
+
+    /** The push itself — called directly by the debounced job, which must
+     *  not cancel itself the way [pushLanguage] cancels it. */
+    private suspend fun sendLanguage(language: String) {
         runCatchingCancellable { languageClient.push(language) }.onSuccess {
             accountLanguage = language
             if (prefs.pendingLanguagePush() == language) prefs.setPendingLanguagePush(null)
@@ -213,7 +219,7 @@ class StateSyncService(
 
     /** React to every local language change after the login reconcile. A
      *  change to [accountLanguage] merely adopted the server's pick (or went
-     *  back to it), so it is never echoed; anything else is a local pick,
+     *  back to it with no other pick's push running), so it is never echoed; anything else is a local pick,
      *  marked pending and pushed after a 400 ms debounce so a rapid run of
      *  picker taps folds into one PUT. `distinctUntilChanged` because the
      *  DataStore flow re-emits the same tag on every prefs write (including
@@ -225,15 +231,19 @@ class StateSyncService(
             .drop(1)
             .collect { tag ->
                 if (tag == null) return@collect
+                // A push still running may already have reached the server —
+                // cancelling the coroutine can't un-send a blocking OkHttp
+                // call — so a pick back to [accountLanguage] must be sent too.
+                val pushInFlight = languagePushJob?.isActive == true
                 languagePushJob?.cancel()
                 languagePushJob = null
-                if (tag == accountLanguage) {
+                if (tag == accountLanguage && !pushInFlight) {
                     prefs.setPendingLanguagePush(null)
                 } else {
                     prefs.setPendingLanguagePush(tag)
                     languagePushJob = scope.launch {
                         delay(LANGUAGE_DEBOUNCE_MS)
-                        if (loggedIn) prefs.pendingLanguagePush()?.let { pushLanguage(it) }
+                        if (loggedIn) prefs.pendingLanguagePush()?.let { sendLanguage(it) }
                     }
                 }
             }

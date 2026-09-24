@@ -228,6 +228,16 @@ final class StateSyncService: ObservableObject {
             if pendingLanguage == language { pendingLanguage = nil }
         } catch {
             // Left pending — see above.
+            return
+        }
+        // The user moved on while this push was in flight — back to the value
+        // the account held before it, which `languageChanged` saw as "nothing
+        // to push". The account now holds `language` instead, so send the
+        // final pick.
+        let current = prefs.selectedLanguage
+        if pendingLanguage == nil, current != language, isLoggedIn {
+            pendingLanguage = current
+            await pushLanguage(current)
         }
     }
 

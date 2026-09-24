@@ -1,5 +1,6 @@
 package pl.kinowo
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -581,6 +582,33 @@ class StateSyncServiceTest {
         assertEquals("es", prefs.languageState.value)
     }
 
+    /** Picking back to the account's language while another pick's push is
+     *  still in flight: the pick-back matches what the account held when it
+     *  was made, so nothing was sent for it, and the in-flight push then left
+     *  the server on the abandoned pick. The final pick must win. Mirrors iOS. */
+    @Test
+    fun pickingBackWhileAPushIsInFlightEndsOnTheFinalPick() = runTest(UnconfinedTestDispatcher()) {
+        languageClient.remote = "de"
+        startService()
+        login()
+        advanceUntilIdle()
+
+        val gate = CompletableDeferred<Unit>()
+        languageClient.beforePushResponse = { gate.await() }
+        prefs.setLanguageTag("es")
+        advanceTimeBy(500)
+        runCurrent()
+        assertEquals(1, languageClient.pushAttempts)
+        prefs.setLanguageTag("de")
+        runCurrent()
+        languageClient.beforePushResponse = {}
+        gate.complete(Unit)
+        advanceTimeBy(500)
+        runCurrent()
+
+        assertEquals("de", languageClient.remote)
+    }
+
     /** A genuine logout forgets the unsent pick — the next sign-in may be a
      *  different account, which must not inherit it. */
     @Test
@@ -702,12 +730,23 @@ private class FakeLanguageClient : LanguageClient {
     /** Every push attempt, failed or not. */
     var pushAttempts = 0
 
-    override suspend fun fetch(): String? = remote
+    /** Awaited once a push has REACHED the server, before its response —
+     *  holds it "in flight". Cancelling the caller then can't un-send it,
+     *  as with the real blocking OkHttp call. */
+    var beforePushResponse: suspend () -> Unit = {}
+    /** Awaited at the start of a fetch — holds it "in flight". */
+    var beforeFetch: suspend () -> Unit = {}
+
+    override suspend fun fetch(): String? {
+        beforeFetch()
+        return remote
+    }
     override suspend fun push(language: String) {
         pushAttempts++
         if (shouldFailPush) throw IOException("HTTP 503")
         pushes += language
         remote = language
+        beforePushResponse()
         lastPushed = language
         pushCount++
     }
