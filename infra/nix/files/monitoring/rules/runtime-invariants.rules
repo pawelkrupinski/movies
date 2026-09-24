@@ -3,12 +3,14 @@
 # rather than about how its machinery is running.
 #
 # Every other application rule watches a mechanism: a queue, a cursor, a scrape, a render. Each
-# of the four here states something that must stay true of the RESULT, whatever path produced it
-# -- the first and third after real incidents that left every mechanism panel clean:
+# of the five here states something that must stay true of the RESULT, whatever path produced it
+# -- the first, second and fourth after real incidents that left every mechanism panel clean:
 #
 #   CityServingShortOfCorpus        a city serves far fewer films than its corpus has
 #                                   (2026-08-30: 300+ US cities for ~2h after the metro split, and
 #                                   the Bay for 38h after its slug rename -- 164 of 418 films)
+#   CityDarkInBothTiers             a city with films all week has none, in the corpus or the site
+#                                   (Butte, MT dark 2026-09-07..09 with nothing alerting)
 #   CinemaContentStaleVenuesGrowing more venues go a week without a film every day
 #   ReadModelContentMismatch        a stored card differs from a fresh projection of its row
 #                                   (Troy / 2046 / Glastonbury served August showtimes for 10 days)
@@ -203,3 +205,65 @@ groups:
             move to a node without it? A version mismatch is a render whose re-projection never
             ran (ShareCardFollowUp); a missing file on a film still pointing at it is a prune
             that did not re-project it (ShareCardJanitor's refresh).
+
+  # -----------------------------------------------------------------------------------------------
+  # A CITY THAT WENT DARK IN BOTH TIERS.
+  #
+  # Every served-count rule compares the web with the corpus, so none can see a city whose CORPUS
+  # emptied too: the web serves exactly what the worker has, which is nothing. Butte, MT went from
+  # 18 showtimes on 2026-09-05 to 0 at 03:00Z on 09-07 -- its venue's scrape stopped adding the new
+  # week while the old one ran out -- and stayed dark until 04:00Z on 09-09, with no alert: the
+  # Grafana `kinowo-movies-served-city-empty` rule deliberately stands down when the corpus is empty
+  # too (ab9da30ca, after three thin-venue false pages), and this is the case it hands over.
+  #
+  # "IT HAD FILMS FOR SIX DAYS" IS WHAT TELLS BUTTE FROM A SMALL TOWN'S WEEK. Replayed at a 15-minute
+  # step over 2026-08-30..09-24, 46 zero spells followed a week with 72+ hours of films, and most
+  # are WEEKLY: Plentywood, MT is dark 48 hours from every Sunday night, Harvey, ND 27.5 hours, until
+  # the next week's programme is published. None of those towns has films six days running, so the
+  # condition is: films in every sample from eight days ago to two days ago (the recorded series
+  # below, gaps ignored -- a worker restart is not a zero), none in either tier now, held 12 hours.
+  # That replay fires six times in 25 days: Butte (09-08, a day before it recovered -- the replay
+  # has no data from before 08-30 to fire it sooner), Richfield UT 3h, Sassnitz DE 13h, Hood River
+  # OR 8.5h, and Mount Ayr IA with Southeast Alaska for 36h on 09-21 -- each a city whose programme
+  # a week earlier had run all week. Weighed against 12 episodes for "zero now but films at this
+  # hour last week" and 16 for five days instead of six.
+  #
+  # IT RESOLVES TWO DAYS AFTER THE CITY WENT DARK, dark or not: the six-day window then reaches into
+  # the darkness itself. Forty-eight hours of a warning, re-sent every 12 hours, is not missed.
+  #
+  # ITS OWN GROUP, AT FIVE MINUTES, because of the six-day window: ~1,000 cities x 1,728 recorded
+  # samples per evaluation, where the raw gauge at the default interval would be ten times that. The
+  # recorded series needs EIGHT DAYS of history before the alert can fire at all.
+  #
+  # A CITY THAT LEFT THE ROSTER is not here: the worker stops counting it and the series goes, rather
+  # than reading 0 (see `kinowo-movies-served-swing`'s "A PAGE THAT LEFT THE ROSTER").
+  - name: runtime-invariants-dark-cities
+    interval: 5m
+    rules:
+      - record: country_city:worker_movies_served:films
+        expr: max by (country, city) (last_over_time(kinowo_worker_movies_served{scope="all"}[10m]))
+
+      - alert: CityDarkInBothTiers
+        expr: >-
+          country_city:worker_movies_served:films == 0
+          unless on (country, city)
+            (max by (country, city) (last_over_time(kinowo_web_movies_served{scope="all"}[10m])) > 0)
+          and on (country, city)
+            (min_over_time(country_city:worker_movies_served:films[6d] offset 2d) > 0)
+          and on (country, city)
+            (last_over_time(country_city:worker_movies_served:films[1h] offset 8d) > 0)
+        for: 12h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.city }} ({{ $labels.country }}) has served no film for 12 hours, after six days that all had films"
+          description: >-
+            Neither the worker's corpus (kinowo_worker_movies_served) nor the web
+            (kinowo_web_movies_served) has a film for {{ $labels.city }}, although it had films in
+            every sample from eight days ago to two days ago -- so this is not a small town's weekly
+            gap between programmes. The web is serving what the corpus has; the corpus lost the
+            city. Check its venues on /uptime (a scrape that keeps succeeding empty looks white)
+            and `kinowo_worker_showtimes{city="{{ $labels.city }}"}` over the last three days: a
+            steady run-down to zero with no new week landing is a venue whose scrape stopped
+            finding its next programme -- a moved listing page, a changed upstream, a venue that
+            closed. It resolves on its own two days after the city went dark; that is not a fix.

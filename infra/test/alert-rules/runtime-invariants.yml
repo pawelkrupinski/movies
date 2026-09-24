@@ -165,3 +165,44 @@ tests:
             exp_annotations:
               summary: "uk: 100% of sampled share-card pointers do not resolve"
               description: 'web_movies.shareCard names a card file that is missing from the country''s share-card directory, belongs to another film, or is at a different version than the URL''s ?v=, and still did 15 minutes later. The worker log lists each film ("share-card audit: <film> still differs ..."). Every film missing its file at once is the directory: is /var/lib/kinowo/share-cards/<cc> still mounted on the worker''s node, and did the pod move to a node without it? A version mismatch is a render whose re-projection never ran (ShareCardFollowUp); a missing file on a film still pointing at it is a prune that did not re-project it (ShareCardJanitor''s refresh).'
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # BUTTE, MT (2026-09-07): films every day for eight and a half days, then none in either tier.
+  # Beside it, three cities that must stay quiet at the same instant: a small town dark for its
+  # weekly gap (films 1.5 days, dark 2, films 5, dark again -- Plentywood's shape), a city the
+  # corpus emptied while the web still serves it (the served-count rules' case, not this one's),
+  # and a city only three days on the roster. The worker restarts while Butte is dark; the hold
+  # survives the gap. Onset is 12240m (8d12h); the hold is 12h.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 5m
+    input_series:
+      - series: 'kinowo_worker_movies_served{scope="all",country="us",city="butte",instance="w1"}'
+        values: '4x2447 0x100 stale 0x186'
+      - series: 'kinowo_web_movies_served{scope="all",country="us",city="butte",instance="web1"}'
+        values: '4x2447 0x288'
+      - series: 'kinowo_worker_movies_served{scope="all",country="us",city="plentywood",instance="w1"}'
+        values: '3x431 0x575 3x1439 0x288'
+      - series: 'kinowo_web_movies_served{scope="all",country="us",city="plentywood",instance="web1"}'
+        values: '3x431 0x575 3x1439 0x288'
+      - series: 'kinowo_worker_movies_served{scope="all",country="us",city="havre",instance="w1"}'
+        values: '5x2447 0x288'
+      - series: 'kinowo_web_movies_served{scope="all",country="us",city="havre",instance="web1"}'
+        values: '5x2735'
+      - series: 'kinowo_worker_movies_served{scope="all",country="us",city="kodiak",instance="w1"}'
+        values: '_x1728 2x719 0x288'
+      - series: 'kinowo_web_movies_served{scope="all",country="us",city="kodiak",instance="web1"}'
+        values: '_x1728 2x719 0x288'
+    alert_rule_test:
+      - eval_time: 12900m
+        alertname: CityDarkInBothTiers
+        exp_alerts: []
+      - eval_time: 12990m
+        alertname: CityDarkInBothTiers
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: us
+              city: butte
+            exp_annotations:
+              summary: "butte (us) has served no film for 12 hours, after six days that all had films"
+              description: 'Neither the worker''s corpus (kinowo_worker_movies_served) nor the web (kinowo_web_movies_served) has a film for butte, although it had films in every sample from eight days ago to two days ago -- so this is not a small town''s weekly gap between programmes. The web is serving what the corpus has; the corpus lost the city. Check its venues on /uptime (a scrape that keeps succeeding empty looks white) and `kinowo_worker_showtimes{city="butte"}` over the last three days: a steady run-down to zero with no new week landing is a venue whose scrape stopped finding its next programme -- a moved listing page, a changed upstream, a venue that closed. It resolves on its own two days after the city went dark; that is not a fix.'
