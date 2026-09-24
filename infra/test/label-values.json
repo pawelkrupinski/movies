@@ -9254,6 +9254,38 @@
     "kinowo-worker"
    ]
   },
+  "kinowo_worker_queue_parked_max_seconds": {
+   "task_type": [
+    "AuditReadModelContent",
+    "AuditShareCards",
+    "EnrichDetails",
+    "FilmwebRating",
+    "ImdbRating",
+    "McRating",
+    "PruneShareCards",
+    "RefreshAllFilmweb",
+    "RefreshAllImdb",
+    "RefreshAllMetacritic",
+    "RefreshAllOmdb",
+    "RefreshAllRt",
+    "RefreshAllTmdb",
+    "ReleaseShareCardHold",
+    "RenderShareCard",
+    "RescrapeShareCard",
+    "ResolveImdbId",
+    "ResolveTmdb",
+    "RtRating",
+    "ScrapeChunk",
+    "ScrapeChunkReduce",
+    "ScrapeCinema",
+    "SettleNow",
+    "ShareCardBackfill",
+    "StagingDetail",
+    "StagingFold",
+    "StagingResolveImdbId",
+    "StagingResolveTmdb"
+   ]
+  },
   "kinowo_worker_readmodel_heals_total": {
    "trigger": [
     "boot",

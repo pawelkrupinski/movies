@@ -448,6 +448,10 @@ tests:
         values: '300-10x30 300-10x30'
       - series: 'kinowo_worker_queue_parked_max_seconds{country="de",job="kinowo-worker",task_type="StagingFold"}'
         values: '0x80'
+      # A template change re-drew 300 recent US films: their Facebook re-scrapes are spaced 10s
+      # apart, so the last slot sits 50 minutes out (and the burst keeps topping it up). A schedule, not a parked task.
+      - series: 'kinowo_worker_queue_parked_max_seconds{country="us",job="kinowo-worker",task_type="RescrapeShareCard"}'
+        values: '3000-10x80'
     alert_rule_test:
       - eval_time: 75m
         alertname: WorkerTaskParkedTooLong
