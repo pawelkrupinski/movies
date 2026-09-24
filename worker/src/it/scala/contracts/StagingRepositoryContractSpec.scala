@@ -8,6 +8,7 @@ import org.scalatest.matchers.should.Matchers
 import services.movies.TitleNormalizer
 import services.staging.{InMemoryStagingRepository, StagingRepository}
 import tools.contracts.Implementations
+import tools.costs.CostScaling
 import tools.{Env, IsolatedMongoDatabase}
 
 import scala.concurrent.Await
@@ -95,7 +96,7 @@ class StagingRepositoryContractSpec extends AnyFlatSpec with Matchers with Befor
 
     it should s"[$name] read one film's group without walking the rest of the backlog" in {
       /** `sanitize` calls ONE group read makes against a backlog of `backlog` other films. */
-      def groupReadCost(backlog: Int): Int = {
+      def groupReadCost(backlog: Int): Long = {
         val (repository, normalizer) = fresh(cls)
         (1 to backlog).foreach(n => stage(repository, Helios, s"Backlog Film $n", Some(2026)))
         stage(repository, Helios,    "Kumotry", Some(2026))
@@ -107,13 +108,9 @@ class StagingRepositoryContractSpec extends AnyFlatSpec with Matchers with Befor
         repository.holdsAnchor(anchor)  shouldBe true
         repository.cinemasUnder(anchor) shouldBe Set(Helios, Multikino)
         repository.findByCinemaAndAnchor(Helios, anchor) should have size 1
-        normalizer.calls
+        normalizer.calls.toLong
       }
-      val small = groupReadCost(20)
-      val large = groupReadCost(200)
-      withClue(s"a 2-row group's reads cost $small sanitize call(s) beside 20 other films, $large beside 200: ") {
-        large should be <= small
-      }
+      CostScaling.assertIndependent("sanitize calls reading a 2-row group beside a backlog of other films", n = 20, factor = 10)(groupReadCost)
     }
   }
 }

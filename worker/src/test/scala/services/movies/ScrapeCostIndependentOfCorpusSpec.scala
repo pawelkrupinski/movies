@@ -5,9 +5,10 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
 import services.freshness.InMemoryFreshnessStore
-import services.staging.{InMemoryStagingRepository, StagingReaper, StagingRecord, StagingSteps}
+import services.staging.{InMemoryStagingRepository, StagingReaper, StagingRecord, StagingRepository, StagingSteps}
 import services.tasks.InMemoryTaskQueue
 import services.titlerules.TitleRuleSet
+import tools.costs.{CostScaling, Work}
 
 /**
  * The cost of scraping ONE venue must not grow with how many films the corpus already
@@ -85,14 +86,9 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
     normalizer.calls
   }
 
-  "recordCinemaScrape" should "cost the same against a large corpus as against a small one" in {
-    val small = scrapeCost(20)
-    val large = scrapeCost(200)
-    withClue(s"20-film corpus: $small sanitize calls; 200-film corpus: $large — " +
-      "a scrape that reads the whole corpus scales with it, and a tick over every venue then costs O(venues x corpus): ") {
-      large shouldBe small
-    }
-  }
+  "recordCinemaScrape" should "cost the same against a large corpus as against a small one" in
+    CostScaling.assertIndependent("sanitize calls of one venue's scrape — a scrape that reads the whole corpus " +
+      "scales with it, and a tick over every venue then costs O(venues x corpus)", n = 20, factor = 10)(scrapeCost(_).toLong)
 
   /** The staging half of the same walk: the prior-slot lookup and the venue prune read
    *  this cinema's rows, and read them with `findAll()` — which against Mongo decodes
@@ -117,7 +113,7 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
    * traversal it shares with this one is what this test stands for.
    */
   it should "cost the same to LAND a listing on a concluded row whatever else the corpus holds" in {
-    def landCost(corpusSize: Int): Int = {
+    def landCost(corpusSize: Int): Long = {
       val normalizer = new CountingNormalizer(TitleNormalizer.forCountry(Country.default).rules)
       val staging    = new InMemoryStagingRepository(normalizer = normalizer)
       val cache      = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = normalizer),
@@ -136,15 +132,10 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
       cache.put(CacheKey(landing, Some(2026), normalizer), concludedRow(landing, cinema))
       normalizer.calls = 0
       cache.recordCinemaScrape(cinema, Seq(scrapeOf(landing)))
-      normalizer.calls
+      normalizer.calls.toLong
     }
-    val small = landCost(20)
-    val large = landCost(200)
-    withClue(s"20-film corpus: $small sanitize calls; 200-film corpus: $large — " +
-      "landing a listing that reads every concluded row's aliases is O(listings x corpus), " +
-      "and a tick over every venue then pays it once per listing: ") {
-      large shouldBe small
-    }
+    CostScaling.assertIndependent("sanitize calls of landing one listing — reading every concluded row's aliases " +
+      "is O(listings x corpus), and a tick over every venue pays it once per listing", n = 20, factor = 10)(landCost)
   }
 
   /**
@@ -203,14 +194,11 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
    * group-read path is under the counter, not just the landing's own reads.
    */
   it should "decode a new film's staging group linearly, not once per venue that joins it" in {
-    def rowsDecoded(venueCount: Int): Int = {
+    def rowsDecoded(venueCount: Int): Long = {
       val normalizer = SingleCountryNormalizer.titleNormalizer
-      var decoded    = 0
-      val staging = new InMemoryStagingRepository(normalizer = normalizer) {
-        override def findByAnchor(anchor: String): Seq[StagingRecord] = {
-          val rows = super.findByAnchor(anchor); decoded += rows.size; rows
-        }
-      }
+      val work       = new Work
+      val store      = new InMemoryStagingRepository(normalizer = normalizer)
+      val staging    = Work.counting(classOf[StagingRepository], store, work, Work.StagingIndexReads)
       val reaper = new StagingReaper(
         new StagingSteps(staging, Nil, (_, _, _) => None, (_, _, _) => None, new InMemoryFreshnessStore),
         new InMemoryTaskQueue, staging)
@@ -222,16 +210,11 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
       venues.foreach(venue => cache.recordCinemaScrape(venue, Seq(scrapeOf("Presale Blockbuster").copy(cinema = venue))))
       // Every venue must really have staged it — a film that never reached staging would
       // decode nothing and satisfy the bound for the opposite reason.
-      staging.findAll().size shouldBe venueCount
-      decoded
+      store.findAll().size shouldBe venueCount
+      work.reads
     }
-    val small = rowsDecoded(50)
-    val large = rowsDecoded(200)
-    withClue(s"50 venues decoded $small staging row(s); 200 venues decoded $large — " +
-      "a kick per joining venue re-reads the growing group each time, O(venues²): ") {
-      large should be <= 200
-      large.toDouble / small should be <= 4.5
-    }
+    CostScaling.assertLinear("staging rows read landing one new film at N venues — a kick per joining venue " +
+      "re-reads the growing group each time, O(venues²)", n = 50, perUnit = 2.0)(rowsDecoded)
   }
 
   it should "read only its own cinema's staging rows, never the whole backlog" in {

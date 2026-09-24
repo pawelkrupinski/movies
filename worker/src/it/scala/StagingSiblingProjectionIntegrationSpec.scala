@@ -223,15 +223,10 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
       withClue("every venue must really have staged the film: ") { counting.findAll().size shouldBe venueCount }
       counting.fetchedIds
     }
-    try {
-      val small = rowsFetched(20)
-      val large = rowsFetched(80)
-      withClue(s"20 venues fetched $small staging row(s); 80 venues fetched $large — " +
-        "a group read per joining venue is O(venues²): ") {
-        large should be <= 2 * 80   // ~one fetch per venue landing, plus the single kick
-        large.toDouble / small should be <= 4.5
-      }
-    } finally Await.result(staged.deleteMany(Filters.empty()).toFuture(), 30.seconds)
+    // ~one fetch per venue landing, plus the single kick.
+    try tools.costs.CostScaling.assertLinear("staging rows fetched from Mongo landing one new film at N venues — " +
+      "a group read per joining venue is O(venues²)", n = 20, perUnit = 2.0)(rowsFetched(_).toLong)
+    finally Await.result(staged.deleteMany(Filters.empty()).toFuture(), 30.seconds)
   }
 
   /** The detail half of the same chain against Mongo: each venue's finished detail step
@@ -252,15 +247,9 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
       withClue("the film must have graduated: ") { chain.movies.findAll() should have size 1 }
       counting.fetchedIds
     }
-    try {
-      val small = rowsFetched(20)
-      val large = rowsFetched(80)
-      withClue(s"20 detail venues fetched $small staging row(s); 80 fetched $large — " +
-        "a group read per finished detail step is O(venues²): ") {
-        large should be <= 8 * 80
-        large.toDouble / small should be <= 4.5
-      }
-    } finally Await.result(staged.deleteMany(Filters.empty()).toFuture(), 30.seconds)
+    try tools.costs.CostScaling.assertLinear("staging rows fetched from Mongo carrying one film through N detail venues — " +
+      "a group read per finished detail step is O(venues²)", n = 20, perUnit = 8.0)(rowsFetched(_).toLong)
+    finally Await.result(staged.deleteMany(Filters.empty()).toFuture(), 30.seconds)
   }
 
   // The invariant an override must hold: answer EXACTLY what filtering `findAll` answers.

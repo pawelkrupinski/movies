@@ -6,6 +6,7 @@ import models.{Cinema, Helios, MovieRecord}
 import services.movies.CacheKey
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
+import tools.costs.{CostScaling, Work}
 
 /**
  * End-to-end: a newcomer in `pending_movies` is driven through the durable queue
@@ -50,29 +51,20 @@ class StagingQueueEndToEndSpec extends AnyFlatSpec with Matchers {
    * the group. Counted as rows the group reads return — Mongo's decodes — not timed.
    */
   it should "read a film's staging group linearly in its detail venues, not once per venue" in {
-    def rowsDecoded(venueCount: Int): Int = {
-      var decoded = 0
-      val staging = new InMemoryStagingRepository {
-        override def findByAnchor(anchor: String): Seq[StagingRecord] = {
-          val rows = super.findByAnchor(anchor); decoded += rows.size; rows
-        }
-      }
-      val venues = Cinema.all.distinct.take(venueCount)
-      val chain  = new StagingChain(staging, venues.map(new CountingEnricher(_)))
+    def rowsDecoded(venueCount: Int): Long = {
+      val work    = new Work
+      val staging = Work.counting(classOf[StagingRepository], new InMemoryStagingRepository, work, Work.StagingIndexReads)
+      val venues  = Cinema.all.distinct.take(venueCount)
+      val chain   = new StagingChain(staging, venues.map(new CountingEnricher(_)))
       venues.foreach(v => staging.upsert(v, "Newcomer", Some(2026), listing(v, "Newcomer")))
       chain.reaper.tick()
       chain.pump(limit = 10 * venueCount)
       // It must actually have folded — a chain that stalled would read little and pass.
       withClue("the film must have graduated: ") { chain.movies.findAll().map(_.title) shouldBe Seq("Newcomer") }
-      decoded
+      work.reads
     }
-    val small = rowsDecoded(40)
-    val large = rowsDecoded(160)
-    withClue(s"40 detail venues decoded $small staging row(s); 160 decoded $large — " +
-      "a group read per finished detail step is O(venues²): ") {
-      large should be <= 8 * 160
-      large.toDouble / small should be <= 4.5
-    }
+    CostScaling.assertLinear("staging rows read carrying one film through N detail venues — a group read per " +
+      "finished detail step is O(venues²)", n = 40, perUnit = 12.0)(rowsDecoded)
   }
 
   /**
