@@ -48,14 +48,18 @@ class ShuffledOrder(suite: Class<*>, builder: RunnerBuilder) : Suite(builder, su
             return z xor (z ushr 31)
         }
 
-        /** Every concrete class compiled beside [suite] with a JUnit 4 `@Test` method. */
+        /** Every concrete class compiled beside [suite] with a JUnit 4 `@Test`
+         *  method, nested static classes included. */
         fun testClasses(suite: Class<*>): Array<Class<*>> {
             val root = File(suite.protectionDomain.codeSource.location.toURI())
             return root.walkTopDown()
-                .filter { it.isFile && it.name.endsWith(".class") && !it.name.contains('$') }
+                .filter { it.isFile && it.name.endsWith(".class") }
                 .map { it.relativeTo(root).path.removeSuffix(".class").replace(File.separatorChar, '.') }
                 .mapNotNull { runCatching { Class.forName(it, false, suite.classLoader) }.getOrNull() }
                 .filter { it != suite && !Modifier.isAbstract(it.modifiers) && !it.isInterface }
+                // Nested classes too, but only the kind JUnit can instantiate.
+                .filter { !it.isAnonymousClass && !it.isLocalClass && !it.isSynthetic }
+                .filter { !it.isMemberClass || Modifier.isStatic(it.modifiers) }
                 .filter { c -> c.methods.any { it.isAnnotationPresent(Test::class.java) } }
                 .sortedBy { it.name }
                 .toList()
