@@ -186,6 +186,63 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  /** A commit that LANDED but whose result never came back — every reply lost past the
+   *  commit retries, or the commit's own wait timing out. Giving up there aborted a
+   *  transaction the server had already committed and rescheduled the task, whose retry found
+   *  the group drained: the post-commit steps never ran and the film graduated with no
+   *  showtimes. The fold must look at what the commit left behind before deciding it failed. */
+  Seq(
+    "every reply is lost" -> { () =>
+      val e = new com.mongodb.MongoException("simulated lost commit reply")
+      e.addLabel(com.mongodb.MongoException.UNKNOWN_TRANSACTION_COMMIT_RESULT_LABEL)
+      e: Throwable
+    },
+    "the commit's wait times out" -> { () => new java.util.concurrent.TimeoutException("simulated commit timeout"): Throwable }
+  ).foreach { case (how, failure) =>
+    it should s"finish the graduated film when its commit landed but $how" in {
+      FoldFixture.withFold("staging-fold") { fold =>
+        import fold.{movies, staging, screenings, db}
+        val repository = new services.movies.MongoMovieRepository(Some(db), fallbackToOwnInit = false,
+          normalizer = titleNormalizer, screenings = Some(screenings), slots = Some(new MongoSlotsRepository(Some(db))))
+        seedConcludedNewcomer(staging)
+        val landedNoReply: org.mongodb.scala.ClientSession => Unit = session => {
+          scala.util.Try(services.staging.MongoStagingFolder.commitTransaction(session)) // committed, or already did
+          throw failure()
+        }
+
+        noException should be thrownBy fold.folder(commit = landedNoReply).foldGroup(newcomerTitle)
+
+        val folded = Await.result(movies.find(Filters.regex("key",
+          s"^${titleNormalizer.sanitize(newcomerTitle)}\\|")).toFuture(), 10.seconds)
+          .flatMap(_.get("_id").map(_.asString().getValue))
+        folded should not be empty
+        folded.foreach { id =>
+          repository.findByIdChecked(FilmId(id))._1.map(_.record.cinemaData.values.map(_.showtimes.size).sum)
+            .getOrElse(0) should be > 0
+        }
+      }
+    }
+  }
+
+  /** And the other half of that check: a commit that did NOT land still fails the fold, so the
+   *  task reschedules rather than reporting a fold that never happened. */
+  it should "still fail the fold when a commit whose result is unknown never landed" in {
+    FoldFixture.withFold("staging-fold") { fold =>
+      import fold.{movies, staging}
+      seedConcludedNewcomer(staging)
+      val neverLands: org.mongodb.scala.ClientSession => Unit = _ => {
+        val e = new com.mongodb.MongoException("simulated lost commit")
+        e.addLabel(com.mongodb.MongoException.UNKNOWN_TRANSACTION_COMMIT_RESULT_LABEL)
+        throw e
+      }
+
+      a[com.mongodb.MongoException] should be thrownBy fold.folder(commit = neverLands).foldGroup(newcomerTitle)
+      Await.result(movies.find(Filters.regex("key",
+        s"^${titleNormalizer.sanitize(newcomerTitle)}\\|")).toFuture(), 10.seconds) shouldBe empty
+      Await.result(staging.countDocuments().toFuture(), 10.seconds) should be > 0L
+    }
+  }
+
   /** A commit that FAILED with a transient error: the transaction did not land, so the whole
    *  attempt re-runs — exactly what a transient error in the body gets. */
   it should "re-run the transaction when its commit fails with a transient error" in {

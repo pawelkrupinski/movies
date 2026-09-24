@@ -120,7 +120,7 @@ class MongoStagingFolder(
       val outcome = Try(foldOnce(session, movies, staging, cleanTitle, candidateIds))
       StagingFold.nextAfterAttempt(outcome.map(_.newPromotions), attempt, maxRetries) match {
         case StagingFold.Next.Commit(newPromotions) =>
-          commitWithRetry(session, cleanTitle, attempt) match {
+          commitWithRetry(session, cleanTitle, attempt, outcome.toOption, movies, staging) match {
             case None =>
               val plan = outcome.toOption
               // Migrate BEFORE completing: `upsert` re-stitches a stripped slot from the
@@ -169,7 +169,10 @@ class MongoStagingFolder(
    *  — never ran, and the graduated film held no showtimes until its next scrape.
    *  Re-issuing `commitTransaction` is what the server's own guidance prescribes: it is
    *  idempotent for a transaction that did commit. */
-  private def commitWithRetry(session: ClientSession, cleanTitle: String, attempt: Int): Option[Throwable] = {
+  private def commitWithRetry(session: ClientSession, cleanTitle: String, attempt: Int,
+                              plan: Option[StagingFold.Plan],
+                              movies: MongoCollection[StoredMovieDto],
+                              staging: MongoCollection[StoredMovieDto]): Option[Throwable] = {
     var commitAttempt = 0
     var outcome: Option[Option[Throwable]] = None
     while (outcome.isEmpty) {
@@ -185,14 +188,39 @@ class MongoStagingFolder(
             case StagingFold.AfterCommitFailure.RetryTransaction(cause) => outcome = Some(Some(cause))
             case StagingFold.AfterCommitFailure.Abandon(cause) =>
               Try(await(publisherToFuture(session.abortTransaction())))
-              logger.error(s"Staging fold '$cleanTitle' could not commit after $attempt attempt(s): ${cause.getMessage} " +
-                "— rethrowing so the task reschedules.")
-              throw cause
+              // Giving up on the REPLY is not knowing the commit failed: a commit whose every
+              // reply was lost, or whose wait timed out, may have landed. Rescheduling one that
+              // did finds the group drained and never runs the post-commit steps, so look at
+              // what the transaction would have left behind before calling it a failure.
+              if (plan.exists(landed(_, movies, staging))) {
+                logger.warn(s"Staging fold '$cleanTitle' commit reported ${cause.getMessage}, but its writes are " +
+                  "in place — it committed; finishing the fold.")
+                outcome = Some(None)
+              } else {
+                logger.error(s"Staging fold '$cleanTitle' could not commit after $attempt attempt(s): ${cause.getMessage} " +
+                  "— rethrowing so the task reschedules.")
+                throw cause
+              }
           }
       }
     }
     outcome.get
   }
+
+  /** Whether `plan`'s transaction is VISIBLE as committed, read outside its session: every
+   *  staging row it deleted is gone, every film it retired is gone, and every film it wrote
+   *  is there. All-or-nothing is the transaction's own guarantee, so one miss means it did
+   *  not land. A read that fails says nothing, and reads as "not landed" — the task
+   *  reschedules, exactly as it did before this check. */
+  private def landed(plan: StagingFold.Plan, movies: MongoCollection[StoredMovieDto],
+                     staging: MongoCollection[StoredMovieDto]): Boolean = Try {
+    def count(c: MongoCollection[StoredMovieDto], ids: Seq[String]): Long =
+      if (ids.isEmpty) 0L else await(c.countDocuments(Filters.in("_id", ids*)).toFuture())
+    val written = plan.moviesUpserts.map(_._1.value).distinct
+    count(staging, plan.stagingDeletes.map(_.id)) == 0 &&
+      count(movies, plan.moviesDeletes.map(_.value)) == 0 &&
+      count(movies, written) == written.size
+  }.getOrElse(false)
 
   /** Write each folded film AGAIN, through the repository's own protocol, so it ends up
    *  in the shape every reader expects.
