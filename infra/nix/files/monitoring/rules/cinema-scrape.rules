@@ -312,3 +312,43 @@ groups:
             is the cause, and its error text is on the row. Empty listings are NOT counted: a
             seasonally closed venue returns nothing and is healthy. A single venue failing every
             attempt shows up in CinemaScrapeOldestAgeHigh instead.
+
+      # -----------------------------------------------------------------------------------------
+      # A CHAIN'S DETAIL ENRICHMENT IS FAILING.
+      #
+      # Cinema City, Cineworld and Regal fetch each film's detail once per network and record it
+      # on /uptime as one "<Chain> Enrichment" row (`DetailEnricher.enrichmentServiceOverride`),
+      # one check per detail fetch. `CinemaScrapeFailureShareHigh` above leaves these rows out on
+      # purpose -- a detail fetch is not a scrape -- and until this rule nothing else read them:
+      # Cineworld Enrichment failed 100% of 200-900 fetches per half hour from 2026-09-18 21:30 to
+      # 09-21 17:30, three days in which that chain's films lost their details, and no alert fired.
+      #
+      # 50% FOR AN HOUR, from 14 days of prod history (2026-09-09 .. 09-24, 15-min steps, at least
+      # 10 checks in the window): the only excursions above 0.3 outside that outage were Cinema
+      # City Enrichment in PL, never longer than 30 minutes (peak 0.7); the Cineworld outage sat at
+      # 0.8-1.0 for its whole length and would have fired an hour in. The 10-check floor keeps a
+      # quiet half-hour (2-8 checks is normal) from reading one failure as a share.
+      #
+      # `last_over_time(...[10m])` BRIDGES A WEB POD CHANGE, as the worker rules in this file do:
+      # one absent evaluation would otherwise reset the hold.
+      - alert: ChainEnrichmentFailing
+        expr: >-
+          (
+            sum by (country, service) (last_over_time(kinowo_uptime_recent_failures{service=~".* Enrichment"}[10m]))
+            /
+            (sum by (country, service) (
+                last_over_time({__name__=~"kinowo_uptime_recent_(failures|successes|zeroes)",service=~".* Enrichment"}[10m])
+            ) >= 10)
+          ) > 0.5
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} ({{ $labels.country }}) has failed {{ $value | humanizePercentage }} of its detail fetches for an hour"
+          description: >-
+            The chain-wide detail enrichment "{{ $labels.service }}" in "{{ $labels.country }}" has
+            failed more than half of its detail fetches for an hour, so that chain's films are not
+            getting their runtime, synopsis or cast from the chain. Open the country's /uptime: the
+            row's error text says whether the detail endpoint moved, started refusing us, or the
+            parser no longer reads it. The chain's venue scrapes are counted separately, by
+            CinemaScrapeFailureShareHigh.

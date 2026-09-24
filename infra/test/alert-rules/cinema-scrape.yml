@@ -399,3 +399,51 @@ tests:
                 is the cause, and its error text is on the row. Empty listings are NOT counted: a
                 seasonally closed venue returns nothing and is healthy. A single venue failing every
                 attempt shows up in CinemaScrapeOldestAgeHigh instead.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # CHAIN-WIDE DETAIL ENRICHMENT FAILING. UK: Cineworld Enrichment at 100% failed from t=0 (the
+  # 2026-09-18..21 shape), with the web target going stale for 3 minutes at 30min -- a pod change
+  # -- which the hold must ride through: pending at 45m, firing at 70m. PL: Cinema City
+  # Enrichment at 60% for 30 minutes and then healthy -- the longest excursion in 14 days of
+  # prod history -- silent. ES: 3 of 4 failing, under the 10-check floor -- silent.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_uptime_recent_failures{country="uk",job="kinowo-web",service="Cineworld Enrichment"}'
+        values: '200x29 stale _x2 200x90'
+      - series: 'kinowo_uptime_recent_successes{country="uk",job="kinowo-web",service="Cineworld Enrichment"}'
+        values: '0x29 stale _x2 0x90'
+      - series: 'kinowo_uptime_recent_zeroes{country="uk",job="kinowo-web",service="Cineworld Enrichment"}'
+        values: '0x29 stale _x2 0x90'
+      - series: 'kinowo_uptime_recent_failures{country="pl",job="kinowo-web",service="Cinema City Enrichment"}'
+        values: '6x30 0x90'
+      - series: 'kinowo_uptime_recent_successes{country="pl",job="kinowo-web",service="Cinema City Enrichment"}'
+        values: '4x30 10x90'
+      - series: 'kinowo_uptime_recent_zeroes{country="pl",job="kinowo-web",service="Cinema City Enrichment"}'
+        values: '0x120'
+      - series: 'kinowo_uptime_recent_failures{country="es",job="kinowo-web",service="Cinesa Enrichment"}'
+        values: '3x120'
+      - series: 'kinowo_uptime_recent_successes{country="es",job="kinowo-web",service="Cinesa Enrichment"}'
+        values: '1x120'
+      - series: 'kinowo_uptime_recent_zeroes{country="es",job="kinowo-web",service="Cinesa Enrichment"}'
+        values: '0x120'
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: ChainEnrichmentFailing
+        exp_alerts: []
+      - eval_time: 70m
+        alertname: ChainEnrichmentFailing
+        exp_alerts:
+          - exp_labels:
+              country: uk
+              service: Cineworld Enrichment
+              severity: warning
+            exp_annotations:
+              summary: "Cineworld Enrichment (uk) has failed 100% of its detail fetches for an hour"
+              description: >-
+                The chain-wide detail enrichment "Cineworld Enrichment" in "uk" has
+                failed more than half of its detail fetches for an hour, so that chain's films are not
+                getting their runtime, synopsis or cast from the chain. Open the country's /uptime: the
+                row's error text says whether the detail endpoint moved, started refusing us, or the
+                parser no longer reads it. The chain's venue scrapes are counted separately, by
+                CinemaScrapeFailureShareHigh.
