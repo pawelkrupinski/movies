@@ -41,13 +41,14 @@ object StagingDetailHandler {
   private[staging] val MaxDetailAttempts = 6
 }
 
-/** STEP 2: resolve the film against TMDB once and stamp the outcome. A transient
- *  TMDB miss (`None`) reschedules with the queue's exponential backoff — the
- *  durability the 120s promoter tick lacked. Once `MaxResolveAttempts` claims
- *  have gone by still failing, the lookup is treated as permanently failing (a
- *  decorated/foreign title TMDB can't search, or a lookup that keeps throwing)
- *  and the film concludes as a no-match so it folds (un-enriched) instead of
- *  re-resolving forever — the staging accumulation this guards against.
+/** STEP 2: resolve the film against TMDB once and stamp the outcome. A failed lookup
+ *  (`TransientFailure`) reschedules with the queue's exponential backoff, and past the
+ *  queue's own attempts the reaper's backstop re-enqueues it: it is NEVER concluded as a
+ *  no-match. A definitive TMDB answer — a miss, or its "not found" — already comes back
+ *  concluded from `MovieService.resolveStagingRecord`; what fails here is an outage or a
+ *  rate limit, which says nothing about the film. (A six-claim give-up budget used to
+ *  conclude it, so a ~2.5-minute TMDB blip hid new films as unresolved until the daily
+ *  re-try.) A film that keeps failing stays in staging, where StagingStuckAlerter names it.
  *
  *  Detail still outstanding is NOT a failure, so it completes (`Skipped`) rather
  *  than rescheduling: this task simply isn't due yet, and `StagingReaper` — the
@@ -58,17 +59,14 @@ object StagingDetailHandler {
  *  forward. A UK film showing at ten Cineworld venues (whose per-venue detail
  *  fetches pace out over the best part of an hour) therefore burned ten claims
  *  climbing to the 30-minute backoff cap, then idled at the cap AFTER its last
- *  detail landed — the "staging detail not ready" rows of 2026-07-27. Completing
- *  also keeps `attempts` — and with it the TMDB give-up budget above — counting
- *  actual TMDB misses rather than time spent waiting on a sibling step. */
+ *  detail landed — the "staging detail not ready" rows of 2026-07-27. */
 class StagingResolveTmdbHandler(steps: StagingSteps) extends TaskHandler {
   // Anchor task payloads the way the staging pipeline anchors its rows.
   private val normalizer: services.movies.TitleNormalizer = steps.normalizer
 
   val taskType: TaskType = TaskType.StagingResolveTmdb
   def handle(task: Task): HandlerOutcome = {
-    val giveUp = task.attempts >= StagingResolveTmdbHandler.MaxResolveAttempts
-    steps.resolveAndStamp(StagingTaskKeys.anchorOf(task.payload, steps.normalizer), giveUp) match {
+    steps.resolveAndStamp(StagingTaskKeys.anchorOf(task.payload, steps.normalizer)) match {
       case StagingSteps.Resolved | StagingSteps.AlreadyDone => HandlerOutcome.Done
       case StagingSteps.DetailNotReady                      => HandlerOutcome.Skipped
       case StagingSteps.TransientFailure                    => HandlerOutcome.Reschedule(Some("staging tmdb resolve transient miss"))
@@ -76,13 +74,6 @@ class StagingResolveTmdbHandler(steps: StagingSteps) extends TaskHandler {
   }
 }
 
-object StagingResolveTmdbHandler {
-  /** After this many claims (the queue's exponential backoff, ≈ the detail
-   *  handler's ≈2.5min) a TMDB resolve that keeps failing is given up on, so the
-   *  film concludes as a no-match and folds instead of hot-looping. `task.attempts`
-   *  is incremented per claim, so the first run is attempt 1. */
-  private[staging] val MaxResolveAttempts = 6
-}
 
 /** STEP 3: recover a missing IMDb id (best-effort — gives up gracefully). */
 class StagingResolveImdbIdHandler(steps: StagingSteps) extends TaskHandler {

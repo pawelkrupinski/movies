@@ -4,7 +4,7 @@ import models.{CinemaShowing, MovieRecord, Source, SourceData, Tmdb}
 import play.api.Logging
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.{MovieRecordMerge, TitleNormalizer}
-import services.resolution.{ResolutionKeys, TmdbAttempt}
+import services.resolution.ResolutionKeys
 import services.tasks.StagingTaskKeys
 import services.cinemas.common.{DetailEnricher, DetailFetchOutcome}
 
@@ -38,10 +38,7 @@ class StagingSteps(
   // The country's badge vocabulary, for the detail-page `format` merged in
   // `enrichDetail` — the staging path writes through the repository rather than
   // the cache, so it carries its own copy of the same wiring.
-  screeningTokens:   services.movies.ScreeningTokens = services.movies.ScreeningTokens.Default,
-  // Stamps a no-match `TmdbAttempt` on a staging row. The fixture harness fixes
-  // it, so a corpus settles to the same bytes whatever order the cinemas arrive in.
-  clock:             java.time.Clock = java.time.Clock.systemUTC()
+  screeningTokens:   services.movies.ScreeningTokens = services.movies.ScreeningTokens.Default
 ) extends Logging {
   // The staging rows anchor under their repository's country rules — take them
   // from it rather than a second copy that could disagree.
@@ -182,7 +179,7 @@ class StagingSteps(
    *  anchor keeps getting re-enqueued for its remaining groups); `TransientFailure`
    *  if any group's resolve fails (already-stamped groups stay concluded, the
    *  reaper retries the rest). */
-  def resolveAndStamp(anchor: String, giveUp: Boolean = false): ResolveResult = {
+  def resolveAndStamp(anchor: String): ResolveResult = {
     val fresh = rowsFor(anchor)
     if (fresh.isEmpty || fresh.forall(_.record.tmdbConcluded)) AlreadyDone
     else if (!fresh.forall(detailReady)) DetailNotReady
@@ -198,30 +195,23 @@ class StagingSteps(
       // slot so a concluded row keeps grouping with its still-arriving siblings.
       val outcomes = fresh.groupBy(hintGroupKey).values.toSeq
         .filter(_.exists(!_.record.tmdbConcluded))
-        .map(resolveAndStampGroup(_, giveUp))
+        .map(resolveAndStampGroup)
       if (outcomes.contains(TransientFailure)) TransientFailure else Resolved
     }
   }
 
-  /** Resolve + stamp one hint-combination's rows. `giveUp` is the handler's
-   *  "retry budget exhausted" signal: a lookup that keeps failing (`None`) would
-   *  otherwise re-resolve forever, so we conclude the group as a no-match
-   *  (`tmdbNoMatch = true`) — exactly a definitive `Success(None)` miss — and let
-   *  it fold un-enriched, the resolve-step analogue of `fetchDetailFor`'s giveUp. */
-  private def resolveAndStampGroup(group: Seq[StagingRecord], giveUp: Boolean): ResolveResult = {
+  /** Resolve + stamp one hint-combination's rows. A lookup that FAILED (`None`) is always
+   *  transient — `resolveStaging` concludes a definitive failure itself — so it is retried,
+   *  never concluded: a retry budget that concluded it as no-match turned a TMDB blip into a
+   *  film hidden as unresolved until the next day's re-try. A film that keeps failing stays
+   *  in staging, where StagingStuckAlerter names it. */
+  private def resolveAndStampGroup(group: Seq[StagingRecord]): ResolveResult = {
     val resolveYear = group.flatMap(_.year).minOption
     // Resolve from CINEMA hints only — drop any stale stamped `Tmdb` slot a prior
     // (partial-group) resolution left on a concluded row, so a re-resolution is a
     // pure function of the cinemas' own data, not the answer it's replacing.
     val mergedHints = MovieRecordMerge.unionAll(group.map(r => r.record.copy(data = r.record.data - Tmdb)))
     resolveStaging(group.head.title, resolveYear, mergedHints) match {
-      case None if giveUp =>
-        group.foreach { r =>
-          val attempt = TmdbAttempt.on(r.record.evidence, r.record.resolverOriginalTitles, clock.instant())
-          stagingRepository.upsertRow(r.copy(record = r.record.copy(tmdbAttempt = Some(attempt))))
-        }
-        logger.warn(s"Staging: giving up TMDB resolve for '${group.head.title}' (${resolveYear.getOrElse("?")}) after repeated failures — concluding as no-match (folds un-enriched).")
-        Resolved
       case None => TransientFailure
       case Some(resolved) =>
         val tmdbSlot = resolved.data.get(Tmdb)

@@ -494,4 +494,36 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
 
     resolved.flatMap(_.tmdbId) shouldBe Some(100)
   }
+
+  // A STAGING RESOLVE THAT FAILED says nothing about the film unless TMDB itself answered
+  // "no such thing". The staging handler used to conclude a film as no-match after six failed
+  // claims (~2.5 min), so a TMDB blip — and, since the person/credits reads throw, a blip on the
+  // director walk alone — hid new films as unresolved for up to a day. The film's fate is
+  // decided here, where the failure is still visible: an upstream "not found" concludes the
+  // row as a miss; anything else is transient, and the caller retries it.
+  "resolveStagingRecord" should "retry a transient TMDB failure and conclude only on an upstream 'not found'" in {
+    def serviceFailingWith(failure: => Throwable) = {
+      val repository = new InMemoryMovieRepository()
+      val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+      val tmdb  = new TmdbClient(http = new GetOnlyHttpFetch {
+        override def get(url: String): String =
+          if (url.contains("/search/movie")) """{"results":[]}"""
+          else if (url.contains("/search/person")) s"""{"results":[{"id":$PersonId,"known_for_department":"Directing"}]}"""
+          else throw failure
+      }, apiKey = Some("stub"))
+      new MovieService(cache, new InProcessEventBus(), tmdb)
+    }
+    val existing = MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(director = Seq(Director))))
+
+    // The director walk's credits read is down: nothing is concluded, the caller retries.
+    serviceFailingWith(new tools.HttpStatusException(503, "GET", "https://api.themoviedb.org/3/person", None))
+      .resolveStagingRecord(Title, Year, existing) shouldBe None
+    serviceFailingWith(new java.net.SocketTimeoutException("read timed out"))
+      .resolveStagingRecord(Title, Year, existing) shouldBe None
+    // TMDB answered "gone": a definitive miss, concluded now.
+    val concluded = serviceFailingWith(new tools.HttpStatusException(410, "GET", "https://api.themoviedb.org/3/person", None))
+      .resolveStagingRecord(Title, Year, existing)
+    concluded.map(_.tmdbConcluded) shouldBe Some(true)
+    concluded.flatMap(_.tmdbId) shouldBe None
+  }
 }

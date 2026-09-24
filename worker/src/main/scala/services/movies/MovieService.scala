@@ -465,7 +465,10 @@ class MovieService(
    *    - `Some(enriched)` on a HIT — `existing` + tmdbId + Tmdb slot;
    *    - `Some(existing.copy(tmdbAttempt = Some(…)))` on a DEFINITIVE MISS;
    *      (both conclude the row → ready to fold into `movies`)
-   *    - `None` on a TRANSIENT failure — leave the row for the promoter to retry.
+   *    - the same definitive miss when the lookup FAILED definitively
+   *      ([[MovieService.failedDefinitively]]);
+   *    - `None` on any other failure — TRANSIENT: an outage, a rate limit, a timeout says
+   *      nothing about the film, so it is never concluded on; the caller retries it.
    *  Publishes no events: rating enrichment is set up on the merged `movies`
    *  row at fold time (`announceResolvedNewMovie`, driven by the folder's
    *  `newPromotions`), not on the per-cinema staging rows. */
@@ -479,6 +482,9 @@ class MovieService(
         Some(resolved)
       case Success(None) =>
         logger.info(s"TMDB (staging): $label → no match")
+        Some(existing.copy(tmdbAttempt = Some(attemptFor(existing, origHint, directoryHint))))
+      case Failure(exception) if MovieService.failedDefinitively(exception) =>
+        logger.warn(s"Staging TMDB resolve for $label failed definitively (${exception.getMessage}) — concluding as no match.")
         Some(existing.copy(tmdbAttempt = Some(attemptFor(existing, origHint, directoryHint))))
       case Failure(exception) =>
         logger.warn(s"Staging TMDB resolve failed for $label: ${exception.getMessage}; will retry.")
@@ -927,6 +933,16 @@ class MovieService(
 }
 
 object MovieService {
+
+  /** A failed TMDB lookup that is an ANSWER about the film, not a read that did not happen:
+   *  TMDB's own "not found" (`EnrichmentRead.isAbsent`), a deterministic failure a retry would
+   *  replay (`TaskWorker.isDeterministic`), or a missing replay fixture — which only the
+   *  fixture harness throws, and treats as permanent (see `TmdbClient.isTransient`). Anything
+   *  else — an outage, a rate limit, a timeout, a 401 on a bad key — is about TMDB, never the
+   *  film, and must not conclude it. */
+  def failedDefinitively(failure: Throwable): Boolean =
+    tools.EnrichmentRead.isAbsent(failure) || services.tasks.TaskWorker.isDeterministic(failure) ||
+      failure.isInstanceOf[java.io.FileNotFoundException]
 
   /** What a completed resolution reports back to its callers: the row as re-read
    *  from the cache (`cached`), backfilled from the record we just persisted

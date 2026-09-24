@@ -105,21 +105,23 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
     repository.findAll().head.record.tmdbConcluded shouldBe false      // still owed, so the reaper re-enqueues it
   }
 
-  it should "give up and conclude as no-match once the resolve retry budget is exhausted" in {
-    // A TMDB lookup that keeps throwing returns None (transient) on every attempt.
-    // Without a give-up budget the film re-resolves forever and piles up in
-    // staging (decorated/foreign one-off titles TMDB can't search). After the
-    // budget it concludes as tmdbNoMatch so it folds un-enriched and drains.
+  it should "never conclude a film on a failed resolve, however many attempts it has had" in {
+    // `resolveStaging` answers None only for a TRANSIENT failure — a definitive TMDB miss comes
+    // back concluded (`MovieService.resolveStagingRecord`). Concluding it as no-match after a
+    // retry budget (six claims, ~2.5 min) turned a TMDB blip into a film hidden as unresolved
+    // for up to a day. It is retried instead: the queue's backoff, then the reaper's backstop,
+    // with StagingStuckAlerter watching a film that stays unconcluded.
     val repository = new InMemoryStagingRepository
     repository.upsert(Helios, "Throwy Film", Some(2026), listingRow("Throwy Film"))
     val handler = new StagingResolveTmdbHandler(steps(repository, Seq.empty, (_, _, _) => None))
     val payload = StagingTaskKeys.titlePayload("Throwy Film")
 
-    handler.handle(task(TaskType.StagingResolveTmdb, payload)) shouldBe a[HandlerOutcome.Reschedule]  // early — retry
-    handler.handle(task(TaskType.StagingResolveTmdb, payload, attempts = StagingResolveTmdbHandler.MaxResolveAttempts)) shouldBe HandlerOutcome.Done
+    Seq(1, 6, 12, 50).foreach { attempts =>
+      handler.handle(task(TaskType.StagingResolveTmdb, payload, attempts = attempts)) shouldBe a[HandlerOutcome.Reschedule]
+    }
     val row = repository.findAll().head
-    row.record.tmdbNoMatch shouldBe true
-    row.record.tmdbConcluded shouldBe true
+    row.record.tmdbNoMatch shouldBe false
+    row.record.tmdbConcluded shouldBe false
   }
 
   "StagingResolveImdbIdHandler" should "recover + stamp the imdbId and report Done" in {

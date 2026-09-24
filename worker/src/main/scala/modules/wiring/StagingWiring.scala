@@ -32,7 +32,7 @@ trait StagingWiring { self: WorkerWiring =>
     new FoldOnStagingEnriched(stagingFolder, stagingRepository, movieService.announceResolvedNewMovie)
   lazy val stagingSteps = new StagingSteps(
     stagingRepository, detailEnrichers, movieService.resolveStagingRecord, imdbIdResolver.findIdFor,
-    freshnessStore, screeningTokens, clock)
+    freshnessStore, screeningTokens)
   lazy val stagingHandlers: Seq[TaskHandler] = Seq(
     new StagingDetailHandler(stagingSteps),
     new StagingResolveTmdbHandler(stagingSteps),
