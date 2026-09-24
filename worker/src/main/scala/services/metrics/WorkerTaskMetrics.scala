@@ -149,12 +149,33 @@ object WorkerTaskMetrics {
 
   /** The per-country queue/staging sample [[Series.scrape]] folds into the gauges
    *  for one country on each scrape. `snapshot` is that country's live queue
-   *  monitor, `stagingByStep` its `StagingReaper.stepCounts()`, and
+   *  monitor, `stagingByStep` its `StagingReaper.stepCounts()` — each None when its read
+   *  FAILED, which holds that read's gauges at their last reading — and
    *  `changeStreamLiveness` the repository's record of when each change-stream cursor
    *  last delivered and what it has handed the apply thread that has not been applied yet —
    *  read at scrape time, so a silent cursor's age and a stuck apply's lag keep climbing. */
-  case class CountryQueueSample(countryCode: String, snapshot: QueueSnapshot, stagingByStep: Map[StagingStep, Int],
+  case class CountryQueueSample(countryCode: String, snapshot: Option[QueueSnapshot], stagingByStep: Option[Map[StagingStep, Int]],
                                 changeStreamLiveness: ChangeStreamLiveness)
+
+  object CountryQueueSample extends play.api.Logging {
+    def apply(countryCode: String, snapshot: QueueSnapshot, stagingByStep: Map[StagingStep, Int],
+              changeStreamLiveness: ChangeStreamLiveness): CountryQueueSample =
+      CountryQueueSample(countryCode, Some(snapshot), Some(stagingByStep), changeStreamLiveness)
+
+    /** Take one country's sample from its live reads, each on its own. Both THROW on a failed
+     *  read (an unreadable queue is not an empty one), and the worker renders its whole
+     *  exposition — every country, the JVM, every counter — in one pass that keeps the last
+     *  good bytes when it throws: a read escaping here froze every series the worker exports
+     *  for as long as it kept failing. A failed read holds only its own gauges. */
+    def read(countryCode: String, snapshot: => QueueSnapshot, stagingByStep: => Map[StagingStep, Int],
+             changeStreamLiveness: ChangeStreamLiveness): CountryQueueSample = {
+      def held[A](what: String, read: => A): Option[A] =
+        scala.util.Try(read).fold(e => {
+          logger.warn(s"metrics: $countryCode $what read failed, holding its gauges at their last reading: ${e.getMessage}"); None
+        }, Some(_))
+      CountryQueueSample(countryCode, held("queue", snapshot), held("staging", stagingByStep), changeStreamLiveness)
+    }
+  }
 
   /**
    * The registered-once metric objects, SHARED across every country's
@@ -681,8 +702,10 @@ object WorkerTaskMetrics {
      *  with one [[CountryQueueSample]] per running country. */
     def scrape(samples: Seq[CountryQueueSample], now: Instant): String = {
       samples.foreach { s =>
-        refreshQueueGauges(s.countryCode, s.snapshot, now)
-        StagingStep.all.foreach(step => stagingMovies.labelValues(s.countryCode, step.label).set(s.stagingByStep.getOrElse(step, 0).toDouble))
+        s.snapshot.foreach(refreshQueueGauges(s.countryCode, _, now))
+        s.stagingByStep.foreach { byStep =>
+          StagingStep.all.foreach(step => stagingMovies.labelValues(s.countryCode, step.label).set(byStep.getOrElse(step, 0).toDouble))
+        }
         ChangeStreamLiveness.Collections.foreach { coll =>
           changeStreamLastEventAge.labelValues(s.countryCode, coll).set(s.changeStreamLiveness.ageSeconds(coll, now))
           changeStreamApplyPending.labelValues(s.countryCode, coll).set(s.changeStreamLiveness.pendingApplies(coll).toDouble)

@@ -251,7 +251,7 @@ object WorkerMain extends Logging {
     // its own country-tagged queue sample) plus the process-level JVM/native series.
     val snapshot = new services.metrics.MetricsSnapshotCache(render = () =>
       workerMetrics.taskSeries.scrape(
-        wirings.map(w => services.metrics.WorkerTaskMetrics.CountryQueueSample(
+        wirings.map(w => services.metrics.WorkerTaskMetrics.CountryQueueSample.read(
           w.country.code, w.taskQueue.monitor(MetricsActiveLimit),
           w.stagingReaper.stepCounts(), w.movieRepository.changeStreamLiveness)),
         Instant.now()))

@@ -275,8 +275,8 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       // The alternative — a single `state: -1, submittedAt: 1` sort — is
       // mixed-direction, which that index can't serve, so Mongo would blocking-sort
       // the whole active set in memory on every 5s poll.
-      // A read failure propagates (see `countByState`): the metrics render keeps its last
-      // good sample and the admin pages show the error, instead of an empty queue.
+      // A read failure propagates (see `countByState`): the worker's queue gauges hold their
+      // last reading and the admin pages show the error, instead of an empty queue.
       val active =
         TaskState.activeByPriority.foldLeft(Seq.empty[TaskSummary]) { (listed, state) =>
           val remaining = activeLimit - listed.size

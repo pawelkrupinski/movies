@@ -347,4 +347,31 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     m.recordWriteFailed("movies", "upsert", "CodecConfigurationException")
     scrapePl(series).linesIterator.find(_.startsWith(line)).map(_.split(' ').last.toDouble) shouldBe Some(1.0)
   }
+
+  // ONE READ, ONE COUNTRY'S GAUGES. The worker renders its whole exposition — every country, the
+  // JVM, every counter in the registry — in one pass, and a render that throws keeps the LAST GOOD
+  // BYTES. The queue and staging reads throw on failure (an unreadable queue is not an empty one),
+  // so a sample that let them escape froze every series the worker exports for as long as either
+  // read kept failing: counters flat, change-stream ages stopped, and no alert able to tell.
+  it should "render the rest of the exposition when a country's queue or staging read fails, holding only those gauges" in {
+    val (m, series) = newPl()
+    val clock    = new tools.MutableClock(now.minusSeconds(10))
+    val liveness = new ChangeStreamLiveness(clock)
+    liveness.delivered(ChangeStreamLiveness.Movies)                 // 10s before `now`
+    val queued   = QueueSnapshot(Map(TaskState.Waiting -> 5L), Nil)
+    series.scrape(Seq(CountryQueueSample.read("pl", queued, Map(StagingStep.Detail -> 3), liveness)), now)
+
+    m.recordEnqueue(TaskType.ScrapeCinema, WorkerTaskMetrics.EnqueueResult.Added)
+    val out = series.scrape(Seq(CountryQueueSample.read("pl",
+      throw new IllegalStateException("queue unreadable"),
+      throw new IllegalStateException("staging read incomplete"), liveness)), now.plusSeconds(60))
+
+    // The render went ahead: a counter moved since the last good one shows its new value …
+    out should include ("""kinowo_worker_tasks_enqueued_total{country="pl",result="added",task_type="ScrapeCinema"} 1""")
+    // … the change-stream age kept climbing …
+    out should include ("""kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="pl"} 70.0""")
+    // … and the two gauges whose read failed hold their last reading rather than claim an empty queue.
+    out should include ("""kinowo_worker_queue_depth{country="pl",state="waiting"} 5""")
+    out should include ("""kinowo_worker_staging_movies{country="pl",step="detail"} 3""")
+  }
 }

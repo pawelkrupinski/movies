@@ -191,8 +191,8 @@ class StagingReaper(
   def stepCounts(): Map[StagingStep, Int] = {
     val (rows, complete) = staging.findAllChecked()
     // THROWS on an incomplete scan: the missing rows would count as zero, and the gauge
-    // read "staging drained" while it could not be read. The metrics render keeps its last
-    // good sample instead (`MetricsSnapshotCache`).
+    // read "staging drained" while it could not be read. The staging gauges hold their last
+    // reading instead (`WorkerTaskMetrics.CountryQueueSample.read`).
     if (!complete) throw new IllegalStateException(s"staging read incomplete (${rows.size} row(s) seen) — step counts unknown")
     rows
       .groupBy(r => normalizer.sanitize(r.title))
