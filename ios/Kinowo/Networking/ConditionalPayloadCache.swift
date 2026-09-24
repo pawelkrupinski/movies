@@ -59,20 +59,11 @@ struct ConditionalPayloadCache<Payload: Codable> {
     }
     private var url: URL { Self.cacheDir.appendingPathComponent(file) }
 
-    /// Persist the freshly-fetched `payload` for `deployment` + `city` together
-    /// with its `lastModified` header, so a later reload of that same pair can
-    /// revalidate. Encodes on the CALLER's thread: the queue holds only the
-    /// file write, so a read never waits behind a whole-listing encode.
-    func save(_ payload: [Payload], deployment: URL, city: String, lastModified: String?) {
-        guard let body = try? JSONEncoder().encode(payload),
-              let entry = Self.entry(body: body, deployment: deployment, city: city, lastModified: lastModified)
-        else { return }
-        conditionalPayloadCacheQueue.sync { write(entry) }
-    }
-
     /// Persist `body` — the payload exactly as the server sent it, already
-    /// encoded, so nothing is re-encoded — off the caller's thread, after every
-    /// save issued before it.
+    /// encoded, so nothing is re-encoded and the queue holds only the file
+    /// write — for `deployment` + `city` with its `lastModified`, so a later
+    /// reload of that same pair can revalidate. Off the caller's thread, after
+    /// every save issued before it; a read issued after it sees it.
     func saveInBackground(body: Data, deployment: URL, city: String, lastModified: String?) {
         guard let entry = Self.entry(body: body, deployment: deployment, city: city, lastModified: lastModified)
         else { return }

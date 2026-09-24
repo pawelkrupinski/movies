@@ -3,25 +3,16 @@ import XCTest
 @testable import KinowoCore
 
 /// The cache's serial queue is what a main-thread read (`lastModified`, `load`)
-/// waits on, so it must hold only file I/O — never the whole-listing JSON
-/// encode a save pays for, or a launch-time read stalls behind a save of the
-/// previous listing.
+/// waits on, so it must hold only file I/O — never a whole-listing JSON encode.
+/// The production save (`saveInBackground(body:)`, called by
+/// `ConditionalListEndpoint` with the response it just received) guarantees that
+/// by encoding nothing at all: the bytes on disk are the server's, as sent.
 final class ConditionalPayloadCacheQueueTests: XCTestCase {
 
-    /// A payload whose encode blocks until the test lets it go.
-    private struct BlockingPayload: Codable {
-        static let encodeStarted = DispatchSemaphore(value: 0)
-        static let releaseEncode = DispatchSemaphore(value: 0)
+    private struct Item: Codable, Equatable { let title: String }
 
-        init() {}
-        init(from decoder: Decoder) throws {}
-        func encode(to encoder: Encoder) throws {
-            Self.encodeStarted.signal()
-            Self.releaseEncode.wait()
-        }
-    }
-
-    private let cache = ConditionalPayloadCache<BlockingPayload>(file: "conditional-payload-queue-test.json")
+    private static let file = "conditional-payload-queue-test.json"
+    private let cache = ConditionalPayloadCache<Item>(file: file)
     private let deployment = URL(string: "https://kinowo.net")!
 
     override func tearDown() {
@@ -29,22 +20,17 @@ final class ConditionalPayloadCacheQueueTests: XCTestCase {
         super.tearDown()
     }
 
-    func testAReadDoesNotWaitOnAnotherSavesEncode() {
-        let saved = expectation(description: "the save finished")
-        DispatchQueue.global().async {
-            self.cache.save([BlockingPayload()], deployment: self.deployment, city: "poznan", lastModified: "x")
-            saved.fulfill()
-        }
-        XCTAssertEqual(BlockingPayload.encodeStarted.wait(timeout: .now() + 5), .success)
+    /// A field the model does not carry, and the server's own spacing: a save that
+    /// decoded and re-encoded the listing — on the queue or anywhere — would drop
+    /// the one and normalise the other.
+    func testTheSaveStoresTheServersBytesWithoutEncodingThem() throws {
+        let body = Data(#"[ {"title": "Diuna",  "notInTheModel": 1} ]"#.utf8)
+        cache.saveInBackground(body: body, deployment: deployment, city: "poznan", lastModified: "x")
 
-        let read = expectation(description: "the read returned while the encode was still running")
-        DispatchQueue.global().async {
-            _ = self.cache.lastModified(deployment: self.deployment, city: "poznan")
-            read.fulfill()
-        }
-        wait(for: [read], timeout: 2)
-
-        BlockingPayload.releaseEncode.signal()
-        wait(for: [saved], timeout: 5)
+        // A read is ordered after the save, so the entry is on disk once it answers.
+        XCTAssertEqual(cache.load(deployment: deployment, city: "poznan"), [Item(title: "Diuna")])
+        let onDisk = try Data(contentsOf: FileManager.default
+            .urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent(Self.file))
+        XCTAssertEqual(onDisk.suffix(body.count), body)
     }
 }

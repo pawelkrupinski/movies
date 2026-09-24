@@ -98,9 +98,9 @@ final class DetailsCacheTests: XCTestCase {
         }
     }
 
-    /// A direct save lands after every background save issued before it, so
+    /// A seeding save lands after every background save issued before it, so
     /// a test's tearDown reset can't be overwritten by the reload it follows.
-    func testADirectSaveIsNotOvertakenByAnEarlierBackgroundSave() {
+    func testASeedingSaveIsNotOvertakenByAnEarlierBackgroundSave() {
         for round in 0..<50 {
             let background = [FilmDetails(title: "Background \(round)", synopsis: nil, trailerURLs: [])]
             ConditionalPayloadCache.details.saveInBackground(body: encoded(background), deployment: poland, city: "gdansk", lastModified: nil)
