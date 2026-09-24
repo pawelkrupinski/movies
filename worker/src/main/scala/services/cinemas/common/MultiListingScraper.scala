@@ -24,6 +24,8 @@ class MultiListingScraper(override val cinema: Cinema, val listings: Seq[CinemaS
   /** The listings' keys together. The roster audit reads [[listings]] to hold
    *  each one unique on its own. */
   override def sourceKey: Option[String] = Some(listings.flatMap(_.sourceKey).mkString(" + ")).filter(_.nonEmpty)
+  /** The first listing a chain knows — the online roster audit looks the venue up by it. */
+  override def chainVenueId: Option[String] = listings.flatMap(_.chainVenueId).headOption
 
   def fetch(): Seq[CinemaMovie] =
     listings.flatMap(_.fetch()).groupBy(_.movie.title).values.toSeq.map { same =>
