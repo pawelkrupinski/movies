@@ -53,7 +53,7 @@ class ShareCardPostersSpec extends AnyFlatSpec with Matchers {
 
     posters.load(film1, Seq(primary, url)) shouldBe defined
     posters.load("fother", Seq("https://gone.example/a.jpg", "https://gone.example/b.jpg")) shouldBe None
-    (series.posterLoadCount("pl", ok = true), series.posterLoadCount("pl", ok = false)) shouldBe ((1.0, 1.0))
+    (series.posterLoadCount("pl", ok = true, retry = false), series.posterLoadCount("pl", ok = false, retry = false)) shouldBe ((1.0, 1.0))
     PosterFailure.all.map(series.posterFetchCount("pl", _)).sum shouldBe 3.0   // the per-URL detail stays
   }
 

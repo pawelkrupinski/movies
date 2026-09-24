@@ -54,6 +54,17 @@ class ShareCardServiceSpec extends AnyFlatSpec with Matchers {
     rig.service.existing(inputs) shouldBe Some(inputs.version(None))
   }
 
+  it should "count a posterless card's re-try apart from a film's first poster load" in {
+    val series = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
+    val rig    = new Rig(download = new CountingDownload(failing = Set("https://cdn.example/poster-a.jpg"))) {
+      override val metrics = series.forCountry("pl")
+    }
+    val inputs = rig.service.inputs(film())
+    rig.service.render(inputs, Seq(ShareCardReason.NewFilm)) shouldBe ShareCardMetrics.Outcome.RenderedNoPoster
+    rig.service.render(inputs, Seq(ShareCardReason.Backfill), retryPoster = true) shouldBe ShareCardMetrics.Outcome.Existing
+    (series.posterLoadCount("pl", ok = false, retry = false), series.posterLoadCount("pl", ok = false, retry = true)) shouldBe ((1.0, 1.0))
+  }
+
   "A projection" should "enqueue a render only when something the card draws changed" in {
     val rig = new Rig
     val movie = film()

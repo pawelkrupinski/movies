@@ -188,17 +188,17 @@ class ShareCardService(
     val before = onDisk(next.filmId)
     // Anything thrown while drawing is this card's failure — counted, and the task retried — never
     // an exception out of the task.
-    def withPoster: Option[String] =
-      Try(onBase(next, first).orElse(rebuildBase(next, first))).recover { case e: Exception =>
+    def withPoster(retry: Boolean): Option[String] =
+      Try(onBase(next, first).orElse(rebuildBase(next, first, retry))).recover { case e: Exception =>
         logger.warn(s"share card: ${next.filmId} could not be drawn: ${e.getClass.getSimpleName}: ${e.getMessage}"); None
       }.get
     val (outcome, card) = existing(next) match {
       case Some(version) if retryPoster && next.isPosterless(version) =>
-        withPoster.fold((Outcome.Existing, Some(version)))(drawn => (Outcome.Rendered, Some(drawn)))
+        withPoster(retry = true).fold((Outcome.Existing, Some(version)))(drawn => (Outcome.Rendered, Some(drawn)))
       case Some(version)                   => (Outcome.Existing, Some(version))
       case None if next.posterUrls.isEmpty => (Outcome.Rendered, Some(drawWhole(next, first)))
       case None =>
-        withPoster.map(drawn => (Outcome.Rendered, Some(drawn))).getOrElse(
+        withPoster(retry = false).map(drawn => (Outcome.Rendered, Some(drawn))).getOrElse(
           Try(drawWhole(next, first)).toOption.fold((Outcome.Failed, Option.empty[String]))(drawn => (Outcome.RenderedNoPoster, Some(drawn))))
     }
     card.foreach { version =>
@@ -233,8 +233,8 @@ class ShareCardService(
   }
 
   /** The base rebuilt from the film's (cached) poster and kept, then the card drawn on it. */
-  private def rebuildBase(next: ShareCardInputs, first: Boolean): Option[String] =
-    posters.load(next.filmId, next.posterUrls).map { case (url, poster) =>
+  private def rebuildBase(next: ShareCardInputs, first: Boolean, retry: Boolean): Option[String] =
+    posters.load(next.filmId, next.posterUrls, retry).map { case (url, poster) =>
       val base = OgCardRenderer.renderBase(next.title, next.subtitle, Some(poster), next.host, next.director, next.synopsis)
       store.writeAtomically(store.basePath(next.filmId), OgCardRenderer.encodeBase(base), next.baseVersion(Some(url)))
       metrics.renderPath(ShareCardMetrics.Path.BaseRebuild)

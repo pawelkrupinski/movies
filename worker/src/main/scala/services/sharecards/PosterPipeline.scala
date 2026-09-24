@@ -311,14 +311,14 @@ class ShareCardPosters(store: ShareCardStore, download: PosterDownload, shrinker
                        metrics: ShareCardMetrics) extends Logging {
 
   /** The first usable candidate — its URL, which the card's version hashes, and its slot image — or
-   *  None when none can be had. */
-  def load(filmId: String, candidates: Seq[String]): Option[(String, BufferedImage)] =
+   *  None when none can be had. `retry` marks the re-try of a card drawn without its poster. */
+  def load(filmId: String, candidates: Seq[String], retry: Boolean = false): Option[(String, BufferedImage)] =
     cached(filmId, candidates) match {
       case hit @ Some(_) => metrics.posterCache(hit = true); hit
       case None =>
         metrics.posterCache(hit = false)
         val loaded = candidates.iterator.flatMap(url => fetchAndCache(filmId, url).map(url -> _)).nextOption()
-        if (candidates.nonEmpty) metrics.posterLoad(ok = loaded.isDefined)
+        if (candidates.nonEmpty) metrics.posterLoad(ok = loaded.isDefined, retry)
         loaded
     }
 
