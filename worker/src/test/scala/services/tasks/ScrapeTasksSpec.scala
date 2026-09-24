@@ -48,8 +48,8 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
   "ScrapeCinemaHandler" should "skip (no scrape) when the cinema is already fresh" in {
     val scraper = new FakeScraper(Multikino, movieAt(Multikino))
     val fresh   = new InMemoryFreshnessStore
-    fresh.markFresh(ScrapeCinemaHandler.dedupKey(Multikino), FreshnessKind.CinemaScrape)
-    val h = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper), freshRunner(), fresh)
+    fresh.markFresh(ScrapeCinemaHandler.dedupKey(Multikino), FreshnessKind.CinemaScrape, specClock.instant())
+    val h = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper), freshRunner(), fresh, clock = specClock)
     h.handle(task(Multikino)) shouldBe HandlerOutcome.Skipped
     scraper.fetchCount shouldBe 0
   }
@@ -58,10 +58,10 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val scraper = new FakeScraper(Multikino, movieAt(Multikino))
     val fresh   = new InMemoryFreshnessStore
     val key     = ScrapeCinemaHandler.dedupKey(Multikino)
-    val h = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper), freshRunner(), fresh)
+    val h = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper), freshRunner(), fresh, clock = specClock)
     h.handle(task(Multikino)) shouldBe HandlerOutcome.Done
     scraper.fetchCount shouldBe 1
-    fresh.isFresh(key, FreshnessKind.CinemaScrape) shouldBe true
+    fresh.isFresh(key, FreshnessKind.CinemaScrape, specClock.instant()) shouldBe true
   }
 
   // ── Thin-venue cadence: durant/moab's mechanism, end to end ─────────────────
@@ -174,9 +174,9 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val scraper = new FakeScraper(Multikino, throw new RuntimeException("HTTP 503 for GET https://x"))
     val fresh   = new InMemoryFreshnessStore
     val key     = ScrapeCinemaHandler.dedupKey(Multikino)
-    val h = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper), freshRunner(), fresh)
+    val h = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper), freshRunner(), fresh, clock = specClock)
     h.handle(task(Multikino)) shouldBe HandlerOutcome.Done
-    fresh.isFresh(key, FreshnessKind.CinemaScrape) shouldBe false
+    fresh.isFresh(key, FreshnessKind.CinemaScrape, specClock.instant()) shouldBe false
   }
 
   // Starvation regression (prod 2026-07-24 → 07-27, kinowo_de + kinowo_uk). A cinema
@@ -260,8 +260,8 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
   it should "not enqueue a cinema that is still fresh" in {
     val scraper = new FakeScraper(KinoApollo, movieAt(KinoApollo))
     val fresh   = new InMemoryFreshnessStore
-    fresh.markFresh(ScrapeCinemaHandler.dedupKey(KinoApollo), FreshnessKind.CinemaScrape)
-    val reaper  = new ScrapeReaper(Seq(scraper), new InMemoryTaskQueue, fresh)
+    fresh.markFresh(ScrapeCinemaHandler.dedupKey(KinoApollo), FreshnessKind.CinemaScrape, specClock.instant())
+    val reaper  = new ScrapeReaper(Seq(scraper), new InMemoryTaskQueue, fresh, clock = specClock)
     reaper.tick() shouldBe 0
   }
 
@@ -589,13 +589,13 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val scrapers = Seq(new FakeScraper(Multikino, movieAt(Multikino)),
                        new FakeScraper(KinoApollo, movieAt(KinoApollo)))
     val queue  = new InMemoryTaskQueue
-    val reaper = new ScrapeReaper(scrapers, queue, fresh, initialDelay = 0.seconds, readyTimeout = 5.seconds)
+    val reaper = new ScrapeReaper(scrapers, queue, fresh, initialDelay = 0.seconds, readyTimeout = 5.seconds, clock = specClock)
     reaper.start()
     Thread.sleep(150)
     // Gate still closed → reaper is blocked, not yet ticking.
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
     // Boot hydrate lands: stamps populate the mirror (fresh), then readiness fires.
-    scrapers.foreach(s => fresh.markFresh(ScrapeCinemaHandler.dedupKey(s.cinema), FreshnessKind.CinemaScrape))
+    scrapers.foreach(s => fresh.markFresh(ScrapeCinemaHandler.dedupKey(s.cinema), FreshnessKind.CinemaScrape, specClock.instant()))
     gate.success(())
     Thread.sleep(150)
     // First tick ran post-hydrate and found every cinema fresh → no storm.

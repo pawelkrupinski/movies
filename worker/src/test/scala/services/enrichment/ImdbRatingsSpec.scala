@@ -136,7 +136,8 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val cadence = new services.cadence.InMemoryRatingCadenceStore
     val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4, "tt2" -> 6.0)),  // A moves, B unchanged
-      (key, tmdbId, v) => cadence.record(services.tasks.RatingTasks.dedupKey(services.freshness.FreshnessKind.ImdbRating, key, tmdbId), v))
+      (key, tmdbId, v) => cadence.record(services.tasks.RatingTasks.dedupKey(services.freshness.FreshnessKind.ImdbRating, key, tmdbId), v,
+        java.time.Instant.parse("2026-06-01T10:00:00Z")))
 
     ratings.refreshAll()
 

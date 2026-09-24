@@ -116,6 +116,53 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // ── rule 3 ─────────────────────────────────────────────────────────────────
+  //
+  // A production parameter that DEFAULTS an instant to the wall clock (`at: Instant =
+  // Instant.now()`) lets a caller who holds the injected clock forget to pass it, and nothing
+  // notices until two components judge one stamp on different clocks — the detail reaper and
+  // handler disagreed about "fresh" exactly that way, and a harness pinned to 2026-06-08 then
+  // re-asked for work a system-clock stamp said was done. A `clock: Clock = Clock.systemUTC()`
+  // default is a SEAM, not a read, and stays allowed — as does a `() => Instant` function one.
+
+  /** `file:parameter` → why that main-source parameter may still default to the wall clock. */
+  private val MainDefaultAllowlist: Map[String, String] = Map(
+    "common/src/main/scala/services/tasks/TaskQueue.scala:submittedAt" ->
+      "queue bookkeeping (the task's submit stamp), read by no freshness decision; ~60 call sites — follow-up",
+    "common/src/main/scala/services/tasks/TaskQueue.scala:now" ->
+      "lease expiry for claim/reap, compared only with other queue stamps the same default wrote — follow-up",
+    "common/src/main/scala/tools/RelativeTime.scala:reference" ->
+      "renders \"3 minutes ago\" for an operator page at request time; nothing is decided from it")
+
+  private val MainWallClockRead = """\b(?:Instant|LocalDate|LocalDateTime|ZonedDateTime|OffsetDateTime)\.now\(\s*\)|System\.currentTimeMillis\(""".r
+  // A value default only: `now: () => Instant = () => Instant.now()` is a seam, like a Clock.
+  private val ParameterName     = """(?:^\s*|[(,]\s*)(\w+)\s*:(?:=>|[^=,(])+=(?!>)\s*$""".r
+
+  private def mainClockDefaults: Seq[(String, String)] =
+    scalaFiles(ScalaSourceScan.MainRoots).flatMap { path =>
+      read(path).linesIterator.zipWithIndex.flatMap { case (raw, index) =>
+        val line = code(raw)
+        MainWallClockRead.findAllMatchIn(line).flatMap { m =>
+          val prefix = line.substring(0, m.start).replaceAll("""(?:java\.(?:time|lang)\.)$""", "")
+          ParameterName.findFirstMatchIn(prefix).map(p => s"$path:${p.group(1)}" -> s"$path:${index + 1}: ${raw.trim}")
+        }
+      }
+    }
+
+  "Main sources" should "not default a parameter to a wall-clock READ — take the injected clock's instant instead" in {
+    val offenders = mainClockDefaults.filterNot { case (key, _) => MainDefaultAllowlist.contains(key) }.map(_._2)
+    withClue("These parameters default to the wall clock, so a caller holding the worker's clock can silently skip " +
+      "it. Drop the default and pass `clock.instant()`, or allowlist the parameter with a reason:\n" +
+      offenders.mkString("\n") + "\n") {
+      offenders shouldBe empty
+    }
+  }
+
+  it should "keep every allowlisted parameter still defaulting to the wall clock" in {
+    val live = mainClockDefaults.map(_._1).toSet
+    (MainDefaultAllowlist.keySet -- live) shouldBe empty
+  }
+
   // ── rule 2 ─────────────────────────────────────────────────────────────────
 
   private val ClockDefault = """clock\s*:\s*(?:java\.time\.)?Clock\s*=\s*(?:java\.time\.)?Clock\.system""".r

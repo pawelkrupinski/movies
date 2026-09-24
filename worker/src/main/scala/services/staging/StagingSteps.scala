@@ -72,7 +72,7 @@ class StagingSteps(
   /** [[detailReady]] for the film at `anchor` and one of its venues — all it reads of a
    *  row, so it can be asked of a venue without decoding that venue's row. */
   def detailReadyAt(anchor: String, cinema: Source): Boolean = enricherFor(cinema) match {
-    case Some(_) => freshness.isFresh(StagingTaskKeys.detailKey(anchor, cinema.displayName), FreshnessKind.DetailEnrich)
+    case Some(_) => freshness.isFresh(StagingTaskKeys.detailKey(anchor, cinema.displayName), FreshnessKind.DetailEnrich, clock.instant())
     case None    => true
   }
 
@@ -116,7 +116,7 @@ class StagingSteps(
       if (!fetched && giveUp)
         logger.warn(s"Staging: giving up on ${cinema.displayName} detail for '$anchor' after repeated failures — degrading to listing-only")
       val ready = fetched || giveUp
-      if (ready) freshness.markFresh(StagingTaskKeys.detailKey(anchor, cinema.displayName), FreshnessKind.DetailEnrich)
+      if (ready) freshness.markFresh(StagingTaskKeys.detailKey(anchor, cinema.displayName), FreshnessKind.DetailEnrich, clock.instant())
       ready
   }
 
@@ -342,13 +342,13 @@ class StagingSteps(
     // Best-effort + one-shot: mark done whenever the step runs (recovered,
     // not-found, or nothing to recover) so the reaper folds instead of
     // re-enqueuing forever.
-    freshness.markFresh(StagingTaskKeys.imdbKey(anchor), FreshnessKind.ImdbRating)
+    freshness.markFresh(StagingTaskKeys.imdbKey(anchor), FreshnessKind.ImdbRating, clock.instant())
   }
 
   /** Whether IMDb recovery has already been attempted for this film — so the
    *  reaper folds instead of re-enqueuing the (best-effort) step forever. */
   def imdbRecoveryDone(anchor: String): Boolean =
-    freshness.isFresh(StagingTaskKeys.imdbKey(anchor), FreshnessKind.ImdbRating)
+    freshness.isFresh(StagingTaskKeys.imdbKey(anchor), FreshnessKind.ImdbRating, clock.instant())
 }
 
 object StagingSteps {

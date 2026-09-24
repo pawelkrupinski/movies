@@ -38,7 +38,7 @@ trait RatingCadenceStore {
    *  [[RatingCadence.record]] — a re-keyed row re-reporting the same value is not a
    *  visible change). Single-writer (one worker, and the queue never runs two
    *  refreshes of the same key at once), so the read-then-write needs no lock. */
-  final def record(key: String, reportedValue: Option[String], at: Instant = Instant.now()): RatingChangeStats = {
+  final def record(key: String, reportedValue: Option[String], at: Instant): RatingChangeStats = {
     val next = RatingCadence.record(statsFor(key), reportedValue, at)
     persist(key, next)
     next

@@ -195,7 +195,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(synopsis = Some("x"))))
     val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus, dueWindow, clock = specClock)
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
-    fresh.markFresh(task.dedupKey, FreshnessKind.DetailEnrich)
+    fresh.markFresh(task.dedupKey, FreshnessKind.DetailEnrich, specClock.instant())
 
     h.handle(task) shouldBe Skipped
     enricher.calls shouldBe 0

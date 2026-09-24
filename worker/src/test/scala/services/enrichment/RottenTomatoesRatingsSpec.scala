@@ -224,7 +224,8 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     val cadence = new services.cadence.InMemoryRatingCadenceStore
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None),
       rtClient(Map(urlA -> pageWithScore(74), urlB -> pageWithScore(60))),  // A moves, B unchanged
-      cadenceRecorder = (key, tmdbId, v) => cadence.record(services.tasks.RatingTasks.dedupKey(services.freshness.FreshnessKind.RtRating, key, tmdbId), v))
+      cadenceRecorder = (key, tmdbId, v) => cadence.record(services.tasks.RatingTasks.dedupKey(services.freshness.FreshnessKind.RtRating, key, tmdbId), v,
+        java.time.Instant.parse("2026-06-01T10:00:00Z")))
 
     ratings.refreshAll()
 

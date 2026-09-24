@@ -75,7 +75,7 @@ object RetiredVenueRows {
     VenueRoster.venueOf(SlotKeyed.slotKeyOf(rowId))
 
   def sweep(screenings: Option[SlotKeyedRows], slots: Option[SlotKeyedRows], roster: Set[String],
-            now: Instant = Instant.now(), grace: FiniteDuration = Grace): RetiredVenueRows =
+            now: Instant, grace: FiniteDuration = Grace): RetiredVenueRows =
     if (roster.isEmpty) {
       logger.warn("Retired-venue rows: the roster is EMPTY — refusing to treat any venue as retired.")
       none

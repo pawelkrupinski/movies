@@ -529,7 +529,7 @@ class MovieService(
   private def publishTmdbOutcome(finalKey: CacheKey, movieRecord: MovieRecord): Unit = {
     // Stamp WHEN this row resolved (keyed by the immutable tmdbId) so the rating
     // handler can measure the resolved → first-rating-attempt delay per site.
-    movieRecord.tmdbId.foreach(id => freshness.markFresh(RatingTasks.tmdbResolvedAtKey(id), FreshnessKind.TmdbResolve))
+    movieRecord.tmdbId.foreach(id => freshness.markFresh(RatingTasks.tmdbResolvedAtKey(id), FreshnessKind.TmdbResolve, clock.instant()))
     movieRecord.imdbId match {
       case Some(id) =>
         // imdbId already known → nothing to recover; the EnrichmentReaper picks up

@@ -186,7 +186,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
 
   it should "skip a film whose detail is already fresh" in {
     val (cache, queue, fresh) = (cacheWith(Some("http://ref")), new InMemoryTaskQueue, new InMemoryFreshnessStore)
-    fresh.markFresh(EnrichDetailsTasks.dedupKey("kino-apollo", cache.keyOf("Dune", None)), FreshnessKind.DetailEnrich)
+    fresh.markFresh(EnrichDetailsTasks.dedupKey("kino-apollo", cache.keyOf("Dune", None)), FreshnessKind.DetailEnrich, specClock.instant())
     reaper(cache, queue, fresh).tick() shouldBe 0
   }
 
@@ -288,7 +288,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   it should "release a detail-pending row whose detail is already fresh (a lost completion event)" in {
     val (cache, queue, fresh) = (cacheWith(Some("http://ref")), new InMemoryTaskQueue, new InMemoryFreshnessStore)
     cache.putIfPresent(cache.keyOf("Dune", None), _.copy(detailPending = true))
-    fresh.markFresh(EnrichDetailsTasks.dedupKey("kino-apollo", cache.keyOf("Dune", None)), FreshnessKind.DetailEnrich)
+    fresh.markFresh(EnrichDetailsTasks.dedupKey("kino-apollo", cache.keyOf("Dune", None)), FreshnessKind.DetailEnrich, specClock.instant())
     val bus = new CapturingBus
     reaper(cache, queue, fresh, bus).reapStuckPending() shouldBe 1
     cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(false)

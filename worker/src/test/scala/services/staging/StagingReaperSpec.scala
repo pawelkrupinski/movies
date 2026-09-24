@@ -14,6 +14,8 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  *  advances the chain off `TaskFinished`. */
 class StagingReaperSpec extends AnyFlatSpec with Matchers {
 
+  private val specClock = java.time.Clock.fixed(java.time.Instant.parse("2026-06-01T10:00:00Z"), java.time.ZoneOffset.UTC)
+
   private val enricher = new FakeDetailEnricher(Helios, "fake")        // deferring detail cinema
 
   /** Wire a reaper over a fresh queue + repository seeded with `rows`. The
@@ -24,7 +26,8 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryStagingRepository
     rows.foreach { case (t, y, r) => repository.upsert(Helios, t, y, r) }
     val freshness = new InMemoryFreshnessStore
-    val steps     = new StagingSteps(repository, Seq(enricher), (_, _, _) => None, (_, _, _) => None, freshness)
+    val steps     = new StagingSteps(repository, Seq(enricher), (_, _, _) => None, (_, _, _) => None, freshness,
+      clock = specClock)
     val queue     = new InMemoryTaskQueue
     val reaper    = new StagingReaper(steps, queue, repository)
     (queue, reaper, repository, freshness)
@@ -32,11 +35,11 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
 
   /** Mark a film's deferred-detail fetch as done — the signal `detailReady` reads. */
   private def markDetailDone(freshness: InMemoryFreshnessStore, title: String): Unit =
-    freshness.markFresh(StagingTaskKeys.detailDedup(title, Helios.displayName, titleNormalizer), FreshnessKind.DetailEnrich)
+    freshness.markFresh(StagingTaskKeys.detailDedup(title, Helios.displayName, titleNormalizer), FreshnessKind.DetailEnrich, specClock.instant())
 
   /** Mark IMDb recovery as already attempted (the best-effort, one-shot signal). */
   private def markImdbAttempted(freshness: InMemoryFreshnessStore, title: String): Unit =
-    freshness.markFresh(StagingTaskKeys.resolveImdbDedup(title, titleNormalizer), FreshnessKind.ImdbRating)
+    freshness.markFresh(StagingTaskKeys.resolveImdbDedup(title, titleNormalizer), FreshnessKind.ImdbRating, specClock.instant())
 
   private def listing(title: String, year: Option[Int]): MovieRecord =
     MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some(title), filmUrl = Some("u"))))

@@ -55,7 +55,7 @@ class QueueEnrichmentRetriggerSpec extends AnyFlatSpec with Matchers {
   it should "INVALIDATE the tmdbId-keyed freshness stamp so the re-fetch isn't deduped away" in {
     val (queue, fresh, trigger) = fixture
     val dedup = RatingTasks.dedupKey(FreshnessKind.ImdbRating, filmKey, resolved.tmdbId)
-    fresh.markFresh(dedup, FreshnessKind.ImdbRating)
+    fresh.markFresh(dedup, FreshnessKind.ImdbRating, java.time.Instant.parse("2026-06-01T10:00:00Z"))
     fresh.lastFetchedAt(dedup) should not be empty            // fresh before
 
     trigger.retrigger(filmKey, resolved, Set(RetriggerKind.ImdbRating))

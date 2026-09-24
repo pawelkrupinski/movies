@@ -57,8 +57,8 @@ object RatingTasks {
  *  `private[services]` [[services.movies.CacheKey]] — it wires the recorder by
  *  value instead. */
 object BulkCadenceRecorder {
-  def apply(cadence: RatingCadenceStore, kind: FreshnessKind): (CacheKey, Option[Int], Option[String]) => Unit =
-    (key, tmdbId, value) => cadence.record(RatingTasks.dedupKey(kind, key, tmdbId), value)
+  def apply(cadence: RatingCadenceStore, kind: FreshnessKind, clock: java.time.Clock): (CacheKey, Option[Int], Option[String]) => Unit =
+    (key, tmdbId, value) => cadence.record(RatingTasks.dedupKey(kind, key, tmdbId), value, clock.instant())
 }
 
 /** Records how long after a film's TMDB resolution each rating site FIRST tried

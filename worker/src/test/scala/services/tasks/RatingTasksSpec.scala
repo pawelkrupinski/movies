@@ -31,17 +31,17 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
   "RatingHandler" should "refresh and mark fresh when stale" in {
     var calls = List.empty[(String, Option[Int])]
     val fresh = new InMemoryFreshnessStore
-    val h     = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow, cadence, (t, y) => { calls ::= (t, y); Some("7.5") })
+    val h     = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow, cadence, (t, y) => { calls ::= (t, y); Some("7.5") }, earlier)
     h.handle(ratingTask("imdb|dune|2024", "dune", Some(2024))) shouldBe HandlerOutcome.Done
     calls shouldBe List(("dune", Some(2024)))
-    fresh.isFresh("imdb|dune|2024", FreshnessKind.ImdbRating) shouldBe true
+    fresh.isFresh("imdb|dune|2024", FreshnessKind.ImdbRating, Earlier) shouldBe true
   }
 
   it should "skip without refreshing when already fresh" in {
     var calls = 0
     val fresh = new InMemoryFreshnessStore
-    fresh.markFresh("imdb|dune|", FreshnessKind.ImdbRating)
-    val h = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow, cadence, (_, _) => { calls += 1; Some("7.5") })
+    fresh.markFresh("imdb|dune|", FreshnessKind.ImdbRating, Earlier)
+    val h = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow, cadence, (_, _) => { calls += 1; Some("7.5") }, earlier)
     h.handle(ratingTask("imdb|dune|", "dune", None)) shouldBe HandlerOutcome.Skipped
     calls shouldBe 0
   }
@@ -120,8 +120,8 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
   it should "not touch the cadence for a task it skips as still-fresh" in {
     val cad   = new services.cadence.InMemoryRatingCadenceStore
     val fresh = new InMemoryFreshnessStore
-    fresh.markFresh("imdb|tmdb:7", FreshnessKind.ImdbRating)
-    new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow, cad, (_, _) => Some("7.5"))
+    fresh.markFresh("imdb|tmdb:7", FreshnessKind.ImdbRating, Earlier)
+    new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow, cad, (_, _) => Some("7.5"), earlier)
       .handle(ratingTask("imdb|tmdb:7", "X", None)) shouldBe HandlerOutcome.Skipped
     cad.statsFor("imdb|tmdb:7") shouldBe None
   }

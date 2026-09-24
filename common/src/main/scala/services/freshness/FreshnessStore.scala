@@ -30,12 +30,12 @@ trait FreshnessStore {
 
   /** Record that the work behind `key` (of the given `kind`) just completed.
    *  Call only on SUCCESS, so a failed fetch stays stale and retries. */
-  def markFresh(key: String, kind: FreshnessKind, at: Instant = Instant.now()): Unit
+  def markFresh(key: String, kind: FreshnessKind, at: Instant): Unit
 
   /** True when `key` was marked fresh within `kind`'s TTL — so the work may be
    *  skipped. A permanent kind (None TTL) is fresh whenever any timestamp
    *  exists; an unknown key is always stale. */
-  final def isFresh(key: String, kind: FreshnessKind, now: Instant = Instant.now()): Boolean =
+  final def isFresh(key: String, kind: FreshnessKind, now: Instant): Boolean =
     lastFetchedAt(key) match {
       case None => false
       case Some(t) =>

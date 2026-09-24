@@ -23,15 +23,15 @@ trait RatingsWiring { self: WorkerWiring =>
   // adaptive cadence the per-row RatingHandler feeds (BulkCadenceRecorder), so an
   // operator's corpus refresh can't move a rating without the cadence seeing it —
   // which a later per-row refresh would otherwise mis-read as a fresh change.
-  lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient, BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.ImdbRating),
+  lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient, BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.ImdbRating, clock),
     enrichmentLanguage = country.language)
   lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient, rtLinkCache,
-    cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.RtRating))
+    cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.RtRating, clock))
   lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient, mcLinkCache,
-    cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.McRating))
+    cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.McRating, clock))
   lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient, filmwebLinkCache,
     onImdbIdMissing = (title, year, searchTitle) => eventBus.publish(ImdbIdMissing(title, year, searchTitle)),
-    cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.FilmwebRating))
+    cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.FilmwebRating, clock))
   // OMDb IDENTIFIER backfill — feature-gated by the OMDB_API_KEY secret. `Some`
   // only when the key is set, so nothing references the OMDb path on the default
   // (key-absent) deployment and the feature is completely inert. When present it
