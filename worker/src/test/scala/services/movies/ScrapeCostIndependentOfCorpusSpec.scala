@@ -7,7 +7,6 @@ import services.events.InProcessEventBus
 import services.freshness.InMemoryFreshnessStore
 import services.staging.{InMemoryStagingRepository, StagingReaper, StagingRecord, StagingRepository, StagingSteps}
 import services.tasks.InMemoryTaskQueue
-import services.titlerules.TitleRuleSet
 import tools.costs.{CostScaling, Work}
 
 /**
@@ -39,10 +38,6 @@ import tools.costs.{CostScaling, Work}
 class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
 
   /** Counts `sanitize`, which every per-row corpus walk calls once per slot. */
-  private class CountingNormalizer(rules: TitleRuleSet) extends TitleNormalizer(rules) {
-    var calls = 0
-    override def sanitize(title: String): String = { calls += 1; super.sanitize(title) }
-  }
 
   private val cinema: Cinema = KinoMuza
   /** A second venue, so the corpus rows carry slots of a cinema OTHER than the one being
@@ -81,7 +76,7 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
         corpusRow(title, if (n % 2 == 0) elsewhere else cinema))
     }
     // Seeding is not what is being measured — only the scrape that follows it.
-    normalizer.calls = 0
+    normalizer.reset()
     cache.recordCinemaScrape(cinema, Seq(scrapeOf("The Scraped Film")))
     normalizer.calls
   }
@@ -130,7 +125,7 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
       // diverting a newcomer into staging.
       val landing = "The Scraped Film"
       cache.put(CacheKey(landing, Some(2026), normalizer), concludedRow(landing, cinema))
-      normalizer.calls = 0
+      normalizer.reset()
       cache.recordCinemaScrape(cinema, Seq(scrapeOf(landing)))
       normalizer.calls.toLong
     }

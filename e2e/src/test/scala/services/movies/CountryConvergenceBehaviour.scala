@@ -304,12 +304,6 @@ abstract class CountryConvergenceBehaviour(
         s"${country.displayName}'s corpus holds no showtimes at all, so there is no instant to render at."))
 
   /** Counts merges by reason so a per-tick delta is observable. */
-  private final class CountingMergeMetrics extends MergeMetrics {
-    private val counts = MergeReason.all.map(_ -> new AtomicInteger(0)).toMap
-    def recordMerge(reason: MergeReason, victims: Int): Unit = counts(reason).addAndGet(victims)
-    def total: Int = counts.values.map(_.get).sum
-    def byReason: Map[MergeReason, Int] = counts.view.mapValues(_.get).toMap
-  }
 
   private def keySet(w: ArchiveReplayWiring): Set[(String, Option[Int])] =
     w.movieCache.snapshot().map(r => (r.title, r.year)).toSet
@@ -360,7 +354,7 @@ abstract class CountryConvergenceBehaviour(
    *  test runs first hands the other exactly the state it expected. Merge counts
    *  are read as deltas inside each test, so a no-op pass cannot pollute the
    *  other's baseline. The database is dropped when the suite ends. */
-  private lazy val shared: (ArchiveReplayWiring, CountingMergeMetrics, ScrapeArchiveRepository) = {
+  private lazy val shared: (ArchiveReplayWiring, RecordingMergeMetrics, ScrapeArchiveRepository) = {
     // In-memory archive: the leg no longer needs a Mongo at all.
     //
     // The corpus used to be READ from `cinema_scrapes`, so routing it back through a
@@ -374,7 +368,7 @@ abstract class CountryConvergenceBehaviour(
     //
     val archive = storage.archive
     val seeded   = seedArchive(archive)
-    val merges   = new CountingMergeMetrics
+    val merges   = new RecordingMergeMetrics
     val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), storage, missingFixtures) {
       // `mergeMetrics` is the ONLY thing this override exists to change — everything
       // else must stay as `WorkerWiring` builds it. `enrichmentLanguage` went missing

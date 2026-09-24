@@ -1,11 +1,11 @@
 package services.contracts
 
-import models.{Country, Helios, KinoMuza, Multikino, MovieRecord, Source, SourceData}
+import services.movies.CountingNormalizer
+import models.{Helios, KinoMuza, Multikino, MovieRecord, Source, SourceData}
 import org.mongodb.scala.SingleObservableFuture
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.TitleNormalizer
 import services.staging.{InMemoryStagingRepository, StagingRepository}
 import tools.contracts.Implementations
 import tools.costs.CostScaling
@@ -34,10 +34,6 @@ class StagingRepositoryContractSpec extends AnyFlatSpec with Matchers with Befor
   override protected def afterAll(): Unit = try IsolatedMongoDatabase.drop(database) finally super.afterAll()
 
   /** Counts `sanitize`, which every per-row walk calls once per row. */
-  private final class CountingNormalizer extends TitleNormalizer(TitleNormalizer.forCountry(Country.default).rules) {
-    @volatile var calls = 0
-    override def sanitize(title: String): String = { calls += 1; super.sanitize(title) }
-  }
 
   /** A fresh, empty repository and the normalizer it counts with. */
   private def fresh(cls: Class[? <: StagingRepository]): (StagingRepository, CountingNormalizer) = {
@@ -103,7 +99,7 @@ class StagingRepositoryContractSpec extends AnyFlatSpec with Matchers with Befor
         stage(repository, Multikino, "KUMOTRY", Some(2025))
         val anchor = normalizer.sanitize("Kumotry")
         repository.holdsAnchor("warm-up")   // any one-off index build is not the per-read cost
-        normalizer.calls = 0
+        normalizer.reset()
         repository.findByAnchor(anchor) should have size 2
         repository.holdsAnchor(anchor)  shouldBe true
         repository.cinemasUnder(anchor) shouldBe Set(Helios, Multikino)

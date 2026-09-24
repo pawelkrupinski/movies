@@ -28,12 +28,6 @@ class ScrapeLandingMetricsSpec extends AnyFlatSpec with Matchers {
   private def splitRepository() = new InMemoryMovieRepository(
     screenings = Some(new InMemoryScreeningsRepository), slots = Some(new InMemorySlotsRepository))
 
-  private class RecordingScrapeLandingMetrics extends ScrapeLandingMetrics {
-    var verdicts: Vector[(String, String)] = Vector.empty
-    var skips:    Vector[String]           = Vector.empty
-    def recordGuardVerdict(guard: String, verdict: String): Unit = verdicts :+= (guard -> verdict)
-    def recordWriteSkipped(reason: String): Unit                 = skips :+= reason
-  }
 
   "the depth guard" should "record a reject then an accept through ScrapeLandingMetrics" in {
     val repository = splitRepository()

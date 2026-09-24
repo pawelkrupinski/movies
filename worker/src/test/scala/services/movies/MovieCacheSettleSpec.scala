@@ -260,10 +260,6 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
 
   // --- merge metrics: each fold is counted, by reason --------------------------
 
-  private class RecordingMergeMetrics extends MergeMetrics {
-    val calls = scala.collection.mutable.ListBuffer[(MergeReason, Int)]()
-    def recordMerge(reason: MergeReason, victims: Int): Unit = { calls += ((reason, victims)); () }
-  }
 
   "the merge counter" should
     "record a Canonicalize fold (1 victim) when the settle collapses a same-title cluster" in {

@@ -1,5 +1,6 @@
 package services.staging
 
+import services.movies.CountingNormalizer
 import ch.qos.logback.classic.Level
 import models.{CinemaCityKinepolis, Helios, Multikino, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -49,11 +50,6 @@ class InMemoryStagingRepositorySpec extends AnyFlatSpec with Matchers {
    *  is staging a whole country. Counted as `sanitize` calls, one per row the read
    *  touches, so it cannot be a timing flake. */
   it should "read one film's group without touching the rest of the backlog" in {
-    class CountingNormalizer extends services.movies.TitleNormalizer(
-        services.movies.TitleNormalizer.forCountry(models.Country.default).rules) {
-      var calls = 0
-      override def sanitize(title: String): String = { calls += 1; super.sanitize(title) }
-    }
     val normalizer = new CountingNormalizer
     val repository = new InMemoryStagingRepository(normalizer = normalizer)
     (1 to 200).foreach(n => repository.upsert(Helios, s"Backlog Film $n", Some(2026), slot(Helios, s"Backlog Film $n", Some(2026))))
@@ -61,7 +57,7 @@ class InMemoryStagingRepositorySpec extends AnyFlatSpec with Matchers {
     repository.upsert(Multikino, "KUMOTRY", Some(2025), slot(Multikino, "KUMOTRY", Some(2025)))
     val anchor = normalizer.sanitize("Kumotry")
 
-    normalizer.calls = 0
+    normalizer.reset()
     val group = repository.findByAnchor(anchor)
     withClue(s"reading a 2-row group out of a 202-row backlog sanitized ${normalizer.calls} title(s): ") {
       normalizer.calls should be <= 2

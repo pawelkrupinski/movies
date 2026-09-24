@@ -54,12 +54,6 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
   private val Fixture = "08-06-2026"
 
   /** Counts merges by reason so a per-tick delta is observable. */
-  private final class CountingMergeMetrics extends services.movies.MergeMetrics {
-    private val counts = MergeReason.all.map(_ -> new AtomicInteger(0)).toMap
-    def recordMerge(reason: MergeReason, victims: Int): Unit = counts(reason).addAndGet(victims)
-    def total: Int = counts.values.map(_.get).sum
-    def byReason: Map[MergeReason, Int] = counts.view.mapValues(_.get).toMap
-  }
 
   private def keySet(w: FixtureTestWiring): Set[(String, Option[Int])] =
     w.movieCache.snapshot().map(r => (r.title, r.year)).toSet
@@ -118,7 +112,7 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
 
   /** A full settle tick: scrape (observing staging) + drain + fold + settle +
    *  ratings. Returns the staging diversions the scrape phase produced; merge
-   *  churn is read separately off the injected `CountingMergeMetrics`.
+   *  churn is read separately off the injected `RecordingMergeMetrics`.
    *
    *  `enrichRatingsSync()` was MISSING here until this comment was added —
    *  `bootCorpus` (via `bootSettled`) runs it to a fully-joined completion
@@ -147,12 +141,12 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
   }
 
   /** Boot the real pipeline and settle to the steady state production reaches,
-   *  with a `CountingMergeMetrics` wired into the cache so a later tick's fold
+   *  with a `RecordingMergeMetrics` wired into the cache so a later tick's fold
    *  churn is observable. `bootStartup` doesn't run the convergence collapse, so
    *  settle explicitly (twice, with a staging drain between) to reach the
    *  fixpoint — not a mid-settle transient. */
-  private def bootSettled(): (FixtureTestWiring, CountingMergeMetrics) = {
-    val merges = new CountingMergeMetrics
+  private def bootSettled(): (FixtureTestWiring, RecordingMergeMetrics) = {
+    val merges = new RecordingMergeMetrics
     val w = new FixtureTestWiring(Fixture) {
       override lazy val movieCache = new services.movies.CaffeineMovieCache(
         movieRepository, eventBus, staging = Some(stagingRepository),
@@ -175,7 +169,7 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
   // neither test mutates the shared key set — whichever runs first leaves the
   // corpus in exactly the state the other expects. `merges` deltas are captured
   // fresh inside each test, so a no-op pass can't pollute the other's baseline.
-  private lazy val settled: (FixtureTestWiring, CountingMergeMetrics) = bootSettled()
+  private lazy val settled: (FixtureTestWiring, RecordingMergeMetrics) = bootSettled()
 
   // ── Settle is idempotent ────────────────────────────────────────────────────
   // The cheapest temporal invariant: re-running the settle (`canonicalizeBySanitize`)

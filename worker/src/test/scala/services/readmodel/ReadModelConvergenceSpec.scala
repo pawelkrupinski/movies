@@ -18,28 +18,11 @@ import java.time.LocalDateTime
 class ReadModelConvergenceSpec extends AnyFlatSpec with Matchers {
   private def at(d: String) = Showtime(LocalDateTime.parse(d), bookingUrl = None)
 
-  private class RecordingMetrics extends ReadModelProjectionMetrics {
-    val pruned  = scala.collection.mutable.Buffer.empty[String]
-    val retired = scala.collection.mutable.Buffer.empty[String]
-    def recordWrite(target: String, op: String, count: Int): Unit = ()
-    def recordFilmPruned(reason: String, count: Int): Unit        = (1 to count).foreach(_ => pruned += reason)
-    def recordCardRetired(reason: String): Unit                   = retired += reason
-    def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit = ()
-    def recordWriteBurst(seconds: Double): Unit                     = ()
-    def recordMetadataProjection(reused: Boolean): Unit           = ()
-    def recordVenueProjection(rebuilt: Int, reused: Int): Unit     = ()
-    def recordReconcileSweep(kind: String, didWork: Boolean): Unit = ()
-    def recordCatchUp(rows: Int): Unit                              = ()
-    def recordHeal(trigger: String, rows: Int): Unit                = ()
-    def recordHealCheck(trigger: String, rows: Int): Unit           = ()
-    def recordDriftWrites(documents: Int): Unit                     = ()
-    def recordCardWrite(changed: Set[String]): Unit                 = ()
-  }
 
   private class Stage {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = new InMemoryReadModelRepository()
-    val metrics    = new RecordingMetrics()
+    val metrics    = new RecordingReadModelProjectionMetrics()
     val projector  = new ReadModelProjector(repository, rm, rm, metrics)
     projector.start()
 
@@ -59,10 +42,10 @@ class ReadModelConvergenceSpec extends AnyFlatSpec with Matchers {
         rm.findAllMovieIds().toSet shouldBe cards
         rm.findAllScreenings().map(_._id).toSet shouldBe screenings
       }
-      val prunedBefore = metrics.pruned.size
+      val prunedBefore = metrics.pruneReasons.size
       projector.pruneOrphans()
       withClue(s"after '$step' the prune must find nothing: ") {
-        metrics.pruned.drop(prunedBefore) shouldBe empty
+        metrics.pruneReasons.drop(prunedBefore) shouldBe empty
         rm.findAllMovieIds().toSet shouldBe cards
         rm.findAllScreenings().map(_._id).toSet shouldBe screenings
       }
@@ -112,7 +95,7 @@ class ReadModelConvergenceSpec extends AnyFlatSpec with Matchers {
     repository.delete(row("Foo").id)
     convergedAfter("a film is deleted outright")
 
-    metrics.pruned shouldBe empty
+    metrics.pruneReasons shouldBe empty
     stop()
   }
 
@@ -134,7 +117,7 @@ class ReadModelConvergenceSpec extends AnyFlatSpec with Matchers {
       }
       convergedAfter(s"random step $step")
     }
-    metrics.pruned shouldBe empty
+    metrics.pruneReasons shouldBe empty
     stop()
   }
 }

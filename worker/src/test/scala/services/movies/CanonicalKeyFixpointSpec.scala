@@ -6,7 +6,6 @@ import org.scalatest.matchers.should.Matchers
 import services.titlerules.TitleRuleSet
 
 import java.time.LocalDateTime
-import java.util.concurrent.atomic.AtomicInteger
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -22,11 +21,6 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  */
 class CanonicalKeyFixpointSpec extends AnyFlatSpec with Matchers {
 
-  private final class CountingMergeMetrics extends MergeMetrics {
-    private val n = new AtomicInteger(0)
-    def recordMerge(reason: MergeReason, victims: Int): Unit = n.addAndGet(victims)
-    def count: Int = n.get
-  }
 
   private def cm(cinema: Cinema, title: String, year: Option[Int]): CinemaMovie =
     CinemaMovie(
@@ -52,7 +46,7 @@ class CanonicalKeyFixpointSpec extends AnyFlatSpec with Matchers {
    *  Returns ((settledKeys, afterKeys, merges), writesOnSettledTick, showtimesAfter). */
   private def reScrapeFull(reports: Seq[CinemaMovie])
       : ((Set[(String, Option[Int])], Set[(String, Option[Int])], Int), Int, Int) = {
-    val merges     = new CountingMergeMetrics
+    val merges     = new RecordingMergeMetrics
     // Screenings WIRED: the production storage split, so a fold that strands a film's
     // showtimes under a retired id is visible here instead of only against real Mongo.
     val screenings = new InMemoryScreeningsRepository
@@ -68,12 +62,12 @@ class CanonicalKeyFixpointSpec extends AnyFlatSpec with Matchers {
     // would re-supply showtimes and mask a settle that had just thrown them away. That
     // masking is why the first version of this assertion passed against the bug.
     val showtimesAfterSettle = screenings.findAll().values.flatMap(_.values).map(_.size).sum
-    val mergesBefore  = merges.count
+    val mergesBefore  = merges.total
     val writesBefore  = repository.upserts.size + repository.deletes.size
     reports.foreach(r => cache.recordCinemaScrape(r.cinema, Seq(r)))
     cache.canonicalizeBySanitize()
     val writes = repository.upserts.size + repository.deletes.size - writesBefore
-    ((settled, keys(cache), merges.count - mergesBefore), writes, showtimesAfterSettle)
+    ((settled, keys(cache), merges.total - mergesBefore), writes, showtimesAfterSettle)
   }
 
   "a settled casing-variant film" should "be a fixpoint under an identical re-scrape" in {
