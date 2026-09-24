@@ -4191,16 +4191,27 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // all pre-checked. Unchecking an area disables its cinemas on confirm; the
   // choice is remembered so it shows once. Driven with an injected grouping over
   // the flat fixture city's cinemas.
-  "the city-entry area picker" should "show once, pre-check all areas, and disable unchecked areas on confirm" in {
+  /** Open the area picker over two synthetic areas splitting the city's cinemas.
+   *  Confirming it writes `disabledCinemas` and `areasChosen:<city>`, which
+   *  outlive the page in this origin's localStorage, so they are forgotten after
+   *  `body` — left behind, they disabled cinemas under every later test here. */
+  private def onAreaPicker(body: CdpPage => Any): Unit =
     onPath("/") { page =>
-      page.eval(
-        "const cs = ALL_CINEMAS; const mid = Math.ceil(cs.length/2);" +
-        "window.CINEMA_AREAS = [" +
-        "  {name:'Group A', slug:'group-a', cinemas: cs.slice(0, mid)}," +
-        "  {name:'Group B', slug:'group-b', cinemas: cs.slice(mid)} ];" +
-        "localStorage.removeItem('areasChosen:' + CURRENT_CITY);" +
-        "localStorage.setItem('disabledCinemas','[]'); maybeShowAreaPicker();"
-      )
+      try {
+        page.eval(
+          "const cs = ALL_CINEMAS; const mid = Math.ceil(cs.length/2);" +
+          "window.CINEMA_AREAS = [" +
+          "  {name:'Group A', slug:'group-a', cinemas: cs.slice(0, mid)}," +
+          "  {name:'Group B', slug:'group-b', cinemas: cs.slice(mid)} ];" +
+          "localStorage.removeItem('areasChosen:' + CURRENT_CITY);" +
+          "localStorage.setItem('disabledCinemas','[]'); maybeShowAreaPicker();"
+        )
+        body(page)
+      } finally page.eval("localStorage.removeItem('disabledCinemas'); localStorage.removeItem('areasChosen:' + CURRENT_CITY); 0")
+    }
+
+  "the city-entry area picker" should "show once, pre-check all areas, and disable unchecked areas on confirm" in {
+    onAreaPicker { page =>
 
       // Modal up, one checkbox per area, all pre-checked.
       page.evalBool("!!document.getElementById('area-picker-overlay')") shouldBe true
@@ -4228,15 +4239,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // five or eighteen areas is faster cleared and re-ticked than unticked one
   // row at a time.
   it should "select and deselect every area from the master row" in {
-    onPath("/") { page =>
-      page.eval(
-        "const cs = ALL_CINEMAS; const mid = Math.ceil(cs.length/2);" +
-        "window.CINEMA_AREAS = [" +
-        "  {name:'Group A', slug:'group-a', cinemas: cs.slice(0, mid)}," +
-        "  {name:'Group B', slug:'group-b', cinemas: cs.slice(mid)} ];" +
-        "localStorage.removeItem('areasChosen:' + CURRENT_CITY);" +
-        "localStorage.setItem('disabledCinemas','[]'); maybeShowAreaPicker();"
-      )
+    onAreaPicker { page =>
       def areasChecked = page.evalInt(
         "[...document.querySelectorAll('#area-picker-overlay input[data-area-slug]')].filter(c => c.checked).length")
       def clickAll()   = page.eval(
