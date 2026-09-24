@@ -122,7 +122,8 @@ EOF
     local log; log="$(mktemp)"
     git bisect run "$wrapper" > "$log" 2>&1
     local first
-    first=$(sed -nE 's/^([0-9a-f]{40}) is the first bad commit$/\1/p' "$log" | head -1)
+    # git 2.55 quotes the term ("is the first 'bad' commit"); earlier versions do not.
+    first=$(sed -nE "s/^([0-9a-f]{40}) is the first '?bad'? commit\$/\1/p" "$log" | head -1)
     if [ -n "$first" ]; then
         finish_exact "$first" "after $(cat "$counter") bisection replay(s)"
     else
