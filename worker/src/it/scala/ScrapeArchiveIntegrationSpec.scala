@@ -250,13 +250,13 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers {
     purge()
     try {
       val ledger = new MongoScrapeGuardLedger(Some(db))
-      ledger.get(Multikino) shouldBe ScrapeGuardState.Fresh
+      ledger.get(Multikino) shouldBe Some(ScrapeGuardState.Fresh)
       new MongoScrapeArchiveRepository(Some(db)).record(scraped(Morning, Seq(minimal)))
-      ledger.get(Multikino) shouldBe ScrapeGuardState.Fresh
+      ledger.get(Multikino) shouldBe Some(ScrapeGuardState.Fresh)
       val state = ScrapeGuardState(Some("filmweb.pl/cinema/2352"), depthRejections = 2, breadthRejections = 1)
       ledger.put(Multikino, state)
       // A second instance: what a restarted worker would read.
-      new MongoScrapeGuardLedger(Some(db)).get(Multikino) shouldBe state
+      new MongoScrapeGuardLedger(Some(db)).get(Multikino) shouldBe Some(state)
     } finally purge()
   }
 
@@ -282,7 +282,7 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers {
       archive.record(scraped(Noon, Seq(fullyPopulated)))
       archive.record(blank(Evening))
 
-      ledger.get(Multikino) shouldBe state
+      ledger.get(Multikino) shouldBe Some(state)
       val row = archive.find(Multikino).get
       row.films.map(_.movie.title) shouldBe Seq("Diuna")
       row.outcome shouldBe ScrapeOutcome.Empty

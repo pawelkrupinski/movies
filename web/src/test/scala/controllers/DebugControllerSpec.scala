@@ -181,6 +181,23 @@ class DebugControllerSpec extends AnyFlatSpec with Matchers {
     html should include(CinemaCityWroclavia.displayName)
   }
 
+  // An unreadable log is not an empty one: rendered empty, it says "never attempted" about a
+  // film whose log the page simply could not read.
+  it should "answer 503, not an empty enrichment log, when the log cannot be read" in {
+    val resolved = Seq(("Belle", Some(2021), MovieRecord(tmdbId = Some(1),
+      data = Map(CinemaCityWroclavia -> SourceData(title = Some("Belle"))))))
+    val unreadable = new services.attempts.EnrichmentAttemptReader {
+      override def all() = Seq.empty
+      override def forKeys(keys: Seq[String]) = throw new java.io.IOException("attempt log unreachable")
+    }
+    val (controller, _) = TestDebugController.build(resolved, Mode.Dev,
+      ratingCadenceReader = cadenceReader, attemptReader = unreadable)
+    val id     = services.movies.StoredMovieRecord.keyFor("Belle", Some(2021), titleNormalizer)
+    val result = controller.debugDetails(id).apply(FakeRequest(GET, s"/debug/details?id=$id"))
+    status(result) shouldBe SERVICE_UNAVAILABLE
+    contentAsString(result) should include ("attempt log unreachable")
+  }
+
   // The enrichment log is the answer to "why does this film have no rating" —
   // it must distinguish a source that ERRORED from one that simply reported no
   // change, and show the backoff that decides when it will be retried.

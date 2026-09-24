@@ -23,10 +23,9 @@ import scala.util.{Failure, Success, Try}
  * consumers as a venue that has never produced anything. Were the archive write to
  * fail, this tick's guard state is dropped with it — the same best-effort bargain.
  *
- * Best-effort both ways, like the archive. A failed read returns
- * [[ScrapeGuardState.Fresh]] — no rewire inferred, the grace counted from zero: the
- * guards stay conservative rather than guessing. A failed write logs and the next
- * tick writes again.
+ * A failed read returns None — "could not look", which `ScrapeLanding` judges as Fresh
+ * (conservative: no rewire inferred) but never writes back, so the stored count survives.
+ * A failed write logs and the next tick writes again.
  */
 class MongoScrapeGuardLedger(sharedDb: Option[MongoDatabase]) extends ScrapeGuardLedger with Logging {
 
@@ -35,17 +34,17 @@ class MongoScrapeGuardLedger(sharedDb: Option[MongoDatabase]) extends ScrapeGuar
   private lazy val coll: Option[MongoCollection[Document]] =
     sharedDb.map(_.getCollection[Document](ScrapeArchiveRepository.Collection))
 
-  def get(cinema: Cinema): ScrapeGuardState = coll.flatMap { c =>
+  def get(cinema: Cinema): Option[ScrapeGuardState] = coll.fold(Option(ScrapeGuardState.Fresh)) { c =>
     attempt(cinema, "get")(Await.result(
       c.find(Filters.eq("_id", cinema.displayName)).projection(Projections.include(Field)).headOption(),
-      10.seconds)).flatten
-  }.flatMap(_.get[BsonDocument](Field)).map { g =>
-    def int(name: String) = Option(g.get(name)).filter(_.isInt32).map(_.asInt32.getValue).getOrElse(0)
-    ScrapeGuardState(
-      sourceKey         = Option(g.get("sourceKey")).filter(_.isString).map(_.asString.getValue),
-      depthRejections   = int("depthRejections"),
-      breadthRejections = int("breadthRejections"))
-  }.getOrElse(ScrapeGuardState.Fresh)
+      10.seconds)).map(_.flatMap(_.get[BsonDocument](Field)).fold(ScrapeGuardState.Fresh) { g =>
+      def int(name: String) = Option(g.get(name)).filter(_.isInt32).map(_.asInt32.getValue).getOrElse(0)
+      ScrapeGuardState(
+        sourceKey         = Option(g.get("sourceKey")).filter(_.isString).map(_.asString.getValue),
+        depthRejections   = int("depthRejections"),
+        breadthRejections = int("breadthRejections"))
+    })
+  }
 
   def put(cinema: Cinema, state: ScrapeGuardState): Unit = coll.foreach { c =>
     val guard = new BsonDocument()

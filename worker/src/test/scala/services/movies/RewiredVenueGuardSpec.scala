@@ -74,15 +74,15 @@ class RewiredVenueGuardSpec extends AnyFlatSpec with Matchers {
 
     // Landed before source keys were recorded.
     cache.recordCinemaScrape(Multikino, scrape(films = 10, showtimesEach = 8))
-    ledger.get(Multikino).sourceKey shouldBe None
+    ledger.get(Multikino).flatMap(_.sourceKey) shouldBe None
 
     cache.recordCinemaScrape(Multikino, scrape(films = 10, showtimesEach = 1), sourceKey = NewSource)
     storedShowtimes(repository, "Film 1") shouldBe 8 // rejected: an unknown past is no rewire
-    ledger.get(Multikino).sourceKey shouldBe None    // and a discarded tick records nothing
+    ledger.get(Multikino).flatMap(_.sourceKey) shouldBe None    // and a discarded tick records nothing
 
     cache.recordCinemaScrape(Multikino, scrape(films = 10, showtimesEach = 7), sourceKey = NewSource)
     storedShowtimes(repository, "Film 1") shouldBe 7
-    ledger.get(Multikino).sourceKey shouldBe NewSource
+    ledger.get(Multikino).flatMap(_.sourceKey) shouldBe NewSource
   }
 
   "a venue rewired before its source was ever recorded" should "be recognised from the stored rows' own links" in {
@@ -101,7 +101,7 @@ class RewiredVenueGuardSpec extends AnyFlatSpec with Matchers {
       services.cinemas.roster.RosterAuditFixtures.page(services.cinemas.roster.RosterAuditFixtures.Sroda477),
       KinoBaszta, titleNormalizer)
     cache.recordCinemaScrape(KinoBaszta, sroda)
-    ledger.get(KinoBaszta).sourceKey shouldBe None
+    ledger.get(KinoBaszta).flatMap(_.sourceKey) shouldBe None
 
     val filmweb = new services.cinemas.pl.FilmwebShowtimesClient(new clients.tools.FakeHttpFetch("filmweb-catchment"),
       2352, KinoBaszta, daysAhead = 0, today = java.time.LocalDate.of(2026, 6, 7))
@@ -113,7 +113,7 @@ class RewiredVenueGuardSpec extends AnyFlatSpec with Matchers {
       case (CinemaShowing(KinoBaszta, _), slot) => slot.filmUrl.flatMap(ScrapeHealth.siteOf) }.flatten.toSet
     withClue("the other town's films must be gone after the first tick of the new source: ")(
       held shouldBe Set("filmweb.pl"))
-    ledger.get(KinoBaszta).sourceKey shouldBe filmweb.sourceKey
+    ledger.get(KinoBaszta).flatMap(_.sourceKey) shouldBe filmweb.sourceKey
   }
 
   it should "still guard a keyless venue whose thin tick links to the same site as its stored rows" in {
@@ -162,6 +162,36 @@ class RewiredVenueGuardSpec extends AnyFlatSpec with Matchers {
     storedShowtimes(repository, "Film 1") shouldBe 1
   }
 
+  /** The durable ledger with its reads failing while `unreadable` — Mongo timing out. What a
+   *  failed read answers is exactly the question: the production ledger used to answer Fresh,
+   *  which is what this double answered before the ledger could say None. */
+  private final class FlakyReadLedger extends ScrapeGuardLedger {
+    private val stored = new InMemoryScrapeGuardLedger
+    @volatile var unreadable = false
+    def get(cinema: Cinema): Option[ScrapeGuardState] = if (unreadable) None else stored.get(cinema)
+    def put(cinema: Cinema, state: ScrapeGuardState): Unit = stored.put(cinema, state)
+    def storedCount(cinema: Cinema): Int = stored.get(cinema).fold(-1)(_.depthRejections)
+  }
+
+  // A read that fails is not a venue with no history. Taken as Fresh, the tick's rejection was
+  // then WRITTEN as the count — 1 over a stored 2 — so a transient Mongo blip reset the grace
+  // the count exists to carry, and a genuinely degraded venue served its stale board longer.
+  "the guards' rejection count" should "survive a tick whose ledger read failed" in {
+    val repository = splitRepository()
+    val ledger     = new FlakyReadLedger
+    cacheOver(repository, ledger).recordCinemaScrape(Multikino, scrape(films = 10, showtimesEach = 12))
+    (1 to ScrapeHealth.MaxConsecutiveDepthRejections - 1).foreach { _ =>
+      cacheOver(repository, ledger).recordCinemaScrape(Multikino, scrape(films = 10, showtimesEach = 1))
+    }
+    val counted = ledger.storedCount(Multikino)
+    counted shouldBe ScrapeHealth.MaxConsecutiveDepthRejections - 1
+
+    ledger.unreadable = true
+    cacheOver(repository, ledger).recordCinemaScrape(Multikino, scrape(films = 10, showtimesEach = 1))
+    withClue("an unreadable ledger must leave the stored count alone: ") { ledger.storedCount(Multikino) shouldBe counted }
+    storedShowtimes(repository, "Film 1") shouldBe 12   // judged conservatively meanwhile
+  }
+
   "the scrape runner" should "hand the cache each scraper's source key, chunked path included" in {
     // A chunked venue reaches the cache as a PreScrapedCinemaScraper built from the
     // chunked scraper, which must carry the key along or its rewire goes unseen.
@@ -176,6 +206,6 @@ class RewiredVenueGuardSpec extends AnyFlatSpec with Matchers {
     }
 
     runner.run(services.cinemas.common.PreScrapedCinemaScraper.of(live, () => live.fetch()))
-    ledger.get(Multikino).sourceKey shouldBe NewSource
+    ledger.get(Multikino).flatMap(_.sourceKey) shouldBe NewSource
   }
 }

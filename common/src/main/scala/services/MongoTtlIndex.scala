@@ -69,14 +69,20 @@ object MongoTtlIndex extends Logging {
     // index was still wrong. That is the exact false negative this metric exists to prevent.
     val key = collection.namespace.getFullName
     currentExpiry(collection, field) match {
-      case Some(actual) if actual == wantedSeconds =>
+      // A read that FAILED says nothing about the index. Taken as "none", it went on to a
+      // create the existing index then rejected, and RECORDED a mismatch — an alert about an
+      // index that may well be right. Leave the gauge as it is; the next boot looks again.
+      case Failure(exception) =>
+        logger.warn(s"$label: $name TTL index on `$field` could not be read, so it is left as it is: ${exception.getMessage}")
+
+      case Success(Some(actual)) if actual == wantedSeconds =>
         Mismatches.resolved(key)
 
-      case Some(actual) =>
+      case Success(Some(actual)) =>
         logger.warn(s"$label: $name TTL index on `$field` expires after ${actual}s, want ${wantedSeconds}s — rebuilding it.")
         rebuild(collection, field, wantedSeconds, label)
 
-      case None =>
+      case Success(None) =>
         create(collection, field, wantedSeconds, label).map { _ =>
           // SYMMETRY, so a namespace cannot stay counted after it is healthy again. Every
           // branch that ends with the index correct clears the entry; every branch that ends
@@ -86,13 +92,9 @@ object MongoTtlIndex extends Logging {
           // here so the invariant holds if that ever stops being true.
           Mismatches.resolved(key)
         }.recover { case exception =>
-          // `IndexOptionsConflict` HERE MEANS THE READ ABOVE FAILED, not that the index is
-          // absent — `currentExpiry` returns None for an unreadable collection too, and
-          // `createIndex` is then rejected by the index it could not see. Saying "could not
-          // be created" would send a reader looking for a missing index that is right there
-          // with the wrong expiry, so name both possibilities.
-          logger.warn(s"$label: $name has no readable TTL index on `$field` and one could not be created — " +
-            s"if it exists, it KEEPS ITS OLD EXPIRY rather than ${wantedSeconds}s: ${exception.getMessage}")
+          // The read said there is no index, so a create that fails is a real failure: the
+          // collection goes unreaped (or a concurrent writer's index conflicts with ours).
+          logger.warn(s"$label: $name has no TTL index on `$field` and one could not be created: ${exception.getMessage}")
           Mismatches.record(key)
         }
     }
@@ -120,11 +122,13 @@ object MongoTtlIndex extends Logging {
   ): Unit = {
     val name = collection.namespace.getCollectionName
     currentExpiry(collection, field) match {
-      case Some(actual) if actual == wantedSeconds => ()
-      case Some(actual) =>
+      case Failure(exception) =>
+        logger.warn(s"$label: $name TTL index on `$field` could not be read, so it is left as it is: ${exception.getMessage}")
+      case Success(Some(actual)) if actual == wantedSeconds => ()
+      case Success(Some(actual)) =>
         logger.warn(s"$label: $name TTL index on `$field` expires after ${actual}s, want ${wantedSeconds}s — " +
           "leaving it to the process that owns this collection, which rebuilds it and reports if it cannot.")
-      case None =>
+      case Success(None) =>
         create(collection, field, wantedSeconds, label).recover { case exception =>
           // Not this process's to fix either, so it is a note rather than a mismatch: on a
           // cold collection the owner creates the index on its own next construction.
@@ -146,11 +150,9 @@ object MongoTtlIndex extends Logging {
       ()
     }
 
-  /** The `expireAfterSeconds` of the existing single-field TTL index on `field`,
-   *  or None when there is no such index — or when the read itself failed, in
-   *  which case `createIndex` is the right next move and reports properly if the
-   *  index is in fact already there. */
-  private def currentExpiry(collection: MongoCollection[Document], field: String): Option[Long] =
+  /** The `expireAfterSeconds` of the existing single-field TTL index on `field`, None when
+   *  there is no such index, and a Failure when the indexes could not be read. */
+  private def currentExpiry(collection: MongoCollection[Document], field: String): Try[Option[Long]] =
     Try {
       Await.result(collection.listIndexes().toFuture(), 10.seconds).flatMap { index =>
         val onFieldAlone = index.get("key")
@@ -159,10 +161,7 @@ object MongoTtlIndex extends Logging {
         if (onFieldAlone) index.get("expireAfterSeconds").collect { case seconds: org.bson.BsonNumber => seconds.longValue() }
         else None
       }.headOption
-    }.recover { case exception =>
-      logger.debug(s"${collection.namespace.getCollectionName} index read failed, treating `$field` as un-indexed: ${exception.getMessage}")
-      None
-    }.toOption.flatten
+    }
 
   /** DROP AND RECREATE, because `collMod` is the one operation `readWrite` does not
    *  carry. Asked directly (`db.getRole("readWrite", {showPrivileges: true})` on
@@ -199,11 +198,14 @@ object MongoTtlIndex extends Logging {
         Mismatches.record(key)
       case Success(_) =>
         currentExpiry(collection, field) match {
-          case Some(actual) if actual == wantedSeconds =>
+          case Success(Some(actual)) if actual == wantedSeconds =>
             logger.info(s"$label: $name TTL index on `$field` now expires after ${wantedSeconds}s.")
             Mismatches.resolved(key)
+          // Unreadable counts as a mismatch HERE, unlike at the start: this process has just
+          // dropped the index, so "could not look" may well mean "there is none".
           case other =>
-            logger.warn(s"$label: $name TTL index on `$field` reads back as ${other.map(_.toString).getOrElse("ABSENT")} " +
+            val readBack = other.fold(e => s"UNREADABLE (${e.getMessage})", _.fold("ABSENT")(_.toString))
+            logger.warn(s"$label: $name TTL index on `$field` reads back as $readBack " +
               s"after a rebuild to ${wantedSeconds}s — the collection may now have NO TTL index and will grow.")
             Mismatches.record(key)
         }

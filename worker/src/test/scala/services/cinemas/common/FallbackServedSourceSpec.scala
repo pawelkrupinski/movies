@@ -41,7 +41,7 @@ class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
       fallback = () => Some(new Source(Fallback, listing)), fallbackName = "Filmweb", fallbackRef = () => Some("2180"),
       new UptimeMonitor(clock = DepthGuardTime.clock), new InMemoryFallbackStore, fallbackAfter = Duration.Zero)
     new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set.empty).run(scraper)
-    ledger.get(Multikino).sourceKey
+    ledger.get(Multikino).flatMap(_.sourceKey)
   }
 
   "a scrape the fallback served" should "never record the fallback as the venue's source" in {
@@ -93,7 +93,7 @@ class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
     runner.run(scraper)
     stored("Fallback Only") shouldBe 2   // the fallback's listing lands…
     stored("Film 5") shouldBe 8          // …without pruning what only the primary lists
-    ledger.get(Multikino).sourceKey shouldBe Some(Primary) // and is no new baseline
+    ledger.get(Multikino).flatMap(_.sourceKey) shouldBe Some(Primary) // and is no new baseline
 
     primary.listing = () => films(board*)(8)
     runner.run(scraper)

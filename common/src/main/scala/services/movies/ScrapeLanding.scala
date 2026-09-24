@@ -117,7 +117,7 @@ private[movies] final class ScrapeLanding(
 
   /** Write the venue's guard state only when it changed — a healthy tick of an
    *  unchanged venue, the overwhelmingly common case, costs the store nothing. */
-  private def saveGuardState(cinema: Cinema, before: ScrapeGuardState, after: ScrapeGuardState): Unit =
+  private def persistGuardState(cinema: Cinema, before: ScrapeGuardState, after: ScrapeGuardState): Unit =
     if (after != before) guardLedger.put(cinema, after)
 
   /** The venue's own wall-clock time — `Showtime.dateTime` is city-local, so a bare UTC
@@ -184,7 +184,12 @@ private[movies] final class ScrapeLanding(
     // A FALLBACK-served listing is none of this (see `MovieCache.recordCinemaScrape`): not a
     // rewire, not judged by either guard, never a prune, and it leaves the guards' state —
     // the primary's baseline — exactly as it found it.
-    val guardState = guardLedger.get(cinema)
+    // An UNREADABLE ledger is judged as Fresh — conservative, no rewire inferred — but its
+    // state is never written back: that would replace the stored count with this tick's.
+    val ledgerRead = guardLedger.get(cinema)
+    val guardState = ledgerRead.getOrElse(ScrapeGuardState.Fresh)
+    def saveGuardState(cinema: Cinema, before: ScrapeGuardState, after: ScrapeGuardState): Unit =
+      if (ledgerRead.isDefined) persistGuardState(cinema, before, after)
     def sites(urls: Iterator[Option[String]]): Set[String] = urls.flatten.flatMap(ScrapeHealth.siteOf).toSet
     lazy val storedSites = sites(corpusIndex.slotsOf(cinema).iterator.map(_._3.filmUrl))
     val rewired = !viaFallback && (guardState.sourceKey match {

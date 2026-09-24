@@ -190,15 +190,6 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("common/src/main/scala/services/MirrorFreshness.scala", "newestIn",
       ".recover { case exception => logger.debug(s\"Mirror freshness read failed: ${exception.getMessage}\"); Seq.empty }") ->
       "the local mirror's age for a dev page: None renders as unknown age, and nothing is decided from it",
-    ("common/src/main/scala/services/MongoTtlIndex.scala", "currentExpiry",
-      "}.recover { case exception =>") ->
-      "KNOWN, follow-up: a failed index read reads as un-indexed, so reconcile drops and rebuilds a TTL index that may be fine — costly, never lossy",
-    ("common/src/main/scala/services/attempts/EnrichmentAttemptStore.scala", "forKeys",
-      ".recover { case e => logger.warn(s\"Enrichment-attempt lookup failed: ${e.getMessage}\"); Map.empty }") ->
-      "KNOWN, follow-up: feeds only the operator attempt report (FilmAttemptReport), which then shows no attempts instead of saying it could not read them",
-    ("common/src/main/scala/services/cadence/RatingCadenceStore.scala", "forKeys",
-      ".recover { case e => logger.warn(s\"Rating-cadence lookup failed: ${e.getMessage}\"); Map.empty }") ->
-      "KNOWN, follow-up: feeds only the operator attempt report (FilmAttemptReport), which then shows no cadence instead of saying it could not read it",
     ("common/src/main/scala/services/readmodel/MongoReadModelRepository.scala", "findCard",
       "case Failure(exception) =>") ->
       "read only by ReadModelContentAudit, which skips a card it could not read and audits it on the next pass",
@@ -216,7 +207,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
       "the archive is a record of a scrape that already happened: None is \"not archived\", never read as an empty scrape",
     ("common/src/main/scala/services/scrapes/MongoScrapeGuardLedger.scala", "attempt",
       "case Failure(e)     =>") ->
-      "KNOWN, follow-up: a failed ledger read reads as no history, so the empty-scrape guard judges on less evidence",
+      "None IS the ledger's typed \"could not read\" (distinct from Some(Fresh)); ScrapeLanding never writes back over it",
     ("common/src/main/scala/services/tasks/MongoBulkTaskResultStore.scala", "latest",
       ".recover { case exception =>") ->
       "the /tasks page's last-results panel: an unreadable store shows no results, and nothing is decided from it",

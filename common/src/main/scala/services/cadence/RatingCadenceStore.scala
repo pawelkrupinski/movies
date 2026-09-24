@@ -238,9 +238,9 @@ class MongoRatingCadenceReader(db: Option[MongoDatabase]) extends RatingCadenceR
   override def forKeys(keys: Seq[String]): Map[String, RatingChangeStats] =
     if (keys.isEmpty) Map.empty
     else coll.fold(Map.empty[String, RatingChangeStats]) { c =>
-      Try(Await.result(c.find(Filters.in("_id", keys*)).toFuture(), 10.seconds))
-        .map(_.flatMap(MongoRatingCadenceStore.decodeRecord).toMap)
-        .recover { case e => logger.warn(s"Rating-cadence lookup failed: ${e.getMessage}"); Map.empty }
-        .getOrElse(Map.empty)
+      // A failed read THROWS: answered empty, the report showed no cadence history for a film
+      // whose history it simply could not read.
+      Await.result(c.find(Filters.in("_id", keys*)).toFuture(), 10.seconds)
+        .flatMap(MongoRatingCadenceStore.decodeRecord).toMap
     }
 }

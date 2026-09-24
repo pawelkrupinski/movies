@@ -38,13 +38,15 @@ object ScrapeGuardState {
  * decisions live in [[ScrapeHealth]] and `ScrapeLanding`.
  */
 trait ScrapeGuardLedger {
-  /** The venue's remembered state, [[ScrapeGuardState.Fresh]] when there is none. */
-  def get(cinema: Cinema): ScrapeGuardState
+  /** The venue's remembered state, [[ScrapeGuardState.Fresh]] when there is none — and None
+   *  when it could not be READ. The two are not the same answer: a venue judged as Fresh
+   *  whose state is then written back resets the rejection count it was carrying. */
+  def get(cinema: Cinema): Option[ScrapeGuardState]
   def put(cinema: Cinema, state: ScrapeGuardState): Unit
 }
 
 final class InMemoryScrapeGuardLedger extends ScrapeGuardLedger {
   private val byCinema = scala.collection.concurrent.TrieMap.empty[String, ScrapeGuardState]
-  def get(cinema: Cinema): ScrapeGuardState = byCinema.getOrElse(cinema.displayName, ScrapeGuardState.Fresh)
+  def get(cinema: Cinema): Option[ScrapeGuardState] = Some(byCinema.getOrElse(cinema.displayName, ScrapeGuardState.Fresh))
   def put(cinema: Cinema, state: ScrapeGuardState): Unit = byCinema.update(cinema.displayName, state)
 }

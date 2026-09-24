@@ -128,10 +128,10 @@ class MongoEnrichmentAttemptReader(db: Option[MongoDatabase]) extends Enrichment
   override def forKeys(keys: Seq[String]): Map[String, EnrichmentAttempt] =
     if (keys.isEmpty) Map.empty
     else coll.fold(Map.empty[String, EnrichmentAttempt]) { c =>
-      Try(Await.result(c.find(Filters.in("_id", keys*)).toFuture(), 10.seconds))
-        .map(_.flatMap(EnrichmentAttempts.decodeRecord).toMap)
-        .recover { case e => logger.warn(s"Enrichment-attempt lookup failed: ${e.getMessage}"); Map.empty }
-        .getOrElse(Map.empty)
+      // A failed read THROWS: answered empty, the report said "never attempted" about a film
+      // whose log it simply could not read.
+      Await.result(c.find(Filters.in("_id", keys*)).toFuture(), 10.seconds)
+        .flatMap(EnrichmentAttempts.decodeRecord).toMap
     }
 }
 

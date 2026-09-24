@@ -156,10 +156,15 @@ class DebugController(cc: ControllerComponents,
           // full-collection reads — this runs per row-expand. Issued CONCURRENTLY:
           // the reads are independent, and against a remote Mongo the round-trip
           // is the whole cost (see `buildFrom`).
-          val statuses = services.attempts.FilmAttemptReport.buildFrom(
-            row.record.tmdbId, stack.attemptReader, stack.ratingCadenceReader)
-          Ok(views.html.debugDetails(row.title, row.year, row.record,
-            stack.movieRepository.normalizer, cinemaSourceUrls(), statuses))
+          scala.util.Try(services.attempts.FilmAttemptReport.buildFrom(
+            row.record.tmdbId, stack.attemptReader, stack.ratingCadenceReader)) match {
+            case scala.util.Success(statuses) =>
+              Ok(views.html.debugDetails(row.title, row.year, row.record,
+                stack.movieRepository.normalizer, cinemaSourceUrls(), statuses))
+            // Not an empty report: that reads as "never attempted".
+            case scala.util.Failure(e) =>
+              ServiceUnavailable(s"could not read the enrichment log for this row: ${e.getMessage}")
+          }
         case None      => NotFound("no such row")
       }
     }
