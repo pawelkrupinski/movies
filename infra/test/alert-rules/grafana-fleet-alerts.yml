@@ -1,0 +1,123 @@
+# THE GRAFANA-MANAGED ALERTS WITH NO SUITE OF THEIR OWN, EVALUATED TO BOTH SIDES OF THEIR THRESHOLD.
+#
+# Same approach as grafana-showtime-volume.yml: these rules live in Grafana's provisioning
+# (grafana/alerting/alert-rules.yaml), so promtool cannot load them as rules, but each one's query A
+# is ordinary PromQL and `promql_expr_test` evaluates it. The threshold is the rule's condition C
+# (a `last` reduced against one number); test_alert_rule_coverage.py reads it from the provisioning
+# file and requires, for every Grafana rule, a case here whose expression is the production one
+# character-for-character (whitespace aside) and whose value crosses that threshold, and a case
+# whose value does not. Change a rule's query and this file has to change with it.
+rule_files: []
+
+evaluation_interval: 1m
+
+tests:
+  # ── kinowo-worker-crash-looping (> 4 restarts in an hour) ────────────────────────────────────
+  # The PL worker restarts five times in an hour -- a crash loop the k8s backoff has not yet
+  # stretched out -- while the UK worker restarts once, which is a deploy.
+  - interval: 1m
+    input_series:
+      - series: 'process_start_time_seconds{app="kinowo-worker-pl",instance="kinowo-worker-pl",job="kinowo-worker"}'
+        values: '0x10 660x10 1260x10 1860x10 2460x10 3060x19'
+      - series: 'process_start_time_seconds{app="kinowo-worker-uk",instance="kinowo-worker-uk",job="kinowo-worker"}'
+        values: '0x30 1860x39'
+    promql_expr_test:
+      - expr: 'max by (app, instance) (changes(process_start_time_seconds{app=~"kinowo-worker.*"}[1h]))'
+        eval_time: 69m
+        exp_samples:
+          - labels: '{app="kinowo-worker-pl",instance="kinowo-worker-pl"}'
+            value: 5
+          - labels: '{app="kinowo-worker-uk",instance="kinowo-worker-uk"}'
+            value: 1
+
+  # ── kinowo-web-serving-down (min up < 1) ──────────────────────────────────────────────────────
+  # One web pod's scrape fails (up 0) while the other answers: `min by (instance)` keeps each pod
+  # its own series, so the failing one crosses and the healthy one sits at 1.
+  - interval: 1m
+    input_series:
+      - series: 'up{instance="kinowo-web-a",job="kinowo-web"}'
+        values: '1x5 0x10'
+      - series: 'up{instance="kinowo-web-b",job="kinowo-web"}'
+        values: '1x15'
+    promql_expr_test:
+      - expr: 'min by (instance) (up{job="kinowo-web"})'
+        eval_time: 10m
+        exp_samples:
+          - labels: '{instance="kinowo-web-a"}'
+            value: 0
+          - labels: '{instance="kinowo-web-b"}'
+            value: 1
+      - expr: 'min by (instance) (up{job="kinowo-web"})'
+        eval_time: 3m
+        exp_samples:
+          - labels: '{instance="kinowo-web-a"}'
+            value: 1
+          - labels: '{instance="kinowo-web-b"}'
+            value: 1
+
+  # ── kinowo-enrichment-source-failing (failure share > 0.5) ────────────────────────────────────
+  # TMDB fails 30 of its last 40 checks in PL (0.75); IMDb fails 2 of 40 (0.05), the ordinary
+  # noise of a rating source. A cinema service failing hard is not an enrichment source and is
+  # not in the result at all.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_uptime_recent_failures{country="pl",job="kinowo-web",service="TMDB"}'
+        values: '30x10'
+      - series: 'kinowo_uptime_recent_successes{country="pl",job="kinowo-web",service="TMDB"}'
+        values: '10x10'
+      - series: 'kinowo_uptime_recent_failures{country="pl",job="kinowo-web",service="IMDb"}'
+        values: '2x10'
+      - series: 'kinowo_uptime_recent_successes{country="pl",job="kinowo-web",service="IMDb"}'
+        values: '38x10'
+      - series: 'kinowo_uptime_recent_failures{country="pl",job="kinowo-web",service="Kino Muza"}'
+        values: '40x10'
+      - series: 'kinowo_uptime_recent_successes{country="pl",job="kinowo-web",service="Kino Muza"}'
+        values: '0x10'
+    promql_expr_test:
+      - expr: 'sum by (service, country) (kinowo_uptime_recent_failures{service=~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes"}) / clamp_min(sum by (service, country) (kinowo_uptime_recent_failures{service=~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes"}) + sum by (service, country) (kinowo_uptime_recent_successes{service=~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes"}), 1)'
+        eval_time: 5m
+        exp_samples:
+          - labels: '{country="pl",service="TMDB"}'
+            value: 0.75
+          - labels: '{country="pl",service="IMDb"}'
+            value: 0.05
+
+  # ── kinowo-corpus-census-stuck (> 1.5 incomplete scans in 30m) ────────────────────────────────
+  # The US census gives up on two passes in half an hour -- the gauges it feeds are frozen. DE has
+  # ONE incomplete pass after an earlier one since boot (the counter already at 5), which a single
+  # slow read produces and the next pass fixes. `increase` extrapolates that single step to 1.017
+  # at the app's 30s scrape interval: over the `> 1` this rule used to have, for the whole half
+  # hour, so it paged on one miss. The first DE-like pass after boot reads exactly 1, because the
+  # extrapolation stops at the counter's zero -- which is why a boot-fresh test never saw it.
+  - interval: 30s
+    input_series:
+      - series: 'kinowo_worker_corpus_scan_incomplete_total{country="us",job="kinowo-worker"}'
+        values: '5x40 6x10 7x50'
+      - series: 'kinowo_worker_corpus_scan_incomplete_total{country="de",job="kinowo-worker"}'
+        values: '5x40 6x60'
+    promql_expr_test:
+      - expr: 'sum by (country) (increase(kinowo_worker_corpus_scan_incomplete_total[30m]))'
+        eval_time: 40m
+        exp_samples:
+          - labels: '{country="us"}'
+            value: 2.0338983050847457
+          - labels: '{country="de"}'
+            value: 1.0169491525423728
+
+  # ── kinowo-worker-task-age-high (head-of-line wait > 600s) ───────────────────────────────────
+  # The PL queue's oldest waiting task is 20 minutes old; the US queue's is 90 seconds, a queue
+  # that is long but moving.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_queue_oldest_waiting_age_seconds{app="kinowo-worker",country="pl",job="kinowo-worker"}'
+        values: '1200x10'
+      - series: 'kinowo_worker_queue_oldest_waiting_age_seconds{app="kinowo-worker",country="us",job="kinowo-worker"}'
+        values: '90x10'
+    promql_expr_test:
+      - expr: 'max by (country) (kinowo_worker_queue_oldest_waiting_age_seconds{app="kinowo-worker"})'
+        eval_time: 5m
+        exp_samples:
+          - labels: '{country="pl"}'
+            value: 1200
+          - labels: '{country="us"}'
+            value: 90

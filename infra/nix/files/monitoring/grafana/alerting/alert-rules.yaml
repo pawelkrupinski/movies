@@ -1020,9 +1020,14 @@ groups:
       # fails is a real fault (decode, connection, timeout), not routine noise. The
       # counter is materialized at 0 per country from boot, so `increase` has a
       # baseline to move off immediately rather than only once it has gone wrong.
-      # `for: 10m` over a 30m window means two consecutive failed 5-min passes, not
-      # one — a single transient miss self-heals on the next tick and the gauges
-      # were only one sample stale.
+      # The threshold is TWO failed passes inside the 30m window, not one — a
+      # single transient miss self-heals on the next tick and the gauges were
+      # only one sample stale — and it is written `> 1.5`, not `> 1`, because
+      # `increase` extrapolates: once the counter has moved off 0 since boot, ONE
+      # failed pass reads ~1.02 and sat above `> 1` for the whole half hour, so
+      # the rule paged on exactly the single miss it claimed to ride out
+      # (infra/test/alert-rules/grafana-fleet-alerts.yml). `for: 10m` then asks
+      # for the second failure to stand for two more passes.
       - uid: kinowo-corpus-census-stuck
         title: Corpus census stuck (country)
         condition: C
@@ -1056,7 +1061,7 @@ groups:
               expression: A
               conditions:
                 - type: query
-                  evaluator: { type: gt, params: [1] }
+                  evaluator: { type: gt, params: [1.5] }
                   operator: { type: and }
                   query: { params: [] }
                   reducer: { type: last, params: [] }
