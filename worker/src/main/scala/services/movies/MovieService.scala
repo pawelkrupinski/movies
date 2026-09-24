@@ -355,7 +355,10 @@ class MovieService(
     cache.get(live) match {
       case None      => rawKey
       case Some(row) =>
-        val newKey = cache.keyOf(live.cleanTitle, row.scrapedOnly.resolvedYear)
+        // `atYear`, not `keyOf(live.cleanTitle, …)`: `live` came off the store, so its
+        // label is the display title and re-deriving from it can name another title key
+        // than the row's — which `rekey` refuses (ES "La luz", 2026-09-21).
+        val newKey = live.atYear(row.scrapedOnly.resolvedYear)
         cache.rekey(live, newKey, _.scrapedOnly, services.movies.RekeyReason.ForcedReset)
         newKey
     }

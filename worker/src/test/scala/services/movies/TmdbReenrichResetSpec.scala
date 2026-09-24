@@ -91,4 +91,33 @@ class TmdbReenrichResetSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf(Title, Some(1982))).flatMap(_.tmdbId) shouldBe Some(Wrong)
     cache.get(cache.keyOf(Title, Some(2019))) shouldBe None
   }
+
+  // ES 2026-09-21: forcing "La luz" (2026) threw `rekey requires same normalised
+  // cleanTitle: La luz que imaginamos vs La luz que imaginamos` on every one of its 12
+  // attempts. A row is found under its STORED key ("la luz|2026") but labelled with its
+  // DISPLAY title (the slots' vote, "La luz que imaginamos"); the reset re-derived the
+  // new key from that label, i.e. under a different title than the row it was moving.
+  it should "re-key a row whose display title differs from its stored key without changing its title key" in {
+    val stored = "La luz"
+    val shown  = "La luz que imaginamos"
+    val row = MovieRecord(
+      tmdbId = Some(Wrong),
+      data = Map[Source, SourceData](
+        Tmdb         -> SourceData(releaseYear = Some(2024)),
+        KinoPalacowe -> SourceData(title = Some(shown), releaseYear = Some(2026))))
+    val repository = new InMemoryMovieRepository(Seq((stored, Some(2024), row))) {
+      // What the Mongo codec hands back: the stored key, labelled with the display vote.
+      override def findAll(): Seq[StoredMovieRecord] = super.findAll().map(_.copy(title = shown))
+    }
+    val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val service = new MovieService(cache, new InProcessEventBus(), new TmdbClient(
+      http = new StubFetch(Seq("search/movie" -> """{"results":[]}""")), apiKey = Some("stub")))
+
+    noException should be thrownBy
+      service.resolveTmdbOnce(stored, Some(2024), originalTitle = None, director = None, mode = services.tasks.ResolveMode.Force)
+
+    // Moved onto the scraped year under the SAME title key it was stored under.
+    cache.get(cache.keyOf(stored, Some(2026))).map(_.tmdbId) shouldBe Some(None)
+    cache.get(cache.keyOf(stored, Some(2024))) shouldBe None
+  }
 }

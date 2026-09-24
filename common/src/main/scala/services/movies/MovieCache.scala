@@ -23,6 +23,11 @@ private[services] case class CacheKey private (cleanTitle: String, year: Option[
     case k: CacheKey => k.normalized == normalized && k.year == year
     case _           => false
   }
+
+  /** The same title key at another year. Re-derive nothing from `cleanTitle`: on a
+   *  key read from the store it is the row's DISPLAY title, which need not sanitize to
+   *  the stored key's title ("La luz que imaginamos" labelling `la luz|2026`). */
+  def atYear(other: Option[Int]): CacheKey = new CacheKey(cleanTitle, other, normalized)
 }
 
 private[services] object CacheKey {
