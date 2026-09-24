@@ -1134,6 +1134,30 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     checker.stop()
   }
 
+  // The slices must continue across restarts. A sweep counter that starts at zero in every
+  // process checks slice 0 again after each deploy, so on a day of hourly deploys (2026-09-24:
+  // six pl boots) the rest of the corpus was never re-checked — the bilety24 SVG posters a
+  // fix had already stopped deriving stayed in the read model.
+  it should "reach every slice across restarts, not re-check the first one after each boot" in {
+    val (projector, repository, rm) = fixture()
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    projector.onMovieUpsert(repository.findAll().head)
+    projector.stop()
+    repository.putEmbeddedOutOfBand("Foo", Some(2024), record(Some(9.9), Seq(at("2026-07-20T18:00"))))
+    repository.upsert("Bar", Some(2024), record(Some(6.0), Seq(at("2026-06-14T20:00"))))
+
+    val clock = new tools.MutableClock(java.time.Instant.parse("2026-09-24T00:00:00Z"))
+    (1 to 48).foreach { _ =>
+      val booted = new ReadModelProjector(repository, rm, rm, clock = clock)
+      booted.start()
+      booted.pruneOrphans()        // one sweep, then the next deploy
+      booted.stop()
+      clock.advance(java.time.Duration.ofMinutes(30))
+    }
+
+    rm.findAllMovies().find(_._id.startsWith("foo")).flatMap(_.ratings.imdb) shouldBe Some(9.9)
+  }
+
   // The 2026-09-07 ReadModelFilmPruneBurst, replayed: live rows whose cards sit under ids
   // the source no longer produces (an id scheme change; a restored database), and then
   // the scheduled prune — with no boot heal in between. The prune must leave every live

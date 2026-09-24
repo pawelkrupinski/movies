@@ -132,8 +132,13 @@ class ReadModelProjector(
    *  change stream because the source had long since stopped changing. A projection is
    *  diff-based, so re-projecting a slice costs a read per row and writes only what actually
    *  drifted; at 48 slices on a 30-minute sweep the whole corpus is verified once a day. */
-  private val ContentSlices = Env.positiveInt("KINOWO_READMODEL_CONTENT_SLICES", 48)
-  private var sweepCount    = 0L
+  //  Read per sweep, so an override applies without a restart: 1 re-projects the whole
+  //  corpus on the next sweep — the way to push a derivation change out at once.
+  private def contentSlices: Int = Env.positiveInt("KINOWO_READMODEL_CONTENT_SLICES", 48)
+  // Numbered by the clock, not from zero: a counter each process starts afresh checks
+  // slice 0 again after every deploy, and on a day of hourly deploys the rest of the corpus
+  // was never reached. Counting on from the clock keeps the next process on the next slice.
+  private var sweepCount    = clock.instant().getEpochSecond / PruneSeconds
   @volatile private var watchHandle: Option[AutoCloseable] = None
 
   def enabled: Boolean = writer.enabled && movieRepository.enabled
@@ -592,14 +597,15 @@ class ReadModelProjector(
     // partition the corpus rather than sampling it, and every row is reached.
     var drifted = 0
     if (!reproject && scanComplete) {
-      val slice = math.floorMod(sweepCount, ContentSlices.toLong).toInt
-      liveRowIds.iterator.filter(id => math.floorMod(id.value.##.toLong, ContentSlices.toLong).toInt == slice).foreach { id =>
+      val slices = contentSlices
+      val slice  = math.floorMod(sweepCount, slices.toLong).toInt
+      liveRowIds.iterator.filter(id => math.floorMod(id.value.##.toLong, slices.toLong).toInt == slice).foreach { id =>
         continuing(s"read-model $kind: a row in the content slice failed to project") {
           movieRepository.findById(id).foreach(row => drifted += project(ReadModelProjection.partition(row, normalizer)))
         }
       }
       if (drifted > 0)
-        logger.warn(s"read-model $kind sweep: content check slice $slice of $ContentSlices rewrote $drifted document(s) — " +
+        logger.warn(s"read-model $kind sweep: content check slice $slice of $slices rewrote $drifted document(s) — " +
           "a stored projection had drifted from what the source projects to, which the id-only sweeps cannot see.")
       metrics.recordDriftWrites(drifted)
     }
