@@ -138,6 +138,16 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     scrapePl(series) should include ("""kinowo_worker_readmodel_catchup_rows_total{country="pl"} 3""")
   }
 
+  it should "count newcomer kicks and the staging rows they decoded, from zero at boot" in {
+    val (m, series) = newPl()
+    scrapePl(series) should include ("""kinowo_worker_staging_newcomer_kicks_total{country="pl"} 0""")
+    m.recordNewcomerKick(1)
+    m.recordNewcomerKick(3)
+    val out = scrapePl(series)
+    out should include ("""kinowo_worker_staging_newcomer_kicks_total{country="pl"} 2""")
+    out should include ("""kinowo_worker_staging_newcomer_kick_rows_total{country="pl"} 4""")
+  }
+
   "WorkerTaskMetrics" should "count enqueues by type and result" in {
     val (m, series) = newPl()
     m.recordEnqueue(TaskType.ScrapeCinema, WorkerTaskMetrics.EnqueueResult.Added)

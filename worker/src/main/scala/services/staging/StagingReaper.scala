@@ -39,7 +39,8 @@ class StagingReaper(
   interval:     FiniteDuration    = 2.minutes,
   initialDelay: FiniteDuration    = 30.seconds,
   runStore:     ScheduledRunStore = AlwaysClaimScheduledRunStore,
-  clock:        Clock             = Clock.systemUTC()
+  clock:        Clock             = Clock.systemUTC(),
+  metrics:      StagingMetrics    = StagingMetrics.noop
 ) extends Stoppable with Logging {
 
   // Anchor rows with the rules their repository keyed them under — an anchor
@@ -65,9 +66,15 @@ class StagingReaper(
 
   /** Advance the chain the moment a brand-new film lands in `pending_movies` —
    *  the initial kick that would otherwise wait for the next backstop tick. Same
-   *  idempotent [[enqueueNext]] decision, keyed on the newcomer's anchor. */
+   *  idempotent [[enqueueNext]] decision, keyed on the newcomer's anchor. The group it
+   *  had to read is metered ([[StagingMetrics]]): a wide group here means kicks are
+   *  firing for venues JOINING a film, not for films new to staging. */
   def onNewcomerDiverted: PartialFunction[DomainEvent, Unit] = {
-    case StagingNewcomerDiverted(title) => enqueueNext(normalizer.sanitize(title)); ()
+    case StagingNewcomerDiverted(title) =>
+      val anchor = normalizer.sanitize(title)
+      val rows   = steps.rowsFor(anchor)
+      metrics.recordNewcomerKick(rows.size)
+      enqueueNext(anchor, rows); ()
   }
 
   private def chainable(t: TaskType): Boolean =

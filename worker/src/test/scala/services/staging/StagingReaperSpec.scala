@@ -132,6 +132,22 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
     active(queue) shouldBe Seq((TaskType.StagingDetail.name, StagingTaskKeys.detailDedup("Newcomer", Helios.displayName, titleNormalizer)))
   }
 
+  it should "meter each kick with the size of the group it had to read" in {
+    // What StagingNewcomerKickReadsWide alerts on: a kick fires only for a film NEW to staging,
+    // so the group it decodes is that one venue's row(s). A kick per JOINING venue (the
+    // pre-2026-09-23 shape) decodes every earlier venue's row, and rows-per-kick climbs with
+    // the film's width -- the only production signal for that quadratic.
+    val repository = new InMemoryStagingRepository
+    repository.upsert(Helios, "Wide", Some(2026), listing("Wide", Some(2026)))
+    repository.upsert(models.Multikino, "Wide", Some(2026), listing("Wide", Some(2026)))
+    repository.upsert(models.CinemaCityPoznanPlaza, "Wide", Some(2026), listing("Wide", Some(2026)))
+    val steps  = new StagingSteps(repository, Seq(enricher), (_, _, _) => None, (_, _, _) => None, new InMemoryFreshnessStore)
+    val kicks  = scala.collection.mutable.ArrayBuffer.empty[Int]
+    val reaper = new StagingReaper(steps, new InMemoryTaskQueue, repository, metrics = (rows: Int) => kicks += rows)
+    reaper.onNewcomerDiverted(StagingNewcomerDiverted("Wide"))
+    kicks.toSeq shouldBe Seq(3)
+  }
+
   it should "ignore a finished StagingFold (terminal) and every non-staging task" in {
     val (_, reaper, _, _) = fixture(("Done", Some(2026), listing("Done", Some(2026))))
     reaper.onTaskFinished.isDefinedAt(TaskFinished(TaskType.StagingFold, "k", StagingTaskKeys.titlePayload("Done"))) shouldBe false

@@ -44,5 +44,6 @@ trait StagingWiring { self: WorkerWiring =>
   lazy val stagingReaper = new StagingReaper(stagingSteps, taskQueue, stagingRepository,
     interval     = FiniteDuration(StagingReaperInterval, TimeUnit.SECONDS),
     initialDelay = FiniteDuration(StagingReaperInitialDelay, TimeUnit.SECONDS),
-    runStore     = scheduledRunStore)
+    runStore     = scheduledRunStore,
+    metrics      = taskMetrics)
 }

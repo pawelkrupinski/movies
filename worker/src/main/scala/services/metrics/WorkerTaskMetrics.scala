@@ -5,7 +5,7 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
 import services.movies.{CacheSyncMetrics, ResolveDuplicateMetrics, ChangeStreamLiveness, ChangeStreamMetrics, MergeMetrics, MergeReason, RekeyReason, ScrapeLandingMetrics, ScreeningsMetrics, SideCollectionChangeMetrics, SplitMetrics}
 import services.readmodel.ReadModelProjectionMetrics
-import services.staging.StagingStep
+import services.staging.{StagingMetrics, StagingStep}
 import services.tasks.{QueueSnapshot, RatingLatencyMetrics, ResolveMode, Task, TaskState, TaskType}
 
 import java.time.Instant
@@ -68,7 +68,7 @@ object TaskObserver {
  * gauges are refreshed from a per-country `QueueSnapshot` each `Series.scrape()`.
  */
 class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
-  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ScrapeLandingMetrics with ResolveDuplicateMetrics {
+  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ScrapeLandingMetrics with ResolveDuplicateMetrics with StagingMetrics {
 
   // ── RatingLatencyMetrics ────────────────────────────────────────────────────
   def recordFirstRatingDelay(site: String, seconds: Double): Unit = series.recordFirstRatingDelay(countryCode, site, seconds)
@@ -92,6 +92,9 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   def recordVenueProjection(rebuilt: Int, reused: Int): Unit     = series.recordVenueProjection(countryCode, rebuilt, reused)
   def recordReconcileSweep(kind: String, didWork: Boolean): Unit = series.recordReconcileSweep(countryCode, kind, didWork)
   def recordHeal(trigger: String, rows: Int): Unit              = series.recordHeal(countryCode, trigger, rows)
+
+  // ── StagingMetrics ──────────────────────────────────────────────────────────
+  def recordNewcomerKick(groupRows: Int): Unit = series.recordStagingNewcomerKick(countryCode, groupRows)
 
   // ── CacheSyncMetrics ────────────────────────────────────────────────────────
   def recordRehydrate(changedUpserts: Int, deletes: Int): Unit = series.recordRehydrate(countryCode, changedUpserts, deletes)
@@ -355,6 +358,18 @@ object WorkerTaskMetrics {
       .labelNames("country", "outcome")
       .register(registry)
 
+    private val stagingNewcomerKicks = Counter.builder()
+      .name("kinowo_worker_staging_newcomer_kicks")
+      .help("StagingNewcomerDiverted events the StagingReaper handled since boot, by country — each one decodes the film's whole staging group to pick its next step. The denominator for kinowo_worker_staging_newcomer_kick_rows_total.")
+      .labelNames("country")
+      .register(registry)
+
+    private val stagingNewcomerKickRows = Counter.builder()
+      .name("kinowo_worker_staging_newcomer_kick_rows")
+      .help("Staging rows decoded by newcomer kicks since boot, by country. A kick is due only for a film NEW to staging, so rows/kick sits near 1; a kick per venue JOINING an incubating film (the pre-2026-09-23 shape) makes the k-th of N venues decode k rows, rows/kick ~N/2 and the scrape tick quadratic in a wide film's venues.")
+      .labelNames("country")
+      .register(registry)
+
     private val cacheRehydrateChanges = Counter.builder()
       .name("kinowo_worker_cache_rehydrate_changes")
       .help("Rows the MovieCache's periodic backstop rehydrate (full findAll reload) caught that the INCREMENTAL change stream missed, by country and kind (changed=a put whose cached value differed = a missed upsert; deleted=a key gone from Mongo the delete-apply didn't drop). After resume-token persistence + cache delete-apply this should be ~0 in steady state; a rate flat at 0 proves the 30-min rehydrate is redundant and can be retired. NOTE: the one-time BOOT hydrate counts EVERY row as changed — read the rate over steady state, not the raw counter.")
@@ -475,6 +490,8 @@ object WorkerTaskMetrics {
         ReadModelProjectionMetrics.VenueOutcomes.foreach(o => readModelVenueProjections.labelValues(c, o))
         ReadModelProjectionMetrics.ReconcileKinds.foreach(k =>
           Seq("true", "false").foreach(w => readModelReconcileSweeps.labelValues(c, k, w)))
+        stagingNewcomerKicks.labelValues(c).inc(0.0)    // materialize so rate() has a baseline from boot
+        stagingNewcomerKickRows.labelValues(c).inc(0.0)
         Seq("changed", "deleted").foreach(k => cacheRehydrateChanges.labelValues(c, k))
         ChangeStreamMetrics.Ops.foreach(o => changeEvents.labelValues(c, o))
         movieCoalesced.labelValues(c)
@@ -554,6 +571,12 @@ object WorkerTaskMetrics {
 
     def recordReconcileSweep(country: String, kind: String, didWork: Boolean): Unit =
       readModelReconcileSweeps.labelValues(country, kind, didWork.toString).inc()
+
+    // ── StagingMetrics ────────────────────────────────────────────────────────
+    def recordStagingNewcomerKick(country: String, groupRows: Int): Unit = {
+      stagingNewcomerKicks.labelValues(country).inc()
+      stagingNewcomerKickRows.labelValues(country).inc(math.max(0, groupRows).toDouble)
+    }
 
     // ── CacheSyncMetrics ──────────────────────────────────────────────────────
     def recordRehydrate(country: String, changedUpserts: Int, deletes: Int): Unit = {
