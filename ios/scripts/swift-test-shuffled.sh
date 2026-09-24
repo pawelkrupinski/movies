@@ -28,7 +28,15 @@ log="$(mktemp -t swift-test-shuffled)"
 failed=()
 while IFS= read -r test; do
     pattern="^$(printf '%s' "$test" | sed 's/[.[\*^$()+?{}|]/\\&/g')\$"
-    if ! swift test --package-path "$package" --skip-build --filter "$pattern" >"$log" 2>&1; then
+    # Exit status alone is not a pass: `swift test` exits 0 when the filter matches
+    # nothing ("No matching test cases were run"), so a case the pattern misses
+    # would pass without running. XCTest's last "Executed N test(s)" line is the
+    # whole run's tally; it must say exactly one.
+    swift test --package-path "$package" --skip-build --filter "$pattern" >"$log" 2>&1
+    status=$?
+    executed="$(grep -oE 'Executed [0-9]+ tests?' "$log" | tail -1 | grep -oE '[0-9]+')"
+    if [ "$status" -ne 0 ] || [ "$executed" != 1 ]; then
+        [ "$status" -eq 0 ] && echo "swift-test-shuffled: expected exactly 1 test to run, saw ${executed:-none}"
         echo "FAILED alone: $test"
         tail -40 "$log"
         failed+=("$test")

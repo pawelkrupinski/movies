@@ -18,6 +18,8 @@ on:
             - 'scripts/shell-spec.sh'
             # The seeded order devtest-shuffled.sh (the nightly emulator leg) draws from.
             - 'scripts/seeded-order*.sh'
+            # The nightly swift leg's runner, whose spec runs in the step below.
+            - 'ios/scripts/swift-test-shuffled*.sh'
             # The rolling-release publish below runs through these.
             - 'scripts/ci/gh-release*.sh'
             - 'scripts/ci/publish-rolling-release.sh'
@@ -39,6 +41,8 @@ on:
             - 'scripts/shell-spec.sh'
             # The seeded order devtest-shuffled.sh (the nightly emulator leg) draws from.
             - 'scripts/seeded-order*.sh'
+            # The nightly swift leg's runner, whose spec runs in the step below.
+            - 'ios/scripts/swift-test-shuffled*.sh'
             # The rolling-release publish below runs through these.
             - 'scripts/ci/gh-release*.sh'
             - 'scripts/ci/publish-rolling-release.sh'
@@ -144,6 +148,7 @@ jobs:
                   scripts/tag-mobile-release-test.sh
                   scripts/ci/gh-release-test.sh
                   scripts/seeded-order-test.sh
+                  ios/scripts/swift-test-shuffled-test.sh
 
             - name: Unit tests
               run: ./gradlew --no-daemon testDebugUnitTest
