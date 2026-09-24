@@ -20,15 +20,18 @@ import org.scalatest.matchers.should.Matchers
  *   - every OTHER job that reads one of those secrets needs `preflight`, directly or through
  *     a job that does, so none can start its long work before the check has passed.
  *
- * The convergence workflows need one too; they are owned by a separate change and are not
- * listed yet.
+ * A job calling a reusable workflow with `secrets: inherit` counts as reading what that workflow reads.
  */
 class PreflightWiringSpec extends AnyFlatSpec with Matchers {
 
   /** workflow file → whether its preflight must also check the Android SDK licence. */
   private val Guarded = Map(
     ".github/workflows/android.yml" -> true,
-    ".github/workflows/main.yml"    -> false
+    ".github/workflows/main.yml"    -> false,
+    ".github/workflows/us-convergence.yml"         -> false,
+    ".github/workflows/country-convergence.yml"    -> false,
+    ".github/workflows/convergence-bisect.yml"     -> false,
+    ".github/workflows/record-scrape-fixtures.yml" -> false
   )
 
   private def jobs(yml: String): Map[String, String] = {
@@ -48,8 +51,17 @@ class PreflightWiringSpec extends AnyFlatSpec with Matchers {
       .map(_.stripPrefix("[").stripSuffix("]").split(",").map(_.trim).filter(_.nonEmpty).toSet)
       .getOrElse(Set.empty)
 
-  private def secretsRead(job: String): Set[String] =
-    """secrets\.([A-Z][A-Z0-9_]*)""".r.findAllMatchIn(job).map(_.group(1)).toSet
+  private def secretsNamed(text: String): Set[String] =
+    """secrets\.([A-Z][A-Z0-9_]*)""".r.findAllMatchIn(text).map(_.group(1)).toSet
+
+  /** A job calling a reusable workflow with `secrets: inherit` reads whatever that workflow reads. */
+  private def secretsRead(job: String): Set[String] = {
+    val called = job.linesIterator.map(_.trim).collectFirst { case s"uses: ./$path.yml" => s"$path.yml" }
+    val inherited =
+      if (job.linesIterator.exists(_.trim == "secrets: inherit")) called.map(p => secretsNamed(RepoFile.read(p))).getOrElse(Set.empty)
+      else Set.empty
+    secretsNamed(job) ++ inherited
+  }
 
   /** The names on the preflight.sh command lines — every all-caps word after the script. */
   private def asserted(preflight: String): Set[String] = {

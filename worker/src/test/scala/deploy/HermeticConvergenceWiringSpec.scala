@@ -28,7 +28,8 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
 
   "a verdict leg" should "be hermetic unless its caller says otherwise, and no verdict caller does" in {
     """mode:[\s\S]*?default:\s*hermetic""".r.findFirstIn(leg) shouldBe defined
-    verdictCallers.foreach(caller => directives(caller) should not include "mode:")
+    // The `mode:` KEY, not any key ending in it (a checkout's `sparse-checkout-cone-mode:`).
+    verdictCallers.foreach(caller => directives(caller).linesIterator.map(_.trim).filter(_.startsWith("mode:")).toSeq shouldBe empty)
   }
 
   it should "hand the mode to BOTH suite steps under the name the wiring reads" in {

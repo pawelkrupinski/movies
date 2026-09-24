@@ -85,6 +85,22 @@ permissions:
     contents: read
 
 jobs:
+    # Seconds, first: the secrets the jobs below read are set, so a missing one fails here
+    # rather than hours into a leg. OMDB_API_KEY is left out: the legs read it, but it is not a repository secret and they run without it. scripts/ci/preflight.sh never prints a value.
+    # (PreflightWiringSpec)
+    preflight:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: scripts/ci
+                  sparse-checkout-cone-mode: false
+            - name: Secrets present
+              env:
+                  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+              run: scripts/ci/preflight.sh TMDB_API_KEY
+
     # One call per country, each carrying its own sample → convergence chain, so a
     # country's full leg waits on ITS OWN sample and nothing else.
     #
@@ -97,6 +113,7 @@ jobs:
     # it further per job — `contents: write` for the rolling release the fixture
     # trees live in, `actions: read` for the artifact bootstrap.
     leg:
+        needs: preflight
         name: ${{ matrix.country }}
         strategy:
             fail-fast: false
@@ -151,7 +168,7 @@ jobs:
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
     report:
-        needs: leg
+        needs: [preflight, leg]
         if: always() && !cancelled() && github.event_name == 'schedule'
         runs-on: ubuntu-latest
         timeout-minutes: 5

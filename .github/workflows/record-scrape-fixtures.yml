@@ -56,7 +56,26 @@ permissions:
     contents: read
 
 jobs:
+    # Seconds, first: the secrets the jobs below read are set, so a missing one fails here
+    # rather than hours into a leg. The tunnel key for the scrape capture, the TMDB key for the enrichment recording. scripts/ci/preflight.sh never prints a value.
+    # (PreflightWiringSpec)
+    preflight:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: scripts/ci
+                  sparse-checkout-cone-mode: false
+            - name: Secrets present
+              env:
+                  MONGO_CI_SSH_KEY: ${{ secrets.MONGO_CI_SSH_KEY }}
+                  MONGO_CI_SSH_HOST_KEY: ${{ secrets.MONGO_CI_SSH_HOST_KEY }}
+                  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+              run: scripts/ci/preflight.sh MONGO_CI_SSH_KEY MONGO_CI_SSH_HOST_KEY TMDB_API_KEY
+
     record:
+        needs: preflight
         name: scrapes (${{ matrix.country }})
         strategy:
             # Parallel and independent: one country's tunnel trouble must not cost
@@ -182,7 +201,7 @@ jobs:
     # needs the boot, which is where every request is made; the replays re-ask nothing.
     enrichment:
         name: enrichment (${{ matrix.country }})
-        needs: record
+        needs: [preflight, record]
         if: ${{ !cancelled() }}
         strategy:
             fail-fast: false
@@ -216,7 +235,7 @@ jobs:
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
     report:
-        needs: [record, enrichment]
+        needs: [preflight, record, enrichment]
         if: always() && !cancelled() && github.event_name == 'schedule'
         runs-on: ubuntu-latest
         timeout-minutes: 5
