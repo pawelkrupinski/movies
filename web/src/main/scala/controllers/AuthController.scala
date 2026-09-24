@@ -509,7 +509,7 @@ class AuthController(
           case None => landing
           // Same origin: the cookie is already there, and the far side's sibling
           // is not this origin, so a binding round trip would go astray.
-          case Some(_) if AuthController.originOf(target) == ForwardedUrl.base(request) => landing
+          case Some(_) if ForwardedUrl.originOf(target) == ForwardedUrl.base(request) => landing
           case Some(user) =>
             request.getQueryString(AuthController.BindParam).filter(_.nonEmpty) match {
               case None =>
@@ -680,9 +680,6 @@ object AuthController {
   private[controllers] def query(params: Seq[(String, String)]): String =
     if (params.isEmpty) ""
     else params.map { case (k, v) => s"${URLEncoder.encode(k, UTF_8)}=${URLEncoder.encode(v, UTF_8)}" }.mkString("?", "&", "")
-
-  /** `scheme://host[:port]` of an absolute URL. */
-  private[controllers] def originOf(url: String): String = url.split('/').take(3).mkString("/")
 
   /** Where [[AuthController.ssoStart]] may send a handoff: a deployed country's
    *  base URL (the country switch), or a deployed ORIGIN — the pairing leg of a

@@ -57,6 +57,25 @@ class CrossSiteWriteFilterSpec extends AnyFlatSpec with Matchers with BeforeAndA
     status("POST", "/facebook/data-deletion", "Content-Type" -> "application/x-www-form-urlencoded") shouldBe 200
   }
 
+  // Browsers that predate Fetch Metadata (Safari before 16.4) send no
+  // Sec-Fetch-Site, but a cross-site write from one still names its page in
+  // Origin (every POST/PUT/DELETE) or, failing that, Referer.
+  it should "refuse a write whose Origin is foreign when the browser sends no Sec-Fetch-Site" in {
+    rejected(status("POST", "/auth/sessions/revoke", "Origin" -> "https://evil.example")) shouldBe true
+    rejected(status("DELETE", "/api/me", "Origin" -> "null")) shouldBe true
+  }
+
+  it should "refuse a write whose Referer is foreign when there is neither Sec-Fetch-Site nor Origin" in {
+    rejected(status("PUT", "/api/me/state", "Referer" -> "https://evil.example/page")) shouldBe true
+  }
+
+  it should "let a write from the site's own origin through when the browser sends no Sec-Fetch-Site" in {
+    status("POST", "/auth/logout", "Origin" -> "http://localhost") shouldBe 200
+    status("PUT", "/api/me/state", "Referer" -> "http://localhost/poznan/") shouldBe 200
+    status("POST", "/auth/logout", "Host" -> "kinowo.net", "X-Forwarded-Proto" -> "https",
+      "Origin" -> "https://kinowo.net") shouldBe 200
+  }
+
   it should "leave cross-site reads and CORS preflights alone" in {
     status("GET", "/api/catalog", "Sec-Fetch-Site" -> "cross-site") shouldBe 200
     status("HEAD", "/", "Sec-Fetch-Site" -> "cross-site") shouldBe 200

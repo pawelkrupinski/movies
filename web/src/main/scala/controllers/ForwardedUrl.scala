@@ -22,4 +22,8 @@ object ForwardedUrl {
     val host   = request.headers.get("X-Forwarded-Host").getOrElse(request.host)
     s"$scheme://$host"
   }
+
+  /** `scheme://host[:port]` of an absolute URL — what `base` answers for the
+   *  request that URL names. */
+  def originOf(url: String): String = url.split('/').take(3).mkString("/")
 }

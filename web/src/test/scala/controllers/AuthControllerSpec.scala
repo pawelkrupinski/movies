@@ -645,7 +645,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   private case class Handoff(arrival: scala.concurrent.Future[play.api.mvc.Result], code: String, binding: String)
 
   private def arriving(url: String) = {
-    val origin = AuthController.originOf(url)
+    val origin = ForwardedUrl.originOf(url)
     val (scheme, host) = origin.split("://") match { case Array(sc, h) => (sc, h) }
     FakeRequest("GET", url.drop(origin.length)).withHeaders("X-Forwarded-Proto" -> scheme, "X-Forwarded-Host" -> host)
   }

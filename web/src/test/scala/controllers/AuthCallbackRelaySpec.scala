@@ -339,7 +339,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
       new AuthExchangeCodes(store, fixedClk), country, clock = fixedClk)
     def follow(result: scala.concurrent.Future[play.api.mvc.Result]) = {
       val url    = redirectLocation(result).value
-      val origin = AuthController.originOf(url)
+      val origin = ForwardedUrl.originOf(url)
       arrivingAt(origin, url.drop(origin.length))
     }
     val kinowo = pod(Country.Poland)
