@@ -42,18 +42,6 @@ class ShareCardStore(val root: Path) {
 
   def cardExists(name: String): Boolean = Files.isRegularFile(cardPath(name))
 
-  /** When card `name` was written, if it exists. */
-  def modified(name: String): Option[Instant] =
-    Try(Files.getLastModifiedTime(cardPath(name)).toInstant).toOption
-
-  /** True when the film with `token` has a card written after `anchor` — or `anchor` is gone, which
-   *  only happens once a newer card replaced it. */
-  def newerCardOf(token: String, anchor: String): Boolean =
-    modified(anchor).fold(true) { since =>
-      Using.resource(Files.newDirectoryStream(root, s"$token-*.jpg"))(_.iterator.asScala.exists(path =>
-        path.getFileName.toString != anchor && Try(Files.getLastModifiedTime(path).toInstant.isAfter(since)).getOrElse(false)))
-    }
-
   /** Every file in the directory and the poster cache, with the facts the janitor decides on. A
    *  file deleted by someone else mid-listing is skipped. */
   def list(): Seq[StoredFile] =

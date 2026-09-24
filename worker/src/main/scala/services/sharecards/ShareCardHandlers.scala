@@ -9,10 +9,7 @@ class RenderShareCardHandler(service: ShareCardService, maxAttempts: Int = 3) ex
   val taskType: TaskType = TaskType.RenderShareCard
   def handle(task: Task): HandlerOutcome =
     ShareCardInputs.fromPayload(task.payload).fold[HandlerOutcome](HandlerOutcome.Skipped) { inputs =>
-      if (service.superseded(task.payload, inputs.filmId)) {
-        service.recordSuperseded(ShareCardService.reasons(task.payload))
-        HandlerOutcome.Skipped
-      } else service.render(inputs, ShareCardService.reasons(task.payload)) match {
+      service.render(inputs, ShareCardService.reasons(task.payload)) match {
         case ShareCardMetrics.Outcome.Failed if task.attempts < maxAttempts => HandlerOutcome.Reschedule(Some("no poster could be fetched"))
         case _ => HandlerOutcome.Done
       }

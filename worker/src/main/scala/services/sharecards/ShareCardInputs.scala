@@ -22,7 +22,7 @@ import tools.{Digest, OgCardRenderer, ShareCardText, SynopsisMarkdown}
  * characters over everything drawn but the ratings and the poster, five over the rating badges, six
  * over the chosen poster URL — sixteen together, as the contract fixes. "Is there a card for these
  * inputs" is one existence check per candidate poster, and "did only the ratings move" is read off
- * the current card's name, which is what lets a ratings-only change wait (see [[ShareCardService]]).
+ * the current card's name.
  */
 final case class ShareCardInputs(
   filmId:     String,
@@ -88,8 +88,7 @@ final case class ShareCardInputs(
     "genres" -> genres.mkString(ShareCardInputs.ListSeparator),
     "posterUrls" -> posterUrls.mkString(ShareCardInputs.ListSeparator)
   ) ++ Seq(
-    // The ratings always carry their key ("" for none), so merging a later payload into a waiting
-    // task (a deferred ratings render — see ShareCardService) also clears a rating that went away.
+    // The ratings always carry their key ("" for none), so a payload names a rating that went away.
     "imdb" -> imdb.fold("")(_.toString), "metascore" -> metascore.fold("")(_.toString),
     "rottenTomatoes" -> rottenTomatoes.fold("")(_.toString), "filmweb" -> filmweb.fold("")(_.toString)
   ) ++ Seq("year" -> year.map(_.toString), "director" -> director, "synopsis" -> synopsis)

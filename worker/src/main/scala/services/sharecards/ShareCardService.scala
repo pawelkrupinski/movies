@@ -18,19 +18,7 @@ import scala.concurrent.duration.*
  * many replicas and triggers ask). A drawn input changing enqueues one; the first-publish gate
  * enqueues one AHEAD of the queue (an earlier `submittedAt` — the queue claims oldest first) plus
  * the task that ends its hold; the backfill feeds the rest in bounded batches.
- *
- * RATINGS-ONLY CHANGES WAIT: at most one such re-render per film per day. Ratings refresh all day
- * (measured ~242 rating-driven changes a day across the fleet, on ~163 films — one PL film moved 11
- * times in a day), and a card a day behind on a rating is still a true card. So when the only thing
- * that moved since the film's current card is the rating badges, the render is queued to run no
- * sooner than a day after that card was written, keyed to that card so every later rating change
- * the same day folds into the one waiting task (its payload merged to the latest ratings). Any other
- * change renders at once, with whatever the ratings are then, and starts a new day.
- *
- * What a document's `shareCard` should be is read from the DIRECTORY, which every replica shares:
- * a card for the film's current inputs drawn from any of its current poster candidates when one
- * exists, else the card it had before (while the new one renders), else none. So replicas agree
- * without telling each other anything.
+
  */
 class ShareCardService(
   country:  Country,
@@ -79,48 +67,13 @@ class ShareCardService(
   def onProjected(movie: ResolvedMovie, screened: Boolean): Unit =
     if (screened) request(inputs(movie))
 
-  /** Ask for the card of `next` — nothing when it exists, a deferred render when only its ratings
-   *  moved, a render now otherwise. What a projection and the backfill both call. */
+  /** Ask for the card of `next` — nothing when it exists, a render otherwise. What a projection
+   *  and the backfill both call. */
   def request(next: ShareCardInputs, fallback: String = ShareCardReason.Backfill): Option[EnqueueResult] =
     existing(next) match {
-      case Some(name) =>
-        fingerprints.put(next.filmId, next.fingerprint)
-        // The ratings came back to what this card shows while a deferred render of an in-between
-        // value waits: bring its payload back too, so it finds the card there and draws nothing.
-        queue.amendWaiting(ratingsKey(next.filmId, name), ratingsPayload(next, name))
-        None
-      case None => Some(ratingsOnlySince(next).fold(enqueueRender(next, reasonsFor(next, fallback)))(deferRatings(next, _)))
+      case Some(_) => fingerprints.put(next.filmId, next.fingerprint); None
+      case None    => Some(enqueueRender(next, reasonsFor(next, fallback)))
     }
-
-  private def ratingsKey(filmId: String, anchor: String): String = s"share-card-ratings|$filmId|$anchor"
-  private def ratingsPayload(next: ShareCardInputs, anchor: String): Map[String, String] =
-    next.toPayload ++ Map(ReasonsKey -> ShareCardReason.Ratings, FirstKey -> "false", AnchorKey -> anchor)
-
-  /** The film's current card, when the only drawn part `next` changes from it is the ratings. */
-  private def ratingsOnlySince(next: ShareCardInputs): Option[ShareCardFile] =
-    Option(lastKnown.get(next.filmId)).filter(store.cardExists).flatMap(ShareCardFile.parse).filter { had =>
-      had.layoutHash == next.layoutHash && had.ratingsHash != next.ratingsHash && candidatePosterHashes(next).contains(had.posterHash)
-    }
-
-  /** Queue `next` to render no sooner than a day after the card it would replace was written. */
-  private def deferRatings(next: ShareCardInputs, had: ShareCardFile): EnqueueResult = {
-    val due = store.modified(had.name).map(_.plusMillis(RatingsWindow.toMillis)).filter(_.isAfter(clock.instant()))
-    due.fold(enqueueRender(next, Seq(ShareCardReason.Ratings))) { notBefore =>
-      val key     = ratingsKey(next.filmId, had.name)
-      val payload = ratingsPayload(next, had.name)
-      val result  = queue.enqueue(TaskType.RenderShareCard, key, payload, submittedAt = clock.instant(), notBefore = Some(notBefore))
-      if (result == EnqueueResult.Duplicate) queue.amendWaiting(key, payload)
-      metrics.render(ShareCardMetrics.Outcome.Deferred, Seq(ShareCardReason.Ratings))
-      result
-    }
-  }
-
-  /** A deferred ratings render whose card was replaced meanwhile (another change rendered a newer
-   *  card for the film, with the ratings of its day) has nothing left to do. */
-  def superseded(payload: Map[String, String], filmId: String): Boolean =
-    payload.get(AnchorKey).exists(anchor => store.newerCardOf(ShareCardFile.token(filmId), anchor))
-
-  def recordSuperseded(reasons: Seq[String]): Unit = metrics.render(ShareCardMetrics.Outcome.Superseded, reasons)
 
   private def candidatePosterHashes(next: ShareCardInputs): Seq[String] =
     if (next.posterUrls.isEmpty) Seq(ShareCardFile.posterHash(None)) else next.posterUrls.map(url => ShareCardFile.posterHash(Some(url)))
@@ -197,11 +150,6 @@ class ShareCardService(
 object ShareCardService {
   val ReasonsKey = "reasons"
   val FirstKey   = "first"
-  /** On a deferred ratings render: the card it would replace. */
-  val AnchorKey  = "anchor"
-
-  /** At most one ratings-only re-render per film per this window. */
-  val RatingsWindow: FiniteDuration = 24.hours
 
   /** How far ahead of the backlog a first card is placed: the queue claims by `submittedAt`, and a
    *  day covers any real backlog. */

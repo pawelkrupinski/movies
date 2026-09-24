@@ -27,11 +27,7 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
 object ShareCardMetrics {
   object Outcome {
     val Rendered = "rendered"; val Existing = "existing"; val Failed = "failed"
-    /** A ratings-only change folded into the film's one render a day, not rendered now. */
-    val Deferred = "deferred"
-    /** A deferred render whose card a later change had already replaced. */
-    val Superseded = "superseded"
-    val all: Seq[String] = Seq(Rendered, Existing, Failed, Deferred, Superseded)
+    val all: Seq[String] = Seq(Rendered, Existing, Failed)
   }
   object PruneReason {
     val Retired = "retired"; val Superseded = "superseded"; val Unreferenced = "unreferenced"
@@ -60,7 +56,7 @@ object ShareCardMetrics {
       .help("Films on screen whose share card for their current inputs exists, over films on screen.")
       .labelNames("country").register(registry)
     private[ShareCardMetrics] val renders = Counter.builder().name("kinowo_worker_share_cards_render")
-      .help("Share-card render attempts by outcome (rendered, existing, failed; deferred = a ratings-only change folded into the film's one render a day; superseded = a deferred render a later change made moot) and reason (new_film, backfill, or the input part that moved).")
+      .help("Share-card render attempts by outcome (rendered, existing, failed) and reason (new_film, backfill, or the input part that moved).")
       .labelNames("country", "outcome", "reason").register(registry)
     private[ShareCardMetrics] val pruned = Counter.builder().name("kinowo_worker_share_cards_pruned")
       .help("Share-card files deleted, by kind and reason (retired, superseded, unreferenced, budget, temp).")

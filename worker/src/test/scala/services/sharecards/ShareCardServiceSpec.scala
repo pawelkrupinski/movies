@@ -7,6 +7,7 @@ import ShareCardTestKit.*
 
 import java.nio.file.Files
 import javax.imageio.ImageIO
+import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 
 class ShareCardServiceSpec extends AnyFlatSpec with Matchers {
@@ -71,6 +72,18 @@ class ShareCardServiceSpec extends AnyFlatSpec with Matchers {
     val queued = drain(rig.queue)
     queued.map(_.taskType) shouldBe Seq(TaskType.RenderShareCard)
     queued.head.payload("reasons") shouldBe ShareCardReason.Ratings
+  }
+
+  it should "re-render a ratings change at once, however recent the card" in {
+    val rig = new Rig
+    val movie = film()
+    rig.service.render(rig.service.inputs(movie), Seq(ShareCardReason.NewFilm))
+    rig.service.current(movie)
+    Seq(8.0, 8.3).foreach(imdb => rig.service.onProjected(movie.copy(ratings = movie.ratings.copy(imdb = Some(imdb))), screened = true))
+    // Both claimable now: nothing is held back for a day.
+    val now = Iterator.continually(rig.queue.claim("spec", 1.minute, T0)).takeWhile(_.isDefined).flatten.toSeq
+    now.map(t => ShareCardInputs.fromPayload(t.payload).flatMap(_.imdb)) shouldBe Seq(Some(8.0), Some(8.3))
+    now.map(_.payload("reasons")).distinct shouldBe Seq(ShareCardReason.Ratings)
   }
 
   it should "re-render with reason poster when the poster the card was drawn from is no longer a candidate" in {
