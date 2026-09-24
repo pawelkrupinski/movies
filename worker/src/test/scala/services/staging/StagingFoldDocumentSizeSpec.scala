@@ -87,7 +87,7 @@ class StagingFoldDocumentSizeSpec extends AnyFlatSpec with Matchers {
     MovieRecord(tmdbId = Some(1061474), data = venues.map(slot).toMap)
 
   private def documentFor(data: Map[Source, SourceData]): StoredMovieDto =
-    StoredMovieDto.fromDomain("avengersdoomsday|2026", record.copy(data = data), Instant.now())
+    StoredMovieDto.fromDomain("avengersdoomsday|2026", record.copy(data = data), Instant.EPOCH)
 
   /** The repository as production wires it under the read-split, asked the way
    *  `MongoStagingFolder` asks it — so the rule under test is the one that ships, not a

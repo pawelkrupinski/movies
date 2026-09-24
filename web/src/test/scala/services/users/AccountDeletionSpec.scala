@@ -19,9 +19,9 @@ class AccountDeletionSpec extends AnyFlatSpec with Matchers {
     userRepository.upsert(User(
       id = "u1", provider = "google", providerSub = "G-1",
       email = Some("u1@x"), displayName = None, avatarUrl = None,
-      createdAt = Instant.now(), lastSeenAt = Instant.now()
+      createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH
     ))
-    stateRepository.upsert(UserState("u1", Set("Conclave"), Set.empty, Instant.now()))
+    stateRepository.upsert(UserState("u1", Set("Conclave"), Set.empty, Instant.EPOCH))
 
     deletion.delete("u1")
 

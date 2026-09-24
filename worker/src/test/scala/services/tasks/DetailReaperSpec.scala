@@ -19,11 +19,14 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
 
   private val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo")
 
-  /** A showtime that keeps its film currently screening. Relative to now, not a
-   *  fixed date, so it cannot silently age into the past — which is what a future
-   *  ended-film gate would then read every fixture here as. Far enough out to also
-   *  sit ahead of the synthetic `t0` the phase-spread tests tick from. */
-  private def screeningSoon = LocalDateTime.now().plusMonths(6)
+  /** The one instant every cache and reaper here runs at. */
+  private val specClock = java.time.Clock.fixed(Instant.parse("2026-06-01T10:00:00Z"), java.time.ZoneOffset.UTC)
+
+  /** A showtime that keeps its film currently screening. Relative to [[specClock]],
+   *  which the caches read too, so it cannot age into the past — which is what a
+   *  future ended-film gate would then read every fixture here as. Far enough out to
+   *  also sit ahead of the synthetic `t0` the phase-spread tests tick from. */
+  private def screeningSoon = LocalDateTime.now(specClock).plusMonths(6)
 
   private class CapturingBus extends EventBus {
     val published = scala.collection.mutable.ListBuffer.empty[DomainEvent]
@@ -34,7 +37,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   /** Seed the cache with one KinoApollo film carrying (optionally) a filmUrl —
    *  exactly what a bare deferred scrape persists. */
   private def cacheWith(filmUrl: Option[String]) = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
     val bare  = CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None, filmUrl = filmUrl,
       synopsis = None, cast = Seq.empty, director = Seq.empty,
       showtimes = Seq(Showtime(screeningSoon, Some("https://book"))))
@@ -44,7 +47,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
 
   private def reaper(cache: CaffeineMovieCache, queue: InMemoryTaskQueue, fresh: InMemoryFreshnessStore,
                      bus: EventBus = new InProcessEventBus()) =
-    new DetailReaper(Seq(enricher), cache, queue, fresh, bus)
+    new DetailReaper(Seq(enricher), cache, queue, fresh, bus, clock = specClock)
 
   /** The same seed as [[cacheWith]], but stored PRODUCTION's way: showtimes in
    *  `screenings`, slots in `movie_slots`. Every other fixture here wires a bare
@@ -57,7 +60,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   private def splitCacheWith(filmUrl: Option[String]) = {
     val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
                                                  slots      = Some(new InMemorySlotsRepository))
-    val cache = new CaffeineMovieCache(repository, new InProcessEventBus(), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
     val bare  = CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None, filmUrl = filmUrl,
       synopsis = None, cast = Seq.empty, director = Seq.empty,
       showtimes = Seq(Showtime(screeningSoon, Some("https://book"))))
@@ -81,14 +84,14 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
    *  `stripForCache` ever stops stripping, these fixtures quietly stop covering the
    *  thing they exist to cover, and only this assertion would say so. */
   private def assertScreeningButStripped(cache: CaffeineMovieCache, repository: InMemoryMovieRepository): Unit = {
-    storedShowtimes(repository).count(_.isUpcoming(LocalDateTime.now())) shouldBe 1
+    storedShowtimes(repository).count(_.isUpcoming(LocalDateTime.now(specClock))) shouldBe 1
     cachedShowtimes(cache) shouldBe empty
   }
 
   /** Seed the cache with `n` distinct deferred films, each carrying a filmUrl —
    *  a synchronized stale cohort, as a re-key / title-rule wave produces. */
   private def cacheWithMany(n: Int) = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
     val films = (1 to n).map { i =>
       CinemaMovie(Movie(s"Film $i"), KinoApollo, posterUrl = None, filmUrl = Some(s"http://ref/$i"),
         synopsis = None, cast = Seq.empty, director = Seq.empty,
@@ -111,7 +114,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
         FreshnessKind.DetailEnrich, Instant.ofEpochMilli(t0))
     }
     val r = new DetailReaper(Seq(enricher), cache, queue, fresh, new InProcessEventBus(),
-      dueWindow = new DueWindow(6.hours))
+      dueWindow = new DueWindow(6.hours), clock = specClock)
     val ticks = (6.hours.toMillis / delta.toMillis).toInt
     (1 to ticks).map(k => r.tick(t0 + k * delta.toMillis))
   }
@@ -199,7 +202,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
     var cap = 1
     val r = new DetailReaper(Seq(enricher), cacheWithMany(10), queue, fresh, new InProcessEventBus(),
-      maxEnqueuePerTick = cap)
+      maxEnqueuePerTick = cap, clock = specClock)
     r.tick() shouldBe 1   // cap = 1
     cap = 4
     r.tick() shouldBe 4   // live re-read picks up the new cap (a captured Int would still be 1)
@@ -208,7 +211,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   it should "enqueue at most maxEnqueuePerTick details when a whole cohort is stale (anti-burst cap)" in {
     val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
     val r = new DetailReaper(Seq(enricher), cacheWithMany(5), queue, fresh, new InProcessEventBus(),
-      maxEnqueuePerTick = 2)
+      maxEnqueuePerTick = 2, clock = specClock)
     r.tick() shouldBe 2
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 2L
   }
@@ -216,7 +219,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   it should "drain the rest of the stale cohort over subsequent capped ticks" in {
     val (cache, queue, fresh) = (cacheWithMany(5), new InMemoryTaskQueue, new InMemoryFreshnessStore)
     val r = new DetailReaper(Seq(enricher), cache, queue, fresh, new InProcessEventBus(),
-      maxEnqueuePerTick = 2)
+      maxEnqueuePerTick = 2, clock = specClock)
     r.tick() shouldBe 2 // films 1–2
     r.tick() shouldBe 2 // 1–2 still waiting (deduped), next 2 fresh cohort members
     r.tick() shouldBe 1 // last one
@@ -227,14 +230,14 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   "DetailReaper.tickIfClaimed" should "not enqueue when another machine has claimed the occurrence" in {
     val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
     new DetailReaper(Seq(enricher), cacheWith(Some("http://ref")), queue, fresh, new InProcessEventBus(),
-      runStore = NeverClaimScheduledRunStore).tickIfClaimed() shouldBe 0
+      runStore = NeverClaimScheduledRunStore, clock = specClock).tickIfClaimed() shouldBe 0
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
   }
 
   it should "tick when it wins the occurrence claim" in {
     val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
     new DetailReaper(Seq(enricher), cacheWith(Some("http://ref")), queue, fresh, new InProcessEventBus(),
-      runStore = new InMemoryScheduledRunStore).tickIfClaimed() shouldBe 1
+      runStore = new InMemoryScheduledRunStore, clock = specClock).tickIfClaimed() shouldBe 1
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
   }
 
@@ -248,7 +251,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
       override def whenReady(kind: FreshnessKind): scala.concurrent.Future[Unit] = scala.concurrent.Promise[Unit]().future
     }
     new DetailReaper(Seq(enricher), cacheWith(Some("http://ref")), queue, hydrating, new InProcessEventBus(),
-      runStore = new InMemoryScheduledRunStore).tickIfClaimed() shouldBe 0
+      runStore = new InMemoryScheduledRunStore, clock = specClock).tickIfClaimed() shouldBe 0
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
   }
 
@@ -304,14 +307,14 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     val window = new DueWindow(6.hours)
     val gone   = new FakeDetailEnricher(KinoApollo, "kino-apollo",
       failure = Some(new HttpStatusException(404, "GET", "http://ref", None)))
-    val r = new DetailReaper(Seq(gone), cache, queue, fresh, new InProcessEventBus(), dueWindow = window)
+    val r = new DetailReaper(Seq(gone), cache, queue, fresh, new InProcessEventBus(), dueWindow = window, clock = specClock)
     val h = new EnrichDetailsHandler(Map("kino-apollo" -> gone), cache, fresh,
       new services.UptimeMonitor(), new InProcessEventBus(), window)
 
     r.tick() shouldBe 1
     // Run the task the way the worker does, so the queue is clear for the next tick
     // and only the freshness stamp can hold the film back.
-    val task = queue.claim("worker", 1.minute, Instant.now()).getOrElse(fail("nothing queued"))
+    val task = queue.claim("worker", 1.minute, specClock.instant()).getOrElse(fail("nothing queued"))
     h.handle(task) shouldBe HandlerOutcome.Done
     queue.complete(task.id, "worker")
 
@@ -326,14 +329,14 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     val gone   = new FakeDetailEnricher(KinoApollo, "kino-apollo",
       failure = Some(new HttpStatusException(404, "GET", "http://ref", None)))
     val bus = new CapturingBus
-    val r = new DetailReaper(Seq(gone), cache, queue, fresh, bus, dueWindow = window)
+    val r = new DetailReaper(Seq(gone), cache, queue, fresh, bus, dueWindow = window, clock = specClock)
     val h = new EnrichDetailsHandler(Map("kino-apollo" -> gone), cache, fresh,
       new services.UptimeMonitor(), new InProcessEventBus(), window)
 
     // Before the detail is even attempted the row is legitimately outstanding.
     r.reapStuckPending() shouldBe 0
     r.tick() shouldBe 1
-    val task = queue.claim("worker", 1.minute, Instant.now()).getOrElse(fail("nothing queued"))
+    val task = queue.claim("worker", 1.minute, specClock.instant()).getOrElse(fail("nothing queued"))
     h.handle(task) shouldBe HandlerOutcome.Done
 
     // Now the detail is settled-unfetchable, so the row must reach the read model

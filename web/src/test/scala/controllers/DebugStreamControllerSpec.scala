@@ -41,7 +41,7 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
       DebugCountries.single(new DebugStack(models.Country.default, repository, staging,
         new services.tasks.InMemoryTaskQueue, services.cadence.RatingCadenceReader.empty,
         services.attempts.EnrichmentAttemptReader.empty,
-        () => Seq.empty, () => Seq.empty, () => java.time.Instant.now())),
+        () => Seq.empty, () => Seq.empty, () => java.time.Instant.EPOCH)),
       mode)
 
   private def record(title: String) =

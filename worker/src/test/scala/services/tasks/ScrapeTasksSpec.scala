@@ -19,6 +19,9 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
 
+  // Every cache here runs at one fixed instant; the listings' showtimes sit a day after it.
+  private val specClock = Clock.fixed(Instant.parse("2026-06-01T10:00:00Z"), ZoneOffset.UTC)
+
   private class FakeScraper(val cinema: Cinema, result: => Seq[CinemaMovie]) extends CinemaScraper {
     var fetchCount = 0
     def scrapeHosts: Set[String]  = Set.empty
@@ -27,11 +30,11 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
 
   private def movieAt(c: Cinema, title: String = "Dune") = Seq(
     CinemaMovie(Movie(title), c, None, None, None, Seq.empty, Seq.empty,
-      Seq(Showtime(LocalDateTime.now(), Some("https://book"))))
+      Seq(Showtime(LocalDateTime.now(specClock).plusDays(1), Some("https://book"))))
   )
 
   private def freshRunner() = new CinemaScrapeRunner(
-    new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer),
+    new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock),
     new InProcessEventBus(),
     deferredCinemas = Set.empty
   )
@@ -648,7 +651,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
   private def movieWithRef(c: Cinema, title: String = "Dune") = Seq(
     CinemaMovie(Movie(title), c, posterUrl = None, filmUrl = Some(s"http://detail/$title"),
       synopsis = None, cast = Seq.empty, director = Seq.empty,
-      showtimes = Seq(Showtime(LocalDateTime.now(), Some("https://book"))))
+      showtimes = Seq(Showtime(LocalDateTime.now(specClock).plusDays(1), Some("https://book"))))
   )
 
   "CinemaScrapeRunner" should "enqueue detail via the bus (CinemaMovieAdded → DetailTaskEnqueuer), not inline" in {
@@ -657,7 +660,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     // into one EnrichDetails task. End-to-end proof the event path replaces the
     // old inline enqueue.
     val bus     = new InProcessEventBus()
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), bus, normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), bus, normalizer = titleNormalizer, clock = specClock)
     val queue   = new InMemoryTaskQueue
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo")
     bus.subscribe(new DetailTaskEnqueuer(enricher, cache, queue, new InMemoryFreshnessStore).onCinemaMovieAdded)
@@ -668,7 +671,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
 
   it should "leave the queue empty when no enqueuer is subscribed for the cinema" in {
     val bus   = new InProcessEventBus()
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), bus, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), bus, normalizer = titleNormalizer, clock = specClock)
     val queue = new InMemoryTaskQueue
     new CinemaScrapeRunner(cache, bus, Set.empty).run(new FakeScraper(KinoApollo, movieWithRef(KinoApollo)))
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
@@ -678,7 +681,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
 
   "CinemaScrapeRunner.classify" should
     "hold a deferred cinema's new film (mark detailPending, emit no event) until its detail lands" in {
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
     val runner  = new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set(KinoApollo))
     val touched = cache.recordCinemaScrape(KinoApollo, movieWithRef(KinoApollo))
 
@@ -687,7 +690,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "enrich a film with no deferred detail immediately (emit MovieDetailsComplete, no detailPending)" in {
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
     val runner  = new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set.empty)
     val touched = cache.recordCinemaScrape(Multikino, movieAt(Multikino))
 
@@ -696,7 +699,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "enrich a deferred cinema's film immediately when it carries no detail filmUrl (nothing to wait for)" in {
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
     val runner  = new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set(KinoApollo))
     val touched = cache.recordCinemaScrape(KinoApollo, movieAt(KinoApollo)) // filmUrl = None
 
@@ -705,11 +708,11 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "enrich a deferred cinema's film immediately when its filmUrl is a Filmweb-fallback page (native enricher can't fetch it)" in {
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
     val runner  = new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set(KinoApollo))
     val fallback = Seq(CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None,
       filmUrl = Some(FilmwebShowtimesClient.filmPageUrl(1089)), synopsis = None, cast = Seq.empty, director = Seq.empty,
-      showtimes = Seq(Showtime(LocalDateTime.now(), Some("https://book")))))
+      showtimes = Seq(Showtime(LocalDateTime.now(specClock).plusDays(1), Some("https://book")))))
     val touched = cache.recordCinemaScrape(KinoApollo, fallback)
 
     runner.classify(KinoApollo, touched).map(_.title) shouldBe Seq("Dune")  // not held — enriches now

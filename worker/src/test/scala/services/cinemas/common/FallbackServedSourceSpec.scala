@@ -1,15 +1,14 @@
 package services.cinemas.common
 
-import models.{Cinema, CinemaMovie, Movie, Multikino, Showtime}
+import models.{Cinema, CinemaMovie, Movie, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.UptimeMonitor
 import services.events.InProcessEventBus
 import services.fallback.InMemoryFallbackStore
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepository, InMemoryScrapeGuardLedger}
+import services.movies.{CaffeineMovieCache, DepthGuardTime, InMemoryMovieRepository, InMemoryScrapeGuardLedger}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
-import java.time.LocalDateTime
 import scala.concurrent.duration.Duration
 
 /**
@@ -32,12 +31,12 @@ class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
   private val Primary  = "multikino.pl/cinemas/0011"
   private val Fallback = "filmweb.pl/cinema/-2180"
   private val listing  = Seq(CinemaMovie(Movie("Dune"), Multikino, None, None, None, Nil, Nil,
-    Seq(Showtime(LocalDateTime.of(2027, 1, 1, 18, 0), None))))
+    DepthGuardTime.showtimes(1)))
 
   private def run(primary: CinemaScraper): Option[String] = {
     val ledger  = new InMemoryScrapeGuardLedger
     val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(),
-      normalizer = titleNormalizer, scrapeGuardLedger = ledger)
+      normalizer = titleNormalizer, scrapeGuardLedger = ledger, clock = DepthGuardTime.clock)
     val scraper = new SourceFallbackScraper(primary,
       fallback = () => Some(new Source(Fallback, listing)), fallbackName = "Filmweb", fallbackRef = () => Some("2180"),
       new UptimeMonitor(), new InMemoryFallbackStore, fallbackAfter = Duration.Zero)
@@ -59,7 +58,7 @@ class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
   // only for the primary's recovery to rewire them back. A fallback tick only ADDS.
   private def films(titles: String*)(showtimesEach: Int): Seq[CinemaMovie] = titles.map { t =>
     CinemaMovie(Movie(t, releaseYear = Some(2026)), Multikino, None, None, None, Nil, Nil,
-      (0 until showtimesEach).map(n => Showtime(LocalDateTime.of(2027, 6, 8 + n / 12, 8 + n % 12, 0), None)))
+      DepthGuardTime.showtimes(showtimesEach))
   }
 
   private final class Switchable(key: String) extends CinemaScraper {
@@ -75,7 +74,7 @@ class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
       slots = Some(new services.movies.InMemorySlotsRepository))
     val ledger  = new InMemoryScrapeGuardLedger
     val cache   = new CaffeineMovieCache(repository, new InProcessEventBus(), normalizer = titleNormalizer,
-      scrapeGuardLedger = ledger, clock = services.movies.DepthGuardTime.clock)
+      scrapeGuardLedger = ledger, clock = DepthGuardTime.clock)
     val primary = new Switchable(Primary)
     val scraper = new SourceFallbackScraper(primary,
       fallback = () => Some(new Source(Fallback, films("Film 1", "Fallback Only")(2))), fallbackName = "Filmweb",

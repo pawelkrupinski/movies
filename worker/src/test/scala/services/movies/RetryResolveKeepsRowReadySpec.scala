@@ -27,12 +27,15 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 class RetryResolveKeepsRowReadySpec extends AnyFlatSpec with Matchers {
 
-  private val Title = "Klasyka Bajek Polskich"
+  // The service and cache run at one fixed instant; the row's showtime and its remembered
+  // miss are placed relative to it.
+  private val specClock = java.time.Clock.fixed(Instant.parse("2026-06-01T10:00:00Z"), java.time.ZoneOffset.UTC)
+  private val Title     = "Klasyka Bajek Polskich"
   private val Row   = MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(
-    title = Some(Title), showtimes = Seq(Showtime(LocalDateTime.now().plusDays(2).withNano(0), None)))))
+    title = Some(Title), showtimes = Seq(Showtime(LocalDateTime.now(specClock).plusDays(2).withNano(0), None)))))
   // A miss on exactly the row's current inputs, recent enough to stand: a plain dispatch
   // would not search again, so only the re-try's own say-so can make it look.
-  private val FirstMiss = TmdbAttempt.on(Row.evidence, Row.resolverOriginalTitles, Instant.now().minusSeconds(3600))
+  private val FirstMiss = TmdbAttempt.on(Row.evidence, Row.resolverOriginalTitles, specClock.instant().minusSeconds(3600))
 
   private class NoMatchTmdb extends GetOnlyHttpFetch {
     val searches = new AtomicInteger
@@ -47,8 +50,8 @@ class RetryResolveKeepsRowReadySpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val readModel  = new InMemoryReadModelRepository()
     val projector  = new ReadModelProjector(repository, readModel, readModel)
-    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val service    = new MovieService(cache, new InProcessEventBus(), new TmdbClient(http = http, apiKey = Some("stub")))
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = specClock)
+    val service    = new MovieService(cache, new InProcessEventBus(), new TmdbClient(http = http, apiKey = Some("stub")), clock = specClock)
     val key        = cache.keyOf(Title, None)
     // Every row state the change stream shows, in order — what the projector sees.
     val streamed   = scala.collection.mutable.Buffer.empty[Boolean]

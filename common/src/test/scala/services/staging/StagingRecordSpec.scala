@@ -51,7 +51,7 @@ class StagingRecordSpec extends AnyFlatSpec with Matchers {
       data   = slot("Kumotry", Some(2026)).data +
         (Tmdb -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026))))
     val id  = StagingRecord.idFor(Helios, "Kumotry", Some(2026), titleNormalizer)
-    val dto = StoredMovieDto.fromDomain(id, record, Instant.now())
+    val dto = StoredMovieDto.fromDomain(id, record, Instant.EPOCH)
     val back = StoredMovieDto.toDomain(dto, titleNormalizer).record
     back.tmdbId               shouldBe Some(1454157)
     back.data.keySet          shouldBe Set(Helios, Tmdb)

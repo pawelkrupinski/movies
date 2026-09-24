@@ -70,7 +70,7 @@ class MovieRecordFieldWiringSpec extends AnyFlatSpec with Matchers {
    *  covered the moment it is declared. `_id` and `updatedAt` are the document's own
    *  metadata, not a film field. */
   private def persistedFields: Seq[String] = StoredMovieDto
-    .fromDomain("test|1900", everyFieldSet, Instant.now())
+    .fromDomain("test|1900", everyFieldSet, Instant.EPOCH)
     // `tmdbNoMatch` is read-only: a legacy flag the decoder turns into a
     // `TmdbAttempt`, never written, so no patch or metric carries it.
     .productElementNames.toSeq.filterNot(Set("_id", "updatedAt", "tmdbNoMatch"))

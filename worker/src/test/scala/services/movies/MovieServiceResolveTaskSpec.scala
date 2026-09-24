@@ -41,7 +41,7 @@ class MovieServiceResolveTaskSpec extends AnyFlatSpec with Matchers {
     service.onMovieDetailsComplete(
       MovieDetailsComplete("Interstellar", Some(2014), originalTitle = None, director = Some("Christopher Nolan")))
 
-    val task = queue.claim("w", 1.minute, Instant.now()).getOrElse(fail("no ResolveTmdb task enqueued"))
+    val task = queue.claim("w", 1.minute, Instant.EPOCH).getOrElse(fail("no ResolveTmdb task enqueued"))
     task.taskType                          shouldBe TaskType.ResolveTmdb
     task.dedupKey                          shouldBe "resolve-tmdb|Interstellar|2014"
     EnrichTaskKeys.titleOf(task.payload)   shouldBe "Interstellar"

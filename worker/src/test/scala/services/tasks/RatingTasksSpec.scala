@@ -18,6 +18,10 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
   // ── RatingHandler ─────────────────────────────────────────────────────────
 
   private val dueWindow = new DueWindow(4.hours)
+
+  // The cadence specs refresh once, then again seven hours on — both on fixed clocks.
+  private val Earlier = Instant.parse("2026-06-01T10:00:00Z")
+  private val earlier = Clock.fixed(Earlier, ZoneOffset.UTC)
   private def cadence    = new services.cadence.InMemoryRatingCadenceStore
 
   private def ratingTask(dedup: String, title: String, year: Option[Int]) =
@@ -46,13 +50,13 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
     val cad   = new services.cadence.InMemoryRatingCadenceStore
     val fresh = new InMemoryFreshnessStore
     // First refresh reports NO visible change → streak grows to 1.
-    new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, new DueWindow(4.hours), cad, (_, _) => None)
+    new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, new DueWindow(4.hours), cad, (_, _) => None, earlier)
       .handle(ratingTask("imdb|tmdb:7", "X", None)) shouldBe HandlerOutcome.Done
     cad.statsFor("imdb|tmdb:7").map(_.unchangedStreak) shouldBe Some(1)
 
     // A later refresh that DOES move the value snaps the streak back to 0 and
     // records the new displayed value as the last change.
-    val later = Clock.fixed(Instant.now().plusSeconds(7.hours.toSeconds), ZoneOffset.UTC)
+    val later = Clock.fixed(Earlier.plusSeconds(7.hours.toSeconds), ZoneOffset.UTC)
     new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, new DueWindow(1.hour), cad, (_, _) => Some("7.2"), later)
       .handle(ratingTask("imdb|tmdb:7", "X", None)) shouldBe HandlerOutcome.Done
     cad.statsFor("imdb|tmdb:7").map(_.unchangedStreak)        shouldBe Some(0)
@@ -66,11 +70,11 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
     // not two changes that pin the film to the base interval.
     val cad   = new services.cadence.InMemoryRatingCadenceStore
     val fresh = new InMemoryFreshnessStore
-    new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, new DueWindow(4.hours), cad, (_, _) => Some("7.3"))
+    new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, new DueWindow(4.hours), cad, (_, _) => Some("7.3"), earlier)
       .handle(ratingTask("imdb|tmdb:7", "X", None)) shouldBe HandlerOutcome.Done
     cad.statsFor("imdb|tmdb:7").map(_.windowChanges) shouldBe Some(1)
 
-    val later = Clock.fixed(Instant.now().plusSeconds(7.hours.toSeconds), ZoneOffset.UTC)
+    val later = Clock.fixed(Earlier.plusSeconds(7.hours.toSeconds), ZoneOffset.UTC)
     new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, new DueWindow(1.hour), cad, (_, _) => Some("7.3"), later)
       .handle(ratingTask("imdb|tmdb:7", "X", None)) shouldBe HandlerOutcome.Done
     cad.statsFor("imdb|tmdb:7").map(_.windowChanges)   shouldBe Some(1)  // still one change, no phantom

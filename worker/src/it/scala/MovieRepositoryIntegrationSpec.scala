@@ -85,10 +85,10 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
    *  `fired` is by-name and re-checked every pass; pass something that waits about a
    *  second (`latch.await(1, TimeUnit.SECONDS)`), so the loop paces itself. */
   private def awaitStreamLive(what: String, fired: => Boolean)(change: Int => Unit): Unit = {
-    val deadline = System.currentTimeMillis() + 60000
+    val deadline = System.nanoTime() / 1000000 + 60000
     var passes   = 0
     var live     = false
-    while (!live && System.currentTimeMillis() < deadline) {
+    while (!live && System.nanoTime() / 1000000 < deadline) {
       passes += 1
       change(passes)
       live = fired
@@ -633,7 +633,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
     val repo   = new MongoMovieRepository(Some(db), normalizer = titleNormalizer)
-    val cache  = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
+    // The system clock on purpose: the Mongo repositories stamp with it too.
+    val cache  = new CaffeineMovieCache(repo, normalizer = titleNormalizer, clock = java.time.Clock.systemUTC())
     val title  = "__integration-test-cache-delete__"
     val year   = Some(1910)
     val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
@@ -2168,7 +2169,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // boot-hydrates EMPTY and the per-film read fails too.
       val blindRepo = new MongoMovieRepository(Some(db), screenings = Some(scr),
         slots = Some(new UnreadableSlotsRepository), normalizer = titleNormalizer)
-      val cache = new CaffeineMovieCache(blindRepo, normalizer = titleNormalizer)
+      // The system clock on purpose: the showtime below is relative to it, as Mongo's stamps are.
+      val cache = new CaffeineMovieCache(blindRepo, normalizer = titleNormalizer, clock = java.time.Clock.systemUTC())
 
       // …and Multikino's scrape lands, as it would on any ordinary tick.
       cache.recordCinemaScrape(Multikino, Seq(CinemaMovie(

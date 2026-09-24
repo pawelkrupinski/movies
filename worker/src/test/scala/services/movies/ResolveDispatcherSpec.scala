@@ -26,7 +26,7 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
       .dispatch("Interstellar", Some(2014), originalTitle = Some("Interstellar"), director = Some("Christopher Nolan"))
 
     queue.monitor().active.size shouldBe 1
-    val task = queue.claim("w", 1.minute, Instant.now()).getOrElse(fail("no ResolveTmdb task enqueued"))
+    val task = queue.claim("w", 1.minute, Instant.EPOCH).getOrElse(fail("no ResolveTmdb task enqueued"))
     task.taskType                            shouldBe TaskType.ResolveTmdb
     task.dedupKey                            shouldBe "resolve-tmdb|Interstellar|2014"
     EnrichTaskKeys.titleOf(task.payload)     shouldBe "Interstellar"
@@ -43,7 +43,7 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
     val queue = new InMemoryTaskQueue()
     new QueueResolveDispatcher(queue).dispatch("Die Odyssee", Some(2026), None, None, ResolveMode.Force)
 
-    val task = queue.claim("w", 1.minute, Instant.now()).getOrElse(fail("no ResolveTmdb task enqueued"))
+    val task = queue.claim("w", 1.minute, Instant.EPOCH).getOrElse(fail("no ResolveTmdb task enqueued"))
     EnrichTaskKeys.modeOf(task.payload) shouldBe ResolveMode.Force
   }
 
@@ -57,7 +57,7 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
     dispatcher.dispatch("Tosca", None, None, None, ResolveMode.RetryMiss)
 
     queue.monitor().active.size shouldBe 1
-    val task = queue.claim("w", 1.minute, Instant.now()).getOrElse(fail("no ResolveTmdb task enqueued"))
+    val task = queue.claim("w", 1.minute, Instant.EPOCH).getOrElse(fail("no ResolveTmdb task enqueued"))
     EnrichTaskKeys.modeOf(task.payload) shouldBe ResolveMode.RetryMiss
   }
 
@@ -68,7 +68,7 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
     dispatcher.dispatch("Tosca", None, None, None, ResolveMode.RetryMiss)
     dispatcher.dispatch("Tosca", None, None, None)
 
-    val task = queue.claim("w", 1.minute, Instant.now()).getOrElse(fail("no ResolveTmdb task enqueued"))
+    val task = queue.claim("w", 1.minute, Instant.EPOCH).getOrElse(fail("no ResolveTmdb task enqueued"))
     EnrichTaskKeys.modeOf(task.payload) shouldBe ResolveMode.Force
   }
 
@@ -83,7 +83,7 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
     dispatcher.dispatch("Tosca", None, None, None)
     dispatcher.dispatch("Tosca", None, None, None)                        // a plain duplicate: nothing lost, not counted
     dispatcher.dispatch("Tosca", None, None, None, ResolveMode.RetryMiss) // waiting → upgraded
-    queue.claim("w", 1.minute, Instant.now()).getOrElse(fail("no ResolveTmdb task enqueued"))
+    queue.claim("w", 1.minute, Instant.EPOCH).getOrElse(fail("no ResolveTmdb task enqueued"))
     dispatcher.dispatch("Tosca", None, None, None, ResolveMode.Force)     // being worked on → not upgraded
 
     recorded.toSeq shouldBe Seq(ResolveMode.RetryMiss -> true, ResolveMode.Force -> false)

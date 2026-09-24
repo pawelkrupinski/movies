@@ -25,7 +25,10 @@ import java.time.LocalDateTime
  */
 class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
 
-  private val showtime = Showtime(LocalDateTime.now().plusDays(1).withHour(20), bookingUrl = None)
+  // The caches run at a fixed instant and the showtime sits a day after it, so it is
+  // upcoming on whatever day the spec runs.
+  private val fixedClock = java.time.Clock.fixed(java.time.Instant.parse("2026-06-01T10:00:00Z"), java.time.ZoneOffset.UTC)
+  private val showtime   = Showtime(LocalDateTime.now(fixedClock).plusDays(1).withHour(20), bookingUrl = None)
 
   /** A film already in `movies` showing at TWO cinemas — the state a scrape must not undo. */
   private def liveFilm = MovieRecord(
@@ -53,7 +56,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
    *  to the caller. Named rather than anonymous: an anonymous subclass capturing a
    *  local `var` trips a JVM VerifyError under this Scala version. */
   private class LosesWrites(repo: MovieRepository, metrics: ScrapeLandingMetrics = ScrapeLandingMetrics.noop)
-      extends CaffeineMovieCache(repo, normalizer = titleNormalizer, scrapeLandingMetrics = metrics) {
+      extends CaffeineMovieCache(repo, normalizer = titleNormalizer, scrapeLandingMetrics = metrics, clock = fixedClock) {
     var loseWrites = false
     override private[services] def putIfPresent(
       key: CacheKey, updater: MovieRecord => MovieRecord): Boolean = {
@@ -80,7 +83,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
     "not rewrite that film as if only this cinema showed it" in {
     val repo    = new Repo(Seq(stored), readable = false)
     val metrics = new RecordingScrapeLandingMetrics
-    val cache   = new CaffeineMovieCache(repo, normalizer = titleNormalizer, scrapeLandingMetrics = metrics)
+    val cache   = new CaffeineMovieCache(repo, normalizer = titleNormalizer, scrapeLandingMetrics = metrics, clock = fixedClock)
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Live Film")))
 
     // Nothing may be written. Any upsert here carries ONLY Multikino, and `upsert` hands
@@ -105,7 +108,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
   // the slot. Ungated, the drop deletes this venue's showtimes and puts them nowhere.
   it should "not strip the venue's slot off the row that still holds it" in {
     val repo  = new Repo(Seq.empty, readable = true)
-    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer, clock = fixedClock)
     // A yearless row holding Multikino's slot — what the redirect will try to promote.
     // Alongside nine filler films, so the degraded tick below is a SHRINK the prune
     // stands down for (`MinSlotsForShrinkGuard` 8, `PruneFloorRatio` 0.5). Otherwise
@@ -140,7 +143,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
   // scraping. A row that is genuinely ABSENT is a real newcomer and must still be written.
   it should "still record a genuinely new film when the read succeeded and found nothing" in {
     val repo  = new Repo(Seq.empty, readable = true)
-    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer, clock = fixedClock)
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Brand New")))
 
     repo.upserts.map(_._2)      should contain ("Brand New")
@@ -152,7 +155,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
   // prunes the film's whole board off the back of it. Deferring costs one settle tick.
   "a re-key whose stored row cannot be READ" should "be deferred, not written from nothing" in {
     val repo  = new Repo(Seq(stored), readable = false)
-    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer, clock = fixedClock)
 
     cache.rekey(CacheKey("Live Film", Some(2026), titleNormalizer), CacheKey("Live Film", Some(2027), titleNormalizer), identity, services.movies.RekeyReason.Canonicalize)
 
@@ -163,7 +166,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
 
   it should "still re-key normally when the row reads back" in {
     val repo  = new Repo(Seq(stored), readable = true)
-    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer, clock = fixedClock)
 
     cache.rekey(CacheKey("Live Film", Some(2026), titleNormalizer), CacheKey("Live Film", Some(2027), titleNormalizer), identity, services.movies.RekeyReason.Canonicalize)
 
@@ -176,7 +179,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
   // behaviour the guard must not cost us.
   it should "merge onto the stored row when the read succeeded, keeping the other cinemas" in {
     val repo  = new Repo(Seq(stored), readable = true)
-    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer, clock = fixedClock)
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Live Film")))
 
     val written = repo.upserts.map(_._3)
@@ -263,7 +266,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
     // without needing a special fake for it.
     val repo    = new Repo(Seq.empty, readable = true)
     val metrics = new RecordingScrapeLandingMetrics
-    val cache   = new CaffeineMovieCache(repo, normalizer = titleNormalizer, scrapeLandingMetrics = metrics)
+    val cache   = new CaffeineMovieCache(repo, normalizer = titleNormalizer, scrapeLandingMetrics = metrics, clock = fixedClock)
     val key     = cache.keyOf("Live Film", Some(2026))
     cache.put(key, liveFilm) // resident in Caffeine — `Repo.updateIfPresent` still answers `false` regardless
     cache.get(key) should not be empty
@@ -282,7 +285,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
   it should "keep the pre-update row resident after a failed write, so the same update is written again" in {
     val repo    = new Repo(Seq.empty, readable = true)
     val metrics = new RecordingScrapeLandingMetrics
-    val cache   = new CaffeineMovieCache(repo, normalizer = titleNormalizer, scrapeLandingMetrics = metrics)
+    val cache   = new CaffeineMovieCache(repo, normalizer = titleNormalizer, scrapeLandingMetrics = metrics, clock = fixedClock)
     val key     = cache.keyOf("Live Film", Some(2026))
     cache.put(key, liveFilm)
 
@@ -297,7 +300,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
   it should "meter and return false on a Caffeine-level miss, without touching the repository" in {
     val repo    = new Repo(Seq.empty, readable = true)
     val metrics = new RecordingScrapeLandingMetrics
-    val cache   = new CaffeineMovieCache(repo, normalizer = titleNormalizer, scrapeLandingMetrics = metrics)
+    val cache   = new CaffeineMovieCache(repo, normalizer = titleNormalizer, scrapeLandingMetrics = metrics, clock = fixedClock)
     val key     = CacheKey("Nothing Resident", Some(2026), titleNormalizer)
     cache.get(key) shouldBe empty // never put — nothing for Caffeine's computeIfPresent to find
 

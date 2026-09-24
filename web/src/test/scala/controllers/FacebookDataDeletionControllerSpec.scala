@@ -31,9 +31,9 @@ class FacebookDataDeletionControllerSpec extends AnyFlatSpec with Matchers {
     userRepository.upsert(User(
       id = "alice@example.com", provider = "facebook", providerSub = fbId,
       email = Some("alice@example.com"), displayName = Some("Alice"), avatarUrl = None,
-      createdAt = Instant.now(), lastSeenAt = Instant.now()
+      createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH
     ))
-    stateRepository.upsert(UserState("alice@example.com", Set("Conclave"), Set.empty, Instant.now()))
+    stateRepository.upsert(UserState("alice@example.com", Set("Conclave"), Set.empty, Instant.EPOCH))
   }
 
   // ── GET on the callback URL ────────────────────────────────────────────────
@@ -99,7 +99,7 @@ class FacebookDataDeletionControllerSpec extends AnyFlatSpec with Matchers {
     userRepository.upsert(User(
       id = "bob@example.com", provider = "google", providerSub = "G-2",
       email = Some("bob@example.com"), displayName = Some("Bob"), avatarUrl = None,
-      createdAt = Instant.now(), lastSeenAt = Instant.now()
+      createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH
     ))
 
     ctl.callback()(callbackRequest(FacebookSignedRequestFixture.forUser(Secret, "fb-777")))
