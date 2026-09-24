@@ -48,8 +48,17 @@ final class RecheckedAudit(
     metrics.audited(judged.size)
     metrics.suspected(suspects.size)
     if (suspects.nonEmpty) {
-      val queued = queue.enqueue(taskType, s"$name-recheck", Map(IdsKey -> suspects.mkString(Separator)),
-        submittedAt = clock.instant(), notBefore = Some(clock.instant().plusMillis(recheckAfter.toMillis)))
+      // Each sample's suspects under a field of their own, so a re-check still WAITING (one
+      // dedup key per audit) takes them on beside its own instead of the enqueue deduping them
+      // away unchecked.
+      val dedupKey = s"$name-recheck"
+      val fields   = Map(s"$IdsKey.${java.util.UUID.randomUUID()}" -> suspects.mkString(Separator))
+      val queued = queue.enqueue(taskType, dedupKey, fields,
+        submittedAt = clock.instant(), notBefore = Some(clock.instant().plusMillis(recheckAfter.toMillis))) match {
+        case EnqueueResult.Duplicate if queue.amendWaiting(dedupKey, fields) => "joined the waiting re-check"
+        case EnqueueResult.Duplicate => "NOT queued: the re-check is running"
+        case other                   => other.toString
+      }
       logger.info(s"$name audit: ${suspects.size} of ${judged.size} sampled differ, re-checked in ${recheckAfter.toMinutes}m " +
         s"($queued): ${suspects.take(LoggedIds).mkString(", ")}")
     }
@@ -71,8 +80,8 @@ final class RecheckedAudit(
   /** Run whichever of the two a task asks for: a re-check when it carries ids, else a sample of
    *  what `ids` returns (None when those could not be read completely — nothing is sampled). */
   def handle(task: Task, ids: () => Option[Seq[String]]): HandlerOutcome =
-    task.payload.get(IdsKey) match {
-      case Some(carried) => recheck(carried.split(Separator).toSeq.filter(_.nonEmpty)); HandlerOutcome.Done
+    carriedIds(task.payload) match {
+      case Some(carried) => recheck(carried); HandlerOutcome.Done
       case None => ids() match {
         case Some(all) => sample(all); HandlerOutcome.Done
         case None =>
@@ -83,6 +92,12 @@ final class RecheckedAudit(
 }
 
 object RecheckedAudit {
+  /** The ids a re-check task carries — every sample's that joined it — or None for a sample task. */
+  private def carriedIds(payload: Map[String, String]): Option[Seq[String]] = {
+    val fields = payload.collect { case (k, v) if k == IdsKey || k.startsWith(s"$IdsKey.") => v }
+    Option.when(fields.nonEmpty)(fields.iterator.flatMap(_.split(Separator)).filter(_.nonEmpty).toSeq.distinct)
+  }
+
   /** Longer than any in-flight gap it has to see past: the change stream applies a write in
    *  seconds (its apply-lag alert is at ten minutes), a finished render re-projects its film at
    *  once. A difference still there after fifteen minutes is not in flight. */

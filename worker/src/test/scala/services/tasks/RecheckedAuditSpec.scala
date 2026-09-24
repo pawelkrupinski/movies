@@ -39,7 +39,7 @@ class RecheckedAuditSpec extends AnyFlatSpec with Matchers with org.scalatest.Lo
     claimable(now.plusSeconds(14 * 60)) shouldBe empty   // held back until the re-check is due
     val recheck = claimable(now.plusSeconds(15 * 60)).loneElement
     recheck.taskType shouldBe TaskType.AuditReadModelContent
-    recheck.payload(RecheckedAudit.IdsKey).split("\n").toSet shouldBe Set("b", "d")
+    recheck.payload.values.flatMap(_.split("\n")).toSet shouldBe Set("b", "d")
   }
 
   it should "judge no more than its sample size" in new Rig(sampleSize = 3) {
@@ -60,6 +60,20 @@ class RecheckedAuditSpec extends AnyFlatSpec with Matchers with org.scalatest.Lo
     broken = Set("d")                                    // b's projection landed meanwhile
     audit.handle(claimable(now.plusSeconds(15 * 60)).loneElement, () => fail("a re-check reads no ids"))
     counts shouldBe (4.0, 2.0, 1.0)
+  }
+
+  // The re-check's dedup key is one per audit, so a sample landing while an earlier re-check
+  // still waits was DEDUPED — its suspects were never re-checked, and a violation found only
+  // then was never confirmed. They join the waiting re-check instead.
+  it should "re-check a later sample's suspects too when an earlier re-check is still waiting" in new Rig {
+    broken = Set("b")
+    audit.sample(Seq("a", "b"))
+    broken = Set("b", "x")
+    audit.sample(Seq("x", "y"))
+    counts shouldBe (4.0, 2.0, 0.0)
+    audit.handle(claimable(now.plusSeconds(15 * 60)).loneElement, () => fail("a re-check reads no ids"))
+      .shouldBe(HandlerOutcome.Done)
+    counts shouldBe (4.0, 2.0, 2.0)                     // b AND x confirmed
   }
 
   "the handler" should "sample what the id read returns, and sample nothing when that read did not complete" in new Rig {
