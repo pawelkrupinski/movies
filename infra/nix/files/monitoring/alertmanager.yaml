@@ -419,6 +419,18 @@ inhibit_rules:
       - severity = "warning"
     equal: ["host", "mountpoint"]
 
+  # THE THREE-DAY PROJECTION SILENCES THE SEVEN-DAY ONE FOR THE SAME DISK. They are one trend read
+  # at two horizons, so whenever the seven-day rule fires beside the three-day one it says the same
+  # thing later. The rule above used to do this, while the three-day rule was critical; since it
+  # became a warning (22ea5879e) both are warnings and both arrived. Same `host =~ ".+"` guard and
+  # the same `mountpoint` pairing, for the same reasons.
+  - source_matchers:
+      - alertname = "FilesystemWillFillWithin3Days"
+      - host =~ ".+"
+    target_matchers:
+      - alertname = "FilesystemWillFillWithin7Days"
+    equal: ["host", "mountpoint"]
+
   # THE SAME STATEMENT FOR THE WORKER PIPELINE, which is scoped by COUNTRY rather than by host: the
   # workers run on k3s and carry `country`, never `host`. A queue that has stalled (critical) makes
   # "the queue is growing" and "the queue is failing everything it claims" (warnings) for the same

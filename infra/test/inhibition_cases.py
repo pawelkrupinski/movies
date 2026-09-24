@@ -40,6 +40,16 @@ CASES = [
      {"alertname": "FilesystemSpaceLow", "severity": "warning", "host": "k3s-worker-1", "mountpoint": "/"},
      False),
 
+    ("the three-day disk projection silences the seven-day one on the SAME disk",
+     {"alertname": "FilesystemWillFillWithin3Days", "severity": "warning", "host": "k3s-worker-1", "mountpoint": "/"},
+     {"alertname": "FilesystemWillFillWithin7Days", "severity": "warning", "host": "k3s-worker-1", "mountpoint": "/"},
+     True),
+
+    ("...and NOT the seven-day one on another disk",
+     {"alertname": "FilesystemWillFillWithin3Days", "severity": "warning", "host": "mongo-1", "mountpoint": "/"},
+     {"alertname": "FilesystemWillFillWithin7Days", "severity": "warning", "host": "mongo-1", "mountpoint": "/var/lib/mongodb"},
+     False),
+
     ("a stalled queue silences the growth warning for ITS country",
      {"alertname": "WorkerQueueStalled", "severity": "critical", "country": "pl"},
      {"alertname": "WorkerQueueGrowingUnbounded", "severity": "warning", "country": "pl"},
