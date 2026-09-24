@@ -166,6 +166,39 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     q.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
   }
 
+  // ES 2026-09-21: `rekey requires same normalised cleanTitle` threw on each of 12
+  // attempts over 1h45m. A violated `require` is a bug in the inputs, not an outage, so
+  // a retry can only replay it: fail the task once, metered apart from `exhausted`.
+  private def firstAttemptThrowing(e: Throwable): (InMemoryTaskQueue, Seq[String], PollResult) = {
+    val q = new InMemoryTaskQueue
+    q.enqueue(ResolveTmdb, "resolve-tmdb|La luz|2026", submittedAt = t0)
+    val outcomes = scala.collection.mutable.Buffer.empty[String]
+    val observer = new TaskObserver {
+      def onStarted(task: Task): Unit = ()
+      def onFinished(task: Task, outcome: String, handleMillis: Long): Unit = outcomes += outcome
+    }
+    val throwing = new TaskHandler { val taskType = ResolveTmdb; def handle(task: Task) = throw e }
+    val result = new TaskWorker(q, Seq(throwing), maxAttempts = 12, observer = observer).claimAndRun("w0")
+    (q, outcomes.toSeq, result)
+  }
+
+  it should "drop a task on its first violated requirement instead of retrying it to exhaustion" in {
+    val (q, outcomes, result) = firstAttemptThrowing(new IllegalArgumentException(
+      "requirement failed: rekey requires same normalised cleanTitle: La luz que imaginamos vs La luz que imaginamos"))
+    result shouldBe PollResult.Completed
+    q.countByState() shouldBe empty
+    outcomes shouldBe Seq(WorkerTaskMetrics.Outcome.Permanent)
+  }
+
+  it should "still retry an IllegalArgumentException subclass parsed out of an upstream payload" in {
+    // `NumberFormatException` is an IllegalArgumentException, but it comes from reading a
+    // response — a truncated or error page is transient, so it keeps the retry curve.
+    val (q, outcomes, result) = firstAttemptThrowing(new NumberFormatException("For input string: \"<html>\""))
+    result shouldBe PollResult.Returned
+    q.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
+    outcomes shouldBe Seq(WorkerTaskMetrics.Outcome.Failed)
+  }
+
   // Regression: `stop()` interrupts every worker to break an in-flight fetch/sleep. When
   // the interrupt lands while a handler is blocked in an HTTP fetch (RealHttpFetch.send →
   // CompletableFuture.get), it surfaces as an InterruptedException — which `NonFatal`

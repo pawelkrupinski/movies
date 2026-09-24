@@ -687,9 +687,13 @@ object WorkerTaskMetrics {
     // succeeded. The one outcome that means work was LOST at this pool: a reaper may
     // re-create it, but nothing here will run it again.
     val Exhausted   = "exhausted"
+    // Dropped on its FIRST failure because the failure is deterministic — a violated
+    // `require` — so a retry could only replay it. Also lost work, like `exhausted`,
+    // but it names a bug in the task's inputs rather than an upstream that stayed down.
+    val Permanent   = "permanent"
   }
   val Outcomes: Seq[String] =
-    Seq(Outcome.Done, Outcome.Skipped, Outcome.Rescheduled, Outcome.Deferred, Outcome.Failed, Outcome.NoHandler, Outcome.Exhausted)
+    Seq(Outcome.Done, Outcome.Skipped, Outcome.Rescheduled, Outcome.Deferred, Outcome.Failed, Outcome.NoHandler, Outcome.Exhausted, Outcome.Permanent)
 
   // `failed` = the queue could not answer (a Mongo error, not a duplicate key): the
   // task was NOT queued and its caller only learns so from this series.

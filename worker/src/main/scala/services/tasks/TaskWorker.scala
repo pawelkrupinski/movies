@@ -222,6 +222,12 @@ class TaskWorker(
             Some(notBefore.getOrElse(backoffUntil(task.attempts))), refundAttempt = true)
           observer.onFinished(task, Outcome.Deferred, millis)
           PollResult.Returned
+        case Failure(exception) if TaskWorker.isDeterministic(exception) =>
+          logger.warn(s"Task ${task.taskType.name}/${task.dedupKey} failed permanently on attempt ${task.attempts} — " +
+                      s"dropping it without retry, a retry would replay it: ${exception.getMessage}")
+          queue.complete(task.id, workerId)
+          observer.onFinished(task, Outcome.Permanent, millis)
+          PollResult.Completed
         case Failure(exception) =>
           logger.warn(s"Task ${task.taskType.name}/${task.dedupKey} failed: ${exception.getMessage}")
           if (task.attempts >= maxAttempts) exhaust(task, workerId, Some(exception.getMessage), millis)
@@ -275,6 +281,15 @@ class TaskWorker(
 }
 
 object TaskWorker {
+  /** A failure a retry can only replay: a violated `require` / an argument the code
+   *  itself rejected (ES "La luz", 2026-09-21: `rekey requires same normalised
+   *  cleanTitle`, 12 identical attempts over 1h45m). EXACTLY `IllegalArgumentException`,
+   *  not its subclasses: `NumberFormatException`, `UnsupportedCharsetException` and
+   *  friends come out of reading an upstream payload, where an error or truncated page
+   *  is transient. No handler throws IAE as a "not yet" signal — those return
+   *  `Reschedule`/`Deferred` — so nothing that clears on its own is classed here. */
+  def isDeterministic(failure: Throwable): Boolean = failure.getClass == classOf[IllegalArgumentException]
+
   /** How many worker threads the pool runs by default.
    *
    *  Named rather than inlined because the test harness's synchronous stand-in for
