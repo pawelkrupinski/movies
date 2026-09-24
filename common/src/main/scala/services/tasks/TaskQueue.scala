@@ -216,7 +216,9 @@ trait TaskQueue {
    *  many were reaped. */
   def reapExpiredLeases(now: Instant = Instant.now()): Int
 
-  /** Count of tasks per state — for the debug view and tests. */
+  /** Count of tasks per state — for the debug view, the heartbeat and tests. THROWS
+   *  when the counts cannot be read, like [[waitingCount]]: an empty map is an empty
+   *  queue. */
   def countByState(): Map[String, Long]
 
   /** Count of WAITING (claimable) tasks of `taskType`. A cheap, index-backed
@@ -235,7 +237,8 @@ trait TaskQueue {
    *  ACTIVE tasks (waiting + worked-on), ordered by [[TaskState.activeByPriority]]
    *  — worked-on first — and oldest-first within each state, capped at
    *  `activeLimit`. Completed tasks are removed, so only active tasks appear.
-   *  Index-backed + bounded so the web can poll it cheaply. */
+   *  Index-backed + bounded so the web can poll it cheaply. THROWS when the queue
+   *  cannot be read (see [[countByState]]). */
   def monitor(activeLimit: Int = 200): QueueSnapshot
 
   /** Push: ring `onWaiting` whenever fresh work becomes claimable (a newly

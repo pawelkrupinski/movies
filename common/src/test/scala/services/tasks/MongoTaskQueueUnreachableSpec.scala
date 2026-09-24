@@ -37,4 +37,15 @@ class MongoTaskQueueUnreachableSpec extends AnyFlatSpec with Matchers with Befor
   "MongoTaskQueue.waitingCount" should "throw on a Mongo failure rather than answer 0" in {
     an[Exception] should be thrownBy queue.waitingCount(TaskType.ScrapeCinema)
   }
+
+  // The same reading one level up: `countByState` and `monitor` used to answer an
+  // empty map / an empty active list, which the worker's metrics exported as a queue
+  // depth of 0 and its heartbeat logged as "waiting=0" — an idle pool, not a blind one.
+  "MongoTaskQueue.countByState" should "throw on a Mongo failure rather than answer an empty queue" in {
+    an[Exception] should be thrownBy queue.countByState()
+  }
+
+  "MongoTaskQueue.monitor" should "throw on a Mongo failure rather than answer an empty queue" in {
+    an[Exception] should be thrownBy queue.monitor(10)
+  }
 }

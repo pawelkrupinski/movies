@@ -51,12 +51,17 @@ class WorkerHeartbeat(
 
   /** The one-line queue-depth summary. Package-private so the test can assert it
    *  without driving the scheduler. */
-  private[tasks] def statusLine(): String = {
-    val counts = queue.countByState()
-    val waiting  = counts.getOrElse(TaskState.Waiting, 0L)
-    val workedOn = counts.getOrElse(TaskState.WorkedOn, 0L)
-    s"worker heartbeat: queue waiting=$waiting worked_on=$workedOn (backlog=${waiting + workedOn})"
-  }
+  private[tasks] def statusLine(): String =
+    Try(queue.countByState()) match {
+      case scala.util.Success(counts) =>
+        val waiting  = counts.getOrElse(TaskState.Waiting, 0L)
+        val workedOn = counts.getOrElse(TaskState.WorkedOn, 0L)
+        s"worker heartbeat: queue waiting=$waiting worked_on=$workedOn (backlog=${waiting + workedOn})"
+      // Unknown is its own reading: a pulse that went silent, or said "waiting=0", would
+      // hide the one moment the queue could not be read.
+      case scala.util.Failure(e) =>
+        s"worker heartbeat: queue depth UNKNOWN (read failed: ${e.getClass.getSimpleName}: ${e.getMessage})"
+    }
 
   def start(): Unit = {
     lastBeatMillis = now()

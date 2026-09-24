@@ -240,7 +240,9 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       val pipeline = Seq(
         Aggregates.filter(Filters.in("state", TaskState.all*)),
         Aggregates.group("$state", Accumulators.sum("n", 1)))
-      Try(Await.result(c.aggregate(pipeline).toFuture(), 10.seconds)).toOption.getOrElse(Seq.empty)
+      // A read failure PROPAGATES, as `waitingCount`'s does: an empty map is an empty
+      // queue, and was exported as a queue depth of 0 while the queue was unreadable.
+      Await.result(c.aggregate(pipeline).toFuture(), 10.seconds)
         .flatMap { doc =>
           for {
             state <- doc.get("_id").filter(_.isString).map(_.asString().getValue)
@@ -273,7 +275,9 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       // The alternative — a single `state: -1, submittedAt: 1` sort — is
       // mixed-direction, which that index can't serve, so Mongo would blocking-sort
       // the whole active set in memory on every 5s poll.
-      val active = Try {
+      // A read failure propagates (see `countByState`): the metrics render keeps its last
+      // good sample and the admin pages show the error, instead of an empty queue.
+      val active =
         TaskState.activeByPriority.foldLeft(Seq.empty[TaskSummary]) { (listed, state) =>
           val remaining = activeLimit - listed.size
           if (remaining <= 0) listed
@@ -284,11 +288,6 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
               .toFuture(),
             10.seconds).map(toSummary)
         }
-      }.recover {
-        case exception: Throwable =>
-          logger.warn(s"TaskQueue.monitor failed: ${exception.getMessage}")
-          Seq.empty[TaskSummary]
-      }.getOrElse(Seq.empty)
       QueueSnapshot(countByState(), active)
   }
 
