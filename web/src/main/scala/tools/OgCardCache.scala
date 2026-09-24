@@ -2,7 +2,7 @@ package tools
 
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine, Weigher}
 
-import java.util.concurrent.{Executor, ForkJoinPool, TimeUnit}
+import java.util.concurrent.{CompletableFuture, CompletionException, ConcurrentHashMap, Executor, ForkJoinPool, TimeUnit}
 
 /**
  * Shared memoisation for the rendered Open Graph cards (the film card and the
@@ -39,14 +39,39 @@ private[tools] class OgCardCache(maxBytes: Long, maintenance: Executor = ForkJoi
       .executor(maintenance)
       .build()
 
+  /** Renders in progress, by key -- what makes identical concurrent requests share ONE render.
+   *  Not Caffeine's own `get(key, loader)`: that would cache every result, and an incomplete card
+   *  must be shared with the callers already waiting on it yet NOT kept for the ones after. An entry
+   *  lives exactly as long as its render. */
+  private val inFlight = new ConcurrentHashMap[String, CompletableFuture[Array[Byte]]]()
+
   /** Return the cached card for `key`, or run `render`. `render` yields the
-   *  bytes paired with whether the render is complete enough to cache. */
+   *  bytes paired with whether the render is complete enough to cache.
+   *
+   *  SINGLE-FLIGHT: while one caller renders a key, every other caller for that key waits for and
+   *  receives the same bytes (or the same failure) instead of rendering it again. A crawler or a
+   *  busy group chat asks for one card many times at once, and each render is a poster fetch plus
+   *  a decode whose native memory OOM-killed web-pl on 2026-09-21. */
   def getOrRender(key: String)(render: => (Array[Byte], Boolean)): Array[Byte] =
     Option(cache.getIfPresent(key)).getOrElse {
-      val (bytes, cacheable) = render
-      if (cacheable) cache.put(key, bytes)
-      bytes
+      val mine  = new CompletableFuture[Array[Byte]]()
+      val other = inFlight.putIfAbsent(key, mine)
+      if (other != null) awaitShared(other)
+      else
+        try {
+          val (bytes, cacheable) = render
+          if (cacheable) cache.put(key, bytes)
+          mine.complete(bytes)
+          bytes
+        } catch {
+          case failure: Throwable => mine.completeExceptionally(failure); throw failure
+        } finally inFlight.remove(key, mine)
     }
+
+  /** The shared render's bytes, or ITS exception rethrown as-is rather than wrapped. */
+  private def awaitShared(flight: CompletableFuture[Array[Byte]]): Array[Byte] =
+    try flight.join()
+    catch { case wrapped: CompletionException if wrapped.getCause != null => throw wrapped.getCause }
 
   /** Bytes currently held. Caffeine evicts asynchronously, so a caller asserting
    *  on the bound has to settle first -- see `cleanUp`. */
