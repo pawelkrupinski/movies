@@ -63,7 +63,7 @@ object SequelMarker {
     t.length == 4 && t.forall(_.isDigit) && { val y = t.toInt; y >= 1888 && y <= java.time.Year.now().getValue + 1 }
 
   def isOrdinal(t: String): Boolean =
-    (t.nonEmpty && t.forall(_.isDigit) && !isYear(t)) || Roman.matches(t)
+    (t.nonEmpty && t.forall(_.isDigit) && !isYear(t) && t.toIntOption.isDefined) || Roman.matches(t)
 
   /** The instalment NUMBER `t` names, however it's written — "2", "ii" and
    *  "two"/"Część druga" are the same value. `differentInstalments` compares
@@ -71,7 +71,9 @@ object SequelMarker {
    *  one cinema and another by a second ("Mortal Kombat 2" vs TMDB's "Mortal
    *  Kombat II") is never mistaken for two different films. */
   private def ordinalValue(t: String): Option[Int] =
-    if (t.nonEmpty && t.forall(_.isDigit) && !isYear(t)) Some(t.toInt)
+    // `toIntOption`: a number past Int (a phone number or ticket code left in a title) names no
+    // instalment, and `toInt` threw out of every comparison that met it.
+    if (t.nonEmpty && t.forall(_.isDigit) && !isYear(t)) t.toIntOption
     else RomanValues.get(t).orElse(WordOrdinalValues.get(t))
 
   /** Sequels that don't NUMBER themselves — a subtitle change instead of an

@@ -192,4 +192,12 @@ class SequelMarkerSpec extends AnyFlatSpec with Matchers {
     siblings("The Hunger Games: Catching Fire (2026)", "The Hunger Games: Catching Fire") shouldBe false
     siblings("The Hunger Games: Catching Fire (2026)", "The Hunger Games: Mockingjay - Part 1") shouldBe true
   }
+
+  // Any all-digit token is read as an instalment number, wherever it sits in the title — and a
+  // number past Int (a phone number or a ticket code a venue left in the title) threw out of
+  // the comparison, failing the resolution or settle that asked, on every retry.
+  it should "read a number too large for an instalment as none, rather than throw" in {
+    SequelMarker.differentInstalments(toks("Kino Seniora 48612345678901"), toks("Kino Seniora 2")) shouldBe false
+    SequelMarker.differentInstalments(toks("Film 99999999999 Part 2"), toks("Film 99999999999 Part 3")) shouldBe true
+  }
 }
