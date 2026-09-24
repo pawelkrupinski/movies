@@ -341,7 +341,8 @@ tests:
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # FAILURE SHARE: A SUSTAINED SPIKE FIRES; EMPTY LISTINGS, NON-CINEMA SERVICES AND A THIN WINDOW
   # DO NOT. UK: 30 venues, 12 failing (40%) for 3h. PL: 20 venues, every one returning an EMPTY
-  # listing (a closed season), plus TMDB failing hard -- zero cinema failures, so silent. ES: 2
+  # listing (a closed season), plus TMDB and the chain-wide "Cinema City Enrichment" detail row
+  # failing hard -- enrichment, not a scrape, so zero cinema failures and silent. ES: 2
   # checks, 1 failed -- 50%, but under the 10-check floor. UK's failures start at t=0 and the
   # rule holds for 2h, so it is pending at 1h and firing at 2h10m.
   # ────────────────────────────────────────────────────────────────────────────────────────────
@@ -364,6 +365,12 @@ tests:
       - series: 'kinowo_uptime_recent_successes{country="pl",job="kinowo-web",service="TMDB"}'
         values: '0x200'
       - series: 'kinowo_uptime_recent_zeroes{country="pl",job="kinowo-web",service="TMDB"}'
+        values: '0x200'
+      - series: 'kinowo_uptime_recent_failures{country="pl",job="kinowo-web",service="Cinema City Enrichment"}'
+        values: '50x200'
+      - series: 'kinowo_uptime_recent_successes{country="pl",job="kinowo-web",service="Cinema City Enrichment"}'
+        values: '0x200'
+      - series: 'kinowo_uptime_recent_zeroes{country="pl",job="kinowo-web",service="Cinema City Enrichment"}'
         values: '0x200'
       - series: 'kinowo_uptime_recent_failures{country="es",job="kinowo-web",service="Cines Victoria Mérida"}'
         values: '1x200'

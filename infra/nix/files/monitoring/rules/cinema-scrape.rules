@@ -262,7 +262,10 @@ groups:
       # The share of the last 30 minutes' cinema uptime checks that FAILED (fetch or parse threw),
       # out of every check (failed + succeeded + parsed-but-empty), from the web tier's
       # `kinowo_uptime_recent_*` per-service gauges -- cinema services only: the enrichment
-      # sources, hosts, image proxies and the residential proxy have rules of their own.
+      # sources, hosts, image proxies and the residential proxy have rules of their own. That
+      # includes the chain-wide detail rows ("Cinema City Enrichment", "Cineworld Enrichment",
+      # "Regal Enrichment" -- `DetailEnricher.enrichmentServiceOverride`): one check per film
+      # detail fetch, so a failing detail endpoint would otherwise outweigh every venue scrape.
       #
       # WHY ZEROES ARE IN THE DENOMINATOR AND NOT THE NUMERATOR: an empty listing is what a
       # seasonally closed venue legitimately returns (~120 of ~2,800 services at any moment), so it
@@ -276,20 +279,21 @@ groups:
       #
       # 20% FOR TWO HOURS, measured on 14 days of the gauges (2026-09-09 .. 09-23, 30-min steps):
       # normal p99 is de 0.10, es 0.06, us 0.02, uk 0.02, pl 0.17, and the one PL excursion above
-      # 0.2 (0.37 on 09-10 07:58) lasted under an hour. Two real, sustained spikes crossed it:
-      # PL at ~0.30 and UK at 0.75-0.95 from the evening of 09-18 to 09-21 17:00 -- three days,
-      # alerted by nothing. This would have fired for UK at ~23:45 on 09-18 and PL at ~00:00 on
-      # 09-19 (replayed against Prometheus). At least 10 checks in the
-      # window, so a country's quiet half-hour cannot make one failure a 50% share.
+      # 0.2 (0.37 on 09-10 07:58) lasted under an hour. The rule was first justified by two
+      # "sustained spikes" -- PL ~0.30 and UK 0.75-0.95, 09-18 evening to 09-21 17:00 -- but
+      # re-measured with the chain-wide enrichment rows excluded (2026-09-24) both were entirely
+      # "Cineworld Enrichment" failing 200-900 detail fetches per half hour, and the scrape-only
+      # share in that window never passed 0.02 in either country. So nothing in those 14 days
+      # would have fired this; the threshold is the measured healthy ceiling plus margin. At
+      # least 10 checks in the window, so a country's quiet half-hour cannot make one failure a
+      # 50% share.
       - alert: CinemaScrapeFailureShareHigh
         expr: >-
           (
-            sum by (country) (kinowo_uptime_recent_failures{service!~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes|Residential proxy|img: .*|[a-z0-9.-]+\\.[a-z]{2,}|.*\\|enrichment"})
+            sum by (country) (kinowo_uptime_recent_failures{service!~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes|Residential proxy|.* Enrichment|img: .*|[a-z0-9.-]+\\.[a-z]{2,}|.*\\|enrichment"})
             /
             (sum by (country) (
-                kinowo_uptime_recent_failures{service!~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes|Residential proxy|img: .*|[a-z0-9.-]+\\.[a-z]{2,}|.*\\|enrichment"}
-              + kinowo_uptime_recent_successes{service!~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes|Residential proxy|img: .*|[a-z0-9.-]+\\.[a-z]{2,}|.*\\|enrichment"}
-              + kinowo_uptime_recent_zeroes{service!~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes|Residential proxy|img: .*|[a-z0-9.-]+\\.[a-z]{2,}|.*\\|enrichment"}
+                {__name__=~"kinowo_uptime_recent_(failures|successes|zeroes)",service!~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes|Residential proxy|.* Enrichment|img: .*|[a-z0-9.-]+\\.[a-z]{2,}|.*\\|enrichment"}
             ) >= 10)
           ) > 0.2
         for: 2h
