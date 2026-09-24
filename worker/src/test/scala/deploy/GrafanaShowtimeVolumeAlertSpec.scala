@@ -59,15 +59,13 @@ import services.metrics.WorkerShowtimesMetrics
  * What the number the expression PRODUCES does, for the relabel and for a real
  * collapse, is pinned by feeding it series in
  * `infra/test/alert-rules/grafana-showtime-volume.yml` — promtool cannot load a
- * Grafana-managed rule, but it will evaluate its `expr`. The last test here is
+ * Grafana-managed rule, but it will evaluate its `expr`. infra/test/test_alert_rule_coverage.py is
  * what stops that suite testing an expression production no longer runs.
  */
 class GrafanaShowtimeVolumeAlertSpec extends AnyFlatSpec with Matchers {
 
   private val AlertRules = "infra/nix/files/monitoring/grafana/alerting/alert-rules.yaml"
 
-  /** The promtool suite that EVALUATES this rule's expression, rather than reading it. */
-  private val PromtoolSuite = "infra/test/alert-rules/grafana-showtime-volume.yml"
 
   private lazy val alertRules = RepoFile.read(AlertRules)
 
@@ -142,22 +140,6 @@ class GrafanaShowtimeVolumeAlertSpec extends AnyFlatSpec with Matchers {
           "and the next artefact unguarded. "
       ) {
         expr should include(s"max by (country, city) (last_over_time(${WorkerShowtimesMetrics.Name}[")
-      }
-    }
-  }
-
-  it should "be evaluated, not merely read, by the promtool suite that claims to test it" in {
-    val suite = RepoFile.read(PromtoolSuite)
-
-    showtimeExpressions.foreach { expr =>
-      withClue(
-        s"$PromtoolSuite does not contain '$expr' verbatim, so it is pinning the value of some " +
-          "OTHER expression than the one Grafana evaluates — and every case in it can pass while " +
-          "the live rule is broken. Every assertion in this file reads the expression; only that " +
-          "suite feeds it series and asks what number comes out, which is the only thing that " +
-          "has ever actually been wrong with this rule. Copy the expression across. "
-      ) {
-        suite should include(expr)
       }
     }
   }

@@ -8,7 +8,7 @@
 # wrong with it: WHAT NUMBER THE EXPRESSION PRODUCES for a given set of series.
 #
 # `rule_files:` is therefore deliberately empty. The expression is duplicated from alert-rules.yaml
-# and GrafanaShowtimeVolumeAlertSpec fails if the two ever drift apart, so this file cannot quietly
+# and test_alert_rule_coverage.py fails if the two ever drift apart, so this file cannot quietly
 # go on testing an expression production no longer runs.
 #
 # WHY THIS SUITE EXISTS. On 2026-09-06 all five countries paged `critical` at 0.46-0.49 with

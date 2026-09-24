@@ -3,7 +3,7 @@
 # Like grafana-showtime-volume.yml, this rule lives in Grafana's provisioning
 # (grafana/alerting/alert-rules.yaml), not in a file Prometheus loads itself, so promtool cannot
 # load it as a rule — but its query A is ordinary PromQL against the same datasource, and
-# `promql_expr_test` will evaluate it. GrafanaCityEmptyAlertSpec fails if this file's expression
+# `promql_expr_test` will evaluate it. test_alert_rule_coverage.py fails if this file's expression
 # ever drifts from alert-rules.yaml's, so this suite cannot quietly go on testing a query
 # production no longer runs.
 #
@@ -37,8 +37,8 @@ tests:
       - series: 'kinowo_worker_movies_served{scope="all",city="wentdark",country="us"}'
         values: '4x146 0x10'
     promql_expr_test:
-      # THE EXPRESSION, PINNED VERBATIM FROM alert-rules.yaml (GrafanaCityEmptyAlertSpec checks
-      # this file contains it character-for-character).
+      # THE EXPRESSION, PINNED VERBATIM FROM alert-rules.yaml (test_alert_rule_coverage.py checks
+      # a suite contains it character-for-character).
       - expr: '(kinowo_web_movies_served{scope="all"} == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (city) (max by (city) (kinowo_worker_movies_served{scope="all"}) > 0)'
         eval_time: 1550m
         exp_samples:

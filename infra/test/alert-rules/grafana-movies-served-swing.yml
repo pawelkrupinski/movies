@@ -3,7 +3,7 @@
 # Mirrors grafana-movies-served-city-empty.yml's structure: this rule lives in Grafana's
 # provisioning (grafana/alerting/alert-rules.yaml), not a file Prometheus loads itself, so
 # promtool cannot load it as a rule — but its query A is ordinary PromQL against the same
-# datasource, and `promql_expr_test` will evaluate it. GrafanaServedSwingCorpusDiscriminantSpec
+# datasource, and `promql_expr_test` will evaluate it. test_alert_rule_coverage.py
 # fails if this file's expression ever drifts from alert-rules.yaml's, so this suite cannot
 # quietly go on testing a query production no longer runs.
 #
@@ -40,7 +40,7 @@ tests:
         values: '8x300 0x10'
     promql_expr_test:
       # THE EXPRESSION, PINNED VERBATIM FROM alert-rules.yaml
-      # (GrafanaServedSwingCorpusDiscriminantSpec checks this file contains it
+      # (test_alert_rule_coverage.py checks some suite evaluates it
       # character-for-character). eval_time lands on the FIRST post-drop sample, where the 1h
       # lookback still averages mostly pre-drop 8s — the transition moment the live rule pages on.
       - expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5)'

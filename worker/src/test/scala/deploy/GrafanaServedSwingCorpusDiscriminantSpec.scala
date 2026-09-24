@@ -28,15 +28,13 @@ import org.scalatest.matchers.should.Matchers
  *
  * What the expression PRODUCES for both causes is pinned by feeding it series in
  * `infra/test/alert-rules/grafana-movies-served-swing.yml` — promtool cannot load a
- * Grafana-managed rule, but it will evaluate its `expr`. The last test here is what stops that
- * suite testing an expression production no longer runs.
+ * Grafana-managed rule, but it will evaluate its `expr`. infra/test/test_alert_rule_coverage.py is
+ * what stops that suite testing an expression production no longer runs.
  */
 class GrafanaServedSwingCorpusDiscriminantSpec extends AnyFlatSpec with Matchers {
 
   private val SwingUid = "kinowo-movies-served-swing"
 
-  /** The promtool suite that EVALUATES this rule's expression, rather than reading it. */
-  private val PromtoolSuite = "infra/test/alert-rules/grafana-movies-served-swing.yml"
 
   private lazy val swingRule: String =
     AlertRule.withUid(SwingUid).getOrElse(fail(s"no rule with uid `$SwingUid` in ${AlertRule.File}"))
@@ -81,23 +79,6 @@ class GrafanaServedSwingCorpusDiscriminantSpec extends AnyFlatSpec with Matchers
           "wrongly exclude a cause (1) city whose corpus dipped by less than the web did. "
       ) {
         expr should include("> 0.5)")
-      }
-    }
-  }
-
-  it should "be evaluated, not merely read, by the promtool suite that claims to test it" in {
-    val suite = RepoFile.read(PromtoolSuite)
-
-    queryA.foreach { expr =>
-      withClue(
-        s"$PromtoolSuite does not contain '$expr' verbatim, so it is pinning the value of some " +
-          "OTHER expression than the one Grafana evaluates — and every case in it can pass while " +
-          "the live rule is broken. Every assertion in this file reads the expression; only that " +
-          "suite feeds it series and asks what number comes out, which is the only thing that has " +
-          "ever actually been wrong with this class of rule (see GrafanaShowtimeVolumeAlertSpec). " +
-          "Copy the expression across. "
-      ) {
-        suite should include(expr)
       }
     }
   }
