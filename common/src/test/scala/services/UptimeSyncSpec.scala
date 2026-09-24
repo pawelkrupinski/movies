@@ -12,9 +12,10 @@ class UptimeSyncSpec extends AnyFlatSpec with Matchers {
   "UptimeSync.applyExternalUpdate" should "write into the shared bucket store and notify only when the bucket changed" in {
     val store = new UptimeMonitor.BucketStore()
     var notified = List.empty[String]
-    val sync = new UptimeSync(store, (service, _) => notified = service :: notified)
+    val clock = java.time.Clock.fixed(java.time.Instant.parse("2026-06-01T10:00:00Z"), java.time.ZoneOffset.UTC)
+    val sync = new UptimeSync(store, (service, _) => notified = service :: notified, clock)
 
-    val timestamp = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    val timestamp = UptimeMonitor.bucketTimestamp(clock.millis())
     sync.applyExternalUpdate("TMDB", timestamp, successes = 7, failures = 2, zeroes = 1, durationSumMs = 1400L, durationCount = 7, errors = Seq("HTTP 503"))
 
     val bucket = store.get("TMDB").get(timestamp)

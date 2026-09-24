@@ -40,7 +40,9 @@ import scala.util.Try
 class UptimeMonitor(
   db: Option[MongoDatabase] = None,
   surfaceExternalWrites: Boolean = false,
-  tagReloadIntervalMs: Long = UptimeMonitor.TagReloadIntervalMs
+  tagReloadIntervalMs: Long = UptimeMonitor.TagReloadIntervalMs,
+  // What "now" is for bucketing and the averaging windows; a spec pins it.
+  clock: java.time.Clock = java.time.Clock.systemUTC()
 ) extends Logging {
   import UptimeMonitor._
 
@@ -64,7 +66,7 @@ class UptimeMonitor(
   // The cross-process reads (boot hydrate + serving-app poll) share this
   // process's bucket map and listener fan-out; see `UptimeSync`. Package-private
   // so a spec can seed buckets the way a polled worker write would.
-  private[services] val sync = new UptimeSync(data, notifyListeners)
+  private[services] val sync = new UptimeSync(data, notifyListeners, clock)
   // Per-service labels ride their own collection; see `ServiceTags`.
   private val serviceTags = new ServiceTags(tagColl)
 
@@ -199,7 +201,7 @@ class UptimeMonitor(
     if (buckets == null) None
     else {
       val relevant = windowMs match {
-        case Some(w) => buckets.tailMap(bucketTimestamp(System.currentTimeMillis() - w)).values()
+        case Some(w) => buckets.tailMap(bucketTimestamp(clock.millis() - w)).values()
         case None    => buckets.values()
       }
       var sum = 0L
@@ -316,7 +318,7 @@ class UptimeMonitor(
   def serviceTagsSnapshot(): Map[String, Set[String]] = serviceTags.snapshot()
 
   private def currentBucket(service: String): Bucket = {
-    val timestamp = bucketTimestamp(System.currentTimeMillis())
+    val timestamp = bucketTimestamp(clock.millis())
     val buckets = bucketsOf(data, service)
     val bucket = bucketAt(buckets, timestamp)
     dropExpired(buckets, timestamp)

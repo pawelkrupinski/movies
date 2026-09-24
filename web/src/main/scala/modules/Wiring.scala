@@ -31,6 +31,10 @@ trait Wiring
   // in `AppComponents`. Loads `conf/messages` (Polish default) + `messages.en`.
   def messagesApi: play.api.i18n.MessagesApi
 
+  // The one wall clock the serving app reads. Everything that asks "what time is it" takes
+  // it by constructor; a test wiring overrides it to pin the time.
+  lazy val clock: java.time.Clock = java.time.Clock.systemUTC()
+
   // Start the data layer. Force the Mongo connection at boot (so connection
   // errors surface in the boot timeline, not mid-request), then start the cache
   // — hydrate from Mongo + open the change stream that keeps it warm.

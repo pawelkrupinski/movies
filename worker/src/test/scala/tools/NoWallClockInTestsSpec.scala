@@ -62,10 +62,6 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
       "rule 2 compares literals with today on purpose (see the class doc)",
     "common/src/test/scala/tools/TlsTrustSpec.scala" ->
       "documents that a pinned certificate really is expired — a statement about today by design",
-    "common/src/test/scala/services/UptimeMonitorSpec.scala" ->
-      "UptimeMonitor buckets and windows by System.currentTimeMillis() with no Clock seam",
-    "common/src/test/scala/services/UptimeSyncSpec.scala" ->
-      "UptimeMonitor buckets by System.currentTimeMillis() with no Clock seam",
     "web/src/test/scala/controllers/UserStateControllerSpec.scala" ->
       ("UserStateController stamps every change with Instant.now() (no Clock seam) and its newer-than rules " +
         "compare the stored stamps with it"),

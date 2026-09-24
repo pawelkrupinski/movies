@@ -6,6 +6,9 @@ import org.scalatest.matchers.should.Matchers
 
 class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
 
+  // Every monitor here buckets at one fixed instant, so a bucket a test writes is the one it reads.
+  private val specClock = java.time.Clock.fixed(java.time.Instant.parse("2026-06-01T10:00:00Z"), java.time.ZoneOffset.UTC)
+
   // A db handle whose MongoClient has been closed. Any write against it throws
   // `IllegalStateException: state should be: open` synchronously at .subscribe
   // — no network needed — exactly as happens to in-flight scrapers when Play
@@ -20,7 +23,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   }
 
   "UptimeMonitor" should "record successes and failures for a service" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = specClock)
     monitor.recordSuccess("TMDB")
     monitor.recordSuccess("TMDB")
     monitor.recordFailure("TMDB", "IOException: timeout")
@@ -35,8 +38,8 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // instead of building every service's 96-slot bar series — see the method's own
   // note for the OOM that motivated it.
   "recentStatuses" should "return the newest buckets' verdicts, oldest→newest, capped at the limit" in {
-    val monitor = new UptimeMonitor()
-    val base = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    val monitor = new UptimeMonitor(clock = specClock)
+    val base = UptimeMonitor.bucketTimestamp(specClock.millis())
     val step = UptimeMonitor.BucketDurationMs
     // Oldest → newest: green, zero, red, red.
     monitor.sync.applyExternalUpdate("Kino", base - 3 * step, successes = 1, failures = 0, zeroes = 0, 0L, 0, Seq.empty)
@@ -49,8 +52,8 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "skip a bucket that recorded nothing, so an idle slot never counts as a verdict" in {
-    val monitor = new UptimeMonitor()
-    val base = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    val monitor = new UptimeMonitor(clock = specClock)
+    val base = UptimeMonitor.bucketTimestamp(specClock.millis())
     val step = UptimeMonitor.BucketDurationMs
     monitor.sync.applyExternalUpdate("Kino", base - step, successes = 1, failures = 0, zeroes = 0, 0L, 0, Seq.empty)
     monitor.sync.applyExternalUpdate("Kino", base,        successes = 0, failures = 0, zeroes = 0, 0L, 0, Seq.empty)
@@ -59,11 +62,11 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be empty for a service that has never been recorded" in {
-    new UptimeMonitor().recentStatuses("Nope", 3) shouldBe empty
+    new UptimeMonitor(clock = specClock).recentStatuses("Nope", 3) shouldBe empty
   }
 
   it should "return empty history for unknown service" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = specClock)
     monitor.history("nonexistent") shouldBe empty
   }
 
@@ -87,7 +90,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   }
 
   "average latency" should "be the mean of timed successful calls (1h and total)" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = specClock)
     monitor.recordSuccess("TMDB", 100L)
     monitor.recordSuccess("TMDB", 300L)
     monitor.averageMs1h("TMDB")    shouldBe Some(200L)
@@ -95,7 +98,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be None when no call has been timed" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = specClock)
     monitor.recordSuccess("TMDB")            // untimed
     monitor.averageMs1h("TMDB")    shouldBe None
     monitor.averageMsTotal("TMDB") shouldBe None
@@ -103,7 +106,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not let untimed successes drag the average toward zero" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = specClock)
     monitor.recordSuccess("TMDB", 200L)
     monitor.recordSuccess("TMDB")            // untimed — must not count as 0ms
     monitor.recordSuccess("TMDB", 400L)
@@ -113,7 +116,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "track services independently" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = specClock)
     monitor.recordSuccess("TMDB")
     monitor.recordFailure("IMDb", "ConnectException: refused")
 
@@ -125,7 +128,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "store error messages on failure" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = specClock)
     monitor.recordFailure("TMDB", "IOException: Connection refused")
     monitor.recordFailure("TMDB", "HTTP 503 for GET https://api.themoviedb.org")
 
@@ -136,7 +139,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "cap errors at MaxErrorsPerBucket" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = specClock)
     (1 to 20).foreach(i => monitor.recordFailure("TMDB", s"error $i"))
 
     monitor.history("TMDB").head.errors should have size UptimeMonitor.MaxErrorsPerBucket
@@ -144,14 +147,14 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not store errors on success" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = specClock)
     monitor.recordSuccess("TMDB")
 
     monitor.history("TMDB").head.errors shouldBe empty
   }
 
   it should "not let a closed-client Mongo write break recording or flushing" in {
-    val monitor = new UptimeMonitor(Some(closedClientDb))
+    val monitor = new UptimeMonitor(Some(closedClientDb), clock = specClock)
 
     // record* is now pure in-memory; the batched flush is the Mongo write. A
     // closed client throws IllegalStateException synchronously at `.subscribe`
@@ -173,7 +176,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // bucket's many records into ONE write of its CUMULATIVE counts, so the serving
   // app's change-stream load is bounded by the flush cadence, not the fetch rate.
   "batched flushing" should "coalesce a bucket's records into one cumulative write and clear dirty" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = specClock)
     monitor.recordSuccess("TMDB", 100L)
     monitor.recordSuccess("TMDB", 300L)
     monitor.recordFailure("TMDB", "boom")
@@ -205,11 +208,11 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // snapshot via applyExternalUpdate, firing its SSE listeners — otherwise the
   // page froze at the last web-boot snapshot.
   "an external (worker) bucket update" should "surface in history, averages, services and fire listeners" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = specClock)
     var notified = List.empty[String]
     monitor.addListener((s, _) => notified = s :: notified)
 
-    val timestamp = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    val timestamp = UptimeMonitor.bucketTimestamp(specClock.millis())
     monitor.sync.applyExternalUpdate("TMDB", timestamp,
       successes = 7, failures = 2, zeroes = 1, durationSumMs = 1400L, durationCount = 7, errors = Seq("HTTP 503"))
 
@@ -228,8 +231,8 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // counts for the bucket. Applying it must REPLACE the bucket, not add — else
   // re-delivery (driver resume) or the web app's own echoed writes double-count.
   it should "replace (not add to) the bucket's counts when applied repeatedly" in {
-    val monitor = new UptimeMonitor()
-    val timestamp = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    val monitor = new UptimeMonitor(clock = specClock)
+    val timestamp = UptimeMonitor.bucketTimestamp(specClock.millis())
     monitor.sync.applyExternalUpdate("IMDb", timestamp, successes = 3, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
     monitor.sync.applyExternalUpdate("IMDb", timestamp, successes = 5, failures = 1, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq("boom"))
 
@@ -243,10 +246,10 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // must NOT fire listeners — otherwise every poll would spam the /uptime SSE
   // with ~one event per bucket regardless of activity.
   it should "fire listeners only when the applied snapshot actually changed" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = specClock)
     var notifications = 0
     monitor.addListener((_, _) => notifications += 1)
-    val timestamp = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    val timestamp = UptimeMonitor.bucketTimestamp(specClock.millis())
 
     monitor.sync.applyExternalUpdate("RT", timestamp, successes = 4, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
     notifications shouldBe 1
@@ -308,7 +311,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // markers ride it). Without Mongo, tagService stores in memory and the snapshot
   // reflects it; an empty set clears the row.
   "service tags" should "round-trip per service in memory and be cleared by an empty set" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = specClock)
     monitor.tagService("Kino Rialto", Set("custom:RialtoClient"))
     monitor.tagService("Helios Posnania", Set("shared:HeliosClient"))
 
@@ -329,7 +332,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // is made from the in-memory map, so it is testable without a database, and that is the
   // whole point — the guard needs no read.
   "tagService" should "write only when the tags actually changed" in {
-    val monitor = new UptimeMonitor(surfaceExternalWrites = false)
+    val monitor = new UptimeMonitor(surfaceExternalWrites = false, clock = specClock)
     withClue("a service this process has never tagged must be written — that first write " +
              "is what reconciles a tag changed while the process was down: ") {
       monitor.tagService("Kino Nowe", Set("custom:NoweClient")) shouldBe true
@@ -357,7 +360,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // stay at 10s.
   "the tag reload" should "run on its own slow cadence, not the 10s bucket poll" in {
     val collection = closedClientDb.getCollection("uptimeServiceTags")
-    val monitor = new UptimeMonitor(surfaceExternalWrites = true)
+    val monitor = new UptimeMonitor(surfaceExternalWrites = true, clock = specClock)
     val schedule = monitor.backgroundSchedule(Some(collection), Some(collection))
 
     val tagJob  = schedule.find(_.name == "reload-tags").getOrElse(fail("no tag-reload job scheduled"))
@@ -371,7 +374,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
 
   it should "schedule the interval it was constructed with" in {
     val collection = closedClientDb.getCollection("uptimeServiceTags")
-    val monitor = new UptimeMonitor(surfaceExternalWrites = true, tagReloadIntervalMs = 1234L)
+    val monitor = new UptimeMonitor(surfaceExternalWrites = true, tagReloadIntervalMs = 1234L, clock = specClock)
 
     monitor.backgroundSchedule(Some(collection), Some(collection))
       .find(_.name == "reload-tags").map(_.periodMs) shouldBe Some(1234L)
@@ -381,7 +384,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // map — so it must schedule neither the bucket poll nor the tag reload.
   it should "not be scheduled at all on the writer (worker) side" in {
     val collection = closedClientDb.getCollection("uptimeServiceTags")
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = specClock)
     monitor.backgroundSchedule(Some(collection), Some(collection)).map(_.name) shouldBe Seq("flush")
   }
 
@@ -414,7 +417,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   }
 
   "recordEmpty" should "increment the zeroes dimension and surface a zero-status bucket" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = specClock)
     monitor.recordEmpty("svc", 42L)
     val bucket = monitor.history("svc").head
     bucket.zeroes    shouldBe 1
@@ -429,7 +432,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // showtimes — green bar) but also marks the bucket `fallback`, so the /uptime
   // page can flag the bar "served via Filmweb" instead of a plain green.
   "recordFallbackSuccess" should "count as a success, mark the bucket fallback, and stay green" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = specClock)
     monitor.recordFallbackSuccess("Kino Praha", 55L)
     val bucket = monitor.history("Kino Praha").head
     bucket.successes shouldBe 1
@@ -440,7 +443,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "carry the fallback flag into the flushed BucketWrite" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = specClock)
     monitor.recordFallbackSuccess("Kino Praha", 30L)
     val w = monitor.drainDirty().head
     w.successes shouldBe 1
@@ -448,7 +451,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "leave fallback false for an ordinary (non-fallback) success" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = specClock)
     monitor.recordSuccess("TMDB", 10L)
     monitor.history("TMDB").head.fallback shouldBe false
     monitor.drainDirty().head.fallback    shouldBe false
@@ -458,10 +461,10 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // bucket write it polls — so the flag must survive applyExternalUpdate, and a
   // flip in the flag must be treated as a change so the /uptime SSE updates.
   "an external bucket update" should "propagate the fallback flag and fire listeners when it flips" in {
-    val monitor = new UptimeMonitor()
+    val monitor = new UptimeMonitor(clock = specClock)
     var notifications = 0
     monitor.addListener((_, _) => notifications += 1)
-    val timestamp = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    val timestamp = UptimeMonitor.bucketTimestamp(specClock.millis())
 
     monitor.sync.applyExternalUpdate("Kino Praha", timestamp,
       successes = 2, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty, fallback = true)
@@ -484,8 +487,8 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // history-then-filter spelling produced, and a fraction of its allocation.
 
   "recentTotals" should "sum only the buckets at or after the cutoff, per service" in {
-    val monitor = new UptimeMonitor()
-    val base = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    val monitor = new UptimeMonitor(clock = specClock)
+    val base = UptimeMonitor.bucketTimestamp(specClock.millis())
     val step = UptimeMonitor.BucketDurationMs
     monitor.sync.applyExternalUpdate("Residential proxy", base - 4 * step, successes = 99, failures = 99, zeroes = 99, 0L, 0, Seq.empty)
     monitor.sync.applyExternalUpdate("Residential proxy", base - 1 * step, successes = 0,  failures = 12, zeroes = 1, 0L, 0, Seq("boom"))
@@ -502,8 +505,8 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // alert that needs to see the zero — so a service whose every bucket predates
   // the window still gets a row.
   it should "still emit a service whose buckets all fall outside the window" in {
-    val monitor = new UptimeMonitor()
-    val base = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    val monitor = new UptimeMonitor(clock = specClock)
+    val base = UptimeMonitor.bucketTimestamp(specClock.millis())
     monitor.sync.applyExternalUpdate("Quiet cinema", base - 10 * UptimeMonitor.BucketDurationMs,
       successes = 5, failures = 5, zeroes = 5, 0L, 0, Seq.empty)
 
@@ -528,8 +531,8 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // Assert against the old spelling rather than an absolute byte count, so the
   // bound calibrates itself to whatever the JVM and collections cost today.
   it should "allocate an order of magnitude less than materialising every service's history" in {
-    val monitor = new UptimeMonitor()
-    val base = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    val monitor = new UptimeMonitor(clock = specClock)
+    val base = UptimeMonitor.bucketTimestamp(specClock.millis())
     val step = UptimeMonitor.BucketDurationMs
     val services = (1 to 1000).map(i => s"Cinema $i")
     services.foreach { service =>

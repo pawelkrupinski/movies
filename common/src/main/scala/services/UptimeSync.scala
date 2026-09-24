@@ -22,7 +22,8 @@ import scala.util.Try
  *  reaches the /uptime SSE exactly like a local record does. */
 private[services] final class UptimeSync(
   buckets: UptimeMonitor.BucketStore,
-  notify: (String, UptimeMonitor.Bucket) => Unit
+  notify: (String, UptimeMonitor.Bucket) => Unit,
+  clock: java.time.Clock
 ) extends Logging {
   import UptimeMonitor._
   import UptimeSync._
@@ -31,7 +32,7 @@ private[services] final class UptimeSync(
    *  query per interval — cost scales with the number of services in the window,
    *  not with the full 24h of retained history. */
   def poll(c: MongoCollection[Document]): Unit = Try {
-    val documents = Await.result(c.find(pollFilter(System.currentTimeMillis())).toFuture(), 10.seconds)
+    val documents = Await.result(c.find(pollFilter(clock.millis())).toFuture(), 10.seconds)
     documents.foreach { document =>
       for {
         service    <- Option(document.getString("service"))
@@ -68,7 +69,7 @@ private[services] final class UptimeSync(
    *  the materialised documents, so a retry can't double-count via `addAndGet`. */
   def hydrate(c: MongoCollection[Document]): Unit = Try {
     val documents = RetryWithBackoff("Uptime hydrate", maxAttempts = HydrateMaxAttempts, initialBackoff = HydrateRetryBackoff) {
-      Await.result(c.find(hydrateFilter(System.currentTimeMillis())).toFuture(), HydrateTimeout)
+      Await.result(c.find(hydrateFilter(clock.millis())).toFuture(), HydrateTimeout)
     }
     var count = 0
     documents.foreach { document =>

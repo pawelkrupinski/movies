@@ -20,7 +20,7 @@ trait AdminWiring { self: Wiring =>
   // scrape volume).
   // `surfaceExternalWrites = true` also means this tier does NOT own the bucket TTL index and
   // will not rebuild it — see `UptimeMonitor.ownsIndexes`.
-  lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database, surfaceExternalWrites = true)
+  lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database, surfaceExternalWrites = true, clock = clock)
 
   // Comma-separated allowlist of admin EMAILS permitted to reach the operational
   // pages (/uptime, /tasks) and the rehydrate trigger. Empty
