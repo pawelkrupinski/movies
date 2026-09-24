@@ -176,7 +176,8 @@ tests:
               description: "`gotk_reconcile_duration_seconds_count` for this object has not moved in an hour, while the busiest objects on this cluster reconcile 12-14 times an hour. Either its controller is wedged, the object is suspended, or its source is unreachable. This is the DEPLOY PATH: a stopped Kustomization means merged changes stop reaching pods, silently, with CI green and the image built -- the state that hid a read-model fix for hours on 2026-09-07. Check `flux get all -A` on monitoring-1 and the controller's own output in the log store (`namespace:flux-system`). This alert does NOT watch reconciliation FAILURE: an object that reconciles and fails every time keeps this counter moving and stays silent here. ImagePolicy is EXCLUDED: it has no interval and advances only when an image is built, so an hour of silence is its normal state -- a wedged image-reflector-controller is caught by its ImageRepository instead."
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
-  # THE OBJECTS' OWN STATUS, from kube-state-metrics' custom-resource-state config. web-pl-config has
+  # THE OBJECTS' OWN STATUS, from kube-state-metrics' custom-resource-state config, one family per
+  # kind (the ImageRepository proves the union reads past Kustomizations). web-pl-config has
   # been Ready=False for over half an hour and fires; web-de-config went False for twenty minutes (one
   # failed health check and its retry, the shape kustomize-controller healed five times in 48h) and
   # must not; headlamp has been suspended for over an hour and fires; reloader is Ready and running.
@@ -184,15 +185,17 @@ tests:
   - interval: 1m
     name: a Kustomization NotReady for 30m fires, a retried health check does not; a long suspension fires
     input_series:
-      - series: 'gotk_resource_info{customresource_group="kustomize.toolkit.fluxcd.io",customresource_kind="Kustomization",customresource_version="v1",namespace="flux-system",name="web-pl-config",ready="False",suspended="false"}'
+      - series: 'gotk_kustomization_info{customresource_group="kustomize.toolkit.fluxcd.io",customresource_kind="Kustomization",customresource_version="v1",namespace="flux-system",name="web-pl-config",ready="False",suspended="false"}'
         values: '1x90'
-      - series: 'gotk_resource_info{customresource_group="kustomize.toolkit.fluxcd.io",customresource_kind="Kustomization",customresource_version="v1",namespace="flux-system",name="web-de-config",ready="False",suspended="false"}'
+      - series: 'gotk_kustomization_info{customresource_group="kustomize.toolkit.fluxcd.io",customresource_kind="Kustomization",customresource_version="v1",namespace="flux-system",name="web-de-config",ready="False",suspended="false"}'
         values: '1x20 stale'
-      - series: 'gotk_resource_info{customresource_group="kustomize.toolkit.fluxcd.io",customresource_kind="Kustomization",customresource_version="v1",namespace="flux-system",name="web-de-config",ready="True",suspended="false"}'
+      - series: 'gotk_kustomization_info{customresource_group="kustomize.toolkit.fluxcd.io",customresource_kind="Kustomization",customresource_version="v1",namespace="flux-system",name="web-de-config",ready="True",suspended="false"}'
         values: '_x21 1x69'
-      - series: 'gotk_resource_info{customresource_group="kustomize.toolkit.fluxcd.io",customresource_kind="Kustomization",customresource_version="v1",namespace="flux-system",name="headlamp",ready="True",suspended="true"}'
+      - series: 'gotk_kustomization_info{customresource_group="kustomize.toolkit.fluxcd.io",customresource_kind="Kustomization",customresource_version="v1",namespace="flux-system",name="headlamp",ready="True",suspended="true"}'
         values: '1x90'
-      - series: 'gotk_resource_info{customresource_group="kustomize.toolkit.fluxcd.io",customresource_kind="Kustomization",customresource_version="v1",namespace="flux-system",name="reloader",ready="True",suspended="false"}'
+      - series: 'gotk_kustomization_info{customresource_group="kustomize.toolkit.fluxcd.io",customresource_kind="Kustomization",customresource_version="v1",namespace="flux-system",name="reloader",ready="True",suspended="false"}'
+        values: '1x90'
+      - series: 'gotk_imagerepository_info{customresource_group="image.toolkit.fluxcd.io",customresource_kind="ImageRepository",customresource_version="v1",namespace="flux-system",name="movies-web",ready="False"}'
         values: '1x90'
     alert_rule_test:
       - eval_time: 25m
@@ -209,6 +212,14 @@ tests:
             exp_annotations:
               summary: "flux Kustomization/web-pl-config has been NotReady for 30 minutes"
               description: "The object reconciles and FAILS -- the case `FluxReconciliationStopped` cannot see, because the reconcile counter keeps moving. For a Kustomization this means merged changes are not reaching the cluster: the pods keep serving the last image that did apply, with CI green. `flux get all -A` on monitoring-1 names the object and its message; `kubectl -n flux-system describe kustomization web-pl-config` has the condition's full text. A health-check timeout usually means a pod that will not become Ready (see `K3sDeploymentReplicasMissing`); a build error means a bad manifest in movies-gitops."
+          - exp_labels:
+              customresource_kind: "ImageRepository"
+              name: "movies-web"
+              namespace: "flux-system"
+              severity: "warning"
+            exp_annotations:
+              summary: "flux ImageRepository/movies-web has been NotReady for 30 minutes"
+              description: "The object reconciles and FAILS -- the case `FluxReconciliationStopped` cannot see, because the reconcile counter keeps moving. For a Kustomization this means merged changes are not reaching the cluster: the pods keep serving the last image that did apply, with CI green. `flux get all -A` on monitoring-1 names the object and its message; `kubectl -n flux-system describe imagerepository movies-web` has the condition's full text. A health-check timeout usually means a pod that will not become Ready (see `K3sDeploymentReplicasMissing`); a build error means a bad manifest in movies-gitops."
       - eval_time: 50m
         alertname: FluxObjectSuspended
         exp_alerts: []
@@ -232,7 +243,7 @@ tests:
   # state. The companion fires after half an hour, and the two comparison rules cannot.
   # ────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 1m
-    name: no gotk_resource_info fires the companion
+    name: no flux object state fires the companion
     input_series:
       - series: 'kube_node_info{node="k3s-worker-1"}'
         values: '1x40'
@@ -247,7 +258,7 @@ tests:
               severity: "warning"
             exp_annotations:
               summary: "Flux object state is not published -- the kube-state-metrics gitops change is pending or broken"
-              description: "`FluxObjectNotReady` and `FluxObjectSuspended` cannot fire without `gotk_resource_info`, so a failing or suspended deploy path is unwatched. EXPECTED UNTIL THE PENDING GITOPS CHANGE IS APPLIED: movies-gitops/kube-state-metrics/ needs flux-crs-config.yaml (the custom-resource-state ConfigMap), the `--custom-resource-state-config-file=/etc/ksm/flux.yaml` flag and its volume mount in deployment.yaml, and list/watch on the flux API groups and on customresourcedefinitions in rbac.yaml -- the diff is in the commit that added the flux-objects group. If it HAS been applied: the ClusterRole does not grant `list`/`watch` on the flux groups and on customresourcedefinitions.apiextensions.k8s.io, or the config names a version the installed CRDs no longer serve. If `KubeStateMetricsSeriesAbsent` fires too, the exporter itself is the problem. IT DOES NOT MEAN FLUX IS HEALTHY."
+              description: "`FluxObjectNotReady` and `FluxObjectSuspended` cannot fire without `flux:resource_info` (kube-state-metrics' `gotk_<kind>_info` series), so a failing or suspended deploy path is unwatched. The series comes from movies-gitops/kube-state-metrics/: flux-crs-config.yaml (the custom-resource-state ConfigMap), the `--custom-resource-state-config-file=/etc/ksm/flux.yaml` flag and its volume mount in deployment.yaml, and list/watch on the flux API groups and on customresourcedefinitions in rbac.yaml. If one of those is missing on the cluster, the `kube-state-metrics` Kustomization has not applied it (`flux get kustomization kube-state-metrics`); if all are there, the pod's log names a reflector failing on permissions, or the config names a version the installed CRDs no longer serve (`kubectl get crd | grep fluxcd`). If `KubeStateMetricsSeriesAbsent` fires too, the exporter itself is the problem. IT DOES NOT MEAN FLUX IS HEALTHY."
       - eval_time: 35m
         alertname: FluxObjectNotReady
         exp_alerts: []

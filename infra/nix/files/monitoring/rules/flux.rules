@@ -25,9 +25,9 @@
 # permanently green. They are gone, replaced by one that watches reconciles CEASING, which is what
 # the remaining metrics can actually say -- for the objects that reconcile on a CLOCK. ImagePolicy
 # does not, and is excluded; see the note on the rule. Reconciliation FAILURE and a SUSPENDED object are
-# watched by the `flux-objects` group at the bottom, from `gotk_resource_info` -- a series
-# kube-state-metrics publishes only once it is given a `--custom-resource-state-config` for Flux's
-# custom resources. That config lives in the gitops repository; until it is applied the group's
+# watched by the `flux-objects` group at the bottom, from `flux:resource_info` -- recorded from the
+# `gotk_<kind>_info` series kube-state-metrics publishes only once it is given a
+# `--custom-resource-state-config` for Flux's custom resources. That config lives in the gitops repository; if it is ever missing, the group's
 # `absent()` companion fires and says so.
 groups:
   - name: flux
@@ -143,16 +143,16 @@ groups:
   # ------------------------------------------------------------------------------------------------
   # THE OBJECTS' OWN STATUS: IS EACH ONE READY, AND IS ANY OF THEM SUSPENDED.
   #
-  # `gotk_resource_info` is not a Flux metric. It is kube-state-metrics reading each Flux object's
+  # `flux:resource_info` is not a Flux metric. It is kube-state-metrics reading each Flux object's
   # `status.conditions[type=Ready].status` and `spec.suspend` through a custom-resource-state config
   # -- the shape Flux's own monitoring example recommends since the controllers dropped
   # `gotk_reconcile_condition` -- so it says what `flux get all -A` says, which the reconcile
   # counter above cannot: an object that reconciles on time and FAILS every time.
   #
-  # ⚠️ IT DOES NOT EXIST UNTIL THE GITOPS CHANGE IS APPLIED. The config, its ConfigMap mount and the
-  # RBAC for the flux API groups belong in movies-gitops/kube-state-metrics/, which this repository
-  # cannot change. Until they are there, the two comparison rules below are silent by
-  # construction and `FluxObjectStateAbsent` fires to say so -- which is the reminder, not noise.
+  # ⚠️ IT EXISTS ONLY THROUGH THE GITOPS REPOSITORY. The config, its ConfigMap mount and the RBAC for
+  # the flux API groups live in movies-gitops/kube-state-metrics/ (since 2026-09-24), which this
+  # repository cannot change. Without them the two comparison rules below are silent by
+  # construction, and `FluxObjectStateAbsent` fires to say so.
   #
   # NOT REPLAYED, and saying so is the point: there is no history of a series that has never been
   # published. The holds are argued from the configuration instead (see each rule), and the first
@@ -160,6 +160,19 @@ groups:
   # ------------------------------------------------------------------------------------------------
   - name: flux-objects
     rules:
+      # ONE SERIES FAMILY PER KIND, UNIONED HERE. kube-state-metrics publishes a custom-resource
+      # metric name from only ONE of the configured kinds when several share it: with all five
+      # named `gotk_resource_info` it served 19 of the cluster's 22 objects -- no ImageRepository,
+      # no ImageUpdateAutomation, no error logged -- and any pair of kinds served one (v2.14 to
+      # v2.17 alike, measured against the live cluster 2026-09-24). So the gitops config names each
+      # kind's metric `gotk_<kind>_info` and this puts them back together. `customresource_kind`
+      # keeps the union free of duplicate label sets. The list is a contract with
+      # movies-gitops/kube-state-metrics/flux-crs-config.yaml: a kind added there and not here is
+      # published and never watched.
+      - record: flux:resource_info
+        expr: >-
+          {__name__=~"gotk_(kustomization|gitrepository|imagerepository|imagepolicy|imageupdateautomation)_info"}
+
       # THIRTY MINUTES, from the Kustomizations' own settings: `interval: 10m` with `timeout: 10m`
       # on the web overlays and 3m elsewhere, and retries on the interval. One failed health check
       # therefore holds Ready=False for up to ~20 minutes before the next attempt can clear it,
@@ -167,7 +180,7 @@ groups:
       # each time. Thirty minutes is past a single failed attempt and its retry; a third failure
       # in a row is not a slow rollout any more.
       - alert: FluxObjectNotReady
-        expr: max by (customresource_kind, namespace, name) (gotk_resource_info{ready="False"}) == 1
+        expr: max by (customresource_kind, namespace, name) (flux:resource_info{ready="False"}) == 1
         for: 30m
         labels:
           severity: warning
@@ -188,7 +201,7 @@ groups:
       # to hold a change -- and the alert exists for the one that was never resumed. An hour is
       # long enough not to page the person holding it and short enough to land the same day.
       - alert: FluxObjectSuspended
-        expr: max by (customresource_kind, namespace, name) (gotk_resource_info{suspended="true"}) == 1
+        expr: max by (customresource_kind, namespace, name) (flux:resource_info{suspended="true"}) == 1
         for: 1h
         labels:
           severity: warning
@@ -202,7 +215,7 @@ groups:
             {{ $labels.name }}` for a Kustomization; `flux resume --help` names the other kinds).
 
       - alert: FluxObjectStateAbsent
-        expr: absent(gotk_resource_info)
+        expr: absent(flux:resource_info)
         # THIRTY MINUTES, matching every other `absent()` companion in this directory.
         for: 30m
         labels:
@@ -211,14 +224,14 @@ groups:
           summary: "Flux object state is not published -- the kube-state-metrics gitops change is pending or broken"
           description: >-
             `FluxObjectNotReady` and `FluxObjectSuspended` cannot fire without
-            `gotk_resource_info`, so a failing or suspended deploy path is unwatched. EXPECTED
-            UNTIL THE PENDING GITOPS CHANGE IS APPLIED: movies-gitops/kube-state-metrics/ needs
-            flux-crs-config.yaml (the custom-resource-state ConfigMap), the
+            `flux:resource_info` (kube-state-metrics' `gotk_<kind>_info` series), so a failing or suspended deploy path is unwatched. The series
+            comes from movies-gitops/kube-state-metrics/: flux-crs-config.yaml (the
+            custom-resource-state ConfigMap), the
             `--custom-resource-state-config-file=/etc/ksm/flux.yaml` flag and its volume mount in
             deployment.yaml, and list/watch on the flux API groups and on
-            customresourcedefinitions in rbac.yaml -- the diff is in the commit that added the
-            flux-objects group. If it HAS been applied: the ClusterRole
-            does not grant `list`/`watch` on the flux groups and on
-            customresourcedefinitions.apiextensions.k8s.io, or the config names a version the
-            installed CRDs no longer serve. If `KubeStateMetricsSeriesAbsent` fires too, the
+            customresourcedefinitions in rbac.yaml. If one of those is missing on the cluster, the
+            `kube-state-metrics` Kustomization has not applied it (`flux get kustomization
+            kube-state-metrics`); if all are there, the pod's log names a reflector failing on
+            permissions, or the config names a version the installed CRDs no longer serve
+            (`kubectl get crd | grep fluxcd`). If `KubeStateMetricsSeriesAbsent` fires too, the
             exporter itself is the problem. IT DOES NOT MEAN FLUX IS HEALTHY.

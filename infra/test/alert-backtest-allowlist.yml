@@ -28,21 +28,23 @@ allow:
   FluxObjectStateAbsent:
     noisy: true
     reason: >-
-      gotk_resource_info does not exist until the pending movies-gitops change (kube-state-metrics'
-      custom-resource-state config for Flux, see flux.rules' flux-objects group) is applied. Until
-      then this warning, naming that change, is the correct and only output.
-  # ...and the two comparisons it stands in for, DEAD until the same change: they read nothing but
-  # gotk_resource_info. Remove both with the entry above.
+      flux:resource_info (recorded from kube-state-metrics' gotk_<kind>_info series) did not exist
+      until the movies-gitops change giving kube-state-metrics a custom-resource-state config for
+      Flux (see flux.rules' flux-objects group) landed on 2026-09-24, so the replayed fortnight
+      still holds this warning firing before it. Remove this entry and the two below once that
+      fortnight has passed (2026-10-09).
+  # ...and the two comparisons it stands in for, DEAD over the same stretch: they read nothing but
+  # flux:resource_info. Remove both with the entry above.
   FluxObjectNotReady:
     dead: true
     reason: >-
-      Reads only gotk_resource_info, which the pending movies-gitops kube-state-metrics change
-      publishes; FluxObjectStateAbsent is the warning that says so meanwhile.
+      Reads only flux:resource_info, which did not exist before the 2026-09-24 movies-gitops
+      kube-state-metrics change; FluxObjectStateAbsent is the warning that said so meanwhile.
   FluxObjectSuspended:
     dead: true
     reason: >-
-      Reads only gotk_resource_info, which the pending movies-gitops kube-state-metrics change
-      publishes; FluxObjectStateAbsent is the warning that says so meanwhile.
+      Reads only flux:resource_info, which did not exist before the 2026-09-24 movies-gitops
+      kube-state-metrics change; FluxObjectStateAbsent is the warning that said so meanwhile.
 
 # Metrics a rule reads that are published ONLY in an exceptional state, so their absence over the
 # whole window is the healthy case, not a dead selector. They are excluded from the dead-alert

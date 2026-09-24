@@ -15,7 +15,7 @@
     "same_as": "gotk_reconcile_duration_seconds_bucket"
    }
   },
-  "gotk_resource_info": {},
+  "flux:resource_info": {},
   "jvm_buffer_pool_capacity_bytes": {
    "job": [
     "kinowo-web",
