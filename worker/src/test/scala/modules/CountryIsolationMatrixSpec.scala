@@ -59,6 +59,8 @@ class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers {
       registerCacheMetrics()
       ()
     }
+    /** Every cinema name this wiring tags into its /uptime at boot or on a fallback flip. */
+    def taggedCinemas: Set[String] = clientMarkers.keySet ++ sourceUrls.keySet ++ filmwebOnlyCinemas
   }
 
   /** The network-level chain sources are not venues of any city; each belongs to one country. */
@@ -109,6 +111,19 @@ class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers {
       try {
         wiring.cinemaScrapers.map(_.cinema).filterNot(ownCinemas(country)) shouldBe empty
         wiring.detailEnrichers.map(_.cinema).filterNot(ownCinemas(country)) shouldBe empty
+      } finally wiring.stop()
+    }
+
+    // Regression: the markers, source links and Filmweb-only set were built off the GLOBAL
+    // catalog, so every worker tagged every country's venues (thousands of rows) into its
+    // own /uptime tag store at boot, and each non-Polish worker resolved Poland's Filmweb
+    // source links over HTTP to do it.
+    it should "tag only its own country's cinemas into /uptime" in {
+      val wiring = new IsolationProbe(country)
+      try {
+        val ownNames = ownCinemas(country).map(_.displayName)
+        wiring.taggedCinemas should not be empty
+        wiring.taggedCinemas.filterNot(ownNames).toSeq.sorted.take(20) shouldBe empty
       } finally wiring.stop()
     }
 

@@ -46,6 +46,15 @@ trait ScrapeWiring { self: WorkerWiring =>
     odeonAuthToken = odeonAuthHarvester.token,
     titles = titleNormalizer)
 
+  /** THIS country's slice of the global catalog, every city included — what every
+   *  consumer below walks. `cinemaScraperCatalog.all` spans every country; a wiring
+   *  that iterates it builds, tags or fetches for venues it does not serve (the
+   *  Cineworld detail enricher in every country's worker, f4c7ac583; every country's
+   *  venues tagged into each country's /uptime). Narrowed further by
+   *  [[scrapeCities]] where only the scraped subset matters. */
+  lazy val countryScrapers: Seq[CinemaScraper] =
+    country.cities.flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c.slug, Nil))
+
   // This country's own cities — the default scrape set. A country wiring only
   // ever scrapes its own cities (never another country's), so the default is
   // `country.cities`, not the global `City.all` union. KINOWO_SCRAPE_CITIES only
@@ -101,21 +110,24 @@ trait ScrapeWiring { self: WorkerWiring =>
     new MongoFallbackStore(mongoConnection.database)
 
   // The per-cinema scraper-client marker ("shared:<Client>" / "custom:<Client>"),
-  // derived once from the catalog. Shared by the boot reconcile and the per-event
+  // derived once from this country's slice of the catalog — the whole catalog tagged
+  // every country's venues (thousands of US/UK/DE/ES rows) into each country's
+  // /uptime tag store at boot. Shared by the boot reconcile and the per-event
   // retag so the FtFW tag is layered on top of — never instead of — the marker.
   protected lazy val clientMarkers: Map[String, String] =
-    CinemaClientMarkers.markers(cinemaScraperCatalog.all)
+    CinemaClientMarkers.markers(countryScrapers)
 
   // The per-cinema public source-page URL ("url:<https…>"), derived once from
-  // the catalog alongside the client marker so the /uptime page can link each
+  // this country's slice alongside the client marker (off the whole catalog, every
+  // non-Polish worker resolved Poland's Filmweb links over HTTP at boot) so the /uptime page can link each
   // cinema name to the page we scrape. Rides the same tag channel. Filmweb-backed
   // venues are upgraded from their `/cinema/-<id>` fallback to the canonical,
   // browser-renderable `/showtimes/<City>/<Name>-<id>` page, resolved once from
   // Filmweb's /info at boot (city + name aren't in our model); tolerant, so a
   // venue whose resolve fails keeps the fallback.
   protected lazy val sourceUrls: Map[String, String] = {
-    val base           = CinemaClientMarkers.sourceUrls(cinemaScraperCatalog.all)
-    val filmwebClients = cinemaScraperCatalog.all.collect { case f: FilmwebShowtimesClient => f }
+    val base           = CinemaClientMarkers.sourceUrls(countryScrapers)
+    val filmwebClients = countryScrapers.collect { case f: FilmwebShowtimesClient => f }
     base ++ FilmwebShowtimesClient.resolveAll(filmwebClients)
   }
 
@@ -130,11 +142,11 @@ trait ScrapeWiring { self: WorkerWiring =>
       uptimeMonitor.tagService(state.cinema, CinemaClientMarkers.tagsFor(clientMarkers.get(state.cinema), sourceUrls.get(state.cinema), state.active))
     }
 
-  // Cinemas whose ONLY scraper is a FilmwebShowtimesClient — served by Filmweb by
+  // This country's cinemas whose ONLY scraper is a FilmwebShowtimesClient — served by Filmweb by
   // design, not as a fallback. Feeds the FilmwebDropAlerter (a Filmweb-only venue
   // going empty means migrate it to an own-site scraper).
   lazy val filmwebOnlyCinemas: Set[String] =
-    cinemaScraperCatalog.all.groupBy(_.cinema)
+    countryScrapers.groupBy(_.cinema)
       .collect { case (c, scrapers) if scrapers.nonEmpty && scrapers.forall(_.isInstanceOf[FilmwebShowtimesClient]) =>
         c.displayName }
       .toSet

@@ -17,7 +17,7 @@ trait DetailWiring { self: WorkerWiring =>
   // detailGroup for the handler (task → fetch); the per-cinema enqueuers and
   // reaper iterate the list directly.
   //
-  // Scoped to `country.cities`, exactly like `ScrapeWiring.cinemaScrapers` —
+  // Scoped to `countryScrapers`, this country's slice, exactly like `ScrapeWiring.cinemaScrapers` —
   // `cinemaScraperCatalog.all` is the GLOBAL catalog across every country, and
   // this list is actively WALKED (the reaper enqueues off it, the enqueuers
   // subscribe off it), not just looked up by a key this country's own rows
@@ -29,9 +29,7 @@ trait DetailWiring { self: WorkerWiring =>
   // failures for a UK-only chain) even though no Polish cinema is a Cineworld
   // venue.
   lazy val detailEnrichers: Seq[DetailEnricher] =
-    country.cities
-      .flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c.slug, Nil))
-      .collect { case de: DetailEnricher => de }
+    countryScrapers.collect { case de: DetailEnricher => de }
 
   /** Cinemas that defer per-film detail AND whose detail supplies TMDB hints —
    *  a film one of these scrapes (with a detail filmUrl) waits for its
