@@ -178,9 +178,7 @@ class VipsPosterShrinker(
         // vips reads JPEG, PNG, WebP, GIF, TIFF, HEIF: for any of those a failure is a real one (the
         // cap among them). Only a file none of those is goes to the JDK decoder.
         if (VipsPosterShrinker.knownFormat(file)) None else javaDecode(file)
-      } else Option(ImageIO.read(out.toFile)).map(slot =>
-        if (slot.getWidth == OgCardRenderer.PosterSlotWidth && slot.getHeight == OgCardRenderer.PosterSlotHeight) slot
-        else OgCardRenderer.coverSlot(slot))
+      } else Option(ImageIO.read(out.toFile)).map(OgCardRenderer.coverSlot)   // opaque RGB, whatever vips wrote
     } catch { case e: Exception => logger.info(s"share card: vips failed on $file: ${e.getMessage}"); None }
     finally Files.deleteIfExists(out)
   }
@@ -255,7 +253,7 @@ object PosterPipeline {
       val params = writer.getDefaultWriteParam
       params.setCompressionMode(ImageWriteParam.MODE_EXPLICIT)
       params.setCompressionQuality(PosterQuality)
-      writer.write(null, new IIOImage(slot, null, null), params)
+      writer.write(null, new IIOImage(OgCardRenderer.opaque(slot), null, null), params)
     } finally { writer.dispose(); stream.close() }
     bytes.toByteArray
   }
@@ -286,15 +284,22 @@ class ShareCardPosters(store: ShareCardStore, download: PosterDownload, shrinker
       .flatMap(url => Try(Option(ImageIO.read(path.toFile))).toOption.flatten.map(url -> _))
   }
 
+  /** `url`'s poster — the first of its renditions that downloads, shrinks AND encodes — cached, or
+   *  None. Any failure on the way, a thrown one included, only moves on to the next rendition (and
+   *  the caller to the next candidate): one bad poster must never fail the render. */
   private def fetchAndCache(filmId: String, url: String): Option[BufferedImage] = {
     val slot = PosterRendition.candidates(url).iterator.flatMap { rendition =>
       download.fetch(rendition).flatMap { file =>
-        try shrinker.coverSlot(file) finally Files.deleteIfExists(file)
+        try shrinker.coverSlot(file).map(image => image -> PosterPipeline.encodePoster(image))
+        catch { case e: Exception => logger.info(s"share card: poster $rendition unusable: ${e.getClass.getSimpleName}: ${e.getMessage}"); None }
+        finally Files.deleteIfExists(file)
       }
     }.nextOption()
     metrics.posterFetch(ok = slot.isDefined)
-    slot.foreach(image => store.writeAtomically(store.posterPath(filmId), PosterPipeline.encodePoster(image), ShareCardPosters.key(url)))
-    slot
+    slot.map { case (image, bytes) =>
+      store.writeAtomically(store.posterPath(filmId), bytes, ShareCardPosters.key(url))
+      image
+    }
   }
 }
 

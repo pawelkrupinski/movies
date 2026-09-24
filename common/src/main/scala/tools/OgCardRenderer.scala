@@ -497,6 +497,7 @@ object OgCardRenderer {
    *  first. 0.85 is the point at which that text stays clean; the difference
    *  from 0.75 costs about 40 KB. */
   private def toJpeg(img: BufferedImage, quality: Float = JpegQuality, fullChroma: Boolean = false): Array[Byte] = {
+    val rgb  = opaque(img)
     val baos = new ByteArrayOutputStream()
     val writer = ImageIO.getImageWritersByFormatName("jpg").next()
     val stream = ImageIO.createImageOutputStream(baos)
@@ -505,7 +506,7 @@ object OgCardRenderer {
       val params = writer.getDefaultWriteParam
       params.setCompressionMode(ImageWriteParam.MODE_EXPLICIT)
       params.setCompressionQuality(quality)
-      val metadata = writer.getDefaultImageMetadata(javax.imageio.ImageTypeSpecifier.createFromRenderedImage(img), params)
+      val metadata = writer.getDefaultImageMetadata(javax.imageio.ImageTypeSpecifier.createFromRenderedImage(rgb), params)
       if (fullChroma) {
         // Every component at 1×1 sampling: the encoder's default halves chroma both ways (4:2:0).
         val tree = metadata.getAsTree("javax_imageio_jpeg_image_1.0")
@@ -517,7 +518,7 @@ object OgCardRenderer {
         }
         metadata.setFromTree("javax_imageio_jpeg_image_1.0", tree)
       }
-      writer.write(null, new IIOImage(img, null, metadata), params)
+      writer.write(null, new IIOImage(rgb, null, metadata), params)
     } finally {
       writer.dispose()
       stream.close()
@@ -546,12 +547,25 @@ object OgCardRenderer {
   /** `p` cover-scaled and cropped to exactly the film card's poster column
    *  ([[PosterSlotWidth]] × [[PosterSlotHeight]]) — what the worker's poster cache stores, so a
    *  render from the cache draws it 1:1. */
-  def coverSlot(p: BufferedImage): BufferedImage = {
-    val slot = new BufferedImage(PosterSlotWidth, PosterSlotHeight, BufferedImage.TYPE_INT_RGB)
-    val g    = slot.createGraphics()
-    try { applyHints(g); drawCover(g, p, 0, 0, PosterSlotWidth, PosterSlotHeight) }
-    finally g.dispose()
-    slot
+  def coverSlot(p: BufferedImage): BufferedImage = opaqueCopy(p, PosterSlotWidth, PosterSlotHeight)
+
+  /** `p` as opaque RGB, the only colour model the JPEG encoder takes whole: transparency composited
+   *  over the card's background, grayscale / palette / CMYK-derived pixels converted. A poster
+   *  arrives in whatever model its site saved it in, and a PNG with alpha reaching the encoder
+   *  untouched is what failed every render of 41 PL films on 2026-09-24 ("Bogus input colorspace"). */
+  def opaque(p: BufferedImage): BufferedImage =
+    if (p.getType == BufferedImage.TYPE_INT_RGB) p else opaqueCopy(p, p.getWidth, p.getHeight)
+
+  /** `p` cover-scaled onto a new opaque RGB canvas of `w` × `h`, over the card's background. */
+  private def opaqueCopy(p: BufferedImage, w: Int, h: Int): BufferedImage = {
+    val out = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
+    val g   = out.createGraphics()
+    try {
+      applyHints(g)
+      g.setColor(Bg); g.fillRect(0, 0, w, h)
+      drawCover(g, p, 0, 0, w, h)
+    } finally g.dispose()
+    out
   }
 
   /** Cover-scale the film poster to the full-bleed left column. */

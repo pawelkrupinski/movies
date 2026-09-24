@@ -97,6 +97,8 @@ object ShareCardMetrics {
     private[sharecards] def coverageFor(country: String): Double = coverage.labelValues(country).get()
     /** Test seam: how many cards were drawn by `path`. */
     private[sharecards] def pathCount(country: String, path: String): Double = paths.labelValues(country, path).get()
+    /** Test seam: how many poster fetches ended `ok` or failed. */
+    private[sharecards] def posterFetchCount(country: String, ok: Boolean): Double = posterFetch.labelValues(country, if (ok) "ok" else "failed").get()
   }
 
   /** Records nothing — for specs that don't assert on metrics. */

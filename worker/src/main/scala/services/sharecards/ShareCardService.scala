@@ -143,8 +143,12 @@ class ShareCardService(
     val (outcome, card) = existing(next) match {
       case Some(version)                   => (Outcome.Existing, Some(version))
       case None if next.posterUrls.isEmpty => (Outcome.Rendered, Some(drawWhole(next, first)))
-      case None => onBase(next, first).orElse(rebuildBase(next, first))
-                     .fold((Outcome.Failed, Option.empty[String]))(version => (Outcome.Rendered, Some(version)))
+      case None =>
+        // Anything thrown while drawing is this card's failure — counted, and the task retried —
+        // never an exception out of the task.
+        Try(onBase(next, first).orElse(rebuildBase(next, first))).recover { case e: Exception =>
+          logger.warn(s"share card: ${next.filmId} could not be drawn: ${e.getClass.getSimpleName}: ${e.getMessage}"); None
+        }.get.fold((Outcome.Failed, Option.empty[String]))(version => (Outcome.Rendered, Some(version)))
     }
     card.foreach { version =>
       fingerprints.put(next.filmId, next.fingerprint)
