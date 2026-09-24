@@ -5,7 +5,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import models.{KinoMuranow, Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{MongoMovieRepository, MongoScreeningsRepository,
+import services.movies.{CountingScreeningsRepository, CountingSlotsRepository, MongoMovieRepository, MongoScreeningsRepository,
                         MongoSlotsRepository, StoredMovieRecord}
 import tools.Env
 

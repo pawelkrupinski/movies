@@ -14,6 +14,8 @@ import tools.{Env, IntegrationCorpusDatabase}
  *  itself (`repository.watchUpserts(projector.onMovieUpsert)`), next to whatever other
  *  listener it is asserting through. */
 final class ProjectedMongoCorpus(db: MongoDatabase) {
+  /** The corpus database's name — what an oplog count ([[tools.OplogWrites]]) is scoped to. */
+  val databaseName: String = db.name
   val screenings = new MongoScreeningsRepository(Some(db))
   val slots      = new MongoSlotsRepository(Some(db))
   val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), slots = Some(slots),

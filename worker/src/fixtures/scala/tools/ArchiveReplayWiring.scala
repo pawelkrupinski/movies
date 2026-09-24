@@ -202,7 +202,7 @@ class ArchiveReplayWiring(
   // and why leaving them faked narrowed the claim without looking as though it did: a
   // settle that enqueues a task, stamps freshness, coordinates a chunk or records an
   // OMDb attempt does real writes in production and none at all against a fake.
-  override lazy val taskQueue            = storage.tasks
+  override protected def queueStore      = storage.tasks
   override lazy val freshnessStore       = storage.freshness
   override lazy val chunkScrapeStore     = storage.chunkScrape
   override lazy val omdbAttemptStore     = storage.omdbAttempt

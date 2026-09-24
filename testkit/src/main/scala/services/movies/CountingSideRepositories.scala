@@ -1,7 +1,6 @@
-package integration
+package services.movies
 
 import models.{Showtime, SourceData}
-import services.movies.{ChangeStreamDemand, ScreeningsRepository, SlotsRepository, WriteOutcome}
 
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -14,6 +13,12 @@ import java.util.concurrent.atomic.AtomicInteger
  * one counting the batch read to prove a scan skipped it — each re-declaring every other
  * method just to delegate it. They all broke together the first time either trait grew a
  * parameter, which is the usual argument for having one.
+ *
+ * Shared from testkit because the fixpoint ledger (`tools.ChurnLedger`) needs the same
+ * count the paging and rewrite guards do: `writes` is every write that reached the store,
+ * which is what a pass over unchanged input must not produce — the in-memory stores ring
+ * their change listeners only on a REAL change, so an identical rewrite (the
+ * `43b595136` shape: Mongo still pays for it) is visible only here.
  *
  * Every method delegates; the counters are the only behaviour. Each spec reads the counters
  * it cares about and ignores the rest, so a new question needs a counter here rather than a
@@ -29,11 +34,14 @@ final class CountingScreeningsRepository(underlying: ScreeningsRepository) exten
   val batchReadCalls   = new AtomicInteger(0)
   /** Whole-collection reads — what a scan must NEVER issue. */
   val findAllCalls     = new AtomicInteger(0)
+  /** Every write of any shape that reached the store. */
+  val writes           = new AtomicInteger(0)
+  private def write[A](body: => A): A = { writes.incrementAndGet(); body }
 
   def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]],
                   stored: Option[Map[String, Seq[Showtime]]] = None): WriteOutcome = {
     replaceFilmCalls.incrementAndGet()
-    underlying.replaceFilm(filmId, slots, stored)
+    write(underlying.replaceFilm(filmId, slots, stored))
   }
 
   def findForFilmChecked(filmId: String): (Map[String, Seq[Showtime]], Boolean) =
@@ -47,19 +55,19 @@ final class CountingScreeningsRepository(underlying: ScreeningsRepository) exten
     underlying.findAll()
   }
   def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): WriteOutcome =
-    underlying.upsertSlot(filmId, slotKey, showtimes)
-  def deleteSlot(filmId: String, slotKey: String): WriteOutcome = underlying.deleteSlot(filmId, slotKey)
-  def deleteFilm(filmId: String): WriteOutcome                  = underlying.deleteFilm(filmId)
+    write(underlying.upsertSlot(filmId, slotKey, showtimes))
+  def deleteSlot(filmId: String, slotKey: String): WriteOutcome = write(underlying.deleteSlot(filmId, slotKey))
+  def deleteFilm(filmId: String): WriteOutcome                  = write(underlying.deleteFilm(filmId))
   def filmIdsChecked(): (Set[String], Boolean)          = underlying.filmIdsChecked()
-  def deleteFilms(filmIds: Set[String]): Long           = underlying.deleteFilms(filmIds)
+  def deleteFilms(filmIds: Set[String]): Long           = write(underlying.deleteFilms(filmIds))
   def rowIdsChecked(): (Set[String], Boolean)           = underlying.rowIdsChecked()
   def rowWrittenAtChecked(): (Map[String, java.time.Instant], Boolean) = underlying.rowWrittenAtChecked()
-  def deleteRows(ids: Set[String]): Long                = underlying.deleteRows(ids)
+  def deleteRows(ids: Set[String]): Long                = write(underlying.deleteRows(ids))
   override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
     underlying.watchApplied(onChange, demand)
   override def close(): Unit = underlying.close()
 
-  def reset(): Unit = { replaceFilmCalls.set(0); batchReadCalls.set(0); findAllCalls.set(0) }
+  def reset(): Unit = { replaceFilmCalls.set(0); batchReadCalls.set(0); findAllCalls.set(0); writes.set(0) }
 }
 
 /** The slots twin of [[CountingScreeningsRepository]]. */
@@ -67,6 +75,8 @@ final class CountingSlotsRepository(underlying: SlotsRepository) extends SlotsRe
   val replaceFilmCalls = new AtomicInteger(0)
   val batchReadCalls   = new AtomicInteger(0)
   val findAllCalls     = new AtomicInteger(0)
+  val writes           = new AtomicInteger(0)
+  private def write[A](body: => A): A = { writes.incrementAndGet(); body }
 
   def findForFilmChecked(filmId: String): (Map[String, SourceData], Boolean) =
     underlying.findForFilmChecked(filmId)
@@ -81,20 +91,20 @@ final class CountingSlotsRepository(underlying: SlotsRepository) extends SlotsRe
   def replaceFilm(filmId: String, slots: Map[String, SourceData],
                   stored: Option[Map[String, SourceData]] = None): WriteOutcome = {
     replaceFilmCalls.incrementAndGet()
-    underlying.replaceFilm(filmId, slots, stored)
+    write(underlying.replaceFilm(filmId, slots, stored))
   }
   def upsertSlot(filmId: String, slotKey: String, slot: SourceData): WriteOutcome =
-    underlying.upsertSlot(filmId, slotKey, slot)
-  def deleteSlot(filmId: String, slotKey: String): WriteOutcome = underlying.deleteSlot(filmId, slotKey)
-  def deleteFilm(filmId: String): WriteOutcome                  = underlying.deleteFilm(filmId)
+    write(underlying.upsertSlot(filmId, slotKey, slot))
+  def deleteSlot(filmId: String, slotKey: String): WriteOutcome = write(underlying.deleteSlot(filmId, slotKey))
+  def deleteFilm(filmId: String): WriteOutcome                  = write(underlying.deleteFilm(filmId))
   def filmIdsChecked(): (Set[String], Boolean)          = underlying.filmIdsChecked()
-  def deleteFilms(filmIds: Set[String]): Long           = underlying.deleteFilms(filmIds)
+  def deleteFilms(filmIds: Set[String]): Long           = write(underlying.deleteFilms(filmIds))
   def rowIdsChecked(): (Set[String], Boolean)           = underlying.rowIdsChecked()
   def rowWrittenAtChecked(): (Map[String, java.time.Instant], Boolean) = underlying.rowWrittenAtChecked()
-  def deleteRows(ids: Set[String]): Long                = underlying.deleteRows(ids)
+  def deleteRows(ids: Set[String]): Long                = write(underlying.deleteRows(ids))
   override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
     underlying.watchApplied(onChange, demand)
   override def close(): Unit                            = underlying.close()
 
-  def reset(): Unit = { replaceFilmCalls.set(0); batchReadCalls.set(0); findAllCalls.set(0) }
+  def reset(): Unit = { replaceFilmCalls.set(0); batchReadCalls.set(0); findAllCalls.set(0); writes.set(0) }
 }

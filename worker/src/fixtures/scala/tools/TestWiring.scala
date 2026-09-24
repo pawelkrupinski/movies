@@ -65,8 +65,18 @@ trait TestWiring extends WorkerWiring {
   // without Mongo: the reapers and the detail enqueuers (when deferred detail is
   // on) write here harmlessly. The harness never runs the TaskWorker — it drives
   // enrichment synchronously (see `enrichRatingsSync` / `converge`) — so these
-  // stay drained.
-  override lazy val taskQueue: TaskQueue = new InMemoryTaskQueue
+  // stay drained. METERED, as production's is, and counting re-asks: a fixpoint pass
+  // (`FixpointPass`) sees a re-dispatch through `kinowo_worker_tasks_enqueued` and a
+  // re-fetch of something already fresh through `reaskCountingQueue` — an unmetered queue
+  // would make every enqueue invisible to it. A wiring with a real queue swaps only the
+  // store underneath (`queueStore`), so it keeps both counts.
+  protected def queueStore: TaskQueue = new InMemoryTaskQueue
+  lazy val reaskCountingQueue = new ReaskCountingTaskQueue(queueStore, freshnessStore, {
+    case TaskType.EnrichDetails                                    => Some(detailDueWindow)
+    case rating if ReaskCountingTaskQueue.StampedTypes(rating)     => Some(ratingDueWindow)
+    case _                                                         => None
+  })
+  override lazy val taskQueue: TaskQueue = new services.metrics.MeteredTaskQueue(reaskCountingQueue, taskMetrics)
   override lazy val freshnessStore: FreshnessStore = new InMemoryFreshnessStore
 
   // The harness's detail handler publishes its `MovieDetailsComplete` (the TMDB

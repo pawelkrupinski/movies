@@ -7,7 +7,7 @@ import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.DomainEvent
-import tools.{FixtureTestWiring, ReadModelSnapshot}
+import tools.{FixpointPass, FixtureTestWiring, ReadModelSnapshot}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
@@ -534,6 +534,21 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     // (The base and dub are ONE record now, so the record legitimately holds both
     // title-slots; display separation — the regular card not showing the dub's
     // showtimes — is verified via the split in the anchor test's dub section.)
+  }
+
+  // ── The second pass is a no-op ────────────────────────────────────────────
+  // The whole recorded corpus through one more FULL tick — landing, staging fold, settle,
+  // projection sweep, TMDB re-try period, rating re-dispatch — over exactly the input the
+  // previous one saw. Every stage has at some point shipped a way to do work anyway (a
+  // film document rewritten unchanged, every screening of a venue rewritten, a heal
+  // re-projecting the same rows every 30 minutes); outputs came out identical each time,
+  // so only COUNTING the work sees it. The first pass after the boot is allowed to look —
+  // the heal's first sweep legitimately does — the second is not allowed to do anything.
+  // Last in the spec: it attaches the projector to the shared wiring's change stream.
+  it should "do no work at all on a second full tick over identical input" in {
+    FixpointPass.attachProjector(wiring)
+    FixpointPass.run(wiring)
+    FixpointPass.ledger(wiring).assertNoChurn("a second full tick over the recorded corpus")(FixpointPass.run(wiring))
   }
 
 }

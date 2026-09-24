@@ -409,6 +409,32 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
       new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), 30.seconds)
   }
 
+  // THE SECOND PASS IS A NO-OP. Once a newcomer has graduated, the next tick brings exactly
+  // what this one did: every venue re-lands the same listing — the whole-record `upsert` a
+  // scrape merge takes — and the staging reaper folds the group again, now empty. Neither may
+  // write anything. Counted off the oplog because that is the only place an identical
+  // `replaceOne` shows up: the driver reports it modified, the change stream delivers it
+  // later or not at all, and the stored documents come out the same either way. That is how
+  // the film-document rewrite (6365b8e95) and the screenings rewrite (43b595136) each ran
+  // once per venue per tick in production while every output-based assertion stayed green.
+  it should "write nothing on a second pass over a graduated film that brings nothing new" in {
+    FoldFixture.withFold("staging-fold") { fold =>
+      val repository = fold.splitAwareRepository
+      seedConcludedNewcomer(fold.staging)
+      fold.folder(repository).foldGroup(newcomerTitle)
+      val graduated = repository.findAll().filter(r => titleNormalizer.sanitize(r.title) == titleNormalizer.sanitize(newcomerTitle))
+      graduated should not be empty   // premise: the fold graduated it, so there is a second pass to have
+
+      val oplog = new tools.OplogWrites(uri, fold.db.name)
+      try new tools.ChurnLedger().counter(s"oplog writes to ${fold.db.name}")(oplog.count())
+        .assertNoChurn("re-landing the graduated film unchanged and folding its group again") {
+          graduated.foreach(film => repository.upsert(film.id, film.title, film.year, film.record))
+          fold.folder(repository).foldGroup(newcomerTitle)
+        }
+      finally oplog.close()
+    }
+  }
+
   /** A newcomer incubating in staging, concluded, with a real board — and NO `movies` row
    *  yet, so the fold is what creates it. Shared by the two tests above, which ask
    *  opposite questions of the same fold and would otherwise each carry their own copy of

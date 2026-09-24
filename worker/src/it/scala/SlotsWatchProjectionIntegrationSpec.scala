@@ -84,4 +84,61 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers {
       } finally { counting.foreach(_.close()); projecting.foreach(_.close()) }
     }
   }
+
+  // THE SECOND PASS IS A NO-OP. A film the projector has already written, re-landed exactly as
+  // it is and swept again, must cost nothing: no document written, no read-model row touched,
+  // and no heal re-projecting it to find nothing to write. The film has a SPENT slot — a venue
+  // whose showtimes are all gone, which the sweep's slots-only view cannot tell from a venue
+  // whose row is missing. That is the shape that re-projected ~333 Polish rows every 30
+  // minutes (dfe62a96c) — against Mongo only, because the in-memory repository stitched the
+  // showtimes back in and made every sweep look convergent.
+  "a projected film" should "cost nothing on a second pass that brings nothing new" in {
+    ProjectedMongoCorpus.withCorpus("projection_fixpoint") { corpus =>
+      import corpus.{databaseName, readModel, repository}
+      val country   = models.Country.Poland
+      val metrics   = services.metrics.WorkerMetrics.singleCountry(country, poolSize = 1)
+      val projector = new services.readmodel.ReadModelProjector(repository, readModel, readModel, metrics.taskMetricsFor(country))
+      val id        = StoredMovieRecord.keyFor(fixpointTitle, year, titleNormalizer)
+      val projecting = repository.watchUpserts(projector.onMovieUpsert)
+      projecting should not be empty
+      try {
+        repository.upsert(fixpointTitle, year, MovieRecord(tmdbId = Some(FixpointTmdb), data = Map[Source, SourceData](
+          KinoMuranow -> SourceData(title = Some(fixpointTitle), showtimes = Seq(Showtime(FarFuture, None))),
+          KinoLuna    -> SourceData(title = Some(fixpointTitle), showtimes = Nil))))
+        withClue("the film never reached the read model, so there is no second pass to measure: ") {
+          Eventually.poll(30000)(readModel.findAllScreenings().exists(_.filmId == id)) shouldBe true
+        }
+        // The film's three writes reach the projector on three cursors, asynchronously. Let the
+        // last of them land before counting, or a late first-pass projection reads as churn.
+        awaitQuiet(metrics.registry)
+        projector.pruneOrphans()   // the FIRST sweep may legitimately look
+
+        val oplog = new tools.OplogWrites(Env.get("MONGODB_URI").get, databaseName)
+        try new tools.ChurnLedger()
+          .registry(metrics.registry, tools.FixpointPass.WorkFamilies, tools.FixpointPass.isWork)
+          .counter(s"oplog writes to $databaseName")(oplog.count())
+          .assertNoChurn("re-landing a projected film unchanged and sweeping again") {
+            repository.findAll().foreach(film => repository.upsert(film.id, film.title, film.year, film.record))
+            projector.pruneOrphans()
+          }
+        finally oplog.close()
+      } finally projecting.foreach(_.close())
+    }
+  }
+
+  private val fixpointTitle = "__projection-fixpoint-sentinel__"
+  private val FixpointTmdb  = 424243
+  // Fixed rather than read off the wall clock, and far enough out to stay upcoming.
+  private val FarFuture     = LocalDateTime.of(2099, 1, 1, 20, 0)
+
+  /** Until the projector has made no projection for a second: its cursors deliver on their own
+   *  threads, so "the write returned" is not "the projection happened". */
+  private def awaitQuiet(registry: io.prometheus.metrics.model.registry.PrometheusRegistry): Unit = {
+    def calls = tools.ChurnLedger.countersOf(registry, Set("kinowo_worker_readmodel_project_calls"), (_, _) => true)
+    // `last` starts EMPTY, so the first probe (which `poll` takes immediately) can never
+    // read as quiet: two readings a full poll interval apart must agree.
+    var last = Map.empty[String, Double]
+    Eventually.poll(30000, 1000) { val now = calls; val quiet = now.nonEmpty && now == last; last = now; quiet }
+    ()
+  }
 }

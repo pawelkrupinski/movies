@@ -2,7 +2,7 @@ package tools
 
 import clients.tools.FakeHttpFetch
 
-import services.movies.{InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository}
+import services.movies.{CountingScreeningsRepository, CountingSlotsRepository, InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository}
 import services.readmodel.{InMemoryReadModelRepository, ReadModelReader, ReadModelWriter}
 
 class FixtureTestWiring(val fixture: String) extends TestWiring {
@@ -22,8 +22,12 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   // filed under its OLD id — so anything that writes the winner and deletes the loser
   // destroys them. With everything inline a fold unions the records and carries them for
   // free, which is exactly why every merge/re-key spec stayed green while prod lost showtimes.
-  override lazy val screeningsRepository = new InMemoryScreeningsRepository
-  override lazy val slotsRepository      = new InMemorySlotsRepository
+  //
+  // Counted, because the in-memory stores ring their change listeners only on a REAL change:
+  // an identical rewrite — which Mongo still pays for in full — is visible to a fixpoint
+  // pass (`FixpointPass.ledger`) only as a write call reaching the store.
+  override lazy val screeningsRepository = new CountingScreeningsRepository(new InMemoryScreeningsRepository)
+  override lazy val slotsRepository      = new CountingSlotsRepository(new InMemorySlotsRepository)
   override lazy val movieRepository =
     new InMemoryMovieRepository(screenings = Some(screeningsRepository), slots = Some(slotsRepository))
 

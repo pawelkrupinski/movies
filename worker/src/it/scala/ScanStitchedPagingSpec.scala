@@ -1,6 +1,5 @@
 package services.movies
 
-import integration.CountingSlotsRepository
 import models.{Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.mongodb.scala.{MongoClient, MongoDatabase}
 import org.mongodb.scala.model.Filters
