@@ -31,16 +31,12 @@ class DatabaseOwnerIntegrationSpec extends AnyFlatSpec with Matchers {
   // both stamp it, the last write winning while the first worker kept running.
   it should "let exactly one of two countries claiming it at once win" in
     tools.IntegrationCorpusDatabase.withDatabase(uri, "database-owner-race") { db =>
-      val pool = java.util.concurrent.Executors.newFixedThreadPool(2)
-      try (1 to 20).foreach { round =>
+      tools.ConcurrentInstances.rounds(20) { round =>
         new DatabaseOwner(db).owner().foreach(_ => db.getCollection(DatabaseOwner.Collection)
           .drop().toFuture().pipe(scala.concurrent.Await.result(_, scala.concurrent.duration.Duration(10, "s"))))
-        val start = new java.util.concurrent.CyclicBarrier(2)
-        val claims = Seq(Country.Poland, Country.Germany).map { country =>
-          pool.submit(() => { start.await(); scala.util.Try(new DatabaseOwner(db).claim(country)).isSuccess })
-        }
-        withClue(s"round $round: ") { claims.count(_.get()) shouldBe 1 }
+        val claims = tools.ConcurrentInstances.race(Seq(Country.Poland, Country.Germany)
+          .map(country => () => new DatabaseOwner(db).claim(country)), Some(round))
+        claims.count(_.isRight) shouldBe 1
       }
-      finally pool.shutdown()
     }
 }

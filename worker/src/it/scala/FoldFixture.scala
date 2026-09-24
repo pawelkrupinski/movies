@@ -113,6 +113,12 @@ object FoldFixture {
 
   }
 
+  /** One worker pod's fold handles over a database it shares with other pods
+   *  (`tools.ConcurrentInstances`): its own client, so its sessions and transactions are its own. */
+  def on(instance: tools.ConcurrentInstances.Instance): Handles =
+    new Handles(instance.database, new MongoConnection(Some(uri), instance.database.name, required = false,
+      sharedClient = Some(instance.client)))
+
   /** Run `test` against a database of this suite's own, dropped afterwards whatever the test
    *  did — including when it threw. `suite` names it; give each spec a distinct one, since two
    *  suites sharing a name would share a database and be back where this started. */

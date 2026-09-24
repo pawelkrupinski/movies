@@ -2,7 +2,6 @@ package integration
 
 import models.Cinema
 
-import java.util.concurrent.CyclicBarrier
 import scala.concurrent.duration._
 
 /**
@@ -13,8 +12,9 @@ import scala.concurrent.duration._
  *
  * Extracted from `StagingFoldConcurrentTmdbRaceIntegrationSpec`, the first fold-race spec,
  * once a second race shape (see the three-way test in that file) needed the identical
- * seed/barrier/thread/join/collect plumbing — the threshold this repo extracts at is two
- * uses, not three.
+ * seed/barrier/thread/join/collect plumbing. The barrier start itself now lives in
+ * `tools.ConcurrentInstances.race`, shared with the two-instance specs; what stays here is
+ * the fold-specific seeding.
  */
 object ConcurrentFoldRaceHarness {
 
@@ -46,18 +46,7 @@ object ConcurrentFoldRaceHarness {
   def race(fold: FoldFixture.Handles, groups: Seq[RaceGroup], joinTimeout: FiniteDuration = 30.seconds,
     maxRetries: Option[Int] = None): Seq[Either[Throwable, Unit]] = {
     groups.foreach(g => fold.seedStagingRow(g.cinema.displayName, g.title, g.year, g.tmdbId, g.imdbId))
-    val folder   = fold.folder(maxRetries = maxRetries.getOrElse(groups.size + 2))
-    val barrier  = new CyclicBarrier(groups.size)
-    val outcomes = Array.fill[Either[Throwable, Unit]](groups.size)(Left(new IllegalStateException("thread did not run")))
-    val threads = groups.zipWithIndex.map { case (g, i) =>
-      val t = new Thread(() => {
-        barrier.await()
-        outcomes(i) = try { folder.foldGroup(g.title); Right(()) } catch { case e: Throwable => Left(e) }
-      })
-      t.start()
-      t
-    }
-    threads.foreach(_.join(joinTimeout.toMillis))
-    outcomes.toSeq
+    val folder = fold.folder(maxRetries = maxRetries.getOrElse(groups.size + 2))
+    tools.ConcurrentInstances.race(groups.map(g => () => { folder.foldGroup(g.title); () }), joinTimeout = joinTimeout)
   }
 }

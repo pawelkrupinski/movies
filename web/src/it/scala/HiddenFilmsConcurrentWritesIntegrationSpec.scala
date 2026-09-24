@@ -1,8 +1,5 @@
 package integration
 
-import controllers.UserStateController
-import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.User
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
@@ -10,12 +7,10 @@ import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.Helpers._
-import play.api.test.{FakeRequest, Helpers}
-import services.metrics.LegacyUserStateMetrics
-import services.users.{AccountDeletion, InMemoryUserRepository, MongoUserStateRepository, NoUserChangeTimeCache, UserStateWriteOutcomes}
+import play.api.test.FakeRequest
+import services.users.{InMemoryUserRepository, MongoUserStateRepository, NoUserChangeTimeCache, UserStateWriteOutcomes}
 import tools.Env
 
-import java.time.Instant
 import java.util.concurrent.{ConcurrentLinkedQueue, Executors}
 import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
@@ -48,15 +43,10 @@ class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matche
     pool.shutdown()
   } finally super.afterAll()
 
-  private val controller = new UserStateController(Helpers.stubControllerComponents(), states,
-    new AccountDeletion(users, states), NoUserChangeTimeCache, new LegacyUserStateMetrics(new PrometheusRegistry(), "pl", java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)), users, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
+  private val controller = UserStatePod.controller(states, users, NoUserChangeTimeCache,
+    java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
 
-  private def signedIn(suffix: String): String = {
-    val id = s"$Prefix$suffix"
-    users.upsert(User(id = id, provider = "google", providerSub = s"G-$id", email = None, displayName = None,
-      avatarUrl = None, createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH))
-    id
-  }
+  private def signedIn(suffix: String): String = UserStatePod.signIn(users, s"$Prefix$suffix")
 
   private def hide(userId: String, country: String, title: String) =
     controller.hideFilm(country, title)(FakeRequest("PUT", s"/api/me/$country/hidden-films/x").withSession("userId" -> userId))
