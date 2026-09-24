@@ -16,12 +16,14 @@
 # country's city page which film it lists now and writes those as a file_sd document
 # (nix/files/synthetic-probe-targets.sh says how, and why it is all-or-nothing).
 #
-# ⚠️ CLOUDFLARE CHALLENGES THIS HOST UNTIL IT IS ALLOW-LISTED. Bot Fight Mode is on for both zones
-# and answers a Hetzner address with a 403 challenge page whatever the User-Agent (measured
-# 2026-09-24 from the fleet's egress: 403 for every URL below, with curl's, blackbox's and a
-# browser's UA alike), and it has no WAF skip. An IP Access Rule with action `allow` for this
-# host's public address on BOTH zones is what lets the probes through; until that exists every
-# probe fails and ProbeFailing says so. The rule is a hand step -- see the commit that added this.
+# CLOUDFLARE AND THIS HOST. Bot Fight Mode is on for both zones and answered a Hetzner address with
+# a 403 challenge whatever the User-Agent (measured 2026-09-24 from the fleet's egress), so an IP
+# Access Rule allowing this host's public address on BOTH zones is a hand step; ProbeBlockedByEdge
+# names it if it is ever missing. With it, every static door answers 200 (measured 2026-09-24
+# 16:15Z). What it does NOT lift is showtimes.cc's managed challenge on `/movie/` paths (a custom
+# rule against scrapers, not verified bots only), which blackbox cannot pass: the discovery reads
+# such a page from the ORIGIN instead (`discoveryOrigin`), probes the share card it names, and
+# leaves the film page itself unprobed rather than probing a 403 forever.
 #
 # ⚠️ THE FIRST SWITCH IS BY HAND. Both units are new, and auto-apply refuses a switch that STARTS a
 # unit it has not been told it may disturb -- and it reads that permission from the closure it is
@@ -126,6 +128,24 @@ in
       description = "The pages that must always answer. Each becomes one probe.";
     };
 
+    discoveryOrigin = lib.mkOption {
+      default = null;
+      description = ''
+        Where the discovery reads a page the edge refuses (403): the origin's address on the
+        private network and the origin certificates to trust for it. Only the discovery goes
+        there -- every probe still goes through the edge. Null reads every page through the edge.
+      '';
+      type = lib.types.nullOr (lib.types.submodule {
+        options = {
+          address = lib.mkOption { type = lib.types.str; example = "10.20.0.12"; };
+          certificates = lib.mkOption {
+            type = lib.types.listOf lib.types.path;
+            description = "The origin certificates (PEM) its TLS is pinned to, one per public name.";
+          };
+        };
+      });
+    };
+
     discoverFrom = lib.mkOption {
       type = lib.types.attrsOf lib.types.str;
       default = { };
@@ -152,7 +172,7 @@ in
       [ config.environment.etc."prometheus/scrape.d/blackbox-targets.yaml".text ];
 
     # ROOT, SO IT CAN PUBLISH INTO node_exporter's root-owned textfile directory; everything else
-    # about the unit is locked down, and all it does is two curls per country.
+    # about the unit is locked down, and all it does is two or three curls per country.
     systemd.services.synthetic-probe-targets = {
       description = "Find a live film page and share card per country for the synthetic probes";
       after = [ "network-online.target" ];
@@ -161,6 +181,11 @@ in
       environment = {
         PROBE_USER_AGENT = cfg.userAgent;
         PROBE_TEXTFILE = "${config.fleet.observability.textfileDirectory}/synthetic-probes.prom";
+      } // lib.optionalAttrs (cfg.discoveryOrigin != null) {
+        PROBE_ORIGIN_ADDRESS = cfg.discoveryOrigin.address;
+        # curl trusts a bundled LEAF certificate (it verifies with OpenSSL's partial-chain flag),
+        # so the origin certificates themselves are the trust store -- no Origin CA root needed.
+        PROBE_ORIGIN_CA = "${pkgs.concatText "synthetic-probe-origin-certificates.pem" cfg.discoveryOrigin.certificates}";
       };
       serviceConfig = {
         Type = "oneshot";

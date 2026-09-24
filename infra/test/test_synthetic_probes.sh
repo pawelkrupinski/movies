@@ -22,17 +22,43 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
 # ── A STUB curl ────────────────────────────────────────────────────────────────────────────────
-# Serves $tmp/pages/<url with / and : replaced by _>; a missing page is a failed fetch (curl -f).
-mkdir -p "$tmp/bin" "$tmp/pages"
+# Serves $tmp/pages/<url with / and : replaced by _> -- or, for a fetch pinned to the origin with
+# `--resolve`, $tmp/pages/origin/<same>. A page's status is 200, or what `refuse` wrote beside it;
+# a missing page is a 404. Honours the `-o` and `-w '%{http_code}'` the discovery reads, and logs
+# every call's arguments to $STUB_LOG.
+mkdir -p "$tmp/bin" "$tmp/pages/origin"
 cat > "$tmp/bin/curl" <<'STUB'
 #!/usr/bin/env bash
-url="${@: -1}"
-page="$STUB_PAGES/$(printf '%s' "$url" | tr '/:' '__')"
-[ -f "$page" ] && cat "$page" || { echo "curl: (22) The requested URL returned error: 404" >&2; exit 22; }
+printf '%s\n' "$*" >> "$STUB_LOG"
+url="${@: -1}" out=/dev/stdout write="" dir="$STUB_PAGES"
+while [ $# -gt 1 ]; do
+  case "$1" in
+    -o) out="$2"; shift ;;
+    -w) write="$2"; shift ;;
+    --resolve) dir="$STUB_PAGES/origin"; shift ;;
+  esac
+  shift
+done
+page="$dir/$(printf '%s' "$url" | tr '/:' '__')"
+code=404
+if [ -f "$page" ]; then code="$(cat "$page.status" 2>/dev/null || echo 200)"; cat "$page" > "$out"; fi
+[ -n "$write" ] && printf '%s' "$code"
+exit 0
 STUB
 chmod +x "$tmp/bin/curl"
 serve() { printf '%s' "$2" > "$tmp/pages/$(printf '%s' "$1" | tr '/:' '__')"; }
-run() { PATH="$tmp/bin:$PATH" STUB_PAGES="$tmp/pages" PROBE_TEXTFILE="$tmp/probes.prom" bash "$script" "$@" 2>"$tmp/stderr"; }
+serve_origin() { printf '%s' "$2" > "$tmp/pages/origin/$(printf '%s' "$1" | tr '/:' '__')"; }
+# The edge's managed challenge: a 403 with a JavaScript page.
+refuse() { serve "$1" '<title>Just a moment...</title></html>'; printf 403 > "$tmp/pages/$(printf '%s' "$1" | tr '/:' '__').status"; }
+# SIGPIPE IGNORED, as systemd runs every service (`IgnoreSIGPIPE=yes`): a closed pipe is then an
+# EPIPE its writer reports on stderr rather than a silent death, which is how the journal filled
+# with "grep: write error: Broken pipe".
+run() {
+  : > "$tmp/curl.log"
+  (trap '' PIPE
+    PATH="$tmp/bin:$PATH" STUB_PAGES="$tmp/pages" STUB_LOG="$tmp/curl.log" PROBE_TEXTFILE="$tmp/probes.prom" \
+      exec bash "$script" "$@" 2>"$tmp/stderr")
+}
 field() { jq -r "$1" "$tmp/targets.json"; }
 
 # Poland mounted at the root with relative hrefs; the UK path-mounted; the film page's og:image
@@ -79,6 +105,48 @@ run "$tmp/targets.json" pl=https://kinowo.net/warszawa/
 check "the new first film replaces the old one" "https://kinowo.net/warszawa/movie/next-film" \
   "$(field '[.[] | select(.labels.kind == "film") | .targets[0]] | join(" ")')"
 
+echo "discovery: the probed film stays put while its city page still lists it"
+serve "https://kinowo.net/warszawa/movie/next-film" \
+  '<meta property="og:image" content="https://kinowo.net/share-cards/pl/hnext.jpg?v=1"></html>'
+run "$tmp/targets.json" pl=https://kinowo.net/warszawa/
+# A real city page lists hundreds of films; big enough here that a reader which stops at the first
+# match closes the pipe on a grep still writing.
+serve "https://kinowo.net/warszawa/" \
+  "<a href=\"/warszawa/movie/newly-first\">x</a><a href=\"/warszawa/movie/next-film\">y</a>$(
+    for i in $(seq 1 20000); do printf '<a href="/warszawa/movie/film-%d">f</a>' "$i"; done)</html>"
+run "$tmp/targets.json" pl=https://kinowo.net/warszawa/
+check "a film that is no longer FIRST but still listed keeps its probe (and its series' holds)" \
+  "https://kinowo.net/warszawa/movie/next-film https://kinowo.net/share-cards/pl/hnext.jpg?v=1" \
+  "$(field '[.[] | .targets[0]] | join(" ")')"
+check "...carried in a hidden label Prometheus drops after relabelling" \
+  "__film=https://kinowo.net/warszawa/movie/next-film" \
+  "$(field '[.[] | .labels.__film] | unique | map("__film=" + .) | join(" ")')"
+check "grep is never cut off mid-write (no broken-pipe noise in the journal)" "0" \
+  "$(grep -c 'Broken pipe' "$tmp/stderr")"
+
+echo "discovery: a film page the edge challenges is read from the origin, and not probed"
+# showtimes.cc's managed challenge on /movie/ paths: the city page answers, the film page 403s.
+serve "https://showtimes.cc/us/new-york/" '<a href="/us/new-york/movie/coyote-vs-acme">x</a></html>'
+refuse "https://showtimes.cc/us/new-york/movie/coyote-vs-acme"
+serve_origin "https://showtimes.cc/us/new-york/movie/coyote-vs-acme" \
+  '<meta property="og:image" content="https://showtimes.cc/share-cards/us/h2dd4.jpg?v=01dd"></html>'
+PROBE_ORIGIN_ADDRESS=10.20.0.12 PROBE_ORIGIN_CA=/etc/origin.pem \
+  run "$tmp/targets.json" us=https://showtimes.cc/us/new-york/
+check "the share card found on the origin's copy of the page is probed, through the edge" \
+  "share-card https://showtimes.cc/share-cards/us/h2dd4.jpg?v=01dd" \
+  "$(field '[.[] | "\(.labels.kind) \(.targets[0])"] | join(" ")')"
+check "the origin fetch is pinned to the origin address and its certificates" "1" \
+  "$(grep -c -- '--resolve showtimes.cc:443:10.20.0.12 --cacert /etc/origin.pem https://showtimes.cc/us/new-york/movie/coyote-vs-acme' "$tmp/curl.log")"
+check "...and the film page gets no probe that could only ever read the challenge" "1" \
+  "$(grep -c 'us: the edge refuses https://showtimes.cc/us/new-york/movie/coyote-vs-acme (403)' "$tmp/stderr")"
+check "the stickiness survives a challenged film page (the hidden label is on the card)" \
+  "https://showtimes.cc/us/new-york/movie/coyote-vs-acme" "$(field '.[0].labels.__film')"
+
+run "$tmp/targets.json" us=https://showtimes.cc/us/new-york/
+check "with no origin configured a refused film page is still probed (and reads 403)" \
+  "film https://showtimes.cc/us/new-york/movie/coyote-vs-acme" \
+  "$(field '[.[] | "\(.labels.kind) \(.targets[0])"] | join(" ")')"
+
 # ── THE SCRAPE JOB monitoring-1 WOULD INSTALL ──────────────────────────────────────────────────
 echo "the blackbox job on monitoring-1"
 nix_flags=(--extra-experimental-features 'nix-command flakes')
@@ -101,6 +169,17 @@ check "the discovered film targets are read from the file the discovery writes" 
 check "the URL becomes the probe target AND the instance label; the scrape goes to the exporter" \
   "__param_target __param_target>instance 127.0.0.1:9115" \
   "$(jq -r '.scrape_configs[0].relabel_configs | "\(.[0].target_label) \(.[1].source_labels[0])>\(.[1].target_label) \(.[2].replacement)"' <<<"$job")"
+
+discovery_env="$(nix "${nix_flags[@]}" eval --json \
+  "$infra#nixosConfigurations.monitoring-1.config.systemd.services.synthetic-probe-targets.environment" 2>/dev/null)"
+check "the discovery reads a refused page from k3s-worker-1's origin" "10.20.0.12" \
+  "$(jq -r '.PROBE_ORIGIN_ADDRESS' <<<"$discovery_env")"
+check "...pinned to both zones' origin certificates" "kinowo.net.crt showtimes.cc.crt" \
+  "$(nix "${nix_flags[@]}" eval --json \
+    "$infra#nixosConfigurations.monitoring-1.config.fleet.syntheticProbes.discoveryOrigin.certificates" 2>/dev/null |
+    jq -r 'map(split("/") | last) | sort | join(" ")')"
+check "...bundled into the one file curl is told to trust" "synthetic-probe-origin-certificates.pem" \
+  "$(jq -r '.PROBE_ORIGIN_CA | split("-") | .[1:] | join("-")' <<<"$discovery_env")"
 
 units="$(nix "${nix_flags[@]}" eval --json "$infra#nixosConfigurations.monitoring-1.config.fleet.autoApply.restartableUnits" 2>/dev/null)"
 check "auto-apply may restart the exporter and the discovery once they exist" "3" \

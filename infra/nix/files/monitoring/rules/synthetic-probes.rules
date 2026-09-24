@@ -16,10 +16,12 @@
 # thresholds are argued below, and the first fortnight of `probe_duration_seconds` is what to check
 # them against.
 #
-# ⚠️ UNTIL monitoring-1's ADDRESS IS ALLOW-LISTED IN CLOUDFLARE, EVERY PROBE GETS A 403. Bot Fight
-# Mode answers a Hetzner address with a challenge whatever the User-Agent. That is reported by
-# `ProbeBlockedByEdge` (a warning naming the fix), and ProbeFailing excludes it, so the missing
-# rule never pages.
+# A 403 IS CLOUDFLARE REFUSING THE PROBE, not the site failing a visitor: Bot Fight Mode challenges
+# a Hetzner address until monitoring-1 has an IP Access Rule, and showtimes.cc challenges every
+# `/movie/` path for anything that is not a verified bot. `ProbeBlockedByEdge` reports it (a warning
+# naming the fix) and ProbeFailing excludes it. The `/movie/` challenge is permanent and blackbox
+# cannot pass it, so the discovery does not probe such a film page at all -- it reads it from the
+# origin to find the share card, and probes that (synthetic-probe-targets.sh).
 groups:
   - name: synthetic-probes
     rules:
@@ -28,8 +30,8 @@ groups:
       # nothing", and critical for the same reason.
       #
       # A 403 IS NOT THIS ALERT. Cloudflare's Bot Fight Mode answers every Hetzner address with a
-      # 403 challenge until monitoring-1 has an IP Access Rule, so until the user adds it every
-      # probe fails -- and that must not page. `ProbeBlockedByEdge` below is the 403 case.
+      # 403 challenge unless monitoring-1 has an IP Access Rule, so without it every probe fails
+      # -- and that must not page. `ProbeBlockedByEdge` below is the 403 case.
       - alert: ProbeFailing
         expr: >-
           probe_success == 0
@@ -49,9 +51,9 @@ groups:
             `share-card` target that 404s alone is a film that left the schedule and a discovery
             that has not replaced it -- `ProbeDiscoveryStale` fires alongside if so.
 
-      # CLOUDFLARE REFUSED THE PROBE. A WARNING WITH INSTRUCTIONS, NOT A PAGE: before the one-time
-      # IP Access Rule exists this is every probe, and it says nothing about whether visitors are
-      # served. Fifteen minutes so one rate-limited minute does not message.
+      # CLOUDFLARE REFUSED THE PROBE. A WARNING WITH INSTRUCTIONS, NOT A PAGE: without the one-time
+      # IP Access Rule this is every probe, and it says nothing about whether visitors are served.
+      # Fifteen minutes so one rate-limited minute does not message.
       - alert: ProbeBlockedByEdge
         expr: probe_http_status_code == 403
         for: 15m
@@ -60,14 +62,16 @@ groups:
         annotations:
           summary: "Cloudflare is refusing the synthetic probe of {{ $labels.instance }} (403)"
           description: >-
-            The probe from monitoring-1 got a 403, which is Cloudflare's Bot Fight Mode challenging
-            a Hetzner address -- so the site is NOT being watched from outside, and ProbeFailing
-            cannot fire for this URL. TO FIX (one-time): in the Cloudflare dashboard, for BOTH
-            zones (kinowo.net and showtimes.cc), Security > WAF > Tools > IP Access Rules, add
-            128.140.49.167 (monitoring-1) with action Allow. If that rule already exists and only
-            some URLs are 403, a WAF or crawler rule is matching the probe's User-Agent
-            (`kinowo-synthetic-probe/1`) -- and if real visitors report the same 403, this is an
-            outage, not a probe problem.
+            The probe from monitoring-1 got a 403 from Cloudflare -- so this URL is NOT being
+            watched from outside, and ProbeFailing cannot fire for it. `curl -sI` it from
+            monitoring-1: `cf-mitigated: challenge` on every URL is Bot Fight Mode challenging a
+            Hetzner address, and the fix (one-time) is an IP Access Rule for 128.140.49.167
+            (monitoring-1) with action Allow, in BOTH zones (kinowo.net and showtimes.cc),
+            Security > WAF > Tools > IP Access Rules. On some URLs only, a custom or crawler rule
+            is matching the path or the probe's User-Agent (`kinowo-synthetic-probe/1`): the
+            showtimes.cc `/movie/` managed challenge is one, and the discovery already keeps film
+            pages under it out of the probes, so a film page here means that rule has spread. If
+            real visitors report the same 403, this is an outage, not a probe problem.
 
       # FOUR SECONDS, AVERAGED OVER TEN MINUTES AND HELD TEN MORE. The same pages answer in
       # 0.2-0.5s from a laptop and from the fleet's own egress (measured 2026-09-24, 184KB film
@@ -93,9 +97,9 @@ groups:
             Caddy.
 
       # THE FILM AND SHARE-CARD TARGETS ARE ONLY AS GOOD AS THEIR DISCOVERY. It runs every two
-      # minutes and publishes a timestamp only when it found a live film for every country, so
-      # fifteen minutes is seven runs in a row that did not -- a city page that lists no films, or
-      # one that stopped answering. While it lasts, the film probes point at whatever was found
+      # minutes and publishes a timestamp only when it found a live film for every country; fifteen
+      # minutes past the last success, held fifteen more, is half an hour -- fourteen runs in a row
+      # that did not: a city page that lists no films, or one that stopped answering. While it lasts, the film probes point at whatever was found
       # last, which will 404 as soon as that film leaves the schedule.
       - alert: ProbeDiscoveryStale
         expr: >-
@@ -105,7 +109,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "The synthetic probes have not found a live film page for every country in 15 minutes"
+          summary: "The synthetic probes have not found a live film page for every country in 30 minutes"
           description: >-
             `synthetic-probe-targets` on monitoring-1 has not completed a discovery, so the `film`
             and `share-card` probes are aimed at pages found earlier (or at none, if it has never

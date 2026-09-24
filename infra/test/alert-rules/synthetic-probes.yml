@@ -98,7 +98,7 @@ tests:
               job: "node"
               severity: "warning"
             exp_annotations:
-              summary: "The synthetic probes have not found a live film page for every country in 15 minutes"
+              summary: "The synthetic probes have not found a live film page for every country in 30 minutes"
               description: "`synthetic-probe-targets` on monitoring-1 has not completed a discovery, so the `film` and `share-card` probes are aimed at pages found earlier (or at none, if it has never run). `journalctl -u synthetic-probe-targets -n 50` names the country and the reason: a city page that did not answer, or one that lists no film. An ABSENT timestamp means it has never succeeded on this host -- most likely the unit was never switched in, or Cloudflare is still challenging monitoring-1."
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # ...a discovery succeeding every two minutes stays quiet...
@@ -130,7 +130,7 @@ tests:
           - exp_labels:
               severity: "warning"
             exp_annotations:
-              summary: "The synthetic probes have not found a live film page for every country in 15 minutes"
+              summary: "The synthetic probes have not found a live film page for every country in 30 minutes"
               description: "`synthetic-probe-targets` on monitoring-1 has not completed a discovery, so the `film` and `share-card` probes are aimed at pages found earlier (or at none, if it has never run). `journalctl -u synthetic-probe-targets -n 50` names the country and the reason: a city page that did not answer, or one that lists no film. An ABSENT timestamp means it has never succeeded on this host -- most likely the unit was never switched in, or Cloudflare is still challenging monitoring-1."
       - eval_time: 20m
         alertname: ProbeResultsAbsent
@@ -178,7 +178,7 @@ tests:
               severity: "warning"
             exp_annotations:
               summary: "Cloudflare is refusing the synthetic probe of https://showtimes.cc/uk/london/ (403)"
-              description: "The probe from monitoring-1 got a 403, which is Cloudflare's Bot Fight Mode challenging a Hetzner address -- so the site is NOT being watched from outside, and ProbeFailing cannot fire for this URL. TO FIX (one-time): in the Cloudflare dashboard, for BOTH zones (kinowo.net and showtimes.cc), Security > WAF > Tools > IP Access Rules, add 128.140.49.167 (monitoring-1) with action Allow. If that rule already exists and only some URLs are 403, a WAF or crawler rule is matching the probe's User-Agent (`kinowo-synthetic-probe/1`) -- and if real visitors report the same 403, this is an outage, not a probe problem."
+              description: "The probe from monitoring-1 got a 403 from Cloudflare -- so this URL is NOT being watched from outside, and ProbeFailing cannot fire for it. `curl -sI` it from monitoring-1: `cf-mitigated: challenge` on every URL is Bot Fight Mode challenging a Hetzner address, and the fix (one-time) is an IP Access Rule for 128.140.49.167 (monitoring-1) with action Allow, in BOTH zones (kinowo.net and showtimes.cc), Security > WAF > Tools > IP Access Rules. On some URLs only, a custom or crawler rule is matching the path or the probe's User-Agent (`kinowo-synthetic-probe/1`): the showtimes.cc `/movie/` managed challenge is one, and the discovery already keeps film pages under it out of the probes, so a film page here means that rule has spread. If real visitors report the same 403, this is an outage, not a probe problem."
       - eval_time: 20m
         alertname: ProbeFailing
         exp_alerts:
