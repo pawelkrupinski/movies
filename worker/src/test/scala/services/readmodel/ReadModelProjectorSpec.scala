@@ -380,6 +380,36 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     restarted.stop()
   }
 
+  /** The same reuse, COUNTED across film widths — so a regression to rebuilding every
+   *  venue on every re-projection fails on the count, not on a timing CI cannot hold. What
+   *  a wide release costs must be the venues that moved, whatever else it screens at: one
+   *  venue's showtimes → 1 rebuilt; a ratings-only change → 0 (a screenings row reads
+   *  none of the metadata); the same row re-projected → 0. */
+  "re-projecting a wide release" should "rebuild only the venues that moved, whatever the film's width" in {
+    val wide = Cinema.all.distinct.filter(c => City.forCinema(c).isDefined)
+    def rebuiltPerStep(venueCount: Int): Seq[(Int, Int)] = {
+      val repository = new InMemoryMovieRepository(); val rm = new InMemoryReadModelRepository()
+      val m = new RecordingMetrics()
+      val projector = new ReadModelProjector(repository, rm, rm, m)
+      val cinemas = wide.take(venueCount)
+      def row(rating: Double, moved: Boolean) = stored(MovieRecord(imdbRating = Some(rating), tmdbId = Some(1),
+        data = cinemas.zipWithIndex.map { (cinema, i) =>
+          (cinema: Source) -> venueSlot("Foo", Seq(at("2026-06-12T20:00")) ++ (if (moved && i == 0) Seq(at("2026-06-13T18:00")) else Nil))
+        }.toMap))
+      Seq(row(7.0, moved = false), row(7.0, moved = true), row(8.0, moved = true), row(8.0, moved = true)).map { r =>
+        val (rebuiltBefore, reusedBefore) = (m.venuesRebuilt, m.venuesReused)
+        projector.onMovieUpsert(r)
+        (m.venuesRebuilt - rebuiltBefore, m.venuesReused - reusedBefore)
+      }
+    }
+    Seq(50, 200).foreach { n =>
+      withClue(s"a film at $n venues — (rebuilt, reused) for: first projection, one venue's showtimes, ratings only, no-op: ") {
+        wide.size should be >= n
+        rebuiltPerStep(n) shouldBe Seq((n, 0), (1, n - 1), (0, n), (0, n))
+      }
+    }
+  }
+
   /** The equivalence the venue reuse rests on, over random edit sequences: whatever an
    *  incremental projector has been through, the read model it leaves is exactly what a
    *  FRESH projector writes for the final row — cards, screenings rows and their content.
