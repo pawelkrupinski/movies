@@ -232,6 +232,23 @@ runs:
         CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
       run: sbt web/PageTest/test
 
+    # The Scala PageTest specs' failures, rerun three times each for a DETERMINISTIC / FLAKY
+    # verdict; the row stays red either way (scripts/ci/rerun-failed-sbt.sh).
+    - name: Rerun the failed PageTest specs, to tell a flake from a break
+      if: failure() && inputs.kind == 'chrome'
+      shell: bash
+      env:
+        CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
+      run: scripts/ci/rerun-failed-sbt.sh target/test-reports/page "page tests (chrome)" target/flake-rerun
+
+    - name: Keep this row's flaky PageTest specs for the ledger
+      if: failure() && inputs.kind == 'chrome' && hashFiles('target/flake-rerun/flaky.tsv') != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: flaky-page-chrome-${{ inputs.version }}
+        path: target/flake-rerun/flaky.tsv
+        retention-days: 7
+
     - name: Publish PageTest report
       if: always() && inputs.kind == 'chrome'
       uses: mikepenz/action-junit-report@v5
@@ -245,11 +262,23 @@ runs:
     # OWN junit + html report (PLAYWRIGHT_JUNIT_OUTPUT_NAME / _HTML_OUTPUT_DIR,
     # read by playwright.config.ts) so a second record can't overwrite the
     # first's results before the publish step globs them.
+    #
+    # A record that FAILS gets its failed tests rerun right there, three times (`--last-failed`,
+    # while the fixture server is still up), and a DETERMINISTIC / FLAKY verdict per test in the
+    # job summary — scripts/ci/flake_verdict.py. The row stays red either way: a rerun is never a
+    # fix. FLAKY tests go to reports/flaky.tsv, uploaded below for main.yml's flake-ledger job.
+    #
+    # Three invocations, not `--repeat-each 3`: combined with --last-failed, Playwright ran each
+    # test ONCE (measured on 1.5x), and its JUnit collapses repeats into one testcase anyway. The
+    # reruns come straight after their record because `.last-run.json` (what --last-failed reads)
+    # belongs to the most recent invocation, and each wipes test-results/, so the failure's own
+    # traces are copied into reports/ first.
     - name: Run Playwright behaviour specs (blocking)
       if: inputs.kind == 'playwright'
       shell: bash
       env:
         PW_RUNS: ${{ inputs.runs }}
+        PW_LABEL: ${{ inputs.label }}
       run: |
         cd page-tests-playwright
         # `set -f` so the shell never glob-expands a project pattern
@@ -286,7 +315,25 @@ runs:
             export PLAYWRIGHT_JUNIT_OUTPUT_NAME="reports/junit-$i.xml"
             export PLAYWRIGHT_HTML_OUTPUT_DIR="reports/html-$i"
             echo "::group::playwright run $i — project=$project grep=$grep_pattern grep-invert=$grep_invert shard=$shard"
-            eval npx playwright test $PROJECT_FLAGS $GREP_INVERT_FLAG $GREP_FLAG $SHARD_FLAG || status=1
+            if ! eval npx playwright test $PROJECT_FLAGS $GREP_INVERT_FLAG $GREP_FLAG $SHARD_FLAG; then
+                status=1
+                echo "::endgroup::"
+                echo "::group::playwright run $i — its failed tests again, three times each"
+                cp -R test-results "reports/test-results-$i" 2>/dev/null || true
+                cp test-results/.last-run.json "reports/last-run-$i.json" 2>/dev/null || true
+                for k in 1 2 3; do
+                    # Each rerun rewrites .last-run.json with ITS failures; restore the original
+                    # run's so all three reruns cover every test that failed there.
+                    mkdir -p test-results
+                    cp "reports/last-run-$i.json" test-results/.last-run.json 2>/dev/null || true
+                    export PLAYWRIGHT_JUNIT_OUTPUT_NAME="reports/rerun-$i-$k.xml"
+                    export PLAYWRIGHT_HTML_OUTPUT_DIR="reports/rerun-html-$i-$k"
+                    eval npx playwright test $PROJECT_FLAGS --last-failed --retries 0 || true
+                done
+                python3 "$GITHUB_WORKSPACE/scripts/ci/flake_verdict.py" --by-project verdict \
+                    --label "page tests ($PW_LABEL) run $i" --original "reports/junit-$i.xml" \
+                    --rerun reports/rerun-"$i"-*.xml --flaky-out reports/flaky.tsv
+            fi
             echo "::endgroup::"
         done <<< "$PW_RUNS"
         exit $status
@@ -311,6 +358,14 @@ runs:
         check_name: page tests (${{ inputs.label }})
         detailed_summary: true
         include_passed: false
+
+    - name: Keep this row's flaky tests for the ledger
+      if: failure() && inputs.kind == 'playwright' && hashFiles('page-tests-playwright/reports/flaky.tsv') != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: flaky-page-${{ inputs.label }}
+        path: page-tests-playwright/reports/flaky.tsv
+        retention-days: 7
 
     - name: Upload Playwright report + traces on failure
       if: failure() && inputs.kind == 'playwright'

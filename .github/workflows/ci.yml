@@ -151,11 +151,14 @@ jobs:
               run: scripts/read-model-snapshot-inputs.sh check HEAD
 
             # The CI-structure scripts' own specs, seconds each: which checks the pre-push hook
-            # selects for which paths, and what the workflows' preflight jobs accept and refuse.
-            - name: Pre-push hook and preflight specs
+            # selects for which paths, what the workflows' preflight jobs accept and refuse, and
+            # how a failed test is judged DETERMINISTIC or FLAKY and ledgered.
+            - name: Pre-push hook, preflight and flake-detection specs
               run: |
                   bash scripts/hooks/pre-push-test.sh
                   bash scripts/ci/preflight-test.sh
+                  bash scripts/ci/flake-ledger-test.sh
+                  python3 scripts/ci/flake_verdict_test.py
 
             - uses: actions/setup-java@v5
               with:
@@ -188,12 +191,36 @@ jobs:
             # job instead — it doubled this step's wall-clock once staging ingest
             # went always-on, and this is the deploy-gating job, so keep it off
             # the critical path. See the `testUnitNoE2e` alias in build.sbt.
-            - run: sbt testUnitNoE2e
+            - id: unit
+              run: sbt testUnitNoE2e
               env:
                   ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}
+
+            # FLAKE DETECTION, the same shape in every sbt job below: each failed test rerun
+            # alone, three times, in this job, and labelled DETERMINISTIC or FLAKY in the job
+            # summary (scripts/ci/rerun-failed-sbt.sh). The job is ALREADY red and stays red — a
+            # rerun is never a fix. FLAKY ones are uploaded as `flaky-*` for main.yml's
+            # flake-ledger job, which appends them to the ledger issue.
+            - name: Rerun the failed unit tests, to tell a flake from a break
+              if: failure() && steps.unit.outcome == 'failure'
+              timeout-minutes: 20
+              run: scripts/ci/rerun-failed-sbt.sh target/test-reports/unit "unit tests" target/flake-rerun
+              env:
+                  ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
+                  TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
+                  MONGODB_URI:     ${{ secrets.MONGODB_URI }}
+                  MONGODB_DB:      ${{ secrets.MONGODB_DB }}
+
+            - name: Keep the flaky unit tests for the ledger
+              if: failure() && hashFiles('target/flake-rerun/flaky.tsv') != ''
+              uses: actions/upload-artifact@v6
+              with:
+                  name: flaky-unit
+                  path: target/flake-rerun/flaky.tsv
+                  retention-days: 7
 
             # The snapshot guards in this run (CatalogSeedSpec's app seeds among them) write
             # what they expected; a committed file they rewrote is a stale snapshot, whether
@@ -483,12 +510,32 @@ jobs:
             # `e2e` module runs in its own parallel job (below) — combining it here
             # made this the deploy gate; with a runner freed by merging the mobile
             # jobs there's now a slot to parallelise e2e off the critical path.
-            - run: sbt itAll
+            - id: it
+              run: sbt itAll
               env:
                   ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:     mongodb://127.0.0.1:27017/kinowo?directConnection=true
                   MONGODB_DB:      kinowo
+
+            # Flake detection — see the unit job. The Mongo container is still up for the reruns.
+            - name: Rerun the failed integration tests, to tell a flake from a break
+              if: failure() && steps.it.outcome == 'failure'
+              timeout-minutes: 20
+              run: scripts/ci/rerun-failed-sbt.sh target/test-reports/it "integration tests" target/flake-rerun
+              env:
+                  ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
+                  TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
+                  MONGODB_URI:     mongodb://127.0.0.1:27017/kinowo?directConnection=true
+                  MONGODB_DB:      kinowo
+
+            - name: Keep the flaky integration tests for the ledger
+              if: failure() && hashFiles('target/flake-rerun/flaky.tsv') != ''
+              uses: actions/upload-artifact@v6
+              with:
+                  name: flaky-it
+                  path: target/flake-rerun/flaky.tsv
+                  retention-days: 7
 
             - name: Publish test report
               if: always()
@@ -568,12 +615,33 @@ jobs:
                       sbt-target-e2e-${{ runner.os }}-
                       sbt-target-${{ runner.os }}-
 
-            - run: sbt ${{ matrix.cmd }}
+            - id: e2e
+              run: sbt ${{ matrix.cmd }}
               env:
                   ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}
+
+            # Flake detection — see the unit job. A whole-corpus spec reruns in minutes, hence
+            # the ceiling; a rerun that runs out of it leaves those tests NOT RERUN.
+            - name: Rerun the failed e2e tests, to tell a flake from a break
+              if: failure() && steps.e2e.outcome == 'failure'
+              timeout-minutes: 30
+              run: scripts/ci/rerun-failed-sbt.sh target/test-reports/unit "e2e (${{ matrix.shard }})" target/flake-rerun
+              env:
+                  ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
+                  TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
+                  MONGODB_URI:     ${{ secrets.MONGODB_URI }}
+                  MONGODB_DB:      ${{ secrets.MONGODB_DB }}
+
+            - name: Keep the flaky e2e tests for the ledger
+              if: failure() && hashFiles('target/flake-rerun/flaky.tsv') != ''
+              uses: actions/upload-artifact@v6
+              with:
+                  name: flaky-e2e-${{ matrix.shard }}
+                  path: target/flake-rerun/flaky.tsv
+                  retention-days: 7
 
             # FilmScheduleEndToEndSpec's expected-schedules.txt / read-model-snapshot.json,
             # held the same way as the unit run's snapshots (scripts/ci/tree-unchanged.sh).

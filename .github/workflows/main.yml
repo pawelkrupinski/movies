@@ -292,6 +292,37 @@ jobs:
                   GH_REPO: ${{ github.repository }}
               run: .github/scripts/kick-convergence.sh "$GITHUB_SHA" "$GITHUB_REF_NAME" "Country convergence" "US convergence"
 
+    # The flaky-test ledger. Every test job in ci.yml that FAILED reran its failed tests three
+    # times and uploaded the ones that passed any rerun as `flaky-*` (scripts/ci/flake_verdict.py);
+    # this appends them to the one open "Flaky test ledger" issue. The run is red either way. A
+    # job of its own, holding `issues: write`, so no job that runs project code holds it.
+    flake-ledger:
+        needs: ci
+        if: always() && needs.ci.result == 'failure' && github.ref == 'refs/heads/main'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: scripts/ci
+                  sparse-checkout-cone-mode: false
+            - uses: actions/download-artifact@v6
+              with:
+                  pattern: flaky-*
+                  path: flaky
+            - name: Append this run's flaky tests to the ledger
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GH_REPO: ${{ github.repository }}
+                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+                  OWNER: ${{ github.repository_owner }}
+              run: |
+                  mapfile -t files < <(find flaky -name flaky.tsv 2>/dev/null)
+                  scripts/ci/flake-ledger.sh --run-url "$RUN_URL" --sha "$GITHUB_SHA" --assignee "$OWNER" "${files[@]}"
+
     # ── The k3s tiers ────────────────────────────────────────────────────────────────────────────
     #
     # These four jobs were two workflows of their own until they were folded in here
