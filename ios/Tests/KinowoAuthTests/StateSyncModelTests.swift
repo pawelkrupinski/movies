@@ -108,8 +108,17 @@ final class StateSyncModelTests: XCTestCase {
     /// used to give up at its turn cap and let the invariants be checked
     /// against a device still mid-flight.
     func testARunThatNeverGoesQuietIsAViolation() async {
-        let violation = await SyncModel.violation(of: [.login], quiesceTurnLimit: 5)
+        // A response that never comes and that no `.stall` accounts for: the device is
+        // busy for good. Within the ordinary turn limit, not a limit below the 20 idle
+        // turns quiescing needs, which would call even an idle run never quiet.
+        let violation = await SyncModel.violation(of: [.login], hangResponses: true)
         XCTAssertTrue(violation?.contains("never went quiet") == true, "got \(violation ?? "nil")")
+    }
+
+    /// The positive control: the same run, answered, goes quiet.
+    func testTheSameRunAnsweredGoesQuiet() async {
+        let violation = await SyncModel.violation(of: [.login])
+        XCTAssertNil(violation)
     }
 
     func testALanguagePickQueuedAtLogout() async {
@@ -215,8 +224,10 @@ enum SyncModel {
     }
 
     /// Run `events` and then settle; the first invariant broken, or nil.
-    static func violation(of events: [SyncEvent], quiesceTurnLimit: Int = 100_000) async -> String? {
-        let run = Run(quiesceTurnLimit: quiesceTurnLimit)
+    /// `hangResponses` makes every fake response wait forever, unaccounted for — a
+    /// device that never goes quiet, for the test that such a run is a violation.
+    static func violation(of events: [SyncEvent], hangResponses: Bool = false) async -> String? {
+        let run = Run(quiesceTurnLimit: 100_000, hangResponses: hangResponses)
         defer { run.tearDown() }
         return await run.play(events)
     }
@@ -250,8 +261,13 @@ enum SyncModel {
         /// in itself: the invariants mean nothing against a device still busy.
         private var neverQuiet: String?
 
-        init(quiesceTurnLimit: Int) {
+        /// Set when every response hangs (see `violation(hangResponses:)`); opened at tearDown
+        /// so the hung calls finish rather than leak.
+        private let hang: AsyncGate?
+
+        init(quiesceTurnLimit: Int, hangResponses: Bool) {
             self.quiesceTurnLimit = quiesceTurnLimit
+            hang = hangResponses ? AsyncGate() : nil
             defaults = UserDefaults(suiteName: suite)!
             prefs = UserPreferences(store: defaults)
             prefs.setCountry(Country.all.first { $0.code == SyncModel.countries[0] }!)
@@ -263,6 +279,7 @@ enum SyncModel {
         }
 
         private func hold(language: Bool) async {
+            if let hang { await hang.wait() }
             guard let gate = stall else { return }
             held += 1
             if language { languageHeld += 1 }
@@ -276,7 +293,10 @@ enum SyncModel {
             stall = nil
         }
 
-        func tearDown() { defaults.removePersistentDomain(forName: suite) }
+        func tearDown() {
+            if let hang { Task { await hang.open() } }
+            defaults.removePersistentDomain(forName: suite)
+        }
 
         private var country: String { prefs.selectedCountry.code }
 
