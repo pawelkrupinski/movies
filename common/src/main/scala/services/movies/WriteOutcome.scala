@@ -1,6 +1,7 @@
 package services.movies
 
-import play.api.Logger
+import org.slf4j.{Marker, MarkerFactory}
+import play.api.{Logger, MarkerContext}
 
 import scala.util.control.NonFatal
 
@@ -61,6 +62,10 @@ object RepositoryWriteMetrics {
  * "what counts as a failure and what is recorded for it" is decided once.
  */
 object RepositoryWrite {
+  /** Carried by the ONE log line a failed write produces — how the it/e2e
+   *  `WriteFailureTripwire` (testkit) recognises it without parsing messages. */
+  val FailedMarker: Marker = MarkerFactory.getMarker("REPOSITORY_WRITE_FAILED")
+
   def attempt(collection: String, op: String, what: => String, metrics: RepositoryWriteMetrics, logger: Logger)
              (body: => WriteOutcome): WriteOutcome =
     try body
@@ -71,7 +76,7 @@ object RepositoryWrite {
         logger.debug(s"$what skipped — Mongo client closing.")
         WriteOutcome.Declined("client-closing")
       case NonFatal(exception) =>
-        logger.warn(s"$what failed: ${exception.getMessage}")
+        logger.warn(s"$what failed: ${exception.getMessage}")(using MarkerContext(FailedMarker))
         metrics.recordWriteFailed(collection, op, exception.getClass.getSimpleName)
         WriteOutcome.Failed(collection, op, exception)
     }

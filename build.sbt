@@ -227,6 +227,8 @@ lazy val worker = (project in file("worker"))
   )
   .settings(unitReportSettings, testOrderSettings)
   .settings(itReportSettings)
+  // Fails the it run when a repository write failed and was swallowed into a WARN.
+  .settings(WriteFailureTripwire.settings(IntegrationTest))
   .settings(noApiDocs)
 
 // ── Web app (content serving) ────────────────────────────────────────────────
@@ -303,6 +305,7 @@ lazy val web = (project in file("web"))
   )
   .settings(unitReportSettings, testOrderSettings)
   .settings(itReportSettings)
+  .settings(WriteFailureTripwire.settings(IntegrationTest))
   .settings(noApiDocs)
 
 // ── End-to-end test module (not deployed) ────────────────────────────────────
@@ -325,6 +328,7 @@ lazy val e2e = (project in file("e2e"))
   )
   .settings(noApiDocs)
   .settings(unitReportSettings, testOrderSettings)
+  .settings(WriteFailureTripwire.settings(Test))
 
 // ── Root aggregator (no sources) ─────────────────────────────────────────────
 
