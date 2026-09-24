@@ -26,6 +26,14 @@ class RepositoryWriteFailureSpec extends AnyFlatSpec with Matchers with LoneElem
       failures :+= ((collection, op, exception))
   }
 
+  /** Named, not anonymous: an anonymous subclass capturing a local `var` trips a JVM
+   *  VerifyError under this Scala version (see UnreadableRowScrapeSpec). */
+  private class UnmovableThrowingRepository(metrics: RepositoryWriteMetrics) extends ThrowingUpsertMovieRepository(metrics) {
+    @volatile var canMoveFilm = true
+    override def moveFilm(oldId: FilmId, newId: FilmId): Boolean = oldId == newId || canMoveFilm
+  }
+
+
   // The caches run at a fixed instant and the showtime sits a day after it.
   private val specClock = java.time.Clock.fixed(java.time.Instant.parse("2026-06-01T10:00:00Z"), java.time.ZoneOffset.UTC)
   private val showtime  = Showtime(LocalDateTime.now(specClock).plusDays(1).withHour(20), bookingUrl = None)
@@ -86,7 +94,7 @@ class RepositoryWriteFailureSpec extends AnyFlatSpec with Matchers with LoneElem
     val metrics    = new RecordingWriteMetrics
     val repository = new ThrowingUpsertMovieRepository(metrics)
     repository.failing = false
-    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = specClock)
     val survivor   = cache.keyOf("Survivor Film", Some(2026))
     val victim     = cache.keyOf("Victim Film", Some(2026))
     cache.put(survivor, MovieRecord(tmdbId = Some(4242)))
@@ -106,5 +114,34 @@ class RepositoryWriteFailureSpec extends AnyFlatSpec with Matchers with LoneElem
     val rows = repository.findAll()
     withClue(s"the retried fold must land: ${rows.map(r => r.title -> r.record.imdbId)}: ")(
       rows.map(_.record.imdbId) shouldBe Seq(Some("tt0004242")))
+  }
+
+  // The slot MOVE drops this (cinema, title)'s slot from every OTHER row once this tick has
+  // decided which film it belongs to — right once the slot has landed on that film, fatal when
+  // the write failed: the venue's showtimes are then deleted from the old row and put nowhere.
+  "a first-time write that fails" should "not strip the venue's slot off the row that still holds it" in {
+    val metrics    = new RecordingWriteMetrics
+    val repository = new UnmovableThrowingRepository(metrics)
+    repository.failing = false
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = specClock)
+    def listingOf(title: String, year: Option[Int]) = listing(title).copy(movie = Movie(title, releaseYear = year))
+    // A yearless row holding Multikino's slot, beside nine fillers so the degraded tick below
+    // is a shrink the prune stands down for (see UnreadableRowScrapeSpec's twin of this case).
+    cache.recordCinemaScrape(Multikino,
+      listingOf("Zaproszenie", None) +: (1 to 9).map(i => listingOf(s"Filler $i", None)))
+    val holder = cache.keyOf("Zaproszenie", None)
+    def multikinoOnHolder = cache.get(holder).toSeq.flatMap(_.data.keys).flatMap(Source.cinemaOf)
+    multikinoOnHolder should contain (Multikino)
+
+    // The redirect's `rekey` onto the 2026 key defers on a move that does not land, so the
+    // tick stands on a key in neither cache nor index and takes the first-time `put` branch.
+    repository.canMoveFilm = false
+    repository.failing     = true
+    cache.recordCinemaScrape(Multikino, Seq(listingOf("Zaproszenie", Some(2026))))
+
+    metrics.failures.map(_._2) should contain ("upsert")
+    withClue(s"rows: ${repository.findAll().map(r => r.title -> r.record.data.keySet)}; the slot never landed " +
+      "anywhere new, so the row holding it must keep it: ")(
+      multikinoOnHolder should contain (Multikino))
   }
 }

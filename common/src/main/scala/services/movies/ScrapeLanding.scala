@@ -620,8 +620,10 @@ private[movies] final class ScrapeLanding(
                   false
                 case (row, true) =>
                   val base = row.getOrElse(MovieRecord())
-                  store.put(key, base.copy(data = base.data + (slotKey -> slot)))
-                  true
+                  // Its RESULT, not `true` — the same reason as `putIfPresent` above: a write
+                  // that FAILED left the slot nowhere (the cache rolled it back), and the move
+                  // below would then strip it off the row that still holds it.
+                  !store.put(key, base.copy(data = base.data + (slotKey -> slot))).failed
               }
           }
           // This tick just decided which film this (cinema, title) belongs to, so

@@ -1209,12 +1209,18 @@ class CaffeineMovieCache(
                 skippedUnreadable.incrementAndGet()
               }
             case _ =>
+              val resident = Option(positive.getIfPresent(oldKey))
               if (oldKey != newKey) {
                 evict(oldKey)
                 mergeMetrics.recordRekey(reason)
                 logger.info(s"retitle ${StoredMovieRecord.keyFor(oldKey)} -> ${StoredMovieRecord.keyFor(newKey)} ($id, $reason)")
               }
-              putAs(newKey, updated, id)
+              // A retitle whose write FAILED is still stored under the old key: put the row
+              // back there, or the cache holds it under neither key while Mongo holds it under
+              // the old one — and a scrape standing on the new key then strips the old row's
+              // slots as if the retitle had landed.
+              if (putAs(newKey, updated, id).failed && oldKey != newKey && !positive.asMap().containsKey(oldKey))
+                resident.foreach(store(oldKey, _, id))
           }
       }
     }
