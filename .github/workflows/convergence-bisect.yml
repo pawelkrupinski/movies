@@ -1,0 +1,171 @@
+#
+# THE AUTO-BISECT — which commit turned a country's hermetic convergence leg red?
+#
+# A leg is an hour (the US: three and a half), each suite's lane keeps one run in flight and
+# one pending, and a day of pushes collapses into a handful of verdicts — so a red leg names a
+# SHA with an untested range under it, and red streaks ran from three hours to two and a half
+# days with the breaking commit unknown. A HERMETIC leg replays the same recorded pair
+# whatever the code, so the question has a mechanical answer: replay the fast sample over the
+# pipeline commits of (last green, first red], halving the range each time.
+#
+# Started by the convergence run's COMPLETION, not inside it: a bisect job in the leg would
+# render (skipped) for every country on every green run, and would hold the suite's one-run
+# lane for up to 90 minutes, delaying the next verdict. A red leg on main leaves a
+# `bisect-request-<code>` artifact (`.github/actions/convergence-bisect-request`); this
+# workflow bisects exactly the countries that left one, and does nothing for a green run.
+#
+# CAPPED: per country, at most three halvings — exact for up to eight pipeline commits — and
+# none started that BUDGET_MINUTES cannot fit, so the worst case is one runner per red country
+# for ~90 minutes. A range it could not narrow is reported as a range, never as a guess. A
+# newer red run of the same suite supersedes an older bisect: its range contains the older one.
+# The logic is `.github/scripts/convergence-bisect.sh` (ConvergenceBisectSpec).
+#
+name: Convergence bisect
+
+on:
+    workflow_run:
+        workflows: [Country convergence, US convergence]
+        types: [completed]
+
+concurrency:
+    group: convergence-bisect-${{ github.event.workflow_run.name }}
+    cancel-in-progress: true
+
+permissions:
+    contents: read
+
+env:
+    # `convergence-setup` reads the pinned pair from here.
+    FIXTURE_RELEASE_TAG: convergence-fixtures
+    BUDGET_MINUTES: 90
+
+jobs:
+    plan:
+        if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.head_branch == 'main'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            actions: read
+        outputs:
+            requests: ${{ steps.requests.outputs.requests }}
+        steps:
+            - id: requests
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GH_REPO: ${{ github.repository }}
+                  RUN: ${{ github.event.workflow_run.id }}
+              run: |
+                  set -uo pipefail
+                  mkdir -p requests
+                  gh run download "$RUN" --pattern 'bisect-request-*' --dir requests 2>/dev/null || true
+                  requests=$(find requests -name '*.json' -exec cat {} + | jq -sc '.')
+                  echo "bisect requests: $requests"
+                  echo "requests=${requests:-[]}" >> "$GITHUB_OUTPUT"
+
+    bisect:
+        name: bisect (${{ matrix.request.country }})
+        needs: plan
+        if: needs.plan.outputs.requests != '[]' && needs.plan.outputs.requests != ''
+        strategy:
+            fail-fast: false
+            matrix:
+                request: ${{ fromJson(needs.plan.outputs.requests) }}
+        runs-on: ubuntu-latest
+        # Above BUDGET_MINUTES, so the script's own cap is what stops it and the verdict it has
+        # so far still reaches the summary.
+        timeout-minutes: 120
+        permissions:
+            # The commit comment on the first bad commit.
+            contents: write
+            # The previous runs' jobs, to find the last green leg.
+            actions: read
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  ref: ${{ github.event.workflow_run.head_sha }}
+                  fetch-depth: 0
+            # The SAME recorded pair the red leg replayed, so a recorder that pinned a new pair
+            # meanwhile cannot move the ground.
+            - uses: ./.github/actions/convergence-setup
+              with:
+                  code:          ${{ matrix.request.code }}
+                  token:         ${{ secrets.GITHUB_TOKEN }}
+                  mode:          hermetic
+                  hermetic-pair: ${{ matrix.request.pair }}
+
+            - name: Bisect over the pipeline commits since the last green leg
+              id: bisect
+              shell: bash
+              env:
+                  GH_TOKEN:        ${{ secrets.GITHUB_TOKEN }}
+                  GH_REPO:         ${{ github.repository }}
+                  COUNTRY:         ${{ matrix.request.country }}
+                  CODE:            ${{ matrix.request.code }}
+                  WORKFLOW:        ${{ github.event.workflow_run.name }}
+                  RUN_ID:          ${{ github.event.workflow_run.id }}
+                  BAD:             ${{ github.event.workflow_run.head_sha }}
+                  SAMPLE_COMMAND:  ${{ matrix.request.sample }}
+                  HEAP:            ${{ matrix.request.heap }}
+                  STEP_MINUTES:    ${{ matrix.request.minutes }}
+                  MAX_STEPS:       3
+                  SAMPLE_FAILED:   ${{ matrix.request.sampleFailed }}
+                  # What every sample replay runs on — the same as the leg's sample step.
+                  KINOWO_COUNTRY:   ${{ matrix.request.code }}
+                  KINOWO_COUNTRIES: ${{ matrix.request.code }}
+                  MONGODB_URI:      mongodb://127.0.0.1:27017/?directConnection=true
+                  TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
+                  OMDB_API_KEY:     ${{ secrets.OMDB_API_KEY }}
+                  KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ matrix.request.code }}
+                  KINOWO_CONVERGENCE_HERMETIC: 'true'
+              run: |
+                  set -uo pipefail
+                  # Copied OUT of the checkout first: `git bisect` rewrites the working tree
+                  # under a running script, and bash reads a script as it goes.
+                  tools="$RUNNER_TEMP/bisect"; mkdir -p "$tools"
+                  cp .github/scripts/convergence-bisect.sh .github/convergence-paths.txt "$tools/"
+                  export CONVERGENCE_PATHS_FILE="$tools/convergence-paths.txt"
+                  export FIRST_BAD_FILE="$tools/first-bad"
+                  # One replay of the sample at whatever commit bisect checked out: 0 green,
+                  # 1 red, 125 untestable — a commit older than hermetic replay, a timeout, or
+                  # a request that commit makes and the pinned recording never saw.
+                  cat > "$tools/step.sh" <<'STEP'
+                  #!/usr/bin/env bash
+                  set -uo pipefail
+                  git grep -q KINOWO_CONVERGENCE_HERMETIC HEAD -- worker/src/fixtures/scala/tools/ArchiveReplayWiring.scala || exit 125
+                  # The pinned corpus over whatever the commit carries — the pair is the constant.
+                  tar -xzf "scrape-archive/scrapes-$CODE.tar.gz"
+                  timeout "$((STEP_MINUTES * 60))" sbt -J-Xmx"$HEAP" "$SAMPLE_COMMAND" > "$RUNNER_TEMP/bisect-step.log" 2>&1
+                  status=$?
+                  git checkout -q -- test/resources
+                  echo "$(git rev-parse --short HEAD): sample exit $status"
+                  grep -q 'HERMETIC run needed' "$RUNNER_TEMP/bisect-step.log" && exit 125
+                  [ "$status" -eq 124 ] && exit 125
+                  [ "$status" -eq 0 ] && exit 0
+                  exit 1
+                  STEP
+                  chmod +x "$tools/step.sh"
+                  export STEP_COMMAND="$tools/step.sh"
+                  git checkout -q -- test/resources
+                  if ! good=$("$tools/convergence-bisect.sh" last-green); then
+                      echo "### Convergence bisect — $COUNTRY" >> "$GITHUB_STEP_SUMMARY"
+                      echo "No green $COUNTRY leg in the last 60 runs — nothing to bisect from." >> "$GITHUB_STEP_SUMMARY"
+                      exit 0
+                  fi
+                  "$tools/convergence-bisect.sh" bisect "$good" "$BAD"
+                  if [ -s "$FIRST_BAD_FILE" ]; then
+                      echo "first-bad=$(cat "$FIRST_BAD_FILE")" >> "$GITHUB_OUTPUT"
+                  fi
+
+            - name: Tell the first bad commit
+              if: steps.bisect.outputs.first-bad != ''
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GH_REPO:  ${{ github.repository }}
+                  SHA:      ${{ steps.bisect.outputs.first-bad }}
+                  COUNTRY:  ${{ matrix.request.country }}
+                  RED_RUN:  ${{ github.event.workflow_run.html_url }}
+                  THIS_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+              run: |
+                  gh api -X POST "repos/$GH_REPO/commits/$SHA/comments" \
+                      -f body="The hermetic $COUNTRY convergence sample turns red at this commit and was green at its parent. Red leg: $RED_RUN — bisected by $THIS_RUN. The leg replays a pinned recorded corpus and enrichment tree, so the change is this commit's, not the network's."

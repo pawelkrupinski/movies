@@ -1,0 +1,27 @@
+# The paths that can change a convergence leg's verdict.
+#
+# Read by `.github/scripts/kick-convergence.sh` (Main dispatches the convergence suites
+# only for a push that touches one of these) and by `.github/scripts/convergence-bisect.sh`
+# (which bisects only over commits that do). One list, so the two cannot disagree about
+# what a "pipeline commit" is: a commit the dispatcher skipped is one the bisect also skips.
+#
+# `dir/**` is everything under `dir/`; anything else is an exact file path — the
+# `.github/actions/changed-paths/matches.sh` dialect.
+common/src/main/**
+worker/src/main/**
+worker/src/fixtures/**
+testkit/src/main/**
+e2e/**
+build.sbt
+project/**
+.jvmopts
+test/resources/fixtures/corpus/**
+.github/convergence-paths.txt
+.github/workflows/country-convergence.yml
+.github/workflows/us-convergence.yml
+.github/workflows/country-convergence-leg.yml
+.github/actions/convergence-setup/**
+.github/actions/convergence-publish/**
+.github/actions/convergence-findings/**
+.github/scripts/pack-enrichment-tree.sh
+.github/scripts/convergence-bisect.sh

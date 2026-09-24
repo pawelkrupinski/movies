@@ -1,0 +1,61 @@
+# What a RED hermetic leg hands `convergence-bisect.yml`: everything the bisect needs to
+# replay this country's sample over older commits, and nothing it would have to re-derive.
+#
+# A STEP at the end of the failing job rather than a bisect job inside the leg, for two
+# reasons. A job there would render — skipped — for every country on every green run
+# (the clutter `ConvergenceLegWiringSpec` keeps the leg free of). And it would hold the
+# suite's one-run lane for up to 90 minutes, delaying the very next verdict; a separate
+# workflow started by the run's completion holds nothing.
+name: Request a convergence bisect
+description: Record what the bisect workflow needs to find the commit that turned this leg red.
+
+inputs:
+    country:
+        description: The country, as its jobs are named (`poland`).
+        required: true
+    code:
+        description: The two-letter code.
+        required: true
+    sample-command:
+        description: The sbt alias of this country's sample leg.
+        required: true
+    heap:
+        description: The sample's -Xmx.
+        required: true
+    step-minutes:
+        description: How long one sample replay may take.
+        required: true
+    pair:
+        description: The recorded pair this leg replayed.
+        required: true
+    sample-failed:
+        description: "'true' when it was the SAMPLE that failed."
+        required: true
+
+runs:
+    using: composite
+    steps:
+        - shell: bash
+          env:
+              COUNTRY: ${{ inputs.country }}
+              CODE: ${{ inputs.code }}
+              SAMPLE_COMMAND: ${{ inputs.sample-command }}
+              HEAP: ${{ inputs.heap }}
+              STEP_MINUTES: ${{ inputs.step-minutes }}
+              PAIR: ${{ inputs.pair }}
+              SAMPLE_FAILED: ${{ inputs.sample-failed }}
+          run: |
+              mkdir -p bisect-request
+              jq -n --arg country "$COUNTRY" --arg code "$CODE" --arg sample "$SAMPLE_COMMAND" \
+                    --arg heap "$HEAP" --arg minutes "$STEP_MINUTES" --arg pair "$PAIR" \
+                    --arg sampleFailed "$SAMPLE_FAILED" \
+                    '{country: $country, code: $code, sample: $sample, heap: $heap,
+                      minutes: $minutes, pair: $pair, sampleFailed: $sampleFailed}' \
+                    > "bisect-request/$CODE.json"
+              cat "bisect-request/$CODE.json"
+        - uses: actions/upload-artifact@v6
+          with:
+              name: bisect-request-${{ inputs.code }}
+              path: bisect-request/${{ inputs.code }}.json
+              retention-days: 3
+              overwrite: true

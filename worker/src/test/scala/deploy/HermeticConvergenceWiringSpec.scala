@@ -53,11 +53,13 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.step(publish, "Pin this recording as the pair hermetic legs replay") should include("hermetic-$code.txt")
   }
 
-  // The sample and the full leg of one run must replay ONE pair, or a recorder
+  // The sample, the full leg and the bisect of one run must replay ONE pair, or a recorder
   // pinning a new pair mid-run would split a leg across two recordings.
   it should "replay the pair its sample replayed" in {
     RepoFile.block(leg, "sample") should include("pair: ${{ steps.setup.outputs.hermetic-pair }}")
     RepoFile.block(leg, "convergence") should include("hermetic-pair: ${{ needs.sample.outputs.pair }}")
+    RepoFile.block(leg, "convergence") should include("pair:           ${{ needs.sample.outputs.pair }}")
+    RepoFile.read(".github/workflows/convergence-bisect.yml") should include("hermetic-pair: ${{ matrix.request.pair }}")
   }
 
   "the recorder" should "record every country's tree over the corpus it just captured" in {
@@ -81,5 +83,32 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     pin should include("inputs.mode == 'record' && inputs.complete == 'true'")
     pin should include("""boot complete""")
     RepoFile.block(leg, "convergence") should include("complete: ${{ inputs.mode == 'record' && steps.suite.outcome != 'cancelled' }}")
+  }
+
+  "the auto-bisect" should "be requested only by a red hermetic leg on main, from both jobs" in {
+    Seq("sample", "convergence").foreach { job =>
+      withClue(s"$job: ") {
+        RepoFile.block(leg, job) should include("uses: ./.github/actions/convergence-bisect-request\n" +
+          "              if: failure() && inputs.mode == 'hermetic' && github.ref == 'refs/heads/main'")
+      }
+    }
+  }
+
+  // Outside the leg: inside, it would hold the suite's one-run lane for its whole budget.
+  it should "run after the suite's run, only when it failed on main, inside a ceiling above its budget" in {
+    val bisect = RepoFile.read(".github/workflows/convergence-bisect.yml")
+    bisect should include("workflows: [Country convergence, US convergence]")
+    RepoFile.block(bisect, "plan") should include(
+      "github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.head_branch == 'main'")
+    val ceiling = """timeout-minutes:\s*(\d+)""".r.findFirstMatchIn(RepoFile.block(bisect, "bisect"))
+      .map(_.group(1).toInt).getOrElse(fail("no ceiling"))
+    val budget = """BUDGET_MINUTES:\s*(\d+)""".r.findFirstMatchIn(bisect).map(_.group(1).toInt)
+      .getOrElse(fail("no budget"))
+    ceiling should be > budget
+    bisect should include(".github/scripts/convergence-bisect.sh")
+    bisect should include("MAX_STEPS:       3")
+    withClue("the leg must not carry a bisect job of its own: ") {
+      leg.linesIterator.map(_.trim).toList should not contain "bisect:"
+    }
   }
 }
