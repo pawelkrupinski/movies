@@ -99,6 +99,21 @@ class SequelMarkerSpec extends AnyFlatSpec with Matchers {
     different("The Hunger Games: Mockinjay - Part 1", "The Hunger Games: Mockingjay - Part 2") shouldBe true
   }
 
+  it should "compare the instalment NUMBER across notations and past a trailing rerelease year or tag" in {
+    // Found by `MatchingPropertySpec`: the equal-length rule never compared the numbers
+    // of two titles that run different lengths, so a venue's rerelease stamp or a
+    // different notation hid a different instalment from the director walk's fuzzy
+    // match (`ResolutionCorporaSpec`'s Kill Bill scenario).
+    different("Kill Bil: Vol. 2 (2026)", "Kill Bill: Vol. 1")                    shouldBe true
+    different("Kill Bill: Vol. 1", "Kill Bil: Vol. 2 (2026)")                    shouldBe true
+    different("The Hunger Games: Mockingjay Pt 6", "The Hunger Games: Mockingjay 3") shouldBe true
+    different("Kingsman 2 4K", "Kingsman Pt 4")                                  shouldBe true
+    different("Szybcy i wściekli 9", "Szybcy i wściekli: część 8")               shouldBe true
+    // ...while one instalment, however it is numbered or stamped, is still one.
+    different("Kill Bill: Vol. 2 (2026)", "Kill Bill: Vol. 2")                   shouldBe false
+    different("Rocky 2", "Rocky: Part Two")                                      shouldBe false
+  }
+
   it should "not mistake the SAME instalment numbered two different ways for two films" in {
     // `MortalKombatDisappearanceSpec`, broken by the first cut of this guard
     // (2026-09-10): Multikino reports "Mortal Kombat 2", TMDB's own credit reads

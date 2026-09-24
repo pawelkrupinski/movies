@@ -200,12 +200,44 @@ object SequelMarker {
     a.iterator.map(TitleContainment.tokens).exists(at => bTokens.exists(curatedSiblings(at, _)))
   }
 
+  /** The instalment `t` numbers itself as: the words before the number (a part marker
+   *  right before it dropped) and its VALUE, read past whatever a venue trails after
+   *  it — a rerelease year, "Re-Release", a format tag. `None` when no token names an
+   *  instalment, when nothing precedes it, or when the words before it themselves end
+   *  in a number ("Ghost 2 (1)": which of the two is the instalment is a guess). */
+  private def numberedInstalment(t: Seq[String]): Option[(Seq[String], Int)] = {
+    def numbersAt(i: Int): Boolean =
+      isOrdinal(t(i)) || (WordOrdinals.contains(t(i)) && i > 0 && PartMarkers.contains(t(i - 1)))
+    val at = t.indices.lastIndexWhere(numbersAt)
+    if (at <= 0) None
+    else {
+      val before = t.take(at)
+      val words  = if (PartMarkers.contains(before.last)) before.init else before
+      ordinalValue(t(at)).filter(_ => words.nonEmpty && !isOrdinal(words.last)).map(words -> _)
+    }
+  }
+
+  /** Two titles of one series (the words before the number agree, up to the spelling
+   *  drift `TitleMatch.close` allows) numbering themselves differently, however each
+   *  writes the number and whatever either trails after it. The equal-length rule below
+   *  cannot see "Kill Bil: Vol. 2 (2026)" beside "Kill Bill: Vol. 1" or "Mockingjay Pt 6"
+   *  beside "Mockingjay 3" — the lengths differ — so a rerelease year a venue stamped on
+   *  the title (the Flicks/Odeon shape) put a typo'd sequel back inside the director
+   *  walk's fuzzy match with its predecessor, and lowest-id handed it the older film. */
+  private def numberedDifferently(a: Seq[String], b: Seq[String]): Boolean =
+    (numberedInstalment(a), numberedInstalment(b)) match {
+      case (Some((wordsA, valueA)), Some((wordsB, valueB))) =>
+        valueA != valueB && services.resolution.TitleMatch.close(wordsA.mkString, wordsB.mkString)
+      case _ => false
+    }
+
   /** Symmetric check: do `a` and `b` name two DIFFERENT instalments of the same
    *  series — two curated siblings of one franchise base ([[curatedSiblings]]),
    *  either one's tokens containing the other's plus a trailing ordinal
-   *  ([[namesAnotherEntry]], either direction), or the two run the same length
-   *  and END in ordinals naming different NUMBERS ("Part 1" vs "Part 2", "Rocky
-   *  II" vs "Rocky III"). Comparing by VALUE, not by raw token, is what keeps a
+   *  ([[namesAnotherEntry]], either direction), two titles of one series numbered
+   *  differently whatever trails the number ([[numberedDifferently]]), or the two
+   *  run the same length and END in ordinals naming different NUMBERS ("Part 1"
+   *  vs "Part 2", "Rocky II" vs "Rocky III"). Comparing by VALUE, not by raw token, is what keeps a
    *  franchise cinemas number two different ways from tripping this: Multikino's
    *  "Mortal Kombat 2" and TMDB's own "Mortal Kombat II" are the SAME film — "2"
    *  and "ii" both resolve to 2 — while "Mockingjay - Part 1" and "- Part 2" (1
@@ -228,7 +260,7 @@ object SequelMarker {
    *  film whenever no candidate title matched either spelling exactly. */
   def differentInstalments(a: Seq[String], b: Seq[String]): Boolean =
     if (a.isEmpty || b.isEmpty) false
-    else if (curatedSiblings(a, b)) true
+    else if (curatedSiblings(a, b) || numberedDifferently(a, b)) true
     else if (a.length == b.length)
       (ordinalValue(a.last), ordinalValue(b.last)) match {
         case (Some(va), Some(vb)) => va != vb
