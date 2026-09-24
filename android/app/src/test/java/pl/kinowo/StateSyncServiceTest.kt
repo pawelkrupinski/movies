@@ -392,6 +392,35 @@ class StateSyncServiceTest {
         assertEquals(setOf("Film PL"), prefs.hiddenByCountry["pl"])
     }
 
+    /** A hide made while a reconcile's fetch is on the wire is newer than the
+     *  set that fetch carries: applying the response would drop it locally
+     *  (and store validators for a set this device no longer holds) until the
+     *  next resume. The reconcile leaves local alone; the hide's own write
+     *  brings the server level. Mirrors iOS. */
+    @Test
+    fun aHideMadeDuringAReconcileFetchSurvivesItsResponse() = runTest(UnconfinedTestDispatcher()) {
+        prefs.countryState.value = "pl"
+        val service = startService()
+        login()
+        advanceUntilIdle()
+
+        client.remote["pl"] = setOf("Elsewhere") // so the fetch answers 200, not 304
+        val gate = CompletableDeferred<Unit>()
+        client.beforeFetchResponse = { gate.await() }
+        launch { service.reconcileCurrentCountry() }
+        runCurrent() // the fetch has read the server's set and is parked
+        prefs.setHiddenFilms("pl", setOf("Mid Fetch"))
+        service.hide("Mid Fetch")
+        runCurrent()
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(setOf("Mid Fetch"), prefs.hiddenState)
+        client.beforeFetchResponse = {}
+        service.reconcileCurrentCountry()
+        assertEquals(setOf("Elsewhere", "Mid Fetch"), prefs.hiddenState)
+    }
+
     /** A second non-null user emission (session re-check returning a changed
      *  profile) restarts the sync job rather than stacking a second one, so a
      *  local change is still pushed exactly once. */

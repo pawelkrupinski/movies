@@ -77,6 +77,9 @@ internal class FakeHiddenFilmsClient : HiddenFilmsClient {
      *  [fetch]. */
     var notModified = false
     var beforeFetch: suspend () -> Unit = {}
+    /** Awaited after a fetch has read the server's set, before it answers —
+     *  holds a response "on the wire" while the set changes underneath it. */
+    var beforeFetchResponse: suspend () -> Unit = {}
 
     /** The validator the server would hand out for [country]'s current set:
      *  derived from the content, as `UserStateController`'s strong ETag is. */
@@ -89,8 +92,10 @@ internal class FakeHiddenFilmsClient : HiddenFilmsClient {
         beforeFetch()
         if (shouldFailFetch) throw IOException("no network")
         if (!signedIn) throw IOException("HTTP 401")
-        if (etag != null && (notModified || etag == etagOf(country))) return HiddenFilmsFetchResult.NotModified
-        return HiddenFilmsFetchResult.Changed(state(country))
+        val answer = if (etag != null && (notModified || etag == etagOf(country))) HiddenFilmsFetchResult.NotModified
+            else HiddenFilmsFetchResult.Changed(state(country))
+        beforeFetchResponse()
+        return answer
     }
 
     override suspend fun hide(country: String, title: String): HiddenFilmsState {

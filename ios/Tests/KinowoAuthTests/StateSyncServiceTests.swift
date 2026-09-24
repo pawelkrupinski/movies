@@ -519,6 +519,34 @@ final class StateSyncServiceTests: XCTestCase {
         _ = sync
     }
 
+    /// A hide made while a reconcile's fetch is on the wire is newer than the
+    /// set that fetch carries: applying the response would drop it locally
+    /// (and store validators for a set this device no longer holds) until the
+    /// next resume. The reconcile leaves local alone; the hide's own write
+    /// brings the server level. Mirrors Android.
+    func testAHideMadeDuringAReconcileFetchSurvivesItsResponse() async throws {
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: [], etag: "\"e1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+
+        // The server's answer, read before the hide reaches it.
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: ["Elsewhere"], etag: "\"e2\"", lastModified: "Tue, 19 May 2026 13:00:00 GMT"))
+        client.fetchDelay[pl] = .milliseconds(300)
+        let fetchesBefore = client.fetchedCountries.count
+        let reconcile = Task { await sync.reconcileCurrentCountry() }
+        try await waitUntil { self.client.fetchedCountries.count > fetchesBefore }
+        client.writeResult = HiddenFilmsResult(hiddenFilms: ["Elsewhere", "Mid Fetch"], etag: "\"e3\"", lastModified: "Tue, 19 May 2026 14:00:00 GMT")
+        prefs.hide("Mid Fetch")
+        await reconcile.value
+
+        XCTAssertEqual(prefs.hiddenFilms, ["Mid Fetch"])
+        client.fetchDelay[pl] = nil
+        client.fetchResults[pl] = .current(client.writeResult)
+        await sync.reconcileCurrentCountry()
+        XCTAssertEqual(prefs.hiddenFilms, ["Elsewhere", "Mid Fetch"])
+    }
+
     /// A write's response is the server's WHOLE set. Its validators vouch for
     /// that set only — when it differs from the local bucket (another device
     /// changed it), storing them would make the next fetch a 304 that hides

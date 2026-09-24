@@ -145,12 +145,14 @@ class StateSyncService(
         // Unsent local edits first: until the server has them, its set is
         // older than local and must not replace it.
         if (!sendPendingOps(country)) return
+        val localBeforeFetch = prefs.hiddenFilmsFor(country)
         // A network error leaves local state authoritative: prefs + flags untouched.
         runCatchingCancellable {
             if (prefs.isHiddenFilmsMigrated(country)) {
                 when (val result = client.fetch(country, prefs.hiddenFilmsEtag(country), prefs.hiddenFilmsLastModified(country))) {
                     is HiddenFilmsFetchResult.NotModified -> Unit
                     is HiddenFilmsFetchResult.Changed -> {
+                        if (editedDuringFetch(country, localBeforeFetch)) return@runCatchingCancellable
                         val state = result.state
                         if (state.hiddenFilms != prefs.hiddenFilmsFor(country)) prefs.setHiddenFilms(country, state.hiddenFilms)
                         prefs.setHiddenFilmsValidators(country, state.etag, state.lastModified)
@@ -158,6 +160,7 @@ class StateSyncService(
                 }
             } else {
                 val remote = (client.fetch(country, null, null) as? HiddenFilmsFetchResult.Changed)?.state
+                if (editedDuringFetch(country, localBeforeFetch)) return@runCatchingCancellable
                 val local = prefs.hiddenFilmsFor(country)
                 val merged = local + (remote?.hiddenFilms ?: emptySet())
                 if (merged != local) prefs.setHiddenFilms(country, merged)
@@ -169,6 +172,14 @@ class StateSyncService(
             }
         }
     }
+
+    /** Whether the user edited [country]'s set while its fetch was on the wire
+     *  (the local set moved, or an edit is still queued). The response then
+     *  predates that edit, so applying it would drop the edit locally; it is
+     *  ignored instead — the edit's own write brings the server level, and
+     *  the next reconcile (not yet migrated: the union) runs against both. */
+    private suspend fun editedDuringFetch(country: String, localBeforeFetch: Set<String>): Boolean =
+        prefs.hiddenFilmsFor(country) != localBeforeFetch || prefs.pendingHiddenFilmsOps(country).isNotEmpty()
 
     /** Language is a scalar, not a set, so it skips the per-country
      *  migration-flag dance [reconcile] needs entirely — there's no "removed

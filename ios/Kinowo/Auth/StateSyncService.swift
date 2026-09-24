@@ -159,16 +159,19 @@ final class StateSyncService: ObservableObject {
         // Unsent local edits first: until the server has them, its set is
         // older than local and must not replace it.
         guard await sendPendingChanges(country: country) else { return }
+        let localBeforeFetch = prefs.hiddenFilms(country: country)
         do {
             if prefs.isHiddenFilmsMigrated(country: country) {
                 let (etag, lastModified) = prefs.hiddenFilmsValidators(country: country)
                 if case .current(let remote) = try await client.fetch(country: country, etag: etag, lastModified: lastModified) {
+                    guard !editedDuringFetch(country: country, localBeforeFetch: localBeforeFetch) else { return }
                     prefs.setHiddenFilms(remote.hiddenFilms, country: country)
                     prefs.setHiddenFilmsValidators(country: country, etag: remote.etag, lastModified: remote.lastModified)
                 }
             } else {
                 // No usable validators, so this is always a fresh 200.
-                guard case .current(let remote) = try await client.fetch(country: country, etag: nil, lastModified: nil) else { return }
+                guard case .current(let remote) = try await client.fetch(country: country, etag: nil, lastModified: nil),
+                      !editedDuringFetch(country: country, localBeforeFetch: localBeforeFetch) else { return }
                 let local     = prefs.hiddenFilms(country: country)
                 let localOnly = local.subtracting(remote.hiddenFilms)
                 prefs.setHiddenFilms(local.union(remote.hiddenFilms), country: country)
@@ -185,6 +188,15 @@ final class StateSyncService: ObservableObject {
             // alone, a later reconcile (resume, country switch, next login)
             // retries.
         }
+    }
+
+    /// Whether the user edited `country`'s set while its fetch was on the wire
+    /// (the local set moved, or an edit is still queued). The response then
+    /// predates that edit, so applying it would drop the edit locally; it is
+    /// ignored instead — the edit's own write brings the server level, and
+    /// the next reconcile (not yet migrated: the union) runs against both.
+    private func editedDuringFetch(country: String, localBeforeFetch: Set<String>) -> Bool {
+        prefs.hiddenFilms(country: country) != localBeforeFetch || !prefs.pendingHiddenFilmsChanges(country: country).isEmpty
     }
 
     /// Language is a scalar, not a set, so it skips the per-country
