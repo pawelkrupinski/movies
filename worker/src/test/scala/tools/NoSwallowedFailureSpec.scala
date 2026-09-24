@@ -125,21 +125,6 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("worker/src/main/scala/modules/wiring/ScrapeWiring.scala", "scrapeAttemptCeiling",
       "else scala.util.Try(new FilmwebCinemaIdResolver(httoFetch).resolveAll())") ->
       "boot must not fail on Filmweb: with no fallback ids every SourceFallbackScraper serves its primary's real outcome, never an empty success",
-    ("worker/src/main/scala/services/TmdbClient.scala", "crewIds",
-      "Try {") ->
-      "KNOWN DEBT: a failed TMDB read reads as \"none\" here; callers take empty as no evidence (see crewIds' doc), and propagating it changes resolution outcomes, so it needs a change of its own",
-    ("worker/src/main/scala/services/TmdbClient.scala", "directorsFor",
-      "Try {") ->
-      "KNOWN DEBT: a failed TMDB read reads as \"none\" here; callers take empty as no evidence (see crewIds' doc), and propagating it changes resolution outcomes, so it needs a change of its own",
-    ("worker/src/main/scala/services/TmdbClient.scala", "posters",
-      "Try {") ->
-      "KNOWN DEBT: a failed TMDB read reads as \"none\" here; callers take empty as no evidence (see crewIds' doc), and propagating it changes resolution outcomes, so it needs a change of its own",
-    ("worker/src/main/scala/services/TmdbClient.scala", "findPersonCandidates",
-      "Try {") ->
-      "KNOWN DEBT: a failed TMDB read reads as \"none\" here; callers take empty as no evidence (see crewIds' doc), and propagating it changes resolution outcomes, so it needs a change of its own",
-    ("worker/src/main/scala/services/TmdbClient.scala", "personCredits",
-      "Try {") ->
-      "KNOWN DEBT: a failed TMDB read reads as \"none\" here; callers take empty as no evidence (see crewIds' doc), and propagating it changes resolution outcomes, so it needs a change of its own",
     ("worker/src/main/scala/services/cinemas/pl/BokClient.scala", "fetch",
       "Try(http.get(url)).toOption.getOrElse(\"\")") ->
       "a later day's page: the first is fetched outside the Try, so a dead source fails the scrape (ScraperOutageSpec); one failed day is tolerated as ListingPages does",

@@ -77,8 +77,11 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
     apiKey = Some("stub")
   )
 
+  // A real miss: TMDB ANSWERS both searches with nothing. The person search used to be
+  // left unstubbed, and the miss rested on its failure being read as "nobody" — which is
+  // how a blocked TMDB could conclude a film unresolvable.
   private def tmdbMiss() = new TmdbClient(
-    http = new RoutingHttpFetch(Map("/search/movie" -> """{"results":[]}"""), getOnly = true),
+    http = new RoutingHttpFetch(Map("/search/movie" -> """{"results":[]}""", "/search/person" -> """{"results":[]}"""), getOnly = true),
     apiKey = Some("stub")
   )
 

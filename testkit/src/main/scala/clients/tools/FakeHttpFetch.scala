@@ -172,6 +172,14 @@ class FakeHttpFetch(fixtureDirectory: String, strict: Boolean = false, foldYear:
     // already read it as "no rating".
     else if (!strict && host == "caching.graphql.imdb.com")
       """{"data":{"title":null}}""".getBytes("UTF-8")
+    // A TMDB CREDITS read the corpus never recorded: a movie's `/credits` (the rating
+    // resolvers' director check) or a person's filmography (the director walk). Until
+    // 2026-09-24 the client swallowed the miss into an empty crew, so the recorder never
+    // captured most of them; the client now propagates a failed read, and the fake states
+    // the recording gap itself — the same rule as the searches above. The replayed corpus
+    // is unchanged by it.
+    else if (!strict && host == "api.themoviedb.org" && path.matches("3/(person/\\d+/movie_credits|movie/\\d+/credits)"))
+      """{"cast":[],"crew":[]}""".getBytes("UTF-8")
     else if (!strict && FakeHttpFetch.ProbedRatingHosts.exists(h => host == h || host.endsWith("." + h)))
       throw new tools.HttpStatusException(404, "GET", url, None)
     else throw new java.io.FileNotFoundException(

@@ -77,6 +77,11 @@ class TmdbClient(
    *  for an id/title TMDB doesn't know — is NOT transient and fails fast (no point
    *  burning the remaining attempts). A `None`/empty parse result isn't an
    *  exception, so the existing graceful-degradation paths are untouched. */
+  /** A 404 on a by-id read is TMDB answering "no such film/person" — no credits, not a
+   *  failed read — so it reads as an empty crew. Every other failure propagates. */
+  private def orEmptyWhenUnknown(read: => String): String =
+    try read catch { case e: HttpStatusException if e.code == 404 => """{"crew":[]}""" }
+
   private def httpGet(url: String, auth: Map[String, String]): String =
     RetryWithBackoff("TMDB GET", maxAttempts = 3, initialBackoff = 300.millis,
       retryOn = TmdbClient.isTransient)(http.get(url, auth))
@@ -215,36 +220,31 @@ class TmdbClient(
    *  TMDB credits to Joel Coen) or someone TMDB files under a different job (Karl
    *  Freund shot the 1931 "Dracula" and is widely credited as co-directing it), and
    *  by ID rather than name so a pseudonym resolves to the same person. Empty when
-   *  TMDB has no credits or the call fails — the caller must read empty as "no
-   *  answer", never as "nobody". */
+   *  TMDB has no credits; THROWS when the call fails — a failed read is not "nobody". */
   def crewIds(tmdbId: Int): Set[Int] = authHeader.map { auth =>
-    Try {
-      val body = httpGet(s"$ApiBase/movie/$tmdbId/credits${apiKeyParameter("?")}", auth)
-      (Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-        .flatMap(c => (c \ "id").asOpt[Int])
-        .toSet
-    }.getOrElse(Set.empty)
+    val body = orEmptyWhenUnknown(httpGet(s"$ApiBase/movie/$tmdbId/credits${apiKeyParameter("?")}", auth))
+    (Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+      .flatMap(c => (c \ "id").asOpt[Int])
+      .toSet
   }.getOrElse(Set.empty)
 
   /** Director name(s) credited on a TMDB movie. Empty when TMDB has no
-   *  credits or the call fails. Used to verify a title-search candidate
+   *  credits; THROWS when the call fails. Used to verify a title-search candidate
    *  against the cinema-reported director — when a film's title and a
    *  cinema's title happen to collide (Polish "Niedźwiedzica" matches both
    *  Grizzly Falls 1999 and the 2026 Helgestad document) the directors disagree. */
   def directorsFor(tmdbId: Int): Set[String] = authHeader.map { auth =>
-    Try {
-      val body = httpGet(s"$ApiBase/movie/$tmdbId/credits${apiKeyParameter("?")}", auth)
-      (Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-        .filter(c => (c \ "job").asOpt[String].contains("Director"))
-        .flatMap { c =>
-          // Include both the localised `name` and the native-script `original_name`
-          // so that cinemas reporting a director in their native script (e.g. "张钢"
-          // for a Chinese director TMDB lists as "Gang Zhang") still match.
-          Seq("name", "original_name").flatMap(f => (c \ f).asOpt[String])
-        }
-        .filter(_.nonEmpty)
-        .toSet
-    }.getOrElse(Set.empty)
+    val body = orEmptyWhenUnknown(httpGet(s"$ApiBase/movie/$tmdbId/credits${apiKeyParameter("?")}", auth))
+    (Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+      .filter(c => (c \ "job").asOpt[String].contains("Director"))
+      .flatMap { c =>
+        // Include both the localised `name` and the native-script `original_name`
+        // so that cinemas reporting a director in their native script (e.g. "张钢"
+        // for a Chinese director TMDB lists as "Gang Zhang") still match.
+        Seq("name", "original_name").flatMap(f => (c \ f).asOpt[String])
+      }
+      .filter(_.nonEmpty)
+      .toSet
   }.getOrElse(Set.empty)
 
   /** One TMDB `/movie/{id}?language=<deployment>&append_to_response=credits,release_dates`
@@ -326,7 +326,9 @@ class TmdbClient(
           // as a backup — the Tmdb slot ranks below every cinema in
           // `MovieRecord.posterUrl` — so a better localised portrait improves
           // the `data-fallbacks` chain (and the no-cinema-poster case).
-          posterUrl     = TmdbClient.bestPortraitPosterUrl(posters(tmdbId), language.getLanguage)
+          // A failed `/images` read falls back to `poster_path` — the poster TMDB flags
+          // primary is a real answer, so a poster hiccup never breaks the resolve.
+          posterUrl     = Try(posters(tmdbId)).toOption.flatMap(TmdbClient.bestPortraitPosterUrl(_, language.getLanguage))
                             .orElse((js \ "poster_path").asOpt[String].filter(_.nonEmpty).map(p => s"${TmdbClient.PosterBase}$p")),
           ageRating     = ageRating
         )
@@ -340,14 +342,11 @@ class TmdbClient(
    *  `poster_path`, which is whatever TMDB flags primary regardless of shape.
    *
    *  `include_image_language=<lang>,null` restricts the response to the
-   *  deployment language's artwork plus language-neutral. Wrapped so any failure — network, or a
-   *  missing fixture on test replay — yields an empty list; callers then fall
-   *  back to `poster_path` exactly as before. */
+   *  deployment language's artwork plus language-neutral. THROWS when the call fails;
+   *  [[fullDetails]] then falls back to `poster_path`, by its own explicit choice. */
   def posters(tmdbId: Int): Seq[TmdbClient.PosterImage] = authHeader.map { auth =>
-    Try {
-      val body = httpGet(s"$ApiBase/movie/$tmdbId/images?include_image_language=$imageLanguages${apiKeyParameter("&")}", auth)
-      TmdbClient.parsePosters(body)
-    }.getOrElse(Seq.empty)
+    val body = httpGet(s"$ApiBase/movie/$tmdbId/images?include_image_language=$imageLanguages${apiKeyParameter("&")}", auth)
+    TmdbClient.parsePosters(body)
   }.getOrElse(Seq.empty)
 
   /** TMDB person id for a name search — the first of [[findPersonCandidates]].
@@ -372,12 +371,10 @@ class TmdbClient(
    *  at one round-trip — an actor sharing a director's name is still skipped, just
    *  no longer fatally when TMDB ranks a credit-less stub above the real one. */
   def findPersonCandidates(name: String): Seq[Int] = authHeader.map { auth =>
-    Try {
-      val body = httpGet(s"$ApiBase/search/person?query=${urlEncode(name)}${apiKeyParameter("&")}", auth)
-      val rows = (Json.parse(body) \ "results").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-      val (directing, others) = rows.partition(r => (r \ "known_for_department").asOpt[String].contains("Directing"))
-      (directing ++ others).flatMap(r => (r \ "id").asOpt[Int]).distinct.take(TmdbClient.MaxPersonCandidates)
-    }.getOrElse(Seq.empty)
+    val body = httpGet(s"$ApiBase/search/person?query=${urlEncode(name)}${apiKeyParameter("&")}", auth)
+    val rows = (Json.parse(body) \ "results").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+    val (directing, others) = rows.partition(r => (r \ "known_for_department").asOpt[String].contains("Directing"))
+    (directing ++ others).flatMap(r => (r \ "id").asOpt[Int]).distinct.take(TmdbClient.MaxPersonCandidates)
   }.getOrElse(Seq.empty)
 
   /** A person's movies as a director — the films they're credited for in the
@@ -397,23 +394,21 @@ class TmdbClient(
     personCredits(personId, "Writing")
 
   private def personCredits(personId: Int, department: String): Seq[TmdbClient.SearchResult] = authHeader.map { auth =>
-    Try {
-      val body = httpGet(s"$ApiBase/person/$personId/movie_credits?language=$languageTag${apiKeyParameter("&")}", auth)
-      (Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-        .filter(c => (c \ "department").asOpt[String].contains(department))
-        .flatMap { js =>
-          for {
-            id <- (js \ "id").asOpt[Int]
-          } yield TmdbClient.SearchResult(
-            id            = id,
-            title         = (js \ "title").asOpt[String].getOrElse(""),
-            originalTitle = (js \ "original_title").asOpt[String],
-            releaseYear   = (js \ "release_date").asOpt[String].filter(_.length >= 4).flatMap(s => Try(s.take(4).toInt).toOption),
-            popularity    = (js \ "popularity").asOpt[Double].getOrElse(0.0)
-          )
-        }
-        .distinctBy(_.id)
-    }.toOption.getOrElse(Seq.empty)
+    val body = orEmptyWhenUnknown(httpGet(s"$ApiBase/person/$personId/movie_credits?language=$languageTag${apiKeyParameter("&")}", auth))
+    (Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+      .filter(c => (c \ "department").asOpt[String].contains(department))
+      .flatMap { js =>
+        for {
+          id <- (js \ "id").asOpt[Int]
+        } yield TmdbClient.SearchResult(
+          id            = id,
+          title         = (js \ "title").asOpt[String].getOrElse(""),
+          originalTitle = (js \ "original_title").asOpt[String],
+          releaseYear   = (js \ "release_date").asOpt[String].filter(_.length >= 4).flatMap(s => Try(s.take(4).toInt).toOption),
+          popularity    = (js \ "popularity").asOpt[Double].getOrElse(0.0)
+        )
+      }
+      .distinctBy(_.id)
   }.getOrElse(Seq.empty)
 
   private[clients] def parseSearchResults(body: String): Seq[TmdbClient.SearchResult] =

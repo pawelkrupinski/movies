@@ -284,8 +284,11 @@ class MovieService(
           val evidence = existing.fold(FilmEvidence.empty)(_.evidence)
             .withDirectors(director.toSeq.flatMap(_.split(",")))
           if (evidence.directors.isEmpty) false
-          else Verdict.of(evidence, Candidate(currentId, crew = tmdb.directorsFor(currentId).toSeq)) match {
-            case Verdict.Reject(Contradiction.Director) =>
+          // A crew TMDB could not read keeps the row (see above) — decided here, explicitly,
+          // rather than by the client answering an empty crew.
+          else scala.util.Try(tmdb.directorsFor(currentId)).toOption
+            .map(crew => Verdict.of(evidence, Candidate(currentId, crew = crew.toSeq))) match {
+            case Some(Verdict.Reject(Contradiction.Director)) =>
               logger.info(s"TMDB re-resolve: '${key.cleanTitle}' (${key.year.getOrElse("?")}) tmdbId=$currentId " +
                           s"no longer matches the reported director(s) [${evidence.directors.mkString(",")}] — re-resolving.")
               true

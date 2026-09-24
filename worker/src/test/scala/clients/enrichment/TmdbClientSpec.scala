@@ -497,9 +497,11 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     ids should have size 3
   }
 
-  it should "return an empty set when the call fails, so the caller reads it as no answer" in {
+  // A FAILED credits read throws (TmdbClientFailedReadSpec); a 404 is TMDB answering that
+  // it has no such film, which is an empty crew rather than a failure.
+  it should "read a 404 as no crew, not as a failure" in {
     val fetch = new GetOnlyHttpFetch {
-      override def get(url: String): String = throw new RuntimeException("TMDB down")
+      override def get(url: String): String = throw new tools.HttpStatusException(404, "GET", url, None)
     }
     new TmdbClient(fetch, apiKey = Some("stub")).crewIds(365398) shouldBe empty
   }

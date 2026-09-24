@@ -40,10 +40,16 @@ class CrewConfirmation(credits: CrewConfirmation.Credits) extends Logging {
     }
 
   private def directorIsAStranger(record: MovieRecord, tmdbId: Int): Boolean = {
-    val crew = credits.crewIds(tmdbId)
     // No crew read, no answer. TMDB failing or having no credits says nothing about
-    // whether this is the right film, and treating it as agreement would re-resolve
-    // rows on the strength of a failed request.
+    // whether this is the right film, and treating either as a contradiction would
+    // re-resolve rows on the strength of a failed request. The two stay apart here, and
+    // the failure is logged, rather than both arriving as an empty set.
+    val crew = scala.util.Try(credits.crewIds(tmdbId)) match {
+      case scala.util.Success(read) => read
+      case scala.util.Failure(e) =>
+        logger.info(s"crew confirmation: tmdbId=$tmdbId crew unreadable (${e.getMessage}) — not confirming")
+        return false
+    }
     if (crew.isEmpty) return false
     val named = record.evidence.directors.flatMap(personIds)
     // Likewise a name TMDB has never heard of: unknown is not absent.
