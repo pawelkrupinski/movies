@@ -753,36 +753,31 @@ class MongoMovieRepository(
    *  round-trips through the normal `StoredMovieDto` codec. */
   override def findAllForListing(): Seq[StoredMovieRecord] = coll match {
     case Some(c) =>
-      Try {
-        val stripShowtimes = org.bson.Document.parse(
-          """{ "$set": { "sourceData": { "$arrayToObject": { "$map": {
-            |  "input": { "$objectToArray": { "$ifNull": ["$sourceData", {}] } },
-            |  "as": "kv",
-            |  "in": { "k": "$$kv.k", "v": { "$arrayToObject": { "$filter": {
-            |    "input": { "$objectToArray": "$$kv.v" },
-            |    "as": "f",
-            |    "cond": { "$ne": ["$$f.k", "showtimes"] } } } } } } } } } }""".stripMargin)
-        val pipeline = Seq[Bson](Aggregates.sort(Sorts.ascending("_id")), stripShowtimes)
-        val rows = Await.result(c.aggregate[StoredMovieDto](pipeline).toFuture(), 60.seconds)
-        // Stitch slots like every other reader. This one reads `movies.sourceData`
-        // straight out of an aggregation, so a migrated film — whose slots have moved to
-        // `movie_slots` — would otherwise list with NO cinemas at all. Showtimes stay
-        // stripped: slots are stored without them, which is exactly what this path wants.
-        // A failed slots load can't be recovered from here (the listing has no "partial"
-        // shape to return), but it MUST NOT pass silently: every migrated film would
-        // render cinema-less and the page would read as a corpus-wide outage. This one is
-        // the dev /debug table, so it degrades loudly instead of refusing to render.
-        val (allSlots, slotsRead) = slots.map(_.findAllChecked())
-          .getOrElse((Map.empty[String, Map[String, SourceData]], true))
-        if (!slotsRead)
-          logger.warn("MovieRepository.findAllForListing: movie_slots load failed — every migrated film will " +
-            "list with no cinemas. The listing is stale, not the corpus.")
-        rows.map(dto => stitchSlots(StoredMovieDto.toDomain(dto, normalizer), allSlots.getOrElse(dto._id, Map.empty)))
-      }.recover {
-        case exception: Throwable =>
-          logger.warn(s"MovieRepository.findAllForListing failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
-          Seq.empty
-      }.getOrElse(Seq.empty)
+      // A failed read THROWS, and /debug shows the error: an empty table read as an empty corpus.
+      val stripShowtimes = org.bson.Document.parse(
+        """{ "$set": { "sourceData": { "$arrayToObject": { "$map": {
+          |  "input": { "$objectToArray": { "$ifNull": ["$sourceData", {}] } },
+          |  "as": "kv",
+          |  "in": { "k": "$$kv.k", "v": { "$arrayToObject": { "$filter": {
+          |    "input": { "$objectToArray": "$$kv.v" },
+          |    "as": "f",
+          |    "cond": { "$ne": ["$$f.k", "showtimes"] } } } } } } } } } }""".stripMargin)
+      val pipeline = Seq[Bson](Aggregates.sort(Sorts.ascending("_id")), stripShowtimes)
+      val rows = Await.result(c.aggregate[StoredMovieDto](pipeline).toFuture(), 60.seconds)
+      // Stitch slots like every other reader. This one reads `movies.sourceData`
+      // straight out of an aggregation, so a migrated film — whose slots have moved to
+      // `movie_slots` — would otherwise list with NO cinemas at all. Showtimes stay
+      // stripped: slots are stored without them, which is exactly what this path wants.
+      // A failed slots load can't be recovered from here (the listing has no "partial"
+      // shape to return), but it MUST NOT pass silently: every migrated film would
+      // render cinema-less and the page would read as a corpus-wide outage. This one is
+      // the dev /debug table, so it degrades loudly instead of refusing to render.
+      val (allSlots, slotsRead) = slots.map(_.findAllChecked())
+        .getOrElse((Map.empty[String, Map[String, SourceData]], true))
+      if (!slotsRead)
+        logger.warn("MovieRepository.findAllForListing: movie_slots load failed — every migrated film will " +
+          "list with no cinemas. The listing is stale, not the corpus.")
+      rows.map(dto => stitchSlots(StoredMovieDto.toDomain(dto, normalizer), allSlots.getOrElse(dto._id, Map.empty)))
     case None => Seq.empty
   }
 
