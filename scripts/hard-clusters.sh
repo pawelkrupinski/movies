@@ -11,7 +11,10 @@
 #
 #   scripts/hard-clusters.sh record [<code>...]
 #       Re-record the responses file(s) only — after a change that makes the pipeline
-#       ask new questions (the spec reports them as "unrecorded request(s)").
+#       ask new questions (the spec reports them as "unrecorded request(s)"). Answers the
+#       file already holds are kept (the tree has moved on since they were recorded) and
+#       only new requests reach the tree; delete the file to re-record all of it. To make
+#       a fix's regression visible, record once WITH the bug and once with the fix.
 #
 # Inputs, each defaulting to what CI's convergence leg has already restored:
 #   KINOWO_HARD_CLUSTERS_CORPUS_DIR  directory holding cinema-scrapes-<code>.json.gz

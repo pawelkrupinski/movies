@@ -143,8 +143,18 @@ object RecordedResponses {
   def replaying(path: Path, refused: Set[String] = RatingHosts): RecordedResponses =
     new RecordedResponses(load(path), None, refused)
 
-  /** Ask `source` for everything, keeping what it answered. Starts EMPTY on purpose, so
-   *  a re-record drops the answers no current request needs any more. */
-  def recording(source: HttpFetch, refused: Set[String] = RatingHosts): RecordedResponses =
-    new RecordedResponses(new ConcurrentHashMap[String, Entry](), Some(source), refused)
+  /** Ask `source` for what `prior` (the file as checked in) does not already hold, and
+   *  keep BOTH: a re-record only ever adds answers. Delete the file to start over.
+   *
+   *  Kept, not re-asked, because the source moves on — the trees are re-recorded from
+   *  the live sites, and a cluster added from a newer recorder run would otherwise
+   *  re-record every older cluster against pages that have since changed or vanished,
+   *  replaying a world none of their proofs ran in. And kept even when no request of
+   *  the CURRENT code asks for them, because a regression is exactly a change in what
+   *  gets asked: recorded after the fix, the "Avengers: Koniec gry (re-release)" cluster
+   *  (PL, 2026-09-24) lost the "Avengers: Doomsday" answers the bug needed, and the
+   *  reverted fix then passed on 28 unrecorded 404s. Record once with the bug, once with
+   *  the fix, and the file holds both worlds. */
+  def recording(source: HttpFetch, refused: Set[String] = RatingHosts, prior: Option[Path] = None): RecordedResponses =
+    new RecordedResponses(prior.fold(new ConcurrentHashMap[String, Entry]())(load), Some(source), refused)
 }

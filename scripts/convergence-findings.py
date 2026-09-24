@@ -17,8 +17,11 @@ The shapes it reads are the clues `CountryConvergenceBehaviour`, `CorpusDiff` an
     tick 1: keys APPEARED: (Blood & Sinners,Some(2026)), …
     record 'Lalka' (Some(2026)):
     tick 1: 5 known film(s) RE-DIVERTED to staging: (Freiluftkino Hasenheide,bloodisinners), …
+    pass2=Map(Cinema1␟avengerskoniecgryrerelease -> 14)
+    …ResolvedMovie(avengerskoniecgryrerelease|2026,Avengers: Koniec Gry (re-release),…
 
-A RE-DIVERTED entry names only the sanitized key; it is emitted as-is and matches the
+The last two are the order-dependence report ("SCREENINGS differ" / "RENDERED ROWS
+differ"). A RE-DIVERTED entry and a screening key name only the sanitized key; it is emitted as-is and matches the
 fixture's listings by containment.
 """
 import re
@@ -35,6 +38,9 @@ KEY_TUPLE = re.compile(r"\(([^()]+(?:\([^()]*\)[^()]*)*?),(?:Some\(\d{4}\)|None)
 KEY_CONTEXT = re.compile(r"(only[-a-z0-9]*=|APPEARED|VANISHED|keys differ)")
 REDIVERTED = re.compile(r"RE-DIVERTED to staging: (.*)")
 CINEMA_KEY = re.compile(r"\(([^,()]+),([a-z0-9]+)\)")
+# A screening count keyed `cinema␟sanitizedTitle`, and a rendered read-model row.
+SCREENING_KEY = re.compile(r"\u241f([a-z0-9]+) ->")
+RESOLVED_MOVIE = re.compile(r"ResolvedMovie\([^|,()]+\|(?:\d{4})?,([^,]+),")
 
 
 def titles(line: str):
@@ -44,6 +50,8 @@ def titles(line: str):
     yield from RECORD.findall(line)
     if KEY_CONTEXT.search(line):
         yield from KEY_TUPLE.findall(line)
+    yield from SCREENING_KEY.findall(line)
+    yield from RESOLVED_MOVIE.findall(line)
     m = REDIVERTED.search(line)
     if m:
         yield from (key for _, key in CINEMA_KEY.findall(m.group(1)))

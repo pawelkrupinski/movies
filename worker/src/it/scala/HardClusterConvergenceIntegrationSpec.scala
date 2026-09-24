@@ -53,7 +53,8 @@ import scala.util.{Random, Try}
  * RECORD MODE re-captures the responses file after the fixture grows (see
  * `scripts/hard-clusters.sh`): with `KINOWO_HARD_CLUSTERS_RECORD=1` and
  * `KINOWO_FIXTURE_ROOT` naming a directory holding the countries' `enrichment-<cc>`
- * trees, every request is answered from the tree and the answers written back.
+ * trees, every request the file does not already answer is asked of the tree, and the
+ * file is written back with the old answers AND the new (`RecordedResponses.recording`).
  */
 class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
@@ -89,7 +90,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
     country -> (
       if (Recording) RecordedResponses.recording(new FallbackHttpFetch(Seq(
         "tree"       -> new clients.tools.FakeHttpFetch(s"enrichment-${country.code}", strict = true, foldYear = false),
-        "unrecorded" -> new clients.tools.FailingHttpFetch(404))))
+        "unrecorded" -> new clients.tools.FailingHttpFetch(404))), prior = Some(RecordedResponses.pathFor(country.code)))
       else RecordedResponses.replaying(RecordedResponses.pathFor(country.code)))
   }.toMap
 
@@ -240,8 +241,8 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
     (byA.keySet ++ byB.keySet).toSeq.sorted.flatMap { key =>
       ((byA.getOrElse(key, Nil), byB.getOrElse(key, Nil)) match {
         case (x, y) if x == y => None
-        case (Nil, y)         => Some(s"  only in $lb: ${y.mkString("; ")}")
-        case (x, Nil)         => Some(s"  only in $la: ${x.mkString("; ")}")
+        case (Nil, y)         => Some(s"  only in $lb [$key]: ${y.mkString("; ")}")
+        case (x, Nil)         => Some(s"  only in $la [$key]: ${x.mkString("; ")}")
         case (x, y)           => Some(s"  $key\n    $la: ${x.mkString("; ")}\n    $lb: ${y.mkString("; ")}")
       }).map(key -> _)
     }

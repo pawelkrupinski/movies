@@ -34,6 +34,15 @@ class ConvergenceFindingsTest(unittest.TestCase):
                 "(Sputnik Südstern,bmovielustisoundinwestberlin1979)")
         self.assertEqual(names(line), ["bloodisinners", "bmovielustisoundinwestberlin1979"])
 
+    def test_order_dependence_names_the_screening_key_and_the_rendered_film(self):
+        # PolandConvergenceSpec, recorder run 36016829894 — the order-dependence failure
+        # names its film only through these two shapes.
+        self.assertEqual(names("      pass2=Map(Cinema1\u241favengerskoniecgryrerelease -> 14)"),
+                         ["avengerskoniecgryrerelease"])
+        line = ("      pass2=\u2026905ce3ea),Some(Sala 6),List(NAP))))))),ResolvedMovie(avengerskoniecgryrerelease|2026,"
+                "Avengers: Koniec Gry (re-release),Some(Avengers: Doomsday),Some(https://med\u2026")
+        self.assertEqual(names(line), ["Avengers: Koniec Gry (re-release)"])
+
     def test_ansi_colour_does_not_hide_a_finding(self):
         self.assertEqual(names("\x1b[31mrecord 'Lalka' (Some(2026)):\x1b[0m"), ["Lalka"])
 
