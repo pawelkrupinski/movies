@@ -734,6 +734,14 @@ groups:
       # to gizycko / tczew. A city the worker stopped counting has left the
       # roster, not broken; a worker that stopped counting EVERY city is
       # ReadModelServedGaugesAbsent's alarm.
+      #
+      # `and on (country) <worker>` IS WHAT TELLS A RETIREMENT FROM A RESTART.
+      # A worker restart leaves every corpus series of its country absent for
+      # ~3 minutes, and without this the exclusion swallowed the whole country
+      # for the gap -- hiding a real web drop and resetting the 5m hold. A
+      # retired page vanishes while its worker goes on counting the country's
+      # other cities; a restart takes them all, so during one nothing is
+      # excluded and the rule reads the web side as before.
       # Guarded by worker deploy.GrafanaServedSwingScopeSpec and
       # deploy.GrafanaServedSwingCorpusDiscriminantSpec.
       - uid: kinowo-movies-served-swing
@@ -754,7 +762,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
-              expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5) unless on (city) (max_over_time(kinowo_worker_movies_served{scope="all"}[1h]) unless on (city) kinowo_worker_movies_served{scope="all"})'
+              expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5) unless on (city) ((max_over_time(kinowo_worker_movies_served{scope="all"}[1h]) unless on (city) kinowo_worker_movies_served{scope="all"}) and on (country) kinowo_worker_movies_served{scope="all"})'
               instant: true
               range: false
               intervalMs: 1000

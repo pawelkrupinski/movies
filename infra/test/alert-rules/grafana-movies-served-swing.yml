@@ -43,7 +43,7 @@ tests:
       # (test_alert_rule_coverage.py checks some suite evaluates it
       # character-for-character). eval_time lands on the FIRST post-drop sample, where the 1h
       # lookback still averages mostly pre-drop 8s — the transition moment the live rule pages on.
-      - expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5) unless on (city) (max_over_time(kinowo_worker_movies_served{scope="all"}[1h]) unless on (city) kinowo_worker_movies_served{scope="all"})'
+      - expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5) unless on (city) ((max_over_time(kinowo_worker_movies_served{scope="all"}[1h]) unless on (city) kinowo_worker_movies_served{scope="all"}) and on (country) kinowo_worker_movies_served{scope="all"})'
         eval_time: 3010m
         exp_samples:
           # ONLY "hadbug" — a listed sample and nothing else, so if "wentdark" ever reappeared (a
@@ -66,7 +66,7 @@ tests:
       - series: 'kinowo_worker_movies_served{scope="all",city="dipped",country="pl"}'
         values: '8x310'
     promql_expr_test:
-      - expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5) unless on (city) (max_over_time(kinowo_worker_movies_served{scope="all"}[1h]) unless on (city) kinowo_worker_movies_served{scope="all"})'
+      - expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5) unless on (city) ((max_over_time(kinowo_worker_movies_served{scope="all"}[1h]) unless on (city) kinowo_worker_movies_served{scope="all"}) and on (country) kinowo_worker_movies_served{scope="all"})'
         eval_time: 3010m
         exp_samples: []
 
@@ -92,8 +92,32 @@ tests:
       - series: 'kinowo_worker_movies_served{scope="all",city="stillhere",country="pl"}'
         values: '34x26'
     promql_expr_test:
-      - expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5) unless on (city) (max_over_time(kinowo_worker_movies_served{scope="all"}[1h]) unless on (city) kinowo_worker_movies_served{scope="all"})'
+      - expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5) unless on (city) ((max_over_time(kinowo_worker_movies_served{scope="all"}[1h]) unless on (city) kinowo_worker_movies_served{scope="all"}) and on (country) kinowo_worker_movies_served{scope="all"})'
         eval_time: 130m
         exp_samples:
           - labels: '{scope="all",city="stillhere",country="pl"}'
+            value: 1
+
+  # ── A WORKER RESTART IS NOT A RETIREMENT ────────────────────────────────────────────────────────
+  # The exclusion above must not fire on the ~3 minutes a worker restart leaves EVERY one of its
+  # country's corpus series absent: that would hide a real web drop for the gap and reset the
+  # rule's 5m hold. What tells the two apart is the rest of the country -- a retired page vanishes
+  # while the worker goes on counting its other cities, a restart takes them all. Here pl's worker
+  # is gone for three minutes at 60m (`stale`), and "broken"'s web side drops 34 -> 0 at the same
+  # moment -- the read-model shape this rule exists for, still reported through the gap.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_movies_served{scope="all",city="broken",country="pl"}'
+        values: '34x59 0x10'
+      - series: 'kinowo_worker_movies_served{scope="all",city="broken",country="pl"}'
+        values: '34x59 stale _x2 34x7'
+      - series: 'kinowo_web_movies_served{scope="all",city="calm",country="pl"}'
+        values: '20x69'
+      - series: 'kinowo_worker_movies_served{scope="all",city="calm",country="pl"}'
+        values: '20x59 stale _x2 20x7'
+    promql_expr_test:
+      - expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5) unless on (city) ((max_over_time(kinowo_worker_movies_served{scope="all"}[1h]) unless on (city) kinowo_worker_movies_served{scope="all"}) and on (country) kinowo_worker_movies_served{scope="all"})'
+        eval_time: 61m
+        exp_samples:
+          - labels: '{scope="all",city="broken",country="pl"}'
             value: 1
