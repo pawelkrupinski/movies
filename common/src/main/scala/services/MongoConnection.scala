@@ -72,7 +72,16 @@ class MongoConnection(
     // booted with Mongo unreachable cannot start writing, once it reconnects, into a
     // database another country owns. Reads never wait on it: until it passes, `database`
     // is `None`, exactly the degraded state an unreachable Mongo already means.
-    onConnected: MongoDatabase => Unit = _ => ()) extends Logging {
+    onConnected: MongoDatabase => Unit = _ => (),
+    // Starts the background reconnect (named, runnable). A daemon thread in production;
+    // the seam lets a test decide when that thread runs relative to construction.
+    startReconnect: (String, Runnable) => Unit = MongoConnection.startDaemon) extends Logging {
+
+  // Stops the background reconnect. Without it a closed connection keeps probing
+  // — and could publish a live client into a connection its owner has already
+  // torn down — plus every test that exercises the degraded path would leak a
+  // retry thread for the rest of the JVM's life.
+  @volatile private var closed = false
 
   // Eager — connecting now (at construction) surfaces wiring / network
   // problems at boot rather than at the first request. `Wiring` touches
@@ -84,16 +93,17 @@ class MongoConnection(
   // `retryInBackground`). `@volatile` so readers on request threads see it.
   @volatile private var initResult: (Option[MongoClient], Option[MongoDatabase]) = init()
 
+  // A `required` connection still without a database after `init` is the degraded one
+  // (every other required failure threw): reconnect in the background. Started only
+  // HERE, once `initResult` is assigned — the reconnect loop reads it straight away,
+  // and started from inside `init` it could read the unassigned field, die on an NPE,
+  // and leave the connection degraded for good.
+  if (required && initResult._2.isEmpty) uri.foreach(retryInBackground)
+
   /** The shared `MongoDatabase` view — pre-bound to `dbName`. Repos
    *  `.withCodecRegistry(...)` it. `None` only when `required` is false and
-   *  Mongo was absent/unreachable (when `required`, init threw instead). */
+   *  Mongo was absent/unreachable, or while a `required` one is degraded. */
   def database: Option[MongoDatabase] = initResult._2
-
-  // Stops the background reconnect. Without it a closed connection keeps probing
-  // — and could publish a live client into a connection its owner has already
-  // torn down — plus every test that exercises the degraded path would leak a
-  // retry thread for the rest of the JVM's life.
-  @volatile private var closed = false
 
   // Only close a client WE built. A `sharedClient` is owned by the caller
   // (WorkerMain closes it once, after every borrowing connection is stopped).
@@ -136,8 +146,9 @@ class MongoConnection(
    *  machine is the same stampede that kept the cluster down, so back off to a
    *  minute and stay there. Only reached when `required` — an optional connection
    *  that failed stays disabled, as before. */
-  private def retryInBackground(connectionString: String): Unit = {
-    val thread = new Thread(
+  private def retryInBackground(connectionString: String): Unit =
+    startReconnect(
+      s"mongo-reconnect-$dbName",
       () => {
         var waitSeconds = 5L
         var givenUp     = false
@@ -166,11 +177,7 @@ class MongoConnection(
                   s"retrying in ${waitSeconds}s.")
             }
         }
-      },
-      s"mongo-reconnect-$dbName")
-    thread.setDaemon(true)
-    thread.start()
-  }
+      })
 
   private def init(): (Option[MongoClient], Option[MongoDatabase]) =
     uri match {
@@ -202,11 +209,10 @@ class MongoConnection(
               throw new IllegalStateException(
                 s"MongoConnection init failed and a Mongo connection is required — refusing to start: ${exception.getMessage}$hint",
                 exception)
-            if (required) {
+            if (required)
               logger.error(s"MongoConnection to $dbName is UNREACHABLE (${exception.getMessage}) — " +
                 s"starting DEGRADED rather than crash-looping; retrying in the background.$hint")
-              retryInBackground(connectionString)
-            } else
+            else
               logger.error(s"MongoConnection init failed (${exception.getMessage}) — disabled.$hint")
             (None, None)
         }
@@ -214,6 +220,13 @@ class MongoConnection(
 }
 
 object MongoConnection extends Logging {
+  /** The production reconnect starter: a daemon thread, so it never holds shutdown open. */
+  def startDaemon(name: String, body: Runnable): Unit = {
+    val thread = new Thread(body, name)
+    thread.setDaemon(true)
+    thread.start()
+  }
+
   /** Pure policy core for the boot-failure decision: Mongo is required
    *  everywhere except tests, unless a local dev opted out (e.g. via
    *  `MONGODB_OPTIONAL`). Kept boolean-only — no Play `Mode`, no env reads —

@@ -87,6 +87,35 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     connection.close()
   }
 
+  // The reconnect thread reads the connection's state the moment it starts. Started from
+  // inside the constructor's field initialiser, it could read that state before it was
+  // assigned, die on an NPE, and leave the connection degraded forever — the
+  // LateReconnectClaimIntegrationSpec CI flake. Holding construction until the thread has
+  // either died or parked in its backoff makes the thread win that race every time.
+  it should "keep its background reconnect alive however soon the reconnect thread runs" in {
+    val died   = new java.util.concurrent.atomic.AtomicReference[Throwable]()
+    val thread = new java.util.concurrent.atomic.AtomicReference[Thread]()
+    val connection = new MongoConnection(
+      uri                    = Some("mongodb://127.0.0.1:1/?connectTimeoutMS=150&socketTimeoutMS=150"),
+      dbName                 = "kinowo",
+      required               = true,
+      probeTimeout           = 3.seconds,
+      serverSelectionTimeout = Some(200.millis),
+      startReconnect         = (name, reconnect) => {
+        val t = new Thread(reconnect, name)
+        t.setDaemon(true)
+        t.setUncaughtExceptionHandler((_, e) => died.set(e))
+        thread.set(t)
+        t.start()
+        t.join(1000)
+      })
+    try {
+      withClue("the reconnect thread must not die before its first attempt: ") { Option(died.get) shouldBe None }
+      thread.get.isAlive shouldBe true
+      connection.database shouldBe None
+    } finally connection.close()
+  }
+
   "MongoConnection with required = false" should "disable (database None) when MONGODB_URI is absent" in {
     val connection = new MongoConnection(uri = None, dbName = "kinowo", required = false)
     connection.database shouldBe None
