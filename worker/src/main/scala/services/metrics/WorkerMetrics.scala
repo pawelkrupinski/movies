@@ -76,6 +76,13 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: Int) {
   val shareCardSeries: services.sharecards.ShareCardMetrics.Series =
     new services.sharecards.ShareCardMetrics.Series(countryCodes, registry)
 
+  // The sampled runtime-invariant audits (see services.tasks.RecheckedAudit): read-model content
+  // against a fresh projection, and web_movies.shareCard against the card directory.
+  val readModelContentAudit: services.tasks.RecheckedAudit.Series =
+    new services.tasks.RecheckedAudit.Series("kinowo_worker_readmodel_content", "read-model content", countryCodes, registry)
+  val shareCardAudit: services.tasks.RecheckedAudit.Series =
+    new services.tasks.RecheckedAudit.Series("kinowo_worker_share_cards", "share-card pointer", countryCodes, registry)
+
   // Per-request outcome of the PAID egress legs (Zyte, Decodo) — see PaidEgressMetrics.
   val paidEgress: PaidEgressMetrics = new PaidEgressMetrics(countryCodes, registry)
 

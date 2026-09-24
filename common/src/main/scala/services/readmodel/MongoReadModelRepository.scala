@@ -190,6 +190,27 @@ class MongoReadModelRepository(
     pagedIdsChecked(movies, "ReadModelRepository.findAllShareCardRefs", Projections.include("_id", "shareCard"))(d =>
       ShareCardRef(d.getString("_id").getValue, Option(d.getString("shareCard", null)).map(_.getValue)))
 
+  // Two reads by `_id`, so no secondary index is owed (see the note above the collection handles):
+  // a screening's `_id` is `<card>|<city>|<cinema>`, so every row of one card sits in the `_id`
+  // range [`<card>|`, `<card>}`) — `}` is the character after `|` — and a variant card's rows
+  // (`<card>~<variant>|…`) sort after that range, never inside it. Decoded strictly: a document
+  // that cannot be decoded fails the read rather than reading as absent.
+  override def findCard(id: String): Option[StoredCard] = (movies, screenings) match {
+    case (Some(movieColl), Some(screeningColl)) =>
+      Try {
+        val movie = Await.result(movieColl.find(Filters.eq("_id", id)).toFuture(), 10.seconds).headOption
+        val rows  = Await.result(
+          screeningColl.find(Filters.and(Filters.gte("_id", s"$id|"), Filters.lt("_id", s"$id}"))).toFuture(), 30.seconds)
+        StoredCard(movie, rows.filter(_.filmId == id))
+      } match {
+        case Success(card) => Some(card)
+        case Failure(exception) =>
+          logger.warn(s"ReadModelRepository.findCard($id) failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
+          None
+      }
+    case _ => None
+  }
+
   // Server-side document counts — the read model's cheap integrity probe. These
   // count index entries (no payload decode), so the web's backstop can detect
   // drift without re-reading the whole corpus. `-1` signals "unavailable".

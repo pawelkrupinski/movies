@@ -2,7 +2,7 @@ package modules
 
 import org.mongodb.scala.MongoClient
 import models.Country
-import modules.wiring.{AlertingWiring, ChunkScrapeWiring, CorpusWiring, DetailWiring, EgressWiring, HttpWiring, MetricsWiring, OperatorWiring, RatingsWiring, ReadModelWiring, ResolutionWiring, ScrapeWiring, ShareCardWiring, StagingWiring, TaskQueueWiring}
+import modules.wiring.{AlertingWiring, ChunkScrapeWiring, CorpusWiring, DetailWiring, EgressWiring, HttpWiring, InvariantAuditWiring, MetricsWiring, OperatorWiring, RatingsWiring, ReadModelWiring, ResolutionWiring, ScrapeWiring, ShareCardWiring, StagingWiring, TaskQueueWiring}
 import services.cinemas.common.CinemaClientMarkers
 import services.events.{EventBus, InProcessEventBus}
 import services.freshness.{Freshness, FreshnessKind}
@@ -60,7 +60,8 @@ class WorkerWiring(
     injectedWorkerMetrics: Option[WorkerMetrics] = None) extends play.api.Logging
     with HttpWiring with EgressWiring with ScrapeWiring with ChunkScrapeWiring with DetailWiring
     with CorpusWiring with ResolutionWiring with RatingsWiring with ReadModelWiring
-    with MetricsWiring with TaskQueueWiring with StagingWiring with AlertingWiring with OperatorWiring with ShareCardWiring {
+    with MetricsWiring with TaskQueueWiring with StagingWiring with AlertingWiring with OperatorWiring with ShareCardWiring
+    with InvariantAuditWiring {
 
   /** The metrics bundle this wiring records into: the shared injected one, or a
    *  self-owned single-country bundle when none was injected (lone boot / test). */
@@ -230,6 +231,7 @@ class WorkerWiring(
     settleReaper.start()
     omdbBackfillReaper.foreach(_.start())
     shareCardReapers.foreach(_.start())
+    auditReapers.foreach(_.start())
     scrapeReaper.start()
     // Backstop the chunked-scrape fan-in: recover complete runs whose completion
     // event was lost, and partial-reduce abandoned runs.
@@ -276,6 +278,7 @@ class WorkerWiring(
     settleReaper.stop()
     omdbBackfillReaper.foreach(_.stop())
     shareCardReapers.foreach(_.stop())
+    auditReapers.foreach(_.stop())
     livenessWatchdog.stop()
     workerHeartbeat.stop()
     taskWorker.stop()

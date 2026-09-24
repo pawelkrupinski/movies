@@ -1862,6 +1862,120 @@
               }
             }
           ]
+        },
+        {
+          "id": 111,
+          "title": "Worker — read-model content audit: sampled cards vs a fresh projection (per hour)",
+          "description": "The hourly READ-MODEL CONTENT AUDIT (ReadModelContentAudit on RecheckedAudit): up to 50 random web_movies cards a run, each compared FIELD BY FIELD -- its document and its web_screenings rows -- with what ReadModelProjection derives from its source row now. Every other read-model check compares ids or counts; this is the one that sees a card that EXISTS and is WRONG (Troy, 2046 and Glastonbury served August showtimes 2026-08-29..09-08), and unlike the rolling content check (the drift line on the removals panel) it reads the STORE, not the projector's memo of what it wrote -- so a write the memo believes landed and the store never took shows here too. 'audited' = cards judged, 'suspects' = differed when sampled (re-checked 15 minutes later: a write in flight is not a finding), 'confirmed' = still differed at the re-check. The worker log names each confirmed card and the fields that differ ('read-model-content audit: ... still differs'). ReadModelContentMismatch fires when confirmed exceeds 2% of audited over 6h.",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 202
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none",
+              "min": 0,
+              "custom": {
+                "spanNulls": 300000,
+                "drawStyle": "line",
+                "fillOpacity": 0
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (country) (increase(kinowo_worker_readmodel_content_audited_total{country=~\"$country\"}[1h]))",
+              "legendFormat": "{{country}} audited",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            },
+            {
+              "refId": "B",
+              "expr": "sum by (country) (increase(kinowo_worker_readmodel_content_audit_suspects_total{country=~\"$country\"}[1h]))",
+              "legendFormat": "{{country}} suspects",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            },
+            {
+              "refId": "C",
+              "expr": "sum by (country) (increase(kinowo_worker_readmodel_content_audit_confirmed_total{country=~\"$country\"}[1h]))",
+              "legendFormat": "{{country}} confirmed",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            }
+          ]
+        },
+        {
+          "id": 112,
+          "title": "Worker — share-card audit: web_movies.shareCard vs the card on disk (per hour)",
+          "description": "The hourly SHARE-CARD AUDIT (ShareCardAudit on RecheckedAudit): up to 50 random films whose web_movies document names a card, each checked against the card directory -- the named file exists, is that film's, and carries the version the ?v= in the URL names. That URL is og:image verbatim and a preview scraper caches what it fetches for about a month, so a pointer at a pruned file, a lost directory, or a card whose version moved on without the document following is a broken or wrong picture wherever the film is shared. The coverage panel asks a different question (does each film on screen HAVE a current card on disk), never whether the document points at it. 'audited' / 'suspects' (re-checked 15 minutes later) / 'confirmed' as on the content audit; the worker log names each confirmed film ('share-card audit: ... still differs'). ShareCardPointersUnresolvable fires when confirmed exceeds 5% of audited over 6h.",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 202
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none",
+              "min": 0,
+              "custom": {
+                "spanNulls": 300000,
+                "drawStyle": "line",
+                "fillOpacity": 0
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (country) (increase(kinowo_worker_share_cards_audited_total{country=~\"$country\"}[1h]))",
+              "legendFormat": "{{country}} audited",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            },
+            {
+              "refId": "B",
+              "expr": "sum by (country) (increase(kinowo_worker_share_cards_audit_suspects_total{country=~\"$country\"}[1h]))",
+              "legendFormat": "{{country}} suspects",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            },
+            {
+              "refId": "C",
+              "expr": "sum by (country) (increase(kinowo_worker_share_cards_audit_confirmed_total{country=~\"$country\"}[1h]))",
+              "legendFormat": "{{country}} confirmed",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            }
+          ]
         }
       ],
       "gridPos": {

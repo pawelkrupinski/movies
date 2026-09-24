@@ -32,6 +32,10 @@ final case class ScreeningRef(_id: String, filmId: String)
  *  can tell which films' files are still referenced without decoding the whole film. */
 final case class ShareCardRef(filmId: String, shareCard: Option[String])
 
+/** One card as the read model holds it: its `web_movies` document (None when there is none) and
+ *  every `web_screenings` row filed under its id. */
+final case class StoredCard(movie: Option[ResolvedMovie], screenings: Seq[CityScreening])
+
 /**
  * Read side of the denormalised read model — what the **web** depends on.
  * Segregated from [[ReadModelWriter]] (ISP): the serving app never writes, so
@@ -92,6 +96,13 @@ trait ReadModelReader {
    *  Mongo reader projects the two fields server-side. */
   def findAllShareCardRefsChecked(): (Seq[ShareCardRef], Boolean) =
     (findAllMovies().map(m => ShareCardRef(m._id, m.shareCard)), true)
+
+  /** One card's stored documents — what the worker's content audit compares with a fresh
+   *  projection — or None when the read FAILED, which is not the fact "no such card". The default
+   *  derives from the whole-collection reads (fine for the in-memory store); the Mongo reader
+   *  makes two reads by `_id`. */
+  def findCard(id: String): Option[StoredCard] =
+    Some(StoredCard(findAllMovies().find(_._id == id), findAllScreenings().filter(_.filmId == id)))
 
   def countMovies(): Long
   def countScreenings(): Long
