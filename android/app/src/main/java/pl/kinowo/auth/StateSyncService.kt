@@ -82,6 +82,8 @@ class StateSyncService(
      *  successfully pushed. A local change to this value merely adopted the
      *  server's pick, so it is never pushed back. */
     @Volatile private var accountLanguage: String? = null
+    /** Whether a language push is on the wire (not merely debouncing). */
+    @Volatile private var languageSendInFlight = false
 
     /** Begin observing the auth state. Idempotent enough for a single call
      *  from the composition root. */
@@ -230,7 +232,10 @@ class StateSyncService(
     /** The push itself — called directly by the debounced job, which must
      *  not cancel itself the way [pushLanguage] cancels it. */
     private suspend fun sendLanguage(language: String) {
-        runCatchingCancellable { languageClient.push(language) }.onSuccess {
+        languageSendInFlight = true
+        runCatchingCancellable {
+            try { languageClient.push(language) } finally { languageSendInFlight = false }
+        }.onSuccess {
             accountLanguage = language
             if (prefs.pendingLanguagePush() == language) prefs.setPendingLanguagePush(null)
         }
@@ -238,8 +243,8 @@ class StateSyncService(
 
     /** React to every local language change after the login reconcile. A
      *  change to [accountLanguage] merely adopted the server's pick (or went
-     *  back to it with no other pick's push running), so it is never echoed; anything else is a local pick,
-     *  marked pending and pushed after a 400 ms debounce so a rapid run of
+     *  back to it with no other pick's push on the wire), so it is never
+     *  echoed; anything else is a local pick, marked pending and pushed after a 400 ms debounce so a rapid run of
      *  picker taps folds into one PUT. `distinctUntilChanged` because the
      *  DataStore flow re-emits the same tag on every prefs write (including
      *  the pending-pick write below); `drop(1)` skips the current
@@ -253,7 +258,7 @@ class StateSyncService(
                 // A push still running may already have reached the server —
                 // cancelling the coroutine can't un-send a blocking OkHttp
                 // call — so a pick back to [accountLanguage] must be sent too.
-                val pushInFlight = languagePushJob?.isActive == true
+                val pushInFlight = languageSendInFlight
                 languagePushJob?.cancel()
                 languagePushJob = null
                 if (tag == accountLanguage && !pushInFlight) {

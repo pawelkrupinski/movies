@@ -633,6 +633,27 @@ class StateSyncServiceTest {
      *  still in flight: the pick-back matches what the account held when it
      *  was made, so nothing was sent for it, and the in-flight push then left
      *  the server on the abandoned pick. The final pick must win. Mirrors iOS. */
+    /** Picking back to the account's language INSIDE the debounce — nothing
+     *  has been sent yet — leaves nothing to push, as on iOS. Only a push
+     *  already on the wire makes the pick-back worth sending. */
+    @Test
+    fun pickingBackInsideTheDebounceSendsNothing() = runTest(UnconfinedTestDispatcher()) {
+        languageClient.remote = "de"
+        startService()
+        login()
+        advanceUntilIdle()
+
+        prefs.setLanguageTag("es")
+        advanceTimeBy(100)
+        runCurrent()
+        prefs.setLanguageTag("de")
+        advanceTimeBy(1_000)
+        runCurrent()
+
+        assertEquals(0, languageClient.pushAttempts)
+        assertNull(prefs.pendingLanguagePush())
+    }
+
     @Test
     fun pickingBackWhileAPushIsInFlightEndsOnTheFinalPick() = runTest(UnconfinedTestDispatcher()) {
         languageClient.remote = "de"
