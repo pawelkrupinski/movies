@@ -543,6 +543,20 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     session(result).get("userId") shouldBe empty
   }
 
+  // THE LOGIN-CSRF HOLE THE BINDING LEFT OPEN. Anyone can mint an UNBOUND code
+  // for their own account — start a native sign-in (`?platform=ios`) in a
+  // desktop browser and read it off the `kinowo://auth-done?code=…` it lands
+  // on. A victim who follows `/auth/sso/finish?code=<that>` holds no binding at
+  // all, and "no binding" must not match "minted without one".
+  it should "refuse an unbound code from a browser holding no binding" in {
+    val (ctl, repository, codes) = fixture()
+    val mallory = signedIn(repository, "mallory@example.com")
+
+    val result = ctl.ssoFinish()(FakeRequest("GET", s"/auth/sso/finish?code=${codes.mint(mallory)}"))
+
+    session(result).get("userId") shouldBe empty
+  }
+
   // By the time they are here they have already left the page they came from,
   // so an error page would offer them nothing they can act on. The home page
   // has a sign-in button.
