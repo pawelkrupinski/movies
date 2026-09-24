@@ -69,6 +69,12 @@ class InMemoryReadModelRepository extends ReadModelReader with ReadModelWriter {
   override def findAllScreeningRefs(): Seq[ScreeningRef] =
     lock.synchronized(screeningsStore.values.map(s => ScreeningRef(s._id, s.filmId)).toSeq)
 
+  // Two reads by id, like Mongo's — not the whole-collection reads the trait's default derives
+  // it from, which would count as full reloads.
+  override def findCard(id: String): Option[StoredCard] = lock.synchronized {
+    Some(StoredCard(moviesStore.get(id), screeningsStore.values.filter(_.filmId == id).toSeq))
+  }
+
   def countMovies():     Long = lock.synchronized(moviesStore.size.toLong)
   def countScreenings(): Long = lock.synchronized(screeningsStore.size.toLong)
 

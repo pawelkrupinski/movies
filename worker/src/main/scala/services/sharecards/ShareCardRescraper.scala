@@ -74,13 +74,13 @@ class ShareCardRescraper(graph: Option[FacebookGraph], reader: ReadModelReader, 
   }
 
   /** The film's page in every city it screens in, on the country's public origin. THROWS
-   *  when the read model cannot be read — an empty list is "no page to refresh". */
+   *  when the read model cannot be read — an empty list is "no page to refresh". The cities
+   *  come from the film's own screenings ([[ReadModelReader.findCard]], a read by `_id`
+   *  range), not a scan of every screening: a burst re-scrapes hundreds of films. */
   private[sharecards] def pageUrls(filmId: String): Seq[String] = {
-    val (refs, refsRead) = reader.findAllScreeningRefsChecked()
-    if (!refsRead) throw new IllegalStateException("web_screenings read incomplete")
+    val card   = reader.findCard(filmId).getOrElse(throw new IllegalStateException(s"read-model card $filmId unreadable"))
     val slug   = slugFor(filmId)
-    val cities = refs.iterator.filter(_.filmId == filmId)
-      .map(_._id.stripPrefix(s"$filmId|").takeWhile(_ != '|')).toSet
+    val cities = card.screenings.map(_._id.stripPrefix(s"$filmId|").takeWhile(_ != '|')).toSet
     (for {
       origin <- country.webOrigin.toSeq
       s      <- slug.toSeq

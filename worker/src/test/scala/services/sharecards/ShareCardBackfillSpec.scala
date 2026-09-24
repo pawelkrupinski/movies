@@ -139,6 +139,24 @@ class ShareCardRescraperSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // A burst of re-scrapes (a template change re-draws every recent film) runs one task per film,
+  // 10s apart. Each read the page list off a scan of the WHOLE of web_screenings — hundreds of
+  // thousands of ids in the US — to keep the few rows filed under one film.
+  it should "read only the film's own screenings for its pages, never the whole of web_screenings" in {
+    val readModel = new services.readmodel.InMemoryReadModelRepository {
+      override def findAllScreeningRefsChecked(): (Seq[services.readmodel.ScreeningRef], Boolean) =
+        fail("a re-scrape scanned every screening in the read model for one film's pages")
+    }
+    val rig   = new Rig(readModel = readModel)
+    val movie = film()
+    readModel.upsertMovie(movie)
+    readModel.upsertScreening(screening(movie._id, "poznan"))
+    readModel.upsertScreening(screening(movie._id, "wroclaw"))
+    val graph = new CountingGraph
+    new ShareCardRescraper(Some(graph), readModel, Country.default, rig.metrics, rig.clock).rescrape(movie._id) shouldBe true
+    graph.urls.toSeq shouldBe Seq("https://kinowo.net/poznan/movie/diuna", "https://kinowo.net/wroclaw/movie/diuna")
+  }
+
   it should "read the film slugs once for a burst of re-scrapes, and again for a film they lack" in {
     val rig = new Rig
     val first  = film()

@@ -47,4 +47,7 @@ class UnreadableReadModelRepository extends InMemoryReadModelRepository with Fai
     if (moviesFail) (Seq.empty, false) else super.findAllShareCardRefsChecked()
   override def findAllScreeningRefsChecked(): (Seq[ScreeningRef], Boolean) =
     if (screeningsFail) (Seq.empty, false) else super.findAllScreeningRefsChecked()
+  // A card is read from both collections, and the Mongo store answers a failed read None.
+  override def findCard(id: String): Option[StoredCard] =
+    if (moviesFail || screeningsFail) None else super.findCard(id)
 }
