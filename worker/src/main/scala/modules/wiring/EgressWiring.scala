@@ -164,7 +164,8 @@ object EgressWiring {
                    onOutcome: (String, Option[String]) => Unit = FallbackHttpFetch.NoOutcome): HttpFetch = {
     val legs = warmUrl.fold(shards)(u => shards.map(new SessionWarmingHttpFetch(_, u)))
     val proxyLeg = meteredProxyLeg(new StickyShardHttpFetch(legs, keyOf), meter)
-    new FallbackHttpFetch(Seq("proxy" -> proxyLeg, "fallback" -> fallback), onOutcome = onOutcome)
+    new FallbackHttpFetch(Seq("proxy" -> proxyLeg, "fallback" -> fallback), onOutcome = onOutcome,
+                          endsChain = FallbackHttpFetch.OriginAnswered)
   }
 
   /** Wrap the sticky-shard proxy leg in a per-host circuit breaker, so a host

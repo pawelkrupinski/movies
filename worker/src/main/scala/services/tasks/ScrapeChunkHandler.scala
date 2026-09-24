@@ -2,7 +2,7 @@ package services.tasks
 
 import play.api.Logging
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaMovieJson}
-import tools.CircuitOpenException
+import tools.{CircuitOpenException, EnrichmentRead}
 
 import java.time.Clock
 
@@ -13,7 +13,9 @@ import java.time.Clock
  *  - The task is dropped (`Skipped`) when its `runId` is no longer the cinema's
  *    active run — i.e. a superseding re-scrape started — so stale chunks never
  *    feed a published listing.
- *  - A fetch failure `Reschedule`s just this chunk (the queue's exponential
+ *  - An upstream "not found" (404/410) stores the chunk EMPTY: it is the answer,
+ *    and retrying it only holds the run open until the chunk exhausts.
+ *  - Any other fetch failure `Reschedule`s just this chunk (the queue's exponential
  *    backoff = the per-chunk retry); the run completes via the coordinator only
  *    once every chunk has stored, or via the backstop's partial reduce on timeout.
  *  - A fetch the host's circuit breaker refused outright never happened, so it
@@ -51,6 +53,14 @@ class ScrapeChunkHandler(
           case e: CircuitOpenException =>
             logger.info(s"chunk '$key' for $cinema run $runId deferred: ${e.getMessage}")
             Deferred(Some(e.getMessage), Some(clock.instant().plusMillis(e.openForMs)))
+          // The upstream says this chunk does not exist (a 404/410 on a key its own
+          // plan advertised — Odeon's empty business dates, UK 2026-09-21/22). That is
+          // an answer, not a failure: a retry only replays it, holding the run open
+          // until the chunk exhausts. Land it empty so the run can complete.
+          case e: Exception if EnrichmentRead.isAbsent(e) =>
+            logger.info(s"chunk '$key' for $cinema run $runId is gone upstream; storing it empty: ${e.getMessage}")
+            store.storeChunk(cinema, runId, key, CinemaMovieJson.encode(Nil), clock.instant())
+            Done
           case e: Exception =>
             logger.warn(s"chunk '$key' for $cinema run $runId failed: ${e.getMessage}")
             Reschedule(Some(e.getMessage))

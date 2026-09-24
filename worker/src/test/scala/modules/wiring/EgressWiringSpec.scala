@@ -90,4 +90,26 @@ class EgressWiringSpec extends AnyFlatSpec with Matchers {
     an[HttpStatusException] should be thrownBy leg.get("https://vwc.odeon.co.uk/x")
     outcomes.toList shouldBe List(HttpOutcome.Http401)
   }
+
+  // UK 2026-09-21/22: Odeon's ocapi answered 404 for a business date through the proxy
+  // (the leg that reaches the origin), then the Zyte leg 401'd and direct 403'd on the
+  // Cloudflare block. The composite "All 2 backends failed" hid the origin's answer, so
+  // the ScrapeChunk rescheduled on a permanent 404 until it exhausted — 20+ minutes of
+  // retries, each paying the paid legs again. Every leg is a route to the SAME origin, so
+  // the origin's "not found" from any of them is the answer.
+  "proxyPrimary" should "end the chain on the origin's not-found instead of masking it with a blocked fallback" in {
+    val fallback = new CountingFailingFetch(url => new HttpStatusException(403, "GET", url, None))
+    val originSaysGone = new CountingFailingFetch(url => new HttpStatusException(404, "GET", url, None))
+    val chain = EgressWiring.proxyPrimary(IndexedSeq(originSaysGone), fallback)
+
+    val thrown = the[HttpStatusException] thrownBy chain.get("https://vwc.odeon.co.uk/showtimes/by-business-date/2026-10-02")
+    thrown.code shouldBe 404
+    fallback.calls.get() shouldBe 0
+  }
+
+  it should "still fall through on a failure that is not the origin's answer" in {
+    val working = new GetOnlyHttpFetch { override def get(url: String): String = "ok" }
+    val chain = EgressWiring.proxyPrimary(IndexedSeq(new CountingFailingFetch(tunnelFailed)), working)
+    chain.get("https://vwc.odeon.co.uk/x") shouldBe "ok"
+  }
 }

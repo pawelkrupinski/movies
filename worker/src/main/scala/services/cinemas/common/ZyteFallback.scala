@@ -36,7 +36,8 @@ object ZyteFallback {
    *  not metered here. Split from [[fetchFor]] so the composition is testable
    *  without a key or a network. */
   def chain(zyte: Option[HttpFetch], direct: HttpFetch, meter: HttpOutcomeRecorder): HttpFetch =
-    zyte.fold(direct)(z => new FallbackHttpFetch(Seq("zyte" -> new CountingHttpFetch(z, meter), "direct" -> direct)))
+    zyte.fold(direct)(z => new FallbackHttpFetch(Seq("zyte" -> new CountingHttpFetch(z, meter), "direct" -> direct),
+                                                  endsChain = FallbackHttpFetch.OriginAnswered))
 
   private lazy val httpClient = HttpClient.newBuilder()
     .version(HttpClient.Version.HTTP_1_1)

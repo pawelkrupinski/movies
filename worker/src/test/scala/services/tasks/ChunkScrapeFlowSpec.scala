@@ -34,13 +34,14 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers {
    *  breaker-blocked host would; `planThrows` fails enumeration. */
   private class FakeChunked(slices: Map[String, Seq[CinemaMovie]], failOnce: Set[String] = Set.empty,
                             failAlways: Set[String] = Set.empty, planThrows: Boolean = false,
-                            circuitOpen: Set[String] = Set.empty) extends ChunkedCinemaScraper {
+                            circuitOpen: Set[String] = Set.empty, gone: Set[String] = Set.empty) extends ChunkedCinemaScraper {
     private val failed = mutable.Set.empty[String]
     val cinema: models.Cinema = ChunkScrapeFlowSpec.this.cinema
     def scrapeHosts: Set[String] = Set("fake.pl")
     def planChunks(): Seq[String] = if (planThrows) throw new RuntimeException("nav down") else slices.keys.toSeq.sorted
     def fetchChunk(k: String): Seq[CinemaMovie] =
       if (circuitOpen.contains(k)) throw new tools.CircuitOpenException("fake.pl", CircuitBlockMs)
+      else if (gone.contains(k)) throw new tools.HttpStatusException(404, "GET", s"https://fake.pl/$k", None)
       else if (failAlways.contains(k)) throw new RuntimeException(s"chunk $k permanently down")
       else if (failOnce.contains(k) && failed.add(k)) throw new RuntimeException(s"chunk $k transient")
       else slices.getOrElse(k, Nil)
@@ -158,6 +159,18 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers {
     h.drain(now.plusSeconds(120))   // b retried → stores → coordinator → reduce
     h.published should have size 1
     h.published.head.map(_.movie.title).toSet shouldBe Set("X", "Y")
+  }
+
+  // UK 2026-09-21/22: Odeon advertised business dates whose showtimes call then answered
+  // 404 on every retry. Rescheduling a definitive "not found" only replays it — the run
+  // sat waiting on those chunks, retrying them to exhaustion (20+ min, paid egress each
+  // time), and published only through the backstop's partial reduce.
+  it should "land a chunk the upstream says does not exist as an empty slice, so the run completes" in {
+    val h = new Harness(new FakeChunked(Map("a" -> Seq(film("X", 25)), "b" -> Seq(film("Y", 25))), gone = Set("b")))
+    h.planner.plan(cinemaName) shouldBe 2
+    h.drain()
+    h.published should have size 1
+    h.published.head.map(_.movie.title).toSet shouldBe Set("X")
   }
 
   it should "DEFER a chunk the host's circuit breaker refused, waiting out the block it named" in {

@@ -8,10 +8,11 @@ import scala.collection.mutable
  * Tries each backend in order, returning the first successful body.
  * A backend that fails is recorded at DEBUG and the chain falls through
  * to the next one; only when every backend has failed does it warn, and
- * throw a single composite exception naming each failure.
+ * throw a single composite exception naming each failure — unless a leg's
+ * failure is one `endsChain` names as the origin's own answer, which is
+ * rethrown as-is without trying the rest.
  *
- * Used by Multikino's composition: Zyte primary → direct fetch as
- * last resort. None of the backends know about each other — each is
+ * Used by the egress compositions (residential proxy → Zyte → direct). None of the backends know about each other — each is
  * just an `HttpFetch`.
  *
  * Single-backend lists are a degenerate case: prefer just using that
@@ -25,7 +26,13 @@ class FallbackHttpFetch(
   // on failure. Lets a caller meter which leg served vs fell through — the worker
   // records the "proxy" leg's outcome to the UptimeMonitor so /uptime shows when
   // the residential proxy served vs fell back to Zyte. Must not throw (guarded).
-  onOutcome: (String, Option[String]) => Unit = FallbackHttpFetch.NoOutcome
+  onOutcome: (String, Option[String]) => Unit = FallbackHttpFetch.NoOutcome,
+  // A leg failure that is the ORIGIN's own answer, which no other leg can improve on,
+  // so the chain stops there and rethrows it. Off by default: a chain whose legs are
+  // different SOURCES (a recorded-fixture layer in front of a live one) must go on
+  // past a leg's "not found". A chain whose legs are different ROUTES to one origin
+  // (proxy → Zyte → direct) passes [[FallbackHttpFetch.OriginAnswered]].
+  endsChain: Throwable => Boolean = FallbackHttpFetch.NeverEnds
 ) extends HttpFetch with Logging {
   require(backends.nonEmpty, "FallbackHttpFetch needs at least one backend")
 
@@ -66,6 +73,10 @@ class FallbackHttpFetch(
           lastFailure = Some(t)
           val message = s"$name: ${t.getClass.getSimpleName}: ${t.getMessage}"
           safeOutcome(name, Some(message))
+          if (endsChain(t)) {
+            logger.debug(s"FallbackHttpFetch $verb $url — $message; the origin answered, not trying later backends")
+            throw t
+          }
           // DEBUG, not WARN: falling through is what a fallback chain is FOR, and a
           // chain that then answers has nothing wrong with it. At warning volume the
           // convergence legs emitted thousands of nine-line misses per run — every
@@ -114,4 +125,15 @@ class FallbackHttpFetch(
 
 object FallbackHttpFetch {
   val NoOutcome: (String, Option[String]) => Unit = (_, _) => ()
+
+  val NeverEnds: Throwable => Boolean = _ => false
+
+  /** For a chain of egress ROUTES to one origin: the origin's "not found" (404/410)
+   *  through any route is final. Letting it fall through buried it — Odeon's ocapi
+   *  404'd a business date through the proxy, the Zyte and direct legs then failed on
+   *  their own blocks, and the composite failure read as transient, so the
+   *  `ScrapeChunk` retried a permanent answer to exhaustion on paid egress (UK
+   *  2026-09-21/22). An egress provider's OWN 404 is not an `HttpStatusException`
+   *  (see `EgressProviderException`), so it still falls through. */
+  val OriginAnswered: Throwable => Boolean = EnrichmentRead.isAbsent
 }

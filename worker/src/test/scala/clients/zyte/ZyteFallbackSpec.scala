@@ -56,4 +56,21 @@ class ZyteFallbackSpec extends AnyFlatSpec with Matchers {
     ZyteFallback.chain(Some(zyte), direct, (o: String) => outcomes += o).get("https://x/") shouldBe "zyte-body"
     outcomes.toList shouldBe List(HttpOutcome.Success)
   }
+
+  // The inner half of Odeon's chain: an origin 404 relayed by Zyte must not be buried
+  // under the direct leg's Cloudflare 403 (see EgressWiringSpec's proxyPrimary case).
+  it should "end on the origin's not-found relayed by Zyte rather than trying the blocked direct leg" in {
+    var directCalls = 0
+    val blockedDirect = new GetOnlyHttpFetch {
+      override def get(url: String): String = { directCalls += 1; throw new HttpStatusException(403, "GET", url, None) }
+    }
+    val zyte = new GetOnlyHttpFetch {
+      override def get(url: String): String =
+        throw new services.cinemas.common.ZyteOriginStatusException(404, url, s"Zyte API call returned upstream status=404 for $url")
+    }
+    val thrown = the[HttpStatusException] thrownBy
+      ZyteFallback.chain(Some(zyte), blockedDirect, HttpOutcomeRecorder.noop).get("https://vwc.odeon.co.uk/d")
+    thrown.code shouldBe 404
+    directCalls shouldBe 0
+  }
 }
