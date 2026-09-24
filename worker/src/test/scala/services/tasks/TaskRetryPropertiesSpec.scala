@@ -66,7 +66,9 @@ class TaskRetryPropertiesSpec extends AnyFlatSpec with Matchers {
   }
 
   "a task failure the table calls transient" should "be retried" in {
-    taskRows.filter(_.verdict == Verdict.Transient).foreach { row =>
+    val transient = taskRows.filter(_.verdict == Verdict.Transient)
+    transient should not be empty
+    transient.foreach { row =>
       val handler = throwing(RetryClassificationFailures.of(row))
       drain(handler, maxAttempts = 3)
       withClue(s"$row: ")(handler.runs shouldBe 3)

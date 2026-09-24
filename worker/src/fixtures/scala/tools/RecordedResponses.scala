@@ -140,8 +140,12 @@ object RecordedResponses {
   }
 
   /** Serve the checked-in file, nothing else. */
-  def replaying(path: Path, refused: Set[String] = RatingHosts): RecordedResponses =
+  def replaying(path: Path, refused: Set[String] = RatingHosts): RecordedResponses = {
+    // A replay of a file that is not there answers every request 404 — every film unresolved,
+    // every pass agreeing with every other, a green spec that replayed nothing. Say so instead.
+    require(Files.exists(path), s"no recorded responses at ${path.toAbsolutePath} — record them first")
     new RecordedResponses(load(path), None, refused)
+  }
 
   /** Ask `source` for what `prior` (the file as checked in) does not already hold, and
    *  keep BOTH: a re-record only ever adds answers. Delete the file to start over.
