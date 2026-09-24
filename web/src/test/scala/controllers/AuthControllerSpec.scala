@@ -793,6 +793,21 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     repository.findById(email).value.sessionVersion shouldBe 1
   }
 
+  // A revoke the store could not write must not answer as though it landed:
+  // the caller would believe every other device signed out while none were.
+  it should "503, and hand out no new session, when the store could not bump the version" in {
+    val repository = new InMemoryUserRepository {
+      override def revokeSessions(id: String): Option[models.User] = None
+    }
+    val ctl = new AuthController(Helpers.stubControllerComponents(), Map.empty, repository,
+      new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk), models.Country.Poland, clock = fixedClk)
+    val email  = signedIn(repository, "alice@example.com")
+    val result = ctl.revokeSessions()(FakeRequest("POST", "/auth/sessions/revoke").withSession("userId" -> email))
+
+    status(result) shouldBe SERVICE_UNAVAILABLE
+    header("Set-Cookie", result) shouldBe empty
+  }
+
   // The whole point: an OLDER cookie (still naming sessionVersion 0, as if
   // issued before this call) must stop resolving once the row's version has
   // moved on — otherwise "sign out everywhere" only ever signs out the one

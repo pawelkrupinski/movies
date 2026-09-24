@@ -7,7 +7,11 @@ import org.scalatest.matchers.should.Matchers
 
 import java.time.Instant
 
-class UserRepositorySpec extends AnyFlatSpec with Matchers {
+class UserRepositorySpec extends AnyFlatSpec with Matchers with UserSessionVersionContract {
+
+  protected val sessionStore        = new InMemoryUserRepository
+  protected val sessionUserIdPrefix = "session-"
+  sessionVersionBehaviour("InMemoryUserRepository")
 
   // Spec exercises `UserRepository` via the in-memory impl so the trait's
   // contract is what's pinned — `MongoUserRepository` honours the same shape

@@ -1,6 +1,9 @@
 package services.users
 
-import com.mongodb.client.model.ReplaceOptions
+import com.mongodb.client.model.{FindOneAndUpdateOptions, ReturnDocument, UpdateOptions, Updates}
+import org.bson.{BsonArray, BsonDocument, BsonDocumentWriter, BsonInt32, BsonString}
+import org.bson.codecs.EncoderContext
+import org.mongodb.scala.bson.conversions.Bson
 import models.User
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, SingleObservableFuture}
@@ -33,7 +36,17 @@ trait UserRepository {
 
   def delete(id: String): Unit
 
+  /** Write `user` as the whole row — except `sessionVersion`, which never
+   *  moves backwards: the store keeps the higher of its own and `user`'s. A
+   *  sign-in writes back a copy it read a moment earlier, and a revoke landing
+   *  in between must survive it (see [[revokeSessions]]). */
   def upsert(user: User): Unit
+
+  /** "Sign out everywhere": bump `id`'s `sessionVersion` by one in ONE atomic
+   *  step and answer the row right after it — `None` when there is no such row
+   *  (or the store could not write). Never a read-then-write, which two
+   *  requests at once could each bump to the same value. */
+  def revokeSessions(id: String): Option[User]
 
   def close(): Unit
 }
@@ -126,14 +139,23 @@ class MongoUserRepository(
   }
 
   def upsert(user: User): Unit = coll.foreach { c =>
-    val opts = new ReplaceOptions().upsert(true)
     Try {
-      Await.result(c.replaceOne(Filters.eq("id", user.id), user, opts).toFuture(), 10.seconds)
+      Await.result(c.updateOne(Filters.eq("id", user.id), MongoUserRepository.upsertPipeline(user),
+        new UpdateOptions().upsert(true)).toFuture(), 10.seconds)
       ()
     }.recover {
       case exception: Throwable =>
         logger.warn(s"UserRepository.upsert(${user.id}) failed: ${exception.getMessage}")
     }
+  }
+
+  def revokeSessions(id: String): Option[User] = coll.flatMap { c =>
+    Try(Option(Await.result(c.findOneAndUpdate(Filters.eq("id", id), Updates.inc("sessionVersion", 1),
+      new FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER)).toFuture(), 10.seconds)))
+      .recover { case exception: Throwable =>
+        logger.warn(s"UserRepository.revokeSessions($id) failed: ${exception.getMessage}")
+        None
+      }.get
   }
 
   def close(): Unit = clientOpt.foreach(_.close())
@@ -164,6 +186,25 @@ class MongoUserRepository(
     }
 }
 
+object MongoUserRepository {
+
+  /** The whole row as `user` has it — a `$replaceWith`, so a `None` field the
+   *  codec leaves out is gone afterwards, exactly as a replace would leave it —
+   *  but with `sessionVersion` the higher of the stored one and `user`'s (see
+   *  `UserRepository.upsert`). The row travels inside `$literal`, since user
+   *  text starting with `$` would otherwise read as a field path. */
+  private[users] def upsertPipeline(user: User): Seq[Bson] = {
+    val row = new BsonDocument()
+    UserCodecs.registry.get(classOf[User]).encode(new BsonDocumentWriter(row), user, EncoderContext.builder().build())
+    row.remove("sessionVersion")
+    val stored = new BsonDocument("$ifNull", new BsonArray(java.util.List.of(new BsonString("$sessionVersion"), new BsonInt32(0))))
+    val sessionVersion = new BsonDocument("sessionVersion",
+      new BsonDocument("$max", new BsonArray(java.util.List.of(stored, new BsonInt32(user.sessionVersion)))))
+    Seq(new BsonDocument("$replaceWith",
+      new BsonDocument("$mergeObjects", new BsonArray(java.util.List.of(new BsonDocument("$literal", row), sessionVersion)))))
+  }
+}
+
 /**
  * In-memory `UserRepository` for tests. Trivial map keyed by `id` plus an
  * index on `(provider, providerSub)` so the lookup signatures both
@@ -184,17 +225,26 @@ class InMemoryUserRepository extends UserRepository {
   def findByEmail(email: String): Option[User] =
     byId.values.find(_.email.exists(_.equalsIgnoreCase(email)))
 
-  def upsert(user: User): Unit = {
+  def upsert(user: User): Unit = synchronized {
+    val kept = user.copy(sessionVersion = byId.get(user.id).map(_.sessionVersion).fold(user.sessionVersion)(_ max user.sessionVersion))
     // Account linking can change a user's (provider, providerSub) pair —
     // sweep out any stale entries pointing to this id before re-indexing.
     // Mongo's overwrite-on-upsert gives the same effect naturally; the
     // in-memory impl has to do it explicitly.
     bySub.filterInPlace { case (_, id) => id != user.id }
-    byId(user.id) = user
+    byId(user.id) = kept
     bySub((user.provider, user.providerSub)) = user.id
   }
 
-  def delete(id: String): Unit = {
+  def revokeSessions(id: String): Option[User] = synchronized {
+    byId.get(id).map { stored =>
+      val revoked = stored.copy(sessionVersion = stored.sessionVersion + 1)
+      byId(id) = revoked
+      revoked
+    }
+  }
+
+  def delete(id: String): Unit = synchronized {
     byId.remove(id).foreach(u => bySub.remove((u.provider, u.providerSub)))
   }
 

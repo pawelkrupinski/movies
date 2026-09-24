@@ -8,7 +8,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.ChangeStreamReopen
-import services.users.{CaffeineUserChangeTimeCache, UserStateRows, UserStateWritesContract, MongoUserRepository, MongoUserStateRepository, UserCodecs}
+import services.users.{UserSessionVersionContract, CaffeineUserChangeTimeCache, UserStateRows, UserStateWritesContract, MongoUserRepository, MongoUserStateRepository, UserCodecs}
 import tools.Env
 import tools.Eventually.eventually
 
@@ -16,7 +16,7 @@ import java.time.Instant
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with UserStateWritesContract {
+class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with UserStateWritesContract with UserSessionVersionContract {
 
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   // Never against a real cluster: these specs write + purge sentinels, and
@@ -49,6 +49,12 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   protected def writesStore  = states
   protected val userIdPrefix = "__integration-test-writes-"
   atomicWritesBehaviour("MongoUserStateRepository")
+
+  // `upsert`'s `$replaceWith` and `revokeSessions`' `$inc`, held to the cases the
+  // in-memory store runs (`UserRepositorySpec`).
+  protected def sessionStore        = users
+  protected val sessionUserIdPrefix = "__integration-test-session-"
+  sessionVersionBehaviour("MongoUserRepository")
 
   private def sentinelUser(suffix: String, email: Option[String]) = User(
     id          = s"__integration-test-$suffix",

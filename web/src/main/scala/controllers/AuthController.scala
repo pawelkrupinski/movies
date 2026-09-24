@@ -346,10 +346,13 @@ class AuthController(
     PerUserResponse(SignedInUser(request, userRepository) match {
       case None => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(user) =>
-        val revoked = user.copy(sessionVersion = user.sessionVersion + 1)
-        userRepository.upsert(revoked)
-        Ok(Json.obj("sessionVersion" -> revoked.sessionVersion))
-          .withSession(SignedInUser.establish(request.session, revoked))
+        userRepository.revokeSessions(user.id) match {
+          case None =>
+            ServiceUnavailable(Json.obj("error" -> "sessions could not be revoked — retry"))
+          case Some(revoked) =>
+            Ok(Json.obj("sessionVersion" -> revoked.sessionVersion))
+              .withSession(SignedInUser.establish(request.session, revoked))
+        }
     })
   }
 
