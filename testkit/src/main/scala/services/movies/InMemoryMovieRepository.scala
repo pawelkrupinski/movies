@@ -181,6 +181,9 @@ class InMemoryMovieRepository(
     // incomplete re-stitch could not see. A spec written against this fake would have asserted the
     // opposite of what production does, which is the whole reason the rules moved into
     // `SlotsRepository.applyFilm` / `ScreeningsSplit.applyFilm`.
+    // What the store holds BEFORE this call, for the unchanged-write rule at the end.
+    val previous    = store.get(id)
+    val sidesBefore = sideRowsOf(id)
     val stitch = screenings.fold(ScreeningsSplit.ReStitched(e.data, Map.empty, complete = true))(
       ScreeningsSplit.reStitchChecked(_, id, e.data))
     val restitched = stitch.data
@@ -190,16 +193,30 @@ class InMemoryMovieRepository(
     val slotPayload = SlotsRepository.slotsOf(restitched)
     val slotsWrite  = slots.map(SlotsRepository.applyFilm(_, id, slotPayload))
     val slotsLanded = slotsWrite.contains(WriteOutcome.Written)
-    val dataForMovies =
-      if (slotsLanded) Map.empty[Source, SourceData]
-      else if (screenings.isEmpty) restitched
-      else ScreeningsSplit.stripShowtimes(restitched)
-    put(id, StoredMovieRecord(t, y, e.copy(data = dataForMovies), film, Some(storedKey)))
+    val dataForMovies = if (slotsLanded) Map.empty[Source, SourceData] else stripFor(restitched)
+    val row = StoredMovieRecord(t, y, e.copy(data = dataForMovies), film, Some(storedKey))
     val screeningsWrite = screenings.map(ScreeningsSplit.applyFilm(_, id, ScreeningsSplit.showtimesOf(restitched), stitch))
     upserts.append((t, y, e))
-    notifyWatcher(id, t, y, e)
+    // An upsert that changes NOTHING writes nothing — `MoviesUpsert.plan`'s rule, the SAME one
+    // `MongoMovieRepository.upsert` acts on (6365b8e95: a byte-identical `replaceOne` still
+    // costs an oplog entry and a change-stream delivery to every consumer). Without it this
+    // fake announced a change for every identical re-write: the unresolved-row TMDB re-try,
+    // which puts back exactly what the row held, read as 283 writes and 282 re-projections
+    // per sweep over the fixture corpus while production wrote none. "Nothing" is the movies
+    // row AND its side rows: a side change alone still notifies, as the side cursors re-deliver
+    // the film in production.
+    val now  = clock.instant()
+    val plan = MoviesUpsert.plan(id, storedKey, e, restitched, slotsLanded, stripFor,
+      scala.util.Success(previous.map(p => StoredMovieDto.fromDomain(id, p.key(normalizer), p.record, now))), now)
+    if (!plan.unchanged || sideRowsOf(id) != sidesBefore) {
+      put(id, row)
+      notifyWatcher(id, t, y, e)
+    }
     WriteOutcome.all(screeningsWrite.toSeq ++ slotsWrite)
   }
+
+  private def sideRowsOf(id: String): (Option[Map[String, SourceData]], Option[Map[String, Seq[models.Showtime]]]) =
+    (slots.map(_.findForFilmChecked(id)._1), screenings.map(_.findForFilmChecked(id)._1))
 
   /** Carry a film's screenings AND slots across a re-key / fold. Both stores move, or a
    *  fold keeps the showtimes and loses the cinema metadata that names them.

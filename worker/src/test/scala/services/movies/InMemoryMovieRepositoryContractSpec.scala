@@ -103,4 +103,38 @@ class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers {
     repository.putEmbeddedOutOfBand("Written First", year, record(screened))
     updatedSince(t0.plusSeconds(60)).map(_.id) shouldBe Seq(idOf("Written First"))
   }
+
+  // THE UNCHANGED WRITE. `MongoMovieRepository.upsert` skips a `movies` write whose document
+  // equals the stored one (`MoviesUpsert.plan`, 6365b8e95) — a byte-identical `replaceOne`
+  // still costs an oplog entry and a change-stream delivery to every consumer. The fake
+  // announced every such write as a change, so over the fixture corpus the daily TMDB re-try
+  // of unresolved rows — which puts back exactly what each row held — read as 283 writes and
+  // 282 re-projections per sweep that production never makes.
+  it should "announce nothing when an upsert changes nothing, as Mongo writes nothing" in {
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
+                                                 slots = Some(new InMemorySlotsRepository))
+    repository.upsert(title, year, record(screened))
+    val deliveries = new java.util.concurrent.atomic.AtomicInteger(0)
+    repository.watchChanges(_ => { deliveries.incrementAndGet(); () }, _ => { deliveries.incrementAndGet(); () })
+
+    repository.upsert(title, year, record(screened))
+    deliveries.get shouldBe 0
+
+    // …and a real change still announces itself, or the rule would be "never notify".
+    repository.upsert(title, year, record(screened).copy(tmdbId = Some(8)))
+    deliveries.get shouldBe 1
+  }
+
+  it should "still announce a write that changed only the film's side rows" in {
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
+                                                 slots = Some(new InMemorySlotsRepository))
+    repository.upsert(title, year, record(screened))
+    val deliveries = new java.util.concurrent.atomic.AtomicInteger(0)
+    repository.watchChanges(_ => { deliveries.incrementAndGet(); () }, _ => ())
+
+    // Same `movies` document, one more showtime: production's screenings cursor re-delivers the
+    // film, so the fake's single stream must too, or the projector never sees the showtime.
+    repository.upsert(title, year, record(screened.copy(showtimes = times :+ Showtime(when.plusHours(2), None))))
+    deliveries.get shouldBe 1
+  }
 }
