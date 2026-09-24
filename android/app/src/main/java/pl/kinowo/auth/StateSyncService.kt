@@ -73,7 +73,10 @@ class StateSyncService(
     @Volatile private var loggedIn = false
     private var syncJob: Job? = null
     private var languagePushJob: Job? = null
-    /** Serialises the hiddenFilms queue: enqueueing and each flush. */
+    /** Serialises every read-modify-write of the persisted hiddenFilms queue. */
+    private val queueMutex = Mutex()
+    /** Serialises the flushes, so no queued edit is sent twice. Never held
+     *  while enqueueing — an edit is persisted even while another is on the wire. */
     private val flushMutex = Mutex()
     /** The language the account is known to hold — last fetched or
      *  successfully pushed. A local change to this value merely adopted the
@@ -279,9 +282,12 @@ class StateSyncService(
      *  before fetching. */
     private fun push(op: HiddenFilmsOp) {
         if (!loggedIn) return
-        scope.launch {
-            val country = currentCountry()
-            flushMutex.withLock { prefs.setPendingHiddenFilmsOps(country, prefs.pendingHiddenFilmsOps(country) + op) }
+        // UNDISPATCHED, so the (fair) queue lock is requested in call order and
+        // a hide and the unhide right after it are queued in that order.
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            val country = queueMutex.withLock {
+                currentCountry().also { prefs.setPendingHiddenFilmsOps(it, prefs.pendingHiddenFilmsOps(it) + op) }
+            }
             sendPendingOps(country)
         }
     }
@@ -304,8 +310,9 @@ class StateSyncService(
                     HiddenFilmsOp.Clear -> client.clear(country)
                 }
             }.getOrElse { return@withLock false }
-            val remaining = prefs.pendingHiddenFilmsOps(country).drop(1)
-            prefs.setPendingHiddenFilmsOps(country, remaining)
+            val remaining = queueMutex.withLock {
+                prefs.pendingHiddenFilmsOps(country).drop(1).also { prefs.setPendingHiddenFilmsOps(country, it) }
+            }
             if (remaining.isEmpty() && result.hiddenFilms == prefs.hiddenFilmsFor(country)) {
                 prefs.setHiddenFilmsValidators(country, result.etag, result.lastModified)
             } else {

@@ -421,6 +421,31 @@ class StateSyncServiceTest {
         assertEquals(setOf("Elsewhere", "Mid Fetch"), prefs.hiddenState)
     }
 
+    /** An edit is persisted BEFORE anything is sent, even while an earlier
+     *  edit's request is still in flight — or a process death during that
+     *  request loses it: local shows it, the server never gets it, and the
+     *  next reconcile takes the server's set back. */
+    @Test
+    fun anEditIsQueuedWhileAnEarlierOneIsStillInFlight() = runTest(UnconfinedTestDispatcher()) {
+        prefs.countryState.value = "pl"
+        val service = startService()
+        login()
+        advanceUntilIdle()
+
+        val gate = CompletableDeferred<Unit>()
+        client.beforeWrite = { gate.await() }
+        service.hide("First")
+        runCurrent() // First is on the wire
+        service.hide("Second")
+        runCurrent()
+
+        assertEquals(listOf(HiddenFilmsOp.Hide("First"), HiddenFilmsOp.Hide("Second")), prefs.pendingHiddenFilmsOps("pl"))
+        gate.complete(Unit)
+        advanceUntilIdle()
+        assertEquals(emptyList<HiddenFilmsOp>(), prefs.pendingHiddenFilmsOps("pl"))
+        assertEquals(setOf("First", "Second"), client.remote["pl"])
+    }
+
     /** A second non-null user emission (session re-check returning a changed
      *  profile) restarts the sync job rather than stacking a second one, so a
      *  local change is still pushed exactly once. */

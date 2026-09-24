@@ -80,6 +80,8 @@ internal class FakeHiddenFilmsClient : HiddenFilmsClient {
     /** Awaited after a fetch has read the server's set, before it answers —
      *  holds a response "on the wire" while the set changes underneath it. */
     var beforeFetchResponse: suspend () -> Unit = {}
+    /** Awaited once a hide/unhide/clear has been recorded — holds it in flight. */
+    var beforeWrite: suspend () -> Unit = {}
 
     /** The validator the server would hand out for [country]'s current set:
      *  derived from the content, as `UserStateController`'s strong ETag is. */
@@ -100,6 +102,7 @@ internal class FakeHiddenFilmsClient : HiddenFilmsClient {
 
     override suspend fun hide(country: String, title: String): HiddenFilmsState {
         hideCalls += title to country
+        beforeWrite()
         if (shouldFailWrite) throw IOException("no network")
         if (!signedIn) throw IOException("HTTP 401")
         remote[country] = (remote[country] ?: emptySet()) + title
@@ -108,6 +111,7 @@ internal class FakeHiddenFilmsClient : HiddenFilmsClient {
 
     override suspend fun unhide(country: String, title: String): HiddenFilmsState {
         unhideCalls += title to country
+        beforeWrite()
         if (shouldFailWrite) throw IOException("no network")
         if (!signedIn) throw IOException("HTTP 401")
         remote[country] = (remote[country] ?: emptySet()) - title
@@ -116,6 +120,7 @@ internal class FakeHiddenFilmsClient : HiddenFilmsClient {
 
     override suspend fun clear(country: String): HiddenFilmsState {
         clearCalls += country
+        beforeWrite()
         if (shouldFailWrite) throw IOException("no network")
         if (!signedIn) throw IOException("HTTP 401")
         remote[country] = emptySet()
