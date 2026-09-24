@@ -431,11 +431,27 @@ groups:
           )
           and on (country) country:readmodel_serving_differs:film_cities
 
+      # WHEN the current difference began, latched the same way, so the carve-out below can be
+      # capped: a re-sync race settles in minutes, and a difference still open two hours after a
+      # boot-time onset is not the race -- it is a defect that happened to start after a boot.
+      - record: country:readmodel_serving_differs:onset_timestamp_seconds
+        expr: >-
+          (
+            last_over_time(country:readmodel_serving_differs:onset_timestamp_seconds[90s])
+            or on (country)
+            (0 * country:readmodel_serving_differs:film_cities + time())
+          )
+          and on (country) country:readmodel_serving_differs:film_cities
+
       - alert: ReadModelServingDiffersFromCorpus
         expr: >-
           country:readmodel_serving_differs:film_cities
           and on (country) (
             (country:readmodel_serving_differs:uptime_at_onset_seconds >= 900)
+            or
+            # The carve-out's CAP: 1h40m into the difference plus the 20m `for:` pages it two
+            # hours after its onset, whatever the uptime then was.
+            (time() - country:readmodel_serving_differs:onset_timestamp_seconds >= 6000)
             or
             (
               sum by (country) (increase(kinowo_worker_readmodel_films_pruned_total[20m])) > 0
@@ -461,9 +477,9 @@ groups:
             stopped producing, which `docs/read-model-convergence.md` says must never happen. Do
             not widen this rule to make it quiet -- zero is the whole statement. (This alert
             stands down only when the difference BEGAN within 15 minutes of a worker/web restart
-            and that counter is zero -- the boot re-sync race -- so if it fired, the difference
-            started on a pair that had already settled, or the counter is genuinely nonzero:
-            treat it as real.)
+            and that counter is zero -- the boot re-sync race -- and then for at most two hours,
+            so if it fired, the difference started on a pair that had already settled, outlived
+            any re-sync, or the counter is genuinely nonzero: treat it as real.)
 
       #
       # The WORKER side is read through `last_over_time(...[10m])`: the worker is `replicas: 1`, so
