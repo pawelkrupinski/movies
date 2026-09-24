@@ -241,9 +241,6 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("worker/src/main/scala/services/movies/MovieService.scala", "resolveStagingRecord",
       "case Failure(exception) =>") ->
       "None is \"not concluded\": the staging row stays and the staging reaper retries it, as for a miss before TMDB answered",
-    ("worker/src/main/scala/services/sharecards/ShareCardService.scala", "withPoster",
-      "Try(onBase(next, first).orElse(rebuildBase(next, first, retry))).recover { case e: Exception =>") ->
-      "None is \"not drawn\": the card keeps its previous version and the failure is counted and retried",
     ("worker/src/main/scala/services/tasks/MongoChunkScrapeStore.scala", "startRun",
       "case e: Throwable => logger.warn(s\"startRun insert for $cinema failed: ${e.getMessage}\"); false") ->
       "false is \"not inserted\"; the supersede step below then decides, and a run that cannot start is skipped this tick",
