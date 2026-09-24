@@ -44,8 +44,9 @@ import scala.util.Try
  *  - any origin is granted `Access-Control-Allow-Credentials` on any route,
  *    preflight or not — which is what Play's default `supportsCredentials = true`
  *    does;
- *  - a route declared as needing an identity answers an anonymous caller with
- *    anything but the refusal its class promises.
+ *  - a route declared as needing an identity answers an anonymous caller, or a
+ *    signed-in account that is not an admin, with anything but what its class
+ *    promises (admin routes: 403 to a non-admin).
  *
  * The harness is not a stand-in for the guards: the positive control below
  * shows the same requests from the site's own pages DO reach every controller,
@@ -106,6 +107,13 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
 
   private val users = TestAdminAction.adminRepository
   private val admin = users.findById(TestAdminAction.AdminUserId).get
+  // Signed in, a real account, and on nobody's admin allowlist.
+  private val member = {
+    val user = models.User("member1", "google", "sub-member", Some("member@example.com"), Some("Member"), None,
+      java.time.Instant.EPOCH, java.time.Instant.EPOCH)
+    users.upsert(user)
+    user
+  }
 
   /** The generated router with a real controller behind every write route (its
    *  identity check is part of what is probed) and nothing behind the GET-only
@@ -155,8 +163,13 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
 
   private def concrete(path: String): String = ":[a-zA-Z]+|\\*[a-zA-Z]+".r.replaceAllIn(path, "pl")
 
-  private def signedInAsAdmin(request: FakeRequest[AnyContentAsEmpty.type]) =
-    request.withSession(SignedInUser.establish(Session(), admin).data.toSeq*)
+  /** Signed in as `user` as the account stands NOW: `/auth/sessions/revoke`,
+   *  probed along the way, bumps the account's session version and so signs out
+   *  every session minted before it. */
+  private def signedInAs(user: models.User)(request: FakeRequest[AnyContentAsEmpty.type]) =
+    request.withSession(SignedInUser.establish(Session(), users.findById(user.id).get).data.toSeq*)
+
+  private def signedInAsAdmin(request: FakeRequest[AnyContentAsEmpty.type]) = signedInAs(admin)(request)
 
   /** Route `request` (as `DefaultHttpRequestHandler` does: find the handler, let
    *  it tag the request with its route definition), then run the tagged request
@@ -218,7 +231,12 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
           .reachedController shouldBe true
       }
       withClue(s"$verb $path, native app (no Sec-Fetch-*): ") {
-        dispatch(signedInAsAdmin(write(verb, path))).reachedController shouldBe true
+        val outcome = dispatch(signedInAsAdmin(write(verb, path)))
+        outcome.reachedController shouldBe true
+        // Signed in for real: no identity class refuses an admin (dev-only
+        // routes aside, which production 404s for everybody).
+        if (Matrix((verb, path)).auth != Auth.DevOnly && Matrix((verb, path)).auth != Auth.Public)
+          Seq(401, 403) should not contain outcome.status
       }
     }
   }
@@ -231,6 +249,25 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
           case Auth.SignedIn | Auth.Admin => outcome.status shouldBe 401
           case Auth.DevOnly               => outcome.status shouldBe 404
           case Auth.Public                => outcome.reachedController shouldBe true
+        }
+      }
+    }
+  }
+
+  it should "answer a signed-in non-admin the way its declared identity class promises" in {
+    writes.foreach { case (verb, path) =>
+      val outcome = dispatch(signedInAs(member)(write(verb, path, "Sec-Fetch-Site" -> "same-origin")))
+      withClue(s"$verb $path (${Matrix((verb, path)).auth}): ") {
+        Matrix((verb, path)).auth match {
+          case Auth.Admin                   => outcome.status shouldBe 403
+          case Auth.DevOnly                 => outcome.status shouldBe 404
+          case Auth.SignedIn =>
+            outcome.reachedController shouldBe true
+            outcome.status should not be 401
+            outcome.status should not be 403
+          // Its credential is the body (a code, a token, a signature), which
+          // this probe does not carry — reaching the controller is the claim.
+          case Auth.Public => outcome.reachedController shouldBe true
         }
       }
     }
