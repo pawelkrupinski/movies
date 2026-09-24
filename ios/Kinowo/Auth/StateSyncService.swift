@@ -56,7 +56,7 @@ final class StateSyncService: ObservableObject {
     /// The hiddenFilms queue flush in progress, if any — see `sendPendingChanges`.
     private var flushTask: Task<Bool, Never>?
     /// The language the account is known to hold — last fetched or
-    /// successfully pushed. A `selectedLanguage` change to this value merely
+    /// successfully pushed; nil when unknown (a push failed). A `selectedLanguage` change to this value merely
     /// adopted the server's pick, so it is never pushed back.
     private var accountLanguage: String?
     /// A local pick the server hasn't confirmed yet: its debounced push is
@@ -254,12 +254,16 @@ final class StateSyncService: ObservableObject {
                 } catch is LanguagePushRefused {
                     // Refused for good: it can never land, so stop owing it, and
                     // take the account's pick instead — never pushing this one back.
+                    self.accountLanguage = nil
                     if self.pendingLanguage == pending {
                         self.pendingLanguage = nil
                         if let remote = try? await self.languageClient.fetch() { self.adopt(remote) }
                     }
                     break
                 } catch {
+                    // It may or may not have landed: the account's value is
+                    // unknown until the next fetch, so no pick is a no-op.
+                    self.accountLanguage = nil
                     break
                 }
                 self.accountLanguage = pending

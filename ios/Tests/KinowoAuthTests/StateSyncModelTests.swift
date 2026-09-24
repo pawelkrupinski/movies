@@ -59,6 +59,16 @@ final class StateSyncModelTests: XCTestCase {
         XCTAssertNil(violation)
     }
 
+    /// Seed 768 on Android: a pick back to the account's language after
+    /// another pick's push FAILED was dropped as "nothing to send" — but a
+    /// failed push leaves the account unknown (another device had moved it on
+    /// meanwhile).
+    func testAPickBackAfterAFailedPushIsStillSent() async {
+        let violation = await SyncModel.violation(of: [.remoteLanguage("de"), .login, .networkDown,
+                                                       .pickLanguage("es"), .remoteLanguage("pl"), .pickLanguage("de")])
+        XCTAssertNil(violation)
+    }
+
     func testALanguagePickQueuedAtLogout() async {
         let violation = await SyncModel.violation(of: [.login, .networkDown, .pickLanguage("de"), .logout, .reconnect])
         XCTAssertNil(violation)

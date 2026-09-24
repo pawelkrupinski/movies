@@ -84,8 +84,8 @@ class StateSyncService(
      *  while enqueueing — an edit is persisted even while another is on the wire. */
     private val flushMutex = Mutex()
     /** The language the account is known to hold — last fetched or
-     *  successfully pushed. A local change to this value merely adopted the
-     *  server's pick, so it is never pushed back. */
+     *  successfully pushed; null when unknown (a push failed). A local change
+     *  to this value merely adopted the server's pick, so it is never pushed back. */
     @Volatile private var accountLanguage: String? = null
     /** Whether a language push is on the wire (not merely debouncing). */
     @Volatile private var languageSendInFlight = false
@@ -242,6 +242,9 @@ class StateSyncService(
                 runCatchingCancellable {
                     try { languageClient.push(pending) } finally { languageSendInFlight = false }
                 }.onFailure { failure ->
+                    // It may or may not have landed: the account's value is
+                    // unknown until the next fetch, so no pick is a no-op.
+                    accountLanguage = null
                     // Refused for good: it can never land, so stop owing it, and
                     // take the account's pick instead — never pushing this one back.
                     if (failure is LanguagePushRefused && prefs.pendingLanguagePush() == pending) {

@@ -85,6 +85,16 @@ class StateSyncModelTest {
         SyncModel.violationOf(events)?.let { fail(it) }
     }
 
+    /** Seed 768: a pick back to the account's language after another pick's
+     *  push FAILED was dropped as "nothing to send" — but a failed push leaves
+     *  the account unknown (another device had moved it on meanwhile). */
+    @Test
+    fun aPickBackAfterAFailedPushIsStillSent() {
+        val events = listOf(SyncEvent.RemoteLanguage("de"), SyncEvent.Login, SyncEvent.NetworkDown,
+            SyncEvent.PickLanguage("es"), SyncEvent.RemoteLanguage("pl"), SyncEvent.PickLanguage("de"))
+        SyncModel.violationOf(events)?.let { fail(it) }
+    }
+
     private companion object {
         /** A push-sized run; the nightly one passes `-PsyncModelSeeds`. */
         const val DefaultSeeds = 200L
