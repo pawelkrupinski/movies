@@ -88,6 +88,16 @@ class WebWiringClockSpec extends AnyFlatSpec with Matchers {
     body should include ("\"label\":\"Środa 10 czerwca\"")
   }
 
+  "the wiring's WebMovieMetrics" should "count a city's films showing tomorrow by the wiring clock's day" in {
+    val record = MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(
+      title     = Some("Clocked Film"),
+      showtimes = Seq(models.Showtime(LocalDateTime.of(2020, 6, 11, 20, 0), None, None, Nil)))))
+    val wiring = new ClockedWiring(Seq(("Clocked Film", None, record)))
+    wiring.boot()
+    wiring.webMovieMetrics.sample()
+    wiring.webMovieMetrics.render() should include ("""city="poznan",scope="tomorrow"} 1""")
+  }
+
   "the wiring's UserStateController" should "stamp an account with no stored state on the wiring clock" in {
     val wiring = new ClockedWiring {
       override lazy val userRepository: services.users.UserRepository = new services.users.InMemoryUserRepository

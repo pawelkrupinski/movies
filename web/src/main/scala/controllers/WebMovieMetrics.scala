@@ -24,7 +24,7 @@ import scala.util.Try
  * city silently drops to zero — invisible to host metrics. A per-city gauge
  * graphs the repertoire size and lets Grafana alert when it swings either way.
  *
- * Every city in [[City.all]] is emitted on every sample, seeded at zero, so a
+ * Every city of the serving country is emitted on every sample, seeded at zero, so a
  * city that drops to zero films reads as a `0` sample rather than a vanished
  * series — the swing/floor alerts need the zero to be present, not absent.
  */
@@ -34,7 +34,8 @@ class WebMovieMetrics(
   // its code is the constant `country` label that lines the series up with the
   // worker's per-country series on the shared Grafana dashboards.
   servingCountry: Country,
-  clock:   Clock      = Clock.systemDefaultZone(),
+  // The wiring's clock, which also dates the listing these counts come from.
+  clock:   Clock,
 ) extends Logging {
   private val cities: Seq[City] = servingCountry.cities
   private val country: String   = servingCountry.code

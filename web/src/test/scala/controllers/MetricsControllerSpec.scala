@@ -168,7 +168,7 @@ class MetricsControllerSpec extends AnyFlatSpec with Matchers {
   )
 
   private def newController(monitor: UptimeMonitor, fallbackStore: InMemoryFallbackStore = new InMemoryFallbackStore) = {
-    val movieMetrics = new WebMovieMetrics(new MovieControllerService(TestReadModel.fromRecords(Seq.empty), TestMovieController.clock), models.Country.Poland)
+    val movieMetrics = new WebMovieMetrics(new MovieControllerService(TestReadModel.fromRecords(Seq.empty), TestMovieController.clock), models.Country.Poland, TestMovieController.clock)
     new MetricsController(Helpers.stubControllerComponents(), monitor, fallbackStore, movieMetrics, new WebJvmMetrics, models.Country.Poland.code)
   }
 }
