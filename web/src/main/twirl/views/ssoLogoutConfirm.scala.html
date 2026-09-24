@@ -1,0 +1,38 @@
+@(signOutHref: String, stayHref: String)(implicit messages: play.api.i18n.Messages)
+@*
+   What the far half of a logout (`/auth/sso/logout`) becomes when
+   `CrossSiteWriteFilter` could not prove it came from our other domain — a
+   browser that strips the Referer on the cross-site hop looks exactly like a
+   forged `<img>`. Sending that visitor straight on would tell them they are
+   signed out while this domain kept them signed in; signing them out would
+   hand the same power to any page. So they are asked: the button is a click
+   on OUR page, which the filter can prove (`Sec-Fetch-Site: same-origin`).
+   Self-contained styling: one question, no app chrome.
+*@
+<!DOCTYPE html>
+<html lang="@messages.lang.code">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>@messages("auth.ssoLogoutConfirm.title")</title>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; margin: 0; min-height: 100vh; display: flex;
+           align-items: center; justify-content: center; background: #f6f5f2; color: #1d1d1f; }
+    main { max-width: 26rem; padding: 2rem 1.5rem; text-align: center; }
+    h1 { font-size: 1.3rem; margin: 0 0 .75rem; }
+    p { margin: 0 0 1.5rem; line-height: 1.45; }
+    a { display: block; padding: .8rem 1rem; border-radius: .6rem; text-decoration: none; font-size: 1rem; margin: .5rem 0; }
+    .primary { background: #1d1d1f; color: #fff; }
+    .secondary { color: #1d1d1f; border: 1px solid #c9c7c2; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>@messages("auth.ssoLogoutConfirm.title")</h1>
+    <p>@messages("auth.ssoLogoutConfirm.body")</p>
+    <a class="primary" href="@signOutHref">@messages("auth.ssoLogoutConfirm.signOut")</a>
+    <a class="secondary" href="@stayHref">@messages("auth.ssoLogoutConfirm.stay")</a>
+  </main>
+</body>
+</html>

@@ -404,6 +404,25 @@ class AuthController(
     signedOut(Redirect(AuthController.ssoLogoutOnward(request.getQueryString("next"))).withNewSession)
   }
 
+  /** The question a refused far half of a logout asks a visitor still signed in
+   *  here (see `ssoLogoutConfirm.scala.html`): sign out here too — a click on this
+   *  page, which `CrossSiteWriteFilter` can prove is ours — or go on signed in.
+   *  Only a validated `next` is carried; one not signed in here is just sent on. */
+  def ssoLogoutConfirm(next: Option[String]): Action[AnyContent] = Action { request =>
+    val onward    = AuthController.ssoLogoutOnward(next)
+    val validNext = AuthController.ssoLogoutNext(next)
+    PerUserResponse(request.session.get(SignedInUser.UserIdKey) match {
+      case None    => Redirect(onward)
+      case Some(_) =>
+        val signOut = routes.AuthController.ssoLogout().url +
+          validNext.fold("")(n => s"?next=${URLEncoder.encode(n, UTF_8)}")
+        Ok(views.html.ssoLogoutConfirm(signOut, onward)(using deploymentMessages))
+    })
+  }
+
+  private val deploymentMessages: play.api.i18n.Messages =
+    cc.messagesApi.preferred(Seq(play.api.i18n.Lang(country.language.getLanguage)))
+
   private def upsertUser(provider: String, profile: OauthProfile): User = {
     val now   = clock.instant()
     val email = profile.email.getOrElse(
@@ -708,7 +727,11 @@ object AuthController {
    *  Shared with `CrossSiteWriteFilter`, which sends a REFUSED far half to the
    *  same place, just without the sign-out. */
   def ssoLogoutOnward(next: Option[String]): String =
-    switchTarget(next).map(_ + "/").getOrElse(routes.LandingController.index().url)
+    ssoLogoutNext(next).map(_ + "/").getOrElse(routes.LandingController.index().url)
+
+  /** A logout leg's `next`, when it is one of the deployed countries' base URLs —
+   *  the only `next` a leg, or the question a refused leg asks, carries on. */
+  def ssoLogoutNext(next: Option[String]): Option[String] = switchTarget(next)
 
   /** Where [[AuthController.ssoStart]] is willing to send a session: an EXACT
    *  match against a deployed country's own base URL (`Country.webUrl`), and

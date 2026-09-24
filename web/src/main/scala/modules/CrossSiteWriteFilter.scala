@@ -41,9 +41,11 @@ import scala.concurrent.Future
  *
  * Refused, such a GET is not answered with a bare 403: its legitimate caller is a
  * visitor mid-way through a redirect chain (a browser that strips the Referer on
- * the cross-site hop is indistinguishable from a forgery), so it is sent on to
- * where the leg was headed — the validated `next`, else the landing — WITHOUT the
- * state change. The worst a forged one achieves is a redirect.
+ * the cross-site hop is indistinguishable from a forgery). WITHOUT the state
+ * change, a visitor signed in here is asked whether to sign out here too (a click
+ * on our own page, which this filter can prove), and anyone else is sent on to
+ * where the leg was headed — the validated `next`, else the landing. The worst a
+ * forged one achieves is a question or a redirect.
  */
 class CrossSiteWriteFilter()(implicit override val mat: Materializer) extends Filter {
 
@@ -51,8 +53,7 @@ class CrossSiteWriteFilter()(implicit override val mat: Materializer) extends Fi
     if (CrossSiteWriteFilter.UnsafeMethods(request.method) && CrossSiteWriteFilter.crossSite(request))
       Future.successful(Results.Forbidden("Cross-site write refused."))
     else if (CrossSiteWriteFilter.siteOnly(request) && !CrossSiteWriteFilter.fromOurPage(request))
-      Future.successful(controllers.PerUserResponse(
-        Results.Redirect(controllers.AuthController.ssoLogoutOnward(request.getQueryString("next")))))
+      Future.successful(controllers.PerUserResponse(Results.Redirect(CrossSiteWriteFilter.refusedOnward(request))))
     else next(request)
 }
 
@@ -80,6 +81,17 @@ object CrossSiteWriteFilter {
         origin == controllers.ForwardedUrl.base(request) || models.Country.deployedOrigins(origin))
 
   private val SameSiteLabels = Set("same-origin", "same-site")
+
+  /** Where a refused `siteonly` GET — today only the far half of a logout — sends
+   *  the visitor: to the question "sign out here too?" when they are signed in
+   *  here, since sent straight on they would believe themselves signed out on
+   *  both domains; else on to where the leg was headed. */
+  private def refusedOnward(request: RequestHeader): String = {
+    val next = request.getQueryString("next")
+    if (request.session.get(controllers.SignedInUser.UserIdKey).isDefined)
+      controllers.routes.AuthController.ssoLogoutConfirm(controllers.AuthController.ssoLogoutNext(next)).url
+    else controllers.AuthController.ssoLogoutOnward(next)
+  }
 
   /** The origin of the page `request` says it came from: `Origin`, else the
    *  origin part of `Referer`. `Origin: null` (a sandboxed or privacy-stripped

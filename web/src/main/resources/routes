@@ -127,6 +127,9 @@ GET     /auth/sso/finish            controllers.AuthController.ssoFinish()
 # (`RouteProtectionMatrixSpec` pins which GETs carry it).
 + siteonly
 GET     /auth/sso/logout            controllers.AuthController.ssoLogout()
+# Where a REFUSED far half sends a visitor still signed in here: asked, not silently
+# left signed in on this domain. A page, not a state change.
+GET     /auth/sso/logout/confirm    controllers.AuthController.ssoLogoutConfirm(next: Option[String] ?= None)
 
 GET     /auth/:provider/start       controllers.AuthController.start(provider: String)
 GET     /auth/:provider/callback    controllers.AuthController.callback(provider: String)

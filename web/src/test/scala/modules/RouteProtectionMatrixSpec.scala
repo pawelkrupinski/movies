@@ -306,9 +306,11 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
 
   // Refused, a `siteonly` GET is not a dead end: it is the far leg of a
   // redirect a real visitor may be riding (a browser that stripped the Referer
-  // on the cross-site hop looks exactly like a forgery), so it sends them on to
-  // where the leg was headed — without doing the state change.
-  it should "refuse another site's page before its controller when it is `siteonly`, sending the visitor on" in {
+  // on the cross-site hop looks exactly like a forgery). A visitor signed in
+  // here is ASKED whether to sign out here too — sent straight on, they would
+  // believe themselves signed out on both domains while this one kept them in;
+  // one who is not is sent on to where the leg was headed. Neither changes state.
+  it should "refuse another site's page before its controller when it is `siteonly`, asking a signed-in visitor" in {
     StateChangingGets.collect { case (route, GetGuard.SiteOnly) => route }.foreach { case (verb, path) =>
       Seq(
         Seq("Sec-Fetch-Site" -> "cross-site", "Referer" -> "https://evil.example/page"),
@@ -321,21 +323,26 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
         withClue(s"$verb $path $headers: ") {
           outcome.reachedController shouldBe false
           outcome.status shouldBe SEE_OTHER
-          outcome.headers.get(LOCATION) shouldBe Some("/")
+          outcome.headers.get(LOCATION) shouldBe Some("/auth/sso/logout/confirm")
           outcome.headers.get("Cache-Control") shouldBe Some(controllers.PerUserResponse.CacheControl)
           outcome.headers.get(SET_COOKIE) shouldBe None
+        }
+        val anonymous = dispatch(FakeRequest(verb, concrete(path)).withHeaders(headers*))
+        withClue(s"anonymous $verb $path $headers: ") {
+          anonymous.reachedController shouldBe false
+          anonymous.headers.get(LOCATION) shouldBe Some("/")
         }
       }
     }
   }
 
-  it should "send a refused SSO logout on to its validated `next`, and never off-brand" in {
+  it should "carry only a validated `next` from a refused SSO logout to its question" in {
     val uk = models.Country.UnitedKingdom.webUrl.get
     def locationFor(next: String) = dispatch(signedInAsAdmin(
       FakeRequest("GET", s"/auth/sso/logout?next=${java.net.URLEncoder.encode(next, "UTF-8")}")
         .withHeaders("Sec-Fetch-Site" -> "cross-site"))).headers.get(LOCATION)
-    locationFor(uk) shouldBe Some(s"$uk/")
-    locationFor("https://evil.example.com") shouldBe Some("/")
+    locationFor(uk) shouldBe Some(s"/auth/sso/logout/confirm?next=${java.net.URLEncoder.encode(uk, "UTF-8")}")
+    locationFor("https://evil.example.com") shouldBe Some("/auth/sso/logout/confirm")
   }
 
   // The positive control: the SSO logout's legitimate caller is our other domain.

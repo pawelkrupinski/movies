@@ -423,6 +423,30 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
     redirectLocation(result).value should not include "evil.example.com"
   }
 
+  // Where `CrossSiteWriteFilter` sends a far half it could not prove came from our
+  // other domain, when the visitor is signed in here: a question, not a silent
+  // "you are signed out" that left this domain's session alive.
+  "The question a refused far half asks" should "offer signing out here too, or going on signed in" in {
+    val (ctl, _, _) = podWith(Country.Poland)
+    val result = ctl.ssoLogoutConfirm(Some(UkBase))(
+      arrivingAt(PlOrigin, s"/auth/sso/logout/confirm?next=$UkBase").withSession("userId" -> "alice@example.com"))
+
+    status(result) shouldBe OK
+    header("Cache-Control", result) shouldBe Some(PerUserResponse.CacheControl)
+    header(SET_COOKIE, result) shouldBe None // no sign-out without the click
+    val html = contentAsString(result)
+    html should include (s"""href="/auth/sso/logout?next=${java.net.URLEncoder.encode(UkBase, "UTF-8")}"""")
+    html should include (s"""href="$UkBase/"""")
+  }
+
+  it should "not ask a visitor who is not signed in here, nor carry an unlisted `next`" in {
+    val (ctl, _, _) = podWith(Country.Poland)
+    redirectLocation(ctl.ssoLogoutConfirm(Some(UkBase))(arrivingAt(PlOrigin, "/auth/sso/logout/confirm"))).value shouldBe s"$UkBase/"
+    val html = contentAsString(ctl.ssoLogoutConfirm(Some("https://evil.example.com"))(
+      arrivingAt(PlOrigin, "/auth/sso/logout/confirm").withSession("userId" -> "alice@example.com")))
+    html should not include "evil.example.com"
+  }
+
   // Pinned against a root-mounted reverse route, for the same reason as
   // `callbackPath`: these address ANOTHER deployment, whose mount point is not
   // ours, so they are literals that must not drift from the routes file.
