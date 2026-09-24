@@ -169,6 +169,10 @@ class SequelMarkerSpec extends AnyFlatSpec with Matchers {
     siblings("The Hunger Games: The Ballad of Songbirds & Snakes",
              "The Hunger Games: The Ballad of Songbirds and Snakes") shouldBe false
     // ...while the entries that really differ still do, decorated or not.
+    // A venue's typo in the entry's own words is spelling, not another entry: the one
+    // correct credit must not read as a sibling of "Mockinjay" (`ResolutionCorporaSpec`).
+    siblings("The Hunger Games: Mockinjay - Part 2", "The Hunger Games: Mockingjay - Part 2") shouldBe false
+    different("The Hunger Games: Mockinjay - Part 2", "The Hunger Games: Mockingjay - Part 2") shouldBe false
     siblings("The Hunger Games: Mockingjay - Part 1 (2026)", "The Hunger Games: Mockingjay - Part 2") shouldBe true
     siblings("The Hunger Games: Mockingjay - Part 1 (2026)", "The Hunger Games: Catching Fire") shouldBe true
   }

@@ -161,12 +161,24 @@ object SequelMarker {
     KnownFranchiseSubtitles.keySet.exists { base =>
       a.startsWith(base) && b.startsWith(base) &&
       ((entryNamed(base, a), entryNamed(base, b)) match {
-        case (Some(entryA), Some(entryB)) => entryA != entryB
+        case (Some(entryA), Some(entryB)) => entryA.differsFrom(entryB)
         case _                            => false
       })
     }
 
-  /** WHICH entry of the curated `base`'s series `whole` names, as a comparable key — or
+  /** One entry of a curated series: the words that name it and, when it numbers itself,
+   *  the instalment's VALUE. Two entries differ when their numbers differ, or when their
+   *  words are further apart than a venue's typo — "Mockinjay - Part 2" is Mockingjay
+   *  Part 2 misspelt, not another film, exactly as `differentInstalments` has always read
+   *  it for an uncurated series (f430c1de5). Comparing the words verbatim made the one
+   *  correct credit a "sibling" of the typo'd listing, so the director walk refused the
+   *  right film and resolved nothing. */
+  private final case class Entry(words: Seq[String], number: Option[Int]) {
+    def differsFrom(other: Entry): Boolean =
+      number != other.number || !services.resolution.TitleMatch.close(words.mkString, other.words.mkString)
+  }
+
+  /** WHICH entry of the curated `base`'s series `whole` names — or
    *  `None` when it names none [[namesAnotherEntry]] would recognise. Comparing these,
    *  not the raw tokens after the base, is what keeps a decoration from reading as a
    *  second entry: UK convergence run 35948292875 (2026-09-24) had 64 Flicks venues list
@@ -174,20 +186,20 @@ object SequelMarker {
    *  one row, and a differing-extras test split the 14 off on every settle over nothing
    *  but the rerelease year.
    *
-   *  The key is the curated subtitle (with "and" dropped, so "Songbirds & Snakes" and
+   *  The entry is the curated subtitle (with "and" dropped, so "Songbirds & Snakes" and
    *  "Songbirds and Snakes" are one entry), or the words before a part marker plus the
    *  instalment's VALUE ("Pt 2" and "Part Two" are one entry), or a bare ordinal's value
    *  right after the base. Whatever trails the instalment — a year, "Re-Release" — is not
    *  part of which entry it is. */
-  private def entryNamed(base: Seq[String], whole: Seq[String]): Option[Seq[String]] = {
+  private def entryNamed(base: Seq[String], whole: Seq[String]): Option[Entry] = {
     val extras = whole.drop(base.length)
-    val subtitle = KnownFranchiseSubtitles.get(base).filter(_.contains(extras)).map(_ => extras.filterNot(_ == "and"))
+    val subtitle = KnownFranchiseSubtitles.get(base).filter(_.contains(extras)).map(_ => Entry(extras.filterNot(_ == "and"), None))
     def partThenOrdinal = extras.indices.iterator.flatMap { at =>
       extras.lift(at).filter(PartMarkers.contains)
         .flatMap(_ => extras.lift(at + 1).flatMap(ordinalValue))
-        .map(value => extras.take(at) :+ value.toString)
+        .map(value => Entry(extras.take(at), Some(value)))
     }.nextOption()
-    def ordinalRightAfterBase = extras.headOption.filter(isOrdinal).flatMap(ordinalValue).map(v => Seq(v.toString))
+    def ordinalRightAfterBase = extras.headOption.filter(isOrdinal).flatMap(ordinalValue).map(v => Entry(Nil, Some(v)))
     subtitle.orElse(partThenOrdinal).orElse(ordinalRightAfterBase)
   }
 
