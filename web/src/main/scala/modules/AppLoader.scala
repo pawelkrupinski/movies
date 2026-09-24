@@ -145,6 +145,22 @@ object AppLoader {
       case _                                               => site.elsewhere
     }
 
+  /** The live filter chain, outermost first (see `AppComponents.httpFilters`
+   *  for why each sits where it does). A function of its filters rather than
+   *  inlined there so `RouteProtectionMatrixSpec` can drive every route through
+   *  THIS chain — the one production runs — without booting the database
+   *  behind the rest of the application. The guards are typed so a spec can
+   *  only hand in the real ones. */
+  private[modules] def filterChain(
+      metrics:        EssentialFilter,
+      playDefaults:   Seq[EssentialFilter],
+      crossSiteWrite: CrossSiteWriteFilter,
+      renamedCity:    EssentialFilter,
+      cors:           play.filters.cors.CORSFilter,
+      csp:            EssentialFilter,
+      gzip:           EssentialFilter): Seq[EssentialFilter] =
+    (metrics +: playDefaults) :+ crossSiteWrite :+ renamedCity :+ cors :+ csp :+ gzip
+
   private[modules] def mountedAt(context: Context, country: Country): Context = {
     val mountPath = country.mountPath
     context.copy(initialConfiguration = Configuration(
@@ -194,7 +210,7 @@ class AppComponents(context: Context)
   // The cross-site write refusal sits right after Play's own filters, ahead of
   // everything that could act on the request.
   override def httpFilters: Seq[EssentialFilter] =
-    (httpMetricsFilter +: super.httpFilters) :+ crossSiteWriteFilter :+ renamedCityRedirectFilter :+ corsFilter :+ cspFilter :+ gzipFilter
+    AppLoader.filterChain(httpMetricsFilter, super.httpFilters, crossSiteWriteFilter, renamedCityRedirectFilter, corsFilter, cspFilter, gzipFilter)
 
   // Replace Play's default error handler with the truncation-tolerant
   // variant so `EntityStreamException` from client-side body cutoffs
