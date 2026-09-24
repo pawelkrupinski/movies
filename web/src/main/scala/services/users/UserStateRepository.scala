@@ -29,10 +29,9 @@ import scala.util.Try
 trait UserStateRepository {
   def enabled: Boolean
 
-  /** State for `userId`, or `None` when nothing's been persisted yet —
-   *  callers treat `None` as `UserState.empty(userId)`. */
-  /** The stored state, `None` when there is none yet. THROWS when the store cannot
-   *  be read — never `None`, which the controller serves as an empty state. */
+  /** State for `userId`, or `None` when nothing's been persisted yet — callers
+   *  treat `None` as `UserState.empty(userId)`. THROWS when the store cannot be
+   *  read — never `None`, which the controller would serve as an empty state. */
   def find(userId: String): Option[UserState]
 
   /** Set the fields a legacy `PUT /api/me/state` body carried (see

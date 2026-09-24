@@ -703,6 +703,13 @@ object AuthController {
   private[controllers] def absoluteLanding(origin: String, landing: String): String =
     if (landing.startsWith("http")) landing else origin + landing
 
+  /** Where the far half of a logout sends the visitor: `next` when it is one
+   *  of the deployed countries' base URLs, else this deployment's landing.
+   *  Shared with `CrossSiteWriteFilter`, which sends a REFUSED far half to the
+   *  same place, just without the sign-out. */
+  def ssoLogoutOnward(next: Option[String]): String =
+    switchTarget(next).map(_ + "/").getOrElse(routes.LandingController.index().url)
+
   /** Where [[AuthController.ssoStart]] is willing to send a session: an EXACT
    *  match against a deployed country's own base URL (`Country.webUrl`), and
    *  nothing else.
@@ -715,13 +722,6 @@ object AuthController {
    *  are base URLs and callers append to them.
    *
    *  Pure, so the refusal can be asserted without a request. */
-  /** Where the far half of a logout sends the visitor: `next` when it is one
-   *  of the deployed countries' base URLs, else this deployment's landing.
-   *  Shared with `CrossSiteWriteFilter`, which sends a REFUSED far half to the
-   *  same place, just without the sign-out. */
-  def ssoLogoutOnward(next: Option[String]): String =
-    switchTarget(next).map(_ + "/").getOrElse(routes.LandingController.index().url)
-
   private[controllers] def switchTarget(to: Option[String]): Option[String] =
     to.map(_.trim.stripSuffix("/")).filter(_.nonEmpty)
       .flatMap(candidate => models.Country.switchable.flatMap(_.webUrl).find(_ == candidate))
