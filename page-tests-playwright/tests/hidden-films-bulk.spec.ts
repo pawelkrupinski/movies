@@ -2,7 +2,9 @@ import { test, expect } from '@playwright/test';
 import { getLocalStorageJson, pinDateFilterAnytime, reload, setLocalStorageJson } from './helpers';
 
 // "Wyczyść" button in the Ukryte filmy modal — `showAllFilms` empties
-// the `hiddenFilms` localStorage set in one shot.
+// this country's `hiddenFilms:<cc>` localStorage set in one shot. (Seeded
+// under the pre-per-country `hiddenFilms` key, which `getHidden` folds into
+// the page's own country.)
 
 test.describe('hidden films bulk unhide', { tag: '@agnostic' }, () => {
 
@@ -24,7 +26,7 @@ test.describe('hidden films bulk unhide', { tag: '@agnostic' }, () => {
       (globalThis as { showAllFilms?: () => void }).showAllFilms?.(),
     );
 
-    const remaining = (await getLocalStorageJson<string[]>(page, 'hiddenFilms')) ?? [];
+    const remaining = (await getLocalStorageJson<string[]>(page, 'hiddenFilms:pl')) ?? [];
     expect(remaining).toEqual([]);
   });
 });

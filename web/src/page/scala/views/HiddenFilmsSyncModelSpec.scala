@@ -31,8 +31,8 @@ import scala.util.Random
  *
  * THE INVARIANTS:
  *  1. No title crosses countries: a title hidden in one country never reaches
- *     another country's server bucket (checked after EVERY event), nor — once a
- *     signed-in page has reconciled — the local list shown for another country.
+ *     another country's server bucket, nor the list another country's page
+ *     works from (both checked after EVERY event).
  *  2. Convergence: once the network is up, signed in and every country's page
  *     has reconciled, each country's local list IS its server list, and the
  *     local language IS the account's.
@@ -42,8 +42,8 @@ import scala.util.Random
  *     same holds for the last language pick made while signed in.
  *
  * The two countries are `uk` and `de` because they share ONE origin in
- * production (showtimes.cc/uk, /de), and so one `localStorage` list — the case
- * the per-country marker exists for. Each sequence runs on a fresh server
+ * production (showtimes.cc/uk, /de), and so one `localStorage` — the case the
+ * per-country local lists exist for. Each sequence runs on a fresh server
  * port, so a fresh origin and an empty `localStorage`.
  *
  * A failure prints the seed, the minimised sequence and the violation; pin the
@@ -121,6 +121,12 @@ class HiddenFilmsSyncModelSpec extends AnyFlatSpec with Matchers with BeforeAndA
   // held up on the wire landed AFTER the hide sent just behind it, and wiped it.
   it should "land a clear and a quick hide on the server in the order they were made" in withChrome { c =>
     SyncModel.violationOf(c, Seq(Login, Hide, Lag, ClearThenHide)) shouldBe None
+  }
+
+  // One list per origin: an anonymous visitor's /uk hide was in the list the
+  // /de page filtered and counted by.
+  it should "keep each country's hidden list to itself on a shared origin" in withChrome { c =>
+    SyncModel.violationOf(c, Seq(Hide, SwitchCountry("de"))) shouldBe None
   }
 
   it should "resend a write that failed offline" in withChrome { c =>
@@ -353,7 +359,7 @@ object HiddenFilmsSyncModelSpec {
       events.zipWithIndex.foreach { case (event, index) =>
         apply(event)
         quiesce()
-        isolationViolation(event).foreach(v => return Some(s"after event #$index $event: $v"))
+        isolationViolation().foreach(v => return Some(s"after event #$index $event: $v"))
       }
       settle()
     }
@@ -446,19 +452,16 @@ object HiddenFilmsSyncModelSpec {
     private def foreign(c: String, titles: Iterable[String]): Seq[String] =
       titles.filterNot(_.startsWith(s"$c-")).toSeq.sorted
 
-    /** Every event: no server bucket holds another country's title. After a page
-     *  load that reconciled signed in, the list on screen is this country's. */
-    private def isolationViolation(event: SyncEvent): Option[String] = {
+    /** Every event: no server bucket holds another country's title, and the list
+     *  a country's page works from holds only that country's — signed in or not,
+     *  online or not. */
+    private def isolationViolation(): Option[String] = {
       Countries.collectFirst {
         case c if foreign(c, account.bucket(c)).nonEmpty =>
           s"server bucket '$c' holds another country's titles ${foreign(c, account.bucket(c))}"
       }.orElse {
-        val reconciled = event match {
-          case SwitchCountry(_) | Login | Resume | Reconnect => signedIn && !account.offline
-          case _                                             => false
-        }
-        Option.when(reconciled && foreign(country, local).nonEmpty)(
-          s"the signed-in '$country' page shows another country's titles ${foreign(country, local)}")
+        Option.when(foreign(country, local).nonEmpty)(
+          s"the '$country' page shows another country's titles ${foreign(country, local)}")
       }
     }
 

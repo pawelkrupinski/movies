@@ -461,7 +461,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  ALREADY '1' in both — set by an earlier spec on the same origin, before
    *  either test's own `bootMergeFromServer` has run. The guard returned at once
    *  and the test went on against a boot still in flight, whose own
-   *  `_lsSet('hiddenFilms', …)` was then free to land on top of the write the
+   *  `setHidden(…)` was then free to land on top of the write the
    *  test made next.
    *
    *  Wiping first makes both halves this document's own work: after the clear,
@@ -512,7 +512,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Such drift comes from a write that never reached the server, and a
       // failed write forgets this country's validators (so the reconcile is
       // not answered with a 304 that would keep the drift) — mimic that too.
-      page.eval("_lsSet('hiddenFilms', ['Film A','Film B']); localStorage.removeItem('hiddenFilmsEtag:pl')")
+      page.eval("setHidden(['Film A','Film B']); localStorage.removeItem('hiddenFilmsEtag:pl')")
       page.reload()
       // `Film A` comes from the server, so this is the same round-trip again.
       page.waitFor("getHidden().indexOf('Film B') === -1 && getHidden().indexOf('Film A') !== -1",
@@ -528,7 +528,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       awaitOwnReconcile(page)
       // Re-arm migration as a fresh login would, plus an anonymous local pick.
       page.eval("localStorage.removeItem('hiddenFilmsSynced:pl')")
-      page.eval("_lsSet('hiddenFilms', ['Local Z'])")
+      page.eval("setHidden(['Local Z'])")
       page.reload()
       // WAIT FOR BOTH HALVES OF THE UNION, not just the local one. The old
       // condition asked for the synced flag and `Local Z` — the value this
@@ -565,7 +565,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       awaitOwnReconcile(page)
       page.evalString("String(localStorage.getItem('hiddenFilmsEtag:pl'))") shouldBe "\"fixture-etag\""
       page.eval("localStorage.removeItem('hiddenFilmsSynced:pl')")
-      page.eval("_lsSet('hiddenFilms', ['Local Z'])")
+      page.eval("setHidden(['Local Z'])")
       page.reload()
       page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1",
                    timeoutMs = 5000)
@@ -582,17 +582,17 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  // Cross-country regression. `hiddenFilms` in localStorage is ONE list per
-  // origin, and showtimes.cc serves /uk, /de, /us and /es from one origin —
-  // but the server keeps one list PER COUNTRY. Coming back to a country whose
-  // validators were cached, the reconcile 304'd and kept the list the OTHER
-  // country had just written locally; arriving at a country for the first
-  // time, it unioned the other country's list and PUT every title of it into
-  // this one's. Simulated here by marking the local list as /uk's.
-  it should "replace, not trust or union, a local list that mirrors another country" in {
+  // Cross-country regression. showtimes.cc serves /uk, /de, /us and /es from
+  // one origin, and the local list used to be ONE per origin while the server
+  // keeps one per country: coming back to a country whose validators were
+  // cached, the reconcile 304'd and kept the list the OTHER country had just
+  // written locally; arriving at a country for the first time, it unioned the
+  // other country's list and PUT every title of it into this one's. The local
+  // lists are per country now (`hiddenFilms:<cc>`); /uk's is simulated here.
+  it should "not show, trust or union another country's local list" in {
     onLoggedInIndex { page =>
       awaitOwnReconcile(page)  // pl synced, pl validators cached
-      page.eval("_lsSet('hiddenFilms', ['UK Film']); localStorage.setItem('hiddenFilmsCountry', 'uk')")
+      page.eval("setHidden(['UK Film'], 'uk')")
       page.reload()
       page.waitFor("getHidden().indexOf('Film A') !== -1", timeoutMs = 5000)
       page.evalString("JSON.stringify(getHidden())") should not include "UK Film"
@@ -603,7 +603,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onLoggedInIndex { page =>
       awaitOwnReconcile(page)
       page.eval("localStorage.removeItem('hiddenFilmsSynced:pl')")
-      page.eval("_lsSet('hiddenFilms', ['UK Film']); localStorage.setItem('hiddenFilmsCountry', 'uk')")
+      page.eval("setHidden(['UK Film'], 'uk')")
       page.reload()
       page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1",
                    timeoutMs = 5000)
@@ -615,17 +615,32 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // The single per-origin list earlier builds kept moves into the bucket of the
+  // country its marker named, or this page's when it named none — never into
+  // another country's.
+  it should "move the old single hidden list into the bucket of the country it belonged to" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      page.eval("localStorage.setItem('hiddenFilms', JSON.stringify(['UK Film'])); localStorage.setItem('hiddenFilmsCountry', 'uk')")
+      page.evalString("JSON.stringify(getHidden())") shouldBe "[]"
+      page.evalString("JSON.stringify(getHidden('uk'))") shouldBe """["UK Film"]"""
+      page.eval("localStorage.setItem('hiddenFilms', JSON.stringify(['Mine']))")
+      page.evalString("JSON.stringify(getHidden())") shouldBe """["Mine"]"""
+      page.evalString("String(localStorage.getItem('hiddenFilms')) + String(localStorage.getItem('hiddenFilmsCountry'))") shouldBe "nullnull"
+      clearLocalStorage(page)
+    }
+  }
+
   // Logout regression. Signing out renders an anonymous page, which re-arms
-  // the first-login migration — and used to forget which country's account
-  // the local list mirrored, too. The list itself stays, so the next sign-in
-  // took the last account's /uk titles for "this device's own picks" and
-  // unioned (and PUT) them into another country: UK and US share English
-  // titles, so hiding "Dune" in the UK hid it in the US. Simulated as a list
-  // left mirroring /uk, then an anonymous page, then a sign-in here (pl).
+  // the first-login migration. The local lists stay, and with one list per
+  // origin the next sign-in took the last account's /uk titles for "this
+  // device's own picks" and unioned (and PUT) them into another country: UK
+  // and US share English titles, so hiding "Dune" in the UK hid it in the US.
+  // Simulated as a /uk list, then an anonymous page, then a sign-in here (pl).
   it should "not carry the last account's other-country hides into this country across a logout" in {
     onLoggedInIndex { page =>
       awaitOwnReconcile(page)
-      page.eval("_lsSet('hiddenFilms', ['UK Film']); localStorage.setItem('hiddenFilmsCountry', 'uk')")
+      page.eval("setHidden(['UK Film'], 'uk')")
       page.navigate(server.baseUrl + cityPrefix + "/")          // signed out: the anonymous boot runs
       page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === null", timeoutMs = 5000)
       page.navigate(server.baseUrl + cityPrefix + "/li")        // signed back in, on pl
@@ -645,7 +660,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "keep, and resend, a hide whose write failed across the next reconcile" in {
     onLoggedInIndex { page =>
       awaitOwnReconcile(page)
-      page.eval("_lsSet('hiddenFilms', getHidden().concat(['Rejected'])); hideFilmOnServer('Rejected')")
+      page.eval("setHidden(getHidden().concat(['Rejected'])); hideFilmOnServer('Rejected')")
       page.waitFor("localStorage.getItem('hiddenFilmsEtag:pl') === null", timeoutMs = 5000)
       page.reload()
       page.waitFor("performance.getEntriesByType('resource')" +
@@ -1532,7 +1547,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Seed a handful of hidden films directly via localStorage so the
       // modal has something to filter. Reload picks up the new state.
       val seeded = """["Diabeł ubiera się u Prady 2","Avatar","Cars"]"""
-      page.eval(s"localStorage.setItem('hiddenFilms', ${jsString(seeded)})")
+      page.eval(s"localStorage.setItem('hiddenFilms:pl', ${jsString(seeded)})")
       page.reload()
       page.eval("openHiddenModal()")
       page.evalInt("document.querySelectorAll('#hidden-modal-list .panel-item').length") shouldBe 3
@@ -1550,7 +1565,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "reset the search box on close so reopening shows the full list" in {
     onPath("/") { page =>
       val seeded = """["Avatar","Cars"]"""
-      page.eval(s"localStorage.setItem('hiddenFilms', ${jsString(seeded)})")
+      page.eval(s"localStorage.setItem('hiddenFilms:pl', ${jsString(seeded)})")
       page.reload()
       page.eval("openHiddenModal()")
       page.eval("document.getElementById('hidden-modal-search').value = 'avat'; filterHiddenModal()")
@@ -4752,7 +4767,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "  hideFilm(btn); })()"
       )
       page.evalBool(
-        s"JSON.parse(localStorage.getItem('hiddenFilms') || '[]').includes(${jsString(title)})"
+        s"JSON.parse(localStorage.getItem('hiddenFilms:pl') || '[]').includes(${jsString(title)})"
       ) shouldBe true
       page.evalString(
         s"document.querySelector('.col[data-title=${jsString(title)}]').style.display"
@@ -4833,7 +4848,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/filmy?country=Polska") { page =>
       clearLocalStorage(page)
       page.eval(
-        "localStorage.setItem('hiddenFilms', JSON.stringify(" +
+        "localStorage.setItem('hiddenFilms:pl', JSON.stringify(" +
         "  [...document.querySelectorAll('#film-grid > .col[data-title]')].map(c => c.dataset.title)));" +
         "applyFilters()"
       )
@@ -4842,7 +4857,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "[...document.querySelectorAll('#film-grid > .col[data-title]')].filter(c => c.style.display !== 'none').length"
       ) shouldBe 0
 
-      page.eval("localStorage.setItem('hiddenFilms', '[]'); applyFilters()")
+      page.eval("localStorage.setItem('hiddenFilms:pl', '[]'); applyFilters()")
       page.evalBool("document.getElementById('no-films').style.display === 'none'") shouldBe true
       page.evalInt(
         "[...document.querySelectorAll('#film-grid > .col[data-title]')].filter(c => c.style.display !== 'none').length"
@@ -4854,7 +4869,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/") { page =>
       pinDateFilterAnytime(page)
       val title = firstVisibleTitle(page)
-      page.eval(s"localStorage.setItem('hiddenFilms', JSON.stringify([${jsString(title)}]))")
+      page.eval(s"localStorage.setItem('hiddenFilms:pl', JSON.stringify([${jsString(title)}]))")
       page.reload()
       pinDateFilterAnytime(page)
 
@@ -4873,7 +4888,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         s"document.querySelector('.col[data-title=${jsString(title)}]').style.display"
       ) should not be "none"
       page.evalBool(
-        s"JSON.parse(localStorage.getItem('hiddenFilms') || '[]').includes(${jsString(title)})"
+        s"JSON.parse(localStorage.getItem('hiddenFilms:pl') || '[]').includes(${jsString(title)})"
       ) shouldBe false
     }
   }

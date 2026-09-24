@@ -21,11 +21,11 @@ test.describe('hidden films modal UI', { tag: '@agnostic' }, () => {
   test.beforeEach(async ({ page }) => {
     // Seed BEFORE the first navigation rather than loading, writing
     // localStorage and reloading: the page's `DOMContentLoaded` init reads
-    // `hiddenFilms` once at boot, so an init script gets it there in time and
+    // `hiddenFilms:pl` once at boot, so an init script gets it there in time and
     // the listing — 2.3 MB of HTML over ~190 cards — is parsed once instead of
     // twice. The second parse was costing Firefox the whole test budget.
     await page.addInitScript(() => {
-      localStorage.setItem('hiddenFilms', JSON.stringify(['Avatar', 'Cars']));
+      localStorage.setItem('hiddenFilms:pl', JSON.stringify(['Avatar', 'Cars']));
     });
     await gotoAndWaitForCards(page, '/poznan/');
   });

@@ -649,13 +649,45 @@
   _migrate('hiddenFilms');
   _migrate('disabledCinemas');
 
-  function getHidden()           { return _lsGet('hiddenFilms')    || []; }
+  // Hidden films are kept PER COUNTRY (`hiddenFilms:<cc>`), as the server and
+  // the apps keep them: showtimes.cc serves /uk, /de, /us and /es from one
+  // origin, so one list there was every country's at once — a /uk hide was in
+  // the list the /de page filtered and counted by, and a sign-in on /de had to
+  // be told (by a marker saying which country the list mirrored) not to union
+  // /uk's titles into the /de account.
+  function _hiddenFilmsKey(country) { return 'hiddenFilms:' + country; }
+  // The single list (and its marker) earlier builds kept — and the legacy
+  // cookie `_migrate` above still lifts into — moved into the bucket of the
+  // country it belongs to: the one the marker names, else this page's. Lazy,
+  // on every read, so a list written under the old key at any point (a
+  // pre-upgrade tab, the cookie) lands in its bucket rather than being lost.
+  const LEGACY_HIDDEN_FILMS_KEY = 'hiddenFilms';
+  const LEGACY_HIDDEN_FILMS_COUNTRY_KEY = 'hiddenFilmsCountry';
+  function _settleLegacyHiddenFilms() {
+    try {
+      const legacy = _lsGet(LEGACY_HIDDEN_FILMS_KEY);
+      if (legacy === null) return;
+      const marker = localStorage.getItem(LEGACY_HIDDEN_FILMS_COUNTRY_KEY);
+      const owner  = marker && /^[a-z]{2}$/.test(marker) ? marker : currentCountryCode();
+      const bucket = _lsGet(_hiddenFilmsKey(owner)) || [];
+      _lsSet(_hiddenFilmsKey(owner), [...new Set([...bucket, ...legacy])]);
+      localStorage.removeItem(LEGACY_HIDDEN_FILMS_KEY);
+      localStorage.removeItem(LEGACY_HIDDEN_FILMS_COUNTRY_KEY);
+    } catch {}
+  }
+  function getHidden(country) {
+    _settleLegacyHiddenFilms();
+    return _lsGet(_hiddenFilmsKey(country || currentCountryCode())) || [];
+  }
   // Pure localStorage write. The server round-trip is the CALLER's job now —
   // each caller already knows exactly which title it hid/unhid (or that it
   // cleared everything), which is what the granular per-title API needs; see
   // hideFilmOnServer/unhideFilmOnServer/clearHiddenFilmsOnServer below and
   // their call sites (hideFilm/restoreFilm/showAllFilms).
-  function setHidden(titles)     { _lsSet('hiddenFilms',    titles); }
+  function setHidden(titles, country) {
+    _settleLegacyHiddenFilms();
+    _lsSet(_hiddenFilmsKey(country || currentCountryCode()), titles);
+  }
   // disabledCinemas is device-local ONLY — no server round-trip at all, ever
   // (see the "Server sync" section below, which no longer models this field
   // in either direction).
@@ -1204,7 +1236,6 @@
     if (!hidden.includes(title)) {
       hidden.push(title);
       setHidden(hidden);
-      noteHiddenFilmsEdit(false);
       hideFilmOnServer(title);
       maybeShowAnonymousNag();  // hide is the other "this will only stick on this device" action
     }
@@ -1229,7 +1260,6 @@
   function showAllFilms() {
     preserveScroll(() => {
       setHidden([]);
-      noteHiddenFilmsEdit(true);
       clearHiddenFilmsOnServer();
       applyFilters();
       updateNavbar();
@@ -2234,17 +2264,13 @@
   //
   // A per-country ETag/Last-Modified is cached so the 304 path actually
   // fires, and a successful WRITE also refreshes them from its own response
-  // headers — no need to wait for the next fetch to warm the cache. A 304 can
-  // only vouch for the local list if that list IS this country's server list,
-  // so validators are sent only when all three hold:
+  // headers — no need to wait for the next fetch to warm the cache. The local
+  // list is per country too (`hiddenFilms:<cc>`, see `getHidden`), so a 304
+  // only has to vouch for this country's own list. Validators are sent only
+  // when both hold:
   //   • the country is already synced (a first reconcile must see the body to
   //     union it — replaying a validator from a PREVIOUS login used to 304
   //     straight past the migration);
-  //   • `hiddenFilmsCountry` names THIS country. localStorage keeps one
-  //     `hiddenFilms` list per ORIGIN, and showtimes.cc serves /uk, /de, /us
-  //     and /es from one — after /de wrote its list locally, a 304 on /uk kept
-  //     /de's list on screen. A list mirroring another country is replaced
-  //     from the server, never unioned (that pushed /de's titles into /uk);
   //   • no write since the last exchange failed — a failed write forgets the
   //     validators, so the next reconcile takes the server's answer.
   //
@@ -2260,9 +2286,6 @@
   // because it could not be reached (offline keeps them, and queues the edits
   // made meanwhile as pending too) — so the next login migrates
   // this device's current picks afresh, exactly as the old single flag did.
-  // The marker is NOT: the local list outlives the logout, and it still
-  // mirrors the account's list for that country — so a sign-in in ANOTHER
-  // country replaces it rather than unioning the last account's titles in.
   //
   // `language` (the picked UI language, `kinowo_lang` — see `i18n.js`) rides
   // the LEGACY `/api/me/state` document instead — there's no granular
@@ -2301,28 +2324,6 @@
   function _hiddenFilmsSyncedKey(country)     { return 'hiddenFilmsSynced:' + country; }
   function _hiddenFilmsEtagKey(country)       { return 'hiddenFilmsEtag:' + country; }
   function _hiddenFilmsLastModifiedKey(country) { return 'hiddenFilmsLastModified:' + country; }
-  // Which country's server list the (per-origin) local `hiddenFilms` list
-  // currently mirrors — see the section comment above.
-  const HIDDEN_FILMS_COUNTRY_KEY = 'hiddenFilmsCountry';
-  // The marker's value for a list holding more than one country's titles: it
-  // mirrors none, so no country may union it in or trust a 304 for it.
-  const HIDDEN_FILMS_MIXED = '*';
-
-  // Keep the marker true to a LOCAL edit, signed in or not. A hide adds this
-  // country's title to the one per-origin list: a list that was nobody's yet
-  // becomes this country's; one that mirrored ANOTHER country now mixes the
-  // two. Without this an anonymous visitor's /uk hides, still in the list on
-  // /de, were unioned into the /de account on a sign-in there — and a hide made
-  // on /uk while offline, over a list still mirroring /de, stayed on /de's
-  // screen behind a 304. A clear leaves nothing but this country's own state.
-  function noteHiddenFilmsEdit(cleared) {
-    try {
-      const country  = currentCountryCode();
-      const mirrored = localStorage.getItem(HIDDEN_FILMS_COUNTRY_KEY);
-      if (cleared || mirrored === null) localStorage.setItem(HIDDEN_FILMS_COUNTRY_KEY, country);
-      else if (mirrored !== country) localStorage.setItem(HIDDEN_FILMS_COUNTRY_KEY, HIDDEN_FILMS_MIXED);
-    } catch {}
-  }
   function _hiddenFilmsPendingKey(country)    { return 'hiddenFilmsPending:' + country; }
 
   // Pending writes for `country`: `[[method, title], …]`, `title` null for a
@@ -2472,8 +2473,7 @@
     if (!isLoggedIn()) {
       // Anonymous (incl. just-logged-out): re-arm migration for EVERY country
       // so the next login carries this device's current local picks up
-      // exactly once, and drop writes owed to the account just left. The
-      // marker stays — see the section comment.
+      // exactly once, and drop writes owed to the account just left.
       try {
         Object.keys(localStorage)
           .filter(k => k.indexOf(_hiddenFilmsSyncedKey('')) === 0 || k.indexOf(_hiddenFilmsPendingKey('')) === 0)
@@ -2484,9 +2484,8 @@
     }
     try {
       const firstSync = localStorage.getItem(_hiddenFilmsSyncedKey(country)) !== '1';
-      const mirrored  = localStorage.getItem(HIDDEN_FILMS_COUNTRY_KEY);
       const headers = { 'Accept': 'application/json' };
-      if (!firstSync && mirrored === country) {
+      if (!firstSync) {
         const etag = localStorage.getItem(_hiddenFilmsEtagKey(country));
         const lastModified = localStorage.getItem(_hiddenFilmsLastModifiedKey(country));
         if (etag) headers['If-None-Match'] = etag;
@@ -2499,25 +2498,22 @@
 
       _storeHiddenFilmsValidators(country, resp);
       const remote = await resp.json();
-      try { localStorage.setItem(HIDDEN_FILMS_COUNTRY_KEY, country); } catch {}
 
-      // Union only a list that is this device's own picks (anonymous, or
-      // already this country's) — never one mirroring another country, which
-      // the server's list replaces instead (server authoritative, so removals
+      // A first sync unions this country's local list in; after that the
+      // server's list replaces it (server authoritative, so removals
       // propagate). Either way the writes this device still owes (see the
       // section comment) are played over the result and sent again — in
       // order, as every write is (see `_writeHiddenFilms`) — and only then
-      // does the union migrate up what the list holds that the server
-      // does not (there is no bulk write any more). A first sync with writes
-      // owed is a page that could not reach the server before: without them
-      // the union would bring back what they removed. `_lsSet` (not
-      // setHidden) avoids re-triggering a write back out.
+      // does the union migrate up what the list holds that the server does
+      // not (there is no bulk write any more). A first sync with writes owed
+      // is a page that could not reach the server before: without them the
+      // union would bring back what they removed. `setHidden` is a pure
+      // local write, so nothing is sent back out from here but the above.
       const serverList = remote.hiddenFilms || [];
-      const union      = firstSync && (mirrored === null || mirrored === country);
       const pending    = _pendingHiddenFilms(country);
-      const list       = _withPending(union ? [...new Set([...getHidden(), ...serverList])] : serverList, pending).sort();
-      _lsSet('hiddenFilms', list);
-      const localOnly  = union ? list.filter(t => !serverList.includes(t)) : [];
+      const list       = _withPending(firstSync ? [...new Set([...getHidden(country), ...serverList])] : serverList, pending).sort();
+      setHidden(list, country);
+      const localOnly  = firstSync ? list.filter(t => !serverList.includes(t)) : [];
       pending.forEach(([method, title]) => _writeHiddenFilms(method, country, title === null ? undefined : title));
       localOnly.forEach(title => hideFilmOnServer(title, country));
       try { localStorage.setItem(_hiddenFilmsSyncedKey(country), '1'); } catch {}
