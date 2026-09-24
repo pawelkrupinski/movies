@@ -20,10 +20,10 @@
 groups:
   - name: share-cards
     rules:
-      # 85% OF THE BUDGET, CARDS AND POSTERS TOGETHER, FOR HALF AN HOUR. Below the budget the janitor
-      # is doing its job; sitting near it means the unreferenced headroom is nearly gone, which is
-      # the step before `ShareCardsOverBudget`. The `kind` label names whichever of the two holds
-      # more bytes, so the annotation says where the space went.
+      # 85% OF THE BUDGET, CARDS, POSTERS AND BASES TOGETHER, FOR HALF AN HOUR. Below the budget the
+      # janitor is doing its job; sitting near it means the unreferenced headroom is nearly gone,
+      # which is the step before `ShareCardsOverBudget`. The `kind` label names whichever of the
+      # three (card, poster, base) holds the most bytes, so the annotation says where the space went.
       - alert: ShareCardsNearBudget
         expr: >-
           (
