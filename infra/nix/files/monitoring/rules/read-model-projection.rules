@@ -403,10 +403,10 @@ groups:
       # deploy, so a 7-hour window meant "almost always" and the zero-prune branch almost never
       # fired -- and a restart AFTER a difference began was treated as its excuse, which it cannot
       # be. The question is: WHEN THIS DIFFERENCE BEGAN, had the pair just booted?
-      # `country:readmodel_serving_differs:uptime_at_onset_seconds` answers it by latching the
-      # country's lowest worker/web uptime at the first evaluation that sees a difference and
+      # `country_city:readmodel_serving_differs:uptime_at_onset_seconds` answers it by latching the
+      # country's lowest worker/web uptime at the first evaluation that sees a city's difference and
       # carrying it (via its own previous sample) for as long as the difference lasts; it is
-      # absent whenever the two sides agree, so the next difference latches afresh. The 90s
+      # absent whenever that city's two sides agree, so its next difference latches afresh. The 90s
       # lookback spans a few 15s evaluations, so one missed scrape does not re-latch.
       #
       # 15 MINUTES IS THE MEASURED BOOT RACE. The traced episodes began 1-8 minutes after their
@@ -423,14 +423,23 @@ groups:
       # restart leaves its gauge absent for ~3 minutes, which made this series absent, which let
       # the onset latch lapse -- so a difference that began on a settled pair re-latched on the NEW
       # pod's uptime once it came back and stood down for the rest of the episode.
-      - record: country:readmodel_serving_differs:film_cities
+      #
+      # LATCHED PER CITY, NOT PER COUNTRY (2026-09-24). The country-level latch took its onset from
+      # whichever difference opened the country's episode, and an episode is only as long as the
+      # country's difference stays continuous -- which, with forty-odd cities flickering a census
+      # tick apart, can be an hour of unrelated cities. On 2026-09-23 a two-minute flicker elsewhere
+      # (onset 17:24Z, on a pair 18 minutes up) was still open when web-pl restarted at 17:26, so
+      # Włodawa's boot race four minutes later inherited the flicker's settled onset and paged.
+      # Latching each (country, city) on its own difference judges every city by when IT began:
+      # a race next to an older difference is still a race, and a real difference that began
+      # before a restart keeps its own settled onset through it. The country series remains the
+      # page's number; the per-city ones decide whether any of it is excused.
+      - record: country_city:readmodel_serving_differs:film_cities
         expr: >-
           (
-            sum by (country) (
-              abs(
-                max by (country, city) (last_over_time(kinowo_worker_movies_served{scope="all"}[10m]))
-                - max by (country, city) (kinowo_web_movies_served{scope="all"})
-              )
+            abs(
+              max by (country, city) (last_over_time(kinowo_worker_movies_served{scope="all"}[10m]))
+              - max by (country, city) (kinowo_web_movies_served{scope="all"})
             ) > 0
           )
           and on (country) (
@@ -440,36 +449,45 @@ groups:
             sum by (country) (max by (country, city) (kinowo_web_movies_served{scope="all"})) > 0
           )
 
-      - record: country:readmodel_serving_differs:uptime_at_onset_seconds
-        expr: >-
-          (
-            last_over_time(country:readmodel_serving_differs:uptime_at_onset_seconds[90s])
-            or on (country)
-            min by (country) (time() - process_start_time_seconds{job=~"kinowo-worker|kinowo-web"})
-          )
-          and on (country) country:readmodel_serving_differs:film_cities
+      - record: country:readmodel_serving_differs:film_cities
+        expr: sum by (country) (country_city:readmodel_serving_differs:film_cities)
 
-      # WHEN the current difference began, latched the same way, so the carve-out below can be
-      # capped: a re-sync race settles in minutes, and a difference still open two hours after a
-      # boot-time onset is not the race -- it is a defect that happened to start after a boot.
-      - record: country:readmodel_serving_differs:onset_timestamp_seconds
+      - record: country_city:readmodel_serving_differs:uptime_at_onset_seconds
         expr: >-
           (
-            last_over_time(country:readmodel_serving_differs:onset_timestamp_seconds[90s])
-            or on (country)
-            (0 * country:readmodel_serving_differs:film_cities + time())
+            last_over_time(country_city:readmodel_serving_differs:uptime_at_onset_seconds[90s])
+            or on (country, city)
+            (
+              0 * country_city:readmodel_serving_differs:film_cities
+              + on (country) group_left
+              min by (country) (time() - process_start_time_seconds{job=~"kinowo-worker|kinowo-web"})
+            )
           )
-          and on (country) country:readmodel_serving_differs:film_cities
+          and on (country, city) country_city:readmodel_serving_differs:film_cities
+
+      # WHEN each city's current difference began, latched the same way, so the carve-out below
+      # can be capped: a re-sync race settles in minutes, and a difference still open two hours
+      # after a boot-time onset is not the race -- it is a defect that happened to start after a boot.
+      - record: country_city:readmodel_serving_differs:onset_timestamp_seconds
+        expr: >-
+          (
+            last_over_time(country_city:readmodel_serving_differs:onset_timestamp_seconds[90s])
+            or on (country, city)
+            (0 * country_city:readmodel_serving_differs:film_cities + time())
+          )
+          and on (country, city) country_city:readmodel_serving_differs:film_cities
 
       - alert: ReadModelServingDiffersFromCorpus
         expr: >-
           country:readmodel_serving_differs:film_cities
           and on (country) (
-            (country:readmodel_serving_differs:uptime_at_onset_seconds >= 900)
-            or
-            # The carve-out's CAP: 1h40m into the difference plus the 20m `for:` pages it two
-            # hours after its onset, whatever the uptime then was.
-            (time() - country:readmodel_serving_differs:onset_timestamp_seconds >= 6000)
+            # Some city's difference is not excused: it began on a pair up 15+ minutes, or
+            # (the carve-out's CAP: 1h40m plus the 20m `for:`) it has been open two hours.
+            count by (country) (
+              (country_city:readmodel_serving_differs:uptime_at_onset_seconds >= 900)
+              or on (country, city)
+              (time() - country_city:readmodel_serving_differs:onset_timestamp_seconds >= 6000)
+            )
             or
             (
               sum by (country) (increase(kinowo_worker_readmodel_films_pruned_total[20m])) > 0

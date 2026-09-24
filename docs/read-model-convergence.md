@@ -64,7 +64,9 @@ at zero rules out the prune-side defect this doc otherwise describes.
 
 The alert itself now stands down for exactly this shape: a difference that BEGAN within
 15 minutes of a worker/web restart, with the prune counter at zero, never pages (the
-uptime at onset is latched by the recording rule
-`country:readmodel_serving_differs:uptime_at_onset_seconds`). A restart that lands after
+uptime at onset is latched PER CITY by the recording rule
+`country_city:readmodel_serving_differs:uptime_at_onset_seconds`). A restart that lands after
 a difference began is not an excuse for it, so a difference that starts on a settled pair
-pages even if a pod restarts mid-episode. If it fired, the onset was not a boot race.
+pages even if a pod restarts mid-episode; and a city's boot race is judged by its own onset,
+not by an older difference elsewhere in the country that happened to be open across the
+restart (2026-09-23, Włodawa). If it fired, some city's onset was not a boot race.

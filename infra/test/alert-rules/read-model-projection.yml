@@ -496,6 +496,71 @@ tests:
               summary: "us: the corpus and the site disagree on 2 film-in-a-city, expected 0"
               description: "`kinowo_worker_movies_served{scope=\"all\"}` is the films this country's corpus WOULD serve and `kinowo_web_movies_served{scope=\"all\"}` is what the site IS serving; summed per city as absolute differences they must be the SAME NUMBER, and they have differed for 20 minutes. Either direction is a defect: the site short of the corpus is a card that should be there and is not, the site ahead of it is a card no source row backs. Find them with `max by (city) (kinowo_worker_movies_served{country=\"us\",scope=\"all\"}) - max by (city) (kinowo_web_movies_served{country=\"us\",scope=\"all\"})` (read the sign per city -- they cancel at country level), then `kinowo_worker_readmodel_films_pruned_total{country=\"us\"}` by reason: a prune that removed anything is the incremental path failing to retire a card it stopped producing, which `docs/read-model-convergence.md` says must never happen. Do not widen this rule to make it quiet -- zero is the whole statement. (This alert stands down only when the difference BEGAN within 15 minutes of a worker/web restart and that counter is zero -- the boot re-sync race -- and then for at most two hours, so if it fired, the difference started on a pair that had already settled, outlived any re-sync, or the counter is genuinely nonzero: treat it as real.)"
 
+  # A DIFFERENCE ELSEWHERE THAT BEGAN BEFORE A RESTART DOES NOT MAKE A BOOT RACE REAL. 2026-09-23,
+  # PL: a short census flicker in other cities (onset ~17:24Z, on a pair 18 minutes up) was still
+  # open when web-pl restarted at 17:26, and the COUNTRY-level onset latch carried it -- so when
+  # Włodawa's boot race (+2 from 17:30, 4 minutes after the restart, held to 17:58) kept the
+  # country's difference open, the race inherited the flicker's settled onset and paged. Onset is
+  # latched per CITY: lodz's flicker (onset 176min, settled pair) lasts 10 minutes and clears;
+  # wlodawa's difference begins at 184min, 4 minutes after web-pl's restart at 180min, and holds
+  # 31 minutes. The country's difference is continuous from 176 to 215min; neither may page.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_movies_served{country="pl",city="lodz",instance="kinowo-worker-pl",job="kinowo-worker",scope="all"}'
+        values: '90x300'
+      - series: 'kinowo_web_movies_served{country="pl",city="lodz",instance="kinowo-web-pl",job="kinowo-web",scope="all"}'
+        values: '90x175 89x10 90x114'
+      - series: 'kinowo_worker_movies_served{country="pl",city="wlodawa",instance="kinowo-worker-pl",job="kinowo-worker",scope="all"}'
+        values: '8x183 10x116'
+      - series: 'kinowo_web_movies_served{country="pl",city="wlodawa",instance="kinowo-web-pl",job="kinowo-web",scope="all"}'
+        values: '8x214 10x85'
+      - series: 'process_start_time_seconds{country="pl",instance="kinowo-worker-pl",job="kinowo-worker"}'
+        values: '-86400x300'
+      - series: 'process_start_time_seconds{country="pl",instance="kinowo-web-pl",job="kinowo-web"}'
+        values: '9660x179 10800x120'
+      - series: 'kinowo_worker_readmodel_films_pruned_total{country="pl",reason="row-gone"}'
+        values: '0+0x300'
+    alert_rule_test:
+      - eval_time: 3h25m
+        alertname: ReadModelServingDiffersFromCorpus
+        exp_alerts: []
+      - eval_time: 3h34m
+        alertname: ReadModelServingDiffersFromCorpus
+        exp_alerts: []
+
+  # …NOR EXCUSE A REAL ONE. Same restart, same Włodawa race, but lodz diverges at 176min on the
+  # settled pair and never recovers. Its onset is its own -- four minutes BEFORE the restart, 18
+  # minutes into the web's uptime -- so it pages 20 minutes on whatever the race beside it does.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_movies_served{country="pl",city="lodz",instance="kinowo-worker-pl",job="kinowo-worker",scope="all"}'
+        values: '90x300'
+      - series: 'kinowo_web_movies_served{country="pl",city="lodz",instance="kinowo-web-pl",job="kinowo-web",scope="all"}'
+        values: '90x175 88x124'
+      - series: 'kinowo_worker_movies_served{country="pl",city="wlodawa",instance="kinowo-worker-pl",job="kinowo-worker",scope="all"}'
+        values: '8x183 10x116'
+      - series: 'kinowo_web_movies_served{country="pl",city="wlodawa",instance="kinowo-web-pl",job="kinowo-web",scope="all"}'
+        values: '8x214 10x85'
+      - series: 'process_start_time_seconds{country="pl",instance="kinowo-worker-pl",job="kinowo-worker"}'
+        values: '-86400x300'
+      - series: 'process_start_time_seconds{country="pl",instance="kinowo-web-pl",job="kinowo-web"}'
+        values: '9660x179 10800x120'
+      - series: 'kinowo_worker_readmodel_films_pruned_total{country="pl",reason="row-gone"}'
+        values: '0+0x300'
+    alert_rule_test:
+      - eval_time: 3h10m
+        alertname: ReadModelServingDiffersFromCorpus
+        exp_alerts: []
+      - eval_time: 3h25m
+        alertname: ReadModelServingDiffersFromCorpus
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: pl
+            exp_annotations:
+              summary: "pl: the corpus and the site disagree on 4 film-in-a-city, expected 0"
+              description: "`kinowo_worker_movies_served{scope=\"all\"}` is the films this country's corpus WOULD serve and `kinowo_web_movies_served{scope=\"all\"}` is what the site IS serving; summed per city as absolute differences they must be the SAME NUMBER, and they have differed for 20 minutes. Either direction is a defect: the site short of the corpus is a card that should be there and is not, the site ahead of it is a card no source row backs. Find them with `max by (city) (kinowo_worker_movies_served{country=\"pl\",scope=\"all\"}) - max by (city) (kinowo_web_movies_served{country=\"pl\",scope=\"all\"})` (read the sign per city -- they cancel at country level), then `kinowo_worker_readmodel_films_pruned_total{country=\"pl\"}` by reason: a prune that removed anything is the incremental path failing to retire a card it stopped producing, which `docs/read-model-convergence.md` says must never happen. Do not widen this rule to make it quiet -- zero is the whole statement. (This alert stands down only when the difference BEGAN within 15 minutes of a worker/web restart and that counter is zero -- the boot re-sync race -- and then for at most two hours, so if it fired, the difference started on a pair that had already settled, outlived any re-sync, or the counter is genuinely nonzero: treat it as real.)"
+
   # JUST PAST THE BOOT WINDOW IS NOT A BOOT RACE. Same settled web, worker-us restarted at 150min,
   # difference begins at 180min -- 30 minutes of uptime at onset, twice the 15-minute window. The
   # four 2026-09-16/17 US episodes began 68-274 minutes after a restart and every one of them had
