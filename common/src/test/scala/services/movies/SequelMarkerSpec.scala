@@ -138,4 +138,23 @@ class SequelMarkerSpec extends AnyFlatSpec with Matchers {
     different("The Hunger Games: Mockingjay - Part 1", "The Hunger Games: Sunrise on the Reaping") shouldBe true
     different("The Hunger Games: Mockingjay - Part 2", "The Hunger Games: Sunrise on the Reaping") shouldBe true
   }
+
+  // UK convergence run 35948292875 (2026-09-24): the Flicks listings name ONE film
+  // "The Hunger Games: Mockingjay - Part 1 (2026)" at 64 venues and plain "... - Part 1"
+  // at 14. Both qualify as an entry against the curated base and their extras differ —
+  // only by the rerelease year — which the sibling check read as two DIFFERENT entries,
+  // so MixedFilmDetector split the 14 off every settle. A decoration on the same entry is
+  // not a sibling: the entry each title names (subtitle words + instalment number) must differ.
+  it should "not read one curated entry beside its own decorated listing as two siblings" in {
+    def siblings(a: String, b: String) = SequelMarker.curatedSiblingTitles(Seq(a), Seq(b))
+    siblings("The Hunger Games: Mockingjay - Part 1 (2026)", "The Hunger Games: Mockingjay - Part 1") shouldBe false
+    siblings("The Hunger Games: Mockingjay - Part 2 (2015)", "The Hunger Games: Mockingjay - Part 2") shouldBe false
+    siblings("The Hunger Games: Mockingjay Pt 2 (2026 Re-Release)", "The Hunger Games: Mockingjay - Part 2") shouldBe false
+    different("The Hunger Games: Mockingjay - Part 1 (2026)", "The Hunger Games: Mockingjay - Part 1") shouldBe false
+    siblings("The Hunger Games: The Ballad of Songbirds & Snakes",
+             "The Hunger Games: The Ballad of Songbirds and Snakes") shouldBe false
+    // ...while the entries that really differ still do, decorated or not.
+    siblings("The Hunger Games: Mockingjay - Part 1 (2026)", "The Hunger Games: Mockingjay - Part 2") shouldBe true
+    siblings("The Hunger Games: Mockingjay - Part 1 (2026)", "The Hunger Games: Catching Fire") shouldBe true
+  }
 }

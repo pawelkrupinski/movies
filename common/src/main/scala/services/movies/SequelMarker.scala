@@ -160,9 +160,36 @@ object SequelMarker {
   private[movies] def curatedSiblings(a: Seq[String], b: Seq[String]): Boolean =
     KnownFranchiseSubtitles.keySet.exists { base =>
       a.startsWith(base) && b.startsWith(base) &&
-      a.drop(base.length) != b.drop(base.length) &&
-      namesAnotherEntry(base, a) && namesAnotherEntry(base, b)
+      ((entryNamed(base, a), entryNamed(base, b)) match {
+        case (Some(entryA), Some(entryB)) => entryA != entryB
+        case _                            => false
+      })
     }
+
+  /** WHICH entry of the curated `base`'s series `whole` names, as a comparable key — or
+   *  `None` when it names none [[namesAnotherEntry]] would recognise. Comparing these,
+   *  not the raw tokens after the base, is what keeps a decoration from reading as a
+   *  second entry: UK convergence run 35948292875 (2026-09-24) had 64 Flicks venues list
+   *  "The Hunger Games: Mockingjay - Part 1 (2026)" and 14 list plain "... - Part 1" on
+   *  one row, and a differing-extras test split the 14 off on every settle over nothing
+   *  but the rerelease year.
+   *
+   *  The key is the curated subtitle (with "and" dropped, so "Songbirds & Snakes" and
+   *  "Songbirds and Snakes" are one entry), or the words before a part marker plus the
+   *  instalment's VALUE ("Pt 2" and "Part Two" are one entry), or a bare ordinal's value
+   *  right after the base. Whatever trails the instalment — a year, "Re-Release" — is not
+   *  part of which entry it is. */
+  private def entryNamed(base: Seq[String], whole: Seq[String]): Option[Seq[String]] = {
+    val extras = whole.drop(base.length)
+    val subtitle = KnownFranchiseSubtitles.get(base).filter(_.contains(extras)).map(_ => extras.filterNot(_ == "and"))
+    def partThenOrdinal = extras.indices.iterator.flatMap { at =>
+      extras.lift(at).filter(PartMarkers.contains)
+        .flatMap(_ => extras.lift(at + 1).flatMap(ordinalValue))
+        .map(value => extras.take(at) :+ value.toString)
+    }.nextOption()
+    def ordinalRightAfterBase = extras.headOption.filter(isOrdinal).flatMap(ordinalValue).map(v => Seq(v.toString))
+    subtitle.orElse(partThenOrdinal).orElse(ordinalRightAfterBase)
+  }
 
   /** [[curatedSiblings]] over two sets of raw title strings: does any title on one
    *  side name a different curated-franchise entry from any title on the other?

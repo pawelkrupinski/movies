@@ -75,6 +75,24 @@ class MixedFilmDetectorSpec extends AnyFlatSpec with Matchers {
     strays should not be empty
   }
 
+  // UK convergence run 35948292875 (2026-09-24), the real Flicks listings: one row,
+  // 64 venues calling it "The Hunger Games: Mockingjay - Part 1 (2026)" and 14 calling
+  // it plain "... - Part 1", all 123 minutes, all Francis Lawrence, no original title.
+  // The curated-sibling path read the rerelease year as a different franchise entry
+  // and split the 14 plain venues off on every settle.
+  "one curated franchise entry listed with and without a rerelease year" should "not split" in {
+    def flicks(title: String) =
+      SourceData(title = Some(title), runtimeMinutes = Some(123), director = Seq("Francis Lawrence"))
+    val stamped = (1 to 4).map(i => (CinemaShowing(Cinema.all.head, s"stamped-$i"): Source) ->
+      flicks("The Hunger Games: Mockingjay - Part 1 (2026)"))
+    val plain = Seq[(Source, SourceData)](
+      (CinemaShowing(Cinema.all.head, "Savoy Boston"): Source) -> flicks("The Hunger Games: Mockingjay - Part 1"),
+      (CinemaShowing(Cinema.all.head, "Parkway Workington"): Source) -> flicks("The Hunger Games: Mockingjay - Part 1"))
+    val record = MovieRecord(tmdbId = Some(131631), data = (stamped ++ plain).toMap)
+
+    MixedFilmDetector.strays(record, titleNormalizer) shouldBe empty
+  }
+
   // ── What must NOT split ───────────────────────────────────────────────────
 
   // The other side of the sequel arm: a number appearing on one venue's title and not
