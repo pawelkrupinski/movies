@@ -9330,6 +9330,15 @@
    ]
   },
   "kube_pod_container_resource_limits": {
+   "container": [
+    "coredns",
+    "headlamp",
+    "kube-state-metrics",
+    "manager",
+    "reloader",
+    "web",
+    "worker"
+   ],
    "namespace": {
     "same_as": "kube_deployment_spec_replicas"
    },
