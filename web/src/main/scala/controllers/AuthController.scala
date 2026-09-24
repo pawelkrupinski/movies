@@ -497,8 +497,9 @@ class AuthController(
               case None =>
                 Redirect(s"$target${AuthController.SsoFinishPath}${AuthController.query(onward)}")
               case Some(binding) =>
+                // The Location carries a live code: nothing may keep a copy of it.
                 val code = exchangeCodes.mint(user.id, Some(binding))
-                Redirect(s"$target${AuthController.SsoFinishPath}${AuthController.query(("code" -> code) +: onward)}")
+                uncacheable(Redirect(s"$target${AuthController.SsoFinishPath}${AuthController.query(("code" -> code) +: onward)}"))
             }
         }
     }

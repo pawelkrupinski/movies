@@ -13,7 +13,8 @@ import java.time.Instant
 /** Every auth response that names a person or hands out / withholds a session
  *  is `PerUserResponse` (`private, no-store`) — including the ones that were
  *  missed: `/auth/token` and `/auth/exchange` (JSON naming the user plus a
- *  `Set-Cookie`), and `ssoFinish`'s signed-out landing for a dead code. */
+ *  `Set-Cookie`), `ssoFinish`'s signed-out landing for a dead code, and
+ *  `ssoStart`'s redirect carrying a freshly minted code. */
 class AuthNoStoreSpec extends AnyFlatSpec with Matchers {
 
   private object Google extends OauthProvider {
@@ -51,6 +52,16 @@ class AuthNoStoreSpec extends AnyFlatSpec with Matchers {
   it should "forbid keeping a copy of a refused code" in {
     val result = ctl.exchange()(FakeRequest("POST", "/auth/exchange").withBody(Json.obj("code" -> "nope")))
     status(result) shouldBe UNAUTHORIZED
+    header("Cache-Control", result) shouldBe Some(PerUserResponse.CacheControl)
+  }
+
+  // The Location carries a live sign-in code; a cached copy would replay it.
+  "GET /auth/sso/start" should "forbid keeping a copy of the redirect that carries a minted code" in {
+    users.upsert(models.User(id = "carol@example.com", provider = "google", providerSub = "G-3", email = Some("carol@example.com"),
+      displayName = None, avatarUrl = None, createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH))
+    val uk     = models.Country.UnitedKingdom.webUrl.get
+    val result = ctl.ssoStart()(FakeRequest("GET", s"/auth/sso/start?to=$uk&bind=b").withSession("userId" -> "carol@example.com"))
+    redirectLocation(result).get should include ("code=")
     header("Cache-Control", result) shouldBe Some(PerUserResponse.CacheControl)
   }
 
