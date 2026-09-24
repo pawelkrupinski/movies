@@ -7,7 +7,7 @@ import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders,
 import org.bson.codecs.configuration.{CodecProvider, CodecRegistry}
 import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
-import org.mongodb.scala.bson.codecs.Macros
+import services.PersistedCodecs
 
 import java.time.Instant
 
@@ -158,15 +158,25 @@ object StoredMovieDto {
  * hand-written codec — see `JavaTimeCodecs.localDateTime`, shared with the
  * read-model collections.
  */
-object MovieCodecs {
+object MovieCodecs extends PersistedCodecs {
 
-  private val macroSourceDataCodec: Codec[SourceData] =
-    Macros.createCodecProviderIgnoreNone[SourceData]()
-      .get(classOf[SourceData], fromRegistries(
-        fromCodecs(JavaTimeCodecs.localDateTime),
-        fromProviders(Macros.createCodecProviderIgnoreNone[Showtime]()),
-        DEFAULT_CODEC_REGISTRY
-      ))
+  /** `SourceData` is written through [[BackwardCompatibleSourceDataCodec]], which wraps
+   *  the macro codec derived here. */
+  type OmittingNone = (SourceData, Showtime)
+  /** `movies` (and `pending_movies`), `screenings`, `movie_slots`. */
+  type WritingNone  = (StoredTmdbAttempt, StoredMovieDto, StoredScreeningsDto, StoredSlotDto)
+
+  /** The macro codecs of `OmittingNone` alone — what the backward-compatible
+   *  `SourceData` codec delegates to. */
+  private val omittingNoneRegistry: CodecRegistry = fromRegistries(
+    fromCodecs(JavaTimeCodecs.localDateTime),
+    fromProviders(PersistedCodecs.omittingNone[OmittingNone]*),
+    DEFAULT_CODEC_REGISTRY
+  )
+
+  private val macroSourceDataCodec: Codec[SourceData] = omittingNoneRegistry.get(classOf[SourceData])
+
+  private val showtimeCodec: Codec[Showtime] = omittingNoneRegistry.get(classOf[Showtime])
 
   private class BackwardCompatibleSourceDataCodec extends Codec[SourceData] {
     override def getEncoderClass: Class[SourceData] = classOf[SourceData]
@@ -201,13 +211,8 @@ object MovieCodecs {
         if (!document.containsKey("showtimes") || document.get("showtimes").isNull) Seq.empty
         else {
           val array = document.getArray("showtimes")
-          val stCodec = macroSourceDataCodec // reuse the registry's Showtime codec
           (0 until array.size()).map { i =>
-            val stDocument = array.get(i).asDocument()
-            val stReader = new org.bson.BsonDocumentReader(stDocument)
-            Macros.createCodecProviderIgnoreNone[Showtime]()
-              .get(classOf[Showtime], fromRegistries(fromCodecs(JavaTimeCodecs.localDateTime), DEFAULT_CODEC_REGISTRY))
-              .decode(stReader, c)
+            showtimeCodec.decode(new org.bson.BsonDocumentReader(array.get(i).asDocument()), c)
           }.toSeq
         }
       SourceData(
@@ -244,20 +249,11 @@ object MovieCodecs {
 
   val registry: CodecRegistry = fromRegistries(
     fromCodecs(JavaTimeCodecs.localDateTime),
-    fromProviders(
-      sourceDataProvider,
-      Macros.createCodecProviderIgnoreNone[Showtime](),
-      Macros.createCodecProvider[StoredTmdbAttempt](),
-      Macros.createCodecProvider[StoredMovieDto](),
-      // The `screenings` collection (showtimes split out of `movies`) — same
-      // Showtime + LocalDateTime codecs as above.
-      Macros.createCodecProvider[StoredScreeningsDto](),
-      // The `movie_slots` collection (the per-cinema SourceData split out of
-      // `movies.sourceData`) — reuses `sourceDataProvider` above for its slot field,
-      // so a slot round-trips through the SAME backward-compatible codec whether it
-      // is read from `movies` or from its own row.
-      Macros.createCodecProvider[StoredSlotDto]()
-    ),
+    // `sourceDataProvider` FIRST, so it shadows the macro `SourceData` codec: a slot
+    // round-trips through the SAME backward-compatible codec whether it is read from
+    // `movies` or from its own `movie_slots` row.
+    fromProviders((sourceDataProvider ::
+      PersistedCodecs.omittingNone[OmittingNone] ::: PersistedCodecs.writingNone[WritingNone])*),
     DEFAULT_CODEC_REGISTRY
   )
 }

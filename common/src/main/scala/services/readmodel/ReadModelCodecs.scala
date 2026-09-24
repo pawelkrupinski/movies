@@ -4,7 +4,7 @@ import models.{CityScreening, ResolvedMovie, ResolvedRatings, Showtime}
 import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders, fromRegistries}
 import org.bson.codecs.configuration.CodecRegistry
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
-import org.mongodb.scala.bson.codecs.Macros
+import services.PersistedCodecs
 import services.movies.JavaTimeCodecs
 
 /**
@@ -16,17 +16,16 @@ import services.movies.JavaTimeCodecs
  * shared `JavaTimeCodecs.localDateTime` so showtimes encode identically to the
  * `movies` collection.
  */
-object ReadModelCodecs {
+object ReadModelCodecs extends PersistedCodecs {
+
+  /** `web_movies` + `web_screenings`, and what they nest. */
+  type OmittingNone = (Showtime, ResolvedRatings, ResolvedMovie, CityScreening)
+  type WritingNone  = EmptyTuple
 
   /** The macro-derived registry — the shape everything is written with. */
   private val macroRegistry: CodecRegistry = fromRegistries(
     fromCodecs(JavaTimeCodecs.localDateTime),
-    fromProviders(
-      Macros.createCodecProviderIgnoreNone[Showtime](),
-      Macros.createCodecProviderIgnoreNone[ResolvedRatings](),
-      Macros.createCodecProviderIgnoreNone[ResolvedMovie](),
-      Macros.createCodecProviderIgnoreNone[CityScreening]()
-    ),
+    fromProviders(PersistedCodecs.omittingNone[OmittingNone]*),
     DEFAULT_CODEC_REGISTRY
   )
 

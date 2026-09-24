@@ -8,10 +8,10 @@ import models.{Cinema, CinemaMovie, Movie, Showtime}
 import org.bson.codecs.configuration.CodecRegistry
 import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders, fromRegistries}
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
-import org.mongodb.scala.bson.codecs.Macros
 import org.mongodb.scala.model.{Filters, Indexes, Projections, Updates}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
+import services.PersistedCodecs
 import services.movies.JavaTimeCodecs
 
 import java.time.Instant
@@ -113,17 +113,13 @@ object StoredScrapeDto {
 /** BSON wiring for `cinema_scrapes`. `IgnoreNone` throughout so an absent
  *  `synopsis`/`room`/`ageRating` costs nothing on the wire and decodes back to
  *  `None` — the same trade `MovieCodecs` makes for `Showtime`. */
-object ScrapeArchiveCodecs {
+object ScrapeArchiveCodecs extends PersistedCodecs {
+  type OmittingNone = (ContentStampDto, Showtime, Movie, ArchivedFilmDto, BarrenAttemptDto, StoredScrapeDto)
+  type WritingNone  = EmptyTuple
+
   val registry: CodecRegistry = fromRegistries(
     fromCodecs(JavaTimeCodecs.localDateTime),
-    fromProviders(
-      Macros.createCodecProviderIgnoreNone[ContentStampDto](),
-      Macros.createCodecProviderIgnoreNone[Showtime](),
-      Macros.createCodecProviderIgnoreNone[Movie](),
-      Macros.createCodecProviderIgnoreNone[ArchivedFilmDto](),
-      Macros.createCodecProviderIgnoreNone[BarrenAttemptDto](),
-      Macros.createCodecProviderIgnoreNone[StoredScrapeDto]()
-    ),
+    fromProviders(PersistedCodecs.omittingNone[OmittingNone]*),
     DEFAULT_CODEC_REGISTRY
   )
 }
