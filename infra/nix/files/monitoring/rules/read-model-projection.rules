@@ -786,6 +786,41 @@ groups:
             flapping out of readiness), and `RemovalAudit` log lines for the same ids.
 
       # -----------------------------------------------------------------------------------------
+      # ONE BOOT HEALED FAR MORE THAN A BOOT SHOULD.
+      #
+      # The rule above leaves boot heals out because 1-6 per boot is routine: the old pod's last
+      # unprojected minutes. A boot that heals HUNDREDS is not that. On 2026-09-23 PL's boot check
+      # re-projected 376 films at once -- the read model had been missing a card or a venue for
+      # every one of them, i.e. the site had been serving without them until that restart, and a
+      # restart was all that happened to repair it. Nothing alerted, because one boot's heals are
+      # exactly what `ReadModelHealsRecurring` is written to ignore.
+      #
+      # 50 IN AN HOUR. Measured 2026-09-10..09-24, the largest boot-heal hour per country outside
+      # that event: US 1, every other country 0. The 376 is the only hour over 50, so the
+      # threshold separates the routine from the event by more than an order of magnitude on
+      # both sides. Summed over the hour so two restarts in quick succession count together.
+      #
+      # NO `for:`: the counter is read through increase() over an hour, which bridges the restart
+      # that produced the heals, and the hour is how long it stays visible.
+      - alert: BootHealLarge
+        expr: >-
+          sum by (country) (increase(kinowo_worker_readmodel_heals_total{trigger="boot"}[1h])) > 50
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}'s worker boot re-projected {{ $value | humanize }} films the read model was missing"
+          description: >-
+            The boot check in "{{ $labels.country }}" found that many ready films with no card or
+            no venue in the read model and projected them. A handful per boot is the old pod's last
+            minutes; this many means the read model had been serving WITHOUT them -- for however
+            long it took a restart to come along -- and that the change-stream path dropped them
+            first. The boot's WARN line names the ids ("projected N ready row(s) missing a card or
+            a venue"); ask what retired their cards before the restart
+            (`kinowo_worker_readmodel_cards_retired_total` by reason, `RemovalAudit` lines for the
+            same ids). Healed now, so this is a post-mortem, not an outage -- but the same miss
+            will open the same hole again until it is found.
+
+      # -----------------------------------------------------------------------------------------
       # THE CURSOR DELIVERS, AND THE APPLY THREAD IS NOT KEEPING UP.
       #
       # `ChangeStreamMoviesCursorSilent` above asks whether a cursor DELIVERS. This asks the other

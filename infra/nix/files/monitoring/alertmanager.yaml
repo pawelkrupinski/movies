@@ -135,6 +135,15 @@ route:
     # nothing paged for over a day -- found by a human reading /uptime's "Aggregator fallback"
     # section by hand. See chain-fallback.rules for the ratio-vs-threshold reasoning.
     #
+    # THE 2026-09-24 GAP AUDIT ADDED EIGHT, each for an incident class that had happened with
+    # nothing alerting at all -- the definition of the silent shape this list is for:
+    # `WebRestartNotOOMKilled` (six web self-exits in a fortnight, no message), `MongodMemoryNearLimit`
+    # (the database OOM that blanked every PL/UK city on 07-29), `BootHealLarge` (376 films
+    # missing from PL's read model until a restart happened by), `ScrapeWritesSkipped` and
+    # `ScrapeGuardStuckRejecting` (Kino Aurum's five stale days), `WorkerQueueHeadOld` (via the
+    # Worker prefix), and two prefixed families: `Probe*`, the synthetic probes that are the only
+    # outside view of the site, and `FluxObject*`, a deploy path failing or suspended with CI green.
+    #
     # THE PREFIX MEANS A NEW `Worker*` OR `Filesystem*` RULE EMAILS BY DEFAULT. That is the right
     # default for these two families -- they are the ones whose failure is silent -- but it is a
     # decision a rule inherits without saying so, so add the name above and a case in
@@ -154,14 +163,14 @@ route:
     # one message to five, repeating hourly, on the channel this file's header argues must stay a
     # single stream. The subject is fixed below instead, where it costs nothing.
     - matchers:
-        - alertname =~ "Filesystem.*|Worker.*|ShareCard.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte|ChainFallbackSaturated|PaidEgressFailing|HeapDumpWritten"
+        - alertname =~ "Filesystem.*|Worker.*|ShareCard.*|Probe.*|FluxObject.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte|ChainFallbackSaturated|PaidEgressFailing|HeapDumpWritten|WebRestartNotOOMKilled|MongodMemoryNearLimit|BootHealLarge|ScrapeWritesSkipped|ScrapeGuardStuckRejecting"
         - severity = "critical"
       receiver: telegram-and-email
       group_wait: 10s
       repeat_interval: 1h
 
     - matchers:
-        - alertname =~ "Filesystem.*|Worker.*|ShareCard.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte|ChainFallbackSaturated|PaidEgressFailing|HeapDumpWritten"
+        - alertname =~ "Filesystem.*|Worker.*|ShareCard.*|Probe.*|FluxObject.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte|ChainFallbackSaturated|PaidEgressFailing|HeapDumpWritten|WebRestartNotOOMKilled|MongodMemoryNearLimit|BootHealLarge|ScrapeWritesSkipped|ScrapeGuardStuckRejecting"
         - severity = "warning"
       receiver: telegram-and-email
       group_interval: 15m
@@ -427,9 +436,10 @@ inhibit_rules:
   # NO FLUX RULE, deliberately, and this is the second time that has been decided. A rule joining
   # `FluxControllerDown` to its warnings on `controller` reads obviously right and earns nothing:
   # when a controller is down its `gotk_*` series go ABSENT, so the warnings it would silence
-  # resolve on their own within a scrape or two. What it does do is silence `FluxSuspended` --
-  # `controller` comes from the scrape target, so every flux series carries it -- and a suspension
-  # somebody set by hand is exactly the news a controller being down does not contain.
+  # resolve on their own within a scrape or two. And the object-state alerts (`FluxObjectNotReady`,
+  # `FluxObjectSuspended`) come from kube-state-metrics, not from a controller: they carry no
+  # `controller` label, so a join on it would match nothing -- and a suspension somebody set by
+  # hand is exactly the news a controller being down does not contain anyway.
   #
   # Two messages for a Flux outage is the same trade already taken for `WorkerDown` and
   # `TargetDown` above: they say the same thing five minutes apart, and the second confirms the

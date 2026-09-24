@@ -118,7 +118,8 @@ CASES = [
     # reconciliation is somebody's deliberate act; a controller being down does not explain it.
     ("a down Flux controller does NOT silence a deliberate suspension",
      {"alertname": "FluxControllerDown", "severity": "critical", "controller": "source-controller"},
-     {"alertname": "FluxSuspended", "severity": "warning", "controller": "source-controller"},
+     {"alertname": "FluxObjectSuspended", "severity": "warning", "customresource_kind": "Kustomization",
+      "name": "web-pl-config"},
      False),
 ]
 

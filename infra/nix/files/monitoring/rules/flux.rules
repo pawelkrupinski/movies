@@ -25,8 +25,10 @@
 # permanently green. They are gone, replaced by one that watches reconciles CEASING, which is what
 # the remaining metrics can actually say -- for the objects that reconcile on a CLOCK. ImagePolicy
 # does not, and is excluded; see the note on the rule. Reconciliation FAILURE and a SUSPENDED object are
-# unwatched here until kube-state-metrics is given a `--custom-resource-state-config` for Flux's
-# custom resources, and that config lives in the gitops repository. See the note on the rule.
+# watched by the `flux-objects` group at the bottom, from `gotk_resource_info` -- a series
+# kube-state-metrics publishes only once it is given a `--custom-resource-state-config` for Flux's
+# custom resources. That config lives in the gitops repository; until it is applied the group's
+# `absent()` companion fires and says so.
 groups:
   - name: flux
     rules:
@@ -56,11 +58,9 @@ groups:
       # back NotReady. A Kustomization that reconciles briskly and fails every time still increments
       # this counter and stays silent here.
       #
-      # RESTORING THE FAILURE AND SUSPEND SIGNALS needs kube-state-metrics to expose Flux's custom
-      # resources through `--custom-resource-state-config`, which lives in the gitops repository
-      # rather than in this one. Until that exists, this file does NOT watch reconciliation failure
-      # or a suspended object, and the absence of an alert here is not evidence that Flux is
-      # applying cleanly.
+      # THE FAILURE AND SUSPEND SIGNALS COME BACK in the `flux-objects` group below, read from the
+      # objects' own status through kube-state-metrics rather than from gauges the controllers no
+      # longer publish.
       #
       # ONE HOUR AGAINST A MEASURED CADENCE, not a round number: the busiest objects reconcile 12-14
       # times an hour (ImageUpdateAutomation/movies 14.1, GitRepository/movies 12.1), so an hour at
@@ -108,8 +108,9 @@ groups:
             image-reflector-controller is caught by its ImageRepository instead.
 
 
-      # THE EXPORTER ITSELF. Without this the three rules above go quiet exactly when the thing
-      # they watch dies hardest, because an absent series cannot compare `== 1`.
+      # THE EXPORTER ITSELF. Without this the reconcile rule above goes quiet exactly when the
+      # thing it watches dies hardest, because a controller that is down publishes no counter for
+      # `increase()` to find flat.
       - alert: FluxControllerDown
         expr: up{job="flux"} == 0
         for: 15m
@@ -138,3 +139,82 @@ groups:
       - record: flux:kustomization_reconcile_duration_seconds:p95
         expr: >-
           histogram_quantile(0.95, sum(rate(gotk_reconcile_duration_seconds_bucket{kind="Kustomization"}[30m])) by (name, le))
+
+  # ------------------------------------------------------------------------------------------------
+  # THE OBJECTS' OWN STATUS: IS EACH ONE READY, AND IS ANY OF THEM SUSPENDED.
+  #
+  # `gotk_resource_info` is not a Flux metric. It is kube-state-metrics reading each Flux object's
+  # `status.conditions[type=Ready].status` and `spec.suspend` through a custom-resource-state config
+  # -- the shape Flux's own monitoring example recommends since the controllers dropped
+  # `gotk_reconcile_condition` -- so it says what `flux get all -A` says, which the reconcile
+  # counter above cannot: an object that reconciles on time and FAILS every time.
+  #
+  # ⚠️ IT DOES NOT EXIST UNTIL THE GITOPS CHANGE IS APPLIED. The config, its ConfigMap mount and the
+  # RBAC for the flux API groups belong in movies-gitops/kube-state-metrics/, which this repository
+  # cannot change. Until they are there, the two comparison rules below are silent by
+  # construction and `FluxObjectStateAbsent` fires to say so -- which is the reminder, not noise.
+  #
+  # NOT REPLAYED, and saying so is the point: there is no history of a series that has never been
+  # published. The holds are argued from the configuration instead (see each rule), and the first
+  # fortnight of real data is where they get checked.
+  # ------------------------------------------------------------------------------------------------
+  - name: flux-objects
+    rules:
+      # THIRTY MINUTES, from the Kustomizations' own settings: `interval: 10m` with `timeout: 10m`
+      # on the web overlays and 3m elsewhere, and retries on the interval. One failed health check
+      # therefore holds Ready=False for up to ~20 minutes before the next attempt can clear it,
+      # and kustomize-controller did exactly that five times in 48h around 2026-09-21, healing
+      # each time. Thirty minutes is past a single failed attempt and its retry; a third failure
+      # in a row is not a slow rollout any more.
+      - alert: FluxObjectNotReady
+        expr: max by (customresource_kind, namespace, name) (gotk_resource_info{ready="False"}) == 1
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "flux {{ $labels.customresource_kind }}/{{ $labels.name }} has been NotReady for 30 minutes"
+          description: >-
+            The object reconciles and FAILS -- the case `FluxReconciliationStopped` cannot see,
+            because the reconcile counter keeps moving. For a Kustomization this means merged
+            changes are not reaching the cluster: the pods keep serving the last image that did
+            apply, with CI green. `flux get all -A` on monitoring-1 names the object and its
+            message; `kubectl -n {{ $labels.namespace }} describe
+            {{ $labels.customresource_kind | toLower }} {{ $labels.name }}` has the condition's
+            full text. A health-check timeout usually means a pod that will not become Ready
+            (see `K3sDeploymentReplicasMissing`); a build error means a bad manifest in
+            movies-gitops.
+
+      # AN HOUR, because a suspension is almost always DELIBERATE -- somebody ran `flux suspend`
+      # to hold a change -- and the alert exists for the one that was never resumed. An hour is
+      # long enough not to page the person holding it and short enough to land the same day.
+      - alert: FluxObjectSuspended
+        expr: max by (customresource_kind, namespace, name) (gotk_resource_info{suspended="true"}) == 1
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "flux {{ $labels.customresource_kind }}/{{ $labels.name }} has been suspended for an hour"
+          description: >-
+            A suspended object reconciles NOTHING: its source can move, its images can be built
+            and tagged, and the cluster does not change -- quietly, with every signal green,
+            which is the 2026-09-03 failure by another door. If the hold is still wanted, silence
+            this in Alertmanager with an expiry; if not, resume it (`flux resume kustomization
+            {{ $labels.name }}` for a Kustomization; `flux resume --help` names the other kinds).
+
+      - alert: FluxObjectStateAbsent
+        expr: absent(gotk_resource_info)
+        # THIRTY MINUTES, matching every other `absent()` companion in this directory.
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Nothing is reporting the state of Flux's objects"
+          description: >-
+            `FluxObjectNotReady` and `FluxObjectSuspended` are comparisons and cannot fire without
+            `gotk_resource_info`, so a failing or suspended deploy path is unwatched. The series
+            comes from kube-state-metrics' custom-resource-state config for the flux API groups in
+            movies-gitops/kube-state-metrics/: either it has not been applied yet, the ClusterRole
+            does not grant `list`/`watch` on the flux groups and on
+            customresourcedefinitions.apiextensions.k8s.io, or the config names a version the
+            installed CRDs no longer serve. If `KubeStateMetricsSeriesAbsent` fires too, the
+            exporter itself is the problem. IT DOES NOT MEAN FLUX IS HEALTHY.

@@ -68,6 +68,7 @@ sed -e 's|@TELEGRAM_BOT_TOKEN_FILE@|/run/secrets/telegram|g' \
     -e 's|@ALERT_EMAIL_TO@|operator@example.invalid|g' \
     "$infra/nix/files/monitoring/alertmanager.yaml" > "$rendered"
 
+
 if grep -nE '@[A-Z0-9_]+@' "$rendered"; then
   echo "  FAILED alertmanager.yaml carries a placeholder this test does not substitute (above)."
   echo "         Add it here AND to the render step in nix/modules/roles/prometheus.nix -- a"
@@ -229,6 +230,19 @@ route_is telegram alertname=JvmHeapHigh severity=warning host=k3s-worker-1
 # The dead-man's handle keeps its own receiver: it must not acquire `send_resolved`, and it must
 # not start arriving by email every day.
 route_is telegram-heartbeat alertname=MonitoringHeartbeat
+
+# THE 2026-09-24 GAP AUDIT'S ALERTS reach the mailbox as well as Telegram.
+route_is telegram-and-email alertname=WebRestartNotOOMKilled severity=critical namespace=kinowo pod=web-pl-5c55479c9c-xxn56
+route_is telegram-and-email alertname=MongodMemoryNearLimit severity=critical host=mongo-1
+route_is telegram-and-email alertname=BootHealLarge severity=warning country=pl
+route_is telegram-and-email alertname=ScrapeWritesSkipped severity=warning country=pl reason=repository-write-failed
+route_is telegram-and-email alertname=ScrapeGuardStuckRejecting severity=warning country=pl guard=depth
+route_is telegram-and-email alertname=WorkerQueueHeadOld severity=warning country=es task_type=ResolveTmdb
+route_is telegram-and-email alertname=ProbeFailing severity=critical country=pl kind=front-door
+route_is telegram-and-email alertname=ProbeSlow severity=warning country=uk kind=city
+route_is telegram-and-email alertname=ProbeDiscoveryStale severity=warning
+route_is telegram-and-email alertname=FluxObjectNotReady severity=warning name=web-pl-config
+route_is telegram-and-email alertname=FluxObjectSuspended severity=warning name=web-pl-config
 
 # ------------------------------------------------------------------------------------------------
 # INHIBITION, WHICH `amtool` CANNOT TEST AND WHICH SILENTLY DELETES ALERTS WHEN IT IS WRONG.

@@ -463,3 +463,37 @@ tests:
       - eval_time: 230h
         alertname: MongodumpShrankSharply
         exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # MONGOD'S RESIDENT MEMORY AGAINST THE MACHINE'S. 3000 MiB of mongo-1's 3.8GB is 78%, past the 75%
+  # line, and held ten minutes it fires; the fortnight's real peak (1893 MiB, 48.7%) must not. The
+  # rs_state label flips at 5m, which `max by (host)` must absorb without resetting the hold.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: mongod past three quarters of the host fires, its real peak does not
+    input_series:
+      - series: 'mongodb_ss_mem_resident{host="mongo-1",rs_nm="rs0",rs_state="1"}'
+        values: '3000x5 stale'
+      - series: 'mongodb_ss_mem_resident{host="mongo-1",rs_nm="rs0",rs_state="2"}'
+        values: '_x6 3000x20'
+      - series: 'node_memory_MemTotal_bytes{host="mongo-1",job="node",instance="10.20.0.13:9100"}'
+        values: '4008202240x30'
+      - series: 'node_memory_MemTotal_bytes{host="k3s-worker-1",job="node",instance="10.20.0.12:9100"}'
+        values: '16374734848x30'
+      - series: 'mongodb_ss_mem_resident{host="mongo-2",rs_nm="rs0",rs_state="2"}'
+        values: '1893x30'
+      - series: 'node_memory_MemTotal_bytes{host="mongo-2",job="node",instance="10.20.0.14:9100"}'
+        values: '4008202240x30'
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: MongodMemoryNearLimit
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: MongodMemoryNearLimit
+        exp_alerts:
+          - exp_labels:
+              host: "mongo-1"
+              severity: "critical"
+            exp_annotations:
+              summary: "mongod on mongo-1 holds 78.48% of the machine's memory"
+              description: "mongod's resident memory is past three quarters of the host's RAM and there is no cgroup limit to stop it -- the next thing to happen is the kernel's OOM killer, and a mongod kill takes every city's listings with it until the web tier re-hydrates. First check the WiredTiger cache is still pinned (`db.serverStatus().wiredTiger.cache [\"maximum bytes configured\"]` should read 1GB; roles/mongodb.nix `wiredTigerCacheSizeGB`), then who is holding memory outside it: `db.serverStatus().tcmalloc` for freed-but-unreleased heap and `db.serverStatus().connections` for a client pool that has grown. Growing the machine is the fix only once neither of those explains it."

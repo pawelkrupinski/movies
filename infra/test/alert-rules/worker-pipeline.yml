@@ -463,3 +463,30 @@ tests:
       - eval_time: 25m
         alertname: WorkerTaskParkedTooLong
         exp_alerts: []
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A CLAIMABLE TASK WHOSE HEAD HAS WAITED OVER TWO HOURS. ES's ResolveTmdb head ages one minute per
+  # minute, crosses 2h at 120m, and fires half an hour later -- across a worker-restart scrape gap at
+  # 131m that the `last_over_time` must bridge. UK's ScrapeChunk sits at 1.7h, the fleet's healthy
+  # 30-day maximum, and must not.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a queue head older than two hours fires across a restart gap, the healthy maximum does not
+    input_series:
+      - series: 'kinowo_worker_queue_oldest_waiting_age_seconds{country="es",task_type="ResolveTmdb"}'
+        values: '0+60x130 stale stale stale 8040+60x60'
+      - series: 'kinowo_worker_queue_oldest_waiting_age_seconds{country="uk",task_type="ScrapeChunk"}'
+        values: '6120x190'
+    alert_rule_test:
+      - eval_time: 140m
+        alertname: WorkerQueueHeadOld
+        exp_alerts: []
+      - eval_time: 165m
+        alertname: WorkerQueueHeadOld
+        exp_alerts:
+          - exp_labels:
+              country: "es"
+              severity: "warning"
+              task_type: "ResolveTmdb"
+            exp_annotations:
+              summary: "es's oldest claimable ResolveTmdb task has waited 2h 45m 0s"
+              description: "A ResolveTmdb task in \"es\" has been claimable -- due, not in backoff -- for over two hours and nothing has picked it up, while the rest of the queue may well be moving. Either the pool is saturated by other types (the queue-depth panel by type, and `kinowo_worker_queue_depth{state=\"worked_on\"}` pinned at the pool size) or claim ordering is starving this type. The country's /tasks page lists the waiting tasks with their due times; the oldest one is the one this is about."

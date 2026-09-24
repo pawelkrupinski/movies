@@ -48,6 +48,12 @@ EVENT_ONLY_VALUES = {
     # kube-state-metrics publishes a reason series only while a container is in that state.
     ("kube_pod_container_status_waiting_reason", "reason", "CrashLoopBackOff"),
     ("kube_pod_container_status_last_terminated_reason", "reason", "OOMKilled"),
+    # NOT PUBLISHED YET, rather than event-only: kube-state-metrics produces `gotk_resource_info`
+    # only once movies-gitops gives it the custom-resource-state config for Flux's objects (see the
+    # `flux-objects` group in flux.rules). `ready` and `suspended` are the Ready condition's status
+    # and `spec.suspend` verbatim. Delete these two, and re-snapshot, once the series exists.
+    ("gotk_resource_info", "ready", "False"),
+    ("gotk_resource_info", "suspended", "true"),
 }
 
 

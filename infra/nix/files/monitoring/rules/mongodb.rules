@@ -386,6 +386,46 @@ groups:
             clients. A pool that grows without bound is a client bug, and raising the ceiling for it
             postpones the same failure at greater cost.
 
+      # -------------------------------------------------------------------------------------------
+      # MONGOD'S OWN MEMORY, AGAINST THE MACHINE'S. This database has been OOM-killed twice
+      # (2026-06-06 and 2026-07-29 on Fly, see roles/mongodb.nix's `wiredTigerCacheSizeGB`), and
+      # the 07-29 kill blanked every PL and UK city for ~17 minutes. `MemoryAvailableLow` in
+      # host-health.rules watches the HOST, which on a box shared with mongodump and node_exporter
+      # cannot say whether it is mongod that grew; this says so directly.
+      #
+      # THE DENOMINATOR IS THE HOST, NOT A CGROUP LIMIT, because there is none: roles/mongodb.nix
+      # sets no MemoryMax on purpose (a hard limit turns pressure into the kernel killing mongod).
+      # So the ceiling is the machine's RAM, joined on `host` from node_exporter. `mem.resident`
+      # is reported in MiB, hence the multiplier.
+      #
+      # 75% IS 2.9GB OF mongo-1's 3.8GB. Measured 2026-09-10..09-24: resident peaked at 1893 MiB,
+      # 48.7% of the host -- the pinned 1GB WiredTiger cache plus ~0.8GB of connections, indexes
+      # and tcmalloc slack. 75% is half again above that peak, and past it the OS, the page cache
+      # WiredTiger's compressed blocks depend on, and the nightly mongodump are left under 1GB
+      # between them. Zero firings in the replay.
+      #
+      # `max by (host)` BECAUSE THE EXPORTER LABELS THIS SERIES WITH `rs_state`, which changes on a
+      # step-down; unaggregated, a role change would reset the hold.
+      - alert: MongodMemoryNearLimit
+        expr: >-
+          max by (host) (mongodb_ss_mem_resident) * 1048576
+            / on (host) max by (host) (node_memory_MemTotal_bytes{job="node"}) > 0.75
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "mongod on {{ $labels.host }} holds {{ $value | humanizePercentage }} of the machine's memory"
+          description: >-
+            mongod's resident memory is past three quarters of the host's RAM and there is no
+            cgroup limit to stop it -- the next thing to happen is the kernel's OOM killer, and a
+            mongod kill takes every city's listings with it until the web tier re-hydrates. First
+            check the WiredTiger cache is still pinned (`db.serverStatus().wiredTiger.cache
+            ["maximum bytes configured"]` should read 1GB; roles/mongodb.nix
+            `wiredTigerCacheSizeGB`), then who is holding memory outside it:
+            `db.serverStatus().tcmalloc` for freed-but-unreleased heap and
+            `db.serverStatus().connections` for a client pool that has grown. Growing the machine
+            is the fix only once neither of those explains it.
+
       # ONE RULE PER ASSERT CLASS, because the two classes carry opposite meanings and the single
       # rule that summed them alerted on the wrong one. It fired on 2026-09-05 at 1.5/s and every
       # assert in it was `user`: mongod was healthy, and what had changed was CONNECTION CHURN from

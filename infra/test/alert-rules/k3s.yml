@@ -351,3 +351,55 @@ tests:
             exp_annotations:
               description: "THE CGROUP LIMIT KILLED IT, WHICH IS NOT THE SAME AS THE NODE RUNNING OUT OF MEMORY -- k3s-worker-1 has 16GB and one workload. Check the container's `resources.limits.memory` first; the limit is the number that decided this. FOR A JVM CONTAINER, an OOM kill means the process grew past its limit in NATIVE memory rather than heap, because `-XX:+ExitOnOutOfMemoryError` makes a heap exhaustion a clean exit instead -- so look at metaspace, direct buffers and thread stacks, not `-Xmx`. If the host itself is under memory pressure, `MemoryAvailableLow` in host-health.rules will be firing alongside this and it is the one to read first."
               summary: "kinowo/worker-pl-5d8f container worker was OOMKilled"
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A WEB CONTAINER THAT RESTARTED ON ITS OWN -- the heap self-exit (`ExitOnOutOfMemoryError`, reason
+  # `Error`) that six web restarts in the fortnight to 2026-09-24 were, and that nothing alerted on.
+  # The counter moves at 11m; the reason says the kernel did not do it. Fires while the 15m window
+  # holds the restart, and stops once it has passed.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a web container restarting without an OOM kill fires
+    input_series:
+      - series: 'kube_pod_container_status_restarts_total{namespace="kinowo",pod="web-pl-5c55",container="web"}'
+        values: '0x10 1x40'
+      - series: 'kube_pod_container_status_last_terminated_reason{namespace="kinowo",pod="web-pl-5c55",container="web",reason="Error"}'
+        values: '1x50'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: WebRestartNotOOMKilled
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: WebRestartNotOOMKilled
+        exp_alerts:
+          - exp_labels:
+              container: "web"
+              namespace: "kinowo"
+              pod: "web-pl-5c55"
+              severity: "critical"
+            exp_annotations:
+              summary: "web-pl-5c55 restarted without being OOM-killed"
+              description: "A web container restarted outside a rollout, and the kernel did not kill it -- so the JVM exited on its own or its liveness probe gave up. The usual cause is a HEAP OOM: `-XX:+ExitOnOutOfMemoryError` makes it a clean exit, the dying stderr is appended to /data/logs/web-stderr.log in the pod, and a heap dump lands under /var/lib/kinowo/heapdumps/ on k3s-worker-1 (`HeapDumpWritten` names it). Read `kubectl -n kinowo logs web-pl-5c55 -c web --previous` first, and `kubectl -n kinowo get pod web-pl-5c55 -o jsonpath='{.status.containerStatuses[0].lastState}'` for the exit code (3 is the heap exit, 137 without OOMKilled is a liveness kill). The site served 502s for this pod's country while the replacement hydrated."
+      - eval_time: 40m
+        alertname: WebRestartNotOOMKilled
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # ...AND THE THREE RESTARTS IT MUST LEAVE ALONE: a kernel OOM kill (K3sContainerOOMKilled's), a
+  # worker restart (not the web tier), and a web pod that has not restarted at all.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: an OOM kill, a worker restart and a steady web pod stay quiet
+    input_series:
+      - series: 'kube_pod_container_status_restarts_total{namespace="kinowo",pod="web-us-7b5d",container="web"}'
+        values: '2x10 3x40'
+      - series: 'kube_pod_container_status_last_terminated_reason{namespace="kinowo",pod="web-us-7b5d",container="web",reason="OOMKilled"}'
+        values: '1x50'
+      - series: 'kube_pod_container_status_restarts_total{namespace="kinowo",pod="worker-pl-5d8f",container="worker"}'
+        values: '0x10 1x40'
+      - series: 'kube_pod_container_status_restarts_total{namespace="kinowo",pod="web-de-9c1a",container="web"}'
+        values: '0x50'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: WebRestartNotOOMKilled
+        exp_alerts: []

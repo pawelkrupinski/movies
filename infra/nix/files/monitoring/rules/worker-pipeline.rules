@@ -355,3 +355,39 @@ groups:
             writes that FAILED") say which store and why: a codec exception is a model field the
             DTO cannot encode, a MongoWriteException a validator or duplicate key, a timeout the
             database itself.
+
+      # -----------------------------------------------------------------------------------------
+      # A TASK TYPE WHOSE HEAD HAS WAITED HOURS. `WorkerQueueStalled` fires only when NOTHING is
+      # claimed, and `WorkerQueueGrowingUnbounded` only when depth climbs. Neither sees one type
+      # starved behind the others while the queue as a whole moves: a resolve or a scrape that is
+      # claimable and never claimed, so a film is never resolved or a cinema never re-scraped, and
+      # every throughput panel looks healthy.
+      #
+      # THE GAUGE IS ALREADY THE RIGHT QUESTION. `kinowo_worker_queue_oldest_waiting_age_seconds`
+      # is the age of the oldest CLAIMABLE waiting task per type -- tasks held in retry backoff or
+      # scheduled for later are excluded where it is computed (WorkerTaskMetrics), so deferred work
+      # does not inflate it and a long backoff cannot page.
+      #
+      # TWO HOURS, HELD HALF AN HOUR. Measured over the whole retention (30 days to 2026-09-24):
+      # the per-country maxima were ES 1.7h (ResolveTmdb, 09-21), UK 1.2h, US 0.5h, DE 0.25h, PL
+      # 0.18h. An hour -- the first draft -- would have fired on the ES 09-21 peak, a backlog that
+      # drained by itself; two hours sits above everything the fleet has done while healthy and
+      # far below the day-long head PL once reached. Zero firings over the 30 days.
+      #
+      # `last_over_time(...[10m])` BRIDGES A WORKER RESTART, as the coverage guard requires for a
+      # held gauge; a restart re-seeds the gauge at 0, so a real restart clears it honestly.
+      - alert: WorkerQueueHeadOld
+        expr: >-
+          max by (country, task_type) (last_over_time(kinowo_worker_queue_oldest_waiting_age_seconds[10m])) > 2 * 3600
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}'s oldest claimable {{ $labels.task_type }} task has waited {{ $value | humanizeDuration }}"
+          description: >-
+            A {{ $labels.task_type }} task in "{{ $labels.country }}" has been claimable -- due, not
+            in backoff -- for over two hours and nothing has picked it up, while the rest of the
+            queue may well be moving. Either the pool is saturated by other types (the queue-depth
+            panel by type, and `kinowo_worker_queue_depth{state="worked_on"}` pinned at the pool
+            size) or claim ordering is starving this type. The country's /tasks page lists the
+            waiting tasks with their due times; the oldest one is the one this is about.

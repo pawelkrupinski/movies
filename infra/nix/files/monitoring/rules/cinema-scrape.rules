@@ -354,3 +354,89 @@ groups:
             row's error text says whether the detail endpoint moved, started refusing us, or the
             parser no longer reads it. The chain's venue scrapes are counted separately, by
             CinemaScrapeFailureShareHigh.
+
+      # -----------------------------------------------------------------------------------------
+      # A SCRAPE SAW A FILM AND ITS WRITE DID NOT LAND.
+      #
+      # `kinowo_worker_scrape_write_skipped_total` (services.movies.ScrapeLandingMetrics) was
+      # published on 2026-09-13 and read by nothing until this rule. Two of its three reasons mean
+      # a listing the scrape observed never reached the store: `repository-write-failed` is
+      # `MovieRepository.updateIfPresent` answering false for a row that WAS in the cache -- the
+      # write `MovieCache.putIfPresent` used to report as a success regardless, which is half of
+      # how Kino Aurum's screenings sat five days stale in 2026-09 -- and `unreadable-row` is the
+      # stored row failing to read at all. Both were zero for every country over 2026-09-10..09-24,
+      # so ANY of either is news and the rule has no threshold to argue about.
+      #
+      # `cache-miss-race` IS LEFT OUT, deliberately: a concurrent rekey of another title
+      # invalidating this key between read and compute, reasoned about in `ScrapeLanding` and
+      # spared from that tick's prune. It runs at up to 17 an hour in PL (1635 over the same
+      # fortnight) with no stale listing to show for it, so it is the routine case.
+      #
+      # NO `for:`: a counter read through an hour's increase() is already its own patience, and
+      # bridges the worker restart that resets it.
+      - alert: ScrapeWritesSkipped
+        expr: >-
+          sum by (country, reason) (
+            increase(kinowo_worker_scrape_write_skipped_total{reason=~"repository-write-failed|unreadable-row"}[1h])
+          ) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: {{ $value | humanize }} scraped listings did not reach the store ({{ $labels.reason }})"
+          description: >-
+            A scrape in "{{ $labels.country }}" observed a film and its write did not land
+            ({{ $labels.reason }}). The in-memory cache already shows the new state, so the SITE
+            LOOKS RIGHT until the next restart re-reads the store -- which is exactly how a cinema's
+            listings can sit stale for days with every scrape green. `repository-write-failed` is
+            Mongo answering "no document updated" for a row the cache holds: look for the WARN line
+            from MovieCache.putIfPresent naming the film, and whether its `_id` was re-keyed under
+            the cache. `unreadable-row` pairs with a WARN from ScrapeLanding naming the row that
+            would not decode -- usually a codec change meeting an old document.
+
+      # -----------------------------------------------------------------------------------------
+      # A SCRAPE GUARD HAS BEEN REJECTING EVERY HOUR FOR TWELVE HOURS.
+      #
+      # `ScrapeHealth`'s depth and breadth guards discard a tick (depth) or skip its prune
+      # (breadth) when a scrape looks partial. Rejecting is their job, and one cinema's bad fetch
+      # is routine. The failure is a guard that NEVER STOPS: Kino Aurum's breadth-guard deadlock
+      # (fixed 2026-09-14) kept 46 stale slots alive because the guard's own skip was the only
+      # thing stopping them from being pruned, and the only trace was a log line per tick.
+      #
+      # The counter has no `cinema` label, so "never stops" is asked per country and guard: at
+      # least one rejection in EVERY one-hour window across twelve hours. Measured over
+      # 2026-09-10..09-24 (VictoriaLogs for which cinema):
+      #   3h  -- 9 series, 80+ episodes: ordinary scattered rejects across a big roster.
+      #   6h  -- PL breadth fired on 11 separate days: still the roster's background.
+      #   12h -- two episodes, both real: PL depth from 00:59 on 09-14, Kino Aurum and artKino
+      #          discarding every tick (24 and 23 times), eleven hours before the fix shipped; and
+      #          PL breadth late on 09-23, Baszta and Kino nad Wartą depth-discarding 12 times
+      #          each with Kino OK Drawsko Pomorskie's prune skipped 10 times.
+      # So twelve hours is where the background stops and stuck cinemas start.
+      #
+      # COUNTED, NOT `min_over_time(...) > 0`, and the difference is the rule. A 12h subquery
+      # evaluates 72 ten-minute points, and `min_over_time` ignores the ones with no value -- so a
+      # series only an hour old (a new country, a counter first scraped after a Prometheus gap)
+      # had its minimum taken over six points and fired after an hour, not twelve. Requiring all
+      # 72 points to have seen a rejection is what makes the twelve hours real.
+      #
+      # NO `for:`: the twelve hours live in the subquery. increase() per window bridges a worker
+      # restart (the counters are seeded at 0 per guard and verdict).
+      - alert: ScrapeGuardStuckRejecting
+        expr: >-
+          count_over_time(
+            (sum by (country, guard) (increase(kinowo_worker_scrape_guard_verdicts_total{verdict="reject"}[1h])) > 0)[12h:10m]
+          ) >= 72
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}'s {{ $labels.guard }} scrape guard has rejected ticks every hour for 12 hours"
+          description: >-
+            Every hour for twelve hours at least one cinema in "{{ $labels.country }}" had a scrape
+            the {{ $labels.guard }} guard judged partial (depth: the tick's showtimes were
+            DISCARDED; breadth: its prune was SKIPPED, so films that left the board stay listed).
+            One cinema doing that for half a day is a scraper broken in a shape the guard cannot
+            tell from a bad fetch -- Kino Aurum's five stale days began exactly like this. Find the
+            cinema: in the log store, `country:{{ $labels.country }} ("DISCARDED tick" OR "SKIPPED
+            prune")` over the last 12h, counted by cinema; the one with a line every tick is it.
+            Then compare its live listing with /{city}/ -- a real schedule cut needs nothing, a
+            broken parser needs fixing.

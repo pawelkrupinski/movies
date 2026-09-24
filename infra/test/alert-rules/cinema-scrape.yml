@@ -480,3 +480,57 @@ tests:
                 row's error text says whether the detail endpoint moved, started refusing us, or the
                 parser no longer reads it. The chain's venue scrapes are counted separately, by
                 CinemaScrapeFailureShareHigh.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A SCRAPED LISTING THAT NEVER REACHED THE STORE. Three `repository-write-failed` skips in PL fire;
+  # UK's 50 `cache-miss-race` skips -- the routine, reasoned-about race -- do not.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a failed scrape write fires, the routine cache-miss race does not
+    input_series:
+      - series: 'kinowo_worker_scrape_write_skipped_total{country="pl",reason="repository-write-failed"}'
+        values: '0x90 3x60'
+      - series: 'kinowo_worker_scrape_write_skipped_total{country="uk",reason="cache-miss-race"}'
+        values: '0x90 50x60'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: ScrapeWritesSkipped
+        exp_alerts: []
+      - eval_time: 100m
+        alertname: ScrapeWritesSkipped
+        exp_alerts:
+          - exp_labels:
+              country: "pl"
+              reason: "repository-write-failed"
+              severity: "warning"
+            exp_annotations:
+              summary: "pl: 3 scraped listings did not reach the store (repository-write-failed)"
+              description: "A scrape in \"pl\" observed a film and its write did not land (repository-write-failed). The in-memory cache already shows the new state, so the SITE LOOKS RIGHT until the next restart re-reads the store -- which is exactly how a cinema's listings can sit stale for days with every scrape green. `repository-write-failed` is Mongo answering \"no document updated\" for a row the cache holds: look for the WARN line from MovieCache.putIfPresent naming the film, and whether its `_id` was re-keyed under the cache. `unreadable-row` pairs with a WARN from ScrapeLanding naming the row that would not decode -- usually a codec change meeting an old document."
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A SCRAPE GUARD REJECTING EVERY HOUR FOR TWELVE -- Kino Aurum's depth guard on 2026-09-13/14. PL's
+  # depth guard rejects once a minute throughout, with a worker restart (a `stale` gap and the counter
+  # back at 0) at 6h: each hour's increase() still counts. UK's breadth guard rejects just as often
+  # but pauses for two hours in the middle, which is the ordinary scattered shape and must not fire.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a guard rejecting every hour for twelve fires, one that pauses does not
+    input_series:
+      - series: 'kinowo_worker_scrape_guard_verdicts_total{country="pl",guard="depth",verdict="reject"}'
+        values: '0+1x360 stale stale stale 0+1x500'
+      - series: 'kinowo_worker_scrape_guard_verdicts_total{country="uk",guard="breadth",verdict="reject"}'
+        values: '0+1x300 300x120 300+1x450'
+    alert_rule_test:
+      - eval_time: 11h
+        alertname: ScrapeGuardStuckRejecting
+        exp_alerts: []
+      - eval_time: 13h
+        alertname: ScrapeGuardStuckRejecting
+        exp_alerts:
+          - exp_labels:
+              country: "pl"
+              guard: "depth"
+              severity: "warning"
+            exp_annotations:
+              summary: "pl's depth scrape guard has rejected ticks every hour for 12 hours"
+              description: "Every hour for twelve hours at least one cinema in \"pl\" had a scrape the depth guard judged partial (depth: the tick's showtimes were DISCARDED; breadth: its prune was SKIPPED, so films that left the board stay listed). One cinema doing that for half a day is a scraper broken in a shape the guard cannot tell from a bad fetch -- Kino Aurum's five stale days began exactly like this. Find the cinema: in the log store, `country:pl (\"DISCARDED tick\" OR \"SKIPPED prune\")` over the last 12h, counted by cinema; the one with a line every tick is it. Then compare its live listing with /{city}/ -- a real schedule cut needs nothing, a broken parser needs fixing."

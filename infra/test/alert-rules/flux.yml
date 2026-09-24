@@ -174,3 +174,80 @@ tests:
             exp_annotations:
               summary: 'flux ImageRepository/movies-web has not reconciled for an hour'
               description: "`gotk_reconcile_duration_seconds_count` for this object has not moved in an hour, while the busiest objects on this cluster reconcile 12-14 times an hour. Either its controller is wedged, the object is suspended, or its source is unreachable. This is the DEPLOY PATH: a stopped Kustomization means merged changes stop reaching pods, silently, with CI green and the image built -- the state that hid a read-model fix for hours on 2026-09-07. Check `flux get all -A` on monitoring-1 and the controller's own output in the log store (`namespace:flux-system`). This alert does NOT watch reconciliation FAILURE: an object that reconciles and fails every time keeps this counter moving and stays silent here. ImagePolicy is EXCLUDED: it has no interval and advances only when an image is built, so an hour of silence is its normal state -- a wedged image-reflector-controller is caught by its ImageRepository instead."
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE OBJECTS' OWN STATUS, from kube-state-metrics' custom-resource-state config. web-pl-config has
+  # been Ready=False for over half an hour and fires; web-de-config went False for twenty minutes (one
+  # failed health check and its retry, the shape kustomize-controller healed five times in 48h) and
+  # must not; headlamp has been suspended for over an hour and fires; reloader is Ready and running.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a Kustomization NotReady for 30m fires, a retried health check does not; a long suspension fires
+    input_series:
+      - series: 'gotk_resource_info{customresource_group="kustomize.toolkit.fluxcd.io",customresource_kind="Kustomization",customresource_version="v1",namespace="flux-system",name="web-pl-config",ready="False",suspended="false"}'
+        values: '1x90'
+      - series: 'gotk_resource_info{customresource_group="kustomize.toolkit.fluxcd.io",customresource_kind="Kustomization",customresource_version="v1",namespace="flux-system",name="web-de-config",ready="False",suspended="false"}'
+        values: '1x20 stale'
+      - series: 'gotk_resource_info{customresource_group="kustomize.toolkit.fluxcd.io",customresource_kind="Kustomization",customresource_version="v1",namespace="flux-system",name="web-de-config",ready="True",suspended="false"}'
+        values: '_x21 1x69'
+      - series: 'gotk_resource_info{customresource_group="kustomize.toolkit.fluxcd.io",customresource_kind="Kustomization",customresource_version="v1",namespace="flux-system",name="headlamp",ready="True",suspended="true"}'
+        values: '1x90'
+      - series: 'gotk_resource_info{customresource_group="kustomize.toolkit.fluxcd.io",customresource_kind="Kustomization",customresource_version="v1",namespace="flux-system",name="reloader",ready="True",suspended="false"}'
+        values: '1x90'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: FluxObjectNotReady
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: FluxObjectNotReady
+        exp_alerts:
+          - exp_labels:
+              customresource_kind: "Kustomization"
+              name: "web-pl-config"
+              namespace: "flux-system"
+              severity: "warning"
+            exp_annotations:
+              summary: "flux Kustomization/web-pl-config has been NotReady for 30 minutes"
+              description: "The object reconciles and FAILS -- the case `FluxReconciliationStopped` cannot see, because the reconcile counter keeps moving. For a Kustomization this means merged changes are not reaching the cluster: the pods keep serving the last image that did apply, with CI green. `flux get all -A` on monitoring-1 names the object and its message; `kubectl -n flux-system describe kustomization web-pl-config` has the condition's full text. A health-check timeout usually means a pod that will not become Ready (see `K3sDeploymentReplicasMissing`); a build error means a bad manifest in movies-gitops."
+      - eval_time: 50m
+        alertname: FluxObjectSuspended
+        exp_alerts: []
+      - eval_time: 70m
+        alertname: FluxObjectSuspended
+        exp_alerts:
+          - exp_labels:
+              customresource_kind: "Kustomization"
+              name: "headlamp"
+              namespace: "flux-system"
+              severity: "warning"
+            exp_annotations:
+              summary: "flux Kustomization/headlamp has been suspended for an hour"
+              description: "A suspended object reconciles NOTHING: its source can move, its images can be built and tagged, and the cluster does not change -- quietly, with every signal green, which is the 2026-09-03 failure by another door. If the hold is still wanted, silence this in Alertmanager with an expiry; if not, resume it (`flux resume kustomization headlamp` for a Kustomization; `flux resume --help` names the other kinds)."
+      - eval_time: 70m
+        alertname: FluxObjectStateAbsent
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # BEFORE THE GITOPS CHANGE: kube-state-metrics is up (kube_node_info) and publishes no Flux object
+  # state. The companion fires after half an hour, and the two comparison rules cannot.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: no gotk_resource_info fires the companion
+    input_series:
+      - series: 'kube_node_info{node="k3s-worker-1"}'
+        values: '1x40'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: FluxObjectStateAbsent
+        exp_alerts: []
+      - eval_time: 35m
+        alertname: FluxObjectStateAbsent
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+            exp_annotations:
+              summary: "Nothing is reporting the state of Flux's objects"
+              description: "`FluxObjectNotReady` and `FluxObjectSuspended` are comparisons and cannot fire without `gotk_resource_info`, so a failing or suspended deploy path is unwatched. The series comes from kube-state-metrics' custom-resource-state config for the flux API groups in movies-gitops/kube-state-metrics/: either it has not been applied yet, the ClusterRole does not grant `list`/`watch` on the flux groups and on customresourcedefinitions.apiextensions.k8s.io, or the config names a version the installed CRDs no longer serve. If `KubeStateMetricsSeriesAbsent` fires too, the exporter itself is the problem. IT DOES NOT MEAN FLUX IS HEALTHY."
+      - eval_time: 35m
+        alertname: FluxObjectNotReady
+        exp_alerts: []

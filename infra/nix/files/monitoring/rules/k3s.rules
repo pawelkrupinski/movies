@@ -305,6 +305,49 @@ groups:
             memory pressure, `MemoryAvailableLow` in host-health.rules will be firing alongside
             this and it is the one to read first.
 
+      # A WEB CONTAINER RESTARTED AND THE KERNEL DID NOT KILL IT. `K3sContainerOOMKilled` above
+      # covers the cgroup kill; this covers every other restart of the one tier users see, and on
+      # this fleet "every other" is mostly the JVM exiting on its own: `-XX:+ExitOnOutOfMemoryError`
+      # turns a heap exhaustion into exit code 3 (reason `Error`), the kubelet restarts the
+      # container, and the site answers 502 for the ~minute the replacement takes to hydrate.
+      # In the fortnight to 2026-09-24 six web restart episodes were that shape -- web-pl 09-17
+      # and 09-21, web-us 09-11, 09-17 (twice) and 09-18; every other web restart was an OOM
+      # kill -- and nothing alerted on any of the six, because none was an OOM kill and none
+      # restarted often enough to reach CrashLoopBackOff.
+      #
+      # A ROLLOUT CANNOT FIRE THIS. The restart counter is per container instance and a rollout
+      # replaces pods rather than restarting them, so a deploy starts every new pod at 0 and
+      # `increase()` sees nothing. A new pod that crashes during its own rollout DOES fire, and
+      # should: that is a deploy that is failing.
+      #
+      # `unless` THE OOM KILLS, which `K3sContainerOOMKilled` already reports. The reason gauge
+      # describes the LAST termination, which is exactly the one the 15m window just counted.
+      #
+      # NO `for:`: a restart is an event, already over by the time it is counted. The 15m window is
+      # how long it stays visible, and the alert resolves on its own once it has passed.
+      # Replayed over 2026-09-10..09-24: six episodes, each one of the self-exits above, 11-19
+      # minutes long, nothing else.
+      - alert: WebRestartNotOOMKilled
+        expr: >-
+          (increase(kube_pod_container_status_restarts_total{namespace="kinowo",container="web"}[15m]) > 0)
+            unless on (namespace, pod, container)
+              (kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1)
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.pod }} restarted without being OOM-killed"
+          description: >-
+            A web container restarted outside a rollout, and the kernel did not kill it -- so the
+            JVM exited on its own or its liveness probe gave up. The usual cause is a HEAP OOM:
+            `-XX:+ExitOnOutOfMemoryError` makes it a clean exit, the dying stderr is appended to
+            /data/logs/web-stderr.log in the pod, and a heap dump lands under
+            /var/lib/kinowo/heapdumps/ on k3s-worker-1 (`HeapDumpWritten` names it). Read
+            `kubectl -n {{ $labels.namespace }} logs {{ $labels.pod }} -c web --previous` first,
+            and `kubectl -n {{ $labels.namespace }} get pod {{ $labels.pod }} -o
+            jsonpath='{.status.containerStatuses[0].lastState}'` for the exit code (3 is the heap
+            exit, 137 without OOMKilled is a liveness kill). The site served 502s for this pod's
+            country while the replacement hydrated.
+
       - alert: KubeStateMetricsSeriesAbsent
         # ONE COMPANION FOR THE WHOLE GROUP, on the series that cannot legitimately be missing: this
         # cluster always has at least one node, so `kube_node_info` is absent only if

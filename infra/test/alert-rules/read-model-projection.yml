@@ -1162,3 +1162,30 @@ tests:
                 that never finishes: the "read-model prune sweep" INFO line stops appearing) or on a
                 Mongo read (the stitch `findById`); a thread dump of the worker names which
                 (`movie-change-apply`).
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A BOOT THAT RE-PROJECTED 376 FILMS -- PL on 2026-09-23. The same hour's six routine boot heals in
+  # the US, and 400 SWEEP heals in DE (ReadModelHealsRecurring's, not this one's), must stay quiet.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a boot healing hundreds fires, routine boot heals and sweep heals do not
+    input_series:
+      - series: 'kinowo_worker_readmodel_heals_total{country="pl",trigger="boot"}'
+        values: '0x90 376x60'
+      - series: 'kinowo_worker_readmodel_heals_total{country="us",trigger="boot"}'
+        values: '0x90 6x60'
+      - series: 'kinowo_worker_readmodel_heals_total{country="de",trigger="sweep"}'
+        values: '0x90 400x60'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: BootHealLarge
+        exp_alerts: []
+      - eval_time: 100m
+        alertname: BootHealLarge
+        exp_alerts:
+          - exp_labels:
+              country: "pl"
+              severity: "warning"
+            exp_annotations:
+              summary: "pl's worker boot re-projected 376 films the read model was missing"
+              description: "The boot check in \"pl\" found that many ready films with no card or no venue in the read model and projected them. A handful per boot is the old pod's last minutes; this many means the read model had been serving WITHOUT them -- for however long it took a restart to come along -- and that the change-stream path dropped them first. The boot's WARN line names the ids (\"projected N ready row(s) missing a card or a venue\"); ask what retired their cards before the restart (`kinowo_worker_readmodel_cards_retired_total` by reason, `RemovalAudit` lines for the same ids). Healed now, so this is a post-mortem, not an outage -- but the same miss will open the same hole again until it is found."

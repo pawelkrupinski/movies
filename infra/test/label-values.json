@@ -15,6 +15,7 @@
     "same_as": "gotk_reconcile_duration_seconds_bucket"
    }
   },
+  "gotk_resource_info": {},
   "jvm_buffer_pool_capacity_bytes": {
    "job": [
     "kinowo-web",
@@ -9279,6 +9280,19 @@
     "miss_unresolved"
    ]
   },
+  "kinowo_worker_scrape_guard_verdicts_total": {
+   "verdict": [
+    "accept",
+    "reject"
+   ]
+  },
+  "kinowo_worker_scrape_write_skipped_total": {
+   "reason": [
+    "cache-miss-race",
+    "repository-write-failed",
+    "unreadable-row"
+   ]
+  },
   "kinowo_worker_share_cards_poster_load_total": {
    "attempt": [
     "first",
@@ -9375,6 +9389,20 @@
    ]
   },
   "kube_pod_container_status_restarts_total": {
+   "container": [
+    "c",
+    "client",
+    "coredns",
+    "headlamp",
+    "kube-state-metrics",
+    "local-path-provisioner",
+    "manager",
+    "nginx",
+    "reloader",
+    "server",
+    "web",
+    "worker"
+   ],
    "namespace": [
     "flux-system",
     "kinowo",
@@ -9557,7 +9585,10 @@
   "node_memory_MemTotal_bytes": {
    "host": {
     "same_as": "node_cpu_seconds_total"
-   }
+   },
+   "job": [
+    "node"
+   ]
   },
   "node_systemd_unit_state": {
    "name": [
