@@ -770,6 +770,35 @@ class StateSyncServiceTest {
         assertEquals("es", languageClient.remote)
     }
 
+    /** Picking pl, then es, then pl again while the first pl is on the wire,
+     *  with another device picking en in between: the final pl is a NEW pick,
+     *  newer than en, even though it equals the value just confirmed — it must
+     *  be sent, not taken as already done. Mirrors iOS. */
+    @Test
+    fun aRepeatedPickMadeWhileItsTwinIsOnTheWireIsSentAgain() = runTest(UnconfinedTestDispatcher()) {
+        languageClient.remote = "de"
+        startService()
+        login()
+        advanceUntilIdle()
+
+        val gate = CompletableDeferred<Unit>()
+        languageClient.beforePushResponse = { gate.await() }
+        prefs.setLanguageTag("pl")
+        advanceTimeBy(500)
+        runCurrent() // pl applied, its response on the wire
+        languageClient.beforePushResponse = {}
+        prefs.setLanguageTag("es")
+        runCurrent()
+        languageClient.remote = "en" // another device
+        prefs.setLanguageTag("pl")
+        advanceTimeBy(500)
+        runCurrent()
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals("pl", languageClient.remote)
+    }
+
     /** Picking back to the account's language INSIDE the debounce — nothing
      *  has been sent yet — leaves nothing to push, as on iOS. Only a push
      *  already on the wire makes the pick-back worth sending. */

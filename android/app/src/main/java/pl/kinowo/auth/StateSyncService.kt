@@ -84,6 +84,9 @@ class StateSyncService(
     /** Counts the language pushes the server confirmed, so a reconcile can
      *  tell that one landed while its fetch was on the wire. */
     @Volatile private var languagePushesConfirmed = 0
+    /** Counts local picks, so a send can tell a pick made while it was on the
+     *  wire from the one it sent — even when both are the same value. */
+    @Volatile private var languagePicks = 0
     /** Serialises every read-modify-write of the persisted hiddenFilms queue. */
     private val queueMutex = Mutex()
     /** Serialises the flushes, so no queued edit is sent twice. Never held
@@ -250,6 +253,7 @@ class StateSyncService(
         languageSendMutex.withLock {
             while (loggedIn) {
                 val pending = prefs.pendingLanguagePush() ?: return
+                val picksBeforeSend = languagePicks
                 languageSendInFlight = true
                 runCatchingCancellable {
                     try { languageClient.push(pending) } finally { languageSendInFlight = false }
@@ -267,7 +271,9 @@ class StateSyncService(
                 }
                 accountLanguage = pending
                 languagePushesConfirmed++
-                if (prefs.pendingLanguagePush() == pending) {
+                // A pick made meanwhile is newer than whatever else reached the
+                // account during this push, even when it is the value just sent.
+                if (languagePicks == picksBeforeSend && prefs.pendingLanguagePush() == pending) {
                     prefs.setPendingLanguagePush(null)
                     return
                 }
@@ -285,7 +291,8 @@ class StateSyncService(
      *  change to [accountLanguage] merely adopted the server's pick (or went
      *  back to it with no other pick's push on the wire), so it is never
      *  echoed; anything else is a local pick, marked pending and pushed after
-     *  a 400 ms debounce so a rapid run of picker taps folds into one PUT. `distinctUntilChanged` because the
+     *  a 400 ms debounce so a rapid run of picker taps folds into one PUT.
+     *  `distinctUntilChanged` because the
      *  DataStore flow re-emits the same tag on every prefs write (including
      *  the pending-pick write below); `drop(1)` skips the current
      *  (post-reconcile) value. */
@@ -295,6 +302,7 @@ class StateSyncService(
             .drop(1)
             .collect { tag ->
                 if (tag == null) return@collect
+                languagePicks++
                 // A push on the wire may already have reached the server, so
                 // a pick back to [accountLanguage] must be sent after it too.
                 languageDebounceJob?.cancel()

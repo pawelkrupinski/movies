@@ -59,6 +59,9 @@ final class StateSyncService: ObservableObject {
     /// Counts the language pushes the server confirmed, so a reconcile can
     /// tell that one landed while its fetch was on the wire.
     private var languagePushesConfirmed = 0
+    /// Counts local picks, so a send can tell a pick made while it was on the
+    /// wire from the one it sent — even when both are the same value.
+    private var languagePicks = 0
     /// The hiddenFilms queue flush in progress, if any — see `sendPendingChanges`.
     private var flushTask: Task<Bool, Never>?
     /// The language the account is known to hold — last fetched or
@@ -261,6 +264,7 @@ final class StateSyncService: ObservableObject {
         if let running = languageSendTask { return await running.value }
         let task = Task { @MainActor [weak self] in
             while let self, self.isLoggedIn, let pending = self.pendingLanguage {
+                let picksBeforeSend = self.languagePicks
                 do {
                     try await self.languageClient.push(pending)
                 } catch is LanguagePushRefused {
@@ -280,7 +284,9 @@ final class StateSyncService: ObservableObject {
                 }
                 self.accountLanguage = pending
                 self.languagePushesConfirmed += 1
-                if self.pendingLanguage == pending { self.pendingLanguage = nil }
+                // A pick made meanwhile is newer than whatever else reached the
+                // account during this push, even when it is the value just sent.
+                if self.languagePicks == picksBeforeSend, self.pendingLanguage == pending { self.pendingLanguage = nil; break }
             }
             self?.languageSendTask = nil
         }
@@ -375,6 +381,7 @@ final class StateSyncService: ObservableObject {
 
     private func languageChanged(to language: String) {
         guard !adopting else { return }
+        languagePicks += 1
         // A push on the wire may already have reached the server, so a pick
         // back to `accountLanguage` must be sent after it too.
         guard language != accountLanguage || languageSendTask != nil else {

@@ -392,6 +392,35 @@ final class StateSyncServiceTests: XCTestCase {
         XCTAssertEqual(languageClient.remote, "es")
     }
 
+    /// Picking pl, then es, then pl again while the first pl is on the wire,
+    /// with another device picking en in between: the final pl is a NEW pick,
+    /// newer than en, even though it equals the value just confirmed — it
+    /// must be sent, not taken as already done. Mirrors Android.
+    func testARepeatedPickMadeWhileItsTwinIsOnTheWireIsSentAgain() async throws {
+        languageClient.remote = "de"
+        let debounce = ManualDebounceScheduler()
+        let sync = StateSyncService(prefs: prefs, userPublisher: userSubject.eraseToAnyPublisher(),
+                                    client: client, languageClient: languageClient, debounceScheduler: debounce)
+        login()
+        try await waitUntil { self.prefs.selectedLanguage == "de" && self.languageClient.inFlight == 0 }
+
+        let gate = AsyncGate()
+        languageClient.beforePushResponse = { await gate.wait() }
+        prefs.setLanguage("pl")
+        debounce.fireAll()
+        try await waitUntil { self.languageClient.remote == "pl" } // applied, its response on the wire
+        languageClient.beforePushResponse = nil
+        prefs.setLanguage("es")
+        languageClient.remote = "en" // another device
+        prefs.setLanguage("pl")
+        debounce.fireAll()
+        await gate.open()
+
+        try await waitUntil { self.languageClient.inFlight == 0 && self.languageClient.pushesStarted >= 2 }
+        XCTAssertEqual(languageClient.remote, "pl")
+        _ = sync
+    }
+
     /// A pick made while the LOGIN reconcile's fetch is in flight: the
     /// observers used to start only after that reconcile, so the pick was
     /// never marked pending and the account's older value overwrote it.
