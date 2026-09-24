@@ -29,11 +29,15 @@ import scala.concurrent.Future
  * preflights pass.
  *
  * A GET that changes session state is a write any page can issue with an `<img>`,
- * so its route carries the `siteonly` modifier and is held to the same rule — with
- * one allowance: it may come from ANY of our deployed origins, since the far half
+ * so its route carries the `siteonly` modifier and is held to a STRICTER rule: it
+ * must be PROVEN to come from one of our pages, not merely not proven foreign.
+ * `Sec-Fetch-Site: same-origin`/`same-site` proves it; so does an `Origin` or
+ * `Referer` naming this origin or ANY of our deployed origins, since the far half
  * of a sign-out (`/auth/sso/logout`) is reached by redirect from our other domain,
- * which the browser rightly calls cross-site. A cross-site one naming no page (a
- * stripped referrer) is refused: that is also how a forged one would arrive.
+ * which the browser rightly calls cross-site. Anything else is refused — a
+ * cross-site one naming no page (a stripped referrer), and one from a browser
+ * without Fetch Metadata naming no page — because that is also how a forged one
+ * would arrive.
  *
  * Refused, such a GET is not answered with a bare 403: its legitimate caller is a
  * visitor mid-way through a redirect chain (a browser that strips the Referer on
@@ -46,8 +50,7 @@ class CrossSiteWriteFilter()(implicit override val mat: Materializer) extends Fi
   override def apply(next: RequestHeader => Future[Result])(request: RequestHeader): Future[Result] =
     if (CrossSiteWriteFilter.UnsafeMethods(request.method) && CrossSiteWriteFilter.crossSite(request))
       Future.successful(Results.Forbidden("Cross-site write refused."))
-    else if (CrossSiteWriteFilter.siteOnly(request) && CrossSiteWriteFilter.crossSite(request) &&
-             !CrossSiteWriteFilter.namedOrigin(request).exists(models.Country.deployedOrigins))
+    else if (CrossSiteWriteFilter.siteOnly(request) && !CrossSiteWriteFilter.fromOurPage(request))
       Future.successful(controllers.PerUserResponse(
         Results.Redirect(controllers.AuthController.ssoLogoutOnward(request.getQueryString("next")))))
     else next(request)
@@ -68,6 +71,15 @@ object CrossSiteWriteFilter {
       case Some(site) => site == "cross-site"
       case None       => namedOrigin(request).exists(_ != controllers.ForwardedUrl.base(request))
     }
+
+  /** Whether `request` PROVES it came from one of our pages — the `siteonly`
+   *  bar, see the class doc. */
+  private[modules] def fromOurPage(request: RequestHeader): Boolean =
+    request.headers.get("Sec-Fetch-Site").exists(SameSiteLabels) ||
+      namedOrigin(request).exists(origin =>
+        origin == controllers.ForwardedUrl.base(request) || models.Country.deployedOrigins(origin))
+
+  private val SameSiteLabels = Set("same-origin", "same-site")
 
   /** The origin of the page `request` says it came from: `Origin`, else the
    *  origin part of `Referer`. `Origin: null` (a sandboxed or privacy-stripped

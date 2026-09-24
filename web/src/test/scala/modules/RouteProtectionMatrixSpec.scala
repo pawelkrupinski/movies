@@ -313,7 +313,9 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
       Seq(
         Seq("Sec-Fetch-Site" -> "cross-site", "Referer" -> "https://evil.example/page"),
         Seq("Sec-Fetch-Site" -> "cross-site"),                 // referrer stripped
-        Seq("Referer" -> "https://evil.example/page")          // no Fetch Metadata
+        Seq("Referer" -> "https://evil.example/page"),         // no Fetch Metadata
+        Seq.empty,                                             // no Fetch Metadata, nothing named
+        Seq("Sec-Fetch-Site" -> "none")                        // typed or bookmarked: no page of ours
       ).foreach { headers =>
         val outcome = dispatch(signedInAsAdmin(FakeRequest(verb, concrete(path)).withHeaders(headers*)))
         withClue(s"$verb $path $headers: ") {
