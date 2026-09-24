@@ -706,6 +706,12 @@ final class FakeLanguageClient: LanguageClient {
     /// server does.
     var remote: String?
     var shouldFailPush = false
+    var shouldFailFetch = false
+    /// Whether the session is signed in; a signed-out one is refused, as the
+    /// server answers it 401.
+    var signedIn = true
+    /// Calls that have started and not yet answered.
+    private(set) var inFlight = 0
     /// Every push that SUCCEEDED, in order.
     private(set) var pushes: [String] = []
     var lastPushed: String? { pushes.last }
@@ -720,15 +726,23 @@ final class FakeLanguageClient: LanguageClient {
 
     func fetch() async throws -> String? {
         fetchesStarted += 1
+        inFlight += 1
+        defer { inFlight -= 1 }
         if let beforeFetch { await beforeFetch() }
+        await Task.yield()
+        if shouldFailFetch { throw URLError(.notConnectedToInternet) }
+        if !signedIn { throw URLError(.userAuthenticationRequired) }
         return remote
     }
 
     func push(_ language: String) async throws {
         pushesStarted += 1
+        inFlight += 1
+        defer { inFlight -= 1 }
         if let beforePush { await beforePush() }
         defer { onPush?(language) }
         if shouldFailPush { throw URLError(.badServerResponse) }
+        if !signedIn { throw URLError(.userAuthenticationRequired) }
         pushes.append(language)
         remote = language
     }
