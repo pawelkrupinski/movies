@@ -192,7 +192,9 @@ groups:
       # the `for:` -- with ~16 worker restarts on a deploy day (and one day-long uptime in the
       # week to 2026-09-23) the bare gauge could not hold fifty hours.
       - alert: RetiredVenueRowsLingering
-        expr: max by (country) (last_over_time(kinowo_worker_retired_venue_side_rows[10m])) > 0
+        # SUM over `collection` (screenings, movie_slots), not max: the summary reports the count,
+        # and a max read the larger of the two as the whole.
+        expr: sum by (country) (last_over_time(kinowo_worker_retired_venue_side_rows[10m])) > 0
         for: 50h
         labels:
           severity: warning

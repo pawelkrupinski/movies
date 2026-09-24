@@ -244,7 +244,7 @@ tests:
               country: pl
               severity: warning
             exp_annotations:
-              summary: "pl still holds 6 side row(s) under a venue its roster no longer lists"
+              summary: "pl still holds 9 side row(s) under a venue its roster no longer lists"
               description: >-
                 `screenings` or `movie_slots` rows in "pl" have been filed under a venue
                 name missing from that country's roster for over two days -- longer than the daily
