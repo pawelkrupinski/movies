@@ -291,3 +291,54 @@ tests:
             exp_annotations:
               summary: "de's worker is failing or retrying 50% of the tasks it finishes"
               description: "The pool is busy and the work is not sticking. Over 24h of normal operation this share is 0.000 in every country -- 13 failures in 464,903 tasks -- so a quarter is a loop, not a bad afternoon. Panel 25 (waiting by type) and the per-type finish counters name WHICH type: `sum by (task_type) (rate(kinowo_worker_tasks_finished_total{outcome=~\"failed|rescheduled\"}[15m]))`. The usual causes are an upstream that has started refusing us (the scraper types), a handler throwing on a data shape it has not seen, and a task whose precondition can never be met so it reschedules itself forever. NOTE `deferred` IS EXCLUDED: a circuit breaker refusing tasks is an upstream being down and reads on the scrape dashboards."
+
+  # REPOSITORY WRITES FAILING. The 2026-09-24 shape: one failed `movies` upsert a minute, for
+  # half an hour. Must not fire before the ten minutes are up, and must fire after.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_repository_write_failed_total{country="pl",job="kinowo-worker",collection="movies",op="upsert",exception="CodecConfigurationException"}'
+        values: '1+1x30'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: RepositoryWritesFailing
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: RepositoryWritesFailing
+        exp_alerts:
+          - exp_labels: { severity: warning, country: pl }
+            exp_annotations:
+              summary: "pl's worker has been failing repository writes for 10 minutes"
+              description: "Writes to `movies`, `movie_slots`, `screenings` or `pending_movies` are throwing. Nothing is lost silently -- each failed row is rolled out of the worker's cache and retried by its next scrape -- but until the cause clears, new films and changed showtimes do not reach the site. The worker's WARN lines name each write (`MovieRepository.upsert(<title>, <year>) failed: ...`), and the counter's `collection`, `op` and `exception` labels (worker diagnostics dashboard, \"Repository writes that FAILED\") say which store and why: a codec exception is a model field the DTO cannot encode, a MongoWriteException a validator or duplicate key, a timeout the database itself."
+
+  # A BLIP HEALS ITSELF. Three failures in one minute (a stepdown), then nothing: the rows were
+  # rolled back and retried by the next scrape, so there is nothing to page about.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_repository_write_failed_total{country="uk",job="kinowo-worker",collection="screenings",op="replaceFilm",exception="MongoTimeoutException"}'
+        values: '1 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4'
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: RepositoryWritesFailing
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: RepositoryWritesFailing
+        exp_alerts: []
+
+  # A ROLLOUT IN THE MIDDLE OF IT. The failures begin on the old pod at t=0, which disappears at
+  # t=8; the new pod's series starts at t=11 and keeps failing. The `for:` began on the old pod
+  # and must carry across the ~3-minute hole rather than restart on the new one -- fired by t=13
+  # (a reset would hold it pending until ~t=22).
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_repository_write_failed_total{country="de",job="kinowo-worker",pod="worker-de-a",collection="movies",op="upsert",exception="CodecConfigurationException"}'
+        values: '1+1x8'
+      - series: 'kinowo_worker_repository_write_failed_total{country="de",job="kinowo-worker",pod="worker-de-b",collection="movies",op="upsert",exception="CodecConfigurationException"}'
+        values: '_x11 1+1x20'
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: RepositoryWritesFailing
+        exp_alerts:
+          - exp_labels: { severity: warning, country: de }
+            exp_annotations:
+              summary: "de's worker has been failing repository writes for 10 minutes"
+              description: "Writes to `movies`, `movie_slots`, `screenings` or `pending_movies` are throwing. Nothing is lost silently -- each failed row is rolled out of the worker's cache and retried by its next scrape -- but until the cause clears, new films and changed showtimes do not reach the site. The worker's WARN lines name each write (`MovieRepository.upsert(<title>, <year>) failed: ...`), and the counter's `collection`, `op` and `exception` labels (worker diagnostics dashboard, \"Repository writes that FAILED\") say which store and why: a codec exception is a model field the DTO cannot encode, a MongoWriteException a validator or duplicate key, a timeout the database itself."

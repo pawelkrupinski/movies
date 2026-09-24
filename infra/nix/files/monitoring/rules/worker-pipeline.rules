@@ -262,3 +262,38 @@ groups:
             unwatched. If the workers were simply down, `WorkerDown` would be firing too and is the
             better alert to read; if they are up, the queue gauges have stopped being refreshed
             from the per-country `QueueSnapshot`, which no target-level check would catch.
+
+      # -----------------------------------------------------------------------------------------
+      # A REPOSITORY WRITE THAT KEEPS FAILING. The queue can be moving and every task finishing
+      # `done` while none of it reaches Mongo: on 2026-09-24 a codec bug made `movies` upserts and
+      # `movie_slots` writes throw for ~6h (34 failures, 29 films). Each was caught, logged at WARN
+      # and returned as if nothing happened, and two new films never reached the site until a
+      # restart. `kinowo_worker_repository_write_failed_total` is that failure, counted where the
+      # repository catches it (services.movies.RepositoryWrite); its baseline is zero.
+      #
+      # SUSTAINED, NOT ANY: a failed write rolls its row out of the cache so the next scrape
+      # retries it, and a single blip (a stepdown, a timeout) heals that way on its own. `[5m]`
+      # with `for: 10m` needs failures in every five-minute window for ten minutes running.
+      #
+      # RESTART-GAP-SAFE the way `last_over_time(...[10m])` makes the gauges elsewhere: a pod
+      # change leaves the series absent for ~3 minutes, and `increase(...[5m])` still holds the
+      # old pod's samples across that hole while the new pod's series starts, so the `for:` is
+      # not reset by a rollout. A series appears on its first failure (the exception label is
+      # open-ended, so nothing can be seeded at boot) and `increase` counts from its second.
+      - alert: RepositoryWritesFailing
+        expr: sum by (country) (increase(kinowo_worker_repository_write_failed_total[5m])) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}'s worker has been failing repository writes for 10 minutes"
+          description: >-
+            Writes to `movies`, `movie_slots`, `screenings` or `pending_movies` are throwing.
+            Nothing is lost silently -- each failed row is rolled out of the worker's cache and
+            retried by its next scrape -- but until the cause clears, new films and changed
+            showtimes do not reach the site. The worker's WARN lines name each write
+            (`MovieRepository.upsert(<title>, <year>) failed: ...`), and the counter's
+            `collection`, `op` and `exception` labels (worker diagnostics dashboard, "Repository
+            writes that FAILED") say which store and why: a codec exception is a model field the
+            DTO cannot encode, a MongoWriteException a validator or duplicate key, a timeout the
+            database itself.
