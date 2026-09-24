@@ -865,6 +865,9 @@ groups:
       # that and half of the broken value. A restart therefore SILENCES the rule for three hours
       # rather than being bridged -- deliberately: the reading after a restart is a different
       # quantity (boot seeding), and a regression that ships with a deploy is caught 3.5h after it.
+      # The start time is read through `last_over_time(...[10m])` so a missed scrape -- the series
+      # gone for a few minutes with NO new process -- does not drop a pending alert; a real restart
+      # still silences it, because `max` then picks the new process's start from the window.
       #
       # THE 0.05/s FLOOR keeps a quiet hour's handful of rows from being a ratio: every country
       # projects 10-1,000 venue rows/s.
@@ -875,7 +878,7 @@ groups:
             / sum by (country) (rate(kinowo_worker_readmodel_venue_projections_total[1h]))
           ) > 0.5
           and on (country) sum by (country) (rate(kinowo_worker_readmodel_venue_projections_total[1h])) > 0.05
-          and on (country) (time() - max by (country) (process_start_time_seconds{job="kinowo-worker"})) > 10800
+          and on (country) (time() - max by (country) (last_over_time(process_start_time_seconds{job="kinowo-worker"}[10m]))) > 10800
         for: 30m
         labels:
           severity: warning

@@ -41,6 +41,29 @@ tests:
               summary: "us is rebuilding 100% of the venue rows it projects"
               description: "More than half of the screenings rows the read-model projector considered in \"us\" over the last hour were REBUILT rather than reused, three hours after the worker booted. Warm, this share sits at 0.1-3%: a showtime change at one venue rebuilds that venue's row and reuses the rest. Near 100% means the per-row input hash stopped matching, and every projection is rebuilding the whole film again -- the pre-2026-09-23 behaviour that held the single apply thread ~2s per wide US film. Panel 33 on the worker diagnostics dashboard draws rebuilt against reused; panel 8's write-burst line should be climbing with it. Look at what changed in `ReadModelProjection`'s slot hash or in the memo `ReadModelProjector` keeps (a field added to the hashed input that differs on every read, e.g. an unordered collection or a timestamp, is the usual shape)."
 
+  # A MISSED SCRAPE IS NOT A RESTART. Pending from 3h, the worker's series go absent for three
+  # minutes at 3h20m with NO new process (the start time comes back unchanged). The uptime gate
+  # reads the start time through last_over_time, so the gap neither drops the pending alert nor
+  # starts its 30 minutes over: it fires at 3h31m as it would have without the gap.
+  - interval: 1m
+    input_series:
+      - series: 'process_start_time_seconds{country="us",instance="kinowo-worker-us",job="kinowo-worker"}'
+        values: '0x199 stale _x2 0x200'
+      - series: 'kinowo_worker_readmodel_venue_projections_total{country="us",job="kinowo-worker",outcome="rebuilt"}'
+        values: '0+60000x199 stale _x2 12180000+60000x200'
+      - series: 'kinowo_worker_readmodel_venue_projections_total{country="us",job="kinowo-worker",outcome="reused"}'
+        values: '0x199 stale _x2 0x200'
+    alert_rule_test:
+      - eval_time: 3h35m
+        alertname: ReadModelVenueRebuildShareHigh
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+              country: "us"
+            exp_annotations:
+              summary: "us is rebuilding 100% of the venue rows it projects"
+              description: "More than half of the screenings rows the read-model projector considered in \"us\" over the last hour were REBUILT rather than reused, three hours after the worker booted. Warm, this share sits at 0.1-3%: a showtime change at one venue rebuilds that venue's row and reuses the rest. Near 100% means the per-row input hash stopped matching, and every projection is rebuilding the whole film again -- the pre-2026-09-23 behaviour that held the single apply thread ~2s per wide US film. Panel 33 on the worker diagnostics dashboard draws rebuilt against reused; panel 8's write-burst line should be climbing with it. Look at what changed in `ReadModelProjection`'s slot hash or in the memo `ReadModelProjector` keeps (a field added to the hashed input that differs on every read, e.g. an unordered collection or a timestamp, is the usual shape)."
+
   # TODAY, WARM: US 1 row rebuilt per 1,000 reused (it measured 0.001-0.002). Quiet.
   - interval: 1m
     input_series:

@@ -20,6 +20,11 @@ a green suite on 2026-09-23, and each check below is written against the class, 
    that bridges the gap (`last_over_time(g[10m])`, or a rate/deriv over a window), and must
    have a case that fires ACROSS a `stale` gap -- the shape of a restart in promtool's input.
    `absent(...)` of a gauge is exempt by construction: absence is the thing it is watching.
+   Two readings the same gap resets are held to the same bar: `process_start_time_seconds` (the
+   uptime gates, absent for the same ~3 minutes), and a RECORDED series the alert reads raw whose
+   recording rule reads a worker gauge raw -- the recorded series goes absent with it. A recording
+   rule that latches itself (`last_over_time(<its own name>[...])`) is exempt: carrying its own
+   previous value across a gap is what it is for.
 
 Run: python3 infra/test/test_alert_rule_coverage.py   (also run by test_alert_rules.sh)
 """
@@ -49,7 +54,7 @@ LONG_HOLD_SECONDS = 15 * 60
 RESTART_GAP_SECONDS = 5 * 60
 
 _WORKER_GAUGE = re.compile(
-    r'(?<![A-Za-z0-9_:])(kinowo_worker_[A-Za-z0-9_]+)'
+    r'(?<![A-Za-z0-9_:])(kinowo_worker_[A-Za-z0-9_]+|process_start_time_seconds)'
     r'(\{(?:[^{}"]|"(?:[^"\\]|\\.)*")*\})?'
     r'(\s*\[\s*([0-9smhdw]+)\s*(?::[^\]]*)?\])?')
 _COUNTER_SUFFIX = re.compile(r'_(total|bucket|count|sum|created)$')
@@ -103,6 +108,40 @@ def crosses(evaluator, value):
     kind, threshold = evaluator
     value = float(value)
     return {"gt": value > threshold, "lt": value < threshold}[kind]
+
+
+# A recorded series name (`level:metric:operations`), with the range window it is read over if any.
+_RECORDED = re.compile(r'(?<![A-Za-z0-9_:])([a-zA-Z_][a-zA-Z0-9_]*:[a-zA-Z0-9_:]+)'
+                       r'(\{(?:[^{}"]|"(?:[^"\\]|\\.)*")*\})?'
+                       r'(\s*\[\s*([0-9smhdw]+)\s*(?::[^\]]*)?\])?')
+
+
+def recording_rules():
+    """{recorded series name: expr} for every recording rule Prometheus loads."""
+    return {rule["record"]: rule["expr"]
+            for path in promql_selectors.RULE_FILES
+            for group in load(path)["groups"]
+            for rule in group["rules"] if "record" in rule}
+
+
+def recorded_reads(expr, recordings, seen=None):
+    """[(name, expr)] for each recorded series `expr` reads RAW (no bridging window), followed
+    through recorded series those rules read raw in turn. Self-latching rules are not followed."""
+    seen = set() if seen is None else seen
+    found = []
+    for match in _RECORDED.finditer(expr):
+        name, window = match.group(1), match.group(4)
+        if name not in recordings or name in seen:
+            continue
+        if window is not None and seconds(window) >= RESTART_GAP_SECONDS:
+            continue
+        seen.add(name)
+        inner = recordings[name]
+        if re.search(r'last_over_time\(\s*%s\b' % re.escape(name), inner):
+            continue
+        found.append((name, inner))
+        found += recorded_reads(inner, recordings, seen)
+    return found
 
 
 def worker_gauges(expr):
@@ -166,6 +205,22 @@ class EveryAlertFiresAndStaysQuiet(unittest.TestCase):
 
 class LongHoldsSurviveAWorkerRestart(unittest.TestCase):
 
+    def test_the_check_follows_a_recorded_series_to_its_raw_gauge(self):
+        # The positive control for `recorded_reads`: without it the check below could pass by
+        # following nothing.
+        recordings = {
+            "country:raw:sum": "sum by (country) (kinowo_worker_things)",
+            "country:bridged:sum": "sum by (country) (last_over_time(kinowo_worker_things[10m]))",
+            "country:latch:seconds": "last_over_time(country:latch:seconds[90s]) or kinowo_worker_things",
+        }
+        followed = recorded_reads(
+            "country:raw:sum > 0 and country:bridged:sum > 0 and country:latch:seconds > 0 "
+            "and last_over_time(country:raw:sum[10m]) > 0", recordings)
+        self.assertEqual(["country:raw:sum", "country:bridged:sum"], [n for n, _ in followed])
+        self.assertTrue(self.assertBridged("x", recordings["country:raw:sum"]))
+        self.assertFalse(self.assertBridged("x", recordings["country:bridged:sum"]))
+        self.assertTrue(self.assertBridged("x", "time() - process_start_time_seconds{job=\"w\"} > 1"))
+
     def assertBridged(self, where, expr):
         problems = []
         for gauge, window, in_absent in sorted(set(worker_gauges(expr)), key=str):
@@ -181,6 +236,7 @@ class LongHoldsSurviveAWorkerRestart(unittest.TestCase):
 
     def test_a_long_held_prometheus_alert_bridges_the_restart_gap(self):
         alerts = prometheus_alerts()
+        recordings = recording_rules()
         all_suites = suites()
         problems = []
         for alert, (rules, rule) in sorted(alerts.items()):
@@ -188,6 +244,8 @@ class LongHoldsSurviveAWorkerRestart(unittest.TestCase):
                 continue
             where = "%s %s (for: %s)" % (rules, alert, rule.get("for"))
             problems += self.assertBridged(where, rule["expr"])
+            for name, inner in recorded_reads(rule["expr"], recordings):
+                problems += self.assertBridged("%s, through %s," % (where, name), inner)
             for gauge in sorted({g for g, _, a in worker_gauges(rule["expr"]) if not a}):
                 if not any(stale_series(test, gauge)
                            and any(c["alertname"] == alert and c.get("exp_alerts")
