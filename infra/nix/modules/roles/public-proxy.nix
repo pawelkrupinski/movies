@@ -247,6 +247,38 @@ in
             });
           };
 
+          shareCardsDir = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+            example = "/var/lib/kinowo/share-cards";
+            description = ''
+              Serve `/share-cards/<cc>/<file>.jpg` straight off this directory, ahead of every
+              upstream, redirect and path prefix on the vhost.
+
+              THE SHARE CARDS ARE FILES, NOT A ROUTE. The worker renders each film's og:image once,
+              writes it to `<dir>/<cc>/<filmId>-<lang>-<hash>.jpg` on this host (a hostPath volume
+              in movies-gitops' worker overlays) and puts the name in the read model; the web only
+              ever emits the URL. So a card request never reaches a JVM -- which is the point: the
+              JVM-rendered cards are what AhrefsBot turned into seven web-pl OOM kills on
+              2026-09-21.
+
+              WHAT IT ANSWERS, and test_public_proxy.sh asks each of these of the real Caddy:
+                - a file that exists, at exactly `/share-cards/<two lowercase letters>/<name>.jpg`,
+                  with `Cache-Control: public, max-age=31536000, immutable` -- the name carries a
+                  content hash, so a changed card is a new URL and an old one never changes;
+                - 404 for EVERYTHING ELSE under `/share-cards/`: a missing file, a directory (never
+                  listed), a `.jpg.tmp` the worker is still writing, any dot-named segment (the
+                  worker's `.posters/` cache lives beside the cards and is not public), and any
+                  deeper or shallower path. The whole prefix is claimed here, so none of it falls
+                  through to the app either.
+              Traversal is closed twice over: the matcher admits exactly two plain segments, and
+              `file_server` joins the path under its root with Caddy's sanitising join regardless.
+
+              NOT UNDER A COUNTRY PREFIX. `/uk/share-cards/...` is the UK app's path, not this one;
+              the cards are addressed by `<cc>` in the path, on every vhost alike.
+            '';
+          };
+
           originCertificate = lib.mkOption {
             type = lib.types.nullOr (lib.types.submodule {
               options = {
@@ -438,13 +470,39 @@ in
           # ACME machinery simply does not run for it -- there is no renewal to fail.
           tlsBlock = lib.optionalString (v.originCertificate != null)
             "tls ${v.originCertificate.certFile} ${v.originCertificate.keyFile}";
-          # WHAT THE VHOST SERVES ONCE THE DOOR HAS BEEN ANSWERED.
+          # THE SHARE CARDS, OFF DISK. A `route` inside the `handle` because the order inside is
+          # the whole rule -- matcher, headers, file, else 404 -- and Caddy would otherwise sort
+          # `respond` ahead of `file_server`. `file` in the matcher is what keeps the immutable
+          # headers off a 404: a year-long cache of a miss would outlive the card it was waiting
+          # for. See `shareCardsDir` for what each answer is for.
+          shareCardsBlock = lib.optionalString (v.shareCardsDir != null) ''
+            handle /share-cards/* {
+              route {
+                uri strip_prefix /share-cards
+                root * ${v.shareCardsDir}
+                @shareCard {
+                  path_regexp ^/[a-z]{2}/[A-Za-z0-9_-][A-Za-z0-9._-]*\.jpg$
+                  file
+                }
+                header @shareCard Cache-Control "public, max-age=31536000, immutable"
+                header @shareCard Content-Type image/jpeg
+                file_server @shareCard
+                respond 404
+              }
+            }
+          '';
+
+          # WHAT THE VHOST SERVES ONCE THE DOOR HAS BEEN ANSWERED. The fallback is wrapped in a
+          # `handle` whenever another `handle` sits beside it: bare, a `redir` fallback (the www.
+          # vhosts) sorts AHEAD of every `handle` in Caddy's directive order and would redirect the
+          # share cards too.
           body = ''
             ${v.extraConfig}
             ${throttleBlock}
-            ${if v.pathUpstreams == { }
+            ${if v.pathUpstreams == { } && v.shareCardsDir == null
               then fallback
               else ''
+                ${shareCardsBlock}
                 ${pathBlocks}
                 handle {
                   ${fallback}

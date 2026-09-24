@@ -95,6 +95,42 @@ case "$vhost" in
 esac
 vhost="$(printf '%s\n' "$vhost" | grep -v '^[[:space:]]*tls[[:space:]]')"
 
+# THE SHARE CARDS ARE SERVED OFF A HOST DIRECTORY, so the rendered path is swapped for a scratch one
+# holding fixtures. Read off the config rather than spelled here, so a moved directory is followed.
+# And EVERY vhost on the product host must serve them, the redirecting www. names included, because
+# og:image carries whichever host the page was reached on.
+echo "==> every product vhost serves the share cards"
+share_dirs="$(nix "${nix_flags[@]}" eval --json "$infra/nix#nixosConfigurations.k3s-worker-1.config.fleet.publicProxy.vhosts" \
+  --apply 'vs: builtins.mapAttrs (_: v: v.shareCardsDir) vs' 2>"$work/eval.err")"
+share_dir="$(printf '%s' "$share_dirs" | python3 -c 'import json,sys; print(json.load(sys.stdin)["showtimes.cc"] or "")')"
+missing="$(printf '%s' "$share_dirs" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(" ".join(sorted(k for k,v in d.items() if v != d["showtimes.cc"] or not v)))')"
+if [ -n "$share_dir" ] && [ -z "$missing" ]; then echo "  ok  all of $(printf '%s' "$share_dirs" | python3 -c 'import json,sys; print(", ".join(sorted(json.load(sys.stdin))))') serve $share_dir"
+else echo "  FAILED share cards are not served on: ${missing:-every vhost} ($share_dirs)"; failed=1; fi
+cards="$work/share-cards"
+vhost="${vhost//$share_dir/$cards}"
+
+echo "==> rendering www.showtimes.cc's vhost out of k3s-worker-1"
+www_port=8897
+www_vhost="$(nix "${nix_flags[@]}" eval --raw \
+  "$infra/nix#nixosConfigurations.k3s-worker-1.config.services.caddy.virtualHosts.\"www.showtimes.cc\".extraConfig" 2>"$work/eval.err")"
+if [ -z "$www_vhost" ]; then
+  echo "  FAILED could not evaluate the vhost:"; sed 's/^/    /' "$work/eval.err" | tail -5; exit 1
+fi
+www_vhost="$(printf '%s\n' "$www_vhost" | grep -v '^[[:space:]]*tls[[:space:]]')"
+www_vhost="${www_vhost//$share_dir/$cards}"
+
+# THE FIXTURES: two real cards, and one of everything that sits beside them and must NOT be served --
+# a card still being written, the worker's poster cache, a dot-file, a file one level too shallow,
+# and a "secret" OUTSIDE the root for the traversal cases to aim at.
+mkdir -p "$cards/pl/.posters" "$cards/uk"
+printf 'CARD-PL' > "$cards/pl/film1-pl-0123456789abcdef.jpg"
+printf 'CARD-UK' > "$cards/uk/film2-en-fedcba9876543210.jpg"
+printf 'PARTIAL' > "$cards/pl/film3-pl-0000000000000000.jpg.tmp"
+printf 'POSTER'  > "$cards/pl/.posters/poster.jpg"
+printf 'HIDDEN'  > "$cards/pl/.hidden.jpg"
+printf 'SHALLOW' > "$cards/shallow.jpg"
+printf 'SECRET'  > "$work/secret.jpg"
+
 echo "==> rendering logs.kinowo.net's vhost out of monitoring-1"
 logs_port=8898
 logs_vhost="$(nix "${nix_flags[@]}" eval --raw \
@@ -146,6 +182,7 @@ handle /oauth2/* {
 { echo "{ auto_https off"; echo "  admin off"; echo "}"
   echo ":$port {"; echo "$vhost"; echo "}"
   echo ":$logs_port {"; echo "$logs_vhost"; echo "}"
+  echo ":$www_port {"; echo "$www_vhost"; echo "}"
   echo ":$stub_port {"; echo "$stub_site"; echo "}"; } > "$work/Caddyfile"
 
 "${caddy_cmd[@]}" run --config "$work/Caddyfile" --adapter caddyfile >"$work/caddy.log" 2>&1 &
@@ -219,6 +256,52 @@ for preview in \
   check 502 "$preview" "/poznan/movie/og-image?title=Diuna" "a share preview renders: ${preview%% *}"
 done
 check 502 "$HUMAN"   "/poznan/movie/og-image?title=Diuna" "a person opening the card directly is never throttled"
+
+# THE SHARE CARDS, SERVED OFF DISK. Each case is a way the route could be quietly wrong: headers
+# missing (a card re-fetched on every share), a 404 cached for a year, a half-written `.tmp` or the
+# poster cache published, a directory listed, a path escaping the root, or the prefix shadowed by a
+# country mount. `--path-as-is` so curl sends the traversal paths unnormalised.
+card() { # <expected status> <port> <path> <what it proves> [<expected body>]
+  local want="$1" p="$2" path="$3" why="$4" body="${5:-}" got
+  got="$(curl -s --path-as-is -o "$work/card.body" -w '%{http_code}' -A "$HUMAN" "http://127.0.0.1:$p$path")"
+  if [ "$got" = "$want" ] && { [ -z "$body" ] || [ "$(cat "$work/card.body")" = "$body" ]; }; then printf '  ok  %s\n' "$why"
+  else printf '  FAILED %s\n         %s -> %s "%s", wanted %s %s\n' "$why" "$path" "$got" "$(head -c 40 "$work/card.body")" "$want" "$body"; failed=1; fi
+  if grep -q SECRET "$work/card.body"; then printf '  FAILED %s escaped the share-card root\n' "$path"; failed=1; fi
+}
+header_of() { # <port> <path> <header>
+  curl -s --path-as-is -o /dev/null -D - -A "$HUMAN" "http://127.0.0.1:$1$2" | tr -d '\r' | awk -F': ' -v h="$3" 'tolower($1)==tolower(h){print $2}'
+}
+echo "==> the share cards, off disk"
+card 200 "$port" "/share-cards/pl/film1-pl-0123456789abcdef.jpg" "a card that exists is served" CARD-PL
+card 200 "$port" "/share-cards/uk/film2-en-fedcba9876543210.jpg" "...for a path-mounted country too: /uk does not shadow /share-cards/uk" CARD-UK
+card 200 "$www_port" "/share-cards/pl/film1-pl-0123456789abcdef.jpg" "...and on the www. vhost, which redirects everything ELSE" CARD-PL
+cc="$(header_of "$port" "/share-cards/pl/film1-pl-0123456789abcdef.jpg" Cache-Control)"
+if [ "$cc" = "public, max-age=31536000, immutable" ]; then echo "  ok  the card is cached for a year as immutable (its name is its content hash)"
+else echo "  FAILED Cache-Control was '$cc'"; failed=1; fi
+ct="$(header_of "$port" "/share-cards/pl/film1-pl-0123456789abcdef.jpg" Content-Type)"
+if [ "$ct" = "image/jpeg" ]; then echo "  ok  ...as image/jpeg"
+else echo "  FAILED Content-Type was '$ct', wanted image/jpeg"; failed=1; fi
+card 404 "$port" "/share-cards/pl/film9-pl-aaaaaaaaaaaaaaaa.jpg" "a missing card is a 404, not the app"
+cc="$(header_of "$port" "/share-cards/pl/film9-pl-aaaaaaaaaaaaaaaa.jpg" Cache-Control)"
+case "$cc" in *immutable*) echo "  FAILED a 404 is cached as immutable ('$cc'), so a card written later stays missing"; failed=1 ;;
+  *) echo "  ok  ...and the 404 is not cached as immutable" ;; esac
+card 404 "$port" "/share-cards/pl/"   "the country directory is never listed"
+card 404 "$port" "/share-cards/pl"    "...with or without its slash"
+card 404 "$port" "/share-cards/"      "...nor the root"
+card 404 "$port" "/share-cards/pl/film3-pl-0000000000000000.jpg.tmp" "a card still being written (.tmp) is not served"
+card 404 "$port" "/share-cards/pl/.posters/poster.jpg" "the worker's poster cache (.posters/) is not served"
+card 404 "$port" "/share-cards/pl/.hidden.jpg" "...nor any dot-file"
+card 404 "$port" "/share-cards/shallow.jpg" "only <cc>/<file> is a card; a file one level up is not"
+# TRAVERSAL. Caddy's path matcher decodes and cleans the path BEFORE matching, so every spelling of
+# `..` that climbs out of the directory resolves to a path outside `/share-cards/*` and goes to the
+# app (502 here) -- it never reaches `file_server` at all. The SECRET check in `card` is the part
+# that matters: whatever answers, it is never the file outside the root.
+card 502 "$port" "/share-cards/pl/../../secret.jpg" "a literal ../ is cleaned to /secret.jpg before matching, so it never reaches the disk"
+card 502 "$port" "/share-cards/pl/..%2f..%2fsecret.jpg" "...and so is an encoded ../"
+card 502 "$port" "/share-cards/pl/%2e%2e/%2e%2e/secret.jpg" "...and an encoded .. segment"
+card 404 "$port" "/share-cards/pl/../uk/film9-en-aaaaaaaaaaaaaaaa.jpg" "a .. that stays inside /share-cards is cleaned and still only finds cards"
+card 502 "$port" "/uk/share-cards/uk/film2-en-fedcba9876543210.jpg" "/uk/share-cards/... is the UK app's path, not the disk's"
+card 301 "$www_port" "/poznan/" "the www. vhost still redirects everything that is not a card"
 
 # HSTS: one year, still without preload or includeSubDomains (both one-way doors -- see the vhost).
 echo "==> what HSTS the vhost promises"

@@ -1,4 +1,11 @@
 { config, ... }:
+let
+  # WHERE THE WORKERS WRITE THE SHARE CARDS AND CADDY READS THEM. The worker pod for each country
+  # mounts `<this>/<cc>` read-write at /share-cards (hostPath, DirectoryOrCreate, in movies-gitops'
+  # worker overlays), so this one path is the contract between the two repositories: change it here
+  # and there together.
+  shareCardsDir = "/var/lib/kinowo/share-cards";
+in
 {
   imports = [
     ./disko.nix
@@ -132,10 +139,13 @@
       # it has always served, byte for byte.
       "kinowo.net" = {
         upstream = "127.0.0.1:30910";
+        inherit shareCardsDir;
         crawlerThrottle = facetThrottle;
         originCertificate = kinowoOrigin;
       };
-      "www.kinowo.net" = { redirectTo = "kinowo.net"; originCertificate = kinowoOrigin; };
+      # EVERY VHOST SERVES THE SHARE CARDS, the redirecting www. names included: og:image carries
+      # the request's own host, so a page reached on www. names a card on www.
+      "www.kinowo.net" = { redirectTo = "kinowo.net"; originCertificate = kinowoOrigin; inherit shareCardsDir; };
 
       # THE SHOWTIMES COUNTRIES SHARE ONE DOMAIN AND ARE TOLD APART BY A PATH SEGMENT.
       #
@@ -163,6 +173,7 @@
       # front-door variants (a sitemap INDEX of the four mounted countries, not Poland's cities).
       "showtimes.cc" = {
         upstream = "127.0.0.1:30910";
+        inherit shareCardsDir;
         pathUpstreams = {
           "/uk" = "127.0.0.1:30912";
           "/de" = "127.0.0.1:30911";
@@ -172,9 +183,21 @@
         crawlerThrottle = facetThrottle;
         originCertificate = showtimesOrigin;
       };
-      "www.showtimes.cc" = { redirectTo = "showtimes.cc"; originCertificate = showtimesOrigin; };
+      "www.showtimes.cc" = { redirectTo = "showtimes.cc"; originCertificate = showtimesOrigin; inherit shareCardsDir; };
     };
   };
+
+  # THE SHARE-CARD DIRECTORY EXISTS BEFORE EITHER SIDE NEEDS IT. The kubelet's DirectoryOrCreate
+  # would make `<cc>/` on first mount anyway; this rule makes the parent's ownership and mode a
+  # declaration rather than whatever the first pod happened to create. root:root 0755 because the
+  # workers run as ROOT (the image sets no USER; `ps` on this host shows uid 0 for every java
+  # process), so root is the writer, and caddy (uid 239) needs only to traverse and read -- the
+  # JVM's 022 umask leaves every card 0644. Not writable by caddy, deliberately: the proxy serves
+  # these files and has no business changing them.
+  systemd.tmpfiles.rules = [
+    "d /var/lib/kinowo 0755 root root -"
+    "d ${shareCardsDir} 0755 root root -"
+  ];
 
   sops.defaultSopsFile = ../../secrets/k3s-worker-1.yaml;
 
