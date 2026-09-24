@@ -29,6 +29,17 @@ class StrictFixtureFallbackSpec extends AnyFlatSpec with Matchers {
     a [java.io.FileNotFoundException] should be thrownBy lenient.get("https://www.kinopodbaranami.pl/repertuar")
   }
 
+  // A TMDB credits read the corpus never recorded used to be answered with an empty crew — the
+  // swallow the client itself stopped doing, moved into the fake. It hid 24 unrecorded credits in
+  // the shared corpus, 17 of which silently cost their films a Filmweb rating once answered
+  // truthfully. Unrecorded is a recording gap, and a gap is loud.
+  it should "throw for an unrecorded TMDB credits read, movie or person, rather than invent an empty crew" in {
+    val lenient = new FakeHttpFetch("does-not-exist-anywhere")
+    a [java.io.FileNotFoundException] should be thrownBy lenient.get("https://api.themoviedb.org/3/movie/1/credits?api_key=k")
+    a [java.io.FileNotFoundException] should be thrownBy
+      lenient.get("https://api.themoviedb.org/3/person/1/movie_credits?language=pl-PL&api_key=k")
+  }
+
   // The rating resolvers find a page by PROBING candidate slugs — ~20 per title
   // for Metacritic/RT, ~55 candidate films for Filmweb — of which at most one
   // exists, so the recorder can only ever capture that one. Every losing
