@@ -109,6 +109,41 @@ jobs:
                   repository: pawelkrupinski/movies-gitops
                   path: infra/kubernetes
 
+            # GENERATED ROSTER ARTEFACTS. Cinema.scala's venue annotations, data/**'s venue
+            # lists and the *RosterData/VenueTowns/PolishPages Scala + the apps' City lists
+            # generated from them are all checked in; an edit that skips regenerating the
+            # links below it compiles and passes every spec that reads the stale output. So
+            # when the chain's sources change, regenerate it and fail on any difference
+            # (scripts/ci/generated-artefacts-drift.sh). Gated on the chain's paths — it
+            # fetches GeoNames and PyPI, which an unrelated push should not depend on. The
+            # base commit is fetched treeless-shallow: changed-paths only diffs names.
+            - name: Fetch this push's base, for the roster filter
+              if: github.event_name == 'push'
+              env:
+                  BASE: ${{ github.event.before }}
+              run: |
+                  if [ -n "$BASE" ] && [ "$BASE" != 0000000000000000000000000000000000000000 ]; then
+                      git fetch --no-tags --depth=1 --filter=blob:none origin "$BASE"
+                  fi
+
+            - name: Did this change touch the generated roster's sources?
+              id: roster
+              uses: ./.github/actions/changed-paths
+              with:
+                  patterns: |
+                      common/src/main/scala/models/**
+                      data/**
+                      android/app/src/main/java/pl/kinowo/model/City.kt
+                      ios/Kinowo/Models/City.swift
+                      scripts/ci/generated-artefacts-drift.sh
+                      .github/workflows/ci.yml
+
+            - name: Generated roster artefacts match their generators
+              if: steps.roster.outputs.changed == 'true'
+              run: |
+                  python3 -m pip install --quiet timezonefinder
+                  scripts/ci/generated-artefacts-drift.sh
+
             - uses: actions/setup-java@v5
               with:
                   distribution: temurin
@@ -146,6 +181,12 @@ jobs:
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}
+
+            # The snapshot guards in this run (CatalogSeedSpec's app seeds among them) write
+            # what they expected; a committed file they rewrote is a stale snapshot, whether
+            # or not the spec itself noticed. See scripts/ci/tree-unchanged.sh.
+            - name: The unit run left every checked-in file unchanged
+              run: scripts/ci/tree-unchanged.sh "sbt testUnitNoE2e"
 
             - name: Publish test report
               if: always()
@@ -520,6 +561,11 @@ jobs:
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}
+
+            # FilmScheduleEndToEndSpec's expected-schedules.txt / read-model-snapshot.json,
+            # held the same way as the unit run's snapshots (scripts/ci/tree-unchanged.sh).
+            - name: The e2e run left every checked-in file unchanged
+              run: scripts/ci/tree-unchanged.sh "sbt ${{ matrix.cmd }}"
 
             - name: Publish e2e test report
               if: always()
