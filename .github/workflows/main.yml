@@ -101,9 +101,27 @@ jobs:
     # split out from this suite. See that file's header, and
     # `country-convergence.yml`'s `concurrency:` block.
     #
-    # This job used to occupy the account's 20th concurrent slot at t=0; that
-    # slot is left idle now rather than spent on a job with nothing correct
-    # left to do (`CiRunnerBudgetSpec`).
+    # This job used to occupy the account's 20th concurrent slot at t=0. That
+    # slot now goes to `preflight` below, for the few seconds it takes to check
+    # the deploy's secret (`CiRunnerBudgetSpec`).
+
+    # Seconds, at t=0: the deploy's secret is set, so a missing one fails the run now rather than
+    # after ci's ten minutes. It takes the account's 20th slot, the headroom ci.yml leaves, for
+    # the few seconds it runs (CiRunnerBudgetSpec). The Grafana marker's secrets are optional
+    # by design (mark-grafana-deploy skips without them), so they are not required here.
+    # (PreflightWiringSpec)
+    preflight:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: scripts/ci
+                  sparse-checkout-cone-mode: false
+            - name: Deploy secrets present
+              env:
+                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+              run: scripts/ci/preflight.sh FLY_API_TOKEN
 
     # THE ONE THING FLY.IO STILL HOSTS FROM THIS REPOSITORY: the Polish web app
     # `kinowo`, which is what `kinowo.fly.dev` resolves to. There is no matrix here
@@ -130,7 +148,7 @@ jobs:
     # accepted price of it not drifting away from `main` — the alternative was a
     # hand-rolled deploy nobody would remember to run. (`FlyDeployScopeSpec`)
     deploy:
-        needs: [ci, build-web]
+        needs: [ci, build-web, preflight]
         runs-on: ubuntu-latest
         # NO concurrency group. GitHub keeps one running plus one pending per group,
         # so back when this was a six-app matrix a per-tier group CANCELLED the third

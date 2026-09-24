@@ -150,9 +150,12 @@ jobs:
             - name: The read-model snapshot is stamped for this fixture corpus
               run: scripts/read-model-snapshot-inputs.sh check HEAD
 
-            # Which checks the pre-push hook selects for which paths (scripts/hooks/pre-push).
-            - name: Pre-push hook path selection
-              run: bash scripts/hooks/pre-push-test.sh
+            # The CI-structure scripts' own specs, seconds each: which checks the pre-push hook
+            # selects for which paths, and what the workflows' preflight jobs accept and refuse.
+            - name: Pre-push hook and preflight specs
+              run: |
+                  bash scripts/hooks/pre-push-test.sh
+                  bash scripts/ci/preflight-test.sh
 
             - uses: actions/setup-java@v5
               with:

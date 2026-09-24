@@ -50,7 +50,7 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still wait for a green build before releasing anything" in {
-    deployJob should include("needs: [ci, build-web]")
+    deployJob should include("needs: [ci, build-web")
   }
 
   it should "release a tag those builds actually push" in {

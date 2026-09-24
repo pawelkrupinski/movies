@@ -86,7 +86,44 @@ permissions:
     contents: read
 
 jobs:
+    # Seconds, first: the signing secrets are set and the SDK licence Gradle needs is accepted.
+    # Without it a missing secret surfaced minutes in, as an UNSIGNED release APK that the
+    # rolling-release step then refused, and an unaccepted licence as Gradle declining to install
+    # a platform. PRs build unsigned by design (see the header), so only other events require
+    # the secrets. scripts/ci/preflight.sh never prints a value. (PreflightWiringSpec)
+    preflight:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: scripts/ci
+                  sparse-checkout-cone-mode: false
+
+            # The same SDK set-up `build` uses, so the licence checked is the one it will see.
+            - name: Set up Android SDK
+              uses: android-actions/setup-android@v3
+              with:
+                  packages: platform-tools
+
+            - name: Signing secrets present, SDK licence accepted
+              env:
+                  KINOWO_RELEASE_KEYSTORE_BASE64: ${{ secrets.KINOWO_RELEASE_KEYSTORE_BASE64 }}
+                  KINOWO_RELEASE_STORE_PASSWORD: ${{ secrets.KINOWO_RELEASE_STORE_PASSWORD }}
+                  KINOWO_RELEASE_KEY_ALIAS: ${{ secrets.KINOWO_RELEASE_KEY_ALIAS }}
+                  KINOWO_RELEASE_KEY_PASSWORD: ${{ secrets.KINOWO_RELEASE_KEY_PASSWORD }}
+                  EVENT: ${{ github.event_name }}
+              run: |
+                  if [ "$EVENT" = pull_request ]; then
+                      scripts/ci/preflight.sh --android-sdk-licence
+                  else
+                      scripts/ci/preflight.sh --android-sdk-licence \
+                          KINOWO_RELEASE_KEYSTORE_BASE64 KINOWO_RELEASE_STORE_PASSWORD \
+                          KINOWO_RELEASE_KEY_ALIAS KINOWO_RELEASE_KEY_PASSWORD
+                  fi
+
     build:
+        needs: preflight
         runs-on: ubuntu-latest
         # `checks: write` so action-junit-report can post the failure
         # check-run + summary from the Gradle JUnit XML. `contents: write`

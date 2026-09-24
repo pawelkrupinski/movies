@@ -18,7 +18,7 @@ import org.scalatest.matchers.should.Matchers
  *
  * So the budget is a fixed 20, and a new job has to take its slot from an
  * existing one rather than be added. Both files that contribute count: ci.yml's
- * jobs and main.yml's `free-runners` start at t=0. (The Fly deploy does not — it
+ * jobs and main.yml's `preflight` start at t=0. (The Fly deploy does not — it
  * `needs: ci`, so ci's jobs have released their slots by then.)
  *
  * A NEEDS-LESS JOB IS THE ONLY KIND THAT COSTS ANYTHING HERE, and that is what
@@ -91,33 +91,38 @@ class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
    * Used to be an EXACT-fill assertion — under-filling the allowance was as real
    * a regression as over-filling, because the account's 20th slot was always
    * `free-runners`, a job with nothing else it could be spending it on. That job
-   * was retired 2026-09-08 (`DeployImageReuseSpec`), and this budget now runs
-   * one slot under the allowance deliberately: filling it means giving ci.yml's
-   * own sharding another row, which is a call about THAT suite's shard sizes,
-   * not a consequence of retiring a runner-preemption step. Left as headroom
-   * until someone has a shard that wants it.
+   * was retired 2026-09-08 (`DeployImageReuseSpec`), and ci.yml now runs one
+   * slot under the allowance deliberately: filling it means giving ci.yml's own
+   * sharding another row, which is a call about THAT suite's shard sizes. The
+   * slot is main.yml's `preflight` now, for the seconds it takes (below).
    */
-  it should "leave the freed slot as headroom rather than force an unrelated shard to fill it" in {
-    withClue(s"ci.yml=$ciRunners + main.yml(no-needs)=$deployRunnersAtStart: ") {
-      ciRunners + deployRunnersAtStart shouldBe (Allowance - 1)
-    }
+  it should "leave ci.yml one slot under the allowance, for main.yml's preflight" in {
+    withClue(s"ci.yml=$ciRunners: ")(ciRunners shouldBe (Allowance - 1))
   }
 
   /**
-   * NO main.yml job should start alongside ci any more. `free-runners` was the
-   * one exception — it ran with no `needs:` because the runners it freed were
-   * only useful while ci's jobs were still queueing — and it is gone
-   * (`DeployImageReuseSpec`). The GHCR build jobs that ship the k3s tiers all
-   * hang off `needs: ci`, which is what keeps the budget above honest: dropping
-   * a `needs:` to make a deploy land sooner would silently push a push to main
-   * past the allowance, and the jobs that queue would be whichever GitHub felt
-   * like.
+   * ONE main.yml job starts alongside ci: `preflight`, which checks the deploy's
+   * secret in seconds so a missing one fails the run at t=0 rather than after
+   * ci (`PreflightWiringSpec`). Everything else — the GHCR build jobs that ship
+   * the k3s tiers, the Fly release — hangs off `needs: ci`, which is what keeps
+   * the budget above honest: dropping a `needs:` to make a deploy land sooner
+   * would silently push a push to main past the allowance, and the jobs that
+   * queue would be whichever GitHub felt like. `free-runners` was the earlier
+   * t=0 exception and is gone (`DeployImageReuseSpec`).
    */
-  it should "hang every main.yml job off ci rather than starting any at t=0" in {
+  it should "start nothing alongside ci but the preflight" in {
     val atStart = jobs(mainYml).view
       .filterKeys(_ != "ci")
       .collect { case (name, block) if !block.linesIterator.exists(_.trim.startsWith("needs:")) => name }
       .toSet
-    withClue("jobs starting alongside ci: ")(atStart shouldBe empty)
+    withClue("jobs starting alongside ci: ")(atStart shouldBe Set("preflight"))
+  }
+
+  /** ...and the preflight holds that slot for seconds, not for whatever it grows into. */
+  it should "bound the preflight to a few minutes at most" in {
+    val timeout = jobs(mainYml)("preflight").linesIterator.map(_.trim).collectFirst {
+      case s"timeout-minutes: $n" => n.toInt
+    }
+    timeout.getOrElse(fail("main.yml's preflight has no timeout-minutes")) should be <= 5
   }
 }
