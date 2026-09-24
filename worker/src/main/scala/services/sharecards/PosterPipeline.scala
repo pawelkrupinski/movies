@@ -23,6 +23,12 @@ object PosterRendition {
   private val TmdbSized = """(https?://image\.tmdb\.org/t/p/)(original|w\d+)(/.+)""".r
   private val Amazon    = """(https?://m\.media-amazon\.com/images/M/[^@]+@)\._V1_[^/]*\.jpg""".r
 
+  /** True for a poster on a source that serves arbitrary sizes. */
+  def resizable(url: String): Boolean = url match {
+    case TmdbSized(_, _, _) | Amazon(_) => true
+    case _                              => false
+  }
+
   /** The URLs to fetch for `url`, cheapest first, ending with `url` itself. */
   def candidates(url: String): Seq[String] = url match {
     case TmdbSized(prefix, size, path) if size == "original" || size.drop(1).toIntOption.exists(_ > 780) =>

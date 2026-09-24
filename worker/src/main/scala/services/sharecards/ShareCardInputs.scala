@@ -132,7 +132,7 @@ object ShareCardInputs {
       title          = movie.title,
       year           = movie.releaseYear,
       genres         = movie.genres,
-      posterUrls     = (movie.posterUrl.toSeq ++ movie.fallbackPosterUrls).filter(_.nonEmpty).distinct.take(MaxPosterCandidates),
+      posterUrls     = candidates(movie.posterUrl.toSeq ++ movie.fallbackPosterUrls),
       imdb           = movie.ratings.imdb,
       metascore      = movie.ratings.metascore,
       rottenTomatoes = movie.ratings.rottenTomatoes,
@@ -162,6 +162,17 @@ object ShareCardInputs {
 
   /** How many poster candidates a card walks — the primary and up to five cinema fallbacks. */
   val MaxPosterCandidates = 6
+
+  /** The first [[MaxPosterCandidates]] of `urls` in their order, except that the posters of a
+   *  source that serves every film at any size ([[PosterRendition.resizable]]: TMDB, IMDb) always
+   *  make the cut. They rank after every cinema's, so a film many cinemas list would otherwise
+   *  lose them — and with them the one poster that reliably downloads. */
+  def candidates(urls: Seq[String]): Seq[String] = {
+    val all  = urls.filter(_.nonEmpty).distinct
+    val sure = all.filter(PosterRendition.resizable).take(MaxPosterCandidates)
+    val kept = (all.filterNot(sure.contains).take(MaxPosterCandidates - sure.size) ++ sure).toSet
+    all.filter(kept)
+  }
 }
 
 /** Why a card was (re-)rendered — the `reason` label on `kinowo_worker_share_cards_render_total`.

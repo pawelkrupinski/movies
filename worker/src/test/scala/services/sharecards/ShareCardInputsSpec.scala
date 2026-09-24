@@ -26,6 +26,18 @@ class ShareCardInputsSpec extends AnyFlatSpec with Matchers {
     ShareCardInputs.of(film(ratings = ratings.copy(imdb = Some(7.86))), Country.default).drawnHash should not be inputs.drawnHash
   }
 
+  // Posters rank cinema-first, TMDB and IMDb last, so a film listed by many cinemas had its TMDB
+  // poster cut by the candidate cap — and with every cinema poster failing (Cloudflare, hotlink
+  // rules), the card went out without one while a TMDB poster was right there.
+  it should "keep the TMDB and IMDb posters among its candidates however many cinemas list one" in {
+    val cinemas = (1 to 9).map(i => s"https://cinema$i.example/poster.jpg")
+    val tmdb    = "https://image.tmdb.org/t/p/w500/x.jpg"
+    val imdb    = "https://m.media-amazon.com/images/M/MV5Bx@._V1_.jpg"
+    val urls    = ShareCardInputs.of(film(poster = cinemas.head).copy(fallbackPosterUrls = cinemas.tail :+ tmdb :+ imdb), Country.default).posterUrls
+    urls should have size ShareCardInputs.MaxPosterCandidates.toLong
+    urls shouldBe cinemas.take(ShareCardInputs.MaxPosterCandidates - 2) :+ tmdb :+ imdb
+  }
+
   it should "version the card by the poster it was drawn from, not by the whole candidate list" in {
     val churned = ShareCardInputs.of(film().copy(fallbackPosterUrls = Seq("https://cinema.example/other.jpg")), Country.default)
     churned.drawnHash shouldBe inputs.drawnHash
