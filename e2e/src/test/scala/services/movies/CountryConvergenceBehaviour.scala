@@ -983,12 +983,17 @@ abstract class CountryConvergenceBehaviour(
       // to let the stages the ticks above skip take their first look, then once more, which
       // must write nothing to the corpus, re-key nothing, re-project nothing and re-ask
       // nothing. Writes are counted off the oplog: this storage is Mongo, whose change
-      // stream delivers too late to count.
+      // stream delivers too late to count — and for the same reason each pass waits for the
+      // cursors to go quiet, or the first pass's projections land in the ledgered one.
       FixpointPass.attachProjector(w)
       FixpointPass.run(w)
+      FixpointPass.awaitStreamsQuiet(w)
       val corpusWrites = storage.corpusWrites()
       try FixpointPass.ledger(w, corpusWrites)
-        .assertNoChurn(s"a further full tick over ${country.displayName}'s unchanged corpus")(FixpointPass.run(w))
+        .assertNoChurn(s"a further full tick over ${country.displayName}'s unchanged corpus") {
+          FixpointPass.run(w)
+          FixpointPass.awaitStreamsQuiet(w)
+        }
       finally corpusWrites.foreach(_.close())
     }
   }

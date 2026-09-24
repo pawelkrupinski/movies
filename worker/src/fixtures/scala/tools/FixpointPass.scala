@@ -3,6 +3,8 @@ package tools
 import io.prometheus.metrics.model.snapshots.Labels
 import services.movies.{CountingScreeningsRepository, CountingSlotsRepository}
 
+import scala.concurrent.duration._
+
 /**
  * One whole production tick, and the ledger that says whether it did any work.
  *
@@ -125,5 +127,34 @@ object FixpointPass {
     services.tasks.ReaperSweeps.unresolvedTmdbPeriod(w.unresolvedTmdbReaper, w.clock.instant())
     w.drainServices()
     w.enrichRatingsSync()
+  }
+
+  /** Wait until Mongo's change streams have delivered and applied what the last pass wrote:
+   *  no event waiting on any cursor's apply thread, and none delivered for `quiet`.
+   *
+   *  A Mongo cursor delivers whenever it gets there, so without this the projector's work
+   *  for one pass lands in the NEXT one's ledger — on 2026-09-24 the UK leg's first pass
+   *  merged two films away, their deletes reached the projector during the ledgered pass,
+   *  and a pass that wrote nothing to the corpus was reported as retiring a card and
+   *  deleting 25 screenings. Call it after the pass that may look and inside the ledgered
+   *  body, after the pass. An in-memory store rings its listeners inside the write and
+   *  needs neither. `now` is the liveness's own clock, the one its delivery stamps come from. */
+  def awaitStreamsQuiet(w: TestWiring, quiet: FiniteDuration = 2.seconds, within: FiniteDuration = 2.minutes): Unit = {
+    val liveness = w.movieRepository.changeStreamLiveness
+    val watched  = services.movies.ChangeStreamLiveness.Collections.filter(liveness.isWatching)
+    val deadline = System.nanoTime() + within.toNanos
+    def settled: Boolean = {
+      val now = liveness.now()
+      watched.forall { c =>
+        liveness.pendingApplies(c) == 0 &&
+          liveness.lastDelivered(c).forall(at => java.time.Duration.between(at, now).toMillis >= quiet.toMillis)
+      }
+    }
+    while (!settled) {
+      if (System.nanoTime() > deadline)
+        throw new IllegalStateException(s"the change streams (${watched.mkString(", ")}) were still delivering or applying " +
+          s"$within after the pass — a pass that never stops writing is churn in its own right")
+      Thread.sleep(100)
+    }
   }
 }
