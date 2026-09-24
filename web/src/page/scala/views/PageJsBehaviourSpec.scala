@@ -242,6 +242,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           case ("PUT", p) if p.startsWith(Bucket + "/")          => writeJson(200, """{"hiddenFilms":["Film A"]}"""); true
           case ("DELETE", p) if p.startsWith(Bucket + "/")       => writeJson(200, """{"hiddenFilms":[]}"""); true
           case ("DELETE", Bucket)                                => writeJson(200, """{"hiddenFilms":[]}"""); true
+          // A language this server does not know — as an older pod answers a
+          // newer page's pick mid-rollout: refused for good, as the real
+          // controller refuses it.
+          case ("PUT", "/api/me/state") if new String(exchange.getRequestBody.readAllBytes(),
+              java.nio.charset.StandardCharsets.UTF_8).contains("\"language\":\"it\"") =>
+            writeJson(400, """{"error":"language must be one of pl, en, de, es, got it"}"""); true
           case _                                                 => false
         }
       }
@@ -848,6 +854,25 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         // German. See this file's other notes on that exact class of leak.
         userStateJson.set("""{"hiddenFilms":["Film A"],"disabledCinemas":["Server-Only Cinema"],"language":null}""")
         page.eval("localStorage.removeItem('kinowo_lang')")
+      }
+    }
+  }
+
+  // A pick the server refuses for good (400) can never land: kept pending, it
+  // was re-pushed on every load and the account's own pick never came back.
+  it should "drop a pending pick the server refuses for good, and take the account's" in {
+    onLoggedInIndex { page =>
+      awaitOwnReconcile(page)
+      userStateJson.set("""{"hiddenFilms":["Film A"],"disabledCinemas":["Server-Only Cinema"],"language":"de"}""")
+      try {
+        page.eval("localStorage.setItem('kinowo_lang', 'it'); localStorage.setItem('kinowo_lang_pending', 'it')")
+        page.reload()
+        page.waitFor(
+          "localStorage.getItem('kinowo_lang_pending') === null && localStorage.getItem('kinowo_lang') === 'de'",
+          timeoutMs = 5000)
+      } finally {
+        userStateJson.set("""{"hiddenFilms":["Film A"],"disabledCinemas":["Server-Only Cinema"],"language":null}""")
+        page.eval("localStorage.removeItem('kinowo_lang'); localStorage.removeItem('kinowo_lang_pending')")
       }
     }
   }

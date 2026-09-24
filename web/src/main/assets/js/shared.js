@@ -2313,6 +2313,11 @@
     try { if (lang) localStorage.setItem(PENDING_LANGUAGE_KEY, lang); else localStorage.removeItem(PENDING_LANGUAGE_KEY); } catch {}
   }
 
+  // Whether a refused write may land if sent again: the server erred, the session
+  // lapsed (401), or it timed out / throttled (408, 429). Any other 4xx is a
+  // refusal that will never change — sending it again is pointless forever.
+  function _retryable(status) { return status >= 500 || [401, 408, 429].includes(status); }
+
   function scheduleServerSync() {
     if (!isLoggedIn() && !sessionUnconfirmed()) return;
     _setPendingLanguage((() => { try { return localStorage.getItem('kinowo_lang'); } catch { return null; } })());
@@ -2420,7 +2425,7 @@
         } else {
           // A refusal that will never change (400 over-long title, 413 full
           // bucket) is not worth replaying; anything else may land next time.
-          failed(resp.status >= 500 || [401, 408, 429].includes(resp.status));
+          failed(_retryable(resp.status));
         }
       })
       .catch(() => failed(true));
@@ -2458,6 +2463,13 @@
     }).then(resp => {
       // Landed: the account holds it — unless a newer pick is already owed.
       if (resp.ok && _pendingLanguage() === lang) _setPendingLanguage(null);
+      // Refused for good (a language this server does not know): it can never
+      // land, so stop owing it, and take the account's pick instead — without
+      // pushing this one back, which is what was just refused.
+      else if (!resp.ok && !_retryable(resp.status) && _pendingLanguage() === lang) {
+        _setPendingLanguage(null);
+        reconcileLanguage({ adoptOnly: true });
+      }
     }).catch(() => { /* offline — still pending, the next reconcile resends it */ });
   }
 
@@ -2556,8 +2568,9 @@
   // becomes the account's. Tested separately from the two hiddenFilms
   // reconcile tests so a change to one never masks a regression in the
   // other.
-  async function reconcileLanguage() {
+  async function reconcileLanguage(opts) {
     if (!isLoggedIn()) return;
+    const adoptOnly = !!(opts && opts.adoptOnly);
     // A pick the account has not confirmed is newer than anything it holds:
     // push it rather than let the account's value overwrite it.
     if (_pendingLanguage()) return pushStateToServer();
@@ -2570,7 +2583,7 @@
       if (remote.language && remote.language !== localLang) {
         localStorage.setItem('kinowo_lang', remote.language);
         if (typeof window.applyLanguage === 'function') window.applyLanguage(remote.language);
-      } else if (!remote.language && localLang) {
+      } else if (!remote.language && localLang && !adoptOnly) {
         pushStateToServer();
       }
     } catch (e) { /* network blew up — localStorage is still usable */ }
