@@ -2374,6 +2374,9 @@
   // landed (offline, 401, 5xx) leaves localStorage ahead of the server, so the
   // cached validators stop describing it — forget them, and the next
   // reconcile takes the server's answer instead of 304-ing onto the drift.
+  // The tail of each country's write chain — see `_writeHiddenFilms`.
+  const _hiddenFilmsWrites = {};
+
   function _writeHiddenFilms(method, country, title) {
     country = country || currentCountryCode();
     const key = title === undefined ? null : title;
@@ -2392,7 +2395,11 @@
       _forgetHiddenFilmsValidators(country);
       _settlePending(country, method, key, retry);
     };
-    return fetch(_hiddenFilmsUrl(country, title), { method: method })
+    // One write at a time per country, in the order they were made: two
+    // concurrent requests may reach the server either way round, and a clear
+    // landing after the hide made just behind it wipes that hide.
+    const previous = _hiddenFilmsWrites[country] || Promise.resolve();
+    const sent = previous.then(() => fetch(_hiddenFilmsUrl(country, title), { method: method }))
       .then(resp => {
         if (resp.ok) {
           _settlePending(country, method, key, false);
@@ -2405,6 +2412,8 @@
         }
       })
       .catch(() => failed(true));
+    _hiddenFilmsWrites[country] = sent;
+    return sent;
   }
 
   function hideFilmOnServer(title, country)   { _writeHiddenFilms('PUT', country, title); }
@@ -2496,9 +2505,9 @@
       // already this country's) — never one mirroring another country, which
       // the server's list replaces instead (server authoritative, so removals
       // propagate). Either way the writes this device still owes (see the
-      // section comment) are played over the result and sent again, IN ORDER
-      // — a clear then a hide must not land the other way round — and only
-      // then does the union migrate up what the list holds that the server
+      // section comment) are played over the result and sent again — in
+      // order, as every write is (see `_writeHiddenFilms`) — and only then
+      // does the union migrate up what the list holds that the server
       // does not (there is no bulk write any more). A first sync with writes
       // owed is a page that could not reach the server before: without them
       // the union would bring back what they removed. `_lsSet` (not
@@ -2509,9 +2518,8 @@
       const list       = _withPending(union ? [...new Set([...getHidden(), ...serverList])] : serverList, pending).sort();
       _lsSet('hiddenFilms', list);
       const localOnly  = union ? list.filter(t => !serverList.includes(t)) : [];
-      pending.reduce((sent, [method, title]) =>
-        sent.then(() => _writeHiddenFilms(method, country, title === null ? undefined : title)), Promise.resolve())
-        .then(() => localOnly.forEach(title => hideFilmOnServer(title, country)));
+      pending.forEach(([method, title]) => _writeHiddenFilms(method, country, title === null ? undefined : title));
+      localOnly.forEach(title => hideFilmOnServer(title, country));
       try { localStorage.setItem(_hiddenFilmsSyncedKey(country), '1'); } catch {}
 
       applyFilters();

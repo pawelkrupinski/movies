@@ -25,7 +25,9 @@ import scala.util.Random
  * unhide, clear, login, logout, resume (a page load — the reconcile; the
  * server answers 304 or 200 by its own content validator), another device
  * hiding / unhiding a title, the network going down, the network coming back
- * (reconnect + reload), a local language pick, another device's language pick.
+ * (reconnect + reload), a local language pick, another device's language pick —
+ * plus two the apps need not model, since their queue sends one write at a
+ * time: a lagging network, and a clear followed at once by a hide.
  *
  * THE INVARIANTS:
  *  1. No title crosses countries: a title hidden in one country never reaches
@@ -115,6 +117,12 @@ class HiddenFilmsSyncModelSpec extends AnyFlatSpec with Matchers with BeforeAndA
     SyncModel.violationOf(c, Seq(NetworkDown, SwitchCountry("de"), PickLanguage("de"), RemoteLanguage("es"))) shouldBe None
   }
 
+  // Found by this model: every write was its own concurrent fetch, so a clear
+  // held up on the wire landed AFTER the hide sent just behind it, and wiped it.
+  it should "land a clear and a quick hide on the server in the order they were made" in withChrome { c =>
+    SyncModel.violationOf(c, Seq(Login, Hide, Lag, ClearThenHide)) shouldBe None
+  }
+
   it should "resend a write that failed offline" in withChrome { c =>
     SyncModel.violationOf(c, Seq(Login, Hide, NetworkDown, Unhide(0), Reconnect)) shouldBe None
   }
@@ -144,6 +152,12 @@ object HiddenFilmsSyncModelSpec {
   case object Reconnect                                      extends SyncEvent
   final case class PickLanguage(language: String)            extends SyncEvent
   final case class RemoteLanguage(language: String)          extends SyncEvent
+  /** The network starts to lag: a whole-bucket write takes longer to arrive than
+   *  a per-title one, so a later request can overtake it. Until settling. */
+  case object Lag                                            extends SyncEvent
+  /** A clear and a hide in one quick run — the second made while the first is
+   *  still on the wire. */
+  case object ClearThenHide                                  extends SyncEvent
 
   object SyncModel {
     def generate(seed: Long): Seq[SyncEvent] = {
@@ -162,8 +176,10 @@ object HiddenFilmsSyncModelSpec {
           case n if n < 74 => RemoteUnhide(country(), random.nextInt(8))
           case n if n < 81 => NetworkDown
           case n if n < 89 => Reconnect
-          case n if n < 96 => PickLanguage(Languages(random.nextInt(Languages.size)))
-          case _           => RemoteLanguage(Languages(random.nextInt(Languages.size)))
+          case n if n < 94 => PickLanguage(Languages(random.nextInt(Languages.size)))
+          case n if n < 96 => RemoteLanguage(Languages(random.nextInt(Languages.size)))
+          case n if n < 98 => Lag
+          case _           => ClearThenHide
         }
       }
     }
@@ -185,7 +201,7 @@ object HiddenFilmsSyncModelSpec {
      *  invariant broken, or None. */
     def violationOf(chrome: Chrome, events: Seq[SyncEvent]): Option[String] = {
       val account = new ModelAccountServer
-      val server  = new TestHttpServer(Pages.routes, dynamicRoute = account.route)
+      val server  = new TestHttpServer(Pages.routes, dynamicRoute = account.route, concurrent = true)
       try chrome.openPage(server.baseUrl + Pages.path(Countries.head)) { page =>
         new Run(page, account, server.baseUrl).play(events)
       } finally server.close()
@@ -221,6 +237,7 @@ object HiddenFilmsSyncModelSpec {
     private var language: Option[String] = None
     @volatile var signedIn = false
     @volatile var offline  = false
+    @volatile var lagging  = false
 
     def bucket(country: String): Set[String] = synchronized(buckets(country))
     def update(country: String)(f: Set[String] => Set[String]): Unit = synchronized(buckets(country) = f(buckets(country)))
@@ -230,7 +247,15 @@ object HiddenFilmsSyncModelSpec {
     private def etag(country: String): String =
       "\"" + Integer.toHexString(buckets(country).toSeq.sorted.mkString("|").hashCode) + "\""
 
-    def route(exchange: HttpExchange): Boolean = synchronized {
+    def route(exchange: HttpExchange): Boolean = {
+      // In transit, before the account sees it: a lagging whole-bucket clear
+      // arrives after whatever was sent just behind it.
+      if (lagging && exchange.getRequestMethod == "DELETE" && exchange.getRequestURI.getPath.endsWith("/hidden-films"))
+        Thread.sleep(400)
+      serve(exchange)
+    }
+
+    private def serve(exchange: HttpExchange): Boolean = synchronized {
       val path   = exchange.getRequestURI.getPath
       val method = exchange.getRequestMethod
       val Bucket = "/api/me/([a-z]+)/hidden-films(?:/(.+))?".r
@@ -357,6 +382,10 @@ object HiddenFilmsSyncModelSpec {
           mustNotHave(country) = mustNotHave(country) ++ list ++ mustHave(country)
           mustHave(country) = Set.empty
         }
+      case ClearThenHide =>
+        apply(Clear)
+        apply(Hide)
+      case Lag => account.lagging = true
       // Signing in or out is a round trip to the server on the web (the OAuth
       // redirect chain, the sign-out POST): offline, neither happens.
       case Login | Logout if account.offline => ()
@@ -437,6 +466,7 @@ object HiddenFilmsSyncModelSpec {
      *  first sync's union pushes have landed — then compare, page by page. */
     private def settle(): Option[String] = {
       account.offline = false
+      account.lagging = false
       load()
       if (!signedIn) apply(Login)
       (1 to 2).foreach(_ => Countries.foreach(c => apply(SwitchCountry(c))))

@@ -36,6 +36,10 @@ class TestHttpServer(
   // every existing caller (a `routes`/`jsonRoutes`-only construction) is
   // completely unaffected.
   dynamicRoute: HttpExchange => Boolean = _ => false,
+  // Serve requests concurrently rather than on the JDK server's one dispatcher
+  // thread — for a route that holds one request back (a lagging network) while
+  // the next one overtakes it, which one thread would make impossible.
+  concurrent: Boolean = false,
 ) extends AutoCloseable {
   // Stable HTTP-date stamped on every JSON response so clients can capture a
   // `Last-Modified` (and a future conditional-GET test has a value to echo
@@ -167,10 +171,12 @@ class TestHttpServer(
       } finally exception.close()
     }
   })
+  private val pool = Option.when(concurrent)(java.util.concurrent.Executors.newCachedThreadPool())
+  pool.foreach(server.setExecutor)
   server.start()
 
   val port: Int = server.getAddress.getPort
   val baseUrl: String = s"http://127.0.0.1:$port"
 
-  override def close(): Unit = server.stop(0)
+  override def close(): Unit = { server.stop(0); pool.foreach(_.shutdownNow()) }
 }
