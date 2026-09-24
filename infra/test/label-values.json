@@ -9293,6 +9293,7 @@
     "exhausted",
     "failed",
     "no_handler",
+    "permanent",
     "rescheduled",
     "skipped"
    ]

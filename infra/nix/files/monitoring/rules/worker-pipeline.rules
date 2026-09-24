@@ -244,6 +244,34 @@ groups:
             handler it was written for.
 
       # -----------------------------------------------------------------------------------------
+      # 5b. A TASK DROPPED ON A DETERMINISTIC FAILURE. `permanent` is what `TaskWorker` records when
+      # a handler throws a bare `IllegalArgumentException` -- a violated `require` -- and it drops the
+      # task on that first attempt instead of retrying a failure every retry would replay (ES "La
+      # luz", 2026-09-21: `rekey requires same normalised cleanTitle`, 12 identical attempts over
+      # 1h45m). It is a code or data bug, so the baseline is zero and one is worth a message --
+      # `warning`, like its siblings, never a page. `WorkerTasksFailingRepeatedly` cannot see it: it
+      # is a RATIO, and one dropped task among hundreds finishing `done` never moves it.
+      #
+      # Same shape as rule 5 and for the same reason: `increase(...[1h])` holds the alert for an
+      # hour after the drop, which is the intended answer (no flapping); the `for: 5m` only delays
+      # the message. `increase` absorbs the counter reset a worker restart causes, so a restart
+      # neither clears it nor fires it.
+      - alert: WorkerTasksFailingPermanently
+        expr: sum by (country, task_type) (increase(kinowo_worker_tasks_finished_total{outcome="permanent"}[1h])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }} dropped {{ $labels.task_type }} task(s) on a deterministic failure"
+          description: >-
+            A `{{ $labels.task_type }}` handler threw a bare IllegalArgumentException (a violated
+            `require`), so `TaskWorker` dropped the task on its first attempt rather than retrying a
+            failure every retry would replay. That is a bug in the code or in the task's data, and the
+            work did not happen. The worker log line "failed permanently on attempt" names the task's
+            dedup key and the message; a reaper that still finds the work due will re-enqueue it and
+            hit the same failure until the bug is fixed.
+
+      # -----------------------------------------------------------------------------------------
       # THE COMPANION. Rules 1 and 2 are comparisons against a series, and a comparison cannot fire
       # when its series is gone -- so a worker that stops publishing its queue gauges would leave
       # both silent, which is indistinguishable from a queue that is behaving. `WorkerDown` covers

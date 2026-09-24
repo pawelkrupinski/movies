@@ -252,6 +252,60 @@ tests:
               summary: "de is claiming RefreshRatings tasks with no handler wired for them"
               description: "Something is enqueueing `RefreshRatings` and nothing is running it -- the tasks are claimed, counted, and discarded, so the work silently never happens while every throughput metric looks healthy. The baseline for this counter is zero across the whole fleet. Look at the handler registration in `WorkerWiring` for this type, and at whatever enqueues it: either the registration was lost in a rename or the enqueue outlived the handler it was written for."
 
+  # A TASK DROPPED ON A DETERMINISTIC FAILURE. One is a bug worth a message (baseline zero), held
+  # for the hour `increase` keeps it in view.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_tasks_finished_total{country="es",job="kinowo-worker",task_type="ResolveTmdb",outcome="permanent"}'
+        values: '0x10 1x70'
+    alert_rule_test:
+      # Before the drop, and inside the `for: 5m` right after it.
+      - eval_time: 9m
+        alertname: WorkerTasksFailingPermanently
+        exp_alerts: []
+      - eval_time: 13m
+        alertname: WorkerTasksFailingPermanently
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: WorkerTasksFailingPermanently
+        exp_alerts:
+          - exp_labels: { severity: warning, country: es, task_type: ResolveTmdb }
+            exp_annotations:
+              summary: "es dropped ResolveTmdb task(s) on a deterministic failure"
+              description: "A `ResolveTmdb` handler threw a bare IllegalArgumentException (a violated `require`), so `TaskWorker` dropped the task on its first attempt rather than retrying a failure every retry would replay. That is a bug in the code or in the task's data, and the work did not happen. The worker log line \"failed permanently on attempt\" names the task's dedup key and the message; a reaper that still finds the work due will re-enqueue it and hit the same failure until the bug is fixed."
+      # An hour after the one drop it has aged out: a single bug report, not a standing alert.
+      - eval_time: 75m
+        alertname: WorkerTasksFailingPermanently
+        exp_alerts: []
+
+  # QUIET: the seeded zero series exists for every (country, task_type) all the time.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_tasks_finished_total{country="pl",job="kinowo-worker",task_type="ResolveTmdb",outcome="permanent"}'
+        values: '0x80'
+    alert_rule_test:
+      - eval_time: 60m
+        alertname: WorkerTasksFailingPermanently
+        exp_alerts: []
+
+  # A WORKER RESTART NEITHER CLEARS NOR FIRES IT. The drop at 10m, then a ~3m scrape gap and the
+  # counter back at its seeded 0: `increase` reads the 1 -> 0 as a reset, not a decrease, so the
+  # alert raised before the restart is still held after it. And a restart alone (0, gap, 0) is quiet.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_tasks_finished_total{country="uk",job="kinowo-worker",task_type="ScrapeChunk",outcome="permanent"}'
+        values: '0x10 1x14 stale stale stale 0x50'
+      - series: 'kinowo_worker_tasks_finished_total{country="de",job="kinowo-worker",task_type="ScrapeChunk",outcome="permanent"}'
+        values: '0x24 stale stale stale 0x50'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: WorkerTasksFailingPermanently
+        exp_alerts:
+          - exp_labels: { severity: warning, country: uk, task_type: ScrapeChunk }
+            exp_annotations:
+              summary: "uk dropped ScrapeChunk task(s) on a deterministic failure"
+              description: "A `ScrapeChunk` handler threw a bare IllegalArgumentException (a violated `require`), so `TaskWorker` dropped the task on its first attempt rather than retrying a failure every retry would replay. That is a bug in the code or in the task's data, and the work did not happen. The worker log line \"failed permanently on attempt\" names the task's dedup key and the message; a reaper that still finds the work due will re-enqueue it and hit the same failure until the bug is fixed."
+
   # A COUNTER SITTING AT ZERO IS NOT AN ALERT. The worker publishes the full cartesian of
   # (country x task_type x outcome) seeded at 0, so every one of these series EXISTS at all times --
   # a rule written as `> -1`, or one that forgot the comparison, would page for the whole fleet.
