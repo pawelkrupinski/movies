@@ -1030,13 +1030,38 @@
   // Ask once per document, and hand every caller the same promise so the boot
   // order is "hydrate, then everything that depends on knowing".
   let _authHydration = null;
+  // Whether `/api/me` ANSWERED — signed in (200) or signed out (401) — rather
+  // than failing (offline, a 5xx). A page that could not ask renders signed
+  // out, the safe way to be wrong about what to SHOW; it must not also act as
+  // if the account were gone and drop what this device still owes it (see
+  // `bootMergeFromServer`).
+  let _authAnswered = false;
+  // The last answer this device had, kept across pages: '1' while `/api/me`
+  // last said signed in. A page that cannot ask goes by it — edits made
+  // offline by someone who was signed in are owed to the account (see
+  // `_writeHiddenFilms`), and edits by someone who was not are nobody's.
+  const SIGNED_IN_KEY = 'signedIn';
+  function sessionUnconfirmed() {
+    if (isLoggedIn() || _authAnswered) return false;
+    try { return localStorage.getItem(SIGNED_IN_KEY) === '1'; } catch { return false; }
+  }
   function hydrateAuth() {
     if (_authHydration) return _authHydration;
     // Nothing to sign in to (a deployment with no OAuth secrets), or a page that
     // already carries the menu: either way there is nothing to ask.
-    if (!HAS_OAUTH_PROVIDERS || isLoggedIn()) return (_authHydration = Promise.resolve());
+    if (!HAS_OAUTH_PROVIDERS || isLoggedIn()) {
+      _authAnswered = true;
+      return (_authHydration = Promise.resolve());
+    }
     _authHydration = fetch(mountPrefix() + '/api/me', { credentials: 'same-origin' })
-      .then(response => (response.ok ? response.json() : null))
+      .then(response => {
+        _authAnswered = response.ok || response.status === 401;
+        try {
+          if (response.ok) localStorage.setItem(SIGNED_IN_KEY, '1');
+          else if (response.status === 401) localStorage.removeItem(SIGNED_IN_KEY);
+        } catch {}
+        return response.ok ? response.json() : null;
+      })
       .then(me => { if (me) buildAuthMenu(me); })
       // Offline, or the request failed: the page stays signed out, which is the
       // safe way to be wrong — it offers the way back in rather than an avatar
@@ -1179,6 +1204,7 @@
     if (!hidden.includes(title)) {
       hidden.push(title);
       setHidden(hidden);
+      noteHiddenFilmsEdit(false);
       hideFilmOnServer(title);
       maybeShowAnonymousNag();  // hide is the other "this will only stick on this device" action
     }
@@ -1203,6 +1229,7 @@
   function showAllFilms() {
     preserveScroll(() => {
       setHidden([]);
+      noteHiddenFilmsEdit(true);
       clearHiddenFilmsOnServer();
       applyFilters();
       updateNavbar();
@@ -2229,7 +2256,9 @@
   // describe a server list the local one is still ahead of.
   //
   // Every per-country flag, and every pending op, is cleared whenever a page
-  // renders anonymous (logout / expired session), so the next login migrates
+  // renders anonymous (logout / expired session) — as `/api/me` says, not merely
+  // because it could not be reached (offline keeps them, and queues the edits
+  // made meanwhile as pending too) — so the next login migrates
   // this device's current picks afresh, exactly as the old single flag did.
   // The marker is NOT: the local list outlives the logout, and it still
   // mirrors the account's list for that country — so a sign-in in ANOTHER
@@ -2243,8 +2272,21 @@
   // for why) but keeps the debounced-push machinery below, narrowed to a
   // `language`-only body now that hiddenFilms/disabledCinemas both left it.
   let _serverSyncTimer = 0;
+  // A language pick the account has not confirmed yet — its debounced push is
+  // still waiting, it failed, or the page was offline. Persisted so the next
+  // signed-in load pushes it instead of adopting the account's OLDER pick over
+  // it (see `reconcileLanguage`); forgotten on a confirmed sign-out, with the
+  // hidden-films writes owed. Mirrors the apps' `pendingLanguagePush`.
+  const PENDING_LANGUAGE_KEY = 'kinowo_lang_pending';
+  function _pendingLanguage() { try { return localStorage.getItem(PENDING_LANGUAGE_KEY); } catch { return null; } }
+  function _setPendingLanguage(lang) {
+    try { if (lang) localStorage.setItem(PENDING_LANGUAGE_KEY, lang); else localStorage.removeItem(PENDING_LANGUAGE_KEY); } catch {}
+  }
+
   function scheduleServerSync() {
-    if (!isLoggedIn()) return;
+    if (!isLoggedIn() && !sessionUnconfirmed()) return;
+    _setPendingLanguage((() => { try { return localStorage.getItem('kinowo_lang'); } catch { return null; } })());
+    if (!isLoggedIn()) return; // could not confirm the session: the next signed-in load pushes it
     clearTimeout(_serverSyncTimer);
     // 400ms — long enough that a rapid run of picker clicks folds into one PUT.
     _serverSyncTimer = setTimeout(pushStateToServer, 400);
@@ -2262,6 +2304,25 @@
   // Which country's server list the (per-origin) local `hiddenFilms` list
   // currently mirrors — see the section comment above.
   const HIDDEN_FILMS_COUNTRY_KEY = 'hiddenFilmsCountry';
+  // The marker's value for a list holding more than one country's titles: it
+  // mirrors none, so no country may union it in or trust a 304 for it.
+  const HIDDEN_FILMS_MIXED = '*';
+
+  // Keep the marker true to a LOCAL edit, signed in or not. A hide adds this
+  // country's title to the one per-origin list: a list that was nobody's yet
+  // becomes this country's; one that mirrored ANOTHER country now mixes the
+  // two. Without this an anonymous visitor's /uk hides, still in the list on
+  // /de, were unioned into the /de account on a sign-in there — and a hide made
+  // on /uk while offline, over a list still mirroring /de, stayed on /de's
+  // screen behind a 304. A clear leaves nothing but this country's own state.
+  function noteHiddenFilmsEdit(cleared) {
+    try {
+      const country  = currentCountryCode();
+      const mirrored = localStorage.getItem(HIDDEN_FILMS_COUNTRY_KEY);
+      if (cleared || mirrored === null) localStorage.setItem(HIDDEN_FILMS_COUNTRY_KEY, country);
+      else if (mirrored !== country) localStorage.setItem(HIDDEN_FILMS_COUNTRY_KEY, HIDDEN_FILMS_MIXED);
+    } catch {}
+  }
   function _hiddenFilmsPendingKey(country)    { return 'hiddenFilmsPending:' + country; }
 
   // Pending writes for `country`: `[[method, title], …]`, `title` null for a
@@ -2314,14 +2375,24 @@
   // cached validators stop describing it — forget them, and the next
   // reconcile takes the server's answer instead of 304-ing onto the drift.
   function _writeHiddenFilms(method, country, title) {
-    if (!isLoggedIn()) return;
     country = country || currentCountryCode();
     const key = title === undefined ? null : title;
+    if (!isLoggedIn()) {
+      // A page that could not confirm the session (offline) of a visitor who
+      // was signed in still owes the edit to the account: the next signed-in
+      // reconcile replays it, a page that is sure it is signed out drops it
+      // with the rest.
+      if (sessionUnconfirmed()) {
+        _forgetHiddenFilmsValidators(country);
+        _settlePending(country, method, key, true);
+      }
+      return;
+    }
     const failed = retry => {
       _forgetHiddenFilmsValidators(country);
       _settlePending(country, method, key, retry);
     };
-    fetch(_hiddenFilmsUrl(country, title), { method: method })
+    return fetch(_hiddenFilmsUrl(country, title), { method: method })
       .then(resp => {
         if (resp.ok) {
           _settlePending(country, method, key, false);
@@ -2363,7 +2434,10 @@
       // pagehide flush below isn't dropped mid-navigation.
       keepalive: !!(opts && opts.keepalive),
       body:    JSON.stringify({ language: lang })
-    }).catch(() => { /* offline / 401 — localStorage still has the write */ });
+    }).then(resp => {
+      // Landed: the account holds it — unless a newer pick is already owed.
+      if (resp.ok && _pendingLanguage() === lang) _setPendingLanguage(null);
+    }).catch(() => { /* offline — still pending, the next reconcile resends it */ });
   }
 
   // Flush a still-pending debounced language push synchronously as the page
@@ -2382,6 +2456,10 @@
 
   async function bootMergeFromServer() {
     const country = currentCountryCode();
+    // Signed out as far as this page can tell, but only because `/api/me`
+    // could not be asked: nothing here is known to be over, so nothing is
+    // forgotten either.
+    if (!isLoggedIn() && !_authAnswered) return;
     if (!isLoggedIn()) {
       // Anonymous (incl. just-logged-out): re-arm migration for EVERY country
       // so the next login carries this device's current local picks up
@@ -2391,6 +2469,7 @@
         Object.keys(localStorage)
           .filter(k => k.indexOf(_hiddenFilmsSyncedKey('')) === 0 || k.indexOf(_hiddenFilmsPendingKey('')) === 0)
           .forEach(k => localStorage.removeItem(k));
+        _setPendingLanguage(null);
       } catch {}
       return;
     }
@@ -2414,21 +2493,25 @@
       try { localStorage.setItem(HIDDEN_FILMS_COUNTRY_KEY, country); } catch {}
 
       // Union only a list that is this device's own picks (anonymous, or
-      // already this country's) — never one mirroring another country.
-      if (firstSync && (mirrored === null || mirrored === country)) {
-        const localOnly = getHidden().filter(t => !(remote.hiddenFilms || []).includes(t));
-        const union = (local, srv) => [...new Set([...(local || []), ...(srv || [])])].sort();
-        _lsSet('hiddenFilms', union(getHidden(), remote.hiddenFilms));
-        localOnly.forEach(title => hideFilmOnServer(title, country)); // migrate up — no bulk write exists any more
-      } else {
-        // Server authoritative — mirror it locally so removals propagate,
-        // except for writes this device still owes it (see the section
-        // comment), which are played over it and sent again.
-        // `_lsSet` (not setHidden) avoids re-triggering a write back out.
-        const pending = _pendingHiddenFilms(country);
-        _lsSet('hiddenFilms', _withPending(remote.hiddenFilms || [], pending).sort());
-        pending.forEach(([method, title]) => _writeHiddenFilms(method, country, title === null ? undefined : title));
-      }
+      // already this country's) — never one mirroring another country, which
+      // the server's list replaces instead (server authoritative, so removals
+      // propagate). Either way the writes this device still owes (see the
+      // section comment) are played over the result and sent again, IN ORDER
+      // — a clear then a hide must not land the other way round — and only
+      // then does the union migrate up what the list holds that the server
+      // does not (there is no bulk write any more). A first sync with writes
+      // owed is a page that could not reach the server before: without them
+      // the union would bring back what they removed. `_lsSet` (not
+      // setHidden) avoids re-triggering a write back out.
+      const serverList = remote.hiddenFilms || [];
+      const union      = firstSync && (mirrored === null || mirrored === country);
+      const pending    = _pendingHiddenFilms(country);
+      const list       = _withPending(union ? [...new Set([...getHidden(), ...serverList])] : serverList, pending).sort();
+      _lsSet('hiddenFilms', list);
+      const localOnly  = union ? list.filter(t => !serverList.includes(t)) : [];
+      pending.reduce((sent, [method, title]) =>
+        sent.then(() => _writeHiddenFilms(method, country, title === null ? undefined : title)), Promise.resolve())
+        .then(() => localOnly.forEach(title => hideFilmOnServer(title, country)));
       try { localStorage.setItem(_hiddenFilmsSyncedKey(country), '1'); } catch {}
 
       applyFilters();
@@ -2450,10 +2533,14 @@
   // other.
   async function reconcileLanguage() {
     if (!isLoggedIn()) return;
+    // A pick the account has not confirmed is newer than anything it holds:
+    // push it rather than let the account's value overwrite it.
+    if (_pendingLanguage()) return pushStateToServer();
     try {
       const resp = await fetch(mountPrefix() + '/api/me/state', { headers: { 'Accept': 'application/json' } });
       if (!resp.ok) return;
       const remote = await resp.json();
+      if (_pendingLanguage()) return pushStateToServer(); // picked while the fetch was out
       const localLang = localStorage.getItem('kinowo_lang');
       if (remote.language && remote.language !== localLang) {
         localStorage.setItem('kinowo_lang', remote.language);
