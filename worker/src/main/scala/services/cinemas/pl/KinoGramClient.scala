@@ -32,7 +32,8 @@ class KinoGramClient(http: HttpFetch) extends CinemaScraper {
 
   def fetch(): Seq[CinemaMovie] = {
     val body = Json.obj("query" -> Query).toString
-    val json = Try(Json.parse(http.post(ApiUrl, body, "application/json"))).getOrElse(Json.obj())
+    // A failed POST propagates: swallowed into `{}` it read as a venue with no screenings.
+    val json = Json.parse(http.post(ApiUrl, body, "application/json"))
     val screenings = (json \ "data" \ "getScreeningList").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
 
     screenings.groupBy(s => (s \ "movie" \ "id").asOpt[String].getOrElse("")).toSeq.flatMap { case (movieId, group) =>

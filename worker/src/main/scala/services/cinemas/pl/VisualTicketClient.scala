@@ -48,7 +48,7 @@ class VisualTicketClient(
   override def sourceUrl: Option[String] = Some(baseUrl)
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] =
-    VisualTicketClient.parse(Try(http.get(s"$baseUrl/")).getOrElse(""), cinema, locationId, baseUrl)
+    VisualTicketClient.parse(http.get(s"$baseUrl/"), cinema, locationId, baseUrl)
 }
 
 object VisualTicketClient {

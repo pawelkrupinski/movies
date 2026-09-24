@@ -54,22 +54,16 @@ object ScrapeHorizon {
    *
    *  A day whose probe THROWS counts as blank, as [[liveMonths]] treats a failed
    *  month: a missing day cannot be told from a quiet one, and treating it as
-   *  "keep going" would walk two years on every upstream blip.
+   *  "keep going" would walk two years on every upstream blip. But when EVERY probe
+   *  threw, the walk throws the first failure: a source that answered nothing is
+   *  down, not dormant, and must fail the scrape rather than read as an empty one.
    *
    *  Callers group the result into chunks — widening a per-day scrape must not
    *  multiply chunk TASKS day for day (see
    *  `project_scrape_caps_count_venues_not_tasks`). */
   def liveDays(from: LocalDate, maxEmptyDays: Int = MaxEmptyDays)(hasProgramme: LocalDate => Boolean): Seq[LocalDate] = {
     val lastDay = from.plusDays(MaxDays.toLong)
-    var day      = from
-    var emptyRun = 0
-    val live     = Seq.newBuilder[LocalDate]
-    while (!day.isAfter(lastDay) && emptyRun < maxEmptyDays) {
-      if (scala.util.Try(hasProgramme(day)).getOrElse(false)) { live += day; emptyRun = 0 }
-      else emptyRun += 1
-      day = day.plusDays(1)
-    }
-    live.result()
+    walk(Iterator.iterate(from)(_.plusDays(1)).takeWhile(!_.isAfter(lastDay)), maxEmptyDays)(hasProgramme)
   }
 
   /** How many consecutive blank months end a [[liveMonths]] walk.
@@ -86,19 +80,32 @@ object ScrapeHorizon {
    *
    *  Same contract: walk forward from `from`, keep what yields something, stop after
    *  `maxEmptyMonths` consecutive blanks, bound the whole thing by [[MaxDays]], and
-   *  count a month whose probe THROWS as blank. Callers that need to tell "every
-   *  month failed" from "the venue is quiet" — a portal that is down must not read as
-   *  a dormant venue — keep their own record of the attempts inside `hasProgramme`. */
+   *  count a month whose probe THROWS as blank — and throw when every probe did. A
+   *  caller whose `hasProgramme` catches its own fetch failures (to keep the pages it
+   *  read) must still apply [[ListingPages.requireAnyReached]] to what it caught. */
   def liveMonths(from: YearMonth, maxEmptyMonths: Int = MaxEmptyMonths)(hasProgramme: YearMonth => Boolean): Seq[YearMonth] = {
     val lastMonth = YearMonth.from(from.atDay(1).plusDays(MaxDays.toLong))
-    var month     = from
-    var emptyRun  = 0
-    val live      = Seq.newBuilder[YearMonth]
-    while (!month.isAfter(lastMonth) && emptyRun < maxEmptyMonths) {
-      if (scala.util.Try(hasProgramme(month)).getOrElse(false)) { live += month; emptyRun = 0 }
+    walk(Iterator.iterate(from)(_.plusMonths(1)).takeWhile(!_.isAfter(lastMonth)), maxEmptyMonths)(hasProgramme)
+  }
+
+  /** The walk both horizons share: keep the steps that yield something, stop after
+   *  `maxEmpty` consecutive blanks — a step whose probe threw counting as one — and
+   *  throw the first failure when EVERY probe threw ([[ListingPages.requireAnyReached]]).
+   *  That last rule is what keeps a dead upstream from reading as a dormant venue: with
+   *  every probe blank-by-failure the walk would otherwise end with no live step, and the
+   *  scrape report a successful empty listing. */
+  private def walk[A](steps: Iterator[A], maxEmpty: Int)(hasProgramme: A => Boolean): Seq[A] = {
+    val probes   = Seq.newBuilder[scala.util.Try[Boolean]]
+    val live     = Seq.newBuilder[A]
+    var emptyRun = 0
+    while (steps.hasNext && emptyRun < maxEmpty) {
+      val step  = steps.next()
+      val probe = scala.util.Try(hasProgramme(step))
+      probes += probe
+      if (probe.getOrElse(false)) { live += step; emptyRun = 0 }
       else emptyRun += 1
-      month = month.plusMonths(1)
     }
+    ListingPages.requireAnyReached(probes.result())
     live.result()
   }
 }

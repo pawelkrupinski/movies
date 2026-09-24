@@ -4,7 +4,7 @@ import services.cinemas.common.ScraperParse
 import tools.{HttpFetch, ParallelDetailFetch}
 import models._
 import org.jsoup.Jsoup
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.{CinemaScraper, ListingPages}
 
 import java.time.LocalDateTime
 import scala.concurrent.duration._
@@ -66,12 +66,18 @@ class SdkClient(http: HttpFetch) extends CinemaScraper {
     val buf = scala.collection.mutable.ListBuffer[String]()
     var start = 0
     var more  = true
+    val attempts = Seq.newBuilder[Try[String]]
     while (more && start <= 200) {
-      val html  = Try(http.get(s"$ListingUrl?start=$start")).getOrElse("")
+      val page  = Try(http.get(s"$ListingUrl?start=$start"))
+      attempts += page
+      val html  = page.getOrElse("")
       val items = parseListPage(html)
       if (items.isEmpty) more = false
       else { buf += html; more = items.size >= PageSize; start += PageSize }
     }
+    // A later page failing ends the walk with what was read; the FIRST failing means
+    // the listing is down, which must fail the scrape rather than read as empty.
+    ListingPages.requireAnyReached(attempts.result())
     buf.toSeq
   }
 

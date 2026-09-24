@@ -47,11 +47,6 @@ class ScraperOutageSpec extends AnyFlatSpec with Matchers {
       // missing token before any fetch — that throw would pass for the wrong reason.
       odeonAuthToken = () => Some("token"), titles = titleNormalizer)
 
-  /** Clients this spec found swallowing a total outage on its first run, fixed in the
-   *  next commit. `pendingUntilFixed` fails the moment one of them passes. */
-  private val KnownSwallowing = Set("KinoGramClient", "KinoKreskaClient", "KinoMikroClient",
-    "KinoSwiatowidElblagClient", "NoweHoryzontyClient", "SdkClient", "VisualTicketClient")
-
   private sealed trait Verdict
   private case object Failed extends Verdict
   private final case class Answered(films: Int) extends Verdict
@@ -81,7 +76,6 @@ class ScraperOutageSpec extends AnyFlatSpec with Matchers {
 
     scrapers.groupBy(_.getClass.getSimpleName).toSeq.sortBy(_._1).foreach { case (clientName, ofClient) =>
       clientName should s"fail its scrape, not return an empty one, when every upstream answers ${fault.name}" in {
-       def check(): Unit = {
         val mine = verdicts.filter { case (s, _) => ofClient.contains(s) }
         val swallowed = mine.collect { case (s, Answered(n)) => s"${s.cinema.displayName} (returned $n films)" }
         val hung      = mine.collect { case (s, Hung) => s.cinema.displayName }
@@ -91,8 +85,6 @@ class ScraperOutageSpec extends AnyFlatSpec with Matchers {
         withClue(s"${hung.size} venues were still scraping a dead upstream after $perScrape: ${hung.take(10).mkString(", ")} — ") {
           hung shouldBe empty
         }
-       }
-       if (KnownSwallowing(clientName)) pendingUntilFixed(check()) else check()
       }
     }
   }

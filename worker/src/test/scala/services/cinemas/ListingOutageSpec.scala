@@ -1,13 +1,10 @@
 package services.cinemas
 
-import clients.tools.FailingHttpFetch
-import models.{KinoAstra, KinoDiana, KinoKijow, KinoTatry, KinoZamekSzczecin, McswElektrowniaCinema}
+import models.KinoDiana
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.common.{CinemaScraper, ListingPages}
-import services.cinemas.pl.{Bilety24SubdomainClient, FilmwebShowtimesClient, KinoDianaClient, KinoKijowClient, KinoTatryClient, KinoZamekClient, McswElektrowniaCinemaClient, MsiClient}
-import services.movies.SingleCountryNormalizer.titleNormalizer
-import tools.HttpStatusException
+import services.cinemas.common.ListingPages
+import services.cinemas.pl.FilmwebShowtimesClient
 
 import java.time.LocalDate
 import scala.util.{Failure, Success}
@@ -16,31 +13,13 @@ import scala.util.{Failure, Success}
  * A scraper whose source is wholly down must fail its scrape — red on /uptime,
  * with the cause — rather than return an empty list, which reads as a
  * successful "0 showtimes" scrape (white, indistinguishable from a dormant
- * venue). Every client here reads its listing off one page or a walk of
- * several, tolerating a single page failing; this pins that a TOTAL outage
- * still propagates.
+ * venue). [[ScraperOutageSpec]] holds every catalog scraper to that against a
+ * failing fetch; this pins the two shapes it doesn't reach — a source that
+ * HANGS, and the page-tolerance rule itself.
  */
 class ListingOutageSpec extends AnyFlatSpec with Matchers {
 
-  private val down  = new FailingHttpFetch(503)
   private val today = LocalDate.of(2026, 9, 23)
-
-  private val scrapers: Seq[CinemaScraper] = Seq(
-    new KinoDianaClient(down),
-    new KinoTatryClient(down, KinoTatry, today),
-    new FilmwebShowtimesClient(down, 2352, KinoDiana, today = today),
-    new Bilety24SubdomainClient(down, "https://kulturalne-oborniki.bilety24.pl/repertuar/", KinoAstra, today = today, titles = titleNormalizer),
-    new KinoKijowClient(down, KinoKijow, today, titles = titleNormalizer),
-    new McswElektrowniaCinemaClient(down, McswElektrowniaCinema, today),
-    new MsiClient(down, "https://bilety.example.pl", KinoDiana, today),
-    new KinoZamekClient(down, KinoZamekSzczecin, today)
-  )
-
-  scrapers.foreach { scraper =>
-    s"${scraper.getClass.getSimpleName}" should "propagate a total fetch outage instead of returning an empty (white) scrape" in {
-      a[HttpStatusException] should be thrownBy scraper.fetch()
-    }
-  }
 
   // A source that HANGS is as down as one that 503s: every day's page times out,
   // so no day reports anything at all — and "nothing reported" must not read as

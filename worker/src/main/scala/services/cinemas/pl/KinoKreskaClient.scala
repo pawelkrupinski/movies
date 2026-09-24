@@ -45,14 +45,12 @@ class KinoKreskaClient(
   override def sourceUrl: Option[String] = Some(s"$BaseUrl/kino-kreska")
 
   def fetch(): Seq[CinemaMovie] = {
-    val json = Try(
-      http.post(TermsUrl, PostBody, "application/x-www-form-urlencoded")
-    ).getOrElse("")
+    // A failed POST or an unparseable answer propagates: swallowed into "" it read as a
+    // venue with no screenings — a white scrape instead of a red one.
+    val json = http.post(TermsUrl, PostBody, "application/x-www-form-urlencoded")
     if (json.isEmpty) return Seq.empty
 
-    val itemsHtml = Try(
-      (Json.parse(json) \ "items").asOpt[String].getOrElse("")
-    ).getOrElse("")
+    val itemsHtml = (Json.parse(json) \ "items").asOpt[String].getOrElse("")
     if (itemsHtml.isEmpty) return Seq.empty
 
     parse(itemsHtml, cinema)
