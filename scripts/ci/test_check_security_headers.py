@@ -98,5 +98,50 @@ class SessionCookie(unittest.TestCase):
         self.assertEqual(len(failures), 1)
 
 
+class ProxyCredentialsNeverPrinted(unittest.TestCase):
+    """The proxy URL carries the Decodo user and password, and a failed fetch's text goes
+    straight into an `::error::` line in a public run log. Whatever an exception says about the
+    proxy, and whatever kind of exception it is, the credentials must not come out."""
+
+    USER, PASSWORD = "decodo-user", "s3cr3t/pass"
+
+    def _failing_opener(self, error):
+        class Opener:
+            def open(self, request, timeout):
+                raise error
+        return Opener()
+
+    def _fetched(self, error):
+        env = {"KINOWO_PROXY_USER": self.USER, "KINOWO_PROXY_PASS": self.PASSWORD}
+        old = {k: os.environ.get(k) for k in env}
+        os.environ.update(env)
+        try:
+            status, _ = check.fetch(self._failing_opener(error), "GET", "https://kinowo.net/api/me", {})
+        finally:
+            for k, v in old.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+        return str(status)
+
+    def assertRedacted(self, text):
+        for secret in (self.USER, self.PASSWORD, "s3cr3t%2Fpass"):
+            self.assertNotIn(secret, text)
+
+    def test_an_os_error_naming_the_proxy_url_is_redacted(self):
+        text = self._fetched(OSError("Tunnel via http://decodo-user:s3cr3t%2Fpass@isp.decodo.com:10001 failed"))
+        self.assertIn("unreachable", text)
+        self.assertRedacted(text)
+
+    def test_the_raw_credentials_are_redacted_too(self):
+        self.assertRedacted(self._fetched(OSError("407 for decodo-user / s3cr3t/pass")))
+
+    def test_an_exception_that_is_not_an_os_error_is_still_a_redacted_result(self):
+        text = self._fetched(ValueError("proxy http://decodo-user:s3cr3t%2Fpass@isp.decodo.com:10001 rejected"))
+        self.assertIn("unreachable", text)
+        self.assertRedacted(text)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

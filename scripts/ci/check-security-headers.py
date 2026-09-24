@@ -101,9 +101,25 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
+def _proxy_credentials():
+    return os.environ.get("KINOWO_PROXY_USER", "").strip(), os.environ.get("KINOWO_PROXY_PASS", "").strip()
+
+
+def redact(text):
+    """`text` with any URL userinfo and the proxy credentials (raw or URL-quoted) masked. A failed
+    fetch's text goes into an `::error::` line of a public run log, and the proxy URL carries the
+    Decodo user and password."""
+    text = re.sub(r"(\w+://)[^/@\s]+@", r"\1***@", text)
+    for secret in _proxy_credentials():
+        if secret:
+            for form in {secret, urllib.request.quote(secret, safe="")}:
+                text = text.replace(form, "***")
+    return text
+
+
 def _opener():
     handlers = [_NoRedirect()]
-    user, password = os.environ.get("KINOWO_PROXY_USER", "").strip(), os.environ.get("KINOWO_PROXY_PASS", "").strip()
+    user, password = _proxy_credentials()
     if user and password:
         proxy = "http://%s:%s@%s" % (urllib.request.quote(user, safe=""), urllib.request.quote(password, safe=""), PROXY_HOST)
         handlers.append(urllib.request.ProxyHandler({"https": proxy, "http": proxy}))
@@ -117,8 +133,8 @@ def fetch(opener, method, url, headers):
             return response.status, list(response.headers.items())
     except urllib.error.HTTPError as error:
         return error.code, list(error.headers.items())
-    except OSError as error:
-        return "unreachable (%s)" % error, []
+    except Exception as error:  # noqa: BLE001 -- any failure is "unreachable", never a traceback
+        return "unreachable (%s)" % redact("%s: %s" % (type(error).__name__, error)), []
 
 
 def check_host(opener, host, require_secure):
