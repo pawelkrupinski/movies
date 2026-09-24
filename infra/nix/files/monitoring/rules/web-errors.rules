@@ -80,9 +80,10 @@ groups:
       # Concurrent writes to a signed-in visitor's state lost updates or answered 503 (2026-09; now
       # one atomic write). `WebServerErrorsServed` would never have fired: /api/me/* is under 0.01%
       # of the tier's traffic, so every write could fail without moving a tier-wide 2%. This asks
-      # the question per `route`, WRITES ONLY (PUT/POST/PATCH/DELETE -- a failing GET is a page
-      # that cannot show state, not a write that did not stick): at least THREE 5xx in 30
-      # minutes (so one unlucky request on a quiet route is not a pattern) and over 10% of that route's responses. 4xx never counts --
+      # the question per `route`, WRITES ONLY (PUT/POST/DELETE, the only write methods the router
+      # declares -- a failing GET is a page that cannot show state, not a write that did not
+      # stick): at least THREE 5xx in 30 minutes (so one unlucky request on a quiet route is not a
+      # pattern) and over 10% of that route's responses. 4xx never counts --
       # GET /api/me answers 401 to every anonymous visitor, by design. `.*/api/me` because the
       # Showtimes countries are mounted and `route` carries the mount (`/uk/api/me/...`).
       #
@@ -91,12 +92,12 @@ groups:
       - alert: UserStateWritesFailing
         expr: >-
           (
-            sum by (country, route) (increase(kinowo_web_http_requests_total{job="kinowo-web",route=~".*/api/me.*",method=~"PUT|POST|PATCH|DELETE",status="5xx"}[30m]))
+            sum by (country, route) (increase(kinowo_web_http_requests_total{job="kinowo-web",route=~".*/api/me.*",method=~"PUT|POST|DELETE",status="5xx"}[30m]))
               / on (country, route)
-            sum by (country, route) (increase(kinowo_web_http_requests_total{job="kinowo-web",route=~".*/api/me.*",method=~"PUT|POST|PATCH|DELETE"}[30m]))
+            sum by (country, route) (increase(kinowo_web_http_requests_total{job="kinowo-web",route=~".*/api/me.*",method=~"PUT|POST|DELETE"}[30m]))
           ) > 0.1
           and on (country, route)
-          sum by (country, route) (increase(kinowo_web_http_requests_total{job="kinowo-web",route=~".*/api/me.*",method=~"PUT|POST|PATCH|DELETE",status="5xx"}[30m])) >= 3
+          sum by (country, route) (increase(kinowo_web_http_requests_total{job="kinowo-web",route=~".*/api/me.*",method=~"PUT|POST|DELETE",status="5xx"}[30m])) >= 3
         for: 10m
         labels:
           severity: warning

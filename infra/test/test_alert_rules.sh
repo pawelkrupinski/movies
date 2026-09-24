@@ -112,11 +112,12 @@ for suite in "$here"/alert-rules/*.yml; do
   fi
 done
 
-# ── WHAT THE SUITES COVER ─────────────────────────────────────────────────────────────────────────
-# The loop above asks each case whether it passes; this asks whether the cases that exist are the
-# ones that matter: every alert has a firing and a quiet case, and a long hold over a worker gauge
-# rides out a restart.
-for check in test_alert_rule_coverage.py; do
+# ── WHAT THE SUITES COVER, AND WHAT THE MATCHERS MATCH ─────────────────────────────────────────────
+# The loop above asks each case whether it passes; these ask whether the cases that exist are the
+# ones that matter (every alert has a firing and a quiet case; a long hold over a worker gauge
+# rides out a restart) and whether every label matcher, here and on the dashboards, names the
+# label values the fleet really produces (test_label_shapes.py, against label-values.json).
+for check in test_alert_rule_coverage.py test_label_shapes.py; do
   if out="$(python3 "$here/$check" 2>&1)"; then
     echo "  ok  $check"
   else
