@@ -77,7 +77,9 @@ while IFS=$'\x1f' read -r _project cls name; do
     for k in $(seq 1 "$Reruns"); do
         echo "::group::rerun $k/$Reruns: $cls — $name"
         rm -f "$reports/TEST-$cls.xml"
-        sbt --client "$module/$config/testOnly $cls -- -z $quoted"
+        # stdin is the list of failed tests this loop reads: the thin client forwards its
+        # terminal to the server, and must not swallow the tests still to rerun.
+        sbt --client "$module/$config/testOnly $cls -- -z $quoted" < /dev/null
         echo "::endgroup::"
         if [ -f "$reports/TEST-$cls.xml" ]; then
             cp "$reports/TEST-$cls.xml" "$out/rerun/$count-$k-TEST-$cls.xml"

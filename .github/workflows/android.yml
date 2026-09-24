@@ -218,6 +218,7 @@ jobs:
                   scripts/ci/gh-release-test.sh
                   scripts/seeded-order-test.sh
                   ios/scripts/swift-test-shuffled-test.sh
+                  android/scripts/devtest-shuffled-test.sh
                   scripts/ci/order-seed-test.sh
 
             - name: Unit tests

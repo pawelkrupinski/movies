@@ -29,6 +29,9 @@ case "$1 ${2:-}" in
 esac
 pattern=""
 while [ $# -gt 0 ]; do [ "$1" = --filter ] && pattern="$2"; shift; done
+# A test process may read stdin; SHIM_READS_STDIN makes every run drain it.
+[ -n "${SHIM_READS_STDIN:-}" ] && cat >/dev/null
+[ -n "${SHIM_LOG:-}" ] && echo "$pattern" >> "$SHIM_LOG"
 case "$pattern" in
   *Ghost*)  echo "warning: No matching test cases were run"; exit 0 ;;
   *Twice*)  echo "	 Executed 2 tests, with 0 failures (0 unexpected) in 0.001 (0.002) seconds"; exit 0 ;;
@@ -53,5 +56,9 @@ check "a filter that ran more than the one case fails the run" "1" "$code"
 
 out="$(run A.T/testBroken)"; code=$?
 check "a case that fails alone still fails the run" "1" "$code"
+
+: > "$shim/log"
+SHIM_READS_STDIN=1 SHIM_LOG="$shim/log" run A.T/testOne A.T/testTwo A.T/testThree >/dev/null
+check "a case that reads stdin cannot swallow the cases still to run" "3" "$(wc -l < "$shim/log" | tr -d ' ')"
 
 spec_summary

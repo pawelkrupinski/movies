@@ -32,7 +32,8 @@ while IFS= read -r test; do
     # nothing ("No matching test cases were run"), so a case the pattern misses
     # would pass without running. XCTest's last "Executed N test(s)" line is the
     # whole run's tally; it must say exactly one.
-    swift test --package-path "$package" --skip-build --filter "$pattern" >"$log" 2>&1
+    # </dev/null: stdin is the case list this loop reads, not the test's to consume.
+    swift test --package-path "$package" --skip-build --filter "$pattern" >"$log" 2>&1 </dev/null
     status=$?
     executed="$(grep -oE 'Executed [0-9]+ tests?' "$log" | tail -1 | grep -oE '[0-9]+')"
     if [ "$status" -ne 0 ] || [ "$executed" != 1 ]; then

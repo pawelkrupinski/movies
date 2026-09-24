@@ -28,7 +28,9 @@ echo "devtest-shuffled: seed $seed — $count classes, each alone — reproduce 
 failed=()
 while IFS= read -r class; do
     echo "::group::$class"
-    if ! "$android/scripts/devtest.sh" "$@" "$class"; then failed+=("$class"); fi
+    # </dev/null: stdin is the class list this loop reads, and adb and Gradle's client
+    # both read theirs — a run would swallow every class after it.
+    if ! "$android/scripts/devtest.sh" "$@" "$class" </dev/null; then failed+=("$class"); fi
     echo "::endgroup::"
 done <<<"$ordered"
 
