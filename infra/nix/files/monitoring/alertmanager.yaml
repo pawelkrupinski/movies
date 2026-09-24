@@ -142,6 +142,10 @@ route:
     # root that has gone read-only is exactly the kind of thing worth a mailbox, so it is kept,
     # deliberately rather than by accident.
     #
+    # `CityServingShortOfCorpus` AND `CityDarkInBothTiers` EARN IT THE SAME WAY, per city: a metro's
+    # page serving a fraction of its films (the Bay, 38 hours) or a town serving none (Butte, two
+    # days) is a page that answers 200 with less on it, and nothing else notices.
+    #
     # `ResidentialProxyFallingBackToZyte` EARNS IT THE SAME WAY: the fallback chain means scraping
     # itself does not break when Decodo degrades, so nothing 500s and no cinema goes dark -- the
     # only trace is a per-request Zyte bill climbing and one /uptime row nobody is staring at.
@@ -185,14 +189,14 @@ route:
     # one message to five, repeating hourly, on the channel this file's header argues must stay a
     # single stream. The subject is fixed below instead, where it costs nothing.
     - matchers:
-        - alertname =~ "Filesystem.*|Worker.*|ShareCard.*|Probe.*|FluxObject.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte|ChainFallbackSaturated|PaidEgressFailing|HeapDumpWritten|WebRestartNotOOMKilled|MongodMemoryNearLimit|BootHealLarge|ScrapeWritesSkipped|ScrapeGuardStuckRejecting"
+        - alertname =~ "Filesystem.*|Worker.*|ShareCard.*|Probe.*|FluxObject.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte|ChainFallbackSaturated|PaidEgressFailing|HeapDumpWritten|WebRestartNotOOMKilled|MongodMemoryNearLimit|BootHealLarge|ScrapeWritesSkipped|ScrapeGuardStuckRejecting|CityServingShortOfCorpus|CityDarkInBothTiers"
         - severity = "critical"
       receiver: telegram-and-email
       group_wait: 10s
       repeat_interval: 1h
 
     - matchers:
-        - alertname =~ "Filesystem.*|Worker.*|ShareCard.*|Probe.*|FluxObject.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte|ChainFallbackSaturated|PaidEgressFailing|HeapDumpWritten|WebRestartNotOOMKilled|MongodMemoryNearLimit|BootHealLarge|ScrapeWritesSkipped|ScrapeGuardStuckRejecting"
+        - alertname =~ "Filesystem.*|Worker.*|ShareCard.*|Probe.*|FluxObject.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte|ChainFallbackSaturated|PaidEgressFailing|HeapDumpWritten|WebRestartNotOOMKilled|MongodMemoryNearLimit|BootHealLarge|ScrapeWritesSkipped|ScrapeGuardStuckRejecting|CityServingShortOfCorpus|CityDarkInBothTiers"
         - severity = "warning"
       receiver: telegram-and-email
       group_interval: 15m

@@ -260,6 +260,9 @@ route_is telegram-and-email alertname=WebRestartNotOOMKilled severity=critical n
 route_is telegram-and-email alertname=MongodMemoryNearLimit severity=critical host=mongo-1
 route_is telegram-and-email alertname=BootHealLarge severity=warning country=pl
 route_is telegram-and-email alertname=ScrapeWritesSkipped severity=warning country=pl reason=repository-write-failed
+# A city serving far short of its corpus, or dark in both tiers: a 200 with less on it.
+route_is telegram-and-email alertname=CityServingShortOfCorpus severity=warning country=us
+route_is telegram-and-email alertname=CityDarkInBothTiers severity=warning country=us city=butte
 route_is telegram-and-email alertname=ScrapeGuardStuckRejecting severity=warning country=pl guard=depth
 route_is telegram-and-email alertname=WorkerQueueHeadOld severity=warning country=es task_type=ResolveTmdb
 route_is telegram-and-email alertname=ProbeFailing severity=critical country=pl kind=front-door
