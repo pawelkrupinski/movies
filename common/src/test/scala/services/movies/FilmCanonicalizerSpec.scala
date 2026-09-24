@@ -181,6 +181,25 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     clusters should have size 2
   }
 
+  it should "let an agreeing director overrule a rule-4 runtime contradiction a venue's typo manufactured" in {
+    // PL hard cluster, surfaced by the Avengers ratchet's new arrival order: Kino Parczew
+    // lists "Vincent.legenda oceanu" at 9 minutes (the film runs 91) crediting Steven
+    // Majaury. Folded after the resolved row had TMDB's runtime, rule 4 refused it as a
+    // different film and it stood alone; folded before, it joined — and the next rescrape
+    // landed it on the resolved row anyway. A shared director is the veto
+    // `MixedFilmDetector` already applies to exactly this kind of runtime "evidence".
+    def withDetails(row: CanonicalizerRows.Row, source: Source, minutes: Int, directors: Seq[String]): CanonicalizerRows.Row =
+      row._1 -> row._2.copy(data = row._2.data.updatedWith(source)(_.map(_.copy(runtimeMinutes = Some(minutes), director = directors))))
+    val vincent = withDetails(resolved("Vincent. Legenda oceanu", tmdbId = 677558, tmdbYear = 2026, cinema = Helios),
+      Tmdb, 91, Seq("Steven Majaury", "Pavel Hruboš"))
+    val parczew = cacheKey("Vincent.legenda oceanu", None) -> MovieRecord(data = Map[Source, SourceData](Multikino ->
+      SourceData(title = Some("Vincent.legenda oceanu"), runtimeMinutes = Some(9), director = Seq("Pavel Hrubas", "Steven Majaury"))))
+    FilmCanonicalizer.clusterByFilm(Seq(vincent, parczew), titleNormalizer) should have size 1
+    // Without the shared credit the typo is still read as a different film.
+    val stranger = parczew._1 -> parczew._2.copy(data = parczew._2.data.map { case (k, sd) => k -> sd.copy(director = Seq("Someone Else")) })
+    FilmCanonicalizer.clusterByFilm(Seq(vincent, stranger), titleNormalizer) should have size 2
+  }
+
   it should "fold a yearless-key row within the WIDER rule-4 slot-year tolerance, and refuse just past it" in {
     def clustersFor(slotYear: Int) = FilmCanonicalizer.clusterByFilm(Seq(
       resolved("Hope", tmdbId = 1058424, tmdbYear = 2026, cinema = Helios),

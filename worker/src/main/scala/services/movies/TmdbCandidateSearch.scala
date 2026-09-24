@@ -635,8 +635,18 @@ class TmdbCandidateSearch(
             }
             runtimeAgrees || castAgrees
           }
+        // And when the title NAMES another of this person's credits — at a year outside
+        // `eligible`'s window — the year is what is wrong, not the title. A rerelease
+        // listed at its SCREENING year ("AVENGERS: KONIEC GRY (re-release)", 2026) pinned
+        // the Russos' only 2026 credit, "Avengers: Doomsday", which corroborates on the
+        // franchise word alone; the title is Endgame's, exactly. The year-pinned branch
+        // exists for titles that match NO credit, so it stands down, and the fold reclaims
+        // the decorated rerelease onto the film it names.
+        def titleNamesAnotherCredit(f: TmdbClient.SearchResult): Boolean =
+          credits.exists(other => other.id != f.id && titleClose(other))
         val byYear = year.flatMap(y => credits.filter(_.releaseYear.contains(y)) match {
-          case Seq(only) if !isDifferentInstalment(only) && (corroboratedByTitle(only) || corroboratedByFacts(only)) =>
+          case Seq(only) if !isDifferentInstalment(only) && !titleNamesAnotherCredit(only) &&
+                            (corroboratedByTitle(only) || corroboratedByFacts(only)) =>
             // Collapse a TMDB adjacent-year DUPLICATE of one film: if the year-pinned
             // credit shares its title with a credit ±1 year off (the same film entered
             // twice — "Gourou" as both 2025/1315702 and 2026/1259983), they're ONE

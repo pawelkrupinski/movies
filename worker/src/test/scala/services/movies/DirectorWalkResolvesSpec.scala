@@ -551,6 +551,41 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
     resolved.flatMap(_.tmdbId) shouldBe None
   }
 
+  /** PL recorder run 36016829894 (PolandConvergenceSpec, order-dependent): Cinema1 lists
+   *  "AVENGERS: KONIEC GRY (re-release)" with the SCREENING's year, 2026, and the Russos
+   *  as directors. The only Russo credit at 2026 is "Avengers: Doomsday", which shares
+   *  the franchise word, so the year-pinned branch bound Endgame's rerelease to Doomsday.
+   *  But the title names a DIFFERENT credit of the same director exactly — Endgame, 2019
+   *  — so the year is what is wrong, not the title, and the year-pinned film is a
+   *  stranger. Refusing leaves the row to the fold, which reclaims the decorated
+   *  rerelease onto the resolved Endgame row. */
+  it should "refuse a year-pinned credit when the title names a different credit of the same director" in {
+    val repository = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val tmdb = new TmdbClient(http = new StubFetch(Map(
+      "/search/movie"  -> """{"results":[]}""",
+      "/search/person" -> """{"results":[{"id":19271,"name":"Anthony Russo","known_for_department":"Directing"}]}""",
+      "/person/19271/movie_credits" -> """{"crew":[
+        |{"id":299534,"title":"Avengers: Koniec gry","original_title":"Avengers: Endgame",
+        | "release_date":"2019-04-24","department":"Directing","job":"Director","popularity":60.0},
+        |{"id":1003596,"title":"Avengers: Doomsday","original_title":"Avengers: Doomsday",
+        | "release_date":"2026-01-01","department":"Directing","job":"Director","popularity":80.0}
+        |]}""".stripMargin,
+      // Doomsday opens in December; only its YEAR matters here, and a date past today
+      // would make `NoWallClockInTestsSpec` flag every cache this file builds.
+      "/movie/1003596/external_ids" -> """{"id":1003596,"imdb_id":"tt21357150"}""",
+      "/movie/1003596?"             -> """{"id":1003596,"title":"Avengers: Doomsday","original_title":"Avengers: Doomsday","release_date":"2026-01-01"}"""
+    )), apiKey = Some("stub"))
+    val service = new MovieService(cache, new InProcessEventBus(), tmdb)
+
+    val existing = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("Avengers: Koniec Gry (re-release)"), director = Seq("Anthony Russo"),
+                           releaseYear = Some(2026))))
+    val resolved = service.resolveStagingRecord("Avengers: Koniec Gry (re-release)", Some(2026), existing)
+
+    resolved.flatMap(_.tmdbId) should not be Some(1003596)
+  }
+
   // ── 3h. The name a cinema prints may be the WRITER ───────────────────────
 
   /** Cinemas do not reliably print the director. "Drzewo magii" is directed by Ben

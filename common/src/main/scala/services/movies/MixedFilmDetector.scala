@@ -281,6 +281,11 @@ object MixedFilmDetector {
   private def sameDirector(a: Set[String], b: Set[String]): Boolean =
     a.nonEmpty && b.nonEmpty && a.intersect(b).nonEmpty
 
+  /** [[sameDirector]] over raw published names — the veto, for a caller weighing its
+   *  own runtime or year evidence (the fold's rule 4, `FilmCanonicalizer`). */
+  private[movies] def creditSamePerson(a: Iterable[String], b: Iterable[String], normalizer: TitleNormalizer): Boolean =
+    sameDirector(directorKeys(a, normalizer), directorKeys(b, normalizer))
+
   /** Published director names as comparable keys.
    *
    *  Order-insensitive — a Japanese name is printed "Makoto Shinkai" by one cinema

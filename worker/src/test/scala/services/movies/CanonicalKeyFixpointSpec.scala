@@ -220,4 +220,30 @@ class CanonicalKeyFixpointSpec extends AnyFlatSpec with Matchers {
       merges shouldBe 0
     }
   }
+
+  // PL hard cluster, SPLIT arrival: half the venues land and settle, and the film's key
+  // is "DKF: Ktoś całkiem obcy" — the only spelling there yet. The rest arrive on the
+  // RESOLVED row as slots (a resolved key is never re-keyed by a scrape), so the row
+  // shows "Ktoś całkiem obcy" but stays stored under the DKF key, where a fold of every
+  // venue at once stores it under the bare one: the same film at two read-model ids,
+  // depending on arrival. The settle must move a lone row onto its own canonical key
+  // even when the canonical sanitizes differently — and then write nothing more.
+  "a lone resolved row whose canonical spelling moved" should "be re-keyed onto it by the settle, then stay put" in {
+    val repository = new InMemoryMovieRepository()
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    def slot(title: String) = SourceData(title = Some(title), releaseYear = Some(2007),
+      showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 8, 18, 0), None)))
+    cache.put(cache.keyOf("DKF: Ktoś całkiem obcy", Some(2007)), MovieRecord(tmdbId = Some(7183), data = Map[Source, SourceData](
+      (Tmdb: Source)        -> SourceData(title = Some("Ktoś całkiem obcy"), releaseYear = Some(2007)),
+      (KinoMuza: Source)    -> slot("DKF: Ktoś całkiem obcy"),
+      (Helios: Source)      -> slot("Ktoś całkiem obcy"),
+      (KinoMuranow: Source) -> slot("Ktoś całkiem obcy"))))
+
+    cache.canonicalizeBySanitize()
+    cache.snapshot().map(_.key(titleNormalizer)) shouldBe Seq("ktoscalkiemobcy|2007")
+
+    val writes = repository.upserts.size + repository.deletes.size
+    cache.canonicalizeBySanitize()
+    repository.upserts.size + repository.deletes.size shouldBe writes
+  }
 }

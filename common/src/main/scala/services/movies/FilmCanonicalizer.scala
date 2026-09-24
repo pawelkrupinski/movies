@@ -299,14 +299,23 @@ object FilmCanonicalizer {
    *     the runtime agrees closely — a rerelease stamped with its screening date
    *     (Kinoteka's "Happy Together", Δ29 but 96 min on both sides).
    *   - Runtime: `RuntimeCorroboration.plausible`.
-   *   - A differing published original title (`MixedFilmDetector`). */
+   *   - A differing published original title (`MixedFilmDetector`).
+   *
+   *  The year and runtime readings stand down when the straggler credits a person the
+   *  film credits — `MixedFilmDetector`'s own veto, for the same reason: a venue's
+   *  typo manufactures a runtime (Kino Parczew's 9-minute "Vincent.legenda oceanu", a
+   *  91-minute film by the Steven Majaury it names), while two unrelated films sharing
+   *  a title do not also share a director. Without it the straggler stood apart only
+   *  when it folded AFTER the film had TMDB's runtime, and the next rescrape's landing
+   *  put it on the film anyway. */
   private def contradictsHome(home: Cluster, row: Row, normalizer: TitleNormalizer): Boolean = {
     val ev              = row._2.evidence
     val homeRuntime     = tmdbRuntime(home)
     val yearContradicts = YearWindow.contradicts(ev.years, home.refYear, YearWindow.SlotYearImplausibility)
     val runtimeAgrees   = MixedFilmDetector.runtimesAgree(ev.runtimes, homeRuntime.toSeq)
-    (yearContradicts && !runtimeAgrees) ||
-      !RuntimeCorroboration.plausible(ev.runtimes, homeRuntime) ||
+    val sharesCredit    = MixedFilmDetector.creditSamePerson(
+      row._2.data.values.flatMap(_.director), home.rows.flatMap(_._2.data.values.flatMap(_.director)), normalizer)
+    (!sharesCredit && ((yearContradicts && !runtimeAgrees) || !RuntimeCorroboration.plausible(ev.runtimes, homeRuntime))) ||
       home.rows.exists(cr => MixedFilmDetector.describeDifferentFilms(cr._2, row._2, normalizer))
   }
 

@@ -742,10 +742,20 @@ class CaffeineMovieCache(
     // new spelling still drives a re-key: `recordCinemaScrape` merges it onto the
     // row and `FilmCanonicalizer.canonical` moves the canonical, so the ROW key
     // then differs and trips the guard.
+    //
+    // A lone row is re-keyed whenever its key is not its canonical — including a
+    // canonical that SANITIZES differently. That happens when later venues land on a
+    // RESOLVED row (a scrape never re-keys one) and out-vote the spelling it was created
+    // under: a split arrival stored "Ktoś całkiem obcy" under "DKF: Ktoś całkiem obcy"
+    // for good, where a fold of every venue at once stores the bare key — one film, two
+    // read-model ids by arrival order. Unless the canonical key belongs to ANOTHER film
+    // (the collision below keeps the survivor's key), which would re-write it each pass.
     val canonicalSanitized = canonical.normalized
     val needsFix = keys.sizeIs > 1 ||
       keys.exists(k => k.normalized == canonicalSanitized &&
-        (k.cleanTitle != canonical.cleanTitle || k.year != canonical.year))
+        (k.cleanTitle != canonical.cleanTitle || k.year != canonical.year)) ||
+      keys.exists(_.normalized != canonicalSanitized) &&
+        !corpusIndex.idOf(canonical).exists(holder => !keys.exists(k => residentIdOf(k) == holder))
     if (needsFix) {
       withTitleLock(canonical.cleanTitle) {
         // Split the keys: rows that genuinely go away, versus the canonical row itself.
