@@ -27,8 +27,7 @@ import java.util.Random
  * Model-based test of [StateSyncService]: seeded random sequences of what a
  * user, the network and the account's other devices do, checked against the
  * sync's invariants. The same alphabet and invariants run against iOS
- * (`StateSyncModelTests`) and, less the refused hide, the web
- * (`HiddenFilmsSyncModelSpec`).
+ * (`StateSyncModelTests`) and the web (`HiddenFilmsSyncModelSpec`).
  *
  * THE ALPHABET: switch country, hide, a hide the server refuses for good (a
  * title over its length bound), unhide, clear, login, logout, resume (a

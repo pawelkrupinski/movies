@@ -21,8 +21,8 @@ import scala.util.Random
  * the sync's invariants. The same alphabet and invariants run against Android
  * (`StateSyncModelTest`) and iOS (`StateSyncModelTests`).
  *
- * THE ALPHABET: switch country (navigate to the other country's page), hide,
- * unhide, clear, login, logout, resume (a page load — the reconcile; the
+ * THE ALPHABET: switch country (navigate to the other country's page), hide, a
+ * hide the server refuses for good (a title over its length bound), unhide, clear, login, logout, resume (a page load — the reconcile; the
  * server answers 304 or 200 by its own content validator), another device
  * hiding / unhiding a title, the network going down, the network coming back
  * (reconnect + reload), a local language pick, another device's language pick —
@@ -124,6 +124,13 @@ class HiddenFilmsSyncModelSpec extends AnyFlatSpec with Matchers with BeforeAndA
     SyncModel.violationOf(c, Seq(Login, Hide, Lag, ClearThenHide)) shouldBe None
   }
 
+  // A hide refused for good (400) is dropped rather than owed: the next load
+  // takes the server's list, and the edits behind it still land. The apps kept
+  // it queued forever (b026295fd); this pins the web to the same verdict.
+  it should "drop a hide the server refuses for good, and still land the edits behind it" in withChrome { c =>
+    SyncModel.violationOf(c, Seq(Login, HideRefused, Hide, Resume)) shouldBe None
+  }
+
   it should "resend a write that failed offline" in withChrome { c =>
     SyncModel.violationOf(c, Seq(Login, Hide, NetworkDown, Unhide(0), Reconnect)) shouldBe None
   }
@@ -142,6 +149,8 @@ object HiddenFilmsSyncModelSpec {
   sealed trait SyncEvent
   final case class SwitchCountry(country: String)           extends SyncEvent
   case object Hide                                           extends SyncEvent
+  /** A hide the server refuses for good: a title over its length bound. */
+  case object HideRefused                                    extends SyncEvent
   final case class Unhide(pick: Int)                         extends SyncEvent
   case object Clear                                          extends SyncEvent
   case object Login                                          extends SyncEvent
@@ -166,7 +175,8 @@ object HiddenFilmsSyncModelSpec {
       def country() = Countries(random.nextInt(Countries.size))
       Seq.fill(Length) {
         random.nextInt(100) match {
-          case n if n < 20 => Hide
+          case n if n < 18 => Hide
+          case n if n < 20 => HideRefused
           case n if n < 32 => Unhide(random.nextInt(8))
           case n if n < 36 => Clear
           case n if n < 46 => SwitchCountry(country())
@@ -229,9 +239,12 @@ object HiddenFilmsSyncModelSpec {
     }
   }
 
+  /** `UserStateController.MaxTitleLength`: a longer hide is refused for good (400). */
+  private val MaxTitleLength = 500
+
   /** The account behind `/api/me`: per-country hidden-films buckets answering
    *  like `UserStateController` (content ETag, 304 on a match, every write
-   *  echoing the set), the legacy `/api/me/state` language, a session that is
+   *  echoing the set, a hide over [[MaxTitleLength]] refused with a 400), the legacy `/api/me/state` language, a session that is
    *  signed in or not, and a network that is up or not. */
   final class ModelAccountServer {
     private val buckets = mutable.Map.empty[String, Set[String]].withDefaultValue(Set.empty)
@@ -294,6 +307,8 @@ object HiddenFilmsSyncModelSpec {
           if (Option(exchange.getRequestHeaders.getFirst("If-None-Match")).contains(etag(country)))
             reply(304, headers = Seq("ETag" -> etag(country)))
           else films(country)
+        case ("PUT", Bucket(_, title)) if title != null && title.length > MaxTitleLength =>
+          reply(400, s"""{"error":"title longer than $MaxTitleLength characters"}""")
         case ("PUT", Bucket(country, title)) if title != null    => buckets(country) = buckets(country) + title; films(country)
         case ("DELETE", Bucket(country, title)) if title != null => buckets(country) = buckets(country) - title; films(country)
         case ("DELETE", Bucket(country, null))                   => buckets(country) = Set.empty; films(country)
@@ -364,11 +379,14 @@ object HiddenFilmsSyncModelSpec {
       case Hide =>
         minted += 1
         val title = s"$country-$minted"
-        // The card button's own handler, on a card carrying the title.
-        page.eval(s"""(function (t) { var card = document.createElement('div'); card.setAttribute('data-title', t);
-                     |  var b = document.createElement('button'); card.appendChild(b); document.body.appendChild(card);
-                     |  hideFilm(b); })(${JsString(title)})""".stripMargin)
+        hideFilm(title)
         if (signedIn) expect(country, title, hidden = true)
+      case HideRefused =>
+        // The server never stores it, so it must end up nowhere.
+        minted += 1
+        val title = s"$country-$minted-" + "x" * MaxTitleLength
+        hideFilm(title)
+        expect(country, title, hidden = false)
       case Unhide(pick) =>
         val list = local
         if (list.nonEmpty) {
@@ -434,6 +452,12 @@ object HiddenFilmsSyncModelSpec {
         account.setAccountLanguage(l)
         expectedLanguage = if (owed) None else Some(l)
     }
+
+    /** The card button's own handler, on a card carrying the title. */
+    private def hideFilm(title: String): Unit =
+      page.eval(s"""(function (t) { var card = document.createElement('div'); card.setAttribute('data-title', t);
+                   |  var b = document.createElement('button'); card.appendChild(b); document.body.appendChild(card);
+                   |  hideFilm(b); })(${JsString(title)})""".stripMargin)
 
     private def expect(c: String, title: String, hidden: Boolean): Unit =
       if (hidden) { mustHave(c) = mustHave(c) + title; mustNotHave(c) = mustNotHave(c) - title }
