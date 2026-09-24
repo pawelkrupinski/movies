@@ -104,9 +104,11 @@ jobs:
         # recording) plus BUDGET_MINUTES of halvings. The US sample is 60 minutes a replay:
         # 60 + 60 + 90, plus setup.
         timeout-minutes: 240
+        # READ-ONLY: this job builds and runs the code of every commit it replays. The commit
+        # comment, the one write, is `tell`'s, below — no job running project code holds a
+        # write token.
         permissions:
-            # The commit comment on the first bad commit.
-            contents: write
+            contents: read
             # The previous runs' jobs, to find the last green leg.
             actions: read
         steps:
@@ -114,6 +116,7 @@ jobs:
               with:
                   ref: ${{ github.event.workflow_run.head_sha }}
                   fetch-depth: 0
+                  persist-credentials: false
             # The SAME recorded pair the red leg replayed, so a recorder that pinned a new pair
             # meanwhile cannot move the ground.
             - uses: ./.github/actions/convergence-setup
@@ -186,16 +189,55 @@ jobs:
                       echo "first-bad=$(cat "$FIRST_BAD_FILE")" >> "$GITHUB_OUTPUT"
                   fi
 
-            - name: Tell the first bad commit
+            # Handed to `tell` as a file: a matrix job's outputs are the last leg's alone.
+            - name: Hand the first bad commit to the comment job
               if: steps.bisect.outputs.first-bad != ''
+              shell: bash
+              env:
+                  SHA:     ${{ steps.bisect.outputs.first-bad }}
+                  COUNTRY: ${{ matrix.request.country }}
+              run: |
+                  mkdir -p first-bad
+                  printf '%s %s\n' "$SHA" "$COUNTRY" > "first-bad/$COUNTRY.txt"
+            - uses: actions/upload-artifact@v6
+              if: steps.bisect.outputs.first-bad != ''
+              with:
+                  name: first-bad-${{ matrix.request.code }}
+                  path: first-bad/
+                  retention-days: 3
+
+    # The commit comment on each first bad commit: the workflow's only write, in a job that
+    # checks out and runs nothing of the project.
+    tell:
+        needs: bisect
+        if: ${{ !cancelled() && needs.bisect.result != 'skipped' }}
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: write
+        steps:
+            # None at all when no leg pinned a commit.
+            - uses: actions/download-artifact@v6
+              continue-on-error: true
+              with:
+                  pattern: first-bad-*
+                  merge-multiple: true
+                  path: first-bad
+            - name: Tell the first bad commit
               shell: bash
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   GH_REPO:  ${{ github.repository }}
-                  SHA:      ${{ steps.bisect.outputs.first-bad }}
-                  COUNTRY:  ${{ matrix.request.country }}
                   RED_RUN:  ${{ github.event.workflow_run.html_url }}
                   THIS_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
               run: |
-                  gh api -X POST "repos/$GH_REPO/commits/$SHA/comments" \
-                      -f body="The hermetic $COUNTRY convergence sample turns red at this commit and was green at its parent. Red leg: $RED_RUN — bisected by $THIS_RUN. The leg replays a pinned recorded corpus and enrichment tree, so the change is this commit's, not the network's."
+                  set -uo pipefail
+                  shopt -s nullglob
+                  failed=0
+                  for f in first-bad/*.txt; do
+                      read -r SHA COUNTRY < "$f"
+                      gh api -X POST "repos/$GH_REPO/commits/$SHA/comments" \
+                          -f body="The hermetic $COUNTRY convergence sample turns red at this commit and was green at its parent. Red leg: $RED_RUN — bisected by $THIS_RUN. The leg replays a pinned recorded corpus and enrichment tree, so the change is this commit's, not the network's." \
+                          || failed=1
+                  done
+                  exit "$failed"
