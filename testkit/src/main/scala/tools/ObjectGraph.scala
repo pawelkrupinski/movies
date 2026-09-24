@@ -31,15 +31,20 @@ object ObjectGraph {
   def collect[T](root: AnyRef, opaque: AnyRef => Boolean = _ => false)(pick: PartialFunction[AnyRef, T]): Seq[(String, T)] = {
     val seen  = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[AnyRef, java.lang.Boolean]())
     val found = mutable.LinkedHashMap.empty[T, String]
-    val stack = mutable.Stack[(AnyRef, String, Int)]((root, root.getClass.getSimpleName, 0))
+    // BREADTH-first, so every object is first reached — and marked seen — at its SHALLOWEST
+    // depth. Depth-first reached many objects first down a long chain, near `MaxDepth`, and
+    // `seen` then stopped the short path from ever expanding them: whatever sat below was
+    // invisible to the walk however close to the root it really was. It also reports the
+    // shortest path to each value, which is the one a reader can follow.
+    val queue = mutable.Queue[(AnyRef, String, Int)]((root, root.getClass.getSimpleName, 0))
 
     def push(value: Any, path: String, depth: Int): Unit = value match {
-      case ref: AnyRef if ref != null && depth <= MaxDepth && !seen.contains(ref) => stack.push((ref, path, depth))
+      case ref: AnyRef if ref != null && depth <= MaxDepth && !seen.contains(ref) => queue.enqueue((ref, path, depth))
       case _                                                                     =>
     }
 
-    while (stack.nonEmpty) {
-      val (obj, path, depth) = stack.pop()
+    while (queue.nonEmpty) {
+      val (obj, path, depth) = queue.dequeue()
       if (seen.add(obj)) {
         if (pick.isDefinedAt(obj)) { val v = pick(obj); if (!found.contains(v)) found(v) = path }
         else if (!opaque(obj)) obj match {
