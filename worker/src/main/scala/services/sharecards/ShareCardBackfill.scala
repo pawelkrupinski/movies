@@ -73,16 +73,20 @@ class ShareCardBackfill(
 
   private def sweep(): Unit = {
     val sweptAt                = clock.instant()
-    val (screenings, complete) = reader.findAllScreeningRefsChecked()
-    if (complete) {
+    val (screenings, screeningsRead) = reader.findAllScreeningRefsChecked()
+    // Both reads must be whole. An unread `web_movies` used to come back empty and pass as
+    // "no film expects a card": the sweep then ENDED — coverage cleared, nothing pending,
+    // and no retry until the next sweep a day later.
+    val (movies, moviesRead) = if (screeningsRead) reader.findAllMoviesChecked() else (Seq.empty, false)
+    if (screeningsRead && moviesRead) {
       val screened = screenings.iterator.map(_.filmId).toSet
-      expected  = reader.findAllMovies().filter(movie => screened(movie._id))
+      expected  = movies.filter(movie => screened(movie._id))
         .map(movie => Swept(service.inputs(movie), service.onDisk(movie._id), sweptAt))
       pending   = expected.filterNot(covered).toList
       posterless = expected.map(_.inputs).filter(service.lacksPoster).toList
       lastSweep = Some(sweptAt)
       logger.info(s"share cards backfill: ${pending.size} of ${expected.size} cards missing, ${posterless.size} drawn without their poster.")
-    } else logger.warn("share cards backfill: web_screenings read incomplete — sweep skipped, retried next tick.")
+    } else logger.warn("share cards backfill: read-model read incomplete — sweep skipped, retried next tick.")
   }
 }
 

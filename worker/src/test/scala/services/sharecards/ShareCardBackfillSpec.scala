@@ -16,7 +16,21 @@ class ShareCardBackfillSpec extends AnyFlatSpec with Matchers {
       movie
     }
 
-  "The backfill" should "feed missing cards into the queue in bounded batches, never past the backlog cap" in {
+  "The backfill" should "not end its sweep on an unread web_movies — the next tick sweeps again" in {
+    val readModel = new services.readmodel.UnreadableReadModelRepository
+    readModel.failingReads = false
+    val rig = new Rig(readModel = readModel)
+    seed(rig, 3)
+    readModel.failingReads = true
+    readModel.screeningsReadable = true               // only web_movies is unreadable
+    val backfill = new ShareCardBackfill(rig.service, rig.readModel, rig.queue, rig.metrics, rig.clock, batch = 20, maxBacklog = 30)
+    backfill.tick() shouldBe 0
+
+    readModel.healReads()
+    backfill.tick() shouldBe 3                        // swept on the next tick, not a day later
+  }
+
+  it should "feed missing cards into the queue in bounded batches, never past the backlog cap" in {
     val rig = new Rig
     seed(rig, 50)
     rig.readModel.upsertMovie(film(id = "foffscreen"))                     // no screenings: no card

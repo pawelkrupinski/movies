@@ -71,8 +71,8 @@ object ShareCardTestKit {
   }
 
   class Rig(val store: ShareCardStore = tempStore(), val clock: Clock = clockAt(T0),
-                  val download: CountingDownload = new CountingDownload()) {
-    val readModel = new InMemoryReadModelRepository
+                  val download: CountingDownload = new CountingDownload(),
+                  val readModel: InMemoryReadModelRepository = new InMemoryReadModelRepository) {
     val queue     = new InMemoryTaskQueue
     val metrics: ShareCardMetrics = ShareCardMetrics.noop
     lazy val posters = new ShareCardPosters(store, download, javaShrinker, metrics)

@@ -62,6 +62,11 @@ final case class StoredCard(movie: Option[ResolvedMovie], screenings: Seq[CitySc
 trait ReadModelReader {
   def enabled: Boolean
   def findAllMovies(): Seq[ResolvedMovie]
+
+  /** Like [[findAllMovies]] but says whether the READ was complete: an incomplete scan
+   *  returns empty, and "no films" is a different fact from "could not read the films".
+   *  The in-memory store cannot fail, so the default reports `true`. */
+  def findAllMoviesChecked(): (Seq[ResolvedMovie], Boolean) = (findAllMovies(), true)
   def findAllScreenings(): Seq[CityScreening]
 
   /** Just the `_id`s of every read-model movie — the projector's reconcile prune

@@ -86,6 +86,10 @@ class MongoReadModelRepository(
   // skipped doc still moves the scan forward. Matches the change-stream apply path, which
   // already swallows per-doc decode failures.
   private def pagedFindAll[A: ClassTag](coll: Option[MongoCollection[A]], label: String): Seq[A] =
+    pagedFindAllChecked(coll, label)._1
+
+  /** [[pagedFindAll]] with whether the scan completed — empty and `false` when it did not. */
+  private def pagedFindAllChecked[A: ClassTag](coll: Option[MongoCollection[A]], label: String): (Seq[A], Boolean) =
     coll match {
       case Some(c) =>
         val codec = ReadModelCodecs.registry.get(implicitly[ClassTag[A]].runtimeClass.asInstanceOf[Class[A]])
@@ -103,8 +107,8 @@ class MongoReadModelRepository(
           onIncomplete   = exception =>
             logger.warn(s"$label keyset scan failed after retries: ${exception.getClass.getSimpleName}: ${exception.getMessage} — returning empty")
         )(batch => buf ++= decodeTolerant(batch, codec, label))
-        if (complete) buf.result() else Seq.empty
-      case None => Seq.empty
+        if (complete) (buf.result(), true) else (Seq.empty, false)
+      case None => (Seq.empty, true)
     }
 
   /** Decode a page of raw documents into `A`, SKIPPING (and logging with the `_id`) any that
@@ -121,7 +125,9 @@ class MongoReadModelRepository(
       }
     }
 
-  def findAllMovies():     Seq[ResolvedMovie] = pagedFindAll(movies,     "ReadModelRepository.findAllMovies")
+  def findAllMovies():     Seq[ResolvedMovie] = findAllMoviesChecked()._1
+  override def findAllMoviesChecked(): (Seq[ResolvedMovie], Boolean) =
+    pagedFindAllChecked(movies, "ReadModelRepository.findAllMovies")
   def findAllScreenings(): Seq[CityScreening] = pagedFindAll(screenings, "ReadModelRepository.findAllScreenings")
 
   // ── Id-only projections (the reconcile prune) ───────────────────────────────
