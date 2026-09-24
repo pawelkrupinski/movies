@@ -35,11 +35,12 @@ final class StateSyncServiceTests: XCTestCase {
         )
     }
 
-    private func waitUntil(_ cond: @escaping () -> Bool, timeout: TimeInterval = 1) async throws {
+    private func waitUntil(_ cond: @escaping () -> Bool, timeout: TimeInterval = 1,
+                           file: StaticString = #filePath, line: UInt = #line) async throws {
         let start = Date()
         while !cond() {
             if Date().timeIntervalSince(start) > timeout {
-                XCTFail("condition not met within \(timeout)s"); return
+                XCTFail("condition not met within \(timeout)s", file: file, line: line); return
             }
             try await Task.sleep(for: .milliseconds(20))
         }
@@ -644,6 +645,33 @@ final class StateSyncServiceTests: XCTestCase {
         client.fetchDelay[pl] = nil
         await sync.reconcileCurrentCountry()
         XCTAssertEqual(prefs.hiddenFilms, ["Elsewhere", "Mid Fetch"])
+    }
+
+    /// An edit still on the wire at a logout: the logout forgets the queue,
+    /// and the next session queues its own edits. When the old response
+    /// lands it must not dequeue the NEW session's first edit as if it were
+    /// the one just sent — that edit would never reach the server. Mirrors Android.
+    func testAResponseLandingAfterALogoutLeavesTheNextSessionsQueueAlone() async throws {
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+
+        let gate = AsyncGate()
+        client.beforeWriteResponse = { await gate.wait() }
+        prefs.hide("First")
+        try await waitUntil { self.client.remote[self.pl] == ["First"] } // applied, response on the wire
+        userSubject.send(nil)
+        try await waitUntil { !self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        login()
+        try await Task.sleep(for: .milliseconds(100)) // the new session is observing edits
+        client.beforeWriteResponse = nil
+        prefs.unhideAll()
+        try await waitUntil { self.prefs.pendingHiddenFilmsChanges(country: self.pl) == [.clearedAll] }
+        await gate.open()
+
+        try await waitUntil { self.client.clearCalls == [self.pl] && self.client.inFlight == 0 }
+        XCTAssertEqual(client.remote[pl], [])
+        _ = sync
     }
 
     /// A write's response is the server's WHOLE set. Its validators vouch for

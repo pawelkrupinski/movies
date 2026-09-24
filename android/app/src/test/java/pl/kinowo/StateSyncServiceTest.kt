@@ -445,6 +445,37 @@ class StateSyncServiceTest {
         assertEquals(setOf("First", "Second"), client.remote["pl"])
     }
 
+    /** An edit still on the wire at a logout: the logout forgets the queue,
+     *  and the next session queues its own edits. When the old response
+     *  lands it must not dequeue the NEW session's first edit as if it were
+     *  the one just sent — that edit would never reach the server. Mirrors iOS. */
+    @Test
+    fun aResponseLandingAfterALogoutLeavesTheNextSessionsQueueAlone() = runTest(UnconfinedTestDispatcher()) {
+        prefs.countryState.value = "pl"
+        val service = startService()
+        login()
+        advanceUntilIdle()
+
+        val gate = CompletableDeferred<Unit>()
+        client.beforeWriteResponse = { gate.await() }
+        prefs.setHiddenFilms("pl", setOf("First"))
+        service.hide("First")
+        runCurrent() // applied by the server, its response on the wire
+        userFlow.value = null
+        runCurrent()
+        login()
+        runCurrent()
+        client.beforeWriteResponse = {}
+        prefs.setHiddenFilms("pl", emptySet())
+        service.clear()
+        runCurrent()
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(listOf("pl"), client.clearCalls)
+        assertEquals(emptySet<String>(), client.remote["pl"])
+    }
+
     /** A second non-null user emission (session re-check returning a changed
      *  profile) restarts the sync job rather than stacking a second one, so a
      *  local change is still pushed exactly once. */

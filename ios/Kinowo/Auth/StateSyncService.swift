@@ -44,6 +44,9 @@ final class StateSyncService: ObservableObject {
     private let client: HiddenFilmsClient
     private let languageClient: LanguageClient
     private var isLoggedIn = false
+    /// Bumped by every genuine logout, which forgets the hiddenFilms queue: a
+    /// response from before it must not touch the next session's queue.
+    private var session = 0
     private var authCancellable: AnyCancellable?
     private var prefsCancellables = Set<AnyCancellable>()
     private var syncTask: Task<Void, Never>?
@@ -109,6 +112,7 @@ final class StateSyncService: ObservableObject {
                     // persisted precisely so the session restore after a
                     // relaunch can still push it.
                     if self.isLoggedIn {
+                        self.session += 1
                         self.prefs.clearHiddenFilmsMigration()
                         self.pendingLanguage = nil
                     }
@@ -340,6 +344,7 @@ final class StateSyncService: ObservableObject {
         let task = Task { @MainActor [weak self] () -> Bool in
             _ = await previous?.value
             guard let self else { return false }
+            let startedIn = self.session
             while let change = self.prefs.pendingHiddenFilmsChanges(country: country).first {
                 guard self.isLoggedIn else { return false }
                 let result: HiddenFilmsResult
@@ -352,6 +357,8 @@ final class StateSyncService: ObservableObject {
                 } catch {
                     return false
                 }
+                // A logout while it was on the wire forgot the queue it came from.
+                guard self.session == startedIn else { return false }
                 let remaining = Array(self.prefs.pendingHiddenFilmsChanges(country: country).dropFirst())
                 self.prefs.setPendingHiddenFilmsChanges(remaining, country: country)
                 if remaining.isEmpty, result.hiddenFilms == self.prefs.hiddenFilms(country: country) {

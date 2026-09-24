@@ -71,6 +71,9 @@ class StateSyncService(
     private val scope: CoroutineScope,
 ) {
     @Volatile private var loggedIn = false
+    /** Bumped by every genuine logout, which forgets the hiddenFilms queue: a
+     *  response from before it must not touch the next session's queue. */
+    @Volatile private var session = 0
     private var syncJob: Job? = null
     /** The 400 ms wait before a local pick is sent — only ever the wait: the
      *  send runs outside it, so cancelling a debounce never abandons a push
@@ -111,6 +114,7 @@ class StateSyncService(
                     // persisted precisely so the session restore after a
                     // relaunch can still push it.
                     if (loggedIn) {
+                        session++
                         prefs.clearHiddenFilmsSyncState()
                         prefs.setPendingLanguagePush(null)
                     }
@@ -339,6 +343,7 @@ class StateSyncService(
      *  dropped so the next fetch is unconditional. Mirrors iOS
      *  `sendPendingChanges`. */
     private suspend fun sendPendingOps(country: String): Boolean = flushMutex.withLock {
+        val startedIn = session
         var op = prefs.pendingHiddenFilmsOps(country).firstOrNull()
         while (op != null) {
             if (!loggedIn) return@withLock false
@@ -349,6 +354,8 @@ class StateSyncService(
                     HiddenFilmsOp.Clear -> client.clear(country)
                 }
             }.getOrElse { return@withLock false }
+            // A logout while it was on the wire forgot the queue it came from.
+            if (session != startedIn) return@withLock false
             val remaining = queueMutex.withLock {
                 prefs.pendingHiddenFilmsOps(country).drop(1).also { prefs.setPendingHiddenFilmsOps(country, it) }
             }
