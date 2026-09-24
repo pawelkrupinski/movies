@@ -287,6 +287,17 @@ class ApplicationDashboardCoverage(unittest.TestCase):
         self.assertTrue(any(needle in q for q in self.queries),
                         "no panel on apps/application-health.json queries %r" % needle)
 
+    def test_it_shows_every_projection_trigger_the_alert_subtracts(self):
+        # ReadModelProjectionTriggerUnaccounted compares projections against the three cursors
+        # LESS the heal passes' re-projections (2026-09-19: six PL rollouts, ~260 boot-check
+        # re-projections each, fired it for a trigger no panel drew). Panels 47 and 48 are where
+        # its description sends the reader, so both must draw the heal checks beside the calls.
+        panels = {p.get("id"): p for p in query_panels(self.document)}
+        for panel_id in (47, 48):
+            exprs = [t.get("expr") or "" for t in panels[panel_id].get("targets", [])]
+            self.assertTrue(any("kinowo_worker_readmodel_heal_checks_total" in e for e in exprs),
+                            "panel %d does not draw readmodel_heal_checks" % panel_id)
+
     def test_it_shows_the_database_host_resources(self):
         for metric in ("node_cpu_seconds_total", "node_memory_MemAvailable_bytes",
                        "node_filesystem_avail_bytes"):

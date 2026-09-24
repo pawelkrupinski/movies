@@ -2668,7 +2668,7 @@
         {
           "id": 47,
           "title": "kinowo-worker projection triggers & output (per-sec)",
-          "description": "The per-second rates that DRIVE and RESULT FROM projection — split out of the CPU panel above because they're a different unit (events/s, not centi-cores) and can't stack with cc. THERE ARE THREE TRIGGERS, and for a long time this panel drew only one: movie change-events/s is a `movies` write, screenings change-events/s is a `screenings` write (one row per film+cinema slot) — the second cursor, and normally the LARGER of the three — and movie_slots change-events/s is a `movie_slots` write (the third cursor, added 2026-09-07: a venue's slot lands without a `movies` write whenever the film document is unchanged, and the projection cannot emit that venue's row until the slot exists). projection-calls/s should track their SUM; against the movies line alone it read as an unexplained 55:1 on worker-de (2026-09-04), which is what an unmetered trigger looks like. coalesced/s is the part of the screenings rate that rode an apply already queued for its film instead of buying its own — the cursor rings once per (film, slot), so a wide release rings once per venue while one re-read after the burst sees all of it; projection-calls/s therefore tracks (both event rates MINUS coalesced), not the raw sum. readmodel-writes/s is the OUTPUT (post-dedup, near-0 even when projection is hot — which is exactly why raw writes under-report projection CPU). calls/s high with writes/s ~0 means the projector is being rung by writes that changed nothing.",
+          "description": "The per-second rates that DRIVE and RESULT FROM projection — split out of the CPU panel above because they're a different unit (events/s, not centi-cores) and can't stack with cc. THERE ARE THREE TRIGGERS, and for a long time this panel drew only one: movie change-events/s is a `movies` write, screenings change-events/s is a `screenings` write (one row per film+cinema slot) — the second cursor, and normally the LARGER of the three — and movie_slots change-events/s is a `movie_slots` write (the third cursor, added 2026-09-07: a venue's slot lands without a `movies` write whenever the film document is unchanged, and the projection cannot emit that venue's row until the slot exists). projection-calls/s should track their SUM; against the movies line alone it read as an unexplained 55:1 on worker-de (2026-09-04), which is what an unmetered trigger looks like. coalesced/s is the part of the screenings rate that rode an apply already queued for its film instead of buying its own — the cursor rings once per (film, slot), so a wide release rings once per venue while one re-read after the burst sees all of it; projection-calls/s therefore tracks (both event rates MINUS coalesced), not the raw sum. readmodel-writes/s is the OUTPUT (post-dedup, near-0 even when projection is hot — which is exactly why raw writes under-report projection CPU). calls/s high with writes/s ~0 means the projector is being rung by writes that changed nothing. heal re-projections/s is the FOURTH trigger: rows the boot check and the 30-min prune sweep re-project because the read model looked short a card or venue (mostly spent slots), with no event behind them. A burst after every worker start is normal; ReadModelProjectionTriggerUnaccounted subtracts it from calls/s before comparing against the three cursors (2026-09-19: six PL rollouts put ~0.8/s of these on the books and fired it).",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -2773,13 +2773,22 @@
                 "type": "prometheus",
                 "uid": "local-prometheus"
               }
+            },
+            {
+              "refId": "K",
+              "expr": "sum(rate(kinowo_worker_readmodel_heal_checks_total{country=~\"$country\"}[5m]))",
+              "legendFormat": "heal re-projections /s (boot check + sweep, no event)",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
             }
           ]
         },
         {
           "id": 48,
           "title": "Read-model projection efficiency",
-          "description": "How hard the read-model projection works. Over-triggering shows as high projections/s against a change-events/s that does NOT keep pace — one write ringing many projections, which is what a whole-film rewrite does (a `replaceFilm` re-writes every slot of the film, so a film at 3,327 US venues turns one changed showtime into 3,327 events). An expensive-film tail shows as high p99 ms instead. p50/p95/p99 are per-projection wall-clock in ms (LEFT axis); projections/s and change-events/s are on the RIGHT. change-events/s is the SUM of both cursors — `movies` and `screenings` — because the projector is fed by both and plotting only the first made a 2026-09-04 climb unattributable. After the metadata-reuse cache, showtime-only churn keeps the percentiles low even when calls/s is high.",
+          "description": "How hard the read-model projection works. Over-triggering shows as high projections/s against a change-events/s that does NOT keep pace — one write ringing many projections, which is what a whole-film rewrite does (a `replaceFilm` re-writes every slot of the film, so a film at 3,327 US venues turns one changed showtime into 3,327 events). An expensive-film tail shows as high p99 ms instead. p50/p95/p99 are per-projection wall-clock in ms (LEFT axis); projections/s and change-events/s are on the RIGHT. change-events/s is the SUM of all three cursors — `movies`, `screenings` and `movie_slots` — because the projector is fed by all of them and plotting only the first made a 2026-09-04 climb unattributable. After the metadata-reuse cache, showtime-only churn keeps the percentiles low even when calls/s is high. heal re-projections/s (right axis) are projections no event asked for — the boot check and the prune sweep re-projecting rows that looked short a card or venue — so projections/s may exceed change-events/s by that much after a worker start without anything being wrong.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -2829,7 +2838,31 @@
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "change-events /s (both cursors)"
+                  "options": "change-events /s (all three cursors)"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "custom.axisPlacement",
+                    "value": "right"
+                  },
+                  {
+                    "id": "custom.axisLabel",
+                    "value": "projections / s"
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 8
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "heal re-projections /s (no event)"
                 },
                 "properties": [
                   {
@@ -2893,6 +2926,15 @@
               "refId": "E",
               "expr": "sum(rate(kinowo_worker_movie_change_events_total{country=~\"$country\"}[5m])) + sum(rate(kinowo_worker_screenings_change_events_total{country=~\"$country\"}[5m])) + sum(rate(kinowo_worker_movie_slots_change_events_total{country=~\"$country\"}[5m]))",
               "legendFormat": "change-events /s (all three cursors)",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            },
+            {
+              "refId": "F",
+              "expr": "sum(rate(kinowo_worker_readmodel_heal_checks_total{country=~\"$country\"}[5m]))",
+              "legendFormat": "heal re-projections /s (no event)",
               "datasource": {
                 "type": "prometheus",
                 "uid": "local-prometheus"
