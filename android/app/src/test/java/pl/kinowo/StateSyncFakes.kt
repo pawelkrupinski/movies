@@ -1,6 +1,8 @@
 package pl.kinowo
 
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.withContext
 import pl.kinowo.auth.HiddenFilmsClient
 import pl.kinowo.auth.HiddenFilmsFetchResult
 import pl.kinowo.auth.HiddenFilmsState
@@ -149,7 +151,8 @@ internal class FakeLanguageClient : LanguageClient {
 
     /** Awaited once a push has REACHED the server, before its response —
      *  holds it "in flight". Cancelling the caller then can't un-send it,
-     *  as with the real blocking OkHttp call. */
+     *  as with the real blocking OkHttp call; throwing from it models a
+     *  response lost after the server applied the push. */
     var beforePushResponse: suspend () -> Unit = {}
     /** Awaited at the start of a fetch — holds it "in flight". */
     var beforeFetch: suspend () -> Unit = {}
@@ -160,14 +163,23 @@ internal class FakeLanguageClient : LanguageClient {
         if (!signedIn) throw IOException("HTTP 401")
         return remote
     }
+    private var pushesInFlight = 0
+    /** The most pushes ever on the wire at once. */
+    var maxPushesInFlight = 0
+        private set
+
     override suspend fun push(language: String) {
         pushAttempts++
         if (shouldFailPush) throw IOException("HTTP 503")
         if (refusePush) throw LanguagePushRefused(400)
         if (!signedIn) throw IOException("HTTP 401")
-        pushes += language
         remote = language
-        beforePushResponse()
+        pushesInFlight++
+        maxPushesInFlight = maxOf(maxPushesInFlight, pushesInFlight)
+        // Once sent, cancelling the caller can't take the request back —
+        // as with the real blocking OkHttp call.
+        try { withContext(NonCancellable) { beforePushResponse() } } finally { pushesInFlight-- }
+        pushes += language
         lastPushed = language
         pushCount++
     }

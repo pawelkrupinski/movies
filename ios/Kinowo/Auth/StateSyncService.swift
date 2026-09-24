@@ -48,6 +48,8 @@ final class StateSyncService: ObservableObject {
     private var prefsCancellables = Set<AnyCancellable>()
     private var syncTask: Task<Void, Never>?
     private var debounceWorkItem: DispatchWorkItem?
+    /// How many language pushes are on the wire — see `languageChanged`.
+    private var languagePushesInFlight = 0
     /// The hiddenFilms queue flush in progress, if any — see `sendPendingChanges`.
     private var flushTask: Task<Bool, Never>?
     /// The language the account is known to hold — last fetched or
@@ -236,6 +238,8 @@ final class StateSyncService: ObservableObject {
     private func pushLanguage(_ language: String) async {
         debounceWorkItem?.cancel()
         debounceWorkItem = nil
+        languagePushesInFlight += 1
+        defer { languagePushesInFlight -= 1 }
         do {
             try await languageClient.push(language)
             accountLanguage = language
@@ -252,14 +256,10 @@ final class StateSyncService: ObservableObject {
             // Left pending — see above.
             return
         }
-        // The user moved on while this push was in flight — back to the value
-        // the account held before it, which `languageChanged` saw as "nothing
-        // to push". The account now holds `language` instead, so send the
-        // final pick.
-        let current = prefs.selectedLanguage
-        if pendingLanguage == nil, current != language, isLoggedIn {
-            pendingLanguage = current
-            await pushLanguage(current)
+        // The user moved on while this push was in flight — `languageChanged`
+        // kept that pick pending — so send it now.
+        if let pending = pendingLanguage, pending != language, isLoggedIn {
+            await pushLanguage(pending)
         }
     }
 
@@ -340,7 +340,10 @@ final class StateSyncService: ObservableObject {
     }
 
     private func languageChanged(to language: String) {
-        guard language != accountLanguage else {
+        // A push on the wire may already have reached the server, so a pick
+        // back to `accountLanguage` must be kept pending and sent after it —
+        // even when that push then fails (its response lost, not its effect).
+        guard language != accountLanguage || languagePushesInFlight > 0 else {
             // Back on (or adopted) what the account already holds — nothing to push.
             pendingLanguage = nil
             debounceWorkItem?.cancel()

@@ -18,6 +18,7 @@ import org.junit.Test
 import pl.kinowo.auth.StateSyncService
 import pl.kinowo.auth.UserProfile
 import pl.kinowo.data.HiddenFilmsOp
+import java.io.IOException
 
 /**
  * Mirrors iOS `StateSyncServiceTests`: per-country merge-on-login, immediate
@@ -657,6 +658,36 @@ class StateSyncServiceTest {
      *  still in flight: the pick-back matches what the account held when it
      *  was made, so nothing was sent for it, and the in-flight push then left
      *  the server on the abandoned pick. The final pick must win. Mirrors iOS. */
+    /** Picking back while another pick's push is in flight, when that push
+     *  then fails AFTER the server applied it: the account now holds the
+     *  abandoned pick, so the pick-back must stay pending and win the next
+     *  reconcile. Mirrors iOS. */
+    @Test
+    fun aPickBackSurvivesAnInFlightPushThatFailsAfterLanding() = runTest(UnconfinedTestDispatcher()) {
+        languageClient.remote = "de"
+        val service = startService()
+        login()
+        advanceUntilIdle()
+
+        val gate = CompletableDeferred<Unit>()
+        languageClient.beforePushResponse = { gate.await(); throw IOException("connection lost") }
+        prefs.setLanguageTag("es")
+        advanceTimeBy(500)
+        runCurrent()
+        prefs.setLanguageTag("de")
+        runCurrent()
+        gate.complete(Unit)
+        runCurrent()
+        languageClient.beforePushResponse = {}
+        assertEquals("es", languageClient.remote) // the lost push landed
+
+        service.reconcileCurrentCountry()
+        advanceUntilIdle()
+
+        assertEquals("de", prefs.languageState.value)
+        assertEquals("de", languageClient.remote)
+    }
+
     /** Picking back to the account's language INSIDE the debounce — nothing
      *  has been sent yet — leaves nothing to push, as on iOS. Only a push
      *  already on the wire makes the pick-back worth sending. */

@@ -314,6 +314,33 @@ final class StateSyncServiceTests: XCTestCase {
         _ = sync
     }
 
+    /// Picking back while another pick's push is in flight, when that push
+    /// then fails AFTER the server applied it: the account now holds the
+    /// abandoned pick, so the pick-back must stay pending and win the next
+    /// reconcile rather than the account's value being adopted. Mirrors Android.
+    func testAPickBackSurvivesAnInFlightPushThatFailsAfterLanding() async throws {
+        languageClient.remote = "de"
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.selectedLanguage == "de" }
+        try await Task.sleep(for: .milliseconds(100))
+
+        let gate = AsyncGate()
+        languageClient.beforePushResponse = { await gate.wait(); throw URLError(.networkConnectionLost) }
+        prefs.setLanguage("es")
+        try await waitUntil { self.languageClient.pushesStarted == 1 }
+        prefs.setLanguage("de")
+        await gate.open()
+        try await waitUntil { self.languageClient.inFlight == 0 }
+        languageClient.beforePushResponse = nil
+        XCTAssertEqual(languageClient.remote, "es") // the lost push landed
+
+        await sync.reconcileCurrentCountry()
+
+        XCTAssertEqual(prefs.selectedLanguage, "de")
+        XCTAssertEqual(languageClient.remote, "de")
+    }
+
     /// A pick made while the LOGIN reconcile's fetch is in flight: the
     /// observers used to start only after that reconcile, so the pick was
     /// never marked pending and the account's older value overwrote it.
@@ -778,7 +805,14 @@ final class FakeLanguageClient: LanguageClient {
     var beforePush: (() async -> Void)?
     /// Awaited at the start of a fetch — holds it "in flight".
     var beforeFetch: (() async -> Void)?
+    /// Awaited once a push has REACHED the server (the account holds its
+    /// value), before the response — throwing from it models a response lost
+    /// after the server applied the push.
+    var beforePushResponse: (() async throws -> Void)?
     private(set) var pushesStarted = 0
+    private var pushesInFlight = 0
+    /// The most pushes ever on the wire at once.
+    private(set) var maxPushesInFlight = 0
     private(set) var fetchesStarted = 0
 
     func fetch() async throws -> String? {
@@ -795,14 +829,17 @@ final class FakeLanguageClient: LanguageClient {
     func push(_ language: String) async throws {
         pushesStarted += 1
         inFlight += 1
-        defer { inFlight -= 1 }
+        pushesInFlight += 1
+        maxPushesInFlight = max(maxPushesInFlight, pushesInFlight)
+        defer { inFlight -= 1; pushesInFlight -= 1 }
         if let beforePush { await beforePush() }
         defer { onPush?(language) }
         if shouldFailPush { throw URLError(.badServerResponse) }
         if refusePush { throw LanguagePushRefused(statusCode: 400) }
         if !signedIn { throw URLError(.userAuthenticationRequired) }
-        pushes.append(language)
         remote = language
+        if let beforePushResponse { try await beforePushResponse() }
+        pushes.append(language)
     }
 }
 
