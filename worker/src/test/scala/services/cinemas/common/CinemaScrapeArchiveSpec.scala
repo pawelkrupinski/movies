@@ -63,7 +63,7 @@ class CinemaScrapeArchiveSpec extends AnyFlatSpec with Matchers {
     val archive = new InMemoryScrapeArchiveRepository
     val reduced = Seq(film(KinoMuza, "Nosferatu"), film(KinoMuza, "Anora"))
     // How ScrapeChunkReduceHandler hands its reduced chunks back to the runner.
-    runnerWith(archive).run(new PreScrapedCinemaScraper(KinoMuza, Set.empty, isChain = false, () => reduced, listingComplete = true))
+    runnerWith(archive).run(PreScrapedCinemaScraper.replaying(KinoMuza, reduced))
 
     archive.find(KinoMuza).getOrElse(fail("nothing archived")).films.map(_.movie.title) should
       contain theSameElementsAs Seq("Nosferatu", "Anora")

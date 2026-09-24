@@ -215,7 +215,7 @@ class ArchiveReplayWiring(
     archivedListings.toSeq
       .sortBy(_._1.displayName)
       .map { case (cinema, films) =>
-        new PreScrapedCinemaScraper(cinema, Set.empty, isChain = false, () => films, listingComplete = true)
+        PreScrapedCinemaScraper.replaying(cinema, films)
       }
 }
 

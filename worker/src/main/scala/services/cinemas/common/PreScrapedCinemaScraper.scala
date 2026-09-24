@@ -3,37 +3,41 @@ package services.cinemas.common
 import models.{Cinema, CinemaMovie}
 
 /**
- * A trivial `CinemaScraper` whose `fetch()` returns (or throws) a precomputed
- * result. It lets the chunked reduce step push its aggregated listing — or a
- * plan/reduce failure — through the SAME recording/fallback decorator chain and
- * `CinemaScrapeRunner` a normal scrape uses, so uptime classification, the
- * Filmweb fallback, and event publishing are all reused unchanged.
+ * A `CinemaScraper` whose `fetch()` returns (or throws) a precomputed result,
+ * standing in for the live scraper it was computed from. It lets the chunked
+ * reduce step push its aggregated listing — or a plan/reduce failure — through
+ * the SAME recording/fallback decorator chain and `CinemaScrapeRunner` a normal
+ * scrape uses, so uptime classification, the Filmweb fallback, and event
+ * publishing are all reused unchanged.
+ *
+ * Every identity (venue, hosts, chain flag, attempts, source URL and key, chain
+ * venue id) is the stood-for scraper's, forwarded by [[DelegatingCinemaScraper]]
+ * so a member added to the trait cannot be dropped here either; only the listing
+ * and whether it is whole are its own.
  */
 class PreScrapedCinemaScraper(
-  val cinema:   Cinema,
-  hosts:        Set[String],
-  isChain:      Boolean,
-  result:       () => Seq[CinemaMovie],
+  standsFor: CinemaScraper,
+  result:    () => Seq[CinemaMovie],
   // False when the chunked run this was reduced from was missing chunks — see
   // `CinemaScraper.listingIsComplete`.
-  listingComplete: Boolean = true,
-  // The original scraper's `sourceKey`, so a chunked venue's rewire is recognised
-  // exactly as a plain one's is — see `MovieCache.recordCinemaScrape`.
-  key:          Option[String] = None
-) extends CinemaScraper {
-  def scrapeHosts: Set[String]  = hosts
+  listingComplete: Boolean = true
+) extends DelegatingCinemaScraper(standsFor) {
   def fetch(): Seq[CinemaMovie] = result()
-  // Carry the original scraper's chain flag so the recording wrapper picks the
-  // same Filmweb-fallback eligibility (`FallbackEligibility.eligible`) it would
-  // for the live scrape — a chunked chain must not become fallback-eligible.
-  override def chain: Boolean = isChain
   override def listingIsComplete: Boolean = listingComplete
-  override def sourceKey: Option[String]  = key
 }
 
 object PreScrapedCinemaScraper {
-  /** `result`, standing in for the live scrape of `scraper` — every identity it
-   *  carries (venue, hosts, chain flag, source key) copied from the scraper itself. */
+  /** `result`, standing in for the live scrape of `scraper`. */
   def of(scraper: CinemaScraper, result: () => Seq[CinemaMovie], listingComplete: Boolean = true): PreScrapedCinemaScraper =
-    new PreScrapedCinemaScraper(scraper.cinema, scraper.scrapeHosts, scraper.chain, result, listingComplete, scraper.sourceKey)
+    new PreScrapedCinemaScraper(scraper, result, listingComplete)
+
+  /** `movies`, a whole listing of `cinema` read from no live source — an archived
+   *  corpus replayed into the pipeline. It has no hosts, source or chain identity. */
+  def replaying(cinema: Cinema, movies: Seq[CinemaMovie]): PreScrapedCinemaScraper =
+    of(Anonymous(cinema), () => movies)
+
+  private final case class Anonymous(cinema: Cinema) extends CinemaScraper {
+    def scrapeHosts: Set[String]  = Set.empty
+    def fetch(): Seq[CinemaMovie] = Seq.empty
+  }
 }

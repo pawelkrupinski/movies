@@ -53,6 +53,20 @@ class DecoratorTransparencySpec extends AnyFlatSpec with Matchers {
       new UptimeMonitor(), new InMemoryFallbackStore())
   )
 
+  // The chunked reduce publishes its listing as a PreScraped stand-in for the live
+  // scraper, through the same decorators — so it must answer as that scraper would.
+  "PreScrapedCinemaScraper.of" should "carry every identity of the scraper it stands in for" in {
+    val stand = PreScrapedCinemaScraper.of(delegate, () => Seq.empty)
+    withClue("cinema: ")(stand.cinema shouldBe delegate.cinema)
+    withClue("scrapeHosts: ")(stand.scrapeHosts shouldBe delegate.scrapeHosts)
+    withClue("maxFetchAttempts: ")(stand.maxFetchAttempts shouldBe delegate.maxFetchAttempts)
+    withClue("chain: ")(stand.chain shouldBe delegate.chain)
+    withClue("sourceUrl: ")(stand.sourceUrl shouldBe delegate.sourceUrl)
+    withClue("sourceKey: ")(stand.sourceKey shouldBe delegate.sourceKey)
+    withClue("chainVenueId: ")(stand.chainVenueId shouldBe delegate.chainVenueId)
+    PreScrapedCinemaScraper.of(delegate, () => Seq.empty, listingComplete = false).listingIsComplete shouldBe false
+  }
+
   decorators.foreach { case (name, decorated) =>
     it should s"carry every delegate answer through $name" in {
       withClue("cinema: ")(decorated.cinema shouldBe delegate.cinema)
@@ -71,9 +85,7 @@ class DecoratorTransparencySpec extends AnyFlatSpec with Matchers {
   it should "reach MovieCache as a short listing once the reduce says so" in {
     // End to end over the seam that broke: the reduce's PreScraped listing, wrapped the way
     // `publishScrape` wraps it, is what the runner reads the flag off.
-    val partial = new PreScrapedCinemaScraper(
-      KinoMuranow, Set("example.test"), isChain = false,
-      result = () => Seq.empty[CinemaMovie], listingComplete = false)
+    val partial = PreScrapedCinemaScraper.of(delegate, () => Seq.empty[CinemaMovie], listingComplete = false)
     new UptimeRecordingScraper(partial, new UptimeMonitor()).listingIsComplete shouldBe false
   }
 }
