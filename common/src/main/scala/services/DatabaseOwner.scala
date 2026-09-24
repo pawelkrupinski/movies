@@ -3,7 +3,7 @@ package services
 import models.Country
 import org.mongodb.scala.{MongoDatabase, SingleObservableFuture}
 import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.model.{Filters, ReplaceOptions}
+import org.mongodb.scala.model.Filters
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -26,18 +26,26 @@ final class DatabaseOwner(database: MongoDatabase) {
     Await.result(owners.find(Filters.eq("_id", DatabaseOwner.Id)).first().toFutureOption(), 10.seconds)
       .flatMap(_.get("country").map(_.asString().getValue))
 
-  /** Stamp `country` on this database, or throw when another country already owns it. */
-  def claim(country: Country): Unit = owner() match {
-    case Some(other) if other != country.code =>
-      throw new IllegalStateException(
-        s"database '${database.name}' belongs to country '$other', refusing to run '${country.code}' on it: " +
-          "two countries on one database prune each other's read model. Unset MONGODB_DB or point it at " +
-          s"'${country.mongoDb}'.")
-    case Some(_) => ()
-    case None =>
-      Await.result(owners.replaceOne(Filters.eq("_id", DatabaseOwner.Id),
-        Document("_id" -> DatabaseOwner.Id, "country" -> country.code), new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
-      ()
+  /** Stamp `country` on this database, or throw when another country already owns it.
+   *
+   *  Insert FIRST, then read on a collision: `_id` is unique, so of two workers claiming
+   *  at once exactly one insert lands. Reading first let both see an unowned database
+   *  and both stamp it, the second overwriting the first while the first kept running. */
+  def claim(country: Country): Unit = {
+    val stamped = scala.util.Try(Await.result(owners.insertOne(
+      Document("_id" -> DatabaseOwner.Id, "country" -> country.code)).toFuture(), 10.seconds))
+    stamped.failed.foreach {
+      case e: com.mongodb.MongoWriteException if MongoErrors.isDuplicateKey(e) => () // already stamped
+      case e                                                                  => throw e
+    }
+    owner() match {
+      case Some(other) if other != country.code =>
+        throw new IllegalStateException(
+          s"database '${database.name}' belongs to country '$other', refusing to run '${country.code}' on it: " +
+            "two countries on one database prune each other's read model. Unset MONGODB_DB or point it at " +
+            s"'${country.mongoDb}'.")
+      case _ => ()
+    }
   }
 }
 
