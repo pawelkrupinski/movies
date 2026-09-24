@@ -29,18 +29,13 @@ import ConcurrentFoldRaceHarness.RaceGroup
  * Before the fix this was an immediate `Next.Abandon` (a duplicate-key write error
  * carries no transient-transaction label), so the whole fold task rethrew and the
  * `StagingReaper` rescheduled it under backoff instead of just re-reading and finding
- * the sibling. `StagingFoldOutcomeSpec` is what actually PINS that decision (fail
- * before / pass after, on the exact incident message) — it is a pure function, so it
- * can construct the E11000 deterministically. This spec cannot: a genuinely
- * concurrent pair of real Mongo transactions on a single-node local replica set
- * overwhelmingly collides as a transient `WriteConflict` (already retried before this
- * fix) rather than a clean post-commit `E11000`, because a real replica set's
- * network-separated worker processes have room to fully commit one side before the
- * other reads, and this loopback pair usually does not. So treat this spec as what it
- * can honestly prove — that `MongoStagingFolder`'s retry loop, against a REAL
- * transactional Mongo, converges racing folds for one tmdbId to a single row with
- * every anchor's cinema, whichever of the two error shapes actually fires — and rely
- * on `StagingFoldOutcomeSpec` for the specific regression pin.
+ * the sibling. The two RACE tests below cannot reach that error: a genuinely concurrent pair
+ * of transactions on a single-node local replica set collides as a transient `WriteConflict`
+ * (retried long before this fix), never a clean post-commit `E11000`. They prove what they
+ * honestly can — that the retry loop converges racing folds for one tmdbId to a single row with
+ * every anchor's cinema, whichever error fires. `StagingFoldOutcomeSpec` pins the decision
+ * itself. The merge-order test at the bottom is a second, non-racing way to the same error that
+ * the retry could not fix: see its comment.
  *
  * The concurrency plumbing (seed, barrier, thread, join, collect) lives in
  * `ConcurrentFoldRaceHarness`, shared with the three-way race below.
@@ -119,6 +114,59 @@ class StagingFoldConcurrentTmdbRaceIntegrationSpec extends AnyFlatSpec with Matc
         "silently drop a loser's own cinema: ") {
         fold.slots.findForFilm(survivors.head).keySet shouldBe cinemaNames
       }
+    }
+  }
+
+  /** Two decorated spellings of one film, each its own fold group, both concluded to `tmdbId` —
+   *  and the loser's group already holding an UNRESOLVED `movies` row of its own (a spelling that
+   *  was promoted before TMDB answered). Returns the loser's title and row id. */
+  private def seedWinnerAndResolvingLoser(fold: FoldFixture.Handles, tmdbId: Int, word: String): (String, String, String) = {
+    import org.mongodb.scala.SingleObservableFuture
+    import org.mongodb.scala.bson.collection.immutable.Document
+    import services.movies.SingleCountryNormalizer.titleNormalizer
+    val winnerTitle = s"Lalka reż. $word"
+    val loserTitle  = s"Ladies Night - ${word.capitalize}"
+    awaitTmdbIdIndex(fold)
+    fold.seedStagingRow(Multikino.displayName, winnerTitle, Some(2026), tmdbId)
+    fold.seedStagingRow(Helios.displayName, loserTitle, Some(2026), tmdbId)
+    val loserId = services.movies.StoredMovieRecord.keyFor(loserTitle, Some(2026), titleNormalizer)
+    Await.result(fold.movies.insertOne(Document("_id" -> loserId, "key" -> loserId,
+      "sourceData" -> Document(), "updatedAt" -> java.util.Date.from(java.time.Instant.now()))).toFuture(), 10.seconds)
+    (winnerTitle, loserTitle, loserId)
+  }
+
+  private def assertOneFilmWithBothCinemas(fold: FoldFixture.Handles, tmdbId: Int) = {
+    val survivors = Await.result(fold.movies.find(Filters.eq("tmdbId", tmdbId)).toFuture(), 10.seconds)
+      .flatMap(_.get("_id").map(_.asString().getValue))
+    withClue(s"survivors=$survivors: ") { survivors should have size 1 }
+    fold.slots.findForFilm(survivors.head).keySet shouldBe Set(Multikino.displayName, Helios.displayName)
+  }
+
+  // Not a race at all, and the shape the tmdbId retry (a42086081) could never have helped: the
+  // loser's plan merges its own unresolved row INTO the sibling that already carries the tmdbId,
+  // and the fold wrote the survivor before deleting the row it retires. Both hold the tmdbId for
+  // that instant, so the unique index refused the fold inside its own transaction — the same
+  // E11000 on every attempt, then an abandon, then a reschedule that does it again.
+  it should "fold a spelling whose unresolved row merges into a sibling already holding the tmdbId" in {
+    FoldFixture.withFold("staging-fold-tmdb-merge-order") { fold =>
+      val tmdbId = 424353
+      val (winnerTitle, loserTitle, _) = seedWinnerAndResolvingLoser(fold, tmdbId, "mergeorder")
+      fold.folder().foldGroup(winnerTitle)
+      noException should be thrownBy fold.folder().foldGroup(loserTitle)
+      assertOneFilmWithBothCinemas(fold, tmdbId)
+    }
+  }
+
+  /** The repository builds the partial unique `tmdbId` index asynchronously at construction;
+   *  a collision is only real once it exists. */
+  private def awaitTmdbIdIndex(fold: FoldFixture.Handles): Unit = {
+    fold.splitAwareRepository
+    val deadline = System.nanoTime() + 10.seconds.toNanos
+    def present = Await.result(fold.movies.listIndexes().toFuture(), 10.seconds)
+      .exists(_.get("name").exists(_.asString().getValue == "tmdbId_1"))
+    while (!present) {
+      if (System.nanoTime() > deadline) fail("the tmdbId unique index never appeared")
+      Thread.sleep(20)
     }
   }
 }
