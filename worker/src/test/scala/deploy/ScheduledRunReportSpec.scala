@@ -17,17 +17,6 @@ import org.scalatest.matchers.should.Matchers
 class ScheduledRunReportSpec extends AnyFlatSpec with Matchers {
   private val Action = "uses: ./.github/actions/report-scheduled-run"
 
-  private def jobs(yml: String): Map[String, String] = {
-    val jobsBlock = RepoFile.block(yml, "jobs").linesIterator.toVector
-    val indent = jobsBlock.drop(1).find(l => l.trim.nonEmpty && !l.trim.startsWith("#"))
-      .map(_.takeWhile(_ == ' ').length).getOrElse(0)
-    val names = jobsBlock.drop(1).collect {
-      case l if l.takeWhile(_ == ' ').length == indent && l.trim.endsWith(":") && !l.trim.startsWith("#") =>
-        l.trim.stripSuffix(":")
-    }
-    names.map(n => n -> RepoFile.block(jobsBlock.mkString("\n"), n)).toMap
-  }
-
   private lazy val scheduled: Seq[(String, String)] =
     RepoFile.workflows().map(f => f.getName -> RepoFile.read(f.getPath))
       .filter { case (_, yml) =>
@@ -40,7 +29,7 @@ class ScheduledRunReportSpec extends AnyFlatSpec with Matchers {
 
   they should "each report a failed scheduled run through report-scheduled-run, after every other job" in {
     val problems = scheduled.flatMap { case (name, yml) =>
-      val all = jobs(yml)
+      val all = RepoFile.jobs(yml)
       all.collectFirst { case (job, body) if body.contains(Action) => job -> body } match {
         case None => Seq(s"$name has no job using report-scheduled-run")
         case Some((job, body)) =>

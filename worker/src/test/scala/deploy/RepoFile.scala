@@ -60,6 +60,23 @@ object RepoFile {
   }
 
   /**
+   * A workflow's jobs, by name: each job's own block (see [[block]]), for the specs that
+   * assert on one job's `needs:`, `if:`, `permissions:` or steps without reading a
+   * neighbour's.
+   */
+  def jobs(yml: String): Map[String, String] = {
+    val jobsBlock = block(yml, "jobs")
+    val Header    = """^(\s+)([A-Za-z][\w-]*):\s*$""".r
+    val topIndent = jobsBlock.linesIterator.drop(1)
+      .collectFirst { case Header(indent, _) => indent.length }
+      .getOrElse(throw new AssertionError("`jobs:` has no job under it"))
+    jobsBlock.linesIterator
+      .collect { case Header(indent, name) if indent.length == topIndent => name }
+      .map(name => name -> block(jobsBlock, name))
+      .toMap
+  }
+
+  /**
    * The workflow step named `stepName` — its `- name:` line and everything up
    * to the next `- ` item at the same indentation — so a spec asserting on one
    * step's `continue-on-error:` or `run:` cannot read the neighbouring step's.

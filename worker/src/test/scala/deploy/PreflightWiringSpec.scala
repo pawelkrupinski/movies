@@ -36,18 +36,6 @@ class PreflightWiringSpec extends AnyFlatSpec with Matchers {
     ".github/workflows/record-scrape-fixtures.yml" -> false
   )
 
-  private def jobs(yml: String): Map[String, String] = {
-    val jobsBlock = RepoFile.block(yml, "jobs")
-    val Header    = """^(\s+)([A-Za-z][\w-]*):\s*$""".r
-    val topIndent = jobsBlock.linesIterator.drop(1)
-      .collectFirst { case Header(indent, _) => indent.length }
-      .getOrElse(fail("`jobs:` has no job under it"))
-    jobsBlock.linesIterator
-      .collect { case line @ Header(indent, name) if indent.length == topIndent => name }
-      .map(name => name -> RepoFile.block(jobsBlock, name))
-      .toMap
-  }
-
   private def needs(job: String): Set[String] =
     job.linesIterator.map(_.trim).collectFirst { case s"needs: $n" => n }
       .map(_.stripPrefix("[").stripSuffix("]").split(",").map(_.trim).filter(_.nonEmpty).toSet)
@@ -81,7 +69,7 @@ class PreflightWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   Guarded.foreach { case (file, androidLicence) =>
-    lazy val all       = jobs(RepoFile.read(file))
+    lazy val all       = RepoFile.jobs(RepoFile.read(file))
     lazy val preflight = all.getOrElse("preflight", fail(s"$file has no `preflight` job"))
 
     s"$file" should "have a preflight job that starts at once and runs for minutes at most" in {

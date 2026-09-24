@@ -18,22 +18,10 @@ class FlakeRerunWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val mainYml = RepoFile.read(".github/workflows/main.yml")
   private lazy val pageAction = RepoFile.read(".github/actions/run-page-test/action.yml")
 
-  private def jobs(yml: String): Map[String, String] = {
-    val jobsBlock = RepoFile.block(yml, "jobs")
-    val Header    = """^(\s+)([A-Za-z][\w-]*):\s*$""".r
-    val topIndent = jobsBlock.linesIterator.drop(1)
-      .collectFirst { case Header(indent, _) => indent.length }
-      .getOrElse(fail("`jobs:` has no job under it"))
-    jobsBlock.linesIterator
-      .collect { case line @ Header(indent, name) if indent.length == topIndent => name }
-      .map(name => name -> RepoFile.block(jobsBlock, name))
-      .toMap
-  }
-
   /** A step that runs an sbt TEST command: `sbt testUnitNoE2e`, `sbt itAll`, `sbt ${{ matrix.cmd }}`. */
   private val SbtTestRun = """(?m)run: sbt (test\w*|itAll|\$\{\{ matrix\.cmd \}\})\s*$""".r.unanchored
 
-  private lazy val sbtTestJobs = jobs(ciYml).filter { case (_, body) => SbtTestRun.matches(body) }
+  private lazy val sbtTestJobs = RepoFile.jobs(ciYml).filter { case (_, body) => SbtTestRun.matches(body) }
 
   "ci.yml" should "have sbt test jobs, or this spec checks nothing" in {
     sbtTestJobs.keySet should contain allOf ("test", "integration-test", "e2e")
@@ -74,7 +62,7 @@ class FlakeRerunWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   "main.yml" should "ledger the flaky tests from a failed ci run, on main, in a job of its own" in {
-    val ledger = jobs(mainYml).getOrElse("flake-ledger", fail("main.yml has no flake-ledger job"))
+    val ledger = RepoFile.jobs(mainYml).getOrElse("flake-ledger", fail("main.yml has no flake-ledger job"))
     ledger should include("needs: ci")
     ledger should include("needs.ci.result == 'failure'")
     ledger should include("github.ref == 'refs/heads/main'")
@@ -84,6 +72,6 @@ class FlakeRerunWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   "the test jobs" should "not hold issues: write — only the ledger job, which runs no project code, does" in {
-    jobs(ciYml).foreach { case (name, body) => withClue(s"$name: ")(body should not include "issues: write") }
+    RepoFile.jobs(ciYml).foreach { case (name, body) => withClue(s"$name: ")(body should not include "issues: write") }
   }
 }

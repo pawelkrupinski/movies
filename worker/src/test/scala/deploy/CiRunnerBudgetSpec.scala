@@ -39,19 +39,6 @@ class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
   private lazy val mainYml = RepoFile.read(".github/workflows/main.yml")
 
   /** Job name → its YAML block, for every job in a workflow file. */
-  private def jobs(yml: String): Map[String, String] = {
-    val jobsBlock = RepoFile.block(yml, "jobs")
-    val Header    = """^(\s+)([A-Za-z][\w-]*):\s*$""".r
-    val topIndent = jobsBlock.linesIterator
-      .drop(1)
-      .collectFirst { case Header(indent, _) => indent.length }
-      .getOrElse(fail("`jobs:` has no job under it"))
-    jobsBlock.linesIterator
-      .collect { case line @ Header(indent, name) if indent.length == topIndent => name }
-      .map(name => name -> RepoFile.block(jobsBlock, name))
-      .toMap
-  }
-
   /**
    * How many runners a job occupies: one per `matrix.include` entry, or one flat
    * if it has no matrix. Counts the `- ` items at the shallowest item indent
@@ -70,13 +57,13 @@ class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
       }
     }
 
-  private lazy val ciRunners = jobs(ciYml).values.map(runners).sum
+  private lazy val ciRunners = RepoFile.jobs(ciYml).values.map(runners).sum
 
   // main.yml's own jobs that start immediately — i.e. no `needs:` at all. `ci`
   // is the reusable-workflow call itself and contributes no runner of its own;
   // its jobs are counted above.
   private lazy val deployRunnersAtStart =
-    jobs(mainYml).view
+    RepoFile.jobs(mainYml).view
       .filterKeys(_ != "ci")
       .collect { case (_, block) if !block.linesIterator.exists(_.trim.startsWith("needs:")) => runners(block) }
       .sum
@@ -111,7 +98,7 @@ class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
    * t=0 exception and is gone (`DeployImageReuseSpec`).
    */
   it should "start nothing alongside ci but the preflight" in {
-    val atStart = jobs(mainYml).view
+    val atStart = RepoFile.jobs(mainYml).view
       .filterKeys(_ != "ci")
       .collect { case (name, block) if !block.linesIterator.exists(_.trim.startsWith("needs:")) => name }
       .toSet
@@ -120,7 +107,7 @@ class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
 
   /** ...and the preflight holds that slot for seconds, not for whatever it grows into. */
   it should "bound the preflight to a few minutes at most" in {
-    val timeout = jobs(mainYml)("preflight").linesIterator.map(_.trim).collectFirst {
+    val timeout = RepoFile.jobs(mainYml)("preflight").linesIterator.map(_.trim).collectFirst {
       case s"timeout-minutes: $n" => n.toInt
     }
     timeout.getOrElse(fail("main.yml's preflight has no timeout-minutes")) should be <= 5
