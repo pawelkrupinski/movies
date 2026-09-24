@@ -133,7 +133,7 @@ private[movies] object SimulatedCodecFailure {
 class ThrowingUpsertMovieRepository(metrics: RepositoryWriteMetrics,
                                     screenings: Option[ScreeningsRepository] = None,
                                     slots: Option[SlotsRepository] = None)
-  extends InMemoryMovieRepository(screenings = screenings, slots = slots) {
+  extends InMemoryMovieRepository(screenings = screenings, slots = slots) with FailsOnPurpose {
   @volatile var failing: Boolean = true
   private val log = play.api.Logger(getClass)
   override def upsert(film: FilmId, key: CacheKey, e: MovieRecord): WriteOutcome =
@@ -144,7 +144,7 @@ class ThrowingUpsertMovieRepository(metrics: RepositoryWriteMetrics,
 
 /** A [[SlotsRepository]] whose per-slot and whole-film writes THROW while `failing`, through
  *  [[RepositoryWrite]] like `MongoSlotsRepository`'s. */
-class ThrowingSlotsRepository(metrics: RepositoryWriteMetrics) extends InMemorySlotsRepository {
+class ThrowingSlotsRepository(metrics: RepositoryWriteMetrics) extends InMemorySlotsRepository with FailsOnPurpose {
   @volatile var failing: Boolean = true
   private val log = play.api.Logger(getClass)
   private def write(op: String)(body: => WriteOutcome): WriteOutcome =
