@@ -59,16 +59,17 @@ EXPOSE 9000
 # fleet reaches the cluster only when somebody applies it by hand, and the image DOES deploy.
 # See docs/heap-dumps.md for fetching a dump.
 #
-# DURABLE STDERR (worker only): the JVM's dying stderr — the `ExitOnOutOfMemoryError`
+# DURABLE STDERR: the JVM's dying stderr — the `ExitOnOutOfMemoryError`
 # native-OOM line (`Native memory allocation (mmap/malloc) failed…`) and, on a clean
 # SIGTERM restart, the `-XX:+PrintNMTStatistics` summary — otherwise goes only to the
 # container stderr → `kubectl logs`, whose short retention rolls away before the ~5 h
 # OOM can be read. Append it to /data/logs/worker-stderr.log so the pre-death readout
 # SURVIVES the restart. `launch()` keeps the `exec` (JVM stays PID-adjacent, receives
 # SIGTERM directly for the graceful NMT dump) while the redirect at the call site
-# hands the JVM an fd-2 pointing at the durable file. web has no /data volume → the
-# `else` branch runs the JVM unredirected, exactly as before. Cap the file on boot so
-# a crash-loop can't fill /data (keep the last ~4 MB). Hard JVM crashes (SIGSEGV) go
+# hands the JVM an fd-2 pointing at the durable file — on web too, whose /data is an
+# emptyDir that outlives a container restart; with no /data at all the `else` branch runs
+# the JVM unredirected. Cap the file on boot so a crash-loop can't fill /data (keep the
+# last ~4 MB); web's emptyDir sizeLimit is derived from this cap (NodeMemoryBudgetSpec). Hard JVM crashes (SIGSEGV) go
 # to -XX:ErrorFile=/data/logs/hs_err_%p.log (set in each k3s overlay's JAVA_OPTS).
 CMD mkdir -p /data/heapdumps /data/logs 2>/dev/null; \
     bin/heap-dumps.sh prune /data/heapdumps || true; \

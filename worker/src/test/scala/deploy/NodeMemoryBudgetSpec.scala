@@ -261,45 +261,85 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  /** The heap-dump volume's ceiling, in mebibytes, and how many dumps survive a boot. */
-  private def dumpVolumeMib(cc: String): Int = {
+  /** web's `/data` emptyDir, as the pod actually gets it: the overlay's where it restates the
+   *  volume, the base's otherwise. */
+  private def scratchVolume(cc: String): String = {
     val overlay = RepoFile.read(s"infra/kubernetes/web/overlays/$cc/patch.yaml")
-    val source  = if (overlay.contains("sizeLimit:")) overlay else RepoFile.read("infra/kubernetes/web/base/all.yaml")
-    val raw = source.linesIterator.map(_.trim).collectFirst {
+    val source  = if (overlay.contains("emptyDir:")) overlay else RepoFile.read("infra/kubernetes/web/base/all.yaml")
+    RepoFile.block(source, "emptyDir")
+  }
+
+  private def scratchSizeLimitMib(cc: String): Int = {
+    val raw = scratchVolume(cc).linesIterator.map(_.trim).collectFirst {
       case l if l.startsWith("sizeLimit:") => l.stripPrefix("sizeLimit:").trim.replace("\"", "")
     }
-    withClue(s"web/$cc has no heap-dump volume sizeLimit: ")(raw should not be empty)
+    withClue(s"web/$cc's /data emptyDir has no sizeLimit: ")(raw should not be empty)
     parseMib(raw.get)
   }
 
+  /** What an hs_err crash log is allowed to weigh. They run to hundreds of KiB (a thread dump,
+   *  the register state and the loaded-library map); 16MiB is an allowance, not a measurement. */
+  private val HsErrAllowanceMib = 16
 
-  // AN emptyDir OVER ITS sizeLimit GETS THE POD EVICTED, so the volume that exists to explain an
-  // OOM must not be able to cause an outage of its own -- on the only user-facing tier, that trade
-  // is strictly worse than having no dump.
+  /** The most web's `/data` can hold, from the caps the image's CMD applies on every boot: the
+   *  stderr log trimmed once it passes its byte cap (counted twice, because the trim only runs at
+   *  boot and the file keeps growing until the next one), and the newest hs_err files it keeps
+   *  plus the one a crash writes on the way down. Read from the Dockerfile so a loosened cap
+   *  shows up here rather than in an eviction. */
+  private lazy val scratchWorstMib: Int = {
+    val cmd       = RepoFile.read("Dockerfile")
+    val stderrCap = """worker-stderr\.log\)" -gt (\d+)""".r.findFirstMatchIn(cmd)
+      .getOrElse(fail("the Dockerfile no longer caps /data/logs/worker-stderr.log on boot")).group(1).toLong
+    val hsErrKept = """hs_err_\*\.log.*tail -n \+(\d+)""".r.findFirstMatchIn(cmd)
+      .getOrElse(fail("the Dockerfile no longer prunes /data/logs/hs_err_*.log on boot")).group(1).toInt - 1
+    (2 * stderrCap / (1024 * 1024)).toInt + (hsErrKept + 1) * HsErrAllowanceMib
+  }
+
+  /** How far above its worst contents the volume may be sized, as the request ceiling above is
+   *  for memory: room for what the caps miss, not room for something that no longer lands here. */
+  private val ScratchHeadroomCeiling = 4
+
+  // THE /data emptyDir WAS SIZED FOR A HEAP DUMP -- `2 x -Xmx`, the kept dump plus the one being
+  // written -- and no dump lands there any more. Since 2026-09-24 they go to the node hostPath
+  // mounted OVER it at /data/heapdumps (asserted below), so they outlive the pod. What is left is
+  // the stderr log and the hs_err crash logs, both capped by the image on boot; measured
+  // 2026-09-24 on all five web pods, `/data/logs` held 8KiB.
   //
-  // A dump cannot exceed the heap that produced it, so `(kept + 1) * -Xmx` is the honest worst
-  // case: the dump being written on the way down, beside the one the previous boot kept. Bounding
-  // on -Xmx rather than on the measured live set is deliberate -- the live set is what a dump
-  // ACTUALLY weighs (~600MiB for web-us's 1024m heap), but it moves with the corpus and this
-  // number must hold without anyone re-measuring it.
+  // THE MEDIUM IS WHAT KEEPS THIS OUT OF THE MEMORY LEDGER. A disk-backed emptyDir is charged to
+  // the node's ephemeral storage; a `medium: Memory` one is tmpfs, and every byte written to it
+  // is charged to the pod's memory cgroup -- against the container limit the heap test above
+  // sizes, and invisible to it. So the medium is pinned, not assumed.
   //
-  // This is the guard for the whole class: raise a heap or shrink a volume,
-  // and whichever of the three you forget fails here rather than in an eviction.
-  "the heap-dump volume" should "hold every dump it is configured to keep, on every web country" in {
+  // Over its sizeLimit the kubelet EVICTS the pod, so the floor still matters on the only public
+  // tier; the ceiling is what retires the dump-sized 1Gi / 2Gi.
+  "web's /data scratch volume" should "be disk-backed and sized to the crash logs it holds, not to a heap dump" in {
+    val worst = scratchWorstMib
     Countries.foreach { cc =>
-      val heap    = flagMib(javaOpts("web", cc), "-Xmx", "web", cc)
-      val ceiling = dumpVolumeMib(cc)
-      // The image keeps exactly ONE dump and only while it fits in half the volume, so the
-      // worst case on disk is the retained dump plus the one being written on the way down.
-      // A dump cannot exceed the heap that produced it, hence 2x -Xmx.
-      val worst   = 2 * heap
-      withClue(
-        s"web/$cc has a ${heap}Mi heap, so its volume can hold ${worst}Mi at once (the kept dump " +
-        s"plus the one being written), against a ${ceiling}Mi sizeLimit. Over that limit the " +
-        "kubelet EVICTS the pod: ") {
-        ceiling should be >= worst
+      val volume = scratchVolume(cc)
+      val limit  = scratchSizeLimitMib(cc)
+      withClue(s"web/$cc's /data emptyDir is tmpfs, so its contents count against the pod's memory limit: ") {
+        volume.linesIterator.map(_.trim).filterNot(_.startsWith("#")).mkString("\n") should not include "medium:"
       }
-      info(s"web/$cc: worst ${worst}Mi <= ${ceiling}Mi sizeLimit")
+      withClue(
+        s"web/$cc's /data sizeLimit is ${limit}Mi against ${worst}Mi of capped crash logs. Under that " +
+        s"the kubelet evicts the pod; over ${ScratchHeadroomCeiling}x it is still sized for a heap dump " +
+        "that now goes to the hostPath: ") {
+        limit should be >= worst
+        limit should be <= worst * ScratchHeadroomCeiling
+      }
+      info(s"web/$cc: ${worst}Mi worst <= ${limit}Mi sizeLimit, disk-backed")
+    }
+  }
+
+  "web's heap dumps" should "land on the node hostPath, not the size-limited /data emptyDir" in {
+    // The volumeMount, then the volume: each `- name: heapdumps` and the line that follows it.
+    val lines  = RepoFile.read("infra/kubernetes/web/base/all.yaml").linesIterator.map(_.trim).toVector
+    val follow = lines.indices.filter(lines(_) == "- name: heapdumps").map(i => lines.lift(i + 1).getOrElse(""))
+    follow shouldBe Vector("mountPath: /data/heapdumps", "hostPath:")
+    Countries.foreach { cc =>
+      withClue(s"web/$cc writes its heap dump outside /data/heapdumps, onto the emptyDir: ") {
+        javaOpts("web", cc) should include("-XX:HeapDumpPath=/data/heapdumps")
+      }
     }
   }
 
@@ -364,7 +404,7 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
   // needed the forensics was the single tier that had none. It was caught by reading JAVA_OPTS
   // back out of the running container, which is not a step anyone should have to remember.
   //
-  // The volume above is worthless without these, so they are asserted together.
+  // The hostPath above is worthless without these, so they are asserted together.
   "every web country" should "actually boot with the heap-dump flags, base or overlay" in {
     val required = Seq("-XX:+HeapDumpOnOutOfMemoryError", "-XX:HeapDumpPath=", "-XX:+ExitOnOutOfMemoryError", "-XX:ErrorFile=")
     Countries.foreach { cc =>
