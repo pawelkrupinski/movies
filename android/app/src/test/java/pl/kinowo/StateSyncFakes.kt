@@ -1,6 +1,8 @@
 package pl.kinowo
 
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 import pl.kinowo.auth.HiddenFilmsClient
@@ -178,9 +180,12 @@ internal class FakeLanguageClient : LanguageClient {
         remote = language
         pushesInFlight++
         maxPushesInFlight = maxOf(maxPushesInFlight, pushesInFlight)
-        // Once sent, cancelling the caller can't take the request back —
-        // as with the real blocking OkHttp call.
+        // Once sent, cancelling the caller can't take the request back — as
+        // with the real blocking OkHttp call — but a cancelled caller never
+        // sees the response either: the real client's withContext(IO) throws
+        // on its way out.
         try { withContext(NonCancellable) { beforePushResponse() } } finally { pushesInFlight-- }
+        currentCoroutineContext().ensureActive()
         pushes += language
         lastPushed = language
         pushCount++

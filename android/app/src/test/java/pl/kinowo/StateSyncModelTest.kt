@@ -1,5 +1,6 @@
 package pl.kinowo
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -32,7 +33,9 @@ import java.util.Random
  * reconcile — the server answers 304 or 200 by its own content validator),
  * another device hiding / unhiding a title, the network going down, the
  * network coming back (reconnect + resume), a local language pick, another
- * device's language pick.
+ * device's language pick, and a stall / release of the responses on the wire
+ * (so events interleave with requests the server applied but the device
+ * hasn't heard back from).
  *
  * THE INVARIANTS:
  *  1. No title crosses countries: a title hidden in one country never reaches
@@ -95,6 +98,34 @@ class StateSyncModelTest {
         SyncModel.violationOf(events)?.let { fail(it) }
     }
 
+    // Shapes the stall/release events found, pinned whatever the seeds generate.
+
+    /** Seed 49: a pick sent while a reconcile's fetch was on the wire lost to
+     *  that fetch's older answer. */
+    @Test
+    fun aPickSentDuringAStalledFetchSurvivesItsAnswer() {
+        val events = listOf(SyncEvent.Stall, SyncEvent.Login, SyncEvent.PickLanguage("de"), SyncEvent.SwitchCountry("de"),
+            SyncEvent.Logout, SyncEvent.SwitchCountry("de"), SyncEvent.Login, SyncEvent.PickLanguage("en"))
+        SyncModel.violationOf(events)?.let { fail(it) }
+    }
+
+    /** Seed 1054: a write on the wire at a logout dequeued the next session's clear. */
+    @Test
+    fun aStalledWriteAcrossALogoutKeepsTheNextSessionsClear() {
+        val events = listOf(SyncEvent.Login, SyncEvent.Stall, SyncEvent.Hide, SyncEvent.Logout, SyncEvent.Login,
+            SyncEvent.Clear)
+        SyncModel.violationOf(events)?.let { fail(it) }
+    }
+
+    /** Seed 1532: a repeated pick made while its twin was on the wire was taken
+     *  as already sent. */
+    @Test
+    fun aRepeatedPickDuringAStalledPushIsSentAgain() {
+        val events = listOf(SyncEvent.Stall, SyncEvent.Login, SyncEvent.PickLanguage("pl"), SyncEvent.PickLanguage("es"),
+            SyncEvent.RemoteLanguage("en"), SyncEvent.PickLanguage("pl"))
+        SyncModel.violationOf(events)?.let { fail(it) }
+    }
+
     private companion object {
         /** A push-sized run; the nightly one passes `-PsyncModelSeeds`. */
         const val DefaultSeeds = 200L
@@ -117,6 +148,12 @@ sealed interface SyncEvent {
     data object Reconnect : SyncEvent
     data class PickLanguage(val language: String) : SyncEvent
     data class RemoteLanguage(val language: String) : SyncEvent
+    /** From now on every response is held on the wire — the server has
+     *  applied the request, the device hasn't heard back — so the events
+     *  after it interleave with requests in flight. */
+    data object Stall : SyncEvent
+    /** Every held response arrives. */
+    data object Release : SyncEvent
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -130,7 +167,7 @@ object SyncModel {
         val random = Random(seed)
         fun country() = Countries[random.nextInt(Countries.size)]
         return List(Length) {
-            when (random.nextInt(100)) {
+            when (random.nextInt(108)) {
                 in 0..19 -> SyncEvent.Hide
                 in 20..31 -> SyncEvent.Unhide(random.nextInt(8))
                 in 32..35 -> SyncEvent.Clear
@@ -143,7 +180,9 @@ object SyncModel {
                 in 74..80 -> SyncEvent.NetworkDown
                 in 81..88 -> SyncEvent.Reconnect
                 in 89..95 -> SyncEvent.PickLanguage(Languages[random.nextInt(Languages.size)])
-                else -> SyncEvent.RemoteLanguage(Languages[random.nextInt(Languages.size)])
+                in 96..99 -> SyncEvent.RemoteLanguage(Languages[random.nextInt(Languages.size)])
+                in 100..103 -> SyncEvent.Stall
+                else -> SyncEvent.Release
             }
         }
     }
@@ -175,7 +214,23 @@ object SyncModel {
         private val languageClient = FakeLanguageClient()
         private val user = MutableStateFlow<UserProfile?>(null)
 
-        init { session(signedIn = false) }
+        /** Completed at the next [SyncEvent.Release]; every response waits on
+         *  it while set. */
+        private var stall: CompletableDeferred<Unit>? = null
+        /** Language requests held by [stall] right now. */
+        private var languageHeldCount = 0
+
+        init {
+            session(signedIn = false)
+            val held: suspend () -> Unit = { stall?.await() }
+            val languageHeld: suspend () -> Unit = {
+                stall?.let { gate -> languageHeldCount++; try { gate.await() } finally { languageHeldCount-- } }
+            }
+            client.beforeFetchResponse = held
+            client.beforeWriteResponse = held
+            languageClient.beforeFetchResponse = languageHeld
+            languageClient.beforePushResponse = languageHeld
+        }
         private var serviceScope: CoroutineScope? = null
         private lateinit var service: StateSyncService
 
@@ -270,6 +325,8 @@ object SyncModel {
                     // A first sync's union may legitimately bring it back.
                     unconstrain(event.country, title)
                 }
+                SyncEvent.Stall -> if (stall == null) stall = CompletableDeferred()
+                SyncEvent.Release -> release()
                 SyncEvent.NetworkDown -> network(up = false)
                 SyncEvent.Reconnect -> { network(up = true); resume() }
                 is SyncEvent.PickLanguage -> {
@@ -282,8 +339,11 @@ object SyncModel {
                 }
                 is SyncEvent.RemoteLanguage -> {
                     languageClient.remote = event.language
-                    // A pick this device still owes the account is newer.
-                    expectedLanguage = if (prefs.pendingLanguagePush() != null) null else event.language
+                    // A pick this device still owes the account is newer; and
+                    // one this device's request already on the wire races —
+                    // last writer wins, there is no conditional PUT.
+                    expectedLanguage =
+                        if (prefs.pendingLanguagePush() != null || languageHeldCount > 0) null else event.language
                 }
             }
         }
@@ -327,7 +387,13 @@ object SyncModel {
 
         /** Network up, signed in, every country reconciled — twice, so a first
          *  sync's union pushes have landed before anything is compared. */
+        private fun release() {
+            stall?.complete(Unit)
+            stall = null
+        }
+
         private suspend fun settle() {
+            release()
             network(up = true)
             if (!signedIn) apply(SyncEvent.Login)
             quiesce()

@@ -11,7 +11,9 @@ import Combine
 /// reconcile — the server answers 304 or 200 by its own content validator),
 /// another device hiding / unhiding a title, the network going down, the
 /// network coming back (reconnect + resume), a local language pick, another
-/// device's language pick.
+/// device's language pick, and a stall / release of the responses on the
+/// wire (so events interleave with requests the server applied but the device
+/// hasn't heard back from).
 ///
 /// THE INVARIANTS:
 ///  1. No title crosses countries: a title hidden in one country never reaches
@@ -69,6 +71,31 @@ final class StateSyncModelTests: XCTestCase {
         XCTAssertNil(violation)
     }
 
+    // Shapes the stall/release events found on Android, pinned whatever the
+    // seeds generate.
+
+    /// Seed 49: a pick sent while a reconcile's fetch was on the wire lost to
+    /// that fetch's older answer.
+    func testAPickSentDuringAStalledFetchSurvivesItsAnswer() async {
+        let violation = await SyncModel.violation(of: [.stall, .login, .pickLanguage("de"), .switchCountry("de"),
+                                                       .logout, .switchCountry("de"), .login, .pickLanguage("en")])
+        XCTAssertNil(violation)
+    }
+
+    /// Seed 1054: a write on the wire at a logout dequeued the next session's clear.
+    func testAStalledWriteAcrossALogoutKeepsTheNextSessionsClear() async {
+        let violation = await SyncModel.violation(of: [.login, .stall, .hide, .logout, .login, .clear])
+        XCTAssertNil(violation)
+    }
+
+    /// Seed 1532: a repeated pick made while its twin was on the wire was
+    /// taken as already sent.
+    func testARepeatedPickDuringAStalledPushIsSentAgain() async {
+        let violation = await SyncModel.violation(of: [.stall, .login, .pickLanguage("pl"), .pickLanguage("es"),
+                                                       .remoteLanguage("en"), .pickLanguage("pl")])
+        XCTAssertNil(violation)
+    }
+
     func testALanguagePickQueuedAtLogout() async {
         let violation = await SyncModel.violation(of: [.login, .networkDown, .pickLanguage("de"), .logout, .reconnect])
         XCTAssertNil(violation)
@@ -81,6 +108,12 @@ enum SyncEvent: CustomStringConvertible, Equatable {
     case switchCountry(String), hide, unhide(Int), clear, login, logout, resume
     case remoteHide(String), remoteUnhide(String, Int), networkDown, reconnect
     case pickLanguage(String), remoteLanguage(String)
+    /// From now on every response is held on the wire — the server has
+    /// applied the request, the device hasn't heard back — so the events after
+    /// it interleave with requests in flight.
+    case stall
+    /// Every held response arrives.
+    case release
 
     var description: String {
         switch self {
@@ -97,6 +130,8 @@ enum SyncEvent: CustomStringConvertible, Equatable {
         case .reconnect:                 return "Reconnect"
         case .pickLanguage(let l):       return "PickLanguage(\(l))"
         case .remoteLanguage(let l):     return "RemoteLanguage(\(l))"
+        case .stall:                     return "Stall"
+        case .release:                   return "Release"
         }
     }
 }
@@ -126,7 +161,7 @@ enum SyncModel {
             let country = countries[random.next(countries.count)]
             let pick = random.next(8)
             let language = languages[random.next(languages.count)]
-            switch random.next(100) {
+            switch random.next(108) {
             case 0...19:  return .hide
             case 20...31: return .unhide(pick)
             case 32...35: return .clear
@@ -139,7 +174,9 @@ enum SyncModel {
             case 74...80: return .networkDown
             case 81...88: return .reconnect
             case 89...95: return .pickLanguage(language)
-            default:      return .remoteLanguage(language)
+            case 96...99:   return .remoteLanguage(language)
+            case 100...103: return .stall
+            default:        return .release
             }
         }
     }
@@ -174,6 +211,11 @@ enum SyncModel {
         private let server = FakeHiddenFilmsClient()
         private let languageClient = FakeLanguageClient()
         private let debounce = ManualDebounceScheduler()
+        /// Opened at the next `.release`; every response waits on it while set.
+        private var stall: AsyncGate?
+        /// Responses held by `stall` right now, and how many of them are language calls.
+        private var held = 0
+        private var languageHeld = 0
         private let user = CurrentValueSubject<UserProfile?, Never>(nil)
         private var service: StateSyncService?
 
@@ -188,6 +230,24 @@ enum SyncModel {
             prefs = UserPreferences(store: defaults)
             prefs.setCountry(Country.all.first { $0.code == SyncModel.countries[0] }!)
             session(signedIn: false)
+            server.beforeFetchResponse = { [unowned self] in await self.hold(language: false) }
+            server.beforeWriteResponse = { [unowned self] in await self.hold(language: false) }
+            languageClient.beforeFetchResponse = { [unowned self] in await self.hold(language: true) }
+            languageClient.beforePushResponse = { [unowned self] in await self.hold(language: true) }
+        }
+
+        private func hold(language: Bool) async {
+            guard let gate = stall else { return }
+            held += 1
+            if language { languageHeld += 1 }
+            await gate.wait()
+            held -= 1
+            if language { languageHeld -= 1 }
+        }
+
+        private func release() async {
+            await stall?.open()
+            stall = nil
         }
 
         func tearDown() { defaults.removePersistentDomain(forName: suite) }
@@ -249,7 +309,7 @@ enum SyncModel {
                 user.send(nil)
                 signedIn = false
             case .resume:
-                await service?.reconcileCurrentCountry()
+                resume()
             case .remoteHide(let c):
                 minted += 1
                 let title = "\(c)-r\(minted)"
@@ -267,7 +327,7 @@ enum SyncModel {
                 network(up: false)
             case .reconnect:
                 network(up: true)
-                await service?.reconcileCurrentCountry()
+                resume()
             case .pickLanguage(let language):
                 // Picking the language already on screen changes nothing.
                 guard prefs.selectedLanguage != language else { return }
@@ -276,8 +336,14 @@ enum SyncModel {
                 expectedLanguage = signedIn ? language : nil
             case .remoteLanguage(let language):
                 languageClient.remote = language
-                // A pick this device still owes the account is newer.
-                expectedLanguage = prefs.pendingLanguagePush != nil ? nil : language
+                // A pick this device still owes the account is newer; and one
+                // this device's request already on the wire races — last
+                // writer wins, there is no conditional PUT.
+                expectedLanguage = prefs.pendingLanguagePush != nil || languageHeld > 0 ? nil : language
+            case .stall:
+                if stall == nil { stall = AsyncGate() }
+            case .release:
+                await release()
             }
         }
 
@@ -296,9 +362,16 @@ enum SyncModel {
                     debounce.fireAll()
                     idleTurns = 0
                 } else {
-                    idleTurns = (server.inFlight == 0 && languageClient.inFlight == 0) ? idleTurns + 1 : 0
+                    idleTurns = server.inFlight + languageClient.inFlight == held ? idleTurns + 1 : 0
                 }
             }
+        }
+
+        /// A foreground reconcile, not awaited: under a stall it waits on held
+        /// responses, and the events after it must still run (`quiesce`
+        /// waits for whatever it can finish).
+        private func resume() {
+            Task { [service] in await service?.reconcileCurrentCountry() }
         }
 
         /// What the server makes of this device's session cookie.
@@ -327,6 +400,7 @@ enum SyncModel {
         /// Network up, signed in, every country reconciled — twice, so a first
         /// sync's union pushes have landed before anything is compared.
         private func settle() async {
+            await release()
             network(up: true)
             if !signedIn { await apply(.login) }
             await quiesce()
