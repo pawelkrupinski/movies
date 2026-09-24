@@ -379,9 +379,15 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
   @volatile private var screeningWatch: Option[StreamSubscription] = None
 
   def start(): Unit = {
+    // The watches replay from BEFORE the hydrate. Opened "from now" after it, a write landing
+    // between the two was in neither: on 2026-09-23 web-pl booted into two new Włodawa
+    // screenings and served without them for the 30 minutes until the backstop saw the count
+    // drift — and a missed write that leaves the counts equal, the backstop never sees. Replayed
+    // events re-apply what the hydrate may already hold; every applier is idempotent.
+    val checkpoint = reader.streamCheckpoint()
     reload()
-    movieWatch     = reader.watchMovies(applyMovieUpsert, applyMovieDelete)
-    screeningWatch = reader.watchScreenings(applyScreeningUpsert, applyScreeningDelete)
+    movieWatch     = reader.watchMovies(applyMovieUpsert, applyMovieDelete, checkpoint)
+    screeningWatch = reader.watchScreenings(applyScreeningUpsert, applyScreeningDelete, checkpoint)
     scheduler.scheduleAtFixedRate(
       () => Try(backstopTick()).recover { case exception => logger.warn(s"WebReadModel backstop tick failed: ${exception.getMessage}") },
       BackstopSeconds, BackstopSeconds, TimeUnit.SECONDS)

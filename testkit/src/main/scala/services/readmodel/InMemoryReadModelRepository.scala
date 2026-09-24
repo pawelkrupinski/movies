@@ -17,6 +17,11 @@ import scala.collection.mutable
  * [[failScreeningStream]], so a test can drive the consumer's stream-died
  * fallback. `findAll*Calls` count the full reloads for asserting the backstop
  * skips them while the model is consistent.
+ *
+ * The change HISTORY is modelled as Mongo's is: a watch opened with no checkpoint
+ * sees only writes made after it, and one opened from a [[StreamCheckpoint]] (a
+ * position in the history) first replays every write since — each upsert with the
+ * document as it is NOW, or not at all if it is gone since, as `UPDATE_LOOKUP` does.
  */
 class InMemoryReadModelRepository extends ReadModelReader with ReadModelWriter {
 
@@ -32,6 +37,11 @@ class InMemoryReadModelRepository extends ReadModelReader with ReadModelWriter {
   // the two collections (e.g. movie-document-before-its-screenings). Entries:
   // "movie:<id>", "screening:<id>", "del-movie:<id>", "del-screening:<id>".
   val writeOrder       = mutable.ListBuffer.empty[String]
+
+  // Every write, in order: which collection (`movies` = true for web_movies), the id, and
+  // whether it was a delete.
+  private final case class Change(movies: Boolean, id: String, deleted: Boolean)
+  private val history = mutable.ArrayBuffer.empty[Change]
 
   val findAllMoviesCalls     = new AtomicInteger(0)
   val findAllScreeningsCalls = new AtomicInteger(0)
@@ -63,36 +73,49 @@ class InMemoryReadModelRepository extends ReadModelReader with ReadModelWriter {
   def countScreenings(): Long = lock.synchronized(screeningsStore.size.toLong)
 
   def upsertMovie(m: ResolvedMovie): Unit = {
-    lock.synchronized { moviesStore.put(m._id, m); movieUpserts += m; writeOrder += s"movie:${m._id}" }
+    lock.synchronized { moviesStore.put(m._id, m); movieUpserts += m; writeOrder += s"movie:${m._id}"; history += Change(movies = true, m._id, deleted = false) }
     movieWatcher.foreach { case (onUpsert, _) => onUpsert(m) }
   }
 
   def deleteMovie(id: String): Unit = {
-    lock.synchronized { moviesStore.remove(id); movieDeletes += id; writeOrder += s"del-movie:$id" }
+    lock.synchronized { moviesStore.remove(id); movieDeletes += id; writeOrder += s"del-movie:$id"; history += Change(movies = true, id, deleted = true) }
     movieWatcher.foreach { case (_, onDelete) => onDelete(id) }
   }
 
   def upsertScreening(s: CityScreening): Unit = {
-    lock.synchronized { screeningsStore.put(s._id, s); screeningUpserts += s; writeOrder += s"screening:${s._id}" }
+    lock.synchronized { screeningsStore.put(s._id, s); screeningUpserts += s; writeOrder += s"screening:${s._id}"; history += Change(movies = false, s._id, deleted = false) }
     screeningWatcher.foreach { case (onUpsert, _) => onUpsert(s) }
   }
 
   def deleteScreening(id: String): Unit = {
-    lock.synchronized { screeningsStore.remove(id); screeningDeletes += id; writeOrder += s"del-screening:$id" }
+    lock.synchronized { screeningsStore.remove(id); screeningDeletes += id; writeOrder += s"del-screening:$id"; history += Change(movies = false, id, deleted = true) }
     screeningWatcher.foreach { case (_, onDelete) => onDelete(id) }
   }
 
-  def watchMovies(onUpsert: ResolvedMovie => Unit, onDelete: String => Unit): Option[StreamSubscription] = {
+  def streamCheckpoint(): Option[StreamCheckpoint] = Some(StreamCheckpoint(lock.synchronized(history.size.toLong)))
+
+  def watchMovies(onUpsert: ResolvedMovie => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription] = {
+    replay(from, movies = true, moviesStore, onUpsert, onDelete)
     movieWatcher = Some((onUpsert, onDelete))
     movieStreamLive.set(true)
     Some(subscription(movieStreamLive, { movieWatcher = None }))
   }
 
-  def watchScreenings(onUpsert: CityScreening => Unit, onDelete: String => Unit): Option[StreamSubscription] = {
+  def watchScreenings(onUpsert: CityScreening => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription] = {
+    replay(from, movies = false, screeningsStore, onUpsert, onDelete)
     screeningWatcher = Some((onUpsert, onDelete))
     screeningStreamLive.set(true)
     Some(subscription(screeningStreamLive, { screeningWatcher = None }))
   }
+
+  /** Deliver one collection's writes since `from`, each upsert as the document stands now. */
+  private def replay[T](from: Option[StreamCheckpoint], movies: Boolean, store: mutable.Map[String, T],
+                        onUpsert: T => Unit, onDelete: String => Unit): Unit =
+    from.foreach { checkpoint =>
+      val since = lock.synchronized(history.drop(checkpoint.value.toInt).filter(_.movies == movies)
+        .map(change => (change, if (change.deleted) None else store.get(change.id))).toSeq)
+      since.foreach { case (change, now) => if (change.deleted) onDelete(change.id) else now.foreach(onUpsert) }
+    }
 
   private def subscription(liveFlag: AtomicBoolean, onClose: => Unit): StreamSubscription =
     new StreamSubscription {

@@ -13,6 +13,14 @@ trait StreamSubscription extends AutoCloseable {
 }
 
 /**
+ * A position in the read model's change history, taken with
+ * [[ReadModelReader.streamCheckpoint]] and handed back to `watchMovies` /
+ * `watchScreenings` to replay every change made since. Opaque: its value means
+ * something only to the store that issued it (Mongo's cluster time).
+ */
+final case class StreamCheckpoint(value: Long)
+
+/**
  * A screening's identity without its payload — `_id` to delete it, `filmId` to
  * test against the live source. The reconcile prune reads only these two fields,
  * so [[ReadModelReader.findAllScreeningRefs]] projects them server-side instead of
@@ -30,6 +38,12 @@ final case class ScreeningRef(_id: String, filmId: String)
  * apply both incrementally instead of reloading. Best-effort: a store that
  * can't stream (disabled, or a standalone Mongo) returns `None` and the caller
  * falls back to a periodic full reload.
+ *
+ * A watch opened with `from = None` starts NOW; with a [[StreamCheckpoint]] from
+ * [[streamCheckpoint]] it first replays every change made since that point. A
+ * consumer that hydrates with a full read and then watches must take the
+ * checkpoint BEFORE the read: a write landing between the read and the watch is
+ * otherwise in neither.
  *
  * `countMovies` / `countScreenings` are the cheap integrity probe: a server-side
  * document count (no payload decode) the consumer's backstop compares against
@@ -64,8 +78,11 @@ trait ReadModelReader {
 
   def countMovies(): Long
   def countScreenings(): Long
-  def watchMovies(onUpsert: ResolvedMovie => Unit, onDelete: String => Unit): Option[StreamSubscription]
-  def watchScreenings(onUpsert: CityScreening => Unit, onDelete: String => Unit): Option[StreamSubscription]
+  /** Where the change history stands now — `None` when the store cannot replay from a
+   *  point (disabled, a standalone Mongo), in which case a watch can only start now. */
+  def streamCheckpoint(): Option[StreamCheckpoint]
+  def watchMovies(onUpsert: ResolvedMovie => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription]
+  def watchScreenings(onUpsert: CityScreening => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription]
   def close(): Unit
 }
 

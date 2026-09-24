@@ -131,6 +131,55 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.screeningsForCity("san-francisco").map(_._id) shouldBe Seq("s1")
   }
 
+  // ── Boot: a write landing between the hydrate and the watches ───────────────
+  //
+  // 2026-09-23 17:26Z: web-pl booted, hydrated, and only then opened its change streams "from
+  // now". Two Włodawa screenings the worker wrote in between reached neither — the hydrate had
+  // already read past them, the streams had not started — and the site served 8 films where the
+  // corpus had 10 until the 30-minute backstop saw the count drift (screenings mem=10600/db=10602,
+  // 17:56:36Z), which paged ReadModelServingDiffersFromCorpus. A missed write that leaves the
+  // counts equal (a changed showtime) the backstop never sees at all.
+
+  /** A store that takes one more write the moment the boot hydrate has read the screenings —
+   *  the worker writing while the web is between its reload and its watches. */
+  private def writeDuringHydrate(write: InMemoryReadModelRepository => Unit): InMemoryReadModelRepository =
+    new InMemoryReadModelRepository {
+      private var pending = true
+      override def findAllScreenings(): Seq[CityScreening] = {
+        val snapshot = super.findAllScreenings()
+        if (pending) { pending = false; write(this) }
+        snapshot
+      }
+    }
+
+  "start" should "serve a screening written after the hydrate read and before the watches opened" in {
+    val repository = writeDuringHydrate { r =>
+      r.upsertMovie(movie("late|2026"))
+      r.upsertScreening(screening("late", "late|2026", "wlodawa"))
+    }
+    repository.upsertMovie(movie("belle|2021"))
+    repository.upsertScreening(screening("s1", "belle|2021", "wlodawa"))
+    val rm = new WebReadModel(repository)
+
+    rm.start()
+
+    rm.screeningsForCity("wlodawa").map(_._id) should contain theSameElementsAs Seq("s1", "late")
+    rm.movie("late|2026") shouldBe defined
+    rm.stop()
+  }
+
+  it should "drop a screening deleted after the hydrate read and before the watches opened" in {
+    val repository = writeDuringHydrate(_.deleteScreening("s1"))
+    repository.upsertMovie(movie("belle|2021"))
+    repository.upsertScreening(screening("s1", "belle|2021", "wlodawa"))
+    val rm = new WebReadModel(repository)
+
+    rm.start()
+
+    rm.screeningsForCity("wlodawa") shouldBe empty
+    rm.stop()
+  }
+
   // ── Backstop: cheap drift check, not an unconditional full reload ────────────
 
   private def started(repository: InMemoryReadModelRepository): WebReadModel = {

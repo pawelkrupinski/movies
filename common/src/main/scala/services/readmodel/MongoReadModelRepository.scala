@@ -4,11 +4,11 @@ import com.mongodb.WriteConcern
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument, OperationType}
 import models.{CityScreening, ResolvedMovie}
-import org.bson.BsonDocumentReader
+import org.bson.{BsonDocumentReader, BsonTimestamp}
 import org.bson.codecs.{Codec, DecoderContext}
 import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.{Filters, Projections, Sorts}
-import org.mongodb.scala.{MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import play.api.Logging
 import services.movies.{KeysetScan, RepositoryWrite}
 
@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 /**
  * MongoDB-backed read model. Persists the denormalised projection to two
@@ -240,20 +240,35 @@ class MongoReadModelRepository(
 
   // ── Change streams ──────────────────────────────────────────────────────────
 
-  def watchMovies(onUpsert: ResolvedMovie => Unit, onDelete: String => Unit): Option[StreamSubscription] =
-    movies.map(watch(_, onUpsert, onDelete, MongoReadModelRepository.MoviesCollection))
+  /** The server's `operationTime` on a `hello` — every write already applied is at or before
+   *  it, so a stream started AT it replays each write a read made after this call could have
+   *  missed. A standalone server reports no operation time (and cannot stream anyway): `None`. */
+  def streamCheckpoint(): Option[StreamCheckpoint] = sharedDb.flatMap { db =>
+    Try(Await.result(db.runCommand(Document("hello" -> 1)).toFuture(), 10.seconds)) match {
+      case Success(reply) =>
+        reply.get("operationTime").filter(_.isTimestamp).map(time => StreamCheckpoint(time.asTimestamp.getValue))
+      case Failure(exception) =>
+        logger.warn(s"ReadModelRepository.streamCheckpoint failed, watching from now: ${exception.getMessage}")
+        None
+    }
+  }
 
-  def watchScreenings(onUpsert: CityScreening => Unit, onDelete: String => Unit): Option[StreamSubscription] =
-    screenings.map(watch(_, onUpsert, onDelete, MongoReadModelRepository.ScreeningsCollection))
+  def watchMovies(onUpsert: ResolvedMovie => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription] =
+    movies.map(watch(_, onUpsert, onDelete, MongoReadModelRepository.MoviesCollection, from))
+
+  def watchScreenings(onUpsert: CityScreening => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription] =
+    screenings.map(watch(_, onUpsert, onDelete, MongoReadModelRepository.ScreeningsCollection, from))
 
   /** Route each insert / update / replace to `onUpsert` (full post-image via
    *  `UPDATE_LOOKUP`) and each delete to `onDelete(_id)`. The driver auto-
    *  resumes across transient blips; a terminal error flips `live` to false so
    *  the caller's periodic reload takes over. Requires a replica set. */
-  private def watch[T: ClassTag](coll: MongoCollection[T], onUpsert: T => Unit, onDelete: String => Unit, label: String): StreamSubscription = {
+  private def watch[T: ClassTag](coll: MongoCollection[T], onUpsert: T => Unit, onDelete: String => Unit, label: String,
+                                 from: Option[StreamCheckpoint]): StreamSubscription = {
     val subRef = new AtomicReference[Subscription]()
     val alive  = new AtomicBoolean(true)
-    coll.watch().fullDocument(FullDocument.UPDATE_LOOKUP)
+    val stream = coll.watch().fullDocument(FullDocument.UPDATE_LOOKUP)
+    from.fold(stream)(checkpoint => stream.startAtOperationTime(new BsonTimestamp(checkpoint.value)))
       .subscribe(new Observer[ChangeStreamDocument[T]] {
         override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }
         override def onNext(change: ChangeStreamDocument[T]): Unit = change.getOperationType match {

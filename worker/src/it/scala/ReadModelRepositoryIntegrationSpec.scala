@@ -15,8 +15,8 @@ import tools.Eventually.eventually
  * `findAllScreenings` decode — i.e. the server-side `{_id}` / `{_id, filmId}`
  * BsonDocument projection is faithful. Requires MONGODB_URI; skips otherwise.
  *
- * Purely read-only against the live `web_movies` / `web_screenings`: it writes
- * nothing, so there are no sentinels to purge.
+ * The id checks are read-only against the live `web_movies` / `web_screenings`;
+ * the paging and change-stream cases write `__it-rm-*` sentinels and delete them.
  *
  * BOTH ID CHECKS SETTLE, and they have to. Each compares TWO SEPARATE READS of a live
  * collection, and `IntegrationTest / parallelExecution` is on — so a sibling spec writing
@@ -124,6 +124,23 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
       refs.map(_._id) shouldBe ids
       refs.map(_.filmId).distinct shouldBe Seq("__it-rm-ref-film__")
     } finally ids.foreach(paged.deleteScreening)
+  }
+
+  // THE WEB'S BOOT GAP, against a real change stream. `WebReadModel.start` hydrates, then
+  // watches; a watch opened "from now" missed every write between the two (2026-09-23: two
+  // Włodawa screenings, served 30 minutes late). A checkpoint taken before the write must make
+  // the watch replay it — the server's cluster time, handed to `startAtOperationTime`.
+  "a watch from a stream checkpoint" should "replay a write made after the checkpoint but before the watch opened" in {
+    import models.CityScreening
+    val id         = "__it-rm-checkpoint__"
+    val seen       = new java.util.concurrent.ConcurrentLinkedQueue[String]()
+    val checkpoint = rm.streamCheckpoint()
+    checkpoint shouldBe defined   // a replica set reports its operation time; a standalone cannot stream at all
+    rm.upsertScreening(CityScreening(_id = id, filmId = "__it-rm-checkpoint-film__",
+      city = "poznan", cinema = "Cinema", filmUrl = None, showtimes = Nil))
+    val watch = rm.watchScreenings(s => { seen.add(s._id); () }, _ => (), from = checkpoint)
+    try eventually(seen.contains(id) shouldBe true, timeoutMs = 10000, pollMs = 100)
+    finally { watch.foreach(_.close()); rm.deleteScreening(id) }
   }
 
 }
