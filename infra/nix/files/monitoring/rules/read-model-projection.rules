@@ -69,10 +69,25 @@ groups:
       # when any one has no series, so this rule says nothing until a build that exports all of
       # them is deployed. That is the safe direction, and `ReadModelProjectionMetricsAbsent` below
       # is what notices the metrics have gone entirely.
+      #
+      # THE HEALS' LOOKS ARE A TRIGGER TOO, and are subtracted. The boot check and the prune sweep
+      # re-project every ready row the slots-only scan reads as short a card or a venue -- and a
+      # spent slot always reads as a short venue, so each PL worker start re-projects ~260 rows no
+      # event asked for. Six rollouts between 11:13 and 12:05Z on 2026-09-19 put ~0.8/s of them in
+      # the window against ~0.1/s of events, and this fired at 12:25Z for a trigger that was known,
+      # just not metered. `readmodel_heal_checks` meters it; `or on (country) 0 * ...` keeps a
+      # worker that does not export it yet comparing as before instead of going silent.
       - alert: ReadModelProjectionTriggerUnaccounted
         expr: >-
           (
-            sum by (country) (rate(kinowo_worker_readmodel_project_calls_total[30m]))
+            (
+              sum by (country) (rate(kinowo_worker_readmodel_project_calls_total[30m]))
+              - (
+                sum by (country) (rate(kinowo_worker_readmodel_heal_checks_total[30m]))
+                or on (country)
+                0 * sum by (country) (rate(kinowo_worker_readmodel_project_calls_total[30m]))
+              )
+            )
             > 3 * (
               sum by (country) (rate(kinowo_worker_movie_change_events_total[30m]))
               + sum by (country) (rate(kinowo_worker_screenings_change_events_total[30m]))
@@ -89,7 +104,8 @@ groups:
         annotations:
           summary: "{{ $labels.country }} is projecting {{ $value | printf \"%.2f\" }}/s more than its change streams can explain"
           description: >-
-            `readmodel_project_calls_total` is running more than 3x the combined rate of the three
+            `readmodel_project_calls_total`, less the heal passes' re-projections
+            (`readmodel_heal_checks_total`), is running more than 3x the combined rate of the three
             cursors that are supposed to drive it, so something is projecting rows that no metered
             change-stream event asked for. Panel 47 on the application dashboard plots all four
             series together and panel 48 draws the sum. Check, in order: whether a FOURTH trigger

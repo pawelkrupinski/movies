@@ -108,6 +108,14 @@ trait ReadModelProjectionMetrics {
    *  Only rows the heal actually WROTE for count — a look that found nothing missing is not a heal. */
   def recordHeal(trigger: String, rows: Int): Unit
 
+  /** `rows` ready rows a heal pass re-projected — WHETHER OR NOT it wrote anything — found by
+   *  the prune sweep or the boot check. Not a defect count (that is [[recordHeal]]): it is the
+   *  heals' share of `readmodel_project_calls`, the projections no change-stream event asked
+   *  for, which `ReadModelProjectionTriggerUnaccounted` must not mistake for an unmetered
+   *  trigger. Most are the slots-only view's phantoms, a spent slot read as an absent venue:
+   *  ~260 rows each PL worker start, and six rollouts in an hour on 2026-09-19 fired that rule. */
+  def recordHealCheck(trigger: String, rows: Int): Unit
+
   /** One card document written, by what moved it: `changed` is the set of card parts
    *  ([[ReadModelProjectionMetrics.CardPart]]) that differ from the card written before,
    *  empty for a card that had none. The single-part share per part says what actually
@@ -170,6 +178,7 @@ object ReadModelProjectionMetrics {
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = ()
     def recordCatchUp(rows: Int): Unit                              = ()
     def recordHeal(trigger: String, rows: Int): Unit                = ()
+    def recordHealCheck(trigger: String, rows: Int): Unit           = ()
     def recordCardWrite(changed: Set[String]): Unit                 = ()
   }
 }

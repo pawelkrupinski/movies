@@ -374,6 +374,7 @@ class ReadModelProjector(
       if (reproject) None else Try(reader.findAllScreeningRefs()).toOption
     val screeningsBefore = screeningRefsBefore.map(_.map(_._id).toSet)
     val healed = scala.collection.mutable.ArrayBuffer.empty[String]
+    var healChecks = 0
     // The REPROJECT needs showtimes — it writes them. The PRUNE never looks at one: it
     // computes ids, and `filmIds` derives those from the cinema SLOTS, which the slots-only
     // scan still stitches. So the frequent, scheduled sweep no longer pulls the whole
@@ -401,7 +402,7 @@ class ReadModelProjector(
             if (healedClean.get(row.id.value).contains(metadataHash)) Seq.empty   // looked already; nothing to write
             else screeningsBefore.fold(Seq.empty[String])(has => partition.screeningIds.filterNot(has))
           if (absentCards.nonEmpty || absentVenues.nonEmpty)
-            try { if (heal(row.id, metadataHash, absentCards, absentVenues)) healed += row.id.value }
+            try { healChecks += 1; if (heal(row.id, metadataHash, absentCards, absentVenues)) healed += row.id.value }
             catch { case exception: Throwable =>
               logger.warn(s"read-model $kind: a row missing a projection failed to project, continuing: ${exception.getMessage}") }
         }
@@ -492,6 +493,7 @@ class ReadModelProjector(
     // the change stream can't deliver. Surfaced as kinowo_worker_readmodel_reconcile_sweeps.
     val didWork = reprojected > 0 || prunedFilms > 0 || prunedScreenings > 0
     if (!reproject) metrics.recordReconcileSweep(ReconcileKind.Prune, didWork)
+    metrics.recordHealCheck(HealTrigger.Sweep, healChecks)
     if (healed.nonEmpty) {
       metrics.recordHeal(HealTrigger.Sweep, healed.size)
       logger.warn(s"read-model $kind sweep: projected ${healed.size} ready row(s) missing a card or a venue " +
@@ -577,6 +579,7 @@ class ReadModelProjector(
     if (!cardsRead) logger.warn("read model: the card ids could not be read at boot — nothing healed; the prune sweep retries.")
     val healed = missing.collect { case (id, metadataHash, absentCards, absentVenues)
       if lock.synchronized(heal(id, metadataHash, absentCards, absentVenues)) => id.value }
+    metrics.recordHealCheck(HealTrigger.Boot, missing.size)
     if (healed.nonEmpty) {
       metrics.recordHeal(HealTrigger.Boot, healed.size)
       logger.warn(s"read model: projected ${healed.size} ready row(s) missing a card or a venue at boot" +

@@ -39,7 +39,7 @@ tests:
               country: de
             exp_annotations:
               summary: "de is projecting 2.00/s more than its change streams can explain"
-              description: "`readmodel_project_calls_total` is running more than 3x the combined rate of the three cursors that are supposed to drive it, so something is projecting rows that no metered change-stream event asked for. Panel 47 on the application dashboard plots all four series together and panel 48 draws the sum. Check, in order: whether a FOURTH trigger has been added and not metered (that is what this rule exists to catch -- the `screenings` cursor itself was unmetered until 2026-09-05 and cost an evening); whether `ReadModelProjector.reconcile` is being called by something other than a backfill script (the scheduled sweep re-projects nothing and logs \"reprojected 0 doc(s)\", so its log line settles that in one grep); and whether a cursor is reopening in a loop, which replays its resume token and inflates projections without inflating the event counters proportionally."
+              description: "`readmodel_project_calls_total`, less the heal passes' re-projections (`readmodel_heal_checks_total`), is running more than 3x the combined rate of the three cursors that are supposed to drive it, so something is projecting rows that no metered change-stream event asked for. Panel 47 on the application dashboard plots all four series together and panel 48 draws the sum. Check, in order: whether a FOURTH trigger has been added and not metered (that is what this rule exists to catch -- the `screenings` cursor itself was unmetered until 2026-09-05 and cost an evening); whether `ReadModelProjector.reconcile` is being called by something other than a backfill script (the scheduled sweep re-projects nothing and logs \"reprojected 0 doc(s)\", so its log line settles that in one grep); and whether a cursor is reopening in a loop, which replays its resume token and inflates projections without inflating the event counters proportionally."
 
   # THE SAME EVENING, ONCE THE SECOND CURSOR IS COUNTED. Identical projection rate, but the
   # screenings cursor now reports the ~2 events/s that were driving it. One event, one projection:
@@ -115,6 +115,55 @@ tests:
       - eval_time: 2h
         alertname: ReadModelProjectionTriggerUnaccounted
         exp_alerts: []
+
+  # A DEPLOY STORM'S HEAL CHECKS ARE A METERED TRIGGER. 2026-09-19 11:13-12:05Z: the PL worker
+  # rolled six times, and every boot's heal check re-projected ~260 rows (spent slots the
+  # slots-only scan reads as absent venues) before any cursor delivered — ~0.8/s over the 30m
+  # window against ~0.1/s of change events, and this fired at 12:25Z. Those projections are
+  # counted by `readmodel_heal_checks`, so they are accounted for, not unmetered: nothing fires.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_readmodel_project_calls_total{country="pl",job="kinowo-worker"}'
+        values: '0+60x180'
+      - series: 'kinowo_worker_readmodel_heal_checks_total{country="pl",job="kinowo-worker",trigger="boot"}'
+        values: '0+48x180'
+      - series: 'kinowo_worker_readmodel_heal_checks_total{country="pl",job="kinowo-worker",trigger="sweep"}'
+        values: '0+0x180'
+      - series: 'kinowo_worker_movie_change_events_total{country="pl",job="kinowo-worker",op="update"}'
+        values: '0+3x180'
+      - series: 'kinowo_worker_screenings_change_events_total{country="pl",job="kinowo-worker",op="update"}'
+        values: '0+3x180'
+      - series: 'kinowo_worker_movie_slots_change_events_total{country="pl",job="kinowo-worker",op="update"}'
+        values: '0+0x180'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: ReadModelProjectionTriggerUnaccounted
+        exp_alerts: []
+
+  # …BUT ONLY THE HEAL CHECKS. The same country with the same heal checks and 1 more
+  # projection/s nothing accounts for still pages, for exactly that excess.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_readmodel_project_calls_total{country="pl",job="kinowo-worker"}'
+        values: '0+120x180'
+      - series: 'kinowo_worker_readmodel_heal_checks_total{country="pl",job="kinowo-worker",trigger="boot"}'
+        values: '0+48x180'
+      - series: 'kinowo_worker_movie_change_events_total{country="pl",job="kinowo-worker",op="update"}'
+        values: '0+3x180'
+      - series: 'kinowo_worker_screenings_change_events_total{country="pl",job="kinowo-worker",op="update"}'
+        values: '0+3x180'
+      - series: 'kinowo_worker_movie_slots_change_events_total{country="pl",job="kinowo-worker",op="update"}'
+        values: '0+0x180'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: ReadModelProjectionTriggerUnaccounted
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: pl
+            exp_annotations:
+              summary: "pl is projecting 1.20/s more than its change streams can explain"
+              description: "`readmodel_project_calls_total`, less the heal passes' re-projections (`readmodel_heal_checks_total`), is running more than 3x the combined rate of the three cursors that are supposed to drive it, so something is projecting rows that no metered change-stream event asked for. Panel 47 on the application dashboard plots all four series together and panel 48 draws the sum. Check, in order: whether a FOURTH trigger has been added and not metered (that is what this rule exists to catch -- the `screenings` cursor itself was unmetered until 2026-09-05 and cost an evening); whether `ReadModelProjector.reconcile` is being called by something other than a backfill script (the scheduled sweep re-projects nothing and logs \"reprojected 0 doc(s)\", so its log line settles that in one grep); and whether a cursor is reopening in a loop, which replays its resume token and inflates projections without inflating the event counters proportionally."
 
   # THE TRIPWIRE. With the projection counter gone the rule above is a comparison against nothing,
   # so it is silent -- and silence is what a well-behaved projector looks like too.

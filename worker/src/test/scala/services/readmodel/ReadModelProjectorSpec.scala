@@ -70,6 +70,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     def recordCatchUp(rows: Int): Unit                             = caughtUp += rows
     val heals = scala.collection.mutable.Buffer.empty[(String, Int)]
     def recordHeal(trigger: String, rows: Int): Unit               = heals += (trigger -> rows)
+    val healChecks = scala.collection.mutable.Buffer.empty[(String, Int)]
+    def recordHealCheck(trigger: String, rows: Int): Unit          = healChecks += (trigger -> rows)
     val cardWrites = scala.collection.mutable.Buffer.empty[Set[String]]
     def recordCardWrite(changed: Set[String]): Unit                = cardWrites += changed
   }
@@ -925,6 +927,33 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     withClue(s"the first sweep re-projected a row the boot check had nothing to write for (${m.projectCalls - looked} times): ") {
       m.projectCalls shouldBe looked
     }
+    booted.stop()
+  }
+
+  // The look itself is still a projection no change-stream event asked for, and
+  // ReadModelProjectionTriggerUnaccounted counts every projection against the cursors' events.
+  // Metered by pass, written or not, so the rule can tell a heal from an unmetered trigger.
+  "a heal pass" should "meter every row it re-projected, including a look that wrote nothing" in {
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
+                                                 slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
+    val rm = new InMemoryReadModelRepository()
+    // Two rows each with a spent slot, so both read as short a venue; only Foo's card is gone.
+    Seq("Foo" -> 1, "Bar" -> 2).foreach { case (title, tmdbId) =>
+      repository.upsert(title, Some(2024), MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
+        Multikino   -> SourceData(title = Some(title), showtimes = Seq(at("2026-06-12T20:00"))),
+        KinoMuranow -> SourceData(title = Some(title), showtimes = Nil))))
+    }
+    val previous = new ReadModelProjector(repository, rm, rm, new RecordingMetrics())
+    repository.findAll().foreach(previous.onMovieUpsert)
+    previous.stop()
+    rm.findAllMovies().filter(_.title == "Foo").foreach(c => rm.deleteMovie(c._id))
+    val m      = new RecordingMetrics()
+    val booted = new ReadModelProjector(repository, rm, rm, m, scheduler = new CapturingScheduler)
+
+    booted.start()
+
+    m.healChecks.toSeq shouldBe Seq(ReadModelProjectionMetrics.HealTrigger.Boot -> 2)   // both looked at
+    m.heals.toSeq      shouldBe Seq(ReadModelProjectionMetrics.HealTrigger.Boot -> 1)   // one written for
     booted.stop()
   }
 

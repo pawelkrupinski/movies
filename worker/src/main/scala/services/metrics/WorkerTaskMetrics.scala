@@ -92,6 +92,7 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   def recordVenueProjection(rebuilt: Int, reused: Int): Unit     = series.recordVenueProjection(countryCode, rebuilt, reused)
   def recordReconcileSweep(kind: String, didWork: Boolean): Unit = series.recordReconcileSweep(countryCode, kind, didWork)
   def recordHeal(trigger: String, rows: Int): Unit              = series.recordHeal(countryCode, trigger, rows)
+  def recordHealCheck(trigger: String, rows: Int): Unit         = series.recordHealCheck(countryCode, trigger, rows)
 
   // ── StagingMetrics ──────────────────────────────────────────────────────────
   def recordNewcomerKick(groupRows: Int): Unit = series.recordStagingNewcomerKick(countryCode, groupRows)
@@ -304,6 +305,12 @@ object WorkerTaskMetrics {
       .labelNames("country", "trigger")
       .register(registry)
 
+    private val readModelHealChecks = Counter.builder()
+      .name("kinowo_worker_readmodel_heal_checks")
+      .help("Ready source rows a read-model heal pass re-projected since boot, whether or not it wrote anything, by country and trigger (sweep|boot). The heals' share of readmodel_project_calls: projections no change-stream event asked for, which ReadModelProjectionTriggerUnaccounted subtracts before comparing against the cursors' events. Mostly the slots-only view's phantoms (a spent slot read as an absent venue), ~260 rows per PL worker start (2026-09-19). Not a defect count: readmodel_heals counts the looks that wrote.")
+      .labelNames("country", "trigger")
+      .register(registry)
+
     private val readModelCardWrites = Counter.builder()
       .name("kinowo_worker_readmodel_card_writes")
       .help("web_movies card documents written since boot, by country and cause. new=no card existed; one of title|poster|facts|synopsis|synopsis-by-city|ratings|trailers|age-rating=exactly that part of the card moved (facts = runtime, year, genres, countries, directors, cast); multiple=more than one part moved (see readmodel_card_rewrite_parts for which). The synopsis-by-city line answers whether moving that map (44% of card bytes in the fixture read model) to its own collection would spare the read model any card rewrites: near zero means the split saves bytes per document but not writes.")
@@ -492,6 +499,7 @@ object WorkerTaskMetrics {
         readModelDriftWrites.labelValues(c).inc(0.0)   // zero is the healthy reading, so it must be drawn
         readModelCatchUpRows.labelValues(c).inc(0.0) // ditto — zero is the healthy reading, so it must be drawn
         ReadModelProjectionMetrics.HealTriggers.foreach(t => readModelHeals.labelValues(c, t).inc(0.0)) // ditto
+        ReadModelProjectionMetrics.HealTriggers.foreach(t => readModelHealChecks.labelValues(c, t).inc(0.0)) // drawn so the rule can subtract it
         readModelProjectCalls.labelValues(c).inc(0.0)     // materialize at 0 so the counter series (+ its _created) exists from boot
         readModelProjectCpu.labelValues(c).inc(0.0)       // ditto — the CPU-attribution counter the drivers panel stacks
         readModelProjectDuration.labelValues(c).observe(0.0) // materialize the histogram (_sum/_count/_bucket) from boot — no Grafana gap
@@ -554,6 +562,9 @@ object WorkerTaskMetrics {
 
     def recordHeal(country: String, trigger: String, rows: Int): Unit =
       if (rows > 0) readModelHeals.labelValues(country, trigger).inc(rows.toDouble)
+
+    def recordHealCheck(country: String, trigger: String, rows: Int): Unit =
+      if (rows > 0) readModelHealChecks.labelValues(country, trigger).inc(rows.toDouble)
 
     def recordCardWrite(country: String, changed: Set[String]): Unit = {
       readModelCardWrites.labelValues(country, ReadModelProjectionMetrics.cardWriteCause(changed)).inc()
