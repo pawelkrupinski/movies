@@ -338,49 +338,6 @@ class InProcessRecencyGauges(unittest.TestCase):
                                  "%s is read raw, so every pod restart resets it: %s" % (gauge, expr))
 
 
-class SingleScrapeSpikeGauges(unittest.TestCase):
-    """A gauge whose excursions last one scrape has to be read as a `max_over_time`, or the peak
-    depends on the zoom.
-
-    `kinowo_worker_change_stream_apply_lag_seconds` / `_apply_pending` are recomputed on every
-    30s scrape, and a healthy excursion -- a scrape wave queueing a dozen wide-film re-projections
-    behind the one apply thread -- drains in seconds, so it is usually ONE nonzero sample. A panel
-    reading the raw gauge shows only the sample that happens to land on each step: measured on
-    2026-09-23 (US, screenings, 16:40-19:05Z), a 30s step shows 47 nonzero points and the 11.5s
-    peak, a 60s step 29, a 120s step 14 and a 4.4s peak -- the 11.5s hump is simply gone. The
-    same event appears or vanishes as the time range changes, which reads as a spike that came
-    and went. `max_over_time(...[$__interval])` keeps every sample's worst case in its step, and
-    a panel min interval of at least the app scrape interval (30s) keeps each window holding a
-    sample at short ranges, where the datasource's 15s default would leave gaps.
-    """
-
-    SPIKE_GAUGES = (
-        "kinowo_worker_change_stream_apply_lag_seconds",
-        "kinowo_worker_change_stream_apply_pending",
-    )
-    APP_SCRAPE_INTERVAL_SECONDS = 30
-
-    @staticmethod
-    def seconds(interval):
-        match = re.fullmatch(r"(\d+)(s|m|h)", interval or "")
-        return int(match.group(1)) * {"s": 1, "m": 60, "h": 3600}[match.group(2)] if match else 0
-
-    def test_a_spike_gauge_is_read_as_its_worst_sample_per_step(self):
-        panels = [p for _, d in dashboards() for p in query_panels(d)]
-        for gauge in self.SPIKE_GAUGES:
-            reading = [(p, t.get("expr", "")) for p in panels for t in p.get("targets", [])
-                       if gauge in t.get("expr", "")]
-            self.assertTrue(reading, "no panel reads %s" % gauge)
-            for panel, expr in reading:
-                self.assertRegex(expr, r"max_over_time\(\s*%s(\{[^}]*\})?\[\$__interval\]\)" % gauge,
-                                 "%s is read raw, so a one-scrape peak shows or vanishes with the zoom: %s"
-                                 % (gauge, expr))
-                self.assertGreaterEqual(self.seconds(panel.get("interval")), self.APP_SCRAPE_INTERVAL_SECONDS,
-                                        "panel %r needs a min interval of at least the %ds app scrape, or "
-                                        "$__interval windows at short ranges hold no sample"
-                                        % (panel.get("title"), self.APP_SCRAPE_INTERVAL_SECONDS))
-
-
 def bar_targets(panel):
     """The targets a timeseries panel draws as BARS: all of them when the panel's default is
     bars, else those whose legend a `byRegexp` bars override COULD match once Grafana fills in
@@ -406,18 +363,55 @@ def bar_targets(panel):
             if any(re.fullmatch(p, legend) for p in patterns for legend in renderings(t, p))]
 
 
-class BarsTileTheTimeAxis(unittest.TestCase):
-    """A bar is a bucket: each one has to count its own slice of time and no other's.
+def seconds(interval):
+    """A Grafana/Prometheus duration ("30s", "1m", "2h") in seconds; 0 when unset or templated."""
+    match = re.fullmatch(r"(\d+)(s|m|h)", interval or "")
+    return int(match.group(1)) * {"s": 1, "m": 60, "h": 3600}[match.group(2)] if match else 0
 
-    `increase(x[30m])` evaluated every step is a SLIDING window -- fine as a line, where it
-    reads as a rate, but drawn as bars at Grafana's default 24h step (~1-2 minutes) one
-    burst is counted again by every bar whose trailing half hour contains it. On
-    2026-09-23 a single boot heal of 376 Polish rows (18:22, the voivodeship re-cluster
-    moving every screening id) rendered as a 30-minute block of 376-high bars on
-    worker-diagnostics panel 27 -- fifteen-odd "heals" for one event, right after a
-    deploy. The bucket form is `increase(x[$__interval])` on a panel with a minimum
-    `interval`, so the step and the window are the same length and the bars tile.
+
+def longest_scrape_interval():
+    """The slowest scrape interval any job is configured with -- the bound a `$__interval` window
+    has to clear to hold a sample for every series, whichever job it reads."""
+    found = []
+    for source in JOB_NAME_SOURCES:
+        with open(source, encoding="utf-8") as handle:
+            found += re.findall(r'scrape_interval\s*[:=]\s*"?(\d+[smh])"?', handle.read())
+    return max(seconds(i) for i in found)
+
+
+class PanelsReadTheSameAtEveryZoom(unittest.TestCase):
+    """What a panel draws must not depend on the time range it is looked at.
+
+    Grafana picks the query step from the zoom: ~15s over an hour, ~1-2 minutes over a day. Three
+    panels on worker-diagnostics drew a different story at every zoom, in two ways, and each test
+    below is one way, checked on EVERY panel of every dashboard:
+
+    - A SLIDING WINDOW DRAWN AS BARS (panels 27 and 33). `increase(x[30m])` evaluated every step
+      is a sliding window -- fine as a line, where it reads as a rate, but as bars one burst is
+      counted again by every bar whose trailing half hour contains it. On 2026-09-23 a single boot
+      heal of 376 Polish rows (18:22) rendered on panel 27 as a 30-minute block of 376-high bars
+      -- fifteen-odd "heals" for one event, right after a deploy. The bucket form is
+      `increase(x[$__interval])` on a panel with a minimum `interval`, so step and window are the
+      same length and the bars tile.
+    - A ONE-SCRAPE SPIKE READ RAW (panel 28). `kinowo_worker_change_stream_apply_lag_seconds` /
+      `_apply_pending` are recomputed on every 30s scrape, and a healthy excursion drains in
+      seconds, so it is usually ONE nonzero sample. Read raw, each step shows only the sample that
+      lands on it: measured 2026-09-23 (US, 16:40-19:05Z), a 30s step showed the 11.5s peak and a
+      120s step a 4.4s one -- the hump simply gone. `max_over_time(...[$__interval])` keeps each
+      step's worst sample.
+    - AND EITHER FIX NEEDS A FLOOR UNDER `$__interval`. At short ranges Grafana's step drops
+      below the scrape interval and a `[$__interval]` window holds no sample, which draws as gaps
+      that come and go with the zoom. The panel's minimum `interval` must cover the slowest scrape
+      -- twice over for rate/increase, which need two samples to say anything.
     """
+
+    # Gauges known to spike for a single scrape. Which gauges do is a fact about the application,
+    # not about the dashboard JSON, so it is listed rather than inferred.
+    SPIKE_GAUGES = (
+        "kinowo_worker_change_stream_apply_lag_seconds",
+        "kinowo_worker_change_stream_apply_pending",
+    )
+    TWO_SAMPLE_FUNCTIONS = ("rate", "irate", "increase", "delta", "idelta", "deriv", "changes", "resets")
 
     def test_every_bar_counts_only_its_own_interval(self):
         checked = 0
@@ -438,6 +432,34 @@ class BarsTileTheTimeAxis(unittest.TestCase):
                                     "fills every bar that window overlaps: %s"
                                     % (path, panel.get("title"), target.get("expr")))
         self.assertTrue(checked, "no bar series found -- the detection above has gone blind")
+
+    def test_a_spike_gauge_is_read_as_its_worst_sample_per_step(self):
+        panels = [p for _, d in dashboards() for p in query_panels(d)]
+        for gauge in self.SPIKE_GAUGES:
+            reading = [t.get("expr", "") for p in panels for t in p.get("targets", [])
+                       if gauge in t.get("expr", "")]
+            self.assertTrue(reading, "no panel reads %s" % gauge)
+            for expr in reading:
+                self.assertRegex(expr, r"max_over_time\(\s*%s(\{[^}]*\})?\[\$__interval\]\)" % gauge,
+                                 "%s is read raw, so a one-scrape peak shows or vanishes with the zoom: %s"
+                                 % (gauge, expr))
+
+    def test_every_interval_window_holds_enough_samples_at_any_zoom(self):
+        scrape = longest_scrape_interval()
+        checked = 0
+        for path, document in dashboards():
+            for panel in query_panels(document):
+                for target in panel.get("targets", []):
+                    expr = target.get("expr", "") or ""
+                    for function in re.findall(r"(\w+)\s*\((?:[^()\[]|\([^()]*\))*\[\$__interval\]", expr):
+                        checked += 1
+                        needed = scrape * (2 if function in self.TWO_SAMPLE_FUNCTIONS else 1)
+                        self.assertGreaterEqual(
+                            seconds(panel.get("interval")), needed,
+                            "%s panel %r reads %s(...[$__interval]) with a minimum interval of %r; "
+                            "under %ds a short zoom leaves windows with too few samples"
+                            % (path, panel.get("title"), function, panel.get("interval"), needed))
+        self.assertTrue(checked, "no $__interval window found -- the detection above has gone blind")
 
 
 if __name__ == "__main__":
