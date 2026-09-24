@@ -418,9 +418,10 @@ class MovieController( cc: ControllerComponents,
                        // can exercise a non-Polish host by passing one, instead of
                        // mutating the process-global env that parallel suites share.
                        servingCountry: models.Country = models.Country.fromEnv,
-                       // Where the share cards render -- never Play's default dispatcher. See
-                       // [[tools.ShareCardPool]].
-                       shareCardPool: tools.ShareCardPool = tools.ShareCardPool.production(),
+                       // Where the share cards render -- never Play's default dispatcher, and
+                       // the process's ONE pool, from the composition root: no default, so no
+                       // controller can quietly build a second. See [[tools.ShareCardPool]].
+                       shareCardPool: tools.ShareCardPool,
                      ) extends AbstractController(cc) with Logging {
 
   // The country this deployment serves — the rules its corpus was keyed under,
