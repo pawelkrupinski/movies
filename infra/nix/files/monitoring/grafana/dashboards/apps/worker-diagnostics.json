@@ -1703,8 +1703,9 @@
     },
     {
       "id": 33,
-      "title": "Read-model venues per projection — rebuilt vs reused, by country (per min)",
-      "description": "`kinowo_worker_readmodel_venue_projections_total{outcome}`: the screenings rows a projection considered. rebuilt (bars, right axis) = the venue's slots (showtimes or link) moved since its row was written, or this process never wrote it (every venue after a worker boot, when the memo is seeded from the read model and cannot vouch for the inputs). reused (lines, left axis) = the row was already written from identical inputs, so it was neither built nor rewritten. A showtime change at one venue of a wide release reads 1 rebuilt against thousands reused — that skip is what took the ~2 s per-film re-projection off the single change-apply thread (panel 28). Rebuilt tracking reused one-for-one outside a boot means the input hash is missing its matches: every projection is rebuilding the whole film again.",
+      "title": "Read-model venues per projection — rebuilt vs reused, by country",
+      "interval": "1m",
+      "description": "`kinowo_worker_readmodel_venue_projections_total{outcome}`: the screenings rows a projection considered, counted per interval (at least a minute), so a boot's burst of rebuilds is one bar rather than one smeared across every overlapping window. rebuilt (bars, right axis) = the venue's slots (showtimes or link) moved since its row was written, or this process never wrote it (every venue after a worker boot, when the memo is seeded from the read model and cannot vouch for the inputs). reused (lines, left axis) = the row was already written from identical inputs, so it was neither built nor rewritten. A showtime change at one venue of a wide release reads 1 rebuilt against thousands reused — that skip is what took the ~2 s per-film re-projection off the single change-apply thread (panel 28). Rebuilt tracking reused one-for-one outside a boot means the input hash is missing its matches: every projection is rebuilding the whole film again.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -1762,7 +1763,7 @@
             "uid": "local-prometheus"
           },
           "refId": "A",
-          "expr": "sum by (country, outcome) (rate(kinowo_worker_readmodel_venue_projections_total{country=~\"$country\"}[$__rate_interval])) * 60",
+          "expr": "sum by (country, outcome) (increase(kinowo_worker_readmodel_venue_projections_total{country=~\"$country\"}[$__interval]))",
           "legendFormat": "{{country}} {{outcome}}"
         }
       ]

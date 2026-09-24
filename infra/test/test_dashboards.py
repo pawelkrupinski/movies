@@ -383,8 +383,11 @@ class SingleScrapeSpikeGauges(unittest.TestCase):
 
 def bar_targets(panel):
     """The targets a timeseries panel draws as BARS: all of them when the panel's default is
-    bars, else those whose legend a `byRegexp` bars override matches (the template variables
-    filled with a placeholder, which is close enough to what Grafana renders)."""
+    bars, else those whose legend a `byRegexp` bars override COULD match once Grafana fills in
+    its `{{label}}` variables. A variable is tried both as a neutral placeholder and as each
+    literal word of the override's regex, because the word may be a label VALUE: worker-
+    diagnostics panel 33 draws `{{country}} {{outcome}}` as bars for `.*rebuilt.*`, and with
+    the placeholder alone this check never saw that series at all."""
     defaults = panel.get("fieldConfig", {}).get("defaults", {}).get("custom", {})
     targets = panel.get("targets", [])
     if defaults.get("drawStyle") == "bars":
@@ -396,8 +399,11 @@ def bar_targets(panel):
         and any(p.get("id") == "custom.drawStyle" and p.get("value") == "bars"
                 for p in override.get("properties", []))
     ]
-    legend = lambda target: re.sub(r"\{\{[^}]*\}\}", "x", target.get("legendFormat", ""))
-    return [t for t in targets if any(re.fullmatch(p, legend(t)) for p in patterns)]
+    def renderings(target, pattern):
+        fillers = ["x"] + re.findall(r"[A-Za-z0-9_-]+", pattern)
+        return [re.sub(r"\{\{[^}]*\}\}", filler, target.get("legendFormat", "")) for filler in fillers]
+    return [t for t in targets
+            if any(re.fullmatch(p, legend) for p in patterns for legend in renderings(t, p))]
 
 
 class BarsTileTheTimeAxis(unittest.TestCase):
