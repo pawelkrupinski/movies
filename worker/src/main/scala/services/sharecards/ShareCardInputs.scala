@@ -82,6 +82,14 @@ final case class ShareCardInputs(
   def candidateVersions: Seq[String] =
     if (posterUrls.isEmpty) Seq(version(None)) else posterUrls.map(url => version(Some(url)))
 
+  /** Every version that serves as these inputs' card: one drawn from any candidate poster, or —
+   *  when none of them worked — the card drawn without one ([[version]] of None, which a later
+   *  working poster replaces, being a different version). */
+  def acceptableVersions: Seq[String] = (candidateVersions :+ version(None)).distinct
+
+  /** True when `version` is these inputs' card drawn WITHOUT the poster the film does have. */
+  def isPosterless(version: String): Boolean = posterUrls.nonEmpty && version == this.version(None)
+
   /** The inputs as a task payload, so the render task draws exactly what was asked for — on
    *  whichever replica claims it, and for a card the first-publish gate holds (which is in no
    *  `web_movies` document yet). [[ShareCardInputs.fromPayload]] reads it back. */

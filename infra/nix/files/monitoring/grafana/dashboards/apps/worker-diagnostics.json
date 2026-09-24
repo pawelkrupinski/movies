@@ -2068,7 +2068,7 @@
     {
       "id": 38,
       "title": "Share-card renders per interval — by outcome and reason, and how each was drawn",
-      "description": "`kinowo_worker_share_cards_render_total{outcome,reason}`: render tasks by result -- rendered, existing (another task or replica already wrote it), failed (no poster could be fetched) -- and by WHY: new_film (the first-publish gate), backfill, or the card input that moved (poster = the poster the card was drawn from left the film's candidates; title, year, ratings at displayed precision, language, template, details = genres/director/synopsis/host). A re-render that moved several inputs counts once per input. A ratings wave after a rating refresh is expected (measured ~242 rating-driven changes a day fleet-wide); a steady `details` line is synopsis churn re-rendering cards. Dashed, right axis: `kinowo_worker_share_cards_render_path_total{path}` -- base_hit = the card drawn as its cached base (the card without its badges, q95 4:4:4 under `.base/`) plus the badges, which is what a ratings change costs (~28 ms against ~54 ms for a rebuild, measured locally); base_rebuild = the base redrawn from the cached poster after any non-rating change; full = a posterless card drawn whole.",
+      "description": "`kinowo_worker_share_cards_render_total{outcome,reason}`: render tasks by result -- rendered, existing (another task or replica already wrote it), rendered_no_poster (every poster failed: a card without one, re-tried daily), failed (the card could not be drawn at all) -- and by WHY: new_film (the first-publish gate), backfill, or the card input that moved (poster = the poster the card was drawn from left the film's candidates; title, year, ratings at displayed precision, language, template, details = genres/director/synopsis/host). A re-render that moved several inputs counts once per input. A ratings wave after a rating refresh is expected (measured ~242 rating-driven changes a day fleet-wide); a steady `details` line is synopsis churn re-rendering cards. Dashed, right axis: `kinowo_worker_share_cards_render_path_total{path}` -- base_hit = the card drawn as its cached base (the card without its badges, q95 4:4:4 under `.base/`) plus the badges, which is what a ratings change costs (~28 ms against ~54 ms for a rebuild, measured locally); base_rebuild = the base redrawn from the cached poster after any non-rating change; full = a posterless card drawn whole.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -2202,7 +2202,7 @@
     {
       "id": 40,
       "title": "Poster cache — hits and misses, and how the misses' fetches went",
-      "description": "`kinowo_worker_share_cards_poster_cache_total{result}`: a render found one of the film's posters already cached (hit, no download) or had to fetch (miss). `kinowo_worker_share_cards_poster_fetch_total{result}` (dashed, right axis) is what each miss's download + shrink did: ok, or failed (every candidate unreachable, over the 50 MB cap, or undecodable). ShareCardPosterFetchFailing fires on failed above half of at least ten attempts for 30m. Hits dominating after the backfill is the cache doing its job: only a changed poster URL costs a fetch.",
+      "description": "`kinowo_worker_share_cards_poster_cache_total{result}`: a render found one of the film's posters already cached (hit, no download) or had to fetch (miss). `kinowo_worker_share_cards_poster_fetch_total{result}` (dashed, right axis) is what each miss's download + shrink did: ok, or failed (every candidate unreachable, over the 50 MB cap, or undecodable). ShareCardPosterFetchFailing fires on failed above half of at least ten attempts for 30m. Hits dominating after the backfill is the cache doing its job: only a changed poster URL costs a fetch. A failed fetch names why in `reason` (http_4xx, http_5xx, timeout, network, too_large, empty_body, decode_error, vips_cap = the vips child hit its memory cap, progressive_estimate = refused by the JPEG-header estimate before decoding, encode_error), and the worker logs `share card: poster for <film> from <host> failed: <reason>` (INFO at most once a second). A film none of whose posters work still gets a card, drawn without a poster (render outcome `rendered_no_poster`), which the daily backfill re-tries.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -2277,8 +2277,8 @@
             "type": "prometheus",
             "uid": "local-prometheus"
           },
-          "expr": "sum by (country, result) (increase(kinowo_worker_share_cards_poster_fetch_total{country=~\"$country\"}[$__rate_interval]))",
-          "legendFormat": "{{country}} fetch {{result}}"
+          "expr": "sum by (country, result, reason) (increase(kinowo_worker_share_cards_poster_fetch_total{country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} fetch {{result}} {{reason}}"
         }
       ]
     },

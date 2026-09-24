@@ -39,12 +39,10 @@ object ShareCardTestKit {
   final class CountingDownload(failing: Set[String] = Set.empty) extends PosterDownload {
     val calls = new java.util.concurrent.ConcurrentHashMap[String, AtomicInteger]()
     def total: Int = { import scala.jdk.CollectionConverters.*; calls.values.asScala.map(_.get).sum }
-    def fetch(url: String): Option[Path] = {
+    def fetch(url: String): Either[String, Path] = {
       calls.computeIfAbsent(url, _ => new AtomicInteger()).incrementAndGet()
-      Option.when(!failing(url)) {
-        val file = Files.createTempFile("poster-", ".img")
-        Files.write(file, posterJpeg)
-      }
+      if (failing(url)) Left(PosterFailure.Http4xx)
+      else Right(Files.write(Files.createTempFile("poster-", ".img"), posterJpeg))
     }
   }
 

@@ -88,8 +88,10 @@ groups:
           summary: "{{ $labels.country }}'s share-card poster fetches are failing ({{ $value | humanizePercentage }})"
           description: >-
             More than half of the poster downloads + decodes behind new share cards failed over the
-            last half hour. Each failure is every candidate URL of a film -- the TMDB w780 rendition,
-            the original, the cinema fallbacks -- unreachable, over the 50 MB download cap, or
-            undecodable (vips, then the bounded JDK decode). Films published meanwhile carry the
-            fallback image. Check the worker log for `share card:` lines and whether one CDN host
-            dominates; `kinowo_worker_http_total` does not see these fetches.
+            last half hour. Each failure is one poster URL of a film (all its renditions, e.g. TMDB
+            w780 then the original) unreachable, over the 50 MB download cap, or undecodable. A film
+            none of whose posters work gets a card WITHOUT a poster meanwhile, re-tried daily. The
+            counter's `reason` label says why (http_4xx, http_5xx, timeout, too_large, decode_error,
+            vips_cap, progressive_estimate, ...), and the worker logs `share card: poster for <film>
+            from <host> failed: <reason>` -- check whether one host or one reason dominates;
+            `kinowo_worker_http_total` does not see these fetches.

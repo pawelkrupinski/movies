@@ -47,12 +47,11 @@ class ShareCardServiceSpec extends AnyFlatSpec with Matchers {
     rig.download.total shouldBe 1
   }
 
-  it should "retry a card whose posters all failed, then give up rather than freeze a posterless card" in {
+  it should "finish with a card without a poster when every poster fails, rather than retry the task" in {
     val rig    = new Rig(download = new CountingDownload(failing = Set("https://cdn.example/poster-a.jpg")))
     val inputs = rig.service.inputs(film())
-    renderTask(rig, inputs, attempts = 1) shouldBe a[HandlerOutcome.Reschedule]
-    renderTask(rig, inputs, attempts = 3) shouldBe HandlerOutcome.Done
-    rig.service.existing(inputs) shouldBe None
+    renderTask(rig, inputs, attempts = 1) shouldBe HandlerOutcome.Done
+    rig.service.existing(inputs) shouldBe Some(inputs.version(None))
   }
 
   "A projection" should "enqueue a render only when something the card draws changed" in {

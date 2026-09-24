@@ -45,7 +45,17 @@ class ShareCardService(
   private def onDisk(filmId: String): Option[String] = store.version(store.cardPath(filmId))
 
   /** The card's version when it is current for exactly these inputs. */
-  def existing(next: ShareCardInputs): Option[String] = onDisk(next.filmId).filter(next.candidateVersions.contains)
+  def existing(next: ShareCardInputs): Option[String] = onDisk(next.filmId).filter(next.acceptableVersions.contains)
+
+  /** True when the film's current card was drawn without a poster although the film has some —
+   *  every one failed when it was rendered. The backfill retries those ([[retryPoster]]). */
+  def lacksPoster(next: ShareCardInputs): Boolean = existing(next).exists(next.isPosterless)
+
+  /** Queue a render that tries `next`'s posters again for a card drawn without one. */
+  def retryPoster(next: ShareCardInputs): EnqueueResult =
+    queue.enqueue(TaskType.RenderShareCard, s"share-card-poster|${next.filmId}|${next.drawnHash}",
+      next.toPayload ++ Map(ReasonsKey -> ShareCardReason.Poster, FirstKey -> "false", RetryPosterKey -> "true"),
+      submittedAt = clock.instant())
 
   def current(movie: ResolvedMovie): Option[String] = onDisk(movie._id).map(ShareCardFile.url(movie._id, _))
 
@@ -125,8 +135,10 @@ class ShareCardService(
   }
 
   /** The render task's work: the film's card for `next`, written over its one card file unless it
-   *  is current already. A film with posters whose every candidate fails gets no new card (the task
-   *  retries), rather than a text-only card.
+   *  is current already. A film with posters whose every candidate fails gets a card WITHOUT a
+   *  poster (`rendered_no_poster`) — a film with no card could never be shared well, and coverage
+   *  would stall on it — versioned as posterless, so the card a working poster later draws
+   *  replaces it. `retryPoster` re-tries the posters for such a card; failing again, it stays.
    *
    *  A card with a poster is drawn on its BASE — everything but the rating badges, kept as the
    *  film's one high-quality JPEG under `.base/`, stamped with every non-rating input and the
@@ -137,23 +149,28 @@ class ShareCardService(
    *
    *  `first` marks the first-publish gate's render: the card then records the film's first
    *  publication, which every later card of the film carries forward. */
-  def render(next: ShareCardInputs, reasons: Seq[String], first: Boolean = false): String = {
+  def render(next: ShareCardInputs, reasons: Seq[String], first: Boolean = false, retryPoster: Boolean = false): String = {
     import ShareCardMetrics.Outcome
     val before = onDisk(next.filmId)
+    // Anything thrown while drawing is this card's failure — counted, and the task retried — never
+    // an exception out of the task.
+    def withPoster: Option[String] =
+      Try(onBase(next, first).orElse(rebuildBase(next, first))).recover { case e: Exception =>
+        logger.warn(s"share card: ${next.filmId} could not be drawn: ${e.getClass.getSimpleName}: ${e.getMessage}"); None
+      }.get
     val (outcome, card) = existing(next) match {
+      case Some(version) if retryPoster && next.isPosterless(version) =>
+        withPoster.fold((Outcome.Existing, Some(version)))(drawn => (Outcome.Rendered, Some(drawn)))
       case Some(version)                   => (Outcome.Existing, Some(version))
       case None if next.posterUrls.isEmpty => (Outcome.Rendered, Some(drawWhole(next, first)))
       case None =>
-        // Anything thrown while drawing is this card's failure — counted, and the task retried —
-        // never an exception out of the task.
-        Try(onBase(next, first).orElse(rebuildBase(next, first))).recover { case e: Exception =>
-          logger.warn(s"share card: ${next.filmId} could not be drawn: ${e.getClass.getSimpleName}: ${e.getMessage}"); None
-        }.get.fold((Outcome.Failed, Option.empty[String]))(version => (Outcome.Rendered, Some(version)))
+        withPoster.map(drawn => (Outcome.Rendered, Some(drawn))).getOrElse(
+          Try(drawWhole(next, first)).toOption.fold((Outcome.Failed, Option.empty[String]))(drawn => (Outcome.RenderedNoPoster, Some(drawn))))
     }
     card.foreach { version =>
       fingerprints.put(next.filmId, next.fingerprint)
       // A recent film's card changed: its previews show the old one.
-      if (outcome == Outcome.Rendered && before.exists(_ != version) && recent(next.filmId)) rescrape(next.filmId)
+      if (outcome != Outcome.Existing && before.exists(_ != version) && recent(next.filmId)) rescrape(next.filmId)
     }
     metrics.render(outcome, reasons)
     outcome
@@ -210,6 +227,8 @@ class ShareCardService(
 object ShareCardService {
   val ReasonsKey = "reasons"
   val FirstKey   = "first"
+  /** On a render that re-tries the posters of a card drawn without one. */
+  val RetryPosterKey = "retryPoster"
 
   /** How far ahead of the backlog a first card is placed: the queue claims by `submittedAt`, and a
    *  day covers any real backlog. */

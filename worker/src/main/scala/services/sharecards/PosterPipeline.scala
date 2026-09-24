@@ -81,11 +81,29 @@ object JpegHeader {
     }).toOption.flatten
 }
 
-/** Downloads a poster to a temp file — never into the heap as a whole — or None. */
+/** Why a poster could not be had — the bounded `reason` label on
+ *  `kinowo_worker_share_cards_poster_fetch_total{result="failed"}`. */
+object PosterFailure {
+  val Http4xx = "http_4xx"; val Http5xx = "http_5xx"; val HttpOther = "http_other"
+  val Timeout = "timeout"; val Network = "network"; val TooLarge = "too_large"; val EmptyBody = "empty_body"
+  /** Neither vips nor the JDK could read it (corrupt, or no image format either knows). */
+  val DecodeError = "decode_error"
+  /** The vips child hit its memory cap (or could not set it). */
+  val VipsCap = "vips_cap"
+  /** A progressive JPEG whose header says its decode cannot fit the cap — refused unspawned. */
+  val ProgressiveEstimate = "progressive_estimate"
+  /** Shrunk, but the slot could not be encoded for the cache, or something threw on the way. */
+  val EncodeError = "encode_error"
+  val all: Seq[String] = Seq(Http4xx, Http5xx, HttpOther, Timeout, Network, TooLarge, EmptyBody, DecodeError, VipsCap,
+    ProgressiveEstimate, EncodeError)
+  /** The reason label of a fetch that worked. */
+  val None = "none"
+}
+
+/** Downloads a poster to a temp file — never into the heap as a whole. */
 trait PosterDownload {
-  /** The poster at `url` in a temp file the caller deletes, or None on any failure: a non-2xx, a
-   *  timeout, or a body larger than the download cap. Never throws. */
-  def fetch(url: String): Option[Path]
+  /** The poster at `url` in a temp file the caller deletes, or the [[PosterFailure]] why not. Never throws. */
+  def fetch(url: String): Either[String, Path]
 }
 
 /** [[PosterDownload]] over the JDK client: the generous connect budget slow cinema origins need
@@ -100,22 +118,30 @@ class HttpPosterDownload(maxBytes: Long = PosterPipeline.MaxDownloadBytes,
     .sslContext(TlsTrust.augmentedContext)
     .build()
 
-  def fetch(url: String): Option[Path] =
-    Try {
+  def fetch(url: String): Either[String, Path] =
+    try {
       val request = HttpRequest.newBuilder().uri(URI.create(url)).timeout(timeout)
         .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
         .GET().build()
       val response = client.send(request, HttpResponse.BodyHandlers.ofInputStream())
       Using.resource(response.body()) { body =>
-        if (response.statusCode() / 100 != 2) None else PosterPipeline.copyCapped(body, maxBytes)
+        response.statusCode() / 100 match {
+          case 2 => PosterPipeline.copyCapped(body, maxBytes)
+          case 4 => Left(PosterFailure.Http4xx)
+          case 5 => Left(PosterFailure.Http5xx)
+          case _ => Left(PosterFailure.HttpOther)
+        }
       }
-    }.toOption.flatten
+    } catch {
+      case _: java.net.http.HttpTimeoutException => Left(PosterFailure.Timeout)
+      case _: Exception                          => Left(PosterFailure.Network)
+    }
 }
 
 /** Turns a downloaded poster into the card's 420×630 poster slot. */
 trait PosterShrinker {
-  /** `file` decoded, cover-scaled and cropped to the slot, or None when it can't be read. */
-  def coverSlot(file: Path): Option[BufferedImage]
+  /** `file` decoded, cover-scaled and cropped to the slot, or the [[PosterFailure]] why not. */
+  def coverSlot(file: Path): Either[String, BufferedImage]
 }
 
 /**
@@ -126,13 +152,16 @@ trait PosterShrinker {
  * 960 MiB limit (PL/UK; ES 896 MiB). So a poster may cost the child at most [[PosterPipeline.DecodeMemoryCapMb]]
  * of address space (`ulimit -v`, one malloc arena, no core dump): an overrun kills the child —
  * libjpeg aborts "Insufficient memory" — and never the container. Measured in the worker image
- * (Debian libvips 8.18, 2026-09-24), the cap at 192 MB: a 780-wide TMDB poster and a 2000×3000
- * progressive JPEG shrink (both need ~160 MB of address space, ~45 MB resident); a 96-megapixel
- * baseline JPEG needs 256 MB and a 96-megapixel progressive one more than 1.5 GB (360 MB resident)
- * — both refused. Vips streams a baseline JPEG, but a PROGRESSIVE one holds every DCT coefficient
- * of the whole image to its last scan, so its header ([[JpegHeader.coefficientBytes]]) says in
- * advance whether it can fit: over [[PosterPipeline.ProgressiveCoefficientBudget]] it is refused
- * without spawning anything, and the caller tries the next-smaller rendition.
+ * (Debian libvips 8.18, 2026-09-24): a 780-wide TMDB poster needs ~160 MB of address space and ~45
+ * MB resident; a 96-megapixel baseline JPEG 256 MB, a 96-megapixel progressive one more than 1.5 GB
+ * (360 MB resident). Vips streams a baseline JPEG, but a PROGRESSIVE one holds every DCT
+ * coefficient of the whole image to its last scan, so its header ([[JpegHeader.coefficientBytes]])
+ * says in advance whether it can fit: over [[PosterPipeline.ProgressiveCoefficientBudget]] it is
+ * refused without spawning anything, and the caller tries the next-smaller rendition. The cap is
+ * 256 MB because ordinary posters are progressive at full chroma resolution: measured, a 2764×4096
+ * 4:4:4 (68 MB of coefficients) fits 224 MB of address space at 108 MB resident, 3000×4500 4:4:4
+ * (81 MB) fits 256 MB at 122 MB; 3500×5250 4:4:4 (110 MB) needs 320 MB — refused. At 192 MB the
+ * first of those failed in prod.
  *
  * A cap-hit is NOT retried in the JVM: the JDK's decoder holds the same coefficient buffer, in
  * the worker's own native memory. The JDK decode (itself capped at [[PosterDecode.MaxPixels]])
@@ -150,42 +179,41 @@ class VipsPosterShrinker(
   gate:          PosterDecodeGate = VipsPosterShrinker.Gate
 ) extends PosterShrinker with Logging {
 
-  def coverSlot(file: Path): Option[BufferedImage] =
+  def coverSlot(file: Path): Either[String, BufferedImage] =
     JpegHeader.read(file) match {
       case Some(header) if header.progressive && header.coefficientBytes > PosterPipeline.ProgressiveCoefficientBudget =>
-        logger.info(s"share card: ${header.width}×${header.height} progressive poster needs ~${header.coefficientBytes >> 20} MB " +
-          "to decode — over the cap, not decoded")
-        None
+        Left(PosterFailure.ProgressiveEstimate)
       case _ => gate.withPermit(binary.fold(javaDecode(file))(vips(_, file)))
     }
 
-  private def vips(bin: String, file: Path): Option[BufferedImage] = {
+  private def vips(bin: String, file: Path): Either[String, BufferedImage] = {
     val out = Files.createTempFile("poster-slot-", ".png")
+    val log = Files.createTempFile("poster-vips-", ".log")
     try {
       // The cap FAILS CLOSED: a Linux shell that cannot set it runs no child. macOS never honours
       // `ulimit -v`, so a developer's machine runs uncapped (time limit and gate only).
       val script = s"""ulimit -c 0; ulimit -v ${memoryCapMb * 1024} 2>/dev/null || [ "$$(uname)" = Darwin ] || exit 97; exec "$$0" thumbnail "$$1" "$$2" ${OgCardRenderer.PosterSlotWidth} --height ${OgCardRenderer.PosterSlotHeight} --crop centre"""
       val process = new ProcessBuilder("/bin/sh", "-c", script, bin, file.toString, out.toString)
-        .redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.DISCARD)
+        .redirectErrorStream(true).redirectOutput(log.toFile)
       process.environment().put("VIPS_CONCURRENCY", "1")
       process.environment().put("MALLOC_ARENA_MAX", "1")
       val child = process.start()
       if (!child.waitFor(timeoutMillis, TimeUnit.MILLISECONDS)) {
         child.destroyForcibly()
-        logger.info(s"share card: vips timed out after ${timeoutMillis}ms on $file")
-        None
+        Left(PosterFailure.Timeout)
       } else if (child.exitValue() != 0) {
         // vips reads JPEG, PNG, WebP, GIF, TIFF, HEIF: for any of those a failure is a real one (the
         // cap among them). Only a file none of those is goes to the JDK decoder.
-        if (VipsPosterShrinker.knownFormat(file)) None else javaDecode(file)
-      } else Option(ImageIO.read(out.toFile)).map(OgCardRenderer.coverSlot)   // opaque RGB, whatever vips wrote
-    } catch { case e: Exception => logger.info(s"share card: vips failed on $file: ${e.getMessage}"); None }
-    finally Files.deleteIfExists(out)
+        if (VipsPosterShrinker.knownFormat(file)) Left(VipsPosterShrinker.failure(child.exitValue(), Try(Files.readString(log)).getOrElse("")))
+        else javaDecode(file)
+      } else Option(ImageIO.read(out.toFile)).map(OgCardRenderer.coverSlot).toRight(PosterFailure.DecodeError)   // opaque RGB, whatever vips wrote
+    } catch { case _: Exception => Left(PosterFailure.DecodeError) }
+    finally { Files.deleteIfExists(out); Files.deleteIfExists(log) }
   }
 
   /** The bounded JDK decode (pixel cap + subsampled read). */
-  private def javaDecode(file: Path): Option[BufferedImage] =
-    Try(PosterDecode.fromFile(file.toFile)).toOption.flatten.map(OgCardRenderer.coverSlot)
+  private def javaDecode(file: Path): Either[String, BufferedImage] =
+    Try(PosterDecode.fromFile(file.toFile)).toOption.flatten.map(OgCardRenderer.coverSlot).toRight(PosterFailure.DecodeError)
 }
 
 object VipsPosterShrinker {
@@ -193,6 +221,11 @@ object VipsPosterShrinker {
   def locate(): Option[String] =
     sys.env.getOrElse("PATH", "").split(java.io.File.pathSeparator).iterator
       .map(dir => Path.of(dir, "vips")).find(Files.isExecutable).map(_.toString)
+
+  /** Why a vips child for a known image format failed: the cap (the shell could not set it — exit
+   *  97 — or libjpeg / glib ran out of memory, which aborts on a signal or says so), else the file. */
+  private[sharecards] def failure(exit: Int, output: String): String =
+    if (exit == 97 || exit > 128 || output.toLowerCase.contains("memory")) PosterFailure.VipsCap else PosterFailure.DecodeError
 
   /** One shrink at a time per process — see the class doc. */
   val Gate = new PosterDecodeGate(permits = 1)
@@ -212,12 +245,13 @@ object PosterPipeline {
   val MaxDownloadBytes: Long = 50L * 1024 * 1024
 
   /** The vips child's address-space cap — see [[VipsPosterShrinker]] for the measurements. */
-  val DecodeMemoryCapMb: Long = tools.Env.positiveLong("KINOWO_SHARE_CARD_DECODE_MEMORY_MB", 192L)
+  val DecodeMemoryCapMb: Long = tools.Env.positiveLong("KINOWO_SHARE_CARD_DECODE_MEMORY_MB", 256L)
 
-  /** The largest progressive JPEG coefficient buffer sent to vips: the cap less the ~140 MB of
-   *  address space vips holds before decoding anything (measured: a 780-wide poster fails under 128
-   *  MB and shrinks under 160 MB). A 2000×3000 4:2:0 poster is 18 MB; 96 megapixels is 190-580 MB. */
-  val ProgressiveCoefficientBudget: Long = (DecodeMemoryCapMb - 140L).max(16L) * 1024 * 1024
+  /** The largest progressive JPEG coefficient buffer sent to vips: the cap less the ~170 MB of
+   *  address space vips needs around the buffer (measured under a `ulimit -v`: 68 MB of coefficients
+   *  fit 224 MB, 81 MB fit 256 MB, 110 MB needed 320 MB). 86 MB at the 256 MB cap: an 11 MP poster
+   *  at 4:4:4 is 68 MB, a 2000×3000 4:2:0 one 18 MB; 96 megapixels is 290-580 MB. */
+  val ProgressiveCoefficientBudget: Long = (DecodeMemoryCapMb - 170L).max(16L) * 1024 * 1024
 
   /** JPEG at 0.95 for the poster cache, not PNG: measured on two real 420×630 TMDB slots, PNG
    *  stored 520-620 KB each and q95 116-152 KB — at ~2,000 posters a country, PNG alone would
@@ -225,9 +259,9 @@ object PosterPipeline {
   val PosterQuality = 0.95f
 
   /** Stream `in` into a temp file, abandoning it past `maxBytes`. */
-  private[sharecards] def copyCapped(in: InputStream, maxBytes: Long): Option[Path] = {
+  private[sharecards] def copyCapped(in: InputStream, maxBytes: Long): Either[String, Path] = {
     val file = Files.createTempFile("poster-", ".img")
-    val kept = Try {
+    val size = Try {
       Using.resource(Files.newOutputStream(file)) { out =>
         val buffer = new Array[Byte](64 * 1024)
         var total  = 0L
@@ -237,10 +271,17 @@ object PosterPipeline {
           if (total <= maxBytes) out.write(buffer, 0, read)
           read = in.read(buffer)
         }
-        total <= maxBytes && total > 0
+        total
       }
-    }.getOrElse(false)
-    if (kept) Some(file) else { Files.deleteIfExists(file); None }
+    }
+    val kept = size match {
+      case scala.util.Success(total) if total > maxBytes => Left(PosterFailure.TooLarge)
+      case scala.util.Success(0L)                        => Left(PosterFailure.EmptyBody)
+      case scala.util.Success(_)                         => Right(file)
+      case scala.util.Failure(_)                         => Left(PosterFailure.Network)
+    }
+    if (kept.isLeft) Files.deleteIfExists(file)
+    kept
   }
 
   /** `slot` as the poster cache stores it. */
@@ -288,22 +329,42 @@ class ShareCardPosters(store: ShareCardStore, download: PosterDownload, shrinker
    *  None. Any failure on the way, a thrown one included, only moves on to the next rendition (and
    *  the caller to the next candidate): one bad poster must never fail the render. */
   private def fetchAndCache(filmId: String, url: String): Option[BufferedImage] = {
-    val slot = PosterRendition.candidates(url).iterator.flatMap { rendition =>
+    val attempts = PosterRendition.candidates(url).iterator.map { rendition =>
       download.fetch(rendition).flatMap { file =>
         try shrinker.coverSlot(file).map(image => image -> PosterPipeline.encodePoster(image))
-        catch { case e: Exception => logger.info(s"share card: poster $rendition unusable: ${e.getClass.getSimpleName}: ${e.getMessage}"); None }
+        catch { case _: Exception => Left(PosterFailure.EncodeError) }
         finally Files.deleteIfExists(file)
       }
-    }.nextOption()
-    metrics.posterFetch(ok = slot.isDefined)
-    slot.map { case (image, bytes) =>
-      store.writeAtomically(store.posterPath(filmId), bytes, ShareCardPosters.key(url))
-      image
+    }
+    // The first rendition that worked, else the last one's reason.
+    var outcome: Either[String, (BufferedImage, Array[Byte])] = Left(PosterFailure.DecodeError)
+    while (attempts.hasNext && outcome.isLeft) outcome = attempts.next()
+    outcome match {
+      case Right((image, bytes)) =>
+        metrics.posterFetch(PosterFailure.None)
+        store.writeAtomically(store.posterPath(filmId), bytes, ShareCardPosters.key(url))
+        Some(image)
+      case Left(reason) =>
+        metrics.posterFetch(reason)
+        ShareCardPosters.logFailure(logger, filmId, url, reason)
+        None
     }
   }
 }
 
 object ShareCardPosters {
+  private val lastLogged = new java.util.concurrent.atomic.AtomicLong(0L)
+
+  /** One INFO line per failed poster, at most one a second (the rest at DEBUG): the film, the host
+   *  and why — what `poster_fetch_total{reason}` counts but cannot name. */
+  private[sharecards] def logFailure(logger: play.api.Logger, filmId: String, url: String, reason: String): Unit = {
+    val host = Try(URI.create(url).getHost).toOption.flatMap(Option(_)).getOrElse("?")
+    val line = s"share card: poster for $filmId from $host failed: $reason"
+    val now  = System.nanoTime()
+    val last = lastLogged.get()
+    if (now - last > 1000000000L && lastLogged.compareAndSet(last, now)) logger.info(line) else logger.debug(line)
+  }
+
   /** A poster's key: 16 hex characters of the SHA-256 of its URL. */
   def key(url: String): String = tools.Digest.sha256Hex(url).take(16)
 }

@@ -33,6 +33,9 @@ class ShareCardBackfill(
 ) extends Logging {
 
   private var pending   = List.empty[ShareCardInputs]
+  // Films whose card was drawn without a poster because every poster failed: re-tried once per
+  // sweep (a day), which is the backoff — a cinema origin that was down usually comes back.
+  private var posterless = List.empty[ShareCardInputs]
   private var expected  = Seq.empty[ShareCardInputs]
   private var lastSweep = Option.empty[Instant]
 
@@ -45,7 +48,10 @@ class ShareCardBackfill(
       val room          = math.min(batch, maxBacklog - backlog)
       val (next, later) = pending.filter(service.existing(_).isEmpty).splitAt(math.max(room, 0))
       pending = later
-      next.count(in => service.request(in).contains(EnqueueResult.Added))
+      val (retry, rest) = posterless.filter(service.lacksPoster).splitAt(math.max(room - next.size, 0))
+      posterless = rest
+      next.count(in => service.request(in).contains(EnqueueResult.Added)) +
+        retry.count(in => service.retryPoster(in) == EnqueueResult.Added)
     }
   }
 
@@ -55,8 +61,9 @@ class ShareCardBackfill(
       val screened = screenings.iterator.map(_.filmId).toSet
       expected  = reader.findAllMovies().filter(movie => screened(movie._id)).map(service.inputs)
       pending   = expected.filter(service.existing(_).isEmpty).toList
+      posterless = expected.filter(service.lacksPoster).toList
       lastSweep = Some(clock.instant())
-      logger.info(s"share cards backfill: ${pending.size} of ${expected.size} cards missing.")
+      logger.info(s"share cards backfill: ${pending.size} of ${expected.size} cards missing, ${posterless.size} drawn without their poster.")
     } else logger.warn("share cards backfill: web_screenings read incomplete — sweep skipped, retried next tick.")
   }
 }

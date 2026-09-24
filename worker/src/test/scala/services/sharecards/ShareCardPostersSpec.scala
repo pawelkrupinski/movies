@@ -47,15 +47,15 @@ class ShareCardPostersSpec extends AnyFlatSpec with Matchers {
 
   "A poster download" should "be abandoned at the byte cap instead of written out" in {
     val body = new Array[Byte](10 * 1024)
-    PosterPipeline.copyCapped(new ByteArrayInputStream(body), maxBytes = 4096) shouldBe None
+    PosterPipeline.copyCapped(new ByteArrayInputStream(body), maxBytes = 4096) shouldBe Left(PosterFailure.TooLarge)
     val kept = PosterPipeline.copyCapped(new ByteArrayInputStream(body), maxBytes = 64 * 1024)
-    kept.map(Files.size) shouldBe Some(10L * 1024)
+    kept.map(Files.size) shouldBe Right(10L * 1024)
     kept.foreach(Files.delete)
   }
 
   "The shrinker" should "decode with the bounded JDK reader when vips is not installed" in {
     val file = Files.write(Files.createTempFile("poster-", ".jpg"), posterJpeg)
-    try new VipsPosterShrinker(binary = None).coverSlot(file).map(i => (i.getWidth, i.getHeight)) shouldBe Some((420, 630))
+    try new VipsPosterShrinker(binary = None).coverSlot(file).map(i => (i.getWidth, i.getHeight)) shouldBe Right((420, 630))
     finally Files.delete(file)
   }
 
@@ -73,7 +73,7 @@ class ShareCardPostersSpec extends AnyFlatSpec with Matchers {
     val threads   = java.lang.management.ManagementFactory.getThreadMXBean.asInstanceOf[com.sun.management.ThreadMXBean]
     val thread    = Thread.currentThread().threadId()
     val before    = threads.getThreadAllocatedBytes(thread)
-    new VipsPosterShrinker(binary = vips).coverSlot(big) shouldBe None
+    new VipsPosterShrinker(binary = vips).coverSlot(big) shouldBe Left(PosterFailure.ProgressiveEstimate)
     val allocated = threads.getThreadAllocatedBytes(thread) - before
     info(f"JVM allocation for refusing the 8000×12000 progressive: ${allocated / 1e6}%.2f MB")
     allocated should be < (4L * 1024 * 1024)

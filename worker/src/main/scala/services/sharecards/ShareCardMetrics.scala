@@ -23,13 +23,15 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
  *  - `kinowo_worker_share_cards_render_path_total{path}` — cards drawn on a cached base or not.
  *  - `kinowo_worker_share_cards_pruned_total{kind,reason}` — deletions by the prune and the budget.
  *  - `kinowo_worker_share_cards_poster_cache_total{result}` — poster cache hits and misses.
- *  - `kinowo_worker_share_cards_poster_fetch_total{result}` — a miss's download + shrink, ok or failed.
+ *  - `kinowo_worker_share_cards_poster_fetch_total{result,reason}` — a miss's download + shrink, ok or failed and why.
  *  - `kinowo_worker_share_cards_rescrape_total{outcome}` — Facebook re-scrape requests.
  */
 object ShareCardMetrics {
   object Outcome {
     val Rendered = "rendered"; val Existing = "existing"; val Failed = "failed"
-    val all: Seq[String] = Seq(Rendered, Existing, Failed)
+    /** Every poster failed: a card without one, kept until a poster works (see ShareCardBackfill). */
+    val RenderedNoPoster = "rendered_no_poster"
+    val all: Seq[String] = Seq(Rendered, RenderedNoPoster, Existing, Failed)
   }
   object PruneReason {
     val Retired = "retired"; val Budget = "budget"; val Temp = "temp"
@@ -74,8 +76,8 @@ object ShareCardMetrics {
       .help("Poster-cache lookups for a render: hit (a cached slot used) or miss (fetched).")
       .labelNames("country", "result").register(registry)
     private[ShareCardMetrics] val posterFetch = Counter.builder().name("kinowo_worker_share_cards_poster_fetch")
-      .help("Poster fetch + decode on a cache miss: ok, or failed (every candidate unreachable, oversized or undecodable).")
-      .labelNames("country", "result").register(registry)
+      .help("Poster fetch + decode on a cache miss per candidate URL: ok, or failed with why (http_4xx, http_5xx, timeout, too_large, decode_error, vips_cap, progressive_estimate, …).")
+      .labelNames("country", "result", "reason").register(registry)
     private[ShareCardMetrics] val rescrapes = Counter.builder().name("kinowo_worker_share_cards_rescrape")
       .help("Facebook re-scrape requests for a film's pages — published before its card, or its card changed in its first week: sent, failed, or disabled (no app credentials).")
       .labelNames("country", "outcome").register(registry)
@@ -87,7 +89,8 @@ object ShareCardMetrics {
       Path.all.foreach(paths.labelValues(c, _))
       for (k <- ShareCardStore.Kind.all; r <- PruneReason.all) pruned.labelValues(c, k, r)
       for (r <- Seq("hit", "miss")) posterCache.labelValues(c, r)
-      for (r <- Seq("ok", "failed")) posterFetch.labelValues(c, r)
+      posterFetch.labelValues(c, "ok", PosterFailure.None)
+      PosterFailure.all.foreach(posterFetch.labelValues(c, "failed", _))
       RescrapeOutcome.all.foreach(rescrapes.labelValues(c, _))
     }
 
@@ -98,7 +101,10 @@ object ShareCardMetrics {
     /** Test seam: how many cards were drawn by `path`. */
     private[sharecards] def pathCount(country: String, path: String): Double = paths.labelValues(country, path).get()
     /** Test seam: how many poster fetches ended `ok` or failed. */
-    private[sharecards] def posterFetchCount(country: String, ok: Boolean): Double = posterFetch.labelValues(country, if (ok) "ok" else "failed").get()
+    private[sharecards] def posterFetchCount(country: String, reason: String): Double =
+      posterFetch.labelValues(country, if (reason == PosterFailure.None) "ok" else "failed", reason).get()
+    /** Test seam: renders counted by outcome and reason. */
+    private[sharecards] def renderCount(country: String, outcome: String, reason: String): Double = renders.labelValues(country, outcome, reason).get()
   }
 
   /** Records nothing — for specs that don't assert on metrics. */
@@ -112,7 +118,9 @@ final class ShareCardMetrics private[sharecards] (country: String, series: Optio
   def renderPath(path: String): Unit = series.foreach(_.paths.labelValues(country, path).inc())
   def pruned(kind: String, reason: String): Unit = series.foreach(_.pruned.labelValues(country, kind, reason).inc())
   def posterCache(hit: Boolean): Unit = series.foreach(_.posterCache.labelValues(country, if (hit) "hit" else "miss").inc())
-  def posterFetch(ok: Boolean): Unit  = series.foreach(_.posterFetch.labelValues(country, if (ok) "ok" else "failed").inc())
+  /** A poster fetch's outcome: [[PosterFailure.None]] for one that worked, else why it failed. */
+  def posterFetch(reason: String): Unit =
+    series.foreach(_.posterFetch.labelValues(country, if (reason == PosterFailure.None) "ok" else "failed", reason).inc())
   def rescrape(outcome: String): Unit = series.foreach(_.rescrapes.labelValues(country, outcome).inc())
   def coverage(ratio: Double): Unit = series.foreach(_.coverage.labelValues(country).set(ratio))
 

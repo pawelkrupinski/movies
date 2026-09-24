@@ -9,8 +9,9 @@ class RenderShareCardHandler(service: ShareCardService, maxAttempts: Int = 3) ex
   val taskType: TaskType = TaskType.RenderShareCard
   def handle(task: Task): HandlerOutcome =
     ShareCardInputs.fromPayload(task.payload).fold[HandlerOutcome](HandlerOutcome.Skipped) { inputs =>
-      service.render(inputs, ShareCardService.reasons(task.payload), first = task.payload.get(ShareCardService.FirstKey).contains("true")) match {
-        case ShareCardMetrics.Outcome.Failed if task.attempts < maxAttempts => HandlerOutcome.Reschedule(Some("no poster could be fetched"))
+      service.render(inputs, ShareCardService.reasons(task.payload), first = task.payload.get(ShareCardService.FirstKey).contains("true"),
+        retryPoster = task.payload.get(ShareCardService.RetryPosterKey).contains("true")) match {
+        case ShareCardMetrics.Outcome.Failed if task.attempts < maxAttempts => HandlerOutcome.Reschedule(Some("the card could not be drawn"))
         case _ => HandlerOutcome.Done
       }
     }
@@ -63,7 +64,7 @@ class ShareCardFollowUp(store: ShareCardStore, refresh: String => Unit, releaseH
   def onTaskFinished: PartialFunction[DomainEvent, Unit] = {
     case TaskFinished(TaskType.RenderShareCard, _, payload) =>
       ShareCardInputs.fromPayload(payload).foreach { inputs =>
-        if (store.version(store.cardPath(inputs.filmId)).exists(inputs.candidateVersions.contains)) refresh(inputs.filmId)
+        if (store.version(store.cardPath(inputs.filmId)).exists(inputs.acceptableVersions.contains)) refresh(inputs.filmId)
         else if (payload.get(ShareCardService.FirstKey).contains("true")) releaseHold(inputs.filmId)
       }
   }

@@ -49,7 +49,7 @@ class PosterColourSpaceSpec extends AnyFlatSpec with Matchers {
 
   /** Download serving `poster` for every URL. */
   private def serving(poster: () => Path): PosterDownload = new PosterDownload {
-    def fetch(url: String): Option[Path] = Some(Files.copy(poster(), Files.createTempFile("dl-", ".img"), java.nio.file.StandardCopyOption.REPLACE_EXISTING))
+    def fetch(url: String): Either[String, Path] = Right(Files.copy(poster(), Files.createTempFile("dl-", ".img"), java.nio.file.StandardCopyOption.REPLACE_EXISTING))
   }
 
   private def rendersThrough(shrinker: PosterShrinker, poster: () => Path) = {
@@ -60,6 +60,7 @@ class PosterColourSpaceSpec extends AnyFlatSpec with Matchers {
     service.render(service.inputs(movie), Seq(ShareCardReason.NewFilm)) shouldBe ShareCardMetrics.Outcome.Rendered
     ImageIO.read(store.cardPath(movie._id).toFile).getWidth shouldBe 1200
     ImageIO.read(store.posterPath(movie._id).toFile).getWidth shouldBe 420
+    store.version(store.cardPath(movie._id)) should not be Some(service.inputs(movie).version(None))
   }
 
   for ((what, poster) <- posters) {
@@ -88,25 +89,25 @@ class PosterColourSpaceSpec extends AnyFlatSpec with Matchers {
     val broken = "https://cdn.example/broken.jpg"
     val good   = "https://cdn.example/good.jpg"
     val download = new PosterDownload {
-      def fetch(url: String): Option[Path] = Some(Files.write(Files.createTempFile("dl-", ".img"), url.getBytes("UTF-8")))
+      def fetch(url: String): Either[String, Path] = Right(Files.write(Files.createTempFile("dl-", ".img"), url.getBytes("UTF-8")))
     }
     val shrinker = new PosterShrinker {
-      def coverSlot(f: Path): Option[BufferedImage] =
+      def coverSlot(f: Path): Either[String, BufferedImage] =
         if (new String(Files.readAllBytes(f), "UTF-8") == broken) throw new javax.imageio.IIOException("Bogus input colorspace")
-        else Some(image(BufferedImage.TYPE_INT_RGB, 420, 630))
+        else Right(image(BufferedImage.TYPE_INT_RGB, 420, 630))
     }
     val series = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
     val store = tempStore()
     val loaded = new ShareCardPosters(store, download, shrinker, series.forCountry("pl")).load("f1", Seq(broken, good))
     loaded.map(_._1) shouldBe Some(good)
-    series.posterFetchCount("pl", ok = false) shouldBe 1
+    series.posterFetchCount("pl", PosterFailure.EncodeError) shouldBe 1
   }
 
-  it should "leave the render a counted failure, not an exception, when every poster fails" in {
-    val shrinker = new PosterShrinker { def coverSlot(f: Path): Option[BufferedImage] = throw new javax.imageio.IIOException("Bogus input colorspace") }
+  it should "leave the film a card without a poster, not an exception, when every poster fails" in {
+    val shrinker = new PosterShrinker { def coverSlot(f: Path): Either[String, BufferedImage] = throw new javax.imageio.IIOException("Bogus input colorspace") }
     val store = tempStore()
     val posters = new ShareCardPosters(store, serving(() => file(image(BufferedImage.TYPE_INT_RGB), "jpg")), shrinker, ShareCardMetrics.noop)
     val service = new ShareCardService(models.Country.default, store, posters, new services.tasks.InMemoryTaskQueue, ShareCardMetrics.noop, clockAt(T0))
-    service.render(service.inputs(film()), Seq(ShareCardReason.NewFilm)) shouldBe ShareCardMetrics.Outcome.Failed
+    service.render(service.inputs(film()), Seq(ShareCardReason.NewFilm)) shouldBe ShareCardMetrics.Outcome.RenderedNoPoster
   }
 }
