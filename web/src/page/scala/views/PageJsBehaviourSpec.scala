@@ -967,6 +967,42 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // Two picks more than the debounce apart used to put two PUTs on the wire at
+  // once; they can land in either order, leaving the account on the OLDER pick
+  // while this page shows the newer one — which the next load then undid. One
+  // push at a time, the latest pick last, as on both apps.
+  it should "send language pushes one at a time, the latest pick last" in {
+    onLoggedInIndex { page =>
+      awaitOwnReconcile(page)
+      try {
+        page.eval(
+          "window._realFetch = window.fetch; window._langPuts = []; window._langInFlight = 0; window._langMaxInFlight = 0;" +
+          "window._releaseFirstPut = null;" +
+          "window.fetch = function (url, opts) {" +
+          "  if (!/\\/api\\/me\\/state$/.test(String(url)) || !opts || opts.method !== 'PUT') return window._realFetch(url, opts);" +
+          "  window._langPuts.push(JSON.parse(opts.body).language);" +
+          "  window._langInFlight++; window._langMaxInFlight = Math.max(window._langMaxInFlight, window._langInFlight);" +
+          "  const answer = () => { window._langInFlight--; return new Response(null, { status: 204 }); };" +
+          "  if (window._langPuts.length === 1) return new Promise(resolve => { window._releaseFirstPut = () => resolve(answer()); });" +
+          "  return Promise.resolve(answer());" +
+          "}; 0")
+        page.eval("onLanguageChange('es')")
+        page.waitFor("typeof window._releaseFirstPut === 'function'", timeoutMs = 5000)
+        page.eval("onLanguageChange('de')")
+        page.eval("new Promise(resolve => setTimeout(resolve, 800))")
+        page.evalInt("window._langPuts.length") shouldBe 1
+        page.eval("window._releaseFirstPut()")
+        page.waitFor("window._langPuts.length === 2 && window._langInFlight === 0", timeoutMs = 5000)
+        page.evalString("JSON.stringify(window._langPuts)") shouldBe """["es","de"]"""
+        page.evalInt("window._langMaxInFlight") shouldBe 1
+        page.evalString("String(localStorage.getItem('kinowo_lang_pending'))") shouldBe "null"
+      } finally {
+        page.eval("if (window._realFetch) window.fetch = window._realFetch; " +
+                  "localStorage.removeItem('kinowo_lang'); localStorage.removeItem('kinowo_lang_pending'); 0")
+      }
+    }
+  }
+
   // ── the dynamic picker: static fallback replaced by JS on load ──────────
 
   "the landing page" should "hide the static, no-JS city list and mount the dynamic picker in its place" in {

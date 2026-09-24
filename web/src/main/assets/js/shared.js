@@ -2449,24 +2449,36 @@
   // server too — same cross-file hook shape as `window.refreshDateLabels`.
   window.scheduleServerSync = scheduleServerSync;
 
-  // The ONLY remaining caller is `onLanguageChange`, via `scheduleServerSync`
-  // above (i18n.js) — hiddenFilms/disabledCinemas both left this mechanism,
-  // so the body carries `language` alone now. `language` rides along only
+  // Called for a pick (`onLanguageChange` in i18n.js, via the debounce in
+  // `scheduleServerSync` above), by `reconcileLanguage`, and by the unload flush
+  // below — hiddenFilms/disabledCinemas both left this mechanism, so the body
+  // carries `language` alone now. `language` rides along only
   // when THIS device has an explicit pick — never the resolved default a
   // visitor never chose, which would otherwise stamp e.g. "pl" onto the
   // account the first time a logged-in Polish visitor merely loads a page,
   // and then force Polish on them on an English deployment they sign into
   // next.
+  //
+  // One push on the wire at a time, each reading the pick current when it goes:
+  // two concurrent PUTs can land in either order and leave the account on the
+  // older pick (the apps' `sendPendingLanguage`). The unload flush alone goes
+  // straight out — nothing chained behind a response runs once the page is gone.
+  let _languagePush = Promise.resolve();
   function pushStateToServer(opts) {
     _serverSyncTimer = 0;
+    if (opts && opts.keepalive) return _sendLanguage(true);
+    _languagePush = _languagePush.then(() => _sendLanguage(false));
+    return _languagePush;
+  }
+  function _sendLanguage(keepalive) {
     const lang = (() => { try { return localStorage.getItem('kinowo_lang'); } catch { return null; } })();
     if (!lang) return; // nothing left to push
-    fetch(mountPrefix() + '/api/me/state', {
+    return fetch(mountPrefix() + '/api/me/state', {
       method:  'PUT',
       headers: { 'Content-Type': 'application/json' },
       // `keepalive` lets the request outlive an unloading document so the
       // pagehide flush below isn't dropped mid-navigation.
-      keepalive: !!(opts && opts.keepalive),
+      keepalive: keepalive,
       body:    JSON.stringify({ language: lang })
     }).then(resp => {
       // Landed: the account holds it — unless a newer pick is already owed.
