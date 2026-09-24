@@ -16,6 +16,13 @@ class TestWebWiring(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty) e
   // disabled state a silent no-op rather than a boot failure.
   override lazy val mongoConnection: MongoConnection =
     new MongoConnection(uri = None, dbName = "kinowo", required = false)
+  // Every other connection production opens from the environment stays shut too: CI runs
+  // the unit suites with MONGODB_URI set, and each of these would otherwise dial the real
+  // cluster — the /debug stacks with every OTHER country in tow.
+  override protected lazy val mongoSharedClient: Option[org.mongodb.scala.MongoClient] = None
+  override protected lazy val debugExtraClient: Option[org.mongodb.scala.MongoClient]  = None
+  override lazy val usersConnection: MongoConnection       = mongoConnection
+  override lazy val movieMirrorConnection: MongoConnection = mongoConnection
   override lazy val movieRepository = new InMemoryMovieRepository(seed)
   override lazy val readModelRepository: ReadModelReader = {
     val store = new InMemoryReadModelRepository()
