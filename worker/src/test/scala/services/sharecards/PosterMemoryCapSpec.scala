@@ -75,7 +75,7 @@ class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
     }
     val store = tempStore()
     val posters = new ShareCardPosters(store, download, new VipsPosterShrinker(binary = None), ShareCardMetrics.noop)
-    posters.load(Seq("https://m.media-amazon.com/images/M/abc@._V1_.jpg")) shouldBe None
+    posters.load("f1", Seq("https://m.media-amazon.com/images/M/abc@._V1_.jpg")) shouldBe None
     tried.toSeq shouldBe Seq(
       "https://m.media-amazon.com/images/M/abc@._V1_SX780.jpg",
       "https://m.media-amazon.com/images/M/abc@._V1_SX500.jpg",

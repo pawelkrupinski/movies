@@ -122,11 +122,12 @@ www_vhost="${www_vhost//$share_dir/$cards}"
 # THE FIXTURES: two real cards, and one of everything that sits beside them and must NOT be served --
 # a card still being written, the worker's poster cache, a dot-file, a file one level too shallow,
 # and a "secret" OUTSIDE the root for the traversal cases to aim at.
-mkdir -p "$cards/pl/.posters" "$cards/uk"
-printf 'CARD-PL' > "$cards/pl/film1-pl-0123456789abcdef.jpg"
-printf 'CARD-UK' > "$cards/uk/film2-en-fedcba9876543210.jpg"
-printf 'PARTIAL' > "$cards/pl/film3-pl-0000000000000000.jpg.tmp"
-printf 'POSTER'  > "$cards/pl/.posters/poster.jpg"
+mkdir -p "$cards/pl/.posters" "$cards/pl/.base" "$cards/uk"
+printf 'CARD-PL' > "$cards/pl/f0123456789abcd.jpg"
+printf 'CARD-UK' > "$cards/uk/h0123456789abcdef0123.jpg"
+printf 'PARTIAL' > "$cards/pl/f3.jpg.k3sworker1-7-deadbeef.tmp"
+printf 'POSTER'  > "$cards/pl/.posters/f0123456789abcd.jpg"
+printf 'BASE'    > "$cards/pl/.base/f0123456789abcd.jpg"
 printf 'HIDDEN'  > "$cards/pl/.hidden.jpg"
 printf 'SHALLOW' > "$cards/shallow.jpg"
 printf 'SECRET'  > "$work/secret.jpg"
@@ -272,24 +273,27 @@ header_of() { # <port> <path> <header>
   curl -s --path-as-is -o /dev/null -D - -A "$HUMAN" "http://127.0.0.1:$1$2" | tr -d '\r' | awk -F': ' -v h="$3" 'tolower($1)==tolower(h){print $2}'
 }
 echo "==> the share cards, off disk"
-card 200 "$port" "/share-cards/pl/film1-pl-0123456789abcdef.jpg" "a card that exists is served" CARD-PL
-card 200 "$port" "/share-cards/uk/film2-en-fedcba9876543210.jpg" "...for a path-mounted country too: /uk does not shadow /share-cards/uk" CARD-UK
-card 200 "$www_port" "/share-cards/pl/film1-pl-0123456789abcdef.jpg" "...and on the www. vhost, which redirects everything ELSE" CARD-PL
-cc="$(header_of "$port" "/share-cards/pl/film1-pl-0123456789abcdef.jpg" Cache-Control)"
-if [ "$cc" = "public, max-age=31536000, immutable" ]; then echo "  ok  the card is cached for a year as immutable (its name is its content hash)"
+card 200 "$port" "/share-cards/pl/f0123456789abcd.jpg" "a card that exists is served" CARD-PL
+card 200 "$port" "/share-cards/uk/h0123456789abcdef0123.jpg" "...for a path-mounted country too: /uk does not shadow /share-cards/uk" CARD-UK
+card 200 "$www_port" "/share-cards/pl/f0123456789abcd.jpg" "...and on the www. vhost, which redirects everything ELSE" CARD-PL
+card 200 "$port" "/share-cards/pl/f0123456789abcd.jpg?v=0123456789abcdef" "the ?v= a page names is ignored: the one file per film is served" CARD-PL
+card 200 "$port" "/share-cards/pl/f0123456789abcd.jpg?v=ffffffffffffffff" "...and a STALE ?v= gets the latest card, not a 404" CARD-PL
+cc="$(header_of "$port" "/share-cards/pl/f0123456789abcd.jpg" Cache-Control)"
+if [ "$cc" = "public, max-age=31536000, immutable" ]; then echo "  ok  the card is cached for a year as immutable (its ?v= names its content)"
 else echo "  FAILED Cache-Control was '$cc'"; failed=1; fi
-ct="$(header_of "$port" "/share-cards/pl/film1-pl-0123456789abcdef.jpg" Content-Type)"
+ct="$(header_of "$port" "/share-cards/pl/f0123456789abcd.jpg" Content-Type)"
 if [ "$ct" = "image/jpeg" ]; then echo "  ok  ...as image/jpeg"
 else echo "  FAILED Content-Type was '$ct', wanted image/jpeg"; failed=1; fi
-card 404 "$port" "/share-cards/pl/film9-pl-aaaaaaaaaaaaaaaa.jpg" "a missing card is a 404, not the app"
-cc="$(header_of "$port" "/share-cards/pl/film9-pl-aaaaaaaaaaaaaaaa.jpg" Cache-Control)"
+card 404 "$port" "/share-cards/pl/f999.jpg" "a missing card is a 404, not the app"
+cc="$(header_of "$port" "/share-cards/pl/f999.jpg" Cache-Control)"
 case "$cc" in *immutable*) echo "  FAILED a 404 is cached as immutable ('$cc'), so a card written later stays missing"; failed=1 ;;
   *) echo "  ok  ...and the 404 is not cached as immutable" ;; esac
 card 404 "$port" "/share-cards/pl/"   "the country directory is never listed"
 card 404 "$port" "/share-cards/pl"    "...with or without its slash"
 card 404 "$port" "/share-cards/"      "...nor the root"
-card 404 "$port" "/share-cards/pl/film3-pl-0000000000000000.jpg.tmp" "a card still being written (.tmp) is not served"
-card 404 "$port" "/share-cards/pl/.posters/poster.jpg" "the worker's poster cache (.posters/) is not served"
+card 404 "$port" "/share-cards/pl/f3.jpg.k3sworker1-7-deadbeef.tmp" "a card still being written (.tmp) is not served"
+card 404 "$port" "/share-cards/pl/.posters/f0123456789abcd.jpg" "the worker's poster cache (.posters/) is not served"
+card 404 "$port" "/share-cards/pl/.base/f0123456789abcd.jpg" "...nor its card bases (.base/)"
 card 404 "$port" "/share-cards/pl/.hidden.jpg" "...nor any dot-file"
 card 404 "$port" "/share-cards/shallow.jpg" "only <cc>/<file> is a card; a file one level up is not"
 # TRAVERSAL. Caddy's path matcher decodes and cleans the path BEFORE matching, so every spelling of
@@ -299,8 +303,8 @@ card 404 "$port" "/share-cards/shallow.jpg" "only <cc>/<file> is a card; a file 
 card 502 "$port" "/share-cards/pl/../../secret.jpg" "a literal ../ is cleaned to /secret.jpg before matching, so it never reaches the disk"
 card 502 "$port" "/share-cards/pl/..%2f..%2fsecret.jpg" "...and so is an encoded ../"
 card 502 "$port" "/share-cards/pl/%2e%2e/%2e%2e/secret.jpg" "...and an encoded .. segment"
-card 404 "$port" "/share-cards/pl/../uk/film9-en-aaaaaaaaaaaaaaaa.jpg" "a .. that stays inside /share-cards is cleaned and still only finds cards"
-card 502 "$port" "/uk/share-cards/uk/film2-en-fedcba9876543210.jpg" "/uk/share-cards/... is the UK app's path, not the disk's"
+card 404 "$port" "/share-cards/pl/../uk/f999.jpg" "a .. that stays inside /share-cards is cleaned and still only finds cards"
+card 502 "$port" "/uk/share-cards/uk/h0123456789abcdef0123.jpg" "/uk/share-cards/... is the UK app's path, not the disk's"
 card 301 "$www_port" "/poznan/" "the www. vhost still redirects everything that is not a card"
 
 # HSTS: one year, still without preload or includeSubDomains (both one-way doors -- see the vhost).

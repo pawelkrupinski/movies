@@ -262,42 +262,43 @@ object PosterPipeline {
 }
 
 /**
- * A film card's poster, from the store's poster cache when any candidate is cached, else fetched,
- * shrunk to the slot and cached — so only a poster URL the country has never seen costs a
- * download and a decode. Keyed by the SHA-256 of the poster URL as the film lists it (not of the
- * smaller rendition fetched in its place), so the cache key moves exactly when the film's poster does.
+ * A film card's poster: the film's cached one when it is still one of the film's candidates, else
+ * fetched, shrunk to the slot and cached — ONE poster file per film, overwritten when the chosen
+ * poster changes. The file is stamped with the key of the URL it came from (the poster as the film
+ * lists it, not the smaller rendition fetched in its place), which is how a changed poster is told.
  */
 class ShareCardPosters(store: ShareCardStore, download: PosterDownload, shrinker: PosterShrinker,
                        metrics: ShareCardMetrics) extends Logging {
 
-  /** The first usable candidate — its URL, which the card's name hashes, and its slot image — or
+  /** The first usable candidate — its URL, which the card's version hashes, and its slot image — or
    *  None when none can be had. */
-  def load(candidates: Seq[String]): Option[(String, BufferedImage)] =
-    candidates.iterator.flatMap(url => cached(url).map(url -> _)).nextOption() match {
+  def load(filmId: String, candidates: Seq[String]): Option[(String, BufferedImage)] =
+    cached(filmId, candidates) match {
       case hit @ Some(_) => metrics.posterCache(hit = true); hit
       case None =>
         metrics.posterCache(hit = false)
-        candidates.iterator.flatMap(url => fetchAndCache(url).map(url -> _)).nextOption()
+        candidates.iterator.flatMap(url => fetchAndCache(filmId, url).map(url -> _)).nextOption()
     }
 
-  private def cached(url: String): Option[BufferedImage] = {
-    val path = store.posterPath(ShareCardPosters.key(url))
-    if (!Files.isRegularFile(path)) None else Try(Option(ImageIO.read(path.toFile))).toOption.flatten
+  private def cached(filmId: String, candidates: Seq[String]): Option[(String, BufferedImage)] = {
+    val path = store.posterPath(filmId)
+    store.version(path).flatMap(key => candidates.find(ShareCardPosters.key(_) == key))
+      .flatMap(url => Try(Option(ImageIO.read(path.toFile))).toOption.flatten.map(url -> _))
   }
 
-  private def fetchAndCache(url: String): Option[BufferedImage] = {
+  private def fetchAndCache(filmId: String, url: String): Option[BufferedImage] = {
     val slot = PosterRendition.candidates(url).iterator.flatMap { rendition =>
       download.fetch(rendition).flatMap { file =>
         try shrinker.coverSlot(file) finally Files.deleteIfExists(file)
       }
     }.nextOption()
     metrics.posterFetch(ok = slot.isDefined)
-    slot.foreach(image => store.writeAtomically(store.posterPath(ShareCardPosters.key(url)), PosterPipeline.encodePoster(image)))
+    slot.foreach(image => store.writeAtomically(store.posterPath(filmId), PosterPipeline.encodePoster(image), ShareCardPosters.key(url)))
     slot
   }
 }
 
 object ShareCardPosters {
-  /** A poster's cache key: the hex SHA-256 of its URL. */
-  def key(url: String): String = tools.Digest.sha256Hex(url)
+  /** A poster's key: 16 hex characters of the SHA-256 of its URL. */
+  def key(url: String): String = tools.Digest.sha256Hex(url).take(16)
 }

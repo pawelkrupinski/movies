@@ -32,6 +32,8 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
     def requestFirstCard(movie: ResolvedMovie, until: Instant): Unit = requested += (movie._id -> until)
     def onPendingCardLanded(filmId: String): Unit          = landed += filmId
     def onProjected(movie: ResolvedMovie, screened: Boolean): Unit = projected += movie._id
+    val retired = scala.collection.mutable.Buffer.empty[String]
+    def onRetired(filmId: String): Unit                    = retired += filmId
   }
 
   private def slot = SourceData(title = Some("Foo"), releaseYear = Some(2024), filmUrl = Some("https://mk/foo"),
@@ -105,6 +107,15 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
     ledger.projected.toSeq shouldBe Seq(id)
     ledger.requested shouldBe empty
     projector.heldCards shouldBe empty
+  }
+
+  "A film dropped from the read model" should "have its share-card files retired at once" in new Setup {
+    val id = upsert(7.5)
+    ledger.cards = Map(id -> "card.jpg?v=0")
+    projector.refreshShareCard(id)
+    projector.onMovieDelete(repository.findAll().head.id)
+    published(id) shouldBe None
+    ledger.retired.toSeq shouldBe Seq(id)
   }
 
   "With no share cards at all" should "publish at once, carrying no card" in {

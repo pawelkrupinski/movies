@@ -19,7 +19,7 @@ import scala.util.Try
  * of flooding it (a 2,000-film country backfills in well under two hours).
  *
  * Each tick also publishes `kinowo_worker_share_cards_coverage_ratio` — the share of films on
- * screen whose card for their CURRENT inputs exists — from the sweep's list of expected names.
+ * screen whose card for their CURRENT inputs exists — from the sweep's list of films and their card inputs.
  */
 class ShareCardBackfill(
   service:    ShareCardService,

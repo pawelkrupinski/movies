@@ -393,6 +393,7 @@ class ReadModelProjector(
     // web_screenings). During a "cards vanish" episode this names every dropped
     // filmId, one INFO line each — the read-model half of the removal audit.
     services.movies.RemovalAudit.cardRemoved(filmId, screeningIds.size, reason = audit)
+    shareCards.onRetired(filmId)
     metrics.recordWrite(Target.Movie, Op.Delete, 1)
     if (screeningIds.nonEmpty) metrics.recordWrite(Target.Screening, Op.Delete, screeningIds.size)
     forgetCard(filmId)

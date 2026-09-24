@@ -13,7 +13,7 @@ import scala.concurrent.duration.*
  *  The worker renders each film's Open Graph card into this country's share-card directory
  *  (`KINOWO_SHARE_CARD_DIR`, default `/share-cards` — the pod's mount of the node's
  *  `/var/lib/kinowo/share-cards/<cc>`; a process running several countries sets it to
- *  `/share-cards/{cc}`), and the projection records each card's file name on `web_movies`.
+ *  `/share-cards/{cc}`), and the projection records each card's path and version on `web_movies`.
  *  Everything runs on the task queue: renders, the backfill, the prune and budget passes, the end
  *  of a first-publish hold and the Facebook re-scrape. Without a writable directory the whole
  *  pipeline is off and the projection runs with [[ShareCardLedger.none]]. */
@@ -31,7 +31,7 @@ trait ShareCardWiring { self: WorkerWiring =>
   lazy val shareCardService: ShareCardService = new ShareCardService(
     country, shareCardStore,
     new ShareCardPosters(shareCardStore, new HttpPosterDownload(), new VipsPosterShrinker(), shareCardMetrics),
-    readModelRepository, taskQueue, shareCardMetrics, clock)
+    taskQueue, shareCardMetrics, clock)
 
   /** What the projection asks about share cards. */
   lazy val shareCardLedger: ShareCardLedger = if (shareCardsEnabled) shareCardService else ShareCardLedger.none

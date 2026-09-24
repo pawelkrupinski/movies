@@ -37,13 +37,12 @@ class ShareCardConcurrencySpec extends AnyFlatSpec with Matchers {
     // Every card either replica wrote is there — young and unrecorded, so neither janitor may touch
     // it, even at a one-byte budget — and every one is a whole JPEG.
     films.foreach { m =>
-      val name = first.service.existing(first.service.inputs(m))
-      name shouldBe defined
-      ImageIO.read(store.cardPath(name.get).toFile).getWidth shouldBe 1200
+      first.service.existing(first.service.inputs(m)) shouldBe defined
+      ImageIO.read(store.cardPath(m._id).toFile).getWidth shouldBe 1200
     }
     store.list().filter(_.temp) shouldBe empty
-    // Each distinct poster was cached, whole, however the two replicas raced on it.
-    store.list().count(_.kind == ShareCardStore.Kind.Poster) shouldBe 3
+    // One card, base and poster per film, whole, however the two replicas raced on the renames.
+    ShareCardStore.Kind.all.foreach(kind => store.list().count(_.kind == kind) shouldBe films.size)
 
     // Once past the grace period, the budget holds: nothing is referenced, so it all may go.
     Files.list(store.root).iterator.asScala.toSeq.filter(Files.isRegularFile(_))

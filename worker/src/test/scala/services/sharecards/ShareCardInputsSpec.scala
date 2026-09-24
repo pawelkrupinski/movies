@@ -26,12 +26,12 @@ class ShareCardInputsSpec extends AnyFlatSpec with Matchers {
     ShareCardInputs.of(film(ratings = ratings.copy(imdb = Some(7.86))), Country.default).drawnHash should not be inputs.drawnHash
   }
 
-  it should "name the card by the poster it was drawn from, not by the whole candidate list" in {
+  it should "version the card by the poster it was drawn from, not by the whole candidate list" in {
     val churned = ShareCardInputs.of(film().copy(fallbackPosterUrls = Seq("https://cinema.example/other.jpg")), Country.default)
     churned.drawnHash shouldBe inputs.drawnHash
-    churned.candidateNames.head shouldBe inputs.candidateNames.head       // drawn from the primary: same card
-    inputs.fileName(Some("https://cdn.example/poster-a.jpg")) shouldBe inputs.candidateNames.head
-    inputs.fileName(Some("https://cdn.example/b.jpg")) should not be inputs.candidateNames.head
+    churned.candidateVersions.head shouldBe inputs.candidateVersions.head // drawn from the primary: same card
+    inputs.version(Some("https://cdn.example/poster-a.jpg")) shouldBe inputs.candidateVersions.head
+    inputs.version(Some("https://cdn.example/b.jpg")) should not be inputs.candidateVersions.head
   }
 
   it should "draw the director label in the deployment's language" in {
@@ -46,13 +46,16 @@ class ShareCardInputsSpec extends AnyFlatSpec with Matchers {
     ShareCardInputs.fromPayload(Map("filmId" -> "x")) shouldBe None
   }
 
-  "A card file name" should "carry a plain film id and hash any other, and parse back" in {
+  "A card's name and URL" should "carry a plain film id, hash any other, and name the version" in {
     ShareCardFile.token("f0123456789abcd") shouldBe "f0123456789abcd"
     ShareCardFile.token("diuna|2021~dune") should fullyMatch regex "h[0-9a-f]{20}"
-    val name = inputs.candidateNames.head
-    name should fullyMatch regex "f0123456789abcd-[0-9a-f]{16}\\.jpg"
-    ShareCardFile.parse(name).map(_.drawnHash) shouldBe Some(inputs.drawnHash)
-    ShareCardFile.parse(name).map(_.posterHash) shouldBe Some(ShareCardFile.posterHash(Some("https://cdn.example/poster-a.jpg")))
-    ShareCardFile.parse("f1-0123456789abcdef.jpg.host-1-ab12cd34.tmp") shouldBe None
+    ShareCardFile.name("f0123456789abcd") shouldBe "f0123456789abcd.jpg"
+    val version = inputs.candidateVersions.head
+    version should fullyMatch regex "[0-9a-f]{16}"
+    val url = ShareCardFile.url("f0123456789abcd", version)
+    url shouldBe s"f0123456789abcd.jpg?v=$version"
+    ShareCardFile.versionOf(url).map(_.drawnHash) shouldBe Some(inputs.drawnHash)
+    ShareCardFile.versionOf(url).map(_.posterHash) shouldBe Some(ShareCardFile.posterHash(Some("https://cdn.example/poster-a.jpg")))
+    ShareCardFile.fileOf(url) shouldBe "f0123456789abcd.jpg"
   }
 }

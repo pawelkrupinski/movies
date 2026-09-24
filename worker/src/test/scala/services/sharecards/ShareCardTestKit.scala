@@ -78,6 +78,6 @@ object ShareCardTestKit {
     val queue     = new InMemoryTaskQueue
     val metrics: ShareCardMetrics = ShareCardMetrics.noop
     lazy val posters = new ShareCardPosters(store, download, javaShrinker, metrics)
-    lazy val service = new ShareCardService(Country.default, store, posters, readModel, queue, metrics, clock)
+    lazy val service = new ShareCardService(Country.default, store, posters, queue, metrics, clock)
   }
 }

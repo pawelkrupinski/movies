@@ -28,7 +28,8 @@ class ShareCardBaseSpec extends AnyFlatSpec with Matchers {
     val rig = new PathRig
     val movie = film()
     rig.service.render(rig.service.inputs(movie), Seq(ShareCardReason.NewFilm)) shouldBe ShareCardMetrics.Outcome.Rendered
-    bases(rig.store) shouldBe Seq(s"${rig.service.inputs(movie).baseKey(Some(movie.posterUrl.get))}.jpg")
+    bases(rig.store) shouldBe Seq("f0123456789abcd.jpg")
+    rig.store.version(rig.store.basePath(movie._id)) shouldBe Some(rig.service.inputs(movie).baseVersion(Some(movie.posterUrl.get)))
     rig.path(ShareCardMetrics.Path.BaseRebuild) shouldBe 1
   }
 
@@ -45,14 +46,16 @@ class ShareCardBaseSpec extends AnyFlatSpec with Matchers {
     bases(rig.store) should have size 1
   }
 
-  "A title change" should "rebuild the base from the cached poster, not from the old base or card" in {
+  "A title change" should "rebuild the base from the cached poster, not from the old base or card, in place" in {
     val rig = new PathRig
     val movie = film()
     rig.service.render(rig.service.inputs(movie), Seq(ShareCardReason.NewFilm))
     rig.service.render(rig.service.inputs(movie.copy(title = "Diuna 2")), Seq(ShareCardReason.Title))
     rig.path(ShareCardMetrics.Path.BaseRebuild) shouldBe 2
     rig.download.total shouldBe 1                                       // the poster came from the cache
-    bases(rig.store) should have size 2
+    bases(rig.store) should have size 1
+    rig.store.version(rig.store.basePath(movie._id)) shouldBe
+      Some(rig.service.inputs(movie.copy(title = "Diuna 2")).baseVersion(Some(movie.posterUrl.get)))
   }
 
   "A posterless film" should "be drawn whole, keeping no base" in {
@@ -73,20 +76,13 @@ class ShareCardBaseSpec extends AnyFlatSpec with Matchers {
     info(f"base_hit median ${hits.sorted.apply(2)}%.1f ms, base_rebuild (poster cached) median ${rebuilds.sorted.apply(2)}%.1f ms; base ${baseBytes.sum / baseBytes.size / 1024} KB")
   }
 
-  "The janitor" should "keep the base a current card was drawn on, and prune an unreferenced one past the grace period" in {
+  "The budget" should "count a film's base, and never evict the base of a current card" in {
     val rig = new Rig
     val movie = film()
     rig.service.render(rig.service.inputs(movie), Seq(ShareCardReason.NewFilm))
-    rig.service.render(rig.service.inputs(movie.copy(title = "Diuna 2")), Seq(ShareCardReason.Title))
-    val current = rig.service.existing(rig.service.inputs(movie.copy(title = "Diuna 2"))).get
-    rig.readModel.upsertMovie(movie.copy(title = "Diuna 2", shareCard = Some(current)))
-    rig.readModel.upsertScreening(screening(movie._id))
+    rig.readModel.upsertMovie(movie.copy(shareCard = rig.service.current(movie)))
     def age(dir: Path): Unit = Files.list(dir).iterator.asScala.foreach(Files.setLastModifiedTime(_, FileTime.from(T0.minusSeconds(7200))))
     age(rig.store.root); age(rig.store.root.resolve(ShareCardStore.BaseDir)); age(rig.store.root.resolve(ShareCardStore.PosterDir))
-    val report = new ShareCardJanitor(rig.store, rig.readModel, 1L << 30, rig.metrics, rig.clock, _ => ()).prune()
-    report.deleted.get(ShareCardMetrics.PruneReason.Unreferenced) shouldBe Some(1)
-    bases(rig.store) shouldBe Seq(s"${ShareCardFile.parse(current).get.baseKey}.jpg")
-    // …and the budget counts it and never evicts it.
     val tight = new ShareCardJanitor(rig.store, rig.readModel, 1L, rig.metrics, rig.clock, _ => ()).enforceBudget()
     tight.currentBytes shouldBe rig.store.list().map(_.bytes).sum
     bases(rig.store) should have size 1

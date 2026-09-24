@@ -32,9 +32,8 @@ object ShareCardMetrics {
     val all: Seq[String] = Seq(Rendered, Existing, Failed)
   }
   object PruneReason {
-    val Retired = "retired"; val Superseded = "superseded"; val Unreferenced = "unreferenced"
-    val Budget = "budget"; val Temp = "temp"
-    val all: Seq[String] = Seq(Retired, Superseded, Unreferenced, Budget, Temp)
+    val Retired = "retired"; val Budget = "budget"; val Temp = "temp"
+    val all: Seq[String] = Seq(Retired, Budget, Temp)
   }
   /** How a rendered card was drawn — see [[ShareCardService.render]]. */
   object Path {
@@ -54,7 +53,7 @@ object ShareCardMetrics {
       .help("Files in the country's share-card directory by kind (card, poster, base).")
       .labelNames("country", "kind").register(registry)
     private[ShareCardMetrics] val currentBytes = Gauge.builder().name("kinowo_worker_share_cards_current_bytes")
-      .help("Bytes no pruner may delete, by kind: cards web_movies points at, their bases, and posters of films on screen.")
+      .help("Bytes no pruner may delete, by kind: the card, base and poster of every film web_movies points a card at (in the daily prune: of films on screen).")
       .labelNames("country", "kind").register(registry)
     private[ShareCardMetrics] val budget = Gauge.builder().name("kinowo_worker_share_cards_budget_bytes")
       .help("The country's share-card disk budget (KINOWO_SHARE_CARD_BUDGET_MB), cards, posters and bases together.")
@@ -69,7 +68,7 @@ object ShareCardMetrics {
       .help("Cards drawn, by how: base_hit (a cached base plus the badges — a ratings change), base_rebuild (the base redrawn from the cached poster), full (a posterless card, drawn whole).")
       .labelNames("country", "path").register(registry)
     private[ShareCardMetrics] val pruned = Counter.builder().name("kinowo_worker_share_cards_pruned")
-      .help("Share-card files deleted, by kind and reason (retired, superseded, unreferenced, budget, temp).")
+      .help("Share-card files deleted, by kind and reason (retired = a film gone from the read model or the screens, budget, temp = an abandoned write).")
       .labelNames("country", "kind", "reason").register(registry)
     private[ShareCardMetrics] val posterCache = Counter.builder().name("kinowo_worker_share_cards_poster_cache")
       .help("Poster-cache lookups for a render: hit (a cached slot used) or miss (fetched).")

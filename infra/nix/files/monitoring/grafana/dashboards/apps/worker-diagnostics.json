@@ -1904,7 +1904,7 @@
     {
       "id": 36,
       "title": "Share-card directory — bytes on disk vs the budget, by country and kind",
-      "description": "`kinowo_worker_share_cards_bytes{kind}`: everything in the country's share-card directory on k3s-worker-1 -- rendered cards (`kind=\"card\"`), the poster cache (`kind=\"poster\"`) and the card bases (`kind=\"base\"`), temp files included -- against `kinowo_worker_share_cards_budget_bytes` (KINOWO_SHARE_CARD_BUDGET_MB, 1 GiB by default), which covers all three TOGETHER. `current` (`kinowo_worker_share_cards_current_bytes`) is the part no pruner may delete: cards web_movies points at, the bases they were drawn on, and posters of films on screen. The janitor evicts the rest oldest-first every ten minutes once the total passes the budget. ShareCardsNearBudget fires on the total above 85% for 30m; ShareCardsOverBudget when current alone exceeds the budget. Gauges are read from the directory, so every replica reports the same number: `max`, never `sum`. Files per kind are on the right axis.",
+      "description": "`kinowo_worker_share_cards_bytes{kind}`: everything in the country's share-card directory on k3s-worker-1 -- rendered cards (`kind=\"card\"`), the poster cache (`kind=\"poster\"`) and the card bases (`kind=\"base\"`), temp files included -- against `kinowo_worker_share_cards_budget_bytes` (KINOWO_SHARE_CARD_BUDGET_MB, 1 GiB by default), which covers all three TOGETHER. `current` (`kinowo_worker_share_cards_current_bytes`) is the part no pruner may delete: the card, base and poster of every film web_movies points a card at. The janitor evicts the rest oldest-first every ten minutes once the total passes the budget. ShareCardsNearBudget fires on the total above 85% for 30m; ShareCardsOverBudget when current alone exceeds the budget. Gauges are read from the directory, so every replica reports the same number: `max`, never `sum`. Files per kind are on the right axis.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -2151,7 +2151,7 @@
     {
       "id": 39,
       "title": "Share-card deletions — by kind and reason",
-      "description": "`kinowo_worker_share_cards_pruned_total{kind,reason}`: files the janitor deleted. retired = the card of a film no longer on screen; superseded = an older card of a film that points at a newer one; unreferenced = a cached poster no film on screen uses; budget = evicted oldest-first to get under the budget; temp = an abandoned write older than the one-hour grace. Nothing younger than an hour is ever deleted, and no card web_movies points at. The daily prune's burst is normal; a steady budget line means the directory lives at its budget.",
+      "description": "`kinowo_worker_share_cards_pruned_total{kind,reason}`: files deleted. Each film has at most three -- its card, base and poster, each overwritten in place by a re-render, so nothing is ever superseded. retired = the files of a film dropped from the read model (at once, by the projection) or off the screens (the daily prune); budget = evicted oldest-first to get under the budget; temp = an abandoned write older than the one-hour grace. Nothing younger than an hour is ever deleted, and no file of a film web_movies points a card at. The daily prune's burst is normal; a steady budget line means the directory lives at its budget.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",

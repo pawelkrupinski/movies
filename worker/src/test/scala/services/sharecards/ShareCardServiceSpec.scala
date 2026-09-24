@@ -15,15 +15,15 @@ class ShareCardServiceSpec extends AnyFlatSpec with Matchers {
   private def renderTask(rig: Rig, inputs: ShareCardInputs, attempts: Int = 1): HandlerOutcome =
     new RenderShareCardHandler(rig.service).handle(Task("t", TaskType.RenderShareCard, "k", inputs.toPayload, attempts))
 
-  "A RenderShareCard task" should "write the card under its content-addressed name, atomically" in {
+  "A RenderShareCard task" should "write the film's card, stamped with its version, atomically" in {
     val rig    = new Rig
     val inputs = rig.service.inputs(film())
     renderTask(rig, inputs) shouldBe HandlerOutcome.Done
 
-    val name = inputs.fileName(Some("https://cdn.example/poster-a.jpg"))
-    name should fullyMatch regex "f0123456789abcd-[0-9a-f]{16}\\.jpg"
-    rig.service.existing(inputs) shouldBe Some(name)
-    val image = ImageIO.read(rig.store.cardPath(name).toFile)
+    val version = inputs.version(Some("https://cdn.example/poster-a.jpg"))
+    rig.service.existing(inputs) shouldBe Some(version)
+    rig.service.current(film()) shouldBe Some(s"f0123456789abcd.jpg?v=$version")
+    val image = ImageIO.read(rig.store.cardPath(film()._id).toFile)
     (image.getWidth, image.getHeight) shouldBe ((1200, 630))
     // No temp file survives a completed write.
     Files.list(rig.store.root).iterator.asScala.map(_.getFileName.toString).filter(_.endsWith(".tmp")).toSeq shouldBe empty
@@ -34,17 +34,16 @@ class ShareCardServiceSpec extends AnyFlatSpec with Matchers {
     val movie  = film(poster = "https://multikino.example/403.jpg").copy(fallbackPosterUrls = Seq("https://cdn.example/b.jpg"))
     val inputs = rig.service.inputs(movie)
     rig.service.render(inputs, Seq(ShareCardReason.NewFilm)) shouldBe ShareCardMetrics.Outcome.Rendered
-    rig.service.existing(inputs) shouldBe Some(inputs.fileName(Some("https://cdn.example/b.jpg")))
+    rig.service.existing(inputs) shouldBe Some(inputs.version(Some("https://cdn.example/b.jpg")))
   }
 
   it should "not render again for inputs whose card exists" in {
     val rig    = new Rig
     val inputs = rig.service.inputs(film())
     rig.service.render(inputs, Seq(ShareCardReason.Backfill)) shouldBe ShareCardMetrics.Outcome.Rendered
-    val name   = rig.service.existing(inputs).get
-    val before = Files.getLastModifiedTime(rig.store.cardPath(name))
+    val before = Files.getLastModifiedTime(rig.store.cardPath(film()._id))
     rig.service.render(inputs, Seq(ShareCardReason.Backfill)) shouldBe ShareCardMetrics.Outcome.Existing
-    Files.getLastModifiedTime(rig.store.cardPath(name)) shouldBe before
+    Files.getLastModifiedTime(rig.store.cardPath(film()._id)) shouldBe before
     rig.download.total shouldBe 1
   }
 
@@ -134,7 +133,7 @@ class ShareCardServiceSpec extends AnyFlatSpec with Matchers {
     val first  = new Rig
     val second = new Rig(store = first.store)
     val inputs = first.service.inputs(film())
-    val secondOnSharedQueue = new ShareCardService(models.Country.default, first.store, second.posters, second.readModel, first.queue, second.metrics, second.clock)
+    val secondOnSharedQueue = new ShareCardService(models.Country.default, first.store, second.posters, first.queue, second.metrics, second.clock)
     first.service.enqueueRender(inputs, Seq(ShareCardReason.NewFilm)) shouldBe services.tasks.EnqueueResult.Added
     secondOnSharedQueue.enqueueRender(inputs, Seq(ShareCardReason.NewFilm)) shouldBe services.tasks.EnqueueResult.Duplicate
     drain(first.queue).map(_.taskType) shouldBe Seq(TaskType.RenderShareCard)

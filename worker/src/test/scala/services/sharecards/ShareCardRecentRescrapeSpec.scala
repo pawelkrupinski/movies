@@ -5,8 +5,6 @@ import org.scalatest.matchers.should.Matchers
 import services.tasks.TaskType
 import ShareCardTestKit.*
 
-import java.nio.file.Files
-import java.nio.file.attribute.FileTime
 import java.time.Instant
 import scala.concurrent.duration.*
 
@@ -22,20 +20,13 @@ class ShareCardRecentRescrapeSpec extends AnyFlatSpec with Matchers {
 
   /** A rig whose clock reads `now`, over a store where `film` was first published at `published`. */
   private def rigWith(now: Instant, published: Option[Instant]): (Rig, models.ResolvedMovie) = {
-    val rig = new Rig(clock = clockAt(now))
     val movie = film()
-    published.foreach { at =>
-      rig.store.markPublished(ShareCardFile.token(movie._id))
-      Files.setLastModifiedTime(rig.store.publishedMarker(ShareCardFile.token(movie._id)), FileTime.from(at))
-    }
-    rig.service.render(rig.service.inputs(movie), Seq(ShareCardReason.NewFilm))
-    drainAll(rig)
+    // The first card: the gate's (recording the publication) when there was one, else the backfill's.
+    val first = new Rig(clock = clockAt(published.getOrElse(now)))
+    first.service.render(first.service.inputs(movie), Seq(ShareCardReason.NewFilm), first = published.isDefined)
+    val rig = new Rig(store = first.store, clock = clockAt(now))
     (rig, movie)
   }
-
-  private def drainAll(rig: Rig): Unit =
-    Iterator.continually(rig.queue.claim("spec", 1.minute, T0.plusSeconds(365L * 86400))).takeWhile(_.isDefined).flatten
-      .foreach(t => rig.queue.complete(t.id, "spec"))
 
   private def rerate(rig: Rig, movie: models.ResolvedMovie): Unit =
     rig.service.render(rig.service.inputs(movie.copy(ratings = movie.ratings.copy(imdb = Some(8.4)))), Seq(ShareCardReason.Ratings))
@@ -67,9 +58,11 @@ class ShareCardRecentRescrapeSpec extends AnyFlatSpec with Matchers {
 
   "A film's first card" should "not be a change: nothing was cached before it" in {
     val rig = new Rig
-    rig.service.requestFirstCard(film(), T0.plusSeconds(120))
-    rig.service.render(rig.service.inputs(film()), Seq(ShareCardReason.NewFilm))
+    rig.service.render(rig.service.inputs(film()), Seq(ShareCardReason.NewFilm), first = true)
     rescrapes(rig) shouldBe empty
-    rig.store.publishedAt(ShareCardFile.token(film()._id)) shouldBe defined
+    rig.store.published(rig.store.cardPath(film()._id)) shouldBe Some(T0)
+    // …and every later card of the film carries the date forward.
+    rig.service.render(rig.service.inputs(film().copy(title = "Diuna 2")), Seq(ShareCardReason.Title))
+    rig.store.published(rig.store.cardPath(film()._id)) shouldBe Some(T0)
   }
 }

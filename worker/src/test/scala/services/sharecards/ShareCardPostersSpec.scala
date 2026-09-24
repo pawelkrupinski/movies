@@ -12,32 +12,35 @@ class ShareCardPostersSpec extends AnyFlatSpec with Matchers {
 
   private val url = "https://cdn.example/poster-a.jpg"
 
-  "The poster cache" should "fetch a new poster URL once, cache it slot-sized, and serve the next render from disk" in {
+  private val film1 = "f0123456789abcd"
+
+  "The poster cache" should "fetch a film's poster once, cache it slot-sized, and serve the next render from disk" in {
     val rig = new Rig
-    rig.posters.load(Seq(url)).map { case (chosen, i) => (chosen, i.getWidth, i.getHeight) } shouldBe Some((url, 420, 630))
+    rig.posters.load(film1, Seq(url)).map { case (chosen, i) => (chosen, i.getWidth, i.getHeight) } shouldBe Some((url, 420, 630))
     rig.download.total shouldBe 1
-    val cached = rig.store.posterPath(ShareCardPosters.key(url))
-    Files.isRegularFile(cached) shouldBe true
+    val cached = rig.store.posterPath(film1)
+    rig.store.version(cached) shouldBe Some(ShareCardPosters.key(url))
     val slot = ImageIO.read(cached.toFile)
     (slot.getWidth, slot.getHeight) shouldBe ((420, 630))
 
-    rig.posters.load(Seq(url)) shouldBe defined
+    rig.posters.load(film1, Seq(url)) shouldBe defined
     rig.download.total shouldBe 1                                  // no fetch for a cached poster
   }
 
-  it should "render a card from a cached poster without any fetch" in {
+  it should "overwrite the film's one poster when its poster changes" in {
     val rig = new Rig
-    rig.posters.load(Seq(url))
-    val other = rig.service.inputs(film(id = "fother"))           // same poster URL, a different film
-    rig.service.render(other, Seq(ShareCardReason.NewFilm)) shouldBe ShareCardMetrics.Outcome.Rendered
-    rig.download.total shouldBe 1
+    rig.posters.load(film1, Seq(url))
+    rig.posters.load(film1, Seq("https://cdn.example/new.jpg")).map(_._1) shouldBe Some("https://cdn.example/new.jpg")
+    rig.download.total shouldBe 2
+    rig.store.version(rig.store.posterPath(film1)) shouldBe Some(ShareCardPosters.key("https://cdn.example/new.jpg"))
+    Files.list(rig.store.root.resolve(ShareCardStore.PosterDir)).count() shouldBe 1
   }
 
   it should "use a cached fallback rather than refetch a primary that keeps failing" in {
     val primary = "https://multikino.example/403.jpg"
     val rig = new Rig(download = new CountingDownload(failing = Set(primary)))
-    rig.posters.load(Seq(primary, url)).map(_._1) shouldBe Some(url)
-    rig.posters.load(Seq(primary, url)).map(_._1) shouldBe Some(url)
+    rig.posters.load(film1, Seq(primary, url)).map(_._1) shouldBe Some(url)
+    rig.posters.load(film1, Seq(primary, url)).map(_._1) shouldBe Some(url)
     rig.download.calls.get(primary).get shouldBe 1
     rig.download.calls.get(url).get shouldBe 1
   }

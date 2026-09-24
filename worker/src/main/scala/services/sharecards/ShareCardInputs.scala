@@ -4,11 +4,11 @@ import models.{Country, ResolvedMovie}
 import tools.{Digest, OgCardRenderer, ShareCardText, SynopsisMarkdown}
 
 /**
- * Everything one film's share card DRAWS — and therefore everything its content-addressed file
- * name hashes. Two cards with equal inputs are the same picture, so a card is rendered once per
- * distinct picture and a changed picture is a new file and a new URL (which is what makes the
- * `immutable` cache header on `/share-cards/...` true). One card per film: it is drawn in the
- * deployment's language, the one a crawler fetching `og:image` sees.
+ * Everything one film's share card DRAWS — and therefore everything its version hashes. Two cards
+ * with equal inputs are the same picture, so a card is rendered once per distinct picture, and a
+ * changed picture is a new version and so a new URL (`<film>.jpg?v=<version>` — which is what makes
+ * the `immutable` cache header on `/share-cards/...` true per URL). One card per film: it is drawn in
+ * the deployment's language, the one a crawler fetching `og:image` sees.
  *
  * THE HASH IS OF WHAT IS DRAWN, AT THE PRECISION IT IS DRAWN, so a change nobody could see never
  * re-renders: the rating badges' own text (IMDb and Filmweb to one decimal, RT as a whole
@@ -18,11 +18,11 @@ import tools.{Digest, OgCardRenderer, ShareCardText, SynopsisMarkdown}
  * while its primary poster essentially never changes (measured 2026-09-24), so a card stays current
  * for as long as the poster it chose is still one of the film's candidates.
  *
- * The name is therefore `<film token>-<layout hash><ratings hash><poster hash>.jpg`: five hex
- * characters over everything drawn but the ratings and the poster, five over the rating badges, six
- * over the chosen poster URL — sixteen together, as the contract fixes. "Is there a card for these
- * inputs" is one existence check per candidate poster, and "did only the ratings move" is read off
- * the current card's name.
+ * The card's VERSION is therefore `<layout hash><ratings hash><poster hash>`: five hex characters
+ * over everything drawn but the ratings and the poster, five over the rating badges, six over the
+ * chosen poster URL — sixteen together. It is stamped inside the film's one card file and names the
+ * card's URL (`<film>.jpg?v=<version>`); "is the card current for these inputs" is its version
+ * being one of [[candidateVersions]], and the base's own version is the layout and poster parts.
  */
 final case class ShareCardInputs(
   filmId:     String,
@@ -71,18 +71,16 @@ final case class ShareCardInputs(
   /** Everything drawn but the poster: [[layoutHash]] then [[ratingsHash]]. */
   def drawnHash: String = layoutHash + ratingsHash
 
-  /** The card's file name when drawn from `poster` (None: a film with no poster at all). */
-  def fileName(poster: Option[String]): String =
-    ShareCardFile(ShareCardFile.token(filmId), drawnHash + ShareCardFile.posterHash(poster)).name
+  /** The card's version when drawn from `poster` (None: a film with no poster at all). */
+  def version(poster: Option[String]): String = drawnHash + ShareCardFile.posterHash(poster)
 
-  /** The key of these inputs' card BASE when drawn from `poster` — see [[ShareCardFile.baseKey]]. */
-  def baseKey(poster: Option[String]): String =
-    s"${ShareCardFile.token(filmId)}-$layoutHash${ShareCardFile.posterHash(poster)}"
+  /** The version of these inputs' card BASE drawn from `poster`: everything but the ratings. */
+  def baseVersion(poster: Option[String]): String = layoutHash + ShareCardFile.posterHash(poster)
 
-  /** Every name a current card of these inputs could have — one per candidate poster, in the
+  /** Every version a current card of these inputs could have — one per candidate poster, in the
    *  order the renderer tries them. */
-  def candidateNames: Seq[String] =
-    if (posterUrls.isEmpty) Seq(fileName(None)) else posterUrls.map(url => fileName(Some(url)))
+  def candidateVersions: Seq[String] =
+    if (posterUrls.isEmpty) Seq(version(None)) else posterUrls.map(url => version(Some(url)))
 
   /** The inputs as a task payload, so the render task draws exactly what was asked for — on
    *  whichever replica claims it, and for a card the first-publish gate holds (which is in no
@@ -177,33 +175,44 @@ object ShareCardReason {
   val all: Seq[String]        = Seq(NewFilm, Backfill, Poster) ++ InputParts
 }
 
-/** A card file name, `<token>-<hash>.jpg`: [[ShareCardInputs.drawnHash]] then the poster's. */
-final case class ShareCardFile(token: String, hash: String) {
-  def name: String = s"$token-$hash.jpg"
-  def drawnHash: String   = hash.take(10)
+/** A card's version, as stamped in its file and carried in its URL — see [[ShareCardInputs]]. */
+final case class ShareCardVersion(hash: String) {
   def layoutHash: String  = hash.take(5)
   def ratingsHash: String = hash.slice(5, 10)
+  def drawnHash: String   = hash.take(10)
   def posterHash: String  = hash.drop(10)
-  /** The key of the BASE this card was drawn on: everything but the ratings, and the poster. */
-  def baseKey: String = s"$token-$layoutHash$posterHash"
 }
 
+object ShareCardVersion {
+  private val Pattern = """[0-9a-f]{16}""".r
+  def parse(hash: String): Option[ShareCardVersion] = Option.when(Pattern.matches(hash))(ShareCardVersion(hash))
+}
+
+/** How a film's files are named: `<token>.jpg`, and its card's URL path `<token>.jpg?v=<version>`. */
 object ShareCardFile {
-  private val Pattern = """([a-z0-9]+)-([0-9a-f]{16})\.jpg""".r
-
-  def parse(name: String): Option[ShareCardFile] = name match {
-    case Pattern(token, hash) => Some(ShareCardFile(token, hash))
-    case _                    => None
-  }
-
   /** Six hex characters of SHA-256 over the poster URL the card was drawn from ("" for none). */
   def posterHash(poster: Option[String]): String = Digest.sha256Hex(poster.getOrElse("")).take(6)
 
   /** A film id as it may appear in a file name and a URL path: the id itself when it is already
    *  plain lower-case alphanumerics (every `FilmId.fresh` id — `f` + hex), else `h` + a digest of
-   *  it (a legacy `title|year` id, or a `~variant` card id), which keeps `-` out so the name
-   *  parses back unambiguously. */
+   *  it (a legacy `title|year` id, or a `~variant` card id). Always `[a-z0-9]+`. */
   def token(filmId: String): String =
     if (filmId.nonEmpty && filmId.forall(c => (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))) filmId
     else "h" + Digest.sha256Hex(filmId).take(20)
+
+  /** The film's file name in every one of the store's directories. */
+  def name(filmId: String): String = s"${token(filmId)}.jpg"
+
+  /** What `web_movies.shareCard` holds: the card's path under `/share-cards/<cc>/`, with its version. */
+  def url(filmId: String, version: String): String = s"${name(filmId)}?v=$version"
+
+  /** The version a `shareCard` value names. */
+  def versionOf(shareCard: String): Option[ShareCardVersion] =
+    shareCard.split("\\?v=", 2) match {
+      case Array(_, version) => ShareCardVersion.parse(version)
+      case _                 => None
+    }
+
+  /** The file name a `shareCard` value points at. */
+  def fileOf(shareCard: String): String = shareCard.takeWhile(_ != '?')
 }

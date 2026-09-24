@@ -255,20 +255,25 @@ in
               Serve `/share-cards/<cc>/<file>.jpg` straight off this directory, ahead of every
               upstream, redirect and path prefix on the vhost.
 
-              THE SHARE CARDS ARE FILES, NOT A ROUTE. The worker renders each film's og:image once,
-              writes it to `<dir>/<cc>/<filmId>-<lang>-<hash>.jpg` on this host (a hostPath volume
-              in movies-gitops' worker overlays) and puts the name in the read model; the web only
-              ever emits the URL. So a card request never reaches a JVM -- which is the point: the
+              THE SHARE CARDS ARE FILES, NOT A ROUTE. The worker renders each film's og:image to ONE
+              file, `<dir>/<cc>/<film>.jpg` on this host (a hostPath volume in movies-gitops' worker
+              overlays; `<film>` is `[a-z0-9]+` -- the film id, or a digest of a legacy one), and
+              overwrites it in place (tmp + rename) on every re-render, so this path is always the
+              latest card and nothing old is left behind. The read model carries
+              `<film>.jpg?v=<version>`; the web only ever emits that URL. So a card request never reaches a JVM -- which is the point: the
               JVM-rendered cards are what AhrefsBot turned into seven web-pl OOM kills on
               2026-09-21.
 
               WHAT IT ANSWERS, and test_public_proxy.sh asks each of these of the real Caddy:
                 - a file that exists, at exactly `/share-cards/<two lowercase letters>/<name>.jpg`,
-                  with `Cache-Control: public, max-age=31536000, immutable` -- the name carries a
-                  content hash, so a changed card is a new URL and an old one never changes;
+                  whatever its query string, with `Cache-Control: public, max-age=31536000,
+                  immutable`. Immutable is true PER URL: the `?v=<version>` names the card's
+                  content, a changed card gets a new `v`, and Cloudflare keys its cache on the whole
+                  URL, query included (checked 2026-09-24: `?v=a` MISS then HIT, `?v=b` MISS). A
+                  stale `v` still gets the latest bytes, which is what a preview wants;
                 - 404 for EVERYTHING ELSE under `/share-cards/`: a missing file, a directory (never
                   listed), a `.jpg.tmp` the worker is still writing, any dot-named segment (the
-                  worker's `.posters/` cache lives beside the cards and is not public), and any
+                  worker's `.posters/` and `.base/` caches live beside the cards and are not public), and any
                   deeper or shallower path. The whole prefix is claimed here, so none of it falls
                   through to the app either.
               Traversal is closed twice over: the matcher admits exactly two plain segments, and

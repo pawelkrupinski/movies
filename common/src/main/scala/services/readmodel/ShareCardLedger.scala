@@ -7,7 +7,7 @@ import models.ResolvedMovie
  * projection (common) and the worker's rendered-card files (which only the worker can see).
  *
  * The projection writes `ResolvedMovie.shareCard` from [[current]], so the web learns a card's
- * file name from `web_movies` and never touches the filesystem. [[onProjected]] is where a
+ * path and version from `web_movies` and never touches the filesystem. [[onProjected]] is where a
  * change to a card's inputs turns into a render; [[readyToPublish]] and [[requestFirstCard]]
  * are the FIRST-PUBLISH GATE: a link-preview scraper (Facebook above all) fetches `og:image`
  * once and caches the answer for about a month, so a film that goes public before its card
@@ -16,9 +16,9 @@ import models.ResolvedMovie
  */
 trait ShareCardLedger {
 
-  /** The card file for `movie`, as its `web_movies` document should carry it: the card for its
-   *  current inputs when that one exists, else the last card it had while the new one renders,
-   *  else none. */
+  /** `movie`'s card as its `web_movies` document should carry it — `<film>.jpg?v=<version>` of the
+   *  film's one card file, the latest render (so the previous card while a new one renders), or
+   *  none. */
   def current(movie: ResolvedMovie): Option[String]
 
   /** True when `movie` may go public now: every card it should have exists, or it will never
@@ -38,6 +38,10 @@ trait ShareCardLedger {
   /** A card's document was written with new content. `screened` is whether it has any
    *  screenings (a film with none is not served, so it gets no card). */
   def onProjected(movie: ResolvedMovie, screened: Boolean): Unit
+
+  /** A card left the read model (its row was deleted, merged away, or lost its readiness): its
+   *  share-card files have nothing left to serve. */
+  def onRetired(filmId: String): Unit
 }
 
 object ShareCardLedger {
@@ -49,5 +53,6 @@ object ShareCardLedger {
     def requestFirstCard(movie: ResolvedMovie, until: java.time.Instant): Unit = ()
     def onPendingCardLanded(filmId: String): Unit            = ()
     def onProjected(movie: ResolvedMovie, screened: Boolean): Unit = ()
+    def onRetired(filmId: String): Unit                      = ()
   }
 }
