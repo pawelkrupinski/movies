@@ -175,12 +175,12 @@ class OgCardServiceSpec extends AnyFlatSpec with Matchers {
     val fetch: PosterFetch = url =>
       if (url.contains("primary")) None
       else { Thread.sleep(delay); Some(jpeg) }
-    val start = System.currentTimeMillis()
+    val start = System.nanoTime() / 1000000
     val bytes = new OgCardService(fetch).card(
       "Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None),
       Seq("https://cdn/primary.jpg", "https://cdn/fallback-a.jpg", "https://cdn/fallback-b.jpg", "https://cdn/fallback-c.jpg"),
       "kinowo.net")
-    val elapsed = System.currentTimeMillis() - start
+    val elapsed = System.nanoTime() / 1000000 - start
     posterRed(bytes) should be > 150
     elapsed should be < (delay * 3)
   }

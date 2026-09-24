@@ -45,9 +45,9 @@ class AdaptiveTimeoutScraperSpec extends AnyFlatSpec with Matchers {
     val executor = DaemonExecutors.virtualThreadEC("test-adaptive-timeout")
     try {
       val s = new AdaptiveTimeoutScraper(delegate(Set("slow.pl")) { Thread.sleep(3000); OneMovie }, stats, executor)
-      val t0 = System.currentTimeMillis()
+      val t0 = System.nanoTime() / 1000000
       val thrown = intercept[TimeoutException](s.fetch())
-      val elapsed = System.currentTimeMillis() - t0
+      val elapsed = System.nanoTime() / 1000000 - t0
       thrown.getMessage should include ("slow.pl")
       elapsed should be < 2000L                       // returned at the budget, not after the 3s sleep
       stats.deadlineFor("slow.pl") shouldBe 120.millis // the cut scrape did NOT feed the baseline

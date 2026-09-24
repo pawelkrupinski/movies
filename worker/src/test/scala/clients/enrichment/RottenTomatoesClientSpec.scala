@@ -459,11 +459,11 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
     val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
       def get(url: String): String = { Thread.sleep(delay); throw new RuntimeException("HTTP 404") }
     })
-    val start = System.currentTimeMillis()
+    val start = System.nanoTime() / 1000000
     // "The North" + year has 4 candidate slugs (year-suffixed/bare x
     // primary/de-articled); sequential would take ~4*150=600ms.
     c.canonicalUrl("The North", Some(2026)) shouldBe None
-    (System.currentTimeMillis() - start) should be < (delay * 2)
+    (System.nanoTime() / 1000000 - start) should be < (delay * 2)
   }
 
   // The RT twin of MetacriticClientSpec's "Odyssey" regression: the correct

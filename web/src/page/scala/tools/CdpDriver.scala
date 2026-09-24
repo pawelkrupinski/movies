@@ -130,9 +130,9 @@ object Chrome {
       val buf = new Array[Byte](4096)
       try while (in.read(buf) >= 0) () catch { case _: Throwable => () }
     }, "chrome-stdout-drain").start()
-    val deadline = System.currentTimeMillis() + 10_000
+    val deadline = System.nanoTime() / 1000000 + 10_000
     var ready = false
-    while (!ready && System.currentTimeMillis() < deadline) {
+    while (!ready && System.nanoTime() / 1000000 < deadline) {
       try {
         httpGet(s"http://localhost:$port/json/version")
         ready = true
@@ -415,8 +415,8 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
    *  for `document.readyState === 'complete'`; can also be used by tests
    *  that need to wait for a debounced filter pass to settle. */
   def waitFor(js: String, timeoutMs: Int = 2000, pollMs: Int = 50): Unit = {
-    val deadline = System.currentTimeMillis() + timeoutMs
-    while (System.currentTimeMillis() < deadline) {
+    val deadline = System.nanoTime() / 1000000 + timeoutMs
+    while (System.nanoTime() / 1000000 < deadline) {
       if (evalBool(s"!!($js)")) return
       Thread.sleep(pollMs)
     }

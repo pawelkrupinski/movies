@@ -24,12 +24,12 @@ class ConcurrentCandidateProbeSpec extends AnyFlatSpec with Matchers {
   it should "run every candidate's probe concurrently rather than one at a time" in {
     val delay = 150
     val candidates = 1 to 4
-    val start = System.currentTimeMillis()
+    val start = System.nanoTime() / 1000000
     ConcurrentCandidateProbe.firstMatch("t", candidates.toSeq) { c =>
       Thread.sleep(delay.toLong)
       None
     }
-    val elapsed = System.currentTimeMillis() - start
+    val elapsed = System.nanoTime() / 1000000 - start
     // Sequential would take ~4*150=600ms; concurrent should land near one
     // delay. Generous ceiling to absorb scheduling jitter in CI.
     elapsed should be < (delay * candidates.size / 2).toLong
@@ -74,12 +74,12 @@ class ConcurrentCandidateProbeSpec extends AnyFlatSpec with Matchers {
   it should "cap concurrent probes at maxConcurrent, running the rest in later rounds" in {
     val delay = 150
     val candidates = 1 to 4
-    val start = System.currentTimeMillis()
+    val start = System.nanoTime() / 1000000
     ConcurrentCandidateProbe.firstMatch("t", candidates.toSeq, maxConcurrent = 2) { c =>
       Thread.sleep(delay.toLong)
       None
     }
-    val elapsed = System.currentTimeMillis() - start
+    val elapsed = System.nanoTime() / 1000000 - start
     // 4 candidates at 2-at-a-time is 2 rounds of ~150ms — comfortably more than
     // one round (the unbounded case) and comfortably less than 4 sequential.
     elapsed should be >= delay.toLong

@@ -44,8 +44,8 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
    *  lost the race on a slow CI Mongo, so the second instance missed the cache
    *  and re-fetched, failing `gets == 1` intermittently. */
   private def awaitStored(url: String): Unit = {
-    val deadline = System.currentTimeMillis() + 10.seconds.toMillis
-    while (System.currentTimeMillis() < deadline &&
+    val deadline = System.nanoTime() / 1000000 + 10.seconds.toMillis
+    while (System.nanoTime() / 1000000 < deadline &&
            Await.result(db.getCollection(collName).find(Filters.eq("_id", url)).headOption(), 5.seconds).isEmpty)
       Thread.sleep(25)
   }
@@ -122,12 +122,12 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
    *  same reason `awaitStored` exists. Fails with the expiry it actually found, so a
    *  regression here says WHICH duration won. */
   private def awaitExpiry(collection: String, wantedSeconds: Long): Unit = {
-    val deadline = System.currentTimeMillis() + 10.seconds.toMillis
+    val deadline = System.nanoTime() / 1000000 + 10.seconds.toMillis
     def current: Option[Long] =
       Await.result(db.getCollection(collection).listIndexes().toFuture(), 5.seconds)
         .find(_.get("key").exists(_.asDocument().containsKey("fetchedAt")))
         .flatMap(_.get("expireAfterSeconds")).map(_.asNumber().longValue())
-    while (System.currentTimeMillis() < deadline && !current.contains(wantedSeconds)) Thread.sleep(25)
+    while (System.nanoTime() / 1000000 < deadline && !current.contains(wantedSeconds)) Thread.sleep(25)
     current shouldBe Some(wantedSeconds)
   }
 

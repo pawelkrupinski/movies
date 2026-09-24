@@ -12,9 +12,9 @@ class EventuallySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "give the check one last try at the deadline instead of failing on a sleep that overran it" in {
-    val start = System.currentTimeMillis()
+    val start = System.nanoTime() / 1000000
     // Passes only once 150ms have gone by; the poll interval (500ms) overshoots the whole
     // budget, so the only attempt that can pass is one made AFTER the deadline's sleep.
-    Eventually.eventually(assert(System.currentTimeMillis() - start >= 150), timeoutMs = 200, pollMs = 500)
+    Eventually.eventually(assert(System.nanoTime() / 1000000 - start >= 150), timeoutMs = 200, pollMs = 500)
   }
 }

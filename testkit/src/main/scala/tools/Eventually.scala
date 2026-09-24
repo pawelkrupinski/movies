@@ -11,12 +11,12 @@ object Eventually {
   def eventually(check: => org.scalatest.Assertion,
                  timeoutMs: Long = 2000,
                  pollMs: Long = 20): org.scalatest.Assertion = {
-    val deadline = System.currentTimeMillis() + timeoutMs
+    val deadline = System.nanoTime() / 1000000 + timeoutMs
     while (true) {
       try return check
       catch {
         case t: Throwable =>
-          val remaining = deadline - System.currentTimeMillis()
+          val remaining = deadline - System.nanoTime() / 1000000
           if (remaining <= 0) throw t
           Thread.sleep(math.min(pollMs, remaining))
       }
@@ -30,9 +30,9 @@ object Eventually {
    *  reimplemented inline, slightly differently, in three separate `it/` specs before
    *  this became the one copy. */
   def poll(timeoutMs: Long, pollMs: Long = 100)(probe: => Boolean): Boolean = {
-    val deadline = System.currentTimeMillis() + timeoutMs
+    val deadline = System.nanoTime() / 1000000 + timeoutMs
     var ok = probe
-    while (!ok && System.currentTimeMillis() < deadline) { Thread.sleep(pollMs); ok = probe }
+    while (!ok && System.nanoTime() / 1000000 < deadline) { Thread.sleep(pollMs); ok = probe }
     ok
   }
 }

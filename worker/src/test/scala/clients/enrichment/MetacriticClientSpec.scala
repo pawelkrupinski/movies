@@ -686,11 +686,11 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
     val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String = { Thread.sleep(delay); throw new RuntimeException("HTTP 404") }
     })
-    val start = System.currentTimeMillis()
+    val start = System.nanoTime() / 1000000
     // "The Odyssey" + year has 4 candidate slugs (see candidateSlugs above);
     // sequential would take ~4*150=600ms.
     c.canonicalResolve("The Odyssey", Some(2026)) shouldBe None
-    (System.currentTimeMillis() - start) should be < (delay * 2)
+    (System.nanoTime() / 1000000 - start) should be < (delay * 2)
   }
 
   // Same "Odyssey" regression as above ("prefer the year-suffixed slug…"), but

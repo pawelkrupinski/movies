@@ -74,9 +74,9 @@ class CdpProxyAuthSpec extends AnyFlatSpec with Matchers {
         case None => cancel("Chrome not installed — skipping CDP proxy-auth spec")
         case Some(chrome) =>
           try {
-            val t0 = System.currentTimeMillis()
+            val t0 = System.nanoTime() / 1000000
             noException should be thrownBy chrome.openPage("https://127.0.0.1:1/") { _ => () }
-            (System.currentTimeMillis() - t0) should be < 15000L
+            (System.nanoTime() / 1000000 - t0) should be < 15000L
           } finally chrome.close()
       }
     finally proxy.close()
