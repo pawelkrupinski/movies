@@ -173,10 +173,10 @@ groups:
             before resizing anything. Heap, non-heap pools and direct buffers are
             `jvm_memory_committed_bytes` and `jvm_buffer_pool_used_bytes{pool="direct"}`; RSS minus
             their sum is memory NO JVM POOL SEES (native allocations: image decoding, fonts, glibc
-            arenas). On web that has been the og-image share cards under a crawler sweep -- check the
-            og-image request rate in /var/log/caddy/access-*.log on k3s-worker-1 and
-            `kinowo_web_cache_entries{cache="og_card_film"}` climbing. Raising the limit only buys
-            time if the growth is unbounded.
+            arenas). On web that used to be the og-image share cards under a crawler sweep; the worker
+            renders them since 2026-09-24, and its poster shrinks run in a vips subprocess that counts
+            against the same cgroup -- check `kinowo_worker_share_cards_render_total` for a render
+            burst. Raising the limit only buys time if the growth is unbounded.
 
       # A JVM WROTE A HEAP DUMP, i.e. it died of (or was about to die of) heap exhaustion and left
       # the evidence on k3s-worker-1. `ExitOnOutOfMemoryError` makes a heap OOM a clean exit and a

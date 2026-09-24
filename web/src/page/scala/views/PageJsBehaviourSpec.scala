@@ -64,6 +64,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // Every film the city will ever show, counted off the fixture corpus the index
   // is rendered from — the number of cards the served document must already hold.
   private var corpusFilmCount: Int = 0
+  // The first fixture film's title — the one the og:image cases open.
+  private var firstFixtureTitle: String = ""
   // `/api/me/state`'s served body — an `AtomicReference`, not a plain var: the
   // language reconcile tests below mutate it from the test thread while
   // `TestHttpServer`'s own handler thread reads it for the reload that test
@@ -99,6 +101,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val cinemas = city.cinemaDisplayNames
       val schedules       = service.toSchedules(city, now)
       corpusFilmCount     = schedules.size
+      firstFixtureTitle   = schedules.head.movie.title
 
       // The city-selection landing (`/` with no city cookie) — drives the
       // inline city-search filter. City-independent, so served off-prefix.
@@ -140,9 +143,18 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         schedules.find(s => tools.Slugify(s.movie.title) == slug) match {
           case Some(s) =>
             views.html.film(s, s"http://test.local/movie/$slug",
-              ogDescription = "", devMode = false).body
+              ogDescription = "", ogImageUrl = controllers.ShareCardUrl.forFilm(s.resolved, city, "http://test.local"),
+              devMode = false).body
           case None    => "<html><body>Film not found</body></html>"
         }
+      // The first fixture film once the worker has drawn its share card: `og:image` names the
+      // card on the request's host instead of the city's static card.
+      val shareCardFilmHtml: String = {
+        val s = schedules.head
+        val withCard = s.copy(resolved = s.resolved.copy(shareCard = Some(PageJsBehaviourSpec.ShareCardFile)))
+        views.html.film(withCard, "http://test.local/movie-share-card", ogDescription = "",
+          ogImageUrl = controllers.ShareCardUrl.forFilm(withCard.resolved, city, "http://test.local"), devMode = false).body
+      }
       // A purpose-built /movie render for the cinema-fold test: the Poznań
       // fixture corpus tops out at a handful of venues a day, but the fold
       // only bites past ten — London's `one-night-only` runs 62. Take the
@@ -336,6 +348,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           // Isolated /movie render with two sibling-city links — the "W
           // innych miastach" popup test.
           case p if sub(p) == "/movie-other-cities" => otherCitiesHtml
+          case p if sub(p) == "/movie-share-card"   => shareCardFilmHtml
           // A large city's listing — crosses the instant-day-swap threshold.
           case p if sub(p) == "/many-showtimes" => manyShowtimesHtml
           // The city-selection landing (no city prefix — there's no city yet).
@@ -2215,6 +2228,25 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         """[...document.querySelectorAll('.cinema-link[data-cinema]')]
           |  .filter(a => a.offsetParent !== null).map(a => a.dataset.cinema)""".stripMargin
       ).as[Seq[String]] should contain noElementsOf off
+    }
+  }
+
+  // ── /movie og:image: the worker's share card, or the city's static card ────
+  // What a link-preview scraper reads off the parsed page. The fixture corpus has no cards, so
+  // a plain film page names the city's card; the purpose-built render names the film's own.
+  private def ogImage(page: CdpPage): String =
+    page.eval("document.querySelector('meta[property=\"og:image\"]').content").as[String]
+
+  "the /movie og:image" should "name the city's static card while the film has no share card" in {
+    onPath(s"/movie/${tools.Slugify(firstFixtureTitle)}") { page =>
+      ogImage(page) shouldBe "https://kinowo.net/assets/img/og-poznan.jpg"
+      page.evalInt("document.querySelectorAll('meta[property=\"og:image:width\"][content=\"1200\"]').length") shouldBe 1
+    }
+  }
+
+  it should "name the film's share card on the request's host once the worker has drawn it" in {
+    onPath("/movie-share-card") { page =>
+      ogImage(page) shouldBe s"http://test.local/share-cards/pl/${PageJsBehaviourSpec.ShareCardFile}"
     }
   }
 
@@ -6183,4 +6215,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+}
+
+object PageJsBehaviourSpec {
+  /** A share card as web_movies carries it: the path under /share-cards/<cc>/ and its version. */
+  val ShareCardFile = "f0123456789abcd.jpg?v=0123456789abcdef"
 }

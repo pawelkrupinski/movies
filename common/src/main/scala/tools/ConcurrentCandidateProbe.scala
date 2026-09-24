@@ -37,7 +37,7 @@ object ConcurrentCandidateProbe {
    *  (an image download + decode, not a slug lookup) needs this: firing every
    *  candidate at once multiplies PEAK memory by the candidate count, which is
    *  what OOM-killed `web-pl` racing up to 5 poster fallbacks together
-   *  (2026-09-17) — see [[tools.PosterImageLoader]]. Rounds are evaluated
+   *  (2026-09-17), when the web's share-card poster loader used it. Rounds are evaluated
    *  lazily (later rounds never start once an earlier one has a match or
    *  throws), so this only trades some latency for a memory ceiling; it does
    *  not change the priority-order or failure-propagation guarantees above. */

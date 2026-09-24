@@ -24,16 +24,7 @@ trait ControllersWiring { self: Wiring =>
 
   lazy val landingController = new LandingController(controllerComponents, models.Country.fromEnv)
   lazy val encodedResponseCache = new EncodedResponseCache
-  // Fetches + composites the per-film Open Graph share card. Its own poster
-  // fetch (not the scraper's httoFetch) so slow cinema origins get a generous
-  // connect budget instead of the fan-out's tight 5s.
-  lazy val ogCardService     = new tools.OgCardService(new tools.HttpPosterFetch)
-  lazy val cityOgCardService = new tools.CityOgCardService(new tools.HttpPosterFetch)
-
-  // The ONE pool the share cards render on in this process — see `tools.ShareCardPool`.
-  lazy val shareCardPool: tools.ShareCardPool = tools.ShareCardPool.production()
-  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, oauthProviders.keySet, environmentMode, encodedResponseCache, ogCardService, cityOgCardService,
-                                                   shareCardPool = shareCardPool)
+  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, oauthProviders.keySet, environmentMode, encodedResponseCache)
   // Global country+city catalog for the mobile apps (`GET /api/catalog`), served
   // identically by every deployment — no per-country/read-model dependency.
   lazy val catalogController = new CatalogController(controllerComponents)

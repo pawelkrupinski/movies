@@ -25,14 +25,15 @@
   @* og:locale — the film page's language for FB/Messenger previews (de_DE etc.),
      driven by the city's country language. *@
   <meta property="og:locale"      content="@{city.country.language.toLanguageTag.replace("-", "_")}">
-  @* og:image is a server-composited 1200×630 card (MovieController.ogImage /
-     tools.OgCardRenderer): the full poster + title + rating badges baked into
-     one landscape image. Handing the raw 2:3 poster to og:image instead let
+  @* og:image is the film's 1200×630 share card, rendered by the worker and served
+     from disk (controllers.ShareCardUrl), or the city's card while it has none:
+     the full poster + title + rating badges baked into one landscape image. Handing the raw 2:3 poster to og:image instead let
      Messenger / Facebook crop it to their ~1.91:1 frame (lopping off the
      poster top + bottom) and never surface the ratings; a 1.91:1 composite
      makes that crop a no-op and keeps everything visible. summary_large_image
      tells X to render it big. The card URL is absolute so every scraper can
-     fetch it. *@
+     fetch it, and its type and size are declared so a first share renders
+     without waiting on the image. *@
   @if(ogImageUrl.nonEmpty) {
     <meta property="og:image"        content="@ogImageUrl">
     <meta property="og:image:type"   content="image/jpeg">

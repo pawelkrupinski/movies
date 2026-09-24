@@ -38,13 +38,9 @@ trait MetricsWiring { self: Wiring =>
   // lazy for the same reason as the line above: registering the gauges is the
   // whole job. It forces `encodedResponseCache`, which is only a map — no I/O, no
   // ordering constraint.
-  // Every in-heap cache this tier holds, on one `kinowo_web_cache_*` family. The
-  // two share-card caches are separate budgets (film cards get four times the
-  // city cards'), so they are separate series rather than a sum.
+  // Every in-heap cache this tier holds, on one `kinowo_web_cache_*` family.
   private val webCacheMetrics = new WebCacheMetrics(webJvmMetrics.registry, metricsCountry.code, Seq(
-    "response"     -> (() => encodedResponseCache.occupancy),
-    "og_card_film" -> (() => ogCardService.cacheOccupancy),
-    "og_card_city" -> (() => cityOgCardService.cacheOccupancy)))
+    "response" -> (() => encodedResponseCache.occupancy)))
   lazy val metricsController = new MetricsController(controllerComponents, uptimeMonitor, filmwebFallbackStore, webMovieMetrics, webJvmMetrics, metricsCountry.code, clock)
   // Retirement signal for the legacy PUT /api/me/state — see the class doc.
   // Safe as `lazy`, unlike webHostMetrics/webCacheMetrics above: userStateController

@@ -119,18 +119,6 @@ object PosterProxy {
   def proxy(url: String): String =
     weserv(url, TargetWidth, TargetHeight, "webp").getOrElse(url)
 
-  /** A poster URL sized + re-encoded for the server-side OG-card compositor
-   *  ([[PosterImageLoader]]). Used only as a *fallback* — the loader now
-   *  decodes the origin directly (the TwelveMonkeys imageio-webp reader handles
-   *  the webp that cinema CDNs serve), and reaches here for the rare origin
-   *  ImageIO still can't read. Asks weserv for JPEG to be safe, and targets a
-   *  higher resolution than the browser card since the poster renders at up to
-   *  ~520px tall on the 1200×630 card. SkipHosts (multikino) yield the origin
-   *  URL — but multikino's webp decodes directly now, so the direct fetch wins
-   *  before this fallback ever matters. */
-  def posterForCard(url: String): String =
-    weserv(url, 440, 660, "jpg").getOrElse(url)
-
   /** True when `host` is, or sits under, a [[SkipDomains]] entry. The `.`
    *  boundary is what stops a lookalike like `notacsta.net` matching
    *  `acsta.net` on a bare `endsWith`. */

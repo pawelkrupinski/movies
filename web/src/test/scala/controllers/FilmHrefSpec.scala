@@ -32,13 +32,6 @@ class FilmHrefSpec extends AnyFlatSpec with Matchers {
     FilmHref.slugOf("Belle") shouldBe Some("belle")
   }
 
-  it should "keep the og-image card on the query form" in {
-    // The card is an asset, not an indexable page — leaving its URL alone means
-    // the previews already cached by Facebook and friends don't all miss.
-    FilmHref.ogImage("Mandalorian i Grogu") shouldBe
-      "/poznan/movie/og-image?title=Mandalorian%20i%20Grogu"
-  }
-
   it should "still build the legacy query form for redirect targets" in {
     FilmHref.legacy("Diabeł ubiera się u Prady 2", Poznan) shouldBe
       "/poznan/movie?title=Diabe%C5%82%20ubiera%20si%C4%99%20u%20Prady%202"
@@ -54,6 +47,5 @@ class FilmHrefSpec extends AnyFlatSpec with Matchers {
     val kent = models.Country.UnitedKingdom.cities.find(_.slug == "kent").get
     FilmHref("Belle", kent) shouldBe "/uk/kent/movie/belle"
     FilmHref.legacy("!!!", kent) shouldBe "/uk/kent/movie?title=%21%21%21"
-    FilmHref.ogImage("Belle")(using kent) shouldBe "/uk/kent/movie/og-image?title=Belle"
   }
 }

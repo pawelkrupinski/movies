@@ -66,8 +66,7 @@ object FilterDescription {
     }
 
   /** "Repertuar kin w Poznaniu" / "Cinema listings in London" — the city-scoped
-   *  heading shared by the default page title ([[defaultTitle]]) and the city
-   *  OG-card overlay ([[MovieController.cityOgImage]]). Reads the declined
+   *  heading of the default page title ([[defaultTitle]]). Reads the declined
    *  locative for Polish, "in {City}" for English, off [[City.locativePhrase]]. */
   def cityHeading(city: City): String = {
     val caption = tr(city)("Repertuar kin", "Cinema listings", "Cartelera de cine", "Kinoprogramm")

@@ -38,8 +38,8 @@ class CachingDetailFetch(
   ttl:        FiniteDuration = CachingDetailFetch.DefaultTtl,
   maxBytes:   Long           = CachingDetailFetch.DefaultMaxBytes,
   ticker:     Ticker         = Ticker.systemTicker(),
-  // WHERE EVICTION RUNS, and the only reason it is a parameter — same trade-off
-  // `OgCardCache` documents at length: Caffeine defers maintenance here, so a
+  // WHERE EVICTION RUNS, and the only reason it is a parameter: Caffeine defers
+  // maintenance here, so a
   // spec asserting on the bound has to run it on the calling thread to know it
   // has happened. Production keeps the common pool.
   maintenance: Executor      = ForkJoinPool.commonPool()

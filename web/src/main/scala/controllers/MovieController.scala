@@ -1,7 +1,5 @@
 package controllers
 
-import models.CityPath
-
 import models._
 import play.api.Logging
 import play.api.libs.json.{Json, Writes}
@@ -14,7 +12,6 @@ import tools.AsciiUrl
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.time.{LocalDate, LocalDateTime}
-import scala.concurrent.Future
 
 case class CinemaShowtimes(cinema: Cinema, showtimes: Seq[Showtime])
 
@@ -412,18 +409,12 @@ class MovieController( cc: ControllerComponents,
                        oauthProviders: Set[String],
                        environment: Mode,
                        responseCache: EncodedResponseCache,
-                       ogCardService: tools.OgCardService,
-                       cityOgCardService: tools.CityOgCardService,
                        // The ONE country this deployment serves — which cities are
                        // ours (`withCity`) and which the sitemap advertises. Injected
                        // rather than read from `Country.fromEnv` at each use so a spec
                        // can exercise a non-Polish host by passing one, instead of
                        // mutating the process-global env that parallel suites share.
                        servingCountry: models.Country = models.Country.fromEnv,
-                       // Where the share cards render -- never Play's default dispatcher, and
-                       // the process's ONE pool, from the composition root: no default, so no
-                       // controller can quietly build a second. See [[tools.ShareCardPool]].
-                       shareCardPool: tools.ShareCardPool,
                      ) extends AbstractController(cc) with Logging {
 
   // The country this deployment serves — the rules its corpus was keyed under,
@@ -662,8 +653,9 @@ class MovieController( cc: ControllerComponents,
   // robots.txt — see `RobotsTxt` for what goes in it and why. The one decision
   // that lives here is WHICH of its two shapes this request wants: the brand
   // front door speaks for every country mounted under the apex, a country's own
-  // site only for itself. The `/*/og-image` + `/*/movie/og-image` PNG endpoints
-  // are deliberately NOT disallowed — Facebook honours robots.txt when fetching
+  // site only for itself. The share-card images (`/share-cards/…`, and the old
+  // `/*/og-image` + `/*/movie/og-image` addresses that redirect to them) are
+  // deliberately NOT disallowed — Facebook honours robots.txt when fetching
   // `og:image`, so blocking them would break every share preview.
   def robotsTxt: Action[AnyContent] = Action { request =>
     val body =
@@ -890,7 +882,7 @@ class MovieController( cc: ControllerComponents,
     // (Play 3.0's `request.secure` ignores the `trustedProxies` knob on this Fly
     // setup) is in one place.
     val canonicalUrl = PageMeta.origin(request) + FilmHref.forSlug(schedule.slug, schedule.movie.title)
-    val ogImageUrl   = PageMeta.origin(request) + FilmHref.ogImage(schedule.movie.title)
+    val ogImageUrl   = shareCardUrl(schedule, request)
     // Sibling cities currently showing this same film — the cross-links a
     // near-duplicate per-city page needs so it isn't only reachable through
     // the sitemap. See [[MovieControllerService.citiesShowing]].
@@ -903,76 +895,29 @@ class MovieController( cc: ControllerComponents,
     // used to need. It stops short of offering itself to a shared cache only
     // because a per-film edge entry wants its own validator analysis, not because
     // the bytes are anyone's.
-    Ok(views.html.film(schedule, canonicalUrl, OgCardAssembly.previewDescription(schedule), ogImageUrl, devMode, oauthProviders, otherCities))
+    Ok(views.html.film(schedule, canonicalUrl, FilmPreviewText.previewDescription(schedule), ogImageUrl, devMode, oauthProviders, otherCities))
       .withHeaders("Cache-Control" -> "private, no-cache")
       .withCookies(cityCookie(c))
   }
 
-  /** The 1200×630 Open Graph share card (PNG) for a film — what `og:image` /
-   *  `twitter:image` on the film page point at. Composited server-side
-   *  ([[tools.OgCardService]]) so the full poster + title + rating badges sit
-   *  inside one landscape image that the preview UIs can't crop the poster out
-   *  of. Cached a day at the edge (the card only changes when ratings / poster
-   *  do, and `OgCardService` memoises the bytes per those inputs). */
-  def ogImage(city: String, title: String): Action[AnyContent] = Action.async {
-    onShareCardPool {
-      // The share card is crawler/ops-facing (fetched by link-preview bots, not
-      // browsed in the filters UI), so — like `DebugController`/the sitemap —
-      // it stays on the deployment's fixed language rather than a per-request one.
-      implicit val messages: play.api.i18n.Messages = deploymentMessages
-      withCity(city) { c =>
-        movieControllerService.film(c, title) match {
-          case Some(schedule) =>
-            val bytes = ogCardService.card(
-              schedule.movie.title,
-              OgCardAssembly.cardSubtitle(schedule),
-              OgCardAssembly.cardRatingBadges(schedule),
-              // Primary poster first, then the cinema fallbacks: the primary is
-              // often a Multikino origin whose Cloudflare 403s our datacentre
-              // egress IP — Hetzner's since the move off Fly, and the block
-              // followed us rather than being about any one provider — so the
-              // card must be free to walk to a reachable fallback (see OgCardService).
-              schedule.posterUrl.toSeq ++ schedule.resolved.fallbackPosterUrls,
-              c.country.shareHost,
-              directorLine = OgCardAssembly.cardDirector(schedule),
-              // The PNG card draws plain text — drop the markdown emphasis markers.
-              synopsis = schedule.synopsis.map(tools.SynopsisMarkdown.strip)
-            )
-            Ok(bytes).as(tools.OgCardRenderer.MimeType).withHeaders("Cache-Control" -> "public, max-age=86400")
-          case None => NotFound(s"Film not found: $title")
-        }
-      }
+  /** The film's share card, or the city's while it has none — see [[ShareCardUrl]]. */
+  private def shareCardUrl(schedule: FilmSchedule, request: RequestHeader)(implicit c: City): String =
+    ShareCardUrl.forFilm(schedule.resolved, c, PageMeta.origin(request))
+
+  /** `/:city/movie/og-image?title=…` — the film card's old, web-rendered address. Link previews
+   *  already cached it, so it stays, as a permanent redirect to the image the page names now: the
+   *  worker's share card, or the city's static card. The web decodes no image. */
+  def ogImage(city: String, title: String): Action[AnyContent] = Action { request =>
+    withCity(city) { c =>
+      MovedPermanently(movieControllerService.film(c, title).fold(ShareCardUrl.city(c))(shareCardUrl(_, request)(using c)))
     }
   }
 
-  /** The 1200×630 per-city Open Graph card (PNG): a montage of the city's
-   *  current posters under the [[FilterDescription.cityHeading]] overlay
-   *  ("Repertuar kin w {locative}" / "Cinema listings in {city}"),
-   *  composited server-side ([[tools.CityOgCardService]]) — fully dynamic, no
-   *  committed image. NOT yet wired into the page's `og:image`; reachable
-   *  directly at `/:city/og-image` for review. */
-  def cityOgImage(city: String): Action[AnyContent] = Action.async {
-    onShareCardPool { withCity(city) { c =>
-      // A different (deduped, poster-bearing) set of the city's films each day —
-      // and the cache key carries the date so the card regenerates daily.
-      val day   = movieControllerService.nowIn(c).toLocalDate
-      val films = OgCardAssembly.dailyCardFilms(movieControllerService.toSchedules(c), day.toEpochDay, count = 5, normalizer)
-        .map(OgCardAssembly.toCityCardFilm)
-      val bytes = cityOgCardService.card(s"${c.slug}|$day", FilterDescription.cityHeading(c), c.country.brandName, c.country.shareHost, films, c.country.filmwebEnabled)
-      // 1h, not a day: the card tracks the live repertoire (which shifts through
-      // the day), and a shorter TTL means a regenerated card surfaces promptly.
-      Ok(bytes).as(tools.OgCardRenderer.MimeType).withHeaders("Cache-Control" -> "public, max-age=3600")
-    } }
+  /** `/:city/og-image` — the city card's old, web-rendered address, redirected for the same reason
+   *  to the city's static card. */
+  def cityOgImage(city: String): Action[AnyContent] = Action {
+    withCity(city)(c => MovedPermanently(ShareCardUrl.city(c)))
   }
-
-  /** A share card's whole request -- film lookup, poster fetch, decode, composite -- on
-   *  [[tools.ShareCardPool]] rather than on Play's default dispatcher, or a fast 503 when that pool
-   *  is full. `Retry-After` because the callers are preview scrapers that honour it; `no-store` so
-   *  neither Cloudflare nor the scraper keeps the refusal in place of the card. */
-  private def onShareCardPool(render: => Result): Future[Result] =
-    shareCardPool.submit(render).getOrElse(Future.successful(
-      ServiceUnavailable("Share cards are busy; retry shortly.")
-        .withHeaders("Retry-After" -> "30", "Cache-Control" -> "no-store")))
 
   private def devOnly(result: => play.api.mvc.Result): play.api.mvc.Result = DevMode.gate(environment)(result)
   private def devMode: Boolean = DevMode.enabled(environment)

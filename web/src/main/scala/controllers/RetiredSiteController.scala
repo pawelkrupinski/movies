@@ -1,8 +1,7 @@
 package controllers
 
-import models.CityPath
 
-import models.{ClientSupport, Country}
+import models.{ClientSupport, Country, CityPath}
 import play.api.mvc._
 
 /**

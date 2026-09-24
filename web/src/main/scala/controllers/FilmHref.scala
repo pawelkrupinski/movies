@@ -60,14 +60,6 @@ object FilmHref {
   def legacy(title: String, city: City): String =
     s"${CityPath(city)}/movie?title=${encodeTitle(title)}"
 
-  /** The server-rendered Open Graph card image (1200×630 PNG) for a film,
-   *  emitted as `og:image` / `twitter:image`. Stays on the `%20`-encoded query
-   *  form rather than following the page to a slug: the card is an asset, not
-   *  an indexable page, so it gains nothing from a readable address, and
-   *  keeping the URL stable means the previews Facebook and friends have
-   *  already cached don't all miss at once. */
-  def ogImage(title: String)(implicit city: City): String =
-    s"${CityPath(city)}/movie/og-image?title=${encodeTitle(title)}"
 
   // `URLEncoder.encode` is form-urlencoded (spaces → `+`). Browsers accept
   // both in query strings, but some link-preview scrapers (Facebook's among

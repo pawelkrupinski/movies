@@ -106,9 +106,10 @@ trait PosterDownload {
   def fetch(url: String): Either[String, Path]
 }
 
-/** [[PosterDownload]] over the JDK client: the generous connect budget slow cinema origins need
- *  (see `tools.HttpPosterFetch`), a bounded request time, and a byte cap enforced while streaming,
- *  so a multi-hundred-megabyte "poster" is abandoned at the cap rather than written out. */
+/** [[PosterDownload]] over the JDK client: a generous connect budget (some cinema origins take
+ *  ~6-7s to a cold TLS connect, past the scrapers' tight 5s), a bounded request time, and a byte
+ *  cap enforced while streaming, so a multi-hundred-megabyte "poster" is abandoned at the cap
+ *  rather than written out. */
 class HttpPosterDownload(maxBytes: Long = PosterPipeline.MaxDownloadBytes,
                          timeout: Duration = Duration.ofSeconds(20)) extends PosterDownload with Logging {
   private val client = HttpClient.newBuilder()
