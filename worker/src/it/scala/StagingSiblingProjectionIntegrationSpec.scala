@@ -150,21 +150,14 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
       val venues: Seq[Source] = Seq(Multikino, models.CinemaCity, models.Helios)
       venues.foreach(v => repositoryUnderTest.upsert(v, title, Some(2026), MovieRecord()))
 
-      var fetchedIds = 0
-      val counting = new MongoStagingRepository(Some(db), normalizer = titleNormalizer) {
-        override protected def fetchByIds(c: org.mongodb.scala.MongoCollection[services.movies.StoredMovieDto],
-                                          ids: Seq[String]): scala.util.Try[Seq[services.movies.StoredMovieDto]] = {
-          fetchedIds += ids.size
-          super.fetchByIds(c, ids)
-        }
-      }
+      val counting = new FetchCountingStagingRepository
       // Warm the index, then count only the lookup itself.
       counting.findByAnchor(anchor)
-      fetchedIds = 0
+      counting.fetchedIds = 0
 
       val one = counting.findByCinemaAndAnchor(Multikino, anchor)
-      withClue(s"the pair lookup fetched $fetchedIds row(s) for a film staged at ${venues.size} venues: ") {
-        fetchedIds should be <= 1
+      withClue(s"the pair lookup fetched ${counting.fetchedIds} row(s) for a film staged at ${venues.size} venues: ") {
+        counting.fetchedIds should be <= 1
       }
       withClue("and must still answer exactly what filtering the group answers: ") {
         one.map(_.id) shouldBe counting.findByAnchor(anchor).filter(_.cinema == Multikino).map(_.id)
@@ -182,17 +175,10 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
       Seq[Source](Multikino, models.CinemaCity, models.Helios)
         .foreach(v => repositoryUnderTest.upsert(v, title, Some(2026), MovieRecord()))
 
-      var fetchedIds = 0
-      val counting = new MongoStagingRepository(Some(db), normalizer = titleNormalizer) {
-        override protected def fetchByIds(c: org.mongodb.scala.MongoCollection[services.movies.StoredMovieDto],
-                                          ids: Seq[String]): scala.util.Try[Seq[services.movies.StoredMovieDto]] = {
-          fetchedIds += ids.size
-          super.fetchByIds(c, ids)
-        }
-      }
+      val counting = new FetchCountingStagingRepository
       val held   = counting.holdsAnchor(anchor)
       val absent = counting.holdsAnchor("a film nobody staged")
-      withClue(s"holdsAnchor fetched $fetchedIds row(s): ") { fetchedIds shouldBe 0 }
+      withClue(s"holdsAnchor fetched ${counting.fetchedIds} row(s): ") { counting.fetchedIds shouldBe 0 }
       held shouldBe counting.findByAnchor(anchor).nonEmpty
       held shouldBe true
       absent shouldBe false
@@ -200,6 +186,53 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
   }
 
   private def repositoryUnderTest = new MongoStagingRepository(Some(db), normalizer = titleNormalizer)
+
+  /** A Mongo staging repository that counts the rows it FETCHES by id — every group,
+   *  venue and pair lookup goes through `fetchByIds`, so this is the decode count the
+   *  quadratics below were paid in. */
+  private class FetchCountingStagingRepository extends MongoStagingRepository(Some(db), normalizer = titleNormalizer) {
+    var fetchedIds = 0
+    override protected def fetchByIds(c: org.mongodb.scala.MongoCollection[services.movies.StoredMovieDto],
+                                      ids: Seq[String]): scala.util.Try[Seq[services.movies.StoredMovieDto]] = {
+      fetchedIds += ids.size
+      super.fetchByIds(c, ids)
+    }
+  }
+
+  /** The landing → kick → group-read path against Mongo, end to end: a new film landing
+   *  at N venues must fetch its staging rows a number of times LINEAR in N. A kick per
+   *  joining venue made the reaper fetch the whole growing group each time — 1 + 2 + … + N
+   *  rows, which for a presale at 2,441 US venues timed the US sample leg out on
+   *  2026-09-23. (Unit twin: `ScrapeCostIndependentOfCorpusSpec`.) */
+  "landing one new film at many venues" should "fetch its staging rows linearly in the venue count" in {
+    def rowsFetched(venueCount: Int): Int = {
+      Await.result(staged.deleteMany(Filters.empty()).toFuture(), 30.seconds)
+      val counting = new FetchCountingStagingRepository
+      val reaper   = new services.staging.StagingReaper(
+        new services.staging.StagingSteps(counting, Nil, (_, _, _) => None, (_, _, _) => None,
+          new services.freshness.InMemoryFreshnessStore),
+        new services.tasks.InMemoryTaskQueue, counting)
+      val bus = new services.events.InProcessEventBus
+      bus.subscribe(reaper.onNewcomerDiverted)
+      val cache = new services.movies.CaffeineMovieCache(new services.movies.InMemoryMovieRepository, bus,
+        staging = Some(counting), normalizer = titleNormalizer)
+      models.Cinema.all.distinct.take(venueCount).foreach { venue =>
+        cache.recordCinemaScrape(venue, Seq(models.CinemaMovie(models.Movie(title = "Presale Blockbuster", releaseYear = Some(2026)),
+          venue, posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil, showtimes = Nil)))
+      }
+      withClue("every venue must really have staged the film: ") { counting.findAll().size shouldBe venueCount }
+      counting.fetchedIds
+    }
+    try {
+      val small = rowsFetched(20)
+      val large = rowsFetched(80)
+      withClue(s"20 venues fetched $small staging row(s); 80 venues fetched $large — " +
+        "a group read per joining venue is O(venues²): ") {
+        large should be <= 2 * 80   // ~one fetch per venue landing, plus the single kick
+        large.toDouble / small should be <= 4.5
+      }
+    } finally Await.result(staged.deleteMany(Filters.empty()).toFuture(), 30.seconds)
+  }
 
   // The invariant an override must hold: answer EXACTLY what filtering `findAll` answers.
   // A previous attempt inferred the anchor from the `_id` — which holds the sanitized

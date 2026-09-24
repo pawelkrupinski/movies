@@ -3,7 +3,10 @@ package services.movies
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.staging.{InMemoryStagingRepository, StagingRecord}
+import services.events.InProcessEventBus
+import services.freshness.InMemoryFreshnessStore
+import services.staging.{InMemoryStagingRepository, StagingReaper, StagingRecord, StagingSteps}
+import services.tasks.InMemoryTaskQueue
 import services.titlerules.TitleRuleSet
 
 /**
@@ -181,6 +184,54 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
     }
     calls(3)  shouldBe (1, 3)
     calls(30) shouldBe (1, 30)
+  }
+
+  /**
+   * One new film landing at N venues must decode its staging group a number of times
+   * LINEAR in N — not once per joining venue.
+   *
+   * THE BUG THIS PINS. Every venue that diverted the film published
+   * `StagingNewcomerDiverted`, and the reaper answered each with `enqueueNext` →
+   * `findByAnchor`, decoding the film's whole group — which by then held every earlier
+   * venue's row. So N venues cost 1 + 2 + … + N row decodes: O(N²). A US presale staged
+   * at 2,441 venues (326k showtimes) took the US sample leg's scrape tick from 27s to
+   * 1,419s and timed the leg out on 2026-09-23. Only the FIRST venue kicks the chain now
+   * (`StagingRepository.holdsAnchor`); the running chain re-reads the group per step.
+   *
+   * Counted as rows the group reads RETURN — the decodes a Mongo `findByAnchor` pays —
+   * with the reaper wired to the bus the production way, so the whole landing → kick →
+   * group-read path is under the counter, not just the landing's own reads.
+   */
+  it should "decode a new film's staging group linearly, not once per venue that joins it" in {
+    def rowsDecoded(venueCount: Int): Int = {
+      val normalizer = SingleCountryNormalizer.titleNormalizer
+      var decoded    = 0
+      val staging = new InMemoryStagingRepository(normalizer = normalizer) {
+        override def findByAnchor(anchor: String): Seq[StagingRecord] = {
+          val rows = super.findByAnchor(anchor); decoded += rows.size; rows
+        }
+      }
+      val reaper = new StagingReaper(
+        new StagingSteps(staging, Nil, (_, _, _) => None, (_, _, _) => None, new InMemoryFreshnessStore),
+        new InMemoryTaskQueue, staging)
+      val bus = new InProcessEventBus
+      bus.subscribe(reaper.onNewcomerDiverted)
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = normalizer), bus,
+                                         staging = Some(staging), normalizer = normalizer)
+      val venues = Cinema.all.distinct.take(venueCount)
+      venues.foreach(venue => cache.recordCinemaScrape(venue, Seq(scrapeOf("Presale Blockbuster").copy(cinema = venue))))
+      // Every venue must really have staged it — a film that never reached staging would
+      // decode nothing and satisfy the bound for the opposite reason.
+      staging.findAll().size shouldBe venueCount
+      decoded
+    }
+    val small = rowsDecoded(50)
+    val large = rowsDecoded(200)
+    withClue(s"50 venues decoded $small staging row(s); 200 venues decoded $large — " +
+      "a kick per joining venue re-reads the growing group each time, O(venues²): ") {
+      large should be <= 200
+      large.toDouble / small should be <= 4.5
+    }
   }
 
   it should "read only its own cinema's staging rows, never the whole backlog" in {
