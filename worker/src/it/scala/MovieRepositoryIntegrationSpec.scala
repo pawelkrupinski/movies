@@ -8,7 +8,8 @@ import models.{CharlieMonroe, CinemaCityKinepolis, CinemaCityKorona, CinemaCityP
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.mongodb.scala.{MongoClient, SingleObservableFuture}
+import org.mongodb.scala.{Document, MongoClient, SingleObservableFuture}
+import org.mongodb.scala.model.ReplaceOptions
 import org.mongodb.scala.model.Filters
 import services.movies.{ChangeStreamMetrics, MongoMovieRepository, StoredMovieRecord, FilmId}
 import tools.{Env, Eventually}
@@ -1138,8 +1139,9 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   it should "split reads: strip showtimes from movies, stitch from screenings, and fan out screenings changes" in {
     import services.movies.{MongoScreeningsRepository, StoredMovieRecord}
     import java.util.concurrent.{CountDownLatch, TimeUnit}
-    val client = MongoClient(Env.get("MONGODB_URI").get)
-    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    // ITS OWN DATABASE: this test's change stream watches the whole `screenings` collection,
+    // and in the shared one every sibling spec's write is decoded by it (see the poison below).
+    tools.IsolatedMongoDatabase.withDatabase(Env.get("MONGODB_URI").get, "split-reads-spec") { db =>
     val scr    = new MongoScreeningsRepository(Some(db))
     val repo   = new MongoMovieRepository(Some(db), screenings = Some(scr), normalizer = titleNormalizer)
     val plain  = new MongoMovieRepository(Some(db), normalizer = titleNormalizer) // no stitch → sees the raw movies doc
@@ -1189,6 +1191,15 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
             Seq(Showtime(java.time.LocalDateTime.of(2099, 1, 1, pass % 23 + 1, 0), None)))
         }
         bell.set(new CountDownLatch(1))
+        // A SIBLING SPEC'S document, the shape that flaked this test under the parallel itAll:
+        // a `screenings` row with no `filmId`, written to the SHARED database. A change stream
+        // watches the whole collection and decodes every event before any filtering, so this
+        // ended the cursor ("Missing field: filmId") and the fanout below never came.
+        val shared = MongoClient(Env.get("MONGODB_URI").get)
+        try Await.result(shared.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo")).getCollection[Document]("screenings")
+          .replaceOne(Filters.eq("_id", "__integration-test-sibling-poison__"), Document("_id" -> "__integration-test-sibling-poison__"),
+            ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
+        finally shared.close()
         val after2 = after.copy(data = Map[Source, SourceData](Multikino ->
           after.data(Multikino).copy(showtimes = after.data(Multikino).showtimes :+
             Showtime(java.time.LocalDateTime.of(2026, 6, 1, 22, 0), Some("https://book/sr-3")))))
@@ -1198,7 +1209,14 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
       repo.delete(title, year)
       scr.findForFilm(id) shouldBe empty
-    } finally { plain.close(); client.close() }
+    } finally {
+      plain.close()
+      val shared = MongoClient(Env.get("MONGODB_URI").get)
+      try Await.result(shared.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo")).getCollection[Document]("screenings")
+        .deleteOne(Filters.eq("_id", "__integration-test-sibling-poison__")).toFuture(), 10.seconds)
+      finally shared.close()
+    }
+    }
   }
 
   // Dual write into `movie_slots`: wiring a SlotsRepository mirrors each film's slots
