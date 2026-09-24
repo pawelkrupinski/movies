@@ -2,7 +2,7 @@ package modules
 
 import org.mongodb.scala.MongoClient
 import models.Country
-import modules.wiring.{AlertingWiring, ChunkScrapeWiring, CorpusWiring, DetailWiring, EgressWiring, HttpWiring, MetricsWiring, OperatorWiring, RatingsWiring, ReadModelWiring, ResolutionWiring, ScrapeWiring, StagingWiring, TaskQueueWiring}
+import modules.wiring.{AlertingWiring, ChunkScrapeWiring, CorpusWiring, DetailWiring, EgressWiring, HttpWiring, MetricsWiring, OperatorWiring, RatingsWiring, ReadModelWiring, ResolutionWiring, ScrapeWiring, ShareCardWiring, StagingWiring, TaskQueueWiring}
 import services.cinemas.common.CinemaClientMarkers
 import services.events.{EventBus, InProcessEventBus}
 import services.freshness.{Freshness, FreshnessKind}
@@ -60,7 +60,7 @@ class WorkerWiring(
     injectedWorkerMetrics: Option[WorkerMetrics] = None) extends play.api.Logging
     with HttpWiring with EgressWiring with ScrapeWiring with ChunkScrapeWiring with DetailWiring
     with CorpusWiring with ResolutionWiring with RatingsWiring with ReadModelWiring
-    with MetricsWiring with TaskQueueWiring with StagingWiring with AlertingWiring with OperatorWiring {
+    with MetricsWiring with TaskQueueWiring with StagingWiring with AlertingWiring with OperatorWiring with ShareCardWiring {
 
   /** The metrics bundle this wiring records into: the shared injected one, or a
    *  self-owned single-country bundle when none was injected (lone boot / test). */
@@ -177,6 +177,9 @@ class WorkerWiring(
   // The coordinator enqueues a chunked scrape's reduce once its last chunk task
   // finishes (the ChunkScrapeReaper backstop covers lost completions).
   eventBus.subscribe(chunkScrapeCoordinator.onTaskFinished)
+  // A finished share-card render re-projects its film, so `web_movies` points at the new card
+  // (and a film the first-publish gate holds is published).
+  eventBus.subscribe(shareCardFollowUp.onTaskFinished)
 
   def start(): Unit = {
     // Force Mongo at boot so connection errors surface in the boot timeline.
@@ -226,6 +229,7 @@ class WorkerWiring(
     detailReaper.start()
     settleReaper.start()
     omdbBackfillReaper.foreach(_.start())
+    shareCardReapers.foreach(_.start())
     scrapeReaper.start()
     // Backstop the chunked-scrape fan-in: recover complete runs whose completion
     // event was lost, and partial-reduce abandoned runs.
@@ -271,6 +275,7 @@ class WorkerWiring(
     detailReaper.stop()
     settleReaper.stop()
     omdbBackfillReaper.foreach(_.stop())
+    shareCardReapers.foreach(_.stop())
     livenessWatchdog.stop()
     workerHeartbeat.stop()
     taskWorker.stop()

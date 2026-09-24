@@ -148,6 +148,7 @@ object ReadModelProjectionMetrics {
   object CardPart {
     val Title = "title"; val Poster = "poster"; val Facts = "facts"; val Synopsis = "synopsis"
     val SynopsisByCity = "synopsis-by-city"; val Ratings = "ratings"; val Trailers = "trailers"; val AgeRating = "age-rating"
+    val ShareCard = "share-card"
   }
   /** The `cause` of a card write: `new`, the one part that moved, or `multiple`. */
   object CardWriteCause { val New = "new"; val Multiple = "multiple" }
@@ -161,7 +162,7 @@ object ReadModelProjectionMetrics {
   val MetadataOutcomes: Seq[String] = Seq(MetadataOutcome.Reused, MetadataOutcome.Recomputed)
   val VenueOutcomes: Seq[String] = Seq(VenueOutcome.Rebuilt, VenueOutcome.Reused)
   val CardParts: Seq[String] = Seq(CardPart.Title, CardPart.Poster, CardPart.Facts, CardPart.Synopsis,
-    CardPart.SynopsisByCity, CardPart.Ratings, CardPart.Trailers, CardPart.AgeRating)
+    CardPart.SynopsisByCity, CardPart.Ratings, CardPart.Trailers, CardPart.AgeRating, CardPart.ShareCard)
   val CardWriteCauses: Seq[String] = Seq(CardWriteCause.New, CardWriteCause.Multiple) ++ CardParts
 
   /** The cause label of a write that moved `changed`. */

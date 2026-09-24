@@ -1,0 +1,95 @@
+---
+# FILM SHARE CARDS: the worker renders each film's Open Graph card (and caches its poster) into a
+# per-country directory on k3s-worker-1 that Caddy serves at /share-cards/<cc>/. Cards and posters
+# share ONE budget (KINOWO_SHARE_CARD_BUDGET_MB, 1 GiB by default) that the worker's janitor
+# enforces by evicting the oldest files nothing references. These rules watch the two ways that
+# can go wrong -- the directory filling towards the budget, and the part the janitor may NOT delete
+# outgrowing it -- plus the poster upstreams the cards are drawn from.
+#
+# AGGREGATION. The directory gauges are read from the DIRECTORY, so every replica of a country
+# publishes the same number for the same files: `max by (country, kind)` first (never `sum`, which
+# would count one directory once per replica), then summed over `kind` for the one budget. The
+# counters are per process and are summed.
+#
+# RESTART-GAP-SAFE: every worker gauge is read through `last_over_time(...[10m])` and every counter
+# through `increase(...[30m])`, so the ~3 minutes a pod change leaves the series absent does not
+# reset a `for:` (test_alert_rule_coverage.py).
+#
+# The alert NAMES all start `ShareCard` so the email + Telegram route for this pipeline matches
+# them by prefix; the node filesystem holding /var/lib/kinowo is watched by filesystem-capacity.rules.
+groups:
+  - name: share-cards
+    rules:
+      # 85% OF THE BUDGET, CARDS AND POSTERS TOGETHER, FOR HALF AN HOUR. Below the budget the janitor
+      # is doing its job; sitting near it means the unreferenced headroom is nearly gone, which is
+      # the step before `ShareCardsOverBudget`. The `kind` label names whichever of the two holds
+      # more bytes, so the annotation says where the space went.
+      - alert: ShareCardsNearBudget
+        expr: >-
+          (
+            (
+              sum by (country) (max by (country, kind) (last_over_time(kinowo_worker_share_cards_bytes[10m])))
+              / max by (country) (last_over_time(kinowo_worker_share_cards_budget_bytes[10m]))
+            ) > 0.85
+          )
+          * on (country) group_left (kind)
+          (0 * topk by (country) (1, max by (country, kind) (last_over_time(kinowo_worker_share_cards_bytes[10m]))) + 1)
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}'s share cards and posters use {{ $value | humanizePercentage }} of their disk budget"
+          description: >-
+            `kinowo_worker_share_cards_bytes` summed over cards and cached posters is above 85% of
+            `kinowo_worker_share_cards_budget_bytes` for this country; most of it is {{ $labels.kind }}s.
+            The janitor evicts unreferenced files oldest-first every ten minutes, so this staying
+            high means most of the directory is CURRENT (cards web_movies points at, posters of films
+            on screen) -- compare `kinowo_worker_share_cards_current_bytes`. Raise
+            KINOWO_SHARE_CARD_BUDGET_MB if the corpus grew; if current bytes did not grow, look for a
+            flood of re-renders in `kinowo_worker_share_cards_render_total` by reason.
+
+      # THE PART NO PRUNER MAY DELETE IS BIGGER THAN THE BUDGET. Critical: the janitor can free
+      # nothing more, so the directory grows with the corpus until the node's disk does.
+      - alert: ShareCardsOverBudget
+        expr: >-
+          (
+            sum by (country) (max by (country, kind) (last_over_time(kinowo_worker_share_cards_current_bytes[10m])))
+            > max by (country) (last_over_time(kinowo_worker_share_cards_budget_bytes[10m]))
+          )
+          * on (country) group_left (kind)
+          (0 * topk by (country) (1, max by (country, kind) (last_over_time(kinowo_worker_share_cards_current_bytes[10m]))) + 1)
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.country }}'s current share cards and posters alone exceed their disk budget"
+          description: >-
+            `kinowo_worker_share_cards_current_bytes` -- the cards web_movies points at plus the
+            cached posters of films on screen, mostly {{ $labels.kind }}s -- is {{ $value | humanize1024 }}B,
+            over the country's budget. The janitor never deletes current files, so nothing will
+            bring this down on its own: raise KINOWO_SHARE_CARD_BUDGET_MB (and check the node's
+            disk, FilesystemSpaceLow on k3s-worker-1), or find why the corpus holds more films on
+            screen than before.
+
+      # POSTER UPSTREAMS FAILING. A cache miss fetches and decodes a poster; when most of those fail
+      # the new cards cannot be drawn and films are published with the fallback image. At least ten
+      # attempts in the window, so two failures out of three at 4am is not a page.
+      - alert: ShareCardPosterFetchFailing
+        expr: >-
+          (
+            sum by (country) (increase(kinowo_worker_share_cards_poster_fetch_total{result="failed"}[30m]))
+            / sum by (country) (increase(kinowo_worker_share_cards_poster_fetch_total[30m]))
+          ) > 0.5
+          and on (country) sum by (country) (increase(kinowo_worker_share_cards_poster_fetch_total[30m])) >= 10
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}'s share-card poster fetches are failing ({{ $value | humanizePercentage }})"
+          description: >-
+            More than half of the poster downloads + decodes behind new share cards failed over the
+            last half hour. Each failure is every candidate URL of a film -- the TMDB w780 rendition,
+            the original, the cinema fallbacks -- unreachable, over the 50 MB download cap, or
+            undecodable (vips, then the bounded JDK decode). Films published meanwhile carry the
+            fallback image. Check the worker log for `share card:` lines and whether one CDN host
+            dominates; `kinowo_worker_http_total` does not see these fetches.

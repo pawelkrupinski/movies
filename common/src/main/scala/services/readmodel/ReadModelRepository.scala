@@ -28,6 +28,12 @@ final case class StreamCheckpoint(value: Long)
  */
 final case class ScreeningRef(_id: String, filmId: String)
 
+/** What the share-card janitor needs of one `web_movies` document: the card file it points at,
+ *  and the poster URLs a card of this film is composed from (the primary, then the cinema
+ *  fallbacks) — so it can tell which cards and cached posters are still referenced without
+ *  decoding the whole film. */
+final case class ShareCardRef(filmId: String, shareCard: Option[String], posterUrls: Seq[String])
+
 /**
  * Read side of the denormalised read model — what the **web** depends on.
  * Segregated from [[ReadModelWriter]] (ISP): the serving app never writes, so
@@ -81,6 +87,13 @@ trait ReadModelReader {
    *  must not read as "no venue has a row". The in-memory store cannot fail. */
   def findAllScreeningRefsChecked(): (Seq[ScreeningRef], Boolean) =
     (findAllScreenings().map(s => ScreeningRef(s._id, s.filmId)), true)
+
+  /** Every document's [[ShareCardRef]], with the same completeness flag as
+   *  [[findAllMovieIdsChecked]]: an incomplete read must prune nothing, since a card missing
+   *  from the answer would read as unreferenced. The default decodes whole documents; the
+   *  Mongo reader projects the three fields server-side. */
+  def findAllShareCardRefsChecked(): (Seq[ShareCardRef], Boolean) =
+    (findAllMovies().map(m => ShareCardRef(m._id, m.shareCard, m.posterUrl.toSeq ++ m.fallbackPosterUrls)), true)
 
   def countMovies(): Long
   def countScreenings(): Long

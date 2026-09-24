@@ -67,6 +67,36 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
   // against 246,309 on `_id_` — and this is the collection the projector rewrites, so each
   // one was an index write on every upsert and delete, paid forever for nothing.
   //
+  // THE SHARE CARD REACHES web_movies, and the janitor's projected read of it is faithful: the
+  // card per language and the poster URLs (primary, then fallbacks) the budget protects. Its own
+  // database, dropped afterwards.
+  "web_movies" should "carry a film's share card, and hand the janitor its projected refs" in {
+    import models.{ResolvedMovie, ResolvedRatings}
+    import services.readmodel.ShareCardRef
+    val ownDb   = tools.IntegrationCorpusDatabase.named("readmodel-sharecards")
+    val client2 = MongoClient(Env.get("MONGODB_URI").get)
+    val fresh   = new MongoReadModelRepository(Some(client2.getDatabase(ownDb)))
+    try {
+      val film = ResolvedMovie(_id = "__it-rm-sharecard__", title = "Diuna", originalTitle = None,
+        posterUrl = Some("https://cdn.example/a.jpg"), fallbackPosterUrls = Seq("https://cdn.example/b.jpg"),
+        runtimeMinutes = None, releaseYear = Some(2021), genres = Nil, countries = Nil, directors = Nil, cast = Nil,
+        synopsis = None, trailerUrls = Nil, ratings = ResolvedRatings(None, None, None, "", None, "", None, ""),
+        weightedRating = 0.0, shareCard = Some("f1-0123456789abcdef.jpg"), shareCardPending = true)
+      val bare = film.copy(_id = "__it-rm-nocard__", posterUrl = None, fallbackPosterUrls = Nil, shareCard = None,
+        shareCardPending = false)
+      fresh.upsertMovie(film); fresh.upsertMovie(bare)
+      fresh.findAllMovies().sortBy(_._id) shouldBe Seq(bare, film)
+      fresh.findAllShareCardRefsChecked() shouldBe ((Seq(
+        ShareCardRef("__it-rm-nocard__", None, Nil),
+        ShareCardRef("__it-rm-sharecard__", Some("f1-0123456789abcdef.jpg"), Seq("https://cdn.example/a.jpg", "https://cdn.example/b.jpg"))),
+        true))
+    } finally {
+      scala.concurrent.Await.ready(client2.getDatabase(ownDb).drop().toFuture(),
+        scala.concurrent.duration.Duration(10, "seconds"))
+      fresh.close(); client2.close()
+    }
+  }
+
   // Its own database, because the assertion is about what a BOOT creates: the shared one
   // still carries the indexes earlier builds made, and dropping them there would be a
   // destructive act in a spec.

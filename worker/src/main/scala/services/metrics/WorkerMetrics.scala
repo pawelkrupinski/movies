@@ -72,6 +72,10 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: Int) {
   // registered-once family, each wiring binds its own country's recorders.
   val resolutionMetrics: WorkerResolutionMetrics = new WorkerResolutionMetrics(countryCodes, registry)
 
+  // The share-card pipeline's series (kinowo_worker_share_cards_*) — see ShareCardMetrics.
+  val shareCardSeries: services.sharecards.ShareCardMetrics.Series =
+    new services.sharecards.ShareCardMetrics.Series(countryCodes, registry)
+
   // Per-request outcome of the PAID egress legs (Zyte, Decodo) — see PaidEgressMetrics.
   val paidEgress: PaidEgressMetrics = new PaidEgressMetrics(countryCodes, registry)
 

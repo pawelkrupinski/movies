@@ -186,6 +186,17 @@ class MongoReadModelRepository(
     pagedIdsChecked(screenings, "ReadModelRepository.findAllScreeningRefs", Projections.include("_id", "filmId"))(d =>
       ScreeningRef(d.getString("_id").getValue, d.getString("filmId").getValue))
 
+  override def findAllShareCardRefsChecked(): (Seq[ShareCardRef], Boolean) =
+    pagedIdsChecked(movies, "ReadModelRepository.findAllShareCardRefs",
+      Projections.include("_id", "shareCard", "posterUrl", "fallbackPosterUrls")) { d =>
+      import scala.jdk.CollectionConverters._
+      val card      = Option(d.getString("shareCard", null)).map(_.getValue)
+      val primary   = Option(d.getString("posterUrl", null)).map(_.getValue)
+      val fallbacks = Option(d.getArray("fallbackPosterUrls", null)).fold(Seq.empty[String])(
+        _.getValues.asScala.collect { case v if v.isString => v.asString.getValue }.toSeq)
+      ShareCardRef(d.getString("_id").getValue, card, primary.toSeq ++ fallbacks)
+    }
+
   // Server-side document counts — the read model's cheap integrity probe. These
   // count index entries (no payload decode), so the web's backstop can detect
   // drift without re-reading the whole corpus. `-1` signals "unavailable".

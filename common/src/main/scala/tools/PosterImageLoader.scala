@@ -114,13 +114,20 @@ object PosterDecodeGate {
  *    could use is refused outright. The loader then tries the next source (the weserv-resized copy
  *    of the same URL, then the next candidate), exactly as for a poster that failed to fetch.
  */
-private[tools] object PosterDecode {
+object PosterDecode {
   /** 12 MP -- a 2828×4243 poster -- is ~6× what the largest slot can show at 2× density, and bounds
    *  one progressive decode's native buffer at ~70 MB. */
   val MaxPixels: Long = 12L * 1000 * 1000
 
   def apply(bytes: Array[Byte]): Option[BufferedImage] =
-    Using.resource(new MemoryCacheImageInputStream(new ByteArrayInputStream(bytes))) { in =>
+    Using.resource(new MemoryCacheImageInputStream(new ByteArrayInputStream(bytes)))(read)
+
+  /** The same bounded read from a file on disk — the worker's poster download lands in one, so a
+   *  large poster is never held in the heap as bytes too. */
+  def fromFile(file: java.io.File): Option[BufferedImage] =
+    Using.resource(new javax.imageio.stream.FileImageInputStream(file))(read)
+
+  private def read(in: javax.imageio.stream.ImageInputStream): Option[BufferedImage] = {
       val readers = ImageIO.getImageReaders(in)
       Option.when(readers.hasNext)(readers.next()).flatMap { reader =>
         try {
@@ -134,5 +141,5 @@ private[tools] object PosterDecode {
           }.flatten
         } finally reader.dispose()
       }
-    }
+  }
 }

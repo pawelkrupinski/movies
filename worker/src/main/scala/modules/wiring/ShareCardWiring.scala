@@ -1,0 +1,76 @@
+package modules.wiring
+
+import modules.WorkerWiring
+import services.readmodel.ShareCardLedger
+import services.sharecards.*
+import services.tasks.{ClaimedEnqueueReaper, TaskHandler, TaskType}
+import tools.Env
+
+import java.nio.file.Path
+import scala.concurrent.duration.*
+
+/** ── Film share cards ─────────────────────────────────────────────────────────
+ *  The worker renders each film's Open Graph card into this country's share-card directory
+ *  (`KINOWO_SHARE_CARD_DIR`, default `/share-cards` — the pod's mount of the node's
+ *  `/var/lib/kinowo/share-cards/<cc>`; a process running several countries sets it to
+ *  `/share-cards/{cc}`), and the projection records each card's file name on `web_movies`.
+ *  Everything runs on the task queue: renders, the backfill, the prune and budget passes, the end
+ *  of a first-publish hold and the Facebook re-scrape. Without a writable directory the whole
+ *  pipeline is off and the projection runs with [[ShareCardLedger.none]]. */
+trait ShareCardWiring { self: WorkerWiring =>
+
+  lazy val shareCardStore: ShareCardStore =
+    new ShareCardStore(Path.of(Env.get("KINOWO_SHARE_CARD_DIR").getOrElse("/share-cards").replace("{cc}", country.code)))
+
+  lazy val shareCardsEnabled: Boolean = shareCardStore.usable
+
+  lazy val shareCardMetrics: ShareCardMetrics = workerMetrics.shareCardSeries.forCountry(country.code)
+
+  lazy val shareCardBudgetBytes: Long = Env.positiveLong("KINOWO_SHARE_CARD_BUDGET_MB", 1024L) * 1024 * 1024
+
+  lazy val shareCardService: ShareCardService = new ShareCardService(
+    country, shareCardStore,
+    new ShareCardPosters(shareCardStore, new HttpPosterDownload(), new VipsPosterShrinker(), shareCardMetrics),
+    readModelRepository, taskQueue, shareCardMetrics, clock)
+
+  /** What the projection asks about share cards. */
+  lazy val shareCardLedger: ShareCardLedger = if (shareCardsEnabled) shareCardService else ShareCardLedger.none
+
+  lazy val shareCardJanitor: ShareCardJanitor = new ShareCardJanitor(
+    shareCardStore, readModelRepository, shareCardBudgetBytes, shareCardMetrics, clock,
+    refresh = readModelProjector.refreshShareCard)
+
+  lazy val shareCardBackfill: ShareCardBackfill =
+    new ShareCardBackfill(shareCardService, readModelRepository, taskQueue, shareCardMetrics, clock)
+
+  lazy val shareCardFollowUp: ShareCardFollowUp =
+    new ShareCardFollowUp(shareCardStore, readModelProjector.refreshShareCard, readModelProjector.releaseShareCardHold)
+
+  lazy val shareCardHandlers: Seq[TaskHandler] =
+    if (!shareCardsEnabled) Nil
+    else Seq(
+      new RenderShareCardHandler(shareCardService),
+      new ShareCardBackfillHandler(shareCardBackfill),
+      new PruneShareCardsHandler(shareCardJanitor),
+      new ReleaseShareCardHoldHandler(() => readModelProjector.releaseExpiredHolds()),
+      new RescrapeShareCardHandler(new ShareCardRescraper(FacebookGraph.fromEnv(), readModelRepository, country, shareCardMetrics)))
+
+  /** The recurring enqueues: a backfill tick every minute (first three minutes after boot), the
+   *  budget pass every ten, the full prune daily (first five minutes after boot). Each window is
+   *  claimed, so one replica enqueues it. */
+  lazy val shareCardReapers: Seq[ClaimedEnqueueReaper] =
+    if (!shareCardsEnabled) Nil
+    else {
+      def enqueue(taskType: TaskType, key: String, payload: Map[String, String] = Map.empty): () => Unit =
+        () => { taskQueue.enqueue(taskType, key, payload, submittedAt = clock.instant()); () }
+      Seq(
+        new ClaimedEnqueueReaper("share-card-backfill", enqueue(TaskType.ShareCardBackfill, "share-card-backfill"),
+          1.minute, 3.minutes, scheduledRunStore, clock),
+        new ClaimedEnqueueReaper("share-card-budget",
+          enqueue(TaskType.PruneShareCards, "share-card-budget", Map(PruneShareCardsHandler.ModeKey -> PruneShareCardsHandler.Budget)),
+          10.minutes, 4.minutes, scheduledRunStore, clock),
+        new ClaimedEnqueueReaper("share-card-prune",
+          enqueue(TaskType.PruneShareCards, "share-card-prune", Map(PruneShareCardsHandler.ModeKey -> PruneShareCardsHandler.Daily)),
+          24.hours, 5.minutes, scheduledRunStore, clock))
+    }
+}

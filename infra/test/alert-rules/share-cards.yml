@@ -1,0 +1,125 @@
+# UNIT TESTS FOR THE SHARE-CARD ALERTS.
+#
+# Each alert fires for a real shape, stays quiet for a healthy one, and holds its `for:` across a
+# worker restart (a `stale` gap in the gauges). The two replicas of `pl` publish the same directory
+# figures: the budget ratio must count them once (`max`), not twice.
+rule_files:
+  - ../../nix/files/monitoring/rules/share-cards.rules
+
+evaluation_interval: 1m
+
+tests:
+  # NEAR BUDGET: 900 MiB of a 1 GiB budget (≈88%), mostly posters, published by two replicas and
+  # through a restart gap. Fires after 30m, names posters.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_share_cards_bytes{country="pl",kind="card",instance="w1",job="kinowo-worker"}'
+        values: '314572800x20 stale _x2 314572800x40'
+      - series: 'kinowo_worker_share_cards_bytes{country="pl",kind="poster",instance="w1",job="kinowo-worker"}'
+        values: '629145600x20 stale _x2 629145600x40'
+      - series: 'kinowo_worker_share_cards_bytes{country="pl",kind="card",instance="w2",job="kinowo-worker"}'
+        values: '314572800x62'
+      - series: 'kinowo_worker_share_cards_bytes{country="pl",kind="poster",instance="w2",job="kinowo-worker"}'
+        values: '629145600x62'
+      - series: 'kinowo_worker_share_cards_budget_bytes{country="pl",instance="w1",job="kinowo-worker"}'
+        values: '1073741824x20 stale _x2 1073741824x40'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: ShareCardsNearBudget
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: ShareCardsNearBudget
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: pl
+              kind: poster
+            exp_annotations:
+              summary: "pl's share cards and posters use 87.89% of their disk budget"
+              description: "`kinowo_worker_share_cards_bytes` summed over cards and cached posters is above 85% of `kinowo_worker_share_cards_budget_bytes` for this country; most of it is posters. The janitor evicts unreferenced files oldest-first every ten minutes, so this staying high means most of the directory is CURRENT (cards web_movies points at, posters of films on screen) -- compare `kinowo_worker_share_cards_current_bytes`. Raise KINOWO_SHARE_CARD_BUDGET_MB if the corpus grew; if current bytes did not grow, look for a flood of re-renders in `kinowo_worker_share_cards_render_total` by reason."
+      - eval_time: 45m
+        alertname: ShareCardsOverBudget
+        exp_alerts: []
+
+  # HEALTHY: half the budget stays quiet.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_share_cards_bytes{country="uk",kind="card",instance="w1",job="kinowo-worker"}'
+        values: '268435456x60'
+      - series: 'kinowo_worker_share_cards_bytes{country="uk",kind="poster",instance="w1",job="kinowo-worker"}'
+        values: '268435456x60'
+      - series: 'kinowo_worker_share_cards_budget_bytes{country="uk",instance="w1",job="kinowo-worker"}'
+        values: '1073741824x60'
+      - series: 'kinowo_worker_share_cards_current_bytes{country="uk",kind="card",instance="w1",job="kinowo-worker"}'
+        values: '200000000x60'
+      - series: 'kinowo_worker_share_cards_current_bytes{country="uk",kind="poster",instance="w1",job="kinowo-worker"}'
+        values: '200000000x60'
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: ShareCardsNearBudget
+        exp_alerts: []
+      - eval_time: 50m
+        alertname: ShareCardsOverBudget
+        exp_alerts: []
+
+  # OVER BUDGET: current cards + posters (700 + 500 MiB) above 1 GiB, through a restart gap. Critical,
+  # names cards (the larger), after 15m.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_share_cards_current_bytes{country="de",kind="card",instance="w1",job="kinowo-worker"}'
+        values: '734003200x10 stale _x2 734003200x20'
+      - series: 'kinowo_worker_share_cards_current_bytes{country="de",kind="poster",instance="w1",job="kinowo-worker"}'
+        values: '524288000x10 stale _x2 524288000x20'
+      - series: 'kinowo_worker_share_cards_budget_bytes{country="de",instance="w1",job="kinowo-worker"}'
+        values: '1073741824x10 stale _x2 1073741824x20'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ShareCardsOverBudget
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: ShareCardsOverBudget
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              country: de
+              kind: card
+            exp_annotations:
+              summary: "de's current share cards and posters alone exceed their disk budget"
+              description: "`kinowo_worker_share_cards_current_bytes` -- the cards web_movies points at plus the cached posters of films on screen, mostly cards -- is 1.172GiB, over the country's budget. The janitor never deletes current files, so nothing will bring this down on its own: raise KINOWO_SHARE_CARD_BUDGET_MB (and check the node's disk, FilesystemSpaceLow on k3s-worker-1), or find why the corpus holds more films on screen than before."
+
+  # POSTERS FAILING: 2 of 3 fetches fail per minute (60 attempts per 30m), through a restart gap.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_share_cards_poster_fetch_total{country="es",result="failed",instance="w1",job="kinowo-worker"}'
+        values: '0+2x20 stale _x2 42+2x60'
+      - series: 'kinowo_worker_share_cards_poster_fetch_total{country="es",result="ok",instance="w1",job="kinowo-worker"}'
+        values: '0+1x20 stale _x2 21+1x60'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: ShareCardPosterFetchFailing
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: ShareCardPosterFetchFailing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: es
+            exp_annotations:
+              summary: "es's share-card poster fetches are failing (66.67%)"
+              description: "More than half of the poster downloads + decodes behind new share cards failed over the last half hour. Each failure is every candidate URL of a film -- the TMDB w780 rendition, the original, the cinema fallbacks -- unreachable, over the 50 MB download cap, or undecodable (vips, then the bounded JDK decode). Films published meanwhile carry the fallback image. Check the worker log for `share card:` lines and whether one CDN host dominates; `kinowo_worker_http_total` does not see these fetches."
+
+  # QUIET: mostly successful fetches, and a failing trickle under ten attempts, both stay silent.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_share_cards_poster_fetch_total{country="us",result="failed",instance="w1",job="kinowo-worker"}'
+        values: '0+1x90'
+      - series: 'kinowo_worker_share_cards_poster_fetch_total{country="us",result="ok",instance="w1",job="kinowo-worker"}'
+        values: '0+4x90'
+      - series: 'kinowo_worker_share_cards_poster_fetch_total{country="pl",result="failed",instance="w1",job="kinowo-worker"}'
+        values: '0+0.1x90'
+      - series: 'kinowo_worker_share_cards_poster_fetch_total{country="pl",result="ok",instance="w1",job="kinowo-worker"}'
+        values: '0x90'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: ShareCardPosterFetchFailing
+        exp_alerts: []

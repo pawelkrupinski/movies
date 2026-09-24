@@ -58,7 +58,18 @@ case class ResolvedMovie(
   // `None` where no source carries one (e.g. PL today), so clients render the badge
   // only when present. Defaulted + last so legacy `web_movies` docs and positional
   // constructors stay valid (the codec restores an absent field as `None`).
-  ageRating:          Option[String]      = None
+  ageRating:          Option[String]      = None,
+  // The file name of the film's rendered Open Graph share card (one per film: it is drawn in the
+  // deployment's language, the one crawlers see), as the worker's share-card store holds it —
+  // the web points `og:image` at `/share-cards/<country>/<file>` when present and at the city
+  // card when not. Written by the projection from the store's state (see
+  // `services.readmodel.ShareCardLedger`), never by the web. Defaulted + last, like the fields
+  // above, so legacy documents decode to "no card".
+  shareCard:          Option[String]      = None,
+  // Published by the first-publish gate's timeout, before its share card existed — so a
+  // preview scraper may have cached the fallback image for it. Cleared once the card lands;
+  // the worker then asks Facebook to scrape the film's pages again.
+  shareCardPending:   Boolean             = false
 ) {
   /** Readable alias for the Mongo `_id`. */
   def id: String = _id

@@ -1602,7 +1602,7 @@
     {
       "id": 31,
       "title": "Venue pairs sharing their programme, by country and scope",
-      "description": "`kinowo_worker_duplicate_venue_pairs`: pairs of roster venues whose upcoming (film, start time) programmes are (nearly) the same (DuplicateVenueCensus, off the 5-min corpus scan), by scope. scope=same_city: two venues of one city overlapping by 90%+ of the larger programme \u2014 one screen listed twice under two names, or two venues wired to one upstream listing, which the name-based offline roster audit cannot see. scope=cross_city: two venues sharing no city, 20+ showtimes each, at 95%+ \u2014 one venue's feed listed under another's name (Flicks once gave Syracuse IN's Pickwick the Park Ridge IL one's). Venues under 5 upcoming showtimes are skipped; pairs on `services.cinemas.roster.DistinctVenuePairs` are cleared. ZERO IS HEALTHY.\n\nThe worker's WARN line \"duplicate-venue census (<country>, <scope>)\" names the pairs whenever the set changes. A chain running one programme in two towns also matches; clear those on DistinctVenuePairs with the reason. Alerted by DuplicateVenueListing (above zero for 24h).",
+      "description": "`kinowo_worker_duplicate_venue_pairs`: pairs of roster venues whose upcoming (film, start time) programmes are (nearly) the same (DuplicateVenueCensus, off the 5-min corpus scan), by scope. scope=same_city: two venues of one city overlapping by 90%+ of the larger programme — one screen listed twice under two names, or two venues wired to one upstream listing, which the name-based offline roster audit cannot see. scope=cross_city: two venues sharing no city, 20+ showtimes each, at 95%+ — one venue's feed listed under another's name (Flicks once gave Syracuse IN's Pickwick the Park Ridge IL one's). Venues under 5 upcoming showtimes are skipped; pairs on `services.cinemas.roster.DistinctVenuePairs` are cleared. ZERO IS HEALTHY.\n\nThe worker's WARN line \"duplicate-venue census (<country>, <scope>)\" names the pairs whenever the set changes. A chain running one programme in two towns also matches; clear those on DistinctVenuePairs with the reason. Alerted by DuplicateVenueListing (above zero for 24h).",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -1898,6 +1898,406 @@
           },
           "expr": "sum by (country, collection, op, exception) (increase(kinowo_worker_repository_write_failed_total{country=~\"$country\"}[$__rate_interval]))",
           "legendFormat": "{{country}} {{collection}}.{{op}} {{exception}}"
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "title": "Share-card directory — bytes on disk vs the budget, by country and kind",
+      "description": "`kinowo_worker_share_cards_bytes{kind}`: everything in the country's share-card directory on k3s-worker-1 -- rendered cards (`kind=\"card\"`) and the poster cache (`kind=\"poster\"`), temp files included -- against `kinowo_worker_share_cards_budget_bytes` (KINOWO_SHARE_CARD_BUDGET_MB, 1 GiB by default), which covers cards and posters TOGETHER. `current` (`kinowo_worker_share_cards_current_bytes`) is the part no pruner may delete: cards web_movies points at and posters of films on screen. The janitor evicts the rest oldest-first every ten minutes once the total passes the budget. ShareCardsNearBudget fires on the total above 85% for 30m; ShareCardsOverBudget when current alone exceeds the budget. Gauges are read from the directory, so every replica reports the same number: `max`, never `sum`. Files per kind are on the right axis.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 193
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*files.*"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*budget.*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    10,
+                    10
+                  ],
+                  "fill": "dash"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country, kind) (kinowo_worker_share_cards_bytes{country=~\"$country\"})",
+          "legendFormat": "{{country}} {{kind}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country, kind) (kinowo_worker_share_cards_current_bytes{country=~\"$country\"})",
+          "legendFormat": "{{country}} {{kind}} current"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country) (kinowo_worker_share_cards_budget_bytes{country=~\"$country\"})",
+          "legendFormat": "{{country}} budget"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country, kind) (kinowo_worker_share_cards_files{country=~\"$country\"})",
+          "legendFormat": "{{country}} {{kind}} files"
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "title": "Share-card coverage — films on screen whose card for their current inputs exists",
+      "description": "`kinowo_worker_share_cards_coverage_ratio`: of the films with screenings in web_screenings, the share whose card for their CURRENT inputs exists on disk -- one card per film, drawn in the deployment's language, from any of its current poster candidates. Published by the backfill tick every minute from its daily sweep. The web switches `og:image` to these cards only once every country holds at least 99% here. A drop after a template bump or a ratings refresh is the re-render queue working through it; a line that stays low while the render counter is quiet is the backfill not running.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 201
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country) (kinowo_worker_share_cards_coverage_ratio{country=~\"$country\"})",
+          "legendFormat": "{{country}}"
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "title": "Share-card renders per interval — by outcome and reason",
+      "description": "`kinowo_worker_share_cards_render_total{outcome,reason}`: render tasks by result -- rendered, existing (another task or replica already wrote it), failed (no poster could be fetched), deferred (a ratings-only change folded into the film's one re-render a day: at most one per film per 24h, measured ~242 rating changes a day fleet-wide on ~163 films), superseded (a deferred render a later change made moot) -- and by WHY: new_film (the first-publish gate), backfill, or the card input that moved (poster = the poster the card was drawn from left the film's candidates; title, year, ratings at displayed precision, language, template, details = genres/director/synopsis/host). A re-render that moved several inputs counts once per input. The deferred line against the rendered ratings line is the saving the once-a-day rule buys; a steady `details` line is synopsis churn re-rendering cards.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 209
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country, outcome, reason) (increase(kinowo_worker_share_cards_render_total{country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} {{outcome}} {{reason}}"
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "title": "Share-card deletions — by kind and reason",
+      "description": "`kinowo_worker_share_cards_pruned_total{kind,reason}`: files the janitor deleted. retired = the card of a film no longer on screen; superseded = an older card of a film that points at a newer one; unreferenced = a cached poster no film on screen uses; budget = evicted oldest-first to get under the budget; temp = an abandoned write older than the one-hour grace. Nothing younger than an hour is ever deleted, and no card web_movies points at. The daily prune's burst is normal; a steady budget line means the directory lives at its budget.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 217
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country, kind, reason) (increase(kinowo_worker_share_cards_pruned_total{country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} {{kind}} {{reason}}"
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "title": "Poster cache — hits and misses, and how the misses' fetches went",
+      "description": "`kinowo_worker_share_cards_poster_cache_total{result}`: a render found one of the film's posters already cached (hit, no download) or had to fetch (miss). `kinowo_worker_share_cards_poster_fetch_total{result}` (dashed, right axis) is what each miss's download + shrink did: ok, or failed (every candidate unreachable, over the 50 MB cap, or undecodable). ShareCardPosterFetchFailing fires on failed above half of at least ten attempts for 30m. Hits dominating after the backfill is the cache doing its job: only a changed poster URL costs a fetch.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 225
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*fetch.*"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    10,
+                    10
+                  ],
+                  "fill": "dash"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country, result) (increase(kinowo_worker_share_cards_poster_cache_total{country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} cache {{result}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country, result) (increase(kinowo_worker_share_cards_poster_fetch_total{country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} fetch {{result}}"
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "title": "Facebook re-scrapes of films published before their card",
+      "description": "`kinowo_worker_share_cards_rescrape_total{outcome}`: when the first-publish gate times out, a film goes public with the fallback image and Facebook may cache that for a month; once its card lands the worker asks the Graph API to re-scrape the film's city pages. sent = requests made, failed = pages Facebook refused (retried), disabled = the worker has no FACEBOOK_APP_ID / FACEBOOK_APP_SECRET, so nothing was sent. Should be near zero: a steady line means cards are routinely slower than the hold.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 233
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country, outcome) (increase(kinowo_worker_share_cards_rescrape_total{country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} {{outcome}}"
         }
       ]
     }

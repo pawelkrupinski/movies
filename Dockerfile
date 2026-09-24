@@ -23,6 +23,12 @@ ARG COMMIT_SHA=unknown
 ENV COMMIT_SHA=$COMMIT_SHA
 ARG BIN=web
 ENV BIN=$BIN
+# libvips for the WORKER only: it shrinks share-card posters of any size in a capped subprocess
+# (services.sharecards.VipsPosterShrinker), where the JDK decoder must refuse anything over 12 MP.
+# Measured +59 MB on the image; the web never decodes a poster, so it doesn't carry it.
+RUN if [ "$BIN" = "worker" ]; then \
+      apt-get update && apt-get install -y --no-install-recommends libvips-tools && rm -rf /var/lib/apt/lists/*; \
+    fi
 WORKDIR /app
 COPY stage/ ./
 # `actions/upload-artifact@v4` strips the Unix executable bit, so the

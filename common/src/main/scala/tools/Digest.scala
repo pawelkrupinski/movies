@@ -9,4 +9,9 @@ object Digest {
   def sha1Hex(s: String): String =
     MessageDigest.getInstance("SHA-1").digest(s.getBytes(StandardCharsets.UTF_8))
       .map(b => f"${b & 0xff}%02x").mkString
+
+  /** SHA-256, for the share-card store's content-addressed names (a card's inputs, a poster's URL). */
+  def sha256Hex(s: String): String =
+    MessageDigest.getInstance("SHA-256").digest(s.getBytes(StandardCharsets.UTF_8))
+      .map(b => f"${b & 0xff}%02x").mkString
 }

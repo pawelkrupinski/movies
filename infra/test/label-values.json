@@ -9279,6 +9279,19 @@
     "miss_unresolved"
    ]
   },
+  "kinowo_worker_share_cards_poster_fetch_total": {
+   "country": [
+    "de",
+    "es",
+    "pl",
+    "uk",
+    "us"
+   ],
+   "result": [
+    "failed",
+    "ok"
+   ]
+  },
   "kinowo_worker_tasks_enqueued_total": {
    "result": [
     "added",

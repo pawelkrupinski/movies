@@ -201,6 +201,9 @@ let
     # took UK's Cineworld/Odeon scrapes down with no working fallback at all -- fixed the same day
     # alongside this rule. Alphabetically after read-model-projection and before web-errors.
     "residential-proxy"
+    # ARE THE FILM SHARE CARDS WITHIN THEIR DISK BUDGET, and are their poster upstreams answering.
+    # The worker renders the cards (and caches posters) onto k3s-worker-1's disk under one budget.
+    "share-cards"
     # IS THE SITE ANSWERING. Every other file here watches a machine or a process, all of which can
     # be green while the web tier serves a 500 to every visitor. Added after the "Error share" panel
     # spent an afternoon at 25% with nothing failing -- the file explains why the 4xx half of that

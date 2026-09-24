@@ -477,6 +477,17 @@ object OgCardRenderer {
     g.drawImage(p, x - (sw - w) / 2, y - (sh - h) / 2, sw, sh, null)
   }
 
+  /** `p` cover-scaled and cropped to exactly the film card's poster column
+   *  ([[PosterSlotWidth]] × [[PosterSlotHeight]]) — what the worker's poster cache stores, so a
+   *  render from the cache draws it 1:1. */
+  def coverSlot(p: BufferedImage): BufferedImage = {
+    val slot = new BufferedImage(PosterSlotWidth, PosterSlotHeight, BufferedImage.TYPE_INT_RGB)
+    val g    = slot.createGraphics()
+    try { applyHints(g); drawCover(g, p, 0, 0, PosterSlotWidth, PosterSlotHeight) }
+    finally g.dispose()
+    slot
+  }
+
   /** Cover-scale the film poster to the full-bleed left column. */
   private def drawPoster(g: Graphics2D, p: BufferedImage): Unit =
     drawCover(g, p, 0, 0, PosterW, PosterH)
