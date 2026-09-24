@@ -3,10 +3,8 @@ package tools
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
 import java.time.{LocalDate, ZoneOffset}
-import scala.jdk.CollectionConverters._
 
 /**
  * Specs must not depend on what day it is.
@@ -41,7 +39,6 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
   private val TestRoots = Seq(
     "common/src/test", "testkit/src", "web/src/test", "web/src/it", "web/src/page",
     "worker/src/test", "worker/src/it", "worker/src/fixtures", "e2e/src/test")
-  private val MainRoots = Seq("common/src/main", "web/src/main", "worker/src/main")
 
   // Why a file may still read the wall clock. Each reason names the production code that reads
   // it without a Clock seam — the spec's data has to be relative to that same clock — so the
@@ -74,41 +71,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
     "worker/src/it/scala/contracts/ResolveDispatcherContractSpec.scala" -> MongoPath
   )
 
-  private def scalaFiles(roots: Seq[String]): Seq[Path] =
-    roots.map(Paths.get(_)).filter(Files.isDirectory(_)).flatMap { root =>
-      Files.walk(root).iterator.asScala.filter(_.toString.endsWith(".scala")).toSeq
-    }.sortBy(_.toString)
-
-  private def read(p: Path): String = new String(Files.readAllBytes(p), StandardCharsets.UTF_8)
-
-  /** The line with any `//` comment dropped, or "" for a Scaladoc/block-comment line. */
-  private def code(line: String): String = {
-    val trimmed = line.trim
-    if (trimmed.startsWith("*") || trimmed.startsWith("/*")) ""
-    else {
-      val slashes = Iterator.iterate(line.indexOf("//"))(i => line.indexOf("//", i + 1))
-        .takeWhile(_ >= 0)
-        .find(i => line.substring(0, i).count(_ == '"') % 2 == 0)
-      slashes.fold(line)(line.substring(0, _))
-    }
-  }
-
-  /** The argument text of the call whose `(` is at `open`. */
-  private def argumentsAt(text: String, open: Int): String = {
-    var depth = 0
-    var i     = open
-    while (i < text.length) {
-      text(i) match {
-        case '(' => depth += 1
-        case ')' =>
-          depth -= 1
-          if (depth == 0) return text.substring(open + 1, i)
-        case _ =>
-      }
-      i += 1
-    }
-    text.substring(open + 1)
-  }
+  import ScalaSourceScan.{argumentsAt, code, read, scalaFiles}
 
   private val Now = """\b(?:Instant|LocalDate|LocalDateTime|LocalTime|ZonedDateTime|OffsetDateTime|Year|YearMonth)\.now\(""".r
   private val OtherReads = """System\.currentTimeMillis\(|Clock\.system(?:UTC|DefaultZone)\(|new (?:java\.util\.)?Date\(\)""".r
@@ -159,7 +122,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
   private val ClassHeader  = """\bclass\s+(\w+)\s*(?:\[[^\]]*\])?\s*(?=\()""".r
 
   /** Production classes whose constructor defaults `clock` to the system clock. */
-  private lazy val clockDefaulted: Set[String] = scalaFiles(MainRoots).flatMap { path =>
+  private lazy val clockDefaulted: Set[String] = scalaFiles(ScalaSourceScan.MainRoots).flatMap { path =>
     val src  = read(path).linesIterator.map(code).mkString("\n")
     ClassHeader.findAllMatchIn(src).collect {
       case m if ClockDefault.findFirstIn(argumentsAt(src, m.end)).isDefined => m.group(1)
