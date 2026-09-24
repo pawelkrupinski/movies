@@ -29,4 +29,18 @@ class ObjectGraphSpec extends AnyFlatSpec with Matchers {
       }
     }
   }
+
+  private final class Lazy {
+    lazy val unread: Holder = new Holder(new Target)
+    lazy val broken: Holder = throw new IllegalStateException("no network here")
+  }
+
+  "a value only a lazy val builds" should "be found once the root's lazy members are forced, and a throwing one named" in {
+    val root = new Lazy
+    ObjectGraph.collect(root) { case t: Target => t } shouldBe empty   // unforced: its field is null
+    val failed = ObjectGraph.forceLazyMembers(root)
+    failed.map(_._1) shouldBe Seq("broken")
+    failed.head._2.getMessage shouldBe "no network here"
+    ObjectGraph.collect(root) { case t: Target => t }.map(_._1) shouldBe Seq("Lazy.unread$lzy1.target")
+  }
 }

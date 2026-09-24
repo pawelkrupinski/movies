@@ -49,15 +49,13 @@ class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers {
     }
     override protected lazy val filmwebFallbackIds: Map[Cinema, Int] = Map.empty
 
-    /** Force the members a real boot builds, short of anything that dials out. */
-    def forceBoot(): Unit = {
-      cinemaScrapers; detailEnrichers; detailEnqueuers; detailReaper; enrichDetailsHandler
-      filmwebOnlyCinemas; clientMarkers; sourceUrls; scrapeReaper; chunkScrapeReaper
-      tmdbClient; imdbRatings; movieCache; ratingEnqueuer; enrichmentReaper; unresolvedTmdbReaper
-      enrichmentRetrigger; taskMetrics; corpusScan; ratingRunCensus; cinemaScrapeCensus
-      cinemaContentCensus; retiredVenueCensus; duplicateVenueCensus
+    /** Build EVERY member the wiring declares — not a hand-kept list of the ones someone
+     *  thought of, which a component added tomorrow would not be on — and name any that could
+     *  not be built (the network leaf refuses every call). */
+    def forceBoot(): Seq[(String, Throwable)] = {
+      val failed = ObjectGraph.forceLazyMembers(this)
       registerCacheMetrics()
-      ()
+      failed
     }
     /** Every cinema name this wiring tags into its /uptime at boot or on a fallback flip. */
     def taggedCinemas: Set[String] = clientMarkers.keySet ++ sourceUrls.keySet ++ filmwebOnlyCinemas
@@ -85,7 +83,10 @@ class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers {
     s"The $code worker wiring" should "hold no other country, city or cinema anywhere in its graph" in {
       val wiring = new IsolationProbe(country)
       try {
-        wiring.forceBoot()
+        val unbuilt = wiring.forceBoot()
+        withClue(s"members the walk cannot see because they failed to build: ${unbuilt.map { case (n, e) => s"$n: $e" }.mkString("; ")}\n") {
+          unbuilt shouldBe empty
+        }
         val graph = ObjectGraph.collect(wiring, opaque = _.isInstanceOf[CinemaScraperCatalog]) {
           case c: Country => c
           case c: City    => c

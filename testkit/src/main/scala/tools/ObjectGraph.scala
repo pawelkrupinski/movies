@@ -66,6 +66,32 @@ object ObjectGraph {
     found.toSeq.map { case (value, where) => where -> value }
   }
 
+  /** Force every `lazy val` of `obj` that has not been read yet, and name the ones that threw.
+   *
+   *  The walk sees fields, and an unforced lazy val's field is null: whatever it WOULD build is
+   *  invisible, so a spec that only walks is as complete as the list of members it thought to
+   *  touch first — the opposite of "a component added tomorrow is caught without listing it".
+   *  Call this on a composition root before [[collect]]. A member that throws is returned, not
+   *  swallowed: the caller decides whether its absence from the walk is acceptable. */
+  def forceLazyMembers(obj: AnyRef): Seq[(String, Throwable)] =
+    Iterator.iterate[Class[?]](obj.getClass)(_.getSuperclass).takeWhile(k => k != null && !isLibrary(k))
+      .flatMap(_.getDeclaredFields.iterator)
+      .flatMap(f => LazyField.findFirstMatchIn(f.getName).map(m => f -> m.group(1)))
+      .filter { case (f, _) => Try { f.setAccessible(true); f.get(obj) == null }.getOrElse(false) }
+      .flatMap { case (f, name) =>
+        accessor(obj.getClass, name).fold(Option(name -> (new NoSuchMethodException(s"no accessor for lazy val $name"): Throwable))) { m =>
+          Try(m.invoke(obj)).failed.toOption.map(e => name -> Option(e.getCause).getOrElse(e))
+        }
+      }.toSeq
+
+  // Scala 3 backs `lazy val name` with a field `name$lzy1`.
+  private val LazyField = """^(.+)\$lzy\d+$""".r
+
+  private def accessor(c: Class[?], name: String): Option[java.lang.reflect.Method] =
+    Iterator.iterate[Class[?]](c)(_.getSuperclass).takeWhile(_ != null)
+      .flatMap(k => Try(k.getDeclaredMethod(name)).toOption)
+      .find(m => Try(m.setAccessible(true)).isSuccess)
+
   private def isLibrary(c: Class[?]): Boolean = {
     val name = c.getName
     c.isPrimitive || LibraryPrefixes.exists(name.startsWith)
