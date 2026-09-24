@@ -957,6 +957,37 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     booted.stop()
   }
 
+  // A HEAL IS A REPAIR OF WHAT WAS MISSING, NOT ANY WRITE. The heal reads its row whole, so it
+  // also writes every change the change stream has not applied YET — and while the sweep holds
+  // the projection lock the stream CANNOT apply, so a row with a spent slot (asked about on every
+  // sweep after it changes) and an event queued behind the sweep was counted as healed. It is the
+  // one path that fits what the US sweep "healed" on 2026-09-23 23:33Z and 00:03Z (Your Mother
+  // Your Mother Your Mother, eight minutes after a scrape-prune at the Aero, Whalefall,
+  // ff17516a55e08450): no card retired, no write failed, no restart, no stream error — and
+  // ReadModelHealsRecurring paged for it.
+  "the orphan prune" should "not count as a heal a row whose absent venue was a spent slot, even when it wrote a pending change" in {
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
+                                                 slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
+    val rm = new InMemoryReadModelRepository()
+    val m  = new RecordingMetrics()
+    val sweeper = new ReadModelProjector(repository, rm, rm, m)
+    def foo(showtime: String) = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+      Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at(showtime))),
+      KinoMuranow -> SourceData(title = Some("Foo"), showtimes = Nil)))
+    repository.upsert("Foo", Some(2024), foo("2026-06-12T20:00"))
+    sweeper.onMovieUpsert(repository.findAll().head)
+    // A showtime change the stream has delivered but not applied: queued behind the sweep.
+    repository.upsert("Foo", Some(2024), foo("2026-06-13T18:00"))
+
+    sweeper.pruneOrphans()
+
+    withClue("the sweep may apply the queued change, but it repaired nothing that was missing: ") {
+      m.heals.filter(_._2 > 0) shouldBe empty
+    }
+    rm.findAllScreenings().flatMap(_.showtimes).map(_.dateTime.toString) shouldBe Seq("2026-06-13T18:00")
+    sweeper.stop()
+  }
+
   it should "ask again once the row itself changes" in {
     val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
                                                  slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)

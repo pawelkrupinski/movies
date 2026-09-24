@@ -105,7 +105,9 @@ trait ReadModelProjectionMetrics {
    *  and any heal is a stream-path defect. On 2026-09-22 a TMDB re-try made rows briefly
    *  unready, the stream retired ~500 cards a day for it, and only the sweep's ~26 heal lines
    *  a day put them back, 30 minutes late each time; that ran for days visible only in logs.
-   *  Only rows the heal actually WROTE for count — a look that found nothing missing is not a heal. */
+   *  Only rows whose missing card or venue the heal actually WROTE count — a look that found
+   *  nothing missing is not a heal, and neither is one that only applied a change the stream
+   *  had queued behind the sweep (2026-09-23, US: three such rows paged ReadModelHealsRecurring). */
   def recordHeal(trigger: String, rows: Int): Unit
 
   /** `rows` ready rows a heal pass re-projected — WHETHER OR NOT it wrote anything — found by

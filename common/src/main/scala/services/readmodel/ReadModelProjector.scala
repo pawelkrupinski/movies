@@ -593,21 +593,30 @@ class ReadModelProjector(
    *  read whole, since the slots-only scans that find them carry no showtimes. What this
    *  process remembers about them is dropped first: the memo says "already written", the
    *  read model says otherwise, and the read model is the truth — trusting the memo would
-   *  skip the very write the heal exists for. True when the heal wrote something.
+   *  skip the very write the heal exists for.
    *
-   *  A heal that wrote NOTHING found the projection agreeing with the read model: the
-   *  absence was the slots-only view's phantom (a spent slot projects no venue row). That
-   *  answer is remembered against the row's `metadataHash`, for the boot check and the
-   *  sweep alike, so no later pass asks again until the row moves. The boot check once kept
-   *  no note, and the first sweep five minutes later re-projected every spent-slot row a
-   *  second time — ~260 of them per PL worker start. */
+   *  True only when the projection wrote one of the ids that were MISSING — the repair a
+   *  heal is. Any other write is a change the change stream has not applied yet: the heal
+   *  reads the row whole and writes whatever differs, and while the sweep holds `lock` every
+   *  event is queued behind it. Counting those called the 2026-09-23 US sweep's pending
+   *  showtime changes heals, and paged `ReadModelHealsRecurring` for a stream that was fine.
+   *
+   *  A heal that repaired nothing found the absence to be the slots-only view's phantom (a
+   *  spent slot projects no venue row). That answer is remembered against the row's
+   *  `metadataHash`, for the boot check and the sweep alike, so no later pass asks again
+   *  until the row moves. The boot check once kept no note, and the first sweep five
+   *  minutes later re-projected every spent-slot row a second time — ~260 of them per PL
+   *  worker start. */
   private def heal(id: services.movies.FilmId, metadataHash: Int, absentCards: Seq[String], absentVenues: Seq[String]): Boolean = {
     absentCards.foreach(forgetCard)
     absentVenues.foreach(forgetScreening)
     movieRepository.findById(id).exists { whole =>
-      val written = project(ReadModelProjection.partition(whole, normalizer))
-      if (written == 0) healedClean.update(id.value, metadataHash)
-      written > 0
+      project(ReadModelProjection.partition(whole, normalizer))
+      // Forgotten above, so remembered now only if this projection produced and wrote it.
+      val repaired = absentCards.exists(lastMovie.contains) ||
+        absentVenues.exists(venue => lastScreenings.valuesIterator.exists(_.contains(venue)))
+      if (!repaired) healedClean.update(id.value, metadataHash)
+      repaired
     }
   }
 
