@@ -95,22 +95,24 @@ tests:
 
   # ─── JvmResidentNearContainerLimit ─────────────────────────────────────────────────────────────
   #
-  # web-pl on 2026-09-21 18:11-18:25Z, the growth the heap rule above could not see: RSS at ~0.87 of
-  # the 1 GiB limit while the heap sat under -Xmx, in the ten minutes before the container was
-  # OOM-killed. The limit comes from kube-state-metrics, labelled the way it labels it: the tier is
-  # the container name and the country only exists inside the pod name.
+  # A CLIMB PAGES, A PLATEAU DOES NOT. Both inputs are web-pl's REAL RSS, one sample a minute, from
+  # Prometheus; the limit is its 1 GiB, labelled the way kube-state-metrics labels it (the tier is
+  # the container name, the country only exists inside the pod name).
+  #
+  # 2026-09-21 17:40-18:24Z: a restart at 17:55, then 0.61 -> 0.89 of the limit in half an hour and
+  # an OOM kill at 18:25. The alert must be firing before the end of this series.
   - interval: 1m
     input_series:
       - series: 'process_resident_memory_bytes{instance="kinowo-web-pl",job="kinowo-web",app="kinowo",tier="web",country="pl"}'
-        values: '800000000 800000000 934000000+0x20'
+        values: '781160448 823533568 823705600 825094144 826163200 834990080 837300224 837443584 838352896 839176192 842727424 849784832 849227776 849264640 849420288 650813440 668217344 692711424 699633664 731328512 739565568 740249600 740843520 757387264 812490752 814231552 814292992 814497792 819363840 873160704 888262656 887955456 888061952 888115200 897404928 930738176 929943552 930058240 930209792 934109184 938385408 939966464 956153856 956174336'
       - series: 'kube_pod_container_resource_limits{job="kube-state-metrics",namespace="kinowo",pod="web-pl-5c55479c9c-xxn56",container="web",resource="memory",unit="byte"}'
-        values: '1073741824+0x22'
+        values: '1073741824+0x44'
     alert_rule_test:
-      # Not on the first scrapes over the line -- `for: 3m`.
-      - eval_time: 3m
+      # 0.76-0.78 of the limit and rising, but not steeply enough to reach it in 30 minutes yet.
+      - eval_time: 35m
         alertname: JvmResidentNearContainerLimit
         exp_alerts: []
-      - eval_time: 6m
+      - eval_time: 43m
         alertname: JvmResidentNearContainerLimit
         exp_alerts:
           - exp_labels:
@@ -118,15 +120,36 @@ tests:
               tier: web
               country: pl
             exp_annotations:
-              summary: "web-pl RSS is 86.99% of its container memory limit"
-              description: "The process is close to the cgroup limit, and the kernel -- not the JVM -- decides what happens next: an OOM kill with no heap dump and no log line. Find WHICH memory grew before resizing anything. Heap, non-heap pools and direct buffers are `jvm_memory_committed_bytes` and `jvm_buffer_pool_used_bytes{pool=\"direct\"}`; RSS minus their sum is memory NO JVM POOL SEES (native allocations: image decoding, fonts, glibc arenas). On web that has been the og-image share cards under a crawler sweep -- check the og-image request rate in /var/log/caddy/access-*.log on k3s-worker-1 and `kinowo_web_cache_entries{cache=\"og_card_film\"}` climbing. Raising the limit only buys time if the growth is unbounded."
+              summary: "web-pl RSS is 89.05% of its container memory limit and climbing toward it"
+              description: "The process's resident memory is climbing toward the cgroup limit fast enough to reach it within half an hour, and the kernel -- not the JVM -- decides what happens then: an OOM kill with no heap dump and no log line. Find WHICH memory grew before resizing anything. Heap, non-heap pools and direct buffers are `jvm_memory_committed_bytes` and `jvm_buffer_pool_used_bytes{pool=\"direct\"}`; RSS minus their sum is memory NO JVM POOL SEES (native allocations: image decoding, fonts, glibc arenas). On web that has been the og-image share cards under a crawler sweep -- check the og-image request rate in /var/log/caddy/access-*.log on k3s-worker-1 and `kinowo_web_cache_entries{cache=\"og_card_film\"}` climbing. Raising the limit only buys time if the growth is unbounded."
 
-  # A HEALTHY web pod stays silent: web-us at its measured 7-day max (0.81 of 2 GiB), with a rolling
-  # deploy's second pod present -- two limit series for one country must not break the join.
+  # 2026-09-20 00:50-02:20Z: one step from 0.79 to 0.86 of the limit, then a plateau that held for
+  # ten hours with no kill (the old static 0.82 line paged for all ten). Flat is not a threat.
+  - interval: 1m
+    input_series:
+      - series: 'process_resident_memory_bytes{instance="kinowo-web-pl",job="kinowo-web",app="kinowo",tier="web",country="pl"}'
+        values: '847925248 847855616 847855616 847855616 847855616 847855616 847855616 847855616 847859712 847859712 847929344 847929344 847929344 847859712 847859712 847933440 847933440 847933440 847941632 847872000 847941632 848007168 847941632 847872000 847872000 847876096 847953920 847884288 847884288 847896576 924250112 924254208 924254208 924254208 924184576 924270592 924336128 924270592 924205056 924205056 924340224 924393472 924323840 924323840 924323840 924323840 924323840 924323840 924381184 924381184 924381184 924385280 924385280 924454912 924434432 924663808 924729344 924680192 924684288 924684288 924753920 924766208 924696576 924696576 924696576 924766208 924766208 924798976 927166464 927096832 927100928 927170560 927166464 927113216 927645696 927154176 927223808 927154176 927223808 927158272 927158272 927158272 927162368 927162368 927162368 927453184 927252480 927252480 927256576 927195136 927260672'
+      - series: 'kube_pod_container_resource_limits{job="kube-state-metrics",namespace="kinowo",pod="web-pl-5c55479c9c-xxn56",container="web",resource="memory",unit="byte"}'
+        values: '1073741824+0x90'
+    alert_rule_test:
+      - eval_time: 35m
+        alertname: JvmResidentNearContainerLimit
+        exp_alerts: []
+      - eval_time: 60m
+        alertname: JvmResidentNearContainerLimit
+        exp_alerts: []
+      - eval_time: 90m
+        alertname: JvmResidentNearContainerLimit
+        exp_alerts: []
+
+  # A STEEP CLIMB FROM LOW DOWN is a boot filling its caches, not a pod about to die: web-us rising
+  # 0.30 -> 0.70 of 2 GiB in 20 minutes would "reach" the limit on a straight line, and the 0.75
+  # floor keeps it quiet. A rolling deploy's second pod is present too -- two limit series for one
+  # country must not break the join.
   - interval: 1m
     input_series:
       - series: 'process_resident_memory_bytes{instance="kinowo-web-us",job="kinowo-web",app="kinowo",tier="web",country="us"}'
-        values: '1740000000+0x30'
+        values: '644245094+42949673x20 1503238553+0x10'
       - series: 'kube_pod_container_resource_limits{job="kube-state-metrics",namespace="kinowo",pod="web-us-6d4b8c7f9d-abcde",container="web",resource="memory",unit="byte"}'
         values: '2147483648+0x30'
       - series: 'kube_pod_container_resource_limits{job="kube-state-metrics",namespace="kinowo",pod="web-us-7f8e9a0b1c-fghij",container="web",resource="memory",unit="byte"}'
@@ -136,20 +159,20 @@ tests:
         alertname: JvmResidentNearContainerLimit
         exp_alerts: []
 
-  # THE WORKERS HAVE THEIR OWN THRESHOLD. worker-pl's healthy 7-day max is 0.86 of its limit --
-  # above web's line -- so the worker line sits higher, and 0.86 must stay silent while 0.94 fires.
+  # THE WORKERS BY THE SAME RULE. worker-pl flat at its healthy 0.86 stays quiet; worker-uk climbing
+  # 0.80 -> 0.95 of 1 GiB over 30 minutes fires.
   - interval: 1m
     input_series:
       - series: 'process_resident_memory_bytes{instance="kinowo-worker-pl",job="kinowo-worker",app="kinowo-worker",tier="worker",country="pl"}'
-        values: '923000000+0x30'
+        values: '923000000+0x40'
       - series: 'kube_pod_container_resource_limits{job="kube-state-metrics",namespace="kinowo",pod="worker-pl-5b9c8d7e6f-klmno",container="worker",resource="memory",unit="byte"}'
-        values: '1073741824+0x30'
+        values: '1073741824+0x40'
       - series: 'process_resident_memory_bytes{instance="kinowo-worker-uk",job="kinowo-worker",app="kinowo-worker",tier="worker",country="uk"}'
-        values: '1010000000+0x30'
+        values: '858993459+5368709x30 1020054733+0x10'
       - series: 'kube_pod_container_resource_limits{job="kube-state-metrics",namespace="kinowo",pod="worker-uk-5fd6cb68bb-lmchv",container="worker",resource="memory",unit="byte"}'
-        values: '1073741824+0x30'
+        values: '1073741824+0x40'
     alert_rule_test:
-      - eval_time: 20m
+      - eval_time: 30m
         alertname: JvmResidentNearContainerLimit
         exp_alerts:
           - exp_labels:
@@ -157,8 +180,8 @@ tests:
               tier: worker
               country: uk
             exp_annotations:
-              summary: "worker-uk RSS is 94.06% of its container memory limit"
-              description: "The process is close to the cgroup limit, and the kernel -- not the JVM -- decides what happens next: an OOM kill with no heap dump and no log line. Find WHICH memory grew before resizing anything. Heap, non-heap pools and direct buffers are `jvm_memory_committed_bytes` and `jvm_buffer_pool_used_bytes{pool=\"direct\"}`; RSS minus their sum is memory NO JVM POOL SEES (native allocations: image decoding, fonts, glibc arenas). On web that has been the og-image share cards under a crawler sweep -- check the og-image request rate in /var/log/caddy/access-*.log on k3s-worker-1 and `kinowo_web_cache_entries{cache=\"og_card_film\"}` climbing. Raising the limit only buys time if the growth is unbounded."
+              summary: "worker-uk RSS is 95% of its container memory limit and climbing toward it"
+              description: "The process's resident memory is climbing toward the cgroup limit fast enough to reach it within half an hour, and the kernel -- not the JVM -- decides what happens then: an OOM kill with no heap dump and no log line. Find WHICH memory grew before resizing anything. Heap, non-heap pools and direct buffers are `jvm_memory_committed_bytes` and `jvm_buffer_pool_used_bytes{pool=\"direct\"}`; RSS minus their sum is memory NO JVM POOL SEES (native allocations: image decoding, fonts, glibc arenas). On web that has been the og-image share cards under a crawler sweep -- check the og-image request rate in /var/log/caddy/access-*.log on k3s-worker-1 and `kinowo_web_cache_entries{cache=\"og_card_film\"}` climbing. Raising the limit only buys time if the growth is unbounded."
 
   # HeapDumpWritten -- web-pl's directory is empty (0) until a dump lands 1h in; worker-us holds an
   # old dump the whole time and the timer keeps republishing it. Only the MOVE may fire, only for

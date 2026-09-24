@@ -127,13 +127,18 @@ groups:
       # so both are lifted into labels to join on. `max by` because a rolling deploy briefly has two
       # pods (and two limit series) per country.
       #
-      # THE THRESHOLDS ARE PER TIER AND MEASURED, 2026-09-24, over the preceding 7 days of
-      # healthy pods: web RSS/limit median 0.68-0.77 and max 0.81 (web-us); worker median 0.62-0.81
-      # and max 0.86 (worker-pl). The workers run with MALLOC_ARENA_MAX=2 and a trim threshold, so
-      # their RSS sits higher but returns memory; web does not yet. In the 09-21 crash loop web-pl
-      # read 0.83-0.87 for the 5-10 minutes before each kill, so 0.82 for 3m fires with minutes to
-      # spare on the kills that grew rather than jumped. A single decode storm can still go from
-      # quiet to killed between two 30s scrapes; nothing sampled can promise to see that one.
+      # A CLIMB, NOT A LEVEL. The first version fired at a static 0.82 (web) / 0.92 (worker), and
+      # no static line separates the two shapes prod has shown (replayed 2026-09-24): web-pl sat
+      # FLAT at 0.86-0.87 for ten hours on 09-20 and again on 09-21 with no kill, while the one
+      # 09-21 kill that grew rather than jumped climbed 0.61 -> 0.89 in the half hour before it.
+      # So this asks whether RSS, on its last 30 minutes' straight line, reaches the limit within
+      # the next 30, AND is already over 0.75 of it -- the floor keeps a boot filling its caches
+      # quiet. Over the seven days to 09-24 that fired on web-pl's 09-17 crash loop and five
+      # minutes before 09-21's 18:25Z kill, and on nothing else in either tier; since the web pods
+      # got MALLOC_ARENA_MAX=2 (09-24 04:34Z) they sit at 0.54-0.67. A single decode storm can
+      # still go from quiet to killed between two 30s scrapes (most of 09-21's seven kills did);
+      # nothing sampled can promise to see that one. The series survives a pod restart (the
+      # target is the country's NodePort), so a restart's drop pulls the line down, not up.
       - alert: JvmResidentNearContainerLimit
         expr: >-
           (
@@ -145,19 +150,26 @@ groups:
                   "tier", "$1", "container", "(.*)"),
                 "country", "$1", "pod", "(?:web|worker)-([a-z]+)-.*")
             )
-          ) > on (tier) group_left()
+          ) > 0.75
+          and on (tier, country)
           (
-            label_replace(vector(0.82), "tier", "web", "", "")
-              or label_replace(vector(0.92), "tier", "worker", "", "")
+            max by (tier, country) (predict_linear(process_resident_memory_bytes{job=~"kinowo-web|kinowo-worker"}[30m], 1800))
+              >= on (tier, country)
+            max by (tier, country) (
+              label_replace(
+                label_replace(kube_pod_container_resource_limits{namespace="kinowo", resource="memory", container=~"web|worker"},
+                  "tier", "$1", "container", "(.*)"),
+                "country", "$1", "pod", "(?:web|worker)-([a-z]+)-.*")
+            )
           )
-        for: 3m
+        for: 2m
         labels:
           severity: warning
         annotations:
-          summary: "{{ $labels.tier }}-{{ $labels.country }} RSS is {{ $value | humanizePercentage }} of its container memory limit"
+          summary: "{{ $labels.tier }}-{{ $labels.country }} RSS is {{ $value | humanizePercentage }} of its container memory limit and climbing toward it"
           description: >-
-            The process is close to the cgroup limit, and the kernel -- not the JVM -- decides what
-            happens next: an OOM kill with no heap dump and no log line. Find WHICH memory grew
+            The process's resident memory is climbing toward the cgroup limit fast enough to reach
+            it within half an hour, and the kernel -- not the JVM -- decides what happens then: an OOM kill with no heap dump and no log line. Find WHICH memory grew
             before resizing anything. Heap, non-heap pools and direct buffers are
             `jvm_memory_committed_bytes` and `jvm_buffer_pool_used_bytes{pool="direct"}`; RSS minus
             their sum is memory NO JVM POOL SEES (native allocations: image decoding, fonts, glibc
