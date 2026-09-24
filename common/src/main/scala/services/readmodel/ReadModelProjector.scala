@@ -74,15 +74,19 @@ class ReadModelProjector(
   // row's next real change re-projects it — self-healing, never permanently wrong.
   // Per card: a hash per PART of what was last written, so a rewrite can name what moved.
   private val lastMovie      = scala.collection.mutable.Map.empty[String, CardHash]
-  // Per SOURCE ROW: the metadata hash at which a heal looked and found nothing to write.
+  // Per SOURCE ROW: the metadata hash at which a heal looked and found nothing to write, and
+  // the venues it found to be phantoms.
   // The venue check reads SLOTS ONLY (the sweep must not pull the whole screenings
   // collection), so it cannot tell a slot with no showtimes from a venue whose row is
   // missing, and it asks about both. A slot that is simply spent therefore reads as absent
   // on EVERY sweep: PL re-projected the same ~333 rows every 30 minutes for as long as this
   // ran (2026-09-08). Once a heal has re-projected a row and written nothing, the absence
   // was a phantom of that slots-only view — remember it, and stop asking until the row's
-  // metadata moves or a projection touches it, which is exactly when the answer can change.
-  private val healedClean    = scala.collection.mutable.Map.empty[String, Int]
+  // metadata moves or a projection WRITES that venue, which is exactly when the answer can
+  // change. Not on every projection of the row: a showtime moving at its other venue, or the
+  // catch-up re-projecting a row the cursor was late with, leaves a spent slot spent, and
+  // wiping the note there re-asked 13 Polish rows on a sweep over an unchanged corpus.
+  private val healedClean    = scala.collection.mutable.Map.empty[String, (Int, Set[String])]
   // Per SOURCE ROW: the card ids its last projection produced. What lets a re-projection
   // retire the variant card a vanished listing no longer earns, and a delete event retire
   // every card of a row that was merged away — so the prune finds nothing (the rule).
@@ -167,8 +171,8 @@ class ReadModelProjector(
    *  anything the change stream missed. */
   private def project(partition: ReadModelProjection.Partition): Int = {
     val rowId = partition.stored.id.value
-    healedClean.remove(rowId)   // whatever it recorded is about a state this projection replaces
     if (!partition.stored.record.readyToProject) {
+      healedClean.remove(rowId)
       // A row that lost its readiness takes its cards with it (the prune would, later).
       lastCardsByRow.remove(rowId).foreach(_.foreach(retireCard(_, RetireReason.RowUnready)))
       return 0
@@ -225,6 +229,10 @@ class ReadModelProjector(
     val kept     = produced ++ before.filter(held.contains)
     (before -- kept).foreach(retireCard(_, RetireReason.VariantGone))
     lastCardsByRow.update(rowId, kept)
+    // A venue this projection wrote is no phantom any more: if its row goes missing now, that
+    // is a real loss the heal must repair.
+    val served = kept.flatMap(card => lastScreenings.get(card).fold(Set.empty[String])(_.keySet))
+    healedClean.updateWith(rowId)(_.map { case (hash, phantoms) => (hash, phantoms -- served) }.filter(_._2.nonEmpty))
     metrics.recordWriteBurst((System.nanoTime() - writeStart) / 1e9)
     written
   }
@@ -513,8 +521,8 @@ class ReadModelProjector(
           val metadataHash = ReadModelProjection.metadataHash(row)
           val absentCards  = ids.filterNot(cardsBefore)
           val absentVenues =
-            if (healedClean.get(row.id.value).contains(metadataHash)) Seq.empty   // looked already; nothing to write
-            else screeningsBefore.fold(Seq.empty[String])(has => partition.screeningIds.filterNot(has))
+            screeningsBefore.fold(Seq.empty[String])(has => partition.screeningIds.filterNot(has))
+              .filterNot(phantomsOf(row.id.value, metadataHash))   // looked already; nothing to write
           if (absentCards.nonEmpty || absentVenues.nonEmpty)
             continuing(s"read-model $kind: a row missing a projection failed to project") {
               heal(row.id, metadataHash, absentCards, absentVenues).foreach { repaired =>
@@ -747,12 +755,17 @@ class ReadModelProjector(
     movieRepository.findById(id).flatMap { whole =>
       project(ReadModelProjection.partition(whole, normalizer))
       // Forgotten above, so remembered now only if this projection produced and wrote it.
-      val repaired = absentCards.exists(lastMovie.contains) ||
-        absentVenues.exists(venue => lastScreenings.valuesIterator.exists(_.contains(venue)))
-      if (!repaired) healedClean.update(id.value, metadataHash)
+      val written  = (venue: String) => lastScreenings.valuesIterator.exists(_.contains(venue))
+      val repaired = absentCards.exists(lastMovie.contains) || absentVenues.exists(written)
+      val phantoms = absentVenues.filterNot(written).toSet
+      if (phantoms.nonEmpty) healedClean.update(id.value, (metadataHash, phantomsOf(id.value, metadataHash) ++ phantoms))
       Option.when(whole.record.readyToProject)(repaired)
     }
   }
+
+  /** The venues a heal found to be phantoms of this row, while its metadata is what it was. */
+  private def phantomsOf(rowId: String, metadataHash: Int): Set[String] =
+    healedClean.get(rowId).collect { case (hash, phantoms) if hash == metadataHash => phantoms }.getOrElse(Set.empty)
 
   /** Run one per-row step of a pass over many rows; a throw is logged and costs that row alone. */
   private def continuing[A](failure: => String)(step: => A): Option[A] =

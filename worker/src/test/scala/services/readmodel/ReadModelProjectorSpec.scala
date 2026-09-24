@@ -901,6 +901,62 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     sweeper.stop()
   }
 
+  // …NOR AFTER A PROJECTION THAT CHANGED NOTHING. Every change-stream event for the row — a
+  // showtime moving at its OTHER venue, the catch-up re-projecting a row the cursor was late
+  // with — used to wipe the note, so the next sweep asked about the spent slot all over again.
+  // Found by the convergence legs' fixpoint pass: 13 Polish rows (Janosik's spent slots)
+  // re-projected on a sweep over a corpus nothing had written to.
+  it should "keep its note about a spent slot across a projection that did not write that venue" in {
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
+                                                 slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
+    val rm = new InMemoryReadModelRepository()
+    val m  = new RecordingMetrics()
+    val sweeper = new ReadModelProjector(repository, rm, rm, m)
+    def film(times: Seq[Showtime]) = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+      Multikino   -> SourceData(title = Some("Foo"), showtimes = times),
+      KinoMuranow -> SourceData(title = Some("Foo"), showtimes = Nil)))
+    repository.upsert("Foo", Some(2024), film(Seq(at("2026-06-12T20:00"))))
+    sweeper.onMovieUpsert(repository.findAll().head)
+    sweeper.pruneOrphans()                      // the first sweep looks, and notes the phantom
+
+    // The live venue's showtimes move: a projection, but nothing about the spent venue changed.
+    repository.upsert("Foo", Some(2024), film(Seq(at("2026-06-12T20:00"), at("2026-06-13T20:00"))))
+    sweeper.onMovieUpsert(repository.findAll().head)
+    val looked = m.projectCalls
+    sweeper.pruneOrphans()
+
+    withClue(s"the heal re-projected the row for its spent slot again (${m.projectCalls - looked} times): ") {
+      m.projectCalls shouldBe looked
+    }
+    sweeper.stop()
+  }
+
+  it should "heal a venue it had noted as spent once a projection has written it and it goes missing" in {
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
+                                                 slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
+    val rm = new InMemoryReadModelRepository()
+    val sweeper = new ReadModelProjector(repository, rm, rm, new RecordingMetrics())
+    def film(muranow: Seq[Showtime]) = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+      Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
+      KinoMuranow -> SourceData(title = Some("Foo"), showtimes = muranow)))
+    repository.upsert("Foo", Some(2024), film(Nil))
+    sweeper.onMovieUpsert(repository.findAll().head)
+    sweeper.pruneOrphans()                      // Muranów noted as a phantom
+
+    // Muranów screens it after all — the projection writes its row, so the note is spent.
+    repository.upsert("Foo", Some(2024), film(Seq(at("2026-06-14T20:00"))))
+    sweeper.onMovieUpsert(repository.findAll().head)
+    val muranow = rm.findAllScreenings().filter(_.cinema == KinoMuranow.displayName)
+    muranow should not be empty
+    muranow.foreach(s => rm.deleteScreening(s._id))   // …and then the read model loses it
+
+    sweeper.pruneOrphans()
+    withClue("a venue that has screenings and went missing must be healed, whatever was noted before: ") {
+      rm.findAllScreenings().exists(_.cinema == KinoMuranow.displayName) shouldBe true
+    }
+    sweeper.stop()
+  }
+
   // …AND IT MUST NOT ASK TWICE PER BOOT. The boot check asks the same slots-only question and
   // found the same spent slots, but kept no note of the answer, so the first sweep five minutes
   // later re-projected every one of them again: ~260 rows at boot and ~260-300 more at the first
