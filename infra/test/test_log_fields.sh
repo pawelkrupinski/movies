@@ -29,10 +29,36 @@ if ! command -v nix >/dev/null 2>&1; then
   exit 1
 fi
 
+# THE FLEET'S OWN VECTOR, from the nixpkgs infra/flake.lock pins (`--inputs-from`), which is the
+# version k3s-worker-1 runs AND one cache.nixos.org has built. Plain `nixpkgs#vector` resolved the
+# user's flake REGISTRY instead: a newer vector with no cached build for this Mac, so bin/check
+# sat compiling it from Rust source for over half an hour (2026-09-24).
+#
+# A CACHE MISS IS SKIPPED, NOT BUILT, unless INFRA_CHECK_BUILD_VECTOR=1: a compile that long is not
+# a check anyone waits for. The skip says so and exits 0, so it is visible but not a failure. Any
+# fetch is bounded by VECTOR_FETCH_TIMEOUT seconds (default 600).
+#
 # `type -P` and NOT `command -v`, which also finds shell FUNCTIONS -- so the obvious spelling of
 # this helper reports itself as already on PATH and then fails to exec.
+bounded() { perl -e 'alarm shift; exec @ARGV or die "exec: $!"' "$@"; }
 if vector_bin="$(type -P vector)"; then vector_cmd=("$vector_bin")
-else vector_cmd=(nix "${nix_flags[@]}" shell 'nixpkgs#vector' -c vector); fi
+else
+  pinned=(--inputs-from "$infra" 'nixpkgs#vector')
+  # Captured, not piped into `grep -q`: under pipefail, grep leaving early fails the pipeline
+  # with nix's SIGPIPE, and the miss read as a hit.
+  plan="$(bounded 120 nix "${nix_flags[@]}" build --dry-run --no-link "${pinned[@]}" 2>&1)"
+  if [[ "$plan" == *"will be built"* ]] && [ "${INFRA_CHECK_BUILD_VECTOR:-0}" != 1 ]; then
+    echo "  skipped: the pinned vector is not in the binary cache and would compile from source;"
+    echo "           put vector on PATH, or set INFRA_CHECK_BUILD_VECTOR=1 to build it."
+    exit 0
+  fi
+  if ! vector_out="$(bounded "${VECTOR_FETCH_TIMEOUT:-600}" \
+      nix "${nix_flags[@]}" build --no-link --print-out-paths "${pinned[@]}" 2>"$(mktemp)")"; then
+    echo "  FAILED could not fetch the pinned vector within ${VECTOR_FETCH_TIMEOUT:-600}s."
+    exit 1
+  fi
+  vector_cmd=("${vector_out%%$'\n'*}/bin/vector")
+fi
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT

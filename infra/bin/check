@@ -179,7 +179,9 @@ fi
 step "pod log fields"
 # THE ONLY THING THAT ASKS WHAT A LOG LINE IS LABELLED WITH. `nix eval` below proves the vector
 # configuration evaluates; it never runs the transform, so a regex that stopped matching would
-# leave every pod line unlabelled and every host would still build.
+# leave every pod line unlabelled and every host would still build. It runs the fleet's pinned
+# vector, fetched within a time bound, and SKIPS (saying so) when that is not in the binary cache
+# rather than compiling it for half an hour; INFRA_CHECK_BUILD_VECTOR=1 forces the build.
 if [ -f test/test_log_fields.sh ]; then
   if out="$(bash test/test_log_fields.sh 2>&1)"; then
     echo "$out"
