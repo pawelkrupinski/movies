@@ -61,6 +61,13 @@ if command -v shellcheck >/dev/null; then
   check "...and removes its temporary worktree on success too" "1" "$(git -C "$repo" worktree list | wc -l | tr -d ' ')"
   git -C "$repo" checkout -q -- a.sh
 
+  # A symbolic end (`--range A..HEAD`) is the same commit as the checkout: checked in place.
+  printf '#!/usr/bin/env bash\necho "$1"\n' > "$repo/b.sh"
+  git -C "$repo" add b.sh; git -C "$repo" commit -qm "adds b"
+  out="$(cd "$repo" && bash scripts/hooks/pre-push --range "$fixed..HEAD" 2>&1)"
+  check "checks a clean checkout in place, even when the range names it symbolically" "1 0" \
+    "$(printf '%s\n' "$out" | grep -c 'shellcheck ok') $(printf '%s\n' "$out" | grep -c 'temporary checkout')"
+
   # git's own stdin, with no origin/main to find a new branch's base from: said, not silently passed.
   out="$(cd "$repo" && printf 'refs/heads/x %s refs/heads/x %s\n' "$head" 0000000000000000000000000000000000000000 \
            | bash scripts/hooks/pre-push origin url 2>&1)"

@@ -118,7 +118,8 @@ for r in "${ranges[@]}"; do
 done
 changed="$(printf '%s' "$changed" | grep -v '^$' | LC_ALL=C sort -u)"
 [ -z "$changed" ] && exit 0
-head_sha="${ranges[${#ranges[@]}-1]##*..}"
+# A commit, not a name: `--range A..HEAD` must compare equal to the checkout's own HEAD.
+head_sha="$(git rev-parse --verify "${ranges[${#ranges[@]}-1]##*..}^{commit}")" || exit 1
 base_sha="${ranges[0]%%..*}"
 
 checks="$(printf '%s\n' "$changed" | plan)"
