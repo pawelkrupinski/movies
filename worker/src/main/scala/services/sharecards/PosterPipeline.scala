@@ -121,8 +121,12 @@ class HttpPosterDownload(maxBytes: Long = PosterPipeline.MaxDownloadBytes,
 
   def fetch(url: String): Either[String, Path] =
     try {
-      val request = HttpRequest.newBuilder().uri(URI.create(url)).timeout(timeout)
+      val uri = URI.create(url)
+      // The poster's own origin as the Referer, as a browser on the cinema's site would send:
+      // hotlink rules refuse a request without one (biletyna.pl: 403 with none, 200 with any).
+      val request = HttpRequest.newBuilder().uri(uri).timeout(timeout)
         .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+        .header("Referer", s"${uri.getScheme}://${uri.getRawAuthority}/")
         .GET().build()
       val response = client.send(request, HttpResponse.BodyHandlers.ofInputStream())
       Using.resource(response.body()) { body =>

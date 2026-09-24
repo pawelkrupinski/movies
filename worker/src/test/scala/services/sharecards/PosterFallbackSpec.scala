@@ -71,4 +71,25 @@ class PosterFallbackSpec extends AnyFlatSpec with Matchers {
     val giant = PosterMemoryCapSpec.jpegHeader(8000, 12000, progressive = true)
     new VipsPosterShrinker(binary = None).coverSlot(giant) shouldBe Left(PosterFailure.ProgressiveEstimate)
   }
+
+  "A poster download" should "send its origin as the Referer, which hotlink rules refuse a download without" in {
+    // biletyna.pl answers a poster request with no Referer 403 and any Referer 200 (checked from
+    // the k3s worker, 2026-09-24): every biletyna poster failed there as http_4xx.
+    val server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0)
+    val jpeg   = "poster bytes".getBytes
+    val sent   = new java.util.concurrent.atomic.AtomicReference[String]()
+    server.createContext("/file/get/id/1", exchange => {
+      sent.set(exchange.getRequestHeaders.getFirst("Referer"))
+      val status = if (sent.get != null) 200 else 403
+      exchange.sendResponseHeaders(status, jpeg.length.toLong); exchange.getResponseBody.write(jpeg); exchange.close()
+    })
+    server.start()
+    try {
+      val origin = s"http://127.0.0.1:${server.getAddress.getPort}"
+      val file   = new HttpPosterDownload().fetch(s"$origin/file/get/id/1")
+      file.map(java.nio.file.Files.size) shouldBe Right(jpeg.length.toLong)
+      file.foreach(java.nio.file.Files.deleteIfExists)
+      sent.get shouldBe s"$origin/"
+    } finally server.stop(0)
+  }
 }
