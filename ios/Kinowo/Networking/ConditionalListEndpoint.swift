@@ -100,7 +100,7 @@ final class ConditionalListEndpoint<Payload: Codable> {
             let decoded = try JSONDecoder().decode([Payload].self, from: data)
             lastReloadedAt = now
             let lm = http.value(forHTTPHeaderField: "Last-Modified")
-            cache.saveInBackground(decoded, deployment: deployment, city: city, lastModified: lm)
+            cache.saveInBackground(body: data, deployment: deployment, city: city, lastModified: lm)
             return .fresh(decoded)
         } catch {
             guard url == requestURL else { return .superseded }

@@ -61,14 +61,22 @@ struct ConditionalPayloadCache<Payload: Codable> {
 
     /// Persist the freshly-fetched `payload` for `deployment` + `city` together
     /// with its `lastModified` header, so a later reload of that same pair can
-    /// revalidate.
+    /// revalidate. Encodes on the CALLER's thread: the queue holds only the
+    /// file write, so a read never waits behind a whole-listing encode.
     func save(_ payload: [Payload], deployment: URL, city: String, lastModified: String?) {
-        conditionalPayloadCacheQueue.sync { write(payload, deployment: deployment, city: city, lastModified: lastModified) }
+        guard let body = try? JSONEncoder().encode(payload),
+              let entry = Self.entry(body: body, deployment: deployment, city: city, lastModified: lastModified)
+        else { return }
+        conditionalPayloadCacheQueue.sync { write(entry) }
     }
 
-    /// `save` off the caller's thread, after every save issued before it.
-    func saveInBackground(_ payload: [Payload], deployment: URL, city: String, lastModified: String?) {
-        conditionalPayloadCacheQueue.async { write(payload, deployment: deployment, city: city, lastModified: lastModified) }
+    /// Persist `body` — the payload exactly as the server sent it, already
+    /// encoded, so nothing is re-encoded — off the caller's thread, after every
+    /// save issued before it.
+    func saveInBackground(body: Data, deployment: URL, city: String, lastModified: String?) {
+        guard let entry = Self.entry(body: body, deployment: deployment, city: city, lastModified: lastModified)
+        else { return }
+        conditionalPayloadCacheQueue.async { write(entry) }
     }
 
     /// Forget the entry.
@@ -76,12 +84,16 @@ struct ConditionalPayloadCache<Payload: Codable> {
         conditionalPayloadCacheQueue.sync { try? FileManager.default.removeItem(at: url) }
     }
 
-    /// Only ever on `conditionalPayloadCacheQueue`.
-    private func write(_ payload: [Payload], deployment: URL, city: String, lastModified: String?) {
+    /// The one-file entry: header line, newline, encoded payload.
+    private static func entry(body: Data, deployment: URL, city: String, lastModified: String?) -> Data? {
         let header = Header(deployment: deployment.absoluteString, city: city, lastModified: lastModified)
-        guard let headerData = try? JSONEncoder().encode(header),
-              let body = try? JSONEncoder().encode(payload) else { return }
-        try? (headerData + Data("\n".utf8) + body).write(to: url, options: .atomic)
+        guard let headerData = try? JSONEncoder().encode(header) else { return nil }
+        return headerData + Data("\n".utf8) + body
+    }
+
+    /// Only ever on `conditionalPayloadCacheQueue`.
+    private func write(_ entry: Data) {
+        try? entry.write(to: url, options: .atomic)
         for legacy in legacyFiles {
             try? FileManager.default.removeItem(at: Self.cacheDir.appendingPathComponent(legacy))
         }

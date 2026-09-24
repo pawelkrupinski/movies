@@ -76,8 +76,8 @@ final class DetailsCacheTests: XCTestCase {
         for round in 0..<50 {
             let old = [FilmDetails(title: "Old \(round)", synopsis: nil, trailerURLs: [])]
             let new = [FilmDetails(title: "New \(round)", synopsis: nil, trailerURLs: [])]
-            ConditionalPayloadCache.details.saveInBackground(old, deployment: poland, city: "poznan", lastModified: "lm-old")
-            ConditionalPayloadCache.details.saveInBackground(new, deployment: poland, city: "warszawa", lastModified: "lm-new")
+            ConditionalPayloadCache.details.saveInBackground(body: encoded(old), deployment: poland, city: "poznan", lastModified: "lm-old")
+            ConditionalPayloadCache.details.saveInBackground(body: encoded(new), deployment: poland, city: "warszawa", lastModified: "lm-new")
 
             XCTAssertEqual(ConditionalPayloadCache.details.load(deployment: poland, city: "warszawa"), new)
             XCTAssertEqual(ConditionalPayloadCache.details.lastModified(deployment: poland, city: "warszawa"), "lm-new")
@@ -91,7 +91,7 @@ final class DetailsCacheTests: XCTestCase {
     func testAReadSeesABackgroundSaveIssuedBeforeIt() {
         for round in 0..<50 {
             let saved = [FilmDetails(title: "Saved \(round)", synopsis: nil, trailerURLs: [])]
-            ConditionalPayloadCache.details.saveInBackground(saved, deployment: poland, city: "gdansk", lastModified: "lm-\(round)")
+            ConditionalPayloadCache.details.saveInBackground(body: encoded(saved), deployment: poland, city: "gdansk", lastModified: "lm-\(round)")
 
             XCTAssertEqual(ConditionalPayloadCache.details.load(deployment: poland, city: "gdansk"), saved)
             XCTAssertEqual(ConditionalPayloadCache.details.lastModified(deployment: poland, city: "gdansk"), "lm-\(round)")
@@ -103,11 +103,16 @@ final class DetailsCacheTests: XCTestCase {
     func testADirectSaveIsNotOvertakenByAnEarlierBackgroundSave() {
         for round in 0..<50 {
             let background = [FilmDetails(title: "Background \(round)", synopsis: nil, trailerURLs: [])]
-            ConditionalPayloadCache.details.saveInBackground(background, deployment: poland, city: "gdansk", lastModified: nil)
+            ConditionalPayloadCache.details.saveInBackground(body: encoded(background), deployment: poland, city: "gdansk", lastModified: nil)
             ConditionalPayloadCache.details.save([], deployment: poland, city: "sopot", lastModified: nil)
 
             XCTAssertNil(ConditionalPayloadCache.details.load(deployment: poland, city: "gdansk"))
             XCTAssertEqual(ConditionalPayloadCache.details.load(deployment: poland, city: "sopot"), [])
         }
+    }
+
+    /// A payload as the server sends it — the form `saveInBackground` takes.
+    private func encoded(_ payload: [FilmDetails]) -> Data {
+        (try? JSONEncoder().encode(payload)) ?? Data()
     }
 }
