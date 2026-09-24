@@ -67,7 +67,7 @@ class UserStateController(
     PerUserResponse(signedInUserId(request) match {
       case None         => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(userId) =>
-        val state = userStateRepository.find(userId).getOrElse(UserState.empty(userId))
+        val state = userStateRepository.find(userId).getOrElse(UserState.empty(userId, clock.instant()))
         Ok(toJson(state))
     })
   }
@@ -126,7 +126,7 @@ class UserStateController(
         cacheProvenUnchanged match {
           case Some(lastChange) => NotModified.withHeaders("Last-Modified" -> httpDate(lastChange))
           case None              =>
-            val state  = userStateRepository.find(userId).getOrElse(UserState.empty(userId))
+            val state  = userStateRepository.find(userId).getOrElse(UserState.empty(userId, clock.instant()))
             val hidden = state.hiddenFilmsByCountry.getOrElse(country.code, Set.empty)
             val body   = hiddenFilmsJson(hidden)
             val etag   = hiddenFilmsETag(body)

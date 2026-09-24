@@ -88,6 +88,19 @@ class WebWiringClockSpec extends AnyFlatSpec with Matchers {
     body should include ("\"label\":\"Środa 10 czerwca\"")
   }
 
+  "the wiring's UserStateController" should "stamp an account with no stored state on the wiring clock" in {
+    val wiring = new ClockedWiring {
+      override lazy val userRepository: services.users.UserRepository = new services.users.InMemoryUserRepository
+    }
+    wiring.userRepository.upsert(models.User(
+      id = "newbie", provider = "google", providerSub = "G-newbie", email = Some("newbie@example.com"),
+      displayName = None, avatarUrl = None, createdAt = Pinned, lastSeenAt = Pinned))
+    val answer = wiring.userStateController.hiddenFilms("pl")(
+      FakeRequest("GET", "/api/me/pl/hidden-films").withSession("userId" -> "newbie", "sessionVersion" -> "0"))
+    status(answer) shouldBe OK
+    header("Last-Modified", answer).value shouldBe "Wed, 10 Jun 2020 08:00:00 GMT"
+  }
+
   "the wiring's AppleTokenValidator" should "judge a token's expiry on the wiring clock" in {
     val generator = KeyPairGenerator.getInstance("RSA")
     generator.initialize(2048)

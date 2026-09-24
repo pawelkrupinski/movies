@@ -34,7 +34,7 @@ case class UserState(
 // field orders, and asserts the retired names are never written back.
 
 object UserState {
-  def empty(userId: String, now: Instant = Instant.now()): UserState =
+  def empty(userId: String, now: Instant): UserState =
     UserState(userId, Set.empty, Set.empty, now)
 
   /** The `updatedAt` a write stamps over a row last stamped `previous` — the
@@ -43,7 +43,7 @@ object UserState {
    *  millisecond BSON date): now, or one millisecond past `previous`, whichever
    *  is later. `MongoUserStateRepository` computes the same rule server-side,
    *  inside each atomic update. */
-  def nextUpdatedAt(previous: Option[Instant], now: Instant = Instant.now()): Instant = {
+  def nextUpdatedAt(previous: Option[Instant], now: Instant): Instant = {
     val tick = now.truncatedTo(java.time.temporal.ChronoUnit.MILLIS)
     previous.map(_.truncatedTo(java.time.temporal.ChronoUnit.MILLIS).plusMillis(1))
       .filter(_.isAfter(tick)).getOrElse(tick)
