@@ -2313,15 +2313,16 @@
     try { if (lang) localStorage.setItem(PENDING_LANGUAGE_KEY, lang); else localStorage.removeItem(PENDING_LANGUAGE_KEY); } catch {}
   }
 
-  // Whether a refused write may land if sent again: the server erred, the session
-  // lapsed (401), or it timed out / throttled (408, 429). Any other 4xx is a
-  // refusal that will never change — sending it again is pointless forever.
-  function _retryable(status) { return status >= 500 || [401, 408, 429].includes(status); }
+  // Whether a hidden-films write was refused for good: only the controller's own
+  // refusals — 400 (over-long title, unknown country) and 413 (full bucket).
+  // Anything else may land if sent again; a 403 in particular is as likely a
+  // Cloudflare challenge in front of the app as anything the app said. The
+  // apps resend every failed write.
+  function _hiddenFilmsWriteRefused(status) { return status === 400 || status === 413; }
   // Whether a language push was refused for good: only a 400, which is what
-  // `UserStateController.put` answers for a language it does not know. Narrower
-  // than `_retryable` on purpose — a 403 is as likely a Cloudflare challenge in
-  // front of the app as anything the app said, and dropping the pick on one
-  // loses it. Same rule as both apps' `LanguagePushRefused`.
+  // `UserStateController.put` answers for a language it does not know. Same
+  // reasoning as `_hiddenFilmsWriteRefused`, and the same rule as both apps'
+  // `LanguagePushRefused`.
   function _languagePickRefused(status) { return status === 400; }
 
   function scheduleServerSync() {
@@ -2437,9 +2438,8 @@
           if (mirrors && _pendingHiddenFilms(country).length === 0) _storeHiddenFilmsValidators(country, resp);
           else _forgetHiddenFilmsValidators(country);
         } else {
-          // A refusal that will never change (400 over-long title, 413 full
-          // bucket) is not worth replaying; anything else may land next time.
-          failed(_retryable(resp.status));
+          // A refusal that will never change is not worth replaying.
+          failed(!_hiddenFilmsWriteRefused(resp.status));
         }
       })
       .catch(() => failed(true));

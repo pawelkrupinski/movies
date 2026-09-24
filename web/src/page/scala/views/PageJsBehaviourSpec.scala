@@ -710,6 +710,40 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  /** Answer this page's hidden-films writes with `status`, write `title`, and
+   *  return the pending queue it leaves. */
+  private def pendingAfterWriteAnswered(page: CdpPage, status: Int, title: String): String =
+    try {
+      page.eval(
+        "window._realFetch = window.fetch; window._written = false;" +
+        "window.fetch = function (url, opts) {" +
+        "  if (!/\\/api\\/me\\/pl\\/hidden-films\\//.test(String(url))) return window._realFetch(url, opts);" +
+        s"  return Promise.resolve(new Response('answer', { status: $status }));" +
+        "};" +
+        s"_writeHiddenFilms('PUT', 'pl', '$title').then(() => { window._written = true; }); 0")
+      page.waitFor("window._written === true", timeoutMs = 5000)
+      page.evalString("String(localStorage.getItem('hiddenFilmsPending:pl'))")
+    } finally page.eval("if (window._realFetch) window.fetch = window._realFetch;" +
+      "localStorage.removeItem('hiddenFilmsPending:pl'); 0")
+
+  // Only the controller's own refusals (400 over-long title or unknown country,
+  // 413 full bucket) are for good. A 403 is as likely a Cloudflare challenge in
+  // front of the app, and dropping the hide on one lost it for the account.
+  it should "keep a hide pending when its write is answered 403" in {
+    onLoggedInIndex { page =>
+      awaitOwnReconcile(page)
+      pendingAfterWriteAnswered(page, 403, "Challenged") should include ("Challenged")
+    }
+  }
+
+  it should "drop a hide the server refused for good" in {
+    onLoggedInIndex { page =>
+      awaitOwnReconcile(page)
+      pendingAfterWriteAnswered(page, 400, "Too Long") should not include "Too Long"
+      pendingAfterWriteAnswered(page, 413, "Over Cap") should not include "Over Cap"
+    }
+  }
+
   // A stateful `/api/me/pl/hidden-films` server installed in the page, over
   // `fetch`: the fixture's is static (it never records a write), so a reconcile
   // that re-asks after an edit could only be driven through it by a 304. A PUT
