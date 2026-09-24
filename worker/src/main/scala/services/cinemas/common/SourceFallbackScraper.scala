@@ -108,10 +108,19 @@ class SourceFallbackScraper(
 
     if (withinBackoff) {
       // On fallback, not yet time to re-probe → skip the broken primary entirely.
-      val (fwMovies, fwMs, fwServed) = tryFallback()
+      // The fallback is the ONLY source this tick, so its failure is the scrape's: it
+      // fails (red) rather than reading as an empty listing. Only a fallback that
+      // answered empty is an empty tick.
+      val (fwResult, fwMs) = fetchFallback()
       previous.foreach(p => store.put(p.copy(updatedAt = nowI)))
-      if (fwServed) { monitor.recordFallbackSuccess(service, fwMs); fallbackServed(fwMovies) }
-      else { monitor.recordEmpty(service, fwMs); primaryServed(Seq.empty) }
+      fwResult match {
+        case scala.util.Success(fwMovies) if showtimeCount(fwMovies) > 0 =>
+          monitor.recordFallbackSuccess(service, fwMs); fallbackServed(fwMovies)
+        case scala.util.Success(_) =>
+          monitor.recordEmpty(service, fwMs); primaryServed(Seq.empty)
+        case scala.util.Failure(t) =>
+          monitor.recordFailure(service, UptimeRecordingScraper.errorLabel(t)); throw t
+      }
     } else {
       runPrimary() match {
         case PrimaryOutcome.Healthy(movies, ms) =>
@@ -186,12 +195,22 @@ class SourceFallbackScraper(
     }
   }
 
-  private def tryFallback(): (Seq[CinemaMovie], Long, Boolean) = fallback() match {
+  /** One fallback fetch and how long it took; an absent fallback answers empty. */
+  private def fetchFallback(): (scala.util.Try[Seq[CinemaMovie]], Long) = fallback() match {
     case Some(fw) =>
       val t0 = System.currentTimeMillis()
-      val movies = try fw.fetch() catch { case NonFatal(_) => Seq.empty }
-      (movies, System.currentTimeMillis() - t0, showtimeCount(movies) > 0)
-    case None => (Seq.empty, 0L, false)
+      val movies = scala.util.Try(fw.fetch())
+      (movies, System.currentTimeMillis() - t0)
+    case None => (scala.util.Success(Seq.empty), 0L)
+  }
+
+  /** The fallback as cover for a primary that failed or came back empty: whether it can
+   *  serve this tick. A fallback that threw cannot, and the primary's own outcome — its
+   *  throw, or its empty listing — stands; nothing is reported on the fallback's behalf. */
+  private def tryFallback(): (Seq[CinemaMovie], Long, Boolean) = {
+    val (movies, ms) = fetchFallback()
+    val served       = movies.toOption.filter(showtimeCount(_) > 0)
+    (served.getOrElse(Seq.empty), ms, served.isDefined)
   }
 
   /** Grace-window failure: keep the `failingSince` clock running (starting it if

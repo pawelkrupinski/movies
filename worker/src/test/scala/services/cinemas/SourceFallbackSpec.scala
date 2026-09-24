@@ -224,6 +224,18 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers {
     h.state.map(_.active) shouldBe Some(true)
   }
 
+  it should "fail the tick (red), not report it empty, when Filmweb throws within the backoff window" in {
+    val filmweb = ScriptedCinemaScraper(List(Right(OneMovie), Left(new RuntimeException("filmweb down"))))
+    val h = new Harness(Seq(Left(boom)), Some(filmweb))
+    h.tickSwallowing()             // t0: grace
+    h.advance(6.hours + 1.minute)
+    h.scraper.fetch() shouldBe OneMovie   // ENTER, served from Filmweb
+    h.advance(1.minute)            // within the backoff: Filmweb is the only source this tick…
+    // …and it is down, so the tick failed. It used to come back as an empty success.
+    the[RuntimeException] thrownBy h.scraper.fetch() should have message "filmweb down"
+    h.bucket.failures should be > 0
+  }
+
   it should "re-probe after the backoff window and RECOVER when the primary returns" in {
     val h = new Harness(Seq(Left(boom), Left(boom), Right(OneMovie)), Some(filmwebWith(OneMovie)))
     h.tickSwallowing()             // t0: grace
