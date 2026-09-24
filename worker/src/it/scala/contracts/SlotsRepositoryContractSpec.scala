@@ -5,7 +5,7 @@ import org.mongodb.scala.SingleObservableFuture
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{SlotsRepository, WriteOutcome}
+import services.movies.{InMemorySlotsRepository, SlotsRepository, WriteOutcome}
 import services.staging.InMemoryStagingRepository
 import tools.contracts.Implementations
 import tools.{Env, IsolatedMongoDatabase}
@@ -31,6 +31,8 @@ class SlotsRepositoryContractSpec extends AnyFlatSpec with Matchers with BeforeA
     Await.result(database.getCollection(SlotsRepository.Collection).drop().toFuture(), 30.seconds)
     Implementations.construct(cls, _.getTypeName match {
       case "scala.Option<org.mongodb.scala.MongoDatabase>" => Some(Some(database))
+      // A decorator (the fixpoint harness's write counter) is held to the contract over the in-memory store.
+      case "services.movies.SlotsRepository"              => Some(new InMemorySlotsRepository())
       case _                                               => None
     }).fold(missing => fail(missing), identity)
   }
