@@ -43,8 +43,11 @@ object GoneUpstream {
 
   /** A status carried in the recorded failure text. The archive persists the
    *  message, not the throwable, so the code has to be read back out of it —
-   *  `\b` on both sides so a 404 in a URL or a film title is not mistaken for one. */
-  private val StatusInMessage = """(?i)\bHTTP\s+(\d{3})\b""".r
+   *  `\b` on both sides so a 404 in a URL or a film title is not mistaken for one. An
+   *  origin status Zyte relays reads `upstream status=404` (ZyteOriginStatusException):
+   *  the origin's own verdict, as durable as fetched directly, and missing it kept every
+   *  Zyte-fetched dead venue out of the quarantine. */
+  private val StatusInMessage = """(?i)\b(?:HTTP\s+|upstream status=)(\d{3})\b""".r
 
   /** Whether a recorded failure says the PAGE is gone rather than broken.
    *

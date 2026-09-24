@@ -49,6 +49,14 @@ class GoneUpstreamSpec extends AnyFlatSpec with Matchers {
     GoneUpstream.isGone(rowFailing(gone410, since = now.minusSeconds(3600)), now) shouldBe false
   }
 
+  // Zyte relays the origin's status in its own words; the retry-classification table
+  // calls an origin 404 through Zyte as permanent as one fetched directly.
+  it should "recognise an origin 404 relayed by Zyte" in {
+    val relayed = "ZyteOriginStatusException: Zyte API call returned upstream status=404 for https://www.odeon.co.uk/cinemas/x/"
+    GoneUpstream.isGone(rowFailing(relayed, since = now.minusSeconds(30 * 3600)), now) shouldBe true
+    GoneUpstream.saysPageIsGone("ZyteApiException: Zyte API call returned upstream status=-1 for https://www.odeon.co.uk/") shouldBe false
+  }
+
   // A proxied chain venue never gets a bare status: the residential leg answers and
   // the direct leg is Cloudflare-blocked, so the archive records both. The leg that
   // REACHED the origin is the one whose answer this is; the blocked leg learned
