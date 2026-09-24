@@ -91,9 +91,20 @@ trait CinemaScraper {
    *  online roster audit to look the venue up in that list. `None` for a venue
    *  no chain lists. */
   def chainVenueId: Option[String] = None
+
+  /** One scrape as `CinemaScrapeRunner` records it: [[fetch]]'s listing under the
+   *  [[sourceKey]] of the listing that actually SERVED it. That is this scraper's
+   *  own key for every scraper but one serving from more than one source —
+   *  `SourceFallbackScraper`, whose tick may be its fallback's. It is the outermost
+   *  decorator; one wrapped around it would have to forward this, not re-derive it
+   *  from its own `fetch()`. */
+  def fetchWithSource(): CinemaScraper.Scraped = CinemaScraper.Scraped(fetch(), sourceKey)
 }
 
 object CinemaScraper {
+  /** A scrape's listing and the source that served it — see [[CinemaScraper.fetchWithSource]]. */
+  final case class Scraped(movies: Seq[CinemaMovie], sourceKey: Option[String])
+
   /** Lower-cased hosts of the given URLs, skipping any that don't parse to a
    *  host. The canonical way a scraper derives `scrapeHosts` from the base
    *  URL(s) it already fetches with — no second copy of the host string. */

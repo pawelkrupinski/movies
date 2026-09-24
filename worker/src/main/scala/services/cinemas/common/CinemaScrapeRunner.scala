@@ -47,8 +47,8 @@ class CinemaScrapeRunner(
     // A throw is archived as a barren attempt and then rethrown untouched, so
     // callers keep deciding what a failure means while the archive still records
     // that the cinema was tried and failed.
-    val movies  =
-      try scraper.fetch()
+    val CinemaScraper.Scraped(movies, servedBy) =
+      try scraper.fetchWithSource()
       catch {
         case failure: Throwable =>
           archive(scraper, Seq.empty, Some(messageOf(failure)))
@@ -60,7 +60,7 @@ class CinemaScrapeRunner(
     // scrape, and a chunked one arrives as a `PreScrapedCinemaScraper` wrapping
     // the already-reduced chunks.
     archive(scraper, movies, error = None)
-    val touched = movieCache.recordCinemaScrape(cinema, movies, scraper.listingIsComplete, scraper.sourceKey)
+    val touched = movieCache.recordCinemaScrape(cinema, movies, scraper.listingIsComplete, servedBy)
     val events   = classify(cinema, touched)
     val elapsed  = System.currentTimeMillis() - t0
     val awaiting = touched.count(_._3) - events.size
