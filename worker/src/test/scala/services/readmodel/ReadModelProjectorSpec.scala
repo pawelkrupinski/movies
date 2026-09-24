@@ -899,6 +899,35 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     sweeper.stop()
   }
 
+  // …AND IT MUST NOT ASK TWICE PER BOOT. The boot check asks the same slots-only question and
+  // found the same spent slots, but kept no note of the answer, so the first sweep five minutes
+  // later re-projected every one of them again: ~260 rows at boot and ~260-300 more at the first
+  // sweep on every PL worker start (prod, 2026-09-19 and 09-24). Six rollouts in an hour on
+  // 2026-09-19 put 0.78/s of projections no change stream asked for on the books, and
+  // ReadModelProjectionTriggerUnaccounted fired.
+  "the first prune after a boot" should "not re-project a spent-slot row the boot check already found nothing to write for" in {
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
+                                                 slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
+    val rm = new InMemoryReadModelRepository()
+    repository.upsert("Foo", Some(2024), MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+      Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
+      KinoMuranow -> SourceData(title = Some("Foo"), showtimes = Nil))))
+    val previous = new ReadModelProjector(repository, rm, rm, new RecordingMetrics())
+    previous.onMovieUpsert(repository.findAll().head)
+    previous.stop()
+    val m      = new RecordingMetrics()
+    val booted = new ReadModelProjector(repository, rm, rm, m, scheduler = new CapturingScheduler)
+
+    booted.start()                              // the boot check may legitimately look once
+    val looked = m.projectCalls
+    booted.pruneOrphans()
+
+    withClue(s"the first sweep re-projected a row the boot check had nothing to write for (${m.projectCalls - looked} times): ") {
+      m.projectCalls shouldBe looked
+    }
+    booted.stop()
+  }
+
   it should "ask again once the row itself changes" in {
     val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
                                                  slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
