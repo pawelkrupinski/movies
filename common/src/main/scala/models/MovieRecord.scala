@@ -317,10 +317,11 @@ case class MovieRecord(
    *  — Multikino, the rest of `Cinema.all`, then `Tmdb`, then `Imdb` — except
    *  that known "coming soon" placeholders (see [[PlaceholderPoster]]) are
    *  demoted to the very end. So a placeholder is only ever picked when no
-   *  real poster (any cinema's or TMDB's) exists. `posterUrl` takes the head;
+   *  real poster (any cinema's or TMDB's) exists. A URL that is no poster at all
+   *  ([[PlaceholderPoster.isAbsent]]) is left out. `posterUrl` takes the head;
    *  `fallbackPosterUrls` is the rest. */
   private def postersByPreference: Seq[String] = {
-    val all = prioritized.iterator.flatMap(_._2.posterUrl).distinct.toSeq
+    val all = prioritized.iterator.flatMap(_._2.posterUrl).filterNot(PlaceholderPoster.isAbsent).distinct.toSeq
     val (placeholders, real) = all.partition(PlaceholderPoster.matches)
     real ++ placeholders
   }

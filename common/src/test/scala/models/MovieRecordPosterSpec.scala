@@ -36,6 +36,20 @@ class MovieRecordPosterSpec extends AnyFlatSpec with Matchers {
     record.fallbackPosterUrls shouldBe Seq(cinemaCity, tmdb)
   }
 
+  it should "treat a vector image as no poster at all, so the next candidate is the primary" in {
+    // bilety24's WordPress venues list their site-default "PAN-BILET" SVG as the poster of every
+    // film (six venues, 2026-09-24), and it 404s on every one of them.
+    val placeholder = "https://kinoluna.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg"
+    val tmdb        = "https://image.tmdb.org/t/p/w500/x.jpg"
+    val record = MovieRecord(data = Map[Source, SourceData](
+      Multikino -> SourceData(posterUrl = Some(placeholder)),
+      Tmdb      -> SourceData(posterUrl = Some(tmdb))))
+    record.posterUrl          shouldBe Some(tmdb)
+    record.fallbackPosterUrls shouldBe empty
+    MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(posterUrl = Some(placeholder.toUpperCase + "?v=2"))))
+      .posterUrl shouldBe None
+  }
+
   it should "include IMDb after every cinema and before / after TMDB per Source.priority" in {
     val multikino  = "https://www.multikino.pl/x.jpg"
     val cinemaCity = "https://www.cinema-city.pl/y.jpg"

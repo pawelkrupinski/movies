@@ -18,4 +18,10 @@ object PlaceholderPoster {
    *  "coming soon" images carry. */
   def matches(url: String): Boolean =
     url.toLowerCase(Locale.ROOT).contains("wkrotce")
+
+  /** True for a URL that is no poster at all, which the record drops outright rather than
+   *  demoting: a vector image. Film posters are photographs; an SVG is a site's logo or default
+   *  graphic — bilety24's WordPress venues list their "PAN-BILET" SVG for every film, and it 404s. */
+  def isAbsent(url: String): Boolean =
+    url.toLowerCase(Locale.ROOT).takeWhile(c => c != '?' && c != '#').endsWith(".svg")
 }
