@@ -2384,9 +2384,13 @@
   // reconcile takes the server's answer instead of 304-ing onto the drift.
   // The tail of each country's write chain — see `_writeHiddenFilms`.
   const _hiddenFilmsWrites = {};
+  // How many writes each country has been asked for on this page — how a
+  // reconcile tells that an edit was made while its fetch was out.
+  const _hiddenFilmsEdits = {};
 
   function _writeHiddenFilms(method, country, title) {
     country = country || currentCountryCode();
+    _hiddenFilmsEdits[country] = (_hiddenFilmsEdits[country] || 0) + 1;
     const key = title === undefined ? null : title;
     if (!isLoggedIn()) {
       // A page that could not confirm the session (offline) of a visitor who
@@ -2471,8 +2475,9 @@
     if (document.visibilityState === 'hidden') flushServerSync();
   });
 
-  async function bootMergeFromServer() {
+  async function bootMergeFromServer(attempt) {
     const country = currentCountryCode();
+    const edits   = _hiddenFilmsEdits[country] || 0;
     // Signed out as far as this page can tell, but only because `/api/me`
     // could not be asked: nothing here is known to be over, so nothing is
     // forgotten either.
@@ -2502,9 +2507,18 @@
       const resp = await fetch(_hiddenFilmsUrl(country), { headers });
       if (resp.status === 304) return; // proven unchanged — localStorage is already current
       if (!resp.ok) return;
+      const remote = await resp.json();
+      // An edit made while the fetch was out is in the local list but maybe not
+      // in this answer, which replacing the list with would undo on screen. Ask
+      // again once the writes queued meanwhile have gone (bounded: a visitor
+      // cannot keep editing faster than a round trip for long).
+      if ((_hiddenFilmsEdits[country] || 0) !== edits) {
+        if ((attempt || 0) >= 3) return;
+        await (_hiddenFilmsWrites[country] || Promise.resolve());
+        return bootMergeFromServer((attempt || 0) + 1);
+      }
 
       _storeHiddenFilmsValidators(country, resp);
-      const remote = await resp.json();
 
       // A first sync unions this country's local list in; after that the
       // server's list replaces it (server authoritative, so removals

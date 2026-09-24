@@ -691,6 +691,37 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // A hide made while a reconcile's fetch is out: the answer predates the hide's
+  // write, and replacing the local list with it took the film back off the
+  // screen (the write itself still landed, so the NEXT load showed it hidden
+  // again). The first fetch is held here until the hide has been made and sent.
+  it should "keep a hide made while the reconcile's fetch is out" in {
+    onLoggedInIndex { page =>
+      awaitOwnReconcile(page)
+      page.eval(
+        "window._realFetch = window.fetch; window._releaseGet = null;" +
+        "window.fetch = function (url, opts) {" +
+        "  if (/\\/hidden-films$/.test(String(url)) && !(opts && opts.method) && !window._releaseGet) {" +
+        "    const answer = window._realFetch(url, opts);" +
+        "    return new Promise(resolve => { window._releaseGet = () => resolve(answer); });" +
+        "  }" +
+        "  return window._realFetch(url, opts);" +
+        "};" +
+        // A 200, not a 304: only a full answer replaces the local list.
+        "localStorage.removeItem('hiddenFilmsEtag:pl'); localStorage.removeItem('hiddenFilmsLastModified:pl');" +
+        "window._reconciled = false; bootMergeFromServer().then(() => { window._reconciled = true; }); 0")
+      page.waitFor("typeof window._releaseGet === 'function'", timeoutMs = 5000)
+      page.eval("setHidden(getHidden().concat(['Made Meanwhile'])); hideFilmOnServer('Made Meanwhile'); 0")
+      page.waitFor("performance.getEntriesByType('resource')" +
+                   ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films/Made%20Meanwhile') !== -1; })",
+                   timeoutMs = 5000)
+      page.eval("window._releaseGet()")
+      page.waitFor("window._reconciled === true", timeoutMs = 5000)
+      page.evalString("JSON.stringify(getHidden())") should include ("Made Meanwhile")
+      page.eval("window.fetch = window._realFetch")
+    }
+  }
+
   // ── hiddenFilms writes are immediate, per-title, no debounce ─────────────
   //
   // Regression for the granular-API migration: the old bulk PUT batched a
