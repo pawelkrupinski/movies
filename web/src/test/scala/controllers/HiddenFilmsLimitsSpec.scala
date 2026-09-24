@@ -24,7 +24,7 @@ class HiddenFilmsLimitsSpec extends AnyFlatSpec with Matchers {
     val states = new InMemoryUserStateRepository
     states.upsert(UserState("u1", Set.empty, Set.empty, Instant.EPOCH, Map("pl" -> bucket)))
     (new UserStateController(Helpers.stubControllerComponents(), states, new AccountDeletion(users, states),
-      NoUserChangeTimeCache, new LegacyUserStateMetrics(new PrometheusRegistry(), "pl"), users), states)
+      NoUserChangeTimeCache, new LegacyUserStateMetrics(new PrometheusRegistry(), "pl", java.time.Clock.systemUTC()), users), states)
   }
 
   private def hide(ctl: UserStateController, title: String) =

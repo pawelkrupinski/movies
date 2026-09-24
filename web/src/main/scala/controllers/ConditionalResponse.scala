@@ -25,11 +25,12 @@ import java.time.Instant
  *  `modelStamp` is when the read model a payload draws on last moved — per
  *  city, or model-wide for a payload that really is (see [[serve]] for why the
  *  distinction matters). `now` is the clock the city's calendar day is read
- *  from; injectable so a spec can walk a validator across midnight.
+ *  from — the wired clock, never a default, so a spec can walk a validator
+ *  across midnight.
  */
 class ConditionalResponse(responseCache: EncodedResponseCache,
                           modelStamp: Option[City] => Instant,
-                          now: () => Instant = () => Instant.now()) {
+                          now: () => Instant) {
 
   /** Every response here varies by exactly this, on the 200s and the 304 alike:
    *  the class itself decides between the gzip and the identity representation. */
@@ -266,7 +267,7 @@ object ConditionalResponse {
    */
   def dayFlooredValidator(modelStamp: Instant,
                           zone: Option[java.time.ZoneId],
-                          now: Instant = Instant.now()): Instant =
+                          now: Instant): Instant =
     zone.map(z => now.atZone(z).toLocalDate.atStartOfDay(z).toInstant) match {
       case Some(dayStart) if dayStart.isAfter(modelStamp) => dayStart
       case _                                              => modelStamp

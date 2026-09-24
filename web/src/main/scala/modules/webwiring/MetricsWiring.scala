@@ -46,7 +46,7 @@ trait MetricsWiring { self: Wiring =>
   // Safe as `lazy`, unlike webHostMetrics/webCacheMetrics above: userStateController
   // (below, in UsersWiring) holds a reference and is itself forced at boot by
   // the router, so this gets forced too — nothing here needs an eager `val`.
-  lazy val legacyUserStateMetrics = new LegacyUserStateMetrics(webJvmMetrics.registry, metricsCountry.code)
+  lazy val legacyUserStateMetrics = new LegacyUserStateMetrics(webJvmMetrics.registry, metricsCountry.code, clock)
   // Every atomic user-state write, by endpoint and outcome — see the class doc.
   // Lazy for the same reason as the line above: `userStateRepository` (UsersWiring)
   // holds it and is forced at boot through the router.

@@ -3,7 +3,7 @@ package services.metrics
 import io.prometheus.metrics.core.metrics.GaugeWithCallback
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 
-import java.time.Instant
+import java.time.{Clock, Instant}
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicReference
  * the web client's own, intended use (`language` has no granular successor),
  * so the endpoint itself stays — see `UserStateController.put`.
  */
-class LegacyUserStateMetrics(registry: PrometheusRegistry, country: String) {
+class LegacyUserStateMetrics(registry: PrometheusRegistry, country: String, clock: Clock) {
   private val lastPutCall = new AtomicReference[Instant](null)
 
   GaugeWithCallback.builder()
@@ -43,6 +43,7 @@ class LegacyUserStateMetrics(registry: PrometheusRegistry, country: String) {
     }
     .register(registry)
 
-  /** Called once per non-language-only `PUT /api/me/state`, from `UserStateController.put()`. */
-  def recordPutCall(now: Instant = Instant.now()): Unit = lastPutCall.set(now)
+  /** Called once per non-language-only `PUT /api/me/state`, from `UserStateController.put()`;
+   *  stamped on the wired `clock`. */
+  def recordPutCall(): Unit = lastPutCall.set(clock.instant())
 }

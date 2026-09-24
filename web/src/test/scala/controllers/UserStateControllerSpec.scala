@@ -32,7 +32,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     prefilled:       Option[UserState] = None,
     changeTimeCache: UserChangeTimeCache = NoUserChangeTimeCache,
     stateRepository: InMemoryUserStateRepository = new InMemoryUserStateRepository,
-    legacyMetrics:   LegacyUserStateMetrics = new LegacyUserStateMetrics(new PrometheusRegistry(), "pl")
+    legacyMetrics:   LegacyUserStateMetrics = new LegacyUserStateMetrics(new PrometheusRegistry(), "pl", specClock)
   ): (UserStateController, InMemoryUserStateRepository, InMemoryUserRepository) = {
     val userRepository  = new InMemoryUserRepository
     userRepository.upsert(testUser("u1")) // the suite's default signed-in identity
@@ -510,7 +510,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   // anonymous/malformed call is still evidence of that.
   it should "record the call on the legacy-usage gauge even when anonymous" in {
     val registry = new PrometheusRegistry()
-    val metrics  = new LegacyUserStateMetrics(registry, "pl")
+    val metrics  = new LegacyUserStateMetrics(registry, "pl", specClock)
     val (ctl, _, _) = fixture(legacyMetrics = metrics)
     ctl.put()(FakeRequest("PUT", "/api/me/state").withBody(Json.obj("hiddenFilms" -> Json.arr("X"))))
 
@@ -524,7 +524,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   // whether any client still sends the sets the granular API replaced.
   it should "leave the legacy-usage gauge alone for a language-only body" in {
     val registry = new PrometheusRegistry()
-    val metrics  = new LegacyUserStateMetrics(registry, "pl")
+    val metrics  = new LegacyUserStateMetrics(registry, "pl", specClock)
     val (ctl, _, _) = fixture(legacyMetrics = metrics)
     status(ctl.put()(FakeRequest("PUT", "/api/me/state").withSession("userId" -> "u1")
       .withBody(Json.obj("language" -> "en")))) shouldBe OK

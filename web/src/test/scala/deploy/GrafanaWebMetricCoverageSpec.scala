@@ -47,7 +47,7 @@ class GrafanaWebMetricCoverageSpec extends AnyFlatSpec with Matchers {
     new WebHttpMetrics(registry, "pl")
     new WebHostMetrics(registry, "pl")
     new WebCacheMetrics(registry, "pl", Seq("probe" -> (() => CacheOccupancy(entries = 0L))))
-    new LegacyUserStateMetrics(registry, "pl")
+    new LegacyUserStateMetrics(registry, "pl", java.time.Clock.systemUTC())
     new UserStateWriteMetrics(registry, "pl")
     new UserStateIndexMetrics(registry, "pl")
     registry

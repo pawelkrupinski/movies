@@ -49,7 +49,7 @@ class UserAcrossPodsSpec extends AnyFlatSpec with Matchers {
       val podStates = UsersWiring.podUserStateRepository(states)
       new UserStateController(Helpers.stubControllerComponents(), podStates,
         new AccountDeletion(podUsers, podStates), NoUserChangeTimeCache,
-        new LegacyUserStateMetrics(new PrometheusRegistry(), "pl"), podUsers)
+        new LegacyUserStateMetrics(new PrometheusRegistry(), "pl", java.time.Clock.systemUTC()), podUsers)
     }
 
     def authPod(): AuthController =

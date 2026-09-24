@@ -424,6 +424,6 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "leave a payload with no day in it on the model stamp alone" in {
     val stamp = java.time.Instant.parse("2020-01-01T00:00:00Z")
-    ConditionalResponse.dayFlooredValidator(stamp, None) shouldBe stamp
+    ConditionalResponse.dayFlooredValidator(stamp, None, now = stamp.plusSeconds(86400 * 3)) shouldBe stamp
   }
 }
