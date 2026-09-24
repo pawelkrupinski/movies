@@ -72,12 +72,12 @@ object ShareCardTestKit {
       .takeWhile(_.isDefined).flatten.map { task => queue.complete(task.id, "spec"); task }.toSeq
   }
 
-  final class Rig(val store: ShareCardStore = tempStore(), val clock: Clock = clockAt(T0),
+  class Rig(val store: ShareCardStore = tempStore(), val clock: Clock = clockAt(T0),
                   val download: CountingDownload = new CountingDownload()) {
     val readModel = new InMemoryReadModelRepository
     val queue     = new InMemoryTaskQueue
-    val metrics   = ShareCardMetrics.noop
-    val posters   = new ShareCardPosters(store, download, javaShrinker, metrics)
-    val service   = new ShareCardService(Country.default, store, posters, readModel, queue, metrics, clock)
+    val metrics: ShareCardMetrics = ShareCardMetrics.noop
+    lazy val posters = new ShareCardPosters(store, download, javaShrinker, metrics)
+    lazy val service = new ShareCardService(Country.default, store, posters, readModel, queue, metrics, clock)
   }
 }

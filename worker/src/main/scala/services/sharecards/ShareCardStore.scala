@@ -11,7 +11,8 @@ import scala.util.{Try, Using}
 
 /**
  * One country's share-card directory — the rendered cards (`<file>.jpg`, served by Caddy at
- * `/share-cards/<cc>/<file>`) and, under [[PosterDir]], the poster cache (never served).
+ * `/share-cards/<cc>/<file>`) and, never served, the poster cache under [[PosterDir]] and the card
+ * bases under [[BaseDir]].
  *
  * SEVERAL WRITERS SHARE IT. Every render thread of every worker replica of the country writes
  * here, so nothing in this class relies on being the only one:
@@ -29,23 +30,26 @@ class ShareCardStore(val root: Path) {
   import ShareCardStore.*
 
   private val posters = root.resolve(PosterDir)
+  private val bases   = root.resolve(BaseDir)
 
   /** True when this process can write the directory — false in a test or dev JVM with no mount,
    *  which then runs without share cards. */
   def usable: Boolean = Try {
     Files.createDirectories(posters)
-    Files.isDirectory(root) && Files.isWritable(root) && Files.isWritable(posters)
+    Files.createDirectories(bases)
+    Files.isDirectory(root) && Files.isWritable(root) && Files.isWritable(posters) && Files.isWritable(bases)
   }.getOrElse(false)
 
   def cardPath(name: String): Path  = root.resolve(name)
   def posterPath(key: String): Path = posters.resolve(s"$key.$PosterExtension")
+  def basePath(key: String): Path   = bases.resolve(s"$key.jpg")
 
   def cardExists(name: String): Boolean = Files.isRegularFile(cardPath(name))
 
   /** Every file in the directory and the poster cache, with the facts the janitor decides on. A
    *  file deleted by someone else mid-listing is skipped. */
   def list(): Seq[StoredFile] =
-    Seq(root -> Kind.Card, posters -> Kind.Poster).flatMap { case (dir, kind) =>
+    Seq(root -> Kind.Card, posters -> Kind.Poster, bases -> Kind.Base).flatMap { case (dir, kind) =>
       if (!Files.isDirectory(dir)) Nil
       else Using.resource(Files.list(dir))(_.iterator.asScala.toList).flatMap { path =>
         val name = path.getFileName.toString
@@ -81,13 +85,16 @@ class ShareCardStore(val root: Path) {
 object ShareCardStore {
   /** The poster cache's subdirectory. A dot directory, which Caddy must not serve. */
   val PosterDir = ".posters"
+  /** The card BASES' subdirectory (a card without its rating badges) — a dot directory too. */
+  val BaseDir = ".base"
   val PosterExtension = "jpg"
   val TempSuffix = ".tmp"
 
   object Kind {
     val Card   = "card"
     val Poster = "poster"
-    val all: Seq[String] = Seq(Card, Poster)
+    val Base   = "base"
+    val all: Seq[String] = Seq(Card, Poster, Base)
   }
 
   /** Host and pid, so a temp file names the process that wrote it. */

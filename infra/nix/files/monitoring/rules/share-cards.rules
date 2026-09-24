@@ -1,7 +1,7 @@
 ---
-# FILM SHARE CARDS: the worker renders each film's Open Graph card (and caches its poster) into a
-# per-country directory on k3s-worker-1 that Caddy serves at /share-cards/<cc>/. Cards and posters
-# share ONE budget (KINOWO_SHARE_CARD_BUDGET_MB, 1 GiB by default) that the worker's janitor
+# FILM SHARE CARDS: the worker renders each film's Open Graph card (and caches its poster and the
+# card's badge-less base) into a per-country directory on k3s-worker-1 that Caddy serves at
+# /share-cards/<cc>/. Cards, posters and bases share ONE budget (KINOWO_SHARE_CARD_BUDGET_MB, 1 GiB by default) that the worker's janitor
 # enforces by evicting the oldest files nothing references. These rules watch the two ways that
 # can go wrong -- the directory filling towards the budget, and the part the janitor may NOT delete
 # outgrowing it -- plus the poster upstreams the cards are drawn from.
@@ -40,11 +40,11 @@ groups:
         annotations:
           summary: "{{ $labels.country }}'s share cards and posters use {{ $value | humanizePercentage }} of their disk budget"
           description: >-
-            `kinowo_worker_share_cards_bytes` summed over cards and cached posters is above 85% of
+            `kinowo_worker_share_cards_bytes` summed over cards, cached posters and card bases is above 85% of
             `kinowo_worker_share_cards_budget_bytes` for this country; most of it is {{ $labels.kind }}s.
             The janitor evicts unreferenced files oldest-first every ten minutes, so this staying
-            high means most of the directory is CURRENT (cards web_movies points at, posters of films
-            on screen) -- compare `kinowo_worker_share_cards_current_bytes`. Raise
+            high means most of the directory is CURRENT (cards web_movies points at, their bases, posters of
+            films on screen) -- compare `kinowo_worker_share_cards_current_bytes`. Raise
             KINOWO_SHARE_CARD_BUDGET_MB if the corpus grew; if current bytes did not grow, look for a
             flood of re-renders in `kinowo_worker_share_cards_render_total` by reason.
 
@@ -64,8 +64,8 @@ groups:
         annotations:
           summary: "{{ $labels.country }}'s current share cards and posters alone exceed their disk budget"
           description: >-
-            `kinowo_worker_share_cards_current_bytes` -- the cards web_movies points at plus the
-            cached posters of films on screen, mostly {{ $labels.kind }}s -- is {{ $value | humanize1024 }}B,
+            `kinowo_worker_share_cards_current_bytes` -- the cards web_movies points at plus their
+            bases and the cached posters of films on screen, mostly {{ $labels.kind }}s -- is {{ $value | humanize1024 }}B,
             over the country's budget. The janitor never deletes current files, so nothing will
             bring this down on its own: raise KINOWO_SHARE_CARD_BUDGET_MB (and check the node's
             disk, FilesystemSpaceLow on k3s-worker-1), or find why the corpus holds more films on

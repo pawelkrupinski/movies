@@ -75,6 +75,10 @@ final case class ShareCardInputs(
   def fileName(poster: Option[String]): String =
     ShareCardFile(ShareCardFile.token(filmId), drawnHash + ShareCardFile.posterHash(poster)).name
 
+  /** The key of these inputs' card BASE when drawn from `poster` — see [[ShareCardFile.baseKey]]. */
+  def baseKey(poster: Option[String]): String =
+    s"${ShareCardFile.token(filmId)}-$layoutHash${ShareCardFile.posterHash(poster)}"
+
   /** Every name a current card of these inputs could have — one per candidate poster, in the
    *  order the renderer tries them. */
   def candidateNames: Seq[String] =
@@ -180,6 +184,8 @@ final case class ShareCardFile(token: String, hash: String) {
   def layoutHash: String  = hash.take(5)
   def ratingsHash: String = hash.slice(5, 10)
   def posterHash: String  = hash.drop(10)
+  /** The key of the BASE this card was drawn on: everything but the ratings, and the poster. */
+  def baseKey: String = s"$token-$layoutHash$posterHash"
 }
 
 object ShareCardFile {

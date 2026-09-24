@@ -160,14 +160,43 @@ object OgCardRenderer {
    *  optional, each omitted when absent. */
   def render(title: String, subtitle: String, badges: Seq[Badge], poster: Option[BufferedImage],
              host: String, directorLine: Option[String] = None, synopsis: Option[String] = None): Array[Byte] =
-    toJpeg(renderImage(title, subtitle, badges, poster, host, directorLine, synopsis))
+    encodeCard(renderImage(title, subtitle, badges, poster, host, directorLine, synopsis))
 
-  /** The film card as a raster, before it is encoded. Separate from [[render]]
-   *  so what the card LOOKS like and what it is ENCODED as are two questions
-   *  with two answers: the specs that sample pixels assert on this, and only the
-   *  format test goes through the lossy encoder. */
+  /** The film card as a raster, before it is encoded — its base ([[renderBase]]) with the badges
+   *  drawn into their slot ([[withBadges]]). Separate from [[render]] so what the card LOOKS like
+   *  and what it is ENCODED as are two questions with two answers: the specs that sample pixels
+   *  assert on this, and only the format test goes through the lossy encoder. */
   def renderImage(title: String, subtitle: String, badges: Seq[Badge], poster: Option[BufferedImage],
-                  host: String, directorLine: Option[String] = None, synopsis: Option[String] = None): BufferedImage = {
+                  host: String, directorLine: Option[String] = None, synopsis: Option[String] = None): BufferedImage =
+    withBadges(renderBase(title, subtitle, poster, host, directorLine, synopsis),
+               badgeSlot(title, subtitle, poster.isDefined), badges)
+
+  /** Where the rating badges go: left edge, top, right edge and the height reserved for them. */
+  final case class BadgeSlot(x: Int, y: Int, right: Int, height: Int)
+
+  /** The badge rows' place on a card with this title and subtitle. A pure function of the LAYOUT
+   *  inputs — never of the ratings — and it always reserves room for the widest set of badges the
+   *  card can carry (all four, widest values), so the director and synopsis below never move when a
+   *  rating does. That is what lets a card's base be cached and reused across rating changes. */
+  def badgeSlot(title: String, subtitle: String, hasPoster: Boolean): BadgeSlot = {
+    val scratch = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB)
+    val g = scratch.createGraphics()
+    try {
+      applyHints(g)
+      val textLeft  = if (hasPoster) PosterTextX else Margin
+      val textRight = Width - Margin
+      val top = titleBlockBottom(g, title, subtitle, textLeft, textRight - textLeft, draw = false) + 36
+      BadgeSlot(textLeft, top, textRight, drawBadges(g, WidestBadges, textLeft, top, textRight, paint = false) - top)
+    } finally g.dispose()
+  }
+
+  /** The widest badges a card can show: every source, at its widest value. */
+  private val WidestBadges: Seq[Badge] = ratingBadges(imdb = Some(10.0), metascore = Some(100), rottenTomatoes = Some(100), filmweb = Some(10.0))
+
+  /** The card WITHOUT its rating badges: background, poster, title, subtitle, director, synopsis and
+   *  footer, with the badge rows ([[badgeSlot]]) left as background. */
+  def renderBase(title: String, subtitle: String, poster: Option[BufferedImage], host: String,
+                 directorLine: Option[String] = None, synopsis: Option[String] = None): BufferedImage = {
     val img = new BufferedImage(Width, Height, BufferedImage.TYPE_INT_RGB)
     val g   = img.createGraphics()
     try {
@@ -183,31 +212,9 @@ object OgCardRenderer {
       val textRight = Width - Margin
       val textW     = textRight - textLeft
 
-      var yPosition = Margin + 12
-
-      g.setFont(bold.deriveFont(60f))
-      g.setColor(TitleCol)
-      val titleFm = g.getFontMetrics
-      for (line <- wrap(g, title, textW, maxLines = 3)) {
-        yPosition += titleFm.getAscent
-        g.drawString(line, textLeft, yPosition)
-        yPosition += titleFm.getDescent + 4
-      }
-
-      if (subtitle.nonEmpty) {
-        yPosition += 14
-        g.setFont(regular.deriveFont(32f))
-        g.setColor(SubCol)
-        val sfm = g.getFontMetrics
-        yPosition += sfm.getAscent
-        g.drawString(ellipsize(g, subtitle, textW), textLeft, yPosition)
-        yPosition += sfm.getDescent
-      }
-
-      if (badges.nonEmpty) {
-        yPosition += 36
-        yPosition = drawBadges(g, badges, textLeft, yPosition, textRight)
-      }
+      titleBlockBottom(g, title, subtitle, textLeft, textW, draw = true)
+      val slot = badgeSlot(title, subtitle, poster.isDefined)
+      var yPosition = slot.y + slot.height
 
       val footerBaseline = Height - Margin
       // Keep the body copy just clear of the footer line (~its ascent).
@@ -414,6 +421,53 @@ object OgCardRenderer {
     y + h
   }
 
+  /** `badges` drawn into `slot` on `base` (in place), which is returned. */
+  def withBadges(base: BufferedImage, slot: BadgeSlot, badges: Seq[Badge]): BufferedImage = {
+    val g = base.createGraphics()
+    try { applyHints(g); drawBadges(g, badges, slot.x, slot.y, slot.right) }
+    finally g.dispose()
+    base
+  }
+
+  /** Title (up to three lines) and subtitle from the top margin; the y just below them. Drawn, or
+   *  only measured when `draw` is false. */
+  private def titleBlockBottom(g: Graphics2D, title: String, subtitle: String, textLeft: Int, textW: Int, draw: Boolean): Int = {
+    var yPosition = Margin + 12
+    g.setFont(bold.deriveFont(60f))
+    g.setColor(TitleCol)
+    val titleFm = g.getFontMetrics
+    for (line <- wrap(g, title, textW, maxLines = 3)) {
+      yPosition += titleFm.getAscent
+      if (draw) g.drawString(line, textLeft, yPosition)
+      yPosition += titleFm.getDescent + 4
+    }
+    if (subtitle.nonEmpty) {
+      yPosition += 14
+      g.setFont(regular.deriveFont(32f))
+      g.setColor(SubCol)
+      val sfm = g.getFontMetrics
+      yPosition += sfm.getAscent
+      if (draw) g.drawString(ellipsize(g, subtitle, textW), textLeft, yPosition)
+      yPosition += sfm.getDescent
+    }
+    yPosition
+  }
+
+  /** The card encoded for serving: JPEG at [[JpegQuality]]. */
+  def encodeCard(img: BufferedImage): Array[Byte] = toJpeg(img)
+
+  /** A card's BASE encoded for the worker's cache: JPEG at 0.95 with full-resolution chroma (4:4:4).
+   *  It is decoded again for every ratings change, so it must carry as little loss as possible into
+   *  the card encoded from it. Measured on red text over cyan (OgCardBaseLayerSpec): 4:4:4 is 356 KB
+   *  at a mean error of 3.1 per pixel, the default 4:2:0 199 KB at 19.8 — a real card's base, mostly
+   *  poster and dark gradient, is far smaller than that worst case. */
+  def encodeBase(img: BufferedImage): Array[Byte] = toJpeg(img, BaseQuality, fullChroma = true)
+
+  private val BaseQuality = 0.95f
+
+  /** Test seam: an encode at any quality and chroma sampling, for the measurement behind [[encodeBase]]. */
+  private[tools] def encodeWith(img: BufferedImage, quality: Float, fullChroma: Boolean): Array[Byte] = toJpeg(img, quality, fullChroma)
+
   private def applyHints(g: Graphics2D): Unit = {
     g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
     g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
@@ -442,7 +496,7 @@ object OgCardRenderer {
    *  text over a dark gradient, which is where JPEG's chroma subsampling shows
    *  first. 0.85 is the point at which that text stays clean; the difference
    *  from 0.75 costs about 40 KB. */
-  private def toJpeg(img: BufferedImage): Array[Byte] = {
+  private def toJpeg(img: BufferedImage, quality: Float = JpegQuality, fullChroma: Boolean = false): Array[Byte] = {
     val baos = new ByteArrayOutputStream()
     val writer = ImageIO.getImageWritersByFormatName("jpg").next()
     val stream = ImageIO.createImageOutputStream(baos)
@@ -450,8 +504,20 @@ object OgCardRenderer {
       writer.setOutput(stream)
       val params = writer.getDefaultWriteParam
       params.setCompressionMode(ImageWriteParam.MODE_EXPLICIT)
-      params.setCompressionQuality(JpegQuality)
-      writer.write(null, new IIOImage(img, null, null), params)
+      params.setCompressionQuality(quality)
+      val metadata = writer.getDefaultImageMetadata(javax.imageio.ImageTypeSpecifier.createFromRenderedImage(img), params)
+      if (fullChroma) {
+        // Every component at 1×1 sampling: the encoder's default halves chroma both ways (4:2:0).
+        val tree = metadata.getAsTree("javax_imageio_jpeg_image_1.0")
+        val sof  = tree.asInstanceOf[org.w3c.dom.Element].getElementsByTagName("sof").item(0).asInstanceOf[org.w3c.dom.Element]
+        val specs = sof.getElementsByTagName("componentSpec")
+        for (k <- 0 until specs.getLength) {
+          val spec = specs.item(k).asInstanceOf[org.w3c.dom.Element]
+          spec.setAttribute("HsamplingFactor", "1"); spec.setAttribute("VsamplingFactor", "1")
+        }
+        metadata.setFromTree("javax_imageio_jpeg_image_1.0", tree)
+      }
+      writer.write(null, new IIOImage(img, null, metadata), params)
     } finally {
       writer.dispose()
       stream.close()
@@ -499,7 +565,8 @@ object OgCardRenderer {
    *
    *  Returns the y of the bottom edge of the last badge row, so the caller can
    *  place the director/synopsis directly beneath however many rows wrapped. */
-  private def drawBadges(g: Graphics2D, badges: Seq[Badge], x0: Int, top: Int, xMax: Int, fontSize: Float = 30f): Int = {
+  private def drawBadges(g: Graphics2D, badges: Seq[Badge], x0: Int, top: Int, xMax: Int, fontSize: Float = 30f,
+                         paint: Boolean = true): Int = {
     val labelFont = bold.deriveFont(fontSize)
     val valueFont = regular.deriveFont(fontSize)
     def fontFor(s: Seg)  = if (s.bold) labelFont else valueFont
@@ -520,6 +587,7 @@ object OgCardRenderer {
       val segW  = b.segs.zip(fms).map { case (s, fm) => fm.stringWidth(s.text) + padX(s) * 2 }
       val width     = segW.sum
       if (xPosition + width > xMax && xPosition > x0) { xPosition = x0; yPosition += height + math.round(12 * scale) }
+      if (paint) {
       val outer = new RoundRectangle2D.Float(xPosition.toFloat, yPosition.toFloat, width.toFloat, height.toFloat, arcD, arcD)
       val saved = g.getClip
       g.setClip(outer) // rounds the outer corners; the per-segment fills keep a square seam
@@ -534,6 +602,7 @@ object OgCardRenderer {
         sx += sw
       }
       g.setClip(saved)
+      }
       xPosition += width + gap
     }
     yPosition + height

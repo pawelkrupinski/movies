@@ -48,8 +48,8 @@ class ShareCardConcurrencySpec extends AnyFlatSpec with Matchers {
     // Once past the grace period, the budget holds: nothing is referenced, so it all may go.
     Files.list(store.root).iterator.asScala.toSeq.filter(Files.isRegularFile(_))
       .foreach(Files.setLastModifiedTime(_, FileTime.from(T0.minusSeconds(7200))))
-    Files.list(store.root.resolve(ShareCardStore.PosterDir)).iterator.asScala.toSeq
-      .foreach(Files.setLastModifiedTime(_, FileTime.from(T0.minusSeconds(7200))))
+    Seq(ShareCardStore.PosterDir, ShareCardStore.BaseDir).foreach(dir => Files.list(store.root.resolve(dir)).iterator.asScala.toSeq
+      .foreach(Files.setLastModifiedTime(_, FileTime.from(T0.minusSeconds(7200)))))
     janitors.head.enforceBudget().bytes should be <= 1L
   }
 }

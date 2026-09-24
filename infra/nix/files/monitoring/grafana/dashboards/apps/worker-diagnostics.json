@@ -1904,7 +1904,7 @@
     {
       "id": 36,
       "title": "Share-card directory — bytes on disk vs the budget, by country and kind",
-      "description": "`kinowo_worker_share_cards_bytes{kind}`: everything in the country's share-card directory on k3s-worker-1 -- rendered cards (`kind=\"card\"`) and the poster cache (`kind=\"poster\"`), temp files included -- against `kinowo_worker_share_cards_budget_bytes` (KINOWO_SHARE_CARD_BUDGET_MB, 1 GiB by default), which covers cards and posters TOGETHER. `current` (`kinowo_worker_share_cards_current_bytes`) is the part no pruner may delete: cards web_movies points at and posters of films on screen. The janitor evicts the rest oldest-first every ten minutes once the total passes the budget. ShareCardsNearBudget fires on the total above 85% for 30m; ShareCardsOverBudget when current alone exceeds the budget. Gauges are read from the directory, so every replica reports the same number: `max`, never `sum`. Files per kind are on the right axis.",
+      "description": "`kinowo_worker_share_cards_bytes{kind}`: everything in the country's share-card directory on k3s-worker-1 -- rendered cards (`kind=\"card\"`), the poster cache (`kind=\"poster\"`) and the card bases (`kind=\"base\"`), temp files included -- against `kinowo_worker_share_cards_budget_bytes` (KINOWO_SHARE_CARD_BUDGET_MB, 1 GiB by default), which covers all three TOGETHER. `current` (`kinowo_worker_share_cards_current_bytes`) is the part no pruner may delete: cards web_movies points at, the bases they were drawn on, and posters of films on screen. The janitor evicts the rest oldest-first every ten minutes once the total passes the budget. ShareCardsNearBudget fires on the total above 85% for 30m; ShareCardsOverBudget when current alone exceeds the budget. Gauges are read from the directory, so every replica reports the same number: `max`, never `sum`. Files per kind are on the right axis.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -2067,8 +2067,8 @@
     },
     {
       "id": 38,
-      "title": "Share-card renders per interval — by outcome and reason",
-      "description": "`kinowo_worker_share_cards_render_total{outcome,reason}`: render tasks by result -- rendered, existing (another task or replica already wrote it), failed (no poster could be fetched) -- and by WHY: new_film (the first-publish gate), backfill, or the card input that moved (poster = the poster the card was drawn from left the film's candidates; title, year, ratings at displayed precision, language, template, details = genres/director/synopsis/host). A re-render that moved several inputs counts once per input. A ratings wave after a rating refresh is expected (measured ~242 rating-driven changes a day fleet-wide); a steady `details` line is synopsis churn re-rendering cards.",
+      "title": "Share-card renders per interval — by outcome and reason, and how each was drawn",
+      "description": "`kinowo_worker_share_cards_render_total{outcome,reason}`: render tasks by result -- rendered, existing (another task or replica already wrote it), failed (no poster could be fetched) -- and by WHY: new_film (the first-publish gate), backfill, or the card input that moved (poster = the poster the card was drawn from left the film's candidates; title, year, ratings at displayed precision, language, template, details = genres/director/synopsis/host). A re-render that moved several inputs counts once per input. A ratings wave after a rating refresh is expected (measured ~242 rating-driven changes a day fleet-wide); a steady `details` line is synopsis churn re-rendering cards. Dashed, right axis: `kinowo_worker_share_cards_render_path_total{path}` -- base_hit = the card drawn as its cached base (the card without its badges, q95 4:4:4 under `.base/`) plus the badges, which is what a ratings change costs (~28 ms against ~54 ms for a rebuild, measured locally); base_rebuild = the base redrawn from the cached poster after any non-rating change; full = a posterless card drawn whole.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -2091,7 +2091,30 @@
             "showPoints": "never"
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*drawn.*"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    10,
+                    10
+                  ],
+                  "fill": "dash"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
@@ -2113,6 +2136,15 @@
           },
           "expr": "sum by (country, outcome, reason) (increase(kinowo_worker_share_cards_render_total{country=~\"$country\"}[$__rate_interval]))",
           "legendFormat": "{{country}} {{outcome}} {{reason}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country, path) (increase(kinowo_worker_share_cards_render_path_total{country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} drawn {{path}}"
         }
       ]
     },

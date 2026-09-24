@@ -6,7 +6,10 @@ import services.readmodel.{ReadModelReader, ShareCardLedger}
 import services.tasks.{EnqueueResult, TaskQueue, TaskType}
 import tools.{Digest, OgCardRenderer}
 
+import java.nio.file.Files
 import java.time.{Clock, Instant}
+import javax.imageio.ImageIO
+import scala.util.Try
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.duration.*
 
@@ -113,14 +116,20 @@ class ShareCardService(
 
   /** The render task's work: the card for `next`, written to the store unless one for these
    *  inputs is there already. A film with posters whose every candidate fails gets no card (the
-   *  task retries), rather than a text-only card frozen under a name its poster would share. */
+   *  task retries), rather than a text-only card frozen under a name its poster would share.
+   *
+   *  A card with a poster is drawn on its BASE — everything but the rating badges, cached as a
+   *  high-quality JPEG under the store's `.base/`, keyed by every non-rating input and the poster.
+   *  When the base is there (a ratings change: the commonest re-render) the card is that base
+   *  decoded plus the badges (`base_hit`); otherwise the base is rebuilt from the cached POSTER —
+   *  never from an older base or card, so no card is more than one q95 step from its poster — and
+   *  kept (`base_rebuild`). A posterless card is cheap to draw whole and keeps no base (`full`). */
   def render(next: ShareCardInputs, reasons: Seq[String]): String = {
     import ShareCardMetrics.Outcome
     val (outcome, card) = existing(next) match {
       case Some(name)                      => (Outcome.Existing, Some(name))
-      case None if next.posterUrls.isEmpty => (Outcome.Rendered, Some(write(next, None)))
-      case None => posters.load(next.posterUrls).fold((Outcome.Failed, Option.empty[String]))(chosen =>
-                     (Outcome.Rendered, Some(write(next, Some(chosen)))))
+      case None if next.posterUrls.isEmpty => (Outcome.Rendered, Some(drawWhole(next)))
+      case None => onBase(next).orElse(rebuildBase(next)).fold((Outcome.Failed, Option.empty[String]))(name => (Outcome.Rendered, Some(name)))
     }
     card.foreach { name =>
       fingerprints.put(next.filmId, next.fingerprint)
@@ -130,10 +139,38 @@ class ShareCardService(
     outcome
   }
 
-  private def write(next: ShareCardInputs, poster: Option[(String, java.awt.image.BufferedImage)]): String = {
-    val name  = next.fileName(poster.map(_._1))
-    val bytes = OgCardRenderer.render(next.title, next.subtitle, next.badges, poster.map(_._2), next.host, next.director, next.synopsis)
+  private def slot(next: ShareCardInputs, hasPoster: Boolean) = OgCardRenderer.badgeSlot(next.title, next.subtitle, hasPoster)
+
+  /** The card drawn on an existing base of one of `next`'s posters. */
+  private def onBase(next: ShareCardInputs): Option[String] =
+    next.posterUrls.iterator.flatMap { url =>
+      val path = store.basePath(next.baseKey(Some(url)))
+      if (!Files.isRegularFile(path)) None
+      else Try(Option(ImageIO.read(path.toFile))).toOption.flatten.map(url -> _)
+    }.nextOption().map { case (url, base) =>
+      val name = next.fileName(Some(url))
+      store.writeAtomically(store.cardPath(name), OgCardRenderer.encodeCard(OgCardRenderer.withBadges(base, slot(next, hasPoster = true), next.badges)))
+      metrics.renderPath(ShareCardMetrics.Path.BaseHit)
+      name
+    }
+
+  /** The base rebuilt from the film's (cached) poster and kept, then the card drawn on it. */
+  private def rebuildBase(next: ShareCardInputs): Option[String] =
+    posters.load(next.posterUrls).map { case (url, poster) =>
+      val base = OgCardRenderer.renderBase(next.title, next.subtitle, Some(poster), next.host, next.director, next.synopsis)
+      store.writeAtomically(store.basePath(next.baseKey(Some(url))), OgCardRenderer.encodeBase(base))
+      val name = next.fileName(Some(url))
+      store.writeAtomically(store.cardPath(name), OgCardRenderer.encodeCard(OgCardRenderer.withBadges(base, slot(next, hasPoster = true), next.badges)))
+      metrics.renderPath(ShareCardMetrics.Path.BaseRebuild)
+      name
+    }
+
+  /** A posterless card, drawn whole. */
+  private def drawWhole(next: ShareCardInputs): String = {
+    val name  = next.fileName(None)
+    val bytes = OgCardRenderer.render(next.title, next.subtitle, next.badges, None, next.host, next.director, next.synopsis)
     store.writeAtomically(store.cardPath(name), bytes)
+    metrics.renderPath(ShareCardMetrics.Path.Full)
     name
   }
 

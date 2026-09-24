@@ -7,13 +7,14 @@ import java.time.Clock
 import scala.concurrent.duration.*
 
 /**
- * Keeps one country's share-card directory — cards and cached posters under ONE budget — in
+ * Keeps one country's share-card directory — cards, cached posters and card bases under ONE budget — in
  * bounds. Run by the `PruneShareCards` task: daily in full ([[prune]]), and every few minutes for
  * the budget alone ([[enforceBudget]]).
  *
  * WHAT IS NEVER DELETED, whoever runs it and whenever:
- *  - a card a `web_movies` document points at (the web may be serving it right now), and a cached
- *    poster of a film on screen (in the budget pass, of a film with a card) — except that the daily prune retires the card of a film that has
+ *  - a card a `web_movies` document points at (the web may be serving it right now), the base it
+ *    was drawn on, and a cached poster of a film on screen (in the budget pass, of a film with a
+ *    card) — except that the daily prune retires the card of a film that has
  *    left the screens, and then re-projects its document so it stops pointing there;
  *  - any file younger than the GRACE period, whatever it looks like: another replica may have just
  *    written a card it hasn't recorded in `web_movies` yet, or be mid-render against a poster;
@@ -57,6 +58,8 @@ class ShareCardJanitor(
     val complete   = refsComplete && screensRead
     val live       = refs.filter(ref => screened(ref.filmId))
     val referenced = refs.iterator.flatMap(_.shareCard).toSet
+    // A base is current while a card web_movies points at was drawn on it.
+    val baseOf     = referenced.iterator.flatMap(ShareCardFile.parse).map(card => s"${card.baseKey}.jpg").toSet
     val onScreen   = live.iterator.flatMap(_.shareCard).toSet
     val posters    = live.iterator.flatMap(_.posterUrls).map(url => s"${ShareCardPosters.key(url)}.${ShareCardStore.PosterExtension}").toSet
     val tokens     = live.iterator.map(ref => ShareCardFile.token(ref.filmId)).toSet
@@ -86,11 +89,16 @@ class ShareCardJanitor(
         .foreach(ref => refresh(ref.filmId))
       files.filter(file => file.kind == Kind.Poster && !file.temp && old(file) && !posters(file.name))
         .foreach(delete(_, PruneReason.Unreferenced))
+      files.filter(file => file.kind == Kind.Base && !file.temp && old(file) && !baseOf(file.name))
+        .foreach(delete(_, PruneReason.Unreferenced))
     }
 
     val remaining = files.filterNot(file => deleted(file.path))
-    def current(file: StoredFile): Boolean =
-      if (file.kind == Kind.Card) referenced(file.name) else posters(file.name)
+    def current(file: StoredFile): Boolean = file.kind match {
+      case Kind.Card   => referenced(file.name)
+      case Kind.Poster => posters(file.name)
+      case _           => baseOf(file.name)
+    }
     val currentBytes = remaining.filter(file => !file.temp && current(file)).groupMapReduce(_.kind)(_.bytes)(_ + _)
     var total = remaining.iterator.map(_.bytes).sum
     if (total > budgetBytes && complete) {

@@ -36,7 +36,7 @@ tests:
               kind: poster
             exp_annotations:
               summary: "pl's share cards and posters use 87.89% of their disk budget"
-              description: "`kinowo_worker_share_cards_bytes` summed over cards and cached posters is above 85% of `kinowo_worker_share_cards_budget_bytes` for this country; most of it is posters. The janitor evicts unreferenced files oldest-first every ten minutes, so this staying high means most of the directory is CURRENT (cards web_movies points at, posters of films on screen) -- compare `kinowo_worker_share_cards_current_bytes`. Raise KINOWO_SHARE_CARD_BUDGET_MB if the corpus grew; if current bytes did not grow, look for a flood of re-renders in `kinowo_worker_share_cards_render_total` by reason."
+              description: "`kinowo_worker_share_cards_bytes` summed over cards, cached posters and card bases is above 85% of `kinowo_worker_share_cards_budget_bytes` for this country; most of it is posters. The janitor evicts unreferenced files oldest-first every ten minutes, so this staying high means most of the directory is CURRENT (cards web_movies points at, their bases, posters of films on screen) -- compare `kinowo_worker_share_cards_current_bytes`. Raise KINOWO_SHARE_CARD_BUDGET_MB if the corpus grew; if current bytes did not grow, look for a flood of re-renders in `kinowo_worker_share_cards_render_total` by reason."
       - eval_time: 45m
         alertname: ShareCardsOverBudget
         exp_alerts: []
@@ -85,7 +85,7 @@ tests:
               kind: card
             exp_annotations:
               summary: "de's current share cards and posters alone exceed their disk budget"
-              description: "`kinowo_worker_share_cards_current_bytes` -- the cards web_movies points at plus the cached posters of films on screen, mostly cards -- is 1.172GiB, over the country's budget. The janitor never deletes current files, so nothing will bring this down on its own: raise KINOWO_SHARE_CARD_BUDGET_MB (and check the node's disk, FilesystemSpaceLow on k3s-worker-1), or find why the corpus holds more films on screen than before."
+              description: "`kinowo_worker_share_cards_current_bytes` -- the cards web_movies points at plus their bases and the cached posters of films on screen, mostly cards -- is 1.172GiB, over the country's budget. The janitor never deletes current files, so nothing will bring this down on its own: raise KINOWO_SHARE_CARD_BUDGET_MB (and check the node's disk, FilesystemSpaceLow on k3s-worker-1), or find why the corpus holds more films on screen than before."
 
   # POSTERS FAILING: 2 of 3 fetches fail per minute (60 attempts per 30m), through a restart gap.
   - interval: 1m
