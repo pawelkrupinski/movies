@@ -13,12 +13,12 @@ import java.time.LocalDateTime
 import scala.concurrent.duration.Duration
 
 /**
- * The scrape guards judge a listing against the rows of the source that last served
- * the venue, keyed by `sourceKey`. A tick the FALLBACK served (Filmweb, Flicks) is the
- * fallback's listing, so it has to land under the fallback's key: recorded under the
- * primary's, a sparse Filmweb board was measured against the primary's full one — the
- * depth guard discarding the very ticks the fallback exists to serve — and the primary's
- * return after an outage never read as the change of source it is.
+ * A tick the FALLBACK served (Filmweb, Flicks) is still the primary venue's, merely covered
+ * while its own source is down. Measured against the primary's full board, a sparse
+ * fallback listing was discarded by the depth guard — the very ticks the fallback exists
+ * to serve; read as a rewire instead, it pruned every primary film it does not list on
+ * each outage. It must land additively: judged by neither guard, pruning nothing, and
+ * leaving the primary as the venue's recorded source.
  */
 class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
 
@@ -45,11 +45,61 @@ class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
     ledger.get(Multikino).sourceKey
   }
 
-  "a scrape the fallback served" should "be recorded under the fallback's source, not the primary's" in {
-    run(new Source(Primary, throw new RuntimeException("primary down"))) shouldBe Some(Fallback)
+  "a scrape the fallback served" should "never record the fallback as the venue's source" in {
+    run(new Source(Primary, throw new RuntimeException("primary down"))) shouldBe None
   }
 
   "a scrape the primary served" should "be recorded under the primary's source" in {
     run(new Source(Primary, listing)) shouldBe Some(Primary)
+  }
+
+  // A fallback serves BECAUSE the primary is broken, and it is usually the thinner of the two.
+  // Read as a rewire, its first tick landed as the new baseline with both guards off, and the
+  // prune retired every primary film the fallback does not list — on every primary outage —
+  // only for the primary's recovery to rewire them back. A fallback tick only ADDS.
+  private def films(titles: String*)(showtimesEach: Int): Seq[CinemaMovie] = titles.map { t =>
+    CinemaMovie(Movie(t, releaseYear = Some(2026)), Multikino, None, None, None, Nil, Nil,
+      (0 until showtimesEach).map(n => Showtime(LocalDateTime.of(2027, 6, 8 + n / 12, 8 + n % 12, 0), None)))
+  }
+
+  private final class Switchable(key: String) extends CinemaScraper {
+    @volatile var listing: () => Seq[CinemaMovie] = () => Nil
+    val cinema: Cinema                     = Multikino
+    def scrapeHosts: Set[String]           = Set.empty
+    def fetch(): Seq[CinemaMovie]          = listing()
+    override def sourceKey: Option[String] = Some(key)
+  }
+
+  "a primary outage served from a thinner fallback" should "keep the primary's films, and recovery land normally" in {
+    val repository = new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository),
+      slots = Some(new services.movies.InMemorySlotsRepository))
+    val ledger  = new InMemoryScrapeGuardLedger
+    val cache   = new CaffeineMovieCache(repository, new InProcessEventBus(), normalizer = titleNormalizer,
+      scrapeGuardLedger = ledger, clock = services.movies.DepthGuardTime.clock)
+    val primary = new Switchable(Primary)
+    val scraper = new SourceFallbackScraper(primary,
+      fallback = () => Some(new Source(Fallback, films("Film 1", "Fallback Only")(2))), fallbackName = "Filmweb",
+      fallbackRef = () => Some("2180"), new UptimeMonitor(), new InMemoryFallbackStore,
+      baseBackoff = Duration.Zero, fallbackAfter = Duration.Zero) // re-probe the primary on the very next tick
+    val runner  = new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set.empty)
+    def stored(title: String): Int = repository.findAll().find(_.title.contains(title))
+      .map(_.record.data.values.map(_.showtimes.size).sum).getOrElse(0)
+    val board = (1 to 10).map(i => s"Film $i")
+
+    primary.listing = () => films(board*)(8)
+    runner.run(scraper)
+    stored("Film 5") shouldBe 8
+
+    primary.listing = () => throw new RuntimeException("primary down")
+    runner.run(scraper)
+    stored("Fallback Only") shouldBe 2   // the fallback's listing lands…
+    stored("Film 5") shouldBe 8          // …without pruning what only the primary lists
+    ledger.get(Multikino).sourceKey shouldBe Some(Primary) // and is no new baseline
+
+    primary.listing = () => films(board*)(8)
+    runner.run(scraper)
+    stored("Film 1") shouldBe 8
+    stored("Film 5") shouldBe 8
+    stored("Fallback Only") shouldBe 0   // the recovered primary's ordinary prune
   }
 }

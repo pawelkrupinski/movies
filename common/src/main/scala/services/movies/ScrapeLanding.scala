@@ -156,7 +156,8 @@ private[movies] final class ScrapeLanding(
    *  re-pay the full enrichment cost on its next scrape. */
   def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie],
                          listingIsComplete: Boolean = true,
-                         sourceKey: Option[String] = None): Seq[(CinemaMovie, CacheKey, Boolean)] = {
+                         sourceKey: Option[String] = None,
+                         viaFallback: Boolean = false): Seq[(CinemaMovie, CacheKey, Boolean)] = {
     // Empty `movies` is almost always a silent scraper failure (Cloudflare
     // challenge, parser regex mismatch, proxy 503, blank HTML), not a
     // cinema that's genuinely showing zero films right now. Without this
@@ -174,13 +175,17 @@ private[movies] final class ScrapeLanding(
     // measure against the old source's rows, which say nothing about the new one.
     // A venue with no recorded key is judged by where its stored rows' film links
     // point instead (see `ScrapeHealth.isRewire`) — only then are the sites computed.
+    //
+    // A FALLBACK-served listing is none of this (see `MovieCache.recordCinemaScrape`): not a
+    // rewire, not judged by either guard, never a prune, and it leaves the guards' state —
+    // the primary's baseline — exactly as it found it.
     val guardState = guardLedger.get(cinema)
     def sites(urls: Iterator[Option[String]]): Set[String] = urls.flatten.flatMap(ScrapeHealth.siteOf).toSet
     lazy val storedSites = sites(corpusIndex.slotsOf(cinema).iterator.map(_._3.filmUrl))
-    val rewired = guardState.sourceKey match {
+    val rewired = !viaFallback && (guardState.sourceKey match {
       case Some(_) => ScrapeHealth.isRewire(guardState.sourceKey, sourceKey)
       case None    => ScrapeHealth.isRewire(None, sourceKey, storedSites, sites(movies.iterator.map(_.filmUrl)))
-    }
+    })
     if (rewired) RemovalAudit.scrapeRewired(cinema.displayName,
       guardState.sourceKey.orElse(Some(s"rows linking to ${storedSites.toSeq.sorted.mkString("+")}")), sourceKey)
 
@@ -204,7 +209,7 @@ private[movies] final class ScrapeLanding(
       ShowtimesDigest.upcomingShowtimeCount(sd, now) }.sum
     val batchShowtimes       = movies.iterator.map(_.showtimes.count(_.dateTime.isAfter(now))).sum
     val depthVerdict =
-      if (rewired) ScrapeHealth.Depth.Healthy
+      if (rewired || viaFallback) ScrapeHealth.Depth.Healthy
       else ScrapeHealth.depth(knownCinemaShowtimes, batchShowtimes, guardState.depthRejections,
         maxConsecutiveGuardRejections)
     depthVerdict match {
@@ -279,7 +284,7 @@ private[movies] final class ScrapeLanding(
     // A rewire skips it like the depth guard: the old source's films are exactly what
     // the prune must retire, however few the new source lists.
     val breadthVerdict =
-      if (rewired) ScrapeHealth.Breadth.Healthy
+      if (rewired || viaFallback) ScrapeHealth.Breadth.Healthy
       else ScrapeHealth.breadth(knownCinemaSlots, deduped.size, listingIsComplete,
         guardState.breadthRejections, maxConsecutiveGuardRejections, depthVerdict)
     val breadthRejections = breadthVerdict match {
@@ -294,11 +299,12 @@ private[movies] final class ScrapeLanding(
     // The listing lands from here on, so its source becomes the venue's recorded one —
     // including on a legacy venue that had none. A scrape that reports no key keeps
     // whatever was recorded.
-    saveGuardState(cinema, guardState, ScrapeGuardState(
+    if (!viaFallback) saveGuardState(cinema, guardState, ScrapeGuardState(
       sourceKey = sourceKey.orElse(guardState.sourceKey), depthRejections = 0, breadthRejections = breadthRejections))
     // Only `Reject` skips the prune below — `AcceptDegraded` means the guard gave
-    // up on treating this as a bad fetch, so it prunes exactly like `Healthy` does.
-    val scrapeLooksPartial = breadthVerdict.isInstanceOf[ScrapeHealth.Breadth.Reject]
+    // up on treating this as a bad fetch, so it prunes exactly like `Healthy` does. A
+    // fallback listing never prunes: it only adds to what the primary last listed.
+    val scrapeLooksPartial = viaFallback || breadthVerdict.isInstanceOf[ScrapeHealth.Breadth.Reject]
     // The divert gate's four questions, all POINT queries against `corpusIndex`.
     //
     // Each was a full walk of the corpus, rebuilt on every venue — see [[CorpusIndex]]
@@ -713,7 +719,8 @@ private[movies] final class ScrapeLanding(
         sampleFilmIds = toPrune.map { case (k, _) => s"${k.cleanTitle} (${k.year.getOrElse("—")})" },
         reason = "scrape-prune")
     }
-    breadthVerdict match {
+    // A fallback-served listing never prunes — it only adds (see `scrapeLooksPartial`).
+    if (!viaFallback) breadthVerdict match {
       case ScrapeHealth.Breadth.Reject(consecutive) =>
         // The guard skipped the prune — log the decision (and what it spared) so a
         // degraded-tick episode is on the record even though nothing was removed.

@@ -118,10 +118,18 @@ trait MovieCache extends MovieCacheReader {
    *  `sourceKey` names the upstream listing this scrape read (`CinemaScraper.sourceKey`).
    *  When it differs from the one the venue's stored listing came from, the venue has
    *  been rewired and the scrape lands as its new baseline, guards skipped
-   *  ([[ScrapeHealth.isRewire]]). `None` never counts as a change. */
+   *  ([[ScrapeHealth.isRewire]]). `None` never counts as a change.
+   *
+   *  `viaFallback` says a FALLBACK served this listing (Filmweb, Flicks) because the venue's
+   *  own source is down. That is not a rewire — `sourceKey` is still the primary's — and the
+   *  listing is judged against nothing: it lands ADDITIVELY, never pruning the primary's
+   *  films it does not list, and leaves the guards' state alone. A fallback serves exactly
+   *  when the primary is broken and is usually thinner, so pruning on it retired a venue's
+   *  films on every outage and restored them on every recovery. */
   def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie],
                          listingIsComplete: Boolean = true,
-                         sourceKey: Option[String] = None): Seq[(CinemaMovie, CacheKey, Boolean)]
+                         sourceKey: Option[String] = None,
+                         viaFallback: Boolean = false): Seq[(CinemaMovie, CacheKey, Boolean)]
 
   /** Reload the positive cache from the repository: drop every in-memory positive
    *  entry, then `repository.findAll()` and put each row. Returns the number of
@@ -1180,8 +1188,9 @@ class CaffeineMovieCache(
 
   def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie],
                          listingIsComplete: Boolean = true,
-                         sourceKey: Option[String] = None): Seq[(CinemaMovie, CacheKey, Boolean)] =
-    landing.recordCinemaScrape(cinema, movies, listingIsComplete, sourceKey)
+                         sourceKey: Option[String] = None,
+                         viaFallback: Boolean = false): Seq[(CinemaMovie, CacheKey, Boolean)] =
+    landing.recordCinemaScrape(cinema, movies, listingIsComplete, sourceKey, viaFallback)
 
   def hasResolvedSiblingByTitle(rawTitle: String): Boolean =
     corpusIndex.entriesFor(normalizer.sanitize(rawTitle)).exists { case (_, e) => e.tmdbId.isDefined }

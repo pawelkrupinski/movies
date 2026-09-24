@@ -74,11 +74,11 @@ import scala.util.control.NonFatal
  * the recoverable side and needs no per-tick state, which a `fetch()`-then-
  * `listingIsComplete` read would otherwise have to carry between two calls.
  *
- * The SOURCE, by contrast, is the one that served: [[fetchWithSource]] reports a tick
- * the fallback covered under the fallback's `sourceKey`, returned with the listing so
- * no state spans two calls. The scrape guards then read entering and leaving fallback
- * as a change of source — each side's first tick lands and becomes the baseline —
- * instead of discarding a sparse fallback board against the primary's full one.
+ * Which of the two SERVED is reported per tick by [[fetchWithSource]], returned with the
+ * listing so no state spans two calls. A fallback tick is NOT a change of source — the
+ * venue's source is still its primary, merely down — so the cache lands it additively:
+ * no guard judges the thin board against the primary's rows, and no prune retires the
+ * primary's films it does not list (`ScrapeLanding.recordCinemaScrape`).
  */
 class SourceFallbackScraper(
   primary:         CinemaScraper,
@@ -99,10 +99,7 @@ class SourceFallbackScraper(
 
   def fetch(): Seq[CinemaMovie] = fetchWithSource().movies
 
-  /** The tick's listing, under the key of the source that SERVED it: the fallback's
-   *  own on a tick it covered, so the scrape guards measure a Filmweb board against
-   *  Filmweb's last one rather than the primary's, and a switch either way reads as
-   *  the change of source it is (see `ScrapeLanding.recordCinemaScrape`). */
+  /** The tick's listing, and whether the fallback served it (see the class doc). */
   override def fetchWithSource(): CinemaScraper.Scraped = {
     val previous      = store.get(service)
     val active        = previous.exists(_.active)
@@ -111,9 +108,9 @@ class SourceFallbackScraper(
 
     if (withinBackoff) {
       // On fallback, not yet time to re-probe → skip the broken primary entirely.
-      val (fwMovies, fwMs, fwServed, fwKey) = tryFallback()
+      val (fwMovies, fwMs, fwServed) = tryFallback()
       previous.foreach(p => store.put(p.copy(updatedAt = nowI)))
-      if (fwServed) { monitor.recordFallbackSuccess(service, fwMs); served(fwMovies, fwKey) }
+      if (fwServed) { monitor.recordFallbackSuccess(service, fwMs); fallbackServed(fwMovies) }
       else { monitor.recordEmpty(service, fwMs); primaryServed(Seq.empty) }
     } else {
       runPrimary() match {
@@ -132,14 +129,14 @@ class SourceFallbackScraper(
         case PrimaryOutcome.Empty(movies, ms) =>
           // Empty only counts as a failure if the fallback can actually cover it —
           // otherwise it's a genuine empty repertoire and must never trip.
-          val (fwMovies, fwMs, fwServed, fwKey) = tryFallback()
+          val (fwMovies, fwMs, fwServed) = tryFallback()
           if (!fwServed) {
             if (active) markPrimaryDown(previous, nowI, EmptyReason)  // already on fallback: still a failed re-probe
             monitor.recordEmpty(service, ms); primaryServed(movies)
           } else if (active) {
-            markPrimaryDown(previous, nowI, EmptyReason); monitor.recordFallbackSuccess(service, fwMs); served(fwMovies, fwKey)
+            markPrimaryDown(previous, nowI, EmptyReason); monitor.recordFallbackSuccess(service, fwMs); fallbackServed(fwMovies)
           } else if (graceElapsed(previous, nowI)) {
-            enterFallback(previous, nowI, EmptyReason); monitor.recordFallbackSuccess(service, fwMs); served(fwMovies, fwKey)
+            enterFallback(previous, nowI, EmptyReason); monitor.recordFallbackSuccess(service, fwMs); fallbackServed(fwMovies)
           } else {
             recordGraceFailure(previous, nowI, EmptyReason); monitor.recordEmpty(service, ms); primaryServed(movies)
           }
@@ -156,19 +153,19 @@ class SourceFallbackScraper(
     keepPrimaryOutcome: => CinemaScraper.Scraped
   ): CinemaScraper.Scraped =
     if (active) {
-      val (fwMovies, fwMs, fwServed, fwKey) = tryFallback()
+      val (fwMovies, fwMs, fwServed) = tryFallback()
       markPrimaryDown(previous, nowI, reason)
-      if (fwServed) { monitor.recordFallbackSuccess(service, fwMs); served(fwMovies, fwKey) } else keepPrimaryOutcome
+      if (fwServed) { monitor.recordFallbackSuccess(service, fwMs); fallbackServed(fwMovies) } else keepPrimaryOutcome
     } else if (graceElapsed(previous, nowI)) {
-      val (fwMovies, fwMs, fwServed, fwKey) = tryFallback()
-      if (fwServed) { enterFallback(previous, nowI, reason); monitor.recordFallbackSuccess(service, fwMs); served(fwMovies, fwKey) }
+      val (fwMovies, fwMs, fwServed) = tryFallback()
+      if (fwServed) { enterFallback(previous, nowI, reason); monitor.recordFallbackSuccess(service, fwMs); fallbackServed(fwMovies) }
       else { recordUncovered(previous, nowI, reason); keepPrimaryOutcome }
     } else {
       recordGraceFailure(previous, nowI, reason); keepPrimaryOutcome
     }
 
-  private def primaryServed(movies: Seq[CinemaMovie]): CinemaScraper.Scraped = CinemaScraper.Scraped(movies, sourceKey)
-  private def served(movies: Seq[CinemaMovie], key: Option[String]): CinemaScraper.Scraped = CinemaScraper.Scraped(movies, key)
+  private def primaryServed(movies: Seq[CinemaMovie]): CinemaScraper.Scraped  = CinemaScraper.Scraped(movies, viaFallback = false)
+  private def fallbackServed(movies: Seq[CinemaMovie]): CinemaScraper.Scraped = CinemaScraper.Scraped(movies, viaFallback = true)
 
   /** Has the current continuous-failure run reached [[fallbackAfter]]?
    *  `failingSince` is carried from the persisted state (or starts now), so the
@@ -189,12 +186,12 @@ class SourceFallbackScraper(
     }
   }
 
-  private def tryFallback(): (Seq[CinemaMovie], Long, Boolean, Option[String]) = fallback() match {
+  private def tryFallback(): (Seq[CinemaMovie], Long, Boolean) = fallback() match {
     case Some(fw) =>
       val t0 = System.currentTimeMillis()
       val movies = try fw.fetch() catch { case NonFatal(_) => Seq.empty }
-      (movies, System.currentTimeMillis() - t0, showtimeCount(movies) > 0, fw.sourceKey)
-    case None => (Seq.empty, 0L, false, None)
+      (movies, System.currentTimeMillis() - t0, showtimeCount(movies) > 0)
+    case None => (Seq.empty, 0L, false)
   }
 
   /** Grace-window failure: keep the `failingSince` clock running (starting it if
