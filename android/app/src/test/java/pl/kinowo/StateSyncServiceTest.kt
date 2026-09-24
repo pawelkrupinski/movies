@@ -15,16 +15,9 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import pl.kinowo.auth.HiddenFilmsClient
-import pl.kinowo.auth.HiddenFilmsFetchResult
-import pl.kinowo.auth.HiddenFilmsState
-import pl.kinowo.auth.LanguageClient
 import pl.kinowo.auth.StateSyncService
 import pl.kinowo.auth.UserProfile
 import pl.kinowo.data.HiddenFilmsOp
-import pl.kinowo.data.SyncPrefs
-import pl.kinowo.model.Country
-import java.io.IOException
 
 /**
  * Mirrors iOS `StateSyncServiceTests`: per-country merge-on-login, immediate
@@ -649,128 +642,5 @@ class StateSyncServiceTest {
         advanceUntilIdle()
 
         assertNull(prefs.pendingLanguagePush())
-    }
-}
-
-private class FakeSyncPrefs : SyncPrefs {
-    val hiddenByCountry = mutableMapOf<String, Set<String>>()
-    val countryState = MutableStateFlow<String?>(null)
-    val languageState = MutableStateFlow<String?>(null)
-    private val migrated = mutableSetOf<String>()
-    private val etags = mutableMapOf<String, String?>()
-    private val lastModifieds = mutableMapOf<String, String?>()
-
-    /** The set of whichever country is selected — what the UI would show. */
-    val hiddenState: Set<String> get() = hiddenByCountry[Country.byCode(countryState.value).code] ?: emptySet()
-
-    override val selectedCountryCode = countryState
-
-    override suspend fun hiddenFilmsFor(country: String): Set<String> = hiddenByCountry[country] ?: emptySet()
-    override suspend fun setHiddenFilms(country: String, films: Set<String>) { hiddenByCountry[country] = films }
-
-    override suspend fun isHiddenFilmsMigrated(country: String): Boolean = country in migrated
-    override suspend fun setHiddenFilmsMigrated(country: String, migrated: Boolean) {
-        if (migrated) this.migrated.add(country) else this.migrated.remove(country)
-    }
-
-    override suspend fun hiddenFilmsEtag(country: String): String? = etags[country]
-    override suspend fun hiddenFilmsLastModified(country: String): String? = lastModifieds[country]
-    override suspend fun setHiddenFilmsValidators(country: String, etag: String?, lastModified: String?) {
-        etags[country] = etag
-        lastModifieds[country] = lastModified
-    }
-
-    override suspend fun clearHiddenFilmsSyncState() {
-        pendingOps.clear()
-        migrated.clear()
-        etags.clear()
-        lastModifieds.clear()
-    }
-
-    override val selectedLanguageTag = languageState
-    override suspend fun setLanguageTag(tag: String) { languageState.value = tag }
-
-    private val pendingOps = mutableMapOf<String, List<HiddenFilmsOp>>()
-    override suspend fun pendingHiddenFilmsOps(country: String): List<HiddenFilmsOp> = pendingOps[country] ?: emptyList()
-    override suspend fun setPendingHiddenFilmsOps(country: String, ops: List<HiddenFilmsOp>) { pendingOps[country] = ops }
-
-    private var pendingLanguage: String? = null
-    override suspend fun pendingLanguagePush(): String? = pendingLanguage
-    override suspend fun setPendingLanguagePush(tag: String?) { pendingLanguage = tag }
-}
-
-private class FakeHiddenFilmsClient : HiddenFilmsClient {
-    val remote = mutableMapOf<String, Set<String>>()
-    val hideCalls = mutableListOf<Pair<String, String>>() // (title, country)
-    val unhideCalls = mutableListOf<Pair<String, String>>()
-    val clearCalls = mutableListOf<String>()
-    val fetchCalls = mutableListOf<String>()
-    var shouldFailFetch = false
-    /** Fail every hide/unhide/clear AFTER recording the call. */
-    var shouldFailWrite = false
-    var notModified = false
-    var beforeFetch: suspend () -> Unit = {}
-
-    override suspend fun fetch(country: String, etag: String?, lastModified: String?): HiddenFilmsFetchResult {
-        fetchCalls += country
-        beforeFetch()
-        if (shouldFailFetch) throw IOException("no network")
-        if (notModified && etag != null) return HiddenFilmsFetchResult.NotModified
-        return HiddenFilmsFetchResult.Changed(HiddenFilmsState(remote[country] ?: emptySet(), "\"etag-$country\"", "lm-$country"))
-    }
-
-    override suspend fun hide(country: String, title: String): HiddenFilmsState {
-        hideCalls += title to country
-        if (shouldFailWrite) throw IOException("no network")
-        remote[country] = (remote[country] ?: emptySet()) + title
-        return HiddenFilmsState(remote[country]!!, "\"etag-$country\"", "lm-$country")
-    }
-
-    override suspend fun unhide(country: String, title: String): HiddenFilmsState {
-        unhideCalls += title to country
-        if (shouldFailWrite) throw IOException("no network")
-        remote[country] = (remote[country] ?: emptySet()) - title
-        return HiddenFilmsState(remote[country] ?: emptySet(), "\"etag-$country\"", "lm-$country")
-    }
-
-    override suspend fun clear(country: String): HiddenFilmsState {
-        clearCalls += country
-        if (shouldFailWrite) throw IOException("no network")
-        remote[country] = emptySet()
-        return HiddenFilmsState(emptySet(), "\"etag-$country\"", "lm-$country")
-    }
-}
-
-/** The account's stored pick behind a fake `/api/me/state`: a successful
- *  push updates [remote], as the server does. Mirrors iOS `FakeLanguageClient`. */
-private class FakeLanguageClient : LanguageClient {
-    var remote: String? = null
-    var shouldFailPush = false
-    /** Every push that SUCCEEDED, in order. */
-    val pushes = mutableListOf<String>()
-    var lastPushed: String? = null
-    var pushCount = 0
-    /** Every push attempt, failed or not. */
-    var pushAttempts = 0
-
-    /** Awaited once a push has REACHED the server, before its response —
-     *  holds it "in flight". Cancelling the caller then can't un-send it,
-     *  as with the real blocking OkHttp call. */
-    var beforePushResponse: suspend () -> Unit = {}
-    /** Awaited at the start of a fetch — holds it "in flight". */
-    var beforeFetch: suspend () -> Unit = {}
-
-    override suspend fun fetch(): String? {
-        beforeFetch()
-        return remote
-    }
-    override suspend fun push(language: String) {
-        pushAttempts++
-        if (shouldFailPush) throw IOException("HTTP 503")
-        pushes += language
-        remote = language
-        beforePushResponse()
-        lastPushed = language
-        pushCount++
     }
 }
