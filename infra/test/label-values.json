@@ -9305,6 +9305,14 @@
     "ok"
    ]
   },
+  "kinowo_worker_share_cards_render_total": {
+   "outcome": [
+    "existing",
+    "failed",
+    "rendered",
+    "rendered_no_poster"
+   ]
+  },
   "kinowo_worker_tasks_enqueued_total": {
    "result": [
     "added",

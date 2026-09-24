@@ -140,3 +140,118 @@ tests:
       - eval_time: 90m
         alertname: ShareCardPosterFetchFailing
         exp_alerts: []
+
+  # COVERAGE STALLED: pl sits at 60% for seven hours, through a restart gap. Quiet for the first six
+  # hours of the hold, then fires.
+  - interval: 5m
+    input_series:
+      - series: 'kinowo_worker_share_cards_coverage_ratio{country="pl",instance="kinowo-worker-pl",job="kinowo-worker"}'
+        values: '0.6x40 stale 0.6x44'
+    alert_rule_test:
+      - eval_time: 5h
+        alertname: ShareCardCoverageLow
+        exp_alerts: []
+      - eval_time: 7h
+        alertname: ShareCardCoverageLow
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: pl
+            exp_annotations:
+              summary: "pl has share cards for only 60% of its films on screen"
+              description: "`kinowo_worker_share_cards_coverage_ratio` -- the share of films with screenings whose card for their CURRENT inputs exists on disk -- has been under 95% for six hours. A fresh backfill (a new template, a first deploy) refills from zero in under three hours (2026-09-24: pl, the slowest, in 2h20m), so the backfill is not keeping up or not running. Read `kinowo_worker_share_cards_render_total` by outcome: quiet means no renders are being queued (is the ShareCardBackfill task running?); busy with `failed` means ShareCardRendersFailing is the alert to read. Every uncovered film keeps the city fallback card, and the web switches og:image to film cards only while every country is at 99% or more."
+
+  # QUIET: a fresh backfill, replayed from pl's on 2026-09-24 -- 0 to 100% over 2h20m, with a restart
+  # halfway -- then healthy. Never fires.
+  - interval: 5m
+    input_series:
+      - series: 'kinowo_worker_share_cards_coverage_ratio{country="pl",instance="kinowo-worker-pl",job="kinowo-worker"}'
+        values: '0+0.006x10 0.06+0.035x10 stale 0.45+0.05x11 0.998x60'
+      - series: 'up{country="pl",instance="kinowo-worker-pl",job="kinowo-worker"}'
+        values: '1x93'
+    alert_rule_test:
+      - eval_time: 6h
+        alertname: ShareCardCoverageLow
+        exp_alerts: []
+      - eval_time: 7h
+        alertname: ShareCardCoverageLow
+        exp_alerts: []
+      - eval_time: 7h
+        alertname: ShareCardCoverageAbsent
+        exp_alerts: []
+
+  # COVERAGE ABSENT: uk's worker publishes its coverage gauge for ten minutes, then -- through a
+  # restart, and still up and scraped after it -- never again; de publishes one and stays quiet.
+  # Fires for uk an hour after the gauge's last sample ages out of the 10m window.
+  - interval: 1m
+    input_series:
+      - series: 'up{country="uk",instance="kinowo-worker-uk",job="kinowo-worker"}'
+        values: '1x30 stale _x3 1x60'
+      - series: 'kinowo_worker_share_cards_coverage_ratio{country="uk",instance="kinowo-worker-uk",job="kinowo-worker"}'
+        values: '1x10 stale'
+      - series: 'up{country="de",instance="kinowo-worker-de",job="kinowo-worker"}'
+        values: '1x93'
+      - series: 'kinowo_worker_share_cards_coverage_ratio{country="de",instance="kinowo-worker-de",job="kinowo-worker"}'
+        values: '1x93'
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: ShareCardCoverageAbsent
+        exp_alerts: []
+      - eval_time: 90m
+        alertname: ShareCardCoverageAbsent
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: uk
+            exp_annotations:
+              summary: "uk's worker is up but publishes no share-card coverage"
+              description: "The worker answers its scrape (`up`) but has published no `kinowo_worker_share_cards_coverage_ratio` for this country for an hour, so ShareCardCoverageLow cannot fire and a stalled card pipeline goes unseen. The ShareCardBackfill tick publishes it every minute while the country has films on screen; its absence means the tick is not running, or the gauge was unwired from the worker's metrics. A worker that is DOWN is WorkerDown's to report, not this one's."
+
+  # QUIET: a worker restart leaves both `up` and the gauge absent for a few minutes; nothing fires.
+  - interval: 1m
+    input_series:
+      - series: 'up{country="es",instance="kinowo-worker-es",job="kinowo-worker"}'
+        values: '1x30 stale _x5 1x60'
+      - series: 'kinowo_worker_share_cards_coverage_ratio{country="es",instance="kinowo-worker-es",job="kinowo-worker"}'
+        values: '1x30 stale _x6 1x60'
+    alert_rule_test:
+      - eval_time: 95m
+        alertname: ShareCardCoverageAbsent
+        exp_alerts: []
+
+  # RENDERS FAILING: of 3 renders a minute in us, 2 fail, through a restart gap. Fires after 30m.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_share_cards_render_total{country="us",outcome="failed",reason="backfill",instance="w1",job="kinowo-worker"}'
+        values: '0+2x20 stale _x2 42+2x60'
+      - series: 'kinowo_worker_share_cards_render_total{country="us",outcome="rendered",reason="backfill",instance="w1",job="kinowo-worker"}'
+        values: '0+1x20 stale _x2 21+1x60'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: ShareCardRendersFailing
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: ShareCardRendersFailing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: us
+            exp_annotations:
+              summary: "us's share-card renders are failing: 66.67% of the last half hour's"
+              description: "More than a quarter of the last half hour's `kinowo_worker_share_cards_render_total` ended `failed`: the card could not be drawn at all, not even without its poster (a poster-less card is `rendered_no_poster`, which ShareCardPosterFetchFailing watches). Each failed task is retried up to three times and then given up, so those films keep the city fallback card and coverage falls. The `reason` label names the input change that queued the failing renders, and the worker logs `share card: <film> could not be drawn: <exception>`. After a deploy, suspect the template, the fonts or libvips."
+
+  # QUIET: an occasional failure among a busy backfill, and a few failures among fewer than ten renders.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_share_cards_render_total{country="de",outcome="failed",reason="ratings",instance="w1",job="kinowo-worker"}'
+        values: '0+0.1x90'
+      - series: 'kinowo_worker_share_cards_render_total{country="de",outcome="rendered",reason="backfill",instance="w1",job="kinowo-worker"}'
+        values: '0+5x90'
+      - series: 'kinowo_worker_share_cards_render_total{country="es",outcome="failed",reason="new_film",instance="w1",job="kinowo-worker"}'
+        values: '0+0.1x90'
+      - series: 'kinowo_worker_share_cards_render_total{country="es",outcome="rendered",reason="new_film",instance="w1",job="kinowo-worker"}'
+        values: '0+0.1x90'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: ShareCardRendersFailing
+        exp_alerts: []

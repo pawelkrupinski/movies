@@ -92,13 +92,14 @@ route:
     # FilesystemWillFillWithin7Days, FilesystemWillFillWithin3Days, FilesystemReadOnly,
     # FilesystemMetricsAbsent, WorkerDown, WorkerQueueStalled, WorkerQueueGrowingUnbounded,
     # WorkerQueueMetricsAbsent, WorkerTasksFailingRepeatedly, WorkerTaskTypeUnhandled, the
-    # `ShareCard*` family (ShareCardsNearBudget, ShareCardsOverBudget, ShareCardPosterFetchFailing),
-    # plus the named ones in full below. Every one of them is meant.
+    # `ShareCard*` family (ShareCardsNearBudget, ShareCardsOverBudget, ShareCardPosterFetchFailing,
+    # ShareCardCoverageLow, ShareCardCoverageAbsent, ShareCardRendersFailing), plus the named ones
+    # in full below. Every one of them is meant.
     #
     # `ShareCard.*` IS A PREFIX FOR THE SAME REASON AS THE DISKS, added 2026-09-24: the share cards
     # are files the workers write onto k3s-worker-1's root, so a budget overrun or a stalled prune
-    # is a slow disk fill with nothing 500ing, and a failing poster fetch just quietly serves the
-    # city fallback card on every share. Every rule in that family has the silent shape, so a
+    # is a slow disk fill with nothing 500ing, and a failing poster fetch or a stalled render
+    # pipeline just quietly serves the city fallback card on every share. Every rule in that family has the silent shape, so a
     # new one enrols by default.
     #
     # THE FOUR NAMES SPELLED OUT IN FULL, NOT GIVEN A PREFIX, and the asymmetry with the two

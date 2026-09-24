@@ -4,7 +4,8 @@
 # /share-cards/<cc>/. Cards, posters and bases share ONE budget (KINOWO_SHARE_CARD_BUDGET_MB, 1 GiB by default) that the worker's janitor
 # enforces by evicting the oldest files nothing references. These rules watch the two ways that
 # can go wrong -- the directory filling towards the budget, and the part the janitor may NOT delete
-# outgrowing it -- plus the poster upstreams the cards are drawn from.
+# outgrowing it -- the poster upstreams the cards are drawn from, and the pipeline itself: cards
+# missing for the films on screen, the gauge that says so gone, and renders failing outright.
 #
 # AGGREGATION. The directory gauges are read from the DIRECTORY, so every replica of a country
 # publishes the same number for the same files: `max by (country, kind)` first (never `sum`, which
@@ -98,3 +99,80 @@ groups:
             decode_error, vips_cap, progressive_estimate, ...), and the worker logs `share card: poster
             for <film> from <host> failed: <reason>` -- check whether one host or one reason
             dominates; `kinowo_worker_http_total` does not see these fetches.
+
+      # THE PIPELINE STALLED: FILMS ON SCREEN WITHOUT THEIR CARD. The coverage gauge is the share of
+      # films with screenings whose card for their current inputs is on disk; steady state is
+      # 99.8-100% (measured 2026-09-24, every country). A FRESH BACKFILL starts it from zero -- a
+      # template bump re-renders every card, and the first deploy did (2026-09-24 09:50-12:10Z:
+      # es in 15 minutes, de and uk in 1h30, us in 2h10, pl in 2h20). So the hold is SIX hours,
+      # over twice the slowest backfill seen, and the threshold 95%, well under the daily churn of
+      # new films; a pipeline that stopped rendering drifts below it as new films arrive.
+      - alert: ShareCardCoverageLow
+        expr: >-
+          max by (country) (last_over_time(kinowo_worker_share_cards_coverage_ratio[10m])) < 0.95
+        for: 6h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }} has share cards for only {{ $value | humanizePercentage }} of its films on screen"
+          description: >-
+            `kinowo_worker_share_cards_coverage_ratio` -- the share of films with screenings whose
+            card for their CURRENT inputs exists on disk -- has been under 95% for six hours. A
+            fresh backfill (a new template, a first deploy) refills from zero in under three hours
+            (2026-09-24: pl, the slowest, in 2h20m), so the backfill is not keeping up or not
+            running. Read `kinowo_worker_share_cards_render_total` by outcome: quiet means no
+            renders are being queued (is the ShareCardBackfill task running?); busy with `failed`
+            means ShareCardRendersFailing is the alert to read. Every uncovered film keeps the city
+            fallback card, and the web switches og:image to film cards only while every country is
+            at 99% or more.
+
+      # THE GAUGE ABOVE IS GONE WHILE THE WORKER IS UP. Per country, not `absent()` over the whole
+      # metric: one country's backfill not running must not hide behind the others' series. A
+      # worker that is down is WorkerDown's (its `up` is 0, so it drops out here). One hour, as the
+      # other *MetricsAbsent rules: longer than a fleet rollout; the gauge is published within a
+      # couple of minutes of a boot (2026-09-24's restarts left 5-6 minute gaps).
+      - alert: ShareCardCoverageAbsent
+        expr: >-
+          max by (country) (last_over_time(up{job="kinowo-worker"}[10m]) == 1)
+          unless on (country)
+          max by (country) (last_over_time(kinowo_worker_share_cards_coverage_ratio[10m]))
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}'s worker is up but publishes no share-card coverage"
+          description: >-
+            The worker answers its scrape (`up`) but has published no
+            `kinowo_worker_share_cards_coverage_ratio` for this country for an hour, so
+            ShareCardCoverageLow cannot fire and a stalled card pipeline goes unseen. The
+            ShareCardBackfill tick publishes it every minute while the country has films on
+            screen; its absence means the tick is not running, or the gauge was unwired from the
+            worker's metrics. A worker that is DOWN is WorkerDown's to report, not this one's.
+
+      # RENDERS FAILING OUTRIGHT. `failed` is a card that could not be drawn even without its
+      # poster -- a template, font or libvips fault, not an upstream (a dead poster is
+      # `rendered_no_poster`, above). NOT ZERO DURING A BACKFILL: pl's first one (2026-09-24
+      # 11:10-11:45Z) failed 93 `new_film` renders, peaking at 12% of the half hour's; every other
+      # country, none. So a quarter, twice that peak, of at least ten renders in the half hour, held
+      # for half an hour: a backfill's stragglers are not a page, a broken template failing every
+      # card is.
+      - alert: ShareCardRendersFailing
+        expr: >-
+          (
+            sum by (country) (increase(kinowo_worker_share_cards_render_total{outcome="failed"}[30m]))
+            / sum by (country) (increase(kinowo_worker_share_cards_render_total[30m]))
+          ) > 0.25
+          and on (country) sum by (country) (increase(kinowo_worker_share_cards_render_total[30m])) >= 10
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}'s share-card renders are failing: {{ $value | humanizePercentage }} of the last half hour's"
+          description: >-
+            More than a quarter of the last half hour's `kinowo_worker_share_cards_render_total`
+            ended `failed`: the card could not be drawn at all, not even without its poster (a
+            poster-less card is `rendered_no_poster`, which ShareCardPosterFetchFailing watches).
+            Each failed task is retried up to three times and then given up, so those films keep
+            the city fallback card and coverage falls. The `reason` label names the input change
+            that queued the failing renders, and the worker logs `share card: <film> could not be
+            drawn: <exception>`. After a deploy, suspect the template, the fonts or libvips.

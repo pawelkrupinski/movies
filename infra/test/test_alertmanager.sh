@@ -199,6 +199,9 @@ route_is telegram-and-email alertname=HeapDumpWritten severity=warning host=k3s-
 route_is telegram-and-email alertname=ShareCardsNearBudget severity=warning country=pl
 route_is telegram-and-email alertname=ShareCardsOverBudget severity=critical country=uk
 route_is telegram-and-email alertname=ShareCardPosterFetchFailing severity=warning country=us
+route_is telegram-and-email alertname=ShareCardCoverageLow severity=warning country=pl
+route_is telegram-and-email alertname=ShareCardCoverageAbsent severity=warning country=uk
+route_is telegram-and-email alertname=ShareCardRendersFailing severity=warning country=de
 
 # THE REST OF THE READ-MODEL FAMILY MUST *NOT* HAVE FOLLOWED THEM INTO THE MAILBOX. This is the
 # assertion that fails if somebody later replaces the two names above with a `ReadModel.*` prefix,
