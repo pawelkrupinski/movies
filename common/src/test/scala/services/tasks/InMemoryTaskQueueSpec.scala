@@ -26,6 +26,24 @@ class InMemoryTaskQueueSpec extends AnyFlatSpec with Matchers {
     q.enqueue(ScrapeCinema, "scrape|kino-x", submittedAt = t0.plusSeconds(60)) shouldBe EnqueueResult.Added
   }
 
+  // Parity with MongoTaskQueue, whose answer is the update's modified count: an amend
+  // that changes nothing — the waiting task already carries these fields — amended nothing.
+  "amendWaiting" should "report an amend only when it changed the waiting task's payload" in {
+    val q = new InMemoryTaskQueue
+    q.enqueue(ResolveTmdb, "resolve|x", Map("title" -> "X"), submittedAt = t0)
+    q.amendWaiting("resolve|x", Map("retryMiss" -> "true")) shouldBe true
+    q.amendWaiting("resolve|x", Map("retryMiss" -> "true")) shouldBe false
+    q.amendWaiting("resolve|x", Map.empty) shouldBe false
+    q.claim("w1", 1.minute, t0).get.payload shouldBe Map("title" -> "X", "retryMiss" -> "true")
+  }
+
+  it should "leave a worked-on task alone" in {
+    val q = new InMemoryTaskQueue
+    q.enqueue(ResolveTmdb, "resolve|x", Map("title" -> "X"), submittedAt = t0)
+    q.claim("w1", 1.minute, t0)
+    q.amendWaiting("resolve|x", Map("force" -> "true")) shouldBe false
+  }
+
   "claim" should "hand out the oldest waiting task first (FIFO) and carry the payload" in {
     val q = new InMemoryTaskQueue
     q.enqueue(ImdbRating, "imdb|b", Map("k" -> "vb"), submittedAt = t0.plusSeconds(10))
