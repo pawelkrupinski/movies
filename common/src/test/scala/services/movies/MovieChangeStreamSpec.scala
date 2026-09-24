@@ -434,6 +434,30 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     } finally { handle.close(); under.close() }
   }
 
+  // The hold exists for the failed film alone. Once a later read has applied it, nothing is
+  // left for a restart to replay — kept, one blip froze the persisted position for the rest of
+  // the process, and the next deploy replayed days of events, or found them out of the oplog.
+  it should "release the held position once every film whose re-read failed has been applied" in {
+    val source    = new HandFedSource
+    val token     = new ChangeStreamResumeToken("movies", database = None, enabled = false)
+    val delivered = new java.util.concurrent.LinkedBlockingQueue[String]()
+    val failures  = new AtomicInteger(0)
+    val under     = stream(source, resumeToken = token, rereadChecked = Some { id =>
+      if (id == "broken|2024" && failures.incrementAndGet() <= MovieChangeStream.RereadAttempts + 2) (None, false)
+      else (Some(recordOf(id)), true)
+    })
+
+    val handle = under.watch(r => delivered.put(r.id.value), _ => ())
+    try {
+      source.emit(event("insert", "broken|2024", StoredMovieDto.fromDomain("broken|2024", MovieRecord(), Instant.EPOCH)))
+      delivered.poll(10, TimeUnit.SECONDS) shouldBe "broken|2024"
+      source.emit(event("insert", "later|2024", StoredMovieDto.fromDomain("later|2024", MovieRecord(), Instant.EPOCH)))
+      delivered.poll(5, TimeUnit.SECONDS) shouldBe "later|2024"
+      withClue("the failed film is applied, so the next applied event moves the position again: ")(
+        eventually(token.current shouldBe Some(new BsonDocument("_data", new BsonString("token-later|2024")))))
+    } finally { handle.close(); under.close() }
+  }
+
   it should "not acknowledge a side-collection event whose re-read failed" in {
     val source = new HandFedSource
     @volatile var ring: (String, () => Unit) => Unit = null

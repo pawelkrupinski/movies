@@ -129,8 +129,8 @@ final class MovieChangeStream(
     open:       ((String, () => Unit) => Unit, ChangeStreamDemand) => Option[AutoCloseable]
   ) {
     val demand = new ChangeStreamDemand(changeDemandWindow)
-    /** Set by this cursor's first apply whose re-read failed — see [[applyReread]]. */
-    val held   = new java.util.concurrent.atomic.AtomicBoolean(false)
+    /** Held while one of this cursor's re-reads has failed and not yet been applied — see [[applyReread]]. */
+    val hold   = new CursorHold(collection)
     private val handle = new AtomicReference[Option[AutoCloseable]](None)
 
     // The re-read is a BLOCKING read, so it (and the fanout) run on `changeApply`, never
@@ -178,7 +178,7 @@ final class MovieChangeStream(
           sideApplyPending.remove(filmId)
           // this cursor's resume position moves only once the film is fanned out — see
           // `SideCollectionWatch` and `applyReread`
-          applyReread(filmId, held, collection)(applied)
+          applyReread(filmId, hold)(applied)
         }
       else {
         metrics.recordCoalescedChange()
@@ -187,8 +187,28 @@ final class MovieChangeStream(
     }
   }
 
-  /** Set by the `movies` cursor's first apply whose re-read failed — see [[applyReread]]. */
-  private val moviesHeld = new java.util.concurrent.atomic.AtomicBoolean(false)
+  /** The films whose change one cursor failed to apply, and so its resume position is held for.
+   *  Touched only on `changeApply`, the single apply thread, so its reads and writes are ordered
+   *  with every acknowledgement. */
+  private final class CursorHold(val cursor: String) {
+    private val failing = scala.collection.mutable.Set.empty[String]
+    def held: Boolean = failing.nonEmpty
+    /** Record `filmId`'s failure; true when it was not already failing (its retry is not yet running). */
+    def fail(filmId: String): Boolean = {
+      if (failing.isEmpty)
+        logger.warn(s"MovieRepository change stream ($cursor): re-reading $filmId failed — its change is NOT " +
+          "applied yet, and this cursor's resume position is held until it is, so a restart replays it.")
+      failing.add(filmId)
+    }
+    def isFailing(filmId: String): Boolean = failing.contains(filmId)
+    /** `filmId`'s current state has been fanned out: it no longer needs a replay. */
+    def applied(filmId: String): Unit =
+      if (failing.remove(filmId) && failing.isEmpty)
+        logger.info(s"MovieRepository change stream ($cursor): every failed re-read is applied — releasing the held position.")
+  }
+
+  private val moviesHold = new CursorHold(ChangeStreamLiveness.Movies)
+  private def holds: Seq[CursorHold] = moviesHold +: sideCursors.map(_.hold)
 
   private def advanceMovies(token: BsonDocument, generation: Long): Unit = {
     resumeToken.advance(token, generation)
@@ -211,16 +231,13 @@ final class MovieChangeStream(
    *  …and the FILM is read again later ([[rereadLater]]), until a read answers. The held
    *  position only helps the next process, and a worker runs for days: until then the film's
    *  projection kept whatever the failed event should have replaced — a changed showtime, which
-   *  the read model's id-only sweeps never see. */
-  private def applyReread(filmId: String, held: java.util.concurrent.atomic.AtomicBoolean, cursor: String)
-                         (acknowledge: () => Unit): Unit =
-    if (rereadAndDispatch(filmId)) { if (!held.get()) acknowledge() }
-    else {
-      if (!held.getAndSet(true))
-        logger.warn(s"MovieRepository change stream ($cursor): re-reading $filmId failed — its change is NOT " +
-          "applied yet, and this cursor's resume position is held from here on so a restart replays it.")
-      rereadLater(filmId, cursor, rereadRetryMillis)
-    }
+   *  the read model's id-only sweeps never see. Once every failed film of a cursor has been read
+   *  and fanned out (by its retry, or by any later apply of it — each reads the film's CURRENT
+   *  state), nothing is left to replay, and the cursor acknowledges again from its next applied
+   *  event. Held for good, one blip froze the persisted position for the rest of the process. */
+  private def applyReread(filmId: String, hold: CursorHold)(acknowledge: () => Unit): Unit =
+    if (rereadAndDispatch(filmId)) { if (!hold.held) acknowledge() }
+    else if (hold.fail(filmId)) rereadLater(filmId, hold, rereadRetryMillis)
 
   /** Re-read `filmId` (a few quick attempts) and fan it out; false when every read failed. */
   private def rereadAndDispatch(filmId: String): Boolean = {
@@ -231,7 +248,10 @@ final class MovieChangeStream(
       attempt += 1
       val next = reread(filmId); film = next._1; read = next._2
     }
-    if (read) film.foreach(movieChanges.dispatchUpsert)
+    if (read) {
+      film.foreach(movieChanges.dispatchUpsert)
+      holds.foreach(_.applied(filmId))
+    }
     read
   }
 
@@ -239,25 +259,30 @@ final class MovieChangeStream(
   private val rereadRetry = tools.DaemonExecutors.scheduler("movie-change-reread-retry")
 
   /** Read a film whose re-read failed again after `delayMillis`, doubling the delay while it
-   *  keeps failing. It joins the coalescing set like any event: an apply already queued for
-   *  the film reads it fresh anyway (and schedules its own retry if that fails too). It
-   *  acknowledges nothing — the cursor is held — and owes no demand, since no cursor delivered it. */
-  private def rereadLater(filmId: String, cursor: String, delayMillis: Long): Unit =
+   *  keeps failing — ONE such chain per failing film and cursor, however many of its events
+   *  fail meanwhile. It stops once any apply has read the film (it is no longer failing). It
+   *  joins the coalescing set like any event: when an apply is already queued for the film,
+   *  that apply's read serves, and this chain looks again after the next delay. It
+   *  acknowledges nothing — its cursor is held — and owes no demand, since no cursor delivered it. */
+  private def rereadLater(filmId: String, hold: CursorHold, delayMillis: Long): Unit = {
+    val next = math.min(delayMillis * 2, MovieChangeStream.RereadRetryMaxMillis)
     scala.util.Try(rereadRetry.schedule((() =>
-      if (sideApplyPending.add(filmId)) {
+      if (!sideApplyPending.add(filmId)) rereadLater(filmId, hold, next)
+      else {
         backlog.incrementAndGet()
         changeApply.execute { () =>
           try {
             sideApplyPending.remove(filmId)
-            if (!rereadAndDispatch(filmId)) {
-              logger.warn(s"MovieRepository change stream ($cursor): re-reading $filmId still fails — trying again later.")
-              rereadLater(filmId, cursor, math.min(delayMillis * 2, MovieChangeStream.RereadRetryMaxMillis))
+            if (hold.isFailing(filmId) && !rereadAndDispatch(filmId)) {
+              logger.warn(s"MovieRepository change stream (${hold.cursor}): re-reading $filmId still fails — trying again later.")
+              rereadLater(filmId, hold, next)
             }
           } finally backlog.decrementAndGet()
         }
       }): Runnable, delayMillis, java.util.concurrent.TimeUnit.MILLISECONDS))
       // Rejected only once `close()` has shut the scheduler: the repository is being discarded.
       .failed.foreach(exception => logger.debug(s"re-read retry of $filmId not scheduled: ${exception.getMessage}"))
+  }
 
   // Read-split only: a showtime change writes only `screenings` and a venue's slot only
   // `movie_slots` (movies stays put), so without these the projector would never see either.
@@ -340,7 +365,7 @@ final class MovieChangeStream(
               if (sideApplyPending.add(dto._id))
                 applyOffLoop(ChangeStreamLiveness.Movies, moviesDemand) {
                   sideApplyPending.remove(dto._id)
-                  applyReread(dto._id, moviesHeld, ChangeStreamLiveness.Movies)(() => advanceMovies(token, generation))
+                  applyReread(dto._id, moviesHold)(() => advanceMovies(token, generation))
                 }
               else { // not advanced — see `SideCursor.applyChange` on why a coalesced event must not be
                 changeStreamMetrics.recordCoalescedChange()
@@ -361,7 +386,7 @@ final class MovieChangeStream(
               deletedId.foreach(sideApplyPending.remove)
               applyOffLoop(ChangeStreamLiveness.Movies, moviesDemand) {
                 deletedId.foreach(movieChanges.dispatchDelete)
-                if (!moviesHeld.get()) advanceMovies(token, generation)
+                if (!moviesHold.held) advanceMovies(token, generation)
               }
           }
         }
