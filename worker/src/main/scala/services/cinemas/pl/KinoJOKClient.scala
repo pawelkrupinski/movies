@@ -57,7 +57,9 @@ object KinoJOKClient {
   private case class RawSlot(title: String, dateTime: LocalDateTime, filmUrl: Option[String])
 
   def parse(json: String, cinema: Cinema): Seq[CinemaMovie] = {
-    val root   = Try(Json.parse(json)).getOrElse(Json.obj())
+    // A body that isn't JSON (a maintenance page, a proxy's HTML) is a failed read and
+    // throws; folded into `{}` it read as a venue with nothing on.
+    val root   = Json.parse(json)
     val events = (root \ "events").asOpt[Seq[JsObject]].getOrElse(Seq.empty)
     val slots  = events.flatMap(parseEvent)
 

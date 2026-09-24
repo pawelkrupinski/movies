@@ -162,7 +162,10 @@ class FilmwebShowtimesClient(
     }
 
   private def parseSeancesForUrl(json: String, url: String): Seq[RawSeance] =
-    dateOf(url).map(d => Try(parseSeances(json, d)).getOrElse(Seq.empty)).getOrElse(Seq.empty)
+    // A day whose body doesn't parse THROWS, so it counts as a failed page for
+    // `ListingPages.requireAnyReached` — swallowed here it counted as a reached, quiet day,
+    // and a Filmweb answering every day with an error page read as a dormant venue.
+    dateOf(url).map(parseSeances(json, _)).getOrElse(Seq.empty)
 
   /** Parse one /title/{id}/info response into title + originalTitle + year +
    *  poster URL. Pure + public so the spec can feed fixture bytes. */

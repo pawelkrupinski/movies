@@ -6,7 +6,6 @@ import services.cinemas.common.CinemaScraper
 import services.cinemas.pl.{CinemaCityClient, MultikinoClient}
 
 import java.time.LocalDate
-import scala.util.Try
 
 /**
  * A chain's own list of its venues — the ONLINE roster audit's source for the
@@ -62,7 +61,7 @@ object ChainDirectory {
     val host = CinemaScraper.hostsOf(ListUrl).head
     def listUrl(today: LocalDate): String = ListUrl
     def parse(body: String): Map[String, PublishedVenue] =
-      Try(Json.parse(body).as[Seq[JsValue]]).getOrElse(Nil).flatMap { js =>
+      Json.parse(body).as[Seq[JsValue]].flatMap { js =>
         for { id <- text(js, "id"); town <- text(js, "city") } yield
           id -> PublishedVenue(town, text(js, "street").map(TrailingPostcode.replaceFirstIn(_, "")).filter(_.nonEmpty),
                                point(js, "latitude", "longitude"))
@@ -79,7 +78,7 @@ object ChainDirectory {
     // A year out: a venue with nothing on sale that far ahead is not open.
     def listUrl(today: LocalDate): String = s"${CinemaCityClient.BaseApiUrl}/cinemas/with-event/until/${today.plusYears(1)}"
     def parse(body: String): Map[String, PublishedVenue] =
-      Try((Json.parse(body) \ "body" \ "cinemas").as[Seq[JsValue]]).getOrElse(Nil).flatMap { js =>
+      (Json.parse(body) \ "body" \ "cinemas").as[Seq[JsValue]].flatMap { js =>
         val address = (js \ "addressInfo").toOption
         for { id <- text(js, "id"); town <- address.flatMap(text(_, "city")) } yield
           id -> PublishedVenue(town, address.flatMap(text(_, "address1")), point(js, "latitude", "longitude"))
@@ -99,7 +98,7 @@ object ChainDirectory {
     def listUrl(today: LocalDate): String = s"${MultikinoClient.BaseUrl}/api/microservice/showings/cinemas"
     override def warmUpUrl: Option[String] = Some(MultikinoClient.HomeUrl)
     def parse(body: String): Map[String, PublishedVenue] =
-      Try((Json.parse(body) \ "result").as[Seq[JsValue]]).getOrElse(Nil)
+      (Json.parse(body) \ "result").as[Seq[JsValue]]
         .flatMap(group => (group \ "cinemas").asOpt[Seq[JsValue]].getOrElse(Nil))
         .flatMap(js => for { id <- text(js, "cinemaId"); town <- text(js, "cinemaName") } yield id -> PublishedVenue(town, None))
         .toMap

@@ -64,6 +64,16 @@ class ChainDirectorySpec extends AnyFlatSpec with Matchers {
     DirectoryNotRead("Multikino", 2, "HTTP 403").failing shouldBe false
   }
 
+  // A list that answered but does not parse names the parse failure; it used to fold into
+  // an empty list and be reported as the chain listing no venues at all.
+  it should "name why an unparseable list was not read, not report it as listing nothing" in {
+    val maintenance: String => FetchedPage = url => FetchedPage(url, "<html>Przerwa techniczna</html>")
+    val venues = Seq("0044" -> AuditedVenue("leszno", "M0044", "https://www.multikino.pl", Seq("Leszno")))
+    val Left(notRead) = RosterSourceReader.readDirectory(maintenance, Today)(Multikino, venues): @unchecked
+    notRead.detail should not include ("no venues in the answer")
+    notRead.detail should include ("Exception")
+  }
+
   // The live run of 2026-09-23 found Cinema City Janki filed as a Warszawa
   // venue with no town of its own; the chain lists it in Janki.
   "every Polish chain venue" should "be listed by its chain, in the town we file it under and near its city page" in {

@@ -45,13 +45,10 @@ class KinoPatriaClient(
   override def sourceUrl: Option[String] = Some(RepertoireUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    // Fetch OUTSIDE the Try so a 5xx/timeout propagates and surfaces as a red
-    // uptime error, rather than being swallowed into an empty list that reads as
-    // a successful "0 showtimes" scrape (white — indistinguishable from a
-    // genuinely film-dormant venue). Only a PARSE failure is swallowed. Mirrors
-    // the guard in KinoZamekClient.
-    val html = http.get(RepertoireUrl)
-    Try(parseRepertoire(html, cinema, today)).getOrElse(Seq.empty)
+    // A fetch or parse failure propagates and surfaces as a red uptime error, rather
+    // than being swallowed into an empty list that reads as a successful "0 showtimes"
+    // scrape (white — indistinguishable from a genuinely film-dormant venue).
+    parseRepertoire(http.get(RepertoireUrl), cinema, today)
   }
 }
 

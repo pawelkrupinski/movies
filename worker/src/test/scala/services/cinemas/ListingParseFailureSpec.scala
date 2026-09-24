@@ -1,10 +1,10 @@
 package services.cinemas
 
 import clients.tools.UrlFragmentHttpFetch
-import models.CinemaCityPoznanPlaza
+import models.{CinemaCityPoznanPlaza, KinoDiana, KinoJOK}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.pl.{Cinema1Client, CinemaCityClient, KinoCentrumCswClient}
+import services.cinemas.pl.{Cinema1Client, CinemaCityClient, FilmwebShowtimesClient, KinoCentrumCswClient, KinoJOKClient}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import java.time.LocalDate
@@ -50,5 +50,21 @@ class ListingParseFailureSpec extends AnyFlatSpec with Matchers {
 
   it should "read a well-formed body with no dates as an empty plan" in {
     cinemaCity("""{"body":{"dates":[]}}""", "").dates("1078") shouldBe empty
+  }
+
+  "KinoJOKClient.parse" should "throw on an unparseable body but read an empty event list as no screenings" in {
+    an[Exception] should be thrownBy KinoJOKClient.parse(ErrorPage, KinoJOK)
+    KinoJOKClient.parse("""{"events":[]}""", KinoJOK) shouldBe empty
+  }
+
+  // Filmweb answering EVERY day with an error page is a Filmweb that is down; each day used
+  // to parse as a quiet one, so the whole scrape read as a dormant venue.
+  "FilmwebShowtimesClient" should "fail the scrape when every day's page is unparseable" in {
+    val errorPages = new tools.HttpFetch {
+      def get(url: String): String = ErrorPage
+      def post(url: String, body: String, contentType: String): String = ErrorPage
+    }
+    an[Exception] should be thrownBy
+      new FilmwebShowtimesClient(errorPages, 2352, KinoDiana, daysAhead = 2, today = day).fetch()
   }
 }
