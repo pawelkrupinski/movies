@@ -184,6 +184,42 @@ groups:
             write; confirm against a longer window before acting.
 
       # -----------------------------------------------------------------------------------------
+      # THE SAME TREND ON A ONE-DAY HORIZON, and deliberately WITHOUT the 40%-free gate above.
+      # Added 2026-09-24 with the share cards, which the workers write onto k3s-worker-1's root
+      # (/var/lib/kinowo) -- a 150G disk at 90% free, where the seven-day rule stays silent until
+      # 40% is left. That gate is right for a slow drift; it is blind to a RUNAWAY writer (a budget
+      # check that stopped pruning, a render loop) that could empty a mostly-free disk inside a day
+      # without ever tripping a level rule until it was nearly over. A day's horizon needs no gate:
+      # the slope that projects a 150G disk to zero in 24h is ~5 GB an hour, which nothing ordinary
+      # on this fleet writes. Critical, because it means acting today, and the inhibition in
+      # alertmanager.yaml then folds the seven-day warning for the same mount into this one.
+      # Fleet-wide rather than one host: every disk deserves the runaway check, and a mount nobody
+      # listed is watched by default, as with every rule in this file.
+      #
+      # RESTART-SAFE BY CONSTRUCTION: `predict_linear` over six hours fits whatever samples the
+      # window holds, so a node_exporter restart's few missing scrapes leave the fit, and the one-
+      # hour hold, intact (filesystem-capacity.yml has the case).
+      # -----------------------------------------------------------------------------------------
+      - alert: FilesystemWillFillWithin24Hours
+        expr: >-
+          predict_linear(
+            node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"}[6h],
+            24 * 3600) < 0
+        # AN HOUR, so a single bulk write -- an image pull, a restore -- has to keep going at that
+        # rate for an hour before it pages, while a real runaway still leaves most of a day.
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.mountpoint }} on {{ $labels.host }} is on course to fill within 24 hours"
+          description: >-
+            A RUNAWAY WRITER, NOT A DRIFT -- the last six hours' slope empties this filesystem within
+            a day. `du -xh --max-depth=3 {{ $labels.mountpoint }} | sort -h | tail -20` names it. On
+            k3s-worker-1 look first at /var/lib/kinowo/share-cards (the workers' share cards: check
+            `kinowo_worker_share_cards_bytes` against its budget and whether PruneShareCards is
+            running), then /var/lib/rancher (images and pod logs).
+
+      # -----------------------------------------------------------------------------------------
       # THE COMPANION, AND IT IS NOT DECORATION. Every rule above is a COMPARISON, and a comparison
       # cannot fire when its series is gone -- so node_exporter dying, or its filesystem collector
       # being turned off, would leave all four silent and indistinguishable from a fleet with room

@@ -258,3 +258,102 @@ tests:
       - eval_time: 4h
         alertname: FilesystemWillFillWithin7Days
         exp_alerts: []
+
+  # THE 24-HOUR PROJECTION, and the disk it was added for: k3s-worker-1's 150G root, which holds
+  # /var/lib/kinowo/share-cards, at 90% free. A RUNAWAY WRITER at 100 MB a minute (6 GB an hour)
+  # empties 135G in under a day, so the one-day rule must fire after its hour -- while the
+  # seven-day rule stays silent, because its 40%-free gate is exactly the blindness this rule
+  # exists to cover. That silence is asserted too: it is why a second projection is not redundant.
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{host="k3s-worker-1",mountpoint="/",fstype="ext4",device="/dev/sda2",instance="10.20.0.12:9100",job="node"}'
+        values: '135000000000-100000000x180'
+      - series: 'node_filesystem_size_bytes{host="k3s-worker-1",mountpoint="/",fstype="ext4",device="/dev/sda2",instance="10.20.0.12:9100",job="node"}'
+        values: '150000000000x180'
+    alert_rule_test:
+      # `for: 1h` -- a burst that stops inside the hour does not page.
+      - eval_time: 30m
+        alertname: FilesystemWillFillWithin24Hours
+        exp_alerts: []
+      - eval_time: 90m
+        alertname: FilesystemWillFillWithin24Hours
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              host: k3s-worker-1
+              mountpoint: /
+              fstype: ext4
+              device: /dev/sda2
+              instance: 10.20.0.12:9100
+              job: node
+            exp_annotations:
+              summary: "/ on k3s-worker-1 is on course to fill within 24 hours"
+              description: "A RUNAWAY WRITER, NOT A DRIFT -- the last six hours' slope empties this filesystem within a day. `du -xh --max-depth=3 / | sort -h | tail -20` names it. On k3s-worker-1 look first at /var/lib/kinowo/share-cards (the workers' share cards: check `kinowo_worker_share_cards_bytes` against its budget and whether PruneShareCards is running), then /var/lib/rancher (images and pod logs)."
+      - eval_time: 90m
+        alertname: FilesystemWillFillWithin7Days
+        exp_alerts: []
+      - eval_time: 90m
+        alertname: FilesystemSpaceLow
+        exp_alerts: []
+
+  # AN ORDINARY DAY'S GROWTH STAYS QUIET: 1 GB an hour of logs and cards off the same 135G is 24G a
+  # day, a fraction of what is free. The rule has no level gate, so this is the case that proves the
+  # slope threshold alone does not page a healthy, growing disk.
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{host="k3s-worker-1",mountpoint="/",fstype="ext4",device="/dev/sda2",instance="10.20.0.12:9100",job="node"}'
+        values: '135000000000-16666666x360'
+    alert_rule_test:
+      - eval_time: 6h
+        alertname: FilesystemWillFillWithin24Hours
+        exp_alerts: []
+
+  # A NODE_EXPORTER RESTART MID-RUNAWAY DOES NOT RESET THE HOLD. Three missing scrapes at 60-62m,
+  # the shape a restart leaves in the series. The rule went pending at 1m; if the gap dropped it,
+  # it would re-arm at 63m and fire no sooner than 123m. Firing at 75m is the proof the six-hour
+  # fit bridges the gap.
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{host="k3s-worker-1",mountpoint="/",fstype="ext4",device="/dev/sda2",instance="10.20.0.12:9100",job="node"}'
+        values: '135000000000-100000000x59 stale stale stale 128700000000-100000000x120'
+    alert_rule_test:
+      - eval_time: 75m
+        alertname: FilesystemWillFillWithin24Hours
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              host: k3s-worker-1
+              mountpoint: /
+              fstype: ext4
+              device: /dev/sda2
+              instance: 10.20.0.12:9100
+              job: node
+            exp_annotations:
+              summary: "/ on k3s-worker-1 is on course to fill within 24 hours"
+              description: "A RUNAWAY WRITER, NOT A DRIFT -- the last six hours' slope empties this filesystem within a day. `du -xh --max-depth=3 / | sort -h | tail -20` names it. On k3s-worker-1 look first at /var/lib/kinowo/share-cards (the workers' share cards: check `kinowo_worker_share_cards_bytes` against its budget and whether PruneShareCards is running), then /var/lib/rancher (images and pod logs)."
+
+  # THE LEVEL, ON THE DISK THAT HOLDS THE SHARE CARDS. 14% free on k3s-worker-1's root -- under the
+  # 15% the share-card plan asked for -- is already past `FilesystemSpaceLow`'s 20%, so the existing
+  # rule is that alert and no second level rule was added. Pinned here for this mount so a later
+  # re-tune of the threshold cannot drop below it unnoticed.
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{host="k3s-worker-1",mountpoint="/",fstype="ext4",device="/dev/sda2",instance="10.20.0.12:9100",job="node"}'
+        values: '21000000000x60'
+      - series: 'node_filesystem_size_bytes{host="k3s-worker-1",mountpoint="/",fstype="ext4",device="/dev/sda2",instance="10.20.0.12:9100",job="node"}'
+        values: '150000000000x60'
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: FilesystemSpaceLow
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              host: k3s-worker-1
+              mountpoint: /
+              fstype: ext4
+              device: /dev/sda2
+              instance: 10.20.0.12:9100
+              job: node
+            exp_annotations:
+              summary: "Less than 20% of / (k3s-worker-1) is free"
+              description: "Note WHICH mountpoint. On `/` the usual cause is the nix store or an unrotated log. On /var/lib/mongodb it is the data itself, which grows monotonically and cannot be collected -- that one is a capacity decision (grow the volume) rather than a cleanup, and it wants planning before the critical alert rather than after. On /var/lib/mongodb-backups, check whether rotation is still working: the dump keeps the most recent N by count, so a growing directory means dumps are landing and none are being pruned. `du -xh --max-depth=2 <mount> | sort -h | tail -20` names the consumer."

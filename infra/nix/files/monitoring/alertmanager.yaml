@@ -89,10 +89,17 @@ route:
     #
     # WHAT THE MATCHER ACTUALLY CATCHES, listed because a regex is not a list and the answer
     # should not have to be re-derived: FilesystemSpaceLow/Critical, FilesystemInodesLow/Critical,
-    # FilesystemWillFillWithin7Days, FilesystemReadOnly, FilesystemMetricsAbsent, WorkerDown,
-    # WorkerQueueStalled, WorkerQueueGrowingUnbounded, WorkerQueueMetricsAbsent,
-    # WorkerTasksFailingRepeatedly, WorkerTaskTypeUnhandled, plus the four named in full below.
-    # Seventeen, and every one of them is meant.
+    # FilesystemWillFillWithin7Days, FilesystemWillFillWithin24Hours, FilesystemReadOnly,
+    # FilesystemMetricsAbsent, WorkerDown, WorkerQueueStalled, WorkerQueueGrowingUnbounded,
+    # WorkerQueueMetricsAbsent, WorkerTasksFailingRepeatedly, WorkerTaskTypeUnhandled, the
+    # `ShareCard*` family (ShareCardsNearBudget, ShareCardsOverBudget, ShareCardPosterFetchFailing),
+    # plus the named ones in full below. Every one of them is meant.
+    #
+    # `ShareCard.*` IS A PREFIX FOR THE SAME REASON AS THE DISKS, added 2026-09-24: the share cards
+    # are files the workers write onto k3s-worker-1's root, so a budget overrun or a stalled prune
+    # is a slow disk fill with nothing 500ing, and a failing poster fetch just quietly serves the
+    # city fallback card on every share. Every rule in that family has the silent shape, so a
+    # new one enrols by default.
     #
     # THE FOUR NAMES SPELLED OUT IN FULL, NOT GIVEN A PREFIX, and the asymmetry with the two
     # families above is the point. A prefix is right for Filesystem and Worker because EVERY rule
@@ -146,14 +153,14 @@ route:
     # one message to five, repeating hourly, on the channel this file's header argues must stay a
     # single stream. The subject is fixed below instead, where it costs nothing.
     - matchers:
-        - alertname =~ "Filesystem.*|Worker.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte|ChainFallbackSaturated|PaidEgressFailing|HeapDumpWritten"
+        - alertname =~ "Filesystem.*|Worker.*|ShareCard.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte|ChainFallbackSaturated|PaidEgressFailing|HeapDumpWritten"
         - severity = "critical"
       receiver: telegram-and-email
       group_wait: 10s
       repeat_interval: 1h
 
     - matchers:
-        - alertname =~ "Filesystem.*|Worker.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte|ChainFallbackSaturated|PaidEgressFailing|HeapDumpWritten"
+        - alertname =~ "Filesystem.*|Worker.*|ShareCard.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte|ChainFallbackSaturated|PaidEgressFailing|HeapDumpWritten"
         - severity = "warning"
       receiver: telegram-and-email
       group_interval: 15m

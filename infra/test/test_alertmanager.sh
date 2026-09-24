@@ -143,6 +143,8 @@ route_is telegram-and-email alertname=FilesystemSpaceLow severity=warning host=m
 route_is telegram-and-email alertname=FilesystemSpaceCritical severity=critical host=mongo-1 mountpoint=/
 route_is telegram-and-email alertname=FilesystemInodesLow severity=warning host=k3s-worker-1 mountpoint=/
 route_is telegram-and-email alertname=FilesystemWillFillWithin7Days severity=warning host=mongo-1
+# The runaway-writer projection added with the share cards, on the host whose root holds them.
+route_is telegram-and-email alertname=FilesystemWillFillWithin24Hours severity=critical host=k3s-worker-1 mountpoint=/
 # "nothing is watching any disk" belongs with the disk alerts, and carries no host label.
 route_is telegram-and-email alertname=FilesystemMetricsAbsent severity=warning
 # LIVES IN host-health.rules, NOT WITH THE OTHER SIX, so it is the one the prefix catches that a
@@ -190,6 +192,13 @@ route_is telegram-and-email alertname=PaidEgressFailing severity=warning country
 # A heap dump is written once per death and rotated away by the budget after three, so it is worth
 # the mailbox: a chat message scrolled past is a dump nobody copied off the node.
 route_is telegram-and-email alertname=HeapDumpWritten severity=warning host=k3s-worker-1 dir=web-pl
+
+# THE SHARE CARDS, BY PREFIX, both severities: the workers' files on k3s-worker-1's disk fill it
+# quietly, and a failing poster fetch quietly degrades every share to the city card. The rules live
+# in the worker's own rule file; the names here are the contract, whatever file holds them.
+route_is telegram-and-email alertname=ShareCardsNearBudget severity=warning country=pl
+route_is telegram-and-email alertname=ShareCardsOverBudget severity=critical country=uk
+route_is telegram-and-email alertname=ShareCardPosterFetchFailing severity=warning country=us
 
 # THE REST OF THE READ-MODEL FAMILY MUST *NOT* HAVE FOLLOWED THEM INTO THE MAILBOX. This is the
 # assertion that fails if somebody later replaces the two names above with a `ReadModel.*` prefix,
