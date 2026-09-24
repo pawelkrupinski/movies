@@ -308,10 +308,10 @@ object HiddenFilmsSyncModelSpec {
     private def quiesce(): Unit = {
       val idle = "document.readyState === 'complete' && window.__inflight === 0 && " +
         "(typeof _serverSyncTimer === 'undefined' || _serverSyncTimer === 0)"
-      val deadline = System.currentTimeMillis() + 10000
+      val deadline = System.nanoTime() + 10000L * 1000000L
       var stable = 0
       while (stable < 6) {
-        if (System.currentTimeMillis() > deadline) throw new RuntimeException("the page never went quiet")
+        if (System.nanoTime() > deadline) throw new RuntimeException("the page never went quiet")
         stable = if (page.evalBool(s"!!($idle)")) stable + 1 else 0
         Thread.sleep(25)
       }
