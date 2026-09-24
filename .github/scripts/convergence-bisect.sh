@@ -119,21 +119,23 @@ EOF
     chmod +x "$wrapper"
 
     git bisect start --first-parent "$bad" "$good" -- "${specs[@]}" >/dev/null
-    local log; log="$(mktemp)"
-    git bisect run "$wrapper" > "$log" 2>&1
-    local first
-    # git 2.55 quotes the term ("is the first 'bad' commit"); earlier versions do not.
-    first=$(sed -nE "s/^([0-9a-f]{40}) is the first '?bad'? commit\$/\1/p" "$log" | head -1)
-    if [ -n "$first" ]; then
-        finish_exact "$first" "after $(cat "$counter") bisection replay(s)"
+    git bisect run "$wrapper" >/dev/null 2>&1
+    # Decided from bisect's own refs, not its prose: git 2.55 reworded "<sha> is the first
+    # bad commit" to "… first 'bad' commit", and a parser keyed to the old wording reported
+    # every pinned commit as an open range. What is left is everything under the newest bad
+    # and above every good; when nothing but that bad remains, it is the first bad commit.
+    local goods skips newest_bad remaining
+    goods=$(git for-each-ref --format='^%(objectname)' 'refs/bisect/good-*')
+    skips=$(git for-each-ref --format='%(objectname)' 'refs/bisect/skip-*')
+    newest_bad=$(git rev-parse refs/bisect/bad)
+    # shellcheck disable=SC2086
+    remaining=$(git rev-list --first-parent "$newest_bad" $goods -- "${specs[@]}" | grep -vx "$newest_bad" || true)
+    if [ -z "$remaining" ]; then
+        finish_exact "$newest_bad" "after $(cat "$counter") bisection replay(s)"
     else
         verdict "Stopped after $(cat "$counter") replay(s) (cap: ${MAX_STEPS:-3} replays, ${BUDGET_MINUTES:-90} min). The first bad commit is one of:" ""
-        # What is left: under the newest bad, above every good, minus what was skipped.
-        local goods skips
-        goods=$(git for-each-ref --format='^%(objectname)' 'refs/bisect/good-*')
-        skips=$(git for-each-ref --format='%(objectname)' 'refs/bisect/skip-*')
         # shellcheck disable=SC2086
-        git rev-list --first-parent refs/bisect/bad $goods -- "${specs[@]}" | while read -r sha; do
+        git rev-list --first-parent "$newest_bad" $goods -- "${specs[@]}" | while read -r sha; do
             if printf '%s\n' "$skips" | grep -qx "$sha"; then continue; fi
             verdict "- $(git log -1 --format='`%h` %s (%an)' "$sha")"
         done
