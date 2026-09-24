@@ -2158,6 +2158,45 @@
               }
             }
           ]
+        },
+        {
+          "id": 110,
+          "title": "Worker — cinemas quiet for over a week (no film in 7+ days), by country",
+          "description": "Roster cinemas whose last content-bearing scrape is more than 7 days old, from kinowo_worker_cinema_content_stale_venues (CinemaContentCensus, every 30 minutes, off the scrape archive). The age panel above follows ONE venue, the roster's worst -- DE read 1,383h and the US 600h on 2026-09-24 -- so it cannot say whether that venue is alone; this counts them all. Never-content venues are not in it (the panel above counts those: they have no age). Closures are not modelled, so a season's dormant venues sit here too: read it for GROWTH. CinemaContentStaleVenuesGrowing fires when today's count is 3+ above yesterday's lowest and stays there a day -- one more venue going quiet a day is what a client-wide parser break (one skin change, every venue on it) looks like, and the scrape-staleness panels stay clean through it because the scrapes themselves succeed.",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 211
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none",
+              "min": 0,
+              "custom": {
+                "spanNulls": 300000,
+                "drawStyle": "line",
+                "fillOpacity": 0
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "max by (country) (kinowo_worker_cinema_content_stale_venues{country=~\"$country\"})",
+              "legendFormat": "{{country}}",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            }
+          ]
         }
       ],
       "gridPos": {

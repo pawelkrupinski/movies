@@ -32,7 +32,13 @@ import scala.concurrent.duration._
  *   - `kinowo_worker_cinema_content_oldest_age_seconds{country}` — how long the
  *     longest-quiet cinema has gone without producing a single film, and
  *   - `kinowo_worker_cinema_never_content{country}` — how many have never produced
- *     one at all.
+ *     one at all, and
+ *   - `kinowo_worker_cinema_content_stale_venues{country}` — how many last produced
+ *     one more than [[CinemaContentCensus.StaleAfter]] ago. The oldest age above is
+ *     ONE venue, the roster's worst, so it cannot say whether that venue is alone:
+ *     DE sat at 1,383h and the US at 600h on 2026-09-24 with nothing reading either.
+ *     A count is what shows a SECOND venue falling silent, which is the shape a
+ *     client-wide parser break takes (one skin change, every venue on it).
  *
  * Deliberately the same shape as [[CinemaScrapeCensus]]'s pair, and split for the
  * same reason: a cinema with no content has no age, so folding it into the age
@@ -55,6 +61,7 @@ class CinemaContentCensus(
   archive:      ScrapeArchiveRepository,
   oldestAge:    Gauge,
   neverContent: Gauge,
+  staleVenues:  Gauge,
   country:      Country,
   clock:        Clock = Clock.systemUTC(),
   override protected val sampleInterval: FiniteDuration = CinemaContentCensus.DefaultSampleInterval
@@ -73,6 +80,9 @@ class CinemaContentCensus(
 
   oldestAge.labelValues(countryCode).set(0.0)
   neverContent.labelValues(countryCode).set(0.0)
+  // NOT zeroed at construction, unlike the two above: its alert compares today's count with
+  // yesterday's lowest, and a boot-time zero would read as "yesterday there were none".
+  // `start()` takes the first reading at once, so the series appears within the boot.
 
   def sample(): Unit = {
     val stamps = archive.lastContentAt()
@@ -85,25 +95,38 @@ class CinemaContentCensus(
     val census = quiet(roster, stamps, clock.instant())
     oldestAge.labelValues(countryCode).set(census.oldestAgeSeconds)
     neverContent.labelValues(countryCode).set(census.neverContent.toDouble)
+    staleVenues.labelValues(countryCode).set(census.staleVenues.toDouble)
   }
 }
 
 object CinemaContentCensus {
   val OldestAgeName    = "kinowo_worker_cinema_content_oldest_age_seconds"
   val NeverContentName = "kinowo_worker_cinema_never_content"
+  val StaleVenuesName  = "kinowo_worker_cinema_content_stale_venues"
 
-  /** How long the quietest cinema has gone without content, and how many have
-   *  never had any. */
-  case class ContentCensus(oldestAgeSeconds: Double, neverContent: Int)
+  /** A venue quiet this long is STALE. A week, because a repertory venue can legitimately go
+   *  a few days between programmes (a Monday-to-Wednesday dark run, a festival gap), and every
+   *  horizon a scraper looks ahead covers at least a week — so a week with nothing at all is
+   *  past anything a working parser of an open cinema produces. Nothing here knows a cinema is
+   *  closed for the season (there is no such flag on `Cinema`), which is why the alert on this
+   *  gauge watches it GROW rather than its level. */
+  val StaleAfter: FiniteDuration = 7.days
+
+  /** How long the quietest cinema has gone without content, how many have never had any, and
+   *  how many last had some more than [[StaleAfter]] ago (never-content venues are NOT among
+   *  them — they have no age, and their own gauge counts them). */
+  case class ContentCensus(oldestAgeSeconds: Double, neverContent: Int, staleVenues: Int)
 
   /** Pure: fold the roster against its archive stamps. A cinema missing from the
    *  archive counts the same as one archived with no content — in both cases we
    *  have never seen it produce a film. */
   def quiet(roster: Seq[String], stamps: Map[String, Option[Instant]], now: Instant): ContentCensus = {
-    val ages = roster.map(cinema => stamps.getOrElse(cinema, None))
+    val ages    = roster.map(cinema => stamps.getOrElse(cinema, None))
+    val seconds = ages.flatten.map(at => (now.toEpochMilli - at.toEpochMilli) / 1000.0)
     ContentCensus(
-      oldestAgeSeconds = ages.flatten.map(at => (now.toEpochMilli - at.toEpochMilli) / 1000.0).maxOption.getOrElse(0.0),
-      neverContent     = ages.count(_.isEmpty)
+      oldestAgeSeconds = seconds.maxOption.getOrElse(0.0),
+      neverContent     = ages.count(_.isEmpty),
+      staleVenues      = seconds.count(_ > StaleAfter.toSeconds)
     )
   }
 
@@ -120,6 +143,12 @@ object CinemaContentCensus {
       .register(registry)
     (oldestAge, neverContent)
   }
+
+  def staleVenuesGauge(registry: PrometheusRegistry): Gauge = Gauge.builder()
+    .name(StaleVenuesName)
+    .help("Cinemas in this country's roster whose last content-bearing scrape is more than 7 days old (never-content venues excluded: kinowo_worker_cinema_never_content counts those). Closures are not modelled, so a season's dormant venues sit here too: watch it GROW day over day, which is what a parser break across a client's venues looks like.")
+    .labelNames("country")
+    .register(registry)
 
   /** Every 30 minutes. The measured thing moves in days, and unlike its in-memory
    *  sibling each reading is a Mongo query — a per-minute cadence would buy no

@@ -75,7 +75,7 @@ trait MetricsWiring { self: WorkerWiring =>
   // healthy — only the archive remembers when a cinema last had real content.
   lazy val cinemaContentCensus: CinemaContentCensus =
     new CinemaContentCensus(cinemaScrapers, scrapeArchive,
-      workerMetrics.contentOldestAgeGauge, workerMetrics.neverContentGauge, country)
+      workerMetrics.contentOldestAgeGauge, workerMetrics.neverContentGauge, workerMetrics.contentStaleVenuesGauge, country)
   // Side rows a venue left behind when it was dropped from the roster — nothing serves them and
   // nothing deleted them (Kino Etiuda OBK, 2026-09). The watchdog for the cleanup that should.
   lazy val retiredVenueCensus: RetiredVenueCensus =
