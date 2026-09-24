@@ -29,7 +29,16 @@
   /* `visibility` (not just the transform) is what makes an undismissed banner
      properly absent — off-screen tab stops and Playwright's `toBeVisible()`
      both key off it, mirroring `#swipe-hint`'s identical show/hide pair. */
-  #app-banner.visible { transform: translateY(0); opacity: 1; visibility: visible; }
+  /* Showing flips `visibility` at once (0s) and only slides/fades the rest;
+     hiding keeps the .25s above so the fade-out stays drawn. A transitioned
+     `visibility` holds its start value, `hidden`, until the next rendered
+     frame starts the transition — on a starved GPU-less CI runner that was
+     longer than a 5s `toBeVisible()`, and for a real visitor it would leave the
+     shown banner out of the accessibility tree until the first paint. */
+  #app-banner.visible {
+    transform: translateY(0); opacity: 1; visibility: visible;
+    transition: transform .25s ease, opacity .25s ease, visibility 0s;
+  }
   .app-banner-icon {
     width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0;
     display: block; box-shadow: 0 1px 3px rgba(0,0,0,.4);

@@ -26,6 +26,46 @@ test.describe('app banner', () => {
     await expect(banner(page)).toContainText('Kinowo — aplikacja mobilna');
   });
 
+  // Regression: `visibility` used to TRANSITION (.25s) on show, like the
+  // transform and opacity do. WebKit leaves a new transition at its start value
+  // — `visibility: hidden` — until the next rendered frame resolves its start
+  // time, so the banner stayed hidden to `toBeVisible()`, screen readers and
+  // tab order until a frame came. On a GPU-less CI runner that frame can take
+  // longer than the whole 5s expect: the test above failed on
+  // `webkit-iphone-se-zoomed` (run 36044091569) with the banner hidden in the
+  // ARIA snapshot but fully drawn in the failure screenshot, which forces a
+  // frame. Reading the style the instant `.visible` lands — in a
+  // MutationObserver callback, a microtask no frame can precede — makes that
+  // dependency deterministic instead of load-dependent.
+  test('is visible the moment it is shown, without waiting for a rendered frame', async ({ page }) => {
+    await page.addInitScript(() => {
+      // A transition only starts from a style the element already HAD. On a
+      // slow runner the ~600-card document paints a frame mid-parse, so the
+      // banner has its hidden style before DOMContentLoaded shows it; on a
+      // fast one it doesn't, and there is no transition to wait on. Resolving
+      // its style at `interactive` (just before DOMContentLoaded) pins the
+      // slow runner's case.
+      document.addEventListener('readystatechange', () => {
+        const el = document.getElementById('app-banner');
+        if (document.readyState === 'interactive' && el) getComputedStyle(el).visibility;
+      });
+      new MutationObserver((records, observer) => {
+        for (const r of records) {
+          const el = r.target as HTMLElement;
+          if (el.id === 'app-banner' && el.classList.contains('visible')) {
+            (window as unknown as { bannerVisibilityOnShow: string }).bannerVisibilityOnShow =
+              getComputedStyle(el).visibility;
+            observer.disconnect();
+          }
+        }
+      }).observe(document, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    });
+    await page.evaluate(() => localStorage.clear());
+    await reload(page);
+    await expect.poll(() => page.evaluate(() =>
+      (window as unknown as { bannerVisibilityOnShow?: string }).bannerVisibilityOnShow)).toBe('visible');
+  });
+
   test('does not show a second time the same day', async ({ page }) => {
     await page.evaluate(() => localStorage.clear());
     await reload(page);
