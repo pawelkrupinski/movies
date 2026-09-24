@@ -64,9 +64,25 @@ final class DetailsCacheTests: XCTestCase {
     }
 
     func testLastModifiedReturnsNilWhenNotSaved() {
-        let url = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("details-meta.txt")
-        try? FileManager.default.removeItem(at: url)
+        ConditionalPayloadCache.details.remove()
         XCTAssertNil(ConditionalPayloadCache.details.lastModified(deployment: poland, city: "poznan"))
+    }
+
+    /// Background saves land in the order they were issued: a city switch's
+    /// save can't be overtaken by the previous city's, which used to run in an
+    /// unordered detached task and could leave the OLD city cached (or pair
+    /// one city's metadata with the other's body) after the grid moved on.
+    func testBackgroundSavesLandInTheOrderTheyWereIssued() {
+        for round in 0..<50 {
+            let old = [FilmDetails(title: "Old \(round)", synopsis: nil, trailerURLs: [])]
+            let new = [FilmDetails(title: "New \(round)", synopsis: nil, trailerURLs: [])]
+            ConditionalPayloadCache.details.saveInBackground(old, deployment: poland, city: "poznan", lastModified: "lm-old")
+            ConditionalPayloadCache.details.saveInBackground(new, deployment: poland, city: "warszawa", lastModified: "lm-new")
+            ConditionalPayloadCache<FilmDetails>.waitForPendingSaves()
+
+            XCTAssertEqual(ConditionalPayloadCache.details.load(deployment: poland, city: "warszawa"), new)
+            XCTAssertEqual(ConditionalPayloadCache.details.lastModified(deployment: poland, city: "warszawa"), "lm-new")
+            XCTAssertNil(ConditionalPayloadCache.details.load(deployment: poland, city: "poznan"))
+        }
     }
 }

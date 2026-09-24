@@ -25,43 +25,75 @@ import Foundation
 /// So a switch along EITHER axis sends no conditional header and takes a fresh
 /// 200, and `load` hands back a body only for the pair that produced it.
 ///
-/// The meta file is three lines — deployment, city, `Last-Modified`. A file
-/// written by an older build has only two, which no longer matches any pair, so
-/// it reads as "nothing cached" and the next fetch is unconditional: stale
-/// entries cost one full response, never a wrong one.
+/// The entry is ONE file, written atomically: a header line (deployment, city,
+/// `Last-Modified` as JSON) followed by the payload. A body and its origin can
+/// therefore never come from two different saves — the separate body + meta
+/// files older builds wrote could, when two saves interleaved or the app died
+/// between the two writes, and then served one city's films under another's
+/// stamp. Those files are no longer read (and are deleted on the next save),
+/// so they cost one full response, never a wrong one. Background saves run
+/// on one serial queue in the order they were issued, so an older city's
+/// save can't land after a newer one's.
 struct ConditionalPayloadCache<Payload: Codable> {
-    private let bodyFile: String
-    private let metaFile: String
+    private let file: String
+    private let legacyFiles: [String]
 
-    init(bodyFile: String, metaFile: String) {
-        self.bodyFile = bodyFile
-        self.metaFile = metaFile
+    init(file: String, legacyFiles: [String] = []) {
+        self.file = file
+        self.legacyFiles = legacyFiles
     }
 
-    private var cacheDir: URL {
+    private struct Header: Codable {
+        let deployment: String
+        let city: String
+        let lastModified: String?
+
+        func matches(deployment: URL, city: String) -> Bool {
+            self.deployment == deployment.absoluteString && self.city == city
+        }
+    }
+
+    private static var cacheDir: URL {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
     }
-    private var bodyURL: URL { cacheDir.appendingPathComponent(bodyFile) }
-    private var metaURL: URL { cacheDir.appendingPathComponent(metaFile) }
+    private var url: URL { Self.cacheDir.appendingPathComponent(file) }
 
     /// Persist the freshly-fetched `payload` for `deployment` + `city` together
     /// with its `lastModified` header, so a later reload of that same pair can
     /// revalidate.
     func save(_ payload: [Payload], deployment: URL, city: String, lastModified: String?) {
-        if let data = try? JSONEncoder().encode(payload) {
-            try? data.write(to: bodyURL, options: .atomic)
+        let header = Header(deployment: deployment.absoluteString, city: city, lastModified: lastModified)
+        guard let headerData = try? JSONEncoder().encode(header),
+              let body = try? JSONEncoder().encode(payload) else { return }
+        try? (headerData + Data("\n".utf8) + body).write(to: url, options: .atomic)
+        for legacy in legacyFiles {
+            try? FileManager.default.removeItem(at: Self.cacheDir.appendingPathComponent(legacy))
         }
-        let meta = [deployment.absoluteString, city, lastModified ?? ""].joined(separator: "\n")
-        try? meta.write(to: metaURL, atomically: true, encoding: .utf8)
+    }
+
+    /// `save` off the caller's thread, after every save issued before it.
+    func saveInBackground(_ payload: [Payload], deployment: URL, city: String, lastModified: String?) {
+        conditionalPayloadCacheWrites.async {
+            save(payload, deployment: deployment, city: city, lastModified: lastModified)
+        }
+    }
+
+    /// Block until every `saveInBackground` issued so far has landed.
+    static func waitForPendingSaves() {
+        conditionalPayloadCacheWrites.sync {}
+    }
+
+    /// Forget the entry.
+    func remove() {
+        try? FileManager.default.removeItem(at: url)
     }
 
     /// The cached body, but only when it belongs to `deployment` + `city` —
     /// otherwise nil, so a switch shows nothing rather than another country's
     /// (or another city's) films while the real fetch is in flight.
     func load(deployment: URL, city: String) -> [Payload]? {
-        guard matches(deployment: deployment, city: city),
-              let data = try? Data(contentsOf: bodyURL) else { return nil }
-        return try? JSONDecoder().decode([Payload].self, from: data)
+        guard let (header, body) = entry(), header.matches(deployment: deployment, city: city) else { return nil }
+        return try? JSONDecoder().decode([Payload].self, from: body)
     }
 
     /// The body to adopt when the server answers **304 Not Modified**, or nil
@@ -82,33 +114,38 @@ struct ConditionalPayloadCache<Payload: Codable> {
     /// The `Last-Modified` to replay as `If-Modified-Since`, but only when the
     /// cached body belongs to `deployment` + `city`; nil for any other pair.
     func lastModified(deployment: URL, city: String) -> String? {
-        guard matches(deployment: deployment, city: city) else { return nil }
-        let value = meta().count > 2 ? meta()[2] : ""
-        return value.isEmpty ? nil : value
+        guard let (header, _) = entry(), header.matches(deployment: deployment, city: city),
+              let value = header.lastModified, !value.isEmpty else { return nil }
+        return value
     }
 
-    private func matches(deployment: URL, city: String) -> Bool {
-        let lines = meta()
-        guard lines.count >= 2 else { return false }
-        return lines[0] == deployment.absoluteString && lines[1] == city
-    }
-
-    private func meta() -> [String] {
-        guard let text = try? String(contentsOf: metaURL, encoding: .utf8) else { return [] }
-        return text.components(separatedBy: "\n")
+    /// The header and the (still encoded) payload. Only the header line is
+    /// decoded here, so reading the stamp doesn't pay for the whole listing.
+    private func entry() -> (Header, Data)? {
+        guard let data = try? Data(contentsOf: url),
+              let newline = data.firstIndex(of: UInt8(ascii: "\n")),
+              let header = try? JSONDecoder().decode(Header.self, from: data[..<newline]) else { return nil }
+        return (header, data[data.index(after: newline)...])
     }
 }
 
-// The two endpoints' caches. Separate files per endpoint so their
-// conditional-GET state never collides. Computed rather than stored: a
-// generic type can't hold a static stored property, and the value is just
-// two file names.
+/// The one serial queue every `ConditionalPayloadCache.saveInBackground` runs
+/// on (a generic type can't hold a static stored property).
+private let conditionalPayloadCacheWrites = DispatchQueue(label: "kinowo.conditional-payload-cache", qos: .utility)
+
+// The two endpoints' caches. A file per endpoint so their conditional-GET
+// state never collides. Computed rather than stored: a generic type can't
+// hold a static stored property, and the value is just file names.
 extension ConditionalPayloadCache where Payload == Film {
     /// `/{city}/api/repertoire`.
-    static var repertoire: Self { .init(bodyFile: "repertoire.json", metaFile: "repertoire-meta.txt") }
+    static var repertoire: Self {
+        .init(file: "repertoire-entry.json", legacyFiles: ["repertoire.json", "repertoire-meta.txt"])
+    }
 }
 
 extension ConditionalPayloadCache where Payload == FilmDetails {
     /// `/{city}/api/details`.
-    static var details: Self { .init(bodyFile: "details.json", metaFile: "details-meta.txt") }
+    static var details: Self {
+        .init(file: "details-entry.json", legacyFiles: ["details.json", "details-meta.txt"])
+    }
 }

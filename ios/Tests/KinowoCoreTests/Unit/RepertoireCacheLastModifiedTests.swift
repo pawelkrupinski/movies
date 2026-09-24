@@ -83,17 +83,16 @@ final class RepertoireCacheLastModifiedTests: XCTestCase {
     }
 
     func testLastModifiedReturnsNilWhenNotSaved() {
-        let url = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("repertoire-meta.txt")
-        try? FileManager.default.removeItem(at: url)
+        ConditionalPayloadCache.repertoire.remove()
         XCTAssertNil(ConditionalPayloadCache.repertoire.lastModified(deployment: poland, city: "poznan"))
     }
 
-    /// A meta file written by an older build carries only city + timestamp. It
-    /// matches no deployment, so it reads as "nothing cached" and the next
-    /// fetch is unconditional — a stale entry costs one full response, never a
-    /// wrong one.
-    func testAPreDeploymentMetaFileIsIgnored() {
+    /// Older builds kept a separate body file and meta file (the oldest meta
+    /// with only city + timestamp). Neither is read any more, so what they
+    /// hold reads as "nothing cached" and the next fetch is unconditional — a
+    /// stale entry costs one full response, never a wrong one.
+    func testAnOlderBuildsMetaFileIsIgnored() {
+        ConditionalPayloadCache.repertoire.remove()
         let url = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("repertoire-meta.txt")
         try? "berlin\nSun, 26 Jul 2026 17:29:46 GMT".write(to: url, atomically: true, encoding: .utf8)
