@@ -90,9 +90,9 @@ tests:
   # POSTERS FAILING: 2 of 3 films end with no poster per minute (60 films per 30m), through a restart gap.
   - interval: 1m
     input_series:
-      - series: 'kinowo_worker_share_cards_poster_load_total{country="es",result="failed",instance="w1",job="kinowo-worker"}'
+      - series: 'kinowo_worker_share_cards_poster_load_total{attempt="first",country="es",result="failed",instance="w1",job="kinowo-worker"}'
         values: '0+2x20 stale _x2 42+2x60'
-      - series: 'kinowo_worker_share_cards_poster_load_total{country="es",result="ok",instance="w1",job="kinowo-worker"}'
+      - series: 'kinowo_worker_share_cards_poster_load_total{attempt="first",country="es",result="ok",instance="w1",job="kinowo-worker"}'
         values: '0+1x20 stale _x2 21+1x60'
     alert_rule_test:
       - eval_time: 30m
@@ -106,7 +106,7 @@ tests:
               country: es
             exp_annotations:
               summary: "es's share-card posters are failing for 66.67% of films"
-              description: "For more than half of the films whose poster was fetched over the last half hour, not one poster URL worked -- every candidate (all its renditions, e.g. TMDB w780 then the original) unreachable, over the 50 MB download cap, or undecodable. Those films get a card WITHOUT a poster meanwhile, re-tried daily. `kinowo_worker_share_cards_poster_fetch_total` counts the URLs, with a `reason` label saying why (http_4xx, http_5xx, timeout, too_large, decode_error, vips_cap, progressive_estimate, ...), and the worker logs `share card: poster for <film> from <host> failed: <reason>` -- check whether one host or one reason dominates; `kinowo_worker_http_total` does not see these fetches."
+              description: "For more than half of the films whose poster was first fetched over the last half hour, not one poster URL worked -- every candidate (all its renditions, e.g. TMDB w780 then the original) unreachable, over the 50 MB download cap, or undecodable. Those films get a card WITHOUT a poster meanwhile, re-tried daily. `kinowo_worker_share_cards_poster_fetch_total` counts the URLs, with a `reason` label saying why (http_4xx, http_5xx, timeout, too_large, decode_error, vips_cap, progressive_estimate, ...), and the worker logs `share card: poster for <film> from <host> failed: <reason>` -- check whether one host or one reason dominates; `kinowo_worker_http_total` does not see these fetches."
 
   # QUIET: a failing PRIMARY whose fallback works is no failed film. Two of every three poster URLs
   # fail (a Multikino origin 403ing the datacentre, say) while every film still gets its poster.
@@ -116,9 +116,9 @@ tests:
         values: '0+2x90'
       - series: 'kinowo_worker_share_cards_poster_fetch_total{country="uk",result="ok",reason="none",instance="w1",job="kinowo-worker"}'
         values: '0+1x90'
-      - series: 'kinowo_worker_share_cards_poster_load_total{country="uk",result="ok",instance="w1",job="kinowo-worker"}'
+      - series: 'kinowo_worker_share_cards_poster_load_total{attempt="first",country="uk",result="ok",instance="w1",job="kinowo-worker"}'
         values: '0+1x90'
-      - series: 'kinowo_worker_share_cards_poster_load_total{country="uk",result="failed",instance="w1",job="kinowo-worker"}'
+      - series: 'kinowo_worker_share_cards_poster_load_total{attempt="first",country="uk",result="failed",instance="w1",job="kinowo-worker"}'
         values: '0x90'
     alert_rule_test:
       - eval_time: 90m
@@ -128,14 +128,29 @@ tests:
   # QUIET: mostly successful films, and a failing trickle under ten films, both stay silent.
   - interval: 1m
     input_series:
-      - series: 'kinowo_worker_share_cards_poster_load_total{country="us",result="failed",instance="w1",job="kinowo-worker"}'
+      - series: 'kinowo_worker_share_cards_poster_load_total{attempt="first",country="us",result="failed",instance="w1",job="kinowo-worker"}'
         values: '0+1x90'
-      - series: 'kinowo_worker_share_cards_poster_load_total{country="us",result="ok",instance="w1",job="kinowo-worker"}'
+      - series: 'kinowo_worker_share_cards_poster_load_total{attempt="first",country="us",result="ok",instance="w1",job="kinowo-worker"}'
         values: '0+4x90'
-      - series: 'kinowo_worker_share_cards_poster_load_total{country="pl",result="failed",instance="w1",job="kinowo-worker"}'
+      - series: 'kinowo_worker_share_cards_poster_load_total{attempt="first",country="pl",result="failed",instance="w1",job="kinowo-worker"}'
         values: '0+0.1x90'
-      - series: 'kinowo_worker_share_cards_poster_load_total{country="pl",result="ok",instance="w1",job="kinowo-worker"}'
+      - series: 'kinowo_worker_share_cards_poster_load_total{attempt="first",country="pl",result="ok",instance="w1",job="kinowo-worker"}'
         values: '0x90'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: ShareCardPosterFetchFailing
+        exp_alerts: []
+
+  # QUIET: a boot's re-try of the cards drawn without a poster fails again, 40 films at once, every
+  # 25 minutes through a day of deploys -- beside a trickle of first loads that mostly work.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_share_cards_poster_load_total{attempt="retry",country="pl",result="failed",instance="w1",job="kinowo-worker"}'
+        values: '0x10 40x25 80x25 120x25 160x5'
+      - series: 'kinowo_worker_share_cards_poster_load_total{attempt="first",country="pl",result="ok",instance="w1",job="kinowo-worker"}'
+        values: '0+0.2x90'
+      - series: 'kinowo_worker_share_cards_poster_load_total{attempt="first",country="pl",result="failed",instance="w1",job="kinowo-worker"}'
+        values: '0+0.03x90'
     alert_rule_test:
       - eval_time: 90m
         alertname: ShareCardPosterFetchFailing

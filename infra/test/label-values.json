@@ -9279,27 +9279,11 @@
     "miss_unresolved"
    ]
   },
-  "kinowo_worker_share_cards_poster_fetch_total": {
-   "result": [
-    "failed",
-    "ok"
-   ],
-   "reason": [
-    "decode_error",
-    "empty_body",
-    "encode_error",
-    "http_4xx",
-    "http_5xx",
-    "http_other",
-    "network",
-    "none",
-    "progressive_estimate",
-    "timeout",
-    "too_large",
-    "vips_cap"
-   ]
-  },
   "kinowo_worker_share_cards_poster_load_total": {
+   "attempt": [
+    "first",
+    "retry"
+   ],
    "result": [
     "failed",
     "ok"
@@ -9310,7 +9294,8 @@
     "existing",
     "failed",
     "rendered",
-    "rendered_no_poster"
+    "rendered_no_poster",
+    "superseded"
    ]
   },
   "kinowo_worker_tasks_enqueued_total": {

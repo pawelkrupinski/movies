@@ -77,21 +77,24 @@ groups:
       # cards are drawn without a poster. Counted per film (`poster_load`), not per URL
       # (`poster_fetch`): a primary that always fails -- a Multikino origin refusing the datacentre --
       # beside a fallback that works is a healthy film, and per URL it read as a 50% failure. At
-      # least ten films in the window, so two failures out of three at 4am is not a page.
+      # least ten films in the window, so two failures out of three at 4am is not a page. FIRST
+      # loads only: every worker boot re-tries every card drawn without a poster (~40 in pl, near
+      # all failing again by nature), and on a day of deploys those bursts alone fired it
+      # (2026-09-24, pl, 40 of 46 films failed per boot, all retries).
       - alert: ShareCardPosterFetchFailing
         expr: >-
           (
-            sum by (country) (increase(kinowo_worker_share_cards_poster_load_total{result="failed"}[30m]))
-            / sum by (country) (increase(kinowo_worker_share_cards_poster_load_total[30m]))
+            sum by (country) (increase(kinowo_worker_share_cards_poster_load_total{attempt="first",result="failed"}[30m]))
+            / sum by (country) (increase(kinowo_worker_share_cards_poster_load_total{attempt="first"}[30m]))
           ) > 0.5
-          and on (country) sum by (country) (increase(kinowo_worker_share_cards_poster_load_total[30m])) >= 10
+          and on (country) sum by (country) (increase(kinowo_worker_share_cards_poster_load_total{attempt="first"}[30m])) >= 10
         for: 30m
         labels:
           severity: warning
         annotations:
           summary: "{{ $labels.country }}'s share-card posters are failing for {{ $value | humanizePercentage }} of films"
           description: >-
-            For more than half of the films whose poster was fetched over the last half hour, not one
+            For more than half of the films whose poster was first fetched over the last half hour, not one
             poster URL worked -- every candidate (all its renditions, e.g. TMDB w780 then the
             original) unreachable, over the 50 MB download cap, or undecodable. Those films get a card
             WITHOUT a poster meanwhile, re-tried daily. `kinowo_worker_share_cards_poster_fetch_total`
