@@ -1,0 +1,30 @@
+# What bin/backtest-alerts accepts from an alert on REAL data that it would otherwise fail.
+#
+# Every entry needs a `reason` -- an allowlisting nobody can explain is the rule being wrong with
+# extra steps. Before adding one, prefer (in order): fixing the rule, with a promtool case; or, when
+# the firing was a REAL incident, cataloguing that incident in alert-incidents.yml under
+# `expect_firing`, which both excuses the firing from the budget AND pins that the alert still
+# catches it.
+
+defaults:
+  # An alert that is firing 5% of the time -- over eight hours a week -- is either a real,
+  # unfixed problem or a rule that means the wrong thing. FluxReconciliationStopped ran at 46%.
+  max_firing_fraction: 0.05
+  # One distinct episode a day, averaged over the window.
+  max_episodes_per_week: 7
+
+allow:
+  MonitoringHeartbeat:
+    noisy: true
+    reason: >-
+      The dead-man's switch, `expr: vector(1)`. It fires 100% of the time by design; the thing
+      that pages is its ABSENCE at the receiver.
+
+# Metrics a rule reads that are published ONLY in an exceptional state, so their absence over the
+# whole window is the healthy case, not a dead selector. They are excluded from the dead-alert
+# check and from rollout clipping.
+conditional_metrics:
+  nixos_auto_apply_excluded:
+    reason: >-
+      Published by fleet/auto-apply.nix only on a host with `excludedBecause` set; no host is
+      excluded today. StagedClosureNotLive reads it in an `unless` arm.

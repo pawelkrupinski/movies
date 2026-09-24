@@ -1,0 +1,682 @@
+#!/usr/bin/env python3
+"""Replay every alerting rule against the fleet's REAL Prometheus history, and say what it did.
+
+promtool (test/alert-rules/) asks whether a rule does what its author MEANT on a series the author
+wrote. This asks the other question: what would the rule, AS IT IS WRITTEN IN THIS TREE, have done
+over the last N days of what the fleet actually reported. Sixteen fixes on this repository were an
+alert meaning the wrong thing on real data while passing its own synthetic cases:
+
+  * MongodNoPrimary paged continuously against a healthy replica set;
+  * one image-policy alert was firing 46% of the time;
+  * three Flux rules selected a gauge this fleet has never published, and could never fire;
+  * a host was dark for 27 hours without a page.
+
+For every `alert:` in nix/files/monitoring/rules/*.rules -- and every Grafana-managed rule in
+grafana/alerting/alert-rules.yaml, translated to the Prometheus alert it is equivalent to -- this
+
+  1. evaluates `expr` with query_range over the window (the same instant-query semantics the rule
+     evaluator uses, at `--step` resolution rather than every 15s);
+  2. simulates the `for:` hold (and `keep_firing_for:`) per output series -- a series fires at t
+     when it has been returned at every step since at least t - for;
+  3. reports the fraction of the window the ALERT (any series) was firing, the number of distinct
+     episodes, and the peak number of firing series.
+
+It fails (exit 1) when
+
+  * NOISY -- an alert fires more than `max_firing_fraction` of the window or more than
+    `max_episodes_per_week` distinct times, not counting firing inside a catalogued incident it
+    is expected to fire in, unless allowlisted with a reason;
+  * DEAD -- the expr returned nothing for the whole window AND a metric it reads has no series in
+    the window. (Quiet with every metric present is the healthy case: the condition just did not
+    happen.) Metrics listed as `conditional_metrics` in the allowlist -- published only in an
+    exceptional state -- never count as missing. An alert Prometheus has not loaded yet (a rule
+    on a branch) is reported as NOT DEPLOYED and does not fail;
+  * an INCIDENT in test/alert-incidents.yml is contradicted: an alert listed under `expect_firing`
+    never fired within the window (plus its `grace`), or one under `expect_quiet` fired in it;
+  * the allowlist names an alert that no longer exists.
+
+A metric ROLLED OUT inside the window (absent, then present for the rest of it) clips the alerts
+reading it to start at the rollout, so an absent-style rule is not blamed for the days before
+its metric existed.
+
+The result is written to test/alert-backtest.json, which is checked in: its diff between two runs
+is how a rule's behaviour on real data changes with the rule.
+
+Prometheus is on the private fleet network, so this reaches it over the SOCKS tunnel
+(`ssh -f -N kinowo-fleet` opens it). It is not part of the offline gate; bin/check runs it only
+when the tunnel answers. See nix/files/monitoring/README.md.
+
+Usage:
+  infra/bin/backtest-alerts                    # all rules, 14 days, write the baseline, check
+  infra/bin/backtest-alerts --alert HostDown   # just these alerts, no baseline written
+  infra/bin/backtest-alerts --no-write         # check without touching the baseline
+"""
+
+import argparse
+import concurrent.futures
+import datetime
+import glob
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+import urllib.parse
+
+import yaml
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+INFRA = os.path.dirname(HERE)
+RULES_GLOB = os.path.join(INFRA, "nix", "files", "monitoring", "rules", "*.rules")
+GRAFANA_RULES = os.path.join(INFRA, "nix", "files", "monitoring", "grafana", "alerting", "alert-rules.yaml")
+BASELINE = os.path.join(INFRA, "test", "alert-backtest.json")
+ALLOWLIST = os.path.join(INFRA, "test", "alert-backtest-allowlist.yml")
+INCIDENTS = os.path.join(INFRA, "test", "alert-incidents.yml")
+
+DEFAULT_PROMETHEUS = "http://10.20.0.11:9090"
+DEFAULT_SOCKS = "127.0.0.1:1080"
+
+# ── PURE LOGIC (unit-tested in test/test_backtest_alerts.py) ─────────────────────────────────────
+
+_DURATION_UNITS = {"ms": 0.001, "s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800, "y": 31536000}
+
+
+def seconds(duration):
+    """A Prometheus duration ("1h30m", "15s", "2d") in seconds; 0 when unset."""
+    if duration in (None, "", 0):
+        return 0
+    if isinstance(duration, (int, float)):
+        return float(duration)
+    parts = re.findall(r"(\d+)(ms|[smhdwy])", duration)
+    if not parts or "".join(n + u for n, u in parts) != duration:
+        raise ValueError("not a Prometheus duration: %r" % duration)
+    return sum(int(n) * _DURATION_UNITS[u] for n, u in parts)
+
+
+# Words that look like identifiers in PromQL and are not metric names.
+_KEYWORDS = {
+    "by", "without", "on", "ignoring", "group_left", "group_right", "and", "or", "unless", "bool",
+    "offset", "atan2", "inf", "nan", "start", "end",
+}
+_STRING = re.compile(r'"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'|`[^`]*`')
+_BRACES = re.compile(r"\{[^{}]*\}")
+_RANGE = re.compile(r"\[[^\]]*\]")
+_LABEL_LIST = re.compile(r"\b(by|without|on|ignoring|group_left|group_right)\s*\([^()]*\)")
+_IDENT = re.compile(r"(?<![A-Za-z0-9_:.])([A-Za-z_:][A-Za-z0-9_:]*)(?![A-Za-z0-9_:])")
+_NAME_MATCHER = re.compile(r'__name__\s*=\s*"([^"]+)"')
+
+
+def metric_names(expr):
+    """Every metric name `expr` reads: bare selectors plus `{__name__="..."}`.
+
+    A scanner, not a parser -- but PromQL makes it exact enough: a metric name is an identifier
+    that is not a function call, not a keyword, and not inside a string, a label list, a matcher
+    block or a range. `{__name__=~...}` regexes are not names and are ignored.
+    """
+    names = set(_NAME_MATCHER.findall(expr))
+    text = _STRING.sub('""', expr)
+    text = _BRACES.sub(" ", text)
+    text = _RANGE.sub(" ", text)
+    text = _LABEL_LIST.sub(" ", text)
+    for match in _IDENT.finditer(text):
+        word = match.group(1)
+        rest = text[match.end():].lstrip()
+        if rest.startswith("("):
+            continue  # a function call (or an aggregation)
+        if word.lower() in _KEYWORDS:
+            continue
+        if re.fullmatch(r"\d+[smhdwy]", word):
+            continue
+        names.add(word)
+    return names
+
+
+def firing_steps(present, grid, hold, keep_firing_for=0):
+    """The set of grid timestamps at which one series is FIRING.
+
+    `present` is the set of timestamps at which the expression returned this series. A series is
+    pending from the first step of an unbroken run of presence and fires once the run is at least
+    `hold` seconds old -- which is what the rule evaluator does, at the grid's resolution. A step
+    with no sample ends the run and resets the hold, as a real gap does. `keep_firing_for` keeps an
+    already-firing series firing that long past its last sample.
+    """
+    firing = set()
+    run_start = None
+    last_fired = None
+    for t in grid:
+        if t in present:
+            if run_start is None:
+                run_start = t
+            if t - run_start >= hold:
+                firing.add(t)
+                last_fired = t
+        else:
+            run_start = None
+            if last_fired is not None and t - last_fired <= keep_firing_for:
+                firing.add(t)
+    return firing
+
+
+def episodes(steps, grid):
+    """[(start, end)] contiguous runs of `steps` along `grid` (end is the last firing step)."""
+    runs = []
+    start = prev = None
+    for t in grid:
+        if t in steps:
+            if start is None:
+                start = t
+            prev = t
+        elif start is not None:
+            runs.append((start, prev))
+            start = None
+    if start is not None:
+        runs.append((start, prev))
+    return runs
+
+
+def summarise(series_present, grid, hold, keep_firing_for, window_start, excused=()):
+    """Firing statistics for one alert over the part of `grid` at or after `window_start`.
+
+    `series_present` maps a series key to the timestamps it was returned at. The grid starts early
+    by the hold so an alert already pending when the window opens is not reset by its edge.
+    `excused` is [(start, end)] windows of catalogued incidents in which this alert is EXPECTED to
+    fire: firing inside them is reported, but does not count against the noise budget.
+    """
+    in_window = [t for t in grid if t >= window_start]
+    union = set()
+    series_episodes = 0
+    peak = {}
+    for present in series_present.values():
+        steps = {t for t in firing_steps(present, grid, hold, keep_firing_for) if t >= window_start}
+        union |= steps
+        series_episodes += len(episodes(steps, in_window))
+        for t in steps:
+            peak[t] = peak.get(t, 0) + 1
+    unexcused = {t for t in union if not any(a <= t <= b for a, b in excused)}
+    budget_grid = [t for t in in_window if not any(a <= t <= b for a, b in excused)]
+    returned = any(t >= window_start for present in series_present.values() for t in present)
+    return {
+        "firing_fraction": (len(union) / len(in_window)) if in_window else 0.0,
+        "episodes": len(episodes(union, in_window)),
+        "budget_firing_fraction": (len(unexcused) / len(budget_grid)) if budget_grid else 0.0,
+        "budget_episodes": len(episodes(unexcused, budget_grid)),
+        "series_episodes": series_episodes,
+        "peak_series": max(peak.values()) if peak else 0,
+        "returned_data": returned,
+        "runs": episodes(union, in_window),
+    }
+
+
+def rollout_start(presence, grid, min_coverage=0.9):
+    """When a metric was ROLLED OUT inside the window, the time it first appeared; else None.
+
+    A metric that appears part-way through the window and is then present for (nearly) all of
+    the rest was deployed then, and an alert over it -- above all an `absent`-style one -- was
+    "firing" before that only because the rule is newer than the data. A metric that comes and
+    goes (published only while a host is blocked, a pod is waiting...) is not a rollout, and is
+    not clipped: its gaps are the signal.
+    """
+    if not presence or not grid:
+        return None
+    first = min(presence)
+    if first <= grid[0]:
+        return None
+    after = [t for t in grid if t >= first]
+    if len([t for t in after if t in presence]) / float(len(after)) < min_coverage:
+        return None
+    return first
+
+
+def verdict(stats, budget, allow, missing_metrics, deployed):
+    """(status, problem or None) for one alert's statistics against its budget and allowlist.
+
+    status is one of: ok, quiet, noisy, dead, not-deployed, error.
+    """
+    if stats.get("error"):
+        return "error", "query failed: %s" % stats["error"]
+    if not stats["returned_data"]:
+        if missing_metrics:
+            if not deployed:
+                return "not-deployed", None
+            if allow.get("dead"):
+                return "dead", None
+            return "dead", ("returned no data for the whole window and reads metrics with no "
+                            "series in it: %s" % ", ".join(sorted(missing_metrics)))
+        return "quiet", None
+    weeks = max(stats.get("days", budget["days"]), 1.0) / 7.0
+    max_fraction = allow.get("max_firing_fraction", budget["max_firing_fraction"])
+    max_per_week = allow.get("max_episodes_per_week", budget["max_episodes_per_week"])
+    problems = []
+    fraction, count = stats["budget_firing_fraction"], stats["budget_episodes"]
+    if fraction > max_fraction:
+        problems.append("fired %.1f%% of the window outside catalogued incidents (budget %.1f%%)"
+                        % (100 * fraction, 100 * max_fraction))
+    if count / weeks > max_per_week:
+        problems.append("fired %d distinct times outside catalogued incidents, %.1f/week "
+                        "(budget %s/week)" % (count, count / weeks, max_per_week))
+    if not problems:
+        return "ok", None
+    if allow.get("noisy"):
+        return "noisy", None
+    return "noisy", "; ".join(problems)
+
+
+# ── RULES, ALLOWLIST, INCIDENTS ──────────────────────────────────────────────────────────────────
+
+
+def load_rules(pattern=RULES_GLOB, grafana=GRAFANA_RULES):
+    """{alert: rule dict + file} across every Prometheus rule file and the Grafana-managed rules.
+
+    A Grafana rule is translated into the Prometheus alert it is equivalent to, keyed by its uid:
+    every one in this tree is a threshold node over the `last` of one instant query, so
+    `(query) <op> <threshold>`, plus `or absent(query)` when its no-data state is Alerting. Any
+    other shape is refused rather than guessed at.
+    """
+    alerts = {}
+    for path in sorted(glob.glob(pattern)):
+        with open(path, encoding="utf-8") as handle:
+            document = yaml.safe_load(handle) or {}
+        for group in document.get("groups") or []:
+            for rule in group.get("rules") or []:
+                if "alert" in rule:
+                    entry = dict(rule)
+                    entry["file"] = os.path.basename(path)
+                    alerts[rule["alert"]] = entry
+    if grafana and os.path.exists(grafana):
+        with open(grafana, encoding="utf-8") as handle:
+            document = yaml.safe_load(handle) or {}
+        for group in document.get("groups") or []:
+            for rule in group.get("rules") or []:
+                alerts[rule["uid"]] = grafana_as_prometheus(rule, os.path.basename(grafana))
+    return alerts
+
+
+def grafana_as_prometheus(rule, file):
+    nodes = {node["refId"]: node["model"] for node in rule["data"]}
+    condition = nodes[rule["condition"]]
+    if condition.get("type") != "threshold" or len(condition.get("conditions") or []) != 1:
+        raise ValueError("%s: condition is not a single threshold" % rule["uid"])
+    evaluator = condition["conditions"][0]["evaluator"]
+    operator = {"gt": ">", "lt": "<"}.get(evaluator["type"])
+    query = nodes[condition["expression"]]
+    if operator is None or not query.get("expr") or query.get("range"):
+        raise ValueError("%s: not a threshold over one instant query" % rule["uid"])
+    expr = "(%s) %s %r" % (query["expr"].strip(), operator, float(evaluator["params"][0]))
+    if rule.get("noDataState") == "Alerting":
+        expr = "(%s) or absent(%s)" % (expr, query["expr"].strip())
+    return {"alert": rule["uid"], "expr": expr, "for": rule.get("for", "0s"), "file": file,
+            "grafana": True}
+
+
+def load_yaml(path, default):
+    if not os.path.exists(path):
+        return default
+    with open(path, encoding="utf-8") as handle:
+        return yaml.safe_load(handle) or default
+
+
+def parse_time(value):
+    if isinstance(value, datetime.datetime):
+        dt = value
+    else:
+        dt = datetime.datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=datetime.timezone.utc)
+    return dt.timestamp()
+
+
+def iso(ts):
+    return datetime.datetime.fromtimestamp(ts, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+# ── PROMETHEUS ───────────────────────────────────────────────────────────────────────────────────
+
+
+class Prometheus(object):
+    """Prometheus's HTTP API over curl, because only curl speaks SOCKS without a dependency."""
+
+    def __init__(self, url, socks):
+        self.url, self.socks = url.rstrip("/"), socks
+
+    def get(self, path, params, timeout=180):
+        query = urllib.parse.urlencode(params, doseq=True)
+        command = ["curl", "-sS", "-G", "--max-time", str(timeout), "--data", query]
+        if self.socks:
+            command += ["--socks5-hostname", self.socks]
+        command.append(self.url + path)
+        for attempt in range(3):
+            out = subprocess.run(command, capture_output=True, text=True)
+            if out.returncode == 0:
+                try:
+                    body = json.loads(out.stdout)
+                except ValueError:
+                    body = {"status": "error", "error": out.stdout[:200]}
+                if body.get("status") == "success":
+                    return body["data"]
+                error = body.get("error", "unknown error")
+                if "exceeded maximum resolution" in error or "parse error" in error:
+                    raise RuntimeError(error)
+            else:
+                error = out.stderr.strip()[:200]
+            time.sleep(2 * (attempt + 1))
+        raise RuntimeError(error)
+
+    def ready(self):
+        command = ["curl", "-s", "--max-time", "5", self.url + "/-/ready"]
+        if self.socks:
+            command[1:1] = ["--socks5-hostname", self.socks]
+        return subprocess.run(command, capture_output=True).returncode == 0
+
+    def metric_names(self, start, end):
+        return set(self.get("/api/v1/label/__name__/values", {"start": start, "end": end}))
+
+    def loaded_alerts(self):
+        data = self.get("/api/v1/rules", {"type": "alert"})
+        return {r["name"] for g in data["groups"] for r in g["rules"]}
+
+    def lowest_timestamp(self):
+        data = self.get("/api/v1/query", {"query": "min(prometheus_tsdb_lowest_timestamp_seconds)"})
+        return float(data["result"][0]["value"][1]) if data["result"] else None
+
+    def presence(self, expr, start, end, step, chunk=86400):
+        """{series key: set(timestamps)} for `expr` over [start, end] on a `step` grid."""
+        series = {}
+        t = start
+        while t <= end:
+            chunk_end = min(t + chunk - step, end)
+            data = self.get("/api/v1/query_range",
+                            {"query": expr, "start": t, "end": chunk_end, "step": step})
+            for result in data["result"]:
+                key = json.dumps(result["metric"], sort_keys=True)
+                series.setdefault(key, set()).update(float(v[0]) for v in result["values"])
+            t = chunk_end + step
+        return series
+
+
+def grid_of(start, end, step):
+    n = int((end - start) // step)
+    return [start + i * step for i in range(n + 1)]
+
+
+def snap_up(t, step):
+    return t if t % step == 0 else t - (t % step) + step
+
+
+def backtest(prom, rule, start, end, step, floor, excused=(), lead_in=True):
+    """Statistics for one alert over [start, end]."""
+    hold = seconds(rule.get("for"))
+    keep = seconds(rule.get("keep_firing_for"))
+    lead = start
+    if lead_in:
+        # Start early by the hold so an alert already pending at `start` keeps its age, on the
+        # same step grid so every chunk lines up.
+        lead = max(start - hold - step, floor or 0)
+        lead = start - ((start - lead) // step) * step
+    try:
+        present = prom.presence(rule["expr"], lead, end, step)
+    except RuntimeError as err:
+        return {"error": str(err), "returned_data": False}
+    stats = summarise(present, grid_of(lead, end, step), hold, keep, start, excused)
+    stats["days"] = (end - start) / 86400.0
+    return stats
+
+
+def observed_fraction(prom, name, start, end, step):
+    """How much of the window Prometheus ITSELF had this alert firing (ALERTS), for comparison.
+
+    It differs from the simulation wherever the deployed rule differs from this tree's, or the
+    alert did not exist yet -- which is the point of printing both.
+    """
+    try:
+        present = prom.presence('max(ALERTS{alertname="%s",alertstate="firing"})' % name,
+                                start, end, step)
+    except RuntimeError:
+        return None
+    steps = set().union(*present.values()) if present else set()
+    return len(steps) / float(len(grid_of(start, end, step)))
+
+
+def metric_rollouts(prom, metrics, start, end, jobs):
+    """{metric: rollout time} for every metric in `metrics` that was deployed inside the window."""
+    step = 900
+    grid = grid_of(start, end, step)
+
+    def one(metric):
+        try:
+            present = prom.presence('count({__name__="%s"})' % metric, start, end, step,
+                                    chunk=end - start + step)
+        except RuntimeError:
+            return metric, None
+        steps = set().union(*present.values()) if present else set()
+        return metric, rollout_start(steps, grid)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as pool:
+        return {m: t for m, t in pool.map(one, sorted(metrics)) if t is not None}
+
+
+def excused_windows(catalogue, step):
+    """{alert: [(start, end)]} -- the incident windows each alert is EXPECTED to fire in."""
+    windows = {}
+    for incident in catalogue:
+        start, end = parse_time(incident["start"]), parse_time(incident["end"])
+        end += seconds(incident.get("grace", "1h"))
+        for name in incident.get("expect_firing") or []:
+            windows.setdefault(name, []).append((start - start % step, end))
+    return windows
+
+
+# ── MAIN ─────────────────────────────────────────────────────────────────────────────────────────
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--days", type=float, default=14)
+    parser.add_argument("--step", type=int, default=60, help="evaluation resolution, seconds")
+    parser.add_argument("--end", help="window end (ISO, UTC); default now")
+    parser.add_argument("--alert", action="append", help="only these alerts (repeatable)")
+    parser.add_argument("--no-write", action="store_true", help="do not write the baseline")
+    parser.add_argument("--no-incidents", action="store_true")
+    parser.add_argument("--jobs", type=int, default=6)
+    parser.add_argument("--prometheus", default=os.environ.get("BACKTEST_PROMETHEUS", DEFAULT_PROMETHEUS))
+    parser.add_argument("--socks", default=os.environ.get("BACKTEST_SOCKS", DEFAULT_SOCKS),
+                        help="SOCKS5 proxy host:port; empty for a direct connection")
+    args = parser.parse_args(argv)
+
+    prom = Prometheus(args.prometheus, args.socks)
+    if not prom.ready():
+        print("Prometheus at %s is unreachable%s. Open the tunnel with: ssh -f -N kinowo-fleet"
+              % (args.prometheus, " via SOCKS " + args.socks if args.socks else ""))
+        return 2
+
+    alerts = load_rules()
+    allowlist = load_yaml(ALLOWLIST, {})
+    defaults = allowlist.get("defaults") or {}
+    allowed = allowlist.get("allow") or {}
+    conditional = allowlist.get("conditional_metrics") or {}
+    catalogue = load_yaml(INCIDENTS, {}).get("incidents") or []
+    budget = {
+        "days": args.days,
+        "max_firing_fraction": float(defaults.get("max_firing_fraction", 0.05)),
+        "max_episodes_per_week": float(defaults.get("max_episodes_per_week", 7)),
+    }
+
+    step = args.step
+    end = parse_time(args.end) if args.end else time.time()
+    end = end - (end % step)
+    start = end - args.days * 86400
+    floor = prom.lowest_timestamp()
+    if floor and start < floor:
+        print("note: retention starts %s, so the window is clipped to it" % iso(floor))
+        start = snap_up(floor, step)
+    existing = prom.metric_names(start, end)
+    loaded = prom.loaded_alerts()
+
+    selected = sorted(alerts)
+    if args.alert:
+        unknown = set(args.alert) - set(alerts)
+        if unknown:
+            print("unknown alert(s): %s" % ", ".join(sorted(unknown)))
+            return 2
+        selected = sorted(args.alert)
+
+    problems = []
+    for name in sorted(set(allowed) - set(alerts)):
+        problems.append("%s: allowlisted in %s but no rule defines it"
+                        % (name, os.path.basename(ALLOWLIST)))
+    for name, entry in sorted(list(allowed.items()) + list(conditional.items())):
+        if not (entry or {}).get("reason"):
+            problems.append("%s: allowlist entry has no reason" % name)
+
+    reads = {n: metric_names(alerts[n]["expr"]) - set(conditional) for n in selected}
+    rollouts = metric_rollouts(prom, set().union(*reads.values()) & existing, start, end, args.jobs)
+    excused = excused_windows(catalogue, step)
+
+    print("backtesting %d alert(s) over %s .. %s at %ds" % (len(selected), iso(start), iso(end), step))
+
+    def run(name):
+        clipped = max([start] + [rollouts[m] for m in reads[name] if m in rollouts])
+        clipped = snap_up(clipped, step)
+        if clipped >= end - step:
+            return name, clipped, {"returned_data": True, "firing_fraction": 0.0, "episodes": 0,
+                                   "budget_firing_fraction": 0.0, "budget_episodes": 0,
+                                   "series_episodes": 0, "peak_series": 0, "runs": []}, None
+        stats = backtest(prom, alerts[name], clipped, end, step, floor,
+                         excused.get(name, ()), lead_in=clipped == start)
+        observed = None if alerts[name].get("grafana") else \
+            observed_fraction(prom, name, clipped, end, step)
+        return name, clipped, stats, observed
+
+    results = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as pool:
+        for name, clipped, stats, observed in pool.map(run, selected):
+            results[name] = (clipped, stats, observed)
+
+    report = {}
+    for name in selected:
+        rule = alerts[name]
+        clipped, stats, observed = results[name]
+        allow = allowed.get(name) or {}
+        missing = sorted(m for m in reads[name] if m not in existing)
+        status, problem = verdict(stats, budget, allow, missing,
+                                  name in loaded or rule.get("grafana", False))
+        entry = {
+            "file": rule["file"],
+            "for": rule.get("for", "0s"),
+            "status": status,
+            "firing_fraction": round(stats.get("firing_fraction", 0.0), 4),
+            "episodes": stats.get("episodes", 0),
+            "series_episodes": stats.get("series_episodes", 0),
+            "peak_series": stats.get("peak_series", 0),
+        }
+        if stats.get("budget_firing_fraction", 0) != stats.get("firing_fraction", 0):
+            entry["firing_fraction_outside_incidents"] = round(stats["budget_firing_fraction"], 4)
+            entry["episodes_outside_incidents"] = stats["budget_episodes"]
+        if observed is not None:
+            entry["observed_firing_fraction"] = round(observed, 4)
+        if clipped != start:
+            entry["metrics_rolled_out_at"] = iso(clipped)
+        if missing:
+            entry["missing_metrics"] = missing
+        if allow:
+            entry["allowlisted"] = allow.get("reason", "")
+        if stats.get("runs"):
+            longest = max(stats["runs"], key=lambda r: r[1] - r[0])
+            entry["longest_episode"] = [iso(longest[0]), iso(longest[1])]
+        if stats.get("error"):
+            entry["error"] = stats["error"]
+        report[name] = entry
+        if problem:
+            problems.append("%s (%s): %s" % (name, rule["file"], problem))
+
+    width = max(len(n) for n in selected)
+    print("  %-*s  %-12s  %8s  %8s  %8s  %4s" % (width, "alert", "status", "firing", "(ALERTS)",
+                                                 "episodes", "peak"))
+    for name in selected:
+        e = report[name]
+        obs = e.get("observed_firing_fraction")
+        print("  %-*s  %-12s  %7.2f%%  %8s  %8d  %4d%s%s"
+              % (width, name, e["status"], 100 * e["firing_fraction"],
+                 "-" if obs is None else "%.2f%%" % (100 * obs), e["episodes"], e["peak_series"],
+                 "  [since %s]" % e["metrics_rolled_out_at"] if "metrics_rolled_out_at" in e else "",
+                 "  [allowlisted]" if "allowlisted" in e else ""))
+
+    pending = [n for n in selected if report[n]["status"] == "not-deployed"]
+    if pending:
+        print("\nnote: not loaded by Prometheus yet, and reading metrics with no series -- these fail"
+              " as DEAD once deployed if the metrics still do not exist:")
+        for name in pending:
+            print("  %s: %s" % (name, ", ".join(report[name]["missing_metrics"])))
+
+    incident_report = []
+    if not args.no_incidents:
+        incident_report, incident_problems = check_incidents(prom, alerts, catalogue, step, floor,
+                                                             args.alert)
+        problems += incident_problems
+
+    if not args.no_write and not args.alert:
+        with open(BASELINE, "w", encoding="utf-8") as handle:
+            json.dump({
+                "window": {"start": iso(start), "end": iso(end), "step_seconds": step},
+                "budget": {k: v for k, v in budget.items() if k != "days"},
+                "alerts": report,
+                "incidents": incident_report,
+            }, handle, indent=2, sort_keys=True)
+            handle.write("\n")
+        print("wrote %s" % os.path.relpath(BASELINE))
+
+    if problems:
+        print("\nFAILED -- %d problem(s):" % len(problems))
+        for p in problems:
+            print("  - " + p)
+        print("\nFix the rule (with a promtool case), catalogue the incident it fired for in %s, "
+              "or allowlist it with a reason in %s."
+              % (os.path.relpath(INCIDENTS), os.path.relpath(ALLOWLIST)))
+        return 1
+    print("\nok")
+    return 0
+
+
+def check_incidents(prom, alerts, catalogue, step, floor, only):
+    """Replay each catalogued incident window; ([result], [problem])."""
+    results, problems = [], []
+    now = time.time() - step
+    for incident in catalogue:
+        ident = incident["id"]
+        start, end = parse_time(incident["start"]), parse_time(incident["end"])
+        grace = seconds(incident.get("grace", "1h"))
+        if floor and start < floor:
+            problems.append("incident %s starts before retention (%s)" % (ident, iso(floor)))
+            continue
+        start -= start % step
+        row = {"id": ident, "firing": {}, "quiet": {}}
+        before = len(problems)
+        wanted = [(n, True) for n in incident.get("expect_firing") or []] + \
+                 [(n, False) for n in incident.get("expect_quiet") or []]
+        for name, should_fire in wanted:
+            if only and name not in only:
+                continue
+            if name not in alerts:
+                problems.append("incident %s names %s, which no rule defines" % (ident, name))
+                continue
+            window_end = min(end + grace if should_fire else end, now)
+            window_end -= window_end % step
+            stats = backtest(prom, alerts[name], start, window_end, step, floor)
+            if stats.get("error"):
+                problems.append("incident %s: %s query failed: %s" % (ident, name, stats["error"]))
+                continue
+            first = iso(stats["runs"][0][0]) if stats["runs"] else None
+            (row["firing"] if should_fire else row["quiet"])[name] = first or "never"
+            if should_fire and not first:
+                problems.append("incident %s: %s should have fired between %s and %s and did not"
+                                % (ident, name, iso(start), iso(window_end)))
+            if not should_fire and first:
+                problems.append("incident %s: %s should have stayed quiet and fired at %s"
+                                % (ident, name, first))
+        print("  incident %-44s %s" % (ident, "ok" if len(problems) == before else "FAILED"))
+        results.append(row)
+    return results, problems
+
+
+if __name__ == "__main__":
+    sys.exit(main())

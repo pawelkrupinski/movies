@@ -1,0 +1,1424 @@
+{
+  "alerts": {
+    "AlertmanagerNotificationsFailing": {
+      "episodes": 0,
+      "file": "monitoring-self.rules",
+      "firing_fraction": 0.0,
+      "for": "15m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "AutoApplyBlocked": {
+      "episodes": 0,
+      "file": "nixos-deploy.rules",
+      "firing_fraction": 0.0,
+      "for": "24h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "AutoApplyNotReporting": {
+      "episodes": 0,
+      "file": "nixos-deploy.rules",
+      "firing_fraction": 0.0,
+      "for": "1h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "AutoApplyRefusingChange": {
+      "episodes": 0,
+      "file": "nixos-deploy.rules",
+      "firing_fraction": 0.0,
+      "for": "1h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "AutoApplyStalled": {
+      "episodes": 0,
+      "file": "nixos-deploy.rules",
+      "firing_fraction": 0.0,
+      "for": "0s",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "AutoApplyStatePublisherStale": {
+      "episodes": 0,
+      "file": "nixos-deploy.rules",
+      "firing_fraction": 0.0,
+      "for": "0s",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "ChainEnrichmentFailing": {
+      "episodes": 1,
+      "episodes_outside_incidents": 1,
+      "file": "cinema-scrape.rules",
+      "firing_fraction": 0.1996,
+      "firing_fraction_outside_incidents": 0.0016,
+      "for": "1h",
+      "longest_episode": [
+        "2026-09-18T22:21:00Z",
+        "2026-09-21T17:25:00Z"
+      ],
+      "observed_firing_fraction": 0.0,
+      "peak_series": 2,
+      "series_episodes": 2,
+      "status": "ok"
+    },
+    "ChainFallbackSaturated": {
+      "episodes": 1,
+      "episodes_outside_incidents": 0,
+      "file": "chain-fallback.rules",
+      "firing_fraction": 0.0787,
+      "firing_fraction_outside_incidents": 0.0,
+      "for": "1h",
+      "longest_episode": [
+        "2026-09-18T21:52:00Z",
+        "2026-09-19T08:40:00Z"
+      ],
+      "metrics_rolled_out_at": "2026-09-18T20:52:00Z",
+      "observed_firing_fraction": 0.0787,
+      "peak_series": 1,
+      "series_episodes": 1,
+      "status": "ok"
+    },
+    "ChangeStreamApplyFallingBehind": {
+      "episodes": 0,
+      "file": "read-model-projection.rules",
+      "firing_fraction": 0.0,
+      "for": "5m",
+      "metrics_rolled_out_at": "2026-09-23T16:52:00Z",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "ChangeStreamApplyLagging": {
+      "episodes": 0,
+      "file": "read-model-projection.rules",
+      "firing_fraction": 0.0,
+      "for": "10m",
+      "metrics_rolled_out_at": "2026-09-23T16:52:00Z",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "ChangeStreamMoviesCursorSilent": {
+      "episodes": 0,
+      "file": "read-model-projection.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "CinemaScrapeCensusAbsent": {
+      "episodes": 0,
+      "file": "cinema-scrape.rules",
+      "firing_fraction": 0.0,
+      "for": "1h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "CinemaScrapeFailureShareHigh": {
+      "episodes": 0,
+      "file": "cinema-scrape.rules",
+      "firing_fraction": 0.0,
+      "for": "2h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "CinemaScrapeNeverScraped": {
+      "episodes": 0,
+      "file": "cinema-scrape.rules",
+      "firing_fraction": 0.0,
+      "for": "24h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "CinemaScrapeOldestAgeHigh": {
+      "episodes": 0,
+      "file": "cinema-scrape.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "ContainerImageGarbageCollectionMetricAbsent": {
+      "episodes": 0,
+      "file": "k3s.rules",
+      "firing_fraction": 0.0,
+      "for": "2d",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "ContainerImageGarbageCollectionStale": {
+      "episodes": 0,
+      "file": "k3s.rules",
+      "firing_fraction": 0.0,
+      "for": "0s",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "CpuBusySustained": {
+      "episodes": 0,
+      "file": "host-health.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "CpuRunQueueDeep": {
+      "episodes": 0,
+      "file": "host-health.rules",
+      "firing_fraction": 0.0,
+      "for": "20m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "DuplicateVenueListing": {
+      "episodes": 0,
+      "file": "cinema-scrape.rules",
+      "firing_fraction": 0.0,
+      "for": "24h",
+      "metrics_rolled_out_at": "2026-09-23T16:52:00Z",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "FilesystemInodesCritical": {
+      "episodes": 0,
+      "file": "filesystem-capacity.rules",
+      "firing_fraction": 0.0,
+      "for": "10m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "FilesystemInodesLow": {
+      "episodes": 0,
+      "file": "filesystem-capacity.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "FilesystemMetricsAbsent": {
+      "episodes": 0,
+      "file": "filesystem-capacity.rules",
+      "firing_fraction": 0.0,
+      "for": "2h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "FilesystemReadOnly": {
+      "episodes": 0,
+      "file": "host-health.rules",
+      "firing_fraction": 0.0,
+      "for": "5m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "FilesystemSpaceCritical": {
+      "episodes": 0,
+      "file": "filesystem-capacity.rules",
+      "firing_fraction": 0.0,
+      "for": "10m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "FilesystemSpaceLow": {
+      "episodes": 0,
+      "file": "filesystem-capacity.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "FilesystemWillFillWithin3Days": {
+      "episodes": 1,
+      "file": "filesystem-capacity.rules",
+      "firing_fraction": 0.0004,
+      "for": "1h",
+      "longest_episode": [
+        "2026-09-23T18:40:00Z",
+        "2026-09-23T18:48:00Z"
+      ],
+      "observed_firing_fraction": 0.0,
+      "peak_series": 1,
+      "series_episodes": 1,
+      "status": "ok"
+    },
+    "FilesystemWillFillWithin7Days": {
+      "episodes": 0,
+      "file": "filesystem-capacity.rules",
+      "firing_fraction": 0.0,
+      "for": "2h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "FluxControllerDown": {
+      "episodes": 0,
+      "file": "flux.rules",
+      "firing_fraction": 0.0,
+      "for": "15m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "FluxReconciliationStopped": {
+      "episodes": 0,
+      "file": "flux.rules",
+      "firing_fraction": 0.0,
+      "for": "15m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "HeapDumpBudgetMetricAbsent": {
+      "episodes": 0,
+      "file": "jvm-heap.rules",
+      "firing_fraction": 0.0,
+      "for": "1h",
+      "metrics_rolled_out_at": "2026-09-24T06:52:00Z",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "HeapDumpBudgetStale": {
+      "episodes": 0,
+      "file": "jvm-heap.rules",
+      "firing_fraction": 0.0,
+      "for": "0s",
+      "metrics_rolled_out_at": "2026-09-24T06:52:00Z",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "HeapDumpWritten": {
+      "episodes": 0,
+      "file": "jvm-heap.rules",
+      "firing_fraction": 0.0,
+      "for": "0s",
+      "metrics_rolled_out_at": "2026-09-24T06:52:00Z",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "HostOomKilled": {
+      "episodes": 7,
+      "episodes_outside_incidents": 5,
+      "file": "host-health.rules",
+      "firing_fraction": 0.0037,
+      "firing_fraction_outside_incidents": 0.0027,
+      "for": "0s",
+      "longest_episode": [
+        "2026-09-21T17:31:00Z",
+        "2026-09-21T17:45:00Z"
+      ],
+      "observed_firing_fraction": 0.0037,
+      "peak_series": 1,
+      "series_episodes": 7,
+      "status": "ok"
+    },
+    "HostRecentlyRebooted": {
+      "episodes": 0,
+      "file": "host-health.rules",
+      "firing_fraction": 0.0,
+      "for": "0s",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "JvmOldGenNearCap": {
+      "episodes": 0,
+      "file": "jvm-heap.rules",
+      "firing_fraction": 0.0,
+      "for": "2h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "JvmResidentNearContainerLimit": {
+      "episodes": 8,
+      "file": "jvm-heap.rules",
+      "firing_fraction": 0.0066,
+      "for": "2m",
+      "longest_episode": [
+        "2026-09-17T14:03:00Z",
+        "2026-09-17T14:39:00Z"
+      ],
+      "observed_firing_fraction": 0.0,
+      "peak_series": 1,
+      "series_episodes": 8,
+      "status": "ok"
+    },
+    "K3sAgentNotRunning": {
+      "episodes": 0,
+      "file": "k3s.rules",
+      "firing_fraction": 0.0,
+      "for": "10m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "K3sContainerOOMKilled": {
+      "episodes": 6,
+      "episodes_outside_incidents": 4,
+      "file": "k3s.rules",
+      "firing_fraction": 0.0032,
+      "firing_fraction_outside_incidents": 0.0023,
+      "for": "5m",
+      "longest_episode": [
+        "2026-09-21T17:36:00Z",
+        "2026-09-21T17:50:00Z"
+      ],
+      "observed_firing_fraction": 0.0032,
+      "peak_series": 1,
+      "series_episodes": 6,
+      "status": "ok"
+    },
+    "K3sDeploymentReplicasMissing": {
+      "episodes": 0,
+      "file": "k3s.rules",
+      "firing_fraction": 0.0,
+      "for": "15m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "K3sNodeNotReady": {
+      "episodes": 0,
+      "file": "k3s.rules",
+      "firing_fraction": 0.0,
+      "for": "10m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "K3sPodCrashLooping": {
+      "episodes": 0,
+      "file": "k3s.rules",
+      "firing_fraction": 0.0,
+      "for": "10m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "K3sServerNotRunning": {
+      "episodes": 0,
+      "file": "k3s.rules",
+      "firing_fraction": 0.0,
+      "for": "5m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "K3sUnitStateAbsent": {
+      "episodes": 0,
+      "file": "k3s.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "KubeStateMetricsSeriesAbsent": {
+      "episodes": 0,
+      "file": "k3s.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "MemoryAvailableCritical": {
+      "episodes": 0,
+      "file": "host-health.rules",
+      "firing_fraction": 0.0,
+      "for": "5m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "MemoryAvailableLow": {
+      "episodes": 0,
+      "file": "host-health.rules",
+      "firing_fraction": 0.0,
+      "for": "15m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "MemoryStallHigh": {
+      "episodes": 0,
+      "file": "host-health.rules",
+      "firing_fraction": 0.0,
+      "for": "10m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "MongodConnectionsSaturated": {
+      "episodes": 0,
+      "file": "mongodb.rules",
+      "firing_fraction": 0.0,
+      "for": "10m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "MongodExporterCannotReachMongod": {
+      "episodes": 0,
+      "file": "mongodb.rules",
+      "firing_fraction": 0.0,
+      "for": "3m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "MongodInternalAssertionsRising": {
+      "episodes": 0,
+      "file": "mongodb.rules",
+      "firing_fraction": 0.0,
+      "for": "15m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "MongodNoPrimary": {
+      "episodes": 0,
+      "file": "mongodb.rules",
+      "firing_fraction": 0.0,
+      "for": "2m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "MongodNotPrimary": {
+      "episodes": 0,
+      "file": "mongodb.rules",
+      "firing_fraction": 0.0,
+      "for": "2m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "MongodNotRunning": {
+      "episodes": 0,
+      "file": "mongodb.rules",
+      "firing_fraction": 0.0,
+      "for": "3m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "MongodOplogWindowMetricAbsent": {
+      "episodes": 0,
+      "file": "mongodb.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "MongodOplogWindowShort": {
+      "episodes": 0,
+      "file": "mongodb.rules",
+      "firing_fraction": 0.0,
+      "for": "15m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "MongodReplsetStateAbsent": {
+      "episodes": 0,
+      "file": "mongodb.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "MongodServerStatusSeriesAbsent": {
+      "episodes": 0,
+      "file": "mongodb.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "MongodUnitStateAbsent": {
+      "episodes": 0,
+      "file": "mongodb.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "MongodUserAssertionsRising": {
+      "episodes": 0,
+      "file": "mongodb.rules",
+      "firing_fraction": 0.0,
+      "for": "15m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "MongodumpMetricAbsent": {
+      "episodes": 0,
+      "file": "mongodb.rules",
+      "firing_fraction": 0.0,
+      "for": "6h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "MongodumpShrankSharply": {
+      "episodes": 0,
+      "file": "mongodb.rules",
+      "firing_fraction": 0.0,
+      "for": "0s",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "MongodumpStale": {
+      "episodes": 0,
+      "file": "mongodb.rules",
+      "firing_fraction": 0.0,
+      "for": "0s",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "MonitoringHeartbeat": {
+      "allowlisted": "The dead-man's switch, `expr: vector(1)`. It fires 100% of the time by design; the thing that pages is its ABSENCE at the receiver.",
+      "episodes": 1,
+      "file": "monitoring-self.rules",
+      "firing_fraction": 1.0,
+      "for": "0s",
+      "longest_episode": [
+        "2026-09-10T14:22:00Z",
+        "2026-09-24T14:22:00Z"
+      ],
+      "observed_firing_fraction": 1.0,
+      "peak_series": 1,
+      "series_episodes": 1,
+      "status": "noisy"
+    },
+    "NixGarbageCollectionMetricAbsent": {
+      "episodes": 0,
+      "file": "nixos-deploy.rules",
+      "firing_fraction": 0.0,
+      "for": "2d",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "NixGarbageCollectionStale": {
+      "episodes": 0,
+      "file": "nixos-deploy.rules",
+      "firing_fraction": 0.0,
+      "for": "0s",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "OomKillMetricAbsent": {
+      "episodes": 0,
+      "file": "host-health.rules",
+      "firing_fraction": 0.0,
+      "for": "6h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "PaidEgressFailing": {
+      "episodes": 0,
+      "file": "residential-proxy.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "metrics_rolled_out_at": "2026-09-23T15:37:00Z",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "PrometheusConfigReloadFailed": {
+      "episodes": 0,
+      "file": "monitoring-self.rules",
+      "firing_fraction": 0.0,
+      "for": "5m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "PrometheusRuleEvaluationFailing": {
+      "episodes": 0,
+      "file": "monitoring-self.rules",
+      "firing_fraction": 0.0,
+      "for": "15m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "ReadModelFilmPruneBurst": {
+      "episodes": 0,
+      "file": "read-model-projection.rules",
+      "firing_fraction": 0.0,
+      "for": "15m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "ReadModelFilmsInvisibleWithScreenings": {
+      "episodes": 2,
+      "episodes_outside_incidents": 0,
+      "file": "read-model-projection.rules",
+      "firing_fraction": 0.1661,
+      "firing_fraction_outside_incidents": 0.0,
+      "for": "2h",
+      "longest_episode": [
+        "2026-09-16T02:18:00Z",
+        "2026-09-17T17:05:00Z"
+      ],
+      "observed_firing_fraction": 0.123,
+      "peak_series": 2,
+      "series_episodes": 3,
+      "status": "ok"
+    },
+    "ReadModelHealsRecurring": {
+      "episodes": 1,
+      "file": "read-model-projection.rules",
+      "firing_fraction": 0.0194,
+      "for": "5m",
+      "longest_episode": [
+        "2026-09-24T00:39:00Z",
+        "2026-09-24T01:03:00Z"
+      ],
+      "metrics_rolled_out_at": "2026-09-23T16:52:00Z",
+      "observed_firing_fraction": 0.0194,
+      "peak_series": 1,
+      "series_episodes": 1,
+      "status": "ok"
+    },
+    "ReadModelProjectionMetricsAbsent": {
+      "episodes": 0,
+      "file": "read-model-projection.rules",
+      "firing_fraction": 0.0,
+      "for": "1h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "ReadModelProjectionTriggerUnaccounted": {
+      "episodes": 0,
+      "file": "read-model-projection.rules",
+      "firing_fraction": 0.0,
+      "for": "1h",
+      "metrics_rolled_out_at": "2026-09-24T05:37:00Z",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "ReadModelProjectionWritePerCallHigh": {
+      "episodes": 1,
+      "episodes_outside_incidents": 0,
+      "file": "read-model-projection.rules",
+      "firing_fraction": 0.9524,
+      "firing_fraction_outside_incidents": 0.0,
+      "for": "1h",
+      "longest_episode": [
+        "2026-09-10T14:22:00Z",
+        "2026-09-23T22:23:00Z"
+      ],
+      "observed_firing_fraction": 0.0,
+      "peak_series": 1,
+      "series_episodes": 1,
+      "status": "ok"
+    },
+    "ReadModelServedGaugesAbsent": {
+      "episodes": 0,
+      "file": "read-model-projection.rules",
+      "firing_fraction": 0.0,
+      "for": "1h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "ReadModelServingDiffersFromCorpus": {
+      "episodes": 0,
+      "file": "read-model-projection.rules",
+      "firing_fraction": 0.0,
+      "for": "20m",
+      "metrics_rolled_out_at": "2026-09-23T14:52:00Z",
+      "missing_metrics": [
+        "CAP:",
+        "Some",
+        "been",
+        "city",
+        "has",
+        "hours",
+        "it",
+        "open",
+        "plus",
+        "s",
+        "the",
+        "two"
+      ],
+      "observed_firing_fraction": 0.0085,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "ReadModelServingShortOfCorpus": {
+      "episodes": 0,
+      "file": "read-model-projection.rules",
+      "firing_fraction": 0.0,
+      "for": "45m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "ReadModelVenueRebuildShareHigh": {
+      "episodes": 0,
+      "file": "read-model-projection.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "metrics_rolled_out_at": "2026-09-23T21:07:00Z",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "RebootOwed": {
+      "episodes": 0,
+      "file": "nixos-deploy.rules",
+      "firing_fraction": 0.0,
+      "for": "7d",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "RepositoryWritesFailing": {
+      "episodes": 0,
+      "file": "worker-pipeline.rules",
+      "firing_fraction": 0.0,
+      "for": "10m",
+      "metrics_rolled_out_at": "2026-09-24T05:37:00Z",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "ResidentialProxyFallingBackToZyte": {
+      "episodes": 1,
+      "file": "residential-proxy.rules",
+      "firing_fraction": 0.0002,
+      "for": "15m",
+      "longest_episode": [
+        "2026-09-19T00:27:00Z",
+        "2026-09-19T00:30:00Z"
+      ],
+      "observed_firing_fraction": 0.0002,
+      "peak_series": 1,
+      "series_episodes": 1,
+      "status": "ok"
+    },
+    "RetiredVenueRowsLingering": {
+      "episodes": 0,
+      "file": "cinema-scrape.rules",
+      "firing_fraction": 0.0,
+      "for": "50h",
+      "metrics_rolled_out_at": "2026-09-23T16:52:00Z",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "ShareCardCoverageAbsent": {
+      "episodes": 0,
+      "file": "share-cards.rules",
+      "firing_fraction": 0.0,
+      "for": "1h",
+      "metrics_rolled_out_at": "2026-09-24T09:52:00Z",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "ShareCardCoverageLow": {
+      "episodes": 0,
+      "file": "share-cards.rules",
+      "firing_fraction": 0.0,
+      "for": "6h",
+      "metrics_rolled_out_at": "2026-09-24T09:52:00Z",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "ShareCardPosterFetchFailing": {
+      "episodes": 1,
+      "file": "share-cards.rules",
+      "firing_fraction": 0.011,
+      "for": "30m",
+      "longest_episode": [
+        "2026-09-24T13:49:00Z",
+        "2026-09-24T13:49:00Z"
+      ],
+      "metrics_rolled_out_at": "2026-09-24T12:52:00Z",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 1,
+      "series_episodes": 1,
+      "status": "ok"
+    },
+    "ShareCardRendersFailing": {
+      "episodes": 0,
+      "file": "share-cards.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "metrics_rolled_out_at": "2026-09-24T09:52:00Z",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "ShareCardsNearBudget": {
+      "episodes": 0,
+      "file": "share-cards.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "metrics_rolled_out_at": "2026-09-24T09:52:00Z",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "ShareCardsOverBudget": {
+      "episodes": 0,
+      "file": "share-cards.rules",
+      "firing_fraction": 0.0,
+      "for": "15m",
+      "metrics_rolled_out_at": "2026-09-24T09:52:00Z",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "StagedClosureNotActivated": {
+      "episodes": 0,
+      "file": "nixos-deploy.rules",
+      "firing_fraction": 0.0,
+      "for": "24h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "StagedClosureNotLive": {
+      "episodes": 0,
+      "file": "nixos-deploy.rules",
+      "firing_fraction": 0.0,
+      "for": "2h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "StagingNewcomerKickReadsWide": {
+      "episodes": 0,
+      "file": "read-model-projection.rules",
+      "firing_fraction": 0.0,
+      "for": "15m",
+      "metrics_rolled_out_at": "2026-09-24T03:22:00Z",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "SystemdUnitFailed": {
+      "episodes": 0,
+      "file": "host-health.rules",
+      "firing_fraction": 0.0,
+      "for": "15m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "TargetDown": {
+      "episodes": 0,
+      "file": "monitoring-self.rules",
+      "firing_fraction": 0.0,
+      "for": "10m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "TtlIndexMetricAbsent": {
+      "episodes": 0,
+      "file": "read-model-projection.rules",
+      "firing_fraction": 0.0,
+      "for": "1h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "TtlIndexUnreconciled": {
+      "episodes": 0,
+      "file": "read-model-projection.rules",
+      "firing_fraction": 0.0,
+      "for": "10m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "UserStateUniqueIndexMissing": {
+      "episodes": 0,
+      "file": "web-errors.rules",
+      "firing_fraction": 0.0,
+      "for": "10m",
+      "metrics_rolled_out_at": "2026-09-24T03:22:00Z",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "UserStateWritesFailing": {
+      "episodes": 0,
+      "file": "web-errors.rules",
+      "firing_fraction": 0.0,
+      "for": "10m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "WebAssetsNotFound": {
+      "episodes": 0,
+      "file": "web-errors.rules",
+      "firing_fraction": 0.0,
+      "for": "15m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "WebEndpointLatencyHigh": {
+      "episodes": 2,
+      "file": "web-latency.rules",
+      "firing_fraction": 0.0015,
+      "for": "15m",
+      "longest_episode": [
+        "2026-09-21T17:41:00Z",
+        "2026-09-21T17:55:00Z"
+      ],
+      "observed_firing_fraction": 0.0009,
+      "peak_series": 1,
+      "series_episodes": 2,
+      "status": "ok"
+    },
+    "WebHttpMetricsAbsent": {
+      "episodes": 0,
+      "file": "web-errors.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "WebPageLatencyHigh": {
+      "episodes": 3,
+      "file": "web-latency.rules",
+      "firing_fraction": 0.0016,
+      "for": "15m",
+      "longest_episode": [
+        "2026-09-13T11:31:00Z",
+        "2026-09-13T11:45:00Z"
+      ],
+      "observed_firing_fraction": 0.0016,
+      "peak_series": 1,
+      "series_episodes": 3,
+      "status": "ok"
+    },
+    "WebPageTooHeavy": {
+      "episodes": 0,
+      "file": "web-page-weight.rules",
+      "firing_fraction": 0.0,
+      "for": "1h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "WebResponseSizeCollapsed": {
+      "episodes": 0,
+      "file": "web-page-weight.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "WebResponseSizeJumped": {
+      "episodes": 0,
+      "file": "web-page-weight.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "WebResponseSizeUnobserved": {
+      "episodes": 0,
+      "file": "web-page-weight.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "WebServerErrorsServed": {
+      "episodes": 0,
+      "file": "web-errors.rules",
+      "firing_fraction": 0.0,
+      "for": "10m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "WorkerDown": {
+      "episodes": 0,
+      "file": "worker-pipeline.rules",
+      "firing_fraction": 0.0,
+      "for": "5m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "WorkerQueueGrowingUnbounded": {
+      "episodes": 0,
+      "file": "worker-pipeline.rules",
+      "firing_fraction": 0.0,
+      "for": "1h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "WorkerQueueMetricsAbsent": {
+      "episodes": 0,
+      "file": "worker-pipeline.rules",
+      "firing_fraction": 0.0,
+      "for": "1h",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "WorkerQueueStalled": {
+      "episodes": 0,
+      "file": "worker-pipeline.rules",
+      "firing_fraction": 0.0,
+      "for": "5m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "WorkerTaskTypeUnhandled": {
+      "episodes": 0,
+      "file": "worker-pipeline.rules",
+      "firing_fraction": 0.0,
+      "for": "5m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "WorkerTasksFailingPermanently": {
+      "episodes": 0,
+      "file": "worker-pipeline.rules",
+      "firing_fraction": 0.0,
+      "for": "5m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "WorkerTasksFailingRepeatedly": {
+      "episodes": 0,
+      "file": "worker-pipeline.rules",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "observed_firing_fraction": 0.0,
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "kinowo-corpus-census-stuck": {
+      "episodes": 0,
+      "file": "alert-rules.yaml",
+      "firing_fraction": 0.0,
+      "for": "10m",
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "kinowo-enrichment-source-failing": {
+      "episodes": 0,
+      "file": "alert-rules.yaml",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "kinowo-movies-served-city-empty": {
+      "episodes": 0,
+      "file": "alert-rules.yaml",
+      "firing_fraction": 0.0,
+      "for": "5m",
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "kinowo-movies-served-swing": {
+      "episodes": 0,
+      "file": "alert-rules.yaml",
+      "firing_fraction": 0.0,
+      "for": "5m",
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "kinowo-showtime-volume-collapsed": {
+      "episodes": 0,
+      "file": "alert-rules.yaml",
+      "firing_fraction": 0.0,
+      "for": "30m",
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "quiet"
+    },
+    "kinowo-web-serving-down": {
+      "episodes": 0,
+      "file": "alert-rules.yaml",
+      "firing_fraction": 0.0,
+      "for": "3m",
+      "peak_series": 0,
+      "series_episodes": 0,
+      "status": "ok"
+    },
+    "kinowo-worker-crash-looping": {
+      "episodes": 1,
+      "file": "alert-rules.yaml",
+      "firing_fraction": 0.0012,
+      "for": "5m",
+      "longest_episode": [
+        "2026-09-19T12:00:00Z",
+        "2026-09-19T12:24:00Z"
+      ],
+      "peak_series": 5,
+      "series_episodes": 5,
+      "status": "ok"
+    },
+    "kinowo-worker-task-age-high": {
+      "episodes": 11,
+      "file": "alert-rules.yaml",
+      "firing_fraction": 0.0079,
+      "for": "5m",
+      "longest_episode": [
+        "2026-09-21T15:22:00Z",
+        "2026-09-21T16:51:00Z"
+      ],
+      "peak_series": 1,
+      "series_episodes": 11,
+      "status": "ok"
+    }
+  },
+  "budget": {
+    "max_episodes_per_week": 7.0,
+    "max_firing_fraction": 0.05
+  },
+  "incidents": [
+    {
+      "firing": {
+        "MongodNoPrimary": "2026-09-01T23:00:00Z"
+      },
+      "id": "mongo-1-relocation-blind-2026-09-01",
+      "quiet": {}
+    },
+    {
+      "firing": {},
+      "id": "mongod-no-primary-misfire-2026-09-02",
+      "quiet": {
+        "MongodNoPrimary": "never",
+        "MongodNotPrimary": "never",
+        "MongodNotRunning": "never"
+      }
+    },
+    {
+      "firing": {},
+      "id": "flux-imagepolicy-flapping-2026-09-01",
+      "quiet": {
+        "FluxReconciliationStopped": "never"
+      }
+    },
+    {
+      "firing": {
+        "ResidentialProxyFallingBackToZyte": "2026-09-10T07:55:00Z"
+      },
+      "id": "decodo-503-cascade-2026-09-10",
+      "quiet": {}
+    },
+    {
+      "firing": {
+        "ReadModelFilmsInvisibleWithScreenings": "2026-09-08T22:36:00Z"
+      },
+      "id": "kino-aurum-invisible-films-2026-09-09",
+      "quiet": {}
+    },
+    {
+      "firing": {
+        "ChainEnrichmentFailing": "2026-09-18T22:21:00Z",
+        "ChainFallbackSaturated": "2026-09-18T21:52:00Z"
+      },
+      "id": "cineworld-relaunch-2026-09-18",
+      "quiet": {}
+    },
+    {
+      "firing": {
+        "ReadModelProjectionWritePerCallHigh": "2026-09-08T16:33:00Z"
+      },
+      "id": "us-readmodel-writes-slow-until-2026-09-23",
+      "quiet": {}
+    },
+    {
+      "firing": {
+        "HostOomKilled": "2026-09-17T10:55:00Z",
+        "K3sContainerOOMKilled": "2026-09-17T11:00:00Z"
+      },
+      "id": "web-pl-oom-2026-09-17",
+      "quiet": {}
+    },
+    {
+      "firing": {},
+      "id": "healthy-2026-09-22",
+      "quiet": {
+        "FilesystemSpaceCritical": "never",
+        "FluxReconciliationStopped": "never",
+        "K3sNodeNotReady": "never",
+        "MongodNoPrimary": "never",
+        "MongodNotRunning": "never",
+        "TargetDown": "never",
+        "WorkerDown": "never",
+        "kinowo-web-serving-down": "never"
+      }
+    }
+  ],
+  "window": {
+    "end": "2026-09-24T14:22:00Z",
+    "start": "2026-09-10T14:22:00Z",
+    "step_seconds": 60
+  }
+}

@@ -1,0 +1,109 @@
+# Real incidents (and real misfires) on the fleet, replayed by bin/backtest-alerts.
+#
+# Each entry is a UTC window from something that actually happened, with the alerts that MUST fire
+# in it and the alerts that MUST stay quiet. It is the only regression test an alert has against the
+# event it was written for: a rule rewritten later that no longer catches the incident -- or that
+# newly misfires in a window known to be healthy -- fails here.
+#
+#   expect_firing  must fire at least once in [start, end + grace]   (grace defaults to 1h, to
+#                  cover the `for:` hold of an alert whose condition began at `start`)
+#   expect_quiet   must not fire at all in [start, end]
+#
+# Firing inside an `expect_firing` window is also excused from that alert's noise budget.
+# Prometheus retention starts ~2026-08-29; an incident older than that cannot be replayed.
+# Times are evidence, not guesses: each entry says where its window came from.
+
+incidents:
+  - id: mongo-1-relocation-blind-2026-09-01
+    description: >-
+      mongo-1 moved hosts (10.20.0.10 -> 10.20.0.13). From 23:00Z the old member reported state 6
+      with no `set` label and the new one was not scraped until 04:45Z, so NO member visible to
+      Prometheus was primary. MongodNoPrimary fires here BY DESIGN -- a monitor that cannot see a
+      primary says so (see mongodb.rules) -- and must keep doing so.
+    source: mongodb_mongod_replset_my_state{instance="10.20.0.10:9216"} == 6 from 23:00Z; first 10.20.0.13 sample 04:45Z
+    start: 2026-09-01T23:00:00Z
+    end: 2026-09-02T04:40:00Z
+    grace: 10m
+    expect_firing: [MongodNoPrimary]
+
+  - id: mongod-no-primary-misfire-2026-09-02
+    description: >-
+      The new mongo-1 was primary and writing, and MongodNoPrimary kept paging: it was
+      `max(state == 1) or vector(0)`, which returns a sample exactly when a member IS primary.
+      Fixed by 14410c44f at 13:54Z.
+    source: ALERTS{alertname="MongodNoPrimary"} firing to 14:00Z while mongodb_mongod_replset_my_state{instance="10.20.0.13:9216"} == 1; commit 14410c44f
+    start: 2026-09-02T05:00:00Z
+    end: 2026-09-02T14:00:00Z
+    expect_quiet: [MongodNoPrimary, MongodNotPrimary, MongodNotRunning]
+
+  - id: flux-imagepolicy-flapping-2026-09-01
+    description: >-
+      FluxReconciliationStopped fired 46%/43% of the time on the two ImagePolicy objects, which
+      reconcile only when an image is built, on a deploy path that was healthy throughout. Fixed
+      by 5dc4ea68e.
+    source: commit 5dc4ea68e (seven-day duty cycle measured before the fix)
+    start: 2026-09-01T00:00:00Z
+    end: 2026-09-08T00:00:00Z
+    expect_quiet: [FluxReconciliationStopped]
+
+  - id: decodo-503-cascade-2026-09-10
+    description: >-
+      Decodo's residential tunnel answered 503 and PL fetches fell back to Zyte.
+    source: memory project_decodo_tunnel_503_cascade_2026_09_10; ALERTS ResidentialProxyFallingBackToZyte{country="pl"} 10:40..11:10Z
+    start: 2026-09-10T07:40:00Z
+    end: 2026-09-10T11:10:00Z
+    expect_firing: [ResidentialProxyFallingBackToZyte]
+
+  - id: kino-aurum-invisible-films-2026-09-09
+    description: >-
+      Films with upcoming screenings failed readyToProject and were pruned from the read model
+      (Kino Aurum's frozen screenings among them); fixed by the 09-14 deploy, tail cleared 09-17.
+    source: memory project_kino_aurum_screenings_freeze; replayed episodes 09-08T22:36Z..09-17T17:05Z
+    start: 2026-09-08T22:00:00Z
+    end: 2026-09-17T16:30:00Z
+    expect_firing: [ReadModelFilmsInvisibleWithScreenings]
+
+  - id: cineworld-relaunch-2026-09-18
+    description: >-
+      Cineworld relaunched its site; the UK chain client's detail enrichment failed almost every
+      fetch and the chain fell back to the aggregator until the rebuilt client shipped.
+    source: memory project_cineworld_relaunch_2026_09_17; kinowo_uptime_recent_failures{service="Cineworld Enrichment"} ratio > 0.9 09-18T21Z..09-21T16Z; replayed firing to 17:25Z
+    start: 2026-09-18T21:00:00Z
+    end: 2026-09-21T17:30:00Z
+    expect_firing: [ChainEnrichmentFailing, ChainFallbackSaturated]
+
+  - id: us-readmodel-writes-slow-until-2026-09-23
+    description: >-
+      Every venue change in the US rebuilt and re-diffed the film's whole screenings set, so the
+      read-model write per call ran at 27-47 ms against 3-7 ms elsewhere, until the 09-23
+      venue-scoping fix.
+    source: sum(rate(kinowo_worker_readmodel_write_burst_seconds_sum[3h])) / count, country=us; ReadModelProjectionWritePerCallHigh's own description; replayed firing 09-08T16:33Z..09-23T22:23Z (the write-burst histogram begins 09-08)
+    start: 2026-09-08T15:00:00Z
+    end: 2026-09-23T23:00:00Z
+    expect_firing: [ReadModelProjectionWritePerCallHigh]
+
+  - id: web-pl-oom-2026-09-17
+    description: >-
+      web-pl's container was OOM-killed twice while rendering share cards (the poster shrink held
+      whole decoded posters), later fixed by capping the shrink's memory.
+    source: ALERTS K3sContainerOOMKilled{pod=~"web-pl.*"} 09-17T11:00Z and 14:50Z
+    start: 2026-09-17T10:30:00Z
+    end: 2026-09-17T15:00:00Z
+    expect_firing: [K3sContainerOOMKilled, HostOomKilled]
+
+  - id: healthy-2026-09-22
+    description: >-
+      A quiet two days: no infrastructure incident in memory, git history or ALERTS beyond the
+      heartbeat. The paging-severity alerts must stay silent through it.
+    source: ALERTS history; memory notes 09-22..09-24
+    start: 2026-09-22T00:00:00Z
+    end: 2026-09-24T00:00:00Z
+    expect_quiet:
+      - MongodNoPrimary
+      - MongodNotRunning
+      - WorkerDown
+      - TargetDown
+      - K3sNodeNotReady
+      - FilesystemSpaceCritical
+      - FluxReconciliationStopped
+      - kinowo-web-serving-down
