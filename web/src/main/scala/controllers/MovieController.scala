@@ -905,11 +905,12 @@ class MovieController( cc: ControllerComponents,
     ShareCardUrl.forFilm(schedule.resolved, c, PageMeta.origin(request))
 
   /** `/:city/movie/og-image?title=…` — the film card's old, web-rendered address. Link previews
-   *  already cached it, so it stays, as a permanent redirect to the image the page names now: the
-   *  worker's share card, or the city's static card. The web decodes no image. */
+   *  already cached it, so it stays, as a temporary redirect to the image the page names now: the
+   *  worker's share card, or the city's static card. Temporary because that target changes with
+   *  every card version, and a film on the city card today gets its own later. The web decodes no image. */
   def ogImage(city: String, title: String): Action[AnyContent] = Action { request =>
     withCity(city) { c =>
-      MovedPermanently(movieControllerService.film(c, title).fold(ShareCardUrl.city(c))(shareCardUrl(_, request)(using c)))
+      Found(movieControllerService.film(c, title).fold(ShareCardUrl.city(c))(shareCardUrl(_, request)(using c)))
     }
   }
 

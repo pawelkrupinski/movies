@@ -59,12 +59,15 @@ class ShareCardOgImageSpec extends AnyFlatSpec with Matchers {
     html should include ("""<meta property="og:image:height" content="630">""")
   }
 
-  "The old film card URL" should "redirect to the film's share card, or to the city card" in {
+  "The old film card URL" should "redirect temporarily to the film's share card, or to the city card" in {
+    // Temporary: the target moves with every new card version, and a film on the city card today gets its own later.
     val ctrl = controller()
     val withCard = ctrl.ogImage("poznan", "Diuna").apply(request)
-    status(withCard) shouldBe MOVED_PERMANENTLY
+    status(withCard) shouldBe FOUND
     redirectLocation(withCard) shouldBe Some(s"https://kinowo.net/share-cards/pl/$card")
-    redirectLocation(ctrl.ogImage("poznan", "Belle").apply(request)) shouldBe Some(cityCard)
+    val withoutCard = ctrl.ogImage("poznan", "Belle").apply(request)
+    status(withoutCard) shouldBe FOUND
+    redirectLocation(withoutCard) shouldBe Some(cityCard)
     redirectLocation(ctrl.ogImage("poznan", "No Such Film").apply(request)) shouldBe Some(cityCard)
   }
 
