@@ -20,26 +20,29 @@ allow:
       The dead-man's switch, `expr: vector(1)`. It fires 100% of the time by design; the thing
       that pages is its ABSENCE at the receiver.
 
-  # THREE `absent()` COMPANIONS THAT FIRE UNTIL A HAND STEP IS DONE, and whose firing IS the reminder
-  # of it -- warnings that name the step, never pages. Remove each entry once its series exists: a
+  # AN `absent()` COMPANION THAT FIRES UNTIL A HAND STEP IS DONE, and whose firing IS the reminder
+  # of it -- a warning that names the step, never a page. Remove the entry once its series exists: a
   # companion still firing after that is a real fault and should fail this check again.
+  # (ProbeResultsAbsent and ProbeDiscoveryStale stood here until monitoring-1 was switched to the
+  # probes on 2026-09-24 and both series appeared.)
   FluxObjectStateAbsent:
     noisy: true
     reason: >-
       gotk_resource_info does not exist until the pending movies-gitops change (kube-state-metrics'
       custom-resource-state config for Flux, see flux.rules' flux-objects group) is applied. Until
       then this warning, naming that change, is the correct and only output.
-  ProbeResultsAbsent:
-    noisy: true
+  # ...and the two comparisons it stands in for, DEAD until the same change: they read nothing but
+  # gotk_resource_info. Remove both with the entry above.
+  FluxObjectNotReady:
+    dead: true
     reason: >-
-      probe_success does not exist until monitoring-1 is switched by hand to the closure that adds
-      blackbox_exporter (auto-apply refuses to start new units). Remove once the probes report.
-  ProbeDiscoveryStale:
-    noisy: true
+      Reads only gotk_resource_info, which the pending movies-gitops kube-state-metrics change
+      publishes; FluxObjectStateAbsent is the warning that says so meanwhile.
+  FluxObjectSuspended:
+    dead: true
     reason: >-
-      The film discovery's timestamp does not exist until the same hand switch, and cannot succeed
-      until Cloudflare allows monitoring-1 (ProbeBlockedByEdge names that step). Remove once it
-      reports.
+      Reads only gotk_resource_info, which the pending movies-gitops kube-state-metrics change
+      publishes; FluxObjectStateAbsent is the warning that says so meanwhile.
 
 # Metrics a rule reads that are published ONLY in an exceptional state, so their absence over the
 # whole window is the healthy case, not a dead selector. They are excluded from the dead-alert
@@ -49,3 +52,8 @@ conditional_metrics:
     reason: >-
       Published by fleet/auto-apply.nix only on a host with `excludedBecause` set; no host is
       excluded today. StagedClosureNotLive reads it in an `unless` arm.
+  country:readmodel_cities_short_of_corpus:count:
+    reason: >-
+      Recorded by runtime-invariants.rules as a count OF the cities in violation, so it has a
+      series only while some city serves far short of its corpus -- none in a healthy fortnight.
+      CityServingShortOfCorpus reads it.

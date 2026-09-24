@@ -107,3 +107,17 @@ incidents:
       - FilesystemSpaceCritical
       - FluxReconciliationStopped
       - kinowo-web-serving-down
+
+  - id: showtimes-film-probes-challenged-2026-09-24
+    description: >-
+      From the probes' first switch, the discovered film pages of uk/de/us/es were showtimes.cc
+      `/movie/` URLs, which Cloudflare's managed-challenge rule answers with a 403 that blackbox
+      cannot pass, so ProbeBlockedByEdge fired on them without cease -- true, but about a probe
+      that could never succeed. Fixed by the discovery reading such pages from the origin and not
+      probing them (10ed17507); the window ends when that was written, so any firing past it is
+      the fix not yet switched in on monitoring-1 and still fails the budget, as it should.
+    source: ALERTS{alertname="ProbeBlockedByEdge",kind="film"} firing from 15:46Z; probe_http_status_code 403 on every showtimes.cc film target
+    start: 2026-09-24T15:46:00Z
+    end: 2026-09-24T17:15:00Z
+    grace: 0m
+    expect_firing: [ProbeBlockedByEdge]
