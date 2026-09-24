@@ -411,10 +411,10 @@ class MongoScreeningsRepository(
     coll.fold((Map.empty[String, java.time.Instant], true))(SlotKeyed.rowWrittenAtChecked(_, "ScreeningsRepository", logger.warn(_), idPaging))
 
   def deleteRows(ids: Set[String]): Long =
-    coll.fold(0L)(SlotKeyed.deleteRows(_, ids, "ScreeningsRepository", logger.warn(_)))
+    coll.fold(0L)(SlotKeyed.deleteRows(_, ids, ScreeningsRepository.Collection, writeMetrics, logger))
 
   def deleteFilms(filmIds: Set[String]): Long =
-    coll.fold(0L)(SlotKeyed.deleteFilms(_, filmIds, "ScreeningsRepository", logger.warn(_)))
+    coll.fold(0L)(SlotKeyed.deleteFilms(_, filmIds, ScreeningsRepository.Collection, writeMetrics, logger))
 
   private def upsertOne(c: MongoCollection[StoredScreeningsDto], filmId: String, slotKey: String, st: Seq[Showtime]): Unit = {
     val dto = StoredScreeningsDto(idOf(filmId, slotKey), filmId, slotKey, st, Instant.now())

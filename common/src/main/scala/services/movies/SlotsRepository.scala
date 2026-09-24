@@ -460,10 +460,10 @@ class MongoSlotsRepository(
     coll.fold((Map.empty[String, java.time.Instant], true))(SlotKeyed.rowWrittenAtChecked(_, "SlotsRepository", logger.warn(_), idPaging))
 
   def deleteRows(ids: Set[String]): Long =
-    coll.fold(0L)(SlotKeyed.deleteRows(_, ids, "SlotsRepository", logger.warn(_)))
+    coll.fold(0L)(SlotKeyed.deleteRows(_, ids, SlotsRepository.Collection, writeMetrics, logger))
 
   def deleteFilms(filmIds: Set[String]): Long =
-    coll.fold(0L)(SlotKeyed.deleteFilms(_, filmIds, "SlotsRepository", logger.warn(_)))
+    coll.fold(0L)(SlotKeyed.deleteFilms(_, filmIds, SlotsRepository.Collection, writeMetrics, logger))
 
   /** Watch `movie_slots`; ring `onChange(filmId)` for every change. The cursor itself is
    *  [[SideCollectionWatch]], shared with `screenings`, under this collection's own

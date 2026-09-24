@@ -72,17 +72,23 @@ object RepositoryWrite {
 
   def attempt(collection: String, op: String, what: => String, metrics: RepositoryWriteMetrics, logger: Logger)
              (body: => WriteOutcome): WriteOutcome =
+    guarded(collection, op, what, metrics, logger)(body)(identity)
+
+  /** [[attempt]] for a write that answers something other than its outcome — a bulk delete's
+   *  row count — with `onFailure` saying what a write that did not happen answers instead. */
+  def guarded[A](collection: String, op: String, what: => String, metrics: RepositoryWriteMetrics, logger: Logger)
+                (body: => A)(onFailure: WriteOutcome => A): A =
     try body
     catch {
       // Shutdown race: the lifecycle closed the MongoClient while a worker was mid-write. The
       // driver throws IllegalStateException("state should be: open"). Nothing to retry into.
       case NonFatal(exception) if isClientClosed(exception) =>
         logger.debug(s"$what skipped — Mongo client closing.")
-        WriteOutcome.Declined("client-closing")
+        onFailure(WriteOutcome.Declined("client-closing"))
       case NonFatal(exception) =>
         logger.warn(s"$what failed: ${exception.getMessage}")(using MarkerContext(FailedMarker))
         metrics.recordWriteFailed(collection, op, exception.getClass.getSimpleName)
-        WriteOutcome.Failed(collection, op, exception)
+        onFailure(WriteOutcome.Failed(collection, op, exception))
     }
 
   /** [[attempt]] for a write whose body only returns once it has landed. */

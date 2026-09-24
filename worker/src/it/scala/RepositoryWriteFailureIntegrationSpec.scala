@@ -44,11 +44,12 @@ class RepositoryWriteFailureIntegrationSpec extends AnyFlatSpec with Matchers wi
     await(db.runCommand(Document("collMod" -> MovieRepository.Collection, "validator" -> Document())).toFuture()); ()
   }
 
-  private object Recording extends RepositoryWriteMetrics {
+  private class Recorder extends RepositoryWriteMetrics {
     @volatile var failures: Vector[(String, String, String)] = Vector.empty
     def recordWriteFailed(collection: String, op: String, exception: String): Unit =
       failures :+= ((collection, op, exception))
   }
+  private val Recording = new Recorder
 
   private val screenings = new MongoScreeningsRepository(Some(db), writeMetrics = Recording)
   private val slots      = new MongoSlotsRepository(Some(db), writeMetrics = Recording)
@@ -86,5 +87,29 @@ class RepositoryWriteFailureIntegrationSpec extends AnyFlatSpec with Matchers wi
     withClue("the identical re-scrape must retry the write: ")(moviesDocuments shouldBe 1L)
     repository.findAll().map(_.title) shouldBe Seq(title)
     Recording.failures should have size 1
+  }
+
+  // The side collections' bulk deletes (the stranded-row and retired-venue sweeps) answered a
+  // failure with "0 rows" and a WARN, and nothing counted it. A VIEW under the collection's
+  // name is a namespace Mongo refuses to delete from, with everything else healthy.
+  "a side collection's bulk delete that Mongo refuses" should "be counted, and report no rows removed" in {
+    val viewDb = tools.IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "repository-delete-failure-spec")
+    try {
+      await(viewDb.createCollection("backing").toFuture())
+      await(viewDb.createView(SlotsRepository.Collection, "backing", Seq.empty).toFuture())
+      await(viewDb.createView(ScreeningsRepository.Collection, "backing", Seq.empty).toFuture())
+      val metrics = new Recorder
+      val viewSlots      = new MongoSlotsRepository(Some(viewDb), writeMetrics = metrics)
+      val viewScreenings = new MongoScreeningsRepository(Some(viewDb), writeMetrics = metrics)
+
+      viewSlots.deleteRows(Set("a␟b")) shouldBe 0L
+      viewSlots.deleteFilms(Set("a")) shouldBe 0L
+      viewScreenings.deleteRows(Set("a␟b")) shouldBe 0L
+      viewScreenings.deleteFilms(Set("a")) shouldBe 0L
+
+      metrics.failures.map(f => f._1 -> f._2) shouldBe Vector(
+        SlotsRepository.Collection -> "deleteRows", SlotsRepository.Collection -> "deleteFilms",
+        ScreeningsRepository.Collection -> "deleteRows", ScreeningsRepository.Collection -> "deleteFilms")
+    } finally tools.IsolatedMongoDatabase.drop(viewDb)
   }
 }
