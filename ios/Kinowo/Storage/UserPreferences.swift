@@ -174,12 +174,20 @@ final class UserPreferences: ObservableObject {
     /// in — the one selected when this build first launches — unless that
     /// country already has its own set. Idempotent; the legacy key is gone
     /// after the first run.
+    ///
+    /// Also forgets every stored validator: the device-wide set was reconciled
+    /// against whichever country was selected at the time, so no country's
+    /// ETag describes what its new bucket holds, and replaying one would draw
+    /// a 304 that strands the wrong set. The migrated flags stay, so each
+    /// country's next reconcile takes a fresh 200 and REPLACES its bucket.
     private func settleLegacyHiddenFilms() {
         store.removeObject(forKey: kHiddenFilmsMirroredLegacy)
         guard let legacy = store.stringArray(forKey: kHiddenLegacy) else { return }
         let key = kHiddenPrefix + selectedCountry.code
         if store.object(forKey: key) == nil { store.set(legacy, forKey: key) }
         store.removeObject(forKey: kHiddenLegacy)
+        store.removeObject(forKey: kHiddenFilmsETags)
+        store.removeObject(forKey: kHiddenFilmsLastModified)
     }
 
     /// Whether `country` has completed its one-time local→server hiddenFilms

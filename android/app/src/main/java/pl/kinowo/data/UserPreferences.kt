@@ -314,7 +314,7 @@ class UserPreferences(private val context: Context) : SyncPrefs {
             ?: emptySet()
 
     private fun MutablePreferences.putHidden(country: String, films: Set<String>) {
-        if (country == currentCountry()) remove(KEY_HIDDEN_LEGACY)
+        if (country == currentCountry()) dropLegacyHiddenFilms()
         this[hiddenKey(country)] = films
     }
 
@@ -322,8 +322,26 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         val legacy = this[KEY_HIDDEN_LEGACY] ?: return
         val country = currentCountry()
         if (this[hiddenKey(country)] == null) this[hiddenKey(country)] = legacy
-        remove(KEY_HIDDEN_LEGACY)
+        dropLegacyHiddenFilms()
     }
+
+    /** Retire the legacy set together with every stored validator: the
+     *  device-wide set was reconciled against whichever country was selected
+     *  at the time, so no country's ETag describes what its bucket now holds,
+     *  and replaying one would draw a 304 that strands the wrong set. The
+     *  migrated flags stay, so each country's next reconcile takes a fresh 200
+     *  and REPLACES its bucket. Mirrors iOS `settleLegacyHiddenFilms`. */
+    private fun MutablePreferences.dropLegacyHiddenFilms() {
+        if (remove(KEY_HIDDEN_LEGACY) == null) return
+        asMap().keys
+            .filter { it.name.startsWith(ETAG_PREFIX) || it.name.startsWith(LAST_MODIFIED_PREFIX) }
+            .forEach { remove(it) }
+    }
+
+    /** A stored validator, unless the legacy set is still unsettled — see
+     *  [dropLegacyHiddenFilms] for why none can be trusted until it is. */
+    private fun Preferences.validator(key: Preferences.Key<String>): String? =
+        if (this[KEY_HIDDEN_LEGACY] != null) null else this[key]
 
     override suspend fun isHiddenFilmsMigrated(country: String): Boolean =
         context.dataStore.data.map { it[migratedKey(country)] ?: false }.first()
@@ -333,10 +351,10 @@ class UserPreferences(private val context: Context) : SyncPrefs {
     }
 
     override suspend fun hiddenFilmsEtag(country: String): String? =
-        context.dataStore.data.map { it[etagKey(country)] }.first()
+        context.dataStore.data.first().validator(etagKey(country))
 
     override suspend fun hiddenFilmsLastModified(country: String): String? =
-        context.dataStore.data.map { it[lastModifiedKey(country)] }.first()
+        context.dataStore.data.first().validator(lastModifiedKey(country))
 
     override suspend fun setHiddenFilmsValidators(country: String, etag: String?, lastModified: String?) {
         context.dataStore.edit { prefs ->

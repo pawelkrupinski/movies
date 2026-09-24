@@ -3,6 +3,8 @@ package pl.kinowo.data
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -79,5 +81,43 @@ class UserPreferencesHiddenFilmsPerCountryTest {
         prefs.hide("New")
 
         assertEquals(setOf("Legacy", "New"), prefs.hiddenFilms.first())
+    }
+
+    /** The device-wide set was reconciled against whichever country was
+     *  selected, so the per-country validators an older build stored describe
+     *  server sets this device never kept apart: replaying them would draw a
+     *  304 and strand the upgraded set (possibly another country's titles, or
+     *  an empty never-written bucket) under a "you're current" answer. None is
+     *  trusted while the legacy set is unsettled, and settling it forgets them
+     *  all — the migrated flags stay, so each country's next reconcile takes a
+     *  fresh 200 and REPLACES its bucket. Mirrors iOS. */
+    @Test
+    fun theUpgradeForgetsTheValidatorsTheDeviceWideSetWasSyncedUnder() = runBlocking {
+        prefs.setHiddenFilmsMigrated("pl", true)
+        prefs.setHiddenFilmsMigrated("uk", true)
+        prefs.setHiddenFilmsValidators("pl", "\"pl\"", "lm-pl")
+        prefs.setHiddenFilmsValidators("uk", "\"uk\"", "lm-uk")
+        prefs.writeLegacyHiddenFilms(setOf("Legacy"))
+
+        assertNull(prefs.hiddenFilmsEtag("pl"))
+        assertNull(prefs.hiddenFilmsLastModified("uk"))
+
+        prefs.setCountryCode("uk")
+
+        assertNull(prefs.hiddenFilmsEtag("uk"))
+        assertNull(prefs.hiddenFilmsEtag("pl"))
+        assertTrue(prefs.isHiddenFilmsMigrated("uk"))
+    }
+
+    /** A hide made before the first reconcile folds the legacy set too — and
+     *  forgets the validators the same way. */
+    @Test
+    fun aHideThatSettlesTheLegacySetForgetsTheValidatorsToo() = runBlocking {
+        prefs.setHiddenFilmsValidators("uk", "\"uk\"", "lm-uk")
+        prefs.writeLegacyHiddenFilms(setOf("Legacy"))
+
+        prefs.hide("New")
+
+        assertNull(prefs.hiddenFilmsEtag("uk"))
     }
 }

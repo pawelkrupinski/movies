@@ -85,4 +85,30 @@ final class UserPreferencesHiddenFilmsPerCountryTests: XCTestCase {
         XCTAssertEqual(prefs.hiddenFilms, ["Legacy"])
         XCTAssertEqual(UserPreferences(store: defaults).hiddenFilms(country: "uk"), ["Legacy"])
     }
+
+    /// The device-wide set was reconciled against whichever country was
+    /// selected, so the per-country validators an older build stored describe
+    /// server sets this device never kept apart: replaying them would draw a
+    /// 304 and strand the upgraded set (possibly another country's titles, or
+    /// an empty never-written bucket) under a "you're current" answer. The
+    /// upgrade forgets them, so each country's next reconcile takes a fresh
+    /// 200 and adopts the server's set — while staying migrated, so that 200
+    /// REPLACES the stale local set rather than being unioned into it.
+    func testTheUpgradeForgetsTheValidatorsTheDeviceWideSetWasSyncedUnder() {
+        CountrySelection.select(poland, in: defaults)
+        defaults.set(["Legacy"], forKey: "hiddenFilms")
+        let older = UserPreferences(store: defaults)
+        older.setHiddenFilmsMigrated(country: "pl")
+        older.setHiddenFilmsMigrated(country: "uk")
+        older.setHiddenFilmsValidators(country: "pl", etag: "\"pl\"", lastModified: "lm-pl")
+        older.setHiddenFilmsValidators(country: "uk", etag: "\"uk\"", lastModified: "lm-uk")
+        defaults.set(["Legacy"], forKey: "hiddenFilms") // the older build's set, still unsettled
+
+        let prefs = UserPreferences(store: defaults)
+
+        XCTAssertNil(prefs.hiddenFilmsValidators(country: "pl").etag)
+        XCTAssertNil(prefs.hiddenFilmsValidators(country: "uk").lastModified)
+        XCTAssertTrue(prefs.isHiddenFilmsMigrated(country: "uk"))
+        XCTAssertEqual(prefs.hiddenFilms, ["Legacy"])
+    }
 }
