@@ -23,16 +23,26 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers {
   /** Runs the gate for both suites; `lastRun` is the head SHA each suite's newest run
    *  reports ("" for a suite that has never run). Returns what was dispatched. */
   private def kick(repo: ScratchGitRepository, head: String, lastRun: String): Seq[String] = {
+    val (status, dispatched) = kickWithStatus(repo, head, lastRun)
+    withClue("the gate's exit status: ")(status shouldBe 0)
+    dispatched
+  }
+
+  /** The gate's exit status and what it dispatched; `refuse` names a suite whose
+   *  `gh workflow run` fails. */
+  private def kickWithStatus(repo: ScratchGitRepository, head: String, lastRun: String,
+                             refuse: String = ""): (Int, Seq[String]) = {
     val dispatched = Files.createTempFile("dispatched", ".log")
     val gh = repo.script("gh",
       s"""case "$$1 $$2" in
          |  "run list")      echo "$lastRun" ;;
-         |  "workflow run")  echo "$$3" >> "$dispatched" ;;
+         |  "workflow run")  [ "$$3" = "$refuse" ] && { echo "HTTP 403" >&2; exit 1; }
+         |                   echo "$$3" >> "$dispatched" ;;
          |esac
          |""".stripMargin)
-    Process(Seq("bash", Script.toString, head, "main", "Country convergence", "US convergence"),
-      repo.root.toFile, "PATH" -> s"${gh.getParent}:${sys.env.getOrElse("PATH", "")}").!!
-    Files.readString(dispatched).linesIterator.toSeq
+    val status = Process(Seq("bash", Script.toString, head, "main", "Country convergence", "US convergence"),
+      repo.root.toFile, "PATH" -> s"${gh.getParent}:${sys.env.getOrElse("PATH", "")}").!(ProcessLogger(_ => ()))
+    (status, Files.readString(dispatched).linesIterator.toSeq)
   }
 
   private def repoWithBase(): (ScratchGitRepository, String) = {
@@ -81,6 +91,20 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers {
 
     kick(repo, head, lastRun = "") should have size 2
     kick(repo, head, lastRun = "0123456789abcdef0123456789abcdef01234567") should have size 2
+  }
+
+  it should "fail when a dispatch fails, after still trying the other suite" in {
+    val (repo, base) = repoWithBase()
+    val head = repo.commit("pipeline", "worker/src/main/Pipeline.scala" -> "v2\n")
+
+    kickWithStatus(repo, head, lastRun = base, refuse = "Country convergence") shouldBe (1, Seq("US convergence"))
+  }
+
+  it should "dispatch when it cannot tell what changed, rather than read a failed diff as nothing" in {
+    val (repo, base) = repoWithBase()
+
+    kickWithStatus(repo, "0123456789abcdef0123456789abcdef01234567", lastRun = base) shouldBe
+      (0, Seq("Country convergence", "US convergence"))
   }
 
   "Main" should "dispatch the convergence suites through the gate, not unconditionally" in {

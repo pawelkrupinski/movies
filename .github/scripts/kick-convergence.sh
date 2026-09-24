@@ -26,18 +26,29 @@ matcher="${CHANGED_PATHS_MATCHER:-$here/../actions/changed-paths/matches.sh}"
 
 head_sha="$1"; ref="$2"; shift 2
 
+# A refused dispatch fails the job (after the other suites are tried): a green job that
+# dispatched nothing reads as "nothing to verify" when a pipeline change went unverified.
+failed=0
+dispatch() {
+    gh workflow run "$1" --ref "$ref" || { echo "::error::could not dispatch $1"; failed=1; }
+}
+
 for workflow in "$@"; do
     base=$(gh run list --workflow "$workflow" --limit 1 --json headSha --jq '.[0].headSha // ""' 2>/dev/null || true)
     if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
         echo "$workflow: no earlier run to diff against (base '${base:-none}') — dispatching"
-        gh workflow run "$workflow" --ref "$ref"
+        dispatch "$workflow"
         continue
     fi
-    changed=$(git diff --name-only "$base" "$head_sha" | "$matcher" "$paths_file")
-    if [ "$changed" = "true" ]; then
+    # A failed diff is not "nothing changed": dispatch, as for a missing base.
+    if ! changed=$(git diff --name-only "$base" "$head_sha" | "$matcher" "$paths_file"); then
+        echo "$workflow: could not diff ${base:0:9}..${head_sha:0:9} — dispatching"
+        dispatch "$workflow"
+    elif [ "$changed" = "true" ]; then
         echo "$workflow: pipeline paths changed since ${base:0:9} — dispatching for ${head_sha:0:9}"
-        gh workflow run "$workflow" --ref "$ref"
+        dispatch "$workflow"
     else
         echo "$workflow: nothing since ${base:0:9} can change its verdict — not dispatched, so the run already pending keeps its place"
     fi
 done
+exit "$failed"
