@@ -85,7 +85,7 @@ object FixpointPass {
       .counters(() => w.reaskCountingQueue.reasked.map { case (t, n) => s"re-asked ${t.name}" -> n.toDouble })
       .explain(w.reaskCountingQueue.reaskedKeys.mkString("re-asked keys: ", ", ", ""))
     oplog match {
-      case Some(writes) => ledger.counter("corpus writes (oplog)")(writes.count())
+      case Some(writes) => ledger.counter("corpus writes (oplog)")(writes.count()).explain(writes.describe())
       case None =>
         ledger
           .deliveries("movies change stream")(tick => w.movieRepository.watchChanges(_ => tick(), _ => tick()))
