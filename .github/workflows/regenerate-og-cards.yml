@@ -200,9 +200,10 @@ jobs:
         if: always() && !cancelled()
         runs-on: ubuntu-latest
         timeout-minutes: 15
+        # Read only: the branch push and the PR go through the App token below, never
+        # GITHUB_TOKEN (OgCardPullRequestPermissionsSpec).
         permissions:
-            contents: write
-            pull-requests: write
+            contents: read
         steps:
             # Short-lived installation token for the "Kinowo Sync Bot" GitHub App.
             # The PR below is opened with THIS token (not GITHUB_TOKEN) so it fires
