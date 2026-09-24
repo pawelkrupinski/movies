@@ -89,7 +89,7 @@ route:
     #
     # WHAT THE MATCHER ACTUALLY CATCHES, listed because a regex is not a list and the answer
     # should not have to be re-derived: FilesystemSpaceLow/Critical, FilesystemInodesLow/Critical,
-    # FilesystemWillFillWithin7Days, FilesystemWillFillWithin24Hours, FilesystemReadOnly,
+    # FilesystemWillFillWithin7Days, FilesystemWillFillWithin3Days, FilesystemReadOnly,
     # FilesystemMetricsAbsent, WorkerDown, WorkerQueueStalled, WorkerQueueGrowingUnbounded,
     # WorkerQueueMetricsAbsent, WorkerTasksFailingRepeatedly, WorkerTaskTypeUnhandled, the
     # `ShareCard*` family (ShareCardsNearBudget, ShareCardsOverBudget, ShareCardPosterFetchFailing),
