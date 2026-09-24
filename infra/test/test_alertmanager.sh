@@ -264,6 +264,7 @@ route_is telegram-and-email alertname=ScrapeGuardStuckRejecting severity=warning
 route_is telegram-and-email alertname=WorkerQueueHeadOld severity=warning country=es task_type=ResolveTmdb
 route_is telegram-and-email alertname=ProbeFailing severity=critical country=pl kind=front-door
 route_is telegram-and-email alertname=ProbeSlow severity=warning country=uk kind=city
+route_is telegram-and-email alertname=ProbeBlockedByEdge severity=warning country=uk kind=city
 route_is telegram-and-email alertname=ProbeDiscoveryStale severity=warning
 route_is telegram-and-email alertname=FluxObjectNotReady severity=warning name=web-pl-config
 route_is telegram-and-email alertname=FluxObjectSuspended severity=warning name=web-pl-config

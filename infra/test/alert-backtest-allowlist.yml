@@ -20,6 +20,27 @@ allow:
       The dead-man's switch, `expr: vector(1)`. It fires 100% of the time by design; the thing
       that pages is its ABSENCE at the receiver.
 
+  # THREE `absent()` COMPANIONS THAT FIRE UNTIL A HAND STEP IS DONE, and whose firing IS the reminder
+  # of it -- warnings that name the step, never pages. Remove each entry once its series exists: a
+  # companion still firing after that is a real fault and should fail this check again.
+  FluxObjectStateAbsent:
+    noisy: true
+    reason: >-
+      gotk_resource_info does not exist until the pending movies-gitops change (kube-state-metrics'
+      custom-resource-state config for Flux, see flux.rules' flux-objects group) is applied. Until
+      then this warning, naming that change, is the correct and only output.
+  ProbeResultsAbsent:
+    noisy: true
+    reason: >-
+      probe_success does not exist until monitoring-1 is switched by hand to the closure that adds
+      blackbox_exporter (auto-apply refuses to start new units). Remove once the probes report.
+  ProbeDiscoveryStale:
+    noisy: true
+    reason: >-
+      The film discovery's timestamp does not exist until the same hand switch, and cannot succeed
+      until Cloudflare allows monitoring-1 (ProbeBlockedByEdge names that step). Remove once it
+      reports.
+
 # Metrics a rule reads that are published ONLY in an exceptional state, so their absence over the
 # whole window is the healthy case, not a dead selector. They are excluded from the dead-alert
 # check and from rollout clipping.

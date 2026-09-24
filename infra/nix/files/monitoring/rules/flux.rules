@@ -208,12 +208,16 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Nothing is reporting the state of Flux's objects"
+          summary: "Flux object state is not published -- the kube-state-metrics gitops change is pending or broken"
           description: >-
-            `FluxObjectNotReady` and `FluxObjectSuspended` are comparisons and cannot fire without
-            `gotk_resource_info`, so a failing or suspended deploy path is unwatched. The series
-            comes from kube-state-metrics' custom-resource-state config for the flux API groups in
-            movies-gitops/kube-state-metrics/: either it has not been applied yet, the ClusterRole
+            `FluxObjectNotReady` and `FluxObjectSuspended` cannot fire without
+            `gotk_resource_info`, so a failing or suspended deploy path is unwatched. EXPECTED
+            UNTIL THE PENDING GITOPS CHANGE IS APPLIED: movies-gitops/kube-state-metrics/ needs
+            flux-crs-config.yaml (the custom-resource-state ConfigMap), the
+            `--custom-resource-state-config-file=/etc/ksm/flux.yaml` flag and its volume mount in
+            deployment.yaml, and list/watch on the flux API groups and on
+            customresourcedefinitions in rbac.yaml -- the diff is in the commit that added the
+            flux-objects group. If it HAS been applied: the ClusterRole
             does not grant `list`/`watch` on the flux groups and on
             customresourcedefinitions.apiextensions.k8s.io, or the config names a version the
             installed CRDs no longer serve. If `KubeStateMetricsSeriesAbsent` fires too, the
