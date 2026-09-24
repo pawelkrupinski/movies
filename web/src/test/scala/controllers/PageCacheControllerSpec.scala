@@ -8,7 +8,6 @@ import play.api.test.Helpers._
 
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
-import java.time.LocalDateTime
 import java.util.zip.GZIPInputStream
 
 /** The plain `/{city}/` page is served as a pre-rendered, pre-gzipped blob to
@@ -19,7 +18,7 @@ import java.util.zip.GZIPInputStream
 class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
 
   private def cacheTestRecord(): MovieRecord = {
-    val now = LocalDateTime.now()
+    val now = TestMovieController.now
     MovieRecord(
       imdbId = Some("tt123"),
       data = Map[Source, SourceData](

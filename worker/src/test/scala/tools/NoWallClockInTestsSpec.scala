@@ -46,9 +46,6 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
   // Why a file may still read the wall clock. Each reason names the production code that reads
   // it without a Clock seam — the spec's data has to be relative to that same clock — so the
   // way to shrink this list is to give that code a Clock, not to widen the list.
-  private val MovieControllerNow =
-    "MovieController (and ConditionalResponse/DebugController) read LocalDateTime.now(city.zoneId) with no Clock " +
-      "seam, so fixture screenings are placed relative to the same system clock"
   private val MongoPath =
     "the Mongo repositories stamp updatedAt and filter upcoming showtimes with the system clock (no Clock seam " +
       "on the Mongo path), so rows are built relative to it"
@@ -75,13 +72,6 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
     "worker/src/test/scala/tools/FileEnrichmentCacheStoreSpec.scala"    -> FileAges,
     "worker/src/test/scala/tools/EnrichmentFreshnessSpec.scala"         -> FileAges
   ) ++ Seq(
-    "ApiCinemasSpec", "ApiRepertoireConditionalSpec", "AreaRoutingSpec", "BrowseFilterParamsSpec", "CanonicalLinkSpec",
-    "CityHeadingSpec", "CityRoutingSpec", "FilmLinkResilienceSpec", "FilmLookupIndexSpec", "FilmSlugRoutingSpec",
-    "LanguagePickSpec", "MovieControllerFilmLookupSpec", "PageCacheControllerSpec", "RenamedFilmPathRedirectSpec",
-    "SharedCacheableListingSpec", "SiblingCityLinksSpec", "SitemapRobotsControllerSpec"
-  ).map(spec => s"web/src/test/scala/controllers/$spec.scala" -> MovieControllerNow) ++ Seq(
-    "DebugSourceCityLabelSpec", "DebugViewPerTitleSlotSpec"
-  ).map(spec => s"web/src/test/scala/views/$spec.scala" -> MovieControllerNow) ++ Seq(
     "FoldFixture", "FreshnessStoreIntegrationSpec", "MergeScreeningsIntegrationSpec", "MongoTaskQueueIntegrationSpec",
     "MoveFilmDurabilitySpec", "MovieRepositoryIntegrationSpec", "MovieRepositoryUpdatedSinceIntegrationSpec",
     "MoviesWriteSkippedWhenUnchangedIntegrationSpec", "ProdCoverageIntegrationSpec", "RekeyScreeningsIntegrationSpec",

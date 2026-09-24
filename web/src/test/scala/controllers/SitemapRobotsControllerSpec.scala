@@ -7,7 +7,7 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import services.readmodel.{InMemoryReadModelRepository, WebReadModel}
 
-import java.time.{Instant, LocalDateTime}
+import java.time.Instant
 
 /** End-to-end checks on the two crawl-control endpoints: robots.txt advertises
  *  the sitemap + fences off the operational noise (while keeping `Allow: /` for
@@ -15,7 +15,7 @@ import java.time.{Instant, LocalDateTime}
 class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
 
   private def controller(): MovieController = {
-    val now = LocalDateTime.now()
+    val now = TestMovieController.now
     val rec = MovieRecord(
       imdbId = Some("tt1"),
       data = Map[Source, SourceData](
@@ -179,7 +179,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
   private def resolvedMovie(id: String, title: String) =
     ResolvedMovie(id, title, None, None, Nil, None, Some(2026), Nil, Nil, Nil, Nil, None, Nil, ratings, 0.0)
   private def cityScreening(id: String, filmId: String, city: String, cinema: models.Cinema) =
-    CityScreening(id, filmId, city, cinema.displayName, None, Seq(models.Showtime(LocalDateTime.now().plusDays(1), None)))
+    CityScreening(id, filmId, city, cinema.displayName, None, Seq(models.Showtime(TestMovieController.now.plusDays(1), None)))
 
   private class StubReadModel(repository: InMemoryReadModelRepository, stamps: Map[String, Instant])
       extends WebReadModel(repository) {
@@ -238,7 +238,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
 
   private def manyFilmsController(filmCount: Int): MovieController = {
     val repository = new InMemoryReadModelRepository
-    val now = LocalDateTime.now().plusDays(1)
+    val now = TestMovieController.now.plusDays(1)
     (1 to filmCount).foreach { i =>
       val id = s"film-$i|2026"
       repository.upsertMovie(resolvedMovie(id, s"Film $i"))

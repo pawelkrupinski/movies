@@ -7,7 +7,6 @@ import play.api.mvc.Result
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 
-import java.time.LocalDateTime
 import java.util.concurrent.{ConcurrentLinkedQueue, CountDownLatch, TimeUnit}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -40,7 +39,7 @@ class FilmOgImageControllerSpec extends AnyFlatSpec with Matchers {
     data = Map[Source, SourceData](Helios -> SourceData(
       title     = Some(title),
       posterUrl = Some(s"https://cinema.example/${title.toLowerCase}.jpg"),
-      showtimes = Seq(models.Showtime(LocalDateTime.now().plusHours(2), None, None, Nil))
+      showtimes = Seq(models.Showtime(TestMovieController.now.plusHours(2), None, None, Nil))
     ))
   )
 

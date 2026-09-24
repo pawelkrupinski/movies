@@ -29,7 +29,7 @@ import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 class DebugViewPerTitleSlotSpec extends AnyFlatSpec with Matchers {
 
   private implicit val city: models.City = models.Poznan
-  private val now = LocalDateTime.now()
+  private val now = LocalDateTime.parse("2026-06-10T12:00") // the view renders it as-is; no clock reads it
 
   // One film, two genuinely-distinct shown titles at the same venue — its
   // original title and its Polish title — so the two slot keys differ.

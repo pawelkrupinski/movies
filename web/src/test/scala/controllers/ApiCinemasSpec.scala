@@ -7,7 +7,6 @@ import play.api.libs.json.Json
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 
-import java.time.LocalDateTime
 
 /**
  * `GET /:city/api/cinemas` serves the static cinema universe + area grouping the
@@ -18,7 +17,7 @@ import java.time.LocalDateTime
 class ApiCinemasSpec extends AnyFlatSpec with Matchers {
 
   private def controller(servingCountry: models.Country = models.Country.default): MovieController = {
-    val now = LocalDateTime.now()
+    val now = TestMovieController.now
     val record = MovieRecord(
       imdbId = Some("tt999"),
       data = Map[Source, SourceData](

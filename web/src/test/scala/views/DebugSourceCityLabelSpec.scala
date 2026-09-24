@@ -16,7 +16,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  */
 class DebugSourceCityLabelSpec extends AnyFlatSpec with Matchers {
 
-  private val now = LocalDateTime.now()
+  private val now = LocalDateTime.parse("2026-06-10T12:00") // the view renders it as-is; no clock reads it
 
   private def recordFrom(cinema: models.Cinema): MovieRecord =
     MovieRecord(

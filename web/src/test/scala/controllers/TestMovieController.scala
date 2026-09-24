@@ -11,6 +11,12 @@ import services.readmodel.{TestReadModel, WebReadModel}
  *  `/debug*` pages have their own builder, [[TestDebugController]]. */
 object TestMovieController {
 
+  /** The instant every controller built here runs at, unless a spec passes its own. */
+  val clock: java.time.Clock = java.time.Clock.fixed(java.time.Instant.parse("2026-06-10T10:00:00Z"), java.time.ZoneOffset.UTC)
+
+  /** [[clock]]'s wall-clock time in Poland — where a spec's fixture screenings are placed from. */
+  def now: java.time.LocalDateTime = java.time.LocalDateTime.now(clock.withZone(java.time.ZoneId.of("Europe/Warsaw")))
+
   def build(
     records: Seq[(String, Option[Int], models.MovieRecord)],
     mode: Mode = Mode.Test,
@@ -39,6 +45,7 @@ object TestMovieController {
     // a fetch they can hold open and a pool they can fill.
     posters: tools.PosterFetch = (_: String) => None,
     shareCardPool: tools.ShareCardPool = new tools.ShareCardPool(threads = 2, queueDepth = 4),
+    clock: java.time.Clock = clock,
   ): (MovieController, WebReadModel) = {
     val readModel_ = readModel.getOrElse(TestReadModel.fromRecords(records))
     val ctrl  = new MovieController(
@@ -47,7 +54,7 @@ object TestMovieController {
       // spec asserting on actual rendered copy needs the checked-in
       // `messages`/`messages.en`/… behind it.
       cc                     = Helpers.stubControllerComponents(messagesApi = testsupport.TestMessages.messagesApi),
-      movieControllerService = new MovieControllerService(readModel_),
+      movieControllerService = new MovieControllerService(readModel_, clock),
       readModel              = readModel_,
       oauthProviders         = Set.empty,
       environment            = mode,

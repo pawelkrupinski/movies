@@ -24,7 +24,7 @@ class FilmLookupEncodingSpec extends AnyFlatSpec with Matchers {
     TestReadModel.fromRecords(Seq(("Drugie życie", Some(2026), MovieRecord(data = Map[Source, SourceData](
       Rialto -> SourceData(title = Some("Drugie życie"),
                            showtimes = Seq(Showtime(showAt, bookingUrl = None)))
-    ))))))
+    ))))), clock = TestMovieController.clock)
 
   "film" should "resolve a plainly-decoded title" in {
     service.film(Poznan, "Drugie życie").map(_.movie.title) shouldBe Some("Drugie życie")

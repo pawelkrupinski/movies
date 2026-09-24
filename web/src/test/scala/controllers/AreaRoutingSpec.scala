@@ -6,7 +6,6 @@ import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 
-import java.time.LocalDateTime
 
 /**
  * The metro level, after the state stopped being a place. A US metro IS the
@@ -35,7 +34,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   private val SfFilm = "Bay Area Feature"
 
   private def filmIn(cinema: Cinema, title: String, imdb: String): MovieRecord = {
-    val now = LocalDateTime.now()
+    val now = TestMovieController.now
     MovieRecord(
       imdbId = Some(imdb),
       data = Map[Source, SourceData](

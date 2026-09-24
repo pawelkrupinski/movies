@@ -6,14 +6,13 @@ import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 
-import java.time.LocalDateTime
 
 /** Behaviour specific to resolving `/{city}/movie/{slug}` — the lossy-fold cases
  *  the title lookup never had to deal with. */
 class FilmSlugRoutingSpec extends AnyFlatSpec with Matchers {
 
   private def controllerFor(titles: (String, Int)*): MovieController = {
-    val now = LocalDateTime.now()
+    val now = TestMovieController.now
     val rows = titles.map { case (title, year) =>
       val record = MovieRecord(
         imdbId = Some("tt" + math.abs(title.hashCode).toString.take(7)),

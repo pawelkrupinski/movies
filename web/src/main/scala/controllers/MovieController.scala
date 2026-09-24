@@ -173,10 +173,20 @@ case class FilmSchedule(
  * never touches the `movies` collection or a MovieRecord — the merge already
  * happened at projection time.
  */
-class MovieControllerService(readModel: WebReadModel) extends Logging {
+class MovieControllerService(
+  readModel: WebReadModel,
+  // What "now" is when a caller does not say: which showtimes are still upcoming.
+  clock: java.time.Clock = java.time.Clock.systemUTC()
+) extends Logging {
+
+  /** The current instant, on [[clock]]. */
+  def now(): java.time.Instant = clock.instant()
+
+  /** The current wall-clock time in `city`'s own zone, on [[clock]]. */
+  def nowIn(city: City): LocalDateTime = LocalDateTime.now(clock.withZone(city.zoneId))
 
   def toSchedules(city: City): Seq[FilmSchedule] =
-    toSchedules(city, LocalDateTime.now(city.zoneId))
+    toSchedules(city, nowIn(city))
 
   /** Every OTHER city in `country` with an upcoming showing of `filmId` right
    *  now — what a film page needs to link directly to its sibling-city
@@ -208,7 +218,7 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
    *  request for one film used to build the whole city's list and pick its own out
    *  of it: 2,000 joins for one card, ~4 ms a request on a 2,000-card city. */
   private def schedulesFor(city: City, filmIds: Set[String]): Seq[FilmSchedule] =
-    schedulesFor(city, readModel.screeningsForCity(city.slug).filter(s => filmIds(s.filmId)), LocalDateTime.now(city.zoneId))
+    schedulesFor(city, readModel.screeningsForCity(city.slug).filter(s => filmIds(s.filmId)), nowIn(city))
 
   private def schedulesFor(city: City, cityScreenings: Seq[CityScreening], now: LocalDateTime): Seq[FilmSchedule] = {
     cityScreenings.groupBy(_.filmId).toSeq.flatMap { case (filmId, screenings) =>
@@ -435,6 +445,7 @@ class MovieController( cc: ControllerComponents,
   private val conditionalResponse = new ConditionalResponse(
     responseCache,
     modelStamp = city => city.fold(readModel.lastModified)(c => readModel.lastModifiedFor(c.slug)),
+    now        = () => movieControllerService.now(),
   )
 
   // The plain HTML pages (`/{city}/`, `/{city}/movies`) are byte-identical for
@@ -567,7 +578,7 @@ class MovieController( cc: ControllerComponents,
     // One clock for both the filtering and the page's own expiry countdown —
     // `_repertoireView` counts forward from `renderedAt`, so it has to be the
     // instant the schedules were actually pruned at.
-    val now         = LocalDateTime.now(city.zoneId)
+    val now         = movieControllerService.nowIn(city)
     val schedules   = movieControllerService.toSchedules(city, now)
     val meta        = FilterDescription.forIndex(city, request.queryString, schedules)
     val isLargeCity = MovieControllerService.totalShowtimes(schedules) > MovieControllerService.LargeCityShowtimeThreshold
@@ -746,7 +757,7 @@ class MovieController( cc: ControllerComponents,
     withCity(city) { c =>
       val window = MovieController.dayWindow(days)
       conditionalJson(request, c, cacheKey = MovieController.windowCacheKey(window)) {
-        val today     = java.time.LocalDate.now(c.zoneId)
+        val today     = movieControllerService.nowIn(c).toLocalDate
         val schedules = movieControllerService.toSchedules(c)
         Json.toJson(MovieController.withinWindow(schedules, today, window).map(ApiFilm.from))
       }
@@ -876,7 +887,7 @@ class MovieController( cc: ControllerComponents,
     // the sitemap. See [[MovieControllerService.citiesShowing]].
     val otherCities: Seq[(City, String)] =
       movieControllerService
-        .citiesShowing(schedule.resolved._id, c, servingCountry, LocalDateTime.now(c.zoneId))
+        .citiesShowing(schedule.resolved._id, c, servingCountry, movieControllerService.nowIn(c))
         .map(sibling => sibling -> FilmHref.forSlug(schedule.slug, schedule.movie.title, sibling))
     // Nobody is rendered into this page either, so `no-cache` (revalidate, keep
     // the browser copy, bfcache works) replaces the `no-store` a signed-in render
@@ -935,7 +946,7 @@ class MovieController( cc: ControllerComponents,
     onShareCardPool { withCity(city) { c =>
       // A different (deduped, poster-bearing) set of the city's films each day —
       // and the cache key carries the date so the card regenerates daily.
-      val day   = java.time.LocalDate.now(c.zoneId)
+      val day   = movieControllerService.nowIn(c).toLocalDate
       val films = OgCardAssembly.dailyCardFilms(movieControllerService.toSchedules(c), day.toEpochDay, count = 5, normalizer)
         .map(OgCardAssembly.toCityCardFilm)
       val bytes = cityOgCardService.card(s"${c.slug}|$day", FilterDescription.cityHeading(c), c.country.brandName, c.country.shareHost, films, c.country.filmwebEnabled)

@@ -6,7 +6,6 @@ import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 
-import java.time.LocalDateTime
 
 /** The city listing's `<h1>`. The page had none at all — the city was marked up
  *  only as a `<title>` and a meta tag — and for a listing that spans several
@@ -17,7 +16,7 @@ import java.time.LocalDateTime
 class CityHeadingSpec extends AnyFlatSpec with Matchers {
 
   private def controller(): MovieController = {
-    val now = LocalDateTime.now()
+    val now = TestMovieController.now
     val rec = MovieRecord(
       imdbId = Some("tt1"),
       data = Map[Source, SourceData](

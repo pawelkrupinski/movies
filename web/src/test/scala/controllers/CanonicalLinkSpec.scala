@@ -7,7 +7,6 @@ import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 
-import java.time.LocalDateTime
 
 /** rel=canonical contract: the city index consolidates its `/movies` alias and
  *  every filter variation to the bare `/{city}/`, while og:url still reflects
@@ -22,7 +21,7 @@ import java.time.LocalDateTime
 class CanonicalLinkSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private def controller(): MovieController = {
-    val now = LocalDateTime.now()
+    val now = TestMovieController.now
     val rec = MovieRecord(
       imdbId = Some("tt1"),
       data = Map[Source, SourceData](

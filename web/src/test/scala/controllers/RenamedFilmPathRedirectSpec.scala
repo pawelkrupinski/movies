@@ -6,7 +6,6 @@ import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 
-import java.time.LocalDateTime
 
 /** The detail page and the browse facets moved off their Polish spellings
  *  (`/{city}/film…`, `/{city}/filmy`) onto `/{city}/movie…` and
@@ -22,7 +21,7 @@ import java.time.LocalDateTime
 class RenamedFilmPathRedirectSpec extends AnyFlatSpec with Matchers {
 
   private def controller(country: models.Country = models.Country.default): MovieController = {
-    val now = LocalDateTime.now()
+    val now = TestMovieController.now
     val record = MovieRecord(
       imdbId = Some("tt1375666"),
       data = Map[Source, SourceData](

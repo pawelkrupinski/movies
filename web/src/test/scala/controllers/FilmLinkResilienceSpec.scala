@@ -17,14 +17,14 @@ import java.time.LocalDateTime
  *  and renders an empty-showings page rather than a 404. */
 class FilmLinkResilienceSpec extends AnyFlatSpec with Matchers {
 
-  private val past   = LocalDateTime.now().minusDays(2)
-  private val future = LocalDateTime.now().plusDays(2)
+  private val past   = TestMovieController.now.minusDays(2)
+  private val future = TestMovieController.now.plusDays(2)
 
   private def serviceWith(showAt: LocalDateTime) = new MovieControllerService(
     TestReadModel.fromRecords(Seq(("Drugie życie", Some(2026), MovieRecord(data = Map[Source, SourceData](
       Rialto -> SourceData(title = Some("Drugie życie"),
                            showtimes = Seq(Showtime(showAt, bookingUrl = None)))
-    ))))))
+    ))))), clock = TestMovieController.clock)
 
   "film" should "still resolve a known film with no live schedule (reprojection/rekey gap or ended run) instead of 404ing" in {
     val schedule = serviceWith(past).film(Poznan, "Drugie życie")

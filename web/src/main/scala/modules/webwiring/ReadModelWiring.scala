@@ -68,5 +68,5 @@ trait ReadModelWiring { self: Wiring =>
 
   // Reads come straight from the read model; enrichment + projection happen in
   // the worker process.
-  lazy val movieControllerService = new MovieControllerService(webReadModel)
+  lazy val movieControllerService = new MovieControllerService(webReadModel, clock)
 }

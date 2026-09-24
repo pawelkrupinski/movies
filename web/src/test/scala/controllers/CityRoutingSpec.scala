@@ -6,7 +6,6 @@ import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 
-import java.time.LocalDateTime
 
 /**
  * Every page/API is now city-scoped under `/{city}/`. This pins the resolution
@@ -16,7 +15,7 @@ import java.time.LocalDateTime
 class CityRoutingSpec extends AnyFlatSpec with Matchers {
 
   private def buildController(): MovieController = {
-    val now    = LocalDateTime.now()
+    val now    = TestMovieController.now
     def filmIn(cinema: models.Cinema, title: String, imdb: String) = MovieRecord(
       imdbId = Some(imdb),
       data = Map[Source, SourceData](

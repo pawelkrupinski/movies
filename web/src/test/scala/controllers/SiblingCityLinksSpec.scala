@@ -6,7 +6,6 @@ import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 
-import java.time.LocalDateTime
 
 /**
  * A film's per-city page (`/{city}/movie/{slug}`) is a near-duplicate of the
@@ -21,7 +20,7 @@ import java.time.LocalDateTime
 class SiblingCityLinksSpec extends AnyFlatSpec with Matchers {
 
   private def recordShowingIn(title: String, cinemas: Source*): MovieRecord = {
-    val now = LocalDateTime.now()
+    val now = TestMovieController.now
     MovieRecord(
       imdbId = Some("tt00000001"),
       data = cinemas.map(_ -> SourceData(
@@ -66,7 +65,7 @@ class SiblingCityLinksSpec extends AnyFlatSpec with Matchers {
 
   "MovieControllerService.citiesShowing" should "exclude a city whose only showings of the film have already ended" in {
     val title = "Stary Film"
-    val now = LocalDateTime.now()
+    val now = TestMovieController.now
     val record = MovieRecord(
       imdbId = Some("tt00000002"),
       data = Map(
@@ -75,7 +74,7 @@ class SiblingCityLinksSpec extends AnyFlatSpec with Matchers {
       )
     )
     val (ctrl, readModel) = TestMovieController.build(Seq((title, Some(2020), record)))
-    val service = new MovieControllerService(readModel)
+    val service = new MovieControllerService(readModel, clock = TestMovieController.clock)
 
     val filmId = readModel.filmSlugs.idFor("stary-film").getOrElse(fail("expected the fixture film to have a slug"))
     val siblings = service.citiesShowing(filmId, excluding = models.Poznan, country = models.Country.default, now)

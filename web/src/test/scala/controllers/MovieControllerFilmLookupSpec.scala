@@ -6,7 +6,6 @@ import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 
-import java.time.LocalDateTime
 
 /**
  * The film page is addressed by slug (`/{city}/movie/{slug}`); the older
@@ -21,7 +20,7 @@ import java.time.LocalDateTime
 class MovieControllerFilmLookupSpec extends AnyFlatSpec with Matchers {
 
   private def buildController(title: String, year: Option[Int]): MovieController = {
-    val now = LocalDateTime.now()
+    val now = TestMovieController.now
     val record = MovieRecord(
       imdbId = Some("tt12340108"),
       data = Map[Source, SourceData](

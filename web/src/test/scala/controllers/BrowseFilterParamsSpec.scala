@@ -6,7 +6,6 @@ import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 
-import java.time.LocalDateTime
 
 /** The `/{city}/movies` browse facets are reached by query param, and the param
  *  names are English in every country — the site serves Poland, Germany and the
@@ -78,7 +77,7 @@ class BrowseFilterParamsSpec extends AnyFlatSpec with Matchers {
   }
 
   private def controller(): MovieController = {
-    val now = LocalDateTime.now()
+    val now = TestMovieController.now
     def record(title: String, data: SourceData) =
       (title, Some(2024), MovieRecord(
         imdbId = Some("tt" + math.abs(title.hashCode).toString.take(7)),

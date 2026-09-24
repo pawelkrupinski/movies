@@ -16,7 +16,7 @@ import java.util.zip.GZIPInputStream
 class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
   private def buildController(): (MovieController, WebReadModel) = {
-    val now = LocalDateTime.now()
+    val now = TestMovieController.now
     val record = MovieRecord(
       imdbId = Some("tt999"),
       data = Map[Source, SourceData](
@@ -94,7 +94,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
   // films sharing a title is the case that tells the two apart: `FilmSlugs` qualifies
   // the older one with its year, and only the ASSIGNED slug carries that.
   it should "serve the ASSIGNED slug, not a re-fold of the title" in {
-    val now = LocalDateTime.now()
+    val now = TestMovieController.now
     def rec(year: Int) = MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some("Zaproszenie"), releaseYear = Some(year),
         synopsis = Some("s"), trailerUrl = Some("https://www.youtube.com/watch?v=abc123DEF45"),
@@ -280,7 +280,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
   // was measured. `days` is what lets a client ask for the part it will show.
 
   private def windowController() = {
-    val today = LocalDateTime.now()
+    val today = TestMovieController.now
     def rec(title: String, when: LocalDateTime) = MovieRecord(
       imdbId = Some("tt" + title.hashCode.abs),
       data = Map[Source, SourceData](Helios -> SourceData(

@@ -7,7 +7,6 @@ import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 
-import java.time.LocalDateTime
 
 /**
  * The city listing may be held by a shared cache, and this is why that is safe.
@@ -27,7 +26,7 @@ import java.time.LocalDateTime
  */
 class SharedCacheableListingSpec extends AnyFlatSpec with Matchers {
 
-  private val Now = LocalDateTime.now()
+  private val Now = TestMovieController.now
 
   private def controller() = TestMovieController.build(
     Seq(("Test Film", Some(2024), MovieRecord(

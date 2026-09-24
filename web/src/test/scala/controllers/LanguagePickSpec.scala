@@ -8,7 +8,6 @@ import play.api.mvc.Cookie
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 
-import java.time.LocalDateTime
 
 /**
  * The plain city listing renders the SAME bytes for every visitor, no matter
@@ -36,7 +35,7 @@ import java.time.LocalDateTime
  */
 class LanguagePickSpec extends AnyFlatSpec with Matchers {
 
-  private val Now = LocalDateTime.now()
+  private val Now = TestMovieController.now
 
   private def controller() = TestMovieController.build(
     Seq(("Test Film", Some(2024), MovieRecord(
