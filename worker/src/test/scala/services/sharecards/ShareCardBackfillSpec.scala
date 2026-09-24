@@ -92,7 +92,7 @@ class ShareCardRescraperSpec extends AnyFlatSpec with Matchers {
     rig.readModel.upsertScreening(screening(movie._id, "poznan"))
     rig.readModel.upsertScreening(screening(movie._id, "wroclaw"))
     val graph = new CountingGraph
-    new ShareCardRescraper(Some(graph), rig.readModel, Country.default, rig.metrics).rescrape(movie._id) shouldBe true
+    new ShareCardRescraper(Some(graph), rig.readModel, Country.default, rig.metrics, rig.clock).rescrape(movie._id) shouldBe true
     graph.urls.toSeq shouldBe Seq("https://kinowo.net/poznan/movie/diuna", "https://kinowo.net/wroclaw/movie/diuna")
   }
 
@@ -101,8 +101,25 @@ class ShareCardRescraperSpec extends AnyFlatSpec with Matchers {
     val movie = film()
     rig.readModel.upsertMovie(movie); rig.readModel.upsertScreening(screening(movie._id))
     new ShareCardRescraper(Some(new CountingGraph(failing = Set("https://kinowo.net/poznan/movie/diuna"))), rig.readModel,
-      Country.default, rig.metrics).rescrape(movie._id) shouldBe false
-    new ShareCardRescraper(None, rig.readModel, Country.default, rig.metrics).rescrape(movie._id) shouldBe true
+      Country.default, rig.metrics, rig.clock).rescrape(movie._id) shouldBe false
+    new ShareCardRescraper(None, rig.readModel, Country.default, rig.metrics, rig.clock).rescrape(movie._id) shouldBe true
+  }
+
+  it should "read the film slugs once for a burst of re-scrapes, and again for a film they lack" in {
+    val rig = new Rig
+    val first  = film()
+    val second = film(id = "fsecond", title = "Oppenheimer")
+    rig.readModel.upsertMovie(first); rig.readModel.upsertScreening(screening(first._id))
+    val graph     = new CountingGraph
+    val rescraper = new ShareCardRescraper(Some(graph), rig.readModel, Country.default, rig.metrics, rig.clock)
+    val before    = rig.readModel.findAllMoviesCalls.get
+    rescraper.rescrape(first._id); rescraper.rescrape(first._id)
+    rig.readModel.findAllMoviesCalls.get - before shouldBe 1
+
+    rig.readModel.upsertMovie(second); rig.readModel.upsertScreening(screening(second._id))
+    rescraper.rescrape(second._id)                                          // new since: read again
+    rig.readModel.findAllMoviesCalls.get - before shouldBe 2
+    graph.urls.last shouldBe "https://kinowo.net/poznan/movie/oppenheimer"
   }
 
   "The landing of a pending film's card" should "queue one spaced-out re-scrape task" in {

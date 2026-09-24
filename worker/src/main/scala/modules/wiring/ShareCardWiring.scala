@@ -53,7 +53,7 @@ trait ShareCardWiring { self: WorkerWiring =>
       new ShareCardBackfillHandler(shareCardBackfill),
       new PruneShareCardsHandler(shareCardJanitor),
       new ReleaseShareCardHoldHandler(() => readModelProjector.releaseExpiredHolds()),
-      new RescrapeShareCardHandler(new ShareCardRescraper(FacebookGraph.fromEnv(), readModelRepository, country, shareCardMetrics)))
+      new RescrapeShareCardHandler(new ShareCardRescraper(FacebookGraph.fromEnv(), readModelRepository, country, shareCardMetrics, clock)))
 
   /** The recurring enqueues: a backfill tick every minute (first three minutes after boot), the
    *  budget pass every ten, the full prune daily (first five minutes after boot). Each window is

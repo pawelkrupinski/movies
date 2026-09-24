@@ -9,7 +9,7 @@ import java.net.URI
 import java.net.URLEncoder
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.nio.charset.StandardCharsets
-import java.time.Duration
+import java.time.{Clock, Duration}
 
 /** Asks Facebook to fetch a page again, so a preview it cached (image included) is replaced. */
 trait FacebookGraph {
@@ -48,7 +48,7 @@ object FacebookGraph {
  * ([[ShareCardService.RescrapeSpacing]]).
  */
 class ShareCardRescraper(graph: Option[FacebookGraph], reader: ReadModelReader, country: Country,
-                         metrics: ShareCardMetrics) extends Logging {
+                         metrics: ShareCardMetrics, clock: Clock) extends Logging {
 
   /** False when a request failed and the task should be retried. */
   def rescrape(filmId: String): Boolean = graph match {
@@ -68,7 +68,7 @@ class ShareCardRescraper(graph: Option[FacebookGraph], reader: ReadModelReader, 
 
   /** The film's page in every city it screens in, on the country's public origin. */
   private[sharecards] def pageUrls(filmId: String): Seq[String] = {
-    val slug   = FilmSlugs(reader.findAllMovies()).slugFor(filmId)
+    val slug   = slugFor(filmId)
     val cities = reader.findAllScreeningRefs().iterator.filter(_.filmId == filmId)
       .map(_._id.stripPrefix(s"$filmId|").takeWhile(_ != '|')).toSet
     (for {
@@ -77,4 +77,24 @@ class ShareCardRescraper(graph: Option[FacebookGraph], reader: ReadModelReader, 
       city   <- country.cities.filter(c => cities(c.slug))
     } yield origin + CityPath.film(city, s)).sorted
   }
+
+  // A film's slug depends on every film (collisions are settled across the corpus), so it takes a
+  // read of all of `web_movies`; a burst of re-scrapes (a template change re-draws every recent
+  // film) shares one read for [[ShareCardRescraper.SlugsFor]]. A film the read lacks re-reads.
+  private var slugs = Option.empty[(FilmSlugs, java.time.Instant)]
+  private def slugFor(filmId: String): Option[String] = synchronized {
+    val fresh = slugs.filter { case (_, at) => clock.instant().isBefore(at.plusMillis(ShareCardRescraper.SlugsFor.toMillis)) }
+      .map(_._1).filter(_.slugFor(filmId).isDefined)
+    fresh.getOrElse {
+      val read = FilmSlugs(reader.findAllMovies())
+      slugs = Some(read -> clock.instant())
+      read
+    }.slugFor(filmId)
+  }
+}
+
+object ShareCardRescraper {
+  import scala.concurrent.duration.*
+  /** How long one read of the film slugs serves re-scrapes. */
+  val SlugsFor: FiniteDuration = 10.minutes
 }
