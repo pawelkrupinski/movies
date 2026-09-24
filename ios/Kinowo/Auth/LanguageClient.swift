@@ -11,8 +11,21 @@ protocol LanguageClient: AnyObject {
     func fetch() async throws -> String?
 
     /// Push this device's explicit pick as the account's. Throws when the
-    /// server did not accept it, so the caller keeps it pending.
+    /// server did not accept it: `LanguagePushRefused` when it never will (the
+    /// caller then stops owing the pick), anything else when a retry may land
+    /// (the caller keeps it pending).
     func push(_ language: String) async throws
+}
+
+/// The server refused a pushed pick for good — a 4xx other than 401 (signed
+/// out), 408 (timed out) or 429 (throttled): a language it does not know, which
+/// no amount of resending changes. Same rule as the web's `_retryable`.
+struct LanguagePushRefused: Error, Equatable {
+    let statusCode: Int
+
+    static func isPermanent(_ statusCode: Int) -> Bool {
+        (400..<500).contains(statusCode) && ![401, 408, 429].contains(statusCode)
+    }
 }
 
 final class HttpLanguageClient: LanguageClient {
@@ -49,7 +62,9 @@ final class HttpLanguageClient: LanguageClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(body)
         let (_, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+        guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+        guard (200..<300).contains(http.statusCode) else {
+            if LanguagePushRefused.isPermanent(http.statusCode) { throw LanguagePushRefused(statusCode: http.statusCode) }
             throw URLError(.badServerResponse)
         }
     }

@@ -210,8 +210,7 @@ class StateSyncService(
             prefs.pendingLanguagePush()?.let { return pushLanguage(it) }
             val localLang = prefs.selectedLanguageTag.first()
             if (remoteLang != null) {
-                accountLanguage = remoteLang
-                if (remoteLang != localLang) prefs.setLanguageTag(remoteLang)
+                adopt(remoteLang)
             } else if (localLang != null) {
                 prefs.setPendingLanguagePush(localLang)
                 pushLanguage(localLang)
@@ -238,7 +237,20 @@ class StateSyncService(
         }.onSuccess {
             accountLanguage = language
             if (prefs.pendingLanguagePush() == language) prefs.setPendingLanguagePush(null)
+        }.onFailure { failure ->
+            // Refused for good: it can never land, so stop owing it, and take
+            // the account's pick instead — never pushing this one back.
+            if (failure is LanguagePushRefused && prefs.pendingLanguagePush() == language) {
+                prefs.setPendingLanguagePush(null)
+                runCatchingCancellable { languageClient.fetch() }.getOrNull()?.let { adopt(it) }
+            }
         }
+    }
+
+    /** Take the account's pick as this device's. */
+    private suspend fun adopt(remoteLang: String) {
+        accountLanguage = remoteLang
+        if (remoteLang != prefs.selectedLanguageTag.first()) prefs.setLanguageTag(remoteLang)
     }
 
     /** React to every local language change after the login reconcile. A

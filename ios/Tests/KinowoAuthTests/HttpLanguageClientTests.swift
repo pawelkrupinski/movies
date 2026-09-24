@@ -24,6 +24,28 @@ final class HttpLanguageClientTests: XCTestCase {
         } catch {}
     }
 
+    /// A 400 (a language this server does not know) is refused for good — a
+    /// different error from one worth retrying, so the caller can stop.
+    func testPushReportsAPermanentRefusalAsSuch() async {
+        do {
+            try await client(answering: 400).push("it")
+            XCTFail("a 400 must not read as a successful push")
+        } catch {
+            XCTAssertEqual((error as? LanguagePushRefused)?.statusCode, 400)
+        }
+    }
+
+    func testPushReportsARetryableFailureAsRetryable() async {
+        for status in [401, 408, 429, 503] {
+            do {
+                try await client(answering: status).push("de")
+                XCTFail("a \(status) must not read as a successful push")
+            } catch {
+                XCTAssertFalse(error is LanguagePushRefused, "\(status) is worth retrying")
+            }
+        }
+    }
+
     func testPushSucceedsOnA2xx() async throws {
         try await client(answering: 204).push("de")
     }

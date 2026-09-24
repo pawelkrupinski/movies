@@ -24,8 +24,20 @@ interface LanguageClient {
     /** The account's current pick, or null if it hasn't made one. */
     suspend fun fetch(): String?
 
-    /** Push this device's explicit pick as the account's. */
+    /** Push this device's explicit pick as the account's. Throws when the
+     *  server did not accept it: [LanguagePushRefused] when it never will (the
+     *  caller then stops owing the pick), anything else when a retry may land. */
     suspend fun push(language: String)
+}
+
+/** The server refused a pushed pick for good — a 4xx other than 401 (signed
+ *  out), 408 (timed out) or 429 (throttled): a language it does not know, which
+ *  no amount of resending changes. Same rule as iOS `LanguagePushRefused` and the
+ *  web's `_retryable`. */
+class LanguagePushRefused(val statusCode: Int) : IOException("HTTP $statusCode") {
+    companion object {
+        fun isPermanent(statusCode: Int): Boolean = statusCode in 400..499 && statusCode !in setOf(401, 408, 429)
+    }
 }
 
 class HttpLanguageClient(
@@ -64,6 +76,7 @@ class HttpLanguageClient(
             .put(payload.toRequestBody(JSON_MEDIA))
             .build()
         client.newCall(request).execute().use { response ->
+            if (LanguagePushRefused.isPermanent(response.code)) throw LanguagePushRefused(response.code)
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
         }
     }

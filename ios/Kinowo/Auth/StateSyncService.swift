@@ -219,8 +219,7 @@ final class StateSyncService: ObservableObject {
             let remoteLanguage = try await languageClient.fetch()
             if let pending = pendingLanguage { return await pushLanguage(pending) }
             if let remoteLanguage {
-                accountLanguage = remoteLanguage
-                if remoteLanguage != prefs.selectedLanguage { prefs.setLanguage(remoteLanguage) }
+                adopt(remoteLanguage)
             } else if let explicit = prefs.explicitLanguage {
                 pendingLanguage = explicit
                 await pushLanguage(explicit)
@@ -241,6 +240,14 @@ final class StateSyncService: ObservableObject {
             try await languageClient.push(language)
             accountLanguage = language
             if pendingLanguage == language { pendingLanguage = nil }
+        } catch is LanguagePushRefused {
+            // Refused for good: it can never land, so stop owing it, and take
+            // the account's pick instead — never pushing this one back.
+            if pendingLanguage == language {
+                pendingLanguage = nil
+                if let remote = try? await languageClient.fetch() { adopt(remote) }
+            }
+            return
         } catch {
             // Left pending — see above.
             return
@@ -254,6 +261,12 @@ final class StateSyncService: ObservableObject {
             pendingLanguage = current
             await pushLanguage(current)
         }
+    }
+
+    /// Take the account's pick as this device's.
+    private func adopt(_ remoteLanguage: String) {
+        accountLanguage = remoteLanguage
+        if remoteLanguage != prefs.selectedLanguage { prefs.setLanguage(remoteLanguage) }
     }
 
     /// Push every local hide/unhide/clear-all immediately — see the class

@@ -236,6 +236,32 @@ final class StateSyncServiceTests: XCTestCase {
         _ = sync
     }
 
+    /// A push the server refuses for good (a language this server does not
+    /// know) can never land: kept pending, it was re-pushed on every reconcile
+    /// and the account's own pick never came back. It is dropped, and the
+    /// account's pick adopted, without pushing the refused one again.
+    func testALanguagePushRefusedForGoodIsDroppedForTheAccountsPick() async throws {
+        languageClient.remote = "de"
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.selectedLanguage == "de" }
+        try await Task.sleep(for: .milliseconds(100))
+
+        languageClient.refusePush = true
+        let attempted = expectation(description: "push attempted")
+        languageClient.onPush = { _ in attempted.fulfill() }
+        prefs.setLanguage("es")
+        await fulfillment(of: [attempted], timeout: 1)
+        languageClient.onPush = nil
+
+        try await waitUntil { self.prefs.selectedLanguage == "de" }
+        let attempts = languageClient.pushesStarted
+        await sync.reconcileCurrentCountry()
+        XCTAssertEqual(prefs.selectedLanguage, "de")
+        XCTAssertEqual(languageClient.pushesStarted, attempts, "the refused pick must not be pushed again")
+        _ = sync
+    }
+
     /// A pick whose push failed survives a relaunch: the next session's
     /// login reconcile pushes it instead of restoring the account's older
     /// value over it.
@@ -734,6 +760,9 @@ final class FakeLanguageClient: LanguageClient {
     /// server does.
     var remote: String?
     var shouldFailPush = false
+    /// Refuse every push for good, as the server answers a language it does
+    /// not know (400).
+    var refusePush = false
     var shouldFailFetch = false
     /// Whether the session is signed in; a signed-out one is refused, as the
     /// server answers it 401.
@@ -770,6 +799,7 @@ final class FakeLanguageClient: LanguageClient {
         if let beforePush { await beforePush() }
         defer { onPush?(language) }
         if shouldFailPush { throw URLError(.badServerResponse) }
+        if refusePush { throw LanguagePushRefused(statusCode: 400) }
         if !signedIn { throw URLError(.userAuthenticationRequired) }
         pushes.append(language)
         remote = language

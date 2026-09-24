@@ -5,6 +5,7 @@ import pl.kinowo.auth.HiddenFilmsClient
 import pl.kinowo.auth.HiddenFilmsFetchResult
 import pl.kinowo.auth.HiddenFilmsState
 import pl.kinowo.auth.LanguageClient
+import pl.kinowo.auth.LanguagePushRefused
 import pl.kinowo.data.HiddenFilmsOp
 import pl.kinowo.data.SyncPrefs
 import pl.kinowo.model.Country
@@ -133,6 +134,9 @@ internal class FakeHiddenFilmsClient : HiddenFilmsClient {
 internal class FakeLanguageClient : LanguageClient {
     var remote: String? = null
     var shouldFailPush = false
+    /** Refuse every push for good, as the server answers a language it does
+     *  not know (400). */
+    var refusePush = false
     var shouldFailFetch = false
     /** As [FakeHiddenFilmsClient.signedIn]. */
     var signedIn = true
@@ -159,6 +163,7 @@ internal class FakeLanguageClient : LanguageClient {
     override suspend fun push(language: String) {
         pushAttempts++
         if (shouldFailPush) throw IOException("HTTP 503")
+        if (refusePush) throw LanguagePushRefused(400)
         if (!signedIn) throw IOException("HTTP 401")
         pushes += language
         remote = language
