@@ -16,6 +16,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import pl.kinowo.net.PersistentCookieJar
+import pl.kinowo.runCatchingCancellable
 
 /**
  * Owns the signed-in session — the Android counterpart of iOS `AuthService`.
@@ -63,7 +64,7 @@ class AuthRepository(
      *  bare `viewModelScope.launch`, where an escaping exception would crash
      *  the app. */
     private suspend fun adoptProfileFrom(request: Request) = withContext(Dispatchers.IO) {
-        runCatching {
+        runCatchingCancellable {
             client.newCall(request).execute().use { response ->
                 if (response.isSuccessful) {
                     _user.value = json.decodeFromString<UserProfile>(response.body.string())
@@ -74,7 +75,7 @@ class AuthRepository(
     }
 
     suspend fun signOut() = withContext(Dispatchers.IO) {
-        runCatching { client.newCall(post("auth/logout", "")).execute().close() }
+        runCatchingCancellable { client.newCall(post("auth/logout", "")).execute().close() }
         clearSession()
     }
 
@@ -84,7 +85,7 @@ class AuthRepository(
             .header("User-Agent", UA)
             .delete()
             .build()
-        runCatching { client.newCall(request).execute().close() }
+        runCatchingCancellable { client.newCall(request).execute().close() }
         clearSession()
     }
 

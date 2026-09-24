@@ -7,6 +7,8 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import kotlin.coroutines.cancellation.CancellationException
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -38,8 +40,8 @@ class AuthRepositoryFailureTest {
         server.shutdown()
     }
 
-    private fun repository(baseUrl: String) = AuthRepository(
-        OkHttpClient(),
+    private fun repository(baseUrl: String, client: OkHttpClient = OkHttpClient()) = AuthRepository(
+        client,
         PersistentCookieJar(ApplicationProvider.getApplicationContext()),
         baseUrl,
     )
@@ -61,5 +63,20 @@ class AuthRepositoryFailureTest {
         auth.exchangeCode("one-shot")
 
         assertNull(auth.user.value)
+    }
+
+    /** Only FAILURES are swallowed: a cancellation (the ViewModel cleared on a
+     *  country switch) must propagate rather than return as if the session
+     *  check had merely failed. */
+    @Test
+    fun checkSessionPropagatesCancellation() = runBlocking {
+        val cancelling = OkHttpClient.Builder()
+            .addInterceptor { throw CancellationException("ViewModel cleared") }
+            .build()
+        val auth = repository(server.url("").toString().trimEnd('/'), cancelling)
+
+        val thrown = runCatching { auth.checkSession() }.exceptionOrNull()
+
+        assertTrue("expected a CancellationException, got $thrown", thrown is CancellationException)
     }
 }
