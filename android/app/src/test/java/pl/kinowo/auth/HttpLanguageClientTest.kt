@@ -4,13 +4,9 @@ import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
-import pl.kinowo.contracts.RetryClassificationTable
-import pl.kinowo.contracts.answerEveryRequestWith
+import pl.kinowo.contracts.assertEveryCallSettlesAsTheTableSays
 
 /** [HttpLanguageClient.push] tells a pick the server refuses for good (a
  *  language it does not know) from a failure worth retrying, so
@@ -39,21 +35,11 @@ class HttpLanguageClientTest {
      *  web and iOS hold their own rule to as well. */
     @Test
     fun everyStatusSettlesAsTheRetryClassificationTableSays() = runBlocking {
-        val table = RetryClassificationTable.load()
-        assertTrue("user-state:language-push" in table.sourcesConsumedBy("android"))
-        val rows = table.rowsFor("user-state:language-push")
-        assertTrue(rows.isNotEmpty())
-        for (row in rows) {
-            val status = requireNotNull(row.status) { "$row names no status" }
-            assertEquals("$row", row.isPermanent, LanguagePushRefused.isPermanent(status))
-            server.answerEveryRequestWith(status)
-            try {
-                client.push("de")
-                fail("a $status must not read as a successful push")
-            } catch (failure: Exception) {
-                assertEquals("$row", row.isPermanent, failure is LanguagePushRefused)
-                if (row.isPermanent) assertEquals(status, (failure as LanguagePushRefused).statusCode)
-            }
-        }
+        server.assertEveryCallSettlesAsTheTableSays(
+            source = "user-state:language-push",
+            isPermanent = { LanguagePushRefused.isPermanent(it) },
+            refusedStatus = { (it as? LanguagePushRefused)?.statusCode },
+            calls = listOf("push" to { client.push("de") }),
+        )
     }
 }

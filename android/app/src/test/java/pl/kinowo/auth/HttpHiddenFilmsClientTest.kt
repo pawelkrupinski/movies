@@ -4,13 +4,9 @@ import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
-import pl.kinowo.contracts.RetryClassificationTable
-import pl.kinowo.contracts.answerEveryRequestWith
+import pl.kinowo.contracts.assertEveryCallSettlesAsTheTableSays
 
 /** [HttpHiddenFilmsClient]'s writes tell an edit the server refuses for good
  *  from a failure worth resending, so [StateSyncService] can stop owing the
@@ -39,28 +35,15 @@ class HttpHiddenFilmsClientTest {
      *  as well — for a hide, an unhide and a clear alike. */
     @Test
     fun everyWriteSettlesEveryStatusAsTheRetryClassificationTableSays() = runBlocking {
-        val table = RetryClassificationTable.load()
-        assertTrue("user-state:hidden-films-write" in table.sourcesConsumedBy("android"))
-        val rows = table.rowsFor("user-state:hidden-films-write")
-        assertTrue(rows.isNotEmpty())
-        val writes: List<Pair<String, suspend () -> HiddenFilmsState>> = listOf(
-            "hide" to { client.hide("pl", "Film") },
-            "unhide" to { client.unhide("pl", "Film") },
-            "clear" to { client.clear("pl") },
+        server.assertEveryCallSettlesAsTheTableSays(
+            source = "user-state:hidden-films-write",
+            isPermanent = { HiddenFilmsWriteRefused.isPermanent(it) },
+            refusedStatus = { (it as? HiddenFilmsWriteRefused)?.statusCode },
+            calls = listOf(
+                "hide" to { client.hide("pl", "Film") },
+                "unhide" to { client.unhide("pl", "Film") },
+                "clear" to { client.clear("pl") },
+            ),
         )
-        for (row in rows) {
-            val status = requireNotNull(row.status) { "$row names no status" }
-            assertEquals("$row", row.isPermanent, HiddenFilmsWriteRefused.isPermanent(status))
-            server.answerEveryRequestWith(status)
-            for ((name, write) in writes) {
-                try {
-                    write()
-                    fail("a $status must not read as a successful $name")
-                } catch (failure: Exception) {
-                    assertEquals("$name: $row", row.isPermanent, failure is HiddenFilmsWriteRefused)
-                    if (row.isPermanent) assertEquals(status, (failure as HiddenFilmsWriteRefused).statusCode)
-                }
-            }
-        }
     }
 }

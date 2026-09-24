@@ -30,21 +30,11 @@ final class HttpLanguageClientTests: XCTestCase {
     /// Every status is a row of the repo's retry-classification table, which
     /// the web and Android hold their own rule to as well.
     func testPushSettlesEveryStatusAsTheRetryClassificationTableSays() async throws {
-        let table = try RetryClassificationTable.load()
-        XCTAssertTrue(table.sources(consumedBy: "ios").contains("user-state:language-push"))
-        let rows = try table.rows(for: "user-state:language-push")
-        XCTAssertFalse(rows.isEmpty)
-        for row in rows {
-            let status = try XCTUnwrap(row.status, "\(row)")
-            XCTAssertEqual(LanguagePushRefused.isPermanent(status), row.isPermanent, "\(row)")
-            do {
-                try await client(answering: status).push("de")
-                XCTFail("a \(status) must not read as a successful push")
-            } catch {
-                XCTAssertEqual(error is LanguagePushRefused, row.isPermanent, "\(row)")
-                if row.isPermanent { XCTAssertEqual((error as? LanguagePushRefused)?.statusCode, status) }
-            }
-        }
+        try await assertEveryCallSettlesAsTheTableSays(
+            source: "user-state:language-push",
+            isPermanent: LanguagePushRefused.isPermanent,
+            refusedStatus: { ($0 as? LanguagePushRefused)?.statusCode },
+            calls: [("push", { try await HttpLanguageClient(session: $0).push("de") })])
     }
 
     func testPushSucceedsOnA2xx() async throws {
