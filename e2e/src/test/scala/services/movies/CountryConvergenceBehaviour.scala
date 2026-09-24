@@ -13,7 +13,7 @@ import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
 import services.titlerules.TitleRuleSet
 import tools.{ArchiveReplayWiring, ConvergenceStorage, CorpusCoverage, CorpusFixture, CorpusProvenance, CountryScrapeCorpus,
-  EnrichmentCache, EnrichmentFreshness, Env, FileEnrichmentCacheStore, MissingFixtures, PhaseTimer, ProdCoverageBaseline,
+  EnrichmentCache, EnrichmentFreshness, Env, FileEnrichmentCacheStore, FixpointPass, MissingFixtures, PhaseTimer, ProdCoverageBaseline,
   SameThreadExecutionBudget}
 
 import java.time.{Instant, LocalDateTime}
@@ -975,6 +975,21 @@ abstract class CountryConvergenceBehaviour(
       withClue(s"${country.displayName} did not settle:\n${unsettled.mkString("\n\n")}\n") {
         unsettled shouldBe empty
       }
+
+      // ── 4) One more FULL tick does no work on any axis ────────────────────────
+      // The ticks above re-scrape and settle; production's tick also projects, sweeps the
+      // TMDB re-try period and re-dispatches ratings, and each of those has shipped a way to
+      // work over unchanged input (see `ChurnLedger`). `FixpointPass` runs all of it — once
+      // to let the stages the ticks above skip take their first look, then once more, which
+      // must write nothing to the corpus, re-key nothing, re-project nothing and re-ask
+      // nothing. Writes are counted off the oplog: this storage is Mongo, whose change
+      // stream delivers too late to count.
+      FixpointPass.attachProjector(w)
+      FixpointPass.run(w)
+      val corpusWrites = storage.corpusWrites()
+      try FixpointPass.ledger(w, corpusWrites)
+        .assertNoChurn(s"a further full tick over ${country.displayName}'s unchanged corpus")(FixpointPass.run(w))
+      finally corpusWrites.foreach(_.close())
     }
   }
 

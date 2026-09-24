@@ -62,6 +62,13 @@ trait ConvergenceStorage {
    *  transaction on the connection rather than the repository handle. */
   def stagingFolder(movieRepository: MovieRepository): StagingFolder
 
+  /** A counter of the writes this storage has taken to the collections the pipeline's OUTPUT
+   *  lives in — the film documents, their side rows, staging and the read model — from the
+   *  moment it is called. What a fixpoint pass (`FixpointPass`) holds to zero; bookkeeping
+   *  (the task queue, freshness stamps) is left out because a pass legitimately claims and
+   *  stamps. `None` for a storage with no oplog to count off. */
+  def corpusWrites(): Option[OplogWrites] = None
+
   def close(): Unit = ()
 }
 
@@ -114,6 +121,10 @@ object ConvergenceStorage {
     extends ConvergenceStorage {
 
     override val describe = s"MongoDB $name"
+
+    override def corpusWrites(): Option[OplogWrites] = Some(new OplogWrites(uri, name, Seq(
+      MovieRepository.Collection, ScreeningsRepository.Collection, SlotsRepository.Collection,
+      StagingRepository.Collection, "web_movies", "web_screenings")))
 
     private val shared = Some(database)
 
