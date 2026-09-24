@@ -31,6 +31,8 @@ trait UserStateRepository {
 
   /** State for `userId`, or `None` when nothing's been persisted yet —
    *  callers treat `None` as `UserState.empty(userId)`. */
+  /** The stored state, `None` when there is none yet. THROWS when the store cannot
+   *  be read — never `None`, which the controller serves as an empty state. */
   def find(userId: String): Option[UserState]
 
   /** Set the fields a legacy `PUT /api/me/state` body carried (see
@@ -169,13 +171,9 @@ class MongoUserStateRepository(
   def enabled: Boolean = coll.isDefined
 
   def find(userId: String): Option[UserState] = coll.flatMap { c =>
-    Try {
-      Await.result(c.find(Filters.eq("userId", userId)).headOption(), 10.seconds)
-    }.recover {
-      case exception: Throwable =>
-        logger.warn(s"UserStateRepository.find($userId) failed: ${exception.getMessage}")
-        None
-    }.getOrElse(None)
+    // A read failure PROPAGATES: `None` means "no state yet", which the controller would
+    // serve as an empty hidden-films list with a fresh validator.
+    Await.result(c.find(Filters.eq("userId", userId)).headOption(), 10.seconds)
   }
 
   def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange, now: Instant): Option[UserState] =

@@ -27,7 +27,10 @@ trait UserRepository {
   def enabled: Boolean
 
   /** Look up by id (= lowercased email). Used on every authenticated
-   *  request after session decode, and during OAuth callback. */
+   *  request after session decode, and during OAuth callback.
+   *
+   *  Every lookup THROWS when the store cannot be read: `None` is "no such user",
+   *  and each caller acts on that answer. */
   def findById(id: String): Option[User]
 
   def findByProviderSub(provider: String, providerSub: String): Option[User]
@@ -94,27 +97,17 @@ class MongoUserRepository(
   def enabled: Boolean = coll.isDefined
 
   def findById(id: String): Option[User] = coll.flatMap { c =>
-    Try {
-      Await.result(c.find(Filters.eq("id", id)).headOption(), 10.seconds)
-    }.recover {
-      case exception: Throwable =>
-        logger.warn(s"UserRepository.findById($id) failed: ${exception.getMessage}")
-        None
-    }.getOrElse(None)
+    // A read failure PROPAGATES: `None` means "no such row", and callers act on it —
+    // sign the visitor out, rebuild the user as new, confirm a deletion that never ran.
+    Await.result(c.find(Filters.eq("id", id)).headOption(), 10.seconds)
   }
 
   def findByProviderSub(provider: String, providerSub: String): Option[User] = coll.flatMap { c =>
-    Try {
-      Await.result(
-        c.find(Filters.and(Filters.eq("provider", provider), Filters.eq("providerSub", providerSub)))
-         .headOption(),
-        10.seconds
-      )
-    }.recover {
-      case exception: Throwable =>
-        logger.warn(s"UserRepository.findByProviderSub($provider, …) failed: ${exception.getMessage}")
-        None
-    }.getOrElse(None)
+    Await.result(
+      c.find(Filters.and(Filters.eq("provider", provider), Filters.eq("providerSub", providerSub)))
+       .headOption(),
+      10.seconds
+    )
   }
 
   def findByEmail(email: String): Option[User] = coll.flatMap { c =>
@@ -124,13 +117,7 @@ class MongoUserRepository(
     // path-of-least-resistance — anchored to start + end so we don't
     // match partial substrings.
     val pattern = "^" + java.util.regex.Pattern.quote(email) + "$"
-    Try {
-      Await.result(c.find(Filters.regex("email", pattern, "i")).headOption(), 10.seconds)
-    }.recover {
-      case exception: Throwable =>
-        logger.warn(s"UserRepository.findByEmail(…) failed: ${exception.getMessage}")
-        None
-    }.getOrElse(None)
+    Await.result(c.find(Filters.regex("email", pattern, "i")).headOption(), 10.seconds)
   }
 
   def delete(id: String): Unit = coll.foreach { c =>

@@ -158,6 +158,17 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
       FakeRequest("GET", s"/api/me/$country/hidden-films").withSession("userId" -> userId).withHeaders(headers*)
     )
 
+  // A store that could not be READ used to answer as though the user had no state: 200,
+  // an empty list, and a validator the client caches — so a Mongo blip told the app
+  // "nothing is hidden".
+  "GET /api/me/state and /api/me/:country/hidden-films" should "503 when the state cannot be read, never serve it as empty" in {
+    val (ctl, _, _) = fixture(stateRepository = new services.users.FailingReadUserStateRepository)
+    status(ctl.get()(FakeRequest("GET", "/api/me/state").withSession("userId" -> "u1"))) shouldBe SERVICE_UNAVAILABLE
+    val hidden = callHiddenFilms(ctl)
+    status(hidden) shouldBe SERVICE_UNAVAILABLE
+    header("ETag", hidden) shouldBe None
+  }
+
   "GET /api/me/:country/hidden-films" should "401 anonymous requests" in {
     val (ctl, _, _) = fixture()
     val result = ctl.hiddenFilms("pl")(FakeRequest("GET", "/api/me/pl/hidden-films"))

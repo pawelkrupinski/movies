@@ -51,16 +51,26 @@ class FacebookDataDeletionController(
                 logger.warn(s"Rejected Facebook data-deletion callback: $reason")
                 BadRequest(Json.obj("error" -> reason))
               case Right(parsed) =>
-                userRepository.findByProviderSub("facebook", parsed.userId) match {
-                  case Some(user) =>
-                    accountDeletion.delete(user.id)
-                    logger.info(s"Facebook data-deletion: removed account ${user.id} (fb ${parsed.userId})")
-                  case None =>
-                    logger.info(s"Facebook data-deletion: no local account for fb ${parsed.userId} — nothing to delete")
+                // The receipt confirms the deletion to Meta, so it goes out only once the
+                // account was found and deleted, or found absent. A lookup that FAILED is
+                // neither: answer 503 so Meta retries, instead of confirming a deletion
+                // that never ran.
+                scala.util.Try(userRepository.findByProviderSub("facebook", parsed.userId)) match {
+                  case scala.util.Failure(e) =>
+                    logger.warn(s"Facebook data-deletion: account lookup for fb ${parsed.userId} failed: ${e.getMessage}")
+                    ServiceUnavailable(Json.obj("error" -> "account store unavailable, retry later"))
+                  case scala.util.Success(found) =>
+                    found match {
+                      case Some(user) =>
+                        accountDeletion.delete(user.id)
+                        logger.info(s"Facebook data-deletion: removed account ${user.id} (fb ${parsed.userId})")
+                      case None =>
+                        logger.info(s"Facebook data-deletion: no local account for fb ${parsed.userId} — nothing to delete")
+                    }
+                    val statusUrl = ForwardedUrl.base(request) +
+                      routes.FacebookDataDeletionController.status(parsed.userId).url
+                    Ok(Json.obj("url" -> statusUrl, "confirmation_code" -> parsed.userId))
                 }
-                val statusUrl = ForwardedUrl.base(request) +
-                  routes.FacebookDataDeletionController.status(parsed.userId).url
-                Ok(Json.obj("url" -> statusUrl, "confirmation_code" -> parsed.userId))
             }
         }
     }

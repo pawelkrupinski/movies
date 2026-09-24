@@ -71,7 +71,16 @@ class FacebookDataDeletionControllerSpec extends AnyFlatSpec with Matchers {
   private def callbackRequest(signedRequest: String) =
     FakeRequest("POST", "/facebook/data-deletion").withFormUrlEncodedBody("signed_request" -> signedRequest)
 
-  "POST /facebook/data-deletion" should "delete the matching local account and return the JSON receipt" in {
+  "POST /facebook/data-deletion" should "answer 503 — not confirm the deletion — when the account lookup fails" in {
+    val users = new services.users.FailingReadUserRepository
+    val ctl = new FacebookDataDeletionController(Helpers.stubControllerComponents(), Some(Secret), users,
+      new AccountDeletion(users, new InMemoryUserStateRepository))
+    val result = ctl.callback()(callbackRequest(FacebookSignedRequestFixture.forUser(Secret, "fb-777")))
+    status(result) shouldBe SERVICE_UNAVAILABLE
+    contentAsString(result) should not include ("confirmation_code")
+  }
+
+  it should "delete the matching local account and return the JSON receipt" in {
     val (ctl, userRepository, stateRepository) = fixture()
     seedFacebookUser(userRepository, stateRepository, "fb-777")
 

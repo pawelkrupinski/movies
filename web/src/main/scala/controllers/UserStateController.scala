@@ -1,6 +1,7 @@
 package controllers
 
 import models.UserState
+import play.api.Logging
 import play.api.libs.json.{JsNull, JsValue, Json}
 import play.api.mvc._
 import services.metrics.LegacyUserStateMetrics
@@ -45,7 +46,7 @@ class UserStateController(
   userRepository:       UserRepository,
   // Stamps every change; the stored stamps' newer-than rules compare against it.
   clock:                java.time.Clock
-) extends AbstractController(cc) {
+) extends AbstractController(cc) with Logging {
   import UserStateController._
 
   // The signed-in visitor's id, or `None` for anonymous AND for a session
@@ -59,6 +60,17 @@ class UserStateController(
   private def signedInUserId(request: RequestHeader): Option[String] =
     SignedInUser(request, userRepository).map(_.id)
 
+  /** `onRead` over this user's stored state — an empty one when they have none yet — or
+   *  a 503 when it could not be READ. The empty state is a real answer ("nothing hidden"),
+   *  with a validator a client caches, so a store that failed must never produce it. */
+  private def readState(userId: String)(onRead: UserState => Result): Result =
+    scala.util.Try(userStateRepository.find(userId)) match {
+      case scala.util.Success(stored) => onRead(stored.getOrElse(UserState.empty(userId, clock.instant())))
+      case scala.util.Failure(e) =>
+        logger.warn(s"UserStateController: state for $userId unreadable: ${e.getClass.getSimpleName}: ${e.getMessage}")
+        ServiceUnavailable(Json.obj("error" -> "state unavailable"))
+    }
+
   // Every action here answers about ONE person, so every answer says so — see
   // `PerUserResponse`. Since the HTML pages stopped carrying a signed-in visitor
   // at all, these endpoints and `/api/me` are the ENTIRE per-user surface, and a
@@ -67,8 +79,7 @@ class UserStateController(
     PerUserResponse(signedInUserId(request) match {
       case None         => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(userId) =>
-        val state = userStateRepository.find(userId).getOrElse(UserState.empty(userId, clock.instant()))
-        Ok(toJson(state))
+        readState(userId)(state => Ok(toJson(state)))
     })
   }
 
@@ -126,18 +137,19 @@ class UserStateController(
         cacheProvenUnchanged match {
           case Some(lastChange) => NotModified.withHeaders("Last-Modified" -> httpDate(lastChange))
           case None              =>
-            val state  = userStateRepository.find(userId).getOrElse(UserState.empty(userId, clock.instant()))
-            val hidden = state.hiddenFilmsByCountry.getOrElse(country.code, Set.empty)
-            val body   = hiddenFilmsJson(hidden)
-            val etag   = hiddenFilmsETag(body)
+            readState(userId) { state =>
+              val hidden = state.hiddenFilmsByCountry.getOrElse(country.code, Set.empty)
+              val body   = hiddenFilmsJson(hidden)
+              val etag   = hiddenFilmsETag(body)
 
-            val notModified = ifNoneMatch match {
-              case Some(inm) => inm.contains(etag)
-              case None      => ifModifiedSince.exists(!state.updatedAt.isAfter(_))
+              val notModified = ifNoneMatch match {
+                case Some(inm) => inm.contains(etag)
+                case None      => ifModifiedSince.exists(!state.updatedAt.isAfter(_))
+              }
+
+              if (notModified) NotModified.withHeaders("ETag" -> etag, "Last-Modified" -> httpDate(state.updatedAt))
+              else respondWithHiddenFilms(hidden, state.updatedAt)
             }
-
-            if (notModified) NotModified.withHeaders("ETag" -> etag, "Last-Modified" -> httpDate(state.updatedAt))
-            else respondWithHiddenFilms(hidden, state.updatedAt)
         }
     })
   }
