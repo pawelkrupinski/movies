@@ -1,4 +1,4 @@
-@()
+@(country: models.Country)
 @*
   Página de ayuda en español — la URL de soporte del listado es-ES de la App
   Store. España pasó a ser territorio de la App Store junto a Polonia, Alemania,
@@ -7,10 +7,10 @@
   Equivalente completo de `supportEn`; un cambio en un idioma exige el mismo
   cambio en los demás.
 *@
-@_legalPage(lang = "es", heading = "Ayuda", contactLabel = "Contacto",
+@_legalPage(country, lang = "es", heading = "Ayuda", contactLabel = "Contacto",
             updated = Some("Última actualización: 3 de septiembre de 2026")) {
   <p>
-    <strong>@models.Country.fromEnv.brandName</strong> reúne la cartelera de
+    <strong>@country.brandName</strong> reúne la cartelera de
     todos los cines de tu ciudad — desde las grandes cadenas hasta las salas
     independientes — en un solo sitio, con las notas de IMDb, Rotten Tomatoes y
     Metacritic en cada película. Si aquí no encuentras respuesta, escríbenos:

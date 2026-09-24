@@ -145,8 +145,8 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     val userState   = new UserStateController(cc, null, null, null,
       new services.metrics.LegacyUserStateMetrics(new io.prometheus.metrics.model.registry.PrometheusRegistry(), "pl", java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)), users, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
     val uptime      = new UptimeController(cc, adminAction, null, null, models.Country.Poland)
-    val tasks       = new TasksController(cc, adminAction, null, null)
-    val facebook    = new FacebookDataDeletionController(cc, None, users, null)
+    val tasks       = new TasksController(cc, adminAction, null, null, models.Country.Poland)
+    val facebook    = new FacebookDataDeletionController(cc, models.Country.Poland, None, users, null)
     val envConfig   = new EnvConfigController(cc, adminAction, null)
     new router.Routes(Components.httpErrorHandler, null, null, null, null, null, debug, null, auth, userState,
       null, null, uptime, tasks, null, null, facebook, envConfig, null)

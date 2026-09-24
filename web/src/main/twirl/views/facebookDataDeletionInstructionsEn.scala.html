@@ -1,4 +1,4 @@
-@()
+@(country: models.Country)
 @*
   What GET /facebook/data-deletion serves — the human-readable "how to delete
   your data" page Meta asks for as its Data Deletion Instructions URL.
@@ -9,9 +9,9 @@
   URL, and a human pasting it into a browser gets an answer instead of the bare
   404 the POST-only route used to give.
 *@
-@_legalPage(lang = "en", heading = "Deleting your data", contactLabel = "Contact") {
+@_legalPage(country, lang = "en", heading = "Deleting your data", contactLabel = "Contact") {
   <p>
-    You can delete your @models.Country.fromEnv.brandName account and everything
+    You can delete your @country.brandName account and everything
     stored with it — your profile, and the settings saved against it (hidden films
     and disabled cinemas) — at any time. Deletion is permanent and immediate; we
     keep no copy afterwards.
@@ -19,7 +19,7 @@
 
   <h2>From Facebook</h2>
   <p>
-    Remove @models.Country.fromEnv.brandName from your Facebook account
+    Remove @country.brandName from your Facebook account
     (<strong>Settings &amp; privacy → Settings → Apps and websites</strong>).
     Facebook notifies us and we delete your data automatically — you do not need
     to contact us, and you will be shown a confirmation code for the request.

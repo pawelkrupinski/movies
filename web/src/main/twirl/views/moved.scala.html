@@ -1,4 +1,4 @@
-@(pageTitle: String, pageDescription: String, pageUrl: String, imageUrl: String, destinationLabel: String)(implicit messages: play.api.i18n.Messages)
+@(country: models.Country, pageTitle: String, pageDescription: String, pageUrl: String, imageUrl: String, destinationLabel: String)(implicit messages: play.api.i18n.Messages)
 @*
    The notice a RETIRED deployment serves in place of `/` and `/{city}/` — the
    address changed, here is the new one (see `RetiredSiteController`).
@@ -31,7 +31,7 @@
      re-cutting its page snapshots) purely for a farewell page's benefit; the two
      copies are named in each other's comments instead. *@
   <meta name="google-site-verification" content="GHV7eYMZc7PnJlXt03b8TU5ZsLib0pSDYOgIr08ifTE" />
-  @_ogTagsApp(
+  @_ogTagsApp(country)(
     pageTitle       = pageTitle,
     pageDescription = pageDescription,
     pageUrl         = pageUrl,

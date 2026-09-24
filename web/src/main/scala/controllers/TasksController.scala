@@ -16,6 +16,8 @@ import services.tasks.{BulkTaskResult, BulkTaskResultStore, EnqueueResult, Enric
  */
 class TasksController(cc: ControllerComponents, adminAction: AdminAction, queue: TaskQueue,
                       bulkResults: BulkTaskResultStore,
+                      // The deployment's country — the one the page's country switch marks current.
+                      country: models.Country,
                       // The server time the page ticks task ages from.
                       clock: java.time.Clock = java.time.Clock.systemUTC()) extends AbstractController(cc) {
 
@@ -24,7 +26,7 @@ class TasksController(cc: ControllerComponents, adminAction: AdminAction, queue:
   private val ActiveLimit = 300
 
   def index: Action[AnyContent] = adminAction {
-    Ok(views.html.tasks())
+    Ok(views.html.tasks(country))
   }
 
   def data: Action[AnyContent] = adminAction {

@@ -1,6 +1,6 @@
 @import controllers.{FallbackRow, FlaggedRow, ServiceRow}
 @import services.UptimeMonitor
-@(failing: Seq[FlaggedRow], gone: Seq[FlaggedRow], zero: Seq[FlaggedRow], onFallback: Seq[FallbackRow], cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow], hiddenHealthyCinemas: Int = 0, current: models.Country = models.Country.fromEnv)
+@(failing: Seq[FlaggedRow], gone: Seq[FlaggedRow], zero: Seq[FlaggedRow], onFallback: Seq[FallbackRow], cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow], hiddenHealthyCinemas: Int = 0, current: models.Country)
 <!DOCTYPE html>
 <html lang="en">
 <head>

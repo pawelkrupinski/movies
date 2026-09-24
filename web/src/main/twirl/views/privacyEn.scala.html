@@ -1,4 +1,4 @@
-@()
+@(country: models.Country)
 @*
   English privacy policy — a full translation of `privacyPl`, no longer the stub
   that told readers the real text was Polish-only. The App Store and Play
@@ -9,10 +9,10 @@
   deployment serves; the substance is otherwise identical to the Polish text.
   A change to any one language needs the same change in the other two.
 *@
-@_legalPage(lang = "en", heading = "Privacy policy", contactLabel = "Contact",
+@_legalPage(country, lang = "en", heading = "Privacy policy", contactLabel = "Contact",
             updated = Some("Last updated: 25 July 2026")) {
   <p>
-    This policy explains what personal data <strong>@models.Country.fromEnv.brandName</strong>
+    This policy explains what personal data <strong>@country.brandName</strong>
     (cinema listings, available on the web and as an Android and iOS app)
     processes, for what purpose and on what basis, and what rights you have in
     relation to that processing.

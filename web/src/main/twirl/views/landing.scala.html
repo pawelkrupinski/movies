@@ -46,7 +46,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   @if(isApex) {
     <title>@messages("landing.apexTitle", models.Country.apexBrandName)</title>
-    @_ogTagsApp(
+    @_ogTagsApp(deployment)(
       pageTitle       = messages("landing.apexTitle", models.Country.apexBrandName),
       pageDescription = messages("landing.ogDescription"),
       pageUrl         = "https://" + models.Country.apexHost + "/",
@@ -64,13 +64,13 @@
     @* Share preview (FB / Messenger / X / Slack): a dedicated repertoire-preview
        card, not the bare "Wybierz miasto" picker — so a shared `/` link sells the
        product (posters + ratings), which the city-selection screen itself can't. *@
-    @_ogTagsApp(
+    @_ogTagsApp(deployment)(
       pageTitle       = messages("landing.title", deployment.brandName),
       pageDescription = messages("landing.ogDescription"),
       pageUrl         = deployment.ogOrigin + "/",
       imageUrl        = deployment.ogOrigin + "/assets/img/" + deployment.homeOgImage,
     )
-    @_jsonLd(controllers.StructuredData.landing())
+    @_jsonLd(controllers.StructuredData.landing(deployment))
   }
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }

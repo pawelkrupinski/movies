@@ -2,7 +2,7 @@
 @import services.movies.TitleNormalizer
 @import services.staging.StagingRecord
 @import controllers.DebugController
-@(rows: Seq[StoredMovieRecord], normalizer: services.movies.TitleNormalizer, staging: Seq[StagingRecord] = Seq.empty, current: models.Country = models.Country.fromEnv, sameOrigin: Boolean = false, mirror: Option[services.MirrorFreshness.Age] = None)(implicit city: models.City)
+@(rows: Seq[StoredMovieRecord], normalizer: services.movies.TitleNormalizer, staging: Seq[StagingRecord] = Seq.empty, current: models.Country, sameOrigin: Boolean = false, mirror: Option[services.MirrorFreshness.Age] = None)(implicit city: models.City)
 <!DOCTYPE html>
 <html lang="pl">
 <head>

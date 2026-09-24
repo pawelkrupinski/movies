@@ -17,20 +17,20 @@ class DebugViewCountrySwitchSpec extends AnyFlatSpec with Matchers {
   private implicit val city: models.City = models.Poznan
 
   "debug navbar" should "offer a switch to another country's debug page on that country's host" in {
-    val html = views.html.debug(Seq.empty, titleNormalizer).body
+    val html = views.html.debug(Seq.empty, titleNormalizer, current = models.Country.Poland).body
     html should include ("""class="debug-nav-country"""")
     // The UK deployment's corpus debug page, on its own host.
     html should include ("""value="https://showtimes.cc/uk/debug"""")
   }
 
   it should "mark this deployment's own country as the selected option" in {
-    val html = views.html.debug(Seq.empty, titleNormalizer).body
-    // KINOWO_COUNTRY unset in tests → Poland; its option is pre-selected.
+    val html = views.html.debug(Seq.empty, titleNormalizer, current = models.Country.Poland).body
+    // The page is Poland's, so its option is pre-selected.
     html should include ("""value="https://kinowo.net/debug" selected""")
   }
 
   "cadence navbar" should "keep the switcher pointed at the cadence page, not the corpus page" in {
-    val html = views.html.cadence(Seq.empty, java.time.Instant.EPOCH).body
+    val html = views.html.cadence(Seq.empty, java.time.Instant.EPOCH, current = models.Country.Poland).body
     html should include ("""value="https://showtimes.cc/uk/debug/cadence"""")
   }
 

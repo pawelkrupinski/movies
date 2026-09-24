@@ -38,7 +38,7 @@ class CadenceFilterSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll
     CadenceReport.Group(2.hours, Seq(entry("mc", "Oppenheimer", 2.hours))),
   )
 
-  private val cadenceHtml: String = views.html.cadence(groups, now).body
+  private val cadenceHtml: String = views.html.cadence(groups, now, current = models.Country.Poland).body
 
   private var chrome: Option[Chrome] = None
   private var server: TestHttpServer = _

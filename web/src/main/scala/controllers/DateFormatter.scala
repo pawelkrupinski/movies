@@ -10,9 +10,8 @@ import java.util.Locale
  *  locale text gives the nominative ("czerwiec"), which reads wrong in a date —
  *  and stays byte-identical to what the templates rendered before i18n. Other
  *  languages fall back to Java's locale-aware full weekday + month names
- *  ("Thursday 4 June"). The deployment's language is resolved once from the
- *  country ([[models.Country.fromEnv]]); callers that already hold a locale can
- *  pass it explicitly (tests). */
+ *  ("Thursday 4 June"). The caller passes the locale — its city's or its
+ *  deployment's language — since the formatter has no country of its own. */
 object DateFormatter {
 
   private val polishDays = Vector(
@@ -27,8 +26,6 @@ object DateFormatter {
   /** `date`'s label as seen from `today` — the year is spelled out only when it is not
    *  `today`'s. `today` comes from the caller's clock (a schedule's `asOf`), never the
    *  system's: a label must not change with the day a test happens to run. */
-  def format(date: LocalDate, today: LocalDate): String = format(date, today, models.Country.fromEnv.language)
-
   def format(date: LocalDate, today: LocalDate, locale: Locale): String = {
     val yearSuffix  = if (date.getYear == today.getYear) "" else s" ${date.getYear}"
     val dayName     =

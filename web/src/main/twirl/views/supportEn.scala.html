@@ -1,4 +1,4 @@
-@()
+@(country: models.Country)
 @*
   English support page. Registered as the support URL of the en-GB App Store
   listing and the Play listing, and served as the fallback for any deployment
@@ -8,10 +8,10 @@
   selling the app; a support URL that only shows the product is a Guideline 1.5
   rejection. A change to any one language needs the same change in the others.
 *@
-@_legalPage(lang = "en", heading = "Support", contactLabel = "Contact",
+@_legalPage(country, lang = "en", heading = "Support", contactLabel = "Contact",
             updated = Some("Last updated: 3 September 2026")) {
   <p>
-    <strong>@models.Country.fromEnv.brandName</strong> gathers the listings of
+    <strong>@country.brandName</strong> gathers the listings of
     every cinema in your city — the big chains and the small independents — into
     one place, with IMDb, Rotten Tomatoes and Metacritic ratings on each film.
     If something here does not answer your question, write to us: we read every

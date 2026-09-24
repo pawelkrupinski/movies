@@ -1,11 +1,11 @@
-@()
+@(country: models.Country)
 @*
   Polish variant of the data-deletion instructions page. See the English one for
   why this lives on the same path as the POST callback.
 *@
-@_legalPage(lang = "pl", heading = "Usunięcie danych", contactLabel = "Kontakt") {
+@_legalPage(country, lang = "pl", heading = "Usunięcie danych", contactLabel = "Kontakt") {
   <p>
-    W każdej chwili możesz usunąć swoje konto @models.Country.fromEnv.brandName
+    W każdej chwili możesz usunąć swoje konto @country.brandName
     wraz ze wszystkimi powiązanymi danymi — profilem oraz zapisanymi ustawieniami
     (ukryte filmy i wyłączone kina). Usunięcie jest trwałe i natychmiastowe; nie
     zachowujemy żadnej kopii.
@@ -13,7 +13,7 @@
 
   <h2>Z poziomu Facebooka</h2>
   <p>
-    Usuń aplikację @models.Country.fromEnv.brandName ze swojego konta na Facebooku
+    Usuń aplikację @country.brandName ze swojego konta na Facebooku
     (<strong>Ustawienia i prywatność → Ustawienia → Aplikacje i witryny</strong>).
     Facebook powiadomi nas, a my automatycznie usuniemy Twoje dane — nie musisz
     się z nami kontaktować, a otrzymasz kod potwierdzający zgłoszenie.

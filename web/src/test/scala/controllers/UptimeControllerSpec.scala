@@ -273,7 +273,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     val failing = Seq(FlaggedRow(
       ServiceRow("Kino Rialto", bars("red", "red", "red"), tags = Set("custom:RialtoClient")),
       Some("Poznań")))
-    val html = views.html.uptime(failing, Seq.empty, Nil, Nil, Nil, Nil, Nil).body
+    val html = views.html.uptime(failing, Seq.empty, Nil, Nil, Nil, Nil, Nil, current = models.Country.Poland).body
     html should include ("Failing — last 3 scrapes")
     html should include ("""data-city="Poznań"""")           // city pops on name hover (instant tooltip)
     html should include ("tag-custom")                       // styled by kind
@@ -286,7 +286,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     val failing = Seq(FlaggedRow(
       ServiceRow("Kino Tatry", bars("red", "red", "red"), tags = Set("shared:FilmwebShowtimesClient")),
       None))
-    val html = views.html.uptime(failing, Seq.empty, Nil, Nil, Nil, Nil, Nil).body
+    val html = views.html.uptime(failing, Seq.empty, Nil, Nil, Nil, Nil, Nil, current = models.Country.Poland).body
     html should include ("tag-shared")
     html should include (">FilmwebShowtimes<")                 // suffix dropped for the chip
     html should include ("""title="FilmwebShowtimesClient"""") // full class on hover

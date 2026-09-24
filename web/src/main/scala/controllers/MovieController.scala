@@ -89,7 +89,8 @@ object ApiFilm {
   implicit val apiRatingsWrites: Writes[ApiRatings] = Json.writes[ApiRatings]
   implicit val apiFilmWrites: Writes[ApiFilm] = Json.writes[ApiFilm]
 
-  def from(fs: FilmSchedule): ApiFilm = {
+  /** `language` is the city's: the day labels are spelled in it. */
+  def from(fs: FilmSchedule, language: java.util.Locale): ApiFilm = {
     val resolved = fs.resolved
     val cinemaUrlMap = fs.cinemaFilmUrls.map { case (c, url) => c.displayName -> url }.toMap
     ApiFilm(
@@ -124,7 +125,7 @@ object ApiFilm {
       showings         = fs.showings.map { case (date, cinemas) =>
         ApiDayShowings(
           date    = date.toString,
-          label   = CardFormat.date(date, fs.asOf),
+          label   = CardFormat.date(date, fs.asOf, language),
           cinemas = cinemas.map { cs =>
             ApiCinemaShowings(
               cinema    = cs.cinema.displayName,
@@ -697,7 +698,7 @@ class MovieController( cc: ControllerComponents,
     // not advertise the UK/Germany cities that also live in the global `City.all`
     // (those pages render empty on this host, so crawling them is pure waste). Each
     // country's own deployment sitemaps its own cities. Same scope the landing +
-    // navbar use (`Country.fromEnv`).
+    // navbar use (the wiring's `country`).
     val body =
       if (servingCountry.servesApex(PageMeta.host(request))) SitemapBuilder.index(mountedUnderApex)
       else {
@@ -760,7 +761,7 @@ class MovieController( cc: ControllerComponents,
       conditionalJson(request, c, cacheKey = MovieController.windowCacheKey(window)) {
         val today     = movieControllerService.nowIn(c).toLocalDate
         val schedules = movieControllerService.toSchedules(c)
-        Json.toJson(MovieController.withinWindow(schedules, today, window).map(ApiFilm.from))
+        Json.toJson(MovieController.withinWindow(schedules, today, window).map(ApiFilm.from(_, c.country.language)))
       }
     }
   }

@@ -65,7 +65,7 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
   "landing JSON-LD" should "describe the WebSite and the Organization in the deployment's language" in {
     import testsupport.TestMessages
     import TestMessages.given   // the deployment's Polish Messages (default Poland)
-    val arr = parseArray(StructuredData.landing())
+    val arr = parseArray(StructuredData.landing(models.Country.Poland))
     val site = byType(arr, "WebSite").head
     (site \ "name").as[String]  shouldBe "Kinowo"
     (site \ "url").as[String]   shouldBe "https://kinowo.net/"

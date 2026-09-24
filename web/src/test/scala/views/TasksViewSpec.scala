@@ -11,7 +11,7 @@ import org.scalatest.matchers.should.Matchers
  */
 class TasksViewSpec extends AnyFlatSpec with Matchers {
 
-  private val html = views.html.tasks().body
+  private val html = views.html.tasks(models.Country.Poland).body
 
   "the tasks header" should "offer a switch to another country's task queue on that country's host" in {
     html should include ("""class="country-switch"""")
@@ -27,7 +27,7 @@ class TasksViewSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "mark this deployment's own country as the selected option" in {
-    // KINOWO_COUNTRY unset in tests → Poland; its option is pre-selected.
+    // The page is rendered for Poland, so its option is pre-selected.
     html should include ("""value="https://kinowo.net/tasks" selected""")
   }
 

@@ -55,13 +55,13 @@ class ApiFilmUrlSpec extends AnyFlatSpec with Matchers {
   }
 
   "the repertoire film" should "carry a poster URL a strict parser accepts, not the raw scraped link" in {
-    val json = Json.toJson(ApiFilm.from(film))
+    val json = Json.toJson(ApiFilm.from(film, java.util.Locale.ENGLISH))
     (json \ "posterURL").as[String] shouldBe
       "http://kinobulgarska19.pl/wp-content/uploads/2026/05/Milcz%C4%85ca-przyjaci%C3%B3%C5%82ka_plakat-PL_LQ.jpg"
   }
 
   it should "emit only URLs a strict parser accepts, in every URL-bearing field" in {
-    val fields = urlFields(Json.toJson(ApiFilm.from(film)))
+    val fields = urlFields(Json.toJson(ApiFilm.from(film, java.util.Locale.ENGLISH)))
     withClue("the sample no longer reaches the fields it is meant to guard: ") {
       fields.map(_._1) should contain allOf (".posterURL", ".fallbackPosterURLs[0]", ".showings[0].cinemas[0].cinemaURL",
         ".showings[0].cinemas[0].showtimes[0].bookingURL", ".ratings.imdbURL")
@@ -75,7 +75,7 @@ class ApiFilmUrlSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "leave a URL that was already valid exactly as it was" in {
-    val json = Json.toJson(ApiFilm.from(film))
+    val json = Json.toJson(ApiFilm.from(film, java.util.Locale.ENGLISH))
     (json \ "fallbackPosterURLs").as[Seq[String]] should contain("https://image.tmdb.org/t/p/original/ok.jpg")
   }
 }

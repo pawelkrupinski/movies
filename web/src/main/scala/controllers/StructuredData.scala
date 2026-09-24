@@ -27,21 +27,20 @@ object StructuredData {
 
   private val Ctx = "https://schema.org"
 
-  /** The origin to attribute a render to when the caller has no request context
-   *  (fixture/snapshot renders pass `""`). THIS DEPLOYMENT's own host, not a
-   *  literal: a hardcoded Polish host put `kinowo.fly.dev` into the UK site's
-   *  JSON-LD, telling Google the two were one site. */
-  private def fallbackOrigin: String = models.Country.fromEnv.ogOrigin
-
-  /** `scheme://host` from a full page URL, falling back to [[fallbackOrigin]]
-   *  when the caller has no request context. */
-  def originOf(pageUrl: String): String =
-    if (pageUrl.isEmpty) fallbackOrigin
+  /** `scheme://host` from a full page URL, falling back to `city`'s own country
+   *  host when the caller has no request context (fixture/snapshot renders pass
+   *  `""`). The country's host, not a literal: a hardcoded Polish host put
+   *  `kinowo.fly.dev` into the UK site's JSON-LD, telling Google the two were one
+   *  site. */
+  private def originOf(pageUrl: String, city: City): String = {
+    val fallback = city.country.ogOrigin
+    if (pageUrl.isEmpty) fallback
     else {
       val u = java.net.URI.create(pageUrl)
-      if (u.getScheme == null || u.getAuthority == null) fallbackOrigin
+      if (u.getScheme == null || u.getAuthority == null) fallback
       else s"${u.getScheme}://${u.getAuthority}"
     }
+  }
 
   /** Landing page: identify the site + publisher so Google can attach a
    *  knowledge-panel / sitelinks to the brand. Everything is the DEPLOYMENT's:
@@ -49,9 +48,8 @@ object StructuredData {
    *  showtimes.cc/uk, not kinowo.net), its home montage, and its
    *  language's landing copy (reusing the `landing.ogDescription` message rather
    *  than a second, drift-prone Polish literal). */
-  def landing()(implicit messages: play.api.i18n.Messages): String = {
-    val country = models.Country.fromEnv
-    val origin  = country.ogOrigin
+  def landing(country: models.Country)(implicit messages: play.api.i18n.Messages): String = {
+    val origin = country.ogOrigin
     render(Json.arr(
       Json.obj(
         "@context" -> Ctx, "@type" -> "WebSite",
@@ -71,7 +69,7 @@ object StructuredData {
    *  landing plus an ItemList of the films currently on show, each linking to
    *  its detail page — a crawlable index of the city's long-tail URLs. */
   def cityPage(pageUrl: String, city: City, films: Seq[FilmSchedule]): String = {
-    val origin   = originOf(pageUrl)
+    val origin   = originOf(pageUrl, city)
     val cityUrl  = s"$origin/${city.slug}/"
     // Distinct on the ASSIGNED slug rather than the title: same-titled films
     // are separate entries with separate URLs, and collapsing them by title
@@ -130,7 +128,7 @@ object StructuredData {
   /** A film detail page: the Movie itself + a breadcrumb + a ScreeningEvent per
    *  showtime (which makes the screenings eligible for Google's event surfaces). */
   def film(canonicalUrl: String, city: City, fs: FilmSchedule): String = {
-    val origin  = originOf(canonicalUrl)
+    val origin  = originOf(canonicalUrl, city)
     val cityUrl = s"$origin/${city.slug}/"
     val m       = fs.movie
 

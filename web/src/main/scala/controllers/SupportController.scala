@@ -11,12 +11,12 @@ import play.api.mvc._
  *  Same shape as [[LegalController]]: static content per language, chosen by
  *  the link rather than by the deployment.
  */
-class SupportController(cc: ControllerComponents) extends AbstractController(cc) {
+class SupportController(cc: ControllerComponents, country: models.Country) extends AbstractController(cc) {
 
   /** `/support?lang=pl|en|de|es` — see [[PublishedLanguages]] for why the
    *  language comes from the link and how an unknown one falls back. */
   def support(lang: Option[String]): Action[AnyContent] = Action {
-    Ok(page(PublishedLanguages.resolve(lang, published)))
+    Ok(page(PublishedLanguages.resolve(lang, published, country)))
   }
 
   /** Spanish is published here even though the privacy policy has no Spanish
@@ -25,11 +25,11 @@ class SupportController(cc: ControllerComponents) extends AbstractController(cc)
   private val published = Set("pl", "en", "de", "es")
 
   private def page(language: String): play.twirl.api.Html = language match {
-    case "pl" => views.html.supportPl()
-    case "de" => views.html.supportDe()
-    case "es" => views.html.supportEs()
+    case "pl" => views.html.supportPl(country)
+    case "de" => views.html.supportDe(country)
+    case "es" => views.html.supportEs(country)
     // English doubles as the fallback for a deployment whose language we don't
     // publish a support page in yet.
-    case _    => views.html.supportEn()
+    case _    => views.html.supportEn(country)
   }
 }

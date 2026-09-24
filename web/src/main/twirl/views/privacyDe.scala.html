@@ -1,4 +1,4 @@
-@()
+@(country: models.Country)
 @*
   German privacy policy — a full translation of `privacyPl`, added so the German
   deployment and the de-DE store listings have a policy in their own language
@@ -9,11 +9,11 @@
   controller here is in Poland. A change to any one language needs the same
   change in the other two.
 *@
-@_legalPage(lang = "de", heading = "Datenschutzerklärung", contactLabel = "Kontakt",
+@_legalPage(country, lang = "de", heading = "Datenschutzerklärung", contactLabel = "Kontakt",
             updated = Some("Zuletzt aktualisiert: 25. Juli 2026")) {
   <p>
     Diese Erklärung beschreibt, welche personenbezogenen Daten die App
-    <strong>@models.Country.fromEnv.brandName</strong> (Kinoprogramm, im Web sowie als
+    <strong>@country.brandName</strong> (Kinoprogramm, im Web sowie als
     Android- und iOS-App verfügbar) verarbeitet, zu welchem Zweck und auf
     welcher Grundlage, und welche Rechte Ihnen dabei zustehen.
   </p>

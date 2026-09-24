@@ -202,7 +202,7 @@ object FixtureServerMain {
     // the production `ApiFilm` / `ApiFilmDetails` / `ApiCityCinemas`
     // projections, so a wire-shape drift in `MovieController`'s JSON is caught
     // by the mobile LocalServer suites.
-    def repertoireJsonFor(c: City): String = Json.toJson(schedulesFor(c).map(ApiFilm.from)).toString
+    def repertoireJsonFor(c: City): String = Json.toJson(schedulesFor(c).map(ApiFilm.from(_, c.country.language))).toString
     def detailsJsonFor(c: City): String =
       Json.toJson(schedulesFor(c).map(ApiFilmDetails.from).filter(ApiFilmDetails.hasContent)).toString
     def cinemasJsonFor(c: City): String = Json.toJson(ApiCityCinemas.from(c)).toString

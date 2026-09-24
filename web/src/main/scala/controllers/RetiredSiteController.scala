@@ -98,6 +98,7 @@ class RetiredSiteController(cc: ControllerComponents, country: Country)(implicit
                       imageUrl: String): Result = {
     RetiredAccessLog.hit("notice", request)
     Ok(views.html.moved(
+      country          = country,
       pageTitle        = pageTitle,
       pageDescription  = pageDescription,
       pageUrl          = pageUrl,

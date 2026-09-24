@@ -6,7 +6,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>@messages("browse.htmlTitle", heading, city.labels.nominative)</title>
-  @_ogTagsApp(
+  @_ogTagsApp(city.country)(
     pageTitle       = messages("browse.ogTitle", heading, city.labels.nominative),
     pageDescription = if (city.genitivePluralLabel.nonEmpty) messages("browse.ogDescription", city.genitivePluralLabel, heading)
                       else messages("browse.ogDescriptionNear", city.locativePhrase, heading),

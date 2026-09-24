@@ -73,7 +73,7 @@ trait UsersWiring { self: Wiring =>
   lazy val accountDeletion   = new AccountDeletion(userRepository, userStateRepository)
   lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, accountDeletion, userChangeTimeCache, legacyUserStateMetrics, userRepository, clock)
   lazy val facebookDataDeletionController =
-    new FacebookDataDeletionController(controllerComponents, Env.get("FACEBOOK_APP_SECRET"), userRepository, accountDeletion)
+    new FacebookDataDeletionController(controllerComponents, country, Env.get("FACEBOOK_APP_SECRET"), userRepository, accountDeletion)
 }
 
 object UsersWiring {

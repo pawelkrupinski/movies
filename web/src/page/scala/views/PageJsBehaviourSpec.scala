@@ -288,7 +288,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         StagingRecord(Helios,              "Staging Film",  Some(2026), MovieRecord(detailPending = true), titleNormalizer),
         StagingRecord(CinemaCityWroclavia, "Done Newcomer", Some(2025),
           MovieRecord(detailPending = false, tmdbId = Some(550)), titleNormalizer))
-      val debugHtml: String = views.html.debug(debugRows, titleNormalizer, debugStaging).body
+      val debugHtml: String = views.html.debug(debugRows, titleNormalizer, debugStaging, current = models.Country.Poland).body
       // A purpose-built corpus row for the Cinemas-cell layout test: ONE venue
       // (CinemaCityWroclavia) listing the film under TWO titles → `cinemaData` =
       // 1 distinct cinema, `cinemaSlots` = 2 per-title slots, so `_debugRow`
@@ -300,7 +300,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         data = Map(
           CinemaShowing(CinemaCityWroclavia, "slots-film")     -> SourceData(title = Some("Slots Film")),
           CinemaShowing(CinemaCityWroclavia, "slots-film-org") -> SourceData(title = Some("Slots Film Org")))))
-      val slotsDebugHtml: String = views.html.debug(Seq(slotsRow), titleNormalizer, Seq.empty).body
+      val slotsDebugHtml: String = views.html.debug(Seq(slotsRow), titleNormalizer, Seq.empty, current = models.Country.Poland).body
       slotsRowId = slotsRow.id.value
       // Change-stream frames for the no-op-guard test, rendered by the SAME
       // `_debugRow` partial DebugStreamController ships. One re-asserts `slotsRow`

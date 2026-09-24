@@ -1,4 +1,4 @@
-@(lang: String, heading: String, contactLabel: String, updated: Option[String] = None)(content: Html)
+@(country: models.Country, lang: String, heading: String, contactLabel: String, updated: Option[String] = None)(content: Html)
 @*
   Shared chrome for the standalone document pages — the privacy policy and the
   support page in each language, and the Facebook data-deletion status pages.
@@ -19,7 +19,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   @_favicon()
-  <title>@heading — @models.Country.fromEnv.brandName</title>
+  <title>@heading — @country.brandName</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -50,7 +50,7 @@
 <body>
   <main>
     <header>
-      <div class="brand">🎬 @models.Country.fromEnv.brandName</div>
+      <div class="brand">🎬 @country.brandName</div>
       <h1>@heading</h1>
       @updated.map { when => <div class="updated">@when</div> }
     </header>
@@ -58,7 +58,7 @@
     @content
 
     <footer>
-      @models.Country.fromEnv.brandName · @contactLabel:
+      @country.brandName · @contactLabel:
       <a href="mailto:@LegalContact.Email">@LegalContact.Email</a>
     </footer>
   </main>

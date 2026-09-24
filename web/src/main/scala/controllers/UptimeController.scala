@@ -123,7 +123,7 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
     val sections = groupRows(active, monitor.recentStatuses(_, RecentScrapes),
       monitor.recentErrors(_, RecentScrapes), row)
     Ok(views.html.uptime(sections.failing, sections.gone, sections.zero, activeFallbacks(), sections.cinemasByCity,
-      sections.services, sections.other, sections.hiddenHealthyCinemas))
+      sections.services, sections.other, sections.hiddenHealthyCinemas, current = country))
   }
 
   /** Cinemas CURRENTLY served by Filmweb because their own scraper is down/empty,

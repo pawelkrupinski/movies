@@ -18,8 +18,8 @@ import scala.io.Source as IoSource
  * The fixture is a single film showing at a cinema in each of the five countries at once,
  * so every page and every API answer has another country's data within reach and has to
  * leave it out. For each country the spec boots the real `Wiring` as that country's
- * deployment (its `country` member, and `KINOWO_COUNTRY` for the few views that still read
- * it — exactly what production sets) and checks:
+ * deployment — through its `country` member alone, with `KINOWO_COUNTRY` naming a DIFFERENT
+ * country, so anything still reading the environment shows up as a leak — and checks:
  *
  *   - the wiring holds no other `Country` (a component built with a defaulted country);
  *   - no page carries a literal that exists only in another language's message bundle, and
@@ -57,13 +57,20 @@ class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers {
         director = Seq("Jane Doe"), cast = Seq("John Roe"), runtimeMinutes = Some(101), releaseYear = Some(2025))))))
   }
 
-  /** Run `body` as `country`'s deployment: the views that still read `KINOWO_COUNTRY` see it,
-   *  as they do in production. Web unit suites run one at a time in their forked JVM. */
+  /** The environment a deployment is booted under: deliberately ANOTHER country's. The
+   *  wiring's `country` member is the one answer to "which country is this?"; a view or
+   *  controller that still asked the environment would render the decoy's brand, host or
+   *  language, which every check below then catches. */
+  private def decoy(country: Country): Country =
+    if (country == Country.Poland) Country.UnitedKingdom else Country.Poland
+
+  /** Run `body` as `country`'s deployment, in a process whose `KINOWO_COUNTRY` names
+   *  [[decoy]]. Web unit suites run one at a time in their forked JVM. */
   private def asDeployment[T](country: Country)(body: DeploymentWiring => T): T = {
     val previous = Option(System.getProperty("KINOWO_COUNTRY"))
-    System.setProperty("KINOWO_COUNTRY", country.code)
+    System.setProperty("KINOWO_COUNTRY", decoy(country).code)
     try {
-      withClue("KINOWO_COUNTRY is set in this shell and overrides the spec's pick: ")(Country.fromEnv shouldBe country)
+      withClue("KINOWO_COUNTRY is set in this shell and overrides the spec's pick: ")(Country.fromEnv shouldBe decoy(country))
       val wiring = new DeploymentWiring(country, corpus, Now)
       wiring.boot()
       body(wiring)
@@ -191,6 +198,21 @@ class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers {
       og("site_name") should include (city.labels.nominative)
       og("locale") shouldBe country.language.toLanguageTag.replace("-", "_")
       """<link rel="canonical" href="([^"]*)"""".r.findFirstMatchIn(film).map(_.group(1)).get should startWith (country.webUrl.get + "/")
+    }
+
+    it should "identify itself on the landing by its own brand, host and language" in asDeployment(country) { wiring =>
+      val landing = body(country, "/", wiring.landingController.index())
+      val og      = """<meta property="og:(site_name|locale|image)"\s+content="([^"]*)"""".r
+        .findAllMatchIn(landing).map(m => m.group(1) -> m.group(2)).toMap
+      og("site_name") shouldBe country.brandName
+      og("locale") shouldBe country.language.toLanguageTag.replace("-", "_")
+      og("image") shouldBe s"${country.ogOrigin}/assets/img/${country.homeOgImage}"
+      val jsonLd = """(?s)<script type="application/ld\+json">(.*?)</script>""".r.findFirstMatchIn(landing)
+        .map(m => Json.parse(m.group(1))).getOrElse(fail(s"$code landing carries no JSON-LD"))
+      val website = jsonLd.as[Seq[JsValue]].find(j => (j \ "@type").asOpt[String].contains("WebSite")).get
+      (website \ "name").as[String] shouldBe country.brandName
+      (website \ "url").as[String] shouldBe s"${country.ogOrigin}/"
+      (website \ "inLanguage").as[String] shouldBe country.language.getLanguage
     }
 
     it should "answer /{city}/api/* with only its own cities and cinemas" in asDeployment(country) { wiring =>

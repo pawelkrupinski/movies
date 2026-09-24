@@ -14,9 +14,9 @@ package controllers
  *  resolve them identically.
  */
 object PublishedLanguages {
-  def resolve(requested: Option[String], published: Set[String]): String =
+  def resolve(requested: Option[String], published: Set[String], deployment: models.Country): String =
     requested
       .map(_.trim.toLowerCase)
       .filter(published.contains)
-      .getOrElse(models.Country.fromEnv.language.getLanguage)
+      .getOrElse(deployment.language.getLanguage)
 }

@@ -24,7 +24,7 @@ class DebugViewMirrorFreshnessSpec extends AnyFlatSpec with Matchers {
     MirrorFreshness.describe(Some(Instant.EPOCH), Instant.EPOCH.plusMillis(behind.toMillis))
 
   "debug navbar" should "say how far behind the mirror is" in {
-    val html = views.html.debug(Seq.empty, titleNormalizer, mirror = age(12.seconds)).body
+    val html = views.html.debug(Seq.empty, titleNormalizer, mirror = age(12.seconds), current = models.Country.Poland).body
     html should include ("mirror 12s behind")
     // The stylesheet names both classes whatever the state, so the assertions
     // below are about the rendered ELEMENT's class list, never the class string.
@@ -34,14 +34,14 @@ class DebugViewMirrorFreshnessSpec extends AnyFlatSpec with Matchers {
 
   // THE case: a sync that stopped yesterday, on the page that reads its data.
   it should "mark a mirror that has stopped syncing, in a way that cannot be read past" in {
-    val html = views.html.debug(Seq.empty, titleNormalizer, mirror = age(26.hours)).body
+    val html = views.html.debug(Seq.empty, titleNormalizer, mirror = age(26.hours), current = models.Country.Poland).body
     html should include ("mirror 26h behind")
     html should include ("""debug-nav-mirror is-stale""")
     html should include ("⚠")
   }
 
   it should "render no age in prod, where the pages read the source" in {
-    val html = views.html.debug(Seq.empty, titleNormalizer).body
+    val html = views.html.debug(Seq.empty, titleNormalizer, current = models.Country.Poland).body
     html should not include ("""<span class="debug-nav-mirror""")
     html should not include ("behind")
   }
@@ -49,13 +49,13 @@ class DebugViewMirrorFreshnessSpec extends AnyFlatSpec with Matchers {
   // The cadence page is the one whose staleness was mistaken for a bug, and the
   // read-model dump is the other page reading the same copy.
   "cadence page" should "carry the same badge" in {
-    val html = views.html.cadence(Seq.empty, Instant.EPOCH, mirror = age(26.hours)).body
+    val html = views.html.cadence(Seq.empty, Instant.EPOCH, mirror = age(26.hours), current = models.Country.Poland).body
     html should include ("mirror 26h behind")
     html should include ("""debug-nav-mirror is-stale""")
   }
 
   "read-model page" should "carry the same badge" in {
-    val html = views.html.debugReadModel(Seq.empty, Map.empty, Instant.EPOCH, mirror = age(26.hours)).body
+    val html = views.html.debugReadModel(Seq.empty, Map.empty, Instant.EPOCH, mirror = age(26.hours), current = models.Country.Poland).body
     html should include ("mirror 26h behind")
     html should include ("""debug-nav-mirror is-stale""")
   }

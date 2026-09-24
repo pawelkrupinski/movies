@@ -91,7 +91,7 @@ class DebugViewPerTitleSlotSpec extends AnyFlatSpec with Matchers {
         original -> slot(originalTitle),
         polish   -> slot(polishTitle),
       )))
-    val html = views.html.debug(Seq(row), titleNormalizer).body
+    val html = views.html.debug(Seq(row), titleNormalizer, current = models.Country.Poland).body
 
     // One distinct cinema (the sort key stays the cinema count) …
     html should include ("""data-cinemas="1"""")

@@ -32,6 +32,6 @@ trait ControllersWiring { self: Wiring =>
   lazy val clientSupportController = new ClientSupportController(controllerComponents)
   lazy val healthController = new HealthController(controllerComponents)
   lazy val wellKnownController = new WellKnownController(controllerComponents)
-  lazy val legalController   = new LegalController(controllerComponents)
-  lazy val supportController = new SupportController(controllerComponents)
+  lazy val legalController   = new LegalController(controllerComponents, country)
+  lazy val supportController = new SupportController(controllerComponents, country)
 }

@@ -1,4 +1,4 @@
-@(active: String = "", current: models.Country = models.Country.fromEnv, sameOrigin: Boolean = false, mirror: Option[services.MirrorFreshness.Age] = None)(implicit city: models.City)
+@(active: String = "", current: models.Country, sameOrigin: Boolean = false, mirror: Option[services.MirrorFreshness.Age] = None)(implicit city: models.City)
 @* The debug page this navbar sits on, as a path — used to keep the country
    switcher on the SAME page when hopping deployments. *@
 @debugPath = @{

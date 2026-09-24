@@ -1,13 +1,13 @@
-@()
+@(country: models.Country)
 @*
   Polska strona pomocy — adres wsparcia dla listingu App Store (pl) i Google
   Play. Pełny odpowiednik `supportEn`; zmiana w jednym języku wymaga tej samej
   zmiany w pozostałych.
 *@
-@_legalPage(lang = "pl", heading = "Pomoc", contactLabel = "Kontakt",
+@_legalPage(country, lang = "pl", heading = "Pomoc", contactLabel = "Kontakt",
             updated = Some("Ostatnia aktualizacja: 3 września 2026")) {
   <p>
-    <strong>@models.Country.fromEnv.brandName</strong> zbiera repertuar
+    <strong>@country.brandName</strong> zbiera repertuar
     wszystkich kin w Twoim mieście — od dużych sieci po małe kina studyjne — w
     jednym miejscu, wraz z ocenami IMDb, Rotten Tomatoes i Filmweb przy każdym
     filmie. Jeśli nie znajdziesz tu odpowiedzi, napisz do nas: czytamy każdą

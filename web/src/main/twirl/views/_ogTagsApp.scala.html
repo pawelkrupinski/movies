@@ -1,4 +1,4 @@
-@(pageTitle: String, pageDescription: String, pageUrl: String = "", fbAppId: Option[String] = None, imageUrl: String = models.Country.fromEnv.ogOrigin + "/assets/img/" + models.Country.fromEnv.homeOgImage, canonicalUrl: String = "", robots: String = "")
+@(country: models.Country)(pageTitle: String, pageDescription: String, pageUrl: String = "", fbAppId: Option[String] = None, imageUrl: String = country.ogOrigin + "/assets/img/" + country.homeOgImage, canonicalUrl: String = "", robots: String = "")
 @*
     Open Graph + Twitter Card meta for every non-/movie page (index, kina,
     browse, plan). The /movie template has its own block because there we want
@@ -9,8 +9,8 @@
     the default here for any other app page (kina, plan, browse).
 
     og:image is an absolute prod URL: Facebook requires an absolute https URL
-    and aggressively caches per-URL. The default pins to THIS deployment's own
-    country host (`Country.fromEnv.ogOrigin`) and its own home montage
+    and aggressively caches per-URL. The default pins to `country`'s own host
+    (`ogOrigin`) and its own home montage
     (`homeOgImage`) — so the Polish deployment scrapes a Polish card off
     kinowo.net and the UK one an English card off showtimes.cc/uk,
     each a single cached image regardless of which environment served the link.
@@ -62,11 +62,11 @@
 @_favicon()@Html(if(canonicalUrl.nonEmpty || pageUrl.nonEmpty) s"""<link rel="canonical" href="${if(canonicalUrl.nonEmpty) canonicalUrl else pageUrl}">""" else "")@Html(if(robots.nonEmpty) s"""<meta name="robots" content="$robots">""" else "")
 <meta property="og:title"       content="@pageTitle">
 <meta property="og:type"        content="website">
-<meta property="og:site_name"   content="@models.Country.fromEnv.brandName">
+<meta property="og:site_name"   content="@country.brandName">
 @* og:locale tells Facebook/Messenger which language the share preview is in
-   (underscore form, e.g. de_DE) — driven by the deployment's country language so
+   (underscore form, e.g. de_DE) — driven by `country`'s language so
    the German site previews as de_DE, the UK as en_GB, Poland as pl_PL. *@
-<meta property="og:locale"      content="@{models.Country.fromEnv.language.toLanguageTag.replace("-", "_")}">
+<meta property="og:locale"      content="@{country.language.toLanguageTag.replace("-", "_")}">
 @if(pageUrl.nonEmpty) {
 <meta property="og:url"         content="@pageUrl">
 }

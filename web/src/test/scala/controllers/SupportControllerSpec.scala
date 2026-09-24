@@ -14,7 +14,7 @@ import play.api.test.{FakeRequest, Helpers}
  */
 class SupportControllerSpec extends AnyFlatSpec with Matchers {
 
-  private val controller = new SupportController(Helpers.stubControllerComponents())
+  private val controller = new SupportController(Helpers.stubControllerComponents(), models.Country.Poland)
 
   private def support(lang: Option[String]): String =
     contentAsString(controller.support(lang).apply(FakeRequest("GET", "/support")))
@@ -74,9 +74,10 @@ class SupportControllerSpec extends AnyFlatSpec with Matchers {
 
   // A bare /support — an old link, or someone typing it — still has to answer.
   it should "fall back to the deployment's own language when no lang is given" in {
-    val html = support(None)
-    val expected = models.Country.fromEnv.language.getLanguage
-    html should include (s"""<html lang="$expected"""")
+    val spanish = new SupportController(Helpers.stubControllerComponents(), models.Country.Spain)
+    val html = contentAsString(spanish.support(None)(FakeRequest(GET, "/support")))
+    html should include ("""<html lang="es"""")
+    html should include ("Showtimes")
   }
 
   it should "fall back for a language we don't publish rather than 404" in {

@@ -1,13 +1,13 @@
-@()
+@(country: models.Country)
 @*
   Deutsche Hilfeseite — die Support-URL des de-DE-App-Store-Listings und des
   Play-Listings. Vollständiges Gegenstück zu `supportEn`; eine Änderung in einer
   Sprache verlangt dieselbe Änderung in den anderen.
 *@
-@_legalPage(lang = "de", heading = "Hilfe", contactLabel = "Kontakt",
+@_legalPage(country, lang = "de", heading = "Hilfe", contactLabel = "Kontakt",
             updated = Some("Zuletzt aktualisiert: 3. September 2026")) {
   <p>
-    <strong>@models.Country.fromEnv.brandName</strong> bündelt das Programm
+    <strong>@country.brandName</strong> bündelt das Programm
     jedes Kinos deiner Stadt — von den großen Ketten bis zu kleinen
     Programmkinos — an einem Ort, mit den Bewertungen von IMDb, Rotten Tomatoes
     und Metacritic zu jedem Film. Wenn deine Frage hier nicht beantwortet wird,

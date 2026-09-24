@@ -1,15 +1,15 @@
-@()
+@(country: models.Country)
 @*
   Polish privacy policy — the original text, now rendered inside `_legalPage`.
   The English and German versions (`privacyEn` / `privacyDe`) are translations
   of THIS document: any change here needs the same change there, or the three
   fall out of step and the store listings point at different promises.
 *@
-@_legalPage(lang = "pl", heading = "Polityka prywatności", contactLabel = "Kontakt",
+@_legalPage(country, lang = "pl", heading = "Polityka prywatności", contactLabel = "Kontakt",
             updated = Some("Ostatnia aktualizacja: 25 lipca 2026")) {
   <p>
     Niniejsza polityka opisuje, jakie dane osobowe przetwarza aplikacja
-    <strong>@models.Country.fromEnv.brandName</strong> (repertuar kin, dostępna w sieci oraz
+    <strong>@country.brandName</strong> (repertuar kin, dostępna w sieci oraz
     jako aplikacja na Androida i iOS), w jakim celu i na jakich zasadach,
     a także jakie prawa przysługują Ci w związku z tym przetwarzaniem.
   </p>

@@ -1,13 +1,13 @@
-@(confirmationCode: String)
+@(country: models.Country, confirmationCode: String)
 @*
   Polish data-deletion status page. Meta requires a human-readable page that
   echoes the confirmation code from the callback's JSON receipt. Shares
   `_legalPage` with the privacy policies — same standalone document chrome.
 *@
-@_legalPage(lang = "pl", heading = "Usunięcie danych", contactLabel = "Kontakt") {
+@_legalPage(country, lang = "pl", heading = "Usunięcie danych", contactLabel = "Kontakt") {
   <p>
     Twoje żądanie usunięcia danych zostało zrealizowane.
-    <strong>Wszystkie dane powiązane z Twoim kontem @models.Country.fromEnv.brandName</strong> —
+    <strong>Wszystkie dane powiązane z Twoim kontem @country.brandName</strong> —
     profil oraz zapisane ustawienia (lista ukrytych filmów i wyłączonych
     kin) — zostały trwale usunięte z naszej bazy.
   </p>

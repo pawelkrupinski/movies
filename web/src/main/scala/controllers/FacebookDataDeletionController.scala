@@ -30,6 +30,8 @@ import services.users.{AccountDeletion, UserRepository}
  */
 class FacebookDataDeletionController(
   cc:              ControllerComponents,
+  // The deployment's country: its brand on the pages, and their language when the link names none.
+  country:         models.Country,
   appSecret:       Option[String],
   userRepository:        UserRepository,
   accountDeletion: AccountDeletion
@@ -96,13 +98,13 @@ class FacebookDataDeletionController(
   def instructions(lang: Option[String]): Action[AnyContent] = Action {
     val language = lang.map(_.trim.toLowerCase)
       .filter(_.nonEmpty)
-      .getOrElse(models.Country.fromEnv.language.getLanguage)
-    Ok(if (language == "pl") views.html.facebookDataDeletionInstructions()
-       else views.html.facebookDataDeletionInstructionsEn())
+      .getOrElse(country.language.getLanguage)
+    Ok(if (language == "pl") views.html.facebookDataDeletionInstructions(country)
+       else views.html.facebookDataDeletionInstructionsEn(country))
   }
 
   def status(code: String): Action[AnyContent] = Action {
-    if (models.Country.fromEnv.language.getLanguage == "pl") Ok(views.html.facebookDataDeletion(code))
-    else Ok(views.html.facebookDataDeletionEn(code))
+    if (country.language.getLanguage == "pl") Ok(views.html.facebookDataDeletion(country, code))
+    else Ok(views.html.facebookDataDeletionEn(country, code))
   }
 }

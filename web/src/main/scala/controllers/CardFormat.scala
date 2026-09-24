@@ -17,10 +17,11 @@ object CardFormat {
    *  and the OG-card showtime chips. */
   def time(dateTime: LocalDateTime): String = dateTime.format(TimeFmt)
 
-  /** A long Polish date label ("Czwartek 4 czerwca", year appended only when it
-   *  isn't `today`'s). Shown on the listing date headers, the JSON API's day
-   *  labels, and the city OG card, each passing its schedule's `asOf`. */
-  def date(d: LocalDate, today: LocalDate): String = DateFormatter.format(d, today)
+  /** A long date label in `locale` ("Czwartek 4 czerwca" / "Thursday 4 June", year
+   *  appended only when it isn't `today`'s). Shown on the listing date headers, the
+   *  JSON API's day labels, and the city OG card, each passing its schedule's `asOf`
+   *  and its city's language. */
+  def date(d: LocalDate, today: LocalDate, locale: java.util.Locale): String = DateFormatter.format(d, today, locale)
 
   /** The compact runtime pill text the card / detail templates render between
    *  `<span class="pill runtime">…</span>` — "2h" when the minutes part is zero,

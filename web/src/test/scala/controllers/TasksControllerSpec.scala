@@ -24,7 +24,7 @@ class TasksControllerSpec extends AnyFlatSpec with Matchers {
 
   private def controller(queue: InMemoryTaskQueue, gate: AdminAction = TestAdminAction(),
                          results: BulkTaskResultStore = new InMemoryBulkTaskResultStore) =
-    new TasksController(Helpers.stubControllerComponents(), gate, queue, results, specClock)
+    new TasksController(Helpers.stubControllerComponents(), gate, queue, results, models.Country.Poland, specClock)
 
   // The server time the controller reports, a minute after the tasks are submitted.
   private val specClock = java.time.Clock.fixed(t0.plusSeconds(60), java.time.ZoneOffset.UTC)

@@ -29,7 +29,7 @@
 @defining(FilmFormat.tokensToStrip(film)) { commonToks =>
 @for((date, cinemaShowtimesList) <- film.showings) {
   <div class="date-group" data-date="@date">
-    <div class="date-label">@CardFormat.date(date, film.asOf)</div>
+    <div class="date-label">@CardFormat.date(date, film.asOf, city.country.language)</div>
     @for(cinemaShowtimes <- cinemaShowtimesList) {
       <div class="cinema-group" data-cinema="@cinemaShowtimes.cinema.displayName">
         <div class="cinema-label">

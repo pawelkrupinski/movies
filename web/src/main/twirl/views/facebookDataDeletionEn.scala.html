@@ -1,13 +1,13 @@
-@(confirmationCode: String)
+@(country: models.Country, confirmationCode: String)
 @*
   English variant of the Facebook data-deletion status page for non-Polish
   deployments (Meta requires a human-readable status page echoing the code).
   Shares `_legalPage` with the privacy policies.
 *@
-@_legalPage(lang = "en", heading = "Data deletion", contactLabel = "Contact") {
+@_legalPage(country, lang = "en", heading = "Data deletion", contactLabel = "Contact") {
   <p>
     Your data deletion request has been completed.
-    <strong>All data associated with your @models.Country.fromEnv.brandName account</strong> — your profile
+    <strong>All data associated with your @country.brandName account</strong> — your profile
     and saved settings (hidden films and disabled cinemas) — has been permanently
     removed from our database.
   </p>

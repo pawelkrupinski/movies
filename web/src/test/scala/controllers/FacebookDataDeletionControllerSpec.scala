@@ -19,7 +19,7 @@ class FacebookDataDeletionControllerSpec extends AnyFlatSpec with Matchers {
     val userRepository  = new InMemoryUserRepository
     val stateRepository = new InMemoryUserStateRepository
     val ctl = new FacebookDataDeletionController(
-      Helpers.stubControllerComponents(),
+      Helpers.stubControllerComponents(), models.Country.Poland,
       appSecret,
       userRepository,
       new AccountDeletion(userRepository, stateRepository)
@@ -73,7 +73,7 @@ class FacebookDataDeletionControllerSpec extends AnyFlatSpec with Matchers {
 
   "POST /facebook/data-deletion" should "answer 503 — not confirm the deletion — when the account lookup fails" in {
     val users = new services.users.FailingReadUserRepository
-    val ctl = new FacebookDataDeletionController(Helpers.stubControllerComponents(), Some(Secret), users,
+    val ctl = new FacebookDataDeletionController(Helpers.stubControllerComponents(), models.Country.Poland, Some(Secret), users,
       new AccountDeletion(users, new InMemoryUserStateRepository))
     val result = ctl.callback()(callbackRequest(FacebookSignedRequestFixture.forUser(Secret, "fb-777")))
     status(result) shouldBe SERVICE_UNAVAILABLE

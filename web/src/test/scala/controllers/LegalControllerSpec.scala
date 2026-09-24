@@ -13,7 +13,7 @@ import play.api.test.{FakeRequest, Helpers}
  */
 class LegalControllerSpec extends AnyFlatSpec with Matchers {
 
-  private val controller = new LegalController(Helpers.stubControllerComponents())
+  private val controller = new LegalController(Helpers.stubControllerComponents(), models.Country.Poland)
 
   private def policy(lang: Option[String]): String =
     contentAsString(controller.privacy(lang).apply(FakeRequest("GET", "/privacy-policy")))
@@ -55,9 +55,10 @@ class LegalControllerSpec extends AnyFlatSpec with Matchers {
   // A bare /privacy-policy (an old link, or a person typing it) still has to
   // answer — with whatever language this deployment serves.
   it should "fall back to the deployment's own language when no lang is given" in {
-    val html = policy(None)
-    val expected = models.Country.fromEnv.language.getLanguage
-    html should include (s"""<html lang="$expected"""")
+    val german = new LegalController(Helpers.stubControllerComponents(), models.Country.Germany)
+    val html = contentAsString(german.privacy(None)(FakeRequest(GET, "/privacy-policy")))
+    html should include ("""<html lang="de"""")
+    html should include ("Showtimes")
   }
 
   it should "fall back for a language we don't publish rather than 404" in {

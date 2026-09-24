@@ -5,7 +5,7 @@ import org.scalatest.matchers.should.Matchers
 
 class PrivacyViewSpec extends AnyFlatSpec with Matchers {
 
-  private val html = views.html.privacyPl().body
+  private val html = views.html.privacyPl(models.Country.Poland).body
 
   "the privacy policy page" should "render as a Polish HTML document" in {
     html should include ("""<html lang="pl">""")
