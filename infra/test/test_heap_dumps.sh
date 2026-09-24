@@ -22,8 +22,14 @@ mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1"; }
 # The file names left in a directory, sorted, space-separated. The fixtures are all plain names.
 # shellcheck disable=SC2012
 left() { (cd "$1" && ls -1 2>/dev/null | sort | tr '\n' ' ' | sed 's/ $//'); }
-run()  { HEAPDUMP_KEEP="${KEEP:-3}" HEAPDUMP_MAX_BYTES="${MAX:-1000000}" \
-         HEAPDUMP_TOTAL_MAX_BYTES="${TOTAL:-1000000}" bash "$script" "$@"; }
+# A mountinfo naming every directory `prune` is pointed at as a mount point -- the hostPath case,
+# which is what the cases below describe. The fallback cases pass one that does not.
+mounted="$tmp/mountinfo-hostpath"
+run()  { if [ "${1:-}" = prune ] && [ -d "${2:-}" ]; then
+           echo "1 2 0:1 / $(cd "$2" && pwd -P) rw - ext4 /dev/sda2 rw" >> "$mounted"; fi
+         HEAPDUMP_KEEP="${KEEP:-3}" HEAPDUMP_MAX_BYTES="${MAX:-1000000}" \
+         HEAPDUMP_TOTAL_MAX_BYTES="${TOTAL:-1000000}" HEAPDUMP_MOUNTINFO="${MOUNTINFO:-$mounted}" \
+         bash "$script" "$@"; }
 
 echo "prune: count limit"
 d="$tmp/count"
@@ -91,6 +97,27 @@ d="$tmp/pid1"
 dump "$d/java_pid1.hprof" 10 202601020304
 run prune "$d" >/dev/null
 check "renamed to its own write time (oom-<mtime UTC>), so the next OOM can write" "1" "$(left "$d" | grep -cE '^oom-2026010[12]T[0-9]{2}0400Z-pid1\.hprof$')"
+
+echo "prune: off the hostPath (older manifests), keep ONE dump so the pod's volume cannot overflow"
+d="$tmp/emptydir"
+dump "$d/a.hprof" 10 202601010000; dump "$d/b.hprof" 10 202601020000
+dump "$d/c.hprof" 10 202601030000
+echo "1 2 0:1 / /data rw - ext4 /dev/sda2 rw" > "$tmp/mountinfo-emptydir"
+out="$(MOUNTINFO="$tmp/mountinfo-emptydir" run prune "$d")"
+check "a plain directory inside /data keeps only the newest" "c.hprof" "$(left "$d")"
+check "...and says why" "1" "$(grep -c 'is not the node.s heap-dump hostPath' <<< "$out")"
+d="$tmp/emptydir-writing"
+dump "$d/a.hprof" 10 202601010000; mkdir -p "$d"; head -c 10 /dev/zero > "$d/writing.hprof"
+MOUNTINFO="$tmp/mountinfo-emptydir" run prune "$d" >/dev/null
+check "...still never deleting a dump being written" "writing.hprof" "$(left "$d")"
+d="$tmp/nomountinfo"
+dump "$d/a.hprof" 10 202601010000; dump "$d/b.hprof" 10 202601020000
+MOUNTINFO="$tmp/does-not-exist" run prune "$d" >/dev/null
+check "an unreadable mountinfo falls back to the safe side (one dump)" "b.hprof" "$(left "$d")"
+d="$tmp/onhostpath"
+dump "$d/a.hprof" 10 202601010000; dump "$d/b.hprof" 10 202601020000
+run prune "$d" >/dev/null
+check "on its own mount (the hostPath) the full budget applies" "a.hprof b.hprof" "$(left "$d")"
 
 echo "prune-all: per directory, then the total across directories"
 r="$tmp/root"

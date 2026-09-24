@@ -2,7 +2,8 @@
 # Keep the JVM heap dumps of every kinowo pod bounded, oldest deleted first.
 #
 #   heap-dumps.sh dump-file <dir>     # prints the -XX:HeapDumpPath FILE this JVM start should use
-#   heap-dumps.sh prune <dir>         # one app-country directory: count + size budget
+#   heap-dumps.sh prune <dir>         # one app-country directory: count + size budget (1 dump if
+#                                     # <dir> is not its own mount, i.e. not yet the hostPath)
 #   heap-dumps.sh prune-all <root>    # every <root>/<app>-<country>/, then a total budget over all
 #   heap-dumps.sh compress <root>     # gzip every settled .hprof under <root> (one level of subdirs)
 #   heap-dumps.sh report <root>       # Prometheus text: files/bytes/newest per directory
@@ -130,6 +131,25 @@ summary() {
   log "dir=$1 files=$files bytes=$bytes keep=$KEEP max_bytes=$MAX_BYTES"
 }
 
+# IS <dir> A MOUNT OF ITS OWN (the node's hostPath), or just a directory inside /data?
+#
+# The image and the GitOps manifests deploy separately, so this image can boot with the OLD
+# manifests, where /data/heapdumps is a plain directory on the pod's sized emptyDir (web) or its
+# PVC (worker). There an emptyDir over its sizeLimit gets the POD EVICTED, and the budget below
+# (3 dumps / 4 GiB) could put it over. So off the hostPath the prune keeps ONE dump -- the rule
+# the image had before, and the one NodeMemoryBudgetSpec sizes that volume for (the kept dump
+# plus the one being written <= 2 x -Xmx <= sizeLimit). The volume's sizeLimit is not visible
+# from inside the container (df there reads the node's disk), so the count is the bound.
+#
+# /proc/self/mountinfo, field 5, is every mount point; a hostPath (subPath or not) is one, a
+# directory on the emptyDir is not. An unreadable mountinfo means "not the hostPath": the safe side.
+is_mount_point() {
+  local mountinfo="${HEAPDUMP_MOUNTINFO:-/proc/self/mountinfo}" target
+  target="$(cd "$1" && pwd -P)"
+  [ -r "$mountinfo" ] || return 1
+  awk -v t="$target" '$5 == t { found = 1 } END { exit !found }' "$mountinfo"
+}
+
 cmd="${1:-}"; shift || true
 case "$cmd" in
   dump-file)
@@ -144,6 +164,10 @@ case "$cmd" in
     if [ ! -d "$dir" ]; then log "dir=$dir absent, nothing to prune"; exit 0; fi
     rotate_fixed_names "$dir"
     drop_stale_tmp "$dir"
+    if ! is_mount_point "$dir"; then
+      KEEP=1
+      log "dir=$dir is not the node's heap-dump hostPath (older manifests): keeping 1 dump so the pod's own volume cannot overflow"
+    fi
     enforce "$KEEP" "$MAX_BYTES" "$dir" "$dir"
     summary "$dir"
     ;;
