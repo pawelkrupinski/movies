@@ -15,6 +15,7 @@ listing IS their page.
 Usage:  python3 data/us/scripts/generate_roster.py <venues.json> <out.scala>
 """
 import json, re, sys, unicodedata
+from decimal import ROUND_HALF_EVEN, Decimal
 from collections import defaultdict
 sys.path.insert(0, __file__.rsplit('/', 1)[0])
 from states import STATES
@@ -43,6 +44,32 @@ FEEDLESS = {
 }
 
 
+#: A centroid's precision: five decimals of a degree, about a metre.
+CENTROID_PLACES = Decimal('0.00001')
+
+
+def mean_coordinate(values):
+    """The mean of coordinates given as the harvest's own decimal strings, rounded
+    half-even to five places.
+
+    EXACT, not float: `sum()` over floats is not the same function on every
+    Python -- 3.12 made it compensated (Neumaier), older ones add naively -- and
+    a mean that lands a hair either side of a rounding boundary then prints a
+    different last digit. Spencer, Iowa came out -94.92317 on one machine and
+    -94.92316 on CI, so the generated roster never matched itself. Decimal
+    arithmetic on the source strings has one answer everywhere."""
+    values = [Decimal(str(value)) for value in values]
+    mean = sum(values, Decimal(0)) / len(values)
+    return float(mean.quantize(CENTROID_PLACES, rounding=ROUND_HALF_EVEN))
+
+
+def centroid(vs):
+    """Centroid of a group's actual venues — centres the map where the
+    cinemas are rather than on a geographic midpoint nobody goes to."""
+    return (mean_coordinate(v['lat_src'] for v in vs),
+            mean_coordinate(v['lon_src'] for v in vs))
+
+
 def main(src, out):
     venues = [v for v in json.load(open(src)) if v.get('slug') not in FEEDLESS]
     by_state = defaultdict(list)
@@ -63,6 +90,8 @@ def main(src, out):
         by_state[state].append({
             'slug': slug, 'title': title, 'city': clean(v.get('city')),
             'lat': lat, 'lon': lon, 'metro': v.get('region_slug') or '',
+            # The harvest's own strings, for the exact centroid (see `mean_coordinate`).
+            'lat_src': v['lat'], 'lon_src': v['lon'],
         })
 
     # Coordinates decide which metro — which City, which URL — a venue lands in,
@@ -130,12 +159,6 @@ def main(src, out):
     sub_of = {}
     for (state, metro), members in by_metro.items():
         sub_of.update(sub_areas_for_metro(metro, members))
-
-    def centroid(vs):
-        """Centroid of a group's actual venues — centres the map where the
-        cinemas are rather than on a geographic midpoint nobody goes to."""
-        return (round(sum(v['lat'] for v in vs) / len(vs), 5),
-                round(sum(v['lon'] for v in vs) / len(vs), 5))
 
     regions = []
     for state in sorted(by_state, key=lambda s: STATES[s]):

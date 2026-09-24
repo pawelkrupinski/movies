@@ -69,3 +69,7 @@ test/resources/fixtures/enrichment-*
 # The GitOps manifests live in pawelkrupinski/movies-gitops. CI and `infra/bin/fetch-gitops`
 # check that repository out HERE, so the deploy specs read the same paths they always did.
 /infra/kubernetes/
+
+# Python bytecode the data/ generators leave beside themselves.
+__pycache__/
+*.pyc

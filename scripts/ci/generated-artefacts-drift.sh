@@ -27,6 +27,14 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
+# The generators import each other (data/us/scripts), and CPython would drop __pycache__/
+# next to them — untracked files the drift check below would then report as drift.
+export PYTHONDONTWRITEBYTECODE=1
+
+# The US centroid has to be the same number on every Python (see its test); prove that
+# before trusting a comparison with the committed roster.
+python3 data/us/scripts/test_generate_roster.py
+
 geonames=data/pl/geonames
 fetched_geonames=false
 if [ ! -f "$geonames/PL.txt" ]; then

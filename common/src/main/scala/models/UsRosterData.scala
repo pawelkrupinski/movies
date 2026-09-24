@@ -1376,11 +1376,11 @@ private[models] object UsRosterData {
     ("Warner Robins", 32.8138, -83.72619, "America/New_York"),
   ))
 
-  private def r_guam: R = ("guam", "Guam", 13.50485, 144.79982, Seq(
+  private def r_guam: R = ("guam", "Guam", 13.50486, 144.79982, Seq(
     ("MM Theatres", "MM Theatres", "mm-theatres", "Apotgan", "", "Dededo"),
     ("Regal Guam", "Regal Guam", "regal-guam", "Apotgan", "", "Apotgan"),
   ), Seq(
-    ("Apotgan", 13.50485, 144.79982, "Pacific/Guam"),
+    ("Apotgan", 13.50486, 144.79982, "Pacific/Guam"),
   ))
 
   private def r_hawaii: R = ("hawaii", "Hawaii", 20.92376, -157.1989, Seq(
@@ -1956,7 +1956,7 @@ private[models] object UsRosterData {
     ("Paullina", 43.05886, -95.69621, "America/Chicago"),
     ("Quad Cities", 41.68185, -90.55841, "America/Chicago"),
     ("Sioux City", 42.49971, -96.01864, "America/Chicago"),
-    ("Spencer", 43.19938, -94.92317, "America/Chicago"),
+    ("Spencer", 43.19938, -94.92316, "America/Chicago"),
     ("Waterloo", 42.078, -92.68587, "America/Chicago"),
   ))
 
