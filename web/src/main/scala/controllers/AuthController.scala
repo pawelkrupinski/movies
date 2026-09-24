@@ -56,6 +56,8 @@ import scala.util.{Failure, Success, Try}
  *   - `userId`        — set on successful callback, dropped on logout
  *   - `ssoBinding`    — set by a codeless `/auth/sso/finish`, spent by the
  *     next one that carries a code
+ *   - `mobileChallenge` — a native start's PKCE-style `challenge`, stamped
+ *     onto the deep-link code the callback mints
  */
 class AuthController(
   cc:                     ControllerComponents,
@@ -94,12 +96,21 @@ class AuthController(
         // callback to bounce back into the app via the `kinowo://` deep link
         // (carrying a one-shot exchange code) instead of redirecting to `/`.
         val isMobile = request.getQueryString("platform").exists(Set("ios", "android"))
-        Redirect(p.authUrl(state, redirectUri))
-          .withSession(request.session
-            + ("oauthState"     -> state)
-            + ("oauthProvider"  -> provider)
-            + ("oauthStateTimestamp"   -> clock.instant().toEpochMilli.toString)
-            ++ (if (isMobile) Seq("mobileClient" -> "1") else Seq.empty))
+        // The app's PKCE-style challenge (see `PendingExchangeCode.challenge`),
+        // carried to the code the callback mints. Absent from released app
+        // versions; malformed is refused rather than silently dropped, which
+        // would mint a code the app's own verifier could then never spend.
+        val challenge = request.getQueryString("challenge").filter(_ => isMobile)
+        if (challenge.exists(c => !AuthExchangeCodes.ChallengePattern.matches(c)))
+          BadRequest("challenge must be base64url(SHA-256(verifier)), unpadded")
+        else
+          Redirect(p.authUrl(state, redirectUri))
+            .withSession(request.session
+              + ("oauthState"     -> state)
+              + ("oauthProvider"  -> provider)
+              + ("oauthStateTimestamp"   -> clock.instant().toEpochMilli.toString)
+              ++ (if (isMobile) Seq("mobileClient" -> "1") else Seq.empty)
+              ++ challenge.map(AuthController.MobileChallengeKey -> _))
     }
   }
 
@@ -184,12 +195,13 @@ class AuthController(
             InternalServerError("Couldn't complete sign-in. Please try again.")
           case Success(user) =>
             val nextSession = SignedInUser.establish(
-              request.session - "oauthState" - "oauthProvider" - "oauthStateTimestamp" - "mobileClient",
+              request.session - "oauthState" - "oauthProvider" - "oauthStateTimestamp" - "mobileClient" - AuthController.MobileChallengeKey,
               user)
             if (request.session.get("mobileClient").contains("1")) {
               // The native apps keep their own cookie jar per host and finish
               // through the deep link, so there is no sibling to pair.
-              uncacheable(Redirect(s"kinowo://auth-done?code=${exchangeCodes.mint(user.id)}").withSession(nextSession))
+              uncacheable(Redirect(s"kinowo://auth-done?code=${exchangeCodes.mint(user.id,
+                challenge = request.session.get(AuthController.MobileChallengeKey))}").withSession(nextSession))
             } else {
               uncacheable(Redirect(pairSiblingThen(landingFor(request), request)).withSession(nextSession))
             }
@@ -424,7 +436,7 @@ class AuthController(
   def exchange(): Action[JsValue] = Action(parse.json) { request => PerUserResponse(redeemExchangeCode(request.body)) }
 
   private def redeemExchangeCode(body: JsValue): Result = {
-    (body \ "code").asOpt[String].flatMap(exchangeCodes.redeem(_)) match {
+    (body \ "code").asOpt[String].flatMap(exchangeCodes.redeem(_, verifier = (body \ "verifier").asOpt[String])) match {
       case None =>
         Unauthorized(Json.obj("error" -> "invalid or expired code"))
       case Some(userId) =>
@@ -663,6 +675,9 @@ object AuthController {
    *  to the handing-over one) for the value that binds a handoff code to one
    *  browser — see [[AuthController.ssoFinish]]. */
   val SsoBindingKey = "ssoBinding"
+
+  /** Session key holding a native flow's `challenge` from start to callback. */
+  val MobileChallengeKey = "mobileChallenge"
   val BindParam     = "bind"
 
   /** `params` as a query string, keys and values encoded; empty for none. */

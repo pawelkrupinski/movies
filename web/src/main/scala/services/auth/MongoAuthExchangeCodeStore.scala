@@ -45,6 +45,7 @@ class MongoAuthExchangeCodeStore(db: Option[MongoDatabase]) extends AuthExchange
       .append("userId",   BsonString(pending.userId))
       .append("issuedAt", BsonDateTime(pending.issuedAt.toEpochMilli))
     pending.binding.foreach(binding => document.append("binding", BsonString(binding)))
+    pending.challenge.foreach(challenge => document.append("challenge", BsonString(challenge)))
     Try(Await.result(c.insertOne(Document(document)).toFuture(), MongoAuthExchangeCodeStore.Timeout))
       // WARN, not debug: the visitor lands signed out on the far side and has no
       // way to tell why, so this line is the only trace the handoff was even
@@ -68,7 +69,8 @@ class MongoAuthExchangeCodeStore(db: Option[MongoDatabase]) extends AuthExchange
     code     <- Option(document.getString("_id"))
     userId   <- Option(document.getString("userId"))
     issuedAt <- Option(document.getDate("issuedAt"))
-  } yield PendingExchangeCode(code, userId, Instant.ofEpochMilli(issuedAt.getTime), Option(document.getString("binding")))
+  } yield PendingExchangeCode(code, userId, Instant.ofEpochMilli(issuedAt.getTime), Option(document.getString("binding")),
+    Option(document.getString("challenge")))
 
   /** Housekeeping only — [[AuthExchangeCodes.redeem]] is what actually refuses an
    *  expired code, and it does so the instant the code is presented. Mongo's TTL

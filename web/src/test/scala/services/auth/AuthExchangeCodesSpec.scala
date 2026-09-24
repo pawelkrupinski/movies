@@ -63,6 +63,19 @@ class AuthExchangeCodesSpec extends AnyFlatSpec with Matchers {
     codes.redeem(codes.mint("alice@example.com"), Some("any-browser")) shouldBe empty
   }
 
+  // A native code minted with a PKCE-style challenge spends only for its
+  // verifier; one minted without spends only without (released apps).
+  it should "redeem a challenged code only for the verifier whose S256 is the challenge" in {
+    val codes     = fixture()
+    val verifier  = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+    val challenge = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM" // RFC 7636 appendix B
+    codes.redeem(codes.mint("alice@example.com", challenge = Some(challenge)), verifier = Some(verifier)).value shouldBe "alice@example.com"
+    codes.redeem(codes.mint("alice@example.com", challenge = Some(challenge)))                                 shouldBe empty
+    codes.redeem(codes.mint("alice@example.com", challenge = Some(challenge)), verifier = Some("wrong"))       shouldBe empty
+    codes.redeem(codes.mint("alice@example.com"), verifier = Some(verifier))                                  shouldBe empty
+    codes.redeem(codes.mint("alice@example.com", challenge = Some(challenge)), Some("b"), Some(verifier))     shouldBe empty
+  }
+
   // Two mints must never collide — one visitor's handoff cannot be redeemable
   // by another's code.
   it should "be unique per mint, even for the same user" in {

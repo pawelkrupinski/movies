@@ -15,7 +15,7 @@ import scala.concurrent.duration._
 /** The handoff code's browser binding survives the real store: the kinowo.net
  *  pod mints, the showtimes.cc pod redeems, and all they share is this
  *  collection — a binding dropped on the way through would make every bound
- *  handoff land signed out. */
+ *  handoff land signed out. The same goes for a native code's challenge. */
 class MongoAuthExchangeCodeStoreIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
@@ -40,5 +40,15 @@ class MongoAuthExchangeCodeStoreIntegrationSpec extends AnyFlatSpec with Matcher
   it should "hand back an unbound code as unbound" in {
     store.put(PendingExchangeCode("app-code", "alice@example.com", Now))
     store.remove("app-code").value.binding shouldBe empty
+  }
+
+  // The native apps' PKCE-style challenge rides the same collection from the
+  // callback that mints to the exchange that redeems — possibly another pod.
+  it should "hand back a native code's challenge" in {
+    val challenged = PendingExchangeCode("pkce-code", "alice@example.com", Now, challenge = Some("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"))
+    store.put(challenged)
+    store.remove("pkce-code").value shouldBe challenged
+    store.put(PendingExchangeCode("legacy-code", "alice@example.com", Now))
+    store.remove("legacy-code").value.challenge shouldBe empty
   }
 }
