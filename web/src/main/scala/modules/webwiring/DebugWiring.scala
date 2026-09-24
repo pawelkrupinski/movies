@@ -58,7 +58,7 @@ trait DebugWiring { self: Wiring =>
   // NEW READER HERE MEANS ADDING ITS COLLECTION TO `services.DebugMirror`, which
   // `MongoConnectionSpec` diffs against the sync's own list.
   private lazy val bootDebugStack: DebugStack = new DebugStack(
-    models.Country.fromEnv, movieRepository, stagingRepository, taskQueue, ratingCadenceReader, enrichmentAttemptReader,
+    country, movieRepository, stagingRepository, taskQueue, ratingCadenceReader, enrichmentAttemptReader,
     readModelMovies       = () => webReadModel.allMovies(),
     readModelScreenings   = () => webReadModel.allScreenings(),
     readModelLastModified = () => webReadModel.lastModified,
@@ -73,7 +73,7 @@ trait DebugWiring { self: Wiring =>
       .orElse(MongoConnection.sharedClientFromEnv())
   private lazy val debugExtraStacks: Seq[(models.Country, MongoConnection, DebugStack)] =
     debugExtraClient.toSeq.flatMap { client =>
-      models.Country.switchable.filterNot(_ == models.Country.fromEnv).map { country =>
+      models.Country.switchable.filterNot(_ == country).map { country =>
         val conn       = Wiring.debugMirrorConnection(
           Env.get("MONGODB_MOVIES_MIRROR_URI"),
           MongoConnection.mirrorForDb(_, country.mongoDb, sharedClient = Some(client)),
@@ -106,7 +106,8 @@ trait DebugWiring { self: Wiring =>
       devMode = environmentMode != Mode.Prod)
 
   lazy val debugController  = new DebugController(controllerComponents, debugCountries, webReadModel, adminAction, environmentMode,
-    cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()), clock = clock)
+    cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()),
+    servingCountry = country, clock = clock)
   // Dev-only SSE feed for the /debug live view; watches the SELECTED country's
   // `movies` + `pending_movies` via the same per-country stacks the /debug page
   // renders from. The live row's details cell ships empty (lazily fetched on

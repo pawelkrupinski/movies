@@ -51,7 +51,7 @@ class DebugController(cc: ControllerComponents,
                       // rather than read from `Country.fromEnv` at each use so a
                       // spec can exercise another country's host without mutating
                       // the process-global env that parallel suites share.
-                      servingCountry: models.Country = models.Country.fromEnv,
+                      servingCountry: models.Country,
                       // What "now" is for the pages' own age readings (the mirror badge, cadence).
                       clock: java.time.Clock = java.time.Clock.systemUTC(),
                      )(implicit messages: play.api.i18n.Messages) extends AbstractController(cc) {

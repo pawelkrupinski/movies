@@ -18,7 +18,7 @@ import play.api.test.{FakeRequest, Helpers}
 class LandingApexSpec extends AnyFlatSpec with Matchers {
 
   private val controller = new LandingController(
-    Helpers.stubControllerComponents(messagesApi = testsupport.TestMessages.messagesApi))
+    Helpers.stubControllerComponents(messagesApi = testsupport.TestMessages.messagesApi), models.Country.Poland)
 
   private def bodyOn(host: String): String =
     contentAsString(controller.index().apply(

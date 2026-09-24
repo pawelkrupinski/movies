@@ -42,7 +42,7 @@ import play.api.mvc._
  * Hard cut: the old unprefixed repertoire URLs no longer exist; these are the
  * only things served at `/`.
  */
-class LandingController(cc: ControllerComponents, country: Country = Country.fromEnv)
+class LandingController(cc: ControllerComponents, country: Country)
     extends AbstractController(cc) {
 
   /** The front door is BRAND chrome, not a country's site, so it is rendered in

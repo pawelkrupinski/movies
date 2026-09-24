@@ -414,7 +414,7 @@ class MovieController( cc: ControllerComponents,
                        // rather than read from `Country.fromEnv` at each use so a spec
                        // can exercise a non-Polish host by passing one, instead of
                        // mutating the process-global env that parallel suites share.
-                       servingCountry: models.Country = models.Country.fromEnv,
+                       servingCountry: models.Country,
                      ) extends AbstractController(cc) with Logging {
 
   // The country this deployment serves — the rules its corpus was keyed under,

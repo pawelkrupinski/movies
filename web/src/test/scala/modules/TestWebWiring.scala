@@ -27,7 +27,9 @@ class TestWebWiring(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty) e
     store
   }
 
-  val controllerComponents = stubControllerComponents()
+  // The real bundles, as production's: a controller resolves its deployment `Messages`
+  // off these components, and the stub default has none (every key renders as itself).
+  val controllerComponents = stubControllerComponents(messagesApi = testsupport.TestMessages.messagesApi)
   def environmentMode       = play.api.Mode.Test
   def messagesApi           = testsupport.TestMessages.messagesApi
   implicit def materializer: org.apache.pekko.stream.Materializer = null

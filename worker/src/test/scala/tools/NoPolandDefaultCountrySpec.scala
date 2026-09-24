@@ -76,12 +76,7 @@ class NoPolandDefaultCountrySpec extends AnyFlatSpec with Matchers {
     "worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala: this.titles" ->
       "the auxiliary constructor exists for the Poland-only operator tools (FilmwebDiff, RosterAudit)",
     "worker/src/main/scala/tools/FilmwebDiffTitleNormalizer.scala: normalize.titles" ->
-      "Filmweb is Polish-only, so a Filmweb title is a Polish title by definition",
-    "web/src/main/scala/controllers/DebugController.scala: DebugController.servingCountry"   -> Tests,
-    "web/src/main/scala/controllers/LandingController.scala: LandingController.country"      -> Tests,
-    "web/src/main/scala/controllers/MetricsController.scala: MetricsController.country"      -> Tests,
-    "web/src/main/scala/controllers/MovieController.scala: MovieController.servingCountry"   -> Tests,
-    "web/src/main/scala/controllers/WebMovieMetrics.scala: WebMovieMetrics.country"          -> Tests
+      "Filmweb is Polish-only, so a Filmweb title is a Polish title by definition"
   )
 
   "Production parameters" should "not default to Poland" in {

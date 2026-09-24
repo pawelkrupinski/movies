@@ -1,6 +1,5 @@
 package controllers
 
-import models.Country
 import play.api.mvc._
 import services.UptimeMonitor
 import services.UptimeMonitor.RecentTotals
@@ -54,7 +53,7 @@ import services.metrics.WebJvmMetrics
  * is to full.
  */
 class MetricsController(cc: ControllerComponents, monitor: UptimeMonitor, fallbackStore: FallbackStore,
-  movieMetrics: WebMovieMetrics, jvmMetrics: WebJvmMetrics, country: String = Country.default.code,
+  movieMetrics: WebMovieMetrics, jvmMetrics: WebJvmMetrics, country: String,
   clock: java.time.Clock = java.time.Clock.systemUTC()) extends AbstractController(cc) {
   def metrics: Action[AnyContent] = Action {
     // Windowed AND summed by the monitor, not here. Pulling each service's full

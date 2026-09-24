@@ -14,7 +14,7 @@ trait ControllersWiring { self: Wiring =>
   // `MovieController` render every visitor in this; an explicit language
   // pick swaps the visible copy client-side instead (`shared.js`'s
   // `applyLanguage`), never by re-rendering server-side.
-  lazy val deploymentLang: play.api.i18n.Lang = play.api.i18n.Lang(models.Country.fromEnv.language)
+  lazy val deploymentLang: play.api.i18n.Lang = play.api.i18n.Lang(country.language)
 
   // The fixed deployment `Messages` — what every visitor-facing render uses,
   // plus `DebugController`/`RetiredSiteController`-adjacent, ops/crawler-facing
@@ -22,9 +22,10 @@ trait ControllersWiring { self: Wiring =>
   implicit lazy val deploymentMessages: play.api.i18n.Messages =
     messagesApi.preferred(Seq(deploymentLang))
 
-  lazy val landingController = new LandingController(controllerComponents, models.Country.fromEnv)
+  lazy val landingController = new LandingController(controllerComponents, country)
   lazy val encodedResponseCache = new EncodedResponseCache
-  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, oauthProviders.keySet, environmentMode, encodedResponseCache)
+  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, oauthProviders.keySet, environmentMode, encodedResponseCache,
+    servingCountry = country)
   // Global country+city catalog for the mobile apps (`GET /api/catalog`), served
   // identically by every deployment — no per-country/read-model dependency.
   lazy val catalogController = new CatalogController(controllerComponents)

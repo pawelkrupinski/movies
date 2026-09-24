@@ -18,8 +18,8 @@ trait MetricsWiring { self: Wiring =>
   // tomorrow), appended to /metrics for Grafana to graph + alert on swings.
   // A web deployment serves exactly one country; tag its /metrics with that
   // country so its series line up with the worker's per-country series in Grafana.
-  private val metricsCountry = models.Country.fromEnv
-  lazy val webMovieMetrics = new WebMovieMetrics(movieControllerService, cities = metricsCountry.cities, country = metricsCountry.code)
+  private def metricsCountry = country
+  lazy val webMovieMetrics = new WebMovieMetrics(movieControllerService, country)
   lazy val webJvmMetrics = new WebJvmMetrics
   // Request rate / error rate / latency, recorded by `HttpMetricsFilter` on the
   // SAME registry the JVM collectors use — so it surfaces on the existing

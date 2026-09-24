@@ -46,6 +46,7 @@ object TestDebugController {
       adminAction      = adminAction,
       environment      = mode,
       cinemaSourceUrls = () => cinemaSourceUrls,
+      servingCountry   = models.Country.default,
     )
     (ctrl, readModel)
   }

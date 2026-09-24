@@ -30,13 +30,14 @@ import scala.util.Try
  */
 class WebMovieMetrics(
   service: MovieControllerService,
-  cities:  Seq[City]  = City.all,
+  // A web deployment serves exactly one country: its cities are the ones sampled, and
+  // its code is the constant `country` label that lines the series up with the
+  // worker's per-country series on the shared Grafana dashboards.
+  servingCountry: Country,
   clock:   Clock      = Clock.systemDefaultZone(),
-  // A web deployment serves exactly one country; its metrics carry a constant
-  // `country` label so they line up with the worker's per-country series on the
-  // shared Grafana dashboards. Defaults to the default country for tests.
-  country: String     = Country.default.code
 ) extends Logging {
+  private val cities: Seq[City] = servingCountry.cities
+  private val country: String   = servingCountry.code
 
   private val latest = new AtomicReference[Seq[WebMovieMetrics.CityCounts]](
     cities.map(c => WebMovieMetrics.CityCounts(c.slug, all = 0, tomorrow = 0))

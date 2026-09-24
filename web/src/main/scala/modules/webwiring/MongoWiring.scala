@@ -32,7 +32,7 @@ trait MongoWiring { self: Wiring =>
     MongoConnection.sharedClientFromEnv()
 
   lazy val mongoConnection: MongoConnection =
-    MongoConnection.fromEnvForDb(models.Country.resolvedDbName, mongoRequired, sharedClient = mongoSharedClient)
+    MongoConnection.fromEnvForDb(models.Country.dbNameFor(country), mongoRequired, sharedClient = mongoSharedClient)
 
   // ── Users ─────────────────────────────────────────────────────────────────
   // `users` + `userStates` come off `Country.usersDbName` rather than this

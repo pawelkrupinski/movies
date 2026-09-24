@@ -191,7 +191,7 @@ class AppComponents(context: Context)
   // ── Router + filters ──────────────────────────────────────────────────────
   lazy val cspFilter: CspFilter = new CspFilter()(using materializer, executionContext)
   lazy val renamedCityRedirectFilter: RenamedCityRedirectFilter =
-    new RenamedCityRedirectFilter(models.Country.fromEnv.mountPath)(using materializer)
+    new RenamedCityRedirectFilter(country.mountPath)(using materializer)
   lazy val httpMetricsFilter: HttpMetricsFilter = new HttpMetricsFilter(webHttpMetrics)(using executionContext)
   lazy val crossSiteWriteFilter: CrossSiteWriteFilter = new CrossSiteWriteFilter()(using materializer)
   // Metrics FIRST (outermost) so the latency it records is the whole chain —

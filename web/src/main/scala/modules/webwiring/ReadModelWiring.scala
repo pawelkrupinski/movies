@@ -57,7 +57,7 @@ trait ReadModelWiring { self: Wiring =>
    *  stacks (DebugWiring) each get their OWN, since they read another country's
    *  database. */
   lazy val titleNormalizer: services.movies.TitleNormalizer =
-    services.movies.TitleNormalizer.forCountry(models.Country.fromEnv)
+    services.movies.TitleNormalizer.forCountry(country)
 
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(
     movieMirrorConnection.database, fallbackToOwnInit = false,

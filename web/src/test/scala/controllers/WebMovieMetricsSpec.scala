@@ -39,7 +39,7 @@ class WebMovieMetricsSpec extends AnyFlatSpec with Matchers {
       ("Wroclaw Tomorrow",   Some(2026), MovieRecord(data = Map[Source, SourceData](HeliosMagnolia -> slot(tomorrow)))),
     )
     val service = new MovieControllerService(TestReadModel.fromRecords(records), clock)
-    new WebMovieMetrics(service, clock = clock)
+    new WebMovieMetrics(service, models.Country.Poland, clock = clock)
   }
 
   "sample" should "count distinct served films per city, by scope" in {
