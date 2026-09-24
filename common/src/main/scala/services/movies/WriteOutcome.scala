@@ -57,6 +57,30 @@ trait RepositoryWriteMetrics {
 
 object RepositoryWriteMetrics {
   val noop: RepositoryWriteMetrics = (_: String, _: String, _: String) => ()
+
+  private val sideCollectionWrites =
+    Seq("replaceFilm", "upsertSlot", "deleteSlot", "deleteFilm", "deleteRows", "deleteFilms")
+
+  /** Every `(collection, op)` a repository write is counted under — the `op` each
+   *  repository passes to [[RepositoryWrite]]. Seeded at boot with [[SeededExceptions]]. */
+  val Writes: Seq[(String, String)] =
+    Seq("upsert", "updateIfPresent", "delete").map(MovieRepository.Collection -> _) ++
+    sideCollectionWrites.map(SlotsRepository.Collection -> _) ++
+    sideCollectionWrites.map(ScreeningsRepository.Collection -> _) ++
+    Seq("upsert", "delete").map(services.staging.StagingRepository.Collection -> _)
+
+  /** The exception classes a repository write is expected to fail with, seeded at 0 so the
+   *  FIRST failure moves `increase()`: a counter series born at 1 needs a second failure
+   *  before any range function sees it, and the 2026-09-24 incident began as exactly one
+   *  codec failure. A class outside this list is still counted, under its own series, from
+   *  its second occurrence. The `exception` label stays the raw class name either way. */
+  val SeededExceptions: Seq[String] = Seq(
+    "CodecConfigurationException",     // a field the DTO cannot encode — the incident
+    "MongoWriteException",             // a validator, a duplicate key
+    "MongoBulkWriteException",         // the same, from a bulkWrite
+    "MongoCommandException",           // the server refusing the command itself
+    "MongoTimeoutException",           // no server selected in time
+    "MongoSocketReadTimeoutException") // a server that stopped answering mid-write
 }
 
 /**

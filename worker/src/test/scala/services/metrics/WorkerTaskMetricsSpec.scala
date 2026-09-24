@@ -312,4 +312,17 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     out should include ("""kinowo_worker_rating_first_attempt_delay_seconds_count{country="pl",site="rt"} 0""")
     out should include ("""kinowo_worker_rating_first_attempt_delay_seconds_count{country="pl",site="mc"} 0""")
   }
+
+  // A counter series that is BORN at 1 is invisible to `increase()`/`rate()` — they need two
+  // samples, and the first one already holds the failure. So the incident's own shape, one
+  // codec failure on `movies.upsert`, must land on a series that already reads 0.
+  it should "seed every known repository write failure at zero, so increase() sees the first one" in {
+    val (m, series) = newPl()
+    val line = """kinowo_worker_repository_write_failed_total{collection="movies",country="pl",exception="CodecConfigurationException",op="upsert"}"""
+
+    scrapePl(series).linesIterator.find(_.startsWith(line)).map(_.split(' ').last.toDouble) shouldBe Some(0.0)
+
+    m.recordWriteFailed("movies", "upsert", "CodecConfigurationException")
+    scrapePl(series).linesIterator.find(_.startsWith(line)).map(_.split(' ').last.toDouble) shouldBe Some(1.0)
+  }
 }

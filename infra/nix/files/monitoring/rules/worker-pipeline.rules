@@ -306,8 +306,9 @@ groups:
       # RESTART-GAP-SAFE the way `last_over_time(...[10m])` makes the gauges elsewhere: a pod
       # change leaves the series absent for ~3 minutes, and `increase(...[5m])` still holds the
       # old pod's samples across that hole while the new pod's series starts, so the `for:` is
-      # not reset by a rollout. A series appears on its first failure (the exception label is
-      # open-ended, so nothing can be seeded at boot) and `increase` counts from its second.
+      # not reset by a rollout. The worker seeds every known (collection, op) at 0 for the
+      # expected exception classes, so `increase` counts from the FIRST failure; a class outside
+      # that list appears on its first failure and counts from its second.
       - alert: RepositoryWritesFailing
         expr: sum by (country) (increase(kinowo_worker_repository_write_failed_total[5m])) > 0
         for: 10m

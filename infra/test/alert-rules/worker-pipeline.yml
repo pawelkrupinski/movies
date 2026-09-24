@@ -364,6 +364,25 @@ tests:
               summary: "pl's worker has been failing repository writes for 10 minutes"
               description: "Writes to `movies`, `movie_slots`, `screenings` or `pending_movies` are throwing. Nothing is lost silently -- each failed row is rolled out of the worker's cache and retried by its next scrape -- but until the cause clears, new films and changed showtimes do not reach the site. The worker's WARN lines name each write (`MovieRepository.upsert(<title>, <year>) failed: ...`), and the counter's `collection`, `op` and `exception` labels (worker diagnostics dashboard, \"Repository writes that FAILED\") say which store and why: a codec exception is a model field the DTO cannot encode, a MongoWriteException a validator or duplicate key, a timeout the database itself."
 
+  # SEEDED AT BOOT, AS THE WORKER NOW DOES: the series reads 0 for ten minutes before the first
+  # failure, so `increase` sees that first failure rather than needing a second. Failures from
+  # t=10 on, one a minute: pending from t=10, firing by t=21, and silent before.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_repository_write_failed_total{country="es",job="kinowo-worker",collection="movie_slots",op="upsertSlot",exception="CodecConfigurationException"}'
+        values: '0x9 1+1x20'
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: RepositoryWritesFailing
+        exp_alerts: []
+      - eval_time: 21m
+        alertname: RepositoryWritesFailing
+        exp_alerts:
+          - exp_labels: { severity: warning, country: es }
+            exp_annotations:
+              summary: "es's worker has been failing repository writes for 10 minutes"
+              description: "Writes to `movies`, `movie_slots`, `screenings` or `pending_movies` are throwing. Nothing is lost silently -- each failed row is rolled out of the worker's cache and retried by its next scrape -- but until the cause clears, new films and changed showtimes do not reach the site. The worker's WARN lines name each write (`MovieRepository.upsert(<title>, <year>) failed: ...`), and the counter's `collection`, `op` and `exception` labels (worker diagnostics dashboard, \"Repository writes that FAILED\") say which store and why: a codec exception is a model field the DTO cannot encode, a MongoWriteException a validator or duplicate key, a timeout the database itself."
+
   # A BLIP HEALS ITSELF. Three failures in one minute (a stepdown), then nothing: the rows were
   # rolled back and retried by the next scrape, so there is nothing to page about.
   - interval: 1m

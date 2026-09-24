@@ -462,7 +462,7 @@ object WorkerTaskMetrics {
 
     private val repositoryWriteFailed = Counter.builder()
       .name("kinowo_worker_repository_write_failed")
-      .help("A MovieRepository / SlotsRepository / ScreeningsRepository / StagingRepository write that THREW, by country, collection (movies|movie_slots|screenings|pending_movies), op (upsert, replaceFilm, upsertSlot, updateIfPresent, delete, ...) and exception (the class's simple name). ZERO IS THE HEALTHY READING. Added 2026-09-24: a codec bug failed 34 upserts over ~6h and every one was logged at WARN and returned Unit, while the cache kept the unwritten row, so two new films never reached the site until a restart and nothing counted it. Every failure is also a WARN line naming the film; the cache rolls the row back so the next identical scrape retries. Alerted by RepositoryWritesFailing (worker-pipeline.rules). Series appear on the first failure, not at boot: the exception label is open-ended.")
+      .help("A MovieRepository / SlotsRepository / ScreeningsRepository / StagingRepository write that THREW, by country, collection (movies|movie_slots|screenings|pending_movies), op (upsert, replaceFilm, upsertSlot, updateIfPresent, delete, ...) and exception (the class's simple name). ZERO IS THE HEALTHY READING. Added 2026-09-24: a codec bug failed 34 upserts over ~6h and every one was logged at WARN and returned Unit, while the cache kept the unwritten row, so two new films never reached the site until a restart and nothing counted it. Every failure is also a WARN line naming the film; the cache rolls the row back so the next identical scrape retries. Alerted by RepositoryWritesFailing (worker-pipeline.rules). Every known (collection, op) is seeded at 0 for the expected exception classes (RepositoryWriteMetrics.SeededExceptions) so increase() sees the first failure; any other class appears on its first failure and counts from its second.")
       .labelNames("country", "collection", "op", "exception")
       .register(registry)
 
@@ -489,6 +489,9 @@ object WorkerTaskMetrics {
         ScrapeLandingMetrics.Guards.foreach(g =>
           ScrapeLandingMetrics.Verdicts.foreach(v => scrapeGuardVerdicts.labelValues(c, g, v).inc(0.0)))
         ScrapeLandingMetrics.SkipReasons.foreach(r => scrapeWriteSkipped.labelValues(c, r).inc(0.0))
+        RepositoryWriteMetrics.Writes.foreach { case (collection, op) =>
+          RepositoryWriteMetrics.SeededExceptions.foreach(e => repositoryWriteFailed.labelValues(c, collection, op, e).inc(0.0))
+        }
         RetryModes.foreach(m => ResolveDuplicateOutcomes.foreach(o => resolveRetryDuplicates.labelValues(c, m, o).inc(0.0)))
         ReadModelProjectionMetrics.Targets.foreach(t =>
           ReadModelProjectionMetrics.Ops.foreach(o => readModelWrites.labelValues(c, t, o)))
