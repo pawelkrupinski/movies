@@ -248,23 +248,10 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
     }
   }
 
-  /**
-   * Divergences that are REAL and NOT YET FIXED, each confined to the SPLIT arrival (the
-   * permutations agree) — so the rest of the claim can guard everything else meanwhile.
-   * Keyed by country code, then the film's stored title key; a film listed here is left
-   * out of the split-vs-reference comparison only. Empty since the three the spec found
-   * on its first run were fixed (UK decorated-year rereleases, PL "Opętanie | klasyka
-   * w 4k", US "It").
-   *
-   * A ratchet, not an allowlist: an entry that no longer diverges FAILS the spec, so a
-   * fix has to delete its entry and cannot leave the exemption behind to hide the next
-   * regression. Never add to it to get a build green — add the fix.
-   */
-  private val KnownSplitArrivalDivergences: Map[String, Set[String]] = Map.empty
-
-  /** The rescrape twin of [[KnownSplitArrivalDivergences]], keyed by sanitized title — the
-   *  same ratchet: a listed film that stops churning fails the spec. */
-  private val KnownRescrapeChurn: Map[String, Set[String]] = Map.empty
+  // The known, unfixed divergences — see `tools.HardClusterExemptions`, where a unit guard
+  // holds them on every push.
+  private val KnownSplitArrivalDivergences = HardClusterExemptions.SplitArrivalDivergences
+  private val KnownRescrapeChurn           = HardClusterExemptions.RescrapeChurn
 
   countries.foreach { country =>
     val name = country.displayName
@@ -281,21 +268,21 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
       if (Env.get("KINOWO_HARD_CLUSTERS_DUMP").isDefined)
         passes.foreach { case (p, fs) => println(s"[${country.code}] ${p.label}:\n  ${fs.mkString("\n  ")}") }
       val known = KnownSplitArrivalDivergences.getOrElse(country.code, Set.empty)
-      def isKnown(pass: Pass, key: String) = pass.label == "split" && known.contains(key.takeWhile(_ != '|'))
+      def isKnown(pass: Pass, key: String) = pass.label == "split" && known.contains(key)
       val divergences = passes.tail.flatMap { case (pass, fs) =>
         val d = diff(refFilms, fs, reference.label, pass.label).filterNot { case (key, _) => isKnown(pass, key) }
         if (d.isEmpty) None
         else Some(s"${reference.label} vs ${pass.label} (seed base 0x${OrderSeed.toHexString}):\n${d.map(_._2).take(15).mkString("\n")}")
       }
       val stillDiverging = passes.tail.flatMap { case (pass, fs) =>
-        diff(refFilms, fs, reference.label, pass.label).collect { case (key, _) if isKnown(pass, key) => key.takeWhile(_ != '|') }
+        diff(refFilms, fs, reference.label, pass.label).collect { case (key, _) if isKnown(pass, key) => key }
       }.toSet
       val fixed = known -- stillDiverging
       withClue(s"$name: ${divergences.size} pass(es) diverged:\n${divergences.mkString("\n")}\n") {
         divergences shouldBe empty
       }
       withClue(s"$name: ${fixed.mkString(", ")} no longer diverge(s) on the split arrival — delete the entry from " +
-               "KnownSplitArrivalDivergences so the exemption cannot hide the next regression: ") {
+               "HardClusterExemptions.SplitArrivalDivergences so the exemption cannot hide the next regression: ") {
         fixed shouldBe empty
       }
     }
@@ -307,11 +294,14 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
       // The known churners are read apart from the rest: left out of every check below,
       // and required to still churn (see the end), so fixing one retires its entry.
       val knownChurn = KnownRescrapeChurn.getOrElse(country.code, Set.empty)
-      def isKnown(title: String) = knownChurn.contains(normalizer.sanitize(title))
+      // By the film's FULL key; only a staged row, which has no year yet, is matched by title.
+      def isKnown(key: String) = knownChurn.contains(key)
+      def isKnownTitle(title: String) = knownChurn.exists(_.takeWhile(_ != '|') == normalizer.sanitize(title))
       def allRecords = w.movieRepository.findAll().sortBy(r => (r.key(normalizer), r.title))
-      def records: Seq[StoredMovieRecord] = allRecords.filterNot(r => isKnown(r.title))
-      def knownRecords: Seq[StoredMovieRecord] = allRecords.filter(r => isKnown(r.title))
-      def keys = w.movieCache.snapshot().map(r => (r.title, r.year)).filterNot(k => isKnown(k._1)).toSet
+      def records: Seq[StoredMovieRecord] = allRecords.filterNot(r => isKnown(r.key(normalizer)))
+      def knownRecords: Seq[StoredMovieRecord] = allRecords.filter(r => isKnown(r.key(normalizer)))
+      def keys = w.movieCache.snapshot().map(r => (r.title, r.year))
+        .filterNot { case (title, year) => isKnown(StoredMovieRecord.keyFor(title, year, normalizer)) }.toSet
       val knownBefore = knownRecords
 
       val problems = mutable.ListBuffer.empty[String]
@@ -348,7 +338,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
         val splitsBeforeSettle = w.movieService.mixedFilmSplits
         w.movieService.settle()
         val splitsInTick = w.movieService.mixedFilmSplits - splitsBeforeSettle
-        val divertedUnknown = diverted.filterNot { case (_, title) => isKnown(title) }
+        val divertedUnknown = diverted.filterNot { case (_, title) => isKnownTitle(title) }
         if (divertedUnknown.nonEmpty)
           problems += s"rescrape $tick re-diverted ${divertedUnknown.size} known film(s) to staging: ${divertedUnknown.toSeq.sorted.take(10).mkString(", ")}"
         if (splitsInTick != 0)
@@ -359,7 +349,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
         if (drift.nonEmpty) problems += s"rescrape $tick moved keys: ${drift.toSeq.sorted.take(10).mkString(", ")}"
       }
       if (knownChurn.nonEmpty && knownRecords == knownBefore)
-        problems += s"${knownChurn.mkString(", ")} no longer churn(s) — delete the entry from KnownRescrapeChurn " +
+        problems += s"${knownChurn.mkString(", ")} no longer churn(s) — delete the entry from HardClusterExemptions.RescrapeChurn " +
                     "so the exemption cannot hide the next regression"
       withClue(s"$name did not stay settled:\n${problems.mkString("\n")}\n") {
         problems shouldBe empty
