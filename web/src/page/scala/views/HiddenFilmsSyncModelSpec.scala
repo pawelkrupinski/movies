@@ -105,7 +105,8 @@ class HiddenFilmsSyncModelSpec extends AnyFlatSpec with Matchers with BeforeAndA
   }
 
   // Found by this model: an anonymous visitor's /uk hide, still in the one
-  // per-origin list on /de, was unioned into the /de account at a sign-in there.
+  // per-origin list on /de, was unioned into the /de account at a sign-in there
+  // — and sat in the list the /de page filtered and counted by.
   it should "not union one country's anonymous hides into another country's account" in withChrome { c =>
     SyncModel.violationOf(c, Seq(Hide, SwitchCountry("de"))) shouldBe None
   }
@@ -121,12 +122,6 @@ class HiddenFilmsSyncModelSpec extends AnyFlatSpec with Matchers with BeforeAndA
   // held up on the wire landed AFTER the hide sent just behind it, and wiped it.
   it should "land a clear and a quick hide on the server in the order they were made" in withChrome { c =>
     SyncModel.violationOf(c, Seq(Login, Hide, Lag, ClearThenHide)) shouldBe None
-  }
-
-  // One list per origin: an anonymous visitor's /uk hide was in the list the
-  // /de page filtered and counted by.
-  it should "keep each country's hidden list to itself on a shared origin" in withChrome { c =>
-    SyncModel.violationOf(c, Seq(Hide, SwitchCountry("de"))) shouldBe None
   }
 
   it should "resend a write that failed offline" in withChrome { c =>
