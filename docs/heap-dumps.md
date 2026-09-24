@@ -43,6 +43,29 @@ Two things enforce the budget:
 2. **The `kinowo-heap-dumps.timer` on the node**, every 15 minutes. It compresses settled dumps,
    prunes per directory, then prunes the total across directories.
 
+## Rolling it out, and in what order
+
+Three independent pieces, and any order is safe:
+
+- **Image** (app repo `main`): the boot prune checks `/proc/self/mountinfo`. If `/data/heapdumps`
+  is not a mount of its own, the manifests are older than the hostPath, so it keeps **one**
+  dump. That keeps the pod's sized emptyDir or PVC from overflowing.
+- **Manifests** (movies-gitops `main`): the hostPath. `DirectoryOrCreate` makes it `root:root
+  0755` if the node has not yet, and the JVM runs as root, so writes work either way.
+- **Node** (Nix): the timer, metrics and tmpfiles. CI stages the closure. Because the units are
+  new, auto-apply refuses the first switch, so apply it by hand:
+
+```
+ssh root@2.28.47.31 'staged=$(readlink -f /nix/var/nix/gcroots/auto/nixdeploy-staged) && nix-env -p /nix/var/nix/profiles/system --set "$staged" && "$staged"/bin/switch-to-configuration switch'
+```
+
+Every order keeps the dumps within a budget. The recommended order is node, then manifests,
+then image, so the metrics and the `HeapDumpWritten` alert are live before the first dump lands
+on the hostPath.
+
+The `HeapDumpWritten` alert (jvm-heap.rules, sent by email and Telegram) fires when a
+directory's newest dump moves forward.
+
 ## Seeing what is there
 
 Prometheus (node_exporter textfile, from the timer):

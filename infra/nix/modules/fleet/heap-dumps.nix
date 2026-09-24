@@ -60,13 +60,15 @@ in
 
   config = lib.mkIf cfg.enable {
     # Created here as well as by the kubelet (`DirectoryOrCreate`), so the timer has something to
-    # report on before the first pod mounts it, and the mode is ours rather than the kubelet's.
+    # report on before the first pod mounts it. Either way it is root:root 0755, and the JVMs run
+    # as root (no USER in the Dockerfile, pinned by WorkerDurableDiagnosticsConfigSpec), so the
+    # order the two arrive in does not matter.
     systemd.tmpfiles.rules = [ "d ${cfg.root} 0755 root root -" ];
 
     # See ./container-image-gc.nix: a oneshot budget pass bounced by an unattended switch costs
     # nothing, and without this every later edit to it would strand the host's whole queue.
-    # The FIRST apply, which introduces the units, is refused regardless and is done by hand
-    # (`colmena apply --on k3s-worker-1`).
+    # The FIRST apply, which introduces the units, is refused regardless and is done by hand,
+    # switching to the closure CI already staged (docs/heap-dumps.md has the command).
     fleet.autoApply.restartableUnits = [
       "kinowo-heap-dumps.service"
       "kinowo-heap-dumps.timer"

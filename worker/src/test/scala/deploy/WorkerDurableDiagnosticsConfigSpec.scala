@@ -70,6 +70,15 @@ class WorkerDurableDiagnosticsConfigSpec extends AnyFlatSpec with Matchers {
     launch should be > name
   }
 
+  it should "run the JVM as root, which is what lets it write into the node's heap-dump hostPath" in {
+    // The hostPath /var/lib/kinowo/heapdumps is root:root 0755 whichever creates it first -- the
+    // node's tmpfiles rule or the kubelet's DirectoryOrCreate -- and so are the per-app-country
+    // subPath directories the kubelet makes. A JVM running as any other UID would fail to create
+    // its dump on the way down, printing one line nobody reads. Adding a `USER` here (or a
+    // `runAsUser` in the manifests) means chowning that tree first.
+    dockerfile.linesIterator.map(_.trim).filter(_.startsWith("USER ")).toList shouldBe empty
+  }
+
   "build.sbt" should "ship the heap-dump script in both the web and the worker dist" in {
     // The CMD above runs `bin/heap-dumps.sh` in BOTH images; a dist without it would log
     // "not found" and boot with the ConfigMap's directory-form flag, i.e. the pid-1 collision.
