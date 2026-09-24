@@ -111,4 +111,20 @@ final class UserPreferencesHiddenFilmsPerCountryTests: XCTestCase {
         XCTAssertTrue(prefs.isHiddenFilmsMigrated(country: "uk"))
         XCTAssertEqual(prefs.hiddenFilms, ["Legacy"])
     }
+
+    /// Account deletion wipes EVERY country's set, as Android's
+    /// `clearAllHiddenFilms` does — `unhideAll` only clears the country being
+    /// browsed, which left the deleted account's other-country hides on the
+    /// device for the next sign-in's first-login union to upload.
+    func testClearAllHiddenFilmsWipesEveryCountry() {
+        let prefs = UserPreferences(store: defaults)
+        prefs.hide("Film PL")
+        prefs.setHiddenFilms(["Film UK"], country: "uk")
+
+        prefs.clearAllHiddenFilms()
+
+        XCTAssertEqual(prefs.hiddenFilms, [])
+        XCTAssertEqual(prefs.hiddenFilms(country: "uk"), [])
+        XCTAssertEqual(UserPreferences(store: defaults).hiddenFilms(country: "pl"), [])
+    }
 }

@@ -661,7 +661,7 @@ struct FiltersSheet: View {
                         Button("filtersheet.delete_account", role: .destructive) {
                             Task {
                                 await authService.deleteAccount()
-                                prefs.unhideAll()
+                                prefs.clearAllHiddenFilms()
                                 prefs.setDisabledCinemas([])
                             }
                         }

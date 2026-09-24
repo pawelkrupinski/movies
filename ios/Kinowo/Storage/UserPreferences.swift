@@ -155,6 +155,17 @@ final class UserPreferences: ObservableObject {
         store.set(Array(areaPickerSeenCities), forKey: kAreaSeen)
     }
 
+    /// Forget every country's hidden titles — account deletion, where
+    /// `unhideAll` (the browsed country only) would leave the other countries'
+    /// sets for the next sign-in's first-login union to upload. Mirrors
+    /// Android's `clearAllHiddenFilms`.
+    func clearAllHiddenFilms() {
+        store.dictionaryRepresentation().keys
+            .filter { $0.hasPrefix(kHiddenPrefix) }
+            .forEach(store.removeObject(forKey:))
+        if !hiddenFilms.isEmpty { hiddenFilms = [] }
+    }
+
     /// `country`'s hidden titles (server code space — `pl`, `uk`, …),
     /// whether or not it is the country being browsed.
     func hiddenFilms(country: String) -> Set<String> {
