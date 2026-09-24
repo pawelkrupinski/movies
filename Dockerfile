@@ -73,8 +73,9 @@ EXPOSE 9000
 # SURVIVES the restart. `launch()` keeps the `exec` (JVM stays PID-adjacent, receives
 # SIGTERM directly for the graceful NMT dump) while the redirect at the call site
 # hands the JVM an fd-2 pointing at the durable file — on web too, whose /data is an
-# emptyDir that outlives a container restart; with no /data at all the `else` branch runs
-# the JVM unredirected. Cap the file on boot so a crash-loop can't fill /data (keep the
+# emptyDir that outlives a container restart. The first line's `mkdir -p` creates /data
+# wherever the root filesystem is writable, so the `else` branch (the JVM unredirected) is
+# only for a read-only root with nothing mounted at /data. Cap the file on boot so a crash-loop can't fill /data (keep the
 # last ~4 MB); web's emptyDir sizeLimit is derived from this cap (NodeMemoryBudgetSpec). Hard JVM crashes (SIGSEGV) go
 # to -XX:ErrorFile=/data/logs/hs_err_%p.log (set in each k3s overlay's JAVA_OPTS).
 CMD mkdir -p /data/heapdumps /data/logs 2>/dev/null; \
