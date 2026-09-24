@@ -103,7 +103,9 @@ class MongoUserStateRepository(
   reopenDriver: (String, () => Unit) => ChangeStreamReopen = ChangeStreamReopen.onDaemonScheduler,
   // How each atomic write went, one outcome per write — the web's
   // `UserStateWriteMetrics` in production.
-  writeOutcomes: UserStateWriteOutcomes = UserStateWriteOutcomes.none
+  writeOutcomes: UserStateWriteOutcomes = UserStateWriteOutcomes.none,
+  // Whether the unique `userId` index is in place — the web's `UserStateIndexMetrics`.
+  indexHealth: UserStateIndexHealth = UserStateIndexHealth.none
 ) extends UserStateRepository with Logging {
   import UserStateWriteOutcomes.{Endpoint, Outcome}
 
@@ -117,7 +119,7 @@ class MongoUserStateRepository(
     sharedDb match {
       case Some(db) =>
         val coll = db.withCodecRegistry(UserCodecs.registry).getCollection[UserState]("userStates")
-        scala.util.Try(ensureUniqueUserIdIndex(coll))
+        uniqueUserIdIndexOrReport(coll)
         (None, Some(coll))
       case None if fallbackToOwnInit => init()
       case None                      => (None, None)
@@ -148,6 +150,19 @@ class MongoUserStateRepository(
       ).toFuture(), 10.seconds)
     ()
   }
+  // LOUD, NOT FATAL. The store keeps serving without the index — failing the boot
+  // would take every web pod (the whole read tier) down over a write-correctness
+  // risk to a few signed-in visitors' rows — but a failed build is logged at ERROR
+  // and reported to `indexHealth`, whose gauge `UserStateUniqueIndexMissing`
+  // (web-errors.rules) alerts on. It used to be a bare `Try`: no index, no trace.
+  private def uniqueUserIdIndexOrReport(coll: MongoCollection[UserState]): Unit = {
+    val built = Try(ensureUniqueUserIdIndex(coll))
+    built.failed.foreach(exception => logger.error(
+      s"userStates has NO unique userId index — building it failed (${exception.getMessage}). " +
+        "Duplicate rows for one userId are the usual cause; writes keyed on userId may pick either row.", exception))
+    indexHealth.uniqueUserIdIndex(built.isSuccess)
+  }
+
   private def clientOpt: Option[MongoClient]                = initResult._1
   private def coll:      Option[MongoCollection[UserState]] = initResult._2
 
@@ -290,7 +305,7 @@ class MongoUserStateRepository(
           val db     = client.getDatabase(dbName).withCodecRegistry(UserCodecs.registry)
           val coll   = db.getCollection[UserState]("userStates")
           Await.result(coll.countDocuments().toFuture(), 10.seconds)
-          ensureUniqueUserIdIndex(coll)
+          uniqueUserIdIndexOrReport(coll)
           logger.info(s"MongoUserStateRepository connected to $dbName.userStates")
           (client, coll)
         }.recover {

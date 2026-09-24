@@ -117,7 +117,9 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     "kinowo_web_legacy_userstate_put_last_called_seconds",
     // Every atomic user-state write by endpoint and outcome — see
     // `services.metrics.UserStateWriteMetrics`.
-    "kinowo_web_user_state_writes"
+    "kinowo_web_user_state_writes",
+    // Whether `userStates` has its unique userId index — `UserStateIndexMetrics`.
+    "kinowo_web_user_state_userid_index_unique"
   )
 
   /** `kinowo_*` families exported by the FLEET rather than by either application —

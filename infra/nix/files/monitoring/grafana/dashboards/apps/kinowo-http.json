@@ -1169,6 +1169,81 @@
           }
         }
       ]
+    },
+    {
+      "type": "stat",
+      "title": "userStates unique userId index (alert: UserStateUniqueIndexMissing)",
+      "description": "1 = this country's web pods found or built the UNIQUE userId index on userStates at boot; 0 = building it failed (the web log has an ERROR naming why -- usually duplicate rows for one userId), so the collection runs with no userId index at all and a write keyed on userId may land on either duplicate. The pods keep serving either way. Fix: dedupe the rows, then restart a web pod. No value = no pod has reached the store since boot.",
+      "id": 21,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 81,
+        "w": 12,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "MISSING"
+                },
+                "1": {
+                  "text": "unique"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "min by (country) (kinowo_web_user_state_userid_index_unique{job=\"kinowo-web\"})",
+          "legendFormat": "{{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
     }
   ]
 }

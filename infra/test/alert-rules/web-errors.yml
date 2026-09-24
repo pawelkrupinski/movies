@@ -204,3 +204,29 @@ tests:
                 (increase(kinowo_web_user_state_writes_total[1h]))` says whether it is
                 `store_failure` (Mongo threw -- the web log has `UserStateRepository.… failed`) or
                 `unavailable` (the pod has no users store at all).
+
+  # A FAILED UNIQUE-INDEX BUILD PAGES AS A WARNING, and only while some pod still reports it: one
+  # country's gauge at 0 for longer than `for:` fires for that country alone.
+  - interval: 5m
+    input_series:
+      - series: 'kinowo_web_user_state_userid_index_unique{country="uk",job="kinowo-web",instance="a"}'
+        values: '0x6'
+      - series: 'kinowo_web_user_state_userid_index_unique{country="pl",job="kinowo-web",instance="b"}'
+        values: '1x6'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: UserStateUniqueIndexMissing
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: UserStateUniqueIndexMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: uk
+            exp_annotations:
+              summary: "uk userStates has no unique userId index"
+              description: >-
+                A web pod could not build the unique `userId` index on `userStates` (the web log has the
+                ERROR `userStates has NO unique userId index` with the reason -- usually duplicate rows
+                for one userId). Writes keyed on userId may land on either duplicate, and reads may
+                disagree with them. Dedupe the rows, then restart a web pod to rebuild the index.

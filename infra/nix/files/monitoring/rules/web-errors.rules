@@ -110,6 +110,23 @@ groups:
             `store_failure` (Mongo threw -- the web log has `UserStateRepository.… failed`) or
             `unavailable` (the pod has no users store at all).
 
+      # A MISSING INDEX IS SILENT OTHERWISE. Every web pod builds the unique `userId` index on
+      # `userStates` at boot and keeps serving if that fails (failing the boot would take the read
+      # tier down over a few signed-in rows) -- so this gauge, and an ERROR in the web log, are the
+      # only trace. Duplicate rows for one userId are the usual cause (2026-09-20 found four).
+      - alert: UserStateUniqueIndexMissing
+        expr: min by (country) (kinowo_web_user_state_userid_index_unique{job="kinowo-web"}) == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }} userStates has no unique userId index"
+          description: >-
+            A web pod could not build the unique `userId` index on `userStates` (the web log has the
+            ERROR `userStates has NO unique userId index` with the reason -- usually duplicate rows
+            for one userId). Writes keyed on userId may land on either duplicate, and reads may
+            disagree with them. Dedupe the rows, then restart a web pod to rebuild the index.
+
       - alert: WebAssetsNotFound
         # THE ONE 4xx WORTH PAGING ON. `/assets/:file` serves the fingerprinted CSS and JS, so a
         # 404 here is not a crawler -- it is a page that rendered without its stylesheet or its

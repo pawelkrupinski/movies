@@ -69,5 +69,19 @@ class MongoUserStateRepositoryOutcomesSpec extends AnyFlatSpec with Matchers {
     text should include ("""kinowo_web_user_state_writes_total{country="pl",endpoint="hide",outcome="store_failure"} 1""")
     text should include ("""kinowo_web_user_state_writes_total{country="pl",endpoint="hide",outcome="ok"} 0""")
   }
-}
 
+  // Every web pod builds the unique `userId` index on boot, and a build that
+  // failed (duplicate rows, a Mongo refusing it) used to vanish into a bare
+  // `Try` — leaving `userStates` with no index at all, silently, every boot.
+  "a unique-index build that fails" should "be reported as a missing index, not swallowed" in {
+    val client = MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=500")
+    val db     = client.getDatabase("closed")
+    client.close()
+    val reported = mutable.ListBuffer.empty[Boolean]
+    val store = new MongoUserStateRepository(sharedDb = Some(db), fallbackToOwnInit = false,
+      indexHealth = (present: Boolean) => reported += present)
+
+    store.enabled shouldBe true   // still serves: a missing index is not a reason to refuse every read
+    reported.toList shouldBe List(false)
+  }
+}
