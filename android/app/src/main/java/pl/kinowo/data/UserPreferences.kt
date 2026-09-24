@@ -12,9 +12,32 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import pl.kinowo.model.Country
 
 private val Context.dataStore by preferencesDataStore(name = "kinowo_prefs")
+
+/** One local hiddenFilms edit waiting to reach the server — see
+ *  [SyncPrefs.pendingHiddenFilmsOps]. [token] is the persisted form, the same
+ *  `hide:`/`unhide:`/`clear` tokens iOS stores for its `HiddenFilmsChange`. */
+sealed interface HiddenFilmsOp {
+    val token: String
+
+    data class Hide(val title: String) : HiddenFilmsOp { override val token get() = "hide:$title" }
+    data class Unhide(val title: String) : HiddenFilmsOp { override val token get() = "unhide:$title" }
+    data object Clear : HiddenFilmsOp { override val token get() = "clear" }
+
+    companion object {
+        fun fromToken(token: String): HiddenFilmsOp? = when {
+            token == "clear" -> Clear
+            token.startsWith("hide:") -> Hide(token.removePrefix("hide:"))
+            token.startsWith("unhide:") -> Unhide(token.removePrefix("unhide:"))
+            else -> null
+        }
+    }
+}
 
 /**
  * The slice of preferences [pl.kinowo.auth.StateSyncService] touches:
@@ -51,6 +74,14 @@ interface SyncPrefs {
     suspend fun hiddenFilmsEtag(country: String): String?
     suspend fun hiddenFilmsLastModified(country: String): String?
     suspend fun setHiddenFilmsValidators(country: String, etag: String?, lastModified: String?)
+
+    /** [country]'s local hide/unhide/clear edits the server hasn't accepted
+     *  yet, oldest first. [pl.kinowo.auth.StateSyncService] queues each edit
+     *  here before sending it and removes it once sent, so one that failed (or
+     *  never ran — the process died) is re-sent by the next reconcile.
+     *  Forgotten on a genuine logout with the rest of the sync state. */
+    suspend fun pendingHiddenFilmsOps(country: String): List<HiddenFilmsOp>
+    suspend fun setPendingHiddenFilmsOps(country: String, ops: List<HiddenFilmsOp>)
 
     /** Forget every country's migration flag and validators — a genuine
      *  logout, so the next sign-in re-runs the union-then-push migration for
@@ -363,10 +394,24 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         }
     }
 
+    override suspend fun pendingHiddenFilmsOps(country: String): List<HiddenFilmsOp> =
+        context.dataStore.data.first()[pendingOpsKey(country)]
+            ?.let { runCatching { Json.decodeFromString<List<String>>(it) }.getOrNull() }
+            .orEmpty()
+            .mapNotNull(HiddenFilmsOp::fromToken)
+
+    override suspend fun setPendingHiddenFilmsOps(country: String, ops: List<HiddenFilmsOp>) {
+        context.dataStore.edit { prefs ->
+            if (ops.isEmpty()) prefs.remove(pendingOpsKey(country))
+            else prefs[pendingOpsKey(country)] = Json.encodeToString(ops.map { it.token })
+        }
+    }
+
     override suspend fun clearHiddenFilmsSyncState() {
         context.dataStore.edit { prefs ->
             val toRemove = prefs.asMap().keys.filter {
-                it.name.startsWith(MIGRATED_PREFIX) || it.name.startsWith(ETAG_PREFIX) || it.name.startsWith(LAST_MODIFIED_PREFIX)
+                it.name.startsWith(MIGRATED_PREFIX) || it.name.startsWith(ETAG_PREFIX) ||
+                    it.name.startsWith(LAST_MODIFIED_PREFIX) || it.name.startsWith(PENDING_OPS_PREFIX)
             }
             toRemove.forEach { prefs.remove(it) }
         }
@@ -379,6 +424,8 @@ class UserPreferences(private val context: Context) : SyncPrefs {
     private fun migratedKey(country: String) = booleanPreferencesKey("$MIGRATED_PREFIX$country")
     private fun etagKey(country: String) = stringPreferencesKey("$ETAG_PREFIX$country")
     private fun lastModifiedKey(country: String) = stringPreferencesKey("$LAST_MODIFIED_PREFIX$country")
+    // An ordered list, so a JSON array in one string rather than a (unordered) string set.
+    private fun pendingOpsKey(country: String) = stringPreferencesKey("$PENDING_OPS_PREFIX$country")
 
     suspend fun markSwiped() = context.dataStore.edit { prefs ->
         prefs[KEY_SWIPED] = true
@@ -410,6 +457,7 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         const val MIGRATED_PREFIX = "hiddenFilmsMigrated_"
         const val ETAG_PREFIX = "hiddenFilmsEtag_"
         const val LAST_MODIFIED_PREFIX = "hiddenFilmsLastModified_"
+        const val PENDING_OPS_PREFIX = "pendingHiddenFilmsOps_"
         val KEY_POSTER_URLS = stringSetPreferencesKey("seenPosterUrls")
         val KEY_POSTER_PURGE_DATE = stringPreferencesKey("posterPurgeDate")
         val KEY_AREA_SEEN = stringSetPreferencesKey("areaPickerSeenCities")

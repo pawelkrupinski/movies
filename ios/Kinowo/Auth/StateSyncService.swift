@@ -22,6 +22,9 @@ import Combine
 /// need for — each hide/unhide is already its own idempotent request. That
 /// also incidentally closes the "toggle right before backgrounding loses
 /// the write" gap the debounce used to risk: there's no window to lose.
+/// Each edit is queued (persisted) before it is sent and dequeued once the
+/// server accepts it, so a write that failed — offline, or the app killed
+/// mid-request — is re-sent by the next reconcile before it fetches.
 ///
 /// The language pick rides the LEGACY `/api/me/state` document instead (via
 /// `LanguageClient` — there's no granular endpoint for a single scalar), and
@@ -45,6 +48,8 @@ final class StateSyncService: ObservableObject {
     private var prefsCancellables = Set<AnyCancellable>()
     private var syncTask: Task<Void, Never>?
     private var debounceWorkItem: DispatchWorkItem?
+    /// The hiddenFilms queue flush in progress, if any — see `sendPendingChanges`.
+    private var flushTask: Task<Bool, Never>?
     /// The language the account is known to hold — last fetched or
     /// successfully pushed. A `selectedLanguage` change to this value merely
     /// adopted the server's pick, so it is never pushed back.
@@ -148,6 +153,9 @@ final class StateSyncService: ObservableObject {
     /// A result that lands after the user switched away writes to its own
     /// country's bucket, never over the newly selected one.
     private func reconcile(country: String) async {
+        // Unsent local edits first: until the server has them, its set is
+        // older than local and must not replace it.
+        guard await sendPendingChanges(country: country) else { return }
         do {
             if prefs.isHiddenFilmsMigrated(country: country) {
                 let (etag, lastModified) = prefs.hiddenFilmsValidators(country: country)
@@ -245,24 +253,52 @@ final class StateSyncService: ObservableObject {
             .store(in: &prefsCancellables)
     }
 
+    /// Queue the edit (persisted — see `UserPreferences.pendingHiddenFilmsChanges`)
+    /// and send the queue. One that fails stays queued; the next reconcile
+    /// re-sends it before fetching.
     private func push(_ change: HiddenFilmsChange) {
         guard isLoggedIn else { return }
         let country = prefs.selectedCountry.code
-        Task { @MainActor [weak self] in
-            guard let self, self.isLoggedIn else { return }
-            do {
+        prefs.setPendingHiddenFilmsChanges(prefs.pendingHiddenFilmsChanges(country: country) + [change], country: country)
+        Task { @MainActor [weak self] in _ = await self?.sendPendingChanges(country: country) }
+    }
+
+    /// Send `country`'s queued edits in order, one flush at a time (a flush
+    /// already running is awaited first, so none is sent twice). Returns
+    /// whether the queue is now empty. After each accepted edit the
+    /// response's validators are kept only when its set is exactly the local
+    /// bucket — otherwise (another device changed the set, or more edits are
+    /// still queued) they would vouch for a set this device doesn't hold, and
+    /// are dropped so the next fetch is unconditional.
+    private func sendPendingChanges(country: String) async -> Bool {
+        let previous = flushTask
+        let task = Task { @MainActor [weak self] () -> Bool in
+            _ = await previous?.value
+            guard let self else { return false }
+            while let change = self.prefs.pendingHiddenFilmsChanges(country: country).first {
+                guard self.isLoggedIn else { return false }
                 let result: HiddenFilmsResult
-                switch change {
-                case .hidden(let title):   result = try await self.client.hide(country: country, title: title)
-                case .unhidden(let title): result = try await self.client.unhide(country: country, title: title)
-                case .clearedAll:          result = try await self.client.clear(country: country)
+                do {
+                    switch change {
+                    case .hidden(let title):   result = try await self.client.hide(country: country, title: title)
+                    case .unhidden(let title): result = try await self.client.unhide(country: country, title: title)
+                    case .clearedAll:          result = try await self.client.clear(country: country)
+                    }
+                } catch {
+                    return false
                 }
-                self.prefs.setHiddenFilmsValidators(country: country, etag: result.etag, lastModified: result.lastModified)
-            } catch {
-                // Best-effort — a later reconcile (resume, country switch, next
-                // login) self-heals a write that silently failed.
+                let remaining = Array(self.prefs.pendingHiddenFilmsChanges(country: country).dropFirst())
+                self.prefs.setPendingHiddenFilmsChanges(remaining, country: country)
+                if remaining.isEmpty, result.hiddenFilms == self.prefs.hiddenFilms(country: country) {
+                    self.prefs.setHiddenFilmsValidators(country: country, etag: result.etag, lastModified: result.lastModified)
+                } else {
+                    self.prefs.clearHiddenFilmsValidators(country: country)
+                }
             }
+            return true
         }
+        flushTask = task
+        return await task.value
     }
 
     private func languageChanged(to language: String) {

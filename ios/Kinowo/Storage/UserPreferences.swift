@@ -9,6 +9,23 @@ enum HiddenFilmsChange: Equatable {
     case hidden(String)
     case unhidden(String)
     case clearedAll
+
+    /// The persisted form — see `UserPreferences.pendingHiddenFilmsChanges`.
+    /// The same `hide:`/`unhide:`/`clear` tokens Android stores.
+    var token: String {
+        switch self {
+        case .hidden(let title):   return "hide:" + title
+        case .unhidden(let title): return "unhide:" + title
+        case .clearedAll:          return "clear"
+        }
+    }
+
+    init?(token: String) {
+        if token == "clear" { self = .clearedAll }
+        else if token.hasPrefix("hide:") { self = .hidden(String(token.dropFirst(5))) }
+        else if token.hasPrefix("unhide:") { self = .unhidden(String(token.dropFirst(7))) }
+        else { return nil }
+    }
 }
 
 /// UserDefaults-backed per-device preferences: hidden films and the
@@ -88,6 +105,7 @@ final class UserPreferences: ObservableObject {
     private let kHiddenFilmsMirroredLegacy = "hiddenFilmsMirroredCountry"
     private let kAreaSeen       = "areaPickerSeenCities"
     private let kPendingLanguage = "pendingLanguagePush"
+    private let kPendingHiddenPrefix = "pendingHiddenFilmsChanges_"
     private let kExplicitPick   = "awaitingExplicitCityPick"
 
     init(store: UserDefaults = .standard) {
@@ -224,6 +242,32 @@ final class UserPreferences: ObservableObject {
         store.removeObject(forKey: kHiddenFilmsMigrated)
         store.removeObject(forKey: kHiddenFilmsETags)
         store.removeObject(forKey: kHiddenFilmsLastModified)
+        store.dictionaryRepresentation().keys
+            .filter { $0.hasPrefix(kPendingHiddenPrefix) }
+            .forEach(store.removeObject(forKey:))
+    }
+
+    /// `country`'s local hide/unhide/clear-all edits the server hasn't
+    /// accepted yet, oldest first. `StateSyncService` queues each edit here
+    /// before sending it and removes it once sent, so one that failed (or
+    /// never ran — the app was killed) is re-sent by the next reconcile.
+    /// Forgotten on a genuine logout with the rest of the sync state.
+    func pendingHiddenFilmsChanges(country: String) -> [HiddenFilmsChange] {
+        (store.stringArray(forKey: kPendingHiddenPrefix + country) ?? []).compactMap(HiddenFilmsChange.init(token:))
+    }
+
+    func setPendingHiddenFilmsChanges(_ changes: [HiddenFilmsChange], country: String) {
+        if changes.isEmpty { store.removeObject(forKey: kPendingHiddenPrefix + country) }
+        else { store.set(changes.map(\.token), forKey: kPendingHiddenPrefix + country) }
+    }
+
+    /// Forget `country`'s validators, so its next fetch is unconditional.
+    func clearHiddenFilmsValidators(country: String) {
+        for key in [kHiddenFilmsETags, kHiddenFilmsLastModified] {
+            var values = store.dictionary(forKey: key) as? [String: String] ?? [:]
+            values[country] = nil
+            store.set(values, forKey: key)
+        }
     }
 
     /// The stored `(ETag, Last-Modified)` pair for `country`'s last known

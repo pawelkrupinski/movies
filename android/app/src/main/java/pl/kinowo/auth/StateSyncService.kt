@@ -9,6 +9,9 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import pl.kinowo.data.HiddenFilmsOp
 import pl.kinowo.data.SyncPrefs
 import pl.kinowo.model.Country
 
@@ -39,14 +42,15 @@ import pl.kinowo.model.Country
  * which reconstructs this whole object and reruns [onLogin]/[start] against
  * the new country).
  *
- * Local hide/unhide push IMMEDIATELY now — see [hide]/[unhide]/[clear] — no
+ * Local hide/unhide push IMMEDIATELY now (queued first — see below) — see [hide]/[unhide]/[clear] — no
  * debounce: the old 400 ms debounce existed to batch several toggles into one
  * bulk PUT body, and there is no bulk write left to batch into.
  *
  * A failed pull leaves local prefs authoritative (no overwrite) — exactly the
- * offline behaviour iOS has. A failed push is silently swallowed the same
- * way; a later reconcile (login, resume) self-heals a write that never
- * landed, since local state already reflects it either way.
+ * offline behaviour iOS has. Each write is queued (persisted) before it is
+ * sent and dequeued once the server accepts it, so one that failed — offline,
+ * or the process killed mid-request — is re-sent by the next reconcile
+ * (login, resume) before it fetches.
  *
  * The language pick rides the LEGACY `/api/me/state` document instead (via
  * [LanguageClient] — there's no granular endpoint for a single scalar), and
@@ -68,6 +72,8 @@ class StateSyncService(
     @Volatile private var loggedIn = false
     private var syncJob: Job? = null
     private var languagePushJob: Job? = null
+    /** Serialises the hiddenFilms queue: enqueueing and each flush. */
+    private val flushMutex = Mutex()
     /** The language the account is known to hold — last fetched or
      *  successfully pushed. A local change to this value merely adopted the
      *  server's pick, so it is never pushed back. */
@@ -131,6 +137,9 @@ class StateSyncService(
     private suspend fun currentCountry(): String = Country.byCode(prefs.selectedCountryCode.first()).code
 
     private suspend fun reconcile(country: String) {
+        // Unsent local edits first: until the server has them, its set is
+        // older than local and must not replace it.
+        if (!sendPendingOps(country)) return
         // A network error leaves local state authoritative: prefs + flags untouched.
         runCatchingCancellable {
             if (prefs.isHiddenFilmsMigrated(country)) {
@@ -232,20 +241,53 @@ class StateSyncService(
 
     /** Hide one film in THIS country: update local prefs immediately (the
      *  caller's responsibility — see [pl.kinowo.ui.KinowoViewModel.hide]) then
-     *  push the write in the background, fire-and-forget. */
-    fun hide(title: String) = push { country -> client.hide(country, title) }
+     *  queue and send the write in the background. */
+    fun hide(title: String) = push(HiddenFilmsOp.Hide(title))
 
-    fun unhide(title: String) = push { country -> client.unhide(country, title) }
+    fun unhide(title: String) = push(HiddenFilmsOp.Unhide(title))
 
-    fun clear() = push { country -> client.clear(country) }
+    fun clear() = push(HiddenFilmsOp.Clear)
 
-    private fun push(write: suspend (country: String) -> HiddenFilmsState) {
+    /** Queue [op] (persisted — see [SyncPrefs.pendingHiddenFilmsOps]) and send
+     *  the queue. One that fails stays queued; the next reconcile re-sends it
+     *  before fetching. */
+    private fun push(op: HiddenFilmsOp) {
         if (!loggedIn) return
         scope.launch {
             val country = currentCountry()
-            runCatchingCancellable { write(country) }
-                .onSuccess { prefs.setHiddenFilmsValidators(country, it.etag, it.lastModified) }
+            flushMutex.withLock { prefs.setPendingHiddenFilmsOps(country, prefs.pendingHiddenFilmsOps(country) + op) }
+            sendPendingOps(country)
         }
+    }
+
+    /** Send [country]'s queued edits in order, one flush at a time. Returns
+     *  whether the queue is now empty. After each accepted edit the response's
+     *  validators are kept only when its set is exactly the local bucket —
+     *  otherwise (another device changed the set, or more edits are still
+     *  queued) they would vouch for a set this device doesn't hold, and are
+     *  dropped so the next fetch is unconditional. Mirrors iOS
+     *  `sendPendingChanges`. */
+    private suspend fun sendPendingOps(country: String): Boolean = flushMutex.withLock {
+        var op = prefs.pendingHiddenFilmsOps(country).firstOrNull()
+        while (op != null) {
+            if (!loggedIn) return@withLock false
+            val result = runCatchingCancellable {
+                when (op) {
+                    is HiddenFilmsOp.Hide -> client.hide(country, op.title)
+                    is HiddenFilmsOp.Unhide -> client.unhide(country, op.title)
+                    HiddenFilmsOp.Clear -> client.clear(country)
+                }
+            }.getOrElse { return@withLock false }
+            val remaining = prefs.pendingHiddenFilmsOps(country).drop(1)
+            prefs.setPendingHiddenFilmsOps(country, remaining)
+            if (remaining.isEmpty() && result.hiddenFilms == prefs.hiddenFilmsFor(country)) {
+                prefs.setHiddenFilmsValidators(country, result.etag, result.lastModified)
+            } else {
+                prefs.setHiddenFilmsValidators(country, null, null)
+            }
+            op = remaining.firstOrNull()
+        }
+        true
     }
 
     private companion object {

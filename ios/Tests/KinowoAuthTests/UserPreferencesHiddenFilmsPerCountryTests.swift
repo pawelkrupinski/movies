@@ -127,4 +127,18 @@ final class UserPreferencesHiddenFilmsPerCountryTests: XCTestCase {
         XCTAssertEqual(prefs.hiddenFilms(country: "uk"), [])
         XCTAssertEqual(UserPreferences(store: defaults).hiddenFilms(country: "pl"), [])
     }
+
+    /// The queue of unsent writes keeps its order and any title verbatim
+    /// (colons included), per country, and a logout forgets it.
+    func testPendingWritesRoundTripInOrderAndALogoutForgetsThem() {
+        let prefs = UserPreferences(store: defaults)
+        let changes: [HiddenFilmsChange] = [.hidden("Mission: Impossible"), .clearedAll, .unhidden("B")]
+        prefs.setPendingHiddenFilmsChanges(changes, country: "pl")
+
+        XCTAssertEqual(UserPreferences(store: defaults).pendingHiddenFilmsChanges(country: "pl"), changes)
+        XCTAssertEqual(prefs.pendingHiddenFilmsChanges(country: "uk"), [])
+
+        prefs.clearHiddenFilmsMigration()
+        XCTAssertEqual(prefs.pendingHiddenFilmsChanges(country: "pl"), [])
+    }
 }

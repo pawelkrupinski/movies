@@ -422,6 +422,80 @@ final class StateSyncServiceTests: XCTestCase {
         _ = sync
     }
 
+    /// A hide whose push failed used to be left to a "later reconcile" that
+    /// never re-sent it: the conditional fetch answered 304 (or a 200 without
+    /// the title, dropping it locally). The failed write is queued and the
+    /// next reconcile sends it before it fetches.
+    func testAFailedHidePushIsResentOnTheNextReconcile() async throws {
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: [], etag: "\"e1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+
+        client.shouldFailWrite = true
+        let attempted = expectation(description: "hide attempted")
+        client.onHide = { attempted.fulfill() }
+        prefs.hide("Offline Hide")
+        await fulfillment(of: [attempted], timeout: 1)
+        client.onHide = nil
+
+        client.shouldFailWrite = false
+        client.writeResult = HiddenFilmsResult(hiddenFilms: ["Offline Hide"], etag: "\"e2\"", lastModified: "Tue, 19 May 2026 13:00:00 GMT")
+        client.fetchResults[pl] = .current(client.writeResult)
+        await sync.reconcileCurrentCountry()
+
+        XCTAssertEqual(client.hideCalls.map(\.title), ["Offline Hide", "Offline Hide"])
+        XCTAssertEqual(prefs.hiddenFilms, ["Offline Hide"])
+        XCTAssertEqual(prefs.pendingHiddenFilmsChanges(country: pl), [])
+        _ = sync
+    }
+
+    /// Failed unhide: the reconcile must not resurrect the title from the
+    /// server's stale set before the unhide reaches it.
+    func testAFailedUnhidePushIsResentBeforeTheReconcileFetches() async throws {
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: ["Was Hidden"], etag: "\"e1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.hiddenFilms == ["Was Hidden"] }
+
+        client.shouldFailWrite = true
+        let attempted = expectation(description: "unhide attempted")
+        client.onUnhide = { attempted.fulfill() }
+        prefs.unhide("Was Hidden")
+        await fulfillment(of: [attempted], timeout: 1)
+        client.onUnhide = nil
+
+        client.shouldFailWrite = false
+        client.writeResult = HiddenFilmsResult(hiddenFilms: [], etag: "\"e2\"", lastModified: "Tue, 19 May 2026 13:00:00 GMT")
+        client.fetchResults[pl] = .current(client.writeResult)
+        await sync.reconcileCurrentCountry()
+
+        XCTAssertEqual(client.unhideCalls.count, 2)
+        XCTAssertEqual(prefs.hiddenFilms, [])
+        _ = sync
+    }
+
+    /// A write's response is the server's WHOLE set. Its validators vouch for
+    /// that set only — when it differs from the local bucket (another device
+    /// changed it), storing them would make the next fetch a 304 that hides
+    /// the difference forever. They are dropped instead.
+    func testAPushResponseThatDiffersFromLocalDropsTheValidators() async throws {
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: ["A"], etag: "\"e1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.hiddenFilms == ["A"] }
+
+        let pushed = expectation(description: "hide pushed")
+        client.onHide = { pushed.fulfill() }
+        client.writeResult = HiddenFilmsResult(hiddenFilms: ["A", "New", "From Elsewhere"], etag: "\"e2\"", lastModified: "Tue, 19 May 2026 13:00:00 GMT")
+        prefs.hide("New")
+        await fulfillment(of: [pushed], timeout: 1)
+        try await waitUntil { self.prefs.hiddenFilmsValidators(country: self.pl).etag != "\"e1\"" }
+
+        XCTAssertNil(prefs.hiddenFilmsValidators(country: pl).etag)
+        _ = sync
+    }
+
     // MARK: - Country switch
 
     func testCountrySwitchReconcilesTheNewlySelectedCountry() async throws {
@@ -529,6 +603,8 @@ final class FakeHiddenFilmsClient: HiddenFilmsClient {
     /// hidden), matching a brand-new account.
     var fetchResults: [String: HiddenFilmsFetchResult] = [:]
     var shouldFailFetch = false
+    /// Fail every hide/unhide/clear AFTER recording the call.
+    var shouldFailWrite = false
     /// Answer like a real conditional GET: `.notModified` when the caller's
     /// `etag` matches the stored result's. Off by default so existing tests
     /// keep their explicit `.notModified` / `.current` scripting.
@@ -561,18 +637,21 @@ final class FakeHiddenFilmsClient: HiddenFilmsClient {
     func hide(country: String, title: String) async throws -> HiddenFilmsResult {
         hideCalls.append((country, title))
         defer { onHide?() }
+        if shouldFailWrite { throw URLError(.notConnectedToInternet) }
         return writeResult
     }
 
     func unhide(country: String, title: String) async throws -> HiddenFilmsResult {
         unhideCalls.append((country, title))
         defer { onUnhide?() }
+        if shouldFailWrite { throw URLError(.notConnectedToInternet) }
         return writeResult
     }
 
     func clear(country: String) async throws -> HiddenFilmsResult {
         clearCalls.append(country)
         defer { onClear?() }
+        if shouldFailWrite { throw URLError(.notConnectedToInternet) }
         return writeResult
     }
 }

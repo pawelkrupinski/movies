@@ -120,4 +120,18 @@ class UserPreferencesHiddenFilmsPerCountryTest {
 
         assertNull(prefs.hiddenFilmsEtag("uk"))
     }
+
+    /** The queue of unsent writes keeps its order and any title verbatim
+     *  (colons included), per country, and a logout forgets it. */
+    @Test
+    fun pendingWritesRoundTripInOrderAndALogoutForgetsThem() = runBlocking {
+        val ops = listOf(HiddenFilmsOp.Hide("Mission: Impossible"), HiddenFilmsOp.Clear, HiddenFilmsOp.Unhide("B"))
+        prefs.setPendingHiddenFilmsOps("pl", ops)
+
+        assertEquals(ops, prefs.pendingHiddenFilmsOps("pl"))
+        assertEquals(emptyList<HiddenFilmsOp>(), prefs.pendingHiddenFilmsOps("uk"))
+
+        prefs.clearHiddenFilmsSyncState()
+        assertEquals(emptyList<HiddenFilmsOp>(), prefs.pendingHiddenFilmsOps("pl"))
+    }
 }

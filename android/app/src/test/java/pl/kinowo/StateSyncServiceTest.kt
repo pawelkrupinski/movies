@@ -20,6 +20,7 @@ import pl.kinowo.auth.HiddenFilmsState
 import pl.kinowo.auth.LanguageClient
 import pl.kinowo.auth.StateSyncService
 import pl.kinowo.auth.UserProfile
+import pl.kinowo.data.HiddenFilmsOp
 import pl.kinowo.data.SyncPrefs
 import pl.kinowo.model.Country
 import java.io.IOException
@@ -231,6 +232,76 @@ class StateSyncServiceTest {
         runCurrent()
 
         assertEquals(listOf("pl"), client.clearCalls)
+    }
+
+    /** A hide whose push failed used to be left to a "later reconcile" that
+     *  never re-sent it: the conditional fetch answered 304 (or a 200 without
+     *  the title, dropping it locally). The failed write is queued and the
+     *  next reconcile sends it before it fetches. Mirrors iOS. */
+    @Test
+    fun aFailedHidePushIsResentOnTheNextReconcile() = runTest(UnconfinedTestDispatcher()) {
+        prefs.countryState.value = "pl"
+        client.notModified = true
+        val service = startService()
+        login()
+        advanceUntilIdle()
+
+        client.shouldFailWrite = true
+        prefs.hiddenByCountry["pl"] = setOf("Offline Hide") // the ViewModel's local write
+        service.hide("Offline Hide")
+        advanceUntilIdle()
+
+        client.shouldFailWrite = false
+        service.reconcileCurrentCountry()
+        advanceUntilIdle()
+
+        assertEquals(listOf("Offline Hide" to "pl", "Offline Hide" to "pl"), client.hideCalls)
+        assertEquals(setOf("Offline Hide"), client.remote["pl"])
+        assertEquals(setOf("Offline Hide"), prefs.hiddenState)
+        assertEquals(emptyList<HiddenFilmsOp>(), prefs.pendingHiddenFilmsOps("pl"))
+    }
+
+    /** Failed unhide: the reconcile must not resurrect the title from the
+     *  server's stale set before the unhide reaches it. */
+    @Test
+    fun aFailedUnhidePushIsResentBeforeTheReconcileFetches() = runTest(UnconfinedTestDispatcher()) {
+        prefs.countryState.value = "pl"
+        client.remote["pl"] = setOf("Was Hidden")
+        val service = startService()
+        login()
+        advanceUntilIdle()
+
+        client.shouldFailWrite = true
+        prefs.hiddenByCountry["pl"] = emptySet()
+        service.unhide("Was Hidden")
+        advanceUntilIdle()
+
+        client.shouldFailWrite = false
+        service.reconcileCurrentCountry()
+        advanceUntilIdle()
+
+        assertEquals(2, client.unhideCalls.size)
+        assertEquals(emptySet<String>(), prefs.hiddenState)
+    }
+
+    /** A write's response is the server's WHOLE set. Its validators vouch for
+     *  that set only — when it differs from the local bucket (another device
+     *  changed it), storing them would make the next fetch a 304 that hides
+     *  the difference forever. They are dropped instead. */
+    @Test
+    fun aPushResponseThatDiffersFromLocalDropsTheValidators() = runTest(UnconfinedTestDispatcher()) {
+        prefs.countryState.value = "pl"
+        client.remote["pl"] = setOf("A")
+        val service = startService()
+        login()
+        advanceUntilIdle()
+
+        client.remote["pl"] = setOf("A", "From Elsewhere")
+        prefs.hiddenByCountry["pl"] = setOf("A", "New")
+        service.hide("New")
+        advanceUntilIdle()
+
+        assertNull(prefs.hiddenFilmsEtag("pl"))
     }
 
     @Test
@@ -559,6 +630,7 @@ private class FakeSyncPrefs : SyncPrefs {
     }
 
     override suspend fun clearHiddenFilmsSyncState() {
+        pendingOps.clear()
         migrated.clear()
         etags.clear()
         lastModifieds.clear()
@@ -566,6 +638,10 @@ private class FakeSyncPrefs : SyncPrefs {
 
     override val selectedLanguageTag = languageState
     override suspend fun setLanguageTag(tag: String) { languageState.value = tag }
+
+    private val pendingOps = mutableMapOf<String, List<HiddenFilmsOp>>()
+    override suspend fun pendingHiddenFilmsOps(country: String): List<HiddenFilmsOp> = pendingOps[country] ?: emptyList()
+    override suspend fun setPendingHiddenFilmsOps(country: String, ops: List<HiddenFilmsOp>) { pendingOps[country] = ops }
 
     private var pendingLanguage: String? = null
     override suspend fun pendingLanguagePush(): String? = pendingLanguage
@@ -579,6 +655,8 @@ private class FakeHiddenFilmsClient : HiddenFilmsClient {
     val clearCalls = mutableListOf<String>()
     val fetchCalls = mutableListOf<String>()
     var shouldFailFetch = false
+    /** Fail every hide/unhide/clear AFTER recording the call. */
+    var shouldFailWrite = false
     var notModified = false
     var beforeFetch: suspend () -> Unit = {}
 
@@ -592,18 +670,21 @@ private class FakeHiddenFilmsClient : HiddenFilmsClient {
 
     override suspend fun hide(country: String, title: String): HiddenFilmsState {
         hideCalls += title to country
+        if (shouldFailWrite) throw IOException("no network")
         remote[country] = (remote[country] ?: emptySet()) + title
         return HiddenFilmsState(remote[country]!!, "\"etag-$country\"", "lm-$country")
     }
 
     override suspend fun unhide(country: String, title: String): HiddenFilmsState {
         unhideCalls += title to country
+        if (shouldFailWrite) throw IOException("no network")
         remote[country] = (remote[country] ?: emptySet()) - title
         return HiddenFilmsState(remote[country] ?: emptySet(), "\"etag-$country\"", "lm-$country")
     }
 
     override suspend fun clear(country: String): HiddenFilmsState {
         clearCalls += country
+        if (shouldFailWrite) throw IOException("no network")
         remote[country] = emptySet()
         return HiddenFilmsState(emptySet(), "\"etag-$country\"", "lm-$country")
     }
