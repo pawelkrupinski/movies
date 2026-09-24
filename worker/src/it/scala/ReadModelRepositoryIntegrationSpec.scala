@@ -160,17 +160,22 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
   // watches; a watch opened "from now" missed every write between the two (2026-09-23: two
   // Włodawa screenings, served 30 minutes late). A checkpoint taken before the write must make
   // the watch replay it — the server's cluster time, handed to `startAtOperationTime`.
-  "a watch from a stream checkpoint" should "replay a write made after the checkpoint but before the watch opened" in {
-    import models.CityScreening
-    val id         = "__it-rm-checkpoint__"
-    val seen       = new java.util.concurrent.ConcurrentLinkedQueue[String]()
-    val checkpoint = rm.streamCheckpoint()
-    checkpoint shouldBe defined   // a replica set reports its operation time; a standalone cannot stream at all
-    rm.upsertScreening(CityScreening(_id = id, filmId = "__it-rm-checkpoint-film__",
-      city = "poznan", cinema = "Cinema", filmUrl = None, showtimes = Nil))
-    val watch = rm.watchScreenings(s => { seen.add(s._id); () }, _ => (), from = checkpoint)
-    try eventually(seen.contains(id) shouldBe true, timeoutMs = 10000, pollMs = 100)
-    finally { watch.foreach(_.close()); rm.deleteScreening(id) }
-  }
+  //
+  // In its own database: the watch sees its whole collection, and in the shared one every
+  // sibling spec's `web_screenings` write reaches it.
+  "a watch from a stream checkpoint" should "replay a write made after the checkpoint but before the watch opened" in
+    tools.IsolatedMongoDatabase.withDatabase(Env.get("MONGODB_URI").get, "readmodel-checkpoint") { own =>
+      import models.CityScreening
+      val isolated   = new MongoReadModelRepository(Some(own))
+      val id         = "__it-rm-checkpoint__"
+      val seen       = new java.util.concurrent.ConcurrentLinkedQueue[String]()
+      val checkpoint = isolated.streamCheckpoint()
+      checkpoint shouldBe defined   // a replica set reports its operation time; a standalone cannot stream at all
+      isolated.upsertScreening(CityScreening(_id = id, filmId = "__it-rm-checkpoint-film__",
+        city = "poznan", cinema = "Cinema", filmUrl = None, showtimes = Nil))
+      val watch = isolated.watchScreenings(s => { seen.add(s._id); () }, _ => (), from = checkpoint)
+      try eventually(seen.contains(id) shouldBe true, timeoutMs = 10000, pollMs = 100)
+      finally watch.foreach(_.close())
+    }
 
 }
