@@ -9280,13 +9280,6 @@
    ]
   },
   "kinowo_worker_share_cards_poster_fetch_total": {
-   "country": [
-    "de",
-    "es",
-    "pl",
-    "uk",
-    "us"
-   ],
    "result": [
     "failed",
     "ok"
