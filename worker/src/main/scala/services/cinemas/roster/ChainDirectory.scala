@@ -26,8 +26,8 @@ sealed trait ChainDirectory {
   /** The list, as of `today` where the endpoint wants a date. */
   def listUrl(today: LocalDate): String
 
-  /** A page to fetch first, on the same client, for the session cookies the
-   *  list endpoint wants. */
+  /** A page whose session cookies the list endpoint wants, fetched on the same
+   *  client when a list call fails (see `tools.ChainListEgress`). */
   def warmUpUrl: Option[String] = None
 
   /** Venue id → where the chain says that venue is. */

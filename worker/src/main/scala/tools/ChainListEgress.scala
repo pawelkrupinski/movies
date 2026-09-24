@@ -18,8 +18,12 @@ import services.cinemas.roster.RosterFinding.DirectoryNotRead
  */
 final class ChainListEgress(direct: HttpFetch, proxyShards: Option[IndexedSeq[HttpFetch]]) {
 
+  /** The list's fetch. A list that wants a session ([[ChainDirectory.warmUpUrl]])
+   *  warms it only when a call fails, then retries — once per egress, the way the
+   *  worker's own Multikino scrapes do, never up front as well. */
   def fetchFor(directory: ChainDirectory): String => FetchedPage = {
-    val http = proxyShards.fold(direct)(EgressWiring.proxyPrimary(_, direct, directory.warmUpUrl))
+    val directLeg = directory.warmUpUrl.fold(direct)(new SessionWarmingHttpFetch(direct, _))
+    val http      = proxyShards.fold(directLeg)(EgressWiring.proxyPrimary(_, directLeg, directory.warmUpUrl))
     url => FetchedPage(url, http.get(url))
   }
 

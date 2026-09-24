@@ -3,6 +3,7 @@ package tools
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.roster.ChainDirectory.Multikino
+import services.cinemas.roster.RosterSourceReader
 import services.cinemas.roster.RosterFinding.DirectoryNotRead
 
 import scala.collection.mutable
@@ -42,6 +43,20 @@ class ChainListEgressSpec extends AnyFlatSpec with Matchers {
     val direct = new Recording("direct", _ => "direct")
     val proxy  = new Recording("proxy", url => throw new java.io.IOException("Tunnel failed, got: 503"))
     new ChainListEgress(direct, Some(IndexedSeq(proxy))).fetchFor(Multikino)(listUrl).body shouldBe "direct"
+  }
+
+  // Multikino's list wants the home page's session cookie. The audit warmed it up
+  // front AND the proxy leg warmed again on the list's cold 401, so every run paid
+  // for two home-page fetches through the proxy where one suffices.
+  it should "warm Multikino's session once, when the list asks for it" in {
+    var listCalls = 0
+    val proxy = new Recording("proxy", url =>
+      if (Multikino.warmUpUrl.contains(url)) ""
+      else { listCalls += 1; if (listCalls == 1) throw new HttpStatusException(401, "GET", url, None) else "{}" })
+    RosterSourceReader.readDirectory(new ChainListEgress(new Recording("direct", blocked), Some(IndexedSeq(proxy))).fetchFor(Multikino),
+      java.time.LocalDate.of(2026, 9, 24))(Multikino, Nil)
+    proxy.calls.count(Multikino.warmUpUrl.contains) shouldBe 1
+    listCalls shouldBe 2
   }
 
   it should "fail the audit on a list that stays unread" in {

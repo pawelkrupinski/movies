@@ -205,7 +205,6 @@ object RosterSourceReader {
   def readDirectory(fetch: String => tools.FetchedPage, today: LocalDate)(directory: ChainDirectory, venues: Seq[(String, AuditedVenue)])
       : Either[DirectoryNotRead, Seq[(AuditedVenue, SourceReading)]] =
     try {
-      directory.warmUpUrl.foreach(u => scala.util.Try(fetch(u)))
       val url    = directory.listUrl(today)
       val listed = directory.parse(fetch(url).body)
       if (listed.isEmpty) Left(DirectoryNotRead(directory.name, venues.size, "no venues in the answer"))
