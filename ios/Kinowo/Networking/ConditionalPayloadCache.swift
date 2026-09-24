@@ -31,9 +31,10 @@ import Foundation
 /// files older builds wrote could, when two saves interleaved or the app died
 /// between the two writes, and then served one city's films under another's
 /// stamp. Those files are no longer read (and are deleted on the next save),
-/// so they cost one full response, never a wrong one. Background saves run
-/// on one serial queue in the order they were issued, so an older city's
-/// save can't land after a newer one's.
+/// so they cost one full response, never a wrong one. Every read and write
+/// runs on one serial queue in the order it was issued, so an older city's
+/// background save can't land after a newer one's, and a read sees every
+/// save issued before it.
 struct ConditionalPayloadCache<Payload: Codable> {
     private let file: String
     private let legacyFiles: [String]
@@ -62,6 +63,21 @@ struct ConditionalPayloadCache<Payload: Codable> {
     /// with its `lastModified` header, so a later reload of that same pair can
     /// revalidate.
     func save(_ payload: [Payload], deployment: URL, city: String, lastModified: String?) {
+        conditionalPayloadCacheQueue.sync { write(payload, deployment: deployment, city: city, lastModified: lastModified) }
+    }
+
+    /// `save` off the caller's thread, after every save issued before it.
+    func saveInBackground(_ payload: [Payload], deployment: URL, city: String, lastModified: String?) {
+        conditionalPayloadCacheQueue.async { write(payload, deployment: deployment, city: city, lastModified: lastModified) }
+    }
+
+    /// Forget the entry.
+    func remove() {
+        conditionalPayloadCacheQueue.sync { try? FileManager.default.removeItem(at: url) }
+    }
+
+    /// Only ever on `conditionalPayloadCacheQueue`.
+    private func write(_ payload: [Payload], deployment: URL, city: String, lastModified: String?) {
         let header = Header(deployment: deployment.absoluteString, city: city, lastModified: lastModified)
         guard let headerData = try? JSONEncoder().encode(header),
               let body = try? JSONEncoder().encode(payload) else { return }
@@ -69,23 +85,6 @@ struct ConditionalPayloadCache<Payload: Codable> {
         for legacy in legacyFiles {
             try? FileManager.default.removeItem(at: Self.cacheDir.appendingPathComponent(legacy))
         }
-    }
-
-    /// `save` off the caller's thread, after every save issued before it.
-    func saveInBackground(_ payload: [Payload], deployment: URL, city: String, lastModified: String?) {
-        conditionalPayloadCacheWrites.async {
-            save(payload, deployment: deployment, city: city, lastModified: lastModified)
-        }
-    }
-
-    /// Block until every `saveInBackground` issued so far has landed.
-    static func waitForPendingSaves() {
-        conditionalPayloadCacheWrites.sync {}
-    }
-
-    /// Forget the entry.
-    func remove() {
-        try? FileManager.default.removeItem(at: url)
     }
 
     /// The cached body, but only when it belongs to `deployment` + `city` —
@@ -122,16 +121,16 @@ struct ConditionalPayloadCache<Payload: Codable> {
     /// The header and the (still encoded) payload. Only the header line is
     /// decoded here, so reading the stamp doesn't pay for the whole listing.
     private func entry() -> (Header, Data)? {
-        guard let data = try? Data(contentsOf: url),
+        guard let data = conditionalPayloadCacheQueue.sync(execute: { try? Data(contentsOf: url) }),
               let newline = data.firstIndex(of: UInt8(ascii: "\n")),
               let header = try? JSONDecoder().decode(Header.self, from: data[..<newline]) else { return nil }
         return (header, data[data.index(after: newline)...])
     }
 }
 
-/// The one serial queue every `ConditionalPayloadCache.saveInBackground` runs
-/// on (a generic type can't hold a static stored property).
-private let conditionalPayloadCacheWrites = DispatchQueue(label: "kinowo.conditional-payload-cache", qos: .utility)
+/// The one serial queue every `ConditionalPayloadCache` file access runs on
+/// (a generic type can't hold a static stored property).
+private let conditionalPayloadCacheQueue = DispatchQueue(label: "kinowo.conditional-payload-cache", qos: .utility)
 
 // The two endpoints' caches. A file per endpoint so their conditional-GET
 // state never collides. Computed rather than stored: a generic type can't

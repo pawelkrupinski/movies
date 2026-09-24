@@ -78,11 +78,36 @@ final class DetailsCacheTests: XCTestCase {
             let new = [FilmDetails(title: "New \(round)", synopsis: nil, trailerURLs: [])]
             ConditionalPayloadCache.details.saveInBackground(old, deployment: poland, city: "poznan", lastModified: "lm-old")
             ConditionalPayloadCache.details.saveInBackground(new, deployment: poland, city: "warszawa", lastModified: "lm-new")
-            ConditionalPayloadCache<FilmDetails>.waitForPendingSaves()
 
             XCTAssertEqual(ConditionalPayloadCache.details.load(deployment: poland, city: "warszawa"), new)
             XCTAssertEqual(ConditionalPayloadCache.details.lastModified(deployment: poland, city: "warszawa"), "lm-new")
             XCTAssertNil(ConditionalPayloadCache.details.load(deployment: poland, city: "poznan"))
+        }
+    }
+
+    /// A read sees every save issued before it, background or not — the
+    /// store's own next reload, and every test that asserts on the disk right
+    /// after a reload, used to race the detached write.
+    func testAReadSeesABackgroundSaveIssuedBeforeIt() {
+        for round in 0..<50 {
+            let saved = [FilmDetails(title: "Saved \(round)", synopsis: nil, trailerURLs: [])]
+            ConditionalPayloadCache.details.saveInBackground(saved, deployment: poland, city: "gdansk", lastModified: "lm-\(round)")
+
+            XCTAssertEqual(ConditionalPayloadCache.details.load(deployment: poland, city: "gdansk"), saved)
+            XCTAssertEqual(ConditionalPayloadCache.details.lastModified(deployment: poland, city: "gdansk"), "lm-\(round)")
+        }
+    }
+
+    /// A direct save lands after every background save issued before it, so
+    /// a test's tearDown reset can't be overwritten by the reload it follows.
+    func testADirectSaveIsNotOvertakenByAnEarlierBackgroundSave() {
+        for round in 0..<50 {
+            let background = [FilmDetails(title: "Background \(round)", synopsis: nil, trailerURLs: [])]
+            ConditionalPayloadCache.details.saveInBackground(background, deployment: poland, city: "gdansk", lastModified: nil)
+            ConditionalPayloadCache.details.save([], deployment: poland, city: "sopot", lastModified: nil)
+
+            XCTAssertNil(ConditionalPayloadCache.details.load(deployment: poland, city: "gdansk"))
+            XCTAssertEqual(ConditionalPayloadCache.details.load(deployment: poland, city: "sopot"), [])
         }
     }
 }
