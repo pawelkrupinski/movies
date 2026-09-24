@@ -20,8 +20,12 @@ object PlaceholderPoster {
     url.toLowerCase(Locale.ROOT).contains("wkrotce")
 
   /** True for a URL that is no poster at all, which the record drops outright rather than
-   *  demoting: a vector image. Film posters are photographs; an SVG is a site's logo or default
-   *  graphic — bilety24's WordPress venues list their "PAN-BILET" SVG for every film, and it 404s. */
-  def isAbsent(url: String): Boolean =
-    url.toLowerCase(Locale.ROOT).takeWhile(c => c != '?' && c != '#').endsWith(".svg")
+   *  demoting: a vector image — film posters are photographs; an SVG is a site's logo or default
+   *  graphic, like the "PAN-BILET" SVG bilety24's WordPress venues list for every film — or a
+   *  path ending in a `not-found` segment, the image bilety24 names for an event without one.
+   *  Both 404. */
+  def isAbsent(url: String): Boolean = {
+    val path = url.toLowerCase(Locale.ROOT).takeWhile(c => c != '?' && c != '#')
+    path.endsWith(".svg") || path.stripSuffix("/").endsWith("/not-found")
+  }
 }

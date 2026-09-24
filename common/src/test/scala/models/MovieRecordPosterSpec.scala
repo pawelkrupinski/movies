@@ -50,6 +50,20 @@ class MovieRecordPosterSpec extends AnyFlatSpec with Matchers {
       .posterUrl shouldBe None
   }
 
+  it should "treat a not-found placeholder as no poster at all" in {
+    // bilety24 names `image.bilety24.pl/not-found` as the image of an event that has none: 786
+    // pl films carried it (2026-09-24), and for one it was the only candidate. It 404s.
+    val placeholder = "https://image.bilety24.pl/not-found"
+    val tmdb        = "https://image.tmdb.org/t/p/w500/x.jpg"
+    MovieRecord(data = Map[Source, SourceData](
+      Multikino -> SourceData(posterUrl = Some(placeholder)),
+      Tmdb      -> SourceData(posterUrl = Some(tmdb)))).fallbackPosterUrls shouldBe empty
+    MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(posterUrl = Some(placeholder + "/"))))
+      .posterUrl shouldBe None
+    withClue("a poster merely NAMED like it stays: ")(
+      PlaceholderPoster.isAbsent("https://cdn.example/posters/not-found-in-translation.jpg") shouldBe false)
+  }
+
   it should "include IMDb after every cinema and before / after TMDB per Source.priority" in {
     val multikino  = "https://www.multikino.pl/x.jpg"
     val cinemaCity = "https://www.cinema-city.pl/y.jpg"
