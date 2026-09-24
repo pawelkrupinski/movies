@@ -96,6 +96,14 @@ final class StateSyncModelTests: XCTestCase {
         XCTAssertNil(violation)
     }
 
+    /// A run that never goes quiet is a violation, not a silent pass: `quiesce`
+    /// used to give up at its turn cap and let the invariants be checked
+    /// against a device still mid-flight.
+    func testARunThatNeverGoesQuietIsAViolation() async {
+        let violation = await SyncModel.violation(of: [.login], quiesceTurnLimit: 5)
+        XCTAssertTrue(violation?.contains("never went quiet") == true, "got \(violation ?? "nil")")
+    }
+
     func testALanguagePickQueuedAtLogout() async {
         let violation = await SyncModel.violation(of: [.login, .networkDown, .pickLanguage("de"), .logout, .reconnect])
         XCTAssertNil(violation)
@@ -197,8 +205,8 @@ enum SyncModel {
     }
 
     /// Run `events` and then settle; the first invariant broken, or nil.
-    static func violation(of events: [SyncEvent]) async -> String? {
-        let run = Run()
+    static func violation(of events: [SyncEvent], quiesceTurnLimit: Int = 100_000) async -> String? {
+        let run = Run(quiesceTurnLimit: quiesceTurnLimit)
         defer { run.tearDown() }
         return await run.play(events)
     }
@@ -225,15 +233,23 @@ enum SyncModel {
         private var mustNotHave: [String: Set<String>] = [:]
         private var expectedLanguage: String?
 
-        init() {
+        /// How many scheduler turns `quiesce` may take before the run counts as
+        /// never going quiet.
+        private let quiesceTurnLimit: Int
+        /// Set by the first `quiesce` that hit `quiesceTurnLimit` — a violation
+        /// in itself: the invariants mean nothing against a device still busy.
+        private var neverQuiet: String?
+
+        init(quiesceTurnLimit: Int) {
+            self.quiesceTurnLimit = quiesceTurnLimit
             defaults = UserDefaults(suiteName: suite)!
             prefs = UserPreferences(store: defaults)
             prefs.setCountry(Country.all.first { $0.code == SyncModel.countries[0] }!)
             session(signedIn: false)
-            server.beforeFetchResponse = { [unowned self] in await self.hold(language: false) }
-            server.beforeWriteResponse = { [unowned self] in await self.hold(language: false) }
-            languageClient.beforeFetchResponse = { [unowned self] in await self.hold(language: true) }
-            languageClient.beforePushResponse = { [unowned self] in await self.hold(language: true) }
+            server.beforeFetchResponse = { [weak self] in await self?.hold(language: false) }
+            server.beforeWriteResponse = { [weak self] in await self?.hold(language: false) }
+            languageClient.beforeFetchResponse = { [weak self] in await self?.hold(language: true) }
+            languageClient.beforePushResponse = { [weak self] in await self?.hold(language: true) }
         }
 
         private func hold(language: Bool) async {
@@ -260,9 +276,10 @@ enum SyncModel {
             for (index, event) in events.enumerated() {
                 await apply(event)
                 await quiesce()
-                if let violation = isolationViolation() { return "after event #\(index) \(event): \(violation)" }
+                if let violation = neverQuiet ?? isolationViolation() { return "after event #\(index) \(event): \(violation)" }
             }
             await settle()
+            if let neverQuiet { return "while settling: \(neverQuiet)" }
             return isolationViolation() ?? convergenceViolation()
         }
 
@@ -355,7 +372,7 @@ enum SyncModel {
         private func quiesce() async {
             var idleTurns = 0
             var turns = 0
-            while idleTurns < 20, turns < 100_000 {
+            while idleTurns < 20, turns < quiesceTurnLimit {
                 turns += 1
                 await Task.yield()
                 if debounce.hasPending {
@@ -364,6 +381,10 @@ enum SyncModel {
                 } else {
                     idleTurns = server.inFlight + languageClient.inFlight == held ? idleTurns + 1 : 0
                 }
+            }
+            if idleTurns < 20, neverQuiet == nil {
+                neverQuiet = "never went quiet within \(quiesceTurnLimit) turns (debounce pending: " +
+                    "\(debounce.hasPending), in flight: \(server.inFlight + languageClient.inFlight), held: \(held))"
             }
         }
 
