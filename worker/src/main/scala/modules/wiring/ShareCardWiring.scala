@@ -28,9 +28,14 @@ trait ShareCardWiring { self: WorkerWiring =>
 
   lazy val shareCardBudgetBytes: Long = Env.positiveLong("KINOWO_SHARE_CARD_BUDGET_MB", 1024L) * 1024 * 1024
 
+  /** Posters download directly, except a Cloudflare-blocked site's, which go through the egress
+   *  its scrapes use: Multikino 403s the worker's IP on every poster as on its pages. */
+  private lazy val posterDownload: PosterDownload = PosterDownload.routed(new HttpPosterDownload(), Map(
+    java.net.URI.create(services.cinemas.pl.MultikinoClient.HomeUrl).getHost -> new EgressPosterDownload(multikinoFetch)))
+
   lazy val shareCardService: ShareCardService = new ShareCardService(
     country, shareCardStore,
-    new ShareCardPosters(shareCardStore, new HttpPosterDownload(), new VipsPosterShrinker(), shareCardMetrics),
+    new ShareCardPosters(shareCardStore, posterDownload, new VipsPosterShrinker(), shareCardMetrics),
     taskQueue, shareCardMetrics, clock)
 
   /** What the projection asks about share cards. */

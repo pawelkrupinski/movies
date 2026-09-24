@@ -112,6 +112,36 @@ trait PosterDownload {
   def fetch(url: String): Either[String, Path]
 }
 
+object PosterDownload {
+  /** `byHost`'s download for a URL on one of its hosts, `direct` for any other. */
+  def routed(direct: PosterDownload, byHost: Map[String, PosterDownload]): PosterDownload = new PosterDownload {
+    def fetch(url: String): Either[String, Path] =
+      Try(URI.create(url).getHost).toOption.flatMap(Option(_)).map(_.toLowerCase).flatMap(byHost.get).getOrElse(direct).fetch(url)
+  }
+}
+
+/** [[PosterDownload]] through a scraper egress — the residential-proxy chain a Cloudflare-blocked
+ *  site's scrapes use — for that site's posters. The chain hands back the whole body, so the cap
+ *  is checked once it has arrived; a poster is fetched once and then cached, so the proxy (Zyte
+ *  only when the proxy fails) sees one request per film. */
+class EgressPosterDownload(http: tools.HttpFetch, maxBytes: Long = PosterPipeline.MaxDownloadBytes) extends PosterDownload {
+  def fetch(url: String): Either[String, Path] =
+    try {
+      val bytes = http.getBytes(url)
+      if (bytes.isEmpty) Left(PosterFailure.EmptyBody)
+      else if (bytes.length > maxBytes) Left(PosterFailure.TooLarge)
+      else Right(Files.write(Files.createTempFile("poster-", ".img"), bytes))
+    } catch {
+      case e: tools.HttpStatusException => Left(e.code / 100 match {
+        case 4 => PosterFailure.Http4xx
+        case 5 => PosterFailure.Http5xx
+        case _ => PosterFailure.HttpOther
+      })
+      case _: java.net.http.HttpTimeoutException => Left(PosterFailure.Timeout)
+      case _: Exception                          => Left(PosterFailure.Network)
+    }
+}
+
 /** [[PosterDownload]] over the JDK client: a generous connect budget (some cinema origins take
  *  ~6-7s to a cold TLS connect, past the scrapers' tight 5s), a bounded request time, and a byte
  *  cap enforced while streaming, so a multi-hundred-megabyte "poster" is abandoned at the cap
