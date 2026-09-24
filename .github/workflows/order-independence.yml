@@ -11,13 +11,18 @@ name: Order independence
 #     starting country (dbfebcfc6).
 #   - iOS: a country/language one UI test chose leaked into the next.
 #
-# Three legs:
-#   scala    every module's unit specs one suite at a time, reversed and shuffled
-#            (TEST_ORDER_SEED — see testOrderSettings in build.sbt).
-#   android  every Robolectric test, classes AND methods reordered by a seed
-#            (-PtestOrderSeed — see ShuffledOrderSuite).
-#   ios      every XCUITest class ALONE, in its own xcodebuild run: a class that only
-#            passes after another has set state up fails here.
+# Five legs:
+#   scala                every module's unit specs one suite at a time, reversed and
+#                        shuffled (TEST_ORDER_SEED — see testOrderSettings in build.sbt).
+#   android              every Robolectric test, classes (nested ones too) AND methods
+#                        reordered by a seed (-PtestOrderSeed — see ShuffledOrderSuite);
+#                        the sync model at 100x its push seed count.
+#   android-instrumented every androidTest class ALONE on an emulator, in a seeded order
+#                        (android/scripts/devtest-shuffled.sh).
+#   swift                every `swift test` case ALONE, in a seeded order
+#                        (ios/scripts/swift-test-shuffled.sh); the sync model at 10x.
+#   ios                  every XCUITest class ALONE, in its own xcodebuild run: a class
+#                        that only passes after another has set state up fails here.
 #
 # A failure prints its seed; replay it locally with the command in the job summary, or
 # re-run this workflow by hand with that seed.
@@ -111,8 +116,9 @@ jobs:
                   REQUESTED: ${{ inputs.seed }}
               run: |
                   seed="${REQUESTED:-$GITHUB_RUN_ID}"
-                  echo "Android unit tests, seed \`$seed\` — replay: \`./gradlew testDebugUnitTest -PtestOrderSeed=$seed\`" >> "$GITHUB_STEP_SUMMARY"
-                  ./gradlew --no-daemon testDebugUnitTest -PtestOrderSeed="$seed"
+                  echo "Android unit tests, seed \`$seed\` — replay: \`./gradlew testDebugUnitTest -PtestOrderSeed=$seed -PsyncModelSeeds=20000\`" >> "$GITHUB_STEP_SUMMARY"
+                  # The sync model runs deep here: 100× its push-sized seed count.
+                  ./gradlew --no-daemon testDebugUnitTest -PtestOrderSeed="$seed" -PsyncModelSeeds=20000
 
             - name: Upload the test report
               if: failure()
@@ -121,6 +127,121 @@ jobs:
                   name: android-order-independence-report
                   path: android/app/build/reports/tests/testDebugUnitTest
                   if-no-files-found: ignore
+
+    android-instrumented:
+        runs-on: ubuntu-latest
+        timeout-minutes: 120
+        defaults:
+            run:
+                working-directory: android
+        env:
+            # The same emulator as android.yml's `instrumented` lane.
+            API_LEVEL: 34
+            AVD_PROFILE: pixel_6
+        steps:
+            - uses: actions/checkout@v5
+
+            - name: Set up JDK 17
+              uses: actions/setup-java@v5
+              with:
+                  distribution: temurin
+                  java-version: '17'
+
+            - name: Set up Android SDK
+              uses: android-actions/setup-android@v3
+              with:
+                  packages: platform-tools
+
+            - name: Set up Gradle
+              uses: gradle/actions/setup-gradle@v4
+
+            - name: Enable KVM
+              run: |
+                  echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+                      | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+                  sudo udevadm control --reload-rules
+                  sudo udevadm trigger --name-match=kvm
+
+            - name: Cache AVD
+              id: avd-cache
+              uses: actions/cache@v5
+              with:
+                  path: |
+                      ~/.android/avd/*
+                      ~/.android/adb*
+                  key: avd-${{ env.API_LEVEL }}-google_apis-x86_64-${{ env.AVD_PROFILE }}
+
+            - name: Create AVD snapshot
+              if: steps.avd-cache.outputs.cache-hit != 'true'
+              uses: reactivecircus/android-emulator-runner@v2
+              with:
+                  api-level: ${{ env.API_LEVEL }}
+                  target: google_apis
+                  arch: x86_64
+                  profile: ${{ env.AVD_PROFILE }}
+                  force-avd-creation: false
+                  emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+                  disable-animations: false
+                  script: echo "Generated AVD snapshot for caching."
+
+            - name: Pick the order
+              id: order
+              working-directory: ${{ github.workspace }}
+              env:
+                  REQUESTED: ${{ inputs.seed }}
+              run: |
+                  seed="${REQUESTED:-$GITHUB_RUN_ID}"
+                  echo "seed=$seed" >> "$GITHUB_OUTPUT"
+                  echo "Android instrumented classes, each alone, seed \`$seed\` — replay: \`android/scripts/devtest-shuffled.sh $seed\`" >> "$GITHUB_STEP_SUMMARY"
+
+            - name: Every androidTest class alone, in that order
+              uses: reactivecircus/android-emulator-runner@v2
+              with:
+                  api-level: ${{ env.API_LEVEL }}
+                  target: google_apis
+                  arch: x86_64
+                  profile: ${{ env.AVD_PROFILE }}
+                  force-avd-creation: false
+                  emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+                  disable-animations: true
+                  emulator-boot-timeout: 600
+                  working-directory: android
+                  # --skip-live-youtube: see android.yml's instrumented lane.
+                  script: scripts/devtest-shuffled.sh ${{ steps.order.outputs.seed }} --skip-live-youtube
+
+            - name: Upload the instrumented test report
+              if: failure()
+              uses: actions/upload-artifact@v6
+              with:
+                  name: android-instrumented-order-independence-report
+                  path: |
+                      android/app/build/reports/androidTests/connected
+                      android/app/build/outputs/androidTest-results/connected
+                  if-no-files-found: ignore
+
+    swift:
+        runs-on: macos-latest
+        timeout-minutes: 90
+        steps:
+            - uses: actions/checkout@v5
+
+            - uses: maxim-lobanov/setup-xcode@v1
+              with:
+                  xcode-version: latest-stable
+
+            - name: Every swift test case alone, in a seeded order
+              env:
+                  REQUESTED: ${{ inputs.seed }}
+              run: |
+                  seed="${REQUESTED:-$GITHUB_RUN_ID}"
+                  echo "swift test cases, each alone, seed \`$seed\` — replay: \`ios/scripts/swift-test-shuffled.sh $seed\`" >> "$GITHUB_STEP_SUMMARY"
+                  ios/scripts/swift-test-shuffled.sh "$seed"
+
+            # The sync model deep: 10x its push-sized seed count.
+            - name: StateSyncModelTests at 2000 seeds
+              run: swift test --package-path ios --filter StateSyncModelTests
+              env:
+                  SYNC_MODEL_SEEDS: '2000'
 
     ios:
         runs-on: macos-latest
@@ -187,7 +308,7 @@ jobs:
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
     report:
-        needs: [scala, android, ios]
+        needs: [scala, android, android-instrumented, swift, ios]
         if: always() && !cancelled() && github.event_name == 'schedule'
         runs-on: ubuntu-latest
         timeout-minutes: 5

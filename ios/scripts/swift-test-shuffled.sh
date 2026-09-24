@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+#
+# Every `swift test` case ALONE, in an order drawn from a seed — the iOS lane
+# of the nightly order-independence workflow. `swift test` has no shuffle and
+# XCTest always runs a process's tests in name order, so a test that passes
+# only because another ran first (or never ran first) in that process, or
+# because of what an earlier process left on disk (UserDefaults suites, the
+# caches directory), looks healthy forever. Running each case in its own
+# process, in a seeded order, meets both. Reproduce a failure with the seed it
+# prints:
+#
+#     ios/scripts/swift-test-shuffled.sh <seed>
+#
+set -uo pipefail
+seed="${1:?usage: swift-test-shuffled.sh <seed>}"
+package="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+swift build --package-path "$package" --build-tests || exit 1
+tests="$(swift test list --package-path "$package" --skip-build)" || exit 1
+[ -n "$tests" ] || { echo "swift-test-shuffled: no tests listed" >&2; exit 1; }
+
+# A seeded order: awk's srand(seed) keys each case, sort orders by the key.
+ordered="$(printf '%s\n' "$tests" | awk -v seed="$seed" 'BEGIN { srand(seed) } NF { printf "%.15f\t%s\n", rand(), $0 }' \
+    | sort -n | cut -f2-)"
+count="$(printf '%s\n' "$ordered" | wc -l | tr -d ' ')"
+echo "swift-test-shuffled: seed $seed — $count cases, each alone — reproduce with ios/scripts/swift-test-shuffled.sh $seed"
+
+log="$(mktemp -t swift-test-shuffled)"
+failed=()
+while IFS= read -r test; do
+    pattern="^$(printf '%s' "$test" | sed 's/[.[\*^$()+?{}|]/\\&/g')\$"
+    if ! swift test --package-path "$package" --skip-build --filter "$pattern" >"$log" 2>&1; then
+        echo "FAILED alone: $test"
+        tail -40 "$log"
+        failed+=("$test")
+    fi
+done <<<"$ordered"
+rm -f "$log"
+
+if [ "${#failed[@]}" -gt 0 ]; then
+    echo "swift-test-shuffled: ${#failed[@]} of $count cases fail alone under seed $seed:"
+    printf '  %s\n' "${failed[@]}"
+    exit 1
+fi
+echo "swift-test-shuffled: all $count cases pass alone under seed $seed"
