@@ -82,7 +82,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     slotsMetrics:        SideCollectionChangeMetrics = SideCollectionChangeMetrics.noop,
     changeStreamMetrics: ChangeStreamMetrics         = ChangeStreamMetrics.noop,
     clock:               Clock                       = Clock.systemUTC(),
-    resumeToken:         ChangeStreamResumeToken     = new ChangeStreamResumeToken("movies", database = None, enabled = false)
+    resumeToken:         ChangeStreamResumeToken     = new ChangeStreamResumeToken("movies", database = None, enabled = false),
+    rereadRetryMillis:   Long                        = 20L
   ) = new MovieChangeStream(
     source              = source,
     screenings          = screenings,
@@ -93,7 +94,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     screeningsMetrics   = screeningsMetrics,
     slotsMetrics        = slotsMetrics,
     changeDemandWindow  = ChangeStreamDemand.DefaultWindow,
-    clock               = clock)
+    clock               = clock,
+    rereadRetryMillis   = rereadRetryMillis)
 
   "MovieChangeStream" should "open one cursor for two listeners and fan each re-read upsert out to both" in {
     val source = new HandFedSource
@@ -404,6 +406,31 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
       delivered.poll(5, TimeUnit.SECONDS) shouldBe "later|2024" // the failed read fanned nothing out
 
       token.current shouldBe Some(new BsonDocument("_data", new BsonString("token-good|2024")))
+    } finally { handle.close(); under.close() }
+  }
+
+  // Held is not applied. The position waits for a restart to replay the change, but a worker
+  // runs for days: until then the film's card kept whatever the failed event should have
+  // replaced — a showtime change the id-only sweeps never see. So the film is re-read again,
+  // later, until a read answers, and only the POSITION stays held.
+  it should "re-read a film whose re-read failed again later, and apply it once a read answers" in {
+    val source    = new HandFedSource
+    val token     = new ChangeStreamResumeToken("movies", database = None, enabled = false)
+    val delivered = new java.util.concurrent.LinkedBlockingQueue[String]()
+    val failures  = new AtomicInteger(0)
+    val under     = stream(source, resumeToken = token, rereadChecked = Some { id =>
+      // Fails past the apply's own quick retries, then recovers.
+      if (id == "broken|2024" && failures.incrementAndGet() <= MovieChangeStream.RereadAttempts + 2) (None, false)
+      else (Some(recordOf(id)), true)
+    })
+
+    val handle = under.watch(r => delivered.put(r.id.value), _ => ())
+    try {
+      source.emit(event("insert", "broken|2024", StoredMovieDto.fromDomain("broken|2024", MovieRecord(), Instant.EPOCH)))
+      withClue("the failed film must reach the listeners once a later read answers: ")(
+        delivered.poll(10, TimeUnit.SECONDS) shouldBe "broken|2024")
+      withClue("the position stays held — the retry is not the event, and a restart still replays it: ")(
+        token.current shouldBe None)
     } finally { handle.close(); under.close() }
   }
 

@@ -61,7 +61,10 @@ final class MovieChangeStream(
   changeDemandWindow:  Int,
   // Stamps the instant of each delivered event — injected so a spec can assert an AGE to the
   // second; production never passes it.
-  clock:               java.time.Clock = java.time.Clock.systemUTC()
+  clock:               java.time.Clock = java.time.Clock.systemUTC(),
+  // How long after a failed re-read the film is read again — see `applyReread`. Doubled per
+  // failure up to `RereadRetryMaxMillis`; a spec shortens it, production never passes it.
+  rereadRetryMillis:   Long = MovieChangeStream.RereadRetryMillis
 ) extends Logging with AutoCloseable {
 
   /** When each cursor last DELIVERED an event — the liveness signal an open-but-silent
@@ -203,9 +206,24 @@ final class MovieChangeStream(
    *  later event moves it past the failed one just the same. A held cursor keeps applying —
    *  the site stays live — and a restart resumes from before the failure and replays it (a
    *  harmless re-read of everything since). If that replay has fallen out of the oplog window,
-   *  the invalid-token path starts fresh and the periodic backstop resyncs, as for any gap. */
+   *  the invalid-token path starts fresh and the periodic backstop resyncs, as for any gap.
+   *
+   *  …and the FILM is read again later ([[rereadLater]]), until a read answers. The held
+   *  position only helps the next process, and a worker runs for days: until then the film's
+   *  projection kept whatever the failed event should have replaced — a changed showtime, which
+   *  the read model's id-only sweeps never see. */
   private def applyReread(filmId: String, held: java.util.concurrent.atomic.AtomicBoolean, cursor: String)
-                         (acknowledge: () => Unit): Unit = {
+                         (acknowledge: () => Unit): Unit =
+    if (rereadAndDispatch(filmId)) { if (!held.get()) acknowledge() }
+    else {
+      if (!held.getAndSet(true))
+        logger.warn(s"MovieRepository change stream ($cursor): re-reading $filmId failed — its change is NOT " +
+          "applied yet, and this cursor's resume position is held from here on so a restart replays it.")
+      rereadLater(filmId, cursor, rereadRetryMillis)
+    }
+
+  /** Re-read `filmId` (a few quick attempts) and fan it out; false when every read failed. */
+  private def rereadAndDispatch(filmId: String): Boolean = {
     var attempt = 1
     var (film, read) = reread(filmId)
     while (!read && attempt < MovieChangeStream.RereadAttempts) {
@@ -213,13 +231,33 @@ final class MovieChangeStream(
       attempt += 1
       val next = reread(filmId); film = next._1; read = next._2
     }
-    if (read) {
-      film.foreach(movieChanges.dispatchUpsert)
-      if (!held.get()) acknowledge()
-    } else if (!held.getAndSet(true))
-      logger.warn(s"MovieRepository change stream ($cursor): re-reading $filmId failed $attempt time(s) — its change " +
-        "is NOT applied, and this cursor's resume position is held from here on so a restart replays it.")
+    if (read) film.foreach(movieChanges.dispatchUpsert)
+    read
   }
+
+  // Schedules the late re-reads; the re-read itself still runs on `changeApply`, in order.
+  private val rereadRetry = tools.DaemonExecutors.scheduler("movie-change-reread-retry")
+
+  /** Read a film whose re-read failed again after `delayMillis`, doubling the delay while it
+   *  keeps failing. It joins the coalescing set like any event: an apply already queued for
+   *  the film reads it fresh anyway (and schedules its own retry if that fails too). It
+   *  acknowledges nothing — the cursor is held — and owes no demand, since no cursor delivered it. */
+  private def rereadLater(filmId: String, cursor: String, delayMillis: Long): Unit =
+    scala.util.Try(rereadRetry.schedule((() =>
+      if (sideApplyPending.add(filmId)) {
+        backlog.incrementAndGet()
+        changeApply.execute { () =>
+          try {
+            sideApplyPending.remove(filmId)
+            if (!rereadAndDispatch(filmId)) {
+              logger.warn(s"MovieRepository change stream ($cursor): re-reading $filmId still fails — trying again later.")
+              rereadLater(filmId, cursor, math.min(delayMillis * 2, MovieChangeStream.RereadRetryMaxMillis))
+            }
+          } finally backlog.decrementAndGet()
+        }
+      }): Runnable, delayMillis, java.util.concurrent.TimeUnit.MILLISECONDS))
+      // Rejected only once `close()` has shut the scheduler: the repository is being discarded.
+      .failed.foreach(exception => logger.debug(s"re-read retry of $filmId not scheduled: ${exception.getMessage}"))
 
   // Read-split only: a showtime change writes only `screenings` and a venue's slot only
   // `movie_slots` (movies stays put), so without these the projector would never see either.
@@ -384,6 +422,7 @@ final class MovieChangeStream(
    *  persisted synchronously, every demand window closed, the apply thread stopped. */
   override def close(): Unit = changeLock.synchronized {
     changeReopen.close()
+    rereadRetry.shutdownNow()
     Option(changeSub.getAndSet(null)).foreach(_.unsubscribe())
     moviesDemand.closed()
     // Let the applies already queued FINISH (bounded) before the final positions are saved:
@@ -405,6 +444,9 @@ object MovieChangeStream {
   /** How many times an apply re-reads a film whose read failed before holding its cursor. */
   private[movies] val RereadAttempts      = 3
   private[movies] val RereadBackoffMillis = 100L
+  /** When a film whose re-read failed is first read again, and the most its delay doubles to. */
+  private[movies] val RereadRetryMillis    = 30_000L
+  private[movies] val RereadRetryMaxMillis = 600_000L
   /** How long `close()` waits for queued applies before saving the final positions. */
   private[movies] val CloseDrainSeconds   = 10L
 
