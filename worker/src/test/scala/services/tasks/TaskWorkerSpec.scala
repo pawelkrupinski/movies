@@ -16,6 +16,8 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
   import TaskWorker.PollResult
 
   private val t0 = Instant.parse("2026-06-07T12:00:00Z")
+  // The instant the workers here claim and back off at — an hour after every task is submitted.
+  private val specClock = java.time.Clock.fixed(t0.plusSeconds(3600), java.time.ZoneOffset.UTC)
 
   private class RecordingHandler(val taskType: TaskType, outcome: HandlerOutcome) extends TaskHandler {
     var seen: List[Task] = Nil
@@ -23,7 +25,7 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
   }
 
   private def worker(q: TaskQueue, hs: Seq[TaskHandler]) =
-    new TaskWorker(q, hs, processingTimeout = 5.minutes, poolSize = 4)
+    new TaskWorker(q, hs, processingTimeout = 5.minutes, poolSize = 4, clock = specClock)
 
   "claimAndRun" should "claim a waiting task, run its handler, and remove it on Done" in {
     val q = new InMemoryTaskQueue
@@ -66,9 +68,9 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     w.claimAndRun("w0") shouldBe PollResult.Returned
     // The worker released it with a backoff window (~5s for the first failure),
     // so an immediate re-claim at "now" finds nothing eligible…
-    q.claim("w1", 1.minute) shouldBe None
+    q.claim("w1", 1.minute, specClock.instant()) shouldBe None
     // …but it's still a Waiting task, claimable once the window has passed.
-    q.claim("w1", 1.minute, Instant.now().plusSeconds(10)).map(_.dedupKey) shouldBe Some("imdb|x")
+    q.claim("w1", 1.minute, specClock.instant().plusSeconds(10)).map(_.dedupKey) shouldBe Some("imdb|x")
   }
 
   it should "NOT charge an attempt for a Deferred task — it never ran" in {
@@ -79,7 +81,7 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     q.enqueue(ImdbRating, "imdb|x", submittedAt = t0)
     val w = worker(q, Seq(new RecordingHandler(ImdbRating, HandlerOutcome.Deferred(Some("circuit open")))))
     w.claimAndRun("w0") shouldBe PollResult.Returned
-    q.claim("w1", 1.minute, Instant.now().plusSeconds(30)).map(_.attempts) shouldBe Some(1)
+    q.claim("w1", 1.minute, specClock.instant().plusSeconds(30)).map(_.attempts) shouldBe Some(1)
   }
 
   it should "hold a Deferred task until the instant the handler named, not the backoff curve" in {
@@ -87,7 +89,7 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     // so the task waits exactly that long — no longer, and no shorter.
     val q = new InMemoryTaskQueue
     q.enqueue(ImdbRating, "imdb|x", submittedAt = t0)
-    val until = Instant.now().plusSeconds(60)
+    val until = specClock.instant().plusSeconds(60)
     val w = worker(q, Seq(new RecordingHandler(ImdbRating, HandlerOutcome.Deferred(Some("circuit open"), Some(until)))))
     w.claimAndRun("w0") shouldBe PollResult.Returned
     q.claim("w1", 1.minute, until.minusSeconds(1)) shouldBe None                       // still blocked
@@ -99,8 +101,8 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     q.enqueue(ImdbRating, "imdb|x", submittedAt = t0)
     val w = worker(q, Seq(new RecordingHandler(ImdbRating, HandlerOutcome.Deferred(Some("circuit open"), None))))
     w.claimAndRun("w0") shouldBe PollResult.Returned
-    q.claim("w1", 1.minute) shouldBe None                                              // an unhinted defer still can't hot-loop
-    q.claim("w1", 1.minute, Instant.now().plusSeconds(10)).map(_.dedupKey) shouldBe Some("imdb|x")
+    q.claim("w1", 1.minute, specClock.instant()) shouldBe None                                              // an unhinted defer still can't hot-loop
+    q.claim("w1", 1.minute, specClock.instant().plusSeconds(10)).map(_.dedupKey) shouldBe Some("imdb|x")
   }
 
   "TaskWorker.retryBackoffFor" should "ramp exponentially from 5s and cap at 30 minutes" in {
@@ -125,7 +127,7 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
       def onStarted(task: Task): Unit = ()
       def onFinished(task: Task, outcome: String, handleMillis: Long): Unit = outcomes += outcome
     }
-    val w = new TaskWorker(q, Seq(handler), maxAttempts = 3, observer = observer)
+    val w = new TaskWorker(q, Seq(handler), maxAttempts = 3, observer = observer, clock = specClock)
     val result = w.claimAndRun("w0")
     (q, outcomes.toSeq, result)
   }
@@ -150,7 +152,7 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     val q = new InMemoryTaskQueue
     q.enqueue(ImdbRating, "imdb|x", submittedAt = t0)
     val t = q.claim("w9", 1.minute).get; q.release(t.id, "w9")   // attempts = 1, cap is 3
-    val w = new TaskWorker(q, Seq(new RecordingHandler(ImdbRating, HandlerOutcome.Reschedule(Some("later")))), maxAttempts = 3)
+    val w = new TaskWorker(q, Seq(new RecordingHandler(ImdbRating, HandlerOutcome.Reschedule(Some("later")))), maxAttempts = 3, clock = specClock)
     w.claimAndRun("w0") shouldBe PollResult.Returned                  // attempt 2 of 3 — still retried
     q.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
   }
@@ -178,7 +180,7 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
       def onFinished(task: Task, outcome: String, handleMillis: Long): Unit = outcomes += outcome
     }
     val throwing = new TaskHandler { val taskType = ResolveTmdb; def handle(task: Task) = throw e }
-    val result = new TaskWorker(q, Seq(throwing), maxAttempts = 12, observer = observer).claimAndRun("w0")
+    val result = new TaskWorker(q, Seq(throwing), maxAttempts = 12, observer = observer, clock = specClock).claimAndRun("w0")
     (q, outcomes.toSeq, result)
   }
 
@@ -330,7 +332,7 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     // idleBackstop a full minute: the ONLY way this task runs inside the
     // assertion window is the watchWaiting doorbell ringing the parked worker.
     val w = new TaskWorker(q, Seq(h), processingTimeout = 5.minutes,
-      retryBackoff = 1.second, idleBackstop = 1.minute, poolSize = 1)
+      retryBackoff = 1.second, idleBackstop = 1.minute, poolSize = 1, clock = specClock)
     w.start()
     try {
       Thread.sleep(100) // let the lone worker reach its idle park
@@ -357,7 +359,7 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
       val q = new InMemoryTaskQueue
       q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0)
       val obs = new RecordingObserver
-      new TaskWorker(q, handlers, processingTimeout = 5.minutes, poolSize = 4, observer = obs).claimAndRun("w0")
+      new TaskWorker(q, handlers, processingTimeout = 5.minutes, poolSize = 4, observer = obs, clock = specClock).claimAndRun("w0")
       (obs.started, obs.finished)
     }
     val throwing = new TaskHandler { val taskType = ScrapeCinema; def handle(task: Task): HandlerOutcome = throw new RuntimeException("boom") }

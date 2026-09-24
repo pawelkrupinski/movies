@@ -82,7 +82,11 @@ class TaskWorker(
   // Metrics hook: notified on every claim and every handler outcome (with the
   // handler's wall-clock). Default no-op keeps the worker decoupled from the
   // metrics sink; the composition root wires WorkerTaskMetrics here.
-  observer:          TaskObserver   = TaskObserver.NoOp
+  observer:          TaskObserver   = TaskObserver.NoOp,
+  // What "now" is for claims and a released task's back-off. It has to ADVANCE: a clock
+  // that stands still (TestWiring's pinned one) would park every backed-off task forever,
+  // which is why the worker wiring leaves this at the system clock.
+  clock:             java.time.Clock = java.time.Clock.systemUTC()
 ) extends Stoppable with Logging {
   import HandlerOutcome._
   import TaskWorker._
@@ -115,7 +119,7 @@ class TaskWorker(
     // (30s) is ample. A reap returns crashed/stuck (and other nodes') leases to
     // waiting; ring so the freed work is picked up now, not at the next backstop.
     reaper.scheduleWithFixedDelay(
-      () => Try { if (queue.reapExpiredLeases() > 0) doorbell.ring() },
+      () => Try { if (queue.reapExpiredLeases(clock.instant()) > 0) doorbell.ring() },
       reapInterval.toMillis, reapInterval.toMillis, TimeUnit.MILLISECONDS)
     (0 until poolSize).foreach { i =>
       val id = s"$baseId-$i"
@@ -176,7 +180,7 @@ class TaskWorker(
    *  completion — one task, then return. Package-private so tests can drive a
    *  worker deterministically without spinning up threads. */
   private[tasks] def claimAndRun(workerId: String): PollResult =
-    queue.claim(workerId, processingTimeout) match {
+    queue.claim(workerId, processingTimeout, clock.instant()) match {
       case None       => PollResult.Idle
       case Some(task) =>
         // Baton: this claim consumed one task, so wake one more parked worker in
@@ -268,7 +272,7 @@ class TaskWorker(
   // When this attempt failed transiently, hold the task back from re-claim until
   // its exponential backoff elapses (see `TaskWorker.retryBackoffFor`).
   private def backoffUntil(attempts: Int): Instant =
-    Instant.now().plusMillis(retryBackoffFor(attempts).toMillis)
+    clock.instant().plusMillis(retryBackoffFor(attempts).toMillis)
 
   override def stop(): Unit = {
     running.set(false)
