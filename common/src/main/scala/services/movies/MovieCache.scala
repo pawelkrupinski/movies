@@ -1,7 +1,7 @@
 package services.movies
 
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
-import models.{Cinema, CinemaMovie, MovieRecord}
+import models.{Cinema, CinemaMovie, MovieRecord, Source, SourceData}
 import play.api.Logging
 import services.Stoppable
 import services.cinemas.CountryNames
@@ -338,7 +338,7 @@ class CaffeineMovieCache(
    *  quadratic that cost the United States leg every run it ever had.
    *
    *  It shadows `positive`, so it is only as correct as the funnels below: EVERY write
-   *  to `positive` goes through `store` / `evict` / the `putIfPresent` compute, and
+   *  to `positive` goes through `store` / `evict` / the `computeResident` compute, and
    *  nothing else may call `positive.put` or `positive.invalidate` directly. The cache
    *  is unbounded, so there is no eviction path to miss. */
   /** What makes a row a valid ALIAS target: resolved, and a bare presentation of its
@@ -549,6 +549,9 @@ class CaffeineMovieCache(
   // the cache must keep showtimes — there's nowhere else to hold them.
   private def forCache(r: MovieRecord): MovieRecord =
     if (repository.hasScreenings) ShowtimesDigest.stripForCache(r) else r
+  /** [[forCache]] of one slot. */
+  private def forCacheSlot(sd: SourceData): SourceData =
+    if (repository.hasScreenings) ShowtimesDigest.stripSlot(sd) else sd
 
   private def persist(key: CacheKey, e: MovieRecord, id: FilmId): WriteOutcome = corpusIndex.idOf(key).filter(_ != id) match {
     case Some(holder) =>
@@ -593,14 +596,20 @@ class CaffeineMovieCache(
   // votes yet, IMDb GraphQL for a brand-new entry. Zero isn't a real rating;
   // persisting it would render a misleading "0/10" badge. Squash to None at
   // the single write boundary so neither Caffeine nor Mongo holds the
-  // phantom score. Applied to every write (`persist` and `putIfPresent`),
-  // so any future caller automatically inherits the rule.
+  // phantom score. Applied to every write (`persist` and `putIfPresent`, which
+  // `putSlotIfPresent` defers to for a row carrying one), so any future caller
+  // automatically inherits the rule.
   private def withoutZeroRatings(e: MovieRecord): MovieRecord = e.copy(
     imdbRating     = e.imdbRating.filter(_ > 0.0),
     metascore      = e.metascore.filter(_ > 0),
     filmwebRating  = e.filmwebRating.filter(_ > 0.0),
     rottenTomatoes = e.rottenTomatoes.filter(_ > 0)
   )
+
+  /** Would [[withoutZeroRatings]] change `e`? */
+  private def carriesZeroRating(e: MovieRecord): Boolean =
+    e.imdbRating.exists(_ <= 0.0) || e.metascore.exists(_ <= 0) ||
+    e.filmwebRating.exists(_ <= 0.0) || e.rottenTomatoes.exists(_ <= 0)
 
   /** Find an existing cache key carrying the same tmdbId as `excluding` — the
    *  same film, whatever its cleanTitle spelling (the display split into a card
@@ -1076,68 +1085,129 @@ class CaffeineMovieCache(
     val full    = new java.util.concurrent.atomic.AtomicReference[MovieRecord]()
     // Cache stores the STRIPPED record; the write below uses the FULL one so the
     // screenings-diff has real showtimes. `current` is the prior (stripped) resident row.
-    val updated = positive.asMap().computeIfPresent(key, new java.util.function.BiFunction[CacheKey, MovieRecord, MovieRecord] {
-      override def apply(k: CacheKey, current: MovieRecord): MovieRecord = {
-        before.set(current)
-        val f = withoutZeroRatings(updater(current))
+    val updated = computeResident(key) { current =>
+      before.set(current)
+      val u = updater(current)
+      // An updater that hands the row back untouched changed nothing: keep the resident
+      // value as it is, rather than stripping, re-indexing and diffing every slot of it
+      // to find that out. The landing's duplicate-slot drop does this once per listing,
+      // on a row that can carry thousands of venues. A zero rating still takes the long
+      // way, because `withoutZeroRatings` would change it.
+      if ((u eq current) && !carriesZeroRating(current)) current
+      else {
+        val f = withoutZeroRatings(u)
         full.set(f)
         forCache(f)
       }
-    })
-    if (updated == null) {
+    }
+    updated.fold(false) { updated =>
+      val prior = before.get()
+      if (updated eq prior) true
+      else {
+        // `computeIfPresent` writes inside Caffeine's own lock, so it cannot go through
+        // `store`; index the value it produced instead. Same contract, one line later.
+        val id = residentIdOf(key)
+        corpusIndex.put(key, updated, id)
+        val fullAfter = full.get()
+        // Write-guard by DIGEST: equal non-showtime fields AND equal per-slot showtime digest
+        // ⇒ no real change, skip the write. See ShowtimesDigest.leanEqual.
+        // Equal is the common case — an unchanged re-scrape re-asserting its slot — and it
+        // skips the repository entirely: each no-op write would be an `updatedAt`-only
+        // `updateOne`, an oplog entry and a change-stream `updateLookup` per row, per pass,
+        // the dominant load on the shared-CPU Mongo.
+        ShowtimesDigest.leanEqual(fullAfter, prior) || writeThrough(key, id, prior, updated, prior, fullAfter)
+      }
+    }
+    }
+
+  /**
+   * [[putIfPresent]] of `_.copy(data = _.data + (source -> slot))` — the scrape landing's
+   * write — in work independent of how many OTHER slots the row carries.
+   *
+   * THE BUG THIS REPLACES. The landing wrote through `putIfPresent`, which re-indexes the
+   * whole row, strips every slot and compares every slot: O(slots) per landing. A film
+   * shown at N venues lands N times a tick, so that was O(N²) per film per tick — a re-scrape
+   * of the US corpus took ~12x its first scrape, and prod paid it on every landing of a
+   * widely shown film. Here the no-op guard compares the ONE slot the write touches, the
+   * cache strips that slot alone, the index re-indexes it alone (`CorpusIndex.putSlot`), and
+   * the repository is handed the two records narrowed to it — every diff the repository
+   * makes is per source, so the narrowed pair yields exactly the patch the whole pair did.
+   *
+   * Identical results to `putIfPresent` by construction: the other slots and every
+   * top-level field are the resident row's own on both sides of the diff. A row carrying a
+   * zero rating, or a source that is not a cinema slot, takes `putIfPresent` itself —
+   * those are the writes that change more than the slot.
+   */
+  private[services] def putSlotIfPresent(key: CacheKey, source: Source, slot: SourceData): Boolean =
+    if (Source.cinemaOf(source).isEmpty || get(key).exists(carriesZeroRating))
+      putIfPresent(key, current => current.copy(data = current.data + (source -> slot)))
+    else withTitleLock(key.cleanTitle) {
+      val before  = new java.util.concurrent.atomic.AtomicReference[MovieRecord]()
+      val cached  = forCacheSlot(slot)
+      val updated = computeResident(key) { current =>
+        before.set(current)
+        // The write guard, asked of the one slot: `leanEqual` of the whole pair is exactly
+        // this, since nothing else differs between them.
+        if (current.data.get(source).exists(ShowtimesDigest.slotLeanEqual(_, slot))) current
+        else current.copy(data = current.data.updated(source, cached))
+      }
+      updated.fold(false) { updated =>
+        val prior = before.get()
+        if (updated eq prior) true
+        else {
+          val id        = residentIdOf(key)
+          val priorSlot = prior.data.get(source)
+          corpusIndex.putSlot(key, source, priorSlot, cached, updated)
+          def only(sd: Option[SourceData]) = prior.copy(data = sd.map(source -> _).toMap)
+          writeThrough(key, id, prior, updated, only(priorSlot), only(Some(slot)))
+        }
+      }
+    }
+
+  /** Caffeine's `computeIfPresent` on `key`: the value `f` produced, or `None` — metered —
+   *  when the key had left the cache by the time it computed. */
+  private def computeResident(key: CacheKey)(f: MovieRecord => MovieRecord): Option[MovieRecord] =
+    Option(positive.asMap().computeIfPresent(key, new java.util.function.BiFunction[CacheKey, MovieRecord, MovieRecord] {
+      override def apply(k: CacheKey, current: MovieRecord): MovieRecord = f(current)
+    })).orElse {
       // The Caffeine-level race `ScrapeLanding`'s own comment on `landed` names: a
       // concurrent `rekey` of some OTHER title invalidated this key between the
       // read and this compute. Recorded here, not at each caller, because this is
       // the one place that KNOWS it happened — every `putIfPresent` caller
       // (scrape, rating refresh, rekey) shares the same race.
       scrapeLandingMetrics.recordWriteSkipped(ScrapeLandingMetrics.SkipReason.CacheMissRace)
-      false
-    } else {
-    // `computeIfPresent` writes inside Caffeine's own lock, so it cannot go through
-    // `store`; index the value it produced instead. Same contract, one line later.
-    val id = residentIdOf(key)
-    corpusIndex.put(key, updated, id)
-    val prior     = before.get()
-    val fullAfter = full.get()
-    // Write-guard by DIGEST: equal non-showtime fields AND equal per-slot showtime digest
-    // ⇒ no real change, skip the write. See ShowtimesDigest.leanEqual.
-    if (ShowtimesDigest.leanEqual(fullAfter, prior)) {
-      // No real change — the common case: an unchanged cinema re-scrape tick
-      // re-asserts the same slot. Skip the write entirely. Otherwise it issues
-      // an `updateOne` that bumps only `updatedAt` (see `patchToUpdate`), and
-      // each such no-op write is an oplog entry plus a change-stream
-      // `updateLookup` full-document read per row, per pass — the dominant load
-      // on the shared-CPU Mongo. The row is already in the desired state, so
-      // report success without touching the repository (or firing the change stream).
-      true
-    } else {
-      // ITS RESULT, not `true` — fixed 2026-09-13. This discarded
-      // `repository.updateIfPresent`'s answer and reported success unconditionally,
-      // so a genuine persistence failure (the Mongo document didn't match, or the
-      // write threw and was caught into `false`) was invisible at every caller:
-      // `corpusIndex.put` above already made the CACHE look correct, `ScrapeLanding`'s
-      // `landed` gate — which exists precisely "to read the write", per its own
-      // comment — saw `true` regardless, and the title was never spared from that
-      // tick's prune nor counted anywhere. A row this happens to can look perfectly
-      // healthy in-memory while Mongo silently never catches up.
-      val wrote = repository.updateIfPresent(id, key, prior, fullAfter)
-      if (!wrote) {
-        logger.warn(s"MovieCache.putIfPresent(${key.cleanTitle}, ${key.year.getOrElse("—")}): " +
-          "the repository write reported failure for a row the cache still holds resident " +
-          "— the Mongo document didn't match, or the write itself failed.")
-        scrapeLandingMetrics.recordWriteSkipped(ScrapeLandingMetrics.SkipReason.RepositoryWriteFailed)
-        // …and put the resident row BACK. The write guard above diffs against it, so a
-        // cache left holding the state Mongo never took would make the next identical
-        // update (the next tick re-asserting the same slot) look like a no-op: skipped,
-        // reported as success, the failure healed in memory and never in Mongo. `replace`
-        // only if it is still ours — under the title lock nothing else wrote this key,
-        // but an eviction may have.
-        if (positive.asMap().replace(key, updated, prior)) corpusIndex.put(key, prior, id)
-      }
-      touch()
-      wrote
+      None
     }
+
+  /** The repository half of [[putIfPresent]] / [[putSlotIfPresent]]: write the `before` →
+   *  `after` diff, and on failure put the resident `prior` back in place of `updated`. */
+  private def writeThrough(key: CacheKey, id: FilmId, prior: MovieRecord, updated: MovieRecord,
+                           before: MovieRecord, after: MovieRecord): Boolean = {
+    // ITS RESULT, not `true` — fixed 2026-09-13. This discarded
+    // `repository.updateIfPresent`'s answer and reported success unconditionally,
+    // so a genuine persistence failure (the Mongo document didn't match, or the
+    // write threw and was caught into `false`) was invisible at every caller:
+    // the index update already made the CACHE look correct, `ScrapeLanding`'s
+    // `landed` gate — which exists precisely "to read the write", per its own
+    // comment — saw `true` regardless, and the title was never spared from that
+    // tick's prune nor counted anywhere. A row this happens to can look perfectly
+    // healthy in-memory while Mongo silently never catches up.
+    val wrote = repository.updateIfPresent(id, key, before, after)
+    if (!wrote) {
+      logger.warn(s"MovieCache.putIfPresent(${key.cleanTitle}, ${key.year.getOrElse("—")}): " +
+        "the repository write reported failure for a row the cache still holds resident " +
+        "— the Mongo document didn't match, or the write itself failed.")
+      scrapeLandingMetrics.recordWriteSkipped(ScrapeLandingMetrics.SkipReason.RepositoryWriteFailed)
+      // …and put the resident row BACK. The write guard diffs against it, so a
+      // cache left holding the state Mongo never took would make the next identical
+      // update (the next tick re-asserting the same slot) look like a no-op: skipped,
+      // reported as success, the failure healed in memory and never in Mongo. `replace`
+      // only if it is still ours — under the title lock nothing else wrote this key,
+      // but an eviction may have.
+      if (positive.asMap().replace(key, updated, prior)) corpusIndex.put(key, prior, id)
     }
+    touch()
+    wrote
   }
 
   /** Drop a row from positive cache + Mongo — used by the TMDB stage to clear

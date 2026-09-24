@@ -17,10 +17,11 @@ import tools.{PersonName, TextNormalization}
  * (`corpusIndex`, read-only), the country's `normalizer` and `keyOf`, and the
  * cache-or-store read that says whether it SUCCEEDED (`storedChecked`). Writes go
  * through the cache's own funnels — `put` (the tmdbId identity gate), `putIfPresent`
- * (the `$set`-diff for a resident row), `rekey` (a retitle) — under `withTitleLock`,
- * the per-title lock the cache shares with its settle paths. `residentCount` and
- * `rehydrate` serve the cold-mirror guard; `skippedUnreadable` is the cache's own
- * counter of writes it declined, which the landing increments for the same reason.
+ * (the `$set`-diff for a resident row) and its one-slot form `putSlotIfPresent`, `rekey`
+ * (a retitle) — under `withTitleLock`, the per-title lock the cache shares with its
+ * settle paths. `residentCount` and `rehydrate` serve the cold-mirror guard;
+ * `skippedUnreadable` is the cache's own counter of writes it declined, which the
+ * landing increments for the same reason.
  */
 private[movies] trait LandingStore {
   def normalizer: TitleNormalizer
@@ -32,6 +33,9 @@ private[movies] trait LandingStore {
   private[services] def storedChecked(key: CacheKey): (Option[MovieRecord], Boolean)
   private[services] def put(key: CacheKey, e: MovieRecord): WriteOutcome
   private[services] def putIfPresent(key: CacheKey, updater: MovieRecord => MovieRecord): Boolean
+  /** `putIfPresent` of a write that sets ONE cinema slot, in work independent of how many
+   *  other slots the row carries — see `CaffeineMovieCache.putSlotIfPresent`. */
+  private[services] def putSlotIfPresent(key: CacheKey, source: Source, slot: SourceData): Boolean
   private[services] def rekey(oldKey: CacheKey, newKey: CacheKey, update: MovieRecord => MovieRecord, reason: RekeyReason): Unit
   private[services] def withTitleLock[A](cleanTitle: String)(body: => A): A
   def rehydrate(): Int
@@ -625,16 +629,16 @@ private[movies] final class ScrapeLanding(
           // it there deletes the venue's showtimes and puts them nowhere.
           val landed = existingOpt match {
             case Some(_) =>
-              // Its RESULT, not `true`. `putIfPresent` answers false when the key is no
+              // Its RESULT, not `true`. `putSlotIfPresent` answers false when the key is no
               // longer in Caffeine by the time it computes — a concurrent `rekey` of a
               // DIFFERENT title invalidates keys without holding this title's lock — or
               // when the repository write itself failed for a row the cache still holds.
               // Assuming the write landed is what lets the move below strip a slot that
               // was never replaced. The gate is only worth having if it reads the write.
               // (Both failure shapes are METERED — see `ScrapeLandingMetrics` — at the
-              // one place inside `MovieCache.putIfPresent` that actually knows which
+              // one place inside the cache's resident write that actually knows which
               // happened, not here: this call site cannot tell them apart.)
-              store.putIfPresent(key, current => current.copy(data = current.data + (slotKey -> slot)))
+              store.putSlotIfPresent(key, slotKey, slot)
             case None =>
               // A cache MISS is not proof of first-time: a restart/eviction/re-key
               // can leave a fully-rated Mongo row unseen by Caffeine. Build the
@@ -711,10 +715,13 @@ private[movies] final class ScrapeLanding(
           // Gated on the write above: see `landed`.
           if (landed) (corpusIndex.keysForCinemaSlot(cinema, norm) + key).foreach { row =>
             val justWritten: Set[Source] = if (row == key) Set(slotKey) else Set.empty
-            dropCinemaSlots(row, _.data.collect {
-              case (src, sd) if Source.cinemaOf(src).contains(cinema) &&
-                                sd.title.exists(t => normalizer.sanitize(t) == norm) => src
-            }.toSet -- justWritten)
+            // The venue's sources on the row from the index when it holds this very
+            // record — not a walk of the row's every slot, which on a film shown at N
+            // venues made each listing O(N) and the tick O(N²) — else from the record.
+            dropCinemaSlots(row, cur =>
+              corpusIndex.sourcesAt(row, cinema, cur)
+                .getOrElse(cur.data.keysIterator.filter(Source.cinemaOf(_).contains(cinema)).toSet)
+                .filter(src => cur.data.get(src).exists(_.title.exists(t => normalizer.sanitize(t) == norm))) -- justWritten)
           }
           // Gated on the write having LANDED. A skipped write leaves Caffeine
           // without the row, so announcing it as new sends `MovieDetailsComplete` /

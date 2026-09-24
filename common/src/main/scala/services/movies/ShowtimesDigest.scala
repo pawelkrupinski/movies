@@ -65,11 +65,13 @@ object ShowtimesDigest {
   /** Strip a record for cache residency: drop each slot's showtime LIST (they live in Mongo
    *  `screenings`), keep only its digest and count. Idempotent + authoritative. */
   def stripForCache(record: MovieRecord): MovieRecord =
-    record.copy(data = record.data.view.mapValues { sd =>
-      if (sd.showtimes.isEmpty && sd.showtimesDigest.isDefined) sd
-      else sd.copy(showtimes = Nil, showtimesDigest = Some(slotDigest(sd)),
-                   showtimeStartMinutes = Some(IArray.from(sd.showtimes.iterator.map(s => startMinute(s.dateTime))).sorted))
-    }.toMap)
+    record.copy(data = record.data.view.mapValues(stripSlot).toMap)
+
+  /** [[stripForCache]] of one slot. */
+  def stripSlot(sd: SourceData): SourceData =
+    if (sd.showtimes.isEmpty && sd.showtimesDigest.isDefined) sd
+    else sd.copy(showtimes = Nil, showtimesDigest = Some(slotDigest(sd)),
+                 showtimeStartMinutes = Some(IArray.from(sd.showtimes.iterator.map(s => startMinute(s.dateTime))).sorted))
 
   /** Whole-record content digest, for a VIEWER that has to decide "did anything I
    *  render change?" from two renders of the same film (the /debug table's
@@ -87,7 +89,9 @@ object ShowtimesDigest {
   def leanEqual(a: MovieRecord, b: MovieRecord): Boolean =
     a.copy(data = Map.empty) == b.copy(data = Map.empty) &&
     a.data.keySet == b.data.keySet &&
-    a.data.forall { case (source, sdA) =>
-      b.data.get(source).exists(sdB => sdA == sdB && slotDigest(sdA) == slotDigest(sdB))
-    }
+    a.data.forall { case (source, sdA) => b.data.get(source).exists(slotLeanEqual(sdA, _)) }
+
+  /** [[leanEqual]] of one slot: equal metadata AND equal showtime digest. */
+  def slotLeanEqual(a: SourceData, b: SourceData): Boolean =
+    a == b && slotDigest(a) == slotDigest(b)
 }

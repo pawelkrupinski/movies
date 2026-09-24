@@ -18,6 +18,7 @@ private[movies] trait CorpusIndexReader {
   def holdsCinemaSlot(cinema: Cinema, normalized: String): Boolean
   def keysForCinemaSlot(cinema: Cinema, normalized: String): Set[CacheKey]
   def slotsOf(cinema: Cinema): Seq[(CacheKey, Source, SourceData)]
+  def sourcesAt(key: CacheKey, cinema: Cinema, record: MovieRecord): Option[Set[Source]]
 }
 
 /**
@@ -57,7 +58,8 @@ private[movies] trait CorpusIndexReader {
  * WHY IT CAN BE TRUSTED TO STAY IN SYNC. `positive` is an UNBOUNDED Caffeine cache
  * (`Caffeine.newBuilder().build()` — no `maximumSize`, no `expireAfter`), so nothing
  * leaves it except through an explicit write, and every one of those funnels through
- * `MovieCache.store` / `evict` / the `putIfPresent` compute. There is no eviction
+ * `MovieCache.store` / `evict` / the `computeResident` compute (`putIfPresent`, and
+ * `putSlotIfPresent`, which re-indexes one slot with [[putSlot]]). There is no eviction
  * callback to miss. [[CorpusIndexConsistencySpec]] pins that by replaying a realistic
  * scrape/fold/prune sequence and asserting the incremental index equals one rebuilt
  * from the rows.
@@ -91,6 +93,12 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
   /** cinema → its slots, with the row each belongs to. The old `heldSlotsOf` scan,
    *  and the prune's stale-slot sweep. */
   private val slotsByCinema = mutable.Map.empty[Cinema, mutable.Map[(CacheKey, Source), SourceData]]
+
+  /** (row, cinema) → the sources on that row belonging to the cinema. A venue's slots on
+   *  ONE row without walking the row's every slot: the landing's duplicate-slot drop asks
+   *  it once per listing, and [[putSlot]] asks it to keep `keysByCinemaSlot` exact when a
+   *  row holds the same (cinema, title) twice. */
+  private val sourcesByRowCinema = mutable.Map.empty[(CacheKey, Cinema), mutable.Set[Source]]
 
   /** sanitized alias → the concluded bare rows carrying it.
    *
@@ -138,6 +146,7 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
     record.data.foreach { case (source, sd) =>
       Source.cinemaOf(source).foreach { cinema =>
         slotsByCinema.getOrElseUpdate(cinema, mutable.Map.empty).update((key, source), sd)
+        sourcesByRowCinema.getOrElseUpdate((key, cinema), mutable.Set.empty) += source
       }
     }
     if (isConcludedBareRow(key, record))
@@ -185,6 +194,48 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
   def keysWithSearchKey(search: String): Set[CacheKey] = synchronized {
     val matched = keysBySearch.get(search).map(_.toSet).getOrElse(Set.empty)
     if (matched.flatMap(tmdbIdByKey.get).sizeIs == 1) matched else Set.empty
+  }
+
+  /**
+   * Re-index ONE cinema slot of a row already indexed under `key` — the scrape landing's
+   * write, which changes nothing but `source`'s slot. [[put]] re-derives the whole row,
+   * which is O(slots) per call; a film shown at N venues re-lands N times a tick, so
+   * that was O(N²) per film per tick (the US re-scrape ran ~12x its first scrape).
+   *
+   * Everything else the index holds is keyed off the row's key, ids and TMDB slot — none
+   * of which a cinema slot touches — so this and [[put]] of `record` agree exactly
+   * (`CorpusIndexConsistencySpec`). `record` must be the row's value WITH the new slot.
+   */
+  def putSlot(key: CacheKey, source: Source, prior: Option[SourceData], slot: SourceData, record: MovieRecord): Unit = synchronized {
+    val cinema = Source.cinemaOf(source).getOrElse(
+      throw new IllegalArgumentException(s"putSlot is for cinema slots, not $source"))
+    rowsByNormalized.getOrElseUpdate(key.normalized, mutable.Map.empty).update(key, record)
+    slotsByCinema.getOrElseUpdate(cinema, mutable.Map.empty).update((key, source), slot)
+    val siblings = sourcesByRowCinema.getOrElseUpdate((key, cinema), mutable.Set.empty)
+    siblings += source
+    val before = prior.flatMap(_.title).map(normalizer.sanitize)
+    val after  = slot.title.map(normalizer.sanitize)
+    if (before != after) {
+      // Un-list the old title only when no OTHER slot of this venue on this row still
+      // carries it — a row can hold one (cinema, title) twice, and `put` lists it once.
+      before.filterNot(norm => siblings.exists(s => s != source &&
+          record.data.get(s).exists(_.title.exists(t => normalizer.sanitize(t) == norm))))
+        .foreach { norm =>
+          keysByCinemaSlot.get((cinema, norm)).foreach { keys =>
+            keys -= key
+            if (keys.isEmpty) keysByCinemaSlot -= ((cinema, norm))
+          }
+        }
+      after.foreach(norm => keysByCinemaSlot.getOrElseUpdate((cinema, norm), mutable.Set.empty) += key)
+    }
+  }
+
+  /** The sources on `key`'s row belonging to `cinema` — `None` when the index does not
+   *  hold `record` itself for that key (a write it has not seen yet), so a caller can
+   *  fall back to reading the record rather than trust a stale answer. */
+  def sourcesAt(key: CacheKey, cinema: Cinema, record: MovieRecord): Option[Set[Source]] = synchronized {
+    Option.when(rowsByNormalized.get(key.normalized).flatMap(_.get(key)).exists(_ eq record))(
+      sourcesByRowCinema.get((key, cinema)).map(_.toSet).getOrElse(Set.empty))
   }
 
   /** Drop everything `key` contributes. */
@@ -243,9 +294,10 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
    */
   private[movies] def snapshot: CorpusIndex.Snapshot = synchronized {
     CorpusIndex.Snapshot(
-      rowsByNormalized = rowsByNormalized.map { case (n, rows) => n -> rows.keySet.toSet }.toMap,
+      rowsByNormalized = rowsByNormalized.map { case (n, rows) => n -> rows.toMap }.toMap,
       keysByCinemaSlot = keysByCinemaSlot.map { case (slot, keys) => slot -> keys.toSet }.toMap,
-      slotsByCinema    = slotsByCinema.map { case (c, slots) => c -> slots.keySet.toSet }.toMap,
+      slotsByCinema    = slotsByCinema.map { case (c, slots) => c -> slots.toMap }.toMap,
+      sourcesByRowCinema = sourcesByRowCinema.map { case (rc, sources) => rc -> sources.toSet }.toMap,
       keysByAlias      = keysByAlias.map { case (a, keys) => a -> keys.toSet }.toMap,
       runsByKey        = runsByKey.toMap,
       keysBySearch     = keysBySearch.map { case (s, keys) => s -> keys.toSet }.toMap)
@@ -269,6 +321,7 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
             slots -= ((key, source))
             if (slots.isEmpty) slotsByCinema -= cinema
           }
+          sourcesByRowCinema -= ((key, cinema))
         }
       }
       if (isConcludedBareRow(key, record))
@@ -307,9 +360,13 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
 
 private[movies] object CorpusIndex {
   /** @see [[CorpusIndex.snapshot]] */
-  final case class Snapshot(rowsByNormalized: Map[String, Set[CacheKey]],
+  /** Values included (the rows and slots, not only their keys): [[CorpusIndex.putSlot]]
+   *  replaces them in place, and a drift in WHICH record the index holds is exactly what
+   *  a keys-only snapshot could not see. */
+  final case class Snapshot(rowsByNormalized: Map[String, Map[CacheKey, MovieRecord]],
                             keysByCinemaSlot: Map[(Cinema, String), Set[CacheKey]],
-                            slotsByCinema: Map[Cinema, Set[(CacheKey, Source)]],
+                            slotsByCinema: Map[Cinema, Map[(CacheKey, Source), SourceData]],
+                            sourcesByRowCinema: Map[(CacheKey, Cinema), Set[Source]],
                             keysByAlias: Map[String, Set[CacheKey]],
                             runsByKey: Map[CacheKey, Seq[Seq[String]]],
                             keysBySearch: Map[String, Set[CacheKey]])

@@ -68,7 +68,7 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
     val normalizer = new CountingNormalizer(TitleNormalizer.forCountry(Country.default).rules)
     val staging    = new InMemoryStagingRepository(normalizer = normalizer)
     val cache      = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = normalizer),
-                                            staging = Some(staging), normalizer = normalizer)
+                                            staging = Some(staging), normalizer = normalizer, clock = DepthGuardTime.clock)
     // A corpus of unrelated films, half of them holding a slot at ANOTHER venue.
     (1 to corpusSize).foreach { n =>
       val title = s"Unrelated Film $n"
@@ -112,7 +112,7 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
       val normalizer = new CountingNormalizer(TitleNormalizer.forCountry(Country.default).rules)
       val staging    = new InMemoryStagingRepository(normalizer = normalizer)
       val cache      = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = normalizer),
-                                              staging = Some(staging), normalizer = normalizer)
+                                              staging = Some(staging), normalizer = normalizer, clock = DepthGuardTime.clock)
       // A corpus of CONCLUDED rows carrying TMDB aliases — what a warm country actually
       // holds, and what the walk charged per landed listing. `corpusRow` alone is
       // already `tmdbConcluded` (it has a tmdbId); the aliases are what make each row
@@ -161,7 +161,7 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
         }
       }
       val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = normalizer),
-                                         staging = Some(staging), normalizer = normalizer)
+                                         staging = Some(staging), normalizer = normalizer, clock = DepthGuardTime.clock)
       cache.recordCinemaScrape(cinema, (1 to listings).map(n => scrapeOf(s"Newcomer $n")))
       // Every one of them must actually have been staged — a batch of nothing would
       // satisfy the count and test the opposite of the point.
@@ -195,12 +195,13 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
       val store      = new InMemoryStagingRepository(normalizer = normalizer)
       val staging    = Work.counting(classOf[StagingRepository], store, work, Work.StagingIndexReads)
       val reaper = new StagingReaper(
-        new StagingSteps(staging, Nil, (_, _, _) => None, (_, _, _) => None, new InMemoryFreshnessStore),
-        new InMemoryTaskQueue, staging)
+        new StagingSteps(staging, Nil, (_, _, _) => None, (_, _, _) => None, new InMemoryFreshnessStore,
+                         clock = DepthGuardTime.clock),
+        new InMemoryTaskQueue, staging, clock = DepthGuardTime.clock)
       val bus = new InProcessEventBus
       bus.subscribe(reaper.onNewcomerDiverted)
       val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = normalizer), bus,
-                                         staging = Some(staging), normalizer = normalizer)
+                                         staging = Some(staging), normalizer = normalizer, clock = DepthGuardTime.clock)
       val venues = Cinema.all.distinct.take(venueCount)
       venues.foreach(venue => cache.recordCinemaScrape(venue, Seq(scrapeOf("Presale Blockbuster").copy(cinema = venue))))
       // Every venue must really have staged it — a film that never reached staging would
@@ -212,6 +213,49 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
       "re-reads the growing group each time, O(venues²)", n = 50, perUnit = 2.0)(rowsDecoded)
   }
 
+  /**
+   * Re-scraping a film shown at N venues must cost work LINEAR in N over the tick.
+   *
+   * THE BUG THIS PINS. Every venue's landing on an existing row went through
+   * `putIfPresent`, which re-indexed the WHOLE row into `CorpusIndex` (a `sanitize` and
+   * two bucket updates per slot, after forgetting every slot first), stripped every slot
+   * again with `stripForCache` and compared every slot with `leanEqual` — O(venues) per
+   * landing, once per venue: O(venues²) per film per tick, and again for the duplicate-slot
+   * drop that follows each landing. The US re-scrape of an already-populated corpus ran
+   * ~12x slower than the first scrape (~400s against 33s), and prod pays it on every
+   * landing of a widely shown film.
+   *
+   * Counted in `sanitize` calls, the probe the index re-build paid per slot; the same
+   * shape as the tests above.
+   */
+  it should "re-land a film shown at N venues in work linear in N, not once per venue over every venue" in {
+    def rescrapeCost(venueCount: Int): Long = {
+      val normalizer = new CountingNormalizer(TitleNormalizer.forCountry(Country.default).rules)
+      val screenings = new InMemoryScreeningsRepository
+      val cache      = new CaffeineMovieCache(
+        new InMemoryMovieRepository(normalizer = normalizer, screenings = Some(screenings)),
+        staging = Some(new InMemoryStagingRepository(normalizer = normalizer)), normalizer = normalizer, clock = DepthGuardTime.clock)
+      val title  = "The Widely Shown Film"
+      val key    = CacheKey(title, Some(2026), normalizer)
+      val venues = Cinema.all.distinct.take(venueCount)
+      cache.put(key, concludedRow(title, venues.head))
+      val showtimes = DepthGuardTime.showtimes(2)
+      def tick(): Unit = venues.foreach { venue =>
+        cache.recordCinemaScrape(venue, Seq(scrapeOf(title).copy(cinema = venue, showtimes = showtimes)))
+      }
+      tick()
+      // The first tick must have landed the film at every venue, or the re-scrape below
+      // would measure newcomers diverting to staging instead of landings.
+      cache.get(key).map(_.cinemaShowings.size) shouldBe Some(venueCount)
+      normalizer.reset()
+      tick()
+      cache.get(key).map(_.cinemaShowings.size) shouldBe Some(venueCount)
+      normalizer.calls.toLong
+    }
+    CostScaling.assertLinear("sanitize calls re-scraping one film at N venues — a landing that re-indexes the " +
+      "whole row pays O(venues) per venue, O(venues²) per film per tick", n = 40, perUnit = 12.0)(rescrapeCost)
+  }
+
   it should "read only its own cinema's staging rows, never the whole backlog" in {
     val normalizer = SingleCountryNormalizer.titleNormalizer
     var fullScans  = 0
@@ -219,7 +263,7 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
       override def findAll(): Seq[StagingRecord] = { fullScans += 1; super.findAll() }
     }
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = normalizer),
-                                       staging = Some(staging), normalizer = normalizer)
+                                       staging = Some(staging), normalizer = normalizer, clock = DepthGuardTime.clock)
     cache.recordCinemaScrape(cinema, Seq(scrapeOf("A Newcomer")))
     fullScans shouldBe 0
   }

@@ -37,7 +37,7 @@ class CorpusIndexConsistencySpec extends AnyFlatSpec with Matchers {
   private def fixture = {
     val staging = new InMemoryStagingRepository(normalizer = normalizer)
     val repo    = new InMemoryMovieRepository(normalizer = normalizer)
-    (new CaffeineMovieCache(repo, staging = Some(staging), normalizer = normalizer), staging)
+    (new CaffeineMovieCache(repo, staging = Some(staging), normalizer = normalizer, clock = DepthGuardTime.clock), staging)
   }
 
   /** The whole point: after `step`, does the index still describe the rows? */
@@ -80,6 +80,34 @@ class CorpusIndexConsistencySpec extends AnyFlatSpec with Matchers {
     // evictions for what is not.
     cache.rehydrate()
     stillAgrees(cache, "a rehydrate")
+  }
+
+  /** `putSlotIfPresent` re-indexes the ONE slot it writes (`CorpusIndex.putSlot`) instead
+   *  of the whole row, so it must land the index exactly where a whole-row re-index would —
+   *  including when the row holds the same (cinema, title) under two sources, where
+   *  retitling one must leave the title listed for the other. */
+  it should "match the rows through one-slot writes" in {
+    val (cache, _) = fixture
+    val key        = CacheKey("Dup Film", Some(2026), normalizer)
+    val showing    = CinemaShowing.keyFor(cinema, "Dup Film", normalizer)
+    cache.put(key, MovieRecord(data = Map[Source, SourceData](
+      (cinema: Source) -> SourceData(title = Some("Dup Film")),
+      showing          -> SourceData(title = Some("Dup Film")))))
+    stillAgrees(cache, "a row holding one venue's title twice")
+
+    cache.putSlotIfPresent(key, showing, SourceData(title = Some("Renamed Film"))) shouldBe true
+    stillAgrees(cache, "retitling one of the two")
+
+    cache.putSlotIfPresent(key, CinemaShowing.keyFor(other, "Dup Film", normalizer), SourceData(title = Some("Dup Film"))) shouldBe true
+    stillAgrees(cache, "a slot at a new venue")
+
+    val times = DepthGuardTime.showtimes(1)
+    cache.putSlotIfPresent(key, showing, SourceData(title = Some("Renamed Film"), showtimes = times)) shouldBe true
+    stillAgrees(cache, "a showtimes-only change")
+    cache.putSlotIfPresent(key, showing, SourceData(title = Some("Renamed Film"), showtimes = times)) shouldBe true
+    stillAgrees(cache, "the same slot again")
+
+    cache.putSlotIfPresent(CacheKey("Absent Film", Some(2026), normalizer), showing, SourceData(title = Some("Absent Film"))) shouldBe false
   }
 
   /** The refcount, on its own: two rows offering the same alias, one removed. A set
