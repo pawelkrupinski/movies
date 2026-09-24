@@ -211,3 +211,255 @@ tests:
       - eval_time: 35m
         alertname: MongodUserAssertionsRising
         exp_alerts: []
+
+  # ---------------------------------------------------------------------------------------------
+  # A HEALTHY MONGO-1 OVER A WEEK AND A BIT, WHICH NONE OF THE PROCESS, BACKUP, OPLOG OR CONNECTION
+  # RULES MAY FIRE ON. mongod active, the exporter reaching it, a dump every night of a slowly
+  # growing database (the timestamp is the dump's own finishing time), an 8h oplog window and a
+  # fifth of the connection ceiling in use. Hourly samples: the backup rules think in days.
+  # ---------------------------------------------------------------------------------------------
+  - interval: 1h
+    name: a healthy mongod with nightly dumps is silent
+    input_series:
+      - series: 'node_systemd_unit_state{name="mongodb.service",state="active",host="mongo-1"}'
+        values: "1x200"
+      - series: 'kinowo_mongodump_last_success_timestamp_seconds{host="mongo-1"}'
+        values: "3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 694800 694800 694800 694800 694800 694800 694800 694800 694800"
+      - series: 'kinowo_mongodump_last_size_bytes{host="mongo-1"}'
+        values: "1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1080000 1080000 1080000 1080000 1080000 1080000 1080000 1080000 1080000"
+      - series: 'mongodb_up{host="mongo-1"}'
+        values: "1x200"
+      - series: 'mongodb_mongod_replset_my_state{host="mongo-1",set="rs0"}'
+        values: "1x200"
+      - series: 'mongodb_mongod_replset_oplog_head_timestamp{host="mongo-1"}'
+        values: "28800+3600x200"
+      - series: 'mongodb_mongod_replset_oplog_tail_timestamp{host="mongo-1"}'
+        values: "0+3600x200"
+      - series: 'mongodb_ss_connections{conn_type="current",host="mongo-1"}'
+        values: "200x200"
+      - series: 'mongodb_ss_connections{conn_type="available",host="mongo-1"}'
+        values: "800x200"
+    alert_rule_test:
+      - eval_time: 200h
+        alertname: MongodNotRunning
+        exp_alerts: []
+      - eval_time: 200h
+        alertname: MongodUnitStateAbsent
+        exp_alerts: []
+      - eval_time: 200h
+        alertname: MongodumpStale
+        exp_alerts: []
+      - eval_time: 200h
+        alertname: MongodumpMetricAbsent
+        exp_alerts: []
+      - eval_time: 200h
+        alertname: MongodumpShrankSharply
+        exp_alerts: []
+      - eval_time: 200h
+        alertname: MongodExporterCannotReachMongod
+        exp_alerts: []
+      - eval_time: 200h
+        alertname: MongodReplsetStateAbsent
+        exp_alerts: []
+      - eval_time: 200h
+        alertname: MongodOplogWindowShort
+        exp_alerts: []
+      - eval_time: 200h
+        alertname: MongodOplogWindowMetricAbsent
+        exp_alerts: []
+      - eval_time: 200h
+        alertname: MongodConnectionsSaturated
+        exp_alerts: []
+      - eval_time: 200h
+        alertname: MongodServerStatusSeriesAbsent
+        exp_alerts: []
+
+  # ---------------------------------------------------------------------------------------------
+  # MONGO-1 REPORTS NOTHING: no unit state, no exporter series, no dump textfile. Every absent()
+  # rule fires once its own hold has run -- the 30m ones at 45m, the backup one, which waits out a
+  # fresh host's first night, only at 7h.
+  # ---------------------------------------------------------------------------------------------
+  - interval: 1m
+    name: a silent mongo-1 fires every absent() rule after its hold
+    input_series:
+      - series: 'up{job="node",host="mongo-1"}'
+        values: "1x480"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: MongodUnitStateAbsent
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: MongodUnitStateAbsent
+        exp_alerts:
+          - exp_labels:
+              name: "mongodb.service"
+              severity: "warning"
+            exp_annotations:
+              description: "`MongodNotRunning` above is a comparison and cannot fire without this series, so the database is currently unwatched. Either node_exporter's systemd collector is off or the mongo host has dropped out of scrape entirely (check `TargetDown`). It does NOT mean mongod is running."
+              summary: "Nothing is reporting the state of mongod's unit"
+      - eval_time: 20m
+        alertname: MongodReplsetStateAbsent
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: MongodReplsetStateAbsent
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+            exp_annotations:
+              description: "`MongodNotPrimary` above is a comparison and cannot fire without this series, so the single failure this exporter was deployed to catch is currently uncovered. THE MOST LIKELY CAUSE IS NOT AN OUTAGE, it is a name: this series exists only because roles/mongodb-exporter.nix passes `--compatible-mode`, and it is one of the names this file's header says to verify against a live /metrics on first deploy. Check the flag and the spelling before looking for a fault. If the exporter itself were down, `TargetDown` would have said so first."
+              summary: "Nothing is reporting mongod's replica-set member state"
+      - eval_time: 20m
+        alertname: MongodOplogWindowMetricAbsent
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: MongodOplogWindowMetricAbsent
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+            exp_annotations:
+              description: "`MongodOplogWindowShort` is a comparison and cannot fire without this series. As with the replica-set state above, suspect the METRIC NAME first -- these are `--compatible-mode` names this file's header says to verify once against a live /metrics. The other candidate is the `kinowo_monitor` user having been created without `clusterMonitor`: the oplog is measured out of `local.oplog.rs`, and `clusterMonitor` is what grants read on `local`. A user with a narrower role authenticates and scrapes perfectly well, and simply publishes fewer series."
+              summary: "Nothing is reporting the oplog window on mongo-1"
+      - eval_time: 20m
+        alertname: MongodServerStatusSeriesAbsent
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: MongodServerStatusSeriesAbsent
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+            exp_annotations:
+              description: "`MongodConnectionsSaturated` and both `Mongod*AssertionsRising` rules are comparisons against this collector's output and none of them can fire without it. This one series stands in for the whole `diagnosticdata` collector: if it is absent, `--collector.diagnosticdata` has been dropped from the exporter's ExecStart, the metric names have moved, or the `kinowo_monitor` user lost the role that lets it run `serverStatus`. IT DOES NOT MEAN THE DATABASE IS HEALTHY."
+              summary: "Nothing is reporting mongod's serverStatus counters"
+      - eval_time: 5h
+        alertname: MongodumpMetricAbsent
+        exp_alerts: []
+      - eval_time: 7h
+        alertname: MongodumpMetricAbsent
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+            exp_annotations:
+              description: "`MongodumpStale` cannot fire without this series, so the backup is unwatched. Either the dump has never run on this host, or node_exporter is not reading the textfile directory the dump writes to (`--collector.textfile.directory` must point at fleet.mongodb.backup.textfileDirectory). AN ABSENT SERIES IS NOT A HEALTHY BACKUP."
+              summary: "Nothing is publishing mongodump's success timestamp"
+
+  # ---------------------------------------------------------------------------------------------
+  # MONGOD STOPS AT 11M, the exporter losing it at the same moment, while the oplog window
+  # collapses to 2h46m and connections reach 90% of the ceiling. Each is quiet before 11m and
+  # firing once its own hold has run.
+  # ---------------------------------------------------------------------------------------------
+  - interval: 1m
+    name: a stopped, unreachable, short-oplog, saturated mongod fires
+    input_series:
+      - series: 'node_systemd_unit_state{name="mongodb.service",state="active",host="mongo-1"}'
+        values: "1x10 0x30"
+      - series: 'mongodb_up{host="mongo-1"}'
+        values: "1x10 0x30"
+      - series: 'mongodb_mongod_replset_oplog_head_timestamp{host="mongo-1"}'
+        values: "100000x40"
+      - series: 'mongodb_mongod_replset_oplog_tail_timestamp{host="mongo-1"}'
+        values: "50000x10 90000x30"
+      - series: 'mongodb_ss_connections{conn_type="current",host="mongo-1"}'
+        values: "100x10 900x30"
+      - series: 'mongodb_ss_connections{conn_type="available",host="mongo-1"}'
+        values: "900x10 100x30"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: MongodNotRunning
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: MongodNotRunning
+        exp_alerts:
+          - exp_labels:
+              host: "mongo-1"
+              name: "mongodb.service"
+              severity: "critical"
+              state: "active"
+            exp_annotations:
+              description: "The database is down. The web tier will keep serving its projected read model from memory and its health checks will stay green, so THE SITE WILL LOOK FINE while it stops updating and every write from the worker fails. Check `journalctl -u mongodb -n 200`; the two failures worth ruling out first are the data volume not being mounted (the unit has RequiresMountsFor, so it refuses to start rather than creating an empty database) and the replica-set key file's permissions, which mongod checks at startup."
+              summary: "mongod is not running on mongo-1"
+      - eval_time: 10m
+        alertname: MongodExporterCannotReachMongod
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: MongodExporterCannotReachMongod
+        exp_alerts:
+          - exp_labels:
+              host: "mongo-1"
+              severity: "critical"
+            exp_annotations:
+              description: "The exporter is running and answering scrapes; the DATABASE is what it cannot talk to. THIS IS NOT THE SAME ALERT AS `MongodNotRunning` and the difference is the point: if that one is silent, mongod's unit is `active` and the failure is between the exporter and the server. Three things produce that, in the order worth checking -- the `kinowo_monitor` user does not exist or its password in nix/secrets/mongo-1.yaml (`mongodb/exporter-password`) does not match, mongod has been restarted into `fleet.mongodb.bootstrapMode` (auth off, loopback only), or mongod is alive but wedged and answering nothing. `journalctl -u mongodb-exporter -n 50` names which."
+              summary: "mongodb_exporter cannot reach mongod on mongo-1"
+      - eval_time: 10m
+        alertname: MongodOplogWindowShort
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: MongodOplogWindowShort
+        exp_alerts:
+          - exp_labels:
+              host: "mongo-1"
+              severity: "warning"
+            exp_annotations:
+              description: "This is the RESUME BUDGET for the application's change streams, not a disk warning. While it is this short, any consumer offline for longer than the window comes back to ChangeStreamHistoryLost and a full re-read. It shrinks for one of two reasons and they need opposite responses: a burst of writes (transient -- check whether the worker is backfilling), or a sustained rise in write rate (structural -- the oplog is now too small for the workload). THE FIX FOR THE SECOND IS NOT FREE: `oplogSizeMB` was cut from 4096 to 1024 because the data volume is 5GB, so growing the window means growing the Hetzner volume first (it grows in place; see terraform/server.mongo.tf)."
+              summary: "The oplog window on mongo-1 is down to 2h 46m 40s"
+      - eval_time: 10m
+        alertname: MongodConnectionsSaturated
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: MongodConnectionsSaturated
+        exp_alerts:
+          - exp_labels:
+              host: "mongo-1"
+              severity: "warning"
+            exp_annotations:
+              description: "The ceiling comes from `LimitNOFILE` on the mongodb unit (64000), not from a MongoDB setting, so raising it is a change to roles/mongodb.nix. Before doing that, find out who is holding them: `db.currentOp(true)` and `db.serverStatus().connections` name the clients. A pool that grows without bound is a client bug, and raising the ceiling for it postpones the same failure at greater cost."
+              summary: "mongod on mongo-1 is using 90% of its connection ceiling"
+
+  # ---------------------------------------------------------------------------------------------
+  # THE NIGHTLY DUMP STOPS. The last one finished at hour 1; 36 hours later it is still the last.
+  # Silent at 30h, when one night's dump is merely late; firing at 40h.
+  # ---------------------------------------------------------------------------------------------
+  - interval: 1h
+    name: a dump older than 36 hours fires
+    input_series:
+      - series: 'kinowo_mongodump_last_success_timestamp_seconds{host="mongo-1"}'
+        values: "3600x48"
+    alert_rule_test:
+      - eval_time: 30h
+        alertname: MongodumpStale
+        exp_alerts: []
+      - eval_time: 40h
+        alertname: MongodumpStale
+        exp_alerts:
+          - exp_labels:
+              host: "mongo-1"
+              severity: "warning"
+            exp_annotations:
+              description: "The nightly dump has not completed since 1d 15h 0m 0s ago. Check `systemctl status mongodump` and `journalctl -u mongodump`. Remember what this covers and what it does not: it is a logical copy on the SAME volume as the database, so it protects against a bad migration or a dropped collection and not against losing the volume. Off-box replication of these dumps is a known gap."
+              summary: "No successful mongodump for over 36 hours"
+
+  # ---------------------------------------------------------------------------------------------
+  # A TRUNCATED DUMP. A week of ~1 MB dumps, then night 8's comes out at 400 KB -- the shape of a
+  # dump that died part-way and still wrote its directory. It fires against the week BEFORE it,
+  # and night 9's dump at a normal 900 KB (under the old minimum, but nowhere near half) does not.
+  # ---------------------------------------------------------------------------------------------
+  - interval: 1h
+    name: a dump under half the previous week's smallest fires
+    input_series:
+      - series: 'kinowo_mongodump_last_size_bytes{host="mongo-1"}'
+        values: "1000000x191 400000x23 900000x23"
+    alert_rule_test:
+      - eval_time: 190h
+        alertname: MongodumpShrankSharply
+        exp_alerts: []
+      - eval_time: 200h
+        alertname: MongodumpShrankSharply
+        exp_alerts:
+          - exp_labels:
+              host: "mongo-1"
+              severity: "warning"
+            exp_annotations:
+              description: "A backup that is present but truncated is worse than a missing one, because it passes every check that only asks whether a dump exists. Compare the directory listings under fleet.mongodb.backup.directory before the next rotation removes the older copy."
+              summary: "The last mongodump is less than half the size of the smallest in the past week"
+      - eval_time: 230h
+        alertname: MongodumpShrankSharply
+        exp_alerts: []

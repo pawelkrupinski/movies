@@ -140,7 +140,13 @@ groups:
         # half its content overnight is an incident in its own right; far more likely is a dump
         # that failed part-way and still wrote a directory, or one taken against the wrong
         # database. Either way it is the shape that makes a restore fail when it is needed.
-        expr: kinowo_mongodump_last_size_bytes < 0.5 * min_over_time(kinowo_mongodump_last_size_bytes[7d])
+        #
+        # `offset 1d` IS THE WHOLE RULE. Without it the week's minimum includes the current reading,
+        # and no number is below half of a minimum it is part of -- the rule shipped that way on
+        # 2026-08-29 and could never fire. Offset by a day, the window ends before the latest
+        # nightly dump, so the dump is compared against the week before it, and the alert holds
+        # for the day that dump is the latest one on disk.
+        expr: kinowo_mongodump_last_size_bytes < 0.5 * min_over_time(kinowo_mongodump_last_size_bytes[7d] offset 1d)
         labels:
           severity: warning
         annotations:
