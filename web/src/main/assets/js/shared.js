@@ -673,6 +673,13 @@
       _lsSet(_hiddenFilmsKey(owner), [...new Set([...bucket, ...legacy])]);
       localStorage.removeItem(LEGACY_HIDDEN_FILMS_KEY);
       localStorage.removeItem(LEGACY_HIDDEN_FILMS_COUNTRY_KEY);
+      // Every country's cached validators described the one old list, and were
+      // only replayed while it mirrored that country: after the move a bucket
+      // can be empty that they vouch for. Forget them all, so each country's
+      // next reconcile takes the server's list instead of a 304.
+      Object.keys(localStorage)
+        .filter(k => k.indexOf('hiddenFilmsEtag:') === 0 || k.indexOf('hiddenFilmsLastModified:') === 0)
+        .forEach(k => localStorage.removeItem(k));
     } catch {}
   }
   function getHidden(country) {

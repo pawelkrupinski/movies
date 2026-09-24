@@ -631,6 +631,24 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // Upgrade regression. Before the per-country lists, a synced country's
+  // validators were only replayed while the one per-origin list mirrored THAT
+  // country — they vouched for a list the upgrade then moved elsewhere. Here the
+  // old list mirrored /uk, so pl's bucket starts empty while pl's validators
+  // still describe the server's ["Film A"]: a 304 kept the empty bucket.
+  it should "not let a pre-upgrade validator 304 an emptied bucket" in {
+    onLoggedInIndex { page =>
+      awaitOwnReconcile(page)  // pl synced, pl validators cached
+      page.eval("localStorage.removeItem('hiddenFilms:pl');" +
+        "localStorage.setItem('hiddenFilms', JSON.stringify(['UK Film'])); localStorage.setItem('hiddenFilmsCountry', 'uk')")
+      page.reload()
+      page.waitFor("performance.getEntriesByType('resource')" +
+                   ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films') !== -1; })", timeoutMs = 5000)
+      page.waitFor("getHidden().indexOf('Film A') !== -1", timeoutMs = 5000)
+      page.evalString("JSON.stringify(getHidden('uk'))") shouldBe """["UK Film"]"""
+    }
+  }
+
   // Logout regression. Signing out renders an anonymous page, which re-arms
   // the first-login migration. The local lists stay, and with one list per
   // origin the next sign-in took the last account's /uk titles for "this
