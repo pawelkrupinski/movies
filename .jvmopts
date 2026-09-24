@@ -25,3 +25,8 @@
 # only the first is ever written. `target/` is sbt-created and gitignored.
 -XX:+HeapDumpOnOutOfMemoryError
 -XX:HeapDumpPath=target/oom-%p.hprof
+# Keep AWT headless. The share-card and poster specs render with AWT, and on macOS
+# a JVM that touches AWT without this registers as a foreground app and steals
+# focus — yanking the user onto another Space mid-run. The forked web Test JVM
+# gets the same flag in build.sbt; the two HeadlessJvmSpecs guard both.
+-Djava.awt.headless=true

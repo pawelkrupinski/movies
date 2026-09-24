@@ -264,6 +264,9 @@ lazy val web = (project in file("web"))
   .configs(IntegrationTest, PageTest)
   .settings(
     name := "web",
+    // Play forks web's Test JVM, which doesn't read .jvmopts — keep it headless
+    // too, or AWT rendering makes it a foreground macOS app that steals focus.
+    Test / javaOptions += "-Djava.awt.headless=true",
     inConfig(IntegrationTest)(Defaults.testSettings),
     IntegrationTest / scalaSource       := baseDirectory.value / "src" / "it" / "scala",
     IntegrationTest / resourceDirectory := baseDirectory.value / "src" / "it" / "resources",
