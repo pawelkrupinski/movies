@@ -40,8 +40,26 @@ permissions:
     contents: read
 
 jobs:
+    # The one seed every shuffled leg uses: the dispatch input, checked to be digits
+    # (scripts/ci/order-seed.sh) before any leg puts it in a shell or an emulator
+    # `script:`, or this run's id. The legs read it through `env:`, never `${{ }}` in a
+    # script body -- see OrderIndependenceSeedSpec.
+    seed:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        outputs:
+            seed: ${{ steps.pick.outputs.seed }}
+        steps:
+            - uses: actions/checkout@v5
+            - name: Pick and check the seed
+              id: pick
+              env:
+                  REQUESTED: ${{ inputs.seed }}
+              run: echo "seed=$(scripts/ci/order-seed.sh "$REQUESTED" "$GITHUB_RUN_ID")" >> "$GITHUB_OUTPUT"
+
     scala:
         name: scala (${{ matrix.order }})
+        needs: seed
         runs-on: ubuntu-latest
         timeout-minutes: 90
         strategy:
@@ -70,9 +88,9 @@ jobs:
               id: order
               env:
                   ORDER: ${{ matrix.order }}
-                  REQUESTED: ${{ inputs.seed }}
+                  SEED: ${{ needs.seed.outputs.seed }}
               run: |
-                  if [ "$ORDER" = reverse ]; then seed=reverse; else seed="${REQUESTED:-$GITHUB_RUN_ID}"; fi
+                  if [ "$ORDER" = reverse ]; then seed=reverse; else seed="$SEED"; fi
                   echo "seed=$seed" >> "$GITHUB_OUTPUT"
                   echo "Scala unit specs, suite order \`$seed\` — replay: \`TEST_ORDER_SEED=$seed sbt testUnitNoE2e\`" >> "$GITHUB_STEP_SUMMARY"
 
@@ -87,6 +105,7 @@ jobs:
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}
 
     android:
+        needs: seed
         runs-on: ubuntu-latest
         timeout-minutes: 45
         defaults:
@@ -113,9 +132,9 @@ jobs:
 
             - name: Robolectric tests, classes and methods in a seeded order
               env:
-                  REQUESTED: ${{ inputs.seed }}
+                  SEED: ${{ needs.seed.outputs.seed }}
               run: |
-                  seed="${REQUESTED:-$GITHUB_RUN_ID}"
+                  seed="$SEED"
                   echo "Android unit tests, seed \`$seed\` — replay: \`./gradlew testDebugUnitTest -PtestOrderSeed=$seed -PsyncModelSeeds=20000\`" >> "$GITHUB_STEP_SUMMARY"
                   # The sync model runs deep here: 100× its push-sized seed count.
                   ./gradlew --no-daemon testDebugUnitTest -PtestOrderSeed="$seed" -PsyncModelSeeds=20000
@@ -129,6 +148,7 @@ jobs:
                   if-no-files-found: ignore
 
     android-instrumented:
+        needs: seed
         runs-on: ubuntu-latest
         timeout-minutes: 120
         defaults:
@@ -184,18 +204,17 @@ jobs:
                   disable-animations: false
                   script: echo "Generated AVD snapshot for caching."
 
-            - name: Pick the order
-              id: order
+            - name: Record the order
               working-directory: ${{ github.workspace }}
               env:
-                  REQUESTED: ${{ inputs.seed }}
+                  SEED: ${{ needs.seed.outputs.seed }}
               run: |
-                  seed="${REQUESTED:-$GITHUB_RUN_ID}"
-                  echo "seed=$seed" >> "$GITHUB_OUTPUT"
-                  echo "Android instrumented classes, each alone, seed \`$seed\` — replay: \`android/scripts/devtest-shuffled.sh $seed\`" >> "$GITHUB_STEP_SUMMARY"
+                  echo "Android instrumented classes, each alone, seed \`$SEED\` — replay: \`android/scripts/devtest-shuffled.sh $SEED\`" >> "$GITHUB_STEP_SUMMARY"
 
             - name: Every androidTest class alone, in that order
               uses: reactivecircus/android-emulator-runner@v2
+              env:
+                  SEED: ${{ needs.seed.outputs.seed }}
               with:
                   api-level: ${{ env.API_LEVEL }}
                   target: google_apis
@@ -207,7 +226,7 @@ jobs:
                   emulator-boot-timeout: 600
                   working-directory: android
                   # --skip-live-youtube: see android.yml's instrumented lane.
-                  script: scripts/devtest-shuffled.sh ${{ steps.order.outputs.seed }} --skip-live-youtube
+                  script: scripts/devtest-shuffled.sh "$SEED" --skip-live-youtube
 
             - name: Upload the instrumented test report
               if: failure()
@@ -220,6 +239,7 @@ jobs:
                   if-no-files-found: ignore
 
     swift:
+        needs: seed
         runs-on: macos-latest
         timeout-minutes: 90
         steps:
@@ -231,9 +251,9 @@ jobs:
 
             - name: Every swift test case alone, in a seeded order
               env:
-                  REQUESTED: ${{ inputs.seed }}
+                  SEED: ${{ needs.seed.outputs.seed }}
               run: |
-                  seed="${REQUESTED:-$GITHUB_RUN_ID}"
+                  seed="$SEED"
                   echo "swift test cases, each alone, seed \`$seed\` — replay: \`ios/scripts/swift-test-shuffled.sh $seed\`" >> "$GITHUB_STEP_SUMMARY"
                   ios/scripts/swift-test-shuffled.sh "$seed"
 
@@ -308,7 +328,7 @@ jobs:
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
     report:
-        needs: [scala, android, android-instrumented, swift, ios]
+        needs: [seed, scala, android, android-instrumented, swift, ios]
         if: always() && !cancelled() && github.event_name == 'schedule'
         runs-on: ubuntu-latest
         timeout-minutes: 5

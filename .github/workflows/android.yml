@@ -20,6 +20,8 @@ on:
             - 'scripts/seeded-order*.sh'
             # The nightly swift leg's runner, whose spec runs in the step below.
             - 'ios/scripts/swift-test-shuffled*.sh'
+            # The nightly order-independence run's seed check, whose spec runs below.
+            - 'scripts/ci/order-seed*.sh'
             # The rolling-release publish below runs through these.
             - 'scripts/ci/gh-release*.sh'
             - 'scripts/ci/publish-rolling-release.sh'
@@ -43,6 +45,8 @@ on:
             - 'scripts/seeded-order*.sh'
             # The nightly swift leg's runner, whose spec runs in the step below.
             - 'ios/scripts/swift-test-shuffled*.sh'
+            # The nightly order-independence run's seed check, whose spec runs below.
+            - 'scripts/ci/order-seed*.sh'
             # The rolling-release publish below runs through these.
             - 'scripts/ci/gh-release*.sh'
             - 'scripts/ci/publish-rolling-release.sh'
@@ -149,6 +153,7 @@ jobs:
                   scripts/ci/gh-release-test.sh
                   scripts/seeded-order-test.sh
                   ios/scripts/swift-test-shuffled-test.sh
+                  scripts/ci/order-seed-test.sh
 
             - name: Unit tests
               run: ./gradlew --no-daemon testDebugUnitTest
