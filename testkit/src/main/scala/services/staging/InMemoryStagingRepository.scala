@@ -39,9 +39,12 @@ class InMemoryStagingRepository(
   // harness runs (`TestWiring` wires no Mongo), so without this the leg pays that
   // quadratic even though the production repository doesn't.
   private val idsByCinema = mutable.Map.empty[models.Cinema, mutable.Set[String]]
-  // How many rows each anchor holds — for `holdsAnchor`, which the scrape landing asks
-  // once per diverted listing and which must not cost a walk of the backlog either.
-  private val rowsByAnchor = mutable.Map.empty[String, Int]
+  // The rows each anchor holds — for `findByAnchor`, which the staging reaper asks on
+  // every step of every film's chain (once per venue's finished detail step), and
+  // `holdsAnchor`, which the scrape landing asks once per diverted listing. Answered by
+  // filtering `findAll` both walk the whole backlog per call; the Mongo repository keeps
+  // the same index for the same reason.
+  private val idsByAnchor = mutable.Map.empty[String, mutable.Set[String]]
   private val lock  = new AnyRef
   val upserts       = mutable.ListBuffer.empty[(Source, String, Option[Int], MovieRecord)]
   val deletes       = mutable.ListBuffer.empty[(Source, String, Option[Int])]
@@ -57,7 +60,7 @@ class InMemoryStagingRepository(
       drop(id)
       store.put(id, sr)
       models.Source.cinemaOf(sr.cinema).foreach(c => idsByCinema.getOrElseUpdate(c, mutable.Set.empty) += id)
-      rowsByAnchor.updateWith(anchorOf(sr))(n => Some(n.getOrElse(0) + 1))
+      idsByAnchor.getOrElseUpdate(anchorOf(sr), mutable.Set.empty) += id
     }
     built
   }
@@ -65,7 +68,11 @@ class InMemoryStagingRepository(
   /** The ONLY way a row leaves the store, so the cinema index can't drift from it. */
   private def drop(id: String): Unit = {
     store.remove(id).foreach { sr =>
-      rowsByAnchor.updateWith(anchorOf(sr))(_.map(_ - 1).filter(_ > 0))
+      val anchor = anchorOf(sr)
+      idsByAnchor.get(anchor).foreach { ids =>
+        ids -= id
+        if (ids.isEmpty) idsByAnchor -= anchor
+      }
       models.Source.cinemaOf(sr.cinema).foreach { c =>
         idsByCinema.get(c).foreach { ids =>
           ids -= id
@@ -92,7 +99,12 @@ class InMemoryStagingRepository(
     idsByCinema.get(cinema).toSeq.flatMap(_.toSeq.sorted.flatMap(store.get))
   }
 
-  override def holdsAnchor(anchor: String): Boolean = lock.synchronized(rowsByAnchor.contains(anchor))
+  /** `_id`-sorted like [[findAll]], so the group's `head` is the same row either way. */
+  override def findByAnchor(anchor: String): Seq[StagingRecord] = lock.synchronized {
+    idsByAnchor.get(anchor).toSeq.flatMap(_.toSeq.sorted.flatMap(store.get))
+  }
+
+  override def holdsAnchor(anchor: String): Boolean = lock.synchronized(idsByAnchor.contains(anchor))
 
   def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = lock.synchronized {
     val id       = StagingRecord.idFor(cinema, title, year, normalizer)

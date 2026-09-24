@@ -43,6 +43,37 @@ class InMemoryStagingRepositorySpec extends AnyFlatSpec with Matchers {
     repository.findByAnchor(anchor) shouldBe empty
   }
 
+  /** The staging reaper reads a film's group on EVERY chain step — once per venue's
+   *  finished detail step — and this fake is what the convergence harness runs. Filtering
+   *  `findAll` sanitized every staged row per read: O(backlog) per step, while the harness
+   *  is staging a whole country. Counted as `sanitize` calls, one per row the read
+   *  touches, so it cannot be a timing flake. */
+  it should "read one film's group without touching the rest of the backlog" in {
+    class CountingNormalizer extends services.movies.TitleNormalizer(
+        services.movies.TitleNormalizer.forCountry(models.Country.default).rules) {
+      var calls = 0
+      override def sanitize(title: String): String = { calls += 1; super.sanitize(title) }
+    }
+    val normalizer = new CountingNormalizer
+    val repository = new InMemoryStagingRepository(normalizer = normalizer)
+    (1 to 200).foreach(n => repository.upsert(Helios, s"Backlog Film $n", Some(2026), slot(Helios, s"Backlog Film $n", Some(2026))))
+    repository.upsert(Helios, "Kumotry", Some(2026), slot(Helios, "Kumotry", Some(2026)))
+    repository.upsert(Multikino, "KUMOTRY", Some(2025), slot(Multikino, "KUMOTRY", Some(2025)))
+    val anchor = normalizer.sanitize("Kumotry")
+
+    normalizer.calls = 0
+    val group = repository.findByAnchor(anchor)
+    withClue(s"reading a 2-row group out of a 202-row backlog sanitized ${normalizer.calls} title(s): ") {
+      normalizer.calls should be <= 2
+    }
+    withClue("and must answer exactly what filtering findAll answers, in the same order: ") {
+      group.map(_.id) shouldBe repository.findAll().filter(row => normalizer.sanitize(row.title) == anchor).map(_.id)
+      group should have size 2
+    }
+    repository.delete(Multikino, "KUMOTRY", Some(2025))
+    repository.findByAnchor(anchor).map(_.cinema) shouldBe Seq(Helios)
+  }
+
   it should "preserve enrichment when a re-scrape re-upserts an already-resolved newcomer row" in {
     // The "stuck in staging" bug: MovieCache.recordCinemaScrape re-diverts a
     // newcomer via `upsert` on EVERY scrape tick until it folds. A blind replace
