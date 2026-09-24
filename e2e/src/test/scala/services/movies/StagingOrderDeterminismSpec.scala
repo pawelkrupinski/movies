@@ -76,7 +76,7 @@ class StagingOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     val record = ids.stableRecords
       .map(r => r.copy(record = r.record.copy(tmdbAttempt = r.record.tmdbAttempt.map(_ => services.resolution.TmdbAttempt.Legacy))))
       .sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
-    val service = new MovieControllerService(w.webReadModel)
+    val service = new MovieControllerService(w.webReadModel, w.clock)
     val rows = City.all.sortBy(_.slug).flatMap(c => service.toSchedules(c, Now)).map(ids.row)
     (record, rows)
   }

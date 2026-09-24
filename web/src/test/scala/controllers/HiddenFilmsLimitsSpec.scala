@@ -17,6 +17,8 @@ import java.time.Instant
  *  document past 16 MB, and every read of it gets slower on the way there). */
 class HiddenFilmsLimitsSpec extends AnyFlatSpec with Matchers {
 
+  private val clock = java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)
+
   private def fixture(bucket: Set[String] = Set.empty): (UserStateController, InMemoryUserStateRepository) = {
     val users  = new InMemoryUserRepository
     users.upsert(models.User(id = "u1", provider = "google", providerSub = "G-u1", email = Some("u1@example.com"),
@@ -24,7 +26,7 @@ class HiddenFilmsLimitsSpec extends AnyFlatSpec with Matchers {
     val states = new InMemoryUserStateRepository
     states.upsert(UserState("u1", Set.empty, Set.empty, Instant.EPOCH, Map("pl" -> bucket)))
     (new UserStateController(Helpers.stubControllerComponents(), states, new AccountDeletion(users, states),
-      NoUserChangeTimeCache, new LegacyUserStateMetrics(new PrometheusRegistry(), "pl", java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)), users), states)
+      NoUserChangeTimeCache, new LegacyUserStateMetrics(new PrometheusRegistry(), "pl", clock), users, clock), states)
   }
 
   private def hide(ctl: UserStateController, title: String) =

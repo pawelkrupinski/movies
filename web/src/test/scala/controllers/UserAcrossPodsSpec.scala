@@ -29,6 +29,7 @@ import java.time.Instant
 class UserAcrossPodsSpec extends AnyFlatSpec with Matchers {
 
   private val Now = Instant.parse("2026-09-20T12:00:00Z")
+  private val clock = java.time.Clock.fixed(Now, java.time.ZoneOffset.UTC)
 
   private def alice(sessionVersion: Int = 0): models.User = models.User(
     id = "alice@example.com", provider = "google", providerSub = "G-1",
@@ -49,7 +50,7 @@ class UserAcrossPodsSpec extends AnyFlatSpec with Matchers {
       val podStates = UsersWiring.podUserStateRepository(states)
       new UserStateController(Helpers.stubControllerComponents(), podStates,
         new AccountDeletion(podUsers, podStates), NoUserChangeTimeCache,
-        new LegacyUserStateMetrics(new PrometheusRegistry(), "pl", java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)), podUsers)
+        new LegacyUserStateMetrics(new PrometheusRegistry(), "pl", clock), podUsers, clock)
     }
 
     def authPod(): AuthController =

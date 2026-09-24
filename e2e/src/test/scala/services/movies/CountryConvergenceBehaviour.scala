@@ -1008,7 +1008,7 @@ abstract class CountryConvergenceBehaviour(
       val ids = OrderIndependentIds(w.movieRepository.findAll(), w.titleNormalizer)
       val records = ids.stableRecords.sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
       val screenings = ids.screenings(w.screeningsRepository.findAll())
-      val service = new MovieControllerService(w.webReadModel)
+      val service = new MovieControllerService(w.webReadModel, w.clock)
       val rows = country.cities.sortBy(_.slug).flatMap(c => service.toSchedules(c, renderAt)).map(ids.row)
       ReplayCorpus(records, screenings, rows)
     }
@@ -1250,7 +1250,7 @@ abstract class CountryConvergenceBehaviour(
 
       // ── what the WEB would render ────────────────────────────────────────────
       val rows = country.cities.sortBy(_.slug).flatMap(c =>
-        new MovieControllerService(w.webReadModel).toSchedules(c, renderAt))
+        new MovieControllerService(w.webReadModel, w.clock).toSchedules(c, renderAt))
       val shown        = rows.flatMap(_.showings.flatMap(_._2))
       val shownCinemas = shown.map(_.cinema.displayName).toSet
       val shownScreenings = shown.flatMap(cs => cs.showtimes.map(st => (cs.cinema.displayName, st.dateTime))).toSet

@@ -42,7 +42,7 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
   }
   // The web read transform, built from the worker-projected read model (the seam
   // the two apps share in production — web reads what worker projected).
-  private def service = new controllers.MovieControllerService(wiring.webReadModel)
+  private def service = new controllers.MovieControllerService(wiring.webReadModel, wiring.clock)
 
   "the / page (repertoire view)" should "render the same HTML as the checked-in snapshot" in {
     val html = views.html.repertoire(

@@ -34,7 +34,7 @@ class ScheduleOrderingSpec extends AnyFlatSpec with Matchers {
       Helios     -> slot(),
     ))
     val service = new MovieControllerService(
-      TestReadModel.fromRecords(Seq(("Milcząca przyjaciółka", Some(2026), record))))
+      TestReadModel.fromRecords(Seq(("Milcząca przyjaciółka", Some(2026), record))), clock = TestMovieController.clock)
 
     val schedules = service.toSchedules(Poznan, now)
     schedules should have size 1

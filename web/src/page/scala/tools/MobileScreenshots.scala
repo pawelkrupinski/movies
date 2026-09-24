@@ -53,7 +53,7 @@ object MobileScreenshots {
     try {
       val wiring = new FixtureTestWiring("08-06-2026")
       wiring.bootStartup()
-      val service = new controllers.MovieControllerService(wiring.webReadModel)
+      val service = new controllers.MovieControllerService(wiring.webReadModel, wiring.clock)
       implicit val city: models.City = Poznan
       val cinemas  = city.cinemaDisplayNames
       val schedules       = service.toSchedules(city, now)

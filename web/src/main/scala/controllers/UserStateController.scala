@@ -44,7 +44,7 @@ class UserStateController(
   legacyUserStateMetrics: LegacyUserStateMetrics,
   userRepository:       UserRepository,
   // Stamps every change; the stored stamps' newer-than rules compare against it.
-  clock:                java.time.Clock = java.time.Clock.systemUTC()
+  clock:                java.time.Clock
 ) extends AbstractController(cc) {
   import UserStateController._
 

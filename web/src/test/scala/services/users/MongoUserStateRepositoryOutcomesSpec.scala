@@ -54,13 +54,14 @@ class MongoUserStateRepositoryOutcomesSpec extends AnyFlatSpec with Matchers {
     client.close()
 
     val registry = new PrometheusRegistry()
+    val clock    = java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)
     val store    = new MongoUserStateRepository(sharedDb = Some(db), fallbackToOwnInit = false,
       writeOutcomes = new UserStateWriteMetrics(registry, "pl"))
     val users    = new InMemoryUserRepository
     users.upsert(User(id = "u", provider = "google", providerSub = "G-u", email = None, displayName = None,
       avatarUrl = None, createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH))
     val controller = new UserStateController(Helpers.stubControllerComponents(), store,
-      new AccountDeletion(users, store), NoUserChangeTimeCache, new LegacyUserStateMetrics(registry, "pl", java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)), users)
+      new AccountDeletion(users, store), NoUserChangeTimeCache, new LegacyUserStateMetrics(registry, "pl", clock), users, clock)
 
     val result = controller.hideFilm("pl", "Film")(FakeRequest("PUT", "/api/me/pl/hidden-films/Film").withSession("userId" -> "u"))
 

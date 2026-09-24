@@ -96,7 +96,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // exercises rendered-page JS, not the pipeline). See ReadModelSnapshot.
       wiring.bootFromSnapshotOrPipeline()
       // Web read transform over the worker-projected read model (the shared seam).
-      val service     = new controllers.MovieControllerService(wiring.webReadModel)
+      val service     = new controllers.MovieControllerService(wiring.webReadModel, wiring.clock)
       val noOauth = Set.empty[String]
       val cinemas = city.cinemaDisplayNames
       val schedules       = service.toSchedules(city, now)

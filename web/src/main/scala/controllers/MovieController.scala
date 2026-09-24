@@ -179,7 +179,7 @@ case class FilmSchedule(
 class MovieControllerService(
   readModel: WebReadModel,
   // What "now" is when a caller does not say: which showtimes are still upcoming.
-  clock: java.time.Clock = java.time.Clock.systemUTC()
+  clock: java.time.Clock
 ) extends Logging {
 
   /** The current instant, on [[clock]]. */

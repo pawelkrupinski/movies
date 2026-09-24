@@ -35,7 +35,7 @@ class CitySynopsisSpec extends AnyFlatSpec with Matchers {
       Tmdb           -> SourceData(title = Some("Dwa Miasta"), synopsis = Some("Krótki opis z TMDB."))
     ))
     val service = new MovieControllerService(
-      TestReadModel.fromRecords(Seq(("Dwa Miasta", Some(2026), record))))
+      TestReadModel.fromRecords(Seq(("Dwa Miasta", Some(2026), record))), clock = TestMovieController.clock)
 
     service.toSchedules(Poznan, now).head.synopsis.get  should (include ("Poznański")  and not include ("Wrocławski"))
     service.toSchedules(Wroclaw, now).head.synopsis.get should (include ("Wrocławski") and not include ("Poznański"))
@@ -48,7 +48,7 @@ class CitySynopsisSpec extends AnyFlatSpec with Matchers {
       Tmdb           -> SourceData(title = Some("Dwa Miasta"), synopsis = Some("Opis z TMDB."))
     ))
     val service = new MovieControllerService(
-      TestReadModel.fromRecords(Seq(("Dwa Miasta", Some(2026), record))))
+      TestReadModel.fromRecords(Seq(("Dwa Miasta", Some(2026), record))), clock = TestMovieController.clock)
 
     service.toSchedules(Wroclaw, now).head.synopsis shouldBe Some("Opis z TMDB.")
     service.toSchedules(Poznan, now).head.synopsis.get should include ("Poznański")
@@ -65,7 +65,7 @@ class CitySynopsisSpec extends AnyFlatSpec with Matchers {
       Tmdb -> SourceData(title = Some("Dwa Miasta"), synopsis = Some("Krótki opis z TMDB."))
     ))
     val service = new MovieControllerService(
-      TestReadModel.fromRecords(Seq(("Dwa Miasta", Some(2026), record))))
+      TestReadModel.fromRecords(Seq(("Dwa Miasta", Some(2026), record))), clock = TestMovieController.clock)
 
     service.toSchedules(Poznan, now).head.synopsis.get  should (include ("Poznański")  and not include ("Wrocławski"))
     service.toSchedules(Wroclaw, now).head.synopsis.get should (include ("Wrocławski") and not include ("Poznański"))

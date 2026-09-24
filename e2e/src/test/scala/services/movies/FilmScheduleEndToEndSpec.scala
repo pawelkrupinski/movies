@@ -91,7 +91,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
   // projected — the seam the two apps share in production (web serves the
   // denormalised documents), exercised here in one JVM.
   private lazy val schedules: Seq[FilmSchedule] =
-    new MovieControllerService(wiring.webReadModel).toSchedules(Poznan, now)
+    new MovieControllerService(wiring.webReadModel, wiring.clock).toSchedules(Poznan, now)
 
   // The rendered `FilmSchedule` carries the resolved metadata (what the user
   // sees) but not the source-data provenance — `cinemaData`, `cinemaTitles`,

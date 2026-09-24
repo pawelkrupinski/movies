@@ -38,7 +38,7 @@ class WebMovieMetricsSpec extends AnyFlatSpec with Matchers {
       // Wrocław: one film showing only tomorrow.
       ("Wroclaw Tomorrow",   Some(2026), MovieRecord(data = Map[Source, SourceData](HeliosMagnolia -> slot(tomorrow)))),
     )
-    val service = new MovieControllerService(TestReadModel.fromRecords(records))
+    val service = new MovieControllerService(TestReadModel.fromRecords(records), clock)
     new WebMovieMetrics(service, clock = clock)
   }
 

@@ -76,7 +76,7 @@ object FixtureServerMain {
 
     // The read transform is the web app's, built from the read model the worker
     // projected (the seam the two apps share in production).
-    val service = new controllers.MovieControllerService(wiring.webReadModel)
+    val service = new controllers.MovieControllerService(wiring.webReadModel, wiring.clock)
 
     // Render with a non-empty oauthProviders set so the Twirl
     // `@if(oauthProviders.nonEmpty)` branches surface the anon-nag

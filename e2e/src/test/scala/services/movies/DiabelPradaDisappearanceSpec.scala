@@ -162,12 +162,13 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
       // read path itself, not in the data.
       // Project the cache into the read model and serve from it, as the web does.
       val readModel = services.readmodel.TestReadModel.fromRows(cache.snapshot())
-      val ctrl = new MovieControllerService(readModel)
       val firstShowtime: java.time.LocalDateTime =
         cache.snapshot().filter(r => isPrada(r.record))
           .flatMap(_.record.cinemaData.values.flatMap(_.showtimes.map(_.dateTime)))
           .min
       val pinnedNow = firstShowtime.minusDays(1)
+      val ctrl = new MovieControllerService(readModel,
+        java.time.Clock.fixed(pinnedNow.toInstant(java.time.ZoneOffset.UTC), java.time.ZoneOffset.UTC))
 
       // The read model drops tmdbId/imdbId, so identify Prada via the cache and
       // match the rendered rows by film id.

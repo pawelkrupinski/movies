@@ -49,7 +49,7 @@ class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matche
   } finally super.afterAll()
 
   private val controller = new UserStateController(Helpers.stubControllerComponents(), states,
-    new AccountDeletion(users, states), NoUserChangeTimeCache, new LegacyUserStateMetrics(new PrometheusRegistry(), "pl", java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)), users)
+    new AccountDeletion(users, states), NoUserChangeTimeCache, new LegacyUserStateMetrics(new PrometheusRegistry(), "pl", java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)), users, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
 
   private def signedIn(suffix: String): String = {
     val id = s"$Prefix$suffix"

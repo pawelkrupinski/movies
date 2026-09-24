@@ -172,7 +172,7 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     // Sorted by city slug for a stable, order-independent capture.
     w.readModelProjector.reconcile()
     w.webReadModel.reload()
-    val service = new MovieControllerService(w.webReadModel)
+    val service = new MovieControllerService(w.webReadModel, w.clock)
     val rows = City.all.sortBy(_.slug).flatMap(c => service.toSchedules(c, Now))
     (record, rows)
   }
@@ -257,7 +257,7 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     // web's read seam (webReadModel), not the raw worker cache.
     w.readModelProjector.reconcile()
     w.webReadModel.reload()
-    val service = new MovieControllerService(w.webReadModel)
+    val service = new MovieControllerService(w.webReadModel, w.clock)
     val rows = City.all.sortBy(_.slug).flatMap(c => service.toSchedules(c, Now))
     (record, rows)
   }
