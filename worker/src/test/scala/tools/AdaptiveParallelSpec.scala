@@ -53,6 +53,23 @@ class AdaptiveParallelSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // `Try` does not catch a fatal error, so it killed its worker thread with the item
+  // still owed a result: every other worker then waited on it forever, and the weekly
+  // roster audit hung until the job's timeout instead of failing.
+  it should "fail the run on a fatal error in f, rather than wait forever for the dead worker's item" in {
+    // A plain thread, not a Future: a Future never completes on a fatal error either.
+    val thrown = new java.util.concurrent.atomic.AtomicReference[Throwable]()
+    val run = new Thread(() =>
+      try { AdaptiveParallel.map(1 to 10, workers = 3, sleep = noSleep)(_ => false) { i =>
+        if (i == 4) throw new LinkageError("fatal") else i
+      }; () } catch { case t: Throwable => thrown.set(t) })
+    run.setDaemon(true)
+    run.start()
+    run.join(10.seconds.toMillis)
+    withClue("map still running after 10s: ") { run.isAlive shouldBe false }
+    thrown.get shouldBe a[LinkageError]
+  }
+
   it should "keep a non-throttle failure as that item's answer, without retrying" in {
     val (results, stats) = AdaptiveParallel.map(Seq(1, 2), workers = 2, sleep = noSleep)(_ == Throttled) { i =>
       if (i == 1) throw new IllegalArgumentException("bad") else i
