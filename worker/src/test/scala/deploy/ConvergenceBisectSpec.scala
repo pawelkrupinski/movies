@@ -44,10 +44,17 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers {
     /** Exits 1 (bad) once the bug is in, 0 before; logs the subject of every commit it
      *  was asked to replay — the last green `base` first, confirmed before any bisecting. */
     val steps: Path = Files.createTempFile("bisect-steps", ".log")
+    /** The script's clock: a `date` that answers `+%s` from a file each replay advances by
+     *  STEP_MINUTES, so a budget of real hours is spent in milliseconds. */
+    val clock: Path = Files.writeString(Files.createTempFile("bisect-clock", ".txt"), "1000000\n")
+    val date: Path = repo.script("date",
+      s"""if [ "$${1:-}" = "+%s" ]; then cat "$clock"; else exec /bin/date "$$@"; fi
+         |""".stripMargin)
     private val skipped =
       if (untestable.isEmpty) "__none__" else untestable.map(n => s"\"pipeline change $n\"").mkString("|")
     val step: Path = repo.script("step.sh",
       s"""git log -1 --format=%s >> "$steps"
+         |echo $$(( $$(cat "$clock") + $${STEP_MINUTES:-0} * 60 )) > "$clock"
          |case "$$(git log -1 --format=%s)" in $skipped) exit 125 ;; esac
          |${if (redEverywhere) "exit 1" else ""}
          |grep -q bad worker/src/main/State.scala && exit 1 || exit 0
@@ -64,7 +71,8 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers {
       "COUNTRY" -> "poland", "STEP_COMMAND" -> history.step.toString, "STEP_MINUTES" -> "1",
       "BUDGET_MINUTES" -> "30", "MAX_STEPS" -> "3", "SAMPLE_FAILED" -> "true",
       "VERDICT_FILE" -> verdict.toString, "FIRST_BAD_FILE" -> firstBad.toString,
-      "CONVERGENCE_PATHS_FILE" -> PathsFile.toString) ++ env
+      "CONVERGENCE_PATHS_FILE" -> PathsFile.toString,
+      "PATH" -> s"${history.date.getParent}:${sys.env.getOrElse("PATH", "")}") ++ env
     val status = Process(Seq("bash", Script.toString, "bisect", good, bad), history.repo.root.toFile, all*)
       .!(ProcessLogger(_ => ()))
     val pinned = Option.when(Files.exists(firstBad))(Files.readString(firstBad).trim)
@@ -118,14 +126,26 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers {
     verdict should include("untested")
   }
 
-  it should "not start a replay the budget cannot fit" in {
+  it should "not start a halving the budget cannot fit" in {
     val history = new History(badAt = 4)
     val (_, verdict, pinned) = bisect(history, history.good, history.bad,
       "STEP_MINUTES" -> "20", "BUDGET_MINUTES" -> "10")
 
-    history.stepCount shouldBe 0
+    history.tested shouldBe Seq("base") // the confirmation only
     pinned shouldBe None
-    verdict should include("No time left")
+    verdict should include("Stopped after 0 replay(s)")
+  }
+
+  // The United States' sample is an hour against a 90-minute budget: charged to the
+  // budget, the confirmation left no room for a single halving.
+  it should "leave the whole budget to the halvings, whatever the confirmation took" in {
+    val history = new History(badAt = 4)
+    val (_, verdict, _) = bisect(history, history.good, history.bad,
+      "STEP_MINUTES" -> "60", "BUDGET_MINUTES" -> "90")
+
+    history.tested.head shouldBe "base"
+    history.stepCount shouldBe 2
+    verdict should include("Stopped after 1 replay(s)")
   }
 
   it should "spend nothing when the same commit was green before" in {

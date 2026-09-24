@@ -27,7 +27,7 @@
 #   STEP_COMMAND       run once per candidate with the working tree at that commit; exits
 #                      0 good, 1 bad, 125 untestable (git bisect's own convention)
 #   STEP_MINUTES       how long one STEP_COMMAND may take
-#   BUDGET_MINUTES     the whole bisection's ceiling (default 90)
+#   BUDGET_MINUTES     the halvings' ceiling (default 90), counted from once <good> is confirmed
 #   MAX_STEPS          bisection replays at most (default 3)
 #   SAMPLE_FAILED      'true' when the SAMPLE was red at <bad> — it is then known bad and
 #                      is not replayed; otherwise <bad> is replayed once first, because a
@@ -69,7 +69,6 @@ verdict() { printf '%s\n' "$@" >> "${VERDICT_FILE:-${GITHUB_STEP_SUMMARY:-/dev/s
 bisect() {
     local good="$1" bad="$2"
     local started
-    started=$(date +%s)
     verdict "### Convergence bisect — $COUNTRY" ""
 
     if [ "$good" = "$bad" ]; then
@@ -107,10 +106,6 @@ bisect() {
     # the bisect would pin the range's first pipeline commit (or its only one, unreplayed)
     # and tell its author the change was theirs. Only a good commit that is green under THIS
     # pair makes the range's answer a commit's.
-    if ! fits_budget; then
-        verdict "No time left in the ${BUDGET_MINUTES:-90}-minute budget to confirm \`${good:0:9}\` is green under this recording. Not bisected."
-        return 0
-    fi
     git checkout -q --force "$good"
     "$STEP_COMMAND"; code=$?
     if [ "$code" -eq 1 ]; then
@@ -125,6 +120,12 @@ bisect() {
         finish_exact "$range" "the only pipeline commit in the range"
         return 0
     fi
+
+    # The budget is the HALVINGS'. The replays above (at most two: <bad> and <good>) are
+    # the price of any answer at all, and charged to it they left the United States — an
+    # hour's sample against 90 minutes — no halving whatsoever. The job's timeout allows
+    # for them on top.
+    started=$(date +%s)
 
     # `git bisect run` drives the search; the wrapper enforces the caps. Exit 255 aborts
     # the run cleanly, leaving the remaining candidates in `refs/bisect/*`.
@@ -168,11 +169,6 @@ EOF
     fi
     git bisect reset >/dev/null 2>&1 || true
     rm -f "$counter" "$wrapper"
-}
-
-# Whether another STEP_MINUTES replay still fits in BUDGET_MINUTES since `started`.
-fits_budget() {
-    [ $(( ${BUDGET_MINUTES:-90} * 60 - ($(date +%s) - started) )) -ge $(( ${STEP_MINUTES:-20} * 60 )) ]
 }
 
 finish_exact() {

@@ -18,8 +18,9 @@
 # the pair is re-pinned nightly and a red the new pair brings is no commit's doing.
 #
 # CAPPED: per country, at most three halvings — exact for up to eight pipeline commits — and
-# none started that BUDGET_MINUTES cannot fit, so the worst case is one runner per red country
-# for ~90 minutes. A range it could not narrow is reported as a range, never as a guess. A
+# none started that BUDGET_MINUTES cannot fit — a budget for the halvings alone, after the
+# (at most two) replays that confirm there is a range to bisect — so the worst case is one runner
+# per red country for ~2 hours (the US: ~3.5). A range it could not narrow is reported as a range, never as a guess. A
 # newer red run of the same suite supersedes an older bisect: its range contains the older one;
 # no other completion of the suite can cancel it.
 # The logic is `.github/scripts/convergence-bisect.sh` (ConvergenceBisectSpec).
@@ -97,9 +98,12 @@ jobs:
             matrix:
                 request: ${{ fromJson(needs.plan.outputs.requests) }}
         runs-on: ubuntu-latest
-        # Above BUDGET_MINUTES, so the script's own cap is what stops it and the verdict it has
-        # so far still reaches the summary.
-        timeout-minutes: 120
+        # Above everything the script may spend, so its own cap is what stops it and the
+        # verdict it has so far still reaches the summary: up to two replays before bisecting
+        # (the red commit when only the full leg failed, and the last green one under this
+        # recording) plus BUDGET_MINUTES of halvings. The US sample is 60 minutes a replay:
+        # 60 + 60 + 90, plus setup.
+        timeout-minutes: 240
         permissions:
             # The commit comment on the first bad commit.
             contents: write
