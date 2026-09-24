@@ -184,11 +184,41 @@ check 429 "$META"    "/de/berlin/movies"                  "...including Germany"
 check 429 "$META"    "/es/madrid/movies"                  "...including Spain"
 check 429 "$META"    "/poznan/filmy"                      "...and the Polish spelling on a root-mounted deployment"
 check 502 "$META"    "/us/florence/movie/some-film"       "the FILM PAGE is one character away and must reach the app"
-check 502 "$META"    "/us/florence/movie/og-image"        "og-image reaches the app, so share cards keep rendering"
 check 502 "$META"    "/us/florence/"                      "the city listing itself is content, not a facet"
 check 502 "$META"    "/us/sitemap.xml"                    "the crawl map stays open"
 check 502 "$HUMAN"   "/us/florence/movies?cast=Tom+Hanks" "a PERSON using the filter UI is never throttled"
 check 502 "$PREVIEW" "/us/florence/movies"                "the share-preview agent is a different agent and stays open"
+
+# THE SHARE CARDS, WHICH A BULK CRAWLER CAN TURN INTO AN OOM KILL.
+#
+# Every og-image miss fetches and decodes a poster in the JVM, and a progressive JPEG's decode holds
+# native memory outside every JVM cap. AhrefsBot sent 612 og-image requests to kinowo.net on
+# 2026-09-21 17:01-18:25Z (against ~10 on a normal evening) and web-pl was OOM-killed seven times.
+# So the bulk crawlers are 429'd on every og-image path -- and the SHARE-PREVIEW agents, the only
+# reason the endpoint exists, must never be, or every link card on every messenger goes blank.
+AHREFS='Mozilla/5.0 (compatible; AhrefsBot/7.0; +http://ahrefs.com/robot/)'
+SEMRUSH='Mozilla/5.0 (compatible; SemrushBot/7~bl; +http://www.semrush.com/bot.html)'
+echo "==> who may fetch the share cards"
+check 429 "$AHREFS"  "/poznan/movie/og-image?title=Diuna" "a bulk SEO crawler is throttled on the film share card"
+check 429 "$AHREFS"  "/us/florence/movie/og-image?title=Dune" "...on every mounted country"
+check 429 "$AHREFS"  "/poznan/og-image"                   "...and on the city share card"
+check 429 "$AHREFS"  "/poznan/film/og-image?title=Diuna"  "...and on the pre-rename /film/og-image address"
+check 429 "$SEMRUSH" "/poznan/movie/og-image?title=Diuna" "...and so is SemrushBot"
+check 429 "$META"    "/poznan/movie/og-image?title=Diuna" "...and Meta's AI crawler, which is NOT its share-preview agent"
+check 502 "$AHREFS"  "/poznan/movie/diuna"                "the FILM PAGE stays open to the same crawler"
+check 502 "$AHREFS"  "/poznan/"                           "...and so does the city page"
+for preview in \
+  'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)' \
+  'Twitterbot/1.0' \
+  'Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)' \
+  'WhatsApp/2.23.20.0' \
+  'LinkedInBot/1.0 (compatible; Mozilla/5.0; Apache-HttpClient +http://www.linkedin.com)' \
+  'Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)' \
+  'TelegramBot (like TwitterBot)' \
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_1) AppleWebKit/601.2.4 (KHTML, like Gecko) Version/9.0.1 Safari/601.2.4 facebookexternalhit/1.1 Facebot Twitterbot/1.0'; do
+  check 502 "$preview" "/poznan/movie/og-image?title=Diuna" "a share preview renders: ${preview%% *}"
+done
+check 502 "$HUMAN"   "/poznan/movie/og-image?title=Diuna" "a person opening the card directly is never throttled"
 
 # HSTS: one year, still without preload or includeSubDomains (both one-way doors -- see the vhost).
 echo "==> what HSTS the vhost promises"

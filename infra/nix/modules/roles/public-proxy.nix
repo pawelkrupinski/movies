@@ -196,8 +196,8 @@ in
 
               Matched by USER-AGENT SUBSTRING, so it is deliberately narrow: Meta's share-preview
               agent is `facebookexternalhit`, a different string on different paths, and stays
-              untouched. So do the film pages and `og-image`, which are the content we want
-              indexed.
+              untouched. So do the film pages, which are the content we want indexed; the share
+              cards are throttled only for the separate `shareCardAgents` list.
             '';
             example = { userAgents = [ "meta-externalagent" ]; };
             type = lib.types.nullOr (lib.types.submodule {
@@ -216,6 +216,22 @@ in
                     The final path segment of a faceted listing, in every language this domain
                     serves it under. The country prefixes are NOT listed here -- they are read off
                     `pathUpstreams`, so a new country cannot be onboarded into an unthrottled hole.
+                  '';
+                };
+                shareCardAgents = lib.mkOption {
+                  type = lib.types.listOf lib.types.str;
+                  default = [ ];
+                  description = ''
+                    User-agent substrings 429'd on the SHARE-CARD paths (`/{city}/movie/og-image`,
+                    `/{city}/og-image`, the pre-rename `/{city}/film/og-image`), a separate list
+                    from `userAgents` because the policy is different: these paths are not
+                    disallowed, they are EXPENSIVE. Every card the app has not cached fetches and
+                    decodes a poster, and a progressive JPEG's decode holds native memory outside
+                    every JVM cap -- AhrefsBot's 612 og-image requests on 2026-09-21 17:01-18:25Z
+                    OOM-killed web-pl seven times. A card is only ever useful to the share-preview
+                    agent of whatever app a link was pasted into, so NEVER list one of those here
+                    (facebookexternalhit, Facebot, Twitterbot, Slackbot, WhatsApp, LinkedInBot,
+                    Discordbot, TelegramBot, ...): a 429 to them is a blank link card.
                   '';
                 };
                 retryAfterSeconds = lib.mkOption {
@@ -405,6 +421,16 @@ in
                 header Retry-After "${toString t.retryAfterSeconds}"
                 respond "Filtered listings are disallowed by robots.txt on this host. The film pages and sitemap are open." 429
               }
+              ${lib.optionalString (t.shareCardAgents != [ ]) ''
+                @throttledCardCrawler {
+                  ${lib.concatStringsSep "\n                  " (map (a: ''header User-Agent *${a}*'') t.shareCardAgents)}
+                  path_regexp shareCard ^${prefixGroup}/[^/]+/(?:(?:movie|film)/)?og-image/?$
+                }
+                handle @throttledCardCrawler {
+                  header Retry-After "${toString t.retryAfterSeconds}"
+                  respond "Share cards are rendered for link previews. The film pages and sitemap are open." 429
+                }
+              ''}
             '');
           # A FIXED CERTIFICATE INSTEAD OF ACME, when the vhost asks for one. Emitted FIRST so it is
           # unmistakable when reading the generated Caddyfile which names are not on Let's Encrypt.

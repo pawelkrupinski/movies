@@ -93,8 +93,19 @@
   # the same logs it made 131 requests, all to city pages and og-image assets. Throttling it would
   # break the Facebook/WhatsApp/Messenger link previews the og-image endpoints exist for.
   fleet.publicProxy = let
+    #
+    # THE SHARE CARDS HAVE THEIR OWN LIST: bulk crawlers with no use for a link-preview image, each
+    # of whose requests can cost a poster decode in the JVM. AhrefsBot is here on evidence (612
+    # og-image requests and seven web-pl OOM kills on 2026-09-21 17:01-18:25Z), meta-externalagent
+    # swept every country's cards on 2026-09-04, SemrushBot bunches the same way on the US site; the
+    # rest are the same class of SEO/AI bulk crawler. The share-preview agents are deliberately
+    # absent -- test_public_proxy.sh asserts each of them still reaches the app.
     facetThrottle = {
       userAgents = [ "meta-externalagent" ];
+      shareCardAgents = [
+        "AhrefsBot" "SemrushBot" "meta-externalagent" "MJ12bot" "DotBot" "PetalBot"
+        "Bytespider" "GPTBot" "CCBot" "ClaudeBot" "Amazonbot" "DataForSeoBot" "BLEXBot"
+      ];
     };
     # ⚠️ ONLY THE PROXIED NAMES. A Cloudflare Origin certificate is trusted by Cloudflare and by
     # nothing else, so putting one on a name a browser reaches directly hands every visitor a
