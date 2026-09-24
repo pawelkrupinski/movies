@@ -30,7 +30,8 @@ trait ControllersWiring { self: Wiring =>
   lazy val ogCardService     = new tools.OgCardService(new tools.HttpPosterFetch)
   lazy val cityOgCardService = new tools.CityOgCardService(new tools.HttpPosterFetch)
 
-  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, oauthProviders.keySet, environmentMode, encodedResponseCache, ogCardService, cityOgCardService)
+  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, oauthProviders.keySet, environmentMode, encodedResponseCache, ogCardService, cityOgCardService,
+                                                   shareCardPool = tools.ShareCardPool.production())
   // Global country+city catalog for the mobile apps (`GET /api/catalog`), served
   // identically by every deployment — no per-country/read-model dependency.
   lazy val catalogController = new CatalogController(controllerComponents)

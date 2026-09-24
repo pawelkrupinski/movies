@@ -34,6 +34,11 @@ object TestMovieController {
     // (one city's showtime moving) rather than only a whole-corpus `reload()`.
     // Defaults to projecting `records`, which is what most specs want.
     readModel: Option[WebReadModel] = None,
+    // The share cards' poster source and render pool. Defaults to no live HTTP (a poster decodes to
+    // None, so the card falls back to text-only) on a small pool of its own; the og-image specs pass
+    // a fetch they can hold open and a pool they can fill.
+    posters: tools.PosterFetch = (_: String) => None,
+    shareCardPool: tools.ShareCardPool = new tools.ShareCardPool(threads = 2, queueDepth = 4),
   ): (MovieController, WebReadModel) = {
     val readModel_ = readModel.getOrElse(TestReadModel.fromRecords(records))
     val ctrl  = new MovieController(
@@ -47,12 +52,10 @@ object TestMovieController {
       oauthProviders         = Set.empty,
       environment            = mode,
       responseCache          = responseCache,
-      // No live HTTP: a poster fetch that returns nothing decodes to None, so
-      // the OG card falls back to text-only — fine for controller specs that
-      // don't assert on the card image itself.
-      ogCardService          = new tools.OgCardService((_: String) => None),
-      cityOgCardService      = new tools.CityOgCardService((_: String) => None),
+      ogCardService          = new tools.OgCardService(posters),
+      cityOgCardService      = new tools.CityOgCardService(posters),
       servingCountry         = servingCountry,
+      shareCardPool          = shareCardPool,
     )
     (ctrl, readModel_)
   }
