@@ -201,6 +201,10 @@ let
     # took UK's Cineworld/Odeon scrapes down with no working fallback at all -- fixed the same day
     # alongside this rule. Alphabetically after read-model-projection and before web-errors.
     "residential-proxy"
+    # WHAT MUST STAY TRUE OF THE OUTPUT, whatever produced it: a city served as much as its corpus
+    # has, venues not going quiet day after day, stored cards equal to a fresh projection, share-
+    # card pointers that resolve on disk -- the questions no mechanism panel answers.
+    "runtime-invariants"
     # ARE THE FILM SHARE CARDS WITHIN THEIR DISK BUDGET, and are their poster upstreams answering.
     # The worker renders the cards (and caches posters) onto k3s-worker-1's disk under one budget.
     "share-cards"

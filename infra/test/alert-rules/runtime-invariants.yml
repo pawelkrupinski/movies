@@ -1,0 +1,167 @@
+# UNIT TESTS FOR THE RUNTIME-INVARIANT ALERTS.
+#
+# Each alert fires for the shape it was written for, stays quiet for the healthy shape beside it,
+# and holds its `for:` across a worker restart (a `stale` gap in the series, ~3 minutes on a real
+# pod change). The per-city rule is fed the numbers the Bay actually showed on 2026-08-30.
+rule_files:
+  - ../../nix/files/monitoring/rules/runtime-invariants.rules
+
+evaluation_interval: 1m
+
+tests:
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE BAY AFTER ITS SLUG RENAME (2026-08-30T21:34Z): the corpus had 418 films for
+  # san-francisco-bay-area, the web served 164. Beside it, three cities that must stay quiet:
+  # New York 3 films short (under the 5-film floor), a four-film town 1 short (25%, but one film),
+  # and Chicago 8 short of 400 (2%, under 20%). The worker restarts mid-way; the pending alert
+  # survives the gap and fires after thirty minutes, naming one city in `us`.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_movies_served{scope="all",country="us",city="san-francisco-bay-area",instance="w1"}'
+        values: '418x20 stale _x2 418x40'
+      - series: 'kinowo_web_movies_served{scope="all",country="us",city="san-francisco-bay-area",instance="web1"}'
+        values: '164x62'
+      - series: 'kinowo_worker_movies_served{scope="all",country="us",city="new-york",instance="w1"}'
+        values: '600x20 stale _x2 600x40'
+      - series: 'kinowo_web_movies_served{scope="all",country="us",city="new-york",instance="web1"}'
+        values: '597x62'
+      - series: 'kinowo_worker_movies_served{scope="all",country="us",city="havre",instance="w1"}'
+        values: '4x20 stale _x2 4x40'
+      - series: 'kinowo_web_movies_served{scope="all",country="us",city="havre",instance="web1"}'
+        values: '3x62'
+      - series: 'kinowo_worker_movies_served{scope="all",country="us",city="chicago",instance="w1"}'
+        values: '400x20 stale _x2 400x40'
+      - series: 'kinowo_web_movies_served{scope="all",country="us",city="chicago",instance="web1"}'
+        values: '392x62'
+    promql_expr_test:
+      - expr: country_city:readmodel_served_short_of_corpus:films
+        eval_time: 25m
+        exp_samples:
+          - labels: 'country_city:readmodel_served_short_of_corpus:films{country="us",city="san-francisco-bay-area"}'
+            value: 254
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: CityServingShortOfCorpus
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: CityServingShortOfCorpus
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: us
+            exp_annotations:
+              summary: "1 us cit(y/ies) serve at least 20% (and 5+) fewer films than the corpus has"
+              description: 'For 30 minutes, in each of these cities the web read model has served at least 5 and at least 20% fewer films than the worker''s corpus census says the city has (kinowo_web_movies_served vs kinowo_worker_movies_served, scope="all"). Name the cities with `topk(10, country_city:readmodel_served_short_of_corpus:films{country="us"})`. Many cities at once after a deploy is an id-scheme or city-model change orphaning projected rows (2026-08-30''s metro split); ONE city is usually a slug rename -- the rows are filed under the old slug, see City.renamedSlugs and WebReadModel''s former-slug fallback. Re-projection heals it at the scrape cadence (14h in the US), so do not wait it out.'
+
+  # A BOOT RACE: the web comes up 60 films short of a city and catches up within ten minutes --
+  # the longest benign episode in the fortnight's replay was 8. Never pages.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_movies_served{scope="all",country="pl",city="starogard-gdanski",instance="w1"}'
+        values: '60x60'
+      - series: 'kinowo_web_movies_served{scope="all",country="pl",city="starogard-gdanski",instance="web1"}'
+        values: '60x10 26x10 60x40'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: CityServingShortOfCorpus
+        exp_alerts: []
+      - eval_time: 55m
+        alertname: CityServingShortOfCorpus
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # VENUES GOING QUIET. PL steps from 10 stale venues to 14 at 24h10m and stays there, through a
+  # restart: 4 more than yesterday's lowest (and far over 5% of 10), held a day -- fires. DE steps
+  # 200 -> 205: 5 venues but only 2.5% of its stale count, a season rather than a break -- quiet.
+  # UK steps 10 -> 14 and falls back within five hours: never held a day -- quiet.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 10m
+    input_series:
+      - series: 'kinowo_worker_cinema_content_stale_venues{country="pl",instance="w1"}'
+        values: '10x144 14x100 stale 14x180'
+      - series: 'kinowo_worker_cinema_content_stale_venues{country="de",instance="w1"}'
+        values: '200x144 205x281'
+      - series: 'kinowo_worker_cinema_content_stale_venues{country="uk",instance="w1"}'
+        values: '10x144 14x30 10x251'
+    alert_rule_test:
+      - eval_time: 36h
+        alertname: CinemaContentStaleVenuesGrowing
+        exp_alerts: []
+      - eval_time: 50h
+        alertname: CinemaContentStaleVenuesGrowing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: pl
+            exp_annotations:
+              summary: "pl has 4 more venue(s) a week without a film than at any point the day before"
+              description: 'kinowo_worker_cinema_content_stale_venues has stayed at least 3 (and 5%) above the previous day''s lowest reading for a full day. Venues that scrape successfully and find nothing look white on /uptime, exactly like a cinema closed for the season, so check WHICH venues joined: the cinema_scrapes archive''s lastSuccess per venue, grouped by scraper client. Several venues of one client going quiet together is a parser break (the 2026-09-04 Java `\w` regex took four PL venues, only one of them white); scattered venues in a region in autumn is a season closing.'
+      # Once yesterday's window holds only the new level, the step is no longer growth.
+      - eval_time: 72h
+        alertname: CinemaContentStaleVenuesGrowing
+        exp_alerts: []
+
+  # A WORKER BOOTING WITH NO HISTORY: nothing a day ago to compare with, so nothing to say.
+  - interval: 10m
+    input_series:
+      - series: 'kinowo_worker_cinema_content_stale_venues{country="es",instance="w1"}'
+        values: '50x200'
+    alert_rule_test:
+      - eval_time: 33h
+        alertname: CinemaContentStaleVenuesGrowing
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE TWO SAMPLED AUDITS. 60 audited an hour in every country. PL confirms 10% of its content
+  # sample and restarts once (its counters reset); DE 1% (under 2%). ES confirms everything but
+  # has audited only 36 in six hours -- a worker just started -- and stays quiet under the floor.
+  # Share cards: UK loses its directory (every pointer confirmed); US confirms 4% (under 5%).
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 10m
+    input_series:
+      - series: 'kinowo_worker_readmodel_content_audited_total{country="pl",instance="w1"}'
+        values: '0+10x30 stale 0+10x30'
+      - series: 'kinowo_worker_readmodel_content_audit_confirmed_total{country="pl",instance="w1"}'
+        values: '0+1x30 stale 0+1x30'
+      - series: 'kinowo_worker_readmodel_content_audited_total{country="de",instance="w1"}'
+        values: '0+10x61'
+      - series: 'kinowo_worker_readmodel_content_audit_confirmed_total{country="de",instance="w1"}'
+        values: '0+0.1x61'
+      - series: 'kinowo_worker_readmodel_content_audited_total{country="es",instance="w1"}'
+        values: '0+1x61'
+      - series: 'kinowo_worker_readmodel_content_audit_confirmed_total{country="es",instance="w1"}'
+        values: '0+1x61'
+      - series: 'kinowo_worker_share_cards_audited_total{country="uk",instance="w1"}'
+        values: '0+10x30 stale 0+10x30'
+      - series: 'kinowo_worker_share_cards_audit_confirmed_total{country="uk",instance="w1"}'
+        values: '0+10x30 stale 0+10x30'
+      - series: 'kinowo_worker_share_cards_audited_total{country="us",instance="w1"}'
+        values: '0+10x61'
+      - series: 'kinowo_worker_share_cards_audit_confirmed_total{country="us",instance="w1"}'
+        values: '0+0.4x61'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: ReadModelContentMismatch
+        exp_alerts: []
+      - eval_time: 8h
+        alertname: ReadModelContentMismatch
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: pl
+            exp_annotations:
+              summary: "pl: 10% of sampled read-model cards differ from a fresh projection of their row"
+              description: 'The content audit found stored web_movies / web_screenings documents that still differed from ReadModelProjection''s output for their source row 15 minutes after first sight. The worker log names each card and the fields ("read-model-content audit: <card> still differs ..."). A card the rolling content check has not reached yet is repaired within a day; one that stays wrong while its row does not change is a write the projector believes landed and the store did not keep (the swallowed-write bug fixed in dfaba5ba8) -- restart the worker to drop its memo, then find the write path.'
+      - eval_time: 30m
+        alertname: ShareCardPointersUnresolvable
+        exp_alerts: []
+      - eval_time: 8h
+        alertname: ShareCardPointersUnresolvable
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: uk
+            exp_annotations:
+              summary: "uk: 100% of sampled share-card pointers do not resolve"
+              description: 'web_movies.shareCard names a card file that is missing from the country''s share-card directory, belongs to another film, or is at a different version than the URL''s ?v=, and still did 15 minutes later. The worker log lists each film ("share-card audit: <film> still differs ..."). Every film missing its file at once is the directory: is /var/lib/kinowo/share-cards/<cc> still mounted on the worker''s node, and did the pod move to a node without it? A version mismatch is a render whose re-projection never ran (ShareCardFollowUp); a missing file on a film still pointing at it is a prune that did not re-project it (ShareCardJanitor''s refresh).'
