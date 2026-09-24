@@ -403,7 +403,10 @@ class ReadModelProjector(
             if (healedClean.get(row.id.value).contains(metadataHash)) Seq.empty   // looked already; nothing to write
             else screeningsBefore.fold(Seq.empty[String])(has => partition.screeningIds.filterNot(has))
           if (absentCards.nonEmpty || absentVenues.nonEmpty)
-            try { healChecks += 1; if (heal(row.id, metadataHash, absentCards, absentVenues)) healed += row.id.value }
+            try heal(row.id, metadataHash, absentCards, absentVenues).foreach { repaired =>
+              healChecks += 1
+              if (repaired) healed += row.id.value
+            }
             catch { case exception: Throwable =>
               logger.warn(s"read-model $kind: a row missing a projection failed to project, continuing: ${exception.getMessage}") }
         }
@@ -578,9 +581,10 @@ class ReadModelProjector(
       }
     }
     if (!cardsRead) logger.warn("read model: the card ids could not be read at boot — nothing healed; the prune sweep retries.")
-    val healed = missing.collect { case (id, metadataHash, absentCards, absentVenues)
-      if lock.synchronized(heal(id, metadataHash, absentCards, absentVenues)) => id.value }
-    metrics.recordHealCheck(HealTrigger.Boot, missing.size)
+    val projected = missing.flatMap { case (id, metadataHash, absentCards, absentVenues) =>
+      lock.synchronized(heal(id, metadataHash, absentCards, absentVenues)).map(id.value -> _) }
+    val healed = projected.collect { case (id, true) => id }
+    metrics.recordHealCheck(HealTrigger.Boot, projected.size)
     if (healed.nonEmpty) {
       metrics.recordHeal(HealTrigger.Boot, healed.size)
       logger.warn(s"read model: projected ${healed.size} ready row(s) missing a card or a venue at boot" +
@@ -607,17 +611,22 @@ class ReadModelProjector(
    *  `metadataHash`, for the boot check and the sweep alike, so no later pass asks again
    *  until the row moves. The boot check once kept no note, and the first sweep five
    *  minutes later re-projected every spent-slot row a second time — ~260 of them per PL
-   *  worker start. */
-  private def heal(id: services.movies.FilmId, metadataHash: Int, absentCards: Seq[String], absentVenues: Seq[String]): Boolean = {
+   *  worker start.
+   *
+   *  `None` when nothing was projected -- the row is gone by the time it is read whole, or no
+   *  longer ready -- so the heal-check meter counts exactly the projections a heal made, which
+   *  is what `ReadModelProjectionTriggerUnaccounted` subtracts from `readmodel_project_calls`;
+   *  otherwise whether the absence was repaired. */
+  private def heal(id: services.movies.FilmId, metadataHash: Int, absentCards: Seq[String], absentVenues: Seq[String]): Option[Boolean] = {
     absentCards.foreach(forgetCard)
     absentVenues.foreach(forgetScreening)
-    movieRepository.findById(id).exists { whole =>
+    movieRepository.findById(id).flatMap { whole =>
       project(ReadModelProjection.partition(whole, normalizer))
       // Forgotten above, so remembered now only if this projection produced and wrote it.
       val repaired = absentCards.exists(lastMovie.contains) ||
         absentVenues.exists(venue => lastScreenings.valuesIterator.exists(_.contains(venue)))
       if (!repaired) healedClean.update(id.value, metadataHash)
-      repaired
+      Option.when(whole.record.readyToProject)(repaired)
     }
   }
 

@@ -957,6 +957,32 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     booted.stop()
   }
 
+  // The meter exists to be SUBTRACTED from readmodel_project_calls, so it must count exactly the
+  // projections a heal made -- not the rows the slots-only scan named. A row gone by the time the
+  // heal reads it whole (deleted or re-keyed in between) is never projected, and counting it made
+  // ReadModelProjectionTriggerUnaccounted subtract projections that never happened.
+  it should "meter only the rows it actually projected, not one that vanished before it was read" in {
+    val repository = new InMemoryMovieRepository() {
+      override def findByIdChecked(id: services.movies.FilmId): (Option[StoredMovieRecord], Boolean) = {
+        val found = super.findByIdChecked(id)
+        if (found._1.exists(_.title == "Bar")) (None, true) else found
+      }
+    }
+    val rm = new InMemoryReadModelRepository()
+    val m  = new RecordingMetrics()
+    Seq("Foo" -> 1, "Bar" -> 2).foreach { case (title, tmdbId) =>
+      repository.upsert(title, Some(2024), MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
+        Multikino -> SourceData(title = Some(title), showtimes = Seq(at("2026-06-12T20:00"))))))
+    }
+    val booted = new ReadModelProjector(repository, rm, rm, m)
+
+    booted.start()                                      // both uncarded; Bar vanishes before its read
+
+    m.healChecks.toSeq shouldBe Seq(ReadModelProjectionMetrics.HealTrigger.Boot -> 1)
+    m.healChecks.map(_._2).sum shouldBe m.projectCalls
+    booted.stop()
+  }
+
   // A HEAL IS A REPAIR OF WHAT WAS MISSING, NOT ANY WRITE. The heal reads its row whole, so it
   // also writes every change the change stream has not applied YET — and while the sweep holds
   // the projection lock the stream CANNOT apply, so a row with a spent slot (asked about on every
