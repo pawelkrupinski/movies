@@ -17,7 +17,8 @@
 # CAPPED: per country, at most three halvings — exact for up to eight pipeline commits — and
 # none started that BUDGET_MINUTES cannot fit, so the worst case is one runner per red country
 # for ~90 minutes. A range it could not narrow is reported as a range, never as a guess. A
-# newer red run of the same suite supersedes an older bisect: its range contains the older one.
+# newer red run of the same suite supersedes an older bisect: its range contains the older one;
+# no other completion of the suite can cancel it.
 # The logic is `.github/scripts/convergence-bisect.sh` (ConvergenceBisectSpec).
 #
 name: Convergence bisect
@@ -28,7 +29,12 @@ on:
         types: [completed]
 
 concurrency:
-    group: convergence-bisect-${{ github.event.workflow_run.name }}
+    # Only a newer RED run on main supersedes a bisect (its range contains the older one).
+    # Every other completion — a green run, and each pending run the convergence lane cancels
+    # when a newer push queues — starts a run whose jobs are all skipped, and must not cancel
+    # a bisect in flight on its way through, so it takes a lane of its own.
+    # (ConvergenceBisectConcurrencySpec)
+    group: convergence-bisect-${{ github.event.workflow_run.name }}-${{ (github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.head_branch == 'main') && 'red' || github.run_id }}
     cancel-in-progress: true
 
 permissions:

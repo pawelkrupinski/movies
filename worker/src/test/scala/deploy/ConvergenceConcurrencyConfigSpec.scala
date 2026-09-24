@@ -50,3 +50,31 @@ class ConvergenceConcurrencyConfigSpec extends AnyFlatSpec with Matchers {
     }
   }
 }
+
+/**
+ * `convergence-bisect.yml` runs on EVERY completion of a convergence run — green, red, and the
+ * pending runs the lanes above cancel whenever a newer push queues. Its jobs do nothing unless
+ * the run was a red one on main, but its `concurrency:` applies to the whole run: with one
+ * group per suite and `cancel-in-progress: true`, each of those no-op completions cancelled a
+ * bisect up to 90 minutes into its replays. Only a newer RED run may supersede a bisect (its
+ * range contains the older one); every other completion takes a lane of its own.
+ */
+class ConvergenceBisectConcurrencySpec extends AnyFlatSpec with Matchers {
+  private val Workflow = RepoFile.read(".github/workflows/convergence-bisect.yml")
+  private val RedOnMain =
+    "github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.head_branch == 'main'"
+
+  private val group =
+    RepoFile.block(Workflow, "concurrency").linesIterator.map(_.trim).collectFirst { case s"group: $g" => g }
+      .getOrElse(fail("convergence-bisect.yml has no concurrency group"))
+
+  "the convergence bisect" should "share a lane only between red runs on main, the ones its jobs bisect" in {
+    group should include(s"($RedOnMain)")
+    RepoFile.block(Workflow, "plan") should include(s"if: $RedOnMain")
+  }
+
+  it should "give every other completion a lane of its own, so it cannot cancel a bisect in flight" in {
+    group should include("|| github.run_id")
+    RepoFile.block(Workflow, "concurrency") should include("cancel-in-progress: true")
+  }
+}
