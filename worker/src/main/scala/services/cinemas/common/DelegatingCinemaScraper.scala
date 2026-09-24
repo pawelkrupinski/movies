@@ -30,4 +30,5 @@ abstract class DelegatingCinemaScraper(delegate: CinemaScraper) extends CinemaSc
   override def listingIsComplete: Boolean = delegate.listingIsComplete
   override def sourceUrl: Option[String]  = delegate.sourceUrl
   override def sourceKey: Option[String]  = delegate.sourceKey
+  override def chainVenueId: Option[String] = delegate.chainVenueId
 }
