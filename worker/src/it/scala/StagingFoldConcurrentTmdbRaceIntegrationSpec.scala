@@ -133,7 +133,7 @@ class StagingFoldConcurrentTmdbRaceIntegrationSpec extends AnyFlatSpec with Matc
     fold.seedStagingRow(Helios.displayName, loserTitle, Some(2026), tmdbId)
     val loserId = services.movies.StoredMovieRecord.keyFor(loserTitle, Some(2026), titleNormalizer)
     Await.result(fold.movies.insertOne(Document("_id" -> loserId, "key" -> loserId,
-      "sourceData" -> Document(), "updatedAt" -> java.util.Date.from(java.time.Instant.now()))).toFuture(), 10.seconds)
+      "sourceData" -> Document(), "updatedAt" -> java.util.Date.from(java.time.Instant.parse("2026-09-01T00:00:00Z")))).toFuture(), 10.seconds)
     (winnerTitle, loserTitle, loserId)
   }
 
