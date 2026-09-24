@@ -8,9 +8,10 @@ import services.cinemas.common.{CinemaScraper, ListingPages}
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.{LocalDate, ZoneId}
+import java.util.concurrent.TimeoutException
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-import scala.util.Try
+import scala.util.{Failure, Try}
 
 /**
  * Universal Filmweb showtimes scraper, driven by Filmweb's JSON API rather
@@ -50,7 +51,9 @@ class FilmwebShowtimesClient(
   cinemaId: Int,
   override val cinema: Cinema,
   daysAhead: Int       = 6,
-  today:     LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:     LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  // How long one day's seances page may take before it counts as failed.
+  pageTimeout: FiniteDuration = 1.minute
 ) extends CinemaScraper {
 
   import FilmwebShowtimesClient._
@@ -84,12 +87,16 @@ class FilmwebShowtimesClient(
     // or unparseable day yields no seances rather than killing the batch — but
     // EVERY day failing means Filmweb is down, which fails the scrape.
     val seancesByDate = ParallelDetailFetch.keyed(
-      "filmweb-seances", dates, 1.minute, maxConcurrent = 1
+      "filmweb-seances", dates, pageTimeout, maxConcurrent = 1
     )(d => seancesUrl(cinemaId, d)) { url =>
       Try(http.get(url)).map(body => parseSeancesForUrl(body, url))
     }
-    ListingPages.requireAnyReached(dates.flatMap(seancesByDate.get))
-    val seances: Seq[RawSeance] = dates.flatMap(d => seancesByDate.get(d).flatMap(_.toOption).getOrElse(Seq.empty))
+    // A day missing from the map timed out — a failed page like any other, or a
+    // Filmweb that hangs on every day would read as a quiet venue.
+    val pages = dates.map(d => seancesByDate.getOrElse(d,
+      Failure(new TimeoutException(s"Filmweb seances for $d took longer than $pageTimeout"))))
+    ListingPages.requireAnyReached(pages)
+    val seances: Seq[RawSeance] = pages.flatMap(_.toOption).flatten
 
     if (seances.isEmpty) return Seq.empty
 
