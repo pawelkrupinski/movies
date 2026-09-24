@@ -697,34 +697,100 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // A stateful `/api/me/pl/hidden-films` server installed in the page, over
+  // `fetch`: the fixture's is static (it never records a write), so a reconcile
+  // that re-asks after an edit could only be driven through it by a 304. A PUT
+  // adds its title and moves the ETag; a GET answers 304 to the current ETag and
+  // the list otherwise. With `holdFirstGet` the first GET is held until
+  // `window._releaseGet()`.
+  private def withHiddenFilmsServer(page: CdpPage, serverList: Seq[String], holdFirstGet: Boolean)(body: => Any): Unit =
+    try {
+      page.eval(
+        "window._realFetch = window.fetch; window._releaseGet = null;" +
+        s"window._server = { list: ${serverList.map(t => s"'$t'").mkString("[", ",", "]")}, version: 2 };" +
+        "function _answer(status, body) {" +
+        "  return new Response(status === 304 ? null : JSON.stringify(body)," +
+        "    { status: status, headers: { 'ETag': '\"v' + window._server.version + '\"', 'Content-Type': 'application/json' } });" +
+        "}" +
+        "window.fetch = function (url, opts) {" +
+        "  const u = String(url); const method = (opts && opts.method) || 'GET';" +
+        "  if (!/\\/api\\/me\\/pl\\/hidden-films/.test(u)) return window._realFetch(url, opts);" +
+        "  if (method === 'PUT') {" +
+        "    const title = decodeURIComponent(u.split('/').pop());" +
+        "    window._server.list = [...new Set(window._server.list.concat([title]))]; window._server.version++;" +
+        "    return Promise.resolve(_answer(200, { hiddenFilms: window._server.list }));" +
+        "  }" +
+        "  const inm = opts && opts.headers && opts.headers['If-None-Match'];" +
+        "  const answer = inm === '\"v' + window._server.version + '\"' ? _answer(304) : _answer(200, { hiddenFilms: window._server.list });" +
+        s"  if (${holdFirstGet} && !window._releaseGet) return new Promise(resolve => { window._releaseGet = () => resolve(answer); });" +
+        "  return Promise.resolve(answer);" +
+        "}; 0")
+      body
+    } finally page.eval("if (window._realFetch) window.fetch = window._realFetch; 0")
+
+  /** [[withHiddenFilmsServer]] holding its first GET, with a `bootMergeFromServer`
+   *  started behind it (`window._reconciled` once it is done). */
+  private def reconcileAgainstHeldServer(page: CdpPage, serverList: Seq[String])(body: => Any): Unit =
+    withHiddenFilmsServer(page, serverList, holdFirstGet = true) {
+      page.eval("window._reconciled = false; bootMergeFromServer().then(() => { window._reconciled = true; }); 0")
+      page.waitFor("typeof window._releaseGet === 'function'", timeoutMs = 5000)
+      body
+    }
+
+  /** Hide `title` locally and on the server while the held reconcile's fetch is
+   *  out, then let the fetch answer and wait for the reconcile to finish. */
+  private def hideDuringHeldFetch(page: CdpPage, title: String): Unit = {
+    page.eval(s"setHidden(getHidden().concat(['$title'])); hideFilmOnServer('$title'); 0")
+    page.waitFor(s"window._server.list.indexOf('$title') !== -1", timeoutMs = 5000)
+    page.eval("window._releaseGet()")
+    page.waitFor("window._reconciled === true", timeoutMs = 5000)
+  }
+
   // A hide made while a reconcile's fetch is out: the answer predates the hide's
   // write, and replacing the local list with it took the film back off the
   // screen (the write itself still landed, so the NEXT load showed it hidden
-  // again). The first fetch is held here until the hide has been made and sent.
+  // again).
   it should "keep a hide made while the reconcile's fetch is out" in {
     onLoggedInIndex { page =>
       awaitOwnReconcile(page)
-      page.eval(
-        "window._realFetch = window.fetch; window._releaseGet = null;" +
-        "window.fetch = function (url, opts) {" +
-        "  if (/\\/hidden-films$/.test(String(url)) && !(opts && opts.method) && !window._releaseGet) {" +
-        "    const answer = window._realFetch(url, opts);" +
-        "    return new Promise(resolve => { window._releaseGet = () => resolve(answer); });" +
-        "  }" +
-        "  return window._realFetch(url, opts);" +
-        "};" +
-        // A 200, not a 304: only a full answer replaces the local list.
-        "localStorage.removeItem('hiddenFilmsEtag:pl'); localStorage.removeItem('hiddenFilmsLastModified:pl');" +
-        "window._reconciled = false; bootMergeFromServer().then(() => { window._reconciled = true; }); 0")
-      page.waitFor("typeof window._releaseGet === 'function'", timeoutMs = 5000)
-      page.eval("setHidden(getHidden().concat(['Made Meanwhile'])); hideFilmOnServer('Made Meanwhile'); 0")
-      page.waitFor("performance.getEntriesByType('resource')" +
-                   ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films/Made%20Meanwhile') !== -1; })",
-                   timeoutMs = 5000)
-      page.eval("window._releaseGet()")
-      page.waitFor("window._reconciled === true", timeoutMs = 5000)
-      page.evalString("JSON.stringify(getHidden())") should include ("Made Meanwhile")
-      page.eval("window.fetch = window._realFetch")
+      reconcileAgainstHeldServer(page, Seq("Film A")) {
+        hideDuringHeldFetch(page, "Made Meanwhile")
+        page.evalString("JSON.stringify(getHidden())") should include ("Made Meanwhile")
+      }
+    }
+  }
+
+  // The same race when the fetch went out because ANOTHER device had changed the
+  // list: the hide's write lands and hands back validators for the server's new
+  // list, so a conditional re-ask answered 304 — and this device never took the
+  // other device's change, then or on any later load its own writes validated.
+  it should "take another device's change when a hide made during the reconcile's fetch forces a re-ask" in {
+    onLoggedInIndex { page =>
+      awaitOwnReconcile(page)
+      reconcileAgainstHeldServer(page, Seq("Film A", "Other Device")) {
+        hideDuringHeldFetch(page, "Made Meanwhile")
+        val hidden = page.evalString("JSON.stringify(getHidden())")
+        hidden should include ("Made Meanwhile")
+        hidden should include ("Other Device")
+      }
+    }
+  }
+
+  // A write's answer carries validators for the server's WHOLE list. Stored when
+  // another device had changed that list since this page last asked, they made
+  // every later reconcile 304 onto the local list, so the other device's hide
+  // never showed here — until the list next changed somewhere else.
+  it should "not keep a write's validators when its answer is not the local list" in {
+    onLoggedInIndex { page =>
+      awaitOwnReconcile(page)
+      withHiddenFilmsServer(page, Seq("Film A", "Other Device"), holdFirstGet = false) {
+        page.eval("setHidden(getHidden().concat(['Mine'])); window._written = false;" +
+                  "_writeHiddenFilms('PUT', 'pl', 'Mine').then(() => { window._written = true; }); 0")
+        page.waitFor("window._written === true", timeoutMs = 5000)
+        page.eval("window._reconciled = false; bootMergeFromServer().then(() => { window._reconciled = true; }); 0")
+        page.waitFor("window._reconciled === true", timeoutMs = 5000)
+        page.evalString("JSON.stringify(getHidden())") should include ("Other Device")
+      }
     }
   }
 

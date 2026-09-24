@@ -2417,10 +2417,18 @@
     // landing after the hide made just behind it wipes that hide.
     const previous = _hiddenFilmsWrites[country] || Promise.resolve();
     const sent = previous.then(() => fetch(_hiddenFilmsUrl(country, title), { method: method }))
-      .then(resp => {
+      .then(async resp => {
         if (resp.ok) {
           _settlePending(country, method, key, false);
-          if (_pendingHiddenFilms(country).length === 0) _storeHiddenFilmsValidators(country, resp);
+          // Its validators vouch for the server's list as of this write: keep
+          // them only when that is exactly the local list. Otherwise (another
+          // device changed it, or more writes are owed) the next reconcile
+          // would 304 onto a list this page does not hold. Mirrors the apps'
+          // `sendPendingChanges`.
+          const answer = await resp.json().then(body => body.hiddenFilms || [], () => null);
+          const local  = getHidden(country);
+          const mirrors = answer !== null && answer.length === local.length && answer.every(t => local.includes(t));
+          if (mirrors && _pendingHiddenFilms(country).length === 0) _storeHiddenFilmsValidators(country, resp);
           else _forgetHiddenFilmsValidators(country);
         } else {
           // A refusal that will never change (400 over-long title, 413 full
