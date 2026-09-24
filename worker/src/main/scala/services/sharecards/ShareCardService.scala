@@ -106,9 +106,10 @@ class ShareCardService(
 
   /** The render task's entry: [[render]], unless a newer request superseded `next` (`superseded`,
    *  nothing drawn). */
-  def renderIfLatest(next: ShareCardInputs, reasons: Seq[String], first: Boolean = false, retryPoster: Boolean = false): String =
+  def renderIfLatest(next: ShareCardInputs, reasons: Seq[String], first: Boolean = false, retryPoster: Boolean = false,
+                     askedAt: Option[Instant] = None): String =
     renderLocks(Math.floorMod(next.filmId.hashCode, renderLocks.length)).synchronized {
-      if (!superseded(next)) render(next, reasons, first, retryPoster)
+      if (!superseded(next)) render(next, reasons, first, retryPoster, askedAt)
       else { metrics.render(ShareCardMetrics.Outcome.Superseded, reasons); ShareCardMetrics.Outcome.Superseded }
     }
 
@@ -164,7 +165,7 @@ class ShareCardService(
     val now = clock.instant()
     ask(next, askedAt)
     queue.enqueue(TaskType.RenderShareCard, s"share-card|${next.filmId}|${renderKey(next)}",
-      next.toPayload ++ Map(ReasonsKey -> reasons.mkString(","), FirstKey -> first.toString),
+      next.toPayload ++ Map(ReasonsKey -> reasons.mkString(","), FirstKey -> first.toString, AskedAtKey -> askedAt.toEpochMilli.toString),
       submittedAt = if (first) now.minusSeconds(FirstCardHeadStart.toSeconds) else now)
   }
 
@@ -183,24 +184,36 @@ class ShareCardService(
    *
    *  `first` marks the first-publish gate's render: the card then records the film's first
    *  publication, which every later card of the film carries forward. */
-  def render(next: ShareCardInputs, reasons: Seq[String], first: Boolean = false, retryPoster: Boolean = false): String = {
+  def render(next: ShareCardInputs, reasons: Seq[String], first: Boolean = false, retryPoster: Boolean = false,
+             askedAt: Option[Instant] = None): String = {
     import ShareCardMetrics.Outcome
     val before = onDisk(next.filmId)
+    def superseding(e: Throwable) = e.isInstanceOf[NewerAskOnDisk]
     // Anything thrown while drawing is this card's failure — counted, and the task retried — never
-    // an exception out of the task.
+    // an exception out of the task. Except a card on disk asked for AFTER these inputs (another
+    // replica's newer render, see `ShareCardStore`): that is supersession, and ends the render.
     def withPoster(retry: Boolean): Option[String] =
-      Try(onBase(next, first).orElse(rebuildBase(next, first, retry))).recover { case e: Exception =>
-        logger.warn(s"share card: ${next.filmId} could not be drawn: ${e.getClass.getSimpleName}: ${e.getMessage}"); None
+      Try(onBase(next, first, askedAt).orElse(rebuildBase(next, first, retry, askedAt))).recover {
+        case e: Exception if !superseding(e) =>
+          logger.warn(s"share card: ${next.filmId} could not be drawn: ${e.getClass.getSimpleName}: ${e.getMessage}"); None
       }.get
-    val (outcome, card) = existing(next) match {
+    def posterless(): Option[String] = Try(drawWhole(next, first, askedAt)) match {
+      case scala.util.Failure(e) if superseding(e) => throw e
+      case other                                   => other.toOption
+    }
+    val drawn = Try(existing(next) match {
       case Some(version) if retryPoster && next.isPosterless(version) =>
         withPoster(retry = true).fold((Outcome.Existing, Some(version)))(drawn => (Outcome.Rendered, Some(drawn)))
       case Some(version)                   => (Outcome.Existing, Some(version))
-      case None if next.posterUrls.isEmpty => (Outcome.Rendered, Some(drawWhole(next, first)))
+      case None if next.posterUrls.isEmpty => (Outcome.Rendered, Some(drawWhole(next, first, askedAt)))
       case None =>
         withPoster(retry = false).map(drawn => (Outcome.Rendered, Some(drawn))).getOrElse(
-          Try(drawWhole(next, first)).toOption.fold((Outcome.Failed, Option.empty[String]))(drawn => (Outcome.RenderedNoPoster, Some(drawn))))
-    }
+          posterless().fold((Outcome.Failed, Option.empty[String]))(drawn => (Outcome.RenderedNoPoster, Some(drawn))))
+    })
+    val (outcome, card) = drawn.recover { case e: NewerAskOnDisk =>
+      logger.info(s"share card: ${next.filmId} not written — ${e.getMessage}")
+      (Outcome.Superseded, Option.empty[String])
+    }.get
     card.foreach { version =>
       fingerprints.put(next.filmId, next.fingerprint)
       // A recent film's card changed: its previews show the old one.
@@ -216,36 +229,37 @@ class ShareCardService(
   private def publishedAt(next: ShareCardInputs, first: Boolean): Option[Instant] =
     store.published(store.cardPath(next.filmId)).orElse(Option.when(first)(clock.instant()))
 
-  private def writeCard(next: ShareCardInputs, image: java.awt.image.BufferedImage, version: String, first: Boolean): String = {
-    store.writeAtomically(store.cardPath(next.filmId), OgCardRenderer.encodeCard(image), version, publishedAt(next, first))
+  private def writeCard(next: ShareCardInputs, image: java.awt.image.BufferedImage, version: String, first: Boolean,
+                        askedAt: Option[Instant]): String = {
+    store.writeAtomically(store.cardPath(next.filmId), OgCardRenderer.encodeCard(image), version, publishedAt(next, first), askedAt)
     version
   }
 
   /** The card drawn on the film's base, when that base is current for one of `next`'s posters. */
-  private def onBase(next: ShareCardInputs, first: Boolean): Option[String] = {
+  private def onBase(next: ShareCardInputs, first: Boolean, askedAt: Option[Instant]): Option[String] = {
     val path = store.basePath(next.filmId)
     store.version(path).flatMap(v => next.posterUrls.find(url => next.baseVersion(Some(url)) == v))
       .flatMap(url => Try(Option(ImageIO.read(path.toFile))).toOption.flatten.map(url -> _))
       .map { case (url, base) =>
         metrics.renderPath(ShareCardMetrics.Path.BaseHit)
-        writeCard(next, OgCardRenderer.withBadges(base, slot(next, hasPoster = true), next.badges), next.version(Some(url)), first)
+        writeCard(next, OgCardRenderer.withBadges(base, slot(next, hasPoster = true), next.badges), next.version(Some(url)), first, askedAt)
       }
   }
 
   /** The base rebuilt from the film's (cached) poster and kept, then the card drawn on it. */
-  private def rebuildBase(next: ShareCardInputs, first: Boolean, retry: Boolean): Option[String] =
+  private def rebuildBase(next: ShareCardInputs, first: Boolean, retry: Boolean, askedAt: Option[Instant]): Option[String] =
     posters.load(next.filmId, next.posterUrls, retry).map { case (url, poster) =>
       val base = OgCardRenderer.renderBase(next.title, next.subtitle, Some(poster), next.host, next.director, next.synopsis)
       store.writeAtomically(store.basePath(next.filmId), OgCardRenderer.encodeBase(base), next.baseVersion(Some(url)))
       metrics.renderPath(ShareCardMetrics.Path.BaseRebuild)
-      writeCard(next, OgCardRenderer.withBadges(base, slot(next, hasPoster = true), next.badges), next.version(Some(url)), first)
+      writeCard(next, OgCardRenderer.withBadges(base, slot(next, hasPoster = true), next.badges), next.version(Some(url)), first, askedAt)
     }
 
   /** A posterless card, drawn whole. */
-  private def drawWhole(next: ShareCardInputs, first: Boolean): String = {
+  private def drawWhole(next: ShareCardInputs, first: Boolean, askedAt: Option[Instant]): String = {
     val image = OgCardRenderer.renderImage(next.title, next.subtitle, next.badges, None, next.host, next.director, next.synopsis)
     metrics.renderPath(ShareCardMetrics.Path.Full)
-    writeCard(next, image, next.version(None), first)
+    writeCard(next, image, next.version(None), first, askedAt)
   }
 
   // Re-scrape requests are spaced out, not sent in a burst: a backfill of pending films must not
@@ -263,6 +277,8 @@ object ShareCardService {
 
   val ReasonsKey = "reasons"
   val FirstKey   = "first"
+  /** When the render's inputs were asked for (epoch millis) — ordered against the card on disk. */
+  val AskedAtKey = "askedAt"
   /** On a render that re-tries the posters of a card drawn without one. */
   val RetryPosterKey = "retryPoster"
 

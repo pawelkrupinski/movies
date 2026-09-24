@@ -22,14 +22,18 @@ import scala.util.{Try, Using}
  * WHAT A FILE WAS DRAWN FROM TRAVELS INSIDE IT: every file carries a JPEG comment
  * (`kinowo:v=<version>[;p=<epoch seconds>]`) written in the same atomic rename as its pixels, so
  * the version can never disagree with the bytes. `v` is the file's input hash; `p`, on a card, is
- * when the film was first published (see [[ShareCardService]]).
+ * when the film was first published (see [[ShareCardService]]); `a`, on a card, is when the inputs
+ * it was drawn from were ASKED for — what orders two replicas' renders of one film.
  *
  * SEVERAL WRITERS SHARE IT. Every render thread of every worker replica of the country writes here:
  *
  *  - A write goes to a temp file UNIQUE TO THE WRITER (`<name>.<host>-<pid>-<random>.tmp`), is
  *    fsynced, then renamed over the final name in one atomic step. A reader (Caddy) sees the old
- *    file or the new one, never a part. Two replicas rendering one film race only on the rename;
- *    both render from current inputs, so the last writer is the latest card.
+ *    file or the new one, never a part. Two replicas rendering one film race only on the rename,
+ *    and a card write never replaces a card whose inputs were asked for LATER (its `a` stamp): a
+ *    replica that never saw the newer ask would otherwise put the older picture under the URL the
+ *    document names for the newer one. (The check and the rename are two steps, so two renders
+ *    of one film landing inside that window can still cross.)
  *  - A delete of a file that is already gone is not an error.
  *  - What the janitor may delete is decided from the directory ITSELF, never from per-process
  *    counters, so every replica sees the same budget.
@@ -54,6 +58,9 @@ class ShareCardStore(val root: Path) {
 
   /** The version a file was written with ([[writeAtomically]]), or None when it is absent. */
   def version(path: Path): Option[String] = stamp(path).get("v")
+
+  /** When the inputs the card at `path` was drawn from were asked for, if it records it. */
+  def asked(path: Path): Option[Instant] = stamp(path).get("a").flatMap(_.toLongOption).map(Instant.ofEpochMilli)
 
   /** When the film whose card is at `path` was first published, if the card records it. */
   def published(path: Path): Option[Instant] = stamp(path).get("p").flatMap(_.toLongOption).map(Instant.ofEpochSecond)
@@ -88,15 +95,18 @@ class ShareCardStore(val root: Path) {
     }
 
   /** Write the JPEG `bytes` over `target` atomically (see the class doc), stamped with `version`
-   *  and, when given, `published`. */
-  def writeAtomically(target: Path, bytes: Array[Byte], version: String, published: Option[Instant] = None): Unit = {
+   *  and, when given, `published` and `asked`. THROWS [[NewerAskOnDisk]], writing nothing, when
+   *  `target` holds a card asked for after `asked`. */
+  def writeAtomically(target: Path, bytes: Array[Byte], version: String, published: Option[Instant] = None,
+                      asked: Option[Instant] = None): Unit = {
     val temp = target.resolveSibling(s"${target.getFileName}.$writerId-${UUID.randomUUID().toString.take(8)}$TempSuffix")
     try {
       Using.resource(FileChannel.open(temp, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) { channel =>
-        val buffer = java.nio.ByteBuffer.wrap(stamped(bytes, version, published))
+        val buffer = java.nio.ByteBuffer.wrap(stamped(bytes, version, published, asked))
         while (buffer.hasRemaining) channel.write(buffer)
         channel.force(true)
       }
+      for (mine <- asked; theirs <- this.asked(target) if theirs.isAfter(mine)) throw new NewerAskOnDisk(target, theirs, mine)
       try Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
       catch { case _: AtomicMoveNotSupportedException => Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING) }
     } finally Files.deleteIfExists(temp)
@@ -104,9 +114,10 @@ class ShareCardStore(val root: Path) {
   }
 
   /** `jpeg` with a comment segment carrying the stamp inserted right after its start-of-image. */
-  private def stamped(jpeg: Array[Byte], version: String, published: Option[Instant]): Array[Byte] = {
+  private def stamped(jpeg: Array[Byte], version: String, published: Option[Instant], asked: Option[Instant]): Array[Byte] = {
     require(jpeg.length > 2 && (jpeg(0) & 0xff) == 0xff && (jpeg(1) & 0xff) == 0xd8, "not a JPEG")
-    val text   = (StampPrefix + s"v=$version" + published.fold("")(at => s";p=${at.getEpochSecond}")).getBytes(StandardCharsets.US_ASCII)
+    val text   = (StampPrefix + s"v=$version" + published.fold("")(at => s";p=${at.getEpochSecond}") +
+      asked.fold("")(at => s";a=${at.toEpochMilli}")).getBytes(StandardCharsets.US_ASCII)
     val length = text.length + 2
     Array[Byte](0xff.toByte, 0xd8.toByte, 0xff.toByte, 0xfe.toByte, (length >> 8).toByte, length.toByte) ++ text ++ jpeg.drop(2)
   }
@@ -126,6 +137,10 @@ class ShareCardStore(val root: Path) {
     try Files.deleteIfExists(path)
     catch { case _: NoSuchFileException => false; case _: IOException => false }
 }
+
+/** A card write refused because the card on disk was drawn from inputs asked for later. */
+final class NewerAskOnDisk(target: Path, onDisk: Instant, mine: Instant)
+  extends RuntimeException(s"$target holds a card asked for at $onDisk, after this render's $mine")
 
 object ShareCardStore {
   /** The poster cache's subdirectory. A dot directory, which Caddy must not serve. */
