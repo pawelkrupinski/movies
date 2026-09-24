@@ -142,7 +142,7 @@ trait MovieCache extends MovieCacheReader {
   def rehydrate(): Int
 
   // ── Internal write surface (services.* only) ─────────────────────────────
-  private[services] def put(key: CacheKey, e: MovieRecord): Unit
+  private[services] def put(key: CacheKey, e: MovieRecord): WriteOutcome
   private[services] def putIfPresent(key: CacheKey, updater: MovieRecord => MovieRecord): Boolean
   /** Settle-path persistence for the title-embedded year: re-key every yearless
    *  row whose cinema-slot titles carry an unambiguous delimited `EmbeddedYear`
@@ -385,6 +385,11 @@ class CaffeineMovieCache(
     skippedUnreadable.incrementAndGet(); ()
   }
 
+  private def deferUnreadableWrite(key: CacheKey): WriteOutcome = {
+    deferUnreadable("write", key)
+    WriteOutcome.Declined("key-unreadable")
+  }
+
   private[services] def idOf(key: CacheKey): Option[FilmId] = corpusIndex.idOf(key)
 
   /** Drop a row and keep the index with it. The ONLY way out of `positive`. */
@@ -504,12 +509,12 @@ class CaffeineMovieCache(
    *  This is the only persist path in the codebase — `MovieRepository.upsert` is
    *  called from nowhere else — so the gate is the chokepoint that prevents
    *  new tmdbId-duplicates from ever being written. */
-  private[services] def put(key: CacheKey, e: MovieRecord): Unit =
-    idFor(key).fold(deferUnreadable("write", key))(putAs(key, e, _))
+  private[services] def put(key: CacheKey, e: MovieRecord): WriteOutcome =
+    idFor(key).fold(deferUnreadableWrite(key))(putAs(key, e, _))
 
   /** [[put]] for a caller that holds the row's id — a retitle, where the index no
    *  longer maps the new key and a lookup would mint a fresh id for a film that has one. */
-  private def putAs(key: CacheKey, e: MovieRecord, id: FilmId): Unit = e.tmdbId match {
+  private def putAs(key: CacheKey, e: MovieRecord, id: FilmId): WriteOutcome = e.tmdbId match {
     case Some(tid) =>
       tmdbLockFor(tid).synchronized {
         siblingKeyByTmdb(tid, excluding = key) match {
@@ -545,10 +550,7 @@ class CaffeineMovieCache(
   private def forCache(r: MovieRecord): MovieRecord =
     if (repository.hasScreenings) ShowtimesDigest.stripForCache(r) else r
 
-  private def persist(key: CacheKey, e: MovieRecord): Unit =
-    idFor(key).fold(deferUnreadable("write", key))(persist(key, e, _))
-
-  private def persist(key: CacheKey, e: MovieRecord, id: FilmId): Unit = corpusIndex.idOf(key).filter(_ != id) match {
+  private def persist(key: CacheKey, e: MovieRecord, id: FilmId): WriteOutcome = corpusIndex.idOf(key).filter(_ != id) match {
     case Some(holder) =>
       // A DIFFERENT film already answers to this key (the same-film cases were folded
       // by `putAs` before this point): two films sharing a title and a year. Writing
@@ -556,7 +558,8 @@ class CaffeineMovieCache(
       // cache — the property spec's first find. The row stays where it is instead.
       logger.warn(s"Refusing to write '${key.cleanTitle}' (${key.year.getOrElse("—")}) as $id: another film " +
         s"($holder) holds that key. The row keeps its current key.")
-      keyCollisions.incrementAndGet(); ()
+      keyCollisions.incrementAndGet()
+      WriteOutcome.Declined("key-held-by-another-film")
     case None =>
       val clean  = withoutZeroRatings(e)
       val cached = forCache(clean)
@@ -564,7 +567,8 @@ class CaffeineMovieCache(
       store(key, cached, id)
       // `clean` may carry stripped slots (folds/canonicalize read from the stripped cache);
       // `upsert` re-stitches those from the film's screenings so a full write never deletes them.
-      if (repository.upsert(id, key, clean).failed) {
+      val outcome = repository.upsert(id, key, clean)
+      if (outcome.failed) {
         // …and a write that FAILED leaves the cache as it was before it. Kept, the unwritten
         // row made every later identical scrape diff as a no-op (`putIfPresent`'s write guard
         // compares against it), so the write was never retried: on 2026-09-24 a codec bug
@@ -579,6 +583,7 @@ class CaffeineMovieCache(
         }
       }
       touch()
+      outcome
   }
 
   // Rating sources occasionally hand us a literal zero — MC/RT search pages
@@ -931,7 +936,7 @@ class CaffeineMovieCache(
    *  first; enrichment-thread arrival order (which varies across machines, and
    *  used to flip the canonical here, drifting the whole-corpus snapshot
    *  between arm64 dev boxes and amd64 CI) no longer matters. */
-  private def foldDeterministically(newKey: CacheKey, newRecord: MovieRecord, newId: FilmId, siblingKey: CacheKey, reason: MergeReason): Unit = {
+  private def foldDeterministically(newKey: CacheKey, newRecord: MovieRecord, newId: FilmId, siblingKey: CacheKey, reason: MergeReason): WriteOutcome = {
     // `stored` (cache-or-Mongo): a cold/evicted sibling read EMPTY would be merged
     // as absent, then full-replaced and its Mongo doc deleted — losing the ratings
     // the `*Ratings` refreshers wrote onto it.
@@ -984,12 +989,30 @@ class CaffeineMovieCache(
         s"'${canonical.cleanTitle}' (${canonical.year.getOrElse("—")}): its screenings/slots could not be carried " +
         "onto the survivor; the rows stay as they are and the settle asks again.")
       skippedUnreadable.incrementAndGet()
-      return
+      return WriteOutcome.Declined("side-rows-not-carried")
     }
-    moved.foreach(repository.delete)
     if (corpusIndex.idOf(newKey).exists(moved.contains)) evict(newKey)
     if (target != siblingKey) evict(siblingKey)
-    persist(target, merged, survivorId)
+    // The victims are deleted only once the survivor carries their union. Deleting them
+    // first, as this did, lost every field only they held whenever the survivor's write then
+    // failed. A survivor write DECLINED because a victim still holds the key or tmdbId is the
+    // ordinary case — the victims are what hold them — so they go, and it is written again.
+    // A FAILED write keeps them: evicted from the cache, their documents make the next scrape
+    // of the title fold again, which is the retry.
+    val outcome = persist(target, merged, survivorId) match {
+      case failed: WriteOutcome.Failed =>
+        logger.warn(s"Keeping the stored row(s) ${moved.mkString(", ")} of '${newKey.cleanTitle}' " +
+          s"(${newKey.year.getOrElse("—")}): the survivor's write failed, so the fold is retried next scrape.")
+        failed
+      case WriteOutcome.IdentityHeld =>
+        moved.foreach(repository.delete)
+        persist(target, merged, survivorId)
+      case WriteOutcome.Written =>
+        moved.foreach(repository.delete)
+        WriteOutcome.Written
+      case declined => declined
+    }
+    if (outcome.failed) return outcome
     // The merge may have filled enrichment inputs the canonical lacked (e.g. an
     // imdbId/searchTitle from the victim) — re-kick the affected enrichments.
     retriggerChangedEnrichments(siblingRecord, siblingKey, merged, target)
@@ -1003,6 +1026,7 @@ class CaffeineMovieCache(
                   s"into '${canonical.cleanTitle}' (${canonical.year.getOrElse("—")}) — $shared" +
                   (if (moved.nonEmpty) ", its stored row retired." else "."))
     }
+    outcome
   }
 
   /** Conditional write — applies `updater` to the row if it currently exists
@@ -1305,8 +1329,19 @@ class CaffeineMovieCache(
       duplicates.foreach { case (k, ids) =>
         val survivor = ids.head
         val (moved, stranded) = ids.tail.partition(repository.moveFilm(_, survivor))
-        Option(positive.getIfPresent(k)).foreach(repository.upsert(survivor, k, _))
-        moved.foreach(repository.delete)
+        val union = Option(positive.getIfPresent(k))
+        // The losers go only on the strength of the survivor carrying their union: a
+        // survivor write that FAILED carries nothing, and deleting them then loses every
+        // field only they held. A write DECLINED is the losers still holding the key or
+        // tmdbId the survivor is taking — expected here — so they go, and it is written again.
+        union.fold[WriteOutcome](WriteOutcome.Written)(repository.upsert(survivor, k, _)) match {
+          case failed: WriteOutcome.Failed =>
+            logger.warn(s"MovieCache rehydrate: kept ${moved.size} duplicate document(s) of '${k.cleanTitle}' — the " +
+              s"survivor's write failed (${failed.cause.getMessage}); reconciled again next pass.")
+          case outcome =>
+            moved.foreach(repository.delete)
+            if (outcome != WriteOutcome.Written) union.foreach(repository.upsert(survivor, k, _))
+        }
         if (stranded.nonEmpty)
           logger.warn(s"MovieCache rehydrate: kept ${stranded.size} duplicate document(s) of '${k.cleanTitle}' whose " +
             "cinemas could not be carried onto the survivor — reconciled again next pass.")

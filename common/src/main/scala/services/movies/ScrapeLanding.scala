@@ -30,7 +30,7 @@ private[movies] trait LandingStore {
   /** How many rows are resident — zero is the cold mirror the first scrape guards. */
   private[services] def residentCount: Long
   private[services] def storedChecked(key: CacheKey): (Option[MovieRecord], Boolean)
-  private[services] def put(key: CacheKey, e: MovieRecord): Unit
+  private[services] def put(key: CacheKey, e: MovieRecord): WriteOutcome
   private[services] def putIfPresent(key: CacheKey, updater: MovieRecord => MovieRecord): Boolean
   private[services] def rekey(oldKey: CacheKey, newKey: CacheKey, update: MovieRecord => MovieRecord, reason: RekeyReason): Unit
   private[services] def withTitleLock[A](cleanTitle: String)(body: => A): A

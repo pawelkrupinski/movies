@@ -36,6 +36,10 @@ object WriteOutcome {
 
   final case class Declined(reason: String) extends WriteOutcome
 
+  /** `movies` refused the write because ANOTHER document holds the key or tmdbId — which a
+   *  merge's own losers do until they are deleted. */
+  val IdentityHeld: Declined = Declined("identity-held-by-another-document")
+
   final case class Failed(collection: String, op: String, cause: Throwable) extends WriteOutcome {
     override def failed: Boolean = true
   }

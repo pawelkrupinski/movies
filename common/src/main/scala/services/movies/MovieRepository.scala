@@ -919,7 +919,7 @@ class MongoMovieRepository(
     if (collidesWithAnother) {
       logger.warn(s"MovieRepository.upsert($title, $year) refused: another document already holds its " +
         s"key or its tmdbId=${e.tmdbId.getOrElse("?")} — the film keeps its previous document")
-      WriteOutcome.Declined("identity-held-by-another-document")
+      WriteOutcome.IdentityHeld
     } else {
       // Slots go FIRST, and `movies` only drops its embedded copy once they have actually
       // landed. Dropping it on a FAILED slot write would leave the film with no cinemas in
@@ -975,7 +975,7 @@ class MongoMovieRepository(
                 s"key or its tmdbId=${e.tmdbId.getOrElse("?")} — the film keeps its previous document (${exception.getMessage})")
               false
           }.get
-        if (!moviesLanded) WriteOutcome.Declined("identity-held-by-another-document")
+        if (!moviesLanded) WriteOutcome.IdentityHeld
         else
           // Write this film's cinema showtimes to `screenings` (their authority). `replaceFilm`
         // is upsert PLUS a delete of every slot the record doesn't name, so it may only run on

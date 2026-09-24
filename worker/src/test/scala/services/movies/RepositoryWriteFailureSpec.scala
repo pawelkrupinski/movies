@@ -81,4 +81,30 @@ class RepositoryWriteFailureSpec extends AnyFlatSpec with Matchers with LoneElem
     withClue("the identical re-scrape must retry the slot write, not skip it: ")(
       heliosSlots should not be empty)
   }
+
+  "a tmdbId fold whose survivor write fails" should "keep the victim's document, so nothing only it held is lost" in {
+    val metrics    = new RecordingWriteMetrics
+    val repository = new ThrowingUpsertMovieRepository(metrics)
+    repository.failing = false
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val survivor   = cache.keyOf("Survivor Film", Some(2026))
+    val victim     = cache.keyOf("Victim Film", Some(2026))
+    cache.put(survivor, MovieRecord(tmdbId = Some(4242)))
+    cache.put(victim, MovieRecord(imdbId = Some("tt0004242")))
+    repository.findAll() should have size 2
+
+    repository.failing = true
+    cache.put(victim, MovieRecord(imdbId = Some("tt0004242"), tmdbId = Some(4242)))
+
+    metrics.failures.map(_._2) should contain ("upsert")
+    withClue("the victim may only be deleted once the survivor carries its fields: ")(
+      repository.findAll().map(_.record.imdbId).toSet shouldBe Set(None, Some("tt0004242")))
+
+    repository.failing = false
+    cache.put(victim, MovieRecord(imdbId = Some("tt0004242"), tmdbId = Some(4242)))
+
+    val rows = repository.findAll()
+    withClue(s"the retried fold must land: ${rows.map(r => r.title -> r.record.imdbId)}: ")(
+      rows.map(_.record.imdbId) shouldBe Seq(Some("tt0004242")))
+  }
 }

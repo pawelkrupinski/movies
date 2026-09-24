@@ -51,6 +51,47 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
     cache.entries.head._2.cinemaData.keySet shouldBe Set(CinemaCityKinepolis, Multikino)
   }
 
+  /** Records the reconcile's writes and answers its survivor upserts with `outcomes`, in order. */
+  private class ReconcileRecorder(rows: Seq[StoredMovieRecord], outcomes: WriteOutcome*)
+      extends StoredRowsRepository(rows, titleNormalizer) {
+    private var answers = outcomes.toList
+    var deleted = Vector.empty[FilmId]
+    override def upsert(id: FilmId, key: CacheKey, e: MovieRecord): WriteOutcome = {
+      super.upsert(id, key, e)
+      val answer = answers.headOption.getOrElse(WriteOutcome.Written)
+      answers = answers.drop(1)
+      answer
+    }
+    override def delete(id: FilmId): WriteOutcome = { deleted :+= id; WriteOutcome.Written }
+  }
+
+  private val codecFailure = WriteOutcome.Failed(MovieRepository.Collection, "upsert", new RuntimeException("codec"))
+
+  // The losers are deleted on the strength of the survivor carrying their union. A survivor
+  // write that FAILED carries nothing, so deleting them would lose every field only they held.
+  it should "keep the duplicate documents when the survivor's write fails" in {
+    val repository = new ReconcileRecorder(Seq(decorated, base), codecFailure)
+    new CaffeineMovieCache(repository, normalizer = new TitleNormalizer(TitleRuleSet(TitleRules.all :+ kinoCafeRule)))
+    repository.upserts should have size 1
+    repository.deleted shouldBe empty
+  }
+
+  it should "delete the losers once the survivor's write has landed" in {
+    val repository = new ReconcileRecorder(Seq(decorated, base), WriteOutcome.Written)
+    new CaffeineMovieCache(repository, normalizer = new TitleNormalizer(TitleRuleSet(TitleRules.all :+ kinoCafeRule)))
+    repository.deleted should have size 1
+  }
+
+  // A survivor write DECLINED because a loser still holds the key or tmdbId is the ordinary
+  // shape here — the losers are what hold them. Delete them, then write the survivor again.
+  it should "delete the losers and rewrite the survivor when its write was declined for their identity" in {
+    val repository = new ReconcileRecorder(Seq(decorated, base),
+      WriteOutcome.Declined("identity-held-by-another-document"), WriteOutcome.Written)
+    new CaffeineMovieCache(repository, normalizer = new TitleNormalizer(TitleRuleSet(TitleRules.all :+ kinoCafeRule)))
+    repository.deleted should have size 1
+    repository.upserts should have size 2
+  }
+
   it should "leave non-colliding rows as separate entries (no spurious union)" in {
     // Same two rows, but WITHOUT the /Kino Cafe rule they don't collide.
     val cache = cacheUnder(TitleRules.ruleSet, decorated, base)
