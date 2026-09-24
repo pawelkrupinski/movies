@@ -2317,6 +2317,12 @@
   // lapsed (401), or it timed out / throttled (408, 429). Any other 4xx is a
   // refusal that will never change — sending it again is pointless forever.
   function _retryable(status) { return status >= 500 || [401, 408, 429].includes(status); }
+  // Whether a language push was refused for good: only a 400, which is what
+  // `UserStateController.put` answers for a language it does not know. Narrower
+  // than `_retryable` on purpose — a 403 is as likely a Cloudflare challenge in
+  // front of the app as anything the app said, and dropping the pick on one
+  // loses it. Same rule as both apps' `LanguagePushRefused`.
+  function _languagePickRefused(status) { return status === 400; }
 
   function scheduleServerSync() {
     if (!isLoggedIn() && !sessionUnconfirmed()) return;
@@ -2486,7 +2492,7 @@
       // Refused for good (a language this server does not know): it can never
       // land, so stop owing it, and take the account's pick instead — without
       // pushing this one back, which is what was just refused.
-      else if (!resp.ok && !_retryable(resp.status) && _pendingLanguage() === lang) {
+      else if (_languagePickRefused(resp.status) && _pendingLanguage() === lang) {
         _setPendingLanguage(null);
         reconcileLanguage({ adoptOnly: true });
       }

@@ -17,14 +17,17 @@ protocol LanguageClient: AnyObject {
     func push(_ language: String) async throws
 }
 
-/// The server refused a pushed pick for good — a 4xx other than 401 (signed
-/// out), 408 (timed out) or 429 (throttled): a language it does not know, which
-/// no amount of resending changes. Same rule as the web's `_retryable`.
+/// The server refused a pushed pick for good — a 400, which is what
+/// `UserStateController.put` answers for a language it does not know, and no
+/// amount of resending changes. Every other failure is retried: a 403 in
+/// particular is as likely a Cloudflare challenge in front of the app as
+/// anything the app said. Same rule as Android's `LanguagePushRefused` and the
+/// web's `_languagePickRefused`.
 struct LanguagePushRefused: Error, Equatable {
     let statusCode: Int
 
     static func isPermanent(_ statusCode: Int) -> Bool {
-        (400..<500).contains(statusCode) && ![401, 408, 429].contains(statusCode)
+        statusCode == 400
     }
 }
 

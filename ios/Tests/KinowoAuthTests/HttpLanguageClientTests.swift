@@ -36,7 +36,8 @@ final class HttpLanguageClientTests: XCTestCase {
     }
 
     func testPushReportsARetryableFailureAsRetryable() async {
-        for status in [401, 408, 429, 503] {
+        // 403 included: a Cloudflare challenge in front of the app is a 403 too.
+        for status in [401, 403, 404, 408, 422, 429, 503] {
             do {
                 try await client(answering: status).push("de")
                 XCTFail("a \(status) must not read as a successful push")

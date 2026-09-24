@@ -956,6 +956,32 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // Only a 400 (the controller's answer to a language it does not know) is
+  // for good. A 403 is as likely a Cloudflare challenge in front of the app as
+  // anything the app said, and dropping the pick on one lost it for good.
+  it should "keep a pick pending when its push is answered 403" in {
+    onLoggedInIndex { page =>
+      awaitOwnReconcile(page)
+      try {
+        page.eval(
+          "window._realFetch = window.fetch; window._lang403 = 0; window._lang403Handled = false;" +
+          "window.fetch = function (url, opts) {" +
+          "  if (!/\\/api\\/me\\/state$/.test(String(url)) || !opts || opts.method !== 'PUT') return window._realFetch(url, opts);" +
+          // A macrotask runs only once every microtask queued before it has —
+          // the push's response handler included — so this flags "handled".
+          "  window._lang403++; setTimeout(() => { window._lang403Handled = true; }, 0);" +
+          "  return Promise.resolve(new Response('challenge', { status: 403 }));" +
+          "};")
+        page.eval("onLanguageChange('es')")
+        page.waitFor("window._lang403Handled === true", timeoutMs = 5000)
+        page.evalString("localStorage.getItem('kinowo_lang_pending')") shouldBe "es"
+      } finally {
+        page.eval("if (window._realFetch) window.fetch = window._realFetch;" +
+          "localStorage.removeItem('kinowo_lang'); localStorage.removeItem('kinowo_lang_pending')")
+      }
+    }
+  }
+
   it should "push an explicit language pick to the server for a logged-in user" in {
     onLoggedInIndex { page =>
       awaitOwnReconcile(page)

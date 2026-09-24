@@ -44,8 +44,9 @@ class HttpLanguageClientTest {
     }
 
     @Test
-    fun signedOutTimedOutThrottledAndServerErrorsAreWorthRetrying() = runBlocking {
-        for (status in listOf(401, 408, 429, 503)) {
+    fun everythingButAFourHundredIsWorthRetrying() = runBlocking {
+        // 403 included: a Cloudflare challenge in front of the app is a 403 too.
+        for (status in listOf(401, 403, 404, 408, 422, 429, 503)) {
             server.enqueue(MockResponse().setResponseCode(status))
             try {
                 client.push("de")

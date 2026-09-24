@@ -30,13 +30,15 @@ interface LanguageClient {
     suspend fun push(language: String)
 }
 
-/** The server refused a pushed pick for good — a 4xx other than 401 (signed
- *  out), 408 (timed out) or 429 (throttled): a language it does not know, which
- *  no amount of resending changes. Same rule as iOS `LanguagePushRefused` and the
- *  web's `_retryable`. */
+/** The server refused a pushed pick for good — a 400, which is what
+ *  `UserStateController.put` answers for a language it does not know, and no
+ *  amount of resending changes. Every other failure is retried: a 403 in
+ *  particular is as likely a Cloudflare challenge in front of the app as
+ *  anything the app said. Same rule as iOS `LanguagePushRefused` and the web's
+ *  `_languagePickRefused`. */
 class LanguagePushRefused(val statusCode: Int) : IOException("HTTP $statusCode") {
     companion object {
-        fun isPermanent(statusCode: Int): Boolean = statusCode in 400..499 && statusCode !in setOf(401, 408, 429)
+        fun isPermanent(statusCode: Int): Boolean = statusCode == 400
     }
 }
 
