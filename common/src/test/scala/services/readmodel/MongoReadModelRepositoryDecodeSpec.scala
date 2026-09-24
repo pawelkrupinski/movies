@@ -27,7 +27,8 @@ class MongoReadModelRepositoryDecodeSpec extends AnyFlatSpec with Matchers {
 
   private val codec = ReadModelCodecs.registry.get(classOf[ResolvedMovie])
   // sharedDb = None → a no-op repository (no Mongo I/O); only `decodeTolerant` is under test.
-  private val repo  = new MongoReadModelRepository(None)
+  private val skipped = scala.collection.mutable.ListBuffer.empty[String]
+  private val repo  = new MongoReadModelRepository(None, decodeFailures = collection => { skipped += collection; () })
 
   private def movie(id: String): ResolvedMovie = ResolvedMovie(
     _id = id, title = "T", originalTitle = None, posterUrl = None, fallbackPosterUrls = Seq.empty,
@@ -53,7 +54,10 @@ class MongoReadModelRepositoryDecodeSpec extends AnyFlatSpec with Matchers {
     an[Exception] should be thrownBy
       codec.decode(new BsonDocumentReader(bad), DecoderContext.builder().build())
 
-    repo.decodeTolerant(Seq(good1, bad, good2), codec, "test").map(_._id) shouldBe Seq("a|1", "c|3")
+    skipped.clear()
+    repo.decodeTolerant(Seq(good1, bad, good2), codec, "test", "web_movies").map(_._id) shouldBe Seq("a|1", "c|3")
+    // …and the skip is COUNTED, by collection: a WARN line alone let skipped films go unnoticed.
+    skipped.toSeq shouldBe Seq("web_movies")
   }
 
   // The improvement `DefaultingCodec` buys: an older row that simply LACKS a field is no
@@ -63,7 +67,7 @@ class MongoReadModelRepositoryDecodeSpec extends AnyFlatSpec with Matchers {
     val older = encode(movie("b|2"))
     older.remove("ratings")
 
-    repo.decodeTolerant(Seq(older), codec, "test").map(_._id) shouldBe Seq("b|2")
+    repo.decodeTolerant(Seq(older), codec, "test", "web_movies").map(_._id) shouldBe Seq("b|2")
   }
 
   // `DefaultingCodec` fills the fields of the document it is handed and nothing deeper, so
@@ -77,7 +81,7 @@ class MongoReadModelRepositoryDecodeSpec extends AnyFlatSpec with Matchers {
     val older = encode(movie("b|2"))
     older.getDocument("ratings").remove("filmwebUrl")
 
-    repo.decodeTolerant(Seq(older), codec, "test").map(_._id) shouldBe Seq("b|2")
+    repo.decodeTolerant(Seq(older), codec, "test", "web_movies").map(_._id) shouldBe Seq("b|2")
   }
 
   it should "restore the missing nested field from the empty template, not invent one" in {
@@ -85,7 +89,7 @@ class MongoReadModelRepositoryDecodeSpec extends AnyFlatSpec with Matchers {
     older.getDocument("ratings").remove("filmwebUrl")
     older.getDocument("ratings").remove("metacriticUrl")
 
-    val decoded = repo.decodeTolerant(Seq(older), codec, "test").head
+    val decoded = repo.decodeTolerant(Seq(older), codec, "test", "web_movies").head
     decoded.ratings.filmwebUrl    shouldBe ""     // the empty instance's value
     decoded.ratings.metacriticUrl shouldBe ""
     decoded.ratings.rottenTomatoesUrl shouldBe "https://rt"  // present fields survive untouched
@@ -103,6 +107,6 @@ class MongoReadModelRepositoryDecodeSpec extends AnyFlatSpec with Matchers {
       EncoderContext.builder().build())
     out.getArray("showtimes").get(0).asDocument().remove("dateTime")
 
-    repo.decodeTolerant(Seq(out), screeningCodec, "test") shouldBe empty
+    repo.decodeTolerant(Seq(out), screeningCodec, "test", "web_screenings") shouldBe empty
   }
 }

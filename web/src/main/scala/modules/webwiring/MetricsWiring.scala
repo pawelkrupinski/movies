@@ -2,7 +2,7 @@ package modules.webwiring
 
 import controllers.{MetricsController, WebMovieMetrics}
 import modules.Wiring
-import services.metrics.{LegacyUserStateMetrics, UserStateIndexMetrics, UserStateWriteMetrics, WebCacheMetrics, WebHostMetrics, WebHttpMetrics, WebJvmMetrics}
+import services.metrics.{LegacyUserStateMetrics, UserStateIndexMetrics, UserStateWriteMetrics, WebDecodeFailureMetrics, WebCacheMetrics, WebHostMetrics, WebHttpMetrics, WebJvmMetrics}
 
 /** ── /metrics ──────────────────────────────────────────────────────────────
  *  Everything the web tier exposes to Prometheus, on ONE registry: the served
@@ -51,6 +51,7 @@ trait MetricsWiring { self: Wiring =>
   // Lazy for the same reason as the line above: `userStateRepository` (UsersWiring)
   // holds it and is forced at boot through the router.
   lazy val userStateWriteMetrics = new UserStateWriteMetrics(webJvmMetrics.registry, metricsCountry.code)
+  lazy val webDecodeFailureMetrics = new WebDecodeFailureMetrics(webJvmMetrics.registry, metricsCountry.code)
   // Whether `userStates` has its unique userId index — see the class doc. Lazy, as above.
   lazy val userStateIndexMetrics = new UserStateIndexMetrics(webJvmMetrics.registry, metricsCountry.code)
 }

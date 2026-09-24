@@ -391,3 +391,25 @@ groups:
             panel by type, and `kinowo_worker_queue_depth{state="worked_on"}` pinned at the pool
             size) or claim ordering is starving this type. The country's /tasks page lists the
             waiting tasks with their due times; the oldest one is the one this is about.
+
+      # A read-model scan SKIPPED a document it could not decode. The skip is deliberate -- one
+      # corrupt document must not sink the keyset page it arrived in -- but the skipped document
+      # is a film or screening the reader goes without, and it used to be a WARN line and nothing
+      # else. Any skip in the hour is worth a look: the healthy reading is exactly zero.
+      - alert: DocumentsUndecodable
+        expr: >-
+          sum by (country, collection) (increase(kinowo_worker_decode_failures_total[1h])) > 0
+          or
+          sum by (country, collection) (increase(kinowo_web_decode_failures_total[1h])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: documents in {{ $labels.collection }} could not be decoded and were skipped"
+          description: >-
+            A full scan of `{{ $labels.collection }}` skipped at least one document in the last hour
+            because it could not be decoded, so the process that read it serves or projects without
+            that film or screening. The WARN line names each one ("skipping undecodable document
+            _id=..."), with the exception; the worker diagnostics dashboard ("Documents skipped as
+            UNDECODABLE") says whether the worker, the web or both saw it. A wrong-typed field is
+            usually a writer that changed shape: the projector's reconcile rewrites the document
+            once the writer is fixed.

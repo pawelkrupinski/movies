@@ -37,7 +37,9 @@ class MongoReadModelRepository(
   // Injectable so tests force multiple pages with a handful of rows; see [[KeysetScan]].
   findAllBatchSize:     Int            = 500,
   findAllBatchAttempts: Int            = 4,
-  findAllBatchBackoff:  FiniteDuration = 500.millis
+  findAllBatchBackoff:  FiniteDuration = 500.millis,
+  // Counts each document a full scan skips as undecodable (see [[decodeTolerant]]).
+  decodeFailures:       DecodeFailureMetrics = DecodeFailureMetrics.noop
 ) extends ReadModelReader with ReadModelWriter with Logging {
 
   // Relaxed write concern (w:1, j:false): the read model is a pure projection of
@@ -106,7 +108,7 @@ class MongoReadModelRepository(
           },
           onIncomplete   = exception =>
             logger.warn(s"$label keyset scan failed after retries: ${exception.getClass.getSimpleName}: ${exception.getMessage} — returning empty")
-        )(batch => buf ++= decodeTolerant(batch, codec, label))
+        )(batch => buf ++= decodeTolerant(batch, codec, label, c.namespace.getCollectionName))
         if (complete) (buf.result(), true) else (Seq.empty, false)
       case None => (Seq.empty, true)
     }
@@ -114,13 +116,14 @@ class MongoReadModelRepository(
   /** Decode a page of raw documents into `A`, SKIPPING (and logging with the `_id`) any that
    *  fail — one malformed/legacy document must sink only itself, never the whole keyset page.
    *  `private[readmodel]` so the tolerance is unit-testable without a live Mongo. */
-  private[readmodel] def decodeTolerant[A](docs: Seq[BsonDocument], codec: Codec[A], label: String): Seq[A] =
+  private[readmodel] def decodeTolerant[A](docs: Seq[BsonDocument], codec: Codec[A], label: String, collection: String): Seq[A] =
     docs.flatMap { doc =>
       Try(codec.decode(new BsonDocumentReader(doc), DecoderContext.builder().build())) match {
         case scala.util.Success(a) => Some(a)
         case scala.util.Failure(exception) =>
           val id = Try(doc.getString("_id").getValue).getOrElse("<unknown>")
           logger.warn(s"$label: skipping undecodable document _id=$id: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
+          decodeFailures.recordDecodeFailure(collection)
           None
       }
     }

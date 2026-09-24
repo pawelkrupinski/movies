@@ -63,7 +63,7 @@ trait ReadModelWiring { self: Wiring =>
     movieMirrorConnection.database, fallbackToOwnInit = false,
     screenings = Some(screeningsRepository), slots = Some(slotsRepository),
     normalizer = titleNormalizer)
-  lazy val readModelRepository: ReadModelReader = new MongoReadModelRepository(mongoConnection.database)
+  lazy val readModelRepository: ReadModelReader = new MongoReadModelRepository(mongoConnection.database, decodeFailures = webDecodeFailureMetrics)
   lazy val webReadModel: WebReadModel = new WebReadModel(readModelRepository)
 
   // Reads come straight from the read model; enrichment + projection happen in

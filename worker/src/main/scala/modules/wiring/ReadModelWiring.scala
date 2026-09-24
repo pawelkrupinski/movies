@@ -11,7 +11,7 @@ trait ReadModelWiring { self: WorkerWiring =>
 
   // Typed as the read+write intersection so test wirings can swap in
   // `InMemoryReadModelRepository` (Mongo-free fixture replay).
-  lazy val readModelRepository: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(mongoConnection.database)
+  lazy val readModelRepository: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(mongoConnection.database, decodeFailures = taskMetrics)
   lazy val readModelProjector = new ReadModelProjector(movieRepository, readModelRepository, readModelRepository, taskMetrics,
     shareCards = shareCardLedger, clock = clock)
 }

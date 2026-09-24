@@ -490,3 +490,52 @@ tests:
             exp_annotations:
               summary: "es's oldest claimable ResolveTmdb task has waited 2h 45m 0s"
               description: "A ResolveTmdb task in \"es\" has been claimable -- due, not in backoff -- for over two hours and nothing has picked it up, while the rest of the queue may well be moving. Either the pool is saturated by other types (the queue-depth panel by type, and `kinowo_worker_queue_depth{state=\"worked_on\"}` pinned at the pool size) or claim ordering is starving this type. The country's /tasks page lists the waiting tasks with their due times; the oldest one is the one this is about."
+
+  # DOCUMENTS UNDECODABLE. Seeded at 0 as both processes do; ONE worker skip at t=10 fires at
+  # once (any increase is the signal), and the alert clears once the skip ages out of the hour.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_decode_failures_total{country="pl",job="kinowo-worker",collection="web_movies"}'
+        values: '0x9 1x80'
+      - series: 'kinowo_worker_decode_failures_total{country="pl",job="kinowo-worker",collection="web_screenings"}'
+        values: '0x90'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: DocumentsUndecodable
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: DocumentsUndecodable
+        exp_alerts:
+          - exp_labels: { severity: warning, country: pl, collection: web_movies }
+            exp_annotations:
+              summary: "pl: documents in web_movies could not be decoded and were skipped"
+              description: "A full scan of `web_movies` skipped at least one document in the last hour because it could not be decoded, so the process that read it serves or projects without that film or screening. The WARN line names each one (\"skipping undecodable document _id=...\"), with the exception; the worker diagnostics dashboard (\"Documents skipped as UNDECODABLE\") says whether the worker, the web or both saw it. A wrong-typed field is usually a writer that changed shape: the projector's reconcile rewrites the document once the writer is fixed."
+      - eval_time: 80m
+        alertname: DocumentsUndecodable
+        exp_alerts: []
+
+  # The web's own scans count under their own family and fire the same alert.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_decode_failures_total{country="de",job="kinowo-web",collection="web_screenings"}'
+        values: '0x9 2 5x50'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: DocumentsUndecodable
+        exp_alerts:
+          - exp_labels: { severity: warning, country: de, collection: web_screenings }
+            exp_annotations:
+              summary: "de: documents in web_screenings could not be decoded and were skipped"
+              description: "A full scan of `web_screenings` skipped at least one document in the last hour because it could not be decoded, so the process that read it serves or projects without that film or screening. The WARN line names each one (\"skipping undecodable document _id=...\"), with the exception; the worker diagnostics dashboard (\"Documents skipped as UNDECODABLE\") says whether the worker, the web or both saw it. A wrong-typed field is usually a writer that changed shape: the projector's reconcile rewrites the document once the writer is fixed."
+
+  # HEALTHY: every series seeded at 0 and flat for two hours, in both processes -- silent.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_decode_failures_total{country="us",job="kinowo-worker",collection="web_movies"}'
+        values: '0x120'
+      - series: 'kinowo_web_decode_failures_total{country="us",job="kinowo-web",collection="web_movies"}'
+        values: '0x120'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: DocumentsUndecodable
+        exp_alerts: []

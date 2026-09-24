@@ -68,7 +68,7 @@ object TaskObserver {
  * gauges are refreshed from a per-country `QueueSnapshot` each `Series.scrape()`.
  */
 class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
-  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ScrapeLandingMetrics with ResolveDuplicateMetrics with StagingMetrics with RepositoryWriteMetrics {
+  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ScrapeLandingMetrics with ResolveDuplicateMetrics with StagingMetrics with RepositoryWriteMetrics with services.readmodel.DecodeFailureMetrics {
 
   // ── RatingLatencyMetrics ────────────────────────────────────────────────────
   def recordFirstRatingDelay(site: String, seconds: Double): Unit = series.recordFirstRatingDelay(countryCode, site, seconds)
@@ -110,6 +110,9 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   // ── RepositoryWriteMetrics ──────────────────────────────────────────────────
   def recordWriteFailed(collection: String, op: String, exception: String): Unit =
     series.recordRepositoryWriteFailed(countryCode, collection, op, exception)
+
+  // ── DecodeFailureMetrics ────────────────────────────────────────────────────
+  def recordDecodeFailure(collection: String): Unit = series.recordDecodeFailure(countryCode, collection)
 
   // ── ChangeStreamMetrics for `movies` ────────────────────────────────────────
   // A separate object rather than a direct mixin: `ChangeStreamMetrics.recordCoalescedChange`
@@ -476,6 +479,12 @@ object WorkerTaskMetrics {
       .labelNames("country", "collection", "op", "exception")
       .register(registry)
 
+    private val decodeFailures = Counter.builder()
+      .name("kinowo_worker_decode_failures")
+      .help("Documents a whole-collection scan SKIPPED because they could not be decoded, by country and collection (web_movies|web_screenings). ZERO IS THE HEALTHY READING. Each skipped document is a film or screening the reader goes without while the rest of its page is kept; it was a WARN line and nothing else before 2026-09-24. Alerted by DocumentsUndecodable (worker-pipeline.rules). Seeded at 0 per collection so increase() sees the first skip.")
+      .labelNames("country", "collection")
+      .register(registry)
+
     seed()
 
     /** Materialize every series at 0 for every country so it exists from boot (no
@@ -503,6 +512,7 @@ object WorkerTaskMetrics {
         RepositoryWriteMetrics.Writes.foreach { case (collection, op) =>
           RepositoryWriteMetrics.SeededExceptions.foreach(e => repositoryWriteFailed.labelValues(c, collection, op, e).inc(0.0))
         }
+        services.readmodel.DecodeFailureMetrics.Collections.foreach(coll => decodeFailures.labelValues(c, coll).inc(0.0))
         RetryModes.foreach(m => ResolveDuplicateOutcomes.foreach(o => resolveRetryDuplicates.labelValues(c, m, o).inc(0.0)))
         ReadModelProjectionMetrics.Targets.foreach(t =>
           ReadModelProjectionMetrics.Ops.foreach(o => readModelWrites.labelValues(c, t, o)))
@@ -632,6 +642,10 @@ object WorkerTaskMetrics {
     // ── RepositoryWriteMetrics ─────────────────────────────────────────────────
     def recordRepositoryWriteFailed(country: String, collection: String, op: String, exception: String): Unit =
       repositoryWriteFailed.labelValues(country, collection, op, exception).inc()
+
+    // ── DecodeFailureMetrics ───────────────────────────────────────────────────
+    def recordDecodeFailure(country: String, collection: String): Unit =
+      decodeFailures.labelValues(country, collection).inc()
 
     // ── ChangeStreamMetrics ────────────────────────────────────────────────────
     def recordEvent(country: String, op: String): Unit       = changeEvents.labelValues(country, op).inc()
