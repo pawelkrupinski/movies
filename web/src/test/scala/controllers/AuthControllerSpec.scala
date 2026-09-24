@@ -821,6 +821,30 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     SignedInUser(FakeRequest().withSession(staleSession.data.toSeq*), repository) shouldBe empty
   }
 
+  // A revoke landing between a sign-in's read of the row and its write: the
+  // store keeps the revoke, and the cookie the sign-in hands out must carry the
+  // version the row holds now, or the fresh sign-in is dead on arrival.
+  it should "hand a sign-in racing a revoke a session that is valid after it" in {
+    class RevokedMidSignIn extends InMemoryUserRepository {
+      @volatile var revokeOnNextRead = false
+      override def findById(id: String): Option[models.User] = {
+        val read = super.findById(id)
+        if (revokeOnNextRead) { revokeOnNextRead = false; revokeSessions(id): Unit }
+        read
+      }
+    }
+    val repository = new RevokedMidSignIn
+    val ctl = new AuthController(Helpers.stubControllerComponents(), Map("google" -> new FakeProvider("google", Profile)),
+      repository, new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk), models.Country.Poland, clock = fixedClk)
+    signedIn(repository, "alice@example.com")
+    val started = session(ctl.start("google")(FakeRequest("GET", "/auth/google/start")))
+    repository.revokeOnNextRead = true
+    val back = ctl.callback("google")(FakeRequest("GET", s"/auth/google/callback?code=C&state=${started.get("oauthState").value}")
+      .withSession(started.data.toSeq*))
+    repository.findById("alice@example.com").value.sessionVersion shouldBe 1
+    SignedInUser(FakeRequest().withSession(session(back).data.toSeq*), repository).map(_.id) shouldBe Some("alice@example.com")
+  }
+
   it should "re-establish THIS request's own session against the bumped version, so the caller stays signed in" in {
     val (ctl, repository, _) = fixture()
     val email = signedIn(repository, "alice@example.com")

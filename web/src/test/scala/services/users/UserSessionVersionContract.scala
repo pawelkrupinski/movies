@@ -57,6 +57,18 @@ trait UserSessionVersionContract { this: AnyFlatSpec & Matchers =>
       stored.lastSeenAt shouldBe Now.plusSeconds(60)
     }
 
+    // What the sign-in then puts in its cookie: the version the row holds AFTER
+    // the write, in the same step — not the one its stale copy carried, which the
+    // revoke already killed.
+    it should "answer the row as stored, carrying the version a revoke left" in {
+      val user = freshUser("answers-stored")
+      val readBySignIn = sessionStore.findById(user.id).value
+      sessionStore.revokeSessions(user.id)
+      val written = sessionStore.upsert(readBySignIn.copy(lastSeenAt = Now.plusSeconds(60)))
+      written.sessionVersion shouldBe 1
+      written.lastSeenAt shouldBe Now.plusSeconds(60)
+    }
+
     it should "still clear an optional field the new copy leaves out" in {
       val user = freshUser("clears")
       sessionStore.upsert(user.copy(avatarUrl = Some("https://avatar")))

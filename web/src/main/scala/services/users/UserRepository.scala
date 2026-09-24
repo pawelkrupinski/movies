@@ -1,6 +1,6 @@
 package services.users
 
-import com.mongodb.client.model.{FindOneAndUpdateOptions, ReturnDocument, UpdateOptions, Updates}
+import com.mongodb.client.model.{FindOneAndUpdateOptions, ReturnDocument, Updates}
 import org.bson.{BsonArray, BsonDocument, BsonDocumentWriter, BsonInt32, BsonString}
 import org.bson.codecs.EncoderContext
 import org.mongodb.scala.bson.conversions.Bson
@@ -39,8 +39,12 @@ trait UserRepository {
   /** Write `user` as the whole row — except `sessionVersion`, which never
    *  moves backwards: the store keeps the higher of its own and `user`'s. A
    *  sign-in writes back a copy it read a moment earlier, and a revoke landing
-   *  in between must survive it (see [[revokeSessions]]). */
-  def upsert(user: User): Unit
+   *  in between must survive it (see [[revokeSessions]]).
+   *
+   *  Answers the row as stored by that same step, so a sign-in puts the version
+   *  the row now holds in its cookie rather than its stale copy's, which the
+   *  revoke already killed. A store that could not write answers `user`. */
+  def upsert(user: User): User
 
   /** "Sign out everywhere": bump `id`'s `sessionVersion` by one in ONE atomic
    *  step and answer the row right after it — `None` when there is no such row
@@ -138,15 +142,16 @@ class MongoUserRepository(
     }
   }
 
-  def upsert(user: User): Unit = coll.foreach { c =>
+  def upsert(user: User): User = coll.fold(user) { c =>
     Try {
-      Await.result(c.updateOne(Filters.eq("id", user.id), MongoUserRepository.upsertPipeline(user),
-        new UpdateOptions().upsert(true)).toFuture(), 10.seconds)
-      ()
+      Option(Await.result(c.findOneAndUpdate(Filters.eq("id", user.id), MongoUserRepository.upsertPipeline(user),
+        new FindOneAndUpdateOptions().upsert(true).returnDocument(ReturnDocument.AFTER)).toFuture(), 10.seconds))
+        .getOrElse(user)
     }.recover {
       case exception: Throwable =>
         logger.warn(s"UserRepository.upsert(${user.id}) failed: ${exception.getMessage}")
-    }
+        user
+    }.get
   }
 
   def revokeSessions(id: String): Option[User] = coll.flatMap { c =>
@@ -225,7 +230,7 @@ class InMemoryUserRepository extends UserRepository {
   def findByEmail(email: String): Option[User] =
     byId.values.find(_.email.exists(_.equalsIgnoreCase(email)))
 
-  def upsert(user: User): Unit = synchronized {
+  def upsert(user: User): User = synchronized {
     val kept = user.copy(sessionVersion = byId.get(user.id).map(_.sessionVersion).fold(user.sessionVersion)(_ max user.sessionVersion))
     // Account linking can change a user's (provider, providerSub) pair —
     // sweep out any stale entries pointing to this id before re-indexing.
@@ -234,6 +239,7 @@ class InMemoryUserRepository extends UserRepository {
     bySub.filterInPlace { case (_, id) => id != user.id }
     byId(user.id) = kept
     bySub((user.provider, user.providerSub)) = user.id
+    kept
   }
 
   def revokeSessions(id: String): Option[User] = synchronized {

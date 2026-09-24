@@ -431,8 +431,9 @@ class AuthController(
           lastSeenAt  = now
         )
     }
+    // The row as stored — its `sessionVersion` may be a revoke's that landed
+    // after the read above, and it is what the new cookie must carry.
     userRepository.upsert(user)
-    user
   }
 
   def exchange(): Action[JsValue] = Action(parse.json) { request => PerUserResponse(redeemExchangeCode(request.body)) }
