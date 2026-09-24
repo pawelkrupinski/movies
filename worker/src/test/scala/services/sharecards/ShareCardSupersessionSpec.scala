@@ -5,6 +5,7 @@ import org.scalatest.matchers.should.Matchers
 import services.events.TaskFinished
 import services.tasks.{HandlerOutcome, TaskType}
 import ShareCardTestKit.*
+import java.nio.file.Files
 
 /**
  * A film's card URL names its version, and the file under it is overwritten by every render. A
@@ -54,6 +55,29 @@ class ShareCardSupersessionSpec extends AnyFlatSpec with Matchers with org.scala
     new RenderShareCardHandler(podB.service).handle(drain(podB.queue).loneElement)   // pod B finishes last
     podA.service.existing(podA.service.inputs(newer)) shouldBe defined
     podB.service.existing(podB.service.inputs(older)) shouldBe empty
+  }
+
+  // The ask-order check and the rename are two steps, and a check run while another replica sits
+  // between its own check and rename used to pass both. Each card write now holds the film's lock
+  // file (a POSIX record lock, which another PROCESS honours) across check and rename. Held here by
+  // a separate process, as a replica's would be, the write must wait for it.
+  it should "hold a card write until another process's lock on the film is released" in {
+    val rig   = new Rig
+    val movie = film()
+    val lock  = rig.store.lockFor(rig.store.cardPath(movie._id))
+    Files.createDirectories(lock.getParent)
+    val holder = new ProcessBuilder("python3", "-c",
+      "import fcntl,sys,time; f=open(sys.argv[1],'a'); fcntl.lockf(f, fcntl.LOCK_EX); print('locked', flush=True); time.sleep(2)",
+      lock.toString).redirectErrorStream(true).start()
+    new java.io.BufferedReader(new java.io.InputStreamReader(holder.getInputStream)).readLine() shouldBe "locked"
+
+    val written = new java.util.concurrent.CountDownLatch(1)
+    val writer  = new Thread(() => { rig.service.render(rig.service.inputs(movie), Seq(ShareCardReason.NewFilm), askedAt = Some(T0)); written.countDown() })
+    writer.start()
+    written.await(1, java.util.concurrent.TimeUnit.SECONDS) shouldBe false     // waiting on the other process
+    holder.waitFor()
+    written.await(10, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
+    rig.service.existing(rig.service.inputs(movie)) shouldBe defined
   }
 
   "A superseded first card" should "not end the film's first-publish hold: the newer render will" in {

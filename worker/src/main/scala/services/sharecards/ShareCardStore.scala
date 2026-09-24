@@ -32,8 +32,8 @@ import scala.util.{Try, Using}
  *    file or the new one, never a part. Two replicas rendering one film race only on the rename,
  *    and a card write never replaces a card whose inputs were asked for LATER (its `a` stamp): a
  *    replica that never saw the newer ask would otherwise put the older picture under the URL the
- *    document names for the newer one. (The check and the rename are two steps, so two renders
- *    of one film landing inside that window can still cross.)
+ *    document names for the newer one. The check and the rename run under the film's lock
+ *    file ([[ShareCardStore.LockDir]]), so no other writer lands between them.
  *  - A delete of a file that is already gone is not an error.
  *  - What the janitor may delete is decided from the directory ITSELF, never from per-process
  *    counters, so every replica sees the same budget.
@@ -97,6 +97,9 @@ class ShareCardStore(val root: Path) {
       }
     }
 
+  /** The lock file a card write to `target` holds (see [[writeAtomically]]). */
+  def lockFor(target: Path): Path = root.resolve(LockDir).resolve(s"${Math.floorMod(target.getFileName.toString.hashCode, LockStripes)}.lock")
+
   /** Write the JPEG `bytes` over `target` atomically (see the class doc), stamped with `version`
    *  and, when given, `published` and `asked`. THROWS [[NewerAskOnDisk]], writing nothing, when
    *  `target` holds a card asked for after `asked`. */
@@ -109,11 +112,32 @@ class ShareCardStore(val root: Path) {
         while (buffer.hasRemaining) channel.write(buffer)
         channel.force(true)
       }
-      for (mine <- asked; theirs <- this.asked(target) if theirs.isAfter(mine)) throw new NewerAskOnDisk(target, theirs, mine)
-      try Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
-      catch { case _: AtomicMoveNotSupportedException => Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING) }
+      // A card write (`asked` given) holds the film's lock across the ask-order check and the
+      // rename, so another writer can never land between the two.
+      def commit(): Unit = {
+        for (mine <- asked; theirs <- this.asked(target) if theirs.isAfter(mine)) throw new NewerAskOnDisk(target, theirs, mine)
+        try Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        catch { case _: AtomicMoveNotSupportedException => Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING) }
+        ()
+      }
+      if (asked.isDefined) holding(lockFor(target))(commit()) else commit()
     } finally Files.deleteIfExists(temp)
     ()
+  }
+
+  /** Run `body` holding `lock` against this process's threads (a JVM's file locks are its own:
+   *  a second channel of the same process is refused, not queued) AND other processes (a POSIX
+   *  record lock). Whether other HOSTS honour it is the filesystem's business: a local or NFSv4
+   *  volume does; a mount without working locks would leave the check-then-rename window. */
+  private def holding[A](lock: Path)(body: => A): A = {
+    Files.createDirectories(lock.getParent)
+    val stripe = ShareCardStore.jvmLocks(Math.floorMod(lock.toString.hashCode, ShareCardStore.jvmLocks.length))
+    stripe.synchronized {
+      Using.resource(FileChannel.open(lock, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) { channel =>
+        val held = channel.lock()
+        try body finally held.release()
+      }
+    }
   }
 
   /** `jpeg` with a comment segment carrying the stamp inserted right after its start-of-image. */
@@ -151,6 +175,11 @@ object ShareCardStore {
   /** The card BASES' subdirectory (a card without its rating badges) — a dot directory too. */
   val BaseDir = ".base"
   val TempSuffix = ".tmp"
+  /** Where card writes take their per-film lock: a dot directory Caddy must not serve, holding a
+   *  FIXED set of stripe files (a lock file cannot safely be deleted while another may take it). */
+  val LockDir     = ".locks"
+  val LockStripes = 64
+  private val jvmLocks = Array.fill(LockStripes)(new AnyRef)
 
   private val StampPrefix    = "kinowo:"
   private val StampReadBytes = 256
