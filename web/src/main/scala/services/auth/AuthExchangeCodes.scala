@@ -100,6 +100,15 @@ class AuthExchangeCodes(
       .filter(_.binding == binding)
       .filter(pending => AuthExchangeCodes.answers(pending.challenge, verifier))
       .map(_.userId)
+
+  /** [[redeem]] for a cross-domain handoff code (see `AuthController.ssoFinish`),
+   *  spent by the browser whose session holds `binding`. A browser holding NO
+   *  binding never matches: "no binding" is not "minted without one", and anyone
+   *  can mint an unbound code for their own account through the native apps'
+   *  deep-link sign-in. The code is spent whatever the outcome, as `redeem`
+   *  spends it — a refused attempt is not a reason to leave it lying around. */
+  def redeemHandoff(code: String, binding: Option[String]): Option[String] =
+    redeem(code, binding).filter(_ => binding.isDefined)
 }
 
 object AuthExchangeCodes {

@@ -565,17 +565,10 @@ class AuthController(
           .withSession(request.session + (AuthController.SsoBindingKey -> binding)))
       case (code, _) =>
         // Spent either way: a binding is good for one handoff, like its code.
-        // A browser holding NO binding spends nothing: redeeming with `None`
-        // would match an unbound code, and anybody can mint one of those for
-        // their own account through the native apps' deep-link sign-in.
+        // `redeemHandoff` refuses a browser holding no binding at all.
         val binding = request.session.get(AuthController.SsoBindingKey)
         val cleared = request.session - AuthController.SsoBindingKey
-        (for {
-          c <- code
-          b <- binding
-          userId <- exchangeCodes.redeem(c, Some(b))
-          user   <- userRepository.findById(userId)
-        } yield user) match {
+        code.flatMap(exchangeCodes.redeemHandoff(_, binding)).flatMap(userRepository.findById) match {
           case None =>
             logger.warn("SSO handoff arrived without a code redeemable by this browser — landing signed out.")
             uncacheable(home.withSession(cleared))
