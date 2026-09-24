@@ -163,6 +163,15 @@ trait MovieRepository {
    *  fell to a third across every country.
    *
    *  The in-memory store cannot fail, so the default reports `true`. */
+  /** Whether a live document holds `id` — the question minting a fresh id asks of each
+   *  candidate. THROWS when the row cannot be read: counting "unknown" as free lets the
+   *  write that follows replace the film that holds it. */
+  final def holdsId(id: FilmId): Boolean = findByIdChecked(id) match {
+    case (Some(_), _)  => true
+    case (None, true)  => false
+    case (None, false) => throw new IllegalStateException(s"cannot read whether id $id is taken")
+  }
+
   def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) =
     (findAll().find(_.id == id), true)
 
@@ -365,8 +374,10 @@ trait KeyAddressedMovieWrites { self: MovieRepository =>
     findByKeyChecked(key) match {
       case (Some(row), _) => upsert(row.id, key, e)
       case (None, true)   =>
-        val taken: FilmId => Boolean = id => findByIdChecked(id)._1.isDefined
-        upsert(Some(FilmId.legacy(key)).filterNot(taken).getOrElse(FilmId.fresh(key, taken)), key, e)
+        scala.util.Try(Some(FilmId.legacy(key)).filterNot(holdsId).getOrElse(FilmId.fresh(key, holdsId))) match {
+          case scala.util.Success(id) => upsert(id, key, e)
+          case scala.util.Failure(_)  => WriteOutcome.Declined("id-unreadable")
+        }
       case (None, false)  => WriteOutcome.Declined("key-unreadable")
     }
   }

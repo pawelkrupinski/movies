@@ -87,9 +87,10 @@ class InMemoryStagingFolder(
         else all.filter(r => r.record.tmdbId.exists(ids.contains) && normalizer.sanitize(r.title) != key)
       val plan       = StagingFold.planGroup(stagingRows, groupRows ++ siblings, normalizer,
         // taken = a LIVE id in the repository, OR one this very plan already minted for an
-        // earlier cluster — see `StagingFold.planGroup`'s `fresh` doc comment.
+        // earlier cluster — see `StagingFold.planGroup`'s `fresh` doc comment. An id that
+        // cannot be read throws (`holdsId`), before any write: the fold retries.
         fresh = (key, mintedSoFar) => FilmId.fresh(key,
-          taken = id => mintedSoFar.contains(id) || movieRepository.findByIdChecked(id)._1.isDefined))
+          taken = id => mintedSoFar.contains(id) || movieRepository.holdsId(id)))
       // A retirement is a merge: carry the loser's side rows onto the winner before the
       // loser goes — the same rule `MongoStagingFolder.migrateRetiredSideRows` follows.
       plan.retirements.foreach { case (loser, winner) => movieRepository.moveFilm(loser, winner) }

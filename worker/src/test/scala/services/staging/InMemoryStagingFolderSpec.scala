@@ -47,6 +47,27 @@ class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
     settleIsANoOpOver(movies)
   }
 
+  // A brand-new film's id is minted by asking whether each candidate is a live id. An
+  // unreadable answer used to count as "free", so the fold could write the new film over
+  // the document that holds that id — here a film since retitled away from the key.
+  it should "abort, not mint over a live document, when it cannot read whether an id is taken" in {
+    val staging = new InMemoryStagingRepository
+    val movies  = new services.movies.UnreadableByIdMovieRepository(keyReadsFail = false)
+    movies.failing = false
+    val key      = CacheKey("Kumotry", Some(2026), titleNormalizer)
+    val occupied = services.movies.FilmId.fresh(key, _ => false)
+    val other    = MovieRecord(tmdbId = Some(42), data = Map[Source, SourceData](Helios -> SourceData(title = Some("Inny Film"))))
+    movies.upsert(occupied, CacheKey("Inny Film", None, titleNormalizer), other)
+    staging.upsert(Multikino, "Kumotry", Some(2026), resolved(Multikino, 2026))
+
+    movies.failing = true
+    an[Exception] should be thrownBy new InMemoryStagingFolder(staging, movies).foldGroup("Kumotry")
+    movies.failing = false
+
+    movies.findById(occupied).map(_.record.tmdbId) shouldBe Some(Some(42))   // the live film is untouched
+    staging.findAll() should have size 1                                     // and the fold retries later
+  }
+
   it should "collapse a film's ±1-year variants into one movies row (settle absorbed into the fold)" in {
     // Cinema City reports 'Kumotry' at the production year 2025, the rest at the
     // release year 2026 (tmdbYear 2026). The group-scoped fold settles them into

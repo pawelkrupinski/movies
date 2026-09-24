@@ -111,13 +111,16 @@ class UnwritableScreeningsRepository extends InMemoryScreeningsRepository with F
  *
  *  `findAll` deliberately keeps working — the corruption this exposes is a WRITE built on a
  *  failed point read, so the spec must still be able to see what the write did. */
-class UnreadableByIdMovieRepository(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty)
+class UnreadableByIdMovieRepository(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty,
+                                    keyReadsFail: Boolean = true)
   extends InMemoryMovieRepository(seed) with FailsOnPurpose {
   @volatile var failing: Boolean = true
   override def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) =
     if (failing) (None, false) else super.findByIdChecked(id)
+  /** `keyReadsFail = false` fails only the by-ID read: the key lookup answers, and a
+   *  caller then asks whether a candidate id is free — the read that must not pass. */
   override def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) =
-    if (failing) (None, false) else super.findByKeyChecked(key)
+    if (failing && keyReadsFail) (None, false) else super.findByKeyChecked(key)
 }
 
 /** A [[MovieRepository]] whose whole-record `upsert` is DECLINED while `declining` — what
