@@ -386,9 +386,13 @@ class ReadModelProjector(
   /** Caller holds `lock`. Remove a card and the screenings this process remembers for
    *  it; `audit` names the path on the removal-audit line. */
   private def removeCard(filmId: String, audit: String): Unit = {
-    writer.deleteMovie(filmId)
     val screeningIds = lastScreenings.getOrElse(filmId, Map.empty).keys.toSeq
-    screeningIds.foreach(writer.deleteScreening)
+    writer.deleteMovie(filmId)
+    // The card is gone from here on, so the memo forgets it even if a screenings delete then
+    // throws — remembered, the row coming back unchanged would skip writing the card. Screenings
+    // left behind belong to no live card; the prune removes them while it stays retired.
+    try screeningIds.foreach(writer.deleteScreening)
+    catch { case exception: Throwable => forgetCard(filmId); throw exception }
     // The point a film actually leaves the served site (web_movies + its
     // web_screenings). During a "cards vanish" episode this names every dropped
     // filmId, one INFO line each — the read-model half of the removal audit.

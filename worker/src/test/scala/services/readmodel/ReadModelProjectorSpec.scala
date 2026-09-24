@@ -1195,6 +1195,30 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     projector.stop()
   }
 
+  // The card is deleted first; a screenings delete that then throws must not leave the memo
+  // saying the card is still written — or the row coming back unchanged skips the card for good.
+  "a card retired while a screenings delete throws" should "be written again when its row comes back" in {
+    val repository = new InMemoryMovieRepository()
+    class FailingScreeningDeletes extends InMemoryReadModelRepository {
+      @volatile var failing = false
+      override def deleteScreening(id: String): Unit =
+        if (failing) throw new RuntimeException("simulated screenings delete failure") else super.deleteScreening(id)
+    }
+    val flaky = new FailingScreeningDeletes
+    val projector = new ReadModelProjector(repository, flaky, flaky)
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    val row = repository.findAll().head
+    projector.onMovieUpsert(row)
+    flaky.failing = true
+    intercept[RuntimeException](projector.onMovieDelete(row.id))
+    flaky.findAllMovieIds() shouldBe empty                    // the card itself went
+    flaky.failing = false
+
+    projector.onMovieUpsert(row)                              // the same row, unchanged
+    flaky.findAllMovieIds() shouldBe Seq(fid)
+    projector.stop()
+  }
+
   "start" should "schedule the orphan prune but NOT a periodic reproject" in {
     val fakeScheduler = new CapturingScheduler
     val repository = new InMemoryMovieRepository()
