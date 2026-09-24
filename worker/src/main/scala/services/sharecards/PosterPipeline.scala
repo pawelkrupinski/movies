@@ -154,21 +154,26 @@ class EgressPosterDownload(http: tools.HttpFetch, maxBytes: Long = PosterPipelin
 class RememberedFailurePosterDownload(delegate: PosterDownload, dir: Path, clock: java.time.Clock) extends PosterDownload {
   import RememberedFailurePosterDownload.*
 
+  // A memory that cannot be READ is not "nothing remembered": asking the paid route on the
+  // strength of it is the cost this class exists to cap. The poster fails this time instead.
   def fetch(url: String): Either[String, Path] =
-    remembered(url).map(Left(_)).getOrElse {
-      val result = delegate.fetch(url)
-      result match {
-        case Left(reason) => remember(url, reason)
-        case Right(_)     => forget(url)
-      }
-      result
+    Try(remembered(url)).toEither match {
+      case Left(_)             => Left(PosterFailure.Network)
+      case Right(Some(reason)) => Left(reason)
+      case Right(None)         =>
+        val result = delegate.fetch(url)
+        result match {
+          case Left(reason) => remember(url, reason)
+          case Right(_)     => forget(url)
+        }
+        result
     }
 
   private def entries(url: String): Seq[Path] = {
     import scala.jdk.CollectionConverters.*
     val prefix = tools.Digest.sha256Hex(url).take(16) + "."
-    Try(Using.resource(Files.list(dir))(_.iterator.asScala.filter(_.getFileName.toString.startsWith(prefix)).toList))
-      .getOrElse(Nil)
+    if (!Files.isDirectory(dir)) Nil   // nothing ever failed here
+    else Using.resource(Files.list(dir))(_.iterator.asScala.filter(_.getFileName.toString.startsWith(prefix)).toList)
   }
 
   private def remembered(url: String): Option[String] =
