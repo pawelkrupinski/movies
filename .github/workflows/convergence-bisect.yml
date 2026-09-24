@@ -14,6 +14,9 @@
 # `bisect-request-<code>` artifact (`.github/actions/convergence-bisect-request`); this
 # workflow bisects exactly the countries that left one, and does nothing for a green run.
 #
+# CONFIRMED first: the last green commit is replayed once under the red leg's recording, since
+# the pair is re-pinned nightly and a red the new pair brings is no commit's doing.
+#
 # CAPPED: per country, at most three halvings — exact for up to eight pipeline commits — and
 # none started that BUDGET_MINUTES cannot fit, so the worst case is one runner per red country
 # for ~90 minutes. A range it could not narrow is reported as a range, never as a guess. A

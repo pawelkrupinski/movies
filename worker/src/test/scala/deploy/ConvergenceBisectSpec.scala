@@ -26,8 +26,9 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers {
 
   /** A main line of six pipeline commits with two app-only commits between them; the bug
    *  lands in pipeline commit number `badAt` (1-based) and stays. The step cannot test the
-   *  pipeline commits numbered in `untestable` (exit 125, bisect's "skip"). */
-  private final class History(badAt: Int, untestable: Set[Int] = Set.empty) {
+   *  pipeline commits numbered in `untestable` (exit 125, bisect's "skip"). `redEverywhere`
+   *  is a recording that fails the sample whatever the code, the base included. */
+  private final class History(badAt: Int, untestable: Set[Int] = Set.empty, redEverywhere: Boolean = false) {
     val repo = new ScratchGitRepository
     val good: String = repo.commit("base", "worker/src/main/State.scala" -> "ok\n")
     private val pipeline = (1 to 6).map { n =>
@@ -41,13 +42,14 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers {
     lazy val firstBad: String = pipeline(badAt - 1)
 
     /** Exits 1 (bad) once the bug is in, 0 before; logs the subject of every commit it
-     *  was asked to replay. */
+     *  was asked to replay — the last green `base` first, confirmed before any bisecting. */
     val steps: Path = Files.createTempFile("bisect-steps", ".log")
     private val skipped =
       if (untestable.isEmpty) "__none__" else untestable.map(n => s"\"pipeline change $n\"").mkString("|")
     val step: Path = repo.script("step.sh",
       s"""git log -1 --format=%s >> "$steps"
          |case "$$(git log -1 --format=%s)" in $skipped) exit 125 ;; esac
+         |${if (redEverywhere) "exit 1" else ""}
          |grep -q bad worker/src/main/State.scala && exit 1 || exit 0
          |""".stripMargin)
     def tested: Seq[String] = Files.readString(steps).linesIterator.toSeq
@@ -79,7 +81,8 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers {
     pinned shouldBe Some(history.firstBad)
     verdict should include("First bad commit:")
     verdict should include("pipeline change 4")
-    withClue("six pipeline commits need at most three halvings: ")(history.stepCount should be <= 3)
+    history.tested.head shouldBe "base"
+    withClue("six pipeline commits need at most three halvings: ")(history.stepCount - 1 should be <= 3)
   }
 
   it should "spend no replay on a commit that touches no pipeline path" in {
@@ -88,7 +91,7 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers {
 
     verdict should include("6 pipeline commit(s)")
     history.tested should not be empty
-    history.tested.filterNot(_.startsWith("pipeline change")) shouldBe empty
+    history.tested.filterNot(t => t.startsWith("pipeline change") || t == "base") shouldBe empty
   }
 
   it should "report the remaining range, not a guess, when the cap stops it first" in {
@@ -97,7 +100,7 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers {
 
     status shouldBe 0
     pinned shouldBe None
-    history.stepCount shouldBe 1
+    history.stepCount shouldBe 2 // the last green, then one halving
     verdict should include("Stopped after 1 replay(s)")
     verdict should include(short(history.firstBad))
     verdict should not include "ios: tweak"
@@ -122,7 +125,7 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers {
 
     history.stepCount shouldBe 0
     pinned shouldBe None
-    verdict should include("Stopped after 0 replay(s)")
+    verdict should include("No time left")
   }
 
   it should "spend nothing when the same commit was green before" in {
@@ -143,14 +146,30 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers {
     verdict should include("touches the pipeline")
   }
 
-  it should "pin the only pipeline commit in range without a replay" in {
+  it should "pin the only pipeline commit in range once its last green replays green" in {
     val history = new History(badAt = 6)
     val beforeLast = history.repo.git("rev-parse", s"${history.bad}~1")
     val (_, verdict, pinned) = bisect(history, beforeLast, history.bad)
 
-    history.stepCount shouldBe 0
+    history.tested shouldBe Seq("pipeline change 5")
     pinned shouldBe Some(history.bad)
     verdict should include("the only pipeline commit in the range")
+  }
+
+  // The pair is re-pinned nightly, so the last green leg may have replayed an older one.
+  it should "blame no commit when the recording is red at the last green commit too" in {
+    Seq(
+      { val h = new History(badAt = 6, redEverywhere = true); (h, h.repo.git("rev-parse", s"${h.bad}~1")) },
+      { val h = new History(badAt = 4, redEverywhere = true); (h, h.good) }
+    ).foreach { case (history, good) =>
+      val (status, verdict, pinned) = bisect(history, good, history.bad)
+
+      status shouldBe 0
+      pinned shouldBe None
+      history.stepCount shouldBe 1
+      verdict should include("red at the last green commit")
+      verdict should not include "First bad commit"
+    }
   }
 
   it should "refuse to bisect a full-leg failure the sample does not reproduce" in {

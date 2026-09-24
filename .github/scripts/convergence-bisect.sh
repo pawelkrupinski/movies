@@ -10,7 +10,9 @@
 # the untested range, halving it each time.
 #
 # HOW. `git bisect run` over (last green, first red], limited to commits that touch the
-# pipeline (`.github/convergence-paths.txt`) and to first-parent history. Cost is CAPPED: at
+# pipeline (`.github/convergence-paths.txt`) and to first-parent history — once the last green
+# commit replays green under the red leg's recording (it may have been green under an older
+# one, and then no commit is to blame). Cost is CAPPED: at
 # most `MAX_STEPS` bisection replays, and none started once the budget cannot fit another.
 # What it could not narrow further it reports as a range, never as a guess.
 #
@@ -88,19 +90,40 @@ bisect() {
         return 0
     fi
     verdict "Range: \`${good:0:9}..${bad:0:9}\`, $count pipeline commit(s)."
-    if [ "$count" -eq 1 ]; then
-        finish_exact "$range" "the only pipeline commit in the range"
-        return 0
-    fi
 
     # A full leg's failure is only bisectable with the sample if the sample reproduces it.
+    local code
     if [ "${SAMPLE_FAILED:-false}" != "true" ]; then
         git checkout -q --force "$bad"
-        "$STEP_COMMAND"; local code=$?
+        "$STEP_COMMAND"; code=$?
         if [ "$code" -ne 1 ]; then
             verdict "The sample leg does not reproduce the failure at \`${bad:0:9}\` (exit $code) — only the full leg sees it, and bisecting with the full leg is not worth its cost. Not bisected."
             return 0
         fi
+    fi
+
+    # The last green leg may have replayed an OLDER recorded pair: the pair is re-pinned
+    # nightly, and a red that the new pair brings is red at every commit. Without this replay
+    # the bisect would pin the range's first pipeline commit (or its only one, unreplayed)
+    # and tell its author the change was theirs. Only a good commit that is green under THIS
+    # pair makes the range's answer a commit's.
+    if ! fits_budget; then
+        verdict "No time left in the ${BUDGET_MINUTES:-90}-minute budget to confirm \`${good:0:9}\` is green under this recording. Not bisected."
+        return 0
+    fi
+    git checkout -q --force "$good"
+    "$STEP_COMMAND"; code=$?
+    if [ "$code" -eq 1 ]; then
+        verdict "The sample is red at the last green commit \`${good:0:9}\` too, under this recording — the red comes from the recorded pair, not from a commit. Not bisected."
+        return 0
+    elif [ "$code" -ne 0 ]; then
+        verdict "The sample could not confirm \`${good:0:9}\` green under this recording (exit $code), so no commit in the range can be blamed. Not bisected."
+        return 0
+    fi
+
+    if [ "$count" -eq 1 ]; then
+        finish_exact "$range" "the only pipeline commit in the range"
+        return 0
     fi
 
     # `git bisect run` drives the search; the wrapper enforces the caps. Exit 255 aborts
@@ -145,6 +168,11 @@ EOF
     fi
     git bisect reset >/dev/null 2>&1 || true
     rm -f "$counter" "$wrapper"
+}
+
+# Whether another STEP_MINUTES replay still fits in BUDGET_MINUTES since `started`.
+fits_budget() {
+    [ $(( ${BUDGET_MINUTES:-90} * 60 - ($(date +%s) - started) )) -ge $(( ${STEP_MINUTES:-20} * 60 )) ]
 }
 
 finish_exact() {
