@@ -1,5 +1,7 @@
 package controllers
 
+import models.CityPath
+
 import models.City
 
 /** Builds the `sitemap.xml` body — a flat `<urlset>` of every crawlable page:

@@ -1,14 +1,9 @@
 package services.tasks
 
-import play.api.Logging
-import services.Stoppable
-import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
-import tools.DaemonExecutors
+import services.schedule.{AlwaysClaimScheduledRunStore, ScheduledRunStore}
 
 import java.time.Clock
-import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * Daily, cluster-claimed ENQUEUER for the OMDb identifier backfill. The sweep
@@ -37,34 +32,7 @@ class OmdbBackfillReaper(
   initialDelay: FiniteDuration = OmdbBackfillReaper.DefaultInitialDelay,
   runStore:     ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:        Clock = Clock.systemUTC()
-) extends Stoppable with Logging {
-
-  private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("omdb-backfill-reaper")
-
-  def start(): Unit = {
-    scheduleNext(initialDelay)
-    logger.info(s"OmdbBackfillReaper started: enqueue OMDb backfill task once per ${interval.toSeconds}s.")
-  }
-
-  /** Self-rescheduling tick: sweep, then schedule the next reading `interval`
-   *  afresh — so an interval flip applies on the next cycle. */
-  private def scheduleNext(delay: FiniteDuration): Unit = {
-    scheduler.schedule(new Runnable {
-      def run(): Unit = { Try(tickIfClaimed()); scheduleNext(interval) }
-    }, delay.toMillis, TimeUnit.MILLISECONDS)
-    ()
-  }
-
-  /** Enqueue a sweep only if this machine wins the current window's occurrence
-   *  claim — otherwise another machine has enqueued this window, so skip. Returns
-   *  true when it enqueued. Package-private so tests can drive it directly. */
-  private[tasks] def tickIfClaimed(): Boolean = {
-    val key = OccurrenceKey.at("omdb-backfill", clock.millis(), interval, 0.seconds)
-    if (runStore.claim(key)) { enqueueSweep(); true } else false
-  }
-
-  override def stop(): Unit = { scheduler.shutdown(); () }
-}
+) extends ClaimedEnqueueReaper("omdb-backfill", enqueueSweep, interval, initialDelay, runStore, clock)
 
 object OmdbBackfillReaper {
   /** Daily: OMDb is a slow-moving gap-filler — the unresolved tail only shrinks

@@ -1,5 +1,7 @@
 package controllers
 
+import models.CityPath
+
 import models.City
 
 import java.net.URLEncoder
@@ -44,7 +46,7 @@ object FilmHref {
 
   @targetName("forSlugInCity")
   def forSlug(slug: Option[String], title: String, city: City): String =
-    slug.fold(legacy(title, city))(s => s"${CityPath(city)}/movie/$s")
+    slug.fold(legacy(title, city))(CityPath.film(city, _))
 
   /** The title's URL slug, or `None` when it folds to nothing addressable (a
    *  title that is entirely punctuation, or in a script the fold doesn't cover).

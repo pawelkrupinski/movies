@@ -1,5 +1,7 @@
 package controllers
 
+import models.CityPath
+
 import models.City
 
 import java.net.URLEncoder

@@ -1,6 +1,4 @@
-package controllers
-
-import models.City
+package models
 
 /** The absolute path every one of a city's pages hangs off — `/poznan` on a
  *  country that owns its domain, `/uk/kent` on one mounted under a country
@@ -22,4 +20,9 @@ import models.City
  *  and testable for every country at once. */
 object CityPath {
   def apply(city: City): String = s"${city.country.pathPrefix}/${city.slug}"
+
+  /** A film page under the city — `/poznan/movie/diuna-2` — for the film's assigned slug
+   *  (`services.readmodel.FilmSlugs`). The web's links and the worker's share-card re-scrape
+   *  requests both build it here, so the two cannot address different pages. */
+  def film(city: City, slug: String): String = s"${apply(city)}/movie/$slug"
 }
