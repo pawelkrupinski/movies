@@ -6,6 +6,8 @@ import org.apache.pekko.util.ByteString
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import play.api.http.HeaderNames.{LOCATION, SET_COOKIE}
+import play.api.http.Status.SEE_OTHER
 import play.api.i18n.Messages
 import play.api.libs.streams.Accumulator
 import play.api.mvc._
@@ -302,7 +304,11 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     marked shouldBe StateChangingGets.collect { case (route, GetGuard.SiteOnly) => route }.toSet
   }
 
-  it should "refuse another site's page before its controller when it is `siteonly`" in {
+  // Refused, a `siteonly` GET is not a dead end: it is the far leg of a
+  // redirect a real visitor may be riding (a browser that stripped the Referer
+  // on the cross-site hop looks exactly like a forgery), so it sends them on to
+  // where the leg was headed — without doing the state change.
+  it should "refuse another site's page before its controller when it is `siteonly`, sending the visitor on" in {
     StateChangingGets.collect { case (route, GetGuard.SiteOnly) => route }.foreach { case (verb, path) =>
       Seq(
         Seq("Sec-Fetch-Site" -> "cross-site", "Referer" -> "https://evil.example/page"),
@@ -312,10 +318,22 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
         val outcome = dispatch(signedInAsAdmin(FakeRequest(verb, concrete(path)).withHeaders(headers*)))
         withClue(s"$verb $path $headers: ") {
           outcome.reachedController shouldBe false
-          outcome.status shouldBe 403
+          outcome.status shouldBe SEE_OTHER
+          outcome.headers.get(LOCATION) shouldBe Some("/")
+          outcome.headers.get("Cache-Control") shouldBe Some(controllers.PerUserResponse.CacheControl)
+          outcome.headers.get(SET_COOKIE) shouldBe None
         }
       }
     }
+  }
+
+  it should "send a refused SSO logout on to its validated `next`, and never off-brand" in {
+    val uk = models.Country.UnitedKingdom.webUrl.get
+    def locationFor(next: String) = dispatch(signedInAsAdmin(
+      FakeRequest("GET", s"/auth/sso/logout?next=${java.net.URLEncoder.encode(next, "UTF-8")}")
+        .withHeaders("Sec-Fetch-Site" -> "cross-site"))).headers.get(LOCATION)
+    locationFor(uk) shouldBe Some(s"$uk/")
+    locationFor("https://evil.example.com") shouldBe Some("/")
   }
 
   // The positive control: the SSO logout's legitimate caller is our other domain.

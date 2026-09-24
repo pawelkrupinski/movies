@@ -122,7 +122,8 @@ GET     /auth/sso/finish            controllers.AuthController.ssoFinish()
 # The far half of a logout. The sign-in pairing establishes a session on BOTH
 # domains, so clearing one would leave the visitor signed out where they pressed
 # the button and signed in a domain away. `siteonly`: a GET any page can embed, so
-# `CrossSiteWriteFilter` refuses it unless it came from one of OUR pages
+# `CrossSiteWriteFilter` refuses it unless it provably came from one of OUR pages
+# — refused, it still redirects on to `next`, just without signing out
 # (`RouteProtectionMatrixSpec` pins which GETs carry it).
 + siteonly
 GET     /auth/sso/logout            controllers.AuthController.ssoLogout()

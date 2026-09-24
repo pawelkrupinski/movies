@@ -398,11 +398,10 @@ class AuthController(
    *  Never propagates onwards — this IS the propagation — so the pair cannot
    *  ping-pong. Reachable by GET because it is the second leg of a redirect —
    *  which any page could otherwise embed, so the route is `siteonly` and
-   *  `CrossSiteWriteFilter` refuses it unless it came from one of our own pages. */
+   *  `CrossSiteWriteFilter` sends it on to the same place WITHOUT signing out
+   *  unless it came from one of our own pages. */
   def ssoLogout(): Action[AnyContent] = Action { request =>
-    val back = AuthController.switchTarget(request.getQueryString("next")).map(_ + "/")
-      .getOrElse(routes.LandingController.index().url)
-    signedOut(Redirect(back).withNewSession)
+    signedOut(Redirect(AuthController.ssoLogoutOnward(request.getQueryString("next"))).withNewSession)
   }
 
   private def upsertUser(provider: String, profile: OauthProfile): User = {
@@ -716,6 +715,13 @@ object AuthController {
    *  are base URLs and callers append to them.
    *
    *  Pure, so the refusal can be asserted without a request. */
+  /** Where the far half of a logout sends the visitor: `next` when it is one
+   *  of the deployed countries' base URLs, else this deployment's landing.
+   *  Shared with `CrossSiteWriteFilter`, which sends a REFUSED far half to the
+   *  same place, just without the sign-out. */
+  def ssoLogoutOnward(next: Option[String]): String =
+    switchTarget(next).map(_ + "/").getOrElse(routes.LandingController.index().url)
+
   private[controllers] def switchTarget(to: Option[String]): Option[String] =
     to.map(_.trim.stripSuffix("/")).filter(_.nonEmpty)
       .flatMap(candidate => models.Country.switchable.flatMap(_.webUrl).find(_ == candidate))

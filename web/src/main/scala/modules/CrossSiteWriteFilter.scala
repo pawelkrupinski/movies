@@ -34,6 +34,12 @@ import scala.concurrent.Future
  * of a sign-out (`/auth/sso/logout`) is reached by redirect from our other domain,
  * which the browser rightly calls cross-site. A cross-site one naming no page (a
  * stripped referrer) is refused: that is also how a forged one would arrive.
+ *
+ * Refused, such a GET is not answered with a bare 403: its legitimate caller is a
+ * visitor mid-way through a redirect chain (a browser that strips the Referer on
+ * the cross-site hop is indistinguishable from a forgery), so it is sent on to
+ * where the leg was headed — the validated `next`, else the landing — WITHOUT the
+ * state change. The worst a forged one achieves is a redirect.
  */
 class CrossSiteWriteFilter()(implicit override val mat: Materializer) extends Filter {
 
@@ -42,7 +48,8 @@ class CrossSiteWriteFilter()(implicit override val mat: Materializer) extends Fi
       Future.successful(Results.Forbidden("Cross-site write refused."))
     else if (CrossSiteWriteFilter.siteOnly(request) && CrossSiteWriteFilter.crossSite(request) &&
              !CrossSiteWriteFilter.namedOrigin(request).exists(models.Country.deployedOrigins))
-      Future.successful(Results.Forbidden("Cross-site request refused."))
+      Future.successful(controllers.PerUserResponse(
+        Results.Redirect(controllers.AuthController.ssoLogoutOnward(request.getQueryString("next")))))
     else next(request)
 }
 
