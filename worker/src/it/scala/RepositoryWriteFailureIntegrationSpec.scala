@@ -102,10 +102,10 @@ class RepositoryWriteFailureIntegrationSpec extends AnyFlatSpec with Matchers wi
       val viewSlots      = new MongoSlotsRepository(Some(viewDb), writeMetrics = metrics)
       val viewScreenings = new MongoScreeningsRepository(Some(viewDb), writeMetrics = metrics)
 
-      viewSlots.deleteRows(Set("a␟b")) shouldBe 0L
-      viewSlots.deleteFilms(Set("a")) shouldBe 0L
-      viewScreenings.deleteRows(Set("a␟b")) shouldBe 0L
-      viewScreenings.deleteFilms(Set("a")) shouldBe 0L
+      viewSlots.deleteRows(Set("__repository-delete-failure-sentinel__␟Multikino")) shouldBe 0L
+      viewSlots.deleteFilms(Set("__repository-delete-failure-sentinel__")) shouldBe 0L
+      viewScreenings.deleteRows(Set("__repository-delete-failure-sentinel__␟Multikino")) shouldBe 0L
+      viewScreenings.deleteFilms(Set("__repository-delete-failure-sentinel__")) shouldBe 0L
 
       metrics.failures.map(f => f._1 -> f._2) shouldBe Vector(
         SlotsRepository.Collection -> "deleteRows", SlotsRepository.Collection -> "deleteFilms",

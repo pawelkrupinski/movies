@@ -176,12 +176,17 @@ object SlotKeyed {
     if (complete) (buf.result(), true) else (Seq.empty, false)
   }
 
+  /** A bulk delete's ids as its failure line names them: the ids themselves when there are a
+   *  few (the line then says WHICH film), a count otherwise. */
+  private def sample(ids: Set[String], noun: String): String =
+    if (ids.sizeIs <= 3) ids.toSeq.sorted.mkString(", ") else s"${ids.size} ${noun}s"
+
   /** [[SlotKeyedRows.deleteRows]] for a Mongo side collection: one `_id $in` delete. A
    *  failure is logged and counted through [[RepositoryWrite]] and reported as 0 rows. */
   def deleteRows[T](c: MongoCollection[T], ids: Set[String], collection: String,
                     metrics: RepositoryWriteMetrics, logger: play.api.Logger): Long =
     if (ids.isEmpty) 0L
-    else RepositoryWrite.guarded(collection, "deleteRows", s"$collection.deleteRows(${ids.size} row(s))", metrics, logger)(
+    else RepositoryWrite.guarded(collection, "deleteRows", s"$collection.deleteRows(${sample(ids, "row")})", metrics, logger)(
       Await.result(c.deleteMany(Filters.in("_id", ids.toSeq*)).toFuture(), 60.seconds).getDeletedCount)(_ => 0L)
 
   /** [[SlotKeyedRows.deleteFilms]] for a Mongo side collection: one `filmId $in` delete.
@@ -190,6 +195,6 @@ object SlotKeyed {
   def deleteFilms[T](c: MongoCollection[T], filmIds: Set[String], collection: String,
                      metrics: RepositoryWriteMetrics, logger: play.api.Logger): Long =
     if (filmIds.isEmpty) 0L
-    else RepositoryWrite.guarded(collection, "deleteFilms", s"$collection.deleteFilms(${filmIds.size} film(s))", metrics, logger)(
+    else RepositoryWrite.guarded(collection, "deleteFilms", s"$collection.deleteFilms(${sample(filmIds, "film")})", metrics, logger)(
       Await.result(c.deleteMany(Filters.in("filmId", filmIds.toSeq*)).toFuture(), 60.seconds).getDeletedCount)(_ => 0L)
 }
