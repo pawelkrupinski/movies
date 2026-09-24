@@ -109,6 +109,11 @@ private[movies] final class ScrapeLanding(
   // with no change stream (its mirror lags the repo), where re-checking would make
   // the staging path order-dependent (StagingOrderDeterminismSpec).
   private val coldMirrorSyncArmed = new java.util.concurrent.atomic.AtomicBoolean(true)
+  // While the sync's corpus read keeps FAILING: when it may be tried again, and the wait
+  // after that. The read is the whole stitched corpus — the costliest read the worker makes —
+  // and every venue's scrape asked for it again while Mongo was not answering.
+  private var coldMirrorRetry: Option[(java.time.Instant, scala.concurrent.duration.FiniteDuration)] = None
+  private val coldMirrorLock  = new AnyRef
 
   /** Write the venue's guard state only when it changed — a healthy tick of an
    *  unchanged venue, the overwhelmingly common case, costs the store nothing. */
@@ -254,12 +259,21 @@ private[movies] final class ScrapeLanding(
     if (staging.isDefined && coldMirrorSyncArmed.get()) {
       if (store.residentCount != 0) coldMirrorSyncArmed.set(false)
       else {
+        val now = clock.instant()
+        val backingOff = coldMirrorLock.synchronized(coldMirrorRetry.exists { case (at, _) => now.isBefore(at) })
+        if (backingOff) return Seq.empty   // cold, and the corpus read is backing off: discarded unread
         val (corpus, complete) = repository.findAllChecked()
         if (!complete) {
+          val wait = coldMirrorLock.synchronized {
+            val next = coldMirrorRetry.fold(ScrapeLanding.ColdMirrorRetryMin)(_._2 * 2).min(ScrapeLanding.ColdMirrorRetryMax)
+            coldMirrorRetry = Some(now.plusMillis(next.toMillis) -> next)
+            next
+          }
           logger.warn(s"${cinema.displayName}: scrape discarded — the movies mirror is cold and the corpus " +
-            "could not be read to warm it; the next scrape retries the sync.")
+            s"could not be read to warm it; scrapes are discarded unread for ${wait.toSeconds}s, then the sync is retried.")
           return Seq.empty
         }
+        coldMirrorLock.synchronized { coldMirrorRetry = None }
         coldMirrorSyncArmed.set(false)
         if (corpus.nonEmpty) store.rehydrate()
       }
@@ -1143,4 +1157,9 @@ private[movies] object ScrapeLanding {
    *  onto a bilety24 venue for every bilety24 film (fixed in 7b225cab2); the venue's next
    *  scrape drops them. */
   def isDetailOnly(slot: SourceData): Boolean = slot.title.isEmpty
+
+  /** The cold-mirror sync's corpus read, while it keeps failing, is retried after this long
+   *  at first, doubling to [[ColdMirrorRetryMax]]. */
+  val ColdMirrorRetryMin: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(30, "seconds")
+  val ColdMirrorRetryMax: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(10, "minutes")
 }
