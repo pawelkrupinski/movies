@@ -1351,7 +1351,19 @@ class CaffeineMovieCache(
               s"survivor's write failed (${failed.cause.getMessage}); reconciled again next pass.")
           case outcome =>
             moved.foreach(repository.delete)
-            if (outcome != WriteOutcome.Written) union.foreach(repository.upsert(survivor, k, _))
+            val rewritten =
+              if (outcome == WriteOutcome.Written) outcome
+              else union.fold[WriteOutcome](WriteOutcome.Written)(repository.upsert(survivor, k, _))
+            // The losers are gone, so a rewrite that did not land leaves the union in the cache
+            // alone — and every later scrape patches only what it changed against it, so the
+            // union's own fields would never reach Mongo. Drop the key; the next read finds the
+            // survivor as Mongo has it (its side rows are moved; the losers' own fields are lost).
+            if (rewritten != WriteOutcome.Written) {
+              logger.warn(s"MovieCache rehydrate: the survivor of '${k.cleanTitle}' could not be rewritten after " +
+                s"its ${moved.size} duplicate document(s) were deleted ($rewritten) — dropped from the cache so it " +
+                "is re-read as stored; fields only the duplicates held are lost.")
+              evict(k)
+            }
         }
         if (stranded.nonEmpty)
           logger.warn(s"MovieCache rehydrate: kept ${stranded.size} duplicate document(s) of '${k.cleanTitle}' whose " +

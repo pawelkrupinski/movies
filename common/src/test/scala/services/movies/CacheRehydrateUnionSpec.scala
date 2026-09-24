@@ -92,6 +92,17 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
     repository.upserts should have size 2
   }
 
+  // The rewrite after the losers are gone can fail too. The cache then holds a union `movies`
+  // never took, and every later scrape diffs against it — patching only what changed, so the
+  // union's own fields never reach Mongo and the failure is never retried. The key goes, and
+  // the next read finds the survivor as Mongo has it.
+  it should "not keep the union resident when the survivor's rewrite fails after the losers are gone" in {
+    val repository = new ReconcileRecorder(Seq(decorated, base), WriteOutcome.IdentityHeld, codecFailure)
+    val cache = new CaffeineMovieCache(repository, normalizer = new TitleNormalizer(TitleRuleSet(TitleRules.all :+ kinoCafeRule)))
+    repository.upserts should have size 2
+    withClue("the union was never written, so the cache must not hold it: ")(cache.entries shouldBe empty)
+  }
+
   it should "leave non-colliding rows as separate entries (no spurious union)" in {
     // Same two rows, but WITHOUT the /Kino Cafe rule they don't collide.
     val cache = cacheUnder(TitleRules.ruleSet, decorated, base)
