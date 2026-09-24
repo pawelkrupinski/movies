@@ -840,12 +840,6 @@ class MovieService(
     targets.foreach { case (k, e) => dispatchWithHints(k, e, ResolveMode.RetryMiss) }
   }
 
-  /** Re-attempt ONE still-unresolved row's TMDB resolution, past just that row's
-   *  remembered miss (the scoped form of [[retryUnresolvedTmdb]]). Driven by
-   *  [[services.tasks.UnresolvedTmdbReaper]]'s phase-spread tick so the
-   *  unresolved backlog re-tries as a flat trickle instead of a boot/period
-   *  burst. No-op once the row has resolved or is awaiting detail (its detail
-   *  completing re-triggers TMDB via `MovieDetailsComplete`). */
   /** [[retryResolve]] addressed by `(title, year)`, for a caller outside `services`
    *  — `CacheKey` is `private[services]`, so the fixture harness cannot name a row
    *  any other way. Without it the only reachable re-resolve was the operator-scale
@@ -866,6 +860,12 @@ class MovieService(
     cache.get(cache.keyOf(title, year)).foreach(record =>
       enqueueNewcomerRatings(cache.keyOf(title, year), record))
 
+  /** Re-attempt ONE still-unresolved row's TMDB resolution, past just that row's
+   *  remembered miss (the scoped form of [[retryUnresolvedTmdb]]). Driven by
+   *  [[services.tasks.UnresolvedTmdbReaper]]'s phase-spread tick so the
+   *  unresolved backlog re-tries as a flat trickle instead of a boot/period
+   *  burst. No-op once the row has resolved or is awaiting detail (its detail
+   *  completing re-triggers TMDB via `MovieDetailsComplete`). */
   def retryResolve(key: CacheKey): Unit =
     cache.get(key).filter(e => e.tmdbId.isEmpty && !e.detailPending).foreach(dispatchWithHints(key, _, ResolveMode.RetryMiss))
 
