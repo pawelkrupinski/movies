@@ -24,25 +24,25 @@ final class HttpLanguageClientTests: XCTestCase {
         } catch {}
     }
 
-    /// A 400 (a language this server does not know) is refused for good — a
-    /// different error from one worth retrying, so the caller can stop.
-    func testPushReportsAPermanentRefusalAsSuch() async {
-        do {
-            try await client(answering: 400).push("it")
-            XCTFail("a 400 must not read as a successful push")
-        } catch {
-            XCTAssertEqual((error as? LanguagePushRefused)?.statusCode, 400)
-        }
-    }
-
-    func testPushReportsARetryableFailureAsRetryable() async {
-        // 403 included: a Cloudflare challenge in front of the app is a 403 too.
-        for status in [401, 403, 404, 408, 422, 429, 503] {
+    /// Only a 400 (a language this server does not know) is refused for good —
+    /// a different error from one worth retrying, so the caller can stop. A 403
+    /// in particular is as likely a Cloudflare challenge in front of the app.
+    /// Every status is a row of the repo's retry-classification table, which
+    /// the web and Android hold their own rule to as well.
+    func testPushSettlesEveryStatusAsTheRetryClassificationTableSays() async throws {
+        let table = try RetryClassificationTable.load()
+        XCTAssertTrue(table.sources(consumedBy: "ios").contains("user-state:language-push"))
+        let rows = try table.rows(for: "user-state:language-push")
+        XCTAssertFalse(rows.isEmpty)
+        for row in rows {
+            let status = try XCTUnwrap(row.status, "\(row)")
+            XCTAssertEqual(LanguagePushRefused.isPermanent(status), row.isPermanent, "\(row)")
             do {
                 try await client(answering: status).push("de")
                 XCTFail("a \(status) must not read as a successful push")
             } catch {
-                XCTAssertFalse(error is LanguagePushRefused, "\(status) is worth retrying")
+                XCTAssertEqual(error is LanguagePushRefused, row.isPermanent, "\(row)")
+                if row.isPermanent { XCTAssertEqual((error as? LanguagePushRefused)?.statusCode, status) }
             }
         }
     }

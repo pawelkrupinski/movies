@@ -5,6 +5,8 @@ on:
         paths:
             - 'android/**'
             - '.github/workflows/android.yml'
+            # The retry-classification table the language-push tests hold the app's rule to.
+            - 'test/resources/retry-classification.json'
             # The store-script helper tests below live here and in ios/scripts,
             # and the lookup tables they guard are SHARED with the iOS capture.
             # Without these, editing the file that actually broke Spain's
@@ -30,6 +32,8 @@ on:
         paths:
             - 'android/**'
             - '.github/workflows/android.yml'
+            # The retry-classification table the language-push tests hold the app's rule to.
+            - 'test/resources/retry-classification.json'
             # The store-script helper tests below live here and in ios/scripts,
             # and the lookup tables they guard are SHARED with the iOS capture.
             # Without these, editing the file that actually broke Spain's

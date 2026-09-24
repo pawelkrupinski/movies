@@ -1,0 +1,113 @@
+{
+  "about": "THE retry/error classification every layer agrees on. One row per (source, error): what a failure of that kind MEANS, whatever code meets it. permanent = the answer is final; remember it, never retry it. transient = says something about right now; retry it with backoff, and it counts against whoever answered. provider = a paid egress route (Zyte, Decodo) failing on its own account; try another route or retry later, but it never counts against the origin or venue. Specs in Scala (worker RetryClassificationSpec, web PageJsBehaviourSpec), Swift (RetryClassificationTableTests) and Kotlin (RetryClassificationTableTest) load this file and assert the production classifiers agree row by row; `consumers` names the platforms whose code enforces a source. Change a verdict here and in the code together.",
+  "verdicts": ["permanent", "transient", "provider"],
+  "sources": {
+    "origin": {
+      "about": "The origin's own answer, fetched directly (RealHttpFetch). Only 404/410 describe the URL rather than the moment (HttpStatusException.isDurable, EnrichmentRead.isAbsent, FallbackHttpFetch.OriginAnswered).",
+      "consumers": ["worker"]
+    },
+    "origin-via-zyte": {
+      "about": "The origin's status relayed by Zyte's extract API (ZyteOriginStatusException): the origin's verdict, as durable as fetched directly.",
+      "consumers": ["worker"]
+    },
+    "zyte": {
+      "about": "Zyte's own API failing (ZyteApiException): its throttle, ban, bad key or outage, never the origin's (0ba08b827).",
+      "consumers": ["worker"]
+    },
+    "decodo": {
+      "about": "The Decodo residential proxy refusing the CONNECT tunnel. The JDK surfaces a 407 (with an Authenticator) as `too many authentication attempts` and any other status as `Tunnel failed, got: N` - both IOExceptions on the proxy leg, which must fall through to the next route.",
+      "consumers": ["worker"]
+    },
+    "task": {
+      "about": "A task handler's failure, as TaskWorker classes it. A violated require is a bug in the task's inputs a retry only replays (0e471cfb3); anything read from an upstream payload may clear.",
+      "consumers": ["worker"]
+    },
+    "mongo-write": {
+      "about": "A Mongo write's outcome. A duplicate key is the store's final answer (someone else holds the key), never an outage to retry.",
+      "consumers": ["worker"]
+    },
+    "user-state:hidden-films-write": {
+      "about": "The app server's answer to a hidden-films PUT/DELETE. UserStateController refuses for good only with 400 (over-long title, unknown country) and 413 (full bucket); a 403 is as likely a Cloudflare challenge in front of the app (f3fb9230e). The apps resend every failed write on the next reconcile and draw no permanent line yet.",
+      "consumers": ["web"]
+    },
+    "user-state:language-push": {
+      "about": "The app server's answer to a language PUT. Only the 400 UserStateController.put answers for an unknown language is for good (78a6c72a2).",
+      "consumers": ["web", "ios", "android"]
+    }
+  },
+  "rows": [
+    { "source": "origin", "error": "http:400", "verdict": "transient" },
+    { "source": "origin", "error": "http:401", "verdict": "transient" },
+    { "source": "origin", "error": "http:403", "verdict": "transient", "note": "a Cloudflare challenge / datacentre-IP block: the host refusing us now" },
+    { "source": "origin", "error": "http:404", "verdict": "permanent" },
+    { "source": "origin", "error": "http:408", "verdict": "transient" },
+    { "source": "origin", "error": "http:410", "verdict": "permanent" },
+    { "source": "origin", "error": "http:422", "verdict": "transient" },
+    { "source": "origin", "error": "http:429", "verdict": "transient" },
+    { "source": "origin", "error": "http:500", "verdict": "transient" },
+    { "source": "origin", "error": "http:502", "verdict": "transient" },
+    { "source": "origin", "error": "http:503", "verdict": "transient" },
+    { "source": "origin", "error": "http:504", "verdict": "transient" },
+    { "source": "origin", "error": "timeout", "verdict": "transient" },
+    { "source": "origin", "error": "connect-timeout", "verdict": "transient" },
+    { "source": "origin", "error": "connection-refused", "verdict": "transient" },
+    { "source": "origin", "error": "unknown-host", "verdict": "transient" },
+    { "source": "origin", "error": "tls-handshake", "verdict": "transient" },
+
+    { "source": "origin-via-zyte", "error": "http:403", "verdict": "transient" },
+    { "source": "origin-via-zyte", "error": "http:404", "verdict": "permanent" },
+    { "source": "origin-via-zyte", "error": "http:410", "verdict": "permanent" },
+    { "source": "origin-via-zyte", "error": "http:429", "verdict": "transient" },
+    { "source": "origin-via-zyte", "error": "http:503", "verdict": "transient" },
+
+    { "source": "zyte", "error": "http:401", "verdict": "provider" },
+    { "source": "zyte", "error": "http:403", "verdict": "provider" },
+    { "source": "zyte", "error": "http:404", "verdict": "provider" },
+    { "source": "zyte", "error": "http:407", "verdict": "provider" },
+    { "source": "zyte", "error": "http:410", "verdict": "provider" },
+    { "source": "zyte", "error": "http:429", "verdict": "provider" },
+    { "source": "zyte", "error": "http:500", "verdict": "provider" },
+    { "source": "zyte", "error": "http:503", "verdict": "provider" },
+    { "source": "zyte", "error": "http:520", "verdict": "provider" },
+    { "source": "zyte", "error": "no-origin-status", "verdict": "provider" },
+
+    { "source": "decodo", "error": "tunnel:407", "verdict": "provider" },
+    { "source": "decodo", "error": "tunnel:502", "verdict": "provider" },
+    { "source": "decodo", "error": "tunnel:503", "verdict": "provider" },
+
+    { "source": "task", "error": "require", "verdict": "permanent" },
+    { "source": "task", "error": "illegal-argument", "verdict": "permanent" },
+    { "source": "task", "error": "number-format", "verdict": "transient", "note": "read from a truncated or error page" },
+    { "source": "task", "error": "illegal-state", "verdict": "transient" },
+    { "source": "task", "error": "runtime", "verdict": "transient" },
+    { "source": "task", "error": "io", "verdict": "transient" },
+
+    { "source": "mongo-write", "error": "duplicate-key", "verdict": "permanent" },
+    { "source": "mongo-write", "error": "write-conflict", "verdict": "transient" },
+    { "source": "mongo-write", "error": "not-writable-primary", "verdict": "transient" },
+
+    { "source": "user-state:hidden-films-write", "error": "http:400", "verdict": "permanent" },
+    { "source": "user-state:hidden-films-write", "error": "http:401", "verdict": "transient" },
+    { "source": "user-state:hidden-films-write", "error": "http:403", "verdict": "transient" },
+    { "source": "user-state:hidden-films-write", "error": "http:404", "verdict": "transient" },
+    { "source": "user-state:hidden-films-write", "error": "http:408", "verdict": "transient" },
+    { "source": "user-state:hidden-films-write", "error": "http:413", "verdict": "permanent" },
+    { "source": "user-state:hidden-films-write", "error": "http:422", "verdict": "transient" },
+    { "source": "user-state:hidden-films-write", "error": "http:429", "verdict": "transient" },
+    { "source": "user-state:hidden-films-write", "error": "http:500", "verdict": "transient" },
+    { "source": "user-state:hidden-films-write", "error": "http:502", "verdict": "transient" },
+    { "source": "user-state:hidden-films-write", "error": "http:503", "verdict": "transient" },
+
+    { "source": "user-state:language-push", "error": "http:400", "verdict": "permanent" },
+    { "source": "user-state:language-push", "error": "http:401", "verdict": "transient" },
+    { "source": "user-state:language-push", "error": "http:403", "verdict": "transient" },
+    { "source": "user-state:language-push", "error": "http:404", "verdict": "transient" },
+    { "source": "user-state:language-push", "error": "http:408", "verdict": "transient" },
+    { "source": "user-state:language-push", "error": "http:413", "verdict": "transient" },
+    { "source": "user-state:language-push", "error": "http:422", "verdict": "transient" },
+    { "source": "user-state:language-push", "error": "http:429", "verdict": "transient" },
+    { "source": "user-state:language-push", "error": "http:500", "verdict": "transient" },
+    { "source": "user-state:language-push", "error": "http:502", "verdict": "transient" },
+    { "source": "user-state:language-push", "error": "http:503", "verdict": "transient" }
+  ]
+}

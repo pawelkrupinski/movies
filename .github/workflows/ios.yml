@@ -7,6 +7,8 @@ on:
             - 'mobile-version.txt'
             - 'scripts/mobile-version-check.sh'
             - '.github/workflows/ios.yml'
+            # The retry-classification table the language-push tests hold the app's rule to.
+            - 'test/resources/retry-classification.json'
     push:
         branches: [main]
         paths:
@@ -14,6 +16,8 @@ on:
             - 'mobile-version.txt'
             - 'scripts/mobile-version-check.sh'
             - '.github/workflows/ios.yml'
+            # The retry-classification table the language-push tests hold the app's rule to.
+            - 'test/resources/retry-classification.json'
     workflow_dispatch:
 
 # A newer push to the same ref cancels the older run mid-flight, freeing the

@@ -13,6 +13,7 @@ import play.api.libs.json.{Json, JsString}
 import services.movies.StoredMovieRecord
 import services.staging.StagingRecord
 import tools.{CdpPage, Chrome, FixtureTestWiring, TestHttpServer}
+import tools.contracts.RetryClassificationTable
 
 import java.net.URLDecoder
 import java.time.{LocalDate, LocalDateTime}
@@ -728,19 +729,20 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   // Only the controller's own refusals (400 over-long title or unknown country,
   // 413 full bucket) are for good. A 403 is as likely a Cloudflare challenge in
-  // front of the app, and dropping the hide on one lost it for the account.
-  it should "keep a hide pending when its write is answered 403" in {
+  // front of the app, and dropping the hide on one lost it for the account
+  // (f3fb9230e). Every status is the retry-classification table's row: a
+  // permanent one drops the hide, anything else keeps it owed.
+  it should "drop or keep a hide exactly as the retry-classification table says, status by status" in {
+    val rows = RetryClassificationTable.load.rowsFor("user-state:hidden-films-write")
     onLoggedInIndex { page =>
       awaitOwnReconcile(page)
-      pendingAfterWriteAnswered(page, 403, "Challenged") should include ("Challenged")
-    }
-  }
-
-  it should "drop a hide the server refused for good" in {
-    onLoggedInIndex { page =>
-      awaitOwnReconcile(page)
-      pendingAfterWriteAnswered(page, 400, "Too Long") should not include "Too Long"
-      pendingAfterWriteAnswered(page, 413, "Over Cap") should not include "Over Cap"
+      rows.foreach { row =>
+        val title = s"Answered ${row.status.get}"
+        withClue(s"$row: ") {
+          pendingAfterWriteAnswered(page, row.status.get, title).contains(title) shouldBe
+            (row.verdict != RetryClassificationTable.Verdict.Permanent)
+        }
+      }
     }
   }
 
@@ -992,26 +994,31 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   // Only a 400 (the controller's answer to a language it does not know) is
   // for good. A 403 is as likely a Cloudflare challenge in front of the app as
-  // anything the app said, and dropping the pick on one lost it for good.
-  it should "keep a pick pending when its push is answered 403" in {
-    onLoggedInIndex { page =>
-      awaitOwnReconcile(page)
-      try {
-        page.eval(
-          "window._realFetch = window.fetch; window._lang403 = 0; window._lang403Handled = false;" +
-          "window.fetch = function (url, opts) {" +
-          "  if (!/\\/api\\/me\\/state$/.test(String(url)) || !opts || opts.method !== 'PUT') return window._realFetch(url, opts);" +
-          // A macrotask runs only once every microtask queued before it has —
-          // the push's response handler included — so this flags "handled".
-          "  window._lang403++; setTimeout(() => { window._lang403Handled = true; }, 0);" +
-          "  return Promise.resolve(new Response('challenge', { status: 403 }));" +
-          "};")
-        page.eval("onLanguageChange('es')")
-        page.waitFor("window._lang403Handled === true", timeoutMs = 5000)
-        page.evalString("localStorage.getItem('kinowo_lang_pending')") shouldBe "es"
-      } finally {
-        page.eval("if (window._realFetch) window.fetch = window._realFetch;" +
-          "localStorage.removeItem('kinowo_lang'); localStorage.removeItem('kinowo_lang_pending')")
+  // anything the app said, and dropping the pick on one lost it for good
+  // (78a6c72a2). Every status is the retry-classification table's row: a
+  // permanent one stops owing the pick, anything else keeps it pending.
+  for (row <- RetryClassificationTable.load.rowsFor("user-state:language-push")) {
+    it should s"settle a language push as the retry-classification table says: $row" in {
+      onLoggedInIndex { page =>
+        awaitOwnReconcile(page)
+        try {
+          page.eval(
+            "window._realFetch = window.fetch; window._pushHandled = false;" +
+            "window.fetch = function (url, opts) {" +
+            "  if (!/\\/api\\/me\\/state$/.test(String(url)) || !opts || opts.method !== 'PUT') return window._realFetch(url, opts);" +
+            // A macrotask runs only once every microtask queued before it has —
+            // the push's response handler included — so this flags "handled".
+            "  setTimeout(() => { window._pushHandled = true; }, 0);" +
+            s"  return Promise.resolve(new Response('answer', { status: ${row.status.get} }));" +
+            "};")
+          page.eval("onLanguageChange('es')")
+          page.waitFor("window._pushHandled === true", timeoutMs = 5000)
+          val pending = page.eval("localStorage.getItem('kinowo_lang_pending')").asOpt[String]
+          pending shouldBe (if (row.verdict == RetryClassificationTable.Verdict.Permanent) None else Some("es"))
+        } finally {
+          page.eval("if (window._realFetch) window.fetch = window._realFetch;" +
+            "localStorage.removeItem('kinowo_lang'); localStorage.removeItem('kinowo_lang_pending')")
+        }
       }
     }
   }
