@@ -29,4 +29,45 @@ check "docs run nothing" "" "$(plan docs/readme.md README.md)"
 check "checks come out once each, in run order" "eslint snapshot actionlint shellcheck sbt" \
   "$(plan web/src/main/assets/js/a.js build.sbt scripts/x.sh .github/workflows/a.yml worker/src/main/scala/A.scala test/resources/fixtures/08-06-2026/y)"
 
+# ── Running for real, over a scratch clone: what is judged, and what is not silently passed ──
+printf '\033[36m▸\033[0m pre-push over a scratch repository\n'
+if command -v shellcheck >/dev/null; then
+  scratch="$(mktemp -d)"
+  trap 'rm -rf "$scratch"' EXIT
+  repo="$scratch/repo"
+  mkdir -p "$repo/scripts/hooks"
+  git -C "$repo" init -q
+  git -C "$repo" config user.email spec@example.com; git -C "$repo" config user.name Spec
+  cp "$REPO_ROOT/scripts/hooks/pre-push" "$repo/scripts/hooks/pre-push"
+  printf '#!/usr/bin/env bash\necho "$1"\n' > "$repo/a.sh"
+  git -C "$repo" add -A; git -C "$repo" commit -qm base
+  base="$(git -C "$repo" rev-parse HEAD)"
+  # The PUSHED commit adds a warning (an unused variable); the working tree then fixes it.
+  printf '#!/usr/bin/env bash\nunused=1\necho "$1"\n' > "$repo/a.sh"
+  git -C "$repo" commit -qam "adds a warning"
+  head="$(git -C "$repo" rev-parse HEAD)"
+  printf '#!/usr/bin/env bash\necho "$1"\n' > "$repo/a.sh"
+
+  (cd "$repo" && bash scripts/hooks/pre-push --range "$base..$head" >/dev/null 2>&1); code=$?
+  check "judges the commits being pushed, not a working tree that has moved on" "1" "$code"
+  check "leaves the working tree as it was" "0" "$(grep -c unused "$repo/a.sh")"
+  check "leaves no temporary worktree behind" "1" "$(git -C "$repo" worktree list | wc -l | tr -d ' ')"
+
+  # The other way round: the pushed commit is clean, the working tree is dirty with a warning.
+  git -C "$repo" commit -qam "fixes it"; fixed="$(git -C "$repo" rev-parse HEAD)"
+  printf '#!/usr/bin/env bash\nunused=1\necho "$1"\n' > "$repo/a.sh"
+  (cd "$repo" && bash scripts/hooks/pre-push --range "$base..$fixed" >/dev/null 2>&1); code=$?
+  check "passes a clean pushed commit whatever the working tree holds" "0" "$code"
+  check "...and removes its temporary worktree on success too" "1" "$(git -C "$repo" worktree list | wc -l | tr -d ' ')"
+  git -C "$repo" checkout -q -- a.sh
+
+  # git's own stdin, with no origin/main to find a new branch's base from: said, not silently passed.
+  out="$(cd "$repo" && printf 'refs/heads/x %s refs/heads/x %s\n' "$head" 0000000000000000000000000000000000000000 \
+           | bash scripts/hooks/pre-push origin url 2>&1)"
+  check "warns when origin/main is missing, instead of checking nothing in silence" "1" \
+    "$(printf '%s\n' "$out" | grep -c 'origin/main')"
+else
+  printf '  (shellcheck not installed — scratch-repository cases skipped)\n'
+fi
+
 spec_summary

@@ -17,6 +17,9 @@
 #   `ios`         scripts/ios-compile-check.sh (app target + Linux SwiftPM) on ios/** — this one
 #                 is minutes, not seconds, and only runs for iOS pushes
 #
+# WHAT IS CHECKED is the pushed commit's tree: in place when the checkout is that tree, else in a
+# temporary worktree of it (cold, so an sbt check there takes minutes, not seconds).
+#
 # BYPASS: `git push --no-verify` skips the whole hook. `PREPUSH_SKIP="ios sbt" git push` skips
 # the named checks. A tool that is not installed (actionlint, shellcheck, Docker, Xcode) is
 # skipped with a warning, never silently.
@@ -83,8 +86,11 @@ base_for() {
     local local_sha="$1" remote_sha="$2"
     if [ "$remote_sha" != "$Zero" ] && git cat-file -e "$remote_sha^{commit}" 2>/dev/null; then
         echo "$remote_sha"
-    else
+    elif git rev-parse -q --verify origin/main >/dev/null; then
         git merge-base "$local_sha" origin/main 2>/dev/null || true
+    else
+        # Said out loud: an unfetched clone would otherwise check nothing and pass.
+        printf '\033[33m! pre-push\033[0m no origin/main to find the base of %s from — nothing checked (git fetch origin, then push again)\n' "${local_sha:0:9}" >&2
     fi
 }
 
@@ -103,7 +109,14 @@ fi
 # THREE dots: what the pushed commits changed since they left the base, not how the two tips
 # differ. A fetch by any agent moves origin/main under every worktree of this clone, and a two-dot
 # diff would count those newer commits of main as this push's changes.
-changed="$(for r in "${ranges[@]}"; do git diff --name-only --diff-filter=d "${r/../...}"; done | LC_ALL=C sort -u)"
+changed=""
+for r in "${ranges[@]}"; do
+    # A diff that fails is not "nothing changed".
+    names="$(git diff --name-only --diff-filter=d "${r/../...}")" \
+        || { printf '\033[33m! pre-push\033[0m cannot diff %s — blocked (bypass with --no-verify)\n' "$r" >&2; exit 1; }
+    changed="$changed$names"$'\n'
+done
+changed="$(printf '%s' "$changed" | grep -v '^$' | LC_ALL=C sort -u)"
 [ -z "$changed" ] && exit 0
 head_sha="${ranges[${#ranges[@]}-1]##*..}"
 base_sha="${ranges[0]%%..*}"
@@ -179,6 +192,29 @@ check_ios() {
 }
 
 tmp="$(mktemp -d)"
+
+# THE PUSHED COMMITS ARE JUDGED, not the working tree: that can hold edits the push does not
+# carry, or sit on another branch entirely (`git push origin other:main`). When HEAD is the
+# pushed commit and nothing the push changed differs from it, the checkout is that tree and the
+# checks run in place, warm. Otherwise they run in a temporary worktree of the pushed commit —
+# never `git stash`, which is shared by every worktree of this clone — removed afterwards.
+in_place() {
+    [ "$(git rev-parse HEAD)" = "$head_sha" ] || return 1
+    local path
+    while IFS= read -r path; do
+        git diff --quiet HEAD -- "$path" || return 1
+        [ -z "$(git ls-files --others --exclude-standard -- "$path")" ] || return 1
+    done <<< "$changed"
+}
+if ! in_place; then
+    tree="$tmp/tree"
+    git worktree add -q --detach "$tree" "$head_sha" || { warn "cannot check out ${head_sha:0:9} to check it"; exit 1; }
+    trap 'git -C "$root" worktree remove --force "$tree" >/dev/null 2>&1; git -C "$root" worktree prune' EXIT
+    [ -d "$root/node_modules" ] && ln -s "$root/node_modules" "$tree/node_modules"
+    log "the working tree is not ${head_sha:0:9}: checking a temporary checkout of it"
+    cd "$tree" || exit 1
+fi
+
 failed=""
 started=$SECONDS
 log "$(printf '%s' "$checks" | tr '\n' ' ') — for $(printf '%s\n' "$changed" | wc -l | tr -d ' ') changed path(s)"
