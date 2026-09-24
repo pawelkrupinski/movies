@@ -164,6 +164,16 @@ class InMemoryMovieRepository(
     delete(FilmId(idOf(t, y)))
   }
 
+  private var enforceIdentity = true
+
+  /** Store a document the unique indexes would refuse today — the legacy data (written before
+   *  they existed) and lost races the hydrate's reconcile exists for. Every other write is held
+   *  to them, as Mongo holds it. */
+  def seedPreIndexDocument(film: FilmId, title: String, year: Option[Int], e: MovieRecord): WriteOutcome = lock.synchronized {
+    enforceIdentity = false
+    try upsert(film, CacheKey(title, year, normalizer), e) finally enforceIdentity = true
+  }
+
   def upsert(film: FilmId, key: CacheKey, e: MovieRecord): WriteOutcome = lock.synchronized {
     val id = film.value
     val (t, y) = (key.cleanTitle, key.year)
@@ -183,6 +193,17 @@ class InMemoryMovieRepository(
     // `SlotsRepository.applyFilm` / `ScreeningsSplit.applyFilm`.
     // What the store holds BEFORE this call, for the unchanged-write rule at the end.
     val previous    = store.get(id)
+    // The unique indexes' refusal, decided by the SAME rule `MongoMovieRepository.upsert` asks
+    // Mongo — before any side row is written, so a refused write leaves the film as it was.
+    val identity = (r: StoredMovieRecord) => MoviesUpsert.Identity(Some(r.key(normalizer)), r.record.tmdbId)
+    val held = enforceIdentity && MoviesUpsert.identityChanging(previous.map(identity), storedKey, e.tmdbId) &&
+      store.exists { case (other, r) => other != id && MoviesUpsert.heldBy(storedKey, e.tmdbId)(identity(r)) }
+    if (held) {
+      // Mongo's upsert says so too; without it a refused write here was silent.
+      InMemoryMovieRepository.logger.warn(s"MovieRepository.upsert(${key.cleanTitle}, ${key.year.getOrElse("—")}) refused: another " +
+        s"document already holds its key or its tmdbId=${e.tmdbId.getOrElse("?")} — the film keeps its previous document")
+      return WriteOutcome.IdentityHeld
+    }
     val sidesBefore = sideRowsOf(id)
     val stitch = screenings.fold(ScreeningsSplit.ReStitched(e.data, Map.empty, complete = true))(
       ScreeningsSplit.reStitchChecked(_, id, e.data))
@@ -368,4 +389,8 @@ class InMemoryMovieRepository(
     val k = keyOf(t, y)
     store.collectFirst { case (id, r) if r.key(normalizer) == k => id }.getOrElse(k)
   }
+}
+
+object InMemoryMovieRepository {
+  private val logger = play.api.Logger(classOf[InMemoryMovieRepository])
 }

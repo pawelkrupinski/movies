@@ -80,7 +80,7 @@ class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(screenings = Some(store), clock = clock)
     repository.upsert("Written First", year, record(screened))
     clock.advanceSeconds(60)
-    repository.upsert("Written Second", year, record(screened))
+    repository.upsert("Written Second", year, record(screened).copy(tmdbId = Some(8)))
 
     def updatedSince(since: java.time.Instant): Seq[StoredMovieRecord] = {
       val rows = Seq.newBuilder[StoredMovieRecord]
@@ -136,5 +136,29 @@ class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers {
     // film, so the fake's single stream must too, or the projector never sees the showtime.
     repository.upsert(title, year, record(screened.copy(showtimes = times :+ Showtime(when.plusHours(2), None))))
     deliveries.get shouldBe 1
+  }
+
+  // Mongo holds `tmdbId` (and `key`) under UNIQUE indexes, and `upsert` refuses a write that
+  // would give a film an identity another document already holds — slots and all. The fake
+  // stored the second document happily, so every fold/merge spec ran against a store that
+  // could hold two films for one tmdbId, which production cannot: the fold-order bug that
+  // abandoned folds forever (26d5690c0) was invisible to every in-memory spec for exactly
+  // this reason.
+  "a write giving a film a tmdbId another document already holds" should
+    "be refused whole, as the unique index refuses it" in {
+    val slots      = new InMemorySlotsRepository
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository), slots = Some(slots))
+    repository.upsert("First", year, record(screened)) shouldBe WriteOutcome.Written
+    val second = MovieRecord(tmdbId = Some(7), data = Map[Source, SourceData](Helios -> SourceData(title = Some("Second"))))
+    repository.upsert("Second", year, second) shouldBe WriteOutcome.IdentityHeld
+    repository.findAll().map(_.id.value) shouldBe Seq(StoredMovieRecord.keyFor("First", year, repository.normalizer))
+    val secondId = StoredMovieRecord.keyFor("Second", year, repository.normalizer)
+    withClue("a refused write must not land its slots either: ") { slots.findForFilm(secondId) shouldBe empty }
+  }
+
+  it should "still let the film that holds the tmdbId re-write itself" in {
+    val repository = new InMemoryMovieRepository()
+    repository.upsert("First", year, record(screened)) shouldBe WriteOutcome.Written
+    repository.upsert("First", year, record(screened).copy(imdbId = Some("tt1"))) shouldBe WriteOutcome.Written
   }
 }

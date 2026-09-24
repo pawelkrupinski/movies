@@ -91,7 +91,8 @@ class ReadModelConvergenceSpec extends AnyFlatSpec with Matchers {
     repository.upsert("Foo", Some(2024), film(plain("2026-06-12T20:00"), decorated("2026-06-20T20:00")))
     convergedAfter("the decorated listing comes back")
 
-    repository.upsert("Bar", Some(2024), film(KinoPalacowe -> SourceData(title = Some("Bar"), showtimes = Seq(at("2026-06-14T20:00")))))
+    // Its own tmdbId: two films cannot hold one, as the repository's unique index refuses it.
+    repository.upsert("Bar", Some(2024), film(KinoPalacowe -> SourceData(title = Some("Bar"), showtimes = Seq(at("2026-06-14T20:00")))).copy(tmdbId = Some(2)))
     val bar = row("Bar").id
     convergedAfter("a second film lands")
 

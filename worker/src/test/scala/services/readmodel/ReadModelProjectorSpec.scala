@@ -27,8 +27,10 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
 
   // tmdbId set → `readyToProject` (TMDB concluded); the projector only
   // publishes rows whose enrichment has settled.
-  private def record(rating: Option[Double], showtimes: Seq[Showtime]): MovieRecord =
-    MovieRecord(imdbRating = rating, tmdbId = Some(1), data = Map[Source, SourceData](Multikino -> slot(showtimes)))
+  // One tmdbId per FILM, as the repository's unique index holds it: a spec seeding a second
+  // film passes its own.
+  private def record(rating: Option[Double], showtimes: Seq[Showtime], tmdbId: Int = 1): MovieRecord =
+    MovieRecord(imdbRating = rating, tmdbId = Some(tmdbId), data = Map[Source, SourceData](Multikino -> slot(showtimes)))
 
   private def stored(record: MovieRecord): StoredMovieRecord = StoredMovieRecord("Foo", Some(2024), record)
 
@@ -476,7 +478,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val (projector, repository, rm) = fixture()
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     projector.reconcile()                       // Foo carded
-    repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00"))))
+    repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
     val before = rm.movieUpserts.size
     projector.start()
     // Bar healed (the helper's slot title is "Foo" for every row, so compare ids — a
@@ -500,7 +502,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     // day, none attributable). The ids make each heal a lookup; the cap keeps a mass heal
     // (the 509-card id-scheme rollout) one readable line.
     val (projector, repository, _) = fixture()
-    (1 to 25).foreach(i => repository.upsert(s"Film$i", Some(2024), record(Some(7.0), Seq(at("2026-06-12T20:00")))))
+    (1 to 25).foreach(i => repository.upsert(s"Film$i", Some(2024), record(Some(7.0), Seq(at("2026-06-12T20:00")), tmdbId = 100 + i)))
     val ids = repository.findAll().map(_.id.value)
     val lines = tools.LogCapture.capture(classOf[ReadModelProjector].getName)(projector.pruneOrphans())
       .map(_.getFormattedMessage).filter(_.contains("missing a card"))
@@ -520,7 +522,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val m  = new RecordingMetrics()
     val projector = new ReadModelProjector(repository, rm, rm, m)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00"))))
+    repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
     projector.start()                                   // both uncarded → both healed at boot
     m.heals.toSeq shouldBe Seq(ReadModelProjectionMetrics.HealTrigger.Boot -> 2)
 
@@ -1170,7 +1172,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     // has delivered plenty since, and the silent-cursor catch-up only re-reads rows written
     // AFTER the last delivery. Without it the catch-up repairs the row and this spec would be
     // testing that instead.
-    repository.upsert("Bar", Some(2024), record(Some(6.0), Seq(at("2026-06-14T20:00"))))
+    repository.upsert("Bar", Some(2024), record(Some(6.0), Seq(at("2026-06-14T20:00")), tmdbId = 2))
 
     val m       = new RecordingMetrics()
     val checker = new ReadModelProjector(repository, rm, rm, m)
@@ -1220,7 +1222,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   "the orphan prune" should "never leave a live film without a card, even when every card it has is stale" in {
     val (projector, repository, rm) = fixture()
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00"))))
+    repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
     val rows = repository.findAll()
     // Cards under the OLD scheme's ids for both rows, and nothing under the new ones.
     rows.foreach { row =>
@@ -1318,7 +1320,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     }
     val m = new RecordingMetrics()
     val projector = new ReadModelProjector(repository, flaky, flaky, m)
-    repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00"))))
+    repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     projector.reconcile()
     repository.delete("Bar", Some(2024))

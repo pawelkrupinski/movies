@@ -281,7 +281,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     val record = MovieRecord(tmdbId = Some(38757), data = Map[Source, SourceData](
       Multikino -> SourceData(title = Some("Zaplątani"), releaseYear = Some(2010))))
     repository.upsert(FilmId("zaplatani|2010"), "Zaplątani", Some(2010), record)
-    repository.upsert(FilmId("f0000000000000001"), "Zaplątani", Some(2010), record.copy(imdbRating = Some(7.7)))
+    repository.seedPreIndexDocument(FilmId("f0000000000000001"), "Zaplątani", Some(2010), record.copy(imdbRating = Some(7.7)))
     repository.findAll() should have size 2
 
     new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = fixedClock)                   // constructor hydrates → reconciles

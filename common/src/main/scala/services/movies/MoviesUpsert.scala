@@ -18,6 +18,22 @@ import scala.util.Try
  */
 object MoviesUpsert {
 
+  /** The identity a `movies` document holds under the two UNIQUE indexes: its stored `key`
+   *  and its `tmdbId`. */
+  final case class Identity(key: Option[String], tmdbId: Option[Int])
+
+  /** Whether writing `key`/`tmdbId` gives the film an identity its stored document did not
+   *  already hold — a re-key or a resolution, the only writes that can newly collide with a
+   *  sibling. The every-venue re-merge that is `upsert`'s normal load changes neither. */
+  def identityChanging(stored: Option[Identity], key: String, tmdbId: Option[Int]): Boolean =
+    !stored.exists(_.key.contains(key)) || (tmdbId.isDefined && !stored.exists(_.tmdbId == tmdbId))
+
+  /** Whether ANOTHER document's identity already holds this write's key or tmdbId — the
+   *  write the unique indexes refuse, so `upsert` refuses it whole ([[WriteOutcome.IdentityHeld]])
+   *  before landing any side rows. Mongo asks it as a query; the in-memory store over its map. */
+  def heldBy(key: String, tmdbId: Option[Int])(other: Identity): Boolean =
+    other.key.contains(key) || (tmdbId.isDefined && other.tmdbId == tmdbId)
+
   /** `document` is what `upsert` would write. `unchanged` says the stored row already equals
    *  it, so the write — and its oplog entry, and that entry's change-stream fanout — can be
    *  skipped. */

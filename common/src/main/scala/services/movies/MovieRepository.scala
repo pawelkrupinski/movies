@@ -935,8 +935,8 @@ class MongoMovieRepository(
     // have stored — i.e. a re-key or a resolution, not the every-venue-every-tick re-merge
     // that is this method's normal load. Gates the extra read below off the hot path: a tick
     // that changes neither can't newly collide with a sibling document.
-    val identityChanging = !storedDoc.exists(_.key.contains(key)) ||
-      (e.tmdbId.isDefined && !storedDoc.exists(_.tmdbId == e.tmdbId))
+    val identityChanging = MoviesUpsert.identityChanging(
+      storedDoc.map(d => MoviesUpsert.Identity(d.key, d.tmdbId)), key, e.tmdbId)
     // Landing the slots write BEFORE knowing the `movies` write will succeed left three films
     // stranded on 2026-09-16: the slots write landed a genuine TMDB match, the `movies` write
     // then hit the OTHER document already holding that tmdbId and was swallowed below, and
@@ -948,7 +948,8 @@ class MongoMovieRepository(
     val collidesWithAnother = identityChanging && Try(Await.result(c.find(Filters.and(
       Filters.ne("_id", id),
       Filters.or(List(Some(Filters.eq("key", key)), e.tmdbId.map(t => Filters.eq("tmdbId", t))).flatten*)
-    )).limit(1).toFuture(), 10.seconds)).toOption.exists(_.nonEmpty)
+    )).limit(1).toFuture(), 10.seconds)).toOption
+      .exists(_.exists(d => MoviesUpsert.heldBy(key, e.tmdbId)(MoviesUpsert.Identity(d.key, d.tmdbId))))
     if (collidesWithAnother) {
       logger.warn(s"MovieRepository.upsert($title, $year) refused: another document already holds its " +
         s"key or its tmdbId=${e.tmdbId.getOrElse("?")} — the film keeps its previous document")
