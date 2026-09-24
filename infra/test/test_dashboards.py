@@ -20,7 +20,11 @@ Run: python3 infra/test/test_dashboards.py   (also run by infra/bin/check)
 import json
 import os
 import re
+import sys
 import unittest
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from promql_selectors import seconds  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DASHBOARD_DIR = os.path.join(HERE, "..", "nix", "files", "monitoring", "grafana", "dashboards")
@@ -361,12 +365,6 @@ def bar_targets(panel):
         return [re.sub(r"\{\{[^}]*\}\}", filler, target.get("legendFormat", "")) for filler in fillers]
     return [t for t in targets
             if any(re.fullmatch(p, legend) for p in patterns for legend in renderings(t, p))]
-
-
-def seconds(interval):
-    """A Grafana/Prometheus duration ("30s", "1m", "2h") in seconds; 0 when unset or templated."""
-    match = re.fullmatch(r"(\d+)(s|m|h)", interval or "")
-    return int(match.group(1)) * {"s": 1, "m": 60, "h": 3600}[match.group(2)] if match else 0
 
 
 def longest_scrape_interval():

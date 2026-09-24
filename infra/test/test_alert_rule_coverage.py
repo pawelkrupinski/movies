@@ -35,6 +35,7 @@ import yaml
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import promql_selectors  # noqa: E402
+from promql_selectors import seconds  # noqa: E402
 
 SUITE_FILES = sorted(glob.glob(os.path.join(HERE, "alert-rules", "*.yml")))
 
@@ -52,12 +53,6 @@ _WORKER_GAUGE = re.compile(
     r'(\{(?:[^{}"]|"(?:[^"\\]|\\.)*")*\})?'
     r'(\s*\[\s*([0-9smhdw]+)\s*(?::[^\]]*)?\])?')
 _COUNTER_SUFFIX = re.compile(r'_(total|bucket|count|sum|created)$')
-
-
-def seconds(duration):
-    """A Prometheus duration ("1h30m", "10m", "2d") in seconds; 0 for none."""
-    units = {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800}
-    return sum(int(n) * units[u] for n, u in re.findall(r'(\d+)([smhdw])', duration or ""))
 
 
 def squash(expr):

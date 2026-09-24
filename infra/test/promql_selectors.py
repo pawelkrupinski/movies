@@ -28,6 +28,14 @@ _MATCHER = re.compile(r'([a-zA-Z_][a-zA-Z0-9_]*)\s*(=~|!~|!=|=)\s*' + _STRING)
 _SELECTOR = re.compile(r'([a-zA-Z_:][a-zA-Z0-9_:]*)?\s*\{((?:[^{}"]|"(?:[^"\\]|\\.)*")*)\}')
 
 
+def seconds(duration):
+    """A Prometheus/Grafana duration ("1h30m", "30s", "2d") in seconds; 0 when unset or templated."""
+    units = {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800}
+    if not re.fullmatch(r"(\d+[smhdw])+", duration or ""):
+        return 0
+    return sum(int(n) * units[u] for n, u in re.findall(r"(\d+)([smhdw])", duration))
+
+
 def unquote(value):
     """A PromQL double-quoted string's content, unescaped the way Prometheus does it."""
     return re.sub(r'\\(.)', lambda m: {"n": "\n", "t": "\t"}.get(m.group(1), m.group(1)), value)
