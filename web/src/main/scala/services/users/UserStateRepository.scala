@@ -6,7 +6,7 @@ import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument
 import models.UserState
 import org.bson.{BsonArray, BsonDateTime, BsonDocument, BsonInt32, BsonString, BsonValue}
 import org.mongodb.scala.model.{Aggregates, Field, Filters}
-import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
+import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, Observer, SingleObservableFuture, Subscription}
 import play.api.Logging
 import services.movies.{ChangeStreamLiveness, ChangeStreamReopen}
 import tools.Env
@@ -131,18 +131,18 @@ class MongoUserStateRepository(
   // historic write race (found + cleaned up 2026-09-20), after which `find`
   // and a write could silently disagree on WHICH duplicate is "the" row.
   //
-  // A deployment that already has the OLD plain index can't just add
-  // `unique` to it in place — Mongo rejects a `createIndex` whose auto-generated
-  // name ("userId_1") already exists with different options
-  // (`IndexKeySpecsConflict`). Drop the old one by name first — but ONLY when
-  // it exists and isn't unique yet. Every web pod runs this on every boot:
-  // an unconditional drop rebuilt the index each time and, between the drop
-  // and the create, left the collection with no index (and no uniqueness)
-  // at all.
+  // BUILD, NEVER REBUILD. Every web pod runs this on every boot, and a rolling
+  // deploy boots the new pod while the old one writes. This used to drop a
+  // legacy plain `userId_1` to make room for the unique one, and two pods
+  // booting together both read "legacy" and both dropped it: the second drop
+  // either found nothing (that pod reported the index missing although the
+  // first had built it) or removed the unique index the first had just built
+  // (`UserStateAcrossPodsIntegrationSpec`). Every country's database has
+  // carried the unique index since (the gauge read 1 in all five on
+  // 2026-09-24), so a plain one is now something to REPORT: `createIndex`
+  // refuses it (IndexKeySpecsConflict), the gauge below goes to 0, and an
+  // operator dedupes and rebuilds it by hand, once.
   private def ensureUniqueUserIdIndex(coll: MongoCollection[UserState]): Unit = {
-    val legacyPlainIndex = Await.result(coll.listIndexes[org.bson.BsonDocument]().toFuture(), 10.seconds)
-      .exists(ix => ix.getString("name").getValue == "userId_1" && !ix.getBoolean("unique", org.bson.BsonBoolean.FALSE).getValue)
-    if (legacyPlainIndex) Await.result(coll.dropIndex("userId_1").toFuture(), 10.seconds)
     Await.result(
       coll.createIndex(
         org.mongodb.scala.model.Indexes.ascending("userId"),

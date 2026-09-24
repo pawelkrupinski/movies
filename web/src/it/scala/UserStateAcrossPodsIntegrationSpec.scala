@@ -115,4 +115,24 @@ class UserStateAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers {
         userIdIndex(instances.head.database).flatMap(_.get("unique")).map(_.asBoolean().getValue) shouldBe Some(true)
       }
     }
+
+  // Over a collection still carrying the pre-caaae16bb PLAIN index, a boot that rebuilt it raced
+  // the other pod's boot: both read "legacy" and both dropped by name — the second drop either
+  // found nothing (that pod then reported the index MISSING although the first had built it,
+  // paging `UserStateUniqueIndexMissing`) or removed the unique index the first pod had just
+  // built. Every country's database carries the unique index now (the gauge reads 1 in all five),
+  // so a pod no longer rebuilds: it reports a non-unique index for an operator to fix, and never
+  // drops an index another pod may be writing behind.
+  "two web pods booting at once over a plain userId index" should "both report it, and neither drop it" in
+    ConcurrentInstances.withInstances("userstate-two-pods-legacy") { instances =>
+      val coll = instances.head.database.getCollection[Document](UserStateRepository.Collection)
+      rounds(4) { round =>
+        Await.result(coll.drop().toFuture(), 10.seconds)
+        Await.result(coll.createIndex(Indexes.ascending("userId"), IndexOptions()).toFuture(), 10.seconds)
+        val (reported, drops) = bootTogether(instances, round)
+        withClue(s"indexes dropped per pod: $drops — ") { drops shouldBe Seq(0, 0) }
+        withClue("the two pods must agree about the one index they share: ") { reported shouldBe Seq(List(false), List(false)) }
+        userIdIndex(instances.head.database).flatMap(_.get("unique")) shouldBe None
+      }
+    }
 }

@@ -127,7 +127,8 @@ groups:
             A web pod could not build the unique `userId` index on `userStates` (the web log has the
             ERROR `userStates has NO unique userId index` with the reason -- usually duplicate rows
             for one userId). Writes keyed on userId may land on either duplicate, and reads may
-            disagree with them. Dedupe the rows, then restart a web pod to rebuild the index.
+            disagree with them. Dedupe the rows -- and if the reason is IndexKeySpecsConflict, drop the
+            non-unique `userId_1` by hand (pods no longer rebuild it) -- then restart a web pod to build it.
 
       - alert: WebAssetsNotFound
         # THE ONE 4xx WORTH PAGING ON. `/assets/:file` serves the fingerprinted CSS and JS, so a

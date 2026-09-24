@@ -220,22 +220,6 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     } finally client.close()
   }
 
-  it should "migrate a legacy plain userId index to a unique one on boot" in {
-    val client = MongoClient(Env.get("MONGODB_URI").get)
-    val coll   = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo")).getCollection("userStates")
-    try {
-      Await.result(coll.dropIndex("userId_1").toFuture(), 10.seconds)
-      Await.result(coll.createIndex(org.mongodb.scala.model.Indexes.ascending("userId")).toFuture(), 10.seconds)
-
-      val rebooted = new MongoUserStateRepository()
-      try rebooted.enabled shouldBe true finally rebooted.close()
-
-      Await.result(coll.listIndexes().toFuture(), 10.seconds)
-        .find(_.get("name").map(_.asString.getValue).contains("userId_1")).value
-        .get("unique").map(_.asBoolean.getValue) shouldBe Some(true)
-    } finally client.close()
-  }
-
   // THE REOPEN GAP. A dead `userStates` cursor reopens at "now", so a write made between the
   // death and the reopen is never delivered. The death's `onDisconnect` only covered what the
   // listener knew THEN; the reopen must report losing track again, so nothing a listener picked
