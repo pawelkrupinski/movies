@@ -2221,9 +2221,19 @@
   //   • no write since the last exchange failed — a failed write forgets the
   //     validators, so the next reconcile takes the server's answer.
   //
-  // Every per-country flag, and the marker, is cleared whenever a page
+  // A write that failed is not lost with it: it is remembered as PENDING
+  // (`hiddenFilmsPending:<country>`, one op per title) and replayed over the
+  // server's list at the next full reconcile, then sent again — until it
+  // lands, or the server refuses it for good (a 4xx other than 401/408/429).
+  // While any is pending, a successful write's validators are not kept: they
+  // describe a server list the local one is still ahead of.
+  //
+  // Every per-country flag, and every pending op, is cleared whenever a page
   // renders anonymous (logout / expired session), so the next login migrates
   // this device's current picks afresh, exactly as the old single flag did.
+  // The marker is NOT: the local list outlives the logout, and it still
+  // mirrors the account's list for that country — so a sign-in in ANOTHER
+  // country replaces it rather than unioning the last account's titles in.
   //
   // `language` (the picked UI language, `kinowo_lang` — see `i18n.js`) rides
   // the LEGACY `/api/me/state` document instead — there's no granular
@@ -2252,6 +2262,28 @@
   // Which country's server list the (per-origin) local `hiddenFilms` list
   // currently mirrors — see the section comment above.
   const HIDDEN_FILMS_COUNTRY_KEY = 'hiddenFilmsCountry';
+  function _hiddenFilmsPendingKey(country)    { return 'hiddenFilmsPending:' + country; }
+
+  // Pending writes for `country`: `[[method, title], …]`, `title` null for a
+  // clear. At most one per title, the latest; a clear supersedes them all.
+  function _pendingHiddenFilms(country) {
+    try { return JSON.parse(localStorage.getItem(_hiddenFilmsPendingKey(country))) || []; } catch { return []; }
+  }
+  function _setPendingHiddenFilms(country, ops) {
+    try {
+      if (ops.length) localStorage.setItem(_hiddenFilmsPendingKey(country), JSON.stringify(ops));
+      else localStorage.removeItem(_hiddenFilmsPendingKey(country));
+    } catch {}
+  }
+  function _settlePending(country, method, title, stillPending) {
+    const others = title === null ? [] : _pendingHiddenFilms(country).filter(op => op[1] !== title);
+    _setPendingHiddenFilms(country, stillPending ? others.concat([[method, title]]) : others);
+  }
+  // The server's list with the pending ops played over it, in order.
+  function _withPending(list, ops) {
+    return ops.reduce((acc, [method, title]) =>
+      title === null ? [] : method === 'PUT' ? [...new Set([...acc, title])] : acc.filter(t => t !== title), list);
+  }
 
   function _hiddenFilmsUrl(country, title) {
     const base = mountPrefix() + '/api/me/' + country + '/hidden-films';
@@ -2284,12 +2316,24 @@
   function _writeHiddenFilms(method, country, title) {
     if (!isLoggedIn()) return;
     country = country || currentCountryCode();
+    const key = title === undefined ? null : title;
+    const failed = retry => {
+      _forgetHiddenFilmsValidators(country);
+      _settlePending(country, method, key, retry);
+    };
     fetch(_hiddenFilmsUrl(country, title), { method: method })
       .then(resp => {
-        if (resp.ok) _storeHiddenFilmsValidators(country, resp);
-        else _forgetHiddenFilmsValidators(country);
+        if (resp.ok) {
+          _settlePending(country, method, key, false);
+          if (_pendingHiddenFilms(country).length === 0) _storeHiddenFilmsValidators(country, resp);
+          else _forgetHiddenFilmsValidators(country);
+        } else {
+          // A refusal that will never change (400 over-long title, 413 full
+          // bucket) is not worth replaying; anything else may land next time.
+          failed(resp.status >= 500 || [401, 408, 429].includes(resp.status));
+        }
       })
-      .catch(() => _forgetHiddenFilmsValidators(country));
+      .catch(() => failed(true));
   }
 
   function hideFilmOnServer(title, country)   { _writeHiddenFilms('PUT', country, title); }
@@ -2341,12 +2385,12 @@
     if (!isLoggedIn()) {
       // Anonymous (incl. just-logged-out): re-arm migration for EVERY country
       // so the next login carries this device's current local picks up
-      // exactly once, and stop claiming the local list mirrors any account.
+      // exactly once, and drop writes owed to the account just left. The
+      // marker stays — see the section comment.
       try {
         Object.keys(localStorage)
-          .filter(k => k.indexOf(_hiddenFilmsSyncedKey('')) === 0)
+          .filter(k => k.indexOf(_hiddenFilmsSyncedKey('')) === 0 || k.indexOf(_hiddenFilmsPendingKey('')) === 0)
           .forEach(k => localStorage.removeItem(k));
-        localStorage.removeItem(HIDDEN_FILMS_COUNTRY_KEY);
       } catch {}
       return;
     }
@@ -2377,10 +2421,13 @@
         _lsSet('hiddenFilms', union(getHidden(), remote.hiddenFilms));
         localOnly.forEach(title => hideFilmOnServer(title, country)); // migrate up — no bulk write exists any more
       } else {
-        // Server authoritative — mirror it locally so removals propagate.
+        // Server authoritative — mirror it locally so removals propagate,
+        // except for writes this device still owes it (see the section
+        // comment), which are played over it and sent again.
         // `_lsSet` (not setHidden) avoids re-triggering a write back out.
-        const fromServer = srv => (srv || []).slice().sort();
-        _lsSet('hiddenFilms', fromServer(remote.hiddenFilms));
+        const pending = _pendingHiddenFilms(country);
+        _lsSet('hiddenFilms', _withPending(remote.hiddenFilms || [], pending).sort());
+        pending.forEach(([method, title]) => _writeHiddenFilms(method, country, title === null ? undefined : title));
       }
       try { localStorage.setItem(_hiddenFilmsSyncedKey(country), '1'); } catch {}
 

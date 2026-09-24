@@ -435,9 +435,16 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
    *
    *  Stamping the outgoing document and waiting for the stamp to be GONE is
    *  positive evidence of the swap, so no sleep has to guess at it. */
-  def reload(): Unit = {
+  def reload(): Unit = replaceDocument(send("Page.reload"))
+
+  /** Go to `url` in this tab and wait for the NEW document — same stamp as
+   *  [[reload]], for the same reason. Keeps the origin's localStorage, which is
+   *  what a spec walking one visitor across pages needs. */
+  def navigate(url: String): Unit = replaceDocument(send("Page.navigate", Json.obj("url" -> url)))
+
+  private def replaceDocument(go: => Any): Unit = {
     eval("window.__cdpReloadStamp = 1")
-    send("Page.reload")
+    go
     waitFor("typeof window.__cdpReloadStamp === 'undefined' && document.readyState === 'complete'",
             timeoutMs = 10000)
   }

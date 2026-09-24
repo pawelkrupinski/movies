@@ -615,6 +615,49 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // Logout regression. Signing out renders an anonymous page, which re-arms
+  // the first-login migration — and used to forget which country's account
+  // the local list mirrored, too. The list itself stays, so the next sign-in
+  // took the last account's /uk titles for "this device's own picks" and
+  // unioned (and PUT) them into another country: UK and US share English
+  // titles, so hiding "Dune" in the UK hid it in the US. Simulated as a list
+  // left mirroring /uk, then an anonymous page, then a sign-in here (pl).
+  it should "not carry the last account's other-country hides into this country across a logout" in {
+    onLoggedInIndex { page =>
+      awaitOwnReconcile(page)
+      page.eval("_lsSet('hiddenFilms', ['UK Film']); localStorage.setItem('hiddenFilmsCountry', 'uk')")
+      page.navigate(server.baseUrl + cityPrefix + "/")          // signed out: the anonymous boot runs
+      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === null", timeoutMs = 5000)
+      page.navigate(server.baseUrl + cityPrefix + "/li")        // signed back in, on pl
+      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1",
+                   timeoutMs = 5000)
+      Thread.sleep(150)
+      page.evalString(
+        "performance.getEntriesByType('resource')" +
+          ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films/UK%20Film') !== -1; }).toString()") shouldBe "false"
+      page.evalString("JSON.stringify(getHidden())") should not include "UK Film"
+    }
+  }
+
+  // A hide that never reached the server (offline, 5xx) must not vanish at the
+  // next reconcile: forgetting the validators makes that reconcile take the
+  // server's list, which does not have it. It stays hidden and is sent again.
+  it should "keep, and resend, a hide whose write failed across the next reconcile" in {
+    onLoggedInIndex { page =>
+      awaitOwnReconcile(page)
+      page.eval("_lsSet('hiddenFilms', getHidden().concat(['Rejected'])); hideFilmOnServer('Rejected')")
+      page.waitFor("localStorage.getItem('hiddenFilmsEtag:pl') === null", timeoutMs = 5000)
+      page.reload()
+      page.waitFor("performance.getEntriesByType('resource')" +
+                   ".some(function (r) { return /\\/api\\/me\\/pl\\/hidden-films$/.test(r.name); }) && " +
+                   "getHidden().indexOf('Film A') !== -1", timeoutMs = 5000)
+      page.evalString("JSON.stringify(getHidden())") should include ("Rejected")
+      page.waitFor("performance.getEntriesByType('resource')" +
+                   ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films/Rejected') !== -1; })",
+                   timeoutMs = 5000)
+    }
+  }
+
   // ── hiddenFilms writes are immediate, per-title, no debounce ─────────────
   //
   // Regression for the granular-API migration: the old bulk PUT batched a
