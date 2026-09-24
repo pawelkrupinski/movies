@@ -220,10 +220,10 @@ class TaskWorker(
         // hold the task until the precondition is due to clear (the handler knows
         // when — e.g. the circuit's own half-open instant) and hand back the
         // increment `claim` took. Falls back to the normal curve when the handler
-        // names no instant, so an unhinted defer still can't hot-loop.
+        // names no instant, so an unhinted defer still can't hot-loop — and never past MaxBackoff.
         case Success(Deferred(err, notBefore)) =>
           queue.release(task.id, workerId, err,
-            Some(notBefore.getOrElse(backoffUntil(task.attempts))), refundAttempt = true)
+            Some(notBefore.fold(backoffUntil(task.attempts))(capped)), refundAttempt = true)
           observer.onFinished(task, Outcome.Deferred, millis)
           PollResult.Returned
         case Failure(exception) if TaskWorker.isDeterministic(exception) =>
@@ -274,6 +274,14 @@ class TaskWorker(
   private def backoffUntil(attempts: Int): Instant =
     clock.instant().plusMillis(retryBackoffFor(attempts).toMillis)
 
+  // A handler's own "not before" is a hint, not a lease on the queue: held to the backoff cap
+  // so a precondition that names a far-off instant (or a bug that does) cannot park its task
+  // past the point the pool would have retried a genuine failure.
+  private def capped(notBefore: Instant): Instant = {
+    val ceiling = clock.instant().plusMillis(MaxBackoff.toMillis)
+    if (notBefore.isAfter(ceiling)) ceiling else notBefore
+  }
+
   override def stop(): Unit = {
     running.set(false)
     watchHandle.foreach(h => Try(h.close()))
@@ -316,11 +324,14 @@ object TaskWorker {
    *  5s). This is the per-task version of what the inline `scheduleTmdbRetry`
    *  used to do for TMDB — now applied to every task type, so a rate-limited
    *  upstream isn't hammered at the pool's tight `retryBackoff` cadence. */
-  private[tasks] def retryBackoffFor(attempts: Int): scala.concurrent.duration.FiniteDuration = {
-    import scala.concurrent.duration._
+  private[tasks] def retryBackoffFor(attempts: Int): FiniteDuration = {
     val shift  = math.min(math.max(attempts - 1, 0), 20)
-    math.min(30.minutes.toMillis, 5000L * (1L << shift)).millis
+    math.min(MaxBackoff.toMillis, 5000L * (1L << shift)).millis
   }
+
+  /** The longest the pool ever holds a waiting task back — the backoff curve's cap, and the
+   *  ceiling on a `Deferred`'s named instant too. Alerted on as WorkerTaskParkedTooLong. */
+  val MaxBackoff: FiniteDuration = 30.minutes
 
   /** Why a worker slot's last claim ended — drives whether it backs off. */
   private[tasks] sealed trait PollResult

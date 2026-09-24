@@ -96,6 +96,17 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     q.claim("w1", 1.minute, until).map(_.dedupKey) shouldBe Some("imdb|x")             // claimable the moment it lifts
   }
 
+  it should "hold a Deferred task no longer than the backoff cap, however far off its instant" in {
+    // The named instant is a hint: one six hours out (a breaker misconfigured, a bug)
+    // would otherwise park the task past every point the pool retries a real failure.
+    val q = new InMemoryTaskQueue
+    q.enqueue(ImdbRating, "imdb|x", submittedAt = t0)
+    val farOff = specClock.instant().plusSeconds(6 * 3600)
+    val w = worker(q, Seq(new RecordingHandler(ImdbRating, HandlerOutcome.Deferred(Some("circuit open"), Some(farOff)))))
+    w.claimAndRun("w0") shouldBe PollResult.Returned
+    q.claim("w1", 1.minute, specClock.instant().plusMillis(TaskWorker.MaxBackoff.toMillis)).map(_.dedupKey) shouldBe Some("imdb|x")
+  }
+
   it should "fall back to the backoff curve when a Deferred names no instant" in {
     val q = new InMemoryTaskQueue
     q.enqueue(ImdbRating, "imdb|x", submittedAt = t0)
