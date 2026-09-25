@@ -42,8 +42,7 @@ class MainActivityRecreateTest {
             scenario.onActivity { before = it }
 
             fresh.write { markSwiped() }
-            val end = System.currentTimeMillis() + 500
-            while (System.currentTimeMillis() < end) { compose.waitForIdle(); Thread.sleep(20) }
+            compose.idleFor(500)
 
             lateinit var after: Activity
             scenario.onActivity { after = it }

@@ -499,13 +499,13 @@ class StateSyncServiceTest {
         advanceUntilIdle()
         userFlow.value = UserProfile(displayName = "Test Renamed", email = "test@test.com", provider = "google")
         advanceUntilIdle()
-        languageClient.pushCount = 0
+        languageClient.pushes.clear()
 
         prefs.setLanguageTag("de")
         advanceTimeBy(500)
         runCurrent()
 
-        assertEquals(1, languageClient.pushCount)
+        assertEquals(1, languageClient.pushes.size)
     }
 
     /** A reconcile cancelled mid-fetch (the ViewModel cleared on a country
@@ -555,7 +555,7 @@ class StateSyncServiceTest {
         login()
         advanceUntilIdle()
 
-        assertEquals("es", languageClient.lastPushed)
+        assertEquals("es", languageClient.pushes.lastOrNull())
     }
 
     /** Neither side has an explicit pick — nothing to restore or stamp onto
@@ -569,7 +569,7 @@ class StateSyncServiceTest {
         advanceUntilIdle()
 
         assertNull(prefs.languageState.value)
-        assertNull(languageClient.lastPushed)
+        assertNull(languageClient.pushes.lastOrNull())
     }
 
     /** A pick made AFTER login (not just the merge-on-login case above)
@@ -579,13 +579,13 @@ class StateSyncServiceTest {
         startService()
         login()
         advanceUntilIdle() // merge completes; the post-merge baseline is dropped
-        languageClient.lastPushed = null // ignore any merge-time push
+        languageClient.pushes.clear() // ignore any merge-time push
 
         prefs.setLanguageTag("de")
         advanceTimeBy(500) // past the 400 ms debounce window
         runCurrent()
 
-        assertEquals("de", languageClient.lastPushed)
+        assertEquals("de", languageClient.pushes.lastOrNull())
     }
 
     /** A pick recreates the activity, whose onResume reconciles inside the

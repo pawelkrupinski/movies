@@ -7,7 +7,6 @@ import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -21,18 +20,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import pl.kinowo.data.FreshUserPreferences
-import pl.kinowo.data.JsonListCache
-import pl.kinowo.data.RepertoireRepository
-import pl.kinowo.model.CinemaShowings
-import pl.kinowo.model.Country
-import pl.kinowo.model.DayShowings
-import pl.kinowo.model.Film
-import pl.kinowo.model.Showtime
-import pl.kinowo.net.KinowoApi
-import pl.kinowo.net.RepertoireApi
 import pl.kinowo.ui.KinowoViewModel
-import java.time.LocalDate
-import java.time.ZoneId
 
 /**
  * A nav deep link is handled ONCE. `recreate()` — a rotation, a language
@@ -68,12 +56,6 @@ class DeepLinkRecreateTest {
         return vm
     }
 
-    /** Idle for a while: long enough for a replayed link to have re-applied. */
-    private fun settle() {
-        val end = System.currentTimeMillis() + 1_000
-        while (System.currentTimeMillis() < end) { compose.waitForIdle(); Thread.sleep(20) }
-    }
-
     @Test
     fun recreateAfterALinkDoesNotReapplyItsFiltersOrReopenTheFilm() {
         fresh.write { setCityInCountry("warszawa", "pl") }
@@ -85,7 +67,7 @@ class DeepLinkRecreateTest {
             compose.waitUntil(5_000) { !detailShown() }
 
             scenario.recreate()
-            settle()
+            compose.idleFor(1_000) // long enough for a replayed link to have re-applied
 
             assertEquals("the link's search must not come back", "", viewModel(scenario).search)
             assertEquals("the film page must not reopen", false, detailShown())

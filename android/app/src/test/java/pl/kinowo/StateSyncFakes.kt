@@ -154,8 +154,6 @@ internal class FakeLanguageClient : LanguageClient {
     var signedIn = true
     /** Every push that SUCCEEDED, in order. */
     val pushes = mutableListOf<String>()
-    var lastPushed: String? = null
-    var pushCount = 0
     /** Every push attempt, failed or not. */
     var pushAttempts = 0
 
@@ -195,7 +193,5 @@ internal class FakeLanguageClient : LanguageClient {
         try { withContext(NonCancellable) { beforePushResponse() } } finally { pushesInFlight-- }
         currentCoroutineContext().ensureActive()
         pushes += language
-        lastPushed = language
-        pushCount++
     }
 }
