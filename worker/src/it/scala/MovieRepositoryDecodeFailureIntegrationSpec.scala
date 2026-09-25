@@ -16,6 +16,7 @@ import scala.concurrent.duration._
  *  one bad document behind a cold mirror or a cursor held for good went unnamed. They count on
  *  the same `decode_failures` counter as the read model's skipped documents. */
 class MovieRepositoryDecodeFailureIntegrationSpec extends AnyFlatSpec with Matchers {
+  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   private val uri = Env.get("MONGODB_URI").get
 
   "the movies repository" should "count a document it cannot decode, on a point read and on the corpus scan" in

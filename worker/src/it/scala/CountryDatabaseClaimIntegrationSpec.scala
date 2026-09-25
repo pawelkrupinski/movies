@@ -10,6 +10,7 @@ import tools.Env
  *  [[MongoConnection.forCountry]], which claims it for that country. A German run pointed
  *  at Poland's database (`.env.local`'s `MONGODB_DB=kinowo`) is refused before it writes. */
 class CountryDatabaseClaimIntegrationSpec extends AnyFlatSpec with Matchers {
+  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   private val uri = Env.get("MONGODB_URI").get
 
   "MongoConnection.forCountry" should "refuse a database another country owns, and claim an unowned one" in

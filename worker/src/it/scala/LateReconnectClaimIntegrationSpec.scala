@@ -20,6 +20,7 @@ import scala.concurrent.duration._
  *  "Unreachable, then reachable" is a local port nothing listens on at boot, which a
  *  forwarder to the test Mongo starts answering on once the connection is degraded. */
 class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with Eventually {
+  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   private val uri      = Env.get("MONGODB_URI").get
   private val target   = URI.create(uri.replace("mongodb://", "http://"))
   private val patience = PatienceConfig(timeout = Span(30, Seconds), interval = Span(1, Seconds))

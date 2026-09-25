@@ -214,12 +214,10 @@ class StagingFoldConcurrentTmdbRaceIntegrationSpec extends AnyFlatSpec with Matc
    *  a collision is only real once it exists. */
   private def awaitTmdbIdIndex(fold: FoldFixture.Handles): Unit = {
     fold.splitAwareRepository
-    val deadline = System.nanoTime() + 10.seconds.toNanos
-    def present = Await.result(fold.movies.listIndexes().toFuture(), 10.seconds)
-      .exists(_.get("name").exists(_.asString().getValue == "tmdbId_1"))
-    while (!present) {
-      if (System.nanoTime() > deadline) fail("the tmdbId unique index never appeared")
-      Thread.sleep(20)
+    val present = tools.Eventually.poll(timeoutMs = 10000, pollMs = 20) {
+      Await.result(fold.movies.listIndexes().toFuture(), 10.seconds)
+        .exists(_.get("name").exists(_.asString().getValue == "tmdbId_1"))
     }
+    if (!present) fail("the tmdbId unique index never appeared")
   }
 }

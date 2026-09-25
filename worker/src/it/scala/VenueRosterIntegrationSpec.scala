@@ -12,6 +12,7 @@ import java.time.LocalDateTime
  *  a row under a UK venue through either write path (`replaceFilm`, `upsertSlot`), and a
  *  foreign row already on disk survives a `replaceFilm` that names it. */
 class VenueRosterIntegrationSpec extends AnyFlatSpec with Matchers {
+  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   private val uri = Env.get("MONGODB_URI").get
 
   private val tomorrow = Seq(Showtime(LocalDateTime.now.plusDays(1).withNano(0), bookingUrl = None))

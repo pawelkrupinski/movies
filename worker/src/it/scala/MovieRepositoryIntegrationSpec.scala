@@ -134,13 +134,11 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Retired Slots"))))
     repository.upsert("__integration-test-retired-slots__", Some(1903), record)
 
-    val client = MongoClient(Env.get("MONGODB_URI").get)
-    try Await.ready(
+    Await.ready(
       specDb.getCollection("movies")
         .updateOne(Filters.eq("imdbId", "tt0000078"),
           org.mongodb.scala.model.Updates.unset("sourceData")).toFuture(),
       10.seconds)
-    finally client.close()
 
     val found = repository.findAll().find(_.record.imdbId.contains("tt0000078"))
     found should not be empty
@@ -149,7 +147,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
   it should "derive a migrated film's title from its movie_slots, not from the empty embedded map" in {
     import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db))
     val slots  = new MongoSlotsRepository(Some(db))
@@ -175,7 +172,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         found.map(_.title) shouldBe Some(title)
       }
     } finally {
-      slots.deleteFilm(id); scr.deleteFilm(id); split.delete(title, year); client.close()
+      slots.deleteFilm(id); scr.deleteFilm(id); split.delete(title, year)
     }
   }
 
@@ -579,7 +576,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // — no waiting for the 30-min backstop rehydrate. Real stream against a replica set.
   it should "drop a MovieCache row when its source is deleted on the change stream" in {
     import services.movies.CaffeineMovieCache
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val repo   = new MongoMovieRepository(Some(db), normalizer = titleNormalizer)
     // The system clock on purpose: the Mongo repositories stamp with it too.
@@ -603,7 +599,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       Eventually.poll(15000)(present) shouldBe true  // applied via the stream (applyUpsert)
       repo.delete(title, year)
       Eventually.poll(15000)(!present) shouldBe true  // dropped via applyDelete, not the backstop
-    } finally { cache.stop(); repo.delete(title, year); repo.delete(warmTitle, year); client.close() }
+    } finally { cache.stop(); repo.delete(title, year); repo.delete(warmTitle, year) }
   }
 
   // The shared cursor's onNext feeds the change-stream stats sink (op + update-field
@@ -654,7 +650,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     import services.movies.MongoScreeningsRepository
 
     val sink = new RecordingScreeningsMetrics
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val repo   = new MongoScreeningsRepository(Some(db), metrics = sink)
     val film   = "__it-screenings-metrics__"
@@ -670,7 +665,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         repo.upsertSlot(film, "Multikino␟M", Seq(Showtime(LocalDateTime.of(2099, 1, 1, hour % 24, 0), None)))
       }
       sink.events should be > 0
-    } finally { handle.foreach(_.close()); repo.deleteFilm(film); repo.close(); client.close() }
+    } finally { handle.foreach(_.close()); repo.deleteFilm(film); repo.close() }
   }
 
   // THE CONTRACT `ScreeningsRepository.watch` HAS ALWAYS STATED — "a no-op write (unchanged
@@ -702,7 +697,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     import java.time.LocalDateTime
     import services.movies.MongoScreeningsRepository
 
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val sink   = new RecordingScreeningsMetrics
     val scr    = new MongoScreeningsRepository(Some(db))
@@ -781,7 +775,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       scr.findForFilm(id).keySet should contain allElementsOf (0 until Burst).map(i => s"Venue$i␟c")
     } finally {
       handle.foreach(_.close()); scr.deleteFilm(id)
-      repo.delete(title, year); repo.close(); client.close()
+      repo.delete(title, year); repo.close()
     }
   }
 
@@ -797,7 +791,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     import java.time.LocalDateTime
     import services.movies.MongoScreeningsRepository
 
-    val client        = MongoClient(Env.get("MONGODB_URI").get)
     val db            = specDb
     val movieSink     = new RecordingMovieChangeMetrics
     val screeningsSink = new RecordingScreeningsMetrics
@@ -907,7 +900,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       scr.findForFilm(id).keySet should contain(Helios.displayName)
     } finally {
       handle.foreach(_.close()); scr.deleteFilm(id)
-      repo.delete(title, year); repo.close(); client.close()
+      repo.delete(title, year); repo.close()
     }
   }
 
@@ -918,7 +911,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     import services.movies.{MongoScreeningsRepository, ScreeningsMetrics}
 
     val sink = new RecordingScreeningsMetrics
-    val client   = MongoClient(Env.get("MONGODB_URI").get)
     val db       = specDb
     val repo     = new MongoScreeningsRepository(Some(db), metrics = sink)
     val film     = "__it-screenings-noop__"
@@ -968,7 +960,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       }
     } finally {
       handle.foreach(_.close()); repo.deleteFilm(film); repo.deleteFilm(after)
-      repo.close(); client.close()
+      repo.close()
     }
   }
 
@@ -1162,7 +1154,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // and only after a backfill. Verified against a real replica set.
   it should "dual-write cinema slots into movie_slots while movies stays the read authority" in {
     import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db))
     val slots  = new MongoSlotsRepository(Some(db))
@@ -1208,7 +1199,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       slots.findForFilm(id)  should not be empty
       repo.delete(title, year)
       slots.findForFilm(id) shouldBe empty
-    } finally { slots.deleteFilm(StoredMovieRecord.keyFor("__integration-test-slotsplit__", Some(1907), titleNormalizer)); client.close() }
+    } finally { slots.deleteFilm(StoredMovieRecord.keyFor("__integration-test-slotsplit__", Some(1907), titleNormalizer)) }
   }
 
   // Read flip: `movie_slots` wins when the film has rows there, and the embedded
@@ -1217,7 +1208,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // blanking every film that has not been rewritten yet.
   it should "read slots from movie_slots when present and fall back to the embedded map when not" in {
     import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db))
     val slots  = new MongoSlotsRepository(Some(db))
@@ -1254,7 +1244,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       split.foreachRecord(r => if (r.id.value == id)
         scanned = r.record.cinemaData.get(Multikino).flatMap(_.posterUrl))
       scanned shouldBe Some("https://poster/split.png")
-    } finally { split.delete(title, year); slots.deleteFilm(id); client.close() }
+    } finally { split.delete(title, year); slots.deleteFilm(id) }
   }
 
   // The DISPLAY TITLE has to survive the slot split too. `StoredMovieDto.toDomain`
@@ -1267,7 +1257,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // STITCHED record, not the hollow document.
   it should "derive the display title from the stitched slots, not the sanitized _id prefix" in {
     import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db))
     val slots  = new MongoSlotsRepository(Some(db))
@@ -1291,7 +1280,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       var scanned: Option[String] = None
       split.foreachRecord(r => if (r.id.value == id) scanned = Some(r.title))
       scanned shouldBe Some(title)
-    } finally { split.delete(title, year); slots.deleteFilm(id); client.close() }
+    } finally { split.delete(title, year); slots.deleteFilm(id) }
   }
 
   // The payoff: once the slots have landed, `movies` stops carrying sourceData at all,
@@ -1301,7 +1290,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   it should "drop the embedded sourceData once the slots have landed, and keep it when they have not" in {
     import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
     import models.SourceData
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db))
     val slots  = new MongoSlotsRepository(Some(db))
@@ -1329,7 +1317,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         slots = Some(new services.movies.UnwritableSlotsRepository), normalizer = titleNormalizer)
       degraded.upsert(title, year, base)
       raw.findById(FilmId(id)).map(_.record.data.size) shouldBe Some(1)   // embedded copy retained
-    } finally { raw.delete(title, year); slots.deleteFilm(id); client.close() }
+    } finally { raw.delete(title, year); slots.deleteFilm(id) }
   }
 
   // A patch must not put the slots back. `upsert` drops the embedded map once the slots
@@ -1338,7 +1326,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   it should "not resurrect the embedded sourceData through a later patch" in {
     import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
     import models.SourceData
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db))
     val slots  = new MongoSlotsRepository(Some(db))
@@ -1363,7 +1350,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // …and the film still reads complete through the split-aware repository
       split.findById(FilmId(id)).flatMap(_.record.cinemaData.get(Multikino)).flatMap(_.posterUrl) shouldBe
         Some("https://poster/p2.png")
-    } finally { raw.delete(title, year); slots.deleteFilm(id); client.close() }
+    } finally { raw.delete(title, year); slots.deleteFilm(id) }
   }
 
   // Once slots moved out, a metadata-only change writes nothing but `movie_slots` — and the
@@ -1376,7 +1363,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
     import java.util.concurrent.{CountDownLatch, TimeUnit}
     import models.SourceData
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db))
     val slots  = new MongoSlotsRepository(Some(db))
@@ -1419,7 +1405,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     } finally {
       split.delete(title, year); slots.deleteFilm(id)
       split.delete(warmTitle, year); slots.deleteFilm(warmId)
-      client.close()
     }
   }
 
@@ -1429,7 +1414,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   it should "stitch slots into the listing read as well" in {
     import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
     import models.SourceData
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db))
     val slots  = new MongoSlotsRepository(Some(db))
@@ -1447,7 +1431,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       listed.flatMap(_.record.cinemaData.get(Multikino)).flatMap(_.posterUrl) shouldBe Some("https://poster/l1.png")
       // …still without showtimes, which is the whole point of this read
       listed.flatMap(_.record.cinemaData.get(Multikino)).map(_.showtimes) shouldBe Some(Seq.empty)
-    } finally { split.delete(title, year); slots.deleteFilm(id); client.close() }
+    } finally { split.delete(title, year); slots.deleteFilm(id) }
   }
 
   // Showtimes EXPIRING is what most re-scrapes look like: same film, same metadata, one
@@ -1459,7 +1443,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     import java.util.concurrent.{CountDownLatch, TimeUnit}
     import java.util.concurrent.atomic.AtomicInteger
     import models.SourceData
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db))
     val slots  = new MongoSlotsRepository(Some(db))
@@ -1518,7 +1501,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     } finally {
       raw.delete(title, year); slots.deleteFilm(id)
       raw.delete(warmTitle, year); slots.deleteFilm(warmId)
-      client.close()
     }
   }
 
@@ -1530,7 +1512,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredSlotDto, MovieCodecs, StoredMovieRecord}
     import org.mongodb.scala.ObservableFuture
     import models.SourceData
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db))
     val slots  = new MongoSlotsRepository(Some(db))
@@ -1562,7 +1543,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       split.upsert(title, year, base.copy(data = Map[Source, SourceData](Multikino -> slot.copy(posterUrl = Some("https://poster/c2.png")))))
       rowStamps() should not be before
       slots.findForFilm(id).get(Multikino.displayName).flatMap(_.posterUrl) shouldBe Some("https://poster/c2.png")
-    } finally { raw.delete(title, year); slots.deleteFilm(id); client.close() }
+    } finally { raw.delete(title, year); slots.deleteFilm(id) }
   }
 
   // Slots read-path parity — the generalisation of the bug that shipped. `findAllForListing`
@@ -1574,7 +1555,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   it should "return identical slots from findById, findAll, foreachRecord and findAllForListing" in {
     import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
     import models.SourceData
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db))
     val slots  = new MongoSlotsRepository(Some(db))
@@ -1602,7 +1582,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       withClue("findAll: ")           { viaFindAll  shouldBe expected }
       withClue("foreachRecord: ")     { viaForeach  shouldBe expected }
       withClue("findAllForListing: ") { viaListing  shouldBe expected }
-    } finally { split.delete(title, year); slots.deleteFilm(id); client.close() }
+    } finally { split.delete(title, year); slots.deleteFilm(id) }
   }
 
   // (C) Read-path parity: every corpus reader must agree on a film's showtimes under
@@ -1610,38 +1590,35 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // dropped 129 films; this guards against ANY future divergence between the readers.
   it should "return identical showtimes from findAll, findById and foreachRecord (read-path parity)" in {
     import services.movies.{MongoScreeningsRepository, StoredMovieRecord}
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db))
     val repo   = new MongoMovieRepository(Some(db), screenings = Some(scr), normalizer = titleNormalizer)
-    try {
-      val title = "__integration-test-readpath-parity__"
-      val year  = Some(1906)
-      val id    = StoredMovieRecord.keyFor(title, year, titleNormalizer)
-      val slot  = SourceData(title = Some("Parity"), showtimes = Seq(
-        Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 0), Some("https://book/p-1")),
-        Showtime(java.time.LocalDateTime.of(2026, 6, 1, 21, 0), Some("https://book/p-2"))))
-      repo.upsert(title, year, MovieRecord(imdbId = Some("tt0000015"), data = Map[Source, SourceData](Multikino -> slot)))
+    val title = "__integration-test-readpath-parity__"
+    val year  = Some(1906)
+    val id    = StoredMovieRecord.keyFor(title, year, titleNormalizer)
+    val slot  = SourceData(title = Some("Parity"), showtimes = Seq(
+      Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 0), Some("https://book/p-1")),
+      Showtime(java.time.LocalDateTime.of(2026, 6, 1, 21, 0), Some("https://book/p-2"))))
+    repo.upsert(title, year, MovieRecord(imdbId = Some("tt0000015"), data = Map[Source, SourceData](Multikino -> slot)))
 
-      def showtimesVia(r: Option[StoredMovieRecord]) = r.flatMap(_.record.cinemaData.get(Multikino)).map(_.showtimes).getOrElse(Seq.empty)
-      val viaFindById = showtimesVia(repo.findById(FilmId(id)))
-      val viaFindAll  = showtimesVia(repo.findAll().find(r => r.id.value == id))
-      var viaForeach  = Seq.empty[Showtime]
-      repo.foreachRecord(r => if (r.id.value == id) viaForeach = r.record.cinemaData.get(Multikino).map(_.showtimes).getOrElse(Seq.empty))
+    def showtimesVia(r: Option[StoredMovieRecord]) = r.flatMap(_.record.cinemaData.get(Multikino)).map(_.showtimes).getOrElse(Seq.empty)
+    val viaFindById = showtimesVia(repo.findById(FilmId(id)))
+    val viaFindAll  = showtimesVia(repo.findAll().find(r => r.id.value == id))
+    var viaForeach  = Seq.empty[Showtime]
+    repo.foreachRecord(r => if (r.id.value == id) viaForeach = r.record.cinemaData.get(Multikino).map(_.showtimes).getOrElse(Seq.empty))
 
-      viaFindById.size shouldBe 2
-      viaFindAll  shouldBe viaFindById
-      viaForeach  shouldBe viaFindById // all three agree — no reader silently strips
+    viaFindById.size shouldBe 2
+    viaFindAll  shouldBe viaFindById
+    viaForeach  shouldBe viaFindById // all three agree — no reader silently strips
 
-      // The count-only scan deliberately does NOT stitch (empty showtimes) — it skips
-      // the screenings load. Contract guard so a future "fix" to stitch it (and re-add
-      // the per-scan cost) is caught.
-      var viaNoStitch = Seq.empty[Showtime]
-      repo.foreachRecordWithoutShowtimes(r => if (r.id.value == id) viaNoStitch = r.record.cinemaData.get(Multikino).map(_.showtimes).getOrElse(Seq.empty))
-      viaNoStitch shouldBe empty
+    // The count-only scan deliberately does NOT stitch (empty showtimes) — it skips
+    // the screenings load. Contract guard so a future "fix" to stitch it (and re-add
+    // the per-scan cost) is caught.
+    var viaNoStitch = Seq.empty[Showtime]
+    repo.foreachRecordWithoutShowtimes(r => if (r.id.value == id) viaNoStitch = r.record.cinemaData.get(Multikino).map(_.showtimes).getOrElse(Seq.empty))
+    viaNoStitch shouldBe empty
 
-      repo.delete(title, year)
-    } finally client.close()
+    repo.delete(title, year)
   }
 
   // `ScreeningsRepository.findAll` now keyset-pages by `_id` (via KeysetScan) instead of
@@ -1657,25 +1634,22 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // correctness the refactor introduces.
   it should "page screenings.findAll by _id across batch boundaries, returning every slot exactly once" in {
     import services.movies.{MongoScreeningsRepository, StoredMovieRecord}
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val writer = new MongoScreeningsRepository(Some(db))
     // batchSize 2 forces several page boundaries over the 5 seeded slots.
     val paged  = new MongoScreeningsRepository(Some(db), findAllBatchSize = 2)
-    try {
-      val filmA = StoredMovieRecord.keyFor("__integration-test-scr-page-A__", Some(1908), titleNormalizer)
-      val filmB = StoredMovieRecord.keyFor("__integration-test-scr-page-B__", Some(1908), titleNormalizer)
-      val st    = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 0), Some("https://book/p")))
-      writer.replaceFilm(filmA, Map("aa" -> st, "bb" -> st, "cc" -> st))
-      writer.replaceFilm(filmB, Map("dd" -> st, "ee" -> st))
+    val filmA = StoredMovieRecord.keyFor("__integration-test-scr-page-A__", Some(1908), titleNormalizer)
+    val filmB = StoredMovieRecord.keyFor("__integration-test-scr-page-B__", Some(1908), titleNormalizer)
+    val st    = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 0), Some("https://book/p")))
+    writer.replaceFilm(filmA, Map("aa" -> st, "bb" -> st, "cc" -> st))
+    writer.replaceFilm(filmB, Map("dd" -> st, "ee" -> st))
 
-      val all = paged.findAll()
-      all.getOrElse(filmA, Map.empty).keySet shouldBe Set("aa", "bb", "cc") // every slot, no skip
-      all.getOrElse(filmB, Map.empty).keySet shouldBe Set("dd", "ee")       // …across the boundary
-      all.getOrElse(filmA, Map.empty).values.flatten.toSeq shouldBe Seq.fill(3)(st).flatten // no duplicate slot
+    val all = paged.findAll()
+    all.getOrElse(filmA, Map.empty).keySet shouldBe Set("aa", "bb", "cc") // every slot, no skip
+    all.getOrElse(filmB, Map.empty).keySet shouldBe Set("dd", "ee")       // …across the boundary
+    all.getOrElse(filmA, Map.empty).values.flatten.toSeq shouldBe Seq.fill(3)(st).flatten // no duplicate slot
 
-      writer.deleteFilm(filmA); writer.deleteFilm(filmB)
-    } finally client.close()
+    writer.deleteFilm(filmA); writer.deleteFilm(filmB)
   }
 
   // (B) The exact regression, end to end: the read-model RECONCILE reads the corpus
@@ -1685,7 +1659,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   it should "not prune a split film's web_screenings on reconcile (foreachRecord stitches)" in {
     import services.movies.{MongoScreeningsRepository, StoredMovieRecord}
     import services.readmodel.{MongoReadModelRepository, ReadModelProjector}
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db))
     val repo   = new MongoMovieRepository(Some(db), screenings = Some(scr), normalizer = titleNormalizer)
@@ -1723,7 +1696,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       expectedScrIds.foreach(rm.deleteScreening)
       expectedMovIds.foreach(rm.deleteMovie)
       repo.delete(title, year)
-      rm.close(); client.close()
+      rm.close()
     }
   }
 
@@ -2022,7 +1995,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // 2026-07-27, 14 films were being served with fewer cinemas than the corpus held.
   it should "serve a cinema the embedded map has and movie_slots does not" in {
     import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db))
     val slots  = new MongoSlotsRepository(Some(db))
@@ -2047,7 +2019,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // …and the cinema only `movies` knows about SURVIVES. Fails before the union rule:
       // the stored rows shadowed the embedded map and this cinema simply vanished.
       read.get(KinoMuranow).flatMap(_.title) shouldBe Some("embedded only")
-    } finally { slots.deleteFilm(id); scr.deleteFilm(id); client.close() }
+    } finally { slots.deleteFilm(id); scr.deleteFilm(id) }
   }
 
   // Once a film's embedded copy is retired, `movies` carries no cinemas at all — so a
@@ -2057,7 +2029,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   it should "refuse to decode a migrated film at all when its slot read fails" in {
     import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord,
       SlotsRepository, UnreadableSlotsRepository}
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db))
     val slots  = new MongoSlotsRepository(Some(db))
@@ -2078,7 +2049,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // None, NOT a record with an empty `data` map. Fails before the fix: `findById`
       // returned a film with zero cinemas, which the projector treats as "delete them all".
       blindRepo.findById(FilmId(id)) shouldBe None
-    } finally { slots.deleteFilm(id); scr.deleteFilm(id); client.close() }
+    } finally { slots.deleteFilm(id); scr.deleteFilm(id) }
   }
 
   // The same refusal one collection over: the screenings read in the same stitch was the
@@ -2087,7 +2058,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   it should "refuse to decode a film at all when its screenings read fails" in {
     import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord,
       UnreadableScreeningsRepository}
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db))
     val slots  = new MongoSlotsRepository(Some(db))
@@ -2105,7 +2075,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         slots = Some(slots), normalizer = titleNormalizer)
       // None, NOT the film with its cinema and no showtimes.
       blindRepo.findByIdChecked(FilmId(id)) shouldBe ((None, false))
-    } finally { slots.deleteFilm(id); scr.deleteFilm(id); client.close() }
+    } finally { slots.deleteFilm(id); scr.deleteFilm(id) }
   }
 
   // END TO END, against real Mongo: the whole 2026-07-27 failure in one test.
@@ -2120,7 +2090,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord,
       UnreadableSlotsRepository, CaffeineMovieCache}
     import models.CinemaMovie
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db))
     val slots  = new MongoSlotsRepository(Some(db))
@@ -2155,7 +2124,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       withClue(s"screenings now: ${scr.findForFilm(id).keySet}: ")(
         scr.findForFilm(id).keySet should contain (KinoMuranow.displayName))
       cache.stop()
-    } finally { slots.deleteFilm(id); scr.deleteFilm(id); client.close() }
+    } finally { slots.deleteFilm(id); scr.deleteFilm(id) }
   }
 
   // The same family one collection over, and the one member that never got a checked read.
@@ -2169,7 +2138,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   it should "keep a film's showtimes when the screenings read fails under a whole-record write" in {
     import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, ShowtimesDigest,
       StoredMovieRecord, UnreadableScreeningsRepository}
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db))
     val slots  = new MongoSlotsRepository(Some(db))
@@ -2200,7 +2168,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // deleted here and only the slot rows survived.
       withClue(s"screenings now: ${scr.findForFilm(id).keySet}: ")(
         scr.findForFilm(id).keySet should have size 2)
-    } finally { slots.deleteFilm(id); scr.deleteFilm(id); client.close() }
+    } finally { slots.deleteFilm(id); scr.deleteFilm(id) }
   }
 
   // Every ordinary enrichment/merge write carries the CACHE's shape — showtimes stripped,
@@ -2210,7 +2178,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // "RBO Cinema Season 2026-27: Tosca" row this way and re-keyed it on the next settle.
   it should "persist a cache-stripped record through upsert, slots included" in {
     import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, ShowtimesDigest}
-    val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db))
     val slots  = new MongoSlotsRepository(Some(db))
@@ -2232,7 +2199,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       stored.flatMap(_.imdbRating) shouldBe Some(6.0)
       stored.flatMap(_.cinemaData.get(Multikino)).flatMap(_.synopsis) shouldBe Some(synopsis)
       scr.findForFilm(id).keySet should have size 1
-    } finally { slots.deleteFilm(id); scr.deleteFilm(id); repository.delete(title, year); client.close() }
+    } finally { slots.deleteFilm(id); scr.deleteFilm(id); repository.delete(title, year) }
   }
 
   // The change stream used to open with `request(Long.MaxValue)` while the apply that

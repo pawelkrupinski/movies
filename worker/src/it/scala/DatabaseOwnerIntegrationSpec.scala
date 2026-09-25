@@ -10,6 +10,7 @@ import scala.util.chaining.scalaUtilChainingOps
 /** Two countries on one database prune each other's read model — the first worker to
  *  boot stamps the database with its country and every other country is refused. */
 class DatabaseOwnerIntegrationSpec extends AnyFlatSpec with Matchers {
+  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   private val uri = Env.get("MONGODB_URI").get
 
   "a database" should "be claimed by its first country and refuse every other" in

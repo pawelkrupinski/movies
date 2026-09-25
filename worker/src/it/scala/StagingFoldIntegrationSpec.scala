@@ -33,8 +33,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
-  private val uri    = Env.get("MONGODB_URI").get
-  private val dbName = Env.get("MONGODB_DB").getOrElse("kinowo")
+  private val uri = Env.get("MONGODB_URI").get
 
   // Two year-variants of one film. `planGroup` collapses them onto the TMDB year, so the
   // other is a merge loser — deleted in-transaction, exactly the bypass under test.
