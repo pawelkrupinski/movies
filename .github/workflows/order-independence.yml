@@ -55,7 +55,9 @@ jobs:
               id: pick
               env:
                   REQUESTED: ${{ inputs.seed }}
-              run: echo "seed=$(scripts/ci/order-seed.sh "$REQUESTED" "$GITHUB_RUN_ID")" >> "$GITHUB_OUTPUT"
+              # Assigned first: inside `echo "seed=$(...)"` a refusal's status is dropped and the
+              # legs would run on an empty seed. (scripts/ci/order-seed-test.sh)
+              run: seed=$(scripts/ci/order-seed.sh "$REQUESTED" "$GITHUB_RUN_ID"); echo "seed=$seed" >> "$GITHUB_OUTPUT"
 
     scala:
         name: scala (${{ matrix.order }})

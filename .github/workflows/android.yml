@@ -22,8 +22,9 @@ on:
             - 'scripts/seeded-order*.sh'
             # The nightly swift leg's runner, whose spec runs in the step below.
             - 'ios/scripts/swift-test-shuffled*.sh'
-            # The nightly order-independence run's seed check, whose spec runs below.
+            # The nightly order-independence run's seed check and the step calling it, whose spec runs below.
             - 'scripts/ci/order-seed*.sh'
+            - '.github/workflows/order-independence.yml'
             # The rolling-release publish below runs through these; its spec
             # holds gh-release.sh to the retry-classification table.
             - 'scripts/ci/gh-release*.sh'
@@ -51,8 +52,9 @@ on:
             - 'scripts/seeded-order*.sh'
             # The nightly swift leg's runner, whose spec runs in the step below.
             - 'ios/scripts/swift-test-shuffled*.sh'
-            # The nightly order-independence run's seed check, whose spec runs below.
+            # The nightly order-independence run's seed check and the step calling it, whose spec runs below.
             - 'scripts/ci/order-seed*.sh'
+            - '.github/workflows/order-independence.yml'
             # The rolling-release publish below runs through these.
             - 'scripts/ci/gh-release*.sh'
             - 'scripts/ci/publish-rolling-release.sh'
