@@ -204,7 +204,18 @@ object WebHttpMetrics {
    *  the monitoring system, and a scrape that gets slow inflates the very
    *  latency histogram you would be reading to diagnose it. Both the matched
    *  route AND the raw path are checked — the raw check is what still holds if
-   *  the route is ever renamed or the request reaches us unrouted. */
+   *  the route is ever renamed or the request reaches us unrouted.
+   *
+   *  Excludes the synthetic probe for the same reason: monitoring-1 fetches
+   *  both front doors, every country root and each country's biggest city page
+   *  once a minute, which made it most of this tier's traffic and most of its
+   *  bytes (from 2026-09-24 15:45Z, showtimes.cc's response bytes ×27). Its
+   *  own `probe_*` series already say whether those pages answer, and how fast. */
   def isMeasured(request: RequestHeader): Boolean =
-    routeLabel(request) != MetricsRoute && request.path != MetricsRoute
+    routeLabel(request) != MetricsRoute && request.path != MetricsRoute &&
+      !request.headers.get(play.api.http.HeaderNames.USER_AGENT).exists(_.startsWith(SyntheticProbeAgent))
+
+  /** The User-Agent prefix every synthetic-probe fetch sends. Must match
+   *  `fleet.syntheticProbes.userAgent` in infra/nix/modules/roles/synthetic-probes.nix. */
+  val SyntheticProbeAgent: String = "kinowo-synthetic-probe/"
 }

@@ -112,7 +112,9 @@ in
       default = "kinowo-synthetic-probe/1 (+https://kinowo.net)";
       description = ''
         Sent on every probe and every discovery fetch, so the requests are easy to find -- and to
-        exclude -- in Caddy's access logs and Cloudflare's analytics.
+        exclude -- in Caddy's access logs and Cloudflare's analytics. The web tier leaves anything
+        starting `kinowo-synthetic-probe/` out of its own request metrics
+        (WebHttpMetrics.SyntheticProbeAgent), so keep that prefix if this changes.
       '';
     };
 
@@ -204,7 +206,7 @@ in
 
     # EVERY TWO MINUTES, because a film leaving the schedule 404s its page at once and ProbeFailing
     # holds for five: two minutes to be replaced (file_sd picks the new file up on write) leaves
-    # three of margin. Ten requests per run is nothing to the site.
+    # three of margin. A run is one city page per country; a film page only when the film changes.
     systemd.timers.synthetic-probe-targets = {
       description = "Find a live film page and share card per country for the synthetic probes";
       wantedBy = [ "timers.target" ];

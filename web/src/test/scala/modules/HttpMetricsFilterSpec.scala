@@ -6,7 +6,7 @@ import org.apache.pekko.stream.Materializer
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.streams.Accumulator
-import play.api.mvc.{EssentialAction, RequestHeader, Result, Results}
+import play.api.mvc.{EssentialAction, Headers, RequestHeader, Result, Results}
 import play.api.routing.{HandlerDef, Router}
 import play.api.test.FakeRequest
 import services.metrics.{PrometheusExposition, WebHttpMetrics}
@@ -176,6 +176,24 @@ class HttpMetricsFilterSpec extends AnyFlatSpec with Matchers {
     harness.run(FakeRequest("GET", "/metrics"))
 
     harness.exposition should not include Counter
+  }
+
+  it should "not count the synthetic probe, which monitoring-1 fires at the biggest pages every minute" in {
+    val harness = new Harness()
+    harness.run(routed("GET", "/us/new-york/", CityIndexPath)
+      .withHeaders(Headers("User-Agent" -> "kinowo-synthetic-probe/1 (+https://kinowo.net)")),
+      Results.Ok("x" * 4096).withHeaders("Content-Length" -> "4096"))
+
+    harness.exposition should not include Counter
+    harness.exposition should not include Histogram
+    harness.exposition should not include Bytes
+  }
+
+  it should "still count a visitor whose User-Agent merely mentions kinowo" in {
+    val harness = new Harness()
+    harness.run(routed("GET", "/poznan/", CityIndexPath).withHeaders(Headers("User-Agent" -> "KinowoIOS/2.0.9")))
+
+    harness.valueOf(s"""$Counter{country="pl",method="GET",route="/:city/",status="2xx"}""") shouldBe Some(1.0)
   }
 
   // ── 4. Status classes ─────────────────────────────────────────────────────
