@@ -111,7 +111,18 @@ object FilmCanonicalizer {
    *  A shared tmdbId is not on its own permission to merge: a row can hold an id that
    *  is not its film's, and merging a sibling onto it buries the disagreement for good
    *  (prod "Mistyczka" absorbed a different 2026 film). So keep the best-ranked row and
-   *  split off every sibling [[differentFilms]] says contradicts it.
+   *  split off every sibling [[differentFilms]] says contradicts it — and then treat the
+   *  split-off rows by the SAME rule, best-ranked first: two venues listing one other
+   *  film under the shared id are that one film, and splitting them one row each left
+   *  their reunion to whenever imdbId enrichment reached both (the fold below).
+   *
+   *  What this never does is merge ACROSS a split: a row split off stays apart from the
+   *  row it contradicts for as long as its cinemas publish the contradiction. It is
+   *  recomputed from the row set every settle, so once the cause is gone (the id is
+   *  corrected, the venue's evidence changes) the row rejoins with no memory of the
+   *  split. Deliberately-separate editions ("Klub Konesera", dubs, "Zaproszenie |
+   *  Kinoteka dla rodziców") are not this rule's business: they are kept apart, or
+   *  not, by `groupByFilm`'s edges and the read-model's per-title cards.
    *
    *  Conversely TMDB sometimes holds ONE film under two ids (a re-release catalogued
    *  separately), both carrying the same imdbId — left apart the site shows the film
@@ -120,14 +131,20 @@ object FilmCanonicalizer {
   private def resolvedClusters(rows: Seq[Row], normalizer: TitleNormalizer): Seq[Cluster] = {
     val identified = rows.map(row => Identified(row, MixedFilmDetector.publishedIdentity(row._2, normalizer)))
     val byTmdbId: Seq[Seq[Identified]] = identified.groupBy(_.row._2.tmdbId.get).toSeq.sortBy(_._1)
-      .flatMap { case (_, members) =>
-        val ordered           = members.sortBy(r => rank(r.row))
-        val main              = ordered.head
-        val (different, same) = ordered.tail.partition(differentFilms(main, _))
-        (main +: same) +: different.map(Seq(_))
-      }
+      .flatMap { case (_, members) => splitByPublishedFilm(members.sortBy(r => rank(r.row))) }
     foldSharedImdbIds(byTmdbId).map(rows => Cluster(refYear = rows.flatMap(_._2.tmdbYear).minOption, rows = rows))
   }
+
+  /** One tmdbId's rows, in rank order, as the films their cinemas published: the
+   *  best-ranked row with every sibling not contradicting it, then the rest the same way. */
+  @scala.annotation.tailrec
+  private def splitByPublishedFilm(ordered: Seq[Identified], films: Vector[Seq[Identified]] = Vector.empty): Seq[Seq[Identified]] =
+    ordered match {
+      case main +: rest =>
+        val (different, same) = rest.partition(differentFilms(main, _))
+        splitByPublishedFilm(different, films :+ (main +: same))
+      case _ => films
+    }
 
   /** Union-find over rule 1's tmdbId groups: groups carrying a common imdbId fold
    *  unless any pair across them describes different films. A component's root is

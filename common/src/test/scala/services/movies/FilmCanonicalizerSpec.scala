@@ -901,6 +901,23 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     FilmCanonicalizer.clusterByFilm(components.head, titleNormalizer) should have size 2
   }
 
+  it should "keep the rows it split off a shared tmdbId together when they agree with each other" in {
+    // Two venues list the SAME other film under the wrong shared id. Each contradicts the
+    // main row, so each is split off — but nothing sets them against each other, and by
+    // the rule the main row's own siblings merge on (shared tmdbId, no contradiction)
+    // they are one film. Split off one by one they became two rows, rejoined only once
+    // imdbId enrichment happened to reach both — the fold's answer hung on timing.
+    val main  = published("Mistyczka",               1646379, 2026, KinoMuza,         "Mistyczka",             87)
+    val other = published("Opowieść o Maryi",        1646379, 2026, KinoMuzeumGdansk, "Maryja. Matka Papieża", 62)
+    val again = published("Pokaz: Opowieść o Maryi", 1646379, 2026, Helios,           "Maryja. Matka Papieża", 62)
+    val expected = Set(Set(main._1), Set(other._1, again._1))
+    Seq(main, other, again).permutations.foreach { ordered =>
+      withClue(s"order ${ordered.map(_._1)}: ") {
+        FilmCanonicalizer.clusterByFilm(ordered, titleNormalizer).map(_.map(_._1).toSet).toSet shouldBe expected
+      }
+    }
+  }
+
   it should "still merge two rows sharing a tmdbId when nothing their cinemas published contradicts it" in {
     // The ordinary case the rule above must not touch: one film, two spellings.
     val components = FilmCanonicalizer.groupByFilm(Seq(
