@@ -138,6 +138,34 @@ private[movies] final class ScrapeLanding(
   private def cinemaSlotKey(cinema: Cinema, title: String): Source =
     CinemaShowing.keyFor(cinema, title, normalizer)
 
+  /** The cold-mirror sync (see its call in [[recordCinemaScrape]]): false when the tick must be
+   *  discarded because the corpus could not be read. The whole check-read-rehydrate runs under
+   *  `coldMirrorLock`, re-checking the latch inside it: two venues' first scrapes landing together
+   *  both saw it armed, and both read the corpus and rehydrated — once per racer, not once. */
+  private def syncColdMirror(cinema: Cinema): Boolean = coldMirrorLock.synchronized {
+    if (!coldMirrorSyncArmed.get()) true
+    else if (store.residentCount != 0) { coldMirrorSyncArmed.set(false); true }
+    else {
+      val now = clock.instant()
+      if (coldMirrorRetry.exists { case (at, _) => now.isBefore(at) }) false   // backing off: discarded unread
+      else {
+        val (corpus, complete) = repository.findAllChecked()
+        if (!complete) {
+          val next = coldMirrorRetry.fold(ScrapeLanding.ColdMirrorRetryMin)(_._2 * 2).min(ScrapeLanding.ColdMirrorRetryMax)
+          coldMirrorRetry = Some(now.plusMillis(next.toMillis) -> next)
+          logger.warn(s"${cinema.displayName}: scrape discarded — the movies mirror is cold and the corpus " +
+            s"could not be read to warm it; scrapes are discarded unread for ${next.toSeconds}s, then the sync is retried.")
+          false
+        } else {
+          coldMirrorRetry = None
+          coldMirrorSyncArmed.set(false)
+          if (corpus.nonEmpty) store.rehydrate()
+          true
+        }
+      }
+    }
+  }
+
   /** Apply one cinema's fresh scrape to the cache: for every CinemaMovie in
    *  `movies`, find-or-create the matching record and replace that cinema's
    *  slot in `data`. After processing, prune the cinema's slot
@@ -265,28 +293,7 @@ private[movies] final class ScrapeLanding(
     // A corpus read that FAILED is neither: it says nothing about whether the corpus is
     // empty. The tick is discarded — landing it on a cold mirror would divert every known
     // film — and the latch stays armed, so the next scrape tries the sync again.
-    if (staging.isDefined && coldMirrorSyncArmed.get()) {
-      if (store.residentCount != 0) coldMirrorSyncArmed.set(false)
-      else {
-        val now = clock.instant()
-        val backingOff = coldMirrorLock.synchronized(coldMirrorRetry.exists { case (at, _) => now.isBefore(at) })
-        if (backingOff) return Seq.empty   // cold, and the corpus read is backing off: discarded unread
-        val (corpus, complete) = repository.findAllChecked()
-        if (!complete) {
-          val wait = coldMirrorLock.synchronized {
-            val next = coldMirrorRetry.fold(ScrapeLanding.ColdMirrorRetryMin)(_._2 * 2).min(ScrapeLanding.ColdMirrorRetryMax)
-            coldMirrorRetry = Some(now.plusMillis(next.toMillis) -> next)
-            next
-          }
-          logger.warn(s"${cinema.displayName}: scrape discarded — the movies mirror is cold and the corpus " +
-            s"could not be read to warm it; scrapes are discarded unread for ${wait.toSeconds}s, then the sync is retried.")
-          return Seq.empty
-        }
-        coldMirrorLock.synchronized { coldMirrorRetry = None }
-        coldMirrorSyncArmed.set(false)
-        if (corpus.nonEmpty) store.rehydrate()
-      }
-    }
+    if (staging.isDefined && coldMirrorSyncArmed.get() && !syncColdMirror(cinema)) return Seq.empty
 
     // The listing as this cache records it — titles cleaned by the venue's rules,
     // every screening badged through the shared vocabulary, the venue's several rows

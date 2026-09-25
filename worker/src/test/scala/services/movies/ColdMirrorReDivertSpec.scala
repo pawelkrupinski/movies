@@ -120,4 +120,29 @@ class ColdMirrorReDivertSpec extends AnyFlatSpec with Matchers {
     staging.findAll() shouldBe empty
     cache.get(cache.keyOf("Toy Story 5", Some(2026))) should not be empty   // synced, landed
   }
+
+  // Two venues' first scrapes landing together both saw the latch armed and the mirror cold,
+  // and both read the whole corpus and rehydrated: the one-shot sync fired once per racer.
+  it should "sync once when two venues' first scrapes land at the same time" in {
+    val staging = new InMemoryStagingRepository
+    val repo    = new BootBlackoutRepository(Seq(("Toy Story 5", Some(2026), knownRow))) {
+      // Holds each corpus read until a second one arrives (or 500ms pass), so racers overlap.
+      val bothReading = new java.util.concurrent.CountDownLatch(2)
+      override def findAllChecked(): (Seq[StoredMovieRecord], Boolean) = {
+        bothReading.countDown()
+        bothReading.await(500, java.util.concurrent.TimeUnit.MILLISECONDS)
+        super.findAllChecked()
+      }
+    }
+    val cache   = new CaffeineMovieCache(repo, staging = Some(staging), normalizer = titleNormalizer)
+    repo.blackout = false
+    val atBoot  = repo.corpusReads.get
+
+    val racers = Seq[Cinema](KinoMuza, Multikino).map { venue =>
+      new Thread(() => { cache.recordCinemaScrape(venue, Seq(scrape("Toy Story 5").copy(cinema = venue))); () })
+    }
+    racers.foreach(_.start())
+    racers.foreach(_.join(10000))
+    repo.corpusReads.get - atBoot shouldBe 1
+  }
 }
