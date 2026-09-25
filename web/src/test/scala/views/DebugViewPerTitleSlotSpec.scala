@@ -85,12 +85,12 @@ class DebugViewPerTitleSlotSpec extends AnyFlatSpec with Matchers {
   }
 
   "debug table row" should "show the per-title slot count when a venue holds several" in {
-    val row = StoredMovieRecord(
+    val row = StoredMovieRecord.synthesised(
       title = polishTitle, year = Some(2024),
       record = MovieRecord(data = Map[Source, SourceData](
         original -> slot(originalTitle),
         polish   -> slot(polishTitle),
-      )))
+      )), services.movies.SingleCountryNormalizer.titleNormalizer)
     val html = views.html.debug(Seq(row), titleNormalizer, current = models.Country.Poland).body
 
     // One distinct cinema (the sort key stays the cinema count) …

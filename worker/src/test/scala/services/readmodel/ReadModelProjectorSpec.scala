@@ -32,7 +32,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   private def record(rating: Option[Double], showtimes: Seq[Showtime], tmdbId: Int = 1): MovieRecord =
     MovieRecord(imdbRating = rating, tmdbId = Some(tmdbId), data = Map[Source, SourceData](Multikino -> slot(showtimes)))
 
-  private def stored(record: MovieRecord): StoredMovieRecord = StoredMovieRecord("Foo", Some(2024), record)
+  private def stored(record: MovieRecord): StoredMovieRecord = StoredMovieRecord.synthesised("Foo", Some(2024), record, services.movies.SingleCountryNormalizer.titleNormalizer)
 
   private def fixture(): (ReadModelProjector, InMemoryMovieRepository, InMemoryReadModelRepository) = {
     val repository = new InMemoryMovieRepository()
@@ -114,7 +114,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
 
   "an un-enriched row" should "be held back from the read model" in {
     val (projector, _, rm) = fixture()
-    projector.onMovieUpsert(StoredMovieRecord("Foo", Some(2024), unresolved(Seq(at("2026-06-12T20:00")))))
+    projector.onMovieUpsert(StoredMovieRecord.synthesised("Foo", Some(2024), unresolved(Seq(at("2026-06-12T20:00"))), services.movies.SingleCountryNormalizer.titleNormalizer))
     rm.movieUpserts     shouldBe empty
     rm.screeningUpserts shouldBe empty
   }
@@ -122,10 +122,10 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   "a row that concludes enrichment on a later upsert" should "then be projected" in {
     val (projector, _, rm) = fixture()
     val shows = Seq(at("2026-06-12T20:00"))
-    projector.onMovieUpsert(StoredMovieRecord("Foo", Some(2024), unresolved(shows)))
+    projector.onMovieUpsert(StoredMovieRecord.synthesised("Foo", Some(2024), unresolved(shows), services.movies.SingleCountryNormalizer.titleNormalizer))
     rm.movieUpserts shouldBe empty  // still enriching
     // TMDB concludes as a definitive no-match → `tmdbNoMatch` → ready → projects.
-    projector.onMovieUpsert(StoredMovieRecord("Foo", Some(2024), unresolved(shows).copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))))
+    projector.onMovieUpsert(StoredMovieRecord.synthesised("Foo", Some(2024), unresolved(shows).copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy)), services.movies.SingleCountryNormalizer.titleNormalizer))
     rm.movieUpserts     should have size 1
     rm.screeningUpserts should have size 1
   }
@@ -685,7 +685,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     // A row still enriching (no tmdbId → !readyToProject) is held back before
     // projectAll runs, so it must NOT be metered — the counter stays put.
     val notReady = MovieRecord(imdbRating = Some(7.0), data = Map[Source, SourceData](Multikino -> slot(Seq(at("2026-06-12T20:00")))))
-    projector.onMovieUpsert(StoredMovieRecord("Foo", Some(2024), notReady))
+    projector.onMovieUpsert(StoredMovieRecord.synthesised("Foo", Some(2024), notReady, services.movies.SingleCountryNormalizer.titleNormalizer))
     m.projectCalls shouldBe 1
 
     // A full reproject sweep projects the live row → one more timing.
@@ -709,7 +709,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     // A row still enriching is held back BEFORE the write phase (and before
     // recordProject too) — it must not buy a write-burst reading either.
     val notReady = MovieRecord(imdbRating = Some(7.0), data = Map[Source, SourceData](Multikino -> slot(Seq(at("2026-06-12T20:00")))))
-    projector.onMovieUpsert(StoredMovieRecord("Foo", Some(2024), notReady))
+    projector.onMovieUpsert(StoredMovieRecord.synthesised("Foo", Some(2024), notReady, services.movies.SingleCountryNormalizer.titleNormalizer))
     m.writeBurstSeconds should have size 1
 
     // A full reproject sweep reaches the write phase for the live row → one more timing.

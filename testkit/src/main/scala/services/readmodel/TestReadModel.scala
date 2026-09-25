@@ -16,14 +16,14 @@ object TestReadModel {
    *  `FilmSchedule.resolved` and `_movieCard` carry. Reuses the production
    *  projection so a view spec exercises the same materialisation as serving. */
   def resolved(title: String, year: Option[Int], record: MovieRecord): models.ResolvedMovie =
-    ReadModelProjection.resolve(StoredMovieRecord(title, year, record), titleNormalizer)
+    ReadModelProjection.resolve(StoredMovieRecord.synthesised(title, year, record, titleNormalizer), titleNormalizer)
 
   /** The `ResolvedRatings` a record projects to — what `_ratingBadges` renders. */
   def ratings(title: String, record: MovieRecord): models.ResolvedRatings =
     ReadModelProjection.ratingsFor(record, title)
 
   def fromRecords(records: Seq[(String, Option[Int], MovieRecord)]): WebReadModel =
-    fromRows(records.map { case (title, year, record) => StoredMovieRecord(title, year, record) })
+    fromRows(records.map { case (title, year, record) => StoredMovieRecord.synthesised(title, year, record, titleNormalizer) })
 
   /** From stored rows AS THEY ARE — ids included. A card is keyed by its row's
    *  `FilmId`, so a spec that matches rendered rows back to cache rows must project
@@ -37,7 +37,7 @@ object TestReadModel {
   /** The projected store alone, for a spec that wants its own [[WebReadModel]]
    *  subclass over it (one that counts reads, say). Call `reload()` on it. */
   def store(records: Seq[(String, Option[Int], MovieRecord)]): InMemoryReadModelRepository =
-    storeRows(records.map { case (title, year, record) => StoredMovieRecord(title, year, record) })
+    storeRows(records.map { case (title, year, record) => StoredMovieRecord.synthesised(title, year, record, titleNormalizer) })
 
   def storeRows(rows: Seq[StoredMovieRecord]): InMemoryReadModelRepository = {
     val store = new InMemoryReadModelRepository()

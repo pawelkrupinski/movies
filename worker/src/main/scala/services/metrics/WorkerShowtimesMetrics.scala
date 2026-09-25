@@ -35,15 +35,13 @@ class WorkerShowtimesMetrics(
   showtimes:   Gauge,
   countryCode: String,
   clock:       Clock     = Clock.systemDefaultZone(),
-  cities:      Seq[City] = City.all
-) extends CorpusMetricsCollector {
-
+  cities:      Seq[City] = City.all,
   // The corpus this collector counts belongs to `countryCode`, so the film ids it
   // projects must fold titles with THAT country's rules — otherwise the gauge
-  // counts ids no reader ever addresses.
-  private val normalizer: services.movies.TitleNormalizer =
-    services.movies.TitleNormalizer.forCountry(
-      models.Country.byCode(countryCode).getOrElse(models.Country.default))
+  // counts ids no reader ever addresses. The wiring hands over its own.
+  normalizer:  services.movies.TitleNormalizer
+) extends CorpusMetricsCollector {
+
   import WorkerShowtimesMetrics._
 
   // Seed every city at 0 so a city that empties reads as an explicit 0, not a

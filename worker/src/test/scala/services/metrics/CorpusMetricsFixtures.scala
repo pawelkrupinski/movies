@@ -32,7 +32,7 @@ object CorpusMetricsFixtures {
     MovieRecord(tmdbId = Some(tmdb), data = Map(cinema -> slot(times*)))
 
   def row(title: String, record: MovieRecord): StoredMovieRecord =
-    StoredMovieRecord(title, Some(2026), record)
+    StoredMovieRecord.synthesised(title, Some(2026), record, services.movies.SingleCountryNormalizer.titleNormalizer)
 
   /** A read-only repository over these rows — the in-memory store production's cache
    *  tests already use, so the specs exercise the real `foreachRecord` contract. */

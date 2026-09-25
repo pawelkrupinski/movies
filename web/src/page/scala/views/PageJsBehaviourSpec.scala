@@ -274,9 +274,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // the sort reads weightedRating, not the old raw-IMDb key (which was both
       // empty here AND never matched its header, so the column never sorted).
       val debugRows = Seq(
-        StoredMovieRecord("Pending Film",    Some(2024), MovieRecord(detailPending = true, tmdbId = Some(1), imdbRating = Some(6.0))),
-        StoredMovieRecord("Unresolved Film", Some(2023), MovieRecord()),
-        StoredMovieRecord("Done Film",       Some(2022), MovieRecord(tmdbId = Some(7), metascore = Some(90), rottenTomatoes = Some(90))),
+        StoredMovieRecord.synthesised("Pending Film",    Some(2024), MovieRecord(detailPending = true, tmdbId = Some(1), imdbRating = Some(6.0)), services.movies.SingleCountryNormalizer.titleNormalizer),
+        StoredMovieRecord.synthesised("Unresolved Film", Some(2023), MovieRecord(), services.movies.SingleCountryNormalizer.titleNormalizer),
+        StoredMovieRecord.synthesised("Done Film",       Some(2022), MovieRecord(tmdbId = Some(7), metascore = Some(90), rottenTomatoes = Some(90)), services.movies.SingleCountryNormalizer.titleNormalizer),
       )
       // Staging (pending_movies) source rows the page FOLDS by film. "Staging
       // Film" (anchor `stagingfilm`) is reported by TWO cinemas and is at its
@@ -295,11 +295,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // renders the bracketed slot count `1 (2)`. Served on its own path so the
       // shared `/debug` corpus-count + sort tests (which assert exactly 3 rows)
       // stay untouched.
-      val slotsRow = StoredMovieRecord("Slots Film", Some(2024), MovieRecord(
+      val slotsRow = StoredMovieRecord.synthesised("Slots Film", Some(2024), MovieRecord(
         tmdbId = Some(99),
         data = Map(
           CinemaShowing(CinemaCityWroclavia, "slots-film")     -> SourceData(title = Some("Slots Film")),
-          CinemaShowing(CinemaCityWroclavia, "slots-film-org") -> SourceData(title = Some("Slots Film Org")))))
+          CinemaShowing(CinemaCityWroclavia, "slots-film-org") -> SourceData(title = Some("Slots Film Org")))), services.movies.SingleCountryNormalizer.titleNormalizer)
       val slotsDebugHtml: String = views.html.debug(Seq(slotsRow), titleNormalizer, Seq.empty, current = models.Country.Poland).body
       slotsRowId = slotsRow.id.value
       // Change-stream frames for the no-op-guard test, rendered by the SAME

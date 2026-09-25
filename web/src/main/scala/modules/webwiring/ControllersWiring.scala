@@ -25,7 +25,7 @@ trait ControllersWiring { self: Wiring =>
   lazy val landingController = new LandingController(controllerComponents, country)
   lazy val encodedResponseCache = new EncodedResponseCache
   lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, oauthProviders.keySet, environmentMode, encodedResponseCache,
-    servingCountry = country)
+    servingCountry = country, normalizer = titleNormalizer)
   // Global country+city catalog for the mobile apps (`GET /api/catalog`), served
   // identically by every deployment — no per-country/read-model dependency.
   lazy val catalogController = new CatalogController(controllerComponents)

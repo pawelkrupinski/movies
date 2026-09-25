@@ -9,14 +9,20 @@ import org.scalatest.matchers.should.Matchers
  * rule sets live in one JVM at the same time, each keying its own titles.
  *
  * Every case here is deliberately simultaneous — holding both normalizers at
- * once — because the old `installRules` / `withRules` pair could only ever make
- * one set current, which is why a multi-country worker had to be refused.
+ * once — because the old process-global rule set could only ever make one set
+ * current, which is why a multi-country worker had to be refused.
  */
 class TitleNormalizerInstanceSpec extends AnyFlatSpec with Matchers {
 
   private val pl = TitleNormalizer.forCountry(Country.Poland)
   private val de = TitleNormalizer.forCountry(Country.Germany)
   private val uk = TitleNormalizer.forCountry(Country.UnitedKingdom)
+
+  "A country's normalizer" should "be a new instance each time it is built, never one the whole JVM shares" in {
+    // Every instance fills memo caches as it runs; a process-wide memo handed every
+    // wiring and every spec the same caches.
+    TitleNormalizer.forCountry(Country.Poland) should not be theSameInstanceAs (TitleNormalizer.forCountry(Country.Poland))
+  }
 
   "two countries' normalizers" should "key the same title differently, at the same time" in {
     // The Polish " & " → " i " unification ("i" = "and") must not reach a German
@@ -58,11 +64,6 @@ class TitleNormalizerInstanceSpec extends AnyFlatSpec with Matchers {
 
   it should "agree on titles no country-scoped rule touches" in {
     Seq(pl, de, uk).map(_.sanitize("Top Gun: Maverick")).distinct should have size 1
-  }
-
-  "forCountry" should "memoise, so a rule set is compiled once per country" in {
-    TitleNormalizer.forCountry(Country.Poland) should be theSameInstanceAs pl
-    TitleNormalizer.forCountry(Country.Germany) should be theSameInstanceAs de
   }
 
   /** The wiring bug behind the first attempt: the normalizer resolved its rule set

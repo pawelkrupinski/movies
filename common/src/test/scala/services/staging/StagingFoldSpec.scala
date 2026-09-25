@@ -64,11 +64,11 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     // not leave a duplicate for the periodic settle. The two keys sanitise
     // differently, so only the tmdbId edge can merge them.
     val englishNewcomer = staging(Multikino, "The Mandalorian and Grogu", 2026, 700, 2026)
-    val polishSibling = StoredMovieRecord("Gwiezdne wojny: Mandalorian i Grogu", Some(2026),
+    val polishSibling = StoredMovieRecord.synthesised("Gwiezdne wojny: Mandalorian i Grogu", Some(2026),
       MovieRecord(tmdbId = Some(700), data = Map[Source, SourceData](
         (Tmdb: Source)   -> SourceData(title = Some("Gwiezdne wojny: Mandalorian i Grogu"),
                                        englishTitle = Some("The Mandalorian and Grogu"), releaseYear = Some(2026)),
-        (Helios: Source) -> SourceData(title = Some("Gwiezdne wojny: Mandalorian i Grogu"), releaseYear = Some(2026)))))
+        (Helios: Source) -> SourceData(title = Some("Gwiezdne wojny: Mandalorian i Grogu"), releaseYear = Some(2026)))), services.movies.SingleCountryNormalizer.titleNormalizer)
 
     val plan = StagingFold.planGroup(Seq(englishNewcomer), moviesRows = Seq(polishSibling), titleNormalizer)
     settleIsANoOpAfterFold(plan)
@@ -103,11 +103,11 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     // id — the plan RETITLES the existing document rather than writing a new one and
     // deleting the old (the group-scoped movies lookup sees it, so nothing is
     // silently overwritten — the bug the old per-year fold guarded against).
-    val existing2025 = StoredMovieRecord("Zawodowcy", Some(2025), MovieRecord(
+    val existing2025 = StoredMovieRecord.synthesised("Zawodowcy", Some(2025), MovieRecord(
       tmdbId = Some(1122573),
       data = Map[Source, SourceData](
         Multikino -> SourceData(title = Some("Zawodowcy"), releaseYear = Some(2025)),
-        Tmdb      -> SourceData(title = Some("Zawodowcy"), releaseYear = Some(2026)))))
+        Tmdb      -> SourceData(title = Some("Zawodowcy"), releaseYear = Some(2026)))), services.movies.SingleCountryNormalizer.titleNormalizer)
     val fresh2026 = staging(Helios, "Zawodowcy", 2026, 1122573, 2026)
 
     val plan = StagingFold.planGroup(Seq(fresh2026), Seq(existing2025), titleNormalizer)
@@ -132,10 +132,10 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
   // shape cannot be misread: the row keeps its id, only its key moves, and there is no
   // delete to cascade off.
   it should "re-key a film as a RETITLE — same id, new key, nothing retired" in {
-    val existing2025 = StoredMovieRecord("Zawodowcy", Some(2025), MovieRecord(
+    val existing2025 = StoredMovieRecord.synthesised("Zawodowcy", Some(2025), MovieRecord(
       tmdbId = Some(1122573),
       data = Map[Source, SourceData](
-        Multikino -> SourceData(title = Some("Zawodowcy"), releaseYear = Some(2025)))))
+        Multikino -> SourceData(title = Some("Zawodowcy"), releaseYear = Some(2025)))), services.movies.SingleCountryNormalizer.titleNormalizer)
     val fresh2026 = staging(Helios, "Zawodowcy", 2026, 1122573, 2026)
 
     val plan = StagingFold.planGroup(Seq(fresh2026), Seq(existing2025), titleNormalizer)
@@ -154,11 +154,11 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
   it should "retire a second document of the same film INTO the survivor, side rows attributed" in {
     // Two existing rows that turn out to be one film (a legacy duplicate at another year):
     // one id survives, the other is deleted, and the retirement says where its cinemas go.
-    val a = StoredMovieRecord("Zawodowcy", Some(2025), MovieRecord(tmdbId = Some(1122573),
-      data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Zawodowcy"), releaseYear = Some(2025)))))
-    val b = StoredMovieRecord("Zawodowcy", Some(2026), MovieRecord(tmdbId = Some(1122573),
+    val a = StoredMovieRecord.synthesised("Zawodowcy", Some(2025), MovieRecord(tmdbId = Some(1122573),
+      data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Zawodowcy"), releaseYear = Some(2025)))), services.movies.SingleCountryNormalizer.titleNormalizer)
+    val b = StoredMovieRecord.synthesised("Zawodowcy", Some(2026), MovieRecord(tmdbId = Some(1122573),
       data = Map[Source, SourceData](Helios -> SourceData(title = Some("Zawodowcy"), releaseYear = Some(2026)),
-                                     Tmdb   -> SourceData(title = Some("Zawodowcy"), releaseYear = Some(2026)))))
+                                     Tmdb   -> SourceData(title = Some("Zawodowcy"), releaseYear = Some(2026)))), services.movies.SingleCountryNormalizer.titleNormalizer)
     val fresh = staging(CinemaCityWroclavia, "Zawodowcy", 2026, 1122573, 2026)
 
     val plan = StagingFold.planGroup(Seq(fresh), Seq(a, b), titleNormalizer)
@@ -175,9 +175,9 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     // resolved yeared movies row collapses onto the resolved row.
     val stray = StagingRecord(Multikino, "Dzień objawienia", None,
       MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Dzień objawienia")))), titleNormalizer)
-    val resolvedSibling = StoredMovieRecord("Dzień objawienia", Some(2026), MovieRecord(
+    val resolvedSibling = StoredMovieRecord.synthesised("Dzień objawienia", Some(2026), MovieRecord(
       tmdbId = Some(1275779), imdbId = Some("tt15047880"),
-      data = Map[Source, SourceData](Helios -> SourceData(title = Some("Dzień objawienia"), releaseYear = Some(2026)))))
+      data = Map[Source, SourceData](Helios -> SourceData(title = Some("Dzień objawienia"), releaseYear = Some(2026)))), services.movies.SingleCountryNormalizer.titleNormalizer)
 
     val plan = StagingFold.planGroup(Seq(stray), Seq(resolvedSibling), titleNormalizer)
     settleIsANoOpAfterFold(plan)
@@ -263,11 +263,11 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     // keyed under TMDB's own year — 2012, YEARLESS on the venues' own slots (they
     // never printed one). The 21st venue's title embeds 2026 and nothing else asserts
     // a year for it, so it is the one row whose asserted year could disagree.
-    val existing = StoredMovieRecord("Queen Budapest", Some(2012), MovieRecord(
+    val existing = StoredMovieRecord.synthesised("Queen Budapest", Some(2012), MovieRecord(
       tmdbId = Some(142773),
       data = Map[Source, SourceData](
         Multikino -> SourceData(title = Some("Queen Budapest")),
-        Tmdb      -> SourceData(title = Some("Queen Budapest"), releaseYear = Some(2012)))))
+        Tmdb      -> SourceData(title = Some("Queen Budapest"), releaseYear = Some(2012)))), services.movies.SingleCountryNormalizer.titleNormalizer)
     val dated = StagingRecord(Helios, "Queen Budapest (2026)", None, MovieRecord(
       data = Map[Source, SourceData](Helios -> SourceData(title = Some("Queen Budapest (2026)")))), titleNormalizer)
 
@@ -298,9 +298,9 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
 
   it should "fold staging onto an existing movies sibling without deleting it spuriously" in {
     val stagingRow = staging(Multikino, "Kumotry", 2026, 1454157, 2026)
-    val existing = StoredMovieRecord("Kumotry", Some(2026), MovieRecord(
+    val existing = StoredMovieRecord.synthesised("Kumotry", Some(2026), MovieRecord(
       tmdbId = Some(1454157),
-      data = Map[Source, SourceData](Helios -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026)))))
+      data = Map[Source, SourceData](Helios -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026)))), services.movies.SingleCountryNormalizer.titleNormalizer)
 
     val plan = StagingFold.planGroup(Seq(stagingRow), Seq(existing), titleNormalizer)
     settleIsANoOpAfterFold(plan)
@@ -325,9 +325,9 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     // An existing `movies` row joins the cluster → not a new film; it already owns
     // its ratings, so it must not be re-enqueued as a promotion.
     val stagingRow = staging(Multikino, "Kumotry", 2026, 1454157, 2026)
-    val existing = StoredMovieRecord("Kumotry", Some(2026), MovieRecord(
+    val existing = StoredMovieRecord.synthesised("Kumotry", Some(2026), MovieRecord(
       tmdbId = Some(1454157),
-      data = Map[Source, SourceData](Helios -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026)))))
+      data = Map[Source, SourceData](Helios -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026)))), services.movies.SingleCountryNormalizer.titleNormalizer)
 
     val plan = StagingFold.planGroup(Seq(stagingRow), Seq(existing), titleNormalizer)
     settleIsANoOpAfterFold(plan)
@@ -340,9 +340,9 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     // 'Diuna' 1984 already lives in `movies`; the 2021 remake arrives via staging.
     // Distinct tmdbIds, far-apart years → two clusters: 1984 merges (not new), 2021
     // is brand new → only 2021 is a promotion.
-    val existing1984 = StoredMovieRecord("Diuna", Some(1984), MovieRecord(
+    val existing1984 = StoredMovieRecord.synthesised("Diuna", Some(1984), MovieRecord(
       tmdbId = Some(841),
-      data = Map[Source, SourceData](Helios -> SourceData(title = Some("Diuna"), releaseYear = Some(1984)))))
+      data = Map[Source, SourceData](Helios -> SourceData(title = Some("Diuna"), releaseYear = Some(1984)))), services.movies.SingleCountryNormalizer.titleNormalizer)
     val staging1984 = staging(Multikino, "Diuna", 1984, 841, 1984)
     val staging2021 = staging(Multikino, "Diuna", 2021, 438631, 2021)
 

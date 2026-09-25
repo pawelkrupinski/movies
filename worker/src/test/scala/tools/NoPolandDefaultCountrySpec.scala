@@ -74,9 +74,7 @@ class NoPolandDefaultCountrySpec extends AnyFlatSpec with Matchers {
       ("the worker test seam `TestWiring` is a trait, so it can only extend the no-argument constructor; " +
         "WorkerMain passes every country explicitly"),
     "worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala: this.titles" ->
-      "the auxiliary constructor exists for the Poland-only operator tools (FilmwebDiff, RosterAudit)",
-    "worker/src/main/scala/tools/FilmwebDiffTitleNormalizer.scala: normalize.titles" ->
-      "Filmweb is Polish-only, so a Filmweb title is a Polish title by definition"
+      "the auxiliary constructor exists for the Poland-only operator tools (FilmwebDiff, RosterAudit)"
   )
 
   "Production parameters" should "not default to Poland" in {

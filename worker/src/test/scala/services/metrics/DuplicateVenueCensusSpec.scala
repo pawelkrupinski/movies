@@ -34,7 +34,7 @@ class DuplicateVenueCensusSpec extends AnyFlatSpec with Matchers {
   private def times(n: Int, from: Int = 1): Seq[LocalDateTime] = (from until from + n).map(d => now.plusDays(d.toLong))
 
   private def row(title: String, slots: (Source, Seq[LocalDateTime])*): StoredMovieRecord =
-    StoredMovieRecord(title, Some(2026), MovieRecord(tmdbId = Some(1), data = slots.map { case (s, t) => s -> slot(t*) }.toMap))
+    StoredMovieRecord.synthesised(title, Some(2026), MovieRecord(tmdbId = Some(1), data = slots.map { case (s, t) => s -> slot(t*) }.toMap), services.movies.SingleCountryNormalizer.titleNormalizer)
 
   private def census(rows: Seq[StoredMovieRecord], complete: Boolean = true, preset: Option[Double] = None,
                      country: Country = Country.Poland, scope: String = DuplicateVenueCensus.SameCity): Double = {

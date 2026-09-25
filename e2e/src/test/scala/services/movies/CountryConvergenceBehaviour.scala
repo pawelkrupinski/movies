@@ -11,7 +11,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
-import services.titlerules.TitleRuleSet
 import tools.{ArchiveReplayWiring, ConvergenceStorage, CorpusCoverage, CorpusFixture, CorpusProvenance, CountryScrapeCorpus,
   ChurnLedger, EnrichmentCache, EnrichmentFreshness, Env, FileEnrichmentCacheStore, FixpointPass, MissingFixtures, PhaseTimer, ProdCoverageBaseline,
   SameThreadExecutionBudget, ServedCorpusInvariants, TestWiring}
@@ -54,9 +53,8 @@ import scala.util.{Random, Try}
  *      input and cannot tell an idempotent pipeline from one that ignores re-scrapes.
  *
  * Each country runs in its OWN JVM — one spec class per country, one CI leg each —
- * because the leg installs that country's `TitleRuleSet` process-globally. Two
- * countries in one JVM would overwrite each other's normalisation, so there is
- * deliberately no alias that runs them together.
+ * so the legs parallelise across CI runners. Every leg builds its storage and
+ * wiring with its own country's `TitleNormalizer`.
  *
  * Every collection is a real, throwaway MongoDB (`ConvergenceStorage`), never a tunnel:
  * the corpus comes from a recorded fixture, and the enrichment answers from a recorded
@@ -800,18 +798,6 @@ abstract class CountryConvergenceBehaviour(
 
   s"the ${country.displayName} pipeline" should
     "converge on the first settle and stay churn-free under identical re-scrapes" in {
-    // Put the JVM on THIS country's title rules. Without it the leg runs on
-    // `TitleNormalizer.active`, which defaults to the sole country named by the
-    // environment and — with none named — to Poland: a German or British leg would
-    // exercise its own catalogue under POLISH normalisation and quietly prove
-    // nothing about its own.
-    //
-    // Installed HERE, in the test body, and deliberately NOT in the constructor:
-    // ScalaTest INSTANTIATES every discovered suite in order to read its tags, so
-    // a constructor-level swap fires even in a run that excludes this spec by tag
-    // — which is how a German rule set reached `FilmScheduleEndToEndSpec` and
-    // failed it. A test body runs only when the test does.
-    TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
     {
       val (w, merges, _) = shared
 
@@ -1114,7 +1100,6 @@ abstract class CountryConvergenceBehaviour(
 
   s"the ${country.displayName} corpus" should
     "come out identical — films, screenings and rendered rows — whatever order it arrives in" taggedAs OrderIndependence in {
-    TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
     {
       // One archive per run, in Mongo like everything else. The passes each get their
       // own database (see `replay`), so they still cannot tread on each other.
@@ -1187,7 +1172,6 @@ abstract class CountryConvergenceBehaviour(
    */
   s"the ${country.displayName} pipeline's coverage" should
     "stay within 5% of what production achieves on the same repertoire" in {
-    TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
     {
       val (w, _, _) = shared
       val baseline = ProdCoverageBaseline.read(corpusKey).getOrElse(
@@ -1289,7 +1273,6 @@ abstract class CountryConvergenceBehaviour(
    *    by the derived id and gets a clean "not found" for a film that is right there. Both
    *    are how a film silently loses its board. */
   s"the ${country.displayName} corpus" should "strand no side rows and no drifted keys" in {
-    TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
     {
       val (w, _, _) = shared
       val normalizer = w.movieCache.normalizer
@@ -1335,7 +1318,6 @@ abstract class CountryConvergenceBehaviour(
 
   s"the ${country.displayName} read model" should
     "emit every cinema, showtime and film the archive holds" in {
-    TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
     {
       val (w, _, archive) = shared
 

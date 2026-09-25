@@ -37,12 +37,14 @@ trait MetricsWiring { self: WorkerWiring =>
   // country — the worker-side mirror of the web's kinowo_web_movies_served (read
   // model), so a Grafana panel overlays the two and a divergence flags drift.
   lazy val sourceFilmsMetrics: WorkerSourceFilmsMetrics =
-    new WorkerSourceFilmsMetrics(workerMetrics.servedGauge, country.code, cities = country.cities)
+    new WorkerSourceFilmsMetrics(workerMetrics.servedGauge, country.code, cities = country.cities,
+      normalizer = titleNormalizer)
   // Per-city (and, summed, country total) count of individual upcoming SHOWTIMES
   // the source `movies` collection would serve — the slot-volume complement to
   // sourceFilmsMetrics, exposed as kinowo_worker_showtimes{country,city}.
   lazy val showtimesMetrics: WorkerShowtimesMetrics =
-    new WorkerShowtimesMetrics(workerMetrics.showtimesGauge, country.code, cities = country.cities)
+    new WorkerShowtimesMetrics(workerMetrics.showtimesGauge, country.code, cities = country.cities,
+      normalizer = titleNormalizer)
   // The widest film's slot count — the blast radius of one film's write, since every write
   // path is per-film and the screenings cursor rings once per row written (see
   // WorkerSlotFanoutMetrics). Rides the same corpus pass as the three censuses above.

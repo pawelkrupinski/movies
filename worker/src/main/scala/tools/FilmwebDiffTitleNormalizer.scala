@@ -1,6 +1,5 @@
 package tools
 
-import models.Country
 import services.movies.TitleNormalizer
 
 /**
@@ -51,7 +50,7 @@ object FilmwebDiffTitleNormalizer {
     "2d", "3d", "imax", "4dx", "4d", "vr", "screenx", "dolby", "atmos", "hfr"
   )
 
-  def normalize(rawTitle: String, titles: TitleNormalizer = TitleNormalizer.forCountry(Country.default)): String = {
+  def normalize(rawTitle: String, titles: TitleNormalizer): String = {
     // 0. drop a leading programme-prefix banner, if any (see class doc).
     val unprefixed = titles.programmePrefix(rawTitle).fold(rawTitle)(rawTitle.stripPrefix)
     val lowered = unprefixed.trim.toLowerCase

@@ -27,11 +27,11 @@ class ProdDriftProofSpec extends AnyFlatSpec with Matchers {
     // screenings (SOURCE OF TRUTH): ONE future showtime, 2026-11-14T11:45
     // web_screenings (CURRENTLY STORED, WRONG): 2026-08-03T20:25 at Prince Charles London,
     //   PLUS a phantom row at "Riverside Studios Hammersmith" that has no slot at all any more.
-    val stored = StoredMovieRecord("Troy", Some(2004), MovieRecord(
+    val stored = StoredMovieRecord.synthesised("Troy", Some(2004), MovieRecord(
       tmdbId = Some(652), imdbId = Some("tt0332452"),
       data = Map[Source, SourceData](
         PrinceCharlesLondon -> SourceData(title = Some("Troy"), runtimeMinutes = Some(163),
-          showtimes = Seq(at("2026-11-14T11:45:00"))))))
+          showtimes = Seq(at("2026-11-14T11:45:00"))))), services.movies.SingleCountryNormalizer.titleNormalizer)
 
     val rows = ReadModelProjection.screenings(stored, titleNormalizer)
 
@@ -47,11 +47,11 @@ class ProdDriftProofSpec extends AnyFlatSpec with Matchers {
     // movies: {"_id":"2046|2004", tmdbId=844}; one slot, Prince Charles London, key "2046"
     // screenings: ONE future showtime, 2026-11-29T14:35
     // web_screenings (wrong): 2026-08-08T20:30
-    val stored = StoredMovieRecord("2046", Some(2004), MovieRecord(
+    val stored = StoredMovieRecord.synthesised("2046", Some(2004), MovieRecord(
       tmdbId = Some(844), imdbId = Some("tt0212712"),
       data = Map[Source, SourceData](
         PrinceCharlesLondon -> SourceData(title = Some("2046"), runtimeMinutes = Some(128),
-          showtimes = Seq(at("2026-11-29T14:35:00"))))))
+          showtimes = Seq(at("2026-11-29T14:35:00"))))), services.movies.SingleCountryNormalizer.titleNormalizer)
 
     val rows = ReadModelProjection.screenings(stored, titleNormalizer)
 
@@ -63,11 +63,11 @@ class ProdDriftProofSpec extends AnyFlatSpec with Matchers {
     // movies: {"_id":"glastonbury|2006", tmdbId=53871}; one slot, Southsea Cinema & Arts
     // Centre, key "glastonbury". screenings: ONE future showtime, 2026-09-23T19:00.
     // web_screenings (wrong): TWO stale rows, 2026-08-05T19:00 and 2026-08-09T19:00.
-    val stored = StoredMovieRecord("Glastonbury", Some(2006), MovieRecord(
+    val stored = StoredMovieRecord.synthesised("Glastonbury", Some(2006), MovieRecord(
       tmdbId = Some(53871), imdbId = Some("tt0464022"),
       data = Map[Source, SourceData](
         SouthseaCinemaArtsCentre -> SourceData(title = Some("Glastonbury"), runtimeMinutes = Some(138),
-          showtimes = Seq(at("2026-09-23T19:00:00"))))))
+          showtimes = Seq(at("2026-09-23T19:00:00"))))), services.movies.SingleCountryNormalizer.titleNormalizer)
 
     val rows = ReadModelProjection.screenings(stored, titleNormalizer)
 

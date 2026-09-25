@@ -25,8 +25,8 @@ class ReresolveSelfLockedRowsSpec extends AnyFlatSpec with Matchers {
         SourceData(title = Some("Grzegorz Dolniak \"Mogło być gorzej\" Stand up")))
 
   private def row(tmdbId: Option[Int], slots: Map[Source, SourceData] = slot) =
-    Some(StoredMovieRecord("Grzegorz Dolniak \"Mogło być gorzej\" Stand up", Some(2009),
-                           MovieRecord(tmdbId = tmdbId, data = slots)))
+    Some(StoredMovieRecord.synthesised("Grzegorz Dolniak \"Mogło być gorzej\" Stand up", Some(2009),
+                           MovieRecord(tmdbId = tmdbId, data = slots), services.movies.SingleCountryNormalizer.titleNormalizer))
 
   "a row still locked to the wrong film" should "be re-resolved" in {
     val (locked, skipped) =

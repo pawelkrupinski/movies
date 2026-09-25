@@ -18,6 +18,8 @@ import java.time.LocalDateTime
  * showing" — to BOTH sides identically.
  */
 class FilmwebDiffWithinWindowSpec extends AnyFlatSpec with Matchers {
+  private val titles = services.movies.TitleNormalizer.forCountry(models.Country.Poland)
+
 
   private val now       = LocalDateTime.of(2026, 9, 13, 23, 33)
   private val windowEnd = now.toLocalDate.plusDays(3)
@@ -30,19 +32,19 @@ class FilmwebDiffWithinWindowSpec extends AnyFlatSpec with Matchers {
 
   "withinWindow" should "drop a showtime that elapsed more than the grace period ago" in {
     val elapsed = now.minusMinutes(40) // outside Showtime.Grace (30 min)
-    FilmwebDiff.withinWindow(Seq(movieWith("Film", elapsed)), now, windowEnd) shouldBe empty
+    FilmwebDiff.withinWindow(Seq(movieWith("Film", elapsed)), now, windowEnd, titles) shouldBe empty
   }
 
   it should "keep a showtime that started within the grace period" in {
     val justStarted = now.minusMinutes(10)
-    FilmwebDiff.withinWindow(Seq(movieWith("Film", justStarted)), now, windowEnd)("film") shouldBe
+    FilmwebDiff.withinWindow(Seq(movieWith("Film", justStarted)), now, windowEnd, titles)("film") shouldBe
       Seq(justStarted)
   }
 
   it should "keep an upcoming showtime inside the window and drop one past windowEnd" in {
     val soon = now.plusHours(1)
     val late = windowEnd.plusDays(1).atStartOfDay() // the day AFTER windowEnd — excluded
-    val result = FilmwebDiff.withinWindow(Seq(movieWith("Film", soon, late)), now, windowEnd)
+    val result = FilmwebDiff.withinWindow(Seq(movieWith("Film", soon, late)), now, windowEnd, titles)
     result("film") shouldBe Seq(soon)
   }
 
@@ -50,8 +52,8 @@ class FilmwebDiffWithinWindowSpec extends AnyFlatSpec with Matchers {
   // Filmweb's listing, proving neither side gets special treatment.
   it should "prune an elapsed showtime identically regardless of which side it came from" in {
     val elapsed = now.minusMinutes(45)
-    val ours = FilmwebDiff.withinWindow(Seq(movieWith("Film", elapsed)), now, windowEnd)
-    val fw   = FilmwebDiff.withinWindow(Seq(movieWith("Film", elapsed)), now, windowEnd)
+    val ours = FilmwebDiff.withinWindow(Seq(movieWith("Film", elapsed)), now, windowEnd, titles)
+    val fw   = FilmwebDiff.withinWindow(Seq(movieWith("Film", elapsed)), now, windowEnd, titles)
     ours shouldBe empty
     fw   shouldBe empty
   }

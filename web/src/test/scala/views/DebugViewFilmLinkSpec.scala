@@ -18,11 +18,11 @@ class DebugViewFilmLinkSpec extends AnyFlatSpec with Matchers {
   // The debug page under test is served under Poznań.
   private implicit val city: models.City = models.Poznan
 
-  private val wroclawOnly = StoredMovieRecord(
+  private val wroclawOnly = StoredMovieRecord.synthesised(
     title = "Belle",
     year = Some(2021),
     record = MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some("Belle"))))
-  )
+  , services.movies.SingleCountryNormalizer.titleNormalizer)
 
   "debug view" should "link a Wrocław-only film into /wroclaw/movie, not the page's own city" in {
     val html = views.html.debug(Seq(wroclawOnly), titleNormalizer, current = models.Country.Poland).body

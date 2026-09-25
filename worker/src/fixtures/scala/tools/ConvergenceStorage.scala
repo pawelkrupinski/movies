@@ -151,11 +151,10 @@ object ConvergenceStorage {
     // What that attempt actually hit was the staging fold writing `movies` with its slots
     // embedded and no side rows — every graduated film read back with no showtimes — which
     // is fixed in `MongoStagingFolder.completeSideCollections`.
-    // `TitleNormalizer.deployment`, NOT the shared single-country instance: this
-    // storage is built once per COUNTRY leg, and the leg installs its own rules
-    // (`installRules(forCountry(country))`) before touching these lazy vals. A
-    // Poland-default here keyed the German and UK corpora through Polish rules —
-    // `minionsimonster` all over again, and the convergence legs caught it.
+    // The leg's own `normalizer`, NOT a shared single-country instance: this storage
+    // is built once per COUNTRY leg. A Poland default here keyed the German and UK
+    // corpora through Polish rules — `minionsimonster` all over again, and the
+    // convergence legs caught it.
     override lazy val movies     = new MongoMovieRepository(shared, normalizer = normalizer,
       screenings = Some(screenings), slots = Some(slots))
     override lazy val screenings = new MongoScreeningsRepository(shared)

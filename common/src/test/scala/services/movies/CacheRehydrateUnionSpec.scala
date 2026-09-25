@@ -30,9 +30,9 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
     new CaffeineMovieCache(repositoryOf(rows*), normalizer = new TitleNormalizer(rs))
 
   private def row(title: String, cinema: Source): StoredMovieRecord =
-    StoredMovieRecord(title, Some(2025),
+    StoredMovieRecord.synthesised(title, Some(2025),
       MovieRecord(data = Map[Source, SourceData](
-        cinema -> SourceData(title = Some(title), rawTitle = Some(title), releaseYear = Some(2025)))))
+        cinema -> SourceData(title = Some(title), rawTitle = Some(title), releaseYear = Some(2025)))), services.movies.SingleCountryNormalizer.titleNormalizer)
 
   private val decorated = row("Takie jest życie/Kino Cafe", CinemaCityKinepolis)
   private val base      = row("Takie jest życie",           Multikino)
@@ -127,9 +127,9 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
   // settle is its own cluster-claimed tick now, not bolted onto the reload, so the
   // restart loop no longer resets it the way it once did.)
   private def resolvedRow(year: Int, cinema: Source): StoredMovieRecord =
-    StoredMovieRecord("Kumotry", Some(year),
+    StoredMovieRecord.synthesised("Kumotry", Some(year),
       MovieRecord(tmdbId = Some(777), data = Map[Source, SourceData](
-        cinema -> SourceData(title = Some("Kumotry"), rawTitle = Some("Kumotry"), releaseYear = Some(year)))))
+        cinema -> SourceData(title = Some("Kumotry"), rawTitle = Some("Kumotry"), releaseYear = Some(year)))), services.movies.SingleCountryNormalizer.titleNormalizer)
 
   "settle after a pure load" should "collapse two same-tmdbId rows that differ only by year" in {
     val cache = new CaffeineMovieCache(repositoryOf(
@@ -148,15 +148,15 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
   // survive on /debug as `kumotry|2025` + `kumotry|2026`. Reproduces the exact
   // shape: a Tmdb slot carrying the resolved year drives `tmdbYear`.
   private def resolved2026Row(cinema: Source): StoredMovieRecord =
-    StoredMovieRecord("Kumotry", Some(2026),
+    StoredMovieRecord.synthesised("Kumotry", Some(2026),
       MovieRecord(tmdbId = Some(1454157), data = Map[Source, SourceData](
         cinema -> SourceData(title = Some("Kumotry"), rawTitle = Some("Kumotry"), releaseYear = Some(2025)),
-        Tmdb   -> SourceData(title = Some("Kumotry"), rawTitle = Some("Kumotry"), releaseYear = Some(2026)))))
+        Tmdb   -> SourceData(title = Some("Kumotry"), rawTitle = Some("Kumotry"), releaseYear = Some(2026)))), services.movies.SingleCountryNormalizer.titleNormalizer)
 
   private def unresolved2025Row(cinema: Source): StoredMovieRecord =
-    StoredMovieRecord("Kumotry", Some(2025),
+    StoredMovieRecord.synthesised("Kumotry", Some(2025),
       MovieRecord(data = Map[Source, SourceData](
-        cinema -> SourceData(title = Some("Kumotry"), rawTitle = Some("Kumotry"), releaseYear = Some(2025)))))
+        cinema -> SourceData(title = Some("Kumotry"), rawTitle = Some("Kumotry"), releaseYear = Some(2025)))), services.movies.SingleCountryNormalizer.titleNormalizer)
 
   it should "attach an unresolved ±1-year row to its resolved same-title cluster" in {
     val cache = new CaffeineMovieCache(repositoryOf(

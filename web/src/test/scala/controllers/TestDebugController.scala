@@ -47,6 +47,7 @@ object TestDebugController {
       environment      = mode,
       cinemaSourceUrls = () => cinemaSourceUrls,
       servingCountry   = models.Country.default,
+      normalizer       = services.movies.SingleCountryNormalizer.titleNormalizer,
     )
     (ctrl, readModel)
   }

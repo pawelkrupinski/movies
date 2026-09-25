@@ -314,13 +314,14 @@ class TitleNormalizer(val rules: TitleRuleSet) {
  */
 object TitleNormalizer {
 
-  /** The normalizer for `country`, memoised — a [[TitleRuleSet]] compiles ~180
-   *  regexes and builds its tier maps at construction, so it is worth holding
-   *  one per country rather than one per call site. */
+  /** A NEW normalizer for `country`. A [[TitleRuleSet]] compiles ~180 regexes and
+   *  builds its tier maps at construction, and every instance fills its own memo
+   *  caches as it runs — so build one per composition root (or per long-lived
+   *  component) and hold it; never call this per title. Deliberately not memoised
+   *  here: a process-wide memo would be one set of caches every wiring and every
+   *  spec in the JVM shares. */
   def forCountry(country: Country): TitleNormalizer =
-    byCountry.computeIfAbsent(country, c => new TitleNormalizer(TitleRuleSet.forCountry(c)))
-
-  private val byCountry = new ConcurrentHashMap[Country, TitleNormalizer]()
+    new TitleNormalizer(TitleRuleSet.forCountry(country))
 
   /** TRANSITIONAL: the normalizer for the country THIS process serves, resolved
    *  from the environment exactly as the old process-global did.
@@ -335,7 +336,10 @@ object TitleNormalizer {
    *
    *  A multi-country worker still gets Poland here, which is why
    *  `WorkerMain.unsupportedCountries` keeps refusing to boot one until the
-   *  remaining call sites are injected and this default can be deleted. */
+   *  remaining call sites are injected and this default can be deleted.
+   *
+   *  Builds a NEW instance per call, like [[forCountry]] — fine as a constructor
+   *  default (once per component), never per title. */
   def deployment: TitleNormalizer = rulesFor(Country.ambiguousFromEnv, Country.soleFromEnv)
 
   /** Pure core of [[deployment]] — the choice, testable without touching process
@@ -351,26 +355,4 @@ object TitleNormalizer {
       "KINOWO_COUNTRY does not disambiguate, so there is no one rule set this process " +
       "can normalise titles under. Pass a TitleNormalizer explicitly instead of relying " +
       "on TitleNormalizer.deployment.")
-
-  // ── Transitional process-global facade ─────────────────────────────────────
-  //
-  // TEMPORARY. Every delegate below resolves the rule set from the environment
-  // instead of from the caller, which is exactly the coupling this class exists
-  // to remove — a multi-country process has no correct answer here, which is why
-  // `WorkerMain.unsupportedCountries` still refuses to boot one. The delegates
-  // exist only so the ~65 call sites can migrate to an injected instance in
-  // separate commits rather than one unreviewable diff; each one deleted is a
-  // call site that now says whose rules it means. Do not add callers.
-
-  private def defaultRules: TitleRuleSet =
-    TitleRuleSet.forCountry(Country.soleFromEnv.getOrElse(Country.default))
-
-  @volatile private var active: TitleNormalizer = new TitleNormalizer(defaultRules)
-
-  /** Swap the rule set `deployment` hands out. Sole caller: the country
-   *  convergence e2e, which installs one country's rules per run so the
-   *  components still defaulting to `deployment` key that country's way. Not
-   *  thread-safe by design — it is a whole-run switch, not a scope. */
-  def installRules(rs: TitleRuleSet): Unit = active = new TitleNormalizer(rs)
-
 }

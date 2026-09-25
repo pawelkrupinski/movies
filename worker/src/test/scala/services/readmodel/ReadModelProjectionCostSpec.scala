@@ -38,7 +38,7 @@ class ReadModelProjectionCostSpec extends AnyFlatSpec with Matchers {
 
     val (title, year, changed) = film(1, 7.5)
     repository.upsert(title, year, changed)
-    projector.onMovieUpsert(StoredMovieRecord(title, year, changed))
+    projector.onMovieUpsert(StoredMovieRecord.synthesised(title, year, changed, services.movies.SingleCountryNormalizer.titleNormalizer))
     readModel.findAllMovies().find(_.title == title).flatMap(_.ratings.imdb) shouldBe Some(7.5)
     work.total
   }

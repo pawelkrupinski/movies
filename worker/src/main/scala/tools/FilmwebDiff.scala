@@ -105,7 +105,9 @@ object FilmwebDiff {
     val jsonPath    = pathArgs.find(_.endsWith(".json")).getOrElse("/temporary/filmweb-diff-output.json")
 
     val http     = new RealHttpFetch()
-    val catalog  = new CinemaScraperCatalog(http, today = today)
+    // Filmweb is Polish-only, so a Filmweb title is a Polish title by definition.
+    val titles   = services.movies.TitleNormalizer.forCountry(models.Country.Poland)
+    val catalog  = new CinemaScraperCatalog(http, today = today, titles = titles)
     val resolver = new FilmwebCinemaIdResolver(http)
 
     val out = new StringBuilder
@@ -161,7 +163,7 @@ object FilmwebDiff {
       }
 
       val r = resolutionByCinema(cinema)
-      diffFor(cinema, r.filmwebId, r.source, oursTry, fwTry, now, windowEnd)
+      diffFor(cinema, r.filmwebId, r.source, oursTry, fwTry, now, windowEnd, titles)
     }
 
     // Cinemas with NO Filmweb id never reach the comparison loop, but they DO
@@ -304,11 +306,11 @@ object FilmwebDiff {
    *  midnight (confirmed: a 2026-09-13 23:33 manual run over-reported ~10 such
    *  gaps at Kino Mikro alone that the routine 06:00 run never sees). */
   private[tools] def withinWindow(
-    movies: Seq[CinemaMovie], now: LocalDateTime, windowEnd: LocalDate
+    movies: Seq[CinemaMovie], now: LocalDateTime, windowEnd: LocalDate, titles: services.movies.TitleNormalizer
   ): Map[String, Seq[LocalDateTime]] = {
     val endOfDay = windowEnd.plusDays(1).atStartOfDay() // exclusive: whole windowEnd day
     movies
-      .map(m => FilmwebDiffTitleNormalizer.normalize(m.movie.title) -> m.showtimes
+      .map(m => FilmwebDiffTitleNormalizer.normalize(m.movie.title, titles) -> m.showtimes
         .filter(s => s.isUpcoming(now) && s.dateTime.isBefore(endOfDay))
         .map(_.dateTime))
       .filter(_._2.nonEmpty)
@@ -322,7 +324,8 @@ object FilmwebDiff {
     oursTry:   Try[Seq[CinemaMovie]],
     fwTry:     Try[Seq[CinemaMovie]],
     now:       LocalDateTime,
-    windowEnd: LocalDate
+    windowEnd: LocalDate,
+    titles:    services.movies.TitleNormalizer
   ): CinemaDiff = (oursTry, fwTry) match {
     case (Failure(e), _) =>
       CinemaDiff(cinema, filmwebId, source, 0, 0, 0, 0, 0, OUR_FETCH_FAILED,
@@ -331,8 +334,8 @@ object FilmwebDiff {
       CinemaDiff(cinema, filmwebId, source, 0, 0, 0, 0, 0, FW_FETCH_FAILED,
         s"  Filmweb fetch failed: ${message(e)}", Map.empty, Map.empty)
     case (Success(ours), Success(fw)) =>
-      val oursByFilm = withinWindow(ours, now, windowEnd)
-      val fwByFilm   = withinWindow(fw, now, windowEnd)
+      val oursByFilm = withinWindow(ours, now, windowEnd, titles)
+      val fwByFilm   = withinWindow(fw, now, windowEnd, titles)
 
       val oursTimes = oursByFilm.values.flatten.toSeq
       val fwTimes   = fwByFilm.values.flatten.toSeq

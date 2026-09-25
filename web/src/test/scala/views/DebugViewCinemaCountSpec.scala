@@ -18,7 +18,7 @@ class DebugViewCinemaCountSpec extends AnyFlatSpec with Matchers {
   private implicit val city: models.City = models.Poznan
 
   private def rowWith(data: Map[models.Source, SourceData]) =
-    StoredMovieRecord(title = "Belle", year = Some(2021), record = MovieRecord(data = data))
+    StoredMovieRecord.synthesised(title = "Belle", year = Some(2021), record = MovieRecord(data = data), services.movies.SingleCountryNormalizer.titleNormalizer)
 
   "debug view" should "render a header for the cinema-count column" in {
     val html = views.html.debug(Seq.empty, titleNormalizer, current = models.Country.Poland).body

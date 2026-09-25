@@ -55,6 +55,7 @@ object TestMovieController {
       environment            = mode,
       responseCache          = responseCache,
       servingCountry         = servingCountry,
+      normalizer             = services.movies.TitleNormalizer.forCountry(servingCountry),
     )
     (ctrl, readModel_)
   }

@@ -71,7 +71,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
     def recordWriteSkipped(reason: String): Unit                 = skips :+= reason
   }
 
-  private val stored = StoredMovieRecord("Live Film", Some(2026), liveFilm)
+  private val stored = StoredMovieRecord.synthesised("Live Film", Some(2026), liveFilm, services.movies.SingleCountryNormalizer.titleNormalizer)
 
   /** One cinema's scrape of `title` — the Multikino listing that lands on a cold cache. */
   private def cinemaMovie(title: String, year: Int = 2026) = CinemaMovie(

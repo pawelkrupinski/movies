@@ -305,7 +305,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
    *  wrote from, so the hash must move with every input the row reads — and only with those. */
   "venuesAll" should "move a venue's input hash with its showtimes and its link, and not with another venue" in {
     def hashes(r: MovieRecord) =
-      ReadModelProjection.partition(StoredMovieRecord("Skazani na Shawshank", Some(1994), r), titleNormalizer)
+      ReadModelProjection.partition(StoredMovieRecord.synthesised("Skazani na Shawshank", Some(1994), r, services.movies.SingleCountryNormalizer.titleNormalizer), titleNormalizer)
         .venuesAll.flatten.map(v => v._id -> v.inputHash).toMap
     def edited(f: SourceData => SourceData) = record.copy(data = record.data.updated(Multikino, f(record.data(Multikino))))
     val base   = hashes(record)
@@ -351,9 +351,9 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
    *  took its normalizer as a parameter it folded with whatever was global, which on
    *  a multi-country worker meant Poland's rules for every country's read model. */
   "filmId" should "not depend on any country's title rules — it is the row's id" in {
-    val stored = StoredMovieRecord("Minions & Monster", Some(2026),
+    val stored = StoredMovieRecord.synthesised("Minions & Monster", Some(2026),
       MovieRecord(data = Map[models.Source, models.SourceData](
-        models.Multikino -> models.SourceData(title = Some("Minions & Monster"), releaseYear = Some(2026)))))
+        models.Multikino -> models.SourceData(title = Some("Minions & Monster"), releaseYear = Some(2026)))), services.movies.SingleCountryNormalizer.titleNormalizer)
     val pl = ReadModelProjection.filmId(stored, TitleNormalizer.forCountry(models.Country.Poland))
     val de = ReadModelProjection.filmId(stored, TitleNormalizer.forCountry(models.Country.Germany))
     pl shouldBe stored.id.value

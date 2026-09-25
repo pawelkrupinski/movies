@@ -36,9 +36,10 @@ case class StoredMovieRecord(title: String, year: Option[Int], record: MovieReco
 }
 
 object StoredMovieRecord {
-  /** A row synthesised without storage: its id is the legacy form of its key. */
-  def apply(title: String, year: Option[Int], record: MovieRecord): StoredMovieRecord =
-    StoredMovieRecord(title, year, record, FilmId.legacy(title, year, TitleNormalizer.deployment))
+  /** A row synthesised without storage: its id is the legacy form of its key under
+   *  `normalizer`'s rules. */
+  def synthesised(title: String, year: Option[Int], record: MovieRecord, normalizer: TitleNormalizer): StoredMovieRecord =
+    StoredMovieRecord(title, year, record, FilmId.legacy(title, year, normalizer))
 
   /** The lookup KEY of a `(title, year)` row: `sanitize(title)|year` — the `key` field of
    *  the document (and, for a row stored before ids existed, its `_id` too). Matches

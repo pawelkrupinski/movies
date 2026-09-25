@@ -54,9 +54,10 @@ class DebugController(cc: ControllerComponents,
                       servingCountry: models.Country,
                       // What "now" is for the pages' own age readings (the mirror badge, cadence).
                       clock: java.time.Clock = java.time.Clock.systemUTC(),
+                      // The serving country's title rules — the wiring's one instance.
+                      normalizer: TitleNormalizer,
                      )(implicit messages: play.api.i18n.Messages) extends AbstractController(cc) {
 
-  private val normalizer: TitleNormalizer = TitleNormalizer.forCountry(servingCountry)
 
   private def withCity(slug: String)(f: City => Result): Result = ServedCity.resolve(slug, servingCountry)(f)
 

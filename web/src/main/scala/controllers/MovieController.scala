@@ -163,11 +163,11 @@ class MovieController( cc: ControllerComponents,
                        // can exercise a non-Polish host by passing one, instead of
                        // mutating the process-global env that parallel suites share.
                        servingCountry: models.Country,
+                       // The serving country's title rules — the wiring's one instance,
+                       // so the city OG card folds titles the way the worker keyed them.
+                       normalizer: TitleNormalizer,
                      ) extends AbstractController(cc) with Logging {
 
-  // The country this deployment serves — the rules its corpus was keyed under,
-  // so the city OG card folds titles the way the worker keyed them.
-  private val normalizer: TitleNormalizer = TitleNormalizer.forCountry(servingCountry)
 
   // The deployment's own, and ONLY, language. Every visitor gets this same
   // rendered `Messages` regardless of `Accept-Language`, cookie, or anything

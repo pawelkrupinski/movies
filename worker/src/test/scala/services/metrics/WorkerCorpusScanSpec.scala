@@ -50,8 +50,8 @@ class WorkerCorpusScanSpec extends AnyFlatSpec with Matchers {
     val registry   = new PrometheusRegistry()
 
     val corpus    = new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl")
-    val films     = new WorkerSourceFilmsMetrics(WorkerSourceFilmsMetrics.gauge(registry), "pl", clock = clock)
-    val showtimes = new WorkerShowtimesMetrics(WorkerShowtimesMetrics.gauge(registry), "pl", clock = clock)
+    val films     = new WorkerSourceFilmsMetrics(WorkerSourceFilmsMetrics.gauge(registry), "pl", clock = clock, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer)
+    val showtimes = new WorkerShowtimesMetrics(WorkerShowtimesMetrics.gauge(registry), "pl", clock = clock, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer)
 
     new WorkerCorpusScan(repository, Seq(corpus, films, showtimes)).sample()
 
@@ -75,8 +75,8 @@ class WorkerCorpusScanSpec extends AnyFlatSpec with Matchers {
     val registry   = new PrometheusRegistry()
     val scan = new WorkerCorpusScan(repository, Seq(
       new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl"),
-      new WorkerSourceFilmsMetrics(WorkerSourceFilmsMetrics.gauge(registry), "pl", clock = clock),
-      new WorkerShowtimesMetrics(WorkerShowtimesMetrics.gauge(registry), "pl", clock = clock)))
+      new WorkerSourceFilmsMetrics(WorkerSourceFilmsMetrics.gauge(registry), "pl", clock = clock, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer),
+      new WorkerShowtimesMetrics(WorkerShowtimesMetrics.gauge(registry), "pl", clock = clock, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer)))
 
     scan.sample()
     scan.sample()
@@ -89,7 +89,7 @@ class WorkerCorpusScanSpec extends AnyFlatSpec with Matchers {
   // tick so far — the failure mode of hoisting the tally onto the collector.
   it should "publish the same values on a repeated sample, not accumulate across ticks" in {
     val registry  = new PrometheusRegistry()
-    val showtimes = new WorkerShowtimesMetrics(WorkerShowtimesMetrics.gauge(registry), "pl", clock = clock)
+    val showtimes = new WorkerShowtimesMetrics(WorkerShowtimesMetrics.gauge(registry), "pl", clock = clock, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer)
     val scan      = new WorkerCorpusScan(new CountingRepository(rows), Seq(showtimes))
 
     scan.sample()
@@ -108,7 +108,7 @@ class WorkerCorpusScanSpec extends AnyFlatSpec with Matchers {
   // value the two cannot be told apart. So it publishes nothing and says so instead.
   it should "keep the last complete values when a scan falls short, not publish a partial count" in {
     val registry  = new PrometheusRegistry()
-    val showtimes = new WorkerShowtimesMetrics(WorkerShowtimesMetrics.gauge(registry), "pl", clock = clock)
+    val showtimes = new WorkerShowtimesMetrics(WorkerShowtimesMetrics.gauge(registry), "pl", clock = clock, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer)
 
     new WorkerCorpusScan(repositoryOf(rows*), Seq(showtimes)).sample()
     gauge(PrometheusExposition.render(registry), WorkerShowtimesMetrics.Name,

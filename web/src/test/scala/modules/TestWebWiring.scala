@@ -27,7 +27,7 @@ class TestWebWiring(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty) e
   override lazy val readModelRepository: ReadModelReader = {
     val store = new InMemoryReadModelRepository()
     seed.foreach { case (title, year, record) =>
-      val stored = StoredMovieRecord(title, year, record)
+      val stored = StoredMovieRecord.synthesised(title, year, record, services.movies.SingleCountryNormalizer.titleNormalizer)
       store.upsertMovie(ReadModelProjection.resolve(stored, titleNormalizer))
       ReadModelProjection.screenings(stored, titleNormalizer).foreach(store.upsertScreening)
     }

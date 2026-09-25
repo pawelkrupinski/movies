@@ -23,12 +23,12 @@ class BackfillReadModelSpec extends AnyFlatSpec with Matchers {
     )
 
   private def filmId(title: String, year: Int): String =
-    ReadModelProjection.filmId(StoredMovieRecord(title, Some(year), record(title, year)), titleNormalizer)
+    ReadModelProjection.filmId(StoredMovieRecord.synthesised(title, Some(year), record(title, year), services.movies.SingleCountryNormalizer.titleNormalizer), titleNormalizer)
 
   // Seed the read model with a film that no longer exists in `movies` — the
   // backfill must prune it.
   private def seedStale(readModel: InMemoryReadModelRepository): Unit = {
-    val stale = StoredMovieRecord("Stale", Some(2000), record("Stale", 2000))
+    val stale = StoredMovieRecord.synthesised("Stale", Some(2000), record("Stale", 2000), services.movies.SingleCountryNormalizer.titleNormalizer)
     readModel.upsertMovie(ReadModelProjection.resolve(stale, titleNormalizer))
     ReadModelProjection.screenings(stale, titleNormalizer).foreach(readModel.upsertScreening)
   }
@@ -79,7 +79,7 @@ class BackfillReadModelSpec extends AnyFlatSpec with Matchers {
     val movieRepository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), showtimeless)))
     val readModel = new InMemoryReadModelRepository()
     // The live read model already holds this film's screenings, written by the projector.
-    val live = StoredMovieRecord("Foo", Some(2024), record("Foo", 2024))
+    val live = StoredMovieRecord.synthesised("Foo", Some(2024), record("Foo", 2024), services.movies.SingleCountryNormalizer.titleNormalizer)
     ReadModelProjection.screenings(live, titleNormalizer).foreach(readModel.upsertScreening)
     readModel.findAllScreenings() should have size 1
 
@@ -104,7 +104,7 @@ class BackfillReadModelSpec extends AnyFlatSpec with Matchers {
     val readModel = new InMemoryReadModelRepository()
     // Both films' screenings are live in the read model, as the projector left them.
     Seq("Foo", "Bar").foreach { t =>
-      val live = StoredMovieRecord(t, Some(2024), record(t, 2024))
+      val live = StoredMovieRecord.synthesised(t, Some(2024), record(t, 2024), services.movies.SingleCountryNormalizer.titleNormalizer)
       ReadModelProjection.screenings(live, titleNormalizer).foreach(readModel.upsertScreening)
     }
     readModel.findAllScreenings() should have size 2

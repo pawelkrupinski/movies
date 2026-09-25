@@ -70,10 +70,10 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
   // fold per distinct (title) — caching keeps title normalisation off the
   // worker's CPU-credit budget and roughly halved the e2e corpus pipeline.
   //
-  // Lifecycle is automatic: a rule edit builds a brand-new TitleRuleSet (see
-  // TitleNormalizer.installRules / withRules), so the caches die with the stale
-  // set — an immutable set always yields stable results, never staleness.
-  // ConcurrentHashMap for thread-safety (TitleNormalizer is shared, lock-free).
+  // Lifecycle is automatic: the caches live and die with this set, which is
+  // immutable, so they always yield stable results, never staleness.
+  // ConcurrentHashMap for thread-safety (a TitleNormalizer is shared across a
+  // wiring's threads, lock-free).
   private val structuralCache      = new ConcurrentHashMap[String, String]()
   private val canonicalCache       = new ConcurrentHashMap[String, String]()
   private val spellingUnifiedCache = new ConcurrentHashMap[String, String]()

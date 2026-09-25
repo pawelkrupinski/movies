@@ -81,15 +81,14 @@ trait DebugWiring { self: Wiring =>
         val screenings = new services.movies.MongoScreeningsRepository(conn.database)
         val slots      = new services.movies.MongoSlotsRepository(conn.database)
         val reader     = new MongoReadModelRepository(conn.database)
+        // THIS stack's country, not the serving one: /debug reads another
+        // country's database, and folding its titles with the serving country's
+        // rules would key rows the way no worker ever wrote them.
+        val normalizer = services.movies.TitleNormalizer.forCountry(country)
         val stack = new DebugStack(country,
-          // THIS stack's country, not the serving one: /debug reads another
-          // country's database, and folding its titles with the serving country's
-          // rules would key rows the way no worker ever wrote them.
           new MongoMovieRepository(conn.database,
-            screenings = Some(screenings), slots = Some(slots),
-            normalizer = services.movies.TitleNormalizer.forCountry(country)),
-          new services.staging.MongoStagingRepository(conn.database,
-            normalizer = services.movies.TitleNormalizer.forCountry(country)),
+            screenings = Some(screenings), slots = Some(slots), normalizer = normalizer),
+          new services.staging.MongoStagingRepository(conn.database, normalizer = normalizer),
           new MongoTaskQueue(conn.database),
           new services.cadence.MongoRatingCadenceReader(conn.database),
           new services.attempts.MongoEnrichmentAttemptReader(conn.database),
@@ -107,7 +106,7 @@ trait DebugWiring { self: Wiring =>
 
   lazy val debugController  = new DebugController(controllerComponents, debugCountries, webReadModel, adminAction, environmentMode,
     cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()),
-    servingCountry = country, clock = clock)
+    servingCountry = country, clock = clock, normalizer = titleNormalizer)
   // Dev-only SSE feed for the /debug live view; watches the SELECTED country's
   // `movies` + `pending_movies` via the same per-country stacks the /debug page
   // renders from. The live row's details cell ships empty (lazily fetched on
