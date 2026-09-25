@@ -422,3 +422,59 @@ groups:
             document FAILS (its film's point read, and the whole corpus scan), and the WARN line is
             that read's failure — fix or remove the document by hand. A change stream that meets
             one skips that event ("skipping undecodable document", rate-limited) and stays open.
+
+  # ---------------------------------------------------------------------------------------------
+  # IS EVERYTHING THE WORKER SHOULD BE DOING ACTUALLY WIRED? The in-app Telegram alerters and the
+  # external integrations are each built from `Env.get(...)` in a for-comprehension, so a missing
+  # env var is not an error -- it is a `None`, and the feature is simply not there. When the
+  # workers moved from Fly to k3s the Telegram chat ids were left behind and all three alerters
+  # (Filmweb fallback, Filmweb drops, staging stuck) were OFF for weeks with nothing noticing. The
+  # worker now publishes 1/0 per feature (`EnvGatedFeature`), and the WARN line at boot names the
+  # key: `kubectl -n kinowo logs deploy/worker-<country> | grep 'is OFF: missing'`.
+  #
+  # ZERO IS ONLY EVER A MISCONFIGURATION IN PRODUCTION, so this is `== 0`, not a tuned threshold:
+  # every key is set on every worker (worker-env / worker-secrets), and a Filmweb alerter is not
+  # exported at all for a country without Filmweb, so "off by design" never reads 0.
+  #
+  # THIRTY MINUTES, THROUGH `last_over_time(...[10m])`: the value is set once at boot and never
+  # changes, so the hold only has to outlast a rollout -- and the 10m window carries the reading
+  # across the ~3 minutes a restart leaves the gauge absent, so a crash-looping worker cannot keep
+  # resetting the hold. `min by` survives the pod being scraped twice across a relabel.
+  #
+  # NOT REPLAYED against history: the gauges are new in this change, so there is no history to
+  # replay. The first 30 minutes after the rollout is the replay -- by the live config (checked
+  # 2026-09-25) every key is present once movies-gitops a94ebb6 is applied, so it should be silent.
+  # ---------------------------------------------------------------------------------------------
+  - name: worker-env-gated-features
+    rules:
+      - alert: WorkerAlerterDisabled
+        expr: min by (country, alerter) (last_over_time(kinowo_worker_alerter_enabled[10m])) == 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: the worker's {{ $labels.alerter }} Telegram alerter is switched off"
+          description: >-
+            The worker wired the `{{ $labels.alerter }}` alerter OFF because an env var it needs is
+            missing, so the incidents it exists to report are reaching nobody. The worker's boot
+            log names the key: `kubectl -n kinowo logs deploy/worker-{{ $labels.country }} | grep
+            'is OFF: missing'`. The chat and topic ids live in the `worker-env` ConfigMap in
+            movies-gitops (worker/base/all.yaml) and the bot token in `worker-secrets`; they were
+            lost once already when the workers moved from Fly to k3s, and all three alerters were
+            silently off for weeks.
+
+      - alert: WorkerIntegrationDisabled
+        expr: min by (country, integration) (last_over_time(kinowo_worker_integration_enabled[10m])) == 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: the worker is running without {{ $labels.integration }}"
+          description: >-
+            The worker started without the `{{ $labels.integration }}` integration because its
+            secret is missing, and carried on degraded rather than failing: no TMDB resolution
+            (newcomers never reach the site), no OMDb tier, no residential proxy (Cloudflare-fronted
+            chains fall to Zyte or fail), no Zyte fallback, no Sentry, or no Facebook re-scrape of a
+            changed share card. The worker's boot log names the key: `kubectl -n kinowo logs
+            deploy/worker-{{ $labels.country }} | grep 'is OFF: missing'`. The secrets are in
+            `worker-secrets` (the Facebook pair in `web-secrets`), managed outside movies-gitops.

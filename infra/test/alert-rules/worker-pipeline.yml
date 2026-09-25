@@ -543,3 +543,100 @@ tests:
       - eval_time: 90m
         alertname: DocumentsUndecodable
         exp_alerts: []
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────
+  # ENV-GATED FEATURES. The case the group exists for is the Fly→k3s move: PL booted with the bot
+  # token and no chat ids, so all three alerters read 0 -- and DE, a country with no Filmweb, never
+  # exports the Filmweb two at all, so only its staging_stuck series is there to judge.
+  # ──────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: every alerter wired and every integration on is silent
+    input_series:
+      - series: 'kinowo_worker_alerter_enabled{alerter="filmweb_fallback",country="pl",job="kinowo-worker"}'
+        values: '1x60'
+      - series: 'kinowo_worker_alerter_enabled{alerter="staging_stuck",country="de",job="kinowo-worker"}'
+        values: '1x60'
+      - series: 'kinowo_worker_integration_enabled{integration="tmdb",country="pl",job="kinowo-worker"}'
+        values: '1x60'
+    alert_rule_test:
+      # A ONE IS A SAMPLE. If this fired, the rule would be testing presence rather than truth.
+      - eval_time: 55m
+        alertname: WorkerAlerterDisabled
+        exp_alerts: []
+      - eval_time: 55m
+        alertname: WorkerIntegrationDisabled
+        exp_alerts: []
+
+  - interval: 1m
+    name: the k3s move leaving the chat ids behind fires after thirty minutes, not before
+    input_series:
+      - series: 'kinowo_worker_alerter_enabled{alerter="filmweb_drop",country="pl",job="kinowo-worker"}'
+        values: '0x60'
+      - series: 'kinowo_worker_alerter_enabled{alerter="staging_stuck",country="de",job="kinowo-worker"}'
+        values: '1x60'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: WorkerAlerterDisabled
+        exp_alerts: []
+      - eval_time: 35m
+        alertname: WorkerAlerterDisabled
+        exp_alerts:
+          - exp_labels:
+              alerter: filmweb_drop
+              country: pl
+              severity: warning
+            exp_annotations:
+              summary: "pl: the worker's filmweb_drop Telegram alerter is switched off"
+              description: "The worker wired the `filmweb_drop` alerter OFF because an env var it needs is missing, so the incidents it exists to report are reaching nobody. The worker's boot log names the key: `kubectl -n kinowo logs deploy/worker-pl | grep 'is OFF: missing'`. The chat and topic ids live in the `worker-env` ConfigMap in movies-gitops (worker/base/all.yaml) and the bot token in `worker-secrets`; they were lost once already when the workers moved from Fly to k3s, and all three alerters were silently off for weeks."
+
+  # A RESTART MID-HOLD: the gauge goes stale for three minutes while the pod is replaced and comes
+  # back still reading 0. `last_over_time(...[10m])` carries it across, so the hold is not reset.
+  - interval: 1m
+    name: a disabled alerter keeps its hold across a worker restart
+    input_series:
+      - series: 'kinowo_worker_alerter_enabled{alerter="staging_stuck",country="uk",job="kinowo-worker"}'
+        values: '0x20 stale stale stale 0x30'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: WorkerAlerterDisabled
+        exp_alerts:
+          - exp_labels:
+              alerter: staging_stuck
+              country: uk
+              severity: warning
+            exp_annotations:
+              summary: "uk: the worker's staging_stuck Telegram alerter is switched off"
+              description: "The worker wired the `staging_stuck` alerter OFF because an env var it needs is missing, so the incidents it exists to report are reaching nobody. The worker's boot log names the key: `kubectl -n kinowo logs deploy/worker-uk | grep 'is OFF: missing'`. The chat and topic ids live in the `worker-env` ConfigMap in movies-gitops (worker/base/all.yaml) and the bot token in `worker-secrets`; they were lost once already when the workers moved from Fly to k3s, and all three alerters were silently off for weeks."
+
+  - interval: 1m
+    name: an integration switched off by a missing secret fires, across a restart
+    input_series:
+      - series: 'kinowo_worker_integration_enabled{integration="residential_proxy",country="de",job="kinowo-worker"}'
+        values: '0x20 stale stale stale 0x30'
+      - series: 'kinowo_worker_integration_enabled{integration="sentry",country="de",job="kinowo-worker"}'
+        values: '1x53'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: WorkerIntegrationDisabled
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: WorkerIntegrationDisabled
+        exp_alerts:
+          - exp_labels:
+              integration: residential_proxy
+              country: de
+              severity: warning
+            exp_annotations:
+              summary: "de: the worker is running without residential_proxy"
+              description: "The worker started without the `residential_proxy` integration because its secret is missing, and carried on degraded rather than failing: no TMDB resolution (newcomers never reach the site), no OMDb tier, no residential proxy (Cloudflare-fronted chains fall to Zyte or fail), no Zyte fallback, no Sentry, or no Facebook re-scrape of a changed share card. The worker's boot log names the key: `kubectl -n kinowo logs deploy/worker-de | grep 'is OFF: missing'`. The secrets are in `worker-secrets` (the Facebook pair in `web-secrets`), managed outside movies-gitops."
+
+  # FIXED BY A REDEPLOY: once the worker boots with the key it reads 1 and the alert resolves.
+  - interval: 1m
+    name: an alerter restored by a redeploy stops firing
+    input_series:
+      - series: 'kinowo_worker_alerter_enabled{alerter="filmweb_fallback",country="pl",job="kinowo-worker"}'
+        values: '0x40 stale stale stale 1x20'
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: WorkerAlerterDisabled
+        exp_alerts: []
