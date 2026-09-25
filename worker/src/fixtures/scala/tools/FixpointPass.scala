@@ -4,6 +4,7 @@ import io.prometheus.metrics.model.snapshots.Labels
 import services.movies.{CountingScreeningsRepository, CountingSlotsRepository}
 
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 
 /**
  * One whole production tick, and the ledger that says whether it did any work.
@@ -84,6 +85,10 @@ object FixpointPass {
       // nowhere: without this probe a producer that went round its due gate was invisible.
       .counters(() => w.reaskCountingQueue.reasked.map { case (t, n) => s"re-asked ${t.name}" -> n.toDouble })
       .explain(w.reaskCountingQueue.reaskedKeys.mkString("re-asked keys: ", ", ", ""))
+      // A venue whose scrape threw landed nothing, so the pass is quiet about it by
+      // construction — counted as work so a tick cannot pass by not taking its input.
+      .counter("venue scrapes that threw")(w.scrapeFailures.size.toLong)
+      .explain(w.scrapeFailures.iterator.asScala.take(6).mkString("venues that threw: ", "; ", ""))
     oplog match {
       case Some(writes) => ledger.counter("corpus writes (oplog)")(writes.count()).explain(writes.describe())
       case None =>

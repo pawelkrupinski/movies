@@ -3,7 +3,7 @@ package services.movies
 
 import clients.TmdbClient
 import controllers.MovieControllerService
-import models.{Cinema, Country, MovieRecord}
+import models.{Cinema, CinemaMovie, Country, MovieRecord}
 import org.mongodb.scala.MongoClient
 import org.scalatest.{BeforeAndAfterAll, Failed, Outcome}
 import org.scalatest.exceptions.TestFailedException
@@ -14,12 +14,13 @@ import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, 
 import services.titlerules.TitleRuleSet
 import tools.{ArchiveReplayWiring, ConvergenceStorage, CorpusCoverage, CorpusFixture, CorpusProvenance, CountryScrapeCorpus,
   ChurnLedger, EnrichmentCache, EnrichmentFreshness, Env, FileEnrichmentCacheStore, FixpointPass, MissingFixtures, PhaseTimer, ProdCoverageBaseline,
-  SameThreadExecutionBudget}
+  SameThreadExecutionBudget, ServedCorpusInvariants, TestWiring}
 
 import java.time.{Instant, LocalDateTime}
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 import scala.util.{Random, Try}
 
 /**
@@ -44,18 +45,22 @@ import scala.util.{Random, Try}
  *   5. and it is ORDER-INDEPENDENT: several independent passes, each taking the
  *      cinemas in a different random order AND each cinema's films in a different
  *      random order, land on byte-identical `movies` records, byte-identical
- *      `screenings`, and a byte-identical rendered read model.
+ *      `screenings`, and a byte-identical rendered read model;
+ *   6. every archived LISTING is served under the one film that holds it, and the read
+ *      model serves nothing the archive did not list (`ServedCorpusInvariants`) — the
+ *      per-listing form of 4, which a set of `(cinema, start)` pairs cannot express;
+ *   7. and the NEXT DAY lands: the one tick whose input moves (films leave, gain venues,
+ *      a venue fails, one comes back empty), because every claim above replays identical
+ *      input and cannot tell an idempotent pipeline from one that ignores re-scrapes.
  *
  * Each country runs in its OWN JVM — one spec class per country, one CI leg each —
  * because the leg installs that country's `TitleRuleSet` process-globally. Two
  * countries in one JVM would overwrite each other's normalisation, so there is
  * deliberately no alias that runs them together.
  *
- * Needs no database. The corpus comes from a committed fixture and is replayed through
- * an in-memory archive; the enrichment answers come from a recorded fixture tree with a
- * remembered-verdict cache beside it. Every Mongo the suite once required — a container
- * for the corpus, a tunnelled cluster for the cache — is gone, along with the failures
- * they caused.
+ * Every collection is a real, throwaway MongoDB (`ConvergenceStorage`), never a tunnel:
+ * the corpus comes from a recorded fixture, and the enrichment answers from a recorded
+ * fixture tree with a remembered-verdict cache beside it.
  *
  * ENRICHMENT is always on the path, replayed so that what a pass sees is fixed rather
  * than whatever the live services felt like saying that minute. A real `TMDB_API_KEY` is
@@ -352,6 +357,11 @@ abstract class CountryConvergenceBehaviour(
    *  test runs first hands the other exactly the state it expected. Merge counts
    *  are read as deltas inside each test, so a no-op pass cannot pollute the
    *  other's baseline. The database is dropped when the suite ends. */
+  /** The shared boot's clock. Starts where every harness clock does (`TestWiring`'s fixed
+   *  instant), so the boot and every first-day claim see exactly what they always saw; only
+   *  the next-day test moves it, as production's clock moves between two days' scrapes. */
+  private lazy val clock = new tools.MutableClock(TestWiring.FixedInstant)
+
   private lazy val shared: (ArchiveReplayWiring, RecordingMergeMetrics, ScrapeArchiveRepository) = {
     // In-memory archive: the leg no longer needs a Mongo at all.
     //
@@ -374,6 +384,7 @@ abstract class CountryConvergenceBehaviour(
       // prod's, so the shared boot and the passes were canonicalising country names
       // against different locales, and the leg this spec reports coverage from was
       // the one running on the default.
+      override lazy val clock: java.time.Clock = CountryConvergenceBehaviour.this.clock
       override lazy val movieCache = new CaffeineMovieCache(
         movieRepository, eventBus, staging = Some(stagingRepository),
         retrigger = enrichmentRetrigger, mergeMetrics = merges,
@@ -390,6 +401,14 @@ abstract class CountryConvergenceBehaviour(
     info(s"${country.displayName}: $seeded cinemas replayed from cinema_scrapes, " +
          s"${w.archivedListings.values.map(_.size).sum} film listings")
     bootSettled(w)
+    // Every replayed venue must LAND: the claims below are all "nothing changed", which a
+    // venue that threw satisfies by never arriving. Checked before the hermetic gap, which
+    // names its own cause.
+    requireHermetic()
+    withClue(s"${w.scrapeFailures.size} venue(s) threw while ${country.displayName} booted, so nothing below " +
+             s"says anything about them:\n  ${w.scrapeFailures.asScala.take(8).mkString("\n  ")}\n") {
+      w.scrapeFailures.asScala shouldBe empty
+    }
     info(s"${country.displayName}: " + missingFixtures.fold("RECORDING run — requests the tree lacks are fetched live and recorded")(
       m => s"HERMETIC run — ${m.size} request(s) the recorded tree could not answer"))
     requireHermetic()
@@ -751,7 +770,7 @@ abstract class CountryConvergenceBehaviour(
    *  shuffled order, then drain and settle. Returns the set of `(cinema, title)`
    *  diversions the scrape phase pushed into staging — a KNOWN film landing back
    *  in `pending_movies` is the churn we care about. */
-  private def settleTick(w: ArchiveReplayWiring, rnd: Random): Set[(String, String)] = {
+  private def settleTick(w: ArchiveReplayWiring, rnd: Random, failures: mutable.ListBuffer[String]): Set[(String, String)] = {
     val before = w.stagingRepository.findAll()
       .map(r => (r.cinema.displayName, w.stagingRepository.normalizer.sanitize(r.title))).toSet
     val ready = mutable.ListBuffer.empty[MovieDetailsComplete]
@@ -759,13 +778,15 @@ abstract class CountryConvergenceBehaviour(
     // Shuffled per tick so the fixpoint is asserted independent of the order
     // cinemas re-report, not merely in catalogue order. `rnd` is caller-seeded,
     // so an order-dependent regression fails deterministically, never as a flake.
+    // A venue whose re-scrape THROWS is recorded, never skipped silently: it lands nothing,
+    // so the tick would read as perfectly churn-free over a pipeline that no longer takes a
+    // re-scrape at all — the fixpoint held by construction. Nothing in a replayed corpus
+    // can legitimately fail to land.
     rnd.shuffle(w.cinemaScrapers.toList).foreach { scraper =>
-      Try(scraper.fetch()).toOption.foreach { films =>
-        try {
-          val touched = w.movieCache.recordCinemaScrape(scraper.cinema, films)
-          ready ++= w.cinemaScrapeRunner.classify(scraper.cinema, touched)
-        } catch { case _: Exception => () }
-      }
+      try {
+        val touched = w.movieCache.recordCinemaScrape(scraper.cinema, scraper.fetch())
+        ready ++= w.cinemaScrapeRunner.classify(scraper.cinema, touched)
+      } catch { case e: Exception => failures += s"${scraper.cinema.displayName}: $e" }
     }
 
     val after = w.stagingRepository.findAll()
@@ -908,7 +929,11 @@ abstract class CountryConvergenceBehaviour(
         // work on causes that turned out to leave the count at exactly 31.
         val recordsBeforeTick   = recordSnapshot(w)
         val showtimesBeforeTick = showtimesByFilm(w)
-        val diversions   = settleTick(w, rnd)
+        val failures     = mutable.ListBuffer.empty[String]
+        val diversions   = settleTick(w, rnd, failures)
+        if (failures.nonEmpty)
+          churn += s"tick $t: ${failures.size} venue(s) FAILED to land their identical re-scrape, so the tick " +
+                   s"proves nothing about them:\n  ${failures.take(6).mkString("\n  ")}"
         val mergesDelta  = MergeReason.all.map(r => r -> (merges.byReason(r) - mergesBeforeTick(r))).filter(_._2 > 0)
         val emissionsDelta = emissions.get - emissionsBeforeTick
         val keysNow  = keySet(w)
@@ -1364,6 +1389,198 @@ abstract class CountryConvergenceBehaviour(
     }
   }
 
+  /** The no-loss claim above, per LISTING rather than per set — see [[ServedCorpusInvariants]]
+   *  for the mistakes a set of `(cinema, start)` pairs cannot see (a listing folded onto the
+   *  wrong film, one film's copy of a shared start time dropped, a showtime served twice). */
+  s"the ${country.displayName} read model" should
+    "serve every archived listing under the one film that holds it, and nothing else" in {
+    TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
+    {
+      val (w, _, archive) = shared
+      val stored     = archive.findAll()
+      val served     = w.readModelRepository.findAllMovies()
+      val screenings = w.readModelRepository.findAllScreenings()
+      info(s"${country.displayName}: ${ServedCorpusInvariants.listings(stored).size} archived listing(s) with showtimes " +
+           s"against ${served.size} served card(s) and ${screenings.size} screening row(s)")
+      // Anti-vacuity: an empty side makes every per-listing check below hold by holding nothing.
+      withClue("nothing to follow — no archived listing carries a showtime, or the read model serves nothing: ") {
+        ServedCorpusInvariants.listings(stored) should not be empty
+        screenings should not be empty
+      }
+      val problems = ServedCorpusInvariants.violations(ServedCorpusInvariants.listings(stored),
+        w.movieRepository.findAll(), served, screenings, w.movieCache.normalizer)
+      withClue(s"${country.displayName}'s served corpus does not match its archive:\n${problems.mkString("\n")}\n") {
+        problems shouldBe empty
+      }
+    }
+  }
+
+  /**
+   * The NEXT DAY, over the settled corpus: every venue re-reports its listing with the
+   * first day's showtimes gone, a few films open at one more venue in their city, one venue
+   * fails outright and one comes back empty.
+   *
+   * Every claim above replays IDENTICAL input, and identical input cannot tell a pipeline
+   * that re-scrapes idempotently from one that has stopped taking re-scrapes at all: both
+   * write nothing. This is the one tick whose input moves, so it is the one that sees a
+   * landing that ignores a known venue, showtimes that are never removed, a film that
+   * stays served after its last listing left, a known film that fails to fold onto its row
+   * at a new venue, and — the other direction — a venue whose scrape FAILED being read as
+   * a venue that stopped showing everything, which is how a film vanishes from a city
+   * because one site was down for a tick.
+   *
+   * DECLARED LAST, and it has to be: it moves the shared corpus on by a day, and every
+   * test before it asserts the first day.
+   */
+  s"the ${country.displayName} pipeline" should
+    "take the next day's listings — films leave, films gain venues, a failed venue keeps its own — and move nothing else" in {
+    TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
+    {
+      val (w, _, _) = shared
+      val normalizer = w.movieCache.normalizer
+      val today      = w.archivedListings
+      // The day after the corpus's TYPICAL first day — the median venue's earliest showtime
+      // — not after its earliest showtime of all, which is some white venue's weeks-old last
+      // scrape and would move nothing anywhere else.
+      val firstDays  = today.values.flatMap(_.flatMap(_.showtimes).map(_.dateTime.toLocalDate).minOption).toSeq.sorted
+      val cutoff     = firstDays(firstDays.size / 2).plusDays(1).atStartOfDay
+      def fromCutoff(cm: CinemaMovie) = cm.copy(showtimes = cm.showtimes.filterNot(_.dateTime.isBefore(cutoff)))
+      val tomorrow   = today.map { case (c, fs) => c -> fs.map(fromCutoff).filter(_.showtimes.nonEmpty) }
+
+      // The two failing venues: the first two, by name, with two or more films still
+      // screening tomorrow — so each has something to lose.
+      val failing  = tomorrow.toSeq.filter(_._2.sizeIs >= 2).map(_._1).sortBy(_.displayName).take(2)
+      val throwing = failing.headOption.toSet
+      val blank    = failing.drop(1).toSet
+
+      // Arrivals: up to three RESOLVED films open at a further venue in the same city — the
+      // multi-venue landing, which must fold onto the known row rather than divert a
+      // newcomer. The copy drops the source venue's film link: a link into another venue's
+      // site is not something a real listing carries.
+      val before     = w.movieRepository.findAll()
+      val holderOf: Map[(Cinema, String), StoredMovieRecord] = before.flatMap(r =>
+        r.record.data.keysIterator.collect { case models.CinemaShowing(c, key) => (c, key) -> r }).toMap
+      def keyOf(c: Cinema, cm: CinemaMovie) = ScrapeListing.slotKey(c, cm.movie.title, normalizer)
+      val receivers  = tomorrow.toSeq.filter { case (c, fs) => fs.nonEmpty && !failing.contains(c) }.sortBy(_._1.displayName)
+      val arrivals: Seq[(Cinema, CinemaMovie, StoredMovieRecord)] =
+        tomorrow.toSeq.sortBy(_._1.displayName).iterator.flatMap { case (from, fs) =>
+          fs.sortBy(_.movie.title).iterator.flatMap { cm =>
+            holderOf.get((from, keyOf(from, cm))).filter(_.record.tmdbId.isDefined).flatMap { film =>
+              receivers.find { case (to, listed) =>
+                to != from && Cinema.cityOf(to) == Cinema.cityOf(from) &&
+                  !film.record.data.keysIterator.exists(models.Source.cinemaOf(_).contains(to)) &&
+                  !listed.exists(l => keyOf(to, l) == keyOf(to, cm))
+              }.map { case (to, _) => (to, cm.copy(cinema = to, filmUrl = None), film) }
+            }
+          }
+        }.distinctBy(_._3.id).take(3).toSeq
+      // Withdrawals: up to three films shown at ONE venue only end their run there while the
+      // venue keeps its board — the film leaves the country, and the slot must go with it
+      // rather than keep serving the showtimes it had. Only from venues where one title less
+      // is not a degraded scrape by production's own breadth rule, or the guard would keep
+      // the slot on purpose.
+      val listingsOf = before.map(r => r.id -> r.record.data.keysIterator.count(models.Source.cinemaOf(_).isDefined)).toMap
+      val withdrawn: Seq[(Cinema, CinemaMovie, StoredMovieRecord)] =
+        // At least one title must remain: an EMPTY listing is the empty-scrape guard's case (the
+        // venue keeps everything), which the blank venue below already covers.
+        receivers.iterator.filter { case (c, fs) => fs.sizeIs >= 2 && !arrivals.exists(_._1 == c) }.flatMap { case (c, fs) =>
+          // Both scrape guards, asked as production asks them — against what the venue HOLDS
+          // (today's board, its still-upcoming showtimes): a withdrawal either guard reads
+          // as a degraded scrape keeps its slot on purpose, and proves nothing here.
+          val held = fs.map(_.showtimes.size).sum
+          def healthyWithout(cm: CinemaMovie): Boolean =
+            !ScrapeHealth.looksPartial(today.getOrElse(c, Nil).size, fs.size - 1, listingIsComplete = true) &&
+              ScrapeHealth.depth(held, held - cm.showtimes.size, consecutiveRejections = 0) == ScrapeHealth.Depth.Healthy
+          fs.sortBy(_.movie.title).iterator.filter(healthyWithout).flatMap(cm =>
+            holderOf.get((c, keyOf(c, cm)))
+              .filter(r => listingsOf.get(r.id).contains(1) && !arrivals.exists(_._3.id == r.id))
+              .map(r => (c, cm, r))).take(1)
+        }.take(3).toSeq
+      val reported: Map[Cinema, Seq[CinemaMovie]] =
+        tomorrow.map { case (c, fs) =>
+          c -> (fs.filterNot(cm => withdrawn.exists(w => w._1 == c && w._2 == cm)) ++ arrivals.collect { case (`c`, cm, _) => cm })
+        }
+
+      // What the served corpus must match afterwards: each venue's new listing, except that
+      // a venue which failed or came back empty keeps the one it had.
+      val expected: Seq[(Cinema, CinemaMovie)] = today.toSeq.flatMap { case (c, fs) =>
+        (if (failing.contains(c)) fs.map(fromCutoff) else reported.getOrElse(c, Nil)).map(c -> _)
+      }
+
+      // The films whose every listing is word-for-word what they had — no showtime of theirs
+      // fell before the cutoff, none of their venues failed, no venue gained them. A tick
+      // that rewrites one of THEM is churn, whatever else it had to do.
+      val touchedVenues = failing.toSet ++ arrivals.map(_._1) ++ withdrawn.map(_._1)
+      val unchanged = before.filter { r =>
+        !arrivals.exists(_._3.id == r.id) &&
+          r.record.data.keysIterator.forall {
+            case models.CinemaShowing(c, key) =>
+              !touchedVenues.contains(c) &&
+                today.getOrElse(c, Nil).filter(cm => keyOf(c, cm) == key).forall(cm => fromCutoff(cm) == cm)
+            case _ => true
+          }
+      }
+      val leaving = before.filter(r => r.record.data.keysIterator.forall {
+        case models.CinemaShowing(c, key) => !failing.contains(c) && !reported.getOrElse(c, Nil).exists(cm => keyOf(c, cm) == key)
+        case _                            => true
+      })
+      info(s"${country.displayName}: next day from $cutoff — ${leaving.size} film(s) leave, ${arrivals.size} gain a venue " +
+           s"(${arrivals.map { case (to, cm, _) => s"'${cm.movie.title}' at ${to.displayName}" }.mkString(", ")}), " +
+           s"${withdrawn.size} withdrawn (${withdrawn.map { case (c, cm, _) => s"'${cm.movie.title}' at ${c.displayName}" }.mkString(", ")}), " +
+           s"${throwing.map(_.displayName).mkString} throws, ${blank.map(_.displayName).mkString} comes back empty, " +
+           s"${unchanged.size} film(s) untouched")
+      withClue("the next day moves nothing, so it would prove nothing — the corpus has no second day or no venue to fail: ") {
+        arrivals should not be empty
+        withdrawn should not be empty
+        failing should have size 2
+        unchanged should not be empty
+      }
+
+      clock.advance(java.time.Duration.between(clock.instant(),
+        cutoff.atZone(CorpusCoverage.zoneOf(country)).toInstant))
+      step("nextDay") {
+        w.cinemaScrapers.map(_.cinema).sortBy(_.displayName).foreach { c =>
+          val scraper =
+            if (throwing.contains(c)) new services.cinemas.common.CinemaScraper {
+              val cinema: Cinema = c
+              def fetch(): Seq[CinemaMovie] = throw new java.io.IOException(s"next day: ${c.displayName} is down")
+              def scrapeHosts: Set[String] = Set.empty
+            }
+            else services.cinemas.common.PreScrapedCinemaScraper.replaying(c, if (blank.contains(c)) Nil else reported.getOrElse(c, Nil))
+          Try(w.cinemaScrapeRunner.run(scraper))
+        }
+        w.enrichDetailsSync()
+        w.drainServices()
+        w.drainStaging()
+        w.movieService.settle()
+        w.movieCache.canonicalizeBySanitize()
+        w.drainStaging()
+        w.concludeEnrichment()
+        // A DAY has passed, so the daily cleanup has run: a film whose last venue dropped it
+        // holds no slot, and it is this sweep — not the tick — that deletes the row and so
+        // retires its card. Without it the withdrawn films stay served as empty cards.
+        w.unscreenedCleanup.removeUnscreened()
+        w.readModelProjector.reconcile()
+        w.readModelProjector.pruneOrphans()
+        FixpointPass.awaitStreamsQuiet(w)
+      }
+      requireHermetic()
+
+      val after    = w.movieRepository.findAll()
+      val afterBy  = after.map(r => r.id -> r).toMap
+      val problems = ServedCorpusInvariants.violations(expected, after, w.readModelRepository.findAllMovies(),
+        w.readModelRepository.findAllScreenings(), normalizer, from = cutoff)
+      val rewritten = unchanged.filterNot(r => afterBy.get(r.id).contains(r))
+      val churn = Option.when(rewritten.nonEmpty)(
+        s"${rewritten.size} film(s) whose listings did not change were rewritten or lost:\n" +
+          CorpusDiff.records(unchanged.sortBy(_.title), unchanged.flatMap(r => afterBy.get(r.id)).sortBy(_.title),
+            "first day", "next day"))
+      val all = problems ++ churn
+      withClue(s"${country.displayName}'s next day did not land cleanly:\n${all.mkString("\n")}\n") {
+        all shouldBe empty
+      }
+    }
+  }
 }
 
 object CountryConvergenceBehaviour {

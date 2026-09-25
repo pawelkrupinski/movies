@@ -43,6 +43,14 @@ class ConvergenceFindingsTest(unittest.TestCase):
                 "Avengers: Koniec Gry (re-release),Some(Avengers: Doomsday),Some(https://med\u2026")
         self.assertEqual(names(line), ["Avengers: Koniec Gry (re-release)"])
 
+    def test_served_corpus_findings_name_the_listing_and_its_film(self):
+        line = ("[info]     'Avengers. Koniec gry - dubbing' at Helios Aleja Bielany \u2192 'Avengers: Koniec gry' (2019) "
+                "[avengerskoniecgry|2019]: 10 of 16 showtime(s) unserved, first 2026-09-25T11:00")
+        self.assertEqual(names(line), ["Avengers. Koniec gry - dubbing", "Avengers: Koniec gry"])
+        self.assertEqual(names("[info]     'Bojkot' (2021) [bojkot|2021]"), ["Bojkot"])
+        self.assertEqual(names("  'RBO Cinema Season 2026-27: Tosca' (\u2014) [rbocinemaseason202627tosca|] attempt=x"),
+                         ["RBO Cinema Season 2026-27: Tosca"])
+
     def test_ansi_colour_does_not_hide_a_finding(self):
         self.assertEqual(names("\x1b[31mrecord 'Lalka' (Some(2026)):\x1b[0m"), ["Lalka"])
 

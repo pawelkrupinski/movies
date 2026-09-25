@@ -41,6 +41,10 @@ CINEMA_KEY = re.compile(r"\(([^,()]+),([a-z0-9]+)\)")
 # A screening count keyed `cinema␟sanitizedTitle`, and a rendered read-model row.
 SCREENING_KEY = re.compile(r"\u241f([a-z0-9]+) ->")
 RESOLVED_MOVIE = re.compile(r"ResolvedMovie\([^|,()]+\|(?:\d{4})?,([^,]+),")
+# `tools.ServedCorpusInvariants` and the next-day / outage checks: a stored film as
+# `'Title' (2026) [key|2026]`, and an archived listing as an indented `'Raw title' at Venue`.
+FILM_LABEL = re.compile(r"'([^']+)' \((?:\d{4}|—)\) \[[^\]|]*\|\d*\]")
+LISTING = re.compile(r"^\s*(?:\[info\]\s+)?'([^']+)' at ")
 
 
 def titles(line: str):
@@ -52,6 +56,8 @@ def titles(line: str):
         yield from KEY_TUPLE.findall(line)
     yield from SCREENING_KEY.findall(line)
     yield from RESOLVED_MOVIE.findall(line)
+    yield from LISTING.findall(line)
+    yield from FILM_LABEL.findall(line)
     m = REDIVERTED.search(line)
     if m:
         yield from (key for _, key in CINEMA_KEY.findall(m.group(1)))

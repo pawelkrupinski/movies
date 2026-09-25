@@ -23,15 +23,13 @@ object ScrapeListing {
     // emits a raw title with no inline cleanup gets cleaned here. Display CASING is
     // NOT applied — the raw spelling is kept as provenance so the `displayTitle`
     // picker can rank on it; casing is applied to the chosen title there.
-    val ruleKey = TitleRuleKey.of(cinema)
     // Central format strip: peel a screen-format/language tag ("(Napisy PL)",
     // "- 2D dubbing", "[2D DUB]") off EVERY cinema's title into the showings'
     // `format`, so a film's dub/subtitle/2D editions fold onto ONE clean slot for
     // every cinema with no per-client code. `FormatTags` strips only format words,
     // so a programme prefix, a "+ event" suffix, or a Ukrainian screening keep their
     // title and stay their own card.
-    def cleanAndFormat(cm: CinemaMovie): (String, List[String]) =
-      FormatTags.extractFormatTags(normalizer.cinemaClean(ruleKey, cm.movie.title))
+    def cleanAndFormat(cm: CinemaMovie): (String, List[String]) = cleanTitle(cinema, cm.movie.title, normalizer)
     val cleaned: CinemaMovie => String = cm => cleanAndFormat(cm)._1
     // Badge each screening with its film's format tokens (unless the client already
     // set one), BEFORE the same-title fold below unions them — then put EVERY token
@@ -63,4 +61,13 @@ object ScrapeListing {
         }
     Prepared(deduped, cleaned)
   }
+
+  /** A listed title as the venue's slot will carry it — cleaned by the venue's rules, its
+   *  format tags peeled off — with those tags. The one definition [[prepare]] folds on. */
+  def cleanTitle(cinema: Cinema, title: String, normalizer: TitleNormalizer): (String, List[String]) =
+    FormatTags.extractFormatTags(normalizer.cinemaClean(TitleRuleKey.of(cinema), title))
+
+  /** The cinema slot a listing under `title` lands in: `CinemaShowing(cinema, slotKey)`. */
+  def slotKey(cinema: Cinema, title: String, normalizer: TitleNormalizer): String =
+    normalizer.sanitize(cleanTitle(cinema, title, normalizer)._1)
 }

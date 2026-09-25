@@ -20,8 +20,7 @@ import scala.concurrent.duration._
 trait TestWiring extends WorkerWiring {
   /** Pinned: a no-match `TmdbAttempt` carries the time it was stamped, and the
    *  determinism specs compare whole records across arrival orders. */
-  override lazy val clock: java.time.Clock =
-    java.time.Clock.fixed(java.time.Instant.parse("2026-06-08T12:00:00Z"), java.time.ZoneOffset.UTC)
+  override lazy val clock: java.time.Clock = java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC)
 
   // Scrape every city in tests, independent of any KINOWO_SCRAPE_CITIES the
   // local/CI env might set, so the recorded fixtures and the coverage spec
@@ -211,6 +210,13 @@ trait TestWiring extends WorkerWiring {
    *
    *  Shared by every harness that boots a corpus — the HTTP-fixture replay and
    *  the archive replay both need exactly this tick. */
+  /** Every venue whose scrape THREW inside [[runOneScrapeTick]], as `venue: exception`.
+   *  The tick carries on past a throwing venue, as production's scheduler does, so without
+   *  this a venue that no longer lands at all reads exactly like one that landed and
+   *  changed nothing — a fixpoint held by construction. Callers asserting convergence read
+   *  it; `FixpointPass.ledger` counts it. */
+  val scrapeFailures = new java.util.concurrent.ConcurrentLinkedQueue[String]()
+
   def runOneScrapeTick(): Unit = {
     val ready   = scala.collection.mutable.ListBuffer.empty[MovieDetailsComplete]
     val started = System.nanoTime()
@@ -222,7 +228,7 @@ trait TestWiring extends WorkerWiring {
         // `classify` marks rows that await deferred detail `detailPending` (held
         // back, no event yet) and returns the ready-now MovieDetailsComplete.
         ready ++= cinemaScrapeRunner.classify(scraper.cinema, touched)
-      } catch { case _: Exception => () }
+      } catch { case e: Exception => scrapeFailures.add(s"${scraper.cinema.displayName}: $e"); () }
       done += 1
       // A heartbeat, because this loop is where a slow persistence layer shows up: each
       // venue's rows are written through, so a per-row cost that grows with the corpus
@@ -655,4 +661,9 @@ trait TestWiring extends WorkerWiring {
     drainServices()
     drainStaging()
   }
+}
+
+object TestWiring {
+  /** The instant every harness clock starts at. */
+  val FixedInstant: java.time.Instant = java.time.Instant.parse("2026-06-08T12:00:00Z")
 }
