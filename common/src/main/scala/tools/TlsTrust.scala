@@ -74,8 +74,9 @@ object TlsTrust extends Logging {
 
   // Read by the JDK's PKIX path builder at validation time: when a server omits
   // an intermediate, fetch it from the cert's AIA caIssuers URL. Off by default.
-  // Set before the first TLS handshake (this object is touched when RealHttpFetch
-  // is constructed, at wiring time, ahead of any scrape).
+  // Set before the first TLS handshake (this object is touched when a context is
+  // built, at wiring time, ahead of any scrape). A JVM-wide switch by nature: the
+  // property is the JDK's, read by every path builder in the process.
   System.setProperty("com.sun.security.enableAIAcaIssuers", "true")
 
   /** Classpath-absolute paths of PEM certs to add as trust anchors on top of the
@@ -106,17 +107,21 @@ object TlsTrust extends Logging {
   /** The pinned expired leaves, parsed. Empty if a resource is missing (logged). */
   private[tools] def pinnedExpiredLeafs: Seq[X509Certificate] = loadCerts(PinnedExpiredLeafResources)
 
-  /** SSLContext trusting default CAs + [[BundledRootResources]] +
+  /** A new SSLContext trusting default CAs + [[BundledRootResources]] +
    *  [[PinnedExpiredLeafResources]]. Falls back to the platform default if
    *  anything goes wrong, so a packaging slip can never take TLS down — it just
-   *  reverts to the unaugmented store. */
-  lazy val augmentedContext: SSLContext =
+   *  reverts to the unaugmented store.
+   *
+   *  A context carries its own TLS session cache, so it is built by whoever owns
+   *  the clients that should share one — a wiring builds one and hands it to every
+   *  client it composes — never kept here for the whole JVM. */
+  def newContext(): SSLContext =
     build().recover { case exception =>
       logger.warn(s"TlsTrust: falling back to default SSLContext (${exception.getMessage})")
       SSLContext.getDefault
     }.get
 
-  /** The X509TrustManager backing [[augmentedContext]] — exposed for tests. */
+  /** The X509TrustManager backing [[newContext]] — exposed for tests. */
   def augmentedTrustManager: X509TrustManager = compositeTrustManager(bundledCerts, pinnedExpiredLeafs)
 
   private def build(): Try[SSLContext] = Try {

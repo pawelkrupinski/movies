@@ -37,5 +37,5 @@ final class ChainListEgress(direct: HttpFetch, proxyShards: Option[IndexedSeq[Ht
 
 object ChainListEgress {
   def fromEnv(direct: HttpFetch): ChainListEgress =
-    new ChainListEgress(direct, EgressWiring.residentialShards(ResidentialProxy.fromEnv()))
+    new ChainListEgress(direct, EgressWiring.residentialShards(ResidentialProxy.fromEnv(), TlsTrust.newContext()))
 }

@@ -34,6 +34,18 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
     pc.selector.select(URI.create("https://www.multikino.pl/api/x")).get(0)
       .address().asInstanceOf[InetSocketAddress].getPort
 
+  it should "handshake with the TLS context it was handed, on every connect budget" in {
+    val tls  = TlsTrust.newContext()
+    val http = new RealHttpFetch(tls = tls)
+    Seq("https://www.iluzjon.fn.org.pl/repertuar.html", "https://www.multikino.pl/repertuar")
+      .foreach(url => http.clientFor(url).sslContext() should be theSameInstanceAs tls)
+  }
+
+  it should "keep a context of its own when none is handed in, rather than one for the whole JVM" in {
+    val url = "https://www.multikino.pl/repertuar"
+    new RealHttpFetch().clientFor(url).sslContext() should not be theSameInstanceAs(new RealHttpFetch().clientFor(url).sslContext())
+  }
+
   "ProxyConfig.pinnedTo" should "pin the selector to the chosen pool port, stickily" in {
     val pool = RealHttpFetch.ProxyConfig("isp.decodo.com", Seq(10001, 10002, 10003), "u", "p")
     val pinned = pool.pinnedTo(10002)

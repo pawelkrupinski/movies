@@ -214,12 +214,13 @@ object RememberedFailurePosterDownload {
  *  cap enforced while streaming, so a multi-hundred-megabyte "poster" is abandoned at the cap
  *  rather than written out. */
 class HttpPosterDownload(maxBytes: Long = PosterPipeline.MaxDownloadBytes,
-                         timeout: Duration = Duration.ofSeconds(20)) extends PosterDownload with Logging {
+                         timeout: Duration = Duration.ofSeconds(20),
+                         tls: javax.net.ssl.SSLContext = TlsTrust.newContext()) extends PosterDownload with Logging {
   private val client = HttpClient.newBuilder()
     .version(HttpClient.Version.HTTP_1_1)
     .followRedirects(HttpClient.Redirect.NORMAL)
     .connectTimeout(Duration.ofSeconds(15))
-    .sslContext(TlsTrust.augmentedContext)
+    .sslContext(tls)
     .build()
 
   def fetch(url: String): Either[String, Path] =

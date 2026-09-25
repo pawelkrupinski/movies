@@ -32,7 +32,7 @@ trait ShareCardWiring { self: WorkerWiring =>
    *  its scrapes use: Multikino 403s the worker's IP on every poster as on its pages. That route
    *  is PAID (the proxy, Zyte behind it), so a poster that fails on it is remembered rather than
    *  asked for again by every render and every daily backfill. */
-  private lazy val posterDownload: PosterDownload = PosterDownload.routed(new HttpPosterDownload(), Map(
+  private lazy val posterDownload: PosterDownload = PosterDownload.routed(new HttpPosterDownload(tls = tlsContext), Map(
     java.net.URI.create(services.cinemas.pl.MultikinoClient.HomeUrl).getHost ->
       new RememberedFailurePosterDownload(new EgressPosterDownload(multikinoPosterFetch), shareCardStore.failedPosters, clock)))
 
@@ -65,7 +65,7 @@ trait ShareCardWiring { self: WorkerWiring =>
       new ShareCardBackfillHandler(shareCardBackfill),
       new PruneShareCardsHandler(shareCardJanitor),
       new ReleaseShareCardHoldHandler(() => readModelProjector.releaseExpiredHolds()),
-      new RescrapeShareCardHandler(new ShareCardRescraper(FacebookGraph.fromEnv(), readModelRepository, country, shareCardMetrics, clock)))
+      new RescrapeShareCardHandler(new ShareCardRescraper(FacebookGraph.fromEnv(tlsContext), readModelRepository, country, shareCardMetrics, clock)))
 
   /** The recurring enqueues: a backfill tick every minute (first three minutes after boot), the
    *  budget pass every ten, the full prune daily (first five minutes after boot). Each window is

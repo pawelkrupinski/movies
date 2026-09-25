@@ -10,7 +10,13 @@ import java.time.Duration
 import java.util.concurrent.CompletableFuture
 import scala.concurrent.duration.FiniteDuration
 
-class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends HttpFetch with Logging {
+class RealHttpFetch(
+  proxy: Option[RealHttpFetch.ProxyConfig] = None,
+  // The TLS context every client below handshakes with (see TlsTrust). A wiring builds
+  // one and hands it to each fetch it composes, so they share its session cache; a
+  // fetch built without one gets its own.
+  tls: javax.net.ssl.SSLContext = TlsTrust.newContext()
+) extends HttpFetch with Logging {
   // Before any client below exists — see RealHttpFetch.allowBasicProxyTunnelAuth.
   RealHttpFetch.allowBasicProxyTunnelAuth()
 
@@ -50,8 +56,8 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
       // Trust the JDK defaults PLUS the Certum root that OpenJDK's cacerts omits,
       // so the Certum-rooted cinema sites (Kinomuzeum/artmuseum.pl, Kino
       // Muranów/kinomuranow.pl, sdk.waw.pl) stop failing PKIX path building. See
-      // TlsTrust — touching it here also enables AIA intermediate fetching.
-      .sslContext(TlsTrust.augmentedContext)
+      // TlsTrust — building the context also enables AIA intermediate fetching.
+      .sslContext(tls)
       .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
     // Route through an authenticated residential proxy when configured (the
     // Decodo static-ISP egress for the cinema sites that Cloudflare-block our

@@ -3,7 +3,7 @@ package services.sharecards
 import models.{CityPath, Country}
 import play.api.Logging
 import services.readmodel.{FilmSlugs, ReadModelReader}
-import tools.{Env, TlsTrust}
+import tools.Env
 
 import java.net.URI
 import java.net.URLEncoder
@@ -19,8 +19,8 @@ trait FacebookGraph {
 
 /** The Graph API's re-scrape (`POST /?id=<url>&scrape=true`) with an app access token. The token
  *  travels in the form body, not the query string, so no URL that reaches a log carries it. */
-class HttpFacebookGraph(appId: String, appSecret: String) extends FacebookGraph {
-  private val client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).sslContext(TlsTrust.augmentedContext).build()
+class HttpFacebookGraph(appId: String, appSecret: String, tls: javax.net.ssl.SSLContext) extends FacebookGraph {
+  private val client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).sslContext(tls).build()
 
   def scrape(url: String): Either[String, Unit] = {
     def enc(s: String) = URLEncoder.encode(s, StandardCharsets.UTF_8)
@@ -37,8 +37,8 @@ class HttpFacebookGraph(appId: String, appSecret: String) extends FacebookGraph 
 object FacebookGraph {
   /** The Graph client when the worker has the app's credentials (`FACEBOOK_APP_ID` +
    *  `FACEBOOK_APP_SECRET`, the web's login names), else None — re-scraping is then a no-op. */
-  def fromEnv(): Option[FacebookGraph] =
-    for { id <- Env.get("FACEBOOK_APP_ID"); secret <- Env.get("FACEBOOK_APP_SECRET") } yield new HttpFacebookGraph(id, secret)
+  def fromEnv(tls: javax.net.ssl.SSLContext): Option[FacebookGraph] =
+    for { id <- Env.get("FACEBOOK_APP_ID"); secret <- Env.get("FACEBOOK_APP_SECRET") } yield new HttpFacebookGraph(id, secret, tls)
 }
 
 /**

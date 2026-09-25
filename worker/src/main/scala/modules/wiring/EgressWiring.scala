@@ -25,7 +25,7 @@ trait EgressWiring { self: WorkerWiring =>
   // each IP warms its Multikino session at most once and reuses it across the
   // venues routed there.
   private lazy val proxyShards: Option[IndexedSeq[RealHttpFetch]] =
-    EgressWiring.residentialShards(ResidentialProxy.fromEnv())
+    EgressWiring.residentialShards(ResidentialProxy.fromEnv(), tlsContext)
 
   // Proxy primary → existing chain (Zyte then direct) as fallback, so a proxy IP
   // that's ever unreachable/burned silently rolls over and scraping never breaks.
@@ -164,8 +164,9 @@ object EgressWiring {
 
   /** One [[RealHttpFetch]] per Decodo pool IP, each pinned with its own cookie
    *  jar — or None when the proxy isn't configured. */
-  def residentialShards(config: Option[RealHttpFetch.ProxyConfig]): Option[IndexedSeq[RealHttpFetch]] =
-    config.map(_.perPort.map(cfg => new RealHttpFetch(Some(cfg))).toIndexedSeq)
+  def residentialShards(config: Option[RealHttpFetch.ProxyConfig],
+                        tls: javax.net.ssl.SSLContext): Option[IndexedSeq[RealHttpFetch]] =
+    config.map(_.perPort.map(cfg => new RealHttpFetch(Some(cfg), tls)).toIndexedSeq)
 
   /** The residential proxy (sticky across `shards`, each warmed on `warmUrl`
    *  when given, metered and circuit-broken) with `fallback` behind it — the

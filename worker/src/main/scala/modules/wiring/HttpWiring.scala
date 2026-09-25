@@ -4,7 +4,7 @@ import clients.TmdbClient
 import modules.WorkerWiring
 import services.enrichment.{FilmwebClient, ImdbClient, LetterboxdClient, LetterboxdIdResolver, MetacriticClient, OMDbClient, RottenTomatoesClient, WikidataClient}
 import services.metrics.WorkerHttpMetrics
-import tools.{CountingHttpFetch, HostCircuitBreakerHttpFetch, HttpFetch, MonitoringHttpFetch, RateLimitedHttpFetch, RealHttpFetch, ThrottledHttpFetch}
+import tools.{CountingHttpFetch, HostCircuitBreakerHttpFetch, HttpFetch, MonitoringHttpFetch, RateLimitedHttpFetch, RealHttpFetch, ThrottledHttpFetch, TlsTrust}
 
 /** The two phase-labelled HTTP chains over ONE wire leaf, and the third-party
  *  metadata / rating / resolution clients that draw from the `enrich` one.
@@ -49,7 +49,12 @@ trait HttpWiring { self: WorkerWiring =>
   // independent per-host 429-gate / circuit-breaker state, which is fine: their
   // host sets are disjoint (cinema sites vs metadata APIs) bar Filmweb, whose
   // rating client and fallback-scraper client legitimately live on opposite phases.
-  protected def realHttpLeaf: HttpFetch = new RealHttpFetch()
+  // The TLS context (default CAs + the bundled Certum roots, see TlsTrust) every
+  // client this wiring builds handshakes with — one per wiring, so they share its
+  // session cache.
+  lazy val tlsContext: javax.net.ssl.SSLContext = TlsTrust.newContext()
+
+  protected def realHttpLeaf: HttpFetch = new RealHttpFetch(tls = tlsContext)
   private lazy val sharedRealHttpLeaf: HttpFetch = realHttpLeaf
   // `protected`, not private: the archive-replay wiring rebuilds the enrich-phase
   // chain to hang its own cache OUTSIDE it (a cache hit must not be metered,
