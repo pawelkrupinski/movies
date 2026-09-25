@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Hang-recovery watchdog for com.kinowo.nixos-dashboard: runs scripts/watchdog.sh every 30s, which
+  kickstarts the dashboard when /healthz stops answering. KeepAlive already restarts a process that
+  exits; this covers the one it cannot see, a process that is alive and no longer answering.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.kinowo.nixos-dashboard-watchdog</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>/Users/pawel/projects/movies/infra/version-dashboard/scripts/watchdog.sh</string>
+  </array>
+
+  <key>StartInterval</key>
+  <integer>30</integer>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/pawel/.kinowo-dashboard-logs/watchdog.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/pawel/.kinowo-dashboard-logs/watchdog.err.log</string>
+</dict>
+</plist>

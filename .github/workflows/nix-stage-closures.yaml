@@ -88,7 +88,7 @@ on:
       # The flake root IS infra/ (see infra/flake.nix), so every git-tracked file underneath it is
       # part of the flake's source. Changing any of them changes the source hash, which changes
       # `system.configurationRevision`, which changes the closure -- including files that never get
-      # imported by a module, like infra/version-dashboard/app.py or infra/bin/check.
+      # imported by a module, like infra/version-dashboard/src/server.ts or infra/bin/check.
       #
       # WITH THE NARROWER FILTER THOSE COMMITS SILENTLY SKIPPED STAGING. Observed on eb596e32e,
       # which added the dashboard: the hosts were deployed by hand and moved to a new closure, CI
@@ -237,29 +237,22 @@ jobs:
         working-directory: infra
         run: bash test/test_heap_dumps.sh
 
-      - name: The fleet dashboard renders what the fleet reports
-        working-directory: infra
-        run: python3 version-dashboard/test_app.py
-
-      # The bulk-apply queue in the fleet dashboard is only observable with a DOM and a real
-      # click, so this one needs a browser. Playwright is the page-test suite's dependency and
-      # is installed from its lockfile; the test SKIPS when it cannot find Playwright, which is
-      # right for a fork's bin/check and wrong here — so the path is passed explicitly, and an
-      # explicit path that does not load is a failure.
+      # The dashboard's own suite: the fleet and mobile views, the check/switch jobs and their
+      # server-side guards, the roster cache, and the bulk-run queue driven in a DOM (jsdom) --
+      # whether it really stops taking new machines after a failure, and whether the production
+      # database's typed confirmation is carried into the switch it authorises. Its setup refuses
+      # every real command and network call, so nothing here can reach a host.
       - uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          node-version-file: infra/version-dashboard/.nvmrc
           cache: 'npm'
-      - name: Install Playwright for the fleet dashboard's browser checks
-        working-directory: page-tests-playwright
+          cache-dependency-path: infra/version-dashboard/package-lock.json
+      - name: The fleet dashboard type-checks, lints and passes its tests
+        working-directory: infra/version-dashboard
         run: |
           npm ci
-          ../scripts/ci/install-playwright.sh chromium
-      - name: The fleet dashboard's bulk run behaves in a real browser
-        working-directory: infra
-        env:
-          KINOWO_PLAYWRIGHT: ${{ github.workspace }}/page-tests-playwright/node_modules/playwright
-        run: node version-dashboard/test_browser.js
+          npm run lint
+          npm test
 
       - name: Every host in the flake evaluates
         working-directory: infra

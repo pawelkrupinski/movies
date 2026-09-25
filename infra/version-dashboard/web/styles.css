@@ -1,0 +1,94 @@
+:root { color-scheme: light dark; }
+* { box-sizing: border-box; }
+body { margin: 0; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+       background: #0f1115; color: #d7dae0; }
+h1 { font-size: 15px; font-weight: 600; margin: 0 0 2px; letter-spacing: .3px; }
+.sub { color: #7d8590; font-size: 12px; margin-bottom: 18px; }
+table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+th { text-align: left; font-weight: 600; color: #7d8590; padding: 6px 10px; font-size: 11px;
+     text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid #242832; }
+td { padding: 8px 10px; border-bottom: 1px solid #1a1d25; vertical-align: top; }
+tr.ok    td:first-child { border-left: 3px solid #30a46c; }
+tr.warn  td:first-child { border-left: 3px solid #f5a623; }
+tr.alarm td:first-child { border-left: 3px solid #e5484d; }
+.name { font-weight: 600; color: #e6e9ef; }
+.mut { color: #6e7681; }
+.badge { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 11px;
+         background: #1c2029; color: #9aa4b2; }
+.badge.ok { background: #10291d; color: #4cc38a; }
+.badge.warn { background: #2e2411; color: #f5a623; }
+.badge.alarm { background: #2d1416; color: #ff6369; }
+.err { background: #2d1416; border: 1px solid #5b1d22; color: #ff9ea3; padding: 10px 12px;
+       border-radius: 6px; margin-bottom: 14px; }
+.note { background: #1a1d25; border: 1px solid #242832; color: #9aa4b2; padding: 10px 12px;
+        border-radius: 6px; margin-bottom: 14px; }
+.detail { color: #6e7681; font-size: 11px; max-width: 62ch; }
+code { color: #a5b4fc; }
+
+/* The action half. The console is a <details>, so a finished job's output collapses out of the
+   way without being destroyed -- it is the only record of what a switch did. */
+button { font: inherit; padding: 4px 10px; border-radius: 5px; cursor: pointer;
+         border: 1px solid #2f3646; background: #1c2029; color: #d7dae0; }
+button:hover:not(:disabled) { border-color: #4a5568; }
+button:disabled { opacity: .45; cursor: default; }
+button.go { border-color: #7a3a12; background: #2e2411; color: #f5a623; }
+button.danger { border-color: #5b1d22; background: #2d1416; color: #ff9ea3; }
+/* The affirmative button, and the one the eye should land on. `.go` is the SECOND press -- the one
+   that actually switches -- so it stays the warmer colour: the two must not look interchangeable. */
+.applybtn { background: #1f6feb; color: #fff; border: 0; border-radius: 6px; padding: 5px 12px; }
+.applybtn:hover:not(:disabled) { background: #2c7cf0; }
+.applybtn:disabled { background: #2b323c; color: #7a8290; cursor: default; }
+.applybtn.go { background: #a1401f; }
+.applybtn.go:hover:not(:disabled) { background: #c04f27; }
+.fleetbulk { margin-bottom: 20px; }
+.fleetbulk .hint { max-width: 78ch; }
+.hint { color: #6e7681; font-size: 11px; margin-left: 8px; }
+.actionrow { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+tr.actions td { border-bottom: 1px solid #242832; padding-top: 0; }
+details.cons { margin-top: 8px; }
+details.cons.hidden { display: none; }
+details.cons summary { cursor: pointer; color: #7d8590; font-size: 11px; }
+.out { margin: 6px 0 0; padding: 8px 10px; max-height: 340px; overflow: auto;
+       background: #0a0c10; border: 1px solid #1a1d25; border-radius: 5px;
+       white-space: pre-wrap; word-break: break-word; font-size: 11.5px; }
+.out .bad { color: #ff6369; }
+.out .step { color: #9aa4b2; }
+.out .rule { color: #f5a623; }
+.out .cmd { color: #6e7681; }
+.consfoot { color: #9aa4b2; font-size: 11px; margin-top: 6px; }
+.toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+
+/* The cell furniture the fleet table is built from, ported from the reference so that the two
+   dashboards read as one screen rather than two takes on it. */
+td .sub { color: #6e7681; font-size: 11px; margin: 3px 0 0; }
+/* `.hint` is indented where it trails a button in the toolbar; inside a cell it is a line of its
+   own and the indent would only make the column look ragged. */
+td .hint { margin-left: 0; display: block; }
+td.none { color: #4a525e; }
+/* Brighter than the muted columns, but NOT bold: `.name` is the machine, and a store hash set in
+   the same weight competes with it for the eye that is scanning down the first column. */
+td.sv { color: #d4d9e1; }
+.sha { color: #8ab4f8; font-weight: 600; }
+.env { display: inline-block; font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+       letter-spacing: .5px; padding: 1px 8px; border-radius: 999px; color: #0b0d10; }
+/* A HOVERABLE EXPLANATION HAS TO LOOK HOVERABLE, or it is one nobody finds. The dotted underline
+   is the long-standing convention for exactly this and costs no layout. */
+.help { cursor: help; text-decoration: underline dotted rgba(255,255,255,.28);
+        text-underline-offset: 3px; }
+.badge.help { text-decoration: none; border-bottom: 1px dashed currentColor; }
+
+/* The shell: one nav across every page, and the live indicator. While the event stream is down
+   the page cannot know it is current, so every control that acts on what it shows is disabled
+   until it reconnects. */
+main { padding: 18px 24px 24px; }
+nav.pages { display: flex; gap: 18px; align-items: baseline; padding: 12px 24px;
+            border-bottom: 1px solid #1a1d25; font-size: 12px; }
+nav.pages a { color: #7d8590; text-decoration: none; }
+nav.pages a:hover { color: #d7dae0; text-decoration: underline; }
+nav.pages a.current { color: #e6e9ef; font-weight: 600; }
+.live { margin-left: auto; font-size: 11px; color: #7d8590; }
+.live.on::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+                   background: #30a46c; margin-right: 6px; }
+.live.off { color: #f5a623; }
+body[data-live=false] .needs-live { opacity: .45; pointer-events: none; }
+h2 { font-size: 13px; margin: 22px 0 8px; }

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
 # Force-tags the commit that actually produced a shipped mobile store build, for
-# the mobile-releases dashboard (infra/version-dashboard/app.py:release_commit_for)
+# the mobile-releases dashboard (infra/version-dashboard/src/mobile/git.ts:releaseCommitFor)
 # to anchor on instead of the "Release mobile X.Y.Z" bump commit -- see that
-# function's docstring for why the bump commit alone is often wrong.
+# function's comment for why the bump commit alone is often wrong.
 #
 #   scripts/tag-mobile-release.sh <ios|android> <version> [sha]
 #

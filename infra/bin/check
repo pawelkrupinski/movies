@@ -62,24 +62,11 @@ else
   failed=1
 fi
 
-step "python + plist syntax"
-# THE DASHBOARD IS NOT COVERED BY ANY OTHER CHECK HERE -- it is plain Python outside the flake, so
-# `nix eval` never looks at it and a syntax error would only surface when launchd failed to start
-# it, which looks like a crash loop rather than a typo.
-#
-# The plist check earns its place separately: XML FORBIDS A DOUBLE HYPHEN INSIDE A COMMENT, and the
-# first version of that file used them as dashes in prose. launchctl rejects the whole file as
-# malformed, so the agent simply never runs -- and nothing else in this repository would have said
-# so.
+step "plist syntax"
+# XML FORBIDS A DOUBLE HYPHEN INSIDE A COMMENT, and the first version of the dashboard's plist used
+# them as dashes in prose. launchctl rejects the whole file as malformed, so the agent simply never
+# runs -- and nothing else in this repository would have said so.
 syntax_ok=1
-if [ -f version-dashboard/app.py ]; then
-  if python3 -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' version-dashboard/app.py; then
-    echo "  ok  version-dashboard/app.py"
-  else
-    echo "  FAILED version-dashboard/app.py"
-    syntax_ok=0
-  fi
-fi
 for plist in version-dashboard/*.plist; do
   [ -e "$plist" ] || continue
   if python3 -c 'import plistlib,sys; plistlib.load(open(sys.argv[1],"rb"))' "$plist"; then
@@ -91,17 +78,21 @@ for plist in version-dashboard/*.plist; do
 done
 ((syntax_ok)) || failed=1
 
-step "version-dashboard render tests"
-# THE RENDER IS THE PART THAT CAN BE WRONG WITHOUT CRASHING. `ast.parse` above proves the file
-# loads; these prove the table still says what an operator reads it for -- which columns exist, and
-# that a machine nobody can reach is not rendered as one that is merely behind.
-if [ -f version-dashboard/test_app.py ]; then
-  if out="$(python3 version-dashboard/test_app.py 2>&1)"; then
-    echo "  ok  $(echo "$out" | grep -c '\.\.\. ok') test(s)"
-  else
-    echo "$out" | tail -25 | sed 's/^/  /'
-    failed=1
-  fi
+step "version-dashboard lint + tests"
+# THE DASHBOARD IS NOT COVERED BY ANY OTHER CHECK HERE -- it is TypeScript outside the flake, so
+# `nix eval` never looks at it and a type error would only surface when launchd failed to start it,
+# which looks like a crash loop rather than a typo. The suite includes the bulk-run queue driven in
+# a DOM, and refuses every real command and network call. Skips when node or the dependencies are
+# missing (a fork offline), and says so rather than passing silently.
+if ! command -v npm >/dev/null 2>&1; then
+  echo "  skipped: no npm on PATH"
+elif [ ! -d version-dashboard/node_modules ] && ! (cd version-dashboard && npm ci --silent >/dev/null 2>&1); then
+  echo "  skipped: version-dashboard dependencies are not installed and npm ci failed"
+elif out="$(cd version-dashboard && npm run --silent lint 2>&1 && npm test --silent 2>&1)"; then
+  echo "  ok  $(echo "$out" | grep -E 'Tests +[0-9]+ passed' | sed 's/^ *//')"
+else
+  echo "$out" | tail -30 | sed 's/^/  /'
+  failed=1
 fi
 
 step "grafana dashboard tests"
@@ -219,23 +210,6 @@ if [ -f test/test_public_proxy.sh ]; then
 else
   echo "  FAILED test/test_public_proxy.sh is missing"
   failed=1
-fi
-
-step "version-dashboard browser tests"
-# THE QUEUE IN bringAllToLatest IS NOT REACHABLE FROM PYTHON. Whether the bulk run really stops
-# taking new machines after a failure, and whether the production database's typed confirmation is
-# actually carried into the switch it authorises, are facts about a running browser -- so they are
-# checked in one. Skips itself when Playwright is not installed, which keeps this gate runnable
-# offline on a fork; the step then says so rather than passing silently.
-if [ -f version-dashboard/test_browser.js ] && command -v node >/dev/null 2>&1; then
-  if out="$(node version-dashboard/test_browser.js 2>&1)"; then
-    echo "$out" | tail -3 | sed 's/^/  /'
-  else
-    echo "$out" | tail -30 | sed 's/^/  /'
-    failed=1
-  fi
-else
-  echo "  skipped: no node on PATH"
 fi
 
 for host in "${hosts[@]}"; do
