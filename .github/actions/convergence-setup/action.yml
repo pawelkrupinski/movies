@@ -67,11 +67,7 @@ runs:
     # served to anyone.
     - name: Start MongoDB (single-node replica set, for change streams)
       shell: bash
-      run: |
-          docker run -d --name mongo -p 27017:27017 mongo:7 --replSet rs0 --wiredTigerCacheSizeGB 2
-          until docker exec mongo mongosh --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do sleep 1; done
-          docker exec mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'
-          until docker exec mongo mongosh --quiet --eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; do sleep 1; done
+      run: '"$GITHUB_WORKSPACE"/scripts/ci/start-mongo-replset.sh --wiredTigerCacheSizeGB 2'
 
     # WHICH recording to replay, decided once and before anything is downloaded.
     #

@@ -36,3 +36,4 @@ test/resources/fixtures/corpus/**
 scripts/ci/leg-verdict.sh
 scripts/ci/gh-release.sh
 scripts/ci/preflight.sh
+scripts/ci/start-mongo-replset.sh

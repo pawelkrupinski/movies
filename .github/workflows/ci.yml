@@ -152,14 +152,16 @@ jobs:
 
             # The CI-structure scripts' own specs, seconds each: which checks the pre-push hook
             # selects for which paths, what the workflows' preflight jobs accept and refuse, and
-            # how a failed test is judged DETERMINISTIC or FLAKY and ledgered.
-            - name: Pre-push hook, preflight and flake-detection specs
+            # how a failed test is judged DETERMINISTIC or FLAKY and ledgered, and how the test
+            # jobs' throwaway MongoDB is started.
+            - name: Pre-push hook, preflight, flake-detection and CI-helper specs
               run: |
                   bash scripts/hooks/pre-push-test.sh
                   bash scripts/ci/preflight-test.sh
                   bash scripts/ci/flake-ledger-test.sh
                   bash scripts/ci/leg-verdict-test.sh
                   bash scripts/ci/rerun-failed-sbt-test.sh
+                  bash scripts/ci/start-mongo-replset-test.sh
                   python3 scripts/ci/flake_verdict_test.py
 
             - uses: actions/setup-java@v5
@@ -482,11 +484,7 @@ jobs:
             - uses: actions/checkout@v5
 
             - name: Start MongoDB (single-node replica set, for change streams)
-              run: |
-                  docker run -d --name mongo -p 27017:27017 mongo:7 --replSet rs0
-                  until docker exec mongo mongosh --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do sleep 1; done
-                  docker exec mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'
-                  until docker exec mongo mongosh --quiet --eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; do sleep 1; done
+              run: scripts/ci/start-mongo-replset.sh
 
             - uses: actions/setup-java@v5
               with:
