@@ -104,6 +104,13 @@ object PosterFailure {
     ProgressiveEstimate, EncodeError)
   /** The reason label of a fetch that worked. */
   val None = "none"
+
+  /** The reason label of a fetch the origin answered with non-2xx `status`. */
+  def forStatus(status: Int): String = status / 100 match {
+    case 4 => Http4xx
+    case 5 => Http5xx
+    case _ => HttpOther
+  }
 }
 
 /** Downloads a poster to a temp file — never into the heap as a whole. */
@@ -132,11 +139,7 @@ class EgressPosterDownload(http: tools.HttpFetch, maxBytes: Long = PosterPipelin
       else if (bytes.length > maxBytes) Left(PosterFailure.TooLarge)
       else Right(Files.write(Files.createTempFile("poster-", ".img"), bytes))
     } catch {
-      case e: tools.HttpStatusException => Left(e.code / 100 match {
-        case 4 => PosterFailure.Http4xx
-        case 5 => PosterFailure.Http5xx
-        case _ => PosterFailure.HttpOther
-      })
+      case e: tools.HttpStatusException => Left(PosterFailure.forStatus(e.code))
       case _: java.net.http.HttpTimeoutException => Left(PosterFailure.Timeout)
       case _: Exception                          => Left(PosterFailure.Network)
     }
@@ -230,12 +233,8 @@ class HttpPosterDownload(maxBytes: Long = PosterPipeline.MaxDownloadBytes,
         .GET().build()
       val response = client.send(request, HttpResponse.BodyHandlers.ofInputStream())
       Using.resource(response.body()) { body =>
-        response.statusCode() / 100 match {
-          case 2 => PosterPipeline.copyCapped(body, maxBytes)
-          case 4 => Left(PosterFailure.Http4xx)
-          case 5 => Left(PosterFailure.Http5xx)
-          case _ => Left(PosterFailure.HttpOther)
-        }
+        if (response.statusCode() / 100 == 2) PosterPipeline.copyCapped(body, maxBytes)
+        else Left(PosterFailure.forStatus(response.statusCode()))
       }
     } catch {
       case _: java.net.http.HttpTimeoutException => Left(PosterFailure.Timeout)
