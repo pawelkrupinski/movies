@@ -239,8 +239,9 @@ tests:
         exp_alerts: []
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
-  # BEFORE THE GITOPS CHANGE: kube-state-metrics is up (kube_node_info) and publishes no Flux object
-  # state. The companion fires after half an hour, and the two comparison rules cannot.
+  # KUBE-STATE-METRICS UP (kube_node_info) BUT PUBLISHING NO FLUX OBJECT STATE -- its Flux config,
+  # RBAC or CRD version lost since the gitops change landed on 2026-09-24. The companion fires after
+  # half an hour, and the two comparison rules cannot.
   # ────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 1m
     name: no flux object state fires the companion
@@ -257,7 +258,7 @@ tests:
           - exp_labels:
               severity: "warning"
             exp_annotations:
-              summary: "Flux object state is not published -- the kube-state-metrics gitops change is pending or broken"
+              summary: "Flux object state is not published -- kube-state-metrics has stopped serving the gotk_<kind>_info series"
               description: "`FluxObjectNotReady` and `FluxObjectSuspended` cannot fire without `flux:resource_info` (kube-state-metrics' `gotk_<kind>_info` series), so a failing or suspended deploy path is unwatched. The series comes from movies-gitops/kube-state-metrics/: flux-crs-config.yaml (the custom-resource-state ConfigMap), the `--custom-resource-state-config-file=/etc/ksm/flux.yaml` flag and its volume mount in deployment.yaml, and list/watch on the flux API groups and on customresourcedefinitions in rbac.yaml. If one of those is missing on the cluster, the `kube-state-metrics` Kustomization has not applied it (`flux get kustomization kube-state-metrics`); if all are there, the pod's log names a reflector failing on permissions, or the config names a version the installed CRDs no longer serve (`kubectl get crd | grep fluxcd`). If `KubeStateMetricsSeriesAbsent` fires too, the exporter itself is the problem. IT DOES NOT MEAN FLUX IS HEALTHY."
       - eval_time: 35m
         alertname: FluxObjectNotReady

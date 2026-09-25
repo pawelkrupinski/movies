@@ -214,14 +214,18 @@ groups:
             this in Alertmanager with an expiry; if not, resume it (`flux resume kustomization
             {{ $labels.name }}` for a Kustomization; `flux resume --help` names the other kinds).
 
+      # THIRTY MINUTES, matching every other `absent()` companion in this directory, and measured
+      # against a real rollout: the kube-state-metrics pod replaced on 2026-09-25 05:30-05:51Z
+      # left the union at 22-26 series throughout (old and new pod overlap), never absent. The one
+      # episode so far, 2026-09-24 15:46-18:11Z, was this rule going live before the gitops change
+      # it names was applied -- the reminder doing its job, not a rollout paging.
       - alert: FluxObjectStateAbsent
         expr: absent(flux:resource_info)
-        # THIRTY MINUTES, matching every other `absent()` companion in this directory.
         for: 30m
         labels:
           severity: warning
         annotations:
-          summary: "Flux object state is not published -- the kube-state-metrics gitops change is pending or broken"
+          summary: "Flux object state is not published -- kube-state-metrics has stopped serving the gotk_<kind>_info series"
           description: >-
             `FluxObjectNotReady` and `FluxObjectSuspended` cannot fire without
             `flux:resource_info` (kube-state-metrics' `gotk_<kind>_info` series), so a failing or suspended deploy path is unwatched. The series
