@@ -1,6 +1,6 @@
 package services.metrics
 
-import controllers.EncodedResponseCache
+import controllers.TestResponseCache
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -33,7 +33,7 @@ class WebCacheMetricsSpec extends AnyFlatSpec with Matchers {
   import CacheMetricSamples.sample
 
   "the response-cache gauges" should "report what the cache holds at scrape time, not at registration" in {
-    val cache    = new EncodedResponseCache()
+    val cache    = TestResponseCache()
     val registry = new PrometheusRegistry()
     register(registry, "response" -> (() => cache.occupancy))
 
@@ -53,14 +53,14 @@ class WebCacheMetricsSpec extends AnyFlatSpec with Matchers {
   it should "publish the budget beside what is held" in {
     val budget   = 32L * 1024
     val registry = new PrometheusRegistry()
-    register(registry, "response" -> (() => new EncodedResponseCache(maxBytes = budget).occupancy))
+    register(registry, "response" -> (() => TestResponseCache(maxBytes = budget).occupancy))
 
     sample(PrometheusExposition.render(registry), "kinowo_web_cache_max_bytes", "response") shouldBe Some(budget.toDouble)
   }
 
   it should "stay under the budget once eviction has kicked in" in {
     val budget = 32L * 1024
-    val cache  = new EncodedResponseCache(maxBytes = budget)
+    val cache  = TestResponseCache(maxBytes = budget)
     val random = new scala.util.Random(7)
     (1 to 30).foreach { state =>
       cache.gzippedBody(s"/state-$state/", version)(random.alphanumeric.take(8 * 1024).mkString)
@@ -77,7 +77,7 @@ class WebCacheMetricsSpec extends AnyFlatSpec with Matchers {
    *  the truth — so it must publish nothing. */
   "a cache with no hit counters" should "publish no ratio rather than a zero" in {
     val registry = new PrometheusRegistry()
-    register(registry, "response" -> (() => new EncodedResponseCache().occupancy))
+    register(registry, "response" -> (() => TestResponseCache().occupancy))
 
     val text = PrometheusExposition.render(registry)
     sample(text, "kinowo_web_cache_hit_ratio", "response")        shouldBe None

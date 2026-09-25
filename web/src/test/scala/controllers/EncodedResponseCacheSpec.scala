@@ -10,8 +10,8 @@ import java.util.zip.GZIPInputStream
 
 class EncodedResponseCacheSpec extends AnyFlatSpec with Matchers {
 
-  private def gunzip(bytes: org.apache.pekko.util.ByteString): String = {
-    val in = new GZIPInputStream(new ByteArrayInputStream(bytes.toArray))
+  private def gunzip(served: EncodedResponseCache.Served): String = {
+    val in = new GZIPInputStream(new ByteArrayInputStream(served.bytes.toArray))
     new String(in.readAllBytes(), StandardCharsets.UTF_8)
   }
 
@@ -19,7 +19,7 @@ class EncodedResponseCacheSpec extends AnyFlatSpec with Matchers {
   private val v2 = Instant.parse("2026-06-05T10:05:00Z")
 
   "gzippedBody" should "render once and serve the cached bytes on a second same-version read" in {
-    val cache = new EncodedResponseCache
+    val cache = TestResponseCache()
     var renders = 0
     def render(): String = { renders += 1; "<html>hello</html>" }
 
@@ -31,20 +31,42 @@ class EncodedResponseCacheSpec extends AnyFlatSpec with Matchers {
     gunzip(first) shouldBe "<html>hello</html>"
   }
 
-  it should "re-render when the version advances (stale entry invalidated)" in {
-    val cache = new EncodedResponseCache
+  it should "serve the superseded copy under its own version while re-rendering it at the new one" in {
+    val cache = TestResponseCache()
     var renders = 0
     def render(): String = { renders += 1; s"<html>v$renders</html>" }
 
     cache.gzippedBody("/poznan/movies", v1)(render())
-    val afterBump = cache.gzippedBody("/poznan/movies", v2)(render())
+    val duringRefresh = cache.gzippedBody("/poznan/movies", v2)(render())
+    val afterRefresh  = cache.gzippedBody("/poznan/movies", v2)(render())
 
     renders shouldBe 2
-    gunzip(afterBump) shouldBe "<html>v2</html>"
+    (duringRefresh.version, gunzip(duringRefresh)) shouldBe ((v1, "<html>v1</html>"))
+    (afterRefresh.version, gunzip(afterRefresh)) shouldBe ((v2, "<html>v2</html>"))
+  }
+
+  it should "render synchronously when the superseded copy predates the caller's floor" in {
+    val cache = TestResponseCache()
+    cache.gzippedBody("/poznan/movies", v1)("<html>v1</html>")
+
+    val served = cache.gzippedBody("/poznan/movies", v2, staleFloor = TestResponseCache.FixedNow.plusSeconds(1))("<html>v2</html>")
+    (served.version, gunzip(served)) shouldBe ((v2, "<html>v2</html>"))
+  }
+
+  it should "not let a late render put an older version back over a newer one" in {
+    val refresh = new ManualExecutionContext
+    val cache   = new EncodedResponseCache(refresh, () => TestResponseCache.FixedNow)
+    val v3      = v2.plusSeconds(60)
+    cache.gzippedBody("/poznan/movies", v1)("<html>v1</html>")
+    cache.gzippedBody("/poznan/movies", v2)("<html>v2</html>")       // schedules v2
+    cache.gzippedBody("/poznan/movies", v3, staleFloor = Instant.MAX)("<html>v3</html>") // renders v3 inline
+
+    refresh.runAll()
+    cache.gzippedBody("/poznan/movies", v3)(fail("v3 is held")).version shouldBe v3
   }
 
   it should "key independently per path" in {
-    val cache = new EncodedResponseCache
+    val cache = TestResponseCache()
     val a = cache.gzippedBody("/poznan/movies", v1)("<html>filmy</html>")
     val b = cache.gzippedBody("/poznan/", v1)("<html>index</html>")
 
@@ -70,7 +92,7 @@ class EncodedResponseCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   "a cache at its byte budget" should "evict rather than grow without bound" in {
-    val cache = new EncodedResponseCache(maxBytes = 64 * 1024)
+    val cache = TestResponseCache(maxBytes = 64 * 1024)
     (1 to 40).foreach(state => cache.gzippedBody(s"/state-$state/", v1)(incompressible(16 * 1024)))
 
     cache.heldBytes should be <= 64L * 1024
@@ -80,7 +102,7 @@ class EncodedResponseCacheSpec extends AnyFlatSpec with Matchers {
   // this is a crawler sweeping cold states while visitors sit on a few hot ones,
   // and insertion order would evict exactly the pages being read.
   it should "keep the page that is still being read and drop the ones that are not" in {
-    val cache = new EncodedResponseCache(maxBytes = 64 * 1024)
+    val cache = TestResponseCache(maxBytes = 64 * 1024)
     val hot = incompressible(16 * 1024)
     cache.gzippedBody("/california/", v1)(hot)
 
@@ -97,7 +119,7 @@ class EncodedResponseCacheSpec extends AnyFlatSpec with Matchers {
   // A body bigger than the whole budget would evict everything else and then
   // itself on the next put — pure churn. Serve it, hold nothing.
   it should "serve but not store a body larger than the entire budget" in {
-    val cache = new EncodedResponseCache(maxBytes = 8 * 1024)
+    val cache = TestResponseCache(maxBytes = 8 * 1024)
 
     val served = cache.gzippedBody("/california/", v1)(incompressible(64 * 1024))
 

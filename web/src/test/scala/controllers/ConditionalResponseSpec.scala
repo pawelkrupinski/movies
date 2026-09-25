@@ -23,14 +23,14 @@ class ConditionalResponseSpec extends AnyFlatSpec with Matchers with OptionValue
   /** A response builder whose model stamp never moves and whose clock is `now`,
    *  answering as a `Future` so Play's result extractors read it like a
    *  controller's. */
-  private class Responses(cache: EncodedResponseCache = new EncodedResponseCache, now: Instant = stamp) {
+  private class Responses(cache: EncodedResponseCache = TestResponseCache(), now: Instant = stamp) {
     private val underlying = new ConditionalResponse(cache, modelStamp = _ => stamp, now = () => now)
     def serve(request: play.api.mvc.RequestHeader, contentType: String, policy: CachePolicy,
               cacheKey: String = "", city: Option[City] = None,
               cacheBody: Boolean = true)(body: => String): Future[play.api.mvc.Result] =
       Future.successful(underlying.serve(request, contentType, policy, cacheKey, city, cacheBody)(body))
   }
-  private def responses(cache: EncodedResponseCache = new EncodedResponseCache, now: Instant = stamp) =
+  private def responses(cache: EncodedResponseCache = TestResponseCache(), now: Instant = stamp) =
     new Responses(cache, now)
 
   private def gzipRequest(path: String, host: String = "kinowo.net") =
@@ -86,7 +86,7 @@ class ConditionalResponseSpec extends AnyFlatSpec with Matchers with OptionValue
   // ── The cache key ───────────────────────────────────────────────────────────
 
   "the blob" should "be keyed on the host as well as the path" in {
-    val cache = new EncodedResponseCache
+    val cache = TestResponseCache()
     val serve = responses(cache)
     var rendered = 0
 

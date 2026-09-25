@@ -58,7 +58,7 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     second shouldBe first
   }
 
-  it should "re-serve a fresh valid page after the cache version advances" in {
+  it should "still serve a valid gzipped page after the cache version advances" in {
     val (ctrl, cache) = buildController()
     ctrl.index("poznan")(gzipRequest("/poznan/"))
 
@@ -109,12 +109,18 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     contentAsBytes(refresh).isEmpty shouldBe true
   }
 
-  it should "200 with a fresh body after the cache version advances despite an old If-Modified-Since" in {
+  // Once the re-render has landed. Until then the previous copy is still what this
+  // process serves, and a client holding it is rightly told 304 under ITS validator
+  // (stale-while-revalidate: see `StaleWhileRevalidateSpec`).
+  it should "200 with a fresh body after the cache version advances and the page is re-rendered, despite an old If-Modified-Since" in {
     val (ctrl, cache) = buildController()
     val lastMod = header("Last-Modified", ctrl.index("poznan")(gzipRequest("/poznan/"))).get
 
     Thread.sleep(1100)
     cache.reload()
+    val duringRefresh = ctrl.index("poznan")(gzipRequest("/poznan/").withHeaders("If-Modified-Since" -> lastMod))
+    withClue("the copy being served while it re-renders is the one this client holds: ")(
+      status(duringRefresh) shouldBe NOT_MODIFIED)
 
     val after = ctrl.index("poznan")(gzipRequest("/poznan/").withHeaders("If-Modified-Since" -> lastMod))
     status(after) shouldBe OK
@@ -305,7 +311,7 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
   // `private, no-cache` pages are answered `BYPASS` by the edge; they are still
   // rendered per request here, and must not take an entry in the byte-bounded LRU.
   it should "still keep no blob" in {
-    val cache = new EncodedResponseCache
+    val cache = TestResponseCache()
     val (ctrl, _) = TestMovieController.build(
       Seq(("Cache Test Film", Some(2024), cacheTestRecord())), responseCache = cache)
 

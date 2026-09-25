@@ -23,7 +23,14 @@ trait ControllersWiring { self: Wiring =>
     messagesApi.preferred(Seq(deploymentLang))
 
   lazy val landingController = new LandingController(controllerComponents, country)
-  lazy val encodedResponseCache = new EncodedResponseCache
+  // Where a cached page superseded by a read-model change is re-rendered while the
+  // previous copy keeps being served (`EncodedResponseCache.gzippedBody`). Capped at
+  // two: a render is ~1 s of CPU for the biggest cities, and an uncapped burst of
+  // cities changing at once would compete with the request threads it exists to
+  // spare. Single-flight per page bounds the queue to the pages actually held.
+  lazy val pageRefreshExecutor: scala.concurrent.ExecutionContextExecutorService =
+    tools.DaemonExecutors.boundedEC("page-refresh", maxConcurrent = 2)
+  lazy val encodedResponseCache = new EncodedResponseCache(pageRefreshExecutor, () => clock.instant())
   lazy val minifier: tools.Minifier = tools.Minifier.forMode(environmentMode)
   lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, oauthProviders.keySet, environmentMode, encodedResponseCache,
     servingCountry = country, normalizer = titleNormalizer, minifier = minifier,

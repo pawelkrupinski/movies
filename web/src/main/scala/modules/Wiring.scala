@@ -71,6 +71,8 @@ trait Wiring
     uptimeMonitor.close()
     webMovieMetrics.stop()
     userChangeTimeCache.stop()
+    // Before the read model and Mongo go: a page re-render reads both.
+    pageRefreshExecutor.shutdownNow()
     webReadModel.stop()
     // Each repository's close() is a no-op when it borrowed its database from
     // `mongoConnection` — closing the shared MongoClient is owned here.

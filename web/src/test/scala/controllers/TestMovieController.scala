@@ -22,7 +22,7 @@ object TestMovieController {
     mode: Mode = Mode.Test,
     // Injectable so a spec can assert what the blob cache ended up holding —
     // the "filter variants mint no blob" bound.
-    responseCache: EncodedResponseCache = new EncodedResponseCache,
+    responseCache: EncodedResponseCache = TestResponseCache(),
     // Which country's host this controller pretends to be. Defaults to Poland,
     // matching an unset KINOWO_COUNTRY; a spec exercising another country's
     // deployment passes it here rather than mutating the shared process env.

@@ -16,7 +16,9 @@ import java.time.Instant
  *  re-downloading the body.
  *
  *  Otherwise the body is served gzipped ([[AcceptEncoding.acceptsGzip]]) from
- *  the versioned [[EncodedResponseCache]]. Naming the `Content-Encoding`
+ *  the versioned [[EncodedResponseCache]] — possibly the copy from BEFORE the
+ *  latest change while its re-render runs, in which case every validator names
+ *  that copy's version, not the current one. Naming the `Content-Encoding`
  *  ourselves is also what keeps Play's `GzipFilter` off the response: it skips
  *  anything that already declares one. A `cacheBody = false` caller, or a
  *  client that refuses gzip, gets the body uncompressed and the filter handles
@@ -92,10 +94,9 @@ class ConditionalResponse(responseCache: EncodedResponseCache,
     // already told itself to reload and reloads into the same 304. Flooring at
     // the day's start retires every held copy at the boundary the payload
     // itself names, and stays monotonic because both inputs only ever advance.
-    val lastMod  = ConditionalResponse.dayFlooredValidator(modelStamp(city), city.map(_.zoneId), now())
+    val instant  = now()
+    val lastMod  = ConditionalResponse.dayFlooredValidator(modelStamp(city), city.map(_.zoneId), instant)
       .truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
-    val httpDate = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
-      .format(lastMod.atOffset(java.time.ZoneOffset.UTC))
     // `no-transform` IS WHAT LETS THE ETAG BELOW REACH ANYONE. Cloudflare deletes
     // the ETag from every `text/html` response these two zones serve -- measured
     // 2026-09-06 on an UNCACHED (`cf-cache-status: BYPASS`) page, so it is not a
@@ -179,11 +180,26 @@ class ConditionalResponse(responseCache: EncodedResponseCache,
     // strong validator is flatly not permitted to do, since a strong tag promises
     // byte-equality and the two share no bytes at all. Weak says all of that out
     // loud.
-    val etag = "W/\"" + Integer.toHexString(bodyKey.hashCode) + "-" + lastMod.getEpochSecond.toHexString + "\""
-    val validators: Seq[(String, String)] = ("Last-Modified" -> httpDate) +: ("ETag" -> etag) +: cacheControl
+    //
+    // A FUNCTION OF THE VERSION, because the version served is not always the
+    // current one: while a superseded copy is served during its background
+    // re-render (see `EncodedResponseCache.gzippedBody`), the validators must name
+    // THAT copy. Stamping the new version on the old body would let a client
+    // revalidate the old bytes into a 304 for the new ones and keep them.
+    def etagAt(version: Instant): String =
+      "W/\"" + Integer.toHexString(bodyKey.hashCode) + "-" + version.getEpochSecond.toHexString + "\""
+    def validatorsAt(version: Instant): Seq[(String, String)] = {
+      val httpDate = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
+        .format(version.atOffset(java.time.ZoneOffset.UTC))
+      ("Last-Modified" -> httpDate) +: ("ETag" -> etagAt(version)) +: cacheControl
+    }
+    def clientHolds(version: Instant): Boolean =
+      ConditionalResponse.offersValidator(request.headers.get("If-None-Match"), etagAt(version)) ||
+        ifModifiedSinceCurrent(request, version)
+    def notModified(version: Instant): Result =
+      NotModified.withHeaders((("Vary" -> Vary) +: validatorsAt(version))*)
 
-    if (ConditionalResponse.offersValidator(request.headers.get("If-None-Match"), etag)
-        || ifModifiedSinceCurrent(request, lastMod))
+    if (clientHolds(lastMod))
       // ⚠️ `Vary` ON THE 304 TOO, not just on the 200s below. RFC 9110 §15.4.5 makes
       // it a MUST, not a nicety -- a 304 "MUST generate any of the following header
       // fields that would have been sent in a 200 to the same request:
@@ -198,20 +214,27 @@ class ConditionalResponse(responseCache: EncodedResponseCache,
       // `vary: Origin`, while the 200 beside it said `vary: Accept-Encoding,Origin`.
       // Cloudflare adds the missing token on the way out, so the edge looked
       // correct and the origin was not -- and nothing else in front of us would.
-      NotModified.withHeaders((("Vary" -> Vary) +: validators)*)
+      notModified(lastMod)
     else if (cacheBody && acceptsGzip(request)) {
       // Gzipped HERE, and stamped `Content-Encoding` HERE, which is also what
       // keeps Play's GzipFilter off it: the filter skips any response that already
       // names an encoding. The uncached branch below deliberately names none, and
       // the filter gzips it on the way out.
-      val bytes = responseCache.gzippedBody(bodyKey, lastMod)(body)
-      Ok(bytes).as(contentType)
-        .withHeaders((Seq("Content-Encoding" -> "gzip", "Vary" -> Vary) ++ validators)*)
+      //
+      // Served stale across a content change until the re-render lands, but never
+      // across the city's midnight: a copy rendered before it names the old
+      // midnight as its reload time, and would reload straight back into itself.
+      val staleFloor = city.fold(Instant.MIN)(c => ConditionalResponse.dayStart(c.zoneId, instant))
+      val served     = responseCache.gzippedBody(bodyKey, lastMod, staleFloor)(body)
+      // A client revalidating the very copy being served stale holds it already.
+      if (served.version != lastMod && clientHolds(served.version)) notModified(served.version)
+      else Ok(served.bytes).as(contentType)
+        .withHeaders((Seq("Content-Encoding" -> "gzip", "Vary" -> Vary) ++ validatorsAt(served.version))*)
     } else
       // An uncached response, or a client that refuses gzip: leave it uncompressed
       // and let the GzipFilter handle it, which is what keeps a filter variant
       // from minting a blob.
-      Ok(body).as(contentType).withHeaders((("Vary" -> Vary) +: validators)*)
+      Ok(body).as(contentType).withHeaders((("Vary" -> Vary) +: validatorsAt(lastMod))*)
   }
 }
 
@@ -268,8 +291,12 @@ object ConditionalResponse {
   def dayFlooredValidator(modelStamp: Instant,
                           zone: Option[java.time.ZoneId],
                           now: Instant): Instant =
-    zone.map(z => now.atZone(z).toLocalDate.atStartOfDay(z).toInstant) match {
-      case Some(dayStart) if dayStart.isAfter(modelStamp) => dayStart
+    zone.map(dayStart(_, now)) match {
+      case Some(midnight) if midnight.isAfter(modelStamp) => midnight
       case _                                              => modelStamp
     }
+
+  /** The start of `now`'s calendar day in `zone`. */
+  def dayStart(zone: java.time.ZoneId, now: Instant): Instant =
+    now.atZone(zone).toLocalDate.atStartOfDay(zone).toInstant
 }
