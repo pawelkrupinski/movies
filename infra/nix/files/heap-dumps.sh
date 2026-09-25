@@ -155,7 +155,7 @@ case "$cmd" in
   dump-file)
     dir="${1:?usage: heap-dumps.sh dump-file <dir>}"
     # POD, COUNTRY AND START TIME, so no two JVM starts can ever name the same file. The worker
-    # names its country KINOWO_COUNTRIES, the web KINOWO_COUNTRY (see Country.soleFromEnv).
+    # names its country KINOWO_COUNTRIES, the web KINOWO_COUNTRY.
     country="${KINOWO_COUNTRY:-${KINOWO_COUNTRIES:-unknown}}"
     echo "$dir/${BIN:-app}-${country}_${HOSTNAME:-$(hostname)}_$(utc_stamp "$now").hprof"
     ;;
