@@ -30,13 +30,11 @@
 #        rebuilds from scratch (`pending_movies` is the staging incubator added
 #        alongside `movies`). --local ALSO drops scheduled_runs (see below).
 #   NOT dropped — operational state, curated config, and accounts the worker does
-#   not rebuild: uptimeBuckets, uptimeServiceTags (monitoring history), titleRules
-#   (admin-curated — seed it locally from prod with
-#   scripts/local-mirror/sync-title-rules.sh), users, userStates (accounts). Add
-#   filmwebFallback /
-#   filmwebFallbackMeta (per-cinema fallback prober state) and/or
-#   normalizationReports (a backfill report) to COLLECTIONS below if you want a
-#   fully-clean slate that re-derives those too.
+#   not rebuild: uptimeBuckets, uptimeServiceTags (monitoring history), users,
+#   userStates (accounts). Add filmwebFallback / filmwebFallbackMeta (per-cinema
+#   fallback prober state) to COLLECTIONS below if you want a fully-clean slate
+#   that re-derives those too. (Title rules are code, not a collection: see
+#   common/src/main/scala/services/titlerules/.)
 #   scheduled_runs is kept in PROD (worker scheduling — dropping it re-fires every
 #   sweep at once) but DROPPED in --local: the fixture worker's reapers are
 #   once-daily and gate on it, so a leftover `scrape@<today>` record makes a
@@ -172,21 +170,6 @@ mongosh "$URI" --quiet --eval "
 if [ "$MODE" = "prod" ] && [ -z "$DRY" ]; then
   scale_deploy "worker-$COUNTRY" 1
   scale_deploy "web-$COUNTRY" 1
-fi
-
-# Local resets preserve the admin-curated titleRules (deliberately not in
-# COLLECTIONS), but a fresh kinowo_local has none and falls back to the frozen
-# TitleRuleDefaults — so re-pull prod's live set with the one-way sync (it opens
-# its OWN read-only tunnel to prod; prod is never written). Non-fatal: a
-# failed sync (offline / no ssh access) must not fail the corpus reset.
-if [ "$MODE" = "local" ]; then
-  if [ -n "$DRY" ]; then
-    echo "[reset] [dry-run] would sync admin-curated titleRules prod → '$DB' (scripts/local-mirror/sync-title-rules.sh)"
-  else
-    echo "[reset] syncing admin-curated titleRules prod → '$DB'…"
-    "$HERE/local-mirror/sync-title-rules.sh" \
-      || echo "[reset] WARN: title-rules sync failed — run scripts/local-mirror/sync-title-rules.sh once prod is reachable."
-  fi
 fi
 
 if [ -n "$DRY" ]; then

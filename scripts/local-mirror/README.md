@@ -287,8 +287,8 @@ work here anyway — the mirror's steady state is `tail.js` holding a **change
 stream** open for days, which is a live cursor, not a dump.
 
 All of it lives in **`prod-tunnel.sh`**, sourced by `mirror.sh`,
-`sync-title-rules.sh`, `sync-enrichment-cache.sh` and `../reset-corpus.sh`.
-Before, those four carried four copies of the same `nc -z || flyctl proxy`
+`sync-enrichment-cache.sh` and `../reset-corpus.sh`.
+Before, those scripts carried their own copies of the same `nc -z || flyctl proxy`
 block, and a move like this had to find every one of them — the copy that got
 missed would go on dialling a stopped machine and fail like a network blip
 rather than a wrong destination.
@@ -343,34 +343,6 @@ the manual lever, but a wedge no longer needs it.
 `mirror.sh` is sourceable for that spec: everything below the
 `[ "${BASH_SOURCE[0]}" = "${0}" ] || return 0` guard runs only when it is
 executed, so sourcing defines the functions and reads no `.env.local`.
-
-## Sync the admin-curated `titleRules` into `kinowo_local`
-
-`titleRules` is the live rule set `TitleNormalizer` runs (edited from the admin
-UI). It's admin-curated, so `reset-corpus.sh` deliberately leaves it alone and
-nothing else seeds it — a fresh `kinowo_local` starts with an **empty**
-collection and the local stack falls back to the frozen `TitleRuleDefaults`,
-diverging from prod's normalisation. Pull the live prod set across:
-
-```
-scripts/local-mirror/sync-title-rules.sh            # one-way prod → kinowo_local
-scripts/local-mirror/sync-title-rules.sh --dry-run  # dump + count only, change nothing
-```
-
-One-shot and on-demand (title rules change rarely) — re-run after admin edits.
-It `mongodump`s the one collection from prod over the same ssh tunnel, guards on the
-record count (≥10, same floor as `scripts.DumpTitleRules`), then
-`mongorestore --drop`s it into `kinowo_local` — a true one-way mirror, so a rule
-deleted in prod also disappears locally. The local web+worker watch
-`kinowo_local`'s `titleRules` change stream, so re-running against a **live**
-local stack hot-swaps the rules. Reads `MONGODB_URI`/`MONGODB_DB` (prod source)
-and `LOCAL_MONGO_URI`/`LOCAL_MONGO_DB` (default `kinowo_local`) from `.env.local`.
-
-> This is the DB→DB (prod → local) direction. Two other syncs touch the same
-> collection and aren't this: `scripts.DumpTitleRules` (DB→**code**, refreshing
-> the `GeneratedTitleRules.scala` test mirror via
-> `.github/workflows/sync-title-rules.yml`), and `scripts.ApplyExtraTitleRules`
-> (code→prod-DB, proposing new rules).
 
 > **CI was repointed too, and no longer tunnels via Fly.**
 > `.github/workflows/record-scrape-fixtures.yml` (through

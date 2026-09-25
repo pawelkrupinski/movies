@@ -2,9 +2,9 @@
 #
 # The one place that knows HOW a laptop reaches prod Mongo. Sourced by every
 # local script whose source is prod: mirror.sh (the /debug mirror daemon),
-# sync-title-rules.sh, sync-enrichment-cache.sh, ../reset-corpus.sh.
+# sync-enrichment-cache.sh, ../reset-corpus.sh.
 #
-# WHY THIS FILE EXISTS AT ALL. Those four had four copies of the same
+# WHY THIS FILE EXISTS AT ALL. Those scripts had their own copies of the same
 # "nc -z :27017 || flyctl proxy" block. When prod moved off the Fly app
 # `kinowo-mongo` onto the Hetzner host mongo-1 (2026-08-29) each copy had to be
 # found and repointed independently, and the one that got missed would keep
@@ -52,8 +52,8 @@
 # key (grep exit 1 under pipefail) yields empty output instead of aborting the
 # caller before it can print a friendly message.
 #
-# This lives here because all four prod-sourced scripts — mirror.sh,
-# sync-title-rules.sh, sync-enrichment-cache.sh, ../reset-corpus.sh — already
+# This lives here because every prod-sourced script — mirror.sh,
+# sync-enrichment-cache.sh, ../reset-corpus.sh — already
 # source this file, and every one of them had defined a byte-identical copy of
 # it. The file below used a seventh inline copy whose comment said it "matches
 # envval in each caller"; a comment promising that two blocks stay identical is

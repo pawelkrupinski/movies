@@ -5,7 +5,7 @@
 # the prod SOURCE over ssh, this one is about the local TARGET the mirror and the
 # sync scripts write into. Same shape of question, opposite end of the pipe.
 #
-# WHY IT EXISTS. mirror.sh, sync-title-rules.sh and sync-enrichment-cache.sh each
+# WHY IT EXISTS. mirror.sh and the sync scripts each
 # carried their own copy of the same probe-then-restart block, differing only in
 # the log tag — and one of them had already drifted, hardcoding :28017 while the
 # other two honoured $LOCAL_MIRROR_PORT. A copy that drifts silently is the whole

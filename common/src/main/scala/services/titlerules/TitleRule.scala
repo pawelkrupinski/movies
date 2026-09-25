@@ -6,11 +6,10 @@ import scala.util.matching.Regex
 
 /** One editable regex-replace step in the title-normalisation pipeline.
  *
- *  The full set of these (stored in the `titleRules` Mongo collection, edited
- *  via the admin page, broadcast to web + worker over a change stream) describes
- *  every prefix/suffix/canonicalisation the app strips. The seed set in
- *  [[TitleRules]] is transcribed verbatim from the formerly-hardcoded
- *  regexes, so behaviour is unchanged until someone edits a rule.
+ *  The full set of these — the frozen baseline in [[TitleRules]], transcribed
+ *  verbatim from the formerly-hardcoded regexes, plus every later addition in
+ *  [[ExtraTitleRules]] — describes every prefix/suffix/canonicalisation the app
+ *  strips. They live in code only, loaded at class-init; there is no collection.
  *
  *  `replacement` follows `scala.util.matching.Regex` replacement semantics: `""`
  *  is a pure strip, and `$1`/`$2` reference capture groups. A literal `$` or `\`

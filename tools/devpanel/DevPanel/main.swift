@@ -386,11 +386,9 @@ private let groups: [ButtonGroup] = [
     ButtonGroup(title: "Kill web + worker", subtitle: "free :9000 · reap worker", defaultsKey: nil,
                 options: [Action(title: "Kill web + worker", subtitle: "free :9000 · reap worker",
                                  script: "kill-stack.sh", console: .web)]),
-    ButtonGroup(title: "Database", subtitle: "▾ reset · sync local data", defaultsKey: "group.database",
+    ButtonGroup(title: "Reset local corpus", subtitle: "drop kinowo_local · re-scrape", defaultsKey: nil,
                 options: [Action(title: "Reset local corpus", subtitle: "drop kinowo_local · re-scrape",
-                                 script: "reset-local-corpus.sh", console: .web),
-                          Action(title: "Sync title rules", subtitle: "prod titleRules → kinowo_local",
-                                 script: "sync-title-rules.sh", console: .web)]),
+                                 script: "reset-local-corpus.sh", console: .web)]),
 ]
 
 private let allActions: [Action] = groups.flatMap { $0.options }
@@ -956,16 +954,14 @@ if ProcessInfo.processInfo.environment["DEVPANEL_SELFTEST"] == "1" {
     // a remembered (or freshly persisted) option shows that option's label; an
     // unknown script falls back to the placeholder.
     let web = groups.first { $0.defaultsKey == "group.webServers" }!
-    let db = groups.first { $0.defaultsKey == "group.database" }!
     let labelOK = web.label(forSelectedScript: nil).title == "Web servers"
         && web.label(forSelectedScript: "run-local-stack.sh").title == "Web + worker"
         && web.label(forSelectedScript: "bogus.sh").title == "Web servers"
-        && db.label(forSelectedScript: "sync-title-rules.sh").title == "Sync title rules"
     let suite = "devpanel.selftest.\(getpid())"
     let ud = UserDefaults(suiteName: suite)!
-    ud.set("sync-title-rules.sh", forKey: "group.database")
-    let persistOK = ud.string(forKey: "group.database") == "sync-title-rules.sh"
-        && db.label(forSelectedScript: ud.string(forKey: "group.database")).title == "Sync title rules"
+    ud.set("run-local-stack.sh", forKey: "group.webServers")
+    let persistOK = ud.string(forKey: "group.webServers") == "run-local-stack.sh"
+        && web.label(forSelectedScript: ud.string(forKey: "group.webServers")).title == "Web + worker"
     UserDefaults.standard.removePersistentDomain(forName: suite)
 
     // LAN-IP selection rule: site-local wins over a public address regardless of

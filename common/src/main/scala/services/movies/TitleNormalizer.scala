@@ -37,8 +37,8 @@ class TitleNormalizer(val rules: TitleRuleSet) {
 
   // ── Cinema-decoration stripping ────────────────────────────────────────────
   //
-  // The patterns live in the `TitleRuleSet` (seeded from `TitleRules`, editable
-  // in Mongo via the admin page). The tiers:
+  // The patterns live in the `TitleRuleSet` (`TitleRules` + `ExtraTitleRules`, in
+  // code). The tiers:
   //   - `apiQuery` (GlobalStructural) — decoration strips (anniversary, restored,
   //     Cykl prefix, slash, language-version) PLUS programme prefixes /
   //     accessibility tags / "+ <event>" suffixes, for EXTERNAL LOOKUPS ONLY:

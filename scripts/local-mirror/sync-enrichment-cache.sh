@@ -20,8 +20,7 @@
 # point. Prod's copy is CI's, and a laptop must not be able to poison it with a
 # rate-limited 429 pinned as a verdict.
 #
-# NOT --drop, unlike sync-title-rules.sh: this is a cache, not a curated rule
-# set. An entry the local box learned that prod hasn't is still a valid cached
+# NOT --drop: this is a cache, not a curated set. An entry the local box learned that prod hasn't is still a valid cached
 # answer, and dropping it would throw away work for no benefit. Entries are
 # upserted by `_id` (the credential-masked request key), so re-running refreshes
 # what prod knows and leaves the rest. The TTL index on `fetchedAt` expires
@@ -65,7 +64,7 @@ DST="$(envval LOCAL_MONGO_URI)"; DST="${DST:-mongodb://127.0.0.1:${LOCAL_MIRROR_
 
 # ── ensure the prod tunnel (source), starting our OWN ssh forward only when
 # nothing already serves :27017 — never fighting a tunnel someone else owns.
-# Shared with mirror.sh and sync-title-rules.sh so prod moving hosts is one edit.
+# Shared with mirror.sh so prod moving hosts is one edit.
 init_prod_tunnel "enrich-cache" "$SRC"
 TMP=""
 cleanup() {
