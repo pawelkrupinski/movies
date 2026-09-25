@@ -24,11 +24,6 @@ import java.util.concurrent.{CountDownLatch, Executors}
  */
 object WorkerMain extends Logging {
 
-  // The liveness signal `/health` reports. Starts permissive — `/health` comes up
-  // BEFORE wiring (a slow Mongo boot must not fail the check), and a still-booting
-  // process IS alive — then is swapped to the LivenessWatchdog once wiring is up.
-  @volatile private var livenessProbe: () => Boolean = () => true
-
   def main(args: Array[String]): Unit = {
     val commit = Option(System.getenv("COMMIT_SHA")).getOrElse("unknown")
     logger.info(s"Worker starting — commit $commit")
@@ -41,7 +36,8 @@ object WorkerMain extends Logging {
     // non-zero so the failure still surfaces as a crash-loop rather than a
     // healthy-but-idle worker.
     val port   = Option(System.getenv("PORT")).map(_.toInt).getOrElse(9000)
-    val health = startHealthServer(port)
+    val liveness = new BootLiveness
+    val health   = startHealthServer(port, liveness)
     logger.info(s"Worker health up on :$port/health — booting scrape/enrich…")
 
     // The countries this worker runs (KINOWO_COUNTRIES, default just the default
@@ -111,7 +107,7 @@ object WorkerMain extends Logging {
     // liveness: it goes 503 (and the watchdog restarts the process) only once a
     // heartbeat pulse has been stale for minutes — a wedged JVM, not a slow boot.
     // ANY country going stale wedges the machine they share.
-    livenessProbe = () => fleet.isAlive
+    liveness.becomes(() => fleet.isAlive)
     // Ensure the heap-dump volume dir exists so the JVM's HeapDumpOnOutOfMemoryError
     // (hard-OOM path) and the watchdog (death-spiral path) both have somewhere to write.
     try java.nio.file.Files.createDirectories(java.nio.file.Paths.get(heapDumpDir))
@@ -185,15 +181,9 @@ object WorkerMain extends Logging {
         s"would be keyed with ${Country.default.code}'s rules and disagree with its own web tier. " +
         s"Run one country per worker until the normalizer is country-scoped.")
 
-  private def startHealthServer(port: Int): HttpServer = {
+  private def startHealthServer(port: Int, liveness: BootLiveness): HttpServer = {
     val server = HttpServer.create(new InetSocketAddress("0.0.0.0", port), 0)
-    server.createContext("/health", exchange => {
-      val alive = livenessProbe()
-      val body  = (if (alive) "ok" else "wedged").getBytes("UTF-8")
-      exchange.sendResponseHeaders(if (alive) 200 else 503, body.length.toLong)
-      val os = exchange.getResponseBody
-      try os.write(body) finally os.close()
-    })
+    addHealthEndpoint(server, liveness)
     // A tiny daemon pool (not the default single caller-runs executor) so a
     // /metrics scrape — which reads the queue depth from Mongo and can block up
     // to its Await timeout if Mongo is slow — can't delay the /health check.
@@ -202,6 +192,18 @@ object WorkerMain extends Logging {
     }))
     server.start()
     server
+  }
+
+  /** `/health`: 200 while `liveness` holds, 503 once it doesn't. */
+  private[modules] def addHealthEndpoint(server: HttpServer, liveness: BootLiveness): Unit = {
+    server.createContext("/health", exchange => {
+      val alive = liveness.isAlive
+      val body  = (if (alive) "ok" else "wedged").getBytes("UTF-8")
+      exchange.sendResponseHeaders(if (alive) 200 else 503, body.length.toLong)
+      val os = exchange.getResponseBody
+      try os.write(body) finally os.close()
+    })
+    ()
   }
 
   /** On-demand HPROF dump of the LIVE heap, written to the Fly volume.
