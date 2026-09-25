@@ -65,6 +65,21 @@ class ShareCardServiceSpec extends AnyFlatSpec with Matchers {
     (series.posterLoadCount("pl", ok = false, retry = false), series.posterLoadCount("pl", ok = false, retry = true)) shouldBe ((1.0, 1.0))
   }
 
+  it should "count a film without posters whose card cannot be written as failed, and retry the task" in {
+    val series = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
+    val full = new ShareCardStore(Files.createTempDirectory("share-cards-")) {
+      override def writeAtomically(target: java.nio.file.Path, bytes: Array[Byte], version: String,
+                                   published: Option[java.time.Instant], asked: Option[java.time.Instant]): Unit =
+        throw new java.io.IOException("No space left on device")
+    }
+    val rig = new Rig(store = full) { override val metrics = series.forCountry("pl") }
+    val inputs = rig.service.inputs(film().copy(posterUrl = None))
+    inputs.posterUrls shouldBe empty
+    rig.service.render(inputs, Seq(ShareCardReason.NewFilm)) shouldBe ShareCardMetrics.Outcome.Failed
+    series.renderCount("pl", ShareCardMetrics.Outcome.Failed, ShareCardReason.NewFilm) shouldBe 1.0
+    renderTask(rig, inputs, attempts = 1) shouldBe a[HandlerOutcome.Reschedule]
+  }
+
   "A projection" should "enqueue a render only when something the card draws changed" in {
     val rig = new Rig
     val movie = film()

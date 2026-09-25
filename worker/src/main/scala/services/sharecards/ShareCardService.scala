@@ -192,20 +192,20 @@ class ShareCardService(
     // Anything thrown while drawing is this card's failure — counted, and the task retried — never
     // an exception out of the task. Except a card on disk asked for AFTER these inputs (another
     // replica's newer render, see `ShareCardStore`): that is supersession, and ends the render.
-    def withPoster(retry: Boolean): Option[String] =
-      Try(onBase(next, first, askedAt).orElse(rebuildBase(next, first, retry, askedAt))).recover {
+    def drawing(draw: => Option[String]): Option[String] =
+      Try(draw).recover {
         case e: Exception if !superseding(e) =>
           logger.warn(s"share card: ${next.filmId} could not be drawn: ${e.getClass.getSimpleName}: ${e.getMessage}"); None
       }.get
-    def posterless(): Option[String] = Try(drawWhole(next, first, askedAt)) match {
-      case scala.util.Failure(e) if superseding(e) => throw e
-      case other                                   => other.toOption
-    }
+    def withPoster(retry: Boolean): Option[String] =
+      drawing(onBase(next, first, askedAt).orElse(rebuildBase(next, first, retry, askedAt)))
+    def posterless(): Option[String] = drawing(Some(drawWhole(next, first, askedAt)))
     val drawn = Try(existing(next) match {
       case Some(version) if retryPoster && next.isPosterless(version) =>
         withPoster(retry = true).fold((Outcome.Existing, Some(version)))(drawn => (Outcome.Rendered, Some(drawn)))
       case Some(version)                   => (Outcome.Existing, Some(version))
-      case None if next.posterUrls.isEmpty => (Outcome.Rendered, Some(drawWhole(next, first, askedAt)))
+      case None if next.posterUrls.isEmpty =>
+        posterless().fold((Outcome.Failed, Option.empty[String]))(drawn => (Outcome.Rendered, Some(drawn)))
       case None =>
         withPoster(retry = false).map(drawn => (Outcome.Rendered, Some(drawn))).getOrElse(
           posterless().fold((Outcome.Failed, Option.empty[String]))(drawn => (Outcome.RenderedNoPoster, Some(drawn))))
