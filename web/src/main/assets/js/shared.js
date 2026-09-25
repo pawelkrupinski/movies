@@ -2875,130 +2875,6 @@
     _hintSet(SWIPE_HINT_DONE, '1');
   }
 
-  // ── App promotion banner ────────────────────────────────────────────────────
-  // Nudges EVERY visitor (not just phones — unlike the swipe hint above) toward
-  // the native app, picking the store badge that matches their OS. The
-  // interval is DEVICE-AWARE: a touch/coarse-pointer visitor (a phone, our
-  // best market) sees it once per calendar day, while a fine-pointer visitor
-  // (desktop) only sees it once every 10 days — desktop traffic is far less
-  // likely to install a phone app, so a daily nudge there is just noise
-  // (Paweł's call, 2026-09-14). Two independent gates, not redundant: the
-  // interval cap keys off the CITY's calendar day (`pageToday()`) and counts
-  // days elapsed since it was last shown, while the ✕ sets a rolling 24h
-  // snooze from the click instant — always shorter than either interval, so
-  // it never needs its own device split; the interval cap is what actually
-  // enforces the 10-day gap on desktop. Device-local, same as the swipe
-  // hint — reuses its `_hintGet`/`_hintSet` localStorage wrapper.
-  //
-  // Every call logs its gate state to the console (`[app-banner] {…}`), and
-  // `?forceAppBanner=1` bypasses both gates — see `appBannerForced` below.
-  const APP_BANNER_DAY              = 'kinowoAppBannerDay';           // last calendar day it was shown
-  const APP_BANNER_SNOOZE           = 'kinowoAppBannerSnoozedUntil';  // epoch ms the ✕ sets
-  const APP_BANNER_SNOOZE_MS        = 24 * 60 * 60 * 1000;
-  const APP_BANNER_INTERVAL_MOBILE  = 1;    // days — phones: every visit-day
-  const APP_BANNER_INTERVAL_DESKTOP = 10;   // days — desktop: far less likely to install
-
-  // `?forceAppBanner=1` bypasses both gates below — for testing on the real
-  // site without waiting out the interval cap / 24h snooze, or hand-editing
-  // localStorage. Never shown to a real visitor; it's a URL param nobody
-  // stumbles onto by accident.
-  function appBannerForced() {
-    return /[?&]forceAppBanner=1(&|$)/.test(location.search);
-  }
-
-  // Whole calendar days between two `pageToday()`-shaped ISO dates
-  // ("YYYY-MM-DD"), parsed as UTC midnight so a city's DST transition can't
-  // shift the count by an hour and flip a whole-day boundary.
-  function _daysBetween(fromIso, toIso) {
-    const from = Date.parse(fromIso + 'T00:00:00Z');
-    const to   = Date.parse(toIso   + 'T00:00:00Z');
-    return Math.round((to - from) / 86400000);
-  }
-
-  // Best-effort "is the native app already installed?" check. Only Chrome on
-  // Android (via the Play Store) can answer this at all — `getInstalledRelatedApps`
-  // has no iOS/Safari equivalent and no signal for the App Store, so this
-  // returns false (i.e. "can't tell, don't suppress") everywhere else. That
-  // asymmetry is inherent to the platform API, not a gap in this code — see
-  // `manifest.json`'s `related_applications` for the Play package it matches
-  // against. Never throws: a detection error must never hide the nudge.
-  async function isAppAlreadyInstalled() {
-    if (!('getInstalledRelatedApps' in navigator)) return false;
-    try {
-      const related = await navigator.getInstalledRelatedApps();
-      return related.some((a) => a.platform === 'play' && a.id === 'net.pawel.kinowo');
-    } catch (e) {
-      return false;
-    }
-  }
-
-  async function maybeShowAppBanner() {
-    const banner = document.getElementById('app-banner');
-    if (!banner) return;                                              // not a page that carries it
-
-    const forced        = appBannerForced();
-    const now           = Date.now();
-    const snoozedUntil  = parseInt(_hintGet(APP_BANNER_SNOOZE) || '0', 10);
-    const snoozed       = now < snoozedUntil;
-    const today         = pageToday();
-    const shownDay      = _hintGet(APP_BANNER_DAY);
-    const isMobile      = matchMedia('(pointer: coarse)').matches;
-    const intervalDays  = isMobile ? APP_BANNER_INTERVAL_MOBILE : APP_BANNER_INTERVAL_DESKTOP;
-    const dueByInterval = !shownDay || _daysBetween(shownDay, today) >= intervalDays;
-    // The gate state that decides whether the banner shows — logged always
-    // (one cheap line) so a report of "I don't see it" can be diagnosed from
-    // the visitor's own console instead of guessing blind.
-    console.log('[app-banner]', {
-      today, shownDay, isMobile, intervalDays, dueByInterval,
-      snoozedUntil: snoozedUntil ? new Date(snoozedUntil).toISOString() : null, snoozed,
-      forced, willShow: forced || (!snoozed && dueByInterval),
-    });
-    if (!forced) {
-      if (snoozed) return;         // explicitly dismissed recently
-      if (!dueByInterval) return;  // not due yet for this device's interval
-    }
-    _hintSet(APP_BANNER_DAY, today);
-
-    if (!forced && await isAppAlreadyInstalled()) {
-      console.log('[app-banner] suppressed: app already installed');
-      return;
-    }
-
-    const ua = navigator.userAgent;
-    // iPadOS has reported a plain desktop-Mac UA (no "iPad" token) since
-    // iPadOS 13's "Request Desktop Website" default — Macintosh + a touch
-    // screen is the standard way to tell it apart from an actual Mac.
-    const isIOS      = /iPhone|iPad|iPod/.test(ua) ||
-      (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-    const isAndroid  = /Android/.test(ua);
-    if (isIOS) {
-      document.getElementById('app-banner-ios').style.display = 'inline-flex';
-    } else if (isAndroid) {
-      document.getElementById('app-banner-android').style.display = 'inline-flex';
-    } else {
-      // Can't tell (desktop, or an unrecognised UA) — offer both rather than guessing wrong.
-      document.getElementById('app-banner-ios').style.display = 'inline-flex';
-      document.getElementById('app-banner-android').style.display = 'inline-flex';
-    }
-
-    banner.classList.add('visible');
-    // Measured AFTER the badge(s) + `.visible` land — the headline/subtitle
-    // length varies per locale and can wrap, so a hardcoded height would be
-    // wrong for German while being right for Polish.
-    requestAnimationFrame(() => {
-      document.documentElement.style.setProperty('--app-banner-h', banner.offsetHeight + 'px');
-      document.body.classList.add('has-app-banner');
-    });
-  }
-
-  // Wired to the banner's ✕ button (onclick, in `_appBanner.scala.html`).
-  function dismissAppBanner() {
-    _hintSet(APP_BANNER_SNOOZE, String(Date.now() + APP_BANNER_SNOOZE_MS));
-    document.getElementById('app-banner')?.classList.remove('visible');
-    document.body.classList.remove('has-app-banner');
-  }
-  window.dismissAppBanner = dismissAppBanner;
-
   // ── Carousel track plumbing ────────────────────────────────────────────────
 
   function dayTrack() { return document.getElementById('day-track'); }
@@ -3371,7 +3247,6 @@
     updateNavbar();
     bootView();
     maybeShowSwipeHint();   // once-a-day phone nudge, retired on first swipe
-    maybeShowAppBanner();   // app-store nudge: daily on mobile, every 10 days on desktop
     // AFTER the page knows who is looking, and only then: the server-state
     // reconcile is a no-op for an anonymous visitor and the sign-out self-heal
     // looks for the avatar menu, so both would read "signed out" off every page

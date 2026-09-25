@@ -66,6 +66,40 @@ test.describe('app banner', () => {
       (window as unknown as { bannerVisibilityOnShow?: string }).bannerVisibilityOnShow)).toBe('visible');
   });
 
+  // Regression: the banner used to be revealed by the deferred shared.js, so
+  // the navbar painted at the top of the page first and then dropped by the
+  // banner's height (a layout shift, and navbar-layout.spec.ts:593's flake).
+  // Samples the navbar's top on every rendered frame from the first one it
+  // exists in. shared.js is held back 500ms — a slow network, and what makes
+  // the pre-fix first paint deterministic on a fast runner too — so a decision
+  // that waits for it is caught every time.
+  test('decides before the first paint, so the navbar never moves', async ({ page }) => {
+    await page.addInitScript(() => {
+      const tops: number[] = [];
+      (window as unknown as { navbarTops: number[] }).navbarTops = tops;
+      const sample = () => {
+        const navbar = document.querySelector('.navbar');
+        if (navbar) tops.push(Math.round(navbar.getBoundingClientRect().top));
+        requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    });
+    await page.route('**/js/shared*.js', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await route.continue();
+    });
+    await page.evaluate(() => localStorage.clear());
+    await reload(page);
+    await expect(banner(page)).toBeVisible();
+    await page.waitForLoadState('load');
+    await page.waitForTimeout(800);   // past the delayed shared.js and a few frames after it
+
+    const tops = await page.evaluate(() => (window as unknown as { navbarTops: number[] }).navbarTops);
+    expect(tops.length).toBeGreaterThan(0);
+    expect(tops[0]).toBeGreaterThan(0);          // the banner was already up at the first frame
+    expect(new Set(tops)).toEqual(new Set([tops[0]]));
+  });
+
   test('does not show a second time the same day', async ({ page }) => {
     await page.evaluate(() => localStorage.clear());
     await reload(page);
@@ -76,7 +110,7 @@ test.describe('app banner', () => {
 
   // Back-dates `kinowoAppBannerDay` by `days` and reloads — simulates time
   // passing without waiting it out or mocking the clock. Parsed as UTC
-  // midnight, matching `_daysBetween` in shared.js.
+  // midnight, matching `daysBetween` in `_appBanner.scala.html`.
   async function backdateShownDayAndReload(page: Page, days: number): Promise<void> {
     await page.evaluate((d) => {
       const shown = localStorage.getItem('kinowoAppBannerDay');

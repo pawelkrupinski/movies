@@ -62,8 +62,8 @@
 </head>
 <body>
 
-
-<div id="app-banner" role="banner" aria-label="Promocja aplikacji Kinowo" data-i18n-attr="aria-label:appBanner.aria" data-i18n-arg0="Kinowo">
+ 
+<div id="app-banner" data-today="2026-06-08" role="banner" aria-label="Promocja aplikacji Kinowo" data-i18n-attr="aria-label:appBanner.aria" data-i18n-arg0="Kinowo">
   <img class="app-banner-icon" src="/assets/img/app-icon.png" alt="Kinowo" width="42" height="42">
   <div class="app-banner-text">
     <div class="app-banner-headline" data-i18n="appBanner.headline" data-i18n-arg0="Kinowo">Kinowo — aplikacja mobilna</div>
@@ -87,6 +87,63 @@
 
   <button type="button" class="app-banner-close" onclick="dismissAppBanner()" aria-label="Zamknij" data-i18n-attr="aria-label:appBanner.close">✕</button>
 </div>
+<script>(function () {
+var banner = document.getElementById('app-banner');
+var DAY = 'kinowoAppBannerDay';
+var SNOOZE = 'kinowoAppBannerSnoozedUntil';
+var SNOOZE_MS = 24 * 60 * 60 * 1000;
+var INTERVAL_MOBILE = 1, INTERVAL_DESKTOP = 10;
+function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function set(k, v) { try { localStorage.setItem(k, v); } catch (e) { } }
+function daysBetween(from, to) {
+return Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000);
+}
+function hide() {
+banner.classList.remove('visible');
+document.body.classList.remove('has-app-banner');
+}
+window.dismissAppBanner = function () {
+set(SNOOZE, String(Date.now() + SNOOZE_MS));
+hide();
+};
+var forced = /[?&]forceAppBanner=1(&|$)/.test(location.search);
+var snoozedUntil = parseInt(get(SNOOZE) || '0', 10);
+var snoozed = Date.now() < snoozedUntil;
+var today = banner.dataset.today;
+var shownDay = get(DAY);
+var isMobile = matchMedia('(pointer: coarse)').matches;
+var intervalDays = isMobile ? INTERVAL_MOBILE : INTERVAL_DESKTOP;
+var dueByInterval = !shownDay || daysBetween(shownDay, today) >= intervalDays;
+var willShow = forced || (!snoozed && dueByInterval);
+console.log('[app-banner]', {
+today: today, shownDay: shownDay, isMobile: isMobile, intervalDays: intervalDays,
+dueByInterval: dueByInterval, snoozed: snoozed, forced: forced, willShow: willShow,
+snoozedUntil: snoozedUntil ? new Date(snoozedUntil).toISOString() : null
+});
+if (!willShow) return;
+set(DAY, today);
+var ua = navigator.userAgent;
+var isIOS = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+var isAndroid = /Android/.test(ua);
+if (isIOS || !isAndroid) document.getElementById('app-banner-ios').style.display = 'inline-flex';
+if (!isIOS) document.getElementById('app-banner-android').style.display = 'inline-flex';
+banner.classList.add('visible');
+function reserve() {
+document.documentElement.style.setProperty('--app-banner-h', banner.offsetHeight + 'px');
+}
+reserve();
+document.body.classList.add('has-app-banner');
+if (window.ResizeObserver) new ResizeObserver(reserve).observe(banner);
+if (!forced && 'getInstalledRelatedApps' in navigator) {
+navigator.getInstalledRelatedApps().then(function (apps) {
+if (apps.some(function (a) { return a.platform === 'play' && a.id === 'net.pawel.kinowo'; })) {
+console.log('[app-banner] suppressed: app already installed');
+hide();
+}
+}, function () { });
+}
+})();</script>
+ 
 
 
 <nav class="navbar px-4 py-3 d-flex align-items-center">

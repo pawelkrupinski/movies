@@ -1,18 +1,39 @@
-@()(implicit city: models.City, messages: play.api.i18n.Messages)
-@* App-promo top banner — markup only. `shared.js`'s `maybeShowAppBanner` (see
-   the "App promotion banner" section there) decides once per calendar day
-   whether to reveal it and which store badge(s) match the visitor's OS;
-   `dismissAppBanner` handles the ✕ and snoozes it for 24 hours. Starts with
-   neither badge shown (`style="display:none"`) so a JS-disabled visitor never
-   sees a banner with nothing it can act on — same reasoning as the grid-cloak
-   / swipe-hint pattern elsewhere on this page.
+@(renderedAt: java.time.LocalDateTime)(implicit city: models.City, messages: play.api.i18n.Messages)
+@* App-promo top banner — its markup AND the whole show/hide decision, which
+   runs in the inline script right after the markup: synchronously, while the
+   parser is still above the navbar, so the banner is up (and the page pushed
+   down by it) before the first paint. It used to be revealed by the deferred
+   `shared.js`, one frame after its checks — the navbar painted at the top and
+   then dropped by the banner's height, a layout shift every visitor saw.
 
-   Store URLs come from `models.ClientSupport` — the SAME record the mobile
-   apps' own update-gate reads (`GET /api/client-support`), not a duplicate
-   constant. Brand name and copy are per-country: `city.country.brandName` is
-   "Kinowo" only in Poland, "Showtimes" everywhere else (see
-   `models.Country.brandName`'s doc comment). *@
-<div id="app-banner" role="banner" aria-label="@messages("appBanner.aria", city.country.brandName)" data-i18n-attr="aria-label:appBanner.aria" data-i18n-arg0="@city.country.brandName">
+   Two independent localStorage gates decide it. The interval cap is
+   DEVICE-AWARE: a touch/coarse-pointer visitor (a phone, our best market)
+   sees it once per calendar day, a fine-pointer one (desktop) once every 10
+   days — desktop traffic is far less likely to install a phone app (Paweł's
+   call, 2026-09-14). It keys off the CITY's calendar day at render
+   (`data-today`, the server's `renderedAt` — the same day `shared.js`'s
+   `pageToday()` reads at boot, since that is `renderedAt` carried forward by
+   elapsed time) and counts days since it was last shown. The ✕ sets a
+   rolling 24h snooze from the click instant, always shorter than either
+   interval. `?forceAppBanner=1` bypasses both, and every visit logs its gate
+   state to the console (`[app-banner] {…}`) so "I don't see it" can be
+   diagnosed from the visitor's own console.
+
+   The one asynchronous check, Android Chrome's `getInstalledRelatedApps()`
+   ("is the Play app already installed?", no iOS/Safari equivalent), can
+   therefore only HIDE a banner that is already up. That hide is a shift too,
+   but only for an Android Chrome visitor who has the app installed, and it
+   resolves within the first moments of the load — deferring the banner for
+   every Android visitor instead would bring the shift back for the common
+   case.
+
+   Starts with neither badge shown (`style="display:none"`) so a JS-disabled
+   visitor never sees a banner with nothing it can act on. Store URLs come
+   from `models.ClientSupport` — the SAME record the mobile apps' own
+   update-gate reads (`GET /api/client-support`). Brand name and copy are
+   per-country: `city.country.brandName` is "Kinowo" only in Poland,
+   "Showtimes" everywhere else. *@
+<div id="app-banner" data-today="@renderedAt.toLocalDate" role="banner" aria-label="@messages("appBanner.aria", city.country.brandName)" data-i18n-attr="aria-label:appBanner.aria" data-i18n-arg0="@city.country.brandName">
   <img class="app-banner-icon" src="@routes.Assets.versioned("img/app-icon.png")" alt="@city.country.brandName" width="42" height="42">
   <div class="app-banner-text">
     <div class="app-banner-headline" data-i18n="appBanner.headline" data-i18n-arg0="@city.country.brandName">@messages("appBanner.headline", city.country.brandName)</div>
@@ -36,3 +57,77 @@
 
   <button type="button" class="app-banner-close" onclick="dismissAppBanner()" aria-label="@messages("appBanner.close")" data-i18n-attr="aria-label:appBanner.close">✕</button>
 </div>
+<script>
+(function () {
+  var banner = document.getElementById('app-banner');
+  var DAY = 'kinowoAppBannerDay';              // last calendar day it was shown
+  var SNOOZE = 'kinowoAppBannerSnoozedUntil';  // epoch ms the ✕ sets
+  var SNOOZE_MS = 24 * 60 * 60 * 1000;
+  var INTERVAL_MOBILE = 1, INTERVAL_DESKTOP = 10;   // days
+  // localStorage throws in some private modes — a missing gate just means "not set".
+  function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } }
+  // Whole days between two "YYYY-MM-DD" dates, parsed as UTC midnight so a
+  // DST transition can't shift the count by an hour and flip a day boundary.
+  function daysBetween(from, to) {
+    return Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000);
+  }
+  function hide() {
+    banner.classList.remove('visible');
+    document.body.classList.remove('has-app-banner');
+  }
+  // Wired to the ✕ button's onclick above.
+  window.dismissAppBanner = function () {
+    set(SNOOZE, String(Date.now() + SNOOZE_MS));
+    hide();
+  };
+
+  var forced        = /[?&]forceAppBanner=1(&|$)/.test(location.search);
+  var snoozedUntil  = parseInt(get(SNOOZE) || '0', 10);
+  var snoozed       = Date.now() < snoozedUntil;
+  var today         = banner.dataset.today;
+  var shownDay      = get(DAY);
+  var isMobile      = matchMedia('(pointer: coarse)').matches;
+  var intervalDays  = isMobile ? INTERVAL_MOBILE : INTERVAL_DESKTOP;
+  var dueByInterval = !shownDay || daysBetween(shownDay, today) >= intervalDays;
+  var willShow      = forced || (!snoozed && dueByInterval);
+  console.log('[app-banner]', {
+    today: today, shownDay: shownDay, isMobile: isMobile, intervalDays: intervalDays,
+    dueByInterval: dueByInterval, snoozed: snoozed, forced: forced, willShow: willShow,
+    snoozedUntil: snoozedUntil ? new Date(snoozedUntil).toISOString() : null
+  });
+  if (!willShow) return;
+  set(DAY, today);
+
+  // iPadOS has reported a plain desktop-Mac UA (no "iPad" token) since
+  // iPadOS 13's "Request Desktop Website" default — Macintosh + a touch
+  // screen is the standard way to tell it apart from an actual Mac. Can't
+  // tell (desktop, an unrecognised UA) → offer both rather than guess wrong.
+  var ua = navigator.userAgent;
+  var isIOS = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  var isAndroid = /Android/.test(ua);
+  if (isIOS || !isAndroid) document.getElementById('app-banner-ios').style.display = 'inline-flex';
+  if (!isIOS) document.getElementById('app-banner-android').style.display = 'inline-flex';
+  banner.classList.add('visible');
+
+  // The page is pushed down by the banner's real height, not a constant: the
+  // copy varies per locale and can wrap on a narrow phone. Measured now (a
+  // synchronous layout, still before the first paint) and kept in step when
+  // a font load or a language switch re-wraps it.
+  function reserve() {
+    document.documentElement.style.setProperty('--app-banner-h', banner.offsetHeight + 'px');
+  }
+  reserve();
+  document.body.classList.add('has-app-banner');
+  if (window.ResizeObserver) new ResizeObserver(reserve).observe(banner);
+
+  if (!forced && 'getInstalledRelatedApps' in navigator) {
+    navigator.getInstalledRelatedApps().then(function (apps) {
+      if (apps.some(function (a) { return a.platform === 'play' && a.id === 'net.pawel.kinowo'; })) {
+        console.log('[app-banner] suppressed: app already installed');
+        hide();
+      }
+    }, function () { /* a detection error must never hide the nudge */ });
+  }
+})();
+</script>

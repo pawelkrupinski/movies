@@ -5,7 +5,7 @@
    its `@_appBanner()` markup, wrapped in `@_minified` there — NOT folded
    into `_sharedStyles` itself, since /movie, /browse, /tune etc. call that
    too but never render the banner and would ship this dead otherwise.
-   `--app-banner-h` is set at runtime by `maybeShowAppBanner` (shared.js)
+   `--app-banner-h` is set at runtime by `_appBanner`'s inline script
    from the banner's actual rendered height — not hardcoded — because the
    headline/subtitle length varies per locale (German runs noticeably
    longer than Polish) and can wrap on a narrow phone. *@

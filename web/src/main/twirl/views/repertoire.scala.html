@@ -35,7 +35,7 @@
 </head>
 <body>
 
-@_appBanner()
+@_minified(minifier) { @_appBanner(renderedAt) }
 @_navbar(devMode, oauthProviders)
 @_loginModal(oauthProviders)
 @_hiddenModal()
