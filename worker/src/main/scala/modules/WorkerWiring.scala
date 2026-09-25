@@ -46,7 +46,7 @@ class WorkerWiring(
     injectedBackgroundBudget: ExecutionBudget = WorkerWiring.backgroundBudgetFrom(Env.fromProcess()),
     // ONE shared `MongoClient` across countries: each country binds its OWN
     // database view (`country.mongoDb`) on this single client. `None` → this
-    // wiring builds (and closes) its own client from `MONGODB_URI`, the
+    // wiring builds (and closes) its own client at its `mongoAddress`, the
     // single-connection default.
     sharedMongoClient: Option[MongoClient] = None,
     // The process-wide worker metrics bundle (ONE registry + one set of metric

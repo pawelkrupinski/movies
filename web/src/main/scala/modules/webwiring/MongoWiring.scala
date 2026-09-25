@@ -19,8 +19,9 @@ trait MongoWiring { self: Wiring =>
 
   // ONE MongoClient behind every database view this process opens — this
   // country's corpus, and the shared users database below when that is a
-  // different one. Built here, once, so the second view BORROWS this pool: a client per view is a second connection
-  // pool, Netty event loop and replica-set monitor thread set, which is the RSS
+  // different one. Built here, once, so the second view BORROWS this pool: a
+  // client per view is a second connection pool, Netty event loop and
+  // replica-set monitor thread set, which is the RSS
   // blow-up `MongoConnection` was written to avoid. `None` when the address names
   // no cluster — then there is no pool to share and each connection degrades on its
   // own, exactly as before. Owned by the root: `stop()` closes it after the
