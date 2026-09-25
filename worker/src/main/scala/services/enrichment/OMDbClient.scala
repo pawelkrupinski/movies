@@ -3,7 +3,7 @@ package services.enrichment
 import play.api.libs.json._
 import services.movies.SamePerson
 import services.resolution.{TitleMatch, YearWindow}
-import tools.{Env, HttpFetch, TextNormalization}
+import tools.{HttpFetch, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -30,7 +30,9 @@ import scala.util.Try
  * Feature gate: the `OMDB_API_KEY` secret. Unset → every method short-circuits
  * to `None` WITHOUT any HTTP call (the TmdbClient pattern).
  */
-class OMDbClient(http: HttpFetch, apiKey: => Option[String] = OMDbClient.ApiKey) {
+// `apiKey` is OMDB_API_KEY — defaulted from the process for tools and specs; the
+// worker wiring passes its composition root's Env's value. Unset turns the backfill off.
+class OMDbClient(http: HttpFetch, apiKey: Option[String] = tools.Env.fromProcess().get("OMDB_API_KEY")) {
   import OMDbClient._
 
   /** Resolve an IMDb id for a film. Tries each title spelling in turn (pass the
@@ -114,8 +116,6 @@ object OMDbClient {
   private val MaxCandidates = 5
   private val YearTolerance = 1
 
-  /** Feature flag: the backfill is OFF whenever this is unset. */
-  val ApiKey: Option[String] = Env.get("OMDB_API_KEY")
 
   /** One OMDb film candidate — imdb id + (normalised-later) title, year, directors. */
   private[enrichment] case class Candidate(imdbId: String, title: String, year: Option[Int], directors: Set[String])

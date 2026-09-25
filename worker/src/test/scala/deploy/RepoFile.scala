@@ -136,7 +136,7 @@ object RepoFile {
    *
    *  Read from its k3s overlay, which is the live deploy path — every `main.yml`
    *  WORKER leg is `enabled: false`, and the newest country never had a fly toml. This
-   *  is the only place a country's sweep rate exists: `Freshness.defaultScrapeTtl`
+   *  is the only place a country's sweep rate exists: `Freshness.scrapeTtlFrom`
    *  reads the env var at runtime and `WorkerWiring` captures it once, so no
    *  `Country` field and no running-JVM test can reach it. */
   def deployedFreshnessMinutes(cc: String): Option[Int] =

@@ -261,7 +261,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       Seq("drafthouse.com", "www.showcasecinemas.com", "www.landmarktheatres.com")
     chainHosts.foreach { host =>
       withClue(s"$host has no HostPolicy pace row, so it is UNPACED: ") {
-        _root_.tools.RateLimitedHttpFetch.configuredInterval(s"https://$host/") should not be empty
+        _root_.tools.RateLimitedHttpFetch.configuredInterval(_root_.tools.Env.of())(s"https://$host/") should not be empty
       }
     }
   }

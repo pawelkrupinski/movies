@@ -24,7 +24,7 @@ object SnapshotProdTitlesToFixture {
   private val Out = Paths.get("common/src/test/resources/fixtures/prod-movies/titles.txt")
 
   def main(args: Array[String]): Unit = {
-    val connection = MongoConnection.fromEnv(required = true)
+    val connection = MongoConnection.fromEnv(required = true, tools.Env.fromProcess())
     val repository = new MongoMovieRepository(connection.database, normalizer = titleNormalizer)
     try {
       val records = repository.findAll()

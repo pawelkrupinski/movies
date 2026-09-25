@@ -1,6 +1,7 @@
 package models
 
 import java.util.Locale
+import tools.Env
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.Inspectors.forAll
@@ -574,22 +575,13 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   }
 
   "Country.resolvedDbName" should "prefer an explicit MONGODB_DB over the country default" in {
-    // Only meaningful when nothing already supplies MONGODB_DB from the ambient
-    // environment (env var / .env.local); skip otherwise to stay deterministic.
-    if (System.getenv("MONGODB_DB") == null && tools.Env.get("MONGODB_DB").isEmpty) {
-      val prev = System.getProperty("MONGODB_DB")
-      try {
-        System.setProperty("MONGODB_DB", "kinowo_override_probe")
-        Country.resolvedDbName shouldBe "kinowo_override_probe"
-      } finally {
-        if (prev == null) System.clearProperty("MONGODB_DB") else System.setProperty("MONGODB_DB", prev)
-      }
-    }
+    Country.resolvedDbName(Env.of("MONGODB_DB" -> "kinowo_override_probe", "KINOWO_COUNTRY" -> "uk")) shouldBe
+      "kinowo_override_probe"
   }
 
-  it should "fall back to the process country's database when MONGODB_DB is unset" in {
-    if (tools.Env.get("MONGODB_DB").isEmpty)
-      Country.resolvedDbName shouldBe Country.fromEnv.mongoDb
+  it should "fall back to the configured country's database when MONGODB_DB is unset" in {
+    Country.resolvedDbName(Env.of("KINOWO_COUNTRY" -> "uk")) shouldBe Country.UnitedKingdom.mongoDb
+    Country.resolvedDbName(Env.of()) shouldBe Country.default.mongoDb
   }
 
   /** The `users` + `userStates` collections are the ONE thing four country
@@ -624,20 +616,11 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   }
 
   "Country.usersDbName" should "read MONGODB_USERS_DB from the environment" in {
-    if (tools.Env.get("MONGODB_USERS_DB").isEmpty) {
-      val prev = System.getProperty("MONGODB_USERS_DB")
-      try {
-        System.setProperty("MONGODB_USERS_DB", "kinowo_users_probe")
-        Country.usersDbName shouldBe "kinowo_users_probe"
-      } finally {
-        if (prev == null) System.clearProperty("MONGODB_USERS_DB") else System.setProperty("MONGODB_USERS_DB", prev)
-      }
-    }
+    Country.usersDbName(Env.of("MONGODB_USERS_DB" -> "kinowo_users_probe")) shouldBe "kinowo_users_probe"
   }
 
   it should "fall back to this deployment's own database when it is unset" in {
-    if (tools.Env.get("MONGODB_USERS_DB").isEmpty)
-      Country.usersDbName shouldBe Country.resolvedDbName
+    Country.usersDbName(Env.of("KINOWO_COUNTRY" -> "de")) shouldBe Country.Germany.mongoDb
   }
 
   /** The two deployments name their country through DIFFERENT env vars — web

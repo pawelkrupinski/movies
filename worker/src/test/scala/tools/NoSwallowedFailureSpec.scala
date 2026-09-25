@@ -117,7 +117,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("common/src/main/scala/services/titlerules/TitleRule.scala", "compiled",
       "try Some(new Regex(pattern)) catch { case _: Throwable => None }") ->
       "an invalid (half-typed) pattern disables only its own rule, and is surfaced to the editor through patternValid",
-    ("common/src/main/scala/tools/Env.scala", "fileVars",
+    ("common/src/main/scala/tools/Env.scala", "readVarsFile",
       "Try {") ->
       ".env.local is a developer convenience: absent or unreadable means no local overrides",
     ("common/src/main/scala/tools/MonitoringHttpFetch.scala", "classify",

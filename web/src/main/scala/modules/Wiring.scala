@@ -31,11 +31,16 @@ trait Wiring
   // in `AppComponents`. Loads `conf/messages` (Polish default) + `messages.en`.
   def messagesApi: play.api.i18n.MessagesApi
 
+  // The process's config (env vars + admin overrides), built once by `AppLoader`.
+  // Every knob in the web wiring is read through it; EnvConfigService installs the
+  // override source into it.
+  def env: tools.Env
+
   // The ONE country this deployment serves, read from the environment here and nowhere
   // else in the wiring: every component that differs by country takes it from this
   // member, so a test wiring overrides it to boot another country's site (see
   // CountryIsolationMatrixSpec) instead of mutating the process environment.
-  lazy val country: models.Country = models.Country.fromEnv
+  lazy val country: models.Country = models.Country.fromEnv(env)
 
   // The one wall clock the serving app reads. Everything that asks "what time is it" takes
   // it by constructor; a test wiring overrides it to pin the time.

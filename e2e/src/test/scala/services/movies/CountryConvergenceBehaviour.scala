@@ -1,7 +1,6 @@
 package services.movies
 
 
-import clients.TmdbClient
 import controllers.MovieControllerService
 import models.{Cinema, CinemaMovie, Country, MovieRecord}
 import org.mongodb.scala.MongoClient
@@ -210,7 +209,7 @@ abstract class CountryConvergenceBehaviour(
    * never a guess.
    */
   private lazy val enrichmentCacheStore: FileEnrichmentCacheStore = {
-    if (TmdbClient.ApiKey.isEmpty)
+    if (_root_.tools.Env.fromProcess().get("TMDB_API_KEY").isEmpty)
       throw new IllegalStateException(
         s"TMDB_API_KEY is not set, so ${country.displayName} would resolve nothing: TmdbClient.search " +
         "short-circuits on a missing key without reaching the fixture tree at all. Symlink .env.local into " +

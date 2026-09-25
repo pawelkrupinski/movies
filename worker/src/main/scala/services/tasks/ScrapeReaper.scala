@@ -53,7 +53,7 @@ class ScrapeReaper(
   // phase-spread across it so all ~300 don't fall due together). The SAME instance
   // must back `ScrapeCinemaHandler` so this enqueue gate and that pickup re-gate
   // agree on what's due — see [[DueWindow]].
-  dueWindow: DueWindow = new DueWindow(Freshness.defaultScrapeTtl),
+  dueWindow: DueWindow = new DueWindow(Freshness.DefaultScrapeTtl),
   interval:  FiniteDuration = 1.minute,
   // A small extra spacing before the (now post-hydrate) first tick, so it doesn't
   // land on the same instant as the cache hydrate finishing. Defaults to 0 so the

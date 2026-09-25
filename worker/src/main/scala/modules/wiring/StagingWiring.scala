@@ -4,7 +4,6 @@ import modules.WorkerWiring
 import services.events.StagingFilmEnriched
 import services.staging.{FoldOnStagingEnriched, MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import services.tasks.TaskHandler
-import tools.Env
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
@@ -39,8 +38,8 @@ trait StagingWiring { self: WorkerWiring =>
     new StagingResolveImdbIdHandler(stagingSteps),
     new StagingFoldHandler(title => eventBus.publish(StagingFilmEnriched(title)))
   )
-  private val StagingReaperInitialDelay = Env.positiveLong("KINOWO_STAGING_PROMOTE_INITIAL_SECONDS", 30L)
-  private val StagingReaperInterval     = Env.positiveLong("KINOWO_STAGING_PROMOTE_SECONDS", 120L)
+  private val StagingReaperInitialDelay = env.positiveLong("KINOWO_STAGING_PROMOTE_INITIAL_SECONDS", 30L)
+  private val StagingReaperInterval     = env.positiveLong("KINOWO_STAGING_PROMOTE_SECONDS", 120L)
   lazy val stagingReaper = new StagingReaper(stagingSteps, taskQueue, stagingRepository,
     interval     = FiniteDuration(StagingReaperInterval, TimeUnit.SECONDS),
     initialDelay = FiniteDuration(StagingReaperInitialDelay, TimeUnit.SECONDS),

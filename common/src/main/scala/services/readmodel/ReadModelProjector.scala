@@ -55,7 +55,10 @@ class ReadModelProjector(
   // How long a brand-new card may be held back waiting for its share card before it is published
   // anyway, with the fallback image and `shareCardPending` set. Never indefinitely.
   firstCardHold: scala.concurrent.duration.FiniteDuration = ReadModelProjector.DefaultFirstCardHold,
-  clock:     java.time.Clock = java.time.Clock.systemUTC()
+  clock:     java.time.Clock = java.time.Clock.systemUTC(),
+  // The process config its prune cadence and content-check slicing are read from.
+  // Defaulted for specs; the worker wiring passes its composition root's instance.
+  env:       Env = Env.fromProcess()
 ) extends Stoppable with Logging {
   // The projection keys rows by the repository's own `_id` formula, so it must
   // fold titles with the same rules the repository writes under — take them from
@@ -118,10 +121,10 @@ class ReadModelProjector(
   // drops must clear within a tick). The expensive full re-projection is no longer
   // scheduled at all (the resume-token change stream made it redundant — see the class
   // doc); it survives only as the explicit `reconcile()` seed/backfill primitive.
-  private val PruneSeconds = Env.positiveLong("KINOWO_READMODEL_PRUNE_SECONDS", 1800L)      // 30 min
+  private val PruneSeconds = env.positiveLong("KINOWO_READMODEL_PRUNE_SECONDS", 1800L)      // 30 min
   // Deferred off the boot path — running a full scan synchronously at `start()` stacked a
   // second scan onto the cache hydrate + first scrape on a cold JVM (the boot CPU drain).
-  private val PruneBootDelaySeconds = Env.positiveLong("KINOWO_READMODEL_PRUNE_BOOT_DELAY_SECONDS", 300L)
+  private val PruneBootDelaySeconds = env.positiveLong("KINOWO_READMODEL_PRUNE_BOOT_DELAY_SECONDS", 300L)
 
   /** How many prune sweeps it takes to re-project the whole corpus once — the ROLLING
    *  CONTENT CHECK. Every backstop before it compared IDS: the prune removes a card whose
@@ -134,7 +137,7 @@ class ReadModelProjector(
    *  drifted; at 48 slices on a 30-minute sweep the whole corpus is verified once a day. */
   //  Read per sweep, so an override applies without a restart: 1 re-projects the whole
   //  corpus on the next sweep — the way to push a derivation change out at once.
-  private def contentSlices: Int = Env.positiveInt("KINOWO_READMODEL_CONTENT_SLICES", 48)
+  private def contentSlices: Int = env.positiveInt("KINOWO_READMODEL_CONTENT_SLICES", 48)
   // Numbered by the clock, not from zero: a counter each process starts afresh checks
   // slice 0 again after every deploy, and on a day of hourly deploys the rest of the corpus
   // was never reached. Counting on from the clock keeps the next process on the next slice.
@@ -824,7 +827,12 @@ object ReadModelProjector {
    *  composite, so this covers a cold one with room to spare while keeping a new film's first
    *  appearance close to its scrape. */
   val DefaultFirstCardHold: scala.concurrent.duration.FiniteDuration =
-    scala.concurrent.duration.Duration(Env.positiveLong("KINOWO_SHARE_CARD_FIRST_HOLD_SECONDS", 120L), TimeUnit.SECONDS)
+    scala.concurrent.duration.Duration(120L, TimeUnit.SECONDS)
+
+  /** `KINOWO_SHARE_CARD_FIRST_HOLD_SECONDS` from `env`, else [[DefaultFirstCardHold]]. */
+  def firstCardHoldFrom(env: Env): scala.concurrent.duration.FiniteDuration =
+    scala.concurrent.duration.Duration(
+      env.positiveLong("KINOWO_SHARE_CARD_FIRST_HOLD_SECONDS", DefaultFirstCardHold.toSeconds), TimeUnit.SECONDS)
 
   /** How many row ids one heal line names before it summarises the rest. */
   private[readmodel] val LoggedIdsPerLine = 20

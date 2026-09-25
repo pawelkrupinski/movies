@@ -103,8 +103,10 @@ class CinemaScraperCatalog(
    *  a shared one. */
   def this(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
            titles: TitleNormalizer = TitleNormalizer.forCountry(Country.default)) =
-    this(http, MultikinoClient.fetchFor(http, ZyteFallback.newHttpClient()), ZyteFallback.fetchFor(http, ZyteFallback.newHttpClient()), today,
-      (_, h, ttl) => new CachingDetailFetch(h, ttl), zyteFetch = ZyteFallback.fetchFor(http, ZyteFallback.newHttpClient()),
+    this(http, MultikinoClient.fetchFor(http, ZyteFallback.newHttpClient(), tools.Env.fromProcess()),
+      ZyteFallback.fetchFor(http, ZyteFallback.newHttpClient(), tools.Env.fromProcess()), today,
+      (_, h, ttl) => new CachingDetailFetch(h, ttl),
+      zyteFetch = ZyteFallback.fetchFor(http, ZyteFallback.newHttpClient(), tools.Env.fromProcess()),
       // No residential proxy outside WorkerWiring — a diagnostic runs from a
       // developer's own (unblocked) IP, so plain `http` is the right default.
       flicksFetch = http, vueFetch = http, odeonFetch = http,

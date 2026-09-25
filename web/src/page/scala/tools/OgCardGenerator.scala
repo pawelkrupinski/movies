@@ -134,7 +134,7 @@ object OgCardGenerator {
     }
 
   def main(args: Array[String]): Unit = {
-    val country = Country.fromEnv
+    val country = Country.fromEnv(tools.Env.fromProcess())
     val baseUrl = sys.env.getOrElse("KINOWO_OG_BASE", country.ogOrigin).stripSuffix("/")
     val outDir  = Paths.get(sys.env.getOrElse("KINOWO_OG_OUT", "web/src/main/assets/img"))
     Files.createDirectories(outDir)

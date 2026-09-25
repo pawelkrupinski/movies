@@ -8,7 +8,7 @@ import scala.concurrent.duration._
  * ([[ScrapeCadenceSustainabilitySpec]]) can't drift apart.
  *
  * The reaper ticks once a minute and enqueues the cinemas due under the shared
- * [[DueWindow]] (period = `Freshness.defaultScrapeTtl`, the scrape freshness
+ * [[DueWindow]] (period = `Freshness.scrapeTtlFrom`, the scrape freshness
  * window). The ~1150-cinema corpus (PL + the nationwide UK Flicks roster + DE) is
  * phase-spread across that window, so the steady-state due rate is
  * `corpus / ticksPerWindow` (~19/tick at the 60-min window). The caps only bite

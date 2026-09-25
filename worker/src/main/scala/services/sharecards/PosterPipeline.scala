@@ -254,14 +254,14 @@ trait PosterShrinker {
  * is absent or cannot read the format at all.
  *
  * THE CHILD SHARES THE WORKER CONTAINER'S MEMORY CGROUP, whose JVM already sits at 700-850 MB of a
- * 960 MiB limit (PL/UK; ES 896 MiB). So a poster may cost the child at most [[PosterPipeline.DecodeMemoryCapMb]]
+ * 960 MiB limit (PL/UK; ES 896 MiB). So a poster may cost the child at most [[PosterPipeline.decodeMemoryCapMbFrom]]
  * of address space (`ulimit -v`, one malloc arena, no core dump): an overrun kills the child —
  * libjpeg aborts "Insufficient memory" — and never the container. Measured in the worker image
  * (Debian libvips 8.18, 2026-09-24): a 780-wide TMDB poster needs ~160 MB of address space and ~45
  * MB resident; a 96-megapixel baseline JPEG 256 MB, a 96-megapixel progressive one more than 1.5 GB
  * (360 MB resident). Vips streams a baseline JPEG, but a PROGRESSIVE one holds every DCT
  * coefficient of the whole image to its last scan, so its header ([[JpegHeader.coefficientBytes]])
- * says in advance whether it can fit: over [[PosterPipeline.ProgressiveCoefficientBudget]] it is
+ * says in advance whether it can fit: over [[PosterPipeline.progressiveCoefficientBudget]] it is
  * refused without spawning anything, and the caller tries the next-smaller rendition. The cap is
  * 256 MB because ordinary posters are progressive at full chroma resolution: measured, a 2764×4096
  * 4:4:4 (68 MB of coefficients) fits 224 MB of address space at 108 MB resident, 3000×4500 4:4:4
@@ -281,14 +281,14 @@ trait PosterShrinker {
  */
 class VipsPosterShrinker(
   binary:        Option[String] = VipsPosterShrinker.locate(),
-  memoryCapMb:   Long           = PosterPipeline.DecodeMemoryCapMb,
+  memoryCapMb:   Long           = PosterPipeline.DefaultDecodeMemoryCapMb,
   timeoutMillis: Long           = 30000L,
   val gate:      PosterDecodeGate = VipsPosterShrinker.newGate()
 ) extends PosterShrinker with Logging {
 
   def coverSlot(file: Path): Either[String, BufferedImage] =
     JpegHeader.read(file) match {
-      case Some(header) if header.progressive && header.coefficientBytes > PosterPipeline.ProgressiveCoefficientBudget =>
+      case Some(header) if header.progressive && header.coefficientBytes > PosterPipeline.progressiveCoefficientBudget(memoryCapMb) =>
         Left(PosterFailure.ProgressiveEstimate)
       case _ => gate.withPermit(binary.fold(javaDecode(file))(vips(_, file)))
     }
@@ -352,13 +352,17 @@ object PosterPipeline {
   val MaxDownloadBytes: Long = 50L * 1024 * 1024
 
   /** The vips child's address-space cap — see [[VipsPosterShrinker]] for the measurements. */
-  val DecodeMemoryCapMb: Long = tools.Env.positiveLong("KINOWO_SHARE_CARD_DECODE_MEMORY_MB", 256L)
+  val DefaultDecodeMemoryCapMb: Long = 256L
+
+  /** `KINOWO_SHARE_CARD_DECODE_MEMORY_MB` from `env`, else [[DefaultDecodeMemoryCapMb]]. */
+  def decodeMemoryCapMbFrom(env: tools.Env): Long =
+    env.positiveLong("KINOWO_SHARE_CARD_DECODE_MEMORY_MB", DefaultDecodeMemoryCapMb)
 
   /** The largest progressive JPEG coefficient buffer sent to vips: the cap less the ~170 MB of
    *  address space vips needs around the buffer (measured under a `ulimit -v`: 68 MB of coefficients
    *  fit 224 MB, 81 MB fit 256 MB, 110 MB needed 320 MB). 86 MB at the 256 MB cap: an 11 MP poster
    *  at 4:4:4 is 68 MB, a 2000×3000 4:2:0 one 18 MB; 96 megapixels is 290-580 MB. */
-  val ProgressiveCoefficientBudget: Long = (DecodeMemoryCapMb - 170L).max(16L) * 1024 * 1024
+  def progressiveCoefficientBudget(memoryCapMb: Long): Long = (memoryCapMb - 170L).max(16L) * 1024 * 1024
 
   /** JPEG at 0.95 for the poster cache, not PNG: measured on two real 420×630 TMDB slots, PNG
    *  stored 520-620 KB each and q95 116-152 KB — at ~2,000 posters a country, PNG alone would

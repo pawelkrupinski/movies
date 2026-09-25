@@ -355,19 +355,19 @@ object HostPolicies {
    *  `paceKnob` flip on `/admin/config` takes effect without a worker restart.
    *  The read is a map lookup against the override cache — cheap enough to sit
    *  on the request path, and it only runs for the few hosts that are paced. */
-  def requestIntervalFor(url: String): Option[Duration] =
-    policyFor(url).flatMap(tunedInterval)
+  def requestIntervalFor(url: String, env: Env): Option[Duration] =
+    policyFor(url).flatMap(tunedInterval(_, env))
 
   /** A policy's live pace: its knob's current value if it names one, else the
-   *  compiled-in default. `Env.positiveLong` ignores a non-positive or
+   *  compiled-in default. `env.positiveLong` ignores a non-positive or
    *  unparseable override, so a fat-fingered `0` falls back to the default
    *  rather than silently unpacing a host we know we out-run. */
-  private def tunedInterval(policy: HostPolicy): Option[Duration] =
+  private def tunedInterval(policy: HostPolicy, env: Env): Option[Duration] =
     policy.paceKnob match {
       case None      => policy.minRequestInterval
       case Some(key) =>
         val compiledIn = policy.minRequestInterval.map(_.toMillis).getOrElse(0L)
-        Some(Duration.ofMillis(Env.positiveLong(key, compiledIn)))
+        Some(Duration.ofMillis(env.positiveLong(key, compiledIn)))
     }
 
   /** The connect (TCP+TLS handshake) budget for `url`: the matching host policy's,

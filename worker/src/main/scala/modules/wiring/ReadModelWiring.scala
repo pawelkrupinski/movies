@@ -13,5 +13,5 @@ trait ReadModelWiring { self: WorkerWiring =>
   // `InMemoryReadModelRepository` (Mongo-free fixture replay).
   lazy val readModelRepository: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(mongoConnection.database, decodeFailures = taskMetrics)
   lazy val readModelProjector = new ReadModelProjector(movieRepository, readModelRepository, readModelRepository, taskMetrics,
-    shareCards = shareCardLedger, clock = clock)
+    shareCards = shareCardLedger, firstCardHold = ReadModelProjector.firstCardHoldFrom(env), clock = clock, env = env)
 }

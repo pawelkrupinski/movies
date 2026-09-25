@@ -11,7 +11,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  *  `enabled`); closing the store closes its connection. */
 object AmbientMovieRepository {
   def open(): MongoMovieRepository = {
-    val connection = MongoConnection.fromEnv(required = false)
+    val connection = MongoConnection.fromEnv(required = false, tools.Env.fromProcess())
     new MongoMovieRepository(connection.database, normalizer = titleNormalizer) {
       override def close(): Unit = try super.close() finally connection.close()
     }

@@ -5,7 +5,7 @@ import models.Country
 import org.mongodb.scala.MongoClient
 import play.api.Logging
 import services.MongoConnection
-import tools.{Env, ExecutionBudget, SharedExecutionBudget}
+import tools.{Env, ExecutionBudget}
 
 import java.net.InetSocketAddress
 import java.time.Instant
@@ -46,7 +46,11 @@ object WorkerMain extends Logging {
     // countries draw run permits from one cap and reuse one connection pool /
     // monitor-thread set — each country still keeps its OWN event bus and its OWN
     // per-country database view on that shared client.
-    val countries    = resolveCountries()
+    // The process's config — env vars, `.env.local`, and (once each wiring's
+    // EnvConfigService starts) the admin overrides. Built ONCE here and handed to
+    // every country's wiring, so a flip reaches all of them.
+    val env          = Env.fromProcess()
+    val countries    = resolveCountries(env)
     // Refuse a configuration this process cannot normalise correctly, before any
     // wiring touches the corpus.
     unsupportedCountries(countries).foreach { why =>
@@ -54,16 +58,15 @@ object WorkerMain extends Logging {
       health.stop(0)
       sys.exit(1)
     }
-    val sharedBudget: ExecutionBudget =
-      new SharedExecutionBudget(Env.positiveInt("KINOWO_BG_CONCURRENCY", 4))
-    val sharedClient: Option[MongoClient] = MongoConnection.sharedClientFromEnv()
+    val sharedBudget: ExecutionBudget = WorkerWiring.backgroundBudgetFrom(env)
+    val sharedClient: Option[MongoClient] = MongoConnection.sharedClientFromEnv(env)
     // ONE metrics bundle for the whole JVM: a single Prometheus registry + one set
     // of metric objects (each tagged with a `country` label), shared by every
     // country's wiring. This is what fixes the earlier "primary country's registry
     // only, others headless" gap — every country writes its own `country="…"` slice
     // and ALL of them surface on the single /metrics endpoint below.
     val workerMetrics = new services.metrics.WorkerMetrics(
-      countries.map(_.code), Env.positiveInt("KINOWO_WORKER_POOL_SIZE", 4))
+      countries.map(_.code), env.positiveInt("KINOWO_WORKER_POOL_SIZE", 4))
     // ONE poster-shrink gate for the JVM: the vips child it bounds shares the pod's
     // memory cgroup with every country's renders.
     val posterShrinkGate = services.sharecards.VipsPosterShrinker.newGate()
@@ -71,7 +74,7 @@ object WorkerMain extends Logging {
 
     val wirings =
       try {
-        val ws = countries.map(c => new WorkerWiring(c, sharedBudget, sharedClient, Some(workerMetrics), posterShrinkGate))
+        val ws = countries.map(c => new WorkerWiring(c, sharedBudget, sharedClient, Some(workerMetrics), posterShrinkGate, env))
         // Open (and so claim — `MongoConnection.forCountry`) every country's database
         // before any wiring starts, so a mismatch refuses the whole boot up front.
         ws.foreach(_.mongoConnection)
@@ -79,7 +82,7 @@ object WorkerMain extends Logging {
         workerMetrics.start() // process-level JVM/native samplers, once
         // Process-wide secrets, so reported once rather than per country: gauge + WARN for
         // any integration a missing one has quietly switched off.
-        val integrations = modules.wiring.WorkerIntegrations.features(Env.get)
+        val integrations = modules.wiring.WorkerIntegrations.features(env.get)
         workerMetrics.envGatedFeatures.recordIntegrations(integrations)
         services.metrics.EnvGatedFeature.disabledWarning("integration", integrations).foreach(w => logger.warn(w))
         ws
@@ -142,8 +145,8 @@ object WorkerMain extends Logging {
    *  deploy needs no new env var. Unknown codes are logged and skipped; an empty
    *  or all-unknown list falls back to the default so the worker never boots with
    *  zero countries. */
-  private def resolveCountries(): Seq[Country] = {
-    val codes = Env.get("KINOWO_COUNTRIES")
+  private def resolveCountries(env: Env): Seq[Country] = {
+    val codes = env.get("KINOWO_COUNTRIES")
       .map(_.split(",").iterator.map(_.trim).filter(_.nonEmpty).toList)
       .filter(_.nonEmpty)
       .getOrElse(List(Country.default.code))

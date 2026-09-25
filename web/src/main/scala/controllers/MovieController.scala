@@ -171,6 +171,10 @@ class MovieController( cc: ControllerComponents,
                        // (`Minifier.forMode`), so its memo caches live and die
                        // with the wiring rather than the JVM.
                        minifier: tools.Minifier,
+                       // The `fb:app_id` the OG block emits (None skips it). A
+                       // function read per render rather than a value fixed at
+                       // boot, so a live config change reaches the page.
+                       fbAppId: () => Option[String],
                      ) extends AbstractController(cc) with Logging {
 
   // The deployment's own, and ONLY, language. Every visitor gets this same
@@ -343,7 +347,7 @@ class MovieController( cc: ControllerComponents,
       pageTitle       = meta.title,
       pageDescription = meta.description,
       pageUrl         = PageMeta.canonicalUrl(request),
-      fbAppId         = PageMeta.fbAppId,
+      fbAppId         = fbAppId(),
       // og:url keeps the filtered request URL (so a shared filtered link
       // previews the filter), but the canonical folds `/{city}/movies` and every
       // `?filter` variation back to the bare listing.
@@ -361,7 +365,7 @@ class MovieController( cc: ControllerComponents,
     Ok(views.html.browse(
       films, heading, minifier, oauthProviders,
       pageUrl = PageMeta.canonicalUrl(request),
-      fbAppId = PageMeta.fbAppId,
+      fbAppId = fbAppId(),
       // A FACET IS UI STATE, NOT A PAGE. `?cast=` alone is one URL per cast
       // member per city, so the set of these is combinatorial rather than
       // merely large, and every one of them is a near-duplicate of the city

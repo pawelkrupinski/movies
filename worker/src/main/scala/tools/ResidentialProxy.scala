@@ -20,8 +20,8 @@ object ResidentialProxy {
 
   /** The configured proxy, or None when host/ports (file) or user/pass (env) are
    *  absent — in which case the caller keeps the Zyte/direct egress. */
-  def fromEnv(): Option[RealHttpFetch.ProxyConfig] =
-    fromConfig(loadProperties(PropertiesResource), Env.get("KINOWO_PROXY_USER"), Env.get("KINOWO_PROXY_PASS"))
+  def fromEnv(env: Env): Option[RealHttpFetch.ProxyConfig] =
+    fromConfig(loadProperties(PropertiesResource), env.get("KINOWO_PROXY_USER"), env.get("KINOWO_PROXY_PASS"))
 
   private[tools] def fromConfig(
     props:    Properties,

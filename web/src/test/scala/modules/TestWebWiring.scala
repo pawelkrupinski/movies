@@ -12,6 +12,9 @@ import play.api.test.Helpers.stubControllerComponents
  *  the worker writes it, so boot's hydrate has production's single fill path.
  *  Override any member by name for what a spec needs to pin (the clock, a provider). */
 class TestWebWiring(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty) extends Wiring {
+  // The process environment, like a production boot; a spec pins a knob by
+  // overriding this with `Env.of(...)`.
+  lazy val env: tools.Env = tools.Env.fromProcess()
   // A connection with no URI never dials Mongo; `required = false` keeps the
   // disabled state a silent no-op rather than a boot failure.
   override lazy val mongoConnection: MongoConnection =

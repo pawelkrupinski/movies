@@ -3,7 +3,6 @@ package modules.webwiring
 import modules.Wiring
 import play.api.Mode
 import services.MongoConnection
-import tools.Env
 
 /** ── Mongo ─────────────────────────────────────────────────────────────────
  *  The one `MongoClient` this process opens, and the two database views on it:
@@ -14,7 +13,7 @@ trait MongoWiring { self: Wiring =>
   // (opt back into silent-degrade with MONGODB_OPTIONAL=true) — see
   // `MongoConnection`.
   protected lazy val mongoRequired: Boolean = {
-    val optedOut = Env.flag("MONGODB_OPTIONAL")
+    val optedOut = env.flag("MONGODB_OPTIONAL")
     MongoConnection.isRequired(environmentMode == Mode.Test, optedOut)
   }
 
@@ -29,10 +28,10 @@ trait MongoWiring { self: Wiring =>
   // connections that borrowed it, since their own close() deliberately leaves it
   // alone.
   protected lazy val mongoSharedClient: Option[org.mongodb.scala.MongoClient] =
-    MongoConnection.sharedClientFromEnv()
+    MongoConnection.sharedClientFromEnv(env)
 
   lazy val mongoConnection: MongoConnection =
-    MongoConnection.fromEnvForDb(models.Country.dbNameFor(country), mongoRequired, sharedClient = mongoSharedClient)
+    MongoConnection.fromEnvForDb(models.Country.dbNameFor(country, env), mongoRequired, env, sharedClient = mongoSharedClient)
 
   // ── Users ─────────────────────────────────────────────────────────────────
   // `users` + `userStates` come off `Country.usersDbName` rather than this
@@ -46,8 +45,8 @@ trait MongoWiring { self: Wiring =>
   // connection object serves both — no second boot probe of a database we are
   // already talking to.
   lazy val usersConnection: MongoConnection = Wiring.usersConnection(
-    ownDbName   = models.Country.resolvedDbName,
-    usersDbName = models.Country.usersDbName,
+    ownDbName   = models.Country.resolvedDbName(env),
+    usersDbName = models.Country.usersDbName(env),
     own         = mongoConnection,
-    openUsers   = MongoConnection.fromEnvForDb(_, mongoRequired, sharedClient = mongoSharedClient))
+    openUsers   = MongoConnection.fromEnvForDb(_, mongoRequired, env, sharedClient = mongoSharedClient))
 }

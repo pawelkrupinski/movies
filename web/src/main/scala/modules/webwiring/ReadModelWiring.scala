@@ -5,7 +5,6 @@ import modules.Wiring
 import services.MongoConnection
 import services.movies.{MongoMovieRepository, MovieRepository}
 import services.readmodel.{MongoReadModelRepository, ReadModelReader, WebReadModel}
-import tools.Env
 
 /** ── Denormalised read model ──────────────────────────────────────────────────
  *  The serving app reads from the worker-maintained `web_movies` /
@@ -37,9 +36,9 @@ trait ReadModelWiring { self: Wiring =>
   // and every /debug load on the driver's 30s default.
   lazy val movieMirrorConnection: MongoConnection =
     Wiring.debugMirrorConnection(
-      Env.get("MONGODB_MOVIES_MIRROR_URI"),
-      MongoConnection.fromUri(_, required = false,
-        probeTimeout           = MongoConnection.LocalMirrorTimeout,
+      env.get("MONGODB_MOVIES_MIRROR_URI"),
+      MongoConnection.fromUri(_, required = false, env,
+        probeTimeout           = Some(MongoConnection.LocalMirrorTimeout),
         serverSelectionTimeout = Some(MongoConnection.LocalMirrorTimeout)),
       mongoConnection)
   // Showtimes split: /debug's movieRepository is read-only, so it only needs the
@@ -64,7 +63,7 @@ trait ReadModelWiring { self: Wiring =>
     screenings = Some(screeningsRepository), slots = Some(slotsRepository),
     normalizer = titleNormalizer, decodeFailures = webDecodeFailureMetrics)
   lazy val readModelRepository: ReadModelReader = new MongoReadModelRepository(mongoConnection.database, decodeFailures = webDecodeFailureMetrics)
-  lazy val webReadModel: WebReadModel = new WebReadModel(readModelRepository)
+  lazy val webReadModel: WebReadModel = new WebReadModel(readModelRepository, env)
 
   // Reads come straight from the read model; enrichment + projection happen in
   // the worker process.

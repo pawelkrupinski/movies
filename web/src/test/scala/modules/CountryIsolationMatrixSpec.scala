@@ -70,7 +70,7 @@ class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers {
     val previous = Option(System.getProperty("KINOWO_COUNTRY"))
     System.setProperty("KINOWO_COUNTRY", decoy(country).code)
     try {
-      withClue("KINOWO_COUNTRY is set in this shell and overrides the spec's pick: ")(Country.fromEnv shouldBe decoy(country))
+      withClue("KINOWO_COUNTRY is set in this shell and overrides the spec's pick: ")(Country.fromEnv(tools.Env.fromProcess()) shouldBe decoy(country))
       val wiring = new DeploymentWiring(country, corpus, Now)
       wiring.boot()
       body(wiring)

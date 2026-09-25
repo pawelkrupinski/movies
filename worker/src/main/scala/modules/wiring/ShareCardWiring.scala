@@ -4,7 +4,6 @@ import modules.WorkerWiring
 import services.readmodel.ShareCardLedger
 import services.sharecards.*
 import services.tasks.{ClaimedEnqueueReaper, TaskHandler, TaskType}
-import tools.Env
 
 import java.nio.file.Path
 import scala.concurrent.duration.*
@@ -20,13 +19,13 @@ import scala.concurrent.duration.*
 trait ShareCardWiring { self: WorkerWiring =>
 
   lazy val shareCardStore: ShareCardStore =
-    new ShareCardStore(Path.of(Env.get("KINOWO_SHARE_CARD_DIR").getOrElse("/share-cards").replace("{cc}", country.code)))
+    new ShareCardStore(Path.of(env.get("KINOWO_SHARE_CARD_DIR").getOrElse("/share-cards").replace("{cc}", country.code)))
 
   lazy val shareCardsEnabled: Boolean = shareCardStore.usable
 
   lazy val shareCardMetrics: ShareCardMetrics = workerMetrics.shareCardSeries.forCountry(country.code)
 
-  lazy val shareCardBudgetBytes: Long = Env.positiveLong("KINOWO_SHARE_CARD_BUDGET_MB", 1024L) * 1024 * 1024
+  lazy val shareCardBudgetBytes: Long = env.positiveLong("KINOWO_SHARE_CARD_BUDGET_MB", 1024L) * 1024 * 1024
 
   /** Posters download directly, except a Cloudflare-blocked site's, which go through the egress
    *  its scrapes use: Multikino 403s the worker's IP on every poster as on its pages. That route
@@ -38,7 +37,8 @@ trait ShareCardWiring { self: WorkerWiring =>
 
   /** Shrinks each poster to the card's slot — through the process's one gate, shared with every
    *  other country's renders. */
-  lazy val posterShrinker: VipsPosterShrinker = new VipsPosterShrinker(gate = posterShrinkGate)
+  lazy val posterShrinker: VipsPosterShrinker =
+    new VipsPosterShrinker(memoryCapMb = PosterPipeline.decodeMemoryCapMbFrom(env), gate = posterShrinkGate)
 
   lazy val shareCardService: ShareCardService = new ShareCardService(
     country, shareCardStore,
@@ -53,7 +53,9 @@ trait ShareCardWiring { self: WorkerWiring =>
     refresh = readModelProjector.refreshShareCard)
 
   lazy val shareCardBackfill: ShareCardBackfill =
-    new ShareCardBackfill(shareCardService, readModelRepository, taskQueue, shareCardMetrics, clock)
+    new ShareCardBackfill(shareCardService, readModelRepository, taskQueue, shareCardMetrics, clock,
+      batch      = env.positiveInt("KINOWO_SHARE_CARD_BACKFILL_BATCH", ShareCardBackfill.DefaultBatch),
+      maxBacklog = env.positiveInt("KINOWO_SHARE_CARD_BACKFILL_MAX_BACKLOG", ShareCardBackfill.DefaultMaxBacklog))
 
   lazy val shareCardFollowUp: ShareCardFollowUp =
     new ShareCardFollowUp(shareCardStore, shareCardService.superseded, readModelProjector.refreshShareCard, readModelProjector.releaseShareCardHold)
@@ -65,7 +67,7 @@ trait ShareCardWiring { self: WorkerWiring =>
       new ShareCardBackfillHandler(shareCardBackfill),
       new PruneShareCardsHandler(shareCardJanitor),
       new ReleaseShareCardHoldHandler(() => readModelProjector.releaseExpiredHolds()),
-      new RescrapeShareCardHandler(new ShareCardRescraper(FacebookGraph.fromEnv(tlsContext), readModelRepository, country, shareCardMetrics, clock)))
+      new RescrapeShareCardHandler(new ShareCardRescraper(FacebookGraph.fromEnv(env, tlsContext), readModelRepository, country, shareCardMetrics, clock)))
 
   /** The recurring enqueues: a backfill tick every minute (first three minutes after boot), the
    *  budget pass every ten, the full prune daily (first five minutes after boot). Each window is

@@ -1,7 +1,7 @@
 package clients
 
 import play.api.libs.json._
-import tools.{Env, HttpFetch, HttpStatusException, RetryWithBackoff}
+import tools.{HttpFetch, HttpStatusException, RetryWithBackoff}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -38,7 +38,9 @@ import scala.util.Try
  */
 class TmdbClient(
   http: HttpFetch,
-  apiKey: => Option[String] = TmdbClient.ApiKey,
+  // TMDB_API_KEY. Defaulted from the process for tools and specs; the worker
+  // wiring passes its composition root's Env's value.
+  apiKey: Option[String] = tools.Env.fromProcess().get("TMDB_API_KEY"),
   // The deployment's language, threaded into every localized TMDB request so a
   // non-Polish deployment gets non-Polish overview/genres/titles. Exposed as a
   // `val` so the enrichment (`MovieService`) can canonicalise the country names
@@ -473,7 +475,6 @@ object TmdbClient {
   // landscape and would crop badly in the 2:3 card, so we skip it.
   private val MaxPortraitAspectRatio = 0.72
 
-  val ApiKey: Option[String] = Env.get("TMDB_API_KEY")
 
   /** The request language when a construction doesn't specify one. Polish keeps
    *  every existing single-country (Poland-only) call site — and every test

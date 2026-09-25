@@ -20,7 +20,7 @@ object MultikinoProxyDiag {
     "0005","0023","0035","0007","0004","0006","0034","0026","0029","0028","0003",
     "0036","0014","0047","0037","0053","0050","0030","0027","0033","0043")
 
-  def main(args: Array[String]): Unit = ResidentialProxy.fromEnv() match {
+  def main(args: Array[String]): Unit = ResidentialProxy.fromEnv(tools.Env.fromProcess()) match {
     case None => println("set KINOWO_PROXY_USER / KINOWO_PROXY_PASS")
     case Some(cfg) =>
       val rounds = if (args.nonEmpty) args(0).toInt else 2

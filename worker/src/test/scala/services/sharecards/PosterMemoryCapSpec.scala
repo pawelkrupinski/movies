@@ -80,11 +80,11 @@ class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
     // Measured in the worker image under the 256 MB cap (2026-09-24): 2764×4096 4:4:4 (68 MB of
     // coefficients) and 3000×4500 4:4:4 (81 MB) fit; 3500×5250 4:4:4 (110 MB) needs 320 MB.
     val ordinary = JpegHeader.read(PosterMemoryCapSpec.jpegHeader(2764, 4096, progressive = true, sampling = Seq(0x11, 0x11, 0x11))).get
-    ordinary.coefficientBytes should be <= PosterPipeline.ProgressiveCoefficientBudget
+    ordinary.coefficientBytes should be <= PosterPipeline.progressiveCoefficientBudget(PosterPipeline.DefaultDecodeMemoryCapMb)
     JpegHeader.read(PosterMemoryCapSpec.jpegHeader(3000, 4500, progressive = true, sampling = Seq(0x11, 0x11, 0x11))).get
-      .coefficientBytes should be <= PosterPipeline.ProgressiveCoefficientBudget
+      .coefficientBytes should be <= PosterPipeline.progressiveCoefficientBudget(PosterPipeline.DefaultDecodeMemoryCapMb)
     JpegHeader.read(PosterMemoryCapSpec.jpegHeader(3500, 5250, progressive = true, sampling = Seq(0x11, 0x11, 0x11))).get
-      .coefficientBytes should be > PosterPipeline.ProgressiveCoefficientBudget
+      .coefficientBytes should be > PosterPipeline.progressiveCoefficientBudget(PosterPipeline.DefaultDecodeMemoryCapMb)
   }
 
   it should "let a real 2764×4096 progressive poster render" in {

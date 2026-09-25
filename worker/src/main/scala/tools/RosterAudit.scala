@@ -51,7 +51,7 @@ object RosterAudit {
     val chainVenues = RosterSourceReader.chainVenuesOf(Country.Poland.cities, slug => catalog.byCity.getOrElse(slug, Nil))
     println(s"RosterAudit: ${chainVenues.size} Polish chain venues to look up in ${ChainDirectory.all.size} chain venue lists")
     val today = LocalDate.now(ZoneId.of("Europe/Warsaw"))
-    val chainEgress = ChainListEgress.fromEnv(http)
+    val chainEgress = ChainListEgress.fromEnv(http, tools.Env.fromProcess())
     val chainResults = chainVenues.groupMap(_._1)(v => v._2 -> v._3).toSeq.map { case (directory, venues) =>
       RosterSourceReader.readDirectory(chainEgress.fetchFor(directory), today)(directory, venues).left.map(chainEgress.judged)
     }

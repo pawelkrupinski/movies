@@ -34,7 +34,7 @@ class LandingCountryPreviewSpec extends AnyFlatSpec with Matchers {
     val prev = System.getProperty("KINOWO_COUNTRY")
     try {
       System.setProperty("KINOWO_COUNTRY", "uk")
-      Country.fromEnv shouldBe Country.UnitedKingdom   // guard: a stray env var didn't win
+      Country.fromEnv(tools.Env.fromProcess()) shouldBe Country.UnitedKingdom   // guard: a stray env var didn't win
       views.html.landing(Country.UnitedKingdom, isApex = false).body
     } finally {
       if (prev == null) System.clearProperty("KINOWO_COUNTRY") else System.setProperty("KINOWO_COUNTRY", prev)

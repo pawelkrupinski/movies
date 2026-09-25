@@ -62,7 +62,10 @@ class ThrottledHttpFetch(
   // Where the pace-report goes. Defaults to this class's logger; injected in
   // tests so the summary can be asserted on as data instead of scraped out of
   // captured log output.
-  report:       Option[String => Unit] = None
+  report:       Option[String => Unit] = None,
+  // The pace `RateLimitedHttpFetch` holds each host to, quoted in the pace-report
+  // (the wiring passes `RateLimitedHttpFetch.configuredInterval(env)`).
+  paceFor:      String => Option[FiniteDuration] = _ => None
 ) extends HttpFetch with Logging {
 
   private val pausedUntil = new ConcurrentHashMap[String, Instant]()
@@ -92,7 +95,7 @@ class ThrottledHttpFetch(
       val total = s.requests.getAndSet(0)
       val t429  = s.throttled.getAndSet(0)
       val clean = if (total == 0) 100.0 else 100.0 * (total - t429) / total
-      val pace  = RateLimitedHttpFetch.configuredInterval(s"https://$host/")
+      val pace  = paceFor(s"https://$host/")
         .map(d => s"${d.toMillis}ms").getOrElse("unpaced")
       val msg = f"pace-report $host: $total%d requests, $t429%d throttled (429/503/timeout), $clean%.1f%% clean, pace=$pace"
       report.fold(logger.info(msg))(_(msg))

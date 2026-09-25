@@ -26,7 +26,9 @@ trait ControllersWiring { self: Wiring =>
   lazy val encodedResponseCache = new EncodedResponseCache
   lazy val minifier: tools.Minifier = tools.Minifier.forMode(environmentMode)
   lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, oauthProviders.keySet, environmentMode, encodedResponseCache,
-    servingCountry = country, normalizer = titleNormalizer, minifier = minifier)
+    servingCountry = country, normalizer = titleNormalizer, minifier = minifier,
+    // Read per render, so an `/admin/config` flip of FB_APP_ID reaches the page.
+    fbAppId = () => env.get("FB_APP_ID"))
   // Global country+city catalog for the mobile apps (`GET /api/catalog`), served
   // identically by every deployment — no per-country/read-model dependency.
   lazy val catalogController = new CatalogController(controllerComponents)

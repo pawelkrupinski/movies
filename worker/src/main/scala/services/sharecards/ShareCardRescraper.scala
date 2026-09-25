@@ -37,8 +37,8 @@ class HttpFacebookGraph(appId: String, appSecret: String, tls: javax.net.ssl.SSL
 object FacebookGraph {
   /** The Graph client when the worker has the app's credentials (`FACEBOOK_APP_ID` +
    *  `FACEBOOK_APP_SECRET`, the web's login names), else None — re-scraping is then a no-op. */
-  def fromEnv(tls: javax.net.ssl.SSLContext): Option[FacebookGraph] =
-    for { id <- Env.get("FACEBOOK_APP_ID"); secret <- Env.get("FACEBOOK_APP_SECRET") } yield new HttpFacebookGraph(id, secret, tls)
+  def fromEnv(env: Env, tls: javax.net.ssl.SSLContext): Option[FacebookGraph] =
+    for { id <- env.get("FACEBOOK_APP_ID"); secret <- env.get("FACEBOOK_APP_SECRET") } yield new HttpFacebookGraph(id, secret, tls)
 }
 
 /**

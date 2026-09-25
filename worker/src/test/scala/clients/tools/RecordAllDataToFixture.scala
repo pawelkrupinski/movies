@@ -1,6 +1,6 @@
 package clients.tools
 
-import tools.{DaemonExecutors, HttpFetch, RealHttpFetch, TestWiring}
+import tools.{DaemonExecutors, Env, HttpFetch, RealHttpFetch, TestWiring}
 import services.movies.InMemoryMovieRepository
 import services.cinemas.common.ZyteFallback
 import services.cinemas.pl.MultikinoClient
@@ -87,9 +87,9 @@ object RecordAllDataToFixture extends TestWiring {
   // URL no matter which leg (Zyte or direct) served it. Guarded by
   // `RecorderZyteCaptureSpec`.
   override lazy val multikinoFetch: HttpFetch =
-    new RecordingHttpFetch(captureDate, MultikinoClient.fetchFor(new RealHttpFetch(), services.cinemas.common.ZyteFallback.newHttpClient()))
+    new RecordingHttpFetch(captureDate, MultikinoClient.fetchFor(new RealHttpFetch(), ZyteFallback.newHttpClient(), Env.fromProcess()))
   override lazy val biletynaFetch: HttpFetch =
-    new RecordingHttpFetch(captureDate, ZyteFallback.fetchFor(new RealHttpFetch(), ZyteFallback.newHttpClient()))
+    new RecordingHttpFetch(captureDate, ZyteFallback.fetchFor(new RealHttpFetch(), ZyteFallback.newHttpClient(), Env.fromProcess()))
 
   // TestWiring stubs the TMDB key to "test-api-key" (fine for replay, where the
   // fixture filename strips api_key). But RECORDING fires the real request, so

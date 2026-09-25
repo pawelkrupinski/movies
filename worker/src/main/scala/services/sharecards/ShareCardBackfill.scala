@@ -40,8 +40,8 @@ class ShareCardBackfill(
   queue:      TaskQueue,
   metrics:    ShareCardMetrics,
   clock:      Clock,
-  batch:      Int            = ShareCardBackfill.Batch,
-  maxBacklog: Int            = ShareCardBackfill.MaxBacklog,
+  batch:      Int            = ShareCardBackfill.DefaultBatch,
+  maxBacklog: Int            = ShareCardBackfill.DefaultMaxBacklog,
   sweepEvery: FiniteDuration = 24.hours
 ) extends Logging {
   import ShareCardBackfill.Swept
@@ -115,8 +115,8 @@ class ShareCardBackfill(
 object ShareCardBackfill {
   private final case class Swept(inputs: ShareCardInputs, cardAtSweep: Option[String], sweptAt: Instant)
 
-  /** Renders enqueued per tick at most. */
-  val Batch: Int      = tools.Env.positiveInt("KINOWO_SHARE_CARD_BACKFILL_BATCH", 20)
-  /** No backfill enqueue while this many renders already wait. */
-  val MaxBacklog: Int = tools.Env.positiveInt("KINOWO_SHARE_CARD_BACKFILL_MAX_BACKLOG", 40)
+  /** Renders enqueued per tick at most (`KINOWO_SHARE_CARD_BACKFILL_BATCH`). */
+  val DefaultBatch: Int      = 20
+  /** No backfill enqueue while this many renders already wait (`KINOWO_SHARE_CARD_BACKFILL_MAX_BACKLOG`). */
+  val DefaultMaxBacklog: Int = 40
 }

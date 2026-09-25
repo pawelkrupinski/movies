@@ -26,7 +26,11 @@ import scala.util.Try
  * is simply skipped by `MovieControllerService` until it does, so the
  * movie-before-screenings write order is preferred but not required.
  */
-class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
+class WebReadModel(
+    reader: ReadModelReader,
+    // The process config the backstop / cold-retry cadences are read from. Defaulted
+    // for specs; the web wiring passes its composition root's instance.
+    env: Env = Env.fromProcess()) extends Stoppable with Logging {
 
   private val movies = new ConcurrentHashMap[String, ResolvedMovie]()
   // citySlug -> (screeningId -> CityScreening). The per-city bucket is the
@@ -371,10 +375,10 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
   // ── Lifecycle ───────────────────────────────────────────────────────────────
 
   private val scheduler       = DaemonExecutors.scheduler("web-read-model")
-  private val BackstopSeconds  = Env.positiveLong("KINOWO_READMODEL_RELOAD_SECONDS", 1800L)
+  private val BackstopSeconds  = env.positiveLong("KINOWO_READMODEL_RELOAD_SECONDS", 1800L)
   // Far tighter than the backstop because the state it recovers from is a blank site, not
   // drift. Cheap enough to run at this cadence precisely because it probes with a count.
-  private val ColdRetrySeconds = Env.positiveLong("KINOWO_READMODEL_COLD_RETRY_SECONDS", 30L)
+  private val ColdRetrySeconds = env.positiveLong("KINOWO_READMODEL_COLD_RETRY_SECONDS", 30L)
   @volatile private var movieWatch:     Option[StreamSubscription] = None
   @volatile private var screeningWatch: Option[StreamSubscription] = None
 

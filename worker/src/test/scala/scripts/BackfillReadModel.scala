@@ -96,7 +96,7 @@ object BackfillReadModel {
     )
 
   def main(args: Array[String]): Unit = {
-    val conn   = MongoConnection.forCountry(models.Country.fromEnv, required = true)
+    val conn   = MongoConnection.forCountry(models.Country.fromEnv(tools.Env.fromProcess()), required = true, env = tools.Env.fromProcess())
     val db     = conn.database.getOrElse { println("Could not open the database — is MONGODB_URI set?"); sys.exit(1) }
     val dbName = db.name
     try {

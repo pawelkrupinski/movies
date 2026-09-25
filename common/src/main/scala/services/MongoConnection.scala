@@ -75,7 +75,10 @@ class MongoConnection(
     onConnected: MongoDatabase => Unit = _ => (),
     // Starts the background reconnect (named, runnable). A daemon thread in production;
     // the seam lets a test decide when that thread runs relative to construction.
-    startReconnect: (String, Runnable) => Unit = MongoConnection.startDaemon) extends Logging {
+    startReconnect: (String, Runnable) => Unit = MongoConnection.startDaemon,
+    // Connections in the pool this connection builds for itself (unused when it
+    // borrows `sharedClient`) — see [[MongoConnection.maxPoolSizeFrom]].
+    maxPoolSize: Int = MongoConnection.DefaultMaxPoolSize) extends Logging {
 
   // Stops the background reconnect. Without it a closed connection keeps probing
   // — and could publish a live client into a connection its owner has already
@@ -131,7 +134,7 @@ class MongoConnection(
    *  "connected" — a probe that actually round-tripped, not a constructed client. */
   private def connect(connectionString: String): Try[(MongoClient, MongoDatabase)] = Try {
     val client = sharedClient.getOrElse(
-      MongoClient(MongoConnection.clientSettings(connectionString, serverSelectionTimeout)))
+      MongoClient(MongoConnection.clientSettings(connectionString, serverSelectionTimeout, maxPoolSize)))
     val db     = client.getDatabase(dbName)
     // Touch the database to surface connectivity errors at boot
     // (same `countDocuments`-against-a-known-collection probe the
@@ -300,12 +303,17 @@ object MongoConnection extends Logging {
    *  `Country.resolvedDbName` — `kinowo` for Poland) — the wiring's entry point.
    *  `required = true` turns a missing or unreachable Mongo into a hard boot
    *  failure instead of silent degradation. */
-  def fromEnv(required: Boolean): MongoConnection =
+  def fromEnv(required: Boolean, env: Env): MongoConnection =
     new MongoConnection(
-      Env.get("MONGODB_URI"),
-      models.Country.resolvedDbName,
+      env.get("MONGODB_URI"),
+      models.Country.resolvedDbName(env),
       required,
-      parseProbeTimeout(Env.get("MONGODB_PROBE_TIMEOUT_SECONDS")))
+      probeTimeoutFrom(env),
+      maxPoolSize = maxPoolSizeFrom(env))
+
+  /** `MONGODB_PROBE_TIMEOUT_SECONDS` from `env`, via [[parseProbeTimeout]]. */
+  def probeTimeoutFrom(env: Env): FiniteDuration =
+    parseProbeTimeout(env.get("MONGODB_PROBE_TIMEOUT_SECONDS"))
 
   /** Like [[fromEnv]] but against an EXPLICIT database name (the caller's
    *  country, via `Country.dbNameFor`) and optionally bound to a `sharedClient`
@@ -313,14 +321,15 @@ object MongoConnection extends Logging {
    *  these per country it runs; `fromEnv` stays the single-db (web) entry point.
    *  `MONGODB_DB` is already folded into `dbName` by the caller, so it isn't
    *  re-read here. */
-  def fromEnvForDb(dbName: String, required: Boolean,
+  def fromEnvForDb(dbName: String, required: Boolean, env: Env,
       sharedClient: Option[MongoClient] = None): MongoConnection =
     new MongoConnection(
-      Env.get("MONGODB_URI"),
+      env.get("MONGODB_URI"),
       dbName,
       required,
-      parseProbeTimeout(Env.get("MONGODB_PROBE_TIMEOUT_SECONDS")),
-      sharedClient = sharedClient)
+      probeTimeoutFrom(env),
+      sharedClient = sharedClient,
+      maxPoolSize = maxPoolSizeFrom(env))
 
   /** [[fromEnvForDb]] for a process that WRITES `country`'s corpus — the worker and every
    *  `worker/Test/runMain scripts.*` tool that writes — claimed for that country through
@@ -330,15 +339,16 @@ object MongoConnection extends Logging {
    *  run — how DE/UK rows reached the Polish corpus) is refused with an
    *  `IllegalStateException` instead of written into. The claim runs on every successful
    *  connect, including a background reconnect after an unreachable boot. */
-  def forCountry(country: models.Country, required: Boolean, sharedClient: Option[MongoClient] = None,
+  def forCountry(country: models.Country, required: Boolean, env: Env, sharedClient: Option[MongoClient] = None,
       dbName: Option[String] = None): MongoConnection =
     new MongoConnection(
-      Env.get("MONGODB_URI"),
-      dbName.getOrElse(models.Country.dbNameFor(country)),
+      env.get("MONGODB_URI"),
+      dbName.getOrElse(models.Country.dbNameFor(country, env)),
       required,
-      parseProbeTimeout(Env.get("MONGODB_PROBE_TIMEOUT_SECONDS")),
+      probeTimeoutFrom(env),
       sharedClient = sharedClient,
-      onConnected = claimFor(country))
+      onConnected = claimFor(country),
+      maxPoolSize = maxPoolSizeFrom(env))
 
   /** The [[MongoConnection]] `onConnected` hook of a writer of `country`'s corpus. */
   def claimFor(country: models.Country): MongoDatabase => Unit = new DatabaseOwner(_).claim(country)
@@ -348,14 +358,15 @@ object MongoConnection extends Logging {
    *  `sharedClient`. `None` when `MONGODB_URI` is unset (local opt-out) — each
    *  connection then degrades on its own. The caller OWNS `close()`-ing the
    *  returned client, after every connection that borrowed it is closed. */
-  def sharedClientFromEnv(serverSelectionTimeout: Option[FiniteDuration] = None): Option[MongoClient] =
-    Env.get("MONGODB_URI").map(cs => sharedClientFor(cs, serverSelectionTimeout))
+  def sharedClientFromEnv(env: Env, serverSelectionTimeout: Option[FiniteDuration] = None): Option[MongoClient] =
+    env.get("MONGODB_URI").map(cs => sharedClientFor(cs, serverSelectionTimeout, maxPoolSizeFrom(env)))
 
   /** Like [[sharedClientFromEnv]] but against an EXPLICIT URI — the `/debug`
    *  read-mirror, whose several per-country database views share one pool the
    *  same way the prod per-country connections do. The caller OWNS `close()`. */
-  def sharedClientFor(uri: String, serverSelectionTimeout: Option[FiniteDuration] = None): MongoClient =
-    MongoClient(clientSettings(uri, serverSelectionTimeout))
+  def sharedClientFor(uri: String, serverSelectionTimeout: Option[FiniteDuration] = None,
+      maxPoolSize: Int = DefaultMaxPoolSize): MongoClient =
+    MongoClient(clientSettings(uri, serverSelectionTimeout, maxPoolSize))
 
   /** The local mirror database holding `prodDb`'s synced copy.
    *
@@ -388,34 +399,38 @@ object MongoConnection extends Logging {
    *  local `/debug` read-mirror (`MONGODB_MOVIES_MIRROR_URI`): a separate
    *  MongoClient pointed at a local Mongo that's kept synced from prod, so the
    *  full-corpus `movies` read is a LAN hop instead of the prod tunnel. The
-   *  database is taken from the URI's own path (see `databaseFromUri`) so the
-   *  mirror can live in a different database than the app's working db; probe
-   *  timeout shares `fromEnv`'s resolution. `required` is the caller's to decide
+   *  database is taken from the URI's own path (see `databaseFromUri`, which
+   *  falls back to `env`'s resolved database) so the mirror can live in a
+   *  different database than the app's working db; probe timeout defaults to
+   *  `fromEnv`'s resolution. `required` is the caller's to decide
    *  (the mirror is a soft optimisation, so the caller passes `false` and
    *  degrades to the primary connection when it's absent). */
   def fromUri(
       uri: String,
       required: Boolean,
-      probeTimeout: FiniteDuration = parseProbeTimeout(Env.get("MONGODB_PROBE_TIMEOUT_SECONDS")),
+      env: Env,
+      probeTimeout: Option[FiniteDuration] = None,
       serverSelectionTimeout: Option[FiniteDuration] = None): MongoConnection =
     new MongoConnection(
       Some(uri),
-      databaseFromUri(uri),
+      databaseFromUri(uri, models.Country.resolvedDbName(env)),
       required,
-      probeTimeout,
-      serverSelectionTimeout)
+      probeTimeout.getOrElse(probeTimeoutFrom(env)),
+      serverSelectionTimeout,
+      maxPoolSize = maxPoolSizeFrom(env))
 
   /** Database name for an explicit-URI connection: the URI's own path (e.g.
    *  `…/kinowo_prod_mirror`), so the `/debug` mirror lives in a different
    *  database than the app's working db (`MONGODB_DB`, used by the prod
-   *  connection). Falls back to `Country.resolvedDbName` (explicit `MONGODB_DB`,
-   *  else the country's database) when the URI names no database. The parse is
+   *  connection). Falls back to `fallback` (the caller's `Country.resolvedDbName`:
+   *  explicit `MONGODB_DB`, else the country's database) when the URI names no
+   *  database. The parse is
    *  guarded so a malformed URI flows through to
    *  `MongoConnection`'s own required/optional handling instead of throwing here. */
-  private[services] def databaseFromUri(uri: String): String =
+  private[services] def databaseFromUri(uri: String, fallback: => String): String =
     Try(Option(new ConnectionString(uri).getDatabase)).toOption.flatten
       .filter(_.nonEmpty)
-      .getOrElse(models.Country.resolvedDbName)
+      .getOrElse(fallback)
 
   /** Driver settings for a connection string. Wire compression (zlib — built into
    *  the JDK, no dependency) is forced ONLY when the host is loopback: the slow
@@ -435,11 +450,15 @@ object MongoConnection extends Logging {
    *  under it — while capping the fleet's worst case to something the VM can hold.
    *  Tunable without a code change (same pattern as the credit thresholds) because
    *  it is a capacity knob we may need to move under pressure. */
-  private[services] val MaxPoolSize: Int = Env.positiveInt("KINOWO_MONGO_MAX_POOL_SIZE", 25)
+  val DefaultMaxPoolSize: Int = 25
+
+  /** `KINOWO_MONGO_MAX_POOL_SIZE` from `env`, else [[DefaultMaxPoolSize]]. */
+  def maxPoolSizeFrom(env: Env): Int = env.positiveInt("KINOWO_MONGO_MAX_POOL_SIZE", DefaultMaxPoolSize)
 
   private[services] def clientSettings(
       connectionString: String,
-      serverSelectionTimeout: Option[FiniteDuration] = None): MongoClientSettings = {
+      serverSelectionTimeout: Option[FiniteDuration] = None,
+      maxPoolSize: Int = DefaultMaxPoolSize): MongoClientSettings = {
     val cs      = new ConnectionString(connectionString)
     val builder = MongoClientSettings.builder().applyConnectionString(cs)
     // Socket I/O uses the driver's DEFAULT transport (JDK NIO2). We briefly routed it
@@ -460,7 +479,7 @@ object MongoConnection extends Logging {
     // 20s -> 4m+ and flyctl's health-check wait expired, failing the deploy.
     // A URI that names its own `maxPoolSize=` still wins, same as `compressors=`.
     if (cs.getMaxConnectionPoolSize == null)
-      builder.applyToConnectionPoolSettings { b => b.maxSize(MaxPoolSize); () }
+      builder.applyToConnectionPoolSettings { b => b.maxSize(maxPoolSize); () }
     serverSelectionTimeout.foreach { timeout =>
       builder.applyToClusterSettings { b =>
         b.serverSelectionTimeout(timeout.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS); ()

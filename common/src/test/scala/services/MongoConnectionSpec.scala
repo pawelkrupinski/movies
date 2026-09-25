@@ -134,14 +134,14 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   // prod connection (database None → fall back) instead of blocking boot — only
   // /debug needs it.
   "MongoConnection.fromUri with required = false" should "disable (database None) on an unusable URI instead of throwing" in {
-    val connection = MongoConnection.fromUri(MalformedUri, required = false)
+    val connection = MongoConnection.fromUri(MalformedUri, required = false, tools.Env.of())
     connection.database shouldBe None
     connection.close()
   }
 
   "MongoConnection.fromUri with required = true" should "throw on an unusable URI" in {
     val exception = intercept[IllegalStateException] {
-      MongoConnection.fromUri(MalformedUri, required = true)
+      MongoConnection.fromUri(MalformedUri, required = true, tools.Env.of())
     }
     exception.getMessage should include ("required")
   }
@@ -151,12 +151,11 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   // the app's working db (used by the prod connection).
   "MongoConnection.databaseFromUri" should "take the database from the URI path" in {
     MongoConnection.databaseFromUri(
-      "mongodb://127.0.0.1:28017/kinowo_prod_mirror?directConnection=true") shouldBe "kinowo_prod_mirror"
+      "mongodb://127.0.0.1:28017/kinowo_prod_mirror?directConnection=true", "fallback") shouldBe "kinowo_prod_mirror"
   }
 
-  it should "fall back to MONGODB_DB (then kinowo) when the URI names no database" in {
-    MongoConnection.databaseFromUri(
-      "mongodb://127.0.0.1:28017/?directConnection=true") shouldBe tools.Env.get("MONGODB_DB").getOrElse("kinowo")
+  it should "fall back to the given database when the URI names no database" in {
+    MongoConnection.databaseFromUri("mongodb://127.0.0.1:28017/?directConnection=true", "fallback") shouldBe "fallback"
   }
 
   // Wire compression earns its CPU only on a SLOW link (the local flyctl proxy
@@ -198,13 +197,22 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   // boot hydrates off Mongo, stretched boots past flyctl's health-check wait and failed
   // the deploys. Capping the pool is the lever, so its value is pinned here.
   "MongoConnection.clientSettings" should "bound the connection pool well below the driver's default of 100" in {
-    // Asserted against LITERALS, not MongoConnection.MaxPoolSize: this must still
+    // Asserted against LITERALS, not MongoConnection.DefaultMaxPoolSize: this must still
     // compile against the un-capped code so it fails on the VALUE (the driver's 100),
     // rather than failing to compile — a green-from-the-start test proves nothing.
     val maxSize = MongoConnection.clientSettings(ValidUri).getConnectionPoolSettings.getMaxSize
     maxSize shouldBe 25
     maxSize should be <= 30
     maxSize should be > 0
+  }
+
+  // The pool cap is read from the Env the wiring hands over, not a process-global
+  // frozen at class init — so an injected value reaches the client settings.
+  it should "take the pool cap from the injected Env" in {
+    val cap = MongoConnection.maxPoolSizeFrom(tools.Env.of("KINOWO_MONGO_MAX_POOL_SIZE" -> "9"))
+    cap shouldBe 9
+    MongoConnection.clientSettings(ValidUri, maxPoolSize = cap).getConnectionPoolSettings.getMaxSize shouldBe 9
+    MongoConnection.maxPoolSizeFrom(tools.Env.of()) shouldBe 25
   }
 
   it should "let a URI that names its own maxPoolSize win, like compressors" in {

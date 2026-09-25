@@ -3,7 +3,6 @@ package modules.wiring
 import modules.WorkerWiring
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, FallbackEligibility}
 import services.tasks.{ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, MongoChunkScrapeStore, ScrapeCadence, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeInFlight}
-import tools.Env
 
 import scala.concurrent.duration.DurationLong
 
@@ -37,7 +36,7 @@ trait ChunkScrapeWiring { self: WorkerWiring =>
   // refreshes behind it. Sized in ScrapeCadence; the planner clamps it under the run
   // stale timeout. See ChunkScrapePlanner.chunkSpread.
   def scrapeChunkSpreadMinutes: Long =
-    Env.positiveLong("KINOWO_SCRAPE_CHUNK_SPREAD_MINUTES", ScrapeCadence.ChunkEnqueueSpread.toMinutes)
+    env.positiveLong("KINOWO_SCRAPE_CHUNK_SPREAD_MINUTES", ScrapeCadence.ChunkEnqueueSpread.toMinutes)
   lazy val chunkScrapePlanner       = new ChunkScrapePlanner(chunkScrapers, chunkScrapeStore, taskQueue, publishScrape,
     scrapeFreshnessPolicy, chunkSpread = scrapeChunkSpreadMinutes.minutes)
   lazy val scrapeChunkHandler       = new ScrapeChunkHandler(chunkScrapers, chunkScrapeStore)

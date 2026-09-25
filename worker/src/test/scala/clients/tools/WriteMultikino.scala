@@ -12,7 +12,8 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 object WriteMultikino {
   def main(args: Array[String]): Unit = {
     val fetch  = new RecordingHttpFetch("multikino", new RealHttpFetch())
-    val client = new MultikinoClient(MultikinoClient.fetchFor(fetch, services.cinemas.common.ZyteFallback.newHttpClient()), titles = titleNormalizer)
+    val client = new MultikinoClient(MultikinoClient.fetchFor(fetch, services.cinemas.common.ZyteFallback.newHttpClient(),
+      _root_.tools.Env.fromProcess()), titles = titleNormalizer)
     client.fetch().foreach(m => println(s"${m.movie.title} (${m.showtimes.size} showtimes)"))
   }
 }

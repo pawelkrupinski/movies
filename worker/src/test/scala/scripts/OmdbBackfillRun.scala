@@ -29,7 +29,7 @@ object OmdbBackfillRun {
       println("MONGODB_URI not set — nothing to backfill.")
       sys.exit(1)
     }
-    if (OMDbClient.ApiKey.isEmpty) {
+    if (tools.Env.fromProcess().get("OMDB_API_KEY").isEmpty) {
       println("OMDB_API_KEY not set — OMDb backfill is off.")
       sys.exit(1)
     }

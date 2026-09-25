@@ -3,7 +3,6 @@ package modules.wiring
 import modules.WorkerWiring
 import services.config.{EnvConfigService, MongoEnvOverrideStore, MongoEnvRegistryStore}
 import services.tasks.{BulkRefreshHandler, BulkRefreshResult, BulkTaskResultStore, MongoBulkTaskResultStore, ResolveImdbIdHandler, ResolveTmdbHandler, TaskHandler, TaskType}
-import tools.Env
 
 import scala.concurrent.duration.DurationLong
 
@@ -19,8 +18,8 @@ trait OperatorWiring { self: WorkerWiring =>
     app       = "worker",
     overrides = new MongoEnvOverrideStore(mongoConnection.database),
     registry  = new MongoEnvRegistryStore(mongoConnection.database),
-    env          = Env.process,
-    tickInterval = Env.positiveLong("KINOWO_CONFIG_REFRESH_SECONDS", 30L).seconds)
+    env          = env,
+    tickInterval = env.positiveLong("KINOWO_CONFIG_REFRESH_SECONDS", 30L).seconds)
 
   // Persists each operator-triggered bulk-refresh outcome so it survives the task
   // doc's instant deletion and the web `/tasks` page can show it. Written here by

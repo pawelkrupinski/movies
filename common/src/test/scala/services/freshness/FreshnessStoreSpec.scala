@@ -67,19 +67,11 @@ class FreshnessStoreSpec extends AnyFlatSpec with Matchers {
     Freshness.ttlFor(TmdbResolve)   shouldBe None
   }
 
-  it should "let KINOWO_SCRAPE_FRESHNESS_MINUTES override the scrape TTL" in {
-    val key = "KINOWO_SCRAPE_FRESHNESS_MINUTES"
-    val previous = Option(System.getProperty(key))
-    try {
-      System.setProperty(key, "45")
-      Freshness.ttlFor(CinemaScrape) shouldBe Some(45.minutes)
-      // a non-positive / unparseable value falls back to the 60min default
-      System.setProperty(key, "0")
-      Freshness.ttlFor(CinemaScrape) shouldBe Some(60.minutes)
-    } finally previous match {
-      case Some(v) => System.setProperty(key, v)
-      case None    => System.clearProperty(key)
-    }
+  "Freshness.scrapeTtlFrom" should "let KINOWO_SCRAPE_FRESHNESS_MINUTES override the scrape TTL" in {
+    Freshness.scrapeTtlFrom(tools.Env.of("KINOWO_SCRAPE_FRESHNESS_MINUTES" -> "45")) shouldBe 45.minutes
+    // a non-positive / unparseable value falls back to the 60min default
+    Freshness.scrapeTtlFrom(tools.Env.of("KINOWO_SCRAPE_FRESHNESS_MINUTES" -> "0")) shouldBe 60.minutes
+    Freshness.scrapeTtlFrom(tools.Env.of()) shouldBe Freshness.DefaultScrapeTtl
   }
 
   "FreshnessKind labels" should "be unique and round-trip via byLabel" in {

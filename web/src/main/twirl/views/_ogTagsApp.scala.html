@@ -75,7 +75,7 @@
 <meta property="og:image:height" content="630">
 <meta property="og:description" content="@pageDescription">
 <meta name="description"        content="@pageDescription">
-@fbAppId.foreach { id =>
+@fbAppId.map { id =>
 <meta property="fb:app_id"      content="@id">
 }
 

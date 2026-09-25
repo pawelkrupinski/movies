@@ -6,7 +6,6 @@ import services.freshness.{FreshnessStore, MongoFreshnessStore}
 import services.metrics.MeteredTaskQueue
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
 import services.tasks.{CachingTaskQueue, LivenessWatchdog, MongoTaskQueue, TaskQueue, TaskWorker, WorkerHeartbeat}
-import tools.Env
 
 import scala.concurrent.duration.DurationLong
 
@@ -58,7 +57,7 @@ trait TaskQueueWiring { self: WorkerWiring =>
   // the number of scrapes/enrichments in flight at once is hard-capped at the
   // pool size and a backlog can't peg the box. (Replaces the old single batch
   // poller that claimed up to 20 tasks per tick onto a shared-budget EC.)
-  def workerPoolSize: Int = Env.positiveInt("KINOWO_WORKER_POOL_SIZE", 4)
+  def workerPoolSize: Int = env.positiveInt("KINOWO_WORKER_POOL_SIZE", 4)
   lazy val taskWorker = new TaskWorker(
     taskQueue, Seq(scrapeCinemaHandler, enrichDetailsHandler, scrapeChunkHandler, scrapeChunkReduceHandler) ++ ratingHandlers ++ operatorHandlers ++ stagingHandlers ++ shareCardHandlers ++ auditHandlers,
     poolSize = workerPoolSize,
@@ -83,8 +82,8 @@ trait TaskQueueWiring { self: WorkerWiring =>
   // heap to the Fly volume (so a leak-vs-too-tight analysis is possible offline) and
   // exits non-zero so Fly reschedules. Threshold sits several heartbeat intervals
   // above the 1-min pulse so GC jitter never trips it.
-  def livenessStaleMinutes: Long = Env.positiveLong("KINOWO_WORKER_LIVENESS_STALE_MINUTES", 5L)
-  def heapDumpDir: String        = Env.get("KINOWO_HEAP_DUMP_DIR").getOrElse("/data/heapdumps")
+  def livenessStaleMinutes: Long = env.positiveLong("KINOWO_WORKER_LIVENESS_STALE_MINUTES", 5L)
+  def heapDumpDir: String        = env.get("KINOWO_HEAP_DUMP_DIR").getOrElse("/data/heapdumps")
   lazy val livenessWatchdog = new LivenessWatchdog(
     lastBeatMillis     = () => workerHeartbeat.lastTickMillis,
     stalenessThreshold = livenessStaleMinutes.minutes,

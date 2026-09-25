@@ -29,7 +29,7 @@ class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matche
   // Every write's reported outcome, as (userId-free) (endpoint, outcome) pairs.
   private val outcomes = new ConcurrentLinkedQueue[(String, String)]()
   private lazy val client   = MongoClient(Env.get("MONGODB_URI").get)
-  private lazy val database = client.getDatabase(models.Country.resolvedDbName)
+  private lazy val database = client.getDatabase(models.Country.resolvedDbName(tools.Env.fromProcess()))
   private val states = new MongoUserStateRepository(Some(database),
     writeOutcomes = (endpoint: String, outcome: String) => { outcomes.add(endpoint -> outcome); () })
   private val users  = new InMemoryUserRepository

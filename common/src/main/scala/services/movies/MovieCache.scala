@@ -251,8 +251,8 @@ class CaffeineMovieCache(
   // cold start pay nothing. Prod turns it on via the Fly env
   // `KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS` so a not-ready Mongo at boot can't leave
   // the cache empty (see `bootHydrate`).
-  bootHydrateMaxAttempts: Int  = Env.get("KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS").flatMap(_.toIntOption).getOrElse(0),
-  bootHydrateRetryMillis: Long = Env.positiveLong("KINOWO_BOOT_HYDRATE_RETRY_MS", 1000L),
+  bootHydrateMaxAttempts: Int  = 0,
+  bootHydrateRetryMillis: Long = 1000L,
   // A genuinely-NEW film (one whose `sanitize(title)` group isn't already in
   // `movies`) is diverted to this staging sink — one row per `cinema|title|year`
   // — to incubate until TMDB concludes, instead of landing in the merged
@@ -304,7 +304,7 @@ class CaffeineMovieCache(
   // MINUTES`, read once here rather than by `ScrapeLanding` itself so the guards'
   // pure functions stay pure) — see `ScrapeHealth.maxRejectionsFor` for why a flat
   // "3" isn't safe for the slower-cadence countries.
-  maxConsecutiveGuardRejections: Int = ScrapeHealth.maxRejectionsFor(services.freshness.Freshness.defaultScrapeTtl),
+  maxConsecutiveGuardRejections: Int = ScrapeHealth.maxRejectionsFor(services.freshness.Freshness.DefaultScrapeTtl),
   // Guard-verdict + silent-write-skip counters, forwarded verbatim to `ScrapeLanding`
   // — see `ScrapeLandingMetrics`. No-op for web/tests; the worker wires `WorkerTaskMetrics`.
   scrapeLandingMetrics: ScrapeLandingMetrics = ScrapeLandingMetrics.noop,
@@ -318,7 +318,10 @@ class CaffeineMovieCache(
   // Where `ScrapeLanding` interns the strings a fresh slot repeats across cinemas, forwarded
   // verbatim to it. The worker hands every country's cache the process's one pool (owned by
   // `WorkerMetrics`, whose gauges read it); a lone cache — tests included — gets its own.
-  val stringPool: StringPool = new StringPool
+  val stringPool: StringPool = new StringPool,
+  // The process config the backstop rehydrate interval is read from. Defaulted for
+  // specs; the worker wiring passes its composition root's instance.
+  env: Env = Env.fromProcess()
 ) extends MovieCache with LandingStore with Stoppable with Logging {
 
   // Supplies `CacheKey.apply` throughout this class, so a key can never be built
@@ -1496,7 +1499,7 @@ class CaffeineMovieCache(
   // tests don't), so unit tests still get a single one-shot hydrate at
   // construction unless they opt into the live sync.
   private val refreshScheduler        = DaemonExecutors.scheduler("movie-cache-refresh")
-  private val BackstopIntervalSeconds = Env.positiveLong("KINOWO_CACHE_REHYDRATE_SECONDS", 21600L)
+  private val BackstopIntervalSeconds = env.positiveLong("KINOWO_CACHE_REHYDRATE_SECONDS", 21600L)
   @volatile private var watchHandle: Option[AutoCloseable] = None
 
   /** Apply one out-of-band upsert from the change stream to the in-memory cache.

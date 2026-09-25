@@ -7,7 +7,6 @@ import services.{MongoConnection, UptimeMonitor}
 import services.movies.MongoMovieRepository
 import services.readmodel.MongoReadModelRepository
 import services.tasks.MongoTaskQueue
-import tools.Env
 
 /** ── /debug ────────────────────────────────────────────────────────────────
  *  The dev-only corpus inspector: one `DebugStack` of read-only views per
@@ -28,7 +27,7 @@ trait DebugWiring { self: Wiring =>
   // Whether the /debug stacks below are reading a COPY. Gates the navbar's
   // mirror-age badge: with no mirror configured every page reads the source, so
   // there is nothing that could be behind and nothing to render.
-  private lazy val readingThroughMirror: Boolean = Env.get("MONGODB_MOVIES_MIRROR_URI").isDefined
+  private lazy val readingThroughMirror: Boolean = env.get("MONGODB_MOVIES_MIRROR_URI").isDefined
   // How far behind that copy is. A sync that stops serves a page which renders,
   // times itself `now`, and is silently hours old — so the pages say their own
   // age (services.MirrorFreshness).
@@ -68,16 +67,16 @@ trait DebugWiring { self: Wiring =>
   // debug switch stays off. The root's `stop()` closes it.
   protected lazy val debugExtraClient: Option[org.mongodb.scala.MongoClient] =
     if (environmentMode == Mode.Prod || models.Country.switchable.sizeIs <= 1) None
-    else Env.get("MONGODB_MOVIES_MIRROR_URI")
-      .map(MongoConnection.sharedClientFor(_, Some(MongoConnection.LocalMirrorTimeout)))
-      .orElse(MongoConnection.sharedClientFromEnv())
+    else env.get("MONGODB_MOVIES_MIRROR_URI")
+      .map(MongoConnection.sharedClientFor(_, Some(MongoConnection.LocalMirrorTimeout), MongoConnection.maxPoolSizeFrom(env)))
+      .orElse(MongoConnection.sharedClientFromEnv(env))
   private lazy val debugExtraStacks: Seq[(models.Country, MongoConnection, DebugStack)] =
     debugExtraClient.toSeq.flatMap { client =>
       models.Country.switchable.filterNot(_ == country).map { country =>
         val conn       = Wiring.debugMirrorConnection(
-          Env.get("MONGODB_MOVIES_MIRROR_URI"),
+          env.get("MONGODB_MOVIES_MIRROR_URI"),
           MongoConnection.mirrorForDb(_, country.mongoDb, sharedClient = Some(client)),
-          MongoConnection.fromEnvForDb(country.mongoDb, required = false, sharedClient = Some(client)))
+          MongoConnection.fromEnvForDb(country.mongoDb, required = false, env, sharedClient = Some(client)))
         val screenings = new services.movies.MongoScreeningsRepository(conn.database)
         val slots      = new services.movies.MongoSlotsRepository(conn.database)
         val reader     = new MongoReadModelRepository(conn.database)

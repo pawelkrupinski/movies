@@ -7,7 +7,6 @@ import services.enrichment.{FilmwebRatings, ImdbRatings, MetascoreRatings, Mongo
 import services.events.ImdbIdMissing
 import services.freshness.FreshnessKind
 import services.tasks.{BulkCadenceRecorder, EnrichTaskKeys, EnrichmentReaper, OmdbBackfillReaper, RatingEnqueuer, RatingHandler, TaskHandler, TaskType}
-import tools.Env
 
 import scala.concurrent.duration.{DurationLong, FiniteDuration}
 
@@ -49,7 +48,7 @@ trait RatingsWiring { self: WorkerWiring =>
   // key would corrupt that source's change history; the default no-op is correct.
   lazy val omdbAttemptStore: OmdbAttemptStore = new MongoOmdbAttemptStore(mongoConnection.database)
   lazy val omdbBackfill: Option[OmdbBackfill] =
-    Env.get("OMDB_API_KEY").map(_ => new OmdbBackfill(movieCache, omdbClient, omdbAttemptStore))
+    env.get("OMDB_API_KEY").map(_ => new OmdbBackfill(movieCache, omdbClient, omdbAttemptStore))
 
   // OMDb identifier backfill runs as a coarse worker TASK (TaskType.RefreshAllOmdb,
   // handled by the BulkRefreshHandler in OperatorWiring). This reaper is just the
@@ -58,7 +57,7 @@ trait RatingsWiring { self: WorkerWiring =>
   // TaskWorker with the rest of the pipeline's metrics/retries — not on a private
   // scheduler thread. Only when the feature is on (`omdbBackfill` is `Some`).
   def omdbBackfillIntervalSeconds: FiniteDuration =
-    Env.positiveLong("KINOWO_OMDB_BACKFILL_INTERVAL_SECONDS", OmdbBackfillReaper.DefaultInterval.toSeconds).seconds
+    env.positiveLong("KINOWO_OMDB_BACKFILL_INTERVAL_SECONDS", OmdbBackfillReaper.DefaultInterval.toSeconds).seconds
   lazy val omdbBackfillReaper: Option[OmdbBackfillReaper] =
     omdbBackfill.map(_ => new OmdbBackfillReaper(
       () => { taskQueue.enqueue(TaskType.RefreshAllOmdb, EnrichTaskKeys.bulkDedup(TaskType.RefreshAllOmdb)); () },
@@ -102,12 +101,12 @@ trait RatingsWiring { self: WorkerWiring =>
   // corpus where every row is due at once — bounding that recovery burst, the same
   // lever as the scrape reaper. Set comfortably above the steady-state so normal
   // operation is never throttled; the leftover stays due and drains over the next ticks.
-  def maxEnrichmentEnqueuePerTick: Int = Env.positiveLong("KINOWO_ENRICHMENT_MAX_ENQUEUE_PER_TICK", 250L).toInt
+  def maxEnrichmentEnqueuePerTick: Int = env.positiveLong("KINOWO_ENRICHMENT_MAX_ENQUEUE_PER_TICK", 250L).toInt
   // How often the reaper wakes to enqueue the now-due slice (the spread granularity).
   // Finer = flatter per-minute rating trickle on the `kinowo_worker_tasks` panel,
   // at the cost of cheap in-memory corpus scans. Default 1min (≈240 ticks per 4h).
   def enrichmentTickInterval: FiniteDuration =
-    Env.positiveLong("KINOWO_ENRICHMENT_TICK_INTERVAL_SECONDS", EnrichmentReaper.DefaultTickInterval.toSeconds).seconds
+    env.positiveLong("KINOWO_ENRICHMENT_TICK_INTERVAL_SECONDS", EnrichmentReaper.DefaultTickInterval.toSeconds).seconds
   // The per-row rating-enqueue decision, shared by the reaper's corpus walk and the
   // newcomer-fold kick (`MovieService.announceResolvedNewMovie`) so the two agree on
   // eligibility + the tmdbId-keyed due gate. ONE instance, handed to both.

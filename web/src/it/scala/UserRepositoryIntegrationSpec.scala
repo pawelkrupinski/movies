@@ -25,7 +25,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
 
   // The database is handed in, as `UsersWiring` hands in the shared connection's.
   private lazy val client   = MongoClient(Env.get("MONGODB_URI").get)
-  private lazy val database = client.getDatabase(models.Country.resolvedDbName)
+  private lazy val database = client.getDatabase(models.Country.resolvedDbName(tools.Env.fromProcess()))
   private lazy val users    = new MongoUserRepository(Some(database))
   private lazy val states   = new MongoUserStateRepository(Some(database))
   // For seeding whole rows: the production store has no whole-row write (see `UserStateRows`).

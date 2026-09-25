@@ -42,7 +42,10 @@ class AppLoader extends ApplicationLoader {
     val adjusted = context.copy(environment = context.environment.copy(mode = mode))
     LoggerConfigurator(adjusted.environment.classLoader)
       .foreach(_.configure(adjusted.environment))
-    val country = Country.fromEnv
+    // The process's config — env vars, `.env.local`, and (once EnvConfigService
+    // starts) the admin overrides. Built once here, handed to the whole wiring.
+    val env     = Env.fromProcess()
+    val country = Country.fromEnv(env)
     val mounted = AppLoader.mountedAt(adjusted, country)
     // KINOWO_RETIRED picks a DIFFERENT composition root, not a different code
     // path inside the usual one — see `RetiredComponents` for why a retired host
@@ -50,8 +53,8 @@ class AppLoader extends ApplicationLoader {
     // configured alongside it: the country already knows its live address
     // (`Country.webOrigin`), and a second spelling of it is a second thing to
     // get wrong.
-    if (Env.flag("KINOWO_RETIRED")) new RetiredComponents(mounted, country).application
-    else                            new AppComponents(mounted).application
+    if (env.flag("KINOWO_RETIRED")) new RetiredComponents(mounted, country).application
+    else                            new AppComponents(mounted, env).application
   }
 }
 
@@ -180,7 +183,7 @@ object AppLoader {
  * forces the side-effecting components (read-model hydrate, change-stream
  * watches) at the bottom, in the order they need to fire.
  */
-class AppComponents(context: Context)
+class AppComponents(context: Context, val env: Env)
     extends BuiltInComponentsFromContext(context)
     with HttpFiltersComponents
     with CORSComponents

@@ -16,10 +16,9 @@ import java.time.Duration
  * (biletyna). Extracted from `MultikinoClient.fetchFor` once a second caller
  * (Kino Kameralne) needed the same chain.
  *
- * `apiKey` defaults to the `ZYTE_API_KEY` env read but is a parameter so tests
- * pin both branches deterministically — `Env` reads `System.getenv`, which a
- * test can't unset, and CI does set the key, so reading it inside here would
- * make the "no key → direct" path untestable.
+ * The key (`ZYTE_API_KEY`) and the session TTL come from the [[tools.Env]] the
+ * caller hands in — the composition root's in production, a fixed `Env.of(…)` in
+ * a spec, so both branches are testable even where CI sets the key.
  *
  * `zyteHttp` is the JDK client the Zyte API calls go through — built by the
  * composition root ([[newHttpClient]]) and handed in, by name, so it is only built
@@ -30,11 +29,12 @@ object ZyteFallback {
   def fetchFor(
     direct:       HttpFetch,
     zyteHttp:     => HttpClient,
+    env:          Env,
     cookieSource: Option[String] = None,
-    apiKey:       Option[String] = Env.get("ZYTE_API_KEY"),
     meter:        HttpOutcomeRecorder = HttpOutcomeRecorder.noop
   ): HttpFetch =
-    chain(apiKey.filter(_.nonEmpty).map(k => new ZyteFetch(new ZyteClient(zyteHttp, k), cookieSource)), direct, meter)
+    chain(env.get("ZYTE_API_KEY").map(k =>
+      new ZyteFetch(new ZyteClient(zyteHttp, k), cookieSource, ZyteFetch.sessionTtlFrom(env))), direct, meter)
 
   /** Zyte (when there is a Zyte leg) → `direct`, with every Zyte attempt's
    *  outcome going to `meter` — the paid-egress counter; `direct` is free and is

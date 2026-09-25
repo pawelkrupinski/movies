@@ -78,7 +78,7 @@ object MultikinoClient {
    *  the cinema clients sharing this fetch (see [[SharedZyteSession]]). Tests
    *  override `Wiring.multikinoFetch` directly with `FakeHttpFetch`.
    */
-  def fetchFor(direct: HttpFetch, zyteHttp: => java.net.http.HttpClient,
+  def fetchFor(direct: HttpFetch, zyteHttp: => java.net.http.HttpClient, env: tools.Env,
                zyteMeter: HttpOutcomeRecorder = HttpOutcomeRecorder.noop): HttpFetch =
-    ZyteFallback.fetchFor(direct, zyteHttp, cookieSource = Some(HomeUrl), meter = zyteMeter)
+    ZyteFallback.fetchFor(direct, zyteHttp, env, cookieSource = Some(HomeUrl), meter = zyteMeter)
 }

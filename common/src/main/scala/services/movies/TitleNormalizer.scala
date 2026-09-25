@@ -340,7 +340,10 @@ object TitleNormalizer {
    *
    *  Builds a NEW instance per call, like [[forCountry]] — fine as a constructor
    *  default (once per component), never per title. */
-  def deployment: TitleNormalizer = rulesFor(Country.ambiguousFromEnv, Country.soleFromEnv)
+  def deployment: TitleNormalizer = {
+    val env = tools.Env.fromProcess()
+    rulesFor(Country.ambiguousFromEnv(env), Country.soleFromEnv(env))
+  }
 
   /** Pure core of [[deployment]] — the choice, testable without touching process
    *  state. A process configured for SEVERAL countries has no one rule set, so it

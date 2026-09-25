@@ -4,7 +4,7 @@ import services.metrics.EnvGatedFeature
 
 /**
  * The worker's external integrations that a missing secret switches off WITHOUT failing the
- * boot — each reads `Env.get(…)` and quietly runs without when it is `None`. All of them are
+ * boot — each reads `env.get(…)` and quietly runs without when it is `None`. All of them are
  * set in production (worker-secrets, plus the two Facebook keys picked from web-secrets), so
  * any one reading off there is a degraded pipeline nobody would otherwise be told about:
  *

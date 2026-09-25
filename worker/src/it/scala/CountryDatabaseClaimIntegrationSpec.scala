@@ -15,11 +15,11 @@ class CountryDatabaseClaimIntegrationSpec extends AnyFlatSpec with Matchers {
 
   "MongoConnection.forCountry" should "refuse a database another country owns, and claim an unowned one" in
     tools.IntegrationCorpusDatabase.withDatabase(uri, "country-db-claim") { db =>
-      val polish = MongoConnection.forCountry(Country.Poland, required = true, dbName = Some(db.name))
+      val polish = MongoConnection.forCountry(Country.Poland, required = true, env = tools.Env.fromProcess(), dbName = Some(db.name))
       try new DatabaseOwner(db).owner() shouldBe Some(Country.Poland.code)
       finally polish.close()
 
-      val refused = the[IllegalStateException] thrownBy MongoConnection.forCountry(Country.Germany, required = true, dbName = Some(db.name))
+      val refused = the[IllegalStateException] thrownBy MongoConnection.forCountry(Country.Germany, required = true, env = tools.Env.fromProcess(), dbName = Some(db.name))
       refused.getMessage should include (Country.Poland.code)
     }
 }

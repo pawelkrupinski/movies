@@ -46,20 +46,20 @@ class ZyteFallbackSpec extends AnyFlatSpec with Matchers {
   private def unbuilt: HttpClient = fail("the Zyte client was built for a chain with no Zyte leg")
 
   "fetchFor without a Zyte key" should "return direct unchanged — no proxy in front" in {
-    ZyteFallback.fetchFor(direct, unbuilt, apiKey = None) should be theSameInstanceAs direct
+    ZyteFallback.fetchFor(direct, unbuilt, _root_.tools.Env.of()) should be theSameInstanceAs direct
   }
 
   it should "treat a blank key as no key" in {
-    ZyteFallback.fetchFor(direct, unbuilt, apiKey = Some("")) should be theSameInstanceAs direct
+    ZyteFallback.fetchFor(direct, unbuilt, _root_.tools.Env.of("ZYTE_API_KEY" -> "")) should be theSameInstanceAs direct
   }
 
   "fetchFor with a Zyte key" should "front direct with a Zyte fallback chain" in {
-    ZyteFallback.fetchFor(direct, new RefusingHttpClient, apiKey = Some("test-key")) shouldBe a[FallbackHttpFetch]
+    ZyteFallback.fetchFor(direct, new RefusingHttpClient, _root_.tools.Env.of("ZYTE_API_KEY" -> "test-key")) shouldBe a[FallbackHttpFetch]
   }
 
   it should "call the Zyte API through the client it was handed" in {
     val client = new RefusingHttpClient
-    val chain  = ZyteFallback.fetchFor(direct, client, apiKey = Some("test-key"))
+    val chain  = ZyteFallback.fetchFor(direct, client, _root_.tools.Env.of("ZYTE_API_KEY" -> "test-key"))
     chain.get("https://www.biletyna.pl/a") shouldBe "direct-body"
     chain.get("https://www.biletyna.pl/b") shouldBe "direct-body"
     client.sends.get() shouldBe 2

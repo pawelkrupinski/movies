@@ -59,14 +59,18 @@ trait HttpWiring { self: WorkerWiring =>
   // `protected`, not private: the archive-replay wiring rebuilds the enrich-phase
   // chain to hang its own cache OUTSIDE it (a cache hit must not be metered,
   // throttled or rate-limited — it never touches the wire).
-  protected def phaseFetch(phase: String): HttpFetch =
+  protected def phaseFetch(phase: String): HttpFetch = {
+    val pace = RateLimitedHttpFetch.configuredInterval(env)
     new MonitoringHttpFetch(
       new ThrottledHttpFetch(
         new HostCircuitBreakerHttpFetch(
           new RateLimitedHttpFetch(
             new CountingHttpFetch(sharedRealHttpLeaf,
-              workerMetrics.httpMetrics.recorderFor(country.code, phase))))),
+              workerMetrics.httpMetrics.recorderFor(country.code, phase)),
+            pace)),
+        paceFor = pace),
       uptimeMonitor, cinemaScraperCatalog.scrapeHosts)
+  }
 
   // Cinema-site HTTP — every listing scrape, chunk scrape and per-film detail
   // fetch. The `scrape` phase; dominates volume and is what the scrape-health panel
@@ -83,7 +87,7 @@ trait HttpWiring { self: WorkerWiring =>
   // ── External API clients ──────────────────────────────────────────────────
   // All draw from `enrichmentFetch` so their attempts tally under the `enrich`
   // phase, apart from the cinema-facing scrapers/resolvers which use `httoFetch`.
-  lazy val tmdbClient = new TmdbClient(enrichmentFetch, language = country.language)
+  lazy val tmdbClient = new TmdbClient(enrichmentFetch, apiKey = env.get("TMDB_API_KEY"), language = country.language)
   lazy val filmwebClient = new FilmwebClient(enrichmentFetch)
   lazy val imdbClient = new ImdbClient(enrichmentFetch)
   lazy val metacriticClient = new MetacriticClient(enrichmentFetch)
@@ -92,7 +96,7 @@ trait HttpWiring { self: WorkerWiring =>
   // The client itself no-ops (returns None, makes no HTTP call) when OMDB_API_KEY
   // is unset; `omdbBackfill` in the ratings block builds the refresher only when
   // the key is present.
-  lazy val omdbClient = new OMDbClient(enrichmentFetch)
+  lazy val omdbClient = new OMDbClient(enrichmentFetch, env.get("OMDB_API_KEY"))
   // Letterboxd — an id-crosswalk resolution SOURCE (not a rating source): it
   // turns a known imdbId into the exact tmdbId (and vice versa) for the
   // arthouse/festival long tail TMDB's own indexes leave unmapped, by scraping

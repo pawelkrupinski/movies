@@ -5,7 +5,6 @@ import modules.Wiring
 import services.UptimeMonitor
 import services.fallback.{FallbackStore, MongoFallbackStore}
 import services.tasks.{BulkTaskResultStore, MongoBulkTaskResultStore, MongoTaskQueue, TaskQueue}
-import tools.Env
 
 /** ── Operator pages ────────────────────────────────────────────────────────
  *  What sits behind the `AdminAction` gate: /uptime, /tasks and /admin/config,
@@ -28,7 +27,7 @@ trait AdminWiring { self: Wiring =>
   // shared AdminAction gate resolves the session's user UUID and checks its email
   // against this set.
   lazy val adminAllowlist: Set[String] =
-    Env.get("ADMIN_ALLOWLIST").map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet).getOrElse(Set.empty)
+    env.get("ADMIN_ALLOWLIST").map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet).getOrElse(Set.empty)
   lazy val adminAction = new AdminAction(controllerComponents.parsers.anyContent, userRepository, adminAllowlist)(using controllerComponents.executionContext)
 
   // ── Task queue (read-only here) ─────────────────────────────────────────────
@@ -50,7 +49,7 @@ trait AdminWiring { self: Wiring =>
     app          = "web",
     overrides    = new services.config.MongoEnvOverrideStore(mongoConnection.database),
     registry     = new services.config.MongoEnvRegistryStore(mongoConnection.database),
-    env          = Env.process,
-    tickInterval = scala.concurrent.duration.Duration(Env.positiveLong("KINOWO_CONFIG_REFRESH_SECONDS", 30L), "seconds"))
+    env          = env,
+    tickInterval = scala.concurrent.duration.Duration(env.positiveLong("KINOWO_CONFIG_REFRESH_SECONDS", 30L), "seconds"))
   lazy val envConfigController = new EnvConfigController(controllerComponents, adminAction, envConfigService)
 }

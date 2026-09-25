@@ -20,7 +20,7 @@ import java.time.LocalDate
  * Checked PER COUNTRY against that country's OWN deployed window, because the
  * caps are shared but the windows are not: each worker scrapes one country and
  * reads its own `KINOWO_SCRAPE_FRESHNESS_MINUTES` (60 PL, 420 UK, 600 DE, 840
- * US). Measuring every country against `Freshness.defaultScrapeTtl` — as this
+ * US). Measuring every country against `Freshness.scrapeTtlFrom` — as this
  * spec used to — models a deployment that does not exist, and it was already
  * wrong before it was ever caught: Germany's 1,529 venues sat against a
  * default-window capacity of 1,560, a 31-venue margin, on a country that in

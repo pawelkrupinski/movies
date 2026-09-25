@@ -5,7 +5,6 @@ import services.enrichment.{CinemetaClient, ImdbIdResolver}
 import services.movies.{MovieService, QueueResolveDispatcher}
 import services.resolution.{MongoResolutionStore, ResolutionCache, ResolutionOutcome, UnresolvedPolicy, WriteThroughResolutionCache}
 import services.tasks.{CrewConfirmation, SettleReaper, UnresolvedTmdbReaper}
-import tools.Env
 
 import scala.concurrent.duration.{DurationLong, FiniteDuration}
 
@@ -35,7 +34,7 @@ trait ResolutionWiring { self: WorkerWiring =>
     wikidata = Some(wikidataClient),
     letterboxdIdResolver = Some(letterboxdIdResolver),
     // Same OMDB_API_KEY gate as `omdbBackfill` — the OMDb rung is inert when unset.
-    omdb = Env.get("OMDB_API_KEY").map(_ => omdbClient),
+    omdb = env.get("OMDB_API_KEY").map(_ => omdbClient),
     // Cinemeta needs no key — always wired as the final free rung.
     cinemeta = Some(new CinemetaClient(enrichmentFetch)))
 
@@ -104,7 +103,7 @@ trait ResolutionWiring { self: WorkerWiring =>
   // the per-deploy flap. Now the load is a pure read and this reaper re-asserts the
   // one-row-per-film invariant once per the SAME 30-min window (cluster-claimed).
   def settleIntervalSeconds: FiniteDuration =
-    Env.positiveLong("KINOWO_SETTLE_INTERVAL_SECONDS", SettleReaper.DefaultInterval.toSeconds).seconds
+    env.positiveLong("KINOWO_SETTLE_INTERVAL_SECONDS", SettleReaper.DefaultInterval.toSeconds).seconds
   lazy val settleReaper = new SettleReaper(() => movieService.settle(),
     interval = settleIntervalSeconds, runStore = scheduledRunStore)
 
@@ -115,7 +114,7 @@ trait ResolutionWiring { self: WorkerWiring =>
   // shared-CPU credit). `retryResolve` dispatches each due row's ResolveTmdb past
   // its remembered miss, which stays stored so the row keeps its card meanwhile. Cap bounds a clock-jump/cold burst the same way the rating
   // reaper does — the leftover stays due and re-tries next period.
-  def maxTmdbRetryEnqueuePerTick: Int = Env.positiveLong("KINOWO_TMDB_RETRY_MAX_ENQUEUE_PER_TICK", 100L).toInt
+  def maxTmdbRetryEnqueuePerTick: Int = env.positiveLong("KINOWO_TMDB_RETRY_MAX_ENQUEUE_PER_TICK", 100L).toInt
   lazy val unresolvedTmdbReaper = new UnresolvedTmdbReaper(movieCache, movieService.retryResolve,
     // `reexamineResolution` + `country` drive the stale-language and misresolution
     // sweeps: a row whose Tmdb slot was fetched in another deployment's language gets its

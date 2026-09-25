@@ -22,7 +22,7 @@ import services.cinemas.pl.MultikinoClient
 object ProxyProbe {
   private val BiletynaVenue = "https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe"
 
-  def main(args: Array[String]): Unit = ResidentialProxy.fromEnv() match {
+  def main(args: Array[String]): Unit = ResidentialProxy.fromEnv(tools.Env.fromProcess()) match {
     case None =>
       println("No proxy config — set KINOWO_PROXY_USER / KINOWO_PROXY_PASS (host+ports come from residential-proxy.properties).")
     case Some(config) =>

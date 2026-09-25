@@ -43,8 +43,7 @@ class WorkerWiring(
     // so all countries draw run permits from one Semaphore/cap rather than each
     // spinning its own (see `backgroundBudget`). Defaulted so a single-country
     // boot / test constructs its own.
-    injectedBackgroundBudget: ExecutionBudget =
-      new SharedExecutionBudget(Env.positiveInt("KINOWO_BG_CONCURRENCY", 4)),
+    injectedBackgroundBudget: ExecutionBudget = WorkerWiring.backgroundBudgetFrom(Env.fromProcess()),
     // ONE shared `MongoClient` across countries: each country binds its OWN
     // database view (`country.mongoDb`) on this single client. `None` → this
     // wiring builds (and closes) its own client from `MONGODB_URI`, the
@@ -62,7 +61,12 @@ class WorkerWiring(
     // process's memory cgroup, so `WorkerMain` builds it once and injects the SAME
     // instance into every country's wiring (see `VipsPosterShrinker`). Defaulted so a
     // single-country boot / test constructs its own.
-    val posterShrinkGate: tools.PosterDecodeGate = services.sharecards.VipsPosterShrinker.newGate()) extends play.api.Logging
+    val posterShrinkGate: tools.PosterDecodeGate = services.sharecards.VipsPosterShrinker.newGate(),
+    // The process's config (env vars + admin overrides) every knob in this wiring
+    // reads. `WorkerMain` builds ONE and hands the same instance to every country's
+    // wiring, so the override source EnvConfigService installs reaches all of them.
+    // Defaulted so a single-country test wiring reads the process environment.
+    val env: Env = Env.fromProcess()) extends play.api.Logging
     with HttpWiring with EgressWiring with ScrapeWiring with ChunkScrapeWiring with DetailWiring
     with CorpusWiring with ResolutionWiring with RatingsWiring with ReadModelWiring
     with MetricsWiring with TaskQueueWiring with StagingWiring with AlertingWiring with OperatorWiring with ShareCardWiring
@@ -72,7 +76,7 @@ class WorkerWiring(
    *  self-owned single-country bundle when none was injected (lone boot / test). */
   val workerMetrics: WorkerMetrics =
     injectedWorkerMetrics.getOrElse(
-      WorkerMetrics.singleCountry(country, Env.positiveInt("KINOWO_WORKER_POOL_SIZE", 4)))
+      WorkerMetrics.singleCountry(country, workerPoolSize))
   lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database, clock = clock,
     ttlMismatches = workerMetrics.ttlIndexMismatches)
 
@@ -106,16 +110,16 @@ class WorkerWiring(
   // This country's Mongo database — explicit MONGODB_DB still wins for local dev,
   // else the country's own database. `protected def` so a test can read the
   // derivation without opening a connection.
-  protected def mongoDbName: String = Country.dbNameFor(country)
+  protected def mongoDbName: String = Country.dbNameFor(country, env)
 
   // The worker is the writer — Mongo is mandatory (opt out only for local dev
   // with MONGODB_OPTIONAL=true). Bound to THIS country's database, on the shared
   // `MongoClient` when WorkerMain injected one — and claimed for this country before
   // anything can prune or write against it (see [[services.DatabaseOwner]]).
   lazy val mongoConnection: MongoConnection = {
-    val optedOut = Env.flag("MONGODB_OPTIONAL")
+    val optedOut = env.flag("MONGODB_OPTIONAL")
     MongoConnection.forCountry(country,
-      required = MongoConnection.isRequired(testMode = false, optedOut = optedOut),
+      required = MongoConnection.isRequired(testMode = false, optedOut = optedOut), env = env,
       sharedClient = sharedMongoClient, dbName = Some(mongoDbName))
   }
 
@@ -128,7 +132,7 @@ class WorkerWiring(
   // The per-venue cadence override `scrapeDueWindow` reads and `ScrapeFreshnessPolicy`
   // writes after every landed scrape — see `VenueScrapeCadence`. Country-scoped
   // (this wiring IS one country), like `scrapeDueWindow` itself.
-  val venueCadenceStore = new VenueCadenceStore(Freshness.defaultScrapeTtl)
+  val venueCadenceStore = new VenueCadenceStore(Freshness.scrapeTtlFrom(env))
   // ONE shared due schedule backs both the scrape reaper (enqueue) and the scrape
   // handler (pickup re-gate), so they agree on what's due and a cinema's scrapes
   // spread across the freshness window instead of falling due in a lockstep wave.
@@ -136,7 +140,7 @@ class WorkerWiring(
   // most cinemas get the country's own cadence (the store's own fallback), but a
   // venue whose freshest listing runs dry sooner gets a shorter one — see
   // `VenueScrapeCadence`.
-  val scrapeDueWindow = new DueWindow(venueCadenceStore.periodFor, Freshness.defaultScrapeTtl)
+  val scrapeDueWindow = new DueWindow(venueCadenceStore.periodFor, Freshness.scrapeTtlFrom(env))
   // Shared detail refresh schedule. Its period IS the DetailEnrich TTL, read from
   // `Freshness.ttlFor` rather than repeated as a literal here: `CachingDetailFetch`'s
   // own TTL is defined as "shorter than this window" and pinned by a spec against
@@ -301,4 +305,12 @@ class WorkerWiring(
     movieRepository.close()
     mongoConnection.close()
   }
+}
+
+object WorkerWiring {
+
+  /** The background concurrency budget every country's wiring shares, sized by
+   *  `KINOWO_BG_CONCURRENCY` (default 4 — see `backgroundBudget`). */
+  def backgroundBudgetFrom(env: Env): ExecutionBudget =
+    new SharedExecutionBudget(env.positiveInt("KINOWO_BG_CONCURRENCY", 4))
 }

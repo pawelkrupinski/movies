@@ -52,7 +52,8 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
   // A minimal wiring that varies the WorkerWiring CONSTRUCTOR (country + injected
   // budget) — which `TestWiring` can't, since it fixes the no-arg super-constructor.
   // Mongo is pinned disabled so nothing connects; we only read the derivation seams.
-  class Probe(c: Country, b: ExecutionBudget) extends WorkerWiring(c, b) {
+  class Probe(c: Country, b: ExecutionBudget, e: tools.Env = tools.Env.of())
+      extends WorkerWiring(c, b, env = e) {
     override lazy val mongoConnection: MongoConnection =
       new MongoConnection(uri = None, dbName = "unused", required = false)
     def dbNameForTest: String              = mongoDbName
@@ -193,7 +194,20 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
 
     w1.country shouldBe Country.Poland
     w1.defaultScrapeCitiesForTest shouldBe Country.Poland.cities.map(_.slug).toSet
-    w1.dbNameForTest              shouldBe Country.dbNameFor(Country.Poland)
+    w1.dbNameForTest              shouldBe Country.Poland.mongoDb
+  }
+
+  // Every knob the wiring reads comes off the Env its root handed it — not a
+  // process-global — so two wirings built over different configs disagree.
+  it should "read its knobs from the Env it was handed" in {
+    val budget = new SharedExecutionBudget(4)
+    val tuned = new Probe(Country.Poland, budget,
+      tools.Env.of("MONGODB_DB" -> "kinowo_probe_db", "KINOWO_SCRAPE_TASKS_PER_VENUE" -> "3"))
+    val plain = new Probe(Country.Poland, budget)
+    tuned.dbNameForTest       shouldBe "kinowo_probe_db"
+    tuned.scrapeTasksPerVenue shouldBe 3
+    plain.dbNameForTest       shouldBe Country.Poland.mongoDb
+    plain.scrapeTasksPerVenue shouldBe 1
   }
 
   // A wiring that only forces the pure, no-I/O catalog derivations (`detailEnrichers`)

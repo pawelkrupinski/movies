@@ -4,7 +4,7 @@ import controllers.{AuthController, FacebookDataDeletionController, UserStateCon
 import modules.Wiring
 import services.auth.{AppleTokenValidator, AuthExchangeCodeStore, AuthExchangeCodes, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, InMemoryAuthExchangeCodeStore, MongoAuthExchangeCodeStore, OauthProvider}
 import services.users.{AccountDeletion, CaffeineUserChangeTimeCache, MongoUserRepository, MongoUserStateRepository, UserRepository, UserStateRepository}
-import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch}
+import tools.{HttpFetch, MonitoringHttpFetch, RealHttpFetch}
 
 /** ── Accounts ──────────────────────────────────────────────────────────────
  *  The signed-in visitor: the users + user-state repositories on the shared
@@ -48,27 +48,27 @@ trait UsersWiring { self: Wiring =>
   // provider absent → start route 404s and the navbar hides the login button.
   lazy val oauthProviders: Map[String, OauthProvider] = {
     val google = for {
-      id     <- Env.get("GOOGLE_CLIENT_ID")
-      secret <- Env.get("GOOGLE_CLIENT_SECRET")
+      id     <- env.get("GOOGLE_CLIENT_ID")
+      secret <- env.get("GOOGLE_CLIENT_SECRET")
     } yield new GoogleOauthProvider(httoFetch, id, secret)
     val facebook = for {
-      id     <- Env.get("FACEBOOK_APP_ID")
-      secret <- Env.get("FACEBOOK_APP_SECRET")
+      id     <- env.get("FACEBOOK_APP_ID")
+      secret <- env.get("FACEBOOK_APP_SECRET")
     } yield new FacebookOauthProvider(httoFetch, id, secret)
     Seq(google, facebook).flatten.map(p => p.name -> (p: OauthProvider)).toMap
   }
 
   lazy val googleTokenValidator: Option[GoogleTokenValidator] =
-    Env.get("GOOGLE_CLIENT_ID").map(id => new GoogleTokenValidator(httoFetch, id))
+    env.get("GOOGLE_CLIENT_ID").map(id => new GoogleTokenValidator(httoFetch, id))
 
   lazy val facebookTokenValidator: Option[FacebookTokenValidator] =
     for {
-      id     <- Env.get("FACEBOOK_APP_ID")
-      secret <- Env.get("FACEBOOK_APP_SECRET")
+      id     <- env.get("FACEBOOK_APP_ID")
+      secret <- env.get("FACEBOOK_APP_SECRET")
     } yield new FacebookTokenValidator(httoFetch, id, secret)
 
   lazy val appleTokenValidator: Option[AppleTokenValidator] =
-    Env.get("APPLE_BUNDLE_ID").orElse(Some("dev.kinowo.Kinowo"))
+    env.get("APPLE_BUNDLE_ID").orElse(Some("dev.kinowo.Kinowo"))
       .map(bundleId => new AppleTokenValidator(httoFetch, bundleId, clock))
 
   // One-shot sign-in codes for the two handoffs a session cookie cannot make:
@@ -87,5 +87,5 @@ trait UsersWiring { self: Wiring =>
   lazy val accountDeletion   = new AccountDeletion(userRepository, userStateRepository)
   lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, accountDeletion, userChangeTimeCache, legacyUserStateMetrics, userRepository, clock)
   lazy val facebookDataDeletionController =
-    new FacebookDataDeletionController(controllerComponents, country, Env.get("FACEBOOK_APP_SECRET"), userRepository, accountDeletion)
+    new FacebookDataDeletionController(controllerComponents, country, env.get("FACEBOOK_APP_SECRET"), userRepository, accountDeletion)
 }

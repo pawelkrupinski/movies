@@ -4,7 +4,6 @@ import modules.WorkerWiring
 import services.alerts.{FilmwebDropAlerter, StagingStuckAlerter, TelegramNotifier, TelegramRoute}
 import services.cinemas.common.ScrapeOutcomeListener
 import services.metrics.EnvGatedFeature
-import tools.Env
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
@@ -22,7 +21,7 @@ trait AlertingWiring { self: WorkerWiring =>
   // Telegram alerter for fallback ENTER / RECOVERED events. Posts to the dedicated
   // "Fallback to Filmweb" topic when a topic id is set.
   protected lazy val fallbackTelegramNotifier: Option[TelegramNotifier] =
-    AlertingWiring.fallbackRoute(Env.get).toOption.map(notifierFor)
+    AlertingWiring.fallbackRoute(env.get).toOption.map(notifierFor)
 
   // Telegram alerter for the OTHER half of the Filmweb story: a venue whose sole
   // source IS Filmweb (no own-site fallback possible) going empty/404 because
@@ -30,9 +29,9 @@ trait AlertingWiring { self: WorkerWiring =>
   // the dedicated "Filmweb Drops Cinemas" channel; off unless its chat id is set,
   // so CI / local without secrets raise no alerts.
   protected lazy val filmwebDropAlerter: Option[FilmwebDropAlerter] =
-    AlertingWiring.filmwebDropRoute(Env.get).toOption.filter(_ => filmwebEnabled).map { route =>
+    AlertingWiring.filmwebDropRoute(env.get).toOption.filter(_ => filmwebEnabled).map { route =>
       new FilmwebDropAlerter(filmwebOnlyCinemas, notifierFor(route).send,
-        Env.positiveInt("KINOWO_FILMWEB_DROP_THRESHOLD", 3))
+        env.positiveInt("KINOWO_FILMWEB_DROP_THRESHOLD", 3))
     }
 
   // The single drop-watcher shared across every UptimeRecordingScraper wrap (it
@@ -46,15 +45,15 @@ trait AlertingWiring { self: WorkerWiring =>
   // else the shared "Kinowo Monitoring" group (KINOWO_FALLBACK_TG_CHAT_ID), so it
   // works on prod without a new secret; off in CI / local without any chat id.
   protected lazy val stagingStuckAlerter: Option[StagingStuckAlerter] =
-    AlertingWiring.stagingStuckRoute(Env.get).toOption.map { route =>
+    AlertingWiring.stagingStuckRoute(env.get).toOption.map { route =>
       new StagingStuckAlerter(stagingRepository, notifierFor(route).send,
-        stuckThreshold = FiniteDuration(Env.positiveLong("KINOWO_STAGING_STUCK_MINUTES", 60L), TimeUnit.MINUTES),
-        interval       = FiniteDuration(Env.positiveLong("KINOWO_STAGING_STUCK_SCAN_MINUTES", 10L), TimeUnit.MINUTES))
+        stuckThreshold = FiniteDuration(env.positiveLong("KINOWO_STAGING_STUCK_MINUTES", 60L), TimeUnit.MINUTES),
+        interval       = FiniteDuration(env.positiveLong("KINOWO_STAGING_STUCK_SCAN_MINUTES", 10L), TimeUnit.MINUTES))
     }
 
   /** Which of this country's alerters are wired, read from the same routes as the
    *  alerters above so the gauge and the wiring cannot disagree. */
-  lazy val alerterFeatures: Seq[EnvGatedFeature] = AlertingWiring.alerters(Env.get, filmwebEnabled)
+  lazy val alerterFeatures: Seq[EnvGatedFeature] = AlertingWiring.alerters(env.get, filmwebEnabled)
 
   /** Publish [[alerterFeatures]] and WARN, naming the missing keys, for any that is off. */
   def reportAlerters(): Unit = {

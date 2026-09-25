@@ -41,9 +41,19 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
       HostPolicies.headersFor(url) shouldBe row.headers
       // The pace goes through the live knob, so compare the two lookups that
       // share that path rather than the compiled-in value an override may shift.
-      HostPolicies.requestIntervalFor(url) shouldBe HostPolicies.requestIntervalFor(exactHost(suffix))
-      HostPolicies.requestIntervalFor(url).isDefined shouldBe row.minRequestInterval.isDefined
+      HostPolicies.requestIntervalFor(url, Env.of()) shouldBe HostPolicies.requestIntervalFor(exactHost(suffix), Env.of())
+      HostPolicies.requestIntervalFor(url, Env.of()).isDefined shouldBe row.minRequestInterval.isDefined
     }
+  }
+
+  // The pace knob is read from the Env the wiring injects, so an admin override
+  // installed into THAT instance re-paces the host — and no other instance's.
+  "a paced row" should "take its interval from the injected Env's pace knob" in {
+    val url     = exactHost("filmstarts.de")
+    val flipped = Env.of()
+    flipped.installOverrides(Map("KINOWO_FILMSTARTS_PACE_MS" -> "4321").get)
+    HostPolicies.requestIntervalFor(url, flipped)  shouldBe Some(java.time.Duration.ofMillis(4321))
+    HostPolicies.requestIntervalFor(url, Env.of()) should not be Some(java.time.Duration.ofMillis(4321))
   }
 
   it should "leave a host that merely ENDS with the suffix text on the defaults" in {
@@ -52,7 +62,7 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
       HostPolicies.connectTimeoutFor(url) shouldBe HostPolicies.DefaultConnectTimeout
       HostPolicies.requestTimeoutFor(url) shouldBe HostPolicies.DefaultRequestTimeout
       HostPolicies.headersFor(url) shouldBe empty
-      HostPolicies.requestIntervalFor(url) shouldBe None
+      HostPolicies.requestIntervalFor(url, Env.of()) shouldBe None
     }
   }
 
