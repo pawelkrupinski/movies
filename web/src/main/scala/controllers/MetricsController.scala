@@ -73,7 +73,9 @@ class MetricsController(cc: ControllerComponents, monitor: UptimeMonitor, fallba
 
 object MetricsController {
   /** Only buckets newer than this contribute to the "recent" gauges — a rolling
-   *  window over the last two 15-min uptime buckets. A since-boot total would
+   *  window over every 15-min uptime bucket that overlaps the last 30 minutes
+   *  (so 30 to 45 minutes of data, never less — see `UptimeMonitor.recentTotals`
+   *  for the mid-outage alert flap the shorter reading caused). A since-boot total would
    *  never recover after an incident; this reflects *current* health, so the
    *  ratio failures/(failures+successes) reads ~1.0 only while a service is
    *  actively failing and falls back to 0 once it recovers. */

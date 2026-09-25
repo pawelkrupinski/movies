@@ -501,6 +501,29 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     totals("TMDB")              shouldBe UptimeMonitor.RecentTotals(successes = 7, failures = 0,  zeroes = 0)
   }
 
+  // THE 2026-09-24 FLAP. `/metrics` hands in `now - 30min`, which almost never
+  // lands on a bucket boundary. Keying the tail on it raw dropped the bucket the
+  // cutoff falls INSIDE, whole, the instant its start slipped past the cutoff — so
+  // the "30-minute" window really held 15 to 30 minutes of data, and every quarter
+  // hour it lost half its history at once. During the Decodo outage that dropped
+  // UK's worst quarter (697 failures, 0 successes) at 20:15:30Z, the proxy ratio
+  // fell from 0.74 to 0.42 for one scrape, and ResidentialProxyFallingBackToZyte
+  // RESOLVED for UK and US mid-outage, then re-fired 15 minutes later.
+  it should "count the bucket the cutoff falls inside, so the window never shrinks below its span" in {
+    val monitor = new UptimeMonitor(clock = specClock)
+    val base = UptimeMonitor.bucketTimestamp(specClock.millis())
+    val step = UptimeMonitor.BucketDurationMs
+    monitor.sync.applyExternalUpdate("Residential proxy", base - 3 * step, successes = 50, failures = 50, zeroes = 0, 0L, 0, Seq.empty)
+    monitor.sync.applyExternalUpdate("Residential proxy", base - 2 * step, successes = 0,  failures = 697, zeroes = 0, 0L, 0, Seq("Tunnel failed, got: 503"))
+    monitor.sync.applyExternalUpdate("Residential proxy", base - 1 * step, successes = 335, failures = 239, zeroes = 0, 0L, 0, Seq.empty)
+
+    // 30 seconds past the (base - 2*step) boundary: that bucket still holds 14.5
+    // minutes of the window; the one before it ended before the cutoff.
+    val totals = monitor.recentTotals(base - 2 * step + 30 * 1000L).toMap
+
+    totals("Residential proxy") shouldBe UptimeMonitor.RecentTotals(successes = 335, failures = 936, zeroes = 0)
+  }
+
   // A gauge that disappears when a service goes quiet reads as "no data" to an
   // alert that needs to see the zero — so a service whose every bucket predates
   // the window still gets a row.

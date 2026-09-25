@@ -276,8 +276,16 @@ class UptimeMonitor(
     }
   }
 
-  /** Every service's counts summed over the buckets at or after `cutoff` — what the
-   *  Prometheus exposition needs, and nothing else.
+  /** Every service's counts summed over every bucket holding any moment at or after
+   *  `cutoff` — what the Prometheus exposition needs, and nothing else.
+   *
+   *  "Holding any moment" includes the bucket the cutoff falls INSIDE, so a
+   *  30-minute window spans 30 to 45 minutes of buckets and never less than it
+   *  asks for. Keying the tail on the raw cutoff dropped that bucket whole the
+   *  instant its start slipped past, so the window held 15 to 30 minutes and lost
+   *  half its history at every quarter hour: during the 2026-09-24 Decodo outage
+   *  that alone took UK's proxy failure ratio from 0.74 to 0.42 for one scrape and
+   *  resolved ResidentialProxyFallingBackToZyte mid-outage for UK and US.
    *
    *  It exists because the obvious spelling (`services.map(s => s -> history(s))`)
    *  is the /uptime OOM again, on a hot path: `history` materialises all 96 of a
@@ -289,7 +297,7 @@ class UptimeMonitor(
    *  operational endpoint took the public site down for a restart.
    *
    *  The window is applied in the SKIP-LIST, not after the fact: `tailMap` touches
-   *  only the two or three slots a 30-minute window spans, and one small
+   *  only the three slots a 30-minute window overlaps, and one small
    *  [[RecentTotals]] per service replaces 96 snapshots. Services with no bucket in
    *  the window still appear, at zero — a gauge that vanishes when a service goes
    *  quiet reads as "no data" to an alert that needs to see the zero. */
@@ -298,7 +306,7 @@ class UptimeMonitor(
       var successes = 0
       var failures  = 0
       var zeroes    = 0
-      val it = entry.getValue.tailMap(cutoff, true).values().iterator()
+      val it = entry.getValue.tailMap(bucketTimestamp(cutoff), true).values().iterator()
       while (it.hasNext) {
         val b = it.next()
         successes += b.successes.get()
