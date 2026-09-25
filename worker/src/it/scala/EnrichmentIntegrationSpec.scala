@@ -17,19 +17,17 @@ import tools.{Env, RealHttpFetch}
  * the chain works end-to-end on a handful of real films that show up in the
  * site's repertoire.
  *
- * Shared TMDB/IMDb clients live on the companion so `ParallelTestExecution`'s
- * one-instance-per-test doesn't multiply the HTTP-client setup.
+ * The clients are the spec instance's, not a companion's: `ParallelTestExecution` builds one
+ * instance per test, so each test builds (lazily, only what it calls) its own — a few cheap
+ * HTTP clients, the same cost as each test's own upstream probe.
  */
-object EnrichmentIntegrationSpec {
-  private val tmdb = new TmdbClient(new RealHttpFetch)
-  private val imdb = new ImdbClient(new RealHttpFetch)
-}
 
 class EnrichmentIntegrationSpec extends AnyFlatSpec with Matchers with ParallelTestExecution {
 
   assume(Env.fromProcess().get("TMDB_API_KEY").isDefined, "TMDB_API_KEY not set")
 
-  import EnrichmentIntegrationSpec.{tmdb, imdb}
+  private lazy val tmdb = new TmdbClient(new RealHttpFetch)
+  private lazy val imdb = new ImdbClient(new RealHttpFetch)
 
   // TMDB and IMDb both answer `None` when they throttle us, exactly as they do when a
   // film genuinely is not there — so a rate limiter looked identical to a broken lookup

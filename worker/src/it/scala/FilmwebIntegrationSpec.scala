@@ -10,17 +10,13 @@ import tools.RealHttpFetch
  * Live test of FilmwebClient against the real (unauthenticated) Filmweb JSON API.
  * No API key needed — Filmweb's /api/v1 endpoints are open.
  *
- * `ParallelTestExecution` mixes in `OneInstancePerTest`, so the shared
- * client lives on the companion (constructing `FilmwebClient` is cheap,
- * but the principle matches the other live specs).
+ * `ParallelTestExecution` mixes in `OneInstancePerTest`, so each test gets its own
+ * instance and with it its own (cheap) client — no companion-held state.
  */
-object FilmwebIntegrationSpec {
-  private val client = new FilmwebClient(new RealHttpFetch)
-}
 
 class FilmwebIntegrationSpec extends AnyFlatSpec with Matchers with ParallelTestExecution {
 
-  import FilmwebIntegrationSpec.client
+  private lazy val client = new FilmwebClient(new RealHttpFetch)
 
   // Filmweb answers `None` both when it throttles and when a film is absent, so a live
   // block is indistinguishable from a lookup regression — see [[LiveUpstream]].
