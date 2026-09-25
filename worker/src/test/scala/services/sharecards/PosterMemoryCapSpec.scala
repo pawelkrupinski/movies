@@ -25,6 +25,46 @@ class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
     (script.toString, ran)
   }
 
+  /** A vips stand-in that marks it has started, then holds its gate until `release` exists (10s at most). */
+  private def blockingVips(): (String, Path, Path) = {
+    val started = Files.createTempFile("vips-started-", ".txt"); Files.delete(started)
+    val release = Files.createTempFile("vips-release-", ".txt"); Files.delete(release)
+    val script  = Files.createTempFile("blocking-vips-", ".sh")
+    Files.writeString(script, s"#!/bin/sh\ntouch '$started'\ni=0\nwhile [ ! -e '$release' ] && [ $$i -lt 100 ]; do sleep 0.1; i=$$((i+1)); done\nexit 1\n")
+    Files.setPosixFilePermissions(script, PosixFilePermissions.fromString("rwx------"))
+    (script.toString, started, release)
+  }
+
+  /** Runs `body` while a shrinker on `gate` is mid-shrink, holding it. */
+  private def whileShrinking(gate: tools.PosterDecodeGate)(body: => Unit): Unit = {
+    val (bin, started, release) = blockingVips()
+    val poster = Files.write(Files.createTempFile("poster-", ".jpg"), posterJpeg)
+    val holder = new Thread(() => { new VipsPosterShrinker(binary = Some(bin), gate = gate).coverSlot(poster); () })
+    holder.start()
+    try {
+      val deadline = System.nanoTime() + 5_000_000_000L
+      while (!Files.exists(started) && System.nanoTime() < deadline) Thread.sleep(10)
+      Files.exists(started) shouldBe true
+      body
+    } finally { Files.createFile(release); holder.join(15000) }
+  }
+
+  private def shrinkWithin(shrinker: VipsPosterShrinker, millis: Long): Option[Either[String, (Int, Int)]] = {
+    val poster = Files.write(Files.createTempFile("poster-", ".jpg"), posterJpeg)
+    val result = scala.concurrent.Future(shrinker.coverSlot(poster).map(i => (i.getWidth, i.getHeight)))(using scala.concurrent.ExecutionContext.global)
+    scala.util.Try(scala.concurrent.Await.result(result, scala.concurrent.duration.Duration(millis, "ms"))).toOption
+  }
+
+  "A poster shrink" should "wait for another shrink on the same gate" in {
+    val gate = VipsPosterShrinker.newGate()
+    whileShrinking(gate)(shrinkWithin(new VipsPosterShrinker(binary = None, gate = gate), millis = 500) shouldBe None)
+  }
+
+  it should "not wait on a shrink behind another gate" in {
+    whileShrinking(VipsPosterShrinker.newGate())(
+      shrinkWithin(new VipsPosterShrinker(binary = None), millis = 5000) shouldBe Some(Right((420, 630))))
+  }
+
   "The JPEG header" should "say progressive, the dimensions and the coefficient buffer a decode will hold" in {
     val giant = JpegHeader.read(PosterMemoryCapSpec.jpegHeader(8000, 12000, progressive = true)).get
     (giant.progressive, giant.width, giant.height) shouldBe ((true, 8000, 12000))

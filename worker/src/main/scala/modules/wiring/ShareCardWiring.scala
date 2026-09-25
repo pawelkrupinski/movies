@@ -36,9 +36,13 @@ trait ShareCardWiring { self: WorkerWiring =>
     java.net.URI.create(services.cinemas.pl.MultikinoClient.HomeUrl).getHost ->
       new RememberedFailurePosterDownload(new EgressPosterDownload(multikinoPosterFetch), shareCardStore.failedPosters, clock)))
 
+  /** Shrinks each poster to the card's slot — through the process's one gate, shared with every
+   *  other country's renders. */
+  lazy val posterShrinker: VipsPosterShrinker = new VipsPosterShrinker(gate = posterShrinkGate)
+
   lazy val shareCardService: ShareCardService = new ShareCardService(
     country, shareCardStore,
-    new ShareCardPosters(shareCardStore, posterDownload, new VipsPosterShrinker(), shareCardMetrics),
+    new ShareCardPosters(shareCardStore, posterDownload, posterShrinker, shareCardMetrics),
     taskQueue, shareCardMetrics, clock)
 
   /** What the projection asks about share cards. */

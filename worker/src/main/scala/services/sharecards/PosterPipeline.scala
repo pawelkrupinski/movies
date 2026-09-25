@@ -271,16 +271,18 @@ trait PosterShrinker {
  * the worker's own native memory. The JDK decode (itself capped at [[PosterDecode.MaxPixels]])
  * runs only when vips is not installed or answers that the file is no image it knows.
  *
- * ONE SHRINK AT A TIME per process ([[VipsPosterShrinker.Gate]]): two capped children are 384 MB of
- * address space against at most ~110-260 MB of headroom on the small workers. The task framework
- * has no per-task-type concurrency limit, so the bound is this gate around the child only — a
- * render's download and composite still run four at once on the pool.
+ * ONE SHRINK AT A TIME per process (`gate`): two capped children are 384 MB of address space
+ * against at most ~110-260 MB of headroom on the small workers. The task framework has no
+ * per-task-type concurrency limit, so the bound is this gate around the child only — a render's
+ * download and composite still run four at once on the pool. The gate is per PROCESS because the
+ * cgroup is: `WorkerMain` builds one and every country's wiring hands it to its shrinker. A shrinker
+ * built without one gets a gate of its own.
  */
 class VipsPosterShrinker(
   binary:        Option[String] = VipsPosterShrinker.locate(),
   memoryCapMb:   Long           = PosterPipeline.DecodeMemoryCapMb,
   timeoutMillis: Long           = 30000L,
-  gate:          PosterDecodeGate = VipsPosterShrinker.Gate
+  val gate:      PosterDecodeGate = VipsPosterShrinker.newGate()
 ) extends PosterShrinker with Logging {
 
   def coverSlot(file: Path): Either[String, BufferedImage] =
@@ -331,8 +333,8 @@ object VipsPosterShrinker {
   private[sharecards] def failure(exit: Int, output: String): String =
     if (exit == 97 || exit > 128 || output.toLowerCase.contains("memory")) PosterFailure.VipsCap else PosterFailure.DecodeError
 
-  /** One shrink at a time per process — see the class doc. */
-  val Gate = new PosterDecodeGate(permits = 1)
+  /** One shrink at a time — see the class doc for why the process shares ONE of these. */
+  def newGate(): PosterDecodeGate = new PosterDecodeGate(permits = 1)
 
   /** True when `file` starts like an image format vips reads. */
   private[sharecards] def knownFormat(file: Path): Boolean = Try {

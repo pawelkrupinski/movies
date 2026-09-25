@@ -57,7 +57,12 @@ class WorkerWiring(
     // boot / test builds its own single-country bundle (resolved in `workerMetrics`
     // below). Kept an Option — mirroring `sharedMongoClient` — because a default
     // referencing `country` can't live in the same parameter clause as `country`.
-    injectedWorkerMetrics: Option[WorkerMetrics] = None) extends play.api.Logging
+    injectedWorkerMetrics: Option[WorkerMetrics] = None,
+    // ONE poster-shrink gate across countries: the vips child it bounds shares the
+    // process's memory cgroup, so `WorkerMain` builds it once and injects the SAME
+    // instance into every country's wiring (see `VipsPosterShrinker`). Defaulted so a
+    // single-country boot / test constructs its own.
+    val posterShrinkGate: tools.PosterDecodeGate = services.sharecards.VipsPosterShrinker.newGate()) extends play.api.Logging
     with HttpWiring with EgressWiring with ScrapeWiring with ChunkScrapeWiring with DetailWiring
     with CorpusWiring with ResolutionWiring with RatingsWiring with ReadModelWiring
     with MetricsWiring with TaskQueueWiring with StagingWiring with AlertingWiring with OperatorWiring with ShareCardWiring

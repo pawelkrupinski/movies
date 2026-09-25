@@ -64,11 +64,14 @@ object WorkerMain extends Logging {
     // and ALL of them surface on the single /metrics endpoint below.
     val workerMetrics = new services.metrics.WorkerMetrics(
       countries.map(_.code), Env.positiveInt("KINOWO_WORKER_POOL_SIZE", 4))
+    // ONE poster-shrink gate for the JVM: the vips child it bounds shares the pod's
+    // memory cgroup with every country's renders.
+    val posterShrinkGate = services.sharecards.VipsPosterShrinker.newGate()
     logger.info(s"Worker running countries: ${countries.map(_.code).mkString(", ")}")
 
     val wirings =
       try {
-        val ws = countries.map(c => new WorkerWiring(c, sharedBudget, sharedClient, Some(workerMetrics)))
+        val ws = countries.map(c => new WorkerWiring(c, sharedBudget, sharedClient, Some(workerMetrics), posterShrinkGate))
         // Open (and so claim — `MongoConnection.forCountry`) every country's database
         // before any wiring starts, so a mismatch refuses the whole boot up front.
         ws.foreach(_.mongoConnection)

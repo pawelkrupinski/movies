@@ -88,6 +88,17 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     } finally { first.stop(); second.stop() }
   }
 
+  it should "hand every country's poster shrinker the one gate it was given" in {
+    val gate = services.sharecards.VipsPosterShrinker.newGate()
+    def wiringWith(g: tools.PosterDecodeGate) =
+      new WorkerWiring(Country.default, posterShrinkGate = g) with TestWiring
+    val (first, second) = (wiringWith(gate), wiringWith(gate))
+    try {
+      first.posterShrinker.gate should be theSameInstanceAs gate
+      second.posterShrinker.gate should be theSameInstanceAs gate
+    } finally { first.stop(); second.stop() }
+  }
+
   "WorkerWiring.start()" should "boot both the scrape and the enrichment cascade" in {
     val wiring = new SpyWiring
     wiring.start()
