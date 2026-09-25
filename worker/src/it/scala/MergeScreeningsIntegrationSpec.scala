@@ -81,4 +81,48 @@ class MergeScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
       }
     } finally cache.stop()
   }
+
+  /* A film RESOLVING LATE, off a yearless row: TMDB's year re-keys it (`settleResolved`),
+   * and when another row already holds the film the re-keyed record folds onto it.
+   * UK convergence, 2026-09-25: 'Don't Look Back In Anger' at 71 Vue venues sat yearless
+   * and unresolved through the boot; the TMDB re-try sweep named it 1447853, which 'Oasis:
+   * Don't Look Back in Anger' (2026) already held, and the Oasis row came out holding every
+   * Vue slot with no showtime at all — 136 listings served as nothing. Both shapes: the
+   * re-key alone, and the re-key that folds. */
+  private def lateResolve(dbName: String, occupied: Boolean): Set[String] =
+    tools.IntegrationCorpusDatabase.withDatabase(uri, dbName) { db =>
+      val screenings = new MongoScreeningsRepository(Some(db))
+      val slots      = new MongoSlotsRepository(Some(db))
+      val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer)
+      val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+      try {
+        if (occupied)
+          cache.put(CacheKey(titleA, Some(2026), titleNormalizer), MovieRecord(tmdbId = Some(9913),
+            data = Map[Source, SourceData](Multikino -> SourceData(title = Some(titleA), showtimes = Seq(Showtime(when, None))),
+              models.Tmdb -> SourceData(title = Some(titleA), releaseYear = Some(2026)))))
+        val yearless = CacheKey(titleB, None, titleNormalizer)
+        cache.put(yearless, MovieRecord(data = Map[Source, SourceData](KinoMuranow -> SourceData(
+          title = Some(titleB), showtimes = Seq(Showtime(when, None))))))
+        // B resolves off its cache-resident (stripped) copy, exactly as `MovieService` does.
+        val resident = cache.get(yearless).getOrElse(fail("row B vanished"))
+        val landed = cache.settleResolved(yearless, resident.copy(tmdbId = Some(9913),
+          data = resident.data + (models.Tmdb -> SourceData(title = Some(titleA), releaseYear = Some(2026)))))
+        val survivor = cache.idOf(landed).orElse(cache.idOf(CacheKey(titleA, Some(2026), titleNormalizer)))
+          .getOrElse(fail(s"nothing stored at $landed"))
+        screenings.findForFilm(survivor.value).collect { case (slotKey, showtimes) if showtimes.nonEmpty => slotKey }.toSet
+      } finally cache.stop()
+    }
+
+  it should "keep a yearless row's showtimes when TMDB's year re-keys it" in {
+    withClue("re-keyed onto its resolved year, the row lost its own showtimes: ")(
+      lateResolve("late-rekey", occupied = false) should contain (KinoMuranow.displayName))
+  }
+
+  it should "keep a yearless row's showtimes when its resolve folds it onto a film another row holds" in {
+    val surviving = lateResolve("late-fold", occupied = true)
+    withClue(s"the fold must union both rows' cinemas with their showtimes — surviving=$surviving: ") {
+      surviving should contain (Multikino.displayName)
+      surviving should contain (KinoMuranow.displayName)
+    }
+  }
 }

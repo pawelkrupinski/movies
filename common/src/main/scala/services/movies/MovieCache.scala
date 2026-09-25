@@ -945,15 +945,39 @@ class CaffeineMovieCache(
       // `readyToProject` upsert is already complete), so the read model is
       // projected to `web_movies` only after this settle — never the single-
       // cinema (Helios-only) split that made the card flicker.
-      val merged = strays.foldLeft(base) { case (acc, (_, e)) => MovieRecordMerge.union(acc, e) }
-      (strays.map(_._1) :+ oldKey).distinct.filterNot(_ == target).foreach(invalidate)
-      put(target, merged)
-      // The resolved row's own re-key (oldKey → target) isn't a merge — only the
-      // strays and any prior occupant of the resolved year are folded-away rows.
-      val folded = strays.size + priorTarget.size
-      if (folded > 0) mergeMetrics.recordMerge(MergeReason.ResolvedSettle, folded)
-      if (target != oldKey) mergeMetrics.recordRekey(RekeyReason.ResolvedYear)
-      target
+      // The resolved row's own document is RETITLED, never deleted: it keeps its id, so its
+      // showtimes (in `screenings`, under that id — the resident record carries only a
+      // digest) are still there when the record is written under the new key. A row folded
+      // in — a prior occupant of `target`, a stray — has its side rows MOVED onto the
+      // survivor before its document goes, as `rekey` and the fold do. Deleting them first,
+      // the `invalidate` this used to be, cascaded `screenings.deleteFilm`: a film that
+      // resolved late (a yearless row re-keyed onto TMDB's year) lost every showtime it had
+      // — UK convergence 2026-09-25, 136 Vue listings served as nothing.
+      val ownId      = corpusIndex.idOf(oldKey).orElse(findStoredChecked(oldKey)._1.map(_.id))
+      // The document already stored under `target` — resident or cold — is the film's row.
+      val targetId   = if (target == oldKey) None
+                       else corpusIndex.idOf(target).orElse(findStoredChecked(target)._1.map(_.id))
+      val survivorId = targetId.orElse(ownId).getOrElse(FilmId.fresh(target, corpusIndex.holdsId))
+      def carried(id: Option[FilmId]): Boolean = id.forall(i => i == survivorId || repository.moveFilm(i, survivorId))
+      if (!carried(ownId)) {
+        // The row's own showtimes could not follow it: stay on its key this pass, as a failed
+        // read does above, and let the periodic settle re-key it.
+        logger.warn(s"settle: could not carry '${oldKey.cleanTitle}' (${oldKey.year.getOrElse("?")})'s side rows onto " +
+          s"'${target.cleanTitle}' (${target.year.getOrElse("?")}); leaving it on its own key this pass.")
+        put(oldKey, resolved)
+        oldKey
+      } else {
+        val folded = strays.filter { case (k, _) => carried(corpusIndex.idOf(k)) }
+        val merged = folded.foldLeft(base) { case (acc, (_, e)) => MovieRecordMerge.union(acc, e) }
+        (folded.map(_._1) :+ oldKey).distinct.filterNot(_ == target).foreach { k =>
+          if (corpusIndex.idOf(k).forall(_ == survivorId)) evict(k) else invalidate(k)
+        }
+        putAs(target, merged, survivorId)
+        val foldedCount = folded.size + priorTarget.size
+        if (foldedCount > 0) mergeMetrics.recordMerge(MergeReason.ResolvedSettle, foldedCount)
+        if (target != oldKey) mergeMetrics.recordRekey(RekeyReason.ResolvedYear)
+        target
+      }
     }
 
   /** Collapse two same-tmdbId rows into one. The surviving key is chosen by
