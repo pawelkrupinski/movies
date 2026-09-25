@@ -266,6 +266,70 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     }
   }
 
+  // ── Spain: Ocine on its own ticketing servers ────────────────────────────────
+
+  // SensaCine theaterId -> the venue's own ticketing host. Twelve of these had
+  // NEVER carried a real programme on SensaCine (its per-venue page advertised no
+  // days at all, 2026-09-25), so the Ocine venues read their chain's own API
+  // instead. Keyed by theaterId, not display name, because `SpanishRoster`
+  // qualifies a name that collides with another country's and the id is stable.
+  private val OcineHosts: Map[String, String] = Map(
+    "E0651" -> "tickets.ocinearenys.es",
+    "E0462" -> "tickets.ocineblanes.es",
+    "E0509" -> "tickets.ocinegavarres.es",
+    "E0362" -> "tickets.ocinegirona.es",
+    "E0507" -> "tickets.ocinegranollers.es",
+    "E0713" -> "tickets.ocinemagic.es",
+    "E0537" -> "tickets.ocinemendibil.es",
+    "E0554" -> "tickets.ocineplatjadaro.es",
+    "E2900" -> "tickets.ocineplazaeboli.es",
+    "E0474" -> "tickets.ocinepremiumaqua.es",
+    "E1045" -> "tickets.ocinepremiumbahiareal.es",
+    "E0925" -> "tickets.ocinepremiumestepark.es",
+    "E0796" -> "tickets.ocinerioshopping.es",
+    "E0556" -> "tickets.ocineroquetes.es",
+    "E0787" -> "tickets.ocineserrallo.es",
+    "E1004" -> "tickets.ocineurbanxmadrid.es",
+    "E0727" -> "tickets.ocinevilaseca.es",
+  )
+
+  private def spanishVenue(theaterId: String): Cinema =
+    models.SpanishRoster.theaterIdByCinema.collectFirst { case (c, id) if id == theaterId => c }
+      .getOrElse(fail(s"no Spanish roster venue has SensaCine id $theaterId"))
+
+  "Spain's Ocine venues" should "each read the chain's own ticketing server, not SensaCine" in {
+    val c = catalog()
+    OcineHosts.foreach { case (theaterId, host) =>
+      val venue    = spanishVenue(theaterId)
+      val scrapers = c.all.filter(_.cinema == venue)
+      withClue(s"${venue.displayName} ($theaterId): ") {
+        scrapers should have size 1
+        scrapers.head.scrapeHosts shouldBe Set(host)
+      }
+    }
+  }
+
+  it should "pace every Ocine ticketing host" in {
+    OcineHosts.values.foreach { host =>
+      withClue(s"$host has no HostPolicy pace row, so it is UNPACED: ") {
+        _root_.tools.RateLimitedHttpFetch.configuredInterval(_root_.tools.Env.of())(s"https://$host/api/v1/sessions") should not be empty
+      }
+    }
+  }
+
+  // Ocine Tudela's ticketing server did not answer on 443 (connect timeout,
+  // 2026-09-25) while SensaCine lists its full week, and Ocine Sant Celoni Altrium
+  // has no ticketing server the chain links to at all — both stay on SensaCine.
+  it should "leave the Ocine venues without a reachable own server on SensaCine" in {
+    val c = catalog()
+    Seq("E0317", "E0745").foreach { theaterId =>
+      val venue = spanishVenue(theaterId)
+      withClue(s"${venue.displayName}: ") {
+        c.all.find(_.cinema == venue).value.scrapeHosts shouldBe Set("www.sensacine.com")
+      }
+    }
+  }
+
   // The venues we could NOT verify against a chain's own roster must stay on the
   // aggregator. Wiring one to a chain client on a guessed id would 404 it into a
   // permanently red venue; leaving it on flicks.us keeps it working. All three are

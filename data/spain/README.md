@@ -137,7 +137,9 @@ python3 data/spain/scripts/test_build_provinces.py
 `SpanishCinema` venues once and hands them to `City.spanishCities`,
 `Cinema.byCity` and `CinemaScraperCatalog.spanishBaseByCity` (one
 `WebediaShowtimesClient` on `WebediaMarket.Spain` per venue, keyed by its
-`theaterId`).
+`theaterId` — except the 17 Ocine venues `services.cinemas.es.OcineVenues`
+maps by `theaterId` to their chain's own ticketing server, which SensaCine
+carried no programme for; they are scraped by `OcineClient` instead).
 
 **A re-harvest is not free.** `displayName` is the wire key every stored
 showtime is filed under, so a venue whose name changes upstream arrives as a
