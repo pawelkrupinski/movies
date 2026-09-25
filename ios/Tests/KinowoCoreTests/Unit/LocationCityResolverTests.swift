@@ -14,13 +14,22 @@ final class RecordingLocationRequester: LocationRequesting {
     var authorizationStatus: CLAuthorizationStatus
     /// The fix CoreLocation is holding, as `CLLocationManager.location` would
     /// report it. `nil` is a manager that has never had one.
-    var location: CLLocation?
+    private let heldFix: CLLocation?
+    /// How many times `location` was read ON THE MAIN THREAD. The real getter
+    /// is a synchronous XPC round trip to locationd, which can stall for most
+    /// of a minute (a freshly booted device), so any read there freezes the UI.
+    private(set) var mainThreadLocationReads = 0
     private(set) var authorizationRequests = 0
     private(set) var locationRequests = 0
 
+    var location: CLLocation? {
+        if Thread.isMainThread { mainThreadLocationReads += 1 }
+        return heldFix
+    }
+
     init(status: CLAuthorizationStatus, location: CLLocation? = nil) {
         authorizationStatus = status
-        self.location = location
+        heldFix = location
     }
 
     func requestWhenInUseAuthorization() { authorizationRequests += 1 }
@@ -75,6 +84,8 @@ final class LocationCityResolverTests: XCTestCase {
 
         requester.authorizationStatus = granted
         resolver.authorizationChanged(to: granted)
+        // The held fix is read off the main thread first (none here), then the fix is asked for.
+        try? await Task.sleep(nanoseconds: 100_000_000)
         XCTAssertEqual(requester.locationRequests, 1, "the grant is what asks for the fix")
         resolver.deliverFix(lat: 52.4064, lon: 16.9252)
 
@@ -282,6 +293,33 @@ final class LocationCityResolverTests: XCTestCase {
         let result = await coordinate
         XCTAssertEqual(result, LocationCityResolver.Coordinate(lat: 52.2297, lon: 21.0122))
         XCTAssertEqual(requester.authorizationRequests, 0)
+    }
+
+    /// The app-open "switch city?" check runs on the main actor at launch, and
+    /// reading the held fix is a synchronous round trip to locationd. On a
+    /// freshly booted device that round trip stalled for up to a minute, and
+    /// with it the whole UI: XCUITest run 36157983964 lost its first two tests
+    /// on a new simulator clone to an app that never went idle, its main thread
+    /// parked in `CLLocationManager.location`. The read belongs off the main
+    /// thread, both for the held fix and for the stale fallback.
+    func testTheHeldFixIsNeverReadOnTheMainThread() async {
+        let fresh = RecordingLocationRequester(
+            status: granted,
+            location: fix(lat: 52.2297, lon: 21.0122, secondsOld: 60)
+        )
+        let coordinate = await LocationCityResolver(requester: fresh, authorizationTimeout: 30, fixTimeout: 30)
+            .resolveIfAuthorized()
+        XCTAssertEqual(coordinate, LocationCityResolver.Coordinate(lat: 52.2297, lon: 21.0122))
+        XCTAssertEqual(fresh.mainThreadLocationReads, 0, "the held fix was read on the main thread")
+
+        let stale = RecordingLocationRequester(
+            status: granted,
+            location: fix(lat: 52.2297, lon: 21.0122, secondsOld: 3600)
+        )
+        let outcome = await LocationCityResolver(requester: stale, authorizationTimeout: 30, fixTimeout: 0.2)
+            .resolve(in: "pl", cities: cities)
+        XCTAssertEqual(outcome, .city(cities[1]), "Warszawa, from the stale fix")
+        XCTAssertEqual(stale.mainThreadLocationReads, 0, "the stale fallback was read on the main thread")
     }
 
     func testResolveIfAuthorizedStaysSilentWhenNotAuthorized() async {

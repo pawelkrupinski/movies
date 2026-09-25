@@ -14,8 +14,10 @@ import os
 /// the production implementation; it already has all three members.
 protocol LocationRequesting: AnyObject {
     var authorizationStatus: CLAuthorizationStatus { get }
-    /// The most recent fix CoreLocation already holds, if any. Reading it is
-    /// free and usually answers outright — see `requestFix()`.
+    /// The most recent fix CoreLocation already holds, if any. Usually answers
+    /// outright — see `requestFix()` — but reading it is a synchronous round
+    /// trip to locationd, so never on the main thread (see `heldFix()`).
+    /// Production reads it from a separate manager (see the convenience init).
     var location: CLLocation? { get }
     func requestWhenInUseAuthorization()
     func requestLocation()
@@ -50,6 +52,8 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
     }
 
     private let requester: LocationRequesting
+    /// Reads the fix CoreLocation holds; always called off the main thread.
+    private let readHeldFix: @Sendable () -> CLLocation?
     /// How long to wait on the PERMISSION DIALOG. Generous, because it measures
     /// the user reading a system alert, not the system doing work: its only job
     /// is to stop the gate spinning forever when no dialog ever appears
@@ -87,15 +91,26 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
 
     /// Production: a real `CLLocationManager`, held through `requester` and
     /// wired to deliver its callbacks here.
+    ///
+    /// The held fix is read from a SEPARATE manager made for that read. A
+    /// manager holds its own lock across the locationd round trip, so reading
+    /// `requester` off the main thread would only move the stall: the main
+    /// thread's next `authorizationStatus` waited on that lock instead
+    /// (sampled on a fresh simulator clone, 2026-09-25).
     convenience init(authorizationTimeout: TimeInterval = 60, fixTimeout: TimeInterval = 8) {
         let manager = CLLocationManager()
-        self.init(requester: manager, authorizationTimeout: authorizationTimeout, fixTimeout: fixTimeout)
+        self.init(requester: manager, readHeldFix: { CLLocationManager().location },
+                  authorizationTimeout: authorizationTimeout, fixTimeout: fixTimeout)
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyKilometer
     }
 
-    init(requester: LocationRequesting, authorizationTimeout: TimeInterval = 60, fixTimeout: TimeInterval = 8) {
+    /// `readHeldFix` defaults to reading `requester.location` (off the main thread).
+    init(requester: LocationRequesting, readHeldFix: (@Sendable () -> CLLocation?)? = nil,
+         authorizationTimeout: TimeInterval = 60, fixTimeout: TimeInterval = 8) {
         self.requester = requester
+        let boxed = UncheckedRequester(requester)
+        self.readHeldFix = readHeldFix ?? { boxed.value.location }
         self.authorizationTimeout = authorizationTimeout
         self.fixTimeout = fixTimeout
         super.init()
@@ -170,15 +185,33 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
     /// `lastLocation` this way; iOS only ever waited for a fresh fix, which is
     /// why the same phone in the same place could be offered a city on one
     /// platform and the manual list on the other.
+    ///
+    /// The fix deadline is armed before the held fix is read, so a read that
+    /// stalls is bounded by it like a fix that never lands.
     private func requestFix() {
-        if let cached = requester.location, age(of: cached) <= maxCachedFixAge {
-            log.notice("gate: using the fix CoreLocation already held (\(Int(self.age(of: cached)), privacy: .public)s old)")
-            deliver(cached)
-            return
-        }
-        log.notice("gate: asking CoreLocation for a fresh fix")
         armTimeout(fixTimeout)
-        requester.requestLocation()
+        Task {
+            let cached = await heldFix()
+            guard isAwaitingOutcome else { return }
+            if let cached, age(of: cached) <= maxCachedFixAge {
+                log.notice("gate: using the fix CoreLocation already held (\(Int(self.age(of: cached)), privacy: .public)s old)")
+                deliver(cached)
+                return
+            }
+            log.notice("gate: asking CoreLocation for a fresh fix")
+            requester.requestLocation()
+        }
+    }
+
+    /// The held fix, read off the main thread. The real getter is a
+    /// synchronous XPC round trip to locationd, and on a freshly booted device
+    /// that round trip stalled for most of a minute: read from the main actor
+    /// it froze the whole UI at launch (the app-open "switch city?" check), and
+    /// XCUITest run 36157983964 lost the first two tests on a new simulator
+    /// clone to an app that never went idle.
+    private func heldFix() async -> CLLocation? {
+        let read = readHeldFix
+        return await Task.detached { read() }.value
     }
 
     private func age(of location: CLLocation) -> TimeInterval {
@@ -253,17 +286,21 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
     /// alternative is handing the user a 41-city list they already told us they
     /// did not want to read.
     func deliverNoFix() {
-        if let stale = requester.location {
-            log.notice("gate: no fresh fix — falling back to a \(Int(self.age(of: stale)), privacy: .public)s-old one")
-            fixDeadline = nil
-            deliver(stale)
-            return
-        }
-        log.notice("gate: no fix at all — falling back to the manual list")
-        if coordinateContinuation != nil {
-            finishCoordinate(nil)
-        } else {
-            finish(.unavailable)
+        fixDeadline = nil
+        Task {
+            let stale = await heldFix()
+            guard isAwaitingOutcome else { return }
+            if let stale {
+                log.notice("gate: no fresh fix — falling back to a \(Int(self.age(of: stale)), privacy: .public)s-old one")
+                deliver(stale)
+                return
+            }
+            log.notice("gate: no fix at all — falling back to the manual list")
+            if coordinateContinuation != nil {
+                finishCoordinate(nil)
+            } else {
+                finish(.unavailable)
+            }
         }
     }
 
@@ -325,5 +362,11 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
             self.fixFailed(transient: transient)
         }
     }
+}
+/// Carries a test's requester onto the detached task that reads its held fix.
+/// The recording fake is not `Sendable`; its `location` is a plain read.
+private struct UncheckedRequester: @unchecked Sendable {
+    let value: LocationRequesting
+    init(_ value: LocationRequesting) { self.value = value }
 }
 #endif
