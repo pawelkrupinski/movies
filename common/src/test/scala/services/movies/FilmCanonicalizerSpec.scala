@@ -83,6 +83,30 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     canonicalKey.year shouldBe None
   }
 
+  it should "keep the tmdbId the cinemas' runtimes point at even when that film has several rows tying on it" in {
+    // The imdbId fold hands `canonical` two TMDB records of one film, and the cinemas'
+    // runtimes pick which id survives. The right film is USUALLY the one with more rows
+    // (more venues found it), and every row of one tmdbId carries the same TMDB runtime
+    // — so asking per ROW made the right film tie with itself, `strictNearest` refused,
+    // and the fold fell back to the lower year: the 18-minute concert record here.
+    def timed(title: String, tmdbId: Int, year: Int, cinema: Source, tmdbRuntime: Int): (CacheKey, MovieRecord) =
+      cacheKey(title, Some(year)) -> MovieRecord(
+        tmdbId = Some(tmdbId), imdbId = Some("tt43683692"),
+        data = Map[Source, SourceData](
+          Tmdb   -> SourceData(releaseYear = Some(year), runtimeMinutes = Some(tmdbRuntime)),
+          cinema -> SourceData(title = Some(title), releaseYear = Some(year), runtimeMinutes = Some(110))))
+    val rows = Seq(
+      timed("Ghost 2",  1568069, 2025, KinoMuza,         tmdbRuntime = 18),
+      timed("Ghost 2",  1693400, 2026, KinoMuzeumGdansk, tmdbRuntime = 110),
+      timed("Ghost Two", 1693400, 2026, Helios,           tmdbRuntime = 110))
+
+    rows.permutations.foreach { ordered =>
+      withClue(s"order ${ordered.map(_._1)}: ") {
+        FilmCanonicalizer.canonical(ordered, titleNormalizer)._2.tmdbId shouldBe Some(1693400)
+      }
+    }
+  }
+
   "clusterByFilm" should "fold an unresolved same-title row into a resolved sibling a full two years off" in {
     // The "Zawieście czerwone latarnie" flake: every cinema's row resolves to one
     // TMDB film at year 1991, but Kino Muzeum reports it uppercase with the

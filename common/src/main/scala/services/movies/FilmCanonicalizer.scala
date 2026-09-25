@@ -548,14 +548,20 @@ object FilmCanonicalizer {
    *  replaced a correct card and a wrong one with a single wrong one. Let the cinemas
    *  break it instead — their published runtimes are exactly the evidence
    *  [[RuntimeCorroboration]] exists for — and fall back to `canonicalRank` when they
-   *  are silent or split. A cluster with one tmdbId (every ordinary fold) is untouched. */
+   *  are silent or split. A cluster with one tmdbId (every ordinary fold) is untouched.
+   *
+   *  The candidates are the FILMS (one per tmdbId), not the rows: every row of one
+   *  tmdbId carries the same TMDB runtime, so asking per row made a film with two rows
+   *  tie with itself, and `strictNearest` refuses a tie. Each film is represented by its
+   *  best-`canonicalRank` row — the same rule [[survivor]] uses — so which row leads is
+   *  a pure function of the row set. */
   private def mergeOrder(cluster: Seq[(CacheKey, MovieRecord)]): Seq[(CacheKey, MovieRecord)] = {
-    val ranked   = cluster.sortBy { case (k, _) => canonicalRank(k) }
-    val resolved = ranked.filter(_._2.tmdbId.isDefined)
-    if (resolved.map(_._2.tmdbId).distinct.sizeIs <= 1) ranked
+    val ranked = cluster.sortBy { case (k, _) => canonicalRank(k) }
+    val films  = ranked.filter(_._2.tmdbId.isDefined).groupBy(_._2.tmdbId).values.toSeq
+    if (films.sizeIs <= 1) ranked
     else RuntimeCorroboration.strictNearest(
       cluster.flatMap(_._2.evidence.runtimes).distinct,
-      resolved.map(row => row -> row._2.data.get(Tmdb).flatMap(_.runtimeMinutes))
+      films.map(rows => rows.head -> rows.flatMap(_._2.data.get(Tmdb).flatMap(_.runtimeMinutes)).headOption)
     ).map(best => best +: ranked.filterNot(_._1 == best._1)).getOrElse(ranked)
   }
 
