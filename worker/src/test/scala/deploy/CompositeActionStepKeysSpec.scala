@@ -31,11 +31,7 @@ class CompositeActionStepKeysSpec extends AnyFlatSpec with Matchers {
     }.toSeq
   }
 
-  private def compositeActions: Seq[String] =
-    Option(new java.io.File(".github/actions").listFiles()).toSeq.flatten
-      .map(dir => s".github/actions/${dir.getName}/action.yml")
-      .filter(path => new java.io.File(path).isFile && RepoFile.read(path).contains("using: composite"))
-      .sorted
+  private lazy val compositeActions: Seq[String] = RepoFile.compositeActions()
 
   "every composite action" should "give its steps only the keys a composite step accepts" in {
     compositeActions should not be empty

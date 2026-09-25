@@ -155,6 +155,14 @@ object RepoFile {
       .sortBy(_.getName)
       .toSeq
 
+  /** Every composite action's `action.yml` under `.github/actions/`, sorted by path —
+   *  the other half of what CI runs, enumerated for the same reason as [[workflows]]. */
+  def compositeActions(): Seq[String] =
+    Option(new java.io.File(".github/actions").listFiles()).toSeq.flatten
+      .map(dir => s".github/actions/${dir.getName}/action.yml")
+      .filter(path => new java.io.File(path).isFile && read(path).contains("using: composite"))
+      .sorted
+
   /** Every `fly*.toml` at the repo root, newest country last — the authoritative deploy set. */
   def flyTomls(): Seq[java.io.File] =
     Option(new java.io.File(".").listFiles())
