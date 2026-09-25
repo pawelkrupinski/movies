@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import tools.GetOnlyHttpFetch
+import tools.RoutingHttpFetch
 
 /**
  * A resolved row that has lost its `Tmdb` slot gets it back BY ID — never by a
@@ -18,11 +18,10 @@ class TmdbSlotRefillSpec extends AnyFlatSpec with Matchers {
 
   private val Id = 270303   // "It Follows"
 
-  private class StubFetch(routes: Map[String, String]) extends GetOnlyHttpFetch {
+  private class StubFetch(routes: Map[String, String]) extends RoutingHttpFetch(routes, getOnly = true) {
     override def get(url: String): String = {
       if (url.contains("/search/")) throw new RuntimeException(s"a refill must not search: $url")
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed URL: $url"))
+      super.get(url)
     }
   }
 

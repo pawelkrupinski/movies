@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
 import services.resolution.ResolutionCache
-import tools.GetOnlyHttpFetch
+import tools.RoutingHttpFetch
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -28,21 +28,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  */
 class TmdbCarryForwardReadFailureSpec extends AnyFlatSpec with Matchers {
 
-  private val Title  = "The Visitor"
-  private val Year   = Some(2022)
-  private val TmdbId = 881487
-
-  private class StubTmdb extends GetOnlyHttpFetch {
-    private val routes = Seq(
-      "/search/movie" -> s"""{"results":[
-        |{"id":$TmdbId,"title":"Gość","original_title":"The Visitor","release_date":"2022-10-07","popularity":1.4}
-        |]}""".stripMargin,
-      s"/movie/$TmdbId/external_ids" -> s"""{"id":$TmdbId,"imdb_id":"tt15558152"}"""
-    )
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed TMDB URL: $url"))
-  }
+  import TheVisitorOnTmdb._
 
   /** The row as stored: one cinema, and a rating a refresher owns. */
   private def seed = MovieRecord(
@@ -50,7 +36,7 @@ class TmdbCarryForwardReadFailureSpec extends AnyFlatSpec with Matchers {
     data = Map[Source, SourceData](CinemaCityPoznanPlaza -> SourceData(title = Some(Title))))
 
   private def serviceOver(cache: MovieCache) =
-    new MovieService(cache, new InProcessEventBus(), new TmdbClient(http = new StubTmdb, apiKey = Some("stub")),
+    new MovieService(cache, new InProcessEventBus(), new TmdbClient(http = RoutingHttpFetch.getOnly(Routes), apiKey = Some("stub")),
       tmdbIdCache = ResolutionCache.passthrough)
 
   "a TMDB resolve whose carry-forward read FAILS" should

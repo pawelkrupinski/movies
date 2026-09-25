@@ -5,7 +5,7 @@ import models.{Helios, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{InProcessEventBus, MovieDetailsComplete}
-import tools.GetOnlyHttpFetch
+import tools.{GetOnlyHttpFetch, RoutingHttpFetch}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -39,12 +39,6 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
   private val Invite2026  = 950028 // "The Invite" (2026)
   private val InviteImdb  = "tt14173636"
 
-  private class StubFetch(routes: Map[String, String]) extends GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed URL: $url"))
-  }
-
   // TMDB stub: a "Zaproszenie" search returns the 2026 film (tmdb 950028,
   // Polish title "Zaproszenie." — note the trailing period, which is NOT an
   // exact match for the query, so `pickBest` lands it via the year-distance
@@ -52,7 +46,7 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
   // the client, so leaving `/movie/950028?…` unstubbed (it throws) falls back
   // to the search-hit shape — the tmdbId still lands.
   private def inviteTmdb(): TmdbClient = new TmdbClient(
-    http = new StubFetch(Map(
+    http = RoutingHttpFetch.getOnly(Map(
       "/search/movie" ->
         s"""{"results":[{"id":$Invite2026,"title":"Zaproszenie.","original_title":"The Invite","release_date":"2026-06-25","popularity":4.3}]}""",
       s"/movie/$Invite2026/external_ids" -> s"""{"id":$Invite2026,"imdb_id":"$InviteImdb"}"""
@@ -69,7 +63,7 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
   // disambiguate, via a person-credits walk. `/search/person` → Olivia Wilde's
   // id; her `/movie_credits` lists 950028 as a Directing credit.
   private def ambiguousTmdb(): TmdbClient = new TmdbClient(
-    http = new StubFetch(Map(
+    http = RoutingHttpFetch.getOnly(Map(
       "/search/movie" ->
         s"""{"results":[
            |  {"id":$Sibling2022,"title":"Zaproszenie","original_title":"The Invitation","release_date":"2022-08-24","popularity":30.0},

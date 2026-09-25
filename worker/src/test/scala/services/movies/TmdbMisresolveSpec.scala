@@ -5,7 +5,7 @@ import models.{CinemaCityPoznanPlaza, Helios, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{InProcessEventBus, MovieDetailsComplete}
-import tools.GetOnlyHttpFetch
+import tools.RoutingHttpFetch
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -38,12 +38,6 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
   private val Director = "Itay Gordon"
   private val PersonId = 3706395
 
-  private class StubFetch(routes: Seq[(String, String)]) extends GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed TMDB URL: $url"))
-  }
-
   // `fullDetails` (/movie/{id}?…append_to_response=credits) is intentionally
   // unstubbed — `runTmdbStageSync` tolerates its failure and falls back to the
   // search-hit shape, so the stub only needs the resolution-path endpoints.
@@ -52,7 +46,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
   // re-verify against — the director-bearing pass resolves fresh via
   // director-walk instead, which never reads the decoy's credits at all.
   private def visitorTmdb(): TmdbClient = new TmdbClient(
-    http = new StubFetch(Seq(
+    http = RoutingHttpFetch.getOnly(Seq(
       // Year-restricted title search returns BOTH 2022 "The Visitor" films —
       // both exact title matches, so `searchYearExactTop` refuses rather than
       // pick the more-popular (Justin P. Lange) one.
@@ -111,7 +105,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
   private val Feature = 1200001   // the 110-minute feature the cinemas are screening
 
   private def vivaldiTmdb(featureRuntime: Int): TmdbClient = new TmdbClient(
-    http = new StubFetch(Seq(
+    http = RoutingHttpFetch.getOnly(Seq(
       "/search/movie" -> s"""{"results":[
         |{"id":$Concert,"title":"Vivaldi i ja","original_title":"Vivaldi i ja","release_date":"2023-04-01","popularity":9.0},
         |{"id":$Feature,"title":"Vivaldi i ja","original_title":"Vivaldi et moi","release_date":"2023-05-01","popularity":0.4}
@@ -147,7 +141,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
     val Short    = 615777
     val PersonId = 8817
     val tmdb = new TmdbClient(
-      http = new StubFetch(Seq(
+      http = RoutingHttpFetch.getOnly(Seq(
         "/search/movie"    -> """{"results":[]}""",
         "/search/person"   -> s"""{"results":[{"id":$PersonId,"name":"Pedro Almodóvar","known_for_department":"Directing"}]}""",
         s"/person/$PersonId/movie_credits" -> s"""{"crew":[
@@ -169,7 +163,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
   it should "still resolve normally when the match's runtime is credible" in {
     // Same search, but the popular hit is now a real feature — nothing to veto.
     val tmdb = new TmdbClient(
-      http = new StubFetch(Seq(
+      http = RoutingHttpFetch.getOnly(Seq(
         "/search/movie" -> s"""{"results":[
           |{"id":$Concert,"title":"Vivaldi i ja","original_title":"Vivaldi i ja","release_date":"2023-04-01","popularity":9.0}
           |]}""".stripMargin,
@@ -189,7 +183,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
     // A singleton title hit, no year and no director to narrow it — all a
     // deferred-detail cinema's first scrape can offer.
     val tmdb = new TmdbClient(
-      http = new StubFetch(Seq(
+      http = RoutingHttpFetch.getOnly(Seq(
         "/search/movie" -> s"""{"results":[{"id":$Concert,"title":"Vivaldi i ja","original_title":"Vivaldi i ja","release_date":"2023-04-01","popularity":9.0}]}""",
         s"/movie/$Concert?" -> s"""{"id":$Concert,"title":"Vivaldi i ja","release_date":"2023-04-01","runtime":108}""",
         s"/movie/$Concert/external_ids" -> s"""{"id":$Concert,"imdb_id":""}"""
@@ -281,7 +275,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
     val Short   = 891655    // the 9-minute 1960 short a title-only search found
     val Feature = 1200002   // the 2025 film twelve venues are actually screening
     val tmdb = new TmdbClient(
-      http = new StubFetch(Seq(
+      http = RoutingHttpFetch.getOnly(Seq(
         // Year-scoped searches: 1960 still finds the short, 2025 finds the feature.
         "&year=1960" ->
           s"""{"results":[{"id":$Short,"title":"Homo sapiens","release_date":"1960-01-01","popularity":5.0}]}""",
@@ -320,7 +314,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
     val Short   = 891655
     val Feature = 1200002
     val tmdb = new TmdbClient(
-      http = new StubFetch(Seq(
+      http = RoutingHttpFetch.getOnly(Seq(
         "&year=1960" ->
           s"""{"results":[{"id":$Short,"title":"Homo sapiens","release_date":"1960-01-01","popularity":5.0}]}""",
         "&year=2025" ->

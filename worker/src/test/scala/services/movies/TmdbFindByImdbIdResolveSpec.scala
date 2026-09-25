@@ -5,7 +5,7 @@ import models.{CinemaCityPoznanPlaza, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
-import tools.GetOnlyHttpFetch
+import tools.RoutingHttpFetch
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -22,14 +22,8 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  */
 class TmdbFindByImdbIdResolveSpec extends AnyFlatSpec with Matchers {
 
-  private class StubFetch(routes: Seq[(String, String)]) extends GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed TMDB URL: $url"))
-  }
-
   private def tmdb(routes: (String, String)*): TmdbClient =
-    new TmdbClient(http = new StubFetch(routes), apiKey = Some("stub"))
+    new TmdbClient(http = RoutingHttpFetch.getOnly(routes), apiKey = Some("stub"))
 
   // A row OMDb backfill would leave behind: one cinema slot, no tmdbId, but a
   // recovered imdbId. Fuzzy search already failed on this title.

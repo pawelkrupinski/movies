@@ -77,14 +77,8 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
   // year-distance — that's "Top Gun: Maverick" (2022). We must prefer
   // exact-title matches over year-distance.
 
-  private def fakeClient(responses: Map[String, String]): TmdbClient = {
-    val fake = new tools.GetOnlyHttpFetch {
-      def get(url: String): String =
-        responses.collectFirst { case (frag, body) if url.contains(frag) => body }
-          .getOrElse(throw new RuntimeException(s"unexpected URL: $url"))
-    }
-    new TmdbClient(http = fake, apiKey = Some("fake"))
-  }
+  private def fakeClient(responses: Map[String, String]): TmdbClient =
+    new TmdbClient(http = tools.RoutingHttpFetch.getOnly(responses), apiKey = Some("fake"))
 
   "findByImdbId" should "parse a TMDB /find response into a SearchResult (Girl Climber)" in {
     val findBody =

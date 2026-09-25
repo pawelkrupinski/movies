@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.resolution.{ResolutionCache, TmdbBasis}
-import tools.GetOnlyHttpFetch
+import tools.RoutingHttpFetch
 
 /**
  * The resolver's half of the matching corpus: every film TMDB resolution has landed on
@@ -32,13 +32,8 @@ class ResolutionCorporaSpec extends AnyFlatSpec with Matchers with ScalaCheckPro
 
   /** Routes tried IN ORDER, first fragment contained in the URL wins; anything
    *  unrouted is an empty TMDB answer, so a scenario states only what it needs. */
-  private class StubFetch(routes: Seq[(String, String)]) extends GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (fragment, body) if url.contains(fragment) => body }
-        .getOrElse("""{"results":[],"crew":[]}""")
-  }
-
-  private def tmdbOf(routes: (String, String)*) = new TmdbClient(http = new StubFetch(routes), apiKey = Some("stub"))
+  private def tmdbOf(routes: (String, String)*) =
+    new TmdbClient(http = RoutingHttpFetch.getOnly(routes :+ ("" -> """{"results":[],"crew":[]}""")), apiKey = Some("stub"))
 
   private def search(tmdb: TmdbClient) =
     new TmdbCandidateSearch(tmdb, titleNormalizer, ResolutionCache.passthrough, letterboxdIdResolver = None, wikidata = None)

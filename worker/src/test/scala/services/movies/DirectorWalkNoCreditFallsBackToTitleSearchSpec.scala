@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.resolution.{ResolutionCache, TmdbBasis}
-import tools.GetOnlyHttpFetch
+import tools.RoutingHttpFetch
 
 /**
  * Regression: "Queen: Hungarian Rhapsody – Live in Budapest '86" (DE, reported
@@ -31,12 +31,6 @@ import tools.GetOnlyHttpFetch
  */
 class DirectorWalkNoCreditFallsBackToTitleSearchSpec extends AnyFlatSpec with Matchers {
 
-  private class StubFetch(routes: Map[String, String]) extends GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed URL: $url"))
-  }
-
   private val QueenBudapest86 = 142773
   private val Title           = "Queen: Hungarian Rhapsody – Live in Budapest '86"
   private val Director        = "János Zsombolyai"
@@ -46,7 +40,7 @@ class DirectorWalkNoCreditFallsBackToTitleSearchSpec extends AnyFlatSpec with Ma
 
   "a director-bearing row whose walk finds no matching credit" should
     "fall through to the same year-scoped exact-title search a director-less row trusts" in {
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       // TMDB doesn't resolve the reported director to a person at all — the
       // walk abstains immediately, exactly as it did for the real Zsombolyai row.
       "/search/person" -> """{"results":[]}""",
@@ -66,7 +60,7 @@ class DirectorWalkNoCreditFallsBackToTitleSearchSpec extends AnyFlatSpec with Ma
   }
 
   it should "still refuse when neither the walk nor the fallback title search can narrow it" in {
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       // The walk finds a person, but their filmography has no matching credit
       // (no title/year match) — directorWalk genuinely returns None.
       "/search/person" -> """{"results":[{"id":9001,"name":"Janos Zsombolyai","known_for_department":"Directing"}]}""",

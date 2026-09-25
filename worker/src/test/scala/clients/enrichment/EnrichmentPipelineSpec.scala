@@ -5,7 +5,7 @@ import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.{FilmwebClient, ImdbClient, MetacriticClient, RottenTomatoesClient}
-import tools.{HttpFetch, UpstreamNotFound}
+import tools.RoutingHttpFetch
 
 /**
  * Glue-level tests that exercise the same TMDB → IMDb → Filmweb chain
@@ -18,16 +18,10 @@ import tools.{HttpFetch, UpstreamNotFound}
  */
 class EnrichmentPipelineSpec extends AnyFlatSpec with Matchers {
 
-  // Minimal stub: route GETimestamp (and POSTimestamp) to canned bodies by URL substring.
-  class StubFetch(routes: Map[String, String]) extends HttpFetch {
-    override def get(url: String): String =
-      // An unrouted URL is the 404 a real site returns for a page it doesn't have,
-      // NOT a generic error — the clients tell those apart now (tools.EnrichmentRead),
-      // and a probe ladder must be able to move on to its next candidate.
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(UpstreamNotFound(url))
-    override def post(url: String, body: String, contentType: String): String = get(url)
-  }
+  // An unrouted URL is the 404 a real site returns for a page it doesn't have,
+  // NOT a generic error — the clients tell those apart now (tools.EnrichmentRead),
+  // and a probe ladder must be able to move on to its next candidate.
+  private def stubFetch(routes: Map[String, String]) = new RoutingHttpFetch(routes, unroutedIsNotFound = true)
 
   // Run the same chain MovieService.fetchEnrichment runs so the test
   // catches drift between the production wiring and what we believe it does.
@@ -86,26 +80,26 @@ class EnrichmentPipelineSpec extends AnyFlatSpec with Matchers {
     "produce a usable record with IMDb rating from the GraphQL scrape (Mortal Kombat II)" in {
 
     val tmdb = new TmdbClient(
-      http = new StubFetch(Map(
+      http = stubFetch(Map(
         "/search/movie" -> Mk2TmdbSearch,
         "/external_ids" -> Mk2TmdbExternalIds
       )),
       apiKey = Some("stub")
     )
     val filmweb = new FilmwebClient(
-      http = new StubFetch(Map(
+      http = stubFetch(Map(
         "/live/search"          -> Mk2FilmwebSearch,
         "/film/10007434/info"   -> Mk2FilmwebInfo,
         "/film/10007434/rating" -> Mk2FilmwebRating
       ))
     )
-    val imdb = new ImdbClient(http = new StubFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphqlBody)))
+    val imdb = new ImdbClient(http = stubFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphqlBody)))
     // MC / RT URL validators return None for any probe — `urlFor` never
     // returns a search URL now, so the resulting fields stay None.
-    val metacritic = new MetacriticClient(http = new StubFetch(Map.empty)) {
+    val metacritic = new MetacriticClient(http = stubFetch(Map.empty)) {
       override def urlFor(title: String, fallback: Option[String], year: Option[Int]): Option[String] = None
     }
-    val rt = new RottenTomatoesClient(http = new StubFetch(Map.empty)) {
+    val rt = new RottenTomatoesClient(http = stubFetch(Map.empty)) {
       override def urlFor(title: String, fallback: Option[String], year: Option[Int]): Option[String] = None
     }
 

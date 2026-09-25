@@ -5,7 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{ImdbIdMissing, InProcessEventBus}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
-import tools.HttpFetch
+import tools.{HttpFetch, RoutingHttpFetch}
 import tools.Eventually.eventually
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
@@ -144,13 +144,6 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
 
   // ── Letterboxd id-crosswalk backstop ────────────────────────────────────────
 
-  // GET-only stub for the Letterboxd client: matches on a URL substring.
-  private class StubGet(routes: Seq[(String, String)]) extends tools.GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed URL: $url"))
-  }
-
   "the Letterboxd backstop" should "recover the imdbId from the film's Letterboxd page when IMDb abstains" in {
     val tmdbOnly = MovieRecord(
       tmdbId = Some(5252),
@@ -158,7 +151,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     )
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Another Obscure Film", Some(2017), tmdbOnly))), normalizer = titleNormalizer)
     val letterboxd = new LetterboxdIdResolver(new LetterboxdClient(
-      new StubGet(Seq("/tmdb/5252/" ->
+      RoutingHttpFetch.getOnly(Seq("/tmdb/5252/" ->
         """<html><body data-tmdb-id="5252" data-tmdb-type="movie"><a href="https://www.imdb.com/title/tt7002002/">imdb</a></body></html>"""))))
     val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
       letterboxdIdResolver = Some(letterboxd))
@@ -173,7 +166,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     // covers. This is the rung that would previously only fire on the daily sweep.
     val noTmdb = MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))
     val cache  = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Varavu", Some(2026), noTmdb))), normalizer = titleNormalizer)
-    val omdb   = new OMDbClient(new StubGet(Seq("?t=" ->
+    val omdb   = new OMDbClient(RoutingHttpFetch.getOnly(Seq("?t=" ->
       """{"Title":"Varavu","Year":"2026","imdbID":"tt37963237","Director":"Shaji Kailas","Response":"True"}""")),
       apiKey = Some("stub"))
     val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
@@ -186,7 +179,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
   "the Cinemeta backstop" should "recover the imdbId via Cinemeta when every earlier rung (incl. OMDb) abstains" in {
     val noTmdb = MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))
     val cache  = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Cactus Pears", Some(2026), noTmdb))), normalizer = titleNormalizer)
-    val cinemeta = new CinemetaClient(new StubGet(Seq("search=" ->
+    val cinemeta = new CinemetaClient(RoutingHttpFetch.getOnly(Seq("search=" ->
       """{"metas":[{"id":"tt31000001","type":"movie","name":"Cactus Pears","releaseInfo":"2026"}]}""")))
     val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
       cinemeta = Some(cinemeta))

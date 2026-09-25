@@ -4,7 +4,7 @@ import clients.TmdbClient
 import models.{Helios, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.GetOnlyHttpFetch
+import tools.RoutingHttpFetch
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -35,14 +35,8 @@ class DirectorWalkAmbiguousYearSpec extends AnyFlatSpec with Matchers {
   private val Decoy     = 1032892                 // "In the Blink of an Eye", 2026-01-26
   private val ToyStory5 = 1022789                 // "Toy Story 5", 2026-06-17
 
-  private class StubFetch(routes: Seq[(String, String)]) extends GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed TMDB URL: $url"))
-  }
-
   private def toyStoryTmdb(): TmdbClient = new TmdbClient(
-    http = new StubFetch(Seq(
+    http = RoutingHttpFetch.getOnly(Seq(
       // The transliterated Ukrainian title finds nothing on TMDB.
       "/search/movie" -> """{"results":[]}""",
       // Director-walk recovery for "Andrew Stanton": two 2026 credits, neither

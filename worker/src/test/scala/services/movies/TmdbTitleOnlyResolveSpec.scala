@@ -5,7 +5,7 @@ import models.{CinemaCityPoznanPlaza, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
-import tools.GetOnlyHttpFetch
+import tools.RoutingHttpFetch
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -24,17 +24,11 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  */
 class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
 
-  private class StubFetch(routes: Seq[(String, String)]) extends GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed TMDB URL: $url"))
-  }
-
   private def result(id: Int, title: String, date: String, pop: Double): String =
     s"""{"id":$id,"title":"$title","original_title":"$title","release_date":"$date","popularity":$pop}"""
 
   private def tmdb(routes: (String, String)*): TmdbClient =
-    new TmdbClient(http = new StubFetch(routes), apiKey = Some("stub"))
+    new TmdbClient(http = RoutingHttpFetch.getOnly(routes), apiKey = Some("stub"))
 
   // A bare-title row: one cinema slot, no year, no director, no original title.
   private def bareRow(title: String): CaffeineMovieCache = {

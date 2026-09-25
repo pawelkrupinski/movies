@@ -5,7 +5,7 @@ import models.{Filmweb, Helios, Imdb, KinoMuza, Multikino, MovieRecord, Source, 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{InProcessEventBus, MovieDetailsComplete}
-import tools.GetOnlyHttpFetch
+import tools.{GetOnlyHttpFetch, RoutingHttpFetch}
 import services.resolution.{FilmEvidence, TmdbAttempt}
 import java.time.{Clock, Instant, ZoneOffset}
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -45,12 +45,6 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   private val PersonId = 2905749
   private val ImdbId   = "tt31260224"
 
-  private class StubFetch(routes: Map[String, String]) extends GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed URL: $url"))
-  }
-
   // TMDB stub modelling the real Kurozając resolution chain:
   //   - the title SEARCH returns nothing, so the director walk is the only way in
   //   - `findPerson("Benjamin Mousquet")` → personId 2905749
@@ -66,7 +60,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   // now agree with the cinema's title on at least one distinctive word, so a stale
   // fake would model a resolution that reality no longer needs the year for.
   private def kurozajacTmdb(): TmdbClient = new TmdbClient(
-    http = new StubFetch(Map(
+    http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
       "/search/person" -> s"""{"results":[{"id":$PersonId,"name":"Benjamin Mousquet","known_for_department":"Directing"}]}""",
       s"/person/$PersonId/movie_credits" -> s"""{"crew":[
@@ -213,7 +207,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     // title "Possession" finds the film. No sibling row exists and the event
     // carries no director, so the ONLY way this resolves is the originalTitle
     // search candidate — exactly the path that removes the sister-timing race.
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "query=Possession"          -> """{"results":[{"id":21484,"title":"Possession","original_title":"Possession","release_date":"1981-05-27","popularity":9.0}]}""",
       "/search/movie"             -> """{"results":[]}""",
       "/movie/21484/external_ids" -> """{"id":21484,"imdb_id":"tt0082933"}"""
@@ -240,7 +234,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   "resolveStagingRecord" should "mine search candidates from the passed row's cinema titles (cache-free)" in {
     val repository  = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb  = new TmdbClient(http = new StubFetch(Map(
+    val tmdb  = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       // The bare staging title finds nothing; the cinema-reported title does.
       "query=Backrooms"           -> """{"results":[{"id":1083381,"title":"Backrooms","original_title":"Backrooms","release_date":"2026-01-01","popularity":9.0}]}""",
       "/search/movie"             -> """{"results":[]}""",
@@ -288,7 +282,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     // Title search is useless here (as in production: "Dreams" is ambiguous), so
     // directorWalk is the only path that can resolve — which director it walks
     // FIRST is the whole test.
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"                    -> """{"results":[]}""",
       "query=Michel+Franco"              -> """{"results":[{"id":5000,"name":"Michel Franco","known_for_department":"Directing"}]}""",
       "query=Dag+Johan+Haugerud"         -> """{"results":[{"id":6000,"name":"Dag Johan Haugerud","known_for_department":"Directing"}]}""",
@@ -341,7 +335,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   it should "use a year a cinema slot reported when the row itself carries none" in {
     val repository = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb  = new TmdbClient(http = new StubFetch(Map(
+    val tmdb  = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       // Year-scoped search finds the film; the year-less one is ambiguous and refused.
       "year=1982"                 -> """{"results":[{"id":118257,"title":"Room 666","original_title":"Chambre 666","release_date":"1982-05-01","popularity":5.0}]}""",
       "/search/movie"             -> """{"results":[{"id":1,"title":"A"},{"id":2,"title":"B"}]}""",
@@ -386,7 +380,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   it should "prefer a credit matching a CINEMA title over one matching a derived slot's original title" in {
     val repository = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"              -> """{"results":[]}""",
       "query=Jan+Sobierajski"      -> """{"results":[{"id":9001,"name":"Jan Sobierajski","known_for_department":"Directing"}]}""",
       "/person/9001/movie_credits" -> """{"crew":[
@@ -429,7 +423,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   it should "prefer the credit the MOST cinemas name when a row holds two films" in {
     val repository = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"              -> """{"results":[]}""",
       "query=Jan+Sobierajski"      -> """{"results":[{"id":9001,"name":"Jan Sobierajski","known_for_department":"Directing"}]}""",
       "/person/9001/movie_credits" -> """{"crew":[
@@ -468,7 +462,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   it should "count a venue that names the film only through its accessibility-decorated title" in {
     val repository = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"              -> """{"results":[]}""",
       "query=Ada+Reg"              -> """{"results":[{"id":7100,"name":"Ada Reg","known_for_department":"Directing"}]}""",
       "/person/7100/movie_credits" -> """{"crew":[

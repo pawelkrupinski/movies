@@ -5,7 +5,7 @@ import models.{Helios, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{InProcessEventBus, MovieDetailsComplete}
-import tools.GetOnlyHttpFetch
+import tools.RoutingHttpFetch
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -31,19 +31,13 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  */
 class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
 
-  private class StubFetch(routes: Map[String, String]) extends GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed URL: $url"))
-  }
-
   // ── 1. A resolution its own cinema contradicts must re-resolve ─────────────
 
   private val DreamsTmdb = 1134463   // Michel Franco, "Dreams: Sueños"
   private val DrommerTmdb = 1228682  // Dag Johan Haugerud, "Drømmer"
 
   private def dreamsTmdb(): TmdbClient = new TmdbClient(
-    http = new StubFetch(Map(
+    http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"                     -> """{"results":[]}""",
       "query=Michel+Franco"               -> """{"results":[{"id":5000,"name":"Michel Franco","known_for_department":"Directing"}]}""",
       "/person/5000/movie_credits"        -> s"""{"crew":[
@@ -140,7 +134,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
     // The title search DOES return a hit — Gozlan's OTHER film — and verifying it
     // by director PASSES, because it really is a Yann Gozlan picture. Only the
     // walk could have told the two apart, so the verified search must not stand in.
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/person"              -> """{"results":[]}""",
       "/search/movie"               -> s"""{"results":[{"id":$Dalloway,"title":"Dalloway","original_title":"Dalloway","release_date":"2025-09-17","popularity":7.0}]}""",
       s"/movie/$Dalloway/credits"   -> """{"crew":[{"job":"Director","name":"Yann Gozlan","original_name":"Yann Gozlan"}]}""",
@@ -176,7 +170,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
   "the walk" should "try further person candidates when the first has no matching credit" in {
     val repository = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie" -> """{"results":[]}""",
       // Two people answer the name. The first is the credit-less stub TMDB ranks
       // top; the real director is second.
@@ -222,7 +216,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
   it should "refuse a credit that matches only on year, never on title" in {
     val repository = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
       // The ONLY person the name resolves to — i.e. the candidate the walk trusts
       // most — with exactly ONE credit in the row's year, under a completely
@@ -253,7 +247,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
   it should "still resolve a year-pinned credit whose title is merely translated" in {
     val repository = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
       "/search/person" -> """{"results":[{"id":4415,"name":"Federico Fellini","known_for_department":"Directing"}]}""",
       // TMDB has no Polish title, so the credit reads Italian — far outside
@@ -292,7 +286,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
   it should "accept a year-pinned credit whose RUNTIME matches, when the title is fully translated" in {
     val repository = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
       "/search/person" -> """{"results":[{"id":600001,"name":"Andrea Di Stefano","known_for_department":"Directing"}]}""",
       // Nothing in "Il Maestro" shares a word with "Trener Tenisa".
@@ -319,7 +313,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
   it should "still refuse a year-only match when the runtime disagrees too" in {
     val repository = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
       "/search/person" -> """{"results":[{"id":700002,"name":"Łukasz Kowalski","known_for_department":"Directing"}]}""",
       "/person/700002/movie_credits" -> """{"crew":[
@@ -349,7 +343,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
   it should "match a shared title word written in Cyrillic" in {
     val repository = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
       "/search/person" -> """{"results":[{"id":3086908,"name":"Katya Tsarik","known_for_department":"Directing"}]}""",
       "/person/3086908/movie_credits" -> """{"crew":[
@@ -391,7 +385,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
   it should "prefer an exact title match over a one-character-off sibling, with no year to separate them" in {
     val repository = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
       "/search/person" -> """{"results":[{"id":5065,"name":"David Frankel","known_for_department":"Directing"}]}""",
       // The original has the LOWER id, so lowest-id would take it.
@@ -433,7 +427,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
   it should "not fold a same-director sequel onto its predecessor when no title matches exactly" in {
     val repository = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
       "/search/person" -> """{"results":[{"id":17838,"name":"Francis Lawrence","known_for_department":"Directing"}]}""",
       // Part 1 carries the LOWER id — lowest-id would wrongly take it.
@@ -481,7 +475,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
   it should "refuse a year-pinned credit the candidate title itself doesn't name a specific instalment of" in {
     val repository = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
       "/search/person" -> """{"results":[{"id":17838,"name":"Francis Lawrence","known_for_department":"Directing"}]}""",
       "/person/17838/movie_credits" -> """{"crew":[
@@ -523,7 +517,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
   it should "refuse a year-pinned credit that is a DIFFERENT sibling of the series, sharing only its name" in {
     val repository = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
       "/search/person" -> """{"results":[{"id":17838,"name":"Francis Lawrence","known_for_department":"Directing"}]}""",
       "/person/17838/movie_credits" -> """{"crew":[
@@ -562,7 +556,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
   it should "refuse a year-pinned credit when the title names a different credit of the same director" in {
     val repository = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
       "/search/person" -> """{"results":[{"id":19271,"name":"Anthony Russo","known_for_department":"Directing"}]}""",
       "/person/19271/movie_credits" -> """{"crew":[
@@ -602,7 +596,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
   it should "follow the writer's filmography when the cinema credits the writer" in {
     val repository = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
       "/search/person" -> """{"results":[{"id":1215930,"name":"Simon Farnaby","known_for_department":"Writing"}]}""",
       // Farnaby DIRECTED none of these; the film is among what he WROTE.
@@ -629,7 +623,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
   it should "still refuse an uncorroborated year-only match from a writer's filmography" in {
     val repository = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
       "/search/person" -> """{"results":[{"id":1215930,"name":"Simon Farnaby","known_for_department":"Writing"}]}""",
       "/person/1215930/movie_credits" -> """{"crew":[
@@ -660,7 +654,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
   it should "see the film's own title through a dash-joined programme banner" in {
     val repository = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
       "/search/person" -> """{"results":[{"id":51329,"name":"Bradley Cooper","known_for_department":"Acting"}]}""",
       "/person/51329/movie_credits" -> """{"crew":[

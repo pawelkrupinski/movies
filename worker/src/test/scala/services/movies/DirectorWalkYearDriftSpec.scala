@@ -4,7 +4,7 @@ import clients.TmdbClient
 import models.{KinoMuza, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.GetOnlyHttpFetch
+import tools.RoutingHttpFetch
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -34,14 +34,8 @@ class DirectorWalkYearDriftSpec extends AnyFlatSpec with Matchers {
   private val Director = "Guillaume Nicloux"
   private val PersonId = 17623
 
-  private class StubFetch(routes: Seq[(String, String)]) extends GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed TMDB URL: $url"))
-  }
-
   private def miAmorTmdb(): TmdbClient = new TmdbClient(
-    http = new StubFetch(Seq(
+    http = RoutingHttpFetch.getOnly(Seq(
       // The title search lands on the wrong same-year "Mi amor" (1302640).
       "/search/movie" -> s"""{"results":[
         |{"id":$Decoy,"title":"Mi amor","original_title":"Mi amor","release_date":"2025-01-02","popularity":0.097}

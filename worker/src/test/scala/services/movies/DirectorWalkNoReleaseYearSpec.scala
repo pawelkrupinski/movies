@@ -4,7 +4,7 @@ import clients.TmdbClient
 import models.{KinoMuza, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.GetOnlyHttpFetch
+import tools.RoutingHttpFetch
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -34,14 +34,8 @@ class DirectorWalkNoReleaseYearSpec extends AnyFlatSpec with Matchers {
   private val Director = "Bo-sol Kim"
   private val PersonId = 3587863
 
-  private class StubFetch(routes: Seq[(String, String)]) extends GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed TMDB URL: $url"))
-  }
-
   private def squareTmdb(): TmdbClient = new TmdbClient(
-    http = new StubFetch(Seq(
+    http = RoutingHttpFetch.getOnly(Seq(
       // Title search finds nothing useful — resolution comes from the director walk.
       "/search/movie" -> """{"results":[]}""",
       "/search/person" -> s"""{"results":[{"id":$PersonId,"name":"Kim Bo-sol","known_for_department":"Directing"}]}""",

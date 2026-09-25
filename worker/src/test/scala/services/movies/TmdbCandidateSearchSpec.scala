@@ -6,18 +6,12 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.resolution.{ResolutionCache, TmdbBasis}
-import tools.GetOnlyHttpFetch
+import tools.RoutingHttpFetch
 
 /** The search half of TMDB resolution, asked directly — no cache, no bus, no
  *  write. What it returns is a candidate and the basis it was concluded on; what
  *  `MovieService` does with that is the other class's business. */
 class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
-
-  private class StubFetch(routes: Map[String, String]) extends GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed URL: $url"))
-  }
 
   private val Dreams = 1134463
 
@@ -25,7 +19,7 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
     new TmdbCandidateSearch(tmdb, titleNormalizer, ResolutionCache.passthrough, letterboxdIdResolver = None, wikidata = None)
 
   "TmdbCandidateSearch" should "walk a reported director's filmography and say so in the basis" in {
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"              -> """{"results":[]}""",
       "query=Michel+Franco"        -> """{"results":[{"id":5000,"name":"Michel Franco","known_for_department":"Directing"}]}""",
       "/person/5000/movie_credits" -> s"""{"crew":[{"id":$Dreams,"title":"Dreams","original_title":"Dreams: Sueños","release_date":"2025-07-10","department":"Directing","popularity":6.2}]}""",
@@ -48,7 +42,7 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
     val (low, high) = (1259983, 1315702)
     def details(id: Int, date: String) =
       s"""{"id":$id,"title":"Gourou","original_title":"Gourou","release_date":"$date","runtime":120,"credits":{"crew":[],"cast":[]}}"""
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "query=Yann+Gozlan"          -> """{"results":[{"id":5000,"name":"Yann Gozlan","known_for_department":"Writing"}]}""",
       "/person/5000/movie_credits" -> s"""{"crew":[
         |{"id":$low,"title":"Gourou","original_title":"Gourou","release_date":"2026-01-28","department":"Writing"},
@@ -75,7 +69,7 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
     val (resolved, namesakes) = (900001, 100001)
     def details(id: Int, date: String) =
       s"""{"id":$id,"title":"Home","original_title":"Home","release_date":"$date","runtime":95,"credits":{"crew":[],"cast":[]}}"""
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "query=Anna+Nowak"             -> """{"results":[
         |{"id":7001,"name":"Anna Nowak","known_for_department":"Directing"},
         |{"id":7002,"name":"Anna Nowak","known_for_department":"Writing"}]}""".stripMargin,
@@ -99,7 +93,7 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "refuse to guess for a bare title the search cannot narrow to one film" in {
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie" -> """{"results":[
         |{"id":1,"title":"Guru","original_title":"Guru","release_date":"2026-01-01","popularity":5.0},
         |{"id":2,"title":"Guru","original_title":"Gourou","release_date":"2025-01-01","popularity":4.0}
@@ -125,7 +119,7 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
    *  shares a distinctive word with "Catching Fire" itself — which it does
    *  not — is what now refuses it. */
   it should "refuse to resolve via a decoration-split fragment whose sole hit shares no distinctive word with it" in {
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "query=The+Hunger+Games%3A+Catching+Fire" ->
         """{"results":[
           |{"id":101299,"title":"The Hunger Games: Catching Fire","release_date":"2013-11-15"},
@@ -150,7 +144,7 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
    *  hit's own title, so it must still resolve. */
   it should "still resolve via a decoration-split fragment whose sole hit shares a distinctive word with it" in {
     val DrzewoMagii = 1140521
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "query=Kino+przyjazne+sensorycznie%3A+drzewo+magii" -> """{"results":[]}""",
       "query=drzewo+magii" ->
         s"""{"results":[{"id":$DrzewoMagii,"title":"Drzewo magii","original_title":"The Magic Faraway Tree","release_date":"2026-11-20"}]}"""
@@ -173,7 +167,7 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
    *  It must still resolve — only a de-decorated FRAGMENT needs the extra check. */
   it should "still resolve a row's own complete title via a translation sharing no distinctive word with the hit" in {
     val MinionkiIStraszydla = 1315772
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "query=%D0%9F%D0%BE%D1%81%D1%96%D0%BF%D0%B0%D0%BA%D0%B8+%D1%96+%D0%9C%D0%BE%D0%BD%D1%81%D1%82%D1%80%D1%8F%D0%BA%D0%B8" ->
         s"""{"results":[{"id":$MinionkiIStraszydla,"title":"Minionki i straszydła","original_title":"Minions & Monsters","release_date":"2026-08-01"}]}"""
     )), apiKey = Some("stub"))
@@ -202,7 +196,7 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
    *  as confirmation before `SequelMarker`'s curated list knew the two apart. */
   it should "refuse a year-pinned credit that is a not-yet-released same-franchise sibling, not the wrong year's real film" in {
     val SunriseOnTheReaping = 1300968
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"                -> """{"results":[]}""",
       "query=Francis+Lawrence"       -> """{"results":[{"id":10943,"name":"Francis Lawrence","known_for_department":"Directing"}]}""",
       "/person/10943/movie_credits"  -> s"""{"crew":[
@@ -235,7 +229,7 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
    *  after it. */
   it should "strip a trailing IMDb disambiguator before searching TMDB for the director" in {
     val ChildsPlay = 587219
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"               -> """{"results":[]}""",
       "query=Tom+Holland&"          -> """{"results":[{"id":9001,"name":"Tom Holland","known_for_department":"Directing"}]}""",
       "/person/9001/movie_credits"  -> s"""{"crew":[{"id":$ChildsPlay,"title":"Chucky - die Mörderpuppe","original_title":"Child's Play","release_date":"1988-11-09","department":"Directing","popularity":10.0}]}""",

@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.{LetterboxdClient, LetterboxdIdResolver}
 import services.events.InProcessEventBus
-import tools.GetOnlyHttpFetch
+import tools.RoutingHttpFetch
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -19,14 +19,8 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  */
 class LetterboxdResolveSpec extends AnyFlatSpec with Matchers {
 
-  private class StubFetch(routes: Seq[(String, String)]) extends GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed URL: $url"))
-  }
-
   private def tmdbStub(routes: (String, String)*): TmdbClient =
-    new TmdbClient(http = new StubFetch(routes), apiKey = Some("stub"))
+    new TmdbClient(http = RoutingHttpFetch.getOnly(routes), apiKey = Some("stub"))
 
   // A row OMDb backfill would leave behind: one cinema slot, a recovered imdbId,
   // no tmdbId. Fuzzy search already failed on this title.
@@ -52,7 +46,7 @@ class LetterboxdResolveSpec extends AnyFlatSpec with Matchers {
     val imdbId     = "tt5550002"
     val cache      = backfilledRow("Inny Nieznany Tytuł", imdbId)
     val letterboxd = new LetterboxdIdResolver(new LetterboxdClient(
-      new StubFetch(Seq(s"/imdb/$imdbId/" ->
+      RoutingHttpFetch.getOnly(Seq(s"/imdb/$imdbId/" ->
         s"""<html><body data-tmdb-id="8802" data-tmdb-type="movie"><a href="https://www.imdb.com/title/$imdbId/">imdb</a></body></html>"""))))
     val service = new MovieService(cache, new InProcessEventBus(),
       tmdbStub(tmdbMissesButHasDetails(imdbId, 8802)*),

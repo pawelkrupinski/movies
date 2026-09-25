@@ -30,19 +30,14 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  */
 class TmdbDeadCandidateIdSpec extends AnyFlatSpec with Matchers {
 
-  private val Title  = "The Visitor"
-  private val Year   = Some(2022)
-  private val TmdbId = 881487
+  import TheVisitorOnTmdb._
 
   /** Search resolves normally; the chosen id's cross-references answer `status`. */
   private class StubTmdb(externalIdsStatus: Int) extends GetOnlyHttpFetch {
-    private val search = s"""{"results":[
-      |{"id":$TmdbId,"title":"Gość","original_title":"The Visitor","release_date":"2022-10-07","popularity":1.4}
-      |]}""".stripMargin
     override def get(url: String): String =
-      if (url.contains(s"/movie/$TmdbId/external_ids"))
+      if (url.contains(ExternalIdsPath))
         throw new HttpStatusException(externalIdsStatus, "GET", url, retryAfter = None)
-      else if (url.contains("/search/movie")) search
+      else if (url.contains(SearchPath)) SearchBody
       else throw new RuntimeException(s"unstubbed TMDB URL: $url")
   }
 

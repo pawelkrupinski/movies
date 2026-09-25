@@ -5,7 +5,7 @@ import models.{CinemaMovie, Country, KinoApollo, Movie, MovieRecord, Showtime, S
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
-import tools.GetOnlyHttpFetch
+import tools.RoutingHttpFetch
 
 import java.time.LocalDateTime
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -34,18 +34,12 @@ class WrongLanguageSlotReresolveSpec extends AnyFlatSpec with Matchers {
   private val Title  = "The Mandalorian and Grogu"
   private val TmdbId = 1228710
 
-  private class StubFetch(routes: Seq[(String, String)]) extends GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed TMDB URL: $url"))
-  }
-
   /** A German-language client whose `de-DE` details payload is PARTIAL: no
    *  `title`, no `overview`, no `genres`, no `poster_path` — only the
    *  language-neutral fields. This is the shape that used to let Polish text
    *  survive a "successful" German re-resolve. */
   private def germanTmdb(): TmdbClient = new TmdbClient(
-    http = new StubFetch(Seq(
+    http = RoutingHttpFetch.getOnly(Seq(
       "/search/movie" ->
         s"""{"results":[
            |{"id":$TmdbId,"title":"","original_title":"The Mandalorian and Grogu",

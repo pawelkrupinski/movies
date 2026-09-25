@@ -9,7 +9,16 @@ import scala.jdk.CollectionConverters._
  * in `clients.tools.FakeHttpFetch`.
  *
  * Routes each call by URL substring against `routes`, returning the
- * matching body or throwing on no match. Both `get` and `post` consult
+ * matching body or throwing on no match. Routes are tried in ITERATION order,
+ * so pass a `Seq` when one fragment must win over another it overlaps with
+ * (`"year=2019"` before `"/search/movie"`); a `Map` is fine when no two
+ * fragments can match the same URL. This is the one fragment router the
+ * specs share — every TMDB/Letterboxd resolve spec used to define its own
+ * private `StubFetch` with this exact `collectFirst`.
+ *
+ * Like `clients.tools.UrlFragmentHttpFetch`, it parses every URL with the same
+ * `URI.create` that `RealHttpFetch` uses, so a client that builds a URL no real
+ * fetch could send fails its tests instead of only failing in production. Both `get` and `post` consult
  * the same routes by default — convenient for flows like Filmweb whose
  * search and rating endpoints mix the two. Pass `getOnly = true` to make
  * any POST throw instead (the Facebook OAuth flow is GET-only and should
@@ -47,7 +56,7 @@ import scala.jdk.CollectionConverters._
  *     ladder that was supposed to move on to its next candidate.
  */
 class RoutingHttpFetch(
-  routes: Map[String, String],
+  routes: Iterable[(String, String)],
   getOnly: Boolean = false,
   unroutedIsNotFound: Boolean = false
 ) extends HttpFetch {
@@ -61,12 +70,14 @@ class RoutingHttpFetch(
   /** Every POST's `(url, body, contentType)`, in call order. */
   def postBodies: Seq[(String, String, String)] = postBodyLog.asScala.toSeq
 
-  private def lookup(url: String): String =
+  private def lookup(url: String): String = {
+    java.net.URI.create(url)
     routes.collectFirst { case (frag, body) if url.contains(frag) => body }
       .getOrElse {
         if (unroutedIsNotFound) UpstreamNotFound(url)
         else throw new RuntimeException(s"unstubbed URL: $url")
       }
+  }
 
   override def get(url: String): String = {
     callLog.add(("GET", url))
@@ -82,6 +93,9 @@ class RoutingHttpFetch(
 }
 
 object RoutingHttpFetch {
+  /** The GET-only router, for a client under test that should never POST. */
+  def getOnly(routes: Iterable[(String, String)]): RoutingHttpFetch = new RoutingHttpFetch(routes, getOnly = true)
+
   /** Fetch that throws on every call. For dependencies a test wires for
    *  composition but should never reach (e.g. the IMDb client a
    *  TMDB-only test doesn't exercise). */

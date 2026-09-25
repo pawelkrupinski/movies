@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import tools.GetOnlyHttpFetch
+import tools.RoutingHttpFetch
 
 /**
  * The misresolution sweep re-examines a resolved row its own cinemas contradict. When
@@ -23,18 +23,12 @@ class ResolutionReexaminationSpec extends AnyFlatSpec with Matchers {
   private val Id    = 270303   // "It Follows"
   private val Other = 999001
 
-  private class StubFetch(routes: Map[String, String]) extends GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed URL: $url"))
-  }
-
   private def details(id: Int, title: String) =
     s"""{"id":$id,"title":"$title","original_title":"$title","release_date":"2014-05-17","runtime":100,"overview":"…",
        |"genres":[{"id":27,"name":"Horror"}],"credits":{"crew":[{"job":"Director","name":"David Robert Mitchell"}],"cast":[]}}""".stripMargin
 
   /** TMDB, answering the title search with `searchHit`. */
-  private def tmdb(searchHit: Int): TmdbClient = new TmdbClient(http = new StubFetch(Map(
+  private def tmdb(searchHit: Int): TmdbClient = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
     "/search/movie"              -> s"""{"results":[{"id":$searchHit,"title":"Coś za mną chodzi","original_title":"It Follows","release_date":"2014-05-17"}]}""",
     s"/movie/$Id/external_ids"    -> s"""{"id":$Id,"imdb_id":"tt3235888"}""",
     s"/movie/$Other/external_ids" -> s"""{"id":$Other,"imdb_id":"tt0000001"}""",
@@ -92,7 +86,7 @@ class ResolutionReexaminationSpec extends AnyFlatSpec with Matchers {
     val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     val key     = cache.keyOf("Coś za mną chodzi", Some(2014))
     cache.put(key, resolvedRow)
-    val nothing = new TmdbClient(http = new StubFetch(Map(
+    val nothing = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/"                 -> """{"results":[]}""",
       s"/movie/$Id/external_ids" -> s"""{"id":$Id,"imdb_id":"tt3235888"}""",
       s"/movie/$Id?"             -> details(Id, "Coś za mną chodzi"))), apiKey = Some("stub"))

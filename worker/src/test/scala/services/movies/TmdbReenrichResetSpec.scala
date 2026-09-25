@@ -5,7 +5,7 @@ import models.{KinoPalacowe, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
-import tools.GetOnlyHttpFetch
+import tools.RoutingHttpFetch
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -28,17 +28,11 @@ class TmdbReenrichResetSpec extends AnyFlatSpec with Matchers {
   private val Wrong   = 48311     // 1982 Charles Band film — the self-locked resolution
   private val Correct = 496243    // 2019 Bong Joon-ho film — what the cinema is showing
 
-  private class StubFetch(routes: Seq[(String, String)]) extends GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed TMDB URL: $url"))
-  }
-
   // `&year=2019` resolves the correct film (a single exact "Parasite" hit, so
   // `searchUnique` succeeds); `&year=1982` resolves the wrong one. `year=2019`
   // is listed first so it wins `url.contains` over the `1982` route.
   private def tmdb(): TmdbClient = new TmdbClient(
-    http = new StubFetch(Seq(
+    http = RoutingHttpFetch.getOnly(Seq(
       "year=2019" -> s"""{"results":[
         |{"id":$Correct,"title":"Parasite","original_title":"기생충","release_date":"2019-05-30","popularity":34.6}
         |]}""".stripMargin,
@@ -111,7 +105,7 @@ class TmdbReenrichResetSpec extends AnyFlatSpec with Matchers {
     }
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val service = new MovieService(cache, new InProcessEventBus(), new TmdbClient(
-      http = new StubFetch(Seq("search/movie" -> """{"results":[]}""")), apiKey = Some("stub")))
+      http = RoutingHttpFetch.getOnly(Seq("search/movie" -> """{"results":[]}""")), apiKey = Some("stub")))
 
     noException should be thrownBy
       service.resolveTmdbOnce(stored, Some(2024), originalTitle = None, director = None, mode = services.tasks.ResolveMode.Force)
