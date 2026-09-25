@@ -20,7 +20,9 @@ verbatim from a real host for exactly that reason: a case somebody made up canno
 Run: python3 infra/test/test_auto_apply_classify.py   (also run by infra/bin/check)
 """
 
+import contextlib
 import importlib.util
+import io
 import os
 import pathlib
 import unittest
@@ -166,9 +168,11 @@ class SwitchExitingFour(unittest.TestCase):
         applier.subprocess.run = fake_subprocess_run
         applier.failed_units = lambda: next(states)
         applier.time.sleep = lambda _s: None
+        self.journal = io.StringIO()
         try:
-            return applier.activate(applier.pathlib.Path("/nix/store/x-candidate"),
-                                    rollback_on_failure=False)
+            with contextlib.redirect_stderr(self.journal):
+                return applier.activate(applier.pathlib.Path("/nix/store/x-candidate"),
+                                        rollback_on_failure=False)
         finally:
             applier.subprocess.run, applier.failed_units, applier.time.sleep = saved
 
@@ -177,6 +181,8 @@ class SwitchExitingFour(unittest.TestCase):
         self.assertEqual(failure, "",
                          "only a per-user activation failed; every system unit came up, so the "
                          "deploy landed and must not be reported as unmeasurable")
+        self.assertIn("warning: user activation for nixdeploy failed", self.journal.getvalue(),
+                      "the tolerated failure is still named in the journal")
 
     def test_the_2026_09_02_user_unit_shape_is_tolerated_too(self):
         failure = self.switch(self.USER_UNIT_RACE_2026_09_02)
