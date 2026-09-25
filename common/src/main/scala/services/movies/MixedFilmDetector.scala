@@ -301,6 +301,22 @@ object MixedFilmDetector {
   private def sameDirector(a: Set[String], b: Set[String]): Boolean =
     a.nonEmpty && b.nonEmpty && a.intersect(b).nonEmpty
 
+  /** Does a venue's OWN published slot deny the film TMDB named (`film`, a `Tmdb` slot)?
+   *  Its year — its own, else the one its title brackets — beyond
+   *  `YearWindow.SlotYearImplausibility` of the film's, AND a director the film does not
+   *  credit. Either alone is ordinary (a cinema prints its screening year, or credits a
+   *  co-director); both together are a different film — the Met's 2026 "Samson i Dalila"
+   *  broadcast (Darko Tresnjak) is not DeMille's 1949 picture. Directors are compared only
+   *  when both sides spell one in Latin script: TMDB credits "王家衛" where a Polish cinema
+   *  prints "Wong Kar Wai", and nothing here can tell those are one man. */
+  def deniesFilm(slot: SourceData, film: SourceData, normalizer: TitleNormalizer): Boolean = {
+    def latin(names: Seq[String]) = names.exists(_.exists(c => Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN))
+    val slotYear = slot.releaseYear.orElse(EmbeddedYear.ofAll(slot.rawTitle ++ slot.title))
+    slotYear.isDefined && latin(slot.director) && latin(film.director) &&
+      services.resolution.YearWindow.contradicts(slotYear, film.releaseYear, services.resolution.YearWindow.SlotYearImplausibility) &&
+      !creditSamePerson(slot.director, film.director, normalizer)
+  }
+
   /** [[sameDirector]] over raw published names — the veto, for a caller weighing its
    *  own runtime or year evidence (the fold's rule 4, `FilmCanonicalizer`). */
   def creditSamePerson(a: Iterable[String], b: Iterable[String], normalizer: TitleNormalizer): Boolean =

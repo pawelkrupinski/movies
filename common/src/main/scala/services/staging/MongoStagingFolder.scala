@@ -387,15 +387,18 @@ class MongoStagingFolder(
    *  film has no cinemas", because voting on that empty pool is the very re-key this method
    *  exists to prevent. The fold fails loudly instead and its caller reschedules it — the
    *  same choice `foldGroup` makes for a missing session. */
-  private def stitchedCinemaTitles(rows: Seq[StoredMovieRecord]): Seq[String] =
-    rows.flatMap { row =>
+  private def stitchedRecords(rows: Seq[StoredMovieRecord]): Map[FilmId, MovieRecord] =
+    rows.map { row =>
       val id                 = row.id
       val (stitched, readOk) = movieRepository.findByIdChecked(id)
       if (!readOk) throw new IllegalStateException(
         s"Staging fold could not read '$id' back through the storage split. Refusing to " +
         "re-key the film on a view that reports none of its cinemas.")
-      stitched.toSeq.flatMap(_.record.cinemaData.values.flatMap(_.title))
-    }
+      id -> stitched.fold(row.record)(_.record)
+    }.toMap
+
+  private def stitchedCinemaTitles(stitched: Map[FilmId, MovieRecord]): Seq[String] =
+    stitched.toSeq.sortBy(_._1.value).flatMap(_._2.cinemaData.values.flatMap(_.title))
 
   /** One transaction body: read the WHOLE `sanitize(title)` GROUP's staging +
    *  movies rows (every year-variant), compute the settled plan, and apply the
@@ -455,11 +458,13 @@ class MongoStagingFolder(
       val group = groupRows ++ siblings
       // A brand-new film's id must not be a live document's — checked in THIS session, so
       // the write below cannot replace a film the fold never read.
-      val plan  = StagingFold.planGroup(stagingRows, group, normalizer, stitchedCinemaTitles(group),
+      val stitched = stitchedRecords(group)
+      val plan  = StagingFold.planGroup(stagingRows, group, normalizer, stitchedCinemaTitles(stitched),
         // taken = a LIVE id in the store, in THIS session, OR one this very plan already
         // minted for an earlier cluster — see `planGroup`'s `fresh` doc comment.
         fresh = (key, mintedSoFar) => FilmId.fresh(key,
-          taken = id => mintedSoFar.contains(id) || await(movies.countDocuments(session, Filters.eq("_id", id.value)).toFuture()) > 0))
+          taken = id => mintedSoFar.contains(id) || await(movies.countDocuments(session, Filters.eq("_id", id.value)).toFuture()) > 0),
+        evidence = stitched)
       // In `Plan.applyTo`'s order — retired rows before the survivors that take over their
       // identity; see there for the E11000 that the other order raised inside this transaction.
       plan.applyTo(new StagingFold.PlanWrites {

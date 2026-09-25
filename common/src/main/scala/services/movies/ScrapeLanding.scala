@@ -920,7 +920,24 @@ private[movies] final class ScrapeLanding(
           chooseConcluded(cands.filter(_.year.exists(YearWindow.distance(_, y) == distance)), listingRuntime, cinema, norm))
           .collectFirst { case Some(k) => k }
     }
-    nearest(keyMatches).orElse(nearest(aliasOnly))
+    // A BARE listing — no year, no minutes — that this venue already holds on a RESOLVED row
+    // stays there when the rows keyed by its title are not that film. It says nothing that
+    // names another film; its home is where its own resolution put it (the fold), and moving
+    // it to a same-titled row the settle then takes it back from is churn on every tick. PL,
+    // 2026-09-25: Kino Amok's bare "Samson i Dalila" sits on DeMille's 1949 film (keyed by
+    // another venue's spelling); the only row KEYED "Samson i Dalila" is the Met's 2026
+    // broadcast, a different film by its own venue's year and director.
+    def incumbent: Option[CacheKey] =
+      if (primary.year.isDefined || listingRuntime.isDefined) None
+      else corpusIndex.keysForCinemaSlot(cinema, norm).toSeq
+        .filter(k => store.get(k).exists(_.tmdbId.isDefined))
+        .filterNot(k => keyMatches.exists(m => m != k && store.get(m).flatMap(_.tmdbId) == store.get(k).flatMap(_.tmdbId)))
+        .minByOption(FilmCanonicalizer.canonicalRank)
+    nearest(keyMatches) match {
+      case Some(k) if store.get(k).exists(_.tmdbId.isEmpty) => incumbent.orElse(Some(k))
+      case Some(k)                                         => Some(k)
+      case None                                            => nearest(aliasOnly)
+    }
   }
 
   /** Pick the concluded row a listing belongs to, from candidates the year has

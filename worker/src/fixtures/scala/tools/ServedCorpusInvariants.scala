@@ -167,29 +167,23 @@ object ServedCorpusInvariants {
    * which neither the split detector (it compares venues with each other, not with TMDB) nor
    * any self-consistency claim sees when every pass merges it the same way.
    *
-   * Directors are compared only when both sides spell one in Latin script: TMDB credits
-   * "王家衛" where a Polish cinema prints "Wong Kar Wai", and no rule here can tell those
-   * are one man. Returns `(film key, report line)`.
+   * The rule is production's own (`MixedFilmDetector.deniesFilm`), the one the staging fold
+   * keeps such a venue apart by. Returns `(film key, report line)`.
    */
-  def wrongMerges(records: Seq[StoredMovieRecord], normalizer: TitleNormalizer): Seq[(String, String)] = {
-    // The venue's own year, else the one it wrote into the title ("A Star Is Born (1954)").
-    def slotYear(sd: models.SourceData) = sd.releaseYear.orElse(services.movies.EmbeddedYear.ofAll(sd.rawTitle ++ sd.title))
-    def latin(names: Seq[String]) = names.exists(_.exists(c => Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN))
+  def wrongMerges(records: Seq[StoredMovieRecord], normalizer: TitleNormalizer): Seq[(String, String)] =
     records.filter(_.record.tmdbId.isDefined).flatMap { r =>
-      val tmdbYear      = r.record.tmdbYear
-      val tmdbDirectors = r.record.data.get(models.Tmdb).toSeq.flatMap(_.director)
-      r.record.cinemaSlots.collect {
-        case (source, sd) if slotYear(sd).isDefined && latin(sd.director) && latin(tmdbDirectors) &&
-            services.resolution.YearWindow.contradicts(slotYear(sd), tmdbYear, services.resolution.YearWindow.SlotYearImplausibility) &&
-            !services.movies.MixedFilmDetector.creditSamePerson(sd.director, tmdbDirectors, normalizer) =>
-          r.key(normalizer) ->
-            (s"'${r.title}' (${r.year.getOrElse("—")}) [${r.key(normalizer)}] tmdb=${r.record.tmdbId.get} " +
-             s"(${tmdbYear.getOrElse("—")}, ${tmdbDirectors.mkString("/")}) at " +
-             s"${models.Source.cinemaOf(source).fold(source.displayName)(_.displayName)}: '${sd.title.getOrElse("—")}' " +
-             s"${slotYear(sd).get}, ${sd.director.mkString("/")}")
+      r.record.data.get(models.Tmdb).toSeq.flatMap { film =>
+        r.record.cinemaSlots.collect {
+          case (source, sd) if services.movies.MixedFilmDetector.deniesFilm(sd, film, normalizer) =>
+            r.key(normalizer) ->
+              (s"'${r.title}' (${r.year.getOrElse("—")}) [${r.key(normalizer)}] tmdb=${r.record.tmdbId.get} " +
+               s"(${film.releaseYear.getOrElse("—")}, ${film.director.mkString("/")}) at " +
+               s"${models.Source.cinemaOf(source).fold(source.displayName)(_.displayName)}: '${sd.title.getOrElse("—")}' " +
+               s"${sd.releaseYear.orElse(services.movies.EmbeddedYear.ofAll(sd.rawTitle ++ sd.title)).getOrElse("—")}, " +
+               sd.director.mkString("/"))
+        }
       }
     }
-  }
 
   private def holdsShowtimes(r: StoredMovieRecord): Boolean =
     r.record.cinemaSlots.exists { case (_, sd) => services.movies.ShowtimesDigest.slotShowtimeCount(sd) > 0 }

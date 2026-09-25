@@ -269,14 +269,12 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
       Some(3111) -> Set[Source](Helios), Some(19610) -> Set[Source](KinoMuranow), Some(332562) -> Set[Source](Multikino))
   }
 
-  it should "keep a group that resolved to ONE film on one row, as it folded before the year filing" in {
+  it should "keep a venue whose own year and director deny its group's film off that film's row" in {
     // PL convergence, 2026-09-25: the Met's "Samson i Dalila" broadcast. Kino Amok's bare
     // listing resolved to 29993 (DeMille's 1949 film); Kino Nowe Horyzonty's detail (2026,
-    // Darko Tresnjak, 234 min) matched nothing. Filing the resolved row at TMDB's year split
-    // the group into a 1949 row and a yearless one, and a bare listing of that title then
-    // had two homes: the scrape landed Amok on one, the settle moved it back to the other,
-    // three writes on every identical tick. The filing is for groups whose rows resolved to
-    // DIFFERENT films; one film, one row, as before.
+    // Darko Tresnjak, 234 min) matched nothing — and was unioned onto the 1949 film anyway,
+    // because the two rows shared the (title, no year) key the fold unions by first. A venue
+    // whose published year AND director both deny the film is a different film.
     val amok = StagingRecord(Multikino, "Samson i Dalila", None, MovieRecord(tmdbId = Some(29993),
       data = Map[Source, SourceData](
         Multikino -> SourceData(title = Some("Samson i Dalila")),
@@ -285,11 +283,27 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
       tmdbAttempt = Some(services.resolution.TmdbAttempt("searched", java.time.Instant.EPOCH)),
       data = Map[Source, SourceData](Helios -> SourceData(title = Some("Samson i Dalila"), releaseYear = Some(2026),
         director = Seq("Darko Tresnjak"), runtimeMinutes = Some(234)))), titleNormalizer)
+    // A venue that says nothing still folds onto the film its group resolved to.
+    val bare = StagingRecord(Kinoteka, "Samson i Dalila", None, MovieRecord(
+      tmdbAttempt = Some(services.resolution.TmdbAttempt("searched", java.time.Instant.EPOCH)),
+      data = Map[Source, SourceData](Kinoteka -> SourceData(title = Some("Samson i Dalila")))), titleNormalizer)
 
-    val plan = StagingFold.planGroup(Seq(amok, horyzonty), moviesRows = Seq.empty, titleNormalizer)
+    val plan = StagingFold.planGroup(Seq(amok, horyzonty, bare), moviesRows = Seq.empty, titleNormalizer)
 
-    plan.moviesUpserts.map { case (_, _, r) => r.tmdbId -> r.cinemaSlots.map(_._1).toSet } shouldBe
-      Seq(Some(29993) -> Set[Source](Multikino, Helios))
+    plan.moviesUpserts.map { case (_, _, r) => r.tmdbId -> r.cinemaSlots.map(_._1).toSet }.toSet shouldBe
+      Set(Some(29993) -> Set[Source](Multikino, Kinoteka), None -> Set[Source](Helios))
+
+    // …and the same when one side folded on an EARLIER pass. A stored row reaches the fold
+    // as its raw document — a migrated film's slots live in `movie_slots`, so it carries
+    // none — and what it says comes in as `evidence`. The hard-cluster replay folded
+    // Kino Nowe Horyzonty onto the stored 1949 row with nothing to compare it against.
+    val first = StagingFold.planGroup(Seq(amok), moviesRows = Seq.empty, titleNormalizer)
+    val (firstId, firstKey, firstRecord) = first.moviesUpserts.head
+    val later = StagingFold.planGroup(Seq(horyzonty),
+      Seq(StoredMovieRecord(firstKey.cleanTitle, firstKey.year, firstRecord.copy(data = Map.empty), firstId)), titleNormalizer,
+      evidence = Map(firstId -> firstRecord))
+    later.moviesUpserts.map { case (_, _, r) => r.tmdbId -> r.cinemaSlots.map(_._1).toSet }.toSet shouldBe
+      Set(Some(29993) -> Set.empty[Source], None -> Set[Source](Helios))
   }
 
   it should "not file an UNANSWERED group at its brackets — TMDB never said nothing resolves" in {

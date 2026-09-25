@@ -1,7 +1,7 @@
 package services.staging
 
 import models.MovieRecord
-import services.movies.{CacheKey, EmbeddedYear, FilmCanonicalizer, MovieRecordMerge, StoredMovieRecord, TitleNormalizer, FilmId}
+import services.movies.{MixedFilmDetector, CacheKey, EmbeddedYear, FilmCanonicalizer, MovieRecordMerge, StoredMovieRecord, TitleNormalizer, FilmId}
 
 /**
  * The PURE decision half of folding a newcomer's staging rows into `movies`,
@@ -211,7 +211,17 @@ object StagingFold {
                 // colliding on the same key"). A caller with a store additionally checks a
                 // candidate is not a LIVE id there (`FilmId.fresh`'s `taken`); the pure
                 // default only guards against this plan's own collisions.
-                fresh: (CacheKey, Set[FilmId]) => FilmId = (key, mintedSoFar) => FilmId.fresh(key, mintedSoFar.contains)): Plan = {
+                fresh: (CacheKey, Set[FilmId]) => FilmId = (key, mintedSoFar) => FilmId.fresh(key, mintedSoFar.contains),
+                // What each stored film's record says once its side rows are stitched back —
+                // its cinema slots and its Tmdb slot. For the DECISIONS only (which rows are one
+                // film): the records written stay the raw ones, because a stitched slot carries
+                // no showtimes digest and writing it would read as "this cinema screens
+                // nothing" (see `MongoStagingFolder.stitchedCinemaTitles`). Without it every
+                // veto `clusterByFilm` applies is blind to a stored film: a migrated document
+                // holds no slots at all, so a venue whose own year and director deny the film
+                // (the Met's 2026 "Samson i Dalila" beside DeMille's 1949 one) had nothing to
+                // be compared with and folded on.
+                evidence: Map[FilmId, MovieRecord] = Map.empty): Plan = {
     // Union the per-cinema staging rows to ONE row per (sanitize, year) key FIRST,
     // restoring the one-row-per-key invariant `clusterByFilm` assumes. Without it,
     // N separate YEARLESS cinema rows would each become a rule-4 singleton cluster
@@ -238,21 +248,43 @@ object StagingFold {
       moviesRows.forall(r => r.record.tmdbId.isEmpty && r.record.tmdbAnswered)
     def baseYear(r: StagingRecord): Option[Int] =
       r.year.orElse(if (nothingResolved) EmbeddedYear.of(r.title) else None)
-    // Where rows sharing a key RESOLVED TO DIFFERENT FILMS, each resolved row is filed at the
-    // year TMDB gave its film instead: the union below keeps one tmdbId per key, and "A Star
-    // Is Born (1954)", "(1976)" and "(2018)" — three venues, no published year, three films —
-    // were unioned into one row before `clusterByFilm` could keep them apart (US convergence,
-    // 2026-09-25). ONLY there: a key whose rows name one film stays one row, as it always
-    // folded. Filing that too split PL's "Samson i Dalila" into a resolved 1949 row and a
-    // yearless one, and a bare listing of the title then had two homes — the scrape landed it
-    // on one and the settle moved it back, on every tick.
-    val splitByFilm: Set[CacheKey] = stagingRows.groupBy(r => CacheKey(r.title, baseYear(r), normalizer))
-      .collect { case (key, rows) if rows.flatMap(_.record.tmdbId).distinct.sizeIs > 1 => key }.toSet
+    // Rows sharing a key are unioned below before `clusterByFilm` can tell films apart, and a
+    // union keeps one tmdbId. So where the key holds more than one film, file them apart first:
+    //  - rows RESOLVED TO DIFFERENT FILMS each at the year TMDB gave its film — "A Star Is Born
+    //    (1954)", "(1976)" and "(2018)", three venues, no published year, three films (US
+    //    convergence, 2026-09-25);
+    //  - an UNRESOLVED row whose own venue denies the film a sibling resolved to
+    //    (`MixedFilmDetector.deniesFilm`) at the year it published — the Met's 2026 "Samson i
+    //    Dalila" (Darko Tresnjak) was unioned onto DeMille's 1949 film because a bare listing
+    //    beside it resolved the title to that.
+    // ONLY there: a key whose rows name one film stays one row, as it always folded. Filing a
+    // one-film key too split PL's "Samson i Dalila" into a resolved row and a yearless one that
+    // a bare listing then had two homes between (churn on every tick).
+    def filmsOf(rows: Seq[StagingRecord]): Seq[models.SourceData] =
+      rows.flatMap(r => r.record.tmdbId.flatMap(_ => r.record.data.get(models.Tmdb))).distinct
+    def denyingYear(record: MovieRecord, films: Seq[models.SourceData]): Option[Int] =
+      if (record.tmdbId.isDefined) None
+      else record.cinemaData.values.find(slot => films.exists(MixedFilmDetector.deniesFilm(slot, _, normalizer)))
+        .flatMap(slot => slot.releaseYear.orElse(EmbeddedYear.ofAll(slot.rawTitle ++ slot.title)))
+    def denying(r: StagingRecord, films: Seq[models.SourceData]): Option[Int] = denyingYear(r.record, films)
+    val buckets = stagingRows.groupBy(r => CacheKey(r.title, baseYear(r), normalizer))
+    // A stored row under the same key takes part too: the venue that denies the film is as
+    // often an unresolved row folded on an earlier pass as one folding now.
+    val storedAt = moviesRows.groupBy(r => CacheKey(r.title, r.year, normalizer))
+    val splitByFilm: Set[CacheKey] = buckets.collect {
+      case (key, rows) if {
+        val stored = storedAt.getOrElse(key, Nil).map(r => MovieRecordMerge.unionAll(r.record +: evidence.get(r.id).toSeq))
+        val films  = filmsOf(rows)
+        (rows.flatMap(_.record.tmdbId) ++ stored.flatMap(_.tmdbId)).distinct.sizeIs > 1 ||
+          rows.exists(r => denying(r, films).isDefined) || stored.exists(denyingYear(_, films).isDefined)
+      } => key
+    }.toSet
     def fileYear(r: StagingRecord): Option[Int] = {
       val base = baseYear(r)
-      if (r.record.tmdbId.isDefined && splitByFilm.contains(CacheKey(r.title, base, normalizer)))
-        base.orElse(r.record.tmdbYear)
-      else base
+      val key  = CacheKey(r.title, base, normalizer)
+      if (!splitByFilm.contains(key) || base.isDefined) base
+      else if (r.record.tmdbId.isDefined) r.record.tmdbYear
+      else denying(r, filmsOf(buckets(key)))
     }
     val stagingByKey = stagingRows.groupBy(r => CacheKey(r.title, fileYear(r), normalizer)).toSeq.map {
       case (key, rows) => key -> MovieRecordMerge.unionAll(rows.map(_.record))
@@ -281,7 +313,12 @@ object StagingFold {
     // `clusterByFilm` produce — already order-independent of arrival — so the minted-so-
     // far set does not reintroduce an order dependency into which id a cluster gets;
     // it only stops two clusters within ONE such deterministic result from colliding.
-    val (plannedRev, _) = FilmCanonicalizer.groupByFilm(byKey, normalizer).flatMap(FilmCanonicalizer.clusterByFilm(_, normalizer))
+    val rawByKey = byKey.toMap
+    val decided  = byKey.map { case (key, record) =>
+      key -> MovieRecordMerge.unionAll(record +: idsByKey.getOrElse(key, Nil).flatMap(evidence.get))
+    }
+    val (plannedRev, _) = FilmCanonicalizer.groupByFilm(decided, normalizer).flatMap(FilmCanonicalizer.clusterByFilm(_, normalizer))
+      .map(_.map { case (key, _) => key -> rawByKey(key) })
       .foldLeft((Vector.empty[((FilmId, CacheKey, MovieRecord), Boolean, Seq[(FilmId, FilmId)])], Set.empty[FilmId])) {
         case ((acc, mintedSoFar), cluster) =>
           val (canonKey, merged) = FilmCanonicalizer.canonical(cluster, normalizer, extraCinemaTitles)
