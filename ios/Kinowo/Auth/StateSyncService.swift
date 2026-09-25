@@ -169,8 +169,10 @@ final class StateSyncService: ObservableObject {
     ///   local (server authoritative, so a removal made elsewhere stays
     ///   removed instead of being resurrected).
     /// - First reconcile of this country this sign-in: fetch
-    ///   unconditionally, union local+server, push every LOCAL-ONLY title as
-    ///   its own `hide` call (there's no bulk push).
+    ///   unconditionally, union local+server, and queue every LOCAL-ONLY title
+    ///   as its own `hide` (there's no bulk push). The country counts as
+    ///   migrated once the queue has drained; a hide that failed stays queued
+    ///   for the next reconcile.
     ///
     /// A result that lands after the user switched away writes to its own
     /// country's bucket, never over the newly selected one.
@@ -194,22 +196,14 @@ final class StateSyncService: ObservableObject {
                 let local     = prefs.hiddenFilms(country: country)
                 let localOnly = local.subtracting(remote.hiddenFilms)
                 prefs.setHiddenFilms(local.union(remote.hiddenFilms), country: country)
-
-                var latest = remote
-                var refused = false
-                for title in localOnly {
-                    do {
-                        latest = try await client.hide(country: country, title: title)
-                    } catch is HiddenFilmsWriteRefused {
-                        refused = true
-                    }
-                }
-                // A refused title stays in the local list only, so the server's
-                // validators no longer describe it: the next fetch replaces it.
-                if refused {
-                    prefs.clearHiddenFilmsValidators(country: country)
-                } else {
-                    prefs.setHiddenFilmsValidators(country: country, etag: latest.etag, lastModified: latest.lastModified)
+                prefs.setHiddenFilmsValidators(country: country, etag: remote.etag, lastModified: remote.lastModified)
+                // Uploaded through the edit queue (empty here — see
+                // `editedDuringFetch`), so an edit the user makes meanwhile is
+                // sent after these hides rather than racing them, and the queue's
+                // own rules settle the validators and a hide refused for good.
+                if !localOnly.isEmpty {
+                    prefs.setPendingHiddenFilmsChanges(localOnly.sorted().map(HiddenFilmsChange.hidden), country: country)
+                    guard await sendPendingChanges(country: country) else { return }
                 }
             }
             prefs.setHiddenFilmsMigrated(country: country)

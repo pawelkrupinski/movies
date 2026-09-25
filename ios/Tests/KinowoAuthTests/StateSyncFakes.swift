@@ -29,6 +29,9 @@ final class FakeHiddenFilmsClient: HiddenFilmsClient {
     var fetchDelay: [String: Duration] = [:]
     /// Awaited after a fetch has read the server's set, before it answers.
     var beforeFetchResponse: (() async -> Void)?
+    /// Awaited before a hide/unhide/clear reaches the server's set — a request
+    /// still on its way, which a later one may overtake.
+    var beforeWriteApplied: (() async -> Void)?
     /// Awaited once a hide/unhide/clear has been APPLIED, before it answers.
     var beforeWriteResponse: (() async -> Void)?
 
@@ -91,6 +94,7 @@ final class FakeHiddenFilmsClient: HiddenFilmsClient {
         if shouldFailWrite { throw URLError(.notConnectedToInternet) }
         if !signedIn { throw URLError(.userAuthenticationRequired) }
         if let refusal { throw HiddenFilmsWriteRefused(statusCode: refusal) }
+        if let beforeWriteApplied { await beforeWriteApplied() }
         change(&remote[country, default: []])
         let answer = state(country)
         if let beforeWriteResponse { await beforeWriteResponse() }

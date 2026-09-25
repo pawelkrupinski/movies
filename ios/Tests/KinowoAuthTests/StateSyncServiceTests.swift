@@ -79,11 +79,12 @@ final class StateSyncServiceTests: XCTestCase {
         login()
         await fulfillment(of: [pushed], timeout: 1)
         try await waitUntil { self.prefs.hiddenFilms == ["Local Only", "Remote Only"] }
+        // Migrated once the queued hide's response has landed.
+        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
 
         XCTAssertEqual(client.hideCalls.count, 1)
         XCTAssertEqual(client.hideCalls.first?.country, pl)
         XCTAssertEqual(client.hideCalls.first?.title, "Local Only")
-        XCTAssertTrue(prefs.isHiddenFilmsMigrated(country: pl))
         _ = sync
     }
 
@@ -278,6 +279,34 @@ final class StateSyncServiceTests: XCTestCase {
         XCTAssertEqual(client.hideCalls.filter { $0.title == overLong }.count, 1,
                        "the refused hide must not be sent again")
         _ = sync
+    }
+
+    /// The first sign-in's union uploads each local-only title while the user
+    /// can already edit: an unhide of one of them, sent beside the union's own
+    /// hide, could reach the server first and leave the title hidden there but
+    /// not here — with validators vouching for the server's set, so every
+    /// later fetch was a 304 that kept the two apart. The union's hides go
+    /// through the edit queue instead, so the user's edit is sent after them.
+    func testAnUnhideDuringTheFirstSyncUnionLandsAfterItsHide() async throws {
+        prefs.hide("Local Only")
+        client.remote[pl] = []
+        let gate = AsyncGate()
+        client.beforeWriteApplied = { [client] in
+            if client!.hideCalls.count == 1 && client!.unhideCalls.isEmpty { await gate.wait() }
+        }
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.client.hideCalls.count == 1 } // the union's hide, on its way
+
+        prefs.unhide("Local Only")
+        try await Task.sleep(for: .milliseconds(100)) // an unhide sent beside it lands first
+        await gate.open()
+        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) && self.client.inFlight == 0 }
+        try await waitUntil { self.prefs.pendingHiddenFilmsChanges(country: self.pl).isEmpty && self.client.inFlight == 0 }
+
+        await sync.reconcileCurrentCountry()
+        XCTAssertEqual(prefs.hiddenFilms(country: pl), [])
+        XCTAssertEqual(client.remote[pl], [])
     }
 
     /// A push the server refuses for good (a language this server does not
