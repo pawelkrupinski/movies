@@ -24,7 +24,7 @@ import scala.util.Try
  *   2. Bootstrap `div.event-item` rows — `div.title a` / `div.date`
  *      ("… 10 czerwca 2026 … godz. 13:30") with a `repertoire.html` link.
  *   3. The `/css/visual9` skin — `div.event-item[data-date][data-time]`
- *      carrying the ISO date + time as attributes, an `h3.event-title`, and a
+ *      carrying the ISO date + time as attributes, an `h2`/`h3.event-title`, and a
  *      `/index.php/kup-bilet/…` booking link. A venue on this skin can ALSO
  *      carry a `data-group` attribute naming which category the event belongs
  *      to (empty for every venue seen until BCKino, Bytom, which sells
@@ -127,7 +127,9 @@ object SystemBiletowyClient {
 
     // Current `/css/visual9` skin (kgl/kck.systembiletowy.pl, bilety.kino.bochnia.pl,
     // bck.systembiletowy.pl): one `div.event-item` per screening with the ISO date
-    // + time as data attributes, the title in `h3.event-title`, and a `kup-bilet`
+    // + time as data attributes, the title in `.event-title` (an h3 on most
+    // instances, an h2 on Bochnia's since ~2026-09-21 — so the heading level is
+    // never part of the selector), and a `kup-bilet`
     // booking link. The booking-link slug embeds the FIRST screening's date, not
     // this row's, so the showtime is read from the attributes — never parsed out
     // of the href. When `filmGroups` is non-empty (a venue mixing categories,
@@ -137,7 +139,7 @@ object SystemBiletowyClient {
       .filter(item => filmGroups.isEmpty || filmGroups.contains(item.attr("data-group")))
       .flatMap { item =>
         for {
-          titleElement <- Option(item.selectFirst("h3.event-title"))
+          titleElement <- Option(item.selectFirst(".event-title"))
           rawTitle = stripGroupPrefix(titleElement.text, item.attr("data-group"))
           titled   = clean(rawTitle) if titled._1.nonEmpty
           day     <- Try(LocalDate.parse(item.attr("data-date"))).toOption

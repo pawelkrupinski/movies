@@ -68,10 +68,10 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
 
   // ── Current `/css/visual9` skin: div.event-item[data-date][data-time] ─────────
   // The vendor's latest UI carries the ISO date + time as data attributes and the
-  // title in `h3.event-title`. These three venues were each previously scraped
-  // from Filmweb (cinema ids 117 / 1513 / 1294) — the fixtures (recorded into the
-  // 08-06-2026 corpus, replayed here) prove each programme is real and reachable
-  // on its own VisualSoft portal, served under both the vendor subdomain
+  // title in `.event-title` (an h3; Bochnia's is an h2 since ~09-21). These three
+  // venues were each previously scraped from Filmweb (cinema ids 117 / 1513 /
+  // 1294) — the fixtures (recorded into the 08-06-2026 corpus, replayed here)
+  // prove each programme is real and reachable on its own VisualSoft portal, served under both the vendor subdomain
   // (kgl/kck.systembiletowy.pl) and a venue's own domain (bilety.kino.bochnia.pl).
   private def visual9(base: String, cinema: models.Cinema) =
     new SystemBiletowyClient(new FakeHttpFetch("08-06-2026"), base, cinema, titles = titleNormalizer).fetch()
@@ -101,6 +101,22 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
     val film = movies.find(_.movie.title.toLowerCase.contains("dzień objawienia")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 17, 17, 0))
     // booking link is the VisualSoft kup-bilet deep link
+    film.showtimes.flatMap(_.bookingUrl).head should include("kup-bilet")
+  }
+
+  // Bochnia's instance re-skinned around 2026-09-21 so the event title renders
+  // as `h2.event-title` instead of `h3` — everything else on the visual9 row
+  // (data-date/data-time, kup-bilet link) unchanged. The heading-level-pinned
+  // selector read zero rows off 66 live screenings, so the venue went white.
+  // Captured live 2026-09-26.
+  it should "parse Regis Bochnia after its titles moved from h3 to h2" in {
+    val movies = new SystemBiletowyClient(
+      new FakeHttpFetch("kino-regis-bochnia"), "https://bilety.kino.bochnia.pl", KinoRegis,
+      titles = titleNormalizer).fetch()
+    movies.map(_.cinema).toSet shouldBe Set(KinoRegis)
+    val film = movies.find(_.movie.title.toLowerCase.contains("marsupilami")).value
+    film.showtimes.map(_.dateTime) should contain allOf (
+      LocalDateTime.of(2026, 9, 26, 16, 0), LocalDateTime.of(2026, 9, 27, 16, 0))
     film.showtimes.flatMap(_.bookingUrl).head should include("kup-bilet")
   }
 
