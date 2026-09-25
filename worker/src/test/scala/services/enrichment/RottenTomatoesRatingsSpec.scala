@@ -302,7 +302,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     val gets = new java.util.concurrent.atomic.AtomicInteger(0)
     val cache = twoFooRows()
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), countingRt(gets),
-      new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore()))
+      new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore(normalizer = titleNormalizer)))
 
     ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
     ratings.refreshOneSync(cache.keyOf("Foo", Some(2025)))

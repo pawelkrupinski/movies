@@ -13,7 +13,7 @@ import java.util.concurrent.{CountDownLatch, Executors, TimeUnit}
 
 class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
 
-  private def newCache(store: ResolutionStore = new InMemoryResolutionStore()) =
+  private def newCache(store: ResolutionStore = new InMemoryResolutionStore(normalizer = titleNormalizer)) =
     new WriteThroughResolutionCache(store)
 
   "WriteThroughResolutionCache" should "resolve once and reuse the cached hit" in {
@@ -37,7 +37,7 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "write a hit through to the durable store" in {
-    val store = new InMemoryResolutionStore()
+    val store = new InMemoryResolutionStore(normalizer = titleNormalizer)
     val cache = newCache(store)
 
     cache.getOrResolve("k")(Some("tt123"))
@@ -45,7 +45,7 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "warm a cold cache from the store without resolving" in {
-    val store = new InMemoryResolutionStore()
+    val store = new InMemoryResolutionStore(normalizer = titleNormalizer)
     store.put("k", "tt999")
     val calls = new AtomicInteger(0)
     val cache = newCache(store) // fresh Caffeine, value only in the store
@@ -75,7 +75,7 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
 
   "InMemoryResolutionStore" should "treat a value older than the 24h TTL as absent" in {
     val clock = new MutableClock(Instant.parse("2026-06-15T00:00:00Z"))
-    val store = new InMemoryResolutionStore(clock)
+    val store = new InMemoryResolutionStore(clock, normalizer = titleNormalizer)
     store.put("k", "tt1")
     store.get("k") shouldBe Some("tt1")
 
@@ -90,7 +90,7 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
   // re-resolve. Clearing only the durable store would leave the stale value in
   // the Caffeine layer in front of it, and the caller would never notice.
   "forget" should "drop the memoised value from BOTH layers so the next call re-resolves" in {
-    val store = new InMemoryResolutionStore
+    val store = new InMemoryResolutionStore(normalizer = titleNormalizer)
     val cache = new WriteThroughResolutionCache(store)
     var resolves = 0
     def resolveTo(v: String) = cache.getOrResolve("mc|theodyssey|odyseja|2026") { resolves += 1; Some(v) }
@@ -111,7 +111,7 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "leave other films' entries alone" in {
-    val cache = new WriteThroughResolutionCache(new InMemoryResolutionStore)
+    val cache = new WriteThroughResolutionCache(new InMemoryResolutionStore(normalizer = titleNormalizer))
     cache.getOrResolve("mc|thenorth|polnoc|2026")(Some("north")) shouldBe Some("north")
     cache.forget("Odyseja")
     var resolved = false
@@ -124,7 +124,7 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
   // is why "Metacritic refresh" could report 0 changed while films sat on the
   // wrong page.
   "forgetAll" should "clear every entry from both layers" in {
-    val store = new InMemoryResolutionStore
+    val store = new InMemoryResolutionStore(normalizer = titleNormalizer)
     val cache = new WriteThroughResolutionCache(store)
     cache.getOrResolve("mc|a||2026")(Some("url-a")) shouldBe Some("url-a")
     cache.getOrResolve("mc|b||2026")(Some("url-b")) shouldBe Some("url-b")
@@ -146,7 +146,7 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
   // means something different for the "is this cache worth keeping" question —
   // so each must be reported for exactly the path it names.
   "outcome reporting" should "distinguish the two hit layers from the two miss kinds" in {
-    val store    = new InMemoryResolutionStore
+    val store    = new InMemoryResolutionStore(normalizer = titleNormalizer)
     val recorded = scala.collection.mutable.ListBuffer.empty[String]
     def cacheOver(s: ResolutionStore) =
       new WriteThroughResolutionCache(s, (o: String) => { recorded += o; () })
@@ -170,7 +170,7 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
   it should "report an uncached miss on EVERY repeat, since Retry never memoises it" in {
     val recorded = scala.collection.mutable.ListBuffer.empty[String]
     val cache = new WriteThroughResolutionCache(
-      new InMemoryResolutionStore, (o: String) => { recorded += o; () })
+      new InMemoryResolutionStore(normalizer = titleNormalizer), (o: String) => { recorded += o; () })
 
     (1 to 3).foreach(_ => cache.getOrResolve("unresolvable")(None))
 
@@ -192,7 +192,7 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
   // film" for the store's TTL turns that into once a day.
 
   private def rememberingCache(
-    store:    ResolutionStore = new InMemoryResolutionStore(),
+    store:    ResolutionStore = new InMemoryResolutionStore(normalizer = titleNormalizer),
     recorder: ResolutionOutcomeRecorder = ResolutionOutcomeRecorder.noop
   ) = new WriteThroughResolutionCache(store, recorder, UnresolvedPolicy.Remember)
 
@@ -208,7 +208,7 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "remember the miss durably, so a restarted process doesn't re-probe" in {
-    val store = new InMemoryResolutionStore()
+    val store = new InMemoryResolutionStore(normalizer = titleNormalizer)
     rememberingCache(store).getOrResolve("k")(None) shouldBe None
 
     val calls = new AtomicInteger(0)
@@ -219,7 +219,7 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
 
   it should "expire the remembered miss on the store's TTL and probe again" in {
     val clock = new MutableClock(Instant.parse("2026-07-30T12:00:00Z"))
-    val store = new InMemoryResolutionStore(clock)
+    val store = new InMemoryResolutionStore(clock, normalizer = titleNormalizer)
     val calls = new AtomicInteger(0)
     def resolve(): Option[String] = { calls.incrementAndGet(); None }
 
@@ -253,7 +253,7 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
   // failed read (tools.EnrichmentRead); this pins the other half of the
   // contract, that a throwing chain leaves the cache empty.
   it should "remember NOTHING when the probe chain fails, so an outage isn't stored as 'no page'" in {
-    val store = new InMemoryResolutionStore()
+    val store = new InMemoryResolutionStore(normalizer = titleNormalizer)
     val cache = rememberingCache(store)
 
     a[RuntimeException] should be thrownBy
@@ -267,7 +267,7 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not persist a failed probe to the store either (a restart must re-probe)" in {
-    val store = new InMemoryResolutionStore()
+    val store = new InMemoryResolutionStore(normalizer = titleNormalizer)
     a[RuntimeException] should be thrownBy
       rememberingCache(store).getOrResolve("k")(throw new RuntimeException("HTTP 503"))
 
@@ -290,7 +290,7 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still resolve and cache a hit normally" in {
-    val store = new InMemoryResolutionStore()
+    val store = new InMemoryResolutionStore(normalizer = titleNormalizer)
     rememberingCache(store).getOrResolve("k")(Some("https://www.metacritic.com/movie/dune")) shouldBe
       Some("https://www.metacritic.com/movie/dune")
     store.get("k") shouldBe Some("https://www.metacritic.com/movie/dune")
@@ -305,7 +305,7 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
 
   it should "count the chain once, then report hits — a remembered miss avoids a probe" in {
     val recorded = scala.collection.mutable.ListBuffer.empty[String]
-    val store = new InMemoryResolutionStore()
+    val store = new InMemoryResolutionStore(normalizer = titleNormalizer)
     val recorder: ResolutionOutcomeRecorder = (o: String) => { recorded += o; () }
 
     rememberingCache(store, recorder).getOrResolve("k")(None)

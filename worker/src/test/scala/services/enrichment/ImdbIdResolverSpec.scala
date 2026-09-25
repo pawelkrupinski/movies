@@ -204,7 +204,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val calls = new java.util.concurrent.atomic.AtomicInteger(0)
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val resolver = new ImdbIdResolver(cache, countingImdb(calls),
-      imdbIdCache = new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore()))
+      imdbIdCache = new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore(normalizer = titleNormalizer)))
 
     resolver.findIdFor("Mortal Kombat II", Some(2026)) shouldBe Some("tt17490712")
     resolver.findIdFor("Mortal Kombat II", Some(2026)) shouldBe Some("tt17490712")

@@ -36,7 +36,7 @@ class MovieServiceTmdbCacheSpec extends AnyFlatSpec with Matchers {
     val http = RoutingHttpFetch.getOnly(Routes)
     val cache = seededCache()
     val service = new MovieService(cache, new InProcessEventBus(), tmdb(http),
-      tmdbIdCache = new WriteThroughResolutionCache(new InMemoryResolutionStore()))
+      tmdbIdCache = new WriteThroughResolutionCache(new InMemoryResolutionStore(normalizer = titleNormalizer)))
 
     service.reEnrichSync(Title, Year).flatMap(_.tmdbId) shouldBe Some(TmdbId)
     service.reEnrichSync(Title, Year).flatMap(_.tmdbId) shouldBe Some(TmdbId)

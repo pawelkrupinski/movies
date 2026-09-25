@@ -40,7 +40,7 @@ class StagingRepositoryContractSpec extends AnyFlatSpec with Matchers with Befor
   /** A fresh, empty repository and the normalizer it counts with. */
   private def fresh(cls: Class[? <: StagingRepository]): (StagingRepository, CountingNormalizer) = {
     Await.result(database.getCollection(StagingRepository.Collection).drop().toFuture(), 30.seconds)
-    val normalizer = new CountingNormalizer
+    val normalizer = new CountingNormalizer(services.movies.SingleCountryNormalizer.titleNormalizer.rules)
     val repository = Implementations.construct(cls, _.getTypeName match {
       case "scala.Option<org.mongodb.scala.MongoDatabase>" => Some(Some(database))
       case "services.movies.TitleNormalizer"               => Some(normalizer)

@@ -65,7 +65,7 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
 
   /** Sanitize calls made by ONE venue's scrape into a corpus of `corpusSize` other films. */
   private def scrapeCost(corpusSize: Int): Int = {
-    val normalizer = new CountingNormalizer(TitleNormalizer.forCountry(Country.default).rules)
+    val normalizer = new CountingNormalizer(SingleCountryNormalizer.titleNormalizer.rules)
     val staging    = new InMemoryStagingRepository(normalizer = normalizer)
     val cache      = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = normalizer),
                                             staging = Some(staging), normalizer = normalizer, clock = DepthGuardTime.clock)
@@ -109,7 +109,7 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
    */
   it should "cost the same to LAND a listing on a concluded row whatever else the corpus holds" in {
     def landCost(corpusSize: Int): Long = {
-      val normalizer = new CountingNormalizer(TitleNormalizer.forCountry(Country.default).rules)
+      val normalizer = new CountingNormalizer(SingleCountryNormalizer.titleNormalizer.rules)
       val staging    = new InMemoryStagingRepository(normalizer = normalizer)
       val cache      = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = normalizer),
                                               staging = Some(staging), normalizer = normalizer, clock = DepthGuardTime.clock)
@@ -230,7 +230,7 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
    */
   it should "re-land a film shown at N venues in work linear in N, not once per venue over every venue" in {
     def rescrapeCost(venueCount: Int): Long = {
-      val normalizer = new CountingNormalizer(TitleNormalizer.forCountry(Country.default).rules)
+      val normalizer = new CountingNormalizer(SingleCountryNormalizer.titleNormalizer.rules)
       val screenings = new InMemoryScreeningsRepository
       val cache      = new CaffeineMovieCache(
         new InMemoryMovieRepository(normalizer = normalizer, screenings = Some(screenings)),

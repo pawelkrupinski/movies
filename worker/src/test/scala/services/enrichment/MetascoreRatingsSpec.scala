@@ -264,7 +264,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     val gets = new java.util.concurrent.atomic.AtomicInteger(0)
     val cache = twoStingRows()
     val rates = new MetascoreRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), stingMc(gets),
-      new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore()))
+      new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore(normalizer = titleNormalizer)))
 
     rates.refreshOneSync(cache.keyOf("The Sting", Some(2024)))
     rates.refreshOneSync(cache.keyOf("The Sting", Some(2025)))

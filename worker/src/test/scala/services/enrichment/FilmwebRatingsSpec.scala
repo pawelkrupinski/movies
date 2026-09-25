@@ -574,7 +574,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val site = countedFilmwebSite()
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1"))), normalizer = titleNormalizer), normalizer = titleNormalizer)
     val ratings = new FilmwebRatings(cache, disabledTmdb, new FilmwebClient(site),
-      new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore()))
+      new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore(normalizer = titleNormalizer)))
 
     ratings.auditOneSync("Foo", Some(2024))
     ratings.auditOneSync("Foo", Some(2024))

@@ -52,7 +52,7 @@ class InMemoryStagingRepositorySpec extends AnyFlatSpec with Matchers {
    *  is staging a whole country. Counted as `sanitize` calls, one per row the read
    *  touches, so it cannot be a timing flake. */
   it should "read one film's group without touching the rest of the backlog" in {
-    val normalizer = new CountingNormalizer
+    val normalizer = new CountingNormalizer(SingleCountryNormalizer.titleNormalizer.rules)
     val repository = new InMemoryStagingRepository(normalizer = normalizer)
     (1 to 200).foreach(n => repository.upsert(Helios, s"Backlog Film $n", Some(2026), slot(Helios, s"Backlog Film $n", Some(2026))))
     repository.upsert(Helios, "Kumotry", Some(2026), slot(Helios, "Kumotry", Some(2026)))

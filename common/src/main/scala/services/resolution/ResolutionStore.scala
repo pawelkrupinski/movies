@@ -67,9 +67,7 @@ object ResolutionStore {
  *  same TTL expiry as the Mongo store via an injectable clock. */
 class InMemoryResolutionStore(
   clock: Clock = Clock.systemUTC(),
-  // Test / Mongo-less local dev only, so a single-country default is right here.
-  override val normalizer: services.movies.TitleNormalizer =
-    services.movies.TitleNormalizer.deployment
+  override val normalizer: services.movies.TitleNormalizer
 ) extends ResolutionStore {
   private val entries = new ConcurrentHashMap[String, (String, Instant)]()
 
