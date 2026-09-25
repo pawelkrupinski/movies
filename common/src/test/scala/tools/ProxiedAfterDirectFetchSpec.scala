@@ -5,7 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.io.{InputStream, OutputStream}
-import java.net.{InetAddress, InetSocketAddress, ServerSocket, Socket, URLClassLoader}
+import java.net.{InetAddress, InetSocketAddress, ServerSocket, Socket}
 import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 import java.nio.file.{Files, Path, Paths}
 import java.security.KeyStore
@@ -50,10 +50,10 @@ class ProxiedAfterDirectFetchSpec extends AnyFlatSpec with Matchers {
     Seq(direct, origin).foreach(_.start())
 
     try {
-      val (exit, output) = runChild(
-        Seq(s"-Djavax.net.ssl.trustStore=$trustStore", s"-Djavax.net.ssl.trustStorePassword=$StorePassword"),
+      val (exit, output) = ChildJvm.run(
         ProbeMain,
-        Seq(s"http://127.0.0.1:${direct.getAddress.getPort}/", proxy.port.toString,
+        jvmArgs = Seq(s"-Djavax.net.ssl.trustStore=$trustStore", s"-Djavax.net.ssl.trustStorePassword=$StorePassword"),
+        args = Seq(s"http://127.0.0.1:${direct.getAddress.getPort}/", proxy.port.toString,
             s"https://127.0.0.1:${origin.getAddress.getPort}/", User, Password))
 
       withClue(s"child output:\n$output\n") {
@@ -117,27 +117,6 @@ object ProxiedAfterDirectFetchSpec {
     val context = SSLContext.getInstance("TLS")
     context.init(kmf.getKeyManagers, null, null)
     context
-  }
-
-  /** This test run's classpath, whether sbt forked it (`java.class.path`) or runs
-   *  it in its own layered class loaders (their URLs). */
-  private def classpath: String = {
-    def urls(loader: ClassLoader): Seq[String] = loader match {
-      case null               => Nil
-      case u: URLClassLoader  => u.getURLs.toSeq.flatMap(url => Try(Paths.get(url.toURI).toString).toOption) ++ urls(u.getParent)
-      case other              => urls(other.getParent)
-    }
-    (urls(getClass.getClassLoader) ++ System.getProperty("java.class.path").split(java.io.File.pathSeparator))
-      .distinct.mkString(java.io.File.pathSeparator)
-  }
-
-  private def runChild(jvmArgs: Seq[String], main: String, args: Seq[String]): (Int, String) = {
-    val java    = Paths.get(System.getProperty("java.home"), "bin", "java").toString
-    val process = new ProcessBuilder((Seq(java, "-cp", classpath) ++ jvmArgs ++ (main +: args))*)
-      .redirectErrorStream(true).start()
-    val output  = new String(process.getInputStream.readAllBytes(), UTF_8)
-    if (!process.waitFor(120, TimeUnit.SECONDS)) { process.destroyForcibly(); (-1, output + "\n[timed out]") }
-    else (process.exitValue(), output)
   }
 
   /** An HTTP proxy that only tunnels: `CONNECT` without the right Basic

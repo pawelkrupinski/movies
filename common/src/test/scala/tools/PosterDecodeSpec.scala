@@ -4,12 +4,12 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.awt.image.BufferedImage
-import java.io.ByteArrayOutputStream
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.{Executors, TimeUnit}
+import java.util.concurrent.{CountDownLatch, Executors, TimeUnit}
 import javax.imageio.spi.{IIORegistry, ImageReaderSpi}
-import javax.imageio.stream.ImageInputStream
+import javax.imageio.stream.{ImageInputStream, MemoryCacheImageInputStream}
 import javax.imageio.{ImageIO, ImageReadParam, ImageReader, ImageTypeSpecifier}
 import scala.concurrent.duration.*
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -63,6 +63,19 @@ class PosterDecodeSpec extends AnyFlatSpec with Matchers {
     first.reads.get() shouldBe 1
   }
 
+  // `sbt common/test`, 2026-09-25: both counting-reader tests failed in the full suite and passed
+  // alone. IIORegistry.getDefaultInstance creates the JVM's registry lazily and WITHOUT a lock, so a
+  // registration racing ImageIO's own first use (another suite's ImageIO.read, started in parallel)
+  // could create a second registry that ImageIO never consults -- for the rest of that JVM. Only a
+  // fresh JVM still has that first use ahead of it, so each attempt runs in one.
+  it should "register where ImageIO looks, even racing another suite's first use of ImageIO" in {
+    val outcomes = (1 to 5).map { _ =>
+      val (exit, output) = ChildJvm.run("tools.CountingReaderRace",jvmArgs = Seq("-Djava.awt.headless=true"))
+      (exit, output.trim)
+    }
+    all(outcomes) shouldBe ((0, "VISIBLE"))
+  }
+
   // A 2000×3000 poster decoded whole is a 6 MP raster (18-24 MB of heap) for a slot 420×630 pixels
   // wide. The decoder subsamples at read time to the smallest size that still COVERS the slot, so no
   // card is ever upscaled.
@@ -106,10 +119,20 @@ private final class CountingReader {
 private object CountingReader {
   val Magic: Array[Byte] = "CNTR-poster".getBytes("US-ASCII")
 
+  /** The registry ImageIO decodes through. `IIORegistry.getDefaultInstance` creates the JVM's one
+   *  lazily with no lock, and ImageIO keeps whichever its class initialiser got; a direct call racing
+   *  that initialiser (another suite's first ImageIO.read) could build a SECOND registry that ImageIO
+   *  never reads. Initialising ImageIO first -- a racing thread blocks on its class init -- leaves
+   *  exactly ImageIO's registry for `getDefaultInstance` to return. */
+  private def imageIoRegistry: IIORegistry = {
+    ImageIO.getUseCache
+    IIORegistry.getDefaultInstance
+  }
+
   /** Runs `body` with a fresh reader registered in ImageIO, deregistering it afterwards. */
   def registered[A](body: CountingReader => A): A = {
     val reader   = new CountingReader
-    val registry = IIORegistry.getDefaultInstance
+    val registry = imageIoRegistry
     registry.registerServiceProvider(reader.spi)
     try body(reader) finally registry.deregisterServiceProvider(reader.spi)
   }
@@ -141,5 +164,25 @@ private object CountingReader {
     def getImageMetadata(imageIndex: Int): javax.imageio.metadata.IIOMetadata = null
     def read(imageIndex: Int, param: ImageReadParam): BufferedImage =
       counter.counting { Thread.sleep(100); new BufferedImage(40, 60, BufferedImage.TYPE_INT_RGB) }
+  }
+}
+
+/** A fresh JVM's first use of ImageIO (standing in for another suite's) racing a counting reader's
+ *  registration; prints whether ImageIO can then find the reader. */
+object CountingReaderRace {
+  def main(args: Array[String]): Unit = {
+    val go      = new CountDownLatch(1)
+    val visible = new java.util.concurrent.atomic.AtomicBoolean(false)
+    val anotherSuite = new Thread(() => { go.await(); ImageIO.getUseCache; () })
+    val thisSuite    = new Thread(() => {
+      go.await()
+      CountingReader.registered { _ =>
+        visible.set(ImageIO.getImageReaders(new MemoryCacheImageInputStream(new ByteArrayInputStream(CountingReader.Magic))).hasNext)
+      }
+    })
+    Seq(anotherSuite, thisSuite).foreach(_.start())
+    go.countDown()
+    Seq(anotherSuite, thisSuite).foreach(_.join())
+    println(if (visible.get) "VISIBLE" else "ORPHAN")
   }
 }
