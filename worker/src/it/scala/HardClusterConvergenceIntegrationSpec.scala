@@ -167,6 +167,13 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
     w.drainStaging()
     w.movieService.settle()
     w.concludeEnrichment()
+    // …and the settle AFTER it. The re-try sweep resolves rows late — a no-match whose
+    // evidence a later venue changed (Helios Siedlce's crew landing on Cinema1's unmatched
+    // "Niesamowite przygody skarpetek") — and a resolve keeps a yeared row's key; the next
+    // periodic settle is what re-keys it onto TMDB's year. Stopping before it compared the
+    // split arrival's film at its interim key against the all-at-once one at its final key.
+    w.movieService.settle()
+    w.movieCache.canonicalizeBySanitize()
     w.readModelProjector.reconcile()
   }
 
