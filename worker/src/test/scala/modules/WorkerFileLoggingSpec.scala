@@ -23,13 +23,15 @@ import scala.jdk.CollectionConverters._
 class WorkerFileLoggingSpec extends AnyFlatSpec with Matchers {
 
   "the worker logback.xml" should "send root logs to a rolling file under KINOWO_LOG_DIR (survives a restart)" in {
-    val dir: Path = Files.createTempDirectory("kinowo-log-test")
-    // logback resolves ${KINOWO_LOG_DIR} from system properties before the OS env.
-    System.setProperty("KINOWO_LOG_DIR", dir.toString)
-    val ctx = new LoggerContext()
+    val directory: Path = Files.createTempDirectory("kinowo-log-test")
+    // Handed to THIS context only: logback resolves ${KINOWO_LOG_DIR} from the context's own
+    // properties before system properties and the OS environment, so the spec names the
+    // directory without a JVM-wide property every other suite would see.
+    val context = new LoggerContext()
+    context.putProperty("KINOWO_LOG_DIR", directory.toString)
     try {
       val configurator = new JoranConfigurator()
-      configurator.setContext(ctx)
+      configurator.setContext(context)
       configurator.doConfigure(getClass.getResourceAsStream("/logback.xml"))
 
       // The root logger must carry a started rolling FILE appender whose active
@@ -37,17 +39,16 @@ class WorkerFileLoggingSpec extends AnyFlatSpec with Matchers {
       // bytes survive a restart. (logback's own writing of events to a configured
       // RollingFileAppender is its contract, not re-tested here; this guards OUR
       // wiring: before the file appender was added, getAppender("FILE") is null.)
-      val appender = ctx.getLogger(ROOT_LOGGER_NAME).getAppender("FILE")
+      val appender = context.getLogger(ROOT_LOGGER_NAME).getAppender("FILE")
       appender shouldBe a[RollingFileAppender[?]]
 
       val fileAppender = appender.asInstanceOf[RollingFileAppender[ILoggingEvent]]
       fileAppender.isStarted shouldBe true
-      Path.of(fileAppender.getFile).toAbsolutePath.toString should startWith(dir.toAbsolutePath.toString)
+      Path.of(fileAppender.getFile).toAbsolutePath.toString should startWith(directory.toAbsolutePath.toString)
       Path.of(fileAppender.getFile).getFileName.toString shouldBe "worker.log"
     } finally {
-      ctx.stop()
-      System.clearProperty("KINOWO_LOG_DIR")
-      Files.walk(dir).iterator().asScala.toSeq.reverse.foreach(p => Files.deleteIfExists(p))
+      context.stop()
+      Files.walk(directory).iterator().asScala.toSeq.reverse.foreach(p => Files.deleteIfExists(p))
     }
   }
 }

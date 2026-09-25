@@ -2,6 +2,7 @@ package modules
 
 import clients.tools.FakeHttpFetch
 import services.tasks.{DetailReaper, ScrapeReaper}
+import services.MongoAddress
 import tools.{Env, HttpFetch}
 
 import java.time.LocalDate
@@ -31,13 +32,14 @@ object LocalFixtureWorkerMain {
   private[modules] val DefaultMongoDb  = "kinowo_local"
 
   def main(args: Array[String]): Unit = {
-    forceLocalMongo()
-    locateFixtureRoot()
-    val fixtureDirectory = Env.fromProcess().get("KINOWO_FIXTURE_DIR").getOrElse("today")
-    println(s"[local-fixture-worker] replaying HTTP from test/resources/fixtures/$fixtureDirectory " +
-      s"into Mongo ${Env.fromProcess().get("MONGODB_URI").getOrElse("?")} db=${Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo")}")
+    val env              = Env.fromProcess()
+    val mongo            = localMongo(key => Option(System.getenv(key)), env)
+    val fixtureBase      = fixtureBaseFor(env, new java.io.File(".").getCanonicalFile)
+    val fixtureDirectory = env.get("KINOWO_FIXTURE_DIR").getOrElse("today")
+    println(s"[local-fixture-worker] replaying HTTP from ${FakeHttpFetch.rootFor(fixtureDirectory, fixtureBase)} " +
+      s"into Mongo ${mongo.uri.getOrElse("?")} db=${mongo.database.getOrElse("?")}")
 
-    val wiring = new FixtureWorkerWiring(fixtureDirectory)
+    val wiring = new FixtureWorkerWiring(fixtureDirectory, mongo, fixtureBase, env)
     wiring.start()
     println("[local-fixture-worker] started — scraping the fixture corpus into the local read model. Ctrl-C to stop.")
 
@@ -49,40 +51,42 @@ object LocalFixtureWorkerMain {
     latch.await()
   }
 
-  /** Point this worker at a LOCAL Mongo, distinct from the prod db `.env.local`
-   *  reaches. A JVM property beats `.env.local` in `Env`'s precedence, so this
-   *  overrides the prod URI; an explicit process-env MONGODB_URI still wins, so
-   *  a user who exported one keeps control. */
-  private def forceLocalMongo(): Unit = {
-    if (System.getenv("MONGODB_URI") == null)
-      System.setProperty("MONGODB_URI", Env.fromProcess().get("KINOWO_LOCAL_MONGO_URI").getOrElse(DefaultMongoUri))
-    if (System.getenv("MONGODB_DB") == null)
-      System.setProperty("MONGODB_DB", Env.fromProcess().get("KINOWO_LOCAL_MONGO_DB").getOrElse(DefaultMongoDb))
-  }
+  /** The LOCAL Mongo this worker writes into, distinct from the prod database `.env.local`
+   *  reaches: a MONGODB_URI / MONGODB_DB exported in the process environment itself still
+   *  wins (a user who exported one keeps control), else KINOWO_LOCAL_MONGO_URI / _DB, else
+   *  the `localStack` defaults. `.env.local`'s own MONGODB_URI — prod — never counts, which
+   *  is why the process environment is asked separately from `env`. Handed to the wiring as
+   *  its address; nothing rewrites the process's MONGODB_URI to get it there. */
+  private[modules] def localMongo(processEnvironment: String => Option[String], env: Env): MongoAddress =
+    MongoAddress(
+      uri      = Some(processEnvironment("MONGODB_URI").filter(_.nonEmpty)
+        .getOrElse(env.get("KINOWO_LOCAL_MONGO_URI").getOrElse(DefaultMongoUri))),
+      database = Some(processEnvironment("MONGODB_DB").filter(_.nonEmpty)
+        .getOrElse(env.get("KINOWO_LOCAL_MONGO_DB").getOrElse(DefaultMongoDb))))
 
-  /** `bgRunMain` forks with CWD = the worker module directory, but FakeHttpFetch reads
-   *  `test/resources/fixtures/…` relative to the repository root. Walk up from the CWD
-   *  to the directory that contains `test/resources/fixtures` and pin it as
-   *  KINOWO_FIXTURE_ROOT (a JVM prop FakeHttpFetch honours), so the corpus
-   *  resolves regardless of where the fork started. No-op if already set. */
-  private def locateFixtureRoot(): Unit = {
-    if (Env.fromProcess().get("KINOWO_FIXTURE_ROOT").isEmpty) {
-      var directory = new java.io.File(".").getCanonicalFile
-      while (directory != null && !new java.io.File(directory, "test/resources/fixtures").isDirectory)
-        directory = directory.getParentFile
-      if (directory != null)
-        System.setProperty("KINOWO_FIXTURE_ROOT", new java.io.File(directory, "test/resources/fixtures").getPath)
+  /** Where the fixture corpus lives. `bgRunMain` forks with CWD = the worker module
+   *  directory, but the corpus is `test/resources/fixtures/…` under the repository root, so
+   *  walk up from `workingDirectory` to the directory holding it — unless KINOWO_FIXTURE_ROOT
+   *  already names one. Handed to the wiring's fetches rather than set as a property. */
+  private[modules] def fixtureBaseFor(env: Env, workingDirectory: java.io.File): Option[String] =
+    env.get("KINOWO_FIXTURE_ROOT").orElse {
+      Iterator.iterate(workingDirectory)(_.getParentFile).takeWhile(_ != null)
+        .map(new java.io.File(_, "test/resources/fixtures"))
+        .find(_.isDirectory)
+        .map(_.getPath)
     }
-  }
 }
 
 /**
  * `WorkerWiring` with fixture-replay HTTP but the real (local) Mongo + read-model
  * projection. Mirrors `FixtureTestWiring`'s fetch overrides, minus its in-memory
- * repos — here the projector writes to the local Mongo so `web` can serve it.
+ * repos — here the projector writes to the local Mongo at `localMongo` so `web` can
+ * serve it, and the fixtures are read from under `fixtureBase`.
  */
-class FixtureWorkerWiring(fixtureDirectory: String) extends WorkerWiring {
-  override lazy val httoFetch: HttpFetch      = new FakeHttpFetch(fixtureDirectory)
+class FixtureWorkerWiring(fixtureDirectory: String, localMongo: MongoAddress, fixtureBase: Option[String], environment: Env)
+    extends WorkerWiring(env = environment) {
+  override lazy val mongoAddress: MongoAddress = localMongo
+  override lazy val httoFetch: HttpFetch      = new FakeHttpFetch(fixtureDirectory, fixtureBase = fixtureBase)
   override lazy val multikinoFetch: HttpFetch = httoFetch
   override lazy val biletynaFetch: HttpFetch  = httoFetch
 

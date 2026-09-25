@@ -4,6 +4,8 @@ import clients.tools.FakeHttpFetch
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.MongoAddress
+import tools.Env
 
 import java.io.File
 import java.nio.file.Files
@@ -45,6 +47,42 @@ class LocalFixtureWorkerSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     LocalFixtureWorkerMain.DefaultMongoUri should include ("28017")
     LocalFixtureWorkerMain.DefaultMongoUri should not include "27018"
     LocalFixtureWorkerMain.DefaultMongoDb shouldBe "kinowo_local"
+  }
+
+  // `.env.local` points MONGODB_URI at PROD. The local stack's address must never pick that
+  // up — only a value exported in the process environment itself may override the local
+  // defaults — and it reaches the wiring as a value, not as a rewritten MONGODB_URI.
+  "LocalFixtureWorkerMain.localMongo" should "ignore a MONGODB_URI that only .env.local carries" in {
+    val dotEnvLocal = Env.of("MONGODB_URI" -> "mongodb://prod-tunnel:27017", "MONGODB_DB" -> "kinowo")
+    LocalFixtureWorkerMain.localMongo(_ => None, dotEnvLocal) shouldBe
+      MongoAddress(Some(LocalFixtureWorkerMain.DefaultMongoUri), Some(LocalFixtureWorkerMain.DefaultMongoDb))
+  }
+
+  it should "let the KINOWO_LOCAL_MONGO_* overrides move it" in {
+    LocalFixtureWorkerMain.localMongo(_ => None,
+      Env.of("KINOWO_LOCAL_MONGO_URI" -> "mongodb://127.0.0.1:28099", "KINOWO_LOCAL_MONGO_DB" -> "kinowo_elsewhere")) shouldBe
+      MongoAddress(Some("mongodb://127.0.0.1:28099"), Some("kinowo_elsewhere"))
+  }
+
+  it should "let a MONGODB_URI / MONGODB_DB exported in the process environment win" in {
+    val exported = Map("MONGODB_URI" -> "mongodb://exported:1", "MONGODB_DB" -> "kinowo_exported")
+    LocalFixtureWorkerMain.localMongo(exported.get, Env.of("KINOWO_LOCAL_MONGO_URI" -> "mongodb://ignored")) shouldBe
+      MongoAddress(Some("mongodb://exported:1"), Some("kinowo_exported"))
+  }
+
+  "LocalFixtureWorkerMain.fixtureBaseFor" should "walk up from a module directory to the repository's fixtures" in {
+    val repository = Files.createTempDirectory("local-fixture-root").toFile
+    val fixtures   = new File(repository, "test/resources/fixtures")
+    fixtures.mkdirs()
+    val module = new File(repository, "worker")
+    module.mkdirs()
+    try LocalFixtureWorkerMain.fixtureBaseFor(Env.of(), module) shouldBe Some(fixtures.getPath)
+    finally deleteRecursively(repository)
+  }
+
+  it should "prefer a KINOWO_FIXTURE_ROOT the process names" in {
+    LocalFixtureWorkerMain.fixtureBaseFor(Env.of("KINOWO_FIXTURE_ROOT" -> "/somewhere/fixtures"), new File("/")) shouldBe
+      Some("/somewhere/fixtures")
   }
 
   // The forked bg worker's CWD isn't the repository root, so FakeHttpFetch must be
