@@ -12,7 +12,11 @@
 # STICKY. The film probed last time is kept for as long as its city page still lists it. The first
 # film a city page lists changes many times a day (Warsaw's changed five times in three hours on
 # 2026-09-24), and every change is a new `instance` -- a new series whose `for:` holds start from
-# zero, so a ProbeSlow that needs twenty minutes on one URL could never complete.
+# zero, so a ProbeSlow that needs twenty minutes on one URL could never complete. A kept film whose
+# share card is already known is not fetched again: its targets are carried over as they were. The
+# film page was the costliest fetch a run made (a London film page is ~870 KB, read from the origin
+# every two minutes per country); a film with no card yet is still re-read, so a card rendered
+# later is picked up.
 #
 # THE EDGE MAY REFUSE A PAGE THE PROBES CANNOT PASS ANYWAY. showtimes.cc answers every `/movie/`
 # path with a Cloudflare managed challenge (a JavaScript page, `cf-mitigated: challenge`, 403) for
@@ -50,7 +54,7 @@ trap 'rm -rf "$work"' EXIT
 # fetch <url> [origin] -- leaves the body in $work/body and the HTTP status in $status (000 when
 # nothing answered); succeeds on a 2xx.
 fetch() {
-  local url="$1" args=(-sS --max-time 20 -A "$ua" -o "$work/body" -w '%{http_code}')
+  local url="$1" args=(-sS --compressed --max-time 20 -A "$ua" -o "$work/body" -w '%{http_code}')
   if [ "${2:-}" = origin ]; then
     local host
     host="$(printf '%s' "$url" | sed -E 's|^https?://([^/:]+).*|\1|')"
@@ -91,6 +95,14 @@ previous_film() {
     "$out" 2>/dev/null
 }
 
+# This country's targets from last time, when they include a share card -- printed as a JSON array
+# for the caller to carry over. Fails when there is no card to carry.
+previous_targets_with_card() {
+  [ -f "$out" ] || return 1
+  jq -ec --arg c "$1" '[.[] | select(.labels.country == $c)] | select(any(.labels.kind == "share-card"))' \
+    "$out" 2>/dev/null
+}
+
 targets='[]'
 failed=0
 for pair in "$@"; do
@@ -112,6 +124,9 @@ for pair in "$@"; do
   film="$(previous_film "$country")"
   if [ -z "$film" ] || ! grep -qxF "$film" "$work/films"; then
     film="$(sed -n 1p "$work/films")"
+  elif kept="$(previous_targets_with_card "$country")"; then
+    targets="$(jq -c --argjson kept "$kept" '. + $kept' <<<"$targets")"
+    continue
   fi
 
   if fetch_page "$film"; then

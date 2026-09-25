@@ -123,6 +123,21 @@ check "...carried in a hidden label Prometheus drops after relabelling" \
   "$(field '[.[] | .labels.__film] | unique | map("__film=" + .) | join(" ")')"
 check "grep is never cut off mid-write (no broken-pipe noise in the journal)" "0" \
   "$(grep -c 'Broken pipe' "$tmp/stderr")"
+check "...and its film page is NOT fetched again: the card it named is already known" "0" \
+  "$(grep -c 'https://kinowo.net/warszawa/movie/next-film$' "$tmp/curl.log")"
+check "every fetch asks for a compressed body (a London film page is ~870 KB uncompressed)" \
+  "$(wc -l < "$tmp/curl.log" | tr -d ' ')" "$(grep -c -- '--compressed' "$tmp/curl.log")"
+
+echo "discovery: a kept film with no share card yet is fetched again, so a card rendered later is found"
+serve "https://kinowo.net/warszawa/" '<a href="/warszawa/movie/cardless">x</a></html>'
+serve "https://kinowo.net/warszawa/movie/cardless" '<meta property="og:image" content="https://kinowo.net/assets/img/og.jpg"></html>'
+run "$tmp/targets.json" pl=https://kinowo.net/warszawa/
+serve "https://kinowo.net/warszawa/movie/cardless" \
+  '<meta property="og:image" content="https://kinowo.net/share-cards/pl/hcard.jpg?v=2"></html>'
+run "$tmp/targets.json" pl=https://kinowo.net/warszawa/
+check "the card rendered since the last run is now probed" \
+  "https://kinowo.net/warszawa/movie/cardless https://kinowo.net/share-cards/pl/hcard.jpg?v=2" \
+  "$(field '[.[] | .targets[0]] | join(" ")')"
 
 echo "discovery: a film page the edge challenges is read from the origin, and not probed"
 # showtimes.cc's managed challenge on /movie/ paths: the city page answers, the film page 403s.
@@ -142,6 +157,7 @@ check "...and the film page gets no probe that could only ever read the challeng
 check "the stickiness survives a challenged film page (the hidden label is on the card)" \
   "https://showtimes.cc/us/new-york/movie/coyote-vs-acme" "$(field '.[0].labels.__film')"
 
+rm -f "$tmp/targets.json"
 run "$tmp/targets.json" us=https://showtimes.cc/us/new-york/
 check "with no origin configured a refused film page is still probed (and reads 403)" \
   "film https://showtimes.cc/us/new-york/movie/coyote-vs-acme" \
