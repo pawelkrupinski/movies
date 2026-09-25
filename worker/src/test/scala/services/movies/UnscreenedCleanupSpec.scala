@@ -62,24 +62,6 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     (repository, slots)
   }
 
-  /** A repository whose per-film read always FAILS — `findByIdChecked` reports
-   *  `readOk = false`, the "I could not tell you" answer that must never be
-   *  mistaken for "this film has no cinemas". */
-  private class UnreadableMovieRepository(delegate: InMemoryMovieRepository) extends MovieRepository {
-    // Same rules as the repository it wraps — a fake that keyed differently from
-    // its delegate would be a fake that disagrees with itself.
-    val normalizer: services.movies.TitleNormalizer = delegate.normalizer
-    override def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean)   = (None, false)
-    override def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) = (None, false)
-    def enabled: Boolean                                              = true
-    def findAll(): Seq[StoredMovieRecord]                             = delegate.findAll()
-    def upsert(id: FilmId, key: CacheKey, e: MovieRecord): WriteOutcome = delegate.upsert(id, key, e)
-    def updateIfPresent(id: FilmId, key: CacheKey, before: MovieRecord, after: MovieRecord): Boolean =
-      delegate.updateIfPresent(id, key, before, after)
-    def delete(id: FilmId): WriteOutcome                              = delegate.delete(id)
-    def close(): Unit                                                 = ()
-  }
-
   "removeUnscreened" should "delete rows whose cinemaShowings map is empty" in {
     val withCinema    = mkRecord("tt1", Map(Helios -> cinemaSlot("With")))
     val withoutCinema = mkRecord("tt2", Map.empty)
@@ -183,14 +165,16 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
   it should "KEEP a row when the durable read FAILED rather than came back empty" in {
     // A failed read is not data: it cannot distinguish "no cinemas" from
     // "Mongo did not answer", so it must never authorise a delete.
-    val (delegate, _) = splitRepository(Seq(("Blogoslawieni", Some(2026), mkRecord("tt7", Map.empty))))
-    val cache = new CaffeineMovieCache(delegate, normalizer = titleNormalizer)
+    // `findByIdChecked`/`findByKeyChecked` answer `readOk = false` — "I could not tell
+    // you" — while the row is genuinely there and `findAll` still sees it.
+    val repository = new UnreadableByIdMovieRepository(Seq(("Blogoslawieni", Some(2026), mkRecord("tt7", Map.empty))))
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
 
-    val removed = new UnscreenedCleanup(cache, new UnreadableMovieRepository(delegate)).removeUnscreened()
+    val removed = new UnscreenedCleanup(cache, repository).removeUnscreened()
 
     removed                                                      shouldBe 0
     cache.get(cache.keyOf("Blogoslawieni", Some(2026)))    should not be empty
-    delegate.deletes                                             shouldBe empty
+    repository.deletes                                           shouldBe empty
   }
 
   it should "still delete a row both the cache AND a healthy durable read call empty" in {
