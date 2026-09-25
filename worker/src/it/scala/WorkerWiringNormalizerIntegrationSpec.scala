@@ -4,7 +4,7 @@ import models.Country
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
-import services.movies.TitleNormalizer
+import services.titlerules.TitleRuleSet
 import tools.Env
 
 import scala.concurrent.Await
@@ -64,7 +64,7 @@ class WorkerWiringNormalizerIntegrationSpec extends AnyFlatSpec with BeforeAndAf
 
   "a wiring's components" should "all key through its own country, not the environment's" in {
     val de = isolated(Country.Germany)
-    assert(de.titleNormalizer.eq(TitleNormalizer.forCountry(Country.Germany)))
+    assert(de.titleNormalizer.rules == TitleRuleSet.forCountry(Country.Germany))
     assert(de.movieRepository.normalizer.eq(de.titleNormalizer))
     assert(de.stagingRepository.normalizer.eq(de.titleNormalizer))
     assert(de.movieCache.normalizer.eq(de.titleNormalizer))
@@ -72,8 +72,9 @@ class WorkerWiringNormalizerIntegrationSpec extends AnyFlatSpec with BeforeAndAf
 
   it should "give a UK wiring the UK's rules" in {
     val uk = isolated(Country.UnitedKingdom)
-    assert(uk.movieRepository.normalizer.eq(TitleNormalizer.forCountry(Country.UnitedKingdom)))
-    assert(uk.movieCache.normalizer.eq(TitleNormalizer.forCountry(Country.UnitedKingdom)))
+    assert(uk.titleNormalizer.rules == TitleRuleSet.forCountry(Country.UnitedKingdom))
+    assert(uk.movieRepository.normalizer.eq(uk.titleNormalizer))
+    assert(uk.movieCache.normalizer.eq(uk.titleNormalizer))
   }
 
   it should "not share a normalizer between two countries' wirings in one JVM" in {
