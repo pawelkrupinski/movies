@@ -44,6 +44,10 @@ object TmdbAttempt {
   def unanswered(at: Instant): TmdbAttempt = TmdbAttempt(Unanswered, at)
   private val Unanswered = "unanswered"
 
+  /** Was this "no-match" concluded without TMDB ever answering? Such a row is not a verdict
+   *  about the film, only a refusal to keep it off the site. */
+  def isUnanswered(attempt: TmdbAttempt): Boolean = attempt.evidence == Unanswered
+
   /** What a resolution attempt actually consumed: the cinemas' evidence and the
    *  extra search terms mined from derived slots (a Filmweb-supplied original
    *  title is a legitimate SEARCH input even though it is no evidence). Sorted

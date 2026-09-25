@@ -2,7 +2,7 @@ package services.staging
 
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
-import models.{Cinema, CinemaCityWroclavia, Helios, KinoMuranow, Multikino, MovieRecord, Source, SourceData, Tmdb}
+import models.{Cinema, CinemaCityWroclavia, Helios, KinoMuranow, Kinoteka, Multikino, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{CacheKey, CaffeineMovieCache, EnrichmentRetrigger, FilmId, MovieRepository, RetriggerKind, StoredMovieRecord, StoredRowsRepository}
@@ -290,6 +290,26 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
 
     plan.moviesUpserts.map { case (_, _, r) => r.tmdbId -> r.cinemaSlots.map(_._1).toSet } shouldBe
       Seq(Some(29993) -> Set[Source](Multikino, Helios))
+  }
+
+  it should "not file an UNANSWERED group at its brackets — TMDB never said nothing resolves" in {
+    // UK hard cluster, replayed through a TMDB outage past the six-hour ceiling: Odeon lists
+    // "The Hunger Games: Mockingjay - Part 2 (2026)" (the re-release year), other venues the
+    // plain title and "(2015)". With TMDB answering, the group resolves and the bracket is
+    // ignored. Folded UNANSWERED, the bracket rule read "nothing resolved" and keyed the
+    // Odeon row at 2026 — a year no film has, which the recovered resolve then searched
+    // with and never found, leaving the venue on its own unmatched card for good.
+    def unanswered(cinema: Source, title: String) = StagingRecord(cinema, title, None, MovieRecord(
+      tmdbAttempt = Some(services.resolution.TmdbAttempt.unanswered(java.time.Instant.EPOCH)),
+      data = Map[Source, SourceData](cinema -> SourceData(title = Some(title)))), titleNormalizer)
+    val title = "The Hunger Games: Mockingjay - Part 2"
+
+    val plan = StagingFold.planGroup(
+      Seq(unanswered(Helios, s"$title (2026)"), unanswered(Multikino, s"$title (2015)"), unanswered(Kinoteka, title)),
+      moviesRows = Seq.empty, titleNormalizer)
+
+    plan.moviesUpserts.map(_._2.year) shouldBe Seq(None)
+    plan.moviesUpserts.head._3.data.keySet shouldBe Set[Source](Helios, Multikino, Kinoteka)
   }
 
   it should "fold a repertory revival's rebroadcast year onto the same film, not split it out" in {

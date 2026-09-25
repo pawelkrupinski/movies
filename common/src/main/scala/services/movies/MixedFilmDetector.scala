@@ -72,8 +72,28 @@ object MixedFilmDetector {
    *  leave the row for each film to get a record of its own. */
   def strays(record: MovieRecord, normalizer: TitleNormalizer): Seq[(Source, SourceData)] =
     split(record, normalizer) match {
-      case Seq()          => Seq.empty
+      case Seq()          => bracketStrays(record)
       case main +: others => others.filter(conflicting(main, _)).flatMap(_.slots)
+    }
+
+  /** The one film per bracketed year on a row TMDB has ANSWERED no-match for — the rule
+   *  `StagingFold.planGroup` files an unresolved group by, applied to a row that reached
+   *  `movies` without it. That happens when the group was folded UNANSWERED (TMDB failing
+   *  past the staging ceiling), which deliberately keeps it yearless; once TMDB has answered,
+   *  the row is what staging would have split. The largest bracket keeps the row (the
+   *  lower year on a tie); every other bracket's slots are strays. Bare listings stay. Never
+   *  on a resolved row (a bracket there can be the event's year) nor an unanswered one. */
+  private def bracketStrays(record: MovieRecord): Seq[(Source, SourceData)] =
+    if (record.tmdbId.isDefined || !record.tmdbNoMatch || !record.tmdbAnswered) Seq.empty
+    else {
+      val byYear = record.cinemaSlots
+        .flatMap { case (source, sd) => EmbeddedYear.ofAll(sd.rawTitle ++ sd.title).map(y => y -> (source, sd)) }
+        .groupMap(_._1)(_._2)
+      if (byYear.sizeIs < 2) Seq.empty
+      else {
+        val keep = byYear.toSeq.minBy { case (year, slots) => (-slots.size, year) }._1
+        byYear.toSeq.filter(_._1 != keep).sortBy(_._1).flatMap(_._2.sortBy(_._1.displayName))
+      }
     }
 
   /** Would attaching this cinema's listing to `record` put a SECOND film on the
@@ -283,7 +303,7 @@ object MixedFilmDetector {
 
   /** [[sameDirector]] over raw published names — the veto, for a caller weighing its
    *  own runtime or year evidence (the fold's rule 4, `FilmCanonicalizer`). */
-  private[movies] def creditSamePerson(a: Iterable[String], b: Iterable[String], normalizer: TitleNormalizer): Boolean =
+  def creditSamePerson(a: Iterable[String], b: Iterable[String], normalizer: TitleNormalizer): Boolean =
     sameDirector(directorKeys(a, normalizer), directorKeys(b, normalizer))
 
   /** Published director names as comparable keys.

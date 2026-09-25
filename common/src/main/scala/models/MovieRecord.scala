@@ -573,6 +573,13 @@ case class MovieRecord(
   /** TMDB looked and found nothing, and nothing has resolved the row since. */
   def tmdbNoMatch: Boolean = tmdbId.isEmpty && tmdbAttempt.isDefined
 
+  /** TMDB ANSWERED for this row — a hit, or a no-match it actually returned. False for a
+   *  row folded as an unanswered no-match (`TmdbAttempt.unanswered`, TMDB failing past the
+   *  staging ceiling): that row is concluded so it can be shown, but nothing is known
+   *  about the film, so no rule may read "TMDB names nothing" off it. */
+  def tmdbAnswered: Boolean =
+    tmdbId.isDefined || tmdbAttempt.exists(a => !services.resolution.TmdbAttempt.isUnanswered(a))
+
   /** TMDB enrichment has concluded — a hit (`tmdbId` set) or a definitive
    *  no-match (`tmdbNoMatch`). A purely transient failure leaves both unset, so
    *  the row stays held back (`readyToProject` false) and keeps retrying. */

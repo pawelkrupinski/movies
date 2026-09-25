@@ -229,7 +229,13 @@ object StagingFold {
     // splits a venue off its film (Queen Budapest (2026), 3e4cbb3c5). And "Titanic (1997)"
     // beside a bare "Titanic" stays one row: rule 4 folds the bare listing onto the only
     // film there is.
-    val nothingResolved = stagingRows.forall(_.record.tmdbId.isEmpty) && moviesRows.forall(_.record.tmdbId.isEmpty)
+    //
+    // "Nothing resolved" means TMDB ANSWERED and named nothing. A group folded UNANSWERED
+    // (TMDB failing past the staging ceiling) knows nothing about its film, and filing it
+    // at its brackets put a re-release's "(2026)" into the key as the film's year — which
+    // the resolve that follows the outage then searched with, and never found.
+    val nothingResolved = stagingRows.forall(r => r.record.tmdbId.isEmpty && r.record.tmdbAnswered) &&
+      moviesRows.forall(r => r.record.tmdbId.isEmpty && r.record.tmdbAnswered)
     def baseYear(r: StagingRecord): Option[Int] =
       r.year.orElse(if (nothingResolved) EmbeddedYear.of(r.title) else None)
     // Where rows sharing a key RESOLVED TO DIFFERENT FILMS, each resolved row is filed at the

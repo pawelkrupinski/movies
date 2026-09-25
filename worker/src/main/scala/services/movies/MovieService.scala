@@ -164,14 +164,19 @@ class MovieService(
    *  delimited year onto that year (then canonicalizes) — the settle-path home for
    *  the title-year persist, off the async resolve so it can't race `canonicalRank`. */
   def settle(): Unit = {
-    cache.backfillEmbeddedYears()
-    // Part of the settle proper, not a sweep of its own: a row holding two films is
-    // a consolidation problem, and settle is where the cache already re-keys and
-    // merges. Being here also puts it under the convergence suite's settle
-    // assertion — "a further settle changes no key, moves no film's cinemas, folds
-    // no row and writes nothing" — which is the guarantee a splitter most needs,
-    // since a split that the next scrape undoes would churn forever.
+    // The split is part of the settle proper, not a sweep of its own: a row holding two
+    // films is a consolidation problem, and settle is where the cache already re-keys and
+    // merges. Being here also puts it under the convergence suite's settle assertion — "a
+    // further settle changes no key, moves no film's cinemas, folds no row and writes
+    // nothing" — which is the guarantee a splitter most needs, since a split that the next
+    // scrape undoes would churn forever.
+    //
+    // BEFORE the embedded-year backfill: a row split by its brackets keeps one bracket's
+    // cinemas yearless, and this same settle must key it at that bracket — left yearless
+    // until the next one, the fold of the stray it just sent to staging puts it straight
+    // back (`clusterByFilm`'s rule 4 folds a yearless, idless row onto the only film).
     splitsSoFar += mixedFilmSplitter.splitMixedRows()
+    cache.backfillEmbeddedYears()
     ()
   }
 

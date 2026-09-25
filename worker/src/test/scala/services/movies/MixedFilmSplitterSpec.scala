@@ -291,6 +291,39 @@ class MixedFilmSplitterSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  /** The same two "It" films on ONE row that TMDB has answered "no match" for, and whose
+   *  venues publish nothing but the bracket: no director, no runtime, no year of their own
+   *  (the real Flicks shape). Staging keeps such listings apart — `StagingFold.planGroup`
+   *  files an unresolved group at its brackets — so they only end up on one row when the
+   *  group was folded while TMDB was DOWN (an unanswered no-match, keyed yearless on
+   *  purpose). Once TMDB has answered, the row is exactly what staging would have split, so
+   *  the settle splits it the same way: the minority bracket goes back to staging.
+   *  US hard cluster through a replayed TMDB outage, 2026-09-25. */
+  "an answered no-match row whose venues bracket two different years" should "send the minority bracket back to staging" in {
+    def bare(title: String) = SourceData(title = Some(title))
+    def row(attempt: services.resolution.TmdbAttempt) = MovieRecord(tmdbAttempt = Some(attempt), data = Map[Source, SourceData](
+      Helios      -> bare("It (1990)"),
+      KinoMuranow -> bare("It (1990)"),
+      Multikino   -> bare("IT (2017)")))
+    val answered = services.resolution.TmdbAttempt("searched", java.time.Instant.EPOCH)
+
+    val (cache, staging, splitter) = fixture(row(answered), "It", None)
+    splitter.splitMixedRows() shouldBe 1
+    staging.findAll().map(r => r.year -> r.cinema) shouldBe Seq(Some(2017) -> Multikino)
+    cache.get(cache.keyOf("It", None)).map(_.cinemaSlots.map(_._1).toSet) shouldBe Some(Set[Source](Helios, KinoMuranow))
+
+    // Not while TMDB has never answered: that row is concluded only so it can be shown.
+    val (_, unansweredStaging, unansweredSplitter) =
+      fixture(row(services.resolution.TmdbAttempt.unanswered(java.time.Instant.EPOCH)), "It", None)
+    unansweredSplitter.splitMixedRows() shouldBe 0
+    unansweredStaging.findAll() shouldBe empty
+
+    // Nor on a RESOLVED row: there a bracket can be the event's year (Queen Budapest (2026)).
+    val (_, resolvedStaging, resolvedSplitter) = fixture(row(answered).copy(tmdbId = Some(346364)), "It", Some(2017))
+    resolvedSplitter.splitMixedRows() shouldBe 0
+    resolvedStaging.findAll() shouldBe empty
+  }
+
   /** The convergence claim itself, for the shape above: a genuinely unresolvable
    *  stray (TMDB has no "It" 1990 MOVIE entry — Wallace's adaptation is a TV
    *  miniseries there, so `/search/movie` can never match it) must still settle to
