@@ -2,7 +2,7 @@ package services.movies
 
 
 import controllers.MovieControllerService
-import models.{Cinema, CinemaMovie, Country, MovieRecord}
+import models.{Cinema, CinemaMovie, City, Country, MovieRecord}
 import org.mongodb.scala.MongoClient
 import org.scalatest.{BeforeAndAfterAll, Failed, Outcome}
 import org.scalatest.exceptions.TestFailedException
@@ -12,7 +12,7 @@ import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
 import tools.{ArchiveReplayWiring, ConvergenceStorage, CorpusCoverage, CorpusFixture, CorpusProvenance, CountryScrapeCorpus,
   ChurnLedger, EnrichmentCache, EnrichmentFreshness, Env, FileEnrichmentCacheStore, FixpointPass, MissingFixtures, PhaseTimer, ProdCoverageBaseline,
-  SameThreadExecutionBudget, ServedCorpusInvariants, TestWiring}
+  SameThreadExecutionBudget, ServedCorpusInvariants, TestWiring, ConvergenceKnownIssues}
 
 import java.time.{Instant, LocalDateTime}
 import java.util.concurrent.atomic.AtomicInteger
@@ -1387,8 +1387,18 @@ abstract class CountryConvergenceBehaviour(
         ServedCorpusInvariants.listings(stored) should not be empty
         screenings should not be empty
       }
+      val records  = w.movieRepository.findAll()
+      val known    = ConvergenceKnownIssues.WrongMerges.getOrElse(country.code, Set.empty)
       val problems = ServedCorpusInvariants.violations(ServedCorpusInvariants.listings(stored),
-        w.movieRepository.findAll(), served, screenings, w.movieCache.normalizer)
+        records, served, screenings, w.movieCache.normalizer, country = Some(country), knownWrongMerges = known)
+      // A known wrong merge whose film this corpus holds must still be found, or its entry
+      // is stale and would hide the next one.
+      val present  = records.map(_.key(w.movieCache.normalizer)).toSet
+      val stale    = (known intersect present) -- ServedCorpusInvariants.wrongMerges(records, w.movieCache.normalizer).map(_._1)
+      withClue(s"${stale.mkString(", ")} no longer merge(s) wrongly — delete the entry from " +
+               "ConvergenceKnownIssues.WrongMerges so it cannot hide the next one: ") {
+        stale shouldBe empty
+      }
       withClue(s"${country.displayName}'s served corpus does not match its archive:\n${problems.mkString("\n")}\n") {
         problems shouldBe empty
       }
@@ -1515,6 +1525,36 @@ abstract class CountryConvergenceBehaviour(
         unchanged should not be empty
       }
 
+      // A CITY RENAME deployed overnight: every row already projected for a city that has a
+      // former slug is filed under that former slug, exactly as the rename leaves them
+      // (`CityScreening._id` is `film|city|cinema`). The city must keep serving every film
+      // it served (the read side falls back to the former bucket), and the next day's
+      // projection must leave nothing behind under the old name — the cross-country check
+      // below reports any row outside the country's CURRENT cities.
+      val service  = new MovieControllerService(w.webReadModel, w.clock)
+      val renamed  = country.cities.filter(c => City.formerSlugs(c.slug).nonEmpty).sortBy(_.slug)
+      def filmsIn(c: City) = service.toSchedules(c, renderAt).map(_.resolved._id).toSet
+      val servedBefore = renamed.map(c => c -> filmsIn(c)).toMap
+      renamed.foreach { c =>
+        val former = City.formerSlugs(c.slug).head
+        w.readModelRepository.findAllScreenings().filter(_.city == c.slug).foreach { sc =>
+          w.readModelRepository.deleteScreening(sc._id)
+          w.readModelRepository.upsertScreening(sc.copy(_id = sc._id.replace(s"|${c.slug}|", s"|$former|"), city = former))
+        }
+      }
+      // The rename reaches production as a DEPLOY: the next worker boots over rows it did not
+      // write, and seeds its projector from them.
+      if (renamed.nonEmpty) w.readModelProjector.seedFromReadModel()
+      w.webReadModel.reload()
+      val renameLost = renamed.flatMap { c =>
+        val lost = servedBefore(c) -- filmsIn(c)
+        Option.when(lost.nonEmpty)(s"${c.slug} (renamed from ${City.formerSlugs(c.slug).mkString(", ")}) stopped serving " +
+          s"${lost.size} of ${servedBefore(c).size} film(s) the moment the rename deployed: " +
+          lost.toSeq.sorted.take(6).map(id => w.webReadModel.movie(id).fold(id)(m => s"'${m.title}' ($id)")).mkString(", "))
+      }
+      info(s"${country.displayName}: city rename — ${if (renamed.isEmpty) "no city with a former slug" else
+        renamed.map(c => s"${c.slug} ← ${City.formerSlugs(c.slug).head} (${servedBefore(c).size} film(s))").mkString(", ")}")
+
       clock.advance(java.time.Duration.between(clock.instant(),
         cutoff.atZone(CorpusCoverage.zoneOf(country)).toInstant))
       step("nextDay") {
@@ -1534,11 +1574,12 @@ abstract class CountryConvergenceBehaviour(
         w.movieService.settle()
         w.movieCache.canonicalizeBySanitize()
         w.drainStaging()
-        w.concludeEnrichment()
         // A DAY has passed, so the daily cleanup has run: a film whose last venue dropped it
         // holds no slot, and it is this sweep — not the tick — that deletes the row and so
-        // retires its card. Without it the withdrawn films stay served as empty cards.
+        // retires its card. Without it the withdrawn films stay served as empty cards. Before
+        // the re-try sweep, which would otherwise search for a row with no cinema left.
         w.unscreenedCleanup.removeUnscreened()
+        w.concludeEnrichment()
         w.readModelProjector.reconcile()
         w.readModelProjector.pruneOrphans()
         FixpointPass.awaitStreamsQuiet(w)
@@ -1548,13 +1589,17 @@ abstract class CountryConvergenceBehaviour(
       val after    = w.movieRepository.findAll()
       val afterBy  = after.map(r => r.id -> r).toMap
       val problems = ServedCorpusInvariants.violations(expected, after, w.readModelRepository.findAllMovies(),
-        w.readModelRepository.findAllScreenings(), normalizer, from = cutoff)
-      val rewritten = unchanged.filterNot(r => afterBy.get(r.id).contains(r))
+        w.readModelRepository.findAllScreenings(), normalizer, from = cutoff, country = Some(country),
+        knownWrongMerges = ConvergenceKnownIssues.WrongMerges.getOrElse(country.code, Set.empty))
+      // A day passed, so the daily TMDB re-try asked again for every unmatched film and
+      // re-dated its miss: the WHEN of a no-match moves, what it searched must not.
+      def undated(r: StoredMovieRecord) = r.copy(record = r.record.copy(tmdbAttempt = r.record.tmdbAttempt.map(_.copy(at = Instant.EPOCH))))
+      val rewritten = unchanged.filterNot(r => afterBy.get(r.id).map(undated).contains(undated(r)))
       val churn = Option.when(rewritten.nonEmpty)(
         s"${rewritten.size} film(s) whose listings did not change were rewritten or lost:\n" +
           CorpusDiff.records(unchanged.sortBy(_.title), unchanged.flatMap(r => afterBy.get(r.id)).sortBy(_.title),
             "first day", "next day"))
-      val all = problems ++ churn
+      val all = renameLost ++ problems ++ churn
       withClue(s"${country.displayName}'s next day did not land cleanly:\n${all.mkString("\n")}\n") {
         all shouldBe empty
       }

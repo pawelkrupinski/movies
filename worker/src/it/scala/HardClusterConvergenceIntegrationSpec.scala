@@ -8,6 +8,8 @@ import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.{CinemaScraper, PreScrapedCinemaScraper}
 import services.events.MovieDetailsComplete
 import services.movies.{StoredMovieRecord, TitleNormalizer}
+import services.resolution.TmdbAttempt
+import services.staging.StagingSteps
 import services.readmodel.FilmSlugs
 import tools._
 
@@ -263,26 +265,41 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
       override def post(url: String, body: String, contentType: String): String = { check(url); inner.post(url, body, contentType) }
     }
     val normalizer = TitleNormalizer.forCountry(country)
+    // The undisturbed reference first, so the outage pass's own log is one contiguous block.
+    val reference  = booted(country).head._2.filter(_.tmdbId.isDefined).map(_.key).toSet
     val (w, _)     = wiringFor(country, "outage", flaky, Some(clock))
+    // Staging as production drives it, never the harness's end-of-drain fold: a film whose
+    // resolve keeps failing STAYS in staging, and only production's own ceiling
+    // (`StagingSteps.TransientResolveCeiling`) may fold it — as an unanswered no-match.
+    def advanceStaging(): Unit = {
+      var before = Int.MaxValue
+      var rounds = 0
+      while (rounds < 20 && w.stagingRepository.findAll().size < before) {
+        before = w.stagingRepository.findAll().size
+        w.advanceStagingOnce()
+        rounds += 1
+      }
+    }
     arrive(w, arrivals(w, new Random(OrderSeed)))
-    // Settled as production settles, and deliberately WITHOUT `concludeEnrichment`: that
-    // harness step stamps every still-unconcluded row a no-match so the projector will
-    // take it, which is exactly the verdict this asks whether the PIPELINE reaches.
-    w.drainStaging()
+    advanceStaging()
+    // The outage outlasts the ceiling, which is the case the ceiling exists for.
+    clock.advance(java.time.Duration.ofMillis(StagingSteps.TransientResolveCeiling.toMillis).plusHours(1))
+    advanceStaging()
     w.movieService.settle()
     w.movieCache.canonicalizeBySanitize()
-    w.drainStaging()
-    w.movieService.settle()
-    val reference = booted(country).head._2.filter(_.tmdbId.isDefined).map(_.key).toSet
     val concludedUnmatched = w.movieRepository.findAll().collect {
-      case r if r.record.tmdbNoMatch && reference.contains(r.key(normalizer)) => s"${r.title} (${r.year.getOrElse("—")}) [${r.key(normalizer)}] attempt=${r.record.tmdbAttempt.getOrElse("—")}"
+      case r if r.record.tmdbNoMatch && !r.record.tmdbAttempt.exists(TmdbAttempt.isUnanswered) &&
+                reference.contains(r.key(normalizer)) =>
+        s"${r.title} (${r.year.getOrElse("—")}) [${r.key(normalizer)}] attempt=${r.record.tmdbAttempt.getOrElse("—")}"
     }.sorted
-    // TMDB answers again. A day passes — the resolve backoff and the re-try reaper's
-    // period both — and one production tick's worth of enrichment runs.
+    // TMDB answers again, and a day passes: the resolve backoff and the re-try reaper's
+    // period both. Then the corpus settles as it would after it.
     down.set(false)
     clock.advance(java.time.Duration.ofHours(25))
-    services.tasks.ReaperSweeps.unresolvedTmdbPeriod(w.unresolvedTmdbReaper, clock.instant())
-    w.drainServices()
+    // A day is many settles: the last resolve of one feeds the next (a no-match that lets a
+    // row split by its brackets is only seen by the settle after it).
+    w.concludeEnrichment()
+    settle(w)
     settle(w)
     (concludedUnmatched, films(w, normalizer))
   }
@@ -387,7 +404,8 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
       val problems = booted(country).flatMap { case (pass, _) =>
         val w = pass.wiring
         ServedCorpusInvariants.violations(listings, w.movieRepository.findAll(), w.readModelRepository.findAllMovies(),
-          w.readModelRepository.findAllScreenings(), TitleNormalizer.forCountry(country)).map(p => s"pass ${pass.label}: $p")
+          w.readModelRepository.findAllScreenings(), TitleNormalizer.forCountry(country), country = Some(country))
+          .map(p => s"pass ${pass.label}: $p")
       }
       withClue(s"$name's served hard clusters do not match their listings:\n${problems.mkString("\n")}\n") {
         problems shouldBe empty

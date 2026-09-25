@@ -1,6 +1,7 @@
 package tools
 
 import models._
+import models.Kinoteka
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{FilmId, StoredMovieRecord}
@@ -42,8 +43,8 @@ class ServedCorpusInvariantsSpec extends AnyFlatSpec with Matchers {
 
   private def check(listings: Seq[(Cinema, CinemaMovie)] = listings, records: Seq[StoredMovieRecord] = records,
                     cards: Seq[ResolvedMovie] = cards, served: Seq[CityScreening] = served,
-                    from: LocalDateTime = LocalDateTime.MIN): Seq[String] =
-    ServedCorpusInvariants.violations(listings, records, cards, served, titleNormalizer, from)
+                    from: LocalDateTime = LocalDateTime.MIN, country: Option[Country] = None): Seq[String] =
+    ServedCorpusInvariants.violations(listings, records, cards, served, titleNormalizer, from, country)
 
   "a corpus served exactly as listed" should "pass" in {
     check() shouldBe empty
@@ -79,6 +80,35 @@ class ServedCorpusInvariantsSpec extends AnyFlatSpec with Matchers {
   "two films holding one tmdbId" should "be named" in {
     check(records = Seq(records.head, records(1).copy(record = records(1).record.copy(tmdbId = Some(1))))).mkString should
       include("tmdb 1:")
+  }
+
+  "a screening filed in another country, or a film holding a foreign venue" should "be named as a leak" in {
+    val uk = Country.UnitedKingdom
+    check(country = Some(Country.Poland)) shouldBe empty
+    val leaked = check(country = Some(uk)).mkString
+    leaked should include("screening row(s) outside")
+    leaked should include("holding a venue of another country")
+  }
+
+  "a venue whose own year and director both deny its film" should "be named as a wrong merge — and nothing weaker should" in {
+    // PL sample, 2026-09-25: Kinoteka's Wong Kar Wai "Happy Together" served as Kim Jeong-hwan's 2018 film.
+    def resolved(tmdbYear: Int, tmdbDirector: String, slotYear: Int, slotDirector: String) = StoredMovieRecord("Happy Together",
+      Some(tmdbYear), MovieRecord(tmdbId = Some(551655), data = Map[Source, SourceData](
+        Tmdb     -> SourceData(title = Some("Happy Together"), releaseYear = Some(tmdbYear), director = Seq(tmdbDirector)),
+        Kinoteka -> SourceData(title = Some("Happy Together"), releaseYear = Some(slotYear), director = Seq(slotDirector)))), FilmId("f9"))
+    def keys(r: StoredMovieRecord) = ServedCorpusInvariants.wrongMerges(Seq(r), titleNormalizer).map(_._1)
+
+    keys(resolved(2018, "Kim Jeong-hwan", 2026, "Wong Kar Wai")) shouldBe Seq("happytogether|2018")
+    keys(resolved(1997, "Wong Kar-wai", 2026, "Wong Kar Wai")) shouldBe empty      // the screening year alone
+    keys(resolved(2018, "Kim Jeong-hwan", 2019, "Wong Kar Wai")) shouldBe empty    // a director alone
+    keys(resolved(1994, "王家衛", 2026, "Wong Kar Wai")) shouldBe empty             // two scripts, one man
+
+    // A venue that writes its year only into the title (the US shape): "A Star Is Born (1954)"
+    // served as Cooper's 2018 film, found by the per-listing check on the US corpus.
+    val garland = StoredMovieRecord("A Star Is Born", Some(2018), MovieRecord(tmdbId = Some(332562), data = Map[Source, SourceData](
+      Tmdb     -> SourceData(title = Some("A Star Is Born"), releaseYear = Some(2018), director = Seq("Bradley Cooper")),
+      Kinoteka -> SourceData(title = Some("A Star Is Born (1954)"), director = Seq("George Cukor")))), FilmId("f8"))
+    ServedCorpusInvariants.wrongMerges(Seq(garland), titleNormalizer).map(_._1) shouldBe Seq("astarisborn|2018")
   }
 
   "showtimes before `from`" should "count on neither side" in {

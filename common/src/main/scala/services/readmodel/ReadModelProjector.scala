@@ -784,9 +784,12 @@ class ReadModelProjector(
     }
   }
 
-  def start(): Unit = if (enabled) {
-    // Seed the last-projection state from the derived collections, so a restart
-    // doesn't rewrite documents that are already correct.
+  /** Seed the last-projection state from the derived collections, so a restart doesn't
+   *  rewrite documents that are already correct — and so a document this process did not
+   *  write (one left under a renamed city's former slug, say) is one its next projection of
+   *  that film can retire. What a worker does as it boots; public so a harness can model the
+   *  boot of the next worker over a read model it did not write. */
+  def seedFromReadModel(): Unit =
     lock.synchronized {
       reader.findAllMovies().foreach { m =>
         lastMovie.update(m._id, CardHash.of(m))
@@ -798,6 +801,9 @@ class ReadModelProjector(
         lastScreenings.update(fid, ss.map(s => s._id -> WrittenScreening(s.##, input = None)).toMap)
       }
     }
+
+  def start(): Unit = if (enabled) {
+    seedFromReadModel()
     healMissingCards()
     // The change-stream watch covers live changes from now on (and, via the persisted
     // resume token, replays every upsert missed while the worker was down); the seeded

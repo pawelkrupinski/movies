@@ -260,21 +260,23 @@ trait TestWiring extends WorkerWiring {
     lastTickThrew = Some(now)
   }
 
-  /** Mark every row TMDB has not resolved as concluded-no-match, the state
-   *  production reaches once the daily retry gives up. Without it a fixture-less
-   *  film stays perpetually "unresolved" and keeps re-triggering enrichment.
+  /** Conclude what PRODUCTION would conclude, and nothing else: one whole period of
+   *  `UnresolvedTmdbReaper` — the sweep production runs continuously — with the resolves it
+   *  enqueues worked as the TaskWorker works them. A row TMDB answers is resolved or
+   *  concluded no-match by production's own resolve; a row whose resolve keeps FAILING stays
+   *  unconcluded and off the read model, exactly where production leaves it.
    *
-   *  Public because WHEN it runs matters and only the caller knows: a row the
-   *  SETTLE created (a fold's merge target, a re-key) was never seen by the pass
-   *  `bootCorpus` runs, and `MovieRecord.readyToProject` requires `tmdbConcluded`
-   *  — so a harness that settles after booting must conclude again afterwards or
-   *  those rows never reach the read model at all. Production doesn't need this:
-   *  `UnresolvedTmdbReaper` sweeps continuously. */
-  def concludeEnrichment(): Unit =
-    movieRepository.findAll().foreach { sr =>
-      if (!sr.record.tmdbConcluded)
-        movieRepository.upsert(sr.id, sr.title, sr.year, sr.record.copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy)))
-    }
+   *  It used to stamp every unconcluded row a no-match, which production never does: after
+   *  a TMDB outage the harness published as "no such film" rows production would still be
+   *  retrying, so no claim about an outage could be made over it.
+   *
+   *  Public because WHEN it runs matters and only the caller knows: a row the SETTLE created
+   *  (a fold's merge target, a re-key) was never seen by the pass `bootCorpus` runs, and
+   *  `MovieRecord.readyToProject` requires `tmdbConcluded`. */
+  def concludeEnrichment(): Unit = {
+    services.tasks.ReaperSweeps.unresolvedTmdbPeriod(unresolvedTmdbReaper, clock.instant())
+    drainServices()
+  }
 
   /** Boot the corpus to the shape production reaches ~20s in: scrape once, drain
    *  the cascade, refresh ratings, drop unscreened films, conclude enrichment.
