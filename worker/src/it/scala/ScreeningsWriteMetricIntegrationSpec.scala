@@ -49,7 +49,7 @@ class ScreeningsWriteMetricIntegrationSpec extends AnyFlatSpec with Matchers wit
     30.seconds)
 
   /** Counts what the repository reports, by outcome. */
-  private object Counting extends ScreeningsMetrics {
+  private final class Counting extends ScreeningsMetrics {
     private val writes = new ConcurrentHashMap[String, AtomicInteger]()
     def recordChangeEvent(op: String): Unit = ()
     def recordCoalescedChange(): Unit       = ()
@@ -59,7 +59,8 @@ class ScreeningsWriteMetricIntegrationSpec extends AnyFlatSpec with Matchers wit
     def snapshot: Map[String, Int]  = writes.asScala.map { case (k, v) => k -> v.get() }.toMap
   }
 
-  private val repository = new MongoScreeningsRepository(Some(db), metrics = Counting)
+  private val counting   = new Counting
+  private val repository = new MongoScreeningsRepository(Some(db), metrics = counting)
   private val filmId     = "__screenings-write-metric-sentinel__|2026"
   private val showtimes  = Seq(Showtime(LocalDateTime.of(2026, 8, 1, 20, 0), None))
 
@@ -78,8 +79,8 @@ class ScreeningsWriteMetricIntegrationSpec extends AnyFlatSpec with Matchers wit
 
     // …so nothing may be reported as written. Before the counter moved after the bulkWrite this
     // read 2 — one per row the call intended to write.
-    withClue(s"outcomes: ${Counting.snapshot} — ") {
-      Counting(ScreeningsMetrics.Outcome.Written) shouldBe 0
+    withClue(s"outcomes: ${counting.snapshot} — ") {
+      counting(ScreeningsMetrics.Outcome.Written) shouldBe 0
     }
   }
 }

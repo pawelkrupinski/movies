@@ -88,8 +88,9 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
    * pick up silently, and it did, which is how the order-independence passes ran against
    * a map for months while appearing to cover the pipeline. A unit spec naming its own
    * doubles is explicit; a default that anything can inherit is not.
+   * One per wiring, so no test reads repositories another test wrote.
    */
-  private object FetchOnlyStorage extends tools.ConvergenceStorage {
+  private final class FetchOnlyStorage extends tools.ConvergenceStorage {
     override val describe = "unit-spec doubles (enrichment fetch only)"
     override lazy val connection  = new services.MongoConnection(uri = None, dbName = "kinowo", required = false)
     override lazy val screenings  = new services.movies.InMemoryScreeningsRepository
@@ -109,7 +110,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   }
 
   private def wiringWith(cache: Option[EnrichmentCache], leaf: HttpFetch): ArchiveReplayWiring =
-    new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, cache, FetchOnlyStorage) {
+    new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, cache, new FetchOnlyStorage) {
       override protected def realHttpLeaf: HttpFetch = leaf
     }
 
@@ -180,7 +181,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     // without ever reaching the fetch. Germany, so the locale discriminates — the keyless
     // branch took `TmdbClient.DefaultLanguage` (pl-PL), and so does `TestWiring`'s stub.
     System.clearProperty(ArchiveReplayWiring.FixturesVar)
-    val wiring = new ArchiveReplayWiring(Country.Germany, new InMemoryScrapeArchiveRepository, None, FetchOnlyStorage) {
+    val wiring = new ArchiveReplayWiring(Country.Germany, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage) {
       override protected def realHttpLeaf: HttpFetch = new CountingLeaf
     }
 
@@ -273,7 +274,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   // WITHOUT overriding `realHttpLeaf`: the leaf under test is the one the wiring chooses.
 
   private def hermeticWiring(cache: Option[EnrichmentCache], missing: MissingFixtures): ArchiveReplayWiring =
-    new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, cache, FetchOnlyStorage, Some(missing))
+    new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, cache, new FetchOnlyStorage, Some(missing))
 
   "a hermetic archive replay" should "refuse an unrecorded enrichment request and name its fixture" in {
     val missing = new MissingFixtures
