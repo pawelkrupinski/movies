@@ -570,7 +570,7 @@ class CaffeineMovieCache(
         s"($holder) holds that key. The row keeps its current key.")
       keyCollisions.incrementAndGet()
       WriteOutcome.Declined("key-held-by-another-film")
-    case None =>
+    case None => repository.writeFence.writing(id) {
       val clean  = withoutZeroRatings(e)
       val cached = forCache(clean)
       val prior  = Option(positive.getIfPresent(key))
@@ -596,6 +596,7 @@ class CaffeineMovieCache(
       }
       touch()
       outcome
+    }
   }
 
   // Rating sources occasionally hand us a literal zero — MC/RT search pages
@@ -1095,7 +1096,7 @@ class CaffeineMovieCache(
     // title→Caffeine and can't deadlock) makes every read-modify-write on a
     // row — scrape, rekey, rating — mutually exclusive. The slow rating HTTP
     // fetch already happened in the caller; only the cache write is held here.
-    withTitleLock(key.cleanTitle) {
+    withTitleLock(key.cleanTitle) { fencingResident(key) {
     // Capture both `before` and `after` inside the Caffeine compute lock so
     // the pair is atomic. The repository write below uses the pair to compute a
     // per-field diff — out-of-band Mongo edits to fields the updater didn't
@@ -1138,7 +1139,7 @@ class CaffeineMovieCache(
         ShowtimesDigest.leanEqual(fullAfter, prior) || writeThrough(key, id, prior, updated, prior, fullAfter)
       }
     }
-    }
+    } }
 
   /**
    * [[putIfPresent]] of `_.copy(data = _.data + (source -> slot))` — the scrape landing's
@@ -1161,7 +1162,7 @@ class CaffeineMovieCache(
   private[services] def putSlotIfPresent(key: CacheKey, source: Source, slot: SourceData): Boolean =
     if (Source.cinemaOf(source).isEmpty || get(key).exists(carriesZeroRating))
       putIfPresent(key, current => current.copy(data = current.data + (source -> slot)))
-    else withTitleLock(key.cleanTitle) {
+    else withTitleLock(key.cleanTitle) { fencingResident(key) {
       val before  = new java.util.concurrent.atomic.AtomicReference[MovieRecord]()
       val cached  = forCacheSlot(slot)
       val updated = computeResident(key) { current =>
@@ -1182,7 +1183,13 @@ class CaffeineMovieCache(
           writeThrough(key, id, prior, updated, only(priorSlot), only(Some(slot)))
         }
       }
-    }
+    } }
+
+  /** Run a local write of the row RESIDENT at `key` inside the repository's write fence, so a
+   *  change-stream read taken before it cannot roll it back (see [[FilmWriteFence]]). A key
+   *  with no resident row has nothing a read could roll back — and nothing to write. */
+  private def fencingResident[A](key: CacheKey)(write: => A): A =
+    corpusIndex.idOf(key).fold(write)(repository.writeFence.writing(_)(write))
 
   /** Caffeine's `computeIfPresent` on `key`: the value `f` produced, or `None` — metered —
    *  when the key had left the cache by the time it computed. */
@@ -1529,13 +1536,21 @@ class CaffeineMovieCache(
   /** Apply one out-of-band upsert from the change stream to the in-memory cache.
    *  Mirrors a single row of `rehydrate` — a direct `positive.put`, bypassing
    *  the identity-gate `put` (Mongo is already the source of truth here, no
-   *  re-folding needed). */
-  private def applyUpsert(r: StoredMovieRecord): Unit = {
+   *  re-folding needed).
+   *
+   *  …unless this cache has written the film since the stream re-read it (`mark`, see
+   *  [[FilmWriteFence]]): that read is older than the resident row, and storing it rolled
+   *  the write back until the write's own event re-read the film. That event still comes,
+   *  so skipping the older read loses nothing. */
+  private def applyUpsert(r: StoredMovieRecord, mark: Long): Unit = {
     val key = r.cacheKey(normalizer)
-    // A retitle arriving from another writer: the id's previous key entry is stale.
-    corpusIndex.keyOf(r.id).filter(_ != key).foreach(evict)
-    store(key, forCache(r.record), r.id)
-    touch()
+    val applied = repository.writeFence.ifUndisturbed(r.id.value, mark) {
+      // A retitle arriving from another writer: the id's previous key entry is stale.
+      corpusIndex.keyOf(r.id).filter(_ != key).foreach(evict)
+      store(key, forCache(r.record), r.id)
+    }
+    if (applied) touch()
+    else logger.debug(s"MovieCache: skipped a change-stream read of '${key.cleanTitle}' taken before this cache's own write of it.")
   }
 
   /** Apply an out-of-band DELETE from the change stream: drop the mirrored row whose
@@ -1557,7 +1572,7 @@ class CaffeineMovieCache(
   }
 
   def start(): Unit = {
-    watchHandle = repository.watchChanges(applyUpsert, applyDelete)
+    watchHandle = repository.watchChangesFenced(applyUpsert, applyDelete)
     logger.info(
       s"MovieCache incremental change-stream watch ${if (watchHandle.isDefined) "active" else "unavailable — backstop only"}; " +
       s"backstop rehydrate every ${BackstopIntervalSeconds}s.")

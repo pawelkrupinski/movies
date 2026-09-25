@@ -95,12 +95,14 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     clock:               Clock                       = Clock.systemUTC(),
     decodeFailures:      services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop,
     resumeToken:         ChangeStreamResumeToken     = new ChangeStreamResumeToken("movies", database = None, enabled = false),
-    rereadRetryMillis:   Long                        = 20L
+    rereadRetryMillis:   Long                        = 20L,
+    fence:               FilmWriteFence              = new FilmWriteFence()
   ) = new MovieChangeStream(
     source              = source,
     screenings          = screenings,
     slots               = slots,
     reread              = rereadChecked.getOrElse(id => (reread(id), true)),
+    fence               = fence,
     resumeToken         = resumeToken,
     changeStreamMetrics = changeStreamMetrics,
     screeningsMetrics   = screeningsMetrics,
@@ -172,6 +174,35 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
       deletedA shouldBe Seq("film|2024")
       deletedB shouldBe Seq("film|2024")
     } finally { handleA.close(); handleB.close(); under.close() }
+  }
+
+  // The stream's half of `FilmWriteFence`: the mark is taken BEFORE the re-read, so a local
+  // write landing while the film is being read disturbs that read — the cache then keeps its
+  // own write instead of rolling it back to the older snapshot (the 2026-09-25
+  // `RetryResolveServingIntegrationSpec` flake).
+  it should "hand a fenced listener the fence mark taken before its re-read" in {
+    val source    = new HandFedSource
+    val fence     = new FilmWriteFence()
+    val film      = FilmId("film|2024")
+    val firstRead = new java.util.concurrent.atomic.AtomicBoolean(true)
+    val under     = stream(source, fence = fence, reread = id => {
+      if (firstRead.getAndSet(false)) fence.writing(film)(()) // a local write lands mid-read
+      Some(recordOf(id))
+    })
+    val marks  = new java.util.concurrent.LinkedBlockingQueue[java.lang.Long]()
+    val handle = under.watchFenced((_, mark) => marks.put(mark), _ => ())
+    try {
+      source.emit(event("update", film.value, StoredMovieDto.fromDomain(film.value, MovieRecord(), Instant.EPOCH)))
+      val raced = marks.poll(5, TimeUnit.SECONDS)
+      withClue("a read a local write overtook must be refused: ") {
+        fence.ifUndisturbed(film.value, raced)(()) shouldBe false
+      }
+      source.emit(event("update", film.value, StoredMovieDto.fromDomain(film.value, MovieRecord(), Instant.EPOCH)))
+      val quiet = marks.poll(5, TimeUnit.SECONDS)
+      withClue("a read nothing overtook must apply: ") {
+        fence.ifUndisturbed(film.value, quiet)(()) shouldBe true
+      }
+    } finally { handle.close(); under.close() }
   }
 
   // THE PROD DEFECT (2026-09-07): a venue's slot row lands in `movie_slots` after the film's

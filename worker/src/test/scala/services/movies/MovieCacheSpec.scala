@@ -367,6 +367,72 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     } finally cache.stop()
   }
 
+  /** An in-memory store whose change stream the spec drives by hand, the way the real one
+   *  delivers: a re-read of the film, with the fence mark taken before that read. */
+  private final class HandDeliveredRepository extends InMemoryMovieRepository(normalizer = titleNormalizer) {
+    @volatile var deliver: (StoredMovieRecord, Long) => Unit = (_, _) => ()
+    override def watchChangesFenced(onUpsert: (StoredMovieRecord, Long) => Unit, onDelete: FilmId => Unit): Option[AutoCloseable] = {
+      deliver = onUpsert
+      Some(() => deliver = (_, _) => ())
+    }
+    /** The stream's re-read: the stored film and the mark it was read under. */
+    def reread(id: FilmId): (StoredMovieRecord, Long) = {
+      val mark = writeFence.mark(id.value)
+      (findById(id).get, mark)
+    }
+  }
+
+  // The 2026-09-25 `RetryResolveServingIntegrationSpec` flake: the stream re-read a film, the
+  // cache then wrote it, and the older read — delivered after — rolled the write back until
+  // the write's own event re-read the film. Each write path the cache has: patch, slot, put.
+  Seq[(String, (CaffeineMovieCache, CacheKey) => Unit)](
+    "putIfPresent" -> ((cache, key) => cache.putIfPresent(key, _.copy(imdbRating = Some(9.5)))),
+    "put"          -> ((cache, key) => cache.put(key, cache.get(key).get.copy(imdbRating = Some(9.5)))),
+  ).foreach { case (path, write) =>
+    it should s"not let a change-stream read taken before its own $path roll that write back" in {
+      val repository = new HandDeliveredRepository
+      val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = fixedClock)
+      val key        = cache.keyOf("Erupcja", Some(2024))
+      cache.put(key, mkEnrichment("tt1", rating = Some(7.0)))
+      cache.start()
+      try {
+        val (staleRead, mark) = repository.reread(cache.idOf(key).get)
+        write(cache, key)
+        repository.deliver(staleRead, mark)
+        cache.get(key).flatMap(_.imdbRating) shouldBe Some(9.5)
+      } finally cache.stop()
+    }
+  }
+
+  it should "not let a change-stream read taken before its own slot landing roll that landing back" in {
+    val repository = new HandDeliveredRepository
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = fixedClock)
+    val key        = cache.keyOf("Erupcja", Some(2024))
+    cache.put(key, mkEnrichment("tt1").copy(data = Map(Multikino -> SourceData(title = Some("Erupcja")))))
+    cache.start()
+    try {
+      val (staleRead, mark) = repository.reread(cache.idOf(key).get)
+      cache.putSlotIfPresent(key, Helios, SourceData(title = Some("Erupcja")))
+      repository.deliver(staleRead, mark)
+      cache.get(key).map(_.data.keySet) shouldBe Some(Set(Multikino, Helios))
+    } finally cache.stop()
+  }
+
+  it should "still apply an out-of-band change-stream read taken after its own write" in {
+    val repository = new HandDeliveredRepository
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = fixedClock)
+    val key        = cache.keyOf("Erupcja", Some(2024))
+    cache.put(key, mkEnrichment("tt1", rating = Some(7.0)))
+    cache.start()
+    try {
+      cache.putIfPresent(key, _.copy(imdbRating = Some(8.0)))
+      repository.upsert(key.cleanTitle, key.year, mkEnrichment("tt1", rating = Some(9.5))) // another writer
+      val (freshRead, mark) = repository.reread(cache.idOf(key).get)
+      repository.deliver(freshRead, mark)
+      cache.get(key).flatMap(_.imdbRating) shouldBe Some(9.5)
+    } finally cache.stop()
+  }
+
   it should "stop applying changes once the watch is closed by stop()" in {
     val repository  = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = fixedClock)

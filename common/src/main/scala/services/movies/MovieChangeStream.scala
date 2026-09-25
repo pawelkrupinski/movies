@@ -54,6 +54,9 @@ final class MovieChangeStream(
   screenings:          Option[ScreeningsRepository],
   slots:               Option[SlotsRepository],
   reread:              String => (Option[StoredMovieRecord], Boolean),
+  // Marked before every `reread`, so a consumer that also writes films (the cache) can tell a
+  // read taken before its own write from one taken after — see [[FilmWriteFence]].
+  fence:               FilmWriteFence = new FilmWriteFence(),
   resumeToken:         ChangeStreamResumeToken,
   changeStreamMetrics: ChangeStreamMetrics,
   screeningsMetrics:   SideCollectionChangeMetrics,
@@ -78,7 +81,7 @@ final class MovieChangeStream(
   // Post-images arrive undecoded (see `Source`) and are decoded here, so a document the codec
   // refuses is one skipped event rather than the end of the cursor.
   private val postImages   = ChangeEventDecoder.of[StoredMovieDto](ChangeStreamLiveness.Movies, MovieCodecs.registry, decodeFailures)
-  private val movieChanges = new ChangeStreamFanout[StoredMovieRecord]("MovieRepository")
+  private val movieChanges = new ChangeStreamFanout[MovieChangeStream.Delivery]("MovieRepository")
   private val changeSub    = new AtomicReference[Subscription]()
   private val changeLock   = new AnyRef
   // Applies change-stream events OFF the Mongo driver's Netty I/O event loops. The
@@ -244,17 +247,19 @@ final class MovieChangeStream(
     if (rereadAndDispatch(filmId)) { if (!hold.held) acknowledge() }
     else if (hold.fail(filmId)) rereadLater(filmId, hold, rereadRetryMillis)
 
-  /** Re-read `filmId` (a few quick attempts) and fan it out; false when every read failed. */
+  /** Re-read `filmId` (a few quick attempts) and fan it out, with the fence mark the
+   *  successful read was taken under; false when every read failed. */
   private def rereadAndDispatch(filmId: String): Boolean = {
+    def markedRead() = { val mark = fence.mark(filmId); val (film, read) = reread(filmId); (film, read, mark) }
     var attempt = 1
-    var (film, read) = reread(filmId)
+    var (film, read, mark) = markedRead()
     while (!read && attempt < MovieChangeStream.RereadAttempts) {
       Thread.sleep(MovieChangeStream.RereadBackoffMillis * attempt)
       attempt += 1
-      val next = reread(filmId); film = next._1; read = next._2
+      val next = markedRead(); film = next._1; read = next._2; mark = next._3
     }
     if (read) {
-      film.foreach(movieChanges.dispatchUpsert)
+      film.foreach(f => movieChanges.dispatchUpsert(MovieChangeStream.Delivery(f, mark)))
       holds.foreach(_.applied(filmId))
     }
     read
@@ -307,8 +312,12 @@ final class MovieChangeStream(
 
   /** Attach a consumer, starting the shared cursor if it isn't running; the returned
    *  handle detaches just that consumer and stops the cursor once none remain. */
-  def watch(onUpsert: StoredMovieRecord => Unit, onDelete: String => Unit): AutoCloseable = {
-    val handle = movieChanges.register(onUpsert, onDelete)
+  def watch(onUpsert: StoredMovieRecord => Unit, onDelete: String => Unit): AutoCloseable =
+    watchFenced((film, _) => onUpsert(film), onDelete)
+
+  /** [[watch]] handing each upsert the [[FilmWriteFence]] mark its re-read was taken under. */
+  def watchFenced(onUpsert: (StoredMovieRecord, Long) => Unit, onDelete: String => Unit): AutoCloseable = {
+    val handle = movieChanges.register(d => onUpsert(d.film, d.mark), onDelete)
     ensureWatching()
     new AutoCloseable { override def close(): Unit = { handle.close(); stopWatchingIfIdle() } }
   }
@@ -477,6 +486,9 @@ final class MovieChangeStream(
 }
 
 object MovieChangeStream {
+  /** One re-read film on its way to the listeners, with the fence mark taken before the read. */
+  private final case class Delivery(film: StoredMovieRecord, mark: Long)
+
   /** How many times an apply re-reads a film whose read failed before holding its cursor. */
   private[movies] val RereadAttempts      = 3
   private[movies] val RereadBackoffMillis = 100L

@@ -344,6 +344,20 @@ trait MovieRepository {
     onDelete: FilmId => Unit
   ): Option[AutoCloseable] = None
 
+  /** [[watchChanges]] for a consumer that also WRITES the films it mirrors — the cache. Each
+   *  upsert comes with the [[FilmWriteFence]] mark its re-read was taken under, to be applied
+   *  only through `writeFence.ifUndisturbed`, so a read taken before one of the consumer's own
+   *  writes cannot roll it back. Default: [[watchChanges]] with every delivery
+   *  [[FilmWriteFence.Unfenced]] — right for a store that notifies synchronously with the
+   *  write, where no delivery can predate a write. */
+  def watchChangesFenced(
+    onUpsert: (StoredMovieRecord, Long) => Unit,
+    onDelete: FilmId => Unit
+  ): Option[AutoCloseable] = watchChanges(onUpsert(_, FilmWriteFence.Unfenced), onDelete)
+
+  /** Where a consumer of [[watchChangesFenced]] fences its own writes of a film. */
+  lazy val writeFence: FilmWriteFence = new FilmWriteFence()
+
   /** When each change-stream cursor last DELIVERED an event — see [[ChangeStreamLiveness]].
    *  The worker's `/metrics` ages every cursor off it, and the read-model prune sweep uses
    *  the `movies` cursor's instant as the floor of what a silent stream may have missed.
@@ -1185,6 +1199,7 @@ class MongoMovieRepository(
       screenings          = screenings,
       slots               = slots,
       reread              = id => findByIdChecked(FilmId(id)),
+      fence               = writeFence,
       // The shared cursor reopens (after a terminal error, and — the big win — after a WORKER
       // RESTART) from the last-seen token instead of "now", REPLAYING writes that landed while
       // this process was down — the gap the consumers' periodic backstops exist for. See
@@ -1206,6 +1221,11 @@ class MongoMovieRepository(
     onUpsert: StoredMovieRecord => Unit,
     onDelete: FilmId => Unit
   ): Option[AutoCloseable] = changeStream.map(_.watch(onUpsert, id => onDelete(FilmId(id))))
+
+  override def watchChangesFenced(
+    onUpsert: (StoredMovieRecord, Long) => Unit,
+    onDelete: FilmId => Unit
+  ): Option[AutoCloseable] = changeStream.map(_.watchFenced(onUpsert, id => onDelete(FilmId(id))))
 
   /** Whether the single shared change-stream cursor is currently running — for
    *  diagnostics/tests (it starts on the first listener, stops after the last). */
