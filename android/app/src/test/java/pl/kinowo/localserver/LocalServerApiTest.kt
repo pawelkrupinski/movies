@@ -1,6 +1,7 @@
 package pl.kinowo.localserver
 
 import kotlinx.coroutines.runBlocking
+import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -40,7 +41,7 @@ class LocalServerApiTest {
             "set KINOWO_LOCAL_URL to run LocalServer tests (boot FixtureServerMain)",
             !base.isNullOrBlank(),
         )
-        api = KinowoApi(baseUrl = base!!)
+        api = KinowoApi(baseUrl = base!!, client = OkHttpClient())
     }
 
     @Test

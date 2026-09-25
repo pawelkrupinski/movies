@@ -10,7 +10,6 @@ import pl.kinowo.model.CinemaCatalog
 import pl.kinowo.model.Film
 import pl.kinowo.model.FilmDetails
 import java.io.IOException
-import java.util.concurrent.TimeUnit
 
 /** The repertoire-listing half of the backend — all [RepertoireRepository] needs. */
 interface RepertoireApi {
@@ -40,10 +39,14 @@ fun interface CatalogApi {
  * The city slug prefixes the path. Mirrors iOS `RepertoireStore` transport:
  * a `KinowoAndroid/1.0` User-Agent, conditional GET via `If-Modified-Since`,
  * and no on-disk URLCache.
+ *
+ * [client] is the composition root's (`kinowoViewModelFactory`): the one
+ * OkHttp client every caller shares, so its cookie jar, pools and timeouts
+ * are configured once rather than a process-wide default built here.
  */
 class KinowoApi(
     private val baseUrl: String = "https://kinowo.net",
-    private val client: OkHttpClient = defaultClient,
+    private val client: OkHttpClient,
 ) : RepertoireApi, DetailsApi, CinemaCatalogApi, CatalogApi {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -115,15 +118,6 @@ class KinowoApi(
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
             val body = response.body?.string() ?: throw IOException("empty body")
             Fetched(json.decodeFromString<List<T>>(body), response.header("Last-Modified"), notModified = false)
-        }
-    }
-
-    companion object {
-        val defaultClient: OkHttpClient by lazy {
-            OkHttpClient.Builder()
-                .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(20, TimeUnit.SECONDS)
-                .build()
         }
     }
 }
