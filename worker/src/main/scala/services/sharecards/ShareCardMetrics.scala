@@ -26,7 +26,7 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
  *  - `kinowo_worker_share_cards_poster_fetch_total{result,reason}` — a miss's download + shrink, ok or failed and why.
  *  - `kinowo_worker_share_cards_poster_load_total{attempt,result}` — the same miss once per FILM: did any candidate
  *    work, on the film's first load or on the backfill's re-try of a card drawn without one.
- *  - `kinowo_worker_share_cards_rescrape_total{outcome}` — Facebook re-scrape requests.
+ *  - `kinowo_worker_share_cards_rescrape_total{outcome}` — Facebook re-scrape requests, one per city page.
  */
 object ShareCardMetrics {
   object Outcome {
@@ -115,6 +115,7 @@ object ShareCardMetrics {
     private[sharecards] def posterLoadCount(country: String, ok: Boolean, retry: Boolean): Double =
       posterLoad.labelValues(country, ShareCardMetrics.attempt(retry), if (ok) "ok" else "failed").get()
     /** Test seam: renders counted by outcome and reason. */
+    private[sharecards] def rescrapeCount(country: String, outcome: String): Double = rescrapes.labelValues(country, outcome).get()
     private[sharecards] def renderCount(country: String, outcome: String, reason: String): Double = renders.labelValues(country, outcome, reason).get()
   }
 

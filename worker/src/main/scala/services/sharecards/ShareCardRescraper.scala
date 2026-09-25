@@ -64,11 +64,15 @@ class ShareCardRescraper(graph: Option[FacebookGraph], reader: ReadModelReader, 
           logger.info(s"share card: re-scrape of $filmId deferred, its pages could not be read: ${e.getMessage}")
           return false
       }
-      val failures = urls.flatMap(url => facebook.scrape(url).left.toOption.map(url -> _))
-      metrics.rescrape(ShareCardMetrics.RescrapeOutcome.Sent)
-      failures.foreach { case (url, why) =>
-        metrics.rescrape(ShareCardMetrics.RescrapeOutcome.Failed)
-        logger.info(s"share card: Facebook re-scrape of $url failed: $why")
+      // One count per page request, so `sent` + `failed` is the requests made.
+      val failures = urls.flatMap { url =>
+        facebook.scrape(url) match {
+          case Right(()) =>
+            metrics.rescrape(ShareCardMetrics.RescrapeOutcome.Sent); None
+          case Left(why) =>
+            metrics.rescrape(ShareCardMetrics.RescrapeOutcome.Failed)
+            logger.info(s"share card: Facebook re-scrape of $url failed: $why"); Some(url)
+        }
       }
       failures.isEmpty
   }

@@ -139,6 +139,18 @@ class ShareCardRescraperSpec extends AnyFlatSpec with Matchers {
     new ShareCardRescraper(None, rig.readModel, Country.default, rig.metrics, rig.clock).rescrape(movie._id) shouldBe true
   }
 
+  it should "count each page's request once, sent or failed, so the outcomes sum to the requests made" in {
+    val series = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
+    val rig = new Rig { override val metrics = series.forCountry("pl") }
+    val movie = film()
+    rig.readModel.upsertMovie(movie)
+    Seq("poznan", "wroclaw", "krakow").foreach(city => rig.readModel.upsertScreening(screening(movie._id, city)))
+    val graph = new CountingGraph(failing = Set("https://kinowo.net/krakow/movie/diuna"))
+    new ShareCardRescraper(Some(graph), rig.readModel, Country.default, rig.metrics, rig.clock).rescrape(movie._id) shouldBe false
+    (series.rescrapeCount("pl", ShareCardMetrics.RescrapeOutcome.Sent),
+     series.rescrapeCount("pl", ShareCardMetrics.RescrapeOutcome.Failed)) shouldBe ((2.0, 1.0))
+  }
+
   // The page list comes from the read model. A read that failed produced no pages, so "no
   // request failed" held and a re-scrape that never ran was reported done.
   it should "ask to be retried, not report done, when the read model could not be read" in {
