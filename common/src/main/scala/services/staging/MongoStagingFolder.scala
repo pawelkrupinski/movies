@@ -135,13 +135,13 @@ class MongoStagingFolder(
               completeSideCollections(plan.map(_.moviesUpserts.toSeq).getOrElse(Seq.empty))
               result = Some(newPromotions)
             case Some(transient) =>
-              Try(await(publisherToFuture(session.abortTransaction())))
+              abortQuietly(session)
               logger.warn(s"Staging fold '$cleanTitle' commit hit a transient error (attempt $attempt): " +
                 s"${transient.getMessage} — re-running the transaction.")
               sleep(MongoStagingFolder.retryBackoffMs(attempt))
           }
         case StagingFold.Next.Retry(e) =>
-          Try(await(publisherToFuture(session.abortTransaction())))
+          abortQuietly(session)
           // Covers both a transient transaction error AND a losing race against a
           // concurrent fold for another title-group that resolved to the same tmdbId
           // (see `StagingFold.nextAfterAttempt`) — the retry re-reads and finds the
@@ -154,7 +154,7 @@ class MongoStagingFolder(
           // pair rather than converging.
           sleep(MongoStagingFolder.retryBackoffMs(attempt))
         case StagingFold.Next.Abandon(e) =>
-          Try(await(publisherToFuture(session.abortTransaction())))
+          abortQuietly(session)
           logger.error(s"Staging fold '$cleanTitle' aborted after $attempt attempt(s): ${e.getMessage} " +
             "— rethrowing so the task reschedules instead of reporting an empty fold as success.")
           throw e
@@ -193,7 +193,7 @@ class MongoStagingFolder(
               sleep(MongoStagingFolder.retryBackoffMs(commitAttempt))
             case StagingFold.AfterCommitFailure.RetryTransaction(cause) => outcome = Some(Some(cause))
             case StagingFold.AfterCommitFailure.Abandon(cause) =>
-              Try(await(publisherToFuture(session.abortTransaction())))
+              abortQuietly(session)
               // Giving up on the REPLY is not knowing the commit failed: a commit whose every
               // reply was lost, or whose wait timed out, may have landed. Rescheduling one that
               // did finds the group drained and never runs the post-commit steps, so look at
@@ -516,6 +516,10 @@ class MongoStagingFolder(
 
   private def await[T](f: => scala.concurrent.Future[T]): T = Await.result(f, opTimeout)
 
+  /** Abort the attempt's transaction on the way to a retry or a give-up; an abort that fails
+   *  changes neither (the server drops an unfinished transaction on its own). */
+  private def abortQuietly(session: ClientSession): Unit = { Try(MongoStagingFolder.abortTransaction(session)); () }
+
   private def publisherToFuture[T](pub: Publisher[T]): scala.concurrent.Future[Unit] =
     MongoStagingFolder.publisherToFuture(pub)
 }
@@ -526,7 +530,7 @@ object MongoStagingFolder {
   def commitTransaction(session: ClientSession): Unit =
     Await.result(publisherToFuture(session.commitTransaction()), 10.seconds)
 
-  /** Abort `session`'s transaction — for a spec's commit hook standing in for one that never landed. */
+  /** Abort `session`'s transaction — every failed attempt's, and a spec's commit hook standing in for one that never landed. */
   def abortTransaction(session: ClientSession): Unit =
     Await.result(publisherToFuture(session.abortTransaction()), 10.seconds)
 

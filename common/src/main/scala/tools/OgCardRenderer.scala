@@ -377,18 +377,13 @@ object OgCardRenderer {
    *
    *  Returns the y of the bottom edge of the last badge row, so the caller can
    *  place the director/synopsis directly beneath however many rows wrapped. */
-  private def drawBadges(g: Graphics2D, badges: Seq[Badge], x0: Int, top: Int, xMax: Int, fontSize: Float = 30f,
-                         paint: Boolean = true): Int = {
-    val labelFont = bold.deriveFont(fontSize)
-    val valueFont = regular.deriveFont(fontSize)
+  private def drawBadges(g: Graphics2D, badges: Seq[Badge], x0: Int, top: Int, xMax: Int, paint: Boolean = true): Int = {
+    val labelFont = bold.deriveFont(30f)
+    val valueFont = regular.deriveFont(30f)
     def fontFor(s: Seg)  = if (s.bold) labelFont else valueFont
-    // The 30f badge's paddings/gap/corner, scaled so a smaller font (the
-    // in-card mini pills) keeps the same proportions.
-    val scale = fontSize / 30f
-    val padY  = math.round(11 * scale)
-    val gap   = math.round(14 * scale)
-    val arcD  = 16f * scale
-    def padX(s: Seg) = math.round(s.padX * scale)
+    val padY  = 11
+    val gap   = 14
+    val arcD  = 16f
     // Uniform height across every badge, from the (taller) bold metrics.
     val refFm = g.getFontMetrics(labelFont)
     val height      = refFm.getAscent + refFm.getDescent + padY * 2
@@ -396,9 +391,9 @@ object OgCardRenderer {
     var yPosition = top
     for (b <- badges) {
       val fms   = b.segs.map(s => g.getFontMetrics(fontFor(s)))
-      val segW  = b.segs.zip(fms).map { case (s, fm) => fm.stringWidth(s.text) + padX(s) * 2 }
+      val segW  = b.segs.zip(fms).map { case (s, fm) => fm.stringWidth(s.text) + s.padX * 2 }
       val width     = segW.sum
-      if (xPosition + width > xMax && xPosition > x0) { xPosition = x0; yPosition += height + math.round(12 * scale) }
+      if (xPosition + width > xMax && xPosition > x0) { xPosition = x0; yPosition += height + 12 }
       if (paint) {
       val outer = new RoundRectangle2D.Float(xPosition.toFloat, yPosition.toFloat, width.toFloat, height.toFloat, arcD, arcD)
       val saved = g.getClip
@@ -410,7 +405,7 @@ object OgCardRenderer {
         g.setColor(s.fg)
         g.setFont(fontFor(s))
         val ty = yPosition + (height - (fm.getAscent + fm.getDescent)) / 2 + fm.getAscent
-        g.drawString(s.text, sx + padX(s), ty)
+        g.drawString(s.text, sx + s.padX, ty)
         sx += sw
       }
       g.setClip(saved)

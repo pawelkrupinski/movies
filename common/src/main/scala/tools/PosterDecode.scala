@@ -34,14 +34,6 @@ class PosterDecodeGate(permits: Int) {
   }
 }
 
-object PosterDecodeGate {
-  /** The one gate the process's poster decodes share. A process singleton on purpose: the resource
-   *  it rations -- the container's native memory -- is one per process too. Two permits cost at most
-   *  ~2×[[PosterDecode.MaxPixels]] of native buffer while keeping a card's primary poster from
-   *  queueing behind a single slow decode. */
-  val Shared = new PosterDecodeGate(permits = 2)
-}
-
 /**
  * Decode poster bytes to the SMALLEST image that still covers the largest card slot
  * ([[OgCardRenderer.PosterSlotWidth]] × [[OgCardRenderer.PosterSlotHeight]]), or None.
