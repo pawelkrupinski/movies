@@ -1,6 +1,6 @@
 package integration
 
-import org.mongodb.scala.{MongoClient, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.ObservableFuture
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
@@ -17,26 +17,19 @@ import scala.concurrent.duration._
  * Live test of `MongoScheduledRunStore` against real MongoDB. Requires
  * MONGODB_URI; skips otherwise so CI without secrets keeps passing.
  *
- * Uses a sentinel collection (`__integration_test_scheduled_runs`) so it never
- * touches the production `scheduled_runs` collection; dropped in `afterAll`.
+ * Runs in a database of its own, dropped in `afterAll`.
  */
 class ScheduledRunStoreIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with Eventually {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  // Never against a real cluster: these specs write + purge sentinels, and
-  // `.env.local` aims MONGODB_URI at the prod tunnel. See `IntegrationMongo`.
-  tools.IntegrationMongo.requireThrowaway()
-
-  private val client = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
-  private val coll   = client.getDatabase(Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo"))
+  // A database of its own (`IsolatedMongoDatabase` refuses a real cluster), dropped in afterAll.
+  private val isolated = tools.IsolatedMongoDatabase.open(Env.fromProcess().get("MONGODB_URI").get, "scheduled-run-store")
+  private val coll     = isolated.database
     .getCollection[Document]("__integration_test_scheduled_runs")
 
   private val store: ScheduledRunStore = new MongoScheduledRunStore(coll)
 
-  override protected def afterAll(): Unit = try {
-    Await.ready(coll.drop().toFuture(), 10.seconds)
-    client.close()
-  } finally super.afterAll()
+  override protected def afterAll(): Unit = try isolated.drop() finally super.afterAll()
 
   "MongoScheduledRunStore.claim" should "grant a never-before-seen occurrence exactly once" in {
     val id = "it-claim-once-1"

@@ -78,18 +78,18 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
       .build()
   )
 
-  private val database: MongoDatabase = client.getDatabase(Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo"))
+  // A database of its own (named per suite, since this client needs the listener above),
+  // dropped whole in `afterAll` — including the `uptimeBuckets` the UptimeMonitor case drops
+  // and re-creates, which in the shared database belonged to every other suite too.
+  private val database: MongoDatabase = client.getDatabase(tools.IntegrationCorpusDatabase.named("ttl-index"))
 
   private def sent(command: String): Int = Option(commands.get(command)).map(_.size()).getOrElse(0)
   private def forget(): Unit            = commands.clear()
 
   /** A fresh sentinel collection per case, so one case's index can never decide
-   *  another's starting state. Dropped in `afterAll` with the rest. */
-  private val sentinels = scala.collection.mutable.ListBuffer.empty[String]
-
+   *  another's starting state. Dropped in `afterAll` with the database. */
   private def sentinel(name: String): MongoCollection[Document] = {
     val collectionName = s"__integration_test_ttl_$name"
-    sentinels += collectionName
     val collection = database.getCollection[Document](collectionName)
     Await.ready(collection.drop().toFuture(), 10.seconds)
     // A collection has to EXIST before listIndexes or dropIndex address anything.
@@ -103,8 +103,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
       .flatMap(_.get("expireAfterSeconds")).map(_.asNumber().longValue())
 
   override protected def afterAll(): Unit = try {
-    sentinels.foreach(name => Await.ready(database.getCollection(name).drop().toFuture(), 10.seconds))
-    client.close()
+    try Await.ready(database.drop().toFuture(), 60.seconds) finally client.close()
   } finally super.afterAll()
 
   "MongoTtlIndex.reconcile" should "create the TTL index when the collection has none" in {

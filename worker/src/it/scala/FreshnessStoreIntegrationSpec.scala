@@ -1,11 +1,10 @@
 package integration
 
-import org.mongodb.scala.model.Filters
-import org.mongodb.scala.{Document, MongoClient, SingleObservableFuture}
+import org.mongodb.scala.{Document, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.freshness.{FreshnessKind, MongoFreshnessStore}
-import tools.Env
+import tools.{Env, IsolatedMongoDatabase}
 
 import java.util.Date
 import scala.concurrent.Await
@@ -23,18 +22,12 @@ import scala.concurrent.duration._
 class FreshnessStoreIntegrationSpec extends AnyFlatSpec with Matchers {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  // Never against a real cluster: these specs write + purge sentinels, and
-  // `.env.local` aims MONGODB_URI at the prod tunnel. See `IntegrationMongo`.
-  tools.IntegrationMongo.requireThrowaway()
 
-  private val client = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
-  private val db     = client.getDatabase(Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo"))
-
-  "MongoFreshnessStore boot hydrate" should "page the enrichment phase across batch boundaries, loading every stamp" in {
-    val coll = db.getCollection("freshness")
-    val ids  = (0 until 5).map(i => s"__it-freshness-page-${i}__")
-    val at   = new Date()
-    try {
+  "MongoFreshnessStore boot hydrate" should "page the enrichment phase across batch boundaries, loading every stamp" in
+    IsolatedMongoDatabase.withDatabase(Env.fromProcess().get("MONGODB_URI").get, "freshness-store") { db =>
+      val coll = db.getCollection("freshness")
+      val ids  = (0 until 5).map(i => s"__it-freshness-page-${i}__")
+      val at   = new Date()
       ids.foreach(id => Await.result(
         coll.insertOne(Document("_id" -> id, "kind" -> FreshnessKind.DetailEnrich.label, "lastFetchedAt" -> at)).toFuture(),
         10.seconds))
@@ -43,6 +36,5 @@ class FreshnessStoreIntegrationSpec extends AnyFlatSpec with Matchers {
       Await.result(store.whenReady(FreshnessKind.DetailEnrich), 30.seconds) // restReady = enrichment phase done
       ids.foreach(id => withClue(s"$id should have hydrated across page boundaries: ")(
         store.lastFetchedAt(id) shouldBe defined))
-    } finally ids.foreach(id => Await.result(coll.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds))
-  }
+    }
 }

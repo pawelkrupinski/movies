@@ -6,15 +6,11 @@ import models.{MovieRecord, Multikino, Showtime, Source, SourceData}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.mongodb.scala.{MongoClient, SingleObservableFuture}
-import org.mongodb.scala.model.Filters
 import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
 import services.readmodel.MongoReadModelRepository
-import tools.Env
+import tools.{Env, IsolatedMongoDatabase}
 
 import java.time.LocalDateTime
-import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * That `scripts.BackfillReadModel`, which PRUNES the read model, reads the corpus the
@@ -34,17 +30,15 @@ import scala.concurrent.duration._
  * `ConvergenceStorageIntegrationSpec`. Needs a real Mongo because the failure lives
  * entirely in the storage split: in memory there is nothing to stitch.
  *
- * Requires MONGODB_URI; skips otherwise. Sentinels are deliberately titled so they do
- * NOT sanitize to `integrationtest…` — `MovieRepositoryIntegrationSpec` purges that
- * prefix in its own before/afterAll and the it/ suites run in parallel against one db.
+ * Requires MONGODB_URI; skips otherwise. Runs in a database of its own, dropped in
+ * `afterAll`, so no co-running suite's rows or cleanup can reach it.
  */
 class BackfillReadModelStitchIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway()
 
-  private val client = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
-  private val db     = client.getDatabase(Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo"))
+  private val isolated = IsolatedMongoDatabase.open(Env.fromProcess().get("MONGODB_URI").get, "backfill-readmodel-stitch")
+  private val db       = isolated.database
 
   private val Title = "Backfill Stitch Probe"
   private val Year  = Some(1904)
@@ -60,18 +54,8 @@ class BackfillReadModelStitchIntegrationSpec extends AnyFlatSpec with Matchers w
   )
   private val readModel = new MongoReadModelRepository(Some(db))
 
-  private def purge(): Unit = {
-    Seq("movies", "movie_slots", "screenings", "web_movies", "web_screenings").foreach { name =>
-      val coll = db.getCollection(name)
-      Await.ready(coll.deleteMany(Filters.or(
-        Filters.regex("_id", s"^$id"), Filters.regex("filmId", s"^$id")
-      )).toFuture(), 10.seconds)
-    }
-  }
-
-  override protected def beforeAll(): Unit = { super.beforeAll(); purge() }
   override protected def afterAll(): Unit =
-    try { purge(); readModel.close(); writer.close(); client.close() } finally super.afterAll()
+    try { readModel.close(); writer.close(); isolated.drop() } finally super.afterAll()
 
   private val record = MovieRecord(imdbId = Some("tt0000904"), data = Map[Source, SourceData](
     Multikino -> SourceData(title = Some(Title), releaseYear = Year,

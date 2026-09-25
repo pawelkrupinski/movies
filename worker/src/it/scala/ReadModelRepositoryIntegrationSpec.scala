@@ -15,43 +15,43 @@ import tools.Eventually.eventually
  * `findAllScreenings` decode — i.e. the server-side `{_id}` / `{_id, filmId}`
  * BsonDocument projection is faithful. Requires MONGODB_URI; skips otherwise.
  *
- * The id checks are read-only against the live `web_movies` / `web_screenings`;
- * the paging and change-stream cases write `__it-rm-*` sentinels and delete them.
- *
- * BOTH ID CHECKS SETTLE, and they have to. Each compares TWO SEPARATE READS of a live
- * collection, and `IntegrationTest / parallelExecution` is on — so a sibling spec writing
- * or purging its own sentinel between the two reads makes them disagree about exactly that
- * row while both are perfectly faithful. That is what failed on CI on 2026-09-04:
- * `Set()` against `Set("backfillstitchprobe|1904")`, the sentinel
- * `BackfillReadModelStitchIntegrationSpec` creates and deletes. A GENUINE projection
- * infidelity is a property of the server-side `{_id}` / `{_id, filmId}` projection and
- * never settles; a concurrent write settles on the next read. Retrying is what tells the
- * two apart, and asserting on a single read is what conflated them.
+ * Runs in a database of its own, dropped in `afterAll`. The id checks once read the
+ * SHARED `web_movies` / `web_screenings` and had to retry, because a sibling spec writing
+ * its own sentinel between the two reads made them disagree (CI, 2026-09-04:
+ * `Set()` against `Set("backfillstitchprobe|1904")`). In a database nobody else writes,
+ * both reads see exactly the rows seeded here, so a single read is the assertion.
  */
 class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  // Never against a real cluster: these specs write + purge sentinels, and
-  // `.env.local` aims MONGODB_URI at the prod tunnel. See `IntegrationMongo`.
-  tools.IntegrationMongo.requireThrowaway()
+  private val isolated = tools.IsolatedMongoDatabase.open(Env.fromProcess().get("MONGODB_URI").get, "readmodel-repository")
+  private val db       = isolated.database
+  private val rm       = new MongoReadModelRepository(Some(db))
 
-  private val client = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
-  private val db     = client.getDatabase(Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo"))
-  private val rm     = new MongoReadModelRepository(Some(db))
+  override protected def afterAll(): Unit = try { rm.close(); isolated.drop() } finally super.afterAll()
 
-  override protected def afterAll(): Unit = try { rm.close(); client.close() } finally super.afterAll()
+  private def resolvedMovie(id: String): models.ResolvedMovie = models.ResolvedMovie(_id = id, title = "Diuna",
+    originalTitle = None, posterUrl = None, fallbackPosterUrls = Nil, runtimeMinutes = None, releaseYear = Some(2021),
+    genres = Nil, countries = Nil, directors = Nil, cast = Nil, synopsis = None, trailerUrls = Nil,
+    ratings = models.ResolvedRatings(None, None, None, "", None, "", None, ""), weightedRating = 0.0)
 
   "findAllMovieIds" should "project the same ids as a full findAllMovies decode" in {
-    // A wider poll than the helper's default: each attempt is TWO whole-collection reads,
-    // so hammering them every 20ms would cost more than the race it is waiting out.
-    eventually(rm.findAllMovieIds().toSet shouldBe rm.findAllMovies().map(_._id).toSet,
-      timeoutMs = 10000, pollMs = 250)
+    val ids = (0 until 3).map(i => s"__it-rm-movie-${i}__")
+    ids.map(resolvedMovie).foreach(rm.upsertMovie)
+    rm.findAllMovies().map(_._id).toSet shouldBe ids.toSet
+    rm.findAllMovieIds().toSet shouldBe ids.toSet
   }
 
   "findAllScreeningRefs" should "project the same (_id, filmId) pairs as a full findAllScreenings decode" in {
-    eventually(rm.findAllScreeningRefs().map(r => r._id -> r.filmId).toSet shouldBe
-      rm.findAllScreenings().map(s => s._id -> s.filmId).toSet,
-      timeoutMs = 10000, pollMs = 250)
+    import models.CityScreening
+    val pairs = (0 until 3).map(i => s"__it-rm-pair-${i}__" -> s"__it-rm-pair-film-${i % 2}__")
+    pairs.foreach { case (id, film) =>
+      rm.upsertScreening(CityScreening(_id = id, filmId = film, city = "poznan", cinema = "Cinema", filmUrl = None, showtimes = Nil))
+    }
+    try {
+      rm.findAllScreenings().map(s => s._id -> s.filmId).toSet shouldBe pairs.toSet
+      rm.findAllScreeningRefs().map(r => r._id -> r.filmId).toSet shouldBe pairs.toSet
+    } finally pairs.foreach { case (id, _) => rm.deleteScreening(id) }
   }
 
   // findAllScreenings is now keyset-PAGED (KeysetScan), not one unbounded find().toFuture().
@@ -71,17 +71,14 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
   // card's path and version. Its own
   // database, dropped afterwards.
   "web_movies" should "carry a film's share card, and hand the janitor its projected refs" in {
-    import models.{ResolvedMovie, ResolvedRatings}
     import services.readmodel.ShareCardRef
     val ownDb   = tools.IntegrationCorpusDatabase.named("readmodel-sharecards")
     val client2 = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
     val fresh   = new MongoReadModelRepository(Some(client2.getDatabase(ownDb)))
     try {
-      val film = ResolvedMovie(_id = "__it-rm-sharecard__", title = "Diuna", originalTitle = None,
-        posterUrl = Some("https://cdn.example/a.jpg"), fallbackPosterUrls = Seq("https://cdn.example/b.jpg"),
-        runtimeMinutes = None, releaseYear = Some(2021), genres = Nil, countries = Nil, directors = Nil, cast = Nil,
-        synopsis = None, trailerUrls = Nil, ratings = ResolvedRatings(None, None, None, "", None, "", None, ""),
-        weightedRating = 0.0, shareCard = Some("f1.jpg?v=0123456789abcdef"), shareCardPending = true)
+      val film = resolvedMovie("__it-rm-sharecard__").copy(posterUrl = Some("https://cdn.example/a.jpg"),
+        fallbackPosterUrls = Seq("https://cdn.example/b.jpg"), shareCard = Some("f1.jpg?v=0123456789abcdef"),
+        shareCardPending = true)
       val bare = film.copy(_id = "__it-rm-nocard__", posterUrl = None, fallbackPosterUrls = Nil, shareCard = None,
         shareCardPending = false)
       fresh.upsertMovie(film); fresh.upsertMovie(bare)

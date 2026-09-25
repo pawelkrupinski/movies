@@ -2,7 +2,7 @@ package integration
 
 import models.{User, UserState}
 import org.scalatest.OptionValues._
-import org.mongodb.scala.{MongoClient, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.{ObservableFuture, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
@@ -23,20 +23,20 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   // `.env.local` aims MONGODB_URI at the prod tunnel. See `IntegrationMongo`.
   tools.IntegrationMongo.requireThrowaway()
 
-  // The database is handed in, as `UsersWiring` hands in the shared connection's.
-  private lazy val client   = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
-  private lazy val database = client.getDatabase(models.Country.resolvedDbName(tools.Env.fromProcess()))
+  // The database is handed in, as `UsersWiring` hands in the shared connection's. It is
+  // this spec's own: its old `^__integration-test-` purge of a shared one also erased
+  // HiddenFilmsConcurrentWritesIntegrationSpec's rows mid-test.
+  private lazy val isolated = tools.IsolatedMongoDatabase.open(Env.fromProcess().get("MONGODB_URI").get, "user-repository")
+  private lazy val database = isolated.database
   private lazy val users    = new MongoUserRepository(Some(database))
   private lazy val states   = new MongoUserStateRepository(Some(database))
   // For seeding whole rows: the production store has no whole-row write (see `UserStateRows`).
   protected def seed(state: UserState): Unit = UserStateRows.replace(database, state)
 
   override protected def afterAll(): Unit = try {
-    Await.ready(database.getCollection("users")     .deleteMany(Filters.regex("id",     "^__integration-test-")).toFuture(), 10.seconds)
-    Await.ready(database.getCollection("userStates").deleteMany(Filters.regex("userId", "^__integration-test-")).toFuture(), 10.seconds)
     users.close()
     states.close()
-    client.close()
+    isolated.drop()
   } finally super.afterAll()
 
   // The store's only door to Mongo is the database it is handed: with none it is disabled,

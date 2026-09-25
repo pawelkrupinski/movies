@@ -2,7 +2,8 @@ package integration
 
 import models.{Cinema, CinemaMovie, Movie, Multikino, Showtime}
 import org.mongodb.scala.model.Filters
-import org.mongodb.scala.{MongoClient, SingleObservableFuture}
+import org.mongodb.scala.SingleObservableFuture
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.ScrapeGuardState
@@ -26,13 +27,16 @@ import scala.concurrent.duration._
  *
  * Requires MONGODB_URI; skips otherwise.
  */
-class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers {
+class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway()
 
-  private val client = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
-  private val db     = client.getDatabase(Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo"))
+  // A database of its own: the archive row is keyed by the cinema's name, which any other
+  // suite archiving a Multikino scrape would share.
+  private val isolated = tools.IsolatedMongoDatabase.open(Env.fromProcess().get("MONGODB_URI").get, "scrape-archive")
+  private val db       = isolated.database
+
+  override protected def afterAll(): Unit = try isolated.drop() finally super.afterAll()
 
   private val Morning = Instant.parse("2026-07-28T09:00:00Z")
   private val Noon    = Instant.parse("2026-07-28T12:00:00Z")

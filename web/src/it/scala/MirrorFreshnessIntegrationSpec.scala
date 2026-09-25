@@ -1,13 +1,12 @@
 package integration
 
-import org.mongodb.scala.model.Filters
-import org.mongodb.scala.{Document, MongoClient, SingleObservableFuture}
+import org.mongodb.scala.{Document, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.MongoMirrorFreshness
-import tools.Env
+import tools.{Env, IsolatedMongoDatabase}
 
 import java.util.Date
 import scala.concurrent.Await
@@ -24,38 +23,18 @@ import scala.concurrent.duration._
 class MirrorFreshnessIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  // Never against a real cluster: this spec writes + purges sentinels, and
-  // `.env.local` aims MONGODB_URI at the prod tunnel. See `IntegrationMongo`.
-  tools.IntegrationMongo.requireThrowaway()
+  // A database of its own (`IsolatedMongoDatabase` refuses a real cluster), so the
+  // newest stamp is one this spec wrote, not whatever a co-running suite last touched.
+  private val isolated = IsolatedMongoDatabase.open(Env.fromProcess().get("MONGODB_URI").get, "mirror-freshness")
+  private val db       = isolated.database
 
-  private val client = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
-  private val db     = client.getDatabase(Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo"))
-
-  private val SentinelId = "^__it-mirror-freshness-"
-  // Dated past anything the throwaway db could already hold, so the assertion is
-  // about which sentinel wins rather than about what else a shared fixture db
-  // happens to carry.
   private val older      = Date.from(java.time.Instant.parse("2099-08-30T08:03:00Z"))
   private val newer      = Date.from(java.time.Instant.parse("2099-08-31T09:04:00Z"))
 
-  // Upsert, not insert: a previous run killed before its cleanup leaves the same
-  // `_id` behind, and a duplicate-key failure there would read as a bug in the
-  // thing under test.
-  private def stamp(collection: String, suffix: String, at: Date): Unit = {
-    val id = s"__it-mirror-freshness-$suffix"
-    Await.result(
-      db.getCollection(collection)
-        .replaceOne(Filters.eq("_id", id), Document("_id" -> id, "updatedAt" -> at),
-          com.mongodb.client.model.ReplaceOptions().upsert(true))
-        .toFuture(),
-      10.seconds)
-  }
+  private def stamp(collection: String, suffix: String, at: Date): Unit =
+    Await.result(db.getCollection(collection).insertOne(Document("_id" -> suffix, "updatedAt" -> at)).toFuture(), 10.seconds)
 
-  override protected def afterAll(): Unit = try {
-    Seq("movies", "screenings").foreach(name =>
-      Await.ready(db.getCollection(name).deleteMany(Filters.regex("_id", SentinelId)).toFuture(), 10.seconds))
-    client.close()
-  } finally super.afterAll()
+  override protected def afterAll(): Unit = try isolated.drop() finally super.afterAll()
 
   "mirror freshness" should "report the newest stamp across movies AND screenings" in {
     // The corpus behind, the showtimes ahead: reading `movies` alone would call

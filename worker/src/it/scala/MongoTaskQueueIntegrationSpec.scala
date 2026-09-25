@@ -1,6 +1,6 @@
 package integration
 
-import org.mongodb.scala.{MongoClient, SingleObservableFuture}
+import org.mongodb.scala.{SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -14,29 +14,22 @@ import scala.concurrent.duration._
 
 /**
  * Live test of `MongoTaskQueue` against real MongoDB. Requires MONGODB_URI;
- * skips otherwise so CI without secrets keeps passing. Uses a sentinel
- * collection so it never touches the production `tasks` collection, dropped in
- * `afterAll`. Exercises the actual Mongo upsert-dedup, findOneAndUpdate claim,
+ * skips otherwise so CI without secrets keeps passing. Runs in a database
+ * of its own, dropped in `afterAll`. Exercises the actual Mongo upsert-dedup, findOneAndUpdate claim,
  * ownership-guarded complete, and lease reaping — the paths the in-memory fake
  * can't prove.
  */
 class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  // Never against a real cluster: these specs write + purge sentinels, and
-  // `.env.local` aims MONGODB_URI at the prod tunnel. See `IntegrationMongo`.
-  tools.IntegrationMongo.requireThrowaway()
-
-  private val client = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
-  private val db = client.getDatabase(Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo"))
+  // A database of its own (`IsolatedMongoDatabase` refuses a real cluster), dropped in afterAll.
+  private val isolated = tools.IsolatedMongoDatabase.open(Env.fromProcess().get("MONGODB_URI").get, "mongo-task-queue")
+  private val db = isolated.database
     .withCodecRegistry(MovieCodecs.registry)
   private val collName = "__integration_test_tasks"
   private val queue = new MongoTaskQueue(Some(db), collName)
 
-  override protected def afterAll(): Unit = try {
-    Await.ready(db.getCollection(collName).drop().toFuture(), 10.seconds)
-    client.close()
-  } finally super.afterAll()
+  override protected def afterAll(): Unit = try isolated.drop() finally super.afterAll()
 
   private val t0 = Instant.parse("2026-06-07T12:00:00Z")
 
@@ -204,7 +197,7 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   }
 
   /** Every dedupKey the queue will hand out at `now` (drains the eligible set,
-   *  leasing each — harmless, the sentinel collection is dropped in afterAll). */
+   *  leasing each — harmless, the spec's database is dropped in afterAll). */
   private def claimableKeysAt(now: Instant): Set[String] = {
     val keys = scala.collection.mutable.Set.empty[String]
     var next = queue.claim("nb-probe", 5.minutes, now)

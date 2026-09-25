@@ -1,6 +1,6 @@
 package integration
 
-import org.mongodb.scala.{MongoClient, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.{ObservableFuture, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
@@ -15,24 +15,18 @@ import scala.concurrent.duration._
  * Live test of `MongoCachingDetailFetch` against real Mongo: two instances
  * sharing one collection (standing in for two worker servers) must fetch the
  * underlying URL only once — the cross-server detail dedup the in-process cache
- * can't give. Requires MONGODB_URI; skips otherwise. Sentinel collection,
- * dropped in afterAll.
+ * can't give. Requires MONGODB_URI; skips otherwise. Runs in a database of
+ * its own, dropped in afterAll.
  */
 class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  // Never against a real cluster: these specs write + purge sentinels, and
-  // `.env.local` aims MONGODB_URI at the prod tunnel. See `IntegrationMongo`.
-  tools.IntegrationMongo.requireThrowaway()
-
-  private val client   = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
-  private val db       = client.getDatabase(Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo"))
+  // A database of its own (`IsolatedMongoDatabase` refuses a real cluster), dropped in afterAll.
+  private val isolated = tools.IsolatedMongoDatabase.open(Env.fromProcess().get("MONGODB_URI").get, "caching-detail-fetch")
+  private val db       = isolated.database
   private val collName = "__integration_test_detail_cache"
 
-  override protected def afterAll(): Unit = try {
-    Await.ready(db.getCollection(collName).drop().toFuture(), 10.seconds)
-    client.close()
-  } finally super.afterAll()
+  override protected def afterAll(): Unit = try isolated.drop() finally super.afterAll()
 
   private class CountingFetch extends GetOnlyHttpFetch {
     @volatile var gets = 0

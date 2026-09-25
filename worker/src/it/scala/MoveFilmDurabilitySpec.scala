@@ -2,7 +2,6 @@ package services.movies
 
 import services.movies.FilmId
 import models.{Multikino, Showtime}
-import org.mongodb.scala.MongoClient
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.Env
@@ -26,9 +25,7 @@ class MoveFilmDurabilitySpec extends AnyFlatSpec with Matchers {
   private val when = java.time.LocalDateTime.now().plusDays(2).withHour(19).withMinute(0).withSecond(0).withNano(0)
 
   it should "keep the old rows when the copy to the new id did not land" in {
-    val client = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
-    val db     = client.getDatabase(Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo"))
-    try {
+    tools.IsolatedMongoDatabase.withDatabase(Env.fromProcess().get("MONGODB_URI").get, "move-film-durability") { db =>
       val screenings = new UnwritableScreeningsRepository
       screenings.seed("moveprobe|", Map(Multikino.displayName -> Seq(Showtime(when, None))))
       screenings.findForFilm("moveprobe|") should not be empty
@@ -38,6 +35,6 @@ class MoveFilmDurabilitySpec extends AnyFlatSpec with Matchers {
 
       withClue("the copy never landed, so the old rows must still be there: ")(
         screenings.findForFilm("moveprobe|") should not be empty)
-    } finally client.close()
+    }
   }
 }
