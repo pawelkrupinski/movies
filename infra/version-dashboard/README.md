@@ -15,7 +15,7 @@ over server-sent events; nothing builds on request. Same shape as
 ```
 npm ci
 npm run service install   # launchd: com.kinowo.nixos-dashboard + its /healthz watchdog
-npm run restart           # lint + test, then SIGTERM; running switches drain before exit
+npm run restart           # by hand: lint + test, then SIGTERM; running switches drain first
 npm run service status    # launchd state + /healthz
 npm run service logs      # ~/.kinowo-dashboard-logs/
 npm run once              # print the fleet once as text and exit (never serves, never acts)
@@ -23,4 +23,8 @@ npm test                  # vitest; setup refuses every real command and network
 npm run lint              # tsc + type-aware oxlint
 ```
 
-Never run it under `tsx watch` in service: a watch restart kills a switch mid-ssh.
+**Autodeploy.** launchd runs it from the root checkout with `KINOWO_AUTODEPLOY=1`, so merging to
+main is the deploy (like the events app): the server notices its own source change, runs `npm ci` if
+the lockfile moved, type-checks, and only then drains running checks/switches and exits for
+KeepAlive to start the new code. A change that does not type-check is logged and the old code keeps
+serving. Never `tsx watch` in service: a watch restart kills a switch mid-ssh.

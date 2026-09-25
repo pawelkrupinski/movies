@@ -2,7 +2,8 @@ import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import { build } from "esbuild";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { HOST, PORT, ROOT } from "./config.js";
+import { Autodeploy } from "./autodeploy.js";
+import { AUTODEPLOY, HOST, PORT, ROOT } from "./config.js";
 import { drain, isDraining, runningWork } from "./lifecycle.js";
 import type { Page } from "./page.js";
 import { createPages } from "./pages.js";
@@ -81,9 +82,11 @@ async function main(): Promise<void> {
   }));
 
   let stopping = false;
+  let autodeploy: Autodeploy | null = null;
   const shutdown = async (signal: string) => {
     if (stopping) return;
     stopping = true;
+    autodeploy?.stop();
     const busy = runningWork();
     if (busy.length) console.log(`${signal}: draining ${busy.map((work) => work.label).join(", ")} before exit`);
     await drain();
@@ -99,6 +102,11 @@ async function main(): Promise<void> {
   await app.listen({ port: PORT, host: HOST });
   for (const page of pages) console.log(`kinowo ${page.title} on http://${HOST}:${PORT}${page.path}`);
   for (const page of pages) await page.start();
+  if (AUTODEPLOY) {
+    autodeploy = new Autodeploy({ root: ROOT, restart: (reason) => void shutdown(reason) });
+    autodeploy.start();
+    console.log(`autodeploy: watching ${ROOT} for merged changes`);
+  }
 }
 
 main().catch((error: unknown) => {

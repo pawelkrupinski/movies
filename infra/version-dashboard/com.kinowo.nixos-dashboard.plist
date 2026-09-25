@@ -9,9 +9,11 @@
   because a bind failure looks exactly like a crash. Different estate, different port.
 
   Runs `tsx src/server.ts` under Homebrew's node, NOT `tsx watch`. A watch restart kills the process
-  under whatever it is doing, which would cut a NixOS switch off mid-ssh. Code changes go live
-  through `npm run restart` instead, which sends SIGTERM; the server then refuses new checks and
-  switches, lets running ones finish, and exits, and KeepAlive starts the new code. ExitTimeOut is
+  under whatever it is doing, which would cut a NixOS switch off mid-ssh. Code changes still go live
+  by themselves, as they do for the events app: KINOWO_AUTODEPLOY makes the server watch its own
+  source, and a merged change that type-checks gets the SIGTERM path (new checks and switches
+  refused, running ones finish, exit) and KeepAlive starts the new code. `npm run restart` does the
+  same by hand. ExitTimeOut is
   above the longest job (a switch, 30 min) so launchd never SIGKILLs a drain in progress.
 
   PATH IS SET EXPLICITLY because launchd does not read a login shell profile. The server shells out
@@ -50,6 +52,8 @@
   <dict>
     <key>PATH</key>
     <string>/opt/homebrew/bin:/nix/var/nix/profiles/default/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>KINOWO_AUTODEPLOY</key>
+    <string>1</string>
   </dict>
 
   <key>RunAtLoad</key>

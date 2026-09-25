@@ -20,6 +20,9 @@ export const REPO_DIR = resolve(INFRA_DIR, "..");
  */
 export const PORT = Number(process.env.KINOWO_DASHBOARD_PORT ?? 8788);
 export const HOST = "127.0.0.1";
+/** Set by the launchd plist: restart onto merged changes (see autodeploy.ts). Off for `npm start`,
+ * where exiting on an edit would just stop the server. */
+export const AUTODEPLOY = process.env.KINOWO_AUTODEPLOY === "1";
 
 /** Outside the repository on purpose: a state file inside it would be an uncommitted change,
  * which this page reports on its own header and which makes every `nix eval` copy a dirty tree. */
