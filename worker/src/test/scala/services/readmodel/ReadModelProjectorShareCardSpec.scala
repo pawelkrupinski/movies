@@ -96,6 +96,15 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "lose its hold when its row stops being ready, instead of re-projecting that row on every change event" in new Setup {
+    val id = upsert(7.5)
+    projector.heldCards shouldBe Set(id)
+    // Its TMDB resolve is re-opened: the row no longer projects, so nothing would ever release the hold.
+    repository.upsert("Foo", Some(2024), record(7.5).copy(tmdbId = None))
+    projector.onMovieUpsert(repository.findAll().head)
+    projector.heldCards shouldBe empty
+  }
+
   it should "lose its pending mark, and have the scrapers told, when its card finally lands" in new Setup {
     val id = upsert(7.5)
     clock.now = T0.plusSeconds(121)
@@ -166,6 +175,25 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
     projector.refreshShareCard(id)
     projector.onMovieDelete(repository.findAll().head.id)
     published(id) shouldBe None
+    ledger.retired.toSeq shouldBe Seq(id)
+  }
+
+  it should "have its share-card files retired even when one of its screenings deletes throws" in {
+    val failing = new InMemoryReadModelRepository() {
+      override def deleteScreening(id: String): Unit = throw new RuntimeException("simulated screenings delete failure")
+    }
+    val repository = new InMemoryMovieRepository()
+    val ledger     = new ScriptedLedger
+    val projector  = new ReadModelProjector(repository, failing, failing, shareCards = ledger)
+    repository.upsert("Foo", Some(2024), record(7.5))
+    val row = repository.findAll().head
+    val id  = ReadModelProjection.filmId(row, titleNormalizer)
+    ledger.cards = Map(id -> "card.jpg?v=0")
+    projector.onMovieUpsert(row)
+    failing.findAllScreenings() should not be empty
+    // The card document is gone once the delete throws, so nothing will ever retire it again.
+    a[RuntimeException] should be thrownBy projector.onMovieDelete(row.id)
+    failing.findAllMovies() shouldBe empty
     ledger.retired.toSeq shouldBe Seq(id)
   }
 

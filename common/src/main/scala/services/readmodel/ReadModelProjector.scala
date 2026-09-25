@@ -180,6 +180,7 @@ class ReadModelProjector(
       healedClean.remove(rowId)
       // A row that lost its readiness takes its cards with it (the prune would, later).
       lastCardsByRow.remove(rowId).foreach(_.foreach(retireCard(_, RetireReason.RowUnready)))
+      dropHoldsNotProducedBy(rowId, Set.empty)
       return 0
     }
     // A row fans out into one card per display-title variant (Cyrillic / English
@@ -192,6 +193,7 @@ class ReadModelProjector(
     val wallStart = System.nanoTime()
     val cpuStart  = cpuClock.nanos()
     val variants  = projectReusingMetadata(partition).map { (movie, venues) => (movie, planScreenings(movie._id, venues)) }
+    dropHoldsNotProducedBy(rowId, variants.map(_._1._id).toSet)
     metrics.recordProject(
       wallSeconds = (System.nanoTime() - wallStart) / 1e9,
       cpuSeconds  = (cpuClock.nanos() - cpuStart) / 1e9
@@ -275,6 +277,14 @@ class ReadModelProjector(
     }
   }
 
+  /** Caller holds `lock`. Forget the first-publish holds on `rowId`'s cards that its projection no
+   *  longer produces — it lost its readiness, or its display title moved to another card. Only
+   *  `gate` releases a hold on a card still produced; a hold nothing produces was otherwise never
+   *  released, and once expired it cost a read and a full re-projection of its row on every change
+   *  event (see `releaseExpired`). */
+  private def dropHoldsNotProducedBy(rowId: String, produced: Set[String]): Unit =
+    held.filterInPlace((card, hold) => hold.row != rowId || produced(card))
+
   /** Re-project the row behind card `filmId` so its document picks up the share-card store's
    *  current state — what the renderer calls once a card is written, which is also what
    *  publishes a card the first-publish gate was holding. */
@@ -311,7 +321,7 @@ class ReadModelProjector(
     rows.filter { row =>
       movieRepository.findByIdChecked(services.movies.FilmId(row)) match {
         case (Some(whole), _) => project(ReadModelProjection.partition(whole, normalizer)); false
-        case (None, true)     => held.filterInPlace((_, card) => card.row != row); false   // gone: nothing to publish
+        case (None, true)     => dropHoldsNotProducedBy(row, Set.empty); false             // gone: nothing to publish
         case (None, false)    => true                                                       // unreadable: keep the hold
       }
     }
@@ -424,16 +434,17 @@ class ReadModelProjector(
   private def removeCard(filmId: String, audit: String): Unit = {
     val screeningIds = lastScreenings.getOrElse(filmId, Map.empty).keys.toSeq
     writer.deleteMovie(filmId)
-    // The card is gone from here on, so the memo forgets it even if a screenings delete then
-    // throws — remembered, the row coming back unchanged would skip writing the card. Screenings
-    // left behind belong to no live card; the prune removes them while it stays retired.
+    // The card is gone from here on, so its share-card files go and the memo forgets it even if a
+    // screenings delete then throws — remembered, the row coming back unchanged would skip writing
+    // the card, and nothing would retire its files again. Screenings left behind belong to no live
+    // card; the prune removes them while it stays retired.
+    shareCards.onRetired(filmId)
     try screeningIds.foreach(writer.deleteScreening)
     catch { case exception: Throwable => forgetCard(filmId); throw exception }
     // The point a film actually leaves the served site (web_movies + its
     // web_screenings). During a "cards vanish" episode this names every dropped
     // filmId, one INFO line each — the read-model half of the removal audit.
     services.movies.RemovalAudit.cardRemoved(filmId, screeningIds.size, reason = audit)
-    shareCards.onRetired(filmId)
     metrics.recordWrite(Target.Movie, Op.Delete, 1)
     if (screeningIds.nonEmpty) metrics.recordWrite(Target.Screening, Op.Delete, screeningIds.size)
     forgetCard(filmId)
