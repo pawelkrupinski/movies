@@ -65,17 +65,6 @@ class ShareCardBaseSpec extends AnyFlatSpec with Matchers {
     bases(rig.store) shouldBe empty
   }
 
-  "Rendering on a base" should "be much cheaper than rebuilding it" in {
-    val rig = new Rig
-    val movie = film()
-    rig.service.render(rig.service.inputs(movie), Seq(ShareCardReason.NewFilm))           // warm-up
-    def time(body: => Any): Double = { val t = System.nanoTime(); body; (System.nanoTime() - t) / 1e6 }
-    val hits = (1 to 5).map(i => time(rig.service.render(rig.service.inputs(rated(movie, 7.0 + i / 10.0)), Seq(ShareCardReason.Ratings))))
-    val rebuilds = (1 to 5).map(i => time(rig.service.render(rig.service.inputs(movie.copy(title = s"Diuna $i")), Seq(ShareCardReason.Title))))
-    val baseBytes = rig.store.list().filter(_.kind == ShareCardStore.Kind.Base).map(_.bytes)
-    info(f"base_hit median ${hits.sorted.apply(2)}%.1f ms, base_rebuild (poster cached) median ${rebuilds.sorted.apply(2)}%.1f ms; base ${baseBytes.sum / baseBytes.size / 1024} KB")
-  }
-
   "The budget" should "count a film's base, and never evict the base of a current card" in {
     val rig = new Rig
     val movie = film()
