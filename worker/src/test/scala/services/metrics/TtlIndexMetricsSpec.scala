@@ -1,10 +1,9 @@
 package services.metrics
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import org.scalatest.BeforeAndAfterEach
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.MongoTtlIndex
+import services.TtlIndexMismatches
 
 /**
  * A TTL index whose expiry disagrees with the code was invisible for the whole life
@@ -21,16 +20,13 @@ import services.MongoTtlIndex
  * This spec guards that the gauge is EXPORTED rather than merely defined, and that
  * it reads zero on a healthy process rather than going absent.
  */
-class TtlIndexMetricsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterEach {
+class TtlIndexMetricsSpec extends AnyFlatSpec with Matchers {
 
   private val sentinel = "__spec_ttl_metric_collection"
 
-  override protected def afterEach(): Unit =
-    try MongoTtlIndex.Mismatches.resolved(sentinel) finally super.afterEach()
-
-  private def scrape(): String = {
+  private def scrape(mismatches: TtlIndexMismatches = new TtlIndexMismatches): String = {
     val registry = new PrometheusRegistry()
-    TtlIndexMetrics.register(registry)
+    TtlIndexMetrics.register(registry, mismatches)
     PrometheusExposition.render(registry)
   }
 
@@ -48,8 +44,14 @@ class TtlIndexMetricsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterE
   }
 
   it should "count an index the reconciler could not bring into line" in {
-    MongoTtlIndex.Mismatches.record(sentinel)
-    PrometheusExposition.value(scrape(), "kinowo_worker_ttl_index_mismatches") shouldBe Some(1.0)
+    val mismatches = new TtlIndexMismatches
+    mismatches.record(sentinel)
+    PrometheusExposition.value(scrape(mismatches), "kinowo_worker_ttl_index_mismatches") shouldBe Some(1.0)
+  }
+
+  it should "count only the mismatches its own process recorded" in {
+    new TtlIndexMismatches().record(sentinel)
+    PrometheusExposition.value(scrape(), "kinowo_worker_ttl_index_mismatches") shouldBe Some(0.0)
   }
 
   /** THE COLLISION THIS GAUGE WOULD OTHERWISE HIDE. A worker JVM builds one wiring per
@@ -59,28 +61,26 @@ class TtlIndexMetricsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterE
    *  one and drop the gauge to zero with the index still wrong — a false negative in
    *  the metric that exists to prevent false negatives. */
   it should "not let one database's entry clear another's for the same collection name" in {
-    MongoTtlIndex.Mismatches.record("kinowo_pl.uptimeBuckets")
-    MongoTtlIndex.Mismatches.record("kinowo_de.uptimeBuckets")
-    try {
-      PrometheusExposition.value(scrape(), "kinowo_worker_ttl_index_mismatches") shouldBe Some(2.0)
-      MongoTtlIndex.Mismatches.resolved("kinowo_de.uptimeBuckets")
-      withClue("Germany's healthy index cleared Poland's broken one: ")(
-        PrometheusExposition.value(scrape(), "kinowo_worker_ttl_index_mismatches") shouldBe Some(1.0))
-    } finally {
-      MongoTtlIndex.Mismatches.resolved("kinowo_pl.uptimeBuckets")
-      MongoTtlIndex.Mismatches.resolved("kinowo_de.uptimeBuckets")
-    }
+    val mismatches = new TtlIndexMismatches
+    mismatches.record("kinowo_pl.uptimeBuckets")
+    mismatches.record("kinowo_de.uptimeBuckets")
+    PrometheusExposition.value(scrape(mismatches), "kinowo_worker_ttl_index_mismatches") shouldBe Some(2.0)
+    mismatches.resolved("kinowo_de.uptimeBuckets")
+    withClue("Germany's healthy index cleared Poland's broken one: ")(
+      PrometheusExposition.value(scrape(mismatches), "kinowo_worker_ttl_index_mismatches") shouldBe Some(1.0))
   }
 
   it should "fall back to zero once that index is reconciled, so the alert clears itself" in {
-    MongoTtlIndex.Mismatches.record(sentinel)
-    MongoTtlIndex.Mismatches.resolved(sentinel)
-    PrometheusExposition.value(scrape(), "kinowo_worker_ttl_index_mismatches") shouldBe Some(0.0)
+    val mismatches = new TtlIndexMismatches
+    mismatches.record(sentinel)
+    mismatches.resolved(sentinel)
+    PrometheusExposition.value(scrape(mismatches), "kinowo_worker_ttl_index_mismatches") shouldBe Some(0.0)
   }
 
   it should "add no country label of its own — one reconciler serves every country in the JVM" in {
-    // `MongoTtlIndex` is an `object`, so the collections Poland reconciles are recorded in
-    // the same set Germany's wiring writes to; a country label MINTED HERE would be a lie.
+    // The worker's one metrics bundle hands the SAME mismatch set to every country's wiring,
+    // so the collections Poland reconciles land beside Germany's; a country label MINTED HERE
+    // would be a lie.
     // Prometheus still attaches a `country` TARGET label naming the pod, which is honest and
     // is what `TtlIndexUnreconciled` groups by — this asserts the metric does not invent one,
     // not that the alert has none to group by.

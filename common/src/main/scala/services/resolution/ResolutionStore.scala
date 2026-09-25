@@ -115,7 +115,9 @@ class MongoResolutionStore(
   // collection holds. The worker passes its country's; defaults to the
   // REQUIRED here: a hint key written under one country's rules and read under
   // another's addresses a row that isn't there.
-  override val normalizer: services.movies.TitleNormalizer
+  override val normalizer: services.movies.TitleNormalizer,
+  // Where a TTL index this store could not bring into line is recorded.
+  ttlMismatches: services.TtlIndexMismatches
 ) extends ResolutionStore with Logging {
 
 
@@ -190,5 +192,5 @@ class MongoResolutionStore(
    *  the same call `UptimeMonitor.ensureIndexes` makes, and its comment explains
    *  why the `collMod` this used to fire unconditionally never worked. */
   private def ensureTtlIndex(c: MongoCollection[Document]): Unit =
-    services.MongoTtlIndex.reconcile(c, "at", ResolutionStore.Ttl.toSeconds, "ResolutionStore")
+    services.MongoTtlIndex.reconcile(c, "at", ResolutionStore.Ttl.toSeconds, "ResolutionStore", ttlMismatches)
 }

@@ -12,7 +12,7 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.{MongoTtlIndex, UptimeMonitor}
+import services.{MongoTtlIndex, TtlIndexMismatches, UptimeMonitor}
 import tools.Env
 
 import java.util.concurrent.TimeUnit
@@ -35,6 +35,10 @@ import scala.jdk.CollectionConverters._
  * boot regardless, the new one sends none once the index agrees.
  */
 class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with Eventually {
+
+  /** This spec's own mismatch set — the tests that assert on it build a fresh one. */
+  private val mismatches = new TtlIndexMismatches
+
 
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
@@ -107,7 +111,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
     val collection = sentinel("create")
     forget()
 
-    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec")
+    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec", mismatches)
 
     expiryOf(collection, "at") shouldBe Some(86400L)
     sent("createIndexes") shouldBe 1
@@ -118,13 +122,13 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
 
   it should "send no collMod when the expiry already matches" in {
     val collection = sentinel("agrees")
-    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec")
+    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec", mismatches)
     expiryOf(collection, "at") shouldBe Some(86400L)
 
     // Second call is the one under test: this is what every pod boot after the
     // first does, and it is where the ~300 rejected commands per rollout came from.
     forget()
-    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec")
+    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec", mismatches)
 
     sent("listIndexes") shouldBe 1
     sent("collMod") shouldBe 0
@@ -141,7 +145,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
     expiryOf(collection, "at") shouldBe Some(100L)
 
     forget()
-    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec")
+    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec", mismatches)
 
     expiryOf(collection, "at") shouldBe Some(86400L)
     // DROP THEN CREATE, NOT collMod. `readWrite` carries dropIndex and createIndex and
@@ -154,7 +158,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
     sent("createIndexes") shouldBe 1
     // The read-back after the rebuild is what would catch a drop that succeeded and a
     // create that did not, so a reconciled index must leave nothing outstanding.
-    MongoTtlIndex.Mismatches.names should not contain collection.namespace.getCollectionName
+    mismatches.names should not contain collection.namespace.getCollectionName
   }
 
   it should "report a mismatch when the index cannot be reconciled at all" in {
@@ -162,17 +166,13 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
     // the un-reconcilable branch without a restricted user: an invalid collection name
     // fails both the read and the create.
     val collection = database.getCollection[Document]("__integration_test_ttl_$bad$name")
-    try {
-      MongoTtlIndex.reconcile(collection, "at", 86400L, "spec")
-      // BY NAMESPACE, NOT BY COLLECTION NAME. A worker JVM builds one wiring per country and
-      // every country owns a collection of each name, so a bare name is not an identity: one
-      // country reconciling its copy would clear another country's record of a broken one.
-      MongoTtlIndex.Mismatches.names should contain (collection.namespace.getFullName)
-      MongoTtlIndex.Mismatches.count should be > 0
-    } finally
-      // The register is process-wide, so a spec that leaves an entry in it changes what every
-      // later spec in this JVM reads from the gauge.
-      MongoTtlIndex.Mismatches.resolved(collection.namespace.getFullName)
+    val mismatches = new TtlIndexMismatches
+    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec", mismatches)
+    // BY NAMESPACE, NOT BY COLLECTION NAME. A worker JVM builds one wiring per country and
+    // every country owns a collection of each name, so a bare name is not an identity: one
+    // country reconciling its copy would clear another country's record of a broken one.
+    mismatches.names should contain (collection.namespace.getFullName)
+    mismatches.count should be > 0
   }
 
   /** WHAT THE REGISTER IS KEYED BY, which is the whole reason the gauge can be trusted.
@@ -184,11 +184,10 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
    *  supplies a namespace rather than a name, which is what makes the two distinguishable. */
   it should "record a mismatch under its full namespace, not the bare collection name" in {
     val collection = database.getCollection[Document]("__integration_test_ttl_$clash$")
-    try {
-      MongoTtlIndex.reconcile(collection, "at", 86400L, "spec")
-      MongoTtlIndex.Mismatches.names should contain (s"${database.name}.__integration_test_ttl_$$clash$$")
-      MongoTtlIndex.Mismatches.names should not contain "__integration_test_ttl_$clash$"
-    } finally MongoTtlIndex.Mismatches.resolved(collection.namespace.getFullName)
+    val mismatches = new TtlIndexMismatches
+    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec", mismatches)
+    mismatches.names should contain (s"${database.name}.__integration_test_ttl_$$clash$$")
+    mismatches.names should not contain "__integration_test_ttl_$clash$"
   }
 
   /** THE READ TIER MUST NOT DROP AN INDEX THE WRITER DEPENDS ON. Both tiers write
@@ -211,10 +210,10 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
     withClue("the read tier changed an expiry it does not own: ")(expiryOf(collection, "at") shouldBe Some(100L))
     // And it does not raise the gauge: the owner is what reports, or the same index would be
     // counted once per process that noticed it.
-    MongoTtlIndex.Mismatches.names should not contain collection.namespace.getFullName
+    mismatches.names should not contain collection.namespace.getFullName
 
     // The owner, on the identical state, does rebuild it.
-    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec")
+    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec", mismatches)
     expiryOf(collection, "at") shouldBe Some(86400L)
   }
 
@@ -258,7 +257,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
     ).toFuture(), 10.seconds)
 
     forget()
-    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec")
+    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec", mismatches)
 
     // A TTL index is single-field by definition; the compound one is not the index
     // being reconciled, so the single-field TTL still has to be CREATED.

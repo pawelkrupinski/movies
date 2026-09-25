@@ -34,7 +34,8 @@ trait ScrapeWiring { self: WorkerWiring =>
     // across worker servers, not just within one process.
     // One collection PER CHAIN: the TTL index is a property of the collection, so two
     // chains sharing it means one of their expiries silently loses (see the class doc).
-    (chain, h, ttl) => new MongoCachingDetailFetch(h, mongoConnection.database, ttl, s"detailCache-$chain"),
+    (chain, h, ttl) => new MongoCachingDetailFetch(h, mongoConnection.database, ttl, s"detailCache-$chain",
+      workerMetrics.ttlIndexMismatches),
     // Kino Kryterium (bilety.ck105.koszalin.pl) times out our Fly egress IP AND
     // every Decodo proxy IP at the TCP layer, so a direct scrape came back empty
     // → a permanent white /uptime bar. Only Zyte's true-residential network

@@ -36,7 +36,10 @@ class MongoCachingDetailFetch(
   // `MongoTtlIndex.reconcile` below now applies whatever expiry it is handed, so two
   // owners sharing a collection would take turns rewriting the index instead of one
   // silently losing — visible rather than invisible, but no more correct.
-  collectionName: String
+  collectionName: String,
+  // Where a TTL index this cache could not bring into line is recorded — the process's
+  // one set, which the worker's gauge reads.
+  ttlMismatches:  TtlIndexMismatches
 ) extends HttpFetch with Logging {
 
   private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(collectionName))
@@ -51,7 +54,7 @@ class MongoCachingDetailFetch(
   // to show for it. See that helper's comment for the same defect in two other places.
   coll.foreach { c =>
     val thread = new Thread(() => {
-      MongoTtlIndex.reconcile(c, "fetchedAt", ttl.toSeconds, "Detail-cache")
+      MongoTtlIndex.reconcile(c, "fetchedAt", ttl.toSeconds, "Detail-cache", ttlMismatches)
     }, "detail-cache-init")
     thread.setDaemon(true)
     thread.start()

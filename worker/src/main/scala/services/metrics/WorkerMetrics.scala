@@ -41,7 +41,9 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: Int) {
 
   // TTL indexes the reconciler could not bring into line — also process-level, and
   // also a count rather than a labelled series, for the reason its own doc gives.
-  TtlIndexMetrics.register(registry)
+  // The one mismatch set every country's reconcilers record into, which the gauge reads.
+  val ttlIndexMismatches: services.TtlIndexMismatches = new services.TtlIndexMismatches
+  TtlIndexMetrics.register(registry, ttlIndexMismatches)
 
   // In-process cache occupancy (`kinowo_worker_cache_*`), one labelled family for
   // every cache any country's wiring registers. Registered once here; the callback

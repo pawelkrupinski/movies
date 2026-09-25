@@ -58,7 +58,8 @@ object MongoTtlIndex extends Logging {
     collection:    MongoCollection[Document],
     field:         String,
     wantedSeconds: Long,
-    label:         String
+    label:         String,
+    mismatches:    TtlIndexMismatches
   ): Unit = {
     val name = collection.namespace.getCollectionName
     // THE KEY IS THE NAMESPACE, NOT THE COLLECTION NAME. A worker JVM builds one wiring per
@@ -76,11 +77,11 @@ object MongoTtlIndex extends Logging {
         logger.warn(s"$label: $name TTL index on `$field` could not be read, so it is left as it is: ${exception.getMessage}")
 
       case Success(Some(actual)) if actual == wantedSeconds =>
-        Mismatches.resolved(key)
+        mismatches.resolved(key)
 
       case Success(Some(actual)) =>
         logger.warn(s"$label: $name TTL index on `$field` expires after ${actual}s, want ${wantedSeconds}s — rebuilding it.")
-        rebuild(collection, field, wantedSeconds, label)
+        rebuild(collection, field, wantedSeconds, label, mismatches)
 
       case Success(None) =>
         create(collection, field, wantedSeconds, label).map { _ =>
@@ -90,12 +91,12 @@ object MongoTtlIndex extends Logging {
           // per namespace per process, so nothing recorded a mismatch earlier in this JVM for
           // the clear to matter — which is why no case reaches it and none is invented. It is
           // here so the invariant holds if that ever stops being true.
-          Mismatches.resolved(key)
+          mismatches.resolved(key)
         }.recover { case exception =>
           // The read said there is no index, so a create that fails is a real failure: the
           // collection goes unreaped (or a concurrent writer's index conflicts with ours).
           logger.warn(s"$label: $name has no TTL index on `$field` and one could not be created: ${exception.getMessage}")
-          Mismatches.record(key)
+          mismatches.record(key)
         }
     }
   }
@@ -181,9 +182,10 @@ object MongoTtlIndex extends Logging {
    *  THE FAILURE THAT MATTERS IS A DROP THAT SUCCEEDS AND A CREATE THAT DOES NOT —
    *  the collection is then left with NO TTL index and grows without bound. So the
    *  expiry is READ BACK AGAIN afterwards and a disagreement is recorded in
-   *  [[Mismatches]] for `TtlIndexMetrics` to publish, because this is exactly the
+   *  [[TtlIndexMismatches]] for `TtlIndexMetrics` to publish, because this is exactly the
    *  class of failure that spent months invisible in a `logger.debug`. */
-  private def rebuild(collection: MongoCollection[Document], field: String, wantedSeconds: Long, label: String): Unit = {
+  private def rebuild(collection: MongoCollection[Document], field: String, wantedSeconds: Long, label: String,
+                      mismatches: TtlIndexMismatches): Unit = {
     val name = collection.namespace.getCollectionName
     val key  = collection.namespace.getFullName
     Try {
@@ -195,47 +197,20 @@ object MongoTtlIndex extends Logging {
     } match {
       case Failure(exception) =>
         logger.warn(s"$label: $name TTL index on `$field` could not be rebuilt to ${wantedSeconds}s: ${exception.getMessage}")
-        Mismatches.record(key)
+        mismatches.record(key)
       case Success(_) =>
         currentExpiry(collection, field) match {
           case Success(Some(actual)) if actual == wantedSeconds =>
             logger.info(s"$label: $name TTL index on `$field` now expires after ${wantedSeconds}s.")
-            Mismatches.resolved(key)
+            mismatches.resolved(key)
           // Unreadable counts as a mismatch HERE, unlike at the start: this process has just
           // dropped the index, so "could not look" may well mean "there is none".
           case other =>
             val readBack = other.fold(e => s"UNREADABLE (${e.getMessage})", _.fold("ABSENT")(_.toString))
             logger.warn(s"$label: $name TTL index on `$field` reads back as $readBack " +
               s"after a rebuild to ${wantedSeconds}s — the collection may now have NO TTL index and will grow.")
-            Mismatches.record(key)
+            mismatches.record(key)
         }
     }
-  }
-
-  /** Collections whose TTL expiry is known to disagree with the code, published as
-   *  `kinowo_worker_ttl_index_mismatches` by `services.metrics.TtlIndexMetrics`.
-   *
-   *  A COUNT THAT IS ALWAYS PRESENT, not a per-collection series that vanishes when
-   *  healthy: an alerting expression fires on the PRESENCE of a sample rather than
-   *  on its truth, and a gauge that disappears in the good case cannot be told from
-   *  a gauge that disappeared because the exporter did. The collection NAMES are in
-   *  the WARN lines above, which is where triage reads them. */
-  object Mismatches {
-    /** Keyed by NAMESPACE (`database.collection`) — see `reconcile`. Every country in this JVM
-     *  has a collection of each name, so the bare name is not an identity. */
-    private val namespaces = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
-    /** ONLY THE RECONCILER MAY CREATE A MISMATCH. Package-private so no other caller can
-     *  invent one — a gauge anybody can raise is a gauge nobody trusts. */
-    private[services] def record(namespace: String): Unit = { namespaces.add(namespace); () }
-
-    /** Clearing is public and idempotent, because it has honest callers outside this package:
-     *  a successful reconcile, and any test that has to leave this process-wide register as it
-     *  found it. Clearing an entry cannot manufacture a problem — at worst it silences one
-     *  until the next construction re-reads the index and records it again. */
-    def resolved(namespace: String): Unit = { namespaces.remove(namespace); () }
-    /** How many TTL indexes are known to be wrong right now. Zero is healthy. */
-    def count: Int = namespaces.size
-    /** The namespaces, for a diagnostic page or a test — not for a metric label. */
-    def names: Set[String] = { import scala.jdk.CollectionConverters._; namespaces.asScala.toSet }
   }
 }

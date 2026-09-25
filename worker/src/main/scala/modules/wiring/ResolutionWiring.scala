@@ -52,7 +52,8 @@ trait ResolutionWiring { self: WorkerWiring =>
     unresolved: UnresolvedPolicy = UnresolvedPolicy.Retry
   ): ResolutionCache =
     new WriteThroughResolutionCache(
-      new MongoResolutionStore(mongoConnection.database, collection, normalizer = titleNormalizer),
+      new MongoResolutionStore(mongoConnection.database, collection, normalizer = titleNormalizer,
+        ttlMismatches = workerMetrics.ttlIndexMismatches),
       // Labels the counter with the source this collection serves (`resolve_rt` →
       // `rt`), so `kinowo_worker_resolution_total` breaks the saving down per
       // rating source rather than lumping all five together.

@@ -68,7 +68,8 @@ class WorkerWiring(
   val workerMetrics: WorkerMetrics =
     injectedWorkerMetrics.getOrElse(
       WorkerMetrics.singleCountry(country, Env.positiveInt("KINOWO_WORKER_POOL_SIZE", 4)))
-  lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database, clock = clock)
+  lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database, clock = clock,
+    ttlMismatches = workerMetrics.ttlIndexMismatches)
 
   // ── Filmweb (per-country) ───────────────────────────────────────────────────
   // Whether the Filmweb rating + fallback path is wired at all — a per-country

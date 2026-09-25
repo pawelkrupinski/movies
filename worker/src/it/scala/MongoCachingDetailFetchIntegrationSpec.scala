@@ -53,8 +53,8 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
   "Two MongoCachingDetailFetch instances sharing a collection" should "fetch the underlying only once for the same URL" in {
     val url   = s"https://chain/film/${System.nanoTime()}"
     val under = new CountingFetch
-    val serverA = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName)
-    val serverB = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName)
+    val serverA = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName, ttlMismatches = new services.TtlIndexMismatches)
+    val serverB = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName, ttlMismatches = new services.TtlIndexMismatches)
 
     serverA.get(url) shouldBe s"<html>$url</html>" // fetches + stores
     awaitStored(url)                               // wait out the fire-and-forget store (no race)
@@ -65,7 +65,7 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
 
   it should "re-fetch a different URL (cache is per-URL)" in {
     val under = new CountingFetch
-    val server = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName)
+    val server = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName, ttlMismatches = new services.TtlIndexMismatches)
     server.get(s"https://chain/a/${System.nanoTime()}")
     server.get(s"https://chain/b/${System.nanoTime()}")
     under.gets shouldBe 2
@@ -80,8 +80,8 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     val under = new CountingFetch {
       override def get(u: String): String = { gets += 1; throw new tools.HttpStatusException(404, "GET", u, None) }
     }
-    val serverA = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName)
-    val serverB = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName)
+    val serverA = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName, ttlMismatches = new services.TtlIndexMismatches)
+    val serverB = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName, ttlMismatches = new services.TtlIndexMismatches)
 
     a [tools.HttpStatusException] should be thrownBy serverA.get(url)
     awaitStored(url)
@@ -95,7 +95,7 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     val under = new CountingFetch {
       override def get(u: String): String = { gets += 1; throw new tools.HttpStatusException(410, "GET", u, None) }
     }
-    val server = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName)
+    val server = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName, ttlMismatches = new services.TtlIndexMismatches)
     a [tools.HttpStatusException] should be thrownBy server.get(url)
     awaitStored(url)
     the [tools.HttpStatusException] thrownBy server.get(url) should have (Symbol("code") (410))
@@ -117,11 +117,11 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
       // this exact sequence in a loop: 8 of 60 on a missing collection, 0 of 150 on an existing one.
       // It is the two owners overlapping, which production never does: one worker owns each cache.
       Await.result(db.createCollection(name).toFuture(), 10.seconds)
-      new MongoCachingDetailFetch(new CountingFetch, Some(db), 6.hours, name)
+      new MongoCachingDetailFetch(new CountingFetch, Some(db), 6.hours, name, ttlMismatches = new services.TtlIndexMismatches)
       awaitExpiry(name, 6.hours.toSeconds)
 
       // A second owner-lifetime with a different duration — a redeploy after the constant moved.
-      new MongoCachingDetailFetch(new CountingFetch, Some(db), 2.hours, name)
+      new MongoCachingDetailFetch(new CountingFetch, Some(db), 2.hours, name, ttlMismatches = new services.TtlIndexMismatches)
       awaitExpiry(name, 2.hours.toSeconds)
     } finally Await.ready(db.getCollection(name).drop().toFuture(), 10.seconds)
   }
@@ -144,7 +144,7 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     val under = new CountingFetch {
       override def get(u: String): String = { gets += 1; throw new tools.HttpStatusException(503, "GET", u, None) }
     }
-    val server = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName)
+    val server = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName, ttlMismatches = new services.TtlIndexMismatches)
     a [tools.HttpStatusException] should be thrownBy server.get(url)
     a [tools.HttpStatusException] should be thrownBy server.get(url)
     under.gets shouldBe 2

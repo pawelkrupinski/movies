@@ -39,7 +39,8 @@ class UnreadableStoresReportFailureSpec extends AnyFlatSpec with Matchers with B
   // about an index it never saw.
   "MongoTtlIndex.reconcile" should "record no mismatch for an index it could not read" in {
     val collection = db.getCollection[Document]("unreadable_ttl")
-    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec")
-    MongoTtlIndex.Mismatches.names should not contain collection.namespace.getFullName
+    val mismatches = new TtlIndexMismatches
+    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec", mismatches)
+    mismatches.names should not contain collection.namespace.getFullName
   }
 }

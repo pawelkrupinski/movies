@@ -2,7 +2,7 @@ package services.metrics
 
 import io.prometheus.metrics.core.metrics.GaugeWithCallback
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.MongoTtlIndex
+import services.TtlIndexMismatches
 
 /**
  * `kinowo_worker_ttl_index_mismatches` — TTL indexes whose expiry does not match
@@ -46,12 +46,12 @@ import services.MongoTtlIndex
  */
 object TtlIndexMetrics {
 
-  def register(registry: PrometheusRegistry): Unit =
+  def register(registry: PrometheusRegistry, mismatches: TtlIndexMismatches): Unit =
     GaugeWithCallback.builder()
       .name("kinowo_worker_ttl_index_mismatches")
       .help("TTL indexes whose expireAfterSeconds disagrees with the code and which the app could " +
         "not rebuild. Zero is healthy. Above zero, a collection is either reaping on the wrong " +
         "schedule or — if a rebuild dropped the index and failed to recreate it — not reaping at all.")
-      .callback(callback => callback.call(MongoTtlIndex.Mismatches.count.toDouble))
+      .callback(callback => callback.call(mismatches.count.toDouble))
       .register(registry)
 }

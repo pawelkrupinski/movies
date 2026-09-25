@@ -42,7 +42,10 @@ class UptimeMonitor(
   surfaceExternalWrites: Boolean = false,
   tagReloadIntervalMs: Long = UptimeMonitor.TagReloadIntervalMs,
   // What "now" is for bucketing and the averaging windows; a spec pins it.
-  clock: java.time.Clock = java.time.Clock.systemUTC()
+  clock: java.time.Clock = java.time.Clock.systemUTC(),
+  // Where a bucket TTL index this monitor could not bring into line is recorded — the
+  // worker passes its process's one set, which its gauge reads.
+  ttlMismatches: TtlIndexMismatches = new TtlIndexMismatches
 ) extends Logging {
   import UptimeMonitor._
 
@@ -112,7 +115,7 @@ class UptimeMonitor(
    *  serving app shares `uptimeBuckets` with the worker and gets `ensure`, which creates
    *  the index when absent and otherwise reports rather than rebuilding. */
   private def ensureIndexes(c: MongoCollection[Document]): Unit = {
-    if (ownsIndexes) MongoTtlIndex.reconcile(c, "bucket", BucketTtlSeconds, "UptimeMonitor")
+    if (ownsIndexes) MongoTtlIndex.reconcile(c, "bucket", BucketTtlSeconds, "UptimeMonitor", ttlMismatches)
     else             MongoTtlIndex.ensure(c, "bucket", BucketTtlSeconds, "UptimeMonitor (read tier)")
 
     Try {
