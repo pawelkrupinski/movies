@@ -173,7 +173,6 @@ class MovieController( cc: ControllerComponents,
                        minifier: tools.Minifier,
                      ) extends AbstractController(cc) with Logging {
 
-
   // The deployment's own, and ONLY, language. Every visitor gets this same
   // rendered `Messages` regardless of `Accept-Language`, cookie, or anything
   // else about the request — an explicit language pick swaps the visible
