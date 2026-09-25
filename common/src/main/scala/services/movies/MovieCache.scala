@@ -1396,6 +1396,11 @@ class CaffeineMovieCache(
     // that disappeared from Mongo since the last sync.
     import scala.jdk.CollectionConverters._
     val tFindAllStart = System.nanoTime()
+    // Marked BEFORE the read: a row this cache writes while `findAll` runs is newer than the
+    // snapshot, and storing (or evicting) it from the snapshot would undo the write — see
+    // [[FilmWriteFence]]. Such a row is left as the write made it; its own change-stream event,
+    // or the next backstop, reconciles it.
+    val marks         = repository.writeFence.markAll()
     val rows          = repository.findAll()
     val tFindAllMs    = (System.nanoTime() - tFindAllStart) / 1000000
     // `repository.findAll()` swallows every Mongo failure into `Seq.empty` — a
@@ -1439,13 +1444,19 @@ class CaffeineMovieCache(
     var changed = 0
     byKey.foreach { case (k, rs) =>
       val record = MovieRecordMerge.unionAll(rs.map(_.record))
-      if (!Option(positive.getIfPresent(k)).exists(ShowtimesDigest.leanEqual(_, record))) changed += 1
       // Several documents under one key are the same film twice; the lowest id is the
       // survivor, deterministically, and the others are reconciled below.
-      store(k, forCache(record), rs.map(_.id).minBy(_.value))
+      val survivor = rs.map(_.id).minBy(_.value)
+      repository.writeFence.ifUndisturbed(survivor.value, marks.of(survivor.value)) {
+        if (!Option(positive.getIfPresent(k)).exists(ShowtimesDigest.leanEqual(_, record))) changed += 1
+        store(k, forCache(record), survivor)
+      }
     }
-    val removed = positive.asMap().keySet().asScala.toSeq.filterNot(byKey.keySet.contains)
-    removed.foreach(evict)
+    // Only a key whose film nobody wrote since the snapshot: one this cache created or
+    // retitled meanwhile is absent from the snapshot because it is NEWER, not gone.
+    val removed = positive.asMap().keySet().asScala.toSeq.filterNot(byKey.keySet.contains).filter { k =>
+      corpusIndex.idOf(k).fold { evict(k); true }(id => repository.writeFence.ifUndisturbed(id.value, marks.of(id.value))(evict(k)))
+    }
     cacheMetrics.recordRehydrate(changed, removed.size)
     if (changed > 0 || removed.nonEmpty)
       logger.info(s"MovieCache rehydrate: caught $changed changed row(s) + ${removed.size} orphan-delete(s) " +

@@ -38,6 +38,16 @@ class FilmWriteFenceSpec extends AnyFlatSpec with Matchers {
     applies(fence, mark) shouldBe false
   }
 
+  it should "mark every film at once, refusing only the ones written since" in {
+    val fence = new FilmWriteFence()
+    val other = "other|2026"
+    val marks = fence.markAll()
+    fence.writing(film)(())
+    fence.ifUndisturbed(film.value, marks.of(film.value))(()) shouldBe false
+    fence.ifUndisturbed(other, marks.of(other))(()) shouldBe true
+    fence.writing(film)(fence.markAll().of(film.value)) shouldBe FilmWriteFence.InFlight
+  }
+
   it should "not run the apply it refuses" in {
     val fence = new FilmWriteFence()
     val mark  = fence.mark(film.value)

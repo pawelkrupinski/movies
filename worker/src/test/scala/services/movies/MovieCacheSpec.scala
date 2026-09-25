@@ -433,6 +433,55 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     } finally cache.stop()
   }
 
+  /** An in-memory store whose `findAll` runs `afterRead` once the rows are read and before
+   *  the caller gets them — the window in which the backstop rehydrate's snapshot goes stale. */
+  private final class RacedSnapshotRepository extends InMemoryMovieRepository(normalizer = titleNormalizer) {
+    @volatile var afterRead: () => Unit = () => ()
+    override def findAll(): Seq[StoredMovieRecord] = {
+      val rows = super.findAll()
+      val hook = afterRead; afterRead = () => (); hook()
+      rows
+    }
+  }
+
+  // The same rollback as the change stream's, through the backstop: `rehydrate` stored every
+  // row of a `findAll` snapshot, so a local write that landed after the snapshot was read
+  // was undone — and a row created after it was evicted as "gone from Mongo".
+  "a MovieCache rehydrate" should "not roll back a local write that landed after its snapshot was read" in {
+    val repository = new RacedSnapshotRepository
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = fixedClock)
+    val key        = cache.keyOf("Erupcja", Some(2024))
+    cache.put(key, mkEnrichment("tt1", rating = Some(7.0)))
+    repository.afterRead = () => { cache.putIfPresent(key, _.copy(imdbRating = Some(9.5))); () }
+    cache.rehydrate()
+    cache.get(key).flatMap(_.imdbRating) shouldBe Some(9.5)
+  }
+
+  it should "not evict a row created after its snapshot was read" in {
+    val repository = new RacedSnapshotRepository
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = fixedClock)
+    val old        = cache.keyOf("Erupcja", Some(2024))
+    val newcomer   = cache.keyOf("Kumotry", Some(2025))
+    cache.put(old, mkEnrichment("tt1"))
+    repository.afterRead = () => { cache.put(newcomer, mkEnrichment("tt2")); () }
+    cache.rehydrate()
+    cache.get(newcomer) shouldBe defined
+  }
+
+  it should "still apply a snapshot row no local write overtook, and evict a row Mongo no longer holds" in {
+    val repository = new RacedSnapshotRepository
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = fixedClock)
+    val kept       = cache.keyOf("Erupcja", Some(2024))
+    val gone       = cache.keyOf("Kumotry", Some(2025))
+    cache.put(kept, mkEnrichment("tt1", rating = Some(7.0)))
+    cache.put(gone, mkEnrichment("tt2"))
+    repository.upsert(kept.cleanTitle, kept.year, mkEnrichment("tt1", rating = Some(9.5))) // another writer
+    repository.delete(gone.cleanTitle, gone.year)
+    cache.rehydrate()
+    cache.get(kept).flatMap(_.imdbRating) shouldBe Some(9.5)
+    cache.get(gone) shouldBe None
+  }
+
   it should "stop applying changes once the watch is closed by stop()" in {
     val repository  = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = fixedClock)

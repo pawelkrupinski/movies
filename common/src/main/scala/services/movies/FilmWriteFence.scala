@@ -18,6 +18,9 @@ package services.movies
  *    read only through [[ifUndisturbed]], which refuses it when a local write of the film was
  *    in flight at the mark or began after it.
  *
+ * The cache's backstop `rehydrate` is the same race on a whole-corpus read: it takes
+ * [[markAll]] before its `findAll`, and neither stores nor evicts a film written since.
+ *
  * Refusing is safe because the disturbing write rings its OWN event, whose re-read comes
  * after it: the film still reaches the cache, just fresh. (A write that changes nothing in
  * Mongo rings nothing — but then the cache already holds what Mongo does.)
@@ -48,6 +51,15 @@ final class FilmWriteFence(stripes: Int = FilmWriteFence.DefaultStripes) {
     stripe.synchronized { if (stripe.started == stripe.finished) stripe.started else FilmWriteFence.InFlight }
   }
 
+  /** [[mark]] for EVERY film at once — taken before a whole-corpus read (the cache's backstop
+   *  `findAll`), whose films are not known until it returns. `marks.of(id)` is that film's mark. */
+  def markAll(): FilmWriteFence.Marks = {
+    val taken = table.map(stripe => stripe.synchronized {
+      if (stripe.started == stripe.finished) stripe.started else FilmWriteFence.InFlight
+    })
+    new FilmWriteFence.Marks(id => taken(Math.floorMod(id.hashCode, stripes)))
+  }
+
   /** Run `apply` — atomically with any local write's start — only if no local write of `id`
    *  was in flight at `mark` or has begun since. [[FilmWriteFence.Unfenced]] always applies.
    *  True when `apply` ran. */
@@ -70,4 +82,9 @@ object FilmWriteFence {
   /** The mark of a delivery that is not a snapshot racing a write — an in-memory store that
    *  notifies synchronously with the write itself. Always applied. */
   val Unfenced: Long = -2L
+
+  /** Every film's mark as of one instant — see [[FilmWriteFence.markAll]]. */
+  final class Marks private[FilmWriteFence] (markOf: String => Long) {
+    def of(id: String): Long = markOf(id)
+  }
 }
