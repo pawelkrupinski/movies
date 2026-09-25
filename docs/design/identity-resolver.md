@@ -46,6 +46,7 @@ commits, of which about 50 are identity fixes. A selection:
 | "It Ends with Us" landed on "It Ends" when it arrived second, but resolved alone when both arrived together | order | `listingDeniesFilm` on decoration landing (95f17ad40) |
 | "Zärtlich kreist die Faust" (1990) adopted onto Murnau's "Faust" (1926) by containment | wrong merge | venue-denied containment fold (b2d308432) |
 | Belle 2013/2021 (Arc Blackpool), Sinn und Sinnlichkeit 1995/2026 (Cinema-Arthouse) shared one slot, so one film showed the other's showtimes | data corruption | same-title slot split by year (338af3edf) |
+| Marion Theatre Ocala's "Planet of the Apes" (Schaffner, no year) and "Planet of the Apes (2001)" (Burton) still shared one slot: one year among two is no year *disagreement* | data corruption | the same-venue fold also splits on directors crediting no common person, `ListingConstraints.venueCreditsApart` (branch `slot-key-collisions`) |
 | "It" 1990/2017: yearless rows folded by title | wrong merge | unresolved groups filed at their bracketed years (e96dbf496) |
 | Avengers rerelease and new arrival orders | order | 3ddc1a100 |
 | A late-resolving row's showtimes lost when TMDB's year re-keyed or folded it | data loss | ce90509fd |
@@ -182,7 +183,7 @@ A **listing** is one row of one venue's scrape. Its key is `ListingKey`
   (Ang Lee 1995 and Georgia Oakley 2026), and Club Manufaktur lists "Bad Apples" twice (2018 and
   2025).
 
-`ListingKeyCorpusSpec` checks uniqueness per distinct listing over 14 corpora (185,437 listings,
+`ListingKeyCorpusSpec` checks uniqueness per distinct listing over 15 corpora (185,439 listings,
 all five full recorded corpora included when `KINOWO_IDENTITY_CORPUS_DIR` is set), and shows that
 every naive key fails somewhere: venue + raw title, venue + page, the prototype's `ListingId`, and
 the production slot key.
@@ -193,9 +194,28 @@ Consequences:
   page-less venue corrects its year or director, the listing gets a new key, and its film keeps
   its FilmId only through overlap with its other listings (§6). A page-bearing listing survives
   any such correction.
-- Slots and screenings keyed by ListingKey make the Belle class structurally impossible. The P4
-  count of production slot keys shared by two resolver films today is 13 in UK and 234 in US
-  *(proof)*.
+- Slots and screenings keyed by ListingKey make the Belle class structurally impossible.
+- **The slot-key finding.** The proof counted production slot keys `(venue, sanitize(title))`
+  holding listings of two resolver films: 13 in UK and 234 in US *(proof)* (Candyman
+  1992/2021 at the Regals, Halloween 1978/2007 at the Prince Charles, Resident Evil 2002/2026 at
+  Cannock). That count reads *raw* rows, and the slot key alone is indeed not unique. What
+  decides whether two films share a slot is `ScrapeListing.prepare`'s same-title fold, and after
+  338af3edf it keeps every one of those bracketed-year pairs on its own slot. Re-checked over
+  all five full corpora (`ListingKeyCorpusSpec`, "the production slot fold"), exactly one pair
+  was still folded: Marion Theatre Ocala's yearless "Planet of the Apes" (Schaffner) with
+  "Planet of the Apes (2001)" (Burton), because one year among two is no year disagreement.
+  The fold now also splits on the venue's own directors crediting no common person
+  (`ListingConstraints.venueCreditsApart`; the landing's `ownCopy` reads the same rule), which
+  is `ListingKey.Published`'s discriminator. On the five corpora every same-venue, same-title
+  pair with disjoint directors also differs in year or runtime, so the rule splits no film.
+  The fold's discriminator is therefore the listing key's, and a (film, slot key) pair holds
+  one published film. Keying storage by `ListingKey` itself stays phase 2's job: it re-keys
+  every stored slot, which is the migration phase 2 plans.
+- The proof's shadow diff mapped each listing to a pipeline film through a `Map` keyed by that
+  same non-unique slot key, so where two films share it the listing lands on whichever the map
+  kept. Its UK category-2 "pipeline merged two films" cases (Halloween, Poltergeist, Belle, …)
+  and the category-4 Belle / Sinn und Sinnlichkeit artifacts are that mapping, not evidence of
+  a merge. The next shadow diff maps by `(film, ListingKey)`.
 - `ScrapeListing.prepare` folds a venue's rows per sanitised title before anything sees them,
   which hides every collision. The evidence store must keep raw rows, and that fold moves into
   the projection's display merge.
@@ -265,7 +285,7 @@ From the shadow diff:
   decorated "Lalka" spellings, "Casino Royale (20th Anniversary)" vs "Throwback: Casino Royale",
   "100 dni: Misja Zeus 2D PL", "Matilda (30th Anniversary)", and "Mockingjay – Part 2 (2026)"
   cannot-linked to the 2015 film by bracketed years. The pipeline joins these through containment
-  and group-level resolution, which the resolver does not yet have (§10).
+  and group-level resolution, which the resolver does not yet have (§7b).
 - *Undecidable from the evidence*: a listing that publishes only a title naming two or more
   films. Examples are Kino 1410's "Opętanie | klasyka w 4k", Amok's bare "Samson i Dalila",
   "Throwback: The Hunger Games", Alamo's "IT (2017)" with no sibling bracketing a year, the bare
@@ -277,6 +297,113 @@ From the shadow diff:
 - *Opera and event broadcasts*: the Met's and RBO's "Macbeth" are joined by a venue's
   `originalTitle`, and "Così fan tutte" is fragmented. These belong to the undecidable class
   until a broadcast has an identity of its own.
+
+---
+
+## 7a. What the shadow diff found
+
+The proof booted the real pipeline (`PipelineReplay`: every venue arrives in sorted order,
+staging advanced between venues, then the full settle and projection) over each recorded corpus
+and the same recorded answers, and compared films with resolver clusters by listing set
+*(proof)*:
+
+| corpus | pipeline films | resolver clusters | identical | identical share | boot |
+|---|---|---|---|---|---|
+| PL | 1,141 | 1,288 | 1,011 | 88.6% | 532 s |
+| UK | 1,539 | 1,590 | 1,468 | 95.4% | 949 s |
+| DE | 1,694 | 1,695 | 1,684 | 99.4% | 589 s |
+| ES | 236 | 236 | 236 | 100% | 107 s |
+| US | – | 2,320 | – | – | stopped after 65 min at ~1,500 of 4,452 venues |
+
+No listing lacked a pipeline slot in any corpus. The disagreements, by category:
+
+| category | PL | UK | DE | who is right |
+|---|---|---|---|---|
+| 1. resolver splits a pipeline film: no must-link joins the parts | 90 | 37 | 2 | the **pipeline**, bar DE's Faust |
+| 2. resolver splits on a cannot-link | 7 | 13 | 2 | mostly the resolver; UK's 13 are the slot-mapping artifact (§4) |
+| 3. resolver leaves an ambiguous node alone | 1 | 5 | 0 | undecidable from the listing |
+| 4. resolver merges pipeline films | 16 | 13 | 4 | mostly the **resolver** (Crash, Digger, Renoir); RBO/Met "Macbeth" is its error |
+| 5. same members, different film (resolver unresolved) | 83 | 71 | 38 | the pipeline; fixture gaps (§9) and thinner per-listing evidence |
+
+ES has 5 of category 5 and nothing else.
+
+**Reading.** Where the two disagree on a *merge*, the resolver is right more often: it has no
+path that merges on title shape against a resolved film's evidence. Where they disagree on a
+*split*, the pipeline is right: the prototype has neither containment nor group-level
+resolution, which are how the pipeline joins "100 dni: Misja Zeus 2D PL", "Throwback: Casino
+Royale", "Coraline - Sensory Friendly Screening" and the 18 decorated "Lalka" spellings to their
+films. §7b designs both back in.
+
+**US is unfinished.** The resolver side of US is complete (99,774 listings, 2,320 clusters, P1–P4
+held), but the pipeline boot scales with venues through `PipelineReplay`'s staging advance per
+venue and was stopped. Only the hard-cluster US diff (29 of 31 pipeline films identical) exists.
+See open question 8.
+
+**Historical replay verdicts** *(proof, full corpora)*:
+
+| case | verdict |
+|---|---|
+| A Star Is Born 1954/1976/2018 (US) | correct: three clusters |
+| Faust 1990 vs 1926 (DE) | correct: no containment edge exists |
+| It Ends with Us vs It Ends (US) | correct |
+| Belle 2013/2021 (UK) | correct: two clusters, two listing keys |
+| Avengers: Endgame rerelease (PL) | correct: joins 299534 with 143 venues |
+| UK "(2026)" rereleases (Hope, Resident Evil, Moana, …) | mostly correct; "Mockingjay – Part 2 (2026)" ×63 is split off (wrong but stable) |
+| Hunger Games siblings | correct per instalment, bar the Part 2 rerelease |
+| Lalka / Überleben / Matilda / Samson churn | correct by construction (P2, 0 id changes) |
+| Vue showtimes deleted on re-key (UK) | correct by construction (P4); not replayable on today's corpus |
+| Happy Together (PL) | no wrong binding; the right film is not found either |
+| Skarpetek instalments (PL) | order-stable, mostly correct |
+| It 1990/2017 (US) | order-stable; Alamo's "IT (2017)" left alone by the too-coarse ambiguity rule |
+| Met "Samson i Dalila" (PL) | wrong but stable: the Met decoration is the only evidence and no edge reads it |
+| Così fan tutte (PL) | wrong but stable: the broadcast is fragmented (under-merge) |
+| Lalka decorated spellings (PL) | wrong but stable: 18 spellings stay out (no containment) |
+| Opętanie (PL) | undecidable: the title names two films and the listing publishes nothing else |
+
+---
+
+## 7b. Containment and group-level resolution, order-independent
+
+Both are how the pipeline gets category 1 right, and both are today *incremental*: containment
+reads the rows already landed, group resolution resolves the group the fold happened to build.
+Each is added back as a deterministic function of the listing set.
+
+**Containment as a tier-4 must-link, by segment.** A listing's title is split at programme
+delimiters (`|`, `:`, ` - `, `–`, a bracket pair, "presented in", "sensory friendly") into
+segments, each normalised to its search form. A containment edge joins A and B when A's whole
+search form **equals one whole segment** of B's. The block key is each segment: B emits all its
+segments, A emits its search form, so every edge joins two listings that share a block key and
+the family closure stays complete (§5). Whole segments, not token n-grams, because the Faust and
+It Ends failures are both *intra*-segment: "Zärtlich kreist die Faust" has no delimiter before
+"Faust", "It Ends with Us" none before "with". The edge is guarded by `VenueDeniesFilm`,
+`ListingDeniesFilm` and a new `BroadcastSeries` cannot-link (a Met / RBO / NT Live marker on one
+side and not the other), and the ambiguity rule applies unchanged: "Throwback: The Hunger
+Games" reaches two cannot-linked instalments and stays alone. Format suffixes ("2D PL") belong in
+`FormatTags`, not here.
+
+**Group-level resolution as a fixpoint over partitions.** The pipeline resolves a merged group's
+pooled evidence: one venue's director or year resolves every venue's bare listing. The resolver
+does it in rounds, each a function of the previous round's partition:
+
+1. Round 0 is today's resolve: per-listing lookups, solve, partition P0.
+2. Round k+1: for each cluster of Pk that holds an unresolved node, pool its members' evidence
+   canonically (the modal own year, smallest on a tie; the union of directors, sorted; the
+   runtimes that agree with the majority) and resolve the pooled evidence. The answer becomes an
+   attribute of every member with no answer of its own, drawn as a tier-1 must-link to that
+   TMDB id's component. A member's own answer always wins, and cannot-links still win over
+   everything.
+3. Stop when Pk+1 = Pk.
+
+Order-independence: P0 is a function of the set (A2); a cluster's pooled evidence is a function
+of its members, so round k+1's lookups and edges are a function of Pk; by induction every round
+is a function of the set. Termination: a round only adds must-links, so partitions coarsen
+monotonically and there are at most (nodes − 1) rounds, in practice one or two. A1 weakens from
+"no lookup depends on another's answer" to "every lookup is a function of the set", which the
+permutation checks still test, and the lazy-lookup mutant stays detectable. The recording pass
+(§9) gains the pooled queries as a second round of `IdentityLookupSweep`.
+
+Each must be proven the way the rest was: a hard cluster, and a mutation that the checks catch
+(dropping the whole-segment rule merges Faust; pooling in arrival order fails P1).
 
 ---
 
@@ -365,7 +492,7 @@ countries; that is phase 1's first acceptance check.
 
 ### Phase 0
 
-- `ListingKeyCorpusSpec` is green on all 14 corpora, and red with any naive key.
+- `ListingKeyCorpusSpec` is green on all 15 corpora, and red with any naive key; its slot-fold check is green.
 - `ListingConstraintsRoutingSpec` is green. The veto specs (`DeniedCandidateSpec`,
   `DecorationVetoSpec`, `ContainmentDeniedByVenueSpec`, `StagingFoldSpec`,
   `BareListingOneHomeSpec`), `testUnit`, `itAll` (including `HardClusterConvergenceIntegrationSpec`)
@@ -377,17 +504,22 @@ countries; that is phase 1's first acceptance check.
 
 - P1/P2/P3 hold on every live resolve. Any crossing edge fails the resolve and pages. The shadow
   diff is identical run to run on an unchanged corpus.
-- The shadow diff against production, measured in listings:
-  - **identical ≥ 95%**. Measured on the proof's corpora: DE 99.4%, UK 95.4%, PL 88.6% (by
-    films). PL does not pass until containment edges land (below).
-  - **"resolver merges pipeline films" (category 4)**: every case reviewed and classified. The
-    `known-issues` list (below) holds each one that is a resolver error.
-  - **"resolver = — where the pipeline resolved" (category 5)**: ≤ 1% of listings, with 0 caused
-    by fixture gaps.
-- The under-merge categories (1 and 3) are added back as edges, each with a block key and a
-  cannot-link guard, and each proven by a hard cluster: containment decoration (the Lalka
-  spellings), the anniversary / throwback / 2D suffix, and group-level resolution as a tier-4
-  must-link. Every one must keep "Zärtlich kreist die Faust" and "It Ends with Us" apart.
+- The shadow diff against production maps listings to films by `(film, ListingKey)`, never by
+  slot key (§4), and is measured per category rather than as one share, because the categories
+  have opposite owners (§7a):
+  - **identical ≥ 97% of films in every country**, once §7b's edges land. Measured without them
+    (by films): ES 100%, DE 99.4%, UK 95.4%, PL 88.6%.
+  - **category 1, resolver under-merges: ≤ 1% of films**, and 0 of the named cases (the Lalka
+    spellings, Casino Royale, 100 dni, Coraline, Digger). Today PL 90 (7.9%), UK 37 (2.4%), DE 2.
+  - **categories 2 and 4, merge disagreements**: every case reviewed and on the `known-issues`
+    list with a verdict. No threshold, since the resolver is usually the right side.
+  - **category 3, ambiguous**: every case on the list as *undecidable*.
+  - **category 5, resolver unresolved where the pipeline resolved: ≤ 1% of listings**, with 0
+    caused by fixture gaps. Today PL 83, UK 71, DE 38, ES 5 films, mostly gaps.
+  - **US** enters phase 1 only once its diff exists at all (open question 8), with the same
+    thresholds.
+- Each §7b edge is proven by a hard cluster and a mutation, and every one keeps "Zärtlich kreist
+  die Faust" and "It Ends with Us" apart.
 
 ### The known-issues list is the acceptance test
 
@@ -445,10 +577,8 @@ countries; that is phase 1's first acceptance check.
 
 ## 12. Open questions
 
-1. **Containment and group-level evidence.** How can the under-merges (category 1, and PL's 90
-   cases) be recovered without reintroducing Faust? The proposal is containment as a tier-3
-   must-link whose block key is every token n-gram of at least two words, guarded by
-   `VenueDeniesFilm` and `ListingDeniesFilm`. Its family-size cost needs measuring first.
+1. **Containment and group-level evidence.** §7b proposes both. Open: the delimiter list, and
+   the family-size cost of segment block keys, which needs measuring on PL before it ships.
 2. **The ambiguity rule is too coarse** where a bracketed year matches one side (Alamo's
    "IT (2017)"). Should an ambiguous node be allowed to join the side its own stated year agrees
    with?
@@ -464,5 +594,8 @@ countries; that is phase 1's first acceptance check.
 7. **Family-size ceiling.** The US wide releases reach 3,179 listings. The resolve is O(nodes)
    per family, but a pathological bridge could join two blockbusters. Should there be a size alarm
    on `FamilyClosure.merges`?
-8. **The shadow diff for US and ES** is still pending in the proof report. Their thresholds above
-   are provisional until it lands.
+8. **The US shadow diff** is still missing; ES has landed (236 of 236 identical). The replay boot
+   (`PipelineReplay`, one staging advance per venue) did not finish US's 4,452 venues in 65
+   minutes. Options: advance staging per *batch* of venues, or diff against the pipeline output
+   the US convergence leg already produces rather than booting a second time. Until one lands,
+   US rests on its hard cluster alone and cannot pass phase 1.
