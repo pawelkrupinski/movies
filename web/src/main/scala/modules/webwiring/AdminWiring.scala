@@ -50,6 +50,7 @@ trait AdminWiring { self: Wiring =>
     app          = "web",
     overrides    = new services.config.MongoEnvOverrideStore(mongoConnection.database),
     registry     = new services.config.MongoEnvRegistryStore(mongoConnection.database),
+    env          = Env.process,
     tickInterval = scala.concurrent.duration.Duration(Env.positiveLong("KINOWO_CONFIG_REFRESH_SECONDS", 30L), "seconds"))
   lazy val envConfigController = new EnvConfigController(controllerComponents, adminAction, envConfigService)
 }

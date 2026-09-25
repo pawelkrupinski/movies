@@ -13,8 +13,9 @@ import scala.util.Try
  * what it discovered so the `/admin/config` page can list every knob across both
  * apps. Run by BOTH web and worker:
  *
- *  - installs the override cache as [[Env]]'s override source, so every Env read
- *    sees a flip live (override wins over the env var);
+ *  - installs the override cache as the process [[Env]]'s override source, so
+ *    every read through that instance sees a flip live (override wins over the
+ *    env var);
  *  - on a periodic tick: refreshes the override cache (picks up flips made on the
  *    other process) and republishes this process's non-secret knobs + their
  *    current values to the shared registry.
@@ -28,19 +29,18 @@ class EnvConfigService(
   app:            String,
   overrides:      EnvOverrideStore,
   registry:       EnvRegistryStore,
+  // The process's config: overrides are installed into it, and its registry of
+  // read knobs is what gets published.
+  env:            Env,
   tickInterval:   FiniteDuration = 30.seconds,
-  isSecret:       String => Boolean = EnvKnobClassifier.isSecret,
-  // Injectable so the publish logic is unit-testable without Env's global,
-  // process-wide registry; production uses the real Env reads.
-  knobSource:     () => Seq[Env.Knob] = () => Env.knobs,
-  currentValueOf: String => Option[String] = Env.currentValue
+  isSecret:       String => Boolean = EnvKnobClassifier.isSecret
 ) extends Stoppable with Logging {
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("env-config")
 
   /** Wire the override cache into Env and start the refresh/publish loop. */
   def start(): Unit = {
-    Env.installOverrides(overrides.lookup)
+    env.installOverrides(overrides.lookup)
     scheduler.scheduleWithFixedDelay(
       () => Try(publishTick()), 0L, tickInterval.toSeconds, TimeUnit.SECONDS)
     logger.info(s"EnvConfigService[$app] started: overrides installed, publishing every ${tickInterval.toSeconds}s.")
@@ -49,8 +49,8 @@ class EnvConfigService(
   /** Refresh overrides from the store, then republish this process's knobs. */
   private[config] def publishTick(): Unit = {
     overrides.refresh()
-    val knobs = knobSource().filterNot(k => isSecret(k.key)).map { k =>
-      RegisteredKnob(app, k.key, k.kind, k.default, currentValueOf(k.key))
+    val knobs = env.knobs.filterNot(k => isSecret(k.key)).map { k =>
+      RegisteredKnob(app, k.key, k.kind, k.default, env.currentValue(k.key))
     }
     registry.publish(app, knobs)
   }

@@ -11,32 +11,29 @@ import scala.util.Try
  *      over every static source so a flip takes effect even when a Fly env var
  *      is set; consulted live on every read, so a knob read per-use changes
  *      mid-flight (no restart) within the override cache's refresh interval.
- *   1. Process environment variable (System.getenv)
- *   2. JVM system property of the same name (-Dkey=value or sys.props)
- *   3. `.env.local` in the working directory — a gitignored file for local dev.
- *      Format: simple `KEY=VALUE` lines, `#` for comments, optional quoting.
+ *   1. The static source this instance was built over — for [[Env.fromProcess]]:
+ *      the process environment variable (System.getenv), then the JVM system
+ *      property of the same name, then `.env.local` in the working directory (a
+ *      gitignored `KEY=VALUE` file for local dev, `#` for comments, optional
+ *      quoting — meant for secrets like ZYTE_API_KEY without polluting the shell).
  *
- * The `.env.local` route is meant for putting secrets like ZYTE_API_KEY in
- * a local file without polluting the shell or the repository.
+ * ONE instance per process, built at the composition root (`AppLoader` for web,
+ * `WorkerMain` for the worker) and handed to whatever reads a knob. It holds the
+ * process's mutable config state — the installed override source and the knob
+ * registry — which is why it is an instance rather than an object: two instances
+ * (two specs, two wirings under test) never see each other's overrides or knobs.
  *
- * Every read also self-registers its key, type and default into an in-memory
- * [[registry]], so the admin page can enumerate all knobs without a hand-kept
- * manifest: adding `Env.positiveLong("KINOWO_NEW", x)` anywhere surfaces it on
+ * Every read also self-registers its key, type and default into this instance's
+ * registry, so the admin page can enumerate all knobs without a hand-kept
+ * manifest: adding `env.positiveLong("KINOWO_NEW", x)` anywhere surfaces it on
  * the page on that process's next registry publish.
  */
-object Env {
+final class Env(staticSource: String => Option[String]) {
+  import Env.{Kind, Knob}
 
-  /** The kind of a registered knob — drives parsing on the admin page and lets
-   *  the page show only the flippable numeric/string knobs. */
-  enum Kind { case Str, Int, Long }
-
-  /** A self-registered config knob: its key, type, and default (None for the
-   *  untyped [[get]], whose callers supply their own downstream default). */
-  final case class Knob(key: String, kind: Kind, default: Option[String])
-
-  // ── admin override source (installed by the composition root) ───────────────
+  // ── admin override source (installed by EnvConfigService) ───────────────────
   // A cheap, thread-safe lookup into the live override cache. Default: no
-  // overrides, so Env behaves exactly as before until a process installs one.
+  // overrides, so the static sources decide until a process installs one.
   @volatile private var overrideSource: String => Option[String] = _ => None
 
   /** Install the live override lookup (the Mongo-backed override cache). The last
@@ -47,23 +44,16 @@ object Env {
   private val registry = new java.util.concurrent.ConcurrentHashMap[String, Knob]()
   private def register(knob: Knob): Unit = { registry.put(knob.key, knob); () }
 
-  /** Every knob this process has read so far, sorted by key. */
+  /** Every knob read through this instance so far, sorted by key. */
   def knobs: Seq[Knob] = {
     import scala.jdk.CollectionConverters._
     registry.values().asScala.toVector.sortBy(_.key)
   }
 
   // ── resolution ──────────────────────────────────────────────────────────────
-  /** The static value (env → property → file), ignoring any admin override. */
-  private def staticValue(key: String): Option[String] =
-    Option(System.getenv(key)).filter(_.nonEmpty)
-      .orElse(Option(System.getProperty(key)).filter(_.nonEmpty))
-      .orElse(fileVars.get(key))
-      .filter(_.nonEmpty)
-
   /** Override (if any) wins over the static sources. */
   private def resolve(key: String): Option[String] =
-    overrideSource(key).filter(_.nonEmpty).orElse(staticValue(key))
+    overrideSource(key).filter(_.nonEmpty).orElse(staticSource(key).filter(_.nonEmpty))
 
   /** The value this process is currently using for `key` (post-override) — what
    *  the admin page reports as "current". None when neither an override nor any
@@ -98,10 +88,47 @@ object Env {
     register(Knob(key, Kind.Long, Some(default.toString)))
     resolve(key).flatMap(_.toLongOption).filter(_ > 0).getOrElse(default)
   }
+}
 
-  private lazy val fileVars: Map[String, String] =
+object Env {
+
+  /** The kind of a registered knob — drives parsing on the admin page and lets
+   *  the page show only the flippable numeric/string knobs. */
+  enum Kind { case Str, Int, Long }
+
+  /** A self-registered config knob: its key, type, and default (None for the
+   *  untyped [[Env.get]], whose callers supply their own downstream default). */
+  final case class Knob(key: String, kind: Kind, default: Option[String])
+
+  /** This process's configuration: env var → system property → `localFile`
+   *  (`.env.local` in the working directory by default). The file is read at most
+   *  once, and only when a key misses the first two. Built ONCE per process at the
+   *  composition root; everything else is handed the instance. */
+  def fromProcess(localFile: java.io.File = new java.io.File(".env.local")): Env = {
+    lazy val fileVars = readVarsFile(localFile)
+    new Env(key =>
+      Option(System.getenv(key)).filter(_.nonEmpty)
+        .orElse(Option(System.getProperty(key)).filter(_.nonEmpty))
+        .orElse(fileVars.get(key)))
+  }
+
+  // ── TRANSITIONAL process instance ──────────────────────────────────────────
+  // Callers not yet handed an injected `Env` read through these forwarders; they
+  // go once every call site takes the instance from its composition root.
+  val process: Env = fromProcess()
+  def get(key: String): Option[String]              = process.get(key)
+  def flag(key: String): Boolean                    = process.flag(key)
+  def positiveInt(key: String, default: Int): Int   = process.positiveInt(key, default)
+  def positiveLong(key: String, default: Long): Long = process.positiveLong(key, default)
+
+  /** An instance over a fixed map — for a spec that needs a knob set without
+   *  touching the process environment. */
+  def of(vars: (String, String)*): Env = new Env(vars.toMap.get)
+
+  /** Parse a `KEY=VALUE` file (`#` comments, optional single/double quoting).
+   *  Empty when the file is absent or unreadable. */
+  private[tools] def readVarsFile(file: java.io.File): Map[String, String] =
     Try {
-      val file = new java.io.File(".env.local")
       if (!file.exists()) Map.empty[String, String]
       else {
         val source = Source.fromFile(file, "UTF-8")

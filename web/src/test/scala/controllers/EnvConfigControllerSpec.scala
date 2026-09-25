@@ -18,7 +18,7 @@ import tools.Env
 class EnvConfigControllerSpec extends AnyFlatSpec with Matchers {
 
   private def serviceWith(over: InMemoryEnvOverrideStore, reg: InMemoryEnvRegistryStore) =
-    new EnvConfigService("web", over, reg, knobSource = () => Seq.empty, currentValueOf = _ => None)
+    new EnvConfigService("web", over, reg, Env.of())
 
   private def fixture() = {
     val over = new InMemoryEnvOverrideStore

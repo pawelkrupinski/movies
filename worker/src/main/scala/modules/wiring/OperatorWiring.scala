@@ -19,6 +19,7 @@ trait OperatorWiring { self: WorkerWiring =>
     app       = "worker",
     overrides = new MongoEnvOverrideStore(mongoConnection.database),
     registry  = new MongoEnvRegistryStore(mongoConnection.database),
+    env          = Env.process,
     tickInterval = Env.positiveLong("KINOWO_CONFIG_REFRESH_SECONDS", 30L).seconds)
 
   // Persists each operator-triggered bulk-refresh outcome so it survives the task

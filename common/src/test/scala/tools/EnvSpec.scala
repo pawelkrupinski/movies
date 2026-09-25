@@ -3,95 +3,140 @@ package tools
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+import java.nio.file.Files
+
 /**
- * `Env` reads from the process environment, JVM system properties, then
- * `.env.local`. We can't set process env vars from a test, but `get` also
- * honours system properties — so the numeric helpers are driven through
- * `System.setProperty` here (cleared in `finally` to avoid cross-test leakage).
+ * `Env` resolves an installed admin override first, then its static source.
+ * Most cases drive an instance over a fixed map ([[Env.of]]); the process
+ * source ([[Env.fromProcess]]: env var → system property → `.env.local`) is
+ * exercised through system properties and a temp vars file, since a test can't
+ * set process env vars.
  */
 class EnvSpec extends AnyFlatSpec with Matchers {
 
-  private def withProp[A](key: String, value: String)(body: => A): A =
-    try { System.setProperty(key, value); body } finally System.clearProperty(key)
-
   "Env.positiveInt" should "use the default when unset" in {
-    Env.positiveInt("KINOWO_TEST_UNSET_INT", 8) shouldBe 8
+    Env.of().positiveInt("KINOWO_TEST_UNSET_INT", 8) shouldBe 8
   }
 
   it should "parse a positive value" in {
-    withProp("KINOWO_TEST_INT", "3") { Env.positiveInt("KINOWO_TEST_INT", 8) shouldBe 3 }
+    Env.of("KINOWO_TEST_INT" -> "3").positiveInt("KINOWO_TEST_INT", 8) shouldBe 3
   }
 
   it should "fall back to the default for non-positive or unparseable values" in {
-    withProp("KINOWO_TEST_INT", "0")   { Env.positiveInt("KINOWO_TEST_INT", 8) shouldBe 8 }
-    withProp("KINOWO_TEST_INT", "-4")  { Env.positiveInt("KINOWO_TEST_INT", 8) shouldBe 8 }
-    withProp("KINOWO_TEST_INT", "abc") { Env.positiveInt("KINOWO_TEST_INT", 8) shouldBe 8 }
+    Env.of("KINOWO_TEST_INT" -> "0").positiveInt("KINOWO_TEST_INT", 8)   shouldBe 8
+    Env.of("KINOWO_TEST_INT" -> "-4").positiveInt("KINOWO_TEST_INT", 8)  shouldBe 8
+    Env.of("KINOWO_TEST_INT" -> "abc").positiveInt("KINOWO_TEST_INT", 8) shouldBe 8
   }
 
   "Env.flag" should "be off when unset, so a switch nobody set stays off" in {
-    Env.flag("KINOWO_TEST_UNSET_FLAG") shouldBe false
+    Env.of().flag("KINOWO_TEST_UNSET_FLAG") shouldBe false
   }
 
   // Both spellings, because both are what a deployment surface produces: whoever
   // sets a Fly secret or a Kubernetes env value writes whichever of the two they
   // think in, and neither should be a silent no-op.
   it should "accept either spelling of on" in {
-    withProp("KINOWO_TEST_FLAG", "true") { Env.flag("KINOWO_TEST_FLAG") shouldBe true }
-    withProp("KINOWO_TEST_FLAG", "1")    { Env.flag("KINOWO_TEST_FLAG") shouldBe true }
+    Env.of("KINOWO_TEST_FLAG" -> "true").flag("KINOWO_TEST_FLAG") shouldBe true
+    Env.of("KINOWO_TEST_FLAG" -> "1").flag("KINOWO_TEST_FLAG")    shouldBe true
   }
 
   it should "treat anything else as off rather than as set" in {
-    withProp("KINOWO_TEST_FLAG", "false") { Env.flag("KINOWO_TEST_FLAG") shouldBe false }
-    withProp("KINOWO_TEST_FLAG", "yes")   { Env.flag("KINOWO_TEST_FLAG") shouldBe false }
-    withProp("KINOWO_TEST_FLAG", "0")     { Env.flag("KINOWO_TEST_FLAG") shouldBe false }
+    Env.of("KINOWO_TEST_FLAG" -> "false").flag("KINOWO_TEST_FLAG") shouldBe false
+    Env.of("KINOWO_TEST_FLAG" -> "yes").flag("KINOWO_TEST_FLAG")   shouldBe false
+    Env.of("KINOWO_TEST_FLAG" -> "0").flag("KINOWO_TEST_FLAG")     shouldBe false
   }
 
   "Env.positiveLong" should "use the default when unset" in {
-    Env.positiveLong("KINOWO_TEST_UNSET_LONG", 300L) shouldBe 300L
+    Env.of().positiveLong("KINOWO_TEST_UNSET_LONG", 300L) shouldBe 300L
   }
 
   it should "parse a positive value and reject non-positive / unparseable ones" in {
-    withProp("KINOWO_TEST_LONG", "30")  { Env.positiveLong("KINOWO_TEST_LONG", 300L) shouldBe 30L }
-    withProp("KINOWO_TEST_LONG", "0")   { Env.positiveLong("KINOWO_TEST_LONG", 300L) shouldBe 300L }
-    withProp("KINOWO_TEST_LONG", "xyz") { Env.positiveLong("KINOWO_TEST_LONG", 300L) shouldBe 300L }
+    Env.of("KINOWO_TEST_LONG" -> "30").positiveLong("KINOWO_TEST_LONG", 300L)  shouldBe 30L
+    Env.of("KINOWO_TEST_LONG" -> "0").positiveLong("KINOWO_TEST_LONG", 300L)   shouldBe 300L
+    Env.of("KINOWO_TEST_LONG" -> "xyz").positiveLong("KINOWO_TEST_LONG", 300L) shouldBe 300L
+  }
+
+  it should "treat an empty static value as unset" in {
+    Env.of("KINOWO_TEST_EMPTY" -> "").get("KINOWO_TEST_EMPTY") shouldBe None
   }
 
   // ── admin override source ─────────────────────────────────────────────────────
-  // Installed by the composition root; wins over env/property/file so an admin
-  // flip takes effect, and is read live (so a per-use read changes mid-flight).
-  private def withOverrides[A](pairs: (String, String)*)(body: => A): A =
-    try { Env.installOverrides(pairs.toMap.get); body } finally Env.installOverrides(_ => None)
-
-  "An installed override" should "win over a system property and apply live" in {
-    withProp("KINOWO_TEST_OVR", "5") {
-      Env.positiveInt("KINOWO_TEST_OVR", 1) shouldBe 5            // no override yet
-      withOverrides("KINOWO_TEST_OVR" -> "9") {
-        Env.positiveInt("KINOWO_TEST_OVR", 1) shouldBe 9         // override wins over the property
-      }
-      Env.positiveInt("KINOWO_TEST_OVR", 1) shouldBe 5            // removed → back to the property
-    }
+  // Installed by EnvConfigService; wins over the static source so an admin flip
+  // takes effect, and is read live (so a per-use read changes mid-flight).
+  "An installed override" should "win over the static value and apply live" in {
+    val env = Env.of("KINOWO_TEST_OVR" -> "5")
+    env.positiveInt("KINOWO_TEST_OVR", 1) shouldBe 5            // no override yet
+    env.installOverrides(Map("KINOWO_TEST_OVR" -> "9").get)
+    env.positiveInt("KINOWO_TEST_OVR", 1) shouldBe 9            // override wins over the static value
+    env.installOverrides(_ => None)
+    env.positiveInt("KINOWO_TEST_OVR", 1) shouldBe 5            // removed → back to the static value
   }
 
   it should "fall back to the default when the override value is non-positive" in {
-    withOverrides("KINOWO_TEST_OVR2" -> "-3") {
-      Env.positiveInt("KINOWO_TEST_OVR2", 7) shouldBe 7
-    }
+    val env = Env.of()
+    env.installOverrides(Map("KINOWO_TEST_OVR2" -> "-3").get)
+    env.positiveInt("KINOWO_TEST_OVR2", 7) shouldBe 7
+  }
+
+  // The reason Env is an instance: an override installed into one process's (or
+  // one spec's) Env must not leak into another's.
+  it should "reach only the instance it was installed into" in {
+    val flipped = Env.of("KINOWO_TEST_ISO" -> "2")
+    val other   = Env.of("KINOWO_TEST_ISO" -> "2")
+    flipped.installOverrides(Map("KINOWO_TEST_ISO" -> "8").get)
+    flipped.positiveInt("KINOWO_TEST_ISO", 1) shouldBe 8
+    other.positiveInt("KINOWO_TEST_ISO", 1)   shouldBe 2
   }
 
   "currentValue" should "report the post-override value the process is using" in {
-    Env.currentValue("KINOWO_TEST_UNSET_NONE") shouldBe None
-    withProp("KINOWO_TEST_CUR", "2") {
-      Env.currentValue("KINOWO_TEST_CUR") shouldBe Some("2")
-      withOverrides("KINOWO_TEST_CUR" -> "4") {
-        Env.currentValue("KINOWO_TEST_CUR") shouldBe Some("4")
-      }
-    }
+    val env = Env.of("KINOWO_TEST_CUR" -> "2")
+    env.currentValue("KINOWO_TEST_UNSET_NONE") shouldBe None
+    env.currentValue("KINOWO_TEST_CUR") shouldBe Some("2")
+    env.installOverrides(Map("KINOWO_TEST_CUR" -> "4").get)
+    env.currentValue("KINOWO_TEST_CUR") shouldBe Some("4")
   }
 
   "Reading a knob" should "self-register its key, kind and default" in {
-    Env.positiveLong("KINOWO_TEST_REG", 42L)
-    val knob = Env.knobs.find(_.key == "KINOWO_TEST_REG")
+    val env = Env.of()
+    env.positiveLong("KINOWO_TEST_REG", 42L)
+    val knob = env.knobs.find(_.key == "KINOWO_TEST_REG")
     knob.map(_.kind)        shouldBe Some(Env.Kind.Long)
     knob.flatMap(_.default) shouldBe Some("42")
+  }
+
+  it should "register into the reading instance only" in {
+    val reader = Env.of()
+    val other  = Env.of()
+    reader.positiveInt("KINOWO_TEST_REG_ISO", 1)
+    reader.knobs.map(_.key) should contain("KINOWO_TEST_REG_ISO")
+    other.knobs shouldBe empty
+  }
+
+  // ── process source ────────────────────────────────────────────────────────────
+  private def withProp[A](key: String, value: String)(body: => A): A =
+    try { System.setProperty(key, value); body } finally System.clearProperty(key)
+
+  private def varsFile(lines: String*): java.io.File = {
+    val path = Files.createTempFile("env-spec", ".env")
+    Files.writeString(path, lines.mkString("\n"))
+    path.toFile.deleteOnExit()
+    path.toFile
+  }
+
+  "Env.fromProcess" should "read a system property, winning over the vars file" in {
+    val env = Env.fromProcess(varsFile("KINOWO_TEST_PROC=file"))
+    withProp("KINOWO_TEST_PROC", "prop") { env.get("KINOWO_TEST_PROC") shouldBe Some("prop") }
+    env.get("KINOWO_TEST_PROC") shouldBe Some("file")
+  }
+
+  it should "parse comments, blank lines and quoting in the vars file" in {
+    val env = Env.fromProcess(varsFile("# comment", "", "KINOWO_TEST_Q1=\"double\"", "KINOWO_TEST_Q2='single'", "noequals"))
+    env.get("KINOWO_TEST_Q1") shouldBe Some("double")
+    env.get("KINOWO_TEST_Q2") shouldBe Some("single")
+    env.get("noequals")       shouldBe None
+  }
+
+  it should "treat a missing vars file as empty" in {
+    Env.fromProcess(new java.io.File("/nonexistent/.env.local")).get("KINOWO_TEST_MISSING") shouldBe None
   }
 }
