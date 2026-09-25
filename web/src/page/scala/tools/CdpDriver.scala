@@ -339,6 +339,13 @@ class Chrome private[tools] (
   }
 }
 
+object CdpPage {
+  /** The most of one `waitFor` evaluate's round-trip charged to its budget. A
+   *  one-line expression answers in 1–25 ms even on a busy machine; anything
+   *  past this is the renderer not running, not the page being slow. */
+  private[tools] val NormalEvalRoundTripMs = 250L
+}
+
 /** One CDP page session. Synchronous request/response over the WebSocket,
  *  plus best-effort dispatch of unsolicited events (messages with a
  *  `method` but no `id`) to a handler registered via [[onEvent]] — needed
@@ -506,14 +513,30 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
 
   /** Poll until `js` evaluates truthy. Used at page-open time to wait
    *  for `document.readyState === 'complete'`; can also be used by tests
-   *  that need to wait for a debounced filter pass to settle. */
+   *  that need to wait for a debounced filter pass to settle.
+   *
+   *  `timeoutMs` is the time the PAGE gets to reach the state, not wall time.
+   *  On a loaded machine the renderer is sometimes not run at all for seconds
+   *  (descheduled, or paged back in from swap), and an evaluate sent meanwhile
+   *  just blocks until it runs again — 2–21 s freezes measured with several sbt
+   *  builds on one laptop (see `CdpWaitForSpec`). Time an evaluate spends past a
+   *  normal round-trip is that freeze, so it isn't charged; the sleeps between
+   *  polls are, since the page runs during them. The timeout is only declared
+   *  on a poll taken AFTER the budget is spent, never on a stale one. A page
+   *  busy in its own JS blocks the evaluate the same way, but the 30 s reply
+   *  timeout in [[send]] still bounds that. */
   def waitFor(js: String, timeoutMs: Int = 2000, pollMs: Int = 50): Unit = {
-    val deadline = System.nanoTime() / 1000000 + timeoutMs
-    while (System.nanoTime() / 1000000 < deadline) {
+    var chargedMs = 0L
+    while (true) {
+      val pollStart = System.nanoTime()
       if (evalBool(s"!!($js)")) return
+      if (chargedMs >= timeoutMs)
+        throw new RuntimeException(s"Timed out after ${timeoutMs}ms waiting for: $js")
+      val evalMs = (System.nanoTime() - pollStart) / 1000000
       Thread.sleep(pollMs)
+      val sleptMs = (System.nanoTime() - pollStart) / 1000000 - evalMs
+      chargedMs += math.min(evalMs, CdpPage.NormalEvalRoundTripMs) + sleptMs
     }
-    throw new RuntimeException(s"Timed out after ${timeoutMs}ms waiting for: $js")
   }
 
   /** Reload and wait for the NEW document, not merely for A document.

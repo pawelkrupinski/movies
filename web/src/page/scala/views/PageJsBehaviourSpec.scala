@@ -3686,9 +3686,15 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // Step to the next day (the Left/Right key path); while the slide is in
       // flight the track is armed (neighbour mounted, parked transform set).
-      page.eval("window.stepDate(1)")
-      page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
-      page.evalInt("document.querySelectorAll('#day-track > .day-col').length") should be >= 1
+      // Observed in the SAME evaluate as the step: the slide commits on its own
+      // ~610 ms timer, so a renderer frozen between two evaluates could resume
+      // with that timer overdue and run it before a separate armed-check.
+      val inFlight = page.eval(
+        """(() => { window.stepDate(1);
+          |  return [document.getElementById('day-track').classList.contains('day-track--armed'),
+          |          document.querySelectorAll('#day-track > .day-col').length]; })()""".stripMargin)
+      inFlight(0).as[Boolean] shouldBe true
+      inFlight(1).as[Int] should be >= 1
 
       // It settles on the next day with `?date=` reflecting it.
       page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
@@ -4067,11 +4073,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/") { page =>
       // The pill highlight moves eagerly, but the URL only updates once the
       // slide commits — wait on the committed `?date=` as the settle signal.
-      // The budget is generous because the signal is an ANIMATION finishing: 2s
-      // was enough locally and timed out once in a full-suite run, where the
-      // slide shares a machine with every other spec.
       page.eval("pickDay('anytime')")
-      page.waitFor("new URL(location.href).searchParams.get('date') === 'anytime'", timeoutMs = 8000)
+      page.waitFor("new URL(location.href).searchParams.get('date') === 'anytime'", timeoutMs = 2000)
 
       // The matching pill is the only `.active`, and carries aria-selected.
       page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "anytime"
