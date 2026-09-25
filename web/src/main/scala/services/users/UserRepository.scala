@@ -1,7 +1,7 @@
 package services.users
 
 import com.mongodb.client.model.{FindOneAndUpdateOptions, ReturnDocument, Updates}
-import org.bson.{BsonArray, BsonDocument, BsonDocumentWriter, BsonInt32, BsonString}
+import org.bson.{BsonDocument, BsonDocumentWriter, BsonInt32}
 import org.bson.codecs.EncoderContext
 import org.mongodb.scala.bson.conversions.Bson
 import models.User
@@ -189,11 +189,10 @@ object MongoUserRepository {
     val row = new BsonDocument()
     UserCodecs.registry.get(classOf[User]).encode(new BsonDocumentWriter(row), user, EncoderContext.builder().build())
     row.remove("sessionVersion")
-    val stored = new BsonDocument("$ifNull", new BsonArray(java.util.List.of(new BsonString("$sessionVersion"), new BsonInt32(0))))
-    val sessionVersion = new BsonDocument("sessionVersion",
-      new BsonDocument("$max", new BsonArray(java.util.List.of(stored, new BsonInt32(user.sessionVersion)))))
-    Seq(new BsonDocument("$replaceWith",
-      new BsonDocument("$mergeObjects", new BsonArray(java.util.List.of(new BsonDocument("$literal", row), sessionVersion)))))
+    import UpdatePipeline.{field, literal, op}
+    val stored         = op("$ifNull", field("sessionVersion"), new BsonInt32(0))
+    val sessionVersion = new BsonDocument("sessionVersion", op("$max", stored, new BsonInt32(user.sessionVersion)))
+    Seq(new BsonDocument("$replaceWith", op("$mergeObjects", literal(row), sessionVersion)))
   }
 }
 

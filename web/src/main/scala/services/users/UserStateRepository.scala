@@ -30,7 +30,7 @@ trait UserStateRepository {
   def enabled: Boolean
 
   /** State for `userId`, or `None` when nothing's been persisted yet — callers
-   *  treat `None` as `UserState.empty(userId)`. THROWS when the store cannot be
+   *  treat `None` as `UserState.empty(userId, now)`. THROWS when the store cannot be
    *  read — never `None`, which the controller would serve as an empty state. */
   def find(userId: String): Option[UserState]
 
@@ -324,6 +324,7 @@ class MongoUserStateRepository(
 }
 
 object MongoUserStateRepository {
+  import UpdatePipeline.{field, literal, op}
 
   // Both pipelines below are single-stage `$set`s: the server evaluates every
   // field against the row it is writing — nothing read beforehand, nothing to
@@ -331,10 +332,7 @@ object MongoUserStateRepository {
   // `$literal`, since a string starting with `$` would otherwise read as a
   // field path.
 
-  private def op(name: String, args: BsonValue*): BsonDocument = new BsonDocument(name, new BsonArray(args.toList.asJava))
-  private def literal(value: BsonValue): BsonDocument = new BsonDocument("$literal", value)
   private def strings(values: Iterable[String]): BsonArray = new BsonArray(values.toList.map(v => new BsonString(v): BsonValue).asJava)
-  private def field(path: String): BsonString = new BsonString("$" + path)
   private def orEmpty(path: String): BsonDocument = op("$ifNull", field(path), new BsonArray())
 
   /** `UserState.nextUpdatedAt`: now, or a millisecond past the stored stamp. */
