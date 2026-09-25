@@ -3,7 +3,7 @@ package services.tasks
 import models.{CinemaMovie, KinoApollo, Movie, Showtime}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository}
 import services.cinemas.FakeDetailEnricher
-import services.events.{DomainEvent, EventBus, InProcessEventBus, MovieDetailsComplete}
+import services.events.{EventBus, InProcessEventBus, MovieDetailsComplete, RecordingEventBus}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.schedule.{InMemoryScheduledRunStore, NeverClaimScheduledRunStore}
@@ -28,11 +28,6 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
    *  also sit ahead of the synthetic `t0` the phase-spread tests tick from. */
   private def screeningSoon = LocalDateTime.now(specClock).plusMonths(6)
 
-  private class CapturingBus extends EventBus {
-    val published = scala.collection.mutable.ListBuffer.empty[DomainEvent]
-    def subscribe(handler: PartialFunction[DomainEvent, Unit]): Unit = ()
-    def publish(event: DomainEvent): Unit = { published += event; () }
-  }
 
   /** Seed the cache with one KinoApollo film carrying (optionally) a filmUrl —
    *  exactly what a bare deferred scrape persists. */
@@ -168,7 +163,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
 
     val key = cache.keyOf("Dune", None)
     cache.putIfPresent(key, _.copy(detailPending = true))
-    val bus = new CapturingBus
+    val bus = new RecordingEventBus
     reaper(cache, queue, fresh, bus).reapStuckPending() shouldBe 0
     cache.get(key).map(_.detailPending) shouldBe Some(true)
     bus.published shouldBe empty
@@ -261,7 +256,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     "leave a row whose detail is still outstanding (filmUrl present, not yet fresh)" in {
     val (cache, queue, fresh) = (cacheWith(Some("http://ref")), new InMemoryTaskQueue, new InMemoryFreshnessStore)
     cache.putIfPresent(cache.keyOf("Dune", None), _.copy(detailPending = true))
-    val bus = new CapturingBus
+    val bus = new RecordingEventBus
     reaper(cache, queue, fresh, bus).reapStuckPending() shouldBe 0
     cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(true) // still held back
     bus.published shouldBe empty
@@ -270,7 +265,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   it should "release a detail-pending row with no deferred filmUrl to fetch (orphaned flag) and re-trigger TMDB" in {
     val (cache, queue, fresh) = (cacheWith(None), new InMemoryTaskQueue, new InMemoryFreshnessStore)
     cache.putIfPresent(cache.keyOf("Dune", None), _.copy(detailPending = true))
-    val bus = new CapturingBus
+    val bus = new RecordingEventBus
     reaper(cache, queue, fresh, bus).reapStuckPending() shouldBe 1
     cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(false)
     bus.published.collect { case e: MovieDetailsComplete => e.title } shouldBe List("Dune")
@@ -279,7 +274,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   it should "release a detail-pending Filmweb-fallback row (filmweb.pl filmUrl, no native detail to fetch) and re-trigger TMDB" in {
     val (cache, queue, fresh) = (cacheWith(Some(FilmwebShowtimesClient.filmPageUrl(1089))), new InMemoryTaskQueue, new InMemoryFreshnessStore)
     cache.putIfPresent(cache.keyOf("Dune", None), _.copy(detailPending = true))
-    val bus = new CapturingBus
+    val bus = new RecordingEventBus
     reaper(cache, queue, fresh, bus).reapStuckPending() shouldBe 1
     cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(false)
     bus.published.collect { case e: MovieDetailsComplete => e.title } shouldBe List("Dune")
@@ -289,7 +284,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     val (cache, queue, fresh) = (cacheWith(Some("http://ref")), new InMemoryTaskQueue, new InMemoryFreshnessStore)
     cache.putIfPresent(cache.keyOf("Dune", None), _.copy(detailPending = true))
     fresh.markFresh(EnrichDetailsTasks.dedupKey("kino-apollo", cache.keyOf("Dune", None)), FreshnessKind.DetailEnrich, specClock.instant())
-    val bus = new CapturingBus
+    val bus = new RecordingEventBus
     reaper(cache, queue, fresh, bus).reapStuckPending() shouldBe 1
     cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(false)
     bus.published.size shouldBe 1
@@ -328,7 +323,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     val window = new DueWindow(6.hours)
     val gone   = new FakeDetailEnricher(KinoApollo, "kino-apollo",
       failure = Some(new HttpStatusException(404, "GET", "http://ref", None)))
-    val bus = new CapturingBus
+    val bus = new RecordingEventBus
     val r = new DetailReaper(Seq(gone), cache, queue, fresh, bus, dueWindow = window, clock = specClock)
     val h = new EnrichDetailsHandler(Map("kino-apollo" -> gone), cache, fresh,
       new services.UptimeMonitor(), new InProcessEventBus(), window)

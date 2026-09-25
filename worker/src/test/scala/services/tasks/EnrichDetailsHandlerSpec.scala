@@ -3,7 +3,7 @@ package services.tasks
 import models.{CinemaCityChain, CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, CinemaShowing, KinoApollo, Movie, MovieRecord, Showtime, Source, SourceData}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.cinemas.FakeDetailEnricher
-import services.events.{DomainEvent, EventBus, InProcessEventBus, MovieDetailsComplete}
+import services.events.{InProcessEventBus, MovieDetailsComplete, RecordingEventBus}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.UptimeMonitor
@@ -26,14 +26,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
   // just-fetched detail is not yet due, so the "skip when fresh" case still holds.
   private val dueWindow = new DueWindow(6.hours)
 
-  /** Records what the handler publishes, so a test can assert the
-   *  detail-complete → MovieDetailsComplete re-trigger (and its absence). */
-  private class CapturingBus extends EventBus {
-    val published = scala.collection.mutable.ListBuffer.empty[DomainEvent]
-    def subscribe(handler: PartialFunction[DomainEvent, Unit]): Unit = ()
-    def publish(event: DomainEvent): Unit = { published += event; () }
-  }
-  private val noBus = new CapturingBus
+  private val noBus = new RecordingEventBus
 
   /** A cache pre-seeded with one (KinoApollo, title) row whose slot carries
    *  showtimes but no detail — exactly what a bare scrape leaves behind. */
@@ -128,7 +121,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val cache    = seededCache("Hamnet")
     val key      = cache.keyOf("Hamnet", None)
     cache.putIfPresent(key, _.copy(detailPending = true)) // held back awaiting its detail
-    val bus      = new CapturingBus
+    val bus      = new RecordingEventBus
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo",
       Some(FilmDetail(synopsis = Some("..."), director = Seq("Chloé Zhao"), originalTitle = Some("Hamnet"))))
     val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(), bus, dueWindow, clock = specClock)
@@ -143,7 +136,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
 
   it should "NOT re-trigger TMDB when refreshing a row that wasn't awaiting detail (no detailPending)" in {
     val cache    = seededCache("Dune") // detailPending defaults false — a plain refresh
-    val bus      = new CapturingBus
+    val bus      = new RecordingEventBus
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(synopsis = Some("x"))))
     val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(), bus, dueWindow, clock = specClock)
 
