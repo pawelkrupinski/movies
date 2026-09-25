@@ -63,7 +63,7 @@
 <body>
 
  
-<div id="app-banner" data-today="2026-06-08" role="banner" aria-label="Promocja aplikacji Kinowo" data-i18n-attr="aria-label:appBanner.aria" data-i18n-arg0="Kinowo">
+<div id="app-banner" data-zone="Europe/Warsaw" role="banner" aria-label="Promocja aplikacji Kinowo" data-i18n-attr="aria-label:appBanner.aria" data-i18n-arg0="Kinowo">
   <img class="app-banner-icon" src="/assets/img/app-icon.png" alt="Kinowo" width="42" height="42">
   <div class="app-banner-text">
     <div class="app-banner-headline" data-i18n="appBanner.headline" data-i18n-arg0="Kinowo">Kinowo — aplikacja mobilna</div>
@@ -109,7 +109,7 @@ hide();
 var forced = /[?&]forceAppBanner=1(&|$)/.test(location.search);
 var snoozedUntil = parseInt(get(SNOOZE) || '0', 10);
 var snoozed = Date.now() < snoozedUntil;
-var today = banner.dataset.today;
+var today = new Date().toLocaleDateString('sv', { timeZone: banner.dataset.zone });
 var shownDay = get(DAY);
 var isMobile = matchMedia('(pointer: coarse)').matches;
 var intervalDays = isMobile ? INTERVAL_MOBILE : INTERVAL_DESKTOP;

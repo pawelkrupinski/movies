@@ -1,4 +1,4 @@
-@(renderedAt: java.time.LocalDateTime)(implicit city: models.City, messages: play.api.i18n.Messages)
+@()(implicit city: models.City, messages: play.api.i18n.Messages)
 @* App-promo top banner — its markup AND the whole show/hide decision, which
    runs in the inline script right after the markup: synchronously, while the
    parser is still above the navbar, so the banner is up (and the page pushed
@@ -10,10 +10,11 @@
    DEVICE-AWARE: a touch/coarse-pointer visitor (a phone, our best market)
    sees it once per calendar day, a fine-pointer one (desktop) once every 10
    days — desktop traffic is far less likely to install a phone app (Paweł's
-   call, 2026-09-14). It keys off the CITY's calendar day at render
-   (`data-today`, the server's `renderedAt` — the same day `shared.js`'s
-   `pageToday()` reads at boot, since that is `renderedAt` carried forward by
-   elapsed time) and counts days since it was last shown. The ✕ sets a
+   call, 2026-09-14). It keys off the CITY's calendar day (`data-zone`) read
+   off the VISITOR's clock, and counts days since it was last shown. Not the
+   page's render day: a body the browser serves from its own cache (a 304, the
+   back/forward cache) keeps its render's day, and the cap compares against
+   localStorage stamps a fresher page wrote. The ✕ sets a
    rolling 24h snooze from the click instant, always shorter than either
    interval. `?forceAppBanner=1` bypasses both, and every visit logs its gate
    state to the console (`[app-banner] {…}`) so "I don't see it" can be
@@ -33,7 +34,7 @@
    update-gate reads (`GET /api/client-support`). Brand name and copy are
    per-country: `city.country.brandName` is "Kinowo" only in Poland,
    "Showtimes" everywhere else. *@
-<div id="app-banner" data-today="@renderedAt.toLocalDate" role="banner" aria-label="@messages("appBanner.aria", city.country.brandName)" data-i18n-attr="aria-label:appBanner.aria" data-i18n-arg0="@city.country.brandName">
+<div id="app-banner" data-zone="@city.zoneId.getId" role="banner" aria-label="@messages("appBanner.aria", city.country.brandName)" data-i18n-attr="aria-label:appBanner.aria" data-i18n-arg0="@city.country.brandName">
   <img class="app-banner-icon" src="@routes.Assets.versioned("img/app-icon.png")" alt="@city.country.brandName" width="42" height="42">
   <div class="app-banner-text">
     <div class="app-banner-headline" data-i18n="appBanner.headline" data-i18n-arg0="@city.country.brandName">@messages("appBanner.headline", city.country.brandName)</div>
@@ -85,7 +86,7 @@
   var forced        = /[?&]forceAppBanner=1(&|$)/.test(location.search);
   var snoozedUntil  = parseInt(get(SNOOZE) || '0', 10);
   var snoozed       = Date.now() < snoozedUntil;
-  var today         = banner.dataset.today;
+  var today         = new Date().toLocaleDateString('sv', { timeZone: banner.dataset.zone });
   var shownDay      = get(DAY);
   var isMobile      = matchMedia('(pointer: coarse)').matches;
   var intervalDays  = isMobile ? INTERVAL_MOBILE : INTERVAL_DESKTOP;

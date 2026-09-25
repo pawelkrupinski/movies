@@ -122,6 +122,26 @@ test.describe('app banner', () => {
     await reload(page);
   }
 
+  // Regression: the interval cap used to key off the page's RENDER day, a
+  // `data-today` stamped from the server's clock. A body the browser serves
+  // from its own cache (a 304 revalidation, the back/forward cache) keeps that
+  // render's day, so a phone that first saw the banner on yesterday's HTML
+  // stamped yesterday and was "due" again on the next fresh page the SAME
+  // real day. The stamp is what every later visit compares against, so it
+  // must be the visitor's actual day in the city, whatever HTML carried it.
+  // (The fixture server renders a pinned June-2026 day, so every page here
+  // is such a stale page.)
+  test('stamps the visitor\'s real day in the city, not the page\'s render day', async ({ page }) => {
+    await page.evaluate(() => localStorage.clear());
+    await reload(page);
+    await expect(banner(page)).toBeVisible();
+    const [stamped, cityToday] = await page.evaluate(() => [
+      localStorage.getItem('kinowoAppBannerDay'),
+      new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' }),
+    ]);
+    expect(stamped).toBe(cityToday);
+  });
+
   test('a touch device sees it again after 1 day; a mouse/trackpad device needs 10', async ({ page }) => {
     await page.evaluate(() => localStorage.clear());
     await reload(page);
