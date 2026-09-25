@@ -73,19 +73,6 @@ runs:
           docker exec mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'
           until docker exec mongo mongosh --quiet --eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; do sleep 1; done
 
-    # The scrape corpus, from the ARTIFACT of the newest `Record scrape fixtures`
-    # run — not from the actions cache it also writes.
-    #
-    # The cache silently loses it. This repo sits at ~9.46 GB of a 10 GB ceiling,
-    # so entries are evicted by LRU with no signal: a leg logs `Cache not found
-    # for input keys: scrape-fixtures-uk-` and carries on. Poland and Germany
-    # never noticed because their corpora are committed to the repository; the
-    # UK's is not, so it depended entirely on the evictable copy — and when that
-    # vanished the leg fell back to a generated corpus and reported `tmdbId 0`,
-    # which cost eleven runs and a wrong diagnosis to trace.
-    #
-    # Same lesson as the enrichment trees a few steps above: an artifact has its
-    # own retention and cannot be evicted to make room for a build cache.
     # WHICH recording to replay, decided once and before anything is downloaded.
     #
     # A HERMETIC leg replays a PAIR: a corpus and the enrichment tree recorded against it,
@@ -140,6 +127,19 @@ runs:
           name: scrape-fixtures-${{ inputs.code }}
           path: scrape-archive
 
+    # The scrape corpus, from the ARTIFACT of a `Record scrape fixtures` run (the
+    # pinned one, else the newest) — not from the actions cache it also writes.
+    #
+    # The cache silently loses it. This repo sits at ~9.46 GB of a 10 GB ceiling,
+    # so entries are evicted by LRU with no signal: a leg logs `Cache not found
+    # for input keys: scrape-fixtures-uk-` and carries on. Poland and Germany
+    # never noticed because their corpora are committed to the repository; the
+    # UK's is not, so it depended entirely on the evictable copy — and when that
+    # vanished the leg fell back to a generated corpus and reported `tmdbId 0`,
+    # which cost eleven runs and a wrong diagnosis to trace.
+    #
+    # Same lesson as the enrichment trees a few steps below: an artifact has its
+    # own retention and cannot be evicted to make room for a build cache.
     - name: Restore the recorded scrape corpus
       shell: bash
       continue-on-error: true

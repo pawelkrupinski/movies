@@ -70,10 +70,6 @@ jobs:
             contents: read
             checks: write
 
-    # Take the runners back from an in-flight convergence run, so this push's jobs
-    # do not queue behind it. No `needs:` — it starts with ci's jobs and is
-    # normally done well before them.
-    #
     # It stages independently rather than taking a build artifact from ci. It
     # used to: `test` uploaded `stage-web` / `stage-worker` and the deploy leg
     # downloaded them. But those only exist once `test` finishes, and waiting for
@@ -260,14 +256,10 @@ jobs:
     #    dispatch supersedes it. Starting with the legs is the earliest this commit's
     #    answer can exist. (DeployParallelismConfigSpec)
     #
-    # That superseding is still real for the SHARED suite: it keeps one lane with
-    # `cancel-in-progress`, so a push landing mid-run throws that run away. Running in
-    # parallel buys the run a deploy's worth of head start against it; it does not
-    # remove it. The nightly 04:20 schedule stays the guaranteed-to-finish signal.
-    #
-    # The US build is the exception, and the reason there are two dispatches below: its
-    # lane is `cancel-in-progress: false`, so a run in flight always finishes and this
-    # dispatch queues behind it, cancelling only whatever else was queued.
+    # Both suites' lanes are `cancel-in-progress: false` (country-convergence.yml's
+    # `concurrency:` block), so a run in flight always finishes and a dispatch queues
+    # behind it, replacing only whatever was queued before. Two lanes, two dispatches:
+    # the US runs the same leg from its own workflow.
     kick-convergence:
         needs: ci
         runs-on: ubuntu-latest
@@ -285,7 +277,6 @@ jobs:
             # Each lane keeps one run pending and every newer dispatch replaces it, so
             # dispatching for an app- or docs-only push used to evict the pending run of the
             # pipeline commit before it — see the script's header for the measurement.
-            # Two lanes, two dispatches: the US runs the same leg from its own workflow.
             - name: Start the convergence suites this push can change
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
