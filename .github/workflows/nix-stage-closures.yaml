@@ -254,7 +254,7 @@ jobs:
         working-directory: page-tests-playwright
         run: |
           npm ci
-          npx playwright install --with-deps chromium
+          ../scripts/ci/install-playwright.sh chromium
       - name: The fleet dashboard's bulk run behaves in a real browser
         working-directory: infra
         env:

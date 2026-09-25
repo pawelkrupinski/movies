@@ -162,6 +162,7 @@ jobs:
                   bash scripts/ci/leg-verdict-test.sh
                   bash scripts/ci/rerun-failed-sbt-test.sh
                   bash scripts/ci/start-mongo-replset-test.sh
+                  bash scripts/ci/install-playwright-test.sh
                   python3 scripts/ci/flake_verdict_test.py
 
             - uses: actions/setup-java@v5

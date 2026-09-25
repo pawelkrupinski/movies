@@ -189,7 +189,7 @@ runs:
         # aren't re-downloaded (root-owned dir → needs sudo; -n keeps any newer
         # copy apt already has).
         sudo cp -n "$APT_CACHE"/*.deb /var/cache/apt/archives/ 2>/dev/null || true
-        cd page-tests-playwright && npx playwright install --with-deps ${{ inputs.browsers }}
+        cd page-tests-playwright && ../scripts/ci/install-playwright.sh ${{ inputs.browsers }}
         # Persist whatever apt now holds (seeded + freshly fetched) back to the
         # cache dir for next time.
         cp -n /var/cache/apt/archives/*.deb "$APT_CACHE"/ 2>/dev/null || true
