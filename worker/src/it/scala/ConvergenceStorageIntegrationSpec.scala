@@ -35,17 +35,17 @@ class ConvergenceStorageIntegrationSpec extends AnyFlatSpec with Matchers {
   /** The 2026-08-04 regression, in the layer that can catch it in seconds rather
    *  than in an hour-long corpus replay.
    *
-   *  A convergence storage is built once per COUNTRY leg. It used to read
-   *  `TitleNormalizer.deployment`, which made the choice invisible; a mechanical
+   *  A convergence storage is built once per COUNTRY leg. It used to read an
+   *  environment-resolved default normalizer, which made the choice invisible; a mechanical
    *  sweep then filled the seam with `SingleCountryNormalizer` — Poland's — and
    *  the Germany and UK legs keyed their corpora through the Polish " & " -> " i "
    *  unification. `wallaceigromitthecurseofthewererabbit` and
    *  `patgarrettibillythekid` in a UK corpus; `bloodisinners` in a German one.
    *
    *  Asserted by BEHAVIOUR under a country whose rules differ from the default,
-   *  because identity would not catch it: in a test JVM naming no country,
-   *  `deployment` and `SingleCountryNormalizer` are the same memoised Poland
-   *  instance. Germany is the country that disagrees, so Germany is the probe.
+   *  because identity would not catch it: every normalizer is a fresh instance, and
+   *  two Poland instances key identically. Germany is the country that disagrees,
+   *  so Germany is the probe.
    *
    *  This is the ConvergenceStorage twin of `WorkerWiringNormalizerIntegrationSpec`,
    *  which has asserted the same property of the PRODUCTION root all along — the

@@ -97,7 +97,7 @@ object ConvergenceStorage {
   /** A uniquely-named throwaway database on `uri`, dropped by [[ConvergenceStorage.close]].
    *  Unique per run so the three country legs — and anything else on the `it` layer —
    *  can share one cluster without colliding, including with a re-run of themselves. */
-  /** `normalizer` is REQUIRED, not read from `TitleNormalizer.deployment`: this storage
+  /** `normalizer` is REQUIRED, never a process-wide default: this storage
    *  is built once per COUNTRY leg, and reading a process-wide default made the choice
    *  invisible. A mechanical sweep then filled the seam with Poland's instance and the
    *  German and UK legs keyed their corpora through the Polish " & " -> " i "

@@ -32,27 +32,9 @@ class NoPolandDefaultCountrySpec extends AnyFlatSpec with Matchers {
     ("""\b(?:models\.)?Country\.(?:default|Poland|fromEnv)\b|\bScreeningTokens\.forDefaultCountry\b|""" +
       """\bTmdbClient\.DefaultLanguage\b|\bCountryNames\.DefaultLanguage\b|forLanguageTag\("pl""").r
 
-  private val Header = """\b(?:class|trait|def)\s+([\w$]+)\s*(?:\[[^\]]*\])?\s*(?=\()""".r
-  private val Parameter =
-    """(?s)^\s*(?:@\w+\s+)*(?:(?:private(?:\[\w+\])?|protected|override|implicit|using|final|val|var)\s+)*([\w$]+)\s*:(.*?)=(?!>)(.*)$""".r
-
   /** "file: Owner.param" for every parameter whose default names Poland. */
-  private lazy val offenders: Seq[String] = scalaFiles(MainRoots).flatMap { path =>
-    val src = codeOf(path)
-    Header.findAllMatchIn(src).flatMap { header =>
-      // Every clause of the signature: `(a)(b)(using c)`.
-      Iterator.iterate(Option(header.end)) {
-        case Some(open) =>
-          val next = src.indexWhere(!_.isWhitespace, closingParen(src, open) + 1)
-          Option.when(next > 0 && src(next) == '(')(next)
-        case None => None
-      }.takeWhile(_.isDefined).flatten.flatMap { open =>
-        topLevelParts(argumentsAt(src, open)).collect {
-          case Parameter(name, _, default) if PolandDefault.findFirstIn(default).isDefined =>
-            s"$path: ${header.group(1)}.$name"
-        }
-      }
-    }.toSeq
+  private lazy val offenders: Seq[String] = parameterDefaults(MainRoots).collect {
+    case p if PolandDefault.findFirstIn(p.default).isDefined => p.label
   }.distinct
 
   private val Tests =

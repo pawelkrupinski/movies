@@ -322,40 +322,4 @@ object TitleNormalizer {
    *  spec in the JVM shares. */
   def forCountry(country: Country): TitleNormalizer =
     new TitleNormalizer(TitleRuleSet.forCountry(country))
-
-  /** TRANSITIONAL: the normalizer for the country THIS process serves, resolved
-   *  from the environment exactly as the old process-global did.
-   *
-   *  It exists so the constructor defaults on `MovieRepository`, `MovieCache`,
-   *  `StagingRepository` and friends stay behaviour-identical while their
-   *  composition roots are migrated to pass an instance explicitly. Defaulting
-   *  them to `forCountry(Country.default)` instead would have been a live
-   *  regression: `showtimes-de` and `showtimes-uk` resolve `KINOWO_COUNTRY`, so a
-   *  Poland default would have started keying their corpora with Polish rules —
-   *  the precise fault this refactor removes.
-   *
-   *  A multi-country worker still gets Poland here, which is why
-   *  `WorkerMain.unsupportedCountries` keeps refusing to boot one until the
-   *  remaining call sites are injected and this default can be deleted.
-   *
-   *  Builds a NEW instance per call, like [[forCountry]] — fine as a constructor
-   *  default (once per component), never per title. */
-  def deployment: TitleNormalizer = {
-    val env = tools.Env.fromProcess()
-    rulesFor(Country.ambiguousFromEnv(env), Country.soleFromEnv(env))
-  }
-
-  /** Pure core of [[deployment]] — the choice, testable without touching process
-   *  state. A process configured for SEVERAL countries has no one rule set, so it
-   *  is refused rather than silently given Poland's: that silent fallback is what
-   *  stored CinemaxX Würzburg's "Minions & Monster" as "Minions i Monster" and
-   *  served it to German users under a key no German cinema slot can produce.
-   *  Nothing configured is NOT ambiguous — a dev box or a spec gets Poland. */
-  private[movies] def rulesFor(ambiguous: List[Country], sole: Option[Country]): TitleNormalizer =
-    if (ambiguous.isEmpty) forCountry(sole.getOrElse(Country.default))
-    else sys.error(
-      s"No sole country: KINOWO_COUNTRIES names ${ambiguous.map(_.code).mkString(", ")} and " +
-      "KINOWO_COUNTRY does not disambiguate, so there is no one rule set this process " +
-      "can normalise titles under. Pass a TitleNormalizer explicitly instead of relying " +
-      "on TitleNormalizer.deployment.")
 }

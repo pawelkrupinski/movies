@@ -13,12 +13,11 @@ import scala.concurrent.duration._
 /**
  * Every component a wiring builds keys through THAT wiring's country.
  *
- * The components each default their normalizer to `TitleNormalizer.deployment`,
- * which reads the environment — a sensible answer for a single-country deploy
- * and none at all for a worker running several. So the composition root has to
- * resolve one itself and hand it down, and this asserts it does: built for
- * Germany, in a JVM whose environment names no country, every seam must still be
- * German rather than the Poland default.
+ * No component resolves its normalizer from the environment — each takes one as
+ * a required argument, since no one answer would fit a worker running several
+ * countries. So the composition root has to build one per country and hand it
+ * down, and this asserts it does: built for Germany, in a JVM whose environment
+ * names no country, every seam must be German rather than Poland.
  *
  * In the integration layer because `WorkerWiring.mongoConnection` refuses to
  * start without `MONGODB_URI` — building the root is the thing under test, so

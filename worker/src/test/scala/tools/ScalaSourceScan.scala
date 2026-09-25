@@ -5,11 +5,39 @@ import java.nio.file.{Files, Path, Paths}
 import scala.jdk.CollectionConverters._
 
 /** Text-level helpers for the source lints (`NoWallClockInTestsSpec`,
- *  `NoPolandDefaultCountrySpec`, `NoSwallowedFailureSpec`): they read the repository's own `.scala` files from the
+ *  `NoPolandDefaultCountrySpec`, `NoDefaultTitleNormalizerSpec`, `NoSwallowedFailureSpec`): they read the repository's own `.scala` files from the
  *  build root (these specs run unforked, so the working directory is the repo root). */
 object ScalaSourceScan {
 
   val MainRoots: Seq[String] = Seq("common/src/main", "web/src/main", "worker/src/main")
+
+  /** One class/def parameter that has a default: where, whose, and the default's text. */
+  final case class ParameterDefault(path: Path, owner: String, name: String, default: String) {
+    def label: String = s"$path: $owner.$name"
+  }
+
+  private val Header = """\b(?:class|trait|def)\s+([\w$]+)\s*(?:\[[^\]]*\])?\s*(?=\()""".r
+  private val Parameter =
+    """(?s)^\s*(?:@\w+\s+)*(?:(?:private(?:\[\w+\])?|protected|override|implicit|using|final|val|var)\s+)*([\w$]+)\s*:(.*?)=(?!>)(.*)$""".r
+
+  /** Every defaulted parameter of every class/trait/def signature under `roots`, each
+   *  clause of a curried signature included — what the default-parameter lints scan. */
+  def parameterDefaults(roots: Seq[String]): Seq[ParameterDefault] = scalaFiles(roots).flatMap { path =>
+    val src = codeOf(path)
+    Header.findAllMatchIn(src).flatMap { header =>
+      // Every clause of the signature: `(a)(b)(using c)`.
+      Iterator.iterate(Option(header.end)) {
+        case Some(open) =>
+          val next = src.indexWhere(!_.isWhitespace, closingParen(src, open) + 1)
+          Option.when(next > 0 && src(next) == '(')(next)
+        case None => None
+      }.takeWhile(_.isDefined).flatten.flatMap { open =>
+        topLevelParts(argumentsAt(src, open)).collect {
+          case Parameter(name, _, default) => ParameterDefault(path, header.group(1), name, default)
+        }
+      }
+    }.toSeq
+  }
 
   def scalaFiles(roots: Seq[String]): Seq[Path] =
     roots.map(Paths.get(_)).filter(Files.isDirectory(_)).flatMap { root =>

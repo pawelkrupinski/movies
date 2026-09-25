@@ -412,9 +412,9 @@ jobs:
                   set -o pipefail
                   sbt -J-Xmx${{ inputs.heap }} ${{ matrix.phase == 'convergence' && inputs.command || inputs.order-command }} 2>&1 | tee convergence.log
               env:
-                  # The spec installs this country's TitleRuleSet itself; naming the
+                  # The spec builds this country's TitleNormalizer itself; naming the
                   # country here too means anything that reads the environment
-                  # directly (`Country.soleFromEnv`) agrees with it rather than
+                  # directly (`Country.fromEnv`) agrees with it rather than
                   # falling back to the Poland default.
                   KINOWO_COUNTRY:   ${{ inputs.code }}
                   KINOWO_COUNTRIES: ${{ inputs.code }}

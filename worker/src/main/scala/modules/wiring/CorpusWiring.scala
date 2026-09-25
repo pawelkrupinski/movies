@@ -33,10 +33,8 @@ trait CorpusWiring { self: WorkerWiring =>
       metrics = taskMetrics.slotsChangeMetrics, roster = VenueRoster.of(country), writeMetrics = taskMetrics, decodeFailures = taskMetrics)
   /** This wiring's country's title rules — the ONE instance every component below
    *  keys through, so a worker running several countries cannot fold one country's
-   *  titles with another's. Passing it explicitly (rather than letting each
-   *  component fall back to `TitleNormalizer.deployment`) is what makes that true:
-   *  the default reads the environment, which has no answer for a multi-country
-   *  process. */
+   *  titles with another's. Every component takes its normalizer as a required
+   *  argument, so there is no environment-resolved fallback to inherit. */
   lazy val titleNormalizer: TitleNormalizer =
     TitleNormalizer.forCountry(country)
 

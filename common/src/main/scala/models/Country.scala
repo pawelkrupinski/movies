@@ -417,53 +417,6 @@ object Country {
    *  A web deployment resolves it once at boot; the worker uses [[all]] instead. */
   def fromEnv(env: Env): Country = env.get("KINOWO_COUNTRY").flatMap(byCode).getOrElse(default)
 
-  /** The ONE country this process serves, or `None` when it serves several.
-   *
-   *  The two deployments name their country through DIFFERENT variables: web sets
-   *  `KINOWO_COUNTRY=de`, each worker sets `KINOWO_COUNTRIES=de` (the plural list,
-   *  even though every deployed worker names exactly one). Anything process-global
-   *  that must be country-correct has to consult BOTH — reading only the singular
-   *  silently hands a worker the Poland default, which is how the country-scoped
-   *  title rules shipped working on web and doing nothing on the worker that
-   *  actually writes the corpus.
-   *
-   *  `None` for a multi-country worker: no single process-global value can be
-   *  right for it, so callers must scope per country rather than pick one. */
-  def soleFromEnv(env: Env): Option[Country] =
-    soleFrom(env.get("KINOWO_COUNTRY"), env.get("KINOWO_COUNTRIES"))
-
-  /** Pure core of [[soleFromEnv]] — the precedence, testable without touching the
-   *  environment. Public so a spec can assert what a GIVEN deployment's env shape
-   *  resolves to (e.g. the worker's `KINOWO_COUNTRIES=de` and no `KINOWO_COUNTRY`)
-   *  without mutating process state. */
-  def soleFrom(country: Option[String], countries: Option[String]): Option[Country] = {
-    val singular = country.flatMap(byCode)
-    val listed = countries
-      .map(_.split(",").iterator.map(_.trim).filter(_.nonEmpty).flatMap(byCode).toList.distinct)
-      .getOrElse(Nil)
-    singular.orElse(if (listed.sizeIs == 1) listed.headOption else None)
-  }
-
-  /** The countries a process was configured for when NO single one can be chosen:
-   *  `KINOWO_COUNTRIES` naming several with no `KINOWO_COUNTRY` to disambiguate.
-   *
-   *  Exists because [[soleFrom]] answers None for TWO different situations that
-   *  must not be treated alike — nothing configured at all (a dev box or a spec,
-   *  where defaulting to Poland is right) and several configured (a multi-country
-   *  worker, where defaulting to Poland is the 2026 incident: CinemaxX Würzburg's
-   *  "Minions & Monster" keyed `minionsimonster` under Polish rules). Empty in the
-   *  first case, the listed countries in the second. */
-  def ambiguousFrom(country: Option[String], countries: Option[String]): List[Country] = {
-    val listed = countries
-      .map(_.split(",").iterator.map(_.trim).filter(_.nonEmpty).flatMap(byCode).toList.distinct)
-      .getOrElse(Nil)
-    if (country.flatMap(byCode).isDefined || listed.sizeIs <= 1) Nil else listed
-  }
-
-  /** [[ambiguousFrom]] over this process's environment. */
-  def ambiguousFromEnv(env: Env): List[Country] =
-    ambiguousFrom(env.get("KINOWO_COUNTRY"), env.get("KINOWO_COUNTRIES"))
-
   /** The Mongo database name for a GIVEN country: an explicit `MONGODB_DB` wins
    *  (local dev / overrides), otherwise it is DERIVED from the country's own
    *  database. The pure per-country core the WORKER resolves each of its N
@@ -505,7 +458,7 @@ object Country {
    *  setting gets switched off, and Mongo would reject the empty name much later,
    *  at the first query rather than at boot.
    *
-   *  Public, like [[soleFrom]], so a spec can resolve a GIVEN deployment's users
+   *  Public so a spec can resolve a GIVEN deployment's users
    *  database without mutating process state — and so the migration that fills
    *  that database picks its target through this rule rather than restating it. */
   def usersDbNameFrom(usersDb: Option[String], ownDb: String): String =

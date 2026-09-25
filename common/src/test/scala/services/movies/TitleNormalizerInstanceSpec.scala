@@ -66,17 +66,6 @@ class TitleNormalizerInstanceSpec extends AnyFlatSpec with Matchers {
     Seq(pl, de, uk).map(_.sanitize("Top Gun: Maverick")).distinct should have size 1
   }
 
-  /** The wiring bug behind the first attempt: the normalizer resolved its rule set
-   *  through `Country.fromEnv`, which reads only the SINGULAR `KINOWO_COUNTRY`. Web
-   *  sets that; every worker sets the PLURAL `KINOWO_COUNTRIES` instead, so the
-   *  worker — the process that WRITES the corpus — silently got Poland's rules and
-   *  kept keying German films `minionsimonster`. Moved here from the retired
-   *  TitleNormalizerScopingSpec, which proved it through a thread-local swap. */
-  it should "give a process configured like kinowo-worker-de the German rule set" in {
-    val asDeployed = Country.soleFrom(None, Some("de")).get   // KINOWO_COUNTRIES=de, no KINOWO_COUNTRY
-    TitleNormalizer.forCountry(asDeployed).sanitize("Minions & Monster") shouldBe "minionsmonster"
-  }
-
   it should "give each country its own instance" in {
     pl should not be theSameInstanceAs(de)
   }
