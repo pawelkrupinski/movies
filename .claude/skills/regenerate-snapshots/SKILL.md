@@ -129,6 +129,13 @@ regeneration fails there instead of ten minutes into the e2e shard. A corpus edi
 did not move the snapshot (dropping captures nothing replays) still needs the rewritten
 stamp committed; one passing run of the spec produces it.
 
+A snapshot whose CONTENT moved also moves `ReadModelProjection.DerivationVersion`:
+`ReadModelDerivationVersionSpec` (worker `testUnit`) fails and prints the new value —
+copy it into the constant and commit it with the snapshot. That version is what makes
+every worker re-project its stored corpus once after the deploy (the derivation pass,
+see `ReadModelDerivationMarker`); a derivation change otherwise reaches stored cards
+only as the rolling content check comes round, up to a day later.
+
 Then regenerate the `expected-*.html` per the section above if rendering shifted,
 and commit all of them together with the production change. Consumers fall back
 to the full pipeline boot when the file is absent, so a forgotten regen is slow,

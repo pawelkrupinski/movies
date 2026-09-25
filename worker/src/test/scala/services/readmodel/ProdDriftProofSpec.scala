@@ -15,8 +15,7 @@ import java.time.LocalDateTime
   * (`movies` + `movie_slots` + `screenings`, ssh mongo-1) — this is what the rolling
   * content check will write the moment its slice reaches these ids, not an invented
   * example. If this passes, the mechanism WILL fix them; the only open question is
-  * WHEN their slice comes up (computed separately from `FilmId.##` against
-  * `KINOWO_READMODEL_CONTENT_SLICES`).
+  * WHEN their slice comes up (`ReadModelProjector.contentSliceOf`).
   */
 class ProdDriftProofSpec extends AnyFlatSpec with Matchers {
   private def at(iso: String) = Showtime(LocalDateTime.parse(iso.stripSuffix("Z")), bookingUrl = Some("https://book"))
@@ -75,14 +74,13 @@ class ProdDriftProofSpec extends AnyFlatSpec with Matchers {
     rows.head.showtimes.map(_.dateTime.toString) shouldBe Seq("2026-09-23T19:00")
   }
 
-  /** WHEN each row's slice comes up: the same hash the sweep uses,
-    * `math.floorMod(id.value.##.toLong, ContentSlices)`, computed against these three
-    * films' REAL FilmId — their `_id` field is the FilmId, unchanged since these are
-    * legacy-keyed rows. 48 is the deployed default (`KINOWO_READMODEL_CONTENT_SLICES`).
+  /** WHEN each row's slice comes up: the sweep's own `contentSliceOf`, computed against these
+    * three films' REAL FilmId — their `_id` field is the FilmId, unchanged since these are
+    * legacy-keyed rows.
     */
   it should "name which of the 48 daily slices each drifted row falls in" in {
-    def slice(id: String, slices: Int = 48): Int = math.floorMod(id.##.toLong, slices.toLong).toInt
-    val bySlice = Seq("troy|2004", "2046|2004", "glastonbury|2006").map(id => id -> slice(id))
+    val bySlice = Seq("troy|2004", "2046|2004", "glastonbury|2006")
+      .map(id => id -> ReadModelProjector.contentSliceOf(services.movies.FilmId(id)))
     info(s"slice assignment: $bySlice")
     bySlice.map(_._2).distinct.size should be <= 3 // just documents the assignment; no fixed expectation
   }

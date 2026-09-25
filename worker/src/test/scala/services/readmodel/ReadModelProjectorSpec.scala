@@ -49,6 +49,14 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     def nanos(): Long = { val n = current; current += stepNanos; n }
   }
 
+  /** A clock at which the rolling content check's next sweeps start on the slice AFTER `row`'s.
+   *  The slice a sweep checks is numbered by the clock, so a spec counting projections across a
+   *  few sweeps otherwise also counts the content check re-projecting its row — in the one or two
+   *  half-hours a day that slice comes up, and nowhere else. */
+  private def clockSkippingSliceOf(row: StoredMovieRecord): java.time.Clock =
+    java.time.Clock.fixed(java.time.Instant.ofEpochSecond(1800L * (ReadModelProjector.contentSliceOf(row.id) + 1)),
+                          java.time.ZoneOffset.UTC)
+
   /** Fake scheduler that CAPTURES the fixed-rate tasks `start()` submits instead of
    *  running them on a timer, so a test can assert exactly what was scheduled and run
    *  the tasks deterministically. */
@@ -900,12 +908,12 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
                                                  slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
     val m  = new RecordingReadModelProjectionMetrics()
-    val sweeper = new ReadModelProjector(repository, rm, rm, m)
     // One venue screening it, one venue whose showtimes are all gone: the second projects no
     // screenings row at all, so its id reads as absent on every slots-only pass.
     repository.upsert("Foo", Some(2024), MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
       KinoMuranow -> SourceData(title = Some("Foo"), showtimes = Nil))))
+    val sweeper = new ReadModelProjector(repository, rm, rm, m, clock = clockSkippingSliceOf(repository.findAll().head))
     sweeper.onMovieUpsert(repository.findAll().head)
 
     sweeper.pruneOrphans()                      // the first sweep may legitimately look
@@ -931,11 +939,11 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
                                                  slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
     val m  = new RecordingReadModelProjectionMetrics()
-    val sweeper = new ReadModelProjector(repository, rm, rm, m)
     def film(times: Seq[Showtime]) = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino   -> SourceData(title = Some("Foo"), showtimes = times),
       KinoMuranow -> SourceData(title = Some("Foo"), showtimes = Nil)))
     repository.upsert("Foo", Some(2024), film(Seq(at("2026-06-12T20:00"))))
+    val sweeper = new ReadModelProjector(repository, rm, rm, m, clock = clockSkippingSliceOf(repository.findAll().head))
     sweeper.onMovieUpsert(repository.findAll().head)
     sweeper.pruneOrphans()                      // the first sweep looks, and notes the phantom
 
@@ -994,7 +1002,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     previous.onMovieUpsert(repository.findAll().head)
     previous.stop()
     val m      = new RecordingReadModelProjectionMetrics()
-    val booted = new ReadModelProjector(repository, rm, rm, m, scheduler = new CapturingScheduler)
+    val booted = new ReadModelProjector(repository, rm, rm, m, scheduler = new CapturingScheduler,
+                                        clock = clockSkippingSliceOf(repository.findAll().head))
 
     booted.start()                              // the boot check may legitimately look once
     val looked = m.projectCalls
@@ -1360,7 +1369,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     projector.stop()
   }
 
-  "start" should "schedule the orphan prune but NOT a periodic reproject" in {
+  "start" should "schedule the orphan prune and the derivation pass's tick but NOT a periodic reproject" in {
     val fakeScheduler = new CapturingScheduler
     val repository = new InMemoryMovieRepository()
     val rm = new InMemoryReadModelRepository()
@@ -1369,7 +1378,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     projector.start()
     val healedAtBoot = rm.movieUpserts.size       // Foo had no card, so the boot heal wrote it
 
-    fakeScheduler.scheduled should have size 1   // only the prune, never the reproject
+    fakeScheduler.scheduled should have size 2   // the prune and the derivation tick, never the reproject
     fakeScheduler.runAll()                        // a scheduled reproject WOULD rewrite Foo here
     rm.movieUpserts     should have size healedAtBoot   // prune re-projects nothing
     projector.stop()

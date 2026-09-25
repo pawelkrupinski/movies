@@ -1,7 +1,7 @@
 package modules.wiring
 
 import modules.WorkerWiring
-import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
+import services.readmodel.{MongoReadModelDerivationMarker, MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
 
 /** ── Denormalised read model (web_movies + web_screenings) ───────────────────
  *  The worker projects every `movies` write into the two read-model collections
@@ -13,5 +13,6 @@ trait ReadModelWiring { self: WorkerWiring =>
   // `InMemoryReadModelRepository` (Mongo-free fixture replay).
   lazy val readModelRepository: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(mongoConnection.database, decodeFailures = taskMetrics)
   lazy val readModelProjector = new ReadModelProjector(movieRepository, readModelRepository, readModelRepository, taskMetrics,
-    shareCards = shareCardLedger, firstCardHold = ReadModelProjector.firstCardHoldFrom(env), clock = clock, env = env)
+    shareCards = shareCardLedger, firstCardHold = ReadModelProjector.firstCardHoldFrom(env), clock = clock, env = env,
+    derivationMarker = new MongoReadModelDerivationMarker(mongoConnection.database, clock))
 }
