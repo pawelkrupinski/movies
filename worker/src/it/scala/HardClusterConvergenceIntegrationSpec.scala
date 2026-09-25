@@ -120,7 +120,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
     CorpusFixture.seedInto(storage.archive, rows)
     val fetch    = wrap(responses(country))
     val language = country.language
-    val w = new ArchiveReplayWiring(country, storage.archive, None, storage) {
+    val w = new ArchiveReplayWiring(country, storage.archive, None, storage, ArchiveReplayWiring.fixtureDirectory(country, Env.fromProcess())) {
       override lazy val clock: java.time.Clock = movableClock.getOrElse(java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC))
       // Ordering, not timing: the whole cascade on the calling thread, so the only
       // nondeterminism left is the seeded arrival order.

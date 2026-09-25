@@ -30,6 +30,16 @@ class ArchiveReplayWiring(
   // to any more: a fixpoint proved over a map says nothing about codecs, paged scans
   // or a transactional staging fold, and every one of those has shipped a bug here.
   storage:          ConvergenceStorage,
+  // The tree both chains replay from and record into, under `test/resources/fixtures/`
+  // (or KINOWO_FIXTURE_ROOT). Handed in — the suite resolves it ONCE through
+  // [[ArchiveReplayWiring.fixtureDirectory]] — so the two chains, the cache that lives
+  // beside it and the freshness prune can never be looking at different directories, and
+  // a spec points a wiring at a scratch tree without touching the process's properties.
+  // A constructor parameter rather than a member for a second reason: `WorkerWiring`'s own
+  // initialisation forces `httoFetch`, which is this subclass's override, which reads it —
+  // a parameter is already set by then, where a strict `val` would still be `null` and bind
+  // both chains to `test/resources/fixtures/null`.
+  fixtureDirectory: String,
   // Some(...) makes the run HERMETIC: the wire itself is replaced (see `realHttpLeaf`),
   // so nothing the recorded tree and remembered verdicts cannot answer is fetched, and
   // every such request is named here instead. None is the RECORDING run, which fills
@@ -43,18 +53,6 @@ class ArchiveReplayWiring(
    *  falls through all of them reaches the network. */
   override protected def realHttpLeaf: HttpFetch =
     hermetic.fold(super.realHttpLeaf)(new HermeticHttpLeaf(_))
-
-  /** The tree both chains replay from and record into — named by the environment when a
-   *  run wants a particular one, and by the country otherwise. Read ONCE so the two
-   *  chains, the cache that lives beside it and the freshness prune can never be looking
-   *  at different directories.
-   *
-   *  LAZY, and it has to be: `WorkerWiring`'s own initialisation forces `httoFetch`, which
-   *  is this subclass's override, which reads this field. As a strict `val` it is still
-   *  `null` at that point and both chains silently bind to
-   *  `test/resources/fixtures/null` — a tree that exists, records, and replays, so the
-   *  next run answers from it and never reaches the live leg at all. */
-  private lazy val fixtureDirectory: String = ArchiveReplayWiring.fixtureDirectory(country)
 
   /**
    * The scrape side: recorded DETAIL pages first, live behind them, and whatever the
@@ -252,7 +250,8 @@ object ArchiveReplayWiring {
    *  place the tree is allowed to grow. */
   val HermeticVar = "KINOWO_CONVERGENCE_HERMETIC"
 
-  def hermeticFromEnv: Boolean = Env.fromProcess().get(HermeticVar).exists(_.trim.equalsIgnoreCase("true"))
+  /** Whether `env` asks for a hermetic leg ([[HermeticVar]]). */
+  def hermeticIn(env: Env): Boolean = env.get(HermeticVar).exists(_.trim.equalsIgnoreCase("true"))
 
   /**
    * The fixture tree a country's replay reads and records: `enrichment-pl`,
@@ -265,7 +264,10 @@ object ArchiveReplayWiring {
    * fetch threw, and the leg ran to completion having enriched nothing — a fixpoint over
    * a corpus with no metadata in it, reported as a pass. A directory that does not exist
    * yet is simply an empty one; the first run fills it and every later run replays it.
+   *
+   * Resolved from the `env` a suite hands in — its own composition root — and passed to
+   * the wiring as a value.
    */
-  def fixtureDirectory(country: Country): String =
-    Env.fromProcess().get(FixturesVar).filter(_.nonEmpty).getOrElse(s"enrichment-${country.code}")
+  def fixtureDirectory(country: Country, env: Env): String =
+    env.get(FixturesVar).filter(_.nonEmpty).getOrElse(s"enrichment-${country.code}")
 }

@@ -24,12 +24,11 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   /**
    * A scratch tree per test.
    *
-   * Every wiring in this spec both replays from a tree and RECORDS into it, and left to
-   * its own devices it would pick the country's real one — so a `sbt testUnit` run would
-   * write `body for https://…` into the corpus a convergence leg replays. Pointing the
-   * spec's own knob at a throwaway name keeps that impossible, and keeps it LOCAL:
-   * `KINOWO_FIXTURE_ROOT` would relocate every fixture consumer in the JVM, and suites
-   * here run in parallel.
+   * Every wiring in this spec both replays from a tree and RECORDS into it, and handed the
+   * country's real one a `sbt testUnit` run would write `body for https://…` into the corpus
+   * a convergence leg replays. Each wiring is handed a throwaway tree instead — a value, so
+   * it stays LOCAL to that wiring: nothing in the JVM's properties moves, and suites here
+   * run in parallel.
    */
   private var fixtureTree: String = scala.compiletime.uninitialized
   private val trees = scala.collection.mutable.ListBuffer.empty[String]
@@ -40,7 +39,6 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   private def useFreshTree(): String = {
     fixtureTree = s"archive-replay-spec-${java.util.UUID.randomUUID()}"
     trees += fixtureTree
-    System.setProperty(ArchiveReplayWiring.FixturesVar, fixtureTree)
     fixtureTree
   }
 
@@ -54,7 +52,6 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   }
 
   override def afterEach(): Unit = {
-    System.clearProperty(ArchiveReplayWiring.FixturesVar)
     trees.map(rootOf).filter(java.nio.file.Files.exists(_)).foreach { root =>
       java.nio.file.Files.walk(root).sorted(java.util.Comparator.reverseOrder())
         .forEach(path => java.nio.file.Files.deleteIfExists(path))
@@ -110,7 +107,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   }
 
   private def wiringWith(cache: Option[EnrichmentCache], leaf: HttpFetch): ArchiveReplayWiring =
-    new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, cache, new FetchOnlyStorage) {
+    new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, cache, new FetchOnlyStorage, fixtureTree) {
       override protected def realHttpLeaf: HttpFetch = leaf
     }
 
@@ -118,15 +115,19 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   // to be a second mode — no directory meant a fetch that refused every call, which took
   // TMDB's key away with it — and the leg then ran to completion having enriched nothing.
   "the archive replay directory" should "be named after the country when nothing points it elsewhere" in {
-    System.clearProperty(ArchiveReplayWiring.FixturesVar)
-
-    ArchiveReplayWiring.fixtureDirectory(Country.Poland)  shouldBe "enrichment-pl"
-    ArchiveReplayWiring.fixtureDirectory(Country.Germany) shouldBe "enrichment-de"
+    ArchiveReplayWiring.fixtureDirectory(Country.Poland, Env.of())  shouldBe "enrichment-pl"
+    ArchiveReplayWiring.fixtureDirectory(Country.Germany, Env.of()) shouldBe "enrichment-de"
   }
 
   it should "be whatever a run points it at" in {
-    // `beforeEach` set it; that IS the override.
-    ArchiveReplayWiring.fixtureDirectory(Country.Poland) shouldBe fixtureTree
+    ArchiveReplayWiring.fixtureDirectory(Country.Poland, Env.of(ArchiveReplayWiring.FixturesVar -> "enrichment-scratch")) shouldBe
+      "enrichment-scratch"
+  }
+
+  "the hermetic switch" should "be on only when a run asks for it" in {
+    ArchiveReplayWiring.hermeticIn(Env.of(ArchiveReplayWiring.HermeticVar -> "true")) shouldBe true
+    ArchiveReplayWiring.hermeticIn(Env.of(ArchiveReplayWiring.HermeticVar -> "false")) shouldBe false
+    ArchiveReplayWiring.hermeticIn(Env.of()) shouldBe false
   }
 
   // The scrape side is per-film DETAIL — 25 Polish cinema clients implement `DetailEnricher`
@@ -180,8 +181,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     // meant `apiKey = None`, and a keyless `TmdbClient` returns `None` from `search`
     // without ever reaching the fetch. Germany, so the locale discriminates — the keyless
     // branch took `TmdbClient.DefaultLanguage` (pl-PL), and so does `TestWiring`'s stub.
-    System.clearProperty(ArchiveReplayWiring.FixturesVar)
-    val wiring = new ArchiveReplayWiring(Country.Germany, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage) {
+    val wiring = new ArchiveReplayWiring(Country.Germany, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage, fixtureTree) {
       override protected def realHttpLeaf: HttpFetch = new CountingLeaf
     }
 
@@ -274,7 +274,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   // WITHOUT overriding `realHttpLeaf`: the leaf under test is the one the wiring chooses.
 
   private def hermeticWiring(cache: Option[EnrichmentCache], missing: MissingFixtures): ArchiveReplayWiring =
-    new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, cache, new FetchOnlyStorage, Some(missing))
+    new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, cache, new FetchOnlyStorage, fixtureTree, Some(missing))
 
   "a hermetic archive replay" should "refuse an unrecorded enrichment request and name its fixture" in {
     val missing = new MissingFixtures

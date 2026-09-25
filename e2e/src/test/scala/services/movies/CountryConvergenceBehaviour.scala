@@ -133,7 +133,7 @@ abstract class CountryConvergenceBehaviour(
    * (`Record scrape fixtures`) run without it, and they are what writes the tree.
    */
   private lazy val missingFixtures: Option[MissingFixtures] =
-    Option.when(ArchiveReplayWiring.hermeticFromEnv)(new MissingFixtures)
+    Option.when(ArchiveReplayWiring.hermeticIn(Env.fromProcess()))(new MissingFixtures)
 
   private def recordCorpusProvenance(rows: Seq[services.scrapes.ArchivedScrape]): Unit = {
     val provenance = CorpusProvenance.of(corpusKey, rows, Env.fromProcess().get)
@@ -225,7 +225,7 @@ abstract class CountryConvergenceBehaviour(
   /** The same tree [[ArchiveReplayWiring]] replays and records into, asked the same way,
    *  so the cache lands BESIDE the corpus it belongs to rather than beside whichever
    *  directory this file happened to name. */
-  private def fixtureDirectory: String = ArchiveReplayWiring.fixtureDirectory(country)
+  private lazy val fixtureDirectory: String = ArchiveReplayWiring.fixtureDirectory(country, Env.fromProcess())
 
   /** Age the recorded responses out before anything reads them, so a rating captured
    *  once isn't replayed for ever. The verdict cache expires itself on read; this is the
@@ -374,7 +374,7 @@ abstract class CountryConvergenceBehaviour(
     val archive = storage.archive
     val seeded   = seedArchive(archive)
     val merges   = new RecordingMergeMetrics
-    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), storage, missingFixtures) {
+    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), storage, fixtureDirectory, missingFixtures) {
       override lazy val clock: java.time.Clock = CountryConvergenceBehaviour.this.clock
       // `mergeMetrics` is the ONLY thing this override exists to change, so it overrides the
       // seam and never the cache: a rebuilt cache silently drops whatever it forgets — it lost
@@ -1058,7 +1058,7 @@ abstract class CountryConvergenceBehaviour(
     val scope = s"${country.code}p${seed - OrderSeed}"
     val passStorage = ConvergenceStorage.fromEnv(scope, TitleNormalizer.forCountry(country))
     passStorages.synchronized(passStorages += passStorage)
-    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage, missingFixtures) {
+    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage, fixtureDirectory, missingFixtures) {
       override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
     }
     val ready = mutable.ListBuffer.empty[MovieDetailsComplete]
