@@ -5,7 +5,7 @@
 # reasons. A job there would render — skipped — for every country on every green run
 # (the clutter `ConvergenceLegWiringSpec` keeps the leg free of). And it would hold the
 # suite's one-run lane for up to 90 minutes, delaying the very next verdict; a separate
-# workflow started by the run's completion holds nothing.
+# workflow the run dispatches once its legs are done holds nothing.
 name: Request a convergence bisect
 description: Record what the bisect workflow needs to find the commit that turned this leg red.
 

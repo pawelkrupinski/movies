@@ -8,11 +8,20 @@
 # whatever the code, so the question has a mechanical answer: replay the fast sample over the
 # pipeline commits of (last green, first red], halving the range each time.
 #
-# Started by the convergence run's COMPLETION, not inside it: a bisect job in the leg would
-# render (skipped) for every country on every green run, and would hold the suite's one-run
-# lane for up to 90 minutes, delaying the next verdict. A red leg on main leaves a
-# `bisect-request-<code>` artifact (`.github/actions/convergence-bisect-request`); this
-# workflow bisects exactly the countries that left one, and does nothing for a green run.
+# DISPATCHED by the convergence run itself, as its last job, when a leg on main failed — not
+# run inside it: a bisect there would hold the suite's one-run lane for up to four hours,
+# queueing the very next verdict (and the newer red run meant to supersede this bisect). A red
+# leg on main leaves a `bisect-request-<code>` artifact (`.github/actions/convergence-bisect-request`);
+# this workflow bisects exactly the countries that left one.
+#
+# Not started by the convergence run's COMPLETION any more. Main's `kick-convergence`
+# dispatches the convergence runs with the GITHUB_TOKEN, so they belong to
+# github-actions[bot] — and GitHub creates no run for an event the GITHUB_TOKEN caused, `workflow_dispatch` and `repository_dispatch` excepted. Their
+# completions started nothing: every bisect that ever ran followed a run dispatched by hand
+# with a personal token, and a red run from a normal push was never bisected. A dispatch is the
+# one event the GITHUB_TOKEN may raise. (ConvergenceBisectTriggerSpec)
+#
+# By hand: `gh workflow run convergence-bisect.yml -f suite="Country convergence" -f run-id=<red run>`.
 #
 # CONFIRMED first: the last green commit is replayed once under the red leg's recording, since
 # the pair is re-pinned nightly and a red the new pair brings is no commit's doing.
@@ -22,23 +31,31 @@
 # (at most two) replays that confirm there is a range to bisect — so the worst case is one runner
 # per red country for ~2 hours (the US: ~3.5). A range it could not narrow is reported as a range, never as a guess. A
 # newer red run of the same suite supersedes an older bisect: its range contains the older one;
-# no other completion of the suite can cancel it.
+# nothing else starts a bisect, so nothing else can cancel one.
 # The logic is `.github/scripts/convergence-bisect.sh` (ConvergenceBisectSpec).
 #
 name: Convergence bisect
 
 on:
-    workflow_run:
-        workflows: [Country convergence, US convergence]
-        types: [completed]
+    workflow_dispatch:
+        inputs:
+            suite:
+                description: The convergence workflow whose run went red.
+                required: true
+                type: choice
+                options:
+                    - Country convergence
+                    - US convergence
+            run-id:
+                description: The red run's id — the one that left the `bisect-request-*` artifacts.
+                required: true
+                type: string
 
 concurrency:
-    # Only a newer RED run on main supersedes a bisect (its range contains the older one).
-    # Every other completion — a green run, and each pending run the convergence lane cancels
-    # when a newer push queues — starts a run whose jobs are all skipped, and must not cancel
-    # a bisect in flight on its way through, so it takes a lane of its own.
-    # (ConvergenceBisectConcurrencySpec)
-    group: convergence-bisect-${{ github.event.workflow_run.name }}-${{ (github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.head_branch == 'main') && 'red' || github.run_id }}
+    # Only a newer RED run supersedes a bisect (its range contains the older one) — and only red
+    # runs on main start one, since the convergence run dispatches it on nothing else. So one lane
+    # per suite, cancelling. (ConvergenceBisectConcurrencySpec)
+    group: convergence-bisect-${{ inputs.suite }}
     cancel-in-progress: true
 
 permissions:
@@ -51,10 +68,9 @@ env:
 
 jobs:
     # Seconds, first: the secrets the jobs below read are set, so a missing one fails here
-    # rather than hours into a leg. OMDB_API_KEY is left out: the legs read it, but it is not a repository secret and they run without it. Gated like `plan`, so a green convergence run starts nothing. scripts/ci/preflight.sh never prints a value.
+    # rather than hours into a leg. OMDB_API_KEY is left out: the legs read it, but it is not a repository secret and they run without it. scripts/ci/preflight.sh never prints a value.
     # (PreflightWiringSpec)
     preflight:
-        if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.head_branch == 'main'
         runs-on: ubuntu-latest
         timeout-minutes: 5
         steps:
@@ -67,22 +83,40 @@ jobs:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
               run: scripts/ci/preflight.sh TMDB_API_KEY
 
+    # The red run, as GitHub records it — still in progress when its last job dispatched this,
+    # so its CONCLUSION is not read: the requests are the gate, since only a red hermetic leg on
+    # main leaves one.
     plan:
-        if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.head_branch == 'main'
         runs-on: ubuntu-latest
         timeout-minutes: 5
         permissions:
             actions: read
         outputs:
             requests: ${{ steps.requests.outputs.requests }}
+            head-sha: ${{ steps.requests.outputs.head-sha }}
+            red-run:  ${{ steps.requests.outputs.red-run }}
         steps:
             - id: requests
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   GH_REPO: ${{ github.repository }}
-                  RUN: ${{ github.event.workflow_run.id }}
+                  RUN: ${{ inputs.run-id }}
+                  SUITE: ${{ inputs.suite }}
               run: |
                   set -uo pipefail
+                  IFS=$'\t' read -r name branch sha url < <(gh api "repos/$GH_REPO/actions/runs/$RUN" \
+                      --jq '[.name, .head_branch, .head_sha, .html_url] | @tsv')
+                  if [ "$name" != "$SUITE" ]; then
+                      echo "::error::run $RUN is a '$name' run, not '$SUITE'"
+                      exit 1
+                  fi
+                  echo "head-sha=$sha" >> "$GITHUB_OUTPUT"
+                  echo "red-run=$url" >> "$GITHUB_OUTPUT"
+                  if [ "$branch" != main ]; then
+                      echo "run $RUN is on $branch, not main — nothing to bisect"
+                      echo "requests=[]" >> "$GITHUB_OUTPUT"
+                      exit 0
+                  fi
                   mkdir -p requests
                   gh run download "$RUN" --pattern 'bisect-request-*' --dir requests 2>/dev/null || true
                   requests=$(find requests -name '*.json' -exec cat {} + | jq -sc '.')
@@ -114,7 +148,7 @@ jobs:
         steps:
             - uses: actions/checkout@v5
               with:
-                  ref: ${{ github.event.workflow_run.head_sha }}
+                  ref: ${{ needs.plan.outputs.head-sha }}
                   fetch-depth: 0
                   persist-credentials: false
             # The SAME recorded pair the red leg replayed, so a recorder that pinned a new pair
@@ -134,9 +168,9 @@ jobs:
                   GH_REPO:         ${{ github.repository }}
                   COUNTRY:         ${{ matrix.request.country }}
                   CODE:            ${{ matrix.request.code }}
-                  WORKFLOW:        ${{ github.event.workflow_run.name }}
-                  RUN_ID:          ${{ github.event.workflow_run.id }}
-                  BAD:             ${{ github.event.workflow_run.head_sha }}
+                  WORKFLOW:        ${{ inputs.suite }}
+                  RUN_ID:          ${{ inputs.run-id }}
+                  BAD:             ${{ needs.plan.outputs.head-sha }}
                   SAMPLE_COMMAND:  ${{ matrix.request.sample }}
                   HEAP:            ${{ matrix.request.heap }}
                   STEP_MINUTES:    ${{ matrix.request.minutes }}
@@ -209,7 +243,7 @@ jobs:
     # The commit comment on each first bad commit: the workflow's only write, in a job that
     # checks out and runs nothing of the project.
     tell:
-        needs: bisect
+        needs: [plan, bisect]
         if: ${{ !cancelled() && needs.bisect.result != 'skipped' }}
         runs-on: ubuntu-latest
         timeout-minutes: 5
@@ -228,7 +262,7 @@ jobs:
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   GH_REPO:  ${{ github.repository }}
-                  RED_RUN:  ${{ github.event.workflow_run.html_url }}
+                  RED_RUN:  ${{ needs.plan.outputs.red-run }}
                   THIS_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
               run: |
                   set -uo pipefail

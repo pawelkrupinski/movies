@@ -96,11 +96,10 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   // Outside the leg: inside, it would hold the suite's one-run lane for its whole budget.
-  it should "run after the suite's run, only when it failed on main, inside a ceiling above its budget" in {
+  it should "run in a run of its own, only on main, inside a ceiling above its budget" in {
     val bisect = RepoFile.read(".github/workflows/convergence-bisect.yml")
-    bisect should include("workflows: [Country convergence, US convergence]")
-    RepoFile.block(bisect, "plan") should include(
-      "github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.head_branch == 'main'")
+    RepoFile.block(bisect, "on") should include("workflow_dispatch:")
+    RepoFile.block(bisect, "plan") should include("""if [ "$branch" != main ]; then""")
     val ceiling = """timeout-minutes:\s*(\d+)""".r.findFirstMatchIn(RepoFile.block(bisect, "bisect"))
       .map(_.group(1).toInt).getOrElse(fail("no ceiling"))
     val budget = """BUDGET_MINUTES:\s*(\d+)""".r.findFirstMatchIn(bisect).map(_.group(1).toInt)

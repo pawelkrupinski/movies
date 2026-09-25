@@ -167,10 +167,30 @@ jobs:
         # TMDB_API_KEY / OMDB_API_KEY, and the GITHUB_TOKEN the setup action reads.
         secrets: inherit
 
+    # A red leg on main hands its range to `convergence-bisect.yml` — DISPATCHED, the one event
+    # the GITHUB_TOKEN may raise: this run belongs to github-actions[bot] (Main dispatched it),
+    # so its completion starts no `workflow_run`. A separate run rather than a reusable call,
+    # so the bisect holds none of this suite's lane. (ConvergenceBisectTriggerSpec)
+    request-bisect:
+        needs: [leg]
+        if: ${{ !cancelled() && needs.leg.result == 'failure' && github.ref == 'refs/heads/main' }}
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            actions: write
+        steps:
+            - name: Dispatch the bisect
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  SUITE: ${{ github.workflow }}
+                  RUN_ID: ${{ github.run_id }}
+              run: gh workflow run convergence-bisect.yml --ref main -f suite="$SUITE" -f run-id="$RUN_ID"
+
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
     report:
-        needs: [preflight, leg]
+        needs: [preflight, leg, request-bisect]
         if: always() && !cancelled() && github.event_name == 'schedule'
         runs-on: ubuntu-latest
         timeout-minutes: 5
