@@ -31,7 +31,7 @@ class MongoUserStateRepositoryOutcomesSpec extends AnyFlatSpec with Matchers {
 
   "a users store that never came up" should "report each refused write as unavailable, on its own endpoint" in {
     val (seen, outcomes) = recording()
-    val store = new MongoUserStateRepository(sharedDb = None, fallbackToOwnInit = false, writeOutcomes = outcomes)
+    val store = new MongoUserStateRepository(database = None, writeOutcomes = outcomes)
     val now   = Instant.parse("2026-09-23T12:00:00Z")
 
     store.changeHiddenFilms("u", "pl", HiddenFilmsChange.Hide("Film", 10), now) shouldBe None
@@ -55,7 +55,7 @@ class MongoUserStateRepositoryOutcomesSpec extends AnyFlatSpec with Matchers {
 
     val registry = new PrometheusRegistry()
     val clock    = java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)
-    val store    = new MongoUserStateRepository(sharedDb = Some(db), fallbackToOwnInit = false,
+    val store    = new MongoUserStateRepository(database = Some(db),
       writeOutcomes = new UserStateWriteMetrics(registry, "pl"))
     val users    = new InMemoryUserRepository
     users.upsert(User(id = "u", provider = "google", providerSub = "G-u", email = None, displayName = None,
@@ -79,7 +79,7 @@ class MongoUserStateRepositoryOutcomesSpec extends AnyFlatSpec with Matchers {
     val db     = client.getDatabase("closed")
     client.close()
     val reported = mutable.ListBuffer.empty[Boolean]
-    val store = new MongoUserStateRepository(sharedDb = Some(db), fallbackToOwnInit = false,
+    val store = new MongoUserStateRepository(database = Some(db),
       indexHealth = (present: Boolean) => reported += present)
 
     store.enabled shouldBe true   // still serves: a missing index is not a reason to refuse every read

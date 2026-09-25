@@ -28,18 +28,19 @@ class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matche
   private val Prefix = "__integration-test-hide-"
   // Every write's reported outcome, as (userId-free) (endpoint, outcome) pairs.
   private val outcomes = new ConcurrentLinkedQueue[(String, String)]()
-  private val states = new MongoUserStateRepository(
+  private lazy val client   = MongoClient(Env.get("MONGODB_URI").get)
+  private lazy val database = client.getDatabase(models.Country.resolvedDbName)
+  private val states = new MongoUserStateRepository(Some(database),
     writeOutcomes = (endpoint: String, outcome: String) => { outcomes.add(endpoint -> outcome); () })
   private val users  = new InMemoryUserRepository
   private val pool   = Executors.newFixedThreadPool(32)
   private implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(pool)
 
   override protected def afterAll(): Unit = try {
-    val client = MongoClient(Env.get("MONGODB_URI").get)
-    Await.ready(client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo")).getCollection("userStates")
+    Await.ready(database.getCollection("userStates")
       .deleteMany(Filters.regex("userId", s"^$Prefix")).toFuture(), 10.seconds)
-    client.close()
     states.close()
+    client.close()
     pool.shutdown()
   } finally super.afterAll()
 

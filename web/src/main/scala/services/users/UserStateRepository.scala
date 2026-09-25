@@ -6,10 +6,9 @@ import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument
 import models.UserState
 import org.bson.{BsonArray, BsonDateTime, BsonDocument, BsonInt32, BsonString, BsonValue}
 import org.mongodb.scala.model.{Aggregates, Field, Filters}
-import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, Observer, SingleObservableFuture, Subscription}
+import org.mongodb.scala.{MongoCollection, MongoDatabase, Observer, SingleObservableFuture, Subscription}
 import play.api.Logging
 import services.movies.{ChangeEventDecoder, ChangeStreamLiveness, ChangeStreamReopen}
-import tools.Env
 
 import scala.concurrent.Await
 import java.time.Instant
@@ -97,8 +96,10 @@ object UserStateRepository {
 }
 
 class MongoUserStateRepository(
-  sharedDb: Option[MongoDatabase] = None,
-  fallbackToOwnInit: Boolean = true,
+  // The users database, handed in by the composition root (`UsersWiring`, on the
+  // shared `MongoConnection`); `None` (no Mongo configured, or the connection
+  // failed) leaves the store disabled. It never opens a client of its own.
+  database: Option[MongoDatabase],
   // The reopen driver for the `userStates` cursor. Production schedules on a daemon
   // thread; a spec hands over one that fires when it says so.
   reopenDriver: (String, () => Unit) => ChangeStreamReopen = ChangeStreamReopen.onDaemonScheduler,
@@ -113,21 +114,11 @@ class MongoUserStateRepository(
 ) extends UserStateRepository with Logging {
   import UserStateWriteOutcomes.{Endpoint, Outcome}
 
-  // Shares its MongoClient with the rest of the app via the
-  // `MongoConnection` passed by Wiring. See MongoUserRepository for the
-  // sharedDb / legacy-init dual-path rationale. `fallbackToOwnInit`
-  // exists for the same reason as on MongoMovieRepository: production sets
-  // it false so a failed shared connection doesn't trigger a duplicate
-  // 15s init timeout here.
-  private lazy val initResult: (Option[MongoClient], Option[MongoCollection[UserState]]) =
-    sharedDb match {
-      case Some(db) =>
-        val coll = db.withCodecRegistry(UserCodecs.registry).getCollection[UserState]("userStates")
-        uniqueUserIdIndexOrReport(coll)
-        (None, Some(coll))
-      case None if fallbackToOwnInit => init()
-      case None                      => (None, None)
-    }
+  private lazy val coll: Option[MongoCollection[UserState]] = database.map { db =>
+    val c = db.withCodecRegistry(UserCodecs.registry).getCollection[UserState]("userStates")
+    uniqueUserIdIndexOrReport(c)
+    c
+  }
 
   // `unique` — without it an upserting write keyed on `Filters.eq("userId", …)`
   // can't tell "this user's one row" from "the first of several": a plain
@@ -166,9 +157,6 @@ class MongoUserStateRepository(
         "Duplicate rows for one userId are the usual cause; writes keyed on userId may pick either row.", exception))
     indexHealth.uniqueUserIdIndex(built.isSuccess)
   }
-
-  private def clientOpt: Option[MongoClient]                = initResult._1
-  private def coll:      Option[MongoCollection[UserState]] = initResult._2
 
   def enabled: Boolean = coll.isDefined
 
@@ -295,32 +283,7 @@ class MongoUserStateRepository(
     })
   }
 
-  def close(): Unit = { reopen.close(); clientOpt.foreach(_.close()) }
-
-  private def init(): (Option[MongoClient], Option[MongoCollection[UserState]]) =
-    Env.get("MONGODB_URI") match {
-      case None =>
-        logger.info("MONGODB_URI not set — MongoUserStateRepository disabled.")
-        (None, None)
-      case Some(uri) =>
-        Try {
-          val dbName = models.Country.resolvedDbName
-          val client = MongoClient(uri)
-          val db     = client.getDatabase(dbName).withCodecRegistry(UserCodecs.registry)
-          val coll   = db.getCollection[UserState]("userStates")
-          Await.result(coll.countDocuments().toFuture(), 10.seconds)
-          uniqueUserIdIndexOrReport(coll)
-          logger.info(s"MongoUserStateRepository connected to $dbName.userStates")
-          (client, coll)
-        }.recover {
-          case exception: Throwable =>
-            logger.error(s"MongoUserStateRepository init failed (${exception.getMessage}) — disabled.")
-            null
-        }.toOption.filter(_ != null) match {
-          case Some((c, coll)) => (Some(c), Some(coll))
-          case None            => (None, None)
-        }
-    }
+  def close(): Unit = reopen.close()
 }
 
 object MongoUserStateRepository {

@@ -28,7 +28,7 @@ import scala.util.control.NonFatal
  *
  * The check is only as current as the row it reads, which is why the
  * `UserRepository` a pod hands this is the shared store itself, uncached (see
- * `UsersWiring.podUserRepository`): a per-process copy of the row kept a
+ * `UsersWiring.userRepository`): a per-process copy of the row kept a
  * revoked cookie working on every OTHER pod, and signed the revoking device
  * out of them, for as long as the copy lived.
  */

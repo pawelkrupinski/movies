@@ -6,9 +6,8 @@ import org.bson.codecs.EncoderContext
 import org.mongodb.scala.bson.conversions.Bson
 import models.User
 import org.mongodb.scala.model.Filters
-import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, SingleObservableFuture}
+import org.mongodb.scala.{MongoCollection, MongoDatabase, SingleObservableFuture}
 import play.api.Logging
-import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -59,40 +58,19 @@ trait UserRepository {
 }
 
 /**
- * MongoDB-backed `UserRepository`. Persists to the `users` collection.
- *
- * When `MONGODB_URI` is unset the repository silently no-ops — local dev
- * without Atlas keeps working with the OAuth flow returning a
- * "session-only" user that doesn't persist (Phase B will surface
- * that explicitly).
+ * MongoDB-backed `UserRepository`. Persists to the `users` collection of the
+ * database the composition root hands in (`UsersWiring`, on the shared
+ * `MongoConnection`). `None` (no Mongo configured, or the connection failed)
+ * leaves it a no-op: local dev without Mongo keeps the OAuth flow working with
+ * a session-only user that doesn't persist. It never opens a client of its own.
  */
-class MongoUserRepository(
-  sharedDb: Option[MongoDatabase] = None,
-  fallbackToOwnInit: Boolean = true
-) extends UserRepository with Logging {
+class MongoUserRepository(database: Option[MongoDatabase]) extends UserRepository with Logging {
 
-  // When `sharedDb` is provided (production path via `MongoConnection`),
-  // we apply our codec registry to it and grab the `users` collection
-  // without opening our own client. When `None` (legacy scripts under
-  // test/scala/scripts/, IT specs), we build our own MongoClient.
-  // See `MongoConnection` for the rationale — Phase A originally
-  // opened a third independent MongoClient per process, which is what
-  // tipped RSS past the 512 MB Fly ceiling.
-  //
-  // `fallbackToOwnInit = false` in Wiring stops the double-init burn:
-  // a failed shared connection would otherwise re-hit the same DNS /
-  // TLS timeout here, adding another ~15s to boot when offline.
-  private lazy val initResult: (Option[MongoClient], Option[MongoCollection[User]]) =
-    sharedDb match {
-      case Some(db) =>
-        val coll = db.withCodecRegistry(UserCodecs.registry).getCollection[User]("users")
-        Try(Await.result(coll.createIndex(org.mongodb.scala.model.Indexes.ascending("id")).toFuture(), 10.seconds))
-        (None, Some(coll))
-      case None if fallbackToOwnInit => init()
-      case None                      => (None, None)
-    }
-  private def clientOpt: Option[MongoClient]               = initResult._1
-  private def coll:      Option[MongoCollection[User]]     = initResult._2
+  private lazy val coll: Option[MongoCollection[User]] = database.map { db =>
+    val c = db.withCodecRegistry(UserCodecs.registry).getCollection[User]("users")
+    Try(Await.result(c.createIndex(org.mongodb.scala.model.Indexes.ascending("id")).toFuture(), 10.seconds))
+    c
+  }
 
   def enabled: Boolean = coll.isDefined
 
@@ -150,32 +128,7 @@ class MongoUserRepository(
       }.get
   }
 
-  def close(): Unit = clientOpt.foreach(_.close())
-
-  private def init(): (Option[MongoClient], Option[MongoCollection[User]]) =
-    Env.get("MONGODB_URI") match {
-      case None =>
-        logger.info("MONGODB_URI not set — MongoUserRepository disabled.")
-        (None, None)
-      case Some(uri) =>
-        Try {
-          val dbName = models.Country.resolvedDbName
-          val client = MongoClient(uri)
-          val db     = client.getDatabase(dbName).withCodecRegistry(UserCodecs.registry)
-          val coll   = db.getCollection[User]("users")
-          Await.result(coll.countDocuments().toFuture(), 10.seconds)
-          Await.result(coll.createIndex(org.mongodb.scala.model.Indexes.ascending("id")).toFuture(), 10.seconds)
-          logger.info(s"MongoUserRepository connected to $dbName.users")
-          (client, coll)
-        }.recover {
-          case exception: Throwable =>
-            logger.error(s"MongoUserRepository init failed (${exception.getMessage}) — disabled.")
-            null
-        }.toOption.filter(_ != null) match {
-          case Some((c, coll)) => (Some(c), Some(coll))
-          case None            => (None, None)
-        }
-    }
+  def close(): Unit = ()
 }
 
 object MongoUserRepository {

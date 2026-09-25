@@ -54,10 +54,10 @@ class SharedUsersDatabaseIntegrationSpec extends AnyFlatSpec with Matchers with 
     client.getDatabase(Country.usersDbNameFrom(sharedUsersDb, corpusDb(country)))
 
   private def usersOn(country: Country, sharedUsersDb: Option[String]) =
-    new MongoUserRepository(Some(usersDbFor(country, sharedUsersDb)), fallbackToOwnInit = false)
+    new MongoUserRepository(Some(usersDbFor(country, sharedUsersDb)))
 
   private def statesOn(country: Country, sharedUsersDb: Option[String]) =
-    new MongoUserStateRepository(Some(usersDbFor(country, sharedUsersDb)), fallbackToOwnInit = false)
+    new MongoUserStateRepository(Some(usersDbFor(country, sharedUsersDb)))
 
   override protected def afterAll(): Unit = try {
     (Country.all.map(corpusDb) :+ SharedDb).distinct.foreach { db =>

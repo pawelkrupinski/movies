@@ -27,7 +27,7 @@ final class UserStatePod(
   indexHealth:   UserStateIndexHealth   = UserStateIndexHealth.none,
   cacheTtl:      scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(10, "minutes")
 ) extends AutoCloseable {
-  val states     = new MongoUserStateRepository(sharedDb = Some(db), fallbackToOwnInit = false,
+  val states     = new MongoUserStateRepository(database = Some(db),
     writeOutcomes = writeOutcomes, indexHealth = indexHealth)
   val changeTimes = new CaffeineUserChangeTimeCache(states, entryTtl = cacheTtl)
   val controller: UserStateController = UserStatePod.controller(states, users, changeTimes, clock)

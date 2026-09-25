@@ -1,7 +1,6 @@
 package controllers
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import modules.webwiring.UsersWiring
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -21,8 +20,8 @@ import java.time.Instant
  * and therefore the session cookie; the apex pod answers `/auth/…` for all of
  * them), and a rolling deploy runs two of the same country side by side. They
  * share nothing but Mongo and the cookie — so whatever each pod puts between
- * its controllers and that database (`UsersWiring.podUserRepository` /
- * `podUserStateRepository`) must not let one pod act on a copy another pod has
+ * its controllers and that database (`UsersWiring.userRepository` /
+ * `userStateRepository`: nothing) must not let one pod act on a copy another pod has
  * already changed. Each test below is a real cross-pod sequence that a
  * per-process cache got wrong.
  */
@@ -46,15 +45,13 @@ class UserAcrossPodsSpec extends AnyFlatSpec with Matchers {
     states.upsert(models.UserState("alice@example.com", Set.empty, Set.empty, Now.minusSeconds(60)))
 
     def statePod(): UserStateController = {
-      val podUsers  = UsersWiring.podUserRepository(users)
-      val podStates = UsersWiring.podUserStateRepository(states)
-      new UserStateController(Helpers.stubControllerComponents(), podStates,
-        new AccountDeletion(podUsers, podStates), NoUserChangeTimeCache,
-        new LegacyUserStateMetrics(new PrometheusRegistry(), "pl", clock), podUsers, clock)
+      new UserStateController(Helpers.stubControllerComponents(), states,
+        new AccountDeletion(users, states), NoUserChangeTimeCache,
+        new LegacyUserStateMetrics(new PrometheusRegistry(), "pl", clock), users, clock)
     }
 
     def authPod(): AuthController =
-      new AuthController(Helpers.stubControllerComponents(), Map.empty, UsersWiring.podUserRepository(users),
+      new AuthController(Helpers.stubControllerComponents(), Map.empty, users,
         new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore), models.Country.Poland)
   }
 

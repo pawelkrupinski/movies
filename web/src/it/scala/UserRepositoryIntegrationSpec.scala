@@ -23,24 +23,35 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   // `.env.local` aims MONGODB_URI at the prod tunnel. See `IntegrationMongo`.
   tools.IntegrationMongo.requireThrowaway()
 
-  private val users  = new MongoUserRepository()
-  private val states = new MongoUserStateRepository()
-  // The database `states` resolved for itself, for seeding whole rows: the production store
-  // has no whole-row write (see `UserStateRows`).
-  private lazy val seedClient = MongoClient(Env.get("MONGODB_URI").get)
-  protected def seed(state: UserState): Unit =
-    UserStateRows.replace(seedClient.getDatabase(models.Country.resolvedDbName), state)
+  // The database is handed in, as `UsersWiring` hands in the shared connection's.
+  private lazy val client   = MongoClient(Env.get("MONGODB_URI").get)
+  private lazy val database = client.getDatabase(models.Country.resolvedDbName)
+  private lazy val users    = new MongoUserRepository(Some(database))
+  private lazy val states   = new MongoUserStateRepository(Some(database))
+  // For seeding whole rows: the production store has no whole-row write (see `UserStateRows`).
+  protected def seed(state: UserState): Unit = UserStateRows.replace(database, state)
 
   override protected def afterAll(): Unit = try {
-    val client = MongoClient(Env.get("MONGODB_URI").get)
-    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
-    Await.ready(db.getCollection("users")     .deleteMany(Filters.regex("id",     "^__integration-test-")).toFuture(), 10.seconds)
-    Await.ready(db.getCollection("userStates").deleteMany(Filters.regex("userId", "^__integration-test-")).toFuture(), 10.seconds)
-    client.close()
-    seedClient.close()
+    Await.ready(database.getCollection("users")     .deleteMany(Filters.regex("id",     "^__integration-test-")).toFuture(), 10.seconds)
+    Await.ready(database.getCollection("userStates").deleteMany(Filters.regex("userId", "^__integration-test-")).toFuture(), 10.seconds)
     users.close()
     states.close()
+    client.close()
   } finally super.afterAll()
+
+  // The store's only door to Mongo is the database it is handed: with none it is disabled,
+  // even though MONGODB_URI (set for this very spec) names a reachable server. It used to
+  // read that variable and open a MongoClient of its own, behind the composition root.
+  "The users stores" should "stay disabled when handed no database, never opening their own connection" in {
+    val ownUsers  = new MongoUserRepository(None)
+    val ownStates = new MongoUserStateRepository(None)
+    try {
+      ownUsers.enabled  shouldBe false
+      ownStates.enabled shouldBe false
+      ownUsers.findById("__integration-test-nobody") shouldBe None
+      ownStates.find("__integration-test-nobody") shouldBe None
+    } finally { ownUsers.close(); ownStates.close() }
+  }
 
   private val Now = Instant.parse("2026-05-19T12:00:00Z")
 
@@ -71,7 +82,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
 
   // ── User round-trip ──────────────────────────────────────────────────────
 
-  "MongoUserRepository" should "be enabled when MONGODB_URI is set" in {
+  "MongoUserRepository" should "be enabled when handed a database" in {
     users.enabled shouldBe true
   }
 
@@ -125,7 +136,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
 
   // ── UserState round-trip ─────────────────────────────────────────────────
 
-  "MongoUserStateRepository" should "be enabled when MONGODB_URI is set" in {
+  "MongoUserStateRepository" should "be enabled when handed a database" in {
     states.enabled shouldBe true
   }
 
@@ -165,16 +176,12 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   // rather than merely "unlikely to lose the race" as an upsert-based test
   // would only prove probabilistically.
   it should "reject a second row for a userId that already has one" in {
-    val client = MongoClient(Env.get("MONGODB_URI").get)
-    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo")).withCodecRegistry(UserCodecs.registry)
-    val coll   = db.getCollection[UserState]("userStates")
+    val coll   = database.withCodecRegistry(UserCodecs.registry).getCollection[UserState]("userStates")
     val userId = "__integration-test-state-unique"
-    try {
-      Await.result(coll.insertOne(UserState(userId, Set("A"), Set.empty, Now)).toFuture(), 10.seconds)
-      a[com.mongodb.MongoWriteException] should be thrownBy
-        Await.result(coll.insertOne(UserState(userId, Set("B"), Set.empty, Now.plusSeconds(1))).toFuture(), 10.seconds)
-      Await.result(db.getCollection("userStates").countDocuments(Filters.eq("userId", userId)).toFuture(), 10.seconds) shouldBe 1
-    } finally client.close()
+    Await.result(coll.insertOne(UserState(userId, Set("A"), Set.empty, Now)).toFuture(), 10.seconds)
+    a[com.mongodb.MongoWriteException] should be thrownBy
+      Await.result(coll.insertOne(UserState(userId, Set("B"), Set.empty, Now.plusSeconds(1))).toFuture(), 10.seconds)
+    Await.result(database.getCollection("userStates").countDocuments(Filters.eq("userId", userId)).toFuture(), 10.seconds) shouldBe 1
   }
 
 
@@ -186,7 +193,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   // sibling spec's `userStates` write reaches it (the shape that flaked a `screenings` watcher).
   it should "stream a delete through to the change-time cache, even though the event key names no user" in
     tools.IsolatedMongoDatabase.withDatabase(Env.get("MONGODB_URI").get, "userstate-stream-delete") { db =>
-      val isolated = new MongoUserStateRepository(Some(db), fallbackToOwnInit = false)
+      val isolated = new MongoUserStateRepository(Some(db))
       val cache    = new CaffeineUserChangeTimeCache(isolated)
       val userId   = "__integration-test-state-stream-delete"
       cache.start()
@@ -206,7 +213,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   it should "keep its change stream open past a row it cannot decode" in
     tools.IsolatedMongoDatabase.withDatabase(Env.get("MONGODB_URI").get, "userstate-malformed") { db =>
       val counted  = new java.util.concurrent.ConcurrentLinkedQueue[String]()
-      val isolated = new MongoUserStateRepository(Some(db), fallbackToOwnInit = false,
+      val isolated = new MongoUserStateRepository(Some(db),
         decodeFailures = collection => { counted.add(collection); () })
       tools.MalformedChangeEventProbe.failure(
         seen => isolated.watchChanges(state => seen(state.userId), _ => (), () => ()).get,
@@ -222,24 +229,21 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   // for nothing and, between the drop and the create, left `userStates` with no index at all —
   // no uniqueness for a concurrent first write to hit, and a collection scan for every `find`.
   it should "leave an already-unique userId index alone on the next boot" in {
-    val client = MongoClient(Env.get("MONGODB_URI").get)
-    val coll   = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo")).getCollection("userStates")
+    val coll = database.getCollection("userStates")
     def userIdIndexCreatedAt(): Any =
       Await.result(coll.aggregate(Seq(org.mongodb.scala.bson.collection.immutable.Document(
         "$indexStats" -> org.mongodb.scala.bson.collection.immutable.Document()))).toFuture(), 10.seconds)
         .find(_.get("name").map(_.asString.getValue).contains("userId_1")).value
         .get("accesses").value.asDocument().get("since")
+    val booted = new MongoUserStateRepository(Some(database))
+    try booted.enabled shouldBe true finally booted.close() // boots once: the index exists, unique
+    val before = userIdIndexCreatedAt()
+    Thread.sleep(50)
+    val rebooted = new MongoUserStateRepository(Some(database))
     try {
-      val booted = new MongoUserStateRepository()
-      try booted.enabled shouldBe true finally booted.close() // boots once: the index exists, unique
-      val before = userIdIndexCreatedAt()
-      Thread.sleep(50)
-      val rebooted = new MongoUserStateRepository()
-      try {
-        rebooted.enabled shouldBe true
-        userIdIndexCreatedAt() shouldBe before
-      } finally rebooted.close()
-    } finally client.close()
+      rebooted.enabled shouldBe true
+      userIdIndexCreatedAt() shouldBe before
+    } finally rebooted.close()
   }
 
   // THE REOPEN GAP. A dead `userStates` cursor reopens at "now", so a write made between the
@@ -254,7 +258,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     val pendingReopen = new java.util.concurrent.atomic.AtomicReference[() => Unit]()
     val manualReopen: (String, () => Unit) => ChangeStreamReopen =
       (name, reopen) => new ChangeStreamReopen(name, reopen, (_, run) => pendingReopen.set(run))
-    val mongo    = new MongoUserStateRepository(Some(db), fallbackToOwnInit = false, reopenDriver = manualReopen)
+    val mongo    = new MongoUserStateRepository(Some(db), reopenDriver = manualReopen)
     val lostTrack = new java.util.concurrent.atomic.AtomicInteger(0)
     val handle   = mongo.watchChanges(_ => (), _ => (), () => { lostTrack.incrementAndGet(); () })
     try {
