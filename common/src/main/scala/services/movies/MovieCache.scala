@@ -639,7 +639,7 @@ class CaffeineMovieCache(
     e.imdbId.flatMap { imdb =>
       (corpusIndex.keysWithImdbId(imdb) - excluding).iterator
         .filter { k => get(k).exists(v => v.tmdbId.isDefined && v.tmdbId != e.tmdbId &&
-                                            !MixedFilmDetector.describeDifferentFilms(v, e, normalizer)) }
+                                            ListingConstraints.cinemasDescribeDifferentFilms(v, e, normalizer).isEmpty) }
         .minByOption(canonicalRank)
     }
 

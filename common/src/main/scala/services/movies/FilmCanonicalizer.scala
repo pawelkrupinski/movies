@@ -181,7 +181,7 @@ object FilmCanonicalizer {
    *  cinemas' bare titles and asks `SequelMarker.curatedSiblingTitles`, not the general
    *  ordinal logic, which misfires on raw cinema text ("Ghost 2 (1)"). */
   private def differentFilms(a: Identified, b: Identified): Boolean =
-    MixedFilmDetector.describeDifferentFilms(a.identity, b.identity) ||
+    ListingConstraints.identitiesDescribeDifferentFilms(a.identity, b.identity).isDefined ||
       SequelMarker.curatedSiblingTitles(a.row._2.evidence.titles, b.row._2.evidence.titles)
 
   /** Rule 2: each unresolved year-bearing row joins the NEAREST resolved cluster whose
@@ -263,14 +263,7 @@ object FilmCanonicalizer {
     val clusterTitles      = c.rows.flatMap { case (k, e) => (e.tmdbTitleAliases + k.cleanTitle).toSeq }.distinct.map(TitleContainment.tokens)
     !ownYearContradicts && whole.nonEmpty &&
       clusterTitles.exists(base => TitleContainment.decorates(base, whole)) &&
-      !c.rows.exists(cr => MixedFilmDetector.describeDifferentFilms(cr._2, row._2, normalizer)) &&
-      !venueDenies(row._2, c.rows.map(_._2), normalizer)
-  }
-
-  /** Does one of `row`'s venues deny the film the `films` rows resolved to? */
-  private def venueDenies(row: MovieRecord, films: Seq[MovieRecord], normalizer: TitleNormalizer): Boolean = {
-    val named = films.flatMap(_.data.get(Tmdb))
-    row.cinemaData.values.exists(slot => named.exists(MixedFilmDetector.deniesFilm(slot, _, normalizer)))
+      ListingConstraints.foldRefused(row._2, c.rows.map(_._2), normalizer).isEmpty
   }
 
   /** Rule 3: the remaining orphans form greedy windows from the lowest distinct year,
@@ -340,7 +333,7 @@ object FilmCanonicalizer {
     val sharesCredit    = MixedFilmDetector.creditSamePerson(
       row._2.data.values.flatMap(_.director), home.rows.flatMap(_._2.data.values.flatMap(_.director)), normalizer)
     (!sharesCredit && ((yearContradicts && !runtimeAgrees) || !RuntimeCorroboration.plausible(ev.runtimes, homeRuntime))) ||
-      home.rows.exists(cr => MixedFilmDetector.describeDifferentFilms(cr._2, row._2, normalizer))
+      home.rows.exists(cr => ListingConstraints.cinemasDescribeDifferentFilms(cr._2, row._2, normalizer).isDefined)
   }
 
   /** Is this row's KEY one of the film's own TMDB titles (its Polish or original
@@ -555,8 +548,7 @@ object FilmCanonicalizer {
           // 1926 "Faust", and was adopted onto it.
           val matched = cands.collect {
             case (base, i) if TitleContainment.decorates(base, whole) &&
-              !MixedFilmDetector.describeDifferentFilms(rows(i)._2, rows(j)._2, normalizer) &&
-              !venueDenies(rows(j)._2, Seq(rows(i)._2), normalizer) => i
+              ListingConstraints.foldRefused(rows(j)._2, Seq(rows(i)._2), normalizer).isEmpty => i
           }
           if (matched.map(i => rows(i)._2.tmdbId.get).distinct.lengthIs == 1) matched.foreach(union(_, j))
         }

@@ -657,7 +657,7 @@ class MovieService(
       // Kinoteka's Wong Kar Wai "Happy Together" was bound by a yearless IMDb rung to Kim
       // Jeong-hwan's 2018 film of the name, and TMDB's find handed that id straight back.
       val film   = details.map(d => SourceData(releaseYear = d.releaseYear, director = d.director))
-      val denied = film.exists(f => row.cinemaData.values.exists(MixedFilmDetector.deniesFilm(_, f, cache.normalizer)))
+      val denied = film.exists(f => ListingConstraints.rowDeniesFilms(row, Seq(f), cache.normalizer).isDefined)
       if (denied) logger.info(s"TMDB: '$cleanTitle' — candidate $tmdbId (${details.flatMap(_.releaseYear).getOrElse("?")}, " +
         s"${details.toSeq.flatMap(_.director).mkString("/")}) is denied by a venue's own year and director; not this film.")
       denied

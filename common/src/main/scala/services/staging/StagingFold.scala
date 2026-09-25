@@ -1,7 +1,7 @@
 package services.staging
 
 import models.MovieRecord
-import services.movies.{MixedFilmDetector, CacheKey, EmbeddedYear, FilmCanonicalizer, MovieRecordMerge, StoredMovieRecord, TitleNormalizer, FilmId}
+import services.movies.{ListingConstraints, CacheKey, EmbeddedYear, FilmCanonicalizer, MovieRecordMerge, StoredMovieRecord, TitleNormalizer, FilmId}
 
 /**
  * The PURE decision half of folding a newcomer's staging rows into `movies`,
@@ -264,7 +264,7 @@ object StagingFold {
       rows.flatMap(r => r.record.tmdbId.flatMap(_ => r.record.data.get(models.Tmdb))).distinct
     def denyingYear(record: MovieRecord, films: Seq[models.SourceData]): Option[Int] =
       if (record.tmdbId.isDefined) None
-      else record.cinemaData.values.find(slot => films.exists(MixedFilmDetector.deniesFilm(slot, _, normalizer)))
+      else ListingConstraints.denyingSlot(record, films, normalizer)
         .flatMap(slot => slot.releaseYear.orElse(EmbeddedYear.ofAll(slot.rawTitle ++ slot.title)))
     def denying(r: StagingRecord, films: Seq[models.SourceData]): Option[Int] = denyingYear(r.record, films)
     val buckets = stagingRows.groupBy(r => CacheKey(r.title, baseYear(r), normalizer))

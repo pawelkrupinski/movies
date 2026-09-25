@@ -950,7 +950,7 @@ private[movies] final class ScrapeLanding(
     // another venue's spelling); the only row KEYED "Samson i Dalila" is the Met's 2026
     // broadcast, a different film by its own venue's year and director.
     def incumbent: Option[CacheKey] =
-      if (primary.year.isDefined || listingRuntime.isDefined) None
+      if (!ListingConstraints.keepsIncumbentHome(primary.year, listingRuntime)) None
       else corpusIndex.keysForCinemaSlot(cinema, norm).toSeq
         .filter(k => store.get(k).exists(_.tmdbId.isDefined))
         .filterNot(k => keyMatches.exists(m => m != k && store.get(m).flatMap(_.tmdbId) == store.get(k).flatMap(_.tmdbId)))

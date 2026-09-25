@@ -184,7 +184,7 @@ object ServedCorpusInvariants {
     records.filter(_.record.tmdbId.isDefined).flatMap { r =>
       r.record.data.get(models.Tmdb).toSeq.flatMap { film =>
         r.record.cinemaSlots.collect {
-          case (source, sd) if services.movies.MixedFilmDetector.deniesFilm(sd, film, normalizer) =>
+          case (source, sd) if services.movies.ListingConstraints.slotDeniesFilm(sd, film, normalizer).isDefined =>
             r.key(normalizer) ->
               (s"'${r.title}' (${r.year.getOrElse("—")}) [${r.key(normalizer)}] tmdb=${r.record.tmdbId.get} " +
                s"(${film.releaseYear.getOrElse("—")}, ${film.director.mkString("/")}) at " +
