@@ -224,7 +224,7 @@ private[movies] final class ScrapeLanding(
       if (ledgerRead.isDefined) persistGuardState(cinema, before, after)
     def sites(urls: Iterator[Option[String]]): Set[String] = urls.flatten.flatMap(ScrapeHealth.siteOf).toSet
     lazy val storedSites = sites(corpusIndex.slotsOf(cinema).iterator.map(_._3.filmUrl))
-    val rewired = !viaFallback && (guardState.sourceKey match {
+    val rewired = !viaFallback && ledgerRead.isDefined && (guardState.sourceKey match {
       case Some(_) => ScrapeHealth.isRewire(guardState.sourceKey, sourceKey)
       case None    => ScrapeHealth.isRewire(None, sourceKey, storedSites, sites(movies.iterator.map(_.filmUrl)))
     })

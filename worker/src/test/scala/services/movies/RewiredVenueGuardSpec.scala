@@ -192,6 +192,22 @@ class RewiredVenueGuardSpec extends AnyFlatSpec with Matchers {
     storedShowtimes(repository, "Film 1") shouldBe 12   // judged conservatively meanwhile
   }
 
+  // Read as Fresh, the venue looked keyless, so its stored rows' links were compared with the
+  // tick's: a thin tick linking elsewhere read as a rewire, both guards stood aside and the
+  // prune wiped the venue's board — on a tick whose own state could not even be read.
+  "a venue whose ledger read failed" should "stay guarded, not be judged rewired by its rows' links" in {
+    val repository = splitRepository()
+    val ledger     = new FlakyReadLedger
+    def linked(site: String)(movies: Seq[CinemaMovie]) = movies.map(m => m.copy(filmUrl = Some(s"https://$site/${m.movie.title.replace(' ', '-')}")))
+    cacheOver(repository, ledger).recordCinemaScrape(Multikino,
+      linked("bilety24.pl")(scrape(films = 10, showtimesEach = 8)), sourceKey = OldSource)
+
+    ledger.unreadable = true
+    cacheOver(repository, ledger).recordCinemaScrape(Multikino,
+      linked("filmweb.pl")(scrape(films = 1, showtimesEach = 3, firstFilm = 20)), sourceKey = OldSource)
+    storedShowtimes(repository, "Film 1") shouldBe 8
+  }
+
   "the scrape runner" should "hand the cache each scraper's source key, chunked path included" in {
     // A chunked venue reaches the cache as a PreScrapedCinemaScraper built from the
     // chunked scraper, which must carry the key along or its rewire goes unseen.
