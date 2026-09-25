@@ -303,8 +303,6 @@ abstract class CountryConvergenceBehaviour(
       .getOrElse(throw new IllegalStateException(
         s"${country.displayName}'s corpus holds no showtimes at all, so there is no instant to render at."))
 
-  /** Counts merges by reason so a per-tick delta is observable. */
-
   private def keySet(w: ArchiveReplayWiring): Set[(String, Option[Int])] =
     w.movieCache.snapshot().map(r => (r.title, r.year)).toSet
 

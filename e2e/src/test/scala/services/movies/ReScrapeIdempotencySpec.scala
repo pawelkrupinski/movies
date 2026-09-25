@@ -53,8 +53,6 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
 
   private val Fixture = "08-06-2026"
 
-  /** Counts merges by reason so a per-tick delta is observable. */
-
   private def keySet(w: FixtureTestWiring): Set[(String, Option[Int])] =
     w.movieCache.snapshot().map(r => (r.title, r.year)).toSet
 

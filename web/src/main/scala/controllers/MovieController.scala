@@ -662,8 +662,8 @@ class MovieController( cc: ControllerComponents,
     }
   }
 
-  /** `/:city/og-image` — the city card's old, web-rendered address, redirected for the same reason
-   *  to the city's static card. */
+  /** `/:city/og-image` — the city card's old, web-rendered address, kept because link previews
+   *  cached it. Permanently redirected, unlike [[ogImage]]: the city's static card never moves. */
   def cityOgImage(city: String): Action[AnyContent] = Action {
     withCity(city)(c => MovedPermanently(ShareCardUrl.city(c)))
   }

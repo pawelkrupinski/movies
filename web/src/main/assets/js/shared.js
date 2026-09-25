@@ -2284,7 +2284,7 @@
   // A write that failed is not lost with it: it is remembered as PENDING
   // (`hiddenFilmsPending:<country>`, one op per title) and replayed over the
   // server's list at the next full reconcile, then sent again — until it
-  // lands, or the server refuses it for good (a 4xx other than 401/408/429).
+  // lands, or the server refuses it for good (`_hiddenFilmsWriteRefused`).
   // While any is pending, a successful write's validators are not kept: they
   // describe a server list the local one is still ahead of.
   //
@@ -2390,16 +2390,16 @@
     } catch {}
   }
 
-  // The one request shape every hiddenFilms write shares. A write that never
-  // landed (offline, 401, 5xx) leaves localStorage ahead of the server, so the
-  // cached validators stop describing it — forget them, and the next
-  // reconcile takes the server's answer instead of 304-ing onto the drift.
   // The tail of each country's write chain — see `_writeHiddenFilms`.
   const _hiddenFilmsWrites = {};
   // How many writes each country has been asked for on this page — how a
   // reconcile tells that an edit was made while its fetch was out.
   const _hiddenFilmsEdits = {};
 
+  // The one request shape every hiddenFilms write shares. A write that never
+  // landed (offline, 401, 5xx) leaves localStorage ahead of the server, so the
+  // cached validators stop describing it — forget them, and the next
+  // reconcile takes the server's answer instead of 304-ing onto the drift.
   function _writeHiddenFilms(method, country, title) {
     country = country || currentCountryCode();
     _hiddenFilmsEdits[country] = (_hiddenFilmsEdits[country] || 0) + 1;
