@@ -8,6 +8,7 @@ import play.api.routing.Router
 import play.api.routing.sird._
 import play.api._
 import models.Country
+import services.MongoAddress
 import tools.Env
 import play.filters.HttpFiltersComponents
 import play.filters.cors.CORSComponents
@@ -44,6 +45,9 @@ class AppLoader extends ApplicationLoader {
       .foreach(_.configure(adjusted.environment))
     // The process's config — env vars, `.env.local`, and (once EnvConfigService
     // starts) the admin overrides. Built once here, handed to the whole wiring.
+    // The typed values the wiring takes are resolved from it HERE, once — the only place
+    // in the web tier that asks the environment which country it serves or where its
+    // Mongo is.
     val env     = Env.fromProcess()
     val country = Country.fromEnv(env)
     val mounted = AppLoader.mountedAt(adjusted, country)
@@ -54,7 +58,7 @@ class AppLoader extends ApplicationLoader {
     // (`Country.webOrigin`), and a second spelling of it is a second thing to
     // get wrong.
     if (env.flag("KINOWO_RETIRED")) new RetiredComponents(mounted, country).application
-    else                            new AppComponents(mounted, env).application
+    else                            new AppComponents(mounted, env, country, MongoAddress.fromEnv(env)).application
   }
 }
 
@@ -183,7 +187,7 @@ object AppLoader {
  * forces the side-effecting components (read-model hydrate, change-stream
  * watches) at the bottom, in the order they need to fire.
  */
-class AppComponents(context: Context, val env: Env)
+class AppComponents(context: Context, val env: Env, val country: Country, val mongoAddress: MongoAddress)
     extends BuiltInComponentsFromContext(context)
     with HttpFiltersComponents
     with CORSComponents

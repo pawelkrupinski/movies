@@ -45,7 +45,7 @@ object ReapOrphanedFilmRows {
   def main(args: Array[String]): Unit = {
     val apply  = args.contains("--apply")
     val max    = argInt(args, "--max", 5000)
-    val conn   = MongoConnection.forCountry(models.Country.fromEnv(tools.Env.fromProcess()), required = true, env = tools.Env.fromProcess())
+    val conn   = MongoConnection.forCountry(models.Country.fromEnv(tools.Env.fromProcess()), services.MongoAddress.fromEnv(tools.Env.fromProcess()), required = true, env = tools.Env.fromProcess())
     val db     = conn.database.getOrElse { println("Could not open the database — is MONGODB_URI set?"); sys.exit(1) }
     val dbName = db.name
     try {

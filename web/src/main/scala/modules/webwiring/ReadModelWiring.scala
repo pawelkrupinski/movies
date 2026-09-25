@@ -37,7 +37,7 @@ trait ReadModelWiring { self: Wiring =>
   lazy val movieMirrorConnection: MongoConnection =
     Wiring.debugMirrorConnection(
       env.get("MONGODB_MOVIES_MIRROR_URI"),
-      MongoConnection.fromUri(_, required = false, env,
+      MongoConnection.fromUri(_, mongoAddress.databaseFor(country), required = false, env,
         probeTimeout           = Some(MongoConnection.LocalMirrorTimeout),
         serverSelectionTimeout = Some(MongoConnection.LocalMirrorTimeout)),
       mongoConnection)

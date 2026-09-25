@@ -6,7 +6,7 @@ import modules.wiring.{AlertingWiring, ChunkScrapeWiring, CorpusWiring, DetailWi
 import services.cinemas.common.CinemaClientMarkers
 import services.events.{EventBus, InProcessEventBus}
 import services.freshness.{Freshness, FreshnessKind}
-import services.{Drainable, MongoConnection, UptimeMonitor}
+import services.{Drainable, MongoAddress, MongoConnection, UptimeMonitor}
 import services.cadence.RatingCadence
 import services.metrics.WorkerMetrics
 import services.tasks.{DueWindow, VenueCadenceStore}
@@ -107,10 +107,15 @@ class WorkerWiring(
   lazy val eventBus: EventBus = new InProcessEventBus()
 
   // ── Mongo ─────────────────────────────────────────────────────────────────
-  // This country's Mongo database — explicit MONGODB_DB still wins for local dev,
-  // else the country's own database. `protected def` so a test can read the
-  // derivation without opening a connection.
-  protected def mongoDbName: String = Country.dbNameFor(country, env)
+  // Where this worker's Mongo is — resolved from its env HERE, the composition root, and
+  // nowhere below it. The local stack overrides it with its own local address instead of
+  // rewriting the process's MONGODB_URI.
+  lazy val mongoAddress: MongoAddress = MongoAddress.fromEnv(env)
+
+  // This country's Mongo database — an explicit database on the address still wins for
+  // local dev, else the country's own. `protected def` so a test can read the derivation
+  // without opening a connection.
+  protected def mongoDbName: String = mongoAddress.databaseFor(country)
 
   // The worker is the writer — Mongo is mandatory (opt out only for local dev
   // with MONGODB_OPTIONAL=true). Bound to THIS country's database, on the shared
@@ -118,9 +123,9 @@ class WorkerWiring(
   // anything can prune or write against it (see [[services.DatabaseOwner]]).
   lazy val mongoConnection: MongoConnection = {
     val optedOut = env.flag("MONGODB_OPTIONAL")
-    MongoConnection.forCountry(country,
+    MongoConnection.forCountry(country, mongoAddress.copy(database = Some(mongoDbName)),
       required = MongoConnection.isRequired(testMode = false, optedOut = optedOut), env = env,
-      sharedClient = sharedMongoClient, dbName = Some(mongoDbName))
+      sharedClient = sharedMongoClient)
   }
 
   /** The one clock a no-match `TmdbAttempt` is stamped from — `MovieService` on the

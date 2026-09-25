@@ -18,8 +18,8 @@ import scala.io.Source as IoSource
  * The fixture is a single film showing at a cinema in each of the five countries at once,
  * so every page and every API answer has another country's data within reach and has to
  * leave it out. For each country the spec boots the real `Wiring` as that country's
- * deployment — through its `country` member alone, with `KINOWO_COUNTRY` naming a DIFFERENT
- * country, so anything still reading the environment shows up as a leak — and checks:
+ * deployment — handed its `country` alone, over an environment whose `KINOWO_COUNTRY` names a
+ * DIFFERENT country, so anything still reading the environment shows up as a leak — and checks:
  *
  *   - the wiring holds no other `Country` (a component built with a defaulted country);
  *   - no page carries a literal that exists only in another language's message bundle, and
@@ -64,17 +64,14 @@ class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers {
   private def decoy(country: Country): Country =
     if (country == Country.Poland) Country.UnitedKingdom else Country.Poland
 
-  /** Run `body` as `country`'s deployment, in a process whose `KINOWO_COUNTRY` names
-   *  [[decoy]]. Web unit suites run one at a time in their forked JVM. */
+  /** Run `body` as `country`'s deployment, over an environment whose `KINOWO_COUNTRY`
+   *  names [[decoy]] — the wiring's own `Env`, not the process's, so no other suite in
+   *  the JVM sees it. */
   private def asDeployment[T](country: Country)(body: DeploymentWiring => T): T = {
-    val previous = Option(System.getProperty("KINOWO_COUNTRY"))
-    System.setProperty("KINOWO_COUNTRY", decoy(country).code)
-    try {
-      withClue("KINOWO_COUNTRY is set in this shell and overrides the spec's pick: ")(Country.fromEnv(tools.Env.fromProcess()) shouldBe decoy(country))
-      val wiring = new DeploymentWiring(country, corpus, Now)
-      wiring.boot()
-      body(wiring)
-    } finally previous.fold(System.clearProperty("KINOWO_COUNTRY"))(System.setProperty("KINOWO_COUNTRY", _))
+    val wiring = new DeploymentWiring(country, corpus, Now, tools.Env.of("KINOWO_COUNTRY" -> decoy(country).code))
+    withClue("the decoy environment must name the other country: ")(Country.fromEnv(wiring.env) shouldBe decoy(country))
+    wiring.boot()
+    body(wiring)
   }
 
   private def request(country: Country, path: String) = {
@@ -246,10 +243,10 @@ class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers {
   }
 }
 
-/** The web wiring booted as `serving`'s deployment, on a fixed clock. Top-level so the
- *  object-graph walk starts at the wiring, not at the spec that built it. */
-private class DeploymentWiring(serving: Country, corpus: Seq[(String, Option[Int], MovieRecord)], now: Instant)
-    extends TestWebWiring(corpus) {
-  override lazy val country: Country       = serving
+/** The web wiring booted as `serving`'s deployment, over `environment`, on a fixed clock.
+ *  Top-level so the object-graph walk starts at the wiring, not at the spec that built it. */
+private class DeploymentWiring(serving: Country, corpus: Seq[(String, Option[Int], MovieRecord)], now: Instant,
+    environment: tools.Env) extends TestWebWiring(corpus, serving) {
+  override lazy val env: tools.Env         = environment
   override lazy val clock: java.time.Clock = java.time.Clock.fixed(now, ZoneOffset.UTC)
 }

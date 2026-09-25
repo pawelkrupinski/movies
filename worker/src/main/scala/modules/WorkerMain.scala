@@ -4,7 +4,7 @@ import com.sun.net.httpserver.HttpServer
 import models.Country
 import org.mongodb.scala.MongoClient
 import play.api.Logging
-import services.MongoConnection
+import services.{MongoAddress, MongoConnection}
 import tools.{Env, ExecutionBudget, ProxyTunnelAuthentication}
 
 import java.net.InetSocketAddress
@@ -63,7 +63,7 @@ object WorkerMain extends Logging {
       sys.exit(1)
     }
     val sharedBudget: ExecutionBudget = WorkerWiring.backgroundBudgetFrom(env)
-    val sharedClient: Option[MongoClient] = MongoConnection.sharedClientFromEnv(env)
+    val sharedClient: Option[MongoClient] = MongoConnection.sharedClientAt(MongoAddress.fromEnv(env), env)
     // ONE metrics bundle for the whole JVM: a single Prometheus registry + one set
     // of metric objects (each tagged with a `country` label), shared by every
     // country's wiring. This is what fixes the earlier "primary country's registry

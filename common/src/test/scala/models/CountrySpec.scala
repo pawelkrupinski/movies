@@ -574,16 +574,6 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  "Country.resolvedDbName" should "prefer an explicit MONGODB_DB over the country default" in {
-    Country.resolvedDbName(Env.of("MONGODB_DB" -> "kinowo_override_probe", "KINOWO_COUNTRY" -> "uk")) shouldBe
-      "kinowo_override_probe"
-  }
-
-  it should "fall back to the configured country's database when MONGODB_DB is unset" in {
-    Country.resolvedDbName(Env.of("KINOWO_COUNTRY" -> "uk")) shouldBe Country.UnitedKingdom.mongoDb
-    Country.resolvedDbName(Env.of()) shouldBe Country.default.mongoDb
-  }
-
   /** The `users` + `userStates` collections are the ONE thing four country
    *  deployments must agree on: a person is not per country. `MONGODB_USERS_DB`
    *  names the database holding them, and the fallback is what keeps the change
@@ -616,10 +606,13 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   }
 
   "Country.usersDbName" should "read MONGODB_USERS_DB from the environment" in {
-    Country.usersDbName(Env.of("MONGODB_USERS_DB" -> "kinowo_users_probe")) shouldBe "kinowo_users_probe"
+    Country.usersDbName(Env.of("MONGODB_USERS_DB" -> "kinowo_users_probe"), Country.Germany.mongoDb) shouldBe "kinowo_users_probe"
   }
 
-  it should "fall back to this deployment's own database when it is unset" in {
-    Country.usersDbName(Env.of("KINOWO_COUNTRY" -> "de")) shouldBe Country.Germany.mongoDb
+  // The deployment's own database is handed in, never re-derived from KINOWO_COUNTRY: the
+  // serving country is the wiring's to know, and a second read of the environment is how a
+  // test wiring booted as one country used to reach another's database.
+  it should "fall back to the deployment's own database it is handed when it is unset" in {
+    Country.usersDbName(Env.of("KINOWO_COUNTRY" -> "uk"), Country.Germany.mongoDb) shouldBe Country.Germany.mongoDb
   }
 }

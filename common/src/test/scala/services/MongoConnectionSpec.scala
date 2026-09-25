@@ -134,14 +134,14 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   // prod connection (database None → fall back) instead of blocking boot — only
   // /debug needs it.
   "MongoConnection.fromUri with required = false" should "disable (database None) on an unusable URI instead of throwing" in {
-    val connection = MongoConnection.fromUri(MalformedUri, required = false, tools.Env.of())
+    val connection = MongoConnection.fromUri(MalformedUri, "kinowo", required = false, tools.Env.of())
     connection.database shouldBe None
     connection.close()
   }
 
   "MongoConnection.fromUri with required = true" should "throw on an unusable URI" in {
     val exception = intercept[IllegalStateException] {
-      MongoConnection.fromUri(MalformedUri, required = true, tools.Env.of())
+      MongoConnection.fromUri(MalformedUri, "kinowo", required = true, tools.Env.of())
     }
     exception.getMessage should include ("required")
   }

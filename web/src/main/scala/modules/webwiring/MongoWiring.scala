@@ -19,19 +19,18 @@ trait MongoWiring { self: Wiring =>
 
   // ONE MongoClient behind every database view this process opens — this
   // country's corpus, and the shared users database below when that is a
-  // different one. Built here rather than left to `MongoConnection.fromEnv` so
-  // the second view BORROWS this pool: a client per view is a second connection
+  // different one. Built here, once, so the second view BORROWS this pool: a client per view is a second connection
   // pool, Netty event loop and replica-set monitor thread set, which is the RSS
-  // blow-up `MongoConnection` was written to avoid. `None` when MONGODB_URI is
-  // unset — then there is no pool to share and each connection degrades on its
+  // blow-up `MongoConnection` was written to avoid. `None` when the address names
+  // no cluster — then there is no pool to share and each connection degrades on its
   // own, exactly as before. Owned by the root: `stop()` closes it after the
   // connections that borrowed it, since their own close() deliberately leaves it
   // alone.
   protected lazy val mongoSharedClient: Option[org.mongodb.scala.MongoClient] =
-    MongoConnection.sharedClientFromEnv(env)
+    MongoConnection.sharedClientAt(mongoAddress, env)
 
   lazy val mongoConnection: MongoConnection =
-    MongoConnection.fromEnvForDb(models.Country.dbNameFor(country, env), mongoRequired, env, sharedClient = mongoSharedClient)
+    MongoConnection.forDatabase(mongoAddress.uri, mongoAddress.databaseFor(country), mongoRequired, env, sharedClient = mongoSharedClient)
 
   // ── Users ─────────────────────────────────────────────────────────────────
   // `users` + `userStates` come off `Country.usersDbName` rather than this
@@ -45,8 +44,8 @@ trait MongoWiring { self: Wiring =>
   // connection object serves both — no second boot probe of a database we are
   // already talking to.
   lazy val usersConnection: MongoConnection = Wiring.usersConnection(
-    ownDbName   = models.Country.resolvedDbName(env),
-    usersDbName = models.Country.usersDbName(env),
+    ownDbName   = mongoAddress.databaseFor(country),
+    usersDbName = models.Country.usersDbName(env, mongoAddress.databaseFor(country)),
     own         = mongoConnection,
-    openUsers   = MongoConnection.fromEnvForDb(_, mongoRequired, env, sharedClient = mongoSharedClient))
+    openUsers   = MongoConnection.forDatabase(mongoAddress.uri, _, mongoRequired, env, sharedClient = mongoSharedClient))
 }

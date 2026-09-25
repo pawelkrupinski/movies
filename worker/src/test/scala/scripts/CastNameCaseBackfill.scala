@@ -51,7 +51,7 @@ import tools.PersonName
  * ==Running it==
  *
  * Each country is its OWN database on the shared cluster, taken from
- * `Country.mongoDb` and NOT from `Country.dbNameFor` — the latter lets
+ * `Country.mongoDb` and NOT from `MongoAddress.databaseFor` — the latter lets
  * `MONGODB_DB` win, and `.env.local` pins that to prod `kinowo`, which would
  * silently point every country's pass at Poland.
  *
@@ -149,8 +149,8 @@ object CastNameCaseBackfill {
   }
 
   private def backfill(country: Country, apply: Boolean): Counts = {
-    // `country.mongoDb`, never `Country.dbNameFor` — see the class comment.
-    val connection = MongoConnection.forCountry(country, required = true, env = tools.Env.fromProcess(), dbName = Some(country.mongoDb))
+    // `country.mongoDb`, never the address's own database — see the class comment.
+    val connection = MongoConnection.forCountry(country, services.MongoAddress.fromEnv(tools.Env.fromProcess()).copy(database = Some(country.mongoDb)), required = true, env = tools.Env.fromProcess())
     val database = connection.database.getOrElse {
       println(s"${country.displayName}: could not open ${country.mongoDb} — is the Mongo tunnel up " +
         "(scripts/local-mirror/prod-tunnel.sh) and MONGODB_URI set?")

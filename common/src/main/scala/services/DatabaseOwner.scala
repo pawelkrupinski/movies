@@ -12,7 +12,7 @@ import scala.concurrent.duration._
   *
   * Every worker prunes its country's read model against its own corpus, so two
   * countries writing one database delete each other's cards on every sweep. Each
-  * database is per country by default (`Country.dbNameFor`), and an explicit
+  * database is per country by default (`MongoAddress.databaseFor`), and an explicit
   * `MONGODB_DB` overrides that for local development — which is exactly the knob a
   * mis-set deployment turns into the shared-database failure. The first worker to
   * boot stamps the database with its country; a later worker for another country

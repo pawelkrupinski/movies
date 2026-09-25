@@ -20,7 +20,7 @@ import java.nio.file.{Files, Path, Paths}
  * Two rules, each naming file:line:
  *
  *  1. No it/ source opens the SHARED database: no `"MONGODB_DB"` read, no
- *     `Country.resolvedDbName`, no literal `getDatabase("kinowo")`. Take a database of the
+ *     `MongoAddress.fromEnv` (which carries it), no literal `getDatabase("kinowo")`. Take a database of the
  *     spec's own from `IsolatedMongoDatabase` (unique per run) or
  *     `IntegrationCorpusDatabase` (`<MONGODB_DB>_<suite>`), and drop it afterwards.
  *
@@ -48,7 +48,7 @@ class IntegrationDatabaseIsolationSpec extends AnyFlatSpec with Matchers {
     "worker/src/it/scala/StagingSiblingProjectionIntegrationSpec.scala" ->
       "inside its own IsolatedMongoDatabase: re-seeds the sibling rows sharing the computed staging-id prefix")
 
-  private val SharedDatabase = """"MONGODB_DB"|\bresolvedDbName\s*\(|getDatabase\(\s*"kinowo"\s*\)""".r
+  private val SharedDatabase = """"MONGODB_DB"|\bMongoAddress\s*\.\s*fromEnv\b|getDatabase\(\s*"kinowo"\s*\)""".r
   private val Delete         = """\.delete(?:Many|One)\s*\(""".r
   private val PatternFilter  = """Filters\.regex\(|\$regex|BsonRegularExpression|Pattern\.compile""".r
 

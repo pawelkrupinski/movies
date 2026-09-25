@@ -69,14 +69,14 @@ trait DebugWiring { self: Wiring =>
     if (environmentMode == Mode.Prod || models.Country.switchable.sizeIs <= 1) None
     else env.get("MONGODB_MOVIES_MIRROR_URI")
       .map(MongoConnection.sharedClientFor(_, Some(MongoConnection.LocalMirrorTimeout), MongoConnection.maxPoolSizeFrom(env)))
-      .orElse(MongoConnection.sharedClientFromEnv(env))
+      .orElse(MongoConnection.sharedClientAt(mongoAddress, env))
   private lazy val debugExtraStacks: Seq[(models.Country, MongoConnection, DebugStack)] =
     debugExtraClient.toSeq.flatMap { client =>
       models.Country.switchable.filterNot(_ == country).map { country =>
         val conn       = Wiring.debugMirrorConnection(
           env.get("MONGODB_MOVIES_MIRROR_URI"),
           MongoConnection.mirrorForDb(_, country.mongoDb, sharedClient = Some(client)),
-          MongoConnection.fromEnvForDb(country.mongoDb, required = false, env, sharedClient = Some(client)))
+          MongoConnection.forDatabase(mongoAddress.uri, country.mongoDb, required = false, env, sharedClient = Some(client)))
         val screenings = new services.movies.MongoScreeningsRepository(conn.database)
         val slots      = new services.movies.MongoSlotsRepository(conn.database)
         val reader     = new MongoReadModelRepository(conn.database)

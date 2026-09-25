@@ -3,7 +3,7 @@ package modules
 import modules.webwiring.{AdminWiring, ControllersWiring, DebugWiring, MetricsWiring, MongoWiring, ReadModelWiring, UsersWiring}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
-import services.MongoConnection
+import services.{MongoAddress, MongoConnection}
 
 /**
  * Read/serving composition root. Builds the content-serving half of the app: the
@@ -36,11 +36,15 @@ trait Wiring
   // override source into it.
   def env: tools.Env
 
-  // The ONE country this deployment serves, read from the environment here and nowhere
-  // else in the wiring: every component that differs by country takes it from this
-  // member, so a test wiring overrides it to boot another country's site (see
-  // CountryIsolationMatrixSpec) instead of mutating the process environment.
-  lazy val country: models.Country = models.Country.fromEnv(env)
+  // The ONE country this deployment serves. Resolved from the process by `AppLoader` —
+  // the composition root — and handed in; nothing in the wiring reads it from the
+  // environment. Every component that differs by country takes it from this member, so a
+  // test wiring is simply built as another country's site (see CountryIsolationMatrixSpec).
+  def country: models.Country
+
+  // Where this deployment's Mongo is (cluster + optional explicit database). Resolved by
+  // `AppLoader` like `country`; a test wiring hands in `MongoAddress.Disabled`.
+  def mongoAddress: MongoAddress
 
   // The one wall clock the serving app reads. Everything that asks "what time is it" takes
   // it by constructor; a test wiring overrides it to pin the time.

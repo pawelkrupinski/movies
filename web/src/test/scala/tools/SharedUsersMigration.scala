@@ -34,7 +34,7 @@ import scala.concurrent.duration._
  * ```
  *
  * Sources are the per-country databases by NAME (`Country.mongoDb`), not through
- * `dbNameFor` — an ambient `MONGODB_DB` would otherwise collapse all four to one
+ * `MongoAddress.databaseFor` — an ambient `MONGODB_DB` would otherwise collapse all four to one
  * and the migration would silently read the same rows four times.
  */
 object SharedUsersMigration {
@@ -115,7 +115,7 @@ object SharedUsersMigration {
     }
 
     // One client for every database view, the way the app itself does it.
-    val client = MongoConnection.sharedClientFromEnv(tools.Env.fromProcess()).getOrElse {
+    val client = MongoConnection.sharedClientAt(services.MongoAddress.fromEnv(tools.Env.fromProcess()), tools.Env.fromProcess()).getOrElse {
       println("MONGODB_URI is not set.")
       sys.exit(1)
     }

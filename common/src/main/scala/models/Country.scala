@@ -417,19 +417,6 @@ object Country {
    *  A web deployment resolves it once at boot; the worker uses [[all]] instead. */
   def fromEnv(env: Env): Country = env.get("KINOWO_COUNTRY").flatMap(byCode).getOrElse(default)
 
-  /** The Mongo database name for a GIVEN country: an explicit `MONGODB_DB` wins
-   *  (local dev / overrides), otherwise it is DERIVED from the country's own
-   *  database. The pure per-country core the WORKER resolves each of its N
-   *  countries through, so no call site re-spells the `"kinowo"` fallback and a
-   *  country can never silently land in the wrong database. */
-  def dbNameFor(country: Country, env: Env): String = env.get("MONGODB_DB").getOrElse(country.mongoDb)
-
-  /** The Mongo database name THIS process should use, for the country resolved
-   *  from `KINOWO_COUNTRY` ([[fromEnv]]) — the single-country (web) entry point.
-   *  Same rule as [[dbNameFor]]: explicit `MONGODB_DB` wins, else the country's
-   *  database (`KINOWO_COUNTRY=uk` → `kinowo_uk`, unset → Poland → `kinowo`). */
-  def resolvedDbName(env: Env): String = dbNameFor(fromEnv(env), env)
-
   /** The database holding the SHARED `users` + `userStates` collections.
    *
    *  Everything else about a deployment is per country -- its films, its cities,
@@ -450,7 +437,7 @@ object Country {
    *  Identity makes the move safe: [[models.User]]`.id` is the lowercased email,
    *  so the same person already carries the same key in every database and
    *  merging them is a union rather than a re-key. */
-  def usersDbName(env: Env): String = usersDbNameFrom(env.get("MONGODB_USERS_DB"), resolvedDbName(env))
+  def usersDbName(env: Env, ownDb: String): String = usersDbNameFrom(env.get("MONGODB_USERS_DB"), ownDb)
 
   /** Pure core of [[usersDbName]] -- the precedence, testable without touching
    *  the environment. A blank or whitespace-only variable counts as UNSET rather

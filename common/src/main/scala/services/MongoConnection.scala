@@ -28,8 +28,8 @@ import scala.util.{Failure, Success, Try}
  * shared.
  *
  * Config (`uri` / `dbName` / `required`) is passed in, not read from the
- * ambient environment — `MongoConnection.fromEnv` is the production entry
- * point that resolves `MONGODB_URI` / `MONGODB_DB`. Keeping the class a pure
+ * ambient environment — a composition root resolves the process's
+ * [[MongoAddress]] (`MONGODB_URI` / `MONGODB_DB`) once and hands it down. Keeping the class a pure
  * function of its inputs is what lets the boot-failure behaviour be tested
  * without poking at process env vars.
  *
@@ -298,52 +298,51 @@ object MongoConnection extends Logging {
   private[services] def parseProbeTimeout(raw: Option[String]): FiniteDuration =
     raw.flatMap(_.toIntOption).filter(_ > 0).map(_.seconds).getOrElse(DefaultProbeTimeout)
 
-  /** Build from the ambient environment (`MONGODB_URI` / `MONGODB_DB`,
-   *  defaulting the db name to the country's database via
-   *  `Country.resolvedDbName` — `kinowo` for Poland) — the wiring's entry point.
-   *  `required = true` turns a missing or unreachable Mongo into a hard boot
-   *  failure instead of silent degradation. */
-  def fromEnv(required: Boolean, env: Env): MongoConnection =
+  /** Build from the ambient environment — this process's [[MongoAddress]] and the country
+   *  `KINOWO_COUNTRY` names. For a one-off script's `main`, which IS its own composition
+   *  root; a wiring is handed its address and country instead. `required = true` turns a
+   *  missing or unreachable Mongo into a hard boot failure instead of silent degradation. */
+  def fromEnv(required: Boolean, env: Env): MongoConnection = {
+    val address = MongoAddress.fromEnv(env)
     new MongoConnection(
-      env.get("MONGODB_URI"),
-      models.Country.resolvedDbName(env),
+      address.uri,
+      address.databaseFor(models.Country.fromEnv(env)),
       required,
       probeTimeoutFrom(env),
       maxPoolSize = maxPoolSizeFrom(env))
+  }
 
   /** `MONGODB_PROBE_TIMEOUT_SECONDS` from `env`, via [[parseProbeTimeout]]. */
   def probeTimeoutFrom(env: Env): FiniteDuration =
     parseProbeTimeout(env.get("MONGODB_PROBE_TIMEOUT_SECONDS"))
 
-  /** Like [[fromEnv]] but against an EXPLICIT database name (the caller's
-   *  country, via `Country.dbNameFor`) and optionally bound to a `sharedClient`
-   *  so several per-country connections reuse ONE pool. The worker builds one of
-   *  these per country it runs; `fromEnv` stays the single-db (web) entry point.
-   *  `MONGODB_DB` is already folded into `dbName` by the caller, so it isn't
-   *  re-read here. */
-  def fromEnvForDb(dbName: String, required: Boolean, env: Env,
+  /** A connection to an EXPLICIT database on the cluster at `uri`, optionally bound to a
+   *  `sharedClient` so several database views reuse ONE pool — the web wiring's own corpus,
+   *  its shared users database and each /debug country. `env` supplies only the tuning
+   *  knobs (probe timeout, pool size); where to connect is the caller's. */
+  def forDatabase(uri: Option[String], dbName: String, required: Boolean, env: Env,
       sharedClient: Option[MongoClient] = None): MongoConnection =
     new MongoConnection(
-      env.get("MONGODB_URI"),
+      uri,
       dbName,
       required,
       probeTimeoutFrom(env),
       sharedClient = sharedClient,
       maxPoolSize = maxPoolSizeFrom(env))
 
-  /** [[fromEnvForDb]] for a process that WRITES `country`'s corpus — the worker and every
-   *  `worker/Test/runMain scripts.*` tool that writes — claimed for that country through
-   *  [[DatabaseOwner]] before the caller can write anything. `dbName` defaults to
-   *  `Country.dbNameFor`, so an explicit `MONGODB_DB` still wins; what this adds is that a
-   *  `MONGODB_DB` naming ANOTHER country's database (`.env.local`'s `kinowo` under a German
-   *  run — how DE/UK rows reached the Polish corpus) is refused with an
-   *  `IllegalStateException` instead of written into. The claim runs on every successful
-   *  connect, including a background reconnect after an unreachable boot. */
-  def forCountry(country: models.Country, required: Boolean, env: Env, sharedClient: Option[MongoClient] = None,
-      dbName: Option[String] = None): MongoConnection =
+  /** [[forDatabase]] for a process that WRITES `country`'s corpus — the worker and every
+   *  `worker/Test/runMain scripts.*` tool that writes — at `country`'s database on
+   *  `address` ([[MongoAddress.databaseFor]], so an explicit database still wins), claimed
+   *  for that country through [[DatabaseOwner]] before the caller can write anything. What
+   *  the claim adds is that an address naming ANOTHER country's database (`.env.local`'s
+   *  `kinowo` under a German run — how DE/UK rows reached the Polish corpus) is refused
+   *  with an `IllegalStateException` instead of written into. The claim runs on every
+   *  successful connect, including a background reconnect after an unreachable boot. */
+  def forCountry(country: models.Country, address: MongoAddress, required: Boolean, env: Env,
+      sharedClient: Option[MongoClient] = None): MongoConnection =
     new MongoConnection(
-      env.get("MONGODB_URI"),
-      dbName.getOrElse(models.Country.dbNameFor(country, env)),
+      address.uri,
+      address.databaseFor(country),
       required,
       probeTimeoutFrom(env),
       sharedClient = sharedClient,
@@ -353,15 +352,15 @@ object MongoConnection extends Logging {
   /** The [[MongoConnection]] `onConnected` hook of a writer of `country`'s corpus. */
   def claimFor(country: models.Country): MongoDatabase => Unit = new DatabaseOwner(_).claim(country)
 
-  /** One shared `MongoClient` for the whole process, built from `MONGODB_URI`,
-   *  to be bound to per-country database views via [[fromEnvForDb]]'s
-   *  `sharedClient`. `None` when `MONGODB_URI` is unset (local opt-out) — each
-   *  connection then degrades on its own. The caller OWNS `close()`-ing the
-   *  returned client, after every connection that borrowed it is closed. */
-  def sharedClientFromEnv(env: Env, serverSelectionTimeout: Option[FiniteDuration] = None): Option[MongoClient] =
-    env.get("MONGODB_URI").map(cs => sharedClientFor(cs, serverSelectionTimeout, maxPoolSizeFrom(env)))
+  /** One shared `MongoClient` for the whole process, on the cluster at `address`, to be
+   *  bound to per-country database views via [[forDatabase]]'s / [[forCountry]]'s
+   *  `sharedClient`. `None` when the address names no cluster (local opt-out) — each
+   *  connection then degrades on its own. The caller OWNS `close()`-ing the returned
+   *  client, after every connection that borrowed it is closed. */
+  def sharedClientAt(address: MongoAddress, env: Env): Option[MongoClient] =
+    address.uri.map(sharedClientFor(_, None, maxPoolSizeFrom(env)))
 
-  /** Like [[sharedClientFromEnv]] but against an EXPLICIT URI — the `/debug`
+  /** Like [[sharedClientAt]] but against an EXPLICIT URI — the `/debug`
    *  read-mirror, whose several per-country database views share one pool the
    *  same way the prod per-country connections do. The caller OWNS `close()`. */
   def sharedClientFor(uri: String, serverSelectionTimeout: Option[FiniteDuration] = None,
@@ -394,26 +393,27 @@ object MongoConnection extends Logging {
       serverSelectionTimeout = Some(LocalMirrorTimeout),
       sharedClient           = sharedClient)
 
-  /** Build from an explicit URI rather than `MONGODB_URI` — for a second
-   *  connection alongside the primary one. The web wiring uses it for the
+  /** Build from an explicit URI rather than the process's [[MongoAddress]] — for a
+   *  second connection alongside the primary one. The web wiring uses it for the
    *  local `/debug` read-mirror (`MONGODB_MOVIES_MIRROR_URI`): a separate
    *  MongoClient pointed at a local Mongo that's kept synced from prod, so the
    *  full-corpus `movies` read is a LAN hop instead of the prod tunnel. The
    *  database is taken from the URI's own path (see `databaseFromUri`, which
-   *  falls back to `env`'s resolved database) so the mirror can live in a
-   *  different database than the app's working db; probe timeout defaults to
-   *  `fromEnv`'s resolution. `required` is the caller's to decide
+   *  falls back to `fallbackDatabase` — the caller's own) so the mirror can live
+   *  in a different database than the app's working db; probe timeout defaults
+   *  to `env`'s. `required` is the caller's to decide
    *  (the mirror is a soft optimisation, so the caller passes `false` and
    *  degrades to the primary connection when it's absent). */
   def fromUri(
       uri: String,
+      fallbackDatabase: String,
       required: Boolean,
       env: Env,
       probeTimeout: Option[FiniteDuration] = None,
       serverSelectionTimeout: Option[FiniteDuration] = None): MongoConnection =
     new MongoConnection(
       Some(uri),
-      databaseFromUri(uri, models.Country.resolvedDbName(env)),
+      databaseFromUri(uri, fallbackDatabase),
       required,
       probeTimeout.getOrElse(probeTimeoutFrom(env)),
       serverSelectionTimeout,
@@ -421,10 +421,8 @@ object MongoConnection extends Logging {
 
   /** Database name for an explicit-URI connection: the URI's own path (e.g.
    *  `…/kinowo_prod_mirror`), so the `/debug` mirror lives in a different
-   *  database than the app's working db (`MONGODB_DB`, used by the prod
-   *  connection). Falls back to `fallback` (the caller's `Country.resolvedDbName`:
-   *  explicit `MONGODB_DB`, else the country's database) when the URI names no
-   *  database. The parse is
+   *  database than the app's working db (the prod connection's). Falls back to
+   *  `fallback` (the caller's own database) when the URI names no database. The parse is
    *  guarded so a malformed URI flows through to
    *  `MongoConnection`'s own required/optional handling instead of throwing here. */
   private[services] def databaseFromUri(uri: String, fallback: => String): String =
