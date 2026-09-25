@@ -163,6 +163,9 @@ trait MovieRepository {
    *  fell to a third across every country.
    *
    *  The in-memory store cannot fail, so the default reports `true`. */
+  def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) =
+    (findAll().find(_.id == id), true)
+
   /** Whether a live document holds `id` — the question minting a fresh id asks of each
    *  candidate. THROWS when the row cannot be read: counting "unknown" as free lets the
    *  write that follows replace the film that holds it. */
@@ -171,9 +174,6 @@ trait MovieRepository {
     case (None, true)  => false
     case (None, false) => throw new IllegalStateException(s"cannot read whether id $id is taken")
   }
-
-  def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) =
-    (findAll().find(_.id == id), true)
 
   /** The row whose `key` field is this lookup key — a cold cache asking "is this
    *  film stored?" before it knows the id. Same checked contract as
@@ -386,7 +386,11 @@ trait KeyAddressedMovieWrites { self: MovieRepository =>
     findByKeyChecked(CacheKey(title, year, normalizer))._1.exists(row => updateIfPresent(row.id, row.cacheKey(normalizer), before, after))
 
   def delete(title: String, year: Option[Int]): WriteOutcome =
-    findByKeyChecked(CacheKey(title, year, normalizer))._1.fold[WriteOutcome](WriteOutcome.Written)(row => delete(row.id))
+    findByKeyChecked(CacheKey(title, year, normalizer)) match {
+      case (Some(row), _) => delete(row.id)
+      case (None, true)   => WriteOutcome.Written                   // nothing under the key: already gone
+      case (None, false)  => WriteOutcome.Declined("key-unreadable")
+    }
 }
 
 object MovieRepository {

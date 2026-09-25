@@ -24,4 +24,14 @@ class KeyAddressedIdUnreadableSpec extends AnyFlatSpec with Matchers {
     an[IllegalStateException] should be thrownBy repo.holdsId(FilmId("f1"))
     new StoredRowsRepository(Seq.empty).holdsId(FilmId("f1")) shouldBe false
   }
+
+  // An absent key is a delete already done; a key that could not be read is not — reported as
+  // Written, the caller took a row it never looked for as gone.
+  "A title-addressed delete" should "decline, not report a delete, when it cannot read the key" in {
+    val repo = new StoredRowsRepository(Seq.empty) {
+      override def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) = (None, false)
+    }
+    repo.delete("Kumotry", Some(2026)) shouldBe WriteOutcome.Declined("key-unreadable")
+    new StoredRowsRepository(Seq.empty).delete("Kumotry", Some(2026)) shouldBe WriteOutcome.Written
+  }
 }
