@@ -76,6 +76,15 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
     repository.deleted shouldBe empty
   }
 
+  // Only a decline for the LOSERS' identity is a reason to delete them first. Any other — a
+  // client closing mid-shutdown — landed nothing either, and the write-time fold keeps its
+  // losers on it; the reconcile deleted them and lost every field only they held.
+  it should "keep the duplicate documents when the survivor's write is declined for another reason" in {
+    val repository = new ReconcileRecorder(Seq(decorated, base), WriteOutcome.Declined("client-closing"))
+    new CaffeineMovieCache(repository, normalizer = new TitleNormalizer(TitleRuleSet(TitleRules.all :+ kinoCafeRule)))
+    repository.deleted shouldBe empty
+  }
+
   it should "delete the losers once the survivor's write has landed" in {
     val repository = new ReconcileRecorder(Seq(decorated, base), WriteOutcome.Written)
     new CaffeineMovieCache(repository, normalizer = new TitleNormalizer(TitleRuleSet(TitleRules.all :+ kinoCafeRule)))

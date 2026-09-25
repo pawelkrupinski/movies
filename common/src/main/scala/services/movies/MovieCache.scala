@@ -1014,26 +1014,15 @@ class CaffeineMovieCache(
     }
     if (corpusIndex.idOf(newKey).exists(moved.contains)) evict(newKey)
     if (target != siblingKey) evict(siblingKey)
-    // The victims are deleted only once the survivor carries their union. Deleting them
-    // first, as this did, lost every field only they held whenever the survivor's write then
-    // failed. A survivor write DECLINED because a victim still holds the key or tmdbId is the
-    // ordinary case — the victims are what hold them — so they go, and it is written again.
-    // A FAILED write keeps them: evicted from the cache, their documents make the next scrape
-    // of the title fold again, which is the retry.
-    val outcome = persist(target, merged, survivorId) match {
-      case failed: WriteOutcome.Failed =>
-        logger.warn(s"Keeping the stored row(s) ${moved.mkString(", ")} of '${newKey.cleanTitle}' " +
-          s"(${newKey.year.getOrElse("—")}): the survivor's write failed, so the fold is retried next scrape.")
-        failed
-      case WriteOutcome.IdentityHeld =>
-        moved.foreach(repository.delete)
-        persist(target, merged, survivorId)
-      case WriteOutcome.Written =>
-        moved.foreach(repository.delete)
-        WriteOutcome.Written
-      case declined => declined
+    // The victims go only once the survivor carries their union (see
+    // `writeSurvivorThenRetireLosers`). Kept, and evicted from the cache, their documents make
+    // the next scrape of the title fold again, which is the retry.
+    val (outcome, retired) = writeSurvivorThenRetireLosers(moved)(() => persist(target, merged, survivorId))
+    if (outcome.failed) {
+      if (!retired) logger.warn(s"Keeping the stored row(s) ${moved.mkString(", ")} of '${newKey.cleanTitle}' " +
+        s"(${newKey.year.getOrElse("—")}): the survivor's write failed, so the fold is retried next scrape.")
+      return outcome
     }
-    if (outcome.failed) return outcome
     // The merge may have filled enrichment inputs the canonical lacked (e.g. an
     // imdbId/searchTitle from the victim) — re-kick the affected enrichments.
     retriggerChangedEnrichments(siblingRecord, siblingKey, merged, target)
@@ -1345,6 +1334,21 @@ class CaffeineMovieCache(
     positive.asMap().asScala.toSeq
   }
 
+  /** Write a merge's survivor, and delete its losers only on the strength of that write —
+   *  shared by the write-time fold and the rehydrate's duplicate reconcile, so the two cannot
+   *  disagree on when the losers go. Deleting them first lost every field only they held
+   *  whenever the survivor's write then did not land. A write DECLINED because a loser still
+   *  holds the key or tmdbId is the ordinary case — the losers are what hold them — so they
+   *  go and the survivor is written again. Any other outcome (a failure, a client closing)
+   *  landed nothing, and the losers are kept. Returns the survivor's outcome and whether the
+   *  losers were deleted. */
+  private def writeSurvivorThenRetireLosers(losers: Seq[FilmId])(write: () => WriteOutcome): (WriteOutcome, Boolean) =
+    write() match {
+      case WriteOutcome.IdentityHeld => losers.foreach(repository.delete); (write(), true)
+      case WriteOutcome.Written      => losers.foreach(repository.delete); (WriteOutcome.Written, true)
+      case kept                      => (kept, false)
+    }
+
   def rehydrate(): Int = {
     // Additive sync — never blank the cache mid-rehydrate. The periodic
     // 30-s tick (see `start()` below) runs while page loads are flying
@@ -1421,29 +1425,20 @@ class CaffeineMovieCache(
         val survivor = ids.head
         val (moved, stranded) = ids.tail.partition(repository.moveFilm(_, survivor))
         val union = Option(positive.getIfPresent(k))
-        // The losers go only on the strength of the survivor carrying their union: a
-        // survivor write that FAILED carries nothing, and deleting them then loses every
-        // field only they held. A write DECLINED is the losers still holding the key or
-        // tmdbId the survivor is taking — expected here — so they go, and it is written again.
-        union.fold[WriteOutcome](WriteOutcome.Written)(repository.upsert(survivor, k, _)) match {
-          case failed: WriteOutcome.Failed =>
-            logger.warn(s"MovieCache rehydrate: kept ${moved.size} duplicate document(s) of '${k.cleanTitle}' — the " +
-              s"survivor's write failed (${failed.cause.getMessage}); reconciled again next pass.")
-          case outcome =>
-            moved.foreach(repository.delete)
-            val rewritten =
-              if (outcome == WriteOutcome.Written) outcome
-              else union.fold[WriteOutcome](WriteOutcome.Written)(repository.upsert(survivor, k, _))
-            // The losers are gone, so a rewrite that did not land leaves the union in the cache
-            // alone — and every later scrape patches only what it changed against it, so the
-            // union's own fields would never reach Mongo. Drop the key; the next read finds the
-            // survivor as Mongo has it (its side rows are moved; the losers' own fields are lost).
-            if (rewritten != WriteOutcome.Written) {
-              logger.warn(s"MovieCache rehydrate: the survivor of '${k.cleanTitle}' could not be rewritten after " +
-                s"its ${moved.size} duplicate document(s) were deleted ($rewritten) — dropped from the cache so it " +
-                "is re-read as stored; fields only the duplicates held are lost.")
-              evict(k)
-            }
+        val (outcome, retired) = writeSurvivorThenRetireLosers(moved)(() =>
+          union.fold[WriteOutcome](WriteOutcome.Written)(repository.upsert(survivor, k, _)))
+        if (!retired)
+          logger.warn(s"MovieCache rehydrate: kept ${moved.size} duplicate document(s) of '${k.cleanTitle}' — the " +
+            s"survivor's write did not land ($outcome); reconciled again next pass.")
+        // The losers are gone, so a rewrite that did not land leaves the union in the cache
+        // alone — and every later scrape patches only what it changed against it, so the
+        // union's own fields would never reach Mongo. Drop the key; the next read finds the
+        // survivor as Mongo has it (its side rows are moved; the losers' own fields are lost).
+        else if (outcome != WriteOutcome.Written) {
+          logger.warn(s"MovieCache rehydrate: the survivor of '${k.cleanTitle}' could not be rewritten after " +
+            s"its ${moved.size} duplicate document(s) were deleted ($outcome) — dropped from the cache so it " +
+            "is re-read as stored; fields only the duplicates held are lost.")
+          evict(k)
         }
         if (stranded.nonEmpty)
           logger.warn(s"MovieCache rehydrate: kept ${stranded.size} duplicate document(s) of '${k.cleanTitle}' whose " +
