@@ -210,14 +210,24 @@ trait TestWiring extends WorkerWiring {
    *
    *  Shared by every harness that boots a corpus — the HTTP-fixture replay and
    *  the archive replay both need exactly this tick. */
-  /** Every venue whose scrape THREW inside [[runOneScrapeTick]], as `venue: exception`.
-   *  The tick carries on past a throwing venue, as production's scheduler does, so without
-   *  this a venue that no longer lands at all reads exactly like one that landed and
-   *  changed nothing — a fixpoint held by construction. Callers asserting convergence read
-   *  it; `FixpointPass.ledger` counts it. */
+  /** Every venue whose scrape THREW inside [[runOneScrapeTick]], as `venue: exception`,
+   *  over the wiring's life. The tick carries on past a throwing venue, as production's
+   *  scheduler does, so a venue that no longer lands at all reads exactly like one that
+   *  landed and changed nothing. A harness whose corpus should land whole (the convergence
+   *  legs) requires it empty. */
   val scrapeFailures = new java.util.concurrent.ConcurrentLinkedQueue[String]()
 
+  /** The venues that threw in the most recent tick, and how many venues' OUTCOME has
+   *  flipped between consecutive ticks (landed → threw or threw → landed). A venue with no
+   *  recorded fixture throws on every tick, identically — that is the corpus, not churn —
+   *  so `FixpointPass.ledger` counts the flips, never the repeats. */
+  @volatile private var lastTickThrew: Option[Set[String]] = None
+  @volatile private var lastTickFlips: Set[String] = Set.empty
+  val scrapeOutcomeFlips = new java.util.concurrent.atomic.AtomicLong()
+  def scrapeOutcomeFlipped: Set[String] = lastTickFlips
+
   def runOneScrapeTick(): Unit = {
+    val threw   = scala.collection.mutable.Set.empty[String]
     val ready   = scala.collection.mutable.ListBuffer.empty[MovieDetailsComplete]
     val started = System.nanoTime()
     val total   = cinemaScrapers.size
@@ -228,7 +238,8 @@ trait TestWiring extends WorkerWiring {
         // `classify` marks rows that await deferred detail `detailPending` (held
         // back, no event yet) and returns the ready-now MovieDetailsComplete.
         ready ++= cinemaScrapeRunner.classify(scraper.cinema, touched)
-      } catch { case e: Exception => scrapeFailures.add(s"${scraper.cinema.displayName}: $e"); () }
+      } catch { case e: Exception =>
+        scrapeFailures.add(s"${scraper.cinema.displayName}: $e"); threw += scraper.cinema.displayName; () }
       done += 1
       // A heartbeat, because this loop is where a slow persistence layer shows up: each
       // venue's rows are written through, so a per-row cost that grows with the corpus
@@ -243,6 +254,10 @@ trait TestWiring extends WorkerWiring {
     // last — same "settle the whole tick, THEN publish" rule for both groups.
     enrichDetailsSync()
     ready.foreach(eventBus.publish)
+    val now = threw.toSet
+    lastTickFlips = lastTickThrew.fold(Set.empty[String])(before => (before diff now) ++ (now diff before))
+    scrapeOutcomeFlips.addAndGet(lastTickFlips.size.toLong)
+    lastTickThrew = Some(now)
   }
 
   /** Mark every row TMDB has not resolved as concluded-no-match, the state
