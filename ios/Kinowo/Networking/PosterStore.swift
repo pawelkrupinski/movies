@@ -29,11 +29,11 @@ import FoundationNetworking
 /// `!data.isEmpty` fallback, so specs that mean to exercise the real
 /// decode have to inject their own. The SwiftUI glue that turns the bytes
 /// into an `Image` lives in `CachedAsyncImage`.
+///
+/// The app builds exactly one, in `KinowoApp` (the composition root), and
+/// hands it down: to `RepertoireStore` for the daily purge and, through the
+/// SwiftUI environment (`\.posterStore`), to every `CachedAsyncImage`.
 final class PosterStore: @unchecked Sendable {
-    /// Production singleton — caches under the app's Caches directory and
-    /// downloads through a cache-bypassing `URLSession`.
-    static let shared = PosterStore()
-
     private let directory: URL
     private let fetch: (URL) async -> Data?
     private let isImage: (Data) -> Bool
@@ -42,9 +42,10 @@ final class PosterStore: @unchecked Sendable {
     ///   - directory: where poster files live. Defaults to
     ///     `Caches/Posters`. Tests pass a throwaway temp directory.
     ///   - fetch: downloads the bytes for a URL, or returns `nil` on any
-    ///     non-2xx / transport error. Defaults to a cache-bypassing
-    ///     `URLSession` (this disk store *is* the cache); tests inject a
-    ///     stub so the cache logic is exercised without the network.
+    ///     non-2xx / transport error. Defaults to a download through this
+    ///     store's own cache-bypassing `URLSession` (this disk store *is* the
+    ///     cache); tests inject a stub so the cache logic is exercised
+    ///     without the network.
     ///   - isImage: whether a body is artwork we can actually render.
     ///     Defaults to a real decode on iOS. `networkFetch` only checks
     ///     the status code, and a Cloudflare-fronted origin answers a bot
@@ -54,7 +55,7 @@ final class PosterStore: @unchecked Sendable {
     ///     repertoire).
     init(
         directory: URL = PosterStore.defaultDirectory,
-        fetch: @escaping (URL) async -> Data? = PosterStore.networkFetch,
+        fetch: @escaping (URL) async -> Data? = PosterStore.networkFetch(through: PosterStore.cacheBypassingSession()),
         isImage: @escaping (Data) -> Bool = PosterStore.decodesAsImage
     ) {
         self.directory = directory
@@ -143,13 +144,15 @@ final class PosterStore: @unchecked Sendable {
             .appendingPathComponent("Posters", isDirectory: true)
     }
 
-    private static let session: URLSession = {
+    /// A session that never consults or fills `URLCache`: this disk store is
+    /// the cache, so a second layer would only double the bytes. A new one per
+    /// call — the default `fetch` builds one for the store it belongs to.
+    static func cacheBypassingSession() -> URLSession {
         let config = URLSessionConfiguration.default
-        // This disk store is the cache; don't double-cache through URLCache.
         config.urlCache = nil
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
         return URLSession(configuration: config)
-    }()
+    }
 
     /// Does `data` decode as an image? Real ImageIO on the app's platforms;
     /// on the Linux toolchain `swift test` runs against there's no image
@@ -163,7 +166,12 @@ final class PosterStore: @unchecked Sendable {
         #endif
     }
 
-    static func networkFetch(_ url: URL) async -> Data? {
+    /// Downloads through `session`: the bytes of a non-empty 2xx, else nil.
+    static func networkFetch(through session: URLSession) -> (URL) async -> Data? {
+        { url in await download(url, through: session) }
+    }
+
+    private static func download(_ url: URL, through session: URLSession) async -> Data? {
         var request = URLRequest(url: url)
         request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
         // Completion-handler `dataTask` bridged through a continuation

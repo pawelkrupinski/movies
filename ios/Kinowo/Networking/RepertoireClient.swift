@@ -41,6 +41,8 @@ final class RepertoireStore: ObservableObject {
     /// three hours early. Defaults to Warsaw for the Poland-default init.
     private var timeZone: TimeZone = .warsaw
     private let session: URLSession
+    /// The app's one poster disk cache, purged daily by `reconcilePostersIfNeeded`.
+    private let posters: PosterStore
     /// The city `catalog` was fetched for, so a static catalog isn't re-fetched
     /// on every stale-repertoire reload — only on an actual city/country switch.
     private var catalogCitySlug: String?
@@ -49,11 +51,14 @@ final class RepertoireStore: ObservableObject {
     /// `…/{citySlug}/api/repertoire`. `citySlug` defaults to the fallback
     /// city so the existing default-init call sites (UI-test fixture, tuning
     /// screen) keep working; the app points it at the resolved city via
-    /// `use(citySlug:)` once the first-launch gate lands.
-    init(base: URL = kinowoBaseURL, citySlug: String = City.default.slug, session: URLSession = .shared) {
+    /// `use(citySlug:)` once the first-launch gate lands. `posters` is the
+    /// composition root's `PosterStore`, the one the grid's images read.
+    init(base: URL = kinowoBaseURL, citySlug: String = City.default.slug, session: URLSession = .shared,
+         posters: PosterStore) {
         endpoint = ConditionalListEndpoint(
             base: base, citySlug: citySlug, endpoint: "repertoire", cache: .repertoire, session: session)
         self.session = session
+        self.posters = posters
     }
 
     /// Re-point at a different country's deployment: rebuild the base + URL,
@@ -217,7 +222,7 @@ final class RepertoireStore: ObservableObject {
         let keepURLs = films.flatMap { film -> [URL] in
             (film.posterURL.map { [$0] } ?? []) + film.fallbackPosterURLs
         }
-        await PosterStore.shared.reconcile(keepURLs: keepURLs)
+        await posters.reconcile(keepURLs: keepURLs)
         defaults.set(today, forKey: Self.posterPurgeDayKey)
     }
 

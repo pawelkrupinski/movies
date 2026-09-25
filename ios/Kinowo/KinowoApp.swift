@@ -4,13 +4,16 @@ import StoreKit
 
 @main
 struct KinowoApp: App {
-    @StateObject private var store = RepertoireStore()
+    @StateObject private var store: RepertoireStore
     @StateObject private var details = DetailsStore()
     @StateObject private var catalog = CatalogStore()
     @StateObject private var prefs: UserPreferences
     @StateObject private var authService: AuthService
     @StateObject private var sync: StateSyncService
     @StateObject private var deepLink = DeepLinkCoordinator()
+    /// The one poster disk cache: the grid and detail images read it through
+    /// the environment, `store` purges it daily.
+    private let posters: PosterStore
 
     init() {
         // Force the resolved language at process start so the bundle's
@@ -28,6 +31,9 @@ struct KinowoApp: App {
         UserDefaults.standard.set([LanguageSelection.resolve(storefrontCountry: nil)], forKey: "AppleLanguages")
         let preferences = UserPreferences()
         let authService = AuthService()
+        let posters = PosterStore()
+        self.posters = posters
+        _store = StateObject(wrappedValue: RepertoireStore(posters: posters))
         _prefs = StateObject(wrappedValue: preferences)
         _authService = StateObject(wrappedValue: authService)
         _sync = StateObject(wrappedValue: StateSyncService(
@@ -37,7 +43,7 @@ struct KinowoApp: App {
             languageClient: HttpLanguageClient()
         ))
         #if DEBUG
-        Self.seedUITestPoster()
+        Self.seedUITestPoster(into: posters)
         #endif
     }
 
@@ -60,7 +66,7 @@ struct KinowoApp: App {
     /// cache renders it; any screen that re-downloads instead shows "Brak
     /// plakatu" — which is how `DetailPosterCacheUITests` tells the two apart
     /// without a network.
-    private static func seedUITestPoster() {
+    private static func seedUITestPoster(into posters: PosterStore) {
         guard RepertoireStore.uiTestPosterSeedEnabled else { return }
         let size = CGSize(width: 60, height: 90)
         let image = UIGraphicsImageRenderer(size: size).image { context in
@@ -68,7 +74,7 @@ struct KinowoApp: App {
             context.fill(CGRect(origin: .zero, size: size))
         }
         guard let data = image.pngData() else { return }
-        PosterStore.shared.seed(data, for: RepertoireStore.uiTestSeededPosterURL)
+        posters.seed(data, for: RepertoireStore.uiTestSeededPosterURL)
     }
     #endif
 
@@ -82,6 +88,7 @@ struct KinowoApp: App {
                 .environmentObject(authService)
                 .environmentObject(sync)
                 .environmentObject(deepLink)
+                .environment(\.posterStore, posters)
                 // Follow the selected (country-independent) language for
                 // in-session SwiftUI `Text(LocalizedStringKey)` resolution
                 // (keyed to the choice so a switch re-localizes the view tree).

@@ -35,7 +35,7 @@ final class CountrySwitchTests: XCTestCase {
         }
         let session = URLProtocolStub.session()
         let prefs = UserPreferences(store: defaults)
-        let store = RepertoireStore(base: poland.baseURL, citySlug: "poznan", session: session)
+        let store = RepertoireStore(base: poland.baseURL, citySlug: "poznan", session: session, posters: .throwaway())
         let details = DetailsStore(base: poland.baseURL, citySlug: "poznan", session: session)
 
         switchCountry(to: unitedKingdom, prefs: prefs, store: store, details: details)
