@@ -4,16 +4,13 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.FilmwebClient
 import services.enrichment.FilmwebClient.{Candidate, SearchHit}
-import tools.{GetOnlyHttpFetch, RealHttpFetch}
+import tools.{GetOnlyHttpFetch, RealHttpFetch, RoutingHttpFetch}
 
 class FilmwebClientSpec extends AnyFlatSpec with Matchers {
 
-  /** Test stub: routes URLs by substring to canned JSON. */
-  private class StubFetch(routes: Map[String, String]) extends GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"HTTP 404 for $url"))
-  }
+  /** Filmweb serving `routes`; any other URL is the 404 a page it doesn't have answers. */
+  private def filmwebSite(routes: Map[String, String]) =
+    new RoutingHttpFetch(routes, getOnly = true, unroutedIsNotFound = true)
 
   private val client = new FilmwebClient(new RealHttpFetch)
 
@@ -464,7 +461,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
       "/live/search"      -> """{"searchHits":[{"id":838929,"type":"film","matchedTitle":"Wartość sentymentalna"}]}""",
       "/film/838929/info" -> """{"title":"It's About Time","year":2015,"type":"film"}"""
     )
-    val fw = new FilmwebClient(new StubFetch(routes))
+    val fw = new FilmwebClient(filmwebSite(routes))
     fw.lookup("Wartość sentymentalna", Some(2025)) shouldBe None
   }
 
@@ -496,7 +493,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
       "/film/650592/info" -> """{"title":"Cirque du Soleil: Dalekie światy","originalTitle":"Cirque du Soleil: Worlds Away","year":2012}""",
       "/film/7895/info"   -> """{"title":"Mroczny przedmiot pożądania","originalTitle":"Cet obscur objet du désir","year":1977}"""
     )
-    val fw = new FilmwebClient(new StubFetch(routes))
+    val fw = new FilmwebClient(filmwebSite(routes))
     fw.lookup("Cirque du Soleil: Kooza", Some(2008)) shouldBe None
   }
 
@@ -515,7 +512,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
       "/film/690834/info"   -> """{"title":"Scarlet","year":2012}""",
       "/film/849495/info"   -> """{"title":"Scarlet","year":2021}"""
     )
-    val fw = new FilmwebClient(new StubFetch(routes))
+    val fw = new FilmwebClient(filmwebSite(routes))
     fw.lookup("Scarlet", None) shouldBe None
   }
 
@@ -529,7 +526,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
       "/film/10058855/info"   -> """{"title":"Wartość sentymentalna","originalTitle":"Sentimental Value","year":2025}""",
       "/film/10058855/rating" -> """{"rate":7.8,"count":1000}"""
     )
-    val fw = new FilmwebClient(new StubFetch(routes))
+    val fw = new FilmwebClient(filmwebSite(routes))
     val r = fw.lookup("Wartość sentymentalna", Some(2025))
     r should not be empty
     r.get.url    should include ("-10058855")
@@ -547,7 +544,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
       "/film/42/preview" -> """{"directors":[{"id":1,"name":"Denis Villeneuve"}],"genres":[{"id":2,"name":{"text":"Sci-Fi"}}],"plot":{"synopsis":"Paul Atryda łączy siły z Fremenami."}}""",
       "/film/42/rating"  -> """{"rate":8.2,"count":100}"""
     )
-    val r = new FilmwebClient(new StubFetch(routes)).lookup("Diuna: Część druga", Some(2024)).get
+    val r = new FilmwebClient(filmwebSite(routes)).lookup("Diuna: Część druga", Some(2024)).get
     r.originalTitle shouldBe Some("Dune: Part Two")
     r.year          shouldBe Some(2024)
     r.directors     shouldBe Seq("Denis Villeneuve")
@@ -564,7 +561,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
       "/film/42/preview" -> """{"directors":[{"id":1,"name":"Dir Name"}],"genres":[{"id":2,"name":{"text":"Dramat"}}],"plot":{"synopsis":"Blurb."}}""",
       "/film/42/rating"  -> """{"rate":7.0,"count":1}"""
     )
-    val r = new FilmwebClient(new StubFetch(routes)).detailsFor("https://www.filmweb.pl/film/X-2001-42").get
+    val r = new FilmwebClient(filmwebSite(routes)).detailsFor("https://www.filmweb.pl/film/X-2001-42").get
     r.originalTitle shouldBe Some("Y")
     r.year          shouldBe Some(2001)
     r.directors     shouldBe Seq("Dir Name")
@@ -581,7 +578,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
       "/film/779836/info"                 -> """{"title":"Diuna: Część druga","originalTitle":"Dune: Part Two","year":2024}""",
       "/film/779836/rating"               -> """{"rate":8.2,"count":1}"""
     )
-    val fw = new FilmwebClient(new StubFetch(routes))
+    val fw = new FilmwebClient(filmwebSite(routes))
     val r = fw.lookup("Diuna", Some(2024), fallback = Some("Dune: Part Two"))
     r should not be empty
     r.get.url should include ("-779836")
@@ -648,17 +645,20 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     FilmwebClient.searchQueryVariants("Pulp Fiction") shouldBe empty
   }
 
-  it should "consult /preview only when the caller passes directors" in {
-    // When directors=Set.empty the lookup must NOT hit /preview — saves a
-    // round-trip per candidate. We prove it by leaving /preview unstubbed:
-    // any call would throw "HTTP 404" from the stub.
+  it should "consult /preview per candidate only when the caller passes directors" in {
+    // When directors=Set.empty the lookup must NOT fetch /preview per candidate —
+    // that saves a round-trip each. Only the WINNER's /preview is fetched, to fill
+    // its content slot. An unstubbed /preview would only 404, which the client
+    // tolerates, so the proof is the call log, not an exception.
     val routes = Map(
-      "/live/search"       -> """{"searchHits":[{"id":42,"type":"film","matchedTitle":"X"}]}""",
+      "/live/search"       -> """{"searchHits":[{"id":42,"type":"film","matchedTitle":"X"},{"id":43,"type":"film","matchedTitle":"Y"}]}""",
       "/film/42/info"      -> """{"title":"X","year":2024}""",
+      "/film/43/info"      -> """{"title":"Y","year":2020}""",
       "/film/42/rating"    -> """{"rate":7.0,"count":1}"""
     )
-    val fw = new FilmwebClient(new StubFetch(routes))
-    noException should be thrownBy fw.lookup("X", Some(2024))
+    val site = filmwebSite(routes)
+    new FilmwebClient(site).lookup("X", Some(2024)).map(_.url) shouldBe Some("https://www.filmweb.pl/film/X-2024-42")
+    site.calls.map(_._2).filter(_.contains("/preview")) shouldBe Seq("https://www.filmweb.pl/api/v1/film/42/preview")
   }
 
   it should "use /preview to verify director overlap when caller passes directors" in {
@@ -673,7 +673,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
       "/film/2/preview"        -> """{"directors":[{"id":11,"name":"Mamoru Hosoda"}]}""",
       "/film/2/rating"         -> """{"rate":7.5,"count":1}"""
     )
-    val fw = new FilmwebClient(new StubFetch(routes))
+    val fw = new FilmwebClient(filmwebSite(routes))
     val r = fw.lookup("Belle", None, directors = Set("Mamoru Hosoda"))
     r.map(_.url) should not be empty
     r.get.url should include ("-2")
@@ -685,7 +685,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
       "/film/1/info"        -> """{"title":"Belle","year":2013}""",
       "/film/1/preview"     -> """{"directors":[{"id":10,"name":"Amma Asante"}]}"""
     )
-    val fw = new FilmwebClient(new StubFetch(routes))
+    val fw = new FilmwebClient(filmwebSite(routes))
     fw.lookup("Belle", Some(2013), directors = Set("Christopher Nolan")) shouldBe None
   }
 
@@ -701,7 +701,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
       "/film/1/preview" -> """{"directors":[{"id":9,"name":"Katya Tsarik"}]}""",
       "/film/1/rating"  -> """{"rate":6.9,"count":50}"""
     )
-    val fw = new FilmwebClient(new StubFetch(routes))
+    val fw = new FilmwebClient(filmwebSite(routes))
     val r = fw.lookup("Mawka. Prawdziwy mit", Some(2026), directors = Set("Katya Tsarik"))
     r.map(_.url) should not be empty
     r.get.url should include ("-1")
@@ -724,7 +724,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
       "/film/10113677/rating" -> """{"rate":6.7,"count":87}""",
       "/film/752725/info"     -> """{"title":"Dobrze się kłamie w miłym towarzystwie","year":2016}"""
     )
-    val fw = new FilmwebClient(new StubFetch(routes))
+    val fw = new FilmwebClient(filmwebSite(routes))
     val r = fw.lookup("Kicia Kocia w podróży", Some(2026))
     r should not be empty
     r.get.url    shouldBe "https://www.filmweb.pl/serial/Kicia+Kocia+w+podr%C3%B3%C5%BCy-2026-10113677"
