@@ -6,7 +6,7 @@ import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, MultiListi
 import services.cinemas.pl._
 import services.cinemas.common.{FlicksClient, FlicksMarket}
 import services.cinemas.uk.{CineworldClient, OdeonClient, TheOldCourtClient}
-import services.cinemas.es.{OcineClient, OcineVenues}
+import services.cinemas.es.OcineClient
 import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
 import services.movies.TitleNormalizer
 
@@ -1843,14 +1843,15 @@ class CinemaScraperCatalog(
     new WebediaShowtimesClient(http, WebediaMarket.Spain, theaterId, cinema, today = Some(today))
 
   // Ocine venues read the chain's own ticketing server instead — SensaCine had
-  // no programme at all for most of them; see `OcineVenues` for which and why.
-  // Plain `http`: the servers sit behind no bot wall.
+  // no programme at all for most of them, and does not list some at all; see
+  // `data/spain/ocine.json` for which and why. Plain `http`: the servers sit
+  // behind no bot wall.
   private def ocine(ticketingSlug: String, cinema: Cinema): OcineClient =
     new OcineClient(http, ticketingSlug, cinema, today = Some(today))
 
-  // Spain — data-driven from the full SpanishRoster (52 provinces / 595 cinemas):
+  // Spain — data-driven from the full SpanishRoster (52 provinces / 605 cinemas):
   // one scraper per cinema, keyed by the PROVINCE slug City.slug uses — the
-  // venue's own chain server where `OcineVenues` names one, SensaCine otherwise.
+  // venue's own chain server where the roster names one, SensaCine otherwise.
   // Keyed off `Country.Spain.cities` rather than off `SpanishRoster.places`,
   // because the slug a province is finally addressable under is decided in
   // `City.spanishCities` (one of them is qualified away from a US metro's) and
@@ -1858,8 +1859,8 @@ class CinemaScraperCatalog(
   private val spanishBaseByCity: Map[String, Seq[CinemaScraper]] =
     models.Country.Spain.cities.map { city =>
       city.slug -> city.cinemas.map { c =>
-        val theaterId = models.SpanishRoster.theaterIdByCinema(c)
-        OcineVenues.ticketingSlugByTheaterId.get(theaterId).map(ocine(_, c)).getOrElse(sensacine(theaterId, c))
+        models.SpanishRoster.ocineSlugByCinema.get(c).map(ocine(_, c))
+          .getOrElse(sensacine(models.SpanishRoster.theaterIdByCinema(c), c))
       }
     }.toMap
 

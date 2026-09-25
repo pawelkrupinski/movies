@@ -2178,21 +2178,32 @@ object SpanishRoster {
       UsRoster.byCity.flatMap(_._2) ++
       Seq(CinemaCityChain, CineworldChain, RegalChain)).map(_.displayName).toSet
 
-  private val built: Seq[(SpanishPlace, Seq[(SpanishCinema, String)])] =
+  private val built: Seq[(SpanishPlace, Seq[(SpanishCinema, Option[String], Option[String])])] =
     SpanishRosterData.provinces.map { case (slug, name, community, lat, lon, zone, towns, cinemas) =>
       // Qualify only the venues that would collide, so the roster's names — and the
       // wire keys of every already-stored Spanish slot — stay exactly as they are
       // otherwise.
-      val venues = cinemas.map { case (disp, pill, tid) =>
+      val venues = cinemas.map { case (disp, pill, theaterId, ocineSlug) =>
         val unique = if (claimedElsewhere.contains(disp)) s"$disp $name" else disp
-        (new SpanishCinema(unique, pill), tid)
+        (new SpanishCinema(unique, pill), theaterId, ocineSlug)
       }
       (SpanishPlace(slug, name, community, lat, lon, ZoneId.of(zone), towns, venues.map(_._1)), venues)
     }
 
-  val places: Seq[SpanishPlace]              = built.map(_._1)
-  val byCity:  Seq[(String, Seq[Cinema])]    = built.map { case (p, v) => p.name -> v.map(_._1) }
-  val theaterIdByCinema: Map[Cinema, String] = built.flatMap(_._2).toMap
+  val places: Seq[SpanishPlace]           = built.map(_._1)
+  val byCity:  Seq[(String, Seq[Cinema])] = built.map { case (p, v) => p.name -> v.map(_._1) }
+
+  /** Each SensaCine-listed venue's `theaterId`. The Ocine venues SensaCine does
+   *  not list (`data/spain/ocine.json`'s `unlisted`) have none, and are absent. */
+  val theaterIdByCinema: Map[Cinema, String] =
+    built.flatMap(_._2).collect { case (c, Some(theaterId), _) => (c: Cinema) -> theaterId }.toMap
+
+  /** Each Ocine venue's ticketing-server slug (`tickets.ocine<slug>.es`), the
+   *  scrape primary for every venue named here — SensaCine carries no programme
+   *  for most of them, and does not list some at all. From `data/spain/ocine.json`,
+   *  which says which venues are (not) on it and why. */
+  val ocineSlugByCinema: Map[Cinema, String] =
+    built.flatMap(_._2).collect { case (c, _, Some(slug)) => (c: Cinema) -> slug }.toMap
 }
 
 object Cinema {

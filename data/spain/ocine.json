@@ -1,0 +1,29 @@
+{
+  "_comment": [
+    "The Ocine chain's venues and the ticketing server each one runs on premises, tickets.ocine<slug>.es — the scrape primary for every venue named here (services.cinemas.es.OcineClient). Hand-kept reference data like communities.json, so it survives a SensaCine re-harvest; generate_roster.py merges it into the roster and refuses a row that no longer lines up with the harvest.",
+    "Built 2026-09-25 from the chain's own venue list (the 'otros cines' links on cinesocine.es, each venue site's SiteSettings.ticketing_url).",
+    "listed: the Ocine venues SensaCine carries, by its theaterId. They left SensaCine because eleven of them (Arenys, Blanes, Granollers, Màgic, Mendibil, Platja d'Aro, Premium Aqua, Premium Bahía Real, Premium Estepark, Urban X-Madrid, Vila-seca) had NO programme there — SensaCine's venue page advertised no days at all — and Gavarres only two stray days, while the chain's own server listed 10-24 films each. For the five SensaCine did cover (Girona, Plaza Éboli, Rio Shopping, Roquetes, Serrallo) the own server reaches further: measured at Girona, Serrallo and Rio Shopping, SensaCine advertised 7-10 days ending 2026-10-01..10-17, the chain's own feed 13-17 days reaching 2026-12-15 — with the room on every session, which SensaCine never carries.",
+    "Two roster Ocine venues are NOT listed and stay on SensaCine: Ocine Tudela (E0317) — tickets.ocinetudela.es answers on port 80 with a redirect to https, and port 443 then never completes a TCP connect (probed 2026-09-25); SensaCine lists its full week, so it is better off where it is, but worth re-probing. And Ocine Sant Celoni Altrium (E0745) — the chain links no site or ticketing server for it at all.",
+    "unlisted: the chain's venues SensaCine does not list at all, so the harvest never had them. They join their province with no theaterId, and their own server is their only source. Name, address and coordinates are the venue's own site's; `province` is the harvest's province name, `town` the municipality as Spanish writes it."
+  ],
+  "listed": {
+    "E0651": "arenys",
+    "E0462": "blanes",
+    "E0509": "gavarres",
+    "E0362": "girona",
+    "E0507": "granollers",
+    "E0713": "magic",
+    "E0537": "mendibil",
+    "E0554": "platjadaro",
+    "E2900": "plazaeboli",
+    "E0474": "premiumaqua",
+    "E1045": "premiumbahiareal",
+    "E0925": "premiumestepark",
+    "E0796": "rioshopping",
+    "E0556": "roquetes",
+    "E0787": "serrallo",
+    "E1004": "urbanxmadrid",
+    "E0727": "vilaseca"
+  },
+  "unlisted": []
+}

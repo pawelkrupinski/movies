@@ -381,7 +381,7 @@ client bug** — sensacine.com itself just currently has nothing listed for
 those specific venues; a coincidental chain-wide lull, not our parser.
 *(Follow-up 2026-09-25: not a lull — SensaCine never listed a real programme
 for most Ocine venues. They now scrape the chain's own ticketing servers via
-`OcineClient`; see `services.cinemas.es.OcineVenues`.)*
+`OcineClient`; see `data/spain/ocine.json`.)*
 The other 14 non-Ocine archive≤10d candidates (including 3 higher-film-count
 ones given extra scrutiny: Cine Príncipe 11 films, Cines Antiguo Berri 6,
 Cines Avenida 3D 4) were all confirmed `data-showtimes-dates="[]"` too,

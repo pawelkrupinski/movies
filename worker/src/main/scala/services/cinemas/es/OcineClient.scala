@@ -36,7 +36,7 @@ import java.time.{LocalDate, ZoneId}
  * the same venues. [[ScrapeHorizon.MaxDays]] only bounds a garbage far date.
  *
  * One instance serves one venue, named by its ticketing host's `<slug>` — see
- * [[OcineVenues]] for the map and which roster venues are (not) on it.
+ * `data/spain/ocine.json` for the map and which venues are (not) on it.
  */
 class OcineClient(
   http:        HttpFetch,

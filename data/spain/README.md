@@ -137,9 +137,23 @@ python3 data/spain/scripts/test_build_provinces.py
 `SpanishCinema` venues once and hands them to `City.spanishCities`,
 `Cinema.byCity` and `CinemaScraperCatalog.spanishBaseByCity` (one
 `WebediaShowtimesClient` on `WebediaMarket.Spain` per venue, keyed by its
-`theaterId` — except the 17 Ocine venues `services.cinemas.es.OcineVenues`
-maps by `theaterId` to their chain's own ticketing server, which SensaCine
-carried no programme for; they are scraped by `OcineClient` instead).
+`theaterId` — except the Ocine venues, scraped by `OcineClient` off the
+chain's own per-venue ticketing server instead; see below).
+
+### Ocine: `ocine.json`
+
+The one roster input that is neither harvested nor generated. SensaCine
+carries no programme for most Ocine venues and does not list some of them at
+all, so `ocine.json` — hand-kept like `communities.json`, and so untouched by
+a re-harvest — names each venue's own ticketing server
+(`tickets.ocine<slug>.es`) in two lists: `listed`, the venues SensaCine has,
+by `theaterId`; and `unlisted`, the chain's venues SensaCine does not list,
+which `generate_roster.py` ADDS to their province with no `theaterId`, so their
+own server is their only source. The file's `_comment` says which venues are
+on it, which are not, and why. `generate_roster.py` refuses a row that has
+stopped lining up with the harvest (a dropped `theaterId`, an unknown
+province, one server named twice), and every host it names needs a pace row
+in `tools.HostPolicies` — `CinemaScraperCatalogSpec` fails on one without.
 
 **A re-harvest is not free.** `displayName` is the wire key every stored
 showtime is filed under, so a venue whose name changes upstream arrives as a

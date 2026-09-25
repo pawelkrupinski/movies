@@ -324,7 +324,7 @@ object HostPolicies {
     // listing in 2-9s and occasionally times a detail out: 1s keeps us to a
     // trickle per server. Same courtesy bound as the US chains above, not a
     // throttle fitted to an observed limit — none has 429'd. Must list exactly
-    // the hosts `OcineVenues` maps; `CinemaScraperCatalogSpec` fails on a venue
+    // the hosts `SpanishRoster.ocineSlugByCinema` maps; `CinemaScraperCatalogSpec` fails on a venue
     // whose host has no pace here.
     HostPolicy(
       Set("arenys", "blanes", "gavarres", "girona", "granollers", "magic", "mendibil",
