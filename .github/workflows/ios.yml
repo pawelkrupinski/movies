@@ -22,11 +22,14 @@ on:
             - 'test/resources/retry-classification.json'
     workflow_dispatch:
 
-# A newer push to the same ref cancels the older run mid-flight, freeing the
-# slow macOS Simulator lane instead of queueing stale UI-test work behind it.
+# On a pull request a newer push cancels the older run mid-flight, freeing the slow macOS
+# Simulator lane instead of queueing stale UI-test work behind it. On main every commit
+# finishes: cancelling there is what killed run 36115063750's XCUITest step 24 minutes in,
+# 57 passes and no failures deep, and read as a hang. (A queued main run still replaces an
+# older queued one, so a commit storm waits for at most one run.)
 concurrency:
     group: ios-${{ github.ref }}
-    cancel-in-progress: true
+    cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # `checks: write` so action-junit-report can post failure check-runs +
 # summaries; `contents: read` for checkout. All jobs are same-repo.
@@ -78,6 +81,8 @@ jobs:
 
     ui-tests:
         runs-on: macos-latest
+        # Build ~2 min + XCUITest step (bounded below) + xcresult conversion ~3 min + SPM ~2 min.
+        timeout-minutes: 75
         steps:
             - uses: actions/checkout@v5
 
@@ -107,16 +112,28 @@ jobs:
                   scripts/ci/ios-sim-destination-test.sh
                   echo "DESTINATION=$(scripts/ci/ios-sim-destination.sh)" >> "$GITHUB_ENV"
 
-            # KinowoUITests target + shared scheme are still being wired
-            # by a parallel change. Don't block main until that lands.
+            # The whole suite takes ~28 min on a macos-latest runner (green run 36117454325).
+            # Every test is bounded: one that hangs is killed at its allowance and FAILS,
+            # naming itself in the report, instead of eating the step's budget in silence.
+            # The step's own timeout backs that up if xcodebuild itself wedges.
+            #
+            # Still continue-on-error: the suite had never run in CI before 2026-09-25 (every
+            # earlier run died on the missing "iPhone 15"), it has one green run (36117454325), and
+            # a local run the same day failed LocalizationUITests.testGermanyRendersGermanDetailCaptions
+            # once ("Grid never appeared" with the CityGate still up after the confirm tap; 0 of 33
+            # reruns reproduced it). Make it blocking once a stretch of main runs is green.
             - name: Run XCUITest
               continue-on-error: true
+              timeout-minutes: 50
               run: |
                   xcodebuild test \
                       -project ios/Kinowo.xcodeproj \
                       -scheme Kinowo \
                       -destination "$DESTINATION" \
                       -resultBundlePath build/Kinowo.xcresult \
+                      -test-timeouts-enabled YES \
+                      -default-test-execution-time-allowance 180 \
+                      -maximum-test-execution-time-allowance 300 \
                       CODE_SIGNING_ALLOWED=NO
 
             # Turn the binary XCUITest result bundle into JUnit XML so a
@@ -137,8 +154,8 @@ jobs:
                   detailed_summary: true
                   include_passed: false
 
-            # XCUITest step is continue-on-error (target still being
-            # wired), so leave a glance-able signal when it has failures.
+            # XCUITest step is continue-on-error (see there), so leave a glance-able signal
+            # when it has failures.
             - name: Flag XCUITest failures
               if: always()
               run: '[ -s xcuitest.xml ] && grep -q "<failure" xcuitest.xml && echo "::warning::XCUITest reported failures — see the iOS XCUITest check" || true'

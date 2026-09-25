@@ -291,7 +291,10 @@ jobs:
 
             # Each XCUITest class on its own, so none can lean on state another left behind.
             # Every class runs even after a failure; the job fails at the end, naming them.
+            # Each test is bounded (a hung one fails at its allowance, naming itself), and so
+            # is the step: the whole suite in one run takes ~25 min, alone ~a minute more a class.
             - name: Every XCUITest class alone
+              timeout-minutes: 120
               run: |
                   set -uo pipefail
                   mkdir -p build/alone
@@ -301,6 +304,7 @@ jobs:
                   failed=""
                   for class in $classes; do
                       echo "::group::$class"
+                      started=$SECONDS
                       if xcodebuild test-without-building \
                           -project ios/Kinowo.xcodeproj \
                           -scheme Kinowo \
@@ -308,9 +312,13 @@ jobs:
                           -derivedDataPath build/dd \
                           -only-testing:"KinowoUITests/$class" \
                           -resultBundlePath "build/alone/$class.xcresult" \
+                          -test-timeouts-enabled YES \
+                          -default-test-execution-time-allowance 180 \
+                          -maximum-test-execution-time-allowance 300 \
                           CODE_SIGNING_ALLOWED=NO > "build/alone/$class.log" 2>&1; then
-                          echo "$class passed alone"
+                          echo "$class passed alone in $((SECONDS - started))s"
                       else
+                          echo "$class FAILED alone after $((SECONDS - started))s"
                           tail -80 "build/alone/$class.log"
                           failed="$failed $class"
                       fi
