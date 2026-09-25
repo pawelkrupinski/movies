@@ -20,10 +20,13 @@
 # a 403 challenge whatever the User-Agent (measured 2026-09-24 from the fleet's egress), so an IP
 # Access Rule allowing this host's public address on BOTH zones is a hand step; ProbeBlockedByEdge
 # names it if it is ever missing. With it, every static door answers 200 (measured 2026-09-24
-# 16:15Z). What it does NOT lift is showtimes.cc's managed challenge on `/movie/` paths (a custom
-# rule against scrapers, not verified bots only), which blackbox cannot pass: the discovery reads
-# such a page from the ORIGIN instead (`discoveryOrigin`), probes the share card it names, and
-# leaves the film page itself unprobed rather than probing a 403 forever.
+# 16:15Z). What it does NOT lift is showtimes.cc's managed challenge on `/movie/` paths (the custom
+# rule "Challenge non-verified-bot traffic on catalog paths", against scrapers), which blackbox
+# cannot pass -- so that rule exempts this host by address too (`and (ip.src ne 128.140.49.167)`,
+# a second hand step, 2026-09-25), and each country's film page is probed through the edge beside
+# its share card. If the exemption is ever lost, the film probes read 403 and ProbeBlockedByEdge
+# names them, while the discovery reads the refused page from the ORIGIN (`discoveryOrigin`) so the
+# share card is still found and probed.
 #
 # ⚠️ THE FIRST SWITCH IS BY HAND. Both units are new, and auto-apply refuses a switch that STARTS a
 # unit it has not been told it may disturb -- and it reads that permission from the closure it is
@@ -148,9 +151,10 @@ in
     discoveryOrigin = lib.mkOption {
       default = null;
       description = ''
-        Where the discovery reads a page the edge refuses (403): the origin's address on the
-        private network and the origin certificates to trust for it. Only the discovery goes
-        there -- every probe still goes through the edge. Null reads every page through the edge.
+        Where the discovery reads a page the edge refuses (403) -- a fallback for a lost Cloudflare
+        exemption, not the normal path: the origin's address on the private network and the origin
+        certificates to trust for it. Only the discovery goes there -- every probe, the refused
+        page's included, still goes through the edge. Null reads every page through the edge.
       '';
       type = lib.types.nullOr (lib.types.submodule {
         options = {

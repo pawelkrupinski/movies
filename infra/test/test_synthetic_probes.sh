@@ -139,23 +139,36 @@ check "the card rendered since the last run is now probed" \
   "https://kinowo.net/warszawa/movie/cardless https://kinowo.net/share-cards/pl/hcard.jpg?v=2" \
   "$(field '[.[] | .targets[0]] | join(" ")')"
 
-echo "discovery: a film page the edge challenges is read from the origin, and not probed"
-# showtimes.cc's managed challenge on /movie/ paths: the city page answers, the film page 403s.
+echo "discovery: a showtimes.cc film page the edge answers is probed alongside its share card"
+# The Cloudflare `/movie/` rule exempts monitoring-1's address (since 2026-09-25): the edge serves it.
 serve "https://showtimes.cc/us/new-york/" '<a href="/us/new-york/movie/coyote-vs-acme">x</a></html>'
+serve "https://showtimes.cc/us/new-york/movie/coyote-vs-acme" \
+  '<meta property="og:image" content="https://showtimes.cc/share-cards/us/h2dd4.jpg?v=01dd"></html>'
+PROBE_ORIGIN_ADDRESS=10.20.0.12 PROBE_ORIGIN_CA=/etc/origin.pem \
+  run "$tmp/targets.json" us=https://showtimes.cc/us/new-york/
+check "the film page and the share card, both through the edge" \
+  "film https://showtimes.cc/us/new-york/movie/coyote-vs-acme share-card https://showtimes.cc/share-cards/us/h2dd4.jpg?v=01dd" \
+  "$(field '[.[] | "\(.labels.kind) \(.targets[0])"] | join(" ")')"
+check "...and the origin is never asked when the edge answers" "0" "$(grep -c -- '--resolve' "$tmp/curl.log")"
+
+echo "discovery: a film page the edge challenges is read from the origin, and STILL probed"
+# The exemption lost: the film page 403s again. Its card is found on the origin; the film page keeps
+# its probe, which now reads 403 -- the signal ProbeBlockedByEdge fires on.
+rm -f "$tmp/targets.json"
 refuse "https://showtimes.cc/us/new-york/movie/coyote-vs-acme"
 serve_origin "https://showtimes.cc/us/new-york/movie/coyote-vs-acme" \
   '<meta property="og:image" content="https://showtimes.cc/share-cards/us/h2dd4.jpg?v=01dd"></html>'
 PROBE_ORIGIN_ADDRESS=10.20.0.12 PROBE_ORIGIN_CA=/etc/origin.pem \
   run "$tmp/targets.json" us=https://showtimes.cc/us/new-york/
-check "the share card found on the origin's copy of the page is probed, through the edge" \
-  "share-card https://showtimes.cc/share-cards/us/h2dd4.jpg?v=01dd" \
+check "the film page is still probed (so its 403 reaches ProbeBlockedByEdge), and the card found on the origin too" \
+  "film https://showtimes.cc/us/new-york/movie/coyote-vs-acme share-card https://showtimes.cc/share-cards/us/h2dd4.jpg?v=01dd" \
   "$(field '[.[] | "\(.labels.kind) \(.targets[0])"] | join(" ")')"
 check "the origin fetch is pinned to the origin address and its certificates" "1" \
   "$(grep -c -- '--resolve showtimes.cc:443:10.20.0.12 --cacert /etc/origin.pem https://showtimes.cc/us/new-york/movie/coyote-vs-acme' "$tmp/curl.log")"
-check "...and the film page gets no probe that could only ever read the challenge" "1" \
+check "...and the refusal is logged as a lost exemption" "1" \
   "$(grep -c 'us: the edge refuses https://showtimes.cc/us/new-york/movie/coyote-vs-acme (403)' "$tmp/stderr")"
-check "the stickiness survives a challenged film page (the hidden label is on the card)" \
-  "https://showtimes.cc/us/new-york/movie/coyote-vs-acme" "$(field '.[0].labels.__film')"
+check "the stickiness survives a challenged film page" \
+  "https://showtimes.cc/us/new-york/movie/coyote-vs-acme" "$(field '[.[].labels.__film] | unique | join(" ")')"
 
 rm -f "$tmp/targets.json"
 run "$tmp/targets.json" us=https://showtimes.cc/us/new-york/

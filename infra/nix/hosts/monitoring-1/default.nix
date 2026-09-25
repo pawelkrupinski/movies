@@ -90,10 +90,11 @@ in
   };
 
   # THE SITE, FETCHED FROM OUTSIDE THE CLUSTER, THROUGH CLOUDFLARE. See roles/synthetic-probes.nix,
-  # including the two hand steps it needed (a Cloudflare IP Access Rule for 128.140.49.167 on both
-  # zones, and the first switch; by 2026-09-24 16:15Z every door below answered 200 from here). One
-  # door per brand, each country's root, and each country's biggest city; a live film page and its
-  # share card per country are discovered from the same city pages.
+  # including the hand steps it needed (a Cloudflare IP Access Rule for 128.140.49.167 on both
+  # zones; showtimes.cc's `/movie/` custom rule "Challenge non-verified-bot traffic on catalog paths"
+  # exempting the same address, 2026-09-25; and the first switch). One door per brand, each
+  # country's root, and each country's biggest city; a live film page and its share card per
+  # country are discovered from the same city pages, and both are probed through the edge.
   fleet.syntheticProbes = {
     enable = true;
     targets = [
@@ -109,9 +110,10 @@ in
       { url = "https://showtimes.cc/us/new-york/"; country = "us"; kind = "city"; }
       { url = "https://showtimes.cc/es/madrid/"; country = "es"; kind = "city"; }
     ];
-    # THE PRODUCT'S ORIGIN, k3s-worker-1's Caddy on the private network, for the pages the edge
-    # challenges (showtimes.cc's `/movie/`): the share card each names is found there and then
-    # probed through the edge like everything else.
+    # THE PRODUCT'S ORIGIN, k3s-worker-1's Caddy on the private network: the discovery's FALLBACK
+    # should the edge challenge a film page again (the `/movie/` exemption above lost). The share
+    # card is then still found there and probed through the edge, and the film page's own probe
+    # reads the 403 that ProbeBlockedByEdge reports.
     discoveryOrigin = {
       address = "10.20.0.12";
       certificates = [ ../../files/origin-certs/kinowo.net.crt ../../files/origin-certs/showtimes.cc.crt ];

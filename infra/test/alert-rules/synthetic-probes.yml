@@ -204,7 +204,7 @@ tests:
               severity: "warning"
             exp_annotations:
               summary: "Cloudflare is refusing the synthetic probe of https://showtimes.cc/uk/london/ (403)"
-              description: "The probe from monitoring-1 got a 403 from Cloudflare -- so this URL is NOT being watched from outside, and ProbeFailing cannot fire for it. `curl -sI` it from monitoring-1: `cf-mitigated: challenge` on every URL is Bot Fight Mode challenging a Hetzner address, and the fix (one-time) is an IP Access Rule for 128.140.49.167 (monitoring-1) with action Allow, in BOTH zones (kinowo.net and showtimes.cc), Security > WAF > Tools > IP Access Rules. On some URLs only, a custom or crawler rule is matching the path or the probe's User-Agent (`kinowo-synthetic-probe/1`): the showtimes.cc `/movie/` managed challenge is one, and the discovery already keeps film pages under it out of the probes, so a film page here means that rule has spread. If real visitors report the same 403, this is an outage, not a probe problem."
+              description: "The probe from monitoring-1 got a 403 from Cloudflare -- so this URL is NOT being watched from outside, and ProbeFailing cannot fire for it. `curl -sI` it from monitoring-1: `cf-mitigated: challenge` on every URL is Bot Fight Mode challenging a Hetzner address, and the fix (one-time) is an IP Access Rule for 128.140.49.167 (monitoring-1) with action Allow, in BOTH zones (kinowo.net and showtimes.cc), Security > WAF > Tools > IP Access Rules. On some URLs only, a custom or crawler rule is matching the path or the probe's User-Agent (`kinowo-synthetic-probe/1`): the showtimes.cc custom rule \"Challenge non-verified-bot traffic on catalog paths\" challenges `/movie/` and exempts monitoring-1 by address (`ip.src ne 128.140.49.167`), so a showtimes.cc film page here means that exemption was lost -- put it back in the rule's expression (Security > WAF > Custom rules). If real visitors report the same 403, this is an outage, not a probe problem."
       - eval_time: 20m
         alertname: ProbeFailing
         exp_alerts:
@@ -217,3 +217,35 @@ tests:
             exp_annotations:
               summary: "https://kinowo.net/ has failed from outside for 5 minutes"
               description: "blackbox_exporter on monitoring-1 has been unable to fetch https://kinowo.net/ (front-door, pl) through Cloudflare for five minutes. `probe_http_status_code` for this instance says which kind (403 is excluded here -- that is ProbeBlockedByEdge): 5xx is the origin (Caddy or the pod -- check `WebServerErrorsServed` and the pod's readiness); 0 is no HTTP answer at all (DNS, TLS, or the node unreachable -- `probe_failed_due_to_regex` 1 means a 200 that stopped short of `</html>`). A `film` or `share-card` target that 404s alone is a film that left the schedule and a discovery that has not replaced it -- `ProbeDiscoveryStale` fires alongside if so."
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE showtimes.cc `/movie/` EXEMPTION LOST. The film page is probed through the edge again
+  # (2026-09-25); if the custom rule stops exempting monitoring-1 the film probe reads 403 while
+  # the city page beside it answers -- a warning naming that film page, not a page.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a showtimes.cc film page challenged again warns that the exemption was lost
+    input_series:
+      - series: 'probe_success{instance="https://showtimes.cc/us/new-york/movie/coyote-vs-acme",job="blackbox",country="us",kind="film"}'
+        values: '0x30'
+      - series: 'probe_http_status_code{instance="https://showtimes.cc/us/new-york/movie/coyote-vs-acme",job="blackbox",country="us",kind="film"}'
+        values: '403x30'
+      - series: 'probe_success{instance="https://showtimes.cc/us/new-york/",job="blackbox-city",country="us",kind="city"}'
+        values: '1x30'
+      - series: 'probe_http_status_code{instance="https://showtimes.cc/us/new-york/",job="blackbox-city",country="us",kind="city"}'
+        values: '200x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: ProbeFailing
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: ProbeBlockedByEdge
+        exp_alerts:
+          - exp_labels:
+              country: "us"
+              instance: "https://showtimes.cc/us/new-york/movie/coyote-vs-acme"
+              job: "blackbox"
+              kind: "film"
+              severity: "warning"
+            exp_annotations:
+              summary: "Cloudflare is refusing the synthetic probe of https://showtimes.cc/us/new-york/movie/coyote-vs-acme (403)"
+              description: "The probe from monitoring-1 got a 403 from Cloudflare -- so this URL is NOT being watched from outside, and ProbeFailing cannot fire for it. `curl -sI` it from monitoring-1: `cf-mitigated: challenge` on every URL is Bot Fight Mode challenging a Hetzner address, and the fix (one-time) is an IP Access Rule for 128.140.49.167 (monitoring-1) with action Allow, in BOTH zones (kinowo.net and showtimes.cc), Security > WAF > Tools > IP Access Rules. On some URLs only, a custom or crawler rule is matching the path or the probe's User-Agent (`kinowo-synthetic-probe/1`): the showtimes.cc custom rule \"Challenge non-verified-bot traffic on catalog paths\" challenges `/movie/` and exempts monitoring-1 by address (`ip.src ne 128.140.49.167`), so a showtimes.cc film page here means that exemption was lost -- put it back in the rule's expression (Security > WAF > Custom rules). If real visitors report the same 403, this is an outage, not a probe problem."

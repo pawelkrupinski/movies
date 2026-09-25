@@ -18,10 +18,10 @@
 #
 # A 403 IS CLOUDFLARE REFUSING THE PROBE, not the site failing a visitor: Bot Fight Mode challenges
 # a Hetzner address until monitoring-1 has an IP Access Rule, and showtimes.cc challenges every
-# `/movie/` path for anything that is not a verified bot. `ProbeBlockedByEdge` reports it (a warning
-# naming the fix) and ProbeFailing excludes it. The `/movie/` challenge is permanent and blackbox
-# cannot pass it, so the discovery does not probe such a film page at all -- it reads it from the
-# origin to find the share card, and probes that (synthetic-probe-targets.sh).
+# `/movie/` path for anything that is not a verified bot -- except monitoring-1, which the custom
+# rule exempts by address since 2026-09-25. `ProbeBlockedByEdge` reports it (a warning naming the
+# fix) and ProbeFailing excludes it. The showtimes.cc film pages are probed through the edge like
+# every other page, so a lost exemption surfaces here as their 403 (synthetic-probe-targets.sh).
 #
 # LAST_OVER_TIME, NOT THE RAW SERIES. City pages are probed every five minutes (roles/synthetic-
 # probes.nix), the length of Prometheus's lookback, so a raw read finds NOTHING whenever the next
@@ -74,9 +74,11 @@ groups:
             (monitoring-1) with action Allow, in BOTH zones (kinowo.net and showtimes.cc),
             Security > WAF > Tools > IP Access Rules. On some URLs only, a custom or crawler rule
             is matching the path or the probe's User-Agent (`kinowo-synthetic-probe/1`): the
-            showtimes.cc `/movie/` managed challenge is one, and the discovery already keeps film
-            pages under it out of the probes, so a film page here means that rule has spread. If
-            real visitors report the same 403, this is an outage, not a probe problem.
+            showtimes.cc custom rule "Challenge non-verified-bot traffic on catalog paths"
+            challenges `/movie/` and exempts monitoring-1 by address (`ip.src ne 128.140.49.167`),
+            so a showtimes.cc film page here means that exemption was lost -- put it back in the
+            rule's expression (Security > WAF > Custom rules). If real visitors report the same
+            403, this is an outage, not a probe problem.
 
       # FOUR SECONDS, AVERAGED OVER TEN MINUTES AND HELD TEN MORE. The same pages answer in
       # 0.2-0.5s from a laptop and from the fleet's own egress (measured 2026-09-24, 184KB film

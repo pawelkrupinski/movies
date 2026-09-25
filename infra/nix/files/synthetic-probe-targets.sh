@@ -18,15 +18,17 @@
 # every two minutes per country); a film with no card yet is still re-read, so a card rendered
 # later is picked up.
 #
-# THE EDGE MAY REFUSE A PAGE THE PROBES CANNOT PASS ANYWAY. showtimes.cc answers every `/movie/`
-# path with a Cloudflare managed challenge (a JavaScript page, `cf-mitigated: challenge`, 403) for
-# any client that is not a verified bot -- a deliberate rule against scrapers. blackbox_exporter
-# runs no JavaScript, so a film-page probe there can only ever read 403, and until 2026-09-24 that
-# was also where the share card was read from, so no showtimes.cc country had a share-card probe.
-# Now: a page the edge answers 403 is read from the ORIGIN instead (PROBE_ORIGIN_ADDRESS, over the
-# private network, TLS pinned to the origin certificates in PROBE_ORIGIN_CA), so the share card is
-# still found and probed -- through the edge, like every other probe. The film page itself gets no
-# probe then: it would only report the challenge, forever.
+# THE FILM PAGE IS PROBED THROUGH THE EDGE, 403 OR NOT. showtimes.cc's Cloudflare custom rule
+# "Challenge non-verified-bot traffic on catalog paths" answers `/movie/` with a managed challenge
+# (a JavaScript page, `cf-mitigated: challenge`, 403) for any client that is not a verified bot -- a
+# deliberate rule against scrapers, which blackbox_exporter (no JavaScript) cannot pass. Since
+# 2026-09-25 the rule exempts monitoring-1's address (`ip.src ne 128.140.49.167`), so its film pages
+# answer 200 here like kinowo.net's, and the film page is probed alongside its share card. Should
+# the exemption be lost (the rule edited, or monitoring-1's address changed), the probe reads 403
+# and ProbeBlockedByEdge says so, naming the URL -- which is why a refused film page keeps its
+# probe. Discovery must not go blind meanwhile, so a page the edge answers 403 is then read from
+# the ORIGIN (PROBE_ORIGIN_ADDRESS, over the private network, TLS pinned to the origin certificates
+# in PROBE_ORIGIN_CA): the share card it names is still found, and probed through the edge.
 #
 # ALL OR NOTHING. If any country's discovery fails -- the city page did not answer, or listed no
 # film -- the previous document is left exactly as it was and the failure is logged. Replacing it
@@ -130,12 +132,10 @@ for pair in "$@"; do
   fi
 
   if fetch_page "$film"; then
-    if [ "$edge_status" = 403 ]; then
-      echo "synthetic-probe-targets: $country: the edge refuses $film (403); read from the origin, not probed" >&2
-    else
-      targets="$(jq -c --arg t "$film" --arg c "$country" \
-        '. + [{targets: [$t], labels: {country: $c, kind: "film", __param_module: "http_page", __film: $t}}]' <<<"$targets")"
-    fi
+    [ "$edge_status" = 403 ] &&
+      echo "synthetic-probe-targets: $country: the edge refuses $film (403), so monitoring-1's Cloudflare exemption is lost; read from the origin, still probed" >&2
+    targets="$(jq -c --arg t "$film" --arg c "$country" \
+      '. + [{targets: [$t], labels: {country: $c, kind: "film", __param_module: "http_page", __film: $t}}]' <<<"$targets")"
     # THE SHARE CARD IS OPTIONAL. A film whose card has not been rendered yet names the city's
     # fallback image instead, which is not under /share-cards/ and is not what this probe is for.
     card="$(grep -oE 'og:image"[[:space:]]+content="[^"]*/share-cards/[^"]*"' "$work/body" |
