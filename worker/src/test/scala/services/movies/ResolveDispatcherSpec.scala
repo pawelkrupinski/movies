@@ -107,6 +107,21 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
   private val keyOf: (String, Option[Int]) => CacheKey =
     new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer).keyOf
 
+  /** A one-slot `boundedEC` whose only slot is already HELD when construction returns, so
+   *  everything dispatched onto it WAITS until [[free]]. Submitting a blocker is not enough:
+   *  each task is its own virtual thread racing for the permit in no promised order, so a
+   *  later task could take the slot first (main CI c65d6b993). Only a confirmed hold is. */
+  private final class OccupiedSlotPool(name: String) {
+    val ec = DaemonExecutors.boundedEC(name, 1)
+    private val release = new CountDownLatch(1)
+    private val held    = new CountDownLatch(1)
+    ec.execute(() => { held.countDown(); release.await(5, java.util.concurrent.TimeUnit.SECONDS); () })
+    held.await(5, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
+
+    def free(): Unit  = release.countDown()
+    def close(): Unit = { free(); if (!ec.isShutdown) ec.shutdown() }
+  }
+
   "InlineResolveDispatcher" should "run the resolve callback once for a key" in {
     val ec    = DaemonExecutors.boundedEC("inline-dispatch-test", 4)
     val count = new AtomicInteger(0)
@@ -151,29 +166,17 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
   // The queue's rule, inline: a re-try that finds its key's resolve still WAITING (submitted,
   // not started — the pool is busy) raises that resolve's mode instead of being dropped.
   it should "upgrade a WAITING resolve to a re-try's mode, as the queue does" in {
-    val ec      = DaemonExecutors.boundedEC("inline-dispatch-upgrade", 1)
-    val release = new CountDownLatch(1)
-    val started = new CountDownLatch(1)
+    val pool    = new OccupiedSlotPool("inline-dispatch-upgrade")
     val ranWith = new java.util.concurrent.ConcurrentHashMap[String, ResolveMode]()
-    val done    = new CountDownLatch(2)
-    val d = new InlineResolveDispatcher(ec, keyOf, (title, _, _, _, mode) => {
-      if (title == "Busy") { started.countDown(); release.await(5, java.util.concurrent.TimeUnit.SECONDS) }
-      ranWith.put(title, mode); done.countDown()
-    })
+    val d = new InlineResolveDispatcher(pool.ec, keyOf, (title, _, _, _, mode) => { ranWith.put(title, mode); () })
     try {
-      d.dispatch("Busy", Some(2020), None, None)                         // occupies the pool's one slot
-      // Each task is its own virtual thread racing for the pool's one permit, in no promised
-      // order: until Busy holds it, Tosca could start first (at Normal) and the re-try below
-      // would rightly be too late.
-      started.await(5, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
-      d.dispatch("Tosca", None, None, None)                              // waits behind it
+      d.dispatch("Tosca", None, None, None)                              // waits behind the held slot
       d.dispatch("Tosca", None, None, None, ResolveMode.RetryMiss)       // must raise the waiting one
       d.dispatch("Tosca", None, None, None)                              // and a plain one never lowers it
-      release.countDown()
-      done.await(5, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
+      pool.free()
       d.stop()
       ranWith.get("Tosca") shouldBe ResolveMode.RetryMiss
-    } finally { release.countDown(); if (!ec.isShutdown) ec.shutdown() }
+    } finally pool.close()
   }
 
   it should "count each re-try that landed on a pending resolve as upgraded, or not once it has started" in {
@@ -197,25 +200,20 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "count a re-try onto a waiting resolve already at its mode or above as upgraded, as the queue does" in {
-    val ec       = DaemonExecutors.boundedEC("inline-dispatch-dup-covered", 1)
-    val release  = new CountDownLatch(1)
-    val started  = new CountDownLatch(1)
+    val pool     = new OccupiedSlotPool("inline-dispatch-dup-covered")
     val recorded = new java.util.concurrent.ConcurrentLinkedQueue[(ResolveMode, Boolean)]()
-    val d = new InlineResolveDispatcher(ec, keyOf, (title, _, _, _, _) =>
-      if (title == "Busy") { started.countDown(); release.await(5, java.util.concurrent.TimeUnit.SECONDS) },
+    val d = new InlineResolveDispatcher(pool.ec, keyOf, (_, _, _, _, _) => (),
       duplicates = (mode, upgraded) => { recorded.add(mode -> upgraded); () })
     try {
-      d.dispatch("Busy", None, None, None) // holds the one pool thread, so Tosca stays WAITING
-      started.await(5, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
-      d.dispatch("Tosca", None, None, None, ResolveMode.RetryMiss)
-      d.dispatch("Tosca", None, None, None, ResolveMode.RetryMiss) // already at RetryMiss
+      d.dispatch("Tosca", None, None, None, ResolveMode.RetryMiss)  // waits behind the held slot
+      d.dispatch("Tosca", None, None, None, ResolveMode.RetryMiss)  // already at RetryMiss
       d.dispatch("Tosca", None, None, None, ResolveMode.Force)
-      d.dispatch("Tosca", None, None, None, ResolveMode.RetryMiss) // Force covers it
-      release.countDown()
+      d.dispatch("Tosca", None, None, None, ResolveMode.RetryMiss)  // Force covers it
+      pool.free()
       d.stop()
       import scala.jdk.CollectionConverters._
       recorded.asScala.toSeq shouldBe Seq(ResolveMode.RetryMiss -> true, ResolveMode.Force -> true, ResolveMode.RetryMiss -> true)
-    } finally { release.countDown(); if (!ec.isShutdown) ec.shutdown() }
+    } finally pool.close()
   }
 
   it should "drain so an in-flight resolve completes on stop()" in {
