@@ -1,0 +1,27 @@
+name: Leg verdict
+description: >-
+  Posts this leg's verdict the moment it ends — a job-summary line, an error annotation when
+  it failed, and a commit status named after the leg — so a failed leg is visible without
+  waiting for the slowest one. See scripts/ci/leg-verdict.sh. The calling job needs
+  `permissions: statuses: write`, a checkout, and to run this LAST with `if: always()`.
+
+inputs:
+  leg:
+    description: The leg's name, as the commit status and summary should show it.
+    required: true
+  status:
+    description: "`job.status` of the calling job."
+    required: true
+  token:
+    description: "A token with `statuses: write`."
+    required: true
+
+runs:
+  using: composite
+  steps:
+      - shell: bash
+        env:
+            GH_TOKEN: ${{ inputs.token }}
+            JOB_STATUS: ${{ inputs.status }}
+            LEG: ${{ inputs.leg }}
+        run: '"$GITHUB_WORKSPACE/scripts/ci/leg-verdict.sh" "$JOB_STATUS" "$LEG"'

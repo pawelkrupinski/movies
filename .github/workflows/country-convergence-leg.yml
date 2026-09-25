@@ -227,6 +227,8 @@ jobs:
             contents: write
             checks: write
             actions: read
+            # The leg-verdict status, posted when THIS job ends.
+            statuses: write
         # The recorded pair this sample replayed, so the full leg and any bisect replay the
         # SAME one even if the recorder pins a new pair while this leg is running.
         outputs:
@@ -298,6 +300,15 @@ jobs:
                   name:  ${{ inputs.code }}-sample
                   token: ${{ secrets.GITHUB_TOKEN }}
 
+            # Last, and whatever happened: this leg's verdict, now rather than when the
+            # slowest country's leg ends (scripts/ci/leg-verdict.sh, LegVerdictWiringSpec).
+            - uses: ./.github/actions/leg-verdict
+              if: always()
+              with:
+                  leg:    sample (${{ inputs.country }})
+                  status: ${{ job.status }}
+                  token:  ${{ secrets.GITHUB_TOKEN }}
+
     # THE RUN BEHIND THE GATE — one PHASE per row: `convergence` for every country, plus
     # `order-independence` for the one whose corpus no longer fits in a single job.
     #
@@ -359,6 +370,7 @@ jobs:
             # `gh run download` still reads artifacts, for the one-off bootstrap when
             # the release doesn't exist yet.
             actions: read
+            statuses: write
         steps:
             - uses: actions/checkout@v5
             - uses: ./.github/actions/convergence-setup
@@ -530,3 +542,11 @@ jobs:
                   code:  ${{ inputs.code }}
                   name:  ${{ inputs.code }}-${{ matrix.phase }}
                   token: ${{ secrets.GITHUB_TOKEN }}
+
+            # Last, and whatever happened (scripts/ci/leg-verdict.sh, LegVerdictWiringSpec).
+            - uses: ./.github/actions/leg-verdict
+              if: always()
+              with:
+                  leg:    ${{ matrix.phase }} (${{ inputs.country }})
+                  status: ${{ job.status }}
+                  token:  ${{ secrets.GITHUB_TOKEN }}

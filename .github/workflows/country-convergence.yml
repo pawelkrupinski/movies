@@ -146,6 +146,7 @@ jobs:
             contents: write
             checks: write
             actions: read
+            statuses: write
         with:
             country:        ${{ matrix.country }}
             code:           ${{ matrix.code }}

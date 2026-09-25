@@ -92,6 +92,7 @@ jobs:
         timeout-minutes: 30
         permissions:
             contents: read
+            statuses: write
         steps:
             - uses: actions/checkout@v5
 
@@ -183,6 +184,15 @@ jobs:
                   overwrite: true
                   if-no-files-found: warn
 
+            # Last, and whatever happened: this leg's verdict, now rather than when the
+            # slowest leg of the run ends (scripts/ci/leg-verdict.sh).
+            - uses: ./.github/actions/leg-verdict
+              if: always()
+              with:
+                  leg:    scrapes (${{ matrix.country }})
+                  status: ${{ job.status }}
+                  token:  ${{ secrets.GITHUB_TOKEN }}
+
     # THE ENRICHMENT RECORDING — the only place the convergence fixture trees grow.
     #
     # Every convergence leg that renders a verdict is HERMETIC (`country-convergence-leg.yml`,
@@ -220,6 +230,7 @@ jobs:
             contents: write
             checks: write
             actions: read
+            statuses: write
         with:
             mode:           record
             corpus-run:     ${{ github.run_id }}
@@ -236,7 +247,9 @@ jobs:
         secrets: inherit
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
-    # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
+    # see .github/actions/report-scheduled-run (ScheduledRunReportSpec). This is the AGGREGATE,
+    # and it waits for the slowest leg; each leg has already posted its own verdict as a
+    # commit status the moment it ended (.github/actions/leg-verdict, LegVerdictWiringSpec).
     report:
         needs: [preflight, record, enrichment]
         if: always() && !cancelled() && github.event_name == 'schedule'

@@ -158,6 +158,7 @@ jobs:
                   bash scripts/hooks/pre-push-test.sh
                   bash scripts/ci/preflight-test.sh
                   bash scripts/ci/flake-ledger-test.sh
+                  bash scripts/ci/leg-verdict-test.sh
                   bash scripts/ci/rerun-failed-sbt-test.sh
                   python3 scripts/ci/flake_verdict_test.py
 
