@@ -34,6 +34,36 @@ test.describe('keyboard arrow date navigation', { tag: '@agnostic' }, () => {
     expect(advanced).not.toBe('today');
   });
 
+  // A throttled / background tab or a stalled renderer can deliver the frame
+  // that starts the slide long after the slide's own duration. The commit must
+  // wait for that frame: committing first and letting the late frame translate
+  // the bare `#view-root` leaves the grid blank, parked two widths off-screen.
+  // Holding every requestAnimationFrame callback past the slide forces it.
+  test('a slide whose first frame arrives late still leaves the grid on-screen', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.evaluate(() => {
+      const w = window as unknown as { __held: FrameRequestCallback[]; __realRaf: typeof requestAnimationFrame };
+      w.__held = [];
+      w.__realRaf = window.requestAnimationFrame;
+      window.requestAnimationFrame = (cb) => { w.__held.push(cb); return w.__held.length; };
+    });
+
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(1200);   // well past the ≤550ms slide + its fallback margin
+    await page.evaluate(() => {
+      const w = window as unknown as { __held: FrameRequestCallback[]; __realRaf: typeof requestAnimationFrame };
+      window.requestAnimationFrame = w.__realRaf;
+      w.__held.splice(0).forEach(cb => cb(performance.now()));
+    });
+
+    await expect.poll(() => page.locator('#date-filter').inputValue()).not.toBe('today');
+    await expect.poll(() => page.evaluate(() => document.querySelectorAll('#day-track > .day-col').length)).toBe(0);
+    await page.waitForTimeout(800);    // let any straggling frame or transition land
+    expect(await page.evaluate(() => document.getElementById('day-track')!.style.transform)).toBe('');
+    expect(await page.evaluate(() =>
+      Math.round(document.getElementById('view-root')!.getBoundingClientRect().left))).toBe(0);
+  });
+
   test('arrow keys do nothing when focus is inside the search input', async ({ page }) => {
     const search = page.locator('#search-input');
     const hidden = !(await search.isVisible());

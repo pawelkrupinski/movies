@@ -3154,10 +3154,6 @@
     track.style.transition = 'none';
     setTrack(fromPx || 0);
     void track.offsetWidth;
-    requestAnimationFrame(() => {
-      track.style.transition = 'transform ' + ms + 'ms ease';
-      track.style.transform  = 'translateX(' + end + 'px)';
-    });
     let done = false;
     const finish = () => {
       if (done) return;
@@ -3165,8 +3161,20 @@
       track.removeEventListener('transitionend', finish);
       commitDay(targetValue);
     };
-    track.addEventListener('transitionend', finish);
-    setTimeout(finish, ms + 60);   // fallback if transitionend is missed
+    // The frame that starts the slide also arms its commit. A throttled or
+    // background tab, or a stalled renderer, can deliver this frame long after
+    // `ms`: a fallback timer armed before it would commit first, and the late
+    // frame would then translate the bare, committed `#view-root` off-screen —
+    // a blank grid. Armed here, the fallback always runs `ms + 60` after the
+    // slide actually began. A frame that finds the track already torn down
+    // (something else disarmed it meanwhile) just commits in place.
+    requestAnimationFrame(() => {
+      if (!track.classList.contains('day-track--armed')) { finish(); return; }
+      track.style.transition = 'transform ' + ms + 'ms ease';
+      track.style.transform  = 'translateX(' + end + 'px)';
+      track.addEventListener('transitionend', finish);
+      setTimeout(finish, ms + 60);   // fallback if transitionend is missed
+    });
   }
 
   // Mount the target day's column on the slide-in side and animate the armed

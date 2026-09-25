@@ -3721,6 +3721,56 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // A throttled / background tab or a stalled renderer can deliver the frame
+  // that STARTS the slide long after the slide's own duration. The commit
+  // fallback must not be armed before that frame: if it fires first it commits
+  // and tears the track down, and the late frame then translates the bare
+  // `#view-root` two widths off-screen — a blank grid. Holding every
+  // `requestAnimationFrame` callback until well past the fallback forces that
+  // ordering deterministically.
+  it should "leave the grid on-screen when the slide's first frame lands after the slide's duration" in {
+    onPath("/") { page =>
+      enableSlideAnimation(page)
+      page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
+      page.waitFor("document.querySelector('.col[data-title]') !== null")
+
+      page.eval(
+        """(() => {
+          |  window.__heldFrames = [];
+          |  window.__realRaf = window.requestAnimationFrame;
+          |  window.requestAnimationFrame = cb => { window.__heldFrames.push(cb); return window.__heldFrames.length; };
+          |  window.__stepAt = performance.now();
+          |  window.stepDate(1);
+          |})()""".stripMargin)
+      // Well past the slide (550 ms) plus its fallback margin, frames still held.
+      page.waitFor("performance.now() - window.__stepAt > 1200", timeoutMs = 3000)
+
+      page.eval(
+        """(() => {
+          |  window.requestAnimationFrame = window.__realRaf;
+          |  const held = window.__heldFrames.splice(0);
+          |  held.forEach(cb => cb(performance.now()));
+          |})()""".stripMargin)
+
+      page.waitFor(
+        "document.querySelectorAll('#day-track > .day-col').length === 0 && " +
+          "document.getElementById('date-filter').value === 'tomorrow'",
+        timeoutMs = 3000
+      )
+      // Let any straggling frame / transition run before judging the layout.
+      page.waitFor("performance.now() - window.__stepAt > 2400", timeoutMs = 3000)
+
+      page.evalString("document.getElementById('day-track').style.transform") shouldBe ""
+      page.evalInt("Math.round(document.getElementById('view-root').getBoundingClientRect().left)") shouldBe 0
+      page.evalBool(
+        """[...document.querySelectorAll('#view-root .col[data-title]')]
+          |  .filter(c => c.offsetParent !== null)
+          |  .some(c => { const r = c.getBoundingClientRect();
+          |               return r.right > 0 && r.left < window.innerWidth; })""".stripMargin
+      ) shouldBe true
+    }
+  }
+
   // ── Desktop slides 1.5× slower than touch ────────────────────────────────────
   //
   // The day-change slide keeps its snappy 220 ms base on touch/mobile (a
