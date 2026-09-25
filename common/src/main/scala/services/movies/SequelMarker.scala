@@ -14,7 +14,7 @@ package services.movies
  * cinemas' own evidence could not refuse it — UK slots publish an original title
  * one time in nine — so the refusal has to come from the title itself.
  *
- * Two shapes say "another film in the series", and only these two:
+ * Two shapes say "another film in the series" of any franchise:
  *   - the token right AFTER the base run is an ordinal — a small number ("Toy Story"
  *     inside "Toy Story 5") or a roman numeral ("Rocky" inside "Rocky II");
  *   - a part marker anywhere among the extra tokens is followed by one ("Pt 2",
@@ -24,6 +24,11 @@ package services.movies
  * A four-digit year is NOT an ordinal ("Casablanca 1942" is Casablanca; "Blade
  * Runner 2049" is not a plausible year, so it still counts). A number BEFORE the base
  * ("Cineworld 30: The Matrix") is a banner, not a sequel, and folds as before.
+ *
+ * A curated few franchises also name entries that number nothing ("The Hunger Games:
+ * Catching Fire"): their subtitles are listed in `KnownFranchiseSubtitles`, and two
+ * titles naming different entries of one are siblings even when neither contains the
+ * other (`curatedSiblings`).
  */
 object SequelMarker {
 
@@ -62,7 +67,7 @@ object SequelMarker {
   private def isYear(t: String): Boolean =
     t.length == 4 && t.forall(_.isDigit) && { val y = t.toInt; y >= 1888 && y <= java.time.Year.now().getValue + 1 }
 
-  def isOrdinal(t: String): Boolean =
+  private def isOrdinal(t: String): Boolean =
     (t.nonEmpty && t.forall(_.isDigit) && !isYear(t) && t.toIntOption.isDefined) || Roman.matches(t)
 
   /** The instalment NUMBER `t` names, however it's written — "2", "ii" and
@@ -161,14 +166,15 @@ object SequelMarker {
    *  gap, which surfaced as Catching Fire's screenings folding onto whichever
    *  Mockingjay part `directorWalk` resolved first, instead of the original film.
    *
-   *  `private[movies]` so `FilmCanonicalizer`'s tmdbId/imdbId-sharing folds can ask
-   *  this ALONE, without the general ordinal/containment logic below — those are
-   *  vetted against clean TMDB candidate titles (`directorWalk`) or an
-   *  already-resolved base (the containment edge), and misfire on raw, messy
+   *  Asked ALONE, through [[curatedSiblingTitles]], by `FilmCanonicalizer`'s
+   *  tmdbId/imdbId-sharing folds and `MixedFilmDetector` — without the general
+   *  ordinal/containment logic below, which is vetted against clean TMDB candidate
+   *  titles (`directorWalk`) or an already-resolved base (the containment edge), and
+   *  misfires on raw, messy
    *  CINEMA-published title text: a synthetic disambiguating suffix ("Ghost 2 (1)")
    *  reads as a false ordinal split. The curated list is manually vetted per
    *  franchise, so it alone is safe to apply to bare cinema titles too. */
-  private[movies] def curatedSiblings(a: Seq[String], b: Seq[String]): Boolean =
+  private def curatedSiblings(a: Seq[String], b: Seq[String]): Boolean =
     KnownFranchiseSubtitles.keySet.exists { base =>
       a.startsWith(base) && b.startsWith(base) &&
       ((entryNamed(base, a), entryNamed(base, b)) match {

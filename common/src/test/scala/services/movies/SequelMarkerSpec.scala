@@ -68,6 +68,8 @@ class SequelMarkerSpec extends AnyFlatSpec with Matchers {
     anotherEntry("Cars 20th Anniversary",    "Toddler Club Cars 20th Anniversary")       shouldBe false
   }
 
+  private def siblings(a: String, b: String) = SequelMarker.curatedSiblingTitles(Seq(a), Seq(b))
+
   private def different(a: String, b: String) =
     SequelMarker.differentInstalments(TitleContainment.tokens(a), TitleContainment.tokens(b))
 
@@ -161,7 +163,6 @@ class SequelMarkerSpec extends AnyFlatSpec with Matchers {
   // so MixedFilmDetector split the 14 off every settle. A decoration on the same entry is
   // not a sibling: the entry each title names (subtitle words + instalment number) must differ.
   it should "not read one curated entry beside its own decorated listing as two siblings" in {
-    def siblings(a: String, b: String) = SequelMarker.curatedSiblingTitles(Seq(a), Seq(b))
     siblings("The Hunger Games: Mockingjay - Part 1 (2026)", "The Hunger Games: Mockingjay - Part 1") shouldBe false
     siblings("The Hunger Games: Mockingjay - Part 2 (2015)", "The Hunger Games: Mockingjay - Part 2") shouldBe false
     siblings("The Hunger Games: Mockingjay Pt 2 (2026 Re-Release)", "The Hunger Games: Mockingjay - Part 2") shouldBe false
@@ -186,7 +187,6 @@ class SequelMarkerSpec extends AnyFlatSpec with Matchers {
     anotherEntry("The Hunger Games", "The Hunger Games: The Ballad of Songbirds and Snakes (2023)") shouldBe true
     anotherEntry("The Hunger Games", "The Hunger Games: Catching Fire (2026)") shouldBe true
     anotherEntry("The Hunger Games", "The Hunger Games: Catching Fire Re-Release") shouldBe true
-    def siblings(a: String, b: String) = SequelMarker.curatedSiblingTitles(Seq(a), Seq(b))
     siblings("The Hunger Games: The Ballad of Songbirds and Snakes (2023)",
              "The Hunger Games: The Ballad of Songbirds & Snakes") shouldBe false
     siblings("The Hunger Games: Catching Fire (2026)", "The Hunger Games: Catching Fire") shouldBe false
