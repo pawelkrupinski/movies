@@ -174,17 +174,19 @@ if ! job="$(nix "${nix_flags[@]}" eval --raw \
 fi
 printf '%s' "$job" > "$tmp/blackbox-targets.yaml"
 
-check "every country's city page is a static target" "de es pl uk us" \
-  "$(jq -r '[.scrape_configs[0].static_configs[] | select(.labels.kind == "city") | .labels.country] | sort | join(" ")' <<<"$job")"
+check "every country's city page is a static target, in the five-minute job" "blackbox-city 5m de es pl uk us" \
+  "$(jq -r '.scrape_configs[] | select(.job_name == "blackbox-city") | "\(.job_name) \(.scrape_interval) \([.static_configs[] | select(.labels.kind == "city") | .labels.country] | sort | join(" "))"' <<<"$job")"
+check "...and in no other job" "" \
+  "$(jq -r '.scrape_configs[] | select(.job_name != "blackbox-city") | .static_configs[] | select(.labels.kind == "city") | .targets[0]' <<<"$job")"
 check "both brands' front doors are static targets" "https://kinowo.net/ https://showtimes.cc/" \
   "$(jq -r '[.scrape_configs[0].static_configs[] | select(.labels.kind == "front-door") | .targets[0]] | sort | join(" ")' <<<"$job")"
 check "every probed URL goes through the public (Cloudflare) names, never an origin address" "" \
-  "$(jq -r '.scrape_configs[0].static_configs[].targets[] | select(test("^https://(kinowo\\.net|showtimes\\.cc)/") | not)' <<<"$job")"
+  "$(jq -r '.scrape_configs[].static_configs[].targets[] | select(test("^https://(kinowo\\.net|showtimes\\.cc)/") | not)' <<<"$job")"
 check "the discovered film targets are read from the file the discovery writes" "/var/lib/synthetic-probes/targets.json" \
   "$(jq -r '.scrape_configs[0].file_sd_configs[0].files[0]' <<<"$job")"
 check "the URL becomes the probe target AND the instance label; the scrape goes to the exporter" \
-  "__param_target __param_target>instance 127.0.0.1:9115" \
-  "$(jq -r '.scrape_configs[0].relabel_configs | "\(.[0].target_label) \(.[1].source_labels[0])>\(.[1].target_label) \(.[2].replacement)"' <<<"$job")"
+  "__param_target __param_target>instance 127.0.0.1:9115 __param_target __param_target>instance 127.0.0.1:9115" \
+  "$(jq -r '[.scrape_configs[].relabel_configs | "\(.[0].target_label) \(.[1].source_labels[0])>\(.[1].target_label) \(.[2].replacement)"] | join(" ")' <<<"$job")"
 
 discovery_env="$(nix "${nix_flags[@]}" eval --json \
   "$infra#nixosConfigurations.monitoring-1.config.systemd.services.synthetic-probe-targets.environment" 2>/dev/null)"

@@ -22,11 +22,16 @@
 # naming the fix) and ProbeFailing excludes it. The `/movie/` challenge is permanent and blackbox
 # cannot pass it, so the discovery does not probe such a film page at all -- it reads it from the
 # origin to find the share card, and probes that (synthetic-probe-targets.sh).
+#
+# LAST_OVER_TIME, NOT THE RAW SERIES. City pages are probed every five minutes (roles/synthetic-
+# probes.nix), the length of Prometheus's lookback, so a raw read finds NOTHING whenever the next
+# probe lands a moment late -- and every such gap restarts a `for` hold. Six minutes bridges one
+# five-minute probe; for the one-minute probes it is just the latest sample.
 groups:
   - name: synthetic-probes
     rules:
-      # FIVE MINUTES: five one-minute probes failing in a row. One failed fetch is the internet;
-      # five is the site, or the path to it. Short, because this is the alert for "a visitor gets
+      # FIVE MINUTES: five one-minute probes failing in a row (two, for a city page probed every
+      # five). One failed fetch is the internet; five is the site, or the path to it. Short, because this is the alert for "a visitor gets
       # nothing", and critical for the same reason.
       #
       # A 403 IS NOT THIS ALERT. Cloudflare's Bot Fight Mode answers every Hetzner address with a
@@ -34,8 +39,8 @@ groups:
       # -- and that must not page. `ProbeBlockedByEdge` below is the 403 case.
       - alert: ProbeFailing
         expr: >-
-          probe_success == 0
-            unless on (instance) probe_http_status_code == 403
+          last_over_time(probe_success[6m]) == 0
+            unless on (instance) last_over_time(probe_http_status_code[6m]) == 403
         for: 5m
         labels:
           severity: critical
@@ -55,7 +60,7 @@ groups:
       # IP Access Rule this is every probe, and it says nothing about whether visitors are served.
       # Fifteen minutes so one rate-limited minute does not message.
       - alert: ProbeBlockedByEdge
-        expr: probe_http_status_code == 403
+        expr: last_over_time(probe_http_status_code[6m]) == 403
         for: 15m
         labels:
           severity: warning
@@ -82,7 +87,7 @@ groups:
       - alert: ProbeSlow
         expr: >-
           avg_over_time(probe_duration_seconds[10m]) > 4
-            and on (instance) probe_success == 1
+            and on (instance) last_over_time(probe_success[6m]) == 1
         for: 10m
         labels:
           severity: warning

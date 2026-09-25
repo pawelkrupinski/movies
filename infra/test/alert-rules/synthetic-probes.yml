@@ -38,6 +38,32 @@ tests:
               summary: "https://kinowo.net/ has failed from outside for 5 minutes"
               description: "blackbox_exporter on monitoring-1 has been unable to fetch https://kinowo.net/ (front-door, pl) through Cloudflare for five minutes. `probe_http_status_code` for this instance says which kind (403 is excluded here -- that is ProbeBlockedByEdge): 5xx is the origin (Caddy or the pod -- check `WebServerErrorsServed` and the pod's readiness); 0 is no HTTP answer at all (DNS, TLS, or the node unreachable -- `probe_failed_due_to_regex` 1 means a 200 that stopped short of `</html>`). A `film` or `share-card` target that 404s alone is a film that left the schedule and a discovery that has not replaced it -- `ProbeDiscoveryStale` fires alongside if so."
   # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A CITY PAGE IS PROBED EVERY FIVE MINUTES, not every minute (each is ~600 KB). London is down
+  # from the first probe; the third lands a minute late (11.5m, not 10.5m), so at 11m the newest
+  # sample is 5.5m old -- past Prometheus's 5m lookback. Read raw, the series vanishes there and
+  # the `for` hold starts over; read through last_over_time it holds, and the page still fires.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 30s
+    name: a city page probed every five minutes still fires across a late probe
+    input_series:
+      - series: 'probe_success{instance="https://showtimes.cc/uk/london/",job="blackbox-city",country="uk",kind="city"}'
+        values: '_ 0 _x9 0 _x11 0 _x9 0'
+      - series: 'probe_http_status_code{instance="https://showtimes.cc/uk/london/",job="blackbox-city",country="uk",kind="city"}'
+        values: '_ 503 _x9 503 _x11 503 _x9 503'
+    alert_rule_test:
+      - eval_time: 13m
+        alertname: ProbeFailing
+        exp_alerts:
+          - exp_labels:
+              country: "uk"
+              instance: "https://showtimes.cc/uk/london/"
+              job: "blackbox-city"
+              kind: "city"
+              severity: "critical"
+            exp_annotations:
+              summary: "https://showtimes.cc/uk/london/ has failed from outside for 5 minutes"
+              description: "blackbox_exporter on monitoring-1 has been unable to fetch https://showtimes.cc/uk/london/ (city, uk) through Cloudflare for five minutes. `probe_http_status_code` for this instance says which kind (403 is excluded here -- that is ProbeBlockedByEdge): 5xx is the origin (Caddy or the pod -- check `WebServerErrorsServed` and the pod's readiness); 0 is no HTTP answer at all (DNS, TLS, or the node unreachable -- `probe_failed_due_to_regex` 1 means a 200 that stopped short of `</html>`). A `film` or `share-card` target that 404s alone is a film that left the schedule and a discovery that has not replaced it -- `ProbeDiscoveryStale` fires alongside if so."
+  # ────────────────────────────────────────────────────────────────────────────────────────────
   # A PAGE THAT ANSWERS SLOWLY. London takes 5s a fetch and succeeds: past the 4s average for twenty
   # minutes it warns. The front door takes 12s because it is timing out -- ProbeFailing's, not this
   # one's -- and Berlin's 0.4s is the normal path.

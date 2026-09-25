@@ -66,32 +66,47 @@ let
       };
   };
 
-  # THE SCRAPE JOB, written like roles/prometheus.nix writes its other scrape.d files: toJSON,
+  # THE SCRAPE JOBS, written like roles/prometheus.nix writes its other scrape.d files: toJSON,
   # because JSON is valid YAML and a generated document is not reviewed by eye.
   #
   # `instance` BECOMES THE URL, so an alert names the page that failed rather than 127.0.0.1:9115.
   # `__param_module` rides on each target, so one job serves both modules.
+  relabelToExporter = [
+    { source_labels = [ "__address__" ]; target_label = "__param_target"; }
+    { source_labels = [ "__param_target" ]; target_label = "instance"; }
+    { target_label = "__address__"; replacement = "127.0.0.1:${toString cfg.exporterPort}"; }
+  ];
+  staticConfigs = map (t: {
+    targets = [ t.url ];
+    labels = { inherit (t) country kind; __param_module = "http_page"; };
+  });
+  isCity = t: t.kind == "city";
   blackboxTargetsYaml = builtins.toJSON {
-    scrape_configs = [{
-      job_name = "blackbox";
-      metrics_path = "/probe";
-      # ONE FETCH A MINUTE PER URL. Enough for a 5m hold to mean five failures in a row, and a
-      # few requests a minute is nothing to the site.
-      scrape_interval = "60s";
-      scrape_timeout = "15s";
-      static_configs = map
-        (t: {
-          targets = [ t.url ];
-          labels = { inherit (t) country kind; __param_module = "http_page"; };
-        })
-        cfg.targets;
-      file_sd_configs = [{ files = [ discoveredFile ]; refresh_interval = "1m"; }];
-      relabel_configs = [
-        { source_labels = [ "__address__" ]; target_label = "__param_target"; }
-        { source_labels = [ "__param_target" ]; target_label = "instance"; }
-        { target_label = "__address__"; replacement = "127.0.0.1:${toString cfg.exporterPort}"; }
-      ];
-    }];
+    scrape_configs = [
+      {
+        job_name = "blackbox";
+        metrics_path = "/probe";
+        # ONE FETCH A MINUTE PER URL. Enough for a 5m hold to mean five failures in a row, and a
+        # few requests a minute is nothing to the site.
+        scrape_interval = "60s";
+        scrape_timeout = "15s";
+        static_configs = staticConfigs (lib.filter (t: !isCity t) cfg.targets);
+        file_sd_configs = [{ files = [ discoveredFile ]; refresh_interval = "1m"; }];
+        relabel_configs = relabelToExporter;
+      }
+      {
+        # CITY PAGES EVERY FIVE MINUTES. They are the heaviest pages there are (London and New York
+        # ~600 KB each through the edge) and fetched once a minute they were ~100 MB/h of the
+        # probes' ~190 MB (Caddy logs, 2026-09-25). A 5m hold is then two failed probes, and
+        # synthetic-probes.rules reads through last_over_time so a late probe does not reset it.
+        job_name = "blackbox-city";
+        metrics_path = "/probe";
+        scrape_interval = "5m";
+        scrape_timeout = "15s";
+        static_configs = staticConfigs (lib.filter isCity cfg.targets);
+        relabel_configs = relabelToExporter;
+      }
+    ];
   };
 
   discover = pkgs.writeShellScript "synthetic-probe-targets"
