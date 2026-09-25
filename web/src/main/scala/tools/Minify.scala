@@ -1,7 +1,5 @@
 package tools
 
-import java.util.concurrent.ConcurrentHashMap
-
 /**
  * Hand-rolled JS + CSS minifier for the inline `<script>` / `<style>`
  * blocks the Twirl templates emit on every page. Conservative on purpose
@@ -31,25 +29,21 @@ import java.util.concurrent.ConcurrentHashMap
  *     preserves space-separated values inside declarations (`1px
  *     solid #fff`).
  *
- * Memoised per-input via a ConcurrentHashMap keyed on input hash so
- * per-request render cost is O(1) string lookup after the first hit.
- * The cache is unbounded but the input set is bounded — every distinct
- * template-rendered block is one entry, ~dozens total even with
- * interpolated values.
+ * Stateless: every call does the full work. The per-request path goes
+ * through a [[MemoisingMinifier]] the web composition root owns, which
+ * wraps these functions in its own caches.
  */
-object Minify {
+object Minify extends Minifier {
 
   /** Top-level: process an HTML fragment, minifying every `<style>` and
    *  `<script>` block found inside while leaving everything else
    *  untouched. The block boundaries are preserved so the surrounding
    *  markup keeps working. */
-  def process(html: String): String = blockCache.computeIfAbsent(html, doProcess)
+  def process(html: String): String = process(html, minifyJs, minifyCss)
 
-  private val blockCache = new ConcurrentHashMap[String, String]
-  private val jsCache    = new ConcurrentHashMap[String, String]
-  private val cssCache   = new ConcurrentHashMap[String, String]
-
-  private def doProcess(html: String): String = {
+  /** [[process]] with the per-block minifiers supplied by the caller — the
+   *  seam [[MemoisingMinifier]] uses to route each block through its caches. */
+  def process(html: String, minifyJs: String => String, minifyCss: String => String): String = {
     val sb = new java.lang.StringBuilder(html.length)
     var i = 0
     while (i < html.length) {
@@ -119,9 +113,7 @@ object Minify {
     """/\*[\s\S]*?\*""" + "/)"
   ).r
 
-  def minifyJs(src: String): String = jsCache.computeIfAbsent(src, doMinifyJs)
-
-  private def doMinifyJs(src: String): String = {
+  def minifyJs(src: String): String = {
     val noComments = JsCommentOrString.replaceAllIn(src, m => {
       val s = m.matched
       if (s.startsWith("//") || s.startsWith("/*")) ""
@@ -159,9 +151,7 @@ object Minify {
   // final `;` before `}` since it's optional.
   private val CssBlockComment = ("""/\*[\s\S]*?\*""" + "/").r
 
-  def minifyCss(src: String): String = cssCache.computeIfAbsent(src, doMinifyCss)
-
-  private def doMinifyCss(src: String): String = {
+  def minifyCss(src: String): String = {
     val noComments = CssBlockComment.replaceAllIn(src, "")
     val collapsed  = noComments.replaceAll("\\s+", " ").trim
     val tightened  = collapsed

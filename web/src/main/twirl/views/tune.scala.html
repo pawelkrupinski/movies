@@ -20,7 +20,7 @@
   <title>Tune · karta filmu</title>
   @* Pulls in the parametrized card CSS (.card-body / .date-label / .cinema-label
      + _pillStyles + _ratingStyles) — the same partials the listing pages load. *@
-  @_sharedStyles(devMode = true)
+  @_sharedStyles(tools.PassThroughMinifier)
   @_tuneStyles()
   <style>
     /* The live preview — a faux 2-column grid so the cards size like the real

@@ -1,5 +1,5 @@
-@(devMode: Boolean = false)
-@_minified(devMode) {
+@(minifier: tools.Minifier)
+@_minified(minifier) {
 <style>
   /* touch-action: manipulation suppresses iOS Safari's double-tap-to-zoom on
      every tap target on the page (rapid presses on time badges, date arrows,

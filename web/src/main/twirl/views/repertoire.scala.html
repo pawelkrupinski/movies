@@ -1,6 +1,6 @@
 @import controllers.FilmSchedule
 @* `renderedAt` must be the clock `films` was filtered by — see `_repertoireView`. *@
-@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, oauthProviders: Set[String], renderedAt: java.time.LocalDateTime, isLargeCity: Boolean = false, pageTitle: String = "Kinowo", pageDescription: String = "Repertuar kin w jednym miejscu — z ocenami IMDb, RT i Filmweb.", pageUrl: String = "", fbAppId: Option[String] = None, canonicalUrl: String = "")(implicit city: models.City, messages: play.api.i18n.Messages)
+@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, minifier: tools.Minifier, oauthProviders: Set[String], renderedAt: java.time.LocalDateTime, isLargeCity: Boolean = false, pageTitle: String = "Kinowo", pageDescription: String = "Repertuar kin w jednym miejscu — z ocenami IMDb, RT i Filmweb.", pageUrl: String = "", fbAppId: Option[String] = None, canonicalUrl: String = "")(implicit city: models.City, messages: play.api.i18n.Messages)
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
 <head>
@@ -21,11 +21,11 @@
   @_analytics()
   @* The Filmy view-chrome CSS (`.cinema-label`, film-card content-visibility)
      lives in `_sharedStyles` so it's shared across every page. *@
-  @_sharedStyles(devMode)
+  @_sharedStyles(minifier)
   @* Only this page renders `@_appBanner()` below, so its styles are scoped
      here rather than folded into `_sharedStyles` — /movie, /browse, /tune
      etc. would otherwise ship dead CSS for markup they never render. *@
-  @_minified(devMode) { @_appBannerStyles() }
+  @_minified(minifier) { @_appBannerStyles() }
   @* `related_applications` lets Chrome/Android answer "is the native app
      already installed?" via `navigator.getInstalledRelatedApps()` — the
      app banner's best-effort install check reads it, so it's scoped to
@@ -62,7 +62,7 @@
    the whole tree for a preview is what stutters on a city this size. *@
 <div id="view-pager">
   <div id="day-track">
-@_repertoireView(films, devMode, renderedAt, isLargeCity)
+@_repertoireView(films, minifier, renderedAt, isLargeCity)
   </div>
 </div>
 

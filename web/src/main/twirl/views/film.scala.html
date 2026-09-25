@@ -1,7 +1,7 @@
 @import controllers.FilmSchedule
 @import controllers.BrowseHref
 @import services.movies.TrailerEmbed
-@(film: FilmSchedule, canonicalUrl: String, ogDescription: String, ogImageUrl: String = "", devMode: Boolean = false, oauthProviders: Set[String] = Set.empty, otherCities: Seq[(models.City, String)] = Seq.empty)(implicit city: models.City, messages: play.api.i18n.Messages)
+@(film: FilmSchedule, canonicalUrl: String, ogDescription: String, ogImageUrl: String = "", minifier: tools.Minifier, oauthProviders: Set[String] = Set.empty, otherCities: Seq[(models.City, String)] = Seq.empty)(implicit city: models.City, messages: play.api.i18n.Messages)
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
 <head>
@@ -48,8 +48,8 @@
   @if(ogDescription.nonEmpty) { <meta name="twitter:description" content="@ogDescription"> }
   @if(ogImageUrl.nonEmpty) { <meta name="twitter:image" content="@ogImageUrl"> }
 
-  @_sharedStyles(devMode)
-@_filmDetailStyles(devMode)
+  @_sharedStyles(minifier)
+@_filmDetailStyles(minifier)
   @* Shared showtime-pill styles — `.badge-time`, `.badge-fmt`. Same partial
      the listing / kina pages load via `_sharedStyles`, so a pill on the film
      page looks identical to the listing's. *@
@@ -79,7 +79,7 @@
 @_loginModal(oauthProviders)
 @_filmDetailContent(film, otherCities)
 
-@_minified(devMode) {
+@_minified(minifier) {
 <script>
   function buildIndex() {}
 

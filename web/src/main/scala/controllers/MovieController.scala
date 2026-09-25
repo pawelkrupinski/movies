@@ -166,6 +166,11 @@ class MovieController( cc: ControllerComponents,
                        // The serving country's title rules — the wiring's one instance,
                        // so the city OG card folds titles the way the worker keyed them.
                        normalizer: TitleNormalizer,
+                       // Rewrites every page's inline `<script>`/`<style>`
+                       // blocks — the composition root's choice for this mode
+                       // (`Minifier.forMode`), so its memo caches live and die
+                       // with the wiring rather than the JVM.
+                       minifier: tools.Minifier,
                      ) extends AbstractController(cc) with Logging {
 
 
@@ -334,7 +339,7 @@ class MovieController( cc: ControllerComponents,
       schedules,
       city.cinemaDisplayNames,
       city.cinemaPillMap,
-      devMode, oauthProviders, renderedAt = now,
+      devMode, minifier, oauthProviders, renderedAt = now,
       isLargeCity     = isLargeCity,
       pageTitle       = meta.title,
       pageDescription = meta.description,
@@ -355,7 +360,7 @@ class MovieController( cc: ControllerComponents,
     // Client-independent like the listing (nobody is rendered into it), but a
     // facet URL is one of combinatorially many and earns no edge entry.
     Ok(views.html.browse(
-      films, heading, devMode, oauthProviders,
+      films, heading, minifier, oauthProviders,
       pageUrl = PageMeta.canonicalUrl(request),
       fbAppId = PageMeta.fbAppId,
       // A FACET IS UI STATE, NOT A PAGE. `?cast=` alone is one URL per cast
@@ -643,7 +648,7 @@ class MovieController( cc: ControllerComponents,
     // used to need. It stops short of offering itself to a shared cache only
     // because a per-film edge entry wants its own validator analysis, not because
     // the bytes are anyone's.
-    Ok(views.html.film(schedule, canonicalUrl, FilmPreviewText.previewDescription(schedule), ogImageUrl, devMode, oauthProviders, otherCities))
+    Ok(views.html.film(schedule, canonicalUrl, FilmPreviewText.previewDescription(schedule), ogImageUrl, minifier, oauthProviders, otherCities))
       .withHeaders("Cache-Control" -> "private, no-cache")
       .withCookies(cityCookie(c))
   }

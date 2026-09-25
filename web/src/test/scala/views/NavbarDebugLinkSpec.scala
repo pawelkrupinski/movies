@@ -56,7 +56,7 @@ class NavbarDebugLinkSpec extends AnyFlatSpec with Matchers {
     // Render `_sharedStyles` directly so the stylesheet block is in
     // the rendered HTML. The CSS minifier collapses ` : ` → `:`, so
     // assert on the minified shape that ships to the browser.
-    val css = views.html._sharedStyles(devMode = false).body
+    val css = views.html._sharedStyles(tools.Minify).body
     css should include (".nav-tab-debug{display:none}")
     // Anchor the rule under both mobile media queries so a future
     // tidy-up can't drop one arm of the OR.

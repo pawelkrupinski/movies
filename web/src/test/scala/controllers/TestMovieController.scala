@@ -56,6 +56,7 @@ object TestMovieController {
       responseCache          = responseCache,
       servingCountry         = servingCountry,
       normalizer             = services.movies.TitleNormalizer.forCountry(servingCountry),
+      minifier               = tools.Minifier.forMode(mode),
     )
     (ctrl, readModel_)
   }

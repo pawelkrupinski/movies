@@ -3,7 +3,7 @@
    client-side showtime expiry counts forward from. Must be the SAME instant
    passed to `MovieControllerService.toSchedules`, or the page starts life
    already disagreeing with itself about what has lapsed. *@
-@(films: Seq[FilmSchedule], devMode: Boolean, renderedAt: java.time.LocalDateTime, isLargeCity: Boolean = false)(implicit city: models.City, messages: play.api.i18n.Messages)
+@(films: Seq[FilmSchedule], minifier: tools.Minifier, renderedAt: java.time.LocalDateTime, isLargeCity: Boolean = false)(implicit city: models.City, messages: play.api.i18n.Messages)
 @* The Filmy view-root. Rendered inside `#view-pager` (the day carousel
    viewport) on the full repertoire page.
 
@@ -21,7 +21,7 @@
   </div>
 </div>
 
-@_minified(devMode) {
+@_minified(minifier) {
 <script>
   // Wrapped in an IIFE to keep the per-view locals (`INDEX`,
   // `_prevVisibleOrder`) off the global scope; the `window.*` entry points

@@ -1,5 +1,5 @@
 @import controllers.FilmSchedule
-@(films: Seq[FilmSchedule], heading: String, devMode: Boolean, oauthProviders: Set[String], pageUrl: String = "", fbAppId: Option[String] = None, canonicalUrl: String = "", robots: String = "")(implicit city: models.City, messages: play.api.i18n.Messages)
+@(films: Seq[FilmSchedule], heading: String, minifier: tools.Minifier, oauthProviders: Set[String], pageUrl: String = "", fbAppId: Option[String] = None, canonicalUrl: String = "", robots: String = "")(implicit city: models.City, messages: play.api.i18n.Messages)
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
 <head>
@@ -19,8 +19,8 @@
   @_resourceHints()
   @_errorTracking()
   @_analytics()
-  @_sharedStyles(devMode)
-  @_minified(devMode) {
+  @_sharedStyles(minifier)
+  @_minified(minifier) {
   <style>
     #film-grid > .col { content-visibility: auto; contain-intrinsic-size: 0 460px; }
     .cinema-label { font-size: .65rem; color: #66aadd; margin-bottom: .1rem; margin-top: .3rem; }
@@ -57,7 +57,7 @@
   </div>
 </div>
 
-@_minified(devMode) {
+@_minified(minifier) {
 <script>
   @* shared.js's `bootView` indexes before it filters. This listing has nothing
      to index — one axis, re-decided from the DOM on every pass — so the hook is

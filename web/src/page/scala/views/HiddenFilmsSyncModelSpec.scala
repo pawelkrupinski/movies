@@ -229,7 +229,7 @@ object HiddenFilmsSyncModelSpec {
     def path(country: String): String = s"/${cities(country).slug}/"
 
     private lazy val html: Map[String, String] = cities.map { case (country, city) =>
-      country -> views.html.repertoire(Seq.empty, Seq.empty, Map.empty, devMode = false,
+      country -> views.html.repertoire(Seq.empty, Seq.empty, Map.empty, devMode = false, minifier = tools.Minify,
         oauthProviders = Set("google"), renderedAt = LocalDateTime.of(2026, 6, 8, 0, 0))(using city, summon[play.api.i18n.Messages]).body
     }
 

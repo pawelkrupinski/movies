@@ -1,4 +1,4 @@
-@(devMode: Boolean)
+@(minifier: tools.Minifier)
 @*
   Film-detail-specific CSS (poster, title, meta labels/values, cinema- and
   trailer-link pills, the showings sub-headers + mobile scaling). Lives in
@@ -6,7 +6,7 @@
   `film.scala.html` so the dev-only `/debug/tune/movie` page renders the REAL
   detail chrome. `.badge-*` pills still come from `_pillStyles`/`_sharedStyles`.
 *@
-  @_minified(devMode) {
+  @_minified(minifier) {
   <style>
     body { background: #111; color: #eee; }
     .navbar { background: #1a1a2e; }

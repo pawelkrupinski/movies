@@ -96,12 +96,12 @@ object FixtureServerMain {
 
     def indexPageFor(c: City): String = {
       implicit val ci: City = c
-      views.html.repertoire(schedulesFor(c), c.cinemaDisplayNames, c.cinemaPillMap, devMode = false,
+      views.html.repertoire(schedulesFor(c), c.cinemaDisplayNames, c.cinemaPillMap, devMode = false, minifier = tools.Minify,
         oauthProviders = oauthConfigured, renderedAt = now).body
     }
     def browsePageFor(c: City): String = {
       implicit val ci: City = c
-      views.html.browse(schedulesFor(c), "Filmy", devMode = false, oauthProviders = oauthConfigured).body
+      views.html.browse(schedulesFor(c), "Filmy", minifier = tools.Minify, oauthProviders = oauthConfigured).body
     }
     // Mirrors `MovieController.filmBySlug`: re-slug the corpus's titles and
     // match, since the slug fold is lossy and can't be reversed.
@@ -110,7 +110,7 @@ object FixtureServerMain {
       schedulesFor(c).find(s => tools.Slugify(s.movie.title) == slug) match {
         case Some(s) =>
           views.html.film(s, s"http://test.local/${c.slug}/movie/$slug",
-            ogDescription = "", devMode = false).body
+            ogDescription = "", minifier = tools.Minify).body
         case None    => "<html><body>Film not found</body></html>"
       }
     }
@@ -124,7 +124,7 @@ object FixtureServerMain {
       // the same empty-handed page a real unpopulated city would.
       schedulesFor(c).headOption match {
         case Some(base) => views.html.film(ManyCinemaFilm(base),
-          s"http://test.local/${c.slug}/movie-many", ogDescription = "", devMode = false).body
+          s"http://test.local/${c.slug}/movie-many", ogDescription = "", minifier = tools.Minify).body
         case None       => "<html><body>Film not found</body></html>"
       }
     }
@@ -140,7 +140,7 @@ object FixtureServerMain {
       val bumped  = ManyShowtimesCity(base, now)
       val isLarge = controllers.MovieControllerService.totalShowtimes(bumped) >
         controllers.MovieControllerService.LargeCityShowtimeThreshold
-      views.html.repertoire(bumped, c.cinemaDisplayNames, c.cinemaPillMap, devMode = false,
+      views.html.repertoire(bumped, c.cinemaDisplayNames, c.cinemaPillMap, devMode = false, minifier = tools.Minify,
         oauthProviders = oauthConfigured, renderedAt = now, isLargeCity = isLarge).body
     }
 
