@@ -20,7 +20,7 @@ import scala.util.Try
  * probing six consecutive days and finding zero booking-link slugs shared
  * across any two `dzien` values. So this is fetched one request per day,
  * walking forward for as long as the programme lasts (see [[ScrapeHorizon]]),
- * the same shape [[KinoMikroClient]] uses for its JSON feed.
+ * the same shape [[NoweHoryzontyClient]] uses for its JSON feed.
  *
  * The showtime's booking link (`bilet.swiatowid.elblag.pl/index.php/kup-bilet/
  * <slug>-<date>-<time>[-N]`) is NOT a reliable date source — its embedded date

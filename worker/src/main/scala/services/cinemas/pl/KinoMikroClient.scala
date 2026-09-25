@@ -5,83 +5,64 @@ import tools.HttpFetch
 import models._
 import play.api.libs.json._
 import org.jsoup.Jsoup
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, ScrapeHorizon}
+import services.cinemas.common.CinemaScraper
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDateTime, OffsetDateTime}
+import scala.util.Try
 
 /**
- * Kino Mikro (kinomikro.pl) and its sister screen Mikro Bronowice share one
- * Joomla/Omomo backend that exposes the programme as JSON at
- * `api.php/v1/repertoires` — no HTML scraping, no detail-page fetch. Both
- * venues come back in the same flat array; `location_institution_name`
- * (`"Kino Mikro"` vs `"Mikro Bronowice"`) is the discriminant, so one client
- * parameterised by the venue name serves either screen. The JSON carries no
- * runtime / genres — TMDB supplies those downstream — but the
- * `event_description` HTML blob does name the director, which we extract.
+ * Kino Mikro (kinomikro.pl) and its sister screen Mikro Bronowice sell tickets
+ * through one VisualSoft ticketing instance (`bilety.kinomikro.pl`), whose
+ * `service.php/repertoire/list.json` feed is the whole upcoming programme of
+ * both screens as JSON — no HTML scraping, no detail-page fetch.
+ * `location.institution_name` (`"Kino Mikro"` vs `"Mikro Bronowice"`) is the
+ * discriminant, so one client parameterised by the venue name serves either
+ * screen. The JSON carries no runtime / genres — TMDB supplies those
+ * downstream — but the `event.description` HTML blob sometimes names the
+ * director, which we extract.
  *
- * The feed is fetched one request per day, walking forward for as long as the
- * programme lasts (see `planChunks`).
- * A broad/un-dated request silently caps the response at ~25 records — today's
- * schedule in full plus a single teaser screening per upcoming day — and the
- * `limit` parameter is ignored, so every advance-date repeat is dropped (Filmweb
- * showed 3–4× our count). A per-day `from=D&to=D+1` request bypasses that cap
- * and returns the whole day; merging the days reconstructs the full window.
+ * One request covers the whole programme: the feed honours `limit` and reports
+ * the total in `meta.nbResults` (95 screenings across both screens, five weeks
+ * out, on 2026-09-26), so there is no horizon to walk. Until 2026-09-23 the
+ * venue's own Joomla site re-served this same programme at
+ * `kinomikro.pl/api.php/v1/repertoires`; the WordPress rebuild that replaced it
+ * 404s that path, and the venue sat on the Filmweb fallback until this client
+ * moved to the ticketing feed directly.
  */
 class KinoMikroClient(
   http:                HttpFetch,
   venueName:           String,
-  override val cinema: Cinema,
-  today:               LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
-) extends ChunkedCinemaScraper {
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoMikroClient.BaseApiUrl, "https://bilety.kinomikro.pl")
+  override val cinema: Cinema
+) extends CinemaScraper {
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoMikroClient.BaseUrl)
   // One feed serves both Mikro screens; the venue name picks this one's rows.
-  override def sourceKey: Option[String] = Some(s"${CinemaScraper.urlKey(KinoMikroClient.BaseApiUrl)}#$venueName")
+  override def sourceKey: Option[String] = Some(s"${CinemaScraper.urlKey(KinoMikroClient.FeedUrl)}#$venueName")
 
-  /** Follow the programme rather than assume a week of it.
-   *
-   *  The feed answers for any date — 2026-08-25 returned screenings while the
-   *  scrape was still asking only for the next seven days, so everything past
-   *  that was invisible. Same walk and same reasoning as `NoweHoryzontyClient`;
-   *  see [[ScrapeHorizon.liveDays]]. Per-day is forced here: a broad `from`/`to`
-   *  range is capped at ~25 records by the feed (see [[KinoMikroClient.dayUrl]]),
-   *  so a week cannot be asked for in one request. */
-  def planChunks(): Seq[String] =
-    DayChunks.keys(ScrapeHorizon.liveDays(today) { day =>
-      KinoMikroParser.parse(Seq(http.get(KinoMikroClient.dayUrl(day))), venueName, cinema).nonEmpty
-    })
-
-  /** One chunk's days → their films. A throw reschedules just this chunk's task. */
-  def fetchChunk(key: String): Seq[CinemaMovie] =
-    KinoMikroParser.parse(
-      DayChunks.days(key).map(d => http.get(KinoMikroClient.dayUrl(d))), venueName, cinema)
+  def fetch(): Seq[CinemaMovie] = KinoMikroParser.parse(http.get(KinoMikroClient.FeedUrl), venueName, cinema)
 }
 
 object KinoMikroClient {
-
-  val BaseApiUrl = "https://kinomikro.pl/api.php/v1/repertoires"
-
-  // The feed caps a broad request at ~25 records and ignores `limit`; a narrow
-  // single-day `from`/`to` range returns that day's full schedule instead. `to`
-  // is exclusive (the day after). `limit=1000` is a harmless safety margin in
-  // case a single day ever exceeds the default page size.
-  def dayUrl(date: LocalDate): String =
-    s"$BaseApiUrl?limit=1000&from=$date&to=${date.plusDays(1)}"
+  val BaseUrl = "https://bilety.kinomikro.pl"
+  // `limit` is honoured (the default page is small); 1000 is ~10× a month of
+  // both screens.
+  val FeedUrl = s"$BaseUrl/service.php/repertoire/list.json?limit=1000&advanced=1"
 }
 
 object KinoMikroParser {
-  // `event_date` is rendered as `DD.MM.YYYY HH:mm` (e.g. "06.06.2026 18:00").
-
-  // `event_description` is an HTML blob whose director line reads either
+  // `event.description` is an HTML blob whose director line reads either
   // `<div>Reżyseria George Sluizer</div>` (no colon) or `<br>Reżyseria:
   // Federico Fellini <br>` (colon). Once Jsoup flattens the markup to text the
   // `<div>`/`<br>` boundaries collapse to spaces, so the value is bounded by
   // the next field label rather than by markup. Capture everything after the
-  // `Reżyseria` marker up to the next known label (or end of text).
-  private val FieldLabels = "Obsada|Scenariusz|Gatunek|Produkcja|Czas|Dystrybutor"
+  // `Reżyseria` marker up to the next known label, a `|` separator
+  // (`Reżyseria: Sam Raimi | Produkcja: USA, 1987`), or the end of text. The
+  // label's end is `(?!\p{L})`, not `\b`: Java's `\b` is ASCII-only, so it sees
+  // no boundary after the `ą` of "Występują".
+  private val FieldLabels = "Obsada|Występują|Scenariusz|Muzyka|Zdjęcia|Gatunek|Produkcja|Czas|Dystrybutor"
   private val DirectorPat =
-    ("""(?i)Reżyseria\s*:?\s*(.+?)\s*(?=(?:""" + FieldLabels + """)\b|$)""").r
+    ("""(?i)Reżyseria\s*:?\s*(.+?)\s*(?=(?:""" + FieldLabels + """)(?!\p{L})|\||$)""").r
 
-  /** Pull the director name(s) out of a row's `event_description` HTML. Splits
+  /** Pull the director name(s) out of a row's `event.description` HTML. Splits
    *  the captured value on `,`/`;`, trims, and drops empties. Returns an empty
    *  Seq when the blob carries no `Reżyseria` marker. */
   private[cinemas] def parseDirector(eventDescriptionHtml: String): Seq[String] = {
@@ -91,31 +72,28 @@ object KinoMikroParser {
     }
   }
 
-  /** Parse and merge one-or-more day responses (`?from=D&to=D+1`). Each film
-   *  recurs across day-files, so grouping by title and de-duplicating showtimes
-   *  reconstructs the full window from the per-day slices. */
-  def parse(jsons: Seq[String], venueName: String, cinema: Cinema): Seq[CinemaMovie] = {
-    val records = jsons.flatMap { json =>
-      (Json.parse(json) \ "data").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-    }
+  /** The feed's `repertoires` object (screening id → screening) → this venue's
+   *  films. A film's dubbed and subtitled screenings arrive as separate titles
+   *  ("Marsupilami- dubbing"); the version tag is peeled into the showtime's
+   *  format so they fold onto one row. */
+  def parse(json: String, venueName: String, cinema: Cinema): Seq[CinemaMovie] = {
+    val records = (Json.parse(json) \ "repertoires").asOpt[JsObject].map(_.values.toSeq).getOrElse(Seq.empty)
 
     val rows = records.flatMap { r =>
       for {
-        inst    <- (r \ "location_institution_name").asOpt[String] if inst == venueName
-        title   <- (r \ "event_title").asOpt[String].map(_.trim).filter(_.nonEmpty)
-        dateStr <- (r \ "event_date").asOpt[String]
-        dt      <- ScraperParse.parseDateTime(dateStr)
-      } yield {
-        val booking = for {
-          slug <- (r \ "slug").asOpt[String].filter(_.nonEmpty)
-          id   <- (r \ "event_id").asOpt[String].filter(_.nonEmpty)
-        } yield s"https://kinomikro.pl/repertoire/$slug/$id.html?view=event"
-        val poster = (r \ "system_image_url").asOpt[String].filter(_.nonEmpty)
-          .map(u => if (u.startsWith("http")) u else s"https://bilety.kinomikro.pl$u")
-        val director = (r \ "event_description").asOpt[String]
-          .map(parseDirector).getOrElse(Seq.empty)
-        RawSlot(title, dt, booking, poster, director)
-      }
+        inst     <- (r \ "location" \ "institution_name").asOpt[String] if inst == venueName
+        rawTitle <- (r \ "title").asOpt[String].map(_.trim).filter(_.nonEmpty)
+        (title, format) = ScraperParse.extractFormatTags(rawTitle)
+        if title.nonEmpty
+        dt       <- (r \ "date").asOpt[String].flatMap(d => Try(OffsetDateTime.parse(d).toLocalDateTime).toOption)
+      } yield RawSlot(
+        title    = title,
+        dateTime = dt,
+        booking  = (r \ "url").asOpt[String].filter(_.nonEmpty).map(KinoMikroClient.BaseUrl + _),
+        poster   = (r \ "image").asOpt[String].filter(_.nonEmpty).map(KinoMikroClient.BaseUrl + _),
+        director = (r \ "event" \ "description").asOpt[String].map(parseDirector).getOrElse(Seq.empty),
+        format   = format
+      )
     }
 
     rows.groupBy(_.title).toSeq.map { case (title, group) =>
@@ -128,7 +106,7 @@ object KinoMikroParser {
         synopsis  = None,
         cast      = Seq.empty,
         director  = sorted.map(_.director).find(_.nonEmpty).getOrElse(Seq.empty),
-        showtimes = sorted.map(s => Showtime(s.dateTime, s.booking)).distinctBy(s => (s.dateTime, s.bookingUrl))
+        showtimes = sorted.map(s => Showtime(s.dateTime, s.booking, None, s.format)).distinctBy(s => (s.dateTime, s.bookingUrl))
       )
     }.sortBy(_.movie.title)
   }
@@ -138,6 +116,7 @@ object KinoMikroParser {
     dateTime: LocalDateTime,
     booking: Option[String],
     poster: Option[String],
-    director: Seq[String]
+    director: Seq[String],
+    format: List[String]
   )
 }

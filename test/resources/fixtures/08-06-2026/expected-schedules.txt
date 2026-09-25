@@ -121,10 +121,10 @@ imdbId:            tt36148135
 originalTitle:     ALL YOU NEED IS KILL
 imdbRating:        6.5
 metascore:         64
-rottenTomatoes:    91
+rottenTomatoes:    —
 filmwebRating:     —
 metacriticUrl:     https://www.metacritic.com/movie/all-you-need-is-kill-2025
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/all_you_need_is_kill
+rottenTomatoesUrl: —
 filmwebUrl:        —
 cinemaFilmUrls:
   Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/all-you-need-is-killl-w-helios-anime-2611
@@ -958,7 +958,7 @@ metascore:         —
 rottenTomatoes:    —
 filmwebRating:     —
 metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/sweetheart_2025
+rottenTomatoesUrl: —
 filmwebUrl:        —
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14626-cinema-italia-oggi-kochanie/
@@ -1125,7 +1125,7 @@ metascore:         —
 rottenTomatoes:    —
 filmwebRating:     7.2
 metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/life_is_life
+rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Takie+jest+%C5%BCycie-2025-10102549
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14634-cinema-italia-oggi-takie-jest-zycie/
@@ -1218,7 +1218,7 @@ showings:
 
 === Cykl "Kultowa klasyka" - Zawieście czerwone latarnie ===
 displayTitle:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie
-cinemaTitles:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie | DKF - ZAWIEŚCIE CZERWONE LATARNIE | Klasyka w kinie Atlantic: Zawieście czerwone latarnie | ZAWIEŚCIE CZERWONE LATARNIE | Zawieście Czerwone Latarnie | Zawieście czerwone latarnie | Zawieście czerwone latarnie (1991) | Zawieście czerwone latarnie (pokaz jednorazowy) | Zawieście czerwone latarnie - pokazy specjalne
+cinemaTitles:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie | DKF - ZAWIEŚCIE CZERWONE LATARNIE | Klasyka w kinie Atlantic: Zawieście czerwone latarnie | ZAWIEŚCIE CZERWONE LATARNIE | Zawieście czerwone latarnie | Zawieście czerwone latarnie (1991) | Zawieście czerwone latarnie (pokaz jednorazowy) | Zawieście czerwone latarnie - pokazy specjalne
 runtimeMinutes:    142
 releaseYear:       1991
 countries:         Chiny, Hongkong, Tajwan
@@ -1253,7 +1253,6 @@ cinemaScrapes:
   Kino Luna / Zawieście czerwone latarnie / —
   Kino MCSW Elektrownia / DKF - ZAWIEŚCIE CZERWONE LATARNIE / —
   Kino Malta Charlie Monroe / Zawieście czerwone latarnie / —
-  Kino Mikro / Zawieście Czerwone Latarnie / —
   Kino Muranów / Zawieście czerwone latarnie / 1991
   Kino Muza / Zawieście czerwone latarnie / 1991
   Kino Muzeum / ZAWIEŚCIE CZERWONE LATARNIE / 1989
@@ -1287,10 +1286,10 @@ imdbId:            tt34621892
 originalTitle:     FolleMente
 imdbRating:        6.9
 metascore:         —
-rottenTomatoes:    12
+rottenTomatoes:    —
 filmwebRating:     7.2
 metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/somebody_to_love
+rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Follemente.+W+tym+szale%C5%84stwie+jest+metoda-2025-10074839
 cinemaFilmUrls:
   Kino Apollo = https://kinoapollo.pl/kino/cykl-zawsze-osmego-follemente-w-tym-szalenstwie-jest-metoda/
@@ -1302,7 +1301,7 @@ showings:
 
 === Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) ===
 displayTitle:      Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977)
-cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | CZŁOWIEK Z MARMURU | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (Man of Marble) | Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: Człowiek z marmuru (+ eng sub) | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
+cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | CZŁOWIEK Z MARMURU | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (Man of Marble) | Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
 runtimeMinutes:    153
 releaseYear:       1977
 countries:         Polska
@@ -1338,7 +1337,6 @@ cinemaScrapes:
   Kino Kultura / Człowiek z marmuru / —
   Kino MOK Centrum / CZŁOWIEK Z MARMURU / —
   Kino Malta Charlie Monroe / Człowiek z marmuru / —
-  Kino Mikro / WAJDA: re- wizje: Człowiek z marmuru (+ eng sub) / —
   Kino Muranów / Człowiek z marmuru / 1977
   Kino Orzeł / Wajda re-wizje: Człowiek z marmuru / —
   Kino Oskard / WAJDA: re- wizje: CZŁOWIEK Z MARMURU / —
@@ -1356,7 +1354,7 @@ showings:
 
 === Człowiek z marmuru ===
 displayTitle:      Człowiek z marmuru
-cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | CZŁOWIEK Z MARMURU | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (Man of Marble) | Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: Człowiek z marmuru (+ eng sub) | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
+cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | CZŁOWIEK Z MARMURU | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (Man of Marble) | Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
 runtimeMinutes:    153
 releaseYear:       1977
 countries:         Polska
@@ -1392,7 +1390,6 @@ cinemaScrapes:
   Kino Kultura / Człowiek z marmuru / —
   Kino MOK Centrum / CZŁOWIEK Z MARMURU / —
   Kino Malta Charlie Monroe / Człowiek z marmuru / —
-  Kino Mikro / WAJDA: re- wizje: Człowiek z marmuru (+ eng sub) / —
   Kino Muranów / Człowiek z marmuru / 1977
   Kino Orzeł / Wajda re-wizje: Człowiek z marmuru / —
   Kino Oskard / WAJDA: re- wizje: CZŁOWIEK Z MARMURU / —
@@ -1820,7 +1817,6 @@ cinemaScrapes:
   Kino Lot / Drugie życie / —
   Kino Luna / KINO SENIORA | Drugie życie / —
   Kino MCSW Elektrownia / DRUGIE ŻYCIE / —
-  Kino Mikro / Drugie życie / —
   Kino Millenium / Drugie życie / —
   Kino Muranów / Drugie życie / 2025
   Kino Muza / Drugie życie / 2025
@@ -1961,7 +1957,6 @@ cinemaScrapes:
   Kino Lot / Drugie życie / —
   Kino Luna / KINO SENIORA | Drugie życie / —
   Kino MCSW Elektrownia / DRUGIE ŻYCIE / —
-  Kino Mikro / Drugie życie / —
   Kino Millenium / Drugie życie / —
   Kino Muranów / Drugie życie / 2025
   Kino Muza / Drugie życie / 2025
@@ -2147,7 +2142,6 @@ cinemaScrapes:
   Kinomax / Drzewo magii / —
   Kinoteatr Rondo / Drzewo magii / —
   Klaps / Drzewo magii / —
-  Mikro Bronowice / Drzewo magii / —
   Muza / Drzewo magii / —
   OKF Iluzja / Drzewo magii / —
   Piast / DRZEWO MAGII / —
@@ -2322,7 +2316,6 @@ cinemaScrapes:
   Kino MDK / DZIEŃ OBJAWIENIA / —
   Kino MOK Centrum / DZIEŃ OBJAWIENIA / —
   Kino MOKiS / Dzień Objawienia / —
-  Kino Mikro / Dzień objawienia / —
   Kino Moskwa / DZIEŃ OBJAWIENIA / —
   Kino Na Biegunach / Dzień objawienia / —
   Kino Nowe Horyzonty / Dzień Objawienia / 2025
@@ -2500,7 +2493,6 @@ cinemaScrapes:
   Kino MDK / DZIEŃ OBJAWIENIA / —
   Kino MOK Centrum / DZIEŃ OBJAWIENIA / —
   Kino MOKiS / Dzień Objawienia / —
-  Kino Mikro / Dzień objawienia / —
   Kino Moskwa / DZIEŃ OBJAWIENIA / —
   Kino Na Biegunach / Dzień objawienia / —
   Kino Nowe Horyzonty / Dzień Objawienia / 2025
@@ -2611,7 +2603,6 @@ cinemaScrapes:
   Kino Studyjne Kadr / Erupcja / —
   Kino U-jazdowski / Erupcja / 2025
   Kinoteka / Erupcja / 2026
-  Mikro Bronowice / Erupcja / —
   OKF Iluzja / Erupcja / —
 showings:
   2026-06-08  Kino Muza                     19:15 Sala 1 · 21:00 Sala 2
@@ -2766,7 +2757,7 @@ metascore:         —
 rottenTomatoes:    —
 filmwebRating:     7.2
 metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/life_is_life
+rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Takie+jest+%C5%BCycie-2025-10102549
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157176
@@ -2897,7 +2888,6 @@ cinemaScrapes:
   Kino Lot / Drugie życie / —
   Kino Luna / KINO SENIORA | Drugie życie / —
   Kino MCSW Elektrownia / DRUGIE ŻYCIE / —
-  Kino Mikro / Drugie życie / —
   Kino Millenium / Drugie życie / —
   Kino Muranów / Drugie życie / 2025
   Kino Muza / Drugie życie / 2025
@@ -3367,7 +3357,7 @@ displayTitle:      Głos Hind Rajab
 cinemaTitles:      Głos Hind Rajab
 runtimeMinutes:    89
 releaseYear:       2025
-countries:         Francja, USA, Wielka Brytania, Włochy, Polska, Holandia
+countries:         Francja, USA, Wielka Brytania, Włochy, Holandia
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/01/Glos_Hind_Rajab-polski-plakat1-po-zmniejszeniu-200x288.jpg
 synopsis.length:   299
 cast:              هند رامي إياد  رجب, Motaz Malhees, Saja Kilani, Amer Hlehel, Clara Khoury
@@ -3385,7 +3375,7 @@ filmwebUrl:        https://www.filmweb.pl/film/G%C5%82os+Hind+Rajab-2025-1008999
 cinemaFilmUrls:
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/glos-hind-rajab
 cinemaScrapes:
-  Kino Amondo / Głos Hind Rajab / 2022
+  Kino Amondo / Głos Hind Rajab / —
   Kino Malta Charlie Monroe / Głos Hind Rajab / —
   Kino Muranów / Głos Hind Rajab / 2025
   Służewski Dom Kultury / Głos Hind Rajab / —
@@ -3810,7 +3800,6 @@ cinemaScrapes:
   Kino Lot / Drugie życie / —
   Kino Luna / KINO SENIORA | Drugie życie / —
   Kino MCSW Elektrownia / DRUGIE ŻYCIE / —
-  Kino Mikro / Drugie życie / —
   Kino Millenium / Drugie życie / —
   Kino Muranów / Drugie życie / 2025
   Kino Muza / Drugie życie / 2025
@@ -3943,7 +3932,6 @@ cinemaScrapes:
   Kino Lot / Drugie życie / —
   Kino Luna / KINO SENIORA | Drugie życie / —
   Kino MCSW Elektrownia / DRUGIE ŻYCIE / —
-  Kino Mikro / Drugie życie / —
   Kino Millenium / Drugie życie / —
   Kino Muranów / Drugie życie / 2025
   Kino Muza / Drugie życie / 2025
@@ -3989,10 +3977,10 @@ imdbId:            tt5089534
 originalTitle:     Freak Show
 imdbRating:        6.5
 metascore:         —
-rottenTomatoes:    54
+rottenTomatoes:    —
 filmwebRating:     6.8
 metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/freak_show
+rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Freak+Show-2026-10065590
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14482-kino-bez-barier-freak-show-ad-cc-pjm/
@@ -4017,10 +4005,10 @@ imdbId:            tt5089534
 originalTitle:     Freak Show
 imdbRating:        6.5
 metascore:         —
-rottenTomatoes:    54
+rottenTomatoes:    —
 filmwebRating:     6.8
 metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/freak_show
+rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Freak+Show-2026-10065590
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14481-kino-bez-barier-freak-show-ad-cc/
@@ -4059,7 +4047,7 @@ showings:
 
 === Klątwa Doliny Węży ===
 displayTitle:      Klątwa Doliny Węży
-cinemaTitles:      "Klątwa doliny węży" z autorską narracją Łony | KLĄTWA DOLINY WĘŻY | Klątwa Doliny Węży | Klątwa Doliny Węży z autorską narracją Łony | Klątwa doliny węży | Klątwa doliny węży z autorską narracją łony
+cinemaTitles:      KLĄTWA DOLINY WĘŻY | Klątwa Doliny Węży | Klątwa Doliny Węży z autorską narracją Łony | Klątwa doliny węży | Klątwa doliny węży z autorską narracją łony
 runtimeMinutes:    105
 releaseYear:       1988
 countries:         Polska, ZSRR
@@ -4085,7 +4073,6 @@ cinemaScrapes:
   Kino Kika / KLĄTWA DOLINY WĘŻY / —
   Kino Luna / Klątwa Doliny Węży z autorską narracją Łony / —
   Kino Malta Charlie Monroe / Klątwa Doliny Węży / —
-  Kino Mikro / "Klątwa doliny węży" z autorską narracją Łony / —
   Kino Nowe Horyzonty / Klątwa Doliny Węży z autorską narracją Łony / 1987
   Kino Pionier 1907 / Klątwa Doliny Węży / —
   Regis / Klątwa doliny węży z autorską narracją łony / —
@@ -4353,7 +4340,7 @@ metascore:         —
 rottenTomatoes:    —
 filmwebRating:     7.7
 metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/double_trouble
+rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Kumotry-2025-10077201
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14405-kumotry-seans-i-spotkanie-z-rezyserka/
@@ -4368,7 +4355,6 @@ cinemaScrapes:
   Kino CK Lublin / Kumotry / —
   Kino Fenomen (WDK) / Kumotry / —
   Kino Iluzjon / Kumotry / 2025
-  Kino Mikro / Kumotry / —
   Kino Nowe Horyzonty / Kumotry / 2025
   Kino Paradox / Kumotry / 2026
   Kino Pałacowe / Kumotry / 2025
@@ -5020,7 +5006,6 @@ cinemaScrapes:
   Kino Luna / Milcząca przyjaciółka / —
   Kino Malta Charlie Monroe / Milcząca przyjaciółka / —
   Kino Meduza / Milcząca przyjaciółka / —
-  Kino Mikro / Milcząca przyjaciółka / —
   Kino Muranów / Milcząca przyjaciółka / 2025
   Kino Muza / Milcząca przyjaciółka / 2025
   Kino Muzeum / MILCZĄCA PRZYJACIÓŁKA / 2025
@@ -5793,7 +5778,6 @@ cinemaScrapes:
   Kino za Rogiem Cafe / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kinomax / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Klaps / Niesamowite przygody skarpetek 3. Ale kosmos! / —
-  Mikro Bronowice / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Muza / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Piast / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS / —
   Służewski Dom Kultury / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -6110,7 +6094,7 @@ metascore:         —
 rottenTomatoes:    —
 filmwebRating:     7.7
 metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/obsession
+rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Obsesja-2025-10094250
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/obsesja/8134s2r
@@ -6386,7 +6370,6 @@ cinemaScrapes:
   Kino MCSW Elektrownia / ORŁY REPUBLIKI / —
   Kino Malta Charlie Monroe / Orły republiki / —
   Kino Meduza / Orły republiki / —
-  Kino Mikro / Orły republiki / —
   Kino Muza / Orły republiki / 2025
   Kino NCKF EC1 / Orły republiki / —
   Kino Nowe Horyzonty / Orły Republiki / 2025
@@ -6427,10 +6410,10 @@ imdbId:            tt0056801
 originalTitle:     8½
 imdbRating:        8.0
 metascore:         93
-rottenTomatoes:    20
+rottenTomatoes:    —
 filmwebRating:     7.8
 metacriticUrl:     https://www.metacritic.com/movie/-1963
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/8
+rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Osiem+i+p%C3%B3%C5%82-1963-30830
 cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/osiem-i-pol/
@@ -6649,10 +6632,10 @@ imdbId:            tt0253474
 originalTitle:     The Pianist
 imdbRating:        8.5
 metascore:         85
-rottenTomatoes:    29
+rottenTomatoes:    —
 filmwebRating:     8.3
 metacriticUrl:     https://www.metacritic.com/movie/the-pianist
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_pianist
+rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Pianista-2002-32225
 cinemaFilmUrls:
   Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/pianista-w-helios-replay-2610
@@ -7347,7 +7330,6 @@ cinemaScrapes:
   Kino IKM / Wartość sentymentalna / —
   Kino Kika / WARTOŚĆ SENTYMENTALNA / —
   Kino Malta Charlie Monroe / Wartość sentymentalna / —
-  Kino Mikro / Wartość sentymentalna / —
   Kino Pałacowe / Plenerowe Pałacowe: Wartość sentymentalna / 2025
   Kino na Szekspirowskim / Wartość sentymentalna / —
   Kinoteka / Wartość sentymentalna / —
@@ -7847,7 +7829,6 @@ cinemaScrapes:
   Kino za Rogiem Cafe / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kinomax / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Klaps / Niesamowite przygody skarpetek 3. Ale kosmos! / —
-  Mikro Bronowice / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Muza / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Piast / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS / —
   Służewski Dom Kultury / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -8427,7 +8408,6 @@ cinemaScrapes:
   Kinoteatr Rondo / Tom i Jerry: Przygoda w muzeum / —
   Klaps / Tom i Jerry: Przygoda w muzeum / —
   Miejskie Centrum Kultury / Tom i Jerry: Przygoda w muzeum / —
-  Mikro Bronowice / Tom i Jerry: Przygoda w muzeum / —
   Muza / Tom i Jerry: Przygoda w muzeum / —
   Piast / TOM I JERRY:PRZYGODA W MUZEUM / —
   Pionier / Tom i Jerry: Przygoda w muzeum / —
@@ -8751,7 +8731,6 @@ cinemaScrapes:
   Kino Fenomen (WDK) / Sny o słoniach / —
   Kino Iluzjon / Sny o słoniach / 2025
   Kino Kinematograf / Seans przedpremierowy. Sny o słoniach / 2025
-  Kino Mikro / Sny o słoniach / —
   Kino Muranów / Sny o słoniach / 2025
   Kino Muzeum / SNY O SŁONIACH / 2025
   Kino NCKF EC1 / Wtorki dla seniora: Sny o słoniach (seans z prelekcją) / —
@@ -9463,7 +9442,7 @@ metascore:         —
 rottenTomatoes:    —
 filmwebRating:     7.2
 metacriticUrl:     —
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/life_is_life
+rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Takie+jest+%C5%BCycie-2025-10102549
 cinemaFilmUrls:
   Kino Apollo = https://kinoapollo.pl/kino/takie-jest-zycie/
@@ -9734,7 +9713,6 @@ cinemaScrapes:
   Kinoteatr Rondo / Tom i Jerry: Przygoda w muzeum / —
   Klaps / Tom i Jerry: Przygoda w muzeum / —
   Miejskie Centrum Kultury / Tom i Jerry: Przygoda w muzeum / —
-  Mikro Bronowice / Tom i Jerry: Przygoda w muzeum / —
   Muza / Tom i Jerry: Przygoda w muzeum / —
   Piast / TOM I JERRY:PRZYGODA W MUZEUM / —
   Pionier / Tom i Jerry: Przygoda w muzeum / —
@@ -10160,7 +10138,6 @@ cinemaScrapes:
   Kino IKM / Wartość sentymentalna / —
   Kino Kika / WARTOŚĆ SENTYMENTALNA / —
   Kino Malta Charlie Monroe / Wartość sentymentalna / —
-  Kino Mikro / Wartość sentymentalna / —
   Kino Pałacowe / Plenerowe Pałacowe: Wartość sentymentalna / 2025
   Kino na Szekspirowskim / Wartość sentymentalna / —
   Kinoteka / Wartość sentymentalna / —
@@ -10657,7 +10634,7 @@ showings:
 
 === Zawieście czerwone latarnie ===
 displayTitle:      Zawieście czerwone latarnie
-cinemaTitles:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie | DKF - ZAWIEŚCIE CZERWONE LATARNIE | Klasyka w kinie Atlantic: Zawieście czerwone latarnie | ZAWIEŚCIE CZERWONE LATARNIE | Zawieście Czerwone Latarnie | Zawieście czerwone latarnie | Zawieście czerwone latarnie (1991) | Zawieście czerwone latarnie (pokaz jednorazowy) | Zawieście czerwone latarnie - pokazy specjalne
+cinemaTitles:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie | DKF - ZAWIEŚCIE CZERWONE LATARNIE | Klasyka w kinie Atlantic: Zawieście czerwone latarnie | ZAWIEŚCIE CZERWONE LATARNIE | Zawieście czerwone latarnie | Zawieście czerwone latarnie (1991) | Zawieście czerwone latarnie (pokaz jednorazowy) | Zawieście czerwone latarnie - pokazy specjalne
 runtimeMinutes:    142
 releaseYear:       1991
 countries:         Chiny, Hongkong, Tajwan
@@ -10696,7 +10673,6 @@ cinemaScrapes:
   Kino Luna / Zawieście czerwone latarnie / —
   Kino MCSW Elektrownia / DKF - ZAWIEŚCIE CZERWONE LATARNIE / —
   Kino Malta Charlie Monroe / Zawieście czerwone latarnie / —
-  Kino Mikro / Zawieście Czerwone Latarnie / —
   Kino Muranów / Zawieście czerwone latarnie / 1991
   Kino Muza / Zawieście czerwone latarnie / 1991
   Kino Muzeum / ZAWIEŚCIE CZERWONE LATARNIE / 1989
@@ -10874,7 +10850,6 @@ cinemaScrapes:
   Kinoteka / Zawodowcy / 2026
   Klaps / Zawodowcy / —
   Miejskie Centrum Kultury / Zawodowcy / —
-  Mikro Bronowice / Zawodowcy / —
   Muza / Zawodowcy / —
   Na Starówce / Zawodowcy / —
   Piast / ZAWODOWCY / —
@@ -10969,7 +10944,6 @@ cinemaScrapes:
   Kino Kinematograf / Znaki Pana Śliwki / 2025
   Kino Kultura / Znaki Pana Śliwki / —
   Kino Malta Charlie Monroe / Znaki Pana Śliwki / —
-  Kino Mikro / Znaki Pana Śliwki / —
   Kino Muza / Znaki Pana Śliwki / 2025
   Kino Nowe Horyzonty / Znaki Pana Śliwki / 2025
   Kino Orzeł / Znaki Pana Śliwki / —
