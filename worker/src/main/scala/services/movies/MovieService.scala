@@ -651,6 +651,16 @@ class MovieService(
   ): Option[(Int, Option[TmdbClient.SearchResult], TmdbClient.ExternalIds, Option[TmdbClient.FullDetails], Option[TmdbBasis])] =
     candidateSearch.resolve(cleanTitle, year, row, originalTitleHint, directorHint).flatMap { case (tmdbId, hit, basis) =>
       externalIdsOfLiveMovie(tmdbId, cleanTitle).map(ids => (tmdbId, hit, ids, tmdb.fullDetails(tmdbId), basis))
+    }.filterNot { case (tmdbId, _, _, details, _) =>
+      // Whatever found it, a film one of the row's own venues DENIES — its year and its
+      // director both contradict what that venue published — is not the venue's film.
+      // Kinoteka's Wong Kar Wai "Happy Together" was bound by a yearless IMDb rung to Kim
+      // Jeong-hwan's 2018 film of the name, and TMDB's find handed that id straight back.
+      val film   = details.map(d => SourceData(releaseYear = d.releaseYear, director = d.director))
+      val denied = film.exists(f => row.cinemaData.values.exists(MixedFilmDetector.deniesFilm(_, f, cache.normalizer)))
+      if (denied) logger.info(s"TMDB: '$cleanTitle' — candidate $tmdbId (${details.flatMap(_.releaseYear).getOrElse("?")}, " +
+        s"${details.toSeq.flatMap(_.director).mkString("/")}) is denied by a venue's own year and director; not this film.")
+      denied
     }
 
   /** The candidate's cross-reference ids, or None when TMDB answers 404 — the id
