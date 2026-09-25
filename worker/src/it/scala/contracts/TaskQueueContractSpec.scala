@@ -18,10 +18,10 @@ import scala.concurrent.duration.*
  * — the in-memory fake, the Mongo queue, and each decorator — found by reflection, so a new
  * implementation joins the suite the day it is written.
  *
- * THE DRIFT THIS PINS. `MongoTaskQueue.amendWaiting` answers with the update's MODIFIED count,
- * so amending a waiting task with fields it already carries reports `false`. The in-memory
- * queue said `true` (69831df05), and every spec of the resolve re-try metric ran against it:
- * they saw an "upgraded" that production never reports.
+ * THE DRIFT THIS PINS. The in-memory and Mongo queues once disagreed on amending a waiting task
+ * with fields it already carries (69831df05), and every spec of the resolve re-try metric ran
+ * against the in-memory one. Both now answer `true` — Mongo from the update's MATCHED count —
+ * because that re-try's request still runs; only a missing or claimed task answers `false`.
  */
 class TaskQueueContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
@@ -68,10 +68,10 @@ class TaskQueueContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfte
       queue.claim("worker", 1.minute, t0).map(_.payload) shouldBe Some(Map("title" -> "Film", "retryMiss" -> "true"))
     }
 
-    it should s"[$name] report NOT amended when the waiting task already carries the fields" in {
+    it should s"[$name] report amended when the waiting task already carries the fields" in {
       val queue = fresh(cls)
       queue.enqueue(TaskType.ResolveTmdb, "film|2026", Map("title" -> "Film", "retryMiss" -> "true"), t0)
-      queue.amendWaiting("film|2026", Map("retryMiss" -> "true")) shouldBe false
+      queue.amendWaiting("film|2026", Map("retryMiss" -> "true")) shouldBe true
     }
 
     it should s"[$name] leave a claimed task's payload alone" in {

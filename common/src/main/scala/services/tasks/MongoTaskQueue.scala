@@ -124,7 +124,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       val filter = Filters.and(Filters.eq("dedupKey", dedupKey), Filters.eq("active", true),
         Filters.eq("state", TaskState.Waiting))
       val update = Updates.combine(fields.toSeq.map { case (k, v) => Updates.set(s"payload.$k", v) }*)
-      Try(Await.result(c.updateOne(filter, update).toFuture(), 10.seconds).getModifiedCount > 0).recover {
+      Try(Await.result(c.updateOne(filter, update).toFuture(), 10.seconds).getMatchedCount > 0).recover {
         case exception: Throwable =>
           logger.warn(s"TaskQueue.amendWaiting($dedupKey) failed: ${exception.getMessage}")
           false

@@ -185,7 +185,8 @@ trait TaskQueue {
    *  whose [[enqueue]] came back Duplicate but whose request carries something the queued
    *  task lacks (a resolve re-try arriving while a plain resolve is queued). A worked-on
    *  task is left alone: its handler has already read the payload. Returns whether a
-   *  waiting task's payload CHANGED — `false` too when it already carried `fields`. */
+   *  waiting task now carries `fields` — `true` too when it already did, since the caller's
+   *  request still runs; `false` when no task waits under the key, or `fields` is empty. */
   def amendWaiting(dedupKey: String, fields: Map[String, String]): Boolean
 
   /** Atomically lease the oldest *eligible* waiting task to `workerId` for

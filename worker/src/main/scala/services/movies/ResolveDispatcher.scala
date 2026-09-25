@@ -55,15 +55,17 @@ object ResolveDispatcher {
   /** THE duplicate rule both dispatchers follow: a dispatch that finds its row's resolve
    *  already pending tries to `raise` the pending one to its mode — which succeeds only while
    *  that resolve is still WAITING, and never lowers a mode (see [[EnrichTaskKeys.raisedMode]])
-   *  — and a re-try's outcome is counted. A plain duplicate adds nothing to raise, so it is
-   *  neither attempted nor counted. */
+   *  — and a re-try's outcome is counted. `raise` answers whether the waiting resolve now runs
+   *  at this mode or above, INCLUDING one already there: that re-try's search still happens.
+   *  A plain duplicate adds nothing to raise, so it is neither attempted nor counted. */
   def onDuplicate(mode: ResolveMode, duplicates: ResolveDuplicateMetrics)(raise: => Boolean): Unit =
     if (mode != ResolveMode.Normal) duplicates.recordDuplicate(mode, upgraded = raise)
 }
 
 /** What became of a re-try (RetryMiss / Force) resolve that found its film's resolve already
- *  queued: `upgraded` onto the waiting task, or not — the task was already claimed with its
- *  old mode, so this re-try's search did not happen. A plain duplicate loses nothing and is not
+ *  queued: `upgraded` — the waiting task now runs at its mode or above, raised to it or there
+ *  already — or not: the task was already claimed with its old mode, so this re-try's search
+ *  did not happen. A plain duplicate loses nothing and is not
  *  reported. Before 2026-09-23 every such re-try was dropped, and the enqueue counter's
  *  `deduped` could not tell a lost re-try from a harmless duplicate. */
 trait ResolveDuplicateMetrics {
@@ -101,7 +103,7 @@ class InlineResolveDispatcher(
     var raised = false
     pending.compute(key, (_, state) => state match {
       case null           => submit = true; Some(mode)
-      case Some(waiting)  => val next = EnrichTaskKeys.raisedMode(waiting, mode); raised = next != waiting; Some(next)
+      case Some(waiting)  => raised = true; Some(EnrichTaskKeys.raisedMode(waiting, mode))
       case running @ None => running
     })
     if (submit)

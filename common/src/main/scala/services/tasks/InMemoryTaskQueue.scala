@@ -55,11 +55,10 @@ class InMemoryTaskQueue extends TaskQueue {
   }
 
   override def amendWaiting(dedupKey: String, fields: Map[String, String]): Boolean = lock.synchronized {
-    // "Amended" means CHANGED, as Mongo's modified count reports it: fields the waiting
-    // task already carries amend nothing.
-    rows.values.find(r => r.dedupKey == dedupKey && r.state == TaskState.Waiting).exists { r =>
-      val payload = r.payload ++ fields
-      payload != r.payload && { rows.put(r.id, r.copy(payload = payload)); true }
+    // "Amended" means MATCHED, as Mongo's matched count reports it: a waiting task that
+    // already carries `fields` still runs the caller's request.
+    fields.nonEmpty && rows.values.find(r => r.dedupKey == dedupKey && r.state == TaskState.Waiting).exists { r =>
+      rows.put(r.id, r.copy(payload = r.payload ++ fields)); true
     }
   }
 

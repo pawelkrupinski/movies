@@ -89,6 +89,21 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
     recorded.toSeq shouldBe Seq(ResolveMode.RetryMiss -> true, ResolveMode.Force -> false)
   }
 
+  // A re-try whose waiting resolve already runs at its mode (or above it) changes nothing, and
+  // loses nothing either: its search still happens. Counting it `upgraded = false` read as a
+  // lost re-try on the dashboard.
+  it should "count a re-try onto a queued resolve already at its mode or above as upgraded" in {
+    val queue    = new InMemoryTaskQueue()
+    val recorded = scala.collection.mutable.Buffer.empty[(ResolveMode, Boolean)]
+    val dispatcher = new QueueResolveDispatcher(queue, (mode, upgraded) => recorded += (mode -> upgraded))
+    dispatcher.dispatch("Tosca", None, None, None, ResolveMode.RetryMiss)
+    dispatcher.dispatch("Tosca", None, None, None, ResolveMode.RetryMiss) // already at RetryMiss
+    dispatcher.dispatch("Tosca", None, None, None, ResolveMode.Force)
+    dispatcher.dispatch("Tosca", None, None, None, ResolveMode.RetryMiss) // Force covers it
+
+    recorded.toSeq shouldBe Seq(ResolveMode.RetryMiss -> true, ResolveMode.Force -> true, ResolveMode.RetryMiss -> true)
+  }
+
   private val keyOf: (String, Option[Int]) => CacheKey =
     new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer).keyOf
 
@@ -173,6 +188,28 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
       d.stop()
       import scala.jdk.CollectionConverters._
       recorded.asScala.toSeq shouldBe Seq(ResolveMode.Force -> false)
+    } finally { release.countDown(); if (!ec.isShutdown) ec.shutdown() }
+  }
+
+  it should "count a re-try onto a waiting resolve already at its mode or above as upgraded, as the queue does" in {
+    val ec       = DaemonExecutors.boundedEC("inline-dispatch-dup-covered", 1)
+    val release  = new CountDownLatch(1)
+    val started  = new CountDownLatch(1)
+    val recorded = new java.util.concurrent.ConcurrentLinkedQueue[(ResolveMode, Boolean)]()
+    val d = new InlineResolveDispatcher(ec, keyOf, (title, _, _, _, _) =>
+      if (title == "Busy") { started.countDown(); release.await(5, java.util.concurrent.TimeUnit.SECONDS) },
+      duplicates = (mode, upgraded) => { recorded.add(mode -> upgraded); () })
+    try {
+      d.dispatch("Busy", None, None, None) // holds the one pool thread, so Tosca stays WAITING
+      started.await(5, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
+      d.dispatch("Tosca", None, None, None, ResolveMode.RetryMiss)
+      d.dispatch("Tosca", None, None, None, ResolveMode.RetryMiss) // already at RetryMiss
+      d.dispatch("Tosca", None, None, None, ResolveMode.Force)
+      d.dispatch("Tosca", None, None, None, ResolveMode.RetryMiss) // Force covers it
+      release.countDown()
+      d.stop()
+      import scala.jdk.CollectionConverters._
+      recorded.asScala.toSeq shouldBe Seq(ResolveMode.RetryMiss -> true, ResolveMode.Force -> true, ResolveMode.RetryMiss -> true)
     } finally { release.countDown(); if (!ec.isShutdown) ec.shutdown() }
   }
 
