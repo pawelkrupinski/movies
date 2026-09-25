@@ -12,7 +12,7 @@ import XCTest
 /// at night — is what makes them reproducible.
 enum FixtureLaunch {
 
-    /// Launch `app` on `city`'s fixture listing and return once the grid is up.
+    /// Launch `app` on `city`'s fixture listing (the caller waits for the grid).
     ///
     /// `country` and `language` are independent (see `LanguageSelection`) and
     /// land in `UserDefaults`' ARGUMENT domain, which outranks anything
@@ -32,45 +32,41 @@ enum FixtureLaunch {
         country: String = "pl",
         language: String = "pl",
         city: String = "warszawa",
-        environment: [String: String] = [:],
-        file: StaticString = #filePath,
-        line: UInt = #line
+        environment: [String: String] = [:]
     ) {
         app.launchEnvironment["KINOWO_UITEST_FIXTURE"] = "1"
-        throughCityGate(app, country: country, language: language, city: city,
-                        environment: environment, file: file, line: line)
+        intoCity(app, country: country, language: language, city: city, environment: environment)
     }
 
-    /// Launch `app` with no persisted city and confirm `city` at the CityGate,
-    /// against whatever repertoire the launch environment selects (the live one
-    /// unless `KINOWO_UITEST_FIXTURE` is set).
+    /// Launch `app` straight onto `city`'s repertoire — the live one unless
+    /// `KINOWO_UITEST_FIXTURE` is set — without passing through the CityGate.
     ///
-    /// The gate ALWAYS shows, whatever an earlier suite persisted, so it is
-    /// awaited as a requirement. An `if confirm.waitForExistence(timeout: 10)`
-    /// instead made the launch depend on run order, and cost ten idle seconds
-    /// per test whenever a city was already stored (run 36115063750).
-    static func throughCityGate(
+    /// The city is pinned like the country (`-selectedCity`, read once by
+    /// `UserPreferences.init`), so whatever an earlier suite persisted cannot
+    /// leak in, and no tap is spent getting past the gate. Confirming it with a
+    /// tap was the one synthesized gesture every such test paid, and a
+    /// synthesized touch is occasionally lost below the app: in local run
+    /// 2026-09-25 backboardd registered XCTest's virtual digitizer twice
+    /// ("unknown digitizer"), dropped the touch's move/up ("didn't see a previous
+    /// touch down"), and the gate stayed up, failing
+    /// `testGermanyRendersGermanDetailCaptions` with "Grid never appeared" (1 of
+    /// ~150 gestures in that run). The gate's own suites still tap it.
+    ///
+    /// `KINOWO_FORCE_DETECTED_CITY` stays set so a test that re-arms the gate
+    /// in-session (a country switch, "pick another city") lands on the confirm
+    /// screen instead of a CoreLocation permission dialog.
+    static func intoCity(
         _ app: XCUIApplication,
         country: String = "pl",
         language: String = "pl",
         city: String,
-        environment: [String: String] = [:],
-        file: StaticString = #filePath,
-        line: UInt = #line
+        environment: [String: String] = [:]
     ) {
         pinCountryAndLanguage(app, country: country, language: language)
-        app.launchEnvironment["KINOWO_CLEAR_CITY"] = "1"
+        app.launchArguments += ["-selectedCity", city]
         app.launchEnvironment["KINOWO_FORCE_DETECTED_CITY"] = city
         for (key, value) in environment { app.launchEnvironment[key] = value }
         app.launch()
-
-        let confirm = app.buttons[A11y.CityGate.confirmButton]
-        XCTAssertTrue(confirm.waitForExistence(timeout: 15),
-                      "City-confirm screen never showed", file: file, line: line)
-        confirm.tap()
-        // Name a tap the gate swallowed here, rather than as a later "Grid never appeared".
-        XCTAssertTrue(confirm.waitForNonExistence(timeout: 10),
-                      "Confirming the city left the CityGate up", file: file, line: line)
     }
 
     /// Mark `app` as a UI-test launch and pin its country and UI language in

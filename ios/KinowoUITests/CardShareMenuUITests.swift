@@ -14,7 +14,7 @@ final class CardShareMenuUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        FixtureLaunch.throughCityGate(app, city: "poznan")
+        FixtureLaunch.intoGrid(app, environment: ["KINOWO_UITEST_SEED_POSTER": "1"])
 
         // "Wszystkie" so the grid has cards regardless of the hour — late in the
         // evening "Dziś" can be empty (see ios uitests-at-night).

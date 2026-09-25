@@ -18,7 +18,7 @@ final class RotationColumnsUITests: XCTestCase {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
-        FixtureLaunch.throughCityGate(app, city: "poznan")
+        FixtureLaunch.intoGrid(app, environment: ["KINOWO_UITEST_SEED_POSTER": "1"])
 
         // "Wszystkie" guarantees a dense, multi-row grid regardless of the hour.
         let anytime = app.buttons[A11y.TopBar.datePillAnytime]

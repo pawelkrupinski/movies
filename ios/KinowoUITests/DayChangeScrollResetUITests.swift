@@ -20,18 +20,7 @@ final class DayChangeScrollResetUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        FixtureLaunch.pinCountryAndLanguage(app)
-        app.launchEnvironment["KINOWO_UITEST_FIXTURE"] = "1" // warm: dense grid at first paint
-        // Pass the first-launch city gate deterministically (so the test stands
-        // alone, not relying on a city another test happened to persist):
-        // clear any saved city, inject a detected one, then confirm it.
-        app.launchEnvironment["KINOWO_CLEAR_CITY"] = "1"
-        app.launchEnvironment["KINOWO_FORCE_DETECTED_CITY"] = "warszawa"
-        app.launch()
-
-        let confirm = app.buttons[A11y.CityGate.confirmButton]
-        XCTAssertTrue(confirm.waitForExistence(timeout: 15), "City-confirm screen never showed")
-        confirm.tap()
+        FixtureLaunch.intoGrid(app)
         XCTAssertTrue(anyCard().waitForExistence(timeout: 30), "Grid never mounted")
     }
 

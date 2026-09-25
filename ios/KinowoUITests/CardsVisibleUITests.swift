@@ -24,17 +24,7 @@ final class CardsVisibleUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        FixtureLaunch.pinCountryAndLanguage(app)
-        app.launchEnvironment["KINOWO_UITEST_FIXTURE"] = "1" // warm: dense grid at first paint
-        // Pass the first-launch city gate deterministically so the test stands
-        // alone (mirrors DayChangeScrollResetUITests).
-        app.launchEnvironment["KINOWO_CLEAR_CITY"] = "1"
-        app.launchEnvironment["KINOWO_FORCE_DETECTED_CITY"] = "warszawa"
-        app.launch()
-
-        let confirm = app.buttons[A11y.CityGate.confirmButton]
-        XCTAssertTrue(confirm.waitForExistence(timeout: 15), "City-confirm screen never showed")
-        confirm.tap()
+        FixtureLaunch.intoGrid(app)
     }
 
     override func tearDownWithError() throws {

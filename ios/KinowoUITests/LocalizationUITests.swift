@@ -335,17 +335,15 @@ final class LocalizationUITests: XCTestCase {
     /// with no relaunch dance; it also forces the city and serves the offline
     /// fixture, which is what makes these reproducible on a fresh simulator.
     /// See `FixtureLaunch` for the full reasoning.
-    private func launch(country: String, language: String,
-                        file: StaticString = #filePath, line: UInt = #line) {
+    private func launch(country: String, language: String) {
         app = XCUIApplication()
-        FixtureLaunch.intoGrid(app, country: country, language: language,
-                               file: file, line: line)
+        FixtureLaunch.intoGrid(app, country: country, language: language)
     }
 
     /// As `launch`, then opens the first film's detail screen.
     private func launchDetail(country: String, language: String,
                               file: StaticString = #filePath, line: UInt = #line) {
-        launch(country: country, language: language, file: file, line: line)
+        launch(country: country, language: language)
 
         let card = FixtureLaunch.firstFilmCard(app)
         XCTAssertTrue(card.waitForExistence(timeout: 30),

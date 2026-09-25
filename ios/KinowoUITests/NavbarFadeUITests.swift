@@ -28,7 +28,7 @@ final class NavbarFadeUITests: XCTestCase {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
-        FixtureLaunch.throughCityGate(app, city: "poznan")
+        FixtureLaunch.intoCity(app, city: "poznan")
 
         // "Wszystkie" guarantees a dense, multi-row poster grid at any hour.
         let anytime = app.buttons[A11y.TopBar.datePillAnytime]

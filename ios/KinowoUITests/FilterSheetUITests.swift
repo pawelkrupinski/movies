@@ -14,7 +14,7 @@ final class FilterSheetUITests: XCTestCase {
     /// The grid, reached deterministically — see `FixtureLaunch`.
     private func launchIntoGrid(_ environment: [String: String] = [:],
                                 file: StaticString = #filePath, line: UInt = #line) {
-        FixtureLaunch.intoGrid(app, environment: environment, file: file, line: line)
+        FixtureLaunch.intoGrid(app, environment: environment)
         XCTAssertTrue(FixtureLaunch.firstFilmCard(app).waitForExistence(timeout: 30),
                       "Grid never appeared", file: file, line: line)
     }

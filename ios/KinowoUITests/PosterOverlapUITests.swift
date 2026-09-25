@@ -19,8 +19,8 @@ final class PosterOverlapUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        FixtureLaunch.pinCountryAndLanguage(app)
-        app.launch()
+        // The live repertoire, not the fixture: the overlap needs real, oddly shaped posters.
+        FixtureLaunch.intoCity(app, city: "poznan")
         // Wait on app launch (the date-pill row), NOT on a film card —
         // the default "Dziś" repertoire is empty late at night, so the
         // grid only fills once we switch to "Wszystkie" in the test.

@@ -18,8 +18,7 @@ final class ScrollInsetUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        FixtureLaunch.pinCountryAndLanguage(app)
-        app.launch()
+        FixtureLaunch.intoGrid(app)
 
         XCTAssertTrue(firstFilmCard(app).waitForExistence(timeout: 30),
                       "Grid never appeared")

@@ -6,7 +6,6 @@ final class RepertoireLaunchUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        FixtureLaunch.pinCountryAndLanguage(app)
     }
 
     override func tearDownWithError() throws {
@@ -14,7 +13,8 @@ final class RepertoireLaunchUITests: XCTestCase {
     }
 
     func testAppLaunches() throws {
-        app.launch()
+        // The one suite on the live repertoire end to end, so no fixture.
+        FixtureLaunch.intoCity(app, city: "warszawa")
 
         // 30s — cold launch + the first network fetch of /repertuar.html
         // over the simulator's host network, which downloads several
@@ -31,7 +31,7 @@ final class RepertoireLaunchUITests: XCTestCase {
         try XCTSkipIf(true, "needs KINOWO_FORCE_OFFLINE wiring in RepertoireClient")
 
         app.launchEnvironment["KINOWO_FORCE_OFFLINE"] = "1"
-        app.launch()
+        FixtureLaunch.intoCity(app, city: "warszawa")
 
         let emptyById = app.otherElements[A11y.EmptyState.repertoire]
         let errorById = app.otherElements[A11y.EmptyState.error]

@@ -14,8 +14,7 @@ final class DaySwipeUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        FixtureLaunch.pinCountryAndLanguage(app)
-        app.launch()
+        FixtureLaunch.intoGrid(app)
 
         // Start on "Wszystkie" so films are present regardless of time of day —
         // late in the evening today's showings have all passed, leaving the
