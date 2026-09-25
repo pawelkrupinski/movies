@@ -153,10 +153,11 @@ class MongoScrapeArchiveRepository(sharedDb: Option[MongoDatabase]) extends Scra
 
   def enabled: Boolean = coll.isDefined
 
-  /** `$set`s the listing's fields and drops the barren marker, rather than replacing
-   *  the row: the row also carries fields this repository does not own (the scrape
-   *  guards' state, `MongoScrapeGuardLedger`), which a replace on every scrape would
-   *  wipe. */
+  /** `$set`s the listing's fields and `$unset`s the ones it leaves empty (the barren marker
+   *  among them), rather than replacing the row: the row also carries fields this repository
+   *  does not own (the scrape guards' state, `MongoScrapeGuardLedger`), which a replace on
+   *  every scrape would wipe. An empty field encodes as nothing at all, so without the unset
+   *  the previous scrape's value would outlive it. */
   protected def storeSuccess(cinema: Cinema, city: Option[String], scrape: SuccessfulScrape): Unit =
     coll.foreach { c =>
       val dto     = StoredScrapeDto.fromSuccess(cinema, city, scrape)
@@ -165,8 +166,9 @@ class MongoScrapeArchiveRepository(sharedDb: Option[MongoDatabase]) extends Scra
         .encode(new BsonDocumentWriter(encoded), dto, EncoderContext.builder().build())
       val fields  = encoded.entrySet().asScala.toSeq.filterNot(_.getKey == "_id")
         .map(e => Updates.set(e.getKey, e.getValue))
+      val emptied = dto.productElementNames.filterNot(encoded.containsKey).map(Updates.unset).toSeq
       guard(cinema, "record") {
-        Await.result(c.updateOne(Filters.eq("_id", dto._id), Updates.combine((fields :+ Updates.unset("lastBarren"))*),
+        Await.result(c.updateOne(Filters.eq("_id", dto._id), Updates.combine((fields ++ emptied)*),
           new UpdateOptions().upsert(true)).toFuture(), 30.seconds)
       }
     }

@@ -109,6 +109,18 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers {
     } finally purge()
   }
 
+  // A success is `$set` field by field (the row carries the guard ledger's fields too), and an
+  // IgnoreNone field that is None encodes as nothing to set: the previous scrape's value stayed
+  // on the row, where the replace it succeeded dropped it.
+  it should "clear an optional field the latest scrape no longer carries" in {
+    val repository = new MongoScrapeArchiveRepository(Some(db))
+    try {
+      repository.record(scraped(Morning, Seq(minimal)))
+      repository.record(scraped(Noon, Seq(minimal)).copy(city = None))
+      repository.find(Multikino).map(_.city) shouldBe Some(None)
+    } finally purge()
+  }
+
   // The barren census reads through this projection rather than `findAll`, because
   // an ArchivedScrape carries its whole parsed listing and the census wants one
   // instant per cinema. Worth an integration test because the projection is real
