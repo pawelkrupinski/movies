@@ -10,10 +10,11 @@ import kotlinx.coroutines.Job
 import okhttp3.OkHttpClient
 import org.junit.rules.ExternalResource
 import org.robolectric.Shadows.shadowOf
-import pl.kinowo.auth.HiddenFilmsClient
+import pl.kinowo.auth.StateSync
 import pl.kinowo.data.FreshUserPreferences
 import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
+import pl.kinowo.location.GrantedLocationSource
 import pl.kinowo.ui.KinowoViewModel
 
 /**
@@ -49,13 +50,14 @@ class KinowoViewModelHarness : ExternalResource() {
     fun viewModel(
         prefs: UserPreferences = UserPreferences(context),
         repository: RepertoireRepository? = null,
-        hiddenFilmsClient: HiddenFilmsClient = NoopHiddenFilmsClient,
+        sync: StateSync = NoopStateSync,
+        location: GrantedLocationSource = GrantedLocationSource { null },
     ): KinowoViewModel {
         val http = OkHttpClient().also { clients += it }
         val factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                testKinowoViewModel(context, repository, prefs, hiddenFilmsClient, http) as T
+                testKinowoViewModel(context, repository, prefs, sync, location, http) as T
         }
         val store = ViewModelStore().also { stores += it }
         return ViewModelProvider(store, factory)[KinowoViewModel::class.java]

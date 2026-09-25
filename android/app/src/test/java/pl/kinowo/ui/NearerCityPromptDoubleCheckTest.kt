@@ -3,17 +3,18 @@ package pl.kinowo.ui
 import pl.kinowo.KinowoViewModelHarness
 import androidx.compose.ui.test.junit4.createComposeRule
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import pl.kinowo.location.GrantedLocationSource
 
 /**
  * A manual re-pick with no detected nearest (Filtry's "Pick another city", or
- * a country switch) is only guarded by [KinowoViewModel.citySwitchSuppressor],
- * a ONE-SHOT flag meant to skip exactly the single [KinowoViewModel.checkCitySwitch]
+ * a country switch) is only guarded by a ONE-SHOT suppressor flag meant to skip exactly the single [KinowoViewModel.checkCitySwitch]
  * call [KinowoViewModel.chooseCityAtGate]'s doc calls "the ONE check [it] fires
  * right after this pick". But [NearerCityPrompt] wires TWO triggers —
  * `LaunchedEffect(Unit)` (on entry) and `LifecycleEventEffect(ON_RESUME)` — and
@@ -23,7 +24,8 @@ import org.robolectric.annotation.GraphicsMode
  * both fire on the very same composition: the first consumes the suppressor and
  * stays quiet, but the SECOND finds it already spent and proceeds into a real
  * check — which is exactly how "you're nearer Poznań" can surface right after a
- * manual pick.
+ * manual pick. The test injects a location fix near Poznań and asserts the
+ * prompt stays down.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -38,12 +40,14 @@ class NearerCityPromptDoubleCheckTest {
 
     @Test
     fun mountingRightAfterAManualRepickChecksExactlyOnce() {
-        val vm = harness.viewModel()
+        var locationReads = 0
+        val vm = harness.viewModel(location = GrantedLocationSource { locationReads++; POZNAN })
         // The "no detected nearest" branch of chooseCityAtGate — Filtry's "Pick
         // another city", or a country switch — is exactly the one that relies on
         // the fragile one-shot suppressor rather than a persisted chosen→nearest
         // key.
         harness.settle(vm.chooseCityAtGate("warszawa", nearestSlug = null))
+        harness.pumpUntil("the pick to reach selectedCity") { vm.selectedCity.value == "warszawa" }
 
         // Mirrors KinowoApp: NearerCityPrompt mounts once `selectedCity` is
         // non-null, which happens right after the pick above — no real
@@ -54,9 +58,14 @@ class NearerCityPromptDoubleCheckTest {
         assertEquals(
             "the mount-time LaunchedEffect and the ON_RESUME catch-up dispatch " +
                 "both fire for one manual pick, but only ONE check is meant to run " +
-                "per chooseCityAtGate's own doc comment",
-            1,
-            vm.checkCitySwitchInvocationCount,
+                "per chooseCityAtGate's own doc comment — the suppressed one",
+            0,
+            locationReads,
         )
+        assertNull("no 'you're nearer Poznań' right after a manual pick", vm.citySwitchSuggestion)
+    }
+
+    private companion object {
+        val POZNAN = 52.4064 to 16.9252
     }
 }

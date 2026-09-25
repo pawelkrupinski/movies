@@ -1,13 +1,14 @@
 package pl.kinowo.ui
 
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import pl.kinowo.KinowoViewModelHarness
+import pl.kinowo.location.GrantedLocationSource
 
 /**
  * [KinowoViewModel.chooseCityAtGate] must not let [KinowoViewModel.checkCitySwitch]
@@ -22,6 +23,8 @@ import pl.kinowo.KinowoViewModelHarness
  * from ([nearestSlug] is null), so it falls back to the SAME one-shot
  * suppressor a web sign-in's Custom Tab resume already uses: skip the very
  * next [checkCitySwitch], not check-by-key.
+ *
+ * Each test drives the real check against an injected location fix.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -31,42 +34,58 @@ class CitySwitchSuppressionWiringTest {
     val harness = KinowoViewModelHarness()
 
     @Test
-    fun rePickingWithNoDetectedNearestArmsTheBlanketSuppressor() {
-        val vm = harness.viewModel()
+    fun rePickingWithNoDetectedNearestSkipsExactlyTheNextCheck() {
+        val vm = pickWarszawa(nearestSlug = null, fix = POZNAN)
 
-        harness.settle(vm.chooseCityAtGate("warszawa", nearestSlug = null))
+        check(vm)
+        assertNull("chooseCityAtGate(nearestSlug = null) should skip the next checkCitySwitch", vm.citySwitchSuggestion)
 
-        assertTrue(
-            "chooseCityAtGate(nearestSlug = null) should skip the next checkCitySwitch",
-            vm.citySwitchSuppressor.consumeShouldSkip(),
-        )
+        // One-shot: the check after that is a genuine one and offers the switch.
+        check(vm)
+        assertEquals("poznan", vm.citySwitchSuggestion?.target?.slug)
     }
 
     @Test
-    fun firstLaunchWithADetectedNearestUsesThePreciseKeyInstead() {
-        val vm = harness.viewModel()
-
-        harness.settle(vm.chooseCityAtGate("warszawa", nearestSlug = "poznan"))
-
-        // The exact chosen→nearest pair is handled by the persisted prompt key
-        // (see UserPreferencesCityTests-equivalent coverage of setCitySwitchPromptKey);
-        // the blanket suppressor has nothing to do here and stays disarmed.
-        assertFalse(
-            "A real detected nearest should be handled by the precise key, not the blanket suppressor",
-            vm.citySwitchSuppressor.consumeShouldSkip(),
-        )
+    fun firstLaunchWithADetectedNearestUsesThePreciseKeyNotTheBlanketSuppressor() {
+        // The chosen→nearest pair itself stays quiet (the persisted key)…
+        val quiet = pickWarszawa(nearestSlug = "poznan", fix = POZNAN)
+        check(quiet)
+        assertNull(quiet.citySwitchSuggestion)
     }
 
     @Test
-    fun rePickingTheAlreadyNearestCityAlsoLeavesTheBlanketSuppressorDisarmed() {
-        val vm = harness.viewModel()
+    fun firstLaunchWithADetectedNearestLeavesOtherPairsPrompting() {
+        // …but the blanket suppressor stays disarmed, so the very next check
+        // still offers a DIFFERENT nearer city.
+        val vm = pickWarszawa(nearestSlug = "poznan", fix = KRAKOW)
+        check(vm)
+        assertEquals("krakow", vm.citySwitchSuggestion?.target?.slug)
+    }
 
+    @Test
+    fun rePickingTheAlreadyNearestCityLeavesTheBlanketSuppressorDisarmed() {
         // chosen == nearest: initialChoiceSuppressKey returns null (nothing to
-        // suppress — switchSuggestion already stays quiet when nearest equals
-        // chosen), and nearestSlug is non-null, so the blanket fallback must not
-        // fire either.
-        harness.settle(vm.chooseCityAtGate("warszawa", nearestSlug = "warszawa"))
+        // suppress), and nearestSlug is non-null, so the blanket fallback must
+        // not fire either — the next check still prompts.
+        val vm = pickWarszawa(nearestSlug = "warszawa", fix = POZNAN)
+        check(vm)
+        assertEquals("poznan", vm.citySwitchSuggestion?.target?.slug)
+    }
 
-        assertFalse(vm.citySwitchSuppressor.consumeShouldSkip())
+    private fun pickWarszawa(nearestSlug: String?, fix: Pair<Double, Double>): KinowoViewModel {
+        val vm = harness.viewModel(location = GrantedLocationSource { fix })
+        harness.settle(vm.chooseCityAtGate("warszawa", nearestSlug = nearestSlug))
+        harness.pumpUntil("the pick to reach selectedCity") { vm.selectedCity.value == "warszawa" }
+        return vm
+    }
+
+    private fun check(vm: KinowoViewModel) {
+        vm.citySwitchSuggestion?.let { vm.dismissCitySwitch() }
+        harness.settle(vm.checkCitySwitch())
+    }
+
+    private companion object {
+        val POZNAN = 52.4064 to 16.9252
+        val KRAKOW = 50.0647 to 19.9450
     }
 }

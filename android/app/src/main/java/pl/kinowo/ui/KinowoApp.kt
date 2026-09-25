@@ -85,20 +85,16 @@ fun KinowoApp(viewModel: KinowoViewModel) {
  * separate `LaunchedEffect(Unit)` used to sit alongside this one to cover
  * "on entry", but that made every mount fire TWO checks back-to-back; the
  * `chooseCityAtGate` "no detected nearest" branch only expects ONE (it's
- * guarded by [KinowoViewModel.citySwitchSuppressor], a one-shot flag — the
- * first check consumed it silently, the second found it already spent and
- * could surface a stale "you're nearer X" suggestion). See
- * [pl.kinowo.ui.KinowoViewModel.checkCitySwitchInvocationCount] and
- * `NearerCityPromptDoubleCheckTest`.
+ * guarded by a one-shot suppressor — the first check consumed it silently, the
+ * second found it already spent and could surface a stale "you're nearer X"
+ * suggestion). See `NearerCityPromptDoubleCheckTest`.
  *
  * `internal` (not `private`) so a test can mount it directly, the same reason
  * [pl.kinowo.ui.city.CityGate] is.
  */
 @Composable
 internal fun NearerCityPrompt(viewModel: KinowoViewModel) {
-    val context = LocalContext.current
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.checkCitySwitch(context) }
-
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.checkCitySwitch() }
     val suggestion = viewModel.citySwitchSuggestion ?: return
     val target = suggestion.target
     AlertDialog(

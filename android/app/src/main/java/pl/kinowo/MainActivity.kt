@@ -29,6 +29,7 @@ import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.JsonListCache
 import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
+import pl.kinowo.location.LocationCityResolver
 import pl.kinowo.model.Country
 import pl.kinowo.model.Film
 import pl.kinowo.model.FilmDetails
@@ -216,6 +217,6 @@ internal fun kinowoViewModelFactory(context: Context, country: Country): KinowoV
     val catalogRepository = CatalogRepository(api, CatalogCache(context.filesDir), catalogSeed)
     return KinowoViewModel.Factory(
         repository, detailsRepository, UserPreferences(context), authRepository,
-        hiddenFilmsClient, languageClient, api, catalogRepository,
+        hiddenFilmsClient, languageClient, api, catalogRepository, LocationCityResolver(context),
     )
 }

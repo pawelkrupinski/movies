@@ -7,7 +7,9 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +32,7 @@ import coil.imageLoader
 import coil.memory.MemoryCache
 import pl.kinowo.auth.AuthRepository
 import pl.kinowo.data.PosterCachePurge
+import pl.kinowo.auth.StateSync
 import pl.kinowo.auth.StateSyncService
 import pl.kinowo.auth.UserProfile
 import pl.kinowo.auth.HiddenFilmsClient
@@ -44,7 +47,7 @@ import pl.kinowo.model.CinemaCatalog
 import pl.kinowo.model.City
 import pl.kinowo.net.CinemaCatalogApi
 import pl.kinowo.deeplink.DeepLinkTitle
-import pl.kinowo.location.LocationCityResolver
+import pl.kinowo.location.GrantedLocationSource
 import pl.kinowo.model.Cities
 import pl.kinowo.model.CitySwitchSuggestion
 import pl.kinowo.model.zoneFor
@@ -79,11 +82,16 @@ class KinowoViewModel(
     private val detailsRepository: DetailsRepository,
     private val prefs: UserPreferences,
     private val authRepository: AuthRepository,
-    hiddenFilmsClient: HiddenFilmsClient,
-    languageClient: LanguageClient,
+    /** Mirrors prefs to the server while signed in; `init` makes it observe the
+     *  auth state. Built by [Factory] over the same [scope]. */
+    private val sync: StateSync,
     private val catalogApi: CinemaCatalogApi,
     private val catalogRepository: CatalogRepository,
-) : ViewModel() {
+    private val location: GrantedLocationSource,
+    /** Becomes [viewModelScope] — cancelled when the ViewModel is cleared. Passed
+     *  in so [Factory] can hand the same scope to [sync]. */
+    scope: CoroutineScope,
+) : ViewModel(scope) {
 
     /** The live country + city catalog (fetched on open, seeded from the distro).
      *  The pickers and the nearest-city gate read `countryCatalog.value.cities` /
@@ -99,27 +107,10 @@ class KinowoViewModel(
     /** The signed-in user, or null when anonymous. Drives the Filtry → Konto UI. */
     val user: StateFlow<UserProfile?> = authRepository.user
 
-    // Mirror prefs to the server while signed in. Constructed here so it shares
-    // the ViewModel's scope; `start()` makes it observe the auth state.
-    private val sync = StateSyncService(prefs, authRepository.user, hiddenFilmsClient, languageClient, viewModelScope)
-
     // Skips the one nearer-city check that the post-OAuth resume would otherwise
     // fire — armed when a web sign-in starts (see [signInWithGoogle]) or a city
-    // is re-picked with no detected nearest (see [chooseCityAtGate]). Internal
-    // rather than private so a test can assert it armed without going through
-    // [checkCitySwitch]'s real location fetch.
-    internal val citySwitchSuppressor = CitySwitchSuppressor()
-
-    // How many times [checkCitySwitch] has run. Internal rather than private so
-    // a test can catch [KinowoApp]'s two check-triggering effects (the initial
-    // mount and the lifecycle's `ON_RESUME` catch-up dispatch, which fires
-    // synchronously for an observer added while already resumed — true of a
-    // manual pick, which never actually pauses/resumes the activity) both
-    // firing for what [chooseCityAtGate]'s doc calls "the ONE check" — a case
-    // [CitySwitchSuppressor]'s one-shot flag can't itself distinguish from a
-    // single legitimate call, since both leave it equally "consumed".
-    internal var checkCitySwitchInvocationCount = 0
-        private set
+    // is re-picked with no detected nearest (see [chooseCityAtGate]).
+    private val citySwitchSuppressor = CitySwitchSuppressor()
 
     init {
         sync.start()
@@ -596,14 +587,13 @@ class KinowoViewModel(
      * pair regardless of accept/decline, and surfaces it as [citySwitchSuggestion]
      * for [KinowoApp] to render.
      */
-    fun checkCitySwitch(context: Context) = viewModelScope.launch {
-        checkCitySwitchInvocationCount++
+    fun checkCitySwitch() = viewModelScope.launch {
         // A web sign-in just returned via a Custom Tab resume — skip the one
         // check that would re-surface the prompt the user already answered.
         if (citySwitchSuppressor.consumeShouldSkip()) return@launch
         if (citySwitchSuggestion != null) return@launch
         val chosen = selectedCity.value ?: return@launch
-        val fix = LocationCityResolver(context).resolveIfGranted() ?: return@launch
+        val fix = location.resolveIfGranted() ?: return@launch
         val suggestion = countryCatalog.value.cities.switchSuggestion(
             chosenSlug = chosen,
             lat = fix.first,
@@ -682,9 +672,18 @@ class KinowoViewModel(
         internal val languageClient: LanguageClient,
         private val catalogApi: CinemaCatalogApi,
         private val catalogRepository: CatalogRepository,
+        private val location: GrantedLocationSource,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            KinowoViewModel(repository, detailsRepository, prefs, authRepository, hiddenFilmsClient, languageClient, catalogApi, catalogRepository) as T
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            // What the default `viewModelScope` would be; built here so the sync
+            // service shares it and is cancelled with the ViewModel.
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+            val sync = StateSyncService(prefs, authRepository.user, hiddenFilmsClient, languageClient, scope)
+            return KinowoViewModel(
+                repository, detailsRepository, prefs, authRepository, sync,
+                catalogApi, catalogRepository, location, scope,
+            ) as T
+        }
     }
 }

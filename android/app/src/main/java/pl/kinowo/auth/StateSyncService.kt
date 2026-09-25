@@ -72,7 +72,7 @@ class StateSyncService(
     private val client: HiddenFilmsClient,
     private val languageClient: LanguageClient,
     private val scope: CoroutineScope,
-) {
+) : StateSync {
     @Volatile private var loggedIn = false
     /** Bumped by every genuine logout, which forgets the hiddenFilms queue: a
      *  response from before it must not touch the next session's queue. */
@@ -104,7 +104,7 @@ class StateSyncService(
 
     /** Begin observing the auth state. Idempotent enough for a single call
      *  from the composition root. */
-    fun start() {
+    override fun start() {
         scope.launch {
             user.collect { profile ->
                 if (profile != null) {
@@ -156,7 +156,7 @@ class StateSyncService(
      *  [pl.kinowo.ui.KinowoViewModel] can call it from its `onResume()` —
      *  which runs for signed-out users too, so this does nothing without a
      *  session: every request would only draw a 401. */
-    suspend fun reconcileCurrentCountry() {
+    override suspend fun reconcileCurrentCountry() {
         if (!loggedIn) return
         reconcileLanguage()
         reconcile(currentCountry())
@@ -346,11 +346,11 @@ class StateSyncService(
      *  [pl.kinowo.ui.KinowoViewModel.hide]) then queue and send the write in
      *  the background. The country is the edit's, not whichever is current
      *  when its turn at the queue comes. */
-    fun hide(country: String, title: String) = push(country, HiddenFilmsOp.Hide(title))
+    override fun hide(country: String, title: String) = push(country, HiddenFilmsOp.Hide(title))
 
-    fun unhide(country: String, title: String) = push(country, HiddenFilmsOp.Unhide(title))
+    override fun unhide(country: String, title: String) = push(country, HiddenFilmsOp.Unhide(title))
 
-    fun clear(country: String) = push(country, HiddenFilmsOp.Clear)
+    override fun clear(country: String) = push(country, HiddenFilmsOp.Clear)
 
     /** Queue [op] (persisted — see [SyncPrefs.pendingHiddenFilmsOps]) and send
      *  the queue. One that fails stays queued; the next reconcile re-sends it

@@ -21,7 +21,7 @@ import kotlin.coroutines.resume
  * pick. The permission check itself lives at the gate, so this is only called
  * once `ACCESS_COARSE_LOCATION` is granted.
  */
-class LocationCityResolver(private val context: Context) {
+class LocationCityResolver(private val context: Context) : GrantedLocationSource {
 
     @SuppressLint("MissingPermission") // the gate requests ACCESS_COARSE_LOCATION before calling
     suspend fun resolveNearestCity(countryCode: String, cities: List<City>): City? {
@@ -41,14 +41,9 @@ class LocationCityResolver(private val context: Context) {
         return cities.nearestWithin100km(fix.first, fix.second)
     }
 
-    /**
-     * A coarse `(lat, lon)` fix, but only when `ACCESS_COARSE_LOCATION` is
-     * *already* granted — never triggers a permission request. Used by the
-     * "you're nearer another city" prompt, which must stay silent (no system
-     * dialog) when location was never granted. Returns null on no permission,
-     * no fix, or any failure.
-     */
-    suspend fun resolveIfGranted(): Pair<Double, Double>? {
+    /** Checks `ACCESS_COARSE_LOCATION` without requesting it. Returns null on
+     *  no permission, no fix, or any failure. */
+    override suspend fun resolveIfGranted(): Pair<Double, Double>? {
         val granted = ContextCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_COARSE_LOCATION,
         ) == PackageManager.PERMISSION_GRANTED
