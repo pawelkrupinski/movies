@@ -41,7 +41,7 @@ trait CorpusWiring { self: WorkerWiring =>
     TitleNormalizer.forCountry(country)
 
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(
-    mongoConnection.database, fallbackToOwnInit = false, changeStreamMetrics = taskMetrics.movieChangeMetrics,
+    mongoConnection.database, changeStreamMetrics = taskMetrics.movieChangeMetrics,
     screeningsMetrics = taskMetrics, slotsMetrics = taskMetrics.slotsChangeMetrics,
     writeMetrics = taskMetrics, decodeFailures = taskMetrics,
     normalizer = titleNormalizer,

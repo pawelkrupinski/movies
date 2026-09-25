@@ -25,7 +25,7 @@ object CountryRatingRefresh {
     val db = conn.database.getOrElse {
       println(s"Could not open ${country.mongoDb} — is the tunnel up + MONGODB_URI set?"); sys.exit(1)
     }
-    val repo  = new MongoMovieRepository(sharedDb = Some(db), fallbackToOwnInit = false, normalizer = titleNormalizer)
+    val repo  = new MongoMovieRepository(sharedDb = Some(db), normalizer = titleNormalizer)
     val queue = new MongoTaskQueue(Some(db))
 
     val affected = repo.findAll().filter(r =>

@@ -128,7 +128,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
   it should "give a graduated film its showtimes in `screenings`, not just embedded" in {
     FoldFixture.withFold("staging-fold") { fold =>
       import fold.{movies, staging, screenings, db}
-      val repository = new services.movies.MongoMovieRepository(Some(db), fallbackToOwnInit = false,
+      val repository = new services.movies.MongoMovieRepository(Some(db),
       normalizer = titleNormalizer,
       screenings = Some(screenings), slots = Some(new MongoSlotsRepository(Some(db))))
       seedConcludedNewcomer(staging)
@@ -182,7 +182,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
   it should "retry a commit whose result is unknown, and still complete the graduated film" in {
     FoldFixture.withFold("staging-fold") { fold =>
       import fold.{movies, staging, screenings, db}
-      val repository = new services.movies.MongoMovieRepository(Some(db), fallbackToOwnInit = false,
+      val repository = new services.movies.MongoMovieRepository(Some(db),
         normalizer = titleNormalizer, screenings = Some(screenings), slots = Some(new MongoSlotsRepository(Some(db))))
       seedConcludedNewcomer(staging)
       val commits = new java.util.concurrent.atomic.AtomicInteger(0)
@@ -224,7 +224,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
     it should s"finish the graduated film when its commit landed but $how" in {
       FoldFixture.withFold("staging-fold") { fold =>
         import fold.{movies, staging, screenings, db}
-        val repository = new services.movies.MongoMovieRepository(Some(db), fallbackToOwnInit = false,
+        val repository = new services.movies.MongoMovieRepository(Some(db),
           normalizer = titleNormalizer, screenings = Some(screenings), slots = Some(new MongoSlotsRepository(Some(db))))
         seedConcludedNewcomer(staging)
         val landedNoReply: org.mongodb.scala.ClientSession => Unit = session => {

@@ -79,8 +79,19 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
   override protected def afterAll(): Unit = try repository.close() finally try tools.IsolatedMongoDatabase.drop(specDb) finally super.afterAll()
 
-  "MovieRepository" should "be enabled when MONGODB_URI is set" in {
+  "MovieRepository" should "be enabled when handed a database" in {
     repository.enabled shouldBe true
+  }
+
+  // The store's only door to Mongo is the database it is handed: with none it is disabled,
+  // even though MONGODB_URI (set for this very spec) names a reachable server. It used to
+  // read that variable and open a MongoClient of its own, behind the composition root.
+  it should "stay disabled when handed no database, never opening its own connection" in {
+    val unwired = new MongoMovieRepository(None, normalizer = titleNormalizer)
+    try {
+      unwired.enabled shouldBe false
+      unwired.findAll() shouldBe empty
+    } finally unwired.close()
   }
 
   it should "round-trip an MovieRecord: upsert → findAll → match" in {

@@ -2,7 +2,7 @@ package scripts
 
 import play.api.libs.json._
 import services.enrichment.FilmwebClient
-import services.movies.{MongoMovieRepository, StoredMovieRecord}
+import services.movies.StoredMovieRecord
 import tools.{RealHttpFetch, TextNormalization}
 
 import java.net.URLEncoder
@@ -13,7 +13,6 @@ import java.util.concurrent.{Executors, TimeUnit}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Try
-import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * THROWAWAY investigation harness (re-derived 2026-06-28 from the original
@@ -65,7 +64,7 @@ object GateReport {
     val cap = rest.lift(1).map(_.toInt)
     val modes = if (ratings) Seq("imdb-eng", "filmweb-pl") else Modes
 
-    val repo = new MongoMovieRepository(normalizer = titleNormalizer)
+    val repo = AmbientMovieRepository.open()
     if (!repo.enabled) { println("MONGODB_URI not set — nothing to read."); sys.exit(1) }
     // Paginated read (200/batch) — far more robust over the flyctl proxy than a
     // single 736-doc `findAll`, which intermittently corrupts the BSON stream

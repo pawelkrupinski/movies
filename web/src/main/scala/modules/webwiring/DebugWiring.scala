@@ -85,7 +85,7 @@ trait DebugWiring { self: Wiring =>
           // THIS stack's country, not the serving one: /debug reads another
           // country's database, and folding its titles with the serving country's
           // rules would key rows the way no worker ever wrote them.
-          new MongoMovieRepository(conn.database, fallbackToOwnInit = false,
+          new MongoMovieRepository(conn.database,
             screenings = Some(screenings), slots = Some(slots),
             normalizer = services.movies.TitleNormalizer.forCountry(country)),
           new services.staging.MongoStagingRepository(conn.database,

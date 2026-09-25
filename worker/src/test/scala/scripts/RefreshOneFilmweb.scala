@@ -2,7 +2,7 @@ package scripts
 
 import clients.TmdbClient
 import services.enrichment.{FilmwebClient, FilmwebRatings}
-import services.movies.{CaffeineMovieCache, MongoMovieRepository}
+import services.movies.CaffeineMovieCache
 import tools.RealHttpFetch
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
@@ -13,7 +13,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 object RefreshOneFilmweb {
   def main(args: Array[String]): Unit = {
     val (title, year) = ("Chłopiec na krańcach świata", Some(2026))
-    val repository  = new MongoMovieRepository(normalizer = titleNormalizer)
+    val repository  = AmbientMovieRepository.open()
     if (!repository.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val ratings = new FilmwebRatings(cache, new TmdbClient(new RealHttpFetch), new FilmwebClient(new RealHttpFetch))

@@ -5,10 +5,9 @@ import com.mongodb.client.model.{ReplaceOptions, UpdateOptions}
 import models.{MovieRecord, Showtime, Source, SourceData}
 import org.mongodb.scala.bson.BsonDateTime
 import org.mongodb.scala.model.{Aggregates, Filters, IndexOptions, Indexes, Projections, Sorts, Updates}
-import org.mongodb.scala.{Document, MongoClient, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import org.bson.conversions.Bson
 import play.api.Logging
-import tools.Env
 
 import java.time.Instant
 import scala.concurrent.Await
@@ -428,14 +427,10 @@ object MovieRepository {
  * `close()` — the class doesn't self-register.
  */
 class MongoMovieRepository(
-  sharedDb: Option[MongoDatabase] = None,
-  // Scripts pass `sharedDb = None` and expect us to connect from
-  // `MONGODB_URI` ourselves (default true). Wiring sets it to false:
-  // when `MongoConnection` is already attempted, an explicit `None`
-  // means it failed and re-running our own init would just hit the
-  // same DNS / TLS timeout twice. Saves ~15s of boot time on the
-  // offline / unreachable-cluster path.
-  fallbackToOwnInit: Boolean = true,
+  // The database, handed in by the composition root (a `MongoConnection`'s, whose
+  // client this class borrows and never closes). `None` (no Mongo configured, or the
+  // connection failed) leaves the store disabled. It never opens a client of its own.
+  sharedDb: Option[MongoDatabase],
   // Cursor page size for the keyset-paged corpus scan shared by `findAll` and
   // `foreachRecord` — the cap on how many rows any ONE cursor delivers before the
   // next `_id`-keyset page. Bounds the async driver's synchronous read-completion
@@ -578,21 +573,11 @@ class MongoMovieRepository(
     }
   }
 
-  // Lazy so subclasses that override every wire method (e.g.
-  // `InMemoryMovieRepository` in tests) never trigger a Mongo connection
-  // attempt — `new InMemoryMovieRepository()` was waiting 10 seconds per test
-  // for the parent's init() to time out against an unreachable cluster.
-  //
-  // `sharedDb` injection (the production path): Wiring's `MongoConnection`
-  // owns a single MongoClient and passes its `.database` here. We apply
-  // our own codec registry to that database (a view, not a clone — the
-  // underlying client is shared) and grab our collection from it. This
-  // class doesn't own the client and its `close()` is a no-op.
-  //
-  // `sharedDb = None` (legacy path used by ad-hoc scripts under
-  // test/scala/scripts/): we build our own MongoClient from `MONGODB_URI`
-  // and own its close().
-  private lazy val initResult: (Option[MongoClient], Option[MongoDatabase], Option[MongoCollection[StoredMovieDto]]) =
+  // Lazy so constructing the store touches no server: the index builds run on
+  // first use. We apply our own codec registry to the handed-in database (a
+  // view, not a clone — the underlying client is the `MongoConnection`'s) and
+  // grab our collection from it.
+  private lazy val initResult: (Option[MongoDatabase], Option[MongoCollection[StoredMovieDto]]) =
     sharedDb match {
       case Some(db) =>
         val withRegistry = db.withCodecRegistry(MovieCodecs.registry)
@@ -603,13 +588,11 @@ class MongoMovieRepository(
         val coll = withRegistry.getCollection[StoredMovieDto](MovieRepository.Collection)
           .withWriteConcern(WriteConcern.W1.withJournal(false))
         ensureIndexes(coll)
-        (None, Some(withRegistry), Some(coll))
-      case None if fallbackToOwnInit => init()
-      case None                      => (None, None, None)
+        (Some(withRegistry), Some(coll))
+      case None => (None, None)
     }
-  private def clientOpt: Option[MongoClient]                     = initResult._1
-  private def database:  Option[MongoDatabase]                   = initResult._2
-  private def coll:      Option[MongoCollection[StoredMovieDto]] = initResult._3
+  private def database: Option[MongoDatabase]                   = initResult._1
+  private def coll:     Option[MongoCollection[StoredMovieDto]] = initResult._2
 
   def enabled: Boolean = coll.isDefined
 
@@ -1230,10 +1213,7 @@ class MongoMovieRepository(
   override def changeStreamLiveness: ChangeStreamLiveness =
     changeStream.fold(super.changeStreamLiveness)(_.liveness)
 
-  def close(): Unit = {
-    changeStream.foreach(_.close())
-    clientOpt.foreach(_.close())
-  }
+  def close(): Unit = changeStream.foreach(_.close())
 
   /** The `key` index and its one-time backfill. Idempotent + best-effort: a re-create is
    *  a no-op, a failure only logs. (The `(title, year)` index that used to serve
@@ -1305,35 +1285,6 @@ class MongoMovieRepository(
   private def isDuplicateKey(exception: Throwable): Boolean =
     exception.isInstanceOf[com.mongodb.MongoWriteException] &&
       exception.asInstanceOf[com.mongodb.MongoWriteException].getError.getCategory == com.mongodb.ErrorCategory.DUPLICATE_KEY
-
-  private def init(): (Option[MongoClient], Option[MongoDatabase], Option[MongoCollection[StoredMovieDto]]) =
-    Env.get("MONGODB_URI") match {
-      case None =>
-        logger.info("MONGODB_URI not set — MongoMovieRepository disabled (in-memory cache only).")
-        (None, None, None)
-      case Some(uri) =>
-        Try {
-          val dbName  = models.Country.resolvedDbName
-          val client  = MongoClient(uri)
-          val db      = client.getDatabase(dbName).withCodecRegistry(MovieCodecs.registry)
-          // Relaxed write concern — see the sharedDb path above.
-          val coll    = db.getCollection[StoredMovieDto](MovieRepository.Collection)
-            .withWriteConcern(WriteConcern.W1.withJournal(false))
-          // Touch the collection to surface connectivity errors at startup,
-          // not on the first read after the app is "up".
-          Await.result(coll.countDocuments().toFuture(), 10.seconds)
-          ensureIndexes(coll)
-          logger.info(s"MongoMovieRepository connected to $dbName.movies")
-          (client, db, coll)
-        }.recover {
-          case exception: Throwable =>
-            logger.error(s"MongoMovieRepository init failed (${exception.getMessage}) — falling back to in-memory cache.")
-            null
-        }.toOption.filter(_ != null) match {
-          case Some((c, db, coll)) => (Some(c), Some(db), Some(coll))
-          case None                => (None, None, None)
-        }
-    }
 
 
 }

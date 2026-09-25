@@ -3,7 +3,7 @@ package scripts
 import clients.TmdbClient
 import models.MovieRecord
 import services.enrichment.{FilmwebClient, FilmwebRatings, ImdbClient, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
-import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieService, StoredMovieRecord}
+import services.movies.{CaffeineMovieCache, MovieService, StoredMovieRecord}
 import services.events.InProcessEventBus
 import tools.{DaemonExecutors, RealHttpFetch}
 
@@ -31,7 +31,7 @@ object EnrichmentBackfill {
   private case class Failed(title: String, year: Option[Int], before: MovieRecord) extends Outcome
 
   def main(args: Array[String]): Unit = {
-    val repository = new MongoMovieRepository(normalizer = titleNormalizer)
+    val repository = AmbientMovieRepository.open()
     if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to backfill.")
       sys.exit(1)

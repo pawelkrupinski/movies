@@ -140,7 +140,7 @@ object ReresolveSelfLockedRows {
     // concatenated string. Same trap as the unstitched read that wiped live screenings on
     // 2026-08-10; the fix is to wire them, as below.
     val repo: MovieRepository = new MongoMovieRepository(
-      sharedDb = Some(db), fallbackToOwnInit = false,
+      sharedDb = Some(db),
       screenings = Some(new MongoScreeningsRepository(Some(db))),
       slots      = Some(new MongoSlotsRepository(Some(db))),
       normalizer = titleNormalizer)

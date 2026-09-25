@@ -190,7 +190,7 @@ class StagingFoldConcurrentTmdbRaceIntegrationSpec extends AnyFlatSpec with Matc
       // (`stitchedCinemaTitles`) — after its snapshot, before its write: that is where the
       // winner gets to commit.
       @volatile var armed = true
-      val loserRepo = new services.movies.MongoMovieRepository(Some(fold.db), fallbackToOwnInit = false,
+      val loserRepo = new services.movies.MongoMovieRepository(Some(fold.db),
         normalizer = titleNormalizer, screenings = Some(fold.screenings), slots = Some(fold.slots)) {
         override def findByIdChecked(id: FilmId) = {
           if (armed) {

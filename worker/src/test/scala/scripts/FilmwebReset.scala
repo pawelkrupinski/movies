@@ -3,7 +3,7 @@ package scripts
 import clients.TmdbClient
 import services.enrichment.{FilmwebClient, FilmwebRatings}
 import services.events.InProcessEventBus
-import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieService, StoredMovieRecord}
+import services.movies.{CaffeineMovieCache, MovieService, StoredMovieRecord}
 import tools.{DaemonExecutors, RealHttpFetch}
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -36,7 +36,7 @@ object FilmwebReset {
   private case class  ReplacedDifferent(beforeUrl: String, afterUrl: String, rating: Option[Double]) extends Outcome
 
   def main(args: Array[String]): Unit = {
-    val repository = new MongoMovieRepository(normalizer = titleNormalizer)
+    val repository = AmbientMovieRepository.open()
     if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to reset.")
       sys.exit(1)

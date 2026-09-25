@@ -62,7 +62,7 @@ object FoldFixture {
     /** The repository as production wires it — split-aware, so a film written through it lands
      *  its cinemas in `movie_slots` and its showtimes in `screenings` rather than embedded. */
     def splitAwareRepository: MovieRepository =
-      new services.movies.MongoMovieRepository(Some(db), fallbackToOwnInit = false,
+      new services.movies.MongoMovieRepository(Some(db),
         normalizer = titleNormalizer, screenings = Some(screenings), slots = Some(slots))
 
     /** The folder as production wires it, or over a repository a spec supplies to inject a

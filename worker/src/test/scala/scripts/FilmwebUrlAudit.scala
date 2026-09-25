@@ -2,7 +2,7 @@ package scripts
 
 import clients.TmdbClient
 import services.enrichment.{FilmwebClient, FilmwebRatings}
-import services.movies.{CaffeineMovieCache, MongoMovieRepository, StoredMovieRecord}
+import services.movies.{CaffeineMovieCache, StoredMovieRecord}
 import tools.{DaemonExecutors, RealHttpFetch}
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -36,7 +36,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 object FilmwebUrlAudit {
 
   def main(args: Array[String]): Unit = {
-    val repository = new MongoMovieRepository(normalizer = titleNormalizer)
+    val repository = AmbientMovieRepository.open()
     if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to audit.")
       sys.exit(1)

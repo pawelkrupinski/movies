@@ -1,6 +1,6 @@
 package scripts
 
-import services.movies.{MongoMovieRepository, StoredMovieRecord}
+import services.movies.StoredMovieRecord
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -37,7 +37,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  */
 object DuplicateAudit {
   def main(args: Array[String]): Unit = {
-    val repository = new MongoMovieRepository(normalizer = titleNormalizer)
+    val repository = AmbientMovieRepository.open()
     if (!repository.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
 
     val rows: Seq[StoredMovieRecord] = repository.findAll()

@@ -36,7 +36,7 @@ object CountryForceResolve {
       println(s"Could not open $dbName — is the Mongo tunnel up (scripts/local-mirror/prod-tunnel.sh) and MONGODB_URI set?")
       sys.exit(1)
     }
-    val repo  = new MongoMovieRepository(sharedDb = Some(db), fallbackToOwnInit = false, normalizer = titleNormalizer)
+    val repo  = new MongoMovieRepository(sharedDb = Some(db), normalizer = titleNormalizer)
     val queue = new MongoTaskQueue(Some(db))
 
     val rows = repo.findAll()

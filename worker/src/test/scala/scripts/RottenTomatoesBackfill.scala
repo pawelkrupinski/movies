@@ -1,14 +1,13 @@
 package scripts
 
 import services.enrichment.RottenTomatoesClient
-import services.movies.{MongoMovieRepository, StoredMovieRecord}
+import services.movies.StoredMovieRecord
 import tools.{DaemonExecutors, RealHttpFetch}
 
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
 import scala.util.Try
-import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * RT URL + score revalidation: walk every row in Mongo and re-run
@@ -43,7 +42,7 @@ object RottenTomatoesBackfill {
   private case class  ScoreCleared (before: Int)                   extends Change
 
   def main(args: Array[String]): Unit = {
-    val repository = new MongoMovieRepository(normalizer = titleNormalizer)
+    val repository = AmbientMovieRepository.open()
     if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to backfill.")
       sys.exit(1)

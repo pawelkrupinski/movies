@@ -90,7 +90,7 @@ object BackfillReadModel {
    *  `BackfillReadModelStitchIntegrationSpec` drives this against a real Mongo. */
   def corpusReader(db: org.mongodb.scala.MongoDatabase): MovieRepository =
     new MongoMovieRepository(
-      Some(db), fallbackToOwnInit = false, normalizer = titleNormalizer,
+      Some(db), normalizer = titleNormalizer,
       screenings = Some(new MongoScreeningsRepository(Some(db))),
       slots      = Some(new MongoSlotsRepository(Some(db)))
     )

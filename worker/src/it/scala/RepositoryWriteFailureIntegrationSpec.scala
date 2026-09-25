@@ -53,7 +53,7 @@ class RepositoryWriteFailureIntegrationSpec extends AnyFlatSpec with Matchers wi
 
   private val screenings = new MongoScreeningsRepository(Some(db), writeMetrics = Recording)
   private val slots      = new MongoSlotsRepository(Some(db), writeMetrics = Recording)
-  private val repository = new MongoMovieRepository(Some(db), fallbackToOwnInit = false, normalizer = titleNormalizer,
+  private val repository = new MongoMovieRepository(Some(db), normalizer = titleNormalizer,
     screenings = Some(screenings), slots = Some(slots), writeMetrics = Recording)
 
   override protected def afterAll(): Unit = {

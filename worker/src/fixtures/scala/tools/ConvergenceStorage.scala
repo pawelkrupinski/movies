@@ -138,10 +138,6 @@ object ConvergenceStorage {
       uri = Some(uri), dbName = name, required = true,
       serverSelectionTimeout = Some(ConvergenceStorage.LocalServerSelectionTimeout))
 
-    // `fallbackToOwnInit = false`: the database is handed in, so a `None` here would
-    // mean the caller's connection failed, and re-running the repository's own init
-    // would just hit the same timeout twice.
-    //
     // Wired with `screenings`/`slots` exactly as `WorkerWiring` does, so a leg exercises
     // production's STORAGE SHAPE and not merely its logic: showtimes in `screenings`, the
     // per-cinema `SourceData` in `movie_slots`, and `movies` carrying neither. Without it
@@ -160,7 +156,7 @@ object ConvergenceStorage {
     // (`installRules(forCountry(country))`) before touching these lazy vals. A
     // Poland-default here keyed the German and UK corpora through Polish rules —
     // `minionsimonster` all over again, and the convergence legs caught it.
-    override lazy val movies     = new MongoMovieRepository(shared, fallbackToOwnInit = false, normalizer = normalizer,
+    override lazy val movies     = new MongoMovieRepository(shared, normalizer = normalizer,
       screenings = Some(screenings), slots = Some(slots))
     override lazy val screenings = new MongoScreeningsRepository(shared)
     override lazy val slots      = new MongoSlotsRepository(shared)
