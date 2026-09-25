@@ -98,7 +98,8 @@ function set(k, v) { try { localStorage.setItem(k, v); } catch (e) { } }
 function daysBetween(from, to) {
 return Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000);
 }
-function hide() {
+function hide(instantly) {
+if (instantly) banner.style.transition = 'none';
 banner.classList.remove('visible');
 document.body.classList.remove('has-app-banner');
 }
@@ -138,7 +139,7 @@ if (!forced && 'getInstalledRelatedApps' in navigator) {
 navigator.getInstalledRelatedApps().then(function (apps) {
 if (apps.some(function (a) { return a.platform === 'play' && a.id === 'net.pawel.kinowo'; })) {
 console.log('[app-banner] suppressed: app already installed');
-hide();
+hide(true);
 }
 }, function () { });
 }

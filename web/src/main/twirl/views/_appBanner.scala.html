@@ -22,7 +22,8 @@
 
    The one asynchronous check, Android Chrome's `getInstalledRelatedApps()`
    ("is the Play app already installed?", no iOS/Safari equivalent), can
-   therefore only HIDE a banner that is already up. That hide is a shift too,
+   therefore only HIDE a banner that is already up — at once, not with the
+   ✕'s fade, since it usually resolves before the first paint. That hide is a shift too,
    but only for an Android Chrome visitor who has the app installed, and it
    resolves within the first moments of the load — deferring the banner for
    every Android visitor instead would bring the shift back for the common
@@ -73,7 +74,13 @@
   function daysBetween(from, to) {
     return Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000);
   }
-  function hide() {
+  // The ✕ fades the banner out (the .25s `visibility` transition in
+  // `_appBannerStyles`); `instantly` drops it with no transition, for a
+  // banner hidden before anyone has seen it — nothing to fade out of, and
+  // WebKit holds a transitioned `visibility` at `visible` until a rendered
+  // frame starts the transition.
+  function hide(instantly) {
+    if (instantly) banner.style.transition = 'none';
     banner.classList.remove('visible');
     document.body.classList.remove('has-app-banner');
   }
@@ -126,7 +133,7 @@
     navigator.getInstalledRelatedApps().then(function (apps) {
       if (apps.some(function (a) { return a.platform === 'play' && a.id === 'net.pawel.kinowo'; })) {
         console.log('[app-banner] suppressed: app already installed');
-        hide();
+        hide(true);
       }
     }, function () { /* a detection error must never hide the nudge */ });
   }

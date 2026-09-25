@@ -168,6 +168,37 @@ test.describe('app banner', () => {
     await expect(banner(page)).toBeHidden();
   });
 
+  // Regression: the installed-app hide used to fade `visibility` out over the
+  // same .25s as the ✕. Since the banner is decided before the first paint,
+  // that check resolves before any frame has been drawn, and WebKit holds a
+  // transitioned `visibility` at its start value, `visible`, until a rendered
+  // frame starts the transition — on a starved CI runner longer than the
+  // test above's whole expect (webkit-iphone-se, run 36190922466: `class=""`,
+  // yet "visible" for 5s). A banner nobody has seen yet has nothing to fade
+  // out of. Reading the style the instant `.visible` is removed — in a
+  // MutationObserver callback, which no frame can precede — pins it on every
+  // engine, fast runner or not.
+  test('an installed-app suppression hides it at once, without waiting for a rendered frame', async ({ page }) => {
+    await page.addInitScript(() => {
+      (navigator as unknown as { getInstalledRelatedApps: () => Promise<Array<{ platform: string; id: string }>> })
+        .getInstalledRelatedApps = async () => [{ platform: 'play', id: 'net.pawel.kinowo' }];
+      new MutationObserver((records, observer) => {
+        for (const r of records) {
+          const el = r.target as HTMLElement;
+          if (el.id === 'app-banner' && (r.oldValue ?? '').includes('visible') && !el.classList.contains('visible')) {
+            (window as unknown as { bannerVisibilityOnHide: string }).bannerVisibilityOnHide =
+              getComputedStyle(el).visibility;
+            observer.disconnect();
+          }
+        }
+      }).observe(document, { subtree: true, attributes: true, attributeOldValue: true, attributeFilter: ['class'] });
+    });
+    await page.evaluate(() => localStorage.clear());
+    await reload(page);
+    await expect.poll(() => page.evaluate(() =>
+      (window as unknown as { bannerVisibilityOnHide?: string }).bannerVisibilityOnHide)).toBe('hidden');
+  });
+
   test('shows normally when the installed-apps check reports no match', async ({ page }) => {
     await page.addInitScript(() => {
       (navigator as unknown as { getInstalledRelatedApps: () => Promise<Array<{ platform: string; id: string }>> })
