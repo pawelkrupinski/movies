@@ -58,7 +58,10 @@ object ListingLanding {
     def wouldAddASecondFilm(record: MovieRecord): Boolean =
       MixedFilmDetector.wouldAddASecondFilm(record, listing.originalTitle, listing.runtimeMinutes,
         listing.releaseYear, listing.director, normalizer)
-    def notASecondFilm(k: CacheKey): Boolean = recordOf(k).forall(r => !wouldAddASecondFilm(r))
+    // A row matched by the SHAPE of its title (a decoration, a shared search key) is also
+    // refused when the listing's own crew and runtime deny its film — see `listingDeniesFilm`.
+    def notASecondFilm(k: CacheKey): Boolean = recordOf(k).forall(r => !wouldAddASecondFilm(r) &&
+      !MixedFilmDetector.listingDeniesFilm(r, listing.runtimeMinutes, listing.releaseYear, listing.director, normalizer))
     // A one-word film title runs along the edge of many unrelated titles ("It" → "It
     // Ends With Us", "Her" → "Her Story"), and the veto is structurally blind there:
     // it compares the words of four letters and more, of which such a title has none.

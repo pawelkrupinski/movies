@@ -317,6 +317,23 @@ object MixedFilmDetector {
       !creditSamePerson(slot.director, film.director, normalizer)
   }
 
+  /** Does a LISTING's own published crew and runtime deny the film `record` resolved to? A
+   *  director the film does not credit AND a runtime that does not agree with the film's (or a year
+   *  beyond `YearWindow.SlotYearImplausibility`). The veto for a listing that matches a known
+   *  film only by the SHAPE of its title — "It Ends with Us" (130 min, Justin Baldoni) runs
+   *  along "It Ends" (89 min, Alexander Ullom) — which `wouldAddASecondFilm` cannot give, since
+   *  it needs an original title and most listings publish none. Silent when the listing names
+   *  no director: a title-only listing is exactly what decoration landing is for. Refusing
+   *  costs little when wrong — the listing incubates, resolves on its own, and a shared tmdbId
+   *  folds it onto the film anyway. */
+  def listingDeniesFilm(record: MovieRecord, runtime: Option[Int], year: Option[Int], director: Seq[String],
+                        normalizer: TitleNormalizer): Boolean =
+    record.data.get(models.Tmdb).exists { film =>
+      director.nonEmpty && film.director.nonEmpty && !creditSamePerson(director, film.director, normalizer) &&
+        ((runtime.exists(_ > 0) && film.runtimeMinutes.exists(_ > 0) && !runtimesAgree(runtime.toSeq, film.runtimeMinutes.toSeq)) ||
+          YearWindow.contradicts(year, film.releaseYear, YearWindow.SlotYearImplausibility))
+    }
+
   /** [[sameDirector]] over raw published names — the veto, for a caller weighing its
    *  own runtime or year evidence (the fold's rule 4, `FilmCanonicalizer`). */
   def creditSamePerson(a: Iterable[String], b: Iterable[String], normalizer: TitleNormalizer): Boolean =
