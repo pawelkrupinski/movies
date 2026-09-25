@@ -508,6 +508,18 @@ private[movies] final class ScrapeLanding(
      *  title the venue lists once, else only when it records `cm`'s year and credits no
      *  director apart from `cm`'s — `ScrapeListing` keeps the films apart by exactly those,
      *  the year filled from the title's bracket where the venue gave none. */
+    /** May `cm` land on the row at `key`? Always, for a title the venue lists once. For a title
+     *  it lists as SEVERAL films, not on a row whose film this listing's own credit or year
+     *  denies — the venue has just said the title names two films, so a credit that is not the
+     *  row's film's is decisive here, where alone it would not be (a pseudonym, a co-director).
+     *  Marion Theatre Ocala, US 2026-09-25: Schaffner's undated "Planet of the Apes" (112 min)
+     *  landed on Burton's 2001 row — the only resolved row of that title — and the two listings
+     *  took turns rewriting its slot on every identical tick. */
+    def admits(cm: CinemaMovie, norm: String)(key: CacheKey): Boolean =
+      !multiFilmTitles.contains(norm) || store.get(key).flatMap(_.data.get(models.Tmdb)).forall { film =>
+        ListingConstraints.venueCreditsApart(cm.director, film.director, normalizer).isEmpty &&
+          !YearWindow.contradicts(ScrapeListing.yearOf(cm), film.releaseYear, YearWindow.ProductionToRelease)
+      }
     def ownCopy(cm: CinemaMovie, norm: String)(sd: SourceData): Boolean =
       !multiFilmTitles.contains(norm) || (
         ScrapeListing.yearOf(sd) == ScrapeListing.yearOf(cm) &&
@@ -590,8 +602,8 @@ private[movies] final class ScrapeLanding(
           // year)` a pure function of the reported variants. A scrape of an
           // already-concluded film lands straight on the resolved row; falls back
           // to the unique-match redirect for not-yet-concluded films.
-          val key = concludedKeyFor(primary, cm.movie.runtimeMinutes.filter(_ > 0), cinema).getOrElse {
-            redirectToExistingVariant(primary) match {
+          val key = concludedKeyFor(primary, cm.movie.runtimeMinutes.filter(_ > 0), cinema, admits(cm, norm)).getOrElse {
+            redirectToExistingVariant(primary).filter(admits(cm, norm)) match {
               case Some(existingKey) =>
                 // A RESOLVED row's key is authoritative — TMDB's title + year,
                 // settled when the film concluded — so never re-key it onto a
@@ -884,7 +896,8 @@ private[movies] final class ScrapeLanding(
   private def concludedKeyFor(
     primary:        CacheKey,
     listingRuntime: Option[Int],
-    cinema:         Cinema
+    cinema:         Cinema,
+    admits:         CacheKey => Boolean
   ): Option[CacheKey] = {
     val norm = primary.normalized
     // A scrape lands on a concluded row when its title matches that row's key, OR
@@ -926,11 +939,11 @@ private[movies] final class ScrapeLanding(
     // first in the FilmCanonicalizer.canonicalRank tie-break ("De" < "Dz"), splitting the Polish
     // film across two ever-growing rows the sanitize-keyed canonicalize can't
     // re-merge. So resolve key-matches first, alias-only matches only as fallback.
-    val keyMatches = corpusIndex.entriesFor(norm).collect { case (k, e) if e.tmdbConcluded => k }
+    val keyMatches = corpusIndex.entriesFor(norm).collect { case (k, e) if e.tmdbConcluded && admits(k) => k }
     // `keysForAlias` is already gated on concluded-AND-bare (the index's own predicate),
     // so the only arm left to apply is the partition's: a key that matches by its own
     // normalised form belongs to `keyMatches`, never here.
-    val aliasOnly  = corpusIndex.keysForAlias(norm).filterNot(_.normalized == norm).toSeq
+    val aliasOnly  = corpusIndex.keysForAlias(norm).filterNot(_.normalized == norm).filter(admits).toSeq
     // Nearest year first, out to `YearWindow.ProductionToRelease` — the settle's own
     // window (`FilmCanonicalizer.clusterByFilm` rule 2), read from the same place so
     // the two cannot drift: a venue reporting the PRODUCTION year two years before

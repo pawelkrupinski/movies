@@ -29,6 +29,44 @@ class SameTitleTwoFilmsOneVenueSpec extends AnyFlatSpec with Matchers {
 
   it should "split a slot an earlier tick merged, on the next scrape" in run(heal = true)
 
+  // Marion Theatre Ocala, US corpus 2026-09-25 (recording 36196248365): "Planet of the Apes"
+  // (Schaffner, 112 min, no year) beside "Planet of the Apes (2001)" (Burton, 119 min), and
+  // only Burton's film resolved in the corpus. The listing tells them apart by director, but
+  // Schaffner's landed on Burton's row — the only resolved row of that title — and the two
+  // took turns rewriting its slot: two writes on every identical tick of the US full leg.
+  "a venue listing two films under one title, one of them undated" should "stay put on a rescrape" in {
+    val us      = TitleNormalizer.forCountry(Country.UnitedStates)
+    val marion  = Cinema.byDisplayName("Marion Theatre Ocala")
+    val at      = LocalDateTime.of(2026, 9, 26, 14, 0)
+    val repository = new InMemoryMovieRepository(normalizer = us)
+    val cache      = new CaffeineMovieCache(repository, normalizer = us,
+      clock = java.time.Clock.fixed(java.time.Instant.parse("2026-09-25T12:00:00Z"), java.time.ZoneOffset.UTC))
+    def film(tmdbId: Int, year: Int, runtime: Int, director: String) = MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
+      Tmdb -> SourceData(title = Some("Planet of the Apes"), releaseYear = Some(year), runtimeMinutes = Some(runtime), director = Seq(director))))
+    cache.put(CacheKey("Planet of the Apes", Some(2001), us), film(869, 2001, 119, "Tim Burton"))
+    def listing(title: String, runtime: Int, director: String, cast: Seq[String]) =
+      CinemaMovie(Movie(title, runtimeMinutes = Some(runtime)), marion, None, None, None, cast, Seq(director), Seq(Showtime(at, None)))
+    val board = Seq(
+      listing("Planet of the Apes", 112, "Franklin J. Schaffner", Seq("Charlton Heston", "Roddy McDowall")),
+      listing("Planet of the Apes (2001)", 119, "Tim Burton", Seq("Mark Wahlberg", "Tim Roth")))
+    cache.recordCinemaScrape(marion, board)
+    cache.recordCinemaScrape(marion, board)
+
+    def directorsAt(year: Int) = repository.findAll().filter(_.year.contains(year)).flatMap(_.record.cinemaSlots)
+      .filter { case (s, _) => Source.cinemaOf(s).contains(marion) }.flatMap(_._2.director).toSet
+    // Burton's row carries Burton's listing only; Schaffner's lands on a row of its own.
+    directorsAt(2001) shouldBe Set("Tim Burton")
+    repository.findAll().filterNot(_.record.tmdbId.contains(869)).flatMap(_.record.cinemaSlots)
+      .flatMap(_._2.director).toSet shouldBe Set("Franklin J. Schaffner")
+
+    val settled = repository.findAll().sortBy(_.id.value)
+    val writes  = new java.util.concurrent.atomic.AtomicInteger
+    repository.watchChanges(_ => { writes.incrementAndGet(); () }, _ => { writes.incrementAndGet(); () })
+    cache.recordCinemaScrape(marion, board)
+    repository.findAll().sortBy(_.id.value) shouldBe settled
+    writes.get shouldBe 0
+  }
+
   private def run(heal: Boolean) = {
     val repository = new InMemoryMovieRepository(normalizer = normalizer)
     val cache      = new CaffeineMovieCache(repository, normalizer = normalizer,
@@ -98,7 +136,6 @@ class SameTitleTwoFilmsOneVenueSpec extends AnyFlatSpec with Matchers {
       clock = java.time.Clock.fixed(java.time.Instant.parse("2026-09-25T12:00:00Z"), java.time.ZoneOffset.UTC))
     def film(tmdbId: Int, year: Int, runtime: Int, director: String) = MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
       Tmdb -> SourceData(title = Some("Planet of the Apes"), releaseYear = Some(year), runtimeMinutes = Some(runtime), director = Seq(director))))
-    cache.put(CacheKey("Planet of the Apes", Some(1968), us), film(871, 1968, 112, "Franklin J. Schaffner"))
     cache.put(CacheKey("Planet of the Apes", Some(2001), us), film(869, 2001, 119, "Tim Burton"))
     def listing(title: String, runtime: Int, director: String, at: LocalDateTime) =
       CinemaMovie(Movie(title, runtimeMinutes = Some(runtime)), marion, None,
