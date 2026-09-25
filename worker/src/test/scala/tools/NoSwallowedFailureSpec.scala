@@ -3,9 +3,8 @@ package tools
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path, Paths}
-import scala.jdk.CollectionConverters._
+import ScalaSourceScan.{MainRoots, read, scalaFiles}
+
 import scala.util.matching.Regex
 
 /**
@@ -36,8 +35,6 @@ import scala.util.matching.Regex
  * (as `TaskQueue.waitingCount` and `EnqueueResult.Failed` now do).
  */
 class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
-
-  private val MainRoots = Seq("common/src/main", "web/src/main", "worker/src/main")
 
   // A type argument may nest one level (`Map.empty[String, Seq[Int]]`).
   private val TypeArgs = """(?:\[(?:[^\[\]]|\[[^\]]*\])*\])?"""
@@ -243,11 +240,6 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
       "a timed-out fetch is recorded in `timedOut`, which the caller reports and meters; None only drops it from the results"
   )
 
-  private def scalaFiles(roots: Seq[String]): Seq[Path] =
-    roots.map(Paths.get(_)).filter(Files.isDirectory(_)).flatMap { root =>
-      Files.walk(root).iterator.asScala.filter(_.toString.endsWith(".scala")).toSeq
-    }.sortBy(_.toString)
-
   /** The source with every comment blanked to spaces (newlines kept, so offsets and line
    *  numbers survive) — a Scaladoc quoting the bad shape must not trip the lint. */
   private def withoutComments(src: String): String = {
@@ -387,7 +379,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
   }
 
   private lazy val found: Seq[Site] = scalaFiles(MainRoots).flatMap { p =>
-    swallows(p.toString, new String(Files.readAllBytes(p), StandardCharsets.UTF_8))
+    swallows(p.toString, read(p))
   }
 
   "Main sources" should "not answer a failed fetch, read or decode with an empty value, outside the allowlist" in {

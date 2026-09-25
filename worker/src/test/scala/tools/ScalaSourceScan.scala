@@ -5,7 +5,7 @@ import java.nio.file.{Files, Path, Paths}
 import scala.jdk.CollectionConverters._
 
 /** Text-level helpers for the source lints (`NoWallClockInTestsSpec`,
- *  `NoPolandDefaultCountrySpec`): they read the repository's own `.scala` files from the
+ *  `NoPolandDefaultCountrySpec`, `NoSwallowedFailureSpec`): they read the repository's own `.scala` files from the
  *  build root (these specs run unforked, so the working directory is the repo root). */
 object ScalaSourceScan {
 
