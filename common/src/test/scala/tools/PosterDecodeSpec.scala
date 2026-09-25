@@ -37,20 +37,30 @@ class PosterDecodeSpec extends AnyFlatSpec with Matchers {
   "decoding" should "be bounded across every concurrent caller" in {
     val gate = new PosterDecodeGate(permits = 2)
     val payload = file(CountingReader.Magic)
-    CountingReader.reset()
-    val registry = IIORegistry.getDefaultInstance
-    registry.registerServiceProvider(CountingReader.Spi)
-    val pool = Executors.newFixedThreadPool(8)
-    try {
-      implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(pool)
-      val decodes = (1 to 8).map(_ => Future(gate.withPermit(PosterDecode.fromFile(payload))))
-      Await.result(Future.sequence(decodes), 30.seconds).flatten should have size 8
-    } finally {
-      pool.shutdown(); pool.awaitTermination(10, TimeUnit.SECONDS)
-      registry.deregisterServiceProvider(CountingReader.Spi)
+    val counted = CountingReader.registered { reader =>
+      val pool = Executors.newFixedThreadPool(8)
+      try {
+        implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(pool)
+        val decodes = (1 to 8).map(_ => Future(gate.withPermit(PosterDecode.fromFile(payload))))
+        Await.result(Future.sequence(decodes), 30.seconds).flatten should have size 8
+      } finally { pool.shutdown(); pool.awaitTermination(10, TimeUnit.SECONDS) }
+      reader
     }
-    CountingReader.reads.get() shouldBe 8
-    CountingReader.peak.get() should be <= 2
+    counted.reads.get() shouldBe 8
+    counted.peak.get() should be <= 2
+  }
+
+  // The counter was once an object shared by every test and zeroed by hand, so a test that forgot
+  // the reset read another's decodes. Each is now its test's own, registered only while it runs.
+  "a counting reader" should "count only its own test's decodes, and leave ImageIO when the test ends" in {
+    val payload = file(CountingReader.Magic)
+    val first = CountingReader.registered { reader => PosterDecode.fromFile(payload) shouldBe defined; reader }
+    PosterDecode.fromFile(payload) shouldBe None
+    CountingReader.registered { second =>
+      PosterDecode.fromFile(payload) shouldBe defined
+      second.reads.get() shouldBe 1
+    }
+    first.reads.get() shouldBe 1
   }
 
   // A 2000×3000 poster decoded whole is a 6 MP raster (18-24 MB of heap) for a slot 420×630 pixels
@@ -77,17 +87,37 @@ class PosterDecodeSpec extends AnyFlatSpec with Matchers {
 
 /** A test-only ImageIO reader for a made-up format (payload `CNTR…`) that records how many reads
  *  run at once. Registering it with ImageIO's own registry puts the counter at the exact point a
- *  decode hands the stream to a decoder. */
-private object CountingReader {
-  val Magic: Array[Byte] = "CNTR-poster".getBytes("US-ASCII")
+ *  decode hands the stream to a decoder. One per test, via [[CountingReader.registered]]: the
+ *  registry is JVM-wide, so the SPI is registered only for the test's body. */
+private final class CountingReader {
   val reads    = new AtomicInteger(0)
   val peak     = new AtomicInteger(0)
   private val inFlight = new AtomicInteger(0)
-  def reset(): Unit = { reads.set(0); peak.set(0); inFlight.set(0) }
+  val spi: ImageReaderSpi = new CountingReader.Spi(this)
 
-  object Spi extends ImageReaderSpi("kinowo-test", "1", Array("cntr"), Array("cntr"), Array("image/x-cntr"),
-                                    classOf[Reader].getName, Array(classOf[ImageInputStream]), null,
-                                    false, null, null, null, null, false, null, null, null, null) {
+  private[tools] def counting[A](body: => A): A = {
+    reads.incrementAndGet()
+    val now = inFlight.incrementAndGet()
+    peak.updateAndGet(prev => math.max(prev, now))
+    try body finally inFlight.decrementAndGet()
+  }
+}
+
+private object CountingReader {
+  val Magic: Array[Byte] = "CNTR-poster".getBytes("US-ASCII")
+
+  /** Runs `body` with a fresh reader registered in ImageIO, deregistering it afterwards. */
+  def registered[A](body: CountingReader => A): A = {
+    val reader   = new CountingReader
+    val registry = IIORegistry.getDefaultInstance
+    registry.registerServiceProvider(reader.spi)
+    try body(reader) finally registry.deregisterServiceProvider(reader.spi)
+  }
+
+  final class Spi(counter: CountingReader)
+      extends ImageReaderSpi("kinowo-test", "1", Array("cntr"), Array("cntr"), Array("image/x-cntr"),
+                             classOf[Reader].getName, Array(classOf[ImageInputStream]), null,
+                             false, null, null, null, null, false, null, null, null, null) {
     def canDecodeInput(source: AnyRef): Boolean = source match {
       case in: ImageInputStream =>
         val head = new Array[Byte](4)
@@ -97,11 +127,11 @@ private object CountingReader {
         finally in.reset()
       case _ => false
     }
-    def createReaderInstance(extension: AnyRef): ImageReader = new Reader(this)
+    def createReaderInstance(extension: AnyRef): ImageReader = new Reader(this, counter)
     def getDescription(locale: Locale): String = "concurrency-counting test reader"
   }
 
-  class Reader(spi: ImageReaderSpi) extends ImageReader(spi) {
+  final class Reader(spi: ImageReaderSpi, counter: CountingReader) extends ImageReader(spi) {
     def getNumImages(allowSearch: Boolean): Int = 1
     def getWidth(imageIndex: Int): Int = 40
     def getHeight(imageIndex: Int): Int = 60
@@ -109,12 +139,7 @@ private object CountingReader {
       java.util.List.of(ImageTypeSpecifier.createFromBufferedImageType(BufferedImage.TYPE_INT_RGB)).iterator()
     def getStreamMetadata: javax.imageio.metadata.IIOMetadata = null
     def getImageMetadata(imageIndex: Int): javax.imageio.metadata.IIOMetadata = null
-    def read(imageIndex: Int, param: ImageReadParam): BufferedImage = {
-      reads.incrementAndGet()
-      val now = inFlight.incrementAndGet()
-      peak.updateAndGet(prev => math.max(prev, now))
-      try { Thread.sleep(100); new BufferedImage(40, 60, BufferedImage.TYPE_INT_RGB) }
-      finally inFlight.decrementAndGet()
-    }
+    def read(imageIndex: Int, param: ImageReadParam): BufferedImage =
+      counter.counting { Thread.sleep(100); new BufferedImage(40, 60, BufferedImage.TYPE_INT_RGB) }
   }
 }
