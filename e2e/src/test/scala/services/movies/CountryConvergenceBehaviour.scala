@@ -1375,7 +1375,6 @@ abstract class CountryConvergenceBehaviour(
    *  wrong film, one film's copy of a shared start time dropped, a showtime served twice). */
   s"the ${country.displayName} read model" should
     "serve every archived listing under the one film that holds it, and nothing else" in {
-    TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
     {
       val (w, _, archive) = shared
       val stored     = archive.findAll()
@@ -1415,7 +1414,6 @@ abstract class CountryConvergenceBehaviour(
    */
   s"the ${country.displayName} pipeline" should
     "take the next day's listings — films leave, films gain venues, a failed venue keeps its own — and move nothing else" in {
-    TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
     {
       val (w, _, _) = shared
       val normalizer = w.movieCache.normalizer
