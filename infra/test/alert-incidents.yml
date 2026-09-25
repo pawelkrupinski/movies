@@ -121,3 +121,28 @@ incidents:
     end: 2026-09-24T17:15:00Z
     grace: 0m
     expect_firing: [ProbeBlockedByEdge]
+
+  - id: readmodel-heals-in-flight-2026-09-24
+    description: >-
+      Every sweep heal in this window (US x3, UK x1) was a scrape landing a new venue or row within
+      five seconds of the prune sweep's start: its change-stream event waited behind the sweep's
+      lock, so the heal wrote what the stream was about to, and ReadModelHealsRecurring paged twice
+      for the US on a stream that was fine. Fixed by 845a335c4 (a heal counts only if the stream
+      does not apply the row itself); the window ends at the last such heal, and the default grace
+      covers the rule's one-hour increase window after it.
+    source: worker WARN "projected N ready row(s) missing a card" (prune sweep) 2026-09-24 21:08Z .. 09-25 02:37Z; ALERTS{alertname="ReadModelHealsRecurring",country="us"} firing 23:16-00:06Z and 01:16-02:06Z; commit 845a335c4
+    start: 2026-09-24T21:00:00Z
+    end: 2026-09-25T02:40:00Z
+    expect_firing: [ReadModelHealsRecurring]
+
+  - id: readmodel-poster-derivation-stale-2026-09-24
+    description: >-
+      The 2026-09-24 poster-selection deploy changed what ReadModelProjection derives from an
+      unchanged row, so stored cards kept the old poster until the rolling content check reached
+      their slice, and ReadModelContentMismatch held for PL until KINOWO_READMODEL_CONTENT_SLICES=1
+      was set by hand. Fixed by d24022bfb (a whole-corpus re-projection once per derivation change).
+    source: ALERTS{alertname="ReadModelContentMismatch",country="pl"} firing 19:06-21:21Z; commit d24022bfb
+    start: 2026-09-24T18:45:00Z
+    end: 2026-09-24T21:25:00Z
+    grace: 0m
+    expect_firing: [ReadModelContentMismatch]
