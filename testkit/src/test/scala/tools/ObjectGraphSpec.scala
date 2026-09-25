@@ -43,4 +43,10 @@ class ObjectGraphSpec extends AnyFlatSpec with Matchers {
     failed.head._2.getMessage shouldBe "no network here"
     ObjectGraph.collect(root) { case t: Target => t }.map(_._1) shouldBe Seq("Lazy.unread$lzy1.target")
   }
+
+  "the walker" should "keep no state of its own between walks" in {
+    ObjectGraph.collect(new Holder(new Target)) { case t: Target => t } should have size 1
+    ObjectGraph.getClass.getDeclaredFields.toSeq
+      .filter(f => classOf[scala.collection.mutable.Iterable[?]].isAssignableFrom(f.getType)).map(_.getName) shouldBe empty
+  }
 }

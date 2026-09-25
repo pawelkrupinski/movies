@@ -37,6 +37,9 @@ object ObjectGraph {
     // invisible to the walk however close to the root it really was. It also reports the
     // shortest path to each value, which is the one a reader can follow.
     val queue = mutable.Queue[(AnyRef, String, Int)]((root, root.getClass.getSimpleName, 0))
+    // Each class's reflectable fields, memoised for THIS walk only: the object keeps nothing
+    // between walks, so two specs walking at once share no state.
+    val fieldsOf = mutable.Map.empty[Class[?], Seq[java.lang.reflect.Field]]
 
     def push(value: Any, path: String, depth: Int): Unit = value match {
       case ref: AnyRef if ref != null && depth <= MaxDepth && !seen.contains(ref) => queue.enqueue((ref, path, depth))
@@ -56,7 +59,7 @@ object ObjectGraph {
             Try(m.entrySet.forEach(e => { push(e.getKey, s"$path.key", depth + 1); push(e.getValue, s"$path[${e.getKey}]", depth + 1) }))
           case c: java.util.Collection[?] => Try(c.forEach(e => push(e, s"$path[]", depth + 1)))
           case _ if !isLibrary(obj.getClass) =>
-            fields(obj.getClass).foreach { f =>
+            fieldsOf.getOrElseUpdate(obj.getClass, fields(obj.getClass)).foreach { f =>
               Try(f.get(obj)).foreach(v => push(v, s"$path.${f.getName}", depth + 1))
             }
           case _ =>
@@ -97,14 +100,10 @@ object ObjectGraph {
     c.isPrimitive || LibraryPrefixes.exists(name.startsWith)
   }
 
-  private val fieldCache = mutable.Map.empty[Class[?], Seq[java.lang.reflect.Field]]
-
-  private def fields(c: Class[?]): Seq[java.lang.reflect.Field] = fieldCache.synchronized {
-    fieldCache.getOrElseUpdate(c,
-      Iterator.iterate[Class[?]](c)(_.getSuperclass).takeWhile(k => k != null && !isLibrary(k))
-        .flatMap(_.getDeclaredFields.iterator)
-        .filterNot(f => Modifier.isStatic(f.getModifiers) || f.getType.isPrimitive)
-        .filter(f => Try(f.setAccessible(true)).isSuccess)
-        .toSeq)
-  }
+  private def fields(c: Class[?]): Seq[java.lang.reflect.Field] =
+    Iterator.iterate[Class[?]](c)(_.getSuperclass).takeWhile(k => k != null && !isLibrary(k))
+      .flatMap(_.getDeclaredFields.iterator)
+      .filterNot(f => Modifier.isStatic(f.getModifiers) || f.getType.isPrimitive)
+      .filter(f => Try(f.setAccessible(true)).isSuccess)
+      .toSeq
 }
