@@ -64,6 +64,22 @@ class ProdCoverageBaselineSpec extends AnyFlatSpec with Matchers {
     ProdCoverageBaseline.divergences(run, prod, Band).mkString should include ("rottenTomatoes")
   }
 
+  // The SAMPLE shape: every rating axis is a few dozen films, so a flat 15-film floor let
+  // a source that stopped answering for a third of them through. Poland's sample, measured.
+  it should "flag a rating source that lost a third of a sample's films, though under 15 films apart" in {
+    val prod = coverage(films = 94, tmdb = 73, metascore = 28)
+    val run  = coverage(films = 94, tmdb = 68, metascore = 17)      // 25% vs 38% of the identified
+
+    ProdCoverageBaseline.divergences(run, prod, Band).mkString should include ("metascore")
+  }
+
+  it should "keep the whole films floor on the films axis, and scale the others to production's count" in {
+    ProdCoverageBaseline.noiseFloor("films", 94) shouldBe ProdCoverageBaseline.NoiseFloorFilms
+    ProdCoverageBaseline.noiseFloor("metascore", 28) shouldBe 3
+    ProdCoverageBaseline.noiseFloor("tmdbId", 90) shouldBe 9
+    ProdCoverageBaseline.noiseFloor("imdbRating", 1367) shouldBe ProdCoverageBaseline.NoiseFloorFilms
+  }
+
   /**
    * Upward drift is a real failure, not an improvement to be waved through. The
    * harness's rating sweep drove Filmweb for every country while production gates it

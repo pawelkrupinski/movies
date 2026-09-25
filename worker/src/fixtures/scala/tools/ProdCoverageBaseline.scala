@@ -115,6 +115,22 @@ object ProdCoverageBaseline {
   val NoiseFloorFilms = 15
 
   /**
+   * The floor for ONE axis. `films` keeps the whole [[NoiseFloorFilms]]: capture skew is a
+   * count of films, and it lands on that axis whole. A downstream axis only inherits its
+   * share of the skew, so it gets a tenth of production's own count (never under 3, never
+   * over the films floor).
+   *
+   * A flat 15 made the band toothless on the ~100-film samples, where every rating axis is
+   * 25-70 films: Poland's sample scores 26 metascores against production's 28, so a source
+   * that stopped answering for a third of its films (26 → 17) sat 35% off the band and still
+   * passed, being only 11 films apart. The widest skew any downstream axis has shown on a
+   * green leg is 5 films on 90 (United Kingdom sample, tmdbId, 2026-09-24), inside a tenth.
+   */
+  def noiseFloor(axis: String, prodCount: Int): Int =
+    if (axis == "films") NoiseFloorFilms
+    else math.min(NoiseFloorFilms, math.max(3, math.ceil(prodCount * 0.1).toInt))
+
+  /**
    * Each axis as `(name, run share, prod share, run count, prod count)`.
    *
    * ONE definition of what every axis is measured against, so the band and the report
@@ -157,8 +173,8 @@ object ProdCoverageBaseline {
       val off   = if (b == 0.0) (if (a == 0.0) 0.0 else Double.PositiveInfinity) else math.abs(a - b) / b
       val apart = math.abs(mine - theirs)
       val note =
-        if (off > tolerance && apart > NoiseFloorFilms) "OUT"
-        else if (off > tolerance * 0.8 && apart > NoiseFloorFilms) "NEARING"
+        if (off > tolerance && apart > noiseFloor(name, theirs)) "OUT"
+        else if (off > tolerance * 0.8 && apart > noiseFloor(name, theirs)) "NEARING"
         else ""
       f"$name%-15s run=$mine%5d prod=$theirs%5d — ${100 * off}%5.1f%% of a ${100 * tolerance}%.0f%% band, " +
       f"$apart%3d film(s) apart $note"
@@ -171,7 +187,7 @@ object ProdCoverageBaseline {
       // misfires: the ratio is noise-dominated on a small corpus, and a raw count is
       // meaningless on a large one.
       val filmsApart = math.abs(mine - theirs)
-      Option.when(off > tolerance && filmsApart > NoiseFloorFilms)(
+      Option.when(off > tolerance && filmsApart > noiseFloor(name, theirs))(
         f"$name%-15s run=$mine%5d (${100 * a}%.1f${if (name == "films") "" else "%"}) " +
         f"prod=$theirs%5d (${100 * b}%.1f${if (name == "films") "" else "%"}) " +
         f"— off by ${100 * off}%.1f%%, band is ${100 * tolerance}%.0f%%")
