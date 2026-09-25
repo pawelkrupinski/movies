@@ -3,8 +3,6 @@ package tools
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.util.Locale
-
 class TextNormalizationSpec extends AnyFlatSpec with Matchers {
 
   "romanizeCyrillic" should "transliterate a Ukrainian-dubbed title to its Latin search form" in {
@@ -174,10 +172,18 @@ class TextNormalizationSpec extends AnyFlatSpec with Matchers {
     // to dotless 'ı', so "FILMOWE SPOTKANIA" came out "Fılmowe spotkanıa" — a
     // platform-dependent title that diverged between dev (en) and any tr-locale
     // JVM. Every sibling helper here pins `Locale.ROOT`; this one must too.
-    val original = Locale.getDefault
-    try {
-      Locale.setDefault(Locale.forLanguageTag("tr"))
-      TextNormalization.sentenceCase("FILMOWE SPOTKANIA") shouldBe "Filmowe spotkania"
-    } finally Locale.setDefault(original)
+    //
+    // In a Turkish JVM of its own: switching THIS JVM's default would turn every
+    // default-locale case fold in the suites running beside it Turkish as well.
+    val (exit, output) = ChildJvm.run("tools.TurkishSentenceCase", Seq("FILMOWE SPOTKANIA"),
+                                      jvmArgs = Seq("-Duser.language=tr", "-Duser.country=TR"))
+    (exit, output.trim) shouldBe ((0, "tr: Filmowe spotkania"))
   }
+}
+
+/** `sentenceCase` of its argument, prefixed with the JVM's default language -- proof the child
+ *  really ran under the locale it was started with. */
+object TurkishSentenceCase {
+  def main(args: Array[String]): Unit =
+    println(s"${java.util.Locale.getDefault.getLanguage}: ${TextNormalization.sentenceCase(args.head)}")
 }
