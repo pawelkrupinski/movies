@@ -88,18 +88,22 @@ trait EgressWiring { self: WorkerWiring =>
   private lazy val decodoMeter: HttpOutcomeRecorder =
     workerMetrics.paidEgress.recorderFor(country.code, PaidEgressMetrics.Provider.Decodo)
 
+  // The one JDK client every Zyte chain this wiring composes calls the Zyte API through.
+  // Lazy, and handed on by name, so a wiring without ZYTE_API_KEY never builds it.
+  lazy val zyteHttpClient: java.net.http.HttpClient = ZyteFallback.newHttpClient()
+
   lazy val multikinoFetch: HttpFetch =
-    proxyPrimary(MultikinoClient.fetchFor(httoFetch, zyteMeter), warmUrl = Some(MultikinoClient.HomeUrl))
+    proxyPrimary(MultikinoClient.fetchFor(httoFetch, zyteHttpClient, zyteMeter), warmUrl = Some(MultikinoClient.HomeUrl))
   // The same route for Multikino's share-card POSTERS, but NOT metered to the "Residential proxy"
   // /uptime row: that row says how often the SCRAPES fall back to Zyte, and a poster the origin
   // refuses through the proxy is not the proxy failing. Its own breaker too, so poster failures
   // never open the scrapes'. The paid-egress counters still see it: it is paid for.
   lazy val multikinoPosterFetch: HttpFetch = {
-    val fallback = MultikinoClient.fetchFor(httoFetch, zyteMeter)
+    val fallback = MultikinoClient.fetchFor(httoFetch, zyteHttpClient, zyteMeter)
     proxyShards.fold(fallback)(EgressWiring.proxyPrimary(_, fallback, Some(MultikinoClient.HomeUrl), meter = decodoMeter))
   }
   // Zyte residential egress → direct fallback (Zyte only when ZYTE_API_KEY is set).
-  lazy val zyteFetch: HttpFetch = ZyteFallback.fetchFor(httoFetch, meter = zyteMeter)
+  lazy val zyteFetch: HttpFetch = ZyteFallback.fetchFor(httoFetch, zyteHttpClient, meter = zyteMeter)
   // biletyna.pl 403s our datacenter IP; residential proxy primary, Zyte fallback.
   lazy val biletynaFetch: HttpFetch = proxyPrimary(zyteFetch)
   // www.flicks.co.uk 403s our datacenter IP behind Cloudflare (verified 2026-07-26

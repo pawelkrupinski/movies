@@ -32,7 +32,7 @@ import scala.concurrent.duration._
  *                  bilety.ck105.koszalin.pl times out the connection from Fly and
  *                  from every Decodo IP, but Zyte's true-residential network gets
  *                  through. `WorkerWiring` routes it through Zyte; the diagnostic
- *                  ctor defaults it to `ZyteFallback.fetchFor(http)`, and the
+ *                  ctor defaults it to `ZyteFallback.fetchFor(http, …)`, and the
  *                  fixture wiring overrides it back to `http`.
  *   - `flicksFetch` — Decodo residential egress for www.flicks.co.uk, which
  *                  Cloudflare 403s from our Fly datacenter IP. Flicks is the
@@ -98,11 +98,13 @@ class CinemaScraperCatalog(
    *  default, not the old `null`-parameter workaround — Scala can't reference `http`
    *  in a primary-constructor default, but a secondary constructor can).
    *  `WorkerWiring` uses the primary ctor to inject its (possibly
-   *  fixture-overridden) `multikinoFetch` / `biletynaFetch`. */
+   *  fixture-overridden) `multikinoFetch` / `biletynaFetch`. Each Zyte chain gets a
+   *  client of its own, built only if ZYTE_API_KEY is set — a diagnostic is not worth
+   *  a shared one. */
   def this(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
            titles: TitleNormalizer = TitleNormalizer.forCountry(Country.default)) =
-    this(http, MultikinoClient.fetchFor(http), ZyteFallback.fetchFor(http), today,
-      (_, h, ttl) => new CachingDetailFetch(h, ttl), zyteFetch = ZyteFallback.fetchFor(http),
+    this(http, MultikinoClient.fetchFor(http, ZyteFallback.newHttpClient()), ZyteFallback.fetchFor(http, ZyteFallback.newHttpClient()), today,
+      (_, h, ttl) => new CachingDetailFetch(h, ttl), zyteFetch = ZyteFallback.fetchFor(http, ZyteFallback.newHttpClient()),
       // No residential proxy outside WorkerWiring — a diagnostic runs from a
       // developer's own (unblocked) IP, so plain `http` is the right default.
       flicksFetch = http, vueFetch = http, odeonFetch = http,
