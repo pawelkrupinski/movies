@@ -57,6 +57,15 @@ class ShareCardPostersSpec extends AnyFlatSpec with Matchers {
     PosterFailure.all.map(series.posterFetchCount("pl", _)).sum shouldBe 3.0   // the per-URL detail stays
   }
 
+  "A failed poster's log line" should "be rate-limited per poster cache, not across every cache in the process" in {
+    val gone = "https://gone.example/a.jpg"
+    def failOnce(): Unit = new Rig(download = new CountingDownload(failing = Set(gone))).posters.load(film1, Seq(gone))
+    val events = tools.LogCapture.thisThread(classOf[ShareCardPosters].getName, Some(ch.qos.logback.classic.Level.DEBUG)) {
+      failOnce(); failOnce()
+    }
+    events.map(_.getLevel.toString) shouldBe Seq("INFO", "INFO")
+  }
+
   "A poster download" should "be abandoned at the byte cap instead of written out" in {
     val body = new Array[Byte](10 * 1024)
     PosterPipeline.copyCapped(new ByteArrayInputStream(body), maxBytes = 4096) shouldBe Left(PosterFailure.TooLarge)

@@ -7,7 +7,6 @@ import org.bson.codecs.configuration.CodecRegistry
 import play.api.Logging
 import services.readmodel.DecodeFailureMetrics
 
-import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
@@ -41,8 +40,7 @@ final class ChangeEventDecoder[T](
 ) extends Logging {
   import ChangeEventDecoder.PostImage
 
-  private val lastLogged = new AtomicLong(Long.MinValue)
-  private val suppressed = new AtomicInteger(0)
+  private val throttle = new tools.LogThrottle(ChangeEventDecoder.LogIntervalNanos, nanoTime)
 
   /** The event's post-image, decoded — `Absent` when it carries none (a delete, a drop). */
   def postImage(change: ChangeStreamDocument[BsonDocument]): PostImage[T] =
@@ -58,16 +56,12 @@ final class ChangeEventDecoder[T](
         }
     }
 
-  private def warn(id: String, exception: Throwable): Unit = {
-    val now  = nanoTime()
-    val last = lastLogged.get()
-    if ((last == Long.MinValue || now - last >= ChangeEventDecoder.LogIntervalNanos) && lastLogged.compareAndSet(last, now)) {
-      val since = suppressed.getAndSet(0)
+  private def warn(id: String, exception: Throwable): Unit =
+    throttle.admit().foreach { since =>
       logger.warn(s"$collection change stream: skipping undecodable document _id=$id " +
         s"(${exception.getClass.getSimpleName}: ${exception.getMessage}) — the stream stays open, the event is " +
         s"not applied" + (if (since > 0) s"; $since more skipped since the last line" else "") + ".")
-    } else suppressed.incrementAndGet()
-  }
+    }
 }
 
 object ChangeEventDecoder {

@@ -413,6 +413,9 @@ object PosterPipeline {
 class ShareCardPosters(store: ShareCardStore, download: PosterDownload, shrinker: PosterShrinker,
                        metrics: ShareCardMetrics) extends Logging {
 
+  // One INFO line per failed poster, at most one a second (the rest at DEBUG).
+  private val failureLog = new tools.LogThrottle(1000000000L)
+
   /** The first usable candidate — its URL, which the card's version hashes, and its slot image — or
    *  None when none can be had. `retry` marks the re-try of a card drawn without its poster. */
   def load(filmId: String, candidates: Seq[String], retry: Boolean = false): Option[(String, BufferedImage)] =
@@ -452,25 +455,20 @@ class ShareCardPosters(store: ShareCardStore, download: PosterDownload, shrinker
         Some(image)
       case Left(reason) =>
         metrics.posterFetch(reason)
-        ShareCardPosters.logFailure(logger, filmId, url, reason)
+        logFailure(filmId, url, reason)
         None
     }
+  }
+
+  /** The film, the host and why — what `poster_fetch_total{reason}` counts but cannot name. */
+  private def logFailure(filmId: String, url: String, reason: String): Unit = {
+    val host = Try(URI.create(url).getHost).toOption.flatMap(Option(_)).getOrElse("?")
+    val line = s"share card: poster for $filmId from $host failed: $reason"
+    if (failureLog.admit().isDefined) logger.info(line) else logger.debug(line)
   }
 }
 
 object ShareCardPosters {
-  private val lastLogged = new java.util.concurrent.atomic.AtomicLong(0L)
-
-  /** One INFO line per failed poster, at most one a second (the rest at DEBUG): the film, the host
-   *  and why — what `poster_fetch_total{reason}` counts but cannot name. */
-  private[sharecards] def logFailure(logger: play.api.Logger, filmId: String, url: String, reason: String): Unit = {
-    val host = Try(URI.create(url).getHost).toOption.flatMap(Option(_)).getOrElse("?")
-    val line = s"share card: poster for $filmId from $host failed: $reason"
-    val now  = System.nanoTime()
-    val last = lastLogged.get()
-    if (now - last > 1000000000L && lastLogged.compareAndSet(last, now)) logger.info(line) else logger.debug(line)
-  }
-
   /** A poster's key: 16 hex characters of the SHA-256 of its URL. */
   def key(url: String): String = tools.Digest.sha256Hex(url).take(16)
 }
