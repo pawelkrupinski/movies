@@ -360,7 +360,7 @@ object WorkerTaskMetrics {
 
     private val readModelDriftWrites = Counter.builder()
       .name("kinowo_worker_readmodel_drift_writes")
-      .help("Read-model documents the rolling CONTENT check rewrote since boot, by country. Every other sweep compares IDS — the prune removes a card whose row is gone, the heal writes one that is missing — and none of them can see a row that exists and is WRONG: three UK films held showtimes from August until 2026-09-08, served to users and unreachable by the change stream because their source had stopped changing. One slice of the corpus is re-projected per prune sweep (KINOWO_READMODEL_CONTENT_SLICES, 48 by default, so the whole corpus once a day) and the projection's own diff writes only what drifted. Zero is the healthy reading; a sustained rate means the incremental path is losing writes.")
+      .help("Read-model documents the rolling CONTENT check rewrote since boot, by country. Every other sweep compares IDS — the prune removes a card whose row is gone, the heal writes one that is missing — and none of them can see a row that exists and is WRONG: three UK films held showtimes from August until 2026-09-08, served to users and unreachable by the change stream because their source had stopped changing. One slice of the corpus is re-projected per prune sweep (one of 48 slices, so the whole corpus once a day, plus a whole-corpus pass when the projection's derivation version changes) and the projection's own diff writes only what drifted. Zero is the healthy reading; a sustained rate means the incremental path is losing writes.")
       .labelNames("country")
       .register(registry)
 
