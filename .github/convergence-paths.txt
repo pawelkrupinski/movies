@@ -29,3 +29,10 @@ test/resources/fixtures/corpus/**
 .github/actions/convergence-findings/**
 .github/scripts/pack-enrichment-tree.sh
 .github/scripts/convergence-bisect.sh
+# The CI plumbing a leg runs: its preflight, the release reads and writes behind its pinned
+# pair, and the status that IS its verdict on the commit. (ConvergenceDispatchGateSpec walks
+# the convergence workflows and fails on any repository file they run that is not listed.)
+.github/actions/leg-verdict/**
+scripts/ci/leg-verdict.sh
+scripts/ci/gh-release.sh
+scripts/ci/preflight.sh

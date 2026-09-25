@@ -101,11 +101,74 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers {
       (seen ++ next, next)
     }.dropWhile(_._2.nonEmpty).next()._1
 
-    val listed = Files.readAllLines(Paths.get(".github/convergence-paths.txt")).asScala.map(_.trim)
-      .filterNot(l => l.isEmpty || l.startsWith("#")).toSeq
-    def covered(path: String) = listed.exists(p => if (p.endsWith("/**")) path.startsWith(p.stripSuffix("**")) else path == p)
     reached.filterNot(covered) shouldBe empty
   }
+
+  // The legs run on every module the e2e project depends on, not only on the ones somebody
+  // remembered to list: a module left off means a regression in it never dispatches a leg
+  // and is never a bisect candidate. Derived from build.sbt's `dependsOn`, transitively.
+  // The web module is the one deliberate narrowing, held by the reachability test above.
+  it should "list the sources of every module the e2e project depends on" in {
+    val build   = RepoFile.read("build.sbt")
+    val Project = """(?s)lazy val (\w+) = \(project in file\("([^"]+)"\)\)(.*?)(?=\nlazy val |\z)""".r
+    val modules = Project.findAllMatchIn(build).map(m => m.group(1) -> (m.group(2), m.group(3))).toMap
+    val DependsOn = """\.dependsOn\(([^)]*)\)""".r
+    val Dep       = """(\w+)(?:\s*%\s*("[^"]*"|\w+))?""".r
+    def deps(module: String): Seq[(String, String)] =
+      DependsOn.findAllMatchIn(modules(module)._2).flatMap(m => Dep.findAllMatchIn(m.group(1)))
+        .map(d => d.group(1) -> Option(d.group(2)).getOrElse("")).toSeq
+    val reached = Iterator.iterate((Set.empty[(String, String)], deps("e2e").toSet)) { case (seen, frontier) =>
+      val next = frontier.flatMap((m, _) => deps(m)).filterNot(d => seen.exists(_._1 == d._1))
+      (seen ++ frontier, next -- seen -- frontier)
+    }.dropWhile(_._2.nonEmpty).next()._1 ++ deps("e2e")
+
+    reached.map(_._1) should contain allOf ("common", "worker", "testkit", "web")
+    val required = reached.toSeq.flatMap { (module, mapping) =>
+      val dir = modules(module)._1
+      (if (module == "web") Nil else Seq(s"$dir/src/main/Probe.scala")) ++
+        (if (mapping.contains("->fixtures")) Seq(s"$dir/src/fixtures/Probe.scala") else Nil)
+    }.distinct
+    required.filterNot(covered) shouldBe empty
+  }
+
+  // A leg's verdict is also what its CI plumbing makes of it: the composite actions that
+  // restore its inputs and publish its pair, the scripts that post its status. Every
+  // repository file the convergence workflows run — `uses: ./…` and every `scripts/…` or
+  // `.github/…` path they name, transitively — is listed, or named below as running only
+  // after the verdict is in.
+  it should "list every repository file the convergence workflows run" in {
+    val afterTheVerdict = Set(
+      ".github/actions/report-scheduled-run/action.yml",     // opens an issue for a failed scheduled run
+      ".github/actions/convergence-bisect-request/action.yml", // asks for a bisect of a red run
+      ".github/actions/hard-clusters-ratchet/action.yml",     // turns a red leg's findings into seeds
+    )
+    val Reference = """(?:\./)?((?:\.github|scripts)/[\w./-]*\w)""".r
+    def referencedBy(file: String): Set[String] =
+      RepoFile.read(file).linesIterator.filterNot(_.trim.startsWith("#"))
+        .flatMap(l => Reference.findAllMatchIn(l).map(_.group(1))).toSet
+        .flatMap { ref =>
+          val action = Paths.get(ref, "action.yml")
+          if (Files.isRegularFile(Paths.get(ref))) Set(ref)
+          else if (Files.isRegularFile(action)) Set(action.toString)
+          else Set.empty
+        }
+    val roots = Set(".github/workflows/country-convergence.yml", ".github/workflows/us-convergence.yml",
+      ".github/workflows/country-convergence-leg.yml")
+    val run = Iterator.iterate((roots, roots)) { case (seen, frontier) =>
+      val next = (frontier -- afterTheVerdict).flatMap(referencedBy) -- seen
+      (seen ++ next, next)
+    }.dropWhile(_._2.nonEmpty).next()._1
+
+    run should contain(".github/actions/convergence-setup/action.yml")
+    (run -- afterTheVerdict).toSeq.sorted.filterNot(covered) shouldBe empty
+  }
+
+  private lazy val listed: Seq[String] =
+    Files.readAllLines(Paths.get(".github/convergence-paths.txt")).asScala.map(_.trim)
+      .filterNot(l => l.isEmpty || l.startsWith("#")).toSeq
+
+  private def covered(path: String): Boolean =
+    listed.exists(p => if (p.endsWith("/**")) path.startsWith(p.stripSuffix("**")) else path == p)
 
   // The base is the suite's last run, not the push's parent: Main's own lane cancels
   // superseded pushes, so a pipeline commit can sit in an EARLIER push whose Main run never
