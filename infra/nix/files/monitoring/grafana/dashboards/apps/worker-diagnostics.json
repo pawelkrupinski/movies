@@ -2017,7 +2017,7 @@
     {
       "id": 37,
       "title": "Share-card coverage — films on screen whose card for their current inputs exists",
-      "description": "`kinowo_worker_share_cards_coverage_ratio`: of the films with screenings in web_screenings, the share whose card for their CURRENT inputs exists on disk -- one card per film, drawn in the deployment's language, from any of its current poster candidates. Published by the backfill tick every minute from its daily sweep. The web switches `og:image` to these cards only once every country holds at least 99% here. A drop after a template bump or a ratings refresh is the re-render queue working through it; a line that stays low while the render counter is quiet is the backfill not running. ShareCardCoverageLow fires under 95% for 6h (a fresh backfill refills in under 3h); ShareCardCoverageAbsent when a worker is up without this gauge for 1h.",
+      "description": "`kinowo_worker_share_cards_coverage_ratio`: of the films with screenings in web_screenings, the share whose card for their CURRENT inputs exists on disk -- one card per film, drawn in the deployment's language, from any of its current poster candidates. Published by the backfill tick every minute from its daily sweep. Films that left the screens since the sweep drop out of the ratio as their cards retire, so it no longer sags overnight. A drop after a template bump or a ratings refresh is the re-render queue working through it; a line that stays low while the render counter is quiet is the backfill not running. ShareCardCoverageLow fires under 95% for 6h (a fresh backfill refills in under 3h); ShareCardCoverageAbsent when a worker is up without this gauge for 1h.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",

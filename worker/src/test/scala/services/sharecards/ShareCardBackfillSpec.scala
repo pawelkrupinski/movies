@@ -78,6 +78,26 @@ class ShareCardBackfillSpec extends AnyFlatSpec with Matchers {
     series.coverageFor("pl") shouldBe 1.0 / 3
   }
 
+  // The sweep's film list is a day old by its end. A film that left the screens meanwhile has its
+  // card deleted at once (the projection's retirement), so it read as a film on screen without a
+  // card: every country's gauge sagged overnight by exactly the films whose run ended since the sweep.
+  it should "stop counting a film that left the read model since the sweep, but not one still on screen" in {
+    val rig = new Rig
+    val films = seed(rig, 4)
+    films.foreach(m => rig.service.render(rig.service.inputs(m), Seq(ShareCardReason.NewFilm)))
+    val series = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
+    val backfill = new ShareCardBackfill(rig.service, rig.readModel, rig.queue, series.forCountry("pl"), rig.clock, batch = 5, maxBacklog = 10)
+    backfill.tick() shouldBe 0
+    series.coverageFor("pl") shouldBe 1.0
+
+    val retired = films(0)._id
+    rig.readModel.deleteMovie(retired); rig.readModel.deleteScreening(screening(retired)._id)
+    rig.store.deleteFilm(retired, olderThan = java.time.Instant.MAX)
+    rig.store.deleteFilm(films(1)._id, olderThan = java.time.Instant.MAX)   // still on screen: really missing
+    backfill.tick()
+    series.coverageFor("pl") shouldBe 2.0 / 3
+  }
+
   "A finished render" should "re-project its film, or end a first card's hold when no card could be made" in {
     val rig = new Rig
     val refreshed, released = collection.mutable.Buffer.empty[String]

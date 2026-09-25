@@ -27,6 +27,12 @@ import scala.util.Try
  * Each tick also publishes `kinowo_worker_share_cards_coverage_ratio` — the share of films on
  * screen whose card for their CURRENT inputs exists: the sweep's inputs, or a card rendered since
  * the sweep (from inputs newer than the sweep's).
+ *
+ * THE SWEEP'S FILMS AGE TOO. A film whose run ends has its card deleted the moment it leaves the
+ * read model, so until the next sweep it would read as a film on screen without a card — the gauge
+ * sagged every night by the films retired since the sweep. A card that was on disk at the sweep and
+ * is gone now is either that or a real loss, so each tick asks the read model about exactly those
+ * films (one read by `_id` each) and forgets the ones no longer on screen.
  */
 class ShareCardBackfill(
   service:    ShareCardService,
@@ -53,6 +59,7 @@ class ShareCardBackfill(
    *  it enqueued. */
   def tick(): Int = synchronized {
     if (lastSweep.forall(at => !clock.instant().isBefore(at.plusMillis(sweepEvery.toMillis)))) sweep()
+    forgetRetired()
     if (expected.nonEmpty) metrics.coverage(expected.count(covered).toDouble / expected.size)
     Try(queue.waitingCount(TaskType.RenderShareCard)).toOption.fold(0) { backlog =>
       val room          = math.min(batch, maxBacklog - backlog)
@@ -70,6 +77,20 @@ class ShareCardBackfill(
   private def covered(film: Swept): Boolean = {
     val now = service.onDisk(film.inputs.filmId)
     now.exists(film.inputs.acceptableVersions.contains) || (now.nonEmpty && now != film.cardAtSweep)
+  }
+
+  /** Drop the films whose card vanished since the sweep because they left the screens. A failed
+   *  read is not "gone": the film stays, counted as missing, and is asked about again next tick. */
+  private def forgetRetired(): Unit = {
+    val retired = expected.iterator
+      .filter(film => film.cardAtSweep.nonEmpty && service.onDisk(film.inputs.filmId).isEmpty)
+      .map(_.inputs.filmId)
+      .filter(filmId => reader.findCard(filmId).exists(card => card.movie.isEmpty || card.screenings.isEmpty))
+      .toSet
+    if (retired.nonEmpty) {
+      expected = expected.filterNot(film => retired(film.inputs.filmId))
+      pending  = pending.filterNot(film => retired(film.inputs.filmId))
+    }
   }
 
   private def sweep(): Unit = {
