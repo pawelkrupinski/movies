@@ -74,4 +74,26 @@ class AmondoClientSpec extends AnyFlatSpec with Matchers {
     detail.director       shouldBe Seq("Lee Chang-dong")
     detail.runtimeMinutes shouldBe Some(148)
   }
+
+  private def recordedDetail(slug: String): AmondoClient.Detail = AmondoClient.parseDetail(
+    new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(s"test/resources/fixtures/amondo-detail/$slug")), "UTF-8"))
+
+  // Recorded 2026-09-25 (Record scrape fixtures 36181020153). Amondo's page for "Miłość,
+  // śmierć i dojrzewanie w Camp Miasma" carries Jane Schoenbrun's film in its header, but its
+  // "Szczegóły" block is another film's — Paolo Cognetti's "Kwiat ośmiu gór", Italy/Belgium
+  // 2024, 80 min. Read as this film's, that crew walked TMDB to Cognetti's "Fiore mio", and
+  // the Klub Filmowy Urania screening of Camp Miasma was served as it.
+  it should "not take a details block that describes another film than the page's own header" in {
+    val detail = recordedDetail("milosc-smierc-i-dojrzewanie-w-camp-miasma")
+    detail.director       shouldBe empty
+    detail.year           shouldBe None
+    detail.runtimeMinutes shouldBe None
+    detail.synopsis.getOrElse("") should not include "Cognetti"
+  }
+
+  it should "still take the details block when it describes the header's film" in {
+    val detail = recordedDetail("oslo-31-sierpnia")
+    detail.director should not be empty
+    detail.year shouldBe defined
+  }
 }

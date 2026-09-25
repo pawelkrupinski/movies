@@ -131,8 +131,31 @@ object AmondoClient {
       // Same ASCII-only trap as `\w` not matching "września".
       .map(_.text.replaceFirst(s"(?iu)^[^A-Za-zÀ-ž0-9]*$label[:\\s]*", "").trim).filter(_.nonEmpty)
 
+  /** The prose Amondo prints under the page's `<h1>`, booking link dropped. */
+  private def headerProse(document: org.jsoup.nodes.Document): String =
+    Option(document.selectFirst("h1")).map(_.parent.select("> p").asScala.toSeq
+      .map(p => { val c = p.clone(); c.select("a.gooutButton").remove(); c.text.trim })
+      .filter(_.nonEmpty).mkString(" ")).getOrElse("")
+
+  private def longWords(text: String): Set[String] =
+    """[\p{L}]{5,}""".r.findAllIn(text.toLowerCase).toSet
+
+  /** Does the "Szczegóły" block describe ANOTHER film than the page's header? Amondo's CMS
+   *  sometimes pastes one film's details block into another's page — "Miłość, śmierć i
+   *  dojrzewanie w Camp Miasma" carried Cognetti's "Kwiat ośmiu gór" (2024, 80 min). Where both
+   *  describe the film they are the same text (every other recorded page overlaps ≥0.98); a
+   *  mis-pasted block shares almost no words with the header (0.02-0.03). Only judged when both
+   *  are substantial prose, so a short header or an empty block is never read as a mismatch. */
+  private def detailsDescribeAnotherFilm(document: org.jsoup.nodes.Document): Boolean = {
+    val header = longWords(headerProse(document))
+    val plot   = longWords(Option(document.selectFirst("div.filmPosterSection__plot")).map(_.text).getOrElse(""))
+    header.sizeIs >= 10 && plot.sizeIs >= 10 &&
+      (header & plot).size.toDouble / math.min(header.size, plot.size) < 0.3
+  }
+
   def parseDetail(html: String): Detail = {
     val document  = Jsoup.parse(html)
+    if (detailsDescribeAnotherFilm(document)) return Detail.empty
     val prod = infoLi(document, "produkcja")
     val year = prod.flatMap(s => """\b((?:19|20)\d{2})\b""".r.findFirstMatchIn(s).map(_.group(1).toInt))
     val countries = prod.map(s => s.replaceAll("""\b(?:19|20)\d{2}\b.*$""", "").trim.stripSuffix(","))
