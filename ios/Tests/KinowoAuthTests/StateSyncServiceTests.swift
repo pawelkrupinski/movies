@@ -335,6 +335,36 @@ final class StateSyncServiceTests: XCTestCase {
         _ = sync
     }
 
+    /// After a refusal the account's pick is fetched to take its place — but a
+    /// pick the user makes while that fetch is on the wire is newer than its
+    /// answer. Adopting it anyway reverted the screen to the account's
+    /// language while the new pick was still pushed, leaving the device and
+    /// the account on different languages.
+    func testAPickMadeWhileARefusedPushFetchesTheAccountsPickIsKept() async throws {
+        languageClient.remote = "de"
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.selectedLanguage == "de" }
+        try await Task.sleep(for: .milliseconds(100))
+
+        languageClient.refusePush = true
+        let gate = AsyncGate()
+        languageClient.onPush = { [languageClient] _ in
+            languageClient!.refusePush = false
+            languageClient!.beforeFetch = { await gate.wait() }
+        }
+        let fetchesBefore = languageClient.fetchesStarted
+        prefs.setLanguage("es")
+        try await waitUntil({ self.languageClient.fetchesStarted > fetchesBefore }, timeout: 2) // refused, fetching
+        prefs.setLanguage("fr")
+        await gate.open()
+
+        try await waitUntil({ self.languageClient.remote == "fr" }, timeout: 2)
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertEqual(prefs.selectedLanguage, "fr")
+        _ = sync
+    }
+
     /// A pick whose push failed survives a relaunch: the next session's
     /// login reconcile pushes it instead of restoring the account's older
     /// value over it.

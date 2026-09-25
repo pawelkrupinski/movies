@@ -283,11 +283,14 @@ final class StateSyncService: ObservableObject {
                     try await self.languageClient.push(pending)
                 } catch is LanguagePushRefused {
                     // Refused for good: it can never land, so stop owing it, and
-                    // take the account's pick instead — never pushing this one back.
+                    // take the account's pick instead — never pushing this one back,
+                    // and never over a pick made while that fetch was on the wire.
                     self.accountLanguage = nil
                     if self.pendingLanguage == pending {
                         self.pendingLanguage = nil
-                        if let remote = try? await self.languageClient.fetch() { self.adopt(remote) }
+                        if let remote = try? await self.languageClient.fetch(), self.pendingLanguage == nil {
+                            self.adopt(remote)
+                        }
                     }
                     break
                 } catch {
