@@ -2104,8 +2104,8 @@ object UsRoster {
 
 
 // ── Spain (SensaCine) — data-driven from the full roster ─────────────────────
-// `SpanishRosterData` (generated from data/spain/provinces.json) carries 52
-// provinces / 595 cinemas. Same shape as `GermanCinema` and `UsCinema`: each
+// `SpanishRosterData` (generated from data/spain/provinces.json + ocine.json) carries 52
+// provinces / 604 cinemas. Same shape as `GermanCinema` and `UsCinema`: each
 // venue is built ONCE in `SpanishRoster` and reused everywhere, so one `Source`
 // instance serves the province, `Cinema.byCity` and the scrape catalog, and
 // identity equality holds like the hand-authored `case object` cinemas.
@@ -2183,9 +2183,9 @@ object SpanishRoster {
       // Qualify only the venues that would collide, so the roster's names — and the
       // wire keys of every already-stored Spanish slot — stay exactly as they are
       // otherwise.
-      val venues = cinemas.map { case (disp, pill, theaterId, ocineSlug) =>
+      val venues = cinemas.map { case (disp, pill, theaterId, ocineServer) =>
         val unique = if (claimedElsewhere.contains(disp)) s"$disp $name" else disp
-        (new SpanishCinema(unique, pill), theaterId, ocineSlug)
+        (new SpanishCinema(unique, pill), theaterId, ocineServer)
       }
       (SpanishPlace(slug, name, community, lat, lon, ZoneId.of(zone), towns, venues.map(_._1)), venues)
     }
@@ -2202,7 +2202,7 @@ object SpanishRoster {
    *  scrape primary for every venue named here — SensaCine carries no programme
    *  for most of them, and does not list some at all. From `data/spain/ocine.json`,
    *  which says which venues are (not) on it and why. */
-  val ocineSlugByCinema: Map[Cinema, String] =
+  val ocineServerByCinema: Map[Cinema, String] =
     built.flatMap(_._2).collect { case (c, _, Some(slug)) => (c: Cinema) -> slug }.toMap
 }
 

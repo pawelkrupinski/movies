@@ -1849,7 +1849,7 @@ class CinemaScraperCatalog(
   private def ocine(ticketingSlug: String, cinema: Cinema): OcineClient =
     new OcineClient(http, ticketingSlug, cinema, today = Some(today))
 
-  // Spain — data-driven from the full SpanishRoster (52 provinces / 605 cinemas):
+  // Spain — data-driven from the full SpanishRoster (52 provinces / 604 cinemas):
   // one scraper per cinema, keyed by the PROVINCE slug City.slug uses — the
   // venue's own chain server where the roster names one, SensaCine otherwise.
   // Keyed off `Country.Spain.cities` rather than off `SpanishRoster.places`,
@@ -1859,7 +1859,7 @@ class CinemaScraperCatalog(
   private val spanishBaseByCity: Map[String, Seq[CinemaScraper]] =
     models.Country.Spain.cities.map { city =>
       city.slug -> city.cinemas.map { c =>
-        models.SpanishRoster.ocineSlugByCinema.get(c).map(ocine(_, c))
+        models.SpanishRoster.ocineServerByCinema.get(c).map(ocine(_, c))
           .getOrElse(sensacine(models.SpanishRoster.theaterIdByCinema(c), c))
       }
     }.toMap

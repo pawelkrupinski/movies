@@ -8,7 +8,7 @@ import java.time.{LocalDate, ZoneId}
 
 /**
  * Ocine (Spain) — each venue off its OWN ticketing server,
- * `tickets.ocine<slug>.es`: a self-hosted "webtpv21" box-office app whose JSON
+ * `tickets.ocine<venue>.es`: a self-hosted "webtpv21" box-office app whose JSON
  * API the venue's public site embeds as its cartelera. Plain HTTP, no auth, no
  * cookie, no captcha on these two reads (the app's altcha challenge guards only
  * purchase recovery), no Cloudflare in front (verified 2026-09-25):
@@ -35,19 +35,19 @@ import java.time.{LocalDate, ZoneId}
  * which reached 2026-12-15 when captured, against SensaCine's 7-10 days for
  * the same venues. [[ScrapeHorizon.MaxDays]] only bounds a garbage far date.
  *
- * One instance serves one venue, named by its ticketing host's `<slug>` — see
+ * One instance serves one venue, named by its ticketing server — see
  * `data/spain/ocine.json` for the map and which venues are (not) on it.
  */
 class OcineClient(
   http:        HttpFetch,
-  ticketingSlug: String,
+  ticketingServer: String,
   override val cinema: Cinema,
   today:       Option[LocalDate] = None
 ) extends ChunkedCinemaScraper {
 
   import OcineClient._
 
-  private val baseUrl      = OcineClient.baseUrl(ticketingSlug)
+  private val baseUrl      = OcineClient.baseUrl(ticketingServer)
   private val referenceDay = today.getOrElse(LocalDate.now(Zone))
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(baseUrl)
@@ -58,7 +58,7 @@ class OcineClient(
   /** The venue's cartelera as the public sees it — the same app the API serves. */
   override def sourceUrl: Option[String] = Some(s"$baseUrl/")
 
-  override def chainVenueId: Option[String] = Some(ticketingSlug)
+  override def chainVenueId: Option[String] = Some(ticketingServer)
 
   /** The venue's film ids, off its cartelera. A fetch failure propagates (the
    *  scrape is recorded as failed and the venue keeps its last-known listing);
@@ -78,10 +78,14 @@ class OcineClient(
 
 object OcineClient {
 
-  def baseUrl(ticketingSlug: String): String = s"https://tickets.ocine$ticketingSlug.es"
+  /** `ticketingServer` is the host, `tickets.ocine<venue>.es`, with the port
+   *  where a venue serves off a non-standard one — Porto Pi answers only on
+   *  `:8444`, and nothing on 443. */
+  def baseUrl(ticketingServer: String): String = s"https://$ticketingServer"
 
-  /** Every Ocine venue is on the peninsula or the Balearics — one zone. Used only
-   *  to resolve "today" for the far-date bound when none is injected. */
+  /** Used only to resolve "today" for the far-date bound when none is injected,
+   *  so one zone serves every venue — 7 Palmas, on Canary time an hour behind,
+   *  included: an hour cannot move a bound set months out. */
   val Zone: ZoneId = ZoneId.of("Europe/Madrid")
 
   /** The body the site's own cartelera posts. An empty `token` asks the server

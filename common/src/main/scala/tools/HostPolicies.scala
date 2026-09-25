@@ -318,18 +318,21 @@ object HostPolicies {
     // ── Ocine (Spain) venue ticketing servers ────────────────────────────────
     // Every Ocine venue runs its OWN box-office server on premises
     // (`tickets.ocine<venue>.es`, residential-ISP addresses), so this one row
-    // names 17 hosts — and the pace gate buckets by full hostname, so each
-    // server is paced on its own. A sweep costs a venue one listing call plus
-    // one per film (~15-30), a small load, but on hardware that answers a
-    // listing in 2-9s and occasionally times a detail out: 1s keeps us to a
-    // trickle per server. Same courtesy bound as the US chains above, not a
-    // throttle fitted to an observed limit — none has 429'd. Must list exactly
-    // the hosts `SpanishRoster.ocineSlugByCinema` maps; `CinemaScraperCatalogSpec` fails on a venue
-    // whose host has no pace here.
+    // names 26 hosts — and the pace gate buckets by full hostname (port
+    // aside: Porto Pi serves on :8444), so each server is paced on its own. A
+    // sweep costs a venue one listing call plus one per film (~15-30), a small
+    // load, but on hardware that answers a listing in 2-9s and occasionally
+    // times a detail out: 1s keeps us to a trickle per server. Same courtesy
+    // bound as the US chains above, not a throttle fitted to an observed limit
+    // — none has 429'd. Must list exactly the hosts
+    // `SpanishRoster.ocineServerByCinema` maps (from `data/spain/ocine.json`);
+    // `CinemaScraperCatalogSpec` fails on a venue whose host has no pace here.
     HostPolicy(
-      Set("arenys", "blanes", "gavarres", "girona", "granollers", "magic", "mendibil",
-        "platjadaro", "plazaeboli", "premiumaqua", "premiumbahiareal", "premiumestepark",
-        "rioshopping", "roquetes", "serrallo", "urbanxmadrid", "vilaseca")
+      Set("arenys", "blanes", "copo", "gavarres", "girona", "granollers", "magic", "mendibil",
+        "platjadaro", "plazaeboli", "premium7palmas", "premiumaqua", "premiumbahiareal",
+        "premiumestepark", "premiumgranvia", "premiumlleida", "premiumlosfresnos",
+        "premiumportopi", "quadernillos", "rioshopping", "roquetes", "serrallo",
+        "urbancaleido", "urbanxmadrid", "vendrell", "vilaseca")
         .map(venue => s"tickets.ocine$venue.es"),
       minRequestInterval = Some(Duration.ofMillis(1000)),
       paceKnob           = Some("KINOWO_OCINE_PACE_MS"),

@@ -356,7 +356,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Spain.cityGroups shouldBe empty
     Country.Spain.cities.map(_.slug) should contain allOf ("madrid", "barcelona", "valencia", "las-palmas")
     all(Country.Spain.cities.map(_.cinemas.size)) should be > 0
-    Country.Spain.cities.flatMap(_.cinemas).size shouldBe 595
+    Country.Spain.cities.flatMap(_.cinemas).size shouldBe 604   // SensaCine's 595 + the 9 Ocine venues it does not list
   }
 
   it should "qualify a province slug another country already serves, and only that one" in {

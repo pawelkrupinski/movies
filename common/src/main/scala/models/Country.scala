@@ -283,7 +283,7 @@ object Country {
    *
    *  Its cities are the 52 PROVINCES SensaCine itself enumerates — flat, like
    *  Germany's regions, because 52 is a list a picker stays readable at and a
-   *  province is what a Spanish visitor names. 595 venues, a third of Germany's
+   *  province is what a Spanish visitor names. 604 venues, a third of Germany's
    *  roster, so its worker is sized like the UK's rather than like Germany's.
    *
    *  It shares a client with Germany but NOT a request budget: `www.sensacine.com`

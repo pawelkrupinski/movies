@@ -78,32 +78,32 @@ def _harvest():
     ]
 
 
-def _unlisted(name, slug, province="Asturias", town="Gijón"):
-    return {"name": name, "ticketingSlug": slug, "province": province, "town": town}
+def _unlisted(name, server, province="Asturias", town="Gijón"):
+    return {"name": name, "ticketingServer": server, "province": province, "town": town}
 
 
 def test_merge_ocine_tags_listed_venues_and_adds_unlisted_ones_in_name_order():
     provinces = _harvest()
-    problems = gr.merge_ocine(provinces, {"listed": {"E0362": "girona"},
-                                          "unlisted": [_unlisted("Ocine Los Fresnos", "losfresnos")]})
+    problems = gr.merge_ocine(provinces, {"listed": {"E0362": "tickets.ocinegirona.es"},
+                                          "unlisted": [_unlisted("Ocine Los Fresnos", "tickets.ocinepremiumlosfresnos.es")]})
     assert problems == []
     girona, asturias = provinces
-    assert girona["cinemas"][0]["ocineSlug"] == "girona"
-    assert "ocineSlug" not in girona["cinemas"][1]
+    assert girona["cinemas"][0]["ocineServer"] == "tickets.ocinegirona.es"
+    assert "ocineServer" not in girona["cinemas"][1]
     assert [c["displayName"] for c in asturias["cinemas"]] == \
         ["Autocine Gijón", "Ocine Los Fresnos", "Yelmo Los Prados"]
     added = asturias["cinemas"][1]
-    assert added["theaterId"] is None and added["ocineSlug"] == "losfresnos"
+    assert added["theaterId"] is None and added["ocineServer"] == "tickets.ocinepremiumlosfresnos.es"
 
 
 def test_merge_ocine_refuses_a_table_the_harvest_does_not_match():
     problems = gr.merge_ocine(_harvest(), {
-        "listed": {"E0362": "girona", "E4040": "gone"},
-        "unlisted": [_unlisted("Ocine Nowhere", "nowhere", province="Atlantis"),
-                     _unlisted("Ocine Girona Bis", "girona")]})
+        "listed": {"E0362": "tickets.ocinegirona.es", "E4040": "tickets.ocinegone.es"},
+        "unlisted": [_unlisted("Ocine Nowhere", "tickets.ocinenowhere.es", province="Atlantis"),
+                     _unlisted("Ocine Girona Bis", "tickets.ocinegirona.es")]})
     assert any("E4040" in p for p in problems)
     assert any("Atlantis" in p for p in problems)
-    assert any("'girona'" in p and "2 venues" in p for p in problems)
+    assert any("'tickets.ocinegirona.es'" in p and "2 venues" in p for p in problems)
     assert len(problems) == 3
 
 

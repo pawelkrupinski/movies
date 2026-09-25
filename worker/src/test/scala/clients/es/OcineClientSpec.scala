@@ -24,7 +24,7 @@ class OcineClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   private val Girona: Cinema =
     SpanishRoster.theaterIdByCinema.collectFirst { case (c, "E0362") => c }.value
 
-  private def clientOn(fixtures: HttpFetch) = new OcineClient(fixtures, "girona", Girona, today = Some(Today))
+  private def clientOn(fixtures: HttpFetch) = new OcineClient(fixtures, "tickets.ocinegirona.es", Girona, today = Some(Today))
 
   private val films: Seq[CinemaMovie] = clientOn(new FakeHttpFetch("ocine")).fetch()
 
@@ -136,7 +136,7 @@ class OcineClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val client = clientOn(new FakeHttpFetch("ocine"))
     client.scrapeHosts shouldBe Set("tickets.ocinegirona.es")
     client.sourceUrl.value shouldBe "https://tickets.ocinegirona.es/"
-    client.chainVenueId.value shouldBe "girona"
+    client.chainVenueId.value shouldBe "tickets.ocinegirona.es"
     client.chain shouldBe true
   }
 

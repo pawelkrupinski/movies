@@ -116,22 +116,22 @@ def scala_option(value) -> str:
 
 def merge_ocine(provinces: list, ocine: dict) -> list[str]:
     """Fold `ocine.json` into the harvested provinces, in place: each listed
-    venue gains its `ocineSlug`, each unlisted one joins its province with no
+    venue gains its `ocineServer`, each unlisted one joins its province with no
     theaterId, and a province that gained a venue is re-sorted by displayName,
     the order the harvest keeps. Returns the problems found — empty means the
     table and the harvest agree."""
     problems = []
     by_theater = {c["theaterId"]: c for p in provinces for c in p["cinemas"]}
     by_province = {p["name"]: p for p in provinces}
-    slugs = collections.Counter(
-        list(ocine["listed"].values()) + [v["ticketingSlug"] for v in ocine["unlisted"]])
-    problems += [f"ticketing server {slug!r} is named for {n} venues"
-                 for slug, n in sorted(slugs.items()) if n > 1]
-    for theater_id, slug in sorted(ocine["listed"].items()):
+    servers = collections.Counter(
+        list(ocine["listed"].values()) + [v["ticketingServer"] for v in ocine["unlisted"]])
+    problems += [f"ticketing server {server!r} is named for {n} venues"
+                 for server, n in sorted(servers.items()) if n > 1]
+    for theater_id, server in sorted(ocine["listed"].items()):
         if theater_id in by_theater:
-            by_theater[theater_id]["ocineSlug"] = slug
+            by_theater[theater_id]["ocineServer"] = server
         else:
-            problems.append(f"listed Ocine venue {theater_id} ({slug}) is not in the harvest")
+            problems.append(f"listed Ocine venue {theater_id} ({server}) is not in the harvest")
     grown = set()
     for venue in ocine["unlisted"]:
         province = by_province.get(venue["province"])
@@ -140,7 +140,7 @@ def merge_ocine(provinces: list, ocine: dict) -> list[str]:
                             f"province {venue['province']!r}")
             continue
         province["cinemas"].append({"theaterId": None, "name": venue["name"], "town": venue["town"],
-                                    "displayName": venue["name"], "ocineSlug": venue["ticketingSlug"]})
+                                    "displayName": venue["name"], "ocineServer": venue["ticketingServer"]})
         grown.add(province["name"])
     for name in grown:
         by_province[name]["cinemas"].sort(key=lambda c: c["displayName"])
@@ -186,7 +186,7 @@ def main() -> int:
         "package models",
         "",
         "private[models] object SpanishRosterData {",
-        "  // (displayName, pillName, SensaCine theaterId, Ocine ticketing slug) — a venue",
+        "  // (displayName, pillName, SensaCine theaterId, Ocine ticketing server) — a venue",
         "  // SensaCine does not list has no theaterId and is scraped off its own server",
         "  type C = (String, String, Option[String], Option[String])",
         "  // (slug, name, autonomous community, lat, lon, zoneId, towns, cinemas)",
@@ -198,7 +198,7 @@ def main() -> int:
         venues = ",\n".join(
             "    ({}, {}, {}, {})".format(
                 scala_string(c["displayName"]), scala_string(c["displayName"]),
-                scala_option(c["theaterId"]), scala_option(c.get("ocineSlug")))
+                scala_option(c["theaterId"]), scala_option(c.get("ocineServer")))
             for c in province["cinemas"])
         towns = ", ".join(scala_string(t) for t in towns_of(province, corrections))
         lines.append(

@@ -1,12 +1,12 @@
 // GENERATED from data/spain/provinces.json by data/spain/scripts/generate_roster.py
-// — do NOT edit by hand. Full Spanish cinema roster: 52 provinces / 595 cinemas (SensaCine, plus the Ocine
+// — do NOT edit by hand. Full Spanish cinema roster: 52 provinces / 604 cinemas (SensaCine, plus the Ocine
 // venues it does not list, from data/spain/ocine.json).
 // Regenerate with `python3 data/spain/scripts/generate_roster.py` after re-harvesting;
 // see data/spain/README.md.
 package models
 
 private[models] object SpanishRosterData {
-  // (displayName, pillName, SensaCine theaterId, Ocine ticketing slug) — a venue
+  // (displayName, pillName, SensaCine theaterId, Ocine ticketing server) — a venue
   // SensaCine does not list has no theaterId and is scraped off its own server
   type C = (String, String, Option[String], Option[String])
   // (slug, name, autonomous community, lat, lon, zoneId, towns, cinemas)
@@ -69,13 +69,14 @@ private[models] object SpanishRosterData {
     ("Yelmo Cines Puerta De Alicante", "Yelmo Cines Puerta De Alicante", Some("E0631"), None),
     ("Yelmo Cines Vinalopo", "Yelmo Cines Vinalopo", Some("E0636"), None)
   ))
-  private def p_almeria: R = ("almeria", "Almería", "Andalucía", 36.83814, -2.45974, "Europe/Madrid", Seq("Almería", "Albox", "Berja", "Garrucha", "Parador Hortichuelas", "Roquetas de Mar", "Vera"), Seq(
+  private def p_almeria: R = ("almeria", "Almería", "Andalucía", 36.83814, -2.45974, "Europe/Madrid", Seq("Almería", "Albox", "Berja", "El Ejido", "Garrucha", "Parador Hortichuelas", "Roquetas de Mar", "Vera"), Seq(
     ("Cine Albox", "Cine Albox", Some("E0865"), None),
     ("Cine Berja", "Cine Berja", Some("E0965"), None),
     ("Cine Tenis", "Cine Tenis", Some("E0975"), None),
     ("Cine Terraza de Verano de Vera", "Cine Terraza de Verano de Vera", Some("E0911"), None),
     ("Cine de verano Aguadulce", "Cine de verano Aguadulce", Some("E0943"), None),
     ("Kinépolis Almería Mediterráneo", "Kinépolis Almería Mediterráneo", Some("E0359"), None),
+    ("Ocine Copo", "Ocine Copo", None, Some("tickets.ocinecopo.es")),
     ("Yelmo Cines Roquetas", "Yelmo Cines Roquetas", Some("E0620"), None),
     ("Yelmo Cines Torrecárdenas", "Yelmo Cines Torrecárdenas", Some("E0909"), None)
   ))
@@ -84,6 +85,7 @@ private[models] object SpanishRosterData {
     ("Cine Fantasio Navia", "Cine Fantasio Navia", Some("E1037"), None),
     ("Cinebox Parque Astur", "Cinebox Parque Astur", Some("E0290"), None),
     ("Cinesa Parque Principado", "Cinesa Parque Principado", Some("E0398"), None),
+    ("Ocine Premium Los Fresnos", "Ocine Premium Los Fresnos", None, Some("tickets.ocinepremiumlosfresnos.es")),
     ("Odeon Multicines Parque Astur", "Odeon Multicines Parque Astur", Some("E0814"), None),
     ("Yelmo Cines Los Prados", "Yelmo Cines Los Prados", Some("E0623"), None)
   ))
@@ -142,9 +144,9 @@ private[models] object SpanishRosterData {
     ("Multicines Catalunya", "Multicines Catalunya", Some("E0495"), None),
     ("Multicines Eix Macià", "Multicines Eix Macià", Some("E0504"), None),
     ("Multicines Sucre", "Multicines Sucre", Some("E0535"), None),
-    ("Ocine Arenys", "Ocine Arenys", Some("E0651"), Some("arenys")),
-    ("Ocine Granollers", "Ocine Granollers", Some("E0507"), Some("granollers")),
-    ("Ocine Màgic", "Ocine Màgic", Some("E0713"), Some("magic")),
+    ("Ocine Arenys", "Ocine Arenys", Some("E0651"), Some("tickets.ocinearenys.es")),
+    ("Ocine Granollers", "Ocine Granollers", Some("E0507"), Some("tickets.ocinegranollers.es")),
+    ("Ocine Màgic", "Ocine Màgic", Some("E0713"), Some("tickets.ocinemagic.es")),
     ("Ocine Sant Celoni Altrium", "Ocine Sant Celoni Altrium", Some("E0745"), None),
     ("Odeon Multicines Llobregat", "Odeon Multicines Llobregat", Some("E0521"), None),
     ("Odeon Multicines Vilanova", "Odeon Multicines Vilanova", Some("E2908"), None),
@@ -168,7 +170,7 @@ private[models] object SpanishRosterData {
     ("Cines Embajadores Santander", "Cines Embajadores Santander", Some("E0349"), None),
     ("Cinesa Bahía de Santander", "Cinesa Bahía de Santander", Some("E0123"), None),
     ("Filmoteca de Cantabria - Santander", "Filmoteca de Cantabria - Santander", Some("E0979"), None),
-    ("Ocine Premium Bahía Real", "Ocine Premium Bahía Real", Some("E1045"), Some("premiumbahiareal")),
+    ("Ocine Premium Bahía Real", "Ocine Premium Bahía Real", Some("E1045"), Some("tickets.ocinepremiumbahiareal.es")),
     ("Palacios De Festivales", "Palacios De Festivales", Some("E0560"), None),
     ("Sala Bretón", "Sala Bretón", Some("E0594"), None),
     ("Teatro Casino Liceo de Santoña", "Teatro Casino Liceo de Santoña", Some("E0918"), None),
@@ -182,7 +184,7 @@ private[models] object SpanishRosterData {
     ("Cinesa Salera", "Cinesa Salera", Some("E0654"), None),
     ("JJ Cinema ", "JJ Cinema ", Some("E0892"), None),
     ("Neocine Puerto Azahar", "Neocine Puerto Azahar", Some("E0571"), None),
-    ("Ocine Premium Estepark", "Ocine Premium Estepark", Some("E0925"), Some("premiumestepark")),
+    ("Ocine Premium Estepark", "Ocine Premium Estepark", Some("E0925"), Some("tickets.ocinepremiumestepark.es")),
     ("Teatre Municipal Carmen Tur - Antic Cine España", "Teatre Municipal Carmen Tur - Antic Cine España", Some("E0791"), None),
     ("Terraza Neptuno", "Terraza Neptuno", Some("E0926"), None)
   ))
@@ -257,9 +259,9 @@ private[models] object SpanishRosterData {
     ("Cinema Truffaut", "Cinema Truffaut", Some("E0316"), None),
     ("Cinemes Roses", "Cinemes Roses", Some("E0324"), None),
     ("Multicines Olot", "Multicines Olot", Some("E0323"), None),
-    ("Ocine Blanes", "Ocine Blanes", Some("E0462"), Some("blanes")),
-    ("Ocine Girona", "Ocine Girona", Some("E0362"), Some("girona")),
-    ("Ocine Platja d'Aro", "Ocine Platja d'Aro", Some("E0554"), Some("platjadaro")),
+    ("Ocine Blanes", "Ocine Blanes", Some("E0462"), Some("tickets.ocineblanes.es")),
+    ("Ocine Girona", "Ocine Girona", Some("E0362"), Some("tickets.ocinegirona.es")),
+    ("Ocine Platja d'Aro", "Ocine Platja d'Aro", Some("E0554"), Some("tickets.ocineplatjadaro.es")),
     ("Odeon Multicines Girona", "Odeon Multicines Girona", Some("E0281"), None),
     ("Teatro Municipal de Palafrugel", "Teatro Municipal de Palafrugel", Some("E0978"), None)
   ))
@@ -274,7 +276,7 @@ private[models] object SpanishRosterData {
     ("Kinépolis Nevada", "Kinépolis Nevada", Some("E0866"), None),
     ("Megarama Granada", "Megarama Granada", Some("E0301"), None),
     ("Motril Cinema", "Motril Cinema", Some("E0869"), None),
-    ("Ocine Serrallo", "Ocine Serrallo", Some("E0787"), Some("serrallo")),
+    ("Ocine Serrallo", "Ocine Serrallo", Some("E0787"), Some("tickets.ocineserrallo.es")),
     ("Salón Cine Ideal", "Salón Cine Ideal", Some("E0849"), None),
     ("Teatro Isabel La Catolica", "Teatro Isabel La Catolica", Some("E0712"), None)
   ))
@@ -293,7 +295,7 @@ private[models] object SpanishRosterData {
     ("Herri Antzokia ", "Herri Antzokia ", Some("E0890"), None),
     ("Leidor Zinema", "Leidor Zinema", Some("E0472"), None),
     ("Multicines Niessen Zinemak", "Multicines Niessen Zinemak", Some("E0637"), None),
-    ("Ocine Mendibil", "Ocine Mendibil", Some("E0537"), Some("mendibil")),
+    ("Ocine Mendibil", "Ocine Mendibil", Some("E0537"), Some("tickets.ocinemendibil.es")),
     ("Oñatiko Zinea", "Oñatiko Zinea", Some("E0551"), None),
     ("Teatro Coliseo", "Teatro Coliseo", Some("E0769"), None),
     ("Usurbe Antzokia", "Usurbe Antzokia", Some("E0605"), None)
@@ -331,6 +333,7 @@ private[models] object SpanishRosterData {
     ("Multicines Manacor", "Multicines Manacor", Some("E0522"), None),
     ("Multicines Rivoli", "Multicines Rivoli", Some("E0533"), None),
     ("Ocimax Multisalas", "Ocimax Multisalas", Some("E0639"), None),
+    ("Ocine Premium Porto Pi", "Ocine Premium Porto Pi", None, Some("tickets.ocinepremiumportopi.es:8444")),
     ("Sala Augusta", "Sala Augusta", Some("E0593"), None),
     ("Teatro España", "Teatro España", Some("E0755"), None)
   ))
@@ -358,6 +361,7 @@ private[models] object SpanishRosterData {
     ("Deiland Multicines", "Deiland Multicines", Some("E0785"), None),
     ("Multicine Atlántida", "Multicine Atlántida", Some("E0484"), None),
     ("Multicines Deiland", "Multicines Deiland", Some("E0485"), None),
+    ("Ocine Premium 7 Palmas", "Ocine Premium 7 Palmas", None, Some("tickets.ocinepremium7palmas.es")),
     ("Odeón Puerto del Rosario", "Odeón Puerto del Rosario", Some("E0898"), None),
     ("Yelmo Cines Fuerteventura", "Yelmo Cines Fuerteventura", Some("E0618"), None),
     ("Yelmo Cines Las Arenas", "Yelmo Cines Las Arenas", Some("E0754"), None),
@@ -380,7 +384,7 @@ private[models] object SpanishRosterData {
     ("Multicines Hollywood", "Multicines Hollywood", Some("E0513"), None),
     ("Yelmo Cines As Termas", "Yelmo Cines As Termas", Some("E0684"), None)
   ))
-  private def p_lerida: R = ("lerida", "Lérida", "Cataluña", 41.61674, 0.62218, "Europe/Madrid", Seq("Mollerussa", "Agramunt", "Almacelles", "Alpicat", "Balaguer", "Bellpuig", "La Seu d'Urgell", "Linyola", "Pont de Suert", "Solsona", "Tremp", "Tàrrega", "Vielha"), Seq(
+  private def p_lerida: R = ("lerida", "Lérida", "Cataluña", 41.61674, 0.62218, "Europe/Madrid", Seq("Mollerussa", "Agramunt", "Almacelles", "Alpicat", "Balaguer", "Bellpuig", "La Seu d'Urgell", "Linyola", "Lleida", "Pont de Suert", "Solsona", "Tremp", "Tàrrega", "Vielha"), Seq(
     ("Autocine Resquitx - Golmés", "Autocine Resquitx - Golmés", Some("E1033"), None),
     ("Cinema Armengol", "Cinema Armengol", Some("E0302"), None),
     ("Cinema Casal Agramunt", "Cinema Casal Agramunt", Some("E0303"), None),
@@ -395,9 +399,10 @@ private[models] object SpanishRosterData {
     ("Cinemes Majestic", "Cinemes Majestic", Some("E0799"), None),
     ("Cinemes Urgell", "Cinemes Urgell", Some("E0325"), None),
     ("Jca Cinemes Alpicat", "Jca Cinemes Alpicat", Some("E0652"), None),
+    ("Ocine Premium Lleida", "Ocine Premium Lleida", None, Some("tickets.ocinepremiumlleida.es")),
     ("Sala d''actes Ajuntament", "Sala d''actes Ajuntament", Some("E0985"), None)
   ))
-  private def p_madrid: R = ("madrid", "Madrid", "Comunidad de Madrid", 40.4165, -3.70256, "Europe/Madrid", Seq("Madrid", "Alcobendas", "Alcorcón", "Boadilla del Monte", "Coslada", "Fuente la Teja", "Leganés", "Majadahonda", "Tres Cantos", "Valdemorillo", "Valdemoro", "Villaviciosa de Odón", "Alcalá de Henares", "Aranjuez", "Arroyomolinos", "Collado Villalba", "Fuenlabrada", "Getafe", "Guadarrama", "Las Rozas de Madrid", "Móstoles", "Parla", "Pelayos de la Presa", "Pinto", "Pozuelo de Alarcón", "Rivas-Vaciamadrid", "San Martín de Valdeiglesias", "San Sebastián de los Reyes", "Soto del Real", "Torrejón de Ardoz", "Villa del Prado"), Seq(
+  private def p_madrid: R = ("madrid", "Madrid", "Comunidad de Madrid", 40.4165, -3.70256, "Europe/Madrid", Seq("Madrid", "Alcalá de Henares", "Alcobendas", "Alcorcón", "Boadilla del Monte", "Coslada", "Fuente la Teja", "Leganés", "Majadahonda", "Tres Cantos", "Valdemorillo", "Valdemoro", "Villaviciosa de Odón", "Aranjuez", "Arroyomolinos", "Collado Villalba", "Fuenlabrada", "Getafe", "Guadarrama", "Las Rozas de Madrid", "Móstoles", "Parla", "Pelayos de la Presa", "Pinto", "Pozuelo de Alarcón", "Rivas-Vaciamadrid", "San Martín de Valdeiglesias", "San Sebastián de los Reyes", "Soto del Real", "Torrejón de Ardoz", "Villa del Prado"), Seq(
     ("Casa de Cultura Guadarrama", "Casa de Cultura Guadarrama", Some("E0936"), None),
     ("Centro de Arte y Cine de Verano Soto del Real", "Centro de Arte y Cine de Verano Soto del Real", Some("E0937"), None),
     ("Cine Aranjuez", "Cine Aranjuez", Some("E0233"), None),
@@ -431,8 +436,10 @@ private[models] object SpanishRosterData {
     ("Kinépolis Madrid", "Kinépolis Madrid", Some("E0453"), None),
     ("Kinépolis Madrid Diversia", "Kinépolis Madrid Diversia", Some("E0209"), None),
     ("Multicines Cisneros", "Multicines Cisneros", Some("E0498"), None),
-    ("Ocine Plaza Éboli", "Ocine Plaza Éboli", Some("E2900"), Some("plazaeboli")),
-    ("Ocine Urban X-Madrid", "Ocine Urban X-Madrid", Some("E1004"), Some("urbanxmadrid")),
+    ("Ocine Plaza Éboli", "Ocine Plaza Éboli", Some("E2900"), Some("tickets.ocineplazaeboli.es")),
+    ("Ocine Quadernillos", "Ocine Quadernillos", None, Some("tickets.ocinequadernillos.es")),
+    ("Ocine Urban Caleido", "Ocine Urban Caleido", None, Some("tickets.ocineurbancaleido.es")),
+    ("Ocine Urban X-Madrid", "Ocine Urban X-Madrid", Some("E1004"), Some("tickets.ocineurbanxmadrid.es")),
     ("Odeon Multicines Sambil Dolby Atmos", "Odeon Multicines Sambil Dolby Atmos", Some("E0877"), None),
     ("Odeon Multicines Tres Cantos", "Odeon Multicines Tres Cantos", Some("E0815"), None),
     ("Restón Cinema", "Restón Cinema", Some("E0584"), None),
@@ -529,6 +536,7 @@ private[models] object SpanishRosterData {
     ("Multicines Cinexpo", "Multicines Cinexpo", Some("E0298"), None),
     ("Multicines Gran Arousa", "Multicines Gran Arousa", Some("E0510"), None),
     ("Multicines Norte", "Multicines Norte", Some("E0525"), None),
+    ("Ocine Premium Gran Vía de Vigo", "Ocine Premium Gran Vía de Vigo", None, Some("tickets.ocinepremiumgranvia.es")),
     ("Teatro Salesianos", "Teatro Salesianos", Some("E0602"), None),
     ("Yelmo Cines Premium Vialia Vigo", "Yelmo Cines Premium Vialia Vigo", Some("E2902"), None),
     ("Yelmo Cines Travesía Vigo", "Yelmo Cines Travesía Vigo", Some("E0635"), None)
@@ -583,16 +591,17 @@ private[models] object SpanishRosterData {
     ("Cine Palafox Burgo de Osma", "Cine Palafox Burgo de Osma", Some("E0265"), None),
     ("Cines Lara", "Cines Lara", Some("E0356"), None)
   ))
-  private def p_tarragona: R = ("tarragona", "Tarragona", "Cataluña", 41.11905, 1.24544, "Europe/Madrid", Seq("Tarragona", "Altafulla", "Amposta", "Calafell", "Cambrils", "Montblanc", "Reus", "Roquetes", "Valls", "Vila-seca"), Seq(
+  private def p_tarragona: R = ("tarragona", "Tarragona", "Cataluña", 41.11905, 1.24544, "Europe/Madrid", Seq("Tarragona", "Altafulla", "Amposta", "Calafell", "Cambrils", "El Vendrell", "Montblanc", "Reus", "Roquetes", "Valls", "Vila-seca"), Seq(
     ("Cinema Casal Montblanquí", "Cinema Casal Montblanquí", Some("E0161"), None),
     ("Cinemes Amposta", "Cinemes Amposta", Some("E0076"), None),
     ("Cines Axion Reus", "Cines Axion Reus", Some("E0920"), None),
     ("JCA Cinemes Tarragona Valls", "JCA Cinemes Tarragona Valls", Some("E0908"), None),
     ("MCB Altafulla - Les Bruixes", "MCB Altafulla - Les Bruixes", Some("E0320"), None),
     ("MCB Calafell", "MCB Calafell", Some("E0479"), None),
-    ("Ocine Gavarres", "Ocine Gavarres", Some("E0509"), Some("gavarres")),
-    ("Ocine Roquetes", "Ocine Roquetes", Some("E0556"), Some("roquetes")),
-    ("Ocine Vila-seca", "Ocine Vila-seca", Some("E0727"), Some("vilaseca")),
+    ("Ocine El Vendrell", "Ocine El Vendrell", None, Some("tickets.ocinevendrell.es")),
+    ("Ocine Gavarres", "Ocine Gavarres", Some("E0509"), Some("tickets.ocinegavarres.es")),
+    ("Ocine Roquetes", "Ocine Roquetes", Some("E0556"), Some("tickets.ocineroquetes.es")),
+    ("Ocine Vila-seca", "Ocine Vila-seca", Some("E0727"), Some("tickets.ocinevilaseca.es")),
     ("Rambla de L'art", "Rambla de L'art", Some("E0811"), None),
     ("Yelmo Cines Parc Central", "Yelmo Cines Parc Central", Some("E0807"), None)
   ))
@@ -640,7 +649,7 @@ private[models] object SpanishRosterData {
     ("Cinestudio D´or", "Cinestudio D´or", Some("E0407"), None),
     ("Kinepolis Alzira", "Kinepolis Alzira", Some("E0434"), None),
     ("Kinépolis Valencia", "Kinépolis Valencia", Some("E0454"), None),
-    ("Ocine Premium Aqua", "Ocine Premium Aqua", Some("E0474"), Some("premiumaqua")),
+    ("Ocine Premium Aqua", "Ocine Premium Aqua", Some("E0474"), Some("tickets.ocinepremiumaqua.es")),
     ("Ozone Gandía", "Ozone Gandía", Some("E0282"), None),
     ("Teatro Flumen", "Teatro Flumen", Some("E0967"), None),
     ("Teatro García Berlanga", "Teatro García Berlanga", Some("E1030"), None),
@@ -657,7 +666,7 @@ private[models] object SpanishRosterData {
     ("Cines Broadway", "Cines Broadway", Some("E0333"), None),
     ("Cines Manhattan", "Cines Manhattan", Some("E0357"), None),
     ("Multicines Coliseo", "Multicines Coliseo", Some("E0698"), None),
-    ("Ocine Rio Shopping", "Ocine Rio Shopping", Some("E0796"), Some("rioshopping")),
+    ("Ocine Rio Shopping", "Ocine Rio Shopping", Some("E0796"), Some("tickets.ocinerioshopping.es")),
     ("Teatro Principal", "Teatro Principal", Some("E0600"), None),
     ("Yelmo Cines Premium VallSur", "Yelmo Cines Premium VallSur", Some("E0297"), None)
   ))
