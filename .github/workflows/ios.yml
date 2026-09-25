@@ -112,9 +112,9 @@ jobs:
                   scripts/ci/ios-sim-destination-test.sh
                   echo "DESTINATION=$(scripts/ci/ios-sim-destination.sh)" >> "$GITHUB_ENV"
 
-            # The whole suite took ~28 min serially on a macos-latest runner (green run 36117454325).
-            # Two simulator clones share it: locally 779s serial -> 561s with 2 workers, while 3 workers
-            # took 1571s (more simulators than the host could feed), so the 3-core runner gets 2.
+            # One simulator, serially: ~28 min (green run 36117454325). Two clones were slower on
+            # this 3-core runner, not faster: run 36157983964 took 38 min and clone 2 ran 3 of the
+            # 62 tests.
             # Every test is bounded: one that hangs is killed at its allowance and FAILS, naming
             # itself in the report, instead of eating the step's budget in silence. The step's own
             # timeout backs that up if xcodebuild itself wedges.
@@ -122,6 +122,7 @@ jobs:
             # Still continue-on-error until two main runs are green with the city-gate flake fixed
             # (only the gate's own suites still tap it, see FixtureLaunch.intoCity); then drop it.
             - name: Run XCUITest
+              id: xcuitest
               continue-on-error: true
               timeout-minutes: 50
               run: |
@@ -130,8 +131,6 @@ jobs:
                       -scheme Kinowo \
                       -destination "$DESTINATION" \
                       -resultBundlePath build/Kinowo.xcresult \
-                      -parallel-testing-enabled YES \
-                      -parallel-testing-worker-count 2 \
                       -test-timeouts-enabled YES \
                       -default-test-execution-time-allowance 180 \
                       -maximum-test-execution-time-allowance 300 \
@@ -155,11 +154,21 @@ jobs:
                   detailed_summary: true
                   include_passed: false
 
-            # XCUITest step is continue-on-error (see there), so leave a glance-able signal
-            # when it has failures.
+            # XCUITest step is continue-on-error (see there), so leave a glance-able signal when
+            # it has failures, WITH each failure's assertion and line: the JUnit report above only
+            # names the test ("Uncategorized"), which left run 36157983964's two failures unexplained.
             - name: Flag XCUITest failures
               if: always()
-              run: '[ -s xcuitest.xml ] && grep -q "<failure" xcuitest.xml && echo "::warning::XCUITest reported failures — see the iOS XCUITest check" || true'
+              run: |
+                  [ -d build/Kinowo.xcresult ] || exit 0
+                  xcrun xcresulttool get test-results summary --path build/Kinowo.xcresult > xcuitest-summary.json || exit 0
+                  python3 - <<'PY'
+                  import json
+                  summary = json.load(open("xcuitest-summary.json"))
+                  for failure in summary.get("testFailures", []):
+                      text = str(failure.get("failureText")).replace("%", "%25").replace("\n", "%0A")
+                      print(f"::warning title={failure.get('testName')}::{text}")
+                  PY
 
             # Parity check — catches Foundation/Darwin vs Linux drift in
             # the model / decoder layer that Linux swift-corelibs-foundation
@@ -176,8 +185,10 @@ jobs:
                   detailed_summary: true
                   include_passed: false
 
+            # `failure()` alone never fires for the XCUITest step: continue-on-error keeps the job
+            # green, so its result bundle was never kept. Its own outcome decides.
             - uses: actions/upload-artifact@v6
-              if: failure()
+              if: always() && (failure() || steps.xcuitest.outcome == 'failure')
               with:
                   name: Kinowo.xcresult
                   path: build/Kinowo.xcresult
