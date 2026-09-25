@@ -10,7 +10,14 @@ trap 'rm -rf "$stub_dir"' EXIT
 cat > "$stub_dir/gh" <<'STUB'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$STUB_LOG"
-if [ "$1 $2" = "issue list" ]; then [ -n "${STUB_OPEN_ISSUE:-}" ] && echo "$STUB_OPEN_ISSUE"; fi
+# `issue list` answers as the real one does with --json: a lookalike the fuzzy search also
+# finds (a title that merely CONTAINS the searched one), then STUB_OPEN_ISSUE under the exact title.
+if [ "$1 $2" = "issue list" ]; then
+  while [ $# -gt 0 ] && [ "$1" != --search ]; do shift; done
+  title="${2%\" in:title}"; title="${title#\"}"
+  jq -nc --arg t "$title" --arg n "${STUB_OPEN_ISSUE:-}" \
+    '[{number: 99, title: ("Re: " + $t)}] + (if $n == "" then [] else [{number: ($n | tonumber), title: $t}] end)'
+fi
 exit 0
 STUB
 chmod +x "$stub_dir/gh"
@@ -30,6 +37,12 @@ check "...and the assignee is the one passed" "1" \
 check "a failure while one is open comments on it instead of opening a second" \
   "issue comment 7 --body Failed again: https://run/2" \
   "$(run 7 failed "OG cards" "https://run/2" pawelkrupinski)"
+check "an issue whose title only contains the workflow's is not its issue" \
+  "issue create --title Scheduled workflow failing: OG cards --" \
+  "$(run "" failed "OG cards" "https://run/1" pawelkrupinski | head -n 1)"
+check "a workflow name with a quote still finds its open issue" \
+  "issue comment 7 --body Failed again: https://run/5" \
+  "$(run 7 failed 'Say "cheese"' "https://run/5" pawelkrupinski)"
 check "a pass closes the open issue" \
   "issue close 7 --comment Passed again: https://run/3" \
   "$(run 7 recovered "OG cards" "https://run/3")"

@@ -12,7 +12,14 @@ trap 'rm -rf "$stub_dir"' EXIT
 cat > "$stub_dir/gh" <<'STUB'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$STUB_LOG"
-if [ "$1 $2" = "issue list" ]; then [ -n "${STUB_OPEN_ISSUE:-}" ] && echo "$STUB_OPEN_ISSUE"; fi
+# `issue list` answers as the real one does with --json: a lookalike the fuzzy search also
+# finds (a title that merely CONTAINS the searched one), then STUB_OPEN_ISSUE under the exact title.
+if [ "$1 $2" = "issue list" ]; then
+  while [ $# -gt 0 ] && [ "$1" != --search ]; do shift; done
+  title="${2%\" in:title}"; title="${title#\"}"
+  jq -nc --arg t "$title" --arg n "${STUB_OPEN_ISSUE:-}" \
+    '[{number: 99, title: ("Re: " + $t)}] + (if $n == "" then [] else [{number: ($n | tonumber), title: $t}] end)'
+fi
 exit 0
 STUB
 chmod +x "$stub_dir/gh"

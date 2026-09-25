@@ -47,8 +47,8 @@ body="Flaky in ${sha:0:9} — $run_url (the build failed regardless; a rerun is 
 |---|---|---|---|
 $rows"
 
-issue="$(gh issue list --state open --search "\"$Title\" in:title" --json number,title \
-    --jq ".[] | select(.title == \"$Title\") | .number" | head -n 1)"
+. "$(dirname "${BASH_SOURCE[0]}")/open-issue.sh"
+issue="$(open_issue_titled "$Title")"
 if [ -n "$issue" ]; then
     gh issue comment "$issue" --body "$body"
 else

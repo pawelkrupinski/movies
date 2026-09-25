@@ -22,10 +22,8 @@ run_url="${3:?run url}"
 assignee="${4:-}"
 title="Scheduled workflow failing: $workflow"
 
-# `--search` is fuzzy, so the exact title is re-checked here; an issue that merely mentions the
-# workflow is not this one.
-open_issue="$(gh issue list --state open --search "\"$title\" in:title" --json number,title \
-  --jq ".[] | select(.title == \"$title\") | .number" | head -n 1)"
+. "$(dirname "${BASH_SOURCE[0]}")/open-issue.sh"
+open_issue="$(open_issue_titled "$title")"
 
 case "$verdict" in
   failed)

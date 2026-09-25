@@ -30,6 +30,7 @@ on:
             - 'scripts/ci/check-security-headers.py'
             - 'scripts/ci/test_check_security_headers.py'
             - 'scripts/ci/scheduled-failure-issue*.sh'
+            - 'scripts/ci/open-issue.sh'
             - '.github/actions/report-scheduled-run/**'
 
 permissions:
