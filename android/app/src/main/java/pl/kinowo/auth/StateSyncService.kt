@@ -149,8 +149,11 @@ class StateSyncService(
     /** Reconcile whichever country is currently selected, PLUS language
      *  (which needs no country at all — see [reconcileLanguage]). Called on
      *  login and on app foreground-resume. Public so
-     *  [pl.kinowo.ui.KinowoViewModel] can call it from its `onResume()`. */
+     *  [pl.kinowo.ui.KinowoViewModel] can call it from its `onResume()` —
+     *  which runs for signed-out users too, so this does nothing without a
+     *  session: every request would only draw a 401. */
     suspend fun reconcileCurrentCountry() {
+        if (!loggedIn) return
         reconcileLanguage()
         reconcile(currentCountry())
     }

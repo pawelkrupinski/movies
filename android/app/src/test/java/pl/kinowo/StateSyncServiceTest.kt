@@ -325,6 +325,19 @@ class StateSyncServiceTest {
         assertEquals(setOf("Film A", "Film B"), prefs.hiddenState)
     }
 
+    /** Most users never sign in, and every one of their foregrounds calls
+     *  this: it must not spend a request the server can only answer 401. */
+    @Test
+    fun aForegroundResumeWhileSignedOutSendsNothing() = runTest(UnconfinedTestDispatcher()) {
+        prefs.countryState.value = "pl"
+        val service = startService()
+
+        service.reconcileCurrentCountry()
+        advanceUntilIdle()
+
+        assertEquals(emptyList<String>(), client.fetchCalls)
+    }
+
     // ── Country switches — hiddenFilms is per country on both sides ────────
 
     /** A switch re-runs the first-login union for a never-synced country.
@@ -500,8 +513,10 @@ class StateSyncServiceTest {
     @Test
     fun aCancelledReconcileDoesNotCompleteNormally() = runTest(UnconfinedTestDispatcher()) {
         prefs.countryState.value = "pl"
+        val service = startService()
+        login()
+        advanceUntilIdle()
         client.beforeFetch = { kotlinx.coroutines.awaitCancellation() }
-        val service = StateSyncService(prefs, userFlow, client, languageClient, backgroundScope)
         var completedNormally = false
         val job = launch { service.reconcileCurrentCountry(); completedNormally = true }
         runCurrent()
