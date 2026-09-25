@@ -117,9 +117,9 @@ jobs:
               if: steps.changed.outputs.wired == 'true'
               with:
                   path: |
-                      target
                       project/target
                       project/project/target
+                      */target/scala-*
                   key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**') }}
                   restore-keys: |
                       sbt-target-${{ runner.os }}-

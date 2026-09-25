@@ -19,15 +19,15 @@ import org.scalatest.matchers.should.Matchers
  * paid on 13 runners at once.
  *
  * A cache that silently caches the wrong thing has no failing symptom, so this
- * spec is the symptom.
+ * spec is the symptom. It reads EVERY workflow and composite action rather than a
+ * list: it once named three files, and the convergence legs' cache — five
+ * recorder legs and ten convergence jobs a night, each spending ~100s compiling
+ * from cold behind a 74 KB "Cache restored" — was in none of them.
  */
 class SbtCachePathsSpec extends AnyFlatSpec with Matchers {
 
-  private val workflows = Seq(
-    ".github/workflows/ci.yml",
-    ".github/workflows/main.yml",
-    ".github/actions/run-page-test/action.yml",
-  )
+  private lazy val workflows: Seq[String] =
+    RepoFile.workflows().map(_.getPath) ++ RepoFile.compositeActions()
 
   /** The `path:` block of every cache step that is caching sbt output. */
   private lazy val sbtCachePaths: Seq[(String, Vector[String])] =
@@ -43,26 +43,19 @@ class SbtCachePathsSpec extends AnyFlatSpec with Matchers {
     }
 
   "the sbt caches" should "have been found at all (guards this spec's own reader)" in {
-    sbtCachePaths should not be empty
-    // test, integration-test, e2e, mobile-local-server, and the page-test
-    // action. `build-image` was one more until its container build moved to
-    // GHCR, where `build-web` / `build-worker` were already producing the
-    // same bytes — those two stage with sbt but cache through
-    // `sbt/setup-sbt`, not this key.
-    sbtCachePaths should have size 5
+    sbtCachePaths.map(_._1).distinct should contain allOf (
+      ".github/workflows/ci.yml",
+      ".github/workflows/record-scrape-fixtures.yml",
+      ".github/actions/run-page-test/action.yml",
+      ".github/actions/convergence-setup/action.yml",
+    )
   }
 
   it should "carry the module classes and zinc state, which is the only part worth caching" in {
-    sbtCachePaths.foreach { case (file, paths) =>
-      withClue(s"$file caches $paths but no module output: ") {
-        paths should contain("*/target/scala-*")
-      }
-    }
+    sbtCachePaths.collect { case (file, paths) if !paths.contains("*/target/scala-*") => file } shouldBe empty
   }
 
   it should "not carry the root target, which is test reports and sbt scratch" in {
-    sbtCachePaths.foreach { case (file, paths) =>
-      withClue(s"$file: ")(paths should not contain "target")
-    }
+    sbtCachePaths.collect { case (file, paths) if paths.contains("target") => file } shouldBe empty
   }
 }

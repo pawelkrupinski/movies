@@ -289,21 +289,21 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
 
   /** The check-run that told us 4,381 tests had passed on a leg that ran none of them.
    *
-   *  `target/` is restored from the actions cache WHOLE, every module writes its JUnit
-   *  XML into the one root-level `target/test-reports/unit/` (build.sbt's
-   *  `unitReportSettings`), and the restore-keys fall through to the key `ci.yml`'s unit
-   *  job saves. So a leg begins with a report directory full of specs from another
-   *  workflow, and the publish step globs that directory. A leg that FINISHES overwrites
-   *  them and nobody notices; the United States' leg died on an OOM before ScalaTest
-   *  reported a result, and its check-run went green naming `CinemaScraperCatalogSpec`.
+   *  Every module writes its JUnit XML into the one root-level `target/test-reports/unit/`
+   *  (build.sbt's `unitReportSettings`), and the leg's sbt cache used to restore the root
+   *  `target/` whole, falling through to the key `ci.yml`'s unit job saves. So a leg began
+   *  with a report directory full of specs from another workflow, and the publish step
+   *  globs that directory. The United States' leg died on an OOM before ScalaTest reported
+   *  a result, and its check-run went green naming `CinemaScraperCatalogSpec`.
    *
-   *  Both halves are load-bearing and neither works alone: clearing the directory
-   *  without `require_tests` turns the lie into a shrug, and `require_tests` over a
-   *  directory nobody cleared still reports somebody else's passes. */
+   *  Both halves are load-bearing and neither works alone: a cache that leaves the root
+   *  `target/` behind without `require_tests` turns the lie into a shrug, and
+   *  `require_tests` over a restored directory still reports somebody else's passes. */
   it should "report only the tests THIS leg ran, and admit it when there are none" in {
-    val setup = RepoFile.read(".github/actions/convergence-setup/action.yml")
-    withClue("the cache restores another job's test reports; the leg must discard them: ") {
-      setup should include("rm -rf target/test-reports")
+    val cachePaths = RepoFile.read(".github/actions/convergence-setup/action.yml").linesIterator
+      .dropWhile(_.trim != "path: |").drop(1).map(_.trim).takeWhile(_.nonEmpty).takeWhile(!_.contains(":")).toSeq
+    withClue("the cache must carry the module classes and NOT the root target, which holds another job's test reports: ") {
+      cachePaths should (contain("*/target/scala-*") and not contain "target")
     }
     withClue("a leg that produced no report must fail the check rather than skip it: ") {
       RepoFile.block(leg, "convergence") should include("require_tests: true")
