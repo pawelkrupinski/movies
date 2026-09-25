@@ -45,6 +45,24 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
       } finally { german.close(); polish.close(); forwarder.close() }
     }
 
+  // Giving up is for the ownership refusal alone. Every other non-transient failure — an auth
+  // error mid role change, a command error — also ended the reconnect for good, leaving the
+  // process degraded until something restarted it.
+  "a reconnect that meets a failure other than another country's claim" should "keep retrying and recover" in
+    tools.IntegrationCorpusDatabase.withDatabase(uri, "late-reconnect-retry") { db =>
+      val attempts = new java.util.concurrent.atomic.AtomicInteger(0)
+      val connection = new MongoConnection(Some(uri), db.name, required = true, probeTimeout = 2.seconds,
+        onConnected = _ => attempts.incrementAndGet() match {
+          case 1 => throw new com.mongodb.MongoTimeoutException("unreachable at boot")
+          case 2 => throw new IllegalArgumentException("refused once, for a reason no claim gave")
+          case _ => ()
+        })
+      try {
+        connection.database shouldBe None
+        eventually(connection.database should not be empty)(using PatienceConfig(Span(40, Seconds), Span(1, Seconds)), implicitly)
+      } finally connection.close()
+    }
+
   // A connection bound to a SHARED client does not own it (the worker closes it once, after
   // every borrowing connection). A close landing while the reconnect's probe was in flight
   // made the reconnect close "its" client — the shared one, under every other country.

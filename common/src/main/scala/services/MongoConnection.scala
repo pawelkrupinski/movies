@@ -170,9 +170,12 @@ class MongoConnection(
                 val published = publishLock.synchronized { if (!closed) initResult = (Some(client), Some(db)); !closed }
                 if (published) logger.info(s"MongoConnection to $dbName RECOVERED — serving from the database again.")
                 else if (sharedClient.isEmpty) client.close()
-              case Failure(exception) if !MongoConnection.isTransient(exception) =>
+              case Failure(exception: DatabaseOwnershipConflict) =>
                 // Reachable, but refused for good — the `onConnected` claim found another
                 // country's database. Stay degraded: publishing it would let writes through.
+                // Only that: any other failure (an auth error mid role change, a command error)
+                // is retried, as before the claim existed — giving up left the process
+                // degraded until something restarted it.
                 givenUp = true
                 logger.error(s"MongoConnection to $dbName reconnected but was REFUSED (${exception.getMessage}) — " +
                   "staying degraded, nothing will be read from or written to it.")

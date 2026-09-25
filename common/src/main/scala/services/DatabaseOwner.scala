@@ -40,7 +40,7 @@ final class DatabaseOwner(database: MongoDatabase) {
     }
     owner() match {
       case Some(other) if other != country.code =>
-        throw new IllegalStateException(
+        throw new DatabaseOwnershipConflict(
           s"database '${database.name}' belongs to country '$other', refusing to run '${country.code}' on it: " +
             "two countries on one database prune each other's read model. Unset MONGODB_DB or point it at " +
             s"'${country.mongoDb}'.")
@@ -53,3 +53,7 @@ object DatabaseOwner {
   val Collection = "database_owner"
   val Id         = "owner"
 }
+
+/** Another country's stamp on the database: reachable, and refused for good — no retry changes
+ *  the owner. What the background reconnect gives up on; every other failure it keeps retrying. */
+final class DatabaseOwnershipConflict(message: String) extends IllegalStateException(message)
