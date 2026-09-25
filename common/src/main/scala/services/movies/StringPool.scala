@@ -18,35 +18,16 @@ import com.github.benmanes.caffeine.cache.Caffeine
  *  (~6-7k synopses + the cast/director/country/genre token vocabulary + ~4k distinct
  *  poster/film-page URLs). Only LOW-CARDINALITY values belong here — pooling a
  *  per-screening value such as `Showtime.bookingUrl` (116k distinct in the UK corpus
- *  alone) would evict the whole vocabulary and save almost nothing. */
-object StringPool {
-
-  /** The pool's ceiling, named so a deployment spec can assert it and
-   *  `kinowo_worker_string_pool_max_entries` can publish it.
-   *
-   *  THE BOUND FAILS SILENTLY, which is why there is a gauge beside it: past the
-   *  maximum Caffeine evicts, the next lookup of an evicted value allocates a fresh
-   *  String, and interning degrades into a no-op that still costs a hash per call.
-   *  Nothing logs, nothing errors -- the heap just grows.
-   *
-   *  MEASURED 2026-09-03, DO NOT RAISE IT: the pooled vocabulary is 28,695 distinct
-   *  values on the US corpus (121,236 slots) and 26,415 on the UK's (38,666) -- 22%
-   *  and 20% of this cap. A 2026-08-30 note called the cap "a US-scale precaution";
-   *  the US has now been counted and the precaution was unnecessary, because THE
-   *  VOCABULARY SATURATES. US carries 3x the UK's slots and barely more distinct
-   *  strings, since extra slots are extra showings of films already pooled.
-   *  Duplication factors bear it out: genres 4,395x (53 distinct across 232,953
-   *  elements), ageRating 8,532x (7 distinct), director 69x, cast 60x.
-   *
-   *  So heap duplication is NOT this cap overflowing. It is the paths that never
-   *  reach the pool -- interning happens only at `ScrapeLanding.buildCinemaSlot`, so
-   *  anything rehydrated through `MovieCodecs` decode, plus `Showtime.format` and
-   *  `CinemaShowing.titleKey`, arrives as fresh instances. Raising this number would
-   *  cost memory and change nothing. */
-  val MaxEntries: Long = 131072L
+ *  alone) would evict the whole vocabulary and save almost nothing.
+ *
+ *  An instance, never a global: the worker's metrics bundle owns ONE for the process and
+ *  its composition root hands that one to every country's cache, so a string Poland
+ *  interned is the instance Germany gets back and the gauges read the pool the scrapes
+ *  actually fill. Anything else (a spec, a lone cache) gets a pool of its own. */
+final class StringPool {
 
   private val pool = Caffeine.newBuilder()
-    .maximumSize(MaxEntries)
+    .maximumSize(StringPool.MaxEntries)
     // Occupancy and evictions are the only way to tell a working pool from a
     // thrashing one; Caffeine keeps these on LongAdders, so the cost is a counter
     // bump per lookup against an allocation saved.
@@ -75,4 +56,31 @@ object StringPool {
     val stats = pool.stats()
     if (stats.requestCount() == 0L) 1.0 else stats.hitRate()
   }
+}
+
+object StringPool {
+
+  /** The pool's ceiling, named so a deployment spec can assert it and
+   *  `kinowo_worker_string_pool_max_entries` can publish it.
+   *
+   *  THE BOUND FAILS SILENTLY, which is why there is a gauge beside it: past the
+   *  maximum Caffeine evicts, the next lookup of an evicted value allocates a fresh
+   *  String, and interning degrades into a no-op that still costs a hash per call.
+   *  Nothing logs, nothing errors -- the heap just grows.
+   *
+   *  MEASURED 2026-09-03, DO NOT RAISE IT: the pooled vocabulary is 28,695 distinct
+   *  values on the US corpus (121,236 slots) and 26,415 on the UK's (38,666) -- 22%
+   *  and 20% of this cap. A 2026-08-30 note called the cap "a US-scale precaution";
+   *  the US has now been counted and the precaution was unnecessary, because THE
+   *  VOCABULARY SATURATES. US carries 3x the UK's slots and barely more distinct
+   *  strings, since extra slots are extra showings of films already pooled.
+   *  Duplication factors bear it out: genres 4,395x (53 distinct across 232,953
+   *  elements), ageRating 8,532x (7 distinct), director 69x, cast 60x.
+   *
+   *  So heap duplication is NOT this cap overflowing. It is the paths that never
+   *  reach the pool -- interning happens only at `ScrapeLanding.buildCinemaSlot`, so
+   *  anything rehydrated through `MovieCodecs` decode, plus `Showtime.format` and
+   *  `CinemaShowing.titleKey`, arrives as fresh instances. Raising this number would
+   *  cost memory and change nothing. */
+  val MaxEntries: Long = 131072L
 }

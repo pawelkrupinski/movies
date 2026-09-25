@@ -31,8 +31,8 @@ import services.TtlIndexMismatches
  * present and reads 0 when every index agrees. The collection names are in the WARN
  * lines `MongoTtlIndex` emits, which is where triage reads them.
  *
- * Process-level, like [[StringPoolMetrics]]: the reconciler is one `object` shared
- * by every country's wiring in the JVM, so a `country` label PUT HERE would be a lie —
+ * Process-level, like [[StringPoolMetrics]]: the mismatch set is one instance, owned
+ * by [[WorkerMetrics]] and shared by every country's wiring in the JVM, so a `country` label PUT HERE would be a lie —
  * the register spans whatever countries this process runs, and attributing its count
  * to one of them would be made up.
  *

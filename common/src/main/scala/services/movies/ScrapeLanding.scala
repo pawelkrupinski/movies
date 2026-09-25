@@ -101,7 +101,10 @@ private[movies] final class ScrapeLanding(
   guardLedger: ScrapeGuardLedger = new InMemoryScrapeGuardLedger,
   // "Now" for the depth guard, which measures only showtimes still ahead of the
   // venue's own city clock — see `upcomingShowtimes`.
-  clock: java.time.Clock = java.time.Clock.systemUTC()
+  clock: java.time.Clock = java.time.Clock.systemUTC(),
+  // Where fresh slot strings are interned — see `buildCinemaSlot`. The worker hands every
+  // country's cache the process's one pool; a lone construction gets its own.
+  stringPool: StringPool = new StringPool
 ) extends Logging {
 
   import store.{corpusIndex, normalizer}
@@ -1042,10 +1045,10 @@ private[movies] final class ScrapeLanding(
       // at the ingestion boundary, so we never store the duplicate — not just hide
       // it at read time. See tools.SynopsisMarkdown.collapseRepeats.
       // Intern so a film's N cinema slots carrying the same chain-wide blurb share ONE
-      // String instead of N byte-identical copies (see StringPool). Same applies to the
+      // String instead of N byte-identical copies (see `stringPool`). Same applies to the
       // cast/director/country/genre fields below — only the FRESH branch needs interning;
       // the prior-slot carry-forward already holds interned instances.
-      synopsis       = cm.synopsis.map(tools.SynopsisMarkdown.collapseRepeats).map(StringPool.canonical).orElse(priorSlot.flatMap(_.synopsis)),
+      synopsis       = cm.synopsis.map(tools.SynopsisMarkdown.collapseRepeats).map(stringPool.canonical).orElse(priorSlot.flatMap(_.synopsis)),
       // Detail fields (cast/director/runtime/originalTitle/countries/genres) are
       // filled by the deferred EnrichDetails merge; a listing-only cinema's re-scrape
       // carries none of them. Carry the prior slot's values forward when the fresh
@@ -1059,9 +1062,9 @@ private[movies] final class ScrapeLanding(
                        else priorSlot.map(_.director).getOrElse(Seq.empty),
       runtimeMinutes = cm.movie.runtimeMinutes.filter(_ > 0).orElse(priorSlot.flatMap(_.runtimeMinutes)),
       releaseYear    = effectiveYear,
-      countries      = { val cs = StringPool.canonicalAll(cm.movie.countries.map(c => CountryNames.canonical(c, enrichmentLanguage)).distinct)
+      countries      = { val cs = stringPool.canonicalAll(cm.movie.countries.map(c => CountryNames.canonical(c, enrichmentLanguage)).distinct)
                          if (cs.nonEmpty) cs else priorSlot.map(_.countries).getOrElse(Seq.empty) },
-      genres         = if (cm.movie.genres.nonEmpty) StringPool.canonicalAll(cm.movie.genres)
+      genres         = if (cm.movie.genres.nonEmpty) stringPool.canonicalAll(cm.movie.genres)
                        else priorSlot.map(_.genres).getOrElse(Seq.empty),
       // Interned like the fields above, and for the same reason: a film's poster,
       // film page and trailer are ONE url repeated across every cinema showing it.
@@ -1071,9 +1074,9 @@ private[movies] final class ScrapeLanding(
       // deliberately NOT interned: it is per-screening, only 1.6x repeated
       // (182,719 -> 116,571 distinct), so pooling it would evict this whole
       // low-cardinality vocabulary for almost no saving.
-      posterUrl      = cm.posterUrl.map(StringPool.canonical).orElse(priorSlot.flatMap(_.posterUrl)),
-      filmUrl        = cm.filmUrl.map(StringPool.canonical),
-      trailerUrl     = cm.trailerUrl.map(StringPool.canonical).orElse(priorSlot.flatMap(_.trailerUrl)),
+      posterUrl      = cm.posterUrl.map(stringPool.canonical).orElse(priorSlot.flatMap(_.posterUrl)),
+      filmUrl        = cm.filmUrl.map(stringPool.canonical),
+      trailerUrl     = cm.trailerUrl.map(stringPool.canonical).orElse(priorSlot.flatMap(_.trailerUrl)),
       // Canonical order so a reorder-only re-scrape stores a byte-identical slot and
       // the write-through guard skips it. Past showings the fresh scrape drops are NOT
       // retained: under the index-only cache the resident `priorSlot` is stripped (Nil
@@ -1085,7 +1088,7 @@ private[movies] final class ScrapeLanding(
       showtimes      = MovieRecordMerge.sortShowtimes(cm.showtimes),
       // Carry the certificate forward on a listing-only re-scrape, like the detail
       // fields above, so a tick that lacks it doesn't wipe a value the detail merge added.
-      ageRating      = cm.ageRating.map(StringPool.canonical).orElse(priorSlot.flatMap(_.ageRating))
+      ageRating      = cm.ageRating.map(stringPool.canonical).orElse(priorSlot.flatMap(_.ageRating))
     )
 
   /** Cast/crew names as the display layer needs them, for the two casings a
@@ -1101,7 +1104,7 @@ private[movies] final class ScrapeLanding(
    *  Interned last, so the pool holds the canonical DISPLAY spelling rather than
    *  a separate instance per source casing. */
   private def displayNames(names: Seq[String]): Seq[String] =
-    StringPool.canonicalAll(names.map(TextNormalization.titleCaseIfAllCaps).map(PersonName.capitalized))
+    stringPool.canonicalAll(names.map(TextNormalization.titleCaseIfAllCaps).map(PersonName.capitalized))
 
   /** If `primary` doesn't currently exist in the cache, look for an existing
    *  row that already knows `primary.cleanTitle` (via its `cinemaTitles`

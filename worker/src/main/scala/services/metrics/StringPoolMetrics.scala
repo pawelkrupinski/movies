@@ -33,18 +33,18 @@ import services.movies.StringPool
  *     healthy; a fall alongside rising evictions is the degradation itself.
  *
  * Process-level, like [[JvmVitalsSampler]] and unlike the census gauges: the pool
- * is one `object` shared by every country's wiring in the JVM, so a `country`
- * label would be a lie. Read at scrape time through callback gauges — three field
+ * is one instance, owned by [[WorkerMetrics]] and shared by every country's wiring in
+ * the JVM, so a `country` label would be a lie. Read at scrape time through callback gauges — three field
  * reads, cheaper than a timer and with no staleness.
  */
 object StringPoolMetrics {
 
-  def register(registry: PrometheusRegistry): Unit = {
+  def register(registry: PrometheusRegistry, pool: StringPool): Unit = {
     gauge(registry,
       "kinowo_worker_string_pool_entries",
       "Distinct strings the intern pool is holding, against its maximum. At the maximum the pool " +
         "is evicting and interning has stopped paying for itself.",
-      () => StringPool.heldEntries.toDouble)
+      () => pool.heldEntries.toDouble)
 
     gauge(registry,
       "kinowo_worker_string_pool_max_entries",
@@ -56,13 +56,13 @@ object StringPoolMetrics {
       "kinowo_worker_string_pool_evictions_total",
       "Strings evicted from the intern pool since boot. Zero is healthy; any sustained climb means " +
         "the corpus vocabulary no longer fits and duplicates are reaching the heap.",
-      () => StringPool.evictions.toDouble)
+      () => pool.evictions.toDouble)
 
     gauge(registry,
       "kinowo_worker_string_pool_hit_ratio",
       "Share of intern lookups served an instance the pool already held. Falling while evictions " +
         "climb is the pool thrashing rather than deduplicating.",
-      () => StringPool.hitRate)
+      () => pool.hitRate)
   }
 
   private def gauge(registry: PrometheusRegistry, name: String, help: String, read: () => Double): Unit =

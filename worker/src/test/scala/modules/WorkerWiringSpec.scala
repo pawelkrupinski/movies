@@ -77,6 +77,17 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.stop()
   }
 
+  it should "hand every country's movie cache the one intern pool the metrics bundle publishes" in {
+    val shared = services.metrics.WorkerMetrics.singleCountry(Country.default, poolSize = 1)
+    def wiringOn(metrics: services.metrics.WorkerMetrics) =
+      new WorkerWiring(Country.default, injectedWorkerMetrics = Some(metrics)) with TestWiring
+    val (first, second) = (wiringOn(shared), wiringOn(shared))
+    try {
+      first.movieCache.stringPool should be theSameInstanceAs shared.stringPool
+      second.movieCache.stringPool should be theSameInstanceAs shared.stringPool
+    } finally { first.stop(); second.stop() }
+  }
+
   "WorkerWiring.start()" should "boot both the scrape and the enrichment cascade" in {
     val wiring = new SpyWiring
     wiring.start()

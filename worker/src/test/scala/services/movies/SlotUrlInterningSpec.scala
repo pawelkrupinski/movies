@@ -43,8 +43,11 @@ class SlotUrlInterningSpec extends AnyFlatSpec with Matchers {
     trailerUrl = Some(new String(trailer))
   )
 
+  private def cacheOn(pool: StringPool) =
+    new CaffeineMovieCache(new InMemoryMovieRepository(Seq.empty), normalizer = titleNormalizer, stringPool = pool)
+
   private def slotsForOneFilmAtTwoCinemas(): Seq[SourceData] = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq.empty), normalizer = titleNormalizer)
+    val cache = cacheOn(new StringPool)
     val a = OdeonNorwich
     val b = BfiLondonSouthbank
     cache.recordCinemaScrape(a, Seq(showing(a)))
@@ -73,5 +76,16 @@ class SlotUrlInterningSpec extends AnyFlatSpec with Matchers {
     urls should have size 2
     urls.head shouldBe trailer
     (urls.head eq urls(1)) shouldBe true
+  }
+
+  "Two caches handed one pool" should "share a URL instance across them, as the worker's countries do" in {
+    val pool = new StringPool
+    val (first, second) = (cacheOn(pool), cacheOn(pool))
+    first.recordCinemaScrape(OdeonNorwich, Seq(showing(OdeonNorwich)))
+    second.recordCinemaScrape(BfiLondonSouthbank, Seq(showing(BfiLondonSouthbank)))
+    val urls = Seq(first, second).flatMap(_.entries.flatMap(_._2.data.values.flatMap(_.posterUrl)))
+    urls should have size 2
+    (urls.head eq urls(1)) shouldBe true
+    urls.head should be theSameInstanceAs pool.canonical(new String(poster))
   }
 }

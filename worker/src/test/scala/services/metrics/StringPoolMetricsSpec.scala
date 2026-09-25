@@ -21,9 +21,9 @@ import services.movies.StringPool
  */
 class StringPoolMetricsSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private def scrape(): String = {
+  private def scrape(pool: StringPool = new StringPool): String = {
     val registry = new PrometheusRegistry()
-    StringPoolMetrics.register(registry)
+    StringPoolMetrics.register(registry, pool)
     PrometheusExposition.render(registry)
   }
 
@@ -41,14 +41,16 @@ class StringPoolMetricsSpec extends AnyFlatSpec with Matchers with OptionValues 
   }
 
   it should "carry no country label — one pool serves every country's wiring in the JVM" in {
-    // A country label here would be a lie: StringPool is an `object`, so the strings
-    // Poland interns are the same instances Germany gets back.
+    // A country label here would be a lie: the worker hands every country's cache the
+    // one pool, so the strings Poland interns are the same instances Germany gets back.
     scrape() should not include "kinowo_worker_string_pool_entries{"
   }
 
-  it should "report an occupancy that tracks the live pool" in {
-    StringPool.canonical(s"exported occupancy probe ${java.util.UUID.randomUUID()}")
-    val entries = PrometheusExposition.value(scrape(), "kinowo_worker_string_pool_entries")
-    entries.value should be > 0.0
+  it should "report the occupancy of the pool it was given" in {
+    val pool = new StringPool
+    pool.canonical("exported occupancy probe")
+    pool.canonical("a second probe")
+    PrometheusExposition.value(scrape(pool), "kinowo_worker_string_pool_entries").value shouldBe 2.0
+    PrometheusExposition.value(scrape(), "kinowo_worker_string_pool_entries").value shouldBe 0.0
   }
 }

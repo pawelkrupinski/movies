@@ -35,9 +35,12 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: Int) {
   // Native-memory + vitals sampler — one JVM, so a single process-level sampler.
   val jvmVitals: JvmVitalsSampler = new JvmVitalsSampler(registry)
 
-  // Intern-pool occupancy and eviction — also process-level: StringPool is one
-  // object shared by every country's wiring, so a `country` label would be a lie.
-  StringPoolMetrics.register(registry)
+  // The intern pool every country's movie cache interns its slot strings into — one per
+  // process, so a string Poland interned is the instance Germany gets back — and its
+  // occupancy/eviction gauges, process-level for the same reason: a `country` label
+  // would be a lie.
+  val stringPool: services.movies.StringPool = new services.movies.StringPool
+  StringPoolMetrics.register(registry, stringPool)
 
   // TTL indexes the reconciler could not bring into line — also process-level, and
   // also a count rather than a labelled series, for the reason its own doc gives.

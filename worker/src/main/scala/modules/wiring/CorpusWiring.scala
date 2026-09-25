@@ -63,7 +63,9 @@ trait CorpusWiring { self: WorkerWiring =>
       scrapeLandingMetrics = taskMetrics,
       // Durable, so the guards' grace and each venue's recorded source survive a
       // rollout — held in memory they reset on every pod change.
-      scrapeGuardLedger = new services.scrapes.MongoScrapeGuardLedger(mongoConnection.database))
+      scrapeGuardLedger = new services.scrapes.MongoScrapeGuardLedger(mongoConnection.database),
+      // The process's one intern pool, shared with every other country's cache.
+      stringPool = workerMetrics.stringPool)
 
   // This deployment's badge vocabulary. One instance, shared by every path that
   // writes a `Showtime.format`, so the cache and the two detail-merge paths
