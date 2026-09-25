@@ -633,6 +633,30 @@ def failed_units() -> set[str]:
     return {line.split()[0] for line in completed.stdout.splitlines() if line.split()}
 
 
+# WHAT `switch-to-configuration switch` EXITING 4 CAN MEAN, from the pinned nixpkgs'
+# switch-to-configuration-ng. It is one code for every failure it noticed, system and per-user alike.
+# The per-user one is `warning: user activation for <name> failed`: it re-runs itself inside each
+# logged-in user's systemd manager, and a manager that logind is stopping at that moment (ten
+# seconds after that user's last session closes -- CI's own `nixdeploy` session, which starts this
+# unit and disconnects) fails the whole switch while every system unit is fine. That race failed
+# monitoring-1's pass on 2026-09-02 and 2026-09-25 and paged `SystemdUnitFailed` for deploys that
+# had landed. Every OTHER failure line below is system scope, and any one of them keeps exit 4 fatal.
+USER_ACTIVATION_FAILED = re.compile(r"^warning: user activation for \S+ failed$")
+SYSTEM_SCOPE_FAILURES = re.compile(
+    r"^(Unable to list users with logind"
+    r"|Failed to run activate script"
+    r"|Failed to restart sysinit-reactivation\.target"
+    r"|warning: the following units failed:"
+    r"|Failed to (start|stop|restart|reload) (?!user unit )\S)")
+
+
+def only_user_activation_failed(output: str) -> bool:
+    """True when exit 4 is explained by per-user activation alone, so the system switch completed."""
+    lines = [line.strip() for line in output.splitlines()]
+    return (any(USER_ACTIVATION_FAILED.match(line) for line in lines)
+            and not any(SYSTEM_SCOPE_FAILURES.match(line) for line in lines))
+
+
 def activate(candidate: pathlib.Path, rollback_on_failure: bool) -> str:
     """Switch to the candidate, then confirm the host is no worse than it was.
 
@@ -658,7 +682,20 @@ def activate(candidate: pathlib.Path, rollback_on_failure: bool) -> str:
     # alone leaves the profile untouched, records no generation, and gives `--rollback` nothing to
     # roll back to.
     run(["nix-env", "--profile", SYSTEM_PROFILE, "--set", str(candidate)], timeout=600)
-    run([str(candidate / "bin" / "switch-to-configuration"), "switch"], timeout=3600)
+    switch = [str(candidate / "bin" / "switch-to-configuration"), "switch"]
+    switched = run(switch, check=False, timeout=3600)
+    output = (switched.stderr or "") + (switched.stdout or "")
+    if switched.returncode == 4 and only_user_activation_failed(output):
+        print("nixos-auto-apply: the system switch completed; only a per-user activation failed "
+              "(a user manager stopping mid-switch): "
+              + " | ".join(line for line in output.splitlines() if "fail" in line.lower()),
+              file=sys.stderr)
+    elif switched.returncode != 0:
+        # THE TAIL, NOT THE HEAD: switch-to-configuration names what failed at the END of its
+        # output, and the first 400 characters are the preamble -- which is all the journal kept
+        # of both exit-4 incidents above.
+        raise Undetermined(f"{' '.join(switch)} exited {switched.returncode}: "
+                           f"...{output.strip()[-600:]}")
 
     time.sleep(5)  # systemd settles; a unit that fails on activation does so within seconds
     newly_failed = failed_units() - before
