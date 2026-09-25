@@ -1,5 +1,7 @@
 package services.alerts
 
+import services.movies.SingleCountryNormalizer
+
 import models.{Helios, Multikino, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -46,7 +48,7 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
 
   "StagingStuckAlerter" should "alert once after a row stays unresolved past the threshold" in {
     val clock = new MutableClock(Start)
-    val repository  = new InMemoryStagingRepository(Seq(staged(Helios, "Brand New Film", Some(2026))))
+    val repository  = new InMemoryStagingRepository(Seq(staged(Helios, "Brand New Film", Some(2026))), normalizer = SingleCountryNormalizer.titleNormalizer)
     val (a, sent) = newAlerter(repository, clock)
 
     a.runOnce() shouldBe None              // just observed — not stuck yet
@@ -71,7 +73,7 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
 
   it should "skip a pass whose staging scan was incomplete, not read the unseen rows as resolved" in {
     val clock      = new MutableClock(Start)
-    val repository = new services.staging.UnreadableStagingRepository(Seq(staged(Helios, "Brand New Film", Some(2026))))
+    val repository = new services.staging.UnreadableStagingRepository(Seq(staged(Helios, "Brand New Film", Some(2026))), titleNormalizer = SingleCountryNormalizer.titleNormalizer)
     repository.failing = false
     val (a, sent)  = newAlerter(repository, clock)
     a.runOnce() shouldBe None                // first seen at Start
@@ -90,7 +92,7 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
     val clock = new MutableClock(Start)
     val repository  = new InMemoryStagingRepository(Seq(
       staged(Helios,    "Resolved Film", Some(2026), tmdbId = Some(123)),
-      staged(Multikino, "No Match Film", Some(2026), noMatch = true)))
+      staged(Multikino, "No Match Film", Some(2026), noMatch = true)), normalizer = SingleCountryNormalizer.titleNormalizer)
     val (a, sent) = newAlerter(repository, clock)
 
     a.runOnce()
@@ -101,7 +103,7 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
 
   it should "not alert a row that resolves before crossing the threshold" in {
     val clock = new MutableClock(Start)
-    val repository  = new InMemoryStagingRepository(Seq(staged(Helios, "Quick Film", Some(2026))))
+    val repository  = new InMemoryStagingRepository(Seq(staged(Helios, "Quick Film", Some(2026))), normalizer = SingleCountryNormalizer.titleNormalizer)
     val (a, sent) = newAlerter(repository, clock)
 
     a.runOnce()
@@ -120,7 +122,7 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
     val repository  = new InMemoryStagingRepository(Seq(
       staged(Helios,    "Alpha", Some(2026)),
       staged(Multikino, "Alpha", Some(2026)),   // same film, two cinemas → one bullet
-      staged(Helios,    "Bravo", Some(2025))))
+      staged(Helios,    "Bravo", Some(2025))), normalizer = SingleCountryNormalizer.titleNormalizer)
     val (a, sent) = newAlerter(repository, clock)
 
     a.runOnce()
@@ -136,7 +138,7 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
 
   it should "re-arm a film that vanishes then reappears" in {
     val clock = new MutableClock(Start)
-    val repository  = new InMemoryStagingRepository(Seq(staged(Helios, "Comeback Film", Some(2026))))
+    val repository  = new InMemoryStagingRepository(Seq(staged(Helios, "Comeback Film", Some(2026))), normalizer = SingleCountryNormalizer.titleNormalizer)
     val (a, sent) = newAlerter(repository, clock)
 
     a.runOnce()

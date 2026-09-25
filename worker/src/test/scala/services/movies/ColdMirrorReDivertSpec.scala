@@ -57,7 +57,7 @@ class ColdMirrorReDivertSpec extends AnyFlatSpec with Matchers {
 
   "recordCinemaScrape" should
     "NOT re-divert a known film into staging when the movies mirror is still cold post-reboot (corpus boot flap)" in {
-    val staging = new InMemoryStagingRepository
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val repo    = new BootBlackoutRepository(Seq(("Toy Story 5", Some(2026), knownRow)))
     // Boots cold: bootHydrate's findAll sees the blackout, so the mirror is empty
     // even though "Toy Story 5" is persisted in `movies`.
@@ -80,7 +80,7 @@ class ColdMirrorReDivertSpec extends AnyFlatSpec with Matchers {
   // `findAll` came back empty, which read as "the corpus is genuinely empty": the one-shot
   // latch disarmed for good, and every known film the scrape carried was diverted.
   it should "neither divert nor disarm the cold-mirror sync when the corpus read FAILED, and sync on the first scrape after its backoff" in {
-    val staging = new InMemoryStagingRepository
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val repo    = new BootBlackoutRepository(Seq(("Toy Story 5", Some(2026), knownRow)))
     val clock   = new tools.MutableClock(java.time.Instant.parse("2026-09-24T12:00:00Z"))
     val cache   = new CaffeineMovieCache(repo, staging = Some(staging), normalizer = titleNormalizer, clock = clock)
@@ -103,7 +103,7 @@ class ColdMirrorReDivertSpec extends AnyFlatSpec with Matchers {
   // full keyset scan against a Mongo that is already not answering. Backed off instead: the
   // ticks inside the backoff are discarded unread, the first after it tries again.
   it should "back off the corpus read while it keeps failing, discarding the ticks in between" in {
-    val staging = new InMemoryStagingRepository
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val repo    = new BootBlackoutRepository(Seq(("Toy Story 5", Some(2026), knownRow)))
     val clock   = new tools.MutableClock(java.time.Instant.parse("2026-09-24T12:00:00Z"))
     val cache   = new CaffeineMovieCache(repo, staging = Some(staging), normalizer = titleNormalizer, clock = clock)
@@ -124,7 +124,7 @@ class ColdMirrorReDivertSpec extends AnyFlatSpec with Matchers {
   // Two venues' first scrapes landing together both saw the latch armed and the mirror cold,
   // and both read the whole corpus and rehydrated: the one-shot sync fired once per racer.
   it should "sync once when two venues' first scrapes land at the same time" in {
-    val staging = new InMemoryStagingRepository
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val repo    = new BootBlackoutRepository(Seq(("Toy Story 5", Some(2026), knownRow))) {
       // Holds each corpus read until a second one arrives (or 500ms pass), so racers overlap.
       val bothReading = new java.util.concurrent.CountDownLatch(2)

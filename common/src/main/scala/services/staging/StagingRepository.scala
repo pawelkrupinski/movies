@@ -293,15 +293,13 @@ object StagingRepository {
         s"sanitized title and source cinema is incubating under more than one key. The fold collapses the " +
         s"year-variants, but a recurring pair points at scrape title/year churn worth fixing at source.")
 
-  /** A disabled, empty no-op `StagingRepository` — the default for callers that don't
-   *  wire staging (e.g. the web `/debug` controller in tests, or any non-staging
-   *  build). `findAll` is empty and writes are dropped. */
-  val empty: StagingRepository = new StagingRepository {
+  /** A disabled, empty no-op `StagingRepository` — for callers that don't wire
+   *  staging (e.g. the web `/debug` controller in tests, or any non-staging build).
+   *  `findAll` is empty and writes are dropped. It holds no rows, so nothing is ever
+   *  anchored, but it still answers `normalizer` with the caller's own rules. */
+  def empty(rules: TitleNormalizer): StagingRepository = new StagingRepository {
     def enabled: Boolean = false
-    // Holds no rows, so nothing is ever anchored — but the member is abstract
-    // now, and naming the fallback HERE is the point: it is visible rather than
-    // inherited by omission.
-    val normalizer: TitleNormalizer = TitleNormalizer.deployment
+    val normalizer: TitleNormalizer = rules
     def findAll(): Seq[StagingRecord] = Seq.empty
     def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): WriteOutcome = WriteOutcome.Declined("no-store")
     def delete(cinema: Source, title: String, year: Option[Int]): WriteOutcome = WriteOutcome.Declined("no-store")

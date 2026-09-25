@@ -1,7 +1,5 @@
 package services.staging
 
-import services.movies.SingleCountryNormalizer
-
 import models.{Cinema, MovieRecord, Source, SourceData}
 import services.cinemas.common.{DetailEnricher, FilmDetail}
 import services.events.{DomainEvent, InProcessEventBus, StagingFilmEnriched, TaskFinished}
@@ -25,13 +23,13 @@ final class StagingChain(
   resolveStaging: (String, Option[Int], MovieRecord) => Option[MovieRecord] = (_, _, r) => Some(r.copy(tmdbId = Some(1275779))),
   recoverImdbId:  (String, Option[Int], MovieRecord) => Option[String]     = (_, _, _) => Some("tt1275779")
 ) {
-  val movies   = new InMemoryMovieRepository(normalizer = SingleCountryNormalizer.titleNormalizer)
+  val movies   = new InMemoryMovieRepository(normalizer = staging.normalizer)
   val queue    = new InMemoryTaskQueue
   val bus      = new InProcessEventBus
   /** Keys the fold announced as brand-new films — production's rating enqueue. */
   val promoted = mutable.ListBuffer.empty[CacheKey]
   bus.subscribe(new FoldOnStagingEnriched(
-    new InMemoryStagingFolder(staging, movies), staging, (key, _) => promoted += key).onStagingFilmEnriched)
+    new InMemoryStagingFolder(staging, movies, normalizer = staging.normalizer), staging, (key, _) => promoted += key).onStagingFilmEnriched)
 
   val steps  = new StagingSteps(staging, enrichers, resolveStaging, recoverImdbId, new InMemoryFreshnessStore)
   val reaper = new StagingReaper(steps, queue, staging)

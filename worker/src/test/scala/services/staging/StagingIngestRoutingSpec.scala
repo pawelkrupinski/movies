@@ -29,7 +29,7 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers with OptionValu
     new CaffeineMovieCache(repository, new InProcessEventBus, staging = Some(staging), normalizer = titleNormalizer)
 
   "a genuinely-new film" should "be diverted to staging, not movies" in {
-    val staging = new InMemoryStagingRepository
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val cache   = cacheWithStaging(new InMemoryMovieRepository(normalizer = titleNormalizer), staging)
 
     cache.recordCinemaScrape(Helios, Seq(scrape("Brand New Film", Some(2026))))
@@ -39,7 +39,7 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers with OptionValu
   }
 
   "a first-time diverted newcomer" should "publish StagingNewcomerDiverted so the reaper kicks its chain off an event, but not republish on re-scrape" in {
-    val staging = new InMemoryStagingRepository
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val bus     = new InProcessEventBus
     val kicked  = scala.collection.mutable.ArrayBuffer.empty[String]
     bus.subscribe { case StagingNewcomerDiverted(title) => kicked += title }
@@ -58,7 +58,7 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers with OptionValu
    *  to 1,419s and timed the leg out on 2026-09-23. The chain the first venue kicked
    *  re-reads the group, joiners included, at every step it finishes. */
   it should "not publish again when another cinema joins a film already incubating" in {
-    val staging = new InMemoryStagingRepository
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val bus     = new InProcessEventBus
     val kicked  = scala.collection.mutable.ArrayBuffer.empty[String]
     bus.subscribe { case StagingNewcomerDiverted(title) => kicked += title }
@@ -88,7 +88,7 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers with OptionValu
    *
    *  A divert is only justified when the listing matches NO row under that title. */
   "a cinema screening one of two same-titled films" should "not be diverted when its own row already exists" in {
-    val staging = new InMemoryStagingRepository
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val cache   = cacheWithStaging(new InMemoryMovieRepository(normalizer = titleNormalizer), staging)
     // Same sanitized title, two years, each a genuinely different film. Both carry the
     // published identity the different-film check reads: original title, runtime, year —
@@ -117,7 +117,7 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers with OptionValu
   }
 
   "a film already known to movies" should "stay on the direct path, not divert nor kick a newcomer event" in {
-    val staging = new InMemoryStagingRepository
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val bus     = new InProcessEventBus
     val kicked  = scala.collection.mutable.ArrayBuffer.empty[String]
     bus.subscribe { case StagingNewcomerDiverted(title) => kicked += title }
@@ -132,7 +132,7 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers with OptionValu
   }
 
   "a film already known to movies" should "stay on the direct path, not divert" in {
-    val staging = new InMemoryStagingRepository
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val cache   = cacheWithStaging(new InMemoryMovieRepository(normalizer = titleNormalizer), staging)
     // Seed a known film (any same-sanitize row in movies).
     cache.put(cache.keyOf("Kumotry", Some(2026)),
@@ -146,7 +146,7 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers with OptionValu
   }
 
   "a known film listed under another language" should "land on the existing resolved row, not incubate as a newcomer" in {
-    val staging = new InMemoryStagingRepository
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val cache   = cacheWithStaging(new InMemoryMovieRepository(normalizer = titleNormalizer), staging)
     // A CONCLUDED row for Tangled, keyed under its Polish title. Its TMDB aliases
     // include the original "Tangled", so a cinema listing it in English is a known
@@ -163,7 +163,7 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers with OptionValu
   }
 
   "a newcomer a cinema stops listing" should "be pruned from staging" in {
-    val staging = new InMemoryStagingRepository
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val cache   = cacheWithStaging(new InMemoryMovieRepository(normalizer = titleNormalizer), staging)
     cache.recordCinemaScrape(Helios, Seq(scrape("Film A", Some(2026))))
     staging.findAll().map(_.title) should contain("Film A")
@@ -204,7 +204,7 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers with OptionValu
       data = Map[Source, SourceData](Helios -> slot)))
 
   "a cinema listing a DIFFERENT film of the same title" should "divert instead of joining the row" in {
-    val staging = new InMemoryStagingRepository
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val cache   = cacheWithStaging(new InMemoryMovieRepository(normalizer = titleNormalizer), staging)
     // The row is Ozon's "L'étranger", 120 minutes.
     rowFor(cache, "Obcy", Some(2025),
@@ -223,7 +223,7 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers with OptionValu
    *  it must. An earlier gate without that corroboration re-diverted nine known
    *  films on EVERY tick (`ReScrapeIdempotencySpec`). */
   "a cinema whose originalTitle is really the Polish title" should "still join the row" in {
-    val staging = new InMemoryStagingRepository
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val cache   = cacheWithStaging(new InMemoryMovieRepository(normalizer = titleNormalizer), staging)
     rowFor(cache, "Obcy", Some(2025),
       SourceData(title = Some("Obcy"), originalTitle = Some("L'étranger"), runtimeMinutes = Some(120)))
@@ -235,7 +235,7 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers with OptionValu
   }
 
   "a cinema publishing nothing to corroborate a title difference" should "still join the row" in {
-    val staging = new InMemoryStagingRepository
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val cache   = cacheWithStaging(new InMemoryMovieRepository(normalizer = titleNormalizer), staging)
     rowFor(cache, "Obcy", Some(2025),
       SourceData(title = Some("Obcy"), originalTitle = Some("L'étranger"), runtimeMinutes = Some(120)))

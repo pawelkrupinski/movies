@@ -21,7 +21,7 @@ class StagingQueueEndToEndSpec extends AnyFlatSpec with Matchers {
     // A deferred-detail cinema (Helios) scrapes the film bare with a filmUrl; its
     // detail page supplies a director hint; TMDB resolves to a tmdbId but ships no
     // imdb cross-reference, so the imdb step must recover it.
-    val chain = new StagingChain(new InMemoryStagingRepository, Seq(new CountingEnricher(Helios)))
+    val chain = new StagingChain(new InMemoryStagingRepository(normalizer = titleNormalizer), Seq(new CountingEnricher(Helios)))
     chain.staging.upsert(Helios, "Newcomer", Some(2026), listing(Helios, "Newcomer"))
 
     // Kick the chain, then drain — completing a step announces it, which enqueues the
@@ -53,7 +53,7 @@ class StagingQueueEndToEndSpec extends AnyFlatSpec with Matchers {
   it should "read a film's staging group linearly in its detail venues, not once per venue" in {
     def rowsDecoded(venueCount: Int): Long = {
       val work    = new Work
-      val staging = Work.counting(classOf[StagingRepository], new InMemoryStagingRepository, work, Work.StagingIndexReads)
+      val staging = Work.counting(classOf[StagingRepository], new InMemoryStagingRepository(normalizer = titleNormalizer), work, Work.StagingIndexReads)
       val venues  = Cinema.all.distinct.take(venueCount)
       val chain   = new StagingChain(staging, venues.map(new CountingEnricher(_)))
       venues.foreach(v => staging.upsert(v, "Newcomer", Some(2026), listing(v, "Newcomer")))
@@ -77,7 +77,7 @@ class StagingQueueEndToEndSpec extends AnyFlatSpec with Matchers {
     val venues = Cinema.all.distinct.take(7)
     def run(joinAfter: Option[Int]): (Seq[(String, Option[Int], MovieRecord)], Map[Cinema, Int]) = {
       val enrichers = venues.map(new CountingEnricher(_))
-      val chain     = new StagingChain(new InMemoryStagingRepository, enrichers)
+      val chain     = new StagingChain(new InMemoryStagingRepository(normalizer = titleNormalizer), enrichers)
       val (initial, joiner) = if (joinAfter.isDefined) (venues.init, venues.lastOption) else (venues, None)
       initial.foreach(v => chain.staging.upsert(v, "Newcomer", Some(2026), listing(v, "Newcomer")))
       chain.reaper.tick()

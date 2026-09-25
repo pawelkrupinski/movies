@@ -94,7 +94,7 @@ trait ResolutionWiring { self: WorkerWiring =>
     // Filmweb URL resolve via P5032 → P4947 (corroborated) once Filmweb is un-gated.
     wikidata = Some(wikidataClient),
     // Where `settle` re-diverts the cinemas of a row's second film.
-    staging = stagingRepository)
+    staging = Some(stagingRepository))
 
   // The whole-corpus settle on its OWN periodic tick, decoupled from the cache
   // hydrate. The settle used to ride `MovieCache.rehydrate`'s backstop reload

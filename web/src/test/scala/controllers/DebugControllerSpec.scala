@@ -147,7 +147,7 @@ class DebugControllerSpec extends AnyFlatSpec with Matchers {
   "GET /debug" should "render the staging fold scaffolding + per-cinema source row" in {
     val staging = new services.staging.InMemoryStagingRepository(Seq(
       (CinemaCityWroclavia, "Newcomer", Some(2099),
-        MovieRecord(detailPending = true, data = Map(CinemaCityWroclavia -> SourceData(title = Some("Newcomer")))))))
+        MovieRecord(detailPending = true, data = Map(CinemaCityWroclavia -> SourceData(title = Some("Newcomer")))))), normalizer = titleNormalizer)
     val html = contentAsString(
       TestDebugController.build(records, Mode.Dev, stagingRepository = staging)._1
         .debug().apply(FakeRequest(GET, "/debug")))

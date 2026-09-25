@@ -27,7 +27,7 @@ class ScrapeLandingSpec extends AnyFlatSpec with Matchers {
 
   "ScrapeLanding" should "land a decorated listing of a known film on that film's row, through the store seam" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
-    val staging    = new InMemoryStagingRepository
+    val staging    = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val store      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val landing    = new ScrapeLanding(store, repository, Some(staging), new InProcessEventBus(),
       ScreeningTokens.forDefaultCountry(), CountryNames.DefaultLanguage)

@@ -36,7 +36,7 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
   override def afterAll(): Unit = Await.result(sys.terminate(), 10.seconds)
 
   private def controller(repository: InMemoryMovieRepository, mode: Mode = Mode.Dev,
-                         staging: StagingRepository = StagingRepository.empty) =
+                         staging: StagingRepository = StagingRepository.empty(services.movies.SingleCountryNormalizer.titleNormalizer)) =
     new DebugStreamController(Helpers.stubControllerComponents(),
       DebugCountries.single(new DebugStack(models.Country.default, repository, staging,
         new services.tasks.InMemoryTaskQueue, services.cadence.RatingCadenceReader.empty,
@@ -101,7 +101,7 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
   // routes them to the staging table: a newcomer INSERTs a staging row, a
   // graduation DELETEs it.
   "the live feed" should "push a staging-upsert frame (rendered row) when a pending_movies row appears" in {
-    val staging = new InMemoryStagingRepository()
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val collecting = controller(new InMemoryMovieRepository(normalizer = titleNormalizer), staging = staging)
       .eventSource(FakeRequest()).takeWithin(1.second).runWith(Sink.seq)
 
@@ -120,7 +120,7 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
 
   it should "push a staging-delete frame with just the id when a row graduates" in {
     val staging = new InMemoryStagingRepository(Seq(
-      (CinemaCityWroclavia, "Newcomer", Some(2026), record("Newcomer"))))
+      (CinemaCityWroclavia, "Newcomer", Some(2026), record("Newcomer"))), normalizer = titleNormalizer)
     val collecting = controller(new InMemoryMovieRepository(normalizer = titleNormalizer), staging = staging)
       .eventSource(FakeRequest()).takeWithin(1.second).runWith(Sink.seq)
 

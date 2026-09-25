@@ -15,12 +15,10 @@ import scala.collection.mutable
  */
 class InMemoryStagingRepository(
   seed: Seq[(Source, String, Option[Int], MovieRecord)] = Seq.empty,
-  // The rules this repository anchors rows under. Overridable so a spec that
-  // needs a specific rule set (e.g. one where a title still drifts between its
-  // persisted `_id` and its re-derived display title) can say so, instead of
-  // installing rules ambiently and hoping the repository reads them.
-  override val normalizer: services.movies.TitleNormalizer =
-    services.movies.TitleNormalizer.forCountry(models.Country.default)
+  // The rules this repository anchors rows under, as `MongoStagingRepository` takes
+  // them: required, so a spec names the rule set (SingleCountryNormalizer, or the
+  // one its scenario needs) rather than inheriting one.
+  override val normalizer: services.movies.TitleNormalizer
 ) extends StagingRepository with Logging {
 
   // Store the REBUILT `StagingRecord` keyed by `_id`, in a `_id`-sorted map. The

@@ -1,5 +1,7 @@
 package services.staging
 
+import services.movies.SingleCountryNormalizer
+
 import services.movies.CountingNormalizer
 import ch.qos.logback.classic.Level
 import models.{CinemaCityKinepolis, Helios, Multikino, MovieRecord, Source, SourceData}
@@ -20,7 +22,7 @@ class InMemoryStagingRepositorySpec extends AnyFlatSpec with Matchers {
       .map(_.getFormattedMessage)
 
   "InMemoryStagingRepository" should "keep one row per (cinema, title, year) and read them back" in {
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = SingleCountryNormalizer.titleNormalizer)
     repository.upsert(Helios, "Kumotry", Some(2026), slot(Helios, "Kumotry", Some(2026)))
     repository.upsert(Multikino, "Kumotry", Some(2026), slot(Multikino, "Kumotry", Some(2026)))
 
@@ -30,7 +32,7 @@ class InMemoryStagingRepositorySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "say it holds an anchor exactly while findByAnchor has rows for it" in {
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = SingleCountryNormalizer.titleNormalizer)
     val anchor     = repository.normalizer.sanitize("Kumotry")
     repository.holdsAnchor(anchor) shouldBe false
     repository.upsert(Helios, "Kumotry", Some(2026), slot(Helios, "Kumotry", Some(2026)))
@@ -77,7 +79,7 @@ class InMemoryStagingRepositorySpec extends AnyFlatSpec with Matchers {
     // resolution and fold — so the film folded UN-ENRICHED and the reaper
     // re-resolved it forever. The re-scrape must REFRESH the cinema slot without
     // clobbering enrichment.
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = SingleCountryNormalizer.titleNormalizer)
     repository.upsert(Helios, "Denʹ istyny - UA", Some(2026), slot(Helios, "Denʹ istyny - UA", Some(2026)))
 
     // Resolve step stamps the row in place (under its persisted id).
@@ -97,7 +99,7 @@ class InMemoryStagingRepositorySpec extends AnyFlatSpec with Matchers {
     // The decorated-title half of the same bug ("Kino bez barier: Ministranci"):
     // TMDB returns no match → the row is concluded with tmdbAttempt=Some(services.resolution.TmdbAttempt.Legacy). A
     // re-scrape must not reset it to false, or the reaper never folds it.
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = SingleCountryNormalizer.titleNormalizer)
     repository.upsert(Helios, "Kino bez barier: Ministranci", None, slot(Helios, "Kino bez barier: Ministranci", None))
     val concluded = repository.findAll().head
     repository.upsertRow(concluded.copy(record = concluded.record.copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))))
@@ -108,14 +110,14 @@ class InMemoryStagingRepositorySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "collapse case/diacritic variants of one cinema's title into a single row" in {
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = SingleCountryNormalizer.titleNormalizer)
     repository.upsert(Helios, "Dzień objawienia", Some(2026), slot(Helios, "Dzień objawienia", Some(2026)))
     repository.upsert(Helios, "DZIEN OBJAWIENIA", Some(2026), slot(Helios, "DZIEN OBJAWIENIA", Some(2026)))
     repository.findAll() should have size 1
   }
 
   it should "delete a single cinema's row without touching the others" in {
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = SingleCountryNormalizer.titleNormalizer)
     repository.upsert(Helios, "Kumotry", Some(2026), slot(Helios, "Kumotry", Some(2026)))
     repository.upsert(Multikino, "Kumotry", Some(2026), slot(Multikino, "Kumotry", Some(2026)))
     repository.delete(Helios, "Kumotry", Some(2026))
@@ -123,7 +125,7 @@ class InMemoryStagingRepositorySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "fire the upsert watcher with the decoded row" in {
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = SingleCountryNormalizer.titleNormalizer)
     val seen = scala.collection.mutable.ListBuffer.empty[StagingRecord]
     repository.watchUpserts(seen += _)
     repository.upsert(CinemaCityKinepolis, "Kumotry", Some(2026), slot(CinemaCityKinepolis, "Kumotry", Some(2026)))
@@ -131,7 +133,7 @@ class InMemoryStagingRepositorySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "WARN when the same (cinema, sanitized title) enters staging under a second year-key" in {
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = SingleCountryNormalizer.titleNormalizer)
     val warnings = warnsDuring {
       repository.upsert(Helios, "Kumotry", Some(2025), slot(Helios, "Kumotry", Some(2025)))  // insert, no sibling
       repository.upsert(Helios, "Kumotry", Some(2026), slot(Helios, "Kumotry", Some(2026)))  // insert, sibling 2025 → WARN
@@ -142,7 +144,7 @@ class InMemoryStagingRepositorySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "NOT warn on a per-tick re-divert of an already-staged row (insert vs update)" in {
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = SingleCountryNormalizer.titleNormalizer)
     repository.upsert(Helios, "Kumotry", Some(2026), slot(Helios, "Kumotry", Some(2026)))  // first insert
     val warnings = warnsDuring {
       repository.upsert(Helios, "Kumotry", Some(2026), slot(Helios, "Kumotry", Some(2026)))  // same id → update
@@ -151,7 +153,7 @@ class InMemoryStagingRepositorySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "NOT warn when a different cinema stages the same title (different _id prefix)" in {
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = SingleCountryNormalizer.titleNormalizer)
     val warnings = warnsDuring {
       repository.upsert(Helios, "Kumotry", Some(2026), slot(Helios, "Kumotry", Some(2026)))
       repository.upsert(Multikino, "Kumotry", Some(2026), slot(Multikino, "Kumotry", Some(2026)))

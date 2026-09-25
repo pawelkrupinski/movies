@@ -52,11 +52,9 @@ trait StagingFolder {
 class InMemoryStagingFolder(
   stagingRepository: StagingRepository,
   movieRepository:   MovieRepository,
-  // The country whose title rules select and key the group. Defaults to Poland so
-  // the many single-country test constructions are unchanged; the worker wires its
+  // The country whose title rules select and key the group; the worker wires its
   // own country's instance.
-  normalizer: services.movies.TitleNormalizer =
-    services.movies.TitleNormalizer.deployment
+  normalizer: services.movies.TitleNormalizer
 ) extends StagingFolder with Logging {
   private val lock = new AnyRef
 

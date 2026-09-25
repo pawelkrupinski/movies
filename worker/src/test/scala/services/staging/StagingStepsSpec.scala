@@ -25,7 +25,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
       CinemaShowing.keyFor(cinema, title, titleNormalizer) -> SourceData(title = Some(title), releaseYear = year, filmUrl = Some(s"https://x/$title"))))
 
   private def seeded(cinema: Cinema, title: String, year: Option[Int]): (InMemoryStagingRepository, String) = {
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = titleNormalizer)
     repository.upsert(cinema, title, year, listingRow(cinema, title, year))
     (repository, titleNormalizer.sanitize(title))
   }
@@ -50,7 +50,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     // parses its own event page and can never fetch that URL, so the row owes no
     // native detail — it must graduate on the listing/Filmweb data immediately
     // rather than rescheduling until the give-up budget burns.
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = titleNormalizer)
     repository.upsert(Helios, "Fallback", Some(2026), MovieRecord(data = Map[Source, SourceData](
       CinemaShowing.keyFor(Helios, "Fallback", titleNormalizer) -> SourceData(title = Some("Fallback"), filmUrl = Some(FilmwebShowtimesClient.filmPageUrl(1089))))))
     val anchor = titleNormalizer.sanitize("Fallback")
@@ -304,7 +304,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     // with NO tmdbId sorts ahead (by `_id`) of the resolved one. Keying recovery
     // off `head` skipped both the recovery AND the freshness mark, so the reaper
     // re-enqueued StagingResolveImdbId forever (8790× observed in prod).
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val title = "Chłopiec na krańcach świata"
     val anchor = titleNormalizer.sanitize(title)
     // Helios row (`_id` sorts first) has NO tmdbId; Multikino row carries tmdbId, no imdb.
@@ -331,7 +331,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     // are two hint-combinations. The OLD code unioned both directors and resolved
     // ONCE, stamping a single tmdbId on both rows; per-combination resolution
     // stamps each row with the film ITS hints resolve to. Fails before, passes now.
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val title = "Twins"; val year = Some(2026)
     val anchor = titleNormalizer.sanitize(title)
     repository.upsert(Helios, title, year,

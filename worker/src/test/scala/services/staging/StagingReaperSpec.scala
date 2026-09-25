@@ -23,7 +23,7 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
    *  repository state + readiness), so they're inert. The freshness store is
    *  returned so a test can mark a film's detail "done" (the readiness signal). */
   private def fixture(rows: (String, Option[Int], MovieRecord)*) = {
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = titleNormalizer)
     rows.foreach { case (t, y, r) => repository.upsert(Helios, t, y, r) }
     val freshness = new InMemoryFreshnessStore
     val steps     = new StagingSteps(repository, Seq(enricher), (_, _, _) => None, (_, _, _) => None, freshness,
@@ -140,7 +140,7 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
     // so the group it decodes is that one venue's row(s). A kick per JOINING venue (the
     // pre-2026-09-23 shape) decodes every earlier venue's row, and rows-per-kick climbs with
     // the film's width -- the only production signal for that quadratic.
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = titleNormalizer)
     repository.upsert(Helios, "Wide", Some(2026), listing("Wide", Some(2026)))
     repository.upsert(models.Multikino, "Wide", Some(2026), listing("Wide", Some(2026)))
     repository.upsert(models.CinemaCityPoznanPlaza, "Wide", Some(2026), listing("Wide", Some(2026)))
@@ -180,7 +180,7 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
   }
 
   "stepCounts" should "throw on an incomplete staging scan rather than report its missing rows as zero" in {
-    val repository = new UnreadableStagingRepository
+    val repository = new UnreadableStagingRepository(titleNormalizer = titleNormalizer)
     val steps      = new StagingSteps(repository, Seq(enricher), (_, _, _) => None, (_, _, _) => None, new InMemoryFreshnessStore)
     val reaper     = new StagingReaper(steps, new InMemoryTaskQueue, repository)
     an[IllegalStateException] should be thrownBy reaper.stepCounts()
@@ -201,7 +201,7 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
   }
 
   /** Counts `findAll` calls so a test can assert the reaper's scan count. */
-  private class CountingStagingRepository extends InMemoryStagingRepository {
+  private class CountingStagingRepository extends InMemoryStagingRepository(normalizer = titleNormalizer) {
     var findAllCalls = 0
     override def findAll(): Seq[StagingRecord] = { findAllCalls += 1; super.findAll() }
   }

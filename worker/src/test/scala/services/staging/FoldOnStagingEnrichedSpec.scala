@@ -31,11 +31,11 @@ class FoldOnStagingEnrichedSpec extends AnyFlatSpec with Matchers {
   }
 
   "on StagingFilmEnriched" should "fold the film's group into movies and announce the newcomer" in {
-    val staging   = new InMemoryStagingRepository
+    val staging   = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val movies    = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val announced = ListBuffer.empty[CacheKey]
     val subscriber = new FoldOnStagingEnriched(
-      new InMemoryStagingFolder(staging, movies), staging, (key, _) => announced += key)
+      new InMemoryStagingFolder(staging, movies, normalizer = titleNormalizer), staging, (key, _) => announced += key)
     staging.upsert(Helios, "Newcomer", Some(2026), staged("Newcomer"))
 
     subscriber.onStagingFilmEnriched(StagingFilmEnriched("Newcomer"))
@@ -46,7 +46,7 @@ class FoldOnStagingEnrichedSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "hand the fold only the rows sharing the event's anchor" in {
-    val staging = new InMemoryStagingRepository
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val folder  = new RecordingFolder
     val subscriber = new FoldOnStagingEnriched(folder, staging, (_, _) => fail("nothing was folded"))
     staging.upsert(Helios, "Dune",  Some(2026), staged("Dune"))
@@ -61,7 +61,7 @@ class FoldOnStagingEnrichedSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "announce exactly the brand-new films the folder reports, and nothing on a merge" in {
-    val staging   = new InMemoryStagingRepository
+    val staging   = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val announced = ListBuffer.empty[CacheKey]
     val newcomer  = CacheKey("Newcomer", Some(2026), titleNormalizer)
     // A merge into an existing `movies` row reports no promotion: the row keeps its
@@ -78,7 +78,7 @@ class FoldOnStagingEnrichedSpec extends AnyFlatSpec with Matchers {
 
   it should "ignore every other event" in {
     val subscriber = new FoldOnStagingEnriched(
-      new RecordingFolder, new InMemoryStagingRepository, (_, _) => fail("nothing was folded"))
+      new RecordingFolder, new InMemoryStagingRepository(normalizer = titleNormalizer), (_, _) => fail("nothing was folded"))
     subscriber.onStagingFilmEnriched.isDefinedAt(TaskFinished(TaskType.StagingFold, "k", Map.empty)) shouldBe false
   }
 }

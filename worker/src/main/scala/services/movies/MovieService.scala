@@ -103,9 +103,9 @@ class MovieService(
   wikidata:             Option[WikidataClient]        = None,
   // Where a row holding TWO different films sends the cinemas of the second one:
   // `settle` re-diverts them here and the ordinary staging path gives each film a
-  // record of its own (see `MixedFilmSplitter`). Defaults to the no-op repository,
-  // so a caller without staging simply never splits.
-  staging:              services.staging.StagingRepository = services.staging.StagingRepository.empty,
+  // record of its own (see `MixedFilmSplitter`). `None` stands in the no-op repository
+  // (keyed by the cache's own rules), so a caller without staging simply never splits.
+  staging:              Option[services.staging.StagingRepository] = None,
   // Where the splitter reports the slots it re-diverted (`kinowo_worker_splits_total`).
   // Production wires `WorkerTaskMetrics`; unit specs and scripts leave it silent.
   splitMetrics:         SplitMetrics = SplitMetrics.noop,
@@ -175,7 +175,7 @@ class MovieService(
     ()
   }
 
-  private lazy val mixedFilmSplitter = new MixedFilmSplitter(cache, staging, splitMetrics)
+  private lazy val mixedFilmSplitter = new MixedFilmSplitter(cache, staging.getOrElse(services.staging.StagingRepository.empty(normalizer)), splitMetrics)
 
   @volatile private var splitsSoFar = 0
 

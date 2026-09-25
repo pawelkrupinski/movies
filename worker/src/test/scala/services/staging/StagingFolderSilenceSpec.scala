@@ -39,9 +39,9 @@ class StagingFolderSilenceSpec extends AnyFlatSpec with Matchers {
   // The other half, so the first isn't satisfied by a folder that simply always throws:
   // an empty answer must stay available for the case it legitimately describes.
   it should "still return empty when there is genuinely nothing to fold" in {
-    val staging = new InMemoryStagingRepository
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
     staging.upsert(Multikino, "Ghost In The Shell", Some(2017), MovieRecord())
 
-    new InMemoryStagingFolder(staging, new InMemoryMovieRepository(normalizer = titleNormalizer)).foldGroup("nothing-matches-this") shouldBe empty
+    new InMemoryStagingFolder(staging, new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer).foldGroup("nothing-matches-this") shouldBe empty
   }
 }

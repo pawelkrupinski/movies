@@ -146,7 +146,7 @@ class MixedFilmSplitterSpec extends AnyFlatSpec with Matchers {
       new TmdbClient(http = new tools.GetOnlyHttpFetch {
         override def get(url: String): String = """{"results":[]}"""
       }, apiKey = Some("stub")),
-      staging = staging)
+      staging = Some(staging))
 
     cache.put(cache.keyOf("Joanna d'Arc", Some(2025)), MovieRecord(data = Map[Source, SourceData](
       KinoMuranow -> slot("Joanna d'Arc", Seq("Luc Besson"), Some("Joan of Arc"), Some(1999), Some(160)),
@@ -307,7 +307,7 @@ class MixedFilmSplitterSpec extends AnyFlatSpec with Matchers {
       new TmdbClient(http = new tools.GetOnlyHttpFetch {
         override def get(url: String): String = """{"results":[]}"""
       }, apiKey = Some("stub")),
-      staging = staging)
+      staging = Some(staging))
 
     cache.put(cache.keyOf("It", Some(2017)), MovieRecord(data = Map[Source, SourceData](
       Multikino   -> slot("It (2017)", Seq("Andy Muschietti"), None, Some(2017), Some(135)),

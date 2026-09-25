@@ -33,7 +33,7 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
     new StagingSteps(repository, enrichers, resolve, recover, new InMemoryFreshnessStore, clock = clock)
 
   "StagingDetailHandler" should "fetch the cinema's detail and report Done" in {
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = titleNormalizer)
     repository.upsert(Helios, "Film", Some(2026), listingRow("Film"))
     val handler = new StagingDetailHandler(steps(repository, Seq(new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("p"))))), (_, _, r) => Some(r)))
 
@@ -42,7 +42,7 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "reschedule when the deferred detail fetch hasn't landed" in {
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = titleNormalizer)
     repository.upsert(Helios, "Film", Some(2026), listingRow("Film"))
     val handler = new StagingDetailHandler(steps(repository, Seq(new FakeEnricher(Helios, None)), (_, _, r) => Some(r)))
 
@@ -50,7 +50,7 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "give up and report Done once the retry budget is exhausted, marking detail ready so the film graduates" in {
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = titleNormalizer)
     repository.upsert(Helios, "Film", Some(2026), listingRow("Film"))
     val s = steps(repository, Seq(new FakeEnricher(Helios, None)), (_, _, r) => Some(r))
     val handler = new StagingDetailHandler(s)
@@ -62,7 +62,7 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "skip an orphaned task for an unknown cinema" in {
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val handler = new StagingDetailHandler(steps(repository, Seq.empty, (_, _, r) => Some(r)))
     handler.handle(task(TaskType.StagingDetail, StagingTaskKeys.detailPayload("Film", "No Such Cinema", titleNormalizer))) shouldBe HandlerOutcome.Skipped
   }
@@ -70,7 +70,7 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
   // Helios has no enricher here, so the detail gate is satisfied and these specs
   // exercise the resolve outcome itself (detail readiness is covered elsewhere).
   "StagingResolveTmdbHandler" should "report Done on a hit and stamp the tmdbId" in {
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = titleNormalizer)
     repository.upsert(Helios, "Film", Some(2026), listingRow("Film"))
     val handler = new StagingResolveTmdbHandler(steps(repository, Seq.empty, (_, _, r) => Some(r.copy(tmdbId = Some(5)))))
 
@@ -79,7 +79,7 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "reschedule on a transient TMDB miss" in {
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = titleNormalizer)
     repository.upsert(Helios, "Film", Some(2026), listingRow("Film"))
     val handler = new StagingResolveTmdbHandler(steps(repository, Seq.empty, (_, _, _) => None))
 
@@ -95,7 +95,7 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
     // film back to `StagingReaper`, which re-enqueues a fresh task (attempts=0)
     // the moment every venue's detail is in — see the reaper's "enqueue
     // StagingResolveTmdb once the detail is present".
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = titleNormalizer)
     repository.upsert(Helios, "Film", Some(2026), listingRow("Film"))
     var resolveCalled = false
     val handler = new StagingResolveTmdbHandler(steps(repository,
@@ -114,7 +114,7 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
   // it has lasted `TransientResolveCeiling` (timed from its FIRST failure, across task attempts,
   // restarts and re-enqueues), then folded as an unanswered no-match its next resolve re-tries.
   it should "retry a transient failure shorter than the ceiling, however many attempts it takes" in {
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = titleNormalizer)
     repository.upsert(Helios, "Throwy Film", Some(2026), listingRow("Throwy Film"))
     val clock   = new tools.MutableClock(java.time.Instant.parse("2026-09-24T12:00:00Z"))
     var answer  = Option.empty[MovieRecord]
@@ -133,7 +133,7 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "fold a film as an unanswered no-match once its resolve has failed for longer than the ceiling" in {
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = titleNormalizer)
     repository.upsert(Helios, "Throwy Film", Some(2026), listingRow("Throwy Film"))
     val clock   = new tools.MutableClock(java.time.Instant.parse("2026-09-24T12:00:00Z"))
     val handler = new StagingResolveTmdbHandler(steps(repository, Seq.empty, (_, _, _) => None, clock = clock))
@@ -150,7 +150,7 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
   }
 
   "StagingResolveImdbIdHandler" should "recover + stamp the imdbId and report Done" in {
-    val repository = new InMemoryStagingRepository
+    val repository = new InMemoryStagingRepository(normalizer = titleNormalizer)
     repository.upsert(Helios, "Film", Some(2026), listingRow("Film").copy(tmdbId = Some(5)))   // resolved, no imdb
     val handler = new StagingResolveImdbIdHandler(steps(repository, Seq.empty, (_, _, r) => Some(r), (_, _, _) => Some("tt5")))
 

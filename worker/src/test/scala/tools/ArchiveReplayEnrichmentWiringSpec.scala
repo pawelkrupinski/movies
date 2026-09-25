@@ -98,14 +98,14 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
       screenings = Some(screenings), slots = Some(slots), normalizer = SingleCountryNormalizer.titleNormalizer)
     override lazy val readModel: services.readmodel.ReadModelReader & services.readmodel.ReadModelWriter =
       new services.readmodel.InMemoryReadModelRepository()
-    override lazy val staging     = new services.staging.InMemoryStagingRepository()
+    override lazy val staging     = new services.staging.InMemoryStagingRepository(normalizer = movies.normalizer)
     override lazy val archive     = new services.scrapes.InMemoryScrapeArchiveRepository
     override lazy val tasks       = new services.tasks.InMemoryTaskQueue
     override lazy val freshness   = new services.freshness.InMemoryFreshnessStore
     override lazy val chunkScrape = new services.tasks.InMemoryChunkScrapeStore()
     override lazy val omdbAttempt = new services.enrichment.InMemoryOmdbAttemptStore
     override def stagingFolder(movieRepository: services.movies.MovieRepository): services.staging.StagingFolder =
-      new services.staging.InMemoryStagingFolder(staging, movieRepository)
+      new services.staging.InMemoryStagingFolder(staging, movieRepository, normalizer = movieRepository.normalizer)
   }
 
   private def wiringWith(cache: Option[EnrichmentCache], leaf: HttpFetch): ArchiveReplayWiring =

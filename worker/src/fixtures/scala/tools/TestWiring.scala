@@ -144,9 +144,9 @@ trait TestWiring extends WorkerWiring {
   // Mongo is disabled, so the inherited MongoStagingRepository would silently drop the
   // diverted newcomers and MongoStagingFolder couldn't open a transaction. The
   // fixture wiring drives promote+fold explicitly (see FixtureTestWiring.drainStaging).
-  override lazy val stagingRepository: services.staging.StagingRepository = new services.staging.InMemoryStagingRepository()
+  override lazy val stagingRepository: services.staging.StagingRepository = new services.staging.InMemoryStagingRepository(normalizer = titleNormalizer)
   override lazy val stagingFolder: services.staging.StagingFolder =
-    new services.staging.InMemoryStagingFolder(stagingRepository, movieRepository)
+    new services.staging.InMemoryStagingFolder(stagingRepository, movieRepository, normalizer = titleNormalizer)
 
   // Don't retry cinema scrapes in fixture replay: a missing fixture is permanent,
   // so backoff per fixture-less cinema just multiplies fixture-server boot time
