@@ -43,6 +43,15 @@ class MetricNames(unittest.TestCase):
         expr = 'label_replace(up, "dst", "$1", "instance", "(.*):.*") and max_over_time(x[1h:5m])'
         self.assertEqual(bt.metric_names(expr), {"up", "x"})
 
+    def test_words_in_a_promql_comment_are_not_metrics(self):
+        # ReadModelServingDiffersFromCorpus explains its carve-out in `#` lines inside `expr`; the
+        # 2026-09-25 run listed "Some", "city", "hours", "two"... as its missing metrics, which
+        # would call the rule DEAD in any fortnight it stayed quiet. A `#` in a string is no comment.
+        expr = ('up{job="a#b"}\n'
+                '  # Some city\'s difference is not excused: two hours (the CAP)\n'
+                '  and on (country) kinowo_c # trailing note_total\n')
+        self.assertEqual(bt.metric_names(expr), {"up", "kinowo_c"})
+
     def test_the_flux_gauge_that_never_existed_is_named(self):
         # The dead rules FluxReconciliationFailing & co. selected this; the dead check needs it.
         expr = 'max by (kind, name) (gotk_reconcile_condition{type="Ready",status="False"} == 1)'
