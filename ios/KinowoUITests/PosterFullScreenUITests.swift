@@ -14,16 +14,7 @@ final class PosterFullScreenUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        FixtureLaunch.pinCountryAndLanguage(app)
-        // Inject the detected city so the first-launch gate is deterministic
-        // (no CoreLocation dialog / resolve timeout); confirm it below.
-        app.launchEnvironment["KINOWO_FORCE_DETECTED_CITY"] = "poznan"
-        app.launch()
-
-        // First-launch city gate → confirm the injected city to reach the
-        // repertoire. Skipped automatically when a city is already persisted.
-        let confirm = app.buttons[A11y.CityGate.confirmButton]
-        if confirm.waitForExistence(timeout: 10) { confirm.tap() }
+        FixtureLaunch.throughCityGate(app, city: "poznan")
 
         // "Wszystkie" so the grid has cards regardless of the hour — late in the
         // evening "Dziś" can be empty (see ios uitests-at-night).

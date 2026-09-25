@@ -18,13 +18,7 @@ final class RotationColumnsUITests: XCTestCase {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
-        FixtureLaunch.pinCountryAndLanguage(app)
-        app.launchEnvironment["KINOWO_FORCE_DETECTED_CITY"] = "poznan"
-        app.launch()
-
-        // Clear the first-launch city gate deterministically (no CoreLocation).
-        let confirm = app.buttons[A11y.CityGate.confirmButton]
-        if confirm.waitForExistence(timeout: 10) { confirm.tap() }
+        FixtureLaunch.throughCityGate(app, city: "poznan")
 
         // "Wszystkie" guarantees a dense, multi-row grid regardless of the hour.
         let anytime = app.buttons[A11y.TopBar.datePillAnytime]

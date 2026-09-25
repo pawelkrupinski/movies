@@ -36,8 +36,29 @@ enum FixtureLaunch {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        pinCountryAndLanguage(app, country: country, language: language)
         app.launchEnvironment["KINOWO_UITEST_FIXTURE"] = "1"
+        throughCityGate(app, country: country, language: language, city: city,
+                        environment: environment, file: file, line: line)
+    }
+
+    /// Launch `app` with no persisted city and confirm `city` at the CityGate,
+    /// against whatever repertoire the launch environment selects (the live one
+    /// unless `KINOWO_UITEST_FIXTURE` is set).
+    ///
+    /// The gate ALWAYS shows, whatever an earlier suite persisted, so it is
+    /// awaited as a requirement. An `if confirm.waitForExistence(timeout: 10)`
+    /// instead made the launch depend on run order, and cost ten idle seconds
+    /// per test whenever a city was already stored (run 36115063750).
+    static func throughCityGate(
+        _ app: XCUIApplication,
+        country: String = "pl",
+        language: String = "pl",
+        city: String,
+        environment: [String: String] = [:],
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        pinCountryAndLanguage(app, country: country, language: language)
         app.launchEnvironment["KINOWO_CLEAR_CITY"] = "1"
         app.launchEnvironment["KINOWO_FORCE_DETECTED_CITY"] = city
         for (key, value) in environment { app.launchEnvironment[key] = value }
@@ -47,6 +68,9 @@ enum FixtureLaunch {
         XCTAssertTrue(confirm.waitForExistence(timeout: 15),
                       "City-confirm screen never showed", file: file, line: line)
         confirm.tap()
+        // Name a tap the gate swallowed here, rather than as a later "Grid never appeared".
+        XCTAssertTrue(confirm.waitForNonExistence(timeout: 10),
+                      "Confirming the city left the CityGate up", file: file, line: line)
     }
 
     /// Mark `app` as a UI-test launch and pin its country and UI language in
