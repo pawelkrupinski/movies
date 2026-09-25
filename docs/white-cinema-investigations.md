@@ -155,6 +155,157 @@ from VictoriaLogs' own docs 404s against this deployment's query parser.
 
 ---
 
+## 2026-09-26
+
+**Ninth all-five-country sweep.** Newest bucket 2026-09-25 23:15 UTC. There is
+no 09-22 entry: that run never logged. PL was fully hand-probed. UK/DE/ES/US were
+triaged with the archive-join + seasonal-name cut (the regex from the 09-19 note).
+Probes of every non-seasonal archive≤10d candidate (US: the top 20 by archive
+film count) went to background subagents. Every BREAK claim was re-verified
+by hand before acting.
+
+| DB | services | white | white % | red | green→white (in-window) | non-seasonal archive≤10d |
+|---|---|---|---|---|---|---|
+| `kinowo` (PL) | 537 | **6** | 1.1% | 1 | 0 | 2 |
+| `kinowo_uk` | 852 | **52** | 6.1% | 0 | 0 | 11 |
+| `kinowo_de` | 1,538 | **383** | 24.9% | 32 | 0 | 19 |
+| `kinowo_us` | 5,039 | **783** | 15.5% | 4 | 0 | 111 |
+| `kinowo_es` | 612 | **187** | 30.6% | 2 | 0 | 14 |
+
+vs. 2026-09-19: PL 5/310→6/537. Services grew by 227 from the nearby-towns
+roster sweep, and the white share fell. UK 49→52 (flat). DE 389→383 (flat;
+seasonal 162/383 = 42.3%). US 741→783 (seasonal 129). ES 202→187, with 612
+services now after the Ocine re-roster. No client shows a ratio jump. DE red
+rose 21→32 (out of brief, not investigated). Max retained non-empty buckets per
+white service: PL 40, UK 4, ES 5, DE 3, US 2. The cadence-vs-retention blind
+spot is unchanged.
+
+### Poland: 6 white + 3 masked (2 by the Filmweb fallback, 1 by a partial Filmweb parse): 5 venues fixed across 3 commits, 4 dormant
+
+**Kino Mikro + Mikro Bronowice (Kraków): fixed, @867342024.** Neither was
+white; both were **masked by the Filmweb fallback** (`fallback: true` on every
+retained bucket; `filmwebFallback` active since 2026-09-23 ~13:00 UTC, 44/49
+consecutive probe failures). The fallback history reads "primary returned no
+screenings" from 09-23, then `HTTP 404 for GET kinomikro.pl/api.php/v1/repertoires`
+from 09-24. kinomikro.pl was rebuilt from Joomla onto WordPress, and the old
+Joomla JSON path died. The old feed was always a front for the venue's
+VisualSoft ticketing instance: the old records even carried `system_url:
+bilety.kinomikro.pl`. That instance's own
+`service.php/repertoire/list.json?limit=1000&advanced=1` returns the whole
+programme of both screens in one request (95 screenings to 10-29; `limit`
+honoured; `meta.nbResults` = total), so the per-day walk is gone.
+`KinoMikroClient` now reads it, keyed on `location.institution_name`. Dub tags
+("Marsupilami- dubbing") are peeled into the showtime format. The director
+regex gained Występują/Muzyka/`|` terminators, closed by `(?!\p{L})` because
+Java's ASCII `\b` sees no boundary after "…ą". Spec replays a live 09-26
+capture. The old client never requests that URL, so the spec fails before the
+fix. The frozen 08-06 corpus only held the dead feed, so Mikro's rows left the
+snapshots and its 7 dead corpus fixtures were deleted (same precedent as CSW
+Toruń on 09-19).
+
+  *Snapshot side-effect worth knowing:* `main` was already red on
+  `e2e (rest)` (runs for c30cce89e and badf48c1d) because c30cce89e ("Drop a
+  stored RT or Metacritic url whose page credits another director") shipped
+  without regenerating `expected-schedules.txt`. This run's regen folded
+  those RT drops in, and bumped `DerivationVersion` to f36edf955e2e6880.
+
+**Regis (Bochnia): fixed, @17b810024.** White since 09-21 19:08 UTC (last
+archive 09-21, 11 films). `bilety.kino.bochnia.pl/index.php` still carries 66
+live `div.event-item[data-date][data-time]` rows on the visual9 skin, but the
+title moved from `h3.event-title` to `h2.event-title`. The h3-pinned selector
+matched nothing. The selector is now `.event-title`. Spec replays a live 09-26
+capture (fails before, 22/22 after). **Shared code path checked:** all 15
+VisualSoft venues were fetched live. Every other instance still renders h3
+(title-count = event-item count) and all 14 were GGGG with same-day archives.
+Only Bochnia had drifted. (Every VisualSoft instance also exposes
+`service.php/repertoire/list.json`; bochnia, kgl, kck, shd, sta, bck, bdk, ckp,
+chck, pckul, mok.zory, ock, kht and oks all answered with counts matching
+their HTML. If the HTML skins keep drifting, moving `SystemBiletowyClient`
+onto that feed would retire all four skin parsers. Not done here: that is a
+15-venue behaviour change, not a white-cinema fix.)
+
+**Kino CKiS Skierniewice + Kino Polonez (Skierniewice): fixed, @c4d4ca925.**
+CKiS had been white since 2026-09-22 22:39 UTC (last archive: 1 film, "Kura").
+Filmweb 3149 returns `[]` for 09-26..10-03. `/info` shows 3149 is CKiS's
+**concert hall at ul. Reymonta 33, not the cinema.** The cinema is Kinoteatr
+Polonez (ul. Wita Stwosza 2/4), rostered separately as `KinoPolonez` on
+Filmweb 320. **Polonez was the masked one.** Its bars read GGGGGG, yet Filmweb
+320 also returns `[]` for 09-26..28 and its archive held a single "Lalka"
+slot. Meanwhile biletyna's place page lists **50 screenings over 2 halls**
+(Mistyczka, Tedi, Hot Spot, W sercu dziczy, Resident Evil, …). This is the
+partial-parse mask again, only the partial source was Filmweb. Both venues
+sell every ticket through biletyna: kino.cekis.pl's "kup bilet" goes through
+bilety.io to biletyna. (The venue site's Mojeekino link is a VOD catalogue,
+NOT a ticketing system. A subagent mapped its API,
+`api-mojeekino.app.insysgo.pl/v1/InsysGoPage/GetPageContent`, and it holds
+no dated screenings. Don't chase it again.) So both went onto the existing
+`BiletynaClient`: `/Skierniewice/Kinoteatr-Polonez` and
+`/Skierniewice/Centrum-Kultury-i-Sztuki-Sala-koncertowa`. The concert-hall
+page mixes 9 ScreeningEvents with 19 concerts and plays, and the client's
+`@type` + title filters keep only the films. Two `CinemaScraperCatalogSpec`
+routing tests replay live 09-26 captures. The CKiS test was run against the
+unmodified catalog first and failed on the missing Filmweb 3149 fixture, so
+it fails before and passes after. `testUnit` is green, and the e2e snapshot is
+unaffected (Skierniewice isn't in the frozen corpus).
+
+  *Shared-path note:* Filmweb-backed PL venues can go "green on a stray slot"
+  while their real programme is elsewhere. The sweep's white predicate cannot
+  see it. A future run could compare each Filmweb venue's archive film count
+  against its town peers. Not done this run.
+
+**Still dormant, re-probed live (subagent, spot-checked):**
+
+| Venue | Source | Verdict |
+|---|---|---|
+| Kino na Szekspirowskim (Gdańsk) | biletyna | **intentionally-dormant**: seasonal rooftop open-air, the 11th season (May–Sept 2026) is over |
+| Kino Wisła Brzeszcze | bilety24 organiser 1539 | **intentionally-dormant**: "Brak wydarzeń"; ok.brzeszcze.pl says the cinema is closed indefinitely for thermo-modernisation. New fact; it is no longer a mystery |
+| Dyskusyjny Klub Filmowy Politechnika (Wrocław) | Filmweb 1645 | **intentionally-dormant**: `[]` for 09-26..10-03; dkf.pwr.edu.pl last posted a programme in May. The October checkpoint from 08-24 comes due next run |
+| Kino Chatka Żaka (Lublin) | UMCS calendar 9469 | **intentionally-dormant**: "Brak wydarzeń" for all categories |
+
+Red (1): the same `Cineworld Enrichment` non-cinema row as 09-19. Out of scope.
+
+### UK: 52 white, 0 transitions, 11 archive≤10d candidates probed, 0 bugs
+
+All 11 (Castlemorton, West Side Stromness, Phoenix Blyth, Lichfield Garrick,
+Hythe Moviola, Wetherby Film Theatre, Theatr Colwyn, Coliseum Aberdare, Plaza
+Stockport, Watersmeet, Ilkley) render Flicks' `no-streaming-sessions` block
+with no `data-date` tabs. **EMPTY.** Controls (Finsbury Park Picturehouse, Odeon
+Norwich) parse normally.
+
+### DE: 383 white, 0 transitions, 19 non-seasonal archive≤10d probed, 0 bugs
+
+16 read `data-showtimes-dates="[]"`. Windlicht (A2757, 16 films in its 6-day-old
+archive) listed only 09-25, now past, so it is effectively empty. **Kulisse** and
+**CLUB PASSAGE** (A0410) show near-term dates whose day content matches the
+selectors, so both are **publication lag**. Control CinemaxX Kiel (A0279) is
+populated.
+
+### US: 783 white, 0 transitions, top-20 (by archive film count) of 111 probed, 0 bugs
+
+14 EMPTY (`no-streaming-sessions`): Marquee Pullman Square 16, Cinemark
+Century Mountain View 16, Geneseo, Heritage Park Altus 7, Southtowne Twin,
+Moody Gardens, Angela Triplex, Kentucky Science Center, both Living Room
+Theatres, T&T Twin, Trinity Weaverville, Illinois Theatre, Lights Of Liberty.
+6 were **LAG**: day tabs present with `cinema-times__article` markup that
+matches the selectors (Green River Campbellsville, Heritage Park Duncan,
+Cinestar Huntsville, Cottonwood Havre, Huish Reel, National Graham 3). Control
+AMC Empire 25 parses. That makes 34/34 US checks in two runs with zero
+parser breaks.
+
+### ES: 187 white, 0 transitions, 14 non-seasonal archive≤10d probed, 0 bugs
+
+**The 5 Ocine venues** (Urban X-Madrid, Premium Estepark, Blanes, Vila-seca,
+Mendibil) show an archive age of ~8.0 d because it predates the 09-25 evening
+switch to `OcineClient`. Each chain server's `POST /api/v1/sessions` returns
+10–16 live films in the shape `OcineParser` expects. SensaCine now shows `[]`
+for them. **Lag across the switchover, not a break.** Re-check next run: they
+should be green. (The subagent also claimed "worker-es has logged nothing on
+09-26". That was an artefact: the run happened at ~23:30 UTC on 09-25, so
+there was no 09-26 yet. Discarded.) **NovoCine Leiro 3D** (E0847) is
+**LAG**. The remaining 8 are `[]`. Control Cinesa Marineda City is populated.
+
+---
+
 ## 2026-09-19
 
 **Eighth all-five-country sweep.** Newest bucket ~2026-09-19 08:00 UTC. Same
