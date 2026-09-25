@@ -338,7 +338,7 @@ private struct ShowtimeBadge: View {
 /// Carries each showtime pill's centre-x (in the card coordinate space) up to
 /// its `ShowtimeBadge`, which reads it to clamp the room tooltip inside the card.
 private struct PillMidXKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
+    static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = nextValue()
     }
