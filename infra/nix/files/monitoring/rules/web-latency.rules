@@ -63,6 +63,12 @@
 # and reads as whatever the slowest of them did; `/es/api/me` would page on a single cold start.
 # The floor is what makes an absolute threshold safe on a tier this quiet.
 #
+# ⚠️ THE FLOOR COUNTS VISITORS ONLY BECAUSE THE WEB TIER LEAVES OUR OWN PROBE OUT. monitoring-1's
+# blackbox probe (roles/synthetic-probes.nix) fetches each probed page once a minute, and from
+# 2026-09-24 that alone lifted `/uk/:city/` and `/us/:city/` over this floor, so WebPageLatencyHigh
+# went pending on the probe's timings. `WebHttpMetrics.isMeasured` now drops its User-Agent before
+# anything is recorded; do not add a probe target without keeping that prefix.
+#
 # ⚠️ HISTORY STARTS AT THE 2026-08-29 CUTOVER, so the six-day baseline quoted above is all there is.
 # Re-measure before tuning either threshold rather than reaching further back.
 groups:

@@ -189,6 +189,32 @@ class HttpMetricsFilterSpec extends AnyFlatSpec with Matchers {
     harness.exposition should not include Bytes
   }
 
+  it should "leave out the User-Agent the probes are ACTUALLY configured with, not just a copy of it" in {
+    // The two ends of this contract live in different languages: the probe's
+    // User-Agent is a NixOS option default, the prefix is here. A rename on the
+    // nix side alone would put the probe back into the visitor metrics -- and
+    // over the traffic floor of WebPageTooHeavy and WebPageLatencyHigh, which is
+    // what it did from 2026-09-24 -- with every other test still green.
+    val relative = "infra/nix/modules/roles/synthetic-probes.nix"
+    val nix = Iterator
+      .iterate(new java.io.File(".").getAbsoluteFile)(_.getParentFile)
+      .takeWhile(_ != null)
+      .map(dir => new java.io.File(dir, relative))
+      .find(_.isFile)
+      .getOrElse(fail(s"no $relative in any parent directory"))
+    val source = scala.io.Source.fromFile(nix)(using scala.io.Codec.UTF8)
+    val text = try source.mkString finally source.close()
+    val configured = """(?s)userAgent\s*=\s*lib\.mkOption\s*\{.*?default\s*=\s*"([^"]+)"""".r
+      .findFirstMatchIn(text).map(_.group(1))
+      .getOrElse(fail(s"no userAgent default in $relative"))
+
+    val harness = new Harness()
+    harness.run(routed("GET", "/uk/london/", CityIndexPath).withHeaders(Headers("User-Agent" -> configured)))
+    withClue(s"$relative sends User-Agent '$configured': ") {
+      harness.exposition should not include Counter
+    }
+  }
+
   it should "still count a visitor whose User-Agent merely mentions kinowo" in {
     val harness = new Harness()
     harness.run(routed("GET", "/poznan/", CityIndexPath).withHeaders(Headers("User-Agent" -> "KinowoIOS/2.0.9")))

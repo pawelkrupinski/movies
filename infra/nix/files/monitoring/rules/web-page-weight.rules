@@ -34,6 +34,12 @@
 # market. Los Angeles is 33x Poznan's showtime count today, and a new metro is onboarded by adding
 # a row to a roster. That is why this alerts on an ABSOLUTE size rather than on growth: there is no
 # baseline to grow from, only the size the corpus happens to be.
+#
+# ⚠️ THESE RULES READ VISITORS ONLY BECAUSE THE WEB TIER LEAVES OUR OWN PROBE OUT. monitoring-1's
+# blackbox probe (roles/synthetic-probes.nix) fetches each probed page once a minute, and from
+# 2026-09-24 that alone lifted `/uk/:city/` and `/us/:city/` over the traffic floor below, so
+# WebPageTooHeavy fired on what the probe downloaded. `WebHttpMetrics.isMeasured` now drops its
+# User-Agent before anything is recorded.
 groups:
   - name: web-page-weight
     rules:
