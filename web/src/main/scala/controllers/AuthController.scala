@@ -383,7 +383,7 @@ class AuthController(
     val target  = models.Country.siblingOfOrigin(ForwardedUrl.base(request)) match {
       case None          => landing
       case Some(sibling) =>
-        s"$sibling${AuthController.SsoLogoutPath}?next=${URLEncoder.encode(absolute(landing, request), UTF_8)}"
+        s"$sibling${AuthController.SsoLogoutPath}${AuthController.query(Seq("next" -> absolute(landing, request)))}"
     }
     // `withNewSession` DISCARDS the cookie rather than re-signing a smaller one.
     // Removing the keys would leave a valid session cookie behind holding
@@ -414,8 +414,7 @@ class AuthController(
     PerUserResponse(request.session.get(SignedInUser.UserIdKey) match {
       case None    => Redirect(onward)
       case Some(_) =>
-        val signOut = routes.AuthController.ssoLogout().url +
-          validNext.fold("")(n => s"?next=${URLEncoder.encode(n, UTF_8)}")
+        val signOut = routes.AuthController.ssoLogout().url + AuthController.query(validNext.map("next" -> _).toSeq)
         Ok(views.html.ssoLogoutConfirm(signOut, onward)(using deploymentMessages))
     })
   }
@@ -676,23 +675,24 @@ object AuthController {
   private[controllers] def relayQuery(request: RequestHeader): String =
     query(request.queryString.toSeq.sortBy(_._1).flatMap { case (key, values) => values.map(key -> _) })
 
-  /** The two SSO legs' paths, as the OTHER domain has to spell them.
+  /** The SSO legs' paths, as the OTHER domain has to spell them.
    *
    *  Literals rather than reverse routes for the same reason as
    *  [[callbackPath]]: these address a DIFFERENT deployment, whose mount point is
    *  not ours, and the reverse route would helpfully prepend ours.
-   *  `AuthCallbackRelaySpec` pins both against a root-mounted reverse route. */
+   *  `AuthCallbackRelaySpec` pins them against a root-mounted reverse route. */
   val SsoStartPath  = "/auth/sso/start"
   val SsoFinishPath = "/auth/sso/finish"
+  val SsoLogoutPath = "/auth/sso/logout"
 
   /** Session key (on the RECEIVING domain) and query parameter (on the way back
    *  to the handing-over one) for the value that binds a handoff code to one
    *  browser — see [[AuthController.ssoFinish]]. */
   val SsoBindingKey = "ssoBinding"
+  val BindParam     = "bind"
 
   /** Session key holding a native flow's `challenge` from start to callback. */
   val MobileChallengeKey = "mobileChallenge"
-  val BindParam     = "bind"
 
   /** `params` as a query string, keys and values encoded; empty for none. */
   private[controllers] def query(params: Seq[(String, String)]): String =
@@ -706,7 +706,6 @@ object AuthController {
   private[controllers] def handoffTarget(to: Option[String]): Option[String] =
     switchTarget(to).orElse(
       to.map(_.trim.stripSuffix("/")).filter(models.Country.deployedOrigins.contains))
-  val SsoLogoutPath = "/auth/sso/logout"
 
   /** A landing as an absolute URL on `origin`.
    *
