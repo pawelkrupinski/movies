@@ -23,14 +23,9 @@ import scala.util.Try
 object MetacriticDiagnostics {
   private val Site = "https://www.metacritic.com"
 
-  private val http = HttpClient.newBuilder()
-    .connectTimeout(Duration.ofSeconds(10))
-    .followRedirects(HttpClient.Redirect.NEVER)
-    .build()
-
   private case class Probe(label: String, slug: String, url: String, status: Int)
 
-  private def probe(label: String, slug: String): Probe = {
+  private def probe(http: HttpClient, label: String, slug: String): Probe = {
     val url = s"$Site/movie/$slug/"
     val request = HttpRequest.newBuilder()
       .uri(URI.create(url))
@@ -69,6 +64,10 @@ object MetacriticDiagnostics {
 
     println(s"${rows.size} rows in Mongo · ${missing.size} missing Metacritic URL · probing variants…\n")
 
+    val http = HttpClient.newBuilder()
+      .connectTimeout(Duration.ofSeconds(10))
+      .followRedirects(HttpClient.Redirect.NEVER)
+      .build()
     val Workers = 4
     implicit val executionContext: ExecutionContextExecutorService = DaemonExecutors.boundedEC("mc-diag", Workers)
     val done        = new AtomicInteger(0)
@@ -106,7 +105,7 @@ object MetacriticDiagnostics {
 
         val probes = seen.iterator.map { case (slug, label) =>
           httpProbes.incrementAndGet()
-          probe(label, slug)
+          probe(http, label, slug)
         }.toList
 
         val finishedIndex = done.incrementAndGet()

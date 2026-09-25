@@ -35,6 +35,15 @@ import scala.util.Try
  *   TMDB_API_KEY=... MONGODB_URI=... sbt 'worker/Test/runMain scripts.GateReport [out.jsonl] [capPerMode]'
  */
 object GateReport {
+  def main(args: Array[String]): Unit = {
+    val http = new RealHttpFetch
+    new GateReport(http, new FilmwebClient(http)).run(args)
+  }
+}
+
+/** The run's HTTP client and Filmweb client are the instance's, built by `main` — not shared
+ *  object state. */
+private final class GateReport(http: RealHttpFetch, filmweb: FilmwebClient) {
 
   private val ApiKey = sys.env.getOrElse("TMDB_API_KEY", "")
   // Relative to the sbt working directory (the repo root): the frozen inputs of the
@@ -42,8 +51,6 @@ object GateReport {
   private val DefaultOut = "docs/synopsis-resolution/archive/accepts.jsonl"
   private val DefaultRatingsOut = "docs/synopsis-resolution/archive/ratings-eval.jsonl"
   private val Tau = 0.06 // stem-IDF synopsis floor (scores run low; corroborators carry precision)
-  private val http = new RealHttpFetch
-  private val filmweb = new FilmwebClient(http)
   private val Modes = Seq("tmdb-pl", "filmweb-pl", "imdb-eng")
 
   private case class Meta(title: String, origTitle: Option[String], year: Option[Int], overview: String,
@@ -53,7 +60,7 @@ object GateReport {
   private case class Film(id: String, title: String, search: String, year: Option[Int], tmdbId: Option[Int],
                           queries: Seq[String], cinemaSyn: String, dirs: Set[String])
 
-  def main(args: Array[String]): Unit = {
+  def run(args: Array[String]): Unit = {
     // `ratings` mode: select the synopsis-matchable rating gaps (link missing,
     // tmdbId present → a reference synopsis exists) and emit EVERY evaluation,
     // accepted or abstained, so the report can show how often / how strongly

@@ -24,7 +24,13 @@ import scala.util.Try
  *
  *  Then regenerate the snapshots (`PageSnapshotSpec`, `FilmScheduleEndToEndSpec`)
  *  and commit the new external fixtures alongside the production change. */
-object RefreshExternalFixtures extends tools.FixtureTestWiring("08-06-2026") {
+object RefreshExternalFixtures {
+  def main(args: Array[String]): Unit = new RefreshExternalFixtures().run()
+}
+
+/** The refresh wiring — an instance `main` builds, so its lazily built fetches and clients
+ *  are the run's own rather than object state. */
+final class RefreshExternalFixtures extends tools.FixtureTestWiring("08-06-2026") {
   // Live-record on a fixture miss ONLY for these external-metadata hosts; every
   // cinema host stays strict replay (a miss throws), pinning the corpus.
   // A `def`, not a `val`: `httoFetch` (overriding the parent's lazy val) is forced
@@ -41,7 +47,7 @@ object RefreshExternalFixtures extends tools.FixtureTestWiring("08-06-2026") {
   override lazy val tmdbClient: clients.TmdbClient =
     new clients.TmdbClient(httoFetch, apiKey = sys.env.get("TMDB_API_KEY"))
 
-  def main(args: Array[String]): Unit = {
+  def run(): Unit = {
     scrapeAndDrainToCache()
     val rows = movieCache.snapshot()
     println(s"Refresh: enriching ${rows.size} rows (live only for missing external queries)…")

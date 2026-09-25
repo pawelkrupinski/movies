@@ -24,6 +24,9 @@ import java.nio.file.Files
 class RecorderZyteCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   private val temporaryRoot = new File("test/resources/fixtures/recorder-zyte-capture-spec")
+  // The recorder script's wiring, built for this spec — forcing its lazy fetches builds the chains only
+  // (no Mongo, no network, no `run()`).
+  private lazy val recordingWiring = new RecordAllDataToFixture()
   private val MultikinoFilmsUrl =
     "https://www.multikino.pl/api/microservice/showings/cinemas/0011/films"
 
@@ -72,8 +75,8 @@ class RecorderZyteCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndAf
     // Zyte chain), not a bare FallbackHttpFetch with recording buried inside as
     // `direct`. Forcing these lazy vals builds the chains only — no Mongo, no
     // network, no `main()`.
-    RecordAllDataToFixture.multikinoFetch shouldBe a[RecordingHttpFetch]
-    RecordAllDataToFixture.biletynaFetch  shouldBe a[RecordingHttpFetch]
+    recordingWiring.multikinoFetch shouldBe a[RecordingHttpFetch]
+    recordingWiring.biletynaFetch  shouldBe a[RecordingHttpFetch]
   }
 
   "The recorder's capture directory" should
@@ -82,7 +85,7 @@ class RecorderZyteCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndAf
     // country-fixture job + local sync key off (refresh-fixtures.yml overrides
     // it to a dd-MM-yyyy directory). Pins that the recorder no longer hard-codes a
     // date literal a workflow must sed.
-    RecordAllDataToFixture.captureDate shouldBe "today"
+    recordingWiring.captureDate shouldBe "today"
   }
 
   it should "build httoFetch's fixture tree under that directory (init-order safe)" in {
@@ -91,7 +94,7 @@ class RecorderZyteCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndAf
     // `test/resources/fixtures/null` while only CAPTURE_DATE landed in `today`
     // (the 323-byte artifact). The lazy val caches that, so this asserts the
     // cached instance is keyed off the right directory.
-    RecordAllDataToFixture.httoFetch
+    recordingWiring.httoFetch
       .asInstanceOf[RecordingHttpFetch].fixtureRoot shouldBe "test/resources/fixtures/today"
   }
 
