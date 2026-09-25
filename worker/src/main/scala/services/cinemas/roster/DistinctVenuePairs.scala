@@ -70,9 +70,10 @@ object DistinctVenuePairs extends Logging {
     ("RMC Jacksonville", "RMC Waterloo Cinema"),
     // Auburn and Canandaigua NY: formovietickets chain rochester, rtn 104446 vs 346993
     ("Auburn Movieplex", "Canandaigua Theaters"),
-    // Phoenix Theatres' one grid in Clarksville TN and Monroe MI: Flicks venues
-    // phoenix-theatres-governors-square vs phoenix-theatres-mall-of-monroe (checked 2026-09-24)
-    ("Phoenix Theatres Governors Square", "Phoenix Theatres Mall of Monroe"),
+    // Two small-town twins 500 miles apart, East Jamestown TN and Laurinburg NC: Flicks venues
+    // castle-twin-jamestown vs cinema-laurinburg, 21 vs 22 showtimes of the same three wide
+    // releases on different day calendars (checked 2026-09-25)
+    ("Castle Twin Jamestown", "Cinema Laurinburg"),
     // Dersa in Damme and Kinocenter Rahden, 90 km apart: Filmstarts theatres A0438 vs A1730
     ("Dersa Kino-Center", "Kinocenter Rahden"),
   )
@@ -84,6 +85,10 @@ object DistinctVenuePairs extends Logging {
     // Caribbean Cinemas' ~28 Puerto Rico houses, most filed under the San Juan metro: each books
     // through its own home.caribbeancinemas.com/<venue>/checkout (checked 2026-09-24).
     "Caribbean Cinemas ",
+    // Phoenix Theatres' one grid across its Michigan, Tennessee, Kentucky, Indiana houses: each is its
+    // own Flicks venue (Governors Square 580 vs Laurel Park 615 vs Mall of Monroe 571 showtimes of
+    // the same six films, checked 2026-09-25), and the census found a new pair on each of two days.
+    "Phoenix Theatres ",
   )
 
   /** Names in [[byName]] the roster no longer holds — a regeneration renamed or dropped the

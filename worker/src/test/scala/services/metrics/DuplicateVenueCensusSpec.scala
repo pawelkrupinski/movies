@@ -145,15 +145,21 @@ class DuplicateVenueCensusSpec extends AnyFlatSpec with Matchers {
     withClue(counted.mkString("\n")) { counted shouldBe empty }
   }
 
-  // The cross-city pairs pending from 2026-09-24 (DuplicateVenueListing{us} from 10:19Z, {de} from
-  // 16:01Z), each two real houses on one programme, checked against the upstream 2026-09-24:
-  // Phoenix Theatres' Clarksville TN and Monroe MI (Flicks venues phoenix-theatres-governors-square
-  // vs phoenix-theatres-mall-of-monroe, their 09-25 grids identical to the minute), and Dersa's
-  // Damme house and Kinocenter Rahden, 90 km apart (Filmstarts theatres A0438 vs A1730, the same
-  // nine films at the same times).
-  it should "not count Phoenix Theatres' Clarksville and Monroe houses, nor Dersa in Damme and Kinocenter Rahden" in {
+  // The pairs pending from 2026-09-24, each two real houses on one programme, checked against the
+  // upstream: Phoenix Theatres, which programmes every house alike -- first Clarksville TN and
+  // Monroe MI (cross-city, 09-24), then Livonia and Monroe MI (same-city, 09-25; Flicks venues
+  // phoenix-theatres-laurel-park vs -mall-of-monroe, 615 vs 571 showtimes of the same six films);
+  // Dersa's Damme house and Kinocenter Rahden, 90 km apart (Filmstarts theatres A0438 vs A1730);
+  // and two small-town twins 500 miles apart, Castle Twin in East Jamestown TN and Cinema
+  // Laurinburg NC (Flicks castle-twin-jamestown vs cinema-laurinburg, 21 vs 22 showtimes of the
+  // same three wide releases on different day calendars, checked 2026-09-25).
+  it should "not count two Phoenix Theatres houses, Dersa and Kinocenter Rahden, nor Castle Twin and Cinema Laurinburg" in {
     val counted =
-      countedPairs(Country.UnitedStates, Seq("Phoenix Theatres Governors Square" -> "Phoenix Theatres Mall of Monroe")) ++
+      countedPairs(Country.UnitedStates, Seq(
+        "Phoenix Theatres Governors Square" -> "Phoenix Theatres Mall of Monroe",
+        "Phoenix Theatres Laurel Park" -> "Phoenix Theatres Mall of Monroe",
+        "Phoenix Theatres Danville 8" -> "Phoenix Theatres New Albany 16",
+        "Castle Twin Jamestown" -> "Cinema Laurinburg")) ++
         countedPairs(Country.Germany, Seq("Dersa Kino-Center" -> "Kinocenter Rahden"))
     withClue(counted.mkString("\n")) { counted shouldBe empty }
   }
