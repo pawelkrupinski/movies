@@ -1,6 +1,6 @@
 package views
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{Helios, Multikino, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec

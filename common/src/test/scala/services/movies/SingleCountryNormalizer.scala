@@ -8,12 +8,10 @@ import models.Country
  *
  * Duplicated deliberately: `testkit` depends on `common`, so `common`'s own test
  * sources cannot see it, and there is no third module both could share. The two
- * definitions are a `given` over one expression; if that expression ever grows
+ * definitions are one expression; if that expression ever grows
  * logic, move it into `common/src/main` and have both delegate.
  */
 object SingleCountryNormalizer {
-  /** The named instance — see the `testkit` copy. */
-  val titleNormalizer: TitleNormalizer = TitleNormalizer.forCountry(Country.default)
-
-  given TitleNormalizer = titleNormalizer
+  /** A NEW normalizer per call — see the `testkit` copy. */
+  def titleNormalizer: TitleNormalizer = TitleNormalizer.forCountry(Country.default)
 }

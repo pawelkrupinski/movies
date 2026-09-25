@@ -9,7 +9,8 @@ import org.scalatest.matchers.should.Matchers
  * decoration glued to the numeral and never corrupting single-letter title words.
  */
 class SanitizeNumeralKeySpec extends AnyFlatSpec with Matchers {
-  import SingleCountryNormalizer.titleNormalizer.sanitize
+  private val titles = SingleCountryNormalizer.titleNormalizer
+  import titles.sanitize
 
   "sanitize" should "key numerals in Arabic, not Roman" in {
     sanitize("Toy Story 5")     shouldBe "toystory5"

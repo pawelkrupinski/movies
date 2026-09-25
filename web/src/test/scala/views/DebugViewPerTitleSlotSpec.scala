@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import java.time.LocalDateTime
 import models.{CinemaShowing, Filmweb, Multikino, MovieRecord, Showtime, Source, SourceData}
 import services.movies.StoredMovieRecord
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * The `movies` collection now keys every cinema slot by `CinemaShowing(cinema,

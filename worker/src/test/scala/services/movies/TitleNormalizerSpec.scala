@@ -7,7 +7,8 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
 
-  import SingleCountryNormalizer.titleNormalizer.mergeKey
+  private val titles = SingleCountryNormalizer.titleNormalizer
+  import titles.mergeKey
 
   // ── The Mandalorian merge — the headline scenario ─────────────────────────
 
@@ -156,7 +157,7 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
 
   // ── preferredDisplay ──────────────────────────────────────────────────────
 
-  import SingleCountryNormalizer.titleNormalizer.preferredDisplay
+  import titles.preferredDisplay
 
   "preferredDisplay" should "prefer 'i' over '&' when both spellings are present" in {
     preferredDisplay(Seq("Mandalorian & Grogu", "Mandalorian i Grogu")) shouldBe Some("Mandalorian i Grogu")
@@ -280,7 +281,7 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
   // cache card while resolving off the bare film. The display title likewise
   // keeps the banner; only its CASING is normalised (see `recase` below).
 
-  import SingleCountryNormalizer.titleNormalizer.{apiQuery, programmePrefix, recase}
+  import titles.{apiQuery, programmePrefix, recase}
 
   "apiQuery" should "leave 'Orwell: 2 + 2 = 5' alone (the '+ <event>' suffix must start with a letter)" in {
     apiQuery("Orwell: 2 + 2 = 5") shouldBe "Orwell: 2 + 2 = 5"
