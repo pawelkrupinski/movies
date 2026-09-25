@@ -30,7 +30,7 @@ class ScrapeLandingSpec extends AnyFlatSpec with Matchers {
     val staging    = new InMemoryStagingRepository
     val store      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val landing    = new ScrapeLanding(store, repository, Some(staging), new InProcessEventBus(),
-      ScreeningTokens.Default, CountryNames.DefaultLanguage)
+      ScreeningTokens.forDefaultCountry(), CountryNames.DefaultLanguage)
     val key        = CacheKey(film, Some(2026), titleNormalizer)
     store.put(key, MovieRecord(tmdbId = Some(1702350), data = Map[Source, SourceData](
       Tmdb -> SourceData(title = Some(film), originalTitle = Some(film), releaseYear = Some(2026)),
@@ -59,7 +59,7 @@ class ScrapeLandingSpec extends AnyFlatSpec with Matchers {
       val repository = new InMemoryMovieRepository
       val store      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
       val landing    = new ScrapeLanding(store, repository, None, new InProcessEventBus(),
-        ScreeningTokens.Default, CountryNames.DefaultLanguage)
+        ScreeningTokens.forDefaultCountry(), CountryNames.DefaultLanguage)
       (store, landing)
     }
     def row(title: String, slots: (Source, SourceData)*) =

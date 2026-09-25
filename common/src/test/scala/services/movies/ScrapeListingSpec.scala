@@ -17,7 +17,7 @@ class ScrapeListingSpec extends AnyFlatSpec with Matchers {
     Showtime(LocalDateTime.of(2026, 9, 7, hour, 0), bookingUrl = None, format = format)
 
   private def prepare(movies: CinemaMovie*) =
-    ScrapeListing.prepare(Helios, movies, titleNormalizer, ScreeningTokens.Default)
+    ScrapeListing.prepare(Helios, movies, titleNormalizer, ScreeningTokens.forDefaultCountry())
 
   "ScrapeListing.prepare" should "fold a venue's several rows for one film onto one slot, keeping every showing" in {
     // Two event pages for the same film, each listing one session, one of them twice

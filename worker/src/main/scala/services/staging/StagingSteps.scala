@@ -38,7 +38,7 @@ class StagingSteps(
   // The country's badge vocabulary, for the detail-page `format` merged in
   // `enrichDetail` — the staging path writes through the repository rather than
   // the cache, so it carries its own copy of the same wiring.
-  screeningTokens:   services.movies.ScreeningTokens = services.movies.ScreeningTokens.Default,
+  screeningTokens:   services.movies.ScreeningTokens = services.movies.ScreeningTokens.forDefaultCountry(),
   // Times how long a film's resolve has been failing (see `StagingSteps.TransientResolveCeiling`)
   // and stamps the attempt that concludes it. The fixture harness fixes it.
   clock:             java.time.Clock = java.time.Clock.systemUTC()

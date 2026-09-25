@@ -65,6 +65,10 @@ class ScreeningTokens(
 ) extends Logging {
   import ScreeningTokens._
 
+  /** Distinct labels already reported, so an unrecognised one is logged once per
+   *  vocabulary rather than once per screening. */
+  private val reported = ConcurrentHashMap.newKeySet[String]()
+
   /** The token(s) `raw` means — empty when it is not a screening attribute. */
   def canonical(raw: String): List[String] = {
     val k = key(raw)
@@ -91,8 +95,9 @@ object ScreeningTokens extends Logging {
 
   /** The default country's spelling, for the single-country constructions that
    *  predate the country split — the same default `MovieCache`'s
-   *  `enrichmentLanguage` takes, and for the same reason. */
-  val Default: ScreeningTokens = of(models.Country.default)
+   *  `enrichmentLanguage` takes, and for the same reason. A fresh vocabulary per
+   *  call: each remembers which labels it has already reported. */
+  def forDefaultCountry(): ScreeningTokens = of(models.Country.default)
 
   /** The labels that name a voice-over, whose TOKEN is the country's own. Helios
    *  spells it `LEC`, and does so 42 times to `LEK`'s one: its `speakingType`
@@ -171,10 +176,6 @@ object ScreeningTokens extends Logging {
       val name = Locale.forLanguageTag(code).getDisplayLanguage(Locale.ENGLISH)
       Option.when(name.nonEmpty && name != code)(key(name) -> List(name.toUpperCase(Locale.ROOT)))
     }.toMap
-
-  /** Distinct labels already reported, so an unrecognised one is logged once per
-   *  process rather than once per screening. */
-  private val reported = ConcurrentHashMap.newKeySet[String]()
 
   /** The comparison form of a source label: lower-cased, stripped of everything
    *  that isn't a letter or a digit. Collapses `Audio Described` / `audio-described`

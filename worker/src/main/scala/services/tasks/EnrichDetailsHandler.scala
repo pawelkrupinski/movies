@@ -97,7 +97,7 @@ class EnrichDetailsHandler(
   // Wired at the composition root beside the cache's own copy; defaulted like the
   // cache's, for the same reason — a wrong value mis-SPELLS a badge rather than
   // mis-keying a row.
-  screeningTokens:  services.movies.ScreeningTokens = services.movies.ScreeningTokens.Default
+  screeningTokens:  services.movies.ScreeningTokens = services.movies.ScreeningTokens.forDefaultCountry()
 ) extends TaskHandler with Logging {
 
   private val normalizer: services.movies.TitleNormalizer = cache.normalizer

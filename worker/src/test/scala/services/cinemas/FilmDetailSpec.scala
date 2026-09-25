@@ -23,7 +23,7 @@ class FilmDetailSpec extends AnyFlatSpec with Matchers {
       title     = Some("Chłopiec na krańcach świata"),
       showtimes = Seq(at(16, 45, "b1", Nil), at(19, 0, "b2", List("NAP")))
     )
-    val merged = FilmDetail(format = List("LEK")).mergeInto(slot, ScreeningTokens.Default)
+    val merged = FilmDetail(format = List("LEK")).mergeInto(slot, ScreeningTokens.forDefaultCountry())
     // The un-badged showing gains LEK; the one the listing already set to NAP is left alone.
     merged.showtimes.map(_.format) shouldBe Seq(List("LEK"), List("NAP"))
   }
@@ -43,7 +43,7 @@ class FilmDetailSpec extends AnyFlatSpec with Matchers {
       releaseYear = Some(2026), runtimeMinutes = Some(162),
       director = Seq("Maciej Kawalski"), synopsis = Some("nowa ekranizacja"))
 
-    val merged = fresh.refreshInto(stale, ScreeningTokens.Default)
+    val merged = fresh.refreshInto(stale, ScreeningTokens.forDefaultCountry())
 
     merged.releaseYear    shouldBe Some(2026)
     merged.runtimeMinutes shouldBe Some(162)
@@ -57,7 +57,7 @@ class FilmDetailSpec extends AnyFlatSpec with Matchers {
       posterUrl = Some("https://pionier1907.pl/listing.jpg"),
       showtimes = Seq(at(20, 15, "b1", Nil)))
     // A detail page that parses nothing must not blank the slot.
-    val merged = FilmDetail().refreshInto(slot, ScreeningTokens.Default)
+    val merged = FilmDetail().refreshInto(slot, ScreeningTokens.forDefaultCountry())
 
     merged.title          shouldBe Some("LALKA")
     merged.posterUrl      shouldBe Some("https://pionier1907.pl/listing.jpg")
@@ -68,6 +68,6 @@ class FilmDetailSpec extends AnyFlatSpec with Matchers {
 
   it should "leave showings untouched when the detail carries no format" in {
     val slot = SourceData(title = Some("X"), showtimes = Seq(at(16, 45, "b", Nil)))
-    FilmDetail(synopsis = Some("prose")).mergeInto(slot, ScreeningTokens.Default).showtimes.map(_.format) shouldBe Seq(Nil)
+    FilmDetail(synopsis = Some("prose")).mergeInto(slot, ScreeningTokens.forDefaultCountry()).showtimes.map(_.format) shouldBe Seq(Nil)
   }
 }

@@ -288,7 +288,7 @@ class CaffeineMovieCache(
   // existing single-country construction is unchanged. Unlike `normalizer` a
   // wrong value here mis-SPELLS a badge rather than mis-keying a row, which is
   // why this one may default at all.
-  screeningTokens: ScreeningTokens = ScreeningTokens.Default,
+  screeningTokens: ScreeningTokens = ScreeningTokens.forDefaultCountry(),
   // The country's title rules. Sibling of `enrichmentLanguage` above and wired
   // from the same `country` by the worker; both default to Poland so existing
   // single-country constructions are unchanged. Every `CacheKey` this cache

@@ -8,7 +8,7 @@ import org.scalatest.matchers.should.Matchers
  *
  * Poland was the only country for years, so "the country" defaulted to it wherever a
  * parameter was added: `country: Country = Country.default`, `language: Locale = pl-PL`,
- * `screeningTokens = ScreeningTokens.Default`. Every such default is a leak waiting for a
+ * `screeningTokens = ScreeningTokens.forDefaultCountry()`. Every such default is a leak waiting for a
  * caller that forgets the argument — Germany and Spain carried Poland's `LEK` voice-over
  * badge for months through one (47cec8241), the UK corpus stored Polish TMDB synopses
  * through another. A default that resolves the deployment from the environment
@@ -29,7 +29,7 @@ class NoPolandDefaultCountrySpec extends AnyFlatSpec with Matchers {
 
   /** What a Poland default looks like, directly or through a Polish constant. */
   private val PolandDefault =
-    ("""\b(?:models\.)?Country\.(?:default|Poland|fromEnv)\b|\bScreeningTokens\.Default\b|""" +
+    ("""\b(?:models\.)?Country\.(?:default|Poland|fromEnv)\b|\bScreeningTokens\.forDefaultCountry\b|""" +
       """\bTmdbClient\.DefaultLanguage\b|\bCountryNames\.DefaultLanguage\b|forLanguageTag\("pl""").r
 
   private val Header = """\b(?:class|trait|def)\s+([\w$]+)\s*(?:\[[^\]]*\])?\s*(?=\()""".r
