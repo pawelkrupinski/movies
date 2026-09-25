@@ -67,7 +67,7 @@ class KinowoApi(
     override suspend fun fetchCatalog(ifNoneMatch: String?): FetchedCatalog = withContext(Dispatchers.IO) {
         val builder = Request.Builder()
             .url("$baseUrl/api/catalog")
-            .header("User-Agent", UA)
+            .header("User-Agent", USER_AGENT)
             .cacheControl(CacheControl.FORCE_NETWORK)
         if (ifNoneMatch != null) builder.header("If-None-Match", ifNoneMatch)
         client.newCall(builder.build()).execute().use { response ->
@@ -89,7 +89,7 @@ class KinowoApi(
     override suspend fun fetchCinemas(citySlug: String): CinemaCatalog = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("$baseUrl/$citySlug/api/cinemas")
-            .header("User-Agent", UA)
+            .header("User-Agent", USER_AGENT)
             .cacheControl(CacheControl.FORCE_NETWORK)
             .build()
         client.newCall(request).execute().use { response ->
@@ -105,7 +105,7 @@ class KinowoApi(
     ): Fetched<T> = withContext(Dispatchers.IO) {
         val builder = Request.Builder()
             .url(url)
-            .header("User-Agent", UA)
+            .header("User-Agent", USER_AGENT)
             .cacheControl(CacheControl.FORCE_NETWORK)
         if (ifModifiedSince != null) builder.header("If-Modified-Since", ifModifiedSince)
         client.newCall(builder.build()).execute().use { response ->
@@ -119,8 +119,6 @@ class KinowoApi(
     }
 
     companion object {
-        private const val UA = "KinowoAndroid/1.0"
-
         val defaultClient: OkHttpClient by lazy {
             OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)

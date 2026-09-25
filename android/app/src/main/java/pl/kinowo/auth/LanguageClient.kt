@@ -1,12 +1,13 @@
 package pl.kinowo.auth
 
+import pl.kinowo.net.USER_AGENT
+import pl.kinowo.net.JSON_MEDIA_TYPE
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -52,7 +53,7 @@ class HttpLanguageClient(
     override suspend fun fetch(): String? = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("$baseUrl/api/me/state")
-            .header("User-Agent", UA)
+            .header("User-Agent", USER_AGENT)
             .build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
@@ -74,8 +75,8 @@ class HttpLanguageClient(
         val payload = json.encodeToString(WireLanguage(language))
         val request = Request.Builder()
             .url("$baseUrl/api/me/state")
-            .header("User-Agent", UA)
-            .put(payload.toRequestBody(JSON_MEDIA))
+            .header("User-Agent", USER_AGENT)
+            .put(payload.toRequestBody(JSON_MEDIA_TYPE))
             .build()
         client.newCall(request).execute().use { response ->
             if (LanguagePushRefused.isPermanent(response.code)) throw LanguagePushRefused(response.code)
@@ -85,9 +86,4 @@ class HttpLanguageClient(
 
     @Serializable
     private data class WireLanguage(val language: String? = null)
-
-    private companion object {
-        const val UA = "KinowoAndroid/1.0"
-        val JSON_MEDIA = "application/json".toMediaType()
-    }
 }

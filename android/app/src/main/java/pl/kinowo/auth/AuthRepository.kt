@@ -1,5 +1,7 @@
 package pl.kinowo.auth
 
+import pl.kinowo.net.USER_AGENT
+import pl.kinowo.net.JSON_MEDIA_TYPE
 import android.content.Context
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
@@ -11,7 +13,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -67,7 +68,7 @@ class AuthRepository(
     suspend fun checkSession() = adoptProfileFrom(
         Request.Builder()
             .url("$baseUrl/api/me")
-            .header("User-Agent", UA)
+            .header("User-Agent", USER_AGENT)
             .build(),
     )
 
@@ -95,7 +96,7 @@ class AuthRepository(
     suspend fun deleteAccount() = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("$baseUrl/api/me")
-            .header("User-Agent", UA)
+            .header("User-Agent", USER_AGENT)
             .delete()
             .build()
         runCatchingCancellable { client.newCall(request).execute().close() }
@@ -110,15 +111,10 @@ class AuthRepository(
     private fun post(path: String, jsonBody: String): Request =
         Request.Builder()
             .url("$baseUrl/$path")
-            .header("User-Agent", UA)
-            .post(jsonBody.toRequestBody(JSON_MEDIA))
+            .header("User-Agent", USER_AGENT)
+            .post(jsonBody.toRequestBody(JSON_MEDIA_TYPE))
             .build()
 
     @Serializable
     private data class CodeRequest(val code: String, val verifier: String)
-
-    private companion object {
-        const val UA = "KinowoAndroid/1.0"
-        val JSON_MEDIA = "application/json".toMediaType()
-    }
 }
