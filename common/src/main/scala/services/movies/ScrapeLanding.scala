@@ -771,20 +771,22 @@ private[movies] final class ScrapeLanding(
     // Touched by reference, OR named by a listing whose write was skipped — see
     // `listedButNotWritten`. A slot in neither set is one the venue genuinely
     // stopped listing, which is the only thing this prune is entitled to act on.
-    def runPrune(): Unit = {
-      val spared = listedButNotWritten.toSet
-      def wasListed(sd: SourceData): Boolean =
-        sd.title.exists(t => spared.contains(normalizer.sanitize(t)))
+    // Drop every untouched slot of this cinema's that `stale` picks, and put the batch on the
+    // record — the signal the served-films sawtooth needed: which cinema dropped how many
+    // slots off how many still-known films this tick, and why.
+    def pruneSlots(reason: String)(stale: SourceData => Boolean): Unit = {
       val toPrune = corpusIndex.slotsOf(cinema).iterator
-        .collect { case (k, s, sd) if !touchedSlots.contains(sd) && !wasListed(sd) => k -> s }
+        .collect { case (k, s, sd) if !touchedSlots.contains(sd) && stale(sd) => k -> s }
         .toList.groupBy(_._1).view.mapValues(_.map(_._2).toSet).toList
       toPrune.foreach { case (k, staleKeys) => dropCinemaSlots(k, _ => staleKeys) }
-      // The batch signal the served-films sawtooth needed: which cinema dropped how
-      // many slots off how many still-known films this tick.
       RemovalAudit.scrapePruned(cinema.displayName, films = toPrune.size,
         slots = toPrune.iterator.map(_._2.size).sum,
         sampleFilmIds = toPrune.map { case (k, _) => s"${k.cleanTitle} (${k.year.getOrElse("—")})" },
-        reason = "scrape-prune")
+        reason = reason)
+    }
+    def runPrune(): Unit = {
+      val spared = listedButNotWritten.toSet
+      pruneSlots("scrape-prune")(sd => !sd.title.exists(t => spared.contains(normalizer.sanitize(t))))
     }
     // A fallback-served listing never prunes — it only adds (see `scrapeLooksPartial`).
     if (!viaFallback) breadthVerdict match {
@@ -795,13 +797,7 @@ private[movies] final class ScrapeLanding(
           knownSlots = knownCinemaSlots, consecutive, reason = "partial-scrape-guard")
         // What the guard spares is the venue's LISTED films a thin tick failed to mention.
         // A detail-only slot was never listed, so a thin tick is no reason to keep it.
-        val phantoms = corpusIndex.slotsOf(cinema).iterator
-          .collect { case (k, s, sd) if ScrapeLanding.isDetailOnly(sd) && !touchedSlots.contains(sd) => k -> s }
-          .toList.groupBy(_._1).view.mapValues(_.map(_._2).toSet).toList
-        phantoms.foreach { case (k, stale) => dropCinemaSlots(k, _ => stale) }
-        RemovalAudit.scrapePruned(cinema.displayName, films = phantoms.size, slots = phantoms.iterator.map(_._2.size).sum,
-          sampleFilmIds = phantoms.map { case (k, _) => s"${k.cleanTitle} (${k.year.getOrElse("—")})" },
-          reason = "detail-only-slot")
+        pruneSlots("detail-only-slot")(ScrapeLanding.isDetailOnly)
       case ScrapeHealth.Breadth.AcceptDegraded(consecutive) =>
         // Sustained across enough ticks to stop being a bad-fetch guess — the prune
         // finally runs, so log that it is about to let go of whatever this venue's
