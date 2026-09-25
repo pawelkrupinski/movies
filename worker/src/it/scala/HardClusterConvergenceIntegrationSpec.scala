@@ -352,10 +352,17 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
       val (_, films) = booted(country).head
       val path     = HardClusters.expectedFilmsPath(country)
       val actual   = films.map(f => s"${f.key}\t$f").mkString("", "\n", "\n")
-      if (!java.nio.file.Files.exists(path)) {
+      // RECORD mode is how the clusters GROW (`scripts/hard-clusters.sh`, and the ratchet a red
+      // convergence leg runs): new films are the point there, so the file is rewritten with
+      // the responses and ships beside them for review, never compared against.
+      if (Recording) {
+        java.nio.file.Files.writeString(path, actual)
+        info(s"$name: recording — rewrote $path")
+      } else if (!java.nio.file.Files.exists(path)) {
         java.nio.file.Files.writeString(path, actual)
         fail(s"no expected films for $name — wrote $path. Review it, commit it, and re-run.")
       }
+      if (Recording) succeed else {
       val expected = java.nio.file.Files.readString(path)
       val byKey    = (text: String) => text.linesIterator.filter(_.nonEmpty).map(l => l.takeWhile(_ != '\t') -> l).toSeq.groupMap(_._1)(_._2)
       val (want, got) = (byKey(expected), byKey(actual))
@@ -371,6 +378,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
                s"intended, delete the file, re-run to regenerate it, and commit it with the change:\n" +
                s"${moved.take(20).mkString("\n")}\n") {
         moved shouldBe empty
+      }
       }
     }
 
