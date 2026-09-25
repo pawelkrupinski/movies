@@ -12,7 +12,7 @@ import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 class RatingSiteTitlesSpec extends AnyFlatSpec with Matchers {
 
   private def keyFor(title: String, year: Option[Int]) =
-    new CaffeineMovieCache(new InMemoryMovieRepository(Seq.empty), normalizer = titleNormalizer).keyOf(title, year)
+    new CaffeineMovieCache(new InMemoryMovieRepository(Seq.empty, normalizer = titleNormalizer), normalizer = titleNormalizer).keyOf(title, year)
 
   private def withOriginal(title: String) =
     MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some(title))))

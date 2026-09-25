@@ -58,7 +58,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
   private def splitRepository(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty) = {
     val slots = new InMemorySlotsRepository
     val repository = new InMemoryMovieRepository(seed,
-      screenings = Some(new InMemoryScreeningsRepository), slots = Some(slots))
+      screenings = Some(new InMemoryScreeningsRepository), slots = Some(slots), normalizer = titleNormalizer)
     (repository, slots)
   }
 
@@ -167,7 +167,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     // "Mongo did not answer", so it must never authorise a delete.
     // `findByIdChecked`/`findByKeyChecked` answer `readOk = false` — "I could not tell
     // you" — while the row is genuinely there and `findAll` still sees it.
-    val repository = new UnreadableByIdMovieRepository(Seq(("Blogoslawieni", Some(2026), mkRecord("tt7", Map.empty))))
+    val repository = new UnreadableByIdMovieRepository(Seq(("Blogoslawieni", Some(2026), mkRecord("tt7", Map.empty))), titleNormalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
 
     val removed = new UnscreenedCleanup(cache, repository).removeUnscreened()

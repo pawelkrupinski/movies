@@ -97,7 +97,7 @@ class SameFilmVocabulariesSpec extends AnyFlatSpec with Matchers {
    *  concluded under one Polish title, then a YEARLESS Helios listing: the row it
    *  lands on. `extraNewVenues` puts more venues on the 2026 row first. */
   private def landing(listingRuntime: Option[Int], extraNewVenues: Seq[Cinema] = Nil): Option[Int] = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     cache.put(cache.keyOf(title, Some(1961)), row(1, KinoMuranow, title, "La notte", 1961, Some(121)))
     cache.put(cache.keyOf(title, Some(2026)), MovieRecord(tmdbId = Some(2), data =
       (Multikino +: extraNewVenues).map(c => (c: Source) -> SourceData(title = Some(title), releaseYear = Some(2026))).toMap +

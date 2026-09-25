@@ -105,7 +105,7 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
   }
 
   private val keyOf: (String, Option[Int]) => CacheKey =
-    new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer).keyOf
+    new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer).keyOf
 
   "InlineResolveDispatcher" should "run the resolve callback once for a key" in {
     val ec    = DaemonExecutors.boundedEC("inline-dispatch-test", 4)

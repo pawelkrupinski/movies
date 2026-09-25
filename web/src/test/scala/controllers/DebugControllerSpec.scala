@@ -122,7 +122,7 @@ class DebugControllerSpec extends AnyFlatSpec with Matchers {
         bothScansOverlapped = true
       } catch { case _: Throwable => () } // timeout / broken barrier ⇒ ran sequentially
 
-    val movieRepo = new services.movies.InMemoryMovieRepository(records) {
+    val movieRepo = new services.movies.InMemoryMovieRepository(records, normalizer = titleNormalizer) {
       override def findAll(): Seq[services.movies.StoredMovieRecord] = { rendezvous(); super.findAll() }
     }
     val stagingRepo = new services.staging.StagingRepository {

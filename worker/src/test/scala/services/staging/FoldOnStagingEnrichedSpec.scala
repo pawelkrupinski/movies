@@ -32,7 +32,7 @@ class FoldOnStagingEnrichedSpec extends AnyFlatSpec with Matchers {
 
   "on StagingFilmEnriched" should "fold the film's group into movies and announce the newcomer" in {
     val staging   = new InMemoryStagingRepository
-    val movies    = new InMemoryMovieRepository
+    val movies    = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val announced = ListBuffer.empty[CacheKey]
     val subscriber = new FoldOnStagingEnriched(
       new InMemoryStagingFolder(staging, movies), staging, (key, _) => announced += key)

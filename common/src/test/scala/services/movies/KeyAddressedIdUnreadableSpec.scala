@@ -10,7 +10,7 @@ import org.scalatest.matchers.should.Matchers
 class KeyAddressedIdUnreadableSpec extends AnyFlatSpec with Matchers {
 
   "A title-addressed upsert" should "decline, not write, when it cannot read whether its id is taken" in {
-    val repo = new StoredRowsRepository(Seq.empty) {
+    val repo = new StoredRowsRepository(Seq.empty, normalizer = SingleCountryNormalizer.titleNormalizer) {
       override def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) = (None, false)
     }
     repo.upsert("Kumotry", Some(2026), MovieRecord(tmdbId = Some(7))) shouldBe WriteOutcome.Declined("id-unreadable")
@@ -18,20 +18,20 @@ class KeyAddressedIdUnreadableSpec extends AnyFlatSpec with Matchers {
   }
 
   "MovieRepository.holdsId" should "throw on an unreadable row, never answer 'free'" in {
-    val repo = new StoredRowsRepository(Seq.empty) {
+    val repo = new StoredRowsRepository(Seq.empty, normalizer = SingleCountryNormalizer.titleNormalizer) {
       override def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) = (None, false)
     }
     an[IllegalStateException] should be thrownBy repo.holdsId(FilmId("f1"))
-    new StoredRowsRepository(Seq.empty).holdsId(FilmId("f1")) shouldBe false
+    new StoredRowsRepository(Seq.empty, normalizer = SingleCountryNormalizer.titleNormalizer).holdsId(FilmId("f1")) shouldBe false
   }
 
   // An absent key is a delete already done; a key that could not be read is not — reported as
   // Written, the caller took a row it never looked for as gone.
   "A title-addressed delete" should "decline, not report a delete, when it cannot read the key" in {
-    val repo = new StoredRowsRepository(Seq.empty) {
+    val repo = new StoredRowsRepository(Seq.empty, normalizer = SingleCountryNormalizer.titleNormalizer) {
       override def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) = (None, false)
     }
     repo.delete("Kumotry", Some(2026)) shouldBe WriteOutcome.Declined("key-unreadable")
-    new StoredRowsRepository(Seq.empty).delete("Kumotry", Some(2026)) shouldBe WriteOutcome.Written
+    new StoredRowsRepository(Seq.empty, normalizer = SingleCountryNormalizer.titleNormalizer).delete("Kumotry", Some(2026)) shouldBe WriteOutcome.Written
   }
 }

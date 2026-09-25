@@ -65,7 +65,7 @@ class PartialReducePruneSpec extends AnyFlatSpec with Matchers {
     val queue     = new InMemoryTaskQueue
     val store     = new InMemoryChunkScrapeStore
     val freshness = new InMemoryFreshnessStore
-    val cache     = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val cache     = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     // The REAL publish path: runner → MovieCache.recordCinemaScrape, which is where the
     // prune lives. The existing ChunkScrapeFlowSpec stubs this out, which is exactly why
     // it never saw this.

@@ -29,7 +29,7 @@ class MovieServiceTmdbCacheSpec extends AnyFlatSpec with Matchers {
   // hint-key across both resolves (no director means none gets added).
   private def seededCache(): CaffeineMovieCache = {
     val seed = MovieRecord(data = Map[Source, SourceData](CinemaCityPoznanPlaza -> SourceData(title = Some(Title))))
-    new CaffeineMovieCache(new InMemoryMovieRepository(Seq((Title, Year, seed))), normalizer = titleNormalizer)
+    new CaffeineMovieCache(new InMemoryMovieRepository(Seq((Title, Year, seed)), normalizer = titleNormalizer), normalizer = titleNormalizer)
   }
 
   "the TMDB id cache" should "resolve the search once for two resolves of the same hints" in {

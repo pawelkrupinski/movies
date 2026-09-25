@@ -20,7 +20,7 @@ class FilmIdentityWritesSpec extends AnyFlatSpec with Matchers {
   private def split() = {
     val screenings = new InMemoryScreeningsRepository
     val slots      = new InMemorySlotsRepository
-    (screenings, new InMemoryMovieRepository(screenings = Some(screenings), slots = Some(slots)))
+    (screenings, new InMemoryMovieRepository(screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer))
   }
 
   "a re-key that meets a same-film sibling" should "retire the moved document and carry its screenings to the survivor" in {
@@ -45,7 +45,7 @@ class FilmIdentityWritesSpec extends AnyFlatSpec with Matchers {
   }
 
   "a write on a key the store cannot be asked about" should "be deferred, not written under a second id" in {
-    val repository = new UnreadableByIdMovieRepository()
+    val repository = new UnreadableByIdMovieRepository(titleNormalizer = titleNormalizer)
     repository.failing = false
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val key   = CacheKey("Beta", Some(2026), titleNormalizer)
@@ -62,7 +62,7 @@ class FilmIdentityWritesSpec extends AnyFlatSpec with Matchers {
   }
 
   "a fold whose side-row move does not land" should "leave both rows as they were" in {
-    val refusing = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository), slots = Some(new InMemorySlotsRepository)) {
+    val refusing = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository), slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer) {
       override def moveFilm(oldId: FilmId, newId: FilmId): Boolean = oldId == newId
     }
     val cache = new CaffeineMovieCache(refusing, normalizer = titleNormalizer)

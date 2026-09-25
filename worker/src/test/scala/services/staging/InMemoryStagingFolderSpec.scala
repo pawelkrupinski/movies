@@ -32,7 +32,7 @@ class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
 
   "foldGroup" should "move a film's staging rows into movies and delete them" in {
     val staging  = new InMemoryStagingRepository
-    val movies   = new InMemoryMovieRepository
+    val movies   = new InMemoryMovieRepository(normalizer = titleNormalizer)
     staging.upsert(Helios, "Kumotry", Some(2026), resolved(Helios, 2026))
     staging.upsert(Multikino, "Kumotry", Some(2026), resolved(Multikino, 2026))
     val folder = new InMemoryStagingFolder(staging, movies)
@@ -52,7 +52,7 @@ class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
   // the document that holds that id — here a film since retitled away from the key.
   it should "abort, not mint over a live document, when it cannot read whether an id is taken" in {
     val staging = new InMemoryStagingRepository
-    val movies  = new services.movies.UnreadableByIdMovieRepository(keyReadsFail = false)
+    val movies  = new services.movies.UnreadableByIdMovieRepository(keyReadsFail = false, titleNormalizer = titleNormalizer)
     movies.failing = false
     val key      = CacheKey("Kumotry", Some(2026), titleNormalizer)
     val occupied = services.movies.FilmId.fresh(key, _ => false)
@@ -73,7 +73,7 @@ class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
     // release year 2026 (tmdbYear 2026). The group-scoped fold settles them into
     // ONE row keyed to 2026 — no separate settle pass.
     val staging = new InMemoryStagingRepository
-    val movies  = new InMemoryMovieRepository
+    val movies  = new InMemoryMovieRepository(normalizer = titleNormalizer)
     staging.upsert(Multikino, "Kumotry", Some(2025), resolved(Multikino, 2025).copy(
       data = resolved(Multikino, 2025).data + (Tmdb -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026)))))
     staging.upsert(Helios, "Kumotry", Some(2026), resolved(Helios, 2026))
@@ -93,7 +93,7 @@ class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
     // The reaper folds on the re-derived title; selection must follow sanitize(r.title),
     // not the `_id` middle, or the row strands and re-folds forever.
     val staging = new InMemoryStagingRepository
-    val movies  = new InMemoryMovieRepository
+    val movies  = new InMemoryMovieRepository(normalizer = titleNormalizer)
     staging.upsert(MikroBronowice, "Toy Story 5- dubbing", None,
       MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy), searchTitle = Some("Toy Story 5- dubbing"),
         data = Map[Source, SourceData](MikroBronowice -> SourceData(title = Some("Toy Story 5- dubbing")))))
@@ -109,14 +109,14 @@ class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
 
   it should "be a no-op when no staging rows match (already folded)" in {
     val staging = new InMemoryStagingRepository
-    val movies  = new InMemoryMovieRepository
+    val movies  = new InMemoryMovieRepository(normalizer = titleNormalizer)
     new InMemoryStagingFolder(staging, movies).foldGroup("Ghost") shouldBe empty
     movies.findAll() shouldBe empty
   }
 
   it should "return the brand-new film as a promotion so its ratings can be scheduled" in {
     val staging = new InMemoryStagingRepository
-    val movies  = new InMemoryMovieRepository
+    val movies  = new InMemoryMovieRepository(normalizer = titleNormalizer)
     staging.upsert(Helios, "Kumotry", Some(2026), resolved(Helios, 2026))
 
     val promotions = new InMemoryStagingFolder(staging, movies).foldGroup("Kumotry")
@@ -128,7 +128,7 @@ class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
 
   it should "NOT return a promotion when the staging row merges into an existing movie" in {
     val staging = new InMemoryStagingRepository
-    val movies  = new InMemoryMovieRepository
+    val movies  = new InMemoryMovieRepository(normalizer = titleNormalizer)
     movies.upsert("Kumotry", Some(2026), resolved(Helios, 2026))   // already in movies
     staging.upsert(Multikino, "Kumotry", Some(2026), resolved(Multikino, 2026))
 
@@ -145,7 +145,7 @@ class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
     // must pull the cross-language sibling in (reconcileTmdbIds) and collapse them to
     // ONE row HERE — not leave a duplicate for the periodic settle.
     val staging = new InMemoryStagingRepository
-    val movies  = new InMemoryMovieRepository
+    val movies  = new InMemoryMovieRepository(normalizer = titleNormalizer)
     movies.upsert("Gwiezdne wojny: Mandalorian i Grogu", Some(2026),
       MovieRecord(tmdbId = Some(700), data = Map[Source, SourceData](
         Tmdb   -> SourceData(title = Some("Gwiezdne wojny: Mandalorian i Grogu"),
@@ -171,7 +171,7 @@ class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
   // fold then deletes the one row that held the film.
   it should "retire the rows it folds away before writing the survivor that takes their identity" in {
     val staging = new InMemoryStagingRepository
-    val movies  = new InMemoryMovieRepository
+    val movies  = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val tmdbId  = 424353
     val folder  = new InMemoryStagingFolder(staging, movies)
     def concluded(cinema: Source, title: String) =

@@ -19,7 +19,7 @@ class DebugCountriesSpec extends AnyFlatSpec with Matchers {
 
   private def stack(country: Country) = new DebugStack(
     country,
-    new services.movies.InMemoryMovieRepository(Nil),
+    new services.movies.InMemoryMovieRepository(Nil, normalizer = services.movies.TitleNormalizer.forCountry(country)),
     services.staging.StagingRepository.empty,
     new services.tasks.InMemoryTaskQueue,
     services.cadence.RatingCadenceReader.empty,

@@ -50,7 +50,7 @@ class CanonicalKeyFixpointSpec extends AnyFlatSpec with Matchers {
     // Screenings WIRED: the production storage split, so a fold that strands a film's
     // showtimes under a retired id is visible here instead of only against real Mongo.
     val screenings = new InMemoryScreeningsRepository
-    val repository = new InMemoryMovieRepository(screenings = Some(screenings))
+    val repository = new InMemoryMovieRepository(screenings = Some(screenings), normalizer = titleNormalizer)
     val cache      = new CaffeineMovieCache(repository, mergeMetrics = merges, normalizer = titleNormalizer)
     reports.foreach(r => cache.recordCinemaScrape(r.cinema, Seq(r)))
     cache.canonicalizeBySanitize()
@@ -124,7 +124,7 @@ class CanonicalKeyFixpointSpec extends AnyFlatSpec with Matchers {
     // the read-model projection splits it back into its own CARD by shown title.
     // Both shown titles survive as cinema slots so the split can recover them.
     val tmdbId = 1127625
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     cache.put(cache.keyOf("Ścieżki życia", Some(2025)),
       MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
         (Tmdb: Source)   -> SourceData(title = Some("Ścieżki życia"), releaseYear = Some(2025)),
@@ -157,7 +157,7 @@ class CanonicalKeyFixpointSpec extends AnyFlatSpec with Matchers {
     // cinema's 1957 is >±1 off, so `concludedKeyFor` misses and the redirect path
     // runs — it must NOT promote the resolved row onto the cinema's ALL-CAPS / 1957
     // key. A resolved row's key is authoritative.
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     cache.put(cache.keyOf("Północ, północny zachód", Some(1959)),
       MovieRecord(tmdbId = Some(213), data = Map[Source, SourceData](
         (Tmdb: Source)     -> SourceData(title = Some("Północ, północny zachód"), releaseYear = Some(1959)),
@@ -223,7 +223,7 @@ class CanonicalKeyFixpointSpec extends AnyFlatSpec with Matchers {
   // depending on arrival. The settle must move a lone row onto its own canonical key
   // even when the canonical sanitizes differently — and then write nothing more.
   "a lone resolved row whose canonical spelling moved" should "be re-keyed onto it by the settle, then stay put" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     def slot(title: String) = SourceData(title = Some(title), releaseYear = Some(2007),
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 8, 18, 0), None)))

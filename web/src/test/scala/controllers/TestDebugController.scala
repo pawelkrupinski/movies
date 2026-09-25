@@ -1,5 +1,7 @@
 package controllers
 
+import services.movies.SingleCountryNormalizer
+
 import play.api.Mode
 import play.api.test.Helpers
 import services.movies.InMemoryMovieRepository
@@ -37,7 +39,7 @@ object TestDebugController {
       cc               = Helpers.stubControllerComponents(),
       debugCountries   = debugCountries.getOrElse(DebugCountries.single(new DebugStack(
         models.Country.default,
-        movieRepository.getOrElse(new InMemoryMovieRepository(records)),
+        movieRepository.getOrElse(new InMemoryMovieRepository(records, normalizer = SingleCountryNormalizer.titleNormalizer)),
         stagingRepository, taskQueue, ratingCadenceReader, attemptReader,
         readModelMovies       = () => readModel.allMovies(),
         readModelScreenings   = () => readModel.allScreenings(),

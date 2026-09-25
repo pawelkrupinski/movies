@@ -41,7 +41,7 @@ class TmdbCarryForwardReadFailureSpec extends AnyFlatSpec with Matchers {
 
   "a TMDB resolve whose carry-forward read FAILS" should
     "defer rather than write the film stripped of its cinemas and ratings" in {
-    val repository = new InMemoryMovieRepository(Seq((Title, Year, seed)))
+    val repository = new InMemoryMovieRepository(Seq((Title, Year, seed)), normalizer = titleNormalizer)
     // The read the carry-forward depends on cannot be answered. Everything else is normal.
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer) {
       override private[services] def storedChecked(key: CacheKey): (Option[MovieRecord], Boolean) =
@@ -61,7 +61,7 @@ class TmdbCarryForwardReadFailureSpec extends AnyFlatSpec with Matchers {
 
   // The read succeeding must still resolve normally — the guard must not cost a resolve.
   it should "resolve normally when the carry-forward read succeeds" in {
-    val repository = new InMemoryMovieRepository(Seq((Title, Year, seed)))
+    val repository = new InMemoryMovieRepository(Seq((Title, Year, seed)), normalizer = titleNormalizer)
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
 
     serviceOver(cache).resolveTmdbOnce(Title, Year, None, None, services.tasks.ResolveMode.Normal) shouldBe true

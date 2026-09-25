@@ -69,7 +69,7 @@ class DzienObjawieniaFlapSpec extends AnyFlatSpec with Matchers {
 
   "canonicalizeBySanitize" should
     "reach a fixpoint for a film whose cinemas SHOUT the title (no per-tick re-write)" in {
-    val repo  = new InMemoryMovieRepository
+    val repo  = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
 
     // Two cinemas, one SHOUTING — both sanitize to `dzienobjawienia`, so they

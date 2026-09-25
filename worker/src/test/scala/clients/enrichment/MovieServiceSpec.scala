@@ -66,7 +66,7 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   import models.{MovieRecord, Source, SourceData, Tmdb}
 
   private def service(seed: (String, Option[Int], MovieRecord)*): MovieService = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(seed), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(seed, normalizer = titleNormalizer), normalizer = titleNormalizer)
     new MovieService(cache, new InProcessEventBus(), new TmdbClient(new RealHttpFetch, apiKey = None))
   }
 

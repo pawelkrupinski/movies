@@ -26,7 +26,7 @@ class ScrapeLandingSpec extends AnyFlatSpec with Matchers {
       cast = Nil, director = Nil, showtimes = Nil)
 
   "ScrapeLanding" should "land a decorated listing of a known film on that film's row, through the store seam" in {
-    val repository = new InMemoryMovieRepository
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val staging    = new InMemoryStagingRepository
     val store      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val landing    = new ScrapeLanding(store, repository, Some(staging), new InProcessEventBus(),
@@ -56,7 +56,7 @@ class ScrapeLandingSpec extends AnyFlatSpec with Matchers {
   // of that venue, whatever the guard says about its real slots.
   it should "drop the venue's detail-only slots on its next scrape, even while the breadth guard spares its real ones" in {
     def rig() = {
-      val repository = new InMemoryMovieRepository
+      val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
       val store      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
       val landing    = new ScrapeLanding(store, repository, None, new InProcessEventBus(),
         ScreeningTokens.forDefaultCountry(), CountryNames.DefaultLanguage)

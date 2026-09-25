@@ -27,7 +27,7 @@ class MixedFilmSplitterSpec extends AnyFlatSpec with Matchers {
                releaseYear = year, runtimeMinutes = runtime)
 
   private def fixture(record: MovieRecord, title: String, year: Option[Int]) = {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val staging    = new InMemoryStagingRepository(normalizer = titleNormalizer)
     cache.put(cache.keyOf(title, year), record)
@@ -139,7 +139,7 @@ class MixedFilmSplitterSpec extends AnyFlatSpec with Matchers {
    *  never exercise this. Hence this: a genuinely mixed row, put through the real
    *  `settle`, twice. */
   "settle" should "split a mixed row, and change nothing on a second pass" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val staging    = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val service    = new MovieService(cache, new InProcessEventBus(),
@@ -300,7 +300,7 @@ class MixedFilmSplitterSpec extends AnyFlatSpec with Matchers {
    *  staging and the 2017 row forever. Real `settle`, real (empty-result) TMDB
    *  stub, twice. */
   "settle" should "converge a genuinely unresolvable 'It' 1990 stray to a stable staging park, not a bounce" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val staging    = new InMemoryStagingRepository(normalizer = titleNormalizer)
     val service    = new MovieService(cache, new InProcessEventBus(),

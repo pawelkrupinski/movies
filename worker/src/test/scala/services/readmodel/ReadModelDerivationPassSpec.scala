@@ -53,7 +53,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
 
   "a boot that finds another derivation recorded" should
     "re-project every row once, one content slice per tick, and then record its own" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = derivedByOldCode(repository)
     val marker     = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"))
     val projector  = booted(repository, rm, marker)
@@ -71,7 +71,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
   }
 
   "a store with no derivation recorded" should "be re-projected whole — the first boot after the marker existed" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = derivedByOldCode(repository)
     val marker     = new InMemoryReadModelDerivationMarker(None)
     val projector  = booted(repository, rm, marker)
@@ -85,7 +85,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
   }
 
   "a boot that finds its own derivation recorded" should "leave the corpus to the rolling content check" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = derivedByOldCode(repository)
     val projector  = booted(repository, rm, new InMemoryReadModelDerivationMarker(Some(ReadModelProjection.DerivationVersion)))
 
@@ -99,7 +99,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
   }
 
   "a row that cannot be read during the pass" should "keep the old marker, so the next sweep runs the pass again" in {
-    val repository = new UnreadableByIdMovieRepository()
+    val repository = new UnreadableByIdMovieRepository(titleNormalizer = titleNormalizer)
     repository.failing = false
     val rm         = derivedByOldCode(repository)
     val marker     = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"))
@@ -121,7 +121,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
   }
 
   "a marker that cannot be read" should "start no pass until a later sweep can read it" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = derivedByOldCode(repository)
     val marker     = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"))
     marker.unreadable = true

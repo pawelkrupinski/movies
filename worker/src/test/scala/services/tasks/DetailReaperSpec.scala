@@ -32,7 +32,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   /** Seed the cache with one KinoApollo film carrying (optionally) a filmUrl —
    *  exactly what a bare deferred scrape persists. */
   private def cacheWith(filmUrl: Option[String]) = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
     val bare  = CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None, filmUrl = filmUrl,
       synopsis = None, cast = Seq.empty, director = Seq.empty,
       showtimes = Seq(Showtime(screeningSoon, Some("https://book"))))
@@ -54,7 +54,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
    *  disabled the degraded-scrape depth guard. */
   private def splitCacheWith(filmUrl: Option[String]) = {
     val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
-                                                 slots      = Some(new InMemorySlotsRepository))
+                                                 slots      = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
     val bare  = CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None, filmUrl = filmUrl,
       synopsis = None, cast = Seq.empty, director = Seq.empty,
@@ -86,7 +86,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   /** Seed the cache with `n` distinct deferred films, each carrying a filmUrl —
    *  a synchronized stale cohort, as a re-key / title-rule wave produces. */
   private def cacheWithMany(n: Int) = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
     val films = (1 to n).map { i =>
       CinemaMovie(Movie(s"Film $i"), KinoApollo, posterUrl = None, filmUrl = Some(s"http://ref/$i"),
         synopsis = None, cast = Seq.empty, director = Seq.empty,

@@ -25,7 +25,7 @@ import org.scalatest.matchers.should.Matchers
  */
 class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
 
-  private def cache = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
+  private def cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
 
   // A cinema-only (unresolved) row: one cinema slot at the given year, no tmdbId.
   private def cinemaRow(c: MovieCache, title: String, cinema: Cinema, year: Option[Int]): Unit =
@@ -119,7 +119,7 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
     val recorder = new EnrichmentRetrigger {
       def retrigger(key: CacheKey, record: MovieRecord, kinds: Set[RetriggerKind]): Unit = { captured += kinds; () }
     }
-    val c = new CaffeineMovieCache(new InMemoryMovieRepository, retrigger = recorder, normalizer = titleNormalizer)
+    val c = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), retrigger = recorder, normalizer = titleNormalizer)
     // Same title + tmdbId under two YEARS (a production/theatrical drift) — distinct
     // keys the put-time tmdbId gate folds. The lower year sorts first (canonicalRank),
     // so the 2025 row — the one WITHOUT the imdb id — becomes canonical and gains the
@@ -228,7 +228,7 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
     // BOTH cinema slot titles. A re-settle must recognise the corpus as already
     // canonical and write NOTHING — otherwise every backstop/rehydrate tick
     // re-upserts the same row to Mongo forever, pinning the worker at 90% steal.
-    val repo = new InMemoryMovieRepository
+    val repo = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val c    = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
     // Multikino genuinely LISTS the film under its original title — slot title is
     // "Tangled", not just the row key — while Helios lists the Polish "Zaplątani".
@@ -264,7 +264,7 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
   "the merge counter" should
     "record a Canonicalize fold (1 victim) when the settle collapses a same-title cluster" in {
     val m = new RecordingMergeMetrics
-    val c = new CaffeineMovieCache(new InMemoryMovieRepository, mergeMetrics = m, normalizer = titleNormalizer)
+    val c = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), mergeMetrics = m, normalizer = titleNormalizer)
     // A resolved row plus a yearless+idless cinema stray of the SAME title. The
     // put-time gate can't fold them (the stray has no tmdbId), so it's the SETTLE
     // — `canonicalizeBySanitize`'s sanitize-edge clustering — that collapses them:
@@ -278,7 +278,7 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
 
   it should "record a TmdbIdentity fold (1 victim) when the put-time tmdbId gate collapses a duplicate" in {
     val m = new RecordingMergeMetrics
-    val c = new CaffeineMovieCache(new InMemoryMovieRepository, mergeMetrics = m, normalizer = titleNormalizer)
+    val c = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), mergeMetrics = m, normalizer = titleNormalizer)
     // Same normalised title + tmdbId under two years — the put gate folds the second.
     c.put(c.keyOf("Film", Some(2025)), MovieRecord(tmdbId = Some(500),
       data = Map[Source, SourceData]((Tmdb: Source) -> SourceData(title = Some("Film"), releaseYear = Some(2025)))))
@@ -289,7 +289,7 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
 
   it should "record a ResolvedSettle fold for a yearless stray absorbed by a year-bearing resolved row" in {
     val m = new RecordingMergeMetrics
-    val c = new CaffeineMovieCache(new InMemoryMovieRepository, mergeMetrics = m, normalizer = titleNormalizer)
+    val c = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), mergeMetrics = m, normalizer = titleNormalizer)
     resolvedRow(c, "Dzień objawienia", Helios,    2026, 1275779)  // year-bearing, resolved
     cinemaRow (c, "Dzień objawienia", Multikino, None)            // a stranded yearless stray
     val resolved = MovieRecord(tmdbId = Some(1275779), data = Map[Source, SourceData](
@@ -311,7 +311,7 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
   // retriggers/boot rating spike measured in prod (`CanonicalizeRetriggerFlapSpec`).
   private def assertRestartIsAFixpoint(settled: MovieCache): Unit = {
     val retriggered = scala.collection.mutable.ListBuffer.empty[Set[RetriggerKind]]
-    val rebooted = new CaffeineMovieCache(new InMemoryMovieRepository, retrigger = new EnrichmentRetrigger {
+    val rebooted = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), retrigger = new EnrichmentRetrigger {
       def retrigger(key: CacheKey, record: MovieRecord, kinds: Set[RetriggerKind]): Unit = { retriggered += kinds; () }
     }, normalizer = titleNormalizer)
     settled.snapshot().foreach { r =>
@@ -361,7 +361,7 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
 
   "recordCinemaScrape" should
     "preserve a cold-cache row's ratings when a scrape lands on it via a Mongo-backed miss" in {
-    val repo = new InMemoryMovieRepository
+    val repo = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val c    = new CaffeineMovieCache(repo, normalizer = titleNormalizer)                    // boots on an EMPTY repo → cache cold
     // Rated row appears in Mongo AFTER construction, so Caffeine never saw it.
     // Before the fix the next scrape MISSED the cache and full-replaced from a bare
@@ -382,7 +382,7 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
 
   "settleResolved" should
     "fold a COLD prior occupant of the resolved year instead of nulling its ratings" in {
-    val repo = new InMemoryMovieRepository
+    val repo = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val c    = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
     // A rated row already occupies (Kumotry, 2026) in Mongo but is cold in the cache
     // (post-restart). A yearless scrape of the same film resolves to 2026; the settle
@@ -405,7 +405,7 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
 
   "rekey" should
     "carry a COLD row's ratings to the new key instead of rewriting it rating-less" in {
-    val repo = new InMemoryMovieRepository
+    val repo = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val c    = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
     // A rated yearless row lives in Mongo, cold in the cache. A resolved year promotes
     // it (oldKey → newKey). Before the fix the cold read returned EMPTY, so the rekey

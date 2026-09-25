@@ -1,5 +1,7 @@
 package tools
 
+import services.movies.SingleCountryNormalizer
+
 import models.Country
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.flatspec.AnyFlatSpec
@@ -93,7 +95,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     override lazy val screenings  = new services.movies.InMemoryScreeningsRepository
     override lazy val slots       = new services.movies.InMemorySlotsRepository
     override lazy val movies      = new services.movies.InMemoryMovieRepository(
-      screenings = Some(screenings), slots = Some(slots))
+      screenings = Some(screenings), slots = Some(slots), normalizer = SingleCountryNormalizer.titleNormalizer)
     override lazy val readModel: services.readmodel.ReadModelReader & services.readmodel.ReadModelWriter =
       new services.readmodel.InMemoryReadModelRepository()
     override lazy val staging     = new services.staging.InMemoryStagingRepository()

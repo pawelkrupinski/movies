@@ -35,7 +35,7 @@ class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
 
   private def run(primary: CinemaScraper): Option[String] = {
     val ledger  = new InMemoryScrapeGuardLedger
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(),
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(),
       normalizer = titleNormalizer, scrapeGuardLedger = ledger, clock = DepthGuardTime.clock)
     val scraper = new SourceFallbackScraper(primary,
       fallback = () => Some(new Source(Fallback, listing)), fallbackName = "Filmweb", fallbackRef = () => Some("2180"),
@@ -71,7 +71,7 @@ class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
 
   "a primary outage served from a thinner fallback" should "keep the primary's films, and recovery land normally" in {
     val repository = new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository),
-      slots = Some(new services.movies.InMemorySlotsRepository))
+      slots = Some(new services.movies.InMemorySlotsRepository), normalizer = titleNormalizer)
     val ledger  = new InMemoryScrapeGuardLedger
     val cache   = new CaffeineMovieCache(repository, new InProcessEventBus(), normalizer = titleNormalizer,
       scrapeGuardLedger = ledger, clock = DepthGuardTime.clock)

@@ -41,7 +41,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
   )
 
   private def cacheWith(record: MovieRecord) =
-    new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Film", Some(2024), record))), normalizer = titleNormalizer)
+    new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Film", Some(2024), record)), normalizer = titleNormalizer), normalizer = titleNormalizer)
   private def keyOf(cache: CaffeineMovieCache) = cache.keyOf("Film", Some(2024))
 
   // ── golden path: recover both identifiers ─────────────────────────────────────
@@ -79,7 +79,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "make NO write when OMDb can supply neither identifier" in {
-    val repository = new InMemoryMovieRepository(Seq(("Film", Some(2024), MovieRecord())))
+    val repository = new InMemoryMovieRepository(Seq(("Film", Some(2024), MovieRecord())), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     repository.upserts.clear()
     // ?t= returns no match, ?i= unreachable (no id) → nothing to write.
@@ -132,7 +132,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
       ("A", None, MovieRecord()),                                                          // both missing
       ("B", None, MovieRecord(imdbId = Some("tt0002"))),                                   // only RT url missing
       ("C", None, MovieRecord(imdbId = Some("tt0003"), rottenTomatoesUrl = Some(RtUrl)))   // fully identified → skip
-    ))
+    ), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     new OmdbBackfill(cache, omdbStub).refreshAll()
 
@@ -152,7 +152,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
       ("B", None, MovieRecord()),                                                       // missing both
       ("C", None, MovieRecord()),                                                       // missing both
       ("D", None, MovieRecord(imdbId = Some("tt9"), rottenTomatoesUrl = Some(RtUrl)))   // fully identified
-    ))
+    ), normalizer = titleNormalizer)
     val cache    = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val attempts = new CountingOmdbAttemptStore
     new OmdbBackfill(cache, omdbStub, attempts).refreshAll()

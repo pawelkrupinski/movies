@@ -44,7 +44,7 @@ class SettlePreservesShowtimesSpec extends AnyFlatSpec with Matchers {
 
   private def fixture = {
     val screenings = new InMemoryScreeningsRepository
-    val repository = new InMemoryMovieRepository(screenings = Some(screenings))
+    val repository = new InMemoryMovieRepository(screenings = Some(screenings), normalizer = titleNormalizer)
     (screenings, repository, new CaffeineMovieCache(repository, normalizer = titleNormalizer))
   }
 

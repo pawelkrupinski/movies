@@ -17,7 +17,7 @@ class DetailTaskEnqueuerSpec extends AnyFlatSpec with Matchers {
   private val clock = java.time.Clock.fixed(java.time.Instant.parse("2026-06-08T12:00:00Z"), java.time.ZoneOffset.UTC)
 
   private def fixture = {
-    val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer)
+    val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(), normalizer = titleNormalizer)
     val queue    = new InMemoryTaskQueue
     val fresh    = new InMemoryFreshnessStore
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo")

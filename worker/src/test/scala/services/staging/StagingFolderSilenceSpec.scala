@@ -42,6 +42,6 @@ class StagingFolderSilenceSpec extends AnyFlatSpec with Matchers {
     val staging = new InMemoryStagingRepository
     staging.upsert(Multikino, "Ghost In The Shell", Some(2017), MovieRecord())
 
-    new InMemoryStagingFolder(staging, new InMemoryMovieRepository).foldGroup("nothing-matches-this") shouldBe empty
+    new InMemoryStagingFolder(staging, new InMemoryMovieRepository(normalizer = titleNormalizer)).foldGroup("nothing-matches-this") shouldBe empty
   }
 }

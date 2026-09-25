@@ -37,7 +37,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   // ── refreshOneSync ──────────────────────────────────────────────────────────
 
   "refreshOneSync" should "fetch the rating and write it back when it differs from the cached value" in {
-    val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
+    val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4)))
 
@@ -47,7 +47,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not write back when the fetched rating equals the cached value (idempotent)" in {
-    val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(7.4)))))
+    val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(7.4)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     repository.upserts.clear()
     val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4)))
@@ -66,7 +66,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "be a no-op when the row has no imdbId (TMDB resolved without a cross-reference)" in {
     val tmdbOnly = MovieRecord(tmdbId = Some(42))
-    val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), tmdbOnly)))
+    val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), tmdbOnly)), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     // ImdbClient must never be invoked — the stub throws on any request.
     val ratings = new ImdbRatings(cache, new ImdbClient(http = new HttpFetch {
@@ -78,7 +78,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be a no-op when the cache has no entry for the key" in {
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val ratings = new ImdbRatings(cache, new ImdbClient(http = new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
       override def post(url: String, body: String, contentType: String): String = get(url)
@@ -94,7 +94,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
       ("A", None, mkEnrichment("tt1", rating = Some(5.0))),
       ("B", None, mkEnrichment("tt2", rating = Some(6.0))),
       ("C", None, mkEnrichment("tt3", rating = Some(7.0)))
-    ))
+    ), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val ratings = new ImdbRatings(cache, imdbStub(Map(
       "tt1" -> 7.4,  // changed
@@ -115,7 +115,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
       ("B", None, mkEnrichment("tt2", rating = Some(6.0))),  // unchanged
       ("C", None, mkEnrichment("tt3", rating = Some(7.0))),  // changes → 8.1
       ("D", None, MovieRecord(tmdbId = Some(1)))             // no imdbId → skipped (not walked)
-    ))
+    ), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4, "tt2" -> 6.0, "tt3" -> 8.1)))
 
@@ -132,7 +132,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(Seq(
       ("A", None, MovieRecord(imdbId = Some("tt1"), imdbRating = Some(5.0), tmdbId = Some(101))),
       ("B", None, MovieRecord(imdbId = Some("tt2"), imdbRating = Some(6.0), tmdbId = Some(102)))
-    ))
+    ), normalizer = titleNormalizer)
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val cadence = new services.cadence.InMemoryRatingCadenceStore
     val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4, "tt2" -> 6.0)),  // A moves, B unchanged
@@ -160,7 +160,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   })
 
   "refreshOneSync" should "propagate a blocked source instead of reporting 'no rating'" in {
-    val repository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
+    val repository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val ratings = new ImdbRatings(cache, blockedImdb(403))
 
@@ -170,7 +170,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   it should "leave the previously stored rating untouched when the source is blocked" in {
     // The freeze-don't-blank guarantee, asserted rather than assumed: a failed
     // refresh must never degrade a rating we already had.
-    val repository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
+    val repository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val ratings = new ImdbRatings(cache, blockedImdb(403))
 
@@ -179,7 +179,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still report None (no throw) when IMDb genuinely has no such title" in {
-    val repository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1"))))
+    val repository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1"))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val ratings = new ImdbRatings(cache, blockedImdb(404))
 

@@ -28,7 +28,7 @@ class RepositoryWriteFailureSpec extends AnyFlatSpec with Matchers with LoneElem
 
   /** Named, not anonymous: an anonymous subclass capturing a local `var` trips a JVM
    *  VerifyError under this Scala version (see UnreadableRowScrapeSpec). */
-  private class UnmovableThrowingRepository(metrics: RepositoryWriteMetrics) extends ThrowingUpsertMovieRepository(metrics) {
+  private class UnmovableThrowingRepository(metrics: RepositoryWriteMetrics) extends ThrowingUpsertMovieRepository(metrics, titleNormalizer = titleNormalizer) {
     @volatile var canMoveFilm = true
     override def moveFilm(oldId: FilmId, newId: FilmId): Boolean = oldId == newId || canMoveFilm
   }
@@ -44,7 +44,7 @@ class RepositoryWriteFailureSpec extends AnyFlatSpec with Matchers with LoneElem
 
   "a new film whose upsert throws" should "be counted, rolled out of the cache, and written by the next identical scrape" in {
     val metrics    = new RecordingWriteMetrics
-    val repository = new ThrowingUpsertMovieRepository(metrics)
+    val repository = new ThrowingUpsertMovieRepository(metrics, titleNormalizer = titleNormalizer)
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = specClock)
     val key        = cache.keyOf("Nowy Film", Some(2026))
 
@@ -67,7 +67,7 @@ class RepositoryWriteFailureSpec extends AnyFlatSpec with Matchers with LoneElem
   // its key or tmdbId. Kept resident, the unwritten row made every identical re-scrape diff as a
   // no-op, exactly as a thrown write did — so it is rolled back the same way.
   "a new film whose upsert is declined for a held identity" should "be rolled out of the cache, and written by the next identical scrape" in {
-    val repository = new IdentityHeldMovieRepository
+    val repository = new IdentityHeldMovieRepository(titleNormalizer = titleNormalizer)
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = specClock)
     val key        = cache.keyOf("Nowy Film", Some(2026))
 
@@ -84,7 +84,7 @@ class RepositoryWriteFailureSpec extends AnyFlatSpec with Matchers with LoneElem
   }
 
   "a retitle whose write is declined for a held identity" should "leave the row resident under its old key" in {
-    val repository = new IdentityHeldMovieRepository
+    val repository = new IdentityHeldMovieRepository(titleNormalizer = titleNormalizer)
     repository.declining = false
     val cache  = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = specClock)
     val before = cache.keyOf("Mroz", None)
@@ -102,7 +102,7 @@ class RepositoryWriteFailureSpec extends AnyFlatSpec with Matchers with LoneElem
     val slots      = new ThrowingSlotsRepository(metrics)
     slots.failing  = false
     val repository = new InMemoryMovieRepository(
-      screenings = Some(new InMemoryScreeningsRepository), slots = Some(slots))
+      screenings = Some(new InMemoryScreeningsRepository), slots = Some(slots), normalizer = titleNormalizer)
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = specClock)
     cache.recordCinemaScrape(Multikino, Seq(listing("Stary Film")))
     val key        = cache.keyOf("Stary Film", Some(2026))
@@ -126,7 +126,7 @@ class RepositoryWriteFailureSpec extends AnyFlatSpec with Matchers with LoneElem
 
   "a tmdbId fold whose survivor write fails" should "keep the victim's document, so nothing only it held is lost" in {
     val metrics    = new RecordingWriteMetrics
-    val repository = new ThrowingUpsertMovieRepository(metrics)
+    val repository = new ThrowingUpsertMovieRepository(metrics, titleNormalizer = titleNormalizer)
     repository.failing = false
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = specClock)
     val survivor   = cache.keyOf("Survivor Film", Some(2026))
@@ -182,7 +182,7 @@ class RepositoryWriteFailureSpec extends AnyFlatSpec with Matchers with LoneElem
   // The same move after a first-time write `movies` DECLINED: nothing threw, but the slot is
   // stored nowhere new, so stripping it off the row that holds it deletes the venue's showtimes.
   "a first-time write that is declined" should "not strip the venue's slot off the row that still holds it" in {
-    val repository = new IdentityHeldMovieRepository
+    val repository = new IdentityHeldMovieRepository(titleNormalizer = titleNormalizer)
     repository.declining = false
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = specClock)
     def listingOf(title: String, year: Option[Int]) = listing(title).copy(movie = Movie(title, releaseYear = year))

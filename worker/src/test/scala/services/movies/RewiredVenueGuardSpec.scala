@@ -30,7 +30,7 @@ class RewiredVenueGuardSpec extends AnyFlatSpec with Matchers {
     }
 
   private def splitRepository() = new InMemoryMovieRepository(
-    screenings = Some(new InMemoryScreeningsRepository), slots = Some(new InMemorySlotsRepository))
+    screenings = Some(new InMemoryScreeningsRepository), slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
 
   private def storedShowtimes(repository: InMemoryMovieRepository, title: String): Int =
     repository.findAll().find(_.title.contains(title))

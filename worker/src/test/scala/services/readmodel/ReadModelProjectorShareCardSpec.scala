@@ -41,7 +41,7 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
   private def record(rating: Double, screened: Boolean = true) =
     MovieRecord(imdbRating = Some(rating), tmdbId = Some(1), data = Map[Source, SourceData](Multikino -> slot(screened)))
 
-  private class Setup(val repository: InMemoryMovieRepository = new InMemoryMovieRepository()) {
+  private class Setup(val repository: InMemoryMovieRepository = new InMemoryMovieRepository(normalizer = titleNormalizer)) {
     val clock      = new StepClock(T0)
     val ledger     = new ScriptedLedger
     val readModel  = new InMemoryReadModelRepository()
@@ -80,7 +80,7 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "keep its hold, not drop it, when its row cannot be read as the hold runs out" in {
-    val unreadable = new services.movies.UnreadableByIdMovieRepository()
+    val unreadable = new services.movies.UnreadableByIdMovieRepository(titleNormalizer = titleNormalizer)
     unreadable.failing = false
     new Setup(unreadable) {
       val id = upsert(7.5)
@@ -182,7 +182,7 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
     val failing = new InMemoryReadModelRepository() {
       override def deleteScreening(id: String): Unit = throw new RuntimeException("simulated screenings delete failure")
     }
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val ledger     = new ScriptedLedger
     val projector  = new ReadModelProjector(repository, failing, failing, shareCards = ledger)
     repository.upsert("Foo", Some(2024), record(7.5))
@@ -198,7 +198,7 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
   }
 
   "With no share cards at all" should "publish at once, carrying no card" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val readModel  = new InMemoryReadModelRepository()
     val projector  = new ReadModelProjector(repository, readModel, readModel)
     repository.upsert("Foo", Some(2024), record(7.5))

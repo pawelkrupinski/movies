@@ -69,7 +69,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
     "be resolved once the real director arrives" in {
     // CinemaCity scraped it first, no director reported.
     val seed  = MovieRecord(data = Map[Source, SourceData](CinemaCityPoznanPlaza -> SourceData(title = Some(Title))))
-    val repository  = new InMemoryMovieRepository(Seq((Title, Year, seed)))
+    val repository  = new InMemoryMovieRepository(Seq((Title, Year, seed)), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
     val service   = new MovieService(cache, bus, visitorTmdb())
@@ -123,7 +123,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
     val seed = MovieRecord(data = Map[Source, SourceData](
       CinemaCityPoznanPlaza -> SourceData(title = Some("Vivaldi i ja"), runtimeMinutes = Some(110)),
       Helios                -> SourceData(title = Some("Vivaldi i ja"), runtimeMinutes = Some(112))))
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Vivaldi i ja", Some(2023), seed))),
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Vivaldi i ja", Some(2023), seed)), normalizer = titleNormalizer),
       normalizer = titleNormalizer)
     new MovieService(cache, new InProcessEventBus(), tmdb).reEnrichSync("Vivaldi i ja", Some(2023))
     cache.get(cache.keyOf("Vivaldi i ja", Some(2023))).flatMap(_.tmdbId)
@@ -154,7 +154,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
       apiKey = Some("stub"))
     val seed = MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some("Ludzki głos"), runtimeMinutes = Some(90), director = Seq("Pedro Almodóvar"))))
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Ludzki głos", Some(2020), seed))),
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Ludzki głos", Some(2020), seed)), normalizer = titleNormalizer),
       normalizer = titleNormalizer)
     new MovieService(cache, new InProcessEventBus(), tmdb).reEnrichSync("Ludzki głos", Some(2020))
     cache.get(cache.keyOf("Ludzki głos", Some(2020))).flatMap(_.tmdbId) shouldBe Some(Short)
@@ -191,7 +191,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
       apiKey = Some("stub"))
     val cache = new CaffeineMovieCache(
       new InMemoryMovieRepository(Seq(("Vivaldi i ja", None,
-        MovieRecord(data = Map[Source, SourceData](CinemaCityPoznanPlaza -> SourceData(title = Some("Vivaldi i ja"))))))),
+        MovieRecord(data = Map[Source, SourceData](CinemaCityPoznanPlaza -> SourceData(title = Some("Vivaldi i ja")))))), normalizer = titleNormalizer),
       normalizer = titleNormalizer)
     new MovieService(cache, new InProcessEventBus(), tmdb).reEnrichSync("Vivaldi i ja", None)
 
@@ -206,7 +206,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
   it should "record a director walk as the stronger basis it is" in {
     val seed = MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some(Title), director = Seq(Director))))
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq((Title, Year, seed))), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq((Title, Year, seed)), normalizer = titleNormalizer), normalizer = titleNormalizer)
     new MovieService(cache, new InProcessEventBus(), visitorTmdb()).reEnrichSync(Title, Year)
 
     val row = cache.get(cache.keyOf(Title, Year))
@@ -241,7 +241,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
     // once per sweep for ever.
     val seed = MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some(Title), director = Seq(Director))))
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq((Title, Year, seed))), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq((Title, Year, seed)), normalizer = titleNormalizer), normalizer = titleNormalizer)
     val ids = new MemoisingResolutionCache
     val service = new MovieService(cache, new InProcessEventBus(), visitorTmdb(), tmdbIdCache = ids)
 
@@ -295,7 +295,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
       data = Map[Source, SourceData](
         CinemaCityPoznanPlaza -> SourceData(title = Some("Homo sapiens"), releaseYear = Some(2025), runtimeMinutes = Some(95))))
     val cache = new CaffeineMovieCache(
-      new InMemoryMovieRepository(Seq(("Homo sapiens", Some(1960), seed))), normalizer = titleNormalizer)
+      new InMemoryMovieRepository(Seq(("Homo sapiens", Some(1960), seed)), normalizer = titleNormalizer), normalizer = titleNormalizer)
 
     new MovieService(cache, new InProcessEventBus(), tmdb).reEnrichSync("Homo sapiens", Some(1960))
 
@@ -335,7 +335,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
         CinemaCityPoznanPlaza -> SourceData(title = Some("Homo sapiens"), releaseYear = Some(2025),
                                             runtimeMinutes = Some(95))))
     val cache = new CaffeineMovieCache(
-      new InMemoryMovieRepository(Seq(("Homo sapiens", Some(1960), seed))), normalizer = titleNormalizer)
+      new InMemoryMovieRepository(Seq(("Homo sapiens", Some(1960), seed)), normalizer = titleNormalizer), normalizer = titleNormalizer)
 
     new MovieService(cache, new InProcessEventBus(), tmdb).reEnrichSync("Homo sapiens", Some(1960))
 

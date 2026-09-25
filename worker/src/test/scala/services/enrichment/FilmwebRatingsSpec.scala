@@ -57,7 +57,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val url = "https://www.filmweb.pl/film/Zaproszenie-2026-10109168"
     val repository = new InMemoryMovieRepository(Seq(
       ("Zaproszenie", Some(1986), mkEnrichment("tt0092281", filmwebUrl = Some(url), filmwebRating = Some(7.4)))
-    ))
+    ), normalizer = titleNormalizer)
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val filmweb = new FilmwebClient(filmwebSite(Map("/film/10109168/rating" -> """{"rate":7.4,"count":1000}""")))
     val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
@@ -73,7 +73,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val url = "https://www.filmweb.pl/film/Zaproszenie-2026-10109168"
     val repository = new InMemoryMovieRepository(Seq(
       ("Zaproszenie", Some(2026), mkEnrichment("tt14173636", filmwebUrl = Some(url), filmwebRating = Some(6.0)))
-    ))
+    ), normalizer = titleNormalizer)
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val filmweb = new FilmwebClient(filmwebSite(Map("/film/10109168/rating" -> """{"rate":7.4,"count":1000}""")))
     val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
@@ -89,7 +89,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val url = "https://www.filmweb.pl/film/Lalka-1174"
     val repository = new InMemoryMovieRepository(Seq(
       ("Lalka", Some(1968), mkEnrichment("tt0064570", filmwebUrl = Some(url), filmwebRating = Some(6.0)))
-    ))
+    ), normalizer = titleNormalizer)
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val filmweb = new FilmwebClient(filmwebSite(Map("/film/1174/rating" -> """{"rate":6.6,"count":1000}""")))
     val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
@@ -103,7 +103,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val url = "https://www.filmweb.pl/film/Mortal+Kombat+II-2026-10007434"
     val repository = new InMemoryMovieRepository(Seq(
       ("Mortal Kombat II", Some(2026), mkEnrichment("tt1", filmwebUrl = Some(url), filmwebRating = Some(6.0)))
-    ))
+    ), normalizer = titleNormalizer)
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val filmweb = new FilmwebClient(filmwebSite(Map(
       "/film/10007434/rating" -> """{"rate":6.72,"count":1000}"""
@@ -121,7 +121,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     // Verify by stubbing ONLY the rating endpoint; any other call would throw
     // "unstubbed URL".
     val url = "https://www.filmweb.pl/film/Title-9999"
-    val repository = new InMemoryMovieRepository(Seq(("X", None, mkEnrichment("tt1", filmwebUrl = Some(url)))))
+    val repository = new InMemoryMovieRepository(Seq(("X", None, mkEnrichment("tt1", filmwebUrl = Some(url)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val filmweb = new FilmwebClient(filmwebSite(Map(
       "/film/9999/rating" -> """{"rate":7.5,"count":1}"""
@@ -135,7 +135,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
   // ── refreshOneSync: missing URL → full lookup ──────────────────────────────
 
   "refreshOneSync (no stored URL)" should "fall through to filmweb.lookup, populating both URL and rating" in {
-    val repository  = new InMemoryMovieRepository(Seq(("Drama", Some(2024), mkEnrichment("tt1"))))
+    val repository  = new InMemoryMovieRepository(Seq(("Drama", Some(2024), mkEnrichment("tt1"))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val filmweb = new FilmwebClient(filmwebSite(Map(
       "/live/search"          -> """{"searchHits":[{"id":555,"type":"film","matchedTitle":"Drama"}]}""",
@@ -182,7 +182,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
           Tmdb -> SourceData(originalTitle = Some("Dune: Part Two"))
         )
       ))
-    ))
+    ), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val filmweb = new FilmwebClient(filmwebSite(Map(
       "/live/search"          -> """{"searchHits":[{"id":779836,"type":"film","matchedTitle":"Diuna"}]}""",
@@ -218,7 +218,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
         tmdbId = Some(682507),
         data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Belle")))
       ))
-    ))
+    ), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val filmweb = new FilmwebClient(filmwebSite(Map(
       "/live/search"      -> """{"searchHits":[{"id":1,"type":"film","matchedTitle":"Belle"}]}""",
@@ -245,7 +245,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       ("Lawa", None, MovieRecord(
         data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Konwicki: Lawa (1989)")))
       ))
-    ))
+    ), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val fetch = filmwebSite(Map(
       "/live/search"      -> """{"searchHits":[
@@ -279,7 +279,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       ("Ostatni konsjerż", None, MovieRecord(
         data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Ostatni konsjerż")))
       ))
-    ))
+    ), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val filmweb = new FilmwebClient(filmwebSite(Map(
       "/live/search"      -> """{"searchHits":[{"id":900,"type":"film","matchedTitle":"Ostatni konsjerż"}]}""",
@@ -311,7 +311,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
         tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy),
         data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Ostatni konsjerż")))
       ))
-    ))
+    ), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, retrigger = (_, _, kinds) => { captured += kinds; () }, normalizer = titleNormalizer)
     val filmweb = new FilmwebClient(filmwebSite(Map(
       "/live/search"      -> """{"searchHits":[{"id":900,"type":"film","matchedTitle":"Ostatni konsjerż"}]}""",
@@ -336,7 +336,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
   // The stored rating must still survive untouched. See tools.EnrichmentRead.
   it should "propagate a Filmweb fetch failure while leaving the stored rating intact" in {
     val url  = "https://www.filmweb.pl/film/Foo-7"
-    val repository = new InMemoryMovieRepository(Seq(("Foo", None, mkEnrichment("tt1", filmwebUrl = Some(url), filmwebRating = Some(6.0)))))
+    val repository = new InMemoryMovieRepository(Seq(("Foo", None, mkEnrichment("tt1", filmwebUrl = Some(url), filmwebRating = Some(6.0)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val brokenFilmweb = new FilmwebClient(RoutingHttpFetch.dead("boom"))
     val ratings = new FilmwebRatings(cache, disabledTmdb, brokenFilmweb)
@@ -346,14 +346,14 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be a no-op when the cache has no entry for the key" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val ratings = new FilmwebRatings(cache, disabledTmdb, new FilmwebClient(RoutingHttpFetch.dead("unused")))
     noException should be thrownBy ratings.refreshOneSync(cache.keyOf("Missing", None))
   }
 
   it should "not write back when the rating is unchanged (idempotent)" in {
     val url = "https://www.filmweb.pl/film/Foo-12"
-    val repository = new InMemoryMovieRepository(Seq(("Foo", None, mkEnrichment("tt1", filmwebUrl = Some(url), filmwebRating = Some(7.5)))))
+    val repository = new InMemoryMovieRepository(Seq(("Foo", None, mkEnrichment("tt1", filmwebUrl = Some(url), filmwebRating = Some(7.5)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     repository.upserts.clear()
     val filmweb = new FilmwebClient(filmwebSite(Map("/film/12/rating" -> """{"rate":7.5,"count":1}""")))
@@ -371,7 +371,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     // churn — the stored value already sits at display precision (RatingDisplay).
     val url = "https://www.filmweb.pl/film/Foo-12"
     val repository = new InMemoryMovieRepository(Seq(
-      ("Foo", None, mkEnrichment("tt1", filmwebUrl = Some(url), filmwebRating = Some(7.5)))))
+      ("Foo", None, mkEnrichment("tt1", filmwebUrl = Some(url), filmwebRating = Some(7.5)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     repository.upserts.clear()
     val filmweb = new FilmwebClient(filmwebSite(Map("/film/12/rating" -> """{"rate":7.53,"count":1001}""")))
@@ -391,7 +391,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       ("A", None, mkEnrichment("tt1", filmwebUrl = Some(urlA), filmwebRating = Some(5.0))),  // changed
       ("B", None, mkEnrichment("tt2", filmwebUrl = Some(urlB), filmwebRating = Some(6.0))),  // unchanged
       ("C", None, mkEnrichment("tt3"))                                                       // full lookup
-    ))
+    ), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val filmweb = new FilmwebClient(filmwebSite(Map(
       "/film/1/rating"   -> """{"rate":7.4,"count":1}""",
@@ -428,7 +428,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       ("Wartość sentymentalna", Some(2025), mkEnrichment(
         "tt1", filmwebUrl = Some(staleUrl), filmwebRating = Some(7.5)
       ))
-    ))
+    ), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val filmweb = new FilmwebClient(filmwebSite(Map(
       "/live/search"     -> """{"searchHits":[{"id":838929,"type":"film","matchedTitle":"Wartość sentymentalna"}]}""",
@@ -449,7 +449,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val rightId   = 222
     val repository = new InMemoryMovieRepository(Seq(
       ("Foo", Some(2024), mkEnrichment("tt1", filmwebUrl = Some(staleUrl), filmwebRating = Some(5.0)))
-    ))
+    ), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val filmweb = new FilmwebClient(filmwebSite(Map(
       "/live/search"          -> s"""{"searchHits":[{"id":$rightId,"type":"film","matchedTitle":"Foo"}]}""",
@@ -471,7 +471,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val rightUrl = s"https://www.filmweb.pl/film/Foo-2024-$rightId"
     val repository = new InMemoryMovieRepository(Seq(
       ("Foo", Some(2024), mkEnrichment("tt1", filmwebUrl = Some(rightUrl), filmwebRating = Some(7.0)))
-    ))
+    ), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val filmweb = new FilmwebClient(filmwebSite(Map(
       "/live/search"           -> s"""{"searchHits":[{"id":$rightId,"type":"film","matchedTitle":"Foo"}]}""",
@@ -517,7 +517,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(Seq(
       ("Popiół i diament", Some(1958),
         MovieRecord(tmdbId = Some(1), data = Map(Tmdb -> SourceData(originalTitle = Some("Ashes and Diamonds")))))
-    ))
+    ), normalizer = titleNormalizer)
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val filmweb = new FilmwebClient(filmwebSite(Map(
       "/live/search"    -> s"""{"searchHits":[{"id":1118,"type":"film","matchedTitle":"Popiół i diament"}]}""",
@@ -537,7 +537,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val url        = "https://www.filmweb.pl/film/Popiół+i+diament-1958-1118"
     val repository = new InMemoryMovieRepository(Seq(
       ("Popiół i diament", Some(1958), MovieRecord(tmdbId = Some(1), filmwebUrl = Some(url)))
-    ))
+    ), normalizer = titleNormalizer)
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val filmweb = new FilmwebClient(filmwebSite(Map(
       "/film/1118/rating" -> """{"rate":8.1,"count":2000}"""
@@ -556,7 +556,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(Seq(
       ("Popiół i diament", Some(1958),
         MovieRecord(imdbId = Some("tt0052080"), tmdbId = Some(1), filmwebUrl = Some(url)))
-    ))
+    ), normalizer = titleNormalizer)
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val filmweb = new FilmwebClient(filmwebSite(Map(
       "/film/1118/rating" -> """{"rate":8.1,"count":2000}"""
@@ -572,7 +572,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
 
   "the Filmweb url cache" should "search once across two audits of the same row" in {
     val site = countedFilmwebSite()
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1")))), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1"))), normalizer = titleNormalizer), normalizer = titleNormalizer)
     val ratings = new FilmwebRatings(cache, disabledTmdb, new FilmwebClient(site),
       new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore()))
 
@@ -583,7 +583,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "search on every audit without the cache (control)" in {
     val site = countedFilmwebSite()
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1")))), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1"))), normalizer = titleNormalizer), normalizer = titleNormalizer)
     val ratings = new FilmwebRatings(cache, disabledTmdb, new FilmwebClient(site),
       services.resolution.ResolutionCache.passthrough)
 

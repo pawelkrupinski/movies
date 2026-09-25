@@ -33,7 +33,7 @@ class ColdMirrorReDivertSpec extends AnyFlatSpec with Matchers {
   // during the worker's boot) `findAll` returns nothing, so the cache hydrates cold;
   // flipping it off reveals the pre-boot rows, which the cache's mirror has never seen.
   private class BootBlackoutRepository(seed: Seq[(String, Option[Int], MovieRecord)])
-    extends InMemoryMovieRepository(seed) {
+    extends InMemoryMovieRepository(seed, normalizer = titleNormalizer) {
     @volatile var blackout: Boolean = true
     val corpusReads = new java.util.concurrent.atomic.AtomicInteger(0)
     override def findAll(): Seq[StoredMovieRecord] = if (blackout) Seq.empty else super.findAll()

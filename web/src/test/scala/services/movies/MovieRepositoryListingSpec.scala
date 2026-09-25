@@ -27,7 +27,7 @@ class MovieRepositoryListingSpec extends AnyFlatSpec with Matchers with LoneElem
         Showtime(LocalDateTime.of(2026, 6, 1, 18, 30), Some("https://book/1")),
         Showtime(LocalDateTime.of(2026, 6, 1, 21, 0),  Some("https://book/2"))))))
 
-  private def repo = new InMemoryMovieRepository(Seq(("Belle", Some(2021), withShowtimes)))
+  private def repo = new InMemoryMovieRepository(Seq(("Belle", Some(2021), withShowtimes)), normalizer = SingleCountryNormalizer.titleNormalizer)
 
   "findAllForListing" should "drop per-cinema showtimes but keep all the metadata the table renders" in {
     val row = repo.findAllForListing().loneElement.record

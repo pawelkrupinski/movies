@@ -88,7 +88,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   }, apiKey = Some("stub"))
 
   "needsTmdbResolution (bus path)" should "search again when a fresh director hint changes what would be searched" in {
-    val repository  = new InMemoryMovieRepository()
+    val repository  = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
     val service   = new MovieService(cache, bus, kurozajacTmdb())
@@ -110,7 +110,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not search again for the same inputs within a day" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
     val service   = new MovieService(cache, bus, silentTmdb)
     bus.subscribe(service.onMovieDetailsComplete)
@@ -126,7 +126,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "search again once the miss is a day old, and record the fresh one" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
     val later = Instant.parse("2026-09-07T12:00:00Z")
     val emptyTmdb = new TmdbClient(http = new GetOnlyHttpFetch {
@@ -153,7 +153,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
       // TMDB never resolved; Helios reported director
       data = Map[Source, SourceData](Helios -> heliosSlot)
     )
-    val repository  = new InMemoryMovieRepository(Seq((Title, Year, seeded)))
+    val repository  = new InMemoryMovieRepository(Seq((Title, Year, seeded)), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val service   = new MovieService(cache, new InProcessEventBus(), kurozajacTmdb())
 
@@ -200,7 +200,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   }
 
   "resolveTmdb" should "resolve a decorated title from its own original-title search candidate (no sibling needed)" in {
-    val repository  = new InMemoryMovieRepository()
+    val repository  = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
     // The decorated title finds nothing on TMDB; searching the cinema's original
@@ -232,7 +232,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   // from an empty cache, that cinema title never became a query, so the 5-cinema
   // variant resolved to a no-match while the corpus-wide direct path resolved it.
   "resolveStagingRecord" should "mine search candidates from the passed row's cinema titles (cache-free)" in {
-    val repository  = new InMemoryMovieRepository()
+    val repository  = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb  = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       // The bare staging title finds nothing; the cinema-reported title does.
@@ -277,7 +277,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
    * director hint is its missing sibling.
    */
   it should "mine director hints from CINEMA slots only, never from the derived TMDB/IMDb/Filmweb slots" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     // Title search is useless here (as in production: "Dreams" is ambiguous), so
     // directorWalk is the only path that can resolve — which director it walks
@@ -333,7 +333,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
    * brings TMDB resolution in line with it.
    */
   it should "use a year a cinema slot reported when the row itself carries none" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb  = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       // Year-scoped search finds the film; the year-less one is ambiguous and refused.
@@ -378,7 +378,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
    * any credit, which is the case they were added for.
    */
   it should "prefer a credit matching a CINEMA title over one matching a derived slot's original title" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"              -> """{"results":[]}""",
@@ -421,7 +421,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
    * adjacent-year duplicate it was written for.
    */
   it should "prefer the credit the MOST cinemas name when a row holds two films" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"              -> """{"results":[]}""",
@@ -460,7 +460,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
    * outvote it. Both sides read the same query forms now.
    */
   it should "count a venue that names the film only through its accessibility-decorated title" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"              -> """{"results":[]}""",
@@ -497,7 +497,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   // row as a miss; anything else is transient, and the caller retries it.
   "resolveStagingRecord" should "retry a transient TMDB failure and conclude only on an upstream 'not found'" in {
     def serviceFailingWith(failure: => Throwable) = {
-      val repository = new InMemoryMovieRepository()
+      val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
       val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
       val tmdb  = new TmdbClient(http = new GetOnlyHttpFetch {
         override def get(url: String): String =

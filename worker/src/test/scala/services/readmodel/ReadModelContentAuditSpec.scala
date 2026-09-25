@@ -36,7 +36,7 @@ class ReadModelContentAuditSpec extends AnyFlatSpec with Matchers {
     ReadModelContentAudit.differences(card, repository, rm)
 
   "a card projected from its current row" should "match, whatever share card the projector gave it" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = new InMemoryReadModelRepository()
     val projector  = new ReadModelProjector(repository, rm, rm)
     repository.upsert("Foo", Some(2024), record(8.0, Seq(at("2026-06-12T20:00"))))
@@ -51,7 +51,7 @@ class ReadModelContentAuditSpec extends AnyFlatSpec with Matchers {
   }
 
   "a lost change event" should "leave a stale card the audit names field by field, until the content check repairs it" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = new InMemoryReadModelRepository()
     val first      = new ReadModelProjector(repository, rm, rm)
     repository.upsert("Foo", Some(2024), record(8.0, Seq(at("2026-06-12T20:00"))))
@@ -91,7 +91,7 @@ class ReadModelContentAuditSpec extends AnyFlatSpec with Matchers {
   }
 
   private def failedWriteThenSweeps(throwing: Boolean): Option[Seq[String]] = {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = new InMemoryReadModelRepository()
     val writer     = new DroppingWriter(rm, throwing)
     val projector  = new ReadModelProjector(repository, writer, rm)
@@ -118,13 +118,13 @@ class ReadModelContentAuditSpec extends AnyFlatSpec with Matchers {
   }
 
   "a card whose row no longer projects it" should "not be judged — the prune and the heal own that" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = new InMemoryReadModelRepository()
     audit("gone|2024", repository, rm) shouldBe None
   }
 
   "a card whose stored read failed" should "not be judged — a failed read is not an empty card" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = new InMemoryReadModelRepository()
     new ReadModelProjector(repository, rm, rm).onMovieUpsert({
       repository.upsert("Foo", Some(2024), record(8.0, Seq(at("2026-06-12T20:00")))); repository.findAll().head })

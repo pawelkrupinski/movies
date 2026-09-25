@@ -26,7 +26,7 @@ class ScrapeLandingMetricsSpec extends AnyFlatSpec with Matchers {
     }
 
   private def splitRepository() = new InMemoryMovieRepository(
-    screenings = Some(new InMemoryScreeningsRepository), slots = Some(new InMemorySlotsRepository))
+    screenings = Some(new InMemoryScreeningsRepository), slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
 
 
   "the depth guard" should "record a reject then an accept through ScrapeLandingMetrics" in {

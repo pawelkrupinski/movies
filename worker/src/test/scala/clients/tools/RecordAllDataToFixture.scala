@@ -71,7 +71,7 @@ object RecordAllDataToFixture extends TestWiring {
   // always correct regardless of init order.
   def captureDate: String = tools.Env.fromProcess().get("KINOWO_FIXTURE_DIR").getOrElse("today")
 
-  override lazy val movieRepository = new InMemoryMovieRepository()
+  override lazy val movieRepository = new InMemoryMovieRepository(normalizer = titleNormalizer)
   override lazy val httoFetch = new RecordingHttpFetch(captureDate, new RealHttpFetch())
 
   // Multikino and Kino Kameralne (biletyna) sit behind a WAF that blocks our

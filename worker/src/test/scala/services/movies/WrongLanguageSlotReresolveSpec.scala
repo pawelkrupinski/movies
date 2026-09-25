@@ -76,7 +76,7 @@ class WrongLanguageSlotReresolveSpec extends AnyFlatSpec with Matchers {
     ))
 
   private def wire(): (CaffeineMovieCache, MovieService) = {
-    val repository = new InMemoryMovieRepository(Seq((Title, Some(2026), polishSlotRow())))
+    val repository = new InMemoryMovieRepository(Seq((Title, Some(2026), polishSlotRow())), normalizer = titleNormalizer)
     val cache      = new CaffeineMovieCache(repository, new InProcessEventBus(), normalizer = titleNormalizer)
     cache.recordCinemaScrape(KinoApollo, Seq(CinemaMovie(
       Movie(Title), KinoApollo, None, None, None, Seq.empty, Seq.empty,

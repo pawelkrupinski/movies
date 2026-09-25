@@ -37,9 +37,9 @@ class InMemoryMovieRepository(
   // union (`SlotsRepository.merge`) is never exercised.
   slots: Option[SlotsRepository] = None,
   // The country whose rules derive a row's `_id`, mirroring `MongoMovieRepository`.
-  // Last and defaulted so the positional constructions are unchanged; a spec that
-  // is ABOUT country scoping passes its own instance instead of swapping a global.
-  override val normalizer: services.movies.TitleNormalizer = services.movies.TitleNormalizer.deployment,
+  // Required, and passed by name: a single-country spec hands it
+  // `SingleCountryNormalizer.titleNormalizer`, a spec ABOUT country scoping its own instance.
+  override val normalizer: services.movies.TitleNormalizer,
   // Stamps a write's `updatedAt` and a delivery's instant, exactly as production stamps them
   // from the wall clock — injected so a spec about AGES can move time by hand.
   clock: java.time.Clock = java.time.Clock.systemUTC()

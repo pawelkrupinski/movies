@@ -289,7 +289,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     // seed and the sweep would walk an empty cache — passing whatever the gate did.
     override lazy val movieRepository: services.movies.MovieRepository =
       new services.movies.InMemoryMovieRepository(
-        Seq(("Diuna", Some(2024), models.MovieRecord(tmdbId = Some(438631), imdbId = Some("tt15239678")))))
+        Seq(("Diuna", Some(2024), models.MovieRecord(tmdbId = Some(438631), imdbId = Some("tt15239678")))), normalizer = titleNormalizer)
 
     // All FOUR stubbed, so the sweep is hermetic and reaches the gate: the real
     // sources would go to the network on the first call and the swallowed throw
@@ -330,7 +330,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     val wiring = new RatingSourceRecordingWiring {
       override lazy val movieRepository: services.movies.MovieRepository =
         new services.movies.InMemoryMovieRepository(Seq(("Brzezina", Some(1970), models.MovieRecord(
-          imdbId = Some("tt0068321"), filmwebUrl = Some("https://www.filmweb.pl/film/Brzezina-1970-8085")))))
+          imdbId = Some("tt0068321"), filmwebUrl = Some("https://www.filmweb.pl/film/Brzezina-1970-8085")))), normalizer = titleNormalizer)
     }
     wiring.movieCache.rehydrate()
 
@@ -370,7 +370,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
         ("Diuna",     Some(2024), models.MovieRecord(tmdbId = Some(438631), imdbId = Some("tt15239678"))),
         ("Zimna wojna", Some(2018), models.MovieRecord(tmdbId = Some(468622), imdbId = Some("tt6543652"))),
         ("Ida",       Some(2013), models.MovieRecord(tmdbId = Some(228150), imdbId = Some("tt2718492"))),
-        ("Boże Ciało", Some(2019), models.MovieRecord(tmdbId = Some(550310), imdbId = Some("tt9078374")))))
+        ("Boże Ciało", Some(2019), models.MovieRecord(tmdbId = Some(550310), imdbId = Some("tt9078374")))), normalizer = titleNormalizer)
 
     override lazy val imdbRatings: services.enrichment.ImdbRatings =
       new services.enrichment.ImdbRatings(movieCache, imdbClient) {
@@ -554,7 +554,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
       }
       override lazy val movieRepository: services.movies.MovieRepository =
         new services.movies.InMemoryMovieRepository(
-          Seq(("Obscure Arthouse Film", Some(2019), models.MovieRecord(imdbId = Some("tt5555555")))))
+          Seq(("Obscure Arthouse Film", Some(2019), models.MovieRecord(imdbId = Some("tt5555555")))), normalizer = titleNormalizer)
       override lazy val letterboxdIdResolver: services.enrichment.LetterboxdIdResolver =
         new services.enrichment.LetterboxdIdResolver(letterboxdClient) {
           override def resolveTmdbId(imdbId: String): Option[Int] = { asked.set(imdbId); None }

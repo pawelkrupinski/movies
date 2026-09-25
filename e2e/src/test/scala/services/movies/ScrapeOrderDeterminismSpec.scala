@@ -321,7 +321,7 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
    *  distinct settled row-sets. Order-independence ⇒ exactly one. */
   private def settledAcrossOrders(rows: Seq[(CacheKey, MovieRecord)]): Set[Set[(String, Option[Int])]] =
     rows.permutations.map { ordered =>
-      val cache = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
       ordered.foreach { case (k, e) => cache.put(k, e) }
       cache.canonicalizeBySanitize()
       cache.snapshot().map(r => (r.title, r.year)).toSet

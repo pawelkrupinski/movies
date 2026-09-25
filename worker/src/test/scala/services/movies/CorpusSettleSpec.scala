@@ -37,7 +37,7 @@ class CorpusSettleSpec extends AnyFlatSpec with Matchers {
     (cinema: Source) -> SourceData(title = Some("Dzień objawienia"))
 
   "MovieService.settle" should "collapse a yearless unresolved row into its resolved yeared sibling" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
 
     // The resolved yeared row (Helios-class cinemas reported releaseYear=2026,
     // TMDB resolved it) …

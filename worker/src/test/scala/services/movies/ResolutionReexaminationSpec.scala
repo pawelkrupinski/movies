@@ -45,7 +45,7 @@ class ResolutionReexaminationSpec extends AnyFlatSpec with Matchers {
                            runtimeMinutes = Some(100))))
 
   "re-examining a resolution" should "leave the row untouched when the evidence still names the same film" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val key        = cache.keyOf("Coś za mną chodzi", Some(2014))
     // The row as a real resolution leaves it: its Tmdb slot is what TMDB answers for its id.
@@ -69,7 +69,7 @@ class ResolutionReexaminationSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still re-resolve the row when the evidence names a different film" in {
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val key     = cache.keyOf("Coś za mną chodzi", Some(2014))
     cache.put(key, resolvedRow)
     val service = new MovieService(cache, new InProcessEventBus(), tmdb(searchHit = Other))
@@ -83,7 +83,7 @@ class ResolutionReexaminationSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "keep the resolution when the evidence names no film at all" in {
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val key     = cache.keyOf("Coś za mną chodzi", Some(2014))
     cache.put(key, resolvedRow)
     val nothing = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(

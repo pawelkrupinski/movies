@@ -1,5 +1,7 @@
 package services.metrics
 
+import services.movies.SingleCountryNormalizer
+
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{Helios, HeliosMagnolia}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -22,7 +24,7 @@ class WorkerCorpusScanSpec extends AnyFlatSpec with Matchers {
 
   /** Counts every full-corpus traversal, whichever variant a collector reaches for. */
   private class CountingRepository(rows: Seq[StoredMovieRecord])
-    extends InMemoryMovieRepository(rows.map(r => (r.title, r.year, r.record))) {
+    extends InMemoryMovieRepository(rows.map(r => (r.title, r.year, r.record)), normalizer = services.movies.SingleCountryNormalizer.titleNormalizer) {
     val scans = new AtomicInteger(0)
 
     override def foreachRecord(f: StoredMovieRecord => Unit): Boolean = {
@@ -116,7 +118,7 @@ class WorkerCorpusScanSpec extends AnyFlatSpec with Matchers {
 
     // A pass that fails BEFORE reaching Poznań's row still delivers Wrocław's. Publishing
     // that would drop Poznań 2 → 0: a total city outage, from a read that simply stopped.
-    new WorkerCorpusScan(new IncompleteScanMovieRepository(rows.drop(1).map(r => (r.title, r.year, r.record))),
+    new WorkerCorpusScan(new IncompleteScanMovieRepository(rows.drop(1).map(r => (r.title, r.year, r.record)), titleNormalizer = SingleCountryNormalizer.titleNormalizer),
       Seq(showtimes)).sample()
 
     val after = PrometheusExposition.render(registry)
@@ -134,7 +136,7 @@ class WorkerCorpusScanSpec extends AnyFlatSpec with Matchers {
     gauge(PrometheusExposition.render(registry), WorkerCorpusMetrics.Name,
       s"""country="pl",subset="${Subset.Total}"""") shouldBe Some(2.0)
 
-    new WorkerCorpusScan(new IncompleteScanMovieRepository(), Seq(corpus)).sample()
+    new WorkerCorpusScan(new IncompleteScanMovieRepository(titleNormalizer = SingleCountryNormalizer.titleNormalizer), Seq(corpus)).sample()
 
     gauge(PrometheusExposition.render(registry), WorkerCorpusMetrics.Name,
       s"""country="pl",subset="${Subset.Total}"""") shouldBe Some(2.0)
@@ -146,7 +148,7 @@ class WorkerCorpusScanSpec extends AnyFlatSpec with Matchers {
   it should "count an incomplete pass so a stuck census can't hide behind frozen gauges" in {
     val registry = new PrometheusRegistry()
     val counter  = WorkerCorpusScan.incompleteCounter(registry)
-    val scan     = new WorkerCorpusScan(new IncompleteScanMovieRepository(), Seq.empty,
+    val scan     = new WorkerCorpusScan(new IncompleteScanMovieRepository(titleNormalizer = SingleCountryNormalizer.titleNormalizer), Seq.empty,
       metrics = CorpusScanMetrics.prometheus(counter, "pl"))
 
     scan.sample()

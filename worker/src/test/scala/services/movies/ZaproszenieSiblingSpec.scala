@@ -84,7 +84,7 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
     (Title, Some(2022), MovieRecord(imdbId = Some("tt12873562"), tmdbId = Some(Sibling2022))),
     (Title, Some(2026), MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some(Title)))))
-  ))
+  ), normalizer = titleNormalizer)
 
   "needsTmdbResolution" should
     "resolve a different-year film that carries its own cinema slots, despite a resolved same-title sibling" in {
@@ -114,7 +114,7 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
   it should "still short-circuit when the key has no cinema slots of its own" in {
     val repository = new InMemoryMovieRepository(Seq(
       (Title, Some(2022), MovieRecord(imdbId = Some("tt12873562"), tmdbId = Some(Sibling2022)))
-    ))
+    ), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
     // TMDB stub that throws on any access — proves we never tried.
@@ -148,7 +148,7 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(Seq(
       (Title, None, MovieRecord(data = Map[Source, SourceData](
         Helios -> SourceData(title = Some(Title), director = Seq("Olivia Wilde")))))
-    ))
+    ), normalizer = titleNormalizer)
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val bus     = new InProcessEventBus()
     val service = new MovieService(cache, bus, ambiguousTmdb())
@@ -171,7 +171,7 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(Seq(
       (Title, None, MovieRecord(data = Map[Source, SourceData](
         Helios -> SourceData(title = Some(Title)))))
-    ))
+    ), normalizer = titleNormalizer)
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val bus     = new InProcessEventBus()
     val service = new MovieService(cache, bus, ambiguousTmdb())

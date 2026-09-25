@@ -58,7 +58,7 @@ class TmdbReenrichResetSpec extends AnyFlatSpec with Matchers {
   )
 
   private def wire(): (CaffeineMovieCache, MovieService) = {
-    val repository = new InMemoryMovieRepository(Seq((Title, Some(1982), lockedRow())))
+    val repository = new InMemoryMovieRepository(Seq((Title, Some(1982), lockedRow())), normalizer = titleNormalizer)
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     (cache, new MovieService(cache, new InProcessEventBus(), tmdb()))
   }
@@ -99,7 +99,7 @@ class TmdbReenrichResetSpec extends AnyFlatSpec with Matchers {
       data = Map[Source, SourceData](
         Tmdb         -> SourceData(releaseYear = Some(2024)),
         KinoPalacowe -> SourceData(title = Some(shown), releaseYear = Some(2026))))
-    val repository = new InMemoryMovieRepository(Seq((stored, Some(2024), row))) {
+    val repository = new InMemoryMovieRepository(Seq((stored, Some(2024), row)), normalizer = titleNormalizer) {
       // What the Mongo codec hands back: the stored key, labelled with the display vote.
       override def findAll(): Seq[StoredMovieRecord] = super.findAll().map(_.copy(title = shown))
     }

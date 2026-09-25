@@ -44,7 +44,7 @@ class FilmwebWikidataResolveSpec extends AnyFlatSpec with Matchers {
       filmwebUrl = Some(filmwebUrl),
       data       = Map[Source, SourceData](CinemaCityPoznanPlaza -> SourceData(title = Some(title)))
     )
-    new CaffeineMovieCache(new InMemoryMovieRepository(Seq((title, Some(year), seed))), normalizer = titleNormalizer)
+    new CaffeineMovieCache(new InMemoryMovieRepository(Seq((title, Some(year), seed)), normalizer = titleNormalizer), normalizer = titleNormalizer)
   }
 
   // TMDB stubs: fuzzy search always misses (the realistic case — Filmweb is the

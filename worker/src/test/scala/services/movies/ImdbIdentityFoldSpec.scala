@@ -11,7 +11,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  *  so there is never a pair to merge — unless the cinemas describe two films. */
 class ImdbIdentityFoldSpec extends AnyFlatSpec with Matchers {
 
-  private def cache() = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
+  private def cache() = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
 
   private def resolved(title: String, tmdbId: Int, tmdbRuntime: Int, cinema: Cinema, cinemaRuntime: Int): MovieRecord =
     MovieRecord(tmdbId = Some(tmdbId), imdbId = Some("tt0123456"), data = Map[Source, SourceData](

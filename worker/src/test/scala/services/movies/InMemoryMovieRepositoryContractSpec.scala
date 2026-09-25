@@ -43,13 +43,13 @@ class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers {
   "InMemoryMovieRepository.upsert" should "keep a film's screenings when the re-stitch read failed" in {
     val store = new InMemoryScreeningsRepository
     // Seed through the ordinary path, so the rows land under the id and slot key production uses.
-    new InMemoryMovieRepository(screenings = Some(store)).upsert(title, year, record(screened))
+    new InMemoryMovieRepository(screenings = Some(store), normalizer = SingleCountryNormalizer.titleNormalizer).upsert(title, year, record(screened))
     showtimesIn(store) shouldBe 1
 
     // Now the same film written again by a repository whose screenings READS all fail, from a
     // record that carries the slot without its showtimes. Nothing about the film has changed;
     // the only thing that changed is that we could not read what is already there.
-    val blind = new InMemoryMovieRepository(screenings = Some(new UnreadableScreeningsRepository(store)))
+    val blind = new InMemoryMovieRepository(screenings = Some(new UnreadableScreeningsRepository(store)), normalizer = SingleCountryNormalizer.titleNormalizer)
     blind.upsert(title, year, record(stripped))
 
     // The showtimes must survive. Before the fake shared production's rule it issued
@@ -59,7 +59,7 @@ class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers {
 
   it should "still write a film's screenings when the re-stitch read succeeded" in {
     val store = new InMemoryScreeningsRepository
-    val repository = new InMemoryMovieRepository(screenings = Some(store))
+    val repository = new InMemoryMovieRepository(screenings = Some(store), normalizer = SingleCountryNormalizer.titleNormalizer)
     repository.upsert(title, year, record(screened))
 
     // The guard must not become "never write": a real change, read cleanly, still lands.
@@ -77,7 +77,7 @@ class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers {
     val clock  = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
     val t0     = clock.instant()
     val store  = new InMemoryScreeningsRepository
-    val repository = new InMemoryMovieRepository(screenings = Some(store), clock = clock)
+    val repository = new InMemoryMovieRepository(screenings = Some(store), clock = clock, normalizer = SingleCountryNormalizer.titleNormalizer)
     repository.upsert("Written First", year, record(screened))
     clock.advanceSeconds(60)
     repository.upsert("Written Second", year, record(screened).copy(tmdbId = Some(8)))
@@ -112,7 +112,7 @@ class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers {
   // 282 re-projections per sweep that production never makes.
   it should "announce nothing when an upsert changes nothing, as Mongo writes nothing" in {
     val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
-                                                 slots = Some(new InMemorySlotsRepository))
+                                                 slots = Some(new InMemorySlotsRepository), normalizer = SingleCountryNormalizer.titleNormalizer)
     repository.upsert(title, year, record(screened))
     val deliveries = new java.util.concurrent.atomic.AtomicInteger(0)
     repository.watchChanges(_ => { deliveries.incrementAndGet(); () }, _ => { deliveries.incrementAndGet(); () })
@@ -127,7 +127,7 @@ class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers {
 
   it should "still announce a write that changed only the film's side rows" in {
     val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
-                                                 slots = Some(new InMemorySlotsRepository))
+                                                 slots = Some(new InMemorySlotsRepository), normalizer = SingleCountryNormalizer.titleNormalizer)
     repository.upsert(title, year, record(screened))
     val deliveries = new java.util.concurrent.atomic.AtomicInteger(0)
     repository.watchChanges(_ => { deliveries.incrementAndGet(); () }, _ => ())
@@ -147,7 +147,7 @@ class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers {
   "a write giving a film a tmdbId another document already holds" should
     "be refused whole, as the unique index refuses it" in {
     val slots      = new InMemorySlotsRepository
-    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository), slots = Some(slots))
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository), slots = Some(slots), normalizer = SingleCountryNormalizer.titleNormalizer)
     repository.upsert("First", year, record(screened)) shouldBe WriteOutcome.Written
     val second = MovieRecord(tmdbId = Some(7), data = Map[Source, SourceData](Helios -> SourceData(title = Some("Second"))))
     repository.upsert("Second", year, second) shouldBe WriteOutcome.IdentityHeld
@@ -157,7 +157,7 @@ class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still let the film that holds the tmdbId re-write itself" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = SingleCountryNormalizer.titleNormalizer)
     repository.upsert("First", year, record(screened)) shouldBe WriteOutcome.Written
     repository.upsert("First", year, record(screened).copy(imdbId = Some("tt1"))) shouldBe WriteOutcome.Written
   }

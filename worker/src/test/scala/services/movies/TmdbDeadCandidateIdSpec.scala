@@ -58,7 +58,7 @@ class TmdbDeadCandidateIdSpec extends AnyFlatSpec with Matchers {
 
   "a search hit whose TMDB id no longer exists" should
     "conclude as a no-match instead of retrying the dead id forever" in {
-    val repository = new InMemoryMovieRepository(Seq((Title, Year, seed)))
+    val repository = new InMemoryMovieRepository(Seq((Title, Year, seed)), normalizer = titleNormalizer)
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val ids        = new RecordingResolutionCache
 
@@ -78,7 +78,7 @@ class TmdbDeadCandidateIdSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still DEFER when the same fetch fails transiently" in {
-    val repository = new InMemoryMovieRepository(Seq((Title, Year, seed)))
+    val repository = new InMemoryMovieRepository(Seq((Title, Year, seed)), normalizer = titleNormalizer)
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
 
     val resolved = serviceOver(cache, new StubTmdb(503), new RecordingResolutionCache)

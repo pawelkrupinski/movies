@@ -34,7 +34,7 @@ class DepthGuardUnderSplitSpec extends AnyFlatSpec with Matchers {
     }
 
   private def splitRepository() = new InMemoryMovieRepository(
-    screenings = Some(new InMemoryScreeningsRepository), slots = Some(new InMemorySlotsRepository))
+    screenings = Some(new InMemoryScreeningsRepository), slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
 
   /** What the film actually has STORED — the cache's own copy is stripped under the split,
    *  so asking it would measure the wrong thing. */

@@ -32,7 +32,7 @@ class DecoratedListingLandsSpec extends AnyFlatSpec with Matchers {
 
   "recordCinemaScrape" should "land a decorated listing of a known film on that film's row, not in staging" in {
     val staging = new InMemoryStagingRepository
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, staging = Some(staging), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), staging = Some(staging), normalizer = titleNormalizer)
     val key     = CacheKey(film, Some(2026), titleNormalizer)
     cache.put(key, resolvedRow)
 
@@ -48,7 +48,7 @@ class DecoratedListingLandsSpec extends AnyFlatSpec with Matchers {
 
   it should "still incubate a sequel that merely carries the film's title" in {
     val staging = new InMemoryStagingRepository
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, staging = Some(staging), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), staging = Some(staging), normalizer = titleNormalizer)
     cache.put(CacheKey("The Hunger Games", Some(2012), titleNormalizer),
       MovieRecord(tmdbId = Some(70160), data = Map[Source, SourceData](
         Tmdb -> SourceData(title = Some("The Hunger Games"), releaseYear = Some(2012)),
@@ -63,7 +63,7 @@ class DecoratedListingLandsSpec extends AnyFlatSpec with Matchers {
   // key (the title with the decorations the search rules strip removed, romanised).
   it should "land a Cyrillic listing on the resolved Latin row it romanises to" in {
     val staging = new InMemoryStagingRepository
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, staging = Some(staging), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), staging = Some(staging), normalizer = titleNormalizer)
     val key     = CacheKey("Vaiana", Some(2026), titleNormalizer)
     cache.put(key, MovieRecord(tmdbId = Some(1241982), data = Map[Source, SourceData](
       Tmdb -> SourceData(title = Some("Vaiana"), originalTitle = Some("Moana 2"), releaseYear = Some(2026)),
@@ -78,7 +78,7 @@ class DecoratedListingLandsSpec extends AnyFlatSpec with Matchers {
 
   it should "land an edition whose stripped search title is the film's on the film's row" in {
     val staging = new InMemoryStagingRepository
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, staging = Some(staging), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), staging = Some(staging), normalizer = titleNormalizer)
     val key     = CacheKey("Ojczyzna", Some(2026), titleNormalizer)
     cache.put(key, MovieRecord(tmdbId = Some(1300001), data = Map[Source, SourceData](
       Tmdb -> SourceData(title = Some("Ojczyzna"), originalTitle = Some("Ojczyzna"), releaseYear = Some(2026)),
@@ -102,7 +102,7 @@ class DecoratedListingLandsSpec extends AnyFlatSpec with Matchers {
    *  staging. */
   private def rowsAfterScrapeAt(cinemaYear: Int): (Set[(Option[Int], Set[Source])], Seq[String]) = {
     val staging = new InMemoryStagingRepository
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, staging = Some(staging), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), staging = Some(staging), normalizer = titleNormalizer)
     cache.put(CacheKey("Zawieście czerwone latarnie", Some(1991), titleNormalizer), MovieRecord(tmdbId = Some(10412), data = Map[Source, SourceData](
       Tmdb -> SourceData(title = Some("Zawieście czerwone latarnie"), originalTitle = Some("Da hong deng long gao gao gua"), releaseYear = Some(1991)),
       (KinoMuza: Source) -> SourceData(title = Some("Zawieście czerwone latarnie"), releaseYear = Some(1991)))))
@@ -134,7 +134,7 @@ class DecoratedListingLandsSpec extends AnyFlatSpec with Matchers {
   // evidence the listing must resolve on its own; with evidence the veto decides.
   it should "not treat a listing as a decoration of a ONE-word film unless it carries evidence" in {
     val staging = new InMemoryStagingRepository
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, staging = Some(staging), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), staging = Some(staging), normalizer = titleNormalizer)
     cache.put(CacheKey("It", Some(2017), titleNormalizer), MovieRecord(tmdbId = Some(346364), data = Map[Source, SourceData](
       Tmdb -> SourceData(title = Some("It"), originalTitle = Some("It"), releaseYear = Some(2017), runtimeMinutes = Some(135)),
       (KinoMuza: Source) -> SourceData(title = Some("It"), releaseYear = Some(2017)))))
@@ -150,7 +150,7 @@ class DecoratedListingLandsSpec extends AnyFlatSpec with Matchers {
 
   it should "still land a two-word film's banner variant without evidence" in {
     val staging = new InMemoryStagingRepository
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, staging = Some(staging), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), staging = Some(staging), normalizer = titleNormalizer)
     val key     = CacheKey("Toy Story", Some(2026), titleNormalizer)
     cache.put(key, MovieRecord(tmdbId = Some(862), data = Map[Source, SourceData](
       Tmdb -> SourceData(title = Some("Toy Story"), originalTitle = Some("Toy Story"), releaseYear = Some(2026)),

@@ -42,7 +42,7 @@ class RememberedMissRetriggerSpec extends AnyFlatSpec with Matchers {
 
   "a remembered miss" should "re-open when a Filmweb-supplied original title changes what would be searched" in {
     val http    = new CountingTmdb
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val bus     = new InProcessEventBus()
     val service = new MovieService(cache, bus, new TmdbClient(http = http, apiKey = Some("stub")))
     bus.subscribe(service.onMovieDetailsComplete)

@@ -39,7 +39,7 @@ class FilmIdentityInvariantsSpec extends AnyFlatSpec with Matchers with ScalaChe
     forAll(ops, minSuccessful(300)) { sequence =>
       val screenings = new InMemoryScreeningsRepository
       val slots      = new InMemorySlotsRepository
-      val repository = new InMemoryMovieRepository(screenings = Some(screenings), slots = Some(slots))
+      val repository = new InMemoryMovieRepository(screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer)
       val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
       sequence.foreach {
         case Put(t, y, id, c) =>

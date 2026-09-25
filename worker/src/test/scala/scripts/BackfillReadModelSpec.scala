@@ -34,7 +34,7 @@ class BackfillReadModelSpec extends AnyFlatSpec with Matchers {
   }
 
   "BackfillReadModel.run" should "populate the read model from movies and prune stale derived documents" in {
-    val movieRepository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), record("Foo", 2024))))
+    val movieRepository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), record("Foo", 2024))), normalizer = titleNormalizer)
     val readModel = new InMemoryReadModelRepository()
     seedStale(readModel)
 
@@ -50,7 +50,7 @@ class BackfillReadModelSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be idempotent — a second run writes the same documents and prunes nothing" in {
-    val movieRepository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), record("Foo", 2024))))
+    val movieRepository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), record("Foo", 2024))), normalizer = titleNormalizer)
     val readModel = new InMemoryReadModelRepository()
 
     BackfillReadModel.run(movieRepository, readModel)
@@ -76,7 +76,7 @@ class BackfillReadModelSpec extends AnyFlatSpec with Matchers {
     val showtimeless = MovieRecord(data = Map[Source, SourceData](
       Multikino -> SourceData(title = Some("Foo"), releaseYear = Some(2024), showtimes = Seq.empty)
     ))
-    val movieRepository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), showtimeless)))
+    val movieRepository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), showtimeless)), normalizer = titleNormalizer)
     val readModel = new InMemoryReadModelRepository()
     // The live read model already holds this film's screenings, written by the projector.
     val live = StoredMovieRecord.synthesised("Foo", Some(2024), record("Foo", 2024), services.movies.SingleCountryNormalizer.titleNormalizer)
@@ -100,7 +100,7 @@ class BackfillReadModelSpec extends AnyFlatSpec with Matchers {
     val movieRepository = new InMemoryMovieRepository(Seq(
       ("Foo", Some(2024), record("Foo", 2024)),   // stitched fine
       ("Bar", Some(2024), showtimeless)           // its showtimes went missing
-    ))
+    ), normalizer = titleNormalizer)
     val readModel = new InMemoryReadModelRepository()
     // Both films' screenings are live in the read model, as the projector left them.
     Seq("Foo", "Bar").foreach { t =>
@@ -118,7 +118,7 @@ class BackfillReadModelSpec extends AnyFlatSpec with Matchers {
   // The flip side: a film that DID project screenings is authoritative for itself, so a
   // cinema that genuinely stopped screening it is still reaped.
   it should "still prune a screening a projecting film no longer produces" in {
-    val movieRepository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), record("Foo", 2024))))
+    val movieRepository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), record("Foo", 2024))), normalizer = titleNormalizer)
     val readModel = new InMemoryReadModelRepository()
     BackfillReadModel.run(movieRepository, readModel)
     // A second cinema's screening for the SAME film, no longer in the corpus.
@@ -137,7 +137,7 @@ class BackfillReadModelSpec extends AnyFlatSpec with Matchers {
     seedStale(readModel)
     readModel.findAllMovies() should have size 1
 
-    val (movies, _, prunedM, _) = BackfillReadModel.run(new InMemoryMovieRepository(Seq.empty), readModel)
+    val (movies, _, prunedM, _) = BackfillReadModel.run(new InMemoryMovieRepository(Seq.empty, normalizer = titleNormalizer), readModel)
 
     movies  shouldBe 0
     prunedM shouldBe 0

@@ -54,7 +54,7 @@ class DirectorWalkAmbiguousYearSpec extends AnyFlatSpec with Matchers {
     "refuse to bind a film rather than guess the first one" in {
     val seed = MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some(Title), director = Seq(Director), releaseYear = Some(2026))))
-    val repository = new InMemoryMovieRepository(Seq((Title, Year, seed)))
+    val repository = new InMemoryMovieRepository(Seq((Title, Year, seed)), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val bus   = new services.events.InProcessEventBus()
     val service = new MovieService(cache, bus, toyStoryTmdb())

@@ -32,7 +32,7 @@ class TmdbFindByImdbIdResolveSpec extends AnyFlatSpec with Matchers {
       imdbId = Some(imdbId),
       data   = Map[Source, SourceData](CinemaCityPoznanPlaza -> SourceData(title = Some(title)))
     )
-    new CaffeineMovieCache(new InMemoryMovieRepository(Seq((title, None, seed))), normalizer = titleNormalizer)
+    new CaffeineMovieCache(new InMemoryMovieRepository(Seq((title, None, seed)), normalizer = titleNormalizer), normalizer = titleNormalizer)
   }
 
   "the TMDB stage" should "resolve a tmdbId-less row via /find when it carries a known imdbId that fuzzy search missed" in {

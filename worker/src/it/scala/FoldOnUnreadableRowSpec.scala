@@ -42,7 +42,7 @@ class FoldOnUnreadableRowSpec extends AnyFlatSpec with Matchers {
       fold.seedStagingRow(Multikino.displayName, title, Some(2026), tmdbId)
 
       val thrown = intercept[IllegalStateException](
-        fold.folder(new UnreadableByIdMovieRepository()).foldGroup(title))
+        fold.folder(new UnreadableByIdMovieRepository(titleNormalizer = titleNormalizer)).foldGroup(title))
       withClue(s"the fold failed, but not for the reason under test: ${thrown.getMessage}\n") {
         thrown.getMessage should include("Refusing to re-key the film")
       }
@@ -68,7 +68,7 @@ class FoldOnUnreadableRowSpec extends AnyFlatSpec with Matchers {
    *  as the real thing does — and then raises the transient error, which is the order a write
    *  conflict actually arrives in. */
   private class FailAfterPlanningRepository(transientOnFirstAttempt: Boolean = false)
-      extends UnreadableByIdMovieRepository {
+      extends UnreadableByIdMovieRepository(titleNormalizer = titleNormalizer) {
     failing = false
     val completionWrites = new java.util.concurrent.atomic.AtomicInteger(0)
     val reads            = new java.util.concurrent.atomic.AtomicInteger(0)
@@ -136,7 +136,7 @@ class FoldOnUnreadableRowSpec extends AnyFlatSpec with Matchers {
 
   /** A repository whose side-collection MIGRATION fails, the two ways it can: reporting
    *  `false` (a read or write it depended on did not happen) or raising outright. */
-  private class UnmovableFilmRepository(raise: Boolean) extends UnreadableByIdMovieRepository {
+  private class UnmovableFilmRepository(raise: Boolean) extends UnreadableByIdMovieRepository(titleNormalizer = titleNormalizer) {
     failing = false
     val attempts = new java.util.concurrent.atomic.AtomicInteger(0)
     override def moveFilm(fromId: FilmId, toId: FilmId): Boolean = {

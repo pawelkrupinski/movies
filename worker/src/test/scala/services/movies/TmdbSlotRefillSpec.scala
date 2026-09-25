@@ -38,7 +38,7 @@ class TmdbSlotRefillSpec extends AnyFlatSpec with Matchers {
     data = Map[Source, SourceData](Helios -> SourceData(title = Some("Coś za mną chodzi"), runtimeMinutes = Some(100))))
 
   "refillTmdbSlot" should "fetch the slot by the row's own id and carry everything else forward" in {
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val key     = cache.keyOf("Coś za mną chodzi", Some(2015))
     cache.put(key, slotless)
     val service = new MovieService(cache, new InProcessEventBus(), tmdbById())
@@ -56,7 +56,7 @@ class TmdbSlotRefillSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "leave a row that has its slot, or no id, alone" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val withSlot = cache.keyOf("A", Some(2020)); cache.put(withSlot, slotless.copy(data = slotless.data + ((Tmdb: Source) -> SourceData(title = Some("A")))))
     val noId     = cache.keyOf("B", Some(2020)); cache.put(noId, slotless.copy(tmdbId = None))
     val service  = new MovieService(cache, new InProcessEventBus(), tmdbById())
@@ -65,7 +65,7 @@ class TmdbSlotRefillSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "write nothing when TMDB cannot answer for the id" in {
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val key     = cache.keyOf("Coś za mną chodzi", Some(2015))
     cache.put(key, slotless)
     val service = new MovieService(cache, new InProcessEventBus(), tmdbById(details = false))

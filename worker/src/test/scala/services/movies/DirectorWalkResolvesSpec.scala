@@ -53,7 +53,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
     apiKey = Some("stub"))
 
   "a resolved row whose cinema reports a different director" should "re-resolve instead of verifying against its own Tmdb slot" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
     val service = new MovieService(cache, bus, dreamsTmdb())
@@ -88,7 +88,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
    *  "Dreams" with `/movie/dreams-drommer` and the Norwegian film's metascore 81
    *  hours after the tmdbId was fixed. Identity-derived fields follow the identity. */
   it should "drop the previous film's rating urls and scores" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
     val service = new MovieService(cache, bus, dreamsTmdb())
@@ -128,7 +128,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
   private val Dalloway = 1315702   // Yann Gozlan, "Dalloway" — a DIFFERENT film, same director
 
   "a director-bearing row whose walk finds nothing" should "refuse rather than accept a same-director title-search hit" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     // findPerson misses (TMDB can't place the name), so the walk yields nothing.
     // The title search DOES return a hit — Gozlan's OTHER film — and verifying it
@@ -168,7 +168,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
    *  is 3 of the 5 remaining corpus failures.
    */
   "the walk" should "try further person candidates when the first has no matching credit" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie" -> """{"results":[]}""",
@@ -214,7 +214,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
    *  cinema's own title, synopsis and poster; they lose TMDB metadata and ratings.
    */
   it should "refuse a credit that matches only on year, never on title" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
@@ -245,7 +245,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
    *  the Lombard case: translations keep the proper noun, unrelated films share
    *  nothing. */
   it should "still resolve a year-pinned credit whose title is merely translated" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
@@ -284,7 +284,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
    *  Cinemas publish no cast for these rows, so runtime is the signal that exists.
    */
   it should "accept a year-pinned credit whose RUNTIME matches, when the title is fully translated" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
@@ -311,7 +311,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
    *  match it was added beside. The cinema reporting Hind Rajab's 89 minutes
    *  against Lombard's 78 is the real corpus pair. */
   it should "still refuse a year-only match when the runtime disagrees too" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
@@ -341,7 +341,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
    *  comparison transliterates before folding. Runtime can't save this one: the
    *  cinema publishes 100 minutes against TMDB's 90. */
   it should "match a shared title word written in Cyrillic" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
@@ -383,7 +383,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
    *  it was written for.
    */
   it should "prefer an exact title match over a one-character-off sibling, with no year to separate them" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
@@ -425,7 +425,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
    *  another, and Part 2's screenings folded onto Part 1's row.
    */
   it should "not fold a same-director sequel onto its predecessor when no title matches exactly" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
@@ -473,7 +473,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
    *  door that skipped it.
    */
   it should "refuse a year-pinned credit the candidate title itself doesn't name a specific instalment of" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
@@ -515,7 +515,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
    *  actual mechanism behind Catching Fire's screenings landing on a Mockingjay
    *  row, not `titleClose` — the two titles never tie there at all. */
   it should "refuse a year-pinned credit that is a DIFFERENT sibling of the series, sharing only its name" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
@@ -554,7 +554,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
    *  stranger. Refusing leaves the row to the fold, which reclaims the decorated
    *  rerelease onto the resolved Endgame row. */
   it should "refuse a year-pinned credit when the title names a different credit of the same director" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
@@ -594,7 +594,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
    *  for a row that would otherwise resolve to nothing at all.
    */
   it should "follow the writer's filmography when the cinema credits the writer" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
@@ -621,7 +621,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
    *  corroboration as any other — an unrelated title with nothing to back it stays
    *  refused. */
   it should "still refuse an uncorroborated year-only match from a writer's filmography" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",
@@ -652,7 +652,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
    *  candidates are safe under a walk — it still only accepts a title that
    *  matches a credit — so splitting the dash costs nothing and recovers the film. */
   it should "see the film's own title through a dash-joined programme banner" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/movie"  -> """{"results":[]}""",

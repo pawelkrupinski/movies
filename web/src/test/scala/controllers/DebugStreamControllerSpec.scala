@@ -48,18 +48,18 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
     MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some(title))))
 
   "GET /debug/stream" should "404 in production (the collection is never watched from the web there)" in {
-    val result = controller(new InMemoryMovieRepository, Mode.Prod).stream.apply(FakeRequest())
+    val result = controller(new InMemoryMovieRepository(normalizer = titleNormalizer), Mode.Prod).stream.apply(FakeRequest())
     status(result) shouldBe NOT_FOUND
   }
 
   it should "serve a text/event-stream in dev" in {
-    val result = controller(new InMemoryMovieRepository, Mode.Dev).stream.apply(FakeRequest())
+    val result = controller(new InMemoryMovieRepository(normalizer = titleNormalizer), Mode.Dev).stream.apply(FakeRequest())
     status(result) shouldBe OK
     contentType(result) shouldBe Some("text/event-stream")
   }
 
   "the live feed" should "push an upsert frame carrying the rendered row when a film appears" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val collecting = controller(repository).eventSource(FakeRequest()).takeWithin(1.second).runWith(Sink.seq)
 
     Thread.sleep(100) // let the stream materialize + subscribe before we write
@@ -77,7 +77,7 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
   }
 
   it should "push a delete frame with just the id when a row is removed (a merge)" in {
-    val repository = new InMemoryMovieRepository(Seq(("Belle", Some(2021), record("Belle"))))
+    val repository = new InMemoryMovieRepository(Seq(("Belle", Some(2021), record("Belle"))), normalizer = titleNormalizer)
     val collecting = controller(repository).eventSource(FakeRequest()).takeWithin(1.second).runWith(Sink.seq)
 
     Thread.sleep(100)
@@ -91,7 +91,7 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
   }
 
   it should "emit nothing while the collection is idle" in {
-    val repository = new InMemoryMovieRepository()
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val frames = Await.result(
       controller(repository).eventSource(FakeRequest()).takeWithin(500.millis).runWith(Sink.seq), 3.seconds)
     frames shouldBe empty
@@ -102,7 +102,7 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
   // graduation DELETEs it.
   "the live feed" should "push a staging-upsert frame (rendered row) when a pending_movies row appears" in {
     val staging = new InMemoryStagingRepository()
-    val collecting = controller(new InMemoryMovieRepository(), staging = staging)
+    val collecting = controller(new InMemoryMovieRepository(normalizer = titleNormalizer), staging = staging)
       .eventSource(FakeRequest()).takeWithin(1.second).runWith(Sink.seq)
 
     Thread.sleep(100)
@@ -121,7 +121,7 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
   it should "push a staging-delete frame with just the id when a row graduates" in {
     val staging = new InMemoryStagingRepository(Seq(
       (CinemaCityWroclavia, "Newcomer", Some(2026), record("Newcomer"))))
-    val collecting = controller(new InMemoryMovieRepository(), staging = staging)
+    val collecting = controller(new InMemoryMovieRepository(normalizer = titleNormalizer), staging = staging)
       .eventSource(FakeRequest()).takeWithin(1.second).runWith(Sink.seq)
 
     Thread.sleep(100)

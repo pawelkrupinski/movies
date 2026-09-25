@@ -68,7 +68,7 @@ class SettleBeatFixpointSpec extends AnyFlatSpec with Matchers {
   private val otherFilm = "Wielka Podróż Kapitana Nemo"
 
   "the pipeline" should "settle again after a film briefly drops off the bare venues' boards" in {
-    val repository = new InMemoryMovieRepository
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val staging    = new InMemoryStagingRepository
     val cache      = new CaffeineMovieCache(repository, staging = Some(staging), normalizer = titleNormalizer)
     val folder     = new InMemoryStagingFolder(staging, repository, titleNormalizer)

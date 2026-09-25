@@ -76,7 +76,7 @@ class CacheRefresherSpec extends AnyFlatSpec with Matchers {
       ("B", None, MovieRecord(tmdbId = None,    metacriticUrl = Some(urlB), metascore = Some(2))),  // no tmdbId: no re-resolve; unchanged
       ("C", None, MovieRecord(tmdbId = Some(3), metacriticUrl = None,       metascore = None)),     // URL discovered, then scored off it
       ("D", None, MovieRecord(tmdbId = None,    metacriticUrl = Some(urlD), metascore = Some(4)))   // fetch throws
-    ))
+    ), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val keyOf = (title: String) => cache.keyOf(title, None)
     val cadence = new ConcurrentLinkedQueue[(CacheKey, Option[Int], Option[String])]
@@ -112,7 +112,7 @@ class CacheRefresherSpec extends AnyFlatSpec with Matchers {
 
   it should "count a failed re-resolution and still refresh the score off the URL the row already had" in {
     val repository = new InMemoryMovieRepository(Seq(
-      ("E", None, MovieRecord(tmdbId = Some(5), metacriticUrl = Some(urlA), metascore = Some(5)))))
+      ("E", None, MovieRecord(tmdbId = Some(5), metacriticUrl = Some(urlA), metascore = Some(5)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val key = cache.keyOf("E", None)
     val refresher = new RecordingRefresher(cache,
@@ -130,7 +130,7 @@ class CacheRefresherSpec extends AnyFlatSpec with Matchers {
 
   "persistIfMoved" should "write only a score that differs from the stored one, and answer with the badge it became" in {
     val repository = new InMemoryMovieRepository(Seq(
-      ("F", None, MovieRecord(metacriticUrl = Some(urlA), metascore = Some(5)))))
+      ("F", None, MovieRecord(metacriticUrl = Some(urlA), metascore = Some(5)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val key = cache.keyOf("F", None)
     val refresher = new RecordingRefresher(cache, scores = Map.empty, discover = Map.empty)

@@ -11,7 +11,7 @@ import scala.collection.mutable
  *  and hide the very shape under test. `rows` is by-name so a spec can hand over a
  *  sequence that changes between calls (a boot hydrate that finds Mongo empty once). */
 class StoredRowsRepository(rows: => Seq[StoredMovieRecord],
-                           override val normalizer: TitleNormalizer = TitleNormalizer.deployment) extends MovieRepository with KeyAddressedMovieWrites {
+                           override val normalizer: TitleNormalizer) extends MovieRepository with KeyAddressedMovieWrites {
   val upserts = mutable.ListBuffer.empty[(FilmId, String, MovieRecord)]
   def enabled: Boolean = true
   def findAll(): Seq[StoredMovieRecord] = rows

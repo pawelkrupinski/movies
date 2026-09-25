@@ -83,8 +83,9 @@ class UnwritableSlotsRepository extends InMemorySlotsRepository with FailsOnPurp
  *  then reports the scan INCOMPLETE, exactly as a keyset batch that exhausted its retries
  *  does. `delivered` defaults to none — the shape where a caller sees `films = 0` and must
  *  not mistake it for an empty corpus. */
-class IncompleteScanMovieRepository(delivered: Seq[(String, Option[Int], MovieRecord)] = Seq.empty)
-  extends InMemoryMovieRepository(delivered) with FailsOnPurpose {
+class IncompleteScanMovieRepository(delivered: Seq[(String, Option[Int], MovieRecord)] = Seq.empty,
+                                    titleNormalizer: TitleNormalizer)
+  extends InMemoryMovieRepository(delivered, normalizer = titleNormalizer) with FailsOnPurpose {
   override def foreachRecord(f: StoredMovieRecord => Unit): Boolean = { super.foreachRecord(f); false }
 }
 
@@ -112,8 +113,9 @@ class UnwritableScreeningsRepository extends InMemoryScreeningsRepository with F
  *  `findAll` deliberately keeps working — the corruption this exposes is a WRITE built on a
  *  failed point read, so the spec must still be able to see what the write did. */
 class UnreadableByIdMovieRepository(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty,
-                                    keyReadsFail: Boolean = true)
-  extends InMemoryMovieRepository(seed) with FailsOnPurpose {
+                                    keyReadsFail: Boolean = true,
+                                    titleNormalizer: TitleNormalizer)
+  extends InMemoryMovieRepository(seed, normalizer = titleNormalizer) with FailsOnPurpose {
   @volatile var failing: Boolean = true
   override def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) =
     if (failing) (None, false) else super.findByIdChecked(id)
@@ -127,7 +129,8 @@ class UnreadableByIdMovieRepository(seed: Seq[(String, Option[Int], MovieRecord)
  *  `MongoMovieRepository.upsert` answers when another document already holds the key or
  *  tmdbId ([[WriteOutcome.IdentityHeld]]): nothing threw, and nothing was written. Every other
  *  operation is real; `canMoveFilm` false makes every film move fail, as a degraded Mongo does. */
-class IdentityHeldMovieRepository extends InMemoryMovieRepository with FailsOnPurpose {
+class IdentityHeldMovieRepository(titleNormalizer: TitleNormalizer)
+  extends InMemoryMovieRepository(normalizer = titleNormalizer) with FailsOnPurpose {
   @volatile var declining: Boolean   = true
   @volatile var canMoveFilm: Boolean = true
   override def upsert(film: FilmId, key: CacheKey, e: MovieRecord): WriteOutcome =
@@ -148,8 +151,9 @@ private[movies] object SimulatedCodecFailure {
  *  rule this double would have to restate. */
 class ThrowingUpsertMovieRepository(metrics: RepositoryWriteMetrics,
                                     screenings: Option[ScreeningsRepository] = None,
-                                    slots: Option[SlotsRepository] = None)
-  extends InMemoryMovieRepository(screenings = screenings, slots = slots) with FailsOnPurpose {
+                                    slots: Option[SlotsRepository] = None,
+                                    titleNormalizer: TitleNormalizer)
+  extends InMemoryMovieRepository(screenings = screenings, slots = slots, normalizer = titleNormalizer) with FailsOnPurpose {
   @volatile var failing: Boolean = true
   private val log = play.api.Logger(getClass)
   override def upsert(film: FilmId, key: CacheKey, e: MovieRecord): WriteOutcome =

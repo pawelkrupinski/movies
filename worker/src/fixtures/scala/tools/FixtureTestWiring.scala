@@ -29,7 +29,7 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   override lazy val screeningsRepository = new CountingScreeningsRepository(new InMemoryScreeningsRepository)
   override lazy val slotsRepository      = new CountingSlotsRepository(new InMemorySlotsRepository)
   override lazy val movieRepository =
-    new InMemoryMovieRepository(screenings = Some(screeningsRepository), slots = Some(slotsRepository))
+    new InMemoryMovieRepository(screenings = Some(screeningsRepository), slots = Some(slotsRepository), normalizer = titleNormalizer)
 
   // Mongo-free read model: the worker projects the scraped corpus into this
   // in-memory store, and the web's `WebReadModel` serves from it — the same

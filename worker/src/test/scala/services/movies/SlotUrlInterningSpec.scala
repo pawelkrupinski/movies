@@ -44,7 +44,7 @@ class SlotUrlInterningSpec extends AnyFlatSpec with Matchers {
   )
 
   private def cacheOn(pool: StringPool) =
-    new CaffeineMovieCache(new InMemoryMovieRepository(Seq.empty), normalizer = titleNormalizer, stringPool = pool)
+    new CaffeineMovieCache(new InMemoryMovieRepository(Seq.empty, normalizer = titleNormalizer), normalizer = titleNormalizer, stringPool = pool)
 
   private def slotsForOneFilmAtTwoCinemas(): Seq[SourceData] = {
     val cache = cacheOn(new StringPool)

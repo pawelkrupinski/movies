@@ -16,7 +16,7 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
 
   private val t0 = Instant.parse("2026-06-18T00:00:00Z").toEpochMilli
 
-  private def newCache() = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer)
+  private def newCache() = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(), normalizer = titleNormalizer)
 
   private def seedRow(cache: CaffeineMovieCache, title: String)(edit: MovieRecord => MovieRecord): Unit = {
     cache.recordCinemaScrape(KinoApollo, Seq(CinemaMovie(

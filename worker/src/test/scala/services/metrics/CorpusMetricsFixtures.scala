@@ -1,5 +1,7 @@
 package services.metrics
 
+import services.movies.SingleCountryNormalizer
+
 import models.{MovieRecord, Showtime, Source, SourceData}
 import services.movies.{InMemoryMovieRepository, MovieRepository, StoredMovieRecord}
 
@@ -37,5 +39,5 @@ object CorpusMetricsFixtures {
   /** A read-only repository over these rows — the in-memory store production's cache
    *  tests already use, so the specs exercise the real `foreachRecord` contract. */
   def repositoryOf(rows: StoredMovieRecord*): MovieRepository =
-    new InMemoryMovieRepository(rows.map(r => (r.title, r.year, r.record)))
+    new InMemoryMovieRepository(rows.map(r => (r.title, r.year, r.record)), normalizer = SingleCountryNormalizer.titleNormalizer)
 }

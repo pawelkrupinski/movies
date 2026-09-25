@@ -29,7 +29,7 @@ class LetterboxdResolveSpec extends AnyFlatSpec with Matchers {
       imdbId = Some(imdbId),
       data   = Map[Source, SourceData](CinemaCityPoznanPlaza -> SourceData(title = Some(title)))
     )
-    new CaffeineMovieCache(new InMemoryMovieRepository(Seq((title, None, seed))), normalizer = titleNormalizer)
+    new CaffeineMovieCache(new InMemoryMovieRepository(Seq((title, None, seed)), normalizer = titleNormalizer), normalizer = titleNormalizer)
   }
 
   // TMDB routes where fuzzy search AND /find both miss, but the crosswalk-

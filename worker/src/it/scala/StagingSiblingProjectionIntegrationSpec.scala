@@ -215,7 +215,7 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
         new services.tasks.InMemoryTaskQueue, counting)
       val bus = new services.events.InProcessEventBus
       bus.subscribe(reaper.onNewcomerDiverted)
-      val cache = new services.movies.CaffeineMovieCache(new services.movies.InMemoryMovieRepository, bus,
+      val cache = new services.movies.CaffeineMovieCache(new services.movies.InMemoryMovieRepository(normalizer = titleNormalizer), bus,
         staging = Some(counting), normalizer = titleNormalizer)
       models.Cinema.all.distinct.take(venueCount).foreach { venue =>
         cache.recordCinemaScrape(venue, Seq(models.CinemaMovie(models.Movie(title = "Presale Blockbuster", releaseYear = Some(2026)),

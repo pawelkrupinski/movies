@@ -45,7 +45,7 @@ class SameTitleTwoFilmsSpec extends AnyFlatSpec with Matchers {
   private val OldFilm  = 41050     // "La notte"       (1961), TMDB runtime 121
   private val When     = LocalDateTime.of(2026, 8, 14, 20, 5)
 
-  private def cache() = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
+  private def cache() = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
 
   /** A concluded row for one of the two films, carrying TMDB's own runtime/year. */
   private def resolved(tmdbId: Int, year: Int, runtime: Int, cinemas: Seq[Cinema]): MovieRecord =
