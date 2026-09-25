@@ -8,9 +8,9 @@ import java.nio.file.Files
 /**
  * `Env` resolves an installed admin override first, then its static source.
  * Most cases drive an instance over a fixed map ([[Env.of]]); the process
- * source ([[Env.fromProcess]]: env var → system property → `.env.local`) is
- * exercised through system properties and a temp vars file, since a test can't
- * set process env vars.
+ * source's precedence (env var → system property → `.env.local`) is driven through
+ * [[Env.layered]] over maps and a temp vars file — [[Env.fromProcess]] is that same
+ * precedence bound to the real process, which a spec must not mutate.
  */
 class EnvSpec extends AnyFlatSpec with Matchers {
 
@@ -113,9 +113,9 @@ class EnvSpec extends AnyFlatSpec with Matchers {
   }
 
   // ── process source ────────────────────────────────────────────────────────────
-  private def withProp[A](key: String, value: String)(body: => A): A =
-    try { System.setProperty(key, value); body } finally System.clearProperty(key)
-
+  // `Env.fromProcess` is `Env.layered` bound to System.getenv / System.getProperty, so
+  // the precedence is proven over maps here — never by setting a real system property,
+  // which every suite sharing this JVM would see.
   private def varsFile(lines: String*): java.io.File = {
     val path = Files.createTempFile("env-spec", ".env")
     Files.writeString(path, lines.mkString("\n"))
@@ -123,20 +123,42 @@ class EnvSpec extends AnyFlatSpec with Matchers {
     path.toFile
   }
 
-  "Env.fromProcess" should "read a system property, winning over the vars file" in {
-    val env = Env.fromProcess(varsFile("KINOWO_TEST_PROC=file"))
-    withProp("KINOWO_TEST_PROC", "prop") { env.get("KINOWO_TEST_PROC") shouldBe Some("prop") }
+  private val NoFile = new java.io.File("/nonexistent/.env.local")
+
+  private def layered(environment: Map[String, String], properties: Map[String, String], file: java.io.File = NoFile): Env =
+    Env.layered(environment.get, properties.get, file)
+
+  "Env.layered" should "let an environment variable win over a system property and the vars file" in {
+    val env = layered(Map("KINOWO_TEST_PROC" -> "env"), Map("KINOWO_TEST_PROC" -> "prop"), varsFile("KINOWO_TEST_PROC=file"))
+    env.get("KINOWO_TEST_PROC") shouldBe Some("env")
+  }
+
+  it should "let a system property win over the vars file" in {
+    val env = layered(Map.empty, Map("KINOWO_TEST_PROC" -> "prop"), varsFile("KINOWO_TEST_PROC=file"))
+    env.get("KINOWO_TEST_PROC") shouldBe Some("prop")
+  }
+
+  it should "fall through to the vars file when neither process source has the key" in {
+    layered(Map.empty, Map.empty, varsFile("KINOWO_TEST_PROC=file")).get("KINOWO_TEST_PROC") shouldBe Some("file")
+  }
+
+  it should "treat an empty value at any layer as unset, so the next layer answers" in {
+    val env = layered(Map("KINOWO_TEST_PROC" -> ""), Map("KINOWO_TEST_PROC" -> ""), varsFile("KINOWO_TEST_PROC=file"))
     env.get("KINOWO_TEST_PROC") shouldBe Some("file")
   }
 
   it should "parse comments, blank lines and quoting in the vars file" in {
-    val env = Env.fromProcess(varsFile("# comment", "", "KINOWO_TEST_Q1=\"double\"", "KINOWO_TEST_Q2='single'", "noequals"))
+    val env = layered(Map.empty, Map.empty, varsFile("# comment", "", "KINOWO_TEST_Q1=\"double\"", "KINOWO_TEST_Q2='single'", "noequals"))
     env.get("KINOWO_TEST_Q1") shouldBe Some("double")
     env.get("KINOWO_TEST_Q2") shouldBe Some("single")
     env.get("noequals")       shouldBe None
   }
 
   it should "treat a missing vars file as empty" in {
-    Env.fromProcess(new java.io.File("/nonexistent/.env.local")).get("KINOWO_TEST_MISSING") shouldBe None
+    layered(Map.empty, Map.empty).get("KINOWO_TEST_MISSING") shouldBe None
+  }
+
+  "Env.fromProcess" should "read the vars file it is pointed at" in {
+    Env.fromProcess(varsFile("KINOWO_TEST_FROM_PROCESS_ONLY_IN_FILE=file")).get("KINOWO_TEST_FROM_PROCESS_ONLY_IN_FILE") shouldBe Some("file")
   }
 }

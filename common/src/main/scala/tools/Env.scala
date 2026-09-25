@@ -104,11 +104,22 @@ object Env {
    *  (`.env.local` in the working directory by default). The file is read at most
    *  once, and only when a key misses the first two. Built ONCE per process at the
    *  composition root; everything else is handed the instance. */
-  def fromProcess(localFile: java.io.File = new java.io.File(".env.local")): Env = {
+  def fromProcess(localFile: java.io.File = new java.io.File(".env.local")): Env =
+    layered(key => Option(System.getenv(key)), key => Option(System.getProperty(key)), localFile)
+
+  /** The precedence [[fromProcess]] binds to the real process — environment variables, then
+   *  system properties, then the vars file — over whatever sources it is handed. An empty
+   *  value counts as unset at every layer, so it falls through to the next one. Separate so
+   *  the precedence itself is testable over plain maps: a spec that set a real system
+   *  property to prove it would set it for every suite sharing its JVM. */
+  def layered(
+      environmentVariables: String => Option[String],
+      systemProperties:     String => Option[String],
+      localFile:            java.io.File): Env = {
     lazy val fileVars = readVarsFile(localFile)
     new Env(key =>
-      Option(System.getenv(key)).filter(_.nonEmpty)
-        .orElse(Option(System.getProperty(key)).filter(_.nonEmpty))
+      environmentVariables(key).filter(_.nonEmpty)
+        .orElse(systemProperties(key).filter(_.nonEmpty))
         .orElse(fileVars.get(key)))
   }
 
