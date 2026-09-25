@@ -230,8 +230,15 @@ object StagingFold {
     // beside a bare "Titanic" stays one row: rule 4 folds the bare listing onto the only
     // film there is.
     val nothingResolved = stagingRows.forall(_.record.tmdbId.isEmpty) && moviesRows.forall(_.record.tmdbId.isEmpty)
+    // A row RESOLVED without a year of its own is filed at the year TMDB gave its film, so
+    // rows that resolved to DIFFERENT films never share a key: the union below keeps one
+    // tmdbId per key, and "A Star Is Born (1954)", "(1976)" and "(2018)" — three venues, no
+    // published year, three films — were unioned into one row before `clusterByFilm` could
+    // keep them apart (US convergence, 2026-09-25). Rows resolved to the same film still meet.
     def fileYear(r: StagingRecord): Option[Int] =
-      r.year.orElse(if (nothingResolved) EmbeddedYear.of(r.title) else None)
+      r.year
+        .orElse(if (r.record.tmdbId.isDefined) r.record.tmdbYear else None)
+        .orElse(if (nothingResolved) EmbeddedYear.of(r.title) else None)
     val stagingByKey = stagingRows.groupBy(r => CacheKey(r.title, fileYear(r), normalizer)).toSeq.map {
       case (key, rows) => key -> MovieRecordMerge.unionAll(rows.map(_.record))
     }

@@ -2,7 +2,7 @@ package services.staging
 
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
-import models.{Cinema, CinemaCityWroclavia, Helios, Multikino, MovieRecord, Source, SourceData, Tmdb}
+import models.{Cinema, CinemaCityWroclavia, Helios, KinoMuranow, Multikino, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{CacheKey, CaffeineMovieCache, EnrichmentRetrigger, FilmId, MovieRepository, RetriggerKind, StoredMovieRecord, StoredRowsRepository}
@@ -247,6 +247,26 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     val titanic = StagingFold.planGroup(Seq(unresolved(Helios, "Titanic (1997)"), unresolved(Multikino, "Titanic")),
       moviesRows = Seq.empty, titleNormalizer)
     titanic.moviesUpserts.map(_._3.data.keySet) shouldBe Seq(Set[Source](Helios, Multikino))
+  }
+
+  it should "keep three films that resolved apart as three rows, though their venues publish no year" in {
+    // US convergence, 2026-09-25: "A Star Is Born (1954)", "(1976)" and "(2018)" at
+    // different venues, none publishing a year of its own. Staging resolved each on its own
+    // hints — 3111, 19610, 332562 — and the fold then unioned all eight rows into ONE movies
+    // row before clustering: they shared the (title, no year) key the fold unions by first,
+    // and a union keeps one tmdbId. Garland's, Streisand's and Cooper's films, one card.
+    def resolvedYearless(cinema: Source, title: String, tmdbId: Int, tmdbYear: Int) = StagingRecord(cinema, title, None,
+      MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
+        cinema -> SourceData(title = Some(title)),
+        Tmdb   -> SourceData(title = Some("A Star Is Born"), releaseYear = Some(tmdbYear)))), titleNormalizer)
+
+    val plan = StagingFold.planGroup(Seq(
+      resolvedYearless(Helios,      "A Star Is Born (1954)", 3111,   1954),
+      resolvedYearless(KinoMuranow, "A Star Is Born (1976)", 19610,  1976),
+      resolvedYearless(Multikino,   "A Star is Born (2018)", 332562, 2018)), moviesRows = Seq.empty, titleNormalizer)
+
+    plan.moviesUpserts.map { case (_, k, r) => r.tmdbId -> r.cinemaSlots.map(_._1).toSet }.toSet shouldBe Set(
+      Some(3111) -> Set[Source](Helios), Some(19610) -> Set[Source](KinoMuranow), Some(332562) -> Set[Source](Multikino))
   }
 
   it should "fold a repertory revival's rebroadcast year onto the same film, not split it out" in {
