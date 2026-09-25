@@ -67,6 +67,25 @@ class CorpusSampleSpec extends AnyFlatSpec with Matchers {
       contain theSameElementsAs Seq("Diuna", "DIUNA")
   }
 
+  /** A decorated listing is the same film as its bare title, and production resolves it
+   *  through that bare title's row. Poland's sample, 2026-09-25 (recording 36163767493):
+   *  "DKF ŻAK: Do utraty tchu", "KOK - Rozważna i romantyczna", "Hot Spot - Kino Konesera -
+   *  24. FFOL", "Nocni pasażerowie | Festiwal Kina Krajów Portugalskojęzycznych Maré" and
+   *  "Najlepsze z Najgorszych: Atak potworków" were drawn without their bare titles, so the
+   *  replay could not fold them while production's baseline counted them resolved — eight
+   *  films apart on tmdbId, outside the band, with no code at fault. */
+  it should "bring a drawn film's bare and decorated spellings along with it" in {
+    val decorated = Seq(
+      venue(models.Helios,    "DKF ŻAK: Do utraty tchu"),
+      venue(models.Multikino, "Do utraty tchu", "Arco", "Brzezina", "Zawodowcy"))
+    val draws = (0 until 40).map(seed => CorpusSample.draw(decorated, 1, new Random(seed), titleNormalizer)
+      .flatMap(_.films.map(_.movie.title)).toSet)
+
+    draws.filter(_.contains("DKF ŻAK: Do utraty tchu")) should not be empty
+    all(draws.filter(t => t.contains("DKF ŻAK: Do utraty tchu") || t.contains("Do utraty tchu"))) should
+      contain allOf ("DKF ŻAK: Do utraty tchu", "Do utraty tchu")
+  }
+
   it should "drop a venue the cap left without films" in {
     CorpusSample.draw(wide, 100, new Random(7), titleNormalizer, maxVenuesPerFilm = 3) should have size 3
   }

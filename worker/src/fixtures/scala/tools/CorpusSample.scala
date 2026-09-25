@@ -97,7 +97,28 @@ object CorpusSample {
    */
   def draw(rows: Seq[ArchivedScrape], size: Int, random: Random, normalizer: TitleNormalizer,
            maxVenuesPerFilm: Int = MaxVenuesPerFilm): Seq[ArchivedScrape] =
-    capVenues(trim(rows, pick(rows, size, random, normalizer), normalizer), maxVenuesPerFilm, random, normalizer)
+    capVenues(trim(rows, withSpellings(rows, pick(rows, size, random, normalizer), normalizer), normalizer),
+      maxVenuesPerFilm, random, normalizer)
+
+  /**
+   * `keys` plus every film key that is a DECORATION of one of them, or that one of them
+   * decorates ([[services.movies.TitleContainment]], the fold's own rule) — so a drawn
+   * "DKF ŻAK: Do utraty tchu" arrives with the "Do utraty tchu" other venues list, and a
+   * drawn bare title with its banners.
+   *
+   * Production identifies a decorated listing through its bare title's row; drawn alone,
+   * the replay cannot, while the baseline — prod's own resolution of the same slot —
+   * counts it resolved. Poland's sample of 2026-09-25 drew five such listings without
+   * their bare titles and sat eight films under production on tmdbId with no code at
+   * fault. One step, not a closure: the sample stays about `size` films.
+   */
+  private[tools] def withSpellings(rows: Seq[ArchivedScrape], keys: Set[String], normalizer: TitleNormalizer): Set[String] = {
+    import services.movies.TitleContainment.{decorates, tokens}
+    val tokensOf = rows.flatMap(_.films).map(film => keyOf(film, normalizer) -> tokens(film.movie.title))
+      .filter(_._1.nonEmpty).distinct
+    val drawn = tokensOf.filter((key, _) => keys.contains(key)).map(_._2)
+    keys ++ tokensOf.collect { case (key, t) if drawn.exists(d => decorates(d, t) || decorates(t, d)) => key }
+  }
 
   /**
    * Keep only the listings for `keys`, and only the venues left holding any.
