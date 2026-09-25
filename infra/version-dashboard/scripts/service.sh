@@ -20,6 +20,12 @@ case "${1:-}" in
     for job in $JOBS; do
       cp "$job.plist" "$AGENTS/"
       /bin/launchctl bootout "$DOMAIN/$job" 2>/dev/null || true
+      # bootout returns before the job is gone, and a bootstrap that lands first fails with
+      # "5: Input/output error" -- wait (bounded) for it to be really unloaded.
+      for _ in 1 2 3 4 5 6 7 8 9 10; do
+        /bin/launchctl print "$DOMAIN/$job" >/dev/null 2>&1 || break
+        sleep 1
+      done
       /bin/launchctl bootstrap "$DOMAIN" "$AGENTS/$job.plist"
     done
     echo "installed; $HEALTH should answer within a few seconds"
