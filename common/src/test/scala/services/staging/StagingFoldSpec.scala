@@ -269,6 +269,29 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
       Some(3111) -> Set[Source](Helios), Some(19610) -> Set[Source](KinoMuranow), Some(332562) -> Set[Source](Multikino))
   }
 
+  it should "keep a group that resolved to ONE film on one row, as it folded before the year filing" in {
+    // PL convergence, 2026-09-25: the Met's "Samson i Dalila" broadcast. Kino Amok's bare
+    // listing resolved to 29993 (DeMille's 1949 film); Kino Nowe Horyzonty's detail (2026,
+    // Darko Tresnjak, 234 min) matched nothing. Filing the resolved row at TMDB's year split
+    // the group into a 1949 row and a yearless one, and a bare listing of that title then
+    // had two homes: the scrape landed Amok on one, the settle moved it back to the other,
+    // three writes on every identical tick. The filing is for groups whose rows resolved to
+    // DIFFERENT films; one film, one row, as before.
+    val amok = StagingRecord(Multikino, "Samson i Dalila", None, MovieRecord(tmdbId = Some(29993),
+      data = Map[Source, SourceData](
+        Multikino -> SourceData(title = Some("Samson i Dalila")),
+        Tmdb      -> SourceData(title = Some("Samson i Dalia"), releaseYear = Some(1949), director = Seq("Cecil B. DeMille")))), titleNormalizer)
+    val horyzonty = StagingRecord(Helios, "Samson i Dalila", None, MovieRecord(
+      tmdbAttempt = Some(services.resolution.TmdbAttempt("searched", java.time.Instant.EPOCH)),
+      data = Map[Source, SourceData](Helios -> SourceData(title = Some("Samson i Dalila"), releaseYear = Some(2026),
+        director = Seq("Darko Tresnjak"), runtimeMinutes = Some(234)))), titleNormalizer)
+
+    val plan = StagingFold.planGroup(Seq(amok, horyzonty), moviesRows = Seq.empty, titleNormalizer)
+
+    plan.moviesUpserts.map { case (_, _, r) => r.tmdbId -> r.cinemaSlots.map(_._1).toSet } shouldBe
+      Seq(Some(29993) -> Set[Source](Multikino, Helios))
+  }
+
   it should "fold a repertory revival's rebroadcast year onto the same film, not split it out" in {
     // THE QUEEN BUDAPEST REGRESSION (2026-09-08). A Cinema City venue advertised its
     // 2026 anniversary screening of the 2012 concert film as "Queen Budapest (2026)"
