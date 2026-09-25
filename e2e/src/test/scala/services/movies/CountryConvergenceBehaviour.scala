@@ -817,7 +817,12 @@ abstract class CountryConvergenceBehaviour(
       before should not be empty
 
       val emissions = new AtomicInteger(0)
-      w.movieRepository.watchChanges(_ => { emissions.incrementAndGet(); () }, _ => { emissions.incrementAndGet(); () })
+      // WHICH films each write hit, not just how many: "2 persisted write(s)" with the records
+      // coming out identical named nothing to look at (US full, recording 36196248365).
+      val written = new java.util.concurrent.ConcurrentLinkedQueue[String]()
+      w.movieRepository.watchChanges(
+        r  => { emissions.incrementAndGet(); written.add(s"upsert '${r.title}' (${r.year.getOrElse("—")}) id=${r.id}"); () },
+        id => { emissions.incrementAndGet(); written.add(s"delete id=$id"); () })
 
       val splitsBefore = w.movieService.mixedFilmSplits
       w.movieService.settle()
@@ -910,6 +915,10 @@ abstract class CountryConvergenceBehaviour(
         // work on causes that turned out to leave the count at exactly 31.
         val recordsBeforeTick   = recordSnapshot(w)
         val showtimesBeforeTick = showtimesByFilm(w)
+        written.clear()
+        // On Mongo, the oplog says which collection and which fields each write touched —
+        // the only way to see a write whose stored record reads back unchanged.
+        val tickWrites          = storage.corpusWrites()
         val failures     = mutable.ListBuffer.empty[String]
         val diversions   = settleTick(w, rnd, failures)
         if (failures.nonEmpty)
@@ -927,12 +936,17 @@ abstract class CountryConvergenceBehaviour(
           churn += s"tick $t: ${diversions.size} known film(s) RE-DIVERTED to staging: ${diversions.take(12).mkString(", ")}"
         if (emissionsDelta != 0) {
           val recordsAfterTick = recordSnapshot(w)
+          import scala.jdk.CollectionConverters._
+          val named = written.asScala.toSeq.distinct
           churn += s"tick $t: $emissionsDelta persisted write(s) — an identical re-scrape must write nothing" +
                    (if (recordsAfterTick == recordsBeforeTick)
                       " (the stored records came out IDENTICAL — the write changed nothing, so this is a " +
                       "re-write of unchanged data, not a corpus still moving)"
-                    else s"\n${CorpusDiff.records(recordsBeforeTick, recordsAfterTick, s"before-tick$t", s"after-tick$t")}")
+                    else s"\n${CorpusDiff.records(recordsBeforeTick, recordsAfterTick, s"before-tick$t", s"after-tick$t")}") +
+                   named.take(8).map("\n  " + _).mkString +
+                   tickWrites.map(_.describe()).filter(_.nonEmpty).map("\n  " + _.replace("\n", "\n  ")).getOrElse("")
         }
+        tickWrites.foreach(_.close())
         if (appeared.nonEmpty) keyDrift += s"tick $t: keys APPEARED: ${appeared.take(8).mkString(", ")}"
         if (vanished.nonEmpty) keyDrift += s"tick $t: keys VANISHED: ${vanished.take(8).mkString(", ")}"
         // A tick is a full re-scrape THEN a settle, which is exactly the sequence a
