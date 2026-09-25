@@ -1,7 +1,5 @@
 package integration
 
-import org.mongodb.scala.model.Filters
-import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -9,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.test.Helpers._
 import play.api.test.FakeRequest
 import services.users.{InMemoryUserRepository, MongoUserStateRepository, NoUserChangeTimeCache, UserStateWriteOutcomes}
-import tools.Env
+import tools.{Env, IsolatedMongoDatabase}
 
 import java.util.concurrent.{ConcurrentLinkedQueue, Executors}
 import scala.jdk.CollectionConverters._
@@ -19,7 +17,14 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 /** The per-country hidden-films writes against REAL Mongo, many requests for one
  *  user at once — the case a second tab, the app and a quick double-tap produce.
  *  What matters is what the server does with overlapping writes, so the store
- *  here is `MongoUserStateRepository`, not the in-memory one. */
+ *  here is `MongoUserStateRepository`, not the in-memory one.
+ *
+ *  The spec owns its database. In the shared one, a co-running spec's
+ *  `afterAll` purge (`UserRepositoryIntegrationSpec` deletes every
+ *  `^__integration-test-` userId) could land between these writes and the
+ *  read-back and erase the row — every write 200, then `find` returned None.
+ *  Isolating by database keeps "neither erases the other" about THIS server's
+ *  writes, not about who else is cleaning up. */
 class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
@@ -28,8 +33,8 @@ class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matche
   private val Prefix = "__integration-test-hide-"
   // Every write's reported outcome, as (userId-free) (endpoint, outcome) pairs.
   private val outcomes = new ConcurrentLinkedQueue[(String, String)]()
-  private lazy val client   = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
-  private lazy val database = client.getDatabase(models.Country.resolvedDbName(tools.Env.fromProcess()))
+  private val isolated = IsolatedMongoDatabase.open(Env.fromProcess().get("MONGODB_URI").get, "hidden-films-concurrent")
+  private val database = isolated.database
   private val states = new MongoUserStateRepository(Some(database),
     writeOutcomes = (endpoint: String, outcome: String) => { outcomes.add(endpoint -> outcome); () })
   private val users  = new InMemoryUserRepository
@@ -37,10 +42,8 @@ class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matche
   private implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(pool)
 
   override protected def afterAll(): Unit = try {
-    Await.ready(database.getCollection("userStates")
-      .deleteMany(Filters.regex("userId", s"^$Prefix")).toFuture(), 10.seconds)
     states.close()
-    client.close()
+    isolated.drop()
     pool.shutdown()
   } finally super.afterAll()
 
