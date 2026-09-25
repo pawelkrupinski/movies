@@ -328,8 +328,10 @@ final class StateSyncService: ObservableObject {
     /// doc for why there's no debounce here any more. Language pushes on its
     /// own debounce instead — see `schedulePush`.
     private func observeLocalChanges() {
+        // Delivered synchronously, like the language pick below: `push` reads
+        // the selected country, which must still be the one the edit was made
+        // in — a `receive(on:)` hop let a switch in the same turn intervene.
         prefs.hiddenFilmsChanges
-            .receive(on: DispatchQueue.main)
             .sink { [weak self] change in self?.push(change) }
             .store(in: &prefsCancellables)
 

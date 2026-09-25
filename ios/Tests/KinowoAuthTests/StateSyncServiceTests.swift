@@ -896,6 +896,23 @@ final class StateSyncServiceTests: XCTestCase {
         _ = sync
     }
 
+    /// A hide belongs to the country it was made in, even when the country
+    /// changes before the next main-queue turn: the edit was queued only after
+    /// a hop to the main queue, under whatever country was selected by then.
+    func testAHideIsSentToTheCountryItWasMadeIn() async throws {
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+
+        prefs.hide("PL Film")
+        prefs.setCountry(unitedKingdom)
+
+        try await waitUntil { !self.client.hideCalls.isEmpty }
+        XCTAssertEqual(client.hideCalls.map(\.country), [pl])
+        XCTAssertEqual(client.remote[pl], ["PL Film"])
+        _ = sync
+    }
+
     /// Switching to a country this device has never synced must show that
     /// country's bucket — not union the previous country's titles in and
     /// push them up as hides of the new one.
