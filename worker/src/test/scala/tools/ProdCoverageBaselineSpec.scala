@@ -75,9 +75,18 @@ class ProdCoverageBaselineSpec extends AnyFlatSpec with Matchers {
 
   it should "keep the whole films floor on the films axis, and scale the others to production's count" in {
     ProdCoverageBaseline.noiseFloor("films", 94) shouldBe ProdCoverageBaseline.NoiseFloorFilms
-    ProdCoverageBaseline.noiseFloor("metascore", 28) shouldBe 3
-    ProdCoverageBaseline.noiseFloor("tmdbId", 90) shouldBe 9
+    ProdCoverageBaseline.noiseFloor("metascore", 28) shouldBe 8          // ⌈1.5·√28⌉
+    ProdCoverageBaseline.noiseFloor("tmdbId", 90) shouldBe 15            // ⌈1.5·√90⌉ = 15
     ProdCoverageBaseline.noiseFloor("imdbRating", 1367) shouldBe ProdCoverageBaseline.NoiseFloorFilms
+  }
+
+  // Green-history lines the one-tenth floor would have failed: sample noise, not regressions.
+  // Every one of the 3,204 band lines in the last 60 convergence and recording runs sits under
+  // 1.42·√prod films apart; these are the widest (Poland sample, 2026-09-24/25).
+  it should "pass the sample skew a green history has shown on every axis" in {
+    ProdCoverageBaseline.divergences(coverage(films = 92, tmdb = 73, rt = 34), coverage(films = 92, tmdb = 73, rt = 39), Band) shouldBe empty
+    ProdCoverageBaseline.divergences(coverage(films = 94, tmdb = 59), coverage(films = 94, tmdb = 71), Band) shouldBe empty
+    ProdCoverageBaseline.divergences(coverage(films = 94, tmdb = 70, metascore = 24), coverage(films = 94, tmdb = 70, metascore = 31), Band) shouldBe empty
   }
 
   /**

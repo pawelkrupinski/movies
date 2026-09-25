@@ -116,19 +116,27 @@ object ProdCoverageBaseline {
 
   /**
    * The floor for ONE axis. `films` keeps the whole [[NoiseFloorFilms]]: capture skew is a
-   * count of films, and it lands on that axis whole. A downstream axis only inherits its
-   * share of the skew, so it gets a tenth of production's own count (never under 3, never
-   * over the films floor).
+   * count of films, and it lands on that axis whole. A downstream axis gets
+   * `NoiseSigmas`·√(production's count), clamped to 3..[[NoiseFloorFilms]].
    *
-   * A flat 15 made the band toothless on the ~100-film samples, where every rating axis is
-   * 25-70 films: Poland's sample scores 26 metascores against production's 28, so a source
-   * that stopped answering for a third of its films (26 → 17) sat 35% off the band and still
-   * passed, being only 11 films apart. The widest skew any downstream axis has shown on a
-   * green leg is 5 films on 90 (United Kingdom sample, tmdbId, 2026-09-24), inside a tenth.
+   * √count because a rating axis is a count of films that each did or did not get the
+   * rating: binomial, with a standard deviation of √(n·p·(1-p)) ≤ √(n·p) = √count. The two
+   * sides are the same films, so run-minus-prod is driven by the few films that flip
+   * between them, and its spread scales the same way.
+   *
+   * The multiplier is measured, not chosen: over the 3,204 downstream band lines of the
+   * last 60 convergence and recording runs (every country, sample and full, 2026-09-18 to
+   * 09-25) the widest skew was 1.42·√prod (Poland sample tmdbId, 59 against 71), p99 1.25.
+   * A flat tenth of the count (the previous floor) fails 14 of those lines — the Poland
+   * sample flipping between tmdbId, metascore and rottenTomatoes from one recording to the
+   * next. The regression this has to keep catching sits above: MetascoreRatings dropping
+   * every third film's score takes the sample from 26 to 17 against 28, 1.70·√28.
    */
+  val NoiseSigmas = 1.5
+
   def noiseFloor(axis: String, prodCount: Int): Int =
     if (axis == "films") NoiseFloorFilms
-    else math.min(NoiseFloorFilms, math.max(3, math.ceil(prodCount * 0.1).toInt))
+    else math.min(NoiseFloorFilms, math.max(3, math.ceil(NoiseSigmas * math.sqrt(prodCount)).toInt))
 
   /**
    * Each axis as `(name, run share, prod share, run count, prod count)`.
