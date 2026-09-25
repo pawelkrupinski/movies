@@ -4,6 +4,7 @@ import clients.tools.FakeHttpFetch
 import models.{CinemaCityChain, CinemaCityKinepolis, CinemaCityPoznanPlaza}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.common.DayChunks
 import services.cinemas.pl.{CinemaCityClient, CinemaCityScraper}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
@@ -30,13 +31,13 @@ class CinemaCityScraperSpec extends AnyFlatSpec with Matchers {
   "planChunks" should "group screening dates into week-sized chunks, not one per date" in {
     val plaza = scraper("1078", CinemaCityPoznanPlaza)
     val dates = client.dates("1078")
-    dates.size should be > CinemaCityScraper.DaysPerChunk // fixture spans more than one chunk
+    dates.size should be > DayChunks.PerChunk // fixture spans more than one chunk
 
     val keys = plaza.planChunks()
-    keys.size shouldBe math.ceil(dates.size.toDouble / CinemaCityScraper.DaysPerChunk).toInt
+    keys.size shouldBe math.ceil(dates.size.toDouble / DayChunks.PerChunk).toInt
     keys.size should be < dates.size                      // fewer tasks than per-date
     // Each key packs up to a week of dates; together they cover every date once.
-    keys.foreach(_.split(",").length should be <= CinemaCityScraper.DaysPerChunk)
+    keys.foreach(_.split(",").length should be <= DayChunks.PerChunk)
     keys.flatMap(_.split(",")).toList shouldBe dates.map(_.toString).toList
   }
 

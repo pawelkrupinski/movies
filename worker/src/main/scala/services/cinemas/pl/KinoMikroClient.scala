@@ -5,7 +5,7 @@ import tools.HttpFetch
 import models._
 import play.api.libs.json._
 import org.jsoup.Jsoup
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, ScrapeHorizon}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 
@@ -46,20 +46,17 @@ class KinoMikroClient(
    *  range is capped at ~25 records by the feed (see [[KinoMikroClient.dayUrl]]),
    *  so a week cannot be asked for in one request. */
   def planChunks(): Seq[String] =
-    ScrapeHorizon.liveDays(today) { day =>
+    DayChunks.keys(ScrapeHorizon.liveDays(today) { day =>
       KinoMikroParser.parse(Seq(http.get(KinoMikroClient.dayUrl(day))), venueName, cinema).nonEmpty
-    }.map(_.toString).grouped(KinoMikroClient.DaysPerChunk).map(_.mkString(",")).toSeq
+    })
 
   /** One chunk's days → their films. A throw reschedules just this chunk's task. */
   def fetchChunk(key: String): Seq[CinemaMovie] =
     KinoMikroParser.parse(
-      key.split(",").toSeq.map(d => http.get(KinoMikroClient.dayUrl(LocalDate.parse(d)))), venueName, cinema)
+      DayChunks.days(key).map(d => http.get(KinoMikroClient.dayUrl(d))), venueName, cinema)
 }
 
 object KinoMikroClient {
-
-  /** Days per chunk task, so a wider window costs chunk tasks in weeks not days. */
-  val DaysPerChunk = 7
 
   val BaseApiUrl = "https://kinomikro.pl/api.php/v1/repertoires"
 

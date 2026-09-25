@@ -6,7 +6,7 @@ import services.movies.FormatTags
 import tools.HttpFetch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, ScrapeHorizon}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import java.time.format.DateTimeFormatter
@@ -60,16 +60,12 @@ class KinoKadrTomaszowLubelskiClient(
 
   def planChunks(): Seq[String] = {
     val nonce = fetchNonce()
-    ScrapeHorizon.liveDays(today) { day => parseDay(postDay(nonce, day), day, cinema).nonEmpty }
-      .map(_.toString).grouped(DaysPerChunk).map(_.mkString(",")).toSeq
+    DayChunks.keys(ScrapeHorizon.liveDays(today) { day => parseDay(postDay(nonce, day), day, cinema).nonEmpty })
   }
 
   def fetchChunk(key: String): Seq[CinemaMovie] = {
     val nonce = fetchNonce()
-    key.split(",").toSeq.flatMap { d =>
-      val day = LocalDate.parse(d)
-      parseDay(postDay(nonce, day), day, cinema)
-    }
+    DayChunks.days(key).flatMap(day => parseDay(postDay(nonce, day), day, cinema))
   }
 
   private def fetchNonce(): String =
@@ -82,10 +78,6 @@ class KinoKadrTomaszowLubelskiClient(
 }
 
 object KinoKadrTomaszowLubelskiClient {
-
-  /** Days per chunk task, so the two-week widget costs one chunk, not one
-   *  task per live day. */
-  val DaysPerChunk = 7
 
   val BaseUrl       = "https://kinokadr.pl"
   val RepertoireUrl = s"$BaseUrl/repertuar/"

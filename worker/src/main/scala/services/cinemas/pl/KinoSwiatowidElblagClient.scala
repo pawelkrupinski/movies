@@ -6,7 +6,7 @@ import services.movies.FormatTags
 import tools.HttpFetch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, ScrapeHorizon}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.jdk.CollectionConverters._
@@ -64,13 +64,12 @@ class KinoSwiatowidElblagClient(
   override def sourceUrl: Option[String] = Some(KinoSwiatowidElblagClient.RepertoireUrl)
 
   def planChunks(): Seq[String] =
-    ScrapeHorizon.liveDays(today) { day =>
+    DayChunks.keys(ScrapeHorizon.liveDays(today) { day =>
       KinoSwiatowidElblagClient.parseDay(http.get(KinoSwiatowidElblagClient.dayUrl(day)), day, cinema).nonEmpty
-    }.map(_.toString).grouped(KinoSwiatowidElblagClient.DaysPerChunk).map(_.mkString(",")).toSeq
+    })
 
   def fetchChunk(key: String): Seq[CinemaMovie] =
-    key.split(",").toSeq.flatMap { d =>
-      val day = LocalDate.parse(d)
+    DayChunks.days(key).flatMap { day =>
       KinoSwiatowidElblagClient.parseDay(http.get(KinoSwiatowidElblagClient.dayUrl(day)), day, cinema)
     }
 
@@ -79,9 +78,6 @@ class KinoSwiatowidElblagClient(
 }
 
 object KinoSwiatowidElblagClient {
-
-  /** Days per chunk task, so a wider window costs chunk tasks in weeks not days. */
-  val DaysPerChunk = 7
 
   val BaseUrl       = "http://kino.swiatowid.elblag.pl"
   val RepertoireUrl = s"$BaseUrl/repertuar"

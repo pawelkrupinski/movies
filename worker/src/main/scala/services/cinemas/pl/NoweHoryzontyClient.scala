@@ -5,7 +5,7 @@ import play.api.libs.json.Json
 import models._
 import org.jsoup.Jsoup
 import tools.HttpFetch
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon}
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, ZoneId}
@@ -31,7 +31,6 @@ import scala.util.Try
  */
 class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends ChunkedCinemaScraper with DetailEnricher {
-
 
   val cinema: Cinema = KinoNoweHoryzonty
   override val detailGroup: String = "nowe-horyzonty"
@@ -69,18 +68,18 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
    *  month: a missing day is indistinguishable from a quiet one, and treating it as
    *  "keep going" would walk two years on every blip.
    *
-   *  Days are grouped [[DaysPerChunk]] to a chunk so widening the window costs
+   *  Days are grouped [[DayChunks.PerChunk]] to a chunk so widening the window costs
    *  chunk TASKS in weeks rather than days — the fan-out that
    *  `project_scrape_caps_count_venues_not_tasks` is about. */
   def planChunks(): Seq[String] =
-    ScrapeHorizon.liveDays(today) { day =>
+    DayChunks.keys(ScrapeHorizon.liveDays(today) { day =>
       listaHtml(http.get(dayUrl(day))).exists(FilmIdPat.findFirstIn(_).isDefined)
-    }.map(_.toString).grouped(NoweHoryzontyClient.DaysPerChunk).map(_.mkString(",")).toSeq
+    })
 
   /** One chunk's days → their films (slots grouped by film id). A throw
    *  reschedules just this chunk's task. */
   def fetchChunk(key: String): Seq[CinemaMovie] =
-    moviesFrom(key.split(",").toSeq.map(LocalDate.parse).flatMap { d =>
+    moviesFrom(DayChunks.days(key).flatMap { d =>
       listaHtml(http.get(dayUrl(d))).toSeq.flatMap(parseDay(_, d))
     })
 
@@ -155,10 +154,6 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
 }
 
 object NoweHoryzontyClient {
-
-  /** Days per chunk task. Widening the window from one week to the whole
-   *  programme must not multiply the chunk-task fan-out day for day. */
-  val DaysPerChunk = 7
 
   private val EventIdPat = """eventId=(\d+)""".r
 
