@@ -6,6 +6,7 @@ on:
             - 'ios/**'
             - 'mobile-version.txt'
             - 'scripts/mobile-version-check.sh'
+            - 'scripts/ci/ios-sim-destination*.sh'
             - '.github/workflows/ios.yml'
             # The retry-classification table the language-push and hidden-films tests hold the app's rules to.
             - 'test/resources/retry-classification.json'
@@ -15,6 +16,7 @@ on:
             - 'ios/**'
             - 'mobile-version.txt'
             - 'scripts/mobile-version-check.sh'
+            - 'scripts/ci/ios-sim-destination*.sh'
             - '.github/workflows/ios.yml'
             # The retry-classification table the language-push and hidden-films tests hold the app's rules to.
             - 'test/resources/retry-classification.json'
@@ -97,6 +99,14 @@ jobs:
                       -destination 'generic/platform=iOS Simulator' \
                       CODE_SIGNING_ALLOWED=NO
 
+            # The destination every simulator step below uses: an iPhone this image HAS, never a
+            # hard-coded model (an Xcode 26 image dropped "iPhone 15", and the continue-on-error
+            # XCUITest step silently stopped running). Its spec runs first.
+            - name: Pick the simulator
+              run: |
+                  scripts/ci/ios-sim-destination-test.sh
+                  echo "DESTINATION=$(scripts/ci/ios-sim-destination.sh)" >> "$GITHUB_ENV"
+
             # KinowoUITests target + shared scheme are still being wired
             # by a parallel change. Don't block main until that lands.
             - name: Run XCUITest
@@ -105,7 +115,7 @@ jobs:
                   xcodebuild test \
                       -project ios/Kinowo.xcodeproj \
                       -scheme Kinowo \
-                      -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+                      -destination "$DESTINATION" \
                       -resultBundlePath build/Kinowo.xcresult \
                       CODE_SIGNING_ALLOWED=NO
 

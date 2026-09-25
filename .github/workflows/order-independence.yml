@@ -268,14 +268,17 @@ jobs:
     ios:
         runs-on: macos-latest
         timeout-minutes: 150
-        env:
-            DESTINATION: 'platform=iOS Simulator,name=iPhone 15,OS=latest'
         steps:
             - uses: actions/checkout@v5
 
             - uses: maxim-lobanov/setup-xcode@v1
               with:
                   xcode-version: latest-stable
+
+            # An iPhone simulator this image actually has, not a hard-coded model it may have
+            # dropped (run 36111347595: "iPhone 15" on an Xcode 26 image). (ios-sim-destination-test.sh)
+            - name: Pick the simulator
+              run: echo "DESTINATION=$(scripts/ci/ios-sim-destination.sh)" >> "$GITHUB_ENV"
 
             - name: Build for testing
               run: |
