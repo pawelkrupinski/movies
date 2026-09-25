@@ -50,4 +50,12 @@ class ListingConstraintsSpec extends AnyFlatSpec with Matchers {
     ListingConstraints.keepsIncumbentHome(Some(2026), None) shouldBe false
     ListingConstraints.keepsIncumbentHome(None, Some(234)) shouldBe false
   }
+
+  "two rows one venue lists under one title" should "cannot-link only when their directors share no person" in {
+    ListingConstraints.venueCreditsApart(Seq("Franklin J. Schaffner"), Seq("Tim Burton"), normalizer) shouldBe
+      Some(CannotLink.VenueCreditsApart)
+    ListingConstraints.venueCreditsApart(Seq("Makoto Shinkai"), Seq("SHINKAI Makoto"), normalizer) shouldBe None
+    ListingConstraints.venueCreditsApart(Seq("Tim Burton"), Seq(" "), normalizer) shouldBe None
+    ListingConstraints.venueCreditsApart(Nil, Seq("Tim Burton"), normalizer) shouldBe None
+  }
 }

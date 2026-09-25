@@ -500,17 +500,18 @@ private[movies] final class ScrapeLanding(
     val listedButNotWritten = scala.collection.mutable.Set.empty[String]
     /** Titles this venue lists as SEVERAL films — "Belle (2013)" beside "Belle (2021)", kept
      *  apart by `ScrapeListing`. Each lands on its own film's row, so a same-title slot on
-     *  another row is a stale copy only when it records THIS listing's own year; dropping
+     *  another row is a stale copy only when it is THIS listing's own (`ownCopy`); dropping
      *  the sibling's slot before the sibling lands rewrote both rows on every tick. */
     val multiFilmTitles: Set[String] =
       deduped.groupBy(cm => normalizer.sanitize(cleaned(cm))).collect { case (norm, cms) if cms.sizeIs > 1 => norm }.toSet
     /** Whether a stored slot `sd` of this venue's title `norm` is `cm`'s own: always for a
-     *  title the venue lists once, else only when it records `cm`'s year — `ScrapeListing`
-     *  keeps the films apart by exactly that year, filled from the title's bracket where the
-     *  venue gave none. */
+     *  title the venue lists once, else only when it records `cm`'s year and credits no
+     *  director apart from `cm`'s — `ScrapeListing` keeps the films apart by exactly those,
+     *  the year filled from the title's bracket where the venue gave none. */
     def ownCopy(cm: CinemaMovie, norm: String)(sd: SourceData): Boolean =
-      !multiFilmTitles.contains(norm) ||
-        ScrapeListing.yearOf(sd) == ScrapeListing.yearOf(cm)
+      !multiFilmTitles.contains(norm) || (
+        ScrapeListing.yearOf(sd) == ScrapeListing.yearOf(cm) &&
+          ListingConstraints.venueCreditsApart(sd.director, cm.director, normalizer).isEmpty)
 
     val resolved: Seq[((CinemaMovie, CacheKey, Boolean), SourceData)] =
       deduped.sortBy(cm => (cleaned(cm), cm.movie.releaseYear.getOrElse(Int.MinValue))).flatMap { cm =>

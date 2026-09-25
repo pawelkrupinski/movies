@@ -22,6 +22,8 @@ import scala.jdk.CollectionConverters._
  *    five countries, the PL and DE convergence corpora, the PL sample);
  *  - `listing-key-collisions-de.json.gz`: the three DE venues' colliding rows, cut verbatim from
  *    recorder run 36153174348's DE corpus (the full corpora are too big to check in);
+ *  - `listing-key-collisions-us.json.gz`: Marion Theatre Ocala's "Planet of the Apes" (Schaffner,
+ *    no year) beside "Planet of the Apes (2001)" (Burton), cut from the same run's US corpus;
  *  - the five full recorded corpora, when `KINOWO_IDENTITY_CORPUS_DIR` names a directory
  *    holding `cinema-scrapes-<cc>.json.gz` (the recorder's `scrape-fixtures-<cc>` artifacts).
  */
@@ -81,6 +83,63 @@ class ListingKeyCorpusSpec extends AnyFlatSpec with Matchers {
     corpora.map(_.label) should contain allOf ("cinema-scrapes-hard-clusters-pl.json.gz", "listing-key-collisions-de.json.gz")
     info(s"${corpora.size} corpora, ${corpora.map(_.listings.size).sum} listings: ${corpora.map(_.label).mkString(", ")}")
     val found = corpora.flatMap(c => collisions(c, ListingKey.of).map(line => s"${c.label}: $line"))
+    found shouldBe empty
+  }
+
+  it should "tell apart the two films a page-less venue lists under one raw title" in {
+    val de   = corpora.find(_.label == "listing-key-collisions-de.json.gz").get
+    val keys = de.listings.map { case (cinema, cm) => ListingKey.of(cinema, cm) }
+    keys.distinct should have size 6
+    keys.collect { case k: ListingKey.Published => (k.venue, k.rawTitle, k.year) }.sorted shouldBe Seq(
+      ("Cinema-Arthouse", "Sinn und Sinnlichkeit", Some(1995)), ("Cinema-Arthouse", "Sinn und Sinnlichkeit", Some(2026)),
+      ("Club Manufaktur", "Bad Apples", Some(2018)), ("Club Manufaktur", "Bad Apples", Some(2025)),
+      ("Schauburg Karlsruhe", "Sinn und Sinnlichkeit", Some(1995)), ("Schauburg Karlsruhe", "Sinn und Sinnlichkeit", Some(2026)))
+  }
+
+  it should "tell apart the films a venue links to one shared programme page" in {
+    val pl = corpora.find(_.label == "cinema-scrapes-hard-clusters-pl.json.gz").get
+    val kinoPort = pl.listings.collect { case (cinema, cm) if cinema.displayName == "KinoPort" => ListingKey.of(cinema, cm) }
+    val shared   = kinoPort.collect { case k: ListingKey.Native => k }.groupBy(_.nativeId).filter(_._2.sizeIs > 1)
+    shared should not be empty
+    shared.values.foreach(ks => ks.distinct.size shouldBe ks.size)
+  }
+
+  /** Two listings the venue itself published as DIFFERENT films: years a production-vs-release
+   *  gap apart, or credited to disjoint directors. The oracle is the published evidence
+   *  `ListingKey.Published` keys a page-less listing by, never a year or film the pipeline derived. */
+  private def publishedAsDifferentFilms(a: CinemaMovie, b: CinemaMovie): Boolean = {
+    val (ya, yb) = (ScrapeListing.yearOf(a), ScrapeListing.yearOf(b))
+    ya.zip(yb).exists { case (x, y) => (x - y).abs > services.resolution.YearWindow.ProductionToRelease } ||
+      (directors(a).nonEmpty && directors(b).nonEmpty && (directors(a) & directors(b)).isEmpty)
+  }
+
+  private def directors(cm: CinemaMovie) = cm.director.map(_.trim.toLowerCase).filter(_.nonEmpty).toSet
+
+  "The production slot fold" should "never put two films a venue lists under one title on one slot, on every recorded corpus" in {
+    corpora.map(_.label) should contain ("listing-key-collisions-us.json.gz")
+    val found = corpora.filter(_.country.isDefined).flatMap { c =>
+      val normalizer = TitleNormalizer.forCountry(c.country.get)
+      val tokens     = ScreeningTokens.of(c.country.get)
+      c.listings.groupMap(_._1)(_._2).toSeq.flatMap { case (cinema, raw) =>
+        val slots = ScrapeListing.prepare(cinema, raw, normalizer, tokens).movies
+          .groupBy(slot => ScrapeListing.slotKey(cinema, slot.movie.title, normalizer))
+        // A listing's own slot carries what it published: its directors and its year. Two
+        // listings of different films each need a slot of their own — not one representative
+        // standing in for both (showtimes can't tell them apart: a double bill shares them).
+        def carries(slot: CinemaMovie, cm: CinemaMovie) =
+          directors(slot) == directors(cm) && ScrapeListing.yearOf(slot) == ScrapeListing.yearOf(cm)
+        raw.groupBy(cm => ScrapeListing.slotKey(cinema, cm.movie.title, normalizer)).toSeq.flatMap { case (key, rows) =>
+          val held = slots.getOrElse(key, Nil)
+          rows.combinations(2).collectFirst {
+            case Seq(a, b) if publishedAsDifferentFilms(a, b) &&
+              !(held.exists(s => carries(s, a) && !carries(s, b)) && held.exists(s => carries(s, b) && !carries(s, a))) =>
+              s"${c.label}: ${cinema.displayName} [$key] folds \"${a.movie.title}\" " +
+                s"(${ScrapeListing.yearOf(a).getOrElse("—")}, ${a.director.mkString("/")}) with \"${b.movie.title}\" " +
+                s"(${ScrapeListing.yearOf(b).getOrElse("—")}, ${b.director.mkString("/")})"
+          }
+        }
+      }
+    }
     found shouldBe empty
   }
 

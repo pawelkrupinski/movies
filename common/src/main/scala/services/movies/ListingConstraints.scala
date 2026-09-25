@@ -40,6 +40,10 @@ object ListingConstraints {
     /** Two rows' cinemas publish contradicting identities
      *  (`MixedFilmDetector.describeDifferentFilms`). */
     case CinemasDescribeDifferentFilms
+    /** One venue lists two rows under one title whose directors share no person
+     *  (`MixedFilmDetector.creditSamePerson`): Marion Theatre Ocala's "Planet of the Apes"
+     *  (Schaffner) beside "Planet of the Apes (2001)" (Burton). */
+    case VenueCreditsApart
   }
 
   /** What one listing published that the landing constraints read. */
@@ -94,6 +98,16 @@ object ListingConstraints {
     originalTitleNamesAnotherFilm(listing, row, normalizer).orElse(
       Option.when(MixedFilmDetector.listingDeniesFilm(row, listing.runtime, listing.year, listing.director, normalizer))(
         CannotLink.ListingDeniesFilm))
+
+  /** May two rows ONE venue lists under one title be one film, by their directors? Refused when
+   *  both credit someone and no person is credited by both. Within one venue this never split
+   *  a film on the five full recorded corpora (every such pair also differs in year or
+   *  runtime); across venues a director difference is no evidence (a venue prints the writer),
+   *  so this is for the same-venue fold only. */
+  def venueCreditsApart(a: Seq[String], b: Seq[String], normalizer: TitleNormalizer): Option[CannotLink] = {
+    def credited(ds: Seq[String]) = ds.exists(_.trim.nonEmpty)
+    Option.when(credited(a) && credited(b) && !MixedFilmDetector.creditSamePerson(a, b, normalizer))(CannotLink.VenueCreditsApart)
+  }
 
   // ── must-links ───────────────────────────────────────────────────────────────────────
 

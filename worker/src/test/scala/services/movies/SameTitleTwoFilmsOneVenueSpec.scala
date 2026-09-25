@@ -84,5 +84,42 @@ class SameTitleTwoFilmsOneVenueSpec extends AnyFlatSpec with Matchers {
     showtimesOf(2026) shouldBe Set(at2026)
   }
 
+  "two films under one title, only one of them with a year" should "each keep their showtime" in {
+    // US, 2026-09-25 (recorder run 36153174348): Marion Theatre Ocala lists "Planet of the Apes"
+    // (Franklin J. Schaffner, 112 min, no year) beside "Planet of the Apes (2001)" (Tim Burton,
+    // 119 min), a double bill at 14:00. One year among the two is no year DISAGREEMENT, so the
+    // fold read them as one film printed twice and unioned them onto one slot; the directors the
+    // venue credits say two films.
+    val us     = TitleNormalizer.forCountry(Country.UnitedStates)
+    val marion = Cinema.byDisplayName("Marion Theatre Ocala")
+    val at     = LocalDateTime.of(2026, 9, 26, 14, 0)
+    val repository = new InMemoryMovieRepository(normalizer = us)
+    val cache      = new CaffeineMovieCache(repository, normalizer = us,
+      clock = java.time.Clock.fixed(java.time.Instant.parse("2026-09-25T12:00:00Z"), java.time.ZoneOffset.UTC))
+    def film(tmdbId: Int, year: Int, runtime: Int, director: String) = MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
+      Tmdb -> SourceData(title = Some("Planet of the Apes"), releaseYear = Some(year), runtimeMinutes = Some(runtime), director = Seq(director))))
+    cache.put(CacheKey("Planet of the Apes", Some(1968), us), film(871, 1968, 112, "Franklin J. Schaffner"))
+    cache.put(CacheKey("Planet of the Apes", Some(2001), us), film(869, 2001, 119, "Tim Burton"))
+    def listing(title: String, runtime: Int, director: String, at: LocalDateTime) =
+      CinemaMovie(Movie(title, runtimeMinutes = Some(runtime)), marion, None,
+        Some(s"https://www.flicks.us/movie/${title.toLowerCase.replaceAll("[^a-z0-9]+", "-").stripSuffix("-")}/"),
+        None, Nil, Seq(director), Seq(Showtime(at, None)))
+    val board = Seq(listing("Planet of the Apes", 112, "Franklin J. Schaffner", at),
+                    listing("Planet of the Apes (2001)", 119, "Tim Burton", at))
+
+    cache.recordCinemaScrape(marion, board)
+    val settled = repository.findAll().sortBy(_.id.value)
+    cache.recordCinemaScrape(marion, board)
+    withClue("an identical re-scrape moved something: ")(repository.findAll().sortBy(_.id.value) shouldBe settled)
+
+    // Two slots on two films, each holding its own listing's showtime — not one slot on one.
+    val slots = repository.findAll().flatMap(r => r.record.cinemaSlots.collect {
+      case (s, sd) if Source.cinemaOf(s).contains(marion) => (r.key(us), sd.showtimes.map(_.dateTime).toSet) })
+    withClue(s"slots: $slots ") {
+      slots.map(_._2) shouldBe Seq(Set(at), Set(at))
+      slots.map(_._1).distinct should have size 2
+    }
+  }
+
   extension (r: MovieRecord) private def let(f: MovieRecord => MovieRecord): MovieRecord = f(r)
 }

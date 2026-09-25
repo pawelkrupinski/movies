@@ -53,27 +53,56 @@ object ScrapeListing {
     // deterministic representative for the scalar film fields.
     //
     // …but only rows of ONE film. Arc Cinema Blackpool lists "Belle (2013)" and "Belle
-    // (2021)" side by side: both clean to "Belle", and unioned into one slot one film was
-    // served the other's showtimes. Rows that name different years (their own, else the one
-    // their title brackets) stay apart, each carrying its year so the landing puts it on its
-    // own film; a row that names none stays with the rest of its title, as before.
+    // (2021)" side by side, Marion Theatre Ocala "Planet of the Apes" (Schaffner, no year)
+    // beside "Planet of the Apes (2001)" (Burton): each pair cleans to one title, and unioned
+    // into one slot one film was served the other's showtimes. `filmsOf` keeps them apart.
     val deduped: Seq[CinemaMovie] =
       formatted.groupBy(cm => normalizer.sanitize(cleaned(cm))).toSeq
         .sortBy { case (k, _) => k }
-        .flatMap { case (_, group) =>
-          val years = group.flatMap(yearOf).distinct
-          // Years a production-vs-release gap apart are one film printed two ways.
-          if (years.sizeIs < 2 || years.max - years.min <= services.resolution.YearWindow.ProductionToRelease) Seq(group)
-          else group.groupBy(yearOf).toSeq.sortBy(_._1.getOrElse(0)).map { case (year, films) =>
-            films.map(cm => cm.copy(movie = cm.movie.copy(releaseYear = cm.movie.releaseYear.orElse(year))))
-          }
-        }
+        .flatMap { case (_, group) => filmsOf(group, normalizer) }
         .map { group =>
           if (group.lengthCompare(1) == 0) group.head
           else MovieRecordMerge.slotRepresentative(group)
             .copy(showtimes = MovieRecordMerge.dedupShowtimes(group.flatMap(_.showtimes)))
         }
     Prepared(deduped, cleaned)
+  }
+
+  /** The films a venue's same-title rows name, told apart only by what the venue itself
+   *  published — the discriminator `ListingKey.Published` keys a page-less listing by, never a
+   *  year or film the pipeline derived:
+   *
+   *   - years a production-to-release gap apart (each row's own, else its title's bracket).
+   *     Each part carries its year, so the landing puts it on its own film; a row naming no
+   *     year is a part of its own;
+   *   - then, within a year, directors crediting no common person
+   *     (`ListingConstraints.venueCreditsApart`, which folds spelling and name order). A row
+   *     crediting nobody joins the credited rows when they are one film, else is a part of
+   *     its own.
+   *
+   *  Rows of one film stay one group, as before: a dub beside a subtitled print. A pure
+   *  function of the rows as a set; the parts come out in a fixed order. */
+  private def filmsOf(group: Seq[CinemaMovie], normalizer: TitleNormalizer): Seq[Seq[CinemaMovie]] = {
+    val years = group.flatMap(yearOf).distinct
+    val byYear =
+      // Years a production-vs-release gap apart are one film printed two ways.
+      if (years.sizeIs < 2 || years.max - years.min <= services.resolution.YearWindow.ProductionToRelease) Seq(group)
+      else group.groupBy(yearOf).toSeq.sortBy(_._1.getOrElse(0)).map { case (year, films) =>
+        films.map(cm => cm.copy(movie = cm.movie.copy(releaseYear = cm.movie.releaseYear.orElse(year))))
+      }
+    byYear.flatMap(byDirector(_, normalizer))
+  }
+
+  private def byDirector(group: Seq[CinemaMovie], normalizer: TitleNormalizer): Seq[Seq[CinemaMovie]] = {
+    val (credited, uncredited) = group.partition(_.director.exists(_.trim.nonEmpty))
+    // Connected components of "credits the same person": whatever order they are joined in.
+    val people = credited.foldLeft(List.empty[List[CinemaMovie]]) { (parts, cm) =>
+      val (same, other) = parts.partition(_.exists(p => ListingConstraints.venueCreditsApart(p.director, cm.director, normalizer).isEmpty))
+      (cm :: same.flatten) :: other
+    }
+    if (people.sizeIs < 2) Seq(group)
+    else (people.sortBy(_.flatMap(_.director).sorted.mkString("\u0000")) ++ Option.when(uncredited.nonEmpty)(uncredited))
+      .map(part => group.filter(cm => part.exists(_ eq cm)))
   }
 
   /** The year a listing names: its own, else the one its title brackets. What tells two films
