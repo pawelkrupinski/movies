@@ -5,7 +5,7 @@ description: How to regenerate the three checked-in snapshot layers — the whol
 
 # Regenerating the snapshots
 
-There are THREE snapshot layers, regenerated for DIFFERENT changes:
+There are THREE snapshot layers, regenerated for DIFFERENT changes (plus the small hard-cluster films layer at the end):
 
 - **`expected-schedules.txt`** — the whole-corpus ASSERTION. One block per
   film, rendered from the controller's `FilmSchedule` output: `displayTitle`
@@ -133,3 +133,24 @@ Then regenerate the `expected-*.html` per the section above if rendering shifted
 and commit all of them together with the production change. Consumers fall back
 to the full pipeline boot when the file is absent, so a forgotten regen is slow,
 never wrong — but the guard still fails until you commit the fresh snapshot.
+
+## Hard-cluster films (`expected-hard-clusters-<cc>.txt`)
+
+A fourth, smaller layer: `HardClusterConvergenceIntegrationSpec` (itAll) pins the
+films the checked-in hard clusters (`test/resources/fixtures/corpus/cinema-scrapes-hard-clusters-<cc>.json.gz`)
+come out as — one line per film: key, title, year, tmdbId, imdbId, public address and
+cinemas. Its other claims are all relative (every arrival order agrees), so this is
+the one that fails when the pipeline folds a franchise sibling, a re-release year or
+two same-titled films the WRONG way consistently. It shifts on the same changes as
+`expected-schedules.txt`, and whenever `scripts/hard-clusters.sh ratchet` grows the
+clusters.
+
+```
+rm test/resources/fixtures/corpus/expected-hard-clusters-*.txt
+MONGODB_URI="mongodb://127.0.0.1:28017/?directConnection=true" \
+  sbt "worker/IntegrationTest/testOnly integration.HardClusterConvergenceIntegrationSpec"
+```
+
+The run writes the missing files and fails with "no expected films … wrote …";
+review the diff (every `-`/`~` line is a film that moved), re-run to confirm it is
+stable, and commit the files with the change.

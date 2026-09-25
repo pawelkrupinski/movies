@@ -44,6 +44,9 @@ class TmdbClient(
   // `val` so the enrichment (`MovieService`) can canonicalise the country names
   // TMDB returns in the SAME language it fetched them in.
   val language: Locale = TmdbClient.DefaultLanguage,
+  // How a transient failure waits before its retry. Real time in production; a harness
+  // that replays an outage passes a no-op, or every refused request costs it ~1s asleep.
+  retrySleep: Long => Unit = Thread.sleep,
 ) {
 
   import TmdbClient.{ApiBase, urlEncode}
@@ -84,7 +87,7 @@ class TmdbClient(
 
   private def httpGet(url: String, auth: Map[String, String]): String =
     RetryWithBackoff("TMDB GET", maxAttempts = 3, initialBackoff = 300.millis,
-      retryOn = TmdbClient.isTransient)(http.get(url, auth))
+      retryOn = TmdbClient.isTransient, sleep = retrySleep)(http.get(url, auth))
 
   /** One TMDB title search, popularity-ordered by [[parseSearchResults]]. Scoped to a
    *  year when one is given — the year a cinema reports can be the production year while

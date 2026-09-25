@@ -58,6 +58,12 @@ object HardClusters {
 
   def corpusKey(country: Country): String = s"hard-clusters-${country.code}"
 
+  /** The films the clusters must come out as — one line per film, keyed by its stored key.
+   *  Checked in beside the fixture and regenerated like the other snapshot layers: delete,
+   *  run `HardClusterConvergenceIntegrationSpec`, review, commit. */
+  def expectedFilmsPath(country: Country): Path =
+    Paths.get("test", "resources", "fixtures", "corpus", s"expected-hard-clusters-${country.code}.txt")
+
   /** The seeds every past cluster was picked from, one `code<TAB>title<TAB>reason` per
    *  line — the provenance of the fixture, and what the ratchet appends to. */
   val SeedsPath: Path = Paths.get("test", "resources", "fixtures", "corpus", "hard-clusters-seeds.tsv")

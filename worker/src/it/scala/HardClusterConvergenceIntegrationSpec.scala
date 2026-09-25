@@ -109,15 +109,17 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
     val bootSplits: Int = wiring.movieService.mixedFilmSplits
   }
 
-  private def wiringFor(country: Country, label: String): (ArchiveReplayWiring, ConvergenceStorage) = {
+  private def wiringFor(country: Country, label: String, wrap: HttpFetch => HttpFetch = identity,
+                        movableClock: Option[MutableClock] = None): (ArchiveReplayWiring, ConvergenceStorage) = {
     val normalizer = TitleNormalizer.forCountry(country)
     val storage    = ConvergenceStorage.mongo(uri.get, s"hc-${country.code}-$label", normalizer)
     storages.synchronized(storages += storage)
     val rows = CorpusFixture.read(HardClusters.corpusKey(country))
     CorpusFixture.seedInto(storage.archive, rows)
-    val fetch    = responses(country)
+    val fetch    = wrap(responses(country))
     val language = country.language
     val w = new ArchiveReplayWiring(country, storage.archive, None, storage) {
+      override lazy val clock: java.time.Clock = movableClock.getOrElse(java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC))
       // Ordering, not timing: the whole cascade on the calling thread, so the only
       // nondeterminism left is the seeded arrival order.
       override lazy val backgroundBudget: ExecutionBudget = new SameThreadExecutionBudget
@@ -128,8 +130,10 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
       // Held in memory: its daemon flusher outlives the pass and would re-create the
       // pass's database after `afterAll` dropped it. Uptime has no part in the claims.
       override lazy val uptimeMonitor = new services.UptimeMonitor(None, clock = clock)
+      // The outage pass refuses on purpose; its retries need not sleep through it.
       override lazy val tmdbClient: TmdbClient =
-        new TmdbClient(fetch, apiKey = Some("hard-clusters"), language = language)
+        new TmdbClient(fetch, apiKey = Some("hard-clusters"), language = language,
+          retrySleep = if (movableClock.isDefined) (_: Long) => () else Thread.sleep)
     }
     (w, storage)
   }
@@ -235,6 +239,56 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
     } finally pool.shutdown()
   }
 
+  /**
+   * TMDB DOWN for part of a boot: half its URLs answer 503 while every venue lands, and
+   * then it comes back. Production's answer to a 5xx is "not now" — the resolve is
+   * rescheduled, the row keeps waiting — never "no such film". A pipeline that reads the
+   * outage as an answer concludes `tmdbNoMatch`, the row is published unmatched with no
+   * ratings, and it stays that way until the daily re-try reaper happens to look again.
+   *
+   * Returns the films DURING the outage (by key: unmatched though the reference pass
+   * matched them) and AFTER it recovered (the films themselves, for a diff against the
+   * reference).
+   */
+  private def outage(country: Country): (Seq[String], Seq[Film]) = {
+    val down  = new java.util.concurrent.atomic.AtomicBoolean(true)
+    val clock = new MutableClock(TestWiring.FixedInstant)
+    def flaky(inner: HttpFetch): HttpFetch = new HttpFetch {
+      private def check(url: String): Unit =
+        if (down.get && url.contains("themoviedb.org") && (url.## & 1) == 0)
+          throw new HttpStatusException(503, "GET", url, retryAfter = None)
+      override def get(url: String): String = { check(url); inner.get(url) }
+      override def get(url: String, headers: Map[String, String]): String = { check(url); inner.get(url, headers) }
+      override def getBytes(url: String): Array[Byte] = { check(url); inner.getBytes(url) }
+      override def post(url: String, body: String, contentType: String): String = { check(url); inner.post(url, body, contentType) }
+    }
+    val normalizer = TitleNormalizer.forCountry(country)
+    val (w, _)     = wiringFor(country, "outage", flaky, Some(clock))
+    arrive(w, arrivals(w, new Random(OrderSeed)))
+    // Settled as production settles, and deliberately WITHOUT `concludeEnrichment`: that
+    // harness step stamps every still-unconcluded row a no-match so the projector will
+    // take it, which is exactly the verdict this asks whether the PIPELINE reaches.
+    w.drainStaging()
+    w.movieService.settle()
+    w.movieCache.canonicalizeBySanitize()
+    w.drainStaging()
+    w.movieService.settle()
+    val reference = booted(country).head._2.filter(_.tmdbId.isDefined).map(_.key).toSet
+    val concludedUnmatched = w.movieRepository.findAll().collect {
+      case r if r.record.tmdbNoMatch && reference.contains(r.key(normalizer)) => s"${r.title} (${r.year.getOrElse("—")}) [${r.key(normalizer)}] attempt=${r.record.tmdbAttempt.getOrElse("—")}"
+    }.sorted
+    // TMDB answers again. A day passes — the resolve backoff and the re-try reaper's
+    // period both — and one production tick's worth of enrichment runs.
+    down.set(false)
+    clock.advance(java.time.Duration.ofHours(25))
+    services.tasks.ReaperSweeps.unresolvedTmdbPeriod(w.unresolvedTmdbReaper, clock.instant())
+    w.drainServices()
+    settle(w)
+    (concludedUnmatched, films(w, normalizer))
+  }
+
+  private lazy val outages: Map[Country, (Seq[String], Seq[Film])] = countries.map(c => c -> outage(c)).toMap
+
   /** What moved between two passes, by film key — named so a failure says WHICH cluster. */
   private def diff(a: Seq[Film], b: Seq[Film], la: String, lb: String): Seq[(String, String)] = {
     val byA = a.groupBy(_.key); val byB = b.groupBy(_.key)
@@ -284,6 +338,70 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
       withClue(s"$name: ${fixed.mkString(", ")} no longer diverge(s) on the split arrival — delete the entry from " +
                "HardClusterExemptions.SplitArrivalDivergences so the exemption cannot hide the next regression: ") {
         fixed shouldBe empty
+      }
+    }
+
+    /* The claims above are all RELATIVE — every pass agrees with every other, a settle agrees
+     * with itself — and a relative claim holds just as well over a wrong answer. A franchise
+     * sibling folded onto the first film, a re-release given the wrong year, two films under
+     * one title collapsed into one: each is deterministic, so every pass makes it identically
+     * and every one of those claims stays green. These clusters are exactly the films where
+     * those mistakes have been made before, and their inputs are all checked in, so their
+     * RIGHT answer can be too. */
+    it should "come out as the films checked in for them — the clusters' answer, not merely a consistent one" in {
+      val (_, films) = booted(country).head
+      val path     = HardClusters.expectedFilmsPath(country)
+      val actual   = films.map(f => s"${f.key}\t$f").mkString("", "\n", "\n")
+      if (!java.nio.file.Files.exists(path)) {
+        java.nio.file.Files.writeString(path, actual)
+        fail(s"no expected films for $name — wrote $path. Review it, commit it, and re-run.")
+      }
+      val expected = java.nio.file.Files.readString(path)
+      val byKey    = (text: String) => text.linesIterator.filter(_.nonEmpty).map(l => l.takeWhile(_ != '\t') -> l).toSeq.groupMap(_._1)(_._2)
+      val (want, got) = (byKey(expected), byKey(actual))
+      val moved = (want.keySet ++ got.keySet).toSeq.sorted.flatMap { key =>
+        (want.getOrElse(key, Nil), got.getOrElse(key, Nil)) match {
+          case (w, g) if w == g => None
+          case (Nil, g)         => Some(s"  + ${g.mkString("; ")}")
+          case (w, Nil)         => Some(s"  - ${w.mkString("; ")}")
+          case (w, g)           => Some(s"  ~ was ${w.mkString("; ")}\n    now ${g.mkString("; ")}")
+        }
+      }
+      withClue(s"$name's hard clusters no longer come out as $path says (${moved.size} film(s)). If the change is " +
+               s"intended, delete the file, re-run to regenerate it, and commit it with the change:\n" +
+               s"${moved.take(20).mkString("\n")}\n") {
+        moved shouldBe empty
+      }
+    }
+
+    it should "serve every listing of every pass under the one film that holds it" in {
+      val listings = ServedCorpusInvariants.listings(CorpusFixture.read(HardClusters.corpusKey(country)))
+      val problems = booted(country).flatMap { case (pass, _) =>
+        val w = pass.wiring
+        ServedCorpusInvariants.violations(listings, w.movieRepository.findAll(), w.readModelRepository.findAllMovies(),
+          w.readModelRepository.findAllScreenings(), TitleNormalizer.forCountry(country)).map(p => s"pass ${pass.label}: $p")
+      }
+      withClue(s"$name's served hard clusters do not match their listings:\n${problems.mkString("\n")}\n") {
+        problems shouldBe empty
+      }
+    }
+
+    it should "not conclude a film unmatched while TMDB is failing" in {
+      val (unmatched, recovered) = outages(country)
+      val (reference, refFilms)  = booted(country).head
+      // How far the corpus is back a day after TMDB answers again — REPORTED, not asserted:
+      // on 2026-09-25 a handful of UK/US films stayed unresolved or lost their imdbId after
+      // the recovery tick (a resolve that matched in the log never reached its `movies`
+      // row), and whether that is the pipeline or this pass's short recovery tick is not
+      // yet known. Named here so the next look starts from the films.
+      val drift = diff(refFilms, recovered, reference.label, "outage-recovered").map(_._2)
+      if (drift.nonEmpty)
+        info(s"$name: ${drift.size} film(s) not back to the undisturbed boot a day after TMDB recovered:\n" +
+             drift.take(12).mkString("\n"))
+      withClue(s"$name: ${unmatched.size} film(s) concluded tmdbNoMatch on a 503 — an outage read as an answer, " +
+               s"so the film is published unmatched and unrated until the daily re-try looks again:\n  " +
+               s"${unmatched.take(12).mkString("\n  ")}\n") {
+        unmatched shouldBe empty
       }
     }
 
