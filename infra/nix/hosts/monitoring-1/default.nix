@@ -83,6 +83,10 @@ in
     # module's ssh-tunnel default, so the link opens straight from a phone or any other device
     # without a laptop holding a tunnel open for it to work.
     externalUrl = "https://alertmanager.kinowo.net";
+    # The check "kinowo monitoring-1 heartbeat" on healthchecks.io (5-min period, 10-min grace,
+    # emailing the owner directly) turns red when these posts stop -- monitoring-1 or its alert
+    # path gone. Its ping URL is `alertmanager/dead-mans-switch-url` in nix/secrets/monitoring-1.yaml.
+    deadMansSwitch.enable = true;
   };
 
   # THE SITE, FETCHED FROM OUTSIDE THE CLUSTER, THROUGH CLOUDFLARE. See roles/synthetic-probes.nix,
