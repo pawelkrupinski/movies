@@ -193,24 +193,47 @@ groups:
       # one host: every disk deserves the runaway check, and a mount nobody listed is watched by
       # default, as with every rule in this file.
       #
-      # A WARNING, NOT A PAGE. With no gate, three days is a low bar -- ~1.9 GB an hour off
-      # k3s-worker-1's 135G free -- and ordinary work clears it: replayed over the 60 days to
-      # 2026-09-24 this expression held for an hour EIGHT times (k3s-worker-1's / on 08-30, 09-03,
-      # 09-04 and 09-23: deploy-day image pulls, each reclaimed by the kubelet's image GC before it
-      # mattered; mongo-1's / and /var/lib/mongodb on 08-29 and mongo-2's data disk on 09-01), while
-      # no disk on the fleet went below 30% free. So it is the email + Telegram warning route with a
-      # 12h repeat, not an hourly critical -- a runaway still leaves most of three days to act in,
-      # and FilesystemSpaceCritical is the page if it gets that far.
+      # A WARNING, NOT A PAGE: the email + Telegram route with a 12h repeat. A runaway still leaves
+      # most of three days to act in, and FilesystemSpaceCritical is the page if it gets that far.
       #
-      # RESTART-SAFE BY CONSTRUCTION: `predict_linear` over six hours fits whatever samples the
-      # window holds, so a node_exporter restart's few missing scrapes leave the fit, and the one-
-      # hour hold, intact (filesystem-capacity.yml has the case).
+      # THE SIX-HOUR SLOPE ALONE MISTOOK EVERY BUSY DEPLOY DAY FOR A RUNAWAY, which is why a
+      # day-long fit now has to agree. k3s-worker-1's root falls all day as merges pull ~0.5 GB
+      # images, and fleet-container-image-gc (not the kubelet, whose GC waits for 85% full) takes
+      # them back once a night: on 2026-09-24, 43 images took it from 143G to 117G free -- 1.6-1.8
+      # GB an hour for hours at a time, against a three-day line of ~1.6 on 117G -- and the 00:34Z
+      # collection returned 22G. The six-hour rule warned on that at 21:03Z; replayed over the 60
+      # days to 2026-09-25 it held for its hour SEVEN times on that disk, every one a deploy day,
+      # while no disk went below 30% free. A 24-hour fit spans the last nightly collection, so it
+      # reads the bounded sawtooth as roughly flat: on the same replay the agreement removes all
+      # seven and keeps the three Mongo episodes (08-29, 09-01). filesystem-capacity.yml replays
+      # the real 09-23/24 series minute by minute.
+      #
+      # THE DAY-LONG FIT COSTS LATENCY, AND THE SECOND CLAUSE BUYS THE FAST END BACK. A runaway
+      # that starts after a quiet day is diluted in the 24-hour fit: modelled, 3 GB an hour warns
+      # ~13h in with ~32h left, where the six-hour fit alone gave ~40h. A writer fast enough that
+      # the six-hour slope empties the disk within ONE day skips the agreement and warns as early
+      # as before; no deploy day has come near that (same replay: one ten-minute episode, Mongo,
+      # 08-29).
+      #
+      # RESTART-SAFE BY CONSTRUCTION: `predict_linear` fits whatever samples the window holds, so a
+      # node_exporter restart's few missing scrapes leave both fits, and the one-hour hold, intact
+      # (filesystem-capacity.yml has the case).
       # -----------------------------------------------------------------------------------------
       - alert: FilesystemWillFillWithin3Days
         expr: >-
-          predict_linear(
-            node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"}[6h],
-            3 * 24 * 3600) < 0
+          (
+              predict_linear(
+                node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"}[6h],
+                3 * 24 * 3600) < 0
+            and
+              predict_linear(
+                node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"}[24h],
+                3 * 24 * 3600) < 0
+          )
+          or
+            predict_linear(
+              node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"}[6h],
+              24 * 3600) < 0
         # AN HOUR, so a single bulk write -- an image pull, a restore -- has to keep going at that
         # rate for an hour before it warns, while a real runaway still leaves most of three days.
         for: 1h
@@ -219,11 +242,14 @@ groups:
         annotations:
           summary: "{{ $labels.mountpoint }} on {{ $labels.host }} is on course to fill within 3 days"
           description: >-
-            A RUNAWAY WRITER, NOT A DRIFT -- the last six hours' slope empties this filesystem within
-            three days. `du -xh --max-depth=3 {{ $labels.mountpoint }} | sort -h | tail -20` names it. On
+            A RUNAWAY WRITER, NOT A DRIFT -- the last six hours' slope and the last day's both empty
+            this filesystem within three days (or the six hours' alone within one), so it is not
+            the deploy-day image pulls the nightly container-image collection takes back.
+            `du -xh --max-depth=3 {{ $labels.mountpoint }} | sort -h | tail -20` names it. On
             k3s-worker-1 look first at /var/lib/kinowo/share-cards (the workers' share cards: check
             `kinowo_worker_share_cards_bytes` against its budget and whether PruneShareCards is
-            running), then /var/lib/rancher (images and pod logs).
+            running), then /var/lib/rancher (images -- is `ContainerImageGarbageCollectionStale`
+            firing? -- and pod logs).
 
       # -----------------------------------------------------------------------------------------
       # THE COMPANION, AND IT IS NOT DECORATION. Every rule above is a COMPARISON, and a comparison
