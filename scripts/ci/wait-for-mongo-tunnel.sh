@@ -134,6 +134,7 @@ URI="mongodb://${USERINFO}@127.0.0.1:${PORT}/?authSource=admin&directConnection=
 # twenty seconds, not a red nightly.
 if ! command -v socat >/dev/null 2>&1; then
   echo "[tunnel] socat missing — installing"
+  "$(dirname "${BASH_SOURCE[0]}")/drop-microsoft-apt-sources.sh"
   sudo apt-get update -qq && sudo apt-get install -y -qq socat
 fi
 
