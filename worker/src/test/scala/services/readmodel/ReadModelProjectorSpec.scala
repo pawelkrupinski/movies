@@ -6,7 +6,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository, StoredMovieRecord}
+import services.movies.{FilmId, InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository, StoredMovieRecord}
 
 import java.time.LocalDateTime
 
@@ -37,7 +37,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   private def fixture(): (ReadModelProjector, InMemoryMovieRepository, InMemoryReadModelRepository) = {
     val repository = new InMemoryMovieRepository()
     val rm   = new InMemoryReadModelRepository()
-    (new ReadModelProjector(repository, rm, rm), repository, rm)
+    (new ReadModelProjector(repository, rm, rm, clock = clockSkippingSliceOf(FilmId(fid))), repository, rm)
   }
 
 
@@ -53,8 +53,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
    *  The slice a sweep checks is numbered by the clock, so a spec counting projections across a
    *  few sweeps otherwise also counts the content check re-projecting its row — in the one or two
    *  half-hours a day that slice comes up, and nowhere else. */
-  private def clockSkippingSliceOf(row: StoredMovieRecord): java.time.Clock =
-    java.time.Clock.fixed(java.time.Instant.ofEpochSecond(1800L * (ReadModelProjector.contentSliceOf(row.id) + 1)),
+  private def clockSkippingSliceOf(id: FilmId): java.time.Clock =
+    java.time.Clock.fixed(java.time.Instant.ofEpochSecond(1800L * (ReadModelProjector.contentSliceOf(id) + 1)),
                           java.time.ZoneOffset.UTC)
 
   /** Fake scheduler that CAPTURES the fixed-rate tasks `start()` submits instead of
@@ -562,7 +562,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(clock = clock)
     val rm         = new InMemoryReadModelRepository()
     val m          = new RecordingReadModelProjectionMetrics()
-    val projector  = new ReadModelProjector(repository, rm, rm, m)
+    val projector  = new ReadModelProjector(repository, rm, rm, m, clock = clockSkippingSliceOf(FilmId(fid)))
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))   // delivered at t0
     projector.reconcile()
     rm.movieUpserts should have size 1
@@ -913,7 +913,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     repository.upsert("Foo", Some(2024), MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
       KinoMuranow -> SourceData(title = Some("Foo"), showtimes = Nil))))
-    val sweeper = new ReadModelProjector(repository, rm, rm, m, clock = clockSkippingSliceOf(repository.findAll().head))
+    val sweeper = new ReadModelProjector(repository, rm, rm, m, clock = clockSkippingSliceOf(repository.findAll().head.id))
     sweeper.onMovieUpsert(repository.findAll().head)
 
     sweeper.pruneOrphans()                      // the first sweep may legitimately look
@@ -943,7 +943,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
       Multikino   -> SourceData(title = Some("Foo"), showtimes = times),
       KinoMuranow -> SourceData(title = Some("Foo"), showtimes = Nil)))
     repository.upsert("Foo", Some(2024), film(Seq(at("2026-06-12T20:00"))))
-    val sweeper = new ReadModelProjector(repository, rm, rm, m, clock = clockSkippingSliceOf(repository.findAll().head))
+    val sweeper = new ReadModelProjector(repository, rm, rm, m, clock = clockSkippingSliceOf(repository.findAll().head.id))
     sweeper.onMovieUpsert(repository.findAll().head)
     sweeper.pruneOrphans()                      // the first sweep looks, and notes the phantom
 
@@ -1003,7 +1003,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     previous.stop()
     val m      = new RecordingReadModelProjectionMetrics()
     val booted = new ReadModelProjector(repository, rm, rm, m, scheduler = new CapturingScheduler,
-                                        clock = clockSkippingSliceOf(repository.findAll().head))
+                                        clock = clockSkippingSliceOf(repository.findAll().head.id))
 
     booted.start()                              // the boot check may legitimately look once
     val looked = m.projectCalls
@@ -1411,11 +1411,11 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val counting  = new SlotTitleCountingNormalizer(banner)
     val repository = new InMemoryMovieRepository(normalizer = counting)
     val rm        = new InMemoryReadModelRepository()
-    val projector = new ReadModelProjector(repository, rm, rm)
     repository.upsert("Foo", Some(2024), MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
       KinoMuranow -> SourceData(title = Some(banner), showtimes = Seq(at("2026-06-13T20:00"))))))
     val row = repository.findAll().head
+    val projector = new ReadModelProjector(repository, rm, rm, clock = clockSkippingSliceOf(row.id))
     val onePartition  = hitsOf(counting)(ReadModelProjection.filmIds(row, counting))
     val oneProjection = hitsOf(counting)(ReadModelProjection.projectAll(row, counting))
     onePartition should be > 0                                              // the counter sees the partition at all
