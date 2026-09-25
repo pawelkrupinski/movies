@@ -113,11 +113,30 @@ class MetascoreRatings(
   // correct URL. The slug ladder already year-guards what it probes; a URL that
   // reached here from the search fallback was accepted on the SERP's year, which
   // is the better evidence of the two.
+  //
+  // Its CREDIT is checked, though: a director is not a release date, and a stored url
+  // whose page credits somebody else is another film's for good — prod's "Bogaci i
+  // martwi" (Romain Gavras, 2026) held /movie/sacrifice-2021, and nothing else would ever
+  // replace it (see `RatingPageIdentity`).
   private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Option[String] =
-    metacritic.metascoreFor(url) match {
+    metascoreIfThisFilm(key, url).flatten match {
       case Some(score) => applyScore(key, e, url, score)
       case None        => logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) $url → no metascore on page"); None
     }
+
+  /** The Metascore on `url`'s page — `Some(None)` when it carries none — or `None` when
+   *  the page credits a director the row's film does not, in which case the url and its
+   *  score are dropped so the next tick re-resolves. The per-row refresh and the bulk
+   *  walk both ask this. */
+  private def metascoreIfThisFilm(key: CacheKey, url: String): Option[Option[Int]] = {
+    val page = metacritic.pageFor(url)
+    if (page.exists(p => cache.get(key).exists(RatingPageIdentity.directorDenies(_, p.directors, tmdb.directorsFor)))) {
+      logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) $url → page credits " +
+        s"${page.toSeq.flatMap(_.directors).mkString(", ")}, not this film — dropping the URL")
+      cache.putIfPresent(key, _.copy(metacriticUrl = None, metascore = None))
+      None
+    } else Some(page.flatMap(_.metascore))
+  }
 
   // Write a known score back, skipping the no-op when it's unchanged; returns the
   // new displayed value (the badge text) iff it changed.
@@ -138,7 +157,7 @@ class MetascoreRatings(
       urlOf         = _.metacriticUrl,
       scoreOf       = _.metascore,
       rediscoverUrl = (key, row) => Success(resolveAndPersistUrl(key, row).isDefined),
-      fetchScore    = (_, url) => Some(metacritic.metascoreFor(url)),
+      fetchScore    = metascoreIfThisFilm,
       withScore     = withMetascore,
       badge         = badge
     )

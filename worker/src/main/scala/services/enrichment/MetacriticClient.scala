@@ -275,12 +275,20 @@ class MetacriticClient(http: HttpFetch) {
    *  containing `aggregateRating.ratingValue` (0–100). Scraping that is
    *  far more stable than the visual HTML — the score block's CSS classes
    *  drift across redesigns. */
-  def metascoreFor(movieUrl: String): Option[Int] =
-    EnrichmentRead.absentOnNotFound(http.get(MetacriticClient.requestUrl(movieUrl))).flatMap(MetacriticClient.parseMetascore)
+  def metascoreFor(movieUrl: String): Option[Int] = pageFor(movieUrl).flatMap(_.metascore)
+
+  /** The Metascore and the directors the page credits, off ONE fetch — the credit is
+   *  what tells a refresh that a STORED url is another film's (`RatingPageIdentity`). */
+  def pageFor(movieUrl: String): Option[MetacriticClient.Page] =
+    EnrichmentRead.absentOnNotFound(http.get(MetacriticClient.requestUrl(movieUrl))).map(body =>
+      MetacriticClient.Page(MetacriticClient.parseMetascore(body), JsonLdAggregateRating.directorNames(body)))
 }
 
 object MetacriticClient {
   private val Site = "https://www.metacritic.com"
+
+  /** A fetched movie page: its Metascore and the directors it credits. */
+  final case class Page(metascore: Option[Int], directors: Set[String])
 
   /** The form of an MC movie URL we actually GET.
    *

@@ -100,7 +100,7 @@ class EnrichmentPipelineSpec extends AnyFlatSpec with Matchers {
       override def urlFor(title: String, fallback: Option[String], year: Option[Int]): Option[String] = None
     }
     val rt = new RottenTomatoesClient(http = stubFetch(Map.empty)) {
-      override def urlFor(title: String, fallback: Option[String], year: Option[Int]): Option[String] = None
+      override def urlFor(title: String, fallback: Option[String], year: Option[Int], directors: Set[String]): Option[String] = None
     }
 
     val e = run(tmdb, filmweb, imdb, metacritic, rt, "Mortal Kombat II", Some(2026)).get

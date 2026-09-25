@@ -50,10 +50,11 @@ class RottenTomatoesClient(http: HttpFetch) {
    *  reports the *screening* year, often a 2020+ anniversary date for a film
    *  actually released decades earlier). */
   def urlFor(
-    title:    String,
-    fallback: Option[String] = None,
-    year:     Option[Int]    = None
-  ): Option[String] = urlForAny(Seq(title), fallback, year)
+    title:     String,
+    fallback:  Option[String] = None,
+    year:      Option[Int]    = None,
+    directors: Set[String]    = Set.empty
+  ): Option[String] = urlForAny(Seq(title), fallback, year, directors)
 
   /** Resolve across several candidate titles, best-first, as ONE attempt.
    *
@@ -69,13 +70,14 @@ class RottenTomatoesClient(http: HttpFetch) {
    *  title's full ladder in turn, `fallback` belonging to the first title — so
    *  this removes repeat requests without changing which page wins. */
   def urlForAny(
-    titles:   Seq[String],
-    fallback: Option[String] = None,
-    year:     Option[Int]    = None
+    titles:    Seq[String],
+    fallback:  Option[String] = None,
+    year:      Option[Int]    = None,
+    directors: Set[String]    = Set.empty
   ): Option[String] = {
     val attempt = new RottenTomatoesClient(new MemoizedHttpFetch(http))
     titles.iterator.zipWithIndex
-      .flatMap { case (title, index) => attempt.probeLadder(title, if (index == 0) fallback else None, year) }
+      .flatMap { case (title, index) => attempt.probeLadder(title, if (index == 0) fallback else None, year, directors) }
       .nextOption()
   }
 
@@ -83,13 +85,21 @@ class RottenTomatoesClient(http: HttpFetch) {
    *  search-page scrape for each. Private because the memo that makes the
    *  ladder cheap lives in [[urlForAny]] — calling this directly would bypass
    *  it. */
-  private def probeLadder(title: String, fallback: Option[String], year: Option[Int]): Option[String] = {
+  private def probeLadder(title: String, fallback: Option[String], year: Option[Int], directors: Set[String]): Option[String] = {
     val effectiveFallback = fallback.filterNot(_.equalsIgnoreCase(title))
-    canonicalUrl(title, year)
-      .orElse(effectiveFallback.flatMap(canonicalUrl(_, year)))
-      .orElse(searchAndPickBest(title, year))
-      .orElse(effectiveFallback.flatMap(t => searchAndPickBest(t, year)))
+    canonicalUrl(title, year, directors)
+      .orElse(effectiveFallback.flatMap(canonicalUrl(_, year, directors)))
+      .orElse(searchAndPickBest(title, year).filter(creditsAllow(_, directors)))
+      .orElse(effectiveFallback.flatMap(t => searchAndPickBest(t, year)).filter(creditsAllow(_, directors)))
   }
+
+  /** Does the page at `url` credit a director compatible with `directors`? The search
+   *  hit was matched on title and year alone, which cannot tell same-named films of
+   *  one year apart; the page names its own director. Unreadable or uncredited is not
+   *  a contradiction ([[MetacriticClient.directorsCompatible]]). */
+  private def creditsAllow(url: String, directors: Set[String]): Boolean =
+    directors.isEmpty || EnrichmentRead.absentOnNotFound(http.get(url))
+      .forall(body => MetacriticClient.directorsCompatible(directors, JsonLdAggregateRating.directorNames(body)))
 
   /** Canonical URL ONLY if any candidate returns 200 AND its page year is
    *  compatible with the film's; otherwise None. RT frequently drops the
@@ -108,7 +118,7 @@ class RottenTomatoesClient(http: HttpFetch) {
    *  a different decade apart — the RT twin of the "Michael"/"The North" MC
    *  collisions. The year-suffixed variants already encode the right year, so
    *  the guard is a no-op for them and only bites the bare slug. */
-  def canonicalUrl(title: String, year: Option[Int] = None): Option[String] =
+  def canonicalUrl(title: String, year: Option[Int] = None, directors: Set[String] = Set.empty): Option[String] =
     // Same-title slug variants are INDEPENDENT probes, so they fire
     // concurrently — see MetacriticClient.canonicalResolve, which shares this
     // shape and [[ConcurrentCandidateProbe]]'s priority-preserving guarantee.
@@ -116,6 +126,10 @@ class RottenTomatoesClient(http: HttpFetch) {
       val url = s"$Site/m/$slug"
       EnrichmentRead.absentOnNotFound(http.get(url))
         .filter(body => MetacriticClient.yearsCompatible(year, RottenTomatoesClient.parseReleaseYear(body)))
+        // An undated bare slug is waved through by the year guard, so the page's own
+        // director is the check that bites: /m/sacrifice is Umberto Lenzi's 1972
+        // "Sacrifice!", undated, and was stored for Romain Gavras's 2026 "Sacrifice".
+        .filter(body => MetacriticClient.directorsCompatible(directors, JsonLdAggregateRating.directorNames(body)))
         .map(_ => url)
     }
 
@@ -242,15 +256,17 @@ class RottenTomatoesClient(http: HttpFetch) {
    *  fetch failure / non-canonical URL. Refuses search URLs explicitly —
    *  scoring a search-result page makes no sense and would silently return
    *  nonsense if RT ever started embedding aggregate ratings there. */
-  def scoreFor(url: String): Option[Int] = scoreAndYearFor(url).flatMap(_._1)
+  def scoreFor(url: String): Option[Int] = pageFor(url).flatMap(_.score)
 
-  /** The Tomatometer AND the year the page claims, off ONE fetch. The year is
-   *  what tells a caller that a STORED url isn't this film's after all —
-   *  re-resolution can't say so, because it writes only when it finds something
-   *  and a wrong url therefore just survives. See `RottenTomatoesRatings`. */
-  def scoreAndYearFor(url: String): Option[(Option[Int], Option[Int])] = {
+  /** The Tomatometer AND what the page says about which film it is — its year and
+   *  credited directors — off ONE fetch. That identity is what tells a caller that a
+   *  STORED url isn't this film's after all: re-resolution can't say so, because it
+   *  writes only when it finds something and a wrong url therefore just survives.
+   *  See `RottenTomatoesRatings`. */
+  def pageFor(url: String): Option[Page] = {
     if (!url.contains("/m/")) None
-    else Try(http.get(url)).toOption.map(body => (parseScore(body), RottenTomatoesClient.parseReleaseYear(body)))
+    else Try(http.get(url)).toOption.map(body =>
+      Page(parseScore(body), RottenTomatoesClient.parseReleaseYear(body), JsonLdAggregateRating.directorNames(body)))
   }
 
   /** Extract the Tomatometer percentage off an RT movie page.
@@ -282,6 +298,9 @@ object RottenTomatoesClient {
   private val ReleaseYear = "\"releaseYear\":\"((?:19|20)\\d{2})\"".r
 
   case class SearchHit(slug: String, title: String, year: Option[Int], tomatometerScore: Option[Int])
+
+  /** A fetched movie page: its Tomatometer, and the year and directors it names. */
+  case class Page(score: Option[Int], year: Option[Int], directors: Set[String])
 
   /** The film's origin release year off an RT movie page (its `releaseYear`
    *  field), or None when the page carries none. Feeds

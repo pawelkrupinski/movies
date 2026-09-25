@@ -58,7 +58,7 @@ class RottenTomatoesRatings(
         // same ladder, same order, but the titles share a fetch memo so a slug
         // an earlier title already probed isn't probed again ("The Sting" and
         // "Sting" both end at /m/sting).
-        rt.urlForAny(titles.candidates, titles.fallback, titles.year)
+        rt.urlForAny(titles.candidates, titles.fallback, titles.year, RatingPageIdentity.directorsOf(e, tmdb.directorsFor))
       }
 
       resolved.foreach { url =>
@@ -89,13 +89,23 @@ class RottenTomatoesRatings(
    *  evidence and is left alone. Both the per-row refresh and the bulk walk ask
    *  this, so neither can re-score a url the other would drop. */
   private def tomatometerIfThisFilm(key: CacheKey, url: String): Option[Option[Int]] = {
-    val fetched = rt.scoreAndYearFor(url)
-    if (fetched.exists { case (_, pageYear) => !MetacriticClient.yearsCompatible(key.year, pageYear) }) {
-      logger.info(s"RT: '${key.cleanTitle}' (${key.year.getOrElse("?")}) $url → page names " +
-        s"${fetched.flatMap(_._2).getOrElse("?")}, not this film — dropping the URL")
-      cache.putIfPresent(key, _.copy(rottenTomatoesUrl = None, rottenTomatoes = None))
-      None
-    } else Some(fetched.flatMap(_._1))
+    val fetched = rt.pageFor(url)
+    val deniedBy = fetched.flatMap { page =>
+      if (!MetacriticClient.yearsCompatible(key.year, page.year)) Some(s"names ${page.year.getOrElse("?")}")
+      // An UNDATED page is no evidence on year, and RT leaves many undated — so the
+      // year guard waved through /m/sacrifice (Umberto Lenzi's 1972 "Sacrifice!") for
+      // Romain Gavras's 2026 "Sacrifice" ("Bogaci i martwi"). Its credit is not silent.
+      else if (cache.get(key).exists(RatingPageIdentity.directorDenies(_, page.directors, tmdb.directorsFor)))
+        Some(s"credits ${page.directors.mkString(", ")}")
+      else None
+    }
+    deniedBy match {
+      case Some(why) =>
+        logger.info(s"RT: '${key.cleanTitle}' (${key.year.getOrElse("?")}) $url → page $why, not this film — dropping the URL")
+        cache.putIfPresent(key, _.copy(rottenTomatoesUrl = None, rottenTomatoes = None))
+        None
+      case None => Some(fetched.flatMap(_.score))
+    }
   }
 
   private def withTomatometer(row: models.MovieRecord, score: Option[Int]): models.MovieRecord = row.copy(rottenTomatoes = score)
