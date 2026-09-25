@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{Cinema, CinemaMovie}
+import models.{Cinema, CinemaMovie, SourceData}
 import services.titlerules.TitleRuleKey
 
 /**
@@ -51,16 +51,37 @@ object ScrapeListing {
     // cinema's same-slot rows into one at exactly the slot-key granularity: union
     // every screening's showtimes, deduped by physical identity, and keep a
     // deterministic representative for the scalar film fields.
+    //
+    // …but only rows of ONE film. Arc Cinema Blackpool lists "Belle (2013)" and "Belle
+    // (2021)" side by side: both clean to "Belle", and unioned into one slot one film was
+    // served the other's showtimes. Rows that name different years (their own, else the one
+    // their title brackets) stay apart, each carrying its year so the landing puts it on its
+    // own film; a row that names none stays with the rest of its title, as before.
     val deduped: Seq[CinemaMovie] =
       formatted.groupBy(cm => normalizer.sanitize(cleaned(cm))).toSeq
         .sortBy { case (k, _) => k }
-        .map { case (_, group) =>
+        .flatMap { case (_, group) =>
+          val years = group.flatMap(yearOf).distinct
+          // Years a production-vs-release gap apart are one film printed two ways.
+          if (years.sizeIs < 2 || years.max - years.min <= services.resolution.YearWindow.ProductionToRelease) Seq(group)
+          else group.groupBy(yearOf).toSeq.sortBy(_._1.getOrElse(0)).map { case (year, films) =>
+            films.map(cm => cm.copy(movie = cm.movie.copy(releaseYear = cm.movie.releaseYear.orElse(year))))
+          }
+        }
+        .map { group =>
           if (group.lengthCompare(1) == 0) group.head
           else MovieRecordMerge.slotRepresentative(group)
             .copy(showtimes = MovieRecordMerge.dedupShowtimes(group.flatMap(_.showtimes)))
         }
     Prepared(deduped, cleaned)
   }
+
+  /** The year a listing names: its own, else the one its title brackets. What tells two films
+   *  a venue lists under one title apart. */
+  def yearOf(cm: CinemaMovie): Option[Int] =
+    cm.movie.releaseYear.orElse(EmbeddedYear.ofAll(cm.movie.rawTitle.toSeq :+ cm.movie.title))
+  /** The same reading off a stored slot, so a slot and the listing that wrote it agree. */
+  def yearOf(sd: SourceData): Option[Int] = sd.releaseYear.orElse(EmbeddedYear.ofAll(sd.rawTitle ++ sd.title))
 
   /** A listed title as the venue's slot will carry it — cleaned by the venue's rules, its
    *  format tags peeled off — with those tags. The one definition [[prepare]] folds on. */

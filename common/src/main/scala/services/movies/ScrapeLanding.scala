@@ -396,8 +396,11 @@ private[movies] final class ScrapeLanding(
     val diverting = staging.isDefined
     // The canonical key among the rows holding a slot — the ranking stays here, with
     // the one definition of `canonicalRank`, rather than inside the index.
-    def keyHoldingCinemaSlot(norm: String): Option[CacheKey] = {
-      val keys = corpusIndex.keysForCinemaSlot(cinema, norm)
+    def keyHoldingCinemaSlot(norm: String, own: Option[SourceData => Boolean]): Option[CacheKey] = {
+      val keys = own.fold(corpusIndex.keysForCinemaSlot(cinema, norm))(isOwn =>
+        corpusIndex.keysForCinemaSlot(cinema, norm).filter(k => store.get(k).exists(_.cinemaShowings.exists {
+          case (cin, slot) => cin == cinema && slot.title.exists(t => normalizer.sanitize(t) == norm) && isOwn(slot)
+        })))
       if (keys.isEmpty) None else Some(keys.minBy(FilmCanonicalizer.canonicalRank))
     }
     /** The release year THIS venue already records for this title, wherever its
@@ -495,6 +498,19 @@ private[movies] final class ScrapeLanding(
      *  write is no evidence either way. Diverted titles are deliberately NOT spared:
      *  there the listing belongs to a different film, which is a real answer. */
     val listedButNotWritten = scala.collection.mutable.Set.empty[String]
+    /** Titles this venue lists as SEVERAL films — "Belle (2013)" beside "Belle (2021)", kept
+     *  apart by `ScrapeListing`. Each lands on its own film's row, so a same-title slot on
+     *  another row is a stale copy only when it records THIS listing's own year; dropping
+     *  the sibling's slot before the sibling lands rewrote both rows on every tick. */
+    val multiFilmTitles: Set[String] =
+      deduped.groupBy(cm => normalizer.sanitize(cleaned(cm))).collect { case (norm, cms) if cms.sizeIs > 1 => norm }.toSet
+    /** Whether a stored slot `sd` of this venue's title `norm` is `cm`'s own: always for a
+     *  title the venue lists once, else only when it records `cm`'s year — `ScrapeListing`
+     *  keeps the films apart by exactly that year, filled from the title's bracket where the
+     *  venue gave none. */
+    def ownCopy(cm: CinemaMovie, norm: String)(sd: SourceData): Boolean =
+      !multiFilmTitles.contains(norm) ||
+        ScrapeListing.yearOf(sd) == ScrapeListing.yearOf(cm)
 
     val resolved: Seq[((CinemaMovie, CacheKey, Boolean), SourceData)] =
       deduped.sortBy(cm => (cleaned(cm), cm.movie.releaseYear.getOrElse(Int.MinValue))).flatMap { cm =>
@@ -611,7 +627,11 @@ private[movies] final class ScrapeLanding(
               // …then the resolved film this listing decorates, ranked the way the
               // settle would rank the fold's survivor; only a listing nothing holds
               // starts a row of its own.
-              case None => keyHoldingCinemaSlot(norm).orElse(landing.fallbackKey).getOrElse(primary)
+              // A title the venue lists as several films lands only on a row holding THIS
+              // film's slot: the sibling's row is the other film ("Sinn und Sinnlichkeit"
+              // 1995 and 2026 at Cinema-Arthouse shared one row, the later overwriting the
+              // earlier's showtimes).
+              case None => keyHoldingCinemaSlot(norm, Option.when(multiFilmTitles.contains(norm))(ownCopy(cm, norm))).orElse(landing.fallbackKey).getOrElse(primary)
             }
           }
           val existingOpt   = store.get(key)
@@ -723,6 +743,8 @@ private[movies] final class ScrapeLanding(
           // SAME source key on another row is exactly what this drop retires), so
           // this can never remove the showtimes it just recorded.
           // Gated on the write above: see `landed`.
+          // …and of a title this venue lists as several films, only the copies of THIS
+          // listing (see `multiFilmTitles`).
           if (landed) (corpusIndex.keysForCinemaSlot(cinema, norm) + key).foreach { row =>
             val justWritten: Set[Source] = if (row == key) Set(slotKey) else Set.empty
             // The venue's sources on the row from the index when it holds this very
@@ -731,7 +753,7 @@ private[movies] final class ScrapeLanding(
             dropCinemaSlots(row, cur =>
               corpusIndex.sourcesAt(row, cinema, cur)
                 .getOrElse(cur.data.keysIterator.filter(Source.cinemaOf(_).contains(cinema)).toSet)
-                .filter(src => cur.data.get(src).exists(_.title.exists(t => normalizer.sanitize(t) == norm))) -- justWritten)
+                .filter(src => cur.data.get(src).exists(sd => sd.title.exists(t => normalizer.sanitize(t) == norm) && ownCopy(cm, norm)(sd))) -- justWritten)
           }
           // Gated on the write having LANDED. A skipped write leaves Caffeine
           // without the row, so announcing it as new sends `MovieDetailsComplete` /

@@ -74,9 +74,19 @@ object ServedCorpusInvariants {
     def film(id: String): String = label.getOrElse(id, s"<no stored film $id>")
 
     // (cinema display name, slot key) -> the stored films holding that slot.
-    val holders: Map[(String, String), Seq[String]] = records.flatMap { r =>
-      r.record.data.keysIterator.collect { case CinemaShowing(c, key) => (c.displayName, key) -> r.id.value }
+    // Each with the year its slot records: one venue can list one title as two films ("Belle
+    // (2013)" beside "Belle (2021)", Ang Lee's and Georgia Oakley's "Sinn und Sinnlichkeit"),
+    // one slot on each film, told apart by the year — the rule the landing itself uses.
+    val holders: Map[(String, String), Seq[(String, Option[Int])]] = records.flatMap { r =>
+      r.record.data.iterator.collect { case (CinemaShowing(c, key), sd) =>
+        (c.displayName, key) -> (r.id.value, ScrapeListing.yearOf(sd))
+      }
     }.groupMap(_._1)(_._2)
+    def holdersOf(cinema: String, key: String, cm: CinemaMovie): Seq[String] = {
+      val all = holders.getOrElse((cinema, key), Nil)
+      val own = all.filter(_._2 == ScrapeListing.yearOf(cm))
+      (if (all.map(_._1).distinct.sizeIs > 1 && own.nonEmpty) own else all).map(_._1).distinct
+    }
 
     // What the read model serves, per (base film id, cinema).
     val servedAt: Map[(String, String), Set[LocalDateTime]] =
@@ -90,7 +100,7 @@ object ServedCorpusInvariants {
 
     val homes = listings.filter { case (_, cm) => upcoming(cm.showtimes).nonEmpty }.map { case (cinema, cm) =>
       val key = ScrapeListing.slotKey(cinema, cm.movie.title, normalizer)
-      (cinema.displayName, cm, holders.getOrElse((cinema.displayName, key), Nil).distinct)
+      (cinema.displayName, cm, holdersOf(cinema.displayName, key, cm))
     }
     report("archived listing(s) held by NO stored film — scraped, then lost before `movies`",
       homes.collect { case (c, cm, Nil) => s"'${cm.movie.title}' at $c (${cm.showtimes.size} showtime(s))" })

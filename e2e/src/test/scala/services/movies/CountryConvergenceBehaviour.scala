@@ -1491,14 +1491,8 @@ abstract class CountryConvergenceBehaviour(
       // fell before the cutoff, none of their venues failed, no venue gained them. A tick
       // that rewrites one of THEM is churn, whatever else it had to do.
       val touchedVenues = failing.toSet ++ arrivals.map(_._1) ++ withdrawn.map(_._1)
-      // The titles those moves touch. A venue can list two films under one slot key — Arc
-      // Cinema Blackpool shows "Belle (2013)" AND "Belle (2021)", and the key drops the
-      // bracket — so withdrawing one hands the venue's slot to the other film, which is the
-      // move landing where it should, not a rewrite of an untouched film.
-      val touchedTitles = (withdrawn.map { case (c, cm, _) => keyOf(c, cm) } ++ arrivals.map { case (c, cm, _) => keyOf(c, cm) }).toSet
       val unchanged = before.filter { r =>
         !arrivals.exists(_._3.id == r.id) &&
-        !r.record.data.keysIterator.exists { case models.CinemaShowing(_, key) => touchedTitles.contains(key); case _ => false } &&
           r.record.data.keysIterator.forall {
             case models.CinemaShowing(c, key) =>
               !touchedVenues.contains(c) &&
