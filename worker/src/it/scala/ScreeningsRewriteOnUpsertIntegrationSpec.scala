@@ -109,7 +109,7 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
     val repository = new MongoMovieRepository(Some(db),
       screenings = Some(counting), slots = Some(countSlots), normalizer = titleNormalizer)
     val readModel  = new services.readmodel.MongoReadModelRepository(Some(db))
-    val projector  = new services.readmodel.ReadModelProjector(repository, readModel, readModel)
+    val projector  = new services.readmodel.ReadModelProjector(repository, readModel, readModel, clock = tools.SpecClock.Pinned)
     try {
       repository.upsert(title, year, recordShowing(when))
       counting.reset(); countSlots.reset()

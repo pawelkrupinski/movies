@@ -59,7 +59,9 @@ class ReadModelProjector(
   // How long a brand-new card may be held back waiting for its share card before it is published
   // anyway, with the fallback image and `shareCardPending` set. Never indefinitely.
   firstCardHold: scala.concurrent.duration.FiniteDuration = ReadModelProjector.DefaultFirstCardHold,
-  clock:     java.time.Clock = java.time.Clock.systemUTC(),
+  // No default: the rolling content check numbers its slice by this clock, so a spec left on the
+  // wall clock re-projected its row in the half-hours that row's slice came up (Main red, 2026-09-25).
+  clock:     java.time.Clock,
   // The process config its prune cadence is read from.
   // Defaulted for specs; the worker wiring passes its composition root's instance.
   env:       Env = Env.fromProcess(),

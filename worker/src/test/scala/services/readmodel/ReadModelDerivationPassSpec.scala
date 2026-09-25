@@ -46,7 +46,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
 
   private def booted(repository: InMemoryMovieRepository, rm: InMemoryReadModelRepository,
                      marker: ReadModelDerivationMarker): ReadModelProjector = {
-    val projector = new ReadModelProjector(repository, rm, rm, derivationMarker = marker)
+    val projector = new ReadModelProjector(repository, rm, rm, derivationMarker = marker, clock = tools.SpecClock.Pinned)
     projector.start()   // seeds its memo from the store, as a restart does
     projector
   }

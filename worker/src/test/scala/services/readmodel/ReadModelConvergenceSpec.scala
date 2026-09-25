@@ -23,7 +23,7 @@ class ReadModelConvergenceSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = new InMemoryReadModelRepository()
     val metrics    = new RecordingReadModelProjectionMetrics()
-    val projector  = new ReadModelProjector(repository, rm, rm, metrics)
+    val projector  = new ReadModelProjector(repository, rm, rm, metrics, clock = tools.SpecClock.Pinned)
     projector.start()
 
     def row(title: String): StoredMovieRecord = repository.findAll().find(_.title == title).get

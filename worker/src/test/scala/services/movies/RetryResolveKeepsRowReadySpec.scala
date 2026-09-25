@@ -49,7 +49,7 @@ class RetryResolveKeepsRowReadySpec extends AnyFlatSpec with Matchers {
     val http       = new NoMatchTmdb
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val readModel  = new InMemoryReadModelRepository()
-    val projector  = new ReadModelProjector(repository, readModel, readModel)
+    val projector  = new ReadModelProjector(repository, readModel, readModel, clock = specClock)
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = specClock)
     val service    = new MovieService(cache, new InProcessEventBus(), new TmdbClient(http = http, apiKey = Some("stub")), clock = specClock)
     val key        = cache.keyOf(Title, None)

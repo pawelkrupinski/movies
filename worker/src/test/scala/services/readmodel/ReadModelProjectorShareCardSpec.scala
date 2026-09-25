@@ -184,7 +184,7 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
     }
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val ledger     = new ScriptedLedger
-    val projector  = new ReadModelProjector(repository, failing, failing, shareCards = ledger)
+    val projector  = new ReadModelProjector(repository, failing, failing, shareCards = ledger, clock = tools.SpecClock.Pinned)
     repository.upsert("Foo", Some(2024), record(7.5))
     val row = repository.findAll().head
     val id  = ReadModelProjection.filmId(row, titleNormalizer)
@@ -200,7 +200,7 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
   "With no share cards at all" should "publish at once, carrying no card" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val readModel  = new InMemoryReadModelRepository()
-    val projector  = new ReadModelProjector(repository, readModel, readModel)
+    val projector  = new ReadModelProjector(repository, readModel, readModel, clock = tools.SpecClock.Pinned)
     repository.upsert("Foo", Some(2024), record(7.5))
     projector.onMovieUpsert(repository.findAll().head)
     readModel.findAllMovies().map(_.shareCard) shouldBe Seq(None)
