@@ -2392,6 +2392,72 @@
           "legendFormat": "web {{country}} {{collection}}"
         }
       ]
+    },
+    {
+      "id": 43,
+      "title": "Env-gated alerters and integrations — 1 wired, 0 switched off by a missing env var",
+      "description": "`kinowo_worker_alerter_enabled{alerter}` (the in-app Telegram alerters: Filmweb fallback, Filmweb drops, staging stuck) and `kinowo_worker_integration_enabled{integration}` (TMDB, OMDb, the residential proxy, Zyte, Sentry, the Facebook re-scrape). ONE IS THE ONLY HEALTHY VALUE.\n\nWHY THIS IS WORTH A PANEL. Each of these is wired as `Env.get(...)` in a for-comprehension, so a missing secret becomes a `None` and the feature is simply not there -- no error, no log line. When the workers moved from Fly to k3s the Telegram chat ids were left behind and all three alerters were off for weeks with nothing noticing. WHICH key is missing is in the worker's boot log: `kubectl -n kinowo logs deploy/worker-pl | grep 'is OFF: missing'`. `WorkerAlerterDisabled` / `WorkerIntegrationDisabled` (worker-pipeline.rules) fire after 30 minutes at 0.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 249
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 1,
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "spanNulls": 300000,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_worker_alerter_enabled{job=\"kinowo-worker\",country=~\"$country\"}",
+          "legendFormat": "alerter {{alerter}} {{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "kinowo_worker_integration_enabled{job=\"kinowo-worker\",country=~\"$country\"}",
+          "legendFormat": "integration {{integration}} {{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
     }
   ],
   "description": "Why a worker is misbehaving, once the application-health dashboard has told you that one is. There are FIVE workers — pl, uk, de, us and es, each its own k3s Deployment — so every panel is scoped by the Country variable and carries the country in its legend; pick one to isolate it, or All to compare. Memory (heap, NMT native categories, the off-book gap, buffers, and the pod's real cgroup limit from kube-state-metrics), CPU split by JIT and GC, GC frequency, restarts, resolution-cache hit rates, and the error shape of the outbound HTTP the scrape and enrichment phases depend on. All from each worker's own /metrics on k3s via local-prometheus. There is no CPU-credit panel: shared-CPU credit was a Fly billing concept and the whole throttle path it drove was deleted on 2026-09-04, so no series behind it exists. · NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still — the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",

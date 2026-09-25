@@ -85,6 +85,18 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.stop()
   }
 
+  // The k3s move left the alerters' chat ids behind and nothing said so for weeks: an
+  // alerter wired off must be on /metrics from boot, on or off, for WorkerAlerterDisabled.
+  it should "publish whether each of the country's alerters is wired" in {
+    val wiring = new SpyWiring
+    wiring.start()
+    val text = PrometheusExposition.render(wiring.workerMetrics.registry)
+    wiring.stop()
+    Seq("filmweb_fallback", "filmweb_drop", "staging_stuck").foreach { alerter =>
+      text should include regex s"""kinowo_worker_alerter_enabled\\{alerter="$alerter",country="pl"\\} [01]"""
+    }
+  }
+
   // Smoothing guard: a resolution BUS EVENT must NOT fan out rating tasks. The old
   // cascade subscribed the rating fetchers to the resolution events and dumped four
   // rating tasks per event instantly (the unspread amplifier behind the midday

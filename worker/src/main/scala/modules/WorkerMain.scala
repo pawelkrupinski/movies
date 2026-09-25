@@ -78,6 +78,11 @@ object WorkerMain extends Logging {
         ws.foreach(_.mongoConnection)
         ws.foreach(_.start())
         workerMetrics.start() // process-level JVM/native samplers, once
+        // Process-wide secrets, so reported once rather than per country: gauge + WARN for
+        // any integration a missing one has quietly switched off.
+        val integrations = modules.wiring.WorkerIntegrations.features(Env.get)
+        workerMetrics.envGatedFeatures.recordIntegrations(integrations)
+        services.metrics.EnvGatedFeature.disabledWarning("integration", integrations).foreach(w => logger.warn(w))
         ws
       } catch {
         case e: Throwable =>

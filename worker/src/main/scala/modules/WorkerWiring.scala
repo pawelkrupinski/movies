@@ -241,6 +241,8 @@ class WorkerWiring(
     // The TaskWorker (above) drains the steps.
     stagingReaper.start()
     stagingStuckAlerter.foreach(_.start())
+    // Say so, loudly, for any alerter a missing env var has wired off (gauge + WARN).
+    reportAlerters()
     // Census the corpus for the /metrics gauges (off-band, read-only paged scan):
     // corpus coverage, per-city would-serve films (to overlay against the web's
     // read-model gauge) and per-city upcoming-showtime volume, all off ONE scan.

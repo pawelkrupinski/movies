@@ -1,6 +1,7 @@
 {
  "comment": "Written by infra/bin/snapshot-label-values from the fleet Prometheus; read by infra/test/test_label_shapes.py. Do not edit by hand -- re-run the script.",
  "metrics": {
+  "flux:resource_info": {},
   "gotk_reconcile_duration_seconds_bucket": {
    "kind": [
     "GitRepository",
@@ -9165,6 +9166,11 @@
     "same_as": "kinowo_web_host_disk_free_bytes"
    }
   },
+  "kinowo_worker_alerter_enabled": {
+   "job": {
+    "same_as": "kinowo_worker_native_memory_bytes"
+   }
+  },
   "kinowo_worker_change_stream_last_event_age_seconds": {
    "collection": [
     "movie_slots",
@@ -9217,6 +9223,11 @@
     "enrich",
     "scrape"
    ]
+  },
+  "kinowo_worker_integration_enabled": {
+   "job": {
+    "same_as": "kinowo_worker_native_memory_bytes"
+   }
   },
   "kinowo_worker_movies_served": {
    "scope": {
