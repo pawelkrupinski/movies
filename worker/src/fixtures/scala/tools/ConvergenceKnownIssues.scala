@@ -8,18 +8,10 @@ package tools
  */
 object ConvergenceKnownIssues {
 
-  /** Film keys `ServedCorpusInvariants.wrongMerges` names, by country code.
-   *
-   *  - `happytogether|2018` (pl): Kinoteka's Wong Kar Wai "Happy Together" (1997), listed
-   *    for its 2026 screening, resolves to TMDB 551655 — Kim Jeong-hwan's 2018 film of the
-   *    same name — and the misresolution sweep keeps it ("its cinemas name no film").
-   *    Found by the wrong-merge check on the PL sample, 2026-09-25.
-   *  - `samsonidalila|1949`, `cosifantutte|1992` (pl): the Met's live broadcasts of the operas
-   *    (Kino Nowe Horyzonty: 2026, Darko Tresnjak / Phelim McDermott) fold onto DeMille's 1949
-   *    film and Tinto Brass's 1992 one, because a bare listing elsewhere resolved the title to
-   *    them and a group that resolved to one film folds as one row (60120769c). Keeping them
-   *    apart needs a bare listing to have ONE home when the title's group holds a resolved
-   *    film and an unresolved one — the landing and the settle currently disagree. */
-  val WrongMerges: Map[String, Set[String]] = Map(
-    "pl" -> Set("happytogether|2018", "samsonidalila|1949", "cosifantutte|1992"))
+  /** Film keys `ServedCorpusInvariants.wrongMerges` names, by country code. Empty: the
+   *  three it has held — PL "Happy Together" resolved to the 2018 film, and the Met opera
+   *  broadcasts folded onto the 1949 "Samson i Dalila" and the 1992 "Così fan tutte" — were
+   *  fixed at their root (a candidate a venue denies is refused; the fold keeps a denying
+   *  venue apart; a bare listing keeps its one home). */
+  val WrongMerges: Map[String, Set[String]] = Map.empty
 }
