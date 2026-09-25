@@ -3,7 +3,7 @@ package clients.enrichment
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.RottenTomatoesClient
-import tools.GetOnlyHttpFetch
+import tools.{GetOnlyHttpFetch, RendezvousHttpFetch}
 
 class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
 
@@ -451,19 +451,15 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
   // canonicalUrl fires its candidate slugs (via ConcurrentCandidateProbe)
   // concurrently rather than one at a time — see tools.ConcurrentCandidateProbeSpec
   // for the primitive's own tests. These two pin the two things that matter at
-  // the CLIENT level: latency actually drops, and priority order still decides
+  // the CLIENT level: the probes actually overlap, and priority order still decides
   // the winner rather than whichever candidate answers first.
 
   it should "probe candidate slugs concurrently, not sequentially" in {
-    val delay = 150L
-    val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
-      def get(url: String): String = { Thread.sleep(delay); throw new RuntimeException("HTTP 404") }
-    })
-    val start = System.nanoTime() / 1000000
-    // "The North" + year has 4 candidate slugs (year-suffixed/bare x
-    // primary/de-articled); sequential would take ~4*150=600ms.
+    val http = new RendezvousHttpFetch()
+    val c = new RottenTomatoesClient(http)
+    // "The North" + year has 4 candidate slugs (year-suffixed/bare x primary/de-articled); probed one at a time, no two requests would ever be in flight together.
     c.canonicalUrl("The North", Some(2026)) shouldBe None
-    (System.nanoTime() / 1000000 - start) should be < (delay * 2)
+    http.peakInFlight should be >= 2
   }
 
   // The RT twin of MetacriticClientSpec's "Odyssey" regression: the correct
