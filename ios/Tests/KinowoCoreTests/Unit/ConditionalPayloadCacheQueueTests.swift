@@ -33,4 +33,23 @@ final class ConditionalPayloadCacheQueueTests: XCTestCase {
             .urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent(Self.file))
         XCTAssertEqual(onDisk.suffix(body.count), body)
     }
+
+    /// Each cache orders its OWN file's accesses; it shares no queue with a
+    /// cache of another file. So a slow write holding one cache's queue (a big
+    /// details payload) never stalls the main-thread read of another's
+    /// (the repertoire stamp) — nor does any process-wide queue exist for
+    /// every instance to meet on.
+    func testACacheIsNotHeldUpByAnotherCachesQueue() {
+        let other = ConditionalPayloadCache<Item>(file: "conditional-payload-queue-test-other.json")
+        let released = DispatchSemaphore(value: 0)
+        other.queue.async { released.wait() }
+        defer { released.signal() }
+
+        let answered = expectation(description: "a read on this cache answers while the other's queue is held")
+        DispatchQueue.global().async {
+            _ = self.cache.load(deployment: self.deployment, city: "poznan")
+            answered.fulfill()
+        }
+        wait(for: [answered], timeout: 2)
+    }
 }

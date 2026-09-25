@@ -32,16 +32,26 @@ import Foundation
 /// between the two writes, and then served one city's films under another's
 /// stamp. Those files are no longer read (and are deleted on the next save),
 /// so they cost one full response, never a wrong one. Every read and write
-/// runs on one serial queue in the order it was issued, so an older city's
-/// background save can't land after a newer one's, and a read sees every
-/// save issued before it.
+/// runs on this cache's own serial queue in the order it was issued, so an
+/// older city's background save can't land after a newer one's, and a read
+/// sees every save issued before it.
+///
+/// That ordering holds per INSTANCE, which is all it needs to: each file has
+/// one owner — the store the app root builds holds its endpoint's cache for
+/// its whole life — and caches of different files have nothing to order
+/// against each other, so one's slow write never holds up another's read.
+/// Two instances over the same file would not be ordered against each other.
 struct ConditionalPayloadCache<Payload: Codable> {
     private let file: String
     private let legacyFiles: [String]
+    /// Every file access of this cache, in issue order. A reference, so copies
+    /// of the struct share it.
+    let queue: DispatchQueue
 
     init(file: String, legacyFiles: [String] = []) {
         self.file = file
         self.legacyFiles = legacyFiles
+        queue = DispatchQueue(label: "kinowo.conditional-payload-cache.\(file)", qos: .utility)
     }
 
     private struct Header: Codable {
@@ -67,12 +77,12 @@ struct ConditionalPayloadCache<Payload: Codable> {
     func saveInBackground(body: Data, deployment: URL, city: String, lastModified: String?) {
         guard let entry = Self.entry(body: body, deployment: deployment, city: city, lastModified: lastModified)
         else { return }
-        conditionalPayloadCacheQueue.async { write(entry) }
+        queue.async { write(entry) }
     }
 
     /// Forget the entry.
     func remove() {
-        conditionalPayloadCacheQueue.sync { try? FileManager.default.removeItem(at: url) }
+        queue.sync { try? FileManager.default.removeItem(at: url) }
     }
 
     /// The one-file entry: header line, newline, encoded payload.
@@ -82,7 +92,7 @@ struct ConditionalPayloadCache<Payload: Codable> {
         return headerData + Data("\n".utf8) + body
     }
 
-    /// Only ever on `conditionalPayloadCacheQueue`.
+    /// Only ever on `queue`.
     private func write(_ entry: Data) {
         try? entry.write(to: url, options: .atomic)
         for legacy in legacyFiles {
@@ -124,30 +134,26 @@ struct ConditionalPayloadCache<Payload: Codable> {
     /// The header and the (still encoded) payload. Only the header line is
     /// decoded here, so reading the stamp doesn't pay for the whole listing.
     private func entry() -> (Header, Data)? {
-        guard let data = conditionalPayloadCacheQueue.sync(execute: { try? Data(contentsOf: url) }),
+        guard let data = queue.sync(execute: { try? Data(contentsOf: url) }),
               let newline = data.firstIndex(of: UInt8(ascii: "\n")),
               let header = try? JSONDecoder().decode(Header.self, from: data[..<newline]) else { return nil }
         return (header, data[data.index(after: newline)...])
     }
 }
 
-/// The one serial queue every `ConditionalPayloadCache` file access runs on
-/// (a generic type can't hold a static stored property).
-private let conditionalPayloadCacheQueue = DispatchQueue(label: "kinowo.conditional-payload-cache", qos: .utility)
-
 // The two endpoints' caches. A file per endpoint so their conditional-GET
-// state never collides. Computed rather than stored: a generic type can't
-// hold a static stored property, and the value is just file names.
+// state never collides. Factories, not shared values: each call builds a new
+// cache with its own queue, for the one store that owns it.
 extension ConditionalPayloadCache where Payload == Film {
     /// `/{city}/api/repertoire`.
-    static var repertoire: Self {
+    static func repertoire() -> Self {
         .init(file: "repertoire-entry.json", legacyFiles: ["repertoire.json", "repertoire-meta.txt"])
     }
 }
 
 extension ConditionalPayloadCache where Payload == FilmDetails {
     /// `/{city}/api/details`.
-    static var details: Self {
+    static func details() -> Self {
         .init(file: "details-entry.json", legacyFiles: ["details.json", "details-meta.txt"])
     }
 }

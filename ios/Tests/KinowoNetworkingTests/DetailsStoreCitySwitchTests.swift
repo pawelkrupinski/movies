@@ -11,10 +11,12 @@ final class DetailsStoreCitySwitchTests: XCTestCase {
     private let deployment = URL(string: "https://details-switch-test.invalid")!
     private let city = "detailscity"
     private let otherCity = "otherdetailscity"
+    /// One instance for the whole case: saves and reads are ordered per cache.
+    private let cache = ConditionalPayloadCache<FilmDetails>.details()
 
     override func tearDown() {
-        ConditionalPayloadCache.details.save([], deployment: deployment, city: city, lastModified: nil)
-        ConditionalPayloadCache.details.save([], deployment: deployment, city: otherCity, lastModified: nil)
+        cache.save([], deployment: deployment, city: city, lastModified: nil)
+        cache.save([], deployment: deployment, city: otherCity, lastModified: nil)
         URLProtocolStub.handler = nil
         super.tearDown()
     }
@@ -31,7 +33,7 @@ final class DetailsStoreCitySwitchTests: XCTestCase {
             return response
         }
 
-        let store = DetailsStore(base: deployment, citySlug: city, session: URLProtocolStub.session())
+        let store = DetailsStore(base: deployment, citySlug: city, session: URLProtocolStub.session(), cache: cache)
         let slowReload = Task { await store.reload() }
         try await Task.sleep(for: .milliseconds(100))
         store.use(citySlug: otherCity)
@@ -40,7 +42,7 @@ final class DetailsStoreCitySwitchTests: XCTestCase {
 
         XCTAssertNil(store.details(for: "Old City Film"))
         XCTAssertNotNil(store.details(for: "New City Film"))
-        XCTAssertEqual(ConditionalPayloadCache.details.load(deployment: deployment, city: otherCity)?.map(\.title), ["New City Film"])
+        XCTAssertEqual(cache.load(deployment: deployment, city: otherCity)?.map(\.title), ["New City Film"])
     }
 
     /// A city switch drops the OUTGOING city's details at once, as
@@ -49,7 +51,7 @@ final class DetailsStoreCitySwitchTests: XCTestCase {
     /// city's fetch is in flight.
     func testACitySwitchDropsThePreviousCitysDetailsImmediately() async throws {
         let oldCity = [FilmDetails(title: "Shared Title", originalTitle: nil, synopsis: "old city", trailerURLs: [])]
-        let store = DetailsStore(base: deployment, citySlug: city, session: URLProtocolStub.session())
+        let store = DetailsStore(base: deployment, citySlug: city, session: URLProtocolStub.session(), cache: cache)
         URLProtocolStub.handler = { _ in URLProtocolStub.Response(statusCode: 200, headers: [:], body: try! JSONEncoder().encode(oldCity)) }
         await store.reload()
         XCTAssertEqual(store.details(for: "Shared Title")?.synopsis, "old city")

@@ -27,9 +27,10 @@ final class DetailsStore: ObservableObject {
 
     /// `base` is the bare host; the fetch URL is `…/{citySlug}/api/details`.
     /// Same city-qualification contract as `RepertoireStore`.
-    init(base: URL = kinowoBaseURL, citySlug: String = City.default.slug, session: URLSession = .shared) {
+    init(base: URL = kinowoBaseURL, citySlug: String = City.default.slug, session: URLSession = .shared,
+         cache: ConditionalPayloadCache<FilmDetails> = .details()) {
         endpoint = ConditionalListEndpoint(
-            base: base, citySlug: citySlug, endpoint: "details", cache: .details, session: session)
+            base: base, citySlug: citySlug, endpoint: "details", cache: cache, session: session)
     }
 
     /// Re-point at a different country's deployment and reload (see

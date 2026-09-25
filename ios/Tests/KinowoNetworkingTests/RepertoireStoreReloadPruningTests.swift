@@ -15,10 +15,12 @@ final class RepertoireStoreReloadPruningTests: XCTestCase {
 
     private let deployment = URL(string: "https://reload-pruning-test.invalid")!
     private let city = "testcity"
+    /// One instance for the whole case: saves and reads are ordered per cache.
+    private let cache = ConditionalPayloadCache<Film>.repertoire()
 
     override func tearDown() {
         // Reset the bound disk cache so cases don't leak into one another.
-        ConditionalPayloadCache.repertoire.save([], deployment: deployment, city: city, lastModified: nil)
+        cache.save([], deployment: deployment, city: city, lastModified: nil)
         URLProtocolStub.handler = nil
         super.tearDown()
     }
@@ -42,7 +44,7 @@ final class RepertoireStoreReloadPruningTests: XCTestCase {
                 : jsonResponse(stalePayload)
         }
 
-        let store = RepertoireStore(base: deployment, citySlug: city, session: URLProtocolStub.session(), posters: .throwaway())
+        let store = RepertoireStore(base: deployment, citySlug: city, session: URLProtocolStub.session(), cache: cache, posters: .throwaway())
         await store.reload(now: now)
 
         XCTAssertTrue(store.films.isEmpty,
@@ -62,7 +64,7 @@ final class RepertoireStoreReloadPruningTests: XCTestCase {
                 : jsonResponse(payload)
         }
 
-        let store = RepertoireStore(base: deployment, citySlug: city, session: URLProtocolStub.session(), posters: .throwaway())
+        let store = RepertoireStore(base: deployment, citySlug: city, session: URLProtocolStub.session(), cache: cache, posters: .throwaway())
         await store.reload(now: now)
 
         XCTAssertEqual(store.films.count, 1,
@@ -74,14 +76,14 @@ final class RepertoireStoreReloadPruningTests: XCTestCase {
     /// A 304 response vouches only for the BODY being unchanged since it was
     /// cached, not for it still being current — the cached body can carry a
     /// screening time that has since crossed the 30-minute cutoff.
-    /// `ConditionalPayloadCache.repertoire.bodyForNotModified` only hands back the cached entry
+    /// `ConditionalPayloadCache.bodyForNotModified` only hands back the cached entry
     /// when the caller is holding nothing, so a fresh store (never
     /// `loadCachedData()`-primed) is what exercises that path.
     func testReloadPrunesAStaleScreeningReplayedByA304() async throws {
         let now = Date()
         let (date, time) = warsawDateAndTime(now.addingTimeInterval(-45 * 60))
         let staleCachedPayload = [film(date: date, time: time)]
-        ConditionalPayloadCache.repertoire.save(staleCachedPayload, deployment: deployment, city: city, lastModified: "cached-tag")
+        cache.save(staleCachedPayload, deployment: deployment, city: city, lastModified: "cached-tag")
 
         URLProtocolStub.handler = { request in
             request.url!.path.hasSuffix("/cinemas")
@@ -89,7 +91,7 @@ final class RepertoireStoreReloadPruningTests: XCTestCase {
                 : .init(statusCode: 304, headers: [:], body: Data())
         }
 
-        let store = RepertoireStore(base: deployment, citySlug: city, session: URLProtocolStub.session(), posters: .throwaway())
+        let store = RepertoireStore(base: deployment, citySlug: city, session: URLProtocolStub.session(), cache: cache, posters: .throwaway())
         XCTAssertTrue(store.films.isEmpty, "precondition: a fresh store starts with no in-memory films")
         await store.reload(now: now)
 
@@ -105,7 +107,7 @@ final class RepertoireStoreReloadPruningTests: XCTestCase {
     /// the await), and save them to the new city's disk cache.
     func testSlowResponseForThePreviousCityIsDroppedAfterASwitch() async throws {
         let otherCity = "othercity"
-        defer { ConditionalPayloadCache.repertoire.save([], deployment: deployment, city: otherCity, lastModified: nil) }
+        defer { cache.save([], deployment: deployment, city: otherCity, lastModified: nil) }
         let later = Date().addingTimeInterval(3 * 3600)
         let (date, time) = warsawDateAndTime(later)
         let oldCityFilm = film(date: date, time: time, title: "Old City Film")
@@ -122,7 +124,7 @@ final class RepertoireStoreReloadPruningTests: XCTestCase {
             return jsonResponse([newCityFilm])
         }
 
-        let store = RepertoireStore(base: deployment, citySlug: city, session: URLProtocolStub.session(), posters: .throwaway())
+        let store = RepertoireStore(base: deployment, citySlug: city, session: URLProtocolStub.session(), cache: cache, posters: .throwaway())
         let slowReload = Task { await store.reload() }
         try await Task.sleep(for: .milliseconds(100))
         store.use(citySlug: otherCity)
@@ -131,7 +133,7 @@ final class RepertoireStoreReloadPruningTests: XCTestCase {
 
         XCTAssertEqual(store.films.map(\.title), ["New City Film"])
         XCTAssertEqual(store.loadedCitySlug, otherCity)
-        XCTAssertEqual(ConditionalPayloadCache.repertoire.load(deployment: deployment, city: otherCity)?.map(\.title), ["New City Film"])
+        XCTAssertEqual(cache.load(deployment: deployment, city: otherCity)?.map(\.title), ["New City Film"])
     }
 }
 
