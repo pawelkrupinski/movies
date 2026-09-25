@@ -133,11 +133,12 @@ final class StateSyncService: ObservableObject {
             guard let self else { return }
             // Observe local edits BEFORE the login reconcile: a pick or hide
             // made while its fetch is in flight must already be pending, or
-            // the account's older state would overwrite it.
+            // the account's older state would overwrite it. Country switches
+            // too: one made meanwhile reconciles its own country.
             self.observeLocalChanges()
+            self.observeCountryChanges()
             await self.reconcileLanguage()
             await self.reconcile(country: self.prefs.selectedCountry.code)
-            self.observeCountryChanges()
         }
     }
 
@@ -428,10 +429,9 @@ final class StateSyncService: ObservableObject {
     }
 
     /// A country switch reconciles that country the same way login does —
-    /// it may be one this device has never synced. Skips a country already
-    /// migrated on THIS reconcile pass isn't needed: `reconcile` itself is
-    /// cheap (a conditional GET) once migrated, so there's no harm re-running
-    /// it on every switch back to an already-migrated country either.
+    /// it may be one this device has never synced. No skip for a country
+    /// already migrated: `reconcile` is cheap (a conditional GET) once
+    /// migrated, so re-running it on every switch back costs nothing.
     private func observeCountryChanges() {
         prefs.$selectedCountry
             .dropFirst()

@@ -876,6 +876,26 @@ final class StateSyncServiceTests: XCTestCase {
         _ = sync
     }
 
+    /// A country switch while the login reconcile's fetch is on the wire: the
+    /// switch was only observed once that reconcile finished, so the new
+    /// country went unsynced until the next resume.
+    func testCountrySwitchDuringTheLoginReconcileReconcilesTheNewCountry() async throws {
+        client.remote[pl] = ["PL Film"]
+        client.remote[unitedKingdom.code] = ["UK Film"]
+        client.fetchDelay[pl] = .milliseconds(300)
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.client.fetchedCountries.contains(self.pl) }
+
+        prefs.setCountry(unitedKingdom)
+
+        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.unitedKingdom.code) }
+        XCTAssertEqual(prefs.hiddenFilms, ["UK Film"])
+        XCTAssertEqual(prefs.hiddenFilms(country: pl), ["PL Film"])
+        _ = sync
+    }
+
     /// Switching to a country this device has never synced must show that
     /// country's bucket — not union the previous country's titles in and
     /// push them up as hides of the new one.
