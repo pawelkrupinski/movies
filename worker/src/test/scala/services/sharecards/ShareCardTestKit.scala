@@ -46,8 +46,10 @@ object ShareCardTestKit {
     }
   }
 
-  /** The bounded JDK decode only — no vips, so a spec runs the same on every machine. */
-  val javaShrinker: PosterShrinker = new VipsPosterShrinker(binary = None)
+  /** The bounded JDK decode only — no vips, so a spec runs the same on every machine. A fresh
+   *  one per caller: each owns its decode gate, the way each worker process does, so one spec's
+   *  (or one simulated worker's) shrinks never queue behind another's. */
+  def newJavaShrinker(): VipsPosterShrinker = new VipsPosterShrinker(binary = None)
 
   val ratings: ResolvedRatings = ResolvedRatings(Some(7.8), None, Some(81), "", Some(91), "", None, "")
 
@@ -75,7 +77,8 @@ object ShareCardTestKit {
                   val readModel: InMemoryReadModelRepository = new InMemoryReadModelRepository) {
     val queue     = new InMemoryTaskQueue
     val metrics: ShareCardMetrics = ShareCardMetrics.noop
-    lazy val posters = new ShareCardPosters(store, download, javaShrinker, metrics)
+    val shrinker  = newJavaShrinker()
+    lazy val posters = new ShareCardPosters(store, download, shrinker, metrics)
     lazy val service = new ShareCardService(Country.default, store, posters, queue, metrics, clock)
   }
 }

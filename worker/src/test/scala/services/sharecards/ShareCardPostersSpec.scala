@@ -49,7 +49,7 @@ class ShareCardPostersSpec extends AnyFlatSpec with Matchers {
     val primary  = "https://multikino.example/403.jpg"
     val series   = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
     val download = new CountingDownload(failing = Set(primary, "https://gone.example/a.jpg", "https://gone.example/b.jpg"))
-    val posters  = new ShareCardPosters(tempStore(), download, javaShrinker, series.forCountry("pl"))
+    val posters  = new ShareCardPosters(tempStore(), download, newJavaShrinker(), series.forCountry("pl"))
 
     posters.load(film1, Seq(primary, url)) shouldBe defined
     posters.load("fother", Seq("https://gone.example/a.jpg", "https://gone.example/b.jpg")) shouldBe None
@@ -64,6 +64,22 @@ class ShareCardPostersSpec extends AnyFlatSpec with Matchers {
       failOnce(); failOnce()
     }
     events.map(_.getLevel.toString) shouldBe Seq("INFO", "INFO")
+  }
+
+  // The kit's shrinker was once one object-level instance, so every rig — and every simulated
+  // worker in the it/ specs — queued behind ONE decode gate, where production has one per process.
+  "Two rigs' shrinkers" should "each shrink behind their own decode gate" in {
+    import scala.concurrent.{Await, Future, Promise}
+    import scala.concurrent.ExecutionContext.Implicits.global
+    import scala.concurrent.duration.*
+    val (busy, idle) = (new Rig(), new Rig())
+    val file    = Files.write(Files.createTempFile("poster-", ".jpg"), posterJpeg)
+    val holding = Promise[Unit](); val release = Promise[Unit]()
+    val holder  = Future(busy.shrinker.gate.withPermit { holding.success(()); Await.ready(release.future, 30.seconds) })
+    try {
+      Await.ready(holding.future, 10.seconds)
+      Await.result(Future(idle.shrinker.coverSlot(file)), 10.seconds).map(_.getWidth) shouldBe Right(420)
+    } finally { release.success(()); Await.ready(holder, 30.seconds); Files.delete(file) }
   }
 
   "A poster download" should "be abandoned at the byte cap instead of written out" in {
