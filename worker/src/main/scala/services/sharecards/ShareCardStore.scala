@@ -41,6 +41,12 @@ import scala.util.{Try, Using}
 class ShareCardStore(val root: Path) {
   import ShareCardStore.*
 
+  // The in-JVM half of a film's lock (see `holding`): per store, because a directory has ONE store
+  // per process — the wiring builds one per country, a worker runs one country (WorkerMain refuses
+  // more), and a card directory is a country's own (its janitor prunes whatever that country's
+  // read model does not name).
+  private val jvmLocks = Array.fill(LockStripes)(new AnyRef)
+
   private val posters = root.resolve(PosterDir)
   private val bases   = root.resolve(BaseDir)
 
@@ -131,7 +137,7 @@ class ShareCardStore(val root: Path) {
    *  volume does; a mount without working locks would leave the check-then-rename window. */
   private def holding[A](lock: Path)(body: => A): A = {
     Files.createDirectories(lock.getParent)
-    val stripe = ShareCardStore.jvmLocks(Math.floorMod(lock.toString.hashCode, ShareCardStore.jvmLocks.length))
+    val stripe = jvmLocks(Math.floorMod(lock.toString.hashCode, jvmLocks.length))
     stripe.synchronized {
       Using.resource(FileChannel.open(lock, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) { channel =>
         val held = channel.lock()
@@ -179,7 +185,6 @@ object ShareCardStore {
    *  FIXED set of stripe files (a lock file cannot safely be deleted while another may take it). */
   val LockDir     = ".locks"
   val LockStripes = 64
-  private val jvmLocks = Array.fill(LockStripes)(new AnyRef)
 
   private val StampPrefix    = "kinowo:"
   private val StampReadBytes = 256

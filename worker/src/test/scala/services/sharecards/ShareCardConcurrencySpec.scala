@@ -51,4 +51,30 @@ class ShareCardConcurrencySpec extends AnyFlatSpec with Matchers {
       .foreach(Files.setLastModifiedTime(_, FileTime.from(T0.minusSeconds(7200)))))
     janitors.head.enforceBudget().bytes should be <= 1L
   }
+
+  "A store" should "never wait on another store's card write, even one whose lock shares its stripe" in {
+    val entered = new CountDownLatch(1)
+    val release = new CountDownLatch(1)
+    val first = new ShareCardStore(Files.createTempDirectory("share-cards-a-")) {
+      override def asked(path: java.nio.file.Path): Option[java.time.Instant] = {   // read under the film's lock
+        entered.countDown(); release.await(10, TimeUnit.SECONDS); None
+      }
+    }
+    def stripeOf(store: ShareCardStore) =
+      Math.floorMod(store.lockFor(store.cardPath("film")).toString.hashCode, ShareCardStore.LockStripes)
+    // A second directory whose lock file lands on the SAME stripe index, so only stripes shared
+    // across stores could make it wait.
+    val second = Iterator.continually(new ShareCardStore(Files.createTempDirectory("share-cards-b-")))
+      .find(stripeOf(_) == stripeOf(first)).get
+
+    val pool = Executors.newFixedThreadPool(2)
+    try {
+      val holding = pool.submit[Unit](() => first.writeAtomically(first.cardPath("film"), posterJpeg, "v1", asked = Some(T0)))
+      entered.await(5, TimeUnit.SECONDS) shouldBe true
+      val other = pool.submit[Unit](() => second.writeAtomically(second.cardPath("film"), posterJpeg, "v1", asked = Some(T0)))
+      noException should be thrownBy other.get(5, TimeUnit.SECONDS)
+      release.countDown()
+      holding.get(10, TimeUnit.SECONDS)
+    } finally { release.countDown(); pool.shutdownNow() }
+  }
 }
