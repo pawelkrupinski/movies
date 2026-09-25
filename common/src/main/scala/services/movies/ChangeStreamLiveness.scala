@@ -3,6 +3,7 @@ package services.movies
 import java.time.{Clock, Duration, Instant}
 import java.util.concurrent.{ConcurrentHashMap, ConcurrentSkipListMap}
 import java.util.concurrent.atomic.AtomicLong
+import scala.jdk.CollectionConverters._
 
 /**
  * WHEN EACH CHANGE-STREAM CURSOR LAST DELIVERED AN EVENT — the liveness signal the
@@ -108,6 +109,13 @@ final class ChangeStreamLiveness(clock: Clock = Clock.systemUTC()) {
 
   /** The apply behind `ticket` has run (or failed — either way it is no longer waiting). */
   def applied(collection: String, ticket: Long): Unit = { waitingOn(collection).remove(ticket); () }
+
+  /** The ticket of the last event handed to the apply thread, from any cursor — 0 before the first. */
+  def lastTicket: Long = tickets.get()
+
+  /** Whether every event handed to the apply thread up to `ticket`, from any cursor, has been applied. */
+  def appliedThrough(ticket: Long): Boolean =
+    waiting.values().iterator().asScala.forall(onCursor => Option(onCursor.firstEntry()).forall(_.getKey > ticket))
 
   /** Events from `collection`'s cursor handed to the apply thread and not yet applied. */
   def pendingApplies(collection: String): Int = waitingOn(collection).size

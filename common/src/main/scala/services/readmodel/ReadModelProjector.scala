@@ -58,7 +58,10 @@ class ReadModelProjector(
   clock:     java.time.Clock = java.time.Clock.systemUTC(),
   // The process config its prune cadence and content-check slicing are read from.
   // Defaulted for specs; the worker wiring passes its composition root's instance.
-  env:       Env = Env.fromProcess()
+  env:       Env = Env.fromProcess(),
+  // Blocks until the change stream has applied what it had in flight when a sweep let go of the
+  // lock — what tells a heal the stream would have made anyway from a real miss (see `verdictOnHeals`).
+  awaitStreamApplied: ChangeStreamLiveness => Unit = ReadModelProjector.awaitStreamApplied(_)
 ) extends Stoppable with Logging {
   // The projection keys rows by the repository's own `_id` formula, so it must
   // fold titles with the same rules the repository writes under — take them from
@@ -143,12 +146,16 @@ class ReadModelProjector(
   // was never reached. Counting on from the clock keeps the next process on the next slice.
   private var sweepCount    = clock.instant().getEpochSecond / PruneSeconds
   @volatile private var watchHandle: Option[AutoCloseable] = None
+  // The rows the change stream applied or deleted since the running prune sweep started, `None`
+  // outside one: what tells a heal the stream would have made anyway from a miss (`verdictOnHeals`).
+  private var appliedSinceSweep: Option[scala.collection.mutable.Set[String]] = None
 
   def enabled: Boolean = writer.enabled && movieRepository.enabled
 
   /** Apply one source-row change from the change stream. */
   def onMovieUpsert(stored: StoredMovieRecord): Unit =
     lock.synchronized {
+      appliedSinceSweep.foreach(_ += stored.id.value)
       projectRow(stored)
       // A second way out of a first-publish hold besides the task scheduled for its end: that
       // task may be claimed by a replica other than the one holding the card.
@@ -161,6 +168,7 @@ class ReadModelProjector(
    *  next prune. The cards are what this process remembers producing for the row, plus
    *  anything in the read model under the row's id (a card a previous process wrote). */
   def onMovieDelete(id: services.movies.FilmId): Unit = lock.synchronized {
+    appliedSinceSweep.foreach(_ += id.value)
     val remembered = lastCardsByRow.getOrElse(id.value, Set.empty)
     val underId    = lastMovie.keysIterator.filter(card => card == id.value || card.startsWith(id.value + "~")).toSet
     (remembered ++ underId).foreach(retireCard(_, RetireReason.RowDeleted))
@@ -296,6 +304,9 @@ class ReadModelProjector(
    *  publishes a card the first-publish gate was holding. */
   def refreshShareCard(filmId: String): Unit = lock.synchronized {
     val row = held.get(filmId).map(_.row).getOrElse(filmId.takeWhile(_ != '~'))
+    // A card held for its share card and published by the render landing is in flight like a
+    // stream event: a sweep between the two found it absent (see `verdictOnHeals`).
+    appliedSinceSweep.foreach(_ += row)
     movieRepository.findById(services.movies.FilmId(row)).foreach(projectRow)
   }
 
@@ -485,7 +496,7 @@ class ReadModelProjector(
    *
    *  A row that fails to project must not abort the prune (the prune is what removes the
    *  duplicates), so each projection is guarded individually. */
-  private def sweep(reproject: Boolean): Unit = lock.synchronized {
+  private def sweep(reproject: Boolean): Seq[String] = lock.synchronized {
     // Log-only label. The reconcile-sweep metric now tracks ONLY the prune (the live,
     // scheduled backstop); the reproject path survives as a test/backfill seed and is
     // no longer metered — the reproject retirement gate it fed has been removed.
@@ -654,13 +665,35 @@ class ReadModelProjector(
     val didWork = reprojected > 0 || prunedFilms > 0 || prunedScreenings > 0
     if (!reproject) metrics.recordReconcileSweep(ReconcileKind.Prune, didWork)
     metrics.recordHealCheck(HealTrigger.Sweep, healChecks)
-    if (healed.nonEmpty) {
-      metrics.recordHeal(HealTrigger.Sweep, healed.size)
-      logger.warn(s"read-model $kind sweep: projected ${healed.size} ready row(s) missing a card or a venue " +
-        s"before the prune: ${ReadModelProjector.idsForLog(healed)}.")
-    }
     logger.info(s"read-model $kind sweep: reprojected $reprojected doc(s), pruned $prunedFilms film(s) + " +
       s"$prunedScreenings orphan screening(s)${if (scanComplete) "" else " [scan INCOMPLETE — prune skipped]"}.")
+    healed.toSeq
+  }
+
+  /** Which of the rows a prune sweep healed were MISSES — the rest the change stream had in flight.
+   *
+   *  The sweep holds the projection lock from its first read of the read model to its last
+   *  write, and every stream apply waits for that lock. So a scrape landing a new venue or a new
+   *  row seconds before the sweep, or during it, leaves exactly the id the sweep finds absent in
+   *  an event queued behind it: the heal writes it, and the stream would have written it a moment
+   *  later. Counted, those paged `ReadModelHealsRecurring` for a stream that was fine — every
+   *  sweep heal from 2026-09-24 21:08Z to 09-25 02:37Z (US and UK) came with a scrape finishing
+   *  within five seconds of the sweep starting, and with no retirement, failed re-read or restart
+   *  behind it. So the verdict waits, outside the lock, for the stream to apply what it had in
+   *  flight: a healed row the stream then applies was not missed; one it leaves alone was. Only
+   *  misses are metered and named in the WARN line. */
+  private def verdictOnHeals(healed: Seq[String]): Unit = {
+    if (healed.nonEmpty) awaitStreamApplied(movieRepository.changeStreamLiveness)
+    val applied = lock.synchronized { val rows = appliedSinceSweep.fold(Set.empty[String])(_.toSet); appliedSinceSweep = None; rows }
+    val (inFlight, missed) = healed.partition(applied)
+    if (inFlight.nonEmpty)
+      logger.info(s"read-model prune sweep: wrote ${inFlight.size} row(s) the change stream had in flight and then " +
+        s"applied itself — not heals: ${ReadModelProjector.idsForLog(inFlight)}.")
+    if (missed.nonEmpty) {
+      metrics.recordHeal(HealTrigger.Sweep, missed.size)
+      logger.warn(s"read-model prune sweep: projected ${missed.size} ready row(s) missing a card or a venue " +
+        s"before the prune: ${ReadModelProjector.idsForLog(missed)}.")
+    }
   }
 
   /** Full re-projection + prune. NOT scheduled — the resume-token change stream made the
@@ -668,11 +701,17 @@ class ReadModelProjector(
    *  fixture/e2e read-model seeding calls it to project a settled corpus synchronously
    *  (it stitches split films via `foreachRecord`, which a per-row `onMovieUpsert` seed
    *  would not). Mirrors `scripts.BackfillReadModel`. */
-  def reconcile(): Unit = sweep(reproject = true)
+  def reconcile(): Unit = { sweep(reproject = true); () }
 
   /** Cheap id-only orphan prune — the frequent backstop for deleted / merged-away rows, and
    *  for the rows a silent change stream failed to deliver (see `sweep`). */
-  def pruneOrphans(): Unit = sweep(reproject = false)
+  def pruneOrphans(): Unit = {
+    lock.synchronized { appliedSinceSweep = Some(scala.collection.mutable.Set.empty) }
+    val healed =
+      try sweep(reproject = false)
+      catch { case exception: Throwable => lock.synchronized { appliedSinceSweep = None }; throw exception }
+    verdictOnHeals(healed)
+  }
 
   def start(): Unit = if (enabled) {
     // Seed the last-projection state from the derived collections, so a restart
@@ -833,6 +872,29 @@ object ReadModelProjector {
   def firstCardHoldFrom(env: Env): scala.concurrent.duration.FiniteDuration =
     scala.concurrent.duration.Duration(
       env.positiveLong("KINOWO_SHARE_CARD_FIRST_HOLD_SECONDS", DefaultFirstCardHold.toSeconds), TimeUnit.SECONDS)
+
+  /** How long a write that landed while a sweep held the lock may take to be DELIVERED by its
+   *  cursor, before the wait below can see it queued. */
+  private val InFlightDeliveryGrace = scala.concurrent.duration.Duration(2000L, TimeUnit.MILLISECONDS)
+  /** The longest a sweep's heal verdict waits for the stream's apply thread to catch up. */
+  private val InFlightApplyTimeout = scala.concurrent.duration.Duration(30L, TimeUnit.SECONDS)
+
+  /** Let the change stream apply what it had in flight when a sweep let go of the lock: wait out
+   *  the delivery of a write that landed during the sweep, then until every event handed to the
+   *  apply thread by then has been applied, or the timeout — an apply thread that far behind is
+   *  `ChangeStreamApplyLagging`'s business, and a heal it leaves unapplied counts. No cursor
+   *  subscribed (a Mongo-less boot, a test wiring) means nothing is in flight. */
+  def awaitStreamApplied(
+    liveness: ChangeStreamLiveness,
+    grace:    scala.concurrent.duration.FiniteDuration = InFlightDeliveryGrace,
+    timeout:  scala.concurrent.duration.FiniteDuration = InFlightApplyTimeout
+  ): Unit =
+    if (ChangeStreamLiveness.Collections.exists(liveness.isWatching)) {
+      Thread.sleep(grace.toMillis)
+      val handedOff = liveness.lastTicket
+      val deadline  = System.nanoTime() + timeout.toNanos
+      while (!liveness.appliedThrough(handedOff) && System.nanoTime() < deadline) Thread.sleep(50)
+    }
 
   /** How many row ids one heal line names before it summarises the rest. */
   private[readmodel] val LoggedIdsPerLine = 20

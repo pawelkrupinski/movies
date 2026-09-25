@@ -1090,6 +1090,47 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     sweeper.stop()
   }
 
+  // A HEAL IS A MISS THE STREAM DID NOT REPAIR ITSELF. The case above left out the other half:
+  // a scrape that lands a NEW venue (or a new row) seconds before the sweep, or during it, puts
+  // exactly the id the sweep finds absent into an event queued behind the sweep's lock — and
+  // the heal writing that id counted as a repair. Every sweep heal from 2026-09-24 21:08Z to
+  // 09-25 02:37Z was that: US 21:08 (Mandaadi + Mirzapur, four Cinemark/Regal scrapes 1-5 s
+  // before the sweep), 23:08 (Other Mommy, NCG Gallatin at the sweep's first second), 01:08
+  // (The Social Reckoning + f10401cf8eb0f536, GQT Wabash Landing 1 s before), and UK 02:37
+  // (The Social Reckoning + fc0b3a8fb0547b69, Showcase de Lux Leeds landing mid-sweep) — no
+  // card retired, no re-read failed, and ReadModelHealsRecurring paged twice. Only a row the
+  // stream does NOT apply once the sweep lets go is a miss.
+  "the orphan prune" should "not count as a heal an absence the change stream applies once the sweep lets go" in {
+    val (_, repository, rm) = fixture()
+    val m = new RecordingReadModelProjectionMetrics()
+    def foo(venues: (Source, String)*) = MovieRecord(tmdbId = Some(1), data = venues.map { case (cinema, showtime) =>
+      cinema -> SourceData(title = Some("Foo"), showtimes = Seq(at(showtime))) }.toMap)
+    repository.upsert("Foo", Some(2024), foo(Multikino -> "2026-06-12T20:00"))
+    repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
+    // The stream's apply thread: what it had queued when the sweep took the lock, run once it is free.
+    val queued = scala.collection.mutable.Buffer.empty[StoredMovieRecord]
+    lazy val projector: ReadModelProjector =
+      new ReadModelProjector(repository, rm, rm, m, awaitStreamApplied = _ => queued.foreach(projector.onMovieUpsert))
+    repository.findAll().foreach(projector.onMovieUpsert)
+    // A scrape lands Foo at a second venue; its event is delivered, and waits behind the sweep.
+    repository.upsert("Foo", Some(2024), foo(Multikino -> "2026-06-12T20:00", KinoMuranow -> "2026-06-13T18:00"))
+    queued ++= repository.findAll().filter(_.id.value == fid)
+    rm.deleteMovie("bar|2024")                           // and a card the stream really did lose
+
+    val lines = tools.LogCapture.capture(classOf[ReadModelProjector].getName)(projector.pruneOrphans())
+      .map(_.getFormattedMessage).filter(_.contains("missing a card"))
+
+    rm.findAllScreenings().map(_._id) should contain allElementsOf ReadModelProjection.screeningIds(queued.head, titleNormalizer)
+    rm.findAllMovies().map(_._id) should contain ("bar|2024")
+    withClue("only the row the stream never applied is a heal: ") {
+      m.heals.toSeq shouldBe Seq(ReadModelProjectionMetrics.HealTrigger.Sweep -> 1)
+    }
+    lines should have size 1
+    lines.head should include ("bar|2024")
+    lines.head should not include (queued.head.id.value)
+    projector.stop()
+  }
+
   it should "ask again once the row itself changes" in {
     val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
                                                  slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)

@@ -765,6 +765,14 @@ groups:
       # heals an hour apart are routine and kept this firing all day. The retry-gap defect above
       # healed in the sweep, which is where a stream miss outlives a boot; boot heals stay on the
       # panel.
+      #
+      # NOT WHAT THE STREAM HAD IN FLIGHT. The sweep holds the projection lock, so a scrape landing
+      # a new venue or row just before or during it leaves the absent id in an event queued behind
+      # it. Every sweep heal 2026-09-24 21:08Z .. 09-25 02:37Z (US x3, UK x1; this rule fired twice
+      # for the US) was that: a scrape finishing within 5 s of the sweep's start, no retirement, no
+      # failed re-read. The worker now waits for the stream to apply what was in flight before it
+      # counts: a row the stream then applied is logged at INFO ("had in flight ... not heals") and
+      # not metered, so what this counts is a row the stream really left missing.
       - alert: ReadModelHealsRecurring
         expr: >-
           (sum by (country) (increase(kinowo_worker_readmodel_heals_total{trigger="sweep"}[1h])) > 0)
