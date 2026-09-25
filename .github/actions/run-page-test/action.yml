@@ -233,6 +233,7 @@ runs:
     # at boot, so a failure has the version diff in its log without
     # extra plumbing.
     - name: Run Scala PageTest
+      id: pagetest
       if: inputs.kind == 'chrome'
       shell: bash
       env:
@@ -240,9 +241,10 @@ runs:
       run: sbt web/PageTest/test
 
     # The Scala PageTest specs' failures, rerun three times each for a DETERMINISTIC / FLAKY
-    # verdict; the row stays red either way (scripts/ci/rerun-failed-sbt.sh).
+    # verdict; the row stays red either way (scripts/ci/rerun-failed-sbt.sh). Only when the
+    # PageTest step itself failed: after a failed browser setup there is nothing to rerun.
     - name: Rerun the failed PageTest specs, to tell a flake from a break
-      if: failure() && inputs.kind == 'chrome'
+      if: failure() && steps.pagetest.outcome == 'failure'
       shell: bash
       env:
         CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
@@ -250,7 +252,7 @@ runs:
 
     - name: Keep this row's flaky PageTest specs for the ledger
       if: failure() && inputs.kind == 'chrome' && hashFiles('target/flake-rerun/flaky.tsv') != ''
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: flaky-page-chrome-${{ inputs.version }}
         path: target/flake-rerun/flaky.tsv

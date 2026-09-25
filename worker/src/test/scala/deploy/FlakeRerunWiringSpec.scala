@@ -61,6 +61,14 @@ class FlakeRerunWiringSpec extends AnyFlatSpec with Matchers {
     pageAction should include("rerun-failed-sbt.sh target/test-reports/page")
   }
 
+  it should "rerun them only once the PageTest step itself failed, not after any earlier step did" in {
+    // A failed browser setup left no reports to judge and reran nothing, but still ran the
+    // rerun step — the same "only once the suite has failed" rule as ci.yml's sbt jobs.
+    val rerun = pageAction.linesIterator.dropWhile(!_.contains("Rerun the failed PageTest")).take(3).mkString("\n")
+    rerun should include("steps.pagetest.outcome == 'failure'")
+    pageAction should include("id: pagetest")
+  }
+
   "main.yml" should "ledger the flaky tests from a failed ci run, on main, in a job of its own" in {
     val ledger = RepoFile.jobs(mainYml).getOrElse("flake-ledger", fail("main.yml has no flake-ledger job"))
     ledger should include("needs: ci")
