@@ -25,7 +25,11 @@ import scala.util.Try
  *  Then regenerate the snapshots (`PageSnapshotSpec`, `FilmScheduleEndToEndSpec`)
  *  and commit the new external fixtures alongside the production change. */
 object RefreshExternalFixtures {
-  def main(args: Array[String]): Unit = new RefreshExternalFixtures().run()
+  def main(args: Array[String]): Unit = {
+    // Its wiring may tunnel through the residential proxy — see ProxyTunnelAuthentication.
+    tools.ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
+    new RefreshExternalFixtures().run()
+  }
 }
 
 /** The refresh wiring — an instance `main` builds, so its lazily built fetches and clients

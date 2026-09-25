@@ -5,7 +5,7 @@ import models.Country
 import org.mongodb.scala.MongoClient
 import play.api.Logging
 import services.MongoConnection
-import tools.{Env, ExecutionBudget}
+import tools.{Env, ExecutionBudget, ProxyTunnelAuthentication}
 
 import java.net.InetSocketAddress
 import java.time.Instant
@@ -25,6 +25,10 @@ import java.util.concurrent.{CountDownLatch, Executors}
 object WorkerMain extends Logging {
 
   def main(args: Array[String]): Unit = {
+    // FIRST, before anything touches java.net.http: the residential egress tunnels HTTPS
+    // through an authenticated proxy, which the JDK's default refuses — see
+    // ProxyTunnelAuthentication for why this is the process's to set, once.
+    ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
     val commit = Option(System.getenv("COMMIT_SHA")).getOrElse("unknown")
     logger.info(s"Worker starting — commit $commit")
 

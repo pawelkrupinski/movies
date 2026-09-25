@@ -27,8 +27,10 @@ import scala.util.{Try, Using}
  * too late, and every proxied chain-list request 407'd (4097c855b). Whether that
  * bites depends on what ran first in the process — so the spec's own JVM, where
  * any earlier spec may already have frozen the value either way, cannot answer
- * it. The child JVM below runs exactly one direct fetch and then one proxied
- * fetch, with nothing before them.
+ * it, and a spec that set the property in it would set it for every suite beside it.
+ * The child JVM below runs exactly one direct fetch and then one proxied fetch,
+ * with nothing before them but what its `main` applies — the same
+ * [[ProxyTunnelAuthentication]] a worker's `main` applies at boot.
  *
  * No live proxy and no network: the proxy, the plain-HTTP origin and the HTTPS
  * origin (a throwaway self-signed certificate the child is told to trust) are
@@ -37,7 +39,47 @@ import scala.util.{Try, Using}
 class ProxiedAfterDirectFetchSpec extends AnyFlatSpec with Matchers {
   import ProxiedAfterDirectFetchSpec._
 
-  "a proxied RealHttpFetch" should "authenticate its CONNECT tunnel even when a direct fetch ran first in the JVM" in {
+  "a proxied RealHttpFetch" should "authenticate its CONNECT tunnel after a direct fetch when its main allowed Basic at boot" in {
+    val run = directThenProxied(applied = Some(ProxyTunnelAuthentication.BasicAllowed))
+    withClue(s"child output:\n${run.output}\n") {
+      run.exit shouldBe 0
+      run.output should include("direct: direct-ok")
+      run.output should include("proxied: through-the-tunnel")
+      // The tunnel was refused unauthenticated and then opened WITH credentials —
+      // not reached some other way.
+      run.challenged should be >= 1
+      run.authenticated shouldBe 1
+    }
+  }
+
+  it should "authenticate the same way in a JVM started with the policy as an option" in {
+    val run = directThenProxied(applied = None, jvmOptions = Seq(ProxyTunnelAuthentication.BasicAllowed.jvmOption))
+    withClue(s"child output:\n${run.output}\n") {
+      run.exit shouldBe 0
+      run.output should include("proxied: through-the-tunnel")
+      run.authenticated shouldBe 1
+    }
+  }
+
+  // The control that makes the two above mean something: nothing but the process's own
+  // policy decides it. Building a fetch or a ProxyConfig no longer rewrites a JVM-wide
+  // property behind the caller's back, so a process that never applied the policy keeps
+  // the JDK default — and the proxy's challenge goes unanswered.
+  it should "leave the tunnel unauthenticated when the process kept the JDK default" in {
+    val run = directThenProxied(applied = None)
+    withClue(s"child output:\n${run.output}\n") {
+      run.output should include("direct: direct-ok")
+      run.exit should not be 0
+      run.challenged should be >= 1
+      run.authenticated shouldBe 0
+    }
+  }
+
+  private final case class ChildRun(exit: Int, output: String, challenged: Int, authenticated: Int)
+
+  /** One child JVM: a direct fetch, then a proxied one. `applied` is the policy its
+   *  `main` applies first (None: none — the JDK default, or whatever `jvmOptions` set). */
+  private def directThenProxied(applied: Option[ProxyTunnelAuthentication], jvmOptions: Seq[String] = Nil): ChildRun = {
     val dir = Files.createTempDirectory("proxied-after-direct")
     val (keyStore, trustStore) = selfSignedStores(dir)
 
@@ -52,19 +94,10 @@ class ProxiedAfterDirectFetchSpec extends AnyFlatSpec with Matchers {
     try {
       val (exit, output) = ChildJvm.run(
         ProbeMain,
-        jvmArgs = Seq(s"-Djavax.net.ssl.trustStore=$trustStore", s"-Djavax.net.ssl.trustStorePassword=$StorePassword"),
-        args = Seq(s"http://127.0.0.1:${direct.getAddress.getPort}/", proxy.port.toString,
+        jvmArgs = Seq(s"-Djavax.net.ssl.trustStore=$trustStore", s"-Djavax.net.ssl.trustStorePassword=$StorePassword") ++ jvmOptions,
+        args = Seq(applied.fold(NoPolicy)(_.toString), s"http://127.0.0.1:${direct.getAddress.getPort}/", proxy.port.toString,
             s"https://127.0.0.1:${origin.getAddress.getPort}/", User, Password))
-
-      withClue(s"child output:\n$output\n") {
-        exit shouldBe 0
-        output should include("direct: direct-ok")
-        output should include("proxied: through-the-tunnel")
-        // The tunnel was refused unauthenticated and then opened WITH credentials —
-        // not reached some other way.
-        proxy.challenged.get should be >= 1
-        proxy.authenticated.get shouldBe 1
-      }
+      ChildRun(exit, output, proxy.challenged.get, proxy.authenticated.get)
     } finally {
       direct.stop(0); origin.stop(0); proxy.close()
       Using.resource(Files.list(dir))(_.forEach(Files.delete(_)))
@@ -79,6 +112,8 @@ object ProxiedAfterDirectFetchSpec {
   private val Password      = "proxy-pass"
   private val StorePassword = "changeit"
   private val ProbeMain     = "tools.ProxiedAfterDirectFetchProbe"
+  /** The probe's first argument when its `main` applies no policy at all. */
+  private[tools] val NoPolicy = "none"
 
   private def respond(exchange: com.sun.net.httpserver.HttpExchange, body: String): Unit = {
     val bytes = body.getBytes(UTF_8)
@@ -191,11 +226,13 @@ object ProxiedAfterDirectFetchSpec {
   }
 }
 
-/** The child JVM's whole life: one direct fetch, then one proxied fetch, each
- *  through a fresh `RealHttpFetch` — nothing touches java.net.http before them. */
+/** The child JVM's whole life: apply the named [[ProxyTunnelAuthentication]] (or none) the
+ *  way a composition root does, then one direct fetch, then one proxied fetch, each through
+ *  a fresh `RealHttpFetch` — nothing touches java.net.http before them. */
 object ProxiedAfterDirectFetchProbe {
   def main(args: Array[String]): Unit = {
-    val Array(directUrl, proxyPort, proxiedUrl, user, password) = args
+    val Array(policy, directUrl, proxyPort, proxiedUrl, user, password) = args
+    if (policy != ProxiedAfterDirectFetchSpec.NoPolicy) ProxyTunnelAuthentication.valueOf(policy).applyToJvm()
     val outcome = Try {
       println(s"direct: ${new RealHttpFetch().get(directUrl)}")
       val proxied = new RealHttpFetch(Some(RealHttpFetch.ProxyConfig("127.0.0.1", Seq(proxyPort.toInt), user, password)))

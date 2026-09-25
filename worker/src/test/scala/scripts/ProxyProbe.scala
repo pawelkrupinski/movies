@@ -22,15 +22,18 @@ import services.cinemas.pl.MultikinoClient
 object ProxyProbe {
   private val BiletynaVenue = "https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe"
 
-  def main(args: Array[String]): Unit = ResidentialProxy.fromEnv(tools.Env.fromProcess()) match {
-    case None =>
-      println("No proxy config — set KINOWO_PROXY_USER / KINOWO_PROXY_PASS (host+ports come from residential-proxy.properties).")
-    case Some(config) =>
-      val fetch = new RealHttpFetch(Some(config))
-      println(s"proxy: ${config.host} ports=${config.ports.mkString(",")} (rotating), via java.net.http RealHttpFetch")
-      probe("egress-ip", fetch, "https://api.ipify.org", b => s"ip=${b.trim}")
-      probe("multikino",  fetch, MultikinoClient.ApiUrl, b => s"films=${b.split("\"filmTitle\"").length - 1}")
-      probe("biletyna",   fetch, BiletynaVenue, b => s"jsonld=${b.contains("application/ld+json")}")
+  def main(args: Array[String]): Unit = {
+    tools.ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
+    ResidentialProxy.fromEnv(tools.Env.fromProcess()) match {
+      case None =>
+        println("No proxy config — set KINOWO_PROXY_USER / KINOWO_PROXY_PASS (host+ports come from residential-proxy.properties).")
+      case Some(config) =>
+        val fetch = new RealHttpFetch(Some(config))
+        println(s"proxy: ${config.host} ports=${config.ports.mkString(",")} (rotating), via java.net.http RealHttpFetch")
+        probe("egress-ip", fetch, "https://api.ipify.org", b => s"ip=${b.trim}")
+        probe("multikino",  fetch, MultikinoClient.ApiUrl, b => s"films=${b.split("\"filmTitle\"").length - 1}")
+        probe("biletyna",   fetch, BiletynaVenue, b => s"jsonld=${b.contains("application/ld+json")}")
+    }
   }
 
   private def probe(label: String, fetch: RealHttpFetch, url: String, summary: String => String): Unit =

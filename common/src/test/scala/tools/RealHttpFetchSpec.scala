@@ -70,23 +70,6 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
     pool.perPort.map(selectedPort) shouldBe List(10001, 10002, 10003)
   }
 
-  it should "clear jdk.http.auth.tunneling.disabledSchemes so Basic proxy auth works over HTTPS CONNECT" in {
-    // The JDK default is "Basic", which 407s every HTTPS fetch through the proxy
-    // — the gotcha that makes the worker's proxied egress fail without this.
-    RealHttpFetch.ProxyConfig("isp.decodo.com", Seq(10001), "u", "p")
-    System.getProperty("jdk.http.auth.tunneling.disabledSchemes") shouldBe ""
-  }
-
-  "a direct RealHttpFetch" should "clear the tunnelling Basic-auth ban too, before its clients exist" in {
-    // The JDK reads the property ONCE, when java.net.http first initialises. The
-    // roster audit made ~170 direct fetches before building its proxy shards, so
-    // clearing it only in ProxyConfig came too late and every proxied request
-    // 407'd (run 35912986387). Whichever RealHttpFetch comes first must clear it.
-    System.setProperty("jdk.http.auth.tunneling.disabledSchemes", "Basic")
-    new RealHttpFetch()
-    System.getProperty("jdk.http.auth.tunneling.disabledSchemes") shouldBe ""
-  }
-
   "ProxyConfig" should "reject an empty port list (a misconfigured proxy)" in {
     an[IllegalArgumentException] should be thrownBy
       RealHttpFetch.ProxyConfig("isp.decodo.com", Seq.empty, "u", "p")
