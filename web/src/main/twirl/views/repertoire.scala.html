@@ -1,6 +1,6 @@
 @import controllers.FilmSchedule
 @* `renderedAt` must be the clock `films` was filtered by — see `_repertoireView`. *@
-@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, minifier: tools.Minifier, oauthProviders: Set[String], renderedAt: java.time.LocalDateTime, isLargeCity: Boolean = false, pageTitle: String = "Kinowo", pageDescription: String = "Repertuar kin w jednym miejscu — z ocenami IMDb, RT i Filmweb.", pageUrl: String = "", fbAppId: Option[String] = None, canonicalUrl: String = "")(implicit city: models.City, messages: play.api.i18n.Messages)
+@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, minifier: tools.Minifier, oauthProviders: Set[String], renderedAt: java.time.LocalDateTime, isLargeCity: Boolean = false, pageTitle: String = "Kinowo", pageDescription: String = "Repertuar kin w jednym miejscu — z ocenami IMDb, RT i Filmweb.", pageUrl: String = "", pageTags: controllers.PageTags = controllers.PageTags.none, canonicalUrl: String = "")(implicit city: models.City, messages: play.api.i18n.Messages)
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
 <head>
@@ -14,11 +14,11 @@
      shared.js never loads / bootView throws, so a broken boot can't leave a
      permanently blank page. *@
   <script>(function(e){e.classList.add('grid-cloak');setTimeout(function(){e.classList.remove('grid-cloak')},2000)})(document.documentElement)</script>
-  @_ogTagsApp(city.country)(pageTitle = pageTitle, pageDescription = pageDescription, pageUrl = pageUrl, fbAppId = fbAppId, imageUrl = controllers.ShareCardUrl.city(city), canonicalUrl = canonicalUrl)
+  @_ogTagsApp(city.country)(pageTitle = pageTitle, pageDescription = pageDescription, pageUrl = pageUrl, fbAppId = pageTags.fbAppId, imageUrl = controllers.ShareCardUrl.city(city), canonicalUrl = canonicalUrl)
   @_jsonLd(controllers.StructuredData.cityPage(pageUrl, city, films))
   @_resourceHints()
-  @_errorTracking()
-  @_analytics()
+  @_errorTracking(pageTags.sentryLoaderUrl)
+  @_analytics(pageTags.gaMeasurementId)
   @* The Filmy view-chrome CSS (`.cinema-label`, film-card content-visibility)
      lives in `_sharedStyles` so it's shared across every page. *@
   @_sharedStyles(minifier)

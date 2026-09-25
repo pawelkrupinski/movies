@@ -27,7 +27,7 @@ object EnrichmentIntegrationSpec {
 
 class EnrichmentIntegrationSpec extends AnyFlatSpec with Matchers with ParallelTestExecution {
 
-  assume(Env.get("TMDB_API_KEY").isDefined, "TMDB_API_KEY not set")
+  assume(Env.fromProcess().get("TMDB_API_KEY").isDefined, "TMDB_API_KEY not set")
 
   import EnrichmentIntegrationSpec.{tmdb, imdb}
 
@@ -37,7 +37,7 @@ class EnrichmentIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
   // asks the upstream whether it is answering at all before calling it a regression.
   private def probe(url: String): () => Unit = () => { new RealHttpFetch().get(url); () }
   private def viaTmdb[T](body: => T): T =
-    LiveUpstream.orCancel("TMDB", probe(LiveUpstream.Probes.tmdb(Env.get("TMDB_API_KEY").get)))(body)
+    LiveUpstream.orCancel("TMDB", probe(LiveUpstream.Probes.tmdb(Env.fromProcess().get("TMDB_API_KEY").get)))(body)
   private def viaImdb[T](body: => T): T =
     LiveUpstream.orCancel("IMDb", probe(LiveUpstream.Probes.Imdb))(body)
 

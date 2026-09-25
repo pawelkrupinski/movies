@@ -55,7 +55,7 @@ class WorkerWiringNormalizerIntegrationSpec extends AnyFlatSpec with BeforeAndAf
    */
   override def afterAll(): Unit = {
     built.foreach(w => scala.util.Try(w.stop()))
-    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val client = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
     try ownDatabases.distinct.foreach(name =>
       scala.util.Try(Await.result(client.getDatabase(name).drop().toFuture(), 60.seconds)))
     finally client.close()

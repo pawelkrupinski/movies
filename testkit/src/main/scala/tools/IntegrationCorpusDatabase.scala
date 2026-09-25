@@ -33,7 +33,7 @@ object IntegrationCorpusDatabase {
   /** `<MONGODB_DB>_<suite>` — the configured database, suffixed per suite. Keeping the
    *  configured name as the PREFIX means the `IntegrationMongo` throwaway guard and the
    *  CI teardown still recognise it as a test database. */
-  def named(suite: String): String = s"${Env.get("MONGODB_DB").getOrElse("kinowo")}_$suite"
+  def named(suite: String): String = s"${Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo")}_$suite"
 
   /**
    * Run `body` against this suite's own corpus and DROP that corpus afterwards — dropped
@@ -56,7 +56,7 @@ object IntegrationCorpusDatabase {
    * that one would delete a neighbour's corpus mid-run.
    */
   def withDatabase[A](uri: String, suite: String)(body: MongoDatabase => A): A = {
-    IntegrationMongo.requireThrowaway(uri, Env.get(IntegrationMongo.OverrideVar).exists(v => v == "1" || v.equalsIgnoreCase("true")))
+    IntegrationMongo.requireThrowaway(uri, Env.fromProcess().get(IntegrationMongo.OverrideVar).exists(v => v == "1" || v.equalsIgnoreCase("true")))
     val client = MongoClient(uri)
     try {
       val database = client.getDatabase(named(suite))

@@ -22,13 +22,13 @@ import scala.concurrent.{Await, ExecutionContext, Future}
  *  here is `MongoUserStateRepository`, not the in-memory one. */
 class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
   private val Prefix = "__integration-test-hide-"
   // Every write's reported outcome, as (userId-free) (endpoint, outcome) pairs.
   private val outcomes = new ConcurrentLinkedQueue[(String, String)]()
-  private lazy val client   = MongoClient(Env.get("MONGODB_URI").get)
+  private lazy val client   = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
   private lazy val database = client.getDatabase(models.Country.resolvedDbName(tools.Env.fromProcess()))
   private val states = new MongoUserStateRepository(Some(database),
     writeOutcomes = (endpoint: String, outcome: String) => { outcomes.add(endpoint -> outcome); () })

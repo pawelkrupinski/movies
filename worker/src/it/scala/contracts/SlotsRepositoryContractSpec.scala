@@ -22,9 +22,9 @@ import scala.concurrent.duration.*
  */
 class SlotsRepositoryContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
 
-  private lazy val isolatedDatabase = IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "slots-contract")
+  private lazy val isolatedDatabase = IsolatedMongoDatabase.open(Env.fromProcess().get("MONGODB_URI").get, "slots-contract")
 
   private lazy val database = isolatedDatabase.database
   override protected def afterAll(): Unit = try isolatedDatabase.drop() finally super.afterAll()

@@ -23,13 +23,13 @@ import scala.concurrent.duration._
  */
 class MirrorFreshnessIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   // Never against a real cluster: this spec writes + purges sentinels, and
   // `.env.local` aims MONGODB_URI at the prod tunnel. See `IntegrationMongo`.
   tools.IntegrationMongo.requireThrowaway()
 
-  private val client = MongoClient(Env.get("MONGODB_URI").get)
-  private val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+  private val client = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
+  private val db     = client.getDatabase(Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo"))
 
   private val SentinelId = "^__it-mirror-freshness-"
   // Dated past anything the throwaway db could already hold, so the assertion is

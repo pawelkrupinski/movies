@@ -65,8 +65,8 @@ object IntegrationMongo {
 
   /** The guard as the specs call it: reads `MONGODB_URI` / the override from `Env`. */
   def requireThrowaway(): Unit =
-    Env.get("MONGODB_URI").foreach(uri =>
-      requireThrowaway(uri, Env.get(OverrideVar).exists(v => v == "1" || v.equalsIgnoreCase("true"))))
+    Env.fromProcess().get("MONGODB_URI").foreach(uri =>
+      requireThrowaway(uri, Env.fromProcess().get(OverrideVar).exists(v => v == "1" || v.equalsIgnoreCase("true"))))
 
   /** Hide the password before the URI reaches a test log / CI transcript. */
   def redact(uri: String): String =

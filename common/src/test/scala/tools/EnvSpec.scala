@@ -14,7 +14,7 @@ import java.nio.file.Files
  */
 class EnvSpec extends AnyFlatSpec with Matchers {
 
-  "Env.positiveInt" should "use the default when unset" in {
+  "Env.fromProcess().positiveInt" should "use the default when unset" in {
     Env.of().positiveInt("KINOWO_TEST_UNSET_INT", 8) shouldBe 8
   }
 
@@ -28,7 +28,7 @@ class EnvSpec extends AnyFlatSpec with Matchers {
     Env.of("KINOWO_TEST_INT" -> "abc").positiveInt("KINOWO_TEST_INT", 8) shouldBe 8
   }
 
-  "Env.flag" should "be off when unset, so a switch nobody set stays off" in {
+  "Env.fromProcess().flag" should "be off when unset, so a switch nobody set stays off" in {
     Env.of().flag("KINOWO_TEST_UNSET_FLAG") shouldBe false
   }
 
@@ -46,7 +46,7 @@ class EnvSpec extends AnyFlatSpec with Matchers {
     Env.of("KINOWO_TEST_FLAG" -> "0").flag("KINOWO_TEST_FLAG")     shouldBe false
   }
 
-  "Env.positiveLong" should "use the default when unset" in {
+  "Env.fromProcess().positiveLong" should "use the default when unset" in {
     Env.of().positiveLong("KINOWO_TEST_UNSET_LONG", 300L) shouldBe 300L
   }
 

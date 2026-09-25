@@ -11,7 +11,7 @@ import tools.persistence.PersistedRoundTrip
  *  unchanged. The list comes from the registry, so a new field or type needs no edit. */
 class UserCodecsRoundTripSpec extends AnyFlatSpec with Matchers {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
 
   "UserCodecs" should "write and read back every persisted type unchanged" in {
     val (covered, findings) = PersistedRoundTrip.registry[UserCodecs.OmittingNone, UserCodecs.WritingNone](UserCodecs.registry, Set.empty)

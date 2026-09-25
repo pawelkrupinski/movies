@@ -26,7 +26,7 @@ import java.time.{Instant, LocalDateTime}
  */
 class RetryResolveServingIntegrationSpec extends AnyFlatSpec with Matchers {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
   private object NoMatchTmdb extends GetOnlyHttpFetch {

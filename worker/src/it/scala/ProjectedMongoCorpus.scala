@@ -29,7 +29,7 @@ final class ProjectedMongoCorpus(db: MongoDatabase) {
 object ProjectedMongoCorpus {
   /** Run `body` over a fresh corpus database named for `suite`, dropped afterwards. */
   def withCorpus[A](suite: String)(body: ProjectedMongoCorpus => A): A =
-    IntegrationCorpusDatabase.withDatabase(Env.get("MONGODB_URI").get, suite) { db =>
+    IntegrationCorpusDatabase.withDatabase(Env.fromProcess().get("MONGODB_URI").get, suite) { db =>
       val corpus = new ProjectedMongoCorpus(db)
       try body(corpus) finally corpus.close()
     }

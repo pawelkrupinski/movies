@@ -136,10 +136,10 @@ abstract class CountryConvergenceBehaviour(
     Option.when(ArchiveReplayWiring.hermeticFromEnv)(new MissingFixtures)
 
   private def recordCorpusProvenance(rows: Seq[services.scrapes.ArchivedScrape]): Unit = {
-    val provenance = CorpusProvenance.of(corpusKey, rows, Env.get)
+    val provenance = CorpusProvenance.of(corpusKey, rows, Env.fromProcess().get)
     corpusProvenance = Some(provenance)
     info(s"${country.displayName}: ${provenance.verdict}")
-    Env.get("GITHUB_STEP_SUMMARY").foreach { summary =>
+    Env.fromProcess().get("GITHUB_STEP_SUMMARY").foreach { summary =>
       Try(java.nio.file.Files.writeString(java.nio.file.Paths.get(summary),
         provenance.markdown(corpusKey) + "\n\n",
         java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND))
@@ -652,11 +652,11 @@ abstract class CountryConvergenceBehaviour(
    * source is never written to, so a live mirror can safely be the source.
    */
   private lazy val realScrapeSource: Option[ScrapeArchiveRepository] =
-    Env.get("KINOWO_CONVERGENCE_SCRAPES_URI").map { uri =>
+    Env.fromProcess().get("KINOWO_CONVERGENCE_SCRAPES_URI").map { uri =>
       // Tuned for the tunnel — see TunnelTunedUri. Without it a proxy restart costs
       // 30s of server selection per attempt and the corpus read stalls at 0% CPU.
       val database = MongoClient(tools.TunnelTunedUri(uri)).getDatabase(
-        Env.get("KINOWO_CONVERGENCE_SCRAPES_DB").getOrElse(country.mongoDb))
+        Env.fromProcess().get("KINOWO_CONVERGENCE_SCRAPES_DB").getOrElse(country.mongoDb))
       new MongoScrapeArchiveRepository(Some(database))
     }
 

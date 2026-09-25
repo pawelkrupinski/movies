@@ -69,7 +69,7 @@ object RecordAllDataToFixture extends TestWiring {
   // 323-byte-artifact bug). A literal `val` only worked because the compiler
   // inlined it as a constant. A `def` is evaluated fresh on every read, so it is
   // always correct regardless of init order.
-  def captureDate: String = tools.Env.get("KINOWO_FIXTURE_DIR").getOrElse("today")
+  def captureDate: String = tools.Env.fromProcess().get("KINOWO_FIXTURE_DIR").getOrElse("today")
 
   override lazy val movieRepository = new InMemoryMovieRepository()
   override lazy val httoFetch = new RecordingHttpFetch(captureDate, new RealHttpFetch())

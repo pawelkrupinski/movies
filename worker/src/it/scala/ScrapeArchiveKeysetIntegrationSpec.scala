@@ -27,10 +27,10 @@ import scala.concurrent.duration._
  */
 class ScrapeArchiveKeysetIntegrationSpec extends AnyFlatSpec with Matchers {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
-  private val client   = MongoClient(Env.get("MONGODB_URI").get)
+  private val client   = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
   private val database = client.getDatabase(
     s"kinowo_isolated_archivekeyset_${ProcessHandle.current().pid()}_${System.nanoTime()}")
 

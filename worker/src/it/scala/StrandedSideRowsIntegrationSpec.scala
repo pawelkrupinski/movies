@@ -13,7 +13,7 @@ import java.time.LocalDateTime
  *  collections. The rule itself is `StrandedSideRowsSpec`'s; this proves the store
  *  answers it — exactly the stranded rows go, a live film keeps every row. */
 class StrandedSideRowsIntegrationSpec extends AnyFlatSpec with Matchers {
-  private val uri = Env.get("MONGODB_URI").get
+  private val uri = Env.fromProcess().get("MONGODB_URI").get
 
   private val tomorrow = Seq(Showtime(LocalDateTime.now.plusDays(1), bookingUrl = None))
   private def slotKey(title: String) = s"multikino␟$title"

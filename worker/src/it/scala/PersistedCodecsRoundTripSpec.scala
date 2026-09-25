@@ -25,7 +25,7 @@ import tools.persistence.PersistedRoundTrip
  */
 class PersistedCodecsRoundTripSpec extends AnyFlatSpec with Matchers {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
 
   /** Fields a codec deliberately never writes, each with its reason. */
   private val dropped = Set(

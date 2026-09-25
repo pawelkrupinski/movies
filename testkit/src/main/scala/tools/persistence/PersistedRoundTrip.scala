@@ -29,7 +29,7 @@ object PersistedRoundTrip {
    *  `WritingNone`) in a throwaway database of their own, dropped afterwards. Returns the
    *  types covered and the findings. */
   inline def registry[OmittingNone <: Tuple, WritingNone <: Tuple](registry: CodecRegistry, dropped: Set[String]): (List[String], Seq[String]) =
-    val findings = IsolatedMongoDatabase.withDatabase(Env.get("MONGODB_URI").get, "persisted-codecs") { database =>
+    val findings = IsolatedMongoDatabase.withDatabase(Env.fromProcess().get("MONGODB_URI").get, "persisted-codecs") { database =>
       all[OmittingNone](registry, database, dropped) ++ all[WritingNone](registry, database, dropped)
     }
     (names[OmittingNone] ++ names[WritingNone], findings)

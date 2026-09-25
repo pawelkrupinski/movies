@@ -171,10 +171,10 @@ class MovieController( cc: ControllerComponents,
                        // (`Minifier.forMode`), so its memo caches live and die
                        // with the wiring rather than the JVM.
                        minifier: tools.Minifier,
-                       // The `fb:app_id` the OG block emits (None skips it). A
+                       // The third-party page tags (`fb:app_id`, GA, Sentry). A
                        // function read per render rather than a value fixed at
                        // boot, so a live config change reaches the page.
-                       fbAppId: () => Option[String],
+                       pageTags: () => PageTags,
                      ) extends AbstractController(cc) with Logging {
 
   // The deployment's own, and ONLY, language. Every visitor gets this same
@@ -347,7 +347,7 @@ class MovieController( cc: ControllerComponents,
       pageTitle       = meta.title,
       pageDescription = meta.description,
       pageUrl         = PageMeta.canonicalUrl(request),
-      fbAppId         = fbAppId(),
+      pageTags        = pageTags(),
       // og:url keeps the filtered request URL (so a shared filtered link
       // previews the filter), but the canonical folds `/{city}/movies` and every
       // `?filter` variation back to the bare listing.
@@ -365,7 +365,7 @@ class MovieController( cc: ControllerComponents,
     Ok(views.html.browse(
       films, heading, minifier, oauthProviders,
       pageUrl = PageMeta.canonicalUrl(request),
-      fbAppId = fbAppId(),
+      pageTags = pageTags(),
       // A FACET IS UI STATE, NOT A PAGE. `?cast=` alone is one URL per cast
       // member per city, so the set of these is combinatorial rather than
       // merely large, and every one of them is a near-duplicate of the city
@@ -651,7 +651,7 @@ class MovieController( cc: ControllerComponents,
     // used to need. It stops short of offering itself to a shared cache only
     // because a per-film edge entry wants its own validator analysis, not because
     // the bytes are anyone's.
-    Ok(views.html.film(schedule, canonicalUrl, FilmPreviewText.previewDescription(schedule), ogImageUrl, minifier, oauthProviders, otherCities))
+    Ok(views.html.film(schedule, canonicalUrl, FilmPreviewText.previewDescription(schedule), ogImageUrl, minifier, oauthProviders, otherCities, pageTags()))
       .withHeaders("Cache-Control" -> "private, no-cache")
       .withCookies(cityCookie(c))
   }

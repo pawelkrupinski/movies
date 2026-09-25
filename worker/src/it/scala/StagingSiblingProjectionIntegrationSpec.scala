@@ -36,7 +36,7 @@ import scala.concurrent.duration._
  */
 class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers with org.scalatest.BeforeAndAfterAll {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
   // Its OWN database, not the one every other `it` spec shares.
@@ -48,7 +48,7 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
   // to production twice. And it measures Mongo's PROFILER, which is database-wide: with
   // specs running concurrently the byte counts belonged to whichever suite happened to be
   // querying, so the assertions were reading someone else's traffic.
-  private val isolatedDb     = tools.IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "staging-projection-spec")
+  private val isolatedDb     = tools.IsolatedMongoDatabase.open(Env.fromProcess().get("MONGODB_URI").get, "staging-projection-spec")
   private val db = isolatedDb.database
   private val staged = db.getCollection[Document]("pending_movies")
 

@@ -1,3 +1,4 @@
+@(measurementId: Option[String])
 @*
    Google Analytics 4 page tag. Driven by `GA_MEASUREMENT_ID` (the
    `G-XXXXXXXX` measurement id on the GA4 property settings page).
@@ -9,7 +10,7 @@
    self-hosted alternatives would mean standing up a second service
    and a database for a hobby-traffic site.
 *@
-@tools.Env.get("GA_MEASUREMENT_ID") match {
+@measurementId match {
   case Some(id) => {
 <script async src="https://www.googletagmanager.com/gtag/js?id=@id"></script>
 <script>

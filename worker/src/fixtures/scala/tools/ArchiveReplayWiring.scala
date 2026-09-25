@@ -252,7 +252,7 @@ object ArchiveReplayWiring {
    *  place the tree is allowed to grow. */
   val HermeticVar = "KINOWO_CONVERGENCE_HERMETIC"
 
-  def hermeticFromEnv: Boolean = Env.get(HermeticVar).exists(_.trim.equalsIgnoreCase("true"))
+  def hermeticFromEnv: Boolean = Env.fromProcess().get(HermeticVar).exists(_.trim.equalsIgnoreCase("true"))
 
   /**
    * The fixture tree a country's replay reads and records: `enrichment-pl`,
@@ -267,5 +267,5 @@ object ArchiveReplayWiring {
    * yet is simply an empty one; the first run fills it and every later run replays it.
    */
   def fixtureDirectory(country: Country): String =
-    Env.get(FixturesVar).filter(_.nonEmpty).getOrElse(s"enrichment-${country.code}")
+    Env.fromProcess().get(FixturesVar).filter(_.nonEmpty).getOrElse(s"enrichment-${country.code}")
 }

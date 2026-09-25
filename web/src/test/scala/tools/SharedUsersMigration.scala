@@ -109,7 +109,7 @@ object SharedUsersMigration {
 
   def main(args: Array[String]): Unit = {
     val write  = args.contains("--write")
-    val target = Env.get("MONGODB_USERS_DB").map(_.trim).filter(_.nonEmpty).getOrElse {
+    val target = Env.fromProcess().get("MONGODB_USERS_DB").map(_.trim).filter(_.nonEmpty).getOrElse {
       println("MONGODB_USERS_DB is not set — nothing to migrate INTO. Refusing to guess.")
       sys.exit(1)
     }

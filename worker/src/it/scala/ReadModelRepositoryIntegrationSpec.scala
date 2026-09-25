@@ -30,13 +30,13 @@ import tools.Eventually.eventually
  */
 class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   // Never against a real cluster: these specs write + purge sentinels, and
   // `.env.local` aims MONGODB_URI at the prod tunnel. See `IntegrationMongo`.
   tools.IntegrationMongo.requireThrowaway()
 
-  private val client = MongoClient(Env.get("MONGODB_URI").get)
-  private val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+  private val client = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
+  private val db     = client.getDatabase(Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo"))
   private val rm     = new MongoReadModelRepository(Some(db))
 
   override protected def afterAll(): Unit = try { rm.close(); client.close() } finally super.afterAll()
@@ -74,7 +74,7 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
     import models.{ResolvedMovie, ResolvedRatings}
     import services.readmodel.ShareCardRef
     val ownDb   = tools.IntegrationCorpusDatabase.named("readmodel-sharecards")
-    val client2 = MongoClient(Env.get("MONGODB_URI").get)
+    val client2 = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
     val fresh   = new MongoReadModelRepository(Some(client2.getDatabase(ownDb)))
     try {
       val film = ResolvedMovie(_id = "__it-rm-sharecard__", title = "Diuna", originalTitle = None,
@@ -103,7 +103,7 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
   "the read model" should "create no secondary index on web_screenings" in {
     import models.CityScreening
     val ownDb   = tools.IntegrationCorpusDatabase.named("readmodel-indexes")
-    val client2 = MongoClient(Env.get("MONGODB_URI").get)
+    val client2 = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
     val fresh   = new MongoReadModelRepository(Some(client2.getDatabase(ownDb)))
     try {
       // The collection does not exist until something is written to it.
@@ -164,7 +164,7 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
   // In its own database: the watch sees its whole collection, and in the shared one every
   // sibling spec's `web_screenings` write reaches it.
   "a watch from a stream checkpoint" should "replay a write made after the checkpoint but before the watch opened" in
-    tools.IsolatedMongoDatabase.withDatabase(Env.get("MONGODB_URI").get, "readmodel-checkpoint") { own =>
+    tools.IsolatedMongoDatabase.withDatabase(Env.fromProcess().get("MONGODB_URI").get, "readmodel-checkpoint") { own =>
       import models.CityScreening
       val isolated   = new MongoReadModelRepository(Some(own))
       val id         = "__it-rm-checkpoint__"

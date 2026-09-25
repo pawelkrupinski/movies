@@ -85,7 +85,7 @@ object ConcurrentInstances {
   /** `count` pods over a database of `suite`'s own (see [[IntegrationCorpusDatabase]]), dropped
    *  afterwards, with every pod's client closed first. */
   def withInstances[A](suite: String, count: Int = 2)(body: Seq[Instance] => A): A = {
-    val uri = Env.get("MONGODB_URI").getOrElse(throw new IllegalStateException("MONGODB_URI not set"))
+    val uri = Env.fromProcess().get("MONGODB_URI").getOrElse(throw new IllegalStateException("MONGODB_URI not set"))
     IntegrationCorpusDatabase.withDatabase(uri, suite) { db =>
       val instances = (1 to count).map(i => new Instance(s"pod-$i", uri, db.name))
       try body(instances) finally instances.foreach(_.close())
@@ -100,7 +100,7 @@ object ConcurrentInstances {
 
   /** The seed round 1 is drawn from — fixed, so a run is reproducible, and overridable to replay
    *  (or to explore) other interleavings. */
-  def baseSeed: Long = Env.get("KINOWO_RACE_SEED").flatMap(_.toLongOption).getOrElse(20260924L)
+  def baseSeed: Long = Env.fromProcess().get("KINOWO_RACE_SEED").flatMap(_.toLongOption).getOrElse(20260924L)
 
   /** Run `body` for `count` rounds, each with its own seed; a failure names the round and seed. */
   def rounds(count: Int, seed: Long = baseSeed)(body: Round => Unit): Unit =

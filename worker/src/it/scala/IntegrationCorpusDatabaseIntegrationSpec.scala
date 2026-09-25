@@ -22,10 +22,10 @@ import scala.concurrent.duration._
  */
 class IntegrationCorpusDatabaseIntegrationSpec extends AnyFlatSpec with Matchers {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
-  private val uri = Env.get("MONGODB_URI").get
+  private val uri = Env.fromProcess().get("MONGODB_URI").get
 
   private def databaseNames(client: MongoClient): Seq[String] =
     Await.result(client.listDatabaseNames().toFuture(), 30.seconds)
@@ -66,7 +66,7 @@ class IntegrationCorpusDatabaseIntegrationSpec extends AnyFlatSpec with Matchers
   }
 
   it should "keep the configured database as its prefix, so the throwaway guard still recognises it" in {
-    val base = Env.get("MONGODB_DB").getOrElse("kinowo")
+    val base = Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo")
     IntegrationCorpusDatabase.named("drop-probe") shouldBe s"${base}_drop-probe"
   }
 }

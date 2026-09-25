@@ -18,13 +18,13 @@ import scala.concurrent.duration._
 
 class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with UserStateWritesContract with UserSessionVersionContract {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   // Never against a real cluster: these specs write + purge sentinels, and
   // `.env.local` aims MONGODB_URI at the prod tunnel. See `IntegrationMongo`.
   tools.IntegrationMongo.requireThrowaway()
 
   // The database is handed in, as `UsersWiring` hands in the shared connection's.
-  private lazy val client   = MongoClient(Env.get("MONGODB_URI").get)
+  private lazy val client   = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
   private lazy val database = client.getDatabase(models.Country.resolvedDbName(tools.Env.fromProcess()))
   private lazy val users    = new MongoUserRepository(Some(database))
   private lazy val states   = new MongoUserStateRepository(Some(database))
@@ -192,7 +192,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   // In its own database: the cursor watches the whole collection, and in the shared one every
   // sibling spec's `userStates` write reaches it (the shape that flaked a `screenings` watcher).
   it should "stream a delete through to the change-time cache, even though the event key names no user" in
-    tools.IsolatedMongoDatabase.withDatabase(Env.get("MONGODB_URI").get, "userstate-stream-delete") { db =>
+    tools.IsolatedMongoDatabase.withDatabase(Env.fromProcess().get("MONGODB_URI").get, "userstate-stream-delete") { db =>
       val isolated = new MongoUserStateRepository(Some(db))
       val cache    = new CaffeineUserChangeTimeCache(isolated)
       val userId   = "__integration-test-state-stream-delete"
@@ -211,7 +211,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   // the reopen opened at "now", past every write made meanwhile. It is one skipped event now:
   // counted, and reported as lost track (whose row changed, to what, is unknowable).
   it should "keep its change stream open past a row it cannot decode" in
-    tools.IsolatedMongoDatabase.withDatabase(Env.get("MONGODB_URI").get, "userstate-malformed") { db =>
+    tools.IsolatedMongoDatabase.withDatabase(Env.fromProcess().get("MONGODB_URI").get, "userstate-malformed") { db =>
       val counted  = new java.util.concurrent.ConcurrentLinkedQueue[String]()
       val isolated = new MongoUserStateRepository(Some(db),
         decodeFailures = collection => { counted.add(collection); () })
@@ -253,7 +253,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   // dropping the collection, and the shared spec DB's `userStates` carries the unique index
   // other cases depend on.
   it should "report lost track again when a dead cursor reopens" in
-    tools.IsolatedMongoDatabase.withDatabase(Env.get("MONGODB_URI").get, "userstate-reopen") { db =>
+    tools.IsolatedMongoDatabase.withDatabase(Env.fromProcess().get("MONGODB_URI").get, "userstate-reopen") { db =>
     val raw     = db.withCodecRegistry(UserCodecs.registry).getCollection[UserState]("userStates")
     val pendingReopen = new java.util.concurrent.atomic.AtomicReference[() => Unit]()
     val manualReopen: (String, () => Unit) => ChangeStreamReopen =

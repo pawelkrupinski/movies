@@ -189,7 +189,7 @@ object FakeHttpFetch {
    *  that env/sysprop is set — so a process whose CWD is NOT the repository root (a
    *  forked `bgRunMain`, e.g. `sbt localStack`'s worker) can still find the
    *  corpus. Default (unset) is unchanged, so existing callers are unaffected. */
-  def rootFor(fixtureDirectory: String): String = rootFor(fixtureDirectory, Env.get("KINOWO_FIXTURE_ROOT"))
+  def rootFor(fixtureDirectory: String): String = rootFor(fixtureDirectory, Env.fromProcess().get("KINOWO_FIXTURE_ROOT"))
 
   /** Pure form, for testing without touching the global env. */
   def rootFor(fixtureDirectory: String, base: Option[String]): String =

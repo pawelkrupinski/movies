@@ -96,7 +96,7 @@ object RecordDirectorWalkFixtures {
    *  here. */
   private def recordFilms(ids: Seq[Int]): Unit = {
     val record = new RecordingHttpFetch(Fixture, new RealHttpFetch, foldYear = false)
-    val key    = tools.Env.get("TMDB_API_KEY").getOrElse(sys.error("TMDB_API_KEY not set"))
+    val key    = tools.Env.fromProcess().get("TMDB_API_KEY").getOrElse(sys.error("TMDB_API_KEY not set"))
     ids.foreach { id =>
       Seq(
         s"https://api.themoviedb.org/3/movie/$id?language=pl-PL&append_to_response=credits,release_dates&api_key=$key",
@@ -122,7 +122,7 @@ object RecordDirectorWalkFixtures {
     // Safe for the corpus: `FakeHttpFetch`/`RecordingHttpFetch` strip `api_key`
     // out of the fixture fingerprint, so a file recorded under the real key is
     // the same file replay looks up under the stub one.
-    val realKey = tools.Env.get("TMDB_API_KEY").filter(_.nonEmpty).getOrElse(
+    val realKey = tools.Env.fromProcess().get("TMDB_API_KEY").filter(_.nonEmpty).getOrElse(
       sys.error("TMDB_API_KEY not set — add it to .env.local (this script records against live TMDB)."))
 
     val wiring = new FixtureTestWiring(Fixture) {

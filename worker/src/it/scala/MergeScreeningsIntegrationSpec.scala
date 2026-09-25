@@ -29,10 +29,10 @@ import tools.Env
  */
 class MergeScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
-  private val uri = Env.get("MONGODB_URI").get
+  private val uri = Env.fromProcess().get("MONGODB_URI").get
 
   // Two rows the fold will recognise as the same film (shared tmdbId) under different keys —
   // the cross-language duplicate shape (`Tangled` / `Zaplatani`) the canonicaliser exists for.

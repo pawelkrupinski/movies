@@ -31,10 +31,10 @@ import scala.concurrent.duration._
  */
 class UptimeTagWriteRollbackIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
-  private val isolatedDb = tools.IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "uptime-tag-rollback-spec")
+  private val isolatedDb = tools.IsolatedMongoDatabase.open(Env.fromProcess().get("MONGODB_URI").get, "uptime-tag-rollback-spec")
 
   private val db = isolatedDb.database
   // Reject everything the monitor writes: it sets `service` and `tags`, never this field.

@@ -26,7 +26,7 @@ import scala.concurrent.duration._
  */
 class PerPodCachesAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers {
 
-  assume(tools.Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(tools.Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
   private val clock = Clock.fixed(Instant.parse("2026-06-01T10:00:00Z"), ZoneOffset.UTC)

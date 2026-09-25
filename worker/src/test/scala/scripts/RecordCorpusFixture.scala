@@ -28,11 +28,11 @@ object RecordCorpusFixture {
 
   def main(args: Array[String]): Unit = {
     val country = args.headOption.flatMap(code => Country.all.find(_.code == code)).getOrElse(Country.fromEnv(tools.Env.fromProcess()))
-    val uri = Env.get("KINOWO_CONVERGENCE_SCRAPES_URI").orElse(Env.get("MONGODB_URI")).getOrElse {
+    val uri = Env.fromProcess().get("KINOWO_CONVERGENCE_SCRAPES_URI").orElse(Env.fromProcess().get("MONGODB_URI")).getOrElse {
       System.err.println("[corpus] set KINOWO_CONVERGENCE_SCRAPES_URI (or MONGODB_URI) to the archive source")
       sys.exit(1)
     }
-    val databaseName = Env.get("KINOWO_CONVERGENCE_SCRAPES_DB").getOrElse(country.mongoDb)
+    val databaseName = Env.fromProcess().get("KINOWO_CONVERGENCE_SCRAPES_DB").getOrElse(country.mongoDb)
 
     // Tunnel-tuned: this runs across a `flyctl proxy` in CI, where the default 30s
     // server selection turns a two-second proxy restart into minutes of blocking.

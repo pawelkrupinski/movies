@@ -24,10 +24,10 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  */
 object DuplicateDocumentIdAudit {
   def main(args: Array[String]): Unit = {
-    val uri = Env.get("MONGODB_URI").getOrElse {
+    val uri = Env.fromProcess().get("MONGODB_URI").getOrElse {
       println("MONGODB_URI not set."); sys.exit(1)
     }
-    val dbName = Env.get("MONGODB_DB").getOrElse("kinowo")
+    val dbName = Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo")
     val client = MongoClient(uri)
     val coll   = client.getDatabase(dbName).getCollection[Document]("movies")
 

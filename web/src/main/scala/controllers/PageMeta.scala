@@ -5,8 +5,8 @@ import play.api.mvc.RequestHeader
 /** Shared helpers for the `<meta>` block on every server-rendered page —
  *  notably the OG `pageUrl`. Centralised here so any controller that hands
  *  data to a Twirl template can pull the same canonical URL without
- *  re-deriving it. (The optional `fb:app_id` is `FB_APP_ID`, handed to
- *  `MovieController` by the wiring and read per render.)
+ *  re-deriving it. (The optional `fb:app_id` is one of the [[PageTags]]
+ *  `MovieController` reads per render.)
  *
  *  Why these matter for share previews: Facebook's debugger flags
  *  `og:url` and `fb:app_id` as missing required properties when either is

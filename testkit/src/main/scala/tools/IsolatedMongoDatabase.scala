@@ -58,7 +58,7 @@ object IsolatedMongoDatabase {
    *  Prefer [[withDatabase]] whenever the work fits inside one block: it cannot
    *  leak, because the drop is in a `finally`. */
   def open(uri: String, purpose: String): IsolatedMongoDatabase = {
-    IntegrationMongo.requireThrowaway(uri, Env.get(IntegrationMongo.OverrideVar).exists(v => v == "1" || v.equalsIgnoreCase("true")))
+    IntegrationMongo.requireThrowaway(uri, Env.fromProcess().get(IntegrationMongo.OverrideVar).exists(v => v == "1" || v.equalsIgnoreCase("true")))
     val client = MongoClient(uri)
     new IsolatedMongoDatabase(client, client.getDatabase(nameFor(purpose)))
   }
@@ -67,7 +67,7 @@ object IsolatedMongoDatabase {
    *  afterwards — dropped even when `body` throws, since the alternative is an
    *  orphan database per failed run. */
   def withDatabase[A](uri: String, purpose: String)(body: MongoDatabase => A): A = {
-    IntegrationMongo.requireThrowaway(uri, Env.get(IntegrationMongo.OverrideVar).exists(v => v == "1" || v.equalsIgnoreCase("true")))
+    IntegrationMongo.requireThrowaway(uri, Env.fromProcess().get(IntegrationMongo.OverrideVar).exists(v => v == "1" || v.equalsIgnoreCase("true")))
     val client = MongoClient(uri)
     val name   = nameFor(purpose)
     try {

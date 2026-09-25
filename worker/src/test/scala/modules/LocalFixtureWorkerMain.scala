@@ -33,9 +33,9 @@ object LocalFixtureWorkerMain {
   def main(args: Array[String]): Unit = {
     forceLocalMongo()
     locateFixtureRoot()
-    val fixtureDirectory = Env.get("KINOWO_FIXTURE_DIR").getOrElse("today")
+    val fixtureDirectory = Env.fromProcess().get("KINOWO_FIXTURE_DIR").getOrElse("today")
     println(s"[local-fixture-worker] replaying HTTP from test/resources/fixtures/$fixtureDirectory " +
-      s"into Mongo ${Env.get("MONGODB_URI").getOrElse("?")} db=${Env.get("MONGODB_DB").getOrElse("kinowo")}")
+      s"into Mongo ${Env.fromProcess().get("MONGODB_URI").getOrElse("?")} db=${Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo")}")
 
     val wiring = new FixtureWorkerWiring(fixtureDirectory)
     wiring.start()
@@ -55,9 +55,9 @@ object LocalFixtureWorkerMain {
    *  a user who exported one keeps control. */
   private def forceLocalMongo(): Unit = {
     if (System.getenv("MONGODB_URI") == null)
-      System.setProperty("MONGODB_URI", Env.get("KINOWO_LOCAL_MONGO_URI").getOrElse(DefaultMongoUri))
+      System.setProperty("MONGODB_URI", Env.fromProcess().get("KINOWO_LOCAL_MONGO_URI").getOrElse(DefaultMongoUri))
     if (System.getenv("MONGODB_DB") == null)
-      System.setProperty("MONGODB_DB", Env.get("KINOWO_LOCAL_MONGO_DB").getOrElse(DefaultMongoDb))
+      System.setProperty("MONGODB_DB", Env.fromProcess().get("KINOWO_LOCAL_MONGO_DB").getOrElse(DefaultMongoDb))
   }
 
   /** `bgRunMain` forks with CWD = the worker module directory, but FakeHttpFetch reads
@@ -66,7 +66,7 @@ object LocalFixtureWorkerMain {
    *  KINOWO_FIXTURE_ROOT (a JVM prop FakeHttpFetch honours), so the corpus
    *  resolves regardless of where the fork started. No-op if already set. */
   private def locateFixtureRoot(): Unit = {
-    if (Env.get("KINOWO_FIXTURE_ROOT").isEmpty) {
+    if (Env.fromProcess().get("KINOWO_FIXTURE_ROOT").isEmpty) {
       var directory = new java.io.File(".").getCanonicalFile
       while (directory != null && !new java.io.File(directory, "test/resources/fixtures").isDirectory)
         directory = directory.getParentFile

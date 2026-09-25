@@ -14,7 +14,7 @@ import scala.concurrent.duration._
  *  same-tmdbId duplicate before it is written; the unique sparse `tmdbId` index is what
  *  refuses the one a race lets through, so the settle never has a pair to merge. */
 class UniqueTmdbIdIntegrationSpec extends AnyFlatSpec with Matchers {
-  private val uri = Env.get("MONGODB_URI").get
+  private val uri = Env.fromProcess().get("MONGODB_URI").get
 
   private def row(title: String): MovieRecord =
     MovieRecord(tmdbId = Some(4242), data = Map[Source, SourceData](

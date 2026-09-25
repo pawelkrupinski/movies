@@ -53,10 +53,10 @@ object ProfileDetailReaper {
   }
 
   def main(args: Array[String]): Unit = {
-    val uri = Env.get("MONGODB_URI").getOrElse {
+    val uri = Env.fromProcess().get("MONGODB_URI").getOrElse {
       System.err.println("MONGODB_URI not set — abort."); sys.exit(1)
     }
-    val dbName = Env.get("MONGODB_DB").getOrElse("kinowo")
+    val dbName = Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo")
     println(s"\nProfileDetailReaper → $dbName\n")
 
     val client = MongoClient(uri)

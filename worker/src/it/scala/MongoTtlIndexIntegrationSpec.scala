@@ -40,7 +40,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
   private val mismatches = new TtlIndexMismatches
 
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
   /** Distinct logical operations the driver issued, by command name — keyed by
@@ -72,13 +72,13 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
   // can only encode to Bson".
   private val client = MongoClient(
     MongoClientSettings.builder()
-      .applyConnectionString(new ConnectionString(Env.get("MONGODB_URI").get))
+      .applyConnectionString(new ConnectionString(Env.fromProcess().get("MONGODB_URI").get))
       .codecRegistry(MongoClient.DEFAULT_CODEC_REGISTRY)
       .addCommandListener(listener)
       .build()
   )
 
-  private val database: MongoDatabase = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+  private val database: MongoDatabase = client.getDatabase(Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo"))
 
   private def sent(command: String): Int = Option(commands.get(command)).map(_.size()).getOrElse(0)
   private def forget(): Unit            = commands.clear()

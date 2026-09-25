@@ -41,8 +41,8 @@ object TestMovieController {
     // Defaults to projecting `records`, which is what most specs want.
     readModel: Option[WebReadModel] = None,
     clock: java.time.Clock = clock,
-    // The deployment's `FB_APP_ID`, read per render — None skips `fb:app_id`.
-    fbAppId: () => Option[String] = () => None,
+    // The deployment's third-party page tags, read per render — none by default.
+    pageTags: () => PageTags = () => PageTags.none,
   ): (MovieController, WebReadModel) = {
     val readModel_ = readModel.getOrElse(TestReadModel.fromRecords(records))
     val ctrl  = new MovieController(
@@ -59,7 +59,7 @@ object TestMovieController {
       servingCountry         = servingCountry,
       normalizer             = services.movies.TitleNormalizer.forCountry(servingCountry),
       minifier               = tools.Minifier.forMode(mode),
-      fbAppId                = fbAppId,
+      pageTags               = pageTags,
     )
     (ctrl, readModel_)
   }

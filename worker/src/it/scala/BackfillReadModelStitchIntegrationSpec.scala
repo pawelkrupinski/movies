@@ -40,11 +40,11 @@ import scala.concurrent.duration._
  */
 class BackfillReadModelStitchIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
-  private val client = MongoClient(Env.get("MONGODB_URI").get)
-  private val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+  private val client = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
+  private val db     = client.getDatabase(Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo"))
 
   private val Title = "Backfill Stitch Probe"
   private val Year  = Some(1904)

@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
 
   private val Tmdb  = 424242
   private val title = "__slots-watch-sentinel__"
@@ -113,7 +113,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers {
         awaitQuiet(metrics.registry)
         projector.pruneOrphans()   // the FIRST sweep may legitimately look
 
-        val oplog = new tools.OplogWrites(Env.get("MONGODB_URI").get, databaseName)
+        val oplog = new tools.OplogWrites(Env.fromProcess().get("MONGODB_URI").get, databaseName)
         try new tools.ChurnLedger()
           .registry(metrics.registry, tools.FixpointPass.WorkFamilies, tools.FixpointPass.isWork)
           .counter(s"oplog writes to $databaseName")(oplog.count())

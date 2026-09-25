@@ -43,11 +43,11 @@ object FoldFixture {
 
   /** Refuse to run against anything but a throwaway Mongo, and skip when none is configured. */
   def requireThrowawayMongo(): Unit = {
-    assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+    assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
     tools.IntegrationMongo.requireThrowaway()
   }
 
-  private def uri = Env.get("MONGODB_URI").get
+  private def uri = Env.fromProcess().get("MONGODB_URI").get
 
   private val Timeout = 10.seconds
   private def now     = java.util.Date.from(java.time.Instant.now())

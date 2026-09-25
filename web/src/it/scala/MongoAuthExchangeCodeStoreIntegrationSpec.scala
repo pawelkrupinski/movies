@@ -18,11 +18,11 @@ import scala.concurrent.duration._
  *  handoff land signed out. The same goes for a native code's challenge. */
 class MongoAuthExchangeCodeStoreIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
   private val DbName = "kinowo_it_authexchangecodes"
-  private lazy val client: MongoClient = MongoClient(Env.get("MONGODB_URI").get)
+  private lazy val client: MongoClient = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
   private lazy val store = new MongoAuthExchangeCodeStore(Some(client.getDatabase(DbName)))
 
   override protected def afterAll(): Unit = try {

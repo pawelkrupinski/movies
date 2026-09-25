@@ -32,7 +32,7 @@ import scala.concurrent.duration._
  */
 class SharedUsersDatabaseIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   // Never against a real cluster: this spec creates and DROPS whole databases.
   tools.IntegrationMongo.requireThrowaway()
 
@@ -41,7 +41,7 @@ class SharedUsersDatabaseIntegrationSpec extends AnyFlatSpec with Matchers with 
   private val Prefix   = "kinowo_it_sharedusers"
   private val SharedDb = s"${Prefix}_users"
 
-  private lazy val client: MongoClient = MongoClient(Env.get("MONGODB_URI").get)
+  private lazy val client: MongoClient = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
 
   /** The database a pod serving `country` keeps its own corpus in, under this
    *  spec's prefix — standing in for `kinowo_uk` / `kinowo_de`. */

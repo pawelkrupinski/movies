@@ -86,7 +86,7 @@ object ConvergenceStorage {
    * passed. An unreachable database fails the run rather than degrading it.
    */
   def fromEnv(purpose: String, normalizer: TitleNormalizer): ConvergenceStorage =
-    Env.get("MONGODB_URI").filter(_.nonEmpty)
+    Env.fromProcess().get("MONGODB_URI").filter(_.nonEmpty)
       .map(uri => mongo(uri, purpose, normalizer))
       .getOrElse(throw new IllegalStateException(
         "MONGODB_URI is not set. This suite runs on a real database only — there is no " +

@@ -20,10 +20,10 @@ import scala.concurrent.duration._
  *  every reopen, dead for good and silent. Each case writes the malformed document while the
  *  watcher runs, then a valid row, which must still be delivered. Each runs in its own database. */
 class ChangeStreamMalformedDocumentIntegrationSpec extends AnyFlatSpec with Matchers {
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
-  private val uri = Env.get("MONGODB_URI").get
+  private val uri = Env.fromProcess().get("MONGODB_URI").get
 
   private def insertRaw(db: MongoDatabase, collection: String, doc: Document): Unit =
     Await.result(db.getCollection[Document](collection).insertOne(doc).toFuture(), 10.seconds)

@@ -17,10 +17,10 @@ import tools.{Env, IntegrationCorpusDatabase, ReadModelSnapshot}
  */
 class ReadModelFindCardIntegrationSpec extends AnyFlatSpec with Matchers {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
 
   "findCard" should "read back every card of the corpus, its screenings and nothing else, and compare equal to what was written" in {
-    IntegrationCorpusDatabase.withDatabase(Env.get("MONGODB_URI").get, "readmodel-findcard") { db =>
+    IntegrationCorpusDatabase.withDatabase(Env.fromProcess().get("MONGODB_URI").get, "readmodel-findcard") { db =>
       val rm       = new MongoReadModelRepository(Some(db))
       val snapshot = ReadModelSnapshot.parse(ReadModelSnapshot.read())
       ReadModelSnapshot.loadInto(rm, ReadModelSnapshot.read())

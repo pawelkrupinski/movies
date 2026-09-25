@@ -58,11 +58,11 @@ import scala.util.{Random, Try}
  */
 class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
-  private val uri = Env.get("MONGODB_URI")
+  private val uri = Env.fromProcess().get("MONGODB_URI")
   assume(uri.isDefined, "MONGODB_URI not set")
   IntegrationMongo.requireThrowaway()
 
-  private val Recording = Env.get("KINOWO_HARD_CLUSTERS_RECORD").exists(v => v == "1" || v.equalsIgnoreCase("true"))
+  private val Recording = Env.fromProcess().get("KINOWO_HARD_CLUSTERS_RECORD").exists(v => v == "1" || v.equalsIgnoreCase("true"))
 
   /** Fixed, so an order dependence fails the same way on every run. */
   private val OrderSeed = 0x2026_09_24L
@@ -82,7 +82,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
 
   /** `KINOWO_HARD_CLUSTERS_COUNTRIES=uk,us` narrows a local run to those countries. */
   private val countries: Seq[Country] = {
-    val only = Env.get("KINOWO_HARD_CLUSTERS_COUNTRIES").map(_.split(",").map(_.trim.toLowerCase).toSet)
+    val only = Env.fromProcess().get("KINOWO_HARD_CLUSTERS_COUNTRIES").map(_.split(",").map(_.trim.toLowerCase).toSet)
     Country.all.filter(c => CorpusFixture.exists(HardClusters.corpusKey(c)) && only.forall(_.contains(c.code)))
   }
 
@@ -319,7 +319,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
       refFilms should not be empty
       // `KINOWO_HARD_CLUSTERS_DUMP=1` prints every pass's films — the first thing to read
       // when a cluster moves.
-      if (Env.get("KINOWO_HARD_CLUSTERS_DUMP").isDefined)
+      if (Env.fromProcess().get("KINOWO_HARD_CLUSTERS_DUMP").isDefined)
         passes.foreach { case (p, fs) => println(s"[${country.code}] ${p.label}:\n  ${fs.mkString("\n  ")}") }
       val known = KnownSplitArrivalDivergences.getOrElse(country.code, Set.empty)
       def isKnown(pass: Pass, key: String) = pass.label == "split" && known.contains(key)

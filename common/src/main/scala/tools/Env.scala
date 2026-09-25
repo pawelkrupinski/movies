@@ -112,15 +112,6 @@ object Env {
         .orElse(fileVars.get(key)))
   }
 
-  // ── TRANSITIONAL process instance ──────────────────────────────────────────
-  // Callers not yet handed an injected `Env` read through these forwarders; they
-  // go once every call site takes the instance from its composition root.
-  val process: Env = fromProcess()
-  def get(key: String): Option[String]              = process.get(key)
-  def flag(key: String): Boolean                    = process.flag(key)
-  def positiveInt(key: String, default: Int): Int   = process.positiveInt(key, default)
-  def positiveLong(key: String, default: Long): Long = process.positiveLong(key, default)
-
   /** An instance over a fixed map — for a spec that needs a knob set without
    *  touching the process environment. */
   def of(vars: (String, String)*): Env = new Env(vars.toMap.get)

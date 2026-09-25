@@ -1,5 +1,5 @@
 @import controllers.FilmSchedule
-@(films: Seq[FilmSchedule], heading: String, minifier: tools.Minifier, oauthProviders: Set[String], pageUrl: String = "", fbAppId: Option[String] = None, canonicalUrl: String = "", robots: String = "")(implicit city: models.City, messages: play.api.i18n.Messages)
+@(films: Seq[FilmSchedule], heading: String, minifier: tools.Minifier, oauthProviders: Set[String], pageUrl: String = "", pageTags: controllers.PageTags = controllers.PageTags.none, canonicalUrl: String = "", robots: String = "")(implicit city: models.City, messages: play.api.i18n.Messages)
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
 <head>
@@ -11,14 +11,14 @@
     pageDescription = if (city.genitivePluralLabel.nonEmpty) messages("browse.ogDescription", city.genitivePluralLabel, heading)
                       else messages("browse.ogDescriptionNear", city.locativePhrase, heading),
     pageUrl         = pageUrl,
-    fbAppId         = fbAppId,
+    fbAppId         = pageTags.fbAppId,
     canonicalUrl    = canonicalUrl,
     robots          = robots,
   )
   @_jsonLd(controllers.StructuredData.cityPage(pageUrl, city, films))
   @_resourceHints()
-  @_errorTracking()
-  @_analytics()
+  @_errorTracking(pageTags.sentryLoaderUrl)
+  @_analytics(pageTags.gaMeasurementId)
   @_sharedStyles(minifier)
   @_minified(minifier) {
   <style>

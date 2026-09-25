@@ -19,8 +19,8 @@ import java.time.LocalDateTime
  *  prefix-sharing "Kino Etiuda") stay, a retired-venue row written inside the grace period
  *  stays (the real `updatedAt` read), and a second sweep is a no-op. */
 class RetiredVenueRowsIntegrationSpec extends AnyFlatSpec with Matchers {
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  private val uri = Env.get("MONGODB_URI").get
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  private val uri = Env.fromProcess().get("MONGODB_URI").get
 
   private val tomorrow = Seq(Showtime(LocalDateTime.now.plusDays(1).withNano(0), bookingUrl = None))
   private val Retired  = "Kino Etiuda OBK"

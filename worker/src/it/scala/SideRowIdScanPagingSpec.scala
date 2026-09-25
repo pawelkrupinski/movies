@@ -23,7 +23,7 @@ import scala.jdk.CollectionConverters._
  */
 class SideRowIdScanPagingSpec extends AnyFlatSpec with Matchers {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
   private val PageSize = 3
@@ -32,7 +32,7 @@ class SideRowIdScanPagingSpec extends AnyFlatSpec with Matchers {
   "the side collections' row-id scans" should "read every row in bounded pages" in {
     val finds = new java.util.concurrent.ConcurrentLinkedQueue[org.bson.BsonDocument]()
     val settings = MongoClientSettings.builder()
-      .applyConnectionString(new ConnectionString(Env.get("MONGODB_URI").get))
+      .applyConnectionString(new ConnectionString(Env.fromProcess().get("MONGODB_URI").get))
       .addCommandListener(new CommandListener {
         override def commandStarted(event: CommandStartedEvent): Unit =
           if (event.getCommandName == "find") finds.add(event.getCommand.clone())

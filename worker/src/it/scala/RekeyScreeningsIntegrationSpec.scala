@@ -33,10 +33,10 @@ import scala.concurrent.duration._
  */
 class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
-  private val uri = Env.get("MONGODB_URI").get
+  private val uri = Env.fromProcess().get("MONGODB_URI").get
   // Its own corpus: this suite hydrates a `CaffeineMovieCache` over the WHOLE `movies`
   // collection and settles it, which is not survivable for a neighbouring suite's rows.
   // Dropped when each leg's scope closes, so a run leaves no `*_rekey-screenings` behind.
@@ -93,7 +93,7 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
     val neighbours     = Seq(Some(2025), Some(2026)).map(y => StoredMovieRecord.keyFor(neighbourTitle, y, titleNormalizer))
     val client = MongoClient(uri)
     // The SHARED database — deliberately not this suite's own.
-    val shared = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo")).getCollection("movies")
+    val shared = client.getDatabase(Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo")).getCollection("movies")
     try {
       // Two unresolved year-variants of one title: the ±1-year shape a settle collapses.
       // (Not one tmdbId twice — the store's unique `tmdbId` index refuses that now.)

@@ -25,7 +25,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  */
 class ScanStitchedPagingSpec extends AnyFlatSpec with Matchers {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
   private val when = java.time.LocalDateTime.now().plusDays(2).withHour(18).withMinute(0).withSecond(0).withNano(0)
@@ -35,13 +35,13 @@ class ScanStitchedPagingSpec extends AnyFlatSpec with Matchers {
   private val sentinels: Seq[(String, Option[Int])] = (1 to 5).map(n => (s"__scanpaging-$n", Some(1900 + n)))
 
   it should "page the side-collection reads instead of preloading them whole" in {
-    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val client = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
     // TWO NESTED `try`s, NOT ONE. Each of these repositories opens a change-stream watcher in
     // its constructor, so construction is itself a step that can throw — and building them
     // between the client and a single `try` leaks the client whenever one does. The outer
     // `try` owns the connection; the inner one owns the sentinel rows.
     try {
-      val db         = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+      val db         = client.getDatabase(Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo"))
       val screenings = new MongoScreeningsRepository(Some(db))
       val realSlots  = new MongoSlotsRepository(Some(db))
       val slots      = new CountingSlotsRepository(realSlots)
