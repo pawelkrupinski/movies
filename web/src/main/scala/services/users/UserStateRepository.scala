@@ -84,15 +84,17 @@ trait UserStateRepository {
 
   /** When the `userStates` cursor last delivered an event — see
    *  `ChangeStreamLiveness`. Default: a repository with no stream, whose
-   *  cursor ages from creation and is never stamped. */
-  def changeStreamLiveness: ChangeStreamLiveness = UserStateRepository.unwatchedLiveness
+   *  cursor ages from this instance's first ask and is never stamped — one
+   *  per repository, so nothing stamped on one is seen through another. */
+  def changeStreamLiveness: ChangeStreamLiveness = unwatchedLiveness
+
+  private lazy val unwatchedLiveness: ChangeStreamLiveness = ChangeStreamLiveness.unwatched()
 
   def close(): Unit
 }
 
 object UserStateRepository {
   val Collection = "userStates"
-  private[users] lazy val unwatchedLiveness: ChangeStreamLiveness = ChangeStreamLiveness.unwatched()
 }
 
 class MongoUserStateRepository(

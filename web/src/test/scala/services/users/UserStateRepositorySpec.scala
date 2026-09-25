@@ -15,6 +15,30 @@ class UserStateRepositorySpec extends AnyFlatSpec with Matchers with UserStateWr
 
   private val Now = Instant.parse("2026-05-19T12:00:00Z")
 
+  /** A store with no change stream — it keeps the trait's default liveness. */
+  private final class StreamlessUserStateRepository extends UserStateRepository {
+    def enabled                                       = true
+    def find(userId: String): Option[UserState]       = None
+    def patchLegacyState(userId: String, patch: LegacyStatePatch, now: Instant): Option[UserState] = None
+    def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange, now: Instant): Option[UserState] = None
+    def delete(userId: String): Unit                  = ()
+    def close(): Unit                                 = ()
+  }
+
+  "A streamless UserStateRepository" should "keep its default liveness to itself" in {
+    val stamped = new StreamlessUserStateRepository
+    val other   = new StreamlessUserStateRepository
+    stamped.changeStreamLiveness.delivered(UserStateRepository.Collection)
+
+    stamped.changeStreamLiveness.lastDelivered(UserStateRepository.Collection) shouldBe defined
+    other.changeStreamLiveness.lastDelivered(UserStateRepository.Collection) shouldBe empty
+  }
+
+  it should "hand back the same liveness on every call" in {
+    val repository = new StreamlessUserStateRepository
+    repository.changeStreamLiveness should be theSameInstanceAs repository.changeStreamLiveness
+  }
+
   "UserStateRepository" should "return None for a user with no stored state — callers fall back to UserState.empty" in {
     new InMemoryUserStateRepository().find("nobody") shouldBe empty
   }
