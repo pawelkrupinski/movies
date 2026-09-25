@@ -114,11 +114,12 @@ incidents:
       `/movie/` URLs, which Cloudflare's managed-challenge rule answers with a 403 that blackbox
       cannot pass, so ProbeBlockedByEdge fired on them without cease -- true, but about a probe
       that could never succeed. Fixed by the discovery reading such pages from the origin and not
-      probing them (10ed17507); the window ends when that was written, so any firing past it is
-      the fix not yet switched in on monitoring-1 and still fails the budget, as it should.
+      probing them (6de1c0983, on main at 17:36:45Z); the window ends once monitoring-1 had
+      switched it in -- the last 403 firing sample is 17:47Z, none since -- so any later firing
+      is a real edge block and still fails the budget, as it should.
     source: ALERTS{alertname="ProbeBlockedByEdge",kind="film"} firing from 15:46Z; probe_http_status_code 403 on every showtimes.cc film target
     start: 2026-09-24T15:46:00Z
-    end: 2026-09-24T17:15:00Z
+    end: 2026-09-24T17:50:00Z
     grace: 0m
     expect_firing: [ProbeBlockedByEdge]
 
