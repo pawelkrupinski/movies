@@ -280,14 +280,14 @@ object SyncModel {
                 SyncEvent.Hide -> {
                     val title = "$country-${++minted}"
                     prefs.setHiddenFilms(country, prefs.hiddenFilmsFor(country) + title)
-                    service.hide(title)
+                    service.hide(country, title)
                     if (signedIn) expect(country, title, hidden = true)
                 }
                 SyncEvent.HideRefused -> {
                     // The server never stores it, so it must end up nowhere.
                     val title = "$country-${++minted}-" + "x".repeat(FakeHiddenFilmsClient.MaxTitleLength)
                     prefs.setHiddenFilms(country, prefs.hiddenFilmsFor(country) + title)
-                    service.hide(title)
+                    service.hide(country, title)
                     expect(country, title, hidden = false)
                 }
                 is SyncEvent.Unhide -> {
@@ -295,13 +295,13 @@ object SyncModel {
                     if (local.isEmpty()) return
                     val title = local[event.pick % local.size]
                     prefs.setHiddenFilms(country, local.toSet() - title)
-                    service.unhide(title)
+                    service.unhide(country, title)
                     if (signedIn) expect(country, title, hidden = false)
                 }
                 SyncEvent.Clear -> {
                     val local = prefs.hiddenFilmsFor(country)
                     prefs.setHiddenFilms(country, emptySet())
-                    service.clear()
+                    service.clear(country)
                     if (signedIn) {
                         mustNotHave.getValue(country) += local + mustHave.getValue(country)
                         mustHave.getValue(country).clear()

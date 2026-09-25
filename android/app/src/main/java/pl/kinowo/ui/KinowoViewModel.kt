@@ -619,9 +619,9 @@ class KinowoViewModel(
      *  already persisted in [checkCitySwitch], so we won't re-ask for it. */
     fun dismissCitySwitch() { citySwitchSuggestion = null }
 
-    fun hide(title: String) = viewModelScope.launch { prefs.hide(title); sync.hide(title) }
-    fun unhide(title: String) = viewModelScope.launch { prefs.unhide(title); sync.unhide(title) }
-    fun unhideAll() = viewModelScope.launch { prefs.unhideAll(); sync.clear() }
+    fun hide(title: String) = viewModelScope.launch { sync.hide(prefs.hide(title), title) }
+    fun unhide(title: String) = viewModelScope.launch { sync.unhide(prefs.unhide(title), title) }
+    fun unhideAll() = viewModelScope.launch { sync.clear(prefs.unhideAll()) }
     /** Replace the excluded-cinemas set. The Filtry sheet's "Kina" section works
      *  out the new set via [pl.kinowo.filter.CinemaFilterSection] and hands it
      *  here; deep links write through the same path. */

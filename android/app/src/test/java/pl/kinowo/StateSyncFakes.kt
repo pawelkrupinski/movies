@@ -57,13 +57,25 @@ internal class FakeSyncPrefs : SyncPrefs {
     override val selectedLanguageTag = languageState
     override suspend fun setLanguageTag(tag: String) { languageState.value = tag }
 
+    /** Awaited before a queue write lands — holds it the way a slow
+     *  DataStore edit would, so another write can arrive meanwhile. */
+    var beforeSetPendingOps: suspend () -> Unit = {}
+    /** Awaited before a pending-language write lands, as [beforeSetPendingOps]. */
+    var beforeSetPendingLanguage: suspend () -> Unit = {}
+
     private val pendingOps = mutableMapOf<String, List<HiddenFilmsOp>>()
     override suspend fun pendingHiddenFilmsOps(country: String): List<HiddenFilmsOp> = pendingOps[country] ?: emptyList()
-    override suspend fun setPendingHiddenFilmsOps(country: String, ops: List<HiddenFilmsOp>) { pendingOps[country] = ops }
+    override suspend fun setPendingHiddenFilmsOps(country: String, ops: List<HiddenFilmsOp>) {
+        beforeSetPendingOps()
+        pendingOps[country] = ops
+    }
 
     private var pendingLanguage: String? = null
     override suspend fun pendingLanguagePush(): String? = pendingLanguage
-    override suspend fun setPendingLanguagePush(tag: String?) { pendingLanguage = tag }
+    override suspend fun setPendingLanguagePush(tag: String?) {
+        beforeSetPendingLanguage()
+        pendingLanguage = tag
+    }
 }
 
 /** The per-country hidden-films endpoints as the server behaves: each bucket
@@ -90,6 +102,9 @@ internal class FakeHiddenFilmsClient : HiddenFilmsClient {
     /** Awaited after a fetch has read the server's set, before it answers —
      *  holds a response "on the wire" while the set changes underneath it. */
     var beforeFetchResponse: suspend () -> Unit = {}
+    /** Awaited before a hide/unhide (named by its title) or a clear (null)
+     *  is applied — holds the request on its way to the server. */
+    var beforeWriteApplied: suspend (title: String?) -> Unit = {}
     /** Awaited once a hide/unhide/clear has been APPLIED, before it answers. */
     var beforeWriteResponse: suspend () -> Unit = {}
 
@@ -112,6 +127,7 @@ internal class FakeHiddenFilmsClient : HiddenFilmsClient {
 
     override suspend fun hide(country: String, title: String): HiddenFilmsState {
         hideCalls += title to country
+        beforeWriteApplied(title)
         if (shouldFailWrite) throw IOException("no network")
         if (!signedIn) throw IOException("HTTP 401")
         if (title.length > MaxTitleLength) throw HiddenFilmsWriteRefused(400)
@@ -121,6 +137,7 @@ internal class FakeHiddenFilmsClient : HiddenFilmsClient {
 
     override suspend fun unhide(country: String, title: String): HiddenFilmsState {
         unhideCalls += title to country
+        beforeWriteApplied(title)
         if (shouldFailWrite) throw IOException("no network")
         if (!signedIn) throw IOException("HTTP 401")
         remote[country] = (remote[country] ?: emptySet()) - title
@@ -129,6 +146,7 @@ internal class FakeHiddenFilmsClient : HiddenFilmsClient {
 
     override suspend fun clear(country: String): HiddenFilmsState {
         clearCalls += country
+        beforeWriteApplied(null)
         if (shouldFailWrite) throw IOException("no network")
         if (!signedIn) throw IOException("HTTP 401")
         remote[country] = emptySet()

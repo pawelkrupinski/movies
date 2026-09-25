@@ -28,8 +28,9 @@ import pl.kinowo.model.Country
  * set. Migration/authority is tracked per country too: the FIRST
  * reconcile for a given country unions local + remote (so nothing set while
  * signed-out, or set for a country never reconciled on this device, is
- * lost), pushes each LOCAL-ONLY title with its own `hide` call (there is no
- * bulk write any more), and marks that country migrated. EVERY reconcile
+ * lost), queues a `hide` for each LOCAL-ONLY title on the same edit queue as
+ * the user's own edits (there is no bulk write any more), and marks that
+ * country migrated once the queue has drained. EVERY reconcile
  * after that treats the SERVER as authoritative for that country — local is
  * replaced with the server's set, so a hide removed elsewhere stays removed
  * instead of being resurrected by a blind union. `reconcile`'s fetch is
@@ -118,12 +119,15 @@ class StateSyncService(
                     // The same goes for an unsent language pick: it is
                     // persisted precisely so the session restore after a
                     // relaunch can still push it.
-                    if (loggedIn) {
+                    // Stop accepting edits BEFORE the clears suspend: one
+                    // queued behind them would reach the next account.
+                    val wasLoggedIn = loggedIn
+                    loggedIn = false
+                    if (wasLoggedIn) {
                         session++
-                        prefs.clearHiddenFilmsSyncState()
+                        queueMutex.withLock { prefs.clearHiddenFilmsSyncState() }
                         prefs.setPendingLanguagePush(null)
                     }
-                    loggedIn = false
                     syncJob?.cancel()
                     syncJob = null
                     languageDebounceJob?.cancel()
@@ -186,24 +190,25 @@ class StateSyncService(
             } else {
                 val remote = (client.fetch(country, null, null) as? HiddenFilmsFetchResult.Changed)?.state
                 if (editedDuringFetch(country, localBeforeFetch)) return@runCatchingCancellable
-                val local = prefs.hiddenFilmsFor(country)
-                val merged = local + (remote?.hiddenFilms ?: emptySet())
-                if (merged != local) prefs.setHiddenFilms(country, merged)
-
-                var latest = remote
-                var refused = false
-                (local - (remote?.hiddenFilms ?: emptySet())).forEach { title ->
-                    try {
-                        latest = client.hide(country, title)
-                    } catch (_: HiddenFilmsWriteRefused) {
-                        refused = true
+                val remoteFilms = remote?.hiddenFilms ?: emptySet()
+                // Each local-only title is owed to the server as a hide, queued
+                // like any edit — so an unhide made meanwhile is sent after it,
+                // never beside it — and the merge is written under the same lock.
+                val localOnly = queueMutex.withLock {
+                    val local = prefs.hiddenFilmsFor(country)
+                    if (!local.containsAll(remoteFilms)) prefs.setHiddenFilms(country, local + remoteFilms)
+                    (local - remoteFilms).also { titles ->
+                        if (titles.isNotEmpty()) {
+                            prefs.setPendingHiddenFilmsOps(country, prefs.pendingHiddenFilmsOps(country) + titles.map(HiddenFilmsOp::Hide))
+                        }
                     }
                 }
-                // A refused title stays in the local list only, so the server's
-                // validators no longer describe it: the next fetch replaces it.
-                if (refused) prefs.setHiddenFilmsValidators(country, null, null)
-                else latest?.let { prefs.setHiddenFilmsValidators(country, it.etag, it.lastModified) }
-                prefs.setHiddenFilmsMigrated(country, true)
+                // Nothing owed: the merged set IS the server's. Otherwise the
+                // flush settles the validators (see [sendPendingOps]).
+                if (localOnly.isEmpty()) remote?.let { prefs.setHiddenFilmsValidators(country, it.etag, it.lastModified) }
+                // Migrated only once everything owed has landed; until then the
+                // next reconcile re-sends the queue and runs the union again.
+                if (sendPendingOps(country)) prefs.setHiddenFilmsMigrated(country, true)
             }
         }
     }
@@ -280,7 +285,9 @@ class StateSyncService(
                     // take the account's pick instead — never pushing this one back.
                     if (failure is LanguagePushRefused && prefs.pendingLanguagePush() == pending) {
                         prefs.setPendingLanguagePush(null)
-                        runCatchingCancellable { languageClient.fetch() }.getOrNull()?.let { adopt(it) }
+                        val account = runCatchingCancellable { languageClient.fetch() }.getOrNull() ?: return
+                        // A pick made during that fetch is newer: it stays, and is sent next.
+                        if (languagePicks == picksBeforeSend) adopt(account) else accountLanguage = account
                     }
                     return
                 }
@@ -334,25 +341,30 @@ class StateSyncService(
             }
     }
 
-    /** Hide one film in THIS country: update local prefs immediately (the
-     *  caller's responsibility — see [pl.kinowo.ui.KinowoViewModel.hide]) then
-     *  queue and send the write in the background. */
-    fun hide(title: String) = push(HiddenFilmsOp.Hide(title))
+    /** Hide one film in [country] — the one the local edit went to: update
+     *  local prefs first (the caller's responsibility — see
+     *  [pl.kinowo.ui.KinowoViewModel.hide]) then queue and send the write in
+     *  the background. The country is the edit's, not whichever is current
+     *  when its turn at the queue comes. */
+    fun hide(country: String, title: String) = push(country, HiddenFilmsOp.Hide(title))
 
-    fun unhide(title: String) = push(HiddenFilmsOp.Unhide(title))
+    fun unhide(country: String, title: String) = push(country, HiddenFilmsOp.Unhide(title))
 
-    fun clear() = push(HiddenFilmsOp.Clear)
+    fun clear(country: String) = push(country, HiddenFilmsOp.Clear)
 
     /** Queue [op] (persisted — see [SyncPrefs.pendingHiddenFilmsOps]) and send
      *  the queue. One that fails stays queued; the next reconcile re-sends it
      *  before fetching — unless it was refused for good. */
-    private fun push(op: HiddenFilmsOp) {
+    private fun push(country: String, op: HiddenFilmsOp) {
         if (!loggedIn) return
+        val madeIn = session
         // UNDISPATCHED, so the (fair) queue lock is requested in call order and
         // a hide and the unhide right after it are queued in that order.
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            val country = queueMutex.withLock {
-                currentCountry().also { prefs.setPendingHiddenFilmsOps(it, prefs.pendingHiddenFilmsOps(it) + op) }
+            queueMutex.withLock {
+                // A logout while it waited forgot what the account was owed.
+                if (session != madeIn || !loggedIn) return@launch
+                prefs.setPendingHiddenFilmsOps(country, prefs.pendingHiddenFilmsOps(country) + op)
             }
             sendPendingOps(country)
         }

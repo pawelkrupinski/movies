@@ -278,20 +278,25 @@ class UserPreferences(private val context: Context) : SyncPrefs {
     val posterPurgeDate: Flow<String> =
         context.dataStore.data.map { it[KEY_POSTER_PURGE_DATE] ?: "" }
 
-    suspend fun hide(title: String) = context.dataStore.edit { prefs ->
-        val country = prefs.currentCountry()
-        prefs.putHidden(country, prefs.hiddenIn(country) + title)
-    }
+    /** Hide [title] in the country being browsed; returns that country, the
+     *  one the edit must be synced to. */
+    suspend fun hide(title: String): String = editCurrentHidden { it + title }
 
-    suspend fun unhide(title: String) = context.dataStore.edit { prefs ->
-        val country = prefs.currentCountry()
-        prefs.putHidden(country, prefs.hiddenIn(country) - title)
-    }
+    suspend fun unhide(title: String): String = editCurrentHidden { it - title }
 
     /** Unhide everything in the country being browsed — the other countries'
      *  sets belong to their own server rows and stay put. */
-    suspend fun unhideAll() = context.dataStore.edit { prefs ->
-        prefs.putHidden(prefs.currentCountry(), emptySet())
+    suspend fun unhideAll(): String = editCurrentHidden { emptySet() }
+
+    /** Rewrite the browsed country's hidden set in ONE edit, returning the
+     *  country it read — so a country switch can't split the two. */
+    private suspend fun editCurrentHidden(change: (Set<String>) -> Set<String>): String {
+        lateinit var country: String
+        context.dataStore.edit { prefs ->
+            country = prefs.currentCountry()
+            prefs.putHidden(country, change(prefs.hiddenIn(country)))
+        }
+        return country
     }
 
     /** Forget every country's hidden titles (account deletion). */

@@ -119,7 +119,7 @@ class StateSyncServiceTest {
         login()
         advanceUntilIdle()
 
-        service.hide("Film A")
+        service.hide("pl", "Film A")
         advanceUntilIdle()
 
         assertEquals(listOf("Film A" to "pl"), client.hideCalls)
@@ -197,7 +197,7 @@ class StateSyncServiceTest {
         login()
         advanceUntilIdle() // merge completes
 
-        service.hide("New Hide")
+        service.hide("pl", "New Hide")
         runCurrent() // no advanceTimeBy — proves there's no debounce left to wait out
 
         assertTrue(client.hideCalls.contains("New Hide" to "pl"))
@@ -210,7 +210,7 @@ class StateSyncServiceTest {
         login()
         advanceUntilIdle()
 
-        service.unhide("Gone")
+        service.unhide("pl", "Gone")
         runCurrent()
 
         assertEquals(listOf("Gone" to "pl"), client.unhideCalls)
@@ -223,7 +223,7 @@ class StateSyncServiceTest {
         login()
         advanceUntilIdle()
 
-        service.clear()
+        service.clear("pl")
         runCurrent()
 
         assertEquals(listOf("pl"), client.clearCalls)
@@ -242,7 +242,7 @@ class StateSyncServiceTest {
 
         client.shouldFailWrite = true
         prefs.hiddenByCountry["pl"] = setOf("Offline Hide") // the ViewModel's local write
-        service.hide("Offline Hide")
+        service.hide("pl", "Offline Hide")
         advanceUntilIdle()
 
         client.shouldFailWrite = false
@@ -267,7 +267,7 @@ class StateSyncServiceTest {
 
         client.shouldFailWrite = true
         prefs.hiddenByCountry["pl"] = emptySet()
-        service.unhide("Was Hidden")
+        service.unhide("pl", "Was Hidden")
         advanceUntilIdle()
 
         client.shouldFailWrite = false
@@ -292,7 +292,7 @@ class StateSyncServiceTest {
 
         client.remote["pl"] = setOf("A", "From Elsewhere")
         prefs.hiddenByCountry["pl"] = setOf("A", "New")
-        service.hide("New")
+        service.hide("pl", "New")
         advanceUntilIdle()
 
         assertNull(prefs.hiddenFilmsEtag("pl"))
@@ -303,7 +303,7 @@ class StateSyncServiceTest {
         prefs.countryState.value = "pl"
         val service = startService()
         // never logged in
-        service.hide("Nope")
+        service.hide("pl", "Nope")
         runCurrent()
 
         assertTrue(client.hideCalls.isEmpty())
@@ -336,6 +336,80 @@ class StateSyncServiceTest {
         advanceUntilIdle()
 
         assertEquals(emptyList<String>(), client.fetchCalls)
+    }
+
+    /** The first sign-in's hides of local-only titles go through the edit
+     *  queue: an unhide the user makes while one is on the wire is sent after
+     *  it, not beside it — otherwise it could land first and the server would
+     *  keep a title the device no longer hides, with validators vouching for it. */
+    @Test
+    fun anUnhideDuringTheFirstSignInMigrationLandsAfterTheMigrationsHide() = runTest(UnconfinedTestDispatcher()) {
+        prefs.countryState.value = "pl"
+        prefs.hiddenByCountry["pl"] = setOf("A", "B")
+        val held = CompletableDeferred<Unit>()
+        client.beforeWriteApplied = { title -> if (title == "A") held.await() }
+        val service = startService()
+        login()
+        runCurrent() // the migration's hide of A is on the wire
+
+        client.beforeWriteApplied = {}
+        prefs.hiddenByCountry["pl"] = setOf("B")
+        service.unhide("pl", "A")
+        runCurrent()
+        held.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(setOf("B"), client.remote["pl"])
+        assertEquals(setOf("B"), prefs.hiddenState)
+    }
+
+    /** An edit is queued for the country it was made in, even when the
+     *  country changes before its turn at the queue comes. */
+    @Test
+    fun anEditIsQueuedForTheCountryItWasMadeInEvenWhenTheCountryChangesFirst() = runTest(UnconfinedTestDispatcher()) {
+        prefs.countryState.value = "pl"
+        val service = startService()
+        login()
+        advanceUntilIdle()
+
+        val held = CompletableDeferred<Unit>()
+        prefs.beforeSetPendingOps = { held.await() }
+        service.hide("pl", "First") // parks mid-enqueue, holding the queue
+        prefs.beforeSetPendingOps = {}
+        service.hide("pl", "Second") // waits its turn
+        prefs.countryState.value = "uk"
+        held.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(listOf("First" to "pl", "Second" to "pl"), client.hideCalls)
+    }
+
+    /** An edit made while a logout is still clearing the sync state is not
+     *  queued: queued, it would reach whichever account signs in next — a
+     *  clear would wipe that account's list. */
+    @Test
+    fun anEditMadeDuringALogoutIsNotSentToTheNextAccount() = runTest(UnconfinedTestDispatcher()) {
+        prefs.countryState.value = "pl"
+        val service = startService()
+        login()
+        advanceUntilIdle()
+
+        val held = CompletableDeferred<Unit>()
+        prefs.beforeSetPendingLanguage = { held.await() }
+        client.signedIn = false
+        userFlow.value = null // the logout parks mid-clear
+        service.clear("pl")
+        runCurrent()
+        prefs.beforeSetPendingLanguage = {}
+        held.complete(Unit)
+        advanceUntilIdle()
+
+        client.signedIn = true
+        client.remote["pl"] = setOf("Theirs")
+        login() // another account, on this device
+        advanceUntilIdle()
+
+        assertEquals(setOf("Theirs"), client.remote["pl"])
     }
 
     // ── Country switches — hiddenFilms is per country on both sides ────────
@@ -422,7 +496,7 @@ class StateSyncServiceTest {
         launch { service.reconcileCurrentCountry() }
         runCurrent() // the fetch has read the server's set and is parked
         prefs.setHiddenFilms("pl", setOf("Mid Fetch"))
-        service.hide("Mid Fetch")
+        service.hide("pl", "Mid Fetch")
         runCurrent()
         gate.complete(Unit)
         advanceUntilIdle()
@@ -446,9 +520,9 @@ class StateSyncServiceTest {
 
         val gate = CompletableDeferred<Unit>()
         client.beforeWriteResponse = { gate.await() }
-        service.hide("First")
+        service.hide("pl", "First")
         runCurrent() // First is on the wire
-        service.hide("Second")
+        service.hide("pl", "Second")
         runCurrent()
 
         assertEquals(listOf(HiddenFilmsOp.Hide("First"), HiddenFilmsOp.Hide("Second")), prefs.pendingHiddenFilmsOps("pl"))
@@ -472,7 +546,7 @@ class StateSyncServiceTest {
         val gate = CompletableDeferred<Unit>()
         client.beforeWriteResponse = { gate.await() }
         prefs.setHiddenFilms("pl", setOf("First"))
-        service.hide("First")
+        service.hide("pl", "First")
         runCurrent() // applied by the server, its response on the wire
         userFlow.value = null
         runCurrent()
@@ -480,7 +554,7 @@ class StateSyncServiceTest {
         runCurrent()
         client.beforeWriteResponse = {}
         prefs.setHiddenFilms("pl", emptySet())
-        service.clear()
+        service.clear("pl")
         runCurrent()
         gate.complete(Unit)
         advanceUntilIdle()
@@ -570,6 +644,33 @@ class StateSyncServiceTest {
 
         assertNull(prefs.languageState.value)
         assertNull(languageClient.pushes.lastOrNull())
+    }
+
+    /** A pick made while a refused pick's replacement is being fetched is
+     *  newer than the account's value: it stays, and is sent. */
+    @Test
+    fun aPickMadeWhileARefusedPicksReplacementIsFetchedIsKeptAndSent() = runTest(UnconfinedTestDispatcher()) {
+        languageClient.remote = "en"
+        startService()
+        login()
+        advanceUntilIdle()
+
+        languageClient.refusePush = true
+        val held = CompletableDeferred<Unit>()
+        languageClient.beforeFetch = { held.await() }
+        prefs.setLanguageTag("xx")
+        advanceTimeBy(500)
+        runCurrent() // refused; the replacement fetch is on the wire
+
+        languageClient.refusePush = false
+        languageClient.beforeFetch = {}
+        prefs.setLanguageTag("de")
+        held.complete(Unit)
+        advanceTimeBy(500)
+        advanceUntilIdle()
+
+        assertEquals("de", prefs.languageState.value)
+        assertEquals("de", languageClient.remote)
     }
 
     /** A pick made AFTER login (not just the merge-on-login case above)
@@ -664,9 +765,9 @@ class StateSyncServiceTest {
 
         val overLong = "x".repeat(FakeHiddenFilmsClient.MaxTitleLength + 1)
         prefs.hiddenByCountry["pl"] = setOf(overLong)
-        service.hide(overLong)
+        service.hide("pl", overLong)
         prefs.hiddenByCountry["pl"] = setOf(overLong, "Film A")
-        service.hide("Film A")
+        service.hide("pl", "Film A")
         advanceUntilIdle()
         assertEquals(setOf("Film A"), client.remote["pl"])
         assertEquals(emptyList<HiddenFilmsOp>(), prefs.pendingHiddenFilmsOps("pl"))
