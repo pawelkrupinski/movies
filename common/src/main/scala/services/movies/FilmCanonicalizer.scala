@@ -263,7 +263,14 @@ object FilmCanonicalizer {
     val clusterTitles      = c.rows.flatMap { case (k, e) => (e.tmdbTitleAliases + k.cleanTitle).toSeq }.distinct.map(TitleContainment.tokens)
     !ownYearContradicts && whole.nonEmpty &&
       clusterTitles.exists(base => TitleContainment.decorates(base, whole)) &&
-      !c.rows.exists(cr => MixedFilmDetector.describeDifferentFilms(cr._2, row._2, normalizer))
+      !c.rows.exists(cr => MixedFilmDetector.describeDifferentFilms(cr._2, row._2, normalizer)) &&
+      !venueDenies(row._2, c.rows.map(_._2), normalizer)
+  }
+
+  /** Does one of `row`'s venues deny the film the `films` rows resolved to? */
+  private def venueDenies(row: MovieRecord, films: Seq[MovieRecord], normalizer: TitleNormalizer): Boolean = {
+    val named = films.flatMap(_.data.get(Tmdb))
+    row.cinemaData.values.exists(slot => named.exists(MixedFilmDetector.deniesFilm(slot, _, normalizer)))
   }
 
   /** Rule 3: the remaining orphans form greedy windows from the lowest distinct year,
@@ -542,9 +549,14 @@ object FilmCanonicalizer {
           // "The Hunger Games" twenty times in nine days of logs with nothing to stop it.
           // A sequel carries the base title exactly the way a decoration does; the
           // ordinal is the difference (`SequelMarker`).
+          // …and refusing when the row's OWN venue denies the base's film (its year and its
+          // director both — `MixedFilmDetector.deniesFilm`): Kulturfabrik Meda's "Zärtlich
+          // kreist die Faust" (1990, Bechert/Dexel) ends with the English title of Murnau's
+          // 1926 "Faust", and was adopted onto it.
           val matched = cands.collect {
             case (base, i) if TitleContainment.decorates(base, whole) &&
-              !MixedFilmDetector.describeDifferentFilms(rows(i)._2, rows(j)._2, normalizer) => i
+              !MixedFilmDetector.describeDifferentFilms(rows(i)._2, rows(j)._2, normalizer) &&
+              !venueDenies(rows(j)._2, Seq(rows(i)._2), normalizer) => i
           }
           if (matched.map(i => rows(i)._2.tmdbId.get).distinct.lengthIs == 1) matched.foreach(union(_, j))
         }
