@@ -89,6 +89,10 @@ object DistinctVenuePairs extends Logging {
     // own Flicks venue (Governors Square 580 vs Laurel Park 615 vs Mall of Monroe 571 showtimes of
     // the same six films, checked 2026-09-25), and the census found a new pair on each of two days.
     "Phoenix Theatres ",
+    // Cineworld's UK estate, on one template since the 2026-09-17 relaunch: 57 pairs of its 87
+    // venues shared 75%+ of their programme on 2026-09-25 (Ely / St Neots 92%, both filed under
+    // Cambridgeshire), each booking through its own site's session ids (097-* vs 084-*).
+    "Cineworld ",
   )
 
   /** Names in [[byName]] the roster no longer holds — a regeneration renamed or dropped the

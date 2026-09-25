@@ -164,6 +164,20 @@ class DuplicateVenueCensusSpec extends AnyFlatSpec with Matchers {
     withClue(counted.mkString("\n")) { counted shouldBe empty }
   }
 
+  // DuplicateVenueListing{uk, same_city} pending from 2026-09-25 18:49Z: Cineworld Ely and St
+  // Neots, both filed under Cambridgeshire, sharing 363 of ~400 showtimes -- two houses booking
+  // through their own session ids (web.cineworld.co.uk/order/showtimes/097-* vs 084-*) on their
+  // own screens. Cineworld programmes its whole estate from one template since the 2026-09-17
+  // relaunch: the archive held 57 pairs of its 87 venues at 75%+ that day, Shrewsbury and
+  // Weston-super-Mare at 94.9%, a hair under the cross-city bar.
+  it should "not count two Cineworld houses, which the chain programmes alike estate-wide" in {
+    val counted = countedPairs(Country.UnitedKingdom, Seq(
+      "Cineworld Ely" -> "Cineworld St Neots",
+      "Cineworld Huntingdon" -> "Cineworld St Neots",
+      "Cineworld Shrewsbury" -> "Cineworld Weston-super-Mare"))
+    withClue(counted.mkString("\n")) { counted shouldBe empty }
+  }
+
   it should "list only pairs of two venues on one country's roster, so no entry is dead" in {
     val dead = services.cinemas.roster.DistinctVenuePairs.all.filterNot { p =>
       p.size == 2 && Country.all.exists(c => p.forall(v => citiesOf(c, v).nonEmpty))
