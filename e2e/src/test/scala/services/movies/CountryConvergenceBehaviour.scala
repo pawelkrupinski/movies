@@ -10,7 +10,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
-import tools.{ArchiveReplayWiring, ConvergenceStorage, CorpusCoverage, CorpusFixture, CorpusProvenance, CountryScrapeCorpus,
+import tools.{ArchiveReplayWiring, ConvergenceStorage, CorpusCoverage, CorpusFixture, CorpusProvenance, CountryScrapeCorpus, IdentityLookupSweep,
   ChurnLedger, EnrichmentCache, EnrichmentFreshness, Env, FileEnrichmentCacheStore, FixpointPass, MissingFixtures, PhaseTimer, ProdCoverageBaseline,
   SameThreadExecutionBudget, ServedCorpusInvariants, TestWiring, ConvergenceKnownIssues}
 
@@ -397,6 +397,11 @@ abstract class CountryConvergenceBehaviour(
              s"says anything about them:\n  ${w.scrapeFailures.asScala.take(8).mkString("\n  ")}\n") {
       w.scrapeFailures.asScala shouldBe empty
     }
+    // The identity resolver's per-listing query set (docs/design/identity-resolver.md §9), when
+    // asked for: a RECORDING leg files every answer into the tree it then pins, a HERMETIC one
+    // names each the tree lacks below. Off by default — a tree recorded without it lacks them.
+    if (IdentityLookupSweep.enabledFromEnv)
+      info(s"${country.displayName}: identity resolver lookups — ${IdentityLookupSweep.over(w, country)}")
     info(s"${country.displayName}: " + missingFixtures.fold("RECORDING run — requests the tree lacks are fetched live and recorded")(
       m => s"HERMETIC run — ${m.size} request(s) the recorded tree could not answer"))
     requireHermetic()

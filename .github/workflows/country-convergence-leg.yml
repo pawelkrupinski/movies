@@ -159,6 +159,14 @@ on:
                 required: false
                 type: string
                 default: hermetic
+            identity-lookups:
+                description: >-
+                    Run the identity resolver's per-listing lookup sweep after the boot
+                    (`KINOWO_IDENTITY_LOOKUPS`): a `record` leg records its answers into the tree,
+                    a `hermetic` one fails on each the tree lacks.
+                required: false
+                type: boolean
+                default: false
             corpus-run:
                 description: >-
                     The `Record scrape fixtures` run whose corpus a RECORDING leg replays — the
@@ -264,6 +272,7 @@ jobs:
                   OMDB_API_KEY:     ${{ secrets.OMDB_API_KEY }}
                   KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
                   KINOWO_CONVERGENCE_HERMETIC: ${{ inputs.mode == 'hermetic' }}
+                  KINOWO_IDENTITY_LOOKUPS: ${{ inputs.identity-lookups }}
 
             # The gate REPLAYS the tree and — until now — extended it only in the
             # runner's filesystem, which is discarded with the runner. Every recorded
@@ -443,6 +452,7 @@ jobs:
                   # in a RECORDING leg. A hermetic one refuses that request and names it.
                   KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
                   KINOWO_CONVERGENCE_HERMETIC: ${{ inputs.mode == 'hermetic' }}
+                  KINOWO_IDENTITY_LOOKUPS: ${{ inputs.identity-lookups }}
                   TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
                   # The OMDb rung of ImdbIdResolver is gated on this key
                   # (`omdb = Env.get("OMDB_API_KEY").map(...)`), so without it the

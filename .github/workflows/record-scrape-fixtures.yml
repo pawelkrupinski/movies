@@ -42,6 +42,15 @@ on:
         # same prod tunnel that is documented to wedge under load.
         - cron: '31 23 * * *'
     workflow_dispatch:
+        inputs:
+            identity-lookups:
+                description: >-
+                    Also record the identity resolver's per-listing lookups (every listing's own
+                    detail page and TMDB resolve — docs/design/identity-resolver.md §9) into each
+                    country's tree. Off on the nightly cron.
+                required: false
+                type: boolean
+                default: false
 
 concurrency:
     group: record-scrape-fixtures-${{ github.ref }}
@@ -234,6 +243,7 @@ jobs:
         with:
             mode:           record
             corpus-run:     ${{ github.run_id }}
+            identity-lookups: ${{ inputs.identity-lookups == true }}
             country:        ${{ matrix.country }}
             code:           ${{ matrix.code }}
             sample-command: ${{ matrix.sample }}
