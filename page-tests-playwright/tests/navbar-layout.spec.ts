@@ -596,7 +596,12 @@ test.describe('tablet portrait — search focus does not reflow the date row (83
       const date = document.querySelector('.navbar-date') as HTMLElement | null;
       if (!navbar || !date) return null;
       const r = date.getBoundingClientRect();
-      return { navH: navbar.getBoundingClientRect().height, dateMid: r.top + r.height / 2 };
+      const nav = navbar.getBoundingClientRect();
+      // Relative to the NAVBAR, not the viewport: the app-promo banner above it
+      // decides asynchronously (it first asks whether the app is installed), so
+      // on a fresh profile it can land between the two reads and push the whole
+      // navbar down its own height — CI once read that 64px as a reflow.
+      return { navH: nav.height, dateMid: r.top + r.height / 2 - nav.top };
     });
 
     const before = await read();
