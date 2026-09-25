@@ -146,7 +146,7 @@ class ReadModelProjector(
   /** Apply one source-row change from the change stream. */
   def onMovieUpsert(stored: StoredMovieRecord): Unit =
     lock.synchronized {
-      project(ReadModelProjection.partition(stored, normalizer))
+      projectRow(stored)
       // A second way out of a first-publish hold besides the task scheduled for its end: that
       // task may be claimed by a replica other than the one holding the card.
       // A row it could not read keeps its hold for the next sweep — see `releaseExpired`.
@@ -164,6 +164,9 @@ class ReadModelProjector(
     lastCardsByRow.remove(id.value)
     ()
   }
+
+  /** Caller holds `lock`. [[project]] a row read whole. */
+  private def projectRow(row: StoredMovieRecord): Int = project(ReadModelProjection.partition(row, normalizer))
 
   // Caller holds `lock`. Project the row and write only what changed, movie
   // document before screenings. A row whose enrichment hasn't concluded
@@ -290,7 +293,7 @@ class ReadModelProjector(
    *  publishes a card the first-publish gate was holding. */
   def refreshShareCard(filmId: String): Unit = lock.synchronized {
     val row = held.get(filmId).map(_.row).getOrElse(filmId.takeWhile(_ != '~'))
-    movieRepository.findById(services.movies.FilmId(row)).foreach(whole => project(ReadModelProjection.partition(whole, normalizer)))
+    movieRepository.findById(services.movies.FilmId(row)).foreach(projectRow)
   }
 
   /** End the hold on card `filmId` now — its card can't be made (every poster failed for good) —
@@ -298,7 +301,7 @@ class ReadModelProjector(
   def releaseShareCardHold(filmId: String): Unit = lock.synchronized {
     held.get(filmId).foreach { card =>
       held.update(filmId, card.copy(until = clock.millis()))
-      movieRepository.findById(services.movies.FilmId(card.row)).foreach(whole => project(ReadModelProjection.partition(whole, normalizer)))
+      movieRepository.findById(services.movies.FilmId(card.row)).foreach(projectRow)
     }
   }
 
@@ -320,7 +323,7 @@ class ReadModelProjector(
     val rows = held.valuesIterator.filter(_.until <= now).map(_.row).toSet
     rows.filter { row =>
       movieRepository.findByIdChecked(services.movies.FilmId(row)) match {
-        case (Some(whole), _) => project(ReadModelProjection.partition(whole, normalizer)); false
+        case (Some(whole), _) => projectRow(whole); false
         case (None, true)     => dropHoldsNotProducedBy(row, Set.empty); false             // gone: nothing to publish
         case (None, false)    => true                                                       // unreadable: keep the hold
       }
@@ -615,7 +618,7 @@ class ReadModelProjector(
       val slice  = math.floorMod(sweepCount, slices.toLong).toInt
       liveRowIds.iterator.filter(id => math.floorMod(id.value.##.toLong, slices.toLong).toInt == slice).foreach { id =>
         continuing(s"read-model $kind: a row in the content slice failed to project") {
-          movieRepository.findById(id).foreach(row => drifted += project(ReadModelProjection.partition(row, normalizer)))
+          movieRepository.findById(id).foreach(row => drifted += projectRow(row))
         }
       }
       if (drifted > 0)
@@ -634,7 +637,7 @@ class ReadModelProjector(
       val complete = movieRepository.foreachRecordUpdatedSince(since) { row =>
         if (row.record.readyToProject)
           continuing(s"read-model $kind: a row written since the change stream last delivered failed to project") {
-            project(ReadModelProjection.partition(row, normalizer)); caughtUp += 1
+            projectRow(row); caughtUp += 1
           }.getOrElse { failed = true }
       }
       if (complete && !failed) liveness.caughtUp(ChangeStreamLiveness.Movies, readFrom)
@@ -776,7 +779,7 @@ class ReadModelProjector(
     absentCards.foreach(forgetCard)
     absentVenues.foreach(forgetScreening)
     movieRepository.findById(id).flatMap { whole =>
-      project(ReadModelProjection.partition(whole, normalizer))
+      projectRow(whole)
       // Forgotten above, so remembered now only if this projection produced and wrote it.
       val written  = (venue: String) => lastScreenings.valuesIterator.exists(_.contains(venue))
       val repaired = absentCards.exists(lastMovie.contains) || absentVenues.exists(written)

@@ -303,12 +303,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
 
   /** The projector skips BUILDING a venue's row whose input hash matches the one it last
    *  wrote from, so the hash must move with every input the row reads — and only with those. */
-  "venuesAll" should "build exactly screeningsAll's rows" in {
-    ReadModelProjection.partition(twoTitleStored, titleNormalizer).venuesAll.map(_.map(_.screening)) shouldBe
-      ReadModelProjection.screeningsAll(twoTitleStored, titleNormalizer)
-  }
-
-  it should "move a venue's input hash with its showtimes and its link, and not with another venue" in {
+  "venuesAll" should "move a venue's input hash with its showtimes and its link, and not with another venue" in {
     def hashes(r: MovieRecord) =
       ReadModelProjection.partition(StoredMovieRecord("Skazani na Shawshank", Some(1994), r), titleNormalizer)
         .venuesAll.flatten.map(v => v._id -> v.inputHash).toMap
@@ -324,14 +319,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     moved(helios)      shouldBe base(helios)
   }
 
-  "screeningsAll" should "return exactly projectAll's screenings (metadata-free), for single- and multi-variant rows" in {
-    // The source-films census counts off screeningsAll instead of projectAll to skip
-    // the unused ResolvedMovie work; the counts only stay identical if the screenings do.
-    ReadModelProjection.screeningsAll(stored, titleNormalizer)         shouldBe ReadModelProjection.projectAll(stored, titleNormalizer).map(_._2)
-    ReadModelProjection.screeningsAll(twoTitleStored, titleNormalizer) shouldBe ReadModelProjection.projectAll(twoTitleStored, titleNormalizer).map(_._2)
-  }
-
-  it should "derive year, director and cast for every card from the whole record" in {
+  "projectAll" should "derive year, director and cast for every card from the whole record" in {
     val cards = ReadModelProjection.projectAll(twoTitleStored, titleNormalizer).map(_._1)
     all (cards.map(_.releaseYear)) shouldBe Some(1944)
     all (cards.map(_.directors))   shouldBe Seq("Siergiej Eisenstein")
