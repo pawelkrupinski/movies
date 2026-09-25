@@ -701,8 +701,8 @@ case object KinoDomKulturyGrajewo extends Cinema("Kino Dom Kultury Grajewo", "Gr
 case object KinoSybilla extends Cinema("Kino Sybilla", "Sybilla")   // Puławy — filmweb 311
 case object KinoRenesans extends Cinema("Kino Renesans", "Renesans")   // Ryki — filmweb 2089
 // skierniewice
-case object KinoPolonez extends Cinema("Kino Polonez", "Polonez")   // Skierniewice — filmweb 320
-case object KinoCKiSSkierniewice extends Cinema("Kino CKiS Skierniewice", "CKiS")   // Skierniewice — filmweb 3149
+case object KinoPolonez extends Cinema("Kino Polonez", "Polonez")   // Skierniewice — biletyna Kinoteatr-Polonez
+case object KinoCKiSSkierniewice extends Cinema("Kino CKiS Skierniewice", "CKiS")   // Skierniewice — biletyna CKiS Sala koncertowa
 case object KinoLen extends Cinema("Kino Len", "Len")   // Żyrardów — filmweb 1812
 case object KinoRomaRawa extends Cinema("Kino Roma Rawa Mazowiecka", "Roma")   // Rawa Mazowiecka — filmweb 2332
 case object KinoFenix extends Cinema("Kino Fenix", "Fenix")   // Łowicz — filmweb 1519

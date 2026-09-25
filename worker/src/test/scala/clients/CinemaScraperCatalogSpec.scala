@@ -1,7 +1,7 @@
 package clients
 
 import clients.tools.FakeHttpFetch
-import models.{City, Country, AdaKinoStudyjne, KinoZacheta, KinoKoneckieCentrumKultury, KinoBaszta, KinoNadWarta, KinoEcho, KinoMewaBudzyn, UsRoster, HeliosSiedlce, KinoGiewont, KinoMuranow, KinoWCKWalcz, MultikinoPruszkow, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
+import models.{City, Country, AdaKinoStudyjne, KinoCKiSSkierniewice, KinoPolonez, KinoZacheta, KinoKoneckieCentrumKultury, KinoBaszta, KinoNadWarta, KinoEcho, KinoMewaBudzyn, UsRoster, HeliosSiedlce, KinoGiewont, KinoMuranow, KinoWCKWalcz, MultikinoPruszkow, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -86,6 +86,29 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     val movies  = scraper.fetch()  // reads the ada-kino-studyjne fixture via bnFetch
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(AdaKinoStudyjne)
+  }
+
+  // Both Skierniewice venues sell every ticket through biletyna, one place page
+  // each: Kinoteatr Polonez (the cinema, two halls) and the CKiS concert hall
+  // at ul. Reymonta 33, which screens the odd film between concerts. Filmweb
+  // (320 / 3149) had gone empty for both — CKiS white from 2026-09-22, Polonez
+  // kept "green" on one stray slot against 50 real screenings. Fixtures
+  // captured live 2026-09-26.
+  it should "route Kino Polonez through its biletyna place page, not Filmweb" in {
+    val movies = catalog(biletyna = "biletyna-skierniewice").all.find(_.cinema == KinoPolonez).value.fetch()
+    movies.map(_.cinema).toSet shouldBe Set(KinoPolonez)
+    val slot = movies.find(_.movie.title == "Mistyczka").value.showtimes
+      .find(_.dateTime == java.time.LocalDateTime.of(2026, 9, 26, 18, 15)).value
+    slot.bookingUrl.value shouldBe "https://biletyna.pl/film/Mistyczka?eid=704171#opis"
+  }
+
+  it should "route Kino CKiS Skierniewice through its biletyna concert-hall page, keeping only the films" in {
+    val movies = catalog(biletyna = "biletyna-skierniewice").all.find(_.cinema == KinoCKiSSkierniewice).value.fetch()
+    movies.map(_.cinema).toSet shouldBe Set(KinoCKiSSkierniewice)
+    val slot = movies.find(_.movie.title == "Krajobraz po bitwie").value.showtimes
+      .find(_.dateTime == java.time.LocalDateTime.of(2026, 9, 29, 19, 0)).value
+    slot.bookingUrl.value shouldBe "https://biletyna.pl/film/Krajobraz-po-bitwie-1970?eid=694150#opis"
+    movies.size should be <= 9   // the page's 9 ScreeningEvents; its 19 concerts/plays stay out
   }
 
   // Kino Fenomen (WDK) is iframe639.biletyna.pl — a biletyna host whose per-film

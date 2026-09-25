@@ -247,6 +247,10 @@ class CinemaScraperCatalog(
     KinoMGOKRecz -> "https://biletyna.pl/Recz/Miejsko-Gminny-Osrodek-Kultury",
     KinoOKJastrowie -> "https://biletyna.pl/Jastrowie/Osrodek-Kultury",
     AdaKinoStudyjne             -> "https://www.biletyna.pl/Warszawa/ADA-Kino-Studyjne",
+    // Filmweb (320 / 3149) went empty for both on ~2026-09-22; biletyna sells
+    // every ticket for the cinema and for the CKiS concert hall's film nights.
+    KinoPolonez                 -> "https://biletyna.pl/Skierniewice/Kinoteatr-Polonez",
+    KinoCKiSSkierniewice        -> "https://biletyna.pl/Skierniewice/Centrum-Kultury-i-Sztuki-Sala-koncertowa",
     KinoKameralne               -> "https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe",
     KinoTur                     -> "https://biletyna.pl/Turek/Kino-Tur",
     KinoMok                     -> "https://biletyna.pl/Zagorow/Gminny-Osrodek-Kultury",
@@ -674,8 +678,8 @@ class CinemaScraperCatalog(
     filmweb(2089, KinoRenesans),   // Ryki
   )
   private val skierniewiceScrapers = Seq(
-    filmweb(320, KinoPolonez),   // Skierniewice
-    filmweb(3149, KinoCKiSSkierniewice),   // Skierniewice
+    biletyna(KinoPolonez),   // Skierniewice
+    biletyna(KinoCKiSSkierniewice),   // Skierniewice
     filmweb(1812, KinoLen),   // Żyrardów
     filmweb(2332, KinoRomaRawa),   // Rawa Mazowiecka
     filmweb(1519, KinoFenix),   // Łowicz
