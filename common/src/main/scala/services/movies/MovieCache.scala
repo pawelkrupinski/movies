@@ -314,7 +314,7 @@ class CaffeineMovieCache(
   scrapeGuardLedger: ScrapeGuardLedger = new InMemoryScrapeGuardLedger,
   // What "now" is to `ScrapeLanding`'s depth guard, which counts only a venue's
   // UPCOMING showtimes. System time in production; specs move it by hand.
-  clock: java.time.Clock = java.time.Clock.systemUTC(),
+  val clock: java.time.Clock = java.time.Clock.systemUTC(),
   // Where `ScrapeLanding` interns the strings a fresh slot repeats across cinemas, forwarded
   // verbatim to it. The worker hands every country's cache the process's one pool (owned by
   // `WorkerMetrics`, whose gauges read it); a lone cache — tests included — gets its own.

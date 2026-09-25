@@ -54,9 +54,22 @@ trait CorpusWiring { self: WorkerWiring =>
   // known to `movies` keeps the direct path. The `staging` sink is wired into the
   // cache, the promoter scheduled and the fold subscribed (in the root)
   // unconditionally.
+  /** The merge counter the cache reports to — production's task metrics. A seam, so a harness
+   *  that counts merges by reason overrides THIS rather than rebuilding the cache, which
+   *  silently drops every argument it forgets (the scrape-guard ledger, the clock, the
+   *  screening tokens — see `CountryConvergenceBehaviour`). */
+  protected def cacheMergeMetrics: services.movies.MergeMetrics = taskMetrics
+
   lazy val movieCache: CaffeineMovieCache =
     new CaffeineMovieCache(movieRepository, eventBus, staging = Some(stagingRepository),
-      retrigger = enrichmentRetrigger, mergeMetrics = taskMetrics, cacheMetrics = taskMetrics,
+      retrigger = enrichmentRetrigger, mergeMetrics = cacheMergeMetrics, cacheMetrics = taskMetrics,
+      // The composition root's clock, not the cache's own default: the scrape guards judge a
+      // tick by the showtimes still UPCOMING, and "upcoming" must mean the same instant for
+      // the cache as for everything else the root wires. Production's is the system clock
+      // either way; a harness that moves its clock a day on moved nothing here, so the depth
+      // guard measured the next day's listing against showtimes the day had already passed
+      // and discarded the tick.
+      clock = clock,
       enrichmentLanguage = country.language, screeningTokens = screeningTokens, normalizer = titleNormalizer,
       scrapeLandingMetrics = taskMetrics,
       // Durable, so the guards' grace and each venue's recorded source survive a

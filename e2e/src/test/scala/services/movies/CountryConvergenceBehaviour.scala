@@ -375,21 +375,12 @@ abstract class CountryConvergenceBehaviour(
     val seeded   = seedArchive(archive)
     val merges   = new RecordingMergeMetrics
     val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), storage, missingFixtures) {
-      // `mergeMetrics` is the ONLY thing this override exists to change — everything
-      // else must stay as `WorkerWiring` builds it. `enrichmentLanguage` went missing
-      // here and nowhere else: the cache the replay passes use (see `replay`) keeps
-      // prod's, so the shared boot and the passes were canonicalising country names
-      // against different locales, and the leg this spec reports coverage from was
-      // the one running on the default.
       override lazy val clock: java.time.Clock = CountryConvergenceBehaviour.this.clock
-      override lazy val movieCache = new CaffeineMovieCache(
-        movieRepository, eventBus, staging = Some(stagingRepository),
-        retrigger = enrichmentRetrigger, mergeMetrics = merges,
-        // `CountryConvergenceBehaviour.this` — inside the anonymous `ArchiveReplayWiring`
-        // both this spec's `country` and the wiring's are in scope, and they are the same
-        // value; naming the spec's is what disambiguates.
-        enrichmentLanguage = CountryConvergenceBehaviour.this.country.language,
-        normalizer = TitleNormalizer.forCountry(CountryConvergenceBehaviour.this.country))
+      // `mergeMetrics` is the ONLY thing this override exists to change, so it overrides the
+      // seam and never the cache: a rebuilt cache silently drops whatever it forgets — it lost
+      // `enrichmentLanguage` once, and later the clock, which left the scrape guards judging
+      // the next day's listings by the wall clock and discarding them as degraded.
+      override protected def cacheMergeMetrics: MergeMetrics = merges
     }
     withClue(s"the archive round-trip lost cinemas: seeded $seeded, replayed ${w.cinemaScrapers.size}\n") {
       w.cinemaScrapers.size shouldBe seeded
@@ -1500,8 +1491,14 @@ abstract class CountryConvergenceBehaviour(
       // fell before the cutoff, none of their venues failed, no venue gained them. A tick
       // that rewrites one of THEM is churn, whatever else it had to do.
       val touchedVenues = failing.toSet ++ arrivals.map(_._1) ++ withdrawn.map(_._1)
+      // The titles those moves touch. A venue can list two films under one slot key — Arc
+      // Cinema Blackpool shows "Belle (2013)" AND "Belle (2021)", and the key drops the
+      // bracket — so withdrawing one hands the venue's slot to the other film, which is the
+      // move landing where it should, not a rewrite of an untouched film.
+      val touchedTitles = (withdrawn.map { case (c, cm, _) => keyOf(c, cm) } ++ arrivals.map { case (c, cm, _) => keyOf(c, cm) }).toSet
       val unchanged = before.filter { r =>
         !arrivals.exists(_._3.id == r.id) &&
+        !r.record.data.keysIterator.exists { case models.CinemaShowing(_, key) => touchedTitles.contains(key); case _ => false } &&
           r.record.data.keysIterator.forall {
             case models.CinemaShowing(c, key) =>
               !touchedVenues.contains(c) &&
