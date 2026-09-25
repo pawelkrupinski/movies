@@ -1,6 +1,5 @@
 package tools
 
-import org.mongodb.scala.MongoDatabase
 import services.MongoConnection
 import services.movies._
 import services.readmodel.{MongoReadModelRepository, ReadModelReader, ReadModelWriter}
@@ -112,11 +111,11 @@ object ConvergenceStorage {
     // the other, found none, and correctly reported nothing to fold. The corpus never
     // reached `movies`, the suite reported `resolved NOTHING — 0 films`, and nothing
     // anywhere was in error — each half was doing exactly what it was told.
-    val database = IsolatedMongoDatabase.open(uri, purpose)
-    new MongoConvergenceStorage(database, uri, database.name, normalizer)
+    val isolated = IsolatedMongoDatabase.open(uri, purpose)
+    new MongoConvergenceStorage(isolated, uri, isolated.database.name, normalizer)
   }
 
-  private final class MongoConvergenceStorage(database: MongoDatabase, uri: String, name: String,
+  private final class MongoConvergenceStorage(isolated: IsolatedMongoDatabase, uri: String, name: String,
                                               normalizer: TitleNormalizer)
     extends ConvergenceStorage {
 
@@ -126,7 +125,7 @@ object ConvergenceStorage {
       MovieRepository.Collection, ScreeningsRepository.Collection, SlotsRepository.Collection,
       StagingRepository.Collection, "web_movies", "web_screenings")))
 
-    private val shared = Some(database)
+    private val shared = Some(isolated.database)
 
     // `required = true` so an unreachable database FAILS the run: a convergence leg that
     // degraded to no-Mongo would report success for a run that tested half of what it
@@ -170,8 +169,7 @@ object ConvergenceStorage {
     override def stagingFolder(movieRepository: MovieRepository): StagingFolder =
       new MongoStagingFolder(connection, normalizer = normalizer, movieRepository = movieRepository)
 
-    // Only OURS. `closeAll` drops every isolated database in the process, which is fine
-    // when a leg is the only holder and destructive the moment anything else is.
-    override def close(): Unit = IsolatedMongoDatabase.drop(database)
+    // Only OURS: the handle drops the one database it opened.
+    override def close(): Unit = isolated.drop()
   }
 }

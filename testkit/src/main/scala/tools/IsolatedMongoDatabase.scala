@@ -21,61 +21,46 @@ import scala.concurrent.duration._
  * two runs starting in the same millisecond, so a leaked database is traceable to
  * whatever left it behind.
  */
+final class IsolatedMongoDatabase private (client: MongoClient, val database: MongoDatabase) extends AutoCloseable {
+
+  private var dropped = false
+
+  /**
+   * Drop this database and close its client. Safe to call twice.
+   *
+   * The handle owns exactly one database, so a suite tidying up can only ever drop its
+   * own: an earlier process-wide registry offered a drop-everything call, and a suite that
+   * finished first took another suite's database out from under it — the victim failed
+   * only when run alongside the other, the least diagnosable way to fail.
+   */
+  def drop(): Unit = synchronized {
+    if (!dropped) {
+      dropped = true
+      try Await.result(database.drop().toFuture(), 60.seconds)
+      catch { case _: Throwable => () }   // a suite that failed early must still close its client
+      finally client.close()
+    }
+  }
+
+  override def close(): Unit = drop()
+}
+
 object IsolatedMongoDatabase {
 
   /** Prefix every isolated database shares, so a sweep can find strays. */
   val Prefix: String = "kinowo_isolated"
 
-  // Databases handed out by `open`, so a suite can drop them all at the end.
-  // One suite per JVM here, so a process-wide list is the right scope.
-  private val opened = scala.collection.mutable.ListBuffer.empty[(MongoClient, MongoDatabase)]
-
   /** A uniquely-named database that outlives a single block — for a suite whose
    *  tests SHARE one expensive fixture and so cannot each wrap their own scope.
-   *  The caller must call [[closeAll]] when the suite ends; until then the
-   *  database is left in place deliberately.
+   *  The suite owns the handle and must [[IsolatedMongoDatabase.drop]] it when it
+   *  ends; until then the database is left in place deliberately.
    *
    *  Prefer [[withDatabase]] whenever the work fits inside one block: it cannot
    *  leak, because the drop is in a `finally`. */
-  def open(uri: String, purpose: String): MongoDatabase = {
+  def open(uri: String, purpose: String): IsolatedMongoDatabase = {
     IntegrationMongo.requireThrowaway(uri, Env.get(IntegrationMongo.OverrideVar).exists(v => v == "1" || v.equalsIgnoreCase("true")))
-    val client   = MongoClient(uri)
-    val database = client.getDatabase(nameFor(purpose))
-    opened.synchronized(opened += (client -> database))
-    database
-  }
-
-  /**
-   * Drop ONE database handed out by [[open]] and close its client, leaving any others
-   * alone.
-   *
-   * Prefer this to [[closeAll]] whenever more than one thing in the process might hold an
-   * isolated database. `closeAll` drops EVERY one, so a suite that finished tidying up
-   * took another suite's database out from under it — two specs in the `it` layer did
-   * exactly that to each other, and the victim failed only when run alongside the other,
-   * which is the least diagnosable way to fail.
-   */
-  def drop(database: MongoDatabase): Unit = opened.synchronized {
-    opened.indexWhere(_._2.name == database.name) match {
-      case -1 => ()
-      case at =>
-        val (client, db) = opened(at)
-        try Await.result(db.drop().toFuture(), 60.seconds)
-        catch { case _: Throwable => () }
-        finally { client.close(); opened.remove(at) }
-    }
-  }
-
-  /** Drop every database handed out by [[open]] and close their clients. Safe to
-   *  call twice, and safe to call when nothing was opened. Use [[drop]] instead when
-   *  anything else in the process may hold one. */
-  def closeAll(): Unit = opened.synchronized {
-    opened.foreach { case (client, database) =>
-      try Await.result(database.drop().toFuture(), 60.seconds)
-      catch { case _: Throwable => () }   // a suite that failed early must still close its client
-      finally client.close()
-    }
-    opened.clear()
+    val client = MongoClient(uri)
+    new IsolatedMongoDatabase(client, client.getDatabase(nameFor(purpose)))
   }
 
   /** Open a uniquely-named database on `uri`, run `body` against it, and drop it

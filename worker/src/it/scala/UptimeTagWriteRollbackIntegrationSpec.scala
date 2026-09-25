@@ -34,8 +34,9 @@ class UptimeTagWriteRollbackIntegrationSpec extends AnyFlatSpec with Matchers wi
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
-  private val db = tools.IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "uptime-tag-rollback-spec")
+  private val isolatedDb = tools.IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "uptime-tag-rollback-spec")
 
+  private val db = isolatedDb.database
   // Reject everything the monitor writes: it sets `service` and `tags`, never this field.
   Await.result(
     db.createCollection(
@@ -74,7 +75,7 @@ class UptimeTagWriteRollbackIntegrationSpec extends AnyFlatSpec with Matchers wi
         // Say so rather than leaving a stray database for someone to find by counting.
         info(s"could not confirm ${db.name} was dropped; sweep kinowo_isolated_* if it lingers")
     }
-    finally tools.IsolatedMongoDatabase.drop(db)
+    finally isolatedDb.drop()
     super.afterAll()
   }
 

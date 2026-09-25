@@ -30,8 +30,10 @@ class StagingRepositoryContractSpec extends AnyFlatSpec with Matchers with Befor
 
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
 
-  private lazy val database = IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "staging-contract")
-  override protected def afterAll(): Unit = try IsolatedMongoDatabase.drop(database) finally super.afterAll()
+  private lazy val isolatedDatabase = IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "staging-contract")
+
+  private lazy val database = isolatedDatabase.database
+  override protected def afterAll(): Unit = try isolatedDatabase.drop() finally super.afterAll()
 
   /** Counts `sanitize`, which every per-row walk calls once per row. */
 

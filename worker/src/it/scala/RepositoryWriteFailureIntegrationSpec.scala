@@ -33,8 +33,9 @@ class RepositoryWriteFailureIntegrationSpec extends AnyFlatSpec with Matchers wi
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
-  private val db = tools.IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "repository-write-failure-spec")
+  private val isolatedDb = tools.IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "repository-write-failure-spec")
 
+  private val db = isolatedDb.database
   private def await[T](f: scala.concurrent.Future[T]): T = Await.result(f, 30.seconds)
 
   await(db.createCollection(MovieRepository.Collection, CreateCollectionOptions().validationOptions(
@@ -58,7 +59,7 @@ class RepositoryWriteFailureIntegrationSpec extends AnyFlatSpec with Matchers wi
 
   override protected def afterAll(): Unit = {
     repository.close()
-    tools.IsolatedMongoDatabase.drop(db)
+    isolatedDb.drop()
     super.afterAll()
   }
 
@@ -93,7 +94,8 @@ class RepositoryWriteFailureIntegrationSpec extends AnyFlatSpec with Matchers wi
   // failure with "0 rows" and a WARN, and nothing counted it. A VIEW under the collection's
   // name is a namespace Mongo refuses to delete from, with everything else healthy.
   "a side collection's bulk delete that Mongo refuses" should "be counted, and report no rows removed" in {
-    val viewDb = tools.IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "repository-delete-failure-spec")
+    val isolatedViewDb = tools.IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "repository-delete-failure-spec")
+    val viewDb = isolatedViewDb.database
     try {
       await(viewDb.createCollection("backing").toFuture())
       await(viewDb.createView(SlotsRepository.Collection, "backing", Seq.empty).toFuture())
@@ -110,6 +112,6 @@ class RepositoryWriteFailureIntegrationSpec extends AnyFlatSpec with Matchers wi
       metrics.failures.map(f => f._1 -> f._2) shouldBe Vector(
         SlotsRepository.Collection -> "deleteRows", SlotsRepository.Collection -> "deleteFilms",
         ScreeningsRepository.Collection -> "deleteRows", ScreeningsRepository.Collection -> "deleteFilms")
-    } finally tools.IsolatedMongoDatabase.drop(viewDb)
+    } finally isolatedViewDb.drop()
   }
 }

@@ -27,8 +27,10 @@ class TaskQueueContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfte
 
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
 
-  private lazy val database = IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "task-queue-contract")
-  override protected def afterAll(): Unit = try IsolatedMongoDatabase.drop(database) finally super.afterAll()
+  private lazy val isolatedDatabase = IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "task-queue-contract")
+
+  private lazy val database = isolatedDatabase.database
+  override protected def afterAll(): Unit = try isolatedDatabase.drop() finally super.afterAll()
 
   private val collections = new AtomicInteger
   private val t0          = Instant.parse("2026-09-24T10:00:00Z")

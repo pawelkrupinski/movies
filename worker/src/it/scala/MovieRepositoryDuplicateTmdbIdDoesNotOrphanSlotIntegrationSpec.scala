@@ -30,10 +30,11 @@ class MovieRepositoryDuplicateTmdbIdDoesNotOrphanSlotIntegrationSpec extends Any
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
-  private val db = tools.IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "movies-dup-tmdbid-spec")
+  private val isolatedDb = tools.IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "movies-dup-tmdbid-spec")
 
+  private val db = isolatedDb.database
   override protected def afterAll(): Unit = {
-    tools.IsolatedMongoDatabase.drop(db)
+    isolatedDb.drop()
     super.afterAll()
   }
 

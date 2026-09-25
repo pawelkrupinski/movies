@@ -37,8 +37,9 @@ class ScreeningsWriteMetricIntegrationSpec extends AnyFlatSpec with Matchers wit
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
-  private val db = tools.IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "screenings-write-metric-spec")
+  private val isolatedDb = tools.IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "screenings-write-metric-spec")
 
+  private val db = isolatedDb.database
   Await.result(
     db.createCollection(
       ScreeningsRepository.Collection,
@@ -64,7 +65,7 @@ class ScreeningsWriteMetricIntegrationSpec extends AnyFlatSpec with Matchers wit
 
   override protected def afterAll(): Unit = {
     repository.close()
-    tools.IsolatedMongoDatabase.drop(db)
+    isolatedDb.drop()
     super.afterAll()
   }
 

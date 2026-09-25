@@ -36,7 +36,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // sibling's `screenings` row with no `filmId` once ENDED one (the 2026-09-24 flake that found
   // the undecodable-post-image bug, see `ChangeStreamMalformedDocumentIntegrationSpec`). Dropped
   // in `afterAll`.
-  private val specDb     = tools.IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "movie-repository-spec")
+  private val isolatedSpecDb     = tools.IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "movie-repository-spec")
+  private val specDb = isolatedSpecDb.database
   private val repository = new MongoMovieRepository(Some(specDb), normalizer = titleNormalizer)
 
   /** Block until a change stream demonstrably DELIVERS, by making changes until one
@@ -77,7 +78,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   private def settleUntil(target: Int, budgetMs: Long = 60000)(accounted: => Int): Unit =
     Eventually.poll(budgetMs, pollMs = 50)(accounted >= target)
 
-  override protected def afterAll(): Unit = try repository.close() finally try tools.IsolatedMongoDatabase.drop(specDb) finally super.afterAll()
+  override protected def afterAll(): Unit = try repository.close() finally try isolatedSpecDb.drop() finally super.afterAll()
 
   "MovieRepository" should "be enabled when handed a database" in {
     repository.enabled shouldBe true
