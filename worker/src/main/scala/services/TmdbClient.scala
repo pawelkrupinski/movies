@@ -204,8 +204,22 @@ class TmdbClient(
    *      "Philosopher's" → "Sorcerer's" Stone, where TMDB keeps the British
    *      title in `title` even for en-US).
    *  Single HTTP for all three fields via `append_to_response`. */
+  private def detailsUrl(tmdbId: Int): String =
+    s"$ApiBase/movie/$tmdbId?language=en-US&append_to_response=alternative_titles${apiKeyParameter("&")}"
+  private def fullDetailsUrl(tmdbId: Int): String =
+    s"$ApiBase/movie/$tmdbId?language=$languageTag&append_to_response=credits,release_dates${apiKeyParameter("&")}"
+
+  /** The film as the identity measures read it (`services.identity.TmdbFilmRecord`), from the two
+   *  answers this client already asks about it — [[fullDetails]]'s and [[details]]'s — so a tree
+   *  recorded for either serves it. `None` when TMDB knows no such film; a failed read THROWS, so
+   *  the identity resolver's lookups can tell "no film" from "not answered". */
+  def identityRecord(tmdbId: Int): Option[services.identity.IdentityMeasures.Film] = authHeader.flatMap { auth =>
+    services.identity.TmdbFilmRecord.parse(Seq(fullDetailsUrl(tmdbId), detailsUrl(tmdbId))
+      .map(url => Json.parse(orEmptyWhenUnknown(httpGet(url, auth))))).map(_._1)
+  }
+
   def details(tmdbId: Int): Option[TmdbClient.Details] = authHeader.flatMap { auth =>
-    Try(httpGet(s"$ApiBase/movie/$tmdbId?language=en-US&append_to_response=alternative_titles${apiKeyParameter("&")}", auth))
+    Try(httpGet(detailsUrl(tmdbId), auth))
       .toOption.map { body =>
         val js = Json.parse(body)
         // Prefer the "untyped" US alt-title (an actual release title) over
@@ -285,7 +299,7 @@ class TmdbClient(
    *  it in costs one fixture migration and removes both problems: same request count as
    *  before the feature, and the rating now arrives in the body every test already replays. */
   def fullDetails(tmdbId: Int): Option[TmdbClient.FullDetails] = authHeader.flatMap { auth =>
-    Try(httpGet(s"$ApiBase/movie/$tmdbId?language=$languageTag&append_to_response=credits,release_dates${apiKeyParameter("&")}", auth))
+    Try(httpGet(fullDetailsUrl(tmdbId), auth))
       .toOption.map { body =>
         val js   = Json.parse(body)
         val crew = (js \ "credits" \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)

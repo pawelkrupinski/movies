@@ -2,7 +2,7 @@ package integration
 
 import models.{CinemaShowing, Country, SourceData, Tmdb}
 import services.identity._
-import services.movies.{ListingConstraints, ListingKey, MixedFilmDetector, ScrapeListing, TitleNormalizer}
+import services.movies.{ListingConstraints, ListingKey, ScrapeListing, TitleNormalizer}
 import services.resolution.YearWindow
 import services.scrapes.ArchivedScrape
 import tools._
@@ -84,7 +84,8 @@ object IdentityShadow {
   // ── today's pipeline ──────────────────────────────────────────────────────────────────
 
   /** One film the pipeline made: its key, its TMDB id and record, and its cinema slots. */
-  final case class PipelineFilm(key: String, tmdbId: Option[Int], facts: Option[FilmFacts], slots: Seq[(String, String, SourceData)])
+  final case class PipelineFilm(key: String, tmdbId: Option[Int], film: Option[IdentityMeasures.Film],
+                                slots: Seq[(String, String, SourceData)])
 
   /** The wiring both sides use (`FetchReplayWiring`): a throwaway database seeded with the corpus,
    *  every answer from the corpus's fetch, retries that never sleep on a replayed refusal. */
@@ -108,8 +109,8 @@ object IdentityShadow {
     w.movieRepository.findAll().map { f =>
       val tmdb = f.record.data.get(Tmdb)
       PipelineFilm(f.id.value, f.record.tmdbId,
-        f.record.tmdbId.map(id => FilmFacts(id, tmdb.flatMap(_.title), tmdb.flatMap(_.originalTitle), tmdb.flatMap(_.releaseYear),
-          tmdb.map(_.director).getOrElse(Nil), tmdb.flatMap(_.runtimeMinutes), tmdb.map(_.countries).getOrElse(Nil))),
+        f.record.tmdbId.map(_ => IdentityMeasures.Film(tmdb.flatMap(_.title).getOrElse(f.title), tmdb.flatMap(_.originalTitle), Nil,
+          tmdb.flatMap(_.releaseYear), tmdb.flatMap(_.runtimeMinutes), tmdb.map(_.director).filter(_.nonEmpty), None)),
         f.record.data.toSeq.collect { case (cs: CinemaShowing, sd) => (cs.cinema.displayName, cs.titleKey, sd) })
     }.sortBy(_.key)
   }
@@ -148,11 +149,11 @@ object IdentityShadow {
   final class Memo(inner: IdentityLookups) extends IdentityLookups {
     private val details = new java.util.concurrent.ConcurrentHashMap[(String, String), Answer[Option[DetailFacts]]]()
     private val queries = new java.util.concurrent.ConcurrentHashMap[CandidateQuery, Answer[Seq[Hit]]]()
-    private val films   = new java.util.concurrent.ConcurrentHashMap[Int, Answer[Option[FilmFacts]]]()
+    private val films   = new java.util.concurrent.ConcurrentHashMap[Int, Answer[Option[IdentityMeasures.Film]]]()
     override def hasDetail(l: Listing): Boolean = inner.hasDetail(l)
     override def detail(l: Listing): Answer[Option[DetailFacts]] = details.computeIfAbsent((l.venue, l.page.getOrElse("")), _ => inner.detail(l))
     override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = queries.computeIfAbsent(q, _ => inner.candidates(q))
-    override def film(id: Int): Answer[Option[FilmFacts]]      = films.computeIfAbsent(id, _ => inner.film(id))
+    override def film(id: Int): Answer[Option[IdentityMeasures.Film]]      = films.computeIfAbsent(id, _ => inner.film(id))
     def sizes: (Int, Int, Int) = (details.size, queries.size, films.size)
     def unknown: (Int, Int, Int) = (details.values.asScala.count(!_.isKnown), queries.values.asScala.count(!_.isKnown),
       films.values.asScala.count(!_.isKnown))
@@ -165,43 +166,44 @@ object IdentityShadow {
     override def hasDetail(l: Listing): Boolean = inner.hasDetail(l)
     override def detail(l: Listing): Answer[Option[DetailFacts]] = inner.detail(l)
     override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = if (withheld(q.sortKey)) Answer.Unknown else inner.candidates(q)
-    override def film(id: Int): Answer[Option[FilmFacts]] = if (withheld(s"film $id")) Answer.Unknown else inner.film(id)
+    override def film(id: Int): Answer[Option[IdentityMeasures.Film]] = if (withheld(s"film $id")) Answer.Unknown else inner.film(id)
   }
 
-  // ── evidence: corroboration and contradiction ─────────────────────────────────────────
+  // ── evidence: labels and contradiction ────────────────────────────────────────────────
 
-  /** What a listing's OWN published evidence says about a film, independent of either system:
-   *  how many independent signals agree (a published year within a year, a credited director, a
-   *  runtime within five minutes, a production country) and whether one contradicts it (a
-   *  published year beyond the implausibility window, a director it does not credit, a runtime
-   *  off by more than fifteen minutes). The benchmark's referee — never an input to the resolver. */
-  final case class Corroboration(agree: Int, contradicted: Boolean)
+  /** Whether a listing's own measurements CONTRADICT a film: two or more of its corroborators
+   *  deny it (`IdentityMeasures.ownAgreement`, the calibration's `contradicted` rule). The
+   *  benchmark's label-free referee — never an input to the resolver. */
+  def contradicts(e: Evidence, f: IdentityMeasures.Film): Boolean =
+    IdentityMeasures.ownAgreement(IdentityMeasures.listingFilm(e.measured, f, None, 0, 0))._2.size >= 2
 
-  def corroboration(e: Evidence, f: FilmFacts, normalizer: TitleNormalizer): Corroboration = {
-    val year = (e.year, f.year) match {
-      case (Some(a), Some(b)) => Some(math.abs(a - b))
-      case _                  => None
-    }
-    val director = Option.when(e.directors.nonEmpty && f.directors.nonEmpty)(MixedFilmDetector.creditSamePerson(e.directors, f.directors, normalizer))
-    val runtime  = (e.runtime, f.runtime) match {
-      case (Some(a), Some(b)) => Some(math.abs(a - b))
-      case _                  => None
-    }
-    val countries = Option.when(e.countries.nonEmpty && f.countries.nonEmpty)(
-      (e.countries.map(services.cinemas.CountryNames.canonical).toSet intersect f.countries.map(services.cinemas.CountryNames.canonical).toSet).nonEmpty)
-    val agree = Seq(year.exists(_ <= YearWindow.PublishedAdjacency), director.contains(true), runtime.exists(_ <= 5), countries.contains(true)).count(identity)
-    val latin = (ns: Seq[String]) => ns.exists(_.exists(ch => Character.UnicodeScript.of(ch.toInt) == Character.UnicodeScript.LATIN))
-    val contradicted = year.exists(_ > YearWindow.SlotYearImplausibility) ||
-      (director.contains(false) && latin(e.directors) && latin(f.directors)) || runtime.exists(_ > 15)
-    Corroboration(agree, contradicted)
+  /** How many of a listing's own corroborators back a film, and how many deny it. */
+  def agreement(e: Evidence, f: IdentityMeasures.Film): (Int, Int) = {
+    val (agree, deny) = IdentityMeasures.ownAgreement(IdentityMeasures.listingFilm(e.measured, f, None, 0, 0))
+    (agree.size, deny.size)
   }
 
-  /** A listing's CORROBORATED label: the one film among `answers` its own evidence backs with at
-   *  least two independent signals and nothing against it. Two such films, or none: no label. */
-  def corroboratedLabel(e: Evidence, answers: Seq[FilmFacts], normalizer: TitleNormalizer): Option[Int] =
-    answers.distinctBy(_.tmdbId).filter { f => val c = corroboration(e, f, normalizer); c.agree >= 2 && !c.contradicted }.map(_.tmdbId) match {
-      case Seq(one) => Some(one)
-      case _        => None
+  /** A system's answer for a listing: the film's TMDB id and what TMDB says about it. */
+  final case class FilmAnswer(tmdbId: Int, film: IdentityMeasures.Film)
+
+  /** One held-out label of the calibration (`identity-labels.json.gz`, `split == test` only):
+   *  `corroborated` names the listing's film; `contradicted` says production's filing of it,
+   *  `tmdbId`, is likely WRONG. */
+  final case class Label(tmdbId: Int, corroborated: Boolean)
+
+  val LabelsPath: Path = java.nio.file.Paths.get("test", "resources", "fixtures", "identity", "identity-labels.json.gz")
+
+  /** Every test-split label of `country`, by `ListingKey.toString`. */
+  def labels(country: Country): Map[String, Label] =
+    if (!Files.exists(LabelsPath)) Map.empty
+    else {
+      val in = new java.util.zip.GZIPInputStream(Files.newInputStream(LabelsPath))
+      val js = try play.api.libs.json.Json.parse(in) finally in.close()
+      (js \ "listings").as[Seq[play.api.libs.json.JsObject]].iterator
+        .filter(l => (l \ "country").as[String] == country.code && (l \ "split").as[String] == "test")
+        .flatMap(l => (l \ "tmdbId").asOpt[Int].map(id => (l \ "listingKey").as[String] ->
+          Label(id, (l \ "status").as[String] == "corroborated")))
+        .toMap
     }
 
   // ── partitions ────────────────────────────────────────────────────────────────────────

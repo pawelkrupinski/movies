@@ -9,7 +9,8 @@ import scala.util.Try
 
 /**
  * [[IdentityLookups]] answered by TMDB and the venues' own detail pages — the raw primitives
- * only: one title search's results, a person's filmography, a film's record. No choice between
+ * only: one yearless title search's results, a person's filmography, a film's record
+ * (`TmdbClient.identityRecord`, parsed by the calibration's own `TmdbFilmRecord`). No choice between
  * candidates is made here (that is the resolver's score), and nothing is memoised across calls,
  * so an answer is a function of its argument and of what the source holds.
  *
@@ -42,7 +43,7 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, enrichers: Seq[DetailEnricher]
     }
 
   override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = query match {
-    case CandidateQuery.Title(text, year) => answered(tmdb.search(text, year).map(hit))
+    case CandidateQuery.Title(text)    => answered(tmdb.search(text, None).map(hit))
     case CandidateQuery.Director(name)    =>
       // Every person the name could mean, each with what they directed — or, with no directing
       // credit, wrote (a venue may print the writer): the walk the pipeline makes, without its pick.
@@ -53,7 +54,5 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, enrichers: Seq[DetailEnricher]
         }.map(hit).distinctBy(_.tmdbId))
   }
 
-  override def film(tmdbId: Int): Answer[Option[FilmFacts]] =
-    answered(tmdb.fullDetails(tmdbId).map(d => FilmFacts(tmdbId, d.title, d.originalTitle, d.releaseYear,
-      d.director, d.runtimeMinutes, d.countries)))
+  override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = answered(tmdb.identityRecord(tmdbId))
 }

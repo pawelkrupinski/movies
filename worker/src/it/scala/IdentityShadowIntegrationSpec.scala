@@ -46,7 +46,7 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     super.afterAll()
   }
 
-  private val weights = IdentityWeights.default
+  private val calibration = IdentityCalibration.default
   private val out     = configuration.identityShadowOutput.value
   private val corpora: Seq[Corpus] =
     hardClusters(configuration.hardClusterCountries.map(_.value.map(_.code))) ++
@@ -58,6 +58,8 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
                                pipelineFilms: Int, pipelineResolved: Int, resolverClusters: Int, resolverResolved: Int,
                                identicalClusters: Int, violations: Int, orderVariants: Int, presentations: Int,
                                heldOutLabelled: Int, pipelineAccuracy: Double, resolverAccuracy: Double,
+                               pipelineRecall: Double, resolverRecall: Double, contradictedLabels: (Int, Int),
+                               unmatched: Map[String, Int],
                                pipelinePairwise: Pairwise, resolverPairwise: Pairwise,
                                pipelineContradicted: (Int, Int), resolverContradicted: (Int, Int),
                                verdicts: Map[String, Int], checks: Map[String, (Int, Int, Int)],
@@ -84,50 +86,43 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       val source = new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language,
         retrySleep = (_: Long) => ()), w.detailEnrichers, c.misses)
       val lookups = new Memo(source)
-      val dataset = new StringBuilder
-      val traced  = mutable.HashMap.empty[Int, Candidate]
-      val nodeRows = mutable.ArrayBuffer.empty[(Int, Seq[ListingKey], Evidence, Candidate, Signals.Values, Double)]
-      val trace: IdentityResolver.Trace = (family, keys, evidence, candidate, signals, p) => {
-        traced.getOrElseUpdate(candidate.tmdbId, candidate)
-        nodeRows += ((family, keys, evidence, candidate, signals, p))
-      }
       val requestsBefore = c.fetch.requests.get()
-      val (resolution, resolveSeconds) = timed(IdentityResolver.resolve(listings, lookups, c.normalizer, weights, trace))
+      val (resolution, resolveSeconds) = timed(IdentityResolver.resolve(listings, lookups, c.normalizer, calibration))
       val resolverRequests = c.fetch.requests.get() - requestsBefore
       val decisionOf = resolution.decisionOf
-      def filmFacts(id: Int): Option[FilmFacts] = lookups.film(id).toOption.flatten.orElse(traced.get(id).map(_.facts))
       val evidenceOf: Map[ListingKey, Evidence] = listings.map(l =>
         l.key -> Evidence.of(l, if (lookups.hasDetail(l)) lookups.detail(l).toOption.flatten else None)).toMap
       val clusterIndex: Map[ListingKey, Int] = resolution.decisions.zipWithIndex.flatMap { case (d, i) => d.members.map(_ -> i) }.toMap
-      def resolverFilm(k: ListingKey): Option[FilmFacts] = decisionOf.get(k).flatMap(_.film).flatMap(filmFacts)
-      def pipelineFilm(k: ListingKey): Option[FilmFacts] = pipelineOf.get(k).flatMap(films(_).facts)
+      def resolverFilm(k: ListingKey): Option[FilmAnswer] =
+        decisionOf.get(k).flatMap(_.film).flatMap(id => resolution.films.get(id).map(FilmAnswer(id, _)))
+      def pipelineFilm(k: ListingKey): Option[FilmAnswer] =
+        pipelineOf.get(k).flatMap(i => films(i).tmdbId.zip(films(i).film).map { case (id, f) => FilmAnswer(id, f) })
       report.line(f"[${c.label}] resolver: ${resolution.nodes} nodes in ${resolution.families} families → ${resolution.decisions.size} clusters " +
         f"(${resolution.decisions.count(_.film.isDefined)} matched) in $resolveSeconds%.1fs; lookups ${lookups.sizes} (details, queries, films), " +
         s"unanswerable ${lookups.unknown}; $resolverRequests HTTP requests; cannot-linked pairs inside a cluster: ${resolution.violations}")
 
-      // ── labels: the node's one candidate its own evidence corroborates twice ──────────
-      val heldOut: Int => Boolean = {
-        val familyKey = resolution.familyOf.groupMap(_._2)(_._1).map { case (f, ks) => f -> ks.min.toString }
-        f => (familyKey(f).hashCode & 0x7fffffff) % 5 == 0
-      }
-      val nodeLabel: Map[Seq[ListingKey], Option[Int]] = nodeRows.groupBy(_._2).map { case (keys, rs) =>
-        keys -> corroboratedLabel(rs.head._3, rs.map(_._4.facts).toSeq, c.normalizer)
-      }
-      val labelOf: Map[ListingKey, Int] = nodeLabel.toSeq.flatMap { case (keys, l) => l.toSeq.flatMap(id => keys.map(_ -> id)) }.toMap
-      // The calibration dataset: every (node, candidate) score with its label and split.
-      dataset.append(("corpus\tnode\tfamily\tsplit\tlistings\ttmdbId\tlabel\tpipelineTmdb\tp\t" + Signals.ModelInputs.mkString("\t")) + "\n")
-      nodeRows.foreach { case (family, keys, _, cand, signals, p) =>
-        val label = nodeLabel(keys).fold("")(id => if (id == cand.tmdbId) "1" else "0")
-        val pipe  = keys.flatMap(pipelineOf.get).flatMap(films(_).tmdbId).groupBy(identity).maxByOption(_._2.size).fold("")(_._1.toString)
-        dataset.append(Seq(c.label, keys.head.hashCode.toHexString, family, if (heldOut(family)) "test" else "train", keys.size, cand.tmdbId, label, pipe,
-          root("%.5f", p), signals.vector.map(x => if (x == 0) "0" else root("%.4f", x)).mkString("\t")).mkString("\t") + "\n")
-      }
-      Files.writeString(out.resolve(s"${c.label}-dataset.tsv"), dataset.toString, StandardCharsets.UTF_8)
+      // Why the resolver left listings unmatched: (a) nothing answerable, (b) below the cut, (c) vetoed.
+      val unmatched = listings.flatMap(l => decisionOf.get(l.key)).filterNot(_.basis.matched)
+        .groupMapReduce(_.basis.toString)(_ => 1)(_ + _)
+      report.line(s"[${c.label}] resolver's unmatched listings by why: " +
+        unmatched.toSeq.sortBy(-_._2).map { case (b, n) => s"$b $n" }.mkString(", "))
+
+      // ── labels: the calibration's held-out (split == test) corroborated films ─────────
+      val heldOutLabels = IdentityShadow.labels(c.country)
+      val labelOf: Map[ListingKey, Int] = listings.flatMap(l => heldOutLabels.get(l.key.toString).filter(_.corroborated).map(l.key -> _.tmdbId)).toMap
+      val wrongOf: Map[ListingKey, Int] = listings.flatMap(l => heldOutLabels.get(l.key.toString).filterNot(_.corroborated).map(l.key -> _.tmdbId)).toMap
 
       // ── accuracy on held-out labelled listings ────────────────────────────────────────
-      val labelled = listings.map(_.key).filter(k => labelOf.contains(k) && heldOut(resolution.familyOf(k)))
-      def accuracy(film: ListingKey => Option[FilmFacts]) =
+      val labelled = listings.map(_.key).filter(labelOf.contains)
+      /** Of the labelled listings a system MATCHED, the share it matched to the labelled film. */
+      def accuracy(film: ListingKey => Option[FilmAnswer]) = {
+        val matched = labelled.filter(k => film(k).isDefined)
+        if (matched.isEmpty) Double.NaN else matched.count(k => film(k).exists(_.tmdbId == labelOf(k))).toDouble / matched.size
+      }
+      /** Of every labelled listing, the share matched to the labelled film. */
+      def recall(film: ListingKey => Option[FilmAnswer]) =
         if (labelled.isEmpty) Double.NaN else labelled.count(k => film(k).exists(_.tmdbId == labelOf(k))).toDouble / labelled.size
+      def onContradicted(film: ListingKey => Option[FilmAnswer]) = wrongOf.count { case (k, id) => film(k).exists(_.tmdbId == id) }
       val truth = labelled.map(k => k -> labelOf(k)).toMap
       val pipePairwise = pairwise(truth, labelled.flatMap(k => pipelineOf.get(k).map(k -> _)).toMap)
       val resPairwise  = pairwise(truth, labelled.map(k => k -> clusterIndex(k)).toMap)
@@ -146,12 +141,12 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       report.line(s"[${c.label}] coverage/accuracy — pipeline: $pipelinePoint; resolver by confidence gate: ${curve.mkString("; ")}")
 
       // ── label-free: matched films a listing's own evidence contradicts ────────────────
-      def contradicted(groups: Seq[(Option[FilmFacts], Seq[ListingKey])]): (Int, Int) = {
+      def contradicted(groups: Seq[(Option[IdentityMeasures.Film], Seq[ListingKey])]): (Int, Int) = {
         val matched = groups.collect { case (Some(f), ks) => (f, ks) }
-        (matched.count { case (f, ks) => ks.exists(k => corroboration(evidenceOf(k), f, c.normalizer).contradicted) }, matched.size)
+        (matched.count { case (f, ks) => ks.exists(k => contradicts(evidenceOf(k), f)) }, matched.size)
       }
-      val pipeGroups = pipelineOf.toSeq.groupMap(_._2)(_._1).toSeq.map { case (i, ks) => films(i).facts -> ks }
-      val resGroups  = resolution.decisions.map(d => d.film.flatMap(filmFacts) -> d.members)
+      val pipeGroups = pipelineOf.toSeq.groupMap(_._2)(_._1).toSeq.map { case (i, ks) => films(i).film.filter(_ => films(i).tmdbId.isDefined) -> ks }
+      val resGroups  = resolution.decisions.map(d => d.film.flatMap(resolution.films.get) -> d.members)
       val pipeContra = contradicted(pipeGroups)
       val resContra  = contradicted(resGroups)
 
@@ -178,7 +173,7 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
             val pf = p.flatMap(films(_).tmdbId); val rf = resolution.decisions(r).film
             pf == rf && (p.isDefined || cells(start).size == resolution.decisions(r).members.size)
           }
-          if (!clean) verdicts += adjudicate(component.toSeq, cells, pipelineFilm, resolverFilm, evidenceOf, films, resolution, c)
+          if (!clean) verdicts += adjudicate(component.toSeq, cells, pipelineFilm, resolverFilm, evidenceOf, films, resolution)
         }
       }
       verdicts.groupBy(_._1).toSeq.sortBy(-_._2.size).foreach { case (v, xs) =>
@@ -187,8 +182,8 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
 
       // ── historical checks, for both ───────────────────────────────────────────────────
       val withEvidence = listings.map(l => l -> evidenceOf(l.key))
-      val resolverAnswer = IdentityHistoricalChecks.Answer(k => clusterIndex.get(k), resolverFilm)
-      val pipelineAnswer = IdentityHistoricalChecks.Answer(k => pipelineOf.get(k), pipelineFilm)
+      val resolverAnswer = IdentityHistoricalChecks.Answer(k => clusterIndex.get(k), k => resolverFilm(k).map(f => f.tmdbId -> f.film.year))
+      val pipelineAnswer = IdentityHistoricalChecks.Answer(k => pipelineOf.get(k), k => pipelineFilm(k).map(f => f.tmdbId -> f.film.year))
       val checkTally = mutable.HashMap.empty[String, (Int, Int, Int)]
       IdentityHistoricalChecks.All.filter(_.country == c.country.code).foreach { check =>
         val (r, p) = (IdentityHistoricalChecks.judge(check, withEvidence, resolverAnswer), IdentityHistoricalChecks.judge(check, withEvidence, pipelineAnswer))
@@ -212,13 +207,13 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       val variants = (1 to n).count { s =>
         val rnd = new Random(s.toLong)
         val shuffled = rnd.shuffle(listings)
-        if (s % 3 == 2) IdentityResolver.resolve(shuffled.take(shuffled.size / 2), lookups, c.normalizer, weights)
-        signature(IdentityResolver.resolve(shuffled, lookups, c.normalizer, weights)) != reference
+        if (s % 3 == 2) IdentityResolver.resolve(shuffled.take(shuffled.size / 2), lookups, c.normalizer, calibration)
+        signature(IdentityResolver.resolve(shuffled, lookups, c.normalizer, calibration)) != reference
       }
       report.line(s"[${c.label}] determinism: $variants of $n presentations (permutations and split arrivals) differ from the sorted one")
 
       // ── robustness: a 30% TMDB outage ─────────────────────────────────────────────────
-      val outaged = IdentityResolver.resolve(listings, new Outage(lookups, 0.3), c.normalizer, weights)
+      val outaged = IdentityResolver.resolve(listings, new Outage(lookups, 0.3), c.normalizer, calibration)
       val (lost, moved) = listings.map(_.key).foldLeft((0, 0)) { case ((l, m), k) =>
         (decisionOf(k).film, outaged.decisionOf(k).film) match {
           case (Some(a), Some(b)) if a != b => (l, m + 1)
@@ -230,7 +225,7 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         s"${outaged.violations} cannot-linked pairs inside a cluster")
 
       // ── perturbation recovery (resolver): decorate a confidently matched listing ───────
-      val sample = new Random(7).shuffle(resolution.decisions.filter(d => d.film.isDefined && d.confidence >= weights.threshold)).take(40)
+      val sample = new Random(7).shuffle(resolution.decisions.filter(d => d.film.isDefined && calibration.showsRatings(d.confidence))).take(40)
       val transforms: Seq[String => String] = Seq(t => s"Pokaz specjalny: $t", t => s"$t (2026)",
         _.toUpperCase(java.util.Locale.ROOT), t => tools.TextNormalization.deburr(t))
       val familyListings = listings.groupBy(l => resolution.familyOf(l.key))
@@ -241,8 +236,8 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         if (family.size <= 400) transforms.foreach { t =>
           val title = t(original.rawTitle)
           val moved = original.copy(key = ListingKey.Published(original.venue + " (perturbed)", title, original.year, original.directors),
-            rawTitle = title, cleanTitle = t(original.cleanTitle), page = None)
-          val r = IdentityResolver.resolve(family :+ moved, lookups, c.normalizer, weights)
+            rawTitle = title, title = t(original.title), cleanTitle = t(original.cleanTitle), page = None)
+          val r = IdentityResolver.resolve(family :+ moved, lookups, c.normalizer, calibration)
           tried += 1
           if (r.decisionOf(moved.key).film == d.film) recovered += 1
         }
@@ -261,6 +256,7 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       rows.synchronized(rows += Row(c.label, listings.size, resolution.nodes, resolution.families,
         films.size, films.count(_.tmdbId.isDefined), resolution.decisions.size, resolution.decisions.count(_.film.isDefined),
         identical, resolution.violations, variants, n, labelled.size, accuracy(pipelineFilm), accuracy(resolverFilm),
+        recall(pipelineFilm), recall(resolverFilm), (onContradicted(pipelineFilm), onContradicted(resolverFilm)), unmatched,
         pipePairwise, resPairwise, pipeContra, resContra, verdicts.groupBy(_._1).view.mapValues(_.size).toMap, checkTally.toMap,
         (lost, moved, outaged.violations), (recovered, tried), lookups.unknown, lookups.sizes,
         bootSeconds, pipelineRequests, resolveSeconds, resolverRequests))
@@ -271,19 +267,15 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     }
   }
 
-  /** A number as the dataset writes it, whatever the machine's locale ("0.5", never "0,5"). */
-  private def root(format: String, x: Double): String = String.format(java.util.Locale.ROOT, format, Double.box(x))
-
   /** One disagreement component, adjudicated on the listings' own evidence alone. Each cell (the
    *  listings one pipeline film and one resolver cluster share) asks: which of the two films does
    *  the evidence back? The component's verdict is the listing-weighted majority of its cells. */
   private def adjudicate(component: Seq[(Option[Int], Int)], cells: Map[(Option[Int], Int), Seq[ListingKey]],
-                         pipelineFilm: ListingKey => Option[FilmFacts], resolverFilm: ListingKey => Option[FilmFacts],
-                         evidenceOf: Map[ListingKey, Evidence], films: Seq[PipelineFilm], resolution: Resolution,
-                         c: Corpus): (String, String) = {
-    def net(ks: Seq[ListingKey], f: Option[FilmFacts]): (Int, Boolean) = f.fold((0, false)) { film =>
-      val cs = ks.map(k => corroboration(evidenceOf(k), film, c.normalizer))
-      (cs.count(_.agree > 0) - cs.count(_.contradicted), cs.nonEmpty && cs.forall(_.contradicted))
+                         pipelineFilm: ListingKey => Option[FilmAnswer], resolverFilm: ListingKey => Option[FilmAnswer],
+                         evidenceOf: Map[ListingKey, Evidence], films: Seq[PipelineFilm], resolution: Resolution): (String, String) = {
+    def net(ks: Seq[ListingKey], f: Option[FilmAnswer]): (Int, Boolean) = f.fold((0, false)) { answer =>
+      val cs = ks.map(k => agreement(evidenceOf(k), answer.film))
+      (cs.count(_._1 > 0) - cs.count(_._2 >= 2), cs.nonEmpty && cs.forall(_._2 >= 2))
     }
     val judged = component.map { cell =>
       val ks = cells(cell)
@@ -316,15 +308,17 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   "The shadow report" should "summarise every corpus, head to head" in {
     val report = new Report(out.resolve("summary.md"))
     def f2(x: Double) = if (x.isNaN) "—" else f"${x * 100}%.1f%%"
-    report.line(s"weights: ${weights.version}\n")
-    report.line("| corpus | listings | pipeline films (tmdb) | resolver clusters (tmdb) | identical | P3 violations | order variants | held-out labelled | tmdb accuracy old / new | pairwise F1 old / new | wrong merges old / new | wrong splits old / new | contradicted matches old / new | verdicts (resolver/pipeline/both/undecidable) | checks pass-fail old / new (regressions) | outage lost/moved | perturbation recovered | unanswerable (details/queries/films) | seconds old / new | HTTP old / new |")
-    report.line("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+    report.line(s"calibration: ${calibration.version}\n")
+    report.line("| corpus | listings | pipeline films (tmdb) | resolver clusters (tmdb) | identical | P3 violations | order variants | held-out labelled | tmdb accuracy of matched old / new | labelled recall old / new | on a contradicted filing old / new | resolver unmatched by why | pairwise F1 old / new | wrong merges old / new | wrong splits old / new | contradicted matches old / new | verdicts (resolver/pipeline/both/undecidable) | checks pass-fail old / new (regressions) | outage lost/moved | perturbation recovered | unanswerable (details/queries/films) | seconds old / new | HTTP old / new |")
+    report.line("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     rows.foreach { r =>
       def v(k: String) = r.verdicts.filter(_._1.startsWith(k)).values.sum
       def ck(s: String) = r.checks.get(s).fold("—")(t => s"${t._1}-${t._2}")
       report.line(s"| ${r.label} | ${r.listings} | ${r.pipelineFilms} (${r.pipelineResolved}) | ${r.resolverClusters} (${r.resolverResolved}) | " +
         s"${r.identicalClusters} | ${r.violations} | ${r.orderVariants}/${r.presentations} | ${r.heldOutLabelled} | " +
-        s"${f2(r.pipelineAccuracy)} / ${f2(r.resolverAccuracy)} | ${f2(r.pipelinePairwise.f1)} / ${f2(r.resolverPairwise.f1)} | " +
+        s"${f2(r.pipelineAccuracy)} / ${f2(r.resolverAccuracy)} | ${f2(r.pipelineRecall)} / ${f2(r.resolverRecall)} | " +
+        s"${r.contradictedLabels._1} / ${r.contradictedLabels._2} | ${r.unmatched.toSeq.sortBy(-_._2).map { case (b, n) => s"$b $n" }.mkString(", ")} | " +
+        s"${f2(r.pipelinePairwise.f1)} / ${f2(r.resolverPairwise.f1)} | " +
         s"${r.pipelinePairwise.wrongMerges} / ${r.resolverPairwise.wrongMerges} | ${r.pipelinePairwise.wrongSplits} / ${r.resolverPairwise.wrongSplits} | " +
         s"${r.pipelineContradicted._1}/${r.pipelineContradicted._2} / ${r.resolverContradicted._1}/${r.resolverContradicted._2} | " +
         s"${v("resolver right")}/${v("pipeline right")}/${v("both wrong")}/${v("undecidable")} | " +

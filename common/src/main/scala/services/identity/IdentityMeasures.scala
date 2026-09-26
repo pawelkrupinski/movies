@@ -168,6 +168,31 @@ object IdentityMeasures {
     case other     => other
   }
 
+  /** The title searches a listing's evidence issues: every title shape and its original title,
+   *  each asked WITHOUT a year (TMDB dates a film by first release, a venue by production or
+   *  re-release). ONE definition: the calibration's candidate pools, the resolver's queries and
+   *  the recording sweep all read it. */
+  def searchQueries(l: Listing): Seq[String] = (titleShapes(l) ++ l.originalTitle).map(_.trim).filter(_.nonEmpty).distinct
+
+  /** The venues among `group` (the listings sharing the listing's title key, with their venue)
+   *  whose OWN facts back `f` — its exact year, or a credit of its director — other than
+   *  `ownVenue`: the `venues.corroborating` count. */
+  def corroboratingVenues(f: Film, group: Seq[(String, Listing)], ownVenue: String): Int =
+    group.iterator.filter { case (_, l) =>
+      l.statedYear.exists(y => f.year.contains(y)) ||
+        f.directors.exists(ds => directorRelation(l.directors, ds) == Category("same_person"))
+    }.map(_._1).toSet.-(ownVenue).size
+
+  /** What a listing's own measurements say about a film by themselves: the corroborators that
+   *  agree (a year within one, the same director, the original title) and those that deny it. */
+  def ownAgreement(m: Map[String, Measure]): (Set[String], Set[String]) = {
+    val agree = Set.newBuilder[String]; val deny = Set.newBuilder[String]
+    m.get("year.distance").foreach { case Number(d) => if (d <= 1) agree += "year" else deny += "year"; case _ => }
+    m.get("director").foreach { case Category(c) => if (c == "same_person") agree += "director" else if (c == "different") deny += "director"; case _ => }
+    m.get("originalTitle").foreach { case Category(c) => if (c == "match") agree += "originalTitle" else if (c == "disjoint") deny += "originalTitle"; case _ => }
+    (agree.result(), deny.result())
+  }
+
   // ── the measurement sets ─────────────────────────────────────────────────────────────
 
   /**

@@ -3,7 +3,7 @@ package scripts
 import clients.tools.RecordingHttpFetch
 import models.{Cinema, CinemaMovie, Country}
 import play.api.libs.json.{JsObject, JsValue, Json}
-import services.identity.IdentityMeasures
+import services.identity.{IdentityMeasures, TmdbFilmRecord}
 import services.identity.IdentityMeasures.{Category, Film, Listing, Measure, Number}
 import services.movies.{ListingKey, ScrapeListing, TitleNormalizer}
 import tools.CorpusFixture
@@ -41,8 +41,7 @@ object IdentityCalibrationData {
     try new String(in.readAllBytes(), StandardCharsets.UTF_8) finally in.close()
   }
 
-  private def yearOf(date: Option[String]): Option[Int] =
-    date.filter(_.length >= 4).flatMap(d => Try(d.take(4).toInt).toOption)
+  private def yearOf(date: Option[String]): Option[Int] = TmdbFilmRecord.yearOf(date)
 
   // ── recorded TMDB answers ─────────────────────────────────────────────────────────────
 
@@ -104,35 +103,10 @@ object IdentityCalibrationData {
       }
     })
 
-    /** TMDB's record of `id`, merged from every recorded answer about it. */
-    def details(id: Int): Option[Details] = detailsCache.getOrElseUpdate(id, {
-      val docs = movieDirFiles.getOrElse(id, Nil).sorted.flatMap(body).flatMap(b => Try(Json.parse(b)).toOption)
-        .map(js => (js \ "text").asOpt[String].flatMap(t => Try(Json.parse(t)).toOption).getOrElse(js))
-      val main = docs.filter(d => (d \ "title").isDefined)
-      if (main.isEmpty) None
-      else {
-        // The deployment-language answer carries `credits`; the en-US one `alternative_titles`.
-        val localized = main.find(d => (d \ "credits").isDefined).getOrElse(main.head)
-        val crew = docs.flatMap(d => (d \ "crew").asOpt[Seq[JsValue]].orElse((d \ "credits" \ "crew").asOpt[Seq[JsValue]]).getOrElse(Nil))
-        val directors = crew.filter(c => (c \ "job").asOpt[String].contains("Director")).flatMap(c => (c \ "name").asOpt[String]).distinct
-        val hasCrew = docs.exists(d => (d \ "crew").isDefined || (d \ "credits" \ "crew").isDefined)
-        val alternatives = main.flatMap(d => (d \ "alternative_titles" \ "titles").asOpt[Seq[JsValue]].getOrElse(Nil))
-          .flatMap(t => (t \ "title").asOpt[String]) ++ main.flatMap(d => (d \ "title").asOpt[String])
-        val title = (localized \ "title").as[String]
-        val countries = main.flatMap(d => (d \ "production_countries").asOpt[Seq[JsValue]].getOrElse(Nil)
-          .flatMap(c => (c \ "iso_3166_1").asOpt[String]) ++ (d \ "origin_country").asOpt[Seq[String]].getOrElse(Nil)).distinct
-        Some(Details(id, Film(
-          title             = title,
-          originalTitle     = (localized \ "original_title").asOpt[String],
-          alternativeTitles = alternatives.distinct.filterNot(_ == title),
-          year              = yearOf((localized \ "release_date").asOpt[String]),
-          runtime           = main.flatMap(d => (d \ "runtime").asOpt[Int]).find(_ > 0),
-          directors         = Option.when(hasCrew)(directors),
-          countries         = Option.when(countries.nonEmpty)(countries),
-          popularity        = main.flatMap(d => (d \ "popularity").asOpt[Double]).headOption),
-          main.flatMap(d => (d \ "imdb_id").asOpt[String]).find(_.nonEmpty)))
-      }
-    })
+    /** TMDB's record of `id`, merged from every recorded answer about it (`TmdbFilmRecord`). */
+    def details(id: Int): Option[Details] = detailsCache.getOrElseUpdate(id,
+      TmdbFilmRecord.parse(movieDirFiles.getOrElse(id, Nil).sorted.flatMap(body).flatMap(b => Try(Json.parse(b)).toOption))
+        .map { case (film, imdb) => Details(id, film, imdb) })
   }
 
   /** A hard-cluster responses file (`"GET <url>" → {"text": body}`) keyed by fixture name. */
@@ -230,8 +204,8 @@ object IdentityCalibrationData {
     out.result()
   }
 
-  /** The queries a listing's own title issues: every title shape and its original title. */
-  def queries(l: Listing): Seq[String] = (IdentityMeasures.titleShapes(l) ++ l.originalTitle).distinct
+  /** The queries a listing's own title issues (`IdentityMeasures.searchQueries`). */
+  def queries(l: Listing): Seq[String] = IdentityMeasures.searchQueries(l)
 
   /** Do the two listings' chains publish an id in a common namespace, and is it the same? */
   def sharedChainId(a: Obs, b: Obs): Option[Boolean] = {

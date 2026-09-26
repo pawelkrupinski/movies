@@ -1,0 +1,243 @@
+{
+  "version": "test-fixture-2",
+  "scopes": {
+    "listing-film": {
+      "prior": -2.0,
+      "signals": {
+        "title": {
+          "kind": "categorical",
+          "categories": {
+            "exact": 2.5,
+            "original": 2.0,
+            "alternative": 1.5,
+            "segment": 1.5,
+            "contains": 0.0,
+            "overlap": -2.0,
+            "none": -3.0
+          },
+          "missing": {}
+        },
+        "year.delta": {
+          "kind": "numeric",
+          "bins": [
+            {
+              "weight": -4.0,
+              "positives": 0,
+              "negatives": 0,
+              "atMost": -3.5
+            },
+            {
+              "weight": 0.5,
+              "positives": 0,
+              "negatives": 0,
+              "atLeast": -3.5,
+              "atMost": -0.5
+            },
+            {
+              "weight": 3.0,
+              "positives": 0,
+              "negatives": 0,
+              "atLeast": -0.5,
+              "atMost": 0.5
+            },
+            {
+              "weight": 0.5,
+              "positives": 0,
+              "negatives": 0,
+              "atLeast": 0.5,
+              "atMost": 2.5
+            },
+            {
+              "weight": -4.0,
+              "positives": 0,
+              "negatives": 0,
+              "atLeast": 2.5
+            }
+          ],
+          "missing": {}
+        },
+        "director": {
+          "kind": "categorical",
+          "categories": {
+            "same_person": 3.0,
+            "shared_name": 0.5,
+            "different": -3.0,
+            "incomparable": 0.0
+          },
+          "missing": {}
+        },
+        "runtime.delta": {
+          "kind": "numeric",
+          "bins": [
+            {
+              "atMost": 5,
+              "weight": 3.0,
+              "positives": 0,
+              "negatives": 0
+            },
+            {
+              "atLeast": 5,
+              "atMost": 15,
+              "weight": -1.0,
+              "positives": 0,
+              "negatives": 0
+            },
+            {
+              "atLeast": 15,
+              "weight": -4.0,
+              "positives": 0,
+              "negatives": 0
+            }
+          ],
+          "missing": {}
+        },
+        "search.rank": {
+          "kind": "numeric",
+          "bins": [
+            {
+              "weight": 0.8,
+              "positives": 0,
+              "negatives": 0,
+              "atMost": 1.5
+            },
+            {
+              "weight": 0.0,
+              "positives": 0,
+              "negatives": 0,
+              "atLeast": 1.5,
+              "atMost": 3.5
+            },
+            {
+              "weight": -0.5,
+              "positives": 0,
+              "negatives": 0,
+              "atLeast": 3.5
+            }
+          ],
+          "missing": {
+            "not-returned": -0.3
+          }
+        },
+        "rivals": {
+          "kind": "numeric",
+          "bins": [
+            {
+              "atMost": 0.5,
+              "weight": 1.8,
+              "positives": 0,
+              "negatives": 0
+            },
+            {
+              "atLeast": 0.5,
+              "atMost": 2.5,
+              "weight": -2.0,
+              "positives": 0,
+              "negatives": 0
+            },
+            {
+              "atLeast": 2.5,
+              "weight": -2.9,
+              "positives": 0,
+              "negatives": 0
+            }
+          ],
+          "missing": {}
+        },
+        "venues.corroborating": {
+          "kind": "numeric",
+          "bins": [
+            {
+              "weight": -0.5,
+              "positives": 0,
+              "negatives": 0,
+              "atMost": 0.5
+            },
+            {
+              "weight": 1.0,
+              "positives": 0,
+              "negatives": 0,
+              "atLeast": 0.5,
+              "atMost": 1.5
+            },
+            {
+              "weight": 3.0,
+              "positives": 0,
+              "negatives": 0,
+              "atLeast": 1.5
+            }
+          ],
+          "missing": {}
+        }
+      },
+      "calibration": {
+        "method": "logistic",
+        "logOdds": [],
+        "probabilities": []
+      },
+      "thresholds": {
+        "showRatings": {
+          "probability": 0.5
+        },
+        "cannotLink": {
+          "probability": 0.02
+        }
+      }
+    },
+    "listing-listing": {
+      "prior": 0.0,
+      "signals": {
+        "title": {
+          "kind": "categorical",
+          "categories": {
+            "exact": 2.0,
+            "segment": 1.0,
+            "contains": 0.0,
+            "overlap": -1.5,
+            "none": -3.0
+          },
+          "missing": {}
+        },
+        "year.delta": {
+          "kind": "numeric",
+          "bins": [
+            {
+              "weight": 0.5,
+              "positives": 0,
+              "negatives": 0,
+              "atMost": 2.5
+            },
+            {
+              "weight": -5.0,
+              "positives": 0,
+              "negatives": 0,
+              "atLeast": 2.5
+            }
+          ],
+          "missing": {}
+        },
+        "director": {
+          "kind": "categorical",
+          "categories": {
+            "same_person": 2.0,
+            "different": -2.0
+          },
+          "missing": {}
+        }
+      },
+      "calibration": {
+        "method": "logistic",
+        "logOdds": [],
+        "probabilities": []
+      },
+      "thresholds": {
+        "cannotLink": {
+          "probability": 0.02
+        }
+      }
+    }
+  },
+  "cannotLinks": [],
+  "provenance": {
+    "purpose": "unit-test fixture in the calibration format: fixed so the resolver specs do not move when the calibration does"
+  }
+}

@@ -87,13 +87,7 @@ object IdentityCalibrate {
     case _                               => None
   }
 
-  private def ownAgreement(m: Map[String, Measure]): (Set[String], Set[String]) = {
-    val agree = mutable.Set.empty[String]; val deny = mutable.Set.empty[String]
-    number(m.get("year.distance")).foreach(d => if (d <= 1) agree += "year" else deny += "year")
-    category(m.get("director")).foreach { c => if (c == "same_person") agree += "director" else if (c == "different") deny += "director" }
-    category(m.get("originalTitle")).foreach { c => if (c == "match") agree += "originalTitle" else if (c == "disjoint") deny += "originalTitle" }
-    (agree.toSet, deny.toSet)
-  }
+  private def ownAgreement(m: Map[String, Measure]): (Set[String], Set[String]) = IdentityMeasures.ownAgreement(m)
 
   // ── one country's pairs ──────────────────────────────────────────────────────────────
 
@@ -136,12 +130,7 @@ object IdentityCalibrate {
 
     // Venue co-occurrence: per title group, which venues' own facts back each candidate.
     val groups: Map[String, IndexedSeq[Int]] = obs.indices.groupBy(i => IdentityMeasures.key(obs(i).listing.title))
-    val backers = mutable.HashMap.empty[(String, Int), Set[String]]
-    def backing(group: String, film: Int, f: Film): Set[String] = backers.getOrElseUpdate((group, film),
-      groups(group).iterator.map(obs).filter { o =>
-        o.listing.statedYear.exists(y => f.year.contains(y)) ||
-          f.directors.exists(ds => IdentityMeasures.directorRelation(o.listing.directors, ds) == Category("same_person"))
-      }.map(_.venue).toSet)
+    val members = groups.view.mapValues(_.map(i => obs(i).venue -> obs(i).listing)).toMap
 
     val lf = Seq.newBuilder[LfPair]
     obs.indices.foreach { i =>
@@ -151,7 +140,7 @@ object IdentityCalibrate {
       pool.foreach { case (id, (rank, f)) =>
         val own = closeTitles(id)
         val rivals = close - (if (own == "exact" || own == "original" || own == "alternative") 1 else 0)
-        val venues = (backing(g, id, f) - o.venue).size
+        val venues = IdentityMeasures.corroboratingVenues(f, members(g), o.venue)
         lf += LfPair(o.idx, id, IdentityMeasures.listingFilm(o.listing, f, rank, rivals, venues))
       }
     }

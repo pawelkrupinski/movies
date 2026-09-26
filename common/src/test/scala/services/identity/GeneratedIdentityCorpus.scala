@@ -59,7 +59,7 @@ object GeneratedIdentityCorpus {
       val directors = if (rnd.nextDouble() < 0.4 && !detailVenues(venue.displayName)) Seq(film.director) else Nil
       val runtime   = Option.when(rnd.nextDouble() < 0.4)(film.runtime)
       val key       = ListingKey.Native(venue.displayName, page.get, spelling)
-      Listing(venue, key, spelling, spelling, year, directors, runtime, page, None) -> film
+      Listing(venue, key, spelling, spelling, spelling, year, directors, runtime, page, None) -> film
     }.distinctBy(_._1.key)
     val truth  = made.map { case (l, f) => l.key -> f.id }.toMap
     val byKey  = made.map { case (l, f) => l.key -> f }.toMap
@@ -72,7 +72,7 @@ object GeneratedIdentityCorpus {
   }
 
   /** A film database over `universe`: TMDB's search (every film whose title holds all the query's
-   *  words, year-scoped when a year is given, most popular first), filmographies and records.
+   *  words, most popular first), filmographies and records.
    *  One query in eleven and one record in seven are GAPS. */
   class SyntheticLookups(universe: Seq[Film], normalizer: TitleNormalizer) extends IdentityLookups {
     private val known = universe.filter(_.tmdbId.isDefined)
@@ -83,16 +83,16 @@ object GeneratedIdentityCorpus {
     override def candidates(q: CandidateQuery): Answer[Seq[Hit]] =
       if (math.abs(q.sortKey.hashCode) % 11 == 0) Answer.Unknown
       else q match {
-        case CandidateQuery.Title(text, year) =>
+        case CandidateQuery.Title(text) =>
           val want = words(text)
-          Answer.Known(known.filter(f => want.nonEmpty && want.subsetOf(words(f.title)) && year.forall(_ == f.year))
+          Answer.Known(known.filter(f => want.nonEmpty && want.subsetOf(words(f.title)))
             .sortBy(f => (-f.popularity, f.tmdbId.get)).map(hit))
         case CandidateQuery.Director(name) =>
           Answer.Known(known.filter(_.director == name).sortBy(_.tmdbId.get).map(hit))
       }
-    override def film(tmdbId: Int): Answer[Option[FilmFacts]] =
+    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
       if (tmdbId % 7 == 0) Answer.Unknown
       else Answer.Known(known.find(_.tmdbId.contains(tmdbId)).map(f =>
-        FilmFacts(tmdbId, Some(f.title), None, Some(f.year), Seq(f.director), Some(f.runtime))))
+        IdentityMeasures.Film(f.title, None, Nil, Some(f.year), Some(f.runtime), Some(Seq(f.director)), None, Some(f.popularity))))
   }
 }

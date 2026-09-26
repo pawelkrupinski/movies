@@ -1,7 +1,7 @@
 package services.identity
 
-import models.{Cinema, CinemaMovie, CinemaShowing, MovieRecord, Source, SourceData, Tmdb}
-import services.movies.{EmbeddedYear, ListingConstraints, ListingKey, ScrapeListing, TitleNormalizer}
+import models.{Cinema, CinemaMovie}
+import services.movies.{ListingKey, ScrapeListing, TitleNormalizer}
 
 /*
  * The identity resolver's vocabulary (docs/design/identity-resolver.md, phase 2). Everything here
@@ -10,13 +10,17 @@ import services.movies.{EmbeddedYear, ListingConstraints, ListingKey, ScrapeList
  * listing, and nothing is read from stored films.
  */
 
-/** One listing exactly as its venue published it, keyed by [[ListingKey]]. `cleanTitle` is the
- *  venue's own title rules applied to the raw title (`ScrapeListing.cleanTitle`) — a function of
- *  the venue and the string, never of any other listing. */
+/** One listing exactly as its venue published it, keyed by [[ListingKey]].
+ *
+ *  `title` is the title the venue's client published — what the calibrated measures read
+ *  (`IdentityMeasures.Listing`), exactly as the calibration read it. `cleanTitle` is that title
+ *  after the venue's own title rules (`ScrapeListing.cleanTitle`): only the FAMILY keys and the
+ *  title must-links read it, so a "2D PL" suffix does not keep a spelling out of its film's family. */
 final case class Listing(
   cinema:        Cinema,
   key:           ListingKey,
   rawTitle:      String,
+  title:         String,
   cleanTitle:    String,
   year:          Option[Int],
   directors:     Seq[String],
@@ -30,7 +34,7 @@ final case class Listing(
   /** A TOTAL order over listings: the key first, then every published field, so two different
    *  listings never tie and a set of listings has exactly one sorted presentation. */
   lazy val sortKey: String =
-    Seq(venue, rawTitle, page.getOrElse(""), cleanTitle, year.fold("")(_.toString), directors.mkString(","),
+    Seq(venue, rawTitle, page.getOrElse(""), title, cleanTitle, year.fold("")(_.toString), directors.mkString(","),
       runtime.fold("")(_.toString), originalTitle.getOrElse("")).mkString("\u0000")
 }
 
@@ -41,6 +45,7 @@ object Listing {
     cinema        = cinema,
     key           = ListingKey.of(cinema, cm),
     rawTitle      = cm.movie.rawTitle.getOrElse(cm.movie.title),
+    title         = cm.movie.title,
     cleanTitle    = ScrapeListing.cleanTitle(cinema, cm.movie.title, normalizer)._1,
     year          = cm.movie.releaseYear,
     directors     = cm.director.map(_.trim).filter(_.nonEmpty).distinct.sorted,
@@ -59,38 +64,23 @@ final case class DetailFacts(year: Option[Int], directors: Seq[String], runtime:
 /** A listing's evidence once its own detail page is merged in — listing values win, the page
  *  fills gaps. VENUE-FREE on purpose: two venues publishing the same evidence are asking the same
  *  question, and the resolver treats them as one node. */
-final case class Evidence(cleanTitle: String, rawTitle: String, year: Option[Int], directors: Seq[String],
+final case class Evidence(title: String, cleanTitle: String, rawTitle: String, year: Option[Int], directors: Seq[String],
                           runtime: Option[Int], originalTitle: Option[String], countries: Seq[String] = Nil) {
   lazy val key: String =
-    Seq(cleanTitle, rawTitle, year.fold("")(_.toString), directors.sorted.mkString(","),
+    Seq(title, cleanTitle, rawTitle, year.fold("")(_.toString), directors.sorted.mkString(","),
       runtime.fold("")(_.toString), originalTitle.getOrElse(""), countries.sorted.mkString(",")).mkString("\u0000")
 
-  /** The year the venue put in its title, when it published none as a field. */
-  lazy val bracketYear: Option[Int] = EmbeddedYear.of(rawTitle, cleanTitle)
+  /** The evidence as the calibrated measures read a listing. */
+  lazy val measured: IdentityMeasures.Listing =
+    IdentityMeasures.Listing(title, Some(rawTitle).filter(_ != title), originalTitle, year, runtime, directors, countries)
 
   /** The year this listing states: its own field, else the one its title brackets. */
-  def statedYear: Option[Int] = year.orElse(bracketYear)
-
-  /** Whether [[statedYear]] was read from a title rather than published as a field. A bracket is
-   *  often a RE-RELEASE year ("Toy Story (2026)"), a field almost never is — the calibration
-   *  weighs the two separately rather than this code guessing which is which. */
-  def yearFromBracket: Boolean = year.isEmpty && bracketYear.isDefined
-
-  /** The cinema slot production would hold for this evidence — what `ListingConstraints` reads. */
-  def slot: SourceData = SourceData(title = Some(cleanTitle), rawTitle = Some(rawTitle), originalTitle = originalTitle,
-    director = directors, runtimeMinutes = runtime, releaseYear = year)
-
-  def constraintEvidence: ListingConstraints.ListingEvidence =
-    ListingConstraints.ListingEvidence(originalTitle, runtime, statedYear, directors)
-
-  /** A one-slot record of this evidence on `cinema` — the row shape `ListingConstraints`' row
-   *  predicates read. */
-  def record(cinema: Cinema, normalizer: TitleNormalizer): MovieRecord =
-    MovieRecord(data = Map[Source, SourceData](CinemaShowing.keyFor(cinema, cleanTitle, normalizer) -> slot))
+  def statedYear: Option[Int] = measured.statedYear
 }
 
 object Evidence {
   def of(listing: Listing, detail: Option[DetailFacts]): Evidence = Evidence(
+    title         = listing.title,
     cleanTitle    = listing.cleanTitle,
     rawTitle      = listing.rawTitle,
     year          = listing.year.orElse(detail.flatMap(_.year)),
@@ -101,45 +91,21 @@ object Evidence {
 }
 
 /** One film a lookup NAMED: a search result or a filmography credit. Only what the list itself
- *  carries — the film's own record is [[FilmFacts]]. */
+ *  carries — the film's own record is an `IdentityMeasures.Film`. */
 final case class Hit(tmdbId: Int, title: String, originalTitle: Option[String], year: Option[Int], popularity: Double)
 
-/** A film as the film database describes it — the facts a candidate is scored on. */
-final case class FilmFacts(tmdbId: Int, title: Option[String], originalTitle: Option[String], year: Option[Int],
-                           directors: Seq[String], runtime: Option[Int], countries: Seq[String] = Nil,
-                           imdbId: Option[String] = None) {
-  def slot: SourceData = SourceData(title = title, originalTitle = originalTitle, releaseYear = year,
-    director = directors, runtimeMinutes = runtime)
-  def record: MovieRecord = MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](Tmdb -> slot))
-}
-
-/**
- * A film some listing of a family may be — every hit any of the family's queries returned, with
- * its own record when the lookup source holds one. `popularity` is the film database's own
- * ranking signal, taken as the largest any hit reported.
- */
-final case class Candidate(tmdbId: Int, titles: Seq[String], year: Option[Int], directors: Seq[String],
-                           runtime: Option[Int], popularity: Double, countries: Seq[String] = Nil,
-                           imdbId: Option[String] = None) {
-  /** The candidate as a film record — what the constraint model's listing-vs-film rules read. */
-  def facts: FilmFacts = FilmFacts(tmdbId, titles.headOption, titles.lift(1), year, directors, runtime, countries, imdbId)
-}
+/** A film some listing of a family may be: its TMDB id and what TMDB says about it — its own
+ *  record when the lookup source holds one (`TmdbFilmRecord`), else what the hits naming it carry. */
+final case class Candidate(tmdbId: Int, film: IdentityMeasures.Film)
 
 object Candidate {
 
-  /** A candidate from every hit naming it and, when known, its own record: the record's facts
-   *  win, the hits fill in (a filmography credit carries a year, a search result a popularity). */
-  def of(tmdbId: Int, hits: Seq[Hit], facts: Option[FilmFacts]): Candidate = {
-    val sorted = hits.sortBy(h => (h.title, h.originalTitle.getOrElse(""), h.year.getOrElse(0), -h.popularity))
-    val titles = (facts.toSeq.flatMap(f => f.title.toSeq ++ f.originalTitle) ++
-      sorted.flatMap(h => h.title +: h.originalTitle.toSeq)).map(_.trim).filter(_.nonEmpty).distinct
-    Candidate(tmdbId, titles,
-      year       = facts.flatMap(_.year).orElse(sorted.flatMap(_.year).sorted.headOption),
-      directors  = facts.map(_.directors).getOrElse(Nil).sorted,
-      runtime    = facts.flatMap(_.runtime).filter(_ > 0),
-      popularity = if (sorted.isEmpty) 0.0 else sorted.map(_.popularity).max,
-      countries  = facts.map(_.countries).getOrElse(Nil).sorted,
-      imdbId     = facts.flatMap(_.imdbId))
+  def of(tmdbId: Int, hits: Seq[Hit], record: Option[IdentityMeasures.Film]): Candidate = {
+    val popularity = hits.map(_.popularity).maxOption
+    val best = hits.sortBy(h => (-h.popularity, h.title, h.originalTitle.getOrElse(""), h.year.getOrElse(0))).headOption
+    Candidate(tmdbId, record.map(f => f.copy(popularity = f.popularity.orElse(popularity))).getOrElse(
+      IdentityMeasures.Film(best.fold("")(_.title), best.flatMap(_.originalTitle), Nil, best.flatMap(_.year),
+        popularity = popularity)))
   }
 }
 
@@ -161,14 +127,14 @@ enum Answer[+A] {
 /** The questions the resolver asks. A function of one evidence: which is what makes the whole
  *  query set a function of the listing SET (assumption A1). */
 enum CandidateQuery {
-  /** A title search, with the year the listing states or none. */
-  case Title(query: String, year: Option[Int])
+  /** A yearless title search (`IdentityMeasures.searchQueries`). */
+  case Title(query: String)
   /** Every film a person of this name directed (or, with no directing credit, wrote). */
   case Director(name: String)
 
   def sortKey: String = this match {
-    case Title(q, y)  => s"t\u0000$q\u0000${y.fold("")(_.toString)}"
-    case Director(n)  => s"d\u0000$n"
+    case Title(q)    => s"t\u0000$q"
+    case Director(n) => s"d\u0000$n"
   }
 }
 
@@ -180,9 +146,6 @@ object CandidateQuery {
  * The only non-pure input: the observations the resolver reads. Each answer must be a function of
  * its argument alone — no argument carries a venue set, a group or a previous answer — which is
  * what lets the resolver enumerate every question from the listing set up front.
- *
- * Minimal on purpose, and named for reconciliation with the observation store (phase 1 owns the
- * observation types; this trait is what the resolver needs of them).
  */
 trait IdentityLookups {
   /** Whether the listing's venue publishes a detail page the source can answer for. */
@@ -191,6 +154,6 @@ trait IdentityLookups {
   def detail(listing: Listing): Answer[Option[DetailFacts]]
   /** Every film a query names. */
   def candidates(query: CandidateQuery): Answer[Seq[Hit]]
-  /** A film's own record. */
-  def film(tmdbId: Int): Answer[Option[FilmFacts]]
+  /** A film's own record (`TmdbFilmRecord`). */
+  def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]]
 }

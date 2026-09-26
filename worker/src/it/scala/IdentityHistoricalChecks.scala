@@ -1,6 +1,6 @@
 package integration
 
-import services.identity.{Evidence, FilmFacts, Listing}
+import services.identity.{Evidence, Listing}
 import services.movies.ListingKey
 
 /**
@@ -65,8 +65,9 @@ object IdentityHistoricalChecks {
     )
   }
 
-  /** One system's answer, as a check reads it: the cluster a listing is in and its film. */
-  final case class Answer(clusterOf: ListingKey => Option[Any], filmOf: ListingKey => Option[FilmFacts])
+  /** One system's answer, as a check reads it: the cluster a listing is in, and its film's TMDB id
+   *  and year. */
+  final case class Answer(clusterOf: ListingKey => Option[Any], filmOf: ListingKey => Option[(Int, Option[Int])])
 
   enum Verdict {
     case Pass, Fail, NotApplicable
@@ -85,17 +86,17 @@ object IdentityHistoricalChecks {
         }
       case Expect.Film(s, id) =>
         val ls = pick(s)
-        if (ls.isEmpty) Verdict.NotApplicable else if (ls.forall(l => answer.filmOf(l).exists(_.tmdbId == id))) Verdict.Pass else Verdict.Fail
+        if (ls.isEmpty) Verdict.NotApplicable else if (ls.forall(l => answer.filmOf(l).exists(_._1 == id))) Verdict.Pass else Verdict.Fail
       case Expect.NotFilm(s, id) =>
         val ls = pick(s)
-        if (ls.isEmpty) Verdict.NotApplicable else if (ls.exists(l => answer.filmOf(l).exists(_.tmdbId == id))) Verdict.Fail else Verdict.Pass
+        if (ls.isEmpty) Verdict.NotApplicable else if (ls.exists(l => answer.filmOf(l).exists(_._1 == id))) Verdict.Fail else Verdict.Pass
       case Expect.NotYear(s, year) =>
         val ls = pick(s)
-        if (ls.isEmpty) Verdict.NotApplicable else if (ls.exists(l => answer.filmOf(l).exists(_.year.contains(year)))) Verdict.Fail else Verdict.Pass
+        if (ls.isEmpty) Verdict.NotApplicable else if (ls.exists(l => answer.filmOf(l).exists(_._2.contains(year)))) Verdict.Fail else Verdict.Pass
       case Expect.Report(s) =>
         val ls = pick(s)
         if (ls.isEmpty) Verdict.NotApplicable
-        else Verdict.Reported(ls.map(l => answer.filmOf(l).fold("no film")(f => s"${f.tmdbId}/${f.year.getOrElse("?")}")).distinct.mkString(", "))
+        else Verdict.Reported(ls.map(l => answer.filmOf(l).fold("no film")(f => s"${f._1}/${f._2.getOrElse("?")}")).distinct.mkString(", "))
     }
   }
 }

@@ -34,7 +34,7 @@ trait Decision {
  *  - `film` is the TMDB id the cluster was matched to, `None` when no candidate was accepted —
  *    which is a verdict too ("a film the database does not know, or one the evidence cannot
  *    pick"), not a failure.
- *  - `confidence` is the probability, under the calibrated [[IdentityWeights]], that the verdict
+ *  - `confidence` is the probability, under the calibrated [[IdentityCalibration]], that the verdict
  *    is right: for a match, that `film` is the cluster's film and no rival is; for no match, that
  *    none of the candidates is.
  *  - `explanation` is the evidence it rests on, in order: each member's own best match, what
@@ -53,7 +53,7 @@ final case class ResolverDecision(members: Seq[ListingKey], film: Option[Int], c
 
 object ResolverDecision {
 
-  /** How the verdict was reached. */
+  /** How the verdict was reached. The unmatched bases say WHY no film was accepted. */
   enum Basis {
     /** A curation pin named the film (confidence 1). */
     case Pinned
@@ -61,10 +61,16 @@ object ResolverDecision {
     case OwnMatch
     /** No member accepted a film alone; the cluster's POOLED evidence did (group-level voting). */
     case PooledMatch
-    /** No candidate reached the threshold. */
-    case NoMatch
-    /** Every lookup the cluster needed was unanswerable: the verdict has nothing to rest on. */
+    /** Unmatched: no candidate at all — every query answered, none named a film this evidence reaches. */
+    case NoCandidate
+    /** Unmatched: no candidate, and some of the cluster's queries could not be answered. */
     case NoEvidence
+    /** Unmatched: the most likely candidate is denied by a member's own evidence (a cannot-link). */
+    case Vetoed
+    /** Unmatched: candidates were scored, and none reached the acceptance cut. */
+    case BelowThreshold
+
+    def matched: Boolean = this == Pinned || this == OwnMatch || this == PooledMatch
   }
 
   def percent(p: Double): String = f"${p * 100}%.1f%%"
@@ -73,10 +79,12 @@ object ResolverDecision {
 /** A resolve's result over a listing set. `violations` counts cannot-linked pairs inside one
  *  cluster (P3; zero by construction — a non-zero count is a solver bug). A resolve with an edge
  *  between two families never returns one: it throws `IdentityResolver.FamilyCrossing`. `queries`
- *  are the candidate queries in the order they were issued, `filmLookups` the films looked up. */
+ *  are the candidate queries in the order they were issued, `filmLookups` the films looked up,
+ *  `films` what the decided films are. */
 final case class Resolution(decisions: Seq[ResolverDecision], nodes: Int, familyOf: Map[ListingKey, Int],
                             edges: Seq[ResolverEdge], queries: Seq[CandidateQuery], filmLookups: Int,
-                            unknownQueries: Int, unknownDetails: Int, violations: Int) {
+                            unknownQueries: Int, unknownDetails: Int, unknownFilms: Int, violations: Int,
+                            films: Map[Int, IdentityMeasures.Film]) {
   def families: Int = familyOf.values.toSet.size
   /** The partition over listing keys — what the order-independence properties compare. */
   lazy val partition: Set[Set[ListingKey]] = decisions.map(_.listings).toSet

@@ -13,7 +13,7 @@ import services.movies.{ListingConstraints, ListingKey, SingleCountryNormalizer}
 class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
 
   private val normalizer = SingleCountryNormalizer.titleNormalizer
-  private val weights    = IdentityWeights.fromResource("services/identity/test-weights.json").get
+  private val weights    = IdentityCalibration.fromResource("services/identity/test-calibration.json").get
 
   private final case class F(id: Int, title: String, year: Int, director: String, runtime: Int, popularity: Double = 10.0)
 
@@ -25,18 +25,19 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     override def hasDetail(l: Listing): Boolean = false
     override def detail(l: Listing): Answer[Option[DetailFacts]] = Answer.Known(None)
     override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = Answer.Known(q match {
-      case CandidateQuery.Title(text, year) =>
+      case CandidateQuery.Title(text) =>
         val want = words(text)
-        films.filter(f => want.nonEmpty && want.subsetOf(words(f.title)) && year.forall(_ == f.year)).sortBy(-_.popularity).map(hit)
+        films.filter(f => want.nonEmpty && want.subsetOf(words(f.title))).sortBy(-_.popularity).map(hit)
       case CandidateQuery.Director(name) => films.filter(_.director == name).map(hit)
     })
-    override def film(id: Int): Answer[Option[FilmFacts]] =
-      Answer.Known(films.find(_.id == id).map(f => FilmFacts(id, Some(f.title), None, Some(f.year), Seq(f.director), Some(f.runtime))))
+    override def film(id: Int): Answer[Option[IdentityMeasures.Film]] =
+      Answer.Known(films.find(_.id == id).map(f =>
+        IdentityMeasures.Film(f.title, None, Nil, Some(f.year), Some(f.runtime), Some(Seq(f.director)), None, Some(f.popularity))))
   }
 
   private def listing(venue: Cinema, title: String, year: Option[Int] = None, director: Option[String] = None,
                       runtime: Option[Int] = None): Listing =
-    Listing(venue, ListingKey.Published(venue.displayName, title, year, director.toSeq), title, title, year,
+    Listing(venue, ListingKey.Published(venue.displayName, title, year, director.toSeq), title, title, title, year,
       director.toSeq, runtime, None, None)
 
   private def resolve(listings: Seq[Listing], films: Seq[F]): Resolution =
@@ -118,7 +119,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val bare = listing(Multikino, "Opętanie | klasyka w 4k")
     val d = resolve(Seq(bare), films).decisionOf(bare.key)
     d.film shouldBe None
-    d.basis shouldBe ResolverDecision.Basis.NoMatch
+    d.basis shouldBe ResolverDecision.Basis.BelowThreshold
     d.explanation.exists(_.startsWith("best rejected candidate")) shouldBe true
   }
 
@@ -150,9 +151,9 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     same.violations shouldBe 0
   }
 
-  "Learned cannot-links" should "veto by the artefact's rules and never on missing evidence" in {
-    val rule = ListingConstraints.LearnedCannotLink("far-year-other-director", "listing-film",
-      Seq(ListingConstraints.LearnedCondition("director", in = Seq("mismatch")), ListingConstraints.LearnedCondition("year.delta", atLeast = Some(6))),
+  "Learned cannot-links" should "veto by the artefact's rules, and never on missing evidence" in {
+    val rule = IdentityCalibration.CannotLinkRule("director in {different} AND year.distance >= 6", "listing-film",
+      Seq(IdentityCalibration.Condition("director", in = Seq("different")), IdentityCalibration.Condition("year.distance", atLeast = Some(6))),
       falseVetoRate = 0.001, support = 100)
     val withRule = weights.copy(cannotLinks = Seq(rule))
     val films = Seq(F(1, "Samson i Dalila", 1949, "Cecil B. DeMille", 131, 50))
@@ -160,16 +161,17 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val bare  = listing(Helios, "Samson i Dalila")
     val r = IdentityResolver.resolve(Seq(met, bare), new Table(films), normalizer, withRule)
     r.decisionOf(met.key).film should not be Some(1)
+    r.decisionOf(met.key).basis shouldBe ResolverDecision.Basis.Vetoed
     // The bare listing publishes neither a year nor a director: nothing to veto on.
     val alone = IdentityResolver.resolve(Seq(bare), new Table(films), normalizer, withRule)
     alone.edges.filterNot(_.must) shouldBe empty
-    ListingConstraints.learnedCannotLink(Seq(rule), "listing-film", Map("director" -> "missing").get, Map.empty[String, Double].get) shouldBe None
+    val bareMeasures = IdentityMeasures.listingFilm(IdentityMeasures.Listing("Samson i Dalila"),
+      IdentityMeasures.Film("Samson i Dalila", year = Some(1949), directors = Some(Seq("Cecil B. DeMille"))), None, 0, 0)
+    ListingConstraints.learned(withRule, "listing-film", bareMeasures, probability = 0.5) shouldBe None
   }
 
-  "Weights" should "load from an artefact, and weigh an input the artefact does not name as 0" in {
-    weights.version shouldBe "test-fixture-1"
-    val bare = Signals.Values(Map("title" -> "exact"), Map.empty)
-    weights.logOdds(bare) shouldBe (weights.weights("bias") + weights.weights("title=exact")) +- 1e-9
-    weights.copy(weights = Map("bias" -> 0.5, "no-such-signal" -> 9.0)).logOdds(bare) shouldBe 0.5 +- 1e-9
+  "The calibration" should "load from an artefact in its own format, the fixture as the real one" in {
+    weights.version shouldBe "test-fixture-2"
+    IdentityCalibration.default.scopes.keySet shouldBe weights.scopes.keySet
   }
 }
