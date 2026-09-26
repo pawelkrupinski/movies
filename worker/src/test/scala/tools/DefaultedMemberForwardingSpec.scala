@@ -53,7 +53,10 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
       classOf[FallbackHttpFetch]           -> ((d: HttpFetch) => new FallbackHttpFetch(Seq("only" -> d))),
       classOf[SessionWarmingHttpFetch]     -> ((d: HttpFetch) => new SessionWarmingHttpFetch(d, "https://decorator.test/")),
       classOf[services.observations.ObservingHttpFetch] -> ((d: HttpFetch) =>
-        new services.observations.ObservingHttpFetch(d, services.observations.ObservationStore.inMemory(java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))))
+        new services.observations.ObservingHttpFetch(d, services.observations.ObservationStore.inMemory(java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)))),
+      // An empty store observed nothing, so every call reaches the live fetch it decorates.
+      classOf[services.identity.ObservedFirstHttpFetch] -> ((d: HttpFetch) =>
+        new services.identity.ObservedFirstHttpFetch(services.observations.ObservationStore.inMemory(java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)), d))
     ),
     mayInherit =
       // The default runs `this.get(url)` on a pool thread — through the decorator's own
@@ -61,7 +64,8 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
       Seq(classOf[RateLimitedHttpFetch], classOf[ThrottledHttpFetch], classOf[HostCircuitBreakerHttpFetch],
           classOf[MemoizedHttpFetch], classOf[CachingDetailFetch], classOf[MongoCachingDetailFetch],
           classOf[MonitoringHttpFetch], classOf[CountingHttpFetch], classOf[StickyShardHttpFetch],
-          classOf[FallbackHttpFetch], classOf[SessionWarmingHttpFetch], classOf[services.observations.ObservingHttpFetch])
+          classOf[FallbackHttpFetch], classOf[SessionWarmingHttpFetch], classOf[services.observations.ObservingHttpFetch],
+          classOf[services.identity.ObservedFirstHttpFetch])
         .map(c => (c: Class[?], getAsync) -> "the default async get goes through the decorator's own get").toMap ++
       Map(
         // A detail page does not vary by request header; both caches key on the URL alone.

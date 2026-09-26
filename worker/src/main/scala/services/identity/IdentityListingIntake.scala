@@ -16,7 +16,6 @@ import java.time.Clock
  * shape). A venue with none yet — every venue, the first time a country is cut over — reads the
  * scrape archive's last listing (`archive`), which is what the old path last landed from.
  * `guards` is the landing's own ledger, so a country switched back and forth keeps one count.
- * `changed` is told whenever a venue's accepted listing moved, so the projection can run soon.
  */
 final class IdentityListingIntake(
   accepted:      ScrapeArchiveRepository,
@@ -24,8 +23,7 @@ final class IdentityListingIntake(
   guards:        ScrapeGuardLedger,
   normalizer:    TitleNormalizer,
   maxRejections: Int,
-  clock:         Clock,
-  changed:       () => Unit = () => ()
+  clock:         Clock
 ) extends ScrapeSink {
 
   /** The listing `cinema` is taken to publish now. */
@@ -48,10 +46,8 @@ final class IdentityListingIntake(
       City.localNow(cinema, clock), maxRejections, normalizer)
     // An unreadable ledger is judged as fresh, and its state is never written back over it.
     if (stored.isDefined && verdict.guard != guard) guards.put(cinema, verdict.guard)
-    if (verdict.outcome != ListingIntake.Outcome.Kept && verdict.accepted != known) {
+    if (verdict.outcome != ListingIntake.Outcome.Kept && verdict.accepted != known)
       accepted.record(ScrapeAttempt(cinema, Cinema.cityOf(cinema), clock.instant(), listingComplete = true, verdict.accepted, error = None))
-      changed()
-    }
     Seq.empty
   }
 }
