@@ -242,6 +242,23 @@ wait_for_android_unlock() {
   done
 }
 
+# ios_pick_device <devicectl-list-devices-json-file>  → prints the UDID of the
+# iPhone/iPad to deploy to: the one on a cable (transportType "wired"), else one
+# reachable over Wi-Fi ("localNetwork"), else nothing. Keyed on the live
+# transport, never on list order — every phone ever paired stays listed, and an
+# unplugged one listed first used to be picked and then waited on forever, its
+# lockState query failing as if locked. Simulators are "sameMachine"; the cabled
+# phone may carry no `reality` key, so transport is the only reliable filter.
+ios_pick_device() {
+  /usr/bin/python3 -c 'import json,sys
+devices=json.load(open(sys.argv[1])).get("result",{}).get("devices",[])
+for transport in ("wired","localNetwork"):
+  for d in devices:
+    h=d.get("hardwareProperties",{})
+    if d.get("connectionProperties",{}).get("transportType")==transport and h.get("deviceType") in ("iPhone","iPad"):
+      print(h["udid"]); sys.exit(0)' "$1" 2>/dev/null
+}
+
 # ios_unlocked_enough <lockState-json-file>  → exit 0 if devicectl can write to
 # the device: either no passcode is set, or it has been unlocked at least once
 # since boot (the data partition is available). This is the one documented gate

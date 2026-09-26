@@ -43,7 +43,9 @@ Both device actions wait for the phone to be ready before launching:
 - **Android** — `wait_for_android_unlock` polls `dumpsys window`'s keyguard
   flag. (If the device exposes no recognised flag — e.g. set to never lock in
   developer options — it doesn't block.)
-- **iOS** — two gates, both verified against a real device:
+- **iOS** — deploys to the device devicectl sees on a **cable** (Wi-Fi if none),
+  never the first paired one listed — switching iPhones just works. Then two
+  gates, both verified against a real device:
   - `wait_for_ios_unlock` blocks until the iPhone has been unlocked since boot
     (`devicectl … lockState`'s `unlockedSinceBoot`) — the one state that blocks
     `devicectl install`.

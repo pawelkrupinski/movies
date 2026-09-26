@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Build the iOS app, install it on the cabled iPhone/iPad, and launch it.
 #
-# There's no project task for this, so we resolve the first connected physical
-# device's UDID and drive xcodebuild + devicectl directly:
+# There's no project task for this, so we pick the device devicectl sees on a
+# cable (see ios_pick_device) and drive xcodebuild + devicectl directly:
 #   1. xcodebuild  — build the Kinowo scheme for the device
 #   2. devicectl install — copy the .app onto the device
 #   3. devicectl launch  — start it (so the button installs *and* runs)
@@ -18,15 +18,10 @@ SCHEME="Kinowo"
 DERIVED="$REPO_ROOT/ios/build/devpanel"
 PRODUCTS="$DERIVED/Build/Products/Debug-iphoneos"
 
-# First UDID listed under "== Devices ==" (physical only; simulators sit under
-# a later "== Simulators ==" header). UDIDs are the last parenthesised token.
 resolve_device_udid() {
-  xcrun xctrace list devices 2>/dev/null \
-    | sed -n '/== Devices ==/,/== Simulators ==/p' \
-    | grep -iE 'iphone|ipad' \
-    | grep -oE '\(([0-9A-Fa-f-]{25,})\)$' \
-    | tr -d '()' \
-    | head -1
+  local json; json="$(mktemp)"
+  xcrun devicectl list devices --json-output "$json" -q 2>/dev/null && ios_pick_device "$json"
+  rm -f "$json"
 }
 
 if [[ "${DEVPANEL_PRINT_ONLY:-}" == "1" ]]; then
@@ -36,7 +31,7 @@ else
   if [[ -z "$UDID" ]]; then
     echo "✗ No cabled iOS device found." >&2
     echo "  Plug in an iPhone/iPad, unlock it, and tap 'Trust'." >&2
-    xcrun xctrace list devices 2>/dev/null | sed -n '/== Devices ==/,/== Simulators ==/p' >&2 || true
+    xcrun devicectl list devices >&2 || true
     exit 1
   fi
   echo "device: $UDID"

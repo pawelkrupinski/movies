@@ -77,6 +77,41 @@ echo "▶ ios lock detection"
   ios_unlocked_enough /tmp/devpanel-ls-locked.json && { echo "  FAIL locked-since-boot not blocked"; exit 9; } || echo "  ok   locked-since-boot ⇒ wait"
 ) || fails=$((fails + 1))
 
+echo "▶ ios device pick (devicectl transport, not list order)"
+(
+  fails=0
+  SCRIPT_DIR="$SCRIPTS"; source "$SCRIPTS/lib.sh"
+  # Trimmed from a real `devicectl list devices --json-output`: an unreachable
+  # iPhone 15 listed FIRST, the cabled iPhone 17 (no `reality` key at all), an
+  # iPad on Wi-Fi, and simulators. xctrace lists all three physical ones under
+  # "Devices Offline", which is how the old resolver picked the dead iPhone 15.
+  real="$HERE/fixtures/devicectl-list-devices.json"
+  tmp="$(mktemp -d)"
+  # set_transport <out> <udid>=<transport|none>...  → fixture with those overrides
+  set_transport() {
+    local out="$1"; shift
+    /usr/bin/python3 -c 'import json,sys
+d=json.load(open(sys.argv[1])); o=dict(a.split("=") for a in sys.argv[3:])
+for x in d["result"]["devices"]:
+  u=x["hardwareProperties"]["udid"]
+  if u in o:
+    c=x["connectionProperties"]; c.pop("transportType",None)
+    if o[u]!="none": c["transportType"]=o[u]
+json.dump(d,open(sys.argv[2],"w"))' "$real" "$out" "$@"
+  }
+  iphone15=00008130-001C08413A60001C iphone17=00008150-001945100208401C ipad=00008142-000220921E6B401C
+
+  check "picks the cabled iPhone, not the first listed" "$iphone17" "$(ios_pick_device "$real")"
+  set_transport "$tmp/swap.json" "$iphone15=wired" "$iphone17=none"
+  check "swapping iPhones follows the cable" "$iphone15" "$(ios_pick_device "$tmp/swap.json")"
+  set_transport "$tmp/wifi.json" "$iphone17=none"
+  check "no cable ⇒ falls back to a Wi-Fi device" "$ipad" "$(ios_pick_device "$tmp/wifi.json")"
+  set_transport "$tmp/none.json" "$iphone17=none" "$ipad=none"
+  check "nothing reachable ⇒ empty (simulators never picked)" "" "$(ios_pick_device "$tmp/none.json")"
+  rm -rf "$tmp"
+  [[ $fails -eq 0 ]]   # check() counts into this subshell's copy of fails
+) || fails=$((fails + 1))
+
 echo "▶ android unlock wait (adb resolution)"
 (
   SCRIPT_DIR="$SCRIPTS"; source "$SCRIPTS/lib.sh"

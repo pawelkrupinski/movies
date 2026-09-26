@@ -1,0 +1,139 @@
+{
+  "result": {
+    "devices": [
+      {
+        "connectionProperties": {
+          "tunnelState": "unavailable",
+          "pairingState": "paired"
+        },
+        "deviceProperties": {
+          "name": "IPhone Pro 15 Pawla"
+        },
+        "hardwareProperties": {
+          "udid": "00008130-001C08413A60001C",
+          "reality": "physical",
+          "deviceType": "iPhone"
+        }
+      },
+      {
+        "connectionProperties": {
+          "transportType": "wired",
+          "tunnelState": "disconnected",
+          "pairingState": "paired"
+        },
+        "deviceProperties": {
+          "name": "IPhone Pro 17 Pawla"
+        },
+        "hardwareProperties": {
+          "udid": "00008150-001945100208401C",
+          "deviceType": "iPhone"
+        }
+      },
+      {
+        "connectionProperties": {
+          "transportType": "localNetwork",
+          "tunnelState": "disconnected",
+          "pairingState": "paired"
+        },
+        "deviceProperties": {
+          "name": "Pawel Krupinski\u2019s iPad"
+        },
+        "hardwareProperties": {
+          "udid": "00008142-000220921E6B401C",
+          "reality": "physical",
+          "deviceType": "iPad"
+        }
+      },
+      {
+        "connectionProperties": {
+          "transportType": "sameMachine",
+          "tunnelState": "disconnected",
+          "pairingState": "paired"
+        },
+        "deviceProperties": {
+          "name": "iPad (A16)"
+        },
+        "hardwareProperties": {
+          "udid": "CD3098AA-4308-4AE4-9038-85DB9CD43D3F",
+          "reality": "simulated",
+          "deviceType": "iPad"
+        }
+      },
+      {
+        "connectionProperties": {
+          "transportType": "sameMachine",
+          "tunnelState": "disconnected",
+          "pairingState": "paired"
+        },
+        "deviceProperties": {
+          "name": "iPad Air 11-inch (M4)"
+        },
+        "hardwareProperties": {
+          "udid": "F7E7A355-B1AA-45EB-9BD5-0AC22897DCE5",
+          "reality": "simulated",
+          "deviceType": "iPad"
+        }
+      },
+      {
+        "connectionProperties": {
+          "transportType": "sameMachine",
+          "tunnelState": "disconnected",
+          "pairingState": "paired"
+        },
+        "deviceProperties": {
+          "name": "iPad Air 13-inch (M4)"
+        },
+        "hardwareProperties": {
+          "udid": "6235244B-8685-41EA-A9ED-6D14F0D9503B",
+          "reality": "simulated",
+          "deviceType": "iPad"
+        }
+      },
+      {
+        "connectionProperties": {
+          "transportType": "sameMachine",
+          "tunnelState": "disconnected",
+          "pairingState": "paired"
+        },
+        "deviceProperties": {
+          "name": "iPad Pro 11-inch (M5)"
+        },
+        "hardwareProperties": {
+          "udid": "2090CBF0-06D1-41D7-B292-FE23D60A7092",
+          "reality": "simulated",
+          "deviceType": "iPad"
+        }
+      },
+      {
+        "connectionProperties": {
+          "transportType": "sameMachine",
+          "tunnelState": "disconnected",
+          "pairingState": "paired"
+        },
+        "deviceProperties": {
+          "name": "iPad Pro 13-inch (M5)"
+        },
+        "hardwareProperties": {
+          "udid": "AE80A46F-AB60-4DCD-AC32-03C665632A6B",
+          "reality": "simulated",
+          "deviceType": "iPad"
+        }
+      },
+      {
+        "connectionProperties": {
+          "transportType": "sameMachine",
+          "tunnelState": "disconnected",
+          "pairingState": "paired"
+        },
+        "deviceProperties": {
+          "name": "iPad mini (A17 Pro)"
+        },
+        "hardwareProperties": {
+          "udid": "486BCA0C-EFDA-48B4-8B93-F81A5168FCCF",
+          "reality": "simulated",
+          "deviceType": "iPad"
+        }
+      }
+    ]
+  }
+}
