@@ -168,8 +168,8 @@ groups:
             whole corpus by itself (worker log "read-model derivation pass", ~8 minutes from the
             first sweep 5 minutes after boot); a pass that could not read every row says so and
             runs again next sweep. If none ran and the differing fields are what a recent deploy
-            changed, the fixture corpus did not exercise that change, so
-            ReadModelProjection.DerivationVersion did not move: give it a new value and redeploy.
+            changed, the fixture corpus did not exercise that change, so no new derivation was
+            named: append one to ReadModelDerivation.History (full scope) and redeploy.
             A card the rolling content check has not reached yet is repaired within a day; one
             that stays wrong while its row does not change is a write the projector believes
             landed and the store did not keep (the swallowed-write bug fixed in dfaba5ba8) --

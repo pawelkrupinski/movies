@@ -380,7 +380,7 @@ object WorkerTaskMetrics {
 
     private val readModelProjectCalls = Counter.builder()
       .name("kinowo_worker_readmodel_project_calls")
-      .help("Source rows projected (projectAll invoked) since boot, by country and trigger — the throughput denominator for readmodel_project_duration_seconds. trigger=stream is a change-stream event (any of the three cursors) and the only share ReadModelProjectionTriggerUnaccounted compares against the cursors' events; heal|catch-up|content|derivation|share-card|hold-release|reproject re-project rows no event asked for, by design. derivation is the whole corpus once per worker after a ReadModelProjection.DerivationVersion change (every read-model snapshot regeneration): on 2026-09-26 five such deploys inside an hour held DE/UK/PL at 1-2/s over their events for an hour.")
+      .help("Source rows projected (projectAll invoked) since boot, by country and trigger — the throughput denominator for readmodel_project_duration_seconds. trigger=stream is a change-stream event (any of the three cursors) and the only share ReadModelProjectionTriggerUnaccounted compares against the cursors' events; heal|catch-up|content|derivation|share-card|hold-release|reproject re-project rows no event asked for, by design. derivation is the whole corpus once per worker after a new derivation (ReadModelDerivation.History — a change to what the projection derives, cards-only or full); until 2026-09-26 every read-model snapshot regeneration counted, and five such deploys inside an hour held DE/UK/PL at 1-2/s over their events for an hour.")
       .labelNames("country", "trigger")
       .register(registry)
 

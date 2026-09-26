@@ -46,8 +46,10 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
 
   private def booted(repository: InMemoryMovieRepository, rm: InMemoryReadModelRepository,
                      marker: ReadModelDerivationMarker,
-                     metrics: ReadModelProjectionMetrics = ReadModelProjectionMetrics.noop): ReadModelProjector = {
-    val projector = new ReadModelProjector(repository, rm, rm, metrics, derivationMarker = marker, clock = tools.SpecClock.Pinned)
+                     metrics: ReadModelProjectionMetrics = ReadModelProjectionMetrics.noop,
+                     history: Seq[Derivation] = ReadModelDerivation.History): ReadModelProjector = {
+    val projector = new ReadModelProjector(repository, rm, rm, metrics, derivationMarker = marker, clock = tools.SpecClock.Pinned,
+                                           derivationHistory = history)
     projector.start()   // seeds its memo from the store, as a restart does
     projector
   }
@@ -67,7 +69,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     projector.advanceDerivationPass()
 
     staleCards(rm) shouldBe 0
-    marker.current shouldBe Some(ReadModelProjection.DerivationVersion)
+    marker.current shouldBe Some(ReadModelDerivation.current.value)
     projector.stop()
   }
 
@@ -99,14 +101,14 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     (1 to 48).foreach(_ => projector.advanceDerivationPass())
 
     staleCards(rm) shouldBe 0
-    marker.current shouldBe Some(ReadModelProjection.DerivationVersion)
+    marker.current shouldBe Some(ReadModelDerivation.current.value)
     projector.stop()
   }
 
   "a boot that finds its own derivation recorded" should "leave the corpus to the rolling content check" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = derivedByOldCode(repository)
-    val projector  = booted(repository, rm, new InMemoryReadModelDerivationMarker(Some(ReadModelProjection.DerivationVersion)))
+    val projector  = booted(repository, rm, new InMemoryReadModelDerivationMarker(Some(ReadModelDerivation.current.value)))
 
     projector.pruneOrphans()   // repairs one slice at most
     val writesAfterSweep = rm.movieUpserts.size
@@ -135,7 +137,7 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     projector.pruneOrphans()
     (1 to 48).foreach(_ => projector.advanceDerivationPass())
     staleCards(rm) shouldBe 0
-    marker.current shouldBe Some(ReadModelProjection.DerivationVersion)
+    marker.current shouldBe Some(ReadModelDerivation.current.value)
     projector.stop()
   }
 
@@ -157,7 +159,116 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     projector.pruneOrphans()
     (1 to 48).foreach(_ => projector.advanceDerivationPass())
     staleCards(rm) shouldBe 0
-    marker.current shouldBe Some(ReadModelProjection.DerivationVersion)
+    marker.current shouldBe Some(ReadModelDerivation.current.value)
+    projector.stop()
+  }
+
+  /** Counts the two by-id reads a pass can make; the slots-only one returns the row without its
+   *  showtimes, as `MongoMovieRepository` does when it skips the `screenings` read. */
+  private class ReadCountingMovieRepository extends InMemoryMovieRepository(normalizer = titleNormalizer) {
+    @volatile var wholeReads = 0
+    @volatile var slotsOnlyReads = 0
+    override def findByIdChecked(id: services.movies.FilmId) = { wholeReads += 1; super.findByIdChecked(id) }
+    override def findByIdWithSlotsChecked(id: services.movies.FilmId) = {
+      slotsOnlyReads += 1
+      val (row, read) = super.findByIdChecked(id)
+      (row.map(r => r.copy(record = r.record.copy(data = r.record.data.view.mapValues(_.copy(showtimes = Nil)).toMap))), read)
+    }
+    def resetCounts(): Unit = { wholeReads = 0; slotsOnlyReads = 0 }
+  }
+
+  private def history(scopeOfLatest: DerivationScope) =
+    Seq(Derivation(DerivationVersion("an-older-derivation"), DerivationScope.Full), Derivation(DerivationVersion("this-code"), scopeOfLatest))
+
+  // THE READ THIS SAVES: a derivation that moved only what a card shows (the 2026-09-24 poster
+  // change: 58 rows, poster alone) re-projects the cards off the slots-only read. A whole-row read
+  // also pulls every showtime from `screenings` — 260 of the US corpus's 341 MB — which no card reads.
+  "a pass owed only for card fields" should "read every row slots-only, rewrite the stale cards, and leave the screenings alone" in {
+    val repository = new ReadCountingMovieRepository
+    val rm         = derivedByOldCode(repository)
+    val marker     = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"))
+    val projector  = booted(repository, rm, marker, history = history(DerivationScope.Cards))
+    projector.pruneOrphans()   // arms the pass; its own content slice may repair a row or two
+    val screeningsBefore = rm.findAllScreenings().toSet
+    val screeningWrites  = rm.screeningUpserts.size
+    repository.resetCounts()
+
+    (1 to 48).foreach(_ => projector.advanceDerivationPass())
+
+    repository.slotsOnlyReads shouldBe Films.size
+    repository.wholeReads shouldBe 0
+    staleCards(rm) shouldBe 0
+    rm.findAllScreenings().toSet shouldBe screeningsBefore
+    rm.screeningUpserts.size shouldBe screeningWrites
+    marker.current shouldBe Some("this-code")
+    projector.stop()
+  }
+
+  "a pass owed for more than card fields" should "read every row whole" in {
+    val repository = new ReadCountingMovieRepository
+    val rm         = derivedByOldCode(repository)
+    val projector  = booted(repository, rm, new InMemoryReadModelDerivationMarker(Some("an-older-derivation")),
+                            history = history(DerivationScope.Full))
+    projector.pruneOrphans()
+    repository.resetCounts()
+
+    (1 to 48).foreach(_ => projector.advanceDerivationPass())
+
+    repository.wholeReads shouldBe Films.size
+    repository.slotsOnlyReads shouldBe 0
+    staleCards(rm) shouldBe 0
+    projector.stop()
+  }
+
+  // A pass takes ~8 minutes and starts ~5 after boot; on 2026-09-26 deploys ten minutes apart
+  // restarted one version's pass on every worker three times before one finished.
+  "a pass a previous process got part-way through" should "resume at the slice it had reached, not start over" in {
+    val repository = new ReadCountingMovieRepository
+    val rm         = derivedByOldCode(repository)
+    val marker     = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"),
+                                                           Some(DerivationProgress(DerivationVersion("this-code"), 30)))
+    val projector  = booted(repository, rm, marker, history = history(DerivationScope.Full))
+    projector.pruneOrphans()
+    repository.resetCounts()
+
+    projector.advanceDerivationPass()
+    marker.currentProgress shouldBe Some(DerivationProgress(DerivationVersion("this-code"), 31))
+    (31 until 48).foreach(_ => projector.advanceDerivationPass())
+
+    marker.current shouldBe Some("this-code")
+    val laterRows = repository.findAll().count(row => ReadModelProjector.contentSliceOf(row.id) >= 30)
+    repository.wholeReads shouldBe laterRows
+    projector.stop()
+  }
+
+  it should "start from the first slice when the progress was for another version" in {
+    val repository = new ReadCountingMovieRepository
+    val rm         = derivedByOldCode(repository)
+    val marker     = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"),
+                                                           Some(DerivationProgress(DerivationVersion("an-abandoned-version"), 30)))
+    val projector  = booted(repository, rm, marker, history = history(DerivationScope.Full))
+    projector.pruneOrphans()
+
+    (1 to 18).foreach(_ => projector.advanceDerivationPass())
+    marker.current shouldBe Some("an-older-derivation")
+    marker.currentProgress shouldBe Some(DerivationProgress(DerivationVersion("this-code"), 18))
+    projector.stop()
+  }
+
+  "a pass that could not read a row" should "stop recording progress, so a restart re-reads from the slice that missed it" in {
+    val repository = new UnreadableByIdMovieRepository(titleNormalizer = titleNormalizer)
+    repository.failing = false
+    val rm         = derivedByOldCode(repository)
+    val marker     = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"))
+    val projector  = booted(repository, rm, marker, history = history(DerivationScope.Full))
+    projector.pruneOrphans()
+    val firstSliceWithARow = repository.findAll().map(row => ReadModelProjector.contentSliceOf(row.id)).min
+
+    repository.failing = true
+    (1 to 48).foreach(_ => projector.advanceDerivationPass())
+
+    marker.currentProgress.map(_.nextSlice).getOrElse(0) should be <= firstSliceWithARow
+    marker.current shouldBe Some("an-older-derivation")
     projector.stop()
   }
 }

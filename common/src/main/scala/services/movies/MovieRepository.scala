@@ -166,6 +166,14 @@ trait MovieRepository {
   def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) =
     (findAll().find(_.id == id), true)
 
+  /** [[findByIdChecked]] stitching the cinema slots but NOT the showtimes — the by-id
+   *  counterpart of [[foreachRecordWithSlots]], with the same caveat: `.data` is complete,
+   *  `.showtimes` is empty. For a re-projection of CARDS only (a derivation change that moved
+   *  nothing but card fields): a card never reads a showtime (`ReadModelProjection.metadataHash`),
+   *  and skipping the `screenings` read skips most of a whole-row read's bytes — 260 of the US
+   *  corpus's 341 MB (2026-09-26). Default delegates to the fully stitched read. */
+  def findByIdWithSlotsChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) = findByIdChecked(id)
+
   /** Whether a live document holds `id` — the question minting a fresh id asks of each
    *  candidate. THROWS when the row cannot be read: counting "unknown" as free lets the
    *  write that follows replace the film that holds it. */
@@ -569,8 +577,9 @@ class MongoMovieRepository(
    *  showtimes — and this is precisely the record the change-stream fan-out hands the
    *  read-model projector, whose `diffScreenings` then deletes every `web_screening` the
    *  film has. Declining to produce a record costs one missed re-projection, which the
-   *  film's next write repeats; producing an empty one empties a live film off the site. */
-  private def decodeStitched(dto: StoredMovieDto): Option[StoredMovieRecord] = {
+   *  film's next write repeats; producing an empty one empties a live film off the site.
+   *  `withShowtimes = false` skips the `screenings` read entirely: the slots-only row. */
+  private def decodeStitched(dto: StoredMovieDto, withShowtimes: Boolean = true): Option[StoredMovieRecord] = {
     val (storedSlots, slotsRead) = slots.map(_.findForFilmChecked(dto._id))
       .getOrElse((Map.empty[String, SourceData], true))
     if (!slotsRead) {
@@ -578,7 +587,7 @@ class MongoMovieRepository(
         "without them would present a live film as having no cinemas.")
       None
     } else {
-      val (storedShowtimes, showtimesRead) = screenings.map(_.findForFilmChecked(dto._id))
+      val (storedShowtimes, showtimesRead) = screenings.filter(_ => withShowtimes).map(_.findForFilmChecked(dto._id))
         .getOrElse((Map.empty[String, Seq[Showtime]], true))
       if (!showtimesRead) {
         logger.warn(s"MovieRepository: skipping ${dto._id} — its screenings read failed, and serving the row " +
@@ -747,6 +756,10 @@ class MongoMovieRepository(
   override def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) =
     findOneChecked(Filters.eq("_id", id.value), s"findById($id)")
 
+  /** The indexed `_id` lookup without the `screenings` read — see the trait. */
+  override def findByIdWithSlotsChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) =
+    findOneChecked(Filters.eq("_id", id.value), s"findByIdWithSlots($id)", withShowtimes = false)
+
   /** Indexed lookup by the `key` field — see the trait. */
   override def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) =
     findOneChecked(Filters.eq("key", StoredMovieRecord.keyFor(key)), s"findByKey(${StoredMovieRecord.keyFor(key)})")
@@ -757,12 +770,12 @@ class MongoMovieRepository(
     if (services.readmodel.DecodeFailureMetrics.isDecodeFailure(failure))
       decodeFailures.recordDecodeFailure(services.readmodel.DecodeFailureMetrics.SourceMoviesCollection)
 
-  private def findOneChecked(filter: Bson, what: String): (Option[StoredMovieRecord], Boolean) = coll match {
+  private def findOneChecked(filter: Bson, what: String, withShowtimes: Boolean = true): (Option[StoredMovieRecord], Boolean) = coll match {
     case Some(c) =>
       Try(Option(Await.result(c.find(filter).first().toFuture(), 10.seconds))) match {
         case scala.util.Success(None)      => (None, true)   // genuinely absent
         case scala.util.Success(Some(dto)) =>
-          decodeStitched(dto) match {
+          decodeStitched(dto, withShowtimes) match {
             case some @ Some(_) => (some, true)
             case None           => (None, false)             // slots or screenings unreadable
           }

@@ -22,18 +22,6 @@ import services.movies.{StoredMovieRecord, TitleNormalizer, TrailerEmbed}
  */
 object ReadModelProjection {
 
-  /** Names what this code derives from a row. When it differs from the version the stored read
-   *  model was last re-projected whole under ([[ReadModelDerivationMarker]]), the worker
-   *  re-projects its corpus once (`ReadModelProjector.advanceDerivationPass`) — a derivation
-   *  change moves no row, so nothing else would reach the cards it changed until the rolling
-   *  content check did, up to a day later.
-   *
-   *  It is the fingerprint of the checked-in read-model snapshot (`read-model-snapshot.json`),
-   *  and `ReadModelDerivationVersionSpec` fails with the new value whenever that snapshot is
-   *  regenerated — so updating it is mechanical, never a judgment about whether a change
-   *  "counts". Change it only by copying that spec's value. */
-  val DerivationVersion: String = "2b3aef8d690fea26"
-
   /** The film identity: the source row's permanent [[services.movies.FilmId]], as is.
    *
    *  It used to be re-derived here as `sanitize(title)|resolvedYear`, which made the

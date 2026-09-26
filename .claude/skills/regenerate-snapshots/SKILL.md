@@ -129,12 +129,23 @@ regeneration fails there instead of ten minutes into the e2e shard. A corpus edi
 did not move the snapshot (dropping captures nothing replays) still needs the rewritten
 stamp committed; one passing run of the spec produces it.
 
-A snapshot whose CONTENT moved also moves `ReadModelProjection.DerivationVersion`:
-`ReadModelDerivationVersionSpec` (worker `testUnit`) fails and prints the new value —
-copy it into the constant and commit it with the snapshot. That version is what makes
-every worker re-project its stored corpus once after the deploy (the derivation pass,
-see `ReadModelDerivationMarker`); a derivation change otherwise reaches stored cards
-only as the rolling content check comes round, up to a day later.
+The same spec run keeps the DERIVATION CORPUS current — `read-model-derivation-rows.jsonl`
+(every ready row, through the prod codec) and `read-model-derivation-hashes.tsv` (what they
+projected to, per card part and screenings, under a `# derivation <version> <scope>` header).
+Before rewriting them it projects the OLD checked-in rows under the current code:
+- **Only the rows moved** (a scraper, a fixture — the usual case): both files are rewritten
+  under the same derivation. Commit them; no worker re-projects anything for it.
+- **The same rows now project differently** (what the projection derives changed): the spec
+  names a new derivation — `cards` scope when only card fields moved, `full` when screenings
+  or a row's set of cards did — and prints the line to append to `ReadModelDerivation.History`.
+  `ReadModelDerivationVersionSpec` (worker `testUnit`) fails until it is appended. That entry is
+  what makes every worker re-project its stored corpus once after the deploy (the derivation
+  pass, see `ReadModelDerivationMarker`) — only the cards, off the slots-only read, for `cards`.
+
+NEVER delete the two derivation files to regenerate them: the old rows are the comparison. With
+nothing checked in the spec cannot compare, names a `full` derivation, and every worker
+re-projects its whole corpus for it. `ReadModelDerivationVersionSpec` also catches a projection
+change in seconds without the pipeline: the checked-in rows must project to the recorded hashes.
 
 Then regenerate the `expected-*.html` per the section above if rendering shifted,
 and commit all of them together with the production change. Consumers fall back

@@ -138,8 +138,8 @@ object ReadModelProjectionMetrics {
    *  change-stream cursors' events: every other trigger re-projects rows no event asked for, BY
    *  DESIGN, and each one that was not told apart has fired that rule. The heals did on
    *  2026-09-19; the derivation pass — the whole corpus in eight minutes, once per worker after
-   *  any snapshot regeneration — did on 2026-09-26 for DE, UK and PL after five such deploys
-   *  inside an hour. A new way to call `project` has to name itself here, so it cannot hide in the
+   *  a derivation change, which until then meant any snapshot regeneration — did on 2026-09-26
+   *  for DE, UK and PL after five such deploys inside an hour. A new way to call `project` has to name itself here, so it cannot hide in the
    *  stream's share. */
   enum ProjectTrigger(val label: String) {
     /** A change-stream event: `onMovieUpsert`, from any of the three cursors. */
@@ -150,7 +150,7 @@ object ReadModelProjectionMetrics {
     case CatchUp     extends ProjectTrigger("catch-up")
     /** The rolling content check's slice, once per prune sweep. */
     case Content     extends ProjectTrigger("content")
-    /** The whole-corpus pass a change of `ReadModelProjection.DerivationVersion` owes. */
+    /** The whole-corpus pass a new derivation (`ReadModelDerivation.History`) owes. */
     case Derivation  extends ProjectTrigger("derivation")
     /** A rendered share card landing, re-projected so its card picks it up. */
     case ShareCard   extends ProjectTrigger("share-card")

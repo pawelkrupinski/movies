@@ -13,8 +13,9 @@
 #
 # The hash is over git BLOB ids, so the committed tree (`git ls-tree`, instant) and the working
 # tree (`git hash-object`, a few seconds over ~750 MB) produce the same value for the same bytes.
-# The snapshot's own outputs (read-model-snapshot.json, expected-schedules.txt, expected-*.html
-# and this stamp) are not inputs and are left out.
+# The snapshot's own outputs (read-model-snapshot.json, expected-schedules.txt, expected-*.html,
+# the derivation corpus read-model-derivation-{rows.jsonl,hashes.tsv} and this stamp) are not
+# inputs and are left out.
 #
 # Usage:
 #   scripts/read-model-snapshot-inputs.sh hash  [<rev>]   print the inputs' hash (working tree, or <rev>)
@@ -30,7 +31,7 @@ cd "$(git rev-parse --show-toplevel)"
 Dir=test/resources/fixtures/08-06-2026
 Stamp=$Dir/read-model-snapshot.inputs.sha256
 Tab=$'\t'
-Outputs="^$Dir/(read-model-snapshot\\.json|read-model-snapshot\\.inputs\\.sha256|expected-schedules\\.txt|expected-[^/]*\\.html)(${Tab}|\$)"
+Outputs="^$Dir/(read-model-snapshot\\.json|read-model-snapshot\\.inputs\\.sha256|read-model-derivation-(rows\\.jsonl|hashes\\.tsv)|expected-schedules\\.txt|expected-[^/]*\\.html)(${Tab}|\$)"
 
 sha256() { if command -v sha256sum >/dev/null; then sha256sum | cut -d' ' -f1; else shasum -a 256 | cut -d' ' -f1; fi; }
 

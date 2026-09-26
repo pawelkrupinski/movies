@@ -7,7 +7,7 @@ import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.DomainEvent
-import tools.{FixpointPass, FixtureTestWiring, ReadModelSnapshot}
+import tools.{FixpointPass, FixtureTestWiring, ReadModelDerivationCorpus, ReadModelSnapshot}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
@@ -392,6 +392,29 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     // nothing replays, dropped) needs only this rewrite committed; CI's tree-unchanged check
     // after the e2e run fails until it is.
     stampSnapshotInputs()
+  }
+
+  // THE DERIVATION CORPUS (see tools.ReadModelDerivationCorpus): the pipeline's rows as a worker
+  // stores them, and what they projected to. Regenerated here, where the rows are made — and
+  // BEFORE the new files replace the old, the old rows are projected under this code: the same
+  // rows projecting differently is the one thing that names a new derivation and owes every worker
+  // a pass. Rows that merely moved (a scraper, a fixture) are rewritten with the derivation kept.
+  it should "match the checked-in derivation corpus, naming a new derivation only when the projection moved" in {
+    val regeneration = ReadModelDerivationCorpus.regenerate(
+      wiring.movieRepository.findAll(), wiring.titleNormalizer, ReadModelDerivationCorpus.readCheckedIn())
+    if (!ReadModelDerivationCorpus.readCheckedIn().contains(regeneration.rowsText -> regeneration.hashesText)) {
+      ReadModelDerivationCorpus.write(regeneration)
+      if (regeneration.bumped)
+        fail((if (regeneration.moved.isEmpty) "No derivation corpus was checked in to compare against" else
+            s"The projection of ${regeneration.moved.size} unchanged row(s) moved " +
+            s"(${regeneration.moved.take(5).map(m => s"${m.title}: ${m.parts.mkString(", ")}").mkString("; ")})") +
+          s" — a new derivation, ${regeneration.derivation.scope} scope. Rewrote the derivation corpus; append to " +
+          s"ReadModelDerivation.History:\n  ${ReadModelDerivationCorpus.historyEntry(regeneration.derivation)}\n" +
+          "then commit both files with it and re-run.")
+      else
+        fail(s"The pipeline's rows moved, what they project to did not: rewrote ${ReadModelDerivationCorpus.RowsPath} " +
+          "and its hashes under the same derivation. Commit them and re-run.")
+    }
   }
 
   /** The input stamp beside the snapshot — see scripts/read-model-snapshot-inputs.sh, which

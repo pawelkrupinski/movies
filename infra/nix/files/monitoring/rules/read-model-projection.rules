@@ -76,8 +76,8 @@ groups:
       # derivation pass, share cards landing, first-publish holds ending, and the backfill. Each one
       # counted in the stream's share was a known trigger the rule read as an unknown one. The
       # heals fired it on 2026-09-19 (six PL rollouts, ~260 boot re-projections each) and were
-      # subtracted; the DERIVATION PASS -- the whole corpus in ~8 minutes, once per worker after any
-      # read-model snapshot regeneration -- fired it on 2026-09-26 for DE, UK and PL after five such
+      # subtracted; the DERIVATION PASS -- the whole corpus in ~8 minutes, once per worker after a
+      # derivation change, then any snapshot regeneration -- fired it on 2026-09-26 for DE, UK and PL after five such
       # deploys inside an hour (00:04-00:55Z). So the rule no longer subtracts triggers one at a time: it compares
       # the stream's own share, and a caller of `project` cannot compile without naming its trigger
       # (`ReadModelProjectionMetrics.ProjectTrigger`). A FOURTH cursor still lands in `stream` and
