@@ -7,7 +7,7 @@ import services.identity.IdentityMeasures.{Category, Measure, Missing, Number}
 /**
  * The identity resolver's calibrated evidence model, as DATA: `identity-weights.json`, produced
  * by `scripts.IdentityCalibrate` from corroborated films (docs/design/identity-resolver.md
- * §calibration). Nothing in the artefact is written by hand; this class only evaluates it.
+ * §14). Nothing in the artefact is written by hand; this class only evaluates it.
  *
  * Per scope ("listing-film": a listing against a TMDB candidate; "listing-listing": two listings)
  * the artefact holds:

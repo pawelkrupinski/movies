@@ -18,7 +18,7 @@ import scala.util.hashing.MurmurHash3
  * Derives the identity resolver's weights, calibration, thresholds and cannot-link rules from
  * EVIDENCE, and writes them as data (`common/src/main/resources/identity-weights.json`) beside the
  * labelled set they were fitted on (`test/resources/fixtures/identity/identity-labels.json.gz`).
- * Run through `scripts/identity-calibrate.sh`; docs/design/identity-resolver.md §calibration
+ * Run through `scripts/identity-calibrate.sh`; docs/design/identity-resolver.md §14
  * reports what it measured.
  *
  * LABELS. Production's tmdbId for a listing is a PROPOSAL, not a label: some are wrong. It becomes
@@ -992,7 +992,7 @@ object IdentityCalibrate {
         .map { case (_, p, y) => Json.arr(p.a, p.b, y) }
       val doc = Json.obj(
         "version" -> version,
-        "split" -> Json.obj("unit" -> "family: listings joined by title key or by production film (docs/design/identity-resolver.md §calibration)",
+        "split" -> Json.obj("unit" -> "family: listings joined by title key or by production film (docs/design/identity-resolver.md §14)",
           "rule" -> "murmur3 stringHash of the family's smallest ListingKey, floorMod 10: 0-4 train, 5-6 calibration, 7-9 test",
           "benchmark" -> "use ONLY split == test"),
         "labels" -> "status corroborated: tmdbId is the film (>= 2 independent corroborators, no denial); contradicted: production's tmdbId is likely WRONG, never a positive; negatives: other films the listing's own title search returned",

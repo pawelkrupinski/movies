@@ -14,7 +14,7 @@ import services.resolution.SearchTitles
  * This object only MEASURES. It never says what a measurement is worth: the bins, the weight of
  * each bin, the calibration and the cannot-link rules are data in `identity-weights.json`
  * ([[IdentityCalibration]]), fitted from corroborated films by `scripts.IdentityCalibrate`
- * (docs/design/identity-resolver.md §calibration). Both the calibration and the resolver call
+ * (docs/design/identity-resolver.md §14). Both the calibration and the resolver call
  * these functions, so the fitted weights and the scored values are one definition.
  *
  * Missing evidence is a value of its own, and says WHICH side is missing ("missing:listing",

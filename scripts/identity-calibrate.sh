@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Regenerates the identity resolver's calibrated evidence model from data
-# (docs/design/identity-resolver.md §calibration):
+# (docs/design/identity-resolver.md §14):
 #
 #   common/src/main/resources/identity-weights.json          weights, calibration map, thresholds, cannot-link rules
 #   test/resources/fixtures/identity/identity-labels.json.gz  the labelled set, with its train/calibration/test split

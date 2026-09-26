@@ -7,7 +7,7 @@ import services.identity.IdentityMeasures.{Category, Film, Listing, ListingFilm,
 
 /**
  * `identity-weights.json` is DATA fitted by `scripts.IdentityCalibrate`
- * (docs/design/identity-resolver.md §calibration). These checks pin that it loads, that it is
+ * (docs/design/identity-resolver.md §14). These checks pin that it loads, that it is
  * internally sound, and that it puts the HISTORICAL cases on the right side. The cases are test
  * labels only — the calibration never reads them — each written from its incident as the venues and
  * TMDB published it.
