@@ -1905,8 +1905,9 @@ class CinemaScraperCatalog(
   // tail on every successful scrape (see ScrapeHorizon — it cost the UK its whole
   // event programme once already). All three chains here were measured against
   // flicks.us on the same venues on 2026-08-30 and each reached the same furthest
-  // date or better, with equal or more populated days — as was Regal, wired
-  // alongside them below. The other four US mid-tier chains are NOT here, and
+  // date or better, with equal or more populated days. Regal and AMC were measured
+  // too, but their own sites answer only US IPs, so both stay on flicks.us
+  // (see `RegalClient` / `AmcClient`, unwired). The other four US mid-tier chains are NOT here, and
   // neither is Cinemark (38-193 days SHORTER than flicks on all 20 venues
   // measured) — `UsChainVenues` names each one and why.
   //
@@ -1921,12 +1922,10 @@ class CinemaScraperCatalog(
 
   /** The chain-primary scraper for a US venue, or `None` when it stays on Flicks.
    *
-   *  The mid-tier chains key off the venue's DISPLAY NAME (their own rosters name
-   *  venues, not slugs); Regal keys off the flicks.us SLUG, because its map was
-   *  built by joining Regal's roster to ours through that slug. Both are exact
-   *  lookups — a venue absent from every map falls through to Flicks, which is the
-   *  correct answer for the ~20 chain locations whose operator no longer lists
-   *  them. */
+   *  The chains key off the venue's DISPLAY NAME (their own rosters name venues,
+   *  not slugs), an exact lookup — a venue absent from every map falls through to
+   *  Flicks, which is the correct answer for the chain locations whose operator no
+   *  longer lists them. */
   private def usChainScraper(cinema: Cinema): Option[CinemaScraper] = {
     val name = cinema.displayName
     UsChainVenues.alamoDrafthouse.get(name).map(alamo(_, cinema))

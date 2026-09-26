@@ -206,7 +206,7 @@ trait ScrapeWiring { self: WorkerWiring =>
   private def fallbackFor(cinema: Cinema, eligible: Boolean): Option[FallbackPlan] = {
     val sixHours = FallbackAfter.FailingFor(SourceFallbackScraper.DefaultFallbackAfter)
     flicksFallbackSlugs.get(cinema).map { case ChainFlicksFallback.FlicksFallback(market, slug) =>
-      // The market comes from the map, not a constant: a Regal venue's fallback
+      // The market comes from the map, not a constant: a US chain venue's fallback
       // lives on flicks.us, and looking it up on flicks.co.uk would just 404.
       FallbackPlan("Flicks", () => Some(slug), () => Some(new FlicksClient(flicksFetch, slug, cinema, market)), sixHours)
     }.orElse(kinoprogrammFallbackPaths.get(cinema).map { path =>

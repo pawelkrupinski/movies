@@ -10,8 +10,8 @@ import java.time.{LocalDate, ZoneId}
  * Cineworld — the UK's second-largest chain (87 sites). Cineworld relaunched
  * its entire website 2026-09-17, retiring the `quickbook` data API this class
  * used to speak (chain code 10108, the same Regal-built API family Cinema City
- * Poland and Regal US still run — see [[services.cinemas.us.RegalClient]] —
- * both unaffected; only Cineworld UK's own deployment moved). The whole
+ * Poland and Regal US still run — the unwired [[services.cinemas.us.RegalClient]]
+ * speaks the latter — both unaffected; only Cineworld UK's own deployment moved). The whole
  * `/uk/` path prefix now 404s.
  *
  * The new site turns out to run the IDENTICAL Webedia "box office" Gatsby
