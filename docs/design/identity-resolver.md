@@ -838,3 +838,550 @@ Chrome: it pins the ticked listing, removes the pin, and shows a refusal.
 - The resolver must read pins through `ListingConstraints.pinned` (§13.1): add `blockKeys` to the
   family keys, solve `mustLinks` as tier 0, apply `admits` to its derived edges, and resolve each
   listing through `resolvedFilm`.
+
+---
+
+## 14. Calibration
+
+Status: 2026-09-26, branch `identity-calibration`. Every weight, bin edge, probability map,
+threshold and cannot-link rule the resolver scores with is DATA, fitted from existing films by a
+reproducible script. Nothing in it is hand-tuned; §14.7 lists the constants that remain.
+
+### 14.1 What ships
+
+| artefact | what |
+|---|---|
+| `common/src/main/resources/identity-weights.json` | per scope (`listing-film`, `listing-listing`): a prior and one log-likelihood-ratio weight per signal value (numeric signals in data-derived bins), an isotonic calibration map, the show-ratings and cannot-link thresholds with their held-out errors; plus the learned cannot-link rules with their measured false-veto rates; plus provenance |
+| `test/resources/fixtures/identity/identity-labels.json.gz` | the labelled set (142,503 listings: corroborated or contradicted, with split and family) and the held-out listing pairs; the resolver's benchmark reads only `split == "test"` |
+| `services.identity.IdentityMeasures` | the measurements (pure, primitives in): title relation, original-title relation, signed year delta, director relation, runtime delta, country, search rank, popularity, rivals, corroborating venues; listing-listing adds venue and chain id. Both the calibration and the resolver call it, so the fitted weights and the scored values are one definition |
+| `services.identity.IdentityCalibration` | loads the artefact and evaluates it: `logOdds`, `probability`, `explain`, `showsRatings`, `forbidsLink`, `cannotLink` (a generic evaluator of the rules as data) |
+| `scripts/identity-calibrate.sh` → `worker/Test/runMain scripts.IdentityCalibrate` | regenerates all of the above, the report below, and the healing lists |
+| `IdentityCalibrationSpec` | the artefact loads, is internally sound, and puts the historical cases on the right side |
+
+Regenerate (≈ 7–20 min, 12 GB heap):
+
+```
+CORPORA=<dir of cinema-scrapes-<cc>.json.gz> FIXTURES=<dir of enrichment-<cc>/> PROD=<snapshot dir> \
+  scripts/identity-calibrate.sh [--extract-prod]
+```
+
+`--extract-prod` first re-reads production (read-only `find()` over `movies` and `movie_slots` of
+every country database, `scripts/identity-calibrate/extract-prod.js`, through the local prod tunnel).
+The numbers below used recorder run 36153174348 (five full corpora and their enrichment trees),
+the hard-cluster corpora and responses, and a production snapshot of 2026-09-26.
+
+### 14.2 Labels: production is a proposal, never ground truth
+
+A listing's production tmdbId becomes a **positive** only when the listing's own evidence
+corroborates it on at least k = 2 of:
+
+- the venue's year within ±1 of TMDB's;
+- a director TMDB credits (same person, name order ignored);
+- the venue's original title naming the film;
+- two or more OTHER venues listing the same title whose own year or director back the film and
+  deny it on nothing (same title only: a production film that already merged two remakes would
+  otherwise vouch for its own mistake);
+
+and nothing denies it (a year off by 2+, a director nobody in the credits, an original title
+sharing no word, or a runtime whose own likelihood ratio says "different film" at 19:1 or more).
+Two or more denials mark the filing **contradicted**: listed for healing, never used. Everything
+else is unlabelled and unused. **Negatives** are the other films the listing's own title search
+returned (hard negatives: remakes, namesakes, sequels), plus films the recorded answers know under
+one of the listing's title shapes, for listings whose positive is corroborated.
+
+The IMDb cross-link is **not** a corroborator: production's imdbId equals TMDB's own external id
+for 99.9% of films (5,973 of 5,978 checked), so it is derived, not independent. The 5 that differ
+are in the cross-check list.
+
+**No circularity.** A signal's table is fitted on labels that do not use that signal (leave one
+corroborator out): the year table is fitted on films corroborated by director, original title and
+venues only. That is naive Bayes' own assumption (signals independent given the film). A
+cannot-link rule's false-veto rate is measured on labels that use none of its signals, with one
+remaining corroborator enough (weaker labels can only overstate false vetoes). Historical cases
+are test labels only; the script never reads them.
+
+**Units.** A wide release lists one film thousands of times with the same evidence. Counts, bin
+tests, calibration, false-veto bounds and the wrong rate all count distinct **units** (family and
+candidate film), not listings.
+
+**Splits.** A family (listings joined by title key or by production film) goes wholly to one
+split by `murmur3(smallest ListingKey) mod 10`: 0–4 train (weights, bins, rules), 5–6 calibration
+(isotonic map, thresholds), 7–9 held out (every number reported).
+
+### 14.3 Model
+
+Naive Bayes: `logOdds = prior + Σ LLR(signal value)`, with Jeffreys smoothing. A numeric signal's
+bins start at every observed integer and merge adjacent bins while a G-test (5%) cannot tell their
+ratios apart. Missing evidence is its own value per side (`missing:listing`, `missing:film`); four
+missing values are forced to 0 because they mark how the recorded data was SAMPLED, not the film
+(credits, runtime and country of candidates whose details were never fetched; a positive absent
+from the title search), and the artefact says so beside each. The summed log-odds go through an
+isotonic map fitted on the calibration split.
+
+### 14.4 Thresholds, from data
+
+- **Today's wrong rate**: 60 contradicted of 6,217 decisive production filings per unit =
+  **0.97%** (1,471 of 142,503 listings; the opera relays dominate by listing count).
+- **Show ratings**: p ≥ **0.3575**, the lowest cut whose wrong share on the calibration split has
+  a one-sided 95% upper bound within today's 0.97%. Held out: 49 wrong of 4,361 shown units
+  (1.12%, within noise of the target), recall 99.9%, 1 of 18 contradicted production filings still
+  shown; per decision (the top candidate per family and film) 1 wrong of 4,313. Stricter cuts are
+  tabulated below (p ≥ 0.9: 4 wrong of 4,276 shown, 0.09%).
+- **Cannot-link by score** (certified: below every same-film unit of the calibration split):
+  listing-film p < 0.0848 (held out 0 false vetoes, 95.5% of different-film units vetoed);
+  listing-listing p < 0.0184 (held out 0.05%, 62.7% vetoed).
+- **Cannot-link rules**: a conjunction of one or two signal conditions becomes a cannot-link only
+  if it fired on **no** same-film unit of the fitting splits and fires significantly more on
+  different films. Every shape searched is a hypothesis, so each is bounded at a
+  Bonferroni-corrected confidence; the resulting certified bound (≈ 0.19–0.22%) is the tightest
+  the ~4,300 independent same-film units can prove. Everything that does not pass stays an
+  ordinary negative weight. 12 listing-film and 14 listing-listing rules pass; held-out false
+  vetoes 0–0.17% each.
+
+### 14.5 Today's vetoes, re-measured
+
+| veto | false vetoes (same film) | true vetoes | verdict |
+|---|---|---|---|
+| VenueDeniesFilm / DeniedCandidate (year > 5 AND director apart) | 4 of 6,159 units (all DE) | 6.1% | not certified; within today's wrong rate → a negative weight, or the learned `director in {different} AND year.distance >= 32` |
+| ListingDeniesFilm / DecorationVeto (director apart AND runtime > 2 or year > 5) | **44 of 6,159 (0.71%)**, PL 5/725, DE 19/1,629 | 7.5% | the loosest of today's vetoes: blocks true matches at 0.7%; the runtime > 2 arm is what over-fires (venues print runtimes with trailers or cuts). Replace with its certified cousins (`director different AND runtime >= 41`-class rules, or leave to the score) |
+| OriginalTitleNamesAnotherFilm | 1 of 4,396 | 13.1% | nearly certified; the learned `originalTitle disjoint AND year.distance >= 2` covers it |
+| Faust fold refusal (containment + venue denial) | 0 of 6,159 | 2.7% | **certified** |
+| CinemasDescribeDifferentFilms | 1 of 4,187 | 47.5% | nearly certified |
+| VenueCreditsApart | 2 of 5,849 | 16.6% | not certified alone; `director in {different} AND venue in {same}` and `runtime.delta >= 1 AND venue in {same}` are |
+| Bare-listing home (must-link) | 459,916 of 460,191 exact-title pairs with a bare side are one film (99.94%) | – | supported as a strong positive, not a must-link: 0.06% are different films |
+
+Conditions none of today's vetoes cover, all certified: a title sharing no word with the film
+beside a year off by 2+ (`title in {none,overlap} AND year.distance >= 3`: 33% of different-film
+units; today's vetoes catch about 11% of those pairs); a year 49+ years off on its own; two listings with
+different chain film ids and differing runtimes or titles; two listings at the SAME venue whose
+runtime or year differs at all (`runtime.delta >= 1 AND venue in {same}`: 26% held out, 0 false).
+
+### 14.6 What the data says is useless or misleading
+
+- **IMDb cross-link**: not independent (§14.2); dropped.
+- **Pooled and search signals** (`venues.corroborating`, `rivals`, `search.rank`, `popularity`)
+  are label-selection sensitive: with a stricter bar (k = 3) several of their bins change sign,
+  within a single country too, while the evidence signals do not (title, director, original title
+  and country keep every sign; see the sensitivity table). Their weights are real on the k = 2
+  labels but should not be trusted beyond them; the resolver should cap their influence or refit
+  them on its own shadow decisions.
+- **Director "different"** is weaker than today's rules assume across a listing and a film
+  (LLR −3.4: venues print the writer), but strong between two listings (−5.2).
+- **Runtime** is the single strongest listing-film signal (Δ ≤ 1 min: +5.7) and **year agreement**
+  (±1: +3.1), then **same director** (+5.3); an **exact title** is worth only +1.3, because the hard
+  negatives share it.
+- **Sensitivity** (k = 3 against k = 2): listing-film correlation 0.80 (41 of 51 weights keep their
+  sign), listing-listing 0.93. The movement is concentrated in the pooled/search signals and in
+  sparse year/runtime bins; the k = 3 set is 51% DE/ES (against 20% at k = 2), so part of it is composition. The evidence
+  signals are stable, the pooled ones are not: labels are sound for the former and
+  selection-biased for the latter.
+
+### 14.7 Remaining constants, with a general replacement each
+
+| constant | where | why it is there | general replacement |
+|---|---|---|---|
+| corroboration bar k = 2, year ±1 | label definition | the user-specified bar; k = 3 reported as sensitivity | iterate: relabel with the fitted model's own posterior (EM / Fellegi–Sunter) |
+| runtime denial at LR ≤ 1:19 | label definition | the 95% convention as a likelihood ratio | same as above |
+| G-test 5%, Wilson 95%, Bonferroni 5% | bins, bounds, rules | statistical conventions, not domain constants | none needed |
+| Jeffreys α = 0.5 | smoothing | standard non-informative prior | none needed |
+| name words ≥ 3 letters (shared name), original-title words ≥ 4 | `IdentityMeasures` | what counts as a shared word | learn a word-weight table (IDF over the corpus) |
+| delimiter set of banner segments | `SearchTitles.candidates` | reused, not new | learn segments from co-occurring spellings |
+| ≤ 20 listing pairs per member in blocks over 41 | pair sampling | cost | none needed: sampling does not bias a unit-counted estimate |
+| 4 neutral missing values | fitting | sampling artefacts of the recorded trees | fetch every candidate's details in the recording pass (§9), then fit them |
+
+### 14.8 Findings for healing (production, read-only)
+
+- `contradicted-prod-resolutions.tsv` (scratchpad): 1,471 listings on 59 films production files on a
+  film their own evidence denies. The largest: the Met's and a German MET relay of *Macbeth* on
+  NT Live's / a 2025 *Macbeth*, the RBO's *Carmen* on Millepied's 2023 film, *Candyman (1992)* and
+  *(2021)* on each other, *Psycho (1998)*, *Halloween (2018/2007)*, *Ghostbusters (2016)* on the
+  originals, *Avengers: Koniec gry* on Falk's 1992 *Koniec gry*, *Zärtlich kreist die Faust* on
+  Murnau's *Faust*, *Sense and Sensibility (1995)* on the 2026 film.
+- `prod-cross-check-mismatches.tsv`: 5 imdbIds that are not TMDB's and 54 rating pages whose slug
+  year disagrees with the film (e.g. *Bogaci i martwi* 2026 → Metacritic `sacrifice-2021`).
+- Not caught by the contradiction rule but visible in the held-out errors: production files
+  *Lalka (ale to horror)* (2025, 82 min) under *Lalka* (2026, 162 min).
+
+### 14.9 The generated report
+
+The script writes this section's numbers to `calibration-report.md` (plus `.json` with the
+reliability data and `held-out-errors.tsv`); the copy below is the run the artefact came from.
+
+#### Label counts
+
+| country | listings | filed on a production tmdbId | with TMDB details | corroborated (k=2) | corroborated (k=3) | contradicted | unlabelled |
+|---|---|---|---|---|---|---|---|
+| pl | 11811 | 11056 | 10862 | 6382 | 2605 | 9 | 5420 |
+| uk | 33456 | 28488 | 28064 | 18436 | 5272 | 13 | 15007 |
+| de | 23540 | 23077 | 22755 | 22390 | 21890 | 175 | 975 |
+| us | 105126 | 97226 | 96954 | 88719 | 17866 | 273 | 16134 |
+| es | 5312 | 5229 | 5186 | 5123 | 4889 | 2 | 187 |
+| all | 179245 | 165076 | 163821 | 141032 | 52520 | 1471 | 36742 |
+
+Today's measured wrong rate: 60 contradicted of 6217 decisive production filings, counted per family and film = 0.97% (per listing: 1471 of 142503).
+
+#### Listing ↔ film signal tables
+
+**title** (fitted on 4216 same / 3235 different pairs, labels without `-`)
+
+| value | same | different | log-LR |
+|---|---|---|---|
+| original | 306 | 10 | +3.11 |
+| alternative | 420 | 33 | +2.27 |
+| exact | 3100 | 630 | +1.33 |
+| segment | 329 | 264 | -0.04 |
+| overlap | 37 | 932 | -3.48 |
+| none | 5 | 248 | -4.08 |
+| contains | 19 | 1118 | -4.31 |
+
+**originalTitle** (fitted on 5352 same / 4488 different pairs, labels without `originalTitle`)
+
+| value | same | different | log-LR |
+|---|---|---|---|
+| match | 3082 | 551 | +1.54 |
+| disjoint | 32 | 607 | -3.10 |
+| overlap | 62 | 1634 | -3.44 |
+| missing:listing | 2176 | 1696 | +0.07 |
+
+**year.delta** (fitted on 4860 same / 4306 different pairs, labels without `year`)
+
+| value | same | different | log-LR |
+|---|---|---|---|
+| ≤ -8 | 0 | 866 | -7.58 |
+| -8 … -3 | 2 | 141 | -4.16 |
+| -3 … -2 | 19 | 35 | -0.72 |
+| -2 … -1 | 294 | 58 | +1.50 |
+| -1 … 1 | 3073 | 128 | +3.05 |
+| 1 … 2 | 19 | 51 | -1.09 |
+| 2 … 8 | 2 | 319 | -4.97 |
+| ≥ 8 | 0 | 1114 | -7.83 |
+| missing:film | 3 | 154 | -3.91 |
+| missing:listing | 1448 | 1440 | -0.12 |
+
+**director** (fitted on 3283 same / 2994 different pairs, labels without `director`)
+
+| value | same | different | log-LR |
+|---|---|---|---|
+| same_person | 3079 | 14 | +5.27 |
+| shared_name | 63 | 2 | +3.14 |
+| incomparable | 1 | 2 | -0.60 |
+| different | 7 | 204 | -3.40 |
+| missing:film | 18 | 2429 | +0.00 (neutral) |
+| missing:listing | 115 | 343 | -1.18 |
+
+**runtime.delta** (fitted on 5045 same / 3398 different pairs, labels without `runtime`)
+
+| value | same | different | log-LR |
+|---|---|---|---|
+| ≤ 1 | 2863 | 6 | +5.69 |
+| 1 … 2 | 906 | 15 | +3.67 |
+| 2 … 7 | 747 | 62 | +2.09 |
+| 7 … 12 | 125 | 37 | +0.81 |
+| 12 … 36 | 98 | 145 | -0.78 |
+| 36 … 37 | 0 | 10 | -3.44 |
+| 37 … 51 | 18 | 32 | -0.96 |
+| 51 … 56 | 0 | 16 | -3.89 |
+| 56 … 64 | 6 | 14 | -1.20 |
+| 64 … 75 | 0 | 8 | -3.23 |
+| 75 … 78 | 1 | 0 | +0.70 |
+| ≥ 78 | 0 | 33 | -4.60 |
+| missing:film | 40 | 2433 | +0.00 (neutral) |
+| missing:listing | 241 | 587 | -1.28 |
+
+**country** (fitted on 5737 same / 4465 different pairs, labels without `-`)
+
+| value | same | different | log-LR |
+|---|---|---|---|
+| match | 3047 | 156 | +2.72 |
+| mismatch | 20 | 76 | -1.57 |
+| missing:film | 10 | 2391 | +0.00 (neutral) |
+| missing:listing | 2604 | 1808 | +0.11 |
+| missing:unmapped | 56 | 34 | +0.24 |
+
+**search.rank** (fitted on 3240 same / 2730 different pairs, labels without `-`)
+
+| value | same | different | log-LR |
+|---|---|---|---|
+| ≤ 2 | 327 | 66 | +1.42 |
+| 2 … 3 | 28 | 194 | -2.09 |
+| 3 … 9 | 14 | 938 | -4.34 |
+| ≥ 9 | 4 | 1410 | -5.92 |
+| missing:not-returned | 2867 | 122 | +0.00 (neutral) |
+
+**popularity.log2** (fitted on 3115 same / 2720 different pairs, labels without `-`)
+
+| value | same | different | log-LR |
+|---|---|---|---|
+| ≤ -3 | 7 | 2 | +0.96 |
+| -3 … -2 | 9 | 130 | -2.76 |
+| -2 … -1 | 108 | 653 | -1.93 |
+| -1 … 1 | 471 | 941 | -0.83 |
+| 1 … 2 | 666 | 486 | +0.18 |
+| 2 … 4 | 1310 | 332 | +1.24 |
+| 4 … 7 | 517 | 175 | +0.95 |
+| ≥ 7 | 27 | 1 | +2.77 |
+
+**rivals** (fitted on 3229 same / 3405 different pairs, labels without `-`)
+
+| value | same | different | log-LR |
+|---|---|---|---|
+| ≤ 1 | 2992 | 531 | +1.78 |
+| 1 … 3 | 157 | 1297 | -2.06 |
+| ≥ 3 | 80 | 1577 | -2.92 |
+
+**venues.corroborating** (fitted on 3904 same / 2811 different pairs, labels without `venues`)
+
+| value | same | different | log-LR |
+|---|---|---|---|
+| ≤ 1 | 919 | 2587 | -1.36 |
+| 1 … 2 | 857 | 170 | +1.29 |
+| 2 … 3 | 1072 | 14 | +3.98 |
+| 3 … 16 | 743 | 20 | +3.26 |
+| 16 … 24 | 69 | 8 | +1.77 |
+| 24 … 34 | 30 | 0 | +3.78 |
+| 34 … 35 | 2 | 2 | -0.33 |
+| 35 … 46 | 47 | 0 | +4.23 |
+| 46 … 48 | 1 | 2 | -0.84 |
+| 48 … 186 | 76 | 1 | +3.60 |
+| 186 … 212 | 12 | 3 | +0.95 |
+| 212 … 618 | 51 | 0 | +4.31 |
+| 618 … 631 | 1 | 1 | -0.33 |
+| 631 … 1222 | 14 | 0 | +3.04 |
+| 1222 … 1406 | 1 | 3 | -1.17 |
+| ≥ 1406 | 9 | 0 | +2.62 |
+
+#### Listing ↔ listing signal tables
+
+**title** (fitted on 3601 same / 249 different pairs, labels without `-`)
+
+| value | same | different | log-LR |
+|---|---|---|---|
+| exact | 2809 | 31 | +1.83 |
+| segment | 748 | 36 | +0.36 |
+| none | 4 | 1 | -1.56 |
+| contains | 26 | 16 | -2.19 |
+| overlap | 14 | 165 | -5.10 |
+
+**originalTitle** (fitted on 5158 same / 188 different pairs, labels without `originalTitle`)
+
+| value | same | different | log-LR |
+|---|---|---|---|
+| match | 2548 | 22 | +1.43 |
+| disjoint | 251 | 25 | -1.01 |
+| overlap | 63 | 44 | -2.94 |
+| missing:film | 158 | 13 | -0.84 |
+| missing:listing | 2138 | 84 | -0.07 |
+
+**year.delta** (fitted on 4486 same / 251 different pairs, labels without `year`)
+
+| value | same | different | log-LR |
+|---|---|---|---|
+| ≤ 1 | 2627 | 14 | +2.33 |
+| 1 … 2 | 292 | 9 | +0.56 |
+| 2 … 3 | 16 | 5 | -1.77 |
+| 3 … 9 | 3 | 25 | -4.86 |
+| ≥ 9 | 0 | 61 | -7.68 |
+| missing:film | 110 | 36 | -1.76 |
+| missing:listing | 1438 | 101 | -0.22 |
+
+**director** (fitted on 2998 same / 211 different pairs, labels without `director`)
+
+| value | same | different | log-LR |
+|---|---|---|---|
+| same_person | 2759 | 12 | +2.76 |
+| shared_name | 63 | 0 | +2.20 |
+| incomparable | 19 | 0 | +1.02 |
+| different | 7 | 94 | -5.17 |
+| missing:film | 44 | 33 | +0.00 (neutral) |
+| missing:listing | 106 | 72 | -2.26 |
+
+**runtime.delta** (fitted on 4759 same / 337 different pairs, labels without `runtime`)
+
+| value | same | different | log-LR |
+|---|---|---|---|
+| ≤ 1 | 2590 | 8 | +3.09 |
+| 1 … 2 | 810 | 10 | +1.72 |
+| 2 … 7 | 778 | 49 | +0.13 |
+| 7 … 12 | 124 | 35 | -1.37 |
+| 12 … 19 | 59 | 54 | -2.54 |
+| 19 … 21 | 25 | 3 | -0.64 |
+| 21 … 25 | 17 | 17 | -2.63 |
+| 25 … 29 | 1 | 20 | -5.24 |
+| 29 … 52 | 32 | 46 | -2.99 |
+| 52 … 56 | 0 | 18 | -6.24 |
+| 56 … 66 | 8 | 11 | -2.93 |
+| ≥ 66 | 1 | 35 | -5.79 |
+| missing:film | 121 | 12 | +0.00 (neutral) |
+| missing:listing | 193 | 19 | -0.33 |
+
+**venue** (fitted on 2929 same / 285 different pairs, labels without `-`)
+
+| value | same | different | log-LR |
+|---|---|---|---|
+| different | 2925 | 198 | +0.36 |
+| same | 4 | 87 | -5.29 |
+
+**chainId** (fitted on 4037 same / 260 different pairs, labels without `-`)
+
+| value | same | different | log-LR |
+|---|---|---|---|
+| same | 1116 | 0 | +4.97 |
+| different | 2 | 62 | -5.96 |
+| missing:no-shared-namespace | 2919 | 198 | -0.05 |
+
+#### Calibration, listing ↔ film (held-out split: 7608 units, 4492 same)
+
+AUC 0.9999, Brier 0.0041, log-loss 0.0206.
+
+| predicted bin | units | mean predicted | observed same |
+|---|---|---|---|
+| 0.0–0.1 | 3021 | 0.018 | 0.000 |
+| 0.1–0.2 | 18 | 0.148 | 0.056 |
+| 0.2–0.3 | 21 | 0.245 | 0.143 |
+| 0.3–0.4 | 14 | 0.337 | 0.000 |
+| 0.4–0.5 | 4 | 0.450 | 0.250 |
+| 0.5–0.6 | 34 | 0.531 | 0.147 |
+| 0.6–0.7 | 9 | 0.664 | 0.556 |
+| 0.7–0.8 | 6 | 0.752 | 0.833 |
+| 0.8–0.9 | 30 | 0.870 | 0.800 |
+| 0.9–1.0 | 4451 | 0.996 | 0.999 |
+
+| threshold | precision | recall | wrong among accepted |
+|---|---|---|---|
+| 0.50 | 0.9903 | 0.9987 | 44 of 4530 |
+| 0.80 | 0.9978 | 0.9953 | 10 of 4481 |
+| 0.90 | 0.9991 | 0.9900 | 4 of 4451 |
+| 0.95 | 0.9998 | 0.9722 | 1 of 4368 |
+| 0.98 | 1.0000 | 0.9570 | 0 of 4299 |
+| 0.99 | 1.0000 | 0.9132 | 0 of 4102 |
+
+#### Calibration, listing ↔ listing (held-out split: 5348 units, 4959 same)
+
+AUC 0.9995, Brier 0.0037, log-loss 0.0164.
+
+| predicted bin | units | mean predicted | observed same |
+|---|---|---|---|
+| 0.0–0.1 | 348 | 0.014 | 0.011 |
+| 0.1–0.2 | 19 | 0.154 | 0.158 |
+| 0.2–0.3 | 16 | 0.253 | 0.063 |
+| 0.3–0.4 | 6 | 0.331 | 0.833 |
+| 0.4–0.5 | 7 | 0.437 | 0.571 |
+| 0.5–0.6 | 9 | 0.554 | 0.333 |
+| 0.6–0.7 | 5 | 0.658 | 0.800 |
+| 0.7–0.8 | 8 | 0.727 | 1.000 |
+| 0.8–0.9 | 48 | 0.882 | 0.979 |
+| 0.9–1.0 | 4882 | 0.996 | 1.000 |
+
+| threshold | precision | recall | wrong among accepted |
+|---|---|---|---|
+| 0.50 | 0.9980 | 0.9966 | 10 of 4952 |
+| 0.80 | 0.9994 | 0.9935 | 3 of 4930 |
+| 0.90 | 0.9996 | 0.9841 | 2 of 4882 |
+| 0.95 | 1.0000 | 0.9706 | 0 of 4813 |
+| 0.98 | 1.0000 | 0.9478 | 0 of 4700 |
+| 0.99 | 1.0000 | 0.9383 | 0 of 4653 |
+
+#### Show-ratings threshold
+
+Target: among pairs whose ratings would be shown, the wrong share must not exceed today's measured wrong rate, 0.97%.
+Derived on the calibration split: p ≥ 0.3575. Held out: 49 wrong of 4361 shown (1.124%); recall of same-film units 99.9%; production's contradicted filings shown: 1 of 18.
+
+| p ≥ | held-out units shown | wrong | wrong rate | per-decision: shown / wrong |
+|---|---|---|---|---|
+| 0.3575 | 4361 | 49 | 1.124% | 4313 / 1 |
+| 0.5000 | 4356 | 45 | 1.033% | 4312 / 1 |
+| 0.8000 | 4306 | 10 | 0.232% | 4296 / 0 |
+| 0.9000 | 4276 | 4 | 0.094% | 4272 / 0 |
+| 0.9500 | 4193 | 1 | 0.024% | 4192 / 0 |
+| 0.9900 | 3927 | 0 | 0.000% | 3927 / 0 |
+
+#### Cannot-link score thresholds
+
+Certified: each cut sits below every same-film unit of the calibration split.
+- listing ↔ film: p < 0.08482 — held-out false veto 0.000% (≤ 0.063%), vetoes 95.5% of different-film units.
+- listing ↔ listing: p < 0.01844 — held-out false veto 0.047% (≤ 0.143%), vetoes 62.7% of different-film units.
+
+#### Today's vetoes, measured (listing ↔ film)
+
+| veto | fires on same-film (false veto) | upper 95% | fires on different-film (true veto) | per country false veto | verdict |
+|---|---|---|---|---|---|
+| VenueDeniesFilm (DeniedCandidate) | 4 of 6159 (0.065%) | 0.145% | 313 of 5150 (6.08%) | de 4/1629, es 0/228, pl 0/725, uk 0/1429, us 0/2156 | within today's wrong rate (4 false vetoes), an ordinary negative weight rather than a cannot-link |
+| ListingDeniesFilm (DecorationVeto) | 44 of 6159 (0.714%) | 0.914% | 386 of 5150 (7.50%) | de 19/1629, es 3/228, pl 5/725, uk 6/1429, us 11/2156 | within today's wrong rate (44 false vetoes), an ordinary negative weight rather than a cannot-link |
+| OriginalTitleNamesAnotherFilm | 1 of 4396 (0.023%) | 0.102% | 543 of 4148 (13.09%) | de 1/977, es 0/137, pl 0/240, uk 0/1181, us 0/1862 | within today's wrong rate (1 false vetoes), an ordinary negative weight rather than a cannot-link |
+| Faust fold refusal (containment + venue denial) | 0 of 6159 (0.000%) | 0.044% | 137 of 5150 (2.66%) | de 0/1629, es 0/228, pl 0/725, uk 0/1429, us 0/2156 | certified: never fired on a same-film unit |
+
+#### Today's vetoes, measured (listing ↔ listing)
+
+| veto | fires on same-film (false veto) | upper 95% | fires on different-film (true veto) | per country false veto | verdict |
+|---|---|---|---|---|---|
+| CinemasDescribeDifferentFilms | 1 of 4187 (0.024%) | 0.107% | 222 of 467 (47.54%) | de 1/952, es 0/135, pl 0/177, uk 0/1152, us 0/1772 | within today's wrong rate (1 false vetoes), an ordinary negative weight rather than a cannot-link |
+| VenueCreditsApart | 2 of 5849 (0.034%) | 0.103% | 113 of 682 (16.57%) | de 0/1568, es 0/225, pl 1/622, uk 0/1352, us 1/2090 | within today's wrong rate (2 false vetoes), an ordinary negative weight rather than a cannot-link |
+
+Bare-listing home (must-link): of 460191 labelled exact-title pairs where a side publishes neither year nor runtime, 459916 are one film (99.94%).
+
+#### Derived cannot-link rules (listing-film)
+
+| rule | fit: false veto (Bonferroni bound) | fit: true veto | held out: false veto | held out: true veto | covered by today's vetoes |
+|---|---|---|---|---|---|
+| title in {none,overlap} AND year.distance >= 3 | 0/4336 (0.194%) | 1280/3867 (33.10%) | 0/1828 (0.000%) | 461/1390 (33.17%) | 3929 of 36333 |
+| director in {different} AND year.distance >= 32 | 0/4335 (0.194%) | 104/3781 (2.75%) | 1/1824 (0.055%) | 43/1369 (3.14%) | 5199 of 5199 |
+| year.distance >= 49 | 0/4336 (0.194%) | 466/3867 (12.05%) | 0/1828 (0.000%) | 118/1390 (8.49%) | 2548 of 4291 |
+| runtime.delta >= 18 AND year.distance >= 16 | 0/4336 (0.194%) | 100/3867 (2.59%) | 0/1828 (0.000%) | 27/1390 (1.94%) | 2244 of 2280 |
+| originalTitle in {disjoint} AND year.distance >= 2 | 0/4314 (0.195%) | 730/3770 (19.36%) | 0/1821 (0.000%) | 332/1377 (24.11%) | 1584 of 1593 |
+| runtime.delta >= 38 AND title in {none,overlap} | 0/4337 (0.194%) | 32/3875 (0.83%) | 1/1827 (0.055%) | 2/1390 (0.14%) | 1643 of 1643 |
+| originalTitle in {disjoint} AND runtime.delta >= 11 | 0/4333 (0.194%) | 39/3878 (1.01%) | 0/1825 (0.000%) | 16/1391 (1.15%) | 149 of 151 |
+| title in {none} AND year.distance >= 2 | 0/4336 (0.194%) | 295/3867 (7.63%) | 0/1828 (0.000%) | 126/1390 (9.06%) | 557 of 1345 |
+| country in {mismatch} AND year.distance >= 2 | 0/4336 (0.194%) | 85/3867 (2.20%) | 0/1828 (0.000%) | 32/1390 (2.30%) | 223 of 235 |
+| runtime.delta >= 82 | 0/4337 (0.194%) | 27/3875 (0.70%) | 2/1827 (0.109%) | 6/1390 (0.43%) | 204 of 220 |
+| country in {mismatch} AND runtime.delta >= 21 | 0/4337 (0.194%) | 52/3875 (1.34%) | 0/1827 (0.000%) | 22/1390 (1.58%) | 150 of 151 |
+| country in {mismatch} AND originalTitle in {disjoint} | 0/4333 (0.194%) | 20/3878 (0.52%) | 1/1825 (0.055%) | 13/1391 (0.93%) | 27 of 32 |
+
+#### Derived cannot-link rules (listing-listing)
+
+| rule | fit: false veto (Bonferroni bound) | fit: true veto | held out: false veto | held out: true veto | covered by today's vetoes |
+|---|---|---|---|---|---|
+| chainId in {different} AND title in {none,overlap} | 0/4142 (0.214%) | 63/408 (15.44%) | 3/1748 (0.172%) | 28/271 (10.33%) | 54 of 5029 |
+| runtime.delta >= 2 AND year.delta >= 16 | 0/4151 (0.214%) | 64/407 (15.72%) | 1/1754 (0.057%) | 17/271 (6.27%) | 100 of 1787 |
+| chainId in {different} AND runtime.delta >= 1 | 0/4142 (0.214%) | 76/408 (18.63%) | 2/1750 (0.114%) | 34/271 (12.55%) | 53 of 3922 |
+| runtime.delta >= 51 AND title in {none,overlap} | 0/4142 (0.214%) | 58/408 (14.22%) | 1/1750 (0.057%) | 50/271 (18.45%) | 153 of 1449 |
+| director in {different} AND year.delta >= 32 | 0/4078 (0.218%) | 27/399 (6.77%) | 1/1721 (0.058%) | 12/265 (4.53%) | 54 of 1248 |
+| title in {none,overlap} AND year.delta >= 16 | 0/4151 (0.214%) | 32/407 (7.86%) | 0/1752 (0.000%) | 8/271 (2.95%) | 20 of 1723 |
+| director in {different} AND originalTitle in {disjoint} | 0/4124 (0.215%) | 36/357 (10.08%) | 1/1735 (0.058%) | 22/228 (9.65%) | 195 of 219 |
+| title in {none,overlap} AND venue in {same} | 0/4142 (0.214%) | 96/408 (23.53%) | 2/1748 (0.114%) | 59/271 (21.77%) | 137 of 228 |
+| year.delta >= 47 | 0/4151 (0.214%) | 19/407 (4.67%) | 0/1752 (0.000%) | 7/271 (2.58%) | 37 of 858 |
+| runtime.delta >= 1 AND venue in {same} | 0/4142 (0.214%) | 138/408 (33.82%) | 0/1750 (0.000%) | 71/271 (26.20%) | 226 of 264 |
+| runtime.delta >= 81 | 0/4142 (0.214%) | 20/408 (4.90%) | 3/1750 (0.171%) | 9/271 (3.32%) | 54 of 1130 |
+| originalTitle in {disjoint} AND year.delta >= 3 | 0/4135 (0.215%) | 22/346 (6.36%) | 0/1744 (0.000%) | 10/230 (4.35%) | 64 of 77 |
+| chainId in {different} AND year.delta >= 16 | 0/4151 (0.214%) | 38/407 (9.34%) | 0/1752 (0.000%) | 8/271 (2.95%) | 5 of 2084 |
+| director in {different} AND venue in {same} | 0/4115 (0.216%) | 79/413 (19.13%) | 1/1734 (0.058%) | 33/269 (12.27%) | 172 of 172 |
+
+#### Sensitivity: corroboration bar k=3 against k=2
+
+- listing ↔ film: 51 weights with ≥30 units; same sign 41/51; mean |Δ| 1.583, max |Δ| 6.481 (year.delta[-2.5..-1.5]), correlation 0.8014.
+  - per signal: country 2/2 same sign, mean |Δ| 0.16; director 2/2 same sign, mean |Δ| 0.65; originalTitle 3/3 same sign, mean |Δ| 0.37; popularity.log2 4/6 same sign, mean |Δ| 1.27; rivals 2/3 same sign, mean |Δ| 1.70; runtime.delta 5/7 same sign, mean |Δ| 1.92; search.rank 3/4 same sign, mean |Δ| 1.83; title 7/7 same sign, mean |Δ| 0.81; venues.corroborating 7/9 same sign, mean |Δ| 1.96; year.delta 6/8 same sign, mean |Δ| 2.65
+  - year.delta[-2.5..-1.5]: k=2 -0.72, k=3 -7.20 (54 units)
+  - runtime.delta[78.0..]: k=2 -4.60, k=3 +0.70 (33 units)
+  - venues.corroborating[34.5..45.5]: k=2 +4.23, k=3 -0.34 (47 units)
+- listing ↔ listing: 22 weights with ≥30 units; same sign 20/22; mean |Δ| 1.032, max |Δ| 2.479 (runtime.delta[11.5..18.5]), correlation 0.9337.
+  - per signal: chainId 2/2 same sign, mean |Δ| 1.39; director 1/1 same sign, mean |Δ| 0.80; originalTitle 3/3 same sign, mean |Δ| 0.38; runtime.delta 7/8 same sign, mean |Δ| 1.63; title 2/3 same sign, mean |Δ| 0.53; venue 2/2 same sign, mean |Δ| 0.71; year.delta 3/3 same sign, mean |Δ| 0.65
+  - runtime.delta[11.5..18.5]: k=2 -2.54, k=3 -0.06 (113 units)
+  - runtime.delta[28.5..51.5]: k=2 -2.99, k=3 -5.35 (78 units)
+  - runtime.delta[65.5..]: k=2 -5.79, k=3 -3.55 (36 units)
+- listing ↔ film, de only: 21 weights with ≥30 units; same sign 18/21; mean |Δ| 0.991, max |Δ| 5.735 (rivals[0.5..]), correlation 0.4296.
+  - per signal: country 1/1 same sign, mean |Δ| 0.01; director 1/1 same sign, mean |Δ| 0.04; originalTitle 1/1 same sign, mean |Δ| 0.34; popularity.log2 1/1 same sign, mean |Δ| 0.00; rivals 1/2 same sign, mean |Δ| 2.88; runtime.delta 3/4 same sign, mean |Δ| 1.33; title 4/4 same sign, mean |Δ| 0.04; venues.corroborating 4/5 same sign, mean |Δ| 1.04; year.delta 2/2 same sign, mean |Δ| 2.00
+  - rivals[0.5..]: k=2 -3.43, k=3 +2.30 (57 units)
+  - year.delta[-3.0..-0.5]: k=2 +0.35, k=3 +3.70 (131 units)
+  - runtime.delta[7.5..11.5]: k=2 -1.33, k=3 +1.46 (33 units)
+- listing ↔ film, us only: 39 weights with ≥30 units; same sign 32/39; mean |Δ| 1.324, max |Δ| 4.628 (venues.corroborating[0.5..1.5]), correlation 0.8608.
+  - per signal: country 2/2 same sign, mean |Δ| 0.18; director 2/2 same sign, mean |Δ| 0.36; originalTitle 3/3 same sign, mean |Δ| 0.39; popularity.log2 4/5 same sign, mean |Δ| 1.05; rivals 2/3 same sign, mean |Δ| 1.58; runtime.delta 4/4 same sign, mean |Δ| 1.47; search.rank 3/4 same sign, mean |Δ| 2.03; title 5/6 same sign, mean |Δ| 0.59; venues.corroborating 3/5 same sign, mean |Δ| 2.76; year.delta 4/5 same sign, mean |Δ| 1.61
+  - venues.corroborating[0.5..1.5]: k=2 +1.07, k=3 -3.56 (328 units)
+  - venues.corroborating[214.0..1222.0]: k=2 +4.44, k=3 -0.01 (43 units)
+  - rivals[0.5..3.5]: k=2 -1.97, k=3 +2.12 (860 units)
+- listing ↔ film, uk only: 35 weights with ≥30 units; same sign 30/35; mean |Δ| 1.305, max |Δ| 4.736 (venues.corroborating[1.5..15.5]), correlation 0.8608.
+  - per signal: country 1/1 same sign, mean |Δ| 0.14; director 2/2 same sign, mean |Δ| 0.78; originalTitle 3/3 same sign, mean |Δ| 0.15; popularity.log2 3/4 same sign, mean |Δ| 0.99; rivals 1/2 same sign, mean |Δ| 1.98; runtime.delta 5/5 same sign, mean |Δ| 1.25; search.rank 3/4 same sign, mean |Δ| 1.77; title 5/6 same sign, mean |Δ| 0.74; venues.corroborating 3/4 same sign, mean |Δ| 2.68; year.delta 4/4 same sign, mean |Δ| 1.77
+  - venues.corroborating[1.5..15.5]: k=2 +5.90, k=3 +1.17 (514 units)
+  - year.delta[1.5..]: k=2 -6.82, k=3 -2.18 (516 units)
+  - venues.corroborating[0.5..1.5]: k=2 +1.17, k=3 -2.73 (221 units)
+
+Contradicted production filings: 1471 listings on 59 tmdbIds (`contradicted-prod-resolutions.tsv`); 59 imdb / rating-page cross-check mismatches (`prod-cross-check-mismatches.tsv`).
+
