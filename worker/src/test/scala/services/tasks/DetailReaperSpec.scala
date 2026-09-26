@@ -197,7 +197,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
     var cap = 1
     val r = new DetailReaper(Seq(enricher), cacheWithMany(10), queue, fresh, new InProcessEventBus(),
-      maxEnqueuePerTick = cap, clock = specClock)
+      maxEnqueuePerTick = settings.DetailMaxEnqueuePerTick(cap), clock = specClock)
     r.tick() shouldBe 1   // cap = 1
     cap = 4
     r.tick() shouldBe 4   // live re-read picks up the new cap (a captured Int would still be 1)
@@ -206,7 +206,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   it should "enqueue at most maxEnqueuePerTick details when a whole cohort is stale (anti-burst cap)" in {
     val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
     val r = new DetailReaper(Seq(enricher), cacheWithMany(5), queue, fresh, new InProcessEventBus(),
-      maxEnqueuePerTick = 2, clock = specClock)
+      maxEnqueuePerTick = settings.DetailMaxEnqueuePerTick(2), clock = specClock)
     r.tick() shouldBe 2
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 2L
   }
@@ -214,7 +214,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   it should "drain the rest of the stale cohort over subsequent capped ticks" in {
     val (cache, queue, fresh) = (cacheWithMany(5), new InMemoryTaskQueue, new InMemoryFreshnessStore)
     val r = new DetailReaper(Seq(enricher), cache, queue, fresh, new InProcessEventBus(),
-      maxEnqueuePerTick = 2, clock = specClock)
+      maxEnqueuePerTick = settings.DetailMaxEnqueuePerTick(2), clock = specClock)
     r.tick() shouldBe 2 // films 1–2
     r.tick() shouldBe 2 // 1–2 still waiting (deduped), next 2 fresh cohort members
     r.tick() shouldBe 1 // last one

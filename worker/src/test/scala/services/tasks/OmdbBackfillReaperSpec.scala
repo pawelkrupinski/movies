@@ -22,7 +22,7 @@ class OmdbBackfillReaperSpec extends AnyFlatSpec with Matchers {
 
   it should "sweep at most once per window — a second tick in the same window is a no-op" in {
     var sweeps = 0
-    val r = new OmdbBackfillReaper(() => sweeps += 1, interval = 24.hours, runStore = new InMemoryScheduledRunStore)
+    val r = new OmdbBackfillReaper(() => sweeps += 1, interval = settings.OmdbBackfillInterval(24.hours), runStore = new InMemoryScheduledRunStore)
     r.tickIfClaimed() shouldBe true
     r.tickIfClaimed() shouldBe false // same 24h window already claimed by this machine
     sweeps shouldBe 1

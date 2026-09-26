@@ -105,7 +105,7 @@ trait ResolutionWiring { self: WorkerWiring =>
   // one-row-per-film invariant once per the SAME 30-min window (cluster-claimed).
   def settleInterval: SettleInterval = configuration.settleInterval(SettleInterval(SettleReaper.DefaultInterval))
   lazy val settleReaper = new SettleReaper(() => movieService.settle(),
-    interval = settleInterval.value, runStore = scheduledRunStore)
+    interval = settleInterval, runStore = scheduledRunStore)
 
   // Re-tries unresolved-TMDB rows once per 24h, phase-spread across the period —
   // the queue-era replacement for MovieService's old daily, all-at-once
@@ -128,7 +128,7 @@ trait ResolutionWiring { self: WorkerWiring =>
     // correct row can lose its resolution. Runtime disagreements pass straight
     // through — they compare numbers, not names.
     confirmContradiction = crewConfirmation.confirmed,
-    maxEnqueuePerTick = maxTmdbRetryEnqueuePerTick.value,
+    maxEnqueuePerTick = maxTmdbRetryEnqueuePerTick,
     runStore = scheduledRunStore)
 
   lazy val crewConfirmation: CrewConfirmation = new CrewConfirmation(new CrewConfirmation.Credits {

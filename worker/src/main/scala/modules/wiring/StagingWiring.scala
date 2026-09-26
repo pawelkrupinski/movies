@@ -45,8 +45,8 @@ trait StagingWiring { self: WorkerWiring =>
   private val StagingReaperInterval     =
     configuration.stagingPromoteInterval(StagingPromoteInterval(FiniteDuration(120L, TimeUnit.SECONDS)))
   lazy val stagingReaper = new StagingReaper(stagingSteps, taskQueue, stagingRepository,
-    interval     = StagingReaperInterval.value,
-    initialDelay = StagingReaperInitialDelay.value,
+    interval     = StagingReaperInterval,
+    initialDelay = StagingReaperInitialDelay,
     runStore     = scheduledRunStore,
     metrics      = taskMetrics)
 }

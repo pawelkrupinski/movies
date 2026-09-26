@@ -299,10 +299,10 @@ trait ScrapeWiring { self: WorkerWiring =>
   def scrapeTasksPerVenue: ScrapeTasksPerVenue = configuration.scrapeTasksPerVenue(ScrapeTasksPerVenue(1))
   lazy val scrapeReaper =
     new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, dueWindow = scrapeDueWindow,
-      initialDelay = initialScrapeDelay.value,
-      maxEnqueuePerTick = maxScrapeEnqueuePerTick.value, bootRamp = scrapeBootRamp.value,
-      maxOutstandingScrapeTasks = maxOutstandingScrapeTasks.value, tasksPerVenue = scrapeTasksPerVenue.value,
-      chunkSpread = ScrapeCadence.ChunkEnqueueSpread,
+      initialDelay = initialScrapeDelay,
+      maxEnqueuePerTick = maxScrapeEnqueuePerTick, bootRamp = scrapeBootRamp,
+      maxOutstandingScrapeTasks = maxOutstandingScrapeTasks, tasksPerVenue = scrapeTasksPerVenue,
+      chunkSpread = settings.ScrapeChunkSpread(ScrapeCadence.ChunkEnqueueSpread),
       inFlight = chunkRunInFlight,
-      enqueueSpread = scrapeEnqueueSpreadSlices.value, runStore = scheduledRunStore)
+      enqueueSpread = scrapeEnqueueSpreadSlices, runStore = scheduledRunStore)
 }

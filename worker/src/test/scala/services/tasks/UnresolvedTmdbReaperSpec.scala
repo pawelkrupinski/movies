@@ -342,7 +342,7 @@ class UnresolvedTmdbReaperSpec extends AnyFlatSpec with Matchers {
     // period == tickInterval → every unresolved row is due on every tick, so the
     // cap is what bounds the batch (the leftover stays due next tick).
     val reaper = new UnresolvedTmdbReaper(cache, retry,
-      dueWindow = new DueWindow(UnresolvedTmdbReaper.DefaultTickInterval), maxEnqueuePerTick = 10)
+      dueWindow = new DueWindow(UnresolvedTmdbReaper.DefaultTickInterval), maxEnqueuePerTick = settings.TmdbRetryMaxEnqueuePerTick(10))
     reaper.tick(t0) shouldBe 10
     reaper.tick(t0 + UnresolvedTmdbReaper.DefaultTickInterval.toMillis) shouldBe 10
   }

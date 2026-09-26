@@ -146,7 +146,7 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
     val cache = newCache(); val queue = new InMemoryTaskQueue
     (0 until 10).foreach(i => seedRow(cache, f"Live$i%03d")(_.copy(imdbId = Some(s"tt$i")))) // 10 cold → due
     var cap = 1
-    val reaper = new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore, maxEnqueuePerTick = cap)
+    val reaper = new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore, maxEnqueuePerTick = settings.EnrichmentMaxEnqueuePerTick(cap))
     reaper.tick(t0) shouldBe 1   // cap = 1
     cap = 5
     reaper.tick(t0) shouldBe 5   // live re-read picks up the new cap (a captured Int would still be 1)
@@ -155,7 +155,7 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
   it should "cap enqueues per tick so a cold corpus drains over several ticks instead of all at once" in {
     val cache = newCache(); val queue = new InMemoryTaskQueue
     (0 until 50).foreach(i => seedRow(cache, f"Cold$i%03d")(_.copy(imdbId = Some(s"tt$i")))) // all never-refreshed → due
-    val reaper = new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore, maxEnqueuePerTick = 10)
+    val reaper = new EnrichmentReaper(cache, queue, new InMemoryFreshnessStore, maxEnqueuePerTick = settings.EnrichmentMaxEnqueuePerTick(10))
     reaper.tick(t0) shouldBe 10                   // first batch only
     reaper.tick(t0) shouldBe 10                   // next batch (first 10 still waiting → deduped)
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 20L

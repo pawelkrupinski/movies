@@ -62,7 +62,7 @@ trait RatingsWiring { self: WorkerWiring =>
   lazy val omdbBackfillReaper: Option[OmdbBackfillReaper] =
     omdbBackfill.map(_ => new OmdbBackfillReaper(
       () => { taskQueue.enqueue(TaskType.RefreshAllOmdb, EnrichTaskKeys.bulkDedup(TaskType.RefreshAllOmdb)); () },
-      interval = omdbBackfillInterval.value, runStore = scheduledRunStore))
+      interval = omdbBackfillInterval, runStore = scheduledRunStore))
 
   // Rating refresh as queue tasks. The handlers reuse each *Ratings class's
   // per-row refreshOneSync; the EnrichmentReaper is the SOLE enqueue path — it
@@ -114,7 +114,7 @@ trait RatingsWiring { self: WorkerWiring =>
   // eligibility + the tmdbId-keyed due gate. ONE instance, handed to both.
   lazy val ratingEnqueuer = new RatingEnqueuer(taskQueue, freshnessStore, ratingDueWindow, country)
   lazy val enrichmentReaper = new EnrichmentReaper(movieCache, taskQueue, freshnessStore,
-    dueWindow = ratingDueWindow, tickInterval = enrichmentTickInterval.value,
-    maxEnqueuePerTick = maxEnrichmentEnqueuePerTick.value,
+    dueWindow = ratingDueWindow, tickInterval = enrichmentTickInterval,
+    maxEnqueuePerTick = maxEnrichmentEnqueuePerTick,
     runStore = scheduledRunStore, enqueuer = Some(ratingEnqueuer))
 }

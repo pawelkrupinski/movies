@@ -199,7 +199,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     // order. Cap of 1 makes the contention explicit: one cinema wins each tick.
     fresh.markFresh(ScrapeCinemaHandler.dedupKey(KinoApollo), FreshnessKind.CinemaScrape, now.minusSeconds(10 * 86400))
     val clock   = Clock.fixed(now, ZoneOffset.UTC)
-    val reaper  = new ScrapeReaper(Seq(broken, healthy), queue, fresh, maxEnqueuePerTick = 1, clock = clock)
+    val reaper  = new ScrapeReaper(Seq(broken, healthy), queue, fresh, maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(1), clock = clock)
     val handler = new ScrapeCinemaHandler(
       Seq(broken, healthy).map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> (s: CinemaScraper)).toMap,
       freshRunner(), fresh, new DueWindow(60.minutes), clock)
@@ -282,7 +282,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios)
       .map(c => new FakeScraper(c, movieAt(c)))
     val queue  = new InMemoryTaskQueue
-    val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore, maxEnqueuePerTick = 2)
+    val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore, maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(2))
     reaper.tick() shouldBe 2            // first batch capped at 2
     reaper.tick() shouldBe 2            // first 2 still in-flight (deduped) → next 2 enqueue
     reaper.tick() shouldBe 1            // last stale cinema
@@ -299,7 +299,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val t0 = Instant.parse("2026-07-03T09:40:00Z")
     val reaper = new ScrapeReaper(Seq(new FakeScraper(Multikino, movieAt(Multikino))),
       new InMemoryTaskQueue, new InMemoryFreshnessStore,
-      maxEnqueuePerTick = 10, bootRamp = 10.minutes)
+      maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(10), bootRamp = settings.ScrapeBootRamp(10.minutes))
     reaper.rampedCap(t0) shouldBe 2                       // first tick: floor = max(1, 10/5)
     reaper.rampedCap(t0.plusSeconds(5 * 60)) shouldBe 5   // half-way through the ramp
     reaper.rampedCap(t0.plusSeconds(10 * 60)) shouldBe 10 // ramp complete → full cap
@@ -310,11 +310,11 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val t0 = Instant.parse("2026-07-03T09:40:00Z")
     // bootRamp defaults to 0 → no ramp, full cap from the first tick.
     val noRamp = new ScrapeReaper(Seq(new FakeScraper(Multikino, movieAt(Multikino))),
-      new InMemoryTaskQueue, new InMemoryFreshnessStore, maxEnqueuePerTick = 10)
+      new InMemoryTaskQueue, new InMemoryFreshnessStore, maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(10))
     noRamp.rampedCap(t0) shouldBe 10
     // Unbounded cap (the direct-tick test default) is never ramped.
     val unbounded = new ScrapeReaper(Seq(new FakeScraper(Multikino, movieAt(Multikino))),
-      new InMemoryTaskQueue, new InMemoryFreshnessStore, bootRamp = 10.minutes)
+      new InMemoryTaskQueue, new InMemoryFreshnessStore, bootRamp = settings.ScrapeBootRamp(10.minutes))
     unbounded.rampedCap(t0) shouldBe Int.MaxValue
   }
 
@@ -322,7 +322,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
     val queue    = new InMemoryTaskQueue
     val reaper   = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
-      maxEnqueuePerTick = 5, bootRamp = 10.minutes)
+      maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(5), bootRamp = settings.ScrapeBootRamp(10.minutes))
     val t0 = Instant.parse("2026-07-03T09:40:00Z")
     reaper.tick(t0) shouldBe 1                        // ramped floor max(1,5/5)=1 — NOT all 5 due (the pre-ramp behaviour)
     reaper.tick(t0.plusSeconds(10 * 60)) shouldBe 4   // ramp done → full cap 5, minus the 1 still waiting (deduped)
@@ -350,7 +350,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
         now.minusSeconds(ageMinutes(c) * 60)))
     val scrapers = ordered.map(c => new FakeScraper(c, movieAt(c)))
     val queue    = new InMemoryTaskQueue
-    val reaper   = new ScrapeReaper(scrapers, queue, fresh, maxEnqueuePerTick = 2,
+    val reaper   = new ScrapeReaper(scrapers, queue, fresh, maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(2),
       clock = Clock.fixed(now, ZoneOffset.UTC))
 
     reaper.tick() shouldBe 2
@@ -375,7 +375,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
     val queue    = new InMemoryTaskQueue
     val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
-      maxEnqueuePerTick = Int.MaxValue, maxOutstandingScrapeTasks = 4)
+      maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(Int.MaxValue), maxOutstandingScrapeTasks = settings.ScrapeMaxOutstandingTasks(4))
 
     // Not throttled: the healthy path. A previous tick's venue is still fanned out.
     (1 to 4).foreach(i => queue.enqueue(TaskType.ScrapeChunk, s"chunk-$i", Map("chunk" -> i.toString)))
@@ -400,7 +400,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
     val queue    = new InMemoryTaskQueue
     val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
-      maxEnqueuePerTick = Int.MaxValue, maxOutstandingScrapeTasks = 20, tasksPerVenue = 10)
+      maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(Int.MaxValue), maxOutstandingScrapeTasks = settings.ScrapeMaxOutstandingTasks(20), tasksPerVenue = settings.ScrapeTasksPerVenue(10))
 
     // Empty queue, 5 cinemas due, a 20-task budget and 10 tasks per venue → 2 venues.
     // Without the conversion this admits all 5, i.e. ~50 tasks against a budget of 20.
@@ -434,9 +434,9 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     // spread → 9 venues must be in flight at once. At 10 tasks a venue a flat 20-task
     // budget would admit 2; the spread floor lifts it to cover all 5 that are due.
     val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
-      dueWindow = new DueWindow(2.minutes), interval = 1.minute,
-      maxEnqueuePerTick = Int.MaxValue, maxOutstandingScrapeTasks = 20,
-      tasksPerVenue = 10, chunkSpread = 3.minutes)
+      dueWindow = new DueWindow(2.minutes), interval = services.tasks.ScrapeReaper.TickInterval(1.minute),
+      maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(Int.MaxValue), maxOutstandingScrapeTasks = settings.ScrapeMaxOutstandingTasks(20),
+      tasksPerVenue = settings.ScrapeTasksPerVenue(10), chunkSpread = settings.ScrapeChunkSpread(3.minutes))
 
     reaper.tick() shouldBe 5
   }
@@ -446,7 +446,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val queue    = new InMemoryTaskQueue
     val running  = scala.collection.mutable.Set(Multikino.displayName, KinoApollo.displayName)
     val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
-      maxEnqueuePerTick = Int.MaxValue,
+      maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(Int.MaxValue),
       inFlight = (name: String) => running.contains(name))
 
     // All 5 are due, but two are mid-run → only the other three are admitted.
@@ -467,7 +467,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
     val queue    = new InMemoryTaskQueue
     val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
-      maxEnqueuePerTick = Int.MaxValue, maxOutstandingScrapeTasks = 20, tasksPerVenue = 10)
+      maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(Int.MaxValue), maxOutstandingScrapeTasks = settings.ScrapeMaxOutstandingTasks(20), tasksPerVenue = settings.ScrapeTasksPerVenue(10))
 
     // First tick admits 2 venues (20-task budget / 10). They are still WAITING — none
     // has fanned out — so the budget is already fully committed and the next tick must
@@ -487,7 +487,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
       override def waitingCount(taskType: TaskType): Int = throw new RuntimeException("mongo down")
     }
     val reaper = new ScrapeReaper(scrapers, unreadable, new InMemoryFreshnessStore,
-      maxEnqueuePerTick = Int.MaxValue, maxOutstandingScrapeTasks = 20)
+      maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(Int.MaxValue), maxOutstandingScrapeTasks = settings.ScrapeMaxOutstandingTasks(20))
 
     reaper.tick() shouldBe 0
     unreadable.countByState() shouldBe empty
@@ -524,7 +524,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
     val queue    = new InMemoryTaskQueue
     val deferred = scala.collection.mutable.ArrayBuffer[Runnable]()
-    val reaper   = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore, enqueueSpread = 3) {
+    val reaper   = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore, enqueueSpread = settings.ScrapeEnqueueSpreadSlices(3)) {
       override protected def scheduleSlice(delay: FiniteDuration, task: Runnable): Unit = { deferred += task; () }
     }
     // 5 due → slices [2,2,1]; only the first 2 enqueue now, the two later slices defer.
@@ -563,7 +563,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
   it should "hold the first tick until the initial delay elapses" in {
     val queue  = new InMemoryTaskQueue
     val reaper = new ScrapeReaper(Seq(new FakeScraper(Multikino, movieAt(Multikino))),
-                                  queue, new InMemoryFreshnessStore, initialDelay = 300.millis)
+                                  queue, new InMemoryFreshnessStore, initialDelay = settings.ScrapeInitialDelay(300.millis))
     reaper.start()
     Thread.sleep(100)
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L // still within the delay
@@ -589,7 +589,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val scrapers = Seq(new FakeScraper(Multikino, movieAt(Multikino)),
                        new FakeScraper(KinoApollo, movieAt(KinoApollo)))
     val queue  = new InMemoryTaskQueue
-    val reaper = new ScrapeReaper(scrapers, queue, fresh, initialDelay = 0.seconds, readyTimeout = 5.seconds, clock = specClock)
+    val reaper = new ScrapeReaper(scrapers, queue, fresh, initialDelay = settings.ScrapeInitialDelay(0.seconds), readyTimeout = services.tasks.ScrapeReaper.ReadyTimeout(5.seconds), clock = specClock)
     reaper.start()
     Thread.sleep(150)
     // Gate still closed → reaper is blocked, not yet ticking.
@@ -624,7 +624,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
                        new FakeScraper(KinoApollo, movieAt(KinoApollo)))
     val queue  = new InMemoryTaskQueue
     val reaper = new ScrapeReaper(scrapers, queue, fresh,
-      initialDelay = 0.seconds, readyTimeout = 50.millis, interval = 50.millis)
+      initialDelay = settings.ScrapeInitialDelay(0.seconds), readyTimeout = services.tasks.ScrapeReaper.ReadyTimeout(50.millis), interval = services.tasks.ScrapeReaper.TickInterval(50.millis))
     reaper.start()
     Thread.sleep(400) // several readyTimeout + interval periods pass with the mirror still cold
     // Before the fix: fail-open after the first 50ms → both stale cinemas enqueued.

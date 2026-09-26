@@ -1,5 +1,7 @@
 package services.tasks
 
+import settings.{EnrichmentMaxEnqueuePerTick, EnrichmentTickInterval}
+
 import play.api.Logging
 import services.Stoppable
 import services.freshness.{FreshnessKind, FreshnessStore}
@@ -62,16 +64,16 @@ class EnrichmentReaper(
   // in-memory) corpus scans. Defaults to 1min (≈240 ticks per 4h period). BY-NAME
   // + a self-rescheduling tick (not fixed-delay) so an `/admin/config` flip of the
   // interval applies mid-flight, on the next cycle, without a restart.
-  tickInterval: => FiniteDuration = EnrichmentReaper.DefaultTickInterval,
+  tickInterval: => EnrichmentTickInterval = EnrichmentTickInterval(EnrichmentReaper.DefaultTickInterval),
   // A small spacing before the first tick (0 in tests that drive `tick` directly).
-  initialDelay: FiniteDuration = 0.seconds,
+  initialDelay: EnrichmentReaper.InitialDelay = EnrichmentReaper.InitialDelay(0.seconds),
   // Cap on enqueues per tick. The phase spread keeps steady-state ticks small,
   // but a cold or long-down corpus has every row due at once; capping bounds that
   // recovery burst the same way `ScrapeReaper` does — the leftover stays due and
   // drains over the next ticks. Default unbounded so tests driving `tick` are
   // unaffected; the wiring sets a finite cap comfortably above the steady-state.
   // BY-NAME: read live each tick, so an `/admin/config` flip applies mid-flight.
-  maxEnqueuePerTick: => Int = Int.MaxValue,
+  maxEnqueuePerTick: => EnrichmentMaxEnqueuePerTick = EnrichmentMaxEnqueuePerTick(Int.MaxValue),
   runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:    Clock = Clock.systemUTC(),
   // The per-row enqueue decision (eligible sources, tmdbId-keyed dedup, due gate),
@@ -87,10 +89,10 @@ class EnrichmentReaper(
     enqueuer.getOrElse(new RatingEnqueuer(queue, freshness, dueWindow))
 
   def start(): Unit = {
-    scheduleNext(initialDelay)
+    scheduleNext(initialDelay.value)
     logger.info(s"EnrichmentReaper started: ${ratingEnqueuer.sourceCount} rating source(s), each row refreshed on an " +
                 s"adaptive cadence (base ${dueWindow.period.toHours}h, backing off per-film toward the cap when its " +
-                s"displayed value is stable), phase-spread over ticks every ${tickInterval.toSeconds}s.")
+                s"displayed value is stable), phase-spread over ticks every ${tickInterval.value.toSeconds}s.")
   }
 
   /** Self-rescheduling tick: run, then schedule the next one reading `tickInterval`
@@ -98,7 +100,7 @@ class EnrichmentReaper(
    *  would freeze the boot-time value). */
   private def scheduleNext(delay: FiniteDuration): Unit = {
     scheduler.schedule(new Runnable {
-      def run(): Unit = { Try(tickIfClaimed()); scheduleNext(tickInterval) }
+      def run(): Unit = { Try(tickIfClaimed()); scheduleNext(tickInterval.value) }
     }, delay.toMillis, TimeUnit.MILLISECONDS)
     ()
   }
@@ -113,14 +115,14 @@ class EnrichmentReaper(
     // deploy. All rating kinds share the one rest-hydrate signal, so any one of
     // them answers "are the rating stamps loaded"; an in-memory store is ready now.
     if (!freshness.isReady(FreshnessKind.ImdbRating)) return 0
-    val key = OccurrenceKey.at("enrich-sweep", clock.millis(), tickInterval, 0.seconds)
+    val key = OccurrenceKey.at("enrich-sweep", clock.millis(), tickInterval.value, 0.seconds)
     if (runStore.claim(key)) tick() else 0
   }
 
   /** Enqueue every eligible, now-due `(row, source)`, up to `maxEnqueuePerTick`.
    *  Package-private, with an injectable `nowMillis`, so tests can drive time. */
   private[tasks] def tick(nowMillis: Long = clock.millis()): Int = {
-    val cap      = maxEnqueuePerTick
+    val cap      = maxEnqueuePerTick.value
     val now      = Instant.ofEpochMilli(nowMillis)
     var enqueued = 0
     val rows = cache.entries.iterator
@@ -136,6 +138,10 @@ class EnrichmentReaper(
 }
 
 object EnrichmentReaper {
+
+  /** How long after `start()` the first tick runs. */
+  final case class InitialDelay(value: FiniteDuration) extends AnyVal
+
   /** How often the reaper wakes to enqueue the now-due slice of the corpus. At
    *  1min over a 4h period the corpus spreads across ~240 ticks, so each tick
    *  enqueues only ~1/240 of each source — a flat per-minute trickle rather than

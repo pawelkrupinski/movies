@@ -69,6 +69,6 @@ trait DetailWiring { self: WorkerWiring =>
   def detailTickInterval: DetailTickInterval =
     configuration.detailTickInterval(DetailTickInterval(DetailReaper.DefaultTickInterval))
   lazy val detailReaper = new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore, eventBus,
-    dueWindow = detailDueWindow, tickInterval = detailTickInterval.value, maxEnqueuePerTick = maxDetailEnqueuePerTick.value,
+    dueWindow = detailDueWindow, tickInterval = detailTickInterval, maxEnqueuePerTick = maxDetailEnqueuePerTick,
     runStore = scheduledRunStore, clock = clock)
 }

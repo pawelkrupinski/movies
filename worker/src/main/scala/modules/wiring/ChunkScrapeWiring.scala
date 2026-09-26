@@ -38,7 +38,7 @@ trait ChunkScrapeWiring { self: WorkerWiring =>
   // stale timeout. See ChunkScrapePlanner.chunkSpread.
   def scrapeChunkSpread: ScrapeChunkSpread = configuration.scrapeChunkSpread(ScrapeChunkSpread(ScrapeCadence.ChunkEnqueueSpread))
   lazy val chunkScrapePlanner       = new ChunkScrapePlanner(chunkScrapers, chunkScrapeStore, taskQueue, publishScrape,
-    scrapeFreshnessPolicy, chunkSpread = scrapeChunkSpread.value)
+    scrapeFreshnessPolicy, chunkSpread = scrapeChunkSpread)
   lazy val scrapeChunkHandler       = new ScrapeChunkHandler(chunkScrapers, chunkScrapeStore)
   lazy val scrapeChunkReduceHandler = new ScrapeChunkReduceHandler(chunkScrapers, chunkScrapeStore, publishScrape,
     scrapeFreshnessPolicy)

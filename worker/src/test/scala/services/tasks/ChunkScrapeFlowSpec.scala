@@ -70,7 +70,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     val publishScrape: CinemaScraper => Unit = s => { published += scala.util.Try(s.fetch()).getOrElse(Seq.empty); () }
     private val map = Map(cinemaName -> (scraper: ChunkedCinemaScraper))
     val policy  = new ScrapeFreshnessPolicy(freshness, clock = clock, venueCadence = Some(venueCadence))
-    val planner = new ChunkScrapePlanner(map, store, queue, publishScrape, policy, stale, clock)
+    val planner = new ChunkScrapePlanner(map, store, queue, publishScrape, policy, services.tasks.ChunkScrapePlanner.RunTimeout(stale), clock)
     val chunkH  = new ScrapeChunkHandler(map, store, clock)
     val reduceH = new ScrapeChunkReduceHandler(map, store, publishScrape, policy, clock)
     val coord   = new ChunkScrapeCoordinator(store, queue)
@@ -280,7 +280,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     val map = Map(cinemaName -> (scraper: ChunkedCinemaScraper))
     val clk = Clock.fixed(now, ZoneOffset.UTC)
     val policy  = new ScrapeFreshnessPolicy(freshness, clock = clk)
-    val planner = new ChunkScrapePlanner(map, store, queue, publish, policy, stale, clk)
+    val planner = new ChunkScrapePlanner(map, store, queue, publish, policy, services.tasks.ChunkScrapePlanner.RunTimeout(stale), clk)
     val chunkH  = new ScrapeChunkHandler(map, store, clk)
     val reduceH = new ScrapeChunkReduceHandler(map, store, publish, policy, clk)
     val coordA  = new ChunkScrapeCoordinator(store, queue) // instance A
@@ -364,8 +364,8 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     val slices  = (0 until 6).map(i => f"2026-06-${25 + i}%02d" -> Seq(film("F", 25 + i))).toMap
     val map     = Map(cinemaName -> (new FakeChunked(slices): ChunkedCinemaScraper))
     val planner = new ChunkScrapePlanner(map, store, queue, _ => (),
-      new ScrapeFreshnessPolicy(new InMemoryFreshnessStore), 30.minutes,
-      Clock.fixed(now, ZoneOffset.UTC), chunkSpread = 6.minutes)
+      new ScrapeFreshnessPolicy(new InMemoryFreshnessStore), services.tasks.ChunkScrapePlanner.RunTimeout(30.minutes),
+      Clock.fixed(now, ZoneOffset.UTC), chunkSpread = settings.ScrapeChunkSpread(6.minutes))
 
     planner.plan(cinemaName) shouldBe 6
     queue.waitingCount(TaskType.ScrapeChunk) shouldBe 6 // all six enqueued...

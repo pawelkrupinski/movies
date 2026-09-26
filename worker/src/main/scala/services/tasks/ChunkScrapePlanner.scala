@@ -1,5 +1,7 @@
 package services.tasks
 
+import settings.ScrapeChunkSpread
+
 import play.api.Logging
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, PreScrapedCinemaScraper}
 
@@ -36,7 +38,7 @@ class ChunkScrapePlanner(
   // Records the terminal outcome of a plan that never reaches the reduce (empty or
   // failed), so such a cinema still advances its due schedule.
   scrapeFreshness: ScrapeFreshnessPolicy,
-  staleAfter:    FiniteDuration = ChunkScrapePlanner.DefaultRunTimeout,
+  staleAfter:    ChunkScrapePlanner.RunTimeout = ChunkScrapePlanner.RunTimeout(ChunkScrapePlanner.DefaultRunTimeout),
   clock:         Clock          = Clock.systemUTC(),
   // Stagger this run's `ScrapeChunk` fan-out evenly across this window (chunk k of
   // n becomes claimable at `+ chunkSpread·k/n`) instead of making all n claimable
@@ -46,7 +48,7 @@ class ChunkScrapePlanner(
   // drains before the run is abandoned to a partial reduce. Default `Zero` disables
   // the spread, leaving the flow tests that drive `plan()` + `drain(now)` directly
   // (and the deterministic fixture harness) unaffected.
-  chunkSpread:   FiniteDuration = Duration.Zero
+  chunkSpread:   ScrapeChunkSpread = ScrapeChunkSpread(Duration.Zero)
 ) extends Logging {
 
   def isChunked(cinema: String): Boolean = chunkScrapers.contains(cinema)
@@ -62,7 +64,7 @@ class ChunkScrapePlanner(
       // ScrapeCinema is the COMMON case, not a rare race, because a chunked venue
       // stays due for its whole run (see [[ScrapeInFlight]]). Prod 2026-07-29: ~90-110
       // such no-ops an hour on the UK worker, each paying that fetch.
-      if (store.activeRun(cinema).exists(!_.isStale(clock.instant(), staleAfter))) return 0
+      if (store.activeRun(cinema).exists(!_.isStale(clock.instant(), staleAfter.value))) return 0
 
       val keys =
         try scraper.planChunks()
@@ -71,13 +73,13 @@ class ChunkScrapePlanner(
       if (keys.isEmpty) { publishEmpty(scraper); return 0 }
 
       val now = clock.instant()
-      store.startRun(cinema, keys, now, staleAfter) match {
+      store.startRun(cinema, keys, now, staleAfter.value) match {
         case None => 0 // a run is already active for this cinema
         case Some(runId) =>
           // Stagger the fan-out's eligibility evenly across the (clamped) spread
           // window so this venue's chunks don't all become claimable at once and
           // monopolise the pool — see `chunkSpread`. `Zero` window → no offset.
-          val windowMillis = math.min(chunkSpread.toMillis, staleAfter.toMillis / 3)
+          val windowMillis = math.min(chunkSpread.value.toMillis, staleAfter.value.toMillis / 3)
           val total        = keys.size
           val n = keys.zipWithIndex.count { case (k, index) =>
             val notBefore =
@@ -118,6 +120,10 @@ class ChunkScrapePlanner(
 }
 
 object ChunkScrapePlanner {
+
+  /** How long a chunked run may go without finishing before it is abandoned and re-planned. */
+  final case class RunTimeout(value: FiniteDuration) extends AnyVal
+
   /** A run with no fresh completion this long is considered abandoned: a new
    *  `ScrapeCinema` supersedes it, and the backstop reduces its partial data. */
   val DefaultRunTimeout: FiniteDuration = 15.minutes

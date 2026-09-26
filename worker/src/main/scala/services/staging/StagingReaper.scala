@@ -1,5 +1,7 @@
 package services.staging
 
+import settings.{StagingPromoteInitialDelay, StagingPromoteInterval}
+
 import play.api.Logging
 import services.Stoppable
 import services.events.{DomainEvent, StagingNewcomerDiverted, TaskFinished}
@@ -36,8 +38,8 @@ class StagingReaper(
   steps:        StagingSteps,
   queue:        TaskQueue,
   staging:      StagingRepository,
-  interval:     FiniteDuration    = 2.minutes,
-  initialDelay: FiniteDuration    = 30.seconds,
+  interval:     StagingPromoteInterval = StagingPromoteInterval(2.minutes),
+  initialDelay: StagingPromoteInitialDelay = StagingPromoteInitialDelay(30.seconds),
   runStore:     ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:        Clock             = Clock.systemUTC(),
   metrics:      StagingMetrics    = StagingMetrics.noop
@@ -53,8 +55,8 @@ class StagingReaper(
   def start(): Unit = {
     if (!staging.enabled) { logger.info("StagingReaper: staging disabled; not starting."); return }
     scheduler.scheduleWithFixedDelay(() => Try(tickIfClaimed()),
-      initialDelay.toMillis, interval.toMillis, TimeUnit.MILLISECONDS)
-    logger.info(s"StagingReaper started — incubating pending_movies via the queue every ${interval.toSeconds}s (first in ${initialDelay.toSeconds}s).")
+      initialDelay.value.toMillis, interval.value.toMillis, TimeUnit.MILLISECONDS)
+    logger.info(s"StagingReaper started — incubating pending_movies via the queue every ${interval.value.toSeconds}s (first in ${initialDelay.value.toSeconds}s).")
   }
 
   /** Advance the chain in reaction to a finished staging step. Ignores
@@ -110,7 +112,7 @@ class StagingReaper(
    *  claim (cluster-safe, like the other reapers). Returns tasks enqueued (0 when
    *  the claim was lost). Package-private so tests drive it directly. */
   private[staging] def tickIfClaimed(): Int = {
-    val key = OccurrenceKey.at("staging", clock.millis(), interval, 0.seconds)
+    val key = OccurrenceKey.at("staging", clock.millis(), interval.value, 0.seconds)
     if (runStore.claim(key)) tick() else 0
   }
 

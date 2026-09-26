@@ -1,5 +1,7 @@
 package services.tasks
 
+import settings.SettleInterval
+
 import play.api.Logging
 import services.Stoppable
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
@@ -34,11 +36,11 @@ class SettleReaper(
   // The settle cadence — once per this period, preserving the old hydrate-backstop
   // frequency (`KINOWO_CACHE_REHYDRATE_SECONDS` = 1800s). BY-NAME so an
   // `/admin/config` flip applies on the next cycle without a restart.
-  interval:     => FiniteDuration = SettleReaper.DefaultInterval,
+  interval:     => SettleInterval = SettleInterval(SettleReaper.DefaultInterval),
   // A small spacing before the first tick so the synchronous hydrate has populated
   // the cache; the settle is a no-op on a cold cache anyway. 0 in tests that drive
   // `tickIfClaimed` directly.
-  initialDelay: FiniteDuration = SettleReaper.DefaultInitialDelay,
+  initialDelay: SettleReaper.InitialDelay = SettleReaper.InitialDelay(SettleReaper.DefaultInitialDelay),
   runStore:     ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:        Clock = Clock.systemUTC()
 ) extends Stoppable with Logging {
@@ -46,15 +48,15 @@ class SettleReaper(
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("settle-reaper")
 
   def start(): Unit = {
-    scheduleNext(initialDelay)
-    logger.info(s"SettleReaper started: whole-corpus settle once per ${interval.toSeconds}s.")
+    scheduleNext(initialDelay.value)
+    logger.info(s"SettleReaper started: whole-corpus settle once per ${interval.value.toSeconds}s.")
   }
 
   /** Self-rescheduling tick: settle, then schedule the next reading `interval`
    *  afresh — so an interval flip applies on the next cycle. */
   private def scheduleNext(delay: FiniteDuration): Unit = {
     scheduler.schedule(new Runnable {
-      def run(): Unit = { Try(tickIfClaimed()); scheduleNext(interval) }
+      def run(): Unit = { Try(tickIfClaimed()); scheduleNext(interval.value) }
     }, delay.toMillis, TimeUnit.MILLISECONDS)
     ()
   }
@@ -63,7 +65,7 @@ class SettleReaper(
    *  otherwise another machine is settling this window, so skip. Returns true when
    *  it settled. Package-private so tests can drive it directly. */
   private[tasks] def tickIfClaimed(): Boolean = {
-    val key = OccurrenceKey.at("settle", clock.millis(), interval, 0.seconds)
+    val key = OccurrenceKey.at("settle", clock.millis(), interval.value, 0.seconds)
     if (runStore.claim(key)) { settle(); true } else false
   }
 
@@ -71,6 +73,10 @@ class SettleReaper(
 }
 
 object SettleReaper {
+
+  /** How long after `start()` the first settle runs. */
+  final case class InitialDelay(value: FiniteDuration) extends AnyVal
+
   /** Matches the old hydrate-backstop cadence (`KINOWO_CACHE_REHYDRATE_SECONDS` =
    *  1800s): the settle ran once per 30 min via the reload; it now runs once per
    *  30 min on its own tick. */

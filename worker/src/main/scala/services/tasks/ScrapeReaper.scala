@@ -1,5 +1,7 @@
 package services.tasks
 
+import settings.{ScrapeBootRamp, ScrapeChunkSpread, ScrapeEnqueueSpreadSlices, ScrapeInitialDelay, ScrapeMaxEnqueuePerTick, ScrapeMaxOutstandingTasks, ScrapeTasksPerVenue}
+
 import services.Stoppable
 import play.api.Logging
 import services.freshness.{Freshness, FreshnessKind, FreshnessStore}
@@ -54,16 +56,16 @@ class ScrapeReaper(
   // must back `ScrapeCinemaHandler` so this enqueue gate and that pickup re-gate
   // agree on what's due — see [[DueWindow]].
   dueWindow: DueWindow = new DueWindow(Freshness.DefaultScrapeTtl),
-  interval:  FiniteDuration = 1.minute,
+  interval:  ScrapeReaper.TickInterval = ScrapeReaper.TickInterval(1.minute),
   // A small extra spacing before the (now post-hydrate) first tick, so it doesn't
   // land on the same instant as the cache hydrate finishing. Defaults to 0 so the
   // tests that drive `tick()` directly are unaffected.
-  initialDelay: FiniteDuration = 0.seconds,
+  initialDelay: ScrapeInitialDelay = ScrapeInitialDelay(0.seconds),
   // How long each readiness wait blocks before logging and waiting again. We never
   // tick against a not-ready mirror (that was the boot storm) — readiness itself
   // now completes only once a hydrate SUCCEEDS or its bounded retry budget is spent
   // (see MongoFreshnessStore.hydrateInPhases), so this just paces the holding log.
-  readyTimeout: FiniteDuration = 30.seconds,
+  readyTimeout: ScrapeReaper.ReadyTimeout = ScrapeReaper.ReadyTimeout(30.seconds),
   // Cap on how many stale cinemas a single tick enqueues. After a restart every
   // cinema can be stale at once; enqueuing all ~300 lets the TaskWorker pool
   // drain flat-out for minutes with no idle gap, exhausting the shared-CPU
@@ -72,7 +74,7 @@ class ScrapeReaper(
   // letting credit recover — the backlog clears over a few ticks instead. The
   // queue dedups, so already-in-flight cinemas don't re-count against the cap.
   // Default unbounded so the tests that drive `tick()` directly are unaffected.
-  maxEnqueuePerTick: Int = Int.MaxValue,
+  maxEnqueuePerTick: ScrapeMaxEnqueuePerTick = ScrapeMaxEnqueuePerTick(Int.MaxValue),
   // Post-boot enqueue RAMP: for this long after the FIRST tick, the (non-throttled)
   // per-tick cap ramps linearly from ~1/5 of `maxEnqueuePerTick` up to the full cap.
   // Even capped, enqueuing the FULL `maxEnqueuePerTick` every tick from the first
@@ -83,7 +85,7 @@ class ScrapeReaper(
   // clears. Anchored at the first tick (post-hydrate), so it covers exactly the
   // cold-restart window. Default 0 disables it, leaving tests/harness that drive
   // `tick()` directly (and the deterministic snapshot) unaffected.
-  bootRamp: FiniteDuration = 0.seconds,
+  bootRamp: ScrapeBootRamp = ScrapeBootRamp(0.seconds),
   // Ceiling on outstanding scrape TASKS ([[ScrapeReaper.ScrapeWorkTypes]]) — the
   // smoothing bound, which is now the only one. It sat beside a throttled "emergency
   // brake" that trimmed enqueue while an external signal said the box was CPU-starved;
@@ -101,7 +103,7 @@ class ScrapeReaper(
   // Bounding the outstanding TASKS converts that into the steady trickle the corpus
   // actually needs — same total work and freshness, no burst. Default unbounded so
   // callers/tests that don't wire it keep the old behaviour.
-  maxOutstandingScrapeTasks: Int = Int.MaxValue,
+  maxOutstandingScrapeTasks: ScrapeMaxOutstandingTasks = ScrapeMaxOutstandingTasks(Int.MaxValue),
   // What one venue COSTS, in scrape tasks, so `maxOutstandingScrapeTasks` can be spent
   // in the unit it is denominated in. A chunked venue's ScrapeCinema task is only the
   // planner; the fetches it fans out arrive a moment later, so a bound checked at
@@ -115,7 +117,7 @@ class ScrapeReaper(
   // `KINOWO_SCRAPE_TASKS_PER_VENUE`. It only has to be right to within a factor of
   // two — it sizes a burst bound, not a schedule. Default 1 = unchunked, which leaves
   // the bound behaving exactly as a venue count for callers that don't set it.
-  tasksPerVenue: Int = 1,
+  tasksPerVenue: ScrapeTasksPerVenue = ScrapeTasksPerVenue(1),
   // Cinemas whose scrape is already running are left OUT of the due set. A chunked
   // venue is not stamped until its run terminates (deliberately — see
   // [[ScrapeInFlight]]), so without this it stays most-overdue for its own duration
@@ -128,7 +130,7 @@ class ScrapeReaper(
   // is. Throughput is concurrent-venues / spread, which makes the spread a term in
   // how big the outstanding budget must be — see `spreadAwareOutstandingBudget`.
   // Default zero = no spread, leaving unchunked callers and tests unaffected.
-  chunkSpread: FiniteDuration = Duration.Zero,
+  chunkSpread: ScrapeChunkSpread = ScrapeChunkSpread(Duration.Zero),
   // SPREAD the (non-throttled) per-tick batch across the tick interval instead of
   // dumping it all at the tick instant. The reaper enqueues a clump of due cinemas
   // each tick; they fetch in parallel and their HTML/JSON payloads PARSE together —
@@ -139,7 +141,7 @@ class ScrapeReaper(
   // lower CPU peak.
   // Default 1 disables it (single group at offset 0), leaving tests that drive
   // `tick()` directly — and the deterministic snapshot — unaffected.
-  enqueueSpread: Int = 1,
+  enqueueSpread: ScrapeEnqueueSpreadSlices = ScrapeEnqueueSpreadSlices(1),
   runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:    Clock = Clock.systemUTC()
 ) extends Stoppable with Logging {
@@ -153,7 +155,7 @@ class ScrapeReaper(
    *  implies. Derived rather than configured, so it tracks the roster and the window
    *  instead of drifting from them. */
   private val cadenceVenuesPerTick: Int = {
-    val ticksPerWindow = math.max(1L, dueWindow.period.toMillis / math.max(1L, interval.toMillis))
+    val ticksPerWindow = math.max(1L, dueWindow.period.toMillis / math.max(1L, interval.value.toMillis))
     math.max(1, math.ceil(scrapers.size.toDouble / ticksPerWindow).toInt)
   }
 
@@ -177,13 +179,13 @@ class ScrapeReaper(
    *  not `venuesPerTick`. Both budgets floor at this — falling under it means the
    *  roster ages without bound, which is not "backing off", it is falling behind. */
   private val cadenceTaskFloor: Int = {
-    val spreadTicks = math.max(1L, chunkSpread.toMillis / math.max(1L, interval.toMillis))
-    cadenceVenuesPerTick * spreadTicks.toInt * math.max(1, tasksPerVenue)
+    val spreadTicks = math.max(1L, chunkSpread.value.toMillis / math.max(1L, interval.value.toMillis))
+    cadenceVenuesPerTick * spreadTicks.toInt * math.max(1, tasksPerVenue.value)
   }
 
   private val spreadAwareOutstandingBudget: Int =
-    if (maxOutstandingScrapeTasks == Int.MaxValue) Int.MaxValue
-    else math.max(maxOutstandingScrapeTasks, cadenceTaskFloor)
+    if (maxOutstandingScrapeTasks.value == Int.MaxValue) Int.MaxValue
+    else math.max(maxOutstandingScrapeTasks.value, cadenceTaskFloor)
   // Instant of the first tick, anchoring the post-boot ramp; set once, then read-only.
   private val rampAnchor = new AtomicReference[Option[Instant]](None)
 
@@ -192,15 +194,15 @@ class ScrapeReaper(
    *  unbounded — so the default configuration and direct-`tick()` tests are unchanged.
    *  Pure given `now` and the (once-set) anchor. */
   private[tasks] def rampedCap(now: Instant): Int =
-    if (bootRamp.toMillis <= 0 || maxEnqueuePerTick == Int.MaxValue) maxEnqueuePerTick
+    if (bootRamp.value.toMillis <= 0 || maxEnqueuePerTick.value == Int.MaxValue) maxEnqueuePerTick.value
     else {
       val anchor  = rampAnchor.updateAndGet(prev => if (prev.isDefined) prev else Some(now)).get
       val elapsed = math.max(0L, JDuration.between(anchor, now).toMillis)
-      if (elapsed >= bootRamp.toMillis) maxEnqueuePerTick
+      if (elapsed >= bootRamp.value.toMillis) maxEnqueuePerTick.value
       else {
-        val floorCap = math.max(1, maxEnqueuePerTick / 5)
-        val scaled   = math.ceil(maxEnqueuePerTick.toDouble * elapsed / bootRamp.toMillis).toInt
-        math.min(maxEnqueuePerTick, math.max(floorCap, scaled))
+        val floorCap = math.max(1, maxEnqueuePerTick.value / 5)
+        val scaled   = math.ceil(maxEnqueuePerTick.value.toDouble * elapsed / bootRamp.value.toMillis).toInt
+        math.min(maxEnqueuePerTick.value, math.max(floorCap, scaled))
       }
     }
 
@@ -209,7 +211,7 @@ class ScrapeReaper(
     // Defer onto the scheduler thread so we can block it on the freshness hydrate
     // without holding up boot wiring; it then schedules the periodic ticks.
     scheduler.execute(() => Try(awaitReadyThenStart()))
-    logger.info(s"ScrapeReaper started over ${scrapers.size} cinemas, first tick after freshness hydrate then ${initialDelay.toSeconds}s, every ${interval.toSeconds}s.")
+    logger.info(s"ScrapeReaper started over ${scrapers.size} cinemas, first tick after freshness hydrate then ${initialDelay.value.toSeconds}s, every ${interval.value.toSeconds}s.")
   }
 
   // Wait until the scrape freshness stamps are actually loaded, THEN begin the
@@ -221,16 +223,16 @@ class ScrapeReaper(
   // drained the shared-CPU credit balance and slowed the next restart's hydrate,
   // storming again.
   private def awaitReadyThenStart(): Unit = {
-    while (!Try(Await.ready(freshness.whenReady(FreshnessKind.CinemaScrape), readyTimeout)).isSuccess)
+    while (!Try(Await.ready(freshness.whenReady(FreshnessKind.CinemaScrape), readyTimeout.value)).isSuccess)
       logger.info("ScrapeReaper: freshness mirror still hydrating; holding scrape ticks (no cold re-scrape).")
-    scheduler.scheduleWithFixedDelay(() => Try(tickIfClaimed()), initialDelay.toMillis, interval.toMillis, TimeUnit.MILLISECONDS)
+    scheduler.scheduleWithFixedDelay(() => Try(tickIfClaimed()), initialDelay.value.toMillis, interval.value.toMillis, TimeUnit.MILLISECONDS)
   }
 
   /** Tick only if this machine wins the current minute's occurrence claim —
    *  otherwise another machine is enqueuing this window's stale cinemas, so
    *  skip. Returns the number enqueued (0 when the claim was lost). */
   private[tasks] def tickIfClaimed(): Int = {
-    val key = OccurrenceKey.at("scrape", clock.millis(), interval, 0.seconds)
+    val key = OccurrenceKey.at("scrape", clock.millis(), interval.value, 0.seconds)
     if (runStore.claim(key)) tick() else 0
   }
 
@@ -263,7 +265,7 @@ class ScrapeReaper(
     // planner is an INTENTION to enqueue ~36 more, and a budget that ignores that keeps
     // admitting against room it has already committed. Prod showed exactly that shape —
     // ScrapeCinema=13 waiting with ScrapeChunk=0, ~470 tasks of pending fan-out read as 13.
-    val perVenue = math.max(1, tasksPerVenue)
+    val perVenue = math.max(1, tasksPerVenue.value)
     // A backlog that cannot be READ is not an empty backlog. `waitingCount` throws on a
     // failed read (it used to answer 0 — the reading of an empty queue, so a Mongo blip
     // was the one moment the whole budget got admitted on top of an unknown pile).
@@ -286,7 +288,7 @@ class ScrapeReaper(
       if (taskBudget == Int.MaxValue) Int.MaxValue
       else math.max(0, taskBudget - outstanding) / perVenue
 
-    if (enqueueSpread <= 1) {
+    if (enqueueSpread.value <= 1) {
       // Un-spread healthy path (the default): enqueue the whole capped batch now.
       val enqueued = enqueueUpTo(due, math.min(rampedCap(now), venuesWithin(spreadAwareOutstandingBudget)))
       if (enqueued > 0) logger.info(s"ScrapeReaper enqueued $enqueued stale cinema(s) ($outstanding scrape task(s) already waiting).")
@@ -297,7 +299,7 @@ class ScrapeReaper(
       // offsets. The queue dedups, so a slice landing near the next tick can't
       // double-enqueue. `tick` returns only what it enqueued SYNCHRONOUSLY (slice 0),
       // matching the un-spread contract for the first-of-batch.
-      val plan = planSlices(due.take(math.min(rampedCap(now), venuesWithin(spreadAwareOutstandingBudget))), enqueueSpread)
+      val plan = planSlices(due.take(math.min(rampedCap(now), venuesWithin(spreadAwareOutstandingBudget))), enqueueSpread.value)
       val enqueuedNow = plan.headOption.map { case (_, first) => enqueueUpTo(first, first.size) }.getOrElse(0)
       plan.drop(1).foreach { case (offset, group) =>
         scheduleSlice(offset, () => {
@@ -347,7 +349,7 @@ class ScrapeReaper(
         val size   = base + (if (k < remainder) 1 else 0)
         val group  = batch.slice(idx, idx + size)
         idx += size
-        ((interval.toMillis * k / groupCount).millis, group)
+        ((interval.value.toMillis * k / groupCount).millis, group)
       }.toVector
     }
   }
@@ -365,6 +367,12 @@ class ScrapeReaper(
 }
 
 object ScrapeReaper {
+
+  /** How often the reaper wakes to enqueue what has come due. */
+  final case class TickInterval(value: FiniteDuration) extends AnyVal
+  /** How long the first tick waits for the freshness store to hydrate. */
+  final case class ReadyTimeout(value: FiniteDuration) extends AnyVal
+
 
   /** Every task type a cinema scrape can be sitting in, and therefore everything the
    *  outstanding-task bound has to count.

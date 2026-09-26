@@ -1,5 +1,7 @@
 package services.tasks
 
+import settings.OmdbBackfillInterval
+
 import services.schedule.{AlwaysClaimScheduledRunStore, ScheduledRunStore}
 
 import java.time.Clock
@@ -25,16 +27,20 @@ import scala.concurrent.duration._
 class OmdbBackfillReaper(
   enqueueSweep: () => Unit,
   // Daily by default. BY-NAME so an `/admin/config` flip applies next cycle.
-  interval:     => FiniteDuration = OmdbBackfillReaper.DefaultInterval,
+  interval:     => OmdbBackfillInterval = OmdbBackfillInterval(OmdbBackfillReaper.DefaultInterval),
   // A small spacing before the first enqueue so the synchronous hydrate has
   // populated the cache (the sweep is a no-op on a cold one anyway). 0 in tests
   // that drive `tickIfClaimed` directly.
-  initialDelay: FiniteDuration = OmdbBackfillReaper.DefaultInitialDelay,
+  initialDelay: OmdbBackfillReaper.InitialDelay = OmdbBackfillReaper.InitialDelay(OmdbBackfillReaper.DefaultInitialDelay),
   runStore:     ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:        Clock = Clock.systemUTC()
-) extends ClaimedEnqueueReaper("omdb-backfill", enqueueSweep, interval, initialDelay, runStore, clock)
+) extends ClaimedEnqueueReaper("omdb-backfill", enqueueSweep, interval.value, initialDelay.value, runStore, clock)
 
 object OmdbBackfillReaper {
+
+  /** How long after `start()` the first sweep is enqueued. */
+  final case class InitialDelay(value: FiniteDuration) extends AnyVal
+
   /** Daily: OMDb is a slow-moving gap-filler — the unresolved tail only shrinks
    *  as new films land, and the free key is capped at 1000 lookups/day. */
   val DefaultInterval: FiniteDuration = 24.hours

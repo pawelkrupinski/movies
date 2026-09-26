@@ -22,7 +22,7 @@ class SettleReaperSpec extends AnyFlatSpec with Matchers {
 
   it should "settle at most once per window — a second tick in the same window is a no-op" in {
     var settles = 0
-    val r = new SettleReaper(() => settles += 1, interval = 30.minutes, runStore = new InMemoryScheduledRunStore)
+    val r = new SettleReaper(() => settles += 1, interval = settings.SettleInterval(30.minutes), runStore = new InMemoryScheduledRunStore)
     r.tickIfClaimed() shouldBe true
     r.tickIfClaimed() shouldBe false // same 30-min window already claimed by this machine
     settles shouldBe 1

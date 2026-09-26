@@ -1,5 +1,7 @@
 package services.tasks
 
+import settings.TmdbRetryMaxEnqueuePerTick
+
 import models.{Country, MovieRecord, Tmdb}
 import play.api.Logging
 import services.Stoppable
@@ -107,15 +109,15 @@ class UnresolvedTmdbReaper(
   // How often the reaper wakes to re-try the slice now due — the spread
   // granularity. Smaller = flatter trickle, at the cost of more (cheap,
   // in-memory) corpus scans. 5min ≈ 288 ticks per 24h period.
-  tickInterval: FiniteDuration = UnresolvedTmdbReaper.DefaultTickInterval,
+  tickInterval: UnresolvedTmdbReaper.TickInterval = UnresolvedTmdbReaper.TickInterval(UnresolvedTmdbReaper.DefaultTickInterval),
   // A small spacing before the first tick (0 in tests that drive `tick` directly).
-  initialDelay: FiniteDuration = 0.seconds,
+  initialDelay: UnresolvedTmdbReaper.InitialDelay = UnresolvedTmdbReaper.InitialDelay(0.seconds),
   // Cap on re-tries per tick. The phase spread keeps steady-state ticks tiny, but
   // a clock jump or a period shorter than the backlog could bunch them; capping
   // bounds that the way `ScrapeReaper` / `EnrichmentReaper` do — the leftover
   // stays due (re-tried next period). Default unbounded so tests driving `tick`
   // are unaffected; the wiring sets a finite cap.
-  maxEnqueuePerTick: Int = Int.MaxValue,
+  maxEnqueuePerTick: TmdbRetryMaxEnqueuePerTick = TmdbRetryMaxEnqueuePerTick(Int.MaxValue),
   runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:    Clock = Clock.systemUTC()
 ) extends Stoppable with Logging {
@@ -124,15 +126,15 @@ class UnresolvedTmdbReaper(
 
   def start(): Unit = {
     scheduler.scheduleWithFixedDelay(
-      () => Try(tickIfClaimed()), initialDelay.toMillis, tickInterval.toMillis, TimeUnit.MILLISECONDS)
+      () => Try(tickIfClaimed()), initialDelay.value.toMillis, tickInterval.value.toMillis, TimeUnit.MILLISECONDS)
     logger.info(s"UnresolvedTmdbReaper started: unresolved rows re-tried once per ${dueWindow.period.toHours}h, " +
-                s"phase-spread over ticks every ${tickInterval.toSeconds}s.")
+                s"phase-spread over ticks every ${tickInterval.value.toSeconds}s.")
   }
 
   /** Tick only if this machine wins the current tick window's occurrence claim —
    *  otherwise another machine is sweeping for this window. Package-private for tests. */
   private[tasks] def tickIfClaimed(): Int = {
-    val key = OccurrenceKey.at("tmdb-retry-sweep", clock.millis(), tickInterval, 0.seconds)
+    val key = OccurrenceKey.at("tmdb-retry-sweep", clock.millis(), tickInterval.value, 0.seconds)
     if (runStore.claim(key)) tick() else 0
   }
 
@@ -141,8 +143,8 @@ class UnresolvedTmdbReaper(
    *  so tests can drive time. */
   private[tasks] def tick(nowMillis: Long = clock.millis()): Int = {
     val now   = Instant.ofEpochMilli(nowMillis)
-    val since = Instant.ofEpochMilli(nowMillis - tickInterval.toMillis)
-    val cap   = maxEnqueuePerTick
+    val since = Instant.ofEpochMilli(nowMillis - tickInterval.value.toMillis)
+    val cap   = maxEnqueuePerTick.value
     var enqueued = 0
     var forced   = 0
     var refilled = 0
@@ -197,6 +199,12 @@ class UnresolvedTmdbReaper(
 }
 
 object UnresolvedTmdbReaper {
+
+  /** How often the reaper wakes to re-try what has come due. */
+  final case class TickInterval(value: FiniteDuration) extends AnyVal
+  /** How long after `start()` the first tick runs. */
+  final case class InitialDelay(value: FiniteDuration) extends AnyVal
+
   /** How often the reaper wakes to re-try the now-due slice. At 5min over a 24h
    *  period the backlog is spread across ~288 ticks. */
   val DefaultTickInterval: FiniteDuration = 5.minutes
