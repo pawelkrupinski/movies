@@ -426,7 +426,7 @@ for the resolver's query set (§9).
   main. Its edges are drawn from `ListingConstraints`.
 - A `ShadowIdentityReaper` runs `resolve` per family, after each settle tick, over the live
   corpus and the lookup caches. It issues **no** new lookups in prod (a gap is an "unknown"
-  node), writes nothing but its shadow collections, and exports gauges. *Built — see §16*: the
+  node), writes nothing but its shadow collections, and exports gauges. *Built — see §17*: the
   collections are `identity_shadow_decisions` and `identity_shadow_diff`, and the gauges follow the
   worker's naming (`kinowo_worker_identity_shadow_films{country,relation}`,
   `kinowo_worker_identity_family_crossings{country}`, `kinowo_worker_identity_resolve_seconds{country}`).
@@ -877,7 +877,7 @@ Chrome: it pins the ticked listing, removes the pin, and shows a refusal.
   *Done on `identity-resolver` (§15):* `ResolverDecision` implements `Decision`, and
   `IdentityResolver.resolve(…, pins = ListingConstraints.pinned(pins))` does all four (a pinned
   listing's decision has basis `Pinned` and confidence 1).
-  *Done since (§16):* the shadow run persists each run's decisions (`ShadowRunStore`), the web
+  *Done since (§17):* the shadow run persists each run's decisions (`ShadowRunStore`), the web
   `AdminWiring` reads them back through `ShadowDecisions`, and `ShadowDecisions.none` is gone.
 
 ---
@@ -1749,3 +1749,78 @@ retire 22 PL film ids. The other countries: UK 45 / 11, DE 13 / 7, US 73 / 7, ES
 
 Hardcoding added: none. The chain-slot exclusion reads `Cinema.all` membership, the model's own
 venue roster. The seeding's largest-film-first rank is a rule over the data, not a constant.
+
+---
+
+## 17. Phase 1 (§8): the shadow run in production
+
+### 17.1 What runs
+
+`ShadowIdentityReaper` (worker, `services.identity`) rides the settle tick (`ResolutionWiring.settleTick`:
+the whole-corpus settle, then the shadow run, on the same cluster-claimed 30-minute window). Each tick:
+
+- **Listings**: every listing of the scrape archive's latest scrape per live venue (`Listing.corpus`,
+  the same function the offline harness and the recording sweep use).
+- **Lookups**: `ObservedIdentityLookups` — the very `TmdbIdentityLookups`, over a TMDB client built by
+  the deployment's own factory (`tmdbClientOver`) on an `ObservedHttpFetch`, and the venues' details
+  from `DETAIL <page> <venue>` observations. There is no network beneath it. A question with no live
+  definitive observation (never asked, or answered only by a failed read) is a gap: `Unknown`, counted.
+  Reads renew what they read (§9a).
+- **Pins**: `identity_pins`, through `ListingConstraints.pinned`.
+- **Diff** (`ShadowDiff`): each cluster against the pipeline's films of the same listings (`PipelineFilms`,
+  by slot — the rule the offline harness uses): `identical`, `split`, `merged`, `moved`; a family whose
+  clusters are not all identical is itemised.
+- **Writes**: `identity_shadow_decisions` (a document per cluster) and `identity_shadow_diff` (per
+  differing family), one run replacing the previous whole, each document stamped `expireAt` = run +
+  `ObservationRetention.Window` (8 days), deleted by a TTL index the worker reconciles. `ShadowRunStore`
+  owns every rule over a Mongo and an in-memory backend (`ShadowRunStoreBehaviour` runs both).
+- **Reads**: `/admin/identity` reads the latest run through `ShadowDecisions`. Its verdicts (the
+  low-confidence cut's input, §13.3) are the clusters the pipeline settles: identical = right; the same
+  listings on another film = wrong; splits, merges and "no film" are not verdicts.
+- **Gauges**: `kinowo_worker_identity_shadow_films{country,relation}`,
+  `kinowo_worker_identity_family_crossings{country}` (a crossing refuses the resolve; the previous run
+  stays), `kinowo_worker_identity_resolve_seconds{country}`; charted on worker-diagnostics. No series
+  while a country's run is off.
+
+**Switches** (staged-migration, read per worker process, off by default):
+`KINOWO_IDENTITY_SHADOW` (`ProcessConfiguration.identityShadow`) wires the run;
+`KINOWO_OBSERVATION_CAPTURE` fills what it reads. With the shadow on and capture off it reads whatever
+the store holds.
+
+### 17.2 Proof
+
+- `ShadowIdentityReaperIntegrationSpec` (itAll; full corpora with `KINOWO_IDENTITY_FULL`): the offline
+  resolve over the recorded answers, every answer filed by the production capture, then one reaper tick
+  over that store alone. The persisted decisions equal the offline resolver's; the corpus fetch sees zero
+  requests during the tick; no crossing.
+- `ObservationCaptureEndToEndSpec`: the recorded Poznań corpus booted with capture and the shadow run on,
+  a tick after the boot: `expected-schedules.txt` and the read-model snapshot unchanged, zero requests.
+- Found on the way: the offline harness counted each replay gap once per distinct request, so a gap met
+  a second time read as the replay's empty answer (`Known(Nil)`); it now counts every gap met.
+
+### 17.3 Measured (2026-09-26)
+
+| corpus | listings | clusters (identical / split / merged / moved) | tick wall | CPU | allocated | Mongo (decisions + diff) |
+|---|---|---|---|---|---|---|
+| hc-pl | 147 | 49 (12 / 33 / 2 / 2) | 1.1 s | 0.6 s | 579 MB | 0.13 MB |
+| hc-uk | 78 | 24 (16 / 0 / 1 / 7) | 0.3 s | 0.2 s | 191 MB | 0.05 MB |
+| hc-de | 45 | 11 (8 / 0 / 0 / 3) | 0.2 s | 0.0 s | 33 MB | 0.01 MB |
+| hc-us | 107 | 36 (17 / 8 / 0 / 11) | 0.3 s | 0.1 s | 121 MB | 0.06 MB |
+| hc-es | 44 | 9 (7 / 0 / 0 / 2) | 0.2 s | 0.0 s | 43 MB | 0.01 MB |
+| full-pl | 10,135 | 1,314 (1,086 / 76 / 152 / 0) | 2.5 s | 2.2 s | 1,887 MB | 5.7 MB |
+| full-uk | 30,302 | 1,563 (1,481 / 7 / 75 / 0) | 1.0 s | 0.7 s | 1,007 MB | 8.8 MB |
+| full-de | 19,674 | 1,680 (1,673 / 0 / 7 / 0) | 0.6 s | 0.4 s | 768 MB | 3.3 MB |
+| full-es | 4,909 | 236 (235 / 0 / 1 / 0) | 0.4 s | 0.1 s | 155 MB | 0.8 MB |
+
+Decisions equal the offline resolver's and zero requests on all nine (recorder run 36153174348's
+trees for the full corpora). "Allocated" is garbage, not retained heap: the run keeps nothing between
+ticks but the Mongo documents. Mongo is the uncompressed BSON `size` of one run (a run replaces the
+last). The tick above excludes the Mongo reads of the observations, one per lookup (full-es: ~1,100
+reads and as many `expireAt` renewals per 30-minute tick).
+
+**What production will see**: over the capture of the pipeline's OWN lookups (the e2e Poznań corpus),
+4,800 listings gave 723 clusters (527 identical, 96 split, 55 merged, 45 moved), 337 matched, and 4,559
+lookups the capture never observed. The resolver's yearless searches, director walks and candidate
+records are mostly questions the pipeline never asks, and the shadow run asks no service, so in
+production most nodes stay `Unknown` until those questions are observed. The diff then measures the
+resolver on the pipeline's evidence, not its own.
