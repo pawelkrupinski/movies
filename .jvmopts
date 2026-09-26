@@ -28,5 +28,11 @@
 # Keep AWT headless. The share-card and poster specs render with AWT, and on macOS
 # a JVM that touches AWT without this registers as a foreground app and steals
 # focus — yanking the user onto another Space mid-run. The forked web Test JVM
-# gets the same flag in build.sbt; the two HeadlessJvmSpecs guard both.
+# gets the same flag in build.sbt; the two TestJvmSpecs guard both.
 -Djava.awt.headless=true
+# Format numbers the way production does. Twirl's `f"…%.1f"` uses the JVM's
+# default locale: prod's image sets none ("6.4"), while a dev Mac's `en_PL`
+# gave "6,4". PageTest renders inside THIS JVM, so its snapshots flipped
+# between the two. Guarded by the TestJvmSpecs, like headless above.
+-Duser.language=en
+-Duser.country=US
