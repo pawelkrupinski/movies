@@ -35,10 +35,16 @@ function failed(error: unknown): StoreState {
   return { error: describeError(error), networkError: isTransientNetworkError(error) };
 }
 
+/** The parsed JSON answer; null for an empty 2xx body (a 204 relationship PATCH, a Play edit DELETE). */
 async function requestJson(url: string, init: Omit<HttpRequest, "timeoutMs">): Promise<unknown> {
   const response = await httpRequest(url, { ...init, timeoutMs: REQUEST_TIMEOUT_MS });
   if (response.status < 200 || response.status >= 300) throw new HttpError(url, response.status, response.body);
-  return JSON.parse(response.body) as unknown;
+  return response.body.trim() ? (JSON.parse(response.body) as unknown) : null;
+}
+
+/** The headers and body for a JSON write, or neither for a bodiless call. */
+function jsonBody(body: unknown): Pick<HttpRequest, "headers" | "body"> {
+  return body === undefined ? {} : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
 }
 
 /**
@@ -72,16 +78,26 @@ export function ascToken(keyId: string, issuerId: string, pem: string, nowSecond
   return `${input}.${b64u(signature)}`;
 }
 
-/** GET against App Store Connect, signing a fresh token per call from the key on this Mac. */
-export function ascClient(repoDir: string, keyDir = ASC_KEY_DIR, now: () => number = Date.now): (path: string) => Promise<unknown> {
-  return async (path) => {
+export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
+/** App Store Connect: reads for the dashboard, writes for the release lane (src/mobile-release). */
+export interface AscApi {
+  readonly get: (path: string) => Promise<unknown>;
+  readonly send: (method: HttpMethod, path: string, body?: unknown) => Promise<unknown>;
+}
+
+/** App Store Connect, signing a fresh token per call from the key on this Mac. */
+export function ascApi(repoDir: string, keyDir = ASC_KEY_DIR, now: () => number = Date.now): AscApi {
+  const send = async (method: HttpMethod, path: string, body?: unknown) => {
     const keyId = await envLocal(repoDir, "APP_STORE_KEY_ID");
     const issuerId = await envLocal(repoDir, "APP_STORE_ISSUER_ID");
     if (!keyId || !issuerId) throw new Error("APP_STORE_KEY_ID/APP_STORE_ISSUER_ID missing from .env.local");
     const pem = await readFile(join(keyDir, `AuthKey_${keyId}.p8`), "utf8");
     const token = ascToken(keyId, issuerId, pem, Math.floor(now() / 1000));
-    return requestJson(`${ASC_BASE}${path}`, { headers: { Authorization: `Bearer ${token}` } });
+    const { headers, body: payload } = jsonBody(body);
+    return requestJson(`${ASC_BASE}${path}`, { method, headers: { Authorization: `Bearer ${token}`, ...headers }, body: payload });
   };
+  return { get: (path) => send("GET", path), send };
 }
 
 interface AscVersion {
@@ -119,8 +135,8 @@ export async function iosReleaseState(get: (path: string) => Promise<unknown>, s
 
 export interface PlayApi {
   token(): Promise<string>;
-  post(path: string, token: string): Promise<unknown>;
   get(path: string, token: string): Promise<unknown>;
+  send(method: HttpMethod, path: string, token: string, body?: unknown): Promise<unknown>;
 }
 
 interface PlayCredentials {
@@ -158,8 +174,13 @@ export function playClient(repoDir: string, now: () => number = Date.now): PlayA
       if (!answer.access_token) throw new Error("the token endpoint answered without an access_token");
       return answer.access_token;
     },
-    post: (path, token) => requestJson(`${PLAY_BASE}${path}`, { method: "POST", headers: auth(token), body: "" }),
     get: (path, token) => requestJson(`${PLAY_BASE}${path}`, { headers: auth(token) }),
+    send: (method, path, token, body) => {
+      const { headers, body: payload } = jsonBody(body);
+      // A bodiless POST (opening an edit, committing one) still sends "" -- Google 411s a POST
+      // with no Content-Length.
+      return requestJson(`${PLAY_BASE}${path}`, { method, headers: { ...auth(token), ...headers }, body: payload ?? (method === "POST" ? "" : undefined) });
+    },
   };
 }
 
@@ -180,7 +201,7 @@ export async function androidReleaseState(play: PlayApi, sleep: Sleep = realSlee
   try {
     track = (await withNetworkRetries(async () => {
       const token = await play.token();
-      const edit = (await play.post("/edits", token)) as { id: string };
+      const edit = (await play.send("POST", "/edits", token)) as { id: string };
       return play.get(`/edits/${edit.id}/tracks/production`, token);
     }, sleep)) as typeof track;
   } catch (error) {

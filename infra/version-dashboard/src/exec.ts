@@ -18,6 +18,8 @@ export interface CommandOptions {
   readonly onLine?: (line: string) => void;
   /** Merge stderr into stdout, in arrival order (the fleet consoles want one stream). */
   readonly mergeStderr?: boolean;
+  /** Added to this process's own environment for the child (secrets a build reads, never argv). */
+  readonly env?: Readonly<Record<string, string>>;
 }
 
 export type Executor = (argv: readonly string[], options: CommandOptions) => Promise<CommandResult>;
@@ -33,7 +35,11 @@ export const spawnExecutor: Executor = (argv, options) =>
       resolvePromise({ code: null, stdout: "", stderr: "empty command", timedOut: false });
       return;
     }
-    const child = spawn(command, args, { cwd: options.cwd, stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn(command, args, {
+      cwd: options.cwd,
+      env: options.env ? { ...process.env, ...options.env } : undefined,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
     let stdout = "";
     let stderr = "";
     // One partial-line buffer PER STREAM: shared, an unterminated stdout chunk was glued onto the

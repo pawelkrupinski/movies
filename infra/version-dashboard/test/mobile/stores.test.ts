@@ -7,7 +7,7 @@ import { setHttpClient, type HttpClient, type HttpRequest } from "../../src/http
 import { HttpError } from "../../src/mobile/network.js";
 import {
   androidReleaseState,
-  ascClient,
+  ascApi,
   ascToken,
   envLocal,
   iosReleaseState,
@@ -90,7 +90,7 @@ describe("iOS release state", () => {
 describe("Android release state", () => {
   const play = (token: () => Promise<string>, releases: unknown[]): PlayApi => ({
     token,
-    post: async () => ({ id: "edit-1" }),
+    send: async () => ({ id: "edit-1" }),
     get: async () => ({ releases }),
   });
 
@@ -154,14 +154,14 @@ describe("the real clients, over a fake HTTP client", () => {
     writeFileSync(join(dir, ".env.local"), "APP_STORE_KEY_ID=KEY1\nAPP_STORE_ISSUER_ID=iss\n");
     writeFileSync(join(dir, "AuthKey_KEY1.p8"), privateKey.export({ type: "pkcs8", format: "pem" }));
     answer({ "https://api.appstoreconnect.apple.com/v1/x": [200, { ok: 1 }] });
-    expect(await ascClient(dir, dir, () => NOW_MS)("/v1/x")).toEqual({ ok: 1 });
+    expect(await ascApi(dir, dir, () => NOW_MS).get("/v1/x")).toEqual({ ok: 1 });
     const token = requests[0]?.init.headers?.Authorization?.replace("Bearer ", "") ?? "";
     expect(decode(token.split(".")[1])).toMatchObject({ iss: "iss", iat: 1_790_000_000 });
   });
 
   it("a missing .p8 is a local fault, not a network error", async () => {
     writeFileSync(join(dir, ".env.local"), "APP_STORE_KEY_ID=KEY1\nAPP_STORE_ISSUER_ID=iss\n");
-    const state = await iosReleaseState(ascClient(dir, dir, () => NOW_MS), noSleep);
+    const state = await iosReleaseState(ascApi(dir, dir, () => NOW_MS).get, noSleep);
     expect(state).toMatchObject({ networkError: false });
     expect(state.error).toContain("AuthKey_KEY1.p8");
   });
@@ -171,7 +171,7 @@ describe("the real clients, over a fake HTTP client", () => {
     writeFileSync(join(dir, ".env.local"), "APP_STORE_KEY_ID=KEY1\nAPP_STORE_ISSUER_ID=iss\n");
     writeFileSync(join(dir, "AuthKey_KEY1.p8"), privateKey.export({ type: "pkcs8", format: "pem" }));
     answer({ "https://api.appstoreconnect.apple.com/v1/apps/6792566321/appStoreVersions?limit=10": [401, { errors: ["NOT_AUTHORIZED"] }] });
-    const state = await iosReleaseState(ascClient(dir, dir, () => NOW_MS), noSleep);
+    const state = await iosReleaseState(ascApi(dir, dir, () => NOW_MS).get, noSleep);
     expect(requests).toHaveLength(1);
     expect(state).toMatchObject({ networkError: false });
     expect(state.error).toContain("HTTP 401");

@@ -21,7 +21,22 @@ sanctioned way to upload builds, move tracks, and edit the store listing.
    - **Locally** — drop the JSON at `android/play-credentials.json`
      (git-ignored). Every `./gradlew publish*` command below picks it up.
 
+## Releasing both stores in one command
+
+`scripts/mobile-ship.sh` (from the main checkout) is the normal release: it picks the
+version from what main and both stores say (bumping and pushing main when the current
+one is already out), builds the signed AAB **and** the iOS archive from one commit,
+uploads both, submits iOS for review and then promotes Android to production, reading
+production back to prove it landed. `--dry-run` prints the plan and changes nothing. The
+steps below are what it automates, for doing one by hand.
+
 ## Deploying a build
+
+**⚠️ The CI lane below can no longer publish.** Since 2.0.9 every release has been built
+locally with `KINOWO_VERSION_CODE=$(date +%s)`, so Play's version codes are epoch seconds
+(1790075578 and up); CI's `github.run_number` (~300) is far below them, and Play refuses
+an upload whose code is lower than one it has seen. Use the local command or
+`scripts/mobile-ship.sh`.
 
 CI does this on a **manual** run (Actions ▸ *Android* ▸ *Run workflow*): it
 builds the signed AAB and uploads it to the **`internal`** track, fully rolled

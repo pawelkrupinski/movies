@@ -4,16 +4,16 @@ import type { Page } from "../page.js";
 import type { MobileSources } from "./build.js";
 import { MobileLive } from "./live.js";
 import type { MobileState } from "./model.js";
-import { androidReleaseState, ascClient, iosReleaseState, playClient } from "./stores.js";
+import { androidReleaseState, ascApi, iosReleaseState, playClient } from "./stores.js";
 import { renderMobile } from "./view.js";
 
 type WakeSource = { readonly onWake: (listener: () => void) => void };
 
 /** The real sources: this checkout's git, App Store Connect and the Play Developer API. */
 export function mobileSources(repoDir: string = REPO_DIR): MobileSources {
-  const asc = ascClient(repoDir);
+  const asc = ascApi(repoDir);
   const play = playClient(repoDir);
-  return { repoDir, ios: () => iosReleaseState(asc), android: () => androidReleaseState(play), now: Date.now };
+  return { repoDir, ios: () => iosReleaseState(asc.get), android: () => androidReleaseState(play), now: Date.now };
 }
 
 export function createMobilePage(wake: WakeSource, live = new MobileLive(mobileSources())): Page<MobileState> & { live: MobileLive } {

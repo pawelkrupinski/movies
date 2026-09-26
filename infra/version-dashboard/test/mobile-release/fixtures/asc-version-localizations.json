@@ -1,0 +1,157 @@
+{
+  "data": [
+    {
+      "type": "appStoreVersionLocalizations",
+      "id": "94e61f2b-f219-40a2-b640-65588d16bcc0",
+      "attributes": {
+        "description": "Kinowo to repertuar wszystkich kin w Twoim mieście w jednej aplikacji —\nod dużych sieci po małe kina studyjne. Zamiast otwierać kilka stron,\nw kilka sekund sprawdzasz, co dziś grają i o której godzinie.\n\nPrzy każdym filmie zobaczysz oceny IMDb, Rotten Tomatoes i Filmweb,\nwięc od razu odróżnisz hit od rozczarowania — bez przeskakiwania między serwisami.\n\nCo znajdziesz w Kinowo:\n• Repertuar wszystkich kin w Twoim mieście w jednym miejscu\n• Godziny seansów na dziś i kolejne dni\n• Oceny IMDb, Rotten Tomatoes i Filmweb przy każdym tytule\n• Plakaty, tytuły i podstawowe informacje o filmach\n• Szybka wyszukiwarka miasta i przejrzysty układ kart\n• Działa zarówno dla dużych sieci kin, jak i kin lokalnych\n\nPersonalizacja (po zalogowaniu):\n• Ukryj filmy, które już widziałeś lub które Cię nie interesują\n• Wyłącz kina, do których nie chodzisz — zostaje tylko Twój repertuar\n• Zaloguj się przez Google, Facebook lub Apple, a ustawienia zapiszą się na Twoich urządzeniach\n\nBez logowania korzystasz ze wszystkich repertuarów i ocen —\nkonto dodaje tylko personalizację. Kinowo jest darmowe.\n\nSprawdź, co dziś grają w kinach w Twoim mieście, porównaj oceny\ni zaplanuj seans — wszystko w Kinowo.",
+        "locale": "pl",
+        "keywords": "kino,repertuar,seanse,filmy,imdb,filmweb,rotten tomatoes,bilety,kina,premiery",
+        "marketingUrl": "https://kinowo.net/",
+        "promotionalText": null,
+        "supportUrl": "https://kinowo.net/support",
+        "whatsNew": "Nazwy dni tygodnia i miesięcy są teraz zgodne z wybranym językiem."
+      },
+      "relationships": {
+        "appScreenshotSets": {
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/94e61f2b-f219-40a2-b640-65588d16bcc0/relationships/appScreenshotSets",
+            "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/94e61f2b-f219-40a2-b640-65588d16bcc0/appScreenshotSets"
+          }
+        },
+        "appPreviewSets": {
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/94e61f2b-f219-40a2-b640-65588d16bcc0/relationships/appPreviewSets",
+            "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/94e61f2b-f219-40a2-b640-65588d16bcc0/appPreviewSets"
+          }
+        },
+        "searchKeywords": {
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/94e61f2b-f219-40a2-b640-65588d16bcc0/relationships/searchKeywords",
+            "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/94e61f2b-f219-40a2-b640-65588d16bcc0/searchKeywords"
+          }
+        }
+      },
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/94e61f2b-f219-40a2-b640-65588d16bcc0"
+      }
+    },
+    {
+      "type": "appStoreVersionLocalizations",
+      "id": "8660e966-1865-4e47-b087-2bdf12d4087f",
+      "attributes": {
+        "description": "Showtimes bringt jedes Kino deiner Stadt in eine App — von den großen\nKetten bis zu kleinen Programm- und Arthouse-Kinos. Statt mehrere\nWebseiten zu öffnen, siehst du in wenigen Sekunden, was heute und zu\nwelcher Uhrzeit läuft.\n\nZu jedem Film siehst du die Bewertungen von IMDb, Rotten Tomatoes und\nMetacritic — so erkennst du auf einen Blick einen Hit von einer\nEnttäuschung, ohne zwischen Seiten zu wechseln.\n\nDas findest du in Showtimes:\n• Jedes Kino deiner Stadt an einem Ort\n• Spielzeiten für heute und die kommenden Tage\n• IMDb-, Rotten-Tomatoes- und Metacritic-Bewertungen zu jedem Titel\n• Poster, Titel und die wichtigsten Details zu jedem Film\n• Eine schnelle Städtesuche und ein klares, kartenbasiertes Layout\n• Funktioniert für die großen Kinoketten und lokale Programmkinos gleichermaßen\n\nPersonalisierung (nach der Anmeldung):\n• Blende Filme aus, die du schon gesehen hast oder die dich nicht interessieren\n• Schalte Kinos aus, die du nie besuchst — behalte nur dein eigenes Programm\n• Melde dich mit Google, Facebook oder Apple an, und deine Einstellungen werden auf allen deinen Geräten synchronisiert\n\nAlle Spielzeiten und Bewertungen bekommst du auch ohne Anmeldung — ein\nKonto fügt nur die Personalisierung hinzu. Showtimes ist kostenlos.\n\nSieh dir an, was heute im Kino deiner Stadt läuft, vergleiche die\nBewertungen und plane deinen Abend — alles in Showtimes.",
+        "locale": "de-DE",
+        "keywords": "kino,kinoprogramm,filme,spielzeiten,imdb,rotten tomatoes,metacritic,vorstellungen",
+        "marketingUrl": "https://showtimes.cc/de/",
+        "promotionalText": null,
+        "supportUrl": "https://showtimes.cc/de/support",
+        "whatsNew": "Wochentags- und Monatsnamen folgen jetzt deiner gewählten Sprache."
+      },
+      "relationships": {
+        "appScreenshotSets": {
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/8660e966-1865-4e47-b087-2bdf12d4087f/relationships/appScreenshotSets",
+            "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/8660e966-1865-4e47-b087-2bdf12d4087f/appScreenshotSets"
+          }
+        },
+        "appPreviewSets": {
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/8660e966-1865-4e47-b087-2bdf12d4087f/relationships/appPreviewSets",
+            "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/8660e966-1865-4e47-b087-2bdf12d4087f/appPreviewSets"
+          }
+        },
+        "searchKeywords": {
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/8660e966-1865-4e47-b087-2bdf12d4087f/relationships/searchKeywords",
+            "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/8660e966-1865-4e47-b087-2bdf12d4087f/searchKeywords"
+          }
+        }
+      },
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/8660e966-1865-4e47-b087-2bdf12d4087f"
+      }
+    },
+    {
+      "type": "appStoreVersionLocalizations",
+      "id": "510de29c-5e96-4d1e-833f-3263c243bc26",
+      "attributes": {
+        "description": "Showtimes reúne todos los cines de tu ciudad en una sola app — desde las\ngrandes cadenas hasta las salas independientes y de versión original. En lugar\nde abrir varias webs, ves en unos segundos qué se proyecta hoy y a qué hora.\n\nCada película muestra sus notas de IMDb, Rotten Tomatoes y Metacritic, así que\ndistingues un acierto de una decepción de un vistazo, sin saltar entre páginas.\n\nLo que encontrarás en Showtimes:\n• Todos los cines de tu ciudad en un mismo sitio\n• Sesiones de hoy y de los próximos días\n• Notas de IMDb, Rotten Tomatoes y Metacritic en cada título\n• Carteles, títulos y los datos clave de cada película\n• Búsqueda rápida de ciudad y una interfaz clara basada en tarjetas\n• Funciona igual con las grandes cadenas y con los cines de barrio\n\nPersonalización (al iniciar sesión):\n• Oculta las películas que ya has visto o que no te interesan\n• Desactiva los cines a los que nunca vas y quédate solo con tu cartelera\n• Inicia sesión con Google, Facebook o Apple y tus ajustes se sincronizan entre\n  tus dispositivos\n\nTienes toda la cartelera y todas las notas sin iniciar sesión: la cuenta solo\nañade la personalización. Showtimes es gratis.\n\nMira qué ponen hoy en los cines de tu ciudad.",
+        "locale": "es-ES",
+        "keywords": "cine,cartelera,peliculas,sesiones,imdb,rotten tomatoes,metacritic,horarios,estrenos",
+        "marketingUrl": "https://showtimes.cc/es/",
+        "promotionalText": null,
+        "supportUrl": "https://showtimes.cc/es/support",
+        "whatsNew": "Los nombres de los días de la semana y los meses ahora siguen tu idioma seleccionado."
+      },
+      "relationships": {
+        "appScreenshotSets": {
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/510de29c-5e96-4d1e-833f-3263c243bc26/relationships/appScreenshotSets",
+            "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/510de29c-5e96-4d1e-833f-3263c243bc26/appScreenshotSets"
+          }
+        },
+        "appPreviewSets": {
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/510de29c-5e96-4d1e-833f-3263c243bc26/relationships/appPreviewSets",
+            "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/510de29c-5e96-4d1e-833f-3263c243bc26/appPreviewSets"
+          }
+        },
+        "searchKeywords": {
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/510de29c-5e96-4d1e-833f-3263c243bc26/relationships/searchKeywords",
+            "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/510de29c-5e96-4d1e-833f-3263c243bc26/searchKeywords"
+          }
+        }
+      },
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/510de29c-5e96-4d1e-833f-3263c243bc26"
+      }
+    },
+    {
+      "type": "appStoreVersionLocalizations",
+      "id": "f0b37274-1314-454d-b309-628621d823d1",
+      "attributes": {
+        "description": "Showtimes brings every cinema in your city into one app — from the big\nchains to small independent and arthouse screens. Instead of opening\nseveral websites, you can see what's on today and at what time in just\na few seconds.\n\nEvery film shows its IMDb, Rotten Tomatoes and Metacritic scores, so\nyou can tell a hit from a disappointment at a glance — without hopping\nbetween sites.\n\nWhat you'll find in Showtimes:\n• Every cinema in your city in one place\n• Showtimes for today and the days ahead\n• IMDb, Rotten Tomatoes and Metacritic ratings on every title\n• Posters, titles and the key details for each film\n• A fast city search and a clean, card-based layout\n• Works for the big cinema chains and local independents alike\n\nPersonalisation (once you sign in):\n• Hide films you've already seen or aren't interested in\n• Turn off cinemas you never visit — keep only your own listings\n• Sign in with Google, Facebook or Apple and your settings sync across your devices\n\nYou get every listing and rating without signing in — an account only\nadds personalisation. Showtimes is free.\n\nSee what's on at the cinema in your city today, compare the ratings and\nplan your evening — all in Showtimes.",
+        "locale": "en-GB",
+        "keywords": "movies,films,imdb,rotten tomatoes,metacritic,listings,what's on,tickets,near me,movie times,local",
+        "marketingUrl": "https://showtimes.cc/uk/",
+        "promotionalText": null,
+        "supportUrl": "https://showtimes.cc/uk/support",
+        "whatsNew": "Weekday and month names now follow your selected language."
+      },
+      "relationships": {
+        "appScreenshotSets": {
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/f0b37274-1314-454d-b309-628621d823d1/relationships/appScreenshotSets",
+            "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/f0b37274-1314-454d-b309-628621d823d1/appScreenshotSets"
+          }
+        },
+        "appPreviewSets": {
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/f0b37274-1314-454d-b309-628621d823d1/relationships/appPreviewSets",
+            "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/f0b37274-1314-454d-b309-628621d823d1/appPreviewSets"
+          }
+        },
+        "searchKeywords": {
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/f0b37274-1314-454d-b309-628621d823d1/relationships/searchKeywords",
+            "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/f0b37274-1314-454d-b309-628621d823d1/searchKeywords"
+          }
+        }
+      },
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/f0b37274-1314-454d-b309-628621d823d1"
+      }
+    }
+  ],
+  "links": {
+    "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/47f2c541-f3c1-4c3a-a86f-1df6e04df3fe/appStoreVersionLocalizations"
+  },
+  "meta": {
+    "paging": {
+      "total": 4,
+      "limit": 50
+    }
+  }
+}

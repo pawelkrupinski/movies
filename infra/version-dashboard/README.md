@@ -8,6 +8,10 @@ http://127.0.0.1:8788 — two pages from one process:
 - **/mobile** — what's in `ios/` and `android/` that neither store has shipped yet, diffed from
   each platform's own live version.
 
+The same package also holds the mobile release lane, `src/mobile-release/` (run as
+`scripts/mobile-ship.sh`), which reuses the page's App Store Connect and Play clients; it is a
+command-line tool, never served.
+
 TypeScript (Fastify + tsx, Node ≥ 24). State is read in the background and pushed to open tabs
 over server-sent events; nothing builds on request. Same shape as
 `~/bitcashier/version-dashboard` (port 8787).

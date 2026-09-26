@@ -1,0 +1,49 @@
+{
+  "kind": "androidpublisher#tracksListResponse",
+  "tracks": [
+    {
+      "track": "production",
+      "releases": [
+        {
+          "name": "2.0.9",
+          "versionCodes": [
+            "1790075578"
+          ],
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "track": "beta",
+      "releases": [
+        {
+          "status": "draft"
+        }
+      ]
+    },
+    {
+      "track": "alpha",
+      "releases": [
+        {
+          "name": "Initial",
+          "versionCodes": [
+            "1"
+          ],
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "track": "internal",
+      "releases": [
+        {
+          "name": "2.0.9",
+          "versionCodes": [
+            "1790075578"
+          ],
+          "status": "completed"
+        }
+      ]
+    }
+  ]
+}
