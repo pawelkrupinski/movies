@@ -187,7 +187,9 @@ trait ScrapeWiring { self: WorkerWiring =>
    *   - else the plain uptime recorder.
    *  One source-neutral [[SourceFallbackScraper]] serves both feeds; `fallbackName`
    *  drives the /uptime label + Telegram text. Extracted so the chunked reduce step
-   *  (`publishScrape`) records uptime + falls back exactly like a live scrape. */
+   *  (`publishScrape`) records uptime + falls back exactly like a live scrape.
+   *  Both wrappers run on the wiring's [[clock]], the one `uptimeMonitor` stamps
+   *  buckets with, so the fixture harness's pinned day judges its own corpus. */
   private[wiring] def recordingScraper(inner: CinemaScraper, eligible: Boolean): CinemaScraper =
     flicksFallbackSlugs.get(inner.cinema) match {
       // The market comes from the map, not a constant: a Regal venue's fallback
@@ -197,15 +199,15 @@ trait ScrapeWiring { self: WorkerWiring =>
           fallback     = () => Some(new FlicksClient(flicksFetch, slug, inner.cinema, market)),
           fallbackName = "Flicks",
           fallbackRef  = () => Some(slug),
-          uptimeMonitor, filmwebFallbackStore, onEvent = filmwebFallbackOnEvent)
+          uptimeMonitor, filmwebFallbackStore, now = () => clock.instant(), onEvent = filmwebFallbackOnEvent)
       case None if eligible =>
         new SourceFallbackScraper(inner,
           fallback     = () => filmwebFallbackFor(inner.cinema),
           fallbackName = "Filmweb",
           fallbackRef  = () => filmwebFallbackIds.get(inner.cinema).map(_.toString),
-          uptimeMonitor, filmwebFallbackStore, onEvent = filmwebFallbackOnEvent)
+          uptimeMonitor, filmwebFallbackStore, now = () => clock.instant(), onEvent = filmwebFallbackOnEvent)
       case None =>
-        new UptimeRecordingScraper(inner, uptimeMonitor, scrapeOutcomeListener)
+        new UptimeRecordingScraper(inner, uptimeMonitor, scrapeOutcomeListener, clock)
     }
 
   /** Rolling per-host scrape-duration stats backing the adaptive scrape timeout.

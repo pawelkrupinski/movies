@@ -89,6 +89,42 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers {
     h.bucket.thin shouldBe false
   }
 
+  // Filmweb covering for a dead primary can itself carry only a stray far-off
+  // slot — the Polonez shape behind a fallback. Each path that serves Filmweb
+  // records its listing's thinness too. (Clock 2026-06-06; OneMovie screens 06-10.)
+  it should "mark a Filmweb listing served on entering the fallback thin" in {
+    val h = new Harness(Seq(Left(boom)), Some(filmwebWith(OneMovie)))
+    h.clock = Instant.parse("2026-06-06T08:00:00Z")
+    h.tickSwallowing()
+    h.advance(6.hours + 1.minute)
+    h.scraper.fetch() shouldBe OneMovie
+    h.bucket.fallback shouldBe true
+    h.bucket.thin     shouldBe true
+  }
+
+  it should "mark a Filmweb listing served for an EMPTY primary thin" in {
+    val h = new Harness(Seq(Right(Seq.empty)), Some(filmwebWith(OneMovie)))
+    h.clock = Instant.parse("2026-06-06T08:00:00Z")
+    h.scraper.fetch()                       // grace starts: the primary's empty is served
+    h.advance(6.hours + 1.minute)
+    h.scraper.fetch() shouldBe OneMovie     // grace elapsed: enters the fallback
+    h.bucket.fallback shouldBe true
+    h.bucket.thin     shouldBe true
+  }
+
+  it should "keep marking a Filmweb listing thin while the venue stays on the fallback" in {
+    val h = new Harness(Seq(Right(Seq.empty)), Some(filmwebWith(OneMovie)))
+    h.clock = Instant.parse("2026-06-06T08:00:00Z")
+    h.scraper.fetch()
+    h.advance(6.hours + 1.minute)
+    h.scraper.fetch()                       // enters the fallback
+    h.state.map(_.active) shouldBe Some(true)
+    h.advance(20.minutes)                   // the 15-min bucket rolls over
+    h.scraper.fetch() shouldBe OneMovie     // served again from the fallback
+    h.bucket.fallback shouldBe true
+    h.bucket.thin     shouldBe true
+  }
+
   // ---- grace window: ride out short outages on last-good data, don't fall back yet ----
 
   it should "RE-RAISE (not fall back) on the first throw — inside the grace window Filmweb is never consulted" in {
