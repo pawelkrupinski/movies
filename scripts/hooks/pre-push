@@ -18,7 +18,9 @@
 #                 is minutes, not seconds, and only runs for iOS pushes
 #
 # WHAT IS CHECKED is the pushed commit's tree: in place when the checkout is that tree, else in a
-# temporary worktree of it (cold, so an sbt check there takes minutes, not seconds).
+# temporary worktree of it (cold, so an sbt check there takes minutes, not seconds). The same
+# temporary worktree is used when an sbt check would share target/ with a live sbt in the
+# checkout (e.g. the DevPanel's `sbt web/run`): two compilers over one classes dir race.
 #
 # BYPASS: `git push --no-verify` skips the whole hook. `PREPUSH_SKIP="ios sbt" git push` skips
 # the named checks. A tool that is not installed (actionlint, shellcheck, Docker, Xcode) is
@@ -207,12 +209,33 @@ in_place() {
         [ -z "$(git ls-files --others --exclude-standard -- "$path")" ] || return 1
     done <<< "$changed"
 }
+# ONE sbt PER target/. A live sbt JVM in this checkout — the DevPanel's `sbt web/run`, an IDE's
+# BSP server, an agent's test run — compiles into the same target/ as the check would: Play's dev
+# server recompiles on the first request after a merge changes sources. Two Zincs over one classes
+# dir delete and rewrite each other's class files, and the check's tests then load a class the
+# other has just deleted (NoClassDefFoundError: services/movies/MovieRepository$, twice on
+# 2026-09-26; a retry passed once both had settled). Echoes the first such pid.
+live_sbt_in_checkout() {
+    local here pid cwd
+    here="$(pwd -P)"
+    for pid in $(pgrep -f 'sbt-launch|xsbt\.boot\.Boot' 2>/dev/null); do
+        cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')"
+        [ -n "$cwd" ] && [ "$(cd "$cwd" 2>/dev/null && pwd -P)" = "$here" ] && { echo "$pid"; return 0; }
+    done
+    return 1
+}
+isolate_reason=""
 if ! in_place; then
+    isolate_reason="the working tree is not ${head_sha:0:9}"
+elif printf '%s\n' "$checks" | grep -qx sbt && ! skipped sbt && live_pid="$(live_sbt_in_checkout)"; then
+    isolate_reason="a live sbt (pid $live_pid) shares this checkout's target/"
+fi
+if [ -n "$isolate_reason" ]; then
     tree="$tmp/tree"
     git worktree add -q --detach "$tree" "$head_sha" || { warn "cannot check out ${head_sha:0:9} to check it"; exit 1; }
     trap 'git -C "$root" worktree remove --force "$tree" >/dev/null 2>&1; git -C "$root" worktree prune' EXIT
     [ -d "$root/node_modules" ] && ln -s "$root/node_modules" "$tree/node_modules"
-    log "the working tree is not ${head_sha:0:9}: checking a temporary checkout of it"
+    log "$isolate_reason: checking a temporary checkout of ${head_sha:0:9}"
     cd "$tree" || exit 1
 fi
 

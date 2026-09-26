@@ -68,6 +68,31 @@ if command -v shellcheck >/dev/null; then
   check "checks a clean checkout in place, even when the range names it symbolically" "1 0" \
     "$(printf '%s\n' "$out" | grep -c 'shellcheck ok') $(printf '%s\n' "$out" | grep -c 'temporary checkout')"
 
+  # A LIVE sbt in the checkout (the DevPanel's `sbt web/run`) recompiles into the same target/
+  # the moment a request arrives after a merge. Two Zincs over one classes dir delete and rewrite
+  # each other's class files, and the hook's run then loaded a class the other had just deleted
+  # (NoClassDefFoundError: services/movies/MovieRepository$, twice on 2026-09-26). So with one
+  # running, the sbt check moves to a temporary checkout of its own.
+  mkdir -p "$scratch/bin"
+  printf '#!/usr/bin/env bash\npwd -P > "%s/sbt-ran-in"\n' "$scratch" > "$scratch/bin/sbt"
+  chmod +x "$scratch/bin/sbt"
+  mkdir -p "$repo/src"; echo 'object A' > "$repo/src/A.scala"
+  git -C "$repo" add src/A.scala; git -C "$repo" commit -qm "adds a Scala source"
+  scala="$(git -C "$repo" rev-parse HEAD)"
+  (cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" >/dev/null 2>&1)
+  check "with no other sbt in the checkout, the sbt check runs in place, warm" \
+    "$(cd "$repo" && pwd -P)" "$(cat "$scratch/sbt-ran-in")"
+  (cd "$repo" && exec -a "java -jar /fake/sbt-launch.jar web/run" sleep 300) &
+  live_sbt=$!
+  rm -f "$scratch/sbt-ran-in"
+  out="$(cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "$scala~1..$scala" 2>&1)"
+  kill "$live_sbt" 2>/dev/null; wait "$live_sbt" 2>/dev/null
+  ran_in="$(cat "$scratch/sbt-ran-in" 2>/dev/null)"
+  check "with a live sbt in the checkout, the sbt check runs in a checkout of its own" \
+    "elsewhere" "$([ -n "$ran_in" ] && [ "$ran_in" != "$(cd "$repo" && pwd -P)" ] && echo elsewhere || echo "in place: $ran_in")"
+  check "...and says which process it is stepping around" "1" \
+    "$(printf '%s\n' "$out" | grep -c "sbt (pid $live_sbt)")"
+
   # git's own stdin, with no origin/main to find a new branch's base from: said, not silently passed.
   out="$(cd "$repo" && printf 'refs/heads/x %s refs/heads/x %s\n' "$head" 0000000000000000000000000000000000000000 \
            | bash scripts/hooks/pre-push origin url 2>&1)"
