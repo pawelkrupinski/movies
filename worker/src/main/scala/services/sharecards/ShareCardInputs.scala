@@ -106,7 +106,12 @@ final case class ShareCardInputs(
 
   /** A small per-part digest, kept instead of the inputs themselves (a synopsis is kilobytes) so a
    *  later render can say WHICH drawn parts moved. */
-  def fingerprint: ShareCardFingerprint = ShareCardFingerprint(drawn.view.mapValues(_.##).toMap)
+  def fingerprint: ShareCardFingerprint =
+    ShareCardFingerprint(drawn.view.mapValues(_.##).toMap ++ detailParts.map { case (part, value) => ShareCardFingerprint.detailKey(part) -> value.## })
+
+  /** The parts [[ShareCardReason.Details]] lumps together, apart — to name which of them moved. */
+  private def detailParts: Map[String, String] = Map(
+    "genres" -> genres.mkString(", "), "director" -> director.getOrElse(""), "synopsis" -> synopsis.getOrElse(""), "host" -> host)
 }
 
 /** Per-part hashes of one card's drawn inputs — see [[ShareCardInputs.fingerprint]]. */
@@ -114,6 +119,15 @@ final case class ShareCardFingerprint(parts: Map[String, Int]) {
   /** The [[ShareCardReason]]s that differ from `previous`, in a stable order. */
   def changedFrom(previous: ShareCardFingerprint): Seq[String] =
     ShareCardReason.InputParts.filter(part => parts.get(part) != previous.parts.get(part))
+
+  /** Which of the details' parts (genres, director, synopsis, host) differ from `previous`. */
+  def detailsChangedFrom(previous: ShareCardFingerprint): Seq[String] =
+    ShareCardFingerprint.DetailParts.filter(part => parts.get(ShareCardFingerprint.detailKey(part)) != previous.parts.get(ShareCardFingerprint.detailKey(part)))
+}
+
+object ShareCardFingerprint {
+  val DetailParts: Seq[String] = Seq("genres", "director", "synopsis", "host")
+  def detailKey(part: String): String = s"${ShareCardReason.Details}.$part"
 }
 
 object ShareCardInputs {

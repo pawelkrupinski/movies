@@ -80,6 +80,30 @@ class ShareCardServiceSpec extends AnyFlatSpec with Matchers {
     renderTask(rig, inputs, attempts = 1) shouldBe a[HandlerOutcome.Reschedule]
   }
 
+  // A burst on the renders panel names only a reason; the log line names the films, and which of
+  // the details (genres, director, synopsis, host) moved.
+  "A render" should "log the film, its outcome and its reasons, naming the details part that moved" in {
+    val rig    = new Rig
+    val movie  = film()
+    val events = tools.LogCapture.thisThread(classOf[ShareCardService].getName) {
+      rig.service.render(rig.service.inputs(movie), Seq(ShareCardReason.NewFilm))
+      rig.service.render(rig.service.inputs(movie.copy(synopsis = Some("Paul Atryda wraca."))), Seq(ShareCardReason.Details))
+    }
+    events.map(_.getFormattedMessage) shouldBe Seq(
+      """share card: f0123456789abcd "Diuna" rendered — new_film""",
+      """share card: f0123456789abcd "Diuna" rendered — details(synopsis)""")
+  }
+
+  it should "log a render a newer request superseded" in {
+    val rig    = new Rig
+    val movie  = film()
+    rig.service.enqueueRender(rig.service.inputs(movie.copy(ratings = movie.ratings.copy(imdb = Some(8.1)))), Seq(ShareCardReason.Ratings))
+    val events = tools.LogCapture.thisThread(classOf[ShareCardService].getName) {
+      rig.service.renderIfLatest(rig.service.inputs(movie), Seq(ShareCardReason.NewFilm))
+    }
+    events.map(_.getFormattedMessage) shouldBe Seq("""share card: f0123456789abcd "Diuna" superseded — new_film""")
+  }
+
   "A projection" should "enqueue a render only when something the card draws changed" in {
     val rig = new Rig
     val movie = film()

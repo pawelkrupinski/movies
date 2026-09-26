@@ -110,7 +110,11 @@ class ShareCardService(
                      askedAt: Option[Instant] = None): String =
     renderLocks(Math.floorMod(next.filmId.hashCode, renderLocks.length)).synchronized {
       if (!superseded(next)) render(next, reasons, first, retryPoster, askedAt)
-      else { metrics.render(ShareCardMetrics.Outcome.Superseded, reasons); ShareCardMetrics.Outcome.Superseded }
+      else {
+        logRender(next, ShareCardMetrics.Outcome.Superseded, reasons, detailsMoved = Nil)
+        metrics.render(ShareCardMetrics.Outcome.Superseded, reasons)
+        ShareCardMetrics.Outcome.Superseded
+      }
     }
 
   def onPendingCardLanded(filmId: String): Unit = rescrape(filmId)
@@ -187,7 +191,8 @@ class ShareCardService(
   def render(next: ShareCardInputs, reasons: Seq[String], first: Boolean = false, retryPoster: Boolean = false,
              askedAt: Option[Instant] = None): String = {
     import ShareCardMetrics.Outcome
-    val before = onDisk(next.filmId)
+    val before       = onDisk(next.filmId)
+    val detailsMoved = Option(fingerprints.get(next.filmId)).fold(Seq.empty[String])(next.fingerprint.detailsChangedFrom)
     def superseding(e: Throwable) = e.isInstanceOf[NewerAskOnDisk]
     // Anything thrown while drawing is this card's failure — counted, and the task retried — never
     // an exception out of the task. Except a card on disk asked for AFTER these inputs (another
@@ -219,8 +224,19 @@ class ShareCardService(
       // A recent film's card changed: its previews show the old one.
       if (outcome != Outcome.Existing && before.exists(_ != version) && recent(next.filmId)) rescrape(next.filmId)
     }
+    logRender(next, outcome, reasons, detailsMoved)
     metrics.render(outcome, reasons)
     outcome
+  }
+
+  /** One line per render, so a burst on the renders panel can be read film by film:
+   *  `share card: <filmId> "<title>" <outcome> — <reasons>`, `details` naming the parts that moved. */
+  private def logRender(next: ShareCardInputs, outcome: String, reasons: Seq[String], detailsMoved: Seq[String]): Unit = {
+    val named = reasons.map {
+      case ShareCardReason.Details if detailsMoved.nonEmpty => s"${ShareCardReason.Details}(${detailsMoved.mkString("+")})"
+      case reason                                           => reason
+    }
+    logger.info(s"""share card: ${next.filmId} "${next.title}" $outcome — ${named.mkString(", ")}""")
   }
 
   private def slot(next: ShareCardInputs, hasPoster: Boolean) = OgCardRenderer.badgeSlot(next.title, next.subtitle, hasPoster)
