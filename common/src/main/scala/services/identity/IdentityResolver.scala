@@ -167,6 +167,7 @@ object IdentityResolver {
       private val groups: Map[String, Seq[(String, IdentityMeasures.Listing)]] =
         members.flatMap(n => n.listings.map(l => IdentityMeasures.key(n.evidence.title) -> (l.venue -> n.evidence.measured)))
           .groupMap(_._1)(_._2)
+      private val backing = new IdentityMeasures.VenueBacking(groups.getOrElse(_, Nil))
 
       /** Every candidate `l` has an evidence path to, scored; `denies` marks the ones its own
        *  evidence rules out (`ListingConstraints.learnedListingFilm`), which are never eligible. */
@@ -175,11 +176,11 @@ object IdentityResolver {
         val relation  = pool.map(c => c.tmdbId -> IdentityMeasures.titleRelation(l, c.film).value).toMap
         val reachable = pool.filter(c => ranks.contains(c.tmdbId) || walked(c.tmdbId) || IdentityMeasures.NamingRelations(relation(c.tmdbId)))
         val close     = reachable.count(c => IdentityMeasures.Rivalling(relation(c.tmdbId)))
-        val group     = groups.getOrElse(IdentityMeasures.key(l.title), Nil)
+        val group     = IdentityMeasures.key(l.title)
         reachable.map { c =>
           val rivals   = close - (if (IdentityMeasures.Rivalling(relation(c.tmdbId))) 1 else 0)
           val measures = IdentityMeasures.listingFilm(l, c.film, ranks.get(c.tmdbId), rivals,
-            IdentityMeasures.corroboratingVenues(c.film, group, venue))
+            backing.corroborating(group, c.film, venue))
           val p = calibration.probability(ListingFilm, measures)
           Scored(c, p, measures, deniedByPins(c.tmdbId) || evidenceDenies(l, c.film, measures), l, ranks.get(c.tmdbId),
             IdentityMeasures.namesSeasonProduction(l, c.film))

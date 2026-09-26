@@ -306,8 +306,7 @@ object IdentityMeasures {
     (backingVenues(f, group) - ownVenue).size
 
   /** Every venue of `group` whose own facts back `f` ([[corroboratingVenues]] before the asking
-   *  venue is taken out): one answer per title group and film, so a caller scoring every member of
-   *  a wide release can ask once. */
+   *  venue is taken out): one answer per title group and film ([[VenueBacking]]). */
   def backingVenues(f: Film, group: Seq[(String, Listing)]): Set[String] =
     group.iterator.filter { case (_, l) =>
       // The venue's title must NAME the film: a year or a director alone backs every film of that
@@ -316,6 +315,16 @@ object IdentityMeasures {
         l.statedYear.exists(y => f.year.contains(y)) ||
           f.directors.exists(ds => directorRelation(l.directors, ds) == Category("same_person")))
     }.map(_._1).toSet
+
+  /** [[corroboratingVenues]] for every asker of the same title groups, each group's backing venues
+   *  of a film found once: a wide release lists one title at thousands of venues over one candidate
+   *  pool, and asking per member re-reads the whole group per member. One per resolve or
+   *  calibration pass; not thread-safe. */
+  final class VenueBacking(groups: String => Seq[(String, Listing)]) {
+    private val memo = scala.collection.mutable.HashMap.empty[(String, Film), Set[String]]
+    def corroborating(group: String, f: Film, ownVenue: String): Int =
+      (memo.getOrElseUpdate((group, f), backingVenues(f, groups(group))) - ownVenue).size
+  }
 
   /** Categories whose evidence cannot weaken as the listing carries more of the other side, per
    *  measure, strongest first: a decoration carries the film's whole title, an overlap some of its

@@ -72,6 +72,18 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.corroboratingVenues(other, group, "Venue 1") shouldBe 0
   }
 
+  "a group's venue backing" should "count, for every member and film, exactly what corroboratingVenues counts" in {
+    val films = Seq(Film("Candyman", year = Some(2021), directors = Some(Seq("Nia DaCosta"))),
+      Film("Candyman", year = Some(1992), directors = Some(Seq("Bernard Rose"))), Film("Candy", year = Some(2006)))
+    val group = (1 to 12).map { i =>
+      s"Venue ${i % 5}" -> Listing(if (i % 4 == 0) "Candyman (1992)" else "Candyman", year = Option.when(i % 3 == 0)(if (i % 2 == 0) 2021 else 1992),
+        directors = if (i % 5 == 1) Seq("Nia DaCosta") else Nil)
+    }
+    val backing = new IdentityMeasures.VenueBacking(Map("candyman" -> group))
+    for (f <- films; (venue, _) <- group :+ ("Elsewhere" -> Listing("Candyman")))
+      withClue(s"$venue ${f.year}")(backing.corroborating("candyman", f, venue) shouldBe IdentityMeasures.corroboratingVenues(f, group, venue))
+  }
+
   "title shapes" should "de-decorate the parts a banner leaves, as well as the whole title" in {
     // "Throwback: Donnie Darko (25th Anniversary)": the banner split leaves "Donnie Darko (25th
     // Anniversary)", whose trailing bracket is itself a decoration.

@@ -142,9 +142,7 @@ object IdentityCalibrate {
     val groups: Map[String, IndexedSeq[Int]] = obs.indices.groupBy(i => IdentityMeasures.key(obs(i).listing.title))
     val members = groups.view.mapValues(_.map(i => obs(i).venue -> obs(i).listing)).toMap
 
-    // A wide release lists one title at thousands of venues with one candidate pool: which venues
-    // back a candidate is one answer per title group and film, not one per member.
-    val backing = mutable.HashMap.empty[(String, Film), Set[String]]
+    val backing = new IdentityMeasures.VenueBacking(members)
 
     val lf = Seq.newBuilder[LfPair]
     obs.indices.foreach { i =>
@@ -154,7 +152,7 @@ object IdentityCalibrate {
       pool.foreach { case (id, (rank, f)) =>
         val own = closeTitles(id)
         val rivals = close - (if (IdentityMeasures.Rivalling(own)) 1 else 0)
-        val venues = (backing.getOrElseUpdate((g, f), IdentityMeasures.backingVenues(f, members(g))) - o.venue).size
+        val venues = backing.corroborating(g, f, o.venue)
         lf += LfPair(o.idx, id, IdentityMeasures.listingFilm(o.listing, f, rank, rivals, venues))
       }
     }
