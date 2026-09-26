@@ -143,9 +143,10 @@ class ShareCardService(
     store.published(store.cardPath(filmId)).exists(_.isAfter(clock.instant().minusMillis(RecentWindow.toMillis)))
 
   /** Why `next` needs a render: `poster` when the poster its card was drawn from is no longer a
-   *  candidate, plus the drawn parts that moved since this process last saw the card (`template`
-   *  when the card differs only by the template version, `fallback` when it can't tell); `new_film`
-   *  when the film has no card at all. */
+   *  candidate, plus the drawn parts that moved since this process last saw the card. A card this
+   *  process has not seen (every card, after a restart) is read from its version on disk instead:
+   *  `ratings` when its badges moved, `template` when the rest differs only by the template
+   *  version, `fallback` when the rest moved otherwise. `new_film` when the film has no card. */
   def reasonsFor(next: ShareCardInputs, fallback: String = ShareCardReason.Backfill): Seq[String] =
     onDisk(next.filmId).flatMap(ShareCardVersion.parse) match {
       case None => Seq(ShareCardReason.NewFilm)
@@ -153,9 +154,13 @@ class ShareCardService(
         val poster = Option.when(!candidatePosterHashes(next).contains(had.posterHash))(ShareCardReason.Poster).toSeq
         val drawn = Option(fingerprints.get(next.filmId)) match {
           case Some(previous) => next.fingerprint.changedFrom(previous)
-          case None if had.drawnHash == next.copy(template = next.template - 1).drawnHash => Seq(ShareCardReason.Template)
-          case None if had.drawnHash == next.drawnHash => Nil
-          case None => Seq(fallback)
+          // Not seen since boot: the version on disk still tells the ratings from the rest.
+          case None =>
+            val layout =
+              if (had.layoutHash == next.layoutHash) Nil
+              else if (had.layoutHash == next.copy(template = next.template - 1).layoutHash) Seq(ShareCardReason.Template)
+              else Seq(fallback)
+            layout ++ Option.when(had.ratingsHash != next.ratingsHash)(ShareCardReason.Ratings)
         }
         Some(poster ++ drawn).filter(_.nonEmpty).getOrElse(Seq(fallback))
     }

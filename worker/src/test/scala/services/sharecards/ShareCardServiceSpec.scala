@@ -152,6 +152,22 @@ class ShareCardServiceSpec extends AnyFlatSpec with Matchers {
     drain(rig.queue) shouldBe empty
   }
 
+  // A restart forgets what each card was last drawn with (32 deploys a day on 09-25), and every
+  // change after one used to read as `backfill`. The card's version on disk still separates its
+  // ratings from the rest of what it draws.
+  it should "name a ratings change after a restart from the card's version on disk" in {
+    val before = new Rig
+    val movie  = film()
+    before.service.render(before.service.inputs(movie), Seq(ShareCardReason.NewFilm))
+    val after  = new Rig(store = before.store)
+    after.service.reasonsFor(after.service.inputs(movie.copy(ratings = movie.ratings.copy(imdb = Some(8.1))))) shouldBe
+      Seq(ShareCardReason.Ratings)
+    after.service.reasonsFor(after.service.inputs(movie.copy(title = "Diuna 2", ratings = movie.ratings.copy(imdb = Some(8.1))))) shouldBe
+      Seq(ShareCardReason.Backfill, ShareCardReason.Ratings)
+    after.service.reasonsFor(after.service.inputs(movie.copy(title = "Diuna 2"))) shouldBe Seq(ShareCardReason.Backfill)
+    after.service.reasonsFor(after.service.inputs(movie)) shouldBe Seq(ShareCardReason.Backfill)
+  }
+
   "current" should "keep the card a film had while the card for its new inputs renders, then switch" in {
     val rig   = new Rig
     val movie = film()
