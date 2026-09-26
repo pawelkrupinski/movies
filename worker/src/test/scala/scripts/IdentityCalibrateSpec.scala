@@ -31,6 +31,15 @@ class IdentityCalibrateSpec extends AnyFlatSpec with Matchers {
     agree should contain ("year")
   }
 
+  "the fitted signals" should "be every measure a pair emits, but those kept out for a stated reason" in {
+    // A measure the resolver computes but the calibration never fits weighs nothing: the bracket
+    // year of "Scary Movie (1991)" and a broadcast's season would be read and ignored.
+    val lf = m(Listing("Scary Movie (1991)"), Film("Scary Movie", year = Some(1991))).keySet
+    val ll = IdentityMeasures.listingListing(Listing("A"), Listing("A"), sameVenue = false, sharedChainId = None).keySet
+    IdentityCalibrate.LfSignals.toSet ++ IdentityCalibrate.Unweighted.keySet shouldBe lf
+    IdentityCalibrate.LlSignals.toSet ++ IdentityCalibrate.Unweighted.keySet.intersect(ll) shouldBe ll
+  }
+
   /** `same` same-film and `different` different-film units measuring `title` as `category`. */
   private def units(category: String, same: Int, different: Int): Seq[IdentityCalibrate.Row] =
     (0 until same + different).map { i =>

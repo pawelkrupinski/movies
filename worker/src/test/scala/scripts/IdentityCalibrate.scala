@@ -79,7 +79,7 @@ object IdentityCalibrate {
 
   /** Which corroborator a signal would read, so its table is fitted on labels without it. */
   def corroboratorOf(signal: String): Option[String] = signal match {
-    case "year.delta" | "year.distance"  => Some("year")
+    case "year.delta" | "year.distance" | "titleYear.delta" => Some("year")
     case "director"                      => Some("director")
     case "originalTitle"                 => Some("originalTitle")
     case "venues.corroborating"          => Some("venues")
@@ -574,9 +574,13 @@ object IdentityCalibrate {
 
   final case class Scope(name: String, signals: Seq[String], rows: Seq[Row])
 
-  val LfSignals: Seq[String] = Seq("title", "originalTitle", "year.delta", "director", "runtime.delta", "country",
-    "search.rank", "popularity.log2", "rivals", "venues.corroborating")
-  val LlSignals: Seq[String] = Seq("title", "originalTitle", "year.delta", "director", "runtime.delta", "venue", "chainId")
+  val LfSignals: Seq[String] = Seq("title", "originalTitle", "year.delta", "titleYear.delta", "season.delta", "director",
+    "runtime.delta", "country", "search.rank", "popularity.log2", "rivals", "venues.corroborating")
+  val LlSignals: Seq[String] = Seq("title", "originalTitle", "year.delta", "titleYear.delta", "season.delta", "director",
+    "runtime.delta", "venue", "chainId")
+  /** Measures a pair carries that no table weighs, and why. */
+  val Unweighted: Map[String, String] = Map(
+    "year.distance" -> "the unsigned twin of year.delta, which carries the weight; the cannot-link rules read the distance")
 
   private def splitOf(family: String): String = {
     val h = java.lang.Math.floorMod(MurmurHash3.stringHash(family), 10)
