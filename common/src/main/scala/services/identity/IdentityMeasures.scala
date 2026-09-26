@@ -415,6 +415,11 @@ object IdentityMeasures {
    *  on the year's score (Helios RePlay's 2026 "Diabły" is Ken Russell's 1971 film). */
   val PublishedYear: Set[String] = Set("year.delta", "year.distance")
   def sameDirector(m: Map[String, Measure]): Boolean = m.get("director").contains(Category("same_person"))
+  /** Does the listing's original title only repeat its own title (a venue filling the field with
+   *  the display title, "Cellar Door x ThoughtBubble Presents: Terminator 2: Judgment Day")? Then
+   *  it is the title again, not a second fact, and — as a title relation alone — never vetoes. */
+  def repeatsItsTitle(l: Listing): Boolean =
+    l.originalTitle.map(key).exists(o => o.nonEmpty && (l.rawTitle.toSeq :+ l.title).map(key).contains(o))
 
   /** Categories whose evidence cannot weaken as the listing carries more of the other side, per
    *  measure, strongest first: a decoration carries the film's whole title, an overlap some of its

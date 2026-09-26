@@ -397,6 +397,32 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       .decisionOf(other.key).film shouldBe None
   }
 
+  "A listing whose original title only repeats its own title" should "not deny its credited siblings' film" in {
+    // UK: five credited "Terminator 2: Judgment Day" listings and Everyman's "Cellar Door x
+    // ThoughtBubble presents: Terminator 2: Judgment Day", whose original-title field repeats that
+    // title. The repeat is the title again, not a second fact: read as one, it scored as a segment
+    // against 280, denied it for the whole cluster, and the vote took The Terminator (1984).
+    val films    = Seq(F(280, "Terminator 2: Judgment Day", 1991, "James Cameron", 137, 40), F(218, "The Terminator", 1984, "James Cameron", 108, 35))
+    val credited = Seq(Multikino, Helios, KinoApollo, Rialto).map(listing(_, "Terminator 2: Judgment Day", director = Some("James Cameron"), runtime = Some(137)))
+    val title    = "Cellar Door x ThoughtBubble presents: Terminator 2: Judgment Day"
+    val echo     = listing(KinoMuza, title).copy(originalTitle = Some("Cellar Door x ThoughtBubble Presents: Terminator 2: Judgment Day"))
+    val r = IdentityResolver.resolve(credited :+ echo, new Table(films), normalizer, IdentityCalibration.resolver)
+    (credited :+ echo).foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film should not be Some(218)))
+    credited.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(280)))
+    r.violations shouldBe 0
+  }
+
+  it should "never have that repeat veto the film on its own" in {
+    // Alone, the repeat was the one fact the listing compared, and it scored against 280
+    // (originalTitle=segment): a veto that reached every sibling. A repeat is the title again,
+    // and a title relation alone never vetoes.
+    val films = Seq(F(280, "Terminator 2: Judgment Day", 1991, "James Cameron", 137, 40), F(218, "The Terminator", 1984, "James Cameron", 108, 35))
+    val echo  = listing(KinoMuza, "Cellar Door x ThoughtBubble presents: Terminator 2: Judgment Day")
+      .copy(originalTitle = Some("Cellar Door x ThoughtBubble Presents: Terminator 2: Judgment Day"))
+    val d = IdentityResolver.resolve(Seq(echo), new Table(films), normalizer, IdentityCalibration.resolver).decisionOf(echo.key)
+    withClue(d.render)(d.basis should not be ResolverDecision.Basis.Vetoed)
+  }
+
   "A re-release titled with its screening year" should "not veto the film its credited siblings name" in {
     // 951 US venues list the 1939 film; some spell it "Gone With The Wind (2026)" — the re-release's
     // year, which a bracket year is as often as the film's. A bracket year agrees; it never denies
