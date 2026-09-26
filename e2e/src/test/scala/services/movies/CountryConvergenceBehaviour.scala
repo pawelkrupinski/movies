@@ -217,7 +217,7 @@ abstract class CountryConvergenceBehaviour(
     // A hermetic run never expires a remembered verdict: freshness is the RECORDING run's
     // job, and an entry that ages out between the recording and a replay of it would turn
     // into a refused fetch the recording never saw.
-    val beside = FileEnrichmentCacheStore.beside(fixtureDirectory)
+    val beside = FileEnrichmentCacheStore.beside(fixtureRoot, fixtureDirectory)
     missingFixtures.fold(new FileEnrichmentCacheStore(beside))(_ =>
       new FileEnrichmentCacheStore(beside, FileEnrichmentCacheStore.NeverExpires))
   }
@@ -227,6 +227,10 @@ abstract class CountryConvergenceBehaviour(
    *  directory this file happened to name. */
   private lazy val fixtureDirectory: String = ArchiveReplayWiring.fixtureDirectory(country, Env.fromProcess())
 
+  /** Where that tree lives — the repository's own unless KINOWO_FIXTURE_ROOT names another;
+   *  resolved here, the suite being the run's root, and handed to everything that reads it. */
+  private lazy val fixtureRoot: clients.tools.FixtureRoot = clients.tools.FixtureRoot.fromEnv(Env.fromProcess())
+
   /** Age the recorded responses out before anything reads them, so a rating captured
    *  once isn't replayed for ever. The verdict cache expires itself on read; this is the
    *  half nothing used to expire at all. */
@@ -235,7 +239,7 @@ abstract class CountryConvergenceBehaviour(
     // replays is the one the recorder left, whole, however old.
     if (missingFixtures.isDefined) 0
     else step("expireStaleEnrichment")(
-      EnrichmentFreshness.prune(java.nio.file.Paths.get(clients.tools.FakeHttpFetch.rootFor(fixtureDirectory))))
+      EnrichmentFreshness.prune(java.nio.file.Paths.get(fixtureRoot.of(fixtureDirectory))))
 
   /**
    * ONE cache for every replay in the suite, preloaded whole before the first of
@@ -374,7 +378,7 @@ abstract class CountryConvergenceBehaviour(
     val archive = storage.archive
     val seeded   = seedArchive(archive)
     val merges   = new RecordingMergeMetrics
-    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), storage, fixtureDirectory, missingFixtures) {
+    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), storage, fixtureDirectory, fixtureRoot, missingFixtures) {
       override lazy val clock: java.time.Clock = CountryConvergenceBehaviour.this.clock
       // `mergeMetrics` is the ONLY thing this override exists to change, so it overrides the
       // seam and never the cache: a rebuilt cache silently drops whatever it forgets — it lost
@@ -1058,7 +1062,7 @@ abstract class CountryConvergenceBehaviour(
     val scope = s"${country.code}p${seed - OrderSeed}"
     val passStorage = ConvergenceStorage.fromEnv(scope, TitleNormalizer.forCountry(country))
     passStorages.synchronized(passStorages += passStorage)
-    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage, fixtureDirectory, missingFixtures) {
+    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage, fixtureDirectory, fixtureRoot, missingFixtures) {
       override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
     }
     val ready = mutable.ListBuffer.empty[MovieDetailsComplete]

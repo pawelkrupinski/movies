@@ -29,7 +29,7 @@ class HermeticHttpLeafSpec extends AnyFlatSpec with Matchers {
   // sends whoever reads it looking for a name no recording will ever produce.
   it should "name the exact file a recording of the same request writes" in {
     val tree = s"hermetic-leaf-spec-${java.util.UUID.randomUUID()}"
-    val root = Paths.get(clients.tools.FakeHttpFetch.rootFor(tree))
+    val root = Paths.get(clients.tools.FixtureRoot.RepositoryRelative.of(tree))
     try {
       val answering = new HttpFetch {
         override def get(url: String): String = "body"

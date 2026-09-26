@@ -64,6 +64,9 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
   assume(uri.isDefined, "MONGODB_URI not set")
   IntegrationMongo.requireThrowaway()
 
+  /** Where the countries' `enrichment-<cc>` trees live: KINOWO_FIXTURE_ROOT when
+   *  `scripts/hard-clusters.sh` names one, else the repository's own. */
+  private val FixtureRoot = clients.tools.FixtureRoot.fromEnv(Env.fromProcess())
   private val Recording = Env.fromProcess().get("KINOWO_HARD_CLUSTERS_RECORD").exists(v => v == "1" || v.equalsIgnoreCase("true"))
 
   /** Fixed, so an order dependence fails the same way on every run. */
@@ -91,7 +94,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
   private lazy val responses: Map[Country, RecordedResponses] = countries.map { country =>
     country -> (
       if (Recording) RecordedResponses.recording(new FallbackHttpFetch(Seq(
-        "tree"       -> new clients.tools.FakeHttpFetch(s"enrichment-${country.code}", strict = true, foldYear = false),
+        "tree"       -> new clients.tools.FakeHttpFetch(s"enrichment-${country.code}", strict = true, foldYear = false, root = FixtureRoot),
         "unrecorded" -> new clients.tools.FailingHttpFetch(404))), prior = Some(RecordedResponses.pathFor(country.code)))
       else RecordedResponses.replaying(RecordedResponses.pathFor(country.code)))
   }.toMap
@@ -120,7 +123,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
     CorpusFixture.seedInto(storage.archive, rows)
     val fetch    = wrap(responses(country))
     val language = country.language
-    val w = new ArchiveReplayWiring(country, storage.archive, None, storage, ArchiveReplayWiring.fixtureDirectory(country, Env.fromProcess())) {
+    val w = new ArchiveReplayWiring(country, storage.archive, None, storage, ArchiveReplayWiring.fixtureDirectory(country, Env.fromProcess()), FixtureRoot) {
       override lazy val clock: java.time.Clock = movableClock.getOrElse(java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC))
       // Ordering, not timing: the whole cascade on the calling thread, so the only
       // nondeterminism left is the seeded arrival order.

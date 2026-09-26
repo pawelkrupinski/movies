@@ -1,6 +1,6 @@
 package modules
 
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FixtureRoot}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -70,30 +70,35 @@ class LocalFixtureWorkerSpec extends AnyFlatSpec with Matchers with BeforeAndAft
       MongoAddress(Some("mongodb://exported:1"), Some("kinowo_exported"))
   }
 
-  "LocalFixtureWorkerMain.fixtureBaseFor" should "walk up from a module directory to the repository's fixtures" in {
+  "LocalFixtureWorkerMain.fixtureRootFor" should "walk up from a module directory to the repository's fixtures" in {
     val repository = Files.createTempDirectory("local-fixture-root").toFile
     val fixtures   = new File(repository, "test/resources/fixtures")
     fixtures.mkdirs()
     val module = new File(repository, "worker")
     module.mkdirs()
-    try LocalFixtureWorkerMain.fixtureBaseFor(Env.of(), module) shouldBe Some(fixtures.getPath)
+    try LocalFixtureWorkerMain.fixtureRootFor(Env.of(), module) shouldBe FixtureRoot(fixtures.getPath)
     finally deleteRecursively(repository)
   }
 
   it should "prefer a KINOWO_FIXTURE_ROOT the process names" in {
-    LocalFixtureWorkerMain.fixtureBaseFor(Env.of("KINOWO_FIXTURE_ROOT" -> "/somewhere/fixtures"), new File("/")) shouldBe
-      Some("/somewhere/fixtures")
+    LocalFixtureWorkerMain.fixtureRootFor(Env.of("KINOWO_FIXTURE_ROOT" -> "/somewhere/fixtures"), new File("/")) shouldBe
+      FixtureRoot("/somewhere/fixtures")
   }
 
-  // The forked bg worker's CWD isn't the repository root, so FakeHttpFetch must be
-  // able to resolve the corpus under an absolute KINOWO_FIXTURE_ROOT base.
-  "FakeHttpFetch.rootFor" should "default to the repository-relative fixtures path" in {
-    FakeHttpFetch.rootFor("today", None) shouldBe "test/resources/fixtures/today"
+  // The forked bg worker's CWD isn't the repository root, so the fetches must be able to
+  // resolve the corpus under an absolute root.
+  "FixtureRoot" should "default to the repository-relative fixtures path" in {
+    FixtureRoot.RepositoryRelative.of("today") shouldBe "test/resources/fixtures/today"
+    FixtureRoot.fromEnv(Env.of()) shouldBe FixtureRoot.RepositoryRelative
   }
 
-  it should "resolve under an absolute base when KINOWO_FIXTURE_ROOT is set" in {
-    FakeHttpFetch.rootFor("today", Some("/repo/test/resources/fixtures")) shouldBe
+  it should "resolve under an absolute root when KINOWO_FIXTURE_ROOT names one" in {
+    FixtureRoot.fromEnv(Env.of("KINOWO_FIXTURE_ROOT" -> "/repo/test/resources/fixtures")).of("today") shouldBe
       "/repo/test/resources/fixtures/today"
+  }
+
+  it should "be where a FakeHttpFetch reads its fixtures from" in {
+    new FakeHttpFetch("today", root = FixtureRoot("/elsewhere")).fixtureRoot shouldBe "/elsewhere/today"
   }
 
   override def afterAll(): Unit = {

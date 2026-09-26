@@ -1,6 +1,6 @@
 package modules
 
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FixtureRoot}
 import services.tasks.{DetailReaper, ScrapeReaper}
 import services.MongoAddress
 import tools.{Env, HttpFetch}
@@ -34,12 +34,12 @@ object LocalFixtureWorkerMain {
   def main(args: Array[String]): Unit = {
     val env              = Env.fromProcess()
     val mongo            = localMongo(key => Option(System.getenv(key)), env)
-    val fixtureBase      = fixtureBaseFor(env, new java.io.File(".").getCanonicalFile)
+    val fixtureRoot      = fixtureRootFor(env, new java.io.File(".").getCanonicalFile)
     val fixtureDirectory = env.get("KINOWO_FIXTURE_DIR").getOrElse("today")
-    println(s"[local-fixture-worker] replaying HTTP from ${FakeHttpFetch.rootFor(fixtureDirectory, fixtureBase)} " +
+    println(s"[local-fixture-worker] replaying HTTP from ${fixtureRoot.of(fixtureDirectory)} " +
       s"into Mongo ${mongo.uri.getOrElse("?")} db=${mongo.database.getOrElse("?")}")
 
-    val wiring = new FixtureWorkerWiring(fixtureDirectory, mongo, fixtureBase, env)
+    val wiring = new FixtureWorkerWiring(fixtureDirectory, mongo, fixtureRoot, env)
     wiring.start()
     println("[local-fixture-worker] started — scraping the fixture corpus into the local read model. Ctrl-C to stop.")
 
@@ -68,12 +68,12 @@ object LocalFixtureWorkerMain {
    *  directory, but the corpus is `test/resources/fixtures/…` under the repository root, so
    *  walk up from `workingDirectory` to the directory holding it — unless KINOWO_FIXTURE_ROOT
    *  already names one. Handed to the wiring's fetches rather than set as a property. */
-  private[modules] def fixtureBaseFor(env: Env, workingDirectory: java.io.File): Option[String] =
-    env.get("KINOWO_FIXTURE_ROOT").orElse {
+  private[modules] def fixtureRootFor(env: Env, workingDirectory: java.io.File): FixtureRoot =
+    env.get("KINOWO_FIXTURE_ROOT").filter(_.nonEmpty).map(FixtureRoot(_)).getOrElse {
       Iterator.iterate(workingDirectory)(_.getParentFile).takeWhile(_ != null)
-        .map(new java.io.File(_, "test/resources/fixtures"))
+        .map(new java.io.File(_, FixtureRoot.RepositoryRelative.directory))
         .find(_.isDirectory)
-        .map(_.getPath)
+        .fold(FixtureRoot.RepositoryRelative)(directory => FixtureRoot(directory.getPath))
     }
 }
 
@@ -81,12 +81,12 @@ object LocalFixtureWorkerMain {
  * `WorkerWiring` with fixture-replay HTTP but the real (local) Mongo + read-model
  * projection. Mirrors `FixtureTestWiring`'s fetch overrides, minus its in-memory
  * repos — here the projector writes to the local Mongo at `localMongo` so `web` can
- * serve it, and the fixtures are read from under `fixtureBase`.
+ * serve it, and the fixtures are read from under `fixtureRoot`.
  */
-class FixtureWorkerWiring(fixtureDirectory: String, localMongo: MongoAddress, fixtureBase: Option[String], environment: Env)
+class FixtureWorkerWiring(fixtureDirectory: String, localMongo: MongoAddress, fixtureRoot: FixtureRoot, environment: Env)
     extends WorkerWiring(env = environment) {
   override lazy val mongoAddress: MongoAddress = localMongo
-  override lazy val httoFetch: HttpFetch      = new FakeHttpFetch(fixtureDirectory, fixtureBase = fixtureBase)
+  override lazy val httoFetch: HttpFetch      = new FakeHttpFetch(fixtureDirectory, root = fixtureRoot)
   override lazy val multikinoFetch: HttpFetch = httoFetch
   override lazy val biletynaFetch: HttpFetch  = httoFetch
 

@@ -43,7 +43,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   }
 
   private def rootOf(tree: String): java.nio.file.Path =
-    java.nio.file.Paths.get(clients.tools.FakeHttpFetch.rootFor(tree))
+    java.nio.file.Paths.get(clients.tools.FixtureRoot.RepositoryRelative.of(tree))
 
   override def beforeEach(): Unit = {
     trees.clear()
@@ -107,7 +107,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   }
 
   private def wiringWith(cache: Option[EnrichmentCache], leaf: HttpFetch): ArchiveReplayWiring =
-    new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, cache, new FetchOnlyStorage, fixtureTree) {
+    new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, cache, new FetchOnlyStorage, fixtureTree, clients.tools.FixtureRoot.RepositoryRelative) {
       override protected def realHttpLeaf: HttpFetch = leaf
     }
 
@@ -181,7 +181,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     // meant `apiKey = None`, and a keyless `TmdbClient` returns `None` from `search`
     // without ever reaching the fetch. Germany, so the locale discriminates — the keyless
     // branch took `TmdbClient.DefaultLanguage` (pl-PL), and so does `TestWiring`'s stub.
-    val wiring = new ArchiveReplayWiring(Country.Germany, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage, fixtureTree) {
+    val wiring = new ArchiveReplayWiring(Country.Germany, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage, fixtureTree, clients.tools.FixtureRoot.RepositoryRelative) {
       override protected def realHttpLeaf: HttpFetch = new CountingLeaf
     }
 
@@ -274,7 +274,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   // WITHOUT overriding `realHttpLeaf`: the leaf under test is the one the wiring chooses.
 
   private def hermeticWiring(cache: Option[EnrichmentCache], missing: MissingFixtures): ArchiveReplayWiring =
-    new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, cache, new FetchOnlyStorage, fixtureTree, Some(missing))
+    new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, cache, new FetchOnlyStorage, fixtureTree, clients.tools.FixtureRoot.RepositoryRelative, Some(missing))
 
   "a hermetic archive replay" should "refuse an unrecorded enrichment request and name its fixture" in {
     val missing = new MissingFixtures

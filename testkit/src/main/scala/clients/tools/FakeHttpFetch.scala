@@ -1,6 +1,6 @@
 package clients.tools
 
-import tools.{Env, HttpFetch}
+import tools.HttpFetch
 
 import java.net.URI
 import java.nio.file.{Files, Path, Paths}
@@ -20,14 +20,12 @@ import java.util.concurrent.CompletableFuture
  *        for the cinema corpus. Enrichment fixtures must NOT: the year-scoped and
  *        yearless TMDB searches return materially different bodies (measured:
  *        0 results vs 16) and `TmdbClient` depends on the difference.
- * @param fixtureBase the directory holding `fixtureDirectory` — see [[FakeHttpFetch.rootFor]].
- *        A process that knows where its fixtures are (the local stack's worker, forked
- *        away from the repository root) hands it in; left out, it is the process's
- *        `KINOWO_FIXTURE_ROOT`, else the repository-relative default.
+ * @param root the directory holding `fixtureDirectory` ([[FixtureRoot]]). The
+ *        repository-relative default unless the run's root hands in another.
  */
 class FakeHttpFetch(fixtureDirectory: String, strict: Boolean = false, foldYear: Boolean = true,
-    fixtureBase: Option[String] = FakeHttpFetch.processFixtureBase) extends HttpFetch {
-  val fixtureRoot = FakeHttpFetch.rootFor(fixtureDirectory, fixtureBase)
+    root: FixtureRoot = FixtureRoot.RepositoryRelative) extends HttpFetch {
+  val fixtureRoot = root.of(fixtureDirectory)
 
   override def get(url: String): String = new String(readBytes(url, body = None), "UTF-8")
 
@@ -188,21 +186,4 @@ object FakeHttpFetch {
    *  unrecorded URL is a 404 rather than a recording gap. See `missingFixture`. */
   private[tools] val ProbedRatingHosts: Set[String] =
     Set("metacritic.com", "rottentomatoes.com", "filmweb.pl")
-
-  /** Fixture root for a directory: `test/resources/fixtures/<directory>` relative to the CWD
-   *  (the repository root for sbt test/runMain), OR `<KINOWO_FIXTURE_ROOT>/<directory>` when
-   *  that env/sysprop is set — so a process whose CWD is NOT the repository root (a
-   *  forked `bgRunMain`, e.g. `sbt localStack`'s worker) can still find the
-   *  corpus. Default (unset) is unchanged, so existing callers are unaffected. */
-  def rootFor(fixtureDirectory: String): String = rootFor(fixtureDirectory, processFixtureBase)
-
-  /** `KINOWO_FIXTURE_ROOT`, when the process names one. */
-  def processFixtureBase: Option[String] = Env.fromProcess().get("KINOWO_FIXTURE_ROOT")
-
-  /** Pure form, for testing without touching the global env. */
-  def rootFor(fixtureDirectory: String, base: Option[String]): String =
-    base.filter(_.nonEmpty) match {
-      case Some(b) => s"$b/$fixtureDirectory"
-      case None    => "test/resources/fixtures/" + fixtureDirectory
-    }
 }

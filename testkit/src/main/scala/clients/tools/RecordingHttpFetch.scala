@@ -34,8 +34,9 @@ import java.nio.file.Files
  *        materially different bodies (measured: 0 results vs 16) and `TmdbClient`
  *        depends on the difference, so folding them would collapse two answers
  *        onto one file. Must match the `FakeHttpFetch` that reads them back. */
-class RecordingHttpFetch(fixtureDirectory: String, delegate: HttpFetch, foldYear: Boolean = true) extends HttpFetch {
-  val fixtureRoot = FakeHttpFetch.rootFor(fixtureDirectory)
+class RecordingHttpFetch(fixtureDirectory: String, delegate: HttpFetch, foldYear: Boolean = true,
+    root: FixtureRoot = FixtureRoot.RepositoryRelative) extends HttpFetch {
+  val fixtureRoot = root.of(fixtureDirectory)
 
   // Record the RAW wire bytes, not the UTF-8-decoded String. A legacy
   // single-byte page (Kino Charlie / Kino Pod Baranami ship raw ISO-8859-2

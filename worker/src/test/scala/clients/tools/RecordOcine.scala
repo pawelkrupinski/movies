@@ -38,7 +38,7 @@ object RecordOcine {
     println(s"Ocine Girona: ${films.size} films, ${showtimes.size} showtimes, ${days.size} days " +
       s"${days.headOption.getOrElse("-")} .. ${days.lastOption.getOrElse("-")}")
 
-    val root = Paths.get(FakeHttpFetch.rootFor("ocine"), "tickets.ocinegirona.es")
+    val root = Paths.get(FixtureRoot.RepositoryRelative.of("ocine"), "tickets.ocinegirona.es")
     Files.walk(root).iterator.asScala.filter(Files.isRegularFile(_)).foreach(blankPosters)
   }
 

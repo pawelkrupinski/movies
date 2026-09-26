@@ -40,6 +40,9 @@ class ArchiveReplayWiring(
   // a parameter is already set by then, where a strict `val` would still be `null` and bind
   // both chains to `test/resources/fixtures/null`.
   fixtureDirectory: String,
+  // The directory that tree lives under — the repository's own unless the suite's root
+  // resolved another (KINOWO_FIXTURE_ROOT, through `FixtureRoot.fromEnv`).
+  fixtureRoot:      clients.tools.FixtureRoot,
   // Some(...) makes the run HERMETIC: the wire itself is replaced (see `realHttpLeaf`),
   // so nothing the recorded tree and remembered verdicts cannot answer is fetched, and
   // every such request is named here instead. None is the RECORDING run, which fills
@@ -88,9 +91,9 @@ class ArchiveReplayWiring(
   override lazy val httoFetch: HttpFetch = {
     val live = phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Scrape)
     new FallbackHttpFetch(Seq(
-      "detail-fixtures" -> new clients.tools.FakeHttpFetch(fixtureDirectory, strict = true, foldYear = false),
+      "detail-fixtures" -> new clients.tools.FakeHttpFetch(fixtureDirectory, strict = true, foldYear = false, root = fixtureRoot),
       "detail-live"     -> new clients.tools.RecordingHttpFetch(
-        fixtureDirectory, enrichmentCache.fold(live)(new CachingEnrichmentFetch(_, live)), foldYear = false)))
+        fixtureDirectory, enrichmentCache.fold(live)(new CachingEnrichmentFetch(_, live)), foldYear = false, root = fixtureRoot)))
   }
   override lazy val multikinoFetch: HttpFetch  = httoFetch
   override lazy val biletynaFetch: HttpFetch   = httoFetch
@@ -154,13 +157,13 @@ class ArchiveReplayWiring(
     // with the Mongo cache removed from the leg and the tree carrying determinism
     // on its own. A tree that cannot grow re-misses the same URLs for ever.
     val live   = cachedEnrichmentFetch.getOrElse(phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Enrich))
-    val replay = new clients.tools.FakeHttpFetch(fixtureDirectory, strict = true, foldYear = false)
+    val replay = new clients.tools.FakeHttpFetch(fixtureDirectory, strict = true, foldYear = false, root = fixtureRoot)
     // Named for what it IS. Labelled "live", every cached 404 was reported as
     // `live: HTTP 404`, so a run answering entirely from remembered verdicts looked
     // exactly like one re-fetching every one of them.
     new FallbackHttpFetch(Seq(
       "enrichment-fixtures" -> replay,
-      "remembered-or-live"  -> new clients.tools.RecordingHttpFetch(fixtureDirectory, live, foldYear = false)))
+      "remembered-or-live"  -> new clients.tools.RecordingHttpFetch(fixtureDirectory, live, foldYear = false, root = fixtureRoot)))
   }
 
   /** The real key and the country's own language — the enrichment is meant to be the one
