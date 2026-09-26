@@ -129,13 +129,14 @@ object KinoprogrammClient {
   private def parseTime(text: String): Option[LocalTime] =
     Time.findFirstMatchIn(text).flatMap(m => Try(LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption)
 
-  /** Merge a venue's films across the weeks walked: one `CinemaMovie` per title,
-   *  showtimes de-duplicated and in time order. */
+  /** Merge a venue's films across the weeks walked: one `CinemaMovie` per film —
+   *  keyed by the film's own page, since two films can share a title — showtimes
+   *  de-duplicated and in time order. */
   private[common] def toMovies(films: Seq[Film], cinema: Cinema, venueUrl: Option[String]): Seq[CinemaMovie] =
-    films.groupBy(_.title).toSeq.map { case (title, same) =>
+    films.groupBy(film => film.filmPath.getOrElse(film.title)).toSeq.map { case (_, same) =>
       val first = same.head
       CinemaMovie(
-        movie       = Movie(title, runtimeMinutes = same.flatMap(_.runtimeMinutes).headOption,
+        movie       = Movie(first.title, runtimeMinutes = same.flatMap(_.runtimeMinutes).headOption,
                             genres = same.flatMap(_.genres).distinct),
         cinema      = cinema,
         posterUrl   = None,

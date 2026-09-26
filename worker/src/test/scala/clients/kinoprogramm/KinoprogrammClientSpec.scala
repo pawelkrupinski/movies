@@ -77,6 +77,29 @@ class KinoprogrammClientSpec extends AnyFlatSpec with Matchers {
     cineStar.foreach(m => m.showtimes.map(_.dateTime) shouldBe m.showtimes.map(_.dateTime).sorted)
   }
 
+  // Two films can share a title (a remake, a re-release) and each has its own page;
+  // merged by title they would read as one film with the other's showtimes.
+  it should "keep two films that share a title apart, by their own pages" in {
+    val real = new FakeHttpFetch("kinoprogramm")
+    val twinned = new GetOnlyHttpFetch {
+      def get(url: String): String = {
+        val page = real.get(url)
+        if (!url.endsWith(s"datum=$Today")) page
+        else {
+          val start   = page.indexOf("<article ")
+          val article = page.substring(start, page.indexOf("</article>", start) + "</article>".length)
+          val filmId  = """id="film-(\d+)"""".r.findFirstMatchIn(article).get.group(1)
+          val twin    = article.replace(s"-$filmId", "-999999")
+          page.substring(0, start) + twin + page.substring(start)
+        }
+      }
+    }
+    val movies = new KinoprogrammClient(twinned, paths("A0738"), cinema("A0738"), today = Some(Today)).fetch()
+    val title  = movies.groupBy(_.movie.title).collectFirst { case (t, same) if same.size == 2 => t }
+    title shouldBe defined
+    movies.filter(m => title.contains(m.movie.title)).flatMap(_.filmUrl).exists(_.endsWith("-999999")) shouldBe true
+  }
+
   // A page without the programme list is a changed layout or a block page, never a
   // venue with nothing on — so a walk that only ever sees such pages fails the
   // scrape rather than serving an empty fallback.
