@@ -143,22 +143,43 @@ class ListingKeyCorpusSpec extends AnyFlatSpec with Matchers with tools.SuiteCon
     found shouldBe empty
   }
 
-  it should "tell apart the two films a page-less venue lists under one raw title" in {
-    val de   = corpora.find(_.label == "listing-key-collisions-de.json.gz").get
-    val keys = de.listings.map { case (cinema, cm) => ListingKey.of(cinema, cm) }
-    keys.distinct should have size 6
-    keys.collect { case k: ListingKey.Published => (k.venue, k.rawTitle, k.year) }.sorted shouldBe Seq(
-      ("Cinema-Arthouse", "Sinn und Sinnlichkeit", Some(1995)), ("Cinema-Arthouse", "Sinn und Sinnlichkeit", Some(2026)),
-      ("Club Manufaktur", "Bad Apples", Some(2018)), ("Club Manufaktur", "Bad Apples", Some(2025)),
-      ("Schauburg Karlsruhe", "Sinn und Sinnlichkeit", Some(1995)), ("Schauburg Karlsruhe", "Sinn und Sinnlichkeit", Some(2026)))
+  /** The listings the fold HIDES — a raw listing whose key no stored slot carries, because
+   *  `ScrapeListing.prepare` unioned it into a slot whose representative is another listing — each
+   *  with that slot and what tells the two keys apart (docs/design/identity-resolver.md §16.4 item 3). */
+  private def hiddenListings(c: Corpus): Seq[(Cinema, CinemaMovie, CinemaMovie, String)] = {
+    val normalizer = TitleNormalizer.forCountry(c.country.get)
+    val tokens     = ScreeningTokens.of(c.country.get)
+    c.listings.groupMap(_._1)(_._2).toSeq.flatMap { case (cinema, raw) =>
+      val slots = ScrapeListing.prepare(cinema, raw, normalizer, tokens).movies
+      val held  = slots.map(ListingKey.of(cinema, _)).toSet
+      raw.distinctBy(ListingKey.of(cinema, _)).filterNot(cm => held(ListingKey.of(cinema, cm))).map { cm =>
+        val key  = ScrapeListing.slotKey(cinema, cm.movie.title, normalizer)
+        val slot = slots.find(s => ScrapeListing.slotKey(cinema, s.movie.title, normalizer) == key).get
+        val page = cm.filmUrl.map(_.trim).filter(_.nonEmpty) != slot.filmUrl.map(_.trim).filter(_.nonEmpty)
+        val rawTitle = published(cm)._1 != published(slot)._1
+        val facts    = published(cm)._2 != published(slot)._2 || published(cm)._3 != published(slot)._3
+        (cinema, cm, slot, Seq("page" -> page, "raw title" -> rawTitle, "year/directors" -> facts).collect { case (n, true) => n }.mkString(" + "))
+      }
+    }
   }
 
-  it should "tell apart the films a venue links to one shared programme page" in {
-    val pl = corpora.find(_.label == "cinema-scrapes-hard-clusters-pl.json.gz").get
-    val kinoPort = pl.listings.collect { case (cinema, cm) if cinema.displayName == "KinoPort" => ListingKey.of(cinema, cm) }
-    val shared   = kinoPort.collect { case k: ListingKey.Native => k }.groupBy(_.nativeId).filter(_._2.sizeIs > 1)
-    shared should not be empty
-    shared.values.foreach(ks => ks.distinct.size shouldBe ks.size)
+  it should "hide only listings of the film whose slot holds them, and say what their keys differ in" in {
+    // Measured, not a gate: the listings a read by listingKey cannot find until slots are one per
+    // listing (phase 5). The claim is that each is the SAME film as its slot's representative (the
+    // fold's own contract), so hiding it loses a key, never a film's showtimes.
+    corpora.filter(_.country.isDefined).foreach { c =>
+      val hidden = hiddenListings(c)
+      hidden.foreach { case (cinema, cm, slot, _) =>
+        withClue(s"${c.label}: ${cinema.displayName} hides '${cm.movie.title}' behind '${slot.movie.title}': ") {
+          publishedAsDifferentFilms(cm, slot) shouldBe false
+        }
+      }
+      if (hidden.nonEmpty)
+        info(s"${c.label}: ${hidden.size} hidden listing(s) at ${hidden.map(_._1).distinct.size} venue(s) — " +
+          hidden.groupBy(_._4).toSeq.sortBy(-_._2.size).map { case (k, hs) => s"$k ${hs.size}" }.mkString(", ") +
+          "; e.g. " + hidden.take(3).map { case (cin, cm, slot, _) =>
+            s"${cin.displayName}: '${published(cm)._1}' ${cm.filmUrl.getOrElse("-")} behind '${published(slot)._1}' ${slot.filmUrl.getOrElse("-")}" }.mkString("; "))
+    }
   }
 
   "Every naive listing key" should "fold two distinct listings of one venue together on some recorded corpus" in {
