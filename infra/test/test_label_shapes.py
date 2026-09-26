@@ -55,10 +55,6 @@ EVENT_ONLY_VALUES = {
     # Re-snapshot once the series exists; `ready="False"` then stays here as event-only.
     ("flux:resource_info", "ready", "False"),
     ("flux:resource_info", "suspended", "true"),
-    # NOT PUBLISHED YET: the worker build that splits projections by what asked for them
-    # (`ReadModelProjectionMetrics.ProjectTrigger`, 2026-09-26). Re-snapshot once it has rolled
-    # out, and drop this entry -- `stream` is then a value every worker publishes.
-    ("kinowo_worker_readmodel_project_calls_total", "trigger", "stream"),
 }
 
 
