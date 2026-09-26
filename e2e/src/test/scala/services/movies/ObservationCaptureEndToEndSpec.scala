@@ -3,7 +3,7 @@ package services.movies
 import models.Poznan
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.ShadowTick
+import services.identity.{ShadowLookupRound, ShadowTick}
 import services.observations.ObservationStore
 import services.scrapes.{InMemoryScrapeArchiveRepository, ScrapeArchiveRepository}
 import settings.ProcessConfiguration
@@ -14,9 +14,10 @@ import java.nio.file.{Files, Paths}
 import java.time.{Clock, LocalDateTime, ZoneOffset}
 
 /**
- * The identity program's shadow capture AND shadow run must not change what the pipeline makes
- * (docs/design/identity-resolver.md §8, §9a). The whole recorded corpus, booted with capture ON
- * and the shadow run switched on and ticked after the boot, must render byte-identically to the
+ * The identity program's shadow capture, shadow run and live lookup fill must not change what the
+ * pipeline makes (docs/design/identity-resolver.md §8, §9a, §17). The whole recorded corpus, booted
+ * with capture ON and the shadow run and its fill switched on — a tick, a fill round and a tick
+ * after the boot — must render byte-identically to the
  * snapshots `FilmScheduleEndToEndSpec` pins with both OFF — `expected-schedules.txt` and the
  * read-model snapshot — while the store fills with every listing, identity lookup and venue
  * detail the boot made, and the shadow run resolves the corpus from those alone.
@@ -31,7 +32,10 @@ class ObservationCaptureEndToEndSpec extends AnyFlatSpec with Matchers {
 
   private lazy val shadow: (FixtureTestWiring, ShadowTick, Long) = {
     val w = new FixtureTestWiring("08-06-2026") {
-      override lazy val configuration: ProcessConfiguration = new ProcessConfiguration(Env.of("KINOWO_IDENTITY_SHADOW" -> "true"))
+      override lazy val configuration: ProcessConfiguration =
+        new ProcessConfiguration(Env.of("KINOWO_IDENTITY_SHADOW" -> "true", "KINOWO_IDENTITY_SHADOW_LOOKUPS" -> "true"))
+      // The fill paces its live asks in real time; the replay need not wait.
+      override protected def shadowLookupSleep: Long => Unit = _ => ()
       override lazy val observationStore: Option[ObservationStore] = Some(store)
       // The fixture wiring's archive is Mongo's, disabled here: an in-memory one keeps the scrapes
       // the shadow run reads its listing set from.
@@ -52,13 +56,23 @@ class ObservationCaptureEndToEndSpec extends AnyFlatSpec with Matchers {
   }
   private def wiring: FixtureTestWiring = shadow._1
 
+  /** A live lookup fill round after the tick, then the next tick over what it filed — the whole
+   *  shadow cycle ran before the snapshots below are compared. */
+  private lazy val filled: (ShadowLookupRound, ShadowTick) = {
+    val w     = wiring
+    val round = w.shadowLookupFill.getOrElse(fail("the lookup fill is not wired")).round()
+    (round, w.shadowIdentityReaper.get.tick())
+  }
+
   "shadow capture" should "leave the whole-corpus schedules byte-identical to the capture-off snapshot" in {
+    val _ = filled
     val expected = new String(Files.readAllBytes(Paths.get("test/resources/fixtures/08-06-2026/expected-schedules.txt")),
       StandardCharsets.UTF_8)
     ScheduleCorpusText.of(wiring, Poznan, now) shouldBe expected
   }
 
   it should "leave the projected read model identical to the capture-off snapshot" in {
+    val _ = filled
     // Up to film ids, exactly as FilmScheduleEndToEndSpec compares it: an id follows which
     // spelling the parallel scrape landed first, with or without capture.
     def modIds(json: String) = ReadModelSnapshot.render(ReadModelSnapshot.orderIndependent(ReadModelSnapshot.parse(json)))
@@ -91,5 +105,17 @@ class ObservationCaptureEndToEndSpec extends AnyFlatSpec with Matchers {
       s"${run.clusters.count(_.decision.film.isDefined)} matched; ${tick.gaps} lookups the capture never observed")
     tick.listings should be > 0
     run.clusters.map(_.decision.members.size).sum shouldBe tick.listings
+  }
+
+  it should "have filled the shadow's gaps with live asks into the store alone, within the fill's allowance" in {
+    val (round, next) = filled
+    val (_, first, _) = shadow
+    info(s"fill round: asked ${round.asked} (${round.answered} answered, ${round.failed} failed), deferred ${round.deferred}; " +
+      s"shadow gaps ${first.gaps} → ${next.gaps}; matched clusters ${first.run.fold(0)(_.clusters.count(_.decision.film.isDefined))} → " +
+      s"${next.run.fold(0)(_.clusters.count(_.decision.film.isDefined))}; the first tick's gaps by kind (every one a question the " +
+      s"pipeline, captured from an empty store, never asked): ${first.gapsByKind.toSeq.sortBy(-_._2).mkString(", ")}")
+    round.asked should be > 0
+    round.asked should be <= round.rate.allowanceOver(wiring.identityShadowInterval.value)
+    next.gaps should be < first.gaps
   }
 }

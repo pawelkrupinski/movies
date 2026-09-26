@@ -627,6 +627,38 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.stop()
   }
 
+  "the shadow run's live lookup fill" should "be wired only when KINOWO_IDENTITY_SHADOW_LOOKUPS and the shadow run are both on" in {
+    val budget = new SharedExecutionBudget(4)
+    def probe(pairs: (String, String)*) = new Probe(Country.Spain, budget, tools.Env.of(pairs*)) {
+      override lazy val observationStore: Option[services.observations.ObservationStore] =
+        Some(services.observations.ObservationStore.inMemory(clock))
+    }
+    probe("KINOWO_IDENTITY_SHADOW" -> "true").shadowLookupFill shouldBe None
+    probe("KINOWO_IDENTITY_SHADOW_LOOKUPS" -> "true").shadowLookupFill shouldBe None
+    val on = probe("KINOWO_IDENTITY_SHADOW" -> "true", "KINOWO_IDENTITY_SHADOW_LOOKUPS" -> "true")
+    on.shadowLookupFill shouldBe defined
+    on.shadowLookupFill.get.effectiveRate shouldBe WorkerWiring.DefaultShadowLookupRate
+    probe("KINOWO_IDENTITY_SHADOW" -> "true", "KINOWO_IDENTITY_SHADOW_LOOKUPS" -> "true", "KINOWO_IDENTITY_SHADOW_LOOKUP_RATE" -> "12")
+      .shadowLookupFill.get.effectiveRate shouldBe settings.IdentityShadowLookupRate(12)
+  }
+
+  it should "start a round after each shadow tick" in {
+    val rounds = new java.util.concurrent.atomic.AtomicInteger()
+    val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4),
+      tools.Env.of("KINOWO_IDENTITY_SHADOW" -> "true", "KINOWO_IDENTITY_SHADOW_LOOKUPS" -> "true")) {
+      override lazy val observationStore: Option[services.observations.ObservationStore] =
+        Some(services.observations.ObservationStore.inMemory(clock))
+      override protected lazy val shadowLookupExecutor: java.util.concurrent.ExecutorService = new java.util.concurrent.AbstractExecutorService {
+        def execute(command: Runnable): Unit = { rounds.incrementAndGet(); command.run() }
+        def shutdown(): Unit = (); def shutdownNow(): java.util.List[Runnable] = java.util.List.of()
+        def isShutdown: Boolean = false; def isTerminated: Boolean = false
+        def awaitTermination(timeout: Long, unit: java.util.concurrent.TimeUnit): Boolean = true
+      }
+    }
+    wiring.identityShadowTick()
+    rounds.get shouldBe 1
+  }
+
   "the identity shadow run" should "tick on its own claimed schedule, not the settle's, and persist its run" in {
     val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4), tools.Env.of("KINOWO_IDENTITY_SHADOW" -> "true")) {
       override lazy val observationStore: Option[services.observations.ObservationStore] =

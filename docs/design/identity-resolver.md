@@ -1966,3 +1966,38 @@ it, rollback, per-country blockers, the phase-6 deletion list) is
 Hardcoding added: none in the identity decision. `ProjectionGuard`'s 2% / 0.5% are §11's rollout
 thresholds, its grace the scrape guards' own constant.
 
+---
+
+## 19. The shadow run's paced live lookup fill
+
+§17's shadow run answers only from observations, and most of the resolver's questions (yearless
+searches, director walks, candidate records) are ones the pipeline never asks: over the Poznań
+capture, 4,559 lookups were unobserved and 337 of 723 clusters matched.
+
+`ShadowLookupFill` (worker, `services.identity`) closes that gap. After each shadow tick (the
+shadow run's own claimed schedule, `WorkerWiring.identityShadowSchedule`, no longer the settle's),
+on its own daemon thread, one round at a time:
+
+- it re-resolves the same listing set over the store, so the questions are exactly the resolver's
+  own (`CandidateQueries`, the set `IdentityLookupSweep` records) — no second list;
+- each TMDB request the store holds no live definitive answer to is asked live — through the
+  cut-over projection's `ObservedFirstHttpFetch` (§18), its live side a `ShadowLiveFetch` — over
+  `enrichmentFetch`, the pipeline's own lookup chain (its 429 gate, breaker and meters), wrapped in
+  `ObservingHttpFetch`, so the answer goes ONLY to `obs_lookups`. No pipeline cache or row is
+  written; dedupe is the observation key; the 8-day retention is the store's;
+- at most `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE` asks a minute (default 60, ~2% of TMDB's ~50 req/s),
+  one per pace, up to rate × settle interval per round; the rest is deferred to the next round;
+- the first overload (429, 5xx, open breaker, network failure) ends the round, and the next runs
+  at half the rate, doubling back after each clean round;
+- venue detail pages are NOT asked: the pipeline's detail refresh fetches every listing's page on
+  its own cadence and the capture files it, while a shadow fetch would write the pipeline's
+  `detailCache-*`.
+
+Gauge: `kinowo_worker_identity_shadow_lookups{country,outcome=asked|answered|failed|deferred|rate}`,
+last round. Switch: `KINOWO_IDENTITY_SHADOW_LOOKUPS` (with `KINOWO_IDENTITY_SHADOW`), off by default.
+
+**The pipeline is never delayed beyond the cap.** TMDB is unpaced here, so the fill competes only
+through the shared 429 gate, which it stops feeding at its first overload. On a paced host, each
+shadow ask costs the pipeline at most one interval (`ShadowLookupFillSpec` simulates a shared pacer
+at full pipeline load). `ObservationCaptureEndToEndSpec` runs a tick, a round and a tick with every
+switch on: `expected-schedules.txt` and the read-model snapshot are unchanged.

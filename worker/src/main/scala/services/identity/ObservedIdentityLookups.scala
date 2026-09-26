@@ -23,11 +23,29 @@ import scala.util.control.NoStackTrace
  * evidence a live listing still needs stays as long as it is needed.
  */
 
-/** The questions one resolve found unanswered. */
+/** The questions one resolve found unanswered, counted by KIND — the method, host and path with
+ *  ids and query stripped (`GET api.themoviedb.org/3/search/movie`, `DETAIL`) — so a tick says
+ *  which service its Unknowns wait on. */
 final class ObservationGaps {
-  private val count = new AtomicLong()
-  def record(): Unit = { count.incrementAndGet(); () }
-  def total: Long    = count.get()
+  private val count  = new AtomicLong()
+  private val kinds  = new java.util.concurrent.ConcurrentHashMap[String, AtomicLong]()
+  def record(query: LookupQuery): Unit = {
+    count.incrementAndGet()
+    kinds.computeIfAbsent(ObservationGaps.kindOf(query), _ => new AtomicLong()).incrementAndGet()
+    ()
+  }
+  def total: Long = count.get()
+  def byKind: Map[String, Long] = { import scala.jdk.CollectionConverters._; kinds.asScala.view.mapValues(_.get).toMap }
+}
+
+object ObservationGaps {
+  def kindOf(query: LookupQuery): String = query.key.split(' ') match {
+    case Array("DETAIL", _*)    => "DETAIL"
+    case Array(method, url, _*) =>
+      val u = scala.util.Try(new java.net.URI(url)).toOption
+      s"$method ${u.flatMap(x => Option(x.getHost)).getOrElse("")}${u.flatMap(x => Option(x.getPath)).getOrElse("").replaceAll("/\\d{2,}", "/{id}")}"
+    case _ => query.key
+  }
 }
 
 /** Thrown for a gap: the caller sees a failed call, and the gap count says it was not a failure. */
@@ -61,7 +79,7 @@ final class ObservedHttpFetch(store: ObservationStore, gaps: ObservationGaps) ex
     }
   }
 
-  private def gap(query: LookupQuery): Nothing = { gaps.record(); throw new ObservationGap(query.key) }
+  private def gap(query: LookupQuery): Nothing = { gaps.record(query); throw new ObservationGap(query.key) }
 }
 
 /** A venue's detail answered from the store's `DETAIL <page> <venue>` observations. Everything
@@ -80,7 +98,9 @@ final class ObservedDetailEnricher(underlying: DetailEnricher, store: Observatio
       case Some(Right(detail)) => detail
       // The venue answered with a failure: the offline source's call would have thrown too.
       case Some(Left(failed))  => throw new IllegalStateException(s"${cinema.displayName} detail $ref: ${failed.message}")
-      case None                => gaps.record(); throw new ObservationGap(LookupQuery.venueDetail(cinema.displayName, ref).key)
+      case None                =>
+        val query = LookupQuery.venueDetail(cinema.displayName, ref)
+        gaps.record(query); throw new ObservationGap(query.key)
     }
 }
 

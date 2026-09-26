@@ -56,7 +56,10 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
         new services.observations.ObservingHttpFetch(d, services.observations.ObservationStore.inMemory(java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)))),
       // An empty store observed nothing, so every call reaches the live fetch it decorates.
       classOf[services.identity.ObservedFirstHttpFetch] -> ((d: HttpFetch) =>
-        new services.identity.ObservedFirstHttpFetch(services.observations.ObservationStore.inMemory(java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)), d))
+        new services.identity.ObservedFirstHttpFetch(services.observations.ObservationStore.inMemory(java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)), d)),
+      // A budget with room: every call reaches the fetch it decorates.
+      classOf[services.identity.ShadowLiveFetch] -> ((d: HttpFetch) =>
+        new services.identity.ShadowLiveFetch(d, new services.identity.ShadowLookupBudget(Int.MaxValue, 0.seconds, _ => ())))
     ),
     mayInherit =
       // The default runs `this.get(url)` on a pool thread — through the decorator's own
@@ -65,7 +68,7 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
           classOf[MemoizedHttpFetch], classOf[CachingDetailFetch], classOf[MongoCachingDetailFetch],
           classOf[MonitoringHttpFetch], classOf[CountingHttpFetch], classOf[StickyShardHttpFetch],
           classOf[FallbackHttpFetch], classOf[SessionWarmingHttpFetch], classOf[services.observations.ObservingHttpFetch],
-          classOf[services.identity.ObservedFirstHttpFetch])
+          classOf[services.identity.ObservedFirstHttpFetch], classOf[services.identity.ShadowLiveFetch])
         .map(c => (c: Class[?], getAsync) -> "the default async get goes through the decorator's own get").toMap ++
       Map(
         // A detail page does not vary by request header; both caches key on the URL alone.

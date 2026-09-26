@@ -8,7 +8,8 @@ import scala.util.control.NonFatal
 
 /** One shadow resolve's outcome: the run it persisted (none when the resolve refused), what it
  *  cost, and how much of its evidence the observations could not supply. */
-final case class ShadowTick(run: Option[ShadowRun], listings: Int, crossings: Int, gaps: Long, resolveSeconds: Double) {
+final case class ShadowTick(run: Option[ShadowRun], listings: Int, crossings: Int, gaps: Long, resolveSeconds: Double,
+                            gapsByKind: Map[String, Long] = Map.empty) {
   def films: Map[ShadowRelation, Int] = run.fold(Map.empty[ShadowRelation, Int])(r => ShadowDiff.counts(r.clusters))
 }
 
@@ -70,10 +71,11 @@ final class ShadowIdentityReaper(
       runs.record(run, retention)
       metrics.crossings(0)
       metrics.resolved(ShadowDiff.counts(clusters), seconds)
-      val tick = ShadowTick(Some(run), corpus.size, 0, gaps.total, seconds)
+      val tick = ShadowTick(Some(run), corpus.size, 0, gaps.total, seconds, gaps.byKind)
       logger.info(f"identity shadow: ${corpus.size} listings → ${clusters.size} clusters " +
         f"(${tick.films.toSeq.sortBy(_._1.ordinal).map { case (r, n) => s"${r.label} $n" }.mkString(", ")}) in $seconds%.1fs; " +
-        s"${gaps.total} unobserved lookups; ${families.size} families differ from the pipeline")
+        s"${gaps.total} unobserved lookups (${gaps.byKind.toSeq.sortBy(-_._2).map { case (k, n) => s"$k $n" }.mkString(", ")}); " +
+        s"${families.size} families differ from the pipeline")
       tick
     } catch {
       case crossing: IdentityResolver.FamilyCrossing =>

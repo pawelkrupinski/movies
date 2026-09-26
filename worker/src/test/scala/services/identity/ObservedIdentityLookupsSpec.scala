@@ -38,6 +38,7 @@ class ObservedIdentityLookupsSpec extends AnyFlatSpec with Matchers {
     shadow.film(1018) shouldBe Answer.Unknown
     shadow.candidates(CandidateQuery.Title("Lalka")) shouldBe Answer.Unknown
     gaps.total should be >= 2L
+    gaps.byKind.keySet should contain allOf ("GET api.themoviedb.org/3/movie/{id}", "GET api.themoviedb.org/3/search/movie")
   }
 
   "the observed fetch" should "answer a body, rethrow a definitive failure, and treat a failed read as a gap" in {

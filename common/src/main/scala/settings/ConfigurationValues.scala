@@ -133,11 +133,6 @@ final case class IdentityRatingGateEnabled(value: Boolean) extends AnyVal
  *  a staged-migration switch, off by default, that resolves the live corpus from the observation
  *  store after each settle and writes only the shadow collections. */
 final case class IdentityShadowEnabled(value: Boolean) extends AnyVal
-/** `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` — how often the identity shadow run resolves (its own
- *  claimed window, independent of the settle). */
-final case class IdentityShadowInterval(value: scala.concurrent.duration.FiniteDuration) extends AnyVal
-/** `KINOWO_IDENTITY_SHADOW_INITIAL_DELAY_SECONDS` — how long after boot the first shadow run waits. */
-final case class IdentityShadowInitialDelay(value: scala.concurrent.duration.FiniteDuration) extends AnyVal
 /** `KINOWO_IDENTITY_CUTOVER` — the identity phase-5 staged-migration switch: the countries whose
  *  films are the resolver's projection (docs/design/identity-resolver.md §8, "cutover, per country").
  *  Chosen once, at the worker's composition root. Empty by default. */
@@ -146,6 +141,23 @@ final case class IdentityCutoverCountries(value: Set[models.Country]) extends An
 }
 /** `KINOWO_IDENTITY_PROJECTION_SECONDS` — the cut-over projection's period. */
 final case class IdentityProjectionInterval(value: FiniteDuration) extends AnyVal
+/** `KINOWO_IDENTITY_SHADOW_LOOKUPS` — the shadow run's paced live lookup fill
+ *  (docs/design/identity-resolver.md §19): asks the resolver's unobserved TMDB questions live,
+ *  into the observation store only. A staged-migration switch, off by default. */
+final case class IdentityShadowLookupsEnabled(value: Boolean) extends AnyVal
+/** `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` — how often the identity shadow run resolves (its own
+ *  claimed window, independent of the settle). */
+final case class IdentityShadowInterval(value: scala.concurrent.duration.FiniteDuration) extends AnyVal
+/** `KINOWO_IDENTITY_SHADOW_INITIAL_DELAY_SECONDS` — how long after boot the first shadow run waits. */
+final case class IdentityShadowInitialDelay(value: scala.concurrent.duration.FiniteDuration) extends AnyVal
+/** `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE` — live asks per minute the shadow fill may make: the cap on
+ *  its share of the lookup chain it shares with the pipeline. */
+final case class IdentityShadowLookupRate(perMinute: Int) extends AnyVal {
+  def pace: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(60000L / perMinute.max(1), "millis")
+  /** How many asks fit in `window` at this rate (at least one). */
+  def allowanceOver(window: scala.concurrent.duration.FiniteDuration): Int = (perMinute.toLong * window.toSeconds / 60).toInt.max(1)
+  def halved: IdentityShadowLookupRate = IdentityShadowLookupRate((perMinute / 2).max(1))
+}
 /** `KINOWO_IDENTITY_LOOKUPS` — the convergence leg sweeps identity lookups. */
 final case class IdentityLookupSweepEnabled(value: Boolean) extends AnyVal
 /** `KINOWO_CONVERGENCE_CORPUS_RUN` — the CI run that recorded the replayed corpus. */

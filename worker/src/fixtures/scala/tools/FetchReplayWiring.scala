@@ -17,7 +17,8 @@ object FetchReplayWiring {
   def apply(country: Country, storage: ConvergenceStorage, rows: Seq[ArchivedScrape], fetch: HttpFetch,
             fixtureRoot: settings.FixtureRoot = settings.FixtureRoot.RepositoryRelative,
             clock: Clock = Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC),
-            retrySleep: Long => Unit = Thread.sleep, environment: Env = Env.of()): ArchiveReplayWiring = {
+            retrySleep: Long => Unit = Thread.sleep, environment: Env = Env.of(),
+            observations: Option[services.observations.ObservationStore] = None): ArchiveReplayWiring = {
     CorpusFixture.seedInto(storage.archive, rows)
     val language = country.language
     val fixed    = clock
@@ -34,6 +35,11 @@ object FetchReplayWiring {
       // Held in memory: its daemon flusher outlives the pass and would re-create the
       // pass's database after `afterAll` dropped it. Uptime has no part in the claims.
       override lazy val uptimeMonitor = new services.UptimeMonitor(None, clock = clock)
+      // The identity capture's store, when a spec wants the boot observed (`None`: the switch decides).
+      override lazy val observationStore: Option[services.observations.ObservationStore] =
+        observations.orElse(capturedObservations)
+      // A replay never waits in real time: the shadow fill paces like a retry does.
+      override protected def shadowLookupSleep: Long => Unit = retrySleep
       // A stub key: the answers are replayed, and a keyless client short-circuits
       // before it reaches the fetch at all.
       override def tmdbClientOver(http: HttpFetch): TmdbClient =

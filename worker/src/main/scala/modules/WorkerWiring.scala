@@ -96,7 +96,10 @@ class WorkerWiring(
   // OFF by default — a staged-migration switch, the one kind of flag the design allows — and
   // invisible either way: `ObservationCaptureEndToEndSpec` holds the corpus byte-identical
   // with it on. Retention needs no job: expiry is a TTL on a stamp the store computes.
-  lazy val observationStore: Option[services.observations.ObservationStore] =
+  lazy val observationStore: Option[services.observations.ObservationStore] = capturedObservations
+  /** The capture's store as the switch decides — what `observationStore` is unless a harness
+   *  hands its own. */
+  protected def capturedObservations: Option[services.observations.ObservationStore] =
     mongoConnection.database.filter(_ => configuration.observationCapture.value)
       .map(db => services.observations.MongoObservationBackend.store(db, clock, workerMetrics.ttlIndexMismatches))
 
@@ -121,10 +124,7 @@ class WorkerWiring(
   lazy val shadowIdentityReaper: Option[services.identity.ShadowIdentityReaper] = {
     import services.identity._
     identityObservations.filter(_ => configuration.identityShadow.value && !identityCutover).map(store => new ShadowIdentityReaper(
-      listings      = () => {
-        val live = cinemaScrapers.map(_.cinema).toSet
-        Listing.corpus(scrapeArchive.findAll().filter(row => live(row.cinema)).map(row => row.cinema -> row.films), titleNormalizer)
-      },
+      listings      = shadowListings,
       pipelineFilms = () => movieCache.snapshot(),
       lookups       = () => ObservedIdentityLookups.over(store, tmdbClientOver, detailEnrichers),
       pins          = new MongoPinStore(mongoConnection.database),
@@ -139,13 +139,52 @@ class WorkerWiring(
   // The shadow run's OWN schedule — not the settle's: the settle is a self-heal near-no-op, and the
   // shadow diffs against the pipeline's films as they are when it ticks (`movieCache.snapshot()`).
   // One claimed window per `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` (30 min), first a few minutes
-  // after boot so the hydrate has loaded the films it diffs against.
+  // after boot so the hydrate has loaded the films it diffs against. Each tick is followed by a
+  // fill round when the fill is on.
   def identityShadowInterval: settings.IdentityShadowInterval =
     configuration.identityShadowInterval(WorkerWiring.DefaultIdentityShadowInterval)
-  def identityShadowTick(): Unit = shadowIdentityReaper.foreach(_.tickQuietly())
+  def identityShadowTick(): Unit = shadowIdentityReaper.foreach { reaper =>
+    reaper.tickQuietly()
+    shadowLookupFill.foreach(_.start())
+  }
   lazy val identityShadowSchedule: Option[services.tasks.ClaimedPeriodicTask] = shadowIdentityReaper.map(_ =>
     new services.tasks.ClaimedPeriodicTask("identity-shadow", () => identityShadowTick(), identityShadowInterval.value,
       configuration.identityShadowInitialDelay(WorkerWiring.DefaultIdentityShadowInitialDelay).value, scheduledRunStore, clock))
+
+  // The shadow run's PACED LIVE LOOKUP FILL (docs/design/identity-resolver.md §19):
+  // `KINOWO_IDENTITY_SHADOW_LOOKUPS`, a staged-migration switch, off by default, and only with the
+  // shadow run on. After each shadow tick it asks the resolver's unobserved TMDB questions through
+  // the pipeline's own lookup chain (`enrichmentFetch`: its 429 gate, breaker and pace), at most
+  // `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE` per minute, and files the answers ONLY in the observation
+  // store. The default cap is 60/min: about 2% of TMDB's ~50 req/s ceiling.
+  lazy val shadowLookupFill: Option[services.identity.ShadowLookupFill] =
+    shadowIdentityReaper.flatMap(_ => identityObservations).filter(_ => configuration.identityShadowLookups.value).map(store =>
+      new services.identity.ShadowLookupFill(
+        listings    = shadowListings,
+        store       = store,
+        tmdb        = tmdbClientOver,
+        liveFetch   = enrichmentFetch,
+        enrichers   = detailEnrichers,
+        normalizer  = titleNormalizer,
+        calibration = services.identity.IdentityCalibration.default,
+        rate        = configuration.identityShadowLookupRate(WorkerWiring.DefaultShadowLookupRate),
+        window      = identityShadowInterval,
+        metrics     = workerMetrics.identityShadow.lookupsForCountry(country.code),
+        executor    = shadowLookupExecutor,
+        sleep       = shadowLookupSleep))
+
+  /** How the fill waits its pace between asks: real time, except in a replay harness. */
+  protected def shadowLookupSleep: Long => Unit = Thread.sleep
+
+  /** One daemon thread for the fill's rounds, which sleep their pace between asks. */
+  protected lazy val shadowLookupExecutor: java.util.concurrent.ExecutorService =
+    tools.DaemonExecutors.boundedEC(s"identity-shadow-lookups-${country.code}", 1)
+
+  /** The shadow run's listing set: every listing of the scrape archive's latest scrape per live venue. */
+  def shadowListings(): Seq[services.identity.Listing] = {
+    val live = cinemaScrapers.map(_.cinema).toSet
+    services.identity.Listing.corpus(scrapeArchive.findAll().filter(row => live(row.cinema)).map(row => row.cinema -> row.films), titleNormalizer)
+  }
 
   // ── Filmweb (per-country) ───────────────────────────────────────────────────
   // Whether the Filmweb rating + fallback path is wired at all — a per-country
@@ -351,6 +390,7 @@ class WorkerWiring(
   def cascadeDrainOrder: Seq[Drainable] = Seq(movieService, imdbIdResolver)
 
   def stop(): Unit = {
+    shadowLookupFill.foreach(_ => shadowLookupExecutor.shutdownNow())
     envConfigService.stop()
     cinemaScrapeCensus.stop()
     cinemaContentCensus.stop()
@@ -396,8 +436,12 @@ object WorkerWiring {
   /** `KINOWO_BG_CONCURRENCY`'s compiled-in default. */
   val DefaultBackgroundConcurrency: BackgroundConcurrency = BackgroundConcurrency(4)
 
+  /** `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE`'s compiled-in default: 60 asks a minute, about 2% of
+   *  TMDB's ~50 req/s ceiling, so the pipeline's own lookups keep the rest (see `shadowLookupFill`). */
+  val DefaultShadowLookupRate: settings.IdentityShadowLookupRate = settings.IdentityShadowLookupRate(60)
+
   /** The identity shadow run's cadence: the settle's former 30 minutes, which its cost (§17: at
-   *  most seconds a tick) was measured against. */
+   *  most seconds a tick) and the fill's per-round allowance were measured against. */
   val DefaultIdentityShadowInterval: settings.IdentityShadowInterval =
     settings.IdentityShadowInterval(scala.concurrent.duration.Duration(30, "minutes"))
   /** Long enough after boot for the synchronous hydrate to have loaded the films the diff reads. */
