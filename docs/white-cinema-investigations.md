@@ -315,8 +315,15 @@ unaffected (Skierniewice isn't in the frozen corpus).
   *Follow-up, same day:* now flagged. See "A third target: `thin` buckets" in
   the methodology. The first measured thin list found 6 more Filmweb venues in
   the Polonez state (Giewont, Wołomin, Wadowice, Len, Działdowo, Chmielno), all
-  with a biletyna place page to move onto. **needs-human / next run:** move
-  them the way Skierniewice was moved.
+  with a biletyna place page to move onto. **Fixed, same day, @a54a375df**:
+  each moved onto its biletyna place page after matching the address to
+  Filmweb's `/info`. That work surfaced a platform bug: **a biletyna place page
+  lists at most 50 events**, and 13 catalogued venues sat at exactly 50
+  (Kameralne sells 132, Wadowice 110, Polonez 95). **Fixed @bedfb0c3f**: a full
+  page is topped up from `/ajax/events?params[h]=<hall id from get_filter>`
+  (paged `ipp=100`), and the feed's `category_id` maps 1:1 to the page's
+  `@type`. A future sweep can treat a biletyna venue with exactly 50 events
+  and no feed request in its logs as a regression of this.
 
 **Still dormant, re-probed live (subagent, spot-checked):**
 
