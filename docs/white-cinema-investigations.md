@@ -141,6 +141,38 @@ is genuinely gone while Filmweb is complete is
 fallback run after run. Baseline 2026-09-26: 2 active (both Mikro screens,
 fixed the same day), 0 in UK/DE/US/ES.
 
+### A third target: `thin` buckets (screenings, but none in the next 72h)
+
+Added 2026-09-26 (@650ad3211). The partial-parse mask above now has a flag.
+A scrape that returns screenings but none from now (on the venue's own clock)
+until 72h ahead marks its `uptimeBuckets` document `thin: true`
+(`NearTermProgramme` in the worker, recorded by `UptimeRecordingScraper` and
+`SourceFallbackScraper`). The bar stays green with a dashed violet outline. A
+venue whose last 3 active buckets are ALL green-and-thin is pulled into its own
+"Nothing in the next 72h" triage section on `/uptime`, so it shows even where a
+large roster hides healthy rows.
+
+Add it to the sweep: per service, take the last 3 non-`empty` buckets as
+usual. A service is **thin** when all 3 are green (`successes>0`, no failures)
+**and** have `thin: true`. The same mongosh pass that builds the white list can
+emit this list.
+
+**It is a probe queue, not a bug list.** On 2026-09-26 the rule flagged 53 of
+517 green PL venues. Most are cultural centres whose next film really is days
+or weeks away (Bielański OK: 29 days; MCK Tkacz; Karolinka). The high-yield
+subset is **thin + a short span**: every screening falls inside the scrape's
+own short window (Filmweb's ~7 days), with the front of the window empty.
+All 9 PL Filmweb venues in that shape that day had `/info` `"multiplex":
+"BILETYNA"`. For **7 of them**, biletyna sold screenings in the next 3 days
+that Filmweb didn't list: Polonez (50), Giewont (15), Wołomin (8), Wadowice (7),
+Len (7), Działdowo (9) and Chmielno (2). Filmweb only carried "Lalka"/"Obcy"
+pre-sales from 09-30. The other 2 (MOK Police, Kongres Węgrów) genuinely had
+nothing near on biletyna either. The check for each thin Filmweb venue: find
+its biletyna place page via a Filmweb `orderLinks` URL (`biletyna.pl/film/<Title>/<City>`
+→ the `/<City>/<Place>` link), then count `ScreeningEvent`s in the next 3 days.
+Thin counts for other countries on 09-26, for comparison: UK 31/789, DE 52/1113,
+US 60/4254, ES 6/414 (72h+ lead on the latest content-bearing scrape).
+
 ### A new capability: reading production logs without a browser, via the mongo-1 SSH hop
 
 Found 2026-09-19, while running down what first looked like a real bug
@@ -273,9 +305,12 @@ it fails before and passes after. `testUnit` is green, and the e2e snapshot is
 unaffected (Skierniewice isn't in the frozen corpus).
 
   *Shared-path note:* Filmweb-backed PL venues can go "green on a stray slot"
-  while their real programme is elsewhere. The sweep's white predicate cannot
-  see it. A future run could compare each Filmweb venue's archive film count
-  against its town peers. Not done this run.
+  while their real programme is elsewhere. The white predicate cannot see it.
+  *Follow-up, same day:* now flagged. See "A third target: `thin` buckets" in
+  the methodology. The first measured thin list found 6 more Filmweb venues in
+  the Polonez state (Giewont, Wołomin, Wadowice, Len, Działdowo, Chmielno), all
+  with a biletyna place page to move onto. **needs-human / next run:** move
+  them the way Skierniewice was moved.
 
 **Still dormant, re-probed live (subagent, spot-checked):**
 
