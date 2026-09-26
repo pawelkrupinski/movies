@@ -133,6 +133,14 @@ final case class IdentityRatingGateEnabled(value: Boolean) extends AnyVal
  *  a staged-migration switch, off by default, that resolves the live corpus from the observation
  *  store after each settle and writes only the shadow collections. */
 final case class IdentityShadowEnabled(value: Boolean) extends AnyVal
+/** `KINOWO_IDENTITY_CUTOVER` — the identity phase-5 staged-migration switch: the countries whose
+ *  films are the resolver's projection (docs/design/identity-resolver.md §8, "cutover, per country").
+ *  Chosen once, at the worker's composition root. Empty by default. */
+final case class IdentityCutoverCountries(value: Set[models.Country]) extends AnyVal {
+  def covers(country: models.Country): Boolean = value.contains(country)
+}
+/** `KINOWO_IDENTITY_PROJECTION_SECONDS` — the cut-over projection's period. */
+final case class IdentityProjectionInterval(value: FiniteDuration) extends AnyVal
 /** `KINOWO_IDENTITY_LOOKUPS` — the convergence leg sweeps identity lookups. */
 final case class IdentityLookupSweepEnabled(value: Boolean) extends AnyVal
 /** `KINOWO_CONVERGENCE_CORPUS_RUN` — the CI run that recorded the replayed corpus. */

@@ -31,6 +31,17 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
     resolvedFrom("KINOWO_COUNTRIES" -> "xx").workerCountries shouldBe WorkerCountries(Seq(Country.default))
   }
 
+  it should "resolve the identity cutover countries, empty unless named" in {
+    resolvedFrom().identityCutover shouldBe IdentityCutoverCountries(Set.empty)
+    resolvedFrom().identityCutover.covers(Country.Spain) shouldBe false
+    val resolved = resolvedFrom("KINOWO_IDENTITY_CUTOVER" -> "es, xx ,de")
+    resolved.identityCutover shouldBe IdentityCutoverCountries(Set(Country.Spain, Country.Germany))
+    resolved.identityCutover.covers(Country.Spain) shouldBe true
+    resolved.identityCutover.covers(Country.Poland) shouldBe false
+    resolvedFrom("KINOWO_IDENTITY_PROJECTION_SECONDS" -> "90").identityProjectionInterval(IdentityProjectionInterval(5.minutes)) shouldBe
+      IdentityProjectionInterval(90.seconds)
+  }
+
   it should "resolve the commit and the port, with their defaults" in {
     resolvedFrom("COMMIT_SHA" -> "abc123").commit shouldBe CommitSha("abc123")
     resolvedFrom("PORT" -> "9123").healthPort(HealthPort(9000)) shouldBe HealthPort(9123)
