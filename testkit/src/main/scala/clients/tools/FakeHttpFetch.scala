@@ -26,7 +26,13 @@ import java.util.concurrent.CompletableFuture
  */
 class FakeHttpFetch(fixtureDirectory: String, strict: Boolean = false, foldYear: Boolean = true,
     root: FixtureRoot = FixtureRoot.RepositoryRelative) extends HttpFetch {
-  val fixtureRoot = root.of(fixtureDirectory)
+  // The tree's REAL path: the case-exact check below compares each candidate with its
+  // `toRealPath`, so a root reached through a symlink would otherwise differ in every component
+  // and replay every request as a miss.
+  val fixtureRoot: String = {
+    val tree = Paths.get(root.of(fixtureDirectory))
+    if (Files.exists(tree)) tree.toRealPath().toString else tree.toString
+  }
 
   override def get(url: String): String = new String(readBytes(url, body = None), "UTF-8")
 
