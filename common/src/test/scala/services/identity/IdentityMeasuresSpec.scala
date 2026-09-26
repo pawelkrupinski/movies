@@ -54,4 +54,11 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.corroboratingVenues(candyman, group, "Venue 1") shouldBe 4
     IdentityMeasures.corroboratingVenues(other, group, "Venue 1") shouldBe 0
   }
+
+  "title shapes" should "de-decorate the parts a banner leaves, as well as the whole title" in {
+    // "Throwback: Donnie Darko (25th Anniversary)": the banner split leaves "Donnie Darko (25th
+    // Anniversary)", whose trailing bracket is itself a decoration.
+    IdentityMeasures.titleShapes(Listing("Throwback: Donnie Darko (25th Anniversary)")) should contain ("Donnie Darko")
+    IdentityMeasures.searchQueries(Listing("Throwback: Donnie Darko (25th Anniversary)")) should contain ("Donnie Darko")
+  }
 }

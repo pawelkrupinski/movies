@@ -110,9 +110,15 @@ object IdentityMeasures {
 
   /** The shapes a listing's title can name a film by: the whole title, its raw form, and each
    *  programme-banner segment (`SearchTitles.candidates`: `|`, ` - `, a first `: `, …). */
-  def titleShapes(l: Listing): Seq[String] =
-    (Seq(l.title) ++ l.rawTitle ++ SearchTitles.candidates(l.title, l.originalTitle) ++
+  def titleShapes(l: Listing): Seq[String] = {
+    val first = (Seq(l.title) ++ l.rawTitle ++ SearchTitles.candidates(l.title, l.originalTitle) ++
       l.rawTitle.toSeq.flatMap(SearchTitles.candidates(_, None))).map(_.trim).filter(_.nonEmpty).distinct
+    // Each part a split leaves is de-decorated in turn ("Throwback: Donnie Darko (25th Anniversary)"
+    // → "Donnie Darko (25th Anniversary)" → "Donnie Darko"), to a fixpoint: every shape still a
+    // whole delimited piece of the listing's own title.
+    Iterator.iterate(first)(shapes => (shapes ++ shapes.flatMap(SearchTitles.candidates(_, None))).map(_.trim).filter(_.nonEmpty).distinct)
+      .sliding(2).collectFirst { case Seq(a, b) if a == b => a }.get
+  }
 
   private def jaccard(a: Set[String], b: Set[String]): Double =
     if (a.isEmpty || b.isEmpty) 0.0 else (a intersect b).size.toDouble / (a union b).size
