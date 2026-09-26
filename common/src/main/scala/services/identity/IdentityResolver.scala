@@ -173,12 +173,21 @@ object IdentityResolver {
         IdentityMeasures.listingBanner(l).flatMap(houseOf.get).forall(house => IdentityMeasures.filmBanner(f).contains(house))
 
     /** Does the listing's own evidence rule the film out: a learned cannot-link, its facts'
-     *  probability below the certified cut, a season its title names that the film is not of, or
+     *  probability below the certified cut (neither reading a screening year beside the same
+     *  director, [[withoutScreeningYear]]), a season its title names that the film is not of, or
      *  its season's production of its work by ANOTHER house than its banner's (`houseOf`). */
-    def evidenceDenies(l: IdentityMeasures.Listing, f: IdentityMeasures.Film, measures: Map[String, Measure]): Boolean =
+    def evidenceDenies(l: IdentityMeasures.Listing, f: IdentityMeasures.Film, measures: Map[String, Measure]): Boolean = {
+      val vetoing = withoutScreeningYear(measures)
       ListingConstraints.seasonsApart(l.seasonYear, IdentityMeasures.filmSeason(f), f.year).isDefined ||
         (IdentityMeasures.namesSeasonProduction(l, f) && !namesItsSeasonProduction(l, f)) ||
-        ListingConstraints.learnedListingFilm(calibration, measures, factsProbability(measures)).isDefined
+        ListingConstraints.learnedListingFilm(calibration, vetoing, factsProbability(vetoing)).isDefined
+    }
+    /** `measures` without the published year when it denies a film the same director made
+     *  (`IdentityMeasures.ownAgreement`): there it dates the screening
+     *  (`IdentityMeasures.PublishedYear`), so no veto reads it; the score still does. */
+    def withoutScreeningYear(measures: Map[String, Measure]): Map[String, Measure] =
+      if (IdentityMeasures.sameDirector(measures) && IdentityMeasures.ownAgreement(measures)._2("year")) measures -- IdentityMeasures.PublishedYear
+      else measures
 
     /** The listings of a family by title key, with their venues: `venues.corroborating`'s group. */
     final class FamilyScope(members: Seq[Node]) {

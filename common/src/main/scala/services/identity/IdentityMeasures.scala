@@ -409,6 +409,13 @@ object IdentityMeasures {
    *  still weighs it both ways in the probability. */
   val AgreesOnly: Set[String] = Set("titleYear.delta")
 
+  /** A listing's published year against the film's. Beside the SAME director it never denies the
+   *  film: a year decades off then dates the screening (a re-release, a retrospective), not
+   *  another film — and that director's other film of the title, when the pool has it, still wins
+   *  on the year's score (Helios RePlay's 2026 "Diabły" is Ken Russell's 1971 film). */
+  val PublishedYear: Set[String] = Set("year.delta", "year.distance")
+  def sameDirector(m: Map[String, Measure]): Boolean = m.get("director").contains(Category("same_person"))
+
   /** Categories whose evidence cannot weaken as the listing carries more of the other side, per
    *  measure, strongest first: a decoration carries the film's whole title, an overlap some of its
    *  words, `none` nothing. The calibration fits their weights under this order

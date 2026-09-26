@@ -373,6 +373,30 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  "A re-release whose listing publishes its screening year" should "not veto the film its same director made" in {
+    // Helios RePlay and Splat!FilmFest list Ken Russell's 1971 "Diabły" with the screening's year,
+    // 2026, in the year field. The director is the same person: the year dates the screening, not
+    // another film, so it scores against the film but never vetoes it.
+    val films = Seq(F(31767, "Diabły", 1971, "Ken Russell", 111, 5))
+    val dated = Seq(Multikino, Helios).map(listing(_, "Diabły", Some(2026), Some("Ken Russell"), Some(114)))
+    val r = IdentityResolver.resolve(dated, new Table(films), normalizer, IdentityCalibration.resolver)
+    dated.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(31767)))
+  }
+
+  it should "still take the same director's film of the listing's year when both are there" in {
+    val films = Seq(F(10234, "Funny Games", 1997, "Michael Haneke", 108, 8), F(8461, "Funny Games", 2007, "Michael Haneke", 111, 9))
+    val dated = listing(Multikino, "Funny Games", Some(2007), Some("Michael Haneke"), Some(111))
+    IdentityResolver.resolve(Seq(dated), new Table(films), normalizer, IdentityCalibration.resolver)
+      .decisionOf(dated.key).film shouldBe Some(8461)
+  }
+
+  it should "still veto a film of that title another director made decades before" in {
+    val films = Seq(F(31767, "Diabły", 1971, "Ken Russell", 111, 5))
+    val other = listing(Multikino, "Diabły", Some(2026), Some("Someone Else"), Some(95))
+    IdentityResolver.resolve(Seq(other), new Table(films), normalizer, IdentityCalibration.resolver)
+      .decisionOf(other.key).film shouldBe None
+  }
+
   "A re-release titled with its screening year" should "not veto the film its credited siblings name" in {
     // 951 US venues list the 1939 film; some spell it "Gone With The Wind (2026)" — the re-release's
     // year, which a bracket year is as often as the film's. A bracket year agrees; it never denies
