@@ -5,7 +5,6 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.readmodel.MongoReadModelRepository
-import tools.Env
 import tools.Eventually.eventually
 
 /**
@@ -21,10 +20,9 @@ import tools.Eventually.eventually
  * `Set()` against `Set("backfillstitchprobe|1904")`). In a database nobody else writes,
  * both reads see exactly the rows seeded here, so a single read is the assertion.
  */
-class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  private val isolated = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "readmodel-repository")
+  private val isolated = tools.IsolatedMongoDatabase.open(mongoTarget, "readmodel-repository")
   private val db       = isolated.database
   private val rm       = new MongoReadModelRepository(Some(db))
 
@@ -72,8 +70,8 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
   // database, dropped afterwards.
   "web_movies" should "carry a film's share card, and hand the janitor its projected refs" in {
     import services.readmodel.ShareCardRef
-    val ownDb   = tools.IntegrationCorpusDatabase.named(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "readmodel-sharecards")
-    val client2 = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
+    val ownDb   = tools.IntegrationCorpusDatabase.named(mongoTarget, "readmodel-sharecards")
+    val client2 = MongoClient(mongoTarget.uri.value)
     val fresh   = new MongoReadModelRepository(Some(client2.getDatabase(ownDb)))
     try {
       val film = resolvedMovie("__it-rm-sharecard__").copy(posterUrl = Some("https://cdn.example/a.jpg"),
@@ -99,8 +97,8 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
   // destructive act in a spec.
   "the read model" should "create no secondary index on web_screenings" in {
     import models.CityScreening
-    val ownDb   = tools.IntegrationCorpusDatabase.named(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "readmodel-indexes")
-    val client2 = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
+    val ownDb   = tools.IntegrationCorpusDatabase.named(mongoTarget, "readmodel-indexes")
+    val client2 = MongoClient(mongoTarget.uri.value)
     val fresh   = new MongoReadModelRepository(Some(client2.getDatabase(ownDb)))
     try {
       // The collection does not exist until something is written to it.
@@ -161,7 +159,7 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
   // In its own database: the watch sees its whole collection, and in the shared one every
   // sibling spec's `web_screenings` write reaches it.
   "a watch from a stream checkpoint" should "replay a write made after the checkpoint but before the watch opened" in
-    tools.IsolatedMongoDatabase.withDatabase(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "readmodel-checkpoint") { own =>
+    tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "readmodel-checkpoint") { own =>
       import models.CityScreening
       val isolated   = new MongoReadModelRepository(Some(own))
       val id         = "__it-rm-checkpoint__"

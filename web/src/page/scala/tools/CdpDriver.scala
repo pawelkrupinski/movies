@@ -1,6 +1,7 @@
 package tools
 
 import play.api.libs.json.{JsValue, Json}
+import settings.CdpBrowserBinary
 
 import java.net.URI
 import java.net.http.HttpResponse.BodyHandlers
@@ -50,16 +51,12 @@ object Chrome {
     "/opt/microsoft/msedge/microsoft-edge"
   )
 
-  /** Resolve a browser binary. The `CDP_BROWSER_BIN` env var wins so
-   *  CI can point at a specific Chrome / Edge version installed at a
-   *  non-standard path (the GH Actions matrix sets this per job).
-   *  Otherwise scan `CandidatePaths` for the first executable hit. */
-  def findExecutable(): Option[Path] = {
-    val envOverride = Option(System.getenv("CDP_BROWSER_BIN"))
-      .map(_.trim)
-      .filter(_.nonEmpty)
-      .map(Paths.get(_))
-      .filter(Files.isExecutable)
+  /** Resolve a browser binary. `browser` — `CDP_BROWSER_BIN`, which the caller resolved from
+   *  its configuration — wins so CI can point at a specific Chrome / Edge version installed at
+   *  a non-standard path (the GH Actions matrix sets this per job). Otherwise scan
+   *  `CandidatePaths` for the first executable hit. */
+  def findExecutable(browser: Option[CdpBrowserBinary]): Option[Path] = {
+    val envOverride = browser.map(_.value).filter(Files.isExecutable)
     envOverride.orElse(
       CandidatePaths.iterator.map(Paths.get(_)).find(Files.isExecutable)
     )
@@ -100,7 +97,8 @@ object Chrome {
    *  TLS/JA3 fingerprinting or ML bot score behind this rule, so a plain
    *  string substitution is enough — no launch-flag/stealth arms race
    *  needed. */
-  def tryStart(proxy: Option[ProxyConfig] = None, spoofHeadlessUserAgent: Boolean = false): Option[Chrome] = findExecutable().flatMap { exe =>
+  def tryStart(browser: Option[CdpBrowserBinary], proxy: Option[ProxyConfig] = None, spoofHeadlessUserAgent: Boolean = false): Option[Chrome] =
+    findExecutable(browser).flatMap { exe =>
     val userDirectory = Files.createTempDirectory("chrome-cdp-test-")
     val pb = new ProcessBuilder(
       (Seq(

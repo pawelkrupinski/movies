@@ -36,13 +36,14 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 object FilmwebUrlAudit {
 
   def main(args: Array[String]): Unit = {
-    val repository = AmbientMovieRepository.open()
+    val configuration = _root_.settings.ProcessConfiguration.resolve()
+    val repository = AmbientMovieRepository.open(configuration)
     if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to audit.")
       sys.exit(1)
     }
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb    = new TmdbClient(new RealHttpFetch, apiKey = settings.ProcessConfiguration.resolve().tmdbApiKey)
+    val tmdb    = new TmdbClient(new RealHttpFetch, apiKey = configuration.tmdbApiKey)
     val filmweb = new FilmwebClient(new RealHttpFetch)
     val ratings = new FilmwebRatings(cache, tmdb, filmweb)
 

@@ -6,7 +6,7 @@ import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.MongoMirrorFreshness
-import tools.{Env, IsolatedMongoDatabase}
+import tools.IsolatedMongoDatabase
 
 import java.util.Date
 import scala.concurrent.Await
@@ -20,12 +20,11 @@ import scala.concurrent.duration._
  * most of the time, and precisely when a half-synced mirror is at its most
  * convincing. Requires MONGODB_URI against a throwaway db; skips otherwise.
  */
-class MirrorFreshnessIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class MirrorFreshnessIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   // A database of its own (`IsolatedMongoDatabase` refuses a real cluster), so the
   // newest stamp is one this spec wrote, not whatever a co-running suite last touched.
-  private val isolated = IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "mirror-freshness")
+  private val isolated = IsolatedMongoDatabase.open(mongoTarget, "mirror-freshness")
   private val db       = isolated.database
 
   private val older      = Date.from(java.time.Instant.parse("2099-08-30T08:03:00Z"))

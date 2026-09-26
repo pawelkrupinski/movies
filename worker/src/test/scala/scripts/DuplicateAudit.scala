@@ -37,7 +37,8 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  */
 object DuplicateAudit {
   def main(args: Array[String]): Unit = {
-    val repository = AmbientMovieRepository.open()
+    val configuration = _root_.settings.ProcessConfiguration.resolve()
+    val repository = AmbientMovieRepository.open(configuration)
     if (!repository.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
 
     val rows: Seq[StoredMovieRecord] = repository.findAll()

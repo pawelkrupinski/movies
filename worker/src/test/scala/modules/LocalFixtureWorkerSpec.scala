@@ -58,19 +58,19 @@ class LocalFixtureWorkerSpec extends AnyFlatSpec with Matchers with BeforeAndAft
   // defaults — and it reaches the wiring as a value, not as a rewritten MONGODB_URI.
   "LocalFixtureWorkerMain.localMongo" should "ignore a MONGODB_URI that only .env.local carries" in {
     val dotEnvLocal = resolvedFrom("MONGODB_URI" -> "mongodb://prod-tunnel:27017", "MONGODB_DB" -> "kinowo")
-    LocalFixtureWorkerMain.localMongo(_ => None, dotEnvLocal) shouldBe
+    LocalFixtureWorkerMain.localMongo(MongoAddress.Disabled, dotEnvLocal) shouldBe
       MongoAddress(Some(MongoUri(LocalFixtureWorkerMain.DefaultMongoUri)), Some(MongoDatabaseName(LocalFixtureWorkerMain.DefaultMongoDb)))
   }
 
   it should "let the KINOWO_LOCAL_MONGO_* overrides move it" in {
-    LocalFixtureWorkerMain.localMongo(_ => None,
+    LocalFixtureWorkerMain.localMongo(MongoAddress.Disabled,
       resolvedFrom("KINOWO_LOCAL_MONGO_URI" -> "mongodb://127.0.0.1:28099", "KINOWO_LOCAL_MONGO_DB" -> "kinowo_elsewhere")) shouldBe
       MongoAddress(Some(MongoUri("mongodb://127.0.0.1:28099")), Some(MongoDatabaseName("kinowo_elsewhere")))
   }
 
   it should "let a MONGODB_URI / MONGODB_DB exported in the process environment win" in {
-    val exported = Map("MONGODB_URI" -> "mongodb://exported:1", "MONGODB_DB" -> "kinowo_exported")
-    LocalFixtureWorkerMain.localMongo(exported.get, resolvedFrom("KINOWO_LOCAL_MONGO_URI" -> "mongodb://ignored")) shouldBe
+    val exported = MongoAddress(Some(MongoUri("mongodb://exported:1")), Some(MongoDatabaseName("kinowo_exported")))
+    LocalFixtureWorkerMain.localMongo(exported, resolvedFrom("KINOWO_LOCAL_MONGO_URI" -> "mongodb://ignored")) shouldBe
       MongoAddress(Some(MongoUri("mongodb://exported:1")), Some(MongoDatabaseName("kinowo_exported")))
   }
 

@@ -26,7 +26,7 @@ import tools.{FixtureTestWiring, HttpFetch, RealHttpFetch}
  */
 object RecordMissingFilmwebSearches {
   def main(args: Array[String]): Unit = {
-    val dir = tools.Env.fromProcess().get("KINOWO_FIXTURE_DIR").getOrElse("08-06-2026")
+    val dir = _root_.settings.ProcessConfiguration.resolve().localStackFixtureDirectory.fold("08-06-2026")(_.value)
     val recording = new RecordMissingFetch(dir, Set("filmweb.pl"), new RealHttpFetch())
     val w = new FixtureTestWiring(dir) {
       override lazy val httoFetch:      HttpFetch = recording

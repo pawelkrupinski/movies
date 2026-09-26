@@ -23,7 +23,7 @@ import tools.{CdpPage, Chrome, TestHttpServer}
  *
  * Skips gracefully when Chrome isn't installed, same as CadenceFilterSpec.
  */
-class DebugReadModelFilterSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class DebugReadModelFilterSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.SuiteConfiguration {
 
   // Two resolved movies with distinct, non-overlapping titles so a query can
   // isolate one and hide the other.
@@ -41,7 +41,7 @@ class DebugReadModelFilterSpec extends AnyFlatSpec with Matchers with BeforeAndA
   private var server: TestHttpServer = _
 
   override def beforeAll(): Unit = {
-    chrome = Chrome.tryStart()
+    chrome = Chrome.tryStart(configuration.cdpBrowserBinary)
     if (chrome.nonEmpty) server = new TestHttpServer({ case "/debug/readmodel" => readModelHtml })
   }
 

@@ -40,11 +40,13 @@ object UptimeCinemaHostCleanup {
    *  can't drift from what `MonitoringHttpFetch` suppresses. A no-op `http` is
    *  fine: building the catalog only constructs client objects — it fetches
    *  nothing — and `scrapeHosts` reads their declared hosts. */
-  def cinemaHosts: Set[String] = new CinemaScraperCatalog(new RealHttpFetch(), configuration = _root_.settings.ProcessConfiguration.resolve()).scrapeHosts
+  def cinemaHosts(configuration: _root_.settings.ProcessConfiguration): Set[String] =
+    new CinemaScraperCatalog(new RealHttpFetch(), configuration = configuration).scrapeHosts
 
   def main(args: Array[String]): Unit = {
-    val hosts = cinemaHosts
-    val connection = MongoConnection.forProcess(_root_.settings.ProcessConfiguration.resolve(), required = false)
+    val configuration = _root_.settings.ProcessConfiguration.resolve()
+    val hosts = cinemaHosts(configuration)
+    val connection = MongoConnection.forProcess(configuration, required = false)
     try {
       val db = connection.database.getOrElse {
         println("MONGODB_URI not set — nothing to do.")

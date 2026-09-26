@@ -8,7 +8,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import models.{Multikino, MovieRecord, Showtime, Source, SourceData}
 import services.staging.{MongoStagingRepository, StagingRecord}
-import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -34,10 +33,7 @@ import scala.concurrent.duration._
  *
  * Requires MONGODB_URI; skips otherwise.
  */
-class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers with org.scalatest.BeforeAndAfterAll {
-
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
+class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers with org.scalatest.BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
   // Its OWN database, not the one every other `it` spec shares.
   //
@@ -48,7 +44,7 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
   // to production twice. And it measures Mongo's PROFILER, which is database-wide: with
   // specs running concurrently the byte counts belonged to whichever suite happened to be
   // querying, so the assertions were reading someone else's traffic.
-  private val isolatedDb     = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "staging-projection-spec")
+  private val isolatedDb     = tools.IsolatedMongoDatabase.open(mongoTarget, "staging-projection-spec")
   private val db = isolatedDb.database
   private val staged = db.getCollection[Document]("pending_movies")
 

@@ -16,9 +16,9 @@ import play.api.test.Helpers.stubControllerComponents
 class TestWebWiring(
     seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty,
     val country: Country = Country.default) extends Wiring {
-  // The process environment, like a production boot; a spec pins a knob by
+  // The process configuration's Env, resolved as a production boot resolves it; a spec pins a knob by
   // overriding this with `Env.of(...)`.
-  lazy val env: tools.Env = tools.Env.fromProcess()
+  lazy val env: tools.Env = settings.ProcessConfiguration.resolve().env
   // No cluster: every connection the wiring opens at this address stays disabled — the
   // corpus, the users database and the /debug stacks alike — whatever MONGODB_URI the
   // shell holds (CI runs the unit suites with it set).

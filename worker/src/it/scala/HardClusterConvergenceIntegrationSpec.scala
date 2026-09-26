@@ -58,16 +58,12 @@ import scala.util.{Random, Try}
  * trees, every request the file does not already answer is asked of the tree, and the
  * file is written back with the old answers AND the new (`RecordedResponses.recording`).
  */
-class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
-
-  private val uri = Env.fromProcess().get("MONGODB_URI")
-  assume(uri.isDefined, "MONGODB_URI not set")
-  IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
+class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
   /** Where the countries' `enrichment-<cc>` trees live: KINOWO_FIXTURE_ROOT when
    *  `scripts/hard-clusters.sh` names one, else the repository's own. */
-  private val FixtureRoot = _root_.settings.ProcessConfiguration.resolve().fixtureRoot
-  private val Recording = Env.fromProcess().get("KINOWO_HARD_CLUSTERS_RECORD").exists(v => v == "1" || v.equalsIgnoreCase("true"))
+  private val FixtureRoot = configuration.fixtureRoot
+  private val Recording = configuration.hardClusterRecording.value
 
   /** Fixed, so an order dependence fails the same way on every run. */
   private val OrderSeed = 0x2026_09_24L
@@ -87,8 +83,8 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
 
   /** `KINOWO_HARD_CLUSTERS_COUNTRIES=uk,us` narrows a local run to those countries. */
   private val countries: Seq[Country] = {
-    val only = Env.fromProcess().get("KINOWO_HARD_CLUSTERS_COUNTRIES").map(_.split(",").map(_.trim.toLowerCase).toSet)
-    Country.all.filter(c => CorpusFixture.exists(HardClusters.corpusKey(c)) && only.forall(_.contains(c.code)))
+    val only = configuration.hardClusterCountries.map(_.value)
+    Country.all.filter(c => CorpusFixture.exists(HardClusters.corpusKey(c)) && only.forall(_.contains(c)))
   }
 
   private lazy val responses: Map[Country, RecordedResponses] = countries.map { country =>
@@ -117,13 +113,13 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
   private def wiringFor(country: Country, label: String, wrap: HttpFetch => HttpFetch = identity,
                         movableClock: Option[MutableClock] = None): (ArchiveReplayWiring, ConvergenceStorage) = {
     val normalizer = TitleNormalizer.forCountry(country)
-    val storage    = ConvergenceStorage.mongo(IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, s"hc-${country.code}-$label", normalizer)
+    val storage    = ConvergenceStorage.mongo(mongoTarget, s"hc-${country.code}-$label", normalizer)
     storages.synchronized(storages += storage)
     val rows = CorpusFixture.read(HardClusters.corpusKey(country))
     CorpusFixture.seedInto(storage.archive, rows)
     val fetch    = wrap(responses(country))
     val language = country.language
-    val w = new ArchiveReplayWiring(country, storage.archive, None, storage, ArchiveReplayWiring.fixtureDirectory(country, _root_.settings.ProcessConfiguration.resolve()), FixtureRoot, environment = Env.fromProcess()) {
+    val w = new ArchiveReplayWiring(country, storage.archive, None, storage, ArchiveReplayWiring.fixtureDirectory(country, configuration), FixtureRoot, environment = configuration.env) {
       override lazy val clock: java.time.Clock = movableClock.getOrElse(java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC))
       // Ordering, not timing: the whole cascade on the calling thread, so the only
       // nondeterminism left is the seeded arrival order.
@@ -346,7 +342,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
       refFilms should not be empty
       // `KINOWO_HARD_CLUSTERS_DUMP=1` prints every pass's films — the first thing to read
       // when a cluster moves.
-      if (Env.fromProcess().get("KINOWO_HARD_CLUSTERS_DUMP").isDefined)
+      if (configuration.hardClusterDump.value)
         passes.foreach { case (p, fs) => println(s"[${country.code}] ${p.label}:\n  ${fs.mkString("\n  ")}") }
       val known = KnownSplitArrivalDivergences.getOrElse(country.code, Set.empty)
       def isKnown(pass: Pass, key: String) = pass.label == "split" && known.contains(key)

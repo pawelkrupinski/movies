@@ -5,7 +5,6 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Seconds, Span}
-import tools.Env
 
 import java.net.{InetSocketAddress, ServerSocket, Socket, URI}
 import org.mongodb.scala.SingleObservableFuture
@@ -19,11 +18,9 @@ import scala.concurrent.duration._
  *
  *  "Unreachable, then reachable" is a local port nothing listens on at boot, which a
  *  forwarder to the test Mongo starts answering on once the connection is degraded. */
-class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with Eventually {
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  private val uri      = Env.fromProcess().get("MONGODB_URI").get
-  private val mongoTarget = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
-  private val target   = URI.create(uri.replace("mongodb://", "http://"))
+class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with Eventually with tools.IntegrationMongoSuite {
+
+  private val target   = URI.create(mongoTarget.uri.value.replace("mongodb://", "http://"))
   private val patience = PatienceConfig(timeout = Span(30, Seconds), interval = Span(1, Seconds))
 
   "a reconnect after an unreachable boot" should "claim the database before publishing it, and refuse another country's" in
@@ -52,7 +49,7 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
   "a reconnect that meets a failure other than another country's claim" should "keep retrying and recover" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "late-reconnect-retry") { db =>
       val attempts = new java.util.concurrent.atomic.AtomicInteger(0)
-      val connection = new MongoConnection(Some(uri), db.name, required = true, probeTimeout = 2.seconds,
+      val connection = new MongoConnection(Some(mongoTarget.uri.value), db.name, required = true, probeTimeout = 2.seconds,
         onConnected = _ => attempts.incrementAndGet() match {
           case 1 => throw new com.mongodb.MongoTimeoutException("unreachable at boot")
           case 2 => throw new IllegalArgumentException("refused once, for a reason no claim gave")
@@ -69,12 +66,12 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
   // made the reconnect close "its" client — the shared one, under every other country.
   "a reconnect that finds its connection closed" should "leave a shared client it does not own open" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "late-reconnect-shared") { db =>
-      val shared   = org.mongodb.scala.MongoClient(uri)
+      val shared   = org.mongodb.scala.MongoClient(mongoTarget.uri.value)
       val attempts = new java.util.concurrent.atomic.AtomicInteger(0)
       val probed   = new java.util.concurrent.CountDownLatch(1)
       @volatile var connection: MongoConnection = null
       try {
-        connection = new MongoConnection(Some(uri), db.name, required = true, probeTimeout = 2.seconds,
+        connection = new MongoConnection(Some(mongoTarget.uri.value), db.name, required = true, probeTimeout = 2.seconds,
           sharedClient = Some(shared),
           onConnected = _ =>
             if (attempts.incrementAndGet() == 1) throw new com.mongodb.MongoTimeoutException("unreachable at boot")

@@ -14,7 +14,7 @@ import java.nio.file.Files
  */
 class EnvSpec extends AnyFlatSpec with Matchers {
 
-  "Env.fromProcess().positiveInt" should "use the default when unset" in {
+  "Env.positiveInt" should "use the default when unset" in {
     Env.of().positiveInt("KINOWO_TEST_UNSET_INT", 8) shouldBe 8
   }
 
@@ -28,7 +28,7 @@ class EnvSpec extends AnyFlatSpec with Matchers {
     Env.of("KINOWO_TEST_INT" -> "abc").positiveInt("KINOWO_TEST_INT", 8) shouldBe 8
   }
 
-  "Env.fromProcess().flag" should "be off when unset, so a switch nobody set stays off" in {
+  "Env.flag" should "be off when unset, so a switch nobody set stays off" in {
     Env.of().flag("KINOWO_TEST_UNSET_FLAG") shouldBe false
   }
 
@@ -46,7 +46,7 @@ class EnvSpec extends AnyFlatSpec with Matchers {
     Env.of("KINOWO_TEST_FLAG" -> "0").flag("KINOWO_TEST_FLAG")     shouldBe false
   }
 
-  "Env.fromProcess().positiveLong" should "use the default when unset" in {
+  "Env.positiveLong" should "use the default when unset" in {
     Env.of().positiveLong("KINOWO_TEST_UNSET_LONG", 300L) shouldBe 300L
   }
 
@@ -158,7 +158,9 @@ class EnvSpec extends AnyFlatSpec with Matchers {
     layered(Map.empty, Map.empty).get("KINOWO_TEST_MISSING") shouldBe None
   }
 
-  "Env.fromProcess" should "read the vars file it is pointed at" in {
-    Env.fromProcess(varsFile("KINOWO_TEST_FROM_PROCESS_ONLY_IN_FILE=file")).get("KINOWO_TEST_FROM_PROCESS_ONLY_IN_FILE") shouldBe Some("file")
+  // The process binding is reached the one way anything may reach it: through the resolver.
+  "The process-bound Env" should "read the vars file the resolver is pointed at" in {
+    settings.ProcessConfiguration.resolve(varsFile("KINOWO_TEST_FROM_PROCESS_ONLY_IN_FILE=file"))
+      .env.get("KINOWO_TEST_FROM_PROCESS_ONLY_IN_FILE") shouldBe Some("file")
   }
 }

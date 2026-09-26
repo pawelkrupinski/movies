@@ -7,7 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
-import tools.{Env, ProdCoverage}
+import tools.ProdCoverage
 
 import java.time.{Instant, LocalDateTime, ZoneOffset}
 import scala.concurrent.Await
@@ -40,12 +40,9 @@ import scala.concurrent.duration._
  *
  * Requires MONGODB_URI; skips otherwise.
  */
-class ProdCoverageIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class ProdCoverageIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
-
-  private val database = MongoClient(Env.fromProcess().get("MONGODB_URI").get).getDatabase(s"prod_coverage_spec_${System.nanoTime()}")
+  private val database = MongoClient(mongoTarget.uri.value).getDatabase(s"prod_coverage_spec_${System.nanoTime()}")
 
   private val movies     = new MongoMovieRepository(sharedDb = Some(database), normalizer = titleNormalizer)
   private val slots      = new MongoSlotsRepository(Some(database))

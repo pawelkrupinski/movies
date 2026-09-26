@@ -7,7 +7,6 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{FilmId, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
-import tools.Env
 
 /**
  * A resolution that collides with a SIBLING document's `tmdbId` must refuse the
@@ -25,12 +24,9 @@ import tools.Env
  *
  * Requires MONGODB_URI; skips otherwise.
  */
-class MovieRepositoryDuplicateTmdbIdDoesNotOrphanSlotIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class MovieRepositoryDuplicateTmdbIdDoesNotOrphanSlotIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
-
-  private val isolatedDb = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "movies-dup-tmdbid-spec")
+  private val isolatedDb = tools.IsolatedMongoDatabase.open(mongoTarget, "movies-dup-tmdbid-spec")
 
   private val db = isolatedDb.database
   override protected def afterAll(): Unit = {

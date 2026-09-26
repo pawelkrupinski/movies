@@ -7,7 +7,7 @@ import services.movies.{CacheKey, ResolveDispatcher, ResolveDuplicateMetrics}
 import services.staging.InMemoryStagingRepository
 import services.tasks.{EnrichTaskKeys, MongoTaskQueue, ResolveMode, TaskQueue, TaskType}
 import tools.contracts.Implementations
-import tools.{Env, IsolatedMongoDatabase}
+import tools.IsolatedMongoDatabase
 
 import java.lang.reflect.{ParameterizedType, Type}
 import java.time.Instant
@@ -32,11 +32,9 @@ import scala.jdk.CollectionConverters.*
  * queue the test claims from. "Waiting" and "running" therefore mean the same thing to both:
  * not yet started, and started with a mode that can no longer change.
  */
-class ResolveDispatcherContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class ResolveDispatcherContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-
-  private lazy val isolatedDatabase = IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "resolve-dispatcher-contract")
+  private lazy val isolatedDatabase = IsolatedMongoDatabase.open(mongoTarget, "resolve-dispatcher-contract")
 
   private lazy val database = isolatedDatabase.database
   override protected def afterAll(): Unit = try isolatedDatabase.drop() finally super.afterAll()

@@ -5,7 +5,7 @@ import models.MovieRecord
 import org.bson.Document
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import services.movies.{MovieCodecs, StoredMovieDto, StoredMovieRecord}
-import tools.Env
+import _root_.tools.ToolMongoAddress
 
 import scala.concurrent.{Await, Promise}
 import scala.concurrent.duration._
@@ -52,16 +52,13 @@ object MeasureStartup {
     println(f"  ${label}%-50s ${ms(nanos)}")
 
   def main(args: Array[String]): Unit = {
-    val uri = Env.fromProcess().get("MONGODB_URI").getOrElse {
-      System.err.println("MONGODB_URI not set — abort.")
-      sys.exit(1)
-    }
-    val dbName = Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo")
+    val mongo  = ToolMongoAddress.orExit(_root_.settings.ProcessConfiguration.resolve())
+    val dbName = mongo.database.value
 
     println(s"\nMeasureStartup → $dbName\n")
 
     val t0     = System.nanoTime()
-    val client = MongoClient(uri)
+    val client = MongoClient(mongo.uri.value)
     try {
       val db: MongoDatabase = client.getDatabase(dbName).withCodecRegistry(MovieCodecs.registry)
       val t1 = System.nanoTime()

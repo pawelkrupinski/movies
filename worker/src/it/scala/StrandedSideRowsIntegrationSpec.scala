@@ -4,7 +4,6 @@ import models.{Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import tools.Env
 
 import java.time.LocalDateTime
 
@@ -12,17 +11,16 @@ import java.time.LocalDateTime
  *  keyset scan (forced onto several pages) and the `$in` delete, against the real
  *  collections. The rule itself is `StrandedSideRowsSpec`'s; this proves the store
  *  answers it — exactly the stranded rows go, a live film keeps every row. */
-class StrandedSideRowsIntegrationSpec extends AnyFlatSpec with Matchers {
-  private val uri = Env.fromProcess().get("MONGODB_URI").get
+class StrandedSideRowsIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
-  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
+
   private val tomorrow = Seq(Showtime(LocalDateTime.now.plusDays(1), bookingUrl = None))
   private def slotKey(title: String) = s"multikino␟$title"
   private def film(title: String): MovieRecord = MovieRecord(data = Map[Source, SourceData](
     Multikino -> SourceData(title = Some(title), releaseYear = Some(2026), showtimes = tomorrow)))
 
   "deleteStrandedSideRows" should "remove exactly the rows whose film has no movies document" in
-    tools.IntegrationCorpusDatabase.withDatabase(target, "stranded-side-rows") { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "stranded-side-rows") { db =>
       val screenings = new MongoScreeningsRepository(Some(db))
       val slots      = new MongoSlotsRepository(Some(db))
       // One id per page, so the live-id scan has to page (two films ⇒ three fetches).

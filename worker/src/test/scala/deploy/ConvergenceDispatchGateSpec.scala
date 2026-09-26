@@ -17,7 +17,7 @@ import scala.sys.process.*
  * only 44% of main's commits touched a pipeline path. This runs the real gate script over a
  * scratch repository with a stub `gh` that records what was dispatched.
  */
-class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers {
+class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.SuiteConfiguration {
 
   private val Script = Paths.get(".github/scripts/kick-convergence.sh").toAbsolutePath
 
@@ -42,7 +42,7 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers {
          |esac
          |""".stripMargin)
     val status = Process(Seq("bash", Script.toString, head, "main", "Country convergence", "US convergence"),
-      repo.root.toFile, "PATH" -> s"${gh.getParent}:${sys.env.getOrElse("PATH", "")}").!(ProcessLogger(_ => ()))
+      repo.root.toFile, "PATH" -> s"${gh.getParent}:${configuration.executableSearchPath.value.mkString(java.io.File.pathSeparator)}").!(ProcessLogger(_ => ()))
     (status, Files.readString(dispatched).linesIterator.toSeq)
   }
 

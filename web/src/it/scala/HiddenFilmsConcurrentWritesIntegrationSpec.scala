@@ -7,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.test.Helpers._
 import play.api.test.FakeRequest
 import services.users.{InMemoryUserRepository, MongoUserStateRepository, NoUserChangeTimeCache, UserStateWriteOutcomes}
-import tools.{Env, IsolatedMongoDatabase}
+import tools.IsolatedMongoDatabase
 
 import java.util.concurrent.{ConcurrentLinkedQueue, Executors}
 import scala.jdk.CollectionConverters._
@@ -25,15 +25,12 @@ import scala.concurrent.{Await, ExecutionContext, Future}
  *  read-back and erase the row — every write 200, then `find` returned None.
  *  Isolating by database keeps "neither erases the other" about THIS server's
  *  writes, not about who else is cleaning up. */
-class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
-
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
+class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
   private val Prefix = "__integration-test-hide-"
   // Every write's reported outcome, as (userId-free) (endpoint, outcome) pairs.
   private val outcomes = new ConcurrentLinkedQueue[(String, String)]()
-  private val isolated = IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "hidden-films-concurrent")
+  private val isolated = IsolatedMongoDatabase.open(mongoTarget, "hidden-films-concurrent")
   private val database = isolated.database
   private val states = new MongoUserStateRepository(Some(database),
     writeOutcomes = (endpoint: String, outcome: String) => { outcomes.add(endpoint -> outcome); () })

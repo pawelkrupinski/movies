@@ -8,7 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
 import services.readmodel.MongoReadModelRepository
-import tools.{Env, IsolatedMongoDatabase}
+import tools.IsolatedMongoDatabase
 
 import java.time.LocalDateTime
 
@@ -33,11 +33,9 @@ import java.time.LocalDateTime
  * Requires MONGODB_URI; skips otherwise. Runs in a database of its own, dropped in
  * `afterAll`, so no co-running suite's rows or cleanup can reach it.
  */
-class BackfillReadModelStitchIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class BackfillReadModelStitchIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-
-  private val isolated = IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "backfill-readmodel-stitch")
+  private val isolated = IsolatedMongoDatabase.open(mongoTarget, "backfill-readmodel-stitch")
   private val db       = isolated.database
 
   private val Title = "Backfill Stitch Probe"

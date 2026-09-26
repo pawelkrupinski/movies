@@ -3,7 +3,7 @@ package clients.tools
 import models.{MovieRecord, Source}
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, ObservableFuture}
 import services.movies.{MovieCodecs, StoredMovieDto, StoredMovieRecord}
-import tools.Env
+import _root_.tools.ToolMongoAddress
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -53,13 +53,11 @@ object ProfileDetailReaper {
   }
 
   def main(args: Array[String]): Unit = {
-    val uri = Env.fromProcess().get("MONGODB_URI").getOrElse {
-      System.err.println("MONGODB_URI not set — abort."); sys.exit(1)
-    }
-    val dbName = Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo")
+    val mongo  = ToolMongoAddress.orExit(_root_.settings.ProcessConfiguration.resolve())
+    val dbName = mongo.database.value
     println(s"\nProfileDetailReaper → $dbName\n")
 
-    val client = MongoClient(uri)
+    val client = MongoClient(mongo.uri.value)
     try {
       val db: MongoDatabase = client.getDatabase(dbName).withCodecRegistry(MovieCodecs.registry)
       val movies: MongoCollection[StoredMovieDto] = db.getCollection[StoredMovieDto]("movies")

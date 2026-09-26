@@ -7,10 +7,9 @@ import org.scalatest.matchers.should.Matchers
 import java.io.{InputStream, OutputStream}
 import java.net.{InetAddress, InetSocketAddress, ServerSocket, Socket}
 import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 import java.security.KeyStore
 import java.util.Base64
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import javax.net.ssl.{KeyManagerFactory, SSLContext}
 import scala.util.{Try, Using}
@@ -37,6 +36,9 @@ import scala.util.{Try, Using}
  * all on loopback.
  */
 class ProxiedAfterDirectFetchSpec extends AnyFlatSpec with Matchers {
+
+  private lazy val configuration = settings.ProcessConfiguration.resolve()
+
   import ProxiedAfterDirectFetchSpec._
 
   "a proxied RealHttpFetch" should "authenticate its CONNECT tunnel after a direct fetch when its main allowed Basic at boot" in {
@@ -81,7 +83,7 @@ class ProxiedAfterDirectFetchSpec extends AnyFlatSpec with Matchers {
    *  `main` applies first (None: none — the JDK default, or whatever `jvmOptions` set). */
   private def directThenProxied(applied: Option[ProxyTunnelAuthentication], jvmOptions: Seq[String] = Nil): ChildRun = {
     val dir = Files.createTempDirectory("proxied-after-direct")
-    val (keyStore, trustStore) = selfSignedStores(dir)
+    val (keyStore, trustStore) = selfSignedStores(new Keytool(configuration.javaHome), dir)
 
     val direct = HttpServer.create(new InetSocketAddress(Loopback, 0), 0)
     direct.createContext("/", exchange => respond(exchange, "direct-ok"))
@@ -92,7 +94,7 @@ class ProxiedAfterDirectFetchSpec extends AnyFlatSpec with Matchers {
     Seq(direct, origin).foreach(_.start())
 
     try {
-      val (exit, output) = ChildJvm.run(
+      val (exit, output) = ChildJvm(configuration).run(
         ProbeMain,
         jvmArgs = Seq(s"-Djavax.net.ssl.trustStore=$trustStore", s"-Djavax.net.ssl.trustStorePassword=$StorePassword") ++ jvmOptions,
         args = Seq(applied.fold(NoPolicy)(_.toString), s"http://127.0.0.1:${direct.getAddress.getPort}/", proxy.port.toString,
@@ -124,22 +126,16 @@ object ProxiedAfterDirectFetchSpec {
   /** A PKCS12 key store holding a self-signed certificate for 127.0.0.1, and a
    *  trust store holding just that certificate — made with the JDK's own keytool,
    *  since the JDK has no public API for minting a certificate. */
-  private def selfSignedStores(dir: Path): (Path, Path) = {
-    val keytool = Paths.get(System.getProperty("java.home"), "bin", "keytool").toString
+  private def selfSignedStores(keytool: Keytool, dir: Path): (Path, Path) = {
     val keys    = dir.resolve("keys.p12")
     val cert    = dir.resolve("cert.pem")
     val trust   = dir.resolve("trust.p12")
-    def run(args: String*): Unit = {
-      val process = new ProcessBuilder((keytool +: args)*).redirectErrorStream(true).start()
-      val output  = new String(process.getInputStream.readAllBytes(), UTF_8)
-      require(process.waitFor(60, TimeUnit.SECONDS) && process.exitValue() == 0, s"keytool ${args.head} failed: $output")
-    }
-    run("-genkeypair", "-alias", "origin", "-keyalg", "RSA", "-keysize", "2048", "-validity", "2",
+    keytool.run("-genkeypair", "-alias", "origin", "-keyalg", "RSA", "-keysize", "2048", "-validity", "2",
       "-dname", "CN=127.0.0.1", "-ext", "SAN=ip:127.0.0.1", "-storetype", "PKCS12",
       "-keystore", keys.toString, "-storepass", StorePassword, "-keypass", StorePassword)
-    run("-exportcert", "-rfc", "-alias", "origin", "-keystore", keys.toString, "-storepass", StorePassword,
+    keytool.run("-exportcert", "-rfc", "-alias", "origin", "-keystore", keys.toString, "-storepass", StorePassword,
       "-file", cert.toString)
-    run("-importcert", "-noprompt", "-alias", "origin", "-file", cert.toString, "-storetype", "PKCS12",
+    keytool.run("-importcert", "-noprompt", "-alias", "origin", "-file", cert.toString, "-storetype", "PKCS12",
       "-keystore", trust.toString, "-storepass", StorePassword)
     (keys, trust)
   }

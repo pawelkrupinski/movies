@@ -3,7 +3,7 @@ package scripts
 import models.Country
 import org.mongodb.scala.MongoClient
 import services.scrapes.MongoScrapeArchiveRepository
-import tools.{CorpusFixture, CorpusSample, CountryScrapeCorpus, Env, ProdCoverage, ProdCoverageBaseline, TunnelTunedUri}
+import tools.{CorpusFixture, CorpusSample, CountryScrapeCorpus, ProdCoverage, ProdCoverageBaseline, TunnelTunedUri}
 
 /**
  * Dump one country's real `cinema_scrapes` to a compressed fixture file.
@@ -27,12 +27,13 @@ import tools.{CorpusFixture, CorpusSample, CountryScrapeCorpus, Env, ProdCoverag
 object RecordCorpusFixture {
 
   def main(args: Array[String]): Unit = {
-    val country = args.headOption.flatMap(code => Country.all.find(_.code == code)).getOrElse(_root_.settings.ProcessConfiguration.resolve().country)
-    val uri = Env.fromProcess().get("KINOWO_CONVERGENCE_SCRAPES_URI").orElse(Env.fromProcess().get("MONGODB_URI")).getOrElse {
+    val configuration = _root_.settings.ProcessConfiguration.resolve()
+    val country = args.headOption.flatMap(code => Country.all.find(_.code == code)).getOrElse(configuration.country)
+    val uri = configuration.convergenceScrapesUri.map(_.value).orElse(configuration.mongoAddress.uri.map(_.value)).getOrElse {
       System.err.println("[corpus] set KINOWO_CONVERGENCE_SCRAPES_URI (or MONGODB_URI) to the archive source")
       sys.exit(1)
     }
-    val databaseName = Env.fromProcess().get("KINOWO_CONVERGENCE_SCRAPES_DB").getOrElse(country.mongoDb)
+    val databaseName = configuration.convergenceScrapesDatabase.map(_.value).getOrElse(country.mongoDb)
 
     // Tunnel-tuned: this runs across a `flyctl proxy` in CI, where the default 30s
     // server selection turns a two-second proxy restart into minutes of blocking.

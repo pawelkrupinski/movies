@@ -27,7 +27,7 @@ import scala.jdk.CollectionConverters._
  *  - the five full recorded corpora, when `KINOWO_IDENTITY_CORPUS_DIR` names a directory
  *    holding `cinema-scrapes-<cc>.json.gz` (the recorder's `scrape-fixtures-<cc>` artifacts).
  */
-class ListingKeyCorpusSpec extends AnyFlatSpec with Matchers {
+class ListingKeyCorpusSpec extends AnyFlatSpec with Matchers with tools.SuiteConfiguration {
 
   private val corpusDir = Paths.get("test", "resources", "fixtures", "corpus")
 
@@ -48,8 +48,8 @@ class ListingKeyCorpusSpec extends AnyFlatSpec with Matchers {
     finally stream.close()
   }
 
-  private val full: Seq[Corpus] = sys.env.get("KINOWO_IDENTITY_CORPUS_DIR").toSeq.flatMap { dir =>
-    Country.all.map(c => Paths.get(dir).resolve(s"cinema-scrapes-${c.code}.json.gz")).filter(Files.exists(_))
+  private val full: Seq[Corpus] = configuration.identityCorpusDirectory.toSeq.flatMap { dir =>
+    Country.all.map(c => dir.value.resolve(s"cinema-scrapes-${c.code}.json.gz")).filter(Files.exists(_))
       .map(p => Corpus(s"full ${p.getFileName}", countryOf(p.getFileName.toString), p))
   }
 

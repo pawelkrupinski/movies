@@ -34,7 +34,7 @@ object LocalFixtureWorkerMain {
 
   def main(args: Array[String]): Unit = {
     val process          = ProcessConfiguration.resolve()
-    val mongo            = localMongo(key => Option(System.getenv(key)), process)
+    val mongo            = localMongo(ProcessConfiguration.resolveExported().mongoAddress, process)
     val fixtureRoot      = fixtureRootFor(process, new java.io.File(".").getCanonicalFile)
     val fixtureDirectory = process.localStackFixtureDirectory.fold("today")(_.value)
     println(s"[local-fixture-worker] replaying HTTP from ${fixtureRoot.of(fixtureDirectory)} " +
@@ -56,13 +56,13 @@ object LocalFixtureWorkerMain {
    *  reaches: a MONGODB_URI / MONGODB_DB exported in the process environment itself still
    *  wins (a user who exported one keeps control), else KINOWO_LOCAL_MONGO_URI / _DB, else
    *  the `localStack` defaults. `.env.local`'s own MONGODB_URI — prod — never counts, which
-   *  is why the process environment is asked separately from `env`. Handed to the wiring as
+   *  is why `exported` is resolved without that file (`ProcessConfiguration.resolveExported`). Handed to the wiring as
    *  its address; nothing rewrites the process's MONGODB_URI to get it there. */
-  private[modules] def localMongo(processEnvironment: String => Option[String], configuration: ProcessConfiguration): MongoAddress =
+  private[modules] def localMongo(exported: MongoAddress, configuration: ProcessConfiguration): MongoAddress =
     MongoAddress(
-      uri      = Some(processEnvironment("MONGODB_URI").filter(_.nonEmpty).map(MongoUri(_))
+      uri      = Some(exported.uri
         .getOrElse(configuration.localStackMongoUri.fold(MongoUri(DefaultMongoUri))(uri => MongoUri(uri.value)))),
-      database = Some(processEnvironment("MONGODB_DB").filter(_.nonEmpty).map(MongoDatabaseName(_))
+      database = Some(exported.database
         .getOrElse(configuration.localStackDatabase.fold(MongoDatabaseName(DefaultMongoDb))(database => MongoDatabaseName(database.value)))))
 
   /** Where the fixture corpus lives. `bgRunMain` forks with CWD = the worker module

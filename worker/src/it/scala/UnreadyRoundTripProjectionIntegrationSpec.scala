@@ -7,7 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.StoredMovieRecord
 import services.resolution.TmdbAttempt
-import tools.{Env, Eventually}
+import tools.Eventually
 
 import java.time.{Instant, LocalDateTime}
 
@@ -28,15 +28,12 @@ import java.time.{Instant, LocalDateTime}
  *
  * Requires MONGODB_URI.
  */
-class UnreadyRoundTripProjectionIntegrationSpec extends AnyFlatSpec with Matchers {
-
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
+class UnreadyRoundTripProjectionIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
   private val year = Some(2026)
 
   private def roundTrip(title: String, settleBetween: Boolean): Unit =
-    ProjectedMongoCorpus.withCorpus("unready_round_trip") { corpus =>
+    ProjectedMongoCorpus.withCorpus(mongoTarget, "unready_round_trip") { corpus =>
       import corpus._
       val id         = StoredMovieRecord.keyFor(title, year, titleNormalizer)
       val when       = LocalDateTime.now().plusDays(3).withHour(20).withMinute(0).withSecond(0).withNano(0)

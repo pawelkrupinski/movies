@@ -5,7 +5,6 @@ import org.mongodb.scala.{Document, ObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -13,17 +12,16 @@ import scala.concurrent.duration._
 /** One document per film, enforced by the store. The write-time fold merges a
  *  same-tmdbId duplicate before it is written; the unique sparse `tmdbId` index is what
  *  refuses the one a race lets through, so the settle never has a pair to merge. */
-class UniqueTmdbIdIntegrationSpec extends AnyFlatSpec with Matchers {
-  private val uri = Env.fromProcess().get("MONGODB_URI").get
+class UniqueTmdbIdIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
-  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
+
   private def row(title: String): MovieRecord =
     MovieRecord(tmdbId = Some(4242), data = Map[Source, SourceData](
       Tmdb      -> SourceData(title = Some(title), releaseYear = Some(2026)),
       Multikino -> SourceData(title = Some(title), releaseYear = Some(2026))))
 
   "the movies collection" should "refuse a second document claiming a tmdbId another one holds, and leave unresolved rows alone" in
-    tools.IntegrationCorpusDatabase.withDatabase(target, "unique-tmdbid") { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "unique-tmdbid") { db =>
       val repository = new MongoMovieRepository(Some(db), normalizer = titleNormalizer)
       try {
         repository.enabled shouldBe true
@@ -50,7 +48,7 @@ class UniqueTmdbIdIntegrationSpec extends AnyFlatSpec with Matchers {
   // The stored key is the lookup identity (see `FilmId`): one document per key, the
   // cache refuses a second at write time and the store refuses the one a race lets by.
   it should "refuse a second document under a key another film already holds" in
-    tools.IntegrationCorpusDatabase.withDatabase(target, "unique-key") { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "unique-key") { db =>
       val repository = new MongoMovieRepository(Some(db), normalizer = titleNormalizer)
       try {
         repository.enabled shouldBe true

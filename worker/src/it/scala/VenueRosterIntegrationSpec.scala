@@ -3,7 +3,6 @@ package services.movies
 import models.{CinemaShowing, CineworldFeltham, Country, KinoEtiuda, Showtime, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.Env
 
 import java.time.LocalDateTime
 
@@ -11,11 +10,9 @@ import java.time.LocalDateTime
  *  Poland's roster, on a database of their own that is dropped afterwards, refuse to write
  *  a row under a UK venue through either write path (`replaceFilm`, `upsertSlot`), and a
  *  foreign row already on disk survives a `replaceFilm` that names it. */
-class VenueRosterIntegrationSpec extends AnyFlatSpec with Matchers {
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  private val uri = Env.fromProcess().get("MONGODB_URI").get
+class VenueRosterIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
-  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
+
   private val tomorrow = Seq(Showtime(LocalDateTime.now.plusDays(1).withNano(0), bookingUrl = None))
   private val film     = "odyseja|2026"
   private val polish   = CinemaShowing(KinoEtiuda, "odyseja").displayName
@@ -23,7 +20,7 @@ class VenueRosterIntegrationSpec extends AnyFlatSpec with Matchers {
   private val other    = CinemaShowing(CineworldFeltham, "other").displayName
 
   "A roster-scoped Mongo side store" should "never write a row under a venue outside the country" in
-    tools.IntegrationCorpusDatabase.withDatabase(target, "venue-roster") { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "venue-roster") { db =>
       val roster     = VenueRoster.of(Country.Poland)
       val screenings = new MongoScreeningsRepository(Some(db), roster = roster)
       val slots      = new MongoSlotsRepository(Some(db), roster = roster)
@@ -39,7 +36,7 @@ class VenueRosterIntegrationSpec extends AnyFlatSpec with Matchers {
     }
 
   it should "keep a foreign row already on disk as it is, rather than prune or rewrite it" in
-    tools.IntegrationCorpusDatabase.withDatabase(target, "venue-roster-kept") { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "venue-roster-kept") { db =>
       val stale      = SourceData(title = Some("The Odyssey"))
       val unscoped   = new MongoSlotsRepository(Some(db))
       val slots      = new MongoSlotsRepository(Some(db), roster = VenueRoster.of(Country.Poland))

@@ -37,15 +37,15 @@ import scala.util.Try
 object GateReport {
   def main(args: Array[String]): Unit = {
     val http = new RealHttpFetch
-    new GateReport(http, new FilmwebClient(http)).run(args)
+    new GateReport(http, new FilmwebClient(http), _root_.settings.ProcessConfiguration.resolve()).run(args)
   }
 }
 
-/** The run's HTTP client and Filmweb client are the instance's, built by `main` — not shared
- *  object state. */
-private final class GateReport(http: RealHttpFetch, filmweb: FilmwebClient) {
+/** The run's HTTP client, Filmweb client and configuration are the instance's, built by `main` —
+ *  not shared object state. */
+private final class GateReport(http: RealHttpFetch, filmweb: FilmwebClient, configuration: _root_.settings.ProcessConfiguration) {
 
-  private val ApiKey = sys.env.getOrElse("TMDB_API_KEY", "")
+  private val ApiKey = configuration.tmdbApiKey.fold("")(_.value)
   // Relative to the sbt working directory (the repo root): the frozen inputs of the
   // 2026-06 investigation live under docs/synopsis-resolution/archive/.
   private val DefaultOut = "docs/synopsis-resolution/archive/accepts.jsonl"
@@ -71,7 +71,7 @@ private final class GateReport(http: RealHttpFetch, filmweb: FilmwebClient) {
     val cap = rest.lift(1).map(_.toInt)
     val modes = if (ratings) Seq("imdb-eng", "filmweb-pl") else Modes
 
-    val repo = AmbientMovieRepository.open()
+    val repo = AmbientMovieRepository.open(configuration)
     if (!repo.enabled) { println("MONGODB_URI not set — nothing to read."); sys.exit(1) }
     // Paginated read (200/batch) — far more robust over the flyctl proxy than a
     // single 736-doc `findAll`, which intermittently corrupts the BSON stream

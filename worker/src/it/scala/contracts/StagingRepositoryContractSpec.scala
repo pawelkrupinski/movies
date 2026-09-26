@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 import services.staging.{InMemoryStagingRepository, StagingRepository}
 import tools.contracts.Implementations
 import tools.costs.CostScaling
-import tools.{Env, IsolatedMongoDatabase}
+import tools.IsolatedMongoDatabase
 
 import scala.concurrent.Await
 import scala.concurrent.duration.*
@@ -26,11 +26,9 @@ import scala.concurrent.duration.*
  * quadratic production does not — and, the other way round, would have hidden one production
  * did pay. Cost is counted as `sanitize` calls, one per row a read touches, never timed.
  */
-class StagingRepositoryContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class StagingRepositoryContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-
-  private lazy val isolatedDatabase = IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "staging-contract")
+  private lazy val isolatedDatabase = IsolatedMongoDatabase.open(mongoTarget, "staging-contract")
 
   private lazy val database = isolatedDatabase.database
   override protected def afterAll(): Unit = try isolatedDatabase.drop() finally super.afterAll()

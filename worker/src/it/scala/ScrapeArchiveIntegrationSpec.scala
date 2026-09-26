@@ -8,7 +8,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.ScrapeGuardState
 import services.scrapes.{MongoScrapeArchiveRepository, MongoScrapeGuardLedger, ScrapeArchiveRepository, ScrapeAttempt, ScrapeOutcome}
-import tools.Env
 
 import java.time.{Instant, LocalDateTime}
 import scala.concurrent.Await
@@ -27,13 +26,11 @@ import scala.concurrent.duration._
  *
  * Requires MONGODB_URI; skips otherwise.
  */
-class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
-
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
   // A database of its own: the archive row is keyed by the cinema's name, which any other
   // suite archiving a Multikino scrape would share.
-  private val isolated = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "scrape-archive")
+  private val isolated = tools.IsolatedMongoDatabase.open(mongoTarget, "scrape-archive")
   private val db       = isolated.database
 
   override protected def afterAll(): Unit = try isolated.drop() finally super.afterAll()

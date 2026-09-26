@@ -7,7 +7,6 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{MongoScreeningsRepository, ScreeningsMetrics, ScreeningsRepository}
-import tools.Env
 
 import java.time.LocalDateTime
 import java.util.concurrent.ConcurrentHashMap
@@ -32,12 +31,9 @@ import scala.jdk.CollectionConverters._
  *
  * Requires MONGODB_URI; skips otherwise.
  */
-class ScreeningsWriteMetricIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class ScreeningsWriteMetricIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
-
-  private val isolatedDb = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "screenings-write-metric-spec")
+  private val isolatedDb = tools.IsolatedMongoDatabase.open(mongoTarget, "screenings-write-metric-spec")
 
   private val db = isolatedDb.database
   Await.result(

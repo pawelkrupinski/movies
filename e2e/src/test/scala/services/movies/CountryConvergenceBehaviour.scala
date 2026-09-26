@@ -11,7 +11,7 @@ import org.scalatest.matchers.should.Matchers
 import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
 import tools.{ArchiveReplayWiring, ConvergenceStorage, CorpusCoverage, CorpusFixture, CorpusProvenance, CountryScrapeCorpus, IdentityLookupSweep,
-  ChurnLedger, EnrichmentCache, EnrichmentFreshness, Env, FileEnrichmentCacheStore, FixpointPass, MissingFixtures, PhaseTimer, ProdCoverageBaseline,
+  ChurnLedger, EnrichmentCache, EnrichmentFreshness, FileEnrichmentCacheStore, FixpointPass, MissingFixtures, PhaseTimer, ProdCoverageBaseline,
   SameThreadExecutionBudget, ServedCorpusInvariants, TestWiring, ConvergenceKnownIssues}
 
 import java.time.{Instant, LocalDateTime}
@@ -93,7 +93,7 @@ abstract class CountryConvergenceBehaviour(
    * than cancelling the job (which does not).
    */
   replayGuard: FiniteDuration = ParallelReplays.DefaultWithin
-) extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+) extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.SuiteConfiguration {
 
   /** Which recorded corpus this leg replayed, against the one its last green leg did —
    *  set once the corpus is read. Every failure carries its verdict, so a red leg says up
@@ -133,14 +133,14 @@ abstract class CountryConvergenceBehaviour(
    * (`Record scrape fixtures`) run without it, and they are what writes the tree.
    */
   private lazy val missingFixtures: Option[MissingFixtures] =
-    Option.when(ArchiveReplayWiring.hermeticIn(_root_.settings.ProcessConfiguration.resolve()))(new MissingFixtures)
+    Option.when(ArchiveReplayWiring.hermeticIn(configuration))(new MissingFixtures)
 
   private def recordCorpusProvenance(rows: Seq[services.scrapes.ArchivedScrape]): Unit = {
-    val provenance = CorpusProvenance.of(corpusKey, rows, _root_.settings.ProcessConfiguration.resolve())
+    val provenance = CorpusProvenance.of(corpusKey, rows, configuration)
     corpusProvenance = Some(provenance)
     info(s"${country.displayName}: ${provenance.verdict}")
-    Env.fromProcess().get("GITHUB_STEP_SUMMARY").foreach { summary =>
-      Try(java.nio.file.Files.writeString(java.nio.file.Paths.get(summary),
+    configuration.stepSummaryFile.foreach { summary =>
+      Try(java.nio.file.Files.writeString(summary.value,
         provenance.markdown(corpusKey) + "\n\n",
         java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND))
     }
@@ -164,7 +164,7 @@ abstract class CountryConvergenceBehaviour(
    * could not produce it because the database was never there to disagree.
    */
   private lazy val storage: ConvergenceStorage =
-    ConvergenceStorage.fromConfiguration(_root_.settings.ProcessConfiguration.resolve(), s"convergence-$corpusKey", TitleNormalizer.forCountry(country))
+    ConvergenceStorage.fromConfiguration(configuration, s"convergence-$corpusKey", TitleNormalizer.forCountry(country))
 
   /** The per-pass databases, so `afterAll` can drop them. Each is isolated; none may
    *  outlive the run. */
@@ -209,7 +209,7 @@ abstract class CountryConvergenceBehaviour(
    * never a guess.
    */
   private lazy val enrichmentCacheStore: FileEnrichmentCacheStore = {
-    if (_root_.tools.Env.fromProcess().get("TMDB_API_KEY").isEmpty)
+    if (configuration.tmdbApiKey.isEmpty)
       throw new IllegalStateException(
         s"TMDB_API_KEY is not set, so ${country.displayName} would resolve nothing: TmdbClient.search " +
         "short-circuits on a missing key without reaching the fixture tree at all. Symlink .env.local into " +
@@ -225,11 +225,11 @@ abstract class CountryConvergenceBehaviour(
   /** The same tree [[ArchiveReplayWiring]] replays and records into, asked the same way,
    *  so the cache lands BESIDE the corpus it belongs to rather than beside whichever
    *  directory this file happened to name. */
-  private lazy val fixtureDirectory: String = ArchiveReplayWiring.fixtureDirectory(country, _root_.settings.ProcessConfiguration.resolve())
+  private lazy val fixtureDirectory: String = ArchiveReplayWiring.fixtureDirectory(country, configuration)
 
   /** Where that tree lives — the repository's own unless KINOWO_FIXTURE_ROOT names another;
    *  resolved here, the suite being the run's root, and handed to everything that reads it. */
-  private lazy val fixtureRoot: settings.FixtureRoot = _root_.settings.ProcessConfiguration.resolve().fixtureRoot
+  private lazy val fixtureRoot: settings.FixtureRoot = configuration.fixtureRoot
 
   /** Age the recorded responses out before anything reads them, so a rating captured
    *  once isn't replayed for ever. The verdict cache expires itself on read; this is the
@@ -378,7 +378,7 @@ abstract class CountryConvergenceBehaviour(
     val archive = storage.archive
     val seeded   = seedArchive(archive)
     val merges   = new RecordingMergeMetrics
-    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), storage, fixtureDirectory, fixtureRoot, missingFixtures, Env.fromProcess()) {
+    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), storage, fixtureDirectory, fixtureRoot, missingFixtures, configuration.env) {
       override lazy val clock: java.time.Clock = CountryConvergenceBehaviour.this.clock
       // `mergeMetrics` is the ONLY thing this override exists to change, so it overrides the
       // seam and never the cache: a rebuilt cache silently drops whatever it forgets — it lost
@@ -404,7 +404,7 @@ abstract class CountryConvergenceBehaviour(
     // The identity resolver's per-listing query set (docs/design/identity-resolver.md §9), when
     // asked for: a RECORDING leg files every answer into the tree it then pins, a HERMETIC one
     // names each the tree lacks below. Off by default — a tree recorded without it lacks them.
-    if (IdentityLookupSweep.enabledIn(_root_.settings.ProcessConfiguration.resolve()))
+    if (IdentityLookupSweep.enabledIn(configuration))
       info(s"${country.displayName}: identity resolver lookups — ${IdentityLookupSweep.over(w, country)}")
     info(s"${country.displayName}: " + missingFixtures.fold("RECORDING run — requests the tree lacks are fetched live and recorded")(
       m => s"HERMETIC run — ${m.size} request(s) the recorded tree could not answer"))
@@ -652,11 +652,11 @@ abstract class CountryConvergenceBehaviour(
    * source is never written to, so a live mirror can safely be the source.
    */
   private lazy val realScrapeSource: Option[ScrapeArchiveRepository] =
-    Env.fromProcess().get("KINOWO_CONVERGENCE_SCRAPES_URI").map { uri =>
+    configuration.convergenceScrapesUri.map { uri =>
       // Tuned for the tunnel — see TunnelTunedUri. Without it a proxy restart costs
       // 30s of server selection per attempt and the corpus read stalls at 0% CPU.
-      val database = MongoClient(tools.TunnelTunedUri(uri)).getDatabase(
-        Env.fromProcess().get("KINOWO_CONVERGENCE_SCRAPES_DB").getOrElse(country.mongoDb))
+      val database = MongoClient(tools.TunnelTunedUri(uri.value)).getDatabase(
+        configuration.convergenceScrapesDatabase.fold(country.mongoDb)(_.value))
       new MongoScrapeArchiveRepository(Some(database))
     }
 
@@ -1060,9 +1060,9 @@ abstract class CountryConvergenceBehaviour(
     // The pass's own scope for the phase log, matching its database's suffix so a line
     // in the interleaved output of `Passes` concurrent replays names which pass wrote it.
     val scope = s"${country.code}p${seed - OrderSeed}"
-    val passStorage = ConvergenceStorage.fromConfiguration(_root_.settings.ProcessConfiguration.resolve(), scope, TitleNormalizer.forCountry(country))
+    val passStorage = ConvergenceStorage.fromConfiguration(configuration, scope, TitleNormalizer.forCountry(country))
     passStorages.synchronized(passStorages += passStorage)
-    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage, fixtureDirectory, fixtureRoot, missingFixtures, Env.fromProcess()) {
+    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage, fixtureDirectory, fixtureRoot, missingFixtures, configuration.env) {
       override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
     }
     val ready = mutable.ListBuffer.empty[MovieDetailsComplete]

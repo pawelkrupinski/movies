@@ -5,7 +5,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.readmodel.DecodeFailureMetrics
-import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -15,13 +14,11 @@ import scala.concurrent.duration._
  *  declared incomplete — fails for the whole corpus. Both used to leave only a WARN line, so the
  *  one bad document behind a cold mirror or a cursor held for good went unnamed. They count on
  *  the same `decode_failures` counter as the read model's skipped documents. */
-class MovieRepositoryDecodeFailureIntegrationSpec extends AnyFlatSpec with Matchers {
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  private val uri = Env.fromProcess().get("MONGODB_URI").get
+class MovieRepositoryDecodeFailureIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
-  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
+
   "the movies repository" should "count a document it cannot decode, on a point read and on the corpus scan" in
-    tools.IntegrationCorpusDatabase.withDatabase(target, "movies-decode-failure") { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "movies-decode-failure") { db =>
       val counted    = scala.collection.mutable.ListBuffer.empty[String]
       val metrics: DecodeFailureMetrics = (collection: String) => { counted += collection; () }
       val repository = new MongoMovieRepository(Some(db), normalizer = titleNormalizer,

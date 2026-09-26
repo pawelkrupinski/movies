@@ -24,7 +24,7 @@ import tools.{CdpPage, Chrome, TestHttpServer}
  * an hour past the last rendered bar and asserts the skipped slots are
  * backfilled as empty bars, keeping the same grid the full render produces.
  */
-class UptimeLiveBarsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class UptimeLiveBarsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.SuiteConfiguration {
 
   private val step   = UptimeMonitor.BucketDurationMs
   private val lastTs = UptimeMonitor.bucketTimestamp(1_752_400_000_000L)
@@ -57,7 +57,7 @@ class UptimeLiveBarsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAl
   private var server: TestHttpServer = _
 
   override def beforeAll(): Unit = {
-    chrome = Chrome.tryStart()
+    chrome = Chrome.tryStart(configuration.cdpBrowserBinary)
     if (chrome.nonEmpty) server = new TestHttpServer({ case "/uptime" => uptimeHtml })
   }
 

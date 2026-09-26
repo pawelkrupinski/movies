@@ -9,7 +9,6 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord, FilmId}
-import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -37,12 +36,9 @@ import scala.concurrent.duration._
  *
  * Requires MONGODB_URI; skips otherwise.
  */
-class MoviesWriteSkippedWhenUnchangedIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class MoviesWriteSkippedWhenUnchangedIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
-
-  private val isolatedDb = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "movies-write-skip-spec")
+  private val isolatedDb = tools.IsolatedMongoDatabase.open(mongoTarget, "movies-write-skip-spec")
 
   private val db = isolatedDb.database
   override protected def afterAll(): Unit = {

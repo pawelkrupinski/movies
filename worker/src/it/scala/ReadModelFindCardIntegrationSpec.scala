@@ -3,7 +3,7 @@ package integration
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.readmodel.{MongoReadModelRepository, ReadModelContentAudit, StoredCard}
-import tools.{Env, IntegrationCorpusDatabase, ReadModelSnapshot}
+import tools.{IntegrationCorpusDatabase, ReadModelSnapshot}
 
 /**
  * The content audit's two reads by `_id`, against a real Mongo and the whole projected fixture
@@ -15,12 +15,10 @@ import tools.{Env, IntegrationCorpusDatabase, ReadModelSnapshot}
  * every card it touches and page for a codec quirk. Written and read back, every card of the
  * corpus must compare EQUAL to what was written.
  */
-class ReadModelFindCardIntegrationSpec extends AnyFlatSpec with Matchers {
-
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+class ReadModelFindCardIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
   "findCard" should "read back every card of the corpus, its screenings and nothing else, and compare equal to what was written" in {
-    IntegrationCorpusDatabase.withDatabase(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "readmodel-findcard") { db =>
+    IntegrationCorpusDatabase.withDatabase(mongoTarget, "readmodel-findcard") { db =>
       val rm       = new MongoReadModelRepository(Some(db))
       val snapshot = ReadModelSnapshot.parse(ReadModelSnapshot.read())
       ReadModelSnapshot.loadInto(rm, ReadModelSnapshot.read())

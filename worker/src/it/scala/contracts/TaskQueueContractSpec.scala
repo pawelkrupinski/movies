@@ -7,7 +7,7 @@ import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
 import services.staging.InMemoryStagingRepository
 import services.tasks.{EnqueueResult, InMemoryTaskQueue, TaskQueue, TaskType}
 import tools.contracts.Implementations
-import tools.{Env, IsolatedMongoDatabase}
+import tools.IsolatedMongoDatabase
 
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
@@ -23,11 +23,9 @@ import scala.concurrent.duration.*
  * against the in-memory one. Both now answer `true` — Mongo from the update's MATCHED count —
  * because that re-try's request still runs; only a missing or claimed task answers `false`.
  */
-class TaskQueueContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class TaskQueueContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-
-  private lazy val isolatedDatabase = IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "task-queue-contract")
+  private lazy val isolatedDatabase = IsolatedMongoDatabase.open(mongoTarget, "task-queue-contract")
 
   private lazy val database = isolatedDatabase.database
   override protected def afterAll(): Unit = try isolatedDatabase.drop() finally super.afterAll()

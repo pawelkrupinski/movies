@@ -25,8 +25,8 @@ class RecorderZyteCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndAf
 
   private val temporaryRoot = new File("test/resources/fixtures/recorder-zyte-capture-spec")
   // The recorder script's wiring, built for this spec — forcing its lazy fetches builds the chains only
-  // (no Mongo, no network, no `run()`).
-  private lazy val recordingWiring = new RecordAllDataToFixture()
+  // (no Mongo, no network, no `run()`) — over an empty configuration, so nothing the process sets reaches it.
+  private lazy val recordingWiring = new RecordAllDataToFixture(new _root_.settings.ProcessConfiguration(_root_.tools.Env.of()))
   private val MultikinoFilmsUrl =
     "https://www.multikino.pl/api/microservice/showings/cinemas/0011/films"
 

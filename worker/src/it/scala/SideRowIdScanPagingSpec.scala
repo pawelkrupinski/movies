@@ -6,7 +6,6 @@ import models.{Showtime, SourceData}
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.Env
 
 import java.time.LocalDateTime
 import scala.concurrent.Await
@@ -21,10 +20,7 @@ import scala.jdk.CollectionConverters._
  * reads must page like every other whole-collection read — every `find` they send carries a
  * limit no bigger than the store's page size.
  */
-class SideRowIdScanPagingSpec extends AnyFlatSpec with Matchers {
-
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
+class SideRowIdScanPagingSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
   private val PageSize = 3
   private val Films    = 8
@@ -32,14 +28,14 @@ class SideRowIdScanPagingSpec extends AnyFlatSpec with Matchers {
   "the side collections' row-id scans" should "read every row in bounded pages" in {
     val finds = new java.util.concurrent.ConcurrentLinkedQueue[org.bson.BsonDocument]()
     val settings = MongoClientSettings.builder()
-      .applyConnectionString(new ConnectionString(Env.fromProcess().get("MONGODB_URI").get))
+      .applyConnectionString(new ConnectionString(mongoTarget.uri.value))
       .addCommandListener(new CommandListener {
         override def commandStarted(event: CommandStartedEvent): Unit =
           if (event.getCommandName == "find") finds.add(event.getCommand.clone())
       })
       .build()
     val client = MongoClient(settings)
-    val db     = client.getDatabase(tools.IntegrationCorpusDatabase.named(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "side-row-id-paging"))
+    val db     = client.getDatabase(tools.IntegrationCorpusDatabase.named(mongoTarget, "side-row-id-paging"))
     try {
       val screenings = new MongoScreeningsRepository(Some(db), findAllBatchSize = PageSize)
       val slots      = new MongoSlotsRepository(Some(db), findAllBatchSize = PageSize)

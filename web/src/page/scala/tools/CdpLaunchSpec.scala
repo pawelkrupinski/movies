@@ -18,7 +18,7 @@ import java.nio.file.Files
  * installed". Chrome now picks and binds its port itself, and the driver reads it from the
  * profile only that Chrome writes, checking the browser that answers is the one named there.
  */
-class CdpLaunchSpec extends AnyFlatSpec with Matchers {
+class CdpLaunchSpec extends AnyFlatSpec with Matchers with SuiteConfiguration {
 
   /** The pids of the browser processes answering on `chrome`'s DevTools port. */
   private def answeringBrowsers(chrome: Chrome): Seq[Long] = {
@@ -30,7 +30,7 @@ class CdpLaunchSpec extends AnyFlatSpec with Matchers {
   }
 
   private def withChrome(body: Chrome => Unit): Unit =
-    Chrome.tryStart() match {
+    Chrome.tryStart(configuration.cdpBrowserBinary) match {
       case None         => cancel("Chrome not installed")
       case Some(chrome) => try body(chrome) finally chrome.close()
     }

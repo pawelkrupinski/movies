@@ -55,12 +55,12 @@ import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
  *      keeps the recording correct.
  */
 object RecordAllDataToFixture {
-  def main(args: Array[String]): Unit = new RecordAllDataToFixture().run()
+  def main(args: Array[String]): Unit = new RecordAllDataToFixture(_root_.settings.ProcessConfiguration.resolve()).run()
 }
 
 /** The recording wiring — an instance `main` builds, so the lazily built fetches, clients
  *  and repositories are the run's own rather than object state. */
-final class RecordAllDataToFixture extends TestWiring {
+final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfiguration) extends TestWiring {
   // The fixture directory under test/resources/fixtures/ that this run writes into.
   //   - country-fixture-artifact.yml leaves it at the default `today` (a fixed,
   //     dateless directory the daily artifact + local sync key off).
@@ -75,7 +75,7 @@ final class RecordAllDataToFixture extends TestWiring {
   // 323-byte-artifact bug). A literal `val` only worked because the compiler
   // inlined it as a constant. A `def` is evaluated fresh on every read, so it is
   // always correct regardless of init order.
-  def captureDate: String = tools.Env.fromProcess().get("KINOWO_FIXTURE_DIR").getOrElse("today")
+  def captureDate: String = configuration.localStackFixtureDirectory.fold("today")(_.value)
 
   override lazy val movieRepository = new InMemoryMovieRepository(normalizer = titleNormalizer)
   override lazy val httoFetch = new RecordingHttpFetch(captureDate, new RealHttpFetch())
@@ -93,9 +93,9 @@ final class RecordAllDataToFixture extends TestWiring {
   // URL no matter which leg (Zyte or direct) served it. Guarded by
   // `RecorderZyteCaptureSpec`.
   override lazy val multikinoFetch: HttpFetch =
-    new RecordingHttpFetch(captureDate, MultikinoClient.fetchFor(new RealHttpFetch(), ZyteFallback.newHttpClient(), _root_.settings.ProcessConfiguration.resolve()))
+    new RecordingHttpFetch(captureDate, MultikinoClient.fetchFor(new RealHttpFetch(), ZyteFallback.newHttpClient(), configuration))
   override lazy val biletynaFetch: HttpFetch =
-    new RecordingHttpFetch(captureDate, ZyteFallback.fetchFor(new RealHttpFetch(), ZyteFallback.newHttpClient(), _root_.settings.ProcessConfiguration.resolve()))
+    new RecordingHttpFetch(captureDate, ZyteFallback.fetchFor(new RealHttpFetch(), ZyteFallback.newHttpClient(), configuration))
 
   // TestWiring stubs the TMDB key to "test-api-key" (fine for replay, where the
   // fixture filename strips api_key). But RECORDING fires the real request, so
@@ -103,7 +103,7 @@ final class RecordAllDataToFixture extends TestWiring {
   // 401s and no enrichment is captured. The recorded filename is still
   // key-agnostic (RecordingHttpFetch strips api_key), so replay is unaffected.
   override lazy val tmdbClient: clients.TmdbClient =
-    new clients.TmdbClient(httoFetch, apiKey = _root_.settings.ProcessConfiguration.resolve().tmdbApiKey)
+    new clients.TmdbClient(httoFetch, apiKey = configuration.tmdbApiKey)
 
   def run(): Unit = {
     // 1. Production-shape pass: every cinema scrape fires (bare), the enqueued

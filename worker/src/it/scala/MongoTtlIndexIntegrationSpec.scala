@@ -13,7 +13,6 @@ import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.{MongoTtlIndex, TtlIndexMismatches, UptimeMonitor}
-import tools.Env
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
@@ -34,14 +33,10 @@ import scala.jdk.CollectionConverters._
  * is what separates those two worlds: the old behaviour sends one command per
  * boot regardless, the new one sends none once the index agrees.
  */
-class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with Eventually {
+class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with Eventually with tools.IntegrationMongoSuite {
 
   /** This spec's own mismatch set — the tests that assert on it build a fresh one. */
   private val mismatches = new TtlIndexMismatches
-
-
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
 
   /** Distinct logical operations the driver issued, by command name — keyed by
    *  `operationId`, NOT counted per wire message. `createIndexes`/`dropIndexes`
@@ -72,7 +67,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
   // can only encode to Bson".
   private val client = MongoClient(
     MongoClientSettings.builder()
-      .applyConnectionString(new ConnectionString(Env.fromProcess().get("MONGODB_URI").get))
+      .applyConnectionString(new ConnectionString(mongoTarget.uri.value))
       .codecRegistry(MongoClient.DEFAULT_CODEC_REGISTRY)
       .addCommandListener(listener)
       .build()
@@ -81,7 +76,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
   // A database of its own (named per suite, since this client needs the listener above),
   // dropped whole in `afterAll` — including the `uptimeBuckets` the UptimeMonitor case drops
   // and re-creates, which in the shared database belonged to every other suite too.
-  private val database: MongoDatabase = client.getDatabase(tools.IntegrationCorpusDatabase.named(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "ttl-index"))
+  private val database: MongoDatabase = client.getDatabase(tools.IntegrationCorpusDatabase.named(mongoTarget, "ttl-index"))
 
   private def sent(command: String): Int = Option(commands.get(command)).map(_.size()).getOrElse(0)
   private def forget(): Unit            = commands.clear()

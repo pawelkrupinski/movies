@@ -4,7 +4,7 @@ import org.mongodb.scala.{Document, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.freshness.{FreshnessKind, MongoFreshnessStore}
-import tools.{Env, IsolatedMongoDatabase}
+import tools.IsolatedMongoDatabase
 
 import java.util.Date
 import scala.concurrent.Await
@@ -19,12 +19,10 @@ import scala.concurrent.duration._
  * sentinel stamps (3 pages) must load every stamp into the mirror across page boundaries.
  * Requires MONGODB_URI; skips otherwise.
  */
-class FreshnessStoreIntegrationSpec extends AnyFlatSpec with Matchers {
-
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+class FreshnessStoreIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
   "MongoFreshnessStore boot hydrate" should "page the enrichment phase across batch boundaries, loading every stamp" in
-    IsolatedMongoDatabase.withDatabase(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "freshness-store") { db =>
+    IsolatedMongoDatabase.withDatabase(mongoTarget, "freshness-store") { db =>
       val coll = db.getCollection("freshness")
       val ids  = (0 until 5).map(i => s"__it-freshness-page-${i}__")
       val at   = new Date()

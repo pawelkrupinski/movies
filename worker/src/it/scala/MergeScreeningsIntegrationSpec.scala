@@ -5,7 +5,6 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import models.{KinoMuranow, Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.Env
 
 /**
  * PROBE: does a duplicate MERGE keep both films' showtimes?
@@ -27,14 +26,9 @@ import tools.Env
  * BOTH cinemas' showtimes must still be reachable somewhere. A merge unions cinemas; it
  * must never be a way to lose one.
  */
-class MergeScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
+class MergeScreeningsIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
 
-  private val uri = Env.fromProcess().get("MONGODB_URI").get
-
-  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
   // Two rows the fold will recognise as the same film (shared tmdbId) under different keys —
   // the cross-language duplicate shape (`Tangled` / `Zaplatani`) the canonicaliser exists for.
   private val titleA = "__merge-probe-sentinel-a__"
@@ -42,7 +36,7 @@ class MergeScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
   private val when   = java.time.LocalDateTime.now().plusDays(3).withHour(20).withMinute(0).withSecond(0).withNano(0)
 
   it should "keep both films' showtimes when a duplicate merge folds one into the other" in
-    tools.IntegrationCorpusDatabase.withDatabase(target, "merge-screenings") { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "merge-screenings") { db =>
     val screenings = new MongoScreeningsRepository(Some(db))
     val slots      = new MongoSlotsRepository(Some(db))
     val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer)
@@ -91,7 +85,7 @@ class MergeScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
    * Vue slot with no showtime at all — 136 listings served as nothing. Both shapes: the
    * re-key alone, and the re-key that folds. */
   private def lateResolve(dbName: String, occupied: Boolean): Set[String] =
-    tools.IntegrationCorpusDatabase.withDatabase(target, dbName) { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, dbName) { db =>
       val screenings = new MongoScreeningsRepository(Some(db))
       val slots      = new MongoSlotsRepository(Some(db))
       val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer)

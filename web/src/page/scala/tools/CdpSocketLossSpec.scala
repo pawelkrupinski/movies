@@ -10,10 +10,10 @@ import org.scalatest.matchers.should.Matchers
  * whatever assertion happened to be polling (as HiddenFilmsSyncModelSpec's `quiesce`
  * did, which read as a sync-model failure), or waiting out the 30s reply timeout.
  */
-class CdpSocketLossSpec extends AnyFlatSpec with Matchers {
+class CdpSocketLossSpec extends AnyFlatSpec with Matchers with SuiteConfiguration {
 
   "a page whose DevTools connection Chrome closed" should "fail its next call saying Chrome closed it" in {
-    Chrome.tryStart() match {
+    Chrome.tryStart(configuration.cdpBrowserBinary) match {
       case None => cancel("Chrome not installed")
       case Some(chrome) =>
         try chrome.openPage("about:blank") { page =>

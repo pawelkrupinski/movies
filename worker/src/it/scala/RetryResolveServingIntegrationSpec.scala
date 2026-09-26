@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
 import integration.ProjectedMongoCorpus
 import services.resolution.TmdbAttempt
-import tools.{Env, Eventually, GetOnlyHttpFetch}
+import tools.{Eventually, GetOnlyHttpFetch}
 
 import java.time.{Instant, LocalDateTime}
 
@@ -24,17 +24,14 @@ import java.time.{Instant, LocalDateTime}
  *
  * Requires MONGODB_URI.
  */
-class RetryResolveServingIntegrationSpec extends AnyFlatSpec with Matchers {
-
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
+class RetryResolveServingIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
   private object NoMatchTmdb extends GetOnlyHttpFetch {
     override def get(url: String): String = """{"results":[]}"""
   }
 
   "a no-match row re-tried by the reaper" should "keep its card while TMDB answers no match again" in
-    ProjectedMongoCorpus.withCorpus("retry_resolve_serving") { corpus =>
+    ProjectedMongoCorpus.withCorpus(mongoTarget, "retry_resolve_serving") { corpus =>
       import corpus._
       val title      = "__retry-resolve-serving__"
       val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)

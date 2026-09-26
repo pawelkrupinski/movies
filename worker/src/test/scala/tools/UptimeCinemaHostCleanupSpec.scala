@@ -13,7 +13,7 @@ import org.scalatest.matchers.should.Matchers
  */
 class UptimeCinemaHostCleanupSpec extends AnyFlatSpec with Matchers {
 
-  private val hosts = UptimeCinemaHostCleanup.cinemaHosts
+  private val hosts = UptimeCinemaHostCleanup.cinemaHosts(new _root_.settings.ProcessConfiguration(Env.of()))
 
   // Mirrors the tool's `before.intersect(hosts)` selection.
   private def selectedForDeletion(existingServices: Set[String]): Set[String] =

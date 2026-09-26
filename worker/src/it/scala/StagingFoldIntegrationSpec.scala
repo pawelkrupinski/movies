@@ -9,7 +9,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{MongoSlotsRepository, StoredMovieRecord, FilmId}
 import services.staging.StagingRepository
-import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -28,12 +27,8 @@ import scala.concurrent.duration._
  * from 22,250 to 7,226 within twenty minutes of deploy, hitting hardest exactly where the
  * most folding was happening.
  */
-class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
+class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
-
-  private val uri = Env.fromProcess().get("MONGODB_URI").get
 
   // Two year-variants of one film. `planGroup` collapses them onto the TMDB year, so the
   // other is a merge loser — deleted in-transaction, exactly the bypass under test.
@@ -51,7 +46,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
   private def sd(t: String) = SourceData(title = Some(t))
 
   it should "keep a retired key's screenings — the winner has not inherited them yet" in {
-    FoldFixture.withFold("staging-fold") { fold =>
+    FoldFixture.withFold(mongoTarget, "staging-fold") { fold =>
       import fold.{movies, staging, slots, screenings}
       // Both year-variants exist in `movies`, each with cinemas in the side collections.
       Seq(winner, loser).foreach { id =>
@@ -126,7 +121,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
    *  show the embedded showtimes the transaction wrote and pass while every real reader
    *  saw none. */
   it should "give a graduated film its showtimes in `screenings`, not just embedded" in {
-    FoldFixture.withFold("staging-fold") { fold =>
+    FoldFixture.withFold(mongoTarget, "staging-fold") { fold =>
       import fold.{movies, staging, screenings, db}
       val repository = new services.movies.MongoMovieRepository(Some(db),
       normalizer = titleNormalizer,
@@ -154,7 +149,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
   /** Each attempt stamps what it writes with `writtenAt`, which the unknown-commit check then
    *  looks for — taken from the worker's one clock, not the system's, like every other stamp. */
   it should "stamp the films a fold writes from its injected clock" in {
-    FoldFixture.withFold("staging-fold") { fold =>
+    FoldFixture.withFold(mongoTarget, "staging-fold") { fold =>
       import fold.{movies, staging}
       seedConcludedNewcomer(staging)
       val pinned  = java.time.Instant.parse("2020-03-01T12:00:00Z")
@@ -180,7 +175,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
    *  the post-commit steps (side-row migration, `completeSideCollections`) never ran and
    *  the graduated film held no showtimes. The commit must be retried, and the fold finish. */
   it should "retry a commit whose result is unknown, and still complete the graduated film" in {
-    FoldFixture.withFold("staging-fold") { fold =>
+    FoldFixture.withFold(mongoTarget, "staging-fold") { fold =>
       import fold.{movies, staging, screenings, db}
       val repository = new services.movies.MongoMovieRepository(Some(db),
         normalizer = titleNormalizer, screenings = Some(screenings), slots = Some(new MongoSlotsRepository(Some(db))))
@@ -222,7 +217,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
     "the commit's wait times out" -> { () => new java.util.concurrent.TimeoutException("simulated commit timeout"): Throwable }
   ).foreach { case (how, failure) =>
     it should s"finish the graduated film when its commit landed but $how" in {
-      FoldFixture.withFold("staging-fold") { fold =>
+      FoldFixture.withFold(mongoTarget, "staging-fold") { fold =>
         import fold.{movies, staging, screenings, db}
         val repository = new services.movies.MongoMovieRepository(Some(db),
           normalizer = titleNormalizer, screenings = Some(screenings), slots = Some(new MongoSlotsRepository(Some(db))))
@@ -249,7 +244,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
   /** And the other half of that check: a commit that did NOT land still fails the fold, so the
    *  task reschedules rather than reporting a fold that never happened. */
   it should "still fail the fold when a commit whose result is unknown never landed" in {
-    FoldFixture.withFold("staging-fold") { fold =>
+    FoldFixture.withFold(mongoTarget, "staging-fold") { fold =>
       import fold.{movies, staging}
       seedConcludedNewcomer(staging)
       val neverLands: org.mongodb.scala.ClientSession => Unit = _ => {
@@ -270,7 +265,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
    *  deterministic id. Taking that for its own commit reports a fold this attempt never made
    *  and finishes it with this attempt's (aborted) plan. It must recognise only its own writes. */
   it should "not take a competing fold's drain of the group for its own unknown commit" in {
-    FoldFixture.withFold("staging-fold") { fold =>
+    FoldFixture.withFold(mongoTarget, "staging-fold") { fold =>
       seedConcludedNewcomer(fold.staging)
       val commits = new java.util.concurrent.atomic.AtomicInteger(0)
       val competitorFolded: org.mongodb.scala.ClientSession => Unit = session => {
@@ -290,7 +285,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
   /** A commit that FAILED with a transient error: the transaction did not land, so the whole
    *  attempt re-runs — exactly what a transient error in the body gets. */
   it should "re-run the transaction when its commit fails with a transient error" in {
-    FoldFixture.withFold("staging-fold") { fold =>
+    FoldFixture.withFold(mongoTarget, "staging-fold") { fold =>
       import fold.{movies, staging}
       seedConcludedNewcomer(staging)
       val commits = new java.util.concurrent.atomic.AtomicInteger(0)
@@ -334,7 +329,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
    *  trip to survive. `StagingFoldDocumentSizeSpec` measures the same ceiling against the
    *  real catalogue, in bytes, without needing a replica set. */
   it should "fold a film whose venues carry more board than one document can hold" in {
-    FoldFixture.withFold("staging-fold") { fold =>
+    FoldFixture.withFold(mongoTarget, "staging-fold") { fold =>
       import fold.{screenings, staging}
       val cinemas = Seq(Multikino, models.Helios)
       cinemas.foreach(seedOversizeRow(staging, _))
@@ -417,14 +412,14 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
   // the film-document rewrite (6365b8e95) and the screenings rewrite (43b595136) each ran
   // once per venue per tick in production while every output-based assertion stayed green.
   it should "write nothing on a second pass over a graduated film that brings nothing new" in {
-    FoldFixture.withFold("staging-fold") { fold =>
+    FoldFixture.withFold(mongoTarget, "staging-fold") { fold =>
       val repository = fold.splitAwareRepository
       seedConcludedNewcomer(fold.staging)
       fold.folder(repository).foldGroup(newcomerTitle)
       val graduated = repository.findAll().filter(r => titleNormalizer.sanitize(r.title) == titleNormalizer.sanitize(newcomerTitle))
       graduated should not be empty   // premise: the fold graduated it, so there is a second pass to have
 
-      val oplog = new tools.OplogWrites(uri, fold.db.name)
+      val oplog = new tools.OplogWrites(mongoTarget.uri.value, fold.db.name)
       try new tools.ChurnLedger().counter(s"oplog writes to ${fold.db.name}")(oplog.count())
         .assertNoChurn("re-landing the graduated film unchanged and folding its group again") {
           graduated.foreach(film => repository.upsert(film.id, film.title, film.year, film.record))
@@ -489,7 +484,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
    * conclusion.
    */
   it should "keep a migrated film on its existing key rather than adopting the staging spelling" in {
-    FoldFixture.withFold("staging-fold") { fold =>
+    FoldFixture.withFold(mongoTarget, "staging-fold") { fold =>
       import fold.{movies, staging, slots}
       val existing = StoredMovieRecord.keyFor(blindTitle, Some(2026), titleNormalizer)
       // The bare spelling is what the cinemas report, and it is the one the settle would key
@@ -547,7 +542,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
   it should "fold the same group whether or not it is told which rows to read" in {
     val hintTitle = "Fold Hint Sentinel"
     val anchor    = titleNormalizer.sanitize(hintTitle)
-    FoldFixture.withFold("staging-fold") { fold =>
+    FoldFixture.withFold(mongoTarget, "staging-fold") { fold =>
       import fold.db
       val repository = new services.staging.MongoStagingRepository(Some(db), titleNormalizer)
       val folder     = fold.folder()

@@ -6,7 +6,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.MovieCodecs
 import services.tasks.{EnqueueResult, MongoTaskQueue, TaskType}
-import tools.Env
 
 import java.time.Instant
 import scala.concurrent.Await
@@ -19,11 +18,10 @@ import scala.concurrent.duration._
  * ownership-guarded complete, and lease reaping — the paths the in-memory fake
  * can't prove.
  */
-class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   // A database of its own (`IsolatedMongoDatabase` refuses a real cluster), dropped in afterAll.
-  private val isolated = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "mongo-task-queue")
+  private val isolated = tools.IsolatedMongoDatabase.open(mongoTarget, "mongo-task-queue")
   private val db = isolated.database
     .withCodecRegistry(MovieCodecs.registry)
   private val collName = "__integration_test_tasks"

@@ -18,12 +18,12 @@ import org.scalatest.matchers.should.Matchers
  * proves the header that actually reaches the server on the wire no longer
  * contains "Headless".
  */
-class CdpUserAgentSpec extends AnyFlatSpec with Matchers {
+class CdpUserAgentSpec extends AnyFlatSpec with Matchers with SuiteConfiguration {
 
   private def withServerAndChrome(spoof: Boolean)(body: (Chrome, TestHttpServer) => Unit): Unit = {
     val server = new TestHttpServer(routes = PartialFunction.empty)
     try
-      Chrome.tryStart(spoofHeadlessUserAgent = spoof) match {
+      Chrome.tryStart(configuration.cdpBrowserBinary, spoofHeadlessUserAgent = spoof) match {
         case None => cancel("Chrome not installed — skipping CDP user-agent spec")
         case Some(chrome) =>
           try body(chrome, server) finally chrome.close()

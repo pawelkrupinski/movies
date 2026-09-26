@@ -7,7 +7,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{CountingScreeningsRepository, CountingSlotsRepository, MongoMovieRepository, MongoScreeningsRepository,
                         MongoSlotsRepository, StoredMovieRecord}
-import tools.Env
 
 /**
  * An `upsert` that leaves a film's showtimes exactly where they were must not rewrite the
@@ -34,13 +33,8 @@ import tools.Env
  *
  * Requires MONGODB_URI; skips otherwise.
  */
-class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers {
+class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
-
-  private val uri = Env.fromProcess().get("MONGODB_URI").get
-  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
   // Its own corpus, dropped when each leg's scope closes — the per-row purge this replaced
   // tidied the sentinels but left the database itself behind on every run.
   private val CorpusSuite = "screenings-rewrite"
@@ -57,7 +51,7 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
       KinoMuranow -> SourceData(title = Some(title), showtimes = Seq(Showtime(at.plusHours(2), None)))))
 
   it should "not rewrite a film's screenings when the upsert leaves its showtimes unchanged" in
-    tools.IntegrationCorpusDatabase.withDatabase(target, CorpusSuite) { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, CorpusSuite) { db =>
     val counting   = new CountingScreeningsRepository(new MongoScreeningsRepository(Some(db)))
     val repository = new MongoMovieRepository(Some(db),
       screenings = Some(counting), slots = Some(new MongoSlotsRepository(Some(db))),
@@ -104,7 +98,7 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
   // than the read model holds and delete live cards — which is why the cheap
   // `foreachRecordWithoutShowtimes` is the wrong tool and this asserts the slots are read.
   it should "prune the read model without reading a single showtime" in
-    tools.IntegrationCorpusDatabase.withDatabase(target, CorpusSuite) { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, CorpusSuite) { db =>
     val counting   = new CountingScreeningsRepository(new MongoScreeningsRepository(Some(db)))
     val countSlots = new CountingSlotsRepository(new MongoSlotsRepository(Some(db)))
     val repository = new MongoMovieRepository(Some(db),

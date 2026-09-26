@@ -16,6 +16,8 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 
 class PosterDecodeSpec extends AnyFlatSpec with Matchers {
 
+  private lazy val configuration = settings.ProcessConfiguration.resolve()
+
   private def file(bytes: Array[Byte]): java.io.File = {
     val f = java.nio.file.Files.createTempFile("poster-", ".img")
     java.nio.file.Files.write(f, bytes)
@@ -70,7 +72,7 @@ class PosterDecodeSpec extends AnyFlatSpec with Matchers {
   // fresh JVM still has that first use ahead of it, so each attempt runs in one.
   it should "register where ImageIO looks, even racing another suite's first use of ImageIO" in {
     val outcomes = (1 to 5).map { _ =>
-      val (exit, output) = ChildJvm.run("tools.CountingReaderRace",jvmArgs = Seq("-Djava.awt.headless=true"))
+      val (exit, output) = ChildJvm(configuration).run("tools.CountingReaderRace",jvmArgs = Seq("-Djava.awt.headless=true"))
       (exit, output.trim)
     }
     all(outcomes) shouldBe ((0, "VISIBLE"))

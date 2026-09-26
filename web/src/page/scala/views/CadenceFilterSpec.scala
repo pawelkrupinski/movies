@@ -21,7 +21,7 @@ import scala.concurrent.duration._
  * Skips gracefully when Chrome isn't installed — CI images without a browser
  * get cancelled tests; a dev with Chrome gets the full coverage.
  */
-class CadenceFilterSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class CadenceFilterSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.SuiteConfiguration {
 
   private implicit val city: models.City = Poznan
   private val now = Instant.parse("2026-07-21T00:00:00Z")
@@ -44,7 +44,7 @@ class CadenceFilterSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll
   private var server: TestHttpServer = _
 
   override def beforeAll(): Unit = {
-    chrome = Chrome.tryStart()
+    chrome = Chrome.tryStart(configuration.cdpBrowserBinary)
     if (chrome.nonEmpty) server = new TestHttpServer({ case "/debug/cadence" => cadenceHtml })
   }
 

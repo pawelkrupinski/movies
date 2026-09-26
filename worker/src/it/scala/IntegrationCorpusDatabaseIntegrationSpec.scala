@@ -1,7 +1,7 @@
 import org.mongodb.scala.{Document, MongoClient, ObservableFuture, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.{Env, IntegrationCorpusDatabase}
+import tools.IntegrationCorpusDatabase
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -20,14 +20,9 @@ import scala.concurrent.duration._
  * assertion here is "absent immediately after the scope returns", which a fire-and-forget
  * drop passes only by luck.
  */
-class IntegrationCorpusDatabaseIntegrationSpec extends AnyFlatSpec with Matchers {
+class IntegrationCorpusDatabaseIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
 
-  private val uri = Env.fromProcess().get("MONGODB_URI").get
-
-  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
   private def databaseNames(client: MongoClient): Seq[String] =
     Await.result(client.listDatabaseNames().toFuture(), 30.seconds)
 
@@ -36,9 +31,9 @@ class IntegrationCorpusDatabaseIntegrationSpec extends AnyFlatSpec with Matchers
     Await.result(client.getDatabase(name).getCollection("probe").insertOne(Document("_id" -> "sentinel")).toFuture(), 30.seconds)
 
   "a corpus database" should "be dropped by the time its scope returns" in {
-    val client = MongoClient(uri)
+    val client = MongoClient(mongoTarget.uri.value)
     try {
-      val name = IntegrationCorpusDatabase.withDatabase(target, "drop-probe") { database =>
+      val name = IntegrationCorpusDatabase.withDatabase(mongoTarget, "drop-probe") { database =>
         seed(client, database.name)
         withClue("the seeded database must exist while the scope is open: ")(
           databaseNames(client) should contain(database.name))
@@ -51,10 +46,10 @@ class IntegrationCorpusDatabaseIntegrationSpec extends AnyFlatSpec with Matchers
   }
 
   it should "be dropped even when the body throws, so a failing run leaks nothing" in {
-    val client = MongoClient(uri)
+    val client = MongoClient(mongoTarget.uri.value)
     try {
       var name = ""
-      a[RuntimeException] should be thrownBy IntegrationCorpusDatabase.withDatabase(target, "drop-probe-failing") { database =>
+      a[RuntimeException] should be thrownBy IntegrationCorpusDatabase.withDatabase(mongoTarget, "drop-probe-failing") { database =>
         name = database.name
         seed(client, database.name)
         throw new RuntimeException("the body failed")
@@ -67,7 +62,7 @@ class IntegrationCorpusDatabaseIntegrationSpec extends AnyFlatSpec with Matchers
   }
 
   it should "keep the configured database as its prefix, so the throwaway guard still recognises it" in {
-    val base = Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo")
-    IntegrationCorpusDatabase.named(target, "drop-probe") shouldBe s"${base}_drop-probe"
+    val base = mongoTarget.databasePrefix.value
+    IntegrationCorpusDatabase.named(mongoTarget, "drop-probe") shouldBe s"${base}_drop-probe"
   }
 }

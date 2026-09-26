@@ -19,7 +19,7 @@ import scala.sys.process.*
  *    before (a flake or a recording change), or no pipeline commit is in range;
  *  - it refuses to bisect a full-leg failure the sample cannot reproduce.
  */
-class ConvergenceBisectSpec extends AnyFlatSpec with Matchers {
+class ConvergenceBisectSpec extends AnyFlatSpec with Matchers with tools.SuiteConfiguration {
 
   private val Script     = Paths.get(".github/scripts/convergence-bisect.sh").toAbsolutePath
   private val PathsFile  = Paths.get(".github/convergence-paths.txt").toAbsolutePath
@@ -72,7 +72,7 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers {
       "BUDGET_MINUTES" -> "30", "MAX_STEPS" -> "3", "SAMPLE_FAILED" -> "true",
       "VERDICT_FILE" -> verdict.toString, "FIRST_BAD_FILE" -> firstBad.toString,
       "CONVERGENCE_PATHS_FILE" -> PathsFile.toString,
-      "PATH" -> s"${history.date.getParent}:${sys.env.getOrElse("PATH", "")}") ++ env
+      "PATH" -> s"${history.date.getParent}:${configuration.executableSearchPath.value.mkString(java.io.File.pathSeparator)}") ++ env
     val status = Process(Seq("bash", Script.toString, "bisect", good, bad), history.repo.root.toFile, all*)
       .!(ProcessLogger(_ => ()))
     val pinned = Option.when(Files.exists(firstBad))(Files.readString(firstBad).trim)
@@ -212,7 +212,7 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers {
          |esac
          |exit 0
          |""".stripMargin)
-    val path = s"${gh.getParent}:${sys.env.getOrElse("PATH", "")}"
+    val path = s"${gh.getParent}:${configuration.executableSearchPath.value.mkString(java.io.File.pathSeparator)}"
     val out = Process(Seq("bash", Script.toString, "last-green"), history.repo.root.toFile,
       "PATH" -> path, "COUNTRY" -> "poland", "WORKFLOW" -> "Country convergence", "RUN_ID" -> "30").!!.trim
 

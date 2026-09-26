@@ -6,7 +6,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.MongoCachingDetailFetch
-import tools.{Env, GetOnlyHttpFetch}
+import tools.GetOnlyHttpFetch
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -18,11 +18,10 @@ import scala.concurrent.duration._
  * can't give. Requires MONGODB_URI; skips otherwise. Runs in a database of
  * its own, dropped in afterAll.
  */
-class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   // A database of its own (`IsolatedMongoDatabase` refuses a real cluster), dropped in afterAll.
-  private val isolated = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "caching-detail-fetch")
+  private val isolated = tools.IsolatedMongoDatabase.open(mongoTarget, "caching-detail-fetch")
   private val db       = isolated.database
   private val collName = "__integration_test_detail_cache"
 

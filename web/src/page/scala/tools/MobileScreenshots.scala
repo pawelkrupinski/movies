@@ -45,7 +45,7 @@ object MobileScreenshots {
                       else Paths.get("page/screenshots")
     Files.createDirectories(outDirectory)
 
-    val chrome = Chrome.tryStart().getOrElse {
+    val chrome = Chrome.tryStart(_root_.settings.ProcessConfiguration.resolve().cdpBrowserBinary).getOrElse {
       System.err.println("Chrome not installed — install Google Chrome or Chromium and retry.")
       sys.exit(2)
     }

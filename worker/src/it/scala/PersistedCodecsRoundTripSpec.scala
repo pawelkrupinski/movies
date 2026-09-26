@@ -5,7 +5,6 @@ import org.scalatest.matchers.should.Matchers
 import services.movies.MovieCodecs
 import services.readmodel.ReadModelCodecs
 import services.scrapes.ScrapeArchiveCodecs
-import tools.Env
 import tools.persistence.PersistedRoundTrip
 
 /**
@@ -23,9 +22,7 @@ import tools.persistence.PersistedRoundTrip
  *
  * `web`'s `UserCodecs` go through the same helper in `web/src/it`.
  */
-class PersistedCodecsRoundTripSpec extends AnyFlatSpec with Matchers {
-
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+class PersistedCodecsRoundTripSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
   /** Fields a codec deliberately never writes, each with its reason. */
   private val dropped = Set(
@@ -41,11 +38,11 @@ class PersistedCodecsRoundTripSpec extends AnyFlatSpec with Matchers {
   }
 
   "MovieCodecs" should "write and read back every persisted type unchanged" in
-    survives(PersistedRoundTrip.registry[MovieCodecs.OmittingNone, MovieCodecs.WritingNone](tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, MovieCodecs.registry, dropped))
+    survives(PersistedRoundTrip.registry[MovieCodecs.OmittingNone, MovieCodecs.WritingNone](mongoTarget, MovieCodecs.registry, dropped))
 
   "ReadModelCodecs" should "write and read back every persisted type unchanged" in
-    survives(PersistedRoundTrip.registry[ReadModelCodecs.OmittingNone, ReadModelCodecs.WritingNone](tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, ReadModelCodecs.registry, dropped))
+    survives(PersistedRoundTrip.registry[ReadModelCodecs.OmittingNone, ReadModelCodecs.WritingNone](mongoTarget, ReadModelCodecs.registry, dropped))
 
   "ScrapeArchiveCodecs" should "write and read back every persisted type unchanged" in
-    survives(PersistedRoundTrip.registry[ScrapeArchiveCodecs.OmittingNone, ScrapeArchiveCodecs.WritingNone](tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, ScrapeArchiveCodecs.registry, dropped))
+    survives(PersistedRoundTrip.registry[ScrapeArchiveCodecs.OmittingNone, ScrapeArchiveCodecs.WritingNone](mongoTarget, ScrapeArchiveCodecs.registry, dropped))
 }

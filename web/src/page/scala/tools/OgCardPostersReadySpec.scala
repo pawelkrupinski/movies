@@ -20,11 +20,11 @@ import java.nio.file.Files
  * when Chrome isn't installed (CI images without a browser get cancelled
  * tests, same pattern as `PageJsBehaviourSpec`).
  */
-class OgCardPostersReadySpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class OgCardPostersReadySpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with SuiteConfiguration {
 
   private var chrome: Option[Chrome] = None
 
-  override def beforeAll(): Unit = chrome = Chrome.tryStart()
+  override def beforeAll(): Unit = chrome = Chrome.tryStart(configuration.cdpBrowserBinary)
   override def afterAll(): Unit  = chrome.foreach(_.close())
 
   // A real 1×1 PNG — decodes to naturalWidth 1, so it satisfies the

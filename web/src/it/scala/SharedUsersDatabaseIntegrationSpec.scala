@@ -7,7 +7,6 @@ import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.users.{MongoUserRepository, MongoUserStateRepository, UserStateRows}
-import tools.Env
 
 import java.time.Instant
 import scala.concurrent.Await
@@ -30,18 +29,14 @@ import scala.concurrent.duration._
  * it is the behaviour being fixed, and it has to keep working, because it is
  * still what an unset `MONGODB_USERS_DB` means for a country deployed alone.
  */
-class SharedUsersDatabaseIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
-
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  // Never against a real cluster: this spec creates and DROPS whole databases.
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
+class SharedUsersDatabaseIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
   // Own prefix so the drop in `afterAll` can never reach a database another spec
   // (or a local dev's corpus) is using.
   private val Prefix   = "kinowo_it_sharedusers"
   private val SharedDb = s"${Prefix}_users"
 
-  private lazy val client: MongoClient = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
+  private lazy val client: MongoClient = MongoClient(mongoTarget.uri.value)
 
   /** The database a pod serving `country` keeps its own corpus in, under this
    *  spec's prefix — standing in for `kinowo_uk` / `kinowo_de`. */

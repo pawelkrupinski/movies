@@ -42,13 +42,11 @@ import ConcurrentFoldRaceHarness.RaceGroup
  * The concurrency plumbing (seed, barrier, thread, join, collect) lives in
  * `ConcurrentFoldRaceHarness`, shared with the three-way race below.
  */
-class StagingFoldConcurrentTmdbRaceIntegrationSpec extends AnyFlatSpec with Matchers {
-
-  FoldFixture.requireThrowawayMongo()
+class StagingFoldConcurrentTmdbRaceIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
   it should "converge to one `movies` row, with every anchor's cinema, when two " +
     "decorated spellings race to conclude the same tmdbId" in {
-    FoldFixture.withFold("staging-fold-tmdb-race") { fold =>
+    FoldFixture.withFold(mongoTarget, "staging-fold-tmdb-race") { fold =>
       // Its own sentinel anchor prefix and tmdbId — see `FoldFixture`, the it suites share
       // one database. `tmdbId` is a shared namespace too (the fold pulls cross-title
       // siblings by it from the WHOLE collection), so this one is unused by any neighbour.
@@ -90,7 +88,7 @@ class StagingFoldConcurrentTmdbRaceIntegrationSpec extends AnyFlatSpec with Matc
   // bug case, so it asserts the identical two invariants the pairwise test does.
   it should "converge to one `movies` row, with every anchor's cinema, when THREE " +
     "decorated spellings race to conclude the same tmdbId" in {
-    FoldFixture.withFold("staging-fold-tmdb-race-3way") { fold =>
+    FoldFixture.withFold(mongoTarget, "staging-fold-tmdb-race-3way") { fold =>
       val tmdbId = 424351
       val groups = Seq(
         RaceGroup(Multikino,            "Lalka reż. threewayrace",     Some(2026), tmdbId),
@@ -150,7 +148,7 @@ class StagingFoldConcurrentTmdbRaceIntegrationSpec extends AnyFlatSpec with Matc
   // that instant, so the unique index refused the fold inside its own transaction — the same
   // E11000 on every attempt, then an abandon, then a reschedule that does it again.
   it should "fold a spelling whose unresolved row merges into a sibling already holding the tmdbId" in {
-    FoldFixture.withFold("staging-fold-tmdb-merge-order") { fold =>
+    FoldFixture.withFold(mongoTarget, "staging-fold-tmdb-merge-order") { fold =>
       val tmdbId = 424353
       val (winnerTitle, loserTitle, _) = seedWinnerAndResolvingLoser(fold, tmdbId, "mergeorder")
       fold.folder().foldGroup(winnerTitle)
@@ -176,7 +174,7 @@ class StagingFoldConcurrentTmdbRaceIntegrationSpec extends AnyFlatSpec with Matc
   // winner visible, and merge into it.
   it should "retry, not abandon, a fold whose write loses the tmdbId index to a sibling that " +
     "committed while it was planning — and converge onto the winner's row" in {
-    FoldFixture.withFold("staging-fold-tmdb-race-e11000") { fold =>
+    FoldFixture.withFold(mongoTarget, "staging-fold-tmdb-race-e11000") { fold =>
       import org.mongodb.scala.SingleObservableFuture
       import org.mongodb.scala.bson.collection.immutable.Document
       import services.movies.SingleCountryNormalizer.titleNormalizer

@@ -23,7 +23,7 @@ import java.net.URI
  * The freeze here is the real mechanism: every renderer process is SIGSTOPped
  * mid-wait and SIGCONTed later, as the kernel's scheduler or pager would.
  */
-class CdpWaitForSpec extends AnyFlatSpec with Matchers {
+class CdpWaitForSpec extends AnyFlatSpec with Matchers with SuiteConfiguration {
 
   private def rendererPids(chrome: Chrome): Seq[Long] = {
     val version = Json.parse(Chrome.httpGet(s"http://${Chrome.Loopback}:${chrome.debuggingPort}/json/version"))
@@ -38,7 +38,7 @@ class CdpWaitForSpec extends AnyFlatSpec with Matchers {
 
   private def withPage(body: (Chrome, CdpPage) => Unit): Unit = {
     val server = new TestHttpServer(routes = { case _ => "<!doctype html><html><body>page</body></html>" })
-    try Chrome.tryStart() match {
+    try Chrome.tryStart(configuration.cdpBrowserBinary) match {
       case None         => cancel("Chrome not installed")
       case Some(chrome) =>
         try chrome.openPage(s"${server.baseUrl}/") { page => body(chrome, page) }

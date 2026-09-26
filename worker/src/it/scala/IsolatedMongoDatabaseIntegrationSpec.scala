@@ -3,26 +3,21 @@ package integration
 import org.mongodb.scala.{Document, MongoClient, ObservableFuture, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.{Env, IsolatedMongoDatabase}
+import tools.IsolatedMongoDatabase
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
 /** Each isolated database is a handle its suite owns: dropping it takes that database and
  *  nothing else — the earlier process-wide registry let one suite's tidy-up reach another's. */
-class IsolatedMongoDatabaseIntegrationSpec extends AnyFlatSpec with Matchers {
-
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
+class IsolatedMongoDatabaseIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
   private def await[A](f: scala.concurrent.Future[A]): A = Await.result(f, 30.seconds)
 
   "An isolated database" should "drop only itself, and tolerate being dropped twice" in {
-    val uri    = Env.fromProcess().get("MONGODB_URI").get
-    val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
-    val first  = IsolatedMongoDatabase.open(target, "isolated-handle-first")
-    val second = IsolatedMongoDatabase.open(target, "isolated-handle-second")
-    val admin  = MongoClient(uri)
+    val first  = IsolatedMongoDatabase.open(mongoTarget, "isolated-handle-first")
+    val second = IsolatedMongoDatabase.open(mongoTarget, "isolated-handle-second")
+    val admin  = MongoClient(mongoTarget.uri.value)
     try {
       Seq(first, second).foreach(i => await(i.database.getCollection("probe").insertOne(Document("_id" -> 1)).toFuture()))
       first.drop()

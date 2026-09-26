@@ -5,6 +5,8 @@ import org.scalatest.matchers.should.Matchers
 
 class TextNormalizationSpec extends AnyFlatSpec with Matchers {
 
+  private lazy val configuration = settings.ProcessConfiguration.resolve()
+
   "romanizeCyrillic" should "transliterate a Ukrainian-dubbed title to its Latin search form" in {
     // The live bug: "Ваяна" (Vaiana, Ukrainian dub) must romanize to "Vaiana" so
     // it shares a search title / TMDB query with the Latin listing.
@@ -175,7 +177,7 @@ class TextNormalizationSpec extends AnyFlatSpec with Matchers {
     //
     // In a Turkish JVM of its own: switching THIS JVM's default would turn every
     // default-locale case fold in the suites running beside it Turkish as well.
-    val (exit, output) = ChildJvm.run("tools.TurkishSentenceCase", Seq("FILMOWE SPOTKANIA"),
+    val (exit, output) = ChildJvm(configuration).run("tools.TurkishSentenceCase", Seq("FILMOWE SPOTKANIA"),
                                       jvmArgs = Seq("-Duser.language=tr", "-Duser.country=TR"))
     (exit, output.trim) shouldBe ((0, "tr: Filmowe spotkania"))
   }

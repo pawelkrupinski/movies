@@ -5,7 +5,6 @@ import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import services.titlerules.TitleRuleSet
-import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -27,7 +26,7 @@ import scala.concurrent.duration._
  * because constructing a root hydrates a cache and watches `movies`. Overriding
  * the seam rather than rebuilding the component keeps this a real wiring.
  */
-class WorkerWiringNormalizerIntegrationSpec extends AnyFlatSpec with BeforeAndAfterAll {
+class WorkerWiringNormalizerIntegrationSpec extends AnyFlatSpec with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
   private val built        = scala.collection.mutable.ListBuffer.empty[WorkerWiring]
   private val ownDatabases = scala.collection.mutable.ListBuffer.empty[String]
@@ -36,7 +35,7 @@ class WorkerWiringNormalizerIntegrationSpec extends AnyFlatSpec with BeforeAndAf
   private def isolated(forCountry: Country): WorkerWiring = {
     val ownDatabase = s"kinowo_it_wiring_${forCountry.code}"
     // The run's own Env (its MONGODB_URI): a wiring built without one is hermetic and dials nothing.
-    val wiring = new WorkerWiring(forCountry, env = tools.Env.fromProcess()) {
+    val wiring = new WorkerWiring(forCountry, env = configuration.env) {
       override protected def mongoDbName: settings.MongoDatabaseName = settings.MongoDatabaseName(ownDatabase)
     }
     built += wiring
@@ -55,7 +54,7 @@ class WorkerWiringNormalizerIntegrationSpec extends AnyFlatSpec with BeforeAndAf
    */
   override def afterAll(): Unit = {
     built.foreach(w => scala.util.Try(w.stop()))
-    val client = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
+    val client = MongoClient(mongoTarget.uri.value)
     try ownDatabases.distinct.foreach(name =>
       scala.util.Try(Await.result(client.getDatabase(name).drop().toFuture(), 60.seconds)))
     finally client.close()

@@ -29,7 +29,8 @@ object MetascoreBackfill {
   private case class Unchanged(title: String, year: Option[Int], orig: Option[String], hasUrl: Boolean, current: Option[Int]) extends Outcome
 
   def main(args: Array[String]): Unit = {
-    val repository = AmbientMovieRepository.open()
+    val configuration = _root_.settings.ProcessConfiguration.resolve()
+    val repository = AmbientMovieRepository.open(configuration)
     if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to backfill.")
       sys.exit(1)

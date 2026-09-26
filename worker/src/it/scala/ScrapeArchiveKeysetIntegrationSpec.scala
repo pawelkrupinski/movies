@@ -5,7 +5,6 @@ import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeAttempt}
-import tools.Env
 
 import java.time.{Instant, LocalDateTime}
 import scala.concurrent.Await
@@ -25,12 +24,9 @@ import scala.concurrent.duration._
  *
  * Requires MONGODB_URI; skips otherwise.
  */
-class ScrapeArchiveKeysetIntegrationSpec extends AnyFlatSpec with Matchers {
+class ScrapeArchiveKeysetIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
-
-  private val client   = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
+  private val client   = MongoClient(mongoTarget.uri.value)
   private val database = client.getDatabase(
     s"kinowo_isolated_archivekeyset_${ProcessHandle.current().pid()}_${System.nanoTime()}")
 

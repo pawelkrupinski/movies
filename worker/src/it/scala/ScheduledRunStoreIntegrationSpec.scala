@@ -8,7 +8,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
 import services.schedule.{MongoScheduledRunStore, ScheduledRunStore}
-import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -19,11 +18,10 @@ import scala.concurrent.duration._
  *
  * Runs in a database of its own, dropped in `afterAll`.
  */
-class ScheduledRunStoreIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with Eventually {
+class ScheduledRunStoreIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with Eventually with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   // A database of its own (`IsolatedMongoDatabase` refuses a real cluster), dropped in afterAll.
-  private val isolated = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "scheduled-run-store")
+  private val isolated = tools.IsolatedMongoDatabase.open(mongoTarget, "scheduled-run-store")
   private val coll     = isolated.database
     .getCollection[Document]("__integration_test_scheduled_runs")
 

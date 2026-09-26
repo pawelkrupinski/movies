@@ -3,11 +3,12 @@ package tools
 import controllers.FilterDescription
 import models.Country
 import play.api.libs.json.Json
+import settings.{CdpBrowserBinary, ProcessConfiguration}
 
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
-import java.nio.file.{Files, Paths}
+import java.nio.file.Files
 import java.util.Base64
 import javax.imageio.stream.MemoryCacheImageOutputStream
 import javax.imageio.{IIOImage, ImageIO, ImageWriteParam}
@@ -103,9 +104,9 @@ object OgCardGenerator {
 
   /** The ports to rotate through this run. `KINOWO_OG_PROXY_PORT`, when set,
    *  pins a single port instead (local debugging against one specific port). */
-  private def proxyPorts(): Seq[Int] =
-    sys.env.get("KINOWO_OG_PROXY_PORT").flatMap(_.toIntOption) match {
-      case Some(port) => Seq(port)
+  private def proxyPorts(configuration: ProcessConfiguration): Seq[Int] =
+    configuration.ogCardProxyPort match {
+      case Some(port) => Seq(port.value)
       case None       => ResidentialProxyPorts
     }
 
@@ -114,29 +115,28 @@ object OgCardGenerator {
    *  unset `${{ secrets.X }}` as an empty string, so a presence check would
    *  launch Chrome against the proxy with empty credentials and fail every card
    *  on a 407 instead of falling back as documented above. */
-  private[tools] def proxyConfigFor(port: Int, env: Map[String, String] = sys.env): Option[Chrome.ProxyConfig] = {
-    def nonBlank(key: String) = env.get(key).filter(_.trim.nonEmpty)
+  private[tools] def proxyConfigFor(port: Int, configuration: ProcessConfiguration): Option[Chrome.ProxyConfig] =
     for {
-      user <- nonBlank("KINOWO_PROXY_USER")
-      pass <- nonBlank("KINOWO_PROXY_PASS")
+      user <- configuration.proxyUser
+      pass <- configuration.proxyPassword
     } yield Chrome.ProxyConfig(
-      host = env.getOrElse("KINOWO_OG_PROXY_HOST", "isp.decodo.com"),
+      host = configuration.ogCardProxyHost.value,
       port = port,
-      user = user,
-      pass = pass
+      user = user.value,
+      pass = pass.value
     )
-  }
 
-  private def startChromeOrExit(proxy: Option[Chrome.ProxyConfig]): Chrome =
-    Chrome.tryStart(proxy = proxy, spoofHeadlessUserAgent = true).getOrElse {
+  private def startChromeOrExit(browser: Option[CdpBrowserBinary], proxy: Option[Chrome.ProxyConfig]): Chrome =
+    Chrome.tryStart(browser, proxy = proxy, spoofHeadlessUserAgent = true).getOrElse {
       System.err.println("No Chrome/Chromium found (set CDP_BROWSER_BIN). Aborting.")
       sys.exit(1)
     }
 
   def main(args: Array[String]): Unit = {
-    val country = _root_.settings.ProcessConfiguration.resolve().country
-    val baseUrl = sys.env.getOrElse("KINOWO_OG_BASE", country.ogOrigin).stripSuffix("/")
-    val outDir  = Paths.get(sys.env.getOrElse("KINOWO_OG_OUT", "web/src/main/assets/img"))
+    val configuration = ProcessConfiguration.resolve()
+    val country = configuration.country
+    val baseUrl = configuration.ogCardBaseUrl.fold(country.ogOrigin)(_.value).stripSuffix("/")
+    val outDir  = configuration.ogCardOutputDirectory.value
     Files.createDirectories(outDir)
 
     // `home` renders the `/` landing montage; any other args are city slugs.
@@ -145,21 +145,21 @@ object OgCardGenerator {
     val cities   = if (homeMode) Nil else country.cities.filter(c => only.isEmpty || only(c.slug))
     if (!homeMode && cities.isEmpty) { System.err.println(s"No ${country.code} cities matched ${only.mkString(", ")}"); sys.exit(1) }
 
-    val ports = proxyPorts()
+    val ports = proxyPorts(configuration)
     val startedAt = System.currentTimeMillis()
     var ok = 0
 
     if (homeMode) {
-      val chrome = startChromeOrExit(proxyConfigFor(ports.head))
+      val chrome = startChromeOrExit(configuration.cdpBrowserBinary, proxyConfigFor(ports.head, configuration))
       try {
-        val city = sys.env.get("KINOWO_OG_HOME_CITY").flatMap(s => country.bySlug.get(s))
+        val city = configuration.ogCardHomeCity.flatMap(slug => country.bySlug.get(slug.value))
           .orElse(country.cities.headOption)
           .getOrElse { System.err.println(s"Country ${country.code} has no cities to screenshot for the home card."); sys.exit(1) }
         if (writeCard(chrome, country, s"$baseUrl/${city.slug}/", homeTagline(country), outDir.resolve(country.homeOgImage), "home")) ok += 1
       } finally chrome.close()
     } else {
       cities.grouped(CitiesPerProxyBatch).zipWithIndex.foreach { case (batch, batchIndex) =>
-        val chrome = startChromeOrExit(proxyConfigFor(ports(batchIndex % ports.size)))
+        val chrome = startChromeOrExit(configuration.cdpBrowserBinary, proxyConfigFor(ports(batchIndex % ports.size), configuration))
         try batch.foreach { city =>
           if (writeCard(chrome, country, s"$baseUrl/${city.slug}/", cityTagline(city), outDir.resolve(city.shareImage), city.slug)) ok += 1
         } finally chrome.close()

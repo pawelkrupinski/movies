@@ -36,13 +36,14 @@ object FilmwebReset {
   private case class  ReplacedDifferent(beforeUrl: String, afterUrl: String, rating: Option[Double]) extends Outcome
 
   def main(args: Array[String]): Unit = {
-    val repository = AmbientMovieRepository.open()
+    val configuration = _root_.settings.ProcessConfiguration.resolve()
+    val repository = AmbientMovieRepository.open(configuration)
     if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to reset.")
       sys.exit(1)
     }
 
-    val tmdb    = new TmdbClient(new RealHttpFetch, apiKey = settings.ProcessConfiguration.resolve().tmdbApiKey)
+    val tmdb    = new TmdbClient(new RealHttpFetch, apiKey = configuration.tmdbApiKey)
     val filmweb = new FilmwebClient(new RealHttpFetch)
 
     // ── Phase 1: snapshot, then wipe FW fields on every row ────────────────

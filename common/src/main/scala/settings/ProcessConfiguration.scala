@@ -271,6 +271,50 @@ final class ProcessConfiguration(val env: Env) {
   def greenCorpusRunId: Option[GreenCorpusRunId]           = text("KINOWO_CONVERGENCE_GREEN_CORPUS_RUN").map(GreenCorpusRunId(_))
   def greenCorpusRecordedAt: Option[GreenCorpusRecordedAt] = text("KINOWO_CONVERGENCE_GREEN_CORPUS_RECORDED_AT").map(GreenCorpusRecordedAt(_))
   def greenCorpusDirectory: Option[GreenCorpusDirectory]   = text("KINOWO_CONVERGENCE_GREEN_CORPUS_DIR").map(dir => GreenCorpusDirectory(Path.of(dir)))
+
+  /** `KINOWO_CONVERGENCE_SCRAPES_URI` / `KINOWO_CONVERGENCE_SCRAPES_DB` — a production dump a
+   *  convergence leg (or the corpus recorder) reads its real scrapes from, read-only. */
+  def convergenceScrapesUri: Option[ConvergenceScrapesUri] = text("KINOWO_CONVERGENCE_SCRAPES_URI").map(ConvergenceScrapesUri(_))
+  def convergenceScrapesDatabase: Option[ConvergenceScrapesDatabaseName] =
+    text("KINOWO_CONVERGENCE_SCRAPES_DB").map(ConvergenceScrapesDatabaseName(_))
+
+  /** `GITHUB_STEP_SUMMARY` — the file a CI step appends its markdown summary to. */
+  def stepSummaryFile: Option[StepSummaryFile] = fact("GITHUB_STEP_SUMMARY").map(file => StepSummaryFile(Path.of(file)))
+
+  /** `KINOWO_HARD_CLUSTERS_RECORD` (`1` or `true`) — the hard-cluster spec re-records its responses. */
+  def hardClusterRecording: HardClusterRecording = HardClusterRecording(env.flag("KINOWO_HARD_CLUSTERS_RECORD"))
+  /** `KINOWO_HARD_CLUSTERS_COUNTRIES` — comma-separated codes narrowing a hard-cluster run; codes
+   *  naming no country are dropped. */
+  def hardClusterCountries: Option[HardClusterCountries] =
+    text("KINOWO_HARD_CLUSTERS_COUNTRIES").map(codes => HardClusterCountries(codes.split(",").iterator.map(_.trim).flatMap(Country.byCode).toSet))
+  /** `KINOWO_HARD_CLUSTERS_DUMP` (any value) — print every pass's films. */
+  def hardClusterDump: HardClusterDump = HardClusterDump(text("KINOWO_HARD_CLUSTERS_DUMP").isDefined)
+
+  /** `KINOWO_IDENTITY_CORPUS_DIR` — recorded corpora the listing-key spec widens its sweep to. */
+  def identityCorpusDirectory: Option[IdentityCorpusDirectory] =
+    text("KINOWO_IDENTITY_CORPUS_DIR").map(dir => IdentityCorpusDirectory(Path.of(dir)))
+
+  /** `CDP_BROWSER_BIN` — the Chrome/Edge binary the page tests drive, over the usual install paths. */
+  def cdpBrowserBinary: Option[CdpBrowserBinary] = fact("CDP_BROWSER_BIN").map(bin => CdpBrowserBinary(Path.of(bin)))
+
+  /** `KINOWO_OG_BASE` — the origin the share-card generator screenshots, over the country's own. */
+  def ogCardBaseUrl: Option[OgCardBaseUrl] = text("KINOWO_OG_BASE").map(OgCardBaseUrl(_))
+  /** `KINOWO_OG_OUT`, else the web assets' image directory. */
+  def ogCardOutputDirectory: OgCardOutputDirectory =
+    OgCardOutputDirectory(Path.of(text("KINOWO_OG_OUT").getOrElse("web/src/main/assets/img")))
+  /** `KINOWO_OG_HOME_CITY` — the city slug the landing card screenshots. */
+  def ogCardHomeCity: Option[OgCardHomeCity] = text("KINOWO_OG_HOME_CITY").map(OgCardHomeCity(_))
+  /** `KINOWO_OG_PROXY_PORT` — one residential proxy port pinned instead of the rotation. */
+  def ogCardProxyPort: Option[OgCardProxyPort] = text("KINOWO_OG_PROXY_PORT").flatMap(_.toIntOption).map(OgCardProxyPort(_))
+  /** `KINOWO_OG_PROXY_HOST`, else the residential proxy's own host. */
+  def ogCardProxyHost: OgCardProxyHost = OgCardProxyHost(text("KINOWO_OG_PROXY_HOST").getOrElse("isp.decodo.com"))
+
+  // ── The JVM itself ──────────────────────────────────────────────────────────
+  /** `java.home` — the running JDK, whose `bin/` a spec launches a child `java` / `keytool` from. */
+  def javaHome: JavaHome = JavaHome(Path.of(fact("java.home").getOrElse(throw new IllegalStateException("java.home is not set"))))
+  /** `java.class.path` — the running JVM's class path, split into its entries. */
+  def javaClassPath: JavaClassPath =
+    JavaClassPath(fact("java.class.path").toSeq.flatMap(_.split(java.io.File.pathSeparator)).filter(_.nonEmpty).map(Path.of(_)))
 }
 
 object ProcessConfiguration {
@@ -279,6 +323,11 @@ object ProcessConfiguration {
    *  (`.env.local` by default). Call once, from a `main`. */
   def resolve(localFile: java.io.File = new java.io.File(".env.local")): ProcessConfiguration =
     new ProcessConfiguration(Env.fromProcess(localFile))
+
+  /** The process's own environment variables and system properties alone, WITHOUT `.env.local`
+   *  — for a root that must tell a value the user exported from one only that file carries (the
+   *  local stack, whose `.env.local` MONGODB_URI is prod's). */
+  def resolveExported(): ProcessConfiguration = resolve(new java.io.File("/nonexistent/.env.local"))
 }
 
 /** Where an alerter's Telegram route is configured: its chat (the first of `chatKeys` set

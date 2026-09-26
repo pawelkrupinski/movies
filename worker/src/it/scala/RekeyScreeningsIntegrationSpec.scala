@@ -7,7 +7,6 @@ import org.mongodb.scala.{MongoClient, ObservableFuture, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -31,13 +30,8 @@ import scala.concurrent.duration._
  * This spec is written to be WRONG-ABLE: it asserts the showtimes survive. A failure
  * proves the hypothesis; a pass disproves it and sends me back to the evidence.
  */
-class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
+class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
-
-  private val uri = Env.fromProcess().get("MONGODB_URI").get
-  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
   // Its own corpus: this suite hydrates a `CaffeineMovieCache` over the WHOLE `movies`
   // collection and settles it, which is not survivable for a neighbouring suite's rows.
   // Dropped when each leg's scope closes, so a run leaves no `*_rekey-screenings` behind.
@@ -49,7 +43,7 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
   private val when   = java.time.LocalDateTime.now().plusDays(3).withHour(20).withMinute(0).withSecond(0).withNano(0)
 
   it should "keep a film's showtimes when the settle re-keys it onto its embedded year" in
-    tools.IntegrationCorpusDatabase.withDatabase(target, CorpusSuite) { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, CorpusSuite) { db =>
     val screenings = new MongoScreeningsRepository(Some(db))
     val slots      = new MongoSlotsRepository(Some(db))
     val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer)
@@ -92,9 +86,9 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
   it should "settle its own corpus, not the database the other suites share" in {
     val neighbourTitle = "__neighbour-corpus-sentinel__"
     val neighbours     = Seq(Some(2025), Some(2026)).map(y => StoredMovieRecord.keyFor(neighbourTitle, y, titleNormalizer))
-    val client = MongoClient(uri)
+    val client = MongoClient(mongoTarget.uri.value)
     // The SHARED database — deliberately not this suite's own.
-    val shared = client.getDatabase(Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo")).getCollection("movies")
+    val shared = client.getDatabase(mongoTarget.databasePrefix.value).getCollection("movies")
     try {
       // Two unresolved year-variants of one title: the ±1-year shape a settle collapses.
       // (Not one tmdbId twice — the store's unique `tmdbId` index refuses that now.)
@@ -104,7 +98,7 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
           "updatedAt" -> java.util.Date.from(java.time.Instant.now())),
         new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), 10.seconds))
 
-      tools.IntegrationCorpusDatabase.withDatabase(target, CorpusSuite) { own =>
+      tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, CorpusSuite) { own =>
         val cache = new CaffeineMovieCache(new MongoMovieRepository(
           Some(own),
           screenings = Some(new MongoScreeningsRepository(Some(own))),

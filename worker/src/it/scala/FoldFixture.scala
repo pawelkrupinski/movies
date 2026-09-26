@@ -7,7 +7,7 @@ import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFu
 import services.MongoConnection
 import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, StoredMovieRecord}
 import services.staging.{MongoStagingFolder, StagingRepository}
-import tools.{Env, IntegrationCorpusDatabase}
+import tools.{IntegrationCorpusDatabase, IntegrationMongoTarget}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -38,18 +38,12 @@ import scala.concurrent.duration._
  * `movies` rows, the `screenings` and `movie_slots` they cascade to, and the staging rows
  * together — which is why the per-anchor `purge` this replaced is gone rather than kept
  * alongside.
+ *
+ * The suite resolves its [[IntegrationMongoTarget]] (`tools.IntegrationMongoSuite`, which also
+ * refuses a real cluster and skips when none is configured) and hands it in.
  */
 object FoldFixture {
 
-  /** Refuse to run against anything but a throwaway Mongo, and skip when none is configured. */
-  def requireThrowawayMongo(): Unit = {
-    assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-    tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
-  }
-
-  private def uri = Env.fromProcess().get("MONGODB_URI").get
-
-  private def target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
   private val Timeout = 10.seconds
   private def now     = java.util.Date.from(java.time.Instant.now())
 
@@ -116,15 +110,15 @@ object FoldFixture {
 
   /** One worker pod's fold handles over a database it shares with other pods
    *  (`tools.ConcurrentInstances`): its own client, so its sessions and transactions are its own. */
-  def on(instance: tools.ConcurrentInstances.Instance): Handles =
-    new Handles(instance.database, new MongoConnection(Some(uri), instance.database.name, required = false,
+  def on(target: IntegrationMongoTarget)(instance: tools.ConcurrentInstances.Instance): Handles =
+    new Handles(instance.database, new MongoConnection(Some(target.uri.value), instance.database.name, required = false,
       sharedClient = Some(instance.client)))
 
   /** Run `test` against a database of this suite's own, dropped afterwards whatever the test
    *  did — including when it threw. `suite` names it; give each spec a distinct one, since two
    *  suites sharing a name would share a database and be back where this started. */
-  def withFold[A](suite: String)(test: Handles => A): A =
+  def withFold[A](target: IntegrationMongoTarget, suite: String)(test: Handles => A): A =
     IntegrationCorpusDatabase.withDatabase(target, suite) { db =>
-      test(new Handles(db, new MongoConnection(Some(uri), db.name, required = false)))
+      test(new Handles(db, new MongoConnection(Some(target.uri.value), db.name, required = false)))
     }
 }

@@ -29,9 +29,7 @@ import scala.concurrent.duration._
  * Mongo-level guards (the fold transaction, its retry, the unique indexes) keep one film per
  * identity across processes — the in-process `withIdLock` cannot help there.
  */
-class RollingWorkersFoldIntegrationSpec extends AnyFlatSpec with Matchers {
-
-  FoldFixture.requireThrowawayMongo()
+class RollingWorkersFoldIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
   private final case class Landing(cinema: Cinema, title: String)
 
@@ -40,9 +38,9 @@ class RollingWorkersFoldIntegrationSpec extends AnyFlatSpec with Matchers {
 
   "two workers of one country landing and folding one film at once" should
     "leave one film, carrying every cinema either roster scraped, and consume all of staging" in
-    ConcurrentInstances.withInstances(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "rolling-workers-fold") { instances =>
-      val workers = instances.map(FoldFixture.on)
-      rounds(8, tools.ConcurrentInstances.baseSeed(_root_.settings.ProcessConfiguration.resolve())) { round =>
+    ConcurrentInstances.withInstances(mongoTarget, "rolling-workers-fold") { instances =>
+      val workers = instances.map(FoldFixture.on(mongoTarget))
+      rounds(8, tools.ConcurrentInstances.baseSeed(configuration)) { round =>
         val title  = film(round.number)
         val tmdbId = 612000 + round.number
         val oldRoster = Seq(Landing(Multikino, title), Landing(Helios, title), Landing(Helios, s"Ladies Night - $title"))
@@ -76,16 +74,16 @@ class RollingWorkersFoldIntegrationSpec extends AnyFlatSpec with Matchers {
   // even of an identical index, leaves a window with no uniqueness in which the OTHER pod's writes
   // are unguarded (the userStates boot did exactly this until e098b3b62).
   "a worker booting while another serves" should "rebuild no index the corpus already carries" in
-    ConcurrentInstances.withInstances(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "rolling-workers-boot") { instances =>
+    ConcurrentInstances.withInstances(mongoTarget, "rolling-workers-boot") { instances =>
       def boot(worker: FoldFixture.Handles): Unit = {
         worker.splitAwareRepository.enabled shouldBe true
         worker.slots.findForFilm("warm-up")
         worker.screenings.findForFilm("warm-up")
         ()
       }
-      val Seq(old, fresh) = instances.map(FoldFixture.on)
+      val Seq(old, fresh) = instances.map(FoldFixture.on(mongoTarget))
       boot(old)
-      rounds(3, tools.ConcurrentInstances.baseSeed(_root_.settings.ProcessConfiguration.resolve())) { round =>
+      rounds(3, tools.ConcurrentInstances.baseSeed(configuration)) { round =>
         val serving = () => { old.seedStagingRow(Helios.displayName, film(round.number), Some(2026), 613000 + round.number); old.folder().foldGroup(film(round.number)); () }
         successes(race(Seq(() => boot(fresh), serving), Some(round)))
         val drops = for {

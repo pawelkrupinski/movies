@@ -8,7 +8,7 @@ import org.scalatest.matchers.should.Matchers
 import services.movies.{InMemorySlotsRepository, SlotsRepository, WriteOutcome}
 import services.staging.InMemoryStagingRepository
 import tools.contracts.Implementations
-import tools.{Env, IsolatedMongoDatabase}
+import tools.IsolatedMongoDatabase
 
 import java.time.LocalDateTime
 import scala.concurrent.Await
@@ -20,11 +20,9 @@ import scala.concurrent.duration.*
  * the fixture harness run. Both claim to "just store"; this is what holds them to it: the
  * same writes, read back the same way, including what a slot does NOT keep.
  */
-class SlotsRepositoryContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class SlotsRepositoryContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-
-  private lazy val isolatedDatabase = IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "slots-contract")
+  private lazy val isolatedDatabase = IsolatedMongoDatabase.open(mongoTarget, "slots-contract")
 
   private lazy val database = isolatedDatabase.database
   override protected def afterAll(): Unit = try isolatedDatabase.drop() finally super.afterAll()

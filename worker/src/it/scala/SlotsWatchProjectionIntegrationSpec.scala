@@ -6,7 +6,7 @@ import models.{KinoLuna, KinoMuranow, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.StoredMovieRecord
-import tools.{Env, Eventually}
+import tools.Eventually
 
 import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicInteger
@@ -29,9 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger
  * Its own database: the projector reads and writes `web_*` whole, and a co-running spec's rows
  * would be indistinguishable from this one's. Requires MONGODB_URI; skips otherwise.
  */
-class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers {
-
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
   private val Tmdb  = 424242
   private val title = "__slots-watch-sentinel__"
@@ -39,7 +37,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers {
 
   "a movie_slots write with no movies or screenings change" should
     "reach the projector and emit the venue's web_screenings row" in {
-    ProjectedMongoCorpus.withCorpus("slots_watch") { corpus =>
+    ProjectedMongoCorpus.withCorpus(mongoTarget, "slots_watch") { corpus =>
       import corpus._
       val id         = StoredMovieRecord.keyFor(title, year, titleNormalizer)
       val when       = LocalDateTime.now().plusDays(3).withHour(20).withMinute(0).withSecond(0).withNano(0)
@@ -93,7 +91,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers {
   // minutes (dfe62a96c) — against Mongo only, because the in-memory repository stitched the
   // showtimes back in and made every sweep look convergent.
   "a projected film" should "cost nothing on a second pass that brings nothing new" in {
-    ProjectedMongoCorpus.withCorpus("projection_fixpoint") { corpus =>
+    ProjectedMongoCorpus.withCorpus(mongoTarget, "projection_fixpoint") { corpus =>
       import corpus.{databaseName, readModel, repository}
       val country   = models.Country.Poland
       val metrics   = services.metrics.WorkerMetrics.singleCountry(country, poolSize = 1)
@@ -113,7 +111,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers {
         awaitQuiet(metrics.registry)
         projector.pruneOrphans()   // the FIRST sweep may legitimately look
 
-        val oplog = new tools.OplogWrites(Env.fromProcess().get("MONGODB_URI").get, databaseName)
+        val oplog = new tools.OplogWrites(mongoTarget.uri.value, databaseName)
         try new tools.ChurnLedger()
           .registry(metrics.registry, tools.FixpointPass.WorkFamilies, tools.FixpointPass.isWork)
           .counter(s"oplog writes to $databaseName")(oplog.count())

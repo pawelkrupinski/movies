@@ -19,23 +19,25 @@ class OgCardProxyConfigSpec extends AnyFlatSpec with Matchers {
 
   private val creds = Map("KINOWO_PROXY_USER" -> "u", "KINOWO_PROXY_PASS" -> "p")
 
+  private def configured(vars: Map[String, String]) = new settings.ProcessConfiguration(Env.of(vars.toSeq*))
+
   "The proxy config" should "route through the default residential host when both credentials are set" in {
-    OgCardGenerator.proxyConfigFor(10002, creds) shouldBe
+    OgCardGenerator.proxyConfigFor(10002, configured(creds)) shouldBe
       Some(Chrome.ProxyConfig("isp.decodo.com", 10002, "u", "p"))
   }
 
   it should "honour a host override" in {
-    OgCardGenerator.proxyConfigFor(10003, creds + ("KINOWO_OG_PROXY_HOST" -> "proxy.example")).map(_.host) shouldBe
+    OgCardGenerator.proxyConfigFor(10003, configured(creds + ("KINOWO_OG_PROXY_HOST" -> "proxy.example"))).map(_.host) shouldBe
       Some("proxy.example")
   }
 
   it should "stay off when either credential is absent" in {
-    OgCardGenerator.proxyConfigFor(10002, creds - "KINOWO_PROXY_PASS") shouldBe None
-    OgCardGenerator.proxyConfigFor(10002, creds - "KINOWO_PROXY_USER") shouldBe None
+    OgCardGenerator.proxyConfigFor(10002, configured(creds - "KINOWO_PROXY_PASS")) shouldBe None
+    OgCardGenerator.proxyConfigFor(10002, configured(creds - "KINOWO_PROXY_USER")) shouldBe None
   }
 
   it should "stay off when a credential is present but blank, the way GitHub Actions renders an unset secret" in {
-    OgCardGenerator.proxyConfigFor(10002, creds + ("KINOWO_PROXY_USER" -> "")) shouldBe None
-    OgCardGenerator.proxyConfigFor(10002, creds + ("KINOWO_PROXY_PASS" -> "  ")) shouldBe None
+    OgCardGenerator.proxyConfigFor(10002, configured(creds + ("KINOWO_PROXY_USER" -> ""))) shouldBe None
+    OgCardGenerator.proxyConfigFor(10002, configured(creds + ("KINOWO_PROXY_PASS" -> "  "))) shouldBe None
   }
 }

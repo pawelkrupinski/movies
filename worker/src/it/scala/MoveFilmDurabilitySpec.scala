@@ -4,7 +4,6 @@ import services.movies.FilmId
 import models.{Multikino, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.Env
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -17,15 +16,12 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * new id demonstrably holds them. Driven against the REAL `MongoMovieRepository` with a
  * screenings store that accepts no writes.
  */
-class MoveFilmDurabilitySpec extends AnyFlatSpec with Matchers {
-
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
+class MoveFilmDurabilitySpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
   private val when = java.time.LocalDateTime.now().plusDays(2).withHour(19).withMinute(0).withSecond(0).withNano(0)
 
   it should "keep the old rows when the copy to the new id did not land" in {
-    tools.IsolatedMongoDatabase.withDatabase(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "move-film-durability") { db =>
+    tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "move-film-durability") { db =>
       val screenings = new UnwritableScreeningsRepository
       screenings.seed("moveprobe|", Map(Multikino.displayName -> Seq(Showtime(when, None))))
       screenings.findForFilm("moveprobe|") should not be empty

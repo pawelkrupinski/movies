@@ -29,13 +29,13 @@ import org.scalatest.matchers.should.Matchers
  * no external dependency) fetching from `TestHttpServer` — no real network
  * egress, no Decodo credentials needed.
  */
-class CdpProxyAuthSpec extends AnyFlatSpec with Matchers {
+class CdpProxyAuthSpec extends AnyFlatSpec with Matchers with SuiteConfiguration {
 
   "Chrome started with a proxy" should "authenticate a plain-HTTP request through it" in {
     val server = new TestHttpServer(routes = { case "/" => "<html><body>proxied ok</body></html>" })
     val proxy  = new TestProxyServer(user = "proxyuser", pass = "proxypass")
     try
-      Chrome.tryStart(proxy = Some(Chrome.ProxyConfig("127.0.0.1", proxy.port, "proxyuser", "proxypass"))) match {
+      Chrome.tryStart(configuration.cdpBrowserBinary, proxy = Some(Chrome.ProxyConfig("127.0.0.1", proxy.port, "proxyuser", "proxypass"))) match {
         case None => cancel("Chrome not installed — skipping CDP proxy-auth spec")
         case Some(chrome) =>
           try chrome.openPage(server.baseUrl + "/") { page =>
@@ -70,7 +70,7 @@ class CdpProxyAuthSpec extends AnyFlatSpec with Matchers {
   it should "authenticate an HTTPS (CONNECT-tunneled) request through it, not just plain HTTP" in {
     val proxy = new TestProxyServer(user = "proxyuser", pass = "proxypass")
     try
-      Chrome.tryStart(proxy = Some(Chrome.ProxyConfig("127.0.0.1", proxy.port, "proxyuser", "proxypass"))) match {
+      Chrome.tryStart(configuration.cdpBrowserBinary, proxy = Some(Chrome.ProxyConfig("127.0.0.1", proxy.port, "proxyuser", "proxypass"))) match {
         case None => cancel("Chrome not installed — skipping CDP proxy-auth spec")
         case Some(chrome) =>
           try {
@@ -107,7 +107,7 @@ class CdpProxyAuthSpec extends AnyFlatSpec with Matchers {
     val server = new TestHttpServer(routes = routes)
     val proxy  = new TestProxyServer(user = "proxyuser", pass = "proxypass")
     try
-      Chrome.tryStart(proxy = Some(Chrome.ProxyConfig("127.0.0.1", proxy.port, "proxyuser", "proxypass"))) match {
+      Chrome.tryStart(configuration.cdpBrowserBinary, proxy = Some(Chrome.ProxyConfig("127.0.0.1", proxy.port, "proxyuser", "proxypass"))) match {
         case None => cancel("Chrome not installed — skipping CDP proxy-auth spec")
         case Some(chrome) =>
           try noException should be thrownBy chrome.openPage(server.baseUrl + "/") { page =>

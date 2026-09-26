@@ -49,12 +49,12 @@ import scala.util.Random
  * A failure prints the seed, the minimised sequence and the violation; pin the
  * sequence as a regression below.
  */
-class HiddenFilmsSyncModelSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class HiddenFilmsSyncModelSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.SuiteConfiguration {
   import HiddenFilmsSyncModelSpec._
 
   private var chrome: Option[Chrome] = None
 
-  override def beforeAll(): Unit = chrome = Chrome.tryStart()
+  override def beforeAll(): Unit = chrome = Chrome.tryStart(configuration.cdpBrowserBinary)
   override def afterAll(): Unit = chrome.foreach(_.close())
 
   private def withChrome(body: Chrome => Unit): Unit =

@@ -2,7 +2,7 @@ package scripts
 
 import org.mongodb.scala.{MongoClient, ObservableFuture}
 import org.mongodb.scala.bson.collection.immutable.Document
-import tools.Env
+import _root_.tools.ToolMongoAddress
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -24,11 +24,9 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  */
 object DuplicateDocumentIdAudit {
   def main(args: Array[String]): Unit = {
-    val uri = Env.fromProcess().get("MONGODB_URI").getOrElse {
-      println("MONGODB_URI not set."); sys.exit(1)
-    }
-    val dbName = Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo")
-    val client = MongoClient(uri)
+    val mongo  = ToolMongoAddress.orExit(_root_.settings.ProcessConfiguration.resolve())
+    val dbName = mongo.database.value
+    val client = MongoClient(mongo.uri.value)
     val coll   = client.getDatabase(dbName).getCollection[Document]("movies")
 
     println(s"@@ scanning $dbName.movies")

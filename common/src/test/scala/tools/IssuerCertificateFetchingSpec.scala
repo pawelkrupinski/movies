@@ -6,10 +6,9 @@ import org.scalatest.matchers.should.Matchers
 
 import java.net.{InetAddress, InetSocketAddress}
 import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 import java.security.cert.Certificate
 import java.security.{KeyStore, PrivateKey}
-import java.util.concurrent.TimeUnit
 import javax.net.ssl.{KeyManagerFactory, SSLContext}
 import scala.util.{Try, Using}
 
@@ -25,6 +24,9 @@ import scala.util.{Try, Using}
  * and because setting it in the spec's JVM would set it for every suite beside it.
  */
 class IssuerCertificateFetchingSpec extends AnyFlatSpec with Matchers {
+
+  private lazy val configuration = settings.ProcessConfiguration.resolve()
+
   import IssuerCertificateFetchingSpec._
 
   "a fetch to a server that omits its intermediate" should "succeed when the process's main enabled issuer fetching" in {
@@ -58,7 +60,7 @@ class IssuerCertificateFetchingSpec extends AnyFlatSpec with Matchers {
     issuers.start()
     val origin = HttpsServer.create(new InetSocketAddress(Loopback, 0), 0)
     try {
-      val chain = Chain.mint(dir, s"http://127.0.0.1:${issuers.getAddress.getPort}/intermediate.cer")
+      val chain = Chain.mint(new Keytool(configuration.javaHome), dir, s"http://127.0.0.1:${issuers.getAddress.getPort}/intermediate.cer")
       issuers.createContext("/intermediate.cer", exchange => {
         val bytes = Files.readAllBytes(chain.intermediateDer)
         exchange.getResponseHeaders.set("Content-Type", "application/pkix-cert")
@@ -72,7 +74,7 @@ class IssuerCertificateFetchingSpec extends AnyFlatSpec with Matchers {
         Using.resource(exchange.getResponseBody)(_.write(bytes))
       })
       origin.start()
-      ChildJvm.run(ProbeMain,
+      ChildJvm(configuration).run(ProbeMain,
         jvmArgs = Seq(s"-Djavax.net.ssl.trustStore=${chain.rootTrustStore}", s"-Djavax.net.ssl.trustStorePassword=$StorePassword") ++ jvmOptions,
         args = Seq(applied.fold(NoPolicy)(_.toString), s"https://127.0.0.1:${origin.getAddress.getPort}/"))
     } finally {
@@ -112,38 +114,31 @@ object IssuerCertificateFetchingSpec {
   }
 
   private object Chain {
-    def mint(dir: Path, aiaUrl: String): Chain = {
+    def mint(keytool: Keytool, dir: Path, aiaUrl: String): Chain = {
       val keys  = dir.resolve("keys.p12")
       val trust = dir.resolve("trust.p12")
       def file(name: String) = dir.resolve(name).toString
       val store = Seq("-storetype", "PKCS12", "-keystore", keys.toString, "-storepass", StorePassword, "-keypass", StorePassword)
       def pair(alias: String, name: String, extensions: String*) =
-        keytool(Seq("-genkeypair", "-alias", alias, "-keyalg", "RSA", "-keysize", "2048", "-validity", "2", "-dname", s"CN=$name") ++
+        keytool.run(Seq("-genkeypair", "-alias", alias, "-keyalg", "RSA", "-keysize", "2048", "-validity", "2", "-dname", s"CN=$name") ++
           extensions.flatMap(Seq("-ext", _)) ++ store*)
       pair("root", "Issuer Fetching Test Root", "bc:c=ca:true")
       pair("intermediate", "Issuer Fetching Test Intermediate")
       pair("leaf", "127.0.0.1")
-      keytool(Seq("-exportcert", "-rfc", "-alias", "root", "-file", file("root.pem")) ++ store*)
-      keytool(Seq("-certreq", "-alias", "intermediate", "-file", file("intermediate.csr")) ++ store*)
-      keytool(Seq("-gencert", "-alias", "root", "-ext", "bc:c=ca:true", "-validity", "2",
+      keytool.run(Seq("-exportcert", "-rfc", "-alias", "root", "-file", file("root.pem")) ++ store*)
+      keytool.run(Seq("-certreq", "-alias", "intermediate", "-file", file("intermediate.csr")) ++ store*)
+      keytool.run(Seq("-gencert", "-alias", "root", "-ext", "bc:c=ca:true", "-validity", "2",
         "-infile", file("intermediate.csr"), "-outfile", file("intermediate.der")) ++ store*)
-      keytool(Seq("-certreq", "-alias", "leaf", "-file", file("leaf.csr")) ++ store*)
-      keytool(Seq("-gencert", "-alias", "intermediate", "-validity", "2", "-ext", "SAN=ip:127.0.0.1",
+      keytool.run(Seq("-certreq", "-alias", "leaf", "-file", file("leaf.csr")) ++ store*)
+      keytool.run(Seq("-gencert", "-alias", "intermediate", "-validity", "2", "-ext", "SAN=ip:127.0.0.1",
         "-ext", s"AIA=caIssuers:uri:$aiaUrl", "-infile", file("leaf.csr"), "-outfile", file("leaf.der")) ++ store*)
       // Install the signed certs so the leaf entry carries its real key + signed cert.
-      keytool(Seq("-importcert", "-noprompt", "-alias", "intermediate", "-file", file("intermediate.der")) ++ store*)
-      keytool(Seq("-importcert", "-noprompt", "-alias", "leaf", "-file", file("leaf.der")) ++ store*)
-      keytool(Seq("-importcert", "-noprompt", "-alias", "root", "-file", file("root.pem"),
+      keytool.run(Seq("-importcert", "-noprompt", "-alias", "intermediate", "-file", file("intermediate.der")) ++ store*)
+      keytool.run(Seq("-importcert", "-noprompt", "-alias", "leaf", "-file", file("leaf.der")) ++ store*)
+      keytool.run(Seq("-importcert", "-noprompt", "-alias", "root", "-file", file("root.pem"),
         "-storetype", "PKCS12", "-keystore", trust.toString, "-storepass", StorePassword)*)
       Seq("root.pem", "intermediate.csr", "leaf.csr", "leaf.der").foreach(name => Files.delete(dir.resolve(name)))
       Chain(keys, dir.resolve("intermediate.der"), trust)
-    }
-
-    private def keytool(args: String*): Unit = {
-      val binary  = Paths.get(System.getProperty("java.home"), "bin", "keytool").toString
-      val process = new ProcessBuilder((binary +: args)*).redirectErrorStream(true).start()
-      val output  = new String(process.getInputStream.readAllBytes(), UTF_8)
-      require(process.waitFor(60, TimeUnit.SECONDS) && process.exitValue() == 0, s"keytool ${args.head} failed: $output")
     }
   }
 }

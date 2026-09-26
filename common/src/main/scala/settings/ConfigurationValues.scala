@@ -129,3 +129,38 @@ final case class GreenCorpusRunId(value: String) extends AnyVal
 final case class GreenCorpusRecordedAt(value: String) extends AnyVal
 /** `KINOWO_CONVERGENCE_GREEN_CORPUS_DIR` — where that green corpus was restored to. */
 final case class GreenCorpusDirectory(value: Path) extends AnyVal
+/** `KINOWO_CONVERGENCE_SCRAPES_URI` — a production dump of real scrapes, read-only. */
+final case class ConvergenceScrapesUri(value: String) extends AnyVal
+/** `KINOWO_CONVERGENCE_SCRAPES_DB` — that dump's database. */
+final case class ConvergenceScrapesDatabaseName(value: String) extends AnyVal
+/** `GITHUB_STEP_SUMMARY` — the file a CI step's markdown summary is appended to. */
+final case class StepSummaryFile(value: Path) extends AnyVal
+/** `KINOWO_HARD_CLUSTERS_RECORD` — the hard-cluster spec re-records its responses. */
+final case class HardClusterRecording(value: Boolean) extends AnyVal
+/** `KINOWO_HARD_CLUSTERS_COUNTRIES` — the countries a hard-cluster run is narrowed to. */
+final case class HardClusterCountries(value: Set[models.Country]) extends AnyVal
+/** `KINOWO_HARD_CLUSTERS_DUMP` — print every hard-cluster pass's films. */
+final case class HardClusterDump(value: Boolean) extends AnyVal
+/** `KINOWO_IDENTITY_CORPUS_DIR` — recorded corpora the listing-key spec sweeps. */
+final case class IdentityCorpusDirectory(value: Path) extends AnyVal
+/** `CDP_BROWSER_BIN` — the browser the page tests drive over CDP. */
+final case class CdpBrowserBinary(value: Path) extends AnyVal
+/** `KINOWO_OG_BASE` — the origin the share-card generator screenshots. */
+final case class OgCardBaseUrl(value: String) extends AnyVal
+/** `KINOWO_OG_OUT` — where the share-card generator writes its images. */
+final case class OgCardOutputDirectory(value: Path) extends AnyVal
+/** `KINOWO_OG_HOME_CITY` — the city slug the landing share card shows. */
+final case class OgCardHomeCity(value: String) extends AnyVal
+/** `KINOWO_OG_PROXY_PORT` — a single residential proxy port the generator pins. */
+final case class OgCardProxyPort(value: Int) extends AnyVal
+/** `KINOWO_OG_PROXY_HOST` — the residential proxy host the generator routes through. */
+final case class OgCardProxyHost(value: String) extends AnyVal
+
+// ── The JVM itself ────────────────────────────────────────────────────────────
+/** `java.home` — the running JDK's installation directory. */
+final case class JavaHome(value: Path) extends AnyVal {
+  /** An executable the JDK ships in its `bin/` (`java`, `keytool`). */
+  def binary(name: String): Path = value.resolve("bin").resolve(name)
+}
+/** `java.class.path` — the running JVM's class path entries. */
+final case class JavaClassPath(value: Seq[Path]) extends AnyVal

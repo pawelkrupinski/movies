@@ -4,7 +4,7 @@ import models.{Multikino, MovieRecord}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.staging.MongoStagingRepository
-import tools.{ConvergenceStorage, Env}
+import tools.ConvergenceStorage
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -27,10 +27,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  *
  * Requires MONGODB_URI; skips otherwise.
  */
-class ConvergenceStorageIntegrationSpec extends AnyFlatSpec with Matchers {
-
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
+class ConvergenceStorageIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
   /** The 2026-08-04 regression, in the layer that can catch it in seconds rather
    *  than in an hour-long corpus replay.
@@ -52,7 +49,7 @@ class ConvergenceStorageIntegrationSpec extends AnyFlatSpec with Matchers {
    *  replay harness was simply never held to it. */
   it should "key through the country it was built for, not the single-country default" in {
     val de = ConvergenceStorage.mongo(
-      tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "normalizer-scope-spec",
+      mongoTarget, "normalizer-scope-spec",
       services.movies.TitleNormalizer.forCountry(models.Country.Germany))
     try {
       withClue("a German leg must not fold ' & ' to the Polish ' i ': ") {
@@ -66,7 +63,7 @@ class ConvergenceStorageIntegrationSpec extends AnyFlatSpec with Matchers {
   }
 
   "a Mongo convergence storage" should "expose one database to its repositories and its connection alike" in {
-    val storage = ConvergenceStorage.mongo(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "storage-agreement-spec", titleNormalizer)
+    val storage = ConvergenceStorage.mongo(mongoTarget, "storage-agreement-spec", titleNormalizer)
     try {
       storage.staging.upsert(Multikino, "Ghost In The Shell", Some(2017), MovieRecord())
 

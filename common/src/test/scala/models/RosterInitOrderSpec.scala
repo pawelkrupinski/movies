@@ -27,6 +27,8 @@ import scala.sys.process.{Process, ProcessLogger}
  */
 class RosterInitOrderSpec extends AnyFlatSpec with Matchers {
 
+  private lazy val configuration = settings.ProcessConfiguration.resolve()
+
   /** This run's real classpath, walked off the loader chain.
    *
    *  NOT `java.class.path`: under sbt that property is the launcher's own classpath, so a
@@ -43,7 +45,7 @@ class RosterInitOrderSpec extends AnyFlatSpec with Matchers {
 
   /** Run `entryPoint`'s main in a new JVM on this run's classpath, returning its output. */
   private def inFreshJvm(entryPoint: String): (Int, String) = {
-    val java      = s"${System.getProperty("java.home")}/bin/java"
+    val java      = configuration.javaHome.binary("java").toString
     val classpath = testClasspath
     val output    = new StringBuilder
     val logger    = ProcessLogger(line => output.append(line).append('\n'),

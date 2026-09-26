@@ -8,7 +8,7 @@ import services.movies.{ChangeStreamDemand, MongoMovieRepository, MongoScreening
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.readmodel.{DecodeFailureMetrics, MongoReadModelRepository}
 import services.staging.{MongoStagingRepository, StagingRecord}
-import tools.{Env, IsolatedMongoDatabase, MalformedChangeEventProbe}
+import tools.{IsolatedMongoDatabase, MalformedChangeEventProbe}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -19,13 +19,9 @@ import scala.concurrent.duration._
  *  stream) ended the cursor — and one resuming from a persisted token met the same document on
  *  every reopen, dead for good and silent. Each case writes the malformed document while the
  *  watcher runs, then a valid row, which must still be delivered. Each runs in its own database. */
-class ChangeStreamMalformedDocumentIntegrationSpec extends AnyFlatSpec with Matchers {
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
+class ChangeStreamMalformedDocumentIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
-  private val uri = Env.fromProcess().get("MONGODB_URI").get
 
-  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
   private def insertRaw(db: MongoDatabase, collection: String, doc: Document): Unit =
     Await.result(db.getCollection[Document](collection).insertOne(doc).toFuture(), 10.seconds)
 
@@ -33,7 +29,7 @@ class ChangeStreamMalformedDocumentIntegrationSpec extends AnyFlatSpec with Matc
    *  the malformed document must be counted there, under its collection. */
   private def survives(collection: String)(watch: (MongoDatabase, DecodeFailureMetrics) => (String => Unit) => AutoCloseable)
                       (writeValid: MongoDatabase => Int => String)(malformed: Document): Unit =
-    IsolatedMongoDatabase.withDatabase(target, s"malformed-$collection") { db =>
+    IsolatedMongoDatabase.withDatabase(mongoTarget, s"malformed-$collection") { db =>
       val counted  = new java.util.concurrent.ConcurrentLinkedQueue[String]()
       val failures: DecodeFailureMetrics = c => { counted.add(c); () }
       MalformedChangeEventProbe.failure(watch(db, failures), writeValid(db), () => insertRaw(db, collection, malformed)) shouldBe None

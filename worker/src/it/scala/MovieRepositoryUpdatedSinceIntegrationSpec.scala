@@ -5,7 +5,6 @@ import org.mongodb.scala.{Document, ObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import tools.Env
 
 import java.time.Instant
 import scala.concurrent.Await
@@ -15,9 +14,8 @@ import scala.concurrent.duration._
  *  `updatedAt` is after an instant, through the same stitched path every other scan
  *  takes, served by an index rather than a collection scan. `updatedAt` has been bumped on
  *  every write since the collection existed and was indexed by nothing. */
-class MovieRepositoryUpdatedSinceIntegrationSpec extends AnyFlatSpec with Matchers {
-  private val uri  = Env.fromProcess().get("MONGODB_URI").get
-  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
+class MovieRepositoryUpdatedSinceIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
+
   private val when = java.time.LocalDateTime.now().plusDays(2).withHour(18).withMinute(0).withSecond(0).withNano(0)
 
   private def row(title: String, tmdbId: Int): MovieRecord =
@@ -25,7 +23,7 @@ class MovieRepositoryUpdatedSinceIntegrationSpec extends AnyFlatSpec with Matche
       Multikino -> SourceData(title = Some(title), releaseYear = Some(2026), showtimes = Seq(Showtime(when, None)))))
 
   "the movies collection" should "index updatedAt and scan the rows written after an instant, stitched" in
-    tools.IntegrationCorpusDatabase.withDatabase(target, "updated-since") { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "updated-since") { db =>
       val screenings = new MongoScreeningsRepository(Some(db))
       val slots      = new MongoSlotsRepository(Some(db))
       val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), slots = Some(slots),

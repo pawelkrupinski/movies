@@ -31,7 +31,8 @@ object EnrichmentBackfill {
   private case class Failed(title: String, year: Option[Int], before: MovieRecord) extends Outcome
 
   def main(args: Array[String]): Unit = {
-    val repository = AmbientMovieRepository.open()
+    val configuration = _root_.settings.ProcessConfiguration.resolve()
+    val repository = AmbientMovieRepository.open(configuration)
     if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to backfill.")
       sys.exit(1)
@@ -42,7 +43,7 @@ object EnrichmentBackfill {
     // now live in their dedicated ratings classes; the script invokes them
     // directly per row so a single backfill pass covers everything.
     val cache       = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb        = new TmdbClient(new RealHttpFetch, apiKey = settings.ProcessConfiguration.resolve().tmdbApiKey)
+    val tmdb        = new TmdbClient(new RealHttpFetch, apiKey = configuration.tmdbApiKey)
     val imdbRatings = new ImdbRatings(cache, new ImdbClient(new RealHttpFetch))
     val mcRatings   = new MetascoreRatings(cache, tmdb, new MetacriticClient(new RealHttpFetch))
     val rtRatings   = new RottenTomatoesRatings(cache, tmdb, new RottenTomatoesClient(new RealHttpFetch))

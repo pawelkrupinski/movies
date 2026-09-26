@@ -38,9 +38,7 @@ import org.scalatest.matchers.should.Matchers
  * to the same key, so no re-key was possible either way. The spellings here sanitize apart,
  * which is the case that moves.
  */
-class FoldSpellingAgreesWithSettleSpec extends AnyFlatSpec with Matchers {
-
-  FoldFixture.requireThrowawayMongo()
+class FoldSpellingAgreesWithSettleSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
   // Its own sentinel anchor and tmdbId — see `FoldFixture`, the it suites share one database.
   private val bare      = "__loopaspelling-it-sentinel__"
@@ -62,7 +60,7 @@ class FoldSpellingAgreesWithSettleSpec extends AnyFlatSpec with Matchers {
   private val fancyVenue  = models.KinoMuza
 
   it should "keep a film on the spelling its stitched cinemas report, not the one diverted venue's" in {
-    FoldFixture.withFold("fold-spelling-settle") { fold =>
+    FoldFixture.withFold(mongoTarget, "fold-spelling-settle") { fold =>
       // A fully MIGRATED film, which is what prod's corpus is: the `movies` document carries
       // no `sourceData` at all, and every cinema it has lives in `movie_slots`. Five venues
       // publish it plainly and one dresses it up, so the settled spelling is the plain one.

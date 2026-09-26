@@ -24,16 +24,18 @@ import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
  */
 object OmdbBackfillRun {
   def main(args: Array[String]): Unit = {
-    val repository = AmbientMovieRepository.open()
+    val configuration = _root_.settings.ProcessConfiguration.resolve()
+    val repository = AmbientMovieRepository.open(configuration)
     if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to backfill.")
       sys.exit(1)
     }
-    if (settings.ProcessConfiguration.resolve().omdbApiKey.isEmpty) {
+    val omdbApiKey = configuration.omdbApiKey
+    if (omdbApiKey.isEmpty) {
       println("OMDB_API_KEY not set — OMDb backfill is off.")
       sys.exit(1)
     }
-    val omdb = new OMDbClient(new RealHttpFetch, settings.ProcessConfiguration.resolve().omdbApiKey)
+    val omdb = new OMDbClient(new RealHttpFetch, omdbApiKey)
 
     // Paginated read (200/batch) — a single 800-doc `findAll` over the flyctl
     // proxy intermittently blows its 60s cap; `foreachRecord` is robust.

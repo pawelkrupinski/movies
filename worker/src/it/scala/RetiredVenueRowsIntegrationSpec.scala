@@ -5,7 +5,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.mongodb.scala.SingleObservableFuture
 import org.mongodb.scala.model.{Filters, Updates}
-import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -18,17 +17,15 @@ import java.time.LocalDateTime
  *  the stores answer it — the retired venue's rows go, a live venue's rows (including the
  *  prefix-sharing "Kino Etiuda") stay, a retired-venue row written inside the grace period
  *  stays (the real `updatedAt` read), and a second sweep is a no-op. */
-class RetiredVenueRowsIntegrationSpec extends AnyFlatSpec with Matchers {
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  private val uri = Env.fromProcess().get("MONGODB_URI").get
+class RetiredVenueRowsIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
-  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
+
   private val tomorrow = Seq(Showtime(LocalDateTime.now.plusDays(1).withNano(0), bookingUrl = None))
   private val Retired  = "Kino Etiuda OBK"
   private val live     = Seq(KinoEtiuda, KinoOOK, KinoStarowka, KinoWawrzyn, KinoMiescisko)
 
   "RetiredVenueRows.sweep" should "remove exactly the rows of a venue the roster no longer lists" in
-    tools.IntegrationCorpusDatabase.withDatabase(target, "retired-venue-rows") { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "retired-venue-rows") { db =>
       val screenings = new MongoScreeningsRepository(Some(db))
       val slots      = new MongoSlotsRepository(Some(db))
       def seed(filmId: String, slotKey: String): Unit = {

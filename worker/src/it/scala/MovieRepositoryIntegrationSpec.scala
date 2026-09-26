@@ -11,7 +11,7 @@ import org.scalatest.matchers.should.Matchers
 import org.mongodb.scala.{Document, MongoClient, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
 import services.movies.{ChangeStreamMetrics, MongoMovieRepository, StoredMovieRecord, FilmId}
-import tools.{Env, Eventually}
+import tools.Eventually
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -24,19 +24,14 @@ import scala.concurrent.duration._
  * Runs in its own database (see `specDb`), dropped at the end, so nothing it writes
  * outlives it or meets a sibling spec's rows.
  */
-class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
-
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  // Never against a real cluster: these specs write and drop databases, and
-  // `.env.local` aims MONGODB_URI at the prod tunnel. See `IntegrationMongo`.
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
+class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
   // THE SPEC'S OWN DATABASE. Most cases here open a change stream, and a stream watches its
   // whole collection: in the shared `it` database every sibling spec's write reaches it — and a
   // sibling's `screenings` row with no `filmId` once ENDED one (the 2026-09-24 flake that found
   // the undecodable-post-image bug, see `ChangeStreamMalformedDocumentIntegrationSpec`). Dropped
   // in `afterAll`.
-  private val isolatedSpecDb     = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "movie-repository-spec")
+  private val isolatedSpecDb     = tools.IsolatedMongoDatabase.open(mongoTarget, "movie-repository-spec")
   private val specDb = isolatedSpecDb.database
   private val repository = new MongoMovieRepository(Some(specDb), normalizer = titleNormalizer)
 
@@ -367,7 +362,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     // change-stream decode failure, then unrelated specs sharing the runner's mongod
     // tripping on driver-session-pool errors in the same window. See
     // IsolatedMongoDatabase's own doc comment.
-    tools.IsolatedMongoDatabase.withDatabase(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "movies-resume-spec") { db =>
+    tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "movies-resume-spec") { db =>
       val repo1   = new MongoMovieRepository(Some(db), persistResumeToken = true, normalizer = titleNormalizer)
       val idA     = StoredMovieRecord.keyFor("__integration-test-resume-A__", Some(1909), titleNormalizer)
       val gotA    = new CountDownLatch(1)
@@ -423,7 +418,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   it should "recover the change stream when a collection drop invalidated the persisted token" in {
     import java.util.concurrent.{CountDownLatch, TimeUnit}
 
-    val client = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
+    val client = MongoClient(mongoTarget.uri.value)
     // ⚠️ ITS OWN DATABASE, because this is the one spec in the module that DROPS
     // `movies` — and `IntegrationTest / parallelExecution` is true, so the drop
     // lands underneath whatever else is mid-transaction against that collection.
@@ -518,7 +513,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     // parallelExecution` can ring (and, if its shape doesn't decode, break). This
     // exact test flaked in CI (2026-09-19) with a `SideCollectionWatch` decode
     // failure ("Missing field: filmId") on this collection.
-    tools.IsolatedMongoDatabase.withDatabase(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "screenings-resume-spec") { db =>
+    tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "screenings-resume-spec") { db =>
       def at(h: Int): Seq[Showtime] = Seq(Showtime(LocalDateTime.of(2099, 1, 1, h, 0), bookingUrl = Some("https://book")))
 
       val filmA = "__it-screenings-resume-A__"
@@ -1092,7 +1087,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     import java.util.concurrent.{CountDownLatch, TimeUnit}
     // ITS OWN DATABASE: this test's change stream watches the whole `screenings` collection,
     // and in the shared one every sibling spec's write is decoded by it (see the poison below).
-    tools.IsolatedMongoDatabase.withDatabase(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "split-reads-spec") { db =>
+    tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "split-reads-spec") { db =>
     val scr    = new MongoScreeningsRepository(Some(db))
     val repo   = new MongoMovieRepository(Some(db), screenings = Some(scr), normalizer = titleNormalizer)
     val plain  = new MongoMovieRepository(Some(db), normalizer = titleNormalizer) // no stitch → sees the raw movies doc
@@ -1914,7 +1909,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     def count(name: String): Int = Option(commands.get(name)).map(_.get()).getOrElse(0)
 
     val client = MongoClient(MongoClientSettings.builder()
-      .applyConnectionString(new ConnectionString(Env.fromProcess().get("MONGODB_URI").get))
+      .applyConnectionString(new ConnectionString(mongoTarget.uri.value))
       .addCommandListener(listener).build())
     val sink = new RecordingScreeningsMetrics
     val screenings = new MongoScreeningsRepository(Some(screeningsDb(client)), metrics = sink)
@@ -1955,7 +1950,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // composite-`_id` separator, and a neighbouring film that must never be touched.
   it should "preserve replaceFilm's exact set semantics without losing screenings" in {
     import services.movies.MongoScreeningsRepository
-    val client     = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
+    val client     = MongoClient(mongoTarget.uri.value)
     val screenings = new MongoScreeningsRepository(Some(screeningsDb(client)))
     val film       = "__it-screenings-replace-semantics__"
     val neighbour  = "__it-screenings-replace-neighbour__"

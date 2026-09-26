@@ -13,10 +13,11 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 object RefreshOneFilmweb {
   def main(args: Array[String]): Unit = {
     val (title, year) = ("Chłopiec na krańcach świata", Some(2026))
-    val repository  = AmbientMovieRepository.open()
+    val configuration = _root_.settings.ProcessConfiguration.resolve()
+    val repository  = AmbientMovieRepository.open(configuration)
     if (!repository.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val ratings = new FilmwebRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = settings.ProcessConfiguration.resolve().tmdbApiKey), new FilmwebClient(new RealHttpFetch))
+    val ratings = new FilmwebRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = configuration.tmdbApiKey), new FilmwebClient(new RealHttpFetch))
 
     def show(label: String): Unit =
       repository.findAll().find(r => r.title == title && r.year == year).foreach { r =>

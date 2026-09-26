@@ -6,7 +6,6 @@ import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.auth.{MongoAuthExchangeCodeStore, PendingExchangeCode}
-import tools.Env
 
 import java.time.Instant
 import scala.concurrent.Await
@@ -16,13 +15,10 @@ import scala.concurrent.duration._
  *  pod mints, the showtimes.cc pod redeems, and all they share is this
  *  collection — a binding dropped on the way through would make every bound
  *  handoff land signed out. The same goes for a native code's challenge. */
-class MongoAuthExchangeCodeStoreIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
-
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
+class MongoAuthExchangeCodeStoreIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
   private val DbName = "kinowo_it_authexchangecodes"
-  private lazy val client: MongoClient = MongoClient(Env.fromProcess().get("MONGODB_URI").get)
+  private lazy val client: MongoClient = MongoClient(mongoTarget.uri.value)
   private lazy val store = new MongoAuthExchangeCodeStore(Some(client.getDatabase(DbName)))
 
   override protected def afterAll(): Unit = try {

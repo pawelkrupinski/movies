@@ -8,7 +8,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.StoredMovieDto
 import services.staging.MongoStagingRepository
-import tools.Env
 
 import scala.util.{Failure, Try}
 
@@ -24,12 +23,9 @@ import scala.util.{Failure, Try}
  * So the batch is pinned against the serial path it replaces, on the real database,
  * including both failure modes. Requires MONGODB_URI; skips otherwise.
  */
-class StagingBatchUpsertIntegrationSpec extends AnyFlatSpec with Matchers with org.scalatest.BeforeAndAfterAll {
+class StagingBatchUpsertIntegrationSpec extends AnyFlatSpec with Matchers with org.scalatest.BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
-
-  private val isolatedDb = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "staging-batch-spec")
+  private val isolatedDb = tools.IsolatedMongoDatabase.open(mongoTarget, "staging-batch-spec")
 
   private val db = isolatedDb.database
   override protected def afterAll(): Unit = {

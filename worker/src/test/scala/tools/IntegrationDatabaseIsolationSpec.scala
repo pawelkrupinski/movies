@@ -48,7 +48,9 @@ class IntegrationDatabaseIsolationSpec extends AnyFlatSpec with Matchers {
     "worker/src/it/scala/StagingSiblingProjectionIntegrationSpec.scala" ->
       "inside its own IsolatedMongoDatabase: re-seeds the sibling rows sharing the computed staging-id prefix")
 
-  private val SharedDatabase = """"MONGODB_DB"|\bMongoAddress\s*\.\s*fromEnv\b|getDatabase\(\s*"kinowo"\s*\)""".r
+  // The shared database is the resolved MONGODB_DB — `IntegrationMongoTarget.databasePrefix`, which
+  // every per-suite database name is derived from — or the raw key / literal name.
+  private val SharedDatabase = """"MONGODB_DB"|\.databasePrefix\b|\bMongoAddress\s*\.\s*fromEnv\b|getDatabase\(\s*"kinowo"\s*\)""".r
   private val Delete         = """\.delete(?:Many|One)\s*\(""".r
   private val PatternFilter  = """Filters\.regex\(|\$regex|BsonRegularExpression|Pattern\.compile""".r
 
