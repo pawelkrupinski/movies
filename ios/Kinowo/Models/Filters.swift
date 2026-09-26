@@ -92,6 +92,18 @@ struct FormatFilter: Equatable {
         fromHour >= 0 ? fromHour * 60 + fromMinute : nil
     }
 
+    /// This filter minus any axis `films` can't satisfy: an IMAX pick carried
+    /// into a city with no IMAX showtime (a city switch, a deep link) would
+    /// blank the list while the sheet — which hides the toggle there — offers
+    /// no way to undo it. Kept, not cleared, so it applies again back in an
+    /// IMAX city. Mirrors the web, whose checkbox isn't rendered at all there.
+    func applicable(to films: [Film]) -> FormatFilter {
+        guard imax && !films.hasImaxShowtime else { return self }
+        var f = self
+        f.imax = false
+        return f
+    }
+
     func matches(showtime: Showtime) -> Bool {
         let tokens = requiredTokens
         if !tokens.isEmpty {
@@ -370,6 +382,18 @@ extension Sequence where Element == Film {
                 cast: film.cast,
                 showings: days
             )
+        }
+    }
+
+    /// Does any showtime, on any loaded day, screen in IMAX? The Filtry sheet
+    /// offers "IMAX only" just then — the web's `hasImaxShowtime` twin.
+    var hasImaxShowtime: Bool {
+        contains { film in
+            film.showings.contains { day in
+                day.cinemas.contains { cg in
+                    cg.showtimes.contains { $0.format.split(separator: " ").contains("IMAX") }
+                }
+            }
         }
     }
 

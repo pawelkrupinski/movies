@@ -541,11 +541,15 @@ struct ContentView: View {
     private var allDirectors: [(name: String, count: Int)] { nameCounts { $0.directors } }
     private var allCast:      [(name: String, count: Int)] { nameCounts { $0.cast } }
 
+    /// `formatFilter` minus an IMAX pick this city's films can't satisfy —
+    /// see `FormatFilter.applicable(to:)`.
+    private var applicableFormatFilter: FormatFilter { formatFilter.applicable(to: store.films) }
+
     private var filtersActive: Bool {
         // Only the filters Wyczyść clears light the bar — NOT cinema selection
         // or hidden films, which persist and aren't part of the reset.
         ActiveFilters.any(
-            format: formatFilter,
+            format: applicableFormatFilter,
             excludedCountries: excludedCountries,
             excludedGenres: excludedGenres,
             excludedDirectors: excludedDirectors,
@@ -558,7 +562,7 @@ struct ContentView: View {
     private func films(for date: DateFilter) -> [Film] {
         store.films.filteredFor(
             date: date,
-            format: formatFilter,
+            format: applicableFormatFilter,
             query: search,
             hidden: prefs.hiddenFilms,
             disabledCinemas: prefs.disabledCinemas,

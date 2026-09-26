@@ -92,6 +92,7 @@ import pl.kinowo.model.sortedForPicker
 import pl.kinowo.model.selected
 import pl.kinowo.filter.SortOption
 import pl.kinowo.model.Film
+import pl.kinowo.filter.hasImaxShowtime
 import pl.kinowo.ui.KinowoViewModel
 import pl.kinowo.ui.NameCount
 import pl.kinowo.ui.countryNameRes
@@ -260,10 +261,13 @@ private fun FiltersList(
                     selected = viewModel.formatFilter.language,
                 ) { viewModel.formatFilter = viewModel.formatFilter.copy(language = it) }
             }
-            // IMAX
-            item {
-                ToggleRow(stringResource(R.string.imax_only), viewModel.formatFilter.imax) {
-                    viewModel.formatFilter = viewModel.formatFilter.copy(imax = it)
+            // IMAX — only where some loaded showtime is IMAX; elsewhere the
+            // toggle could only blank the list (the web and iOS hide it too).
+            if (films.hasImaxShowtime()) {
+                item {
+                    ToggleRow(stringResource(R.string.imax_only), viewModel.formatFilter.imax) {
+                        viewModel.formatFilter = viewModel.formatFilter.copy(imax = it)
+                    }
                 }
             }
             // Od godziny

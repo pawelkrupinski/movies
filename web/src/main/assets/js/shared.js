@@ -16,8 +16,9 @@
     const dim  = (document.querySelector('input[name="format-dim"]:checked')  || {}).value || '';
     const lang = (document.querySelector('input[name="format-lang"]:checked') || {}).value || '';
     // The Filtry panel (and the `#format-imax` checkbox inside it) isn't
-    // rendered on all pages — treat a missing checkbox as "unchecked / no
-    // IMAX filter applied" rather than throwing.
+    // rendered on all pages, nor on a listing without an IMAX showtime —
+    // treat a missing checkbox as "unchecked / no IMAX filter applied"
+    // rather than throwing.
     const imaxEl = document.getElementById('format-imax');
     const imax = imaxEl && imaxEl.checked ? 'IMAX' : '';
     return [dim, lang, imax].filter(Boolean);
@@ -293,7 +294,9 @@
     // subtitled/dubbed screenings — see `_navbar`; the UK and US carry no row.
     const langAll = document.querySelector('input[name="format-lang"][value=""]');
     if (langAll) langAll.checked = true;
-    document.getElementById('format-imax').checked   = false;
+    // Rendered only where the listing has an IMAX showtime -- see `_navbar`.
+    const imaxEl = document.getElementById('format-imax');
+    if (imaxEl) imaxEl.checked = false;
     document.getElementById('from-hour').value       = '';
     document.getElementById('from-minute').value     = '0';
     var sortSel = document.getElementById('sort-by');

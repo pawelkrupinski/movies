@@ -252,6 +252,12 @@ object MovieControllerService {
   def totalShowtimes(schedules: Seq[FilmSchedule]): Int =
     schedules.iterator.flatMap(_.showings).flatMap(_._2).map(_.showtimes.size).sum
 
+  /** Does any showtime on any day of `schedules` screen in IMAX? The Filtry
+   *  panel offers its "IMAX only" checkbox only then -- in a city without an
+   *  IMAX screen the filter could only ever blank the listing. */
+  def hasImaxShowtime(schedules: Seq[FilmSchedule]): Boolean =
+    schedules.iterator.flatMap(_.showings).flatMap(_._2).flatMap(_.showtimes).exists(_.format.contains("IMAX"))
+
   /** displayName → Cinema (cinemas are `Source`s, so reuse the shared map). */
   private def cinemaByName(name: String): Option[Cinema] =
     Source.byDisplayName.get(name).collect { case c: Cinema => c }

@@ -256,7 +256,7 @@ class KinowoViewModel(
     // set is global, so a cinema unticked in another city lingers in it and must
     // not light up the Filtry icon here (see CinemaFilterSection.enabledCount).
     fun filtersActive(cityCinemas: List<String>): Boolean =
-        !formatFilter.isEmpty ||
+        !formatFilter.applicable(films.value).isEmpty ||
             CinemaFilterSection(CinemaCatalog(cityCinemas, emptyList()), disabledCinemas.value)
                 .let { it.enabledCount < it.cityCinemas.size } ||
             hiddenFilms.value.isNotEmpty() ||
@@ -280,7 +280,7 @@ class KinowoViewModel(
     ): List<Film> =
         all.filteredFor(
             date = date,
-            format = formatFilter,
+            format = formatFilter.applicable(all),
             query = search,
             hidden = hidden,
             disabledCinemas = disabledCinemas,

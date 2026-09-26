@@ -556,9 +556,13 @@ struct FiltersSheet: View {
                     .pickerStyle(.segmented)
                 }
 
-                Section {
-                    Toggle("filtersheet.imax_only", isOn: $formatFilter.imax)
-                        .accessibilityIdentifier(A11y.FiltersSheet.imaxToggle)
+                // Only where some loaded showtime is IMAX — elsewhere the
+                // toggle could only blank the list (the web hides it too).
+                if store.films.hasImaxShowtime {
+                    Section {
+                        Toggle("filtersheet.imax_only", isOn: $formatFilter.imax)
+                            .accessibilityIdentifier(A11y.FiltersSheet.imaxToggle)
+                    }
                 }
 
                 Section(header: Text("filtersheet.from_hour")

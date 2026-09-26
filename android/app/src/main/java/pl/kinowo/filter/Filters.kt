@@ -100,6 +100,15 @@ enum class SortOption {
     }
 }
 
+/** Does any showtime, on any loaded day, screen in IMAX? The Filtry sheet
+ *  offers "IMAX only" just then — the web's `hasImaxShowtime` twin. */
+fun List<Film>.hasImaxShowtime(): Boolean =
+    any { film ->
+        film.showings.any { day ->
+            day.cinemas.any { cg -> cg.showtimes.any { "IMAX" in it.format.split(" ") } }
+        }
+    }
+
 /**
  * Format axis of the Filtry dropdown: Wymiar / Wersja / IMAX format tokens
  * combined with a from-hour lower bound. Each axis independent — empty
@@ -126,6 +135,14 @@ data class FormatFilter(
     /** `null` when the user picked "Dowolna" (any time). */
     val fromMinutes: Int?
         get() = if (fromHour >= 0) fromHour * 60 + fromMinute else null
+
+    /** This filter minus any axis [films] can't satisfy: an IMAX pick carried
+     *  into a city with no IMAX showtime (a city switch, a deep link) would
+     *  blank the list while the sheet — which hides the toggle there — offers
+     *  no way to undo it. Kept, not cleared, so it applies again back in an
+     *  IMAX city. Mirrors the web, whose checkbox isn't rendered at all there. */
+    fun applicable(films: List<Film>): FormatFilter =
+        if (imax && !films.hasImaxShowtime()) copy(imax = false) else this
 
     fun matches(showtime: Showtime): Boolean {
         val tokens = requiredTokens

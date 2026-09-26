@@ -1,4 +1,4 @@
-@(devMode: Boolean, oauthProviders: Set[String])(implicit city: models.City, messages: play.api.i18n.Messages)
+@(devMode: Boolean, oauthProviders: Set[String], showImaxFilter: Boolean)(implicit city: models.City, messages: play.api.i18n.Messages)
 @*
    Navbar layout:
      - Logo + tab links (Debug, dev-only)                       — left
@@ -153,8 +153,14 @@
         <label class="panel-label"><input type="radio" autocomplete="off" name="format-lang" value="@tokens.dubbed" onchange="onFormatChange()"> <span data-i18n="nav.dubbing">@messages("nav.dubbing")</span></label>
         <div class="panel-divider"></div>
       }
-      <label class="panel-label"><input type="checkbox" autocomplete="off" id="format-imax"           onchange="onFormatChange()"> <span data-i18n="nav.imaxOnly">@messages("nav.imaxOnly")</span></label>
-      <div class="panel-divider"></div>
+      @* Only where some showtime, on any day of the listing, is IMAX --
+         `MovieControllerService.hasImaxShowtime`. Elsewhere the checkbox could
+         only blank the page. shared.js treats a missing `#format-imax` as
+         "no IMAX filter". *@
+      @if(showImaxFilter) {
+        <label class="panel-label"><input type="checkbox" autocomplete="off" id="format-imax"           onchange="onFormatChange()"> <span data-i18n="nav.imaxOnly">@messages("nav.imaxOnly")</span></label>
+        <div class="panel-divider"></div>
+      }
       <div class="panel-section-label" data-i18n="nav.fromHour">@messages("nav.fromHour")</div>
       <div class="d-flex gap-1 align-items-center" style="margin-bottom:.4rem">
         <select id="from-hour" class="filter-select" onchange="onFormatChange()" style="flex:1; min-width:0">

@@ -255,7 +255,8 @@ object FilterDescription {
       if (selected == tokens.subtitled)   out += tr("z napisami", "with subtitles", "subtituladas", "mit Untertiteln")
       if (selected == tokens.dubbed)      out += tr("z dubbingiem", "with dubbing", "dobladas", "synchronisiert")
     }
-    if (parameterOf(query, "imax").contains("1")) out += "IMAX"
+    // Only where the checkbox renders (`_navbar`): elsewhere `?imax=1` narrows nothing.
+    if (parameterOf(query, "imax").contains("1") && MovieControllerService.hasImaxShowtime(schedules)) out += "IMAX"
     parameterOf(query, "from").filter(_.matches("\\d{1,2}:\\d{2}")).foreach(f => out += tr(s"od $f", s"from $f", s"desde las $f", s"ab $f"))
 
     val allCountries = schedules.flatMap(_.movie.countries).toSet

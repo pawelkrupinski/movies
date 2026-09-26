@@ -48,6 +48,38 @@ final class FormatFilterTests: XCTestCase {
         XCTAssertFalse(f.matches(showtime: slot("20:00", "3D NAP")))
     }
 
+    private func film(_ formatsByDay: [String]...) -> Film {
+        Film(title: "Film", posterURL: nil, fallbackPosterURLs: [],
+             runtimeMinutes: 90, releaseYear: nil, genres: [], ratings: .empty,
+             countries: [], directors: [], cast: [],
+             showings: formatsByDay.enumerated().map { i, formats in
+                 DayShowings(date: "2026-05-2\(i)", label: "", cinemas: [
+                     CinemaShowings(cinema: "Kino", cinemaURL: nil,
+                                    showtimes: formats.map { slot("18:00", $0) })
+                 ])
+             })
+    }
+
+    // The Filtry sheet offers "IMAX only" just where a showtime on ANY loaded
+    // day carries the token — elsewhere it could only blank the list.
+    func testHasImaxShowtimeLooksAtEveryDay() {
+        XCTAssertFalse([Film]().hasImaxShowtime)
+        XCTAssertFalse([film(["2D NAP"], ["3D DUB"])].hasImaxShowtime)
+        XCTAssertTrue([film(["2D NAP"]), film(["2D"], ["IMAX 3D"])].hasImaxShowtime)
+    }
+
+    // An IMAX pick carried into a city without IMAX (city switch, deep link)
+    // is dropped rather than blanking a list whose sheet has no toggle to undo it.
+    func testApplicableDropsImaxWhereNoShowtimeHasIt() {
+        var f = FormatFilter()
+        f.imax = true
+        f.dimension = "3D"
+        let without = f.applicable(to: [film(["3D NAP"])])
+        XCTAssertFalse(without.imax)
+        XCTAssertEqual(without.dimension, "3D")
+        XCTAssertEqual(f.applicable(to: [film(["IMAX 3D"])]), f)
+    }
+
     func testFromHourMinuteBoundary() {
         var f = FormatFilter()
         f.fromHour = 18

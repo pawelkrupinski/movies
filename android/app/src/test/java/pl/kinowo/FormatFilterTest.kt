@@ -6,6 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import pl.kinowo.filter.FormatFilter
+import pl.kinowo.filter.hasImaxShowtime
 import pl.kinowo.model.Showtime
 
 class FormatFilterTest {
@@ -82,5 +83,30 @@ class FormatFilterTest {
         assertFalse(f.matches(slot("19:00", "2D NAP")))
         assertFalse(f.matches(slot("19:00", "3D DUB")))
         assertTrue(f.matches(slot("18:30", "3D NAP IMAX")))
+    }
+
+    private fun film(vararg formatsByDay: List<String>) = TestData.film(
+        "Film",
+        formatsByDay.mapIndexed { i, formats ->
+            TestData.day("2026-05-2$i", listOf(TestData.cinema("Kino", formats.map { TestData.slot("18:00", it) })))
+        },
+    )
+
+    // The Filtry sheet offers "IMAX only" just where a showtime on ANY loaded
+    // day carries the token — elsewhere it could only blank the list.
+    @Test
+    fun hasImaxShowtimeLooksAtEveryDay() {
+        assertFalse(emptyList<pl.kinowo.model.Film>().hasImaxShowtime())
+        assertFalse(listOf(film(listOf("2D NAP"), listOf("3D DUB"))).hasImaxShowtime())
+        assertTrue(listOf(film(listOf("2D NAP")), film(listOf("2D"), listOf("IMAX 3D"))).hasImaxShowtime())
+    }
+
+    // An IMAX pick carried into a city without IMAX (city switch, deep link)
+    // is dropped rather than blanking a list whose sheet has no toggle to undo it.
+    @Test
+    fun applicableDropsImaxWhereNoShowtimeHasIt() {
+        val f = FormatFilter(imax = true, dimension = "3D")
+        assertEquals(FormatFilter(dimension = "3D"), f.applicable(listOf(film(listOf("3D NAP")))))
+        assertEquals(f, f.applicable(listOf(film(listOf("IMAX 3D")))))
     }
 }

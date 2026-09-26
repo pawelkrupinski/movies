@@ -14,9 +14,9 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
   private def movie(title: String, countries: List[String] = Nil, genres: Seq[String] = Nil): Movie =
     Movie(title = title, countries = countries, genres = genres)
 
-  private def slot(cinema: Cinema, room: String, time: String): Showtime = {
+  private def slot(cinema: Cinema, room: String, time: String, format: List[String] = Nil): Showtime = {
     val (h, m) = time.split(':').map(_.toInt) match { case Array(a, b) => (a, b) }
-    Showtime(dateTime = LocalDateTime.of(2026, 5, 17, h, m), bookingUrl = None, room = Some(room))
+    Showtime(dateTime = LocalDateTime.of(2026, 5, 17, h, m), bookingUrl = None, room = Some(room), format = format)
   }
 
   private def film(
@@ -27,6 +27,7 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     genres:    Seq[String] = Nil,
     director:  Seq[String] = Nil,
     cast:      Seq[String] = Nil,
+    format:    List[String] = Nil,
   ): FilmSchedule = FilmSchedule(
     movie         = movie(title, countries, genres),
     posterUrl     = None,
@@ -35,7 +36,7 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     director      = director,
     cinemaFilmUrls = Nil,
     showings      = Seq(
-      LocalDate.of(2026, 5, 17) -> Seq(CinemaShowtimes(cinema, rooms.map(r => slot(cinema, r, "18:00"))))
+      LocalDate.of(2026, 5, 17) -> Seq(CinemaShowtimes(cinema, rooms.map(r => slot(cinema, r, "18:00", format))))
     ),
     resolved      = TestReadModel.resolved(title, None, MovieRecord()),
     slug          = FilmHref.slugOf(title),
@@ -43,7 +44,7 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
   )
 
   private val schedules: Seq[FilmSchedule] = Seq(
-    film("Belle",                 Multikino, Seq("Sala 5", "Sala 7"), List("Japonia"),  genres = Seq("Animacja"), director = Seq("Mamoru Hosoda")),
+    film("Belle",                 Multikino, Seq("Sala 5", "Sala 7"), List("Japonia"),  genres = Seq("Animacja"), director = Seq("Mamoru Hosoda"), format = List("IMAX", "2D")),
     film("Diabeł nosi Pradę 2",  Multikino, Seq("Sala 9", "Sala 10"), List("USA"),     genres = Seq("Komedia"),  director = Seq("David Frankel")),
     film("Bizancjum",             Helios,    Seq("Sala 3"),            List("Polska"),  genres = Seq("Dramat"),   director = Seq("Anna Smith")),
   )
@@ -133,6 +134,13 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
 
   "imax=1" should "surface as 'IMAX'" in {
     FilterDescription.forIndex(Poznan,Map("imax" -> Seq("1")), schedules).title shouldBe "Kinowo — filmy IMAX"
+  }
+
+  // A listing with no IMAX showtime renders no IMAX checkbox, so a hand-typed
+  // `?imax=1` narrows nothing -- the title must not advertise it.
+  it should "describe nothing on a listing without an IMAX showtime" in {
+    val withoutImax = schedules.filterNot(_.movie.title == "Belle")
+    FilterDescription.forIndex(Poznan, Map("imax" -> Seq("1")), withoutImax).title shouldBe FilterDescription.defaultTitle(Poznan)
   }
 
   "dim=3D and lang=NAP" should "combine in order" in {

@@ -69,6 +69,30 @@ class FiltersSheetOrderTest {
         return harness.viewModel(prefs = prefs)
     }
 
+    private fun filmScreening(format: String) = pl.kinowo.TestData.film("Diuna", listOf(
+        pl.kinowo.TestData.day("2026-05-22", listOf(
+            pl.kinowo.TestData.cinema("Kino", listOf(pl.kinowo.TestData.slot("18:00", format)))))))
+
+    /** "Tylko IMAX" renders only where some loaded showtime is IMAX — in a city
+     *  without one it could only blank the list. Same rule as the web and iOS. */
+    @Test
+    fun imaxToggleHiddenWhenNoLoadedShowtimeIsImax() {
+        compose.setContent {
+            FiltersSheetContent(viewModel(), films = listOf(filmScreening("2D NAP")))
+        }
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Od godziny"))
+        compose.onNodeWithText("Tylko IMAX").assertDoesNotExist()
+    }
+
+    @Test
+    fun imaxToggleShownWhenALoadedShowtimeIsImax() {
+        compose.setContent {
+            FiltersSheetContent(viewModel(), films = listOf(filmScreening("IMAX 3D")))
+        }
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Tylko IMAX"))
+        compose.onNodeWithText("Tylko IMAX").assertIsDisplayed()
+    }
+
     /**
      * Sortuj stays above the "Ukryte filmy" row — unlike iOS, where the hidden
      * row leads. Guards requirement #1 against the row drifting to the top when
@@ -252,7 +276,9 @@ class FiltersSheetOrderTest {
             FiltersSheetContent(viewModel(), films = emptyList())
         }
 
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Język"))
+        // Scroll to the picker's own row, not the "Język" header above it: the
+        // header landing on the viewport's last line leaves this one off-screen.
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Polski"))
         compose.onNodeWithText("Polski").assertIsDisplayed()
         compose.onNodeWithText("Deutsch").assertDoesNotExist()
 

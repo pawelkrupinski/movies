@@ -184,6 +184,15 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         isLargeCity = controllers.MovieControllerService.totalShowtimes(manyShowtimesSchedules) >
           controllers.MovieControllerService.LargeCityShowtimeThreshold
       ).body
+      // The listing with every IMAX token stripped -- a city with no IMAX
+      // screen, whose Filtry panel renders no IMAX checkbox at all.
+      val noImaxHtml: String = views.html.repertoire(
+        schedules.map(s => s.copy(showings = s.showings.map { case (day, cinemas) =>
+          day -> cinemas.map(c => c.copy(showtimes = c.showtimes.map(t => t.copy(format = t.format.filterNot(_ == "IMAX")))))
+        })),
+        cinemas, pills, devMode = false, minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
+        oauthProviders = noOauth, renderedAt = now
+      ).body
       // The facet listing (`/{city}/filmy?country=…|director=…|cast=…|genre=…`).
       // Same cards as `/`, but its own inline `applyFilters` — no day, cinema or
       // format axes, just the hidden-films set — so it needs its own coverage;
@@ -352,6 +361,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           case p if sub(p) == "/movie-share-card"   => shareCardFilmHtml
           // A large city's listing — crosses the instant-day-swap threshold.
           case p if sub(p) == "/many-showtimes" => manyShowtimesHtml
+          // A listing without a single IMAX showtime.
+          case p if { val s = sub(p); s == "/no-imax" || s.startsWith("/no-imax?") } => noImaxHtml
           // The city-selection landing (no city prefix — there's no city yet).
           case "/landing" => landingHtml
           // Its grouped variant — same template, a country with `cityGroups`.
@@ -4549,6 +4560,23 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/?imax=1") { page =>
       page.evalBool("document.getElementById('format-imax').checked") shouldBe true
     }
+  }
+
+  it should "not render on a listing without an IMAX showtime, and the rest of the panel still works" in {
+    onPath("/no-imax") { page =>
+      page.evalBool("document.getElementById('format-imax') === null") shouldBe true
+      // Wyczyść used to reach for the checkbox unconditionally; a throw here
+      // would leave every other axis un-reset.
+      page.eval("document.querySelector('input[name=\"format-dim\"][value=\"3D\"]').click(); resetFormatFilter()")
+      page.evalBool("document.querySelector('input[name=\"format-dim\"][value=\"\"]').checked") shouldBe true
+    }
+  }
+
+  it should "leave the listing unfiltered when ?imax=1 reaches a listing without one" in {
+    var all = 0
+    onPath("/no-imax") { page => all = visibleCardCount(page) }
+    all should be > 0
+    onPath("/no-imax?imax=1") { page => visibleCardCount(page) shouldBe all }
   }
 
   "the from-hour filter" should "round-trip through ?from=HH:MM when the Copy button is used" in {
