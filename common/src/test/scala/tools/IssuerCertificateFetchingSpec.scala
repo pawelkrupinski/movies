@@ -36,7 +36,7 @@ class IssuerCertificateFetchingSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "succeed the same way in a JVM started with the policy as an option" in {
-    val (exit, output) = handshake(applied = None, jvmOptions = Seq(IssuerCertificateFetching.Enabled.jvmOption))
+    val (exit, output) = handshake(applied = None, jvmOptions = IssuerCertificateFetching.Enabled.jvmOptions)
     withClue(s"child output:\n$output\n")(exit shouldBe 0)
   }
 
