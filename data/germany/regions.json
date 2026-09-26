@@ -961,12 +961,6 @@
         "displayName": "Kommunales Kino Weiterstadt im Bürgerzentrum"
       },
       {
-        "theaterId": "A0680",
-        "name": "Kino Idstein",
-        "city": "Idstein",
-        "displayName": "Kino Idstein"
-      },
-      {
         "theaterId": "A1098",
         "name": "Saalbau-Lichtspiele Pfungstadt",
         "city": "Pfungstadt",
@@ -4242,12 +4236,6 @@
         "displayName": "Kinomobil Stuttgart - Alte Kelter"
       },
       {
-        "theaterId": "A1824",
-        "name": "Kinomobil Stuttgart - Alte Kelter Besigheim",
-        "city": "Besigheim",
-        "displayName": "Kinomobil Stuttgart - Alte Kelter Besigheim"
-      },
-      {
         "theaterId": "A1513",
         "name": "Kinostar Filmwelt Mosbach",
         "city": "Mosbach",
@@ -5227,12 +5215,6 @@
         "displayName": "Krone-Theater"
       },
       {
-        "theaterId": "A1547",
-        "name": "Löwen-Lichtspiele Kenzingen",
-        "city": "Kenzingen",
-        "displayName": "Löwen-Lichtspiele Kenzingen"
-      },
-      {
         "theaterId": "A2100",
         "name": "Kinomobil Stuttgart - Johann-Philipp-Glock-Schule",
         "city": "Schallstadt",
@@ -5933,12 +5915,6 @@
         "name": "Thalia Augsburg",
         "city": "Augsburg",
         "displayName": "Thalia Augsburg"
-      },
-      {
-        "theaterId": "A0100",
-        "name": "Kino Center",
-        "city": "Friedberg (Hessen)",
-        "displayName": "Kino Center"
       },
       {
         "theaterId": "A0312",
@@ -6736,12 +6712,6 @@
         "name": "Cineplex Brilon",
         "city": "Brilon",
         "displayName": "Cineplex Brilon"
-      },
-      {
-        "theaterId": "A1688",
-        "name": "Lichtwerk",
-        "city": "Schmallenberg",
-        "displayName": "Lichtwerk"
       }
     ]
   },
@@ -7778,12 +7748,6 @@
         "displayName": "Cineplex Münster"
       },
       {
-        "theaterId": "A0908",
-        "name": "Kino Deutsches Haus",
-        "city": "Munster",
-        "displayName": "Kino Deutsches Haus"
-      },
-      {
         "theaterId": "A2879",
         "name": "CinemAhlen",
         "city": "Ahlen",
@@ -7844,12 +7808,6 @@
         "name": "Cineplex Gotha",
         "city": "Gotha",
         "displayName": "Cineplex Gotha"
-      },
-      {
-        "theaterId": "A0726",
-        "name": "Kulturhaus Gotha",
-        "city": "Gotha",
-        "displayName": "Kulturhaus Gotha"
       },
       {
         "theaterId": "A0610",
@@ -9296,12 +9254,6 @@
     ],
     "cinemas": [
       {
-        "theaterId": "A0613",
-        "name": "Hof-Theater",
-        "city": "Sigmaringen",
-        "displayName": "Hof-Theater"
-      },
-      {
         "theaterId": "A1148",
         "name": "Lichtspielhaus Riedlingen",
         "city": "Riedlingen",
@@ -9882,12 +9834,6 @@
         "name": "Clubkino Zella-Mehlis",
         "city": "Zella-Mehlis",
         "displayName": "Clubkino Zella-Mehlis"
-      },
-      {
-        "theaterId": "A2708",
-        "name": "Kino im Badehaus Masserberg",
-        "city": "Masserberg",
-        "displayName": "Kino im Badehaus Masserberg"
       }
     ]
   },
@@ -10162,12 +10108,6 @@
       "Attendorn"
     ],
     "cinemas": [
-      {
-        "theaterId": "A0119",
-        "name": "Burgtheater Gummersbach",
-        "city": "Gummersbach",
-        "displayName": "Burgtheater Gummersbach"
-      },
       {
         "theaterId": "A2912",
         "name": "SEVEN Kinocenter Gummersbach",

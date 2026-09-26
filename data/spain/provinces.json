@@ -117,12 +117,6 @@
         "name": "Yelmo Cines Imaginalia",
         "town": "Albacete",
         "displayName": "Yelmo Cines Imaginalia"
-      },
-      {
-        "theaterId": "E0778",
-        "name": "Yelmo Cines Vialia Albacete",
-        "town": "Albacete",
-        "displayName": "Yelmo Cines Vialia Albacete"
       }
     ]
   },
@@ -1493,12 +1487,6 @@
         "name": "Cine Delicias",
         "town": "Cordoba",
         "displayName": "Cine Delicias"
-      },
-      {
-        "theaterId": "E1013",
-        "name": "Cine Mota del Cuervo",
-        "town": "Estacion De Espiel",
-        "displayName": "Cine Mota del Cuervo"
       },
       {
         "theaterId": "E1012",

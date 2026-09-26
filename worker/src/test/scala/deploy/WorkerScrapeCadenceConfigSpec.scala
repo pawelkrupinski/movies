@@ -21,7 +21,7 @@ import scala.concurrent.duration.*
  * US is the slow one, at 14h. Its roster is ~5,000 Flicks venues across 55 states
  * and territories — ~10x the UK's paced set — against an origin whose 200ms pace
  * is a measured ceiling rather than a choice, so the cadence is the only lever
- * its ~10h sweep leaves. DE is next at 10h: ~1,528 cinemas across 158 Filmstarts
+ * its ~10h sweep leaves. DE is next at 10h: ~1,518 cinemas across 158 Filmstarts
  * regions, on the least heap headroom in the fleet.
  *
  * EVERY COUNTRY READS FROM ITS OVERLAY. The three oldest were onboarded onto Fly

@@ -22,7 +22,7 @@ import java.time.LocalDate
  * reads its own `KINOWO_SCRAPE_FRESHNESS_MINUTES` (60 PL, 420 UK, 600 DE, 840
  * US). Measuring every country against `Freshness.scrapeTtlFrom` — as this
  * spec used to — models a deployment that does not exist, and it was already
- * wrong before it was ever caught: Germany's 1,528 venues sat against a
+ * wrong before it was ever caught: Germany's 1,518 venues sat against a
  * default-window capacity of 1,560, a 31-venue margin, on a country that in
  * fact runs a 10h window and had ~10x the room it was credited with. The US
  * made it fail outright (5,031 venues against that same 1,560) despite having

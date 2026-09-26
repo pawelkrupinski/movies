@@ -1002,8 +1002,8 @@ final class UsCity(slug: String, labels: CityLabels, lat: Double, lon: Double,
  *  readable at, so unlike every other country here there is nothing to group
  *  them under: Spain's picker is the only flat one left besides Poland's.
  *
- *  The roster (604 cinemas over 52 provinces: SensaCine's 595 plus nine Ocine
- *  venues it does not list) is generated into
+ *  The roster (602 cinemas over 52 provinces: SensaCine's 595 less two closed,
+ *  plus nine Ocine venues it does not list) is generated into
  *  `SpanishRosterData` and materialised by [[SpanishRoster]]; instances are built
  *  ONCE (in `City.spanishCities`), so identity equality holds just like the
  *  hand-authored `case object` cities.

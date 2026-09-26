@@ -1,5 +1,5 @@
 // GENERATED from data/spain/provinces.json by data/spain/scripts/generate_roster.py
-// — do NOT edit by hand. Full Spanish cinema roster: 52 provinces / 604 cinemas (SensaCine, plus the Ocine
+// — do NOT edit by hand. Full Spanish cinema roster: 52 provinces / 602 cinemas (SensaCine, plus the Ocine
 // venues it does not list, from data/spain/ocine.json).
 // Regenerate with `python3 data/spain/scripts/generate_roster.py` after re-harvesting;
 // see data/spain/README.md.
@@ -29,8 +29,7 @@ private[models] object SpanishRosterData {
   private def p_albacete: R = ("albacete", "Albacete", "Castilla-La Mancha", 38.99424, -1.85643, "Europe/Madrid", Seq("Albacete", "Almansa"), Seq(
     ("Cines Coliseum", "Cines Coliseum", Some("E0710"), None),
     ("Gran Teatro de Villarrobledo", "Gran Teatro de Villarrobledo", Some("E0448"), None),
-    ("Yelmo Cines Imaginalia", "Yelmo Cines Imaginalia", Some("E0205"), None),
-    ("Yelmo Cines Vialia Albacete", "Yelmo Cines Vialia Albacete", Some("E0778"), None)
+    ("Yelmo Cines Imaginalia", "Yelmo Cines Imaginalia", Some("E0205"), None)
   ))
   private def p_alicante: R = ("alicante", "Alicante", "Comunidad Valenciana", 38.34517, -0.48149, "Europe/Madrid", Seq("Alicante", "Benidorm", "Javea", "Marina", "Petrer", "San Vicente del Raspeig", "Alcoy", "Alfas del Pi", "Callosa de Segura", "Calpe", "Cocentaina", "Dehesa de Campoamor", "Denia", "Elche", "Finestrat", "Maitino", "Mutxamel", "Ondara", "Orihuela", "San Juan de Alicante", "Santa Pola", "Torrevieja", "Villena"), Seq(
     ("Abc Elx", "Abc Elx", Some("E0035"), None),
@@ -237,12 +236,11 @@ private[models] object SpanishRosterData {
     ("Yelmo Cines Área Sur", "Yelmo Cines Área Sur", Some("E0669"), None),
     ("mk2 Bahía de Cádiz", "mk2 Bahía de Cádiz", Some("E0332"), None)
   ))
-  private def p_cordoba: R = ("cordoba", "Córdoba", "Andalucía", 37.89155, -4.77275, "Europe/Madrid", Seq("Estacion de Espiel", "Córdoba", "Baena", "Cabra", "Lucena", "Pozoblanco"), Seq(
+  private def p_cordoba: R = ("cordoba", "Córdoba", "Andalucía", 37.89155, -4.77275, "Europe/Madrid", Seq("Córdoba", "Estacion de Espiel", "Baena", "Cabra", "Lucena", "Pozoblanco"), Seq(
     ("Artesiete Lucena", "Artesiete Lucena", Some("E0489"), None),
     ("Centro Cultural de la Villa - Pastora Soler", "Centro Cultural de la Villa - Pastora Soler", Some("E1016"), None),
     ("Cine Baena", "Cine Baena", Some("E0915"), None),
     ("Cine Delicias", "Cine Delicias", Some("E0948"), None),
-    ("Cine Mota del Cuervo", "Cine Mota del Cuervo", Some("E1013"), None),
     ("Cine Municipal Huércal-Overa", "Cine Municipal Huércal-Overa", Some("E1012"), None),
     ("Cine Pósito", "Cine Pósito", Some("E0859"), None),
     ("Cinestudio Municipal Cabra", "Cinestudio Municipal Cabra", Some("E0868"), None),

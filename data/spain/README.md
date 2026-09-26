@@ -122,8 +122,8 @@ python3 data/spain/scripts/test_build_provinces.py
 
 - **52** provinces, **0** with zero venues.
 - **595** unique cinemas (theaterIds are unique across the whole harvest), to
-  which `ocine.json` adds the **9** Ocine venues SensaCine does not list: **604**
-  in the roster.
+  which `ocine.json` adds the **9** Ocine venues SensaCine does not list, less
+  two venues since closed (E0778, E1013): **602** in the roster.
 - Verified-facts expectation of ~594 held: the crawl found 595, one more
   than the pre-reconnoitred estimate — consistent with normal roster churn
   between the manual recon and this run, not a pagination miss (every

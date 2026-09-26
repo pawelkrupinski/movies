@@ -27,7 +27,7 @@ object ScrapeCadence {
    *  ≥1.5× headroom (`cap × ticksPerWindow ≥ corpus × 1.5`). Post the per-country
    *  worker split each machine scrapes ONE country, so the binding corpus is the
    *  largest country, not the global sum. Rose 25→30 for the nationwide UK Flicks
-   *  roster, then 30→40 when the full German Filmstarts roster (1,528 cinemas) made
+   *  roster, then 30→40 when the full German Filmstarts roster (1,518 cinemas) made
    *  Germany the largest country (60 ticks × 40 = 2400 ≥ 1529 × 1.5 = 2294). */
   val MaxEnqueuePerTick: Int = 40
 

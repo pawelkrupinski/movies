@@ -93,8 +93,8 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     // koeln, …), each an aggregation of nearby cities' cinemas (see data/germany/).
     Country.Germany.cities should have size 158
     Country.Germany.cities.map(_.slug) should contain allOf ("berlin", "muenchen", "koeln", "hamburg", "frankfurt-am-main")
-    // Every region carries cinemas; the roster totals 1,528 venues.
-    Country.Germany.cities.flatMap(_.cinemas).size shouldBe 1528
+    // Every region carries cinemas; the roster totals 1,518 venues.
+    Country.Germany.cities.flatMap(_.cinemas).size shouldBe 1518
   }
 
   "Country.UnitedStates" should "be an English, Filmweb-free deployment (Flicks-sourced) on its own database" in {
@@ -356,7 +356,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Spain.cityGroups shouldBe empty
     Country.Spain.cities.map(_.slug) should contain allOf ("madrid", "barcelona", "valencia", "las-palmas")
     all(Country.Spain.cities.map(_.cinemas.size)) should be > 0
-    Country.Spain.cities.flatMap(_.cinemas).size shouldBe 604   // SensaCine's 595 + the 9 Ocine venues it does not list
+    Country.Spain.cities.flatMap(_.cinemas).size shouldBe 602   // SensaCine's 595, less 2 closed, + the 9 Ocine venues it does not list
   }
 
   it should "qualify a province slug another country already serves, and only that one" in {
@@ -428,12 +428,37 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   //   A1560 Mephisto Augsburg — closed end of January 2026 (ARB Kino GmbH
   //         insolvency); the Staatstheater takes the hall over as a stage.
   //         Mephisto Ulm (A1559) is a separate, still-listed venue.
+  // Retired 2026-09-26, each 404ing since 2026-08-31 and confirmed closed:
+  //   A0908 Kino Deutsches Haus (Munster) — hall now a hotel event room
+  //   A0680 Kino Idstein — closed 2020, no successor
+  //   A2708 Kino im Badehaus Masserberg — Badehaus shut since 2016, no screenings resumed
+  //   A1688 Lichtwerk (Schmallenberg) — public cinema closed 2006
+  //   A0613 Hof-Theater (Sigmaringen) — closed 2015 over fire safety
+  //   A0119 Burgtheater Gummersbach — no programme since a stalled 2020 renovation
+  //   A0100 Kino Center (Friedberg) — closed 2018, building demolished
+  //   A0726 Kulturhaus Gotha — no cinema use; its own /kino page is gone
+  //   A1547 Löwen-Lichtspiele Kenzingen — closed since 2022; re-add if the town's
+  //         planned reopening happens
+  //   A1824 Kinomobil Besigheim — Filmstarts re-listed it as A0793, already rostered
+  // Most of that day's other 404s are cinemas still running that Filmstarts
+  // dropped (kino.de / kino-zeit list them) — not closures, so they stay.
   it should "not carry the Filmstarts theater ids that were delisted upstream" in {
-    val delisted = Set("A0743", "G01C9", "A2843", "A2165", "A1560")
+    val delisted = Set("A0743", "G01C9", "A2843", "A2165", "A1560",
+      "A0908", "A0680", "A2708", "A1688", "A0613", "A0119", "A0100", "A0726", "A1547", "A1824")
     GermanRoster.theaterIdByCinema.values.toSet intersect delisted shouldBe empty
     val names = Country.Germany.cities.flatMap(_.cinemas).map(_.displayName).toSet
     names should not contain "Kino Kiste"
     names should not contain "Inselkino Baltrum"
+  }
+
+  // SensaCine answers 410 for both; each is confirmed closed (2026-09-26):
+  // Yelmo Vialia Albacete shut end of Sept 2025 (Yelmo moved to Imaginalia, still
+  // rostered), and Mota del Cuervo's municipal cinema was dismantled in 2023.
+  "Country.Spain" should "not carry the venues SensaCine retired because they closed" in {
+    val names = Country.Spain.cities.flatMap(_.cinemas).map(_.displayName).toSet
+    names should not contain "Yelmo Cines Vialia Albacete"
+    names should not contain "Cine Mota del Cuervo"
+    names should contain ("Yelmo Cines Imaginalia")
   }
 
   "Country.Poland" should "keep the original kinowo database and Filmweb enabled" in {

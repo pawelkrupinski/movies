@@ -1,6 +1,6 @@
 // GENERATED from data/germany/regions.json by the DE roster generator — do NOT edit by hand.
 // Full German cinema roster: 158 regions over 16 Bundesländer /
-// 1,528 cinemas (Filmstarts). Regenerate with
+// 1,518 cinemas (Filmstarts). Regenerate with
 // the generator in data/germany/scripts after re-harvesting; see data/germany/README.md.
 package models
 
@@ -163,7 +163,6 @@ private[models] object GermanRosterData {
     ("Drive In Autokino Gravenbruch", "Drive In Autokino Gravenbruch", "A1398"),
     ("Open-Air Marktplatz Neue Stadtmitte", "Open-Air Marktplatz Neue Stadtmitte", "A2204"),
     ("Kommunales Kino Weiterstadt im Bürgerzentrum", "Kommunales Kino Weiterstadt im Bürgerzentrum", "A0858"),
-    ("Kino Idstein", "Kino Idstein", "A0680"),
     ("Saalbau-Lichtspiele Pfungstadt", "Saalbau-Lichtspiele Pfungstadt", "A1098"),
     ("Lichtspielhaus Groß-Gerau", "Lichtspielhaus Groß-Gerau", "A0913"),
     ("CasaBlanca Art House", "CasaBlanca Art House", "A1531"),
@@ -677,7 +676,6 @@ private[models] object GermanRosterData {
     ("Holi Filmtheater", "Holi Filmtheater", "A2203"),
     ("Scala Filmtheater Öhringen", "Scala Filmtheater Öhringen", "A0837"),
     ("Kinomobil Stuttgart - Alte Kelter", "Kinomobil Stuttgart - Alte Kelter", "A0793"),
-    ("Kinomobil Stuttgart - Alte Kelter Besigheim", "Kinomobil Stuttgart - Alte Kelter Besigheim", "A1824"),
     ("Kinostar Filmwelt Mosbach", "Kinostar Filmwelt Mosbach", "A1513"),
     ("Kinomobil Stuttgart - Stadthalle Lauffen", "Kinomobil Stuttgart - Stadthalle Lauffen", "A0788"),
     ("Kinomobil Stuttgart - Kelter Winzerhausen", "Kinomobil Stuttgart - Kelter Winzerhausen", "A2132"),
@@ -831,7 +829,6 @@ private[models] object GermanRosterData {
     ("Joki Kino am Bahnhof", "Joki Kino am Bahnhof", "A0722"),
     ("Engel-Lichtspiele", "Engel-Lichtspiele", "A1403"),
     ("Krone-Theater", "Krone-Theater", "A0873"),
-    ("Löwen-Lichtspiele Kenzingen", "Löwen-Lichtspiele Kenzingen", "A1547"),
     ("Kinomobil Stuttgart - Johann-Philipp-Glock-Schule", "Kinomobil Stuttgart - Johann-Philipp-Glock-Schule", "A2100"),
     ("Kino im Rathaus", "Kino im Rathaus", "A0728")
   ))
@@ -940,7 +937,6 @@ private[models] object GermanRosterData {
     ("Open Air Kino Lechflimmern Familienbad am Plärrer", "Open Air Kino Lechflimmern Familienbad am Plärrer", "A1800"),
     ("Savoy Kino", "Savoy Kino", "A1105"),
     ("Thalia Augsburg", "Thalia Augsburg", "A1645"),
-    ("Kino Center", "Kino Center", "A0100"),
     ("Cineplex Königsbrunn", "Cineplex Königsbrunn", "A0312"),
     ("Cineplex Aichach", "Cineplex Aichach", "A1374"),
     ("Open Air Seebühne", "Open Air Seebühne", "A2539"),
@@ -1062,8 +1058,7 @@ private[models] object GermanRosterData {
     ("Linden-Theater", "Linden-Theater", "A1701"),
     ("Weidenhof Kino", "Weidenhof Kino", "A1270"),
     ("Lichtspielhaus Lennestadt", "Lichtspielhaus Lennestadt", "A0912"),
-    ("Cineplex Brilon", "Cineplex Brilon", "G00YX"),
-    ("Lichtwerk", "Lichtwerk", "A1688")
+    ("Cineplex Brilon", "Cineplex Brilon", "G00YX")
   ))
   private def r_loerrach: R = ("loerrach", "Lörrach", "Baden-Württemberg", 47.61497, 7.66457, Seq("Lörrach", "Weil am Rhein", "Rheinfelden", "Schopfheim", "Müllheim", "Neuenburg am Rhein", "Kandern"), Seq(
     ("Cineplex Lörrach", "Cineplex Lörrach", "A0321"),
@@ -1225,7 +1220,6 @@ private[models] object GermanRosterData {
     ("Kaisersaal-Lichtspiele", "Kaisersaal-Lichtspiele", "A0633"),
     ("Schlosstheater Münster", "Schlosstheater Münster", "A1130"),
     ("Cineplex Münster", "Cineplex Münster", "A0305"),
-    ("Kino Deutsches Haus", "Kino Deutsches Haus", "A0908"),
     ("CinemAhlen", "CinemAhlen", "A2879"),
     ("Cinema Coesfeld (Dülmen)", "Cinema Coesfeld (Dülmen)", "A0249"),
     ("Cinema Coesfeld (Coesfeld)", "Cinema Coesfeld (Coesfeld)", "A0229")
@@ -1236,7 +1230,6 @@ private[models] object GermanRosterData {
     ("Open Air Kino egapark", "Open Air Kino egapark", "A2261"),
     ("Open Air im Kulturhof Krönbacken", "Open Air im Kulturhof Krönbacken", "A1829"),
     ("Cineplex Gotha", "Cineplex Gotha", "A2675"),
-    ("Kulturhaus Gotha", "Kulturhaus Gotha", "A0726"),
     ("Hochschulfilmclub TU Ilmenau", "Hochschulfilmclub TU Ilmenau", "A0610"),
     ("Linden Lichtspiele", "Linden Lichtspiele", "A0917")
   ))
@@ -1460,7 +1453,6 @@ private[models] object GermanRosterData {
     ("Castello", "Castello", "A0182")
   ))
   private def r_sigmaringen: R = ("sigmaringen", "Sigmaringen", "Baden-Württemberg", 48.08829, 9.23033, Seq("Sigmaringen", "Riedlingen", "Mengen", "Gammertingen", "Emmingen-Liptingen", "Kolbingen"), Seq(
-    ("Hof-Theater", "Hof-Theater", "A0613"),
     ("Lichtspielhaus Riedlingen", "Lichtspielhaus Riedlingen", "A1148"),
     ("Kinocenter Mengen", "Kinocenter Mengen", "A1502"),
     ("Open Air", "Open Air", "A2772"),
@@ -1550,8 +1542,7 @@ private[models] object GermanRosterData {
     ("Cineplex Suhl", "Cineplex Suhl", "A0304"),
     ("Casino Lichtspiele Meiningen", "Casino Lichtspiele Meiningen", "A0181"),
     ("Open Air Kino Schloss Wilhelmsburg", "Open Air Kino Schloss Wilhelmsburg", "A2246"),
-    ("Clubkino Zella-Mehlis", "Clubkino Zella-Mehlis", "A2753"),
-    ("Kino im Badehaus Masserberg", "Kino im Badehaus Masserberg", "A2708")
+    ("Clubkino Zella-Mehlis", "Clubkino Zella-Mehlis", "A2753")
   ))
   private def r_eisenach: R = ("eisenach", "Eisenach", "Thüringen", 50.9807, 10.31522, Seq("Eisenach", "Mühlhausen", "Eschwege", "Bad Langensalza", "Bad Salzungen"), Seq(
     ("Capitol Eisenach", "Capitol Eisenach", "A0161"),
@@ -1594,7 +1585,6 @@ private[models] object GermanRosterData {
     ("Capitol Theater Kappeln", "Capitol Theater Kappeln", "A1664")
   ))
   private def r_gummersbach: R = ("gummersbach", "Gummersbach", "Nordrhein-Westfalen", 51.02608, 7.56473, Seq("Gummersbach", "Olpe", "Attendorn"), Seq(
-    ("Burgtheater Gummersbach", "Burgtheater Gummersbach", "A0119"),
     ("SEVEN Kinocenter Gummersbach", "SEVEN Kinocenter Gummersbach", "A2912"),
     ("Cineplex Olpe", "Cineplex Olpe", "A2115"),
     ("JAC Kino Attendorn", "JAC Kino Attendorn", "A2914")

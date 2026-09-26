@@ -62,7 +62,7 @@ class GoneVenueAlertingArchiveSpec extends AnyFlatSpec with Matchers {
     h.pages shouldBe empty
   }
 
-  // An aggregator outage fails every venue it lists at once, and 1,528 German pages
+  // An aggregator outage fails every venue it lists at once, and 1,518 German pages
   // would bury the one that means something. Only a page-gone answer says the venue
   // itself is the problem.
   it should "stay quiet for failures that do not say the page is gone" in {
