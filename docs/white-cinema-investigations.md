@@ -120,6 +120,27 @@ opinion. Drop it from the checklist — lean on `data-showtimes-dates` alone,
 cross-checked against a known-busy control cinema (confirms the fetch
 method itself isn't blocked) rather than the per-day JSON.
 
+### A second target: every venue on the Filmweb fallback
+
+Added 2026-09-26. The Mikro screens sat on the fallback for three days, green
+throughout, because kinomikro.pl's rebuild 404'd their feed. Every run now
+lists `filmwebFallback` docs with `active: true` in all five DBs and diagnoses
+each one like a white venue. `lastReason` and the newest-first `history` lines
+(`<epochMs>\t<ENTER|PROBE_FAILED|RECOVERED>\t<reason>`, one per hourly
+re-probe of the primary) usually name the failure outright:
+- "primary returned no screenings": parse drift, a moved programme, or a dark venue.
+- `HTTP 404/410`: the site was rebuilt or the slug renamed.
+- `403`: an IP block.
+- `5xx`/`CircuitOpenException`: the upstream is down.
+- A TLS error.
+
+Watch how the reason evolved and when it started. Log every active fallback
+venue in a table (venue, since, last reason, verdict). A venue whose own site
+is genuinely gone while Filmweb is complete is
+`needs-human: move permanently onto Filmweb?`. It should not sit on the
+fallback run after run. Baseline 2026-09-26: 2 active (both Mikro screens,
+fixed the same day), 0 in UK/DE/US/ES.
+
 ### A new capability: reading production logs without a browser, via the mongo-1 SSH hop
 
 Found 2026-09-19, while running down what first looked like a real bug
@@ -220,9 +241,12 @@ VisualSoft venues were fetched live. Every other instance still renders h3
 Only Bochnia had drifted. (Every VisualSoft instance also exposes
 `service.php/repertoire/list.json`; bochnia, kgl, kck, shd, sta, bck, bdk, ckp,
 chck, pckul, mok.zory, ock, kht and oks all answered with counts matching
-their HTML. If the HTML skins keep drifting, moving `SystemBiletowyClient`
-onto that feed would retire all four skin parsers. Not done here: that is a
-15-venue behaviour change, not a white-cinema fix.)
+their HTML. *Follow-up, same day: done.* `SystemBiletowyClient` now reads that
+feed for every VisualSoft venue, Kino Mikro included (`KinoMikroClient`
+deleted), and all four HTML skin parsers are gone. Farys and Kino Orzeł lack
+the advanced template, so they get the plain feed. Nasze Kino is scoped by
+`location.institution_name`, which also stops Oświęcim's concerts leaking in.
+See the "VisualSoft venues read one JSON feed" commit.)
 
 **Kino CKiS Skierniewice + Kino Polonez (Skierniewice): fixed, @c4d4ca925.**
 CKiS had been white since 2026-09-22 22:39 UTC (last archive: 1 film, "Kura").
