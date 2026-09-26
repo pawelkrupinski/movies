@@ -113,9 +113,12 @@ class ChunkScrapePlanner(
 
   private def publishFailure(scraper: ChunkedCinemaScraper, e: Exception): Unit = {
     logger.warn(s"chunked plan for ${scraper.cinema.displayName} failed: ${e.getMessage}")
-    try publishScrape(PreScrapedCinemaScraper.of(scraper, () => throw e))
-    catch { case _: Exception => () }
-    scrapeFreshness.failed(ScrapeCinemaHandler.dedupKey(scraper.cinema))
+    // The recording wrapper re-raises the failure — unless the venue's fallback
+    // served it instead, which is the scrape succeeding, as on the plain path. Kept
+    // due, it would be re-run on the next ticks and re-walk the fallback each time.
+    val fallbackServed = scala.util.Try(publishScrape(PreScrapedCinemaScraper.of(scraper, () => throw e))).isSuccess
+    val key            = ScrapeCinemaHandler.dedupKey(scraper.cinema)
+    if (fallbackServed) scrapeFreshness.succeeded(key) else scrapeFreshness.failed(key)
   }
 }
 

@@ -62,12 +62,20 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
 
   private class Harness(scraper: FakeChunked, clock: Clock = Clock.fixed(now, ZoneOffset.UTC),
                          venueCadenceDefault: FiniteDuration = 14.hours,
-                         val store: InMemoryChunkScrapeStore = new InMemoryChunkScrapeStore) {
+                         val store: InMemoryChunkScrapeStore = new InMemoryChunkScrapeStore,
+                         fallbackServes: Boolean = false) {
     val queue     = new InMemoryTaskQueue
     val freshness = new InMemoryFreshnessStore
     val venueCadence = new VenueCadenceStore(settings.ScrapeFreshness(venueCadenceDefault))
     val published = mutable.ListBuffer.empty[Seq[CinemaMovie]]
-    val publishScrape: CinemaScraper => Unit = s => { published += scala.util.Try(s.fetch()).getOrElse(Seq.empty); () }
+    // As production's recording wrapper: a failed scrape re-raises, unless the venue's
+    // fallback served it instead (`fallbackServes`), which returns normally.
+    val publishScrape: CinemaScraper => Unit = s => {
+      val scraped = scala.util.Try(s.fetch())
+      published += scraped.getOrElse(Seq.empty)
+      if (!fallbackServes) scraped.get
+      ()
+    }
     private val map = Map(cinemaName -> (scraper: ChunkedCinemaScraper))
     val policy  = new ScrapeFreshnessPolicy(freshness, clock = clock, venueCadence = Some(venueCadence))
     val planner = new ChunkScrapePlanner(map, store, queue, publishScrape, policy, services.tasks.ChunkScrapePlanner.RunTimeout(stale), clock)
@@ -338,6 +346,17 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     h.planner.plan(cinemaName) shouldBe 0
     h.freshness.lastFetchedAt(key) shouldBe None
     h.planner.plan(cinemaName) shouldBe 0          // past the 2-retry budget
+    h.freshness.isFresh(key, FreshnessKind.CinemaScrape, now) shouldBe true
+  }
+
+  // The fallback serving a venue whose plan failed IS the scrape succeeding, as on the
+  // plain path: kept due, the venue was re-run twice a minute apart, and each re-run
+  // re-walked the fallback's whole horizon.
+  it should "mark a chunked cinema fresh when its fallback served the plan that failed" in {
+    val h   = new Harness(new FakeChunked(Map("a" -> Seq(film("X", 25))), planThrows = true), fallbackServes = true)
+    val key = ScrapeCinemaHandler.dedupKey(cinema)
+
+    h.planner.plan(cinemaName) shouldBe 0
     h.freshness.isFresh(key, FreshnessKind.CinemaScrape, now) shouldBe true
   }
 
