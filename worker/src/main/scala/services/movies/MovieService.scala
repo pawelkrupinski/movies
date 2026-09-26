@@ -11,7 +11,8 @@ import services.resolution.{Candidate, Contradiction, FilmEvidence, ResolutionCa
 import services.tasks.{RatingTasks, ResolveMode}
 import tools.{DaemonExecutors, HttpStatusException}
 
-import models.{MovieRecord, Source, SourceData, Tmdb}
+import models.{MovieRecord, Source, SourceData, TitleSearch, Tmdb}
+import services.identity.{Hit, IdentityMeasures, StoredIdentityConfidence}
 import scala.concurrent.ExecutionContextExecutorService
 import scala.util.{Failure, Success, Try}
 
@@ -755,6 +756,11 @@ class MovieService(
     val existingMatchesLanguage = existingTmdbSlot.fetchedLanguageTag == tmdb.language.toLanguageTag
     def carriedLocalized[A](existing: Option[A]): Option[A] =
       if (existingMatchesLanguage) existing else None
+    // Where the film stands in each of the row's listing titles' own yearless TMDB searches —
+    // the identity evidence the rating gate scores (`StoredIdentityConfidence`). Kept while the
+    // film stays the same; a different film is measured afresh.
+    val titleSearches = measureTitleSearches(tmdbId, existing,
+      carried = if (differentFilm) Nil else existingTmdbSlot.titleSearches)
     val tmdbSlot = detailsOpt match {
       case Some(d) => SourceData(
         title          = d.title.orElse(hitTitle).orElse(carriedLocalized(existingTmdbSlot.title)),
@@ -781,13 +787,15 @@ class MovieService(
         ageRating      = d.ageRating.orElse(existingTmdbSlot.ageRating),
         // Stamp the language these fields were fetched in, so a slot frozen by a
         // pre-locale-fix resolve is detectable rather than silently Polish forever.
-        language       = Some(tmdb.language.toLanguageTag)
+        language       = Some(tmdb.language.toLanguageTag),
+        titleSearches  = titleSearches
       )
       case None => existingTmdbSlot.copy(
         title         = hitTitle.orElse(existingTmdbSlot.title),
         originalTitle = hit.flatMap(_.originalTitle).orElse(existingTmdbSlot.originalTitle),
         englishTitle  = englishTitle,
-        releaseYear   = hit.flatMap(_.releaseYear).orElse(existingTmdbSlot.releaseYear)
+        releaseYear   = hit.flatMap(_.releaseYear).orElse(existingTmdbSlot.releaseYear),
+        titleSearches = titleSearches
       )
     }
     MovieRecord(
@@ -812,6 +820,22 @@ class MovieService(
       detailPending     = existing.detailPending,
       data              = carriedData + ((Tmdb: Source) -> tmdbSlot)
     )
+  }
+
+  /** `IdentityMeasures.titleSearch` for every distinct listing title of `row` the same film's slot
+   *  has not measured yet (`carried`), over live yearless searches in TMDB's own order (each query
+   *  asked once). Measured once per film and title: a re-resolve to the same film — most of them
+   *  answered off the id cache — asks TMDB nothing more. A title whose searches all failed is
+   *  simply not measured. */
+  private def measureTitleSearches(tmdbId: Int, row: MovieRecord, carried: Seq[TitleSearch]): Seq[TitleSearch] = {
+    val asked = scala.collection.mutable.HashMap.empty[String, Option[Seq[Hit]]]
+    val search: String => Option[Seq[Hit]] = query => asked.getOrElseUpdate(query,
+      Try(tmdb.searchAsRanked(query)).toOption.flatten.map(_.map(r => Hit(r.id, r.title, r.originalTitle, r.releaseYear, r.popularity))))
+    val known    = carried.map(_.titleKey).toSet
+    val listings = row.cinemaShowings.map { case (_, slot) => StoredIdentityConfidence.listing(slot) }
+      .filter(_.title.trim.nonEmpty).sortBy(l => (l.title, l.rawTitle.getOrElse(""))).distinctBy(l => IdentityMeasures.key(l.title))
+      .filterNot(l => known(IdentityMeasures.key(l.title)))
+    (carried ++ listings.flatMap(IdentityMeasures.titleSearch(_, tmdbId, search))).sortBy(_.titleKey)
   }
 
   // IMDb / Filmweb / Metacritic / Rotten Tomatoes refresh logic lives in the

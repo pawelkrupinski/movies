@@ -203,6 +203,30 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
     settled.flatMap(_.tmdbBasis) shouldBe Some(services.resolution.TmdbBasis.TitleOnly.toString)
   }
 
+  it should "record where the film stood in its listing title's own search, in TMDB's order, for the rating gate" in {
+    // TMDB returns the less popular film first; the rank the gate reads is TMDB's, not the
+    // client's popularity sort — the order the calibration measured on recorded answers.
+    val tmdb = new TmdbClient(
+      http = RoutingHttpFetch.getOnly(Seq(
+        "/search/movie" -> s"""{"results":[
+          {"id":$Concert,"title":"Vivaldi i ja","original_title":"Vivaldi i ja","release_date":"2023-04-01","popularity":1.0},
+          {"id":99,"title":"Vivaldi","original_title":"Vivaldi","release_date":"2005-01-01","popularity":9.0}]}""",
+        s"/movie/$Concert?" -> s"""{"id":$Concert,"title":"Vivaldi i ja","release_date":"2023-04-01","runtime":108}""",
+        s"/movie/$Concert/external_ids" -> s"""{"id":$Concert,"imdb_id":""}"""
+      )),
+      apiKey = Some(settings.TmdbApiKey("stub")))
+    val cache = new CaffeineMovieCache(
+      new InMemoryMovieRepository(Seq(("Vivaldi i ja", Some(2023),
+        MovieRecord(data = Map[Source, SourceData](CinemaCityPoznanPlaza -> SourceData(title = Some("Vivaldi i ja"),
+          releaseYear = Some(2023)))))), normalizer = titleNormalizer),
+      normalizer = titleNormalizer)
+    new MovieService(cache, new InProcessEventBus(), tmdb).reEnrichSync("Vivaldi i ja", Some(2023))
+
+    val settled = cache.get(cache.keyOf("Vivaldi i ja", Some(2023)))
+    settled.flatMap(_.tmdbId) shouldBe Some(Concert)
+    settled.map(_.data(models.Tmdb).titleSearches) shouldBe Some(Seq(models.TitleSearch("vivaldiija", Some(1), 0)))
+  }
+
   it should "record a director walk as the stronger basis it is" in {
     val seed = MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some(Title), director = Seq(Director))))

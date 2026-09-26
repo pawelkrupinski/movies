@@ -94,7 +94,12 @@ case class SourceData(
   // slots carry it (the UK chains + Flicks expose it); `MovieRecord.ageRating` takes
   // it CINEMA-first — the screening venue's certificate is the authoritative one for
   // that country, unlike TMDB's per-country certification jumble.
-  ageRating:       Option[String] = None
+  ageRating:       Option[String] = None,
+  // Tmdb slot only: what each of the film's listing titles' own yearless TMDB title searches
+  // said about this film when it was resolved — its rank and its same-titled rivals, one entry
+  // per listing title key (`IdentityMeasures.titleSearch`). Evidence the rating gate scores
+  // (`StoredIdentityConfidence`), never a verdict. Empty on rows resolved before it existed.
+  titleSearches:   Seq[TitleSearch] = Seq.empty
 ) {
   // Record IDENTITY / metadata equality is showtime-AGNOSTIC: canonicalize / settle /
   // divert compare records to decide film identity + row structure, which never depend
@@ -119,13 +124,13 @@ case class SourceData(
       englishTitle == o.englishTitle && synopsis == o.synopsis && SourceData.castSet(cast) == SourceData.castSet(o.cast) &&
       director == o.director && runtimeMinutes == o.runtimeMinutes && releaseYear == o.releaseYear &&
       countries == o.countries && genres == o.genres && posterUrl == o.posterUrl &&
-      filmUrl == o.filmUrl && trailerUrl == o.trailerUrl && language == o.language
+      filmUrl == o.filmUrl && trailerUrl == o.trailerUrl && language == o.language && titleSearches == o.titleSearches
     case _ => false
   }
   override def hashCode(): Int =
     (title, rawTitle, originalTitle, englishTitle, synopsis, SourceData.castSet(cast), director,
      runtimeMinutes, releaseYear, countries, genres, posterUrl, filmUrl, trailerUrl,
-     language).hashCode()
+     language, titleSearches).hashCode()
 
   /** The BCP-47 tag this slot's localized text was actually fetched in, reading an
    *  unstamped slot as the historical hardcoded default. Every caller that compares
@@ -165,3 +170,9 @@ object SourceData {
     Option.when(before.posterUrl.isEmpty      && after.posterUrl.nonEmpty)("poster")
   ).flatten
 }
+
+/** What one listing title's own yearless TMDB title searches said about the film it resolved to:
+ *  where the film ranked (1-based; `None` when no search returned it) and how many OTHER films
+ *  they returned that the title names as closely (`IdentityMeasures.rivals`). Keyed by the
+ *  listing title's comparison key (`IdentityMeasures.key`). */
+final case class TitleSearch(titleKey: String, rank: Option[Int], rivals: Int)

@@ -177,6 +177,28 @@ object IdentityMeasures {
    *  the recording sweep all read it. */
   def searchQueries(l: Listing): Seq[String] = (titleShapes(l) ++ l.originalTitle).map(_.trim).filter(_.nonEmpty).distinct
 
+  /** The title relations under which another film RIVALS a listing's film: the listing's title
+   *  names it as closely (`rivals`). */
+  val Rivalling: Set[String] = Set("exact", "original", "alternative")
+
+  /** How many films of `pool` other than `film` the listing's title names as closely as a
+   *  rival does — the `rivals` measure, over whatever pool the caller searched. */
+  def rivals(l: Listing, pool: Map[Int, Film], film: Int): Int =
+    pool.count { case (id, f) => id != film && Rivalling(titleRelation(l, f).value) }
+
+  /** What a listing's own yearless title searches ([[searchQueries]]) said about `film`: where it
+   *  ranked (1-based, best over the queries; `None` when no query returned it) and how many other
+   *  films they returned that the listing's title names as closely. `None` when no query was
+   *  answered. `search` answers ONE query with its ranked results, `None` when it could not. */
+  def titleSearch(l: Listing, film: Int, search: String => Option[Seq[Hit]]): Option[models.TitleSearch] = {
+    val answers = searchQueries(l).flatMap(q => search(q).toSeq)
+    Option.when(answers.nonEmpty) {
+      val ranked = answers.flatMap(_.zipWithIndex).groupMapReduce(_._1.tmdbId)(h => h)((a, b) => if (a._2 <= b._2) a else b)
+      val pool = ranked.map { case (id, (h, _)) => id -> Film(h.title, h.originalTitle, Nil, h.year, popularity = Some(h.popularity)) }
+      models.TitleSearch(key(l.title), ranked.get(film).map(_._2 + 1), rivals(l, pool, film))
+    }
+  }
+
   /** The venues among `group` (the listings sharing the listing's title key, with their venue)
    *  whose OWN facts back `f` — its exact year, or a credit of its director — other than
    *  `ownVenue`: the `venues.corroborating` count. */

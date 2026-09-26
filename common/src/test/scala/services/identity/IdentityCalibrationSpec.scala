@@ -149,6 +149,19 @@ class IdentityCalibrationSpec extends AnyFlatSpec with Matchers {
       sameVenue = false) should be > 0.5
   }
 
+  "a listing's title search" should "rank the film at its best over the listing's own queries and count the films its title names as closely" in {
+    val l = Listing("Kill Bill", rawTitle = Some("Kill Bill: The Whole Bloody Affair"))
+    val answers = Map(
+      "Kill Bill" -> Seq(Hit(24, "Kill Bill: Vol. 1", None, Some(2003), 50), Hit(414419, "Kill Bill: The Whole Bloody Affair", None, Some(2011), 5)),
+      "Kill Bill: The Whole Bloody Affair" -> Seq(Hit(414419, "Kill Bill: The Whole Bloody Affair", None, Some(2011), 5)))
+    val s = IdentityMeasures.titleSearch(l, 414419, answers.get).get
+    s shouldBe models.TitleSearch(IdentityMeasures.key("Kill Bill"), Some(1), 0)
+    IdentityMeasures.titleSearch(l, 7, answers.get).get.rank shouldBe None
+    IdentityMeasures.titleSearch(l, 414419, _ => None) shouldBe None
+    val namesakes = Map("Lalka" -> Seq(Hit(1, "Lalka", None, Some(1968), 3), Hit(2, "Lalka", None, Some(2026), 9)))
+    IdentityMeasures.titleSearch(Listing("Lalka"), 2, namesakes.get).get shouldBe models.TitleSearch("lalka", Some(2), 1)
+  }
+
   "a learned cannot-link" should "never fire on missing evidence" in {
     val rule = IdentityCalibration.Condition("director", in = Seq("different"))
     rule.holds(Map("director" -> Missing("listing"))) shouldBe false

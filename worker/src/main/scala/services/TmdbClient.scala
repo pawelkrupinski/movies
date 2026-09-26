@@ -90,21 +90,32 @@ class TmdbClient(
     RetryWithBackoff("TMDB GET", maxAttempts = 3, initialBackoff = 300.millis,
       retryOn = TmdbClient.isTransient, sleep = retrySleep)(http.get(url, auth))
 
+  private def searchUrl(title: String, yearParameter: Option[Int]): String = {
+    val yp = yearParameter.map(y => s"&year=$y&primary_release_year=$y").getOrElse("")
+    s"$ApiBase/search/movie?language=$languageTag&include_adult=false&query=${urlEncode(title)}$yp${apiKeyParameter("&")}"
+  }
+
   /** One TMDB title search, popularity-ordered by [[parseSearchResults]]. Scoped to a
    *  year when one is given — the year a cinema reports can be the production year while
    *  TMDB stores the theatrical date, so the two forms return materially different result
    *  sets and the two callers choose deliberately between them. */
   private def searchOnce(title: String, yearParameter: Option[Int], auth: Map[String, String]): Seq[TmdbClient.SearchResult] = {
-    val yp = yearParameter.map(y => s"&year=$y&primary_release_year=$y").getOrElse("")
-    val url = s"$ApiBase/search/movie?language=$languageTag&include_adult=false&query=${urlEncode(title)}$yp${apiKeyParameter("&")}"
+    val url = searchUrl(title, yearParameter)
     parseSearchResults(httpGet(url, auth))
   }
 
-  /** Every result of ONE title search, in TMDB's order — year-scoped when a year is given. The
+  /** Every result of ONE title search, most popular first — year-scoped when a year is given. The
    *  identity resolver's candidate lookup (`services.identity.TmdbIdentityLookups`), which scores
    *  every result itself rather than asking this client to pick one. */
   def search(title: String, year: Option[Int]): Seq[TmdbClient.SearchResult] =
     authHeader.map(searchOnce(title, year, _)).getOrElse(Nil)
+
+  /** One yearless title search in TMDB's OWN order, not re-sorted by popularity: where a film
+   *  ranks in it is identity evidence (`IdentityMeasures.titleSearch`), measured exactly as the
+   *  calibration measured it on recorded answers. `None` without a key; a failed request throws. */
+  def searchAsRanked(title: String): Option[Seq[TmdbClient.SearchResult]] = authHeader.map { auth =>
+    (Json.parse(httpGet(searchUrl(title, None), auth)) \ "results").asOpt[JsArray].map(decodeMovieArray).getOrElse(Seq.empty)
+  }
 
   /** Resolve ONLY when the title search is unambiguous — exactly one result.
    *  Used when the title is the only signal we have (no year / director /
@@ -436,13 +447,13 @@ class TmdbClient(
   }.getOrElse(Seq.empty)
 
   private[clients] def parseSearchResults(body: String): Seq[TmdbClient.SearchResult] =
-    (Json.parse(body) \ "results").asOpt[JsArray].map(decodeMovieArray).getOrElse(Seq.empty)
+    (Json.parse(body) \ "results").asOpt[JsArray].map(decodeMovieArray).getOrElse(Seq.empty).sortBy(-_.popularity)
 
   // /find/{external_id} returns matches under "movie_results" in the same row
   // shape as /search/movie's "results". Both decoders share this body.
   private[clients] def parseFindMovieResults(body: String): Seq[TmdbClient.SearchResult] =
     (Json.parse(body) \ "movie_results").asOpt[JsArray]
-      .map(decodeMovieArray).getOrElse(Seq.empty)
+      .map(decodeMovieArray).getOrElse(Seq.empty).sortBy(-_.popularity)
 
   private def decodeMovieArray(array: JsArray): Seq[TmdbClient.SearchResult] =
     array.value.flatMap { js =>
@@ -456,7 +467,7 @@ class TmdbClient(
         popularity    = (js \ "popularity").asOpt[Double].getOrElse(0.0),
         overview      = (js \ "overview").asOpt[String].filter(_.nonEmpty)
       )
-    }.sortBy(-_.popularity).toSeq
+    }.toSeq
 }
 
 object TmdbClient {

@@ -136,10 +136,10 @@ object IdentityCalibrate {
     obs.indices.foreach { i =>
       val o = obs(i); val pool = pools(i); val g = IdentityMeasures.key(o.listing.title)
       val closeTitles = pool.map { case (id, (_, f)) => id -> IdentityMeasures.titleRelation(o.listing, f).value }
-      val close = closeTitles.count { case (_, r) => r == "exact" || r == "original" || r == "alternative" }
+      val close = closeTitles.count { case (_, r) => IdentityMeasures.Rivalling(r) }
       pool.foreach { case (id, (rank, f)) =>
         val own = closeTitles(id)
-        val rivals = close - (if (own == "exact" || own == "original" || own == "alternative") 1 else 0)
+        val rivals = close - (if (IdentityMeasures.Rivalling(own)) 1 else 0)
         val venues = IdentityMeasures.corroboratingVenues(f, members(g), o.venue)
         lf += LfPair(o.idx, id, IdentityMeasures.listingFilm(o.listing, f, rank, rivals, venues))
       }

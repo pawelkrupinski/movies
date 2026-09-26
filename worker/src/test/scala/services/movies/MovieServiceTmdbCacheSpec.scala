@@ -12,7 +12,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * The TMDB id resolution (search + verify + director-walk) is cached per hint
- * combination, so resolving the same film twice runs the TMDB title search ONCE.
+ * combination, so resolving the same film a second time runs no TMDB title search.
  * Without the cache (the `passthrough` control) each resolve hits `/search/movie`
  * again — that contrast is the fail-before / pass-after gate for the wiring.
  */
@@ -39,8 +39,11 @@ class MovieServiceTmdbCacheSpec extends AnyFlatSpec with Matchers {
       tmdbIdCache = new WriteThroughResolutionCache(new InMemoryResolutionStore(normalizer = titleNormalizer)))
 
     service.reEnrichSync(Title, Year).flatMap(_.tmdbId) shouldBe Some(TmdbId)
+    val first = searches(http)
     service.reEnrichSync(Title, Year).flatMap(_.tmdbId) shouldBe Some(TmdbId)
-    searches(http) shouldBe 1
+    // The second resolve searches nothing: its id comes off the cache, and the film's title
+    // search was already measured for the rating gate on the first.
+    searches(http) shouldBe first
   }
 
   it should "hit the search on every resolve without a cache (control)" in {
@@ -50,7 +53,8 @@ class MovieServiceTmdbCacheSpec extends AnyFlatSpec with Matchers {
       tmdbIdCache = ResolutionCache.passthrough)
 
     service.reEnrichSync(Title, Year)
+    val first = searches(http)
     service.reEnrichSync(Title, Year)
-    searches(http) shouldBe 2
+    searches(http) should be > first
   }
 }

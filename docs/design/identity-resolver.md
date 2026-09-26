@@ -788,30 +788,50 @@ published are untouched.
   reads each stored row through `StoredIdentityConfidence`: the TMDB slot is the film, each venue
   slot (with its detail-page facts) a listing, measured by the calibration's own
   `IdentityMeasures.listingFilm` — title, original title, year, director, runtime, country, and
-  `venues.corroborating` over the row's venues sharing the title key. The measures only the
-  concluding TMDB search knew (`IdentityMeasures.RankingPriors`: rank, popularity, rivals) are not
-  stored and weigh nothing. The film's confidence is its best-evidenced listing's
-  `IdentityCalibration.probability`; below the artefact's `showRatings` threshold (fitted, §14)
-  the card is withheld. `tmdbBasis` is never read — most rows predate it. A row with no TMDB slot
+  `venues.corroborating` over the row's venues sharing the title key — and the film's standing in
+  each listing title's own yearless TMDB search (`search.rank`, `rivals`), which the resolution
+  records on the TMDB slot (`SourceData.titleSearches`, `IdentityMeasures.titleSearch`, in TMDB's
+  own result order as the calibration measured it; `backfill-title-searches.js` fills rows resolved
+  before). A title with no stored search leaves both out; popularity is never used. The search
+  standing can lend a listing confidence, never withdraw it (the larger of the probability with and
+  without it — the resolver's own rule for vetoes, `factsProbability`, §14.6). The film's
+  confidence is its best-evidenced listing's `IdentityCalibration.probability`; below the
+  artefact's `showRatings` threshold (fitted, §14) the card is withheld. `tmdbBasis` is never read — most rows predate it. A row with no TMDB slot
   or no venue slot has nothing to measure and keeps its card. So a title-only match stays a match,
   and keeps its ratings exactly when some venue's facts back it: Kino 1410's "Samson i dalila |
   metropolitan opera: live in hd 2026/27" (no year, director or runtime, against DeMille's 1949
   film) is withheld; a Back to the Future III whose venues state 1990, 118 min and Zemeckis is
-  shown; an exact title with no other fact anywhere scores ≈0.18 and is withheld, as a namesake
-  would have the same evidence (`StoredIdentityConfidenceSpec`).
+  shown; an exact title with no other fact scores ≈0.18 and is withheld unless its own search
+  returned it first with no same-titled rival (then ≈0.5, shown), as a namesake would otherwise
+  have the same evidence (`StoredIdentityConfidenceSpec`).
+- **Why the search standing, measured** (`scripts.IdentitySearchEvidence`, labelled units replayed
+  through run 36224654409's recorded searches, the listing stripped to its title): rank 1 with no
+  rival under an exact title is 2,697 corroborated units against 1 contradicted; the same under a
+  banner segment 387 against 18. Shown on a bare title: 61.7% of corroborated units and 2.1% of
+  contradicted with rank and rivals, 9.4% and 0% without. Stable where §14.6 said the pooled
+  weights are not: k = 3 labels 69.6%, labels not using other venues 69.0%, held-out 63.4%
+  (contradicted held-out 1 of 12). Popularity adds nothing (60.5%). With full listing evidence the
+  lend-never-withdraw rule shows 99.7% of corroborated units (99.5% without the search) and the
+  same 1 of 47 contradicted.
 - **Why not the shadow decisions.** The first cut gated on the shadow resolver's persisted
   decisions, with a threshold `ConfidenceCalibration` fitted from its labelled diff. Those
   decisions were never persisted (`ShadowDecisions.none`), so a switched-on gate withheld nothing.
   `ConfidenceCalibration` now only draws the admin view's low-confidence line (§13.3).
 - **Measure before switching.** `scripts.IdentityGateImpact` replays a read-only export of
-  production rows through the same gate and reports, per country, what it would hide and how many
-  of those the labelled set corroborates (false hides) or contradicts. Measured 2026-09-26 on
-  listed, rated films: PL 199/710 hidden (28%; labels: 1 corroborated, 1 contradicted, 197
-  unlabelled), UK 33/1373 (2.4%; 2/2/29), DE 9/1544 (0.6%; 1/1/7), US 86/2132 (4.0%; 0/1/85),
-  ES 2/209 (1.0%). The labels cover few of the hidden films; unlabelled PL and US hides include
-  plainly right matches that small venues list by bare title (Fellini's "Osiem i pół", Alamo's
-  "Kill Bill"), so those countries are not switched. Rows with a tmdbId but no stored TMDB slot
-  (PL 15, UK 26, DE 52) are not scored.
+  production rows through the same gate (with `--trees`, measuring rows that store no search from
+  the recorded answers — the backfill's plan) and reports per country what it would hide, judged
+  against the labelled set. 2026-09-26, listed rated films, hidden (false / true by label,
+  unlabelled), then a hand spot-check of the unlabelled hides (right / wrong / unsure):
+  PL 64/709 (0/1/63; 17/10/3 of 30), UK 21/1375 (0/2/19; 11/5/3 of 19), DE 8/1545 (0/1/7; 4/3/0),
+  US 40/2136 (0/1/39; 19/3/8 of 30), ES 2/209 (0/0/2; 1/1/0). Without the search standing:
+  PL 199, UK 33, DE 9, US 86, ES 2. Estimated false hides: PL ≈5% of rated films, US ≈1.2–1.7%,
+  UK ≈0.9–1.0%, DE 0.3%, ES 0.5% — PL and US stay above today's 0.97% wrong rate. What remains
+  hidden and right: PL series banners whose segment keeps the bracketed year ("Akademia Kina
+  Polskiego: Psy (1992)" measures `contains` and is searched with the year inside, so TMDB returns
+  nothing); US repertory titles with same-titled rivals (Free Willy, Frailty), where the labels put
+  the top hit right about 91% of the time — hiding them is what the 0.97% target asks; re-release
+  years ("25 Aniversario", "20 Jähriges Jubiläum") measured as a year 20+ off. Rows with a tmdbId
+  but no stored TMDB slot (PL 15, UK 26, DE 52) are not scored.
 - **Wiring, off.** `ReadModelProjector(ratingGate = …)` applies the gate to every card it
   projects. The gate's `version` is part of the metadata-reuse key, so a new gate re-projects
   instead of reusing cards gated under the old one. `ReadModelContentAudit` projects through the

@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{CinemaShowing, CurzonCinemaAldgate, Helios, Imdb, Multikino, MovieRecord, Showtime, Source, SourceData, Tmdb}
+import models.{CinemaShowing, CurzonCinemaAldgate, Helios, Imdb, Multikino, MovieRecord, Showtime, Source, SourceData, TitleSearch, Tmdb}
 import org.bson.{BsonDocument, BsonDocumentReader, BsonDocumentWriter}
 import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -182,6 +182,13 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     val back   = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain("cert|2026", record, Instant.EPOCH)), titleNormalizer)
     back.record.data(Helios).ageRating shouldBe Some("12A")
     back.record.ageRating              shouldBe Some("12A")
+  }
+
+  it should "round-trip the Tmdb slot's title-search evidence, a film no search returned included" in {
+    val searches = Seq(TitleSearch("osiemipol", Some(1), 0), TitleSearch("fellini", None, 3))
+    val record   = MovieRecord(data = Map[Source, SourceData](Tmdb -> SourceData(title = Some("Osiem i pół"), titleSearches = searches)))
+    val back = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain("osiemipol|1963", record, Instant.EPOCH)), titleNormalizer)
+    back.record.data(Tmdb).titleSearches shouldBe searches
   }
 
   it should "round-trip the Tmdb slot's enrichment-language stamp" in {

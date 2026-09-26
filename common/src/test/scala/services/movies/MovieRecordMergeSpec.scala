@@ -310,4 +310,11 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
     MovieRecordMerge.unionAll(Seq(row)).data(Helios) should be theSameInstanceAs slot
   }
 
+  "merging two Tmdb slots" should "keep every listing title's search, the better-ranked one where both measured it, in any order" in {
+    val a = SourceData(title = Some("Diuna"), titleSearches = Seq(TitleSearch("diuna", Some(2), 1), TitleSearch("dune", Some(1), 0)))
+    val b = SourceData(title = Some("Diuna"), titleSearches = Seq(TitleSearch("diuna", Some(1), 1)))
+    val want = Seq(TitleSearch("diuna", Some(1), 1), TitleSearch("dune", Some(1), 0))
+    MovieRecordMerge.mergeSlots(Seq(a, b)).titleSearches shouldBe want
+    MovieRecordMerge.mergeSlots(Seq(b, a)).titleSearches shouldBe want
+  }
 }

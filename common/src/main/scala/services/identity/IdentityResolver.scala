@@ -77,7 +77,6 @@ object IdentityResolver {
   /** Title relations close enough that a candidate a node's own queries did not name is still
    *  scored for it (an evidence path through the title). */
   private val Reaching = Set("exact", "original", "alternative", "segment", "contains")
-  private val Rivalling = Set("exact", "original", "alternative")
 
   /** `pins` are the curation's hard constraints (`ListingConstraints.pinned`): a pinned film
    *  replaces a listing's own match, a denied one is never eligible, a pinned group is must-linked
@@ -165,10 +164,10 @@ object IdentityResolver {
                 deniedByPins: Int => Boolean): Seq[Scored] = {
         val relation  = pool.map(c => c.tmdbId -> IdentityMeasures.titleRelation(l, c.film).value).toMap
         val reachable = pool.filter(c => ranks.contains(c.tmdbId) || walked(c.tmdbId) || Reaching(relation(c.tmdbId)))
-        val close     = reachable.count(c => Rivalling(relation(c.tmdbId)))
+        val close     = reachable.count(c => IdentityMeasures.Rivalling(relation(c.tmdbId)))
         val group     = groups.getOrElse(IdentityMeasures.key(l.title), Nil)
         reachable.map { c =>
-          val rivals   = close - (if (Rivalling(relation(c.tmdbId))) 1 else 0)
+          val rivals   = close - (if (IdentityMeasures.Rivalling(relation(c.tmdbId))) 1 else 0)
           val measures = IdentityMeasures.listingFilm(l, c.film, ranks.get(c.tmdbId), rivals,
             IdentityMeasures.corroboratingVenues(c.film, group, venue))
           val p = calibration.probability(ListingFilm, measures)

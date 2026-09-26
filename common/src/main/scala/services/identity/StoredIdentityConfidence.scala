@@ -1,6 +1,6 @@
 package services.identity
 
-import models.{MovieRecord, SourceData, Tmdb}
+import models.{MovieRecord, SourceData, TitleSearch, Tmdb}
 import services.identity.IdentityMeasures.{Film, Listing, ListingFilm, Measure}
 
 /**
@@ -16,10 +16,13 @@ import services.identity.IdentityMeasures.{Film, Listing, ListingFilm, Measure}
  * How the row's tmdbId was concluded (`tmdbBasis`) is never read: most rows predate it, and the
  * evidence is what says whether a title-only match is right.
  *
- * The TMDB search that concluded the id is not stored, so the measures only a search yields —
- * [[IdentityMeasures.RankingPriors]]: the film's rank, its popularity, its same-titled rivals —
- * are left out, weighing nothing. What remains is the listings' own facts: a unique search hit
- * that no venue's facts back scores as an exact title alone does.
+ * The film's standing in each listing title's own TMDB title search is part of the evidence: the
+ * TMDB slot keeps it per title (`SourceData.titleSearches`, measured at resolution by
+ * [[IdentityMeasures.titleSearch]]) as the film's rank and its same-titled rivals — what makes a
+ * bare exact title that TMDB knows as one film credible, and a banner or namesake not. A listing
+ * title with no stored search (a row resolved before the field existed, a venue that listed the
+ * film later) leaves both out, weighing nothing. Popularity is never used: measured, it adds
+ * nothing to rank and rivals (docs/design/identity-resolver.md §13.2).
  */
 object StoredIdentityConfidence {
 
@@ -48,22 +51,37 @@ object StoredIdentityConfidence {
   }
 
   /** One listing's measures against the film, with `venues` (every venue slot of the row, by
-   *  venue) as its corroborating family: the venues listing the same title key. */
-  def measures(film: Film, venue: String, listing: Listing, venues: Seq[(String, Listing)]): Map[String, Measure] = {
-    val family = venues.filter { case (_, l) => IdentityMeasures.key(l.title) == IdentityMeasures.key(listing.title) }
-    IdentityMeasures.listingFilm(listing, film, searchRank = None, rivals = 0,
-      IdentityMeasures.corroboratingVenues(film, family, venue)) -- IdentityMeasures.RankingPriors
+   *  venue) as its corroborating family — the venues listing the same title key — and `searches`
+   *  the film's stored title searches. */
+  def measures(film: Film, venue: String, listing: Listing, venues: Seq[(String, Listing)],
+               searches: Seq[TitleSearch]): Map[String, Measure] = {
+    val titleKey = IdentityMeasures.key(listing.title)
+    val family   = venues.filter { case (_, l) => IdentityMeasures.key(l.title) == titleKey }
+    val search   = searches.find(_.titleKey == titleKey)
+    val measured = IdentityMeasures.listingFilm(listing, film, search.flatMap(_.rank), search.fold(0)(_.rivals),
+      IdentityMeasures.corroboratingVenues(film, family, venue)) - "popularity.log2"
+    if (search.isDefined) measured else measured -- IdentityMeasures.RankingPriors
   }
 
   /** The film's confidence: its best-evidenced listing's calibrated probability. The ratings are
    *  the TMDB film's, so one venue whose facts (with its family's) establish that film is enough;
    *  a venue that publishes nothing neither establishes nor refutes it. None without a TMDB
    *  record or a venue listing: nothing to measure. */
-  def of(film: Film, venues: Seq[(String, Listing)], calibration: IdentityCalibration): Option[Double] =
-    venues.map { case (venue, l) => calibration.probability(ListingFilm, measures(film, venue, l, venues)) }.maxOption
+  def of(film: Film, venues: Seq[(String, Listing)], searches: Seq[TitleSearch], calibration: IdentityCalibration): Option[Double] =
+    venues.map { case (venue, l) =>
+      // The search standing can lend a listing confidence, never withdraw it: a film its own
+      // facts establish is not doubted for ranking seventh among namesakes. The same rule the
+      // resolver's vetoes follow (`IdentityResolver.factsProbability`): rank and rivals are
+      // ambiguity, not evidence of a different film, and their weights are the label-selection
+      // sensitive ones (docs/design/identity-resolver.md §14.6).
+      val withSearch = measures(film, venue, l, venues, searches)
+      calibration.probability(ListingFilm, withSearch) max
+        calibration.probability(ListingFilm, withSearch -- IdentityMeasures.RankingPriors)
+    }.maxOption
 
   def of(record: MovieRecord, calibration: IdentityCalibration): Option[Double] =
     record.data.get(Tmdb).filter(_ => record.tmdbId.isDefined).flatMap { tmdb =>
-      of(film(tmdb), record.cinemaShowings.map { case (cinema, slot) => cinema.displayName -> listing(slot) }, calibration)
+      of(film(tmdb), record.cinemaShowings.map { case (cinema, slot) => cinema.displayName -> listing(slot) }, tmdb.titleSearches,
+        calibration)
     }
 }

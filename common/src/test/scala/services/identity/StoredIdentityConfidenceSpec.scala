@@ -101,16 +101,50 @@ class StoredIdentityConfidenceSpec extends AnyFlatSpec with Matchers {
     shown(noTmdb) shouldBe true
   }
 
-  "the stored-evidence measures" should "leave out what only the concluding search knew" in {
-    val m = StoredIdentityConfidence.measures(StoredIdentityConfidence.film(samson.record.data(Tmdb)), "Kino 1410",
-      StoredIdentityConfidence.listing(samson.record.data(Kino1410)), Nil)
-    m.keySet intersect IdentityMeasures.RankingPriors shouldBe empty
-    m.keySet should contain allOf ("title", "year.distance", "director", "runtime.delta", "venues.corroborating")
+  "the stored-evidence measures" should "take rank and rivals from the listing title's stored search, and leave them out without one" in {
+    val film    = StoredIdentityConfidence.film(samson.record.data(Tmdb))
+    val listing = StoredIdentityConfidence.listing(samson.record.data(Kino1410))
+    val none    = StoredIdentityConfidence.measures(film, "Kino 1410", listing, Nil, Nil)
+    none.keySet intersect IdentityMeasures.RankingPriors shouldBe empty
+    none.keySet should contain allOf ("title", "year.distance", "director", "runtime.delta", "venues.corroborating")
+    val searched = StoredIdentityConfidence.measures(film, "Kino 1410", listing, Nil,
+      Seq(TitleSearch(IdentityMeasures.key(listing.title), Some(2), 1)))
+    searched.get("search.rank") shouldBe Some(IdentityMeasures.Number(2))
+    searched.get("rivals") shouldBe Some(IdentityMeasures.Number(1))
+    searched.keySet should not contain "popularity.log2"
   }
 
   "the gate's version" should "follow the calibration artefact" in {
     RatingGate.fromEvidence(calibration).version shouldBe RatingGate.fromEvidence(calibration).version
     RatingGate.fromEvidence(calibration.copy(version = "other")).version should not be RatingGate.fromEvidence(calibration).version
     RatingGate.fromEvidence(calibration).version should not be RatingGate.off.version
+  }
+
+  // A bare title TMDB's own search for it knows as ONE film — "Osiem i pół" at a small venue, a
+  // repertory "Kill Bill" — is what the old title-only rule got right. Measured on the labelled
+  // set (docs/design/identity-resolver.md §13.2): rank 1 with no rival, exact title: 2,697
+  // corroborated units against 1 contradicted.
+  private val lantern = tmdb("Zawieście czerwone latarnie", "大红灯笼高高挂", 1991, 125, "张艺谋", "Chiny")
+  private def bareLantern(searches: TitleSearch*) =
+    row(lantern.copy(titleSearches = searches), KinoAmondo -> SourceData(title = Some("Zawieście czerwone latarnie"),
+      rawTitle = Some("Zawieście czerwone latarnie")))
+
+  "a bare exact title its own TMDB search returned first and alone" should "keep its ratings" in {
+    shown(bareLantern(TitleSearch(IdentityMeasures.key("Zawieście czerwone latarnie"), Some(1), 0))) shouldBe true
+  }
+
+  it should "still be withheld when the search returned same-titled rivals: a namesake is as likely" in {
+    shown(bareLantern(TitleSearch(IdentityMeasures.key("Zawieście czerwone latarnie"), Some(1), 2))) shouldBe false
+  }
+
+  it should "weigh nothing for a search stored under another listing title" in {
+    shown(bareLantern(TitleSearch("somethingelse", Some(1), 0))) shouldBe false
+  }
+
+  "a banner title whose search returned one film" should "stay withheld: uniqueness does not rescue a title the film does not carry" in {
+    val unique = samson.copy(record = samson.record.copy(data = samson.record.data.updated(Tmdb,
+      samson.record.data(Tmdb).copy(titleSearches = Seq(TitleSearch(IdentityMeasures.key(
+        "Samson i dalila | metropolitan opera: live in hd 2026/27"), Some(1), 0))))))
+    shown(unique) shouldBe false
   }
 }

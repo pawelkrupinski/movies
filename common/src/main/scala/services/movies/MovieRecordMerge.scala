@@ -191,7 +191,11 @@ object MovieRecordMerge {
       // keeps a merged-but-not-yet-restripped slot self-consistent in the meantime.
       showtimesDigest = number(_.showtimesDigest),
       showtimeStartMinutes = ranked.iterator.flatMap(_.showtimeStartMinutes).nextOption(),
-      ageRating       = text(_.ageRating)
+      ageRating       = text(_.ageRating),
+      // One entry per listing title: every slot's, and for a title two slots measured, the one
+      // its search ranked the film best in — a total order, so the result is order-free.
+      titleSearches   = slots.flatMap(_.titleSearches).groupBy(_.titleKey).values
+                          .map(_.minBy(t => (t.rank.getOrElse(Int.MaxValue), t.rivals))).toSeq.sortBy(_.titleKey)
     )
   }
 

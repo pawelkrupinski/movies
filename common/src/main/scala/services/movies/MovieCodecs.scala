@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{MovieRecord, Showtime, Source, SourceData}
+import models.{MovieRecord, Showtime, Source, SourceData, TitleSearch}
 import services.resolution.TmdbAttempt
 import org.bson.{BsonReader, BsonWriter}
 import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders, fromRegistries}
@@ -162,7 +162,7 @@ object MovieCodecs extends PersistedCodecs {
 
   /** `SourceData` is written through [[BackwardCompatibleSourceDataCodec]], which wraps
    *  the macro codec derived here. */
-  type OmittingNone = (SourceData, Showtime)
+  type OmittingNone = (SourceData, Showtime, TitleSearch)
   /** `movies` (and `pending_movies`), `screenings`, `movie_slots`. */
   type WritingNone  = (StoredTmdbAttempt, StoredMovieDto, StoredScreeningsDto, StoredSlotDto)
 
@@ -177,6 +177,8 @@ object MovieCodecs extends PersistedCodecs {
   private val macroSourceDataCodec: Codec[SourceData] = omittingNoneRegistry.get(classOf[SourceData])
 
   private val showtimeCodec: Codec[Showtime] = omittingNoneRegistry.get(classOf[Showtime])
+
+  private val titleSearchCodec: Codec[TitleSearch] = omittingNoneRegistry.get(classOf[TitleSearch])
 
   private class BackwardCompatibleSourceDataCodec extends Codec[SourceData] {
     override def getEncoderClass: Class[SourceData] = classOf[SourceData]
@@ -216,6 +218,12 @@ object MovieCodecs extends PersistedCodecs {
             showtimeCodec.decode(new org.bson.BsonDocumentReader(array.get(i).asDocument()), c)
           }.toSeq
         }
+      def titleSearches: Seq[TitleSearch] =
+        if (!document.containsKey("titleSearches") || !document.get("titleSearches").isArray) Seq.empty
+        else {
+          val array = document.getArray("titleSearches")
+          (0 until array.size()).map(i => titleSearchCodec.decode(new org.bson.BsonDocumentReader(array.get(i).asDocument()), c)).toSeq
+        }
       SourceData(
         title          = optStr("title"),
         rawTitle       = optStr("rawTitle"),
@@ -237,7 +245,9 @@ object MovieCodecs extends PersistedCodecs {
         language       = optStr("language"),
         showtimes      = showtimes,
         // Absent on every row written before the certificate field existed → None.
-        ageRating      = optStr("ageRating")
+        ageRating      = optStr("ageRating"),
+        // Absent on every slot written before the field existed → no search evidence.
+        titleSearches  = titleSearches
       )
     }
   }
