@@ -18,7 +18,7 @@ import java.time.{Clock, LocalDateTime, ZoneOffset}
  * (docs/design/identity-resolver.md §8, §9a). The whole recorded corpus, booted with capture ON
  * and the shadow run switched on and ticked after the boot, must render byte-identically to the
  * snapshots `FilmScheduleEndToEndSpec` pins with both OFF — `expected-schedules.txt` and the
- * read-model snapshot — while the store fills with every listing, external lookup and venue
+ * read-model snapshot — while the store fills with every listing, identity lookup and venue
  * detail the boot made, and the shadow run resolves the corpus from those alone.
  */
 class ObservationCaptureEndToEndSpec extends AnyFlatSpec with Matchers {
@@ -67,7 +67,7 @@ class ObservationCaptureEndToEndSpec extends AnyFlatSpec with Matchers {
     modIds(actual) shouldBe modIds(expected)
   }
 
-  it should "have observed every scraped listing, the external lookups and the venue details the boot made" in {
+  it should "have observed every scraped listing, the identity lookups and the venue details the boot made" in {
     wiring
     val listings = store.currentListings()
     val scraped  = wiring.cinemaScrapers.flatMap(s => scala.util.Try(s.fetch()).toOption.toSeq.flatten.map(ListingKey.of(s.cinema, _)))
@@ -75,8 +75,10 @@ class ObservationCaptureEndToEndSpec extends AnyFlatSpec with Matchers {
       listings.map(_.key).toSet shouldBe scraped.toSet
     }
     val lookups = store.currentLookups()
-    lookups.map(_.query.host).toSet should contain allOf ("api.themoviedb.org", "caching.graphql.imdb.com", "www.filmweb.pl", "www.rottentomatoes.com")
-    lookups.count(_.query.key.startsWith("DETAIL ")) should be > 0
+    // The resolver's lookups only: the TMDB client's and the venues' details — no rating page.
+    val (details, external) = lookups.partition(_.query.key.startsWith("DETAIL "))
+    external.map(_.query.host).toSet shouldBe Set("api.themoviedb.org")
+    details.size should be > 0
   }
 
   it should "have resolved the corpus in shadow from the observations alone, without a request" in {

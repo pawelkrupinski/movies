@@ -15,8 +15,8 @@ import scala.util.Try
  *
  *  - a LISTING observation: what one venue published about one film, keyed by `ListingKey`;
  *  - a LOOKUP observation: what an external service answered to one request, keyed by the
- *    canonical request (`LookupQuery`) — TMDB searches, details and credits, IMDb, Filmweb,
- *    Metacritic and Rotten Tomatoes pages, a venue's per-film detail page.
+ *    canonical request (`LookupQuery`) — the identity resolver's: TMDB searches, details,
+ *    credits and filmographies, and a venue's per-film detail page.
  *
  * Nothing here is derived from another observation, and nothing serving reads them.
  */
@@ -32,6 +32,16 @@ final case class LookupQuery(key: String) {
     case Array(_, url, _*) => Try(Option(new URI(url).getHost)).toOption.flatten.getOrElse("")
     case _                 => ""
   }
+
+  /** Whether this is evidence the identity resolver reads: a venue's detail, or a request under
+   *  TMDB's API — the one external client `TmdbIdentityLookups` asks, and so the one the capture
+   *  observes (`identityLookupFetch`). What the unscoped capture filed from every other client —
+   *  rating pages above all — is not, and `PurgeNonIdentityObservations` removes it. */
+  def isIdentityEvidence: Boolean = key.split(' ') match {
+    case Array(LookupQuery.DetailMethod, _*) => true
+    case Array(_, url, _*)                   => url.startsWith(s"${clients.TmdbClient.ApiBase}/")
+    case _                                   => false
+  }
 }
 
 object LookupQuery {
@@ -42,7 +52,9 @@ object LookupQuery {
 
   /** A venue's per-film detail answer, which reaches the resolver PARSED (`DetailEnricher`)
    *  rather than as one HTTP body: some venues assemble a detail from several requests. */
-  def venueDetail(venue: String, page: String): LookupQuery = LookupQuery(s"DETAIL $page $venue")
+  def venueDetail(venue: String, page: String): LookupQuery = LookupQuery(s"$DetailMethod $page $venue")
+
+  private[observations] val DetailMethod = "DETAIL"
 }
 
 /** What a request came back with: a body, raw bytes, or a failure (with its HTTP status when it

@@ -90,7 +90,7 @@ class WorkerWiring(
 
   // ── Identity observations (shadow) ──────────────────────────────────────────
   // The identity program's evidence store (docs/design/identity-resolver.md, "Phase 1"):
-  // when `KINOWO_OBSERVATION_CAPTURE` is on, every external lookup (`lookupFetch`), every venue
+  // when `KINOWO_OBSERVATION_CAPTURE` is on, every identity lookup (`identityLookupFetch`), every venue
   // detail (`detailEnrichers`) and every scraped listing (`cinemaScrapeRunner`'s archive) is
   // also kept in this country's `obs_listings` / `obs_lookups`, which nothing serving reads.
   // OFF by default — a staged-migration switch, the one kind of flag the design allows — and

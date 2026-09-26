@@ -49,7 +49,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
   lazy val identityProjection: Option[IdentityProjection] = identityListingIntake.map { intake =>
     new IdentityProjection(
       listings    = () => intake.listings(cinemaScrapers.map(_.cinema)),
-      lookups     = () => CutoverIdentityLookups.over(observationStore, tmdbClientOver, lookupFetch, detailEnrichers),
+      lookups     = () => CutoverIdentityLookups.over(observationStore, tmdbClientOver, identityLookupFetch, detailEnrichers),
       pins        = new MongoPinStore(mongoConnection.database),
       cache       = movieCache,
       filmIds     = filmIdCounterStore,

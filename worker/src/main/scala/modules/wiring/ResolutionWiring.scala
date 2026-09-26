@@ -37,7 +37,7 @@ trait ResolutionWiring { self: WorkerWiring =>
     // Same OMDB_API_KEY gate as `omdbBackfill` — the OMDb rung is inert when unset.
     omdb = configuration.omdbApiKey.map(_ => omdbClient),
     // Cinemeta needs no key — always wired as the final free rung.
-    cinemeta = Some(new CinemetaClient(lookupFetch)))
+    cinemeta = Some(new CinemetaClient(enrichmentFetch)))
 
   // Single-movie TMDB resolution is dispatched as a `ResolveTmdb` worker task:
   // drained by the TaskWorker, retried (`Reschedule`) + deduped by the queue,

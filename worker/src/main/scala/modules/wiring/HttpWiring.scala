@@ -84,35 +84,39 @@ trait HttpWiring { self: WorkerWiring =>
   lazy val enrichmentFetch: HttpFetch =
     phaseFetch(WorkerHttpMetrics.Phase.Enrich)
 
-  // What every external lookup client draws from: `enrichmentFetch`, observed when the
-  // identity program's shadow capture is on (`observationStore`). Wrapped OUTSIDE the chain,
-  // so an observation is what the pipeline itself received — a replayed fixture, a remembered
-  // verdict or the wire — and a harness that swaps `enrichmentFetch` is still observed.
-  lazy val lookupFetch: HttpFetch =
+  // What the identity resolver's lookups draw from: `enrichmentFetch`, observed when the identity
+  // program's shadow capture is on (`observationStore`). The resolver's lookups are
+  // `TmdbIdentityLookups` — a TMDB client plus the venues' `detailEnrichers` (observed in
+  // DetailWiring) — so the TMDB client is the ONE external client over this fetch; every rating,
+  // metadata and id-crosswalk client draws from `enrichmentFetch` unobserved, since none of them
+  // is identity evidence (docs/design/identity-resolver.md §2, "Capture"). Wrapped OUTSIDE the
+  // chain, so an observation is what the pipeline itself received — a replayed fixture, a
+  // remembered verdict or the wire — and a harness that swaps `enrichmentFetch` is still observed.
+  lazy val identityLookupFetch: HttpFetch =
     observationStore.fold(enrichmentFetch)(new services.observations.ObservingHttpFetch(enrichmentFetch, _))
 
   // ── External API clients ──────────────────────────────────────────────────
-  // All draw from `lookupFetch` (the `enrich` phase) so their attempts tally under the
-  // `enrich` phase, apart from the cinema-facing scrapers/resolvers which use `httoFetch`.
-  lazy val tmdbClient: TmdbClient = tmdbClientOver(lookupFetch)
-  /** The deployment's TMDB client (key, language) over `http` — the pipeline's over `lookupFetch`,
+  // All draw from the `enrich` phase (the TMDB client through `identityLookupFetch`), apart from
+  // the cinema-facing scrapers/resolvers which use `httoFetch`.
+  lazy val tmdbClient: TmdbClient = tmdbClientOver(identityLookupFetch)
+  /** The deployment's TMDB client (key, language) over `http` — the pipeline's over `identityLookupFetch`,
    *  and the identity shadow run's over the observation store, so the two ask the same requests. */
   def tmdbClientOver(http: HttpFetch): TmdbClient = new TmdbClient(http, apiKey = configuration.tmdbApiKey, language = country.language)
-  lazy val filmwebClient = new FilmwebClient(lookupFetch)
-  lazy val imdbClient = new ImdbClient(lookupFetch)
-  lazy val metacriticClient = new MetacriticClient(lookupFetch)
-  lazy val rottenTomatoesClient = new RottenTomatoesClient(lookupFetch)
+  lazy val filmwebClient = new FilmwebClient(enrichmentFetch)
+  lazy val imdbClient = new ImdbClient(enrichmentFetch)
+  lazy val metacriticClient = new MetacriticClient(enrichmentFetch)
+  lazy val rottenTomatoesClient = new RottenTomatoesClient(enrichmentFetch)
   // OMDb (omdbapi.com) — feature-gated fallback for the three IMDb-keyed ratings.
   // The client itself no-ops (returns None, makes no HTTP call) when OMDB_API_KEY
   // is unset; `omdbBackfill` in the ratings block builds the refresher only when
   // the key is present.
-  lazy val omdbClient = new OMDbClient(lookupFetch, configuration.omdbApiKey)
+  lazy val omdbClient = new OMDbClient(enrichmentFetch, configuration.omdbApiKey)
   // Letterboxd — an id-crosswalk resolution SOURCE (not a rating source): it
   // turns a known imdbId into the exact tmdbId (and vice versa) for the
   // arthouse/festival long tail TMDB's own indexes leave unmapped, by scraping
   // its film pages. Wired into `resolveTmdbId` (after TMDB /find) and
   // `ImdbIdResolver` (after Wikidata) as a last-resort fallback.
-  lazy val letterboxdClient     = new LetterboxdClient(lookupFetch)
+  lazy val letterboxdClient     = new LetterboxdClient(enrichmentFetch)
   lazy val letterboxdIdResolver = new LetterboxdIdResolver(letterboxdClient)
-  lazy val wikidataClient = new WikidataClient(lookupFetch)
+  lazy val wikidataClient = new WikidataClient(enrichmentFetch)
 }

@@ -527,10 +527,17 @@ own shadow run, which reads what this phase stores) turns the evidence into data
 ### Capture
 
 One decorator per seam, generic over everything that passes it — no per-source or per-venue
-code: `ObservingHttpFetch` on `lookupFetch` (the enrich-phase chain every metadata, rating and
-resolution client now draws from), `ObservingDetailEnricher` on every `DetailEnricher`, and
+code: `ObservingHttpFetch` on `identityLookupFetch` (the enrich-phase chain under the TMDB client, the
+one external client the resolver's `TmdbIdentityLookups` asks), `ObservingDetailEnricher` on every `DetailEnricher`, and
 `ObservingScrapeArchive` on the runner's archive. Each returns or rethrows exactly what it wraps,
 and a store failure never fails the observed call.
+
+Scoped by WIRING, not by host: every rating, metadata and id-crosswalk client (Metacritic, Rotten
+Tomatoes, IMDb, Filmweb, OMDb, Letterboxd, Wikidata, Cinemeta) draws from the unobserved
+`enrichmentFetch`. Rating pages are per-film enrichment (§2) and were ~80% of the bytes the
+unscoped capture wrote (kinowo_de, first hour: Metacritic 44 KB and RT 25 KB per page, against
+TMDB's 3 KB). `tools.PurgeNonIdentityObservations` (dry run unless `--apply`) removes what the unscoped capture
+filed.
 
 `KINOWO_OBSERVATION_CAPTURE=true` turns it on (a staged-migration switch at the composition root,
 off by default). `ObservationCaptureEndToEndSpec` boots the recorded corpus with capture on and

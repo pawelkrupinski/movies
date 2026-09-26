@@ -44,6 +44,16 @@ trait ObservationStoreBehaviour extends AnyFlatSpec with Matchers {
       LookupQuery.of("POST", "https://api.graphql.imdb.com/", Some("{b}"))
   }
 
+  it should "be identity evidence exactly when it is a venue's detail or a TMDB request" in {
+    search.isIdentityEvidence shouldBe true
+    LookupQuery.venueDetail("Kino Muza", "/film/belle").isIdentityEvidence shouldBe true
+    LookupQuery.of("GET", "https://www.metacritic.com/movie/belle/").isIdentityEvidence shouldBe false
+    LookupQuery.of("GET", "https://www.rottentomatoes.com/m/belle_2021").isIdentityEvidence shouldBe false
+    LookupQuery.of("POST", "https://caching.graphql.imdb.com/", Some("{a}")).isIdentityEvidence shouldBe false
+    // A poster is TMDB's too, but not its API: no identity question is answered by an image.
+    LookupQuery.of("BYTES", "https://image.tmdb.org/t/p/w500/belle.jpg").isIdentityEvidence shouldBe false
+  }
+
   "a lookup observation" should "be kept once per distinct answer, stamped with when it was fetched" in {
     val clock = new MutableClock(t0)
     val s     = store(clock)

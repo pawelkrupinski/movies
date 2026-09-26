@@ -14,8 +14,8 @@ import scala.util.{Failure, Success, Try}
 /*
  * SHADOW CAPTURE — one decorator per seam, each generic over everything that passes through it:
  *
- *  - `ObservingHttpFetch`: every external lookup (the enrich-phase chain every metadata, rating
- *    and resolution client draws from);
+ *  - `ObservingHttpFetch`: every identity lookup (`identityLookupFetch`, the fetch under the TMDB
+ *    client the resolver's `TmdbIdentityLookups` asks — never a rating page);
  *  - `ObservingDetailEnricher`: every venue's per-film detail;
  *  - `ObservingScrapeArchive`: every scraped listing.
  *

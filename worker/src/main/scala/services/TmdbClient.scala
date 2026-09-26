@@ -492,7 +492,7 @@ object TmdbClient {
       .flatMap(r => (r \ "release_dates").asOpt[play.api.libs.json.JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
         .flatMap(rd => (rd \ "certification").asOpt[String]).map(_.trim).find(_.nonEmpty))
 
-  private val ApiBase = "https://api.themoviedb.org/3"
+  val ApiBase = "https://api.themoviedb.org/3"
   // TMDB's CDN-served poster path. w500 is the largest "good" size for our
   // cards (next step up is "original" which can be 2000+ px and isn't worth
   // the bytes). Matches the size Multikino's own posters ship at.

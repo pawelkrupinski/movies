@@ -10,7 +10,7 @@ import tools.HttpFetch
  * The identity projection's lookups in a cut-over country (docs/design/identity-resolver.md §8,
  * phase 5): the very `TmdbIdentityLookups` the shadow run resolves with, answered from the
  * observation store FIRST and from the live service only for a question the store holds no live
- * definitive answer to. The live side is the pipeline's own (the observed `lookupFetch`, the
+ * definitive answer to. The live side is the pipeline's own (the observed `identityLookupFetch`, the
  * observed detail enrichers), so an answer asked live is filed and the next projection reads it
  * from the store: a resolve asks each question once per observation lifetime, not once per tick.
  * A no-match is simply such an answer, re-asked when it expires (§2.1).
