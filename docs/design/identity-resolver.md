@@ -1750,6 +1750,68 @@ retire 22 PL film ids. The other countries: UK 45 / 11, DE 13 / 7, US 73 / 7, ES
 Hardcoding added: none. The chain-slot exclusion reads `Cinema.all` membership, the model's own
 venue roster. The seeding's largest-film-first rank is a rule over the data, not a constant.
 
+### 16.5 Dual-read prerequisites (2026-09-26, branch `identity-phase4-dualread`)
+
+Still invisible to what production serves: no serving path reads `listingKey`, the read-model
+field or the FilmId map, and no FilmId changes. Status of §16.4:
+
+- **Index (item 2).** `SlotKeyed.ensureIndexes` builds `filmId` and `listingKey` on `movie_slots`
+  and `screenings` at the repositories' first use. `ListingKeyDualWriteIntegrationSpec` asserts a
+  read by one listing's key is an index scan (it reads COLLSCAN with the index removed). The read
+  itself is `ListingKeyedRows.rowIdsForListingKeyChecked`, beside `rowListingKeysChecked`
+  (every row id with its stamp), on both Mongo and in-memory stores (`SlotsRepositoryContractSpec`).
+- **Unstamped rows (item 1's gate).** `UnstampedListingCensus` publishes
+  `kinowo_worker_listing_key_unstamped_rows{country,collection}` hourly. It counts venue rows with
+  no `listingKey`. The exemptions are `ListingKey.isVenueRow`: enrichment slots, chain network
+  detail slots, retired venues. It must read 0 per country after the backfill. It is charted on
+  the worker-diagnostics dashboard. No alert yet: before the backfill it is ~10k per country by
+  design. Add one (above 0 for a day) once every country has been backfilled.
+- **Shadow read (item 2).** `services.identity.ListingKeyShadowRead` samples
+  `KINOWO_LISTING_KEY_SHADOW_SAMPLE` (default 500) venue slot rows an hour. It resolves each one
+  by slot key and by `listingKey` in both collections. It publishes
+  `kinowo_worker_listing_key_shadow_read_rows{country,outcome=agree|slots_disagree|screenings_disagree|unread}`
+  and logs the first 10 disagreements with their keys. It is **off by default**
+  (`KINOWO_LISTING_KEY_SHADOW_READ`, wired in `MetricsWiring`). Over the PL hard clusters after
+  the whole pipeline, every venue slot row agrees (the teeth: one unset stamp is reported by both
+  the shadow read and the census).
+- **`web_screenings` (item 6).** `CityScreening.listingKeys` holds the sorted keys of every slot a
+  row unions, derived as the side rows are stamped. Nothing reads it. It is derivation
+  `e90186e6b0473c75` (Full), so every worker re-projects its corpus once after the deploy. On the
+  fixture corpus all 4,784 rows carry a key, and none unions two.
+- **FilmId map (item 5).** `FilmIdCounters` holds the rules: injective both ways, append-only,
+  unmapped films numbered after the largest counter, largest film first. The stores are
+  `MongoFilmIdCounterStore` (`identity_film_ids`, unique `counter`) and
+  `InMemoryFilmIdCounterStore`, both held to `FilmIdCounterStoreContractSpec`.
+  `IdSeeding.review` takes the stored map, so a film seeded earlier keeps its counter, and with it
+  any contested cluster. `scripts.FilmIdCounterSeed` is a dry run by default and builds its index
+  only on `--apply`. The dry run against prod (read-only, 2026-09-26) found an empty map, with
+  1,203 PL / 1,598 UK / 1,861 DE / 2,275 US / 239 ES films to add.
+- **The listings the fold hides (item 3): a phase-5 item, not fixed here.** `ListingKeyCorpusSpec`
+  measures them on the recorded full PL corpus: 73 listings at 42 venues, and 0 in the other
+  countries' checked-in corpora.
+  - What differs: page and raw title for 39, the page alone for 31, and raw title plus
+    year/directors for 3 (an uncredited row beside a credited one).
+  - Every one is a format edition with its own page (2D/3D, dubbing/napisy, LEKTOR, Helios
+    RePlay editions). `ScrapeListing.prepare` unions it into one slot whose representative
+    carries another edition's page and title.
+  - The spec asserts each one is the same film as its slot. So hiding it loses a key, never
+    showtimes or identity.
+  - A generic fix exists without a per-title rule: the slot carries the set of listing keys it
+    folded, as a multikey field. It is not done here. It changes `CinemaMovie` / `SourceData` and
+    every landing path, and phase 5 removes the need: one slot per listing, with the fold moved
+    into the projection's display merge (§4).
+  - Until then a dual read must treat "not found by key" for these 73 as expected, or read the
+    representative's slot.
+
+Still blocking dual reads:
+
+1. Deploy, then run `ListingKeyBackfill --apply` per country, until the unstamped gauge reads 0.
+2. Turn the shadow read on per country, until `agree` equals the sample for a week.
+3. Phase 5's one slot per listing, for the fold-hidden listings.
+4. Apply `FilmIdCounterSeed` (parent), and resolver coverage (§15.5) before any id is assigned by
+   overlap.
+5. Remove the 5 stale DE rows.
+
 ---
 
 ## 17. Phase 1 (§8): the shadow run in production
