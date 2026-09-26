@@ -164,7 +164,7 @@ showings:
 
 === André Rieu. Niech żyje Maastricht! | Retransmisja letniego koncertu z Maastricht 2026 ===
 displayTitle:      André Rieu. Niech żyje Maastricht! | Retransmisja letniego koncertu z Maastricht 2026
-cinemaTitles:      André Rieu. Niech żyje Maastricht! | Retransmisja letniego koncertu z Maastricht 2026
+cinemaTitles:      André Rieu. Niech żyje Maastricht! Retransmisja letniego koncertu z Maastricht 2026 | André Rieu. Niech żyje Maastricht! | Retransmisja letniego koncertu z Maastricht 2026
 runtimeMinutes:    —
 releaseYear:       2026
 countries:         —
@@ -186,6 +186,7 @@ cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157352
 cinemaScrapes:
   Kino Rialto / André Rieu. Niech żyje Maastricht! | Retransmisja letniego koncertu z Maastricht 2026 / 2026
+  Świt / André Rieu. Niech żyje Maastricht! Retransmisja letniego koncertu z Maastricht 2026 / —
 showings:
   2026-06-09  Kino Rialto                   18:00
 
@@ -6012,7 +6013,7 @@ showings:
 
 === Obcy ===
 displayTitle:      Obcy
-cinemaTitles:      Obcy
+cinemaTitles:      OBCY | Obcy
 runtimeMinutes:    122
 releaseYear:       2025
 countries:         Francja, Belgia, Maroko
@@ -6038,6 +6039,8 @@ cinemaScrapes:
   Kino Nowe Horyzonty / Obcy / 2025
   Kino Pionier 1907 / Obcy / 2025
   Kino Pod Baranami / Obcy / —
+  Teatr Elektryczny / OBCY / —
+  Świt / OBCY / —
 showings:
   2026-06-11  Kino Muza                     19:00 Sala 1
 

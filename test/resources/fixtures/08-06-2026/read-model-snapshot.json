@@ -1988,6 +1988,24 @@
     "ageRating" : "16",
     "shareCardPending" : false
   }, {
+    "_id" : "f1c85b0520073f0a",
+    "title" : "Supermocni",
+    "posterUrl" : "https://biletyna.pl/file/get/id/410854",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Supermocni/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Supermocni",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Supermocni"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
     "_id" : "f1c924491162cdd9",
     "title" : "Beavis and Butt-Head",
     "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/05/bbh-800x450.jpg",
@@ -2113,6 +2131,24 @@
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
+    "_id" : "f1e747abb2d9e34b",
+    "title" : "W sercu dziczy",
+    "posterUrl" : "https://biletyna.pl/file/get/id/402134",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/W+sercu+dziczy/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=W+sercu+dziczy",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=W+sercu+dziczy"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
     "_id" : "f1ef8a9303ab4a3c",
     "title" : "Ladies Night - Narodziny gwiazdy",
     "originalTitle" : "A Star Is Born",
@@ -2204,6 +2240,24 @@
     "weightedRating" : 7.3999999999999995,
     "synopsisByCity" : { },
     "ageRating" : "6",
+    "shareCardPending" : false
+  }, {
+    "_id" : "f2148ac4b343d040",
+    "title" : "Folwark zwierzęcy",
+    "posterUrl" : "https://biletyna.pl/file/get/id/398866",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Folwark+zwierz%C4%99cy/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Folwark+zwierz%C4%99cy",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Folwark+zwierz%C4%99cy"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
     "_id" : "f21a091d3619480b",
@@ -2705,7 +2759,7 @@
     "title" : "Do utraty tchu",
     "originalTitle" : "À bout de souffle",
     "posterUrl" : "https://stacjafalenica.pl/wp-content/uploads/2026/07/2946x2160-CAP055-RESTORATION-4K-RET-1-scaled.jpg",
-    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/h9TfhwNJuqyci2AXxr4O8dizsDt.jpg" ],
+    "fallbackPosterUrls" : [ "https://biletyna.pl/file/get/id/340225", "https://image.tmdb.org/t/p/w500/h9TfhwNJuqyci2AXxr4O8dizsDt.jpg" ],
     "runtimeMinutes" : 90,
     "releaseYear" : 1960,
     "genres" : [ "Dramat", "Kryminał", "Romans" ],
@@ -3610,7 +3664,7 @@
     "_id" : "f2db438ff06cda66",
     "title" : "Niebo nad Normandią",
     "posterUrl" : "https://stacjafalenica.pl/wp-content/uploads/2026/09/Pressure-Stills-Press-Photos-First-Look-8256x5180-P-03634-EDIT-01-jpg-scaled.jpg",
-    "fallbackPosterUrls" : [ "https://medstore.cinemaone.pl/NiebonadNormandiaBrendanB123DDnew.jpg" ],
+    "fallbackPosterUrls" : [ "https://medstore.cinemaone.pl/NiebonadNormandiaBrendanB123DDnew.jpg", "https://biletyna.pl/file/get/id/385325" ],
     "runtimeMinutes" : 100,
     "releaseYear" : 2026,
     "genres" : [ "Thriller", "Wojenny", "Dramat" ],
@@ -4832,6 +4886,24 @@
       "czestochowa" : "Internetowy hit „The Amazing Digital Circus” doczekał się długo wyczekiwanej finałowej odsłony w formie pełnometrażowego filmu kinowego! Ten „Ostatni akt” łączy w sobie 8. odcinek z zupełnie nowym, godzinnym 9. odcinkiem, który fani będą mogli obejrzeć jako pierwsi na świecie. Po odejściu Caine'a i zamknięciu cyrku, aktorom pozostają jedynie błędy i traumy z przeszłości, które dotrzymują im towarzystwa. Gdy perspektywa wieczności zbliża się wielkimi krokami, odkrywają prawdę o Digital Circus i jego historii. Czy pogodzą się z tym, co odkryją, czy też dokonają… innego wyboru? Poza tym, prawdopodobnie w pewnym momencie ktoś powie coś zabawnego, bo to zakończenie nie może być aż tak przygnębiające, prawda?"
     },
     "ageRating" : "12",
+    "shareCardPending" : false
+  }, {
+    "_id" : "f413d2bed80fb736",
+    "title" : "Orlando (1992)",
+    "posterUrl" : "https://biletyna.pl/file/get/id/399654",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Orlando+%281992%29/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Orlando+%281992%29",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Orlando+%281992%29"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
     "_id" : "f414d36435eaf94a",
@@ -6950,6 +7022,24 @@
     },
     "shareCardPending" : false
   }, {
+    "_id" : "f5d370c9a65a7412",
+    "title" : "Vivaldi i ja",
+    "posterUrl" : "https://biletyna.pl/file/get/id/394272",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Vivaldi+i+ja/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Vivaldi+i+ja",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Vivaldi+i+ja"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
     "_id" : "f5d3b0c5126e80da",
     "title" : "Felek i Tola ratują las",
     "originalTitle" : "Fox and Hare Save the Forest",
@@ -6976,6 +7066,24 @@
       "szczecin" : "Mieszkający na polanie Bóbr kończy pracę nad dziełem swojego życia – wielką tamą w środku lasu. Aby ją stworzyć, wyciął wiele drzew i zablokował lokalne strumyki. Woda bardzo szybko wylała i w środku lasu powstało jezioro, podtapiając w ten sposób domki Felka, Toli i ich przyjaciół. Co gorsza, okazało się, że w nocy woda zabrała ich sąsiada Henia! Nie ma czasu do stracenia – leśni kompani wyruszają na ratunek! Kiedy po drodze spotykają Bobra, starają się mu wyjaśnić, że stawianie tamy w tym miejscu było złym pomysłem. Niestety, arogancki zwierzak nie da łatwo za wygraną! Czy bohaterom uda się znaleźć swojego przyjaciela i uratować las przed powodzią? „Felek i Tola ratują las” to filmowa adaptacja uwielbianej serii o parze sympatycznych leśnych przyjaciół. Jest to wyjątkowa opowieść o naturze, zaufaniu i sile przyjaźni. Występujące w filmie wątki ekologiczne opisują w przystępny sposób, jak wygląda życie leśnych stworzeń i jak można zapewnić im bezpieczeństwo."
     },
     "ageRating" : "AL",
+    "shareCardPending" : false
+  }, {
+    "_id" : "f5d833f2a745f9a8",
+    "title" : "Resident Evil",
+    "posterUrl" : "https://biletyna.pl/file/get/id/396112",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Resident+Evil/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Resident+Evil",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Resident+Evil"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
     "_id" : "f5e4b07b834c538b",
@@ -7007,6 +7115,24 @@
       "metacriticUrl" : "https://www.metacritic.com/search/Moja+strona+Wis%C5%82y/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Moja+strona+Wis%C5%82y",
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Moja+strona+Wis%C5%82y"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
+    "_id" : "f5edfd7e52931de8",
+    "title" : "Powiedz mi, co czujesz",
+    "posterUrl" : "https://biletyna.pl/file/get/id/384465",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Powiedz+mi%2C+co+czujesz/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Powiedz+mi%2C+co+czujesz",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Powiedz+mi%2C+co+czujesz"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { },
@@ -7514,6 +7640,24 @@
       "metacriticUrl" : "https://www.metacritic.com/search/Projekt+TATO%3A+pokaz+filmu+Rambo%3A+Pierwsza+krew+na+Dzie%C5%84+Ojca+2026/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Projekt+TATO%3A+pokaz+filmu+Rambo%3A+Pierwsza+krew+na+Dzie%C5%84+Ojca+2026",
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Projekt+TATO%3A+pokaz+filmu+Rambo%3A+Pierwsza+krew+na+Dzie%C5%84+Ojca+2026"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
+    "_id" : "f650373328d59356",
+    "title" : "Baranek Shaun i kudłata bestia",
+    "posterUrl" : "https://biletyna.pl/file/get/id/409108",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Baranek+Shaun+i+kud%C5%82ata+bestia/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Baranek+Shaun+i+kud%C5%82ata+bestia",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Baranek+Shaun+i+kud%C5%82ata+bestia"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { },
@@ -9305,6 +9449,24 @@
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
+    "_id" : "f761f574821243b8",
+    "title" : "Miłość, śmierć i dojrzewanie w Camp Miasma",
+    "posterUrl" : "https://biletyna.pl/file/get/id/394114",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Mi%C5%82o%C5%9B%C4%87%2C+%C5%9Bmier%C4%87+i+dojrzewanie+w+Camp+Miasma/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Mi%C5%82o%C5%9B%C4%87%2C+%C5%9Bmier%C4%87+i+dojrzewanie+w+Camp+Miasma",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Mi%C5%82o%C5%9B%C4%87%2C+%C5%9Bmier%C4%87+i+dojrzewanie+w+Camp+Miasma"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
     "_id" : "f76273a8f34feb25",
     "title" : "Ojczyzna | przedpremierowo",
     "fallbackPosterUrls" : [ ],
@@ -9800,6 +9962,24 @@
       "metacriticUrl" : "https://www.metacritic.com/search/Monterey+Pop+%7C+DKF/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Monterey+Pop+%7C+DKF",
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Monterey+Pop+%7C+DKF"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
+    "_id" : "f7a01fa8f345fc40",
+    "title" : "Egon schiele. Poza tabu",
+    "posterUrl" : "https://biletyna.pl/file/get/id/407385",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Egon+schiele.+Poza+tabu/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Egon+schiele.+Poza+tabu",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Egon+schiele.+Poza+tabu"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { },
@@ -11343,7 +11523,7 @@
     "_id" : "f8d62bd1ecfa4530",
     "title" : "André Rieu. Niech żyje Maastricht! | Retransmisja letniego koncertu z Maastricht 2026",
     "posterUrl" : "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/ar2026-vm-poster-b1-pl.jpg",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://biletyna.pl/file/get/id/372884" ],
     "releaseYear" : 2026,
     "genres" : [ "Dramat" ],
     "countries" : [ ],
@@ -12006,7 +12186,7 @@
     "_id" : "f95f2a027853d7d0",
     "title" : "Mistyczka",
     "posterUrl" : "https://kinobajka.pl/wp-content/uploads/2026/06/8254344.10.webp",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://biletyna.pl/file/get/id/396090" ],
     "runtimeMinutes" : 90,
     "genres" : [ ],
     "countries" : [ ],
@@ -12831,6 +13011,24 @@
       "metacriticUrl" : "https://www.metacritic.com/search/Playboy+zachodniego+%C5%9Bwiata+%7C+Teatr+W+Kinie+%7C+National+Theatre+Live/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Playboy+zachodniego+%C5%9Bwiata+%7C+Teatr+W+Kinie+%7C+National+Theatre+Live",
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Playboy+zachodniego+%C5%9Bwiata+%7C+Teatr+W+Kinie+%7C+National+Theatre+Live"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
+    "_id" : "f9ac6d51ce03ff9c",
+    "title" : "Róża (2026)",
+    "posterUrl" : "https://biletyna.pl/file/get/id/408571",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/R%C3%B3%C5%BCa+%282026%29/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=R%C3%B3%C5%BCa+%282026%29",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=R%C3%B3%C5%BCa+%282026%29"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { },
@@ -13887,7 +14085,7 @@
     "_id" : "fa41857fe5071b5a",
     "title" : "Totalna magia 2",
     "posterUrl" : "https://medstore.cinemaone.pl/PLPMAG2EMVERTINTLMAIN1080x1920.jpg",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://biletyna.pl/file/get/id/398818" ],
     "runtimeMinutes" : 129,
     "releaseYear" : 2026,
     "genres" : [ "Fantasy", "Komedia romantyczna" ],
@@ -15310,7 +15508,7 @@
     "_id" : "faf9a0834ab4f229",
     "title" : "Ostatni konsjerż",
     "posterUrl" : "https://stacjafalenica.pl/wp-content/uploads/2026/07/Ostatni-konsjerz-9.jpg",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://biletyna.pl/file/get/id/384442" ],
     "runtimeMinutes" : 80,
     "genres" : [ ],
     "countries" : [ ],
@@ -16240,7 +16438,7 @@
     "_id" : "fb7797264bc28470",
     "title" : "Tony",
     "posterUrl" : "https://stacjafalenica.pl/wp-content/uploads/2026/08/TONY_fotos_1-scaled.jpg",
-    "fallbackPosterUrls" : [ "https://medstore.cinemaone.pl/TONYDigitalPoster.jpg" ],
+    "fallbackPosterUrls" : [ "https://medstore.cinemaone.pl/TONYDigitalPoster.jpg", "https://biletyna.pl/file/get/id/398678" ],
     "runtimeMinutes" : 104,
     "releaseYear" : 2026,
     "genres" : [ "Biograficzny", "Komedia", "Obyczajowy" ],
@@ -16913,6 +17111,24 @@
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
+    "_id" : "fc094be0b91c6a47",
+    "title" : "Pasażer Andrzej Munk",
+    "posterUrl" : "https://biletyna.pl/file/get/id/0",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Pasa%C5%BCer+Andrzej+Munk/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Pasa%C5%BCer+Andrzej+Munk",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Pasa%C5%BCer+Andrzej+Munk"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
     "_id" : "fc0b7b55fec7e308",
     "title" : "Szatańskie tango",
     "originalTitle" : "Sátántangó",
@@ -17034,7 +17250,7 @@
     "_id" : "fc14146269d68d83",
     "title" : "Bez końca",
     "posterUrl" : "https://stacjafalenica.pl/wp-content/uploads/2026/09/bez-konca-plakat-net-2-scaled-e1788861482224.webp",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://biletyna.pl/file/get/id/386273" ],
     "runtimeMinutes" : 108,
     "genres" : [ ],
     "countries" : [ ],
@@ -18309,6 +18525,24 @@
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
+    "_id" : "fcecc92a5141ed91",
+    "title" : "Jak żyć, żeby nie zwariować",
+    "posterUrl" : "https://biletyna.pl/file/get/id/409111",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Jak+%C5%BCy%C4%87%2C+%C5%BCeby+nie+zwariowa%C4%87/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Jak+%C5%BCy%C4%87%2C+%C5%BCeby+nie+zwariowa%C4%87",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Jak+%C5%BCy%C4%87%2C+%C5%BCeby+nie+zwariowa%C4%87"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
     "_id" : "fcf54c88b293a84b",
     "title" : "Omen",
     "fallbackPosterUrls" : [ ],
@@ -18864,6 +19098,24 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Dziewczyna+Pi%C4%99taszek-1940-35735"
     },
     "weightedRating" : 8.525,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
+    "_id" : "fd57e265e5293141",
+    "title" : "Zapomniana wyspa",
+    "posterUrl" : "https://biletyna.pl/file/get/id/407746",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Zapomniana+wyspa/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Zapomniana+wyspa",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Zapomniana+wyspa"
+    },
+    "weightedRating" : 0,
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
@@ -19544,7 +19796,7 @@
     "title" : "Podręcznik dla superbohaterów",
     "originalTitle" : "Handbok för superhjältar",
     "posterUrl" : "https://img.helios.pl/pliki/film/podrecznik-dla-superbohaterow/podrecznik-dla-superbohaterow-plakat-783.jpg",
-    "fallbackPosterUrls" : [ "https://medstore.cinemaone.pl/plakatpodrecznikdlasuperbohaterow.jpg" ],
+    "fallbackPosterUrls" : [ "https://medstore.cinemaone.pl/plakatpodrecznikdlasuperbohaterow.jpg", "https://biletyna.pl/file/get/id/414158" ],
     "runtimeMinutes" : 91,
     "releaseYear" : 2026,
     "genres" : [ "Animowany", "Familijny" ],
@@ -19842,7 +20094,7 @@
     "title" : "Obcy",
     "originalTitle" : "L'Étranger",
     "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/05/MV5BNWZjNjQwMTMtMmZkOC00ZjYzLWJmZWQtNTMwZTI4N2JiZjJkXkEyXkFqcGc@._V1_-547x800.jpg",
-    "fallbackPosterUrls" : [ "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/25_09_12_1757674263_0_l-etranger-f-ozon-photo-01-_photo_carole_bethuel_c_foz_-_gaumont_-_france_2_cinema.jpg?itok=SsVM-tHk", "https://image.tmdb.org/t/p/w500/1O6jXFzPO3LBThgmrJDqoUZ61Ik.jpg", "https://m.media-amazon.com/images/M/MV5BOGE5ODZjNjgtNTdhZS00ZmM0LWI2NDYtYTBiYWY2NmI4YWMzXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/25_09_12_1757674263_0_l-etranger-f-ozon-photo-01-_photo_carole_bethuel_c_foz_-_gaumont_-_france_2_cinema.jpg?itok=SsVM-tHk", "https://biletyna.pl/file/get/id/386571", "https://image.tmdb.org/t/p/w500/1O6jXFzPO3LBThgmrJDqoUZ61Ik.jpg", "https://m.media-amazon.com/images/M/MV5BOGE5ODZjNjgtNTdhZS00ZmM0LWI2NDYtYTBiYWY2NmI4YWMzXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 122,
     "releaseYear" : 2025,
     "genres" : [ "Dramat", "Kryminał" ],
@@ -20656,7 +20908,7 @@
     "_id" : "feb713e5dcecc057",
     "title" : "Gorzkie Święta",
     "posterUrl" : "https://kinobajka.pl/wp-content/uploads/2026/07/obraz_2026-07-07_234952264-208x300.png",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://biletyna.pl/file/get/id/383566" ],
     "runtimeMinutes" : 111,
     "genres" : [ ],
     "countries" : [ ],
@@ -21493,10 +21745,28 @@
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
+    "_id" : "ff87480637f9f9b1",
+    "title" : "Dzień dziecka księdza Jana Kaczkowskiego",
+    "posterUrl" : "https://biletyna.pl/file/get/id/401001",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Dzie%C5%84+dziecka+ksi%C4%99dza+Jana+Kaczkowskiego/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Dzie%C5%84+dziecka+ksi%C4%99dza+Jana+Kaczkowskiego",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Dzie%C5%84+dziecka+ksi%C4%99dza+Jana+Kaczkowskiego"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
     "_id" : "ff9682dec3985ae2",
     "title" : "Lalka",
     "posterUrl" : "https://medstore.cinemaone.pl/Lalkapion.jpg",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://biletyna.pl/file/get/id/402969" ],
     "runtimeMinutes" : 146,
     "releaseYear" : 2026,
     "genres" : [ "Dramat obyczajowy", "Kostiumowy" ],
@@ -21564,6 +21834,24 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/De+capul+nostru-2026-10113353"
     },
     "weightedRating" : 6.6,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
+    "_id" : "ffa1d03f286356c0",
+    "title" : "Tedi i magiczna lampa",
+    "posterUrl" : "https://biletyna.pl/file/get/id/406644",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Tedi+i+magiczna+lampa/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Tedi+i+magiczna+lampa",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Tedi+i+magiczna+lampa"
+    },
+    "weightedRating" : 0,
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
@@ -21822,6 +22110,24 @@
       "metacriticUrl" : "https://www.metacritic.com/search/Nienasyceni/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Nienasyceni",
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Nienasyceni"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
+    "_id" : "ffb945d9a915cdb9",
+    "title" : "Dom Dobry",
+    "posterUrl" : "https://biletyna.pl/file/get/id/297251",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Dom+Dobry/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Dom+Dobry",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Dom+Dobry"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { },
@@ -39233,6 +39539,49 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "f1c85b0520073f0a|grudziadz|Kinoteatr Rondo",
+    "filmId" : "f1c85b0520073f0a",
+    "city" : "grudziadz",
+    "cinema" : "Kinoteatr Rondo",
+    "filmUrl" : "https://biletyna.pl/film/Supermocni?eid=704089#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-23T15:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Supermocni?eid=704089#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-24T13:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Supermocni?eid=704090#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-25T12:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Supermocni?eid=704091#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-28T16:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Supermocni?eid=704092#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-29T16:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Supermocni?eid=704093#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-30T16:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Supermocni?eid=704094#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-31T16:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Supermocni?eid=704095#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-11-04T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Supermocni?eid=704096#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-11-05T16:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Supermocni?eid=704097#opis",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "f1c924491162cdd9|poznan|Kino Muza",
     "filmId" : "f1c924491162cdd9",
     "city" : "poznan",
@@ -39305,6 +39654,21 @@
       "dateTime" : "2026-07-05T12:00:00",
       "bookingUrl" : "https://bilet.gcf.org.pl/MSI/?event_id=60714&typetran=0&ReturnLink=http://gcf.org.pl/kino-studyjne/repertuar/",
       "room" : "Sala Warszawa",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "f1e747abb2d9e34b|jastrzebie-zdroj|Teatr Elektryczny",
+    "filmId" : "f1e747abb2d9e34b",
+    "city" : "jastrzebie-zdroj",
+    "cinema" : "Teatr Elektryczny",
+    "filmUrl" : "https://biletyna.pl/film/W-sercu-dziczy?eid=707280#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-30T19:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/W-sercu-dziczy?eid=707280#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-31T19:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/W-sercu-dziczy?eid=707281#opis",
       "format" : [ ]
     } ]
   }, {
@@ -39611,6 +39975,33 @@
       "dateTime" : "2026-06-11T10:00:00",
       "bookingUrl" : "https://wisla.novekino.pl/msi/default.aspx?event_id=112995&typetran=0&ReturnLink=https://www.novekino.pl/kina/wisla/repertuar.php",
       "format" : [ "DUB" ]
+    } ]
+  }, {
+    "_id" : "f2148ac4b343d040|jastrzebie-zdroj|Teatr Elektryczny",
+    "filmId" : "f2148ac4b343d040",
+    "city" : "jastrzebie-zdroj",
+    "cinema" : "Teatr Elektryczny",
+    "filmUrl" : "https://biletyna.pl/film/Folwark-zwierzecy?eid=694459#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-09-26T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Folwark-zwierzecy?eid=694459#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-28T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Folwark-zwierzecy?eid=694460#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-29T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Folwark-zwierzecy?eid=694461#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-30T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Folwark-zwierzecy?eid=694462#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-01T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Folwark-zwierzecy?eid=684509#opis",
+      "format" : [ ]
     } ]
   }, {
     "_id" : "f21a091d3619480b|boleslawiec|Forum",
@@ -40109,6 +40500,17 @@
     }, {
       "dateTime" : "2026-06-26T17:00:00",
       "bookingUrl" : "https://www.sfr.pl/kup-bilet/11507/baczne-oczka-sezon-2",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "f2524e5afc5fd2b8|grudziadz|Kinoteatr Rondo",
+    "filmId" : "f2524e5afc5fd2b8",
+    "city" : "grudziadz",
+    "cinema" : "Kinoteatr Rondo",
+    "filmUrl" : "https://biletyna.pl/film/Do-utraty-tchu?eid=704079#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-21T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Do-utraty-tchu?eid=704079#opis",
       "format" : [ ]
     } ]
   }, {
@@ -42424,6 +42826,25 @@
     "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/ostatni-dzien-lata/",
     "showtimes" : [ {
       "dateTime" : "2026-06-22T19:00:00",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "f2db438ff06cda66|grudziadz|Kinoteatr Rondo",
+    "filmId" : "f2db438ff06cda66",
+    "city" : "grudziadz",
+    "cinema" : "Kinoteatr Rondo",
+    "filmUrl" : "https://biletyna.pl/film/Niebo-nad-Normandia?eid=695033#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-09-26T20:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Niebo-nad-Normandia?eid=695033#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-27T20:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Niebo-nad-Normandia?eid=695034#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-30T20:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Niebo-nad-Normandia?eid=695035#opis",
       "format" : [ ]
     } ]
   }, {
@@ -47981,6 +48402,21 @@
       "bookingUrl" : "https://tickets.cinema-city.pl/api/order/1496029?lang=pl",
       "room" : "Sala 8 T-mobile",
       "format" : [ "2D", "NAP" ]
+    } ]
+  }, {
+    "_id" : "f413d2bed80fb736|czechowice-dziedzice|Świt",
+    "filmId" : "f413d2bed80fb736",
+    "city" : "czechowice-dziedzice",
+    "cinema" : "Świt",
+    "filmUrl" : "https://biletyna.pl/film/Orlando-1992?eid=695855#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-09-26T18:15:00",
+      "bookingUrl" : "https://biletyna.pl/film/Orlando-1992?eid=695855#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-27T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Orlando-1992?eid=695856#opis",
+      "format" : [ ]
     } ]
   }, {
     "_id" : "f414d36435eaf94a|warszawa|Kino Muranów",
@@ -85199,6 +85635,17 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "f5d370c9a65a7412|czechowice-dziedzice|Świt",
+    "filmId" : "f5d370c9a65a7412",
+    "city" : "czechowice-dziedzice",
+    "cinema" : "Świt",
+    "filmUrl" : "https://biletyna.pl/film/Vivaldi-i-ja?eid=707689#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-01T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Vivaldi-i-ja?eid=707689#opis",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "f5d3b0c5126e80da|krakow|Kino Kika",
     "filmId" : "f5d3b0c5126e80da",
     "city" : "krakow",
@@ -85234,6 +85681,33 @@
       "format" : [ "2D", "DUB" ]
     } ]
   }, {
+    "_id" : "f5d833f2a745f9a8|grudziadz|Kinoteatr Rondo",
+    "filmId" : "f5d833f2a745f9a8",
+    "city" : "grudziadz",
+    "cinema" : "Kinoteatr Rondo",
+    "filmUrl" : "https://biletyna.pl/film/Resident-Evil?eid=704071#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-14T20:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Resident-Evil?eid=704071#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-15T20:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Resident-Evil?eid=704072#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-17T21:15:00",
+      "bookingUrl" : "https://biletyna.pl/film/Resident-Evil?eid=704073#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-18T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Resident-Evil?eid=704074#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-22T20:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Resident-Evil?eid=704075#opis",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "f5e4b07b834c538b|bielsko-biala|Kino Kreska",
     "filmId" : "f5e4b07b834c538b",
     "city" : "bielsko-biala",
@@ -85253,6 +85727,36 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-21T19:00:00",
       "bookingUrl" : "https://www.sfr.pl/kup-bilet/11475/moja-strona-wisly",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "f5edfd7e52931de8|czechowice-dziedzice|Świt",
+    "filmId" : "f5edfd7e52931de8",
+    "city" : "czechowice-dziedzice",
+    "cinema" : "Świt",
+    "filmUrl" : "https://biletyna.pl/film/Powiedz-mi-co-czujesz?eid=707690#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-08T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Powiedz-mi-co-czujesz?eid=707690#opis",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "f5edfd7e52931de8|grudziadz|Kinoteatr Rondo",
+    "filmId" : "f5edfd7e52931de8",
+    "city" : "grudziadz",
+    "cinema" : "Kinoteatr Rondo",
+    "filmUrl" : "https://biletyna.pl/film/Powiedz-mi-co-czujesz?eid=704049#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-01T20:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Powiedz-mi-co-czujesz?eid=704049#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-08T20:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Powiedz-mi-co-czujesz?eid=704050#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-09T17:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Powiedz-mi-co-czujesz?eid=704051#opis",
       "format" : [ ]
     } ]
   }, {
@@ -87878,6 +88382,65 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-23T19:00:00",
       "bookingUrl" : "https://ksk.systembiletowy.pl/index.php/kup-bilet/rambo-pierwsza-krew-2026-06-23-19-00",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "f650373328d59356|jastrzebie-zdroj|Teatr Elektryczny",
+    "filmId" : "f650373328d59356",
+    "city" : "jastrzebie-zdroj",
+    "cinema" : "Teatr Elektryczny",
+    "filmUrl" : "https://biletyna.pl/film/Baranek-Shaun-i-kudlata-bestia?eid=707225#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-16T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Baranek-Shaun-i-kudlata-bestia?eid=707225#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-17T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Baranek-Shaun-i-kudlata-bestia?eid=707226#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-18T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Baranek-Shaun-i-kudlata-bestia?eid=707227#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-20T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Baranek-Shaun-i-kudlata-bestia?eid=707228#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-21T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Baranek-Shaun-i-kudlata-bestia?eid=707229#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-23T16:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Baranek-Shaun-i-kudlata-bestia?eid=707231#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-25T16:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Baranek-Shaun-i-kudlata-bestia?eid=707232#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-26T16:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Baranek-Shaun-i-kudlata-bestia?eid=707233#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-27T16:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Baranek-Shaun-i-kudlata-bestia?eid=707234#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-28T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Baranek-Shaun-i-kudlata-bestia?eid=707235#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-29T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Baranek-Shaun-i-kudlata-bestia?eid=707236#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-30T16:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Baranek-Shaun-i-kudlata-bestia?eid=707237#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-31T16:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Baranek-Shaun-i-kudlata-bestia?eid=707238#opis",
       "format" : [ ]
     } ]
   }, {
@@ -106739,6 +107302,21 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "f761f574821243b8|czechowice-dziedzice|Świt",
+    "filmId" : "f761f574821243b8",
+    "city" : "czechowice-dziedzice",
+    "cinema" : "Świt",
+    "filmUrl" : "https://biletyna.pl/film/Milosc-smierc-i-dojrzewanie-w-Camp-Miasma?eid=695859#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-09-26T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Milosc-smierc-i-dojrzewanie-w-Camp-Miasma?eid=695859#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-28T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Milosc-smierc-i-dojrzewanie-w-Camp-Miasma?eid=695860#opis",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "f76273a8f34feb25|gliwice|Kino Amok",
     "filmId" : "f76273a8f34feb25",
     "city" : "gliwice",
@@ -107534,6 +108112,21 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-23T18:00:00",
       "bookingUrl" : "https://www.bilety24.pl/kino/1492-monterey-pop-dkf-156098?id=928683",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "f7a01fa8f345fc40|jastrzebie-zdroj|Teatr Elektryczny",
+    "filmId" : "f7a01fa8f345fc40",
+    "city" : "jastrzebie-zdroj",
+    "cinema" : "Teatr Elektryczny",
+    "filmUrl" : "https://biletyna.pl/film/EGON-SCHIELE-POZA-TABU?eid=707277#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-30T17:45:00",
+      "bookingUrl" : "https://biletyna.pl/film/EGON-SCHIELE-POZA-TABU?eid=707277#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-31T17:45:00",
+      "bookingUrl" : "https://biletyna.pl/film/EGON-SCHIELE-POZA-TABU?eid=707279#opis",
       "format" : [ ]
     } ]
   }, {
@@ -114765,6 +115358,17 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "f8d62bd1ecfa4530|czechowice-dziedzice|Świt",
+    "filmId" : "f8d62bd1ecfa4530",
+    "city" : "czechowice-dziedzice",
+    "cinema" : "Świt",
+    "filmUrl" : "https://biletyna.pl/koncert/Andre-Rieu-czyli-70-lat-mlodosci-2?eid=675692#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-09-27T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/koncert/Andre-Rieu-czyli-70-lat-mlodosci-2?eid=675692#opis",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "f8d62bd1ecfa4530|poznan|Kino Rialto",
     "filmId" : "f8d62bd1ecfa4530",
     "city" : "poznan",
@@ -120309,6 +120913,36 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "f95f2a027853d7d0|czechowice-dziedzice|Świt",
+    "filmId" : "f95f2a027853d7d0",
+    "city" : "czechowice-dziedzice",
+    "cinema" : "Świt",
+    "filmUrl" : "https://biletyna.pl/film/Mistyczka?eid=695851#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-09-26T16:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Mistyczka?eid=695851#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-27T18:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Mistyczka?eid=695852#opis",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "f95f2a027853d7d0|grudziadz|Kinoteatr Rondo",
+    "filmId" : "f95f2a027853d7d0",
+    "city" : "grudziadz",
+    "cinema" : "Kinoteatr Rondo",
+    "filmUrl" : "https://biletyna.pl/film/Mistyczka?eid=695036#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-09-26T12:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Mistyczka?eid=695036#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-27T14:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Mistyczka?eid=695037#opis",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "f95f2a027853d7d0|lublin|Kino Bajka",
     "filmId" : "f95f2a027853d7d0",
     "city" : "lublin",
@@ -120317,6 +120951,33 @@
     "showtimes" : [ {
       "dateTime" : "2026-08-23T15:45:00",
       "bookingUrl" : "https://bajka-lublin.biletpro24.pl/BiletPro24/reservation/screenings",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "f95f2a027853d7d0|slupca|Kino MOK",
+    "filmId" : "f95f2a027853d7d0",
+    "city" : "slupca",
+    "cinema" : "Kino MOK",
+    "filmUrl" : "https://biletyna.pl/film/Mistyczka?eid=699560#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-09-26T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Mistyczka?eid=699560#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-27T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Mistyczka?eid=699561#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-28T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Mistyczka?eid=699562#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-29T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Mistyczka?eid=699563#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-30T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Mistyczka?eid=699564#opis",
       "format" : [ ]
     } ]
   }, {
@@ -133580,6 +134241,33 @@
       "dateTime" : "2026-07-11T17:30:00",
       "bookingUrl" : "https://bilet.gcf.org.pl/MSI/?event_id=61173&typetran=0&ReturnLink=http://gcf.org.pl/kino-studyjne/repertuar/",
       "room" : "Sala Goplana",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "f9ac6d51ce03ff9c|czechowice-dziedzice|Świt",
+    "filmId" : "f9ac6d51ce03ff9c",
+    "city" : "czechowice-dziedzice",
+    "cinema" : "Świt",
+    "filmUrl" : "https://biletyna.pl/film/Roza-2026?eid=707656#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-16T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Roza-2026?eid=707656#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-18T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Roza-2026?eid=707705#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-19T18:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Roza-2026?eid=707709#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-20T18:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Roza-2026?eid=707707#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-21T18:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Roza-2026?eid=707708#opis",
       "format" : [ ]
     } ]
   }, {
@@ -148115,6 +148803,33 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "fa41857fe5071b5a|slupca|Kino MOK",
+    "filmId" : "fa41857fe5071b5a",
+    "city" : "slupca",
+    "cinema" : "Kino MOK",
+    "filmUrl" : "https://biletyna.pl/film/Totalna-magia-2?eid=699566#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-09-26T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Totalna-magia-2?eid=699566#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-27T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Totalna-magia-2?eid=699567#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-28T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Totalna-magia-2?eid=699568#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-29T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Totalna-magia-2?eid=699569#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-30T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Totalna-magia-2?eid=699570#opis",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "fa41857fe5071b5a|trojmiasto|Cinema1",
     "filmId" : "fa41857fe5071b5a",
     "city" : "trojmiasto",
@@ -159738,6 +160453,17 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "faf9a0834ab4f229|czechowice-dziedzice|Świt",
+    "filmId" : "faf9a0834ab4f229",
+    "city" : "czechowice-dziedzice",
+    "cinema" : "Świt",
+    "filmUrl" : "https://biletyna.pl/film/Ostatni-konsjerz?eid=707710#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-15T20:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Ostatni-konsjerz?eid=707710#opis",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "faf9a0834ab4f229|warszawa|KINOkawiarnia Stacja Falenica",
     "filmId" : "faf9a0834ab4f229",
     "city" : "warszawa",
@@ -163239,6 +163965,21 @@
       "dateTime" : "2026-06-09T11:00:00",
       "bookingUrl" : "https://ckzamek.bilety24.pl/kup-bilety/?id=928189",
       "room" : "Sala 1 - Kinowa",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "fb7797264bc28470|grudziadz|Kinoteatr Rondo",
+    "filmId" : "fb7797264bc28470",
+    "city" : "grudziadz",
+    "cinema" : "Kinoteatr Rondo",
+    "filmUrl" : "https://biletyna.pl/film/Tony?eid=695030#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-09-26T18:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Tony?eid=695030#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-27T18:15:00",
+      "bookingUrl" : "https://biletyna.pl/film/Tony?eid=695031#opis",
       "format" : [ ]
     } ]
   }, {
@@ -169510,6 +170251,17 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "fc094be0b91c6a47|czechowice-dziedzice|Świt",
+    "filmId" : "fc094be0b91c6a47",
+    "city" : "czechowice-dziedzice",
+    "cinema" : "Świt",
+    "filmUrl" : "https://biletyna.pl/film/Pasazer-Andrzej-Munk?eid=707713#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-15T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Pasazer-Andrzej-Munk?eid=707713#opis",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "fc0b7b55fec7e308|warszawa|Kino Muranów",
     "filmId" : "fc0b7b55fec7e308",
     "city" : "warszawa",
@@ -169585,6 +170337,29 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-24T18:00:00",
       "bookingUrl" : "https://oswiecim.planetcinema.pl/MSI/Default.aspx?event_id=118690&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "fc14146269d68d83|jastrzebie-zdroj|Teatr Elektryczny",
+    "filmId" : "fc14146269d68d83",
+    "city" : "jastrzebie-zdroj",
+    "cinema" : "Teatr Elektryczny",
+    "filmUrl" : "https://biletyna.pl/film/Bez-konca?eid=707240#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-17T16:45:00",
+      "bookingUrl" : "https://biletyna.pl/film/Bez-konca?eid=707240#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-18T16:45:00",
+      "bookingUrl" : "https://biletyna.pl/film/Bez-konca?eid=707252#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-20T16:45:00",
+      "bookingUrl" : "https://biletyna.pl/film/Bez-konca?eid=707253#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-21T16:45:00",
+      "bookingUrl" : "https://biletyna.pl/film/Bez-konca?eid=707254#opis",
       "format" : [ ]
     } ]
   }, {
@@ -177981,6 +178756,49 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "fcecc92a5141ed91|grudziadz|Kinoteatr Rondo",
+    "filmId" : "fcecc92a5141ed91",
+    "city" : "grudziadz",
+    "cinema" : "Kinoteatr Rondo",
+    "filmUrl" : "https://biletyna.pl/film/Jak-zyc-zeby-nie-zwariowac?eid=704080#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-23T12:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Jak-zyc-zeby-nie-zwariowac?eid=704080#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-23T20:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Jak-zyc-zeby-nie-zwariowac?eid=704081#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-28T18:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Jak-zyc-zeby-nie-zwariowac?eid=704082#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-28T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Jak-zyc-zeby-nie-zwariowac?eid=704083#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-29T18:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Jak-zyc-zeby-nie-zwariowac?eid=704084#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-29T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Jak-zyc-zeby-nie-zwariowac?eid=704085#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-30T18:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Jak-zyc-zeby-nie-zwariowac?eid=704086#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-30T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Jak-zyc-zeby-nie-zwariowac?eid=704087#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-31T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Jak-zyc-zeby-nie-zwariowac?eid=704088#opis",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "fcf54c88b293a84b|gliwice|Kino Amok",
     "filmId" : "fcf54c88b293a84b",
     "city" : "gliwice",
@@ -182843,6 +183661,128 @@
       "dateTime" : "2026-06-10T17:45:00",
       "bookingUrl" : "https://kicket.com/embeddables/repertoire?organizerId=1772&showId=27242",
       "room" : "Sala I",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "fd57e265e5293141|grudziadz|Kinoteatr Rondo",
+    "filmId" : "fd57e265e5293141",
+    "city" : "grudziadz",
+    "cinema" : "Kinoteatr Rondo",
+    "filmUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=704052#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-02T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=704052#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-03T10:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=704053#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-03T12:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=704054#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-04T10:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=704055#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-04T12:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=704056#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-07T13:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=704057#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-08T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=704058#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-09T15:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=704059#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-11T10:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=704060#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-11T12:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=704061#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-14T15:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=704062#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-15T15:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=704063#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-18T13:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=704064#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-21T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=704065#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-22T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=704066#opis",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "fd57e265e5293141|slupca|Kino MOK",
+    "filmId" : "fd57e265e5293141",
+    "city" : "slupca",
+    "cinema" : "Kino MOK",
+    "filmUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=701713#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-02T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=701713#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-04T10:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=701714#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-04T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=701715#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-05T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=701716#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-06T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=701717#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-07T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=701718#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-09T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=701720#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-11T10:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=701719#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-11T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=701721#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-12T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=701722#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-13T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=701723#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-14T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Zapomniana-wyspa?eid=701724#opis",
       "format" : [ ]
     } ]
   }, {
@@ -188507,6 +189447,25 @@
       "format" : [ "2D", "DUB" ]
     } ]
   }, {
+    "_id" : "fdf37855b39430b9|grudziadz|Kinoteatr Rondo",
+    "filmId" : "fdf37855b39430b9",
+    "city" : "grudziadz",
+    "cinema" : "Kinoteatr Rondo",
+    "filmUrl" : "https://biletyna.pl/film/Podrecznik-dla-superbohaterow?eid=700506#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-09-27T12:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Podrecznik-dla-superbohaterow?eid=700506#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-30T15:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Podrecznik-dla-superbohaterow?eid=700507#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-01T15:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Podrecznik-dla-superbohaterow?eid=700508#opis",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "fdf37855b39430b9|kielce|Helios Kielce",
     "filmId" : "fdf37855b39430b9",
     "city" : "kielce",
@@ -188917,6 +189876,60 @@
       "dateTime" : "2026-06-21T18:00:00",
       "bookingUrl" : "https://bilet.gcf.org.pl/MSI/?event_id=61190&typetran=0&ReturnLink=http://gcf.org.pl/kino-studyjne/repertuar/",
       "room" : "Sala Goplana",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "fe22aa92dbfe541c|czechowice-dziedzice|Świt",
+    "filmId" : "fe22aa92dbfe541c",
+    "city" : "czechowice-dziedzice",
+    "cinema" : "Świt",
+    "filmUrl" : "https://biletyna.pl/film/OBCY?eid=707691#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-09T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/OBCY?eid=707691#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-10T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/OBCY?eid=707694#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-11T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/OBCY?eid=707695#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-12T18:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/OBCY?eid=707701#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-13T18:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/OBCY?eid=707696#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-14T18:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/OBCY?eid=707697#opis",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "fe22aa92dbfe541c|jastrzebie-zdroj|Teatr Elektryczny",
+    "filmId" : "fe22aa92dbfe541c",
+    "city" : "jastrzebie-zdroj",
+    "cinema" : "Teatr Elektryczny",
+    "filmUrl" : "https://biletyna.pl/film/OBCY?eid=694465#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-09-26T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/OBCY?eid=694465#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-27T18:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/OBCY?eid=694466#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-28T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/OBCY?eid=694467#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-29T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/OBCY?eid=694468#opis",
       "format" : [ ]
     } ]
   }, {
@@ -190190,6 +191203,33 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-18T18:00:00",
       "bookingUrl" : "https://bilety.ck105.koszalin.pl/MSI/Default.aspx?event_id=34277&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "feb713e5dcecc057|jastrzebie-zdroj|Teatr Elektryczny",
+    "filmId" : "feb713e5dcecc057",
+    "city" : "jastrzebie-zdroj",
+    "cinema" : "Teatr Elektryczny",
+    "filmUrl" : "https://biletyna.pl/film/Gorzkie-swieta?eid=707257#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-23T17:45:00",
+      "bookingUrl" : "https://biletyna.pl/film/Gorzkie-swieta?eid=707257#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-25T17:45:00",
+      "bookingUrl" : "https://biletyna.pl/film/Gorzkie-swieta?eid=707268#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-26T17:45:00",
+      "bookingUrl" : "https://biletyna.pl/film/Gorzkie-swieta?eid=707269#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-27T17:45:00",
+      "bookingUrl" : "https://biletyna.pl/film/Gorzkie-swieta?eid=707270#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-28T18:45:00",
+      "bookingUrl" : "https://biletyna.pl/film/Gorzkie-swieta?eid=707271#opis",
       "format" : [ ]
     } ]
   }, {
@@ -192239,6 +193279,493 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "ff87480637f9f9b1|grudziadz|Kinoteatr Rondo",
+    "filmId" : "ff87480637f9f9b1",
+    "city" : "grudziadz",
+    "cinema" : "Kinoteatr Rondo",
+    "filmUrl" : "https://biletyna.pl/film/DZIEN-DZIECKA-KSIEDZA-JANA-KACZKOWSKIEGO?eid=704067#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-03T14:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/DZIEN-DZIECKA-KSIEDZA-JANA-KACZKOWSKIEGO?eid=704067#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-04T14:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/DZIEN-DZIECKA-KSIEDZA-JANA-KACZKOWSKIEGO?eid=704068#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-07T12:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/DZIEN-DZIECKA-KSIEDZA-JANA-KACZKOWSKIEGO?eid=704069#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-18T15:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/DZIEN-DZIECKA-KSIEDZA-JANA-KACZKOWSKIEGO?eid=704070#opis",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "ff9682dec3985ae2|czechowice-dziedzice|Świt",
+    "filmId" : "ff9682dec3985ae2",
+    "city" : "czechowice-dziedzice",
+    "cinema" : "Świt",
+    "filmUrl" : "https://biletyna.pl/film/Lalka-2026?eid=695861#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-09-30T16:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=695861#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-30T19:15:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=695862#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-01T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707648#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-02T19:45:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707660#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-04T16:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707671#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-04T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707672#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-05T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707652#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-05T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707653#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-06T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707673#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-06T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707674#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-07T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707675#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-07T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707676#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-08T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707654#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-09T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707677#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-10T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707678#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-11T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707679#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-12T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707655#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-13T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707680#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-14T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707681#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-16T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707682#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-17T16:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707683#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-18T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707684#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-19T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707657#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-20T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707685#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-21T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707686#opis",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "ff9682dec3985ae2|grudziadz|Kinoteatr Rondo",
+    "filmId" : "ff9682dec3985ae2",
+    "city" : "grudziadz",
+    "cinema" : "Kinoteatr Rondo",
+    "filmUrl" : "https://biletyna.pl/film/Lalka-2026?eid=700312#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-09-30T17:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=700312#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-01T17:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=700313#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-02T19:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=700314#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-03T16:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=700315#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-03T19:15:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=700316#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-04T16:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=700317#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-04T19:15:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=700318#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-07T19:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=700319#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-08T17:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=700320#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-09T19:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=700321#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-10T19:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=700322#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-11T19:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=700323#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-14T17:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=700324#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-15T17:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=700325#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-18T17:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=700326#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-22T17:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=700327#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-23T17:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=700328#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-24T19:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=700329#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-25T19:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=700330#opis",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "ff9682dec3985ae2|jastrzebie-zdroj|Teatr Elektryczny",
+    "filmId" : "ff9682dec3985ae2",
+    "city" : "jastrzebie-zdroj",
+    "cinema" : "Teatr Elektryczny",
+    "filmUrl" : "https://biletyna.pl/film/Lalka-2026?eid=694471#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-09-30T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=694471#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-30T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=694472#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-01T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707139#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-01T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707148#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-02T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707140#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-02T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707150#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-03T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707141#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-03T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707152#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-04T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707142#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-04T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707153#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-05T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707143#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-05T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707154#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-06T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707144#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-06T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707155#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-07T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707146#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-07T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707156#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-08T18:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=684487#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-09T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707166#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-09T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707167#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-10T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707168#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-10T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707169#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-11T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707170#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-11T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707171#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-12T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707172#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-12T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707165#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-13T16:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=699385#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-13T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707158#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-14T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707159#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-15T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707160#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-16T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707161#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-17T18:45:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707162#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-18T18:45:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707163#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-20T18:45:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707164#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-21T18:45:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707173#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-22T18:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707192#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-23T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707194#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-25T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707195#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-26T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707196#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-27T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=707197#opis",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "ff9682dec3985ae2|slupca|Kino MOK",
+    "filmId" : "ff9682dec3985ae2",
+    "city" : "slupca",
+    "cinema" : "Kino MOK",
+    "filmUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701465#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-02T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701465#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-02T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701467#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-04T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701472#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-04T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701483#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-05T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701473#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-05T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701484#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-06T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701474#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-06T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701485#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-07T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701471#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-07T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701486#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-09T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701476#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-09T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701487#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-11T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701477#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-11T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701488#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-12T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701478#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-12T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701489#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-13T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701479#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-13T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701490#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-14T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701480#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-14T20:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701491#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-16T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701481#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-17T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701492#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-18T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701493#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-19T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701494#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-20T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701495#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-21T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Lalka-2026?eid=701496#opis",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "ff9682dec3985ae2|trojmiasto|Cinema1",
     "filmId" : "ff9682dec3985ae2",
     "city" : "trojmiasto",
@@ -192439,6 +193966,88 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-19T20:00:00",
       "bookingUrl" : "https://kinomuranow.pl/tickets/26688/buy",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "ffa1d03f286356c0|jastrzebie-zdroj|Teatr Elektryczny",
+    "filmId" : "ffa1d03f286356c0",
+    "city" : "jastrzebie-zdroj",
+    "cinema" : "Teatr Elektryczny",
+    "filmUrl" : "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=707208#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-02T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=707208#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-03T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=707210#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-04T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=707211#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-05T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=707212#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-06T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=707213#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-07T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=707214#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-09T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=707215#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-10T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=707216#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-11T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=707217#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-12T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=707218#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-14T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=707219#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-10-15T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=707220#opis",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "ffa1d03f286356c0|slupca|Kino MOK",
+    "filmId" : "ffa1d03f286356c0",
+    "city" : "slupca",
+    "cinema" : "Kino MOK",
+    "filmUrl" : "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=699548#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-09-26T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=699548#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-27T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=699549#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-28T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=699550#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-29T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=699551#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-30T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=699552#opis",
       "format" : [ ]
     } ]
   }, {
@@ -192676,6 +194285,17 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-27T21:45:00",
       "bookingUrl" : "https://biletyna.pl/film/Nienasyceni?eid=664610#opis",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "ffb945d9a915cdb9|grudziadz|Kinoteatr Rondo",
+    "filmId" : "ffb945d9a915cdb9",
+    "city" : "grudziadz",
+    "cinema" : "Kinoteatr Rondo",
+    "filmUrl" : "https://biletyna.pl/film/Dom-Dobry?eid=703207#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-09-27T16:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Dom-Dobry?eid=703207#opis",
       "format" : [ ]
     } ]
   }, {

@@ -25,6 +25,16 @@ import scala.util.Try
  *                   both the film URL and the booking link
  *   - `image`     → poster (`biletyna.pl/file/get/id/N`)
  *
+ * The place page stops at the venue's first 50 events (every busy venue shows
+ * exactly 50: Kino Kameralne's run three weeks out of the 132 it sells). When
+ * it is full, the rest comes from `/ajax/events?params[h]=<hall>` — the feed
+ * the page's own "more events" scroller reads, keyed by the hall id the page
+ * declares in its `get_filter` script variable — paged `ipp` at a time until
+ * a page comes back short. Its records carry the same event id, title and
+ * start time, and a `category_id` in place of the `@type`
+ * ([[BiletynaClient.EventTypeByCategory]]). The two lists are merged on the
+ * booking link, since the feed can omit an event the page still shows.
+ *
  * One instance per venue, captured by its `pageUrl` + `cinema`, so adding a
  * biletyna-hosted cinema is a new catalog line, not a new client (OCP). Known
  * venues: ADA Kino Studyjne (Warszawa), Kino Kameralne Cafe (Gdańsk) and Kino
@@ -49,8 +59,11 @@ class BiletynaClient(http: HttpFetch, pageUrl: String, override val cinema: Cine
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(pageUrl)
   override def sourceUrl: Option[String] = Some(pageUrl)
 
-  protected def fetchUnfiltered(): Seq[CinemaMovie] =
-    BiletynaClient.parse(http.get(pageUrl), cinema).map(m => m.copy(showtimes = m.showtimes.map(_.copy(room = room))))
+  protected def fetchUnfiltered(): Seq[CinemaMovie] = {
+    val html = http.get(pageUrl)
+    BiletynaClient.parse(html, cinema, BiletynaClient.remainingEvents(http, pageUrl, html))
+      .map(m => m.copy(showtimes = m.showtimes.map(_.copy(room = room))))
+  }
 }
 
 object BiletynaClient {
@@ -86,8 +99,13 @@ object BiletynaClient {
   private def isLiveEventType(slot: RawSlot): Boolean =
     slot.eventType.exists(NonFilmEventTypes) && !NonMovieEventClassifier.isScreenedBroadcast(slot.title)
 
-  def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
-    val slots = jsonLdBlocks(html).flatMap(parseEvents).filterNot(isLiveEventType)
+  /** The events the place page lists (its JSON-LD), plus `more` — the feed
+   *  records past the page's cap ([[remainingEvents]]) — merged on the booking
+   *  link, so an event both carry counts once. */
+  def parse(html: String, cinema: Cinema, more: Seq[JsValue] = Seq.empty): Seq[CinemaMovie] = {
+    val slots = (jsonLdBlocks(html).flatMap(parseEvents) ++ more.flatMap(parseFeedEvent))
+      .distinctBy(_.url)
+      .filterNot(isLiveEventType)
 
     SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, Some(s.url))) { (rawName, group, showtimes) =>
       val parsed = parseTitle(rawName)
@@ -185,5 +203,81 @@ object BiletynaClient {
       dateTime  = dt,
       url       = url,
       poster    = (ev \ "image").asOpt[String].filter(_.nonEmpty)
+    )
+
+  /** How many events the place page renders at most; a page holding exactly
+   *  this many has more behind it. */
+  private[pl] val PageEventCap = 50
+  private val FeedPageSize    = 100
+  // A venue with more than 2,000 upcoming events is a feed ignoring `page`,
+  // not a programme; stop rather than loop.
+  private val MaxFeedPages    = 20
+
+  private val BiletynaOrigin = "https://biletyna.pl"
+  private val HallFilter     = """get_filter\s*=\s*(\{.*?\});""".r
+
+  /** The feed records for a capped place page (empty when the page isn't
+   *  full), paged until one comes back short. Throws when the page is full but
+   *  names no hall, or the feed never ends: a venue silently cut at 50 events is the failure this exists to
+   *  prevent, so it fails loudly instead. */
+  private[pl] def remainingEvents(http: HttpFetch, pageUrl: String, html: String): Seq[JsValue] =
+    if (pageEventCount(html) < PageEventCap) Seq.empty
+    else {
+      val hall = HallFilter.findFirstMatchIn(html)
+        .flatMap(m => (Json.parse(m.group(1)) \ "0" \ "hall_id").asOpt[Long])
+        .getOrElse(throw new IllegalStateException(s"$pageUrl lists $PageEventCap events but names no hall to page the rest from"))
+      val origin = CinemaScraper.hostsOf(pageUrl).headOption.fold(BiletynaOrigin)(host => s"https://$host")
+      @annotation.tailrec
+      def fetchFrom(page: Int, acc: Vector[JsValue]): Vector[JsValue] = {
+        if (page > MaxFeedPages)
+          throw new IllegalStateException(s"$pageUrl: event feed for hall $hall did not end after $MaxFeedPages pages")
+        val records = feedRecords(http.get(s"$origin/ajax/events?params%5Bh%5D=$hall&h=$hall&ipp=$FeedPageSize&page=$page"))
+        if (records.size < FeedPageSize) acc ++ records else fetchFrom(page + 1, acc ++ records)
+      }
+      fetchFrom(1, Vector.empty)
+    }
+
+  // Every event the page lists, parseable or not — the cap counts them all.
+  private def pageEventCount(html: String): Int =
+    jsonLdBlocks(html).map { block =>
+      Try(Json.parse(block)).toOption.flatMap(json => (json \ "events").asOpt[JsArray]).fold(0)(_.value.size)
+    }.sum
+
+  private def feedRecords(json: String): Seq[JsValue] =
+    (Json.parse(json) \ "events").toOption.toSeq.flatMap {
+      case o: JsObject => o.values.toSeq
+      case a: JsArray  => a.value.toSeq
+      case _           => Seq.empty
+    }
+
+  /** The feed's `category_id` for each schema.org `@type` the place page stamps
+   *  on the same event — measured over every catalogued venue on 2026-09-26
+   *  (1,526 events on both lists, every id mapping to exactly one type). An
+   *  unknown id maps to no type, which [[isLiveEventType]] keeps. */
+  private[pl] val EventTypeByCategory: Map[Int, String] = Map(
+    14 -> "ScreeningEvent",
+    3  -> "TheaterEvent", 37 -> "TheaterEvent", 38 -> "TheaterEvent",
+    4  -> "MusicEvent",
+    2  -> "ComedyEvent", 17 -> "ComedyEvent",
+    7  -> "Event",
+    13 -> "ChildrensEvent",
+    36 -> "Festival",
+  )
+
+  private val FeedDateTime = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+
+  private def parseFeedEvent(ev: JsValue): Option[RawSlot] =
+    for {
+      eventId <- (ev \ "event_id").asOpt[Long]
+      title   <- (ev \ "artist_name").asOpt[String].map(_.trim).filter(_.nonEmpty)
+      start   <- (ev \ "event_date").asOpt[String]
+      dt      <- Try(java.time.LocalDateTime.parse(start, FeedDateTime)).toOption
+      film    <- (ev \ "v2_artist_seo_url").asOpt[String].filter(_.nonEmpty)
+    } yield RawSlot(
+      eventType = (ev \ "category_id").asOpt[Int].flatMap(EventTypeByCategory.get),
+      title     = title,
+      dateTime  = dt,
+      url       = s"$BiletynaOrigin$film?eid=$eventId#opis",
+      poster    = (ev \ "thumb_file_id").asOpt[Long].map(id => s"$BiletynaOrigin/file/get/id/$id")
     )
 }

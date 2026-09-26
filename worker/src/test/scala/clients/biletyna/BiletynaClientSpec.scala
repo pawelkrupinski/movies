@@ -204,4 +204,42 @@ class BiletynaClientSpec
     titles should contain("Marsupilami")
     titles should not contain "Cztery Pory Miłowania"
   }
+
+  // ── Past the place page's 50-event cap ────────────────────────────────────
+  // The place page lists a venue's first 50 events only. Kino Len (Żyrardów)
+  // sells 58; the page stops at 2026-10-20, and the rest come from the
+  // `/ajax/events?params[h]=5126` feed. Page and feed captured live 2026-09-26.
+  private lazy val len =
+    new BiletynaClient(new FakeHttpFetch("biletyna-filmweb-desynced"), "https://biletyna.pl/Zyrardow/Kino-Len", KinoLen).fetch()
+
+  "BiletynaClient (full page)" should "read the screenings past the page's 50-event cap from the hall's event feed" in {
+    val lalka = len.find(_.movie.title == "Lalka (2026)").value
+    val slot  = lalka.showtimes.find(_.dateTime == LocalDateTime.of(2026, 10, 22, 17, 0)).value
+    slot.bookingUrl.value shouldBe "https://biletyna.pl/film/Lalka-2026?eid=701564#opis"
+    len.flatMap(_.showtimes).size shouldBe 58   // every event once: page and feed merged on the booking link
+  }
+
+  it should "page the feed until a page comes back short — Kino Kameralne's 132 events over two" in {
+    val movies = new BiletynaClient(new FakeHttpFetch("kino-kameralne"), "https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe",
+      KinoKameralne).fetch()
+    movies.flatMap(_.showtimes).map(_.dateTime).max should be > LocalDateTime.of(2026, 11, 1, 0, 0)
+  }
+
+  it should "not ask the feed for a venue whose page isn't full" in {
+    val asked = scala.collection.mutable.ArrayBuffer.empty[String]
+    val http = new tools.GetOnlyHttpFetch {
+      private val fixtures = new FakeHttpFetch("biletyna-filmweb-desynced")
+      def get(url: String): String = { asked += url; fixtures.get(url) }
+    }
+    new BiletynaClient(http, "https://biletyna.pl/Dzialdowo/Miejski-Dom-Kultury", KinoApolloDzialdowo).fetch() should not be empty
+    asked.toSeq shouldBe Seq("https://biletyna.pl/Dzialdowo/Miejski-Dom-Kultury")
+  }
+
+  it should "fail loudly when a full page names no hall to page the rest from" in {
+    val page = new FakeHttpFetch("biletyna-filmweb-desynced").get("https://biletyna.pl/Zyrardow/Kino-Len")
+      .replaceAll("""get_filter\s*=\s*\{.*?\};""", "")
+    val http = new tools.GetOnlyHttpFetch { def get(url: String): String = page }
+    an[IllegalStateException] should be thrownBy
+      new BiletynaClient(http, "https://biletyna.pl/Zyrardow/Kino-Len", KinoLen).fetch()
+  }
 }
