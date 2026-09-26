@@ -44,6 +44,17 @@ object ListingConstraints {
      *  (`MixedFilmDetector.creditSamePerson`): Marion Theatre Ocala's "Planet of the Apes"
      *  (Schaffner) beside "Planet of the Apes (2001)" (Burton). */
     case VenueCreditsApart
+    /** An admin pinned the listing as never this film (`services.identity.PinClaim.NeverFilm`):
+     *  it cannot share a film with any listing that is that film. */
+    case PinnedNotFilm
+  }
+
+  /** Why two pieces of evidence must be one film, where the rule is not a title or TMDB edge
+   *  the resolver draws itself. */
+  enum MustLink {
+    /** An admin pinned the listings as one film (`PinClaim.SameFilm`), or as the same film
+     *  (`PinClaim.IsFilm`). Hard: it overrides a derived cannot-link between them. */
+    case Pinned
   }
 
   /** What one listing published that the landing constraints read. */
@@ -110,6 +121,12 @@ object ListingConstraints {
   }
 
   // ── must-links ───────────────────────────────────────────────────────────────────────
+
+  /** The admin pins as hard constraints — the one way curation reaches the resolver: its
+   *  must-links, cannot-links, block keys, the per-listing film override, and which derived
+   *  edges a pin overrides (see [[services.identity.PinConstraints]]). */
+  def pinned(pins: Seq[services.identity.Pin]): services.identity.PinConstraints =
+    services.identity.PinConstraints(pins)
 
   /** A BARE listing — no year, no runtime — names nothing that could put it on another film,
    *  so it stays on the resolved film its venue already holds it on (its incumbent home)
