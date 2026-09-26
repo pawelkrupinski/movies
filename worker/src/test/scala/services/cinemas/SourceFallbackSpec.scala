@@ -37,6 +37,7 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
     base:        FiniteDuration = 10.minutes,
     grace:       FiniteDuration = 6.hours,
     trigger:     Option[FallbackAfter] = None,
+    name:        String = "Filmweb",
     // Shared across harnesses to model a worker restart: a fresh scraper, the same persisted state.
     val store:   InMemoryFallbackStore = new InMemoryFallbackStore
   ) {
@@ -52,7 +53,7 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
     val events = collection.mutable.ListBuffer.empty[(FallbackState, FallbackEvent)]
     val scraper = new SourceFallbackScraper(
       primary,
-      fallback = () => filmweb, fallbackName = "Filmweb", fallbackRef = () => Some("2180"),
+      fallback = () => filmweb, fallbackName = name, fallbackRef = () => Some("2180"),
       monitor, store,
       now = () => clock, baseBackoff = base, maxBackoff = 60.minutes, fallbackAfter = trigger.getOrElse(FallbackAfter.FailingFor(grace)),
       onEvent = (s, e) => events += ((s, e))
@@ -282,6 +283,27 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
     after.clock = before.clock.plusMillis(1.hour.toMillis)
     after.scraper.fetch() shouldBe OneMovie
     after.events.map(_._2.event) shouldBe List(FallbackEvent.Enter)
+  }
+
+  // German venues carried Filmweb-wrapper state (a spell's clock, its UNCOVERED page)
+  // before kinoprogramm.com became their fallback. That spell was another feed's: the
+  // new one must count and page for itself, or a venue whose kinoprogramm page is
+  // dead too is never paged.
+  it should "start a fresh spell when the stored state was written by another fallback" in {
+    val h = new Harness(Seq(Left(boom)), None, trigger = ThreeRuns, name = "Kinoprogramm")
+    val longAgo = h.clock.minusMillis(30.days.toMillis)
+    h.store.put(FallbackState(
+      cinema = Service, active = false, fallbackSource = "Filmweb", fallbackRef = None,
+      failingSince = Some(longAgo), since = None, lastReason = Some("HTTP 404"),
+      consecutiveFailures = 0, lastPrimaryProbeAt = Some(longAgo), nextPrimaryProbeAt = None,
+      updatedAt = longAgo, history = List(FallbackEvent(longAgo, FallbackEvent.Uncovered, "HTTP 404"))
+    ))
+    h.tickSwallowing(); h.advance(1.hour)
+    h.state.flatMap(_.failingSince) shouldBe Some(h.clock.minusMillis(1.hour.toMillis))   // its own clock
+    h.tickSwallowing(); h.advance(1.hour)
+    h.tickSwallowing()
+    h.events.map(_._2.event) shouldBe List(FallbackEvent.Uncovered)
+    h.state.map(_.history.last.event) shouldBe Some(FallbackEvent.Uncovered)   // the old spell's record is kept
   }
 
   // ---- empty-primary handling ----

@@ -103,7 +103,7 @@ class SourceFallbackScraper(
 
   /** The tick's listing, and whether the fallback served it (see the class doc). */
   override def fetchWithSource(): CinemaScraper.Scraped = {
-    val previous      = store.get(service)
+    val previous      = store.get(service).map(ownSpell)
     val active        = previous.exists(_.active)
     val nowI          = now()
     val withinBackoff = active && previous.flatMap(_.nextPrimaryProbeAt).exists(nowI.isBefore)
@@ -182,6 +182,18 @@ class SourceFallbackScraper(
 
   private def primaryServed(movies: Seq[CinemaMovie]): CinemaScraper.Scraped  = CinemaScraper.Scraped(movies, viaFallback = false)
   private def fallbackServed(movies: Seq[CinemaMovie]): CinemaScraper.Scraped = CinemaScraper.Scraped(movies, viaFallback = true)
+
+  /** The stored state as THIS fallback's: a state another fallback wrote describes
+   *  that feed's spell — German venues carried Filmweb-wrapper state before
+   *  kinoprogramm.com became their fallback — so its clock, run count and pages
+   *  are not ours, and reusing them would, say, treat its UNCOVERED page as ours
+   *  and never page for a venue this feed cannot cover either. The spell starts
+   *  afresh; the history stays, as the venue's record. */
+  private def ownSpell(state: FallbackState): FallbackState =
+    if (state.fallbackSource == fallbackName) state
+    else state.copy(
+      active = false, alerted = false, failingSince = None, failedRuns = 0, since = None,
+      consecutiveFailures = 0, lastPrimaryProbeAt = None, nextPrimaryProbeAt = None)
 
   /** Has the current failing spell, counting THIS failed run, reached [[fallbackAfter]]?
    *  `failingSince` and `failedRuns` are carried from the persisted state (or start
