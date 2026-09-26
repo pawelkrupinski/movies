@@ -23,8 +23,9 @@ import scala.collection.mutable
  *      ([[IdentityCalibration]] over [[IdentityMeasures]] — the same measurements the weights were
  *      fitted on, including `venues.corroborating`, the family's venue co-occurrence). A candidate
  *      a node's evidence DENIES (`ListingConstraints.learned`: a learned rule, or a probability
- *      below the certified cut) is not eligible. A node ACCEPTS its best candidate when its
- *      confidence — the best is the film and no rival is — clears the calibration's cut. Then:
+ *      below the certified cut) is not eligible. A node ACCEPTS its best candidate ALONE when the
+ *      calibrated probability clears the calibration's cut AND its own facts (not TMDB's ranking)
+ *      favour it over the runner-up; otherwise it follows its cluster. Then:
  *        1. constraint edges between nodes sharing a block key — must-links by tier (0 pinned, 1
  *           same accepted film, 2 same sanitised title, 3 same search form or original title, 4 one's
  *           title a delimited segment of the other's) and
@@ -187,15 +188,28 @@ object IdentityResolver {
       }
     }
 
-    /** The confidence that `film` is the listing's film and no rival is: p(film) × Π(1 − p(rival))
-     *  over the eligible candidates. Accepting on it keeps a listing that names two equally likely
-     *  films from picking one on its own. */
-    def confidenceOf(ranked: Seq[Scored], film: Int): Double = {
-      val eligible = ranked.filterNot(_.denied)
-      eligible.find(_.c.tmdbId == film).fold(0.0)(_.p) * eligible.filterNot(_.c.tmdbId == film).map(1 - _.p).product
-    }
+    /** The calibrated probability that `film` is the listing's film — the decision's confidence,
+     *  on the scale the rating gate reads. Rivals are already in it (the `rivals` measure). */
+    def confidenceOf(ranked: Seq[Scored], film: Int): Double =
+      ranked.filterNot(_.denied).find(_.c.tmdbId == film).fold(0.0)(_.p)
+    /** The best eligible candidate, when the calibration accepts it. */
     def acceptedOf(ranked: Seq[Scored]): Option[(Scored, Double)] =
-      ranked.find(!_.denied).map(b => b -> confidenceOf(ranked, b.c.tmdbId)).filter(x => calibration.showsRatings(x._2))
+      ranked.find(!_.denied).map(b => b -> b.p).filter(x => calibration.showsRatings(x._2))
+
+    /** What the LISTING'S OWN facts contribute — the title, year, director, runtime, original
+     *  title and country measures — as opposed to the film database's ranking priors (search rank,
+     *  popularity, rivals) and the family's pooled count (`venues.corroborating`). */
+    val Priors = Set("search.rank", "popularity.log2", "rivals", "venues.corroborating")
+    def ownEvidence(s: Scored): Double =
+      calibration.contributions(ListingFilm, s.measures).collect { case (name, w) if !Priors(name) => w }.sum
+    /** A node accepts a film ON ITS OWN only when its own facts favour it over the runner-up: a
+     *  bare "Lalka" beside two 2026 "Lalka"s, told apart only by TMDB's popularity ranking, is not
+     *  decided alone — it follows the film its title's credited siblings chose (the cluster's), or
+     *  the pooled vote. */
+    def acceptedAlone(ranked: Seq[Scored]): Option[(Scored, Double)] = {
+      val eligible = ranked.filterNot(_.denied)
+      acceptedOf(ranked).filter { case (best, _) => eligible.lift(1).forall(r => ownEvidence(best) > ownEvidence(r)) }
+    }
 
     // ── families ─────────────────────────────────────────────────────────────────────────
     def titleKeys(n: Node): Set[String] =
@@ -217,7 +231,7 @@ object IdentityResolver {
     var stable     = false
     while (!stable) {
       scopes = nodes.groupBy(n => familyOf(n.id)).map { case (f, ms) => f -> new FamilyScope(ms.sortBy(_.id)) }
-      bestOf = nodes.flatMap(n => acceptedOf(scopes(familyOf(n.id)).of(n)).map(n.id -> _)).toMap
+      bestOf = nodes.flatMap(n => acceptedAlone(scopes(familyOf(n.id)).of(n)).map(n.id -> _)).toMap
       val grown = nodes.map(n => n.id -> (matchedIds.getOrElse(n.id, Set.empty[Int]) ++ bestOf.get(n.id).map(_._1.c.tmdbId) ++
         pinnedFilm.get(n.id))).toMap
       stable = grown == matchedIds || mutation == Mutation.NarrowFamilies

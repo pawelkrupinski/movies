@@ -55,6 +55,18 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     together(r, plain.head, decorated) shouldBe true
   }
 
+  "A bare listing its own evidence cannot separate between two films" should
+    "follow its title's credited siblings, not the database's popularity ranking" in {
+    // Two 2026 films TMDB titles "Lalka"; the more popular one is not the one the venues credit.
+    val films = Seq(F(1, "Lalka", 2026, "Maciej Kawalski", 150, 5), F(2, "Lalka", 2026, "Someone Else", 95, 80))
+    val credited = Seq(Multikino, Helios).map(listing(_, "Lalka", Some(2026), Some("Maciej Kawalski")))
+    val bare     = Seq(KinoApollo, KinoMuza, Rialto).map(listing(_, "Lalka"))
+    val r = resolve(credited ++ bare, films)
+    r.decisionOf(credited.head.key).film shouldBe Some(1)
+    bare.map(l => r.decisionOf(l.key).film) shouldBe Seq.fill(3)(Some(1))
+    r.violations shouldBe 0
+  }
+
   "Three films under one title" should "stay three, and a bare listing joins neither of the dated ones by title alone" in {
     val films = Seq(F(1954, "A Star Is Born", 1954, "George Cukor", 176), F(1976, "A Star Is Born", 1976, "Frank Pierson", 139),
       F(2018, "A Star Is Born", 2018, "Bradley Cooper", 136, 60))
@@ -116,7 +128,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
 
   "A listing the evidence cannot place" should "stay unmatched, and say which candidate it refused" in {
     val films = Seq(F(1, "Opętanie", 1981, "Andrzej Żuławski", 124), F(2, "Opętanie", 1973, "Someone Else", 90))
-    val bare = listing(Multikino, "Opętanie | klasyka w 4k")
+    val bare = listing(Multikino, "Opętanie")
     val d = resolve(Seq(bare), films).decisionOf(bare.key)
     d.film shouldBe None
     d.basis shouldBe ResolverDecision.Basis.BelowThreshold

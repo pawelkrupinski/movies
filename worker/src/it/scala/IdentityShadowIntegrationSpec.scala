@@ -123,6 +123,12 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       def recall(film: ListingKey => Option[FilmAnswer]) =
         if (labelled.isEmpty) Double.NaN else labelled.count(k => film(k).exists(_.tmdbId == labelOf(k))).toDouble / labelled.size
       def onContradicted(film: ListingKey => Option[FilmAnswer]) = wrongOf.count { case (k, id) => film(k).exists(_.tmdbId == id) }
+      // Every labelled listing the resolver matched to ANOTHER film, with the decision's reasons.
+      val mismatched = labelled.filter(k => resolverFilm(k).exists(_.tmdbId != labelOf(k)))
+      report.line(s"[${c.label}] resolver matched ${mismatched.size} labelled listing(s) to another film:" +
+        mismatched.groupBy(k => (labelOf(k), decisionOf(k).film)).toSeq.sortBy(-_._2.size).take(25).map { case ((label, film), ks) =>
+          s"\n    ×${ks.size} '${ks.head.rawTitle}' label $label → ${film.getOrElse("—")}: ${decisionOf(ks.head).explanation.take(3).mkString(" | ")}"
+        }.mkString)
       val truth = labelled.map(k => k -> labelOf(k)).toMap
       val pipePairwise = pairwise(truth, labelled.flatMap(k => pipelineOf.get(k).map(k -> _)).toMap)
       val resPairwise  = pairwise(truth, labelled.map(k => k -> clusterIndex(k)).toMap)
@@ -188,6 +194,10 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       IdentityHistoricalChecks.All.filter(_.country == c.country.code).foreach { check =>
         val (r, p) = (IdentityHistoricalChecks.judge(check, withEvidence, resolverAnswer), IdentityHistoricalChecks.judge(check, withEvidence, pipelineAnswer))
         report.line(s"[${c.label}] check '${check.name}': resolver $r, pipeline $p")
+        if (r == IdentityHistoricalChecks.Verdict.Fail)
+          withEvidence.filter { case (l, _) => l.rawTitle.toLowerCase(java.util.Locale.ROOT).matches(s".*(${check.name.split(" ").take(2).mkString(" ").toLowerCase(java.util.Locale.ROOT)}).*") }
+            .flatMap { case (l, _) => decisionOf.get(l.key) }.distinct.take(4)
+            .foreach(d => report.line(s"    ${d.members.head.rawTitle}: ${d.render}"))
         def tally(system: String, v: IdentityHistoricalChecks.Verdict) = {
           val (pass, fail, na) = checkTally.getOrElse(system, (0, 0, 0))
           checkTally(system) = v match {
