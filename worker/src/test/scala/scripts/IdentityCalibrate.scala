@@ -1029,6 +1029,9 @@ object IdentityCalibrate {
       out.write(Json.stringify(doc))
     } finally out.close()
 
+    // The evidence classes are measured on the labels just written, against the artefact just written.
+    IdentityEvidenceClasses.derive(cfg.fixtures, cfg.labelsOut, cfg.weightsOut, s"the --fixtures trees (${cfg.fixtures.getFileName})")
+
     val reportJs = Json.obj("listingFilm" -> lfQuality, "listingListing" -> llQuality,
       "existingVetoes" -> Json.obj("listingFilm" -> lfExisting, "listingListing" -> llExisting))
     Files.writeString(cfg.reportDir.resolve("calibration-report.json"), Json.prettyPrint(reportJs))

@@ -19,11 +19,16 @@ import services.identity.IdentityMeasures.{Category, Measure, Missing, Number}
  *  - `thresholds`: the probability above which ratings are shown, and the one below which a pair
  *    is a cannot-link, each with the held-out error it was chosen at.
  * Plus `cannotLinks`: conjunctions of signal conditions whose measured false-veto rate is under
- * the stated bound — the learned vetoes, evaluated generically by [[cannotLink]].
+ * the stated bound — the learned vetoes, evaluated generically by [[cannotLink]]. And
+ * `evidenceClasses`: conjunctions of signal conditions whose measured wrong share, as a class, is
+ * within the wrong rate ratings are shown at — each with the probability it measured, which a
+ * listing in the class may be credited with where the naive-Bayes sum undersells it
+ * ([[classProbability]]; derived by `scripts.IdentityEvidenceClasses`).
  */
 final case class IdentityCalibration(version: String,
                                      scopes: Map[String, IdentityCalibration.ScopeModel],
                                      cannotLinks: Seq[IdentityCalibration.CannotLinkRule] = Nil,
+                                     evidenceClasses: Seq[IdentityCalibration.EvidenceClass] = Nil,
                                      provenance: Map[String, String] = Map.empty) {
   import IdentityCalibration.*
 
@@ -61,6 +66,11 @@ final case class IdentityCalibration(version: String,
    *  signal that is missing never holds: missing evidence never vetoes. */
   def cannotLink(scope: String, measures: Map[String, Measure]): Option[CannotLinkRule] =
     cannotLinks.find(r => r.scope == scope && r.all.nonEmpty && r.all.forall(_.holds(measures)))
+
+  /** The measured probability of the best evidence class of `scope` whose every condition holds.
+   *  As with a cannot-link, a condition on missing evidence never holds. */
+  def classProbability(scope: String, measures: Map[String, Measure]): Option[Double] =
+    evidenceClasses.filter(c => c.scope == scope && c.all.nonEmpty && c.all.forall(_.holds(measures))).map(_.probability).maxOption
 }
 
 object IdentityCalibration {
@@ -129,6 +139,13 @@ object IdentityCalibration {
                                   support: Int, falseVetoBound: Double = 0.0, trueVetoRate: Double = 0.0,
                                   positives: Int = 0, negatives: Int = 0, origin: String = "derived")
 
+  /** A class of evidence measured as a whole on the labels: every listing-film pair whose measures
+   *  meet `all` is the listing's film with `probability` (a conservative bound on its measured
+   *  precision, `measured` saying on which units), and the class qualified because its wrong share
+   *  is within the wrong rate ratings are shown at (`basis`). */
+  final case class EvidenceClass(name: String, scope: String, all: Seq[Condition], probability: Double,
+                                 measured: Map[String, Double] = Map.empty, basis: String = "")
+
   private def render(m: Option[Measure]): String = m match {
     case Some(Category(v)) => v
     case Some(Number(x))   => if (x == math.rint(x)) x.toLong.toString else f"$x%.2f"
@@ -143,6 +160,7 @@ object IdentityCalibration {
   implicit val scopeFormat: OFormat[ScopeModel]          = Json.using[Json.WithDefaultValues].format[ScopeModel]
   implicit val conditionFormat: OFormat[Condition]       = Json.using[Json.WithDefaultValues].format[Condition]
   implicit val ruleFormat: OFormat[CannotLinkRule]       = Json.using[Json.WithDefaultValues].format[CannotLinkRule]
+  implicit val classFormat: OFormat[EvidenceClass]       = Json.using[Json.WithDefaultValues].format[EvidenceClass]
   implicit val format: OFormat[IdentityCalibration]      = Json.using[Json.WithDefaultValues].format[IdentityCalibration]
 
   /** Where the artefact sits on the classpath (common/src/main/resources). */

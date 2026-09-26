@@ -1189,12 +1189,39 @@
     "negatives" : 269,
     "origin" : "derived"
   } ],
+  "evidenceClasses" : [ {
+    "name" : "title=exact AND search.rank<=1 AND rivals in [-inf, 0.5]",
+    "scope" : "listing-film",
+    "all" : [ {
+      "signal" : "title",
+      "in" : [ "exact" ]
+    }, {
+      "signal" : "search.rank",
+      "in" : [ ],
+      "atMost" : 1
+    }, {
+      "signal" : "rivals",
+      "in" : [ ],
+      "atMost" : 0.5
+    } ],
+    "probability" : 0.994132355243458,
+    "measured" : {
+      "fittingWrongUpper" : 0.005867644756541977,
+      "heldOutUnits" : 811,
+      "heldOutWrong" : 4,
+      "fittingUnits" : 1884,
+      "fittingWrong" : 4,
+      "targetWrongRate" : 0.009650957053241113
+    },
+    "basis" : "a listing's exact top hit (its whole title names the film exactly and a title search returned it first) as a class, measured on bare titles replayed through the recorded searches: its wrong share on the fitting splits has a Bonferroni-corrected one-sided 95% upper bound within the wrong rate ratings are shown at; the probability is one minus it"
+  } ],
   "provenance" : {
     "corpora" : "recorder run 36153174348: cinema-scrapes-<cc>.json.gz and enrichment-<cc> trees; hard-cluster corpora and responses",
     "production" : "read-only snapshot of movies + movie_slots (calib)",
     "splits" : "family = listings joined by title key or production film; murmur3(smallest ListingKey) mod 10: 0-4 train, 5-6 calibration, 7-9 test",
     "labels" : "production tmdbId corroborated by >= 2 independent signals (year ±1, director, original title, >= 2 other venues), none denying; negatives = the listing's other title-search results",
     "epsilonBasis" : "certified: every rule fired on NO same-film unit of the fitting splits; epsilon is the largest Bonferroni-corrected upper bound that certifies (the tightest the data can prove)",
+    "evidenceClasses" : "scripts.IdentityEvidenceClasses: the labels above, replayed stripped to their titles through the recorded title searches of recorder run 36224654409 (the resolver-query recording)",
     "script" : "scripts/identity-calibrate.sh (worker/Test/runMain scripts.IdentityCalibrate)",
     "epsilon" : "0.002176862202282568",
     "todayWrongRate" : "0,00965"

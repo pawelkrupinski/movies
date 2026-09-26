@@ -243,6 +243,54 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     d.explanation.exists(_.startsWith("best rejected candidate")) shouldBe true
   }
 
+  /** The shipped artefact without its evidence classes: what a bare title scores signal by signal. */
+  private val withoutClasses = IdentityCalibration.default.copy(evidenceClasses = Nil)
+  /** The shipped artefact with one evidence class: an exact top hit with at most `rivals` same-titled rivals. */
+  private def withTopHitClass(rivals: Double, base: IdentityCalibration = withoutClasses): IdentityCalibration = {
+    import IdentityCalibration.{Condition, EvidenceClass}
+    base.copy(evidenceClasses = Seq(EvidenceClass("exact top hit", IdentityMeasures.ListingFilm,
+      Seq(Condition("title", in = Seq("exact")), Condition("search.rank", atMost = Some(1)), Condition("rivals", atMost = Some(rivals))),
+      probability = 0.99)))
+  }
+
+  "A bare exact title TMDB returns first" should "take that film on its evidence class's measured probability" in {
+    val films = Seq(F(39264, "Godzilla vs. Megalon", 1973, "Jun Fukuda", 82, 0.6), F(2, "Godzilla vs. Mothra", 1964, "Ishirō Honda", 89, 30))
+    val bare  = listing(Rialto, "Godzilla vs. Megalon")
+    val before = IdentityResolver.resolve(Seq(bare), new Table(films), normalizer, withoutClasses).decisionOf(bare.key)
+    before.film shouldBe None
+    before.basis shouldBe ResolverDecision.Basis.BelowThreshold
+    val after = IdentityResolver.resolve(Seq(bare), new Table(films), normalizer, withTopHitClass(0.5)).decisionOf(bare.key)
+    after.film shouldBe Some(39264)
+    after.basis shouldBe ResolverDecision.Basis.OwnMatch
+    after.confidence shouldBe 0.99
+    after.explanation.head should include ("exact top hit")
+  }
+
+  it should "not take it past its class: a same-titled rival, a banner, a published fact against it, a rival that fits better" in {
+    val megalon = F(39264, "Godzilla vs. Megalon", 1973, "Jun Fukuda", 82, 0.6)
+    val remake  = F(7, "Godzilla vs. Megalon", 2031, "Someone Else", 120, 0.5)
+    def film(l: Listing, films: Seq[F], rivals: Double) =
+      IdentityResolver.resolve(Seq(l), new Table(films), normalizer, withTopHitClass(rivals)).decisionOf(l.key).film
+    // A rival the class was not measured with.
+    film(listing(Rialto, "Godzilla vs. Megalon"), Seq(megalon, remake), rivals = 0.5) shouldBe None
+    // A banner segment's first hit is not the listing's exact title.
+    film(listing(Rialto, "Kino Nocne: Godzilla vs. Megalon"), Seq(megalon), rivals = 0.5) shouldBe None
+    // The venue's own runtime weighs against the top hit.
+    film(listing(Rialto, "Godzilla vs. Megalon", runtime = Some(150)), Seq(megalon), rivals = 0.5) shouldBe None
+    // The rival's facts fit the listing better than the top hit's: the top hit is not taken.
+    film(listing(Rialto, "Godzilla vs. Megalon", runtime = Some(120)), Seq(megalon, remake), rivals = 2.5) should not be Some(39264)
+  }
+
+  it should "still leave a broadcast's bare listing off the old film its title-linked sibling's season denies" in {
+    val films  = Seq(F(29993, "Samson i Dalila", 1949, "Cecil B. DeMille", 131, 20))
+    val season = listing(Multikino, "Samson i dalila | metropolitan opera: live in hd 2026/27")
+    val bare   = Seq(Helios, KinoApollo).map(listing(_, "Samson i Dalila"))
+    // On the case's own weights, where the sibling's season denies the film: the class must not undo that.
+    val r = IdentityResolver.resolve(season +: bare, new Table(films), normalizer, withTopHitClass(0.5, weights))
+    (season +: bare).foreach(l => withClue(l.title)(r.decisionOf(l.key).film should not be Some(29993)))
+    r.violations shouldBe 0
+  }
+
   "Curation pins" should "override the evidence: a pinned film, a denied one, and a pinned group" in {
     def pin(ls: Seq[Listing], claim: PinClaim) = Pin(ls.map(_.key), claim, "spec", "test", java.time.Instant.EPOCH)
     val films = Seq(F(1, "Opętanie", 1981, "Andrzej Żuławski", 124), F(2, "Opętanie", 1973, "Someone Else", 90))

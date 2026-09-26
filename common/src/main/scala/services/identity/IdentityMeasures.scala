@@ -34,7 +34,20 @@ object IdentityMeasures {
     lazy val titleYear: Option[Int] = EmbeddedYear.ofAll(titles.map(IdentityMeasures.withoutSeasons), Int.MaxValue)
     /** The venue's own year: its field, else the one its title brackets. */
     def statedYear: Option[Int] = year.orElse(titleYear)
+    /** A running time the venue put in its title as a bracketed annotation ("(97’)", "[97 min]"). */
+    lazy val titleRuntime: Option[Int] = IdentityMeasures.bracketedRuntime(titles)
+    /** The venue's own runtime: its field, else the one its title brackets. */
+    def statedRuntime: Option[Int] = runtime.filter(_ > 0).orElse(titleRuntime)
   }
+
+  /** A running time in brackets, marked as minutes by a prime or an apostrophe ("97’", "97'", "97′")
+   *  or by "min" — the only way a number in a title says it is a duration. One value, or none. */
+  private val BracketedRuntime = """(?i)[(\[]\s*(\d{2,3})\s*(?:['’′]|min\.?|mins\.?)\s*[)\]]""".r
+  def bracketedRuntime(titles: Seq[String]): Option[Int] =
+    titles.iterator.flatMap(BracketedRuntime.findAllMatchIn).map(_.group(1).toInt).filter(_ > 0).toSeq.distinct match {
+      case Seq(one) => Some(one)
+      case _        => None
+    }
 
   /** A SEASON written into a title — "2026/27", "2026-27", "2026/2027", "2026–2027": a year and the
    *  next, which is how a broadcast or programme series names its run, never a film's year. */
@@ -265,6 +278,14 @@ object IdentityMeasures {
   def rivals(l: Listing, pool: Map[Int, Film], film: Int): Int =
     pool.count { case (id, f) => id != film && Rivalling(titleRelation(l, f).value) }
 
+  /** The films a listing's title names EXACTLY that one of its own title searches returned FIRST,
+   *  from `pool` (each candidate with its best 1-based rank over the listing's searches, `None` when
+   *  none returned it). A banner segment's first hit is not one: the listing's whole title must be
+   *  the film's. The resolver's top-hit acceptance and the evidence class it is measured as
+   *  (`scripts.IdentityEvidenceClasses`) read this one definition. */
+  def exactTopHits(l: Listing, pool: Seq[(Int, Film, Option[Int])]): Seq[Int] =
+    pool.collect { case (id, f, Some(1)) if titleRelation(l, f) == Category("exact") => id }.distinct.sorted
+
   /** What a listing's own yearless title searches ([[searchQueries]]) said about `film`: where it
    *  ranked (1-based, best over the queries; `None` when no query returned it) and how many other
    *  films they returned that the listing's title names as closely. `None` when no query was
@@ -340,7 +361,7 @@ object IdentityMeasures {
       "season.delta"   -> filmMinus(f.year, l.seasonYear),
       "director"       -> f.directors.fold[Measure](if (l.directors.exists(_.trim.nonEmpty)) MissingFilm else MissingListing)(
                             directorRelation(l.directors, _)),
-      "runtime.delta"  -> absDelta(l.runtime.filter(_ > 0), f.runtime.filter(_ > 0)),
+      "runtime.delta"  -> absDelta(l.statedRuntime, f.runtime.filter(_ > 0)),
       "country"        -> countryRelation(l.countries, f.countries),
       "search.rank"    -> searchRank.fold[Measure](Missing("not-returned"))(r => Number(r.toDouble)),
       "popularity.log2" -> f.popularity.fold[Measure](MissingFilm)(p => Number(math.floor(math.log(math.max(p, 1e-3)) / math.log(2)))),
@@ -350,7 +371,7 @@ object IdentityMeasures {
 
   /** Titles a listing names itself by, as the other side of a listing-listing comparison. */
   private def asFilm(l: Listing): Film =
-    Film(l.title, l.originalTitle, l.rawTitle.toSeq, l.statedYear, l.runtime, Some(l.directors).filter(_.exists(_.trim.nonEmpty)),
+    Film(l.title, l.originalTitle, l.rawTitle.toSeq, l.statedYear, l.statedRuntime, Some(l.directors).filter(_.exists(_.trim.nonEmpty)),
       None, None)
 
   /**
@@ -375,7 +396,7 @@ object IdentityMeasures {
       "titleYear.delta" -> absDelta(a.titleYear, b.titleYear),
       "season.delta"  -> absDelta(a.seasonYear, b.seasonYear),
       "director"      -> directorRelation(a.directors, b.directors),
-      "runtime.delta" -> absDelta(a.runtime.filter(_ > 0), b.runtime.filter(_ > 0)),
+      "runtime.delta" -> absDelta(a.statedRuntime, b.statedRuntime),
       "venue"         -> Category(if (sameVenue) "same" else "different"),
       "chainId"       -> sharedChainId.fold[Measure](Missing("no-shared-namespace"))(s => Category(if (s) "same" else "different"))
     )

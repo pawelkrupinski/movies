@@ -65,6 +65,34 @@ class IdentityCalibrationSpec extends AnyFlatSpec with Matchers {
     director shouldBe model.scopes(ListingFilm).signals("director").missing.getOrElse("listing", 0.0)
   }
 
+  "an evidence class" should "lend its measured probability only when every condition holds, never on missing evidence" in {
+    import IdentityCalibration.{Condition, EvidenceClass}
+    val topHit = EvidenceClass("title=exact AND search.rank<=1 AND rivals<=0.5", ListingFilm,
+      Seq(Condition("title", in = Seq("exact")), Condition("search.rank", atMost = Some(1)), Condition("rivals", atMost = Some(0.5))),
+      probability = 0.99)
+    val m = model.copy(evidenceClasses = Seq(topHit))
+    def measured(rank: Option[Int], rivals: Int) = IdentityMeasures.listingFilm(Listing("Aaram"), Film("Aaram"), rank, rivals, 0)
+    m.classProbability(ListingFilm, measured(Some(1), 0)) shouldBe Some(0.99)
+    m.classProbability(ListingFilm, measured(Some(2), 0)) shouldBe None
+    m.classProbability(ListingFilm, measured(Some(1), 1)) shouldBe None
+    m.classProbability(ListingFilm, measured(None, 0)) shouldBe None
+    m.classProbability(ListingListing, measured(Some(1), 0)) shouldBe None
+    model.copy(evidenceClasses = Nil).classProbability(ListingFilm, measured(Some(1), 0)) shouldBe None
+  }
+
+  "identity-weights.json's evidence classes" should "each be measured within the wrong rate ratings are shown at" in {
+    val target = model.scopes(ListingFilm).thresholds("showRatings").measured("targetWrongRate")
+    model.evidenceClasses should not be empty
+    model.evidenceClasses.foreach { c =>
+      withClue(c.name) {
+        c.all should not be empty
+        c.measured("fittingWrongUpper") should be <= target
+        c.probability shouldBe (1 - c.measured("fittingWrongUpper")) +- 1e-12
+        model.showsRatings(c.probability) shouldBe true
+      }
+    }
+  }
+
   // ── the historical cases (docs/design/identity-resolver.md §1.1) ──────────────────────
 
   private val samsonMet   = Listing("Samson i Dalila", year = Some(2026), directors = Seq("Darko Tresnjak"))

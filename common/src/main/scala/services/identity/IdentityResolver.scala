@@ -137,10 +137,11 @@ object IdentityResolver {
     val candidateById: Map[Int, Candidate] = hitsById.map { case (id, hs) => id -> Candidate.of(id, hs, records(id).toOption.flatten) }
 
     // ── scoring ──────────────────────────────────────────────────────────────────────────
-    /** `seasonProduction`: the film's record names the listing's season production
+    /** A candidate scored for `listing`, which its own title searches ranked at `rank` (best,
+     *  1-based). `seasonProduction`: the film's record names the listing's season production
      *  (`IdentityMeasures.namesSeasonProduction`). */
     final case class Scored(c: Candidate, p: Double, measures: Map[String, Measure], denied: Boolean,
-                            seasonProduction: Boolean = false)
+                            listing: IdentityMeasures.Listing, rank: Option[Int], seasonProduction: Boolean = false)
 
     /** What the LISTING'S OWN facts contribute — the title, year, director, runtime, original
      *  title and country measures — as opposed to the film database's ranking priors (search rank,
@@ -180,7 +181,7 @@ object IdentityResolver {
           val measures = IdentityMeasures.listingFilm(l, c.film, ranks.get(c.tmdbId), rivals,
             IdentityMeasures.corroboratingVenues(c.film, group, venue))
           val p = calibration.probability(ListingFilm, measures)
-          Scored(c, p, measures, deniedByPins(c.tmdbId) || evidenceDenies(l, c.film, measures),
+          Scored(c, p, measures, deniedByPins(c.tmdbId) || evidenceDenies(l, c.film, measures), l, ranks.get(c.tmdbId),
             IdentityMeasures.namesSeasonProduction(l, c.film))
         }.sortBy(s => (-s.p, s.c.tmdbId))
       }
@@ -210,11 +211,42 @@ object IdentityResolver {
       }
     }
 
-    /** The calibrated probability that `film` is the listing's film — the decision's confidence,
-     *  on the scale the rating gate reads. Rivals are already in it (the `rivals` measure). */
-    def confidenceOf(ranked: Seq[Scored], film: Int): Double =
-      ranked.filterNot(_.denied).find(_.c.tmdbId == film).fold(0.0)(_.p)
     def ownEvidence(s: Scored): Double = ownContributions(s.measures)
+    /** Does anything the listing PUBLISHED weigh against the film — an own-fact measure the listing
+     *  did not leave missing, with a negative weight? */
+    def speaksAgainst(s: Scored): Boolean =
+      calibration.contributions(ListingFilm, s.measures).exists { case (name, w) =>
+        !Priors(name) && w < 0 && !s.measures.get(name).exists(_.isInstanceOf[IdentityMeasures.Missing])
+      }
+
+    /** The listing's EXACT TOP HIT, accepted on what the calibration measured for its evidence as a
+     *  CLASS (`IdentityCalibration.classProbability`): the one film its whole title names exactly
+     *  that its own title search returned first, in TMDB's order ([[IdentityMeasures.exactTopHits]]),
+     *  when the listing's own evidence rules it out on nothing, published nothing against it, and
+     *  gives no rival a better fit. A bare title credits it with the naive-Bayes sum of missing
+     *  facts, a low popularity and its same-titled rivals, which undersells what the class measured
+     *  on the labels; here the search standing LENDS confidence and never withdraws it. */
+    def topHit(ranked: Seq[Scored]): Option[(Scored, Double)] = ranked.headOption.flatMap { any =>
+      val eligible = ranked.filterNot(_.denied)
+      IdentityMeasures.exactTopHits(any.listing, ranked.map(s => (s.c.tmdbId, s.c.film, s.rank))) match {
+        case Seq(id) =>
+          eligible.find(_.c.tmdbId == id)
+            .filter(best => !speaksAgainst(best) && eligible.forall(r => (r eq best) || ownEvidence(r) <= ownEvidence(best)))
+            .flatMap(best => calibration.classProbability(ListingFilm, best.measures).map(cp => best -> math.max(best.p, cp)))
+            .filter(x => calibration.showsRatings(x._2))
+        case _ => None
+      }
+    }
+
+    /** The probability that `film` is the listing's film — the decision's confidence, on the scale
+     *  the rating gate reads: the calibrated one (rivals are in it, the `rivals` measure), or its
+     *  evidence class's when the film is the listing's accepted exact top hit. */
+    def confidenceOf(ranked: Seq[Scored], film: Int): Double =
+      topHit(ranked).filter(_._1.c.tmdbId == film).map(_._2)
+        .getOrElse(ranked.filterNot(_.denied).find(_.c.tmdbId == film).fold(0.0)(_.p))
+    /** The best eligible candidate, when its calibrated probability clears the calibration's cut. */
+    def calibrated(ranked: Seq[Scored]): Option[(Scored, Double)] =
+      ranked.find(!_.denied).map(b => b -> b.p).filter(x => calibration.showsRatings(x._2))
     /** The eligible candidate whose record names the listing's SEASON PRODUCTION — the season and
      *  the work its title names. `None`: no candidate does. `Some(Some(x))`: `x` is the listing's
      *  film on that identity, whatever the calibrated probability (the fitted weights do not read a
@@ -230,18 +262,19 @@ object IdentityResolver {
         case a +: b +: _  => Some(Option.when(ownEvidence(a) > ownEvidence(b))(a -> a.p))
       }
     /** The listing's season production, else the best eligible candidate when the calibration
-     *  accepts it. */
+     *  accepts it, else the exact top hit. */
     def acceptedOf(ranked: Seq[Scored]): Option[(Scored, Double)] =
-      seasonProductionOf(ranked).getOrElse(ranked.find(!_.denied).map(b => b -> b.p).filter(x => calibration.showsRatings(x._2)))
+      seasonProductionOf(ranked).getOrElse(calibrated(ranked).orElse(topHit(ranked)))
 
     /** A node accepts a film ON ITS OWN only when its own facts favour it over the runner-up: a
      *  bare "Lalka" beside two 2026 "Lalka"s, told apart only by TMDB's popularity ranking, is not
      *  decided alone — it follows the film its title's credited siblings chose (the cluster's), or
-     *  the pooled vote. */
+     *  the pooled vote — unless it is the listing's exact top hit, which is measured as a class. */
     def acceptedAlone(ranked: Seq[Scored]): Option[(Scored, Double)] = {
       val eligible = ranked.filterNot(_.denied)
-      seasonProductionOf(ranked).getOrElse(acceptedOf(ranked).filter { case (best, _) =>
-        eligible.lift(1).forall(r => ownEvidence(best) > ownEvidence(r)) })
+      seasonProductionOf(ranked).getOrElse(
+        calibrated(ranked).filter { case (best, _) => eligible.lift(1).forall(r => ownEvidence(best) > ownEvidence(r)) }
+          .orElse(topHit(ranked)))
     }
 
     // ── families ─────────────────────────────────────────────────────────────────────────
@@ -423,7 +456,8 @@ object IdentityResolver {
         else ResolverDecision.Basis.BelowThreshold
       val ids   = cluster.map(_.id).toSet
       val own   = cluster.flatMap(n => bestOf.get(n.id).map { case (s, c) =>
-        s"${n.label}: own match ${s.c.tmdbId} at ${ResolverDecision.percent(c)} (${calibration.explain(ListingFilm, s.measures)})" })
+        s"${n.label}: own match ${s.c.tmdbId} at ${ResolverDecision.percent(c)}${if (c > s.p) " as its exact top hit" else ""} " +
+          s"(${calibration.explain(ListingFilm, s.measures)})" })
       val joins = edges.filter(e => e.must && ids(e.a) && ids(e.b)).groupBy(_.reason).toSeq.sortBy(_._1)
         .map { case (r, es) => s"joined by $r ×${es.size}" }
       val apart = edges.filter(e => !e.must && (ids(e.a) ^ ids(e.b))).map { e =>

@@ -92,4 +92,31 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.comparesAFact(measures(Listing("Vincent (1975)"), film)) shouldBe true
     IdentityMeasures.comparesAFact(measures(Listing("Vincent", originalTitle = Some("Vincent")), film)) shouldBe true
   }
+
+  "a runtime a title brackets with a minute mark" should "be the listing's runtime when it publishes none" in {
+    // KinoPort prints the running time into the title: "DZIADKU WIEJEMY (97’)".
+    val film = Film("Dziadku, wiejemy!", year = Some(2025), runtime = Some(97))
+    Seq("DZIADKU WIEJEMY (97’)", "Dziadku wiejemy (97')", "Dziadku wiejemy (97′)", "Dziadku wiejemy [97 min]").foreach { t =>
+      withClue(t)(measures(Listing(t), film)("runtime.delta") shouldBe Number(0))
+    }
+    // A published runtime wins; a year, a sequel number or a bare number is not a runtime.
+    measures(Listing("Dziadku wiejemy (97’)", runtime = Some(99)), film)("runtime.delta") shouldBe Number(2)
+    Seq("Dziadku wiejemy (2025)", "Ocean's 11", "Kino 60 Krzeseł", "Dziadku wiejemy (97)").foreach { t =>
+      withClue(t)(measures(Listing(t), film)("runtime.delta") shouldBe Missing("listing"))
+    }
+    // Between two listings too: the bracketed runtime is the listing's runtime.
+    IdentityMeasures.listingListing(Listing("DZIADKU WIEJEMY (97’)"), Listing("Dziadku wiejemy", runtime = Some(97)),
+      sameVenue = false, sharedChainId = None)("runtime.delta") shouldBe Number(0)
+  }
+
+  "a listing's exact top hits" should "be the films its title names exactly that a title search returned FIRST" in {
+    val listing = Listing("Godzilla vs. Megalon")
+    val megalon = Film("Godzilla vs. Megalon", year = Some(1973))
+    val remake  = Film("Godzilla vs. Megalon", year = Some(2031))
+    val other   = Film("Godzilla vs. Mothra", year = Some(1964))
+    IdentityMeasures.exactTopHits(listing, Seq((1, megalon, Some(1)), (2, remake, Some(2)), (3, other, Some(1)))) shouldBe Seq(1)
+    // First only under a banner segment's search, or not first at all: no exact top hit.
+    IdentityMeasures.exactTopHits(Listing("Kino Nocne: Godzilla vs. Megalon"), Seq((1, megalon, Some(1)))) shouldBe Nil
+    IdentityMeasures.exactTopHits(listing, Seq((1, megalon, Some(2)), (3, other, Some(1)), (4, megalon, None))) shouldBe Nil
+  }
 }

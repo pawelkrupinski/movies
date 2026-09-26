@@ -1008,6 +1008,31 @@ outside the order: a fragment is the opposite evidence, so the data alone places
   ordinary negative weight. 12 listing-film and 14 listing-listing rules pass; held-out false
   vetoes 0–0.17% each.
 
+### 14.4a Evidence classes: what the sum undersells, measured whole
+
+A bare title's naive-Bayes sum pays for every fact the venue did not publish, for a low popularity
+and for having no other venue beside it, so a title TMDB knows as exactly one film scores 7–35%.
+`scripts.IdentityEvidenceClasses` (run by `IdentityCalibrate` after it writes the artefact, or
+alone) measures such evidence AS A CLASS on the labels and writes it to `evidenceClasses`. Its one
+shape is the **exact top hit** (`IdentityMeasures.exactTopHits`): the one film the listing's whole
+title names exactly that its own title search returned first, in TMDB's order, split along the
+artefact's own `rivals` bins. Each labelled unit is replayed stripped to its title through the
+recorded searches; a top hit that is not the labelled film (also when the labelled film was not
+returned at all, the Samson shape) or is a contradicted filing counts as wrong. A class ships only
+when its fitting-split wrong share has a Bonferroni-corrected one-sided 95% upper bound within the
+wrong rate ratings are shown at; its probability is one minus that bound. On recorder run
+36224654409's searches:
+
+| rivals | fitting right / wrong | held-out right / wrong | ships |
+|---|---|---|---|
+| 0 | 1,880 / 4 | 807 / 4 | p = 0.9941 |
+| 1–2 | 564 / 50 | 235 / 14 | no (8% wrong) |
+| 3+ | 403 / 52 | 157 / 32 | no (11–17% wrong) |
+
+The resolver credits a listing's exact top hit with its class's probability (never less than its
+own) when nothing the listing published weighs against the film and no rival's own facts fit it
+better. Rank and rivals lend confidence there; they never withdraw it.
+
 ### 14.5 Today's vetoes, re-measured
 
 | veto | false vetoes (same film) | true vetoes | verdict |
@@ -1596,6 +1621,7 @@ Re-run this section's commands once phase 1's recording pass is pinned and `iden
 | `YearWindow` constants | the incremental pipeline's predicates only; since round 2 the resolver's vetoes are the artefact's learned rules and cuts | — | done (§15.7) |
 | The season pattern: a year and the next ("2026/27", "2026-2027"), and a season's production spanning those two years | `IdentityMeasures.seasonYear`, `ListingConstraints.seasonsApart`, `IdentityResolver.seasonProductionOf` | the fitted weights do not read `season.delta` yet, so a season's production is accepted and its out-of-season namesakes vetoed structurally | refit with `season.delta` and let the learned cannot-links and weights replace the veto and the acceptance; tell houses apart by learning banner aliases from which record each banner's other works matched |
 | The prior/fact split of the measures (`search.rank`, `popularity.log2`, `rivals`, `venues.corroborating` are priors) | `IdentityResolver.Priors` | a classification of the calibration's measure names, not a weight or threshold | the calibration could publish it in the artefact |
+| The bracketed-runtime marks (a prime, an apostrophe or "min" after a bracketed 2–3 digit number) | `IdentityMeasures.bracketedRuntime` | the only way a number in a title says it is a duration ("DZIADKU WIEJEMY (97’)"); 8 PL listings | learn per-venue title annotations from their agreement with the film's runtime |
 | The evidence-path rule (a candidate is scored only when the listing's own query named it or its title relates) | `IdentityResolver.reachable` | structural pruning, with no constant | none needed |
 
 The resolver has no per-title, per-venue, per-chain or per-franchise rule of its own. Every constant above is inherited from the constraint model or the normaliser, and a learned counterpart for it is pending.
