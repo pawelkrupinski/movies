@@ -184,5 +184,14 @@ trait DetailEnricher {
    *  loop runs every 60s in [[services.tasks.DetailReaper]] and was 7.93cc of the UK
    *  worker's 12.46cc, 64% of its CPU, to produce 0.3 EnrichDetails/min. */
   final def nativeDetailRefIn(cinemaData: Map[Cinema, SourceData]): Option[String] =
-    cinemaData.get(cinema).flatMap(_.filmUrl).filterNot(FilmwebShowtimesClient.isFilmwebFilmUrl)
+    cinemaData.get(cinema).flatMap(DetailEnricher.nativeRefOf)
+}
+
+object DetailEnricher {
+  /** The detail page ONE slot points at, if it is one a cinema's own parser can read
+   *  (not a Filmweb-fallback url). The per-slot rule behind [[DetailEnricher.nativeDetailRef]],
+   *  and what tells a detail's writer which slots a fetched page belongs to: a venue that
+   *  lists a film as several editions, each with its own page, owns one page per slot. */
+  def nativeRefOf(slot: SourceData): Option[String] =
+    slot.filmUrl.filterNot(FilmwebShowtimesClient.isFilmwebFilmUrl)
 }

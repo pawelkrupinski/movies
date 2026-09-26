@@ -117,6 +117,39 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     row.data.get(CinemaShowing.keyFor(KinoApollo, "Ojczyzna", titleNormalizer)) shouldBe None
   }
 
+  // Kinoteka runs "Rozważna i romantyczna" as two programme editions — "| Kino dla
+  // rodzica" and "| Kino przy herbatce" — each with its OWN detail page (112 vs 131
+  // minutes, a different synopsis and billing). One detail task serves the whole row, on
+  // the representative slot's url; landing that one page on every edition made the
+  // re-read (authoritative) overwrite the sibling edition with a page that is not its
+  // own, so the herbatce slot changed between two days of identical listings.
+  it should "leave an edition slot that has its OWN detail page alone, even on a re-read" in {
+    val parents = CinemaShowing(KinoApollo, "rozwaznairomantycznakinodlarodzica")
+    val tea     = CinemaShowing(KinoApollo, "rozwaznairomantycznakinoprzyherbatce")
+    def slot(title: String, url: String, runtime: Int) = SourceData(title = Some(title), filmUrl = Some(url),
+      runtimeMinutes = Some(runtime), showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 11, 0), Some("https://book"))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), new InProcessEventBus(), normalizer = titleNormalizer, clock = specClock)
+    val key   = cache.keyOf("Rozważna i romantyczna", Some(2026))
+    cache.put(key, MovieRecord(data = Map(
+      parents -> slot("Rozważna i romantyczna | Kino dla rodzica", "http://ref", 112),
+      tea     -> slot("Rozważna i romantyczna | Kino przy herbatce", "http://tea", 131))))
+    val fresh    = new InMemoryFreshnessStore
+    val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(runtimeMinutes = Some(112))))
+    val task     = taskFor("kino-apollo", cache, "Rozważna i romantyczna", enricher, year = Some(2026))
+    def handle() = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, new UptimeMonitor(), noBus, dueWindow, clock = specClock)
+      .handle(task) shouldBe Done
+
+    handle()
+    // The next day's re-read — authoritative over what the slots hold.
+    fresh.markFresh(task.dedupKey, FreshnessKind.DetailEnrich, specClock.instant().minus(2, ChronoUnit.DAYS))
+    handle()
+
+    val row = cache.get(key).get
+    row.data.get(parents).flatMap(_.runtimeMinutes) shouldBe Some(112)
+    withClue("the herbatce edition's own page says 131; the parents' page is not its to overwrite: ")(
+      row.data.get(tea).flatMap(_.runtimeMinutes) shouldBe Some(131))
+  }
+
   it should "clear detailPending and publish MovieDetailsComplete (the TMDB re-trigger) once a held-back row's detail lands" in {
     val cache    = seededCache("Hamnet")
     val key      = cache.keyOf("Hamnet", None)

@@ -121,7 +121,8 @@ class EnrichDetailsHandler(
         val service = enricher.enrichmentServiceOverride
           .getOrElse(UptimeMonitor.enrichmentService(enricher.cinema.displayName))
         val label = task.payload.getOrElse(EnrichDetailsTasks.TitleKey, key)
-        enricher.fetchDetail(task.payload.getOrElse(EnrichDetailsTasks.RefKey, "")) match {
+        val ref = task.payload.getOrElse(EnrichDetailsTasks.RefKey, "")
+        enricher.fetchDetail(ref) match {
           case DetailFetchOutcome.Failed =>
             uptime.recordFailure(service, s"detail fetch returned nothing for $label")
             Done // failed/absent — not marked fresh, the next scrape re-enqueues
@@ -171,15 +172,24 @@ class EnrichDetailsHandler(
             // cinema's existing slots, never fabricating a bare phantom. Only when NONE
             // exists (a chain's network source, or a not-yet-scraped row) create the
             // derived key. A chain redirects to its shared network source, left as-is.
+            //
+            // "The SAME film's" detail holds only for an edition that has no page of its
+            // own. Kinoteka lists "Rozważna i romantyczna | Kino dla rodzica" and "… |
+            // Kino przy herbatce" on one row, each with its OWN page (112 vs 131 minutes,
+            // a different synopsis and billing), and this task reads just one of them —
+            // the representative slot's. Landing it on the sibling made the re-read, which
+            // is authoritative, overwrite that edition with a page that is not its own, so
+            // the row changed between two days of identical listings. A slot pointing at a
+            // DIFFERENT page is that page's to fill, not this one's.
             val targets: Seq[Source] =
               if (enricher.detailTarget != enricher.cinema) Seq(enricher.detailTarget)
               else {
                 val derived     = CinemaShowing.keyFor(enricher.cinema, title, cache.normalizer)
-                val cinemaSlots = cache.get(rowKey).toList
-                  .flatMap(_.data.keys.filter(s => Source.cinemaOf(s).contains(enricher.cinema)))
-                if (cinemaSlots.contains(derived)) Seq(derived)  // scrape wrote the base title too
-                else if (cinemaSlots.nonEmpty) cinemaSlots       // decorated edition(s) → merge into the real slot(s)
-                else Seq(derived)                                 // chain / not-yet-scraped → create it
+                val venueSlots  = cache.get(rowKey).toList.flatMap(_.data.filter { case (s, _) => Source.cinemaOf(s).contains(enricher.cinema) })
+                val cinemaSlots = venueSlots.collect { case (s, sd) if DetailEnricher.nativeRefOf(sd).forall(_ == ref) => s }
+                if (venueSlots.isEmpty) Seq(derived)             // chain / not-yet-scraped → create it
+                else if (cinemaSlots.contains(derived)) Seq(derived)  // scrape wrote the base title too
+                else cinemaSlots                                  // decorated edition(s) → merge into the real slot(s)
               }
             // Was this the detail the row was held back for? Capture before the
             // merge clears the flag, so a periodic re-fetch of an already-done
