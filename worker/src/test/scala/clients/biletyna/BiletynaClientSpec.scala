@@ -7,8 +7,7 @@ import play.api.libs.json.Json
 import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
-import services.cinemas.pl.BiletynaClient
-
+import services.cinemas.pl.{BiletynaClient, BiletynaPlacePage}
 import java.time.LocalDateTime
 
 /** One spec for every cinema on the shared biletyna.pl platform. Each row
@@ -70,7 +69,7 @@ class BiletynaClientSpec
   )
 
   forAll(venues) { (label, directory, pageUrl, cinema, title, when, booking) =>
-    lazy val movies = new BiletynaClient(new FakeHttpFetch(directory), pageUrl, cinema).fetch()
+    lazy val movies = new BiletynaClient(new FakeHttpFetch(directory), BiletynaPlacePage(pageUrl), cinema).fetch()
 
     it should s"return a non-empty, single-cinema film list — $label" in {
       movies should not be empty
@@ -91,8 +90,7 @@ class BiletynaClientSpec
   // year — which are all present in the string, no detail fetch — into their
   // own fields, keeping the raw string as `rawTitle`.
   it should "lift director, countries and year out of the descriptive title — Kinoteatr Rondo" in {
-    val movies = new BiletynaClient(
-      new FakeHttpFetch("08-06-2026"), "https://biletyna.pl/Chelmno/Kinoteatr-Rondo", KinoRondo
+    val movies = new BiletynaClient(new FakeHttpFetch("08-06-2026"), BiletynaPlacePage("https://biletyna.pl/Chelmno/Kinoteatr-Rondo"), KinoRondo
     ).fetch()
     val film = movies.find(_.movie.title == "Dyrygent").value
     film.movie.rawTitle.value shouldBe "„Dyrygent\" | reżyseria: Ondřej Provazník | Czechy 2025"
@@ -104,8 +102,7 @@ class BiletynaClientSpec
   // A bare film title with no `reżyseria:` marker is left untouched — no
   // false-positive splitting on a pipe that isn't a metadata separator.
   it should "leave a plain title (no reżyseria marker) untouched — Kino Kameralne" in {
-    val movies = new BiletynaClient(
-      new FakeHttpFetch("kino-kameralne"), "https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe", KinoKameralne
+    val movies = new BiletynaClient(new FakeHttpFetch("kino-kameralne"), BiletynaPlacePage("https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe"), KinoKameralne
     ).fetch()
     val film = movies.find(_.movie.title == "Lalka (2026)").value
     film.movie.rawTitle shouldBe None
@@ -179,9 +176,7 @@ class BiletynaClientSpec
   // concert and two TheaterEvent plays on the same programme — the live
   // regression for the @type filter proven synthetically above.
   it should "drop the real concert and plays off Chrzanów's programme, keeping every film" in {
-    val movies = new BiletynaClient(
-      new FakeHttpFetch("kino-sztuka-chrzanow"),
-      "https://biletyna.pl/Chrzanow/Miejski-Osrodek-Kultury-Sportu-i-Rekreacji",
+    val movies = new BiletynaClient(new FakeHttpFetch("kino-sztuka-chrzanow"), BiletynaPlacePage("https://biletyna.pl/Chrzanow/Miejski-Osrodek-Kultury-Sportu-i-Rekreacji"),
       KinoSztuka
     ).fetch()
     val titles = movies.map(_.movie.title).toSet
@@ -195,9 +190,7 @@ class BiletynaClientSpec
   // a MusicEvent concert on the same feed — the live regression for the @type
   // filter, off a real recorded page rather than the synthetic Kino PDK fixture.
   it should "drop the real concert off Tucholski Ośrodek Kultury's programme, keeping every film" in {
-    val movies = new BiletynaClient(
-      new FakeHttpFetch("kino-tucholski-osrodek-kultury"),
-      "https://biletyna.pl/Tuchola/Tucholski-Osrodek-Kultury",
+    val movies = new BiletynaClient(new FakeHttpFetch("kino-tucholski-osrodek-kultury"), BiletynaPlacePage("https://biletyna.pl/Tuchola/Tucholski-Osrodek-Kultury"),
       KinoTucholskiOsrodekKultury
     ).fetch()
     val titles = movies.map(_.movie.title).toSet
@@ -210,7 +203,7 @@ class BiletynaClientSpec
   // sells 58; the page stops at 2026-10-20, and the rest come from the
   // `/ajax/events?params[h]=5126` feed. Page and feed captured live 2026-09-26.
   private lazy val len =
-    new BiletynaClient(new FakeHttpFetch("biletyna-filmweb-desynced"), "https://biletyna.pl/Zyrardow/Kino-Len", KinoLen).fetch()
+    new BiletynaClient(new FakeHttpFetch("biletyna-filmweb-desynced"), BiletynaPlacePage("https://biletyna.pl/Zyrardow/Kino-Len"), KinoLen).fetch()
 
   "BiletynaClient (full page)" should "read the screenings past the page's 50-event cap from the hall's event feed" in {
     val lalka = len.find(_.movie.title == "Lalka (2026)").value
@@ -220,7 +213,7 @@ class BiletynaClientSpec
   }
 
   it should "page the feed until a page comes back short — Kino Kameralne's 132 events over two" in {
-    val movies = new BiletynaClient(new FakeHttpFetch("kino-kameralne"), "https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe",
+    val movies = new BiletynaClient(new FakeHttpFetch("kino-kameralne"), BiletynaPlacePage("https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe"),
       KinoKameralne).fetch()
     movies.flatMap(_.showtimes).map(_.dateTime).max should be > LocalDateTime.of(2026, 11, 1, 0, 0)
   }
@@ -231,7 +224,7 @@ class BiletynaClientSpec
       private val fixtures = new FakeHttpFetch("biletyna-filmweb-desynced")
       def get(url: String): String = { asked += url; fixtures.get(url) }
     }
-    new BiletynaClient(http, "https://biletyna.pl/Dzialdowo/Miejski-Dom-Kultury", KinoApolloDzialdowo).fetch() should not be empty
+    new BiletynaClient(http, BiletynaPlacePage("https://biletyna.pl/Dzialdowo/Miejski-Dom-Kultury"), KinoApolloDzialdowo).fetch() should not be empty
     asked.toSeq shouldBe Seq("https://biletyna.pl/Dzialdowo/Miejski-Dom-Kultury")
   }
 
@@ -240,14 +233,13 @@ class BiletynaClientSpec
       .replaceAll("""get_filter\s*=\s*\{.*?\};""", "")
     val http = new tools.GetOnlyHttpFetch { def get(url: String): String = page }
     an[IllegalStateException] should be thrownBy
-      new BiletynaClient(http, "https://biletyna.pl/Zyrardow/Kino-Len", KinoLen).fetch()
+      new BiletynaClient(http, BiletynaPlacePage("https://biletyna.pl/Zyrardow/Kino-Len"), KinoLen).fetch()
   }
 
   // The feed marks a film with no artwork as `thumb_file_id: 0`; that is not a
   // poster, and `/file/get/id/0` must not stand in for one.
   it should "leave a feed-only film without artwork posterless" in {
-    val polonez = new BiletynaClient(new FakeHttpFetch("biletyna-skierniewice"),
-      "https://biletyna.pl/Skierniewice/Kinoteatr-Polonez", KinoPolonez).fetch()
+    val polonez = new BiletynaClient(new FakeHttpFetch("biletyna-skierniewice"), BiletynaPlacePage("https://biletyna.pl/Skierniewice/Kinoteatr-Polonez"), KinoPolonez).fetch()
     polonez.find(_.movie.title.startsWith("Verity")).value.posterUrl shouldBe None
   }
 }

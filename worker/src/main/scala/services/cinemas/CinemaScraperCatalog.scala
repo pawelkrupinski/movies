@@ -281,16 +281,16 @@ class CinemaScraperCatalog(
     KinoTucholskiOsrodekKultury  -> "https://biletyna.pl/Tuchola/Tucholski-Osrodek-Kultury",
   )
   private def biletyna(cinema: Cinema): BiletynaClient =
-    new BiletynaClient(bnFetch, biletynaPages(cinema), cinema)
+    new BiletynaClient(bnFetch, BiletynaPlacePage(biletynaPages(cinema)), cinema)
 
   // Końskie's culture centre lists each hall on a biletyna page of its own. The
   // stage hall is mostly cabaret and concerts but does screen the odd film
   // ("Popiełuszko - wolność jest w nas", 2026-10-20), so both halls are ONE
   // cinema, each showtime tagged with its hall.
   private val koneckieCentrumKultury: CinemaScraper = new MultiListingScraper(KinoKoneckieCentrumKultury, Seq(
-    new BiletynaClient(bnFetch, "https://biletyna.pl/Konskie/Koneckie-Centrum-Kultury-sala-kinowa",
+    new BiletynaClient(bnFetch, BiletynaPlacePage("https://biletyna.pl/Konskie/Koneckie-Centrum-Kultury-sala-kinowa"),
       KinoKoneckieCentrumKultury, room = Some("sala kinowa")),
-    new BiletynaClient(bnFetch, "https://biletyna.pl/Konskie/Koneckie-Centrum-Kultury-sala-widowiskowa",
+    new BiletynaClient(bnFetch, BiletynaPlacePage("https://biletyna.pl/Konskie/Koneckie-Centrum-Kultury-sala-widowiskowa"),
       KinoKoneckieCentrumKultury, room = Some("sala widowiskowa")),
   ))
 
@@ -320,7 +320,7 @@ class CinemaScraperCatalog(
     MikroBronowice -> Institution("Mikro Bronowice"),
   )
   private def systemBiletowy(cinema: Cinema): SystemBiletowyClient =
-    new SystemBiletowyClient(http, systemBiletowyPortals(cinema), cinema, titles = titles,
+    new SystemBiletowyClient(http, VisualSoftPortal(systemBiletowyPortals(cinema)), cinema, titles = titles,
       institution = systemBiletowyInstitutions.get(cinema))
 
   // Venues on their own `<venue>.bilety24.pl` subdomain (7) — as opposed to the
@@ -591,7 +591,7 @@ class CinemaScraperCatalog(
   // prefix. Verified screening 2026-09-23.
   private val bytomScrapers        = Seq(
     cinemaCity("1092", CinemaCityBytom),
-    new SystemBiletowyClient(http, "https://bck.systembiletowy.pl", KinoBCKBytom, titles = titles, filmGroups = Set(EventCategory("BCKino"))),
+    new SystemBiletowyClient(http, VisualSoftPortal("https://bck.systembiletowy.pl"), KinoBCKBytom, titles = titles, filmGroups = Set(EventCategory("BCKino"))),
   )
   private val dabrowaGorniczaScrapers = Seq(helios(HeliosNuxt.DabrowaGornicza), new VisualTicketClient(http, "https://bilety.palac.art.pl", KinoKadr, locationId = 2))
   private val nowySaczScrapers     = Seq(helios(HeliosNuxt.NowySacz), bilety24("https://www.bilety24.pl/kino/organizator/malopolskie-centrum-kultury-sokol-w-nowym-saczu-1225", KinoSokol))
@@ -2289,7 +2289,7 @@ class CinemaScraperCatalog(
       new KinoNowaFalaClient(http, KinoNowaFalaGizycko),   // Giżycko
     ),
     "przemysl" -> Seq(
-      new SystemBiletowyClient(http, "https://udk.systembiletowy.pl", KinoOrzelUstrzyki, titles = titles),   // Ustrzyki Dolne
+      new SystemBiletowyClient(http, VisualSoftPortal("https://udk.systembiletowy.pl"), KinoOrzelUstrzyki, titles = titles),   // Ustrzyki Dolne
       systemBiletowy(KinoBieszczadzkiDK),   // Lesko
     ),
     "katowice" -> Seq(
@@ -2298,7 +2298,7 @@ class CinemaScraperCatalog(
       // systembiletowy portal with Chorzowskie Centrum Kultury's own events —
       // filmGroups keeps only the "Imprezy SDK" rows, same pattern as
       // KinoBCKBytom below but with this venue's own data-group value.
-      new SystemBiletowyClient(http, "https://bilety.chck.pl", KinoFrajda, titles = titles, filmGroups = Set(EventCategory("Imprezy SDK"))),   // Chorzów
+      new SystemBiletowyClient(http, VisualSoftPortal("https://bilety.chck.pl"), KinoFrajda, titles = titles, filmGroups = Set(EventCategory("Imprezy SDK"))),   // Chorzów
     ),
     "ostrowiec-swietokrzyski" -> Seq(
       systemBiletowy(KinoKadrStaszow),   // Staszów

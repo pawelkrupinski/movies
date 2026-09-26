@@ -6,7 +6,7 @@ import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.CinemaScraper
-import services.cinemas.pl.{BiletynaClient, NonMovieEventClassifier, OnlyMovieEventsFilter}
+import services.cinemas.pl.{BiletynaClient, BiletynaPlacePage, NonMovieEventClassifier, OnlyMovieEventsFilter}
 
 class OnlyMovieEventsFilterSpec extends AnyFlatSpec with Matchers with OptionValues {
 
@@ -44,8 +44,7 @@ class OnlyMovieEventsFilterSpec extends AnyFlatSpec with Matchers with OptionVal
   // Warszawa" alongside its films. BiletynaClient now mixes in the filter, so
   // fetch() must drop that event while keeping the film "Dyrygent".
   "BiletynaClient (with the mix-in)" should "filter the Kinoteatr Rondo stage event but keep its films" in {
-    val titles = new BiletynaClient(
-      new FakeHttpFetch("08-06-2026"), "https://biletyna.pl/Chelmno/Kinoteatr-Rondo", KinoRondo
+    val titles = new BiletynaClient(new FakeHttpFetch("08-06-2026"), BiletynaPlacePage("https://biletyna.pl/Chelmno/Kinoteatr-Rondo"), KinoRondo
     ).fetch().map(_.movie.title)
 
     titles should contain ("Dyrygent")

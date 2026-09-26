@@ -4,7 +4,7 @@ import clients.tools.UrlFragmentHttpFetch
 import models.{CinemaCityPoznanPlaza, KinoDiana, KinoFarys, KinoJOK, KinoLen}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.pl.{BiletynaClient, Cinema1Client, CinemaCityClient, FilmwebShowtimesClient, KinoCentrumCswClient, KinoJOKClient, SystemBiletowyClient}
+import services.cinemas.pl.{BiletynaClient, BiletynaPlacePage, Cinema1Client, CinemaCityClient, FilmwebShowtimesClient, Institution, KinoCentrumCswClient, KinoJOKClient, SystemBiletowyClient, VisualSoftPortal}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import java.time.LocalDate
@@ -72,16 +72,33 @@ class ListingParseFailureSpec extends AnyFlatSpec with Matchers {
   // advanced feed's missing-template error is the one that means "ask the plain
   // feed"; any other error body, or one from the plain feed too, is a failed read.
   "SystemBiletowyClient.parse" should "throw on an error or unparseable body but read an empty programme as no screenings" in {
-    an[Exception] should be thrownBy SystemBiletowyClient.parse(ErrorPage, KinoFarys, "https://kfb.example", titleNormalizer)
+    an[Exception] should be thrownBy SystemBiletowyClient.parse(ErrorPage, KinoFarys, VisualSoftPortal("https://kfb.example"), titleNormalizer)
     an[Exception] should be thrownBy
-      SystemBiletowyClient.parse("""{"error":"Internal error","code":500}""", KinoFarys, "https://kfb.example", titleNormalizer)
-    SystemBiletowyClient.parse("""{"meta":{"nbResults":0},"repertoires":[]}""", KinoFarys, "https://kfb.example", titleNormalizer) shouldBe empty
+      SystemBiletowyClient.parse("""{"error":"Internal error","code":500}""", KinoFarys, VisualSoftPortal("https://kfb.example"), titleNormalizer)
+    SystemBiletowyClient.parse("""{"meta":{"nbResults":0},"repertoires":[]}""", KinoFarys, VisualSoftPortal("https://kfb.example"), titleNormalizer) shouldBe empty
   }
 
-  "SystemBiletowyClient" should "fail the scrape when the plain feed errors too" in {
+  // Only the missing-template error means "this instance has no advanced feed".
+  // Any other error from the advanced feed is a failed read — falling back would
+  // swap in a feed without venue or category, silently emptying a scoped venue.
+  "SystemBiletowyClient" should "fail the scrape on an advanced-feed error other than the missing template" in {
+    val http = new UrlFragmentHttpFetch(Seq("advanced=1" -> """{"error":"Internal error","code":500}""",
+      "list.json" -> """{"meta":{"nbResults":1},"repertoires":{"1":{"id":1,"title":"Film","date":"2026-10-01T18:00:00+02:00"}}}"""))
+    an[Exception] should be thrownBy new SystemBiletowyClient(http, VisualSoftPortal("https://kfb.example"), KinoFarys, titleNormalizer).fetch()
+  }
+
+  it should "fail a venue scoped by institution when its instance has no advanced feed to scope with" in {
+    val missingTemplate = """{"error":"The template \"listAdvancedSuccess.json.php\" does not exist or is unreadable in \"\".","code":200}"""
+    val http = new UrlFragmentHttpFetch(Seq("advanced=1" -> missingTemplate,
+      "list.json" -> """{"meta":{"nbResults":1},"repertoires":{"1":{"id":1,"title":"Film","date":"2026-10-01T18:00:00+02:00"}}}"""))
+    an[Exception] should be thrownBy new SystemBiletowyClient(http, VisualSoftPortal("https://kfb.example"), KinoFarys, titleNormalizer,
+      institution = Some(Institution("Kino Farys"))).fetch()
+  }
+
+  it should "fail the scrape when the plain feed errors too" in {
     val missingTemplate = """{"error":"The template \"listAdvancedSuccess.json.php\" does not exist or is unreadable in \"\".","code":200}"""
     val http = new UrlFragmentHttpFetch(Seq("advanced=1" -> missingTemplate, "list.json" -> """{"error":"Internal error","code":500}"""))
-    an[Exception] should be thrownBy new SystemBiletowyClient(http, "https://kfb.example", KinoFarys, titleNormalizer).fetch()
+    an[Exception] should be thrownBy new SystemBiletowyClient(http, VisualSoftPortal("https://kfb.example"), KinoFarys, titleNormalizer).fetch()
   }
 
   // A full biletyna place page (50 events) is topped up from the hall's event
@@ -90,7 +107,7 @@ class ListingParseFailureSpec extends AnyFlatSpec with Matchers {
   private val fullPlacePage = new clients.tools.FakeHttpFetch("biletyna-filmweb-desynced").get("https://biletyna.pl/Zyrardow/Kino-Len")
   private def lenWithFeed(feed: String) =
     new BiletynaClient(new UrlFragmentHttpFetch(Seq("/ajax/events" -> feed, "Kino-Len" -> fullPlacePage)),
-      "https://biletyna.pl/Zyrardow/Kino-Len", KinoLen)
+      BiletynaPlacePage("https://biletyna.pl/Zyrardow/Kino-Len"), KinoLen)
 
   "BiletynaClient" should "fail the scrape when a full page's event feed answers with an error" in {
     an[Exception] should be thrownBy lenWithFeed("""{"status":false,"message":"error"}""").fetch()

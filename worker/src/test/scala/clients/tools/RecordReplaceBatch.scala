@@ -43,11 +43,11 @@ object RecordReplaceBatch {
     val sb: Seq[(String, Cinema)] = Seq(
       "https://bilety.pckul.pl" -> KinoPckulKino, "https://bilety.mok.zory.pl" -> KinoNaStarowce,
       "https://ock.systembiletowy.pl" -> KinoNaszeKino)
-    sb.foreach { case (base, c) => rep(c.displayName)(new SystemBiletowyClient(corpus, base, c, titles = titleNormalizer).fetch().size) }
+    sb.foreach { case (base, c) => rep(c.displayName)(new SystemBiletowyClient(corpus, VisualSoftPortal(base), c, titles = titleNormalizer).fetch().size) }
 
 
     // ── Existing-client one-offs ──
-    rep("Kinoteatr Rondo")(new BiletynaClient(corpus, "https://biletyna.pl/Chelmno/Kinoteatr-Rondo", KinoRondo).fetch().size)
+    rep("Kinoteatr Rondo")(new BiletynaClient(corpus, BiletynaPlacePage("https://biletyna.pl/Chelmno/Kinoteatr-Rondo"), KinoRondo).fetch().size)
     rep("Forum (Bolesławiec)")(new Bilety24OrganizerClient(corpus,
       "https://www.bilety24.pl/kino/organizator/boleslawiecki-osrodek-kultury-miedzynarodowe-centrum-ceramiki-w-boleslawcu-1586",
       KinoForumBoleslawiec, titles = titleNormalizer).fetch().size)
@@ -55,6 +55,6 @@ object RecordReplaceBatch {
     // ── Per-client fixtures for the new specs ──
     println("--- spec fixtures ---")
     rep("ekobilet spec (Meduza)")(new EkobiletClient(record("kino-meduza"), "opolskielamy", KinoMeduza, today).fetch().size)
-    rep("systembiletowy-alt spec")(new SystemBiletowyClient(record("visualsoft"), "https://bilety.pckul.pl", KinoPckulKino, titles = titleNormalizer).fetch().size)
+    rep("systembiletowy-alt spec")(new SystemBiletowyClient(record("visualsoft"), VisualSoftPortal("https://bilety.pckul.pl"), KinoPckulKino, titles = titleNormalizer).fetch().size)
   }
 }

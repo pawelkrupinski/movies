@@ -7,7 +7,7 @@ import clients.tools.FakeHttpFetch
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import play.api.libs.json.JsString
-import services.cinemas.pl.{EventCategory, Institution, SystemBiletowyClient}
+import services.cinemas.pl.{EventCategory, Institution, SystemBiletowyClient, VisualSoftPortal}
 
 import java.time.LocalDateTime
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -27,7 +27,7 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
 
   private def client(base: String, cinema: Cinema, filmGroups: Set[EventCategory] = Set.empty,
                      institution: Option[Institution] = None) =
-    new SystemBiletowyClient(http, base, cinema, titles = titleNormalizer, filmGroups = filmGroups,
+    new SystemBiletowyClient(http, VisualSoftPortal(base), cinema, titles = titleNormalizer, filmGroups = filmGroups,
       institution = institution)
 
   // (instance, cinema, title fragment, screening, exact booking link)
@@ -162,7 +162,7 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
     val json =
       s"""{"repertoires":{"1":{"id":1,"title":"Probe","date":"2026-10-15T18:00:00+02:00",
          |"event":{"description":${JsString(description)}}}}}""".stripMargin
-    SystemBiletowyClient.parse(json, KinoMikro, "https://x.example", titleNormalizer).head.director
+    SystemBiletowyClient.parse(json, KinoMikro, VisualSoftPortal("https://x.example"), titleNormalizer).head.director
   }
 
   "SystemBiletowyClient.parse" should "read a no-colon director terminated by the next label" in {
@@ -182,5 +182,9 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
     client("https://bilety.kino.bochnia.pl", KinoRegis).fetch().map(_.movie.title) should contain("Marsupilami")
     client("https://bilety.kinomikro.pl", KinoMikro, institution = Some(Institution("Kino Mikro"))).fetch().map(_.movie.title) should
       contain("Birthday Party")
+    // A short initialism doesn't make a title shout: "DKF Pełna Sala: Diabły"
+    // keeps its casing (a blanket re-case gave "Dkf pełna sala: diabły").
+    client("https://bilety.kinomikro.pl", KinoMikro, institution = Some(Institution("Kino Mikro"))).fetch()
+      .map(_.movie.title).exists(_.contains("Dkf")) shouldBe false
   }
 }

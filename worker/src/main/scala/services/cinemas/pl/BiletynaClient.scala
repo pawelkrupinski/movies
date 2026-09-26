@@ -36,7 +36,7 @@ import scala.util.Try
  * ([[BiletynaClient.EventTypeByCategory]]). The two lists are merged on the
  * booking link, since the feed can omit an event the page still shows.
  *
- * One instance per venue, captured by its `pageUrl` + `cinema`, so adding a
+ * One instance per venue, captured by its place page + `cinema`, so adding a
  * biletyna-hosted cinema is a new catalog line, not a new client (OCP); the
  * catalog's `biletynaPages` lists them. Several were previously scraped from
  * Filmweb, which had silently gone empty or stale for them.
@@ -46,22 +46,22 @@ import scala.util.Try
  * production, the fixture fake in tests.
  *
  * @parameter http    HTTP client (the biletyna fetch seam in production).
- * @parameter pageUrl The venue's biletyna place page, e.g.
+ * @parameter page   The venue's biletyna place page, e.g.
  *                `https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe`.
  * @parameter cinema  The [[Cinema]] source tag attached to every [[CinemaMovie]].
  */
-class BiletynaClient(http: HttpFetch, pageUrl: String, override val cinema: Cinema,
+class BiletynaClient(http: HttpFetch, page: BiletynaPlacePage, override val cinema: Cinema,
                      // The hall this page lists, where a venue has a page per hall
                      // (see `MultiListingScraper`); stamped on every showtime.
                      room: Option[String] = None)
     extends CinemaScraper with OnlyMovieEventsFilter {
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(pageUrl)
-  override def sourceUrl: Option[String] = Some(pageUrl)
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(page.url)
+  override def sourceUrl: Option[String] = Some(page.url)
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] = {
-    val html = http.get(pageUrl)
-    BiletynaClient.parse(html, cinema, BiletynaClient.remainingEvents(http, pageUrl, html))
+    val html = http.get(page.url)
+    BiletynaClient.parse(html, cinema, BiletynaClient.remainingEvents(http, page, html))
       .map(m => m.copy(showtimes = m.showtimes.map(_.copy(room = room))))
   }
 }
@@ -220,24 +220,24 @@ object BiletynaClient {
    *  full), paged until one comes back short. Throws when the page is full but
    *  names no hall, or the feed never ends: a venue silently cut at 50 events is the failure this exists to
    *  prevent, so it fails loudly instead. */
-  private[pl] def remainingEvents(http: HttpFetch, pageUrl: String, html: String): Seq[JsValue] =
+  private[pl] def remainingEvents(http: HttpFetch, page: BiletynaPlacePage, html: String): Seq[JsValue] =
     if (pageEventCount(html) < PageEventCap) Seq.empty
     else {
       val hall = HallFilter.findFirstMatchIn(html)
         .flatMap(m => (Json.parse(m.group(1)) \ "0" \ "hall_id").asOpt[Long]).map(HallId(_))
-        .getOrElse(throw new IllegalStateException(s"$pageUrl lists $PageEventCap events but names no hall to page the rest from"))
-      val origin = CinemaScraper.hostsOf(pageUrl).headOption.fold(BiletynaOrigin)(host => s"https://$host")
+        .getOrElse(throw new IllegalStateException(s"${page.url} lists $PageEventCap events but names no hall to page the rest from"))
+      val origin = CinemaScraper.hostsOf(page.url).headOption.fold(BiletynaOrigin)(host => s"https://$host")
       @annotation.tailrec
-      def fetchFrom(page: Int, acc: Vector[JsValue]): Vector[JsValue] = {
-        if (page > MaxFeedPages)
-          throw new IllegalStateException(s"$pageUrl: event feed for hall ${hall.value} did not end after $MaxFeedPages pages")
-        val records = feedRecords(pageUrl, http.get(
-          s"$origin/ajax/events?params%5Bh%5D=${hall.value}&h=${hall.value}&ipp=$FeedPageSize&page=$page"))
+      def fetchFrom(feedPage: Int, acc: Vector[JsValue]): Vector[JsValue] = {
+        if (feedPage > MaxFeedPages)
+          throw new IllegalStateException(s"${page.url}: event feed for hall ${hall.value} did not end after $MaxFeedPages pages")
+        val records = feedRecords(page, http.get(
+          s"$origin/ajax/events?params%5Bh%5D=${hall.value}&h=${hall.value}&ipp=$FeedPageSize&page=$feedPage"))
         // Records none of which read (a renamed field, a new date format) would
         // cut the venue at 50 again as surely as an error would.
         if (records.nonEmpty && records.flatMap(parseFeedEvent).isEmpty)
-          throw new IllegalStateException(s"$pageUrl: none of the ${records.size} records on event-feed page $page parse")
-        if (records.size < FeedPageSize) acc ++ records else fetchFrom(page + 1, acc ++ records)
+          throw new IllegalStateException(s"${page.url}: none of the ${records.size} records on event-feed page $feedPage parse")
+        if (records.size < FeedPageSize) acc ++ records else fetchFrom(feedPage + 1, acc ++ records)
       }
       fetchFrom(1, Vector.empty)
     }
@@ -250,14 +250,14 @@ object BiletynaClient {
 
   /** One feed page's records: an object keyed by event id, or an array. A reply
    *  with `status: false` or without `events` is a failed read, not an empty page. */
-  private def feedRecords(pageUrl: String, json: String): Seq[JsValue] = {
+  private def feedRecords(page: BiletynaPlacePage, json: String): Seq[JsValue] = {
     val reply = Json.parse(json)
     if ((reply \ "status").asOpt[Boolean].contains(false))
-      throw new IllegalStateException(s"$pageUrl: event feed answered status false: ${json.take(200)}")
+      throw new IllegalStateException(s"${page.url}: event feed answered status false: ${json.take(200)}")
     (reply \ "events").as[JsValue] match {
       case o: JsObject => o.values.toSeq
       case a: JsArray  => a.value.toSeq
-      case other       => throw new IllegalStateException(s"$pageUrl: event feed's events is neither an object nor an array: $other")
+      case other       => throw new IllegalStateException(s"${page.url}: event feed's events is neither an object nor an array: $other")
     }
   }
 
@@ -297,3 +297,6 @@ object BiletynaClient {
 /** A biletyna hall id — the `h` its place page's `get_filter` names and its
  *  event feed is keyed by. */
 final case class HallId(value: Long) extends AnyVal
+
+/** A venue's biletyna place page (`https://biletyna.pl/<City>/<Venue>`). */
+final case class BiletynaPlacePage(url: String) extends AnyVal

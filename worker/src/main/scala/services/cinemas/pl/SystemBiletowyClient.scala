@@ -41,29 +41,34 @@ import scala.util.Try
  *     BCKino (Bytom) tags films "BCKino" beside "Warsztaty"/"BECEK CZYTA"; Kino
  *     Frajda's are "Imprezy SDK" beside Chorzów's own "Imprezy ChCK" — and
  *     peels the "<group> – " prefix those venues glue onto a title.
- * Both need the advanced feed. Left empty (the default) they change nothing.
+ * Both need the advanced feed; a scoped venue on an instance without it fails
+ * its scrape rather than read empty. Left empty (the default) they change nothing.
  *
- * One instance per venue, captured by its `baseUrl` + `cinema` (+ scopes), so
+ * One instance per venue, captured by its portal + `cinema` (+ scopes), so
  * adding a VisualSoft-hosted cinema is a catalog line, not a new client (OCP).
  */
-class SystemBiletowyClient(http: HttpFetch, baseUrl: String, override val cinema: Cinema,
+class SystemBiletowyClient(http: HttpFetch, portal: VisualSoftPortal, override val cinema: Cinema,
                            titles: TitleNormalizer, filmGroups: Set[EventCategory] = Set.empty,
                            institution: Option[Institution] = None)
     extends CinemaScraper with OnlyMovieEventsFilter {
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(baseUrl)
-  override def sourceUrl: Option[String] = Some(baseUrl)
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(portal.url)
+  override def sourceUrl: Option[String] = Some(portal.url)
   // Two venues on one instance share its URL; the institution tells them apart.
   override def sourceKey: Option[String] =
     super.sourceKey.map(key => institution.fold(key)(venue => s"$key#${venue.name}"))
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] =
-    SystemBiletowyClient.parse(feed(), cinema, baseUrl, titles, filmGroups, institution)
+    SystemBiletowyClient.parse(feed(), cinema, portal, titles, filmGroups, institution)
 
   private def feed(): String = {
-    val advanced = http.get(SystemBiletowyClient.advancedFeedUrl(baseUrl))
-    if (SystemBiletowyClient.lacksAdvancedTemplate(advanced)) http.get(SystemBiletowyClient.basicFeedUrl(baseUrl))
-    else advanced
+    val advanced = http.get(SystemBiletowyClient.advancedFeedUrl(portal))
+    if (!SystemBiletowyClient.lacksAdvancedTemplate(advanced)) advanced
+    else if (institution.nonEmpty || filmGroups.nonEmpty)
+      // The plain feed carries no venue or category to scope by, so every record
+      // would be filtered out and the venue would read empty.
+      throw new IllegalStateException(s"${portal.url} has no advanced feed, which ${cinema.displayName}'s scope needs")
+    else http.get(SystemBiletowyClient.basicFeedUrl(portal))
   }
 }
 
@@ -71,14 +76,14 @@ object SystemBiletowyClient {
 
   // `limit` is honoured and the default page is small; 1000 is ~5× the busiest
   // instance's whole programme (Kino PCKul, 206 in 2026-09).
-  def advancedFeedUrl(baseUrl: String): String = s"$baseUrl/service.php/repertoire/list.json?limit=1000&advanced=1"
-  def basicFeedUrl(baseUrl: String): String    = s"$baseUrl/service.php/repertoire/list.json?limit=1000"
+  def advancedFeedUrl(portal: VisualSoftPortal): String = s"${portal.url}/service.php/repertoire/list.json?limit=1000&advanced=1"
+  def basicFeedUrl(portal: VisualSoftPortal): String    = s"${portal.url}/service.php/repertoire/list.json?limit=1000"
 
-  // A body that isn't JSON at all throws here — a failed scrape, not an empty one.
-  private[pl] def lacksAdvancedTemplate(json: String): Boolean = {
-    val parsed = Json.parse(json)
-    (parsed \ "repertoires").isEmpty && (parsed \ "error").isDefined
-  }
+  // The instance's answer when it doesn't ship the advanced template — and only
+  // that; any other error is a failed read that `parse` throws on. A body that
+  // isn't JSON at all throws here — a failed scrape, not an empty one.
+  private[pl] def lacksAdvancedTemplate(json: String): Boolean =
+    (Json.parse(json) \ "error").asOpt[String].exists(_.contains("listAdvancedSuccess"))
 
   private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String], format: List[String],
                              poster: Option[String], director: Seq[String])
@@ -92,16 +97,16 @@ object SystemBiletowyClient {
   private val FilmBoilerplate =
     """(?i)[-–—]\s*Film\b(?=\s+(?:2D|3D|IMAX|4DX|dolby|atmos|dubbing|dubb|dub|napisy|nap|lektor|lek)\b)""".r
 
-  def parse(json: String, cinema: Cinema, baseUrl: String, titles: TitleNormalizer,
+  def parse(json: String, cinema: Cinema, portal: VisualSoftPortal, titles: TitleNormalizer,
             filmGroups: Set[EventCategory] = Set.empty, institution: Option[Institution] = None): Seq[CinemaMovie] = {
     // `repertoires` is an object keyed by screening id, or `[]` when nothing is
     // on. A body without it — an error object, a proxy's HTML — is a failed read.
     val records = (Json.parse(json) \ "repertoires").as[JsValue] match {
       case o: JsObject => o.values.toSeq
       case a: JsArray  => a.value.toSeq
-      case other       => throw new IllegalStateException(s"$baseUrl: repertoires is neither an object nor an array: $other")
+      case other       => throw new IllegalStateException(s"${portal.url}: repertoires is neither an object nor an array: $other")
     }
-    def absolute(path: String) = if (path.startsWith("http")) path else baseUrl + path
+    def absolute(path: String) = if (path.startsWith("http")) path else portal.url + path
 
     val slots = records.flatMap { r =>
       val group = (r \ "event" \ "category").asOpt[String].getOrElse("")
@@ -122,7 +127,7 @@ object SystemBiletowyClient {
                      .orElse((r \ "id").toOption.map {
                        case JsString(id) => id
                        case id           => id.toString
-                     }.map(id => s"$baseUrl/index.php/repertoire.html?id=$id")),
+                     }.map(id => s"${portal.url}/index.php/repertoire.html?id=$id")),
         format   = ScraperParse.extractFormatTags(peeled)._2,
         poster   = (r \ "image").asOpt[String].filter(_.nonEmpty).map(absolute),
         director = (r \ "event" \ "description").asOpt[String].map(parseDirector).getOrElse(Seq.empty)
@@ -144,13 +149,15 @@ object SystemBiletowyClient {
     }
   }
 
-  /** Sentence-case a title that shouts — any word of two or more letters all in
-   *  capitals ("LALKA", "LUNA I ROZGADANA ŚWINKA Tani Poniedziałek") — and keep
-   *  one that doesn't as the venue spelled it ("Birthday Party"). */
+  /** Sentence-case a title that shouts — any word of four or more letters all in
+   *  capitals ("LALKA  Premiera!", "MA TO SENS  Tani Poniedziałek") — and keep one
+   *  that doesn't as the venue spelled it ("Birthday Party", "DKF Pełna Sala:
+   *  Diabły", "… 2D Dubbing PL"): a short initialism isn't a shout. Measured on
+   *  the 315 titles the recorded feeds carried on 2026-09-26. */
   private def recase(title: String): String = {
     val shouts = title.split("\\s+").exists { word =>
       val letters = word.filter(_.isLetter)
-      letters.length >= 2 && letters.forall(_.isUpper)
+      letters.length >= 4 && letters.forall(_.isUpper)
     }
     if (shouts) ScraperParse.sentenceCase(title) else title
   }
@@ -193,3 +200,7 @@ final case class Institution(name: String) extends AnyVal
 /** An `event.category` on a VisualSoft instance that tags its events by kind
  *  ("BCKino" beside "Warsztaty"). */
 final case class EventCategory(name: String) extends AnyVal
+
+/** A VisualSoft ticketing instance's base URL (`https://kgl.systembiletowy.pl`,
+ *  `https://bilety.kino.bochnia.pl`). */
+final case class VisualSoftPortal(url: String) extends AnyVal

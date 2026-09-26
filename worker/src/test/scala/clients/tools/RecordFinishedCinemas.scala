@@ -2,7 +2,7 @@ package clients.tools
 
 import models._
 import tools.RealHttpFetch
-import services.cinemas.pl.{BiletynaClient, GdynskieCentrumFilmoweClient}
+import services.cinemas.pl.{BiletynaClient, BiletynaPlacePage, GdynskieCentrumFilmoweClient}
 
 import scala.util.Try
 
@@ -19,9 +19,9 @@ object RecordFinishedCinemas {
     def report(label: String)(n: => Int): Unit =
       println(f"$label%-26s ${Try(n).fold(e => s"FAIL ${e.getClass.getSimpleName} ${e.getMessage}", x => s"$x films")}")
 
-    report("ADA Kino Studyjne")(new BiletynaClient(record("ada-kino-studyjne"), "https://www.biletyna.pl/Warszawa/ADA-Kino-Studyjne", AdaKinoStudyjne).fetch().size)
-    report("Kino Kameralne Cafe")(new BiletynaClient(record("kino-kameralne"), "https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe", KinoKameralne).fetch().size)
-    report("Kino Pegaz (Wodzisław)")(new BiletynaClient(record("kino-pegaz"), "https://biletyna.pl/Wodzislaw-Slaski/Wodzislawskie-Centrum-Kultury", KinoPegaz).fetch().size)
+    report("ADA Kino Studyjne")(new BiletynaClient(record("ada-kino-studyjne"), BiletynaPlacePage("https://www.biletyna.pl/Warszawa/ADA-Kino-Studyjne"), AdaKinoStudyjne).fetch().size)
+    report("Kino Kameralne Cafe")(new BiletynaClient(record("kino-kameralne"), BiletynaPlacePage("https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe"), KinoKameralne).fetch().size)
+    report("Kino Pegaz (Wodzisław)")(new BiletynaClient(record("kino-pegaz"), BiletynaPlacePage("https://biletyna.pl/Wodzislaw-Slaski/Wodzislawskie-Centrum-Kultury"), KinoPegaz).fetch().size)
     report("Gdyńskie Centrum Filmowe")(new GdynskieCentrumFilmoweClient(record("gcf"), GdynskieCentrumFilmowe).fetch().size)
   }
 }

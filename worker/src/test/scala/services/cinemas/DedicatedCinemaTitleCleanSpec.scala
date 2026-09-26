@@ -6,7 +6,7 @@ import services.titlerules.{ExtraTitleRules, TitleRules, TitleRuleSet}
 import services.movies.TitleNormalizer
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
-import services.cinemas.pl.{Bilety24Client, Bilety24OrganizerClient, CyfroweKinoClient, KinoBajkaClient, KinoKijowClient, SystemBiletowyClient}
+import services.cinemas.pl.{Bilety24Client, Bilety24OrganizerClient, CyfroweKinoClient, KinoBajkaClient, KinoKijowClient, SystemBiletowyClient, VisualSoftPortal}
 
 import java.time.YearMonth
 
@@ -125,16 +125,16 @@ class DedicatedCinemaTitleCleanSpec extends AnyFlatSpec with Matchers {
     s"""{"repertoires":{"1":{"id":1,"title":"$title","date":"2026-08-20T18:00:00+02:00","url":"/kup-bilet/1"}}}"""
 
   "SystemBiletowyClient (Na Starówce)" should "strip the 'akcja lato w kinie' campaign suffix" in {
-    SystemBiletowyClient.parse(systemBiletowyFeed("Toy story 5 akcja lato w kinie"), KinoNaStarowce, "https://s.example", withExtras)
+    SystemBiletowyClient.parse(systemBiletowyFeed("Toy story 5 akcja lato w kinie"), KinoNaStarowce, VisualSoftPortal("https://s.example"), withExtras)
       .map(_.movie.title) shouldBe Seq("Toy story 5")
   }
 
   "SystemBiletowyClient (Kino Farys)" should "fix the 'Tot story 5' source typo" in {
-    SystemBiletowyClient.parse(systemBiletowyFeed("Tot story 5"), KinoFarys, "https://s.example", withExtras)
+    SystemBiletowyClient.parse(systemBiletowyFeed("Tot story 5"), KinoFarys, VisualSoftPortal("https://s.example"), withExtras)
       .map(_.movie.title) shouldBe Seq("Toy Story 5")
   }
   it should "be load-bearing — the seed rules alone leave the typo" in {
-    SystemBiletowyClient.parse(systemBiletowyFeed("Tot story 5"), KinoFarys, "https://s.example", seedOnly)
+    SystemBiletowyClient.parse(systemBiletowyFeed("Tot story 5"), KinoFarys, VisualSoftPortal("https://s.example"), seedOnly)
       .map(_.movie.title) shouldBe Seq("Tot story 5")
   }
 }
