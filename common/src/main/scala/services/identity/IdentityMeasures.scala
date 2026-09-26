@@ -78,6 +78,23 @@ object IdentityMeasures {
    *  it has. */
   val RankingPriors: Set[String] = Set("search.rank", "popularity.log2", "rivals")
 
+  /** The listing-film measure that counts OTHER venues' evidence (the family's pool), not
+   *  anything this listing published. */
+  val PooledMeasures: Set[String] = Set("venues.corroborating")
+
+  /** The listing-film measures that compare a FACT the listing published beside its title — a
+   *  year (field, bracket or season), a director, a runtime, a country, an original title: every
+   *  measure but the title relation, the ranking priors and the pooled count. Derived from
+   *  [[listingFilm]] itself, so a new measure is a fact unless it is classified otherwise. */
+  lazy val FactMeasures: Set[String] =
+    listingFilm(Listing(""), Film(""), None, 0, 0).keySet -- RankingPriors -- PooledMeasures - "title"
+
+  /** Does this listing-film measurement set compare at least one fact the listing published (a
+   *  fact measure that is not missing on either side)? When it does not, the only evidence
+   *  against the film is how the two titles relate — a score, never a veto. */
+  def comparesAFact(m: Map[String, Measure]): Boolean =
+    m.exists { case (name, v) => FactMeasures(name) && !v.isInstanceOf[Missing] }
+
   // ── keys ─────────────────────────────────────────────────────────────────────────────
 
   /** A title or name as a comparison key: accents folded, lowercased, every non-letter and

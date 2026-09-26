@@ -55,6 +55,39 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     together(r, plain.head, decorated) shouldBe true
   }
 
+  "A listing that publishes only a title" should
+    "not be denied its credited siblings' film by the title relation alone" in {
+    // PL, the Polish title of a foreign film: TMDB's record carries only the original title, so a
+    // bare listing's title shares no word with it (`title=none`). The credited siblings reach it
+    // through their director; the bare same-titled one and the bannered one must follow them —
+    // nothing they publish contradicts the film, and a title relation is a score, not a veto.
+    val films     = Seq(F(677558, "The Last Whale Singer", 2025, "Reza Memari", 91, 5))
+    val credited  = Seq(Multikino, Helios).map(listing(_, "Vincent. Legenda oceanu", Some(2025), Some("Reza Memari")))
+    val bare      = listing(KinoApollo, "VINCENT. LEGENDA OCEANU")
+    val bannered  = listing(KinoMuza, "Dyskusyjny Klub Bajkowy: Vincent. Legenda oceanu")
+    val r = resolve(credited ++ Seq(bare, bannered), films)
+    val shown = (credited ++ Seq(bare, bannered)).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")
+    withClue(shown) {
+      (credited ++ Seq(bare, bannered)).map(l => r.decisionOf(l.key).film) shouldBe Seq.fill(4)(Some(677558))
+      together(r, credited.head, bare) shouldBe true
+      together(r, credited.head, bannered) shouldBe true
+    }
+    r.violations shouldBe 0
+  }
+
+  it should "still be denied a film one published fact contradicts" in {
+    // The same shape, but the bare listing states a year decades from the film's: a fact, so the
+    // veto stands and the listing stays off the credited cluster.
+    val films    = Seq(F(677558, "The Last Whale Singer", 2025, "Reza Memari", 91, 5))
+    val credited = Seq(Multikino, Helios).map(listing(_, "Vincent. Legenda oceanu", Some(2025), Some("Reza Memari")))
+    val dated    = listing(KinoApollo, "VINCENT. LEGENDA OCEANU", Some(1975))
+    val r = resolve(credited :+ dated, films)
+    r.decisionOf(credited.head.key).film shouldBe Some(677558)
+    r.decisionOf(dated.key).film shouldBe None
+    together(r, credited.head, dated) shouldBe false
+    r.violations shouldBe 0
+  }
+
   "A bare listing its own evidence cannot separate between two films" should
     "follow its title's credited siblings, not the database's popularity ranking" in {
     // Four 2026 films TMDB titles "Lalka"; the one the venue credits ranks LAST in the search, so

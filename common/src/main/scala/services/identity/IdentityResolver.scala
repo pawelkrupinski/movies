@@ -22,8 +22,9 @@ import scala.collection.mutable
  *      query named it, or a film title relates to its title) with the calibrated model
  *      ([[IdentityCalibration]] over [[IdentityMeasures]] — the same measurements the weights were
  *      fitted on, including `venues.corroborating`, the family's venue co-occurrence). A candidate
- *      a node's evidence DENIES (`ListingConstraints.learned`: a learned rule, or its OWN facts'
- *      probability below the certified cut) is not eligible. A node ACCEPTS its best candidate ALONE when the
+ *      a node's evidence DENIES (`ListingConstraints.learnedListingFilm`: a learned rule, or its OWN
+ *      facts' probability below the certified cut, and only when the node publishes a fact the film
+ *      can be compared on — a title relation alone is scored, never a veto) is not eligible. A node ACCEPTS its best candidate ALONE when the
  *      calibrated probability clears the calibration's cut AND its own facts (not TMDB's ranking)
  *      favour it over the runner-up; otherwise it follows its cluster. Then:
  *        1. constraint edges between nodes sharing a block key — must-links by tier (0 pinned, 1
@@ -141,7 +142,7 @@ object IdentityResolver {
     /** What the LISTING'S OWN facts contribute — the title, year, director, runtime, original
      *  title and country measures — as opposed to the film database's ranking priors (search rank,
      *  popularity, rivals) and the family's pooled count (`venues.corroborating`). */
-    val Priors = IdentityMeasures.RankingPriors + "venues.corroborating"
+    val Priors = IdentityMeasures.RankingPriors ++ IdentityMeasures.PooledMeasures
     def ownContributions(measures: Map[String, Measure]): Double =
       calibration.contributions(ListingFilm, measures).collect { case (name, w) if !Priors(name) => w }.sum
     /** The calibrated probability on the listing's own facts alone — what a cannot-link reads. A
@@ -159,7 +160,7 @@ object IdentityResolver {
           .groupMap(_._1)(_._2)
 
       /** Every candidate `l` has an evidence path to, scored; `denies` marks the ones its own
-       *  evidence rules out (`ListingConstraints.learned`), which are never eligible. */
+       *  evidence rules out (`ListingConstraints.learnedListingFilm`), which are never eligible. */
       def score(l: IdentityMeasures.Listing, venue: String, ranks: Map[Int, Int], walked: Set[Int],
                 deniedByPins: Int => Boolean): Seq[Scored] = {
         val relation  = pool.map(c => c.tmdbId -> IdentityMeasures.titleRelation(l, c.film).value).toMap
@@ -172,7 +173,7 @@ object IdentityResolver {
             IdentityMeasures.corroboratingVenues(c.film, group, venue))
           val p = calibration.probability(ListingFilm, measures)
           Scored(c, p, measures, deniedByPins(c.tmdbId) ||
-            ListingConstraints.learned(calibration, ListingFilm, measures, factsProbability(measures)).isDefined)
+            ListingConstraints.learnedListingFilm(calibration, measures, factsProbability(measures)).isDefined)
         }.sortBy(s => (-s.p, s.c.tmdbId))
       }
 
@@ -286,7 +287,7 @@ object IdentityResolver {
         // A film this node has no evidence path to: its own evidence against the film's record.
         candidateById.get(film).exists { c =>
           val m = IdentityMeasures.listingFilm(n.evidence.measured, c.film, None, 0, 0)
-          ListingConstraints.learned(calibration, ListingFilm, m, factsProbability(m)).isDefined
+          ListingConstraints.learnedListingFilm(calibration, m, factsProbability(m)).isDefined
         }
       })(_.denied)
 

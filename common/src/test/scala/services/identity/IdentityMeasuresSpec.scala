@@ -61,4 +61,18 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.titleShapes(Listing("Throwback: Donnie Darko (25th Anniversary)")) should contain ("Donnie Darko")
     IdentityMeasures.searchQueries(Listing("Throwback: Donnie Darko (25th Anniversary)")) should contain ("Donnie Darko")
   }
+
+  "a listing's comparable facts" should "be every measure but the title relation, the ranking priors and the pooled count" in {
+    IdentityMeasures.FactMeasures shouldBe Set("originalTitle", "year.delta", "year.distance", "titleYear.delta", "season.delta",
+      "director", "runtime.delta", "country")
+    val film = Film("The Last Whale Singer", year = Some(2025), directors = Some(Seq("Reza Memari")))
+    // A title and nothing else: no fact to compare, whatever the titles' relation.
+    IdentityMeasures.comparesAFact(measures(Listing("Vincent. Legenda oceanu"), film)) shouldBe false
+    IdentityMeasures.comparesAFact(measures(Listing("Donnie Darko 25th Anniversary"), Film("Donnie Darko"))) shouldBe false
+    // A published fact the film cannot be compared on (no year in its record) is not a comparison.
+    IdentityMeasures.comparesAFact(measures(Listing("Vincent", year = Some(2025)), Film("Vincent"))) shouldBe false
+    IdentityMeasures.comparesAFact(measures(Listing("Vincent", year = Some(1975)), film)) shouldBe true
+    IdentityMeasures.comparesAFact(measures(Listing("Vincent (1975)"), film)) shouldBe true
+    IdentityMeasures.comparesAFact(measures(Listing("Vincent", originalTitle = Some("Vincent")), film)) shouldBe true
+  }
 }

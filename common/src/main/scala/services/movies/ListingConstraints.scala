@@ -135,6 +135,19 @@ object ListingConstraints {
     calibration.cannotLink(scope, measures).map(r => CannotLink.Learned(r.name))
       .orElse(Option.when(calibration.forbidsLink(scope, probability))(CannotLink.Learned(s"$scope probability below the cannot-link cut")))
 
+  /** [[learned]] for a LISTING against a FILM (the "listing-film" scope, `probability` its own
+   *  facts' calibrated probability): the listing's evidence denies the film only when it compares
+   *  at least one published fact with it. A listing that publishes nothing but a title — a
+   *  programme banner, an anniversary or format suffix, a local-language title of a foreign
+   *  film — is scored by how its title relates to the film's, and that relation alone never
+   *  vetoes: a decorated or translated spelling is otherwise denied the very film its plain,
+   *  credited siblings matched, and the denial outranks the title must-link that would join them. */
+  def learnedListingFilm(calibration: services.identity.IdentityCalibration,
+                         measures: Map[String, services.identity.IdentityMeasures.Measure],
+                         probability: Double): Option[CannotLink] =
+    if (!services.identity.IdentityMeasures.comparesAFact(measures)) None
+    else learned(calibration, services.identity.IdentityMeasures.ListingFilm, measures, probability)
+
   // ── must-links ───────────────────────────────────────────────────────────────────────
 
   /** The admin pins as hard constraints — the one way curation reaches the resolver: its
