@@ -8,7 +8,7 @@ phase, it is the input to `GermanRosterData.scala` (see "Regenerating" below).
 ## Contents
 
 - **`regions.json`** — the roster the app will load: **158 regions** covering
-  **1,529 cinemas** across all 16 Bundesländer. Each region:
+  **1,528 cinemas** across all 16 Bundesländer. Each region:
   `{ slug, name, lat, lon, bundesland, cities:[…], cinemas:[{theaterId, name, city, displayName}] }`.
   Regions cap the city dropdown (901 raw cities → 158 regions, each aggregating
   cinemas within ~35 km of a hub city). Every cinema `displayName` is globally

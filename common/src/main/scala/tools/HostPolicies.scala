@@ -115,7 +115,7 @@ object HostPolicies {
       headers = Map("x-imdb-client-name" -> "imdb-web-next"),
     ),
 
-    // Filmstarts (Webedia DE). Germany's 1,529 venues each fan out one listing
+    // Filmstarts (Webedia DE). Germany's 1,528 venues each fan out one listing
     // fetch plus one request per advertised day onto ONE origin, and with no
     // pacing the worker's fan-out delivers them in bursts the host answers with
     // 429. That was our steady state, not an anomaly: ThrottledHttpFetch's

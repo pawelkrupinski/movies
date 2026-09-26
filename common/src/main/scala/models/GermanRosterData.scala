@@ -1,6 +1,6 @@
 // GENERATED from data/germany/regions.json by the DE roster generator — do NOT edit by hand.
 // Full German cinema roster: 158 regions over 16 Bundesländer /
-// 1,529 cinemas (Filmstarts). Regenerate with
+// 1,528 cinemas (Filmstarts). Regenerate with
 // the generator in data/germany/scripts after re-harvesting; see data/germany/README.md.
 package models
 
@@ -937,7 +937,6 @@ private[models] object GermanRosterData {
     ("CineStar Augsburg", "CineStar Augsburg", "A0350"),
     ("CinemaxX Augsburg", "CinemaxX Augsburg", "A0276"),
     ("Liliom", "Liliom", "A1541"),
-    ("Mephisto Augsburg", "Mephisto Augsburg", "A1560"),
     ("Open Air Kino Lechflimmern Familienbad am Plärrer", "Open Air Kino Lechflimmern Familienbad am Plärrer", "A1800"),
     ("Savoy Kino", "Savoy Kino", "A1105"),
     ("Thalia Augsburg", "Thalia Augsburg", "A1645"),

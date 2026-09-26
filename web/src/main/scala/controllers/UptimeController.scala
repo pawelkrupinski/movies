@@ -73,7 +73,7 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
   // than limping, an admin opening /uptime took the PUBLIC site down with it.
   // Nothing is lost by hiding them: the triage sections above already carry every
   // row that is failing or returning nothing, which is what the page is read for.
-  // 500 keeps Poland (~60) and the UK (343) rendering as before; Germany (1,529)
+  // 500 keeps Poland (~60) and the UK (343) rendering as before; Germany (1,528)
   // and the US collapse. Thin rows (51 PL / 16 US on 2026-09-26) sit far below it,
   // but a feed change that left most of a country thin would not.
   private val MaxRenderedRows = 500

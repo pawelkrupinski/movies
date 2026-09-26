@@ -93,8 +93,8 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     // koeln, …), each an aggregation of nearby cities' cinemas (see data/germany/).
     Country.Germany.cities should have size 158
     Country.Germany.cities.map(_.slug) should contain allOf ("berlin", "muenchen", "koeln", "hamburg", "frankfurt-am-main")
-    // Every region carries cinemas; the roster totals 1,529 venues.
-    Country.Germany.cities.flatMap(_.cinemas).size shouldBe 1529
+    // Every region carries cinemas; the roster totals 1,528 venues.
+    Country.Germany.cities.flatMap(_.cinemas).size shouldBe 1528
   }
 
   "Country.UnitedStates" should "be an English, Filmweb-free deployment (Flicks-sourced) on its own database" in {
@@ -424,8 +424,12 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   //   A2165 Kino Babenhausen — hall alive for theatre, no cinema programme
   // NOTE: do NOT re-point Heppel to A1575 "Neues Rottmann" — that is a different
   // operating cinema, not a rename.
+  // Retired later, same evidence (404 on Filmstarts, venue gone):
+  //   A1560 Mephisto Augsburg — closed end of January 2026 (ARB Kino GmbH
+  //         insolvency); the Staatstheater takes the hall over as a stage.
+  //         Mephisto Ulm (A1559) is a separate, still-listed venue.
   it should "not carry the Filmstarts theater ids that were delisted upstream" in {
-    val delisted = Set("A0743", "G01C9", "A2843", "A2165")
+    val delisted = Set("A0743", "G01C9", "A2843", "A2165", "A1560")
     GermanRoster.theaterIdByCinema.values.toSet intersect delisted shouldBe empty
     val names = Country.Germany.cities.flatMap(_.cinemas).map(_.displayName).toSet
     names should not contain "Kino Kiste"
