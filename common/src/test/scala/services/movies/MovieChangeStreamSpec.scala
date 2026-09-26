@@ -259,7 +259,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
       source.emit(event("insert", "other|2024", StoredMovieDto.fromDomain("other|2024", MovieRecord(), Instant.EPOCH)))
       val Burst = 20
       (0 until Burst).foreach(i => slots.upsertSlot("film|2024", s"Venue$i␟film", SourceData(title = Some(s"Film $i"))))
-      screenings.upsertSlot("film|2024", "Venue0␟film", Seq(models.Showtime(LocalDateTime.of(2099, 1, 1, 20, 0), None)))
+      screenings.upsertSlot("film|2024", "Venue0␟film", ListedShowtimes(Seq(models.Showtime(LocalDateTime.of(2099, 1, 1, 20, 0), None)), None))
       gate.countDown()
 
       drained.await(5, TimeUnit.SECONDS) shouldBe true
@@ -310,7 +310,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
       // `updateIfPresent` writes `movies` BEFORE `screenings`/`movie_slots` (see
       // `MovieRepository.scala`), so the movies event arriving first, as above, is the real order.
       slots.upsertSlot("film|2024", "Venue0␟film", SourceData(title = Some("Film")))
-      screenings.upsertSlot("film|2024", "Venue0␟film", Seq(models.Showtime(LocalDateTime.of(2099, 1, 1, 20, 0), None)))
+      screenings.upsertSlot("film|2024", "Venue0␟film", ListedShowtimes(Seq(models.Showtime(LocalDateTime.of(2099, 1, 1, 20, 0), None)), None))
       gate.countDown()
 
       drained.await(5, TimeUnit.SECONDS) shouldBe true

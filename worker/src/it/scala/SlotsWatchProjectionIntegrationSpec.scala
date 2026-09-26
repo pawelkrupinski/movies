@@ -1,5 +1,7 @@
 package integration
 
+import services.movies.ListedShowtimes
+
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{KinoLuna, KinoMuranow, MovieRecord, Showtime, Source, SourceData}
@@ -65,7 +67,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers with
         // venue stays invisible. That is correct, and asserted so the final assertion can only be
         // satisfied by the slot write itself.
         val seenBefore = dispatched.get()
-        screenings.upsertSlot(id, KinoLuna.displayName, Seq(Showtime(when.plusHours(1), None)))
+        screenings.upsertSlot(id, KinoLuna.displayName, ListedShowtimes(Seq(Showtime(when.plusHours(1), None)), None))
         withClue("the screenings cursor never delivered the second venue's row: ") {
           Eventually.poll(30000)(dispatched.get() > seenBefore) shouldBe true
         }

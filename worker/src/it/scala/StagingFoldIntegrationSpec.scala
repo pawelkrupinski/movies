@@ -1,5 +1,7 @@
 package integration
 
+import services.movies.ListedShowtimes
+
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{Multikino, SourceData}
@@ -59,8 +61,8 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers with tools.In
         // (`MongoStagingFolder.withStitchedCinemas`), so a placeholder here is a cinema
         // claiming to show a different film and the two year-variants stop clustering.
         slots.replaceFilm(id, Map(Multikino.displayName -> sd(title)))
-        screenings.replaceFilm(id, Map(Multikino.displayName -> Seq(
-          models.Showtime(java.time.LocalDateTime.of(2026, 8, 1, 20, 0), None))))
+        screenings.replaceFilm(id, Map(Multikino.displayName -> ListedShowtimes(Seq(
+          models.Showtime(java.time.LocalDateTime.of(2026, 8, 1, 20, 0), None)), None)))
       }
       slots.findForFilm(loser)      should not be empty
       screenings.findForFilm(loser) should not be empty

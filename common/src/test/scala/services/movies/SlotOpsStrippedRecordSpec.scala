@@ -55,7 +55,7 @@ class SlotOpsStrippedRecordSpec extends AnyFlatSpec with Matchers {
     val after  = record(slot(showtimes))
 
     ScreeningsSplit.slotOps(before.data, after.data) shouldBe
-      Map(Multikino.displayName -> Some(showtimes))
+      Map(Multikino.displayName -> Some(ListedShowtimes(showtimes, Some(ListingKey.Published(Multikino.displayName, "Sirat", None, Nil)))))
   }
 
   it should "stay silent when a stripped record's digest matches — the common case" in {

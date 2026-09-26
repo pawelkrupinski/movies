@@ -41,7 +41,7 @@ class SideRowIdScanPagingSpec extends AnyFlatSpec with Matchers with tools.Integ
       val slots      = new MongoSlotsRepository(Some(db), findAllBatchSize = PageSize)
       val when       = LocalDateTime.now().plusDays(2).withNano(0)
       (1 to Films).foreach { n =>
-        screenings.upsertSlot(s"film$n|2026", s"Kino␟film $n", Seq(Showtime(when, None)))
+        screenings.upsertSlot(s"film$n|2026", s"Kino␟film $n", ListedShowtimes(Seq(Showtime(when, None)), None))
         slots.upsertSlot(s"film$n|2026", s"Kino␟film $n", SourceData(title = Some(s"Film $n")))
       }
       val expected = (1 to Films).map(n => SlotKeyed.idOf(s"film$n|2026", s"Kino␟film $n")).toSet

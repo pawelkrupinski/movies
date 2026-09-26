@@ -25,8 +25,8 @@ class VenueRosterIntegrationSpec extends AnyFlatSpec with Matchers with tools.In
       val screenings = new MongoScreeningsRepository(Some(db), roster = roster)
       val slots      = new MongoSlotsRepository(Some(db), roster = roster)
       try {
-        screenings.replaceFilm(film, Map(polish -> tomorrow, foreign -> tomorrow))
-        screenings.upsertSlot(film, other, tomorrow)
+        screenings.replaceFilm(film, Map(polish -> ListedShowtimes(tomorrow, None), foreign -> ListedShowtimes(tomorrow, None)))
+        screenings.upsertSlot(film, other, ListedShowtimes(tomorrow, None))
         slots.replaceFilm(film, Map(polish -> SourceData(title = Some("Odyseja")), foreign -> SourceData(title = Some("The Odyssey"))))
         slots.upsertSlot(film, other, SourceData(title = Some("Other")))
 

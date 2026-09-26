@@ -45,7 +45,7 @@ final class ObservationStore(
 
   def observeListing(cinema: Cinema, listing: CinemaMovie): Unit = {
     val evidence = ListingObservation.evidence(listing)
-    record(listings, ListingObservation.keyString(ListingKey.of(cinema, listing)), cinema.displayName,
+    record(listings, ListingKey.serialised(ListingKey.of(cinema, listing)), cinema.displayName,
       CinemaMovieJson.encode(Seq(evidence)), replaces = _ => true)
   }
 
@@ -87,10 +87,10 @@ final class ObservationStore(
     lookups.history(query.key).filter(live(clock.instant())).sortBy(_.observedAt).map(toLookup)
 
   def listing(key: ListingKey): Option[ListingObservation] =
-    listings.current(ListingObservation.keyString(key)).filter(live(clock.instant())).flatMap(toListing)
+    listings.current(ListingKey.serialised(key)).filter(live(clock.instant())).flatMap(toListing)
 
   def listingHistory(key: ListingKey): Seq[ListingObservation] =
-    listings.history(ListingObservation.keyString(key)).filter(live(clock.instant())).sortBy(_.observedAt).flatMap(toListing)
+    listings.history(ListingKey.serialised(key)).filter(live(clock.instant())).sortBy(_.observedAt).flatMap(toListing)
 
   /** Every live listing — the resolver's listing set. */
   def currentListings(): Seq[ListingObservation] =

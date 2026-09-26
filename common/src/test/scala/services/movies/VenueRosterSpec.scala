@@ -53,8 +53,8 @@ class VenueRosterSpec extends AnyFlatSpec with Matchers {
 
   "A roster-scoped screenings store" should "not write showtimes under a foreign venue" in {
     val screenings = new InMemoryScreeningsRepository(roster = roster)
-    screenings.replaceFilm(film, Map(polish -> tomorrow, foreign -> tomorrow))
-    screenings.upsertSlot(film, CinemaShowing(CineworldFeltham, "other").displayName, tomorrow)
+    screenings.replaceFilm(film, Map(polish -> ListedShowtimes(tomorrow, None), foreign -> ListedShowtimes(tomorrow, None)))
+    screenings.upsertSlot(film, CinemaShowing(CineworldFeltham, "other").displayName, ListedShowtimes(tomorrow, None))
     screenings.findForFilm(film).keySet shouldBe Set(polish)
   }
 

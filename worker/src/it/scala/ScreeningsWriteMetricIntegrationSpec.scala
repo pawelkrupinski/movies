@@ -1,5 +1,7 @@
 package integration
 
+import services.movies.ListedShowtimes
+
 import models.Showtime
 import org.mongodb.scala.SingleObservableFuture
 import org.mongodb.scala.model.{CreateCollectionOptions, Filters, ValidationOptions}
@@ -67,7 +69,7 @@ class ScreeningsWriteMetricIntegrationSpec extends AnyFlatSpec with Matchers wit
   }
 
   "replaceFilm" should "not count a write Mongo refused" in {
-    repository.replaceFilm(filmId, Map("Multikino" -> showtimes, "Kino Muranów" -> showtimes))
+    repository.replaceFilm(filmId, Map("Multikino" -> ListedShowtimes(showtimes, None), "Kino Muranów" -> ListedShowtimes(showtimes, None)))
 
     // The write really was refused.
     Await.result(db.getCollection(ScreeningsRepository.Collection)

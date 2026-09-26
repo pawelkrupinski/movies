@@ -10,11 +10,12 @@ import java.util.concurrent.atomic.AtomicInteger
 class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
 
   private def st(h: Int) = Showtime(LocalDateTime.of(2026, 6, 8, h, 0), Some(s"https://book/$h"))
+  private def row(showtimes: Showtime*) = ListedShowtimes(showtimes, None)
 
   "upsertSlot" should "add a slot's showtimes, grouped per film and slot key" in {
     val repo = new InMemoryScreeningsRepository
-    repo.upsertSlot("wonka|2026", "Kino Muranów␟wonka", Seq(st(18), st(20)))
-    repo.upsertSlot("wonka|2026", "Kinoteka␟wonka",     Seq(st(19)))
+    repo.upsertSlot("wonka|2026", "Kino Muranów␟wonka", row(st(18), st(20)))
+    repo.upsertSlot("wonka|2026", "Kinoteka␟wonka",     row(st(19)))
     repo.findForFilm("wonka|2026") shouldBe Map(
       "Kino Muranów␟wonka" -> Seq(st(18), st(20)),
       "Kinoteka␟wonka"     -> Seq(st(19)))
@@ -29,26 +30,37 @@ class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
   // read-model projector a stitch read plus a full projection of the same film — 297 of
   // 298 rows redundant on prod DE (2026-09-04), and the widest US film carries 3,327.
   "changedRows" should "name only the rows whose value moved, or that are not stored yet" in {
-    val stored = Map("A␟f" -> Seq(st(10)), "B␟f" -> Seq(st(11)))
+    val stored = Map("A␟f" -> row(st(10)), "B␟f" -> row(st(11)))
     ScreeningsSplit.changedSlots(stored, readComplete = true,
-      Map("A␟f" -> Seq(st(10)), "B␟f" -> Seq(st(11)))) shouldBe empty          // nothing moved
+      Map("A␟f" -> row(st(10)), "B␟f" -> row(st(11)))) shouldBe empty          // nothing moved
     ScreeningsSplit.changedSlots(stored, readComplete = true,
-      Map("A␟f" -> Seq(st(10)), "B␟f" -> Seq(st(12)))) shouldBe
-        Map("B␟f" -> Seq(st(12)))                                              // one venue moved
+      Map("A␟f" -> row(st(10)), "B␟f" -> row(st(12)))) shouldBe
+        Map("B␟f" -> row(st(12)))                                              // one venue moved
     ScreeningsSplit.changedSlots(stored, readComplete = true,
-      Map("A␟f" -> Seq(st(10)), "C␟f" -> Seq(st(13)))) shouldBe
-        Map("C␟f" -> Seq(st(13)))                                              // a new venue is a change
+      Map("A␟f" -> row(st(10)), "C␟f" -> row(st(13)))) shouldBe
+        Map("C␟f" -> row(st(13)))                                              // a new venue is a change
     // Order matters inside a slot: two showtimes swapped is a different listing, not a
     // no-op, and `Seq` equality is what says so.
-    ScreeningsSplit.changedSlots(Map("A␟f" -> Seq(st(10), st(11))), readComplete = true,
-      Map("A␟f" -> Seq(st(11), st(10)))) shouldBe Map("A␟f" -> Seq(st(11), st(10)))
+    ScreeningsSplit.changedSlots(Map("A␟f" -> row(st(10), st(11))), readComplete = true,
+      Map("A␟f" -> row(st(11), st(10)))) shouldBe Map("A␟f" -> row(st(11), st(10)))
+  }
+
+  it should "name a row whose listing key moved though its showtimes did not" in {
+    // A page-less venue correcting its own year gives its listing a new key (docs/design/
+    // identity-resolver.md §4). The showtimes stay; the stored key must still follow.
+    val listing = ListingKey.Published("Kino Muranów", "Belle", Some(2013), Nil)
+    val stored  = Map("A␟f" -> ListedShowtimes(Seq(st(10)), Some(listing)))
+    val moved   = Map("A␟f" -> ListedShowtimes(Seq(st(10)), Some(listing.copy(year = Some(2021)))))
+    ScreeningsSplit.changedSlots(stored, readComplete = true, moved) shouldBe moved
+    // …and a legacy row, stored before the key existed, takes it on its next write.
+    ScreeningsSplit.changedSlots(Map("A␟f" -> row(st(10))), readComplete = true, stored) shouldBe stored
   }
 
   it should "write EVERYTHING when the read that would have compared them failed" in {
     // A read that did not see the film cannot say which rows are unchanged. Writing a row
     // that did not need it is the harmless direction; skipping one that did is not.
     ScreeningsSplit.changedSlots(Map.empty, readComplete = false,
-      Map("A␟f" -> Seq(st(10)))) shouldBe Map("A␟f" -> Seq(st(10)))
+      Map("A␟f" -> row(st(10)))) shouldBe Map("A␟f" -> row(st(10)))
   }
 
   it should "hold for the sibling collection's payload too, since both share the rule" in {
@@ -62,9 +74,9 @@ class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
 
   "replaceFilm" should "set a film's screenings to exactly the given slots (deleting the rest)" in {
     val repo = new InMemoryScreeningsRepository
-    repo.upsertSlot("f|2026", "A␟f", Seq(st(10)))
-    repo.upsertSlot("f|2026", "B␟f", Seq(st(11)))
-    repo.replaceFilm("f|2026", Map("B␟f" -> Seq(st(12)))) // A dropped, B updated
+    repo.upsertSlot("f|2026", "A␟f", row(st(10)))
+    repo.upsertSlot("f|2026", "B␟f", row(st(11)))
+    repo.replaceFilm("f|2026", Map("B␟f" -> row(st(12)))) // A dropped, B updated
     repo.findForFilm("f|2026") shouldBe Map("B␟f" -> Seq(st(12)))
     repo.replaceFilm("f|2026", Map.empty)                // empties → film gone
     repo.findForFilm("f|2026") shouldBe empty
@@ -73,8 +85,8 @@ class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
 
   "deleteSlot / deleteFilm" should "remove one slot or the whole film" in {
     val repo = new InMemoryScreeningsRepository
-    repo.upsertSlot("f|2026", "A␟f", Seq(st(10)))
-    repo.upsertSlot("f|2026", "B␟f", Seq(st(11)))
+    repo.upsertSlot("f|2026", "A␟f", row(st(10)))
+    repo.upsertSlot("f|2026", "B␟f", row(st(11)))
     repo.deleteSlot("f|2026", "A␟f")
     repo.findForFilm("f|2026") shouldBe Map("B␟f" -> Seq(st(11)))
     repo.deleteFilm("f|2026")
@@ -87,21 +99,21 @@ class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
     val lastFilm = new java.util.concurrent.atomic.AtomicReference[String]("")
     val handle = repo.watchApplied((filmId, applied) => { rings.incrementAndGet(); lastFilm.set(filmId); applied() }).get
 
-    repo.upsertSlot("f|2026", "A␟f", Seq(st(10)))
+    repo.upsertSlot("f|2026", "A␟f", row(st(10)))
     rings.get()    shouldBe 1
     lastFilm.get() shouldBe "f|2026"
 
-    repo.upsertSlot("f|2026", "A␟f", Seq(st(10))) // identical → no-op, must not ring
+    repo.upsertSlot("f|2026", "A␟f", row(st(10))) // identical → no-op, must not ring
     rings.get() shouldBe 1
 
-    repo.upsertSlot("f|2026", "A␟f", Seq(st(10), st(12))) // changed → rings
+    repo.upsertSlot("f|2026", "A␟f", row(st(10), st(12))) // changed → rings
     rings.get() shouldBe 2
 
     repo.deleteSlot("f|2026", "absent") // nothing to delete → no ring
     rings.get() shouldBe 2
 
     handle.close()
-    repo.upsertSlot("f|2026", "B␟f", Seq(st(13))) // unsubscribed → no more rings
+    repo.upsertSlot("f|2026", "B␟f", row(st(13))) // unsubscribed → no more rings
     rings.get() shouldBe 2
   }
 
@@ -112,6 +124,16 @@ class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
       Kinoteka    -> SourceData(title = Some("Wonka")),                              // no showtimes → excluded
       Tmdb        -> SourceData(title = Some("Wonka"), showtimes = Seq.empty))       // Tmdb never has showtimes
     ScreeningsSplit.showtimesOf(data) shouldBe Map("Kino Muranów" -> Seq(st(18), st(20)))
+  }
+
+  "screeningsOf" should "stamp each row with the listing key of the slot it came from" in {
+    val slot = SourceData(title = Some("Wonka"), rawTitle = Some("Wonka (2D dubbing)"), releaseYear = Some(2023),
+                          filmUrl = Some("https://muranow.pl/wonka"), showtimes = Seq(st(18)))
+    val data = Map[models.Source, SourceData](
+      models.CinemaShowing(KinoMuranow, "wonka") -> slot,
+      Kinoteka                                   -> SourceData(title = Some("Wonka")))
+    ScreeningsSplit.screeningsOf(data) shouldBe Map("Kino Muranów␟wonka" -> ListedShowtimes(Seq(st(18)),
+      Some(ListingKey.Native("Kino Muranów", "https://muranow.pl/wonka", "Wonka (2D dubbing)"))))
   }
 
   "slotOps" should "emit an upsert only for a slot whose showtimes changed, a delete when they empty, and nothing for a metadata-only change" in {
@@ -125,7 +147,8 @@ class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
 
     // a genuine showtime change → upsert
     val after2 = before + (KinoMuranow -> SourceData(showtimes = Seq(st(18), st(21))))
-    ScreeningsSplit.slotOps(before, after2) shouldBe Map("Kino Muranów" -> Some(Seq(st(18), st(21))))
+    ScreeningsSplit.slotOps(before, after2) shouldBe
+      Map("Kino Muranów" -> Some(ListedShowtimes(Seq(st(18), st(21)), Some(ListingKey.Published("Kino Muranów", "", None, Nil)))))
 
     // a slot removed entirely → delete
     ScreeningsSplit.slotOps(before, Map(KinoMuranow -> before(KinoMuranow))) shouldBe Map("Kinoteka" -> None)

@@ -28,11 +28,11 @@ class UnreadableSlotsRepository extends InMemorySlotsRepository with FailsOnPurp
  *  store so an integration spec can fail the read in front of the REAL Mongo repository. */
 class UnreadableScreeningsRepository(store: ScreeningsRepository = new InMemoryScreeningsRepository)
   extends ScreeningsRepository with FailsOnPurpose {
-  def findForFilmChecked(filmId: String): (Map[String, Seq[Showtime]], Boolean) = (Map.empty, false)
+  def findListedForFilmChecked(filmId: String): (Map[String, ListedShowtimes], Boolean) = (Map.empty, false)
   def findAll(): Map[String, Map[String, Seq[Showtime]]]                        = store.findAll()
-  def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]],
-                  stored: Option[Map[String, Seq[Showtime]]] = None): WriteOutcome      = store.replaceFilm(filmId, slots, stored)
-  def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): WriteOutcome = store.upsertSlot(filmId, slotKey, showtimes)
+  def replaceFilm(filmId: String, slots: Map[String, ListedShowtimes],
+                  stored: Option[Map[String, ListedShowtimes]] = None): WriteOutcome    = store.replaceFilm(filmId, slots, stored)
+  def upsertSlot(filmId: String, slotKey: String, row: ListedShowtimes): WriteOutcome   = store.upsertSlot(filmId, slotKey, row)
   def deleteSlot(filmId: String, slotKey: String): WriteOutcome                         = store.deleteSlot(filmId, slotKey)
   def deleteFilm(filmId: String): WriteOutcome                                          = store.deleteFilm(filmId)
   def deleteFilms(filmIds: Set[String]): Long                                   = store.deleteFilms(filmIds)
@@ -95,13 +95,13 @@ class IncompleteScanMovieRepository(delivered: Seq[(String, Option[Int], MovieRe
 class UnwritableScreeningsRepository extends InMemoryScreeningsRepository with FailsOnPurpose {
   /** Populate a film's rows, bypassing the write block — so a spec can set up the state a
    *  failed copy is supposed to preserve. */
-  def seed(filmId: String, slots: Map[String, Seq[models.Showtime]]): Unit = {
+  def seed(filmId: String, slots: Map[String, ListedShowtimes]): Unit = {
     super.replaceFilm(filmId, slots); ()
   }
-  override def replaceFilm(filmId: String, slots: Map[String, Seq[models.Showtime]],
-                           stored: Option[Map[String, Seq[models.Showtime]]] = None): WriteOutcome =
+  override def replaceFilm(filmId: String, slots: Map[String, ListedShowtimes],
+                           stored: Option[Map[String, ListedShowtimes]] = None): WriteOutcome =
     SimulatedWriteFailure(ScreeningsRepository.Collection, "replaceFilm")
-  override def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[models.Showtime]): WriteOutcome =
+  override def upsertSlot(filmId: String, slotKey: String, row: ListedShowtimes): WriteOutcome =
     SimulatedWriteFailure(ScreeningsRepository.Collection, "upsertSlot")
 }
 

@@ -107,7 +107,7 @@ class ShowtimesDigestSpec extends AnyFlatSpec with Matchers {
     val prior = stripped(Seq(st("2026-06-11T10:00")))
     val fresh = SourceData(showtimes = Seq(st("2026-06-11T10:00"), st("2026-06-11T12:00")))
     ScreeningsSplit.slotOps(Map(src -> prior), Map(src -> fresh)) shouldBe
-      Map(src.displayName -> Some(fresh.showtimes))
+      Map(src.displayName -> Some(ListedShowtimes(fresh.showtimes, ListingKey.ofSource(src, fresh))))
   }
 
   it should "no-op when a fresh scrape matches the stripped prior's digest" in {
@@ -131,7 +131,7 @@ class ShowtimesDigestSpec extends AnyFlatSpec with Matchers {
   "reStitch" should "re-inject a stripped slot's showtimes from screenings (no fold data loss)" in {
     val real = Seq(st("2026-06-11T10:00"), st("2026-06-11T12:00"))
     val scr  = new InMemoryScreeningsRepository()
-    scr.upsertSlot("film1", src.displayName, real)
+    scr.upsertSlot("film1", src.displayName, ListedShowtimes(real, None))
     val restitched = ScreeningsSplit.reStitch(scr, "film1", Map(src -> stripped(real)))
     restitched(src).showtimes shouldBe real
     // ...so a full write keeps them: showtimesOf is non-empty → replaceFilm won't delete.

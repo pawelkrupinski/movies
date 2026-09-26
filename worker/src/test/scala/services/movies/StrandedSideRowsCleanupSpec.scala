@@ -33,7 +33,7 @@ class StrandedSideRowsCleanupSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer)
     repository.upsert("Live", Some(2026), MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some("Live"), releaseYear = Some(2026), showtimes = tomorrow))))
-    screenings.upsertSlot("dead|2020", "helios␟dead", tomorrow)
+    screenings.upsertSlot("dead|2020", "helios␟dead", ListedShowtimes(tomorrow, None))
     (repository, screenings)
   }
 

@@ -269,14 +269,29 @@ object SlotsRepository {
 
 /** Storage DTO for one cinema slot's metadata — the macro codec target for the
  *  `movie_slots` collection. `_id = "<filmId><slotKey>"`; `filmId` is indexed
- *  for per-film reads/deletes. */
+ *  for per-film reads/deletes.
+ *
+ *  `listingKey` is the identity migration's dual write (docs/design/identity-resolver.md,
+ *  phase 4): [[ListingKey.serialised]] of the venue listing this slot holds, derived from the
+ *  row itself by [[ListingKey.ofSlotRow]], so it can never disagree with the slot. Nothing
+ *  serves from it yet. Absent on an enrichment slot, and on a row written before the field
+ *  existed until `scripts.ListingKeyBackfill` stamps it. */
 case class StoredSlotDto(
-  _id:       String,
-  filmId:    String,
-  slotKey:   String,
-  slot:      SourceData,
-  updatedAt: Instant
+  _id:        String,
+  filmId:     String,
+  slotKey:    String,
+  slot:       SourceData,
+  updatedAt:  Instant,
+  listingKey: Option[String] = None
 )
+
+object StoredSlotDto {
+  /** The ONE way a `movie_slots` row is built for writing, so no write path can land a slot
+   *  without its listing key (`ListingKeyWritePathLintSpec` keeps it the only constructor call). */
+  def of(filmId: String, slotKey: String, slot: SourceData, now: Instant): StoredSlotDto =
+    StoredSlotDto(SlotKeyed.idOf(filmId, slotKey), filmId, slotKey, slot, now,
+      ListingKey.ofSlotRow(slotKey, slot).map(ListingKey.serialised))
+}
 
 /**
  * Mongo-backed `SlotsRepository`, collection `movie_slots`. Relaxed write concern
@@ -397,7 +412,7 @@ class MongoSlotsRepository(
       val (current, readComplete) = stored.map(_ -> true).getOrElse(findForFilmChecked(filmId))
       val writable = roster.writable(SlotsRepository.Collection, filmId, current, slots)
       val upserts = SlotKeyed.changedRows(current, readComplete, writable).toSeq.map { case (k, sd) =>
-        val dto = StoredSlotDto(idOf(filmId, k), filmId, k, sd, now)
+        val dto = StoredSlotDto.of(filmId, k, sd, now)
         ReplaceOneModel(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true))
       }
       val dropStale = DeleteManyModel[StoredSlotDto](SlotKeyed.staleSlotsFilter(filmId, slots.keySet))
@@ -415,7 +430,7 @@ class MongoSlotsRepository(
     // A read that fails, and a row that is absent, both read as "differs" and write.
     write("upsertSlot", s"SlotsRepository.upsertSlot($filmId,$slotKey)") {
       if (roster.admitsWrite(SlotsRepository.Collection, filmId, slotKey) && !storedSlot(c, filmId, slotKey).contains(slot)) {
-        val dto = StoredSlotDto(idOf(filmId, slotKey), filmId, slotKey, slot, Instant.now())
+        val dto = StoredSlotDto.of(filmId, slotKey, slot, Instant.now())
         Await.result(c.replaceOne(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
       }
       WriteOutcome.Written

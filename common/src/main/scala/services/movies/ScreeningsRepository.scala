@@ -46,7 +46,16 @@ trait ScreeningsRepository extends SlotKeyedRows {
    *  "no showtimes" deletes them all. That is how the German corpus lost ~80% of its
    *  upcoming showtimes on 2026-07-27 while its film count and every film↔cinema slot
    *  row stayed intact. */
-  def findForFilmChecked(filmId: String): (Map[String, Seq[Showtime]], Boolean)
+  def findForFilmChecked(filmId: String): (Map[String, Seq[Showtime]], Boolean) = {
+    val (rows, complete) = findListedForFilmChecked(filmId)
+    (rows.view.mapValues(_.showtimes).toMap, complete)
+  }
+
+  /** [[findForFilmChecked]] with each row's `listingKey` beside its showtimes — what a WRITE
+   *  compares against and a merge carries across, so a row whose listing key moved is rewritten
+   *  and a moved row keeps the key it had. Serving never needs the key (phase 4 of the identity
+   *  migration writes it and reads it nowhere else). */
+  def findListedForFilmChecked(filmId: String): (Map[String, ListedShowtimes], Boolean)
 
   /** The rows of SEVERAL films in ONE round-trip, plus whether the read succeeded.
    *
@@ -75,12 +84,12 @@ trait ScreeningsRepository extends SlotKeyedRows {
    *  `MovieRepository.upsert` has it in hand from the re-stitch, on the hottest write path
    *  in the system. `None` means "read it yourself"; passing a map from a read that FAILED
    *  would have every row look new and be trusted, so a failed read must pass `None`. */
-  def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]],
-                  stored: Option[Map[String, Seq[Showtime]]] = None): WriteOutcome
+  def replaceFilm(filmId: String, slots: Map[String, ListedShowtimes],
+                  stored: Option[Map[String, ListedShowtimes]] = None): WriteOutcome
 
   /** Upsert one slot's showtimes — the per-slot patch write path
    *  (`MovieRepository.updateIfPresent`). */
-  def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): WriteOutcome
+  def upsertSlot(filmId: String, slotKey: String, row: ListedShowtimes): WriteOutcome
 
   /** Drop one slot's screenings (the slot left the film's listings). */
   def deleteSlot(filmId: String, slotKey: String): WriteOutcome
@@ -116,22 +125,22 @@ trait ScreeningsRepository extends SlotKeyedRows {
 class InMemoryScreeningsRepository(clock: () => java.time.Instant = () => java.time.Instant.now(),
                                    roster: VenueRoster = VenueRoster.Unrestricted) extends ScreeningsRepository {
 
-  private val rows = new InMemorySlotRows[Seq[Showtime]](clock)
+  private val rows = new InMemorySlotRows[ListedShowtimes](clock)
 
-  def findForFilmChecked(filmId: String): (Map[String, Seq[Showtime]], Boolean) = (rows.forFilm(filmId), true)
+  def findListedForFilmChecked(filmId: String): (Map[String, ListedShowtimes], Boolean) = (rows.forFilm(filmId), true)
 
-  def findAll(): Map[String, Map[String, Seq[Showtime]]] = rows.all()
+  def findAll(): Map[String, Map[String, Seq[Showtime]]] = rows.all().view.mapValues(_.view.mapValues(_.showtimes).toMap).toMap
 
   // `stored` is ignored: this store's rows are already in memory, so re-reading them is free
   // and the parameter exists only to honour the trait.
-  def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]],
-                  stored: Option[Map[String, Seq[Showtime]]] = None): WriteOutcome = {
+  def replaceFilm(filmId: String, slots: Map[String, ListedShowtimes],
+                  stored: Option[Map[String, ListedShowtimes]] = None): WriteOutcome = {
     rows.replaceFilm(filmId, roster.writable(ScreeningsRepository.Collection, filmId, rows.forFilm(filmId), slots))
     WriteOutcome.Written   // an in-memory store cannot fail to write
   }
 
-  def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): WriteOutcome = {
-    if (roster.admitsWrite(ScreeningsRepository.Collection, filmId, slotKey)) rows.upsert(filmId, slotKey, showtimes)
+  def upsertSlot(filmId: String, slotKey: String, row: ListedShowtimes): WriteOutcome = {
+    if (roster.admitsWrite(ScreeningsRepository.Collection, filmId, slotKey)) rows.upsert(filmId, slotKey, row)
     WriteOutcome.Written
   }
 
@@ -182,16 +191,39 @@ object ScreeningsRepository {
   private[movies] val IdSep: Char = SlotKeyed.IdSep
 }
 
+/**
+ * One slot's showtimes, beside the venue listing they are showtimes OF — a `screenings` row as
+ * the write path hands it over.
+ *
+ * `listingKey` is the identity migration's dual write (docs/design/identity-resolver.md, phase
+ * 4): the same key the slot row at this `(film, slotKey)` carries, derived from the slot by
+ * [[ListingKey.ofSlotRow]], so a later phase can key showtimes by the listing instead of by a
+ * title-derived slot key. Nothing serves from it yet. `None` only for a row whose slot is no
+ * venue's listing, and for a row written before the field existed.
+ */
+final case class ListedShowtimes(showtimes: Seq[Showtime], listingKey: Option[ListingKey])
+
 /** Storage DTO for one cinema slot's screenings — the macro codec target for the
  *  `screenings` collection. `_id = "<filmId><slotKey>"`; `filmId` is indexed
- *  for per-film reads/deletes. */
+ *  for per-film reads/deletes. `listingKey` is [[ListingKey.serialised]]; absent on a row
+ *  written before phase 4 until the backfill (`scripts.ListingKeyBackfill`) stamps it. */
 case class StoredScreeningsDto(
-  _id:       String,
-  filmId:    String,
-  slotKey:   String,
-  showtimes: Seq[Showtime],
-  updatedAt: Instant
-)
+  _id:        String,
+  filmId:     String,
+  slotKey:    String,
+  showtimes:  Seq[Showtime],
+  updatedAt:  Instant,
+  listingKey: Option[String] = None
+) {
+  def listed: ListedShowtimes = ListedShowtimes(showtimes, listingKey.flatMap(ListingKey.parse))
+}
+
+object StoredScreeningsDto {
+  /** The ONE way a `screenings` row is built for writing, so no write path can land a row
+   *  without its listing key (`ListingKeyWritePathLintSpec` keeps it the only constructor call). */
+  def of(filmId: String, slotKey: String, row: ListedShowtimes, now: Instant): StoredScreeningsDto =
+    StoredScreeningsDto(SlotKeyed.idOf(filmId, slotKey), filmId, slotKey, row.showtimes, now, row.listingKey.map(ListingKey.serialised))
+}
 
 /**
  * Mongo-backed `ScreeningsRepository`, collection `screenings`. Relaxed write
@@ -246,10 +278,10 @@ class MongoScreeningsRepository(
   // `MongoSlotsRepository.findForFilmChecked`, its sibling under `SlotKeyed`; the two
   // answered opposite things for the same state, and a caller that treats "unreadable" as
   // "defer" would have deferred forever against a Mongo-less stack.
-  def findForFilmChecked(filmId: String): (Map[String, Seq[Showtime]], Boolean) =
-    coll.fold((Map.empty[String, Seq[Showtime]], true)) { c =>
+  def findListedForFilmChecked(filmId: String): (Map[String, ListedShowtimes], Boolean) =
+    coll.fold((Map.empty[String, ListedShowtimes], true)) { c =>
       Try(Await.result(c.find(Filters.eq("filmId", filmId)).toFuture(), 30.seconds)) match {
-        case Success(docs) => (docs.map(d => d.slotKey -> d.showtimes).toMap, true)
+        case Success(docs) => (docs.map(d => d.slotKey -> d.listed).toMap, true)
         case Failure(exception) =>
           logger.warn(s"ScreeningsRepository.findForFilm($filmId) failed: ${exception.getMessage}")
           (Map.empty, false)
@@ -319,8 +351,8 @@ class MongoScreeningsRepository(
    *  can never race ahead of a slot this same call is re-writing. The request list is
    *  never empty (the delete is always present), so the driver's empty-`bulkWrite`
    *  rejection is unreachable. */
-  def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]],
-                  stored: Option[Map[String, Seq[Showtime]]] = None): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
+  def replaceFilm(filmId: String, slots: Map[String, ListedShowtimes],
+                  stored: Option[Map[String, ListedShowtimes]] = None): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
     write("replaceFilm", s"ScreeningsRepository.replaceFilm($filmId)") {
       val now     = Instant.now()
       // Rewrite only the rows that MOVED. One indexed read on `filmId` — the same read the
@@ -332,7 +364,7 @@ class MongoScreeningsRepository(
       // The DELETE vector is unaffected: it is derived from `slots.keySet` (what the film
       // should end up with), never from the subset being written, so a row that is correct and
       // therefore skipped is still a row this call keeps.
-      val (current, readComplete) = stored.map(_ -> true).getOrElse(findForFilmChecked(filmId))
+      val (current, readComplete) = stored.map(_ -> true).getOrElse(findListedForFilmChecked(filmId))
       val changed = ScreeningsSplit.changedSlots(current, readComplete,
         roster.writable(ScreeningsRepository.Collection, filmId, current, slots))
       // The SKIP is counted here and the WRITE is counted after the bulkWrite returns, which is
@@ -341,8 +373,8 @@ class MongoScreeningsRepository(
       // rows that never landed. The documented canary for a broken guard is "`written` climbing
       // under a flat scrape rate" -- exactly the shape a Mongo incident would have forged.
       metrics.recordWrite(ScreeningsMetrics.Outcome.Unchanged, slots.size - changed.size)
-      val upserts = changed.toSeq.map { case (k, st) =>
-        val dto = StoredScreeningsDto(idOf(filmId, k), filmId, k, st, now)
+      val upserts = changed.toSeq.map { case (k, row) =>
+        val dto = StoredScreeningsDto.of(filmId, k, row, now)
         ReplaceOneModel(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true))
       }
       val dropStale = DeleteManyModel[StoredScreeningsDto](ScreeningsRepository.staleSlotsFilter(filmId, slots.keySet))
@@ -359,7 +391,7 @@ class MongoScreeningsRepository(
   private def write(op: String, what: => String)(body: => WriteOutcome): WriteOutcome =
     RepositoryWrite.attempt(ScreeningsRepository.Collection, op, what, writeMetrics, logger)(body)
 
-  def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
+  def upsertSlot(filmId: String, slotKey: String, row: ListedShowtimes): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
     // Same no-op guard as `replaceFilm`, at the granularity this method works in: a point read
     // on the composite `_id`. A row that is already what we would write must not be written,
     // because the write is what rings the change stream — the trait's contract has always said
@@ -367,22 +399,22 @@ class MongoScreeningsRepository(
     // A read that fails, and a row that is absent, both read as "differs" and write.
     if (!roster.admitsWrite(ScreeningsRepository.Collection, filmId, slotKey)) WriteOutcome.Written
     else write("upsertSlot", s"ScreeningsRepository.upsertSlot($filmId,$slotKey)") {
-      if (storedShowtimes(c, filmId, slotKey).contains(showtimes))
+      if (storedRow(c, filmId, slotKey).contains(row))
         metrics.recordWrite(ScreeningsMetrics.Outcome.Unchanged, 1)
       else {
-        upsertOne(c, filmId, slotKey, showtimes)
+        upsertOne(c, filmId, slotKey, row)
         metrics.recordWrite(ScreeningsMetrics.Outcome.Written, 1)
       }
       WriteOutcome.Written
     }
   }
 
-  /** One row's stored showtimes, or None when it is absent OR unreadable — the two cases
+  /** One stored row, or None when it is absent OR unreadable — the two cases
    *  `upsertSlot` treats alike, because both mean "we cannot say this write is redundant". */
-  private def storedShowtimes(c: MongoCollection[StoredScreeningsDto],
-                              filmId: String, slotKey: String): Option[Seq[Showtime]] =
+  private def storedRow(c: MongoCollection[StoredScreeningsDto],
+                        filmId: String, slotKey: String): Option[ListedShowtimes] =
     Try(Await.result(c.find(Filters.eq("_id", idOf(filmId, slotKey))).first().toFuture(), 10.seconds))
-      .toOption.flatMap(Option(_)).map(_.showtimes)
+      .toOption.flatMap(Option(_)).map(_.listed)
 
   def deleteSlot(filmId: String, slotKey: String): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
     write("deleteSlot", s"ScreeningsRepository.deleteSlot($filmId,$slotKey)") {
@@ -418,8 +450,8 @@ class MongoScreeningsRepository(
   def deleteFilms(filmIds: Set[String]): Long =
     coll.fold(0L)(SlotKeyed.deleteFilms(_, filmIds, ScreeningsRepository.Collection, writeMetrics, logger))
 
-  private def upsertOne(c: MongoCollection[StoredScreeningsDto], filmId: String, slotKey: String, st: Seq[Showtime]): Unit = {
-    val dto = StoredScreeningsDto(idOf(filmId, slotKey), filmId, slotKey, st, Instant.now())
+  private def upsertOne(c: MongoCollection[StoredScreeningsDto], filmId: String, slotKey: String, row: ListedShowtimes): Unit = {
+    val dto = StoredScreeningsDto.of(filmId, slotKey, row, Instant.now())
     Await.result(c.replaceOne(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds); ()
   }
 

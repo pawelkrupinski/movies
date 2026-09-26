@@ -23,7 +23,7 @@ class MoveFilmDurabilitySpec extends AnyFlatSpec with Matchers with tools.Integr
   it should "keep the old rows when the copy to the new id did not land" in {
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "move-film-durability") { db =>
       val screenings = new UnwritableScreeningsRepository
-      screenings.seed("moveprobe|", Map(Multikino.displayName -> Seq(Showtime(when, None))))
+      screenings.seed("moveprobe|", Map(Multikino.displayName -> ListedShowtimes(Seq(Showtime(when, None)), None)))
       screenings.findForFilm("moveprobe|") should not be empty
 
       val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), normalizer = titleNormalizer)

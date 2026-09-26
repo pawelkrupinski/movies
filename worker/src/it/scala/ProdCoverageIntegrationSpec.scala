@@ -1,5 +1,7 @@
 package integration
 
+import services.movies.ListedShowtimes
+
 import models.{CinemaShowing, KinoPionier, MovieRecord, Showtime, Source, SourceData}
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
@@ -67,7 +69,7 @@ class ProdCoverageIntegrationSpec extends AnyFlatSpec with Matchers with BeforeA
 
     // Both are SCREENING — the baseline counts only films with a future showtime.
     Seq("side|2024" -> sideKey, "embedded|1982" -> embeddedKey).foreach { case (filmId, key) =>
-      screenings.upsertSlot(filmId, key.displayName, Seq(Showtime(dateTime = soon, bookingUrl = None)))
+      screenings.upsertSlot(filmId, key.displayName, ListedShowtimes(Seq(Showtime(dateTime = soon, bookingUrl = None)), None))
     }
   }
 

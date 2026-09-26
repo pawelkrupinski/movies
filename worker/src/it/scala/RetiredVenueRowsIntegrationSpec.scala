@@ -29,7 +29,7 @@ class RetiredVenueRowsIntegrationSpec extends AnyFlatSpec with Matchers with too
       val screenings = new MongoScreeningsRepository(Some(db))
       val slots      = new MongoSlotsRepository(Some(db))
       def seed(filmId: String, slotKey: String): Unit = {
-        screenings.upsertSlot(filmId, slotKey, tomorrow)
+        screenings.upsertSlot(filmId, slotKey, ListedShowtimes(tomorrow, None))
         slots.upsertSlot(filmId, slotKey, SourceData(title = Some(filmId)))
       }
       try {

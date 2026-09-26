@@ -38,14 +38,14 @@ final class CountingScreeningsRepository(underlying: ScreeningsRepository) exten
   val writes           = new AtomicInteger(0)
   private def write[A](body: => A): A = { writes.incrementAndGet(); body }
 
-  def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]],
-                  stored: Option[Map[String, Seq[Showtime]]] = None): WriteOutcome = {
+  def replaceFilm(filmId: String, slots: Map[String, ListedShowtimes],
+                  stored: Option[Map[String, ListedShowtimes]] = None): WriteOutcome = {
     replaceFilmCalls.incrementAndGet()
     write(underlying.replaceFilm(filmId, slots, stored))
   }
 
-  def findForFilmChecked(filmId: String): (Map[String, Seq[Showtime]], Boolean) =
-    underlying.findForFilmChecked(filmId)
+  def findListedForFilmChecked(filmId: String): (Map[String, ListedShowtimes], Boolean) =
+    underlying.findListedForFilmChecked(filmId)
   override def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, Seq[Showtime]]], Boolean) = {
     batchReadCalls.incrementAndGet()
     underlying.findForFilmsChecked(filmIds)
@@ -54,8 +54,8 @@ final class CountingScreeningsRepository(underlying: ScreeningsRepository) exten
     findAllCalls.incrementAndGet()
     underlying.findAll()
   }
-  def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): WriteOutcome =
-    write(underlying.upsertSlot(filmId, slotKey, showtimes))
+  def upsertSlot(filmId: String, slotKey: String, row: ListedShowtimes): WriteOutcome =
+    write(underlying.upsertSlot(filmId, slotKey, row))
   def deleteSlot(filmId: String, slotKey: String): WriteOutcome = write(underlying.deleteSlot(filmId, slotKey))
   def deleteFilm(filmId: String): WriteOutcome                  = write(underlying.deleteFilm(filmId))
   def filmIdsChecked(): (Set[String], Boolean)          = underlying.filmIdsChecked()

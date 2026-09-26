@@ -1,5 +1,7 @@
 package integration
 
+import services.movies.ListedShowtimes
+
 import models.{CityScreening, MovieRecord, Multikino, ResolvedMovie, ResolvedRatings, Showtime, Source, SourceData}
 import org.mongodb.scala.{Document, MongoDatabase, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -53,7 +55,7 @@ class ChangeStreamMalformedDocumentIntegrationSpec extends AnyFlatSpec with Matc
       new MongoScreeningsRepository(Some(db), decodeFailures = failures).watchApplied((filmId, applied) => { seen(filmId); applied() }, ChangeStreamDemand.unbounded).get
     } { db =>
       val screenings = new MongoScreeningsRepository(Some(db))
-      n => { screenings.upsertSlot(s"film$n", "Cinema", Seq(Showtime(java.time.LocalDateTime.of(2099, 1, 1, 10, 0), None))); s"film$n" }
+      n => { screenings.upsertSlot(s"film$n", "Cinema", ListedShowtimes(Seq(Showtime(java.time.LocalDateTime.of(2099, 1, 1, 10, 0), None)), None)); s"film$n" }
     }(Document("_id" -> "__malformed__"))
 
   "the movie_slots change stream" should "deliver a valid row after a row with no filmId" in

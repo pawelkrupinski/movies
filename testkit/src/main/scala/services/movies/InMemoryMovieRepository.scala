@@ -216,7 +216,7 @@ class InMemoryMovieRepository(
     val slotsLanded = slotsWrite.contains(WriteOutcome.Written)
     val dataForMovies = if (slotsLanded) Map.empty[Source, SourceData] else stripFor(restitched)
     val row = StoredMovieRecord(t, y, e.copy(data = dataForMovies), film, Some(storedKey))
-    val screeningsWrite = screenings.map(ScreeningsSplit.applyFilm(_, id, ScreeningsSplit.showtimesOf(restitched), stitch))
+    val screeningsWrite = screenings.map(ScreeningsSplit.applyFilm(_, id, ScreeningsSplit.screeningsOf(restitched), stitch))
     upserts.append((t, y, e))
     // An upsert that changes NOTHING writes nothing — `MoviesUpsert.plan`'s rule, the SAME one
     // `MongoMovieRepository.upsert` acts on (6365b8e95: a byte-identical `replaceOne` still
@@ -242,8 +242,8 @@ class InMemoryMovieRepository(
     WriteOutcome.all(screeningsWrite.toSeq ++ slotsWrite)
   }
 
-  private def sideRowsOf(id: String): (Option[Map[String, SourceData]], Option[Map[String, Seq[models.Showtime]]]) =
-    (slots.map(_.findForFilmChecked(id)._1), screenings.map(_.findForFilmChecked(id)._1))
+  private def sideRowsOf(id: String): (Option[Map[String, SourceData]], Option[Map[String, ListedShowtimes]]) =
+    (slots.map(_.findForFilmChecked(id)._1), screenings.map(_.findListedForFilmChecked(id)._1))
 
   /** Carry a film's screenings AND slots across a re-key / fold. Both stores move, or a
    *  fold keeps the showtimes and loses the cinema metadata that names them.
@@ -256,9 +256,9 @@ class InMemoryMovieRepository(
   override def moveFilm(oldFilm: FilmId, newFilm: FilmId): Boolean =
     if (oldFilm == newFilm) true else lock.synchronized {
       val (oldId, newId) = (oldFilm.value, newFilm.value)
-      val screeningsMoved = screenings.forall(s => SideCollectionMove.move[Seq[models.Showtime]](
+      val screeningsMoved = screenings.forall(s => SideCollectionMove.move[ListedShowtimes](
         oldId, newId,
-        read       = s.findForFilmChecked,
+        read       = s.findListedForFilmChecked,
         replace    = s.replaceFilm(_, _),
         deleteFilm = s.deleteFilm))
       val slotsMoved = slots.forall(sl => SideCollectionMove.move[SourceData](
@@ -286,7 +286,7 @@ class InMemoryMovieRepository(
         // because `upsert` leaves that map empty, would patch onto emptiness and store a
         // record holding only the slots this one call happened to touch.
         val showtimeOps = if (screenings.isDefined) ScreeningsSplit.slotOps(before.data, after.data)
-                          else Map.empty[String, Option[Seq[models.Showtime]]]
+                          else Map.empty[String, Option[ListedShowtimes]]
         val slotOps     = if (slots.isDefined) SlotsRepository.slotOps(before.data, after.data)
                           else Map.empty[String, Option[SourceData]]
         val rawPatch = MovieRecordPatch.diff(before.copy(data = stripFor(before.data)),
@@ -298,7 +298,7 @@ class InMemoryMovieRepository(
         else {
           val sideWrites =
             screenings.toSeq.flatMap(s => showtimeOps.map {
-              case (k, Some(times)) => s.upsertSlot(id, k, times)
+              case (k, Some(row))   => s.upsertSlot(id, k, row)
               case (k, None)        => s.deleteSlot(id, k)
             }) ++
             slots.toSeq.flatMap(sl => slotOps.map {

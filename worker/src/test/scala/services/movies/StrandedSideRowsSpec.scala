@@ -42,7 +42,7 @@ class StrandedSideRowsSpec extends AnyFlatSpec with Matchers {
   /** Rows filed under an id no document holds — what a pre-cascade delete or merge left. */
   private def strand(screenings: ScreeningsRepository, slots: SlotsRepository, filmId: String,
                      inScreenings: Boolean = true, inSlots: Boolean = true): Unit = {
-    if (inScreenings) screenings.upsertSlot(filmId, slotKey(filmId), tomorrow)
+    if (inScreenings) screenings.upsertSlot(filmId, slotKey(filmId), ListedShowtimes(tomorrow, None))
     if (inSlots)      slots.upsertSlot(filmId, slotKey(filmId), SourceData(title = Some(filmId)))
   }
 
@@ -67,7 +67,7 @@ class StrandedSideRowsSpec extends AnyFlatSpec with Matchers {
     val (repository, screenings, slots) = split()
     val liveId = liveFilm(repository, "Live")
     // A second venue's showtimes whose slot was dropped: projects nothing, inflates the census.
-    screenings.upsertSlot(liveId, "kino-x␟live", tomorrow)
+    screenings.upsertSlot(liveId, "kino-x␟live", ListedShowtimes(tomorrow, None))
     screenings.rowIdsChecked()._1 should have size 2
     slots.rowIdsChecked()._1      should have size 1
 
@@ -84,7 +84,7 @@ class StrandedSideRowsSpec extends AnyFlatSpec with Matchers {
     }
     val (repository, screenings, _) = split(slots = unreadableSlots)
     val liveId = liveFilm(repository, "Live")
-    screenings.upsertSlot(liveId, "kino-x␟live", tomorrow)
+    screenings.upsertSlot(liveId, "kino-x␟live", ListedShowtimes(tomorrow, None))
 
     repository.deleteStrandedSideRows().twinless shouldBe 0
     screenings.rowIdsChecked()._1 should have size 2

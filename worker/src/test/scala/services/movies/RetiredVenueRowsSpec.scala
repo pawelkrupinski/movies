@@ -37,7 +37,7 @@ class RetiredVenueRowsSpec extends AnyFlatSpec with Matchers {
   private val live    = Seq(KinoEtiuda, KinoOOK, KinoStarowka, KinoWawrzyn, KinoMiescisko)
 
   private def seed(screenings: ScreeningsRepository, slots: SlotsRepository, filmId: String, slotKey: String): Unit = {
-    screenings.upsertSlot(filmId, slotKey, tomorrow)
+    screenings.upsertSlot(filmId, slotKey, ListedShowtimes(tomorrow, None))
     slots.upsertSlot(filmId, slotKey, SourceData(title = Some(filmId)))
   }
 
@@ -92,7 +92,7 @@ class RetiredVenueRowsSpec extends AnyFlatSpec with Matchers {
     // sweep to find a day later. A row is as fresh as its freshest twin.
     val (screenings, slots) = corpus()
     clockNow = later.minusSeconds(3600)   // only the screenings twin is rewritten recently
-    screenings.upsertSlot("other|2025", s"$Retired${CinemaShowing.Separator}other", tomorrow ++ tomorrow)
+    screenings.upsertSlot("other|2025", s"$Retired${CinemaShowing.Separator}other", ListedShowtimes(tomorrow ++ tomorrow, None))
     try {
       sweep(Some(screenings), Some(slots), roster) shouldBe
         RetiredVenueRows(screenings = 1, slots = 2, venues = Map(Retired -> 3L))

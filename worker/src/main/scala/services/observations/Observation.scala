@@ -92,11 +92,4 @@ object ListingObservation {
 
   /** The evidence half of a scraped listing. */
   def evidence(listing: CinemaMovie): CinemaMovie = listing.copy(showtimes = Nil)
-
-  /** A total, injective string form of a `ListingKey` — the store's key. */
-  def keyString(key: ListingKey): String = key match {
-    case ListingKey.Native(venue, page, raw)          => Seq("N", venue, page, raw).mkString("\u0000")
-    case ListingKey.Published(venue, raw, year, dirs) =>
-      (Seq("P", venue, raw, year.fold("")(_.toString)) ++ dirs).mkString("\u0000")
-  }
 }

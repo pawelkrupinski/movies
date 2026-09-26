@@ -35,11 +35,11 @@ class StrandedSideRowsIntegrationSpec extends AnyFlatSpec with Matchers with too
 
         // What a delete or merge from before the cascade left behind: rows under ids no
         // document holds — one film in both side collections, one in screenings only.
-        screenings.upsertSlot("deadboth|2020", slotKey("deadboth"), tomorrow)
+        screenings.upsertSlot("deadboth|2020", slotKey("deadboth"), ListedShowtimes(tomorrow, None))
         slots.upsertSlot("deadboth|2020", slotKey("deadboth"), SourceData(title = Some("deadboth")))
-        screenings.upsertSlot("deadscreeningsonly|1986", slotKey("deadscreeningsonly"), tomorrow)
+        screenings.upsertSlot("deadscreeningsonly|1986", slotKey("deadscreeningsonly"), ListedShowtimes(tomorrow, None))
         // A live film's screenings row whose movie_slots twin is gone.
-        screenings.upsertSlot(liveIds.head, "kino-x␟twinless", tomorrow)
+        screenings.upsertSlot(liveIds.head, "kino-x␟twinless", ListedShowtimes(tomorrow, None))
 
         screenings.filmIdsChecked() shouldBe ((liveIds + "deadboth|2020" + "deadscreeningsonly|1986", true))
         slots.filmIdsChecked()      shouldBe ((liveIds + "deadboth|2020", true))

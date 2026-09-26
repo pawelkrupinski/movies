@@ -1,5 +1,7 @@
 package services.metrics
 
+import services.movies.ListedShowtimes
+
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{Country, KinoMuranow, Showtime, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -37,11 +39,11 @@ class RetiredVenueCensusSpec extends AnyFlatSpec with Matchers {
     val screenings = new InMemoryScreeningsRepository
     val slots      = new InMemorySlotsRepository
     // A live venue: never counted, however many rows.
-    screenings.upsertSlot("foo|2026", s"${KinoMuranow.displayName}␟foo", Seq(at("2026-09-24T18:00")))
+    screenings.upsertSlot("foo|2026", s"${KinoMuranow.displayName}␟foo", ListedShowtimes(Seq(at("2026-09-24T18:00")), None))
     slots.upsertSlot("foo|2026", s"${KinoMuranow.displayName}␟foo", SourceData(title = Some("Foo")))
     // The retired venue: two films, three showtimes of which two are still ahead (Warsaw time).
-    screenings.upsertSlot("foo|2026", s"$retired␟foo", Seq(at("2026-09-22T18:00"), at("2026-09-24T18:00")))
-    screenings.upsertSlot("bar|2026", s"$retired␟bar", Seq(at("2026-09-25T20:00")))
+    screenings.upsertSlot("foo|2026", s"$retired␟foo", ListedShowtimes(Seq(at("2026-09-22T18:00"), at("2026-09-24T18:00")), None))
+    screenings.upsertSlot("bar|2026", s"$retired␟bar", ListedShowtimes(Seq(at("2026-09-25T20:00")), None))
     slots.upsertSlot("foo|2026", s"$retired␟foo", SourceData(title = Some("Foo")))
 
     val (c, rows, future) = census(screenings, slots)
@@ -56,8 +58,8 @@ class RetiredVenueCensusSpec extends AnyFlatSpec with Matchers {
   // other and either hide the retired rows or convict the live ones.
   it should "compare a row's venue to the roster by equality, never by prefix" in {
     val screenings = new InMemoryScreeningsRepository
-    screenings.upsertSlot("foo|2026", s"${KinoMuranow.displayName} OBK␟foo", Seq(at("2026-09-24T18:00")))
-    screenings.upsertSlot("foo|2026", KinoMuranow.displayName, Seq(at("2026-09-24T18:00")))   // a legacy bare key
+    screenings.upsertSlot("foo|2026", s"${KinoMuranow.displayName} OBK␟foo", ListedShowtimes(Seq(at("2026-09-24T18:00")), None))
+    screenings.upsertSlot("foo|2026", KinoMuranow.displayName, ListedShowtimes(Seq(at("2026-09-24T18:00")), None))   // a legacy bare key
 
     val (c, rows, _) = census(screenings, new InMemorySlotsRepository)
     c.sample()

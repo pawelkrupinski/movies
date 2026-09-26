@@ -1,5 +1,7 @@
 package integration
 
+import services.movies.ListedShowtimes
+
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{CharlieMonroe, CinemaCityKinepolis, CinemaCityKorona, CinemaCityPoznanPlaza, CinemaCityWroclavia,
@@ -553,16 +555,16 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         // change, so each has an event owed and the loop can actually converge.
         awaitStreamLive("a warm-up event, so nothing below is testing resumption",
                         gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
-          repo1.upsertSlot(filmWarm, "Multikino␟W", at(pass % 23 + 1))
+          repo1.upsertSlot(filmWarm, "Multikino␟W", ListedShowtimes(at(pass % 23 + 1), None))
         }
 
-        repo1.upsertSlot(filmA, "Multikino␟A", at(10))
+        repo1.upsertSlot(filmA, "Multikino␟A", ListedShowtimes(at(10), None))
         gotA.await(15, TimeUnit.SECONDS) shouldBe true
         handle1.foreach(_.close()) // watcher gone → force-saves the token (position: after A)
 
         // "Down": B and C land while nothing is watching the screenings stream.
-        repo1.upsertSlot(filmB, "Multikino␟B", at(11))
-        repo1.upsertSlot(filmC, "Multikino␟C", at(12))
+        repo1.upsertSlot(filmB, "Multikino␟B", ListedShowtimes(at(11), None))
+        repo1.upsertSlot(filmC, "Multikino␟C", ListedShowtimes(at(12), None))
 
         // A fresh process (empty in-memory state) resumes from the persisted token.
         val repo2   = new MongoScreeningsRepository(Some(db), persistResumeToken = true)
@@ -669,7 +671,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // attempt carries a DIFFERENT hour so every one of them is a genuine change with
       // an event to count.
       awaitStreamLive("an event to count", seen.await(1, TimeUnit.SECONDS)) { hour =>
-        repo.upsertSlot(film, "Multikino␟M", Seq(Showtime(LocalDateTime.of(2099, 1, 1, hour % 24, 0), None)))
+        repo.upsertSlot(film, "Multikino␟M", ListedShowtimes(Seq(Showtime(LocalDateTime.of(2099, 1, 1, hour % 24, 0), None)), None))
       }
       sink.events should be > 0
     } finally { handle.foreach(_.close()); repo.deleteFilm(film); repo.close() }
@@ -733,7 +735,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       awaitStreamLive("a warm-up event, so a low projection count below would mean nothing " +
                       "was arriving rather than that it was being coalesced",
                       warmed.await(1, TimeUnit.SECONDS)) { pass =>
-        scr.upsertSlot(id, "Warm␟c", Seq(Showtime(LocalDateTime.of(2099, 1, 1, pass % 23 + 1, 0), None)))
+        scr.upsertSlot(id, "Warm␟c", ListedShowtimes(Seq(Showtime(LocalDateTime.of(2099, 1, 1, pass % 23 + 1, 0), None)), None))
       }
       dispatched.set(0); sink.reset()
 
@@ -745,7 +747,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // is the whole point never happens. (Observed — it is why this comment exists.)
       val nonce = (System.nanoTime() / 1000000L % 60L).toInt
       (0 until Burst).foreach(i =>
-        scr.upsertSlot(id, s"Venue$i␟c", Seq(Showtime(LocalDateTime.of(2099, 2, 1, i % 23 + 1, nonce), None))))
+        scr.upsertSlot(id, s"Venue$i␟c", ListedShowtimes(Seq(Showtime(LocalDateTime.of(2099, 2, 1, i % 23 + 1, nonce), None)), None)))
 
       // SETTLE ON THE BURST ITSELF rather than on a sentinel written after it. Every delivered
       // event either bought an apply or rode one, so the two counters sum to the burst once it
@@ -832,7 +834,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       awaitStreamLive("a warm-up event, so a low dispatch count below would mean nothing was arriving " +
                       "rather than that it was being coalesced",
                       warmed.await(1, TimeUnit.SECONDS)) { pass =>
-        scr.upsertSlot(id, "Warm␟c", Seq(Showtime(LocalDateTime.of(2099, 1, 1, pass % 23 + 1, 0), None)))
+        scr.upsertSlot(id, "Warm␟c", ListedShowtimes(Seq(Showtime(LocalDateTime.of(2099, 1, 1, pass % 23 + 1, 0), None)), None))
       }
       // Drain any trailing warm-up deliveries still in flight: the warm-up loop issues a new
       // write on EVERY pass until the first one's dispatch lands, so several of its writes can
@@ -940,18 +942,18 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // Establish by DELIVERY, not by napping: write a fresh hour each pass until one comes
       // back. Every pass is a genuine change, so each has an event owed.
       awaitStreamLive("a warm-up event", warmed.await(1, TimeUnit.SECONDS)) { hour =>
-        repo.upsertSlot(film, slot, at(hour % 23 + 1))
+        repo.upsertSlot(film, slot, ListedShowtimes(at(hour % 23 + 1), None))
       }
 
       val settled = repo.findForFilm(film)(slot)
       rings.set(0); sink.reset()
 
       // (1) THE REDUNDANT WRITES — byte-identical to what is stored, through BOTH write paths.
-      repo.upsertSlot(film, slot, settled)
-      repo.replaceFilm(film, Map(slot -> settled))
+      repo.upsertSlot(film, slot, ListedShowtimes(settled, None))
+      repo.replaceFilm(film, Map(slot -> ListedShowtimes(settled, None)))
       // (2) THE TRIPWIRE — a different film, so a genuine change whose event orders after
       //     anything (1) could have produced.
-      repo.upsertSlot(after, slot, at(7))
+      repo.upsertSlot(after, slot, ListedShowtimes(at(7), None))
 
       withClue("the tripwire write never arrived, so the stream stopped rather than stayed quiet: ") {
         tripwire.await(30, TimeUnit.SECONDS) shouldBe true
@@ -1134,7 +1136,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         awaitStreamLive("a warm-up fanout for the split-reads film",
                         bell.get().await(1, TimeUnit.SECONDS)) { pass =>
           scr.upsertSlot(id, "Warm␟c",
-            Seq(Showtime(java.time.LocalDateTime.of(2099, 1, 1, pass % 23 + 1, 0), None)))
+            ListedShowtimes(Seq(Showtime(java.time.LocalDateTime.of(2099, 1, 1, pass % 23 + 1, 0), None)), None))
         }
         bell.set(new CountDownLatch(1))
         // The shape that flaked this test under the parallel itAll, when it shared a database: a
@@ -1648,8 +1650,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val filmA = StoredMovieRecord.keyFor("__integration-test-scr-page-A__", Some(1908), titleNormalizer)
     val filmB = StoredMovieRecord.keyFor("__integration-test-scr-page-B__", Some(1908), titleNormalizer)
     val st    = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 0), Some("https://book/p")))
-    writer.replaceFilm(filmA, Map("aa" -> st, "bb" -> st, "cc" -> st))
-    writer.replaceFilm(filmB, Map("dd" -> st, "ee" -> st))
+    writer.replaceFilm(filmA, Map("aa" -> ListedShowtimes(st, None), "bb" -> ListedShowtimes(st, None), "cc" -> ListedShowtimes(st, None)))
+    writer.replaceFilm(filmB, Map("dd" -> ListedShowtimes(st, None), "ee" -> ListedShowtimes(st, None)))
 
     val all = paged.findAll()
     all.getOrElse(filmA, Map.empty).keySet shouldBe Set("aa", "bb", "cc") // every slot, no skip
@@ -1918,12 +1920,12 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // Seed four slots (this also forces the lazy collection + its createIndex, so those
       // commands land before the counter is reset).
       screenings.replaceFilm(film, Map(
-        "A" -> Seq(show(10)), "B" -> Seq(show(11)), "C" -> Seq(show(12)), "STALE" -> Seq(show(13))))
+        "A" -> ListedShowtimes(Seq(show(10)), None), "B" -> ListedShowtimes(Seq(show(11)), None), "C" -> ListedShowtimes(Seq(show(12)), None), "STALE" -> ListedShowtimes(Seq(show(13)), None)))
       screenings.findForFilm(film).keySet shouldBe Set("A", "B", "C", "STALE")
 
       commands.clear(); sink.reset()
       // One changed slot, one unchanged, one brand new — and two slots going stale.
-      screenings.replaceFilm(film, Map("A" -> Seq(show(20)), "B" -> Seq(show(11)), "NEW" -> Seq(show(14))))
+      screenings.replaceFilm(film, Map("A" -> ListedShowtimes(Seq(show(20)), None), "B" -> ListedShowtimes(Seq(show(11)), None), "NEW" -> ListedShowtimes(Seq(show(14)), None)))
 
       count("find")   shouldBe 1 // ONE indexed read, and it is what the two lines below buy
       count("update") shouldBe 1 // the upserts still ride one bulk update, never one per slot
@@ -1958,24 +1960,24 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     // can no longer be split back apart — the delete must key off the FIELDS, not the _id.
     val separatorFilm = s"__it-screenings${0x1f.toChar}sep__"
     try {
-      screenings.replaceFilm(neighbour, Map("X" -> Seq(show(9))))
+      screenings.replaceFilm(neighbour, Map("X" -> ListedShowtimes(Seq(show(9)), None)))
 
       // brand-new slots land
-      screenings.replaceFilm(film, Map("A" -> Seq(show(10)), "B" -> Seq(show(11))))
+      screenings.replaceFilm(film, Map("A" -> ListedShowtimes(Seq(show(10)), None), "B" -> ListedShowtimes(Seq(show(11)), None)))
       screenings.findForFilm(film) shouldBe Map("A" -> Seq(show(10)), "B" -> Seq(show(11)))
 
       // A unchanged, B changed, "E" mapped to EMPTY showtimes is STORED (never treated as
       // a delete — `showtimesOf` filters empties out upstream, `replaceFilm` does not).
-      screenings.replaceFilm(film, Map("A" -> Seq(show(10)), "B" -> Seq(show(12)), "E" -> Seq.empty))
+      screenings.replaceFilm(film, Map("A" -> ListedShowtimes(Seq(show(10)), None), "B" -> ListedShowtimes(Seq(show(12)), None), "E" -> ListedShowtimes(Seq.empty, None)))
       screenings.findForFilm(film) shouldBe Map("A" -> Seq(show(10)), "B" -> Seq(show(12)), "E" -> Seq.empty)
 
       // repeating the identical write loses nothing (idempotent)
-      screenings.replaceFilm(film, Map("A" -> Seq(show(10)), "B" -> Seq(show(12)), "E" -> Seq.empty))
+      screenings.replaceFilm(film, Map("A" -> ListedShowtimes(Seq(show(10)), None), "B" -> ListedShowtimes(Seq(show(12)), None), "E" -> ListedShowtimes(Seq.empty, None)))
       screenings.findForFilm(film) shouldBe Map("A" -> Seq(show(10)), "B" -> Seq(show(12)), "E" -> Seq.empty)
 
       // a separator-carrying filmId is replaced on its own terms
-      screenings.replaceFilm(separatorFilm, Map("A" -> Seq(show(8)), "B" -> Seq(show(9))))
-      screenings.replaceFilm(separatorFilm, Map("B" -> Seq(show(9))))
+      screenings.replaceFilm(separatorFilm, Map("A" -> ListedShowtimes(Seq(show(8)), None), "B" -> ListedShowtimes(Seq(show(9)), None)))
+      screenings.replaceFilm(separatorFilm, Map("B" -> ListedShowtimes(Seq(show(9)), None)))
       screenings.findForFilm(separatorFilm) shouldBe Map("B" -> Seq(show(9)))
 
       // THE delete vector: an empty `slots` map clears THIS film entirely (`$nin: []`

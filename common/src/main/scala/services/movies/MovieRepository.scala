@@ -907,9 +907,9 @@ class MongoMovieRepository(
    *  against rules production doesn't follow. See the trait doc for what it cost. */
   override def moveFilm(oldFilm: FilmId, newFilm: FilmId): Boolean = if (oldFilm == newFilm) true else {
     val (oldId, newId) = (oldFilm.value, newFilm.value)
-    val screeningsMoved = screenings.forall(s => SideCollectionMove.move[Seq[Showtime]](
+    val screeningsMoved = screenings.forall(s => SideCollectionMove.move[ListedShowtimes](
       oldId, newId,
-      read       = s.findForFilmChecked,
+      read       = s.findListedForFilmChecked,
       replace    = s.replaceFilm(_, _),
       deleteFilm = s.deleteFilm,
       onSkip     = message => logger.warn(s"merge $oldId -> $newId (screenings): $message."),
@@ -1032,7 +1032,7 @@ class MongoMovieRepository(
         // tick positively carries, but never the delete half — a slot we simply could not read
         // is not a slot that stopped screening.
         screenings.fold[WriteOutcome](WriteOutcome.Written) { s =>
-          val showtimes = ScreeningsSplit.showtimesOf(restitched)
+          val showtimes = ScreeningsSplit.screeningsOf(restitched)
           // Skip the whole call when the stored rows already match — the same guard the slots
           // write above has, and here it is FREE: `reStitchChecked` has already read these
           // rows, so `stitch.stored` costs no round trip where the slots half pays one.
@@ -1068,7 +1068,7 @@ class MongoMovieRepository(
       // Showtime deltas → `screenings` (its authority under the split); from the
       // ORIGINAL records. Only when a screenings repo is wired.
       val ops = if (screenings.isDefined) ScreeningsSplit.slotOps(before.data, after.data)
-                else Map.empty[String, Option[Seq[Showtime]]]
+                else Map.empty[String, Option[ListedShowtimes]]
       // Slot deltas → `movie_slots` (dual write). Also from the ORIGINAL records:
       // `slotsOf` drops showtimes itself, so a showtimes-only change yields no slot
       // write and the two side collections stay independent.
