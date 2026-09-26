@@ -415,7 +415,7 @@ jobs:
                   # Upsert, retrying 409/5xx/rate-limit only; a refused 403
                   # fails fast. See the headers of publish-rolling-release.sh
                   # and gh-release.sh for the 403s that shaped it.
-                  notes="Signed build from the latest \`main\` commit (${GITHUB_SHA:0:7}). \`kinowo.apk\` to sideload on Android (enable installing from unknown sources); \`kinowo.aab\` to upload to the Google Play Console."
+                  notes="Signed build from the latest \`main\` commit — the one this release's tag points at. \`kinowo.apk\` to sideload on Android (enable installing from unknown sources); \`kinowo.aab\` to upload to the Google Play Console."
                   "$GITHUB_WORKSPACE/scripts/ci/publish-rolling-release.sh" android-latest \
                       "Kinowo Android (latest)" "$notes" \
                       "$RUNNER_TEMP/kinowo.apk" "$RUNNER_TEMP/kinowo.aab"
@@ -436,7 +436,7 @@ jobs:
                       exit 1
                   fi
                   cp "$apk" "$RUNNER_TEMP/kinowo-tune.apk"
-                  notes="Signed APK from the latest \`main\` build (${GITHUB_SHA:0:7}) WITH the on-device tweak screen — tap the \"Kinowo Tune\" launcher icon to open it. Sideload \`kinowo-tune.apk\` on Android; enable installing from unknown sources."
+                  notes="Signed APK from the latest \`main\` build — the commit this release's tag points at — WITH the on-device tweak screen — tap the \"Kinowo Tune\" launcher icon to open it. Sideload \`kinowo-tune.apk\` on Android; enable installing from unknown sources."
                   "$GITHUB_WORKSPACE/scripts/ci/publish-rolling-release.sh" android-tune-latest \
                       "Kinowo Android — tweak build (latest)" "$notes" \
                       "$RUNNER_TEMP/kinowo-tune.apk"

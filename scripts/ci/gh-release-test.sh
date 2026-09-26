@@ -79,21 +79,21 @@ publish() {
   echo "$? $(awk '{ printf "%s ", ($1 == "release") ? $2 : $1 }' "$STUB_LOG")"
 }
 
-check "an existing rolling release is edited, never recreated, its assets clobbered, then its tag moved" \
-  "0 view edit upload api " "$(publish 0 '' '')"
+check "an existing rolling release is never edited or recreated: its assets are clobbered, then its tag moved" \
+  "0 view upload api " "$(publish 0 '' '')"
 check "a missing one is created" "0 view create upload " "$(publish 0 '' yes)"
 check "a transient failure of the existence check is retried, not mistaken for a missing release" \
-  "0 view view edit upload api " "$(publish 1 'HTTP 502: Bad Gateway' '')"
+  "0 view view upload api " "$(publish 1 'HTTP 502: Bad Gateway' '')"
 check "a refused 403 on the existence check fails, never answered with a create" \
   "1 view " "$(publish 1 'HTTP 403: Resource not accessible by integration' '')"
-check "the edit retargets the release at this commit, as a prerelease" \
-  "release edit rolling --repo o/r --target abc1234def --prerelease --notes notes" \
-  "$(publish 0 '' '' >/dev/null; grep '^release edit' "$STUB_LOG")"
+check "a new release is created at this commit, as a prerelease, with the given title and notes" \
+  "release create rolling --repo o/r --target abc1234def --prerelease --title Rolling (latest) --notes notes" \
+  "$(publish 0 '' yes >/dev/null; grep '^release create' "$STUB_LOG")"
 check "an existing release's tag is force-moved to this commit, since --target moves only a new tag" \
   "api -X PATCH repos/o/r/git/refs/tags/rolling -f sha=abc1234def -F force=true" \
   "$(publish 0 '' '' >/dev/null; grep '^api' "$STUB_LOG")"
 check "a refused tag move (assets already out) fails the publish rather than leaving the tag silently stale" \
-  "1 view edit upload api " "$(STUB_FAIL_API=yes publish 0 '' '')"
+  "1 view upload api " "$(STUB_FAIL_API=yes publish 0 '' '')"
 check "the upload clobbers every asset given" \
   "release upload rolling --repo o/r --clobber $stub_dir/a.apk $stub_dir/a.aab" \
   "$(publish 0 '' '' >/dev/null; grep '^release upload' "$STUB_LOG")"

@@ -7,6 +7,14 @@
 # gh's "release not found" is read as missing — never a 403, which a create would only repeat
 # against the existing tag.
 #
+# An existing release is NEVER edited: its title, prerelease flag and notes are fixed at create
+# (the notes name no commit — the tag does, and it moves below), so the only writes are the asset
+# upload and the tag move. `release edit` is also the one call GitHub has refused with an
+# intermittent `403 Resource not accessible by integration` under a token holding
+# `Contents: write` — runs 35912639675 (09-23), 36018126285 (09-24), 36182394910 (09-25): three of
+# ~30 publishes, no pattern in the commits, and never cleared within a run. Nothing it wrote was
+# needed.
+#
 # Usage: publish-rolling-release.sh <tag> <title> <notes> <asset>...
 #   needs GH_TOKEN (contents: write), GITHUB_REPOSITORY and GITHUB_SHA — as in any Actions step.
 # Tested by scripts/ci/gh-release-test.sh against a stub `gh`.
@@ -26,7 +34,7 @@ sha="${GITHUB_SHA:?}"
 # the error to report, not a cue to create a release whose tag already exists.
 moved_by_create=no
 if view_err="$("$release" view "$tag" --repo "$repo" 2>&1 >/dev/null)"; then
-  "$release" edit "$tag" --repo "$repo" --target "$sha" --prerelease --notes "$notes"
+  : # exists: nothing about the release itself changes
 elif grep -q 'release not found' <<< "$view_err"; then
   "$release" create "$tag" --repo "$repo" --target "$sha" --prerelease \
     --title "$title" --notes "$notes"
@@ -36,9 +44,9 @@ else
   exit 1
 fi
 "$release" upload "$tag" --repo "$repo" --clobber "$@"
-# `--target` only places a tag that does not exist yet (GitHub ignores target_commitish for an
-# existing one), so an edited release kept its tag on the commit it was first created at —
-# android-latest sat on 199465a from 09-04 while its assets moved on. Force-move the tag last,
+# `--target` only places a tag that does not exist yet, so an existing release keeps its tag on
+# the commit it was first created at unless it is moved — android-latest sat on 199465a from
+# 09-04 while its assets moved on. Force-move the tag last,
 # once the assets are out, so a refused move cannot withhold the build — but still fails the
 # step rather than leaving the tag silently stale. Through the REST refs API, never `git push`:
 # GITHUB_TOKEN has no `workflows` permission, and GitHub refuses its tag PUSH whenever the
