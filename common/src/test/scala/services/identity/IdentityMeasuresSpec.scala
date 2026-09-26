@@ -44,4 +44,14 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.ownAgreement(measures(Listing("Toy Story (2026)"), Film("Toy Story", year = Some(1995))))._2 should not contain ("year")
     IdentityMeasures.ownAgreement(measures(Listing("Toy Story", year = Some(2026)), Film("Toy Story", year = Some(1995))))._2 should contain ("year")
   }
+
+  "venues corroborating a film" should "count only venues whose own title names it, not every venue crediting its director" in {
+    // 237 Regal venues list "Candyman (1992)" by Bernard Rose: they back his Candyman, but not
+    // every other film the director walk turns up — a director alone does not pick his film.
+    val group = (1 to 5).map(i => s"Venue $i" -> Listing("Candyman (1992)", directors = Seq("Bernard Rose")))
+    val candyman = Film("Candyman", year = Some(1992), directors = Some(Seq("Bernard Rose")))
+    val other    = Film("Paperhouse", year = Some(1988), directors = Some(Seq("Bernard Rose")))
+    IdentityMeasures.corroboratingVenues(candyman, group, "Venue 1") shouldBe 4
+    IdentityMeasures.corroboratingVenues(other, group, "Venue 1") shouldBe 0
+  }
 }

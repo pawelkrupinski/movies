@@ -87,7 +87,17 @@ object IdentityCalibrate {
     case _                               => None
   }
 
-  private def ownAgreement(m: Map[String, Measure]): (Set[String], Set[String]) = IdentityMeasures.ownAgreement(m)
+  private val NamedClosely = Set("exact", "original", "alternative", "segment")
+
+  /** What a listing's own evidence says about production's proposal: `IdentityMeasures.ownAgreement`,
+   *  plus a TITLE denial when the listing's title does not name the proposal closely but does name
+   *  another film its own search returned (`others`) — "Vengadores: Endgame (Reestreno)" filed under
+   *  Avengers: Doomsday agrees on year and directors, yet names Endgame. */
+  def proposalAgreement(proposal: Map[String, Measure], others: Seq[Map[String, Measure]]): (Set[String], Set[String]) = {
+    val (agree, deny) = IdentityMeasures.ownAgreement(proposal)
+    val closely = (m: Map[String, Measure]) => m.get("title").exists { case Category(c) => NamedClosely(c); case _ => false }
+    (agree, if (!closely(proposal) && others.exists(closely)) deny + "title" else deny)
+  }
 
   // ── one country's pairs ──────────────────────────────────────────────────────────────
 
@@ -148,8 +158,11 @@ object IdentityCalibrate {
 
     // Corroboration of production's proposal, from the listing's own evidence and other venues'.
     val proposal: Map[Int, Int] = obs.flatMap(o => o.prodFilm.flatMap(prod.films.get).flatMap(_.tmdbId).map(o.idx -> _)).toMap
+    val pairsOf = lfPairs.groupBy(_.obs)
     val own: Map[Int, (Set[String], Set[String])] =
-      lfPairs.iterator.filter(p => proposal.get(p.obs).contains(p.tmdbId)).map(p => p.obs -> ownAgreement(p.measures)).toMap
+      lfPairs.iterator.filter(p => proposal.get(p.obs).contains(p.tmdbId)).map { p =>
+        p.obs -> proposalAgreement(p.measures, pairsOf(p.obs).filterNot(_.tmdbId == p.tmdbId).map(_.measures))
+      }.toMap
     val byFilm = obs.filter(o => own.contains(o.idx)).groupBy(o => proposal(o.idx))
     val evidence: Map[Int, Evidence] = own.map { case (i, (agree, deny)) =>
       val o = obs(i - startIdx)
@@ -508,7 +521,7 @@ object IdentityCalibrate {
 
   /** The containment fold's venue denial (the Faust refusal): a decorated-title match denied. */
   def faustFoldRefusal(m: Map[String, Measure]): Boolean =
-    cat(m, "title").exists(Set("segment", "contains")) && venueDeniesFilm(m)
+    cat(m, "title").exists(Set("segment", "decorated")) && venueDeniesFilm(m)
 
   /** `MixedFilmDetector.describeDifferentFilms` between two listings (CinemasDescribeDifferentFilms). */
   def cinemasDescribeDifferentFilms(m: Map[String, Measure]): Boolean =

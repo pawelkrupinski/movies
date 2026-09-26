@@ -232,13 +232,19 @@ object IdentityMeasures {
   }
 
   /** The venues among `group` (the listings sharing the listing's title key, with their venue)
-   *  whose OWN facts back `f` — its exact year, or a credit of its director — other than
-   *  `ownVenue`: the `venues.corroborating` count. */
+   *  whose OWN facts back `f` — a title naming it, and its exact year or a credit of its director —
+   *  other than `ownVenue`: the `venues.corroborating` count. */
   def corroboratingVenues(f: Film, group: Seq[(String, Listing)], ownVenue: String): Int =
     group.iterator.filter { case (_, l) =>
-      l.statedYear.exists(y => f.year.contains(y)) ||
-        f.directors.exists(ds => directorRelation(l.directors, ds) == Category("same_person"))
+      // The venue's title must NAME the film: a year or a director alone backs every film of that
+      // year or that director, and the walk of a director's filmography turns up all of them.
+      NamingRelations(titleRelation(l, f).value) && (
+        l.statedYear.exists(y => f.year.contains(y)) ||
+          f.directors.exists(ds => directorRelation(l.directors, ds) == Category("same_person")))
     }.map(_._1).toSet.-(ownVenue).size
+
+  /** Title relations that name a film: the listing's title is (a spelling of) the film's. */
+  val NamingRelations: Set[String] = Set("exact", "original", "alternative", "segment", "decorated")
 
   /** What a listing's own measurements say about a film by themselves: the corroborators that
    *  agree (a year within one, the same director, the original title) and those that deny it. */

@@ -48,6 +48,12 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
 
   private val calibration = IdentityCalibration.default
   private val out     = configuration.identityShadowOutput.value
+  /** Every disagreement cell, one JSONL per country (`<out>/identity-disagreements/<cc>.jsonl`). */
+  private val disagreementsDir = {
+    val d = out.resolve("identity-disagreements")
+    if (Files.isDirectory(d)) Files.list(d).forEach(Files.delete(_))
+    d
+  }
   private val corpora: Seq[Corpus] =
     hardClusters(configuration.hardClusterCountries.map(_.value.map(_.code))) ++
       configuration.identityCorpusDirectory.toSeq.flatMap(d => IdentityShadow.full(configuration.identityFullCorpora.value, d.value, fixtureRoot))
@@ -185,6 +191,52 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       verdicts.groupBy(_._1).toSeq.sortBy(-_._2.size).foreach { case (v, xs) =>
         report.line(s"[${c.label}] disagreement verdict '$v' ×${xs.size}\n    ${xs.map(_._2).sorted.take(12).mkString("\n    ")}")
       }
+
+      // ── STRICT per-listing comparison on the held-out labels ────────────────────────────
+      import IdentityDisagreements.Cell
+      val listingByKey = listings.map(l => l.key -> l).toMap
+      def describe(k: ListingKey): String = {
+        val d = decisionOf(k)
+        s"'${k.rawTitle}' at ${k.venue}: old ${pipelineFilm(k).fold("no film")(f => s"${f.tmdbId} ${f.film.title} (${f.film.year.getOrElse("?")})")}" +
+          s" → new ${d.film.fold(s"no film [${d.basis}]")(id => s"$id ${resolution.films.get(id).fold("")(_.title)} [${d.basis}]")}" +
+          s" — ${d.explanation.headOption.getOrElse("")}"
+      }
+      val cellOfListing = labelled.map(k => k -> IdentityDisagreements.cellOf(labelOf(k), pipelineFilm(k).map(_.tmdbId), resolverFilm(k).map(_.tmdbId))).toMap
+      val cellCounts = Cell.values.map(v => v -> cellOfListing.count(_._2 == v)).toMap
+      report.line(s"[${c.label}] labelled cells: both right ${cellCounts(Cell.BothRight)} | LOSS-coverage ${cellCounts(Cell.LossCoverage)} | " +
+        s"LOSS-wrong ${cellCounts(Cell.LossWrong)} | WIN ${cellCounts(Cell.Win)} | both wrong/unmatched ${cellCounts(Cell.BothWrong)}; " +
+        s"old wrong or missed ${labelled.count(k => !pipelineFilm(k).exists(_.tmdbId == labelOf(k)))} of ${labelled.size} (the ceiling for a WIN)")
+      Seq(Cell.LossWrong, Cell.LossCoverage, Cell.Win).foreach { v =>
+        val ks = cellOfListing.collect { case (k, x) if x == v => k }.toSeq.sortBy(_.toString)
+        if (ks.nonEmpty) report.line(s"[${c.label}] $v examples (${ks.size}):\n    " + ks.take(20).map(describe).mkString("\n    "))
+      }
+
+      // ── every disagreement cell, adjudicated, to JSONL ──────────────────────────────────
+      val showtimeCount: Map[ListingKey, Int] = w.archivedListings.toSeq.flatMap { case (cinema, cms) =>
+        cms.map(cm => ListingKey.of(cinema, cm) -> cm.showtimes.size) }.groupMapReduce(_._1)(_._2)(_ + _)
+      val clustersOfPipe = cells.keys.groupMap(_._1)(_._2)
+      val pipesOfCluster = cells.keys.groupMap(_._2)(_._1)
+      val cellLines = cells.toSeq.sortBy { case ((p, r), _) => (p.getOrElse(-1), r) }.flatMap { case ((p, r), ks) =>
+        val decision = resolution.decisions(r)
+        val (pf, rf) = (pipelineFilm(ks.head), resolverFilm(ks.head))
+        IdentityDisagreements.kindOf(pf.map(_.tmdbId), rf.map(_.tmdbId),
+          pipelineSplit = p.exists(i => clustersOfPipe(Some(i)).size > 1), resolverMerges = pipesOfCluster(r).size > 1).map { kind =>
+          val adj = IdentityDisagreements.adjudicate(ks.map(evidenceOf), pf, rf)
+          (kind, adj, ks, IdentityDisagreements.cellJson(c.country.code, if (c.isHardCluster) "hc" else "full", p, films, r, decision,
+            resolution, ks.map(listingByKey), evidenceOf, k => showtimeCount.getOrElse(k, 0), heldOutLabels, kind, pf, rf, adj))
+        }
+      }
+      IdentityDisagreements.write(disagreementsDir.resolve(s"${c.country.code}.jsonl"), cellLines.map(_._4))
+      val unlabelledCells = cellLines.filter { case (_, _, ks, _) => ks.forall(k => !heldOutLabels.contains(k.toString)) }
+      val adjudicated = unlabelledCells.groupMapReduce(_._2.verdict)(_ => 1)(_ + _)
+      val pipelineRightMoved = unlabelledCells.filter { case (kind, adj, _, _) => kind == "moved" && adj.verdict == "pipeline-right" }
+      report.line(s"[${c.label}] disagreement cells ${cellLines.size} (${cellLines.groupMapReduce(_._1)(_ => 1)(_ + _).toSeq.sorted.map { case (k, n) => s"$k $n" }.mkString(", ")}); " +
+        s"unlabelled cells by adjudication: ${adjudicated.toSeq.sorted.map { case (k, n) => s"$k $n" }.mkString(", ")}")
+      if (pipelineRightMoved.nonEmpty) report.line(s"[${c.label}] unlabelled pipeline-right cells where the resolver picks a DIFFERENT film (${pipelineRightMoved.size}):\n    " +
+        pipelineRightMoved.map(x => describe(x._3.head) + s" ×${x._3.size}").mkString("\n    "))
+      val strict = cellCounts(Cell.LossWrong) == 0 && cellCounts(Cell.LossCoverage) == 0 && adjudicated.getOrElse("pipeline-right", 0) == 0
+      val weak   = cellCounts(Cell.LossWrong) == 0 && pipelineRightMoved.isEmpty && cellCounts(Cell.LossCoverage) <= cellCounts(Cell.Win)
+      report.line(s"[${c.label}] VERDICT: STRICT no-worse ${if (strict) "YES" else "NO"}; WEAK no-worse ${if (weak) "YES" else "NO"}")
 
       // ── historical checks, for both ───────────────────────────────────────────────────
       val withEvidence = listings.map(l => l -> evidenceOf(l.key))
