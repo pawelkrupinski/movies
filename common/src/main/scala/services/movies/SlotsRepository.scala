@@ -3,7 +3,7 @@ package services.movies
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.ReplaceOptions
 import models.{Source, SourceData}
-import org.mongodb.scala.model.{BulkWriteOptions, DeleteManyModel, Filters, Indexes, ReplaceOneModel, Sorts}
+import org.mongodb.scala.model.{BulkWriteOptions, DeleteManyModel, Filters, ReplaceOneModel, Sorts}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
 
@@ -180,6 +180,12 @@ class InMemorySlotsRepository(clock: () => java.time.Instant = () => java.time.I
 
   def deleteFilms(filmIds: Set[String]): Long = rows.deleteFilms(filmIds)
 
+  // The key a Mongo row would be stamped with — the same derivation `StoredSlotDto.of` writes.
+  def rowListingKeysChecked(): (Map[String, Option[String]], Boolean) = (rows.listingKeys(StoredSlotDto.listingKeyOf), true)
+
+  def rowIdsForListingKeyChecked(listingKey: String): (Set[String], Boolean) =
+    (rowListingKeysChecked()._1.collect { case (id, Some(k)) if k == listingKey => id }.toSet, true)
+
   // Rings listeners synchronously, so there is no queue and nothing for `demand` to
   // bound — it is accepted only to honour the trait's contract.
   override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
@@ -289,8 +295,11 @@ object StoredSlotDto {
   /** The ONE way a `movie_slots` row is built for writing, so no write path can land a slot
    *  without its listing key (`ListingKeyWritePathLintSpec` keeps it the only constructor call). */
   def of(filmId: String, slotKey: String, slot: SourceData, now: Instant): StoredSlotDto =
-    StoredSlotDto(SlotKeyed.idOf(filmId, slotKey), filmId, slotKey, slot, now,
-      ListingKey.ofSlotRow(slotKey, slot).map(ListingKey.serialised))
+    StoredSlotDto(SlotKeyed.idOf(filmId, slotKey), filmId, slotKey, slot, now, listingKeyOf(slotKey, slot))
+
+  /** The `listingKey` a slot row is stamped with: [[ListingKey.serialised]] of [[ListingKey.ofSlotRow]]. */
+  def listingKeyOf(slotKey: String, slot: SourceData): Option[String] =
+    ListingKey.ofSlotRow(slotKey, slot).map(ListingKey.serialised)
 }
 
 /**
@@ -327,7 +336,7 @@ class MongoSlotsRepository(
   private lazy val coll: Option[MongoCollection[StoredSlotDto]] = sharedDb.map { db =>
     val c = db.withCodecRegistry(MovieCodecs.registry).getCollection[StoredSlotDto](SlotsRepository.Collection)
       .withWriteConcern(WriteConcern.W1.withJournal(false))
-    Try(Await.result(c.createIndex(Indexes.ascending("filmId")).toFuture(), 10.seconds))
+    SlotKeyed.ensureIndexes(c)
     c
   }
 
@@ -475,6 +484,12 @@ class MongoSlotsRepository(
 
   def rowWrittenAtChecked(): (Map[String, java.time.Instant], Boolean) =
     coll.fold((Map.empty[String, java.time.Instant], true))(SlotKeyed.rowWrittenAtChecked(_, "SlotsRepository", logger.warn(_), idPaging))
+
+  def rowListingKeysChecked(): (Map[String, Option[String]], Boolean) =
+    coll.fold((Map.empty[String, Option[String]], true))(SlotKeyed.rowListingKeysChecked(_, "SlotsRepository", logger.warn(_), idPaging))
+
+  def rowIdsForListingKeyChecked(listingKey: String): (Set[String], Boolean) =
+    coll.fold((Set.empty[String], true))(SlotKeyed.rowIdsForListingKeyChecked(_, listingKey, "SlotsRepository", logger.warn(_)))
 
   def deleteRows(ids: Set[String]): Long =
     coll.fold(0L)(SlotKeyed.deleteRows(_, ids, SlotsRepository.Collection, writeMetrics, logger))

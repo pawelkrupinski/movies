@@ -1,7 +1,7 @@
 package modules.wiring
 
 import modules.WorkerWiring
-import services.metrics.{CinemaContentCensus, CinemaScrapeCensus, CorpusScanMetrics, DuplicateVenueCensus, RatingRunCensus, RetiredVenueCensus, WorkerCorpusMetrics, WorkerCorpusScan, WorkerShowtimesMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics, WorkerTaskMetrics}
+import services.metrics.{CinemaContentCensus, CinemaScrapeCensus, CorpusScanMetrics, DuplicateVenueCensus, RatingRunCensus, RetiredVenueCensus, UnstampedListingCensus, WorkerCorpusMetrics, WorkerCorpusScan, WorkerShowtimesMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics, WorkerTaskMetrics}
 
 /** This country's slice of the process-wide `/metrics` registry: the
  *  per-country task-pipeline facade, the cache-occupancy gauges, and the
@@ -83,4 +83,15 @@ trait MetricsWiring { self: WorkerWiring =>
   lazy val retiredVenueCensus: RetiredVenueCensus =
     new RetiredVenueCensus(screeningsRepository, slotsRepository, services.movies.VenueRoster.venuesOf(country),
       workerMetrics.retiredVenueRowsGauge, workerMetrics.retiredVenueFutureGauge, country)
+  // Venue side rows with no listingKey — what the identity migration's dual reads wait on
+  // reaching zero (docs/design/identity-resolver.md §16). Always on: id+key reads, hourly.
+  lazy val unstampedListingCensus: UnstampedListingCensus =
+    new UnstampedListingCensus(screeningsRepository, slotsRepository, workerMetrics.unstampedListingRowsGauge, country)
+  // The shadow read: sampled listings read by slot key AND by listingKey, and the answers compared.
+  // OFF unless KINOWO_LISTING_KEY_SHADOW_READ — a staged-migration switch; it serves nothing either way.
+  lazy val listingKeyShadowRead: Option[services.identity.ListingKeyShadowRead] =
+    Option.when(configuration.listingKeyShadowRead.value)(
+      new services.identity.ListingKeyShadowRead(slotsRepository, screeningsRepository,
+        configuration.listingKeyShadowSample(services.identity.ListingKeyShadowRead.DefaultSample),
+        workerMetrics.listingKeyShadowReadGauge, country, new scala.util.Random()))
 }

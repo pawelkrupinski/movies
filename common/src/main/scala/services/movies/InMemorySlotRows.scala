@@ -73,6 +73,13 @@ final class InMemorySlotRows[A](clock: () => Instant = () => Instant.now()) {
    *  [[SlotKeyedRows.rowIdsChecked]] and [[SlotKeyedRows.rowWrittenAtChecked]] from. */
   def writtenAt(): Map[String, Instant] = lock.synchronized(stamps.toMap)
 
+  /** Every row's composite `_id` with the listing key `keyOf` reads off it — what both fakes
+   *  answer [[ListingKeyedRows]] from. */
+  def listingKeys(keyOf: (String, A) => Option[String]): Map[String, Option[String]] =
+    all().iterator.flatMap { case (filmId, rows) =>
+      rows.iterator.map { case (slotKey, row) => SlotKeyed.idOf(filmId, slotKey) -> keyOf(slotKey, row) }
+    }.toMap
+
   /** Drop the rows with exactly these composite `_id`s; returns how many existed. */
   def deleteRows(ids: Set[String]): Long = {
     val present = ids.filter(writtenAt().contains)

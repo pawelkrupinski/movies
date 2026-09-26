@@ -328,6 +328,8 @@ class WorkerWiring(
     cinemaScrapeCensus.start()
     cinemaContentCensus.start()
     retiredVenueCensus.start()
+    unstampedListingCensus.start()
+    listingKeyShadowRead.foreach(_.start())
   }
 
   /** Event-cascade drain order, producer→consumer (see monolith comment). Only
@@ -340,6 +342,8 @@ class WorkerWiring(
     cinemaScrapeCensus.stop()
     cinemaContentCensus.stop()
     retiredVenueCensus.stop()
+    unstampedListingCensus.stop()
+    listingKeyShadowRead.foreach(_.stop())
     ratingRunCensus.stop()
     corpusScan.stop()
     // jvmVitals is process-level (shared WorkerMetrics bundle); WorkerMain stops it.

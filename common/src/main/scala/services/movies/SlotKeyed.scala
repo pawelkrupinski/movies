@@ -15,7 +15,7 @@ import scala.util.{Failure, Success, Try}
  * [[SlotsRepository]] extend it, so a sweep asks the same two questions of each store
  * and the rule deciding what is stranded lives once, above both.
  */
-trait SlotKeyedRows {
+trait SlotKeyedRows extends ListingKeyedRows {
   /** The DISTINCT `filmId`s with at least one row here, plus whether the read succeeded.
    *  `(Set.empty, false)` is "could not tell" — a caller deleting on this store's behalf
    *  must skip it, not treat it as empty. Never a full document read: `screenings` is
@@ -39,6 +39,23 @@ trait SlotKeyedRows {
 
   /** Drop the rows with exactly these `_id`s in one write; returns the rows removed. */
   def deleteRows(ids: Set[String]): Long
+}
+
+/**
+ * The listing-key questions of a slot-keyed side collection — the identity migration's DUAL
+ * READ seam (docs/design/identity-resolver.md §16): which listing each row is stamped with, and
+ * which rows one listing's key finds. Asked only by the shadow read (`services.identity.ListingKeyShadowRead`) and the unstamped-row
+ * census; no serving path reads `listingKey` until the migration's cutover.
+ */
+trait ListingKeyedRows {
+  /** Every row `_id` with the `listingKey` it is stamped with (`None` where the field is absent
+   *  or null), plus whether the read succeeded. Ids and keys only, never the rows. */
+  def rowListingKeysChecked(): (Map[String, Option[String]], Boolean)
+
+  /** The `_id`s of the rows stamped with `listingKey` (a [[ListingKey.serialised]] key), plus
+   *  whether the read succeeded — the read by listing a dual read will serve from, and what the
+   *  `listingKey` index is for. */
+  def rowIdsForListingKeyChecked(listingKey: String): (Set[String], Boolean)
 }
 
 /**
@@ -134,6 +151,37 @@ object SlotKeyed {
     val (docs, read) = projectedRowsChecked(c, s"$label.rowIds", warn, paging, Projections.include("_id"))
     (docs.flatMap(idOfDoc).toSet, read)
   }
+
+  /** The stamped listing key's field, on both side collections. */
+  val ListingKeyField = "listingKey"
+
+  /** The indexes both side collections carry: `filmId` for the per-film reads and deletes, and
+   *  `listingKey` for the read by listing ([[ListingKeyedRows.rowIdsForListingKeyChecked]]) that
+   *  the identity migration's dual reads will serve from. Best effort, like every index here: a
+   *  store without one still answers, by a collection scan. */
+  def ensureIndexes[T](c: MongoCollection[T]): Unit =
+    Seq("filmId", ListingKeyField).foreach(field =>
+      Try(Await.result(c.createIndex(org.mongodb.scala.model.Indexes.ascending(field)).toFuture(), 10.seconds)))
+
+  /** [[ListingKeyedRows.rowListingKeysChecked]] for a Mongo side collection: `_id` + `listingKey`
+   *  projected server-side, keyset-paged like the other whole-collection id reads. */
+  def rowListingKeysChecked[T](c: MongoCollection[T], label: String, warn: String => Unit,
+                               paging: Paging): (Map[String, Option[String]], Boolean) = {
+    val (docs, read) = projectedRowsChecked(c, s"$label.rowListingKeys", warn, paging, Projections.include("_id", ListingKeyField))
+    (docs.flatMap(d => idOfDoc(d).map(_ -> d.get(ListingKeyField).collect { case k if k.isString => k.asString.getValue })).toMap, read)
+  }
+
+  /** [[ListingKeyedRows.rowIdsForListingKeyChecked]] for a Mongo side collection: one equality
+   *  read on the `listingKey` index, `_id`s only. */
+  def rowIdsForListingKeyChecked[T](c: MongoCollection[T], listingKey: String, label: String,
+                                    warn: String => Unit): (Set[String], Boolean) =
+    Try(Await.result(c.find[Document](Filters.eq(ListingKeyField, listingKey)).projection(Projections.include("_id")).toFuture(), 30.seconds)) match {
+      case Success(docs) => (docs.flatMap(idOfDoc).toSet, true)
+      case Failure(exception) =>
+        warn(s"$label.rowIdsForListingKey failed: ${exception.getClass.getSimpleName}: ${exception.getMessage} — " +
+          "reporting the read as incomplete.")
+        (Set.empty, false)
+    }
 
   /** [[SlotKeyedRows.rowWrittenAtChecked]] for a Mongo side collection: `_id` + `updatedAt`
    *  projected server-side. A row with no `updatedAt` (none is written without one) reads as

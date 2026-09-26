@@ -154,6 +154,10 @@ final class ProcessConfiguration(val env: Env) {
 
   /** `KINOWO_OBSERVATION_CAPTURE` (`true` / `1`); off when unset. */
   def observationCapture: ObservationCapture = ObservationCapture(env.flag("KINOWO_OBSERVATION_CAPTURE"))
+  /** `KINOWO_LISTING_KEY_SHADOW_READ` (`true` / `1`); off when unset. */
+  def listingKeyShadowRead: ListingKeyShadowReadEnabled = ListingKeyShadowReadEnabled(env.flag("KINOWO_LISTING_KEY_SHADOW_READ"))
+  def listingKeyShadowSample(default: ListingKeyShadowSample): ListingKeyShadowSample =
+    ListingKeyShadowSample(count("KINOWO_LISTING_KEY_SHADOW_SAMPLE", default.value))
 
   def backgroundConcurrency(default: BackgroundConcurrency): BackgroundConcurrency =
     BackgroundConcurrency(count("KINOWO_BG_CONCURRENCY", default.value))

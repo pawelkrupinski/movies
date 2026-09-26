@@ -93,5 +93,20 @@ class SlotsRepositoryContractSpec extends AnyFlatSpec with Matchers with BeforeA
         withClue(s"$id: ")((back.showtimesDigest, back.showtimeStartMinutes) shouldBe (None, None))
       }
     }
+
+    it should s"[$name] answer the listing-key reads: every row with its stamp, and the rows one listing's key finds" in {
+      val slots   = fresh(cls)
+      val muranow = models.CinemaShowing(models.KinoMuranow, "belle").displayName
+      val belle   = slot("Belle").copy(filmUrl = Some("https://muranow.pl/belle"))
+      val belleKey = services.movies.StoredSlotDto.listingKeyOf(muranow, belle).get
+      slots.upsertSlot("belle|2013", muranow, belle)
+      slots.upsertSlot("belle|2021", muranow, belle)                       // one listing, filed on two films
+      slots.upsertSlot("belle|2013", models.Tmdb.displayName, slot("Belle"))   // no venue listing: no stamp
+      val id = services.movies.SlotKeyed.idOf
+      slots.rowListingKeysChecked() shouldBe (Map(id("belle|2013", muranow) -> Some(belleKey), id("belle|2021", muranow) -> Some(belleKey),
+                                                  id("belle|2013", models.Tmdb.displayName) -> None), true)
+      slots.rowIdsForListingKeyChecked(belleKey) shouldBe (Set(id("belle|2013", muranow), id("belle|2021", muranow)), true)
+      slots.rowIdsForListingKeyChecked(belleKey + "x") shouldBe (Set.empty, true)
+    }
   }
 }

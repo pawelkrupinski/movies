@@ -63,6 +63,8 @@ final class CountingScreeningsRepository(underlying: ScreeningsRepository) exten
   def rowIdsChecked(): (Set[String], Boolean)           = underlying.rowIdsChecked()
   def rowWrittenAtChecked(): (Map[String, java.time.Instant], Boolean) = underlying.rowWrittenAtChecked()
   def deleteRows(ids: Set[String]): Long                = write(underlying.deleteRows(ids))
+  def rowListingKeysChecked(): (Map[String, Option[String]], Boolean) = underlying.rowListingKeysChecked()
+  def rowIdsForListingKeyChecked(listingKey: String): (Set[String], Boolean) = underlying.rowIdsForListingKeyChecked(listingKey)
   override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
     underlying.watchApplied(onChange, demand)
   override def close(): Unit = underlying.close()
@@ -102,6 +104,8 @@ final class CountingSlotsRepository(underlying: SlotsRepository) extends SlotsRe
   def rowIdsChecked(): (Set[String], Boolean)           = underlying.rowIdsChecked()
   def rowWrittenAtChecked(): (Map[String, java.time.Instant], Boolean) = underlying.rowWrittenAtChecked()
   def deleteRows(ids: Set[String]): Long                = write(underlying.deleteRows(ids))
+  def rowListingKeysChecked(): (Map[String, Option[String]], Boolean) = underlying.rowListingKeysChecked()
+  def rowIdsForListingKeyChecked(listingKey: String): (Set[String], Boolean) = underlying.rowIdsForListingKeyChecked(listingKey)
   override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
     underlying.watchApplied(onChange, demand)
   override def close(): Unit                            = underlying.close()

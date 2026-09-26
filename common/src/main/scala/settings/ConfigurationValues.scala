@@ -54,6 +54,12 @@ final case class MongoOptional(value: Boolean) extends AnyVal
 /** `KINOWO_OBSERVATION_CAPTURE` — the identity program's shadow observation capture
  *  (docs/design/identity-resolver.md §9a), a staged-migration switch that is off by default. */
 final case class ObservationCapture(value: Boolean) extends AnyVal
+/** `KINOWO_LISTING_KEY_SHADOW_READ` — the identity migration's shadow read (docs/design/identity-resolver.md
+ *  §16): sampled side rows read both by slot key and by `listingKey`, and the two answers compared.
+ *  A staged-migration switch, off by default; it serves nothing either way. */
+final case class ListingKeyShadowReadEnabled(value: Boolean) extends AnyVal
+/** `KINOWO_LISTING_KEY_SHADOW_SAMPLE` — how many venue slot rows one shadow-read tick compares. */
+final case class ListingKeyShadowSample(value: Int) extends AnyVal
 
 // ── Third-party credentials and ids ─────────────────────────────────────────────
 /** `TMDB_API_KEY` (a v3 key or a v4 read token). */

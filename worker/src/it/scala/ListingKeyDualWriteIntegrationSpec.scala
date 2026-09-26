@@ -1,7 +1,7 @@
 package integration
 
 import models.{CinemaShowing, KinoMuranow, Kinoteka, MovieRecord, Showtime, Source, SourceData, Tmdb}
-import org.mongodb.scala.{Document, MongoDatabase, ObservableFuture}
+import org.mongodb.scala.{Document, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -35,6 +35,15 @@ class ListingKeyDualWriteIntegrationSpec extends AnyFlatSpec with Matchers with 
 
   private val storages = mutable.ListBuffer.empty[ConvergenceStorage]
   override def afterAll(): Unit = { storages.foreach(s => Try(s.close())); super.afterAll() }
+
+  /** The PL hard-cluster corpus booted through the whole pipeline, the way the convergence legs
+   *  boot it (scrape, settle, canonicalise, staging fold, conclusion, projection) — once, for
+   *  every test that reads what it leaves. */
+  private lazy val plPipeline: MongoDatabase = {
+    val corpus = IdentityShadow.hardClusters(Some(Set("pl"))).head
+    IdentityShadow.bootPipeline(IdentityShadow.wiring(mongoTarget, corpus, storages, configuration.fixtureRoot, configuration.env))
+    storages.last.connection.database.get
+  }
 
   private val at = LocalDateTime.of(2099, 3, 1, 18, 0)
   private def show(hour: Int) = Showtime(at.withHour(hour), None)
@@ -103,11 +112,27 @@ class ListingKeyDualWriteIntegrationSpec extends AnyFlatSpec with Matchers with 
     }
   }
 
+  "movie_slots and screenings" should "index listingKey, so a read by one listing is an index scan, not a collection scan" in {
+    IsolatedMongoDatabase.withDatabase(mongoTarget, "listing-key-index") { db =>
+      val screenings = new MongoScreeningsRepository(Some(db))
+      val slots      = new MongoSlotsRepository(Some(db))
+      slots.upsertSlot("belle|2013", paged.displayName, pagedSlot)
+      screenings.upsertSlot("belle|2013", paged.displayName, ListedShowtimes(pagedSlot.showtimes, Some(pagedKey)))
+      Seq(SlotsRepository.Collection, ScreeningsRepository.Collection).foreach { collection =>
+        val explained = Await.result(db.runCommand(Document(
+          "explain"   -> Document("find" -> collection, "filter" -> Document("listingKey" -> ListingKey.serialised(pagedKey))),
+          "verbosity" -> "queryPlanner")).toFuture(), 30.seconds)
+        val winning = explained.toBsonDocument.getDocument("queryPlanner").getDocument("winningPlan").toJson
+        withClue(s"$collection: a read by listingKey must use the listingKey index (winning plan $winning): ") {
+          winning should include("listingKey_1")
+          winning should not include "COLLSCAN"
+        }
+      }
+    }
+  }
+
   "the pipeline" should "leave every side row it writes carrying the listing key of its slot (PL hard clusters)" in {
-    val corpus  = IdentityShadow.hardClusters(Some(Set("pl"))).head
-    val wiring  = IdentityShadow.wiring(mongoTarget, corpus, storages, configuration.fixtureRoot, configuration.env)
-    IdentityShadow.bootPipeline(wiring)
-    val db      = storages.head.connection.database.get
+    val db      = plPipeline
     val slotDocs = raw(db, SlotsRepository.Collection)
     val slotKeyOf = slotDocs.map { d =>
       val slot = MovieCodecs.registry.get(classOf[SourceData]).decode(
@@ -126,5 +151,43 @@ class ListingKeyDualWriteIntegrationSpec extends AnyFlatSpec with Matchers with 
     withClue("screenings rows whose stored key is not their slot's: ") {
       screeningKeys.filter { case (rowId, stored) => stored.isEmpty || !slotKeyOf.get(rowId).contains(stored) }.take(10) shouldBe empty
     }
+  }
+
+  "the shadow read" should "find every listing's rows by listingKey exactly as by slot key after the pipeline (PL hard clusters), and see a row the stamp missed" in {
+    val db         = plPipeline
+    val slots      = new MongoSlotsRepository(Some(db))
+    val screenings = new MongoScreeningsRepository(Some(db))
+    val registry   = new io.prometheus.metrics.model.registry.PrometheusRegistry()
+    val shadow = new services.identity.ListingKeyShadowRead(slots, screenings, settings.ListingKeyShadowSample(Int.MaxValue),
+      services.identity.ListingKeyShadowRead.gauge(registry), models.Country.Poland, new scala.util.Random(0))
+    val unstamped = services.metrics.UnstampedListingCensus.gauge(registry)
+    val census    = new services.metrics.UnstampedListingCensus(screenings, slots, unstamped, models.Country.Poland)
+
+    val report = shadow.compare().get
+    val venueSlots = keys(db, SlotsRepository.Collection).keys.count(id => ListingKey.isVenueRow(SlotKeyed.slotKeyOf(id)))
+    withClue(s"every venue slot row is compared (${report.compared.size} of $venueSlots, ${report.unread} unread): ") {
+      report.compared.size shouldBe venueSlots
+      report.compared.size should be > 100
+      report.unread shouldBe 0
+    }
+    info(s"shadow read over the PL hard clusters: ${report.count(services.identity.ListingKeyShadowRead.Agree)} of ${report.compared.size} listings agree")
+    withClue("listings whose rows differ by listingKey from by slot key: ") {
+      report.disagreements.take(10).map(_.describe) shouldBe empty
+    }
+    census.sample()
+    unstamped.labelValues("pl", SlotsRepository.Collection).get() shouldBe 0.0
+    unstamped.labelValues("pl", ScreeningsRepository.Collection).get() shouldBe 0.0
+
+    // Teeth: one row of each collection loses its stamp, as a pre-phase-4 write would leave it.
+    val sampled = report.compared.find(_.screeningsBySlotKey.nonEmpty).get.rowId
+    Seq(SlotsRepository.Collection, ScreeningsRepository.Collection).foreach { collection =>
+      Await.result(db.getCollection[Document](collection).updateOne(
+        Document("_id" -> sampled), Document("$unset" -> Document("listingKey" -> ""))).toFuture(), 10.seconds)
+    }
+    val broken = shadow.compare().get
+    broken.disagreements.map(d => (d.rowId, d.slotsAgree, d.screeningsAgree)) shouldBe Seq((sampled, false, false))
+    census.sample()
+    unstamped.labelValues("pl", SlotsRepository.Collection).get() shouldBe 1.0
+    unstamped.labelValues("pl", ScreeningsRepository.Collection).get() shouldBe 1.0
   }
 }

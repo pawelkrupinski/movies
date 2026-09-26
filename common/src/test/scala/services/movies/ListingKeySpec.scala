@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{CinemaShowing, CineworldChain, KinoMuranow, Multikino, SourceData, Tmdb}
+import models.{CinemaShowing, CineworldChain, Filmweb, Imdb, KinoMuranow, Multikino, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -58,5 +58,13 @@ class ListingKeySpec extends AnyFlatSpec with Matchers {
     // title, so as "listings" every film's collapsed onto one key per chain and director.
     ListingKey.ofSlotRow(CineworldChain.displayName, SourceData(director = Seq("Christopher Nolan"))) shouldBe None
     ListingKey.ofSlotRow("Kino That Closed␟belle", SourceData(title = Some("Belle"))) shouldBe None
+  }
+
+  "isVenueRow" should "hold exactly for the wire keys ofSlotRow keys, whatever the slot holds" in {
+    val slot = SourceData(title = Some("Belle"))
+    val rows = Seq(CinemaShowing(KinoMuranow, "belle").displayName, Multikino.displayName, Tmdb.displayName,
+                   CineworldChain.displayName, "Kino That Closed␟belle", Imdb.displayName, Filmweb.displayName)
+    rows.map(r => r -> ListingKey.isVenueRow(r)) shouldBe rows.map(r => r -> ListingKey.ofSlotRow(r, slot).isDefined)
+    rows.filter(ListingKey.isVenueRow) shouldBe rows.take(2)
   }
 }
