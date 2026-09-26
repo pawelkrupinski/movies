@@ -348,6 +348,15 @@ Swept `kinowo.filmwebFallback` (219 docs) for `active: true` or any ENTER/RECOVE
 | Kino Astra (Oborniki) | 09-22 13:05→23:05, 10 h | `TimeoutException` on its biletyna host | **recovered**: transient, green since |
 | KINOkawiarnia Stacja Falenica, Cinema1 | entered before the window, RECOVERED 09-13 | "primary returned no screenings" | **recovered**: back on their own-site sources (archives 09-26: 24 and 19 films) |
 
+### Production check after the day's fixes (2026-09-26 ~05:40–07:40 UTC)
+
+Checked prod Mongo after the fixes deployed:
+- **Biletyna, 50-event cap:** every capped venue now carries its full programme — Kameralne 130 screenings (to 12-13), Wadowice 103, Polonez 91, Sztuka 92, Teatr Elektryczny 86, Rondo 76, Len 58.
+- **VisualSoft JSON feed:** all green, including both plain-feed instances (Farys, Kino Orzeł) and the scoped venues (Nasze Kino 30, Mikro 74, Bronowice 21).
+- **The eight venues moved to biletyna:** all green. The four whose oldest retained bucket was flagged `thin` show it only on that pre-switch bucket.
+- **Filmweb fallback:** none active in PL. Kino Mikro recovered at 01:49 UTC.
+- **Ocine:** Urban X-Madrid, Premium Estepark, Vila-seca and Mendibil each read 146–276 screenings from their own servers. **Ocine Blanes** timed out three times in a row around 00:36 UTC (`POST tickets.ocineblanes.es/api/v1/sessions` hit the worker's 30 s timeout), then was parked until its next 7-hour window. At 07:30 it read 19 films / 230 screenings, and the same server answered a local probe in 4–5 s. Verdict: **transient upstream outage, recovered**. No code change.
+
 ### UK: 52 white, 0 transitions, 11 archive≤10d candidates probed, 0 bugs
 
 All 11 (Castlemorton, West Side Stromness, Phoenix Blyth, Lichfield Garrick,
