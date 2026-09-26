@@ -184,7 +184,17 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
     sfinks.compareTo(Duration.ofSeconds(2)) should be > 0
   }
 
-  "headersFor" should "give IMDb's GraphQL CDN the client-name header its edge now demands" in {
+  // kinoprogramm.com answers 403 to our default Chrome/124.0.0.0 User-Agent (and to
+  // Chrome/131) but 200 to Chrome/126 — a blocklist of UA strings, measured 2026-09-26.
+  "headersFor" should "send kinoprogramm.com a User-Agent it accepts, not the default it blocks" in {
+    val sent = new RealHttpFetch().buildRequest("https://www.kinoprogramm.com/kino/hannover/kino-am-raschplatz-60676")
+      .headers().allValues("User-Agent")
+    sent.size shouldBe 1
+    sent.get(0) shouldBe HostPolicies.KinoprogrammUserAgent
+    sent.get(0) should not include "Chrome/124"
+  }
+
+  it should "give IMDb's GraphQL CDN the client-name header its edge now demands" in {
     HostPolicies.headersFor("https://caching.graphql.imdb.com/") shouldBe
       Map("x-imdb-client-name" -> "imdb-web-next")
   }

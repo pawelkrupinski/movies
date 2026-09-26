@@ -113,6 +113,7 @@ enum PaceKnob(val key: String) {
   case ShowcaseUs extends PaceKnob("KINOWO_SHOWCASE_US_PACE_MS")
   case Landmark   extends PaceKnob("KINOWO_LANDMARK_PACE_MS")
   case Ocine      extends PaceKnob("KINOWO_OCINE_PACE_MS")
+  case Kinoprogramm extends PaceKnob("KINOWO_KINOPROGRAMM_PACE_MS")
 }
 /** The live minimum gap between two requests to a paced host. */
 final case class HostPace(value: java.time.Duration) extends AnyVal

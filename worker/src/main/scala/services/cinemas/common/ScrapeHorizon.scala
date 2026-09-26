@@ -94,6 +94,18 @@ object ScrapeHorizon {
    *  That last rule is what keeps a dead upstream from reading as a dormant venue: with
    *  every probe blank-by-failure the walk would otherwise end with no live step, and the
    *  scrape report a successful empty listing. */
+  /** How many blank WEEKS in a row end a weekly walk: a month of nothing, the
+   *  weekly reading of [[MaxEmptyMonths]]'s rule that a venue publishing a week or
+   *  two ahead must not be cut off by one quiet week between programmes. */
+  val MaxEmptyWeeks: Int = 3
+
+  /** [[liveDays]] a week per step, for a source that serves a 7-day page per request
+   *  (kinoprogramm.com's `?datum=`): the week-start dates that had a programme. */
+  def liveWeeks(from: LocalDate, maxEmptyWeeks: Int = MaxEmptyWeeks)(hasProgramme: LocalDate => Boolean): Seq[LocalDate] = {
+    val lastDay = from.plusDays(MaxDays.toLong)
+    walk(Iterator.iterate(from)(_.plusWeeks(1)).takeWhile(!_.isAfter(lastDay)), maxEmptyWeeks)(hasProgramme)
+  }
+
   private def walk[A](steps: Iterator[A], maxEmpty: Int)(hasProgramme: A => Boolean): Seq[A] = {
     val probes   = Seq.newBuilder[scala.util.Try[Boolean]]
     val live     = Seq.newBuilder[A]

@@ -71,6 +71,10 @@ object HostPolicies {
 
   /** The per-host policy table — the single place a host earns a non-default
    *  timeout, pace, or header. First matching row wins. */
+  /** The browser string kinoprogramm.com accepts — see its row below. */
+  val KinoprogrammUserAgent: String =
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+
   val all: Seq[HostPolicy] = Seq(
     // Helios's REST API (restapi.helios.pl) — both the screening/event LIST that
     // HeliosClient fetches per cinema AND the per-screen/detail enrichment. On
@@ -157,6 +161,24 @@ object HostPolicies {
       Set("filmstarts.de"),
       minRequestInterval = Some(Duration.ofMillis(1400)),
       paceKnob           = Some(PaceKnob.Filmstarts),
+    ),
+
+    // kinoprogramm.com — Germany's FALLBACK behind Filmstarts (KinoprogrammClient),
+    // fetched only for venues whose Filmstarts scrape keeps failing, so it is idle
+    // until Filmstarts has trouble — and then, in a whole-site outage, all 1,518
+    // venues fall back at once at ~5 week-pages each. 1s keeps that burst to ~2h
+    // per sweep, inside DE's 10h cadence, at the rate probing ran without a 429.
+    //
+    // Its User-Agent is pinned because the site refuses SOME browser strings
+    // outright — HTTP 403 for Chrome/124.0.0.0 (our default) and Chrome/131.0.0.0,
+    // 200 for Chrome/126.0.0.0 and 140.0.0.0, deterministically (2026-09-26), a
+    // blocklist of UA strings rather than a rate limit. If this one starts 403ing
+    // too, that is the first thing to check.
+    HostPolicy(
+      Set("kinoprogramm.com"),
+      minRequestInterval = Some(Duration.ofMillis(1000)),
+      paceKnob           = Some(PaceKnob.Kinoprogramm),
+      headers            = Map("User-Agent" -> HostPolicies.KinoprogrammUserAgent),
     ),
 
     // SensaCine (Webedia ES). Spain's 594 venues reach the SAME client Germany

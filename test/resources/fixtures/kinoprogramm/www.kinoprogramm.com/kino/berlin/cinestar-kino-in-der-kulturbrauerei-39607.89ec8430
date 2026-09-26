@@ -1,0 +1,630 @@
+<!doctype html>
+<html class="dark" lang="de">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#061522">
+    <script>
+        // Setzt das gespeicherte Farbschema vor dem Laden des Stylesheets, damit die Seite nicht sichtbar umspringt.
+        (function () {
+            let theme = 'dark';
+            try {
+                if (window.localStorage.getItem('kinoprogramm-theme') === 'light') {
+                    theme = 'light';
+                }
+            } catch (error) {
+                theme = 'dark';
+            }
+            document.documentElement.classList.toggle('dark', theme === 'dark');
+            document.documentElement.style.colorScheme = theme;
+            const themeColor = document.querySelector('meta[name="theme-color"]');
+            if (themeColor) {
+                themeColor.content = theme === 'dark' ? '#061522' : '#eef3f7';
+            }
+        }());
+    </script>
+    <title>Cinestar Kino in der Kulturbrauerei in Berlin: Kinoprogramm &amp;…</title>
+    <meta name="description" content="Aktuelles Kinoprogramm für Cinestar Kino in der Kulturbrauerei in Berlin: Filme, Vorstellungstage, Spielzeiten, Adresse und weitere Kino-Informationen.">
+    <meta name="keywords" content="Cinestar Kino in der Kulturbrauerei Berlin, Kinoprogramm, Kino Spielzeiten, Schönhauser Allee 36">
+    <meta name="robots" content="index,follow">
+    <link rel="canonical" href="https://www.kinoprogramm.com/kino/berlin/cinestar-kino-in-der-kulturbrauerei-39607">            <meta property="og:type" content="website"><meta property="og:locale" content="de_DE"><meta property="og:site_name" content="Kinoprogramm.com"><meta property="og:title" content="Cinestar Kino in der Kulturbrauerei in Berlin: Kinoprogramm &amp;…"><meta property="og:description" content="Aktuelles Kinoprogramm für Cinestar Kino in der Kulturbrauerei in Berlin: Filme, Vorstellungstage, Spielzeiten, Adresse und weitere Kino-Informationen."><meta property="og:url" content="https://www.kinoprogramm.com/kino/berlin/cinestar-kino-in-der-kulturbrauerei-39607"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="Cinestar Kino in der Kulturbrauerei in Berlin: Kinoprogramm &amp;…"><meta name="twitter:description" content="Aktuelles Kinoprogramm für Cinestar Kino in der Kulturbrauerei in Berlin: Filme, Vorstellungstage, Spielzeiten, Adresse und weitere Kino-Informationen.">    <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","@id":"https://www.kinoprogramm.com/kino/berlin/cinestar-kino-in-der-kulturbrauerei-39607#webpage","url":"https://www.kinoprogramm.com/kino/berlin/cinestar-kino-in-der-kulturbrauerei-39607","name":"Cinestar Kino in der Kulturbrauerei in Berlin: Kinoprogramm \u0026…","description":"Aktuelles Kinoprogramm für Cinestar Kino in der Kulturbrauerei in Berlin: Filme, Vorstellungstage, Spielzeiten, Adresse und weitere Kino-Informationen.","inLanguage":"de-DE","isPartOf":{"@type":"WebSite","@id":"https://www.kinoprogramm.com/#website","name":"Kinoprogramm.com","url":"https://www.kinoprogramm.com/"}}</script>    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="stylesheet" href="/lib/assets/css/vendor/maplibre-gl.css?v=4">    <link rel="stylesheet" href="/lib/assets/css/modern.min.css?v=4">
+    <link rel="stylesheet" href="/lib/assets/css/custom-select.css?v=4">
+    <link rel="stylesheet" href="/lib/assets/css/ufo-cursor.css?v=4">
+    <style>:root { --container-content: 1400px; }</style>
+</head>
+<body class="m-0 overflow-x-hidden bg-deep bg-page font-sans text-[18px] leading-[1.45] text-content max-xl:text-base max-sm:text-[15px] [&_a:focus-visible]:outline [&_a:focus-visible]:outline-2 [&_a:focus-visible]:outline-offset-4 [&_a:focus-visible]:outline-content [&_button]:transition-all [&_button]:duration-200 [&_button]:ease-out [&_button:focus-visible]:outline [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-4 [&_button:focus-visible]:outline-content">
+    <header class="relative z-20 h-24 border-b border-line bg-deep/95 lg:h-26 max-sm:h-18">
+        <div class="h-full w-full px-4 sm:px-6 xl:px-12">
+        <div class="mx-auto grid h-full max-w-content grid-cols-[auto_minmax(0,1fr)_auto] items-center max-lg:grid-cols-[1fr_auto]">
+            <a class="inline-flex w-max items-baseline font-brand text-[35px] tracking-[-.7px] max-sm:text-[22px] max-[400px]:text-[19px]" href="/" aria-label="kinoprogramm.com Startseite">
+                <span class="text-content">kinoprogramm</span><em class="not-italic text-accent">.com</em>
+            </a>
+            <nav class="flex h-full min-w-0 items-center justify-self-center gap-10 whitespace-nowrap text-base font-semibold uppercase tracking-[.03em] max-xl:gap-6 max-[1160px]:gap-3! max-lg:hidden" aria-label="Hauptnavigation">
+                <a class="relative flex h-full items-center after:absolute after:-bottom-px after:left-1/2 after:h-1 after:w-0 after:-translate-x-1/2 after:rounded-t-full after:bg-[linear-gradient(90deg,#dd102b,#ffbe68_48%,#ffefbb_50%,#ffbe68_52%,#dd102b)] after:shadow-navGlow after:transition-all hover:after:w-18 data-[active=true]:after:w-18" data-active="false" href="/">Startseite</a>
+                <a class="relative flex h-full items-center after:absolute after:-bottom-px after:left-1/2 after:h-1 after:w-0 after:-translate-x-1/2 after:rounded-t-full after:bg-[linear-gradient(90deg,#dd102b,#ffbe68_48%,#ffefbb_50%,#ffbe68_52%,#dd102b)] after:shadow-navGlow after:transition-all hover:after:w-18 data-[active=true]:after:w-18" data-active="true" href="/kino/">Kinoprogramm</a>
+                <a class="relative flex h-full items-center after:absolute after:-bottom-px after:left-1/2 after:h-1 after:w-0 after:-translate-x-1/2 after:rounded-t-full after:bg-[linear-gradient(90deg,#dd102b,#ffbe68_48%,#ffefbb_50%,#ffbe68_52%,#dd102b)] after:shadow-navGlow after:transition-all hover:after:w-18 data-[active=true]:after:w-18" data-active="false" href="/kinofilm/">Im Kino</a>
+                <a class="relative flex h-full items-center after:absolute after:-bottom-px after:left-1/2 after:h-1 after:w-0 after:-translate-x-1/2 after:rounded-t-full after:bg-[linear-gradient(90deg,#dd102b,#ffbe68_48%,#ffefbb_50%,#ffbe68_52%,#dd102b)] after:shadow-navGlow after:transition-all hover:after:w-18 data-[active=true]:after:w-18" data-active="false" href="/wieder-im-kino/">Wieder im Kino</a>
+                <a class="relative flex h-full items-center after:absolute after:-bottom-px after:left-1/2 after:h-1 after:w-0 after:-translate-x-1/2 after:rounded-t-full after:bg-[linear-gradient(90deg,#dd102b,#ffbe68_48%,#ffefbb_50%,#ffbe68_52%,#dd102b)] after:shadow-navGlow after:transition-all hover:after:w-18 data-[active=true]:after:w-18" data-active="false" href="/kinofilm/vorschau/">Kinovorschau</a>
+                <a class="relative flex h-full items-center after:absolute after:-bottom-px after:left-1/2 after:h-1 after:w-0 after:-translate-x-1/2 after:rounded-t-full after:bg-[linear-gradient(90deg,#dd102b,#ffbe68_48%,#ffefbb_50%,#ffbe68_52%,#dd102b)] after:shadow-navGlow after:transition-all hover:after:w-18 data-[active=true]:after:w-18" data-active="false" href="/trailer/">Trailer</a>
+            </nav>
+            <div class="flex justify-self-end gap-3 max-sm:gap-1.5">
+                <button class="cursor-pointer grid size-[52px] place-items-center rounded-full border border-line bg-cinema/70 text-content transition-colors! hover:border-accent hover:bg-accent/10 hover:text-accent max-sm:size-[38px] max-[400px]:size-9" type="button" data-search-toggle aria-controls="modern-search" aria-expanded="false" aria-label="Suche öffnen">
+                    <svg class="size-7 fill-none stroke-current stroke-[1.8] max-sm:size-6" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16.5 16.5 4 4"></path></svg>
+                </button>
+                <button class="grid size-[52px] cursor-pointer place-items-center rounded-full border border-line bg-cinema/70 text-content transition-colors! hover:border-accent hover:bg-accent/10 hover:text-accent max-sm:size-[38px] max-[400px]:size-9" type="button" data-theme-toggle aria-label="Hellen Modus aktivieren" aria-pressed="false" title="Hellen Modus aktivieren">
+                    <svg class="size-7 fill-none stroke-current stroke-[1.8] max-sm:size-6" data-theme-icon-dark viewBox="0 0 24 24" aria-hidden="true"><path d="M20.4 15.2A8.5 8.5 0 0 1 8.8 3.6 8.5 8.5 0 1 0 20.4 15.2Z"></path></svg>
+                    <svg class="size-7 fill-none stroke-current stroke-[1.8] max-sm:size-6" hidden data-theme-icon-light viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
+                </button>
+                <button class="hidden size-[52px] cursor-pointer place-items-center rounded-full border border-line bg-cinema/70 text-content hover:scale-105 hover:border-accent hover:bg-accent/10 hover:text-accent hover:shadow-redSoft max-lg:grid max-sm:size-[38px] max-[400px]:size-9" type="button" data-menu-toggle aria-controls="mobile-menu" aria-expanded="false" aria-label="Menü öffnen">
+                    <svg class="size-7 fill-none stroke-current stroke-[1.8] max-sm:size-6" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+                </button>
+            </div>
+        </div>
+        </div>
+        <nav id="mobile-menu" class="absolute inset-x-0 top-24 border-b border-line bg-cinema px-6 pb-7 pt-4 text-center text-base lg:hidden max-sm:top-18 [&_a]:mx-auto [&_a]:block [&_a]:max-w-md [&_a]:border-b [&_a]:border-line [&_a]:px-2.5 [&_a]:py-3.5 [&_a]:font-semibold [&_a]:uppercase" aria-label="Mobile Navigation" hidden>
+            <a href="/">Startseite</a><a href="/kino/">Kinoprogramm</a><a href="/kinofilm/">Im Kino</a><a href="/wieder-im-kino/">Wieder im Kino</a><a href="/kinofilm/vorschau/">Kinovorschau</a><a href="/trailer/">Trailer</a>
+        </nav>
+    </header>
+
+    <section id="modern-search" class="absolute inset-x-4 top-24 z-10 mx-auto w-auto max-w-4xl animate-search-panel-in rounded-b-2xl border-x border-b border-line bg-cinema/95 px-6 py-6 shadow-panel backdrop-blur-md motion-reduce:animate-none lg:top-26 max-sm:inset-x-0 max-sm:top-18 max-sm:rounded-none max-sm:px-4 max-sm:py-5" aria-label="Kinoprogramm durchsuchen" hidden>
+        <div class="mb-4 flex items-center justify-between"><h2 class="m-0 text-xl font-semibold uppercase max-sm:text-base">Stadt, Kino oder Film suchen</h2><button class="cursor-pointer text-3xl leading-none text-slate-400 transition-colors hover:text-accent" type="button" data-search-close aria-label="Suche schließen">×</button></div>
+        <form class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_150px] gap-3 max-lg:grid-cols-2 max-md:grid-cols-1" data-modern-search>
+            <label class="block min-w-0"><span class="sr-only">Stadt oder Postleitzahl</span><input class="form-control h-12 w-full rounded-full border border-line bg-deep/70 px-5 text-sm text-content outline-none placeholder:text-faint focus:border-accent" name="suchfeld_stadt" type="text" maxlength="100" placeholder="Stadt oder Postleitzahl"></label>
+            <label class="block min-w-0"><span class="sr-only">Kinoname</span><input class="form-control h-12 w-full rounded-full border border-line bg-deep/70 px-5 text-sm text-content outline-none placeholder:text-faint focus:border-accent" name="suchfeld_kino" type="text" maxlength="100" value="Kino: Alle" placeholder="Kino: Alle" autocomplete="off"><input name="suchfeld_kino_id" type="hidden" value=""></label>
+            <label class="block min-w-0"><span class="sr-only">Filmname</span><input class="form-control h-12 w-full rounded-full border border-line bg-deep/70 px-5 text-sm text-content outline-none placeholder:text-faint focus:border-accent" name="suchfeld_film" type="text" maxlength="100" placeholder="Filmname"></label>
+            <button class="h-12 cursor-pointer rounded-full bg-linear-to-b from-red-500 to-accentDark px-6 text-sm font-semibold uppercase text-white transition hover:brightness-110" type="submit">Suchen</button>
+            <p class="col-span-full m-0 min-h-5 text-xs text-slate-400 max-md:col-span-1" data-search-message aria-live="polite"></p>
+        </form>
+    </section>
+
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"MovieTheater","@id":"https://www.kinoprogramm.com/kino/berlin/cinestar-kino-in-der-kulturbrauerei-39607#movie-theater","name":"Cinestar Kino in der Kulturbrauerei","url":"https://www.kinoprogramm.com/kino/berlin/cinestar-kino-in-der-kulturbrauerei-39607","address":{"@type":"PostalAddress","streetAddress":"Schönhauser Allee 36","postalCode":"10435","addressLocality":"Berlin","addressCountry":"DE"},"telephone":"0451/7030200","sameAs":"https://www.cinestar.de/berlin-kino-in-der-kulturbrauerei","screenCount":8,"maximumAttendeeCapacity":1545,"geo":{"@type":"GeoCoordinates","latitude":52.53820037841797,"longitude":13.412400245666504}}</script>
+<style>
+    .kino-week-film {
+        display: grid;
+        gap: 1.25rem;
+        grid-template-columns: 112px minmax(0, 1fr);
+        scroll-margin-top: 1rem;
+    }
+
+    .kino-week-poster {
+        aspect-ratio: 2 / 3;
+        display: block;
+        overflow: hidden;
+        width: 112px;
+    }
+
+    .kino-week-days-wrap {
+        grid-column: 1 / -1;
+        width: 100%;
+    }
+
+    .kino-week-days {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .kino-week-day {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 6px;
+        flex: 1 1 90px;
+        min-width: 72px;
+        padding: 0.65rem;
+        text-align: center;
+    }
+
+    .kino-week-time {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        box-sizing: border-box;
+        display: block;
+        margin: 0.35rem auto 0;
+        max-width: 120px;
+        min-height: 32px;
+        padding: 0.3rem 0.45rem;
+        width: 100%;
+    }
+
+    .kino-program-toggle {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .kino-program-section[data-expanded="false"] .kino-program-list {
+        display: none;
+    }
+
+    .kino-program-section[data-expanded="true"] .kino-program-list {
+        margin-top: 0.5rem;
+    }
+
+    .kino-program-section[data-expanded="true"] .kino-program-toggle svg {
+        transform: rotate(180deg);
+    }
+
+    .kino-program-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .kino-program-link {
+        background: rgba(255, 255, 255, 0.03);
+        padding: 0.4rem 0.625rem;
+        transition: background-color 160ms ease, color 160ms ease;
+    }
+
+    .kino-program-link:hover {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .kino-info-toggle {
+        display: none;
+    }
+
+    @media (max-width: 767px) {
+        .kino-week-film {
+            gap: 0.875rem;
+            grid-template-columns: 90px minmax(0, 1fr);
+        }
+
+        .kino-week-poster {
+            width: 90px;
+        }
+
+        .kino-week-day {
+            flex-basis: 105px;
+            min-width: 0;
+        }
+
+        .kino-info-box {
+            height: auto;
+            max-height: none;
+            overflow: visible;
+            padding: 0.75rem;
+        }
+
+        .kino-info-title {
+            display: none;
+        }
+
+        .kino-info-toggle {
+            align-items: center;
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .kino-info-box[data-expanded="false"] .kino-info-content {
+            display: none;
+        }
+
+        .kino-info-box[data-expanded="true"] .kino-info-content {
+            display: block;
+            margin-top: 0.35rem;
+        }
+
+        .kino-info-box[data-expanded="true"] .kino-info-toggle svg {
+            transform: rotate(180deg);
+        }
+
+        .kino-info-box .kino-program-section[data-expanded="false"] .kino-program-list {
+            display: none !important;
+        }
+
+        .kino-info-box > h2 {
+            font-size: 0.7rem;
+            margin-bottom: 0;
+        }
+
+        .kino-info-box dl {
+            font-size: 0.65rem;
+        }
+
+        .kino-info-box dt,
+        .kino-info-box dd {
+            padding-bottom: 0.4rem;
+            padding-top: 0.4rem;
+        }
+
+        .kino-info-map {
+            margin-top: 0.65rem;
+            padding-top: 0.65rem;
+        }
+
+        .kino-info-map > h3 {
+            font-size: 0.7rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .kino-info-map-frame {
+            aspect-ratio: 2.6;
+        }
+
+        .kino-info-route {
+            margin-top: 0.5rem;
+            padding-bottom: 0.45rem;
+            padding-top: 0.45rem;
+        }
+    }
+</style>
+
+<main id="main-content" data-modern-kino-detail>
+    <section class="relative min-h-85 overflow-hidden border-b border-line/80 py-7 text-white max-md:min-h-0 max-sm:py-5" aria-labelledby="cinema-title">
+        <img class="absolute inset-0 size-full object-cover" src="/media/homepage/cinema-detail-facade.jpg" alt="" aria-hidden="true">
+        <div class="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,14,25,.97)_0%,rgba(2,14,25,.86)_38%,rgba(2,14,25,.3)_72%,rgba(2,14,25,.5)_100%)] max-md:bg-[linear-gradient(rgba(2,14,25,.72),rgba(2,14,25,.94))]" aria-hidden="true"></div>
+        <div class="relative z-1 w-full px-4 sm:px-6 xl:px-12">
+            <div class="mx-auto max-w-content">
+                <a class="mb-7 inline-flex items-center gap-2 text-sm text-white/75 transition-colors hover:text-accent max-sm:mb-5" href="/kino/berlin/"><span aria-hidden="true">‹</span> Alle Kinos in Berlin</a>
+                <div class="grid grid-cols-[minmax(0,1fr)_clamp(280px,21vw,330px)] gap-8 max-md:grid-cols-1 max-md:gap-6">
+                    <div>
+                        <h1 class="m-0 wrap-break-word font-display text-[clamp(45px,5vw,67px)] font-normal leading-none tracking-tight max-sm:text-[38px]" id="cinema-title">Cinestar Kino in der Kulturbrauerei in Berlin</h1>
+                        <p class="mb-0 mt-4 max-w-3xl text-sm leading-6 text-white/80">Heute, 26.09.2026 laufen <strong class="font-semibold text-white">0 Filme</strong> im Cinestar Kino in der Kulturbrauerei. Hier findest du die tagesaktuellen Beginnzeiten der gesamten Woche auf einen Blick.</p>
+                        <div class="mt-7 flex flex-wrap gap-x-8 gap-y-3 text-sm text-white/85 [&_a]:inline-flex [&_a]:items-center [&_a]:gap-2 [&_a]:transition-colors [&_a:hover]:text-accent">
+                            <a href="#cinema-map"><svg class="size-5 fill-none stroke-accent stroke-[1.8]" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>Schönhauser Allee 36 · 10435 Berlin</a>
+                            <a href="tel:0451/7030200"><svg class="size-5 fill-none stroke-accent stroke-[1.8]" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3H4a1 1 0 0 0-1 1c0 9.4 7.6 17 17 17a1 1 0 0 0 1-1v-3l-5-1-1.5 2.2a16 16 0 0 1-8.7-8.7L8 8Z"></path></svg>0451/7030200</a>                            <a href="https://www.cinestar.de/berlin-kino-in-der-kulturbrauerei" target="_blank" rel="noopener"><svg class="size-5 fill-none stroke-accent stroke-[1.8]" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9"></path><path d="M19 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h6"></path></svg>Website</a>                            <a href="https://www.google.com/maps/search/?api=1&amp;query=Cinestar%20Kino%20in%20der%20Kulturbrauerei%2C%20Sch%C3%B6nhauser%20Allee%2036%2C%2010435%20Berlin" target="_blank" rel="noopener"><svg class="size-5 fill-none stroke-accent stroke-[1.8]" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 9-9 9-9-9Z"></path><path d="M8 12h8m-3-3 3 3-3 3"></path></svg>Route planen</a>                        </div>
+                        <div class="mt-5 h-px w-full max-w-2xl bg-white/20" aria-hidden="true"></div><ul class="mt-5 flex flex-wrap gap-2 p-0 text-xs text-white/85 [&_li]:list-none [&_li]:rounded-md [&_li]:border [&_li]:border-white/20 [&_li]:bg-black/35 [&_li]:px-3.5 [&_li]:py-2"><li>8 Säle</li><li>1545 Sitzplätze</li></ul>                        <div class="mt-8 border-t border-white/15 pt-6" id="showtimes" data-kino-program>
+                            <h2 class="m-0 text-[28px] font-semibold uppercase max-sm:text-2xl" id="showtimes-title">Kinoprogramm: Cinestar Kino in der Kulturbrauerei</h2>
+                            <div class="mt-3">
+                                <div class="overflow-x-auto pb-2 scrollbar-none [&::-webkit-scrollbar]:hidden">
+                                    <div class="flex shrink-0 gap-2.5 [&_button]:grid [&_button]:h-[70px] [&_button]:w-[53px] [&_button]:cursor-pointer [&_button]:place-content-center [&_button]:rounded-md [&_button]:border [&_button]:border-white/20 [&_button]:bg-black/25 [&_button]:px-1 [&_button]:text-center [&_button]:transition-colors [&_button:hover]:border-accent [&_small]:block [&_small]:text-[10px] [&_small]:uppercase [&_small]:leading-tight [&_small]:text-white/60 [&_strong]:my-0.5 [&_strong]:block [&_strong]:text-xl [&_strong]:leading-none">
+                                        <button class="data-[active=true]:border-accent! data-[active=true]:bg-accent/10! data-[active=true]:shadow-redSoft data-[active=true]:[&_small]:text-accent!" type="button" data-kino-week-filter="all" data-active="true" aria-pressed="true"><small>Ganze</small><strong>7</strong><small>Woche</small></button>
+                                        <button class="data-[active=true]:border-accent! data-[active=true]:bg-accent/10! data-[active=true]:shadow-redSoft data-[active=true]:[&_small]:text-accent!" type="button" data-kino-week-filter="2026-10-10" data-active="false" aria-pressed="false"><small>Sa</small><strong>10</strong><small>Okt</small></button><button class="data-[active=true]:border-accent! data-[active=true]:bg-accent/10! data-[active=true]:shadow-redSoft data-[active=true]:[&_small]:text-accent!" type="button" data-kino-week-filter="2026-10-11" data-active="false" aria-pressed="false"><small>So</small><strong>11</strong><small>Okt</small></button><button class="data-[active=true]:border-accent! data-[active=true]:bg-accent/10! data-[active=true]:shadow-redSoft data-[active=true]:[&_small]:text-accent!" type="button" data-kino-week-filter="2026-10-12" data-active="false" aria-pressed="false"><small>Mo</small><strong>12</strong><small>Okt</small></button><button class="data-[active=true]:border-accent! data-[active=true]:bg-accent/10! data-[active=true]:shadow-redSoft data-[active=true]:[&_small]:text-accent!" type="button" data-kino-week-filter="2026-10-13" data-active="false" aria-pressed="false"><small>Di</small><strong>13</strong><small>Okt</small></button><button class="data-[active=true]:border-accent! data-[active=true]:bg-accent/10! data-[active=true]:shadow-redSoft data-[active=true]:[&_small]:text-accent!" type="button" data-kino-week-filter="2026-10-14" data-active="false" aria-pressed="false"><small>Mi</small><strong>14</strong><small>Okt</small></button><button class="data-[active=true]:border-accent! data-[active=true]:bg-accent/10! data-[active=true]:shadow-redSoft data-[active=true]:[&_small]:text-accent!" type="button" data-kino-week-filter="2026-10-15" data-active="false" aria-pressed="false"><small>Do</small><strong>15</strong><small>Okt</small></button><button class="data-[active=true]:border-accent! data-[active=true]:bg-accent/10! data-[active=true]:shadow-redSoft data-[active=true]:[&_small]:text-accent!" type="button" data-kino-week-filter="2026-10-16" data-active="false" aria-pressed="false"><small>Fr</small><strong>16</strong><small>Okt</small></button>                                    </div>
+                                </div>
+                            </div>
+                                                    </div>
+                    </div>
+                    <aside class="kino-info-box self-end rounded-lg border border-white/25 bg-black/75 p-5 shadow-2xl backdrop-blur-sm" data-expanded="false" aria-labelledby="cinema-info-title">
+                        <h2 class="mb-3 mt-0 text-sm font-semibold uppercase tracking-[.04em]" id="cinema-info-title"><span class="kino-info-title">Kino-Info</span><button class="kino-info-toggle cursor-pointer border-0 bg-transparent p-0 text-left font-inherit uppercase text-white" type="button" data-kino-info-toggle aria-controls="kino-info-content" aria-expanded="false" aria-label="Kino-Info öffnen"><span>Kino-Info</span><svg class="size-4 rotate-90 fill-none stroke-current stroke-2 transition-transform" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg></button></h2>
+                        <div class="kino-info-content" id="kino-info-content">
+                        <dl class="m-0 grid grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] text-[11px] [&_dd]:m-0 [&_dd]:min-w-0 [&_dd]:wrap-break-word [&_dd]:border-b [&_dd]:border-white/10 [&_dd]:py-2.5 [&_dd]:text-right [&_dd]:leading-snug [&_dd:last-of-type]:border-0 [&_dt]:border-b [&_dt]:border-white/10 [&_dt]:py-2.5 [&_dt]:text-white/60 [&_dt:last-of-type]:border-0">
+                            <dt>Adresse</dt><dd>Schönhauser Allee 36, 10435 Berlin</dd>
+                            <dt>Stadtteil</dt><dd>Prenzlauer Berg</dd>                            <dt>Säle</dt><dd>8 Säle</dd>                            <dt>Sitzplätze</dt><dd>1545 Sitzplätze</dd>                        </dl>
+                        <div class="kino-program-section mt-4 border-t border-white/15 pt-4" data-expanded="false"><h3 class="m-0 text-xs font-semibold uppercase"><button class="kino-program-toggle cursor-pointer border-0 bg-transparent p-0 text-left font-inherit uppercase text-white" type="button" data-kino-program-toggle aria-controls="kino-program-list" aria-expanded="false" aria-label="Filme im Programm öffnen"><span>Filme im Programm</span><svg class="size-4 rotate-90 fill-none stroke-current stroke-2 transition-transform" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg></button></h3><ul class="kino-program-list m-0 max-h-48 overflow-y-auto p-0 pr-2 text-xs" id="kino-program-list"><li class="list-none"><a class="kino-program-link block wrap-break-word text-white/80 hover:text-white" href="#film-242689">Die Tribute von Panem - The Hunger Games</a></li></ul></div>                        <div class="kino-info-map mt-4 border-t border-white/15 pt-4" id="cinema-map" aria-labelledby="map-title"><h3 class="mb-3 mt-0 text-sm font-semibold" id="map-title">Anfahrt &amp; Parken: Cinestar Kino in der Kulturbrauerei</h3><div class="kino-info-map-frame relative aspect-[2.1] overflow-hidden rounded-md"><div class="absolute! inset-0!" data-city-map aria-label="Interaktive Karte für Cinestar Kino in der Kulturbrauerei"></div><p class="absolute inset-x-3 bottom-3 z-10 m-0 rounded-md bg-deep/90 px-3 py-2 text-center text-[10px] text-slate-200 shadow-panel" data-city-map-status>Die Karte wird geladen …</p><div hidden data-city-map-markers><span data-city-map-marker data-lat="52.53820037841797" data-lon="13.412400245666504" data-name="Cinestar Kino in der Kulturbrauerei" data-url="/kino/berlin/cinestar-kino-in-der-kulturbrauerei-39607"></span></div></div><a class="kino-info-route mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/20 py-2.5 text-xs transition-colors hover:border-accent hover:text-accent" href="https://www.google.com/maps/search/?api=1&amp;query=Cinestar%20Kino%20in%20der%20Kulturbrauerei%2C%20Sch%C3%B6nhauser%20Allee%2036%2C%2010435%20Berlin" target="_blank" rel="noopener"><svg class="size-4 fill-none stroke-current stroke-[1.8]" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 9-9 9-9-9Z"></path><path d="M8 12h8m-3-3 3 3-3 3"></path></svg>Route planen</a></div>                        </div>
+                    </aside>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="w-full px-4 py-10 sm:px-6 xl:px-12 max-sm:py-7">
+        <div class="mx-auto grid max-w-content grid-cols-[minmax(0,1fr)_clamp(245px,19vw,320px)] items-start gap-6 max-md:grid-cols-1">
+            <section aria-labelledby="showtimes-title">
+                <div class="mt-5 overflow-hidden rounded-lg border border-line/80 bg-deep/30" data-kino-week-list>
+                                            <article class="kino-week-film border-b border-line/70 p-5 last:border-0 max-sm:p-4" id="film-242689" data-kino-week-film>
+                            <a class="kino-week-poster rounded-md border border-slate-500/40" href="/kino/berlin/cinestar-kino-in-der-kulturbrauerei/die-tribute-von-panem-the-hunger-games-242689"><img class="size-full object-cover" src="/media/images/poster/p242689_312.jpg" alt="Filmposter - Die Tribute von Panem - The Hunger Games im Cinestar Kino in der Kulturbrauerei" loading="lazy"></a>
+                            <div class="min-w-0">
+                                <a class="text-lg font-semibold leading-tight transition-colors hover:text-accent" href="/kino/berlin/cinestar-kino-in-der-kulturbrauerei/die-tribute-von-panem-the-hunger-games-242689">Die Tribute von Panem - The Hunger Games</a>
+                                <p class="mb-3 mt-1 text-sm leading-5 text-slate-400">Abenteuer, Action, Drama · FSK 12 · Laufzeit: 136 Min.</p>
+                                                            </div>
+                            <div class="kino-week-days-wrap pb-2"><div class="kino-week-days">
+                                                                    <section class="kino-week-day" data-kino-week-day="2026-10-10"><h3 class="m-0 text-xs font-semibold text-slate-300">Sa, 10. Okt</h3>
+                                        <div class="mt-2 text-xs font-medium">
+                                                                                        <span class="text-slate-600" data-kino-week-no-showing>–</span>
+                                        </div>
+                                    </section>
+                                                                    <section class="kino-week-day" data-kino-week-day="2026-10-11"><h3 class="m-0 text-xs font-semibold text-slate-300">So, 11. Okt</h3>
+                                        <div class="mt-2 text-xs font-medium">
+                                                                                        <span class="text-slate-600" data-kino-week-no-showing>–</span>
+                                        </div>
+                                    </section>
+                                                                    <section class="kino-week-day" data-kino-week-day="2026-10-12"><h3 class="m-0 text-xs font-semibold text-slate-300">Mo, 12. Okt</h3>
+                                        <div class="mt-2 text-xs font-medium">
+                                                                                        <span class="text-slate-600" data-kino-week-no-showing>–</span>
+                                        </div>
+                                    </section>
+                                                                    <section class="kino-week-day" data-kino-week-day="2026-10-13"><h3 class="m-0 text-xs font-semibold text-slate-300">Di, 13. Okt</h3>
+                                        <div class="mt-2 text-xs font-medium">
+                                                                                            <div data-kino-week-version="original-mit-untertiteln"><span class="kino-week-time">19:00</span></div>
+                                                                                        <span class="text-slate-600" data-kino-week-no-showing hidden>–</span>
+                                        </div>
+                                    </section>
+                                                                    <section class="kino-week-day" data-kino-week-day="2026-10-14"><h3 class="m-0 text-xs font-semibold text-slate-300">Mi, 14. Okt</h3>
+                                        <div class="mt-2 text-xs font-medium">
+                                                                                        <span class="text-slate-600" data-kino-week-no-showing>–</span>
+                                        </div>
+                                    </section>
+                                                                    <section class="kino-week-day" data-kino-week-day="2026-10-15"><h3 class="m-0 text-xs font-semibold text-slate-300">Do, 15. Okt</h3>
+                                        <div class="mt-2 text-xs font-medium">
+                                                                                        <span class="text-slate-600" data-kino-week-no-showing>–</span>
+                                        </div>
+                                    </section>
+                                                                    <section class="kino-week-day" data-kino-week-day="2026-10-16"><h3 class="m-0 text-xs font-semibold text-slate-300">Fr, 16. Okt</h3>
+                                        <div class="mt-2 text-xs font-medium">
+                                                                                        <span class="text-slate-600" data-kino-week-no-showing>–</span>
+                                        </div>
+                                    </section>
+                                                            </div></div>
+                        </article>
+                                        <p class="m-0 p-8 text-center text-slate-300" data-kino-week-empty-filter hidden>Für den ausgewählten Tag und die gewählte Fassung sind keine Vorstellungen vorhanden.</p>
+                </div>
+            </section>
+
+            <aside class="space-y-5" aria-label="Weitere Informationen zum Kino">
+                                <section aria-label="Werbung">
+                    <style>
+    .career-ad-shell { container-type: inline-size; }
+    .career-ad {
+        display: grid;
+        grid-template-columns: minmax(260px, 34%) minmax(0, 1fr);
+        min-height: 240px;
+        overflow: hidden;
+        border: 1px solid var(--color-line);
+        border-radius: 0.5rem;
+        background: #061522;
+        color: #f8fafc;
+        text-decoration: none;
+    }
+    .career-ad__media {
+        min-height: 100%;
+        overflow: hidden;
+        background: #180714;
+    }
+    .career-ad__image {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+        transition: transform 300ms ease;
+    }
+    .career-ad:hover .career-ad__image { transform: scale(1.025); }
+    .career-ad__content {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "copy brand"
+            "action brand";
+        align-content: center;
+        align-items: center;
+        gap: 1rem 2rem;
+        padding: 2rem;
+    }
+    .career-ad__copy { grid-area: copy; }
+    .career-ad__eyebrow {
+        display: block;
+        margin: 0 0 0.5rem;
+        color: #ef233c;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+    .career-ad__headline {
+        display: block;
+        margin: 0;
+        max-width: 640px;
+        font-size: 2.5rem;
+        font-weight: 800;
+        line-height: 1.05;
+        text-transform: uppercase;
+    }
+    .career-ad__text {
+        display: block;
+        margin: 0.75rem 0 0;
+        color: #cbd5e1;
+        font-size: 1rem;
+    }
+    .career-ad__brand {
+        grid-area: brand;
+        white-space: nowrap;
+        font-size: 1.55rem;
+        font-weight: 700;
+    }
+    .career-ad__brand-domain { color: #ef233c; }
+    .career-ad__action {
+        grid-area: action;
+        display: inline-flex;
+        width: max-content;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.375rem;
+        background: #e71935;
+        padding: 0.75rem 1.5rem;
+        font-size: 0.875rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        transition: background-color 200ms ease;
+    }
+    .career-ad:hover .career-ad__action { background: #ff2945; }
+    @container (max-width: 900px) {
+        .career-ad__content {
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-areas: "brand" "copy" "action";
+            gap: 1rem;
+            padding: 1.5rem;
+        }
+        .career-ad__headline { font-size: 2rem; }
+        .career-ad__brand { font-size: 1.25rem; }
+    }
+    @container (max-width: 650px) {
+        .career-ad {
+            grid-template-columns: minmax(0, 1fr);
+        }
+        .career-ad__media {
+            aspect-ratio: 49 / 30;
+            min-height: 0;
+        }
+        .career-ad__content {
+            gap: 1rem;
+            padding: 1.25rem;
+        }
+        .career-ad__headline { font-size: 1.75rem; }
+        .career-ad__text { font-size: 0.875rem; }
+        .career-ad__action {
+            width: 100%;
+            margin-top: 0.25rem;
+        }
+    }
+</style>
+
+<div class="career-ad-shell">
+    <a class="career-ad" href="https://www.ausbildungsstellen.de" target="_blank" rel="sponsored noopener" aria-label="Ausbildungsstellen auf ausbildungsstellen.de entdecken">
+        <span class="career-ad__media">
+            <img class="career-ad__image" src="/media/ausbildungsstellen-jugendliche.jpg" alt="Vier junge Menschen aus unterschiedlichen Ausbildungsberufen" loading="lazy">
+        </span>
+        <span class="career-ad__content">
+            <span class="career-ad__brand">ausbildungsstellen<span class="career-ad__brand-domain">.de</span></span>
+            <span class="career-ad__copy">
+                <span class="career-ad__eyebrow">Deine Zukunft</span>
+                <strong class="career-ad__headline">Deine Ausbildung beginnt hier!</strong>
+                <span class="career-ad__text">Freie Ausbildungsplätze finden. Zukunft starten.</span>
+            </span>
+            <span class="career-ad__action">Jetzt Stellen entdecken</span>
+        </span>
+    </a>
+</div>
+                </section>
+
+            </aside>
+        </div>
+    </div>
+
+    <section class="pb-10 pt-2" aria-labelledby="newsletter-title">
+        <div class="w-full px-4 sm:px-6 xl:px-12">
+            <div class="mx-auto flex min-h-34 max-w-content items-center overflow-hidden rounded-xl border-y border-accent/20 bg-newsletter text-white max-sm:rounded-lg">
+                <div class="grid w-full grid-cols-[104px_1fr_minmax(480px,650px)] items-center gap-6 px-12 max-xl:grid-cols-[80px_1fr] max-xl:px-7 max-sm:grid-cols-[58px_1fr] max-sm:gap-3 max-sm:px-4 max-sm:pt-5">
+                    <div class="grid size-[78px] place-items-center rounded-full bg-accent shadow-[0_0_30px_rgba(239,23,51,.7)] max-sm:size-[52px]" aria-hidden="true">
+                        <svg class="size-12 fill-none stroke-white stroke-[1.5] max-sm:size-8" viewBox="0 0 24 24"><path d="M3 5h18v14H3z"></path><path d="m4 7 8 7 8-7"></path></svg>
+                    </div>
+                    <div>
+                        <h2 class="m-0 text-[21px] font-semibold uppercase max-sm:text-[15px]" id="newsletter-title">Keinen Filmstart verpassen!</h2>
+                        <p class="mb-0 mt-1.5 text-base text-white/75 max-sm:text-xs">Unser Newsletter hält dich auf dem Laufenden.</p>
+                    </div>
+                    <form id="newsletter-form" class="grid grid-cols-[1fr_195px] overflow-hidden rounded-xl border border-rose-300/30 bg-black/30 max-xl:col-span-full max-xl:mb-6 max-sm:grid-cols-1 max-sm:overflow-visible max-sm:border-0 max-sm:bg-transparent">
+                        <label class="sr-only" for="newsletter-email">Deine E-Mail-Adresse</label>
+                        <input class="min-w-0 border-0 bg-transparent px-8 py-4 text-white outline-none placeholder:text-white/55 max-sm:rounded-lg max-sm:border max-sm:border-rose-300/30 max-sm:bg-black/30" id="newsletter-email" name="email" type="email" placeholder="Deine E-Mail-Adresse" autocomplete="email" required>
+                        <button class="cursor-pointer border-0 bg-linear-to-b from-red-500 to-accentDark text-base font-semibold uppercase text-white max-sm:mt-2 max-sm:rounded-lg max-sm:p-3" type="submit">Anmelden</button>
+                        <p class="col-span-full m-0 bg-black/45 px-4 text-center text-xs text-amber-200" data-newsletter-message aria-live="polite"></p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<dialog id="trailer-modal" class="m-auto w-[min(1120px,calc(100%-2rem))] translate-y-5 overflow-hidden rounded-xl border border-white/20 bg-[#020d17] p-0 text-white opacity-0 shadow-2xl transition-[opacity,translate] duration-300 ease-out data-[state=open]:translate-y-0 data-[state=open]:opacity-100 motion-reduce:translate-y-0 motion-reduce:transition-none" data-state="closed" aria-labelledby="trailer-modal-title">
+    <div class="relative bg-black">
+        <button class="absolute right-3 top-3 z-10 grid size-11 cursor-pointer place-items-center rounded-full border border-white/30 bg-black/70 text-3xl leading-none text-white hover:scale-105 hover:border-accent hover:bg-accent hover:shadow-redSoft" type="button" data-trailer-modal-close aria-label="Trailer schließen">×</button>
+        <video class="aspect-video w-full bg-black object-contain" id="trailer-modal-player" controls preload="metadata" poster=""><source id="trailer-modal-source" src="" type="video/mp4">Dein Browser unterstützt dieses Video nicht.</video>
+        <div class="border-t border-white/15 bg-[#0b1b29] px-5 py-4"><h2 class="m-0 text-xl font-semibold uppercase"><a class="transition-colors hover:text-accent" id="trailer-modal-title" href="#">Aktueller Trailer</a></h2></div>
+    </div>
+</dialog>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const dayFilters = Array.from(document.querySelectorAll('[data-kino-week-filter]'));
+        const versionFilter = document.querySelector('[data-kino-week-version-filter]');
+        const infoBox = document.querySelector('.kino-info-box');
+        const infoToggle = document.querySelector('[data-kino-info-toggle]');
+        if (infoBox && infoToggle) {
+            infoToggle.addEventListener('click', function () {
+                const isExpanded = infoBox.dataset.expanded !== 'true';
+                infoBox.dataset.expanded = String(isExpanded);
+                infoToggle.setAttribute('aria-expanded', String(isExpanded));
+                infoToggle.setAttribute('aria-label', isExpanded ? 'Kino-Info schließen' : 'Kino-Info öffnen');
+            });
+        }
+        const programSection = document.querySelector('.kino-program-section');
+        const programToggle = document.querySelector('[data-kino-program-toggle]');
+        if (programSection && programToggle) {
+            const setProgramExpanded = function (isExpanded) {
+                programSection.dataset.expanded = String(isExpanded);
+                programToggle.setAttribute('aria-expanded', String(isExpanded));
+                programToggle.setAttribute('aria-label', isExpanded ? 'Filme im Programm schließen' : 'Filme im Programm öffnen');
+            };
+            programToggle.addEventListener('click', function () {
+                const isExpanded = programSection.dataset.expanded !== 'true';
+                setProgramExpanded(isExpanded);
+            });
+        }
+        if (dayFilters.length === 0) {
+            return;
+        }
+
+        let selectedDay = 'all';
+        const updateWeeklyProgram = function () {
+            const selectedVersion = versionFilter ? versionFilter.value : 'all';
+            let visibleFilms = 0;
+
+            dayFilters.forEach(function (button) {
+                const isActive = button.dataset.kinoWeekFilter === selectedDay;
+                button.dataset.active = String(isActive);
+                button.setAttribute('aria-pressed', String(isActive));
+            });
+
+            document.querySelectorAll('[data-kino-week-film]').forEach(function (film) {
+                let filmHasShowing = false;
+
+                film.querySelectorAll('[data-kino-week-day]').forEach(function (day) {
+                    const matchesDay = selectedDay === 'all' || day.dataset.kinoWeekDay === selectedDay;
+                    let dayHasShowing = false;
+
+                    day.querySelectorAll('[data-kino-week-version]').forEach(function (version) {
+                        const matchesVersion = selectedVersion === 'all' || version.dataset.kinoWeekVersion === selectedVersion;
+                        version.hidden = !matchesVersion;
+                        if (matchesVersion && version.querySelector('[class~="kino-week-time"]')) {
+                            dayHasShowing = true;
+                        }
+                    });
+
+                    const noShowing = day.querySelector('[data-kino-week-no-showing]');
+                    if (noShowing) {
+                        noShowing.hidden = dayHasShowing;
+                    }
+                    day.hidden = !matchesDay;
+                    if (matchesDay && dayHasShowing) {
+                        filmHasShowing = true;
+                    }
+                });
+
+                film.hidden = !filmHasShowing;
+                if (filmHasShowing) {
+                    visibleFilms++;
+                }
+            });
+
+            const emptyOutput = document.querySelector('[data-kino-week-empty-filter]');
+            if (emptyOutput) {
+                emptyOutput.hidden = visibleFilms !== 0;
+            }
+        };
+
+        dayFilters.forEach(function (button) {
+            button.addEventListener('click', function () {
+                selectedDay = button.dataset.kinoWeekFilter;
+                updateWeeklyProgram();
+            });
+        });
+        if (versionFilter) {
+            versionFilter.addEventListener('change', updateWeeklyProgram);
+        }
+        updateWeeklyProgram();
+    });
+</script>
+
+    <footer class="min-h-[304px] bg-footer px-0 pb-5 pt-9">
+        <div class="w-full px-4 sm:px-6 xl:px-12">
+        <div class="mx-auto grid max-w-content grid-cols-[2.2fr_1fr_1fr_1.15fr] gap-20 max-lg:grid-cols-[1.6fr_1fr_1fr] max-lg:gap-11 max-sm:grid-cols-2 max-sm:gap-x-5 max-sm:gap-y-8 [&_nav]:flex [&_nav]:flex-col [&_nav]:items-start [&_nav]:pt-2 [&_nav_h2]:mb-3.5 [&_nav_h2]:text-[13px] [&_nav_h2]:font-medium [&_nav_h2]:uppercase [&_nav_h2]:text-slate-400 [&_nav_a]:my-1 [&_nav_a]:text-sm [&_nav_a]:text-slate-300 [&_nav_a]:transition [&_nav_a:hover]:translate-x-1 [&_nav_a:hover]:text-accent">
+            <div class="max-w-[350px] max-sm:col-span-full"><a class="inline-flex w-max items-baseline font-brand text-[31px]" href="/"><span class="text-content">kinoprogramm</span><em class="not-italic text-accent">.com</em></a><p class="mb-4 mt-6 text-sm leading-5 text-slate-400">Dein Guide für Filme, Kinos und Trailer. Finde heraus, was läuft und was du nicht verpassen darfst.</p><div class="flex gap-3 text-slate-500" aria-label="Social Media – Links folgen"><a class="grid size-9 place-items-center rounded-full border border-line transition-colors duration-200 hover:border-accent hover:bg-accent/10 hover:text-accent hover:shadow-redSoft" href="#" aria-label="Facebook"><svg class="size-[18px] fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.7 21v-8h2.8l.4-3.2h-3.2V7.7c0-.9.3-1.6 1.7-1.6H17V3.2c-.3 0-1.3-.2-2.5-.2-2.5 0-4.2 1.5-4.2 4.4v2.4H7.5V13h2.8v8h3.4Z"></path></svg></a><a class="grid size-9 place-items-center rounded-full border border-line transition-colors duration-200 hover:border-accent hover:bg-accent/10 hover:text-accent hover:shadow-redSoft" href="#" aria-label="Instagram"><svg class="size-[18px] fill-none stroke-current stroke-[1.8]" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.5" cy="6.7" r="1" class="fill-current stroke-none"></circle></svg></a><a class="grid size-9 place-items-center rounded-full border border-line transition-colors duration-200 hover:border-accent hover:bg-accent/10 hover:text-accent hover:shadow-redSoft" href="#" aria-label="X"><svg class="size-4 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 3H22l-6.8 7.8L23 21h-6.1l-4.8-6.2L6.7 21H3.6l7-8L3 3h6.3l4.3 5.7L18.9 3Zm-1.1 16h1.7L8.3 4.9H6.5L17.8 19Z"></path></svg></a><a class="grid size-9 place-items-center rounded-full border border-line transition-colors duration-200 hover:border-accent hover:bg-accent/10 hover:text-accent hover:shadow-redSoft" href="#" aria-label="YouTube"><svg class="size-5 fill-none stroke-current stroke-[1.7]" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="5.5" width="19" height="13" rx="4"></rect><path class="fill-current stroke-none" d="m10 9 5 3-5 3V9Z"></path></svg></a></div></div>
+            <nav aria-label="Entdecken"><h2>Entdecken</h2><a href="/">Startseite</a><a href="/kino/">Kinoprogramm</a><a href="/kinos/">Kinos</a><a href="/kinofilm/">Im Kino</a><a href="/wieder-im-kino/">Wieder im Kino</a><a href="/kinofilm/vorschau/">Kinovorschau</a><a href="/trailer/">Trailer</a></nav>
+            <nav aria-label="Service"><h2>Service</h2><a href="/kino/#cinema-search">Suche</a><a href="/genre/">Genres</a><a href="/#newsletter">Newsletter</a></nav>
+            <nav class="max-lg:col-start-2 max-sm:col-auto" aria-label="Rechtliches"><h2>Rechtliches</h2><a href="/datenschutzerklaerung">Datenschutz</a><a href="/impressum">Impressum</a><a href="javascript:void(0);" data-cc="c-settings" aria-haspopup="dialog">Cookie-Einstellungen</a></nav>
+        </div>
+        </div>
+        <p class="mb-0 mt-6 text-center text-[13px] text-slate-600">© 2026 kinoprogramm.com – Alle Rechte vorbehalten.</p>
+    </footer>
+
+    <script src="/lib/assets/js/vendor/autocomplete.min.js"></script>
+    <script src="/lib/assets/js/cookieconsent.js"></script>
+    <script src="/lib/assets/js/modern.min.js?v=4"></script>
+    <script src="/lib/assets/js/cinema-search.js?v=4"></script>
+    <script src="/lib/assets/js/revival-search.js?v=4"></script>
+    <script src="/lib/assets/js/custom-select.js?v=4"></script>
+    <script type="module" src="/lib/assets/js/modern-map.min.js?v=4"></script></body>
+</html>
