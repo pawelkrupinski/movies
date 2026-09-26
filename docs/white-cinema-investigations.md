@@ -123,9 +123,15 @@ method itself isn't blocked) rather than the per-day JSON.
 ### A second target: every venue on the Filmweb fallback
 
 Added 2026-09-26. The Mikro screens sat on the fallback for three days, green
-throughout, because kinomikro.pl's rebuild 404'd their feed. Every run now
-lists `filmwebFallback` docs with `active: true` in all five DBs and diagnoses
-each one like a white venue. `lastReason` and the newest-first `history` lines
+throughout, because kinomikro.pl's rebuild 404'd their feed. **Filmweb is
+Poland-only**, so this target is `kinowo.filmwebFallback` only. The same-named
+collection in the other four DBs holds the chain→Flicks fallback
+(`fallbackSource: "Flicks"`, UK 235 / US 63 docs) and stale docs, never Filmweb
+cover. The UK's 107-venue Cineworld/Odeon ENTER→RECOVER burst of 09-17/18 was
+the Cineworld relaunch, not a Filmweb event. Every run lists docs with
+`active: true`, plus any whose `history` shows an ENTER or RECOVERED since the
+last run (a flapper is a broken scraper too), and diagnoses each one like a
+white venue. `lastReason` and the newest-first `history` lines
 (`<epochMs>\t<ENTER|PROBE_FAILED|RECOVERED>\t<reason>`, one per hourly
 re-probe of the primary) usually name the failure outright:
 - "primary returned no screenings": parse drift, a moved programme, or a dark venue.
@@ -139,7 +145,7 @@ venue in a table (venue, since, last reason, verdict). A venue whose own site
 is genuinely gone while Filmweb is complete is
 `needs-human: move permanently onto Filmweb?`. It should not sit on the
 fallback run after run. Baseline 2026-09-26: 2 active (both Mikro screens,
-fixed the same day), 0 in UK/DE/US/ES.
+fixed the same day). See that entry's fallback table.
 
 ### A third target: `thin` buckets (screenings, but none in the next 72h)
 
@@ -322,6 +328,18 @@ unaffected (Skierniewice isn't in the frozen corpus).
 | Kino Chatka Żaka (Lublin) | UMCS calendar 9469 | **intentionally-dormant**: "Brak wydarzeń" for all categories |
 
 Red (1): the same `Cineworld Enrichment` non-cinema row as 09-19. Out of scope.
+
+### Filmweb-fallback sweep (PL only): 2 active, 5 recent flappers, all resolved or transient
+
+Swept `kinowo.filmwebFallback` (219 docs) for `active: true` or any ENTER/RECOVERED in the last 14 days.
+
+| Venue | Episode (UTC) | Reason (from `history`) | Verdict |
+|---|---|---|---|
+| Kino Mikro | since 09-23 13:48, active | "no screenings" from 09-23, then `HTTP 404` on `kinomikro.pl/api.php/v1/repertoires` from 09-24 (site rebuilt) | **fixed** @867342024, then moved onto the shared VisualSoft feed @34310a5f0. Deployed; awaiting its first post-deploy probe to release the fallback |
+| Mikro Bronowice | since 09-23 12:39, active | same | **fixed**, same commits |
+| Kino Wisła, Kino Atlantic (novekino.pl) | 09-12 11:14→18:14, 7 h | `CircuitOpenException` / timeouts on www.novekino.pl | **recovered**: one upstream outage, green since |
+| Kino Astra (Oborniki) | 09-22 13:05→23:05, 10 h | `TimeoutException` on its biletyna host | **recovered**: transient, green since |
+| KINOkawiarnia Stacja Falenica, Cinema1 | entered before the window, RECOVERED 09-13 | "primary returned no screenings" | **recovered**: back on their own-site sources (archives 09-26: 24 and 19 films) |
 
 ### UK: 52 white, 0 transitions, 11 archive≤10d candidates probed, 0 bugs
 
