@@ -4,7 +4,7 @@ import models._
 import tools.{CachingDetailFetch, HttpFetch}
 import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, MultiListingScraper, VueCinemasPlatformClient, WebediaMarket, WebediaShowtimesClient, ZyteFallback}
 import services.cinemas.pl._
-import services.cinemas.common.{FlicksClient, FlicksMarket}
+import services.cinemas.common.{FlicksClient, FlicksMarket, KinoprogrammClient}
 import services.cinemas.uk.{CineworldClient, OdeonClient, TheOldCourtClient}
 import services.cinemas.es.OcineClient
 import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
@@ -2367,6 +2367,10 @@ class CinemaScraperCatalog(
   val flicksFallbackSlugs: Map[Cinema, ChainFlicksFallback.FlicksFallback] =
     ChainFlicksFallback.slugs ++ usFlicksFallback
 
+  /** German venues' kinoprogramm.com pages — their showtime FALLBACK behind Filmstarts,
+   *  harvested into the roster (`data/germany/kinoprogramm.json`). */
+  val kinoprogrammFallbackPaths: Map[Cinema, String] = models.GermanRoster.kinoprogrammPathByCinema
+
   /** Union of every cinema scraper's HTTP hosts. `MonitoringHttpFetch`
    *  suppresses per-host uptime rows for these — each cinema's health is
    *  already tracked under its `displayName` by `UptimeRecordingScraper`, so a
@@ -2374,5 +2378,7 @@ class CinemaScraperCatalog(
    *  bucket. Single source of truth: a new cinema's client declares its host
    *  (forced by the abstract `CinemaScraper.scrapeHosts`) and is suppressed
    *  automatically — no hand-kept host list to drift. */
-  val scrapeHosts: Set[String] = all.flatMap(_.scrapeHosts).toSet
+  val scrapeHosts: Set[String] = all.flatMap(_.scrapeHosts).toSet ++
+    // A fallback feed is scraped for a venue too, but by no catalogue scraper.
+    Option.when(kinoprogrammFallbackPaths.nonEmpty)(CinemaScraper.hostsOf(KinoprogrammClient.BaseUrl)).toSet.flatten
 }

@@ -86,4 +86,14 @@ class FallbackStoreSpec extends AnyFlatSpec with Matchers {
       .getDocument("$set")
     MongoFallbackStore.fromDocument(Document(set) + ("_id" -> s.cinema)) shouldBe Some(s)
   }
+
+  // The run count a `FallbackAfter.FailedRuns` venue is judged on: dropped on write, a
+  // 10-hourly venue would restart at zero after every worker restart and never fall back.
+  it should "round-trip the separate failed runs of the current spell" in {
+    val s = state("Kino Praha", active = false).copy(failedRuns = 2)
+    val set = MongoFallbackStore.toUpdate(s)
+      .toBsonDocument(classOf[org.bson.BsonDocument], com.mongodb.MongoClientSettings.getDefaultCodecRegistry)
+      .getDocument("$set")
+    MongoFallbackStore.fromDocument(Document(set) + ("_id" -> s.cinema)).map(_.failedRuns) shouldBe Some(2)
+  }
 }

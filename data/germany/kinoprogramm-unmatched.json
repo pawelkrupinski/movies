@@ -1,0 +1,3814 @@
+[
+  {
+    "bestCandidate": null,
+    "city": "Wiesbaden",
+    "name": "Cineplex Arkaden Wiesbaden",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0007"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Cuxhaven",
+      "name": "Bali Kino Center Cuxhaven",
+      "path": "/kino/cuxhaven/bali-kino-center-cuxhaven-32388"
+    },
+    "city": "Cuxhaven",
+    "name": "Bali-Service-Kino",
+    "reason": "below_threshold",
+    "score": 0.609,
+    "theaterId": "A0009"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Falkensee",
+      "name": "ALA-Kino in Falkensee",
+      "path": "/kino/falkensee/alakino-in-falkensee-31518"
+    },
+    "city": "Falkensee",
+    "name": "ALA Kino am Falkensee",
+    "reason": "below_threshold",
+    "score": 0.667,
+    "theaterId": "A0013"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Kandern",
+      "name": "Kommunales Kino Kandern",
+      "path": "/kino/kandern/kommunales-kino-kandern-32106"
+    },
+    "city": "Kandern",
+    "name": "Kino Kandern",
+    "reason": "below_threshold",
+    "score": 0.617,
+    "theaterId": "A0014"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Berlin",
+      "name": "Cineplex Spandau",
+      "path": "/kino/berlin/cineplex-spandau-52876"
+    },
+    "city": "Berlin",
+    "name": "Cineplex Alhambra",
+    "reason": "below_threshold",
+    "score": 0.645,
+    "theaterId": "A0015"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Wiesbaden",
+    "name": "Cineplex Apollo-Center Wiesbaden",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0019"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Ingelheim am Rhein",
+    "name": "Casablanca Ingelheim am Rhein",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0024"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Arnsberg",
+      "name": "Apollo-Theater",
+      "path": "/kino/arnsberg/apollotheater-31737"
+    },
+    "city": "Arnsberg",
+    "name": "Apollo Arnsberg-Neheim",
+    "reason": "below_threshold",
+    "score": 0.667,
+    "theaterId": "A0038"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Neustadt in Holstein",
+    "name": "Kino-Center Kremper Tor",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0060"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Zempow",
+    "name": "Autokino Zempow",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0071"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Kassel, Hessen",
+      "name": "Filmpalast",
+      "path": "/kino/kassel-hessen/filmpalast-39197"
+    },
+    "city": "Kassel",
+    "name": "Bali-Kinos im KulturBahnhof Kassel",
+    "reason": "below_threshold",
+    "score": 0.207,
+    "theaterId": "A0078"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Neustrelitz",
+      "name": "Movie Star",
+      "path": "/kino/neustrelitz/movie-star-74697"
+    },
+    "city": "Neustrelitz",
+    "name": "Basiskulturfabrik",
+    "reason": "below_threshold",
+    "score": 0.154,
+    "theaterId": "A0084"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Rottach-Egern",
+    "name": "Kino am Tegernsee",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0093"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Bebra",
+    "name": "Biber-Kino-Center",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0094"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Soest",
+      "name": "Universum",
+      "path": "/kino/soest/universum-31916"
+    },
+    "city": "Soest",
+    "name": "Bürgerzentrum Alter Schlachthof",
+    "reason": "below_threshold",
+    "score": 0.256,
+    "theaterId": "A0117"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Karlstadt am Main",
+    "name": "Burg-Lichtspiele",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0118"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Schwalmstadt",
+      "name": "Burg Theater",
+      "path": "/kino/schwalmstadt/burg-theater-32255"
+    },
+    "city": "Schwalmstadt",
+    "name": "Burgtheater Treysa",
+    "reason": "below_threshold",
+    "score": 0.786,
+    "theaterId": "A0123"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Burg",
+      "name": "Burg Theater - Kino &amp; Bar",
+      "path": "/kino/burg/burg-theater-kino-und-bar-78357"
+    },
+    "city": "Burg",
+    "name": "Burg-Theater Burg",
+    "reason": "below_threshold",
+    "score": 0.824,
+    "theaterId": "A0124"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Bad Tölz",
+      "name": "Kinocenter Capitoltheater",
+      "path": "/kino/bad-toelz/kinocenter-capitoltheater-32687"
+    },
+    "city": "Bad Tölz",
+    "name": "Capitol Filmtheater Bad Tölz",
+    "reason": "below_threshold",
+    "score": 0.452,
+    "theaterId": "A0142"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Grafing bei München",
+    "name": "Capitol Theater Grafing bei München",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0159"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Lohne",
+    "name": "Capitol-Kinocenter Lohne (Oldenburg)",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0162"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Leutkirch im Allgäu",
+    "name": "Centraltheater",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0205"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Köthen",
+    "name": "Cine Circus",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0218"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Verden an der Aller",
+    "name": "Cine City",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0219"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Rennertshofen",
+    "name": "Cinema Kulturtreff Rennertshofen",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0232"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Höchst im Odenwald",
+    "name": "Höchster Lichtspiele",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0240"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Prerow",
+    "name": "Cinema Ostseebad Prerow",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0241"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Dülmen",
+    "name": "Cinema Coesfeld",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0249"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Bingen am Rhein",
+    "name": "KiKuBi",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0251"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Salzgitter",
+      "name": "Kultiplex",
+      "path": "/kino/salzgitter/kultiplex-32602"
+    },
+    "city": "Salzgitter",
+    "name": "Cinema in der Angerpassage",
+    "reason": "below_threshold",
+    "score": 0.154,
+    "theaterId": "A0253"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Frankfurt am Main",
+      "name": "Orfeos Erben",
+      "path": "/kino/frankfurt-am-main/orfeos-erben-39664"
+    },
+    "city": "Frankfurt am Main",
+    "name": "Cinema am Rossmarkt",
+    "reason": "below_threshold",
+    "score": 0.4,
+    "theaterId": "A0261"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Braunschweig",
+      "name": "SchunterKino",
+      "path": "/kino/braunschweig/schunterkino-88539"
+    },
+    "city": "Braunschweig",
+    "name": "C1 Cinema Braunschweig",
+    "reason": "below_threshold",
+    "score": 0.2,
+    "theaterId": "A0284"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Paderborn",
+    "name": "Pollux by Cineplex Paderborn",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0315"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Mainz am Rhein",
+      "name": "CineStar - Der Filmpalast",
+      "path": "/kino/mainz-am-rhein/cinestar-der-filmpalast-38697"
+    },
+    "city": "Mainz",
+    "name": "CineStar Mainz",
+    "reason": "ambiguous",
+    "score": 0.913,
+    "theaterId": "A0352"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Rostock",
+      "name": "CineStar Filmpalast",
+      "path": "/kino/rostock/cinestar-filmpalast-31656"
+    },
+    "city": "Rostock",
+    "name": "CineStar Rostock - Lütten Klein",
+    "reason": "below_threshold",
+    "score": 0.585,
+    "theaterId": "A0358"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Neunkirchen",
+    "name": "Cinetower",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0385"
+  },
+  {
+    "bestCandidate": {
+      "locality": "München",
+      "name": "Cincinnati",
+      "path": "/kino/muenchen/cincinnati-32870"
+    },
+    "city": "München",
+    "name": "City-Kinos - München",
+    "reason": "below_threshold",
+    "score": 0.429,
+    "theaterId": "A0397"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Rosenheim",
+    "name": "Kinopolis Rosenheim",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0401"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Lichtenstein",
+      "name": "Clubkino Capitol",
+      "path": "/kino/lichtenstein/clubkino-capitol-31588"
+    },
+    "city": "Lichtenstein",
+    "name": "Clubkino &quot;Capitol&quot;",
+    "reason": "ambiguous",
+    "score": 1.0,
+    "theaterId": "A0414"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Gera",
+      "name": "Metropol Kino",
+      "path": "/kino/gera/metropol-kino-31532"
+    },
+    "city": "Gera",
+    "name": "Kino im COMMA",
+    "reason": "below_threshold",
+    "score": 0.267,
+    "theaterId": "A0416"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Kaufbeuren",
+      "name": "Corona KinoPlex Open Air",
+      "path": "/kino/kaufbeuren/corona-kinoplex-open-air-38671"
+    },
+    "city": "Kaufbeuren",
+    "name": "CICO Kaufbeuren",
+    "reason": "below_threshold",
+    "score": 0.359,
+    "theaterId": "A0422"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Kochel am See",
+    "name": "Filmstudio Kochel",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0532"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Ebersbach",
+    "name": "Film Theater Ebersbach",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0539"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Tauberbischofsheim",
+    "name": "Filmtheater Badischer Hof",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0541"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Landau in der Pfalz",
+    "name": "Filmwelt Landau",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0548"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Steinfurt",
+    "name": "Kino Steinfurt",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0551"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Leipzig",
+      "name": "Cinémathèque in der naTo Leipzig e.V.",
+      "path": "/kino/leipzig/cin%C3%A9math%C3%A8que-in-der-nato-leipzig-e.v.-65357"
+    },
+    "city": "Leipzig",
+    "name": "Freilichtkino auf der Pferderennbahn",
+    "reason": "below_threshold",
+    "score": 0.321,
+    "theaterId": "A0561"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Alpirsbach",
+      "name": "Subiaco Kino im Kloster",
+      "path": "/kino/alpirsbach/subiaco-kino-im-kloster-85817"
+    },
+    "city": "Alpirsbach",
+    "name": "Subiaco Galerie",
+    "reason": "below_threshold",
+    "score": 0.667,
+    "theaterId": "A0566"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Singen am Hohentwiel",
+    "name": "Kino in der Gems",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0570"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Schwäbisch Hall",
+      "name": "Kino im Schafstall",
+      "path": "/kino/schwaebisch-hall/kino-im-schafstall-32984"
+    },
+    "city": "Schwäbisch Hall",
+    "name": "Lichtspielhaus Schwäbisch Hall",
+    "reason": "below_threshold",
+    "score": 0.385,
+    "theaterId": "A0585"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Neustadt in Sachsen",
+    "name": "Grenzland Lichtspiele",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0592"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Murnau am Staffelsee",
+    "name": "Kino im Griesbräu",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0593"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Bad Belzig",
+    "name": "Hofgarten Kino",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0611"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Speyer",
+      "name": "Theaterhaus Speyer House of Entertainment",
+      "path": "/kino/speyer/theaterhaus-speyer-house-of-entertainment-32269"
+    },
+    "city": "Speyer",
+    "name": "IMAX Speyer",
+    "reason": "below_threshold",
+    "score": 0.158,
+    "theaterId": "A0624"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Detmold",
+      "name": "Open-Air Mondscheinkino - Waldbühne am Hermannsdenkmal",
+      "path": "/kino/detmold/openair-mondscheinkino-waldbuehne-am-hermannsdenkmal-71538"
+    },
+    "city": "Detmold",
+    "name": "Kaiserhof+ Einfach Gutes Kino",
+    "reason": "below_threshold",
+    "score": 0.272,
+    "theaterId": "A0632"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Münster",
+      "name": "Cinema &amp; Kurbelkiste",
+      "path": "/kino/muenster/cinema-und-kurbelkiste-31879"
+    },
+    "city": "Münster",
+    "name": "Kaisersaal-Lichtspiele",
+    "reason": "below_threshold",
+    "score": 0.25,
+    "theaterId": "A0633"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Königslutter am Elm",
+    "name": "Kammerlichtspiele Könnigslutter am Elm",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0637"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Berlin",
+      "name": "Freiluftkino Kreuzberg",
+      "path": "/kino/berlin/freiluftkino-kreuzberg-31380"
+    },
+    "city": "Berlin",
+    "name": "Kant Kino Charlottenburg",
+    "reason": "below_threshold",
+    "score": 0.478,
+    "theaterId": "A0645"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Maxhütte-Haidhof",
+    "name": "Kinocenter Maxhütte-Haidhof",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0656"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Dietzenbach",
+    "name": "Main Kino D",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0658"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Malchin",
+    "name": "Filmbühne Malchin",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0660"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Leer",
+    "name": "Kino Leer (Ostfriesland)",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0675"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Erbach im Odenwald",
+    "name": "Erbacher Lichtspiele",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0690"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Holzminden",
+    "name": "Roxy Filmcentrum",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0697"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Bergen auf Rügen",
+    "name": "Kino Bergen auf Rügen",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0709"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Bad Krozingen",
+    "name": "Joki Kino am Bahnhof",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0722"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Inning-Stegen",
+    "name": "Kino in der Alten Brauerei",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0735"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Mölln",
+    "name": "Eulenspiegelkino Mölln",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0741"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Kirchberg an der Jagst",
+    "name": "Kino Klappe",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0744"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Berlin",
+      "name": "Hackesche Höfe Kino",
+      "path": "/kino/berlin/hackesche-hoefe-kino-34705"
+    },
+    "city": "Berlin",
+    "name": "Kino Spreehöfe Berlin",
+    "reason": "below_threshold",
+    "score": 0.583,
+    "theaterId": "A0753"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Düsseldorf",
+      "name": "Open-Air-Kino Vier Linden",
+      "path": "/kino/duesseldorf/openairkino-vier-linden-36050"
+    },
+    "city": "Düsseldorf",
+    "name": "Kino Süd",
+    "reason": "below_threshold",
+    "score": 0.412,
+    "theaterId": "A0755"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Wesenberg",
+    "name": "Kino Wesenberg",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0757"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Selb",
+    "name": "Cineplex Kinocenter Selb",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0763"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Nastätten",
+      "name": "Kino-Center",
+      "path": "/kino/nastaetten/kinocenter-32190"
+    },
+    "city": "Nastätten",
+    "name": "Kinocenter Nastätten",
+    "reason": "below_threshold",
+    "score": 0.75,
+    "theaterId": "A0774"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Rendsburg",
+      "name": "Kinocenter",
+      "path": "/kino/rendsburg/kinocenter-64776"
+    },
+    "city": "Rendsburg",
+    "name": "Kino-Center Rendsburg",
+    "reason": "below_threshold",
+    "score": 0.75,
+    "theaterId": "A0775"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Boxberg",
+    "name": "Kinomobil Stuttgart - Medien und Kulturzentrum",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0783"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Marbach am Neckar",
+    "name": "Kinomobil Stuttgart - Jugend-Kultur-Haus planet x",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0784"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Kirchheim am Neckar",
+    "name": "Kinomobil Stuttgart - Kulturzentrum Alte Schule",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0785"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Hardthausen am Kocher",
+    "name": "Kinomobil Stuttgart - Gewölbekeller im Rathaus",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0786"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Lauffen",
+    "name": "Kinomobil Stuttgart - Stadthalle Lauffen",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0788"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Ilshofen",
+      "name": "Kinomobil Stuttgart - Stadthalle",
+      "path": "/kino/ilshofen/kinomobil-stuttgart-stadthalle-41546"
+    },
+    "city": "Ilshofen",
+    "name": "Kinomobil Stuttgart - Roland-Wurmthaler-Halle",
+    "reason": "below_threshold",
+    "score": 0.776,
+    "theaterId": "A0789"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Schlat",
+    "name": "Kinomobil Stuttgart - Bürgerhaus",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0808"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Kolbingen",
+    "name": "Kinomobil Stuttgart - Kolbingen Dorfplatz",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0811"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Erdmannhausen",
+      "name": "Kinomobil Stuttgart - Astrid-Lindgren-Schule",
+      "path": "/kino/erdmannhausen/kinomobil-stuttgart-astridlindgrenschule-41777"
+    },
+    "city": "Erdmannhausen",
+    "name": "Kinomobil Stuttgart - Astrid-Lindgren-Schule",
+    "reason": "ambiguous",
+    "score": 1.0,
+    "theaterId": "A0813"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Ensingen",
+    "name": "Kinomobil Stuttgart - BIO-Café Zimt und Zunder",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0814"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Neresheim",
+    "name": "Kinomobil Stuttgart - Härtsfeldhalle",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0817"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Leverkusen",
+    "name": "Cineplex Kinopolis Leverkusen",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0826"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Sulzbach",
+    "name": "Kinopolis Main-Taunus",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0831"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Diessen am Ammersee",
+    "name": "Kinowelt am Ammersee",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0841"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Ravensburg",
+    "name": "Kinozentrum Frauentor",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0845"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Oberndorf am Neckar",
+    "name": "KKK-Filmtheater",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0848"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Achim",
+      "name": "Kommunales Kino",
+      "path": "/kino/achim/kommunales-kino-36690"
+    },
+    "city": "Achim",
+    "name": "Koki Kommunales Kino",
+    "reason": "below_threshold",
+    "score": 0.833,
+    "theaterId": "A0853"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Nürnberg, Mittelfranken",
+      "name": "Filmhauskino",
+      "path": "/kino/nuernberg-mittelfranken/filmhauskino-67658"
+    },
+    "city": "Nürnberg",
+    "name": "Filmfabrik KommKino",
+    "reason": "below_threshold",
+    "score": 0.455,
+    "theaterId": "A0854"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Gladbeck",
+    "name": "Kommunales Kino im Studio der Stadtbücherei",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0861"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Freiburg im Breisgau",
+      "name": "Kandelhof",
+      "path": "/kino/freiburg-im-breisgau/kandelhof-32046"
+    },
+    "city": "Freiburg",
+    "name": "Kommunales Kino - Im Alten Wiehrebahnhof",
+    "reason": "below_threshold",
+    "score": 0.308,
+    "theaterId": "A0862"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Eckernförde",
+    "name": "Das Haus",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0866"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Weimar",
+      "name": "Lichthaus Kino im Straßenbahndepot/e-werk",
+      "path": "/kino/weimar/lichthaus-kino-im-strassenbahndepotewerk-53997"
+    },
+    "city": "Weimar",
+    "name": "Kommunales Kino im mon ami",
+    "reason": "below_threshold",
+    "score": 0.25,
+    "theaterId": "A0867"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Schlüchtern",
+      "name": "KUKI-ZELT",
+      "path": "/kino/schluechtern/kukizelt-79197"
+    },
+    "city": "Schlüchtern",
+    "name": "KUKI Kino",
+    "reason": "below_threshold",
+    "score": 0.667,
+    "theaterId": "A0875"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Berchtesgaden",
+    "name": "Kurkino im Kurhaus",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0886"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Lenzkirch",
+    "name": "Kultur im Kino",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0889"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Worms",
+    "name": "Arkaden Lichtspiele",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0891"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Gross-Gerau",
+    "name": "Lichtspielhaus Groß-Gerau",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0913"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Rostock",
+      "name": "li.wu. in der Frieda23",
+      "path": "/kino/rostock/li.wu.-in-der-frieda23-84657"
+    },
+    "city": "Rostock",
+    "name": "Lichtspieltheater Wundervoll (Metropol)",
+    "reason": "below_threshold",
+    "score": 0.346,
+    "theaterId": "A0914"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Wildeshausen",
+    "name": "Lindenhof-Lichtspiele",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A0919"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Wusterhausen",
+    "name": "Lindenkino",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0920"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Frankenthal (Pfalz)",
+      "name": "Open Air Kino in der Erkenbert Ruine",
+      "path": "/kino/frankenthal-pfalz/open-air-kino-in-der-erkenbert-ruine-71540"
+    },
+    "city": "Frankenthal",
+    "name": "Lux im Dathenushaus",
+    "reason": "below_threshold",
+    "score": 0.255,
+    "theaterId": "A0930"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Rust",
+    "name": "Magic Cinema im Europa Park",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0936"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Buchholz in der Nordheide",
+    "name": "Movieplexx Delhi - Center",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0971"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Güstrow",
+      "name": "Moviestar",
+      "path": "/kino/guestrow/moviestar-38819"
+    },
+    "city": "Güstrow",
+    "name": "Movie Star Gustrow",
+    "reason": "below_threshold",
+    "score": 0.72,
+    "theaterId": "A0972"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Viechtach",
+      "name": "CineVIT - Lichtspiel &amp;amp; Lounge",
+      "path": "/kino/viechtach/cinevit-lichtspiel-und-lounge-65236"
+    },
+    "city": "Viechtach",
+    "name": "Neue Post Lichtspiele",
+    "reason": "below_threshold",
+    "score": 0.667,
+    "theaterId": "A0983"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Weiden in der Oberpfalz",
+    "name": "Neue Welt Kinocenter",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0985"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Neunkirchen (Innenstadt)",
+    "name": "Neues Eden",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0987"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Isny im Allgäu",
+    "name": "Neues Ringtheater",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A0992"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Schwarzenberg/Erzgebirge",
+    "name": "Olympia Schwarzenberg",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1011"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Feuchtwangen",
+    "name": "KulturKino Feuchtwangen",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1054"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Bad Sobernheim",
+    "name": "Rex Bad Sobernheim",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1071"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Haslach im Kinzigtal",
+    "name": "Rio + Scala",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1081"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Dortmund",
+      "name": "Filmbühne Zur Postkutsche",
+      "path": "/kino/dortmund/filmbuehne-zur-postkutsche-30028"
+    },
+    "city": "Dortmund",
+    "name": "Roxy Dortmund",
+    "reason": "below_threshold",
+    "score": 0.143,
+    "theaterId": "A1088"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Nürnberg, Mittelfranken",
+      "name": "Open Air Krafftscher Hof",
+      "path": "/kino/nuernberg-mittelfranken/open-air-krafftscher-hof-75946"
+    },
+    "city": "Nürnberg",
+    "name": "Roxy-Fremdsprachenkino",
+    "reason": "below_threshold",
+    "score": 0.348,
+    "theaterId": "A1092"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Bad Neuenahr-Ahrweiler",
+    "name": "Kino-Center Rhein-Ahr",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1115"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Lübben",
+    "name": "Spreewald Lichtspiele Lübben",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1144"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Wadern",
+    "name": "Starlight-Kino",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1150"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Göppingen",
+      "name": "Staufen-Movieplex",
+      "path": "/kino/goeppingen/staufenmovieplex-32775"
+    },
+    "city": "Göppingen",
+    "name": "Staufen-Movieplex",
+    "reason": "ambiguous",
+    "score": 1.0,
+    "theaterId": "A1151"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Sankt Augustin",
+      "name": "Studio Kino Lounge",
+      "path": "/kino/sankt-augustin/studio-kino-lounge-31906"
+    },
+    "city": "Sankt Augustin",
+    "name": "Studio",
+    "reason": "below_threshold",
+    "score": 0.667,
+    "theaterId": "A1161"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Wangen im Allgäu",
+    "name": "Lichtspielhaus Wangen im Allgäu",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1163"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Regensburg",
+      "name": "Kinos im Andreasstadl",
+      "path": "/kino/regensburg/kinos-im-andreasstadl-66757"
+    },
+    "city": "Regensburg",
+    "name": "Turm-Theater Regensburg",
+    "reason": "below_threshold",
+    "score": 0.37,
+    "theaterId": "A1195"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Leuna",
+    "name": "UCI Nova Eventis",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1212"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Immenstadt im Allgäu",
+    "name": "Union Filmtheater Immenstadt im Allgäu",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1227"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Landau in der Pfalz",
+    "name": "Universum Kinocenter",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1245"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Greiz",
+      "name": "UT99 Kino-Center",
+      "path": "/kino/greiz/ut99-kinocenter-42916"
+    },
+    "city": "Greiz",
+    "name": "UT99 Kinocenter",
+    "reason": "below_threshold",
+    "score": 0.846,
+    "theaterId": "A1250"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Wernigerode",
+    "name": "Volkslichtspiele Wernigerode",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1265"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Fischbach bei Dahn",
+    "name": "Wasgau-Theater",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1269"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Eggenfelden",
+      "name": "Gerniale Kino Open-Air",
+      "path": "/kino/eggenfelden/gerniale-kino-openair-73783"
+    },
+    "city": "Eggenfelden",
+    "name": "Kinocenter Eggenfelden",
+    "reason": "below_threshold",
+    "score": 0.318,
+    "theaterId": "A1312"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Schönberg",
+    "name": "Blitz-Lichtspiele Schönberg",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1318"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Landstuhl",
+    "name": "Broadway Ramstein-Miesenbach",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1319"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Diepholz",
+    "name": "Central Diepholz",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1344"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Salzwedel",
+    "name": "Filmpalast Salzwedel (Hansestadt)",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1347"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Boppard",
+    "name": "Cinema Boppard",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1360"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Bremen",
+      "name": "City 46/Kommunalkino Bremen e.V.",
+      "path": "/kino/bremen/city-46kommunalkino-bremen-e.v.-32359"
+    },
+    "city": "Bremen",
+    "name": "City-Filmtheater",
+    "reason": "below_threshold",
+    "score": 0.444,
+    "theaterId": "A1378"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Kempten im Allgäu",
+    "name": "Colosseum-Center",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1382"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Stuttgart",
+      "name": "Gloria",
+      "path": "/kino/stuttgart/gloria-33011"
+    },
+    "city": "Stuttgart",
+    "name": "Delphi 1+2",
+    "reason": "below_threshold",
+    "score": 0.286,
+    "theaterId": "A1389"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Ravensburg (Württemberg)",
+      "name": "CineParc - Die Burg",
+      "path": "/kino/ravensburg-wuerttemberg/cineparc-die-burg-32944"
+    },
+    "city": "Ravensburg",
+    "name": "CineParC Ravensburg",
+    "reason": "ambiguous",
+    "score": 0.913,
+    "theaterId": "A1393"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Breisach am Rhein",
+    "name": "Engel-Lichtspiele",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1403"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Bad Säckingen",
+    "name": "Gloria Bad Säckingen",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1438"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Soltau",
+    "name": "Gloria Kino Center Soltau",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1441"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Gronau",
+    "name": "Gronauer-Lichtspiele",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1446"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Murrhardt",
+    "name": "Kommunales Kino Murrhardt e.V.",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1459"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Kelheim",
+      "name": "Kelheimer Kinocenter",
+      "path": "/kino/kelheim/kelheimer-kinocenter-32808"
+    },
+    "city": "Kelheim",
+    "name": "Kelheimer Lichtspiele",
+    "reason": "below_threshold",
+    "score": 0.683,
+    "theaterId": "A1462"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Bad Königshofen im Grabfeld",
+    "name": "Stadtsaal-Lichtspiele",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1463"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Frankfurt am Main",
+      "name": "Harmonie",
+      "path": "/kino/frankfurt-am-main/harmonie-32026"
+    },
+    "city": "Frankfurt am Main",
+    "name": "Mal seh&#039;n Kino",
+    "reason": "below_threshold",
+    "score": 0.353,
+    "theaterId": "A1469"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Freiburg im Breisgau",
+      "name": "aka Filmclub",
+      "path": "/kino/freiburg-im-breisgau/aka-filmclub-32041"
+    },
+    "city": "Freiburg im Breisgau",
+    "name": "aka-Filmclub",
+    "reason": "ambiguous",
+    "score": 1.0,
+    "theaterId": "A1474"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Freystadt",
+    "name": "Kino im Cafe Restaurant Beck",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1485"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Neuenburg am Rhein",
+    "name": "Kino Im Stadthaus",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1486"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Burghausen",
+      "name": "Ankersaal",
+      "path": "/kino/burghausen/ankersaal-32708"
+    },
+    "city": "Burghausen",
+    "name": "Anker-Filmtheater",
+    "reason": "below_threshold",
+    "score": 0.714,
+    "theaterId": "A1490"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Buckow",
+    "name": "Park-Theater Buckow",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1491"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Winsen",
+    "name": "Kinocenter Winsen",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1504"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Mosbach",
+    "name": "Kinostar Filmwelt Mosbach",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1513"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Alfeld",
+    "name": "Kinowelt Alfeld",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1515"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Tettnang",
+    "name": "KiTT - Kino und Kleinkunst Tettnang e.V.",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1518"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Triberg im Schwarzwald",
+    "name": "Kronen-Lichtspiele Triberg im Schwarzwald",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1526"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Langen bei Bremerhaven",
+      "name": "Lichtburg Kinos",
+      "path": "/kino/langen-bei-bremerhaven/lichtburg-kinos-33270"
+    },
+    "city": "Langen",
+    "name": "Lichtburg Kinos",
+    "reason": "ambiguous",
+    "score": 1.0,
+    "theaterId": "A1534"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Bad Wörishofen",
+    "name": "Filmhaus Bad Wörishofen - Lichtspiele am Bahnhof",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1537"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Brunsbüttel",
+      "name": "Metropol-Theater",
+      "path": "/kino/brunsbuettel/metropoltheater-32377"
+    },
+    "city": "Brunsbüttel",
+    "name": "Metropol Brunsbüttel 1",
+    "reason": "below_threshold",
+    "score": 0.667,
+    "theaterId": "A1565"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Rinteln",
+      "name": "Kinocenter",
+      "path": "/kino/rinteln/kinocenter-32598"
+    },
+    "city": "Rinteln",
+    "name": "Metropol-Theater Rinteln",
+    "reason": "below_threshold",
+    "score": 0.32,
+    "theaterId": "A1566"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Lindenberg im Allgäu",
+    "name": "Neues Krone Kino",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1574"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Hirschberg",
+    "name": "Olympia Hirschberg",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1580"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Enkenbach Alsenborn",
+    "name": "Provinzkino",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1588"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Darmstadt",
+      "name": "Citydome",
+      "path": "/kino/darmstadt/citydome-32006"
+    },
+    "city": "Darmstadt",
+    "name": "programmkino rex",
+    "reason": "below_threshold",
+    "score": 0.316,
+    "theaterId": "A1597"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Weilmünster",
+    "name": "Saalbau-Lichtspiele Weilmünster",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1611"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Weilheim in Oberbayern",
+    "name": "Starlight",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1633"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Speyer",
+      "name": "Theaterhaus Speyer House of Entertainment",
+      "path": "/kino/speyer/theaterhaus-speyer-house-of-entertainment-32269"
+    },
+    "city": "Speyer",
+    "name": "Kinocenter Theaterhaus Speyer",
+    "reason": "below_threshold",
+    "score": 0.607,
+    "theaterId": "A1647"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Kappeln, Schlei",
+      "name": "Capitol Lichtspiele",
+      "path": "/kino/kappeln-schlei/capitol-lichtspiele-32507"
+    },
+    "city": "Kappeln",
+    "name": "Capitol Theater Kappeln",
+    "reason": "below_threshold",
+    "score": 0.647,
+    "theaterId": "A1664"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Kirchheim unter Teck",
+      "name": "Central-Lichtspiele",
+      "path": "/kino/kirchheim-unter-teck/centrallichtspiele-32811"
+    },
+    "city": "Kirchheim unter Teck",
+    "name": "Kommunales Kino Kirchheim unter Teck",
+    "reason": "below_threshold",
+    "score": 0.286,
+    "theaterId": "A1692"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Niebüll",
+    "name": "Eck&#039; s Kino",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1697"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Meschede",
+      "name": "Linden-Lichtspiele",
+      "path": "/kino/meschede/lindenlichtspiele-31188"
+    },
+    "city": "Meschede",
+    "name": "Linden-Theater",
+    "reason": "below_threshold",
+    "score": 0.6,
+    "theaterId": "A1701"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Köln",
+      "name": "Rex am Ring Lichtspiele",
+      "path": "/kino/koeln/rex-am-ring-lichtspiele-74197"
+    },
+    "city": "Köln",
+    "name": "Rex am Ring",
+    "reason": "ambiguous",
+    "score": 0.955,
+    "theaterId": "A1704"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Magdeburg",
+      "name": "Kulturzentrum Moritzhof",
+      "path": "/kino/magdeburg/kulturzentrum-moritzhof-71957"
+    },
+    "city": "Magdeburg",
+    "name": "Oli Lichtspiele",
+    "reason": "below_threshold",
+    "score": 0.211,
+    "theaterId": "A1708"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Rahden",
+    "name": "Kinocenter Rahden",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1730"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Radeburg",
+    "name": "Kinobar",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1759"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Borna",
+    "name": "Volksplatz Borna Open Air Kino",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1804"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Berlin",
+      "name": "Freiluftkino Friedrichshagen",
+      "path": "/kino/berlin/freiluftkino-friedrichshagen-43721"
+    },
+    "city": "Berlin",
+    "name": "Freiluftkino Friedrichshain",
+    "reason": "ambiguous",
+    "score": 0.936,
+    "theaterId": "A1805"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Berlin",
+      "name": "Freiluftkino Kreuzberg",
+      "path": "/kino/berlin/freiluftkino-kreuzberg-31380"
+    },
+    "city": "Berlin",
+    "name": "ARTE Freiluftkino Kulturforum",
+    "reason": "below_threshold",
+    "score": 0.558,
+    "theaterId": "A1807"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Berlin",
+      "name": "Freiluftkino Friedrichshagen",
+      "path": "/kino/berlin/freiluftkino-friedrichshagen-43721"
+    },
+    "city": "Berlin",
+    "name": "Freiluftkino Naturtheater Friedrichshagen",
+    "reason": "ambiguous",
+    "score": 0.947,
+    "theaterId": "A1808"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Berlin",
+      "name": "Freiluftkino Hasenheide",
+      "path": "/kino/berlin/freiluftkino-hasenheide-61899"
+    },
+    "city": "Berlin",
+    "name": "Freiluftkino Parkbühne Biesdorf",
+    "reason": "below_threshold",
+    "score": 0.636,
+    "theaterId": "A1809"
+  },
+  {
+    "bestCandidate": {
+      "locality": "München",
+      "name": "Open Air Kino am Olympiasee",
+      "path": "/kino/muenchen/open-air-kino-am-olympiasee-75479"
+    },
+    "city": "München",
+    "name": "Open Air Kino, Mond &amp; Sterne",
+    "reason": "below_threshold",
+    "score": 0.667,
+    "theaterId": "A1815"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Erfurt",
+      "name": "Kinoklub am Hirschlachufer",
+      "path": "/kino/erfurt/kinoklub-am-hirschlachufer-31514"
+    },
+    "city": "Erfurt",
+    "name": "Open Air im Kulturhof Krönbacken",
+    "reason": "below_threshold",
+    "score": 0.305,
+    "theaterId": "A1829"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Oelsnitz",
+    "name": "Open-Air-Kino - Waldbühne Neuwürschnitz",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1846"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Frankfurt am Main",
+      "name": "Pupille - Kino in der Uni",
+      "path": "/kino/frankfurt-am-main/pupille-kino-in-der-uni-36896"
+    },
+    "city": "Frankfurt am Main",
+    "name": "Open-Air-Kino Brentanobad",
+    "reason": "below_threshold",
+    "score": 0.417,
+    "theaterId": "A1853"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Marburg",
+      "name": "Kino Cafe Trauma",
+      "path": "/kino/marburg/kino-cafe-trauma-69717"
+    },
+    "city": "Marburg",
+    "name": "Open Air Kino Marburg",
+    "reason": "below_threshold",
+    "score": 0.378,
+    "theaterId": "A1855"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Leipzig",
+      "name": "Regina-Palast",
+      "path": "/kino/leipzig/reginapalast-31586"
+    },
+    "city": "Leipzig",
+    "name": "Sommerkino Schauportal",
+    "reason": "below_threshold",
+    "score": 0.4,
+    "theaterId": "A1858"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Lemförde",
+    "name": "Lichtburg Open Air Kino",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1865"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Regensburg",
+      "name": "Kinos im Andreasstadl",
+      "path": "/kino/regensburg/kinos-im-andreasstadl-66757"
+    },
+    "city": "Regensburg",
+    "name": "Open Air Kino Auf Schloss Pürkelgut",
+    "reason": "below_threshold",
+    "score": 0.316,
+    "theaterId": "A1876"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Düsseldorf",
+      "name": "Open-Air-Kino Vier Linden",
+      "path": "/kino/duesseldorf/openairkino-vier-linden-36050"
+    },
+    "city": "Düsseldorf",
+    "name": "Frankenheim Kino",
+    "reason": "below_threshold",
+    "score": 0.39,
+    "theaterId": "A1884"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Senftenberg",
+    "name": "Kino am See",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1887"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Dortmund",
+      "name": "Kino im U",
+      "path": "/kino/dortmund/kino-im-u-80817"
+    },
+    "city": "Dortmund",
+    "name": "Open Air Kino im Stadion",
+    "reason": "below_threshold",
+    "score": 0.485,
+    "theaterId": "A1898"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Hamburg",
+      "name": "LOTTO Hamburg SchanzenKino Open Air",
+      "path": "/kino/hamburg/lotto-hamburg-schanzenkino-open-air-59037"
+    },
+    "city": "Hamburg",
+    "name": "Outdoor Cine - Das Open Air Kino im Völkerkunde-Museum",
+    "reason": "below_threshold",
+    "score": 0.426,
+    "theaterId": "A1913"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Fellbach",
+      "name": "Orfeo",
+      "path": "/kino/fellbach/orfeo-36550"
+    },
+    "city": "Fellbach",
+    "name": "Fellbacher Sommernachts-Open-Air-Kino",
+    "reason": "below_threshold",
+    "score": 0.143,
+    "theaterId": "A1925"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Potsdam",
+      "name": "Freiluftkino Waschhaus",
+      "path": "/kino/potsdam/freiluftkino-waschhaus-67017"
+    },
+    "city": "Potsdam",
+    "name": "Inselkino auf der Freundschaftsinsel",
+    "reason": "below_threshold",
+    "score": 0.448,
+    "theaterId": "A1932"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Altensteig",
+    "name": "Open-Air Kino im Schlossgarten",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1934"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Assamstadt",
+    "name": "Kinomobil Stuttgart - Grundschule Assamstadt",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1936"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Wald",
+    "name": "Kinomobil Stuttgart - Feuerwehrhaus Wald",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1937"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Oberriexingen",
+    "name": "Kinomobil Stuttgart - Festhalle Oberriexingen",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1938"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Gottmadingen",
+    "name": "Kinomobil Stuttgart - Neues Rathaus",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1939"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Emmingen-Liptingen",
+    "name": "Kinomobil Stuttgart - Musiksaal der Witthohschule",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1941"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Erlangen",
+      "name": "Kino im E-Werk",
+      "path": "/kino/erlangen/kino-im-ewerk-37549"
+    },
+    "city": "Erlangen",
+    "name": "Open Air Erlangen",
+    "reason": "below_threshold",
+    "score": 0.387,
+    "theaterId": "A1943"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Immenstaad am Bodensee",
+    "name": "Kinomobil Stuttgart - Strandbad Aquastaad",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1951"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Erdmannhausen",
+      "name": "Kinomobil Stuttgart - Astrid-Lindgren-Schule",
+      "path": "/kino/erdmannhausen/kinomobil-stuttgart-astridlindgrenschule-41777"
+    },
+    "city": "Erdmannhausen",
+    "name": "Kinomobil Stuttgart - Schulhof Astrid-Lindgren-Schule",
+    "reason": "ambiguous",
+    "score": 0.963,
+    "theaterId": "A1952"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Reichenau",
+    "name": "Kinomobil Stuttgart - Hochwart-Wiese",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1953"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Walheim",
+    "name": "Kinomobil Stuttgart - Römerhaus",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1954"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Nürnberg, Mittelfranken",
+      "name": "Open Air Naturgartenbad",
+      "path": "/kino/nuernberg-mittelfranken/open-air-naturgartenbad-86881"
+    },
+    "city": "Nürnberg",
+    "name": "Open Air Radrennbahn am Reichelsdorfer Keller",
+    "reason": "below_threshold",
+    "score": 0.492,
+    "theaterId": "A1956"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Fürth",
+      "name": "Babylon Kino am Stadtpark",
+      "path": "/kino/fuerth/babylon-kino-am-stadtpark-32762"
+    },
+    "city": "Fürth",
+    "name": "Freilichtbühne im Fürther Stadtpark",
+    "reason": "below_threshold",
+    "score": 0.462,
+    "theaterId": "A1963"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Forchheim",
+      "name": "Kino-Center",
+      "path": "/kino/forchheim/kinocenter-54076"
+    },
+    "city": "Forchheim",
+    "name": "Open Air Kino In der Kaiserpfalz Forchheim",
+    "reason": "below_threshold",
+    "score": 0.302,
+    "theaterId": "A1968"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Nürnberg, Mittelfranken",
+      "name": "Meisengeige",
+      "path": "/kino/nuernberg-mittelfranken/meisengeige-32912"
+    },
+    "city": "Nürnberg",
+    "name": "Kino in den Felsengängen",
+    "reason": "below_threshold",
+    "score": 0.552,
+    "theaterId": "A1980"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Nürnberg, Mittelfranken",
+      "name": "Open Air Pellerhaus",
+      "path": "/kino/nuernberg-mittelfranken/open-air-pellerhaus-91281"
+    },
+    "city": "Nürnberg",
+    "name": "Open Air Kino Freilichtbühne Desi",
+    "reason": "below_threshold",
+    "score": 0.512,
+    "theaterId": "A1981"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Bamberg",
+      "name": "Odeon Lichtspiel, Kino &amp; Café",
+      "path": "/kino/bamberg/odeon-lichtspiel-kino-und-caf%C3%A9-48482"
+    },
+    "city": "Bamberg",
+    "name": "Open Air Kino Hainbad",
+    "reason": "below_threshold",
+    "score": 0.5,
+    "theaterId": "A1983"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Lahr am Schwarzwald",
+    "name": "Open Air Kino im Innenhof Schlachthof",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A1986"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Oberndorf am Neckar",
+    "name": "Sommernachtskino im Klosterhof in Oberndorf",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1987"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Ludwigslust, Mecklenburg",
+      "name": "Luna Filmtheater",
+      "path": "/kino/ludwigslust-mecklenburg/luna-filmtheater-70497"
+    },
+    "city": "Ludwigslust",
+    "name": "Open Air Kino am Schweizerhaus",
+    "reason": "below_threshold",
+    "score": 0.174,
+    "theaterId": "A1992"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Tauberbischofsheim",
+    "name": "Open Air Kino Rotary-Benefiz",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A1995"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Tuttlingen",
+      "name": "Scala",
+      "path": "/kino/tuttlingen/scala-33035"
+    },
+    "city": "Tuttlingen",
+    "name": "Open Air Kino Tuttlingen",
+    "reason": "below_threshold",
+    "score": 0.138,
+    "theaterId": "A1999"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Offenburg",
+      "name": "Forum",
+      "path": "/kino/offenburg/forum-74717"
+    },
+    "city": "Offenburg",
+    "name": "Sommer Kino Nächte Ortenau",
+    "reason": "below_threshold",
+    "score": 0.188,
+    "theaterId": "A2002"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Herne, Westfalen",
+      "name": "Open-Air Kino Schloss Strünkede",
+      "path": "/kino/herne-westfalen/openair-kino-schloss-struenkede-64177"
+    },
+    "city": "Herne",
+    "name": "Open-Air Kino Schloss Strünkede",
+    "reason": "ambiguous",
+    "score": 1.0,
+    "theaterId": "A2008"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Ingolstadt",
+      "name": "Audi Programmkino im Audi Forum Ingolstadt",
+      "path": "/kino/ingolstadt/audi-programmkino-im-audi-forum-ingolstadt-66437"
+    },
+    "city": "Ingolstadt",
+    "name": "Kino Open Air Ingolstadt",
+    "reason": "below_threshold",
+    "score": 0.5,
+    "theaterId": "A2024"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Böblingen",
+      "name": "Filmzentrum Bären",
+      "path": "/kino/boeblingen/filmzentrum-baeren-32704"
+    },
+    "city": "Böblingen",
+    "name": "Open Air Böblinger See",
+    "reason": "below_threshold",
+    "score": 0.39,
+    "theaterId": "A2035"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Freiburg im Breisgau",
+      "name": "Friedrichsbau-Apollo",
+      "path": "/kino/freiburg-im-breisgau/friedrichsbauapollo-65198"
+    },
+    "city": "Freiburg",
+    "name": "Sommernachts-Kino",
+    "reason": "below_threshold",
+    "score": 0.378,
+    "theaterId": "A2036"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Hechingen",
+      "name": "Burgtheater",
+      "path": "/kino/hechingen/burgtheater-32786"
+    },
+    "city": "Hechingen",
+    "name": "Open Air Kino Burg Hohenzollern",
+    "reason": "below_threshold",
+    "score": 0.381,
+    "theaterId": "A2053"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Kühlungsborn, Ostseebad",
+      "name": "Ostseekino",
+      "path": "/kino/kuehlungsborn-ostseebad/ostseekino-60856"
+    },
+    "city": "Kühlungsborn",
+    "name": "Open Air Strandkorbkino am Bootshafen",
+    "reason": "below_threshold",
+    "score": 0.298,
+    "theaterId": "A2059"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Kassel, Hessen",
+      "name": "Filmladen",
+      "path": "/kino/kassel-hessen/filmladen-32114"
+    },
+    "city": "Kassel",
+    "name": "Kasseler Open Air Sommerfilm",
+    "reason": "below_threshold",
+    "score": 0.216,
+    "theaterId": "A2063"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Ginsheim-Gustavsburg",
+      "name": "Burg-Lichtspiele",
+      "path": "/kino/ginsheimgustavsburg/burglichtspiele-32066"
+    },
+    "city": "Ginsheim-Gustavsburg",
+    "name": "Open Air Kino Ginsheim-Gustavsburg",
+    "reason": "below_threshold",
+    "score": 0.16,
+    "theaterId": "A2084"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Vitte",
+    "name": "Zeltkino Hiddensee",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2097"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Schallstadt",
+    "name": "Kinomobil Stuttgart - Johann-Philipp-Glock-Schule",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2100"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Deggingen",
+    "name": "Kinomobil Stuttgart - Feuerwehrhaus Deggingen",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2128"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Grossbottwar",
+    "name": "Kinomobil Stuttgart - Kelter Winzerhausen",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2132"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Grafenberg",
+    "name": "Kinomobil Stuttgart - Historische Kelter",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2134"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Görlitz, Neiße",
+      "name": "Filmpalast",
+      "path": "/kino/goerlitz-neisse/filmpalast-31536"
+    },
+    "city": "Görlitz",
+    "name": "Offkino Klappe die Zweite",
+    "reason": "below_threshold",
+    "score": 0.312,
+    "theaterId": "A2142"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Potsdam",
+      "name": "Freiluftkino Waschhaus",
+      "path": "/kino/potsdam/freiluftkino-waschhaus-67017"
+    },
+    "city": "Potsdam",
+    "name": "Freilichtkino in der Russischen Kolonie Alexandrowka",
+    "reason": "below_threshold",
+    "score": 0.405,
+    "theaterId": "A2152"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Waldenbuch",
+    "name": "Kinomobil Stuttgart - Haus der Begegnung Waldenbuch",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2171"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Köln",
+      "name": "Filmhaus Kino",
+      "path": "/kino/koeln/filmhaus-kino-30858"
+    },
+    "city": "Köln",
+    "name": "Odonisches Sommerkino",
+    "reason": "below_threshold",
+    "score": 0.471,
+    "theaterId": "A2175"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Schwerin bei Königs Wusterhausen",
+      "name": "Kino unterm Dach e.V.",
+      "path": "/kino/schwerin-bei-koenigs-wusterhausen/kino-unterm-dach-e.v.-93102"
+    },
+    "city": "Schwerin",
+    "name": "Open-Air-Kino Schwerin",
+    "reason": "below_threshold",
+    "score": 0.381,
+    "theaterId": "A2190"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Sosa",
+    "name": "Freilichtbühne Sosa",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2191"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Weinböhla",
+    "name": "Openair Zentralgasthof Weinböhla GmbH",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2202"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Kelkheim (Taunus)",
+    "name": "Open-Air Marktplatz Neue Stadtmitte",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2204"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Landsberg am Lech",
+      "name": "Open Air Kino am Rossmarkt",
+      "path": "/kino/landsberg-am-lech/open-air-kino-am-rossmarkt-68417"
+    },
+    "city": "Landsberg am Lech",
+    "name": "Open Air Kino Landsberg",
+    "reason": "below_threshold",
+    "score": 0.615,
+    "theaterId": "A2207"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Waldshut-Tiengen",
+      "name": "Albrecht Kino Waldshut",
+      "path": "/kino/waldshuttiengen/albrecht-kino-waldshut-75377"
+    },
+    "city": "Waldshut-Tiengen",
+    "name": "Open Air-Kino Waldshut",
+    "reason": "below_threshold",
+    "score": 0.5,
+    "theaterId": "A2225"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Dörzbach",
+    "name": "Kinomobil Stuttgart - Schlosshof Schloss Eyb",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2227"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Nagold",
+      "name": "Krone-Lichtspiele",
+      "path": "/kino/nagold/kronelichtspiele-32896"
+    },
+    "city": "Nagold",
+    "name": "Open Air im Badepark Nagold",
+    "reason": "below_threshold",
+    "score": 0.182,
+    "theaterId": "A2235"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Bautzen",
+      "name": "Open Air Kino auf der Terassse",
+      "path": "/kino/bautzen/open-air-kino-auf-der-terassse-82400"
+    },
+    "city": "Bautzen",
+    "name": "Open Air Kino im Hof der Ortenburg",
+    "reason": "below_threshold",
+    "score": 0.622,
+    "theaterId": "A2237"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Schmalkalden",
+    "name": "Open Air Kino Schloss Wilhelmsburg",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2246"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Mörfelden-Walldorf",
+      "name": "Lichtblick",
+      "path": "/kino/moerfeldenwalldorf/lichtblick-32185"
+    },
+    "city": "Mörfelden-Walldorf",
+    "name": "Open Air Kino am Rathaus Walldorf",
+    "reason": "below_threshold",
+    "score": 0.093,
+    "theaterId": "A2256"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Erfurt",
+      "name": "Kinoklub am Hirschlachufer",
+      "path": "/kino/erfurt/kinoklub-am-hirschlachufer-31514"
+    },
+    "city": "Erfurt",
+    "name": "Open Air Kino egapark",
+    "reason": "below_threshold",
+    "score": 0.298,
+    "theaterId": "A2261"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Berlin",
+      "name": "Central-Kino Open Air Berlin",
+      "path": "/kino/berlin/centralkino-open-air-berlin-90497"
+    },
+    "city": "Berlin",
+    "name": "Open Air Kino Spandau Innenhof Stadtbibliothek",
+    "reason": "below_threshold",
+    "score": 0.386,
+    "theaterId": "A2276"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Eppstein",
+    "name": "Open-Air auf der Burg",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2283"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Regionalverband Saarbrücken",
+    "name": "Residenz",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2298"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Moers",
+      "name": "Movie Center",
+      "path": "/kino/moers/movie-center-74636"
+    },
+    "city": "Moers",
+    "name": "Atlantic Kinocenter",
+    "reason": "below_threshold",
+    "score": 0.483,
+    "theaterId": "A2328"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Hammelburg",
+    "name": "Kino in der Stadtbibliothek Hammelburg",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2348"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Holzkirchen",
+    "name": "KULTUR im Oberbräu",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2357"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Leipzig",
+      "name": "Passage Kinos",
+      "path": "/kino/leipzig/passage-kinos-36692"
+    },
+    "city": "Leipzig",
+    "name": "Filmclub KassaBlanka",
+    "reason": "below_threshold",
+    "score": 0.308,
+    "theaterId": "A2361"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Schloss Holte-Stukenbrock",
+    "name": "Rhythmus-Filmtheater",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2365"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Frankfurt an der Oder",
+    "name": "Kleines Kino",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2371"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Rotenburg an der Wümme",
+    "name": "Stadtkino Rotenburg",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2372"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Wittstock",
+    "name": "Astoria Wittstock",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2377"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Rudolstadt",
+      "name": "Sommerkino im Garten des Schillerhauses",
+      "path": "/kino/rudolstadt/sommerkino-im-garten-des-schillerhauses-86397"
+    },
+    "city": "Rudolstadt",
+    "name": "Uferpalast Rudolstadt",
+    "reason": "below_threshold",
+    "score": 0.233,
+    "theaterId": "A2390"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Köln",
+      "name": "Kino Weißhaus",
+      "path": "/kino/koeln/kino-weisshaus-31843"
+    },
+    "city": "Köln",
+    "name": "Open Air Kino Im Rheinauenhafen",
+    "reason": "below_threshold",
+    "score": 0.4,
+    "theaterId": "A2436"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Forchtenberg",
+    "name": "Open-Air-Kino Forchtenberg",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2440"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Rudolstadt",
+      "name": "Sommerkino im Garten des Schillerhauses",
+      "path": "/kino/rudolstadt/sommerkino-im-garten-des-schillerhauses-86397"
+    },
+    "city": "Rudolstadt",
+    "name": "Freiluftkino im Garten des Schillerhauses",
+    "reason": "below_threshold",
+    "score": 0.812,
+    "theaterId": "A2443"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Fürstenwalde an der Spree",
+    "name": "Open Air Kino Parkbühne",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2449"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Hofheim am Taunus",
+      "name": "Filmpalast",
+      "path": "/kino/hofheim-am-taunus/filmpalast-78837"
+    },
+    "city": "Hofheim am Taunus",
+    "name": "Open-Air Spielwiese neben dem Rathaus",
+    "reason": "below_threshold",
+    "score": 0.17,
+    "theaterId": "A2458"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Hannover",
+      "name": "Kommunales Kino im Künstlerhaus",
+      "path": "/kino/hannover/kommunales-kino-im-kuenstlerhaus-32475"
+    },
+    "city": "Hannover",
+    "name": "Seh-Fest Gilde Parkbühne",
+    "reason": "below_threshold",
+    "score": 0.308,
+    "theaterId": "A2472"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Nördlingen",
+      "name": "Ries Theater",
+      "path": "/kino/noerdlingen/ries-theater-32904"
+    },
+    "city": "Nördlingen",
+    "name": "Open Air Kino Ochsenzwinger Nördlingen",
+    "reason": "below_threshold",
+    "score": 0.196,
+    "theaterId": "A2484"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Alpirsbach",
+      "name": "Open Air Kino im Kreuzgarten des Klosters",
+      "path": "/kino/alpirsbach/open-air-kino-im-kreuzgarten-des-klosters-63816"
+    },
+    "city": "Alpirsbach",
+    "name": "Kino unterm Sternenhimmel Alpirsbach",
+    "reason": "below_threshold",
+    "score": 0.364,
+    "theaterId": "A2486"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Hürth",
+      "name": "CP Lichtspiele",
+      "path": "/kino/huerth/cp-lichtspiele-89197"
+    },
+    "city": "Hürth",
+    "name": "Open Air Kino Kloster Burbach",
+    "reason": "below_threshold",
+    "score": 0.233,
+    "theaterId": "A2488"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Nürnberg, Mittelfranken",
+      "name": "Open Air Krafftscher Hof",
+      "path": "/kino/nuernberg-mittelfranken/open-air-krafftscher-hof-75946"
+    },
+    "city": "Nürnberg",
+    "name": "Open Air Fränkisches Museumseisenbahn",
+    "reason": "below_threshold",
+    "score": 0.516,
+    "theaterId": "A2489"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Zittau",
+      "name": "Filmpalast",
+      "path": "/kino/zittau/filmpalast-31720"
+    },
+    "city": "Zittau",
+    "name": "Zittauer Filmnächte",
+    "reason": "below_threshold",
+    "score": 0.4,
+    "theaterId": "A2491"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Osnabrück",
+      "name": "Open Air Kino im Zoo",
+      "path": "/kino/osnabrueck/open-air-kino-im-zoo-92778"
+    },
+    "city": "Osnabrück",
+    "name": "Open-Air-Kino Schloss-Innenhof",
+    "reason": "below_threshold",
+    "score": 0.6,
+    "theaterId": "A2504"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Klöden",
+    "name": "Sommerkino Klöden",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2508"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Reutlingen",
+      "name": "Open Air Kino Reutlingen",
+      "path": "/kino/reutlingen/open-air-kino-reutlingen-92531"
+    },
+    "city": "Reutlingen",
+    "name": "Open Air Kino Spitalhof Reutlingen",
+    "reason": "below_threshold",
+    "score": 0.615,
+    "theaterId": "A2518"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Hoyerswerda",
+      "name": "Open Air an der Krabatmühle Schwarzkollm",
+      "path": "/kino/hoyerswerda/open-air-an-der-krabatmuehle-schwarzkollm-76157"
+    },
+    "city": "Hoyerswerda",
+    "name": "Open Air an der schwarzen Mühle",
+    "reason": "below_threshold",
+    "score": 0.822,
+    "theaterId": "A2526"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Schweinfurt",
+      "name": "KuK Sommerkino Open Air",
+      "path": "/kino/schweinfurt/kuk-sommerkino-open-air-76204"
+    },
+    "city": "Schweinfurt",
+    "name": "Open Air am KuK",
+    "reason": "below_threshold",
+    "score": 0.706,
+    "theaterId": "A2532"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Sulzbach-Rosenberg",
+    "name": "Lu-Li Sommernachtskino",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2533"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Bad Urach",
+      "name": "Forum 22",
+      "path": "/kino/bad-urach/forum-22-32688"
+    },
+    "city": "Bad Urach",
+    "name": "Bad Uracher Sommer Open Air",
+    "reason": "below_threshold",
+    "score": 0.057,
+    "theaterId": "A2534"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Gersthofen",
+    "name": "Open Air Seebühne",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2539"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Bad Wörishofen",
+    "name": "Open Air Kino Unter den Linden",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2543"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Donzdorf",
+    "name": "Sommerkino Donzdorf",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2544"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Leutkirch im Allgäu",
+    "name": "Open-Air-Kino im Museumshof",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2548"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Allmersbach im Tal",
+    "name": "Kinomobil Stuttgart - Bürgersaal",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2557"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Wasserburg am Inn",
+      "name": "Kino Utopia",
+      "path": "/kino/wasserburg-am-inn/kino-utopia-33054"
+    },
+    "city": "Wasserburg am Inn",
+    "name": "Open Air im STrandpark Wasserburg",
+    "reason": "below_threshold",
+    "score": 0.136,
+    "theaterId": "A2561"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Landau in der Pfalz",
+    "name": "Open Air Kino Landau",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2564"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Grünberg",
+      "name": "Lichtspiele Grünberg",
+      "path": "/kino/gruenberg/lichtspiele-gruenberg-57696"
+    },
+    "city": "Grünberg",
+    "name": "Open Air Kino auf dem Marktplatz",
+    "reason": "below_threshold",
+    "score": 0.151,
+    "theaterId": "A2565"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Freiberg",
+    "name": "Open Air auf Schloss Freudenstein",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2567"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Sontheim",
+    "name": "Kino in der Dampfsäg",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2588"
+  },
+  {
+    "bestCandidate": {
+      "locality": "München",
+      "name": "Cadillac &amp; Veranda Kino",
+      "path": "/kino/muenchen/cadillac-und-veranda-kino-32857"
+    },
+    "city": "München",
+    "name": "Technische Universität",
+    "reason": "below_threshold",
+    "score": 0.41,
+    "theaterId": "A2600"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Landau",
+    "name": "KuKi - Das Kultkino",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2623"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Dietzenbach",
+    "name": "Maingau - Open - Air - Kino",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2627"
+  },
+  {
+    "bestCandidate": {
+      "locality": "München",
+      "name": "Astor Film Lounge im Arri",
+      "path": "/kino/muenchen/astor-film-lounge-im-arri-32867"
+    },
+    "city": "München",
+    "name": "Astor Cinema Lounge",
+    "reason": "ambiguous",
+    "score": 0.92,
+    "theaterId": "A2636"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Rostock",
+      "name": "li.wu. in der Frieda23",
+      "path": "/kino/rostock/li.wu.-in-der-frieda23-84657"
+    },
+    "city": "Rostock",
+    "name": "Lichtspieltheater Wundervoll (Frieda 23)",
+    "reason": "below_threshold",
+    "score": 0.615,
+    "theaterId": "A2649"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Haselünne",
+    "name": "Hasetor-Lichtspiele",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2650"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Darmstadt",
+      "name": "Studentischer Filmkreis an der TU Darmstadt",
+      "path": "/kino/darmstadt/studentischer-filmkreis-an-der-tu-darmstadt-84937"
+    },
+    "city": "Darmstadt",
+    "name": "Studentischer Filmkreis im Audimaxx der TU Darmstadt",
+    "reason": "below_threshold",
+    "score": 0.853,
+    "theaterId": "A2665"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Werdau",
+    "name": "Auto- und Freilichtkino Langenhessen",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2695"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Schrozberg",
+    "name": "Open Air Schrozberg",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2701"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Dessau-Roßlau",
+    "name": "Open Air am Landhaus Dessau",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2702"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Wathlingen",
+    "name": "Kleines Kino Wathlingen",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2709"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Diessen am Ammersee",
+    "name": "Cinema Augustinum Diessen am Ammersee",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2714"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Neumarkt in der Oberpfalz",
+    "name": "Cineplex Neumarkt",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2716"
+  },
+  {
+    "bestCandidate": {
+      "locality": "München",
+      "name": "Open Air Kino am Olympiasee",
+      "path": "/kino/muenchen/open-air-kino-am-olympiasee-75479"
+    },
+    "city": "München",
+    "name": "Programm-Kino im Viehhof-Zelt",
+    "reason": "below_threshold",
+    "score": 0.464,
+    "theaterId": "A2721"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Wedel",
+    "name": "Open Air auf dem Theaterschiff",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2723"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Fehmarn",
+    "name": "Burg-Film-Theater",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2729"
+  },
+  {
+    "bestCandidate": {
+      "locality": "München",
+      "name": "Astor Cinema Lounge im Bayerischen Hof",
+      "path": "/kino/muenchen/astor-cinema-lounge-im-bayerischen-hof-79897"
+    },
+    "city": "München",
+    "name": "Kino in der Hochschule für Fernsehen und Film München",
+    "reason": "below_threshold",
+    "score": 0.382,
+    "theaterId": "A2743"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Hamburg",
+      "name": "LOTTO Hamburg SchanzenKino Open Air",
+      "path": "/kino/hamburg/lotto-hamburg-schanzenkino-open-air-59037"
+    },
+    "city": "Hamburg",
+    "name": "SchanzenKino 73 (zweisprachig)",
+    "reason": "below_threshold",
+    "score": 0.5,
+    "theaterId": "A2747"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Zella-Mehlis",
+    "name": "Clubkino Zella-Mehlis",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2753"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Hürth",
+      "name": "CP Lichtspiele",
+      "path": "/kino/huerth/cp-lichtspiele-89197"
+    },
+    "city": "Hürth",
+    "name": "CP Lichtspielfreunde Hürth von 2016 e.V.",
+    "reason": "below_threshold",
+    "score": 0.667,
+    "theaterId": "A2754"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Spremberg, Niederlausitz",
+      "name": "Spreekino",
+      "path": "/kino/spremberg-niederlausitz/spreekino-39157"
+    },
+    "city": "Spremberg",
+    "name": "Spremberger Filmnächte",
+    "reason": "below_threshold",
+    "score": 0.438,
+    "theaterId": "A2758"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Gera",
+      "name": "Metropol Kino",
+      "path": "/kino/gera/metropol-kino-31532"
+    },
+    "city": "Gera",
+    "name": "Open Air im Comma-Garten",
+    "reason": "below_threshold",
+    "score": 0.216,
+    "theaterId": "A2759"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Feldberger Seenlandschaft",
+    "name": "Clubkino Feldberg",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2761"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Jülich",
+      "name": "KuBa",
+      "path": "/kino/juelich/kuba-70097"
+    },
+    "city": "Jülich",
+    "name": "Open Air Kino Jülich",
+    "reason": "below_threshold",
+    "score": 0.08,
+    "theaterId": "A2765"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Kelkheim",
+      "name": "Kino-Kelkheim",
+      "path": "/kino/kelkheim/kinokelkheim-32123"
+    },
+    "city": "Kelkheim",
+    "name": "Open Air Kelkheim",
+    "reason": "below_threshold",
+    "score": 0.5,
+    "theaterId": "A2767"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Herrenberg",
+      "name": "Kommunales Kino",
+      "path": "/kino/herrenberg/kommunales-kino-69497"
+    },
+    "city": "Herrenberg",
+    "name": "Open Air Kino Herrenberg",
+    "reason": "below_threshold",
+    "score": 0.359,
+    "theaterId": "A2770"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Weil der Stadt",
+      "name": "Kino-Center",
+      "path": "/kino/weil-der-stadt/kinocenter-33058"
+    },
+    "city": "Weil der Stadt",
+    "name": "Kinocenter",
+    "reason": "below_threshold",
+    "score": 0.75,
+    "theaterId": "A2771"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Konstanz, Universitätsstadt",
+      "name": "Zebra Open Air Neuwerk",
+      "path": "/kino/konstanz-universitaetsstadt/zebra-open-air-neuwerk-75919"
+    },
+    "city": "Konstanz",
+    "name": "Open Air am Neuwerk",
+    "reason": "below_threshold",
+    "score": 0.8,
+    "theaterId": "A2774"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Nürnberg, Mittelfranken",
+      "name": "Cinecitta",
+      "path": "/kino/nuernberg-mittelfranken/cinecitta-34569"
+    },
+    "city": "Nürnberg",
+    "name": "Cinecittá Open Air",
+    "reason": "below_threshold",
+    "score": 0.5,
+    "theaterId": "A2779"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Weimar",
+      "name": "Lichthaus Kino im Straßenbahndepot/e-werk",
+      "path": "/kino/weimar/lichthaus-kino-im-strassenbahndepotewerk-53997"
+    },
+    "city": "Weimar",
+    "name": "Open Air am Lichthaus-Kino",
+    "reason": "below_threshold",
+    "score": 0.412,
+    "theaterId": "A2783"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Seeheim-Jugenheim",
+      "name": "Die Freilichtbühne - Open Air Kino",
+      "path": "/kino/seeheimjugenheim/die-freilichtbuehne-open-air-kino-73539"
+    },
+    "city": "Seeheim-Jugenheim",
+    "name": "Filmseher Open Air",
+    "reason": "below_threshold",
+    "score": 0.652,
+    "theaterId": "A2797"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Merzig (Saar)",
+      "name": "Odeon Kino-Center",
+      "path": "/kino/merzig-saar/odeon-kinocenter-65016"
+    },
+    "city": "Merzig",
+    "name": "Kino am Seffersbach",
+    "reason": "below_threshold",
+    "score": 0.25,
+    "theaterId": "A2800"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Sankt Blasien",
+    "name": "Kino im Kursaal",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2802"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Waldkirch",
+    "name": "Kommunales Kino Klappe 11",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2805"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Norddorf auf Amrum",
+    "name": "LichtBlick InselKino",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2807"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Emmendingen",
+      "name": "Cine Maja",
+      "path": "/kino/emmendingen/cine-maja-40260"
+    },
+    "city": "Emmendingen",
+    "name": "Maja",
+    "reason": "below_threshold",
+    "score": 0.667,
+    "theaterId": "A2808"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Emsdetten",
+    "name": "Metropolis Kino Emsdetten",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2809"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Remscheid",
+    "name": "Open Air an der Gelben Villa",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2810"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Krefeld",
+      "name": "Werft 765 Open Air Kino Krefelder Rhine Side",
+      "path": "/kino/krefeld/werft-765-open-air-kino-krefelder-rhine-side-92747"
+    },
+    "city": "Krefeld",
+    "name": "Open Air Kino Krefelder Rennbahn",
+    "reason": "below_threshold",
+    "score": 0.636,
+    "theaterId": "A2812"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Göhren",
+    "name": "Ostseebad Göhren Kinohalle - Regenbogencamp",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2815"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Hannover",
+      "name": "Sommerkino im Theaterhof",
+      "path": "/kino/hannover/sommerkino-im-theaterhof-79097"
+    },
+    "city": "Hannover",
+    "name": "Puschenkino Puki",
+    "reason": "below_threshold",
+    "score": 0.4,
+    "theaterId": "A2818"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Nürnberg, Mittelfranken",
+      "name": "Open Air Naturgartenbad",
+      "path": "/kino/nuernberg-mittelfranken/open-air-naturgartenbad-86881"
+    },
+    "city": "Nürnberg",
+    "name": "SommerNachtFilmFestival - Marienbergpark",
+    "reason": "below_threshold",
+    "score": 0.414,
+    "theaterId": "A2822"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Kirchheim unter Teck",
+      "name": "Central-Lichtspiele",
+      "path": "/kino/kirchheim-unter-teck/centrallichtspiele-32811"
+    },
+    "city": "Kirchheim unter Teck",
+    "name": "Sommernachtskino",
+    "reason": "below_threshold",
+    "score": 0.457,
+    "theaterId": "A2823"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Löhne",
+    "name": "Sommernachtskino",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2824"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Remscheid",
+    "name": "Open Air Kino Remscheid",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2826"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Trier",
+      "name": "Cineasta der Uni Trier",
+      "path": "/kino/trier/cineasta-der-uni-trier-87857"
+    },
+    "city": "Trier",
+    "name": "Open-Air-Kino im TuFa-Hof",
+    "reason": "below_threshold",
+    "score": 0.298,
+    "theaterId": "A2829"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Berlin",
+      "name": "Blauer Stern",
+      "path": "/kino/berlin/blauer-stern-31389"
+    },
+    "city": "Berlin",
+    "name": "Akademie der Künste",
+    "reason": "below_threshold",
+    "score": 0.438,
+    "theaterId": "A2830"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Chemnitz, Sachsen",
+      "name": "Filmnächte auf dem Theaterplatz",
+      "path": "/kino/chemnitz-sachsen/filmnaechte-auf-dem-theaterplatz-79319"
+    },
+    "city": "Chemnitz",
+    "name": "Campusfilmnächte auf dem Sportplatz",
+    "reason": "below_threshold",
+    "score": 0.742,
+    "theaterId": "A2831"
+  },
+  {
+    "bestCandidate": {
+      "locality": "München",
+      "name": "Werkstattkino e.V.",
+      "path": "/kino/muenchen/werkstattkino-e.v.-39386"
+    },
+    "city": "München",
+    "name": "Instituto Cervantes - München",
+    "reason": "below_threshold",
+    "score": 0.429,
+    "theaterId": "A2832"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Berlin",
+      "name": "Zeughauskino - Deutsches Historisches Museum",
+      "path": "/kino/berlin/zeughauskino-deutsches-historisches-museum-31375"
+    },
+    "city": "Berlin",
+    "name": "Czech Centre / Tschechische Zentrum Berlin",
+    "reason": "below_threshold",
+    "score": 0.554,
+    "theaterId": "A2834"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Berlin",
+      "name": "Freiluftkino Rehberge",
+      "path": "/kino/berlin/freiluftkino-rehberge-76002"
+    },
+    "city": "Berlin",
+    "name": "Freiheit fünfzehn - kino im liegestuh",
+    "reason": "below_threshold",
+    "score": 0.456,
+    "theaterId": "A2840"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Kiel",
+      "name": "Studio - Filmtheater am Dreiecksplatz",
+      "path": "/kino/kiel/studio-filmtheater-am-dreiecksplatz-44339"
+    },
+    "city": "Kiel",
+    "name": "Hansafilmpalast",
+    "reason": "below_threshold",
+    "score": 0.368,
+    "theaterId": "A2842"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Bremen",
+      "name": "Atlantis Filmttheater",
+      "path": "/kino/bremen/atlantis-filmttheater-32364"
+    },
+    "city": "Bremen",
+    "name": "Instituto Cervantes - Bremen",
+    "reason": "below_threshold",
+    "score": 0.45,
+    "theaterId": "A2845"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Hamburg",
+      "name": "Hansa-Filmstudio Bergedorf",
+      "path": "/kino/hamburg/hansafilmstudio-bergedorf-32462"
+    },
+    "city": "Hamburg",
+    "name": "Instituto Cervantes - Hamburg",
+    "reason": "below_threshold",
+    "score": 0.429,
+    "theaterId": "A2846"
+  },
+  {
+    "bestCandidate": {
+      "locality": "München",
+      "name": "Astor Film Lounge im Arri",
+      "path": "/kino/muenchen/astor-film-lounge-im-arri-32867"
+    },
+    "city": "München",
+    "name": "Istituto Italiano di Cultura - München",
+    "reason": "below_threshold",
+    "score": 0.377,
+    "theaterId": "A2847"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Dessau-Roßlau",
+    "name": "Kiez-Kino",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2849"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Ebersberg",
+    "name": "Kino im Alten Kino",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2850"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Landshut, Isar",
+      "name": "Filmzentrum e.V. Kinoptikum",
+      "path": "/kino/landshut-isar/filmzentrum-e.v.-kinoptikum-34563"
+    },
+    "city": "Landshut",
+    "name": "Kleines Theater Landshut",
+    "reason": "below_threshold",
+    "score": 0.229,
+    "theaterId": "A2852"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Mainz am Rhein",
+      "name": "Capitol",
+      "path": "/kino/mainz-am-rhein/capitol-32160"
+    },
+    "city": "Mainz",
+    "name": "KlubKino",
+    "reason": "below_threshold",
+    "score": 0.182,
+    "theaterId": "A2853"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Offenburg",
+      "name": "Forum",
+      "path": "/kino/offenburg/forum-74717"
+    },
+    "city": "Offenburg",
+    "name": "Kommunales Kino im KiK",
+    "reason": "below_threshold",
+    "score": 0.2,
+    "theaterId": "A2854"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Trossingen",
+    "name": "Kommunales Kino Trossingen",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2855"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Weinstadt",
+    "name": "Kommunales Kino Weinstadt",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2856"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Chemnitz, Sachsen",
+      "name": "AJZ Chemnitz",
+      "path": "/kino/chemnitz-sachsen/ajz-chemnitz-70657"
+    },
+    "city": "Chemnitz",
+    "name": "M54 / AJZ",
+    "reason": "below_threshold",
+    "score": 0.667,
+    "theaterId": "A2858"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Asperg",
+    "name": "MoKi Ludwigsburg",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2859"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Fulda",
+      "name": "Kinoinitiative 35",
+      "path": "/kino/fulda/kinoinitiative-35-79917"
+    },
+    "city": "Fulda",
+    "name": "Museumscafé",
+    "reason": "below_threshold",
+    "score": 0.074,
+    "theaterId": "A2860"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Erlangen",
+      "name": "Manhattan Deluxe",
+      "path": "/kino/erlangen/manhattan-deluxe-32737"
+    },
+    "city": "Erlangen",
+    "name": "Open Air an der Bleiche",
+    "reason": "below_threshold",
+    "score": 0.462,
+    "theaterId": "A2864"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Lörrach",
+      "name": "Kino Free Cinema",
+      "path": "/kino/loerrach/kino-free-cinema-69696"
+    },
+    "city": "Lörrach",
+    "name": "Open Air im Hof",
+    "reason": "below_threshold",
+    "score": 0.258,
+    "theaterId": "A2865"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Mainz am Rhein",
+      "name": "Cinémayence",
+      "path": "/kino/mainz-am-rhein/cin%C3%A9mayence-32158"
+    },
+    "city": "Mainz",
+    "name": "Open Air im Kurfürstlichen Schloss",
+    "reason": "below_threshold",
+    "score": 0.13,
+    "theaterId": "A2866"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Lehrte",
+      "name": "Das Andere Kino",
+      "path": "/kino/lehrte/das-andere-kino-32524"
+    },
+    "city": "Lehrte",
+    "name": "Open Air im Stadtpark",
+    "reason": "below_threshold",
+    "score": 0.167,
+    "theaterId": "A2867"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Hannover",
+      "name": "Sommerkino im Theaterhof",
+      "path": "/kino/hannover/sommerkino-im-theaterhof-79097"
+    },
+    "city": "Hannover",
+    "name": "Open Air im Theaterhof",
+    "reason": "below_threshold",
+    "score": 0.811,
+    "theaterId": "A2868"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Celle",
+      "name": "Kino achteinhalb",
+      "path": "/kino/celle/kino-achteinhalb-46417"
+    },
+    "city": "Celle",
+    "name": "Open Air Kino",
+    "reason": "below_threshold",
+    "score": 0.276,
+    "theaterId": "A2869"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Hildesheim",
+      "name": "Thega-Filmpalast",
+      "path": "/kino/hildesheim/thegafilmpalast-32491"
+    },
+    "city": "Hildesheim",
+    "name": "Hochschulkino im Audimax",
+    "reason": "below_threshold",
+    "score": 0.222,
+    "theaterId": "A2876"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Ahlen",
+      "name": "Cinema",
+      "path": "/kino/ahlen/cinema-65257"
+    },
+    "city": "Ahlen",
+    "name": "CinemAhlen",
+    "reason": "below_threshold",
+    "score": 0.675,
+    "theaterId": "A2879"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Eberswalde-Finow",
+    "name": "Movie Magic",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2891"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Nordhorn",
+      "name": "UCI Kinowelt Nordhorn",
+      "path": "/kino/nordhorn/uci-kinowelt-nordhorn-91356"
+    },
+    "city": "Nordhorn",
+    "name": "UCI LUXE Nordhorn",
+    "reason": "below_threshold",
+    "score": 0.6,
+    "theaterId": "A2895"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Berlin",
+      "name": "Arsenal - Institut für Film und Videokunst e.V.",
+      "path": "/kino/berlin/arsenal-institut-fuer-film-und-videokunst-e.v.-31387"
+    },
+    "city": "Berlin",
+    "name": "Instituto Cervantes - Berlin",
+    "reason": "below_threshold",
+    "score": 0.51,
+    "theaterId": "A2907"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Frankfurt",
+    "name": "Instituto Cervantes - Frankfurt",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "A2908"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Kalk",
+    "name": "Lichtspiele Kalk",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2915"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Radolfzell am Bodensee",
+    "name": "Universum-Nostalgiekino",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2916"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Bad Saulgau",
+      "name": "Kino Saulgau",
+      "path": "/kino/bad-saulgau/kino-saulgau-32973"
+    },
+    "city": "Bad Saulgau",
+    "name": "Autokino Bad Saulgau am Fesplatz",
+    "reason": "below_threshold",
+    "score": 0.5,
+    "theaterId": "A2922"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Bünde",
+      "name": "Bünder Lichtspiele",
+      "path": "/kino/buende/buender-lichtspiele-31782"
+    },
+    "city": "Bünde",
+    "name": "Autokino Bünder Lichtspiele am Festplatz",
+    "reason": "below_threshold",
+    "score": 0.5,
+    "theaterId": "A2923"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Dillingen an der Donau",
+      "name": "Filmcenter Dillingen",
+      "path": "/kino/dillingen-an-der-donau/filmcenter-dillingen-32722"
+    },
+    "city": "Dillingen an der Donau",
+    "name": "Autokino Dillingen",
+    "reason": "below_threshold",
+    "score": 0.5,
+    "theaterId": "A2926"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Güstrow",
+      "name": "Moviestar",
+      "path": "/kino/guestrow/moviestar-38819"
+    },
+    "city": "Güstrow",
+    "name": "Sommerkino Güstrow",
+    "reason": "below_threshold",
+    "score": 0.429,
+    "theaterId": "A2933"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Grasleben",
+    "name": "Autokino in Grasleben",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2937"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Geithain",
+    "name": "Kino im Bürgerhaus Geithain",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2944"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Buchholz in der Nordheide",
+    "name": "Movieplexx Autokino",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2945"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Dortmund",
+      "name": "Kino im U",
+      "path": "/kino/dortmund/kino-im-u-80817"
+    },
+    "city": "Dortmund",
+    "name": "PSD Bank Autokino Dortmund",
+    "reason": "below_threshold",
+    "score": 0.4,
+    "theaterId": "A2947"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Altona",
+    "name": "LOTTO Hamburg Auto- und Open Air Kino",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "A2949"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Bad Saarow",
+    "name": "Cinema by Velotel",
+    "reason": "below_threshold",
+    "score": 0.0,
+    "theaterId": "G0119"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Passau",
+      "name": "Scharfrichter-Kino",
+      "path": "/kino/passau/scharfrichterkino-32933"
+    },
+    "city": "Passau",
+    "name": "ProLi Cinema",
+    "reason": "below_threshold",
+    "score": 0.222,
+    "theaterId": "G011E"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Gütersloh",
+      "name": "Bambi &amp; Löwenherz",
+      "path": "/kino/guetersloh/bambi-und-loewenherz-76656"
+    },
+    "city": "Gütersloh",
+    "name": "Filmwerk Gutersloh",
+    "reason": "below_threshold",
+    "score": 0.375,
+    "theaterId": "G01IT"
+  },
+  {
+    "bestCandidate": null,
+    "city": "Versmold",
+    "name": "Kulturbühne Versmold",
+    "reason": "town_absent",
+    "score": 0.0,
+    "theaterId": "G02OV"
+  },
+  {
+    "bestCandidate": {
+      "locality": "Memmingen",
+      "name": "Kaminwerk",
+      "path": "/kino/memmingen/kaminwerk-93104"
+    },
+    "city": "Memmingen",
+    "name": "Rex Palast Memmingen",
+    "reason": "below_threshold",
+    "score": 0.211,
+    "theaterId": "G0GK4"
+  }
+]

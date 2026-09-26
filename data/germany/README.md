@@ -15,6 +15,16 @@ phase, it is the input to `GermanRosterData.scala` (see "Regenerating" below).
   unique (4 chain-name collisions disambiguated with `(City)`).
 - `theaters-raw.json` — the raw flat harvest (1,534 theaters, pre-clustering).
 - `city-coords.json` — the 900 distinct cities → lat/lon (GeoNames), for reference.
+  Known wrong: "Frankfurt (Oder)" carries Frankfurt am Main's coordinates.
+- **`kinoprogramm.json`** — each venue's kinoprogramm.com page, `{ theaterId: path }`:
+  its showtime FALLBACK behind Filmstarts (`KinoprogrammClient`, served once a
+  venue's Filmstarts scrape has failed three separate runs). 1,135 of 1,518 venues
+  (2026-09-26); `kinoprogramm-unmatched.json` lists the rest with their best
+  candidate. Produced by `scripts/harvest_kinoprogramm.py` (precision first: a
+  candidate must name the roster city in its address AND sit within 25 km of it,
+  so a same-named town elsewhere cannot match; open-air screens never match a
+  regular cinema). Rerun it after a re-harvest, then `generate_roster.py`, which
+  carries the path into `GermanRosterData`.
 - `scripts/` — the reproducible pipeline.
 
 ## How it was produced

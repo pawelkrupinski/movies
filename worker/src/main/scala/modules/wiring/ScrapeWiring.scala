@@ -6,7 +6,7 @@ import models.Cinema
 import modules.WorkerWiring
 import services.MongoCachingDetailFetch
 import services.cinemas.{ChainFlicksFallback, CinemaScraperCatalog}
-import services.cinemas.common.{AdaptiveTimeoutScraper, ChunkedCinemaScraper, CinemaClientMarkers, CinemaScrapeRunner, CinemaScraper, FallbackEligibility, FlicksClient, RetryingCinemaScraper, SourceFallbackScraper, UptimeRecordingScraper}
+import services.cinemas.common.{AdaptiveTimeoutScraper, ChunkedCinemaScraper, CinemaClientMarkers, CinemaScrapeRunner, CinemaScraper, FallbackAfter, FallbackEligibility, FlicksClient, KinoprogrammClient, RetryingCinemaScraper, SourceFallbackScraper, UptimeRecordingScraper}
 import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebShowtimesClient}
 import services.alerts.{FallbackAlert, GoneVenueAlertingArchive}
 import services.observations.ObservingScrapeArchive
@@ -180,49 +180,69 @@ trait ScrapeWiring { self: WorkerWiring =>
   protected def flicksFallbackSlugs: Map[Cinema, ChainFlicksFallback.FlicksFallback] =
     cinemaScraperCatalog.flicksFallbackSlugs
 
-  /** Wrap a scrape source with the outcome recorder + its fallback source:
-   *   - a chain venue → Flicks as the aggregator fallback, on the market its
-   *     catalogue entry names (flicks.co.uk for the UK chains, flicks.us for AMC);
-   *   - else an eligible single venue in a Filmweb country (Poland) → Filmweb;
-   *   - else the plain uptime recorder. Outside Poland Filmweb lists nothing to fall
-   *     back to, so a Filmweb wrapper there could only page "Filmweb has nothing to
-   *     serve" for a venue it never could have covered.
-   *  One source-neutral [[SourceFallbackScraper]] serves both feeds; `fallbackName`
-   *  drives the /uptime label + Telegram text. Extracted so the chunked reduce step
-   *  (`publishScrape`) records uptime + falls back exactly like a live scrape.
-   *  Both wrappers run on the wiring's [[clock]], the one `uptimeMonitor` stamps
-   *  buckets with, so the fixture harness's pinned day judges its own corpus. */
-  private[wiring] def recordingScraper(inner: CinemaScraper, eligible: Boolean): CinemaScraper =
-    flicksFallbackSlugs.get(inner.cinema) match {
+  /** Cinema → its kinoprogramm.com page, for German venues whose Filmstarts scrape
+   *  has kinoprogramm as its FALLBACK. */
+  protected def kinoprogrammFallbackPaths: Map[Cinema, String] =
+    cinemaScraperCatalog.kinoprogrammFallbackPaths
+
+  /** A venue's fallback: the feed that serves it once its own scrape keeps failing. */
+  private final case class FallbackPlan(
+    name:   String,                        // "Flicks", "Kinoprogramm", "Filmweb" — the /uptime label + Telegram text
+    ref:    () => Option[String],          // the feed's per-venue handle, for the status page's link
+    client: () => Option[CinemaScraper],
+    after:  FallbackAfter
+  )
+
+  /** Which fallback a venue gets, if any — the ONE decision both [[recordingScraper]]
+   *  and [[venuesPagedElsewhere]] read, so they cannot disagree about who is covered:
+   *   - a chain venue → Flicks, on the market its catalogue entry names (flicks.co.uk
+   *     for the UK chains, flicks.us for the US ones);
+   *   - a German venue kinoprogramm.com lists → Kinoprogramm, once its Filmstarts
+   *     scrape has failed [[KinoprogrammFailedRuns]] SEPARATE runs: German venues are
+   *     scraped ~10-hourly, so a 6h window would hand over on the second failure;
+   *   - an eligible single venue in a Filmweb country (Poland) → Filmweb. Outside
+   *     Poland Filmweb lists nothing, so a wrapper there could only page "Filmweb has
+   *     nothing to serve" for a venue it never could have covered. */
+  private def fallbackFor(cinema: Cinema, eligible: Boolean): Option[FallbackPlan] = {
+    val sixHours = FallbackAfter.FailingFor(SourceFallbackScraper.DefaultFallbackAfter)
+    flicksFallbackSlugs.get(cinema).map { case ChainFlicksFallback.FlicksFallback(market, slug) =>
       // The market comes from the map, not a constant: a Regal venue's fallback
       // lives on flicks.us, and looking it up on flicks.co.uk would just 404.
-      case Some(ChainFlicksFallback.FlicksFallback(market, slug)) =>
-        new SourceFallbackScraper(inner,
-          fallback     = () => Some(new FlicksClient(flicksFetch, slug, inner.cinema, market)),
-          fallbackName = "Flicks",
-          fallbackRef  = () => Some(slug),
-          uptimeMonitor, filmwebFallbackStore, now = () => clock.instant(), onEvent = filmwebFallbackOnEvent)
-      case None if filmwebFallbackApplies(eligible) =>
-        new SourceFallbackScraper(inner,
-          fallback     = () => filmwebFallbackFor(inner.cinema),
-          fallbackName = "Filmweb",
-          fallbackRef  = () => filmwebFallbackIds.get(inner.cinema).map(_.toString),
-          uptimeMonitor, filmwebFallbackStore, now = () => clock.instant(), onEvent = filmwebFallbackOnEvent)
-      case None =>
-        new UptimeRecordingScraper(inner, uptimeMonitor, scrapeOutcomeListener, clock)
-    }
+      FallbackPlan("Flicks", () => Some(slug), () => Some(new FlicksClient(flicksFetch, slug, cinema, market)), sixHours)
+    }.orElse(kinoprogrammFallbackPaths.get(cinema).map { path =>
+      FallbackPlan("Kinoprogramm", () => Some(path),
+        () => Some(new KinoprogrammClient(httoFetch, path, cinema,
+          today = Some(java.time.LocalDate.now(clock.withZone(KinoprogrammClient.Zone))))),
+        FallbackAfter.FailedRuns(KinoprogrammFailedRuns))
+    }).orElse(Option.when(eligible && filmwebEnabled)(
+      FallbackPlan("Filmweb", () => filmwebFallbackIds.get(cinema).map(_.toString), () => filmwebFallbackFor(cinema), sixHours)))
+  }
 
-  /** Whether a single venue gets the Filmweb fallback: [[FallbackEligibility]] for the
-   *  venue, and a Filmweb country for the rest. Shared by the wrap above and
-   *  [[venuesPagedElsewhere]], so the two cannot disagree about which venues are covered. */
-  private def filmwebFallbackApplies(eligible: Boolean): Boolean = eligible && filmwebEnabled
+  /** Separate failed Filmstarts runs before a German venue hands over to kinoprogramm.com:
+   *  several, so one bad scrape — or two — rides out on the last good listing. */
+  private val KinoprogrammFailedRuns = 3
+
+  /** Wrap a scrape source with the outcome recorder + its fallback source
+   *  ([[fallbackFor]]), or the plain uptime recorder when it has none. One
+   *  source-neutral [[SourceFallbackScraper]] serves every feed. Extracted so the
+   *  chunked reduce step (`publishScrape`) records uptime + falls back exactly like a
+   *  live scrape. Both wrappers run on the wiring's [[clock]], the one `uptimeMonitor`
+   *  stamps buckets with, so the fixture harness's pinned day judges its own corpus. */
+  private[wiring] def recordingScraper(inner: CinemaScraper, eligible: Boolean): CinemaScraper =
+    fallbackFor(inner.cinema, eligible).fold[CinemaScraper](
+      new UptimeRecordingScraper(inner, uptimeMonitor, scrapeOutcomeListener, clock)
+    )(plan =>
+      new SourceFallbackScraper(inner,
+        fallback = plan.client, fallbackName = plan.name, fallbackRef = plan.ref,
+        uptimeMonitor, filmwebFallbackStore, now = () => clock.instant(),
+        fallbackAfter = plan.after, onEvent = filmwebFallbackOnEvent))
 
   /** The venues another alert already pages for when their page is gone: those with
    *  a fallback (`SourceFallbackScraper` pages UNCOVERED) and the Filmweb-only ones
    *  (`FilmwebDropAlerter`). [[GoneVenueAlertingArchive]] pages for the rest. */
   lazy val venuesPagedElsewhere: Set[String] =
     countryScrapers
-      .filter(s => flicksFallbackSlugs.contains(s.cinema) || filmwebFallbackApplies(FallbackEligibility.eligible(s)))
+      .filter(s => fallbackFor(s.cinema, FallbackEligibility.eligible(s)).isDefined)
       .map(_.cinema.displayName).toSet ++ filmwebOnlyCinemas
 
   /** Rolling per-host scrape-duration stats backing the adaptive scrape timeout.

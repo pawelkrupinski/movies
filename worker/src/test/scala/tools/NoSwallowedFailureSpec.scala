@@ -91,7 +91,10 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
       "consecutiveFailures = Try(document.getInteger(\"consecutiveFailures\", 0)).getOrElse(0),") ->
       "an optional field's default while decoding one document: absent on documents written before the field existed",
     ("common/src/main/scala/services/fallback/FallbackStore.scala", "instant",
-      "alerted             = Try(document.getBoolean(\"alerted\", false)).getOrElse(false)") ->
+      "alerted             = Try(document.getBoolean(\"alerted\", false)).getOrElse(false),") ->
+      "an optional field's default while decoding one document: absent on documents written before the field existed",
+    ("common/src/main/scala/services/fallback/FallbackStore.scala", "instant",
+      "failedRuns          = Try(document.getInteger(\"failedRuns\", 0)).getOrElse(0)") ->
       "an optional field's default while decoding one document: absent on documents written before the field existed",
     ("common/src/main/scala/services/freshness/FreshnessStore.scala", "hydrateInPhases",
       "var loaded  = Try(loadScrape()).getOrElse(false)") ->

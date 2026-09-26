@@ -86,6 +86,11 @@ def bundesland(region: dict) -> str:
 
 def main() -> int:
     regions = json.loads((DATA / "regions.json").read_text())
+    # Each venue's kinoprogramm.com page (harvest_kinoprogramm.py) — its showtime
+    # FALLBACK behind Filmstarts. A venue the harvest could not match confidently
+    # simply has none.
+    fallback_file = DATA / "kinoprogramm.json"
+    kinoprogramm = json.loads(fallback_file.read_text()) if fallback_file.exists() else {}
     cinemas = sum(len(r["cinemas"]) for r in regions)
     stale = set(MISFILED) - {r["slug"] for r in regions}
     if stale:
@@ -116,8 +121,8 @@ def main() -> int:
         "package models",
         "",
         "private[models] object GermanRosterData {",
-        "  // (displayName, pillName, filmstarts theaterId)",
-        "  type C = (String, String, String)",
+        "  // (displayName, pillName, filmstarts theaterId, kinoprogramm.com fallback path)",
+        "  type C = (String, String, String, Option[String])",
         "  // (slug, name, bundesland, lat, lon, cities, cinemas)",
         "  type R = (String, String, String, Double, Double, Seq[String], Seq[C])",
         "",
@@ -125,8 +130,9 @@ def main() -> int:
 
     for region in regions:
         venues = ",\n".join(
-            "    ({}, {}, {})".format(
-                scala_string(c["displayName"]), scala_string(c["displayName"]), scala_string(c["theaterId"]))
+            "    ({}, {}, {}, {})".format(
+                scala_string(c["displayName"]), scala_string(c["displayName"]), scala_string(c["theaterId"]),
+                "Some({})".format(scala_string(kinoprogramm[c["theaterId"]])) if c["theaterId"] in kinoprogramm else "None")
             for c in region["cinemas"])
         # `cities` is already ranked by cinema count (cluster_regions.py), which
         # is the order `City.coveredPlaces` promises its consumers.
@@ -150,8 +156,9 @@ def main() -> int:
     lines.append("}")
 
     OUT.write_text("\n".join(lines) + "\n")
+    covered = sum(1 for r in regions for c in r["cinemas"] if c["theaterId"] in kinoprogramm)
     print(f"Wrote {OUT.relative_to(ROOT)}: {len(regions)} regions over "
-          f"{len(laender)} Bundesländer / {cinemas:,} cinemas")
+          f"{len(laender)} Bundesländer / {cinemas:,} cinemas, {covered:,} with a kinoprogramm.com fallback")
     return 0
 
 
