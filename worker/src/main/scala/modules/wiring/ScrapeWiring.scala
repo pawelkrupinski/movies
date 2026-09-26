@@ -8,7 +8,8 @@ import services.MongoCachingDetailFetch
 import services.cinemas.{ChainFlicksFallback, CinemaScraperCatalog}
 import services.cinemas.common.{AdaptiveTimeoutScraper, ChunkedCinemaScraper, CinemaClientMarkers, CinemaScrapeRunner, CinemaScraper, FallbackEligibility, FlicksClient, RetryingCinemaScraper, SourceFallbackScraper, UptimeRecordingScraper}
 import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebShowtimesClient}
-import services.alerts.FallbackAlert
+import services.alerts.{FallbackAlert, GoneVenueAlertingArchive}
+import services.observations.ObservingScrapeArchive
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, MongoFallbackStore}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
 import services.tasks.{ScrapeCadence, ScrapeCinemaHandler, ScrapeFreshnessPolicy, ScrapeReaper}
@@ -201,7 +202,7 @@ trait ScrapeWiring { self: WorkerWiring =>
           fallbackName = "Flicks",
           fallbackRef  = () => Some(slug),
           uptimeMonitor, filmwebFallbackStore, now = () => clock.instant(), onEvent = filmwebFallbackOnEvent)
-      case None if eligible && filmwebEnabled =>
+      case None if filmwebFallbackApplies(eligible) =>
         new SourceFallbackScraper(inner,
           fallback     = () => filmwebFallbackFor(inner.cinema),
           fallbackName = "Filmweb",
@@ -210,6 +211,19 @@ trait ScrapeWiring { self: WorkerWiring =>
       case None =>
         new UptimeRecordingScraper(inner, uptimeMonitor, scrapeOutcomeListener, clock)
     }
+
+  /** Whether a single venue gets the Filmweb fallback: [[FallbackEligibility]] for the
+   *  venue, and a Filmweb country for the rest. Shared by the wrap above and
+   *  [[venuesPagedElsewhere]], so the two cannot disagree about which venues are covered. */
+  private def filmwebFallbackApplies(eligible: Boolean): Boolean = eligible && filmwebEnabled
+
+  /** The venues another alert already pages for when their page is gone: those with
+   *  a fallback (`SourceFallbackScraper` pages UNCOVERED) and the Filmweb-only ones
+   *  (`FilmwebDropAlerter`). [[GoneVenueAlertingArchive]] pages for the rest. */
+  lazy val venuesPagedElsewhere: Set[String] =
+    countryScrapers
+      .filter(s => flicksFallbackSlugs.contains(s.cinema) || filmwebFallbackApplies(FallbackEligibility.eligible(s)))
+      .map(_.cinema.displayName).toSet ++ filmwebOnlyCinemas
 
   /** Rolling per-host scrape-duration stats backing the adaptive scrape timeout.
    *  In-memory by design — it adds no Mongo write load (the throttle this guards
@@ -251,8 +265,12 @@ trait ScrapeWiring { self: WorkerWiring =>
   // MovieDetailsComplete only for rows that don't await deferred detail.
   // The runner archives through the observing archive when the identity program's shadow
   // capture is on (`observationStore`): every scraped listing becomes an observation too.
+  // Wrapped once more, outermost, to page for a gone venue nothing else pages for.
   lazy val cinemaScrapeRunner = new CinemaScrapeRunner(movieCache, eventBus, deferredDetailCinemas,
-    observationStore.fold(scrapeArchive)(new services.observations.ObservingScrapeArchive(scrapeArchive, _)))
+    new GoneVenueAlertingArchive(
+      observationStore.fold(scrapeArchive)(new ObservingScrapeArchive(scrapeArchive, _)),
+      venuesPagedElsewhere,
+      message => fallbackTelegramNotifier.foreach(_.send(message))))
 
   /** Every cinema's last consolidated scrape, kept for replay/repopulate. One row
    *  per cinema in THIS country's database, replaced on each successful scrape. */

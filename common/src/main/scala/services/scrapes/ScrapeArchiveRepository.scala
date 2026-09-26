@@ -54,7 +54,12 @@ case class BarrenAttempt(
   // venue page that 404s forever (flicks.us and filmstarts.de both list venues
   // whose pages are dead) looks exactly like one that 404'd once. See
   // [[GoneUpstream]].
-  since:   Option[Instant] = None
+  since:   Option[Instant] = None,
+  // How many separate scrape runs in a row, ending with this one, have FAILED — 0
+  // for an empty. Retries inside one run are one run: the runner archives once per
+  // run. `None` for a run that began before the count existed, which stays
+  // uncounted until it ends (see [[BarrenAttempt.continuing]]).
+  failedRuns: Option[Int] = None
 ) {
   /** When this barren run started — `since` once one has been carried, else this
    *  attempt itself. */
@@ -67,7 +72,17 @@ object BarrenAttempt {
    *  implementation at the point where it already holds the row it is replacing —
    *  a real store and a fake must not disagree about when a run began. */
   def continuing(existing: Option[BarrenAttempt], attempt: BarrenAttempt): BarrenAttempt =
-    attempt.copy(since = Some(existing.map(_.runStartedAt).getOrElse(attempt.at)))
+    attempt.copy(
+      since      = Some(existing.map(_.runStartedAt).getOrElse(attempt.at)),
+      failedRuns = failedRunsAfter(existing, attempt))
+
+  /** A failure extends the previous failure's count; anything else ends the streak.
+   *  An uncounted previous failure (written before the count existed) keeps the
+   *  streak uncounted: restarting it at one would page, a few runs after this
+   *  shipped, for every long-dead venue already in the archive. */
+  private def failedRunsAfter(existing: Option[BarrenAttempt], attempt: BarrenAttempt): Option[Int] =
+    if (attempt.outcome != ScrapeOutcome.Failed) Some(0)
+    else existing.filter(_.outcome == ScrapeOutcome.Failed).fold(Some(1))(_.failedRuns.map(_ + 1))
 }
 
 /**

@@ -108,6 +108,35 @@ class ScrapeArchiveRepositorySpec extends AnyFlatSpec with Matchers {
     stored.lastBarren.value.runStartedAt shouldBe Morning   // …and it has been failing since morning
   }
 
+  // How many separate scrape RUNS in a row have failed — what the gone-venue page
+  // counts, so a venue is judged on several attempts rather than one run's retries.
+  it should "count the consecutive failed runs of a barren run" in {
+    val repository = new InMemoryScrapeArchiveRepository
+    repository.record(threw(Multikino, Morning, "HTTP 404 for GET https://x/"))
+    repository.record(threw(Multikino, Noon,    "HTTP 404 for GET https://x/"))
+    repository.record(threw(Multikino, Evening, "HTTP 404 for GET https://x/"))
+
+    repository.find(Multikino).value.lastBarren.value.failedRuns shouldBe Some(3)
+  }
+
+  it should "restart the failed-run count after a run that fetched cleanly but came back empty" in {
+    val repository = new InMemoryScrapeArchiveRepository
+    repository.record(threw(Multikino, Morning, "HTTP 404 for GET https://x/"))
+    repository.record(blank(Multikino, Noon))
+    repository.record(threw(Multikino, Evening, "HTTP 404 for GET https://x/"))
+
+    repository.find(Multikino).value.lastBarren.value.failedRuns shouldBe Some(1)
+  }
+
+  // A marker written before the count existed cannot say how many runs it spans,
+  // so its run stays uncounted until it ends, rather than restarting at one and
+  // paging for every long-dead venue already sitting in the archive.
+  it should "leave a run that began before failed runs were counted uncounted" in {
+    val legacy = BarrenAttempt(Morning, ScrapeOutcome.Failed, Some("HTTP 404"), since = Some(Morning), failedRuns = None)
+    val next   = BarrenAttempt(Noon, ScrapeOutcome.Failed, Some("HTTP 404"))
+    BarrenAttempt.continuing(Some(legacy), next).failedRuns shouldBe None
+  }
+
   it should "start a new run after a success, not resume the old one" in {
     val repository = new InMemoryScrapeArchiveRepository
     repository.record(threw(Multikino, Morning, "HTTP 404 for GET https://x/"))

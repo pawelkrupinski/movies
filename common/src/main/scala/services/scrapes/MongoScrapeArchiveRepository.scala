@@ -46,8 +46,19 @@ case class BarrenAttemptDto(
   error:   Option[String],
   // When the current unbroken barren run began; absent on rows written before the
   // field existed, which decode as "since `at`".
-  since:   Option[Instant] = None
-)
+  since:   Option[Instant] = None,
+  // Consecutive failed runs; absent on rows written before the count existed,
+  // which decode as an uncounted run.
+  failedRuns: Option[Int] = None
+) {
+  def toDomain: Option[BarrenAttempt] =
+    ScrapeOutcome.byLabel(outcome).map(o => BarrenAttempt(at, o, error, since, failedRuns))
+}
+
+object BarrenAttemptDto {
+  def from(b: BarrenAttempt): BarrenAttemptDto =
+    BarrenAttemptDto(b.at, b.outcome.label, b.error, b.since, b.failedRuns)
+}
 
 /** Storage DTO for one cinema's archive row — the macro codec target for the
  *  `cinema_scrapes` collection. `_id` is the cinema's `displayName`, the same
@@ -104,8 +115,7 @@ object StoredScrapeDto {
             f.movie, cinema, f.posterUrl, f.filmUrl, f.synopsis, f.cast, f.director,
             f.showtimes, f.externalIds, f.trailerUrl, f.ageRating))
         )),
-        lastBarren  = dto.lastBarren.flatMap(b =>
-          ScrapeOutcome.byLabel(b.outcome).map(o => BarrenAttempt(b.at, o, b.error, b.since)))
+        lastBarren  = dto.lastBarren.flatMap(_.toDomain)
       )
     }
 }
@@ -188,10 +198,9 @@ class MongoScrapeArchiveRepository(sharedDb: Option[MongoDatabase]) extends Scra
           // the run costs nothing extra — and the decision itself is the shared
           // pure one, never this store's own idea of when a run began.
           val run = BarrenAttempt.continuing(
-            existing.flatMap(_.lastBarren).flatMap(b =>
-              ScrapeOutcome.byLabel(b.outcome).map(o => BarrenAttempt(b.at, o, b.error, b.since))),
+            existing.flatMap(_.lastBarren).flatMap(_.toDomain),
             attempt)
-          val marker = Updates.set("lastBarren", BarrenAttemptDto(run.at, run.outcome.label, run.error, run.since))
+          val marker = Updates.set("lastBarren", BarrenAttemptDto.from(run))
           val update = city.fold(marker)(name => Updates.combine(marker, Updates.setOnInsert("city", name)))
           Await.result(
             c.updateOne(Filters.eq("_id", cinema.displayName), update, new UpdateOptions().upsert(true)).toFuture(),

@@ -248,6 +248,7 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
         .getOrElse(fail("no barren marker"))
       stored.at           shouldBe Evening
       stored.runStartedAt shouldBe Morning
+      stored.failedRuns   shouldBe Some(2)
     } finally purge()
   }
 
