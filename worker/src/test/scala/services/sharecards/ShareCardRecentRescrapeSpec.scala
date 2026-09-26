@@ -6,17 +6,17 @@ import services.tasks.TaskType
 import ShareCardTestKit.*
 
 import java.time.Instant
-import scala.concurrent.duration.*
 
 /** A film in its first week is the one people are sharing, so when its card changes (a ratings
- *  update, a new poster) Facebook is asked to fetch its pages again — on the same task and metric
- *  as the repair of a film published before its card existed. */
+ *  update, a new poster) Facebook is asked to fetch its pages again — through the fleet's re-scrape
+ *  queue, as is the repair of a film published before its card existed. Never onto the task
+ *  queue: a re-scrape there held a task-worker slot while it waited on Facebook, and a burst of
+ *  them queued ahead of the card renders. */
 class ShareCardRecentRescrapeSpec extends AnyFlatSpec with Matchers {
 
-  private def rescrapes(rig: Rig): Seq[(String, Instant)] = {
-    val tasks = Iterator.continually(rig.queue.claim("spec", 1.minute, T0.plusSeconds(365L * 86400))).takeWhile(_.isDefined).flatten.toSeq
-    tasks.filter(_.taskType == TaskType.RescrapeShareCard).map(t => t.payload("filmId") -> Instant.EPOCH)
-  }
+  /** The films waiting in the fleet's queue, and when each is due. */
+  private def rescrapes(rig: Rig): Seq[(String, Instant)] =
+    rig.rescrapeStore.waiting.collect { case RescrapeEntry(_, RescrapeTarget.FilmPages(_, filmId), notBefore, _) => filmId -> notBefore }
 
   /** A rig whose clock reads `now`, over a store where `film` was first published at `published`. */
   private def rigWith(now: Instant, published: Option[Instant]): (Rig, models.ResolvedMovie) = {
@@ -37,11 +37,23 @@ class ShareCardRecentRescrapeSpec extends AnyFlatSpec with Matchers {
     rescrapes(rig).map(_._1) shouldBe Seq(movie._id)
   }
 
-  it should "be asked only after the new card can be on web_movies, and spaced from the others" in {
+  it should "be asked only after the new card can be on web_movies" in {
     val (rig, movie) = rigWith(now = T0, published = Some(T0.minusSeconds(86400)))
     rerate(rig, movie)
-    rig.queue.claim("spec", 1.minute, T0.plusSeconds(10)) shouldBe None
-    rig.queue.claim("spec", 1.minute, T0.plusSeconds(120)).map(_.taskType) shouldBe Some(TaskType.RescrapeShareCard)
+    rescrapes(rig) shouldBe Seq(movie._id -> T0.plusMillis(ShareCardService.RescrapeDelay.toMillis))
+  }
+
+  it should "leave nothing on the task queue: the card renders never wait behind re-scrapes" in {
+    val (rig, movie) = rigWith(now = T0, published = Some(T0.minusSeconds(86400)))
+    rerate(rig, movie)
+    drain(rig.queue).map(_.taskType) should not contain TaskType.RescrapeShareCard
+  }
+
+  "The landing of a pending film's card" should "queue each film once in the fleet's queue" in {
+    val rig = new Rig
+    rig.service.onPendingCardLanded("fa"); rig.service.onPendingCardLanded("fb"); rig.service.onPendingCardLanded("fa")
+    rescrapes(rig).map(_._1) shouldBe Seq("fa", "fb")
+    drain(rig.queue) shouldBe empty
   }
 
   "A film past its first week" should "not be re-scraped" in {

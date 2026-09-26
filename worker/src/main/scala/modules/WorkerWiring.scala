@@ -49,7 +49,7 @@ class WorkerWiring(
     // database view (`country.mongoDb`) on this single client. `None` → this
     // wiring builds (and closes) its own client at its `mongoAddress`, the
     // single-connection default.
-    sharedMongoClient: Option[MongoClient] = None,
+    val sharedMongoClient: Option[MongoClient] = None,
     // The process-wide worker metrics bundle (ONE registry + one set of metric
     // objects, shared across every country's wiring — see WorkerMetrics). WorkerMain
     // builds it once over ALL countries and injects the SAME instance so every
@@ -267,6 +267,7 @@ class WorkerWiring(
     settleReaper.start()
     omdbBackfillReaper.foreach(_.start())
     shareCardReapers.foreach(_.start())
+    startFacebookRescrapes()
     auditReapers.foreach(_.start())
     scrapeReaper.start()
     // Backstop the chunked-scrape fan-in: recover complete runs whose completion
@@ -316,6 +317,7 @@ class WorkerWiring(
     settleReaper.stop()
     omdbBackfillReaper.foreach(_.stop())
     shareCardReapers.foreach(_.stop())
+    stopFacebookRescrapes()
     auditReapers.foreach(_.stop())
     livenessWatchdog.stop()
     workerHeartbeat.stop()

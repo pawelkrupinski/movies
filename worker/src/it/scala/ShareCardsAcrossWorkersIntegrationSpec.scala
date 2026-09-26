@@ -4,7 +4,7 @@ import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.sharecards.ShareCardTestKit._
-import services.sharecards.{RenderShareCardHandler, ShareCardMetrics, ShareCardPosters, ShareCardService, ShareCardStore}
+import services.sharecards.{RenderShareCardHandler, ShareCardMetrics, ShareCardPosters, ShareCardRescrapes, ShareCardService, ShareCardStore}
 import services.tasks.MongoTaskQueue
 import tools.ConcurrentInstances
 import tools.ConcurrentInstances.{race, rounds, successes}
@@ -35,7 +35,7 @@ class ShareCardsAcrossWorkersIntegrationSpec extends AnyFlatSpec with Matchers w
       val services = instances.map { instance =>
         val posters = new ShareCardPosters(store, new CountingDownload(), newJavaShrinker(), ShareCardMetrics.noop)
         val queue   = new MongoTaskQueue(Some(instance.database))
-        (new ShareCardService(Country.default, store, posters, queue, ShareCardMetrics.noop, clockAt(T0)), queue)
+        (new ShareCardService(Country.default, store, posters, queue, ShareCardRescrapes.disabled(ShareCardMetrics.noop), ShareCardMetrics.noop, clockAt(T0)), queue)
       }
       rounds(4, tools.ConcurrentInstances.baseSeed(configuration)) { round =>
         val id     = f"frolling${round.number}%02d"

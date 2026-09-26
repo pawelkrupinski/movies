@@ -47,13 +47,14 @@ class ReleaseShareCardHoldHandler(releaseExpiredHolds: () => Unit) extends TaskH
   def handle(task: Task): HandlerOutcome = { releaseExpiredHolds(); HandlerOutcome.Done }
 }
 
-/** `RescrapeShareCard`: ask Facebook to look at a film's pages again. */
-class RescrapeShareCardHandler(rescraper: ShareCardRescraper, maxAttempts: Int = 3) extends TaskHandler {
+/** `RescrapeShareCard`: a re-scrape task queued before re-scrapes moved to the fleet's queue
+ *  ([[FacebookRescrapeQueue]]) — handed over to it. Nothing enqueues the type any more; once no
+ *  worker's queue holds one, the type, this handler and the parked-task alert's exception for it go. */
+class RescrapeShareCardHandler(rescrapes: ShareCardRescrapes, clock: java.time.Clock) extends TaskHandler {
   val taskType: TaskType = TaskType.RescrapeShareCard
   def handle(task: Task): HandlerOutcome =
     task.payload.get("filmId").fold[HandlerOutcome](HandlerOutcome.Skipped) { filmId =>
-      if (rescraper.rescrape(filmId) || task.attempts >= maxAttempts) HandlerOutcome.Done
-      else HandlerOutcome.Reschedule(Some("Facebook re-scrape failed"))
+      rescrapes.request(filmId, clock.instant()); HandlerOutcome.Done
     }
 }
 

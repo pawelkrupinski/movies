@@ -2284,8 +2284,8 @@
     },
     {
       "id": 41,
-      "title": "Facebook re-scrapes of film pages — pending cards landed, and recent films whose card changed",
-      "description": "`kinowo_worker_share_cards_rescrape_total{outcome}`: the worker asks the Graph API to re-scrape a film's city pages (a) when a film published without its card (the first-publish gate timed out, so Facebook may have cached the fallback for a month) finally gets one, and (b) when the card of a film in its first week after first publication changes (a ratings update, a new poster) -- those are the films people share. At most one request per 10 s per process, each at least a minute after the card changed. sent = requests made, failed = pages Facebook refused (retried), disabled = the worker has no FACEBOOK_APP_ID / FACEBOOK_APP_SECRET, so nothing was sent. A steady (a) line means cards are routinely slower than the hold.",
+      "title": "Facebook re-scrapes of film pages — sent, failed, rate-limited",
+      "description": "`kinowo_worker_share_cards_rescrape_total{outcome}`: requests to the Graph API asking Facebook to re-scrape one film page, so a cached preview shows the film's current card. A film is queued (a) when it was published without its card (the first-publish gate timed out) and finally gets one, and (b) when the card of a film in its first week changes. Every country's worker drains ONE fleet-wide queue (the facebook_rescrapes collection of the shared fleet database) on ONE quota: at most one request every 20 s across the whole fleet, whichever country sends it, each page on its own. sent = accepted; failed = refused, that page alone retried with back-off (1, 2, 4, 8 min) and dropped after 5 attempts; rate_limited = Facebook named its rate limit, and the whole fleet waits an hour; disabled = a film asked for with no FACEBOOK_APP_ID / FACEBOOK_APP_SECRET or no fleet database, so nothing is queued. The worker log names each refusal with Facebook's own code and message. Before 2026-09-26 re-scrapes were per-country tasks sending all of a film's city pages back to back — the 2026-09-25 16:20 spike of ~680 HTTP 403s was one film in 265 US and 63 UK cities.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -2293,7 +2293,7 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 24,
+        "w": 16,
         "x": 0,
         "y": 233
       },
@@ -2332,6 +2332,46 @@
           "legendFormat": "{{country}} {{outcome}}"
         }
       ]
+    },
+    {
+      "id": 44,
+      "type": "timeseries",
+      "title": "Facebook re-scrapes waiting — film pages queued, by country",
+      "description": "`kinowo_worker_share_cards_rescrape_waiting`: pages each country has waiting in the fleet's re-scrape queue. At one request per 20 s fleet-wide the queue drains ~180 pages an hour, so a burst (a film showing in hundreds of cities, a template change re-drawing every recent film) shows as a ramp that falls over hours. Flat and non-zero for over an hour = the fleet is holding for Facebook's rate limit (see rate_limited on the panel to the left).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 233
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country) (kinowo_worker_share_cards_rescrape_waiting{country=~\"$country\"})",
+          "legendFormat": "{{country}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      }
     },
     {
       "id": 42,

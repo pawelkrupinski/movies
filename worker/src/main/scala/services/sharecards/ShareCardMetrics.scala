@@ -27,6 +27,8 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
  *  - `kinowo_worker_share_cards_poster_load_total{attempt,result}` — the same miss once per FILM: did any candidate
  *    work, on the film's first load or on the backfill's re-try of a card drawn without one.
  *  - `kinowo_worker_share_cards_rescrape_total{outcome}` — Facebook re-scrape requests, one per city page.
+ *  - `kinowo_worker_share_cards_rescrape_waiting` — the country's pages waiting in the fleet's
+ *    re-scrape queue ([[FacebookRescrapeDrain]]). Read from the shared queue: `max by (country)`.
  */
 object ShareCardMetrics {
   object Outcome {
@@ -48,7 +50,9 @@ object ShareCardMetrics {
   }
   object RescrapeOutcome {
     val Sent = "sent"; val Failed = "failed"; val Disabled = "disabled"
-    val all: Seq[String] = Seq(Sent, Failed, Disabled)
+    /** Facebook named its rate limit: the fleet's quota waits, the page goes back. */
+    val RateLimited = "rate_limited"
+    val all: Seq[String] = Seq(Sent, Failed, RateLimited, Disabled)
   }
 
   final class Series(countryCodes: Seq[String], registry: PrometheusRegistry) {
@@ -86,8 +90,11 @@ object ShareCardMetrics {
       .help("A film's poster on a cache miss, once per FILM: ok when any candidate URL worked, failed when none did (the film's card is then drawn without one). attempt: first, or retry (the backfill re-trying a card drawn without its poster). poster_fetch counts the URLs.")
       .labelNames("country", "attempt", "result").register(registry)
     private[ShareCardMetrics] val rescrapes = Counter.builder().name("kinowo_worker_share_cards_rescrape")
-      .help("Facebook re-scrape requests for a film's pages — published before its card, or its card changed in its first week: sent, failed, or disabled (no app credentials).")
+      .help("Facebook re-scrape requests, one per film page, drained from the fleet-wide queue: sent, failed (refused, retried alone up to 5 times), rate_limited (the fleet's quota waits an hour), or disabled (a film asked for with no app credentials or fleet database).")
       .labelNames("country", "outcome").register(registry)
+    private[ShareCardMetrics] val rescrapesWaiting = Gauge.builder().name("kinowo_worker_share_cards_rescrape_waiting")
+      .help("The country's film pages waiting in the fleet's Facebook re-scrape queue. Read from the shared queue: max by country across replicas.")
+      .labelNames("country").register(registry)
 
     for (c <- countryCodes) {
       for (k <- ShareCardStore.Kind.all) { bytes.labelValues(c, k); files.labelValues(c, k); currentBytes.labelValues(c, k) }
@@ -100,6 +107,7 @@ object ShareCardMetrics {
       PosterFailure.all.foreach(posterFetch.labelValues(c, "failed", _))
       for (a <- Seq("first", "retry"); r <- Seq("ok", "failed")) posterLoad.labelValues(c, a, r)
       RescrapeOutcome.all.foreach(rescrapes.labelValues(c, _))
+      rescrapesWaiting.labelValues(c)
     }
 
     def forCountry(code: String): ShareCardMetrics = new ShareCardMetrics(code, Some(this))
@@ -116,6 +124,8 @@ object ShareCardMetrics {
       posterLoad.labelValues(country, ShareCardMetrics.attempt(retry), if (ok) "ok" else "failed").get()
     /** Test seam: renders counted by outcome and reason. */
     private[sharecards] def rescrapeCount(country: String, outcome: String): Double = rescrapes.labelValues(country, outcome).get()
+    /** Test seam: the country's pages waiting in the fleet's re-scrape queue. */
+    private[sharecards] def rescrapesWaitingFor(country: String): Double = rescrapesWaiting.labelValues(country).get()
     private[sharecards] def renderCount(country: String, outcome: String, reason: String): Double = renders.labelValues(country, outcome, reason).get()
   }
 
@@ -140,6 +150,7 @@ final class ShareCardMetrics private[sharecards] (country: String, series: Optio
   def posterLoad(ok: Boolean, retry: Boolean): Unit =
     series.foreach(_.posterLoad.labelValues(country, ShareCardMetrics.attempt(retry), if (ok) "ok" else "failed").inc())
   def rescrape(outcome: String): Unit = series.foreach(_.rescrapes.labelValues(country, outcome).inc())
+  def rescrapesWaiting(pages: Long): Unit = series.foreach(_.rescrapesWaiting.labelValues(country).set(pages.toDouble))
   def coverage(ratio: Double): Unit = series.foreach(_.coverage.labelValues(country).set(ratio))
 
   /** The directory's state as the janitor last measured it. */

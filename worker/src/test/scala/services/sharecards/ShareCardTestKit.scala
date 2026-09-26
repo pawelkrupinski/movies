@@ -79,6 +79,9 @@ object ShareCardTestKit {
     val metrics: ShareCardMetrics = ShareCardMetrics.noop
     val shrinker  = newJavaShrinker()
     lazy val posters = new ShareCardPosters(store, download, shrinker, metrics)
-    lazy val service = new ShareCardService(Country.default, store, posters, queue, metrics, clock)
+    /** The fleet's re-scrape queue, as every simulated worker of a spec shares it. */
+    val rescrapeStore = new InMemoryFacebookRescrapeStore
+    lazy val service = new ShareCardService(Country.default, store, posters, queue,
+      new FacebookRescrapeQueue(rescrapeStore, Country.default.code), metrics, clock)
   }
 }

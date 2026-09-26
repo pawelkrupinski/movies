@@ -198,7 +198,7 @@ class ShareCardServiceSpec extends AnyFlatSpec with Matchers {
     val first  = new Rig
     val second = new Rig(store = first.store)
     val inputs = first.service.inputs(film())
-    val secondOnSharedQueue = new ShareCardService(models.Country.default, first.store, second.posters, first.queue, second.metrics, second.clock)
+    val secondOnSharedQueue = new ShareCardService(models.Country.default, first.store, second.posters, first.queue, new FacebookRescrapeQueue(first.rescrapeStore, models.Country.default.code), second.metrics, second.clock)
     first.service.enqueueRender(inputs, Seq(ShareCardReason.NewFilm)) shouldBe services.tasks.EnqueueResult.Added
     secondOnSharedQueue.enqueueRender(inputs, Seq(ShareCardReason.NewFilm)) shouldBe services.tasks.EnqueueResult.Duplicate
     drain(first.queue).map(_.taskType) shouldBe Seq(TaskType.RenderShareCard)

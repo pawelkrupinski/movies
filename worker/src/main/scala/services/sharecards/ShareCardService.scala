@@ -31,6 +31,7 @@ class ShareCardService(
   store:    ShareCardStore,
   posters:  ShareCardPosters,
   queue:    TaskQueue,
+  rescrapes: ShareCardRescrapes,
   metrics:  ShareCardMetrics,
   clock:    Clock
 ) extends ShareCardLedger with Logging {
@@ -130,12 +131,10 @@ class ShareCardService(
   }
 
   /** Ask Facebook to fetch the film's pages again — no sooner than [[RescrapeDelay]] from now, by
-   *  when the card the pages name is on `web_movies`, and spaced [[RescrapeSpacing]] from the last. */
-  private def rescrape(filmId: String): Unit = {
-    queue.enqueue(TaskType.RescrapeShareCard, s"share-card-rescrape|$filmId", Map("filmId" -> filmId),
-      submittedAt = clock.instant(), notBefore = Some(nextRescrapeSlot()))
-    ()
-  }
+   *  when the card the pages name is on `web_movies`. Into the fleet's queue, never onto the task
+   *  queue: the requests are paced there ([[FacebookRescrapeDrain]]), off the render threads. */
+  private def rescrape(filmId: String): Unit =
+    rescrapes.request(filmId, clock.instant().plusMillis(RescrapeDelay.toMillis))
 
   /** True for a film first published by the gate less than [[RecentWindow]] ago — the films people
    *  are sharing, whose previews are worth refreshing when the card changes. */
@@ -282,15 +281,6 @@ class ShareCardService(
     metrics.renderPath(ShareCardMetrics.Path.Full)
     writeCard(next, image, next.version(None), first, askedAt)
   }
-
-  // Re-scrape requests are spaced out, not sent in a burst: a backfill of pending films must not
-  // look like abuse to the Graph API.
-  private var lastRescrapeSlot = Instant.EPOCH
-  private def nextRescrapeSlot(): Instant = synchronized {
-    val slot = Seq(clock.instant().plusMillis(RescrapeDelay.toMillis), lastRescrapeSlot.plusMillis(RescrapeSpacing.toMillis)).max
-    lastRescrapeSlot = slot
-    slot
-  }
 }
 
 object ShareCardService {
@@ -306,9 +296,6 @@ object ShareCardService {
   /** How far ahead of the backlog a first card is placed: the queue claims by `submittedAt`, and a
    *  day covers any real backlog. */
   val FirstCardHeadStart: FiniteDuration = 1.day
-
-  /** At most one Facebook re-scrape every 10 seconds per process. */
-  val RescrapeSpacing: FiniteDuration = 10.seconds
 
   /** A re-scrape waits this long: the card's `web_movies` document is rewritten when its render task
    *  completes, and Facebook must find the new URL, not the old. */

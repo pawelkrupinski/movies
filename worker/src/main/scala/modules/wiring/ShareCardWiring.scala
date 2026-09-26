@@ -5,6 +5,7 @@ import settings.{PosterDecodeMemoryCap, ShareCardBackfillBatch, ShareCardBackfil
 import modules.WorkerWiring
 import services.readmodel.ShareCardLedger
 import services.sharecards.*
+import services.{MongoConnection, MongoRequirement, MongoTuning}
 import services.tasks.{ClaimedEnqueueReaper, TaskHandler, TaskType}
 
 import scala.concurrent.duration.*
@@ -14,8 +15,10 @@ import scala.concurrent.duration.*
  *  (`KINOWO_SHARE_CARD_DIR`, default `/share-cards` — the pod's mount of the node's
  *  `/var/lib/kinowo/share-cards/<cc>`; a process running several countries sets it to
  *  `/share-cards/{cc}`), and the projection records each card's path and version on `web_movies`.
- *  Everything runs on the task queue: renders, the backfill, the prune and budget passes, the end
- *  of a first-publish hold and the Facebook re-scrape. Without a writable directory the whole
+ *  Everything runs on the task queue — renders, the backfill, the prune and budget passes, the end
+ *  of a first-publish hold — except the Facebook re-scrapes, which the whole fleet queues in its
+ *  shared database and drains on one quota, each country on its own thread
+ *  ([[FacebookRescrapeDrain]]). Without a writable directory the whole
  *  pipeline is off and the projection runs with [[ShareCardLedger.none]]. */
 trait ShareCardWiring { self: WorkerWiring =>
 
@@ -47,7 +50,42 @@ trait ShareCardWiring { self: WorkerWiring =>
   lazy val shareCardService: ShareCardService = new ShareCardService(
     country, shareCardStore,
     new ShareCardPosters(shareCardStore, posterDownload, posterShrinker, shareCardMetrics),
-    taskQueue, shareCardMetrics, clock)
+    taskQueue, shareCardRescrapes, shareCardMetrics, clock)
+
+  /** The fleet database — one for every country's worker, on the same cluster (and, in a
+   *  multi-country process, the same client) as the country's own. Optional: unreachable or
+   *  refused, it is only the Facebook re-scrapes that stop. */
+  lazy val fleetMongoConnection: MongoConnection =
+    MongoConnection.forDatabase(mongoAddress.uri, ShareCardWiring.FleetDatabase, MongoRequirement.Optional,
+      MongoTuning.from(configuration), sharedMongoClient)
+
+  private lazy val facebookGraph: Option[FacebookGraph] = FacebookGraph.fromConfiguration(configuration, tlsContext)
+
+  /** The fleet's re-scrape queue, when there is anything to send with and anywhere to queue. */
+  private lazy val facebookRescrapeStore: Option[FacebookRescrapeStore] =
+    facebookGraph.flatMap(_ => fleetMongoConnection.database).map(db =>
+      new MongoFacebookRescrapeStore(db.getCollection(MongoFacebookRescrapeStore.Collection)))
+
+  lazy val shareCardRescrapes: ShareCardRescrapes = facebookRescrapeStore match {
+    case Some(store) => new FacebookRescrapeQueue(store, country.code)
+    case None =>
+      if (facebookGraph.isDefined) logger.error(s"share card: Facebook re-scrapes are OFF for ${country.code} — " +
+        s"the fleet database ${ShareCardWiring.FleetDatabase.value} could not be reached or used")
+      ShareCardRescrapes.disabled(shareCardMetrics)
+  }
+
+  /** This country's side of draining the fleet's re-scrape queue, on its own thread. */
+  lazy val facebookRescrapeDrain: Option[FacebookRescrapeDrain] =
+    for { store <- facebookRescrapeStore; graph <- facebookGraph if shareCardsEnabled }
+    yield new FacebookRescrapeDrain(store, graph, new FilmPageUrls(readModelRepository, country, clock), country.code, shareCardMetrics, clock)
+
+  def startFacebookRescrapes(): Unit = facebookRescrapeDrain.foreach(_.start())
+
+  /** Stops the drain and closes the fleet database — only when this wiring opened it. */
+  def stopFacebookRescrapes(): Unit = {
+    facebookRescrapeDrain.foreach(_.stop())
+    facebookRescrapeStore.foreach(_ => fleetMongoConnection.close())
+  }
 
   /** What the projection asks about share cards. */
   lazy val shareCardLedger: ShareCardLedger = if (shareCardsEnabled) shareCardService else ShareCardLedger.none
@@ -71,7 +109,7 @@ trait ShareCardWiring { self: WorkerWiring =>
       new ShareCardBackfillHandler(shareCardBackfill),
       new PruneShareCardsHandler(shareCardJanitor),
       new ReleaseShareCardHoldHandler(() => readModelProjector.releaseExpiredHolds()),
-      new RescrapeShareCardHandler(new ShareCardRescraper(FacebookGraph.fromConfiguration(configuration, tlsContext), readModelRepository, country, shareCardMetrics, clock)))
+      new RescrapeShareCardHandler(shareCardRescrapes, clock))
 
   /** The recurring enqueues: a backfill tick every minute (first three minutes after boot), the
    *  budget pass every ten, the full prune daily at 03:00 UTC (or five minutes after a boot that
@@ -97,4 +135,13 @@ object ShareCardWiring {
   /** When the daily share-card prune runs, past midnight UTC: a fixed time, so its burst of
    *  deletions lands at one place on the dashboard however the day's deploys fall. */
   val DailyPruneAt: FiniteDuration = 3.hours
+
+  /** The database every country's worker shares: the fleet's Facebook re-scrape queue and quota.
+   *
+   *  POLAND'S DATABASE, NOT A DEDICATED ONE, for the reason the web's shared users database is
+   *  (`MONGODB_USERS_DB: kinowo`, see the web manifest): the deployments' Mongo user is scoped to
+   *  the country databases, so a new database fails every write `Unauthorized` until the server
+   *  grants it. `kinowo` is one every worker already holds rights on; the queue's one collection
+   *  sits beside the Polish corpus and nothing that prunes the corpus reads it. */
+  val FleetDatabase: settings.MongoDatabaseName = settings.MongoDatabaseName(models.Country.Poland.mongoDb)
 }
