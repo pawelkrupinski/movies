@@ -356,7 +356,6 @@ object IdentityResolver {
         else if (scored.isEmpty) (if (unknown > 0) ResolverDecision.Basis.NoEvidence else ResolverDecision.Basis.NoCandidate)
         else if (scored.head.denied) ResolverDecision.Basis.Vetoed
         else ResolverDecision.Basis.BelowThreshold
-      val here  = cluster.head.id
       val ids   = cluster.map(_.id).toSet
       val own   = cluster.flatMap(n => bestOf.get(n.id).map { case (s, c) =>
         s"${n.label}: own match ${s.c.tmdbId} at ${ResolverDecision.percent(c)} (${calibration.explain(ListingFilm, s.measures)})" })
@@ -372,7 +371,7 @@ object IdentityResolver {
       val gaps  = Option.when(unknown > 0)(s"$unknown lookup(s) unanswerable")
       ResolverDecision(cluster.flatMap(_.listings.map(_.key)).sorted, film, confidence, basis,
         (own.take(4) ++ Option.when(own.size > 4)(s"… ${own.size - 4} more own match(es)") ++ vote ++ joins ++
-          apart.take(4) ++ best ++ gaps).toSeq :+ s"node $here", contradictions = apart)
+          apart.take(4) ++ best ++ gaps).toSeq :+ s"node ${cluster.head.listings.head.key}", contradictions = apart)
     }
 
     val acceptedAll: Map[String, Int] = bestOf.map { case (id, (s, _)) => id -> s.c.tmdbId } ++ pinnedFilm

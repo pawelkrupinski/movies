@@ -129,6 +129,17 @@ class IdentityResolverPropertiesSpec extends AnyFlatSpec with Matchers {
     refused should be > 0
   }
 
+  "Every decision" should "explain itself in printable text: no control character reaches a report or a log" in {
+    // A NUL in an explanation made logs binary, and `grep` (ugrep -I) then skipped them silently —
+    // a green shadow run read as one that exited mid-pass.
+    Seeds.foreach { seed =>
+      val c = corpus(seed)
+      run(c.listings, c.lookups).decisions.flatMap(d => d.explanation :+ d.render).foreach { line =>
+        withClue(line.replace('\u0000', '␀'))(line.exists(ch => Character.isISOControl(ch) && ch != '\n') shouldBe false)
+      }
+    }
+  }
+
   "The resolver on generated data" should "keep every film's listings mostly together and never join two known films" in {
     var (pairs, together, wrongJoins) = (0L, 0L, 0L)
     Seeds.foreach { seed =>
