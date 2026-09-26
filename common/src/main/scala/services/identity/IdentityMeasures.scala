@@ -139,7 +139,8 @@ object IdentityMeasures {
     val languages = Seq("pl", "en", "de", "es", "fr", "it").map(Locale.forLanguageTag)
     Locale.getISOCountries.iterator.flatMap { iso =>
       val l = Locale.of("", iso)
-      (languages.map(l.getDisplayCountry) ++ Seq(iso, scala.util.Try(l.getISO3Country).getOrElse("")))
+      // A country with no alpha-3 code throws; it simply has no such spelling.
+      (languages.map(l.getDisplayCountry) ++ Seq(iso) ++ scala.util.Try(l.getISO3Country).toOption)
         .map(key).filter(_.nonEmpty).map(_ -> iso)
     }.toMap
   }
