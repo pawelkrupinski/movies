@@ -326,6 +326,33 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     named.violations shouldBe 0
   }
 
+  "The database's ranking priors" should "lend confidence to a film the listing's own facts pick, never withdraw it" in {
+    // The venue credits the director and nothing else; the film is the least popular of
+    // ten same-titled ones, ranks last in TMDB's search and no other venue lists it. Every signal
+    // against it is TMDB's ranking or the family's count — none is a fact — and the facts rule the
+    // nine namesakes out, so the ranking is no reason to leave the listing unmatched.
+    val films = F(1, "Solo", 2019, "Hugo Stuven", 98, 0.2) +:
+      (2 to 10).map(i => F(i, "Solo", 1960 + 6 * i, s"Director $i", 80 + 5 * i, 10.0 * i))
+    val credited = listing(Rialto, "Solo", director = Some("Hugo Stuven"))
+    val d = IdentityResolver.resolve(Seq(credited), new Table(films), normalizer, IdentityCalibration.resolver).decisionOf(credited.key)
+    withClue(d.render) {
+      d.film shouldBe Some(1)
+      d.basis shouldBe ResolverDecision.Basis.OwnMatch
+      IdentityCalibration.resolver.showsRatings(d.confidence) shouldBe true
+      d.explanation.head should include ("ranking priors lending")
+    }
+  }
+
+  it should "still leave a listing unmatched when they are all that separates two namesakes its facts fit alike" in {
+    // Both films are 2019 and the listing publishes only the year: its facts cannot tell them
+    // apart, so TMDB's ranking is the only separator, and it keeps its full weight.
+    val films = Seq(F(1, "Solo", 2019, "Hugo Stuven", 98, 0.2), F(2, "Solo", 2019, "Someone Else", 90, 0.3),
+      F(3, "Solo", 1996, "Norberto Barba", 94, 30), F(4, "Solo", 1972, "A Third", 88, 20))
+    val dated = listing(Rialto, "Solo", year = Some(2019))
+    val d = IdentityResolver.resolve(Seq(dated), new Table(films), normalizer, IdentityCalibration.resolver).decisionOf(dated.key)
+    withClue(d.render)(d.film shouldBe None)
+  }
+
   "A listing the evidence cannot place" should "stay unmatched, and say which candidate it refused" in {
     val films = Seq(F(1, "Opętanie", 1981, "Andrzej Żuławski", 124), F(2, "Opętanie", 1973, "Someone Else", 90))
     val bare = listing(Multikino, "Opętanie")

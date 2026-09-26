@@ -257,14 +257,33 @@ object IdentityResolver {
     }
 
     /** The probability that `film` is the listing's film — the decision's confidence, on the scale
-     *  the rating gate reads: the calibrated one (rivals are in it, the `rivals` measure), or its
-     *  evidence class's when the film is the listing's accepted exact top hit. */
+     *  the rating gate reads: the calibrated one (rivals are in it, the `rivals` measure), its
+     *  evidence class's when the film is the listing's accepted exact top hit, or the one the priors
+     *  lent when the listing's facts accepted it ([[calibrated]]). */
     def confidenceOf(ranked: Seq[Scored], film: Int): Double =
       topHit(ranked).filter(_._1.c.tmdbId == film).map(_._2)
+        .orElse(calibrated(ranked).filter(_._1.c.tmdbId == film).map(_._2))
         .getOrElse(ranked.filterNot(_.denied).find(_.c.tmdbId == film).fold(0.0)(_.p))
-    /** The best eligible candidate, when its calibrated probability clears the calibration's cut. */
-    def calibrated(ranked: Seq[Scored]): Option[(Scored, Double)] =
-      ranked.find(!_.denied).map(b => b -> b.p).filter(x => calibration.showsRatings(x._2))
+    /** `best`'s probability with the database's ranking priors and the family's pooled count
+     *  LENDING confidence but never withdrawing it — each one's negative weight capped at 0 — when
+     *  the listing's own facts decide: it compares a fact, nothing it published weighs against the
+     *  film, and its facts favour the film over every other eligible candidate. Otherwise the
+     *  calibrated probability: a namesake the facts fit alike is told apart only by the ranking,
+     *  which then keeps its full weight. */
+    def priorsLent(best: Scored, eligible: Seq[Scored]): Double =
+      if (!IdentityMeasures.comparesAFact(ListingFilm, best.measures) || speaksAgainst(best) ||
+          eligible.exists(r => (r ne best) && ownEvidence(r) >= ownEvidence(best))) best.p
+      else {
+        val scope = calibration.scopes(ListingFilm)
+        val lent  = calibration.contributions(ListingFilm, best.measures).map { case (name, w) => if (Priors(name)) math.max(0.0, w) else w }.sum
+        math.max(best.p, scope.calibration(scope.prior + lent))
+      }
+    /** The best eligible candidate, when its probability — the priors lending, never withdrawing
+     *  ([[priorsLent]]) — clears the calibration's cut. */
+    def calibrated(ranked: Seq[Scored]): Option[(Scored, Double)] = {
+      val eligible = ranked.filterNot(_.denied)
+      eligible.headOption.map(b => b -> priorsLent(b, eligible)).filter(x => calibration.showsRatings(x._2))
+    }
     /** The eligible candidate whose record names the listing's SEASON PRODUCTION — the season and
      *  the work its title names. `None`: no candidate does. `Some(Some(x))`: `x` is the listing's
      *  film on that identity, whatever the calibrated probability (the fitted weights do not read a
@@ -441,6 +460,13 @@ object IdentityResolver {
       ConstraintSolver.solveAs(presented.map(_.id), cs, presentation).map(_.map(nodeById))
     }
 
+    /** Why an own match's confidence stands above its calibrated probability: its exact top hit's
+     *  class, or the ranking priors lending ([[priorsLent]]). */
+    def liftedBy(ranked: Seq[Scored], s: Scored, confidence: Double): String =
+      if (confidence <= s.p) ""
+      else if (topHit(ranked).exists(_._1.c.tmdbId == s.c.tmdbId)) " as its exact top hit"
+      else " with the ranking priors lending, never withdrawing"
+
     def decide(cluster: Seq[Node], scope: FamilyScope, filmOf: String => Option[Int], accepted: Map[String, Int],
                voted: Map[String, (Int, Double)], edges: Seq[ResolverEdge], clusterIndex: Map[String, Int]): ResolverDecision = {
       val films = cluster.flatMap(n => filmOf(n.id)).distinct
@@ -462,7 +488,7 @@ object IdentityResolver {
         else ResolverDecision.Basis.BelowThreshold
       val ids   = cluster.map(_.id).toSet
       val own   = cluster.flatMap(n => bestOf.get(n.id).map { case (s, c) =>
-        s"${n.label}: own match ${s.c.tmdbId} at ${ResolverDecision.percent(c)}${if (c > s.p) " as its exact top hit" else ""} " +
+        s"${n.label}: own match ${s.c.tmdbId} at ${ResolverDecision.percent(c)}${liftedBy(scope.of(n), s, c)} " +
           s"(${calibration.explain(ListingFilm, s.measures)})" })
       val joins = edges.filter(e => e.must && ids(e.a) && ids(e.b)).groupBy(_.reason).toSeq.sortBy(_._1)
         .map { case (r, es) => s"joined by $r ×${es.size}" }
