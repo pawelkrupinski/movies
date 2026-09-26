@@ -2001,3 +2001,37 @@ through the shared 429 gate, which it stops feeding at its first overload. On a 
 shadow ask costs the pipeline at most one interval (`ShadowLookupFillSpec` simulates a shared pacer
 at full pipeline load). `ObservationCaptureEndToEndSpec` runs a tick, a round and a tick with every
 switch on: `expected-schedules.txt` and the read-model snapshot are unchanged.
+
+### 19.1 Measured (2026-09-26, recorder run 36153174348's trees, the replay as the live service)
+
+The pipeline boots with the capture on (the store holds exactly its own lookups, as production's
+would), then shadow ticks and fill rounds alternate at the default cap (60/min, 1,800 a 30-min round):
+
+| corpus | gaps after the pipeline's capture | asked to converge | rounds (hours at the cap) | asks per listing | matched clusters |
+|---|---|---|---|---|---|
+| full-es | 3,892 | 10,997 | 7 (3.5 h) | 2.24 | 223 → 225 of 233 |
+| full-de | 24,441 | 60,573 | 34 (17 h) | 3.08 | 1,632 → 1,642 of 1,686 |
+| hard clusters | 80–404 | 216–988 | 1 | 4.8–12.7 | e.g. hc-us 15 → 25 of 36 |
+
+Gaps rise after the first round before they fall: each answered search names candidates whose
+records are asked next. What is asked is almost entirely candidate records (`GET /3/movie/{id}`,
+two requests per film), then filmographies and yearless searches; details and person searches are
+single digits. No round failed or backed off.
+
+Steady state: a new listing costs its asks once (ES ≈ 2.2, DE ≈ 3.1); a read renews an answer, so
+nothing live is re-asked while it is needed. The daily volume is therefore asks-per-listing ×
+new listings a day, bounded by the cap (86,400 a day at 60/min, ~2% of TMDB's ceiling).
+
+Mongo: the observations one DE tick reads are 70,061 (489 MB uncompressed; stored gzipped, ~4.5×
+smaller, §9a); ES 12,357 (113 MB uncompressed).
+
+### 19.2 Why there is no seeder of the pipeline's persisted answers
+
+The shadow's gaps are the RESOLVER's questions, not answers the pipeline has and never re-fetches.
+The Poznań e2e boots from an empty store with the capture on, so every request the pipeline makes
+is observed — an upper bound on anything a seed of its persisted state could supply — and 4,559
+questions stay unobserved: 3,982 candidate records, 512 yearless searches, 59 filmographies, 1
+person search, 5 details. And what the pipeline persists is not the answers: `resolve_*` keeps
+hint → id, the film rows keep parsed TMDB slots; only `detailCache-*` keeps raw bodies, and the
+pipeline's own detail refresh re-observes those within a cycle. Seeding TMDB observations from
+parsed slots would file bodies no service sent. The fill is what closes the gap.
