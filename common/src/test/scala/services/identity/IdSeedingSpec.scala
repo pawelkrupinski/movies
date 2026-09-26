@@ -52,4 +52,14 @@ class IdSeedingSpec extends AnyFlatSpec with Matchers {
       IdSeeding.review(random.shuffle(films), random.shuffle(clusters)) shouldBe expected
     }
   }
+
+  it should "honour the persisted FilmId map: a film mapped earlier keeps its counter, and with it a contested cluster" in {
+    // `f00000000000abc` was seeded first (counter 1) when it was the larger film; today `dune|2021`
+    // is larger, but the stored order stands — the map is append-only, so seeding never re-ranks.
+    val stored = FilmIdCounters.of(Seq(FilmIdCounter("f00000000000abc", 1))).toOption.get
+    val r = IdSeeding.review(films, clusters, stored)
+    r.keeps("f00000000000abc") shouldBe (big ++ small)
+    r.mergedAway.map { case (f, winner) => f.id -> winner } shouldBe Seq("dune|2021" -> "f00000000000abc")
+    IdSeeding.review(films, clusters, FilmIdCounters.empty) shouldBe IdSeeding.review(films, clusters)
+  }
 }

@@ -9,10 +9,12 @@ import services.movies.ListingKey
  * migration's review list — are named.
  *
  * Today's film is the set of its slots' listing keys (`movie_slots.listingKey`). Its FilmId is an
- * opaque string, so it is mapped to the counter [[IdAssigner]] works over, ordered largest film
- * first (ties by id): `IdAssigner` hands a contested cluster to the SMALLER number, and a film
- * being migrated has no creation counter to be "older" by, so the film with more listings — the
- * one more of the site's showtimes hang off — keeps its id. Fresh ids follow the last film's.
+ * opaque string, so it goes through the persisted FilmId map ([[FilmIdCounters]]) to the counter
+ * [[IdAssigner]] works over: `IdAssigner` hands a contested cluster to the SMALLER number. A film
+ * the map already holds keeps its stored counter; one it does not is numbered after it by the
+ * map's own rule — largest film first (ties by id), since a film being migrated has no creation
+ * counter to be "older" by, so the film with more listings, the one more of the site's showtimes
+ * hang off, keeps its id. Fresh ids follow the largest counter.
  *
  * Pure and order-independent, like [[IdAssigner]]: the review is a function of the two sets.
  */
@@ -31,11 +33,13 @@ object IdSeeding {
   final case class Review(keeps: Map[String, Set[ListingKey]], unmatched: Seq[Film], mergedAway: Seq[(Film, String)],
                           split: Seq[(Film, Seq[Set[ListingKey]])], fresh: Seq[(Set[ListingKey], Seq[String])])
 
-  def review(films: Seq[Film], clusters: Seq[Set[ListingKey]]): Review = {
-    val ranked   = films.filter(_.listings.nonEmpty).distinctBy(_.id).sortBy(f => (-f.listings.size, f.id))
-    val number   = ranked.zipWithIndex.map { case (f, i) => f.id -> (i + 1L) }.toMap
+  def review(films: Seq[Film], clusters: Seq[Set[ListingKey]], ids: FilmIdCounters = FilmIdCounters.empty): Review = {
+    val present  = films.filter(_.listings.nonEmpty).distinctBy(_.id)
+    val counters = ids.covering(present)
+    val number   = present.map(f => f.id -> counters.counterOf(f.id).get).toMap
+    val ranked   = present.sortBy(f => number(f.id))
     val byNumber = ranked.map(f => number(f.id) -> f).toMap
-    val assigned = IdAssigner.assign(ranked.map(f => number(f.id) -> f.listings), clusters, ranked.size + 1L)
+    val assigned = IdAssigner.assign(ranked.map(f => number(f.id) -> f.listings), clusters, counters.nextCounter)
     val owner    = clusters.iterator.flatMap(c => c.iterator.map(_ -> c)).toMap
     /** The clusters `f`'s listings fall in, the one holding most of them first. */
     def overlapped(f: Film): Seq[Set[ListingKey]] =

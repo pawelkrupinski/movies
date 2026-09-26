@@ -114,19 +114,9 @@ object ListingKeyBackfill {
   }
 
   private def backfill(country: Country, apply: Boolean, exportDir: Option[Path]): Unit = {
-    val process    = _root_.settings.ProcessConfiguration.resolve()
-    val connection = MongoConnection.forCountry(country,
-      process.mongoAddress.copy(database = Some(_root_.settings.MongoDatabaseName(country.mongoDb))),
-      required = services.MongoRequirement.Required, services.MongoTuning.from(process))
-    val database = connection.database.getOrElse {
-      println(s"${country.displayName}: could not open ${country.mongoDb} — is the tunnel up and MONGODB_URI set?"); sys.exit(1)
-    }
+    val (connection, database) = openCountry(country)
     val started = System.nanoTime()
-    val slots = scan(database.getCollection[Document](SlotsRepository.Collection),
-      Projections.include("filmId", "slotKey", "listingKey", "slot.title", "slot.rawTitle", "slot.releaseYear",
-        "slot.director", "slot.filmUrl")) { d =>
-      SlotRow(text(d, "_id"), text(d, "filmId"), text(d, "slotKey"), slotOf(d), stored(d))
-    }
+    val slots = slotRows(database)
     val screenings = scan(database.getCollection[Document](ScreeningsRepository.Collection),
       Projections.include("filmId", "slotKey", "listingKey")) { d =>
       ScreeningRow(text(d, "_id"), text(d, "filmId"), text(d, "slotKey"), stored(d))
@@ -156,6 +146,30 @@ object ListingKeyBackfill {
     println(f"    ${slots.size + screenings.size} rows in $seconds%.1fs (${(slots.size + screenings.size) / math.max(seconds, 0.001)}%.0f rows/s)")
     connection.close()
   }
+
+  /** `country`'s own database (`Country.mongoDb`, never `MONGODB_DB`), or exit saying why not. */
+  def openCountry(country: Country): (MongoConnection, MongoDatabase) = {
+    val process    = _root_.settings.ProcessConfiguration.resolve()
+    val connection = MongoConnection.forCountry(country,
+      process.mongoAddress.copy(database = Some(_root_.settings.MongoDatabaseName(country.mongoDb))),
+      required = services.MongoRequirement.Required, services.MongoTuning.from(process))
+    val database = connection.database.getOrElse {
+      println(s"${country.displayName}: could not open ${country.mongoDb} — is the tunnel up and MONGODB_URI set?"); sys.exit(1)
+    }
+    (connection, database)
+  }
+
+  /** Every `movie_slots` row, its listing fields and stored key only, `_id`-keyset paged. */
+  def slotRows(database: MongoDatabase): Vector[SlotRow] =
+    scan(database.getCollection[Document](SlotsRepository.Collection),
+      Projections.include("filmId", "slotKey", "listingKey", "slot.title", "slot.rawTitle", "slot.releaseYear",
+        "slot.director", "slot.filmUrl")) { d =>
+      SlotRow(text(d, "_id"), text(d, "filmId"), text(d, "slotKey"), slotOf(d), stored(d))
+    }
+
+  /** Every `_id` of `collection`, keyset paged. */
+  def ids(database: MongoDatabase, collection: String): Vector[String] =
+    scan(database.getCollection[Document](collection), Projections.include("_id"))(text(_, "_id"))
 
   /** A key or row id as a person reads it: the NUL and unit separators shown as ` | `. */
   def readable(key: String): String = key.replace("\u0000", " | ").replace(services.movies.SlotKeyed.IdSep.toString, " | ")
