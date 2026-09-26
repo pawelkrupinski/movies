@@ -18,7 +18,8 @@ import scala.jdk.CollectionConverters.*
  * setting can be passed as another.
  *
  * Two rules, over every module's `src/main` (Scala and Twirl) and the worker's shared
- * `src/fixtures` harness, with comments stripped:
+ * `src/fixtures` harness, with comments stripped — and the first also over every spec,
+ * integration spec, page test, e2e suite and tool main (`src/test`, `src/it`, `src/page`):
  *
  *  1. Nothing touches the process directly — no `Env.fromProcess`, `sys.env`, `sys.props`,
  *     `System.getenv` / `getProperty` / `setProperty`.
@@ -40,7 +41,7 @@ class ProcessAccessLintSpec extends AnyFlatSpec with Matchers {
     "common/src/main/scala/tools/Env.scala" ->
       "Env's process binding: environment variables, then system properties, then .env.local",
     "common/src/main/scala/settings/ProcessConfiguration.scala" ->
-      "the ONE resolver: reads the process through Env.fromProcess and yields the typed values roots pass down",
+      "the ONE resolver: binds Env to the process and yields the typed values roots pass down",
     "common/src/main/scala/tools/ProxyTunnelAuthentication.scala" ->
       "writes a policy the JDK itself reads (jdk.http.auth.tunneling.disabledSchemes); applied once by each main",
     "common/src/main/scala/tools/IssuerCertificateFetching.scala" ->
@@ -57,15 +58,27 @@ class ProcessAccessLintSpec extends AnyFlatSpec with Matchers {
       "the /admin/config page: lists every REGISTERED knob's current value by the key the registry holds — keys as data, not one setting read",
   )
 
-  private def sources: Seq[Path] = {
+  /** Every module's production sources and the worker's shared fixture harness. */
+  private val ProductionDirectories =
+    Seq("common/src/main", "testkit/src/main", "worker/src/main", "worker/src/fixtures", "web/src/main", "e2e/src/main")
+
+  /** Every spec, integration spec, page test, e2e suite and the tool/script mains that live
+   *  beside them. A spec is the root of its own run: it resolves ONE ProcessConfiguration
+   *  (`tools.SuiteConfiguration`) or builds the typed values it needs directly. */
+  private val SpecDirectories = for {
+    module <- Seq("common", "testkit", "worker", "web", "e2e")
+    config <- Seq("test", "it", "page")
+  } yield s"$module/src/$config"
+
+  private def sources(directories: Seq[String]): Seq[Path] = {
     val root = RepoRoot.dir.toPath
     for {
-      directory <- Seq("common/src/main", "testkit/src/main", "worker/src/main", "worker/src/fixtures", "web/src/main", "e2e/src/main")
+      directory <- directories
       dir        = root.resolve(directory)
       if Files.isDirectory(dir)
       file      <- Files.walk(dir).iterator().asScala.toSeq
       name       = file.getFileName.toString
-      if name.endsWith(".scala") || name.endsWith(".scala.html")
+      if name.endsWith(".scala") || name.endsWith(".scala.html") || name.endsWith(".java")
     } yield file
   }
 
@@ -79,9 +92,10 @@ class ProcessAccessLintSpec extends AnyFlatSpec with Matchers {
     withoutBlocks.replaceAll("""(?m)(?<![:"])//.*$""", "")
   }
 
-  private def offenders(pattern: scala.util.matching.Regex, allowed: Map[String, String]): Seq[String] = {
+  private def offenders(pattern: scala.util.matching.Regex, allowed: Map[String, String],
+                        directories: Seq[String] = ProductionDirectories): Seq[String] = {
     val root = RepoRoot.dir.toPath
-    sources.flatMap { path =>
+    sources(directories).flatMap { path =>
       val relative = root.relativize(path).toString
       if (allowed.contains(relative)) Nil
       else code(Files.readString(path)).linesIterator.zipWithIndex.collect {
@@ -101,6 +115,14 @@ class ProcessAccessLintSpec extends AnyFlatSpec with Matchers {
     withClue("add an accessor to settings.ProcessConfiguration returning a type of its own, and take that value " +
       "as a parameter: ") {
       offenders(KeyRead, KeyReadAllowed) shouldBe empty
+    }
+  }
+
+  "specs, integration specs, page tests and tool mains" should "read the process only through ProcessConfiguration" in {
+    val found = offenders(ProcessAccess, ProcessAllowed, SpecDirectories)
+    withClue(s"${found.size} direct process reads — resolve ONE ProcessConfiguration per suite or main " +
+      "(tools.SuiteConfiguration) and read its typed accessors, or construct the typed value directly: ") {
+      found shouldBe empty
     }
   }
 
