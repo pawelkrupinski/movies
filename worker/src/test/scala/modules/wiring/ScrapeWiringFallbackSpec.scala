@@ -5,7 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.CinemaScraper
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, InMemoryFallbackStore}
-import tools.FixtureTestWiring
+import tools.{FixtureTestWiring, MutableClock, TestWiring}
 
 import scala.util.Try
 
@@ -20,13 +20,16 @@ class ScrapeWiringFallbackSpec extends AnyFlatSpec with Matchers {
   }
 
   private class Wiring(filmweb: Boolean, kinoprogramm: Map[Cinema, String] = Map.empty) {
+    // Runs an hour apart are separate runs; retries minutes apart are not (SeparateRuns).
+    private val testClock = new MutableClock(TestWiring.FixedInstant)
     val wiring = new FixtureTestWiring("08-06-2026") {
+      override lazy val clock: java.time.Clock = testClock
       override protected def filmwebEnabled: Boolean = filmweb
       override protected def kinoprogrammFallbackPaths: Map[Cinema, String] = kinoprogramm
       override lazy val filmwebFallbackStore: FallbackStore = new InMemoryFallbackStore
     }
     private val scraper = wiring.recordingScraper(failing, eligible = true)
-    def failRun(): Unit = { Try(scraper.fetch()); () }
+    def failRun(): Unit = { Try(scraper.fetch()); testClock.advance(java.time.Duration.ofHours(1)) }
     def state: Option[FallbackState] = wiring.filmwebFallbackStore.get(KinoMikro.displayName)
   }
 
@@ -48,7 +51,7 @@ class ScrapeWiringFallbackSpec extends AnyFlatSpec with Matchers {
 
   // German venues are scraped ~10-hourly, so a 6h window would hand a venue over on
   // its second failure. Kinoprogramm waits for three SEPARATE failed runs instead —
-  // and the harness clock never moves here, so only a run count can trip it.
+  // an hour apart here, far inside a 6h window, so only a run count can trip it.
   it should "give a venue kinoprogramm.com lists a Kinoprogramm fallback, after three failed runs" in {
     val w = new Wiring(filmweb = false, kinoprogramm = Map(KinoMikro -> "/kino/somewhere/kino-mikro-1"))
     w.failRun(); w.failRun()

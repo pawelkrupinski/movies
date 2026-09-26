@@ -21,7 +21,7 @@ object FallbackAfter {
   }
 
   /** After `count` separate scrape runs in a row have failed, however far apart they
-   *  fall. A run is one call of the wrapper, so the retries inside it are not counted. */
+   *  fall. Retries of one run — minutes apart — count once ([[services.scrapes.SeparateRuns]]). */
   final case class FailedRuns(count: Int) extends FallbackAfter {
     def reached(failingSince: Instant, failedRuns: Int, now: Instant): Boolean = failedRuns >= count
   }

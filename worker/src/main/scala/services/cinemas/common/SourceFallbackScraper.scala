@@ -3,6 +3,7 @@ package services.cinemas.common
 import models.CinemaMovie
 import services.UptimeMonitor
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore}
+import services.scrapes.SeparateRuns
 
 import java.time.{Clock, Instant, ZoneOffset}
 import scala.concurrent.duration._
@@ -188,8 +189,16 @@ class SourceFallbackScraper(
   private def graceElapsed(previous: Option[FallbackState], nowI: Instant): Boolean =
     fallbackAfter.reached(
       failingSince = previous.flatMap(_.failingSince).getOrElse(nowI),
-      failedRuns   = previous.map(_.failedRuns).getOrElse(0) + 1,
+      failedRuns   = failedRunsIncluding(previous.getOrElse(initialState), nowI),
       now          = nowI)
+
+  /** The current spell's separate failed runs, counting a failure at `nowI`: a new
+   *  spell is one run, and a failure within [[SeparateRuns.MinGap]] of the last
+   *  probe is a retry of that run, not another. */
+  private def failedRunsIncluding(base: FallbackState, nowI: Instant): Int =
+    if (base.failingSince.isEmpty) 1
+    else if (base.lastPrimaryProbeAt.forall(SeparateRuns.isNewRun(_, nowI))) base.failedRuns + 1
+    else math.max(base.failedRuns, 1)
 
   private def runPrimary(): PrimaryOutcome = {
     val t0 = System.currentTimeMillis()
@@ -269,7 +278,7 @@ class SourceFallbackScraper(
       active              = false,
       fallbackSource = fallbackName, fallbackRef = fallbackRef(),
       failingSince        = base.failingSince.orElse(Some(nowI)),
-      failedRuns          = base.failedRuns + 1,
+      failedRuns          = failedRunsIncluding(base, nowI),
       lastReason          = Some(reason),
       consecutiveFailures = 0,             // backoff only matters once we're on fallback
       lastPrimaryProbeAt  = Some(nowI),
@@ -287,7 +296,7 @@ class SourceFallbackScraper(
       active              = true,
       fallbackSource = fallbackName, fallbackRef = fallbackRef(),
       failingSince        = base.failingSince.orElse(Some(nowI)),
-      failedRuns          = base.failedRuns + 1,
+      failedRuns          = failedRunsIncluding(base, nowI),
       since               = Some(nowI),
       lastReason          = Some(reason),
       consecutiveFailures = 1,

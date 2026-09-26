@@ -56,8 +56,7 @@ case class BarrenAttempt(
   // [[GoneUpstream]].
   since:   Option[Instant] = None,
   // How many separate scrape runs in a row, ending with this one, have FAILED — 0
-  // for an empty. Retries inside one run are one run: the runner archives once per
-  // run. `None` for a run that began before the count existed, which stays
+  // for an empty. Retries of one run are one run ([[SeparateRuns]]). `None` for a run that began before the count existed, which stays
   // uncounted until it ends (see [[BarrenAttempt.continuing]]).
   failedRuns: Option[Int] = None
 ) {
@@ -76,13 +75,16 @@ object BarrenAttempt {
       since      = Some(existing.map(_.runStartedAt).getOrElse(attempt.at)),
       failedRuns = failedRunsAfter(existing, attempt))
 
-  /** A failure extends the previous failure's count; anything else ends the streak.
-   *  An uncounted previous failure (written before the count existed) keeps the
-   *  streak uncounted: restarting it at one would page, a few runs after this
-   *  shipped, for every long-dead venue already in the archive. */
+  /** A failure in a new run ([[SeparateRuns]]) extends the previous failure's count,
+   *  a retry of the same run leaves it; anything else ends the streak. An uncounted
+   *  previous failure (written before the count existed) keeps the streak uncounted:
+   *  restarting it at one would page, a few runs after this shipped, for every
+   *  long-dead venue already in the archive. */
   private def failedRunsAfter(existing: Option[BarrenAttempt], attempt: BarrenAttempt): Option[Int] =
     if (attempt.outcome != ScrapeOutcome.Failed) Some(0)
-    else existing.filter(_.outcome == ScrapeOutcome.Failed).fold(Some(1))(_.failedRuns.map(_ + 1))
+    else existing.filter(_.outcome == ScrapeOutcome.Failed).fold(Some(1)) { previous =>
+      if (SeparateRuns.isNewRun(previous.at, attempt.at)) previous.failedRuns.map(_ + 1) else previous.failedRuns
+    }
 }
 
 /**

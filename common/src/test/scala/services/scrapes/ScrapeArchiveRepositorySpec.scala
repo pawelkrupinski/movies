@@ -119,6 +119,19 @@ class ScrapeArchiveRepositorySpec extends AnyFlatSpec with Matchers {
     repository.find(Multikino).value.lastBarren.value.failedRuns shouldBe Some(3)
   }
 
+  // The reaper re-runs a failed venue on its next ticks, a minute apart
+  // (`ScrapeFreshnessPolicy.immediateRetries`): those retries are the SAME run, or
+  // one bad minute would read as three separate failures.
+  it should "count retries minutes apart as one failed run" in {
+    val repository = new InMemoryScrapeArchiveRepository
+    repository.record(threw(Multikino, Morning,                "HTTP 404 for GET https://x/"))
+    repository.record(threw(Multikino, Morning.plusSeconds(60),  "HTTP 404 for GET https://x/"))
+    repository.record(threw(Multikino, Morning.plusSeconds(120), "HTTP 404 for GET https://x/"))
+    repository.find(Multikino).value.lastBarren.value.failedRuns shouldBe Some(1)
+    repository.record(threw(Multikino, Noon, "HTTP 404 for GET https://x/"))
+    repository.find(Multikino).value.lastBarren.value.failedRuns shouldBe Some(2)
+  }
+
   it should "restart the failed-run count after a run that fetched cleanly but came back empty" in {
     val repository = new InMemoryScrapeArchiveRepository
     repository.record(threw(Multikino, Morning, "HTTP 404 for GET https://x/"))

@@ -239,14 +239,25 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
   // runs instead waits for several separate failures however far apart they fall.
   private val ThreeRuns = Some(FallbackAfter.FailedRuns(3))
 
-  it should "with a failed-runs trigger, fall back on the Nth separate failed run however little time passed" in {
+  it should "with a failed-runs trigger, fall back on the Nth separate failed run" in {
     val h = new Harness(Seq(Left(boom)), Some(filmwebWith(OneMovie)), trigger = ThreeRuns)
-    h.tickSwallowing(); h.advance(1.minute)
-    h.tickSwallowing(); h.advance(1.minute)
+    h.tickSwallowing(); h.advance(1.hour)
+    h.tickSwallowing(); h.advance(1.hour)
     h.events shouldBe empty                 // two failed runs: still riding it out
     h.scraper.fetch() shouldBe OneMovie     // the third: served from the fallback
     h.state.map(_.active) shouldBe Some(true)
     h.events.map(_._2.event) shouldBe List(FallbackEvent.Enter)
+  }
+
+  // The reaper re-runs a failed venue on its next ticks, a minute apart: those
+  // retries are the same run, or one bad minute would hand the venue over.
+  it should "with a failed-runs trigger, count retries minutes apart as the same run" in {
+    val h = new Harness(Seq(Left(boom)), Some(filmwebWith(OneMovie)), trigger = ThreeRuns)
+    h.tickSwallowing(); h.advance(1.minute)
+    h.tickSwallowing(); h.advance(1.minute)
+    h.tickSwallowing()
+    h.events shouldBe empty                 // one run and its two retries
+    h.state.map(_.failedRuns) shouldBe Some(1)
   }
 
   it should "with a failed-runs trigger, not fall back on elapsed time alone" in {
@@ -260,14 +271,15 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
   it should "with a failed-runs trigger, restart the count after a healthy run" in {
     val h = new Harness(Seq(Left(boom), Left(boom), Right(OneMovie), Left(boom), Left(boom)),
       Some(filmwebWith(OneMovie)), trigger = ThreeRuns)
-    (1 to 5).foreach(_ => h.tickSwallowing())
+    (1 to 5).foreach { _ => h.tickSwallowing(); h.advance(1.hour) }
     h.events shouldBe empty                 // 2 failures, a success, 2 failures: never 3 in a row
   }
 
   it should "with a failed-runs trigger, carry the count across a worker restart" in {
     val before = new Harness(Seq(Left(boom)), Some(filmwebWith(OneMovie)), trigger = ThreeRuns)
-    before.tickSwallowing(); before.tickSwallowing()
+    before.tickSwallowing(); before.advance(1.hour); before.tickSwallowing()
     val after = new Harness(Seq(Left(boom)), Some(filmwebWith(OneMovie)), trigger = ThreeRuns, store = before.store)
+    after.clock = before.clock.plusMillis(1.hour.toMillis)
     after.scraper.fetch() shouldBe OneMovie
     after.events.map(_._2.event) shouldBe List(FallbackEvent.Enter)
   }
