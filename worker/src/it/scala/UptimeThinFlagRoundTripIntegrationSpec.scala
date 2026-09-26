@@ -22,9 +22,9 @@ import scala.concurrent.duration._
 class UptimeThinFlagRoundTripIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway()
+  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
 
-  private val isolatedDb = tools.IsolatedMongoDatabase.open(Env.fromProcess().get("MONGODB_URI").get, "uptime-thin-roundtrip-spec")
+  private val isolatedDb = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "uptime-thin-roundtrip-spec")
   private val db         = isolatedDb.database
   private val service    = "__uptime-thin-roundtrip__"
   private var reader: Option[UptimeMonitor] = None
