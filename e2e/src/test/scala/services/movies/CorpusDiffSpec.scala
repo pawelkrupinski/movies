@@ -47,4 +47,21 @@ class CorpusDiffSpec extends AnyFlatSpec with Matchers {
   it should "stay silent about a match on identical corpora" in {
     CorpusDiff.records(Seq.empty, Seq.empty) shouldBe ""
   }
+
+  // The PL next-day leg printed `cast: first day=Vector(Fiona Shaw, Daisy Edgar-Jones, …)
+  // next day=Vector(Daisy Edgar-Jones, Fiona Shaw, …)` — the same three people, re-billed —
+  // beside the two fields that really moved, sending the reader after a non-difference.
+  it should "not report a cast that was only re-billed, but still report one that grew" in {
+    import models.{Kinoteka, MovieRecord, Source, SourceData}
+    def row(cast: Seq[String], runtime: Int) = StoredMovieRecord("Rozważna i romantyczna", Some(2026),
+      MovieRecord(data = Map[Source, SourceData](Kinoteka -> SourceData(cast = cast, runtimeMinutes = Some(runtime)))),
+      FilmId("rozwazna"))
+    val billed = Seq("Fiona Shaw", "Daisy Edgar-Jones", "Esme Creed-Miles")
+
+    val rebilled = CorpusDiff.records(Seq(row(billed, 131)), Seq(row(billed.reverse, 112)))
+    rebilled should include ("runtimeMinutes")
+    rebilled should not include "cast"
+
+    CorpusDiff.records(Seq(row(billed, 131)), Seq(row(billed :+ "George MacKay", 112))) should include ("cast")
+  }
 }

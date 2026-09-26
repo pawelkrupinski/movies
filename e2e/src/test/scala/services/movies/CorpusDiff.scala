@@ -1,6 +1,6 @@
 package services.movies
 
-import models.Showtime
+import models.{Showtime, SourceData}
 
 /**
  * Renders WHAT differs between two corpora, for the clue on a failed
@@ -49,7 +49,8 @@ object CorpusDiff {
             val fields = Seq[(String, Any, Any)](
               ("title", da.title, db.title),
               ("synopsis.len", da.synopsis.map(_.length), db.synopsis.map(_.length)),
-              ("cast", da.cast, db.cast), ("director", da.director, db.director),
+              // Compared as the names it holds: a re-billed cast is no difference.
+              ("cast", SourceData.castSet(da.cast), SourceData.castSet(db.cast)), ("director", da.director, db.director),
               ("posterUrl", da.posterUrl, db.posterUrl), ("releaseYear", da.releaseYear, db.releaseYear),
               ("runtimeMinutes", da.runtimeMinutes, db.runtimeMinutes), ("countries", da.countries, db.countries),
               ("genres", da.genres, db.genres), ("filmUrl", da.filmUrl, db.filmUrl),

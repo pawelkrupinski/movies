@@ -332,6 +332,51 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
     resolved.flatMap(_.tmdbId) shouldBe None
   }
 
+  // ── 3d'. CAST corroborates by overlap, never by one name ─────────────────
+
+  /** The same fully translated film, where the venue publishes CAST instead of a
+   *  runtime that agrees. TMDB keeps its top five billed; a venue prints its own top
+   *  few, in its own order. */
+  private def castWalk(venueCast: Seq[String]): Option[MovieRecord] = {
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
+      "/search/movie"  -> """{"results":[]}""",
+      "/search/person" -> """{"results":[{"id":600001,"name":"Andrea Di Stefano","known_for_department":"Directing"}]}""",
+      "/person/600001/movie_credits" -> """{"crew":[
+        |{"id":1143973,"title":"Il Maestro","original_title":"Il Maestro",
+        | "release_date":"2025-09-01","department":"Directing","job":"Director","popularity":5.0}
+        |]}""".stripMargin,
+      "/movie/1143973?" -> """{"id":1143973,"title":"Il Maestro","original_title":"Il Maestro","release_date":"2025-09-01","runtime":125,
+        |"credits":{"cast":[{"name":"Pierfrancesco Favino","order":0},{"name":"Tiziano Menichelli","order":1},
+        |{"name":"Giovanni Ludeno","order":2},{"name":"Dora Romano","order":3},{"name":"Edwige Fenech","order":4}],"crew":[]}}""".stripMargin,
+      "/movie/1143973/external_ids" -> """{"id":1143973,"imdb_id":"tt30000001"}"""
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
+    val service = new MovieService(cache, new InProcessEventBus(), tmdb)
+    // The runtime DISAGREES (98 against 125), so only the cast can corroborate.
+    val existing = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("Trener Tenisa"), director = Seq("Andrea Di Stefano"),
+                           releaseYear = Some(2025), runtimeMinutes = Some(98), cast = venueCast)))
+    service.resolveStagingRecord("Trener Tenisa", Some(2025), existing)
+  }
+
+  it should "accept a year-pinned credit whose top billing CONTAINS the venue's shorter cast, in any order" in {
+    castWalk(Seq("Dora Romano", "Pierfrancesco Favino", "Tiziano Menichelli")).flatMap(_.tmdbId) shouldBe Some(1143973)
+  }
+
+  it should "refuse a year-pinned credit that shares only ONE name with the venue's cast" in {
+    castWalk(Seq("Pierfrancesco Favino")).flatMap(_.tmdbId) shouldBe None
+  }
+
+  it should "refuse a year-pinned credit whose billing covers too little of the venue's cast" in {
+    castWalk(Seq("Pierfrancesco Favino", "Dora Romano", "Toni Servillo", "Valeria Golino", "Elio Germano"))
+      .flatMap(_.tmdbId) shouldBe None
+  }
+
+  it should "refuse a year-pinned credit whose cast is nobody the venue named" in {
+    castWalk(Seq("Toni Servillo", "Valeria Golino", "Elio Germano")).flatMap(_.tmdbId) shouldBe None
+  }
+
   // ── 3e. The shared word may be written in another ALPHABET ───────────────
 
   /** "Mavka. Prawdziwy mit" against TMDB's "Мавка. Справжній міф" shares its

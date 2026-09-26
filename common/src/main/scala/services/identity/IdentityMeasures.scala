@@ -60,11 +60,8 @@ object IdentityMeasures {
 
   private def words(s: String): Seq[String] = TitleContainment.tokens(s)
 
-  /** A person as an order-insensitive whole-name key: "Makoto Shinkai" = "Shinkai Makoto". */
-  private def personKey(name: String): String = words(name).sorted.mkString(" ")
-
   private def people(names: Iterable[String]): Set[String] =
-    names.iterator.flatMap(_.split(",")).map(personKey).filter(_.nonEmpty).toSet
+    names.iterator.flatMap(_.split(",")).map(services.movies.PersonKey.of).filter(_.nonEmpty).toSet
 
   private def latin(names: Iterable[String]): Boolean =
     names.exists(_.exists(c => Character.isLetter(c) && Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN))

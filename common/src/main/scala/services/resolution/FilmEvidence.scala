@@ -99,7 +99,7 @@ object FilmEvidence {
       slotTitles     = record.cinemaShowings.flatMap(_._2.title).sorted,
       originalTitles = perVenue.flatMap(_.originalTitle).map(_.trim).filter(_.nonEmpty).distinct,
       directors      = perVenue.flatMap(_.director).map(_.trim).filter(_.nonEmpty).distinct.sorted,
-      cast           = perVenue.flatMap(_.cast).map(_.trim).filter(_.nonEmpty).distinct.sorted,
+      cast           = models.SourceData.castSet(perVenue.flatMap(_.cast)).toSeq.sorted,
       runtimes       = perVenue.flatMap(_.runtimeMinutes).distinct.sorted,
       years          = perVenue.flatMap(_.releaseYear).distinct.sorted)
   }

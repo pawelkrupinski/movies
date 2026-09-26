@@ -108,17 +108,22 @@ case class SourceData(
   // repository write when the new record `==` the stored one, so a re-resolve that
   // corrected ONLY the language stamp (TMDB returning the same text under a freshly
   // -confirmed tag) would never persist — and the row would be re-swept forever.
+  //
+  // `cast` compares as a SET (`SourceData.castSet`): a venue re-billing the same people
+  // ("Fiona Shaw, Daisy Edgar-Jones" one day, "Daisy Edgar-Jones, Fiona Shaw" the next,
+  // Kinoteka) is not a change worth a write or a churn report, while a cast that gains or
+  // loses a name still is. The stored list keeps the source's billing order.
   override def equals(that: Any): Boolean = that match {
     case o: SourceData =>
       title == o.title && rawTitle == o.rawTitle && originalTitle == o.originalTitle &&
-      englishTitle == o.englishTitle && synopsis == o.synopsis && cast == o.cast &&
+      englishTitle == o.englishTitle && synopsis == o.synopsis && SourceData.castSet(cast) == SourceData.castSet(o.cast) &&
       director == o.director && runtimeMinutes == o.runtimeMinutes && releaseYear == o.releaseYear &&
       countries == o.countries && genres == o.genres && posterUrl == o.posterUrl &&
       filmUrl == o.filmUrl && trailerUrl == o.trailerUrl && language == o.language
     case _ => false
   }
   override def hashCode(): Int =
-    (title, rawTitle, originalTitle, englishTitle, synopsis, cast, director,
+    (title, rawTitle, originalTitle, englishTitle, synopsis, SourceData.castSet(cast), director,
      runtimeMinutes, releaseYear, countries, genres, posterUrl, filmUrl, trailerUrl,
      language).hashCode()
 
@@ -141,6 +146,10 @@ object SourceData {
    *  this (rather than "unknown, re-resolve") keeps the Polish corpus — where the
    *  stamp is absent and the text is already right — completely still. */
   val LegacyLanguageTag: String = "pl-PL"
+
+  /** A cast as the names it holds, billing order aside: what "did this cast change" compares.
+   *  Trimmed only — a respelled name is a change the page should show. */
+  def castSet(cast: Iterable[String]): Set[String] = cast.iterator.map(_.trim).filter(_.nonEmpty).toSet
 
   /** Which fields a merge actually filled in — for logging that can tell a detail page
    *  that contributed something from one that contributed nothing. The two used to look

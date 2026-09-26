@@ -629,10 +629,10 @@ class TmdbCandidateSearch(
             val full = tmdb.fullDetails(f.id)
             val runtimeAgrees = full.flatMap(_.runtimeMinutes).exists(actual =>
               cinemaRuntimes.exists(reported => math.abs(actual - reported) <= TmdbCandidateSearch.RuntimeAgreementMinutes))
-            val castAgrees = full.exists { d =>
-              val theirs = d.cast.map(normalizer.sanitize).filter(_.nonEmpty).toSet
-              cinemaCast.map(normalizer.sanitize).exists(n => n.nonEmpty && theirs.contains(n))
-            }
+            // Overlap against the SMALLER list, never one shared name (`CastAgreement`):
+            // a venue's top three inside TMDB's top five agree in any order, while one
+            // actor in common is what two films of one director routinely share.
+            val castAgrees = full.exists(d => CastAgreement.agrees(cinemaCast, d.cast))
             runtimeAgrees || castAgrees
           }
         // And when the title NAMES another of this person's credits — at a year outside
