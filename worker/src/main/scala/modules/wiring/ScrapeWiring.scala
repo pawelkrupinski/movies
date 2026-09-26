@@ -1,5 +1,7 @@
 package modules.wiring
 
+import settings.{ScrapeBootRamp, ScrapeEnqueueSpreadSlices, ScrapeInitialDelay, ScrapeMaxEnqueuePerTick, ScrapeMaxOutstandingTasks, ScrapeTasksPerVenue}
+
 import models.Cinema
 import modules.WorkerWiring
 import services.MongoCachingDetailFetch
@@ -10,7 +12,7 @@ import services.alerts.FallbackAlert
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, MongoFallbackStore}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
 import services.tasks.{ScrapeCadence, ScrapeCinemaHandler, ScrapeFreshnessPolicy, ScrapeReaper}
-import tools.{DaemonExecutors, HostScrapeStats, ScrapeCities}
+import tools.{DaemonExecutors, HostScrapeStats}
 
 import java.util.concurrent.ExecutorService
 import scala.concurrent.duration.DurationLong
@@ -63,7 +65,7 @@ trait ScrapeWiring { self: WorkerWiring =>
   protected def scrapeCitiesDefault: Set[String] = country.cities.map(_.slug).toSet
   // `protected def` so test wirings can pin the set independently.
   protected def scrapeCities: Set[String] =
-    ScrapeCities.enabled(env.get("KINOWO_SCRAPE_CITIES"), default = scrapeCitiesDefault)
+    configuration.scrapeCitySlugs.fold(scrapeCitiesDefault)(_.value)
 
   // The date Helios bakes into its REST URLs. Production uses the real Warsaw
   // date; fixture-replay test wirings override with the fixture's capture date.
@@ -222,7 +224,7 @@ trait ScrapeWiring { self: WorkerWiring =>
   // pile onto the cache hydrate and drain the shared-CPU credit balance to zero.
   // The ScrapeReaper's first tick enqueues every stale cinema (all of them on a
   // cold boot) for the TaskWorker to drain at once.
-  def initialScrapeDelaySeconds: Long = env.positiveLong("KINOWO_SCRAPE_INITIAL_DELAY_SECONDS", 45L)
+  def initialScrapeDelay: ScrapeInitialDelay = configuration.scrapeInitialDelay(ScrapeInitialDelay(45.seconds))
 
   // Cap on stale cinemas enqueued per reaper tick. A cold boot (or a long backlog)
   // would otherwise queue every cinema at once and let the TaskWorker pool drain
@@ -231,8 +233,8 @@ trait ScrapeWiring { self: WorkerWiring =>
   // credit to recover; the backlog clears over a handful of ticks. Tune down if a
   // restart still throttles, up once Mongo/CPU have headroom. Default sized in
   // ScrapeCadence (≥1.5× the steady-state due rate at the freshness window).
-  def maxScrapeEnqueuePerTick: Int =
-    env.positiveInt("KINOWO_SCRAPE_MAX_ENQUEUE_PER_TICK", ScrapeCadence.MaxEnqueuePerTick)
+  def maxScrapeEnqueuePerTick: ScrapeMaxEnqueuePerTick =
+    configuration.scrapeMaxEnqueuePerTick(ScrapeMaxEnqueuePerTick(ScrapeCadence.MaxEnqueuePerTick))
 
   // Cinema scraping is driven by a durable Mongo task queue: the ScrapeReaper
   // enqueues each cinema at most once per freshness window, and the TaskWorker
@@ -275,30 +277,29 @@ trait ScrapeWiring { self: WorkerWiring =>
   // first tick, so the whole-corpus backlog drains gradually (pool idles → the just-
   // reset CPU-credit balance rebuilds) rather than pinning the pool flat-out and
   // re-draining credit — the residual boot-storm spike. See ScrapeReaper.bootRamp.
-  def scrapeBootRampMinutes: Long = env.positiveLong("KINOWO_SCRAPE_BOOT_RAMP_MINUTES", 5L)
+  def scrapeBootRamp: ScrapeBootRamp = configuration.scrapeBootRamp(ScrapeBootRamp(5.minutes))
   // How many staggered sub-slices each healthy reaper tick spreads its due batch
   // over the 1-min interval, so the batch's scrape parses don't clump into a single
   // CPU spike that floors the CPU-credit balance (the parse-wave burst). Same total
   // work and freshness; only the enqueue timing is staggered. Sized in ScrapeCadence;
   // 1 disables the spread. See ScrapeReaper.enqueueSpread.
-  def scrapeEnqueueSpreadSlices: Int =
-    env.positiveInt("KINOWO_SCRAPE_ENQUEUE_SPREAD_SLICES", ScrapeCadence.EnqueueSpreadSlices)
+  def scrapeEnqueueSpreadSlices: ScrapeEnqueueSpreadSlices =
+    configuration.scrapeEnqueueSpreadSlices(ScrapeEnqueueSpreadSlices(ScrapeCadence.EnqueueSpreadSlices))
   // Ceiling on outstanding scrape TASKS, the bound that survives the healthy path —
   // the per-tick caps above count VENUES, which on a chunked country understates the
   // work by the fan-out factor. Sized in ScrapeCadence. See ScrapeReaper's parameter.
-  def maxOutstandingScrapeTasks: Int =
-    env.positiveInt("KINOWO_SCRAPE_MAX_OUTSTANDING_TASKS",
-      ScrapeCadence.MaxOutstandingScrapeTasks)
+  def maxOutstandingScrapeTasks: ScrapeMaxOutstandingTasks =
+    configuration.scrapeMaxOutstandingTasks(ScrapeMaxOutstandingTasks(ScrapeCadence.MaxOutstandingScrapeTasks))
   // What one venue costs in scrape tasks, so the budget above can be spent in the unit
   // it is written in. Per country because the fan-out is a property of that country's
   // scrapers — see ScrapeReaper's `tasksPerVenue`. Default 1 (unchunked).
-  def scrapeTasksPerVenue: Int = env.positiveInt("KINOWO_SCRAPE_TASKS_PER_VENUE", 1)
+  def scrapeTasksPerVenue: ScrapeTasksPerVenue = configuration.scrapeTasksPerVenue(ScrapeTasksPerVenue(1))
   lazy val scrapeReaper =
     new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, dueWindow = scrapeDueWindow,
-      initialDelay = initialScrapeDelaySeconds.seconds,
-      maxEnqueuePerTick = maxScrapeEnqueuePerTick, bootRamp = scrapeBootRampMinutes.minutes,
-      maxOutstandingScrapeTasks = maxOutstandingScrapeTasks, tasksPerVenue = scrapeTasksPerVenue,
+      initialDelay = initialScrapeDelay.value,
+      maxEnqueuePerTick = maxScrapeEnqueuePerTick.value, bootRamp = scrapeBootRamp.value,
+      maxOutstandingScrapeTasks = maxOutstandingScrapeTasks.value, tasksPerVenue = scrapeTasksPerVenue.value,
       chunkSpread = ScrapeCadence.ChunkEnqueueSpread,
       inFlight = chunkRunInFlight,
-      enqueueSpread = scrapeEnqueueSpreadSlices, runStore = scheduledRunStore)
+      enqueueSpread = scrapeEnqueueSpreadSlices.value, runStore = scheduledRunStore)
 }

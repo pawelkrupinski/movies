@@ -27,7 +27,7 @@ import scala.concurrent.duration._
 class UserStateAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers {
 
   assume(tools.Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(tools.Env.fromProcess())
+  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
 
   private val clock = Clock.fixed(Instant.parse("2026-06-01T10:00:00Z"), ZoneOffset.UTC)
 
@@ -51,10 +51,10 @@ class UserStateAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers {
 
   "two web pods writing one user's state at once" should
     "leave exactly one row, and one that some serial order of the writes produces" in
-    ConcurrentInstances.withInstances(tools.IntegrationMongoTarget.fromEnv(tools.Env.fromProcess()).get, "userstate-two-pods") { instances =>
+    ConcurrentInstances.withInstances(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "userstate-two-pods") { instances =>
       val users = new InMemoryUserRepository
       val pods  = instances.map(instance => new UserStatePod(instance.database, users, clock))
-      try rounds(12, tools.ConcurrentInstances.baseSeed(tools.Env.fromProcess())) { round =>
+      try rounds(12, tools.ConcurrentInstances.baseSeed(_root_.settings.ProcessConfiguration.resolve())) { round =>
         // A user with NO row yet: the first writes from both pods are the ones that each upsert.
         val userId = UserStatePod.signIn(users, s"two-pods-${round.number}")
         val writes = Seq(Hide(0, "A1"), Hide(1, "B1"), Unhide(0, "B1"), Hide(1, "A2"), Language(0, "en"), Language(1, "de"))
@@ -105,10 +105,10 @@ class UserStateAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers {
   // that dropped and rebuilt it every time (fixed in e098b3b62) left the collection with no
   // uniqueness at all between the drop and the create — exactly while the old pod was writing.
   "a web pod booting while another serves" should "find the unique userId index and drop nothing" in
-    ConcurrentInstances.withInstances(tools.IntegrationMongoTarget.fromEnv(tools.Env.fromProcess()).get, "userstate-two-pods-boot") { instances =>
+    ConcurrentInstances.withInstances(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "userstate-two-pods-boot") { instances =>
       Await.result(instances.head.database.getCollection[Document](UserStateRepository.Collection)
         .createIndex(Indexes.ascending("userId"), IndexOptions().unique(true)).toFuture(), 10.seconds)
-      rounds(3, tools.ConcurrentInstances.baseSeed(tools.Env.fromProcess())) { round =>
+      rounds(3, tools.ConcurrentInstances.baseSeed(_root_.settings.ProcessConfiguration.resolve())) { round =>
         val (reported, drops) = bootTogether(instances, round)
         reported shouldBe Seq(List(true), List(true))
         withClue(s"indexes dropped per pod: $drops — ") { drops shouldBe Seq(0, 0) }
@@ -124,9 +124,9 @@ class UserStateAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers {
   // so a pod no longer rebuilds: it reports a non-unique index for an operator to fix, and never
   // drops an index another pod may be writing behind.
   "two web pods booting at once over a plain userId index" should "both report it, and neither drop it" in
-    ConcurrentInstances.withInstances(tools.IntegrationMongoTarget.fromEnv(tools.Env.fromProcess()).get, "userstate-two-pods-legacy") { instances =>
+    ConcurrentInstances.withInstances(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "userstate-two-pods-legacy") { instances =>
       val coll = instances.head.database.getCollection[Document](UserStateRepository.Collection)
-      rounds(4, tools.ConcurrentInstances.baseSeed(tools.Env.fromProcess())) { round =>
+      rounds(4, tools.ConcurrentInstances.baseSeed(_root_.settings.ProcessConfiguration.resolve())) { round =>
         Await.result(coll.drop().toFuture(), 10.seconds)
         Await.result(coll.createIndex(Indexes.ascending("userId"), IndexOptions()).toFuture(), 10.seconds)
         val (reported, drops) = bootTogether(instances, round)

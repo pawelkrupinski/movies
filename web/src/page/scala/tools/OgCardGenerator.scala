@@ -21,7 +21,7 @@ import javax.imageio.{IIOImage, ImageIO, ImageWriteParam}
  * dates shown so the poster grid is full even at night) under a left-side dark
  * gradient carrying the deployment's wordmark (Kinowo / Showtimes) and the
  * IMDb·Metacritic·RT(·Filmweb) pills — the same look as the `/` landing card.
- * Everything language- and brand-specific is read from [[Country.fromEnv]]
+ * Everything language- and brand-specific is read from `KINOWO_COUNTRY` (`settings.ProcessConfiguration.country`)
  * (`KINOWO_COUNTRY`): the brand, the display host, the tagline language, and
  * whether the Filmweb pill shows (Poland only).
  *
@@ -134,7 +134,7 @@ object OgCardGenerator {
     }
 
   def main(args: Array[String]): Unit = {
-    val country = Country.fromEnv(tools.Env.fromProcess())
+    val country = _root_.settings.ProcessConfiguration.resolve().country
     val baseUrl = sys.env.getOrElse("KINOWO_OG_BASE", country.ogOrigin).stripSuffix("/")
     val outDir  = Paths.get(sys.env.getOrElse("KINOWO_OG_OUT", "web/src/main/assets/img"))
     Files.createDirectories(outDir)

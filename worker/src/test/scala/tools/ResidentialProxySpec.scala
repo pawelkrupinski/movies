@@ -16,22 +16,23 @@ class ResidentialProxySpec extends AnyFlatSpec with Matchers {
 
   "ResidentialProxy.fromConfig" should
     "build a ProxyConfig when host+ports (file) and user+pass (env) are all present" in {
-    val cfg = ResidentialProxy.fromConfig(props("isp.decodo.com", "10001, 10002 ,10003"), Some("u"), Some("p"))
+    val cfg = ResidentialProxy.fromConfig(props("isp.decodo.com", "10001, 10002 ,10003"), Some(settings.ProxyUser("u")), Some(settings.ProxyPassword("p")))
     cfg.map(_.host)  shouldBe Some("isp.decodo.com")
     cfg.map(_.ports) shouldBe Some(Seq(10001, 10002, 10003)) // parsed + trimmed
-    cfg.map(_.user)  shouldBe Some("u")
+    cfg.map(_.user)  shouldBe Some(settings.ProxyUser("u"))
   }
 
   it should "be None when the secret credentials are absent (proxy disabled → Zyte/direct)" in {
-    ResidentialProxy.fromConfig(props("isp.decodo.com", "10001"), None, Some("p"))      shouldBe None
-    ResidentialProxy.fromConfig(props("isp.decodo.com", "10001"), Some("u"), None)      shouldBe None
-    ResidentialProxy.fromConfig(props("isp.decodo.com", "10001"), Some("  "), Some("p")) shouldBe None
+    ResidentialProxy.fromConfig(props("isp.decodo.com", "10001"), None, Some(settings.ProxyPassword("p")))      shouldBe None
+    ResidentialProxy.fromConfig(props("isp.decodo.com", "10001"), Some(settings.ProxyUser("u")), None)      shouldBe None
+    // A blank credential is no credential: the resolver never yields one.
+    new settings.ProcessConfiguration(Env.of("KINOWO_PROXY_USER" -> "  ")).proxyUser shouldBe None
   }
 
   it should "be None when the properties file has no host or no usable ports" in {
-    ResidentialProxy.fromConfig(props(null, "10001"), Some("u"), Some("p"))              shouldBe None
-    ResidentialProxy.fromConfig(props("isp.decodo.com", null), Some("u"), Some("p"))     shouldBe None
-    ResidentialProxy.fromConfig(props("isp.decodo.com", " , ,"), Some("u"), Some("p"))   shouldBe None
+    ResidentialProxy.fromConfig(props(null, "10001"), Some(settings.ProxyUser("u")), Some(settings.ProxyPassword("p")))              shouldBe None
+    ResidentialProxy.fromConfig(props("isp.decodo.com", null), Some(settings.ProxyUser("u")), Some(settings.ProxyPassword("p")))     shouldBe None
+    ResidentialProxy.fromConfig(props("isp.decodo.com", " , ,"), Some(settings.ProxyUser("u")), Some(settings.ProxyPassword("p")))   shouldBe None
   }
 
   "the committed residential-proxy.properties" should "carry the Decodo host and a non-empty port list" in {

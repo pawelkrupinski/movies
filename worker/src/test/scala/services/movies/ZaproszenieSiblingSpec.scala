@@ -51,7 +51,7 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
         s"""{"results":[{"id":$Invite2026,"title":"Zaproszenie.","original_title":"The Invite","release_date":"2026-06-25","popularity":4.3}]}""",
       s"/movie/$Invite2026/external_ids" -> s"""{"id":$Invite2026,"imdb_id":"$InviteImdb"}"""
     )),
-    apiKey = Some("stub")
+    apiKey = Some(settings.TmdbApiKey("stub"))
   )
 
   private val WildePersonId = 47634 // Olivia Wilde
@@ -75,7 +75,7 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
         s"""{"crew":[{"id":$Invite2026,"title":"Zaproszenie.","original_title":"The Invite","release_date":"2026-06-25","department":"Directing","job":"Director","popularity":4.3}]}""",
       s"/movie/$Invite2026/external_ids" -> s"""{"id":$Invite2026,"imdb_id":"$InviteImdb"}"""
     )),
-    apiKey = Some("stub")
+    apiKey = Some(settings.TmdbApiKey("stub"))
   )
 
   // A resolved 2022 sibling + an unresolved 2026 row that carries its own
@@ -121,7 +121,7 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
     val tmdb = new TmdbClient(http = new GetOnlyHttpFetch {
       override def get(url: String): String =
         throw new RuntimeException(s"TMDB should not be called: $url")
-    }, apiKey = Some("stub"))
+    }, apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, bus, tmdb)
     bus.subscribe(service.onMovieDetailsComplete)
 

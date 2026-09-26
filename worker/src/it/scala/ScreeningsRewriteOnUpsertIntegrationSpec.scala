@@ -37,10 +37,10 @@ import tools.Env
 class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
+  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
 
   private val uri = Env.fromProcess().get("MONGODB_URI").get
-  private val target = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
+  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
   // Its own corpus, dropped when each leg's scope closes — the per-row purge this replaced
   // tidied the sentinels but left the database itself behind on every run.
   private val CorpusSuite = "screenings-rewrite"

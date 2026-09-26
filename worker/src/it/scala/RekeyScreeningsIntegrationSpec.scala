@@ -34,10 +34,10 @@ import scala.concurrent.duration._
 class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
+  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
 
   private val uri = Env.fromProcess().get("MONGODB_URI").get
-  private val target = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
+  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
   // Its own corpus: this suite hydrates a `CaffeineMovieCache` over the WHOLE `movies`
   // collection and settles it, which is not survivable for a neighbouring suite's rows.
   // Dropped when each leg's scope closes, so a run leaves no `*_rekey-screenings` behind.

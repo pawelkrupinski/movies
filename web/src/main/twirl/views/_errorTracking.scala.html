@@ -1,4 +1,4 @@
-@(loaderUrl: Option[String])
+@(loaderUrl: Option[_root_.settings.SentryLoaderUrl])
 @*
    Sentry "Loader Script" tag. Driven by `SENTRY_LOADER_URL` — the
    per-DSN script path Sentry hosts at
@@ -16,5 +16,5 @@
 @loaderUrl.map { url =>
 @* `async` (the comment above always claimed it; the attribute was missing):
    without it this third-party CDN request blocks HTML parsing / first paint. *@
-<script async src="@url" crossorigin="anonymous"></script>
+<script async src="@url.value" crossorigin="anonymous"></script>
 }

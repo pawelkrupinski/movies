@@ -4,7 +4,8 @@ import models.{CityScreening, ResolvedMovie}
 import play.api.Logging
 import services.Stoppable
 import services.movies.{ChangeStreamLiveness, MovieRepository, StoredMovieRecord}
-import tools.{DaemonExecutors, Env}
+import settings.{ReadModelPruneBootDelay, ReadModelPruneInterval, ShareCardFirstHold}
+import tools.DaemonExecutors
 
 import java.util.concurrent.TimeUnit
 import scala.util.Try
@@ -58,13 +59,14 @@ class ReadModelProjector(
   shareCards: ShareCardLedger = ShareCardLedger.none,
   // How long a brand-new card may be held back waiting for its share card before it is published
   // anyway, with the fallback image and `shareCardPending` set. Never indefinitely.
-  firstCardHold: scala.concurrent.duration.FiniteDuration = ReadModelProjector.DefaultFirstCardHold,
+  firstCardHold: ShareCardFirstHold = ShareCardFirstHold(ReadModelProjector.DefaultFirstCardHold),
   // No default: the rolling content check numbers its slice by this clock, so a spec left on the
   // wall clock re-projected its row in the half-hours that row's slice came up (Main red, 2026-09-25).
   clock:     java.time.Clock,
-  // The process config its prune cadence is read from. Defaulted to an empty Env (the
-  // compiled-in cadence) for specs; the worker wiring passes its composition root's instance.
-  env:       Env = Env.of(),
+  // How often the id-only orphan prune runs, and how long after boot the first one waits
+  // (`KINOWO_READMODEL_PRUNE_SECONDS` / `…_BOOT_DELAY_SECONDS`, resolved by the worker's root).
+  pruneInterval:  ReadModelPruneInterval  = ReadModelProjector.DefaultPruneInterval,
+  pruneBootDelay: ReadModelPruneBootDelay = ReadModelProjector.DefaultPruneBootDelay,
   // Blocks until the change stream has applied what it had in flight when a sweep let go of the
   // lock — what tells a heal the stream would have made anyway from a real miss (see `verdictOnHeals`).
   awaitStreamApplied: ChangeStreamLiveness => Unit = ReadModelProjector.awaitStreamApplied(_),
@@ -134,10 +136,10 @@ class ReadModelProjector(
   // drops must clear within a tick). The expensive full re-projection is no longer
   // scheduled at all (the resume-token change stream made it redundant — see the class
   // doc); it survives only as the explicit `reconcile()` seed/backfill primitive.
-  private val PruneSeconds = env.positiveLong("KINOWO_READMODEL_PRUNE_SECONDS", 1800L)      // 30 min
+  private val PruneSeconds = pruneInterval.value.toSeconds
   // Deferred off the boot path — running a full scan synchronously at `start()` stacked a
   // second scan onto the cache hydrate + first scrape on a cold JVM (the boot CPU drain).
-  private val PruneBootDelaySeconds = env.positiveLong("KINOWO_READMODEL_PRUNE_BOOT_DELAY_SECONDS", 300L)
+  private val PruneBootDelaySeconds = pruneBootDelay.value.toSeconds
 
   // Numbered by the clock, not from zero: a counter each process starts afresh checks
   // slice 0 again after every deploy, and on a day of hourly deploys the rest of the corpus
@@ -273,7 +275,7 @@ class ReadModelProjector(
     val id       = projected._id
     val served   = lastMovie.contains(id) && lastScreenings.get(id).exists(_.nonEmpty)
     val firstOne = screened && !served && !shareCards.readyToPublish(projected)
-    val hold     = Option.when(firstOne)(held.getOrElseUpdate(id, HeldCard(rowId, now + firstCardHold.toMillis)))
+    val hold     = Option.when(firstOne)(held.getOrElseUpdate(id, HeldCard(rowId, now + firstCardHold.value.toMillis)))
     if (!firstOne) held.remove(id)
     val expired  = hold.exists(_.until <= now)
     if (firstOne && !expired) {
@@ -283,7 +285,7 @@ class ReadModelProjector(
       if (expired) {
         held.remove(id)
         pendingCards += id
-        logger.warn(s"share card: published $id without its card — none was ready within ${firstCardHold.toSeconds}s.")
+        logger.warn(s"share card: published $id without its card — none was ready within ${firstCardHold.value.toSeconds}s.")
       }
       val shareCard = shareCards.current(projected)
       if (shareCard.nonEmpty && pendingCards.remove(id)) shareCards.onPendingCardLanded(id)
@@ -982,10 +984,11 @@ object ReadModelProjector {
   val DefaultFirstCardHold: scala.concurrent.duration.FiniteDuration =
     scala.concurrent.duration.Duration(120L, TimeUnit.SECONDS)
 
-  /** `KINOWO_SHARE_CARD_FIRST_HOLD_SECONDS` from `env`, else [[DefaultFirstCardHold]]. */
-  def firstCardHoldFrom(env: Env): scala.concurrent.duration.FiniteDuration =
-    scala.concurrent.duration.Duration(
-      env.positiveLong("KINOWO_SHARE_CARD_FIRST_HOLD_SECONDS", DefaultFirstCardHold.toSeconds), TimeUnit.SECONDS)
+  /** The id-only orphan prune's compiled-in cadence: every 30 minutes, first 5 minutes after boot. */
+  val DefaultPruneInterval: ReadModelPruneInterval =
+    ReadModelPruneInterval(scala.concurrent.duration.Duration(1800L, TimeUnit.SECONDS))
+  val DefaultPruneBootDelay: ReadModelPruneBootDelay =
+    ReadModelPruneBootDelay(scala.concurrent.duration.Duration(300L, TimeUnit.SECONDS))
 
   /** How long a write that landed while a sweep held the lock may take to be DELIVERED by its
    *  cursor, before the wait below can see it queued. */

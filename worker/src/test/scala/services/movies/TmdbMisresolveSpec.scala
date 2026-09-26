@@ -62,7 +62,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
         |]}""".stripMargin,
       s"/movie/$Correct/external_ids" -> s"""{"id":$Correct,"imdb_id":""}"""
     )),
-    apiKey = Some("stub")
+    apiKey = Some(settings.TmdbApiKey("stub"))
   )
 
   "a film unresolved against a director-less first scrape" should
@@ -115,7 +115,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
       s"/movie/$Concert/external_ids" -> s"""{"id":$Concert,"imdb_id":""}""",
       s"/movie/$Feature/external_ids" -> s"""{"id":$Feature,"imdb_id":""}"""
     )),
-    apiKey = Some("stub")
+    apiKey = Some(settings.TmdbApiKey("stub"))
   )
 
   private def resolveVivaldi(tmdb: TmdbClient): Option[Int] = {
@@ -151,7 +151,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
           |"credits":{"crew":[{"job":"Director","name":"Pedro Almodóvar"}],"cast":[]}}""".stripMargin,
         s"/movie/$Short/external_ids" -> s"""{"id":$Short,"imdb_id":"tt12545256"}"""
       )),
-      apiKey = Some("stub"))
+      apiKey = Some(settings.TmdbApiKey("stub")))
     val seed = MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some("Ludzki głos"), runtimeMinutes = Some(90), director = Seq("Pedro Almodóvar"))))
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Ludzki głos", Some(2020), seed)), normalizer = titleNormalizer),
@@ -170,7 +170,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
         s"/movie/$Concert?" -> s"""{"id":$Concert,"title":"Vivaldi i ja","release_date":"2023-04-01","runtime":108}""",
         s"/movie/$Concert/external_ids" -> s"""{"id":$Concert,"imdb_id":""}"""
       )),
-      apiKey = Some("stub"))
+      apiKey = Some(settings.TmdbApiKey("stub")))
     resolveVivaldi(tmdb) shouldBe Some(Concert)
   }
 
@@ -188,7 +188,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
         s"/movie/$Concert?" -> s"""{"id":$Concert,"title":"Vivaldi i ja","release_date":"2023-04-01","runtime":108}""",
         s"/movie/$Concert/external_ids" -> s"""{"id":$Concert,"imdb_id":""}"""
       )),
-      apiKey = Some("stub"))
+      apiKey = Some(settings.TmdbApiKey("stub")))
     val cache = new CaffeineMovieCache(
       new InMemoryMovieRepository(Seq(("Vivaldi i ja", None,
         MovieRecord(data = Map[Source, SourceData](CinemaCityPoznanPlaza -> SourceData(title = Some("Vivaldi i ja")))))), normalizer = titleNormalizer),
@@ -286,7 +286,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
         s"/movie/$Short/external_ids"   -> s"""{"id":$Short,"imdb_id":""}""",
         s"/movie/$Feature/external_ids" -> s"""{"id":$Feature,"imdb_id":""}"""
       )),
-      apiKey = Some("stub"))
+      apiKey = Some(settings.TmdbApiKey("stub")))
 
     // The row as prod held it: keyed 1960 off a TitleOnly conclusion, with every
     // venue publishing 2025 and a feature-length runtime.
@@ -324,7 +324,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
         s"/movie/$Short/external_ids"   -> s"""{"id":$Short,"imdb_id":""}""",
         s"/movie/$Feature/external_ids" -> s"""{"id":$Feature,"imdb_id":""}"""
       )),
-      apiKey = Some("stub"))
+      apiKey = Some(settings.TmdbApiKey("stub")))
 
     val seed = MovieRecord(
       tmdbId = Some(Short), tmdbBasis = Some(services.resolution.TmdbBasis.TitleOnly.toString),

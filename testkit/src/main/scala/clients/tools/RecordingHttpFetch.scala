@@ -1,5 +1,6 @@
 package clients.tools
 
+import settings.FixtureRoot
 import tools.HttpFetch
 
 import java.io.File

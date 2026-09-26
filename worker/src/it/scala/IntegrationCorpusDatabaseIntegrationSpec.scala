@@ -23,11 +23,11 @@ import scala.concurrent.duration._
 class IntegrationCorpusDatabaseIntegrationSpec extends AnyFlatSpec with Matchers {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
+  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
 
   private val uri = Env.fromProcess().get("MONGODB_URI").get
 
-  private val target = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
+  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
   private def databaseNames(client: MongoClient): Seq[String] =
     Await.result(client.listDatabaseNames().toFuture(), 30.seconds)
 

@@ -1,10 +1,11 @@
 package modules.wiring
 
+import settings.{DetailMaxEnqueuePerTick, DetailTickInterval}
+
 import modules.WorkerWiring
 import services.cinemas.common.DetailEnricher
 import services.tasks.{DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler}
 
-import scala.concurrent.duration.{DurationLong, FiniteDuration}
 
 /** Deferred per-film detail: the cinemas that scrape BARE and fill their detail
  *  through EnrichDetails queue tasks, the handler that fetches it, and the
@@ -56,14 +57,14 @@ trait DetailWiring { self: WorkerWiring =>
   // that pinned the shared-CPU credit). Same lever as the scrape/rating reapers.
   lazy val detailEnqueuers: Seq[DetailTaskEnqueuer] =
     detailEnrichers.map(de => new DetailTaskEnqueuer(de, movieCache, taskQueue, freshnessStore, clock))
-  def maxDetailEnqueuePerTick: Int = env.positiveLong("KINOWO_DETAIL_MAX_ENQUEUE_PER_TICK", 50L).toInt
+  def maxDetailEnqueuePerTick: DetailMaxEnqueuePerTick = configuration.detailMaxEnqueuePerTick(DetailMaxEnqueuePerTick(50))
   // How often the detail reaper wakes to enqueue the now-due slice (the spread
   // granularity). Finer = flatter per-minute `EnrichDetails` trickle on the
   // `kinowo_worker_tasks` panel, at the cost of cheap in-memory corpus scans.
   // Default 1min (≈360 ticks per 6h).
-  def detailTickInterval: FiniteDuration =
-    env.positiveLong("KINOWO_DETAIL_TICK_INTERVAL_SECONDS", DetailReaper.DefaultTickInterval.toSeconds).seconds
+  def detailTickInterval: DetailTickInterval =
+    configuration.detailTickInterval(DetailTickInterval(DetailReaper.DefaultTickInterval))
   lazy val detailReaper = new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore, eventBus,
-    dueWindow = detailDueWindow, tickInterval = detailTickInterval, maxEnqueuePerTick = maxDetailEnqueuePerTick,
+    dueWindow = detailDueWindow, tickInterval = detailTickInterval.value, maxEnqueuePerTick = maxDetailEnqueuePerTick.value,
     runStore = scheduledRunStore, clock = clock)
 }

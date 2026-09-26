@@ -28,7 +28,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 class FilmwebWikidataResolveSpec extends AnyFlatSpec with Matchers {
 
   private def tmdb(routes: (String, String)*): TmdbClient =
-    new TmdbClient(http = new clients.tools.UrlFragmentHttpFetch(routes.toSeq), apiKey = Some("stub"))
+    new TmdbClient(http = new clients.tools.UrlFragmentHttpFetch(routes.toSeq), apiKey = Some(settings.TmdbApiKey("stub")))
 
   // A Wikidata client whose two Action-API calls (search by P5032, then
   // wbgetentities claims) are stubbed by URL fragment. `P4947` = TMDB id.

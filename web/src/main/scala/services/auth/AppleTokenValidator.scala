@@ -8,7 +8,8 @@ import java.security.KeyFactory
 import java.security.spec.RSAPublicKeySpec
 import java.util.Base64
 
-class AppleTokenValidator(http: HttpFetch, bundleId: String, clock: java.time.Clock = java.time.Clock.systemUTC()) {
+class AppleTokenValidator(http: HttpFetch, appleBundleId: settings.AppleBundleId, clock: java.time.Clock = java.time.Clock.systemUTC()) {
+  private val bundleId = appleBundleId.value
 
   @volatile private var cachedKeys: Map[String, java.security.PublicKey] = Map.empty
   @volatile private var keysLoadedAt: Long = 0

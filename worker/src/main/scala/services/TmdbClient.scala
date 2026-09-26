@@ -39,7 +39,7 @@ import scala.util.Try
 class TmdbClient(
   http: HttpFetch,
   // TMDB_API_KEY — handed in: the worker wiring passes its Env's value, a spec its stub.
-  apiKey: Option[String],
+  apiKey: Option[settings.TmdbApiKey],
   // The deployment's language, threaded into every localized TMDB request so a
   // non-Polish deployment gets non-Polish overview/genres/titles. Exposed as a
   // `val` so the enrichment (`MovieService`) can canonicalise the country names
@@ -62,7 +62,7 @@ class TmdbClient(
    *  key returns None and the calling method short-circuits via flatMap
    *  without ever hitting the network. */
   private def authHeader: Option[Map[String, String]] =
-    apiKey.map(k => Map("Authorization" -> s"Bearer $k"))
+    apiKey.map(key => Map("Authorization" -> s"Bearer ${key.value}"))
 
   /** Query-string suffix carrying the legacy v3 `api_key=` parameter.
    *  Empty when no key is configured (the calling method short-circuits
@@ -72,7 +72,7 @@ class TmdbClient(
    *  query-less URLs the caller switches `?` for the leading `&` via
    *  `apiKeyParameter(separator)`. */
   private def apiKeyParameter(separator: String): String =
-    apiKey.map(k => s"${separator}api_key=$k").getOrElse("")
+    apiKey.map(key => s"${separator}api_key=${key.value}").getOrElse("")
 
   /** Every TMDB call routes through here. TMDB's API 5xxs and times out for a
    *  few minutes now and then (it took down a CI integration run on

@@ -264,7 +264,7 @@ object RealHttpFetch {
    *  through one IP tripped Decodo's "too many authentication attempts. Limit: 3"
    *  cap and rolled all proxied traffic to Zyte on 2026-06-16. See the
    *  `reference_decodo_isp_proxy` memory. */
-  case class ProxyConfig(host: String, ports: Seq[Int], user: String, password: String) {
+  case class ProxyConfig(host: String, ports: Seq[Int], user: settings.ProxyUser, password: settings.ProxyPassword) {
     require(ports.nonEmpty, "ProxyConfig needs at least one port")
 
     /** This config's sticky egress: the sole port of a [[pinnedTo]] config, or
@@ -290,7 +290,7 @@ object RealHttpFetch {
     val authenticator: Authenticator = new Authenticator {
       override protected def getPasswordAuthentication: PasswordAuthentication =
         if (getRequestorType == Authenticator.RequestorType.PROXY)
-          new PasswordAuthentication(user, password.toCharArray)
+          new PasswordAuthentication(user.value, password.value.toCharArray)
         else null // server (non-proxy) auth is none of this proxy's business
     }
   }

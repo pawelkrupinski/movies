@@ -45,7 +45,7 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
     val clock      = new StepClock(T0)
     val ledger     = new ScriptedLedger
     val readModel  = new InMemoryReadModelRepository()
-    val projector  = new ReadModelProjector(repository, readModel, readModel, shareCards = ledger, firstCardHold = 2.minutes, clock = clock)
+    val projector  = new ReadModelProjector(repository, readModel, readModel, shareCards = ledger, firstCardHold = settings.ShareCardFirstHold(2.minutes), clock = clock)
     def upsert(rating: Double, screened: Boolean = true): String = {
       repository.upsert("Foo", Some(2024), record(rating, screened))
       val row = repository.findAll().head

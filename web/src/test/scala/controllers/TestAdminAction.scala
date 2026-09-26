@@ -29,6 +29,6 @@ object TestAdminAction {
     users: InMemoryUserRepository = adminRepository,
     allow: Set[String]      = Set(AdminEmail)
   ): AdminAction =
-    new AdminAction(Helpers.stubControllerComponents().parsers.anyContent, users, allow)(
+    new AdminAction(Helpers.stubControllerComponents().parsers.anyContent, users, settings.AdminAllowlist(allow))(
       using ExecutionContext.global)
 }

@@ -2,7 +2,7 @@ package tools
 
 import services.scrapes.ArchivedScrape
 
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 
 /** One `Record scrape fixtures` run whose corpus a convergence leg replayed. */
 final case class CorpusRecording(runId: String, recordedAt: String) {
@@ -139,13 +139,13 @@ object CorpusProvenance {
    *  differs from the replayed one and could still be downloaded. */
   val GreenDirEnv        = "KINOWO_CONVERGENCE_GREEN_CORPUS_DIR"
 
-  def of(corpusKey: String, replayedRows: Seq[ArchivedScrape], env: String => Option[String]): CorpusProvenance = {
-    def recording(run: String, at: String) =
-      env(run).filter(_.trim.nonEmpty).map(id => CorpusRecording(id.trim, env(at).getOrElse("?")))
-    val replayed  = recording(RunEnv, RecordedAtEnv)
-    val lastGreen = recording(GreenRunEnv, GreenRecordedAtEnv)
-    val greenFile: Option[Path] = env(GreenDirEnv)
-      .map(dir => Paths.get(dir).resolve(CorpusFixture.pathFor(corpusKey).getFileName))
+  def of(corpusKey: String, replayedRows: Seq[ArchivedScrape], configuration: settings.ProcessConfiguration): CorpusProvenance = {
+    val replayed  = configuration.corpusRunId.map(run =>
+      CorpusRecording(run.value, configuration.corpusRecordedAt.fold("?")(_.value)))
+    val lastGreen = configuration.greenCorpusRunId.map(run =>
+      CorpusRecording(run.value, configuration.greenCorpusRecordedAt.fold("?")(_.value)))
+    val greenFile: Option[Path] = configuration.greenCorpusDirectory
+      .map(_.value.resolve(CorpusFixture.pathFor(corpusKey).getFileName))
       .filter(Files.exists(_))
     CorpusProvenance(replayed, lastGreen, greenFile.map(f => CorpusDiff.of(CorpusFixture.readFrom(f), replayedRows)))
   }

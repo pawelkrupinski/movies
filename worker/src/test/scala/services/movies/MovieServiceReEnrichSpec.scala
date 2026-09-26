@@ -70,7 +70,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     // returned for the same Polish title before its index drifted). Re-enrich
     // should accept the new TMDB answer rather than anchoring on the stale id.
     val tmdbHttp = tmdbWithYearFallback()
-    val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
+    val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some(settings.TmdbApiKey("stub")))
     val repository     = new InMemoryMovieRepository(Seq(
       ("Powrót do przyszłości", Some(2026), mkEnrichment("tt-old-wrong-id"))
     ), normalizer = titleNormalizer)
@@ -93,7 +93,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
   // the famous film. The row gets the correct imdbId.
   it should "resolve the famous title via year-less fallback when the cinema's year is the scheduling year, not the release year" in {
     val tmdbHttp = tmdbWithYearFallback()
-    val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
+    val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some(settings.TmdbApiKey("stub")))
     val repository     = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val cache    = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val service      = new MovieService(cache, new InProcessEventBus(), tmdb)
@@ -111,7 +111,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
       // Both year-scoped and year-less return zero results.
       "/search/movie" -> """{"results":[]}"""
     ))
-    val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
+    val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some(settings.TmdbApiKey("stub")))
     val original = mkEnrichment("tt-original", orig = Some("Keep me"))
     val repository     = new InMemoryMovieRepository(Seq(("Title", Some(2024), original)), normalizer = titleNormalizer)
     val cache    = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
@@ -128,7 +128,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
 
   it should "resolve via search for a brand-new key (no existing row)" in {
     val tmdbHttp = tmdbWithYearFallback()
-    val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
+    val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some(settings.TmdbApiKey("stub")))
     val repository     = new InMemoryMovieRepository(normalizer = titleNormalizer)  // empty
     val cache    = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val service      = new MovieService(cache, new InProcessEventBus(), tmdb)
@@ -147,7 +147,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
 
   "resolveTmdbOnce(Force)" should "write the resolved imdbId through the cache and return true (concluded)" in {
     val tmdbHttp = tmdbWithYearFallback()
-    val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
+    val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some(settings.TmdbApiKey("stub")))
     val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val service  = new MovieService(cache, new InProcessEventBus(), tmdb)
 
@@ -160,7 +160,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
   // must kick a forced rating re-fetch so those scores come back, rather than
   // leaving the reaper's cadence gate to (wrongly) skip the still-stamped sources.
   it should "kick a forced rating re-fetch for the re-resolved row (carrying the resolved ids the sources key on)" in {
-    val tmdb    = new TmdbClient(http = tmdbWithYearFallback(), apiKey = Some("stub"))
+    val tmdb    = new TmdbClient(http = tmdbWithYearFallback(), apiKey = Some(settings.TmdbApiKey("stub")))
     val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val kicked  = scala.collection.mutable.ListBuffer.empty[(CacheKey, MovieRecord)]
     val service = new MovieService(cache, new InProcessEventBus(), tmdb,
@@ -180,7 +180,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
   // TTL. Prod: "Odyseja" kept re-resolving to the memoised Metacritic URL of a
   // different film until the entry expired.
   it should "forget the film's memoised resolutions, so the re-resolve re-probes instead of replaying" in {
-    val tmdb      = new TmdbClient(http = tmdbWithYearFallback(), apiKey = Some("stub"))
+    val tmdb      = new TmdbClient(http = tmdbWithYearFallback(), apiKey = Some(settings.TmdbApiKey("stub")))
     val cache     = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val forgotten = scala.collection.mutable.ListBuffer.empty[String]
     val service   = new MovieService(cache, new InProcessEventBus(), tmdb,
@@ -192,7 +192,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "NOT forget resolutions on a normal (unforced) resolve — the cache is there to be used" in {
-    val tmdb      = new TmdbClient(http = tmdbWithYearFallback(), apiKey = Some("stub"))
+    val tmdb      = new TmdbClient(http = tmdbWithYearFallback(), apiKey = Some(settings.TmdbApiKey("stub")))
     val cache     = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val forgotten = scala.collection.mutable.ListBuffer.empty[String]
     val service   = new MovieService(cache, new InProcessEventBus(), tmdb,

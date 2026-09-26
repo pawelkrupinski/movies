@@ -168,7 +168,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
         if (url.contains("/movie/693134?")) tmdbBody
         else if (url.contains("/movie/693134/credits")) creditsBody
         else UpstreamNotFound(url)
-    }, apiKey = Some("stub"))
+    }, apiKey = Some(settings.TmdbApiKey("stub")))
 
     val repository = new InMemoryMovieRepository(Seq(
       ("Diuna: Część druga", Some(2024), MovieRecord(
@@ -211,7 +211,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
         if (url.contains("/movie/682507?")) tmdbBody
         else if (url.contains("/movie/682507/credits")) creditsBody
         else UpstreamNotFound(url)
-    }, apiKey = Some("stub"))
+    }, apiKey = Some(settings.TmdbApiKey("stub")))
 
     val repository = new InMemoryMovieRepository(Seq(
       ("Belle", Some(2021), MovieRecord(

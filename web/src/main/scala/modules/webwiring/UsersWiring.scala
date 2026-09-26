@@ -48,28 +48,27 @@ trait UsersWiring { self: Wiring =>
   // provider absent → start route 404s and the navbar hides the login button.
   lazy val oauthProviders: Map[String, OauthProvider] = {
     val google = for {
-      id     <- env.get("GOOGLE_CLIENT_ID")
-      secret <- env.get("GOOGLE_CLIENT_SECRET")
+      id     <- processConfiguration.googleClientId
+      secret <- processConfiguration.googleClientSecret
     } yield new GoogleOauthProvider(httoFetch, id, secret)
     val facebook = for {
-      id     <- env.get("FACEBOOK_APP_ID")
-      secret <- env.get("FACEBOOK_APP_SECRET")
+      id     <- processConfiguration.facebookAppId
+      secret <- processConfiguration.facebookAppSecret
     } yield new FacebookOauthProvider(httoFetch, id, secret)
     Seq(google, facebook).flatten.map(p => p.name -> (p: OauthProvider)).toMap
   }
 
   lazy val googleTokenValidator: Option[GoogleTokenValidator] =
-    env.get("GOOGLE_CLIENT_ID").map(id => new GoogleTokenValidator(httoFetch, id))
+    processConfiguration.googleClientId.map(id => new GoogleTokenValidator(httoFetch, id))
 
   lazy val facebookTokenValidator: Option[FacebookTokenValidator] =
     for {
-      id     <- env.get("FACEBOOK_APP_ID")
-      secret <- env.get("FACEBOOK_APP_SECRET")
+      id     <- processConfiguration.facebookAppId
+      secret <- processConfiguration.facebookAppSecret
     } yield new FacebookTokenValidator(httoFetch, id, secret)
 
   lazy val appleTokenValidator: Option[AppleTokenValidator] =
-    env.get("APPLE_BUNDLE_ID").orElse(Some("dev.kinowo.Kinowo"))
-      .map(bundleId => new AppleTokenValidator(httoFetch, bundleId, clock))
+    Some(new AppleTokenValidator(httoFetch, processConfiguration.appleBundleId, clock))
 
   // One-shot sign-in codes for the two handoffs a session cookie cannot make:
   // the native apps' `kinowo://` deep link, and the country switch across the
@@ -87,5 +86,5 @@ trait UsersWiring { self: Wiring =>
   lazy val accountDeletion   = new AccountDeletion(userRepository, userStateRepository)
   lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, accountDeletion, userChangeTimeCache, legacyUserStateMetrics, userRepository, clock)
   lazy val facebookDataDeletionController =
-    new FacebookDataDeletionController(controllerComponents, country, env.get("FACEBOOK_APP_SECRET"), userRepository, accountDeletion)
+    new FacebookDataDeletionController(controllerComponents, country, processConfiguration.facebookAppSecret, userRepository, accountDeletion)
 }

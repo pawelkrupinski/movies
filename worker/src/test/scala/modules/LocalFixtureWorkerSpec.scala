@@ -1,10 +1,12 @@
 package modules
 
-import clients.tools.{FakeHttpFetch, FixtureRoot}
+import clients.tools.FakeHttpFetch
+import settings.FixtureRoot
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.MongoAddress
+import settings.{MongoDatabaseName, MongoUri, ProcessConfiguration}
 import tools.Env
 
 import java.io.File
@@ -20,6 +22,8 @@ import java.time.LocalDate
  * that path is left to the running `localStack` rather than a unit spec.
  */
 class LocalFixtureWorkerSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+
+  private def resolvedFrom(vars: (String, String)*): ProcessConfiguration = new ProcessConfiguration(Env.of(vars*))
 
   private val temporaryDirectory  = "local-fixture-worker-spec"
   private val temporaryRoot = new File(s"test/resources/fixtures/$temporaryDirectory")
@@ -53,21 +57,21 @@ class LocalFixtureWorkerSpec extends AnyFlatSpec with Matchers with BeforeAndAft
   // up — only a value exported in the process environment itself may override the local
   // defaults — and it reaches the wiring as a value, not as a rewritten MONGODB_URI.
   "LocalFixtureWorkerMain.localMongo" should "ignore a MONGODB_URI that only .env.local carries" in {
-    val dotEnvLocal = Env.of("MONGODB_URI" -> "mongodb://prod-tunnel:27017", "MONGODB_DB" -> "kinowo")
+    val dotEnvLocal = resolvedFrom("MONGODB_URI" -> "mongodb://prod-tunnel:27017", "MONGODB_DB" -> "kinowo")
     LocalFixtureWorkerMain.localMongo(_ => None, dotEnvLocal) shouldBe
-      MongoAddress(Some(LocalFixtureWorkerMain.DefaultMongoUri), Some(LocalFixtureWorkerMain.DefaultMongoDb))
+      MongoAddress(Some(MongoUri(LocalFixtureWorkerMain.DefaultMongoUri)), Some(MongoDatabaseName(LocalFixtureWorkerMain.DefaultMongoDb)))
   }
 
   it should "let the KINOWO_LOCAL_MONGO_* overrides move it" in {
     LocalFixtureWorkerMain.localMongo(_ => None,
-      Env.of("KINOWO_LOCAL_MONGO_URI" -> "mongodb://127.0.0.1:28099", "KINOWO_LOCAL_MONGO_DB" -> "kinowo_elsewhere")) shouldBe
-      MongoAddress(Some("mongodb://127.0.0.1:28099"), Some("kinowo_elsewhere"))
+      resolvedFrom("KINOWO_LOCAL_MONGO_URI" -> "mongodb://127.0.0.1:28099", "KINOWO_LOCAL_MONGO_DB" -> "kinowo_elsewhere")) shouldBe
+      MongoAddress(Some(MongoUri("mongodb://127.0.0.1:28099")), Some(MongoDatabaseName("kinowo_elsewhere")))
   }
 
   it should "let a MONGODB_URI / MONGODB_DB exported in the process environment win" in {
     val exported = Map("MONGODB_URI" -> "mongodb://exported:1", "MONGODB_DB" -> "kinowo_exported")
-    LocalFixtureWorkerMain.localMongo(exported.get, Env.of("KINOWO_LOCAL_MONGO_URI" -> "mongodb://ignored")) shouldBe
-      MongoAddress(Some("mongodb://exported:1"), Some("kinowo_exported"))
+    LocalFixtureWorkerMain.localMongo(exported.get, resolvedFrom("KINOWO_LOCAL_MONGO_URI" -> "mongodb://ignored")) shouldBe
+      MongoAddress(Some(MongoUri("mongodb://exported:1")), Some(MongoDatabaseName("kinowo_exported")))
   }
 
   "LocalFixtureWorkerMain.fixtureRootFor" should "walk up from a module directory to the repository's fixtures" in {
@@ -76,29 +80,29 @@ class LocalFixtureWorkerSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     fixtures.mkdirs()
     val module = new File(repository, "worker")
     module.mkdirs()
-    try LocalFixtureWorkerMain.fixtureRootFor(Env.of(), module) shouldBe FixtureRoot(fixtures.getPath)
+    try LocalFixtureWorkerMain.fixtureRootFor(resolvedFrom(), module) shouldBe FixtureRoot(fixtures.toPath)
     finally deleteRecursively(repository)
   }
 
   it should "prefer a KINOWO_FIXTURE_ROOT the process names" in {
-    LocalFixtureWorkerMain.fixtureRootFor(Env.of("KINOWO_FIXTURE_ROOT" -> "/somewhere/fixtures"), new File("/")) shouldBe
-      FixtureRoot("/somewhere/fixtures")
+    LocalFixtureWorkerMain.fixtureRootFor(resolvedFrom("KINOWO_FIXTURE_ROOT" -> "/somewhere/fixtures"), new File("/")) shouldBe
+      FixtureRoot(java.nio.file.Path.of("/somewhere/fixtures"))
   }
 
   // The forked bg worker's CWD isn't the repository root, so the fetches must be able to
   // resolve the corpus under an absolute root.
   "FixtureRoot" should "default to the repository-relative fixtures path" in {
     FixtureRoot.RepositoryRelative.of("today") shouldBe "test/resources/fixtures/today"
-    FixtureRoot.fromEnv(Env.of()) shouldBe FixtureRoot.RepositoryRelative
+    resolvedFrom().fixtureRoot shouldBe FixtureRoot.RepositoryRelative
   }
 
   it should "resolve under an absolute root when KINOWO_FIXTURE_ROOT names one" in {
-    FixtureRoot.fromEnv(Env.of("KINOWO_FIXTURE_ROOT" -> "/repo/test/resources/fixtures")).of("today") shouldBe
+    resolvedFrom("KINOWO_FIXTURE_ROOT" -> "/repo/test/resources/fixtures").fixtureRoot.of("today") shouldBe
       "/repo/test/resources/fixtures/today"
   }
 
   it should "be where a FakeHttpFetch reads its fixtures from" in {
-    new FakeHttpFetch("today", root = FixtureRoot("/elsewhere")).fixtureRoot shouldBe "/elsewhere/today"
+    new FakeHttpFetch("today", root = FixtureRoot(java.nio.file.Path.of("/elsewhere"))).fixtureRoot shouldBe "/elsewhere/today"
   }
 
   override def afterAll(): Unit = {

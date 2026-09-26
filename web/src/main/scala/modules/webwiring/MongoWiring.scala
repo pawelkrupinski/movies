@@ -2,7 +2,7 @@ package modules.webwiring
 
 import modules.Wiring
 import play.api.Mode
-import services.MongoConnection
+import services.{MongoConnection, MongoTuning}
 
 /** ── Mongo ─────────────────────────────────────────────────────────────────
  *  The one `MongoClient` this process opens, and the two database views on it:
@@ -13,8 +13,7 @@ trait MongoWiring { self: Wiring =>
   // (opt back into silent-degrade with MONGODB_OPTIONAL=true) — see
   // `MongoConnection`.
   protected lazy val mongoRequired: Boolean = {
-    val optedOut = env.flag("MONGODB_OPTIONAL")
-    MongoConnection.isRequired(environmentMode == Mode.Test, optedOut)
+    MongoConnection.isRequired(environmentMode == Mode.Test, processConfiguration.mongoOptional.value)
   }
 
   // ONE MongoClient behind every database view this process opens — this
@@ -28,10 +27,14 @@ trait MongoWiring { self: Wiring =>
   // connections that borrowed it, since their own close() deliberately leaves it
   // alone.
   protected lazy val mongoSharedClient: Option[org.mongodb.scala.MongoClient] =
-    MongoConnection.sharedClientAt(mongoAddress, env)
+    MongoConnection.sharedClientAt(mongoAddress, mongoTuning)
 
   lazy val mongoConnection: MongoConnection =
-    MongoConnection.forDatabase(mongoAddress.uri, mongoAddress.databaseFor(country), mongoRequired, env, sharedClient = mongoSharedClient)
+    MongoConnection.forDatabase(mongoAddress.uri, mongoAddress.databaseFor(country), mongoRequired, mongoTuning, sharedClient = mongoSharedClient)
+
+  /** How every connection this deployment opens dials (`MONGODB_PROBE_TIMEOUT_SECONDS`,
+   *  `KINOWO_MONGO_MAX_POOL_SIZE`). */
+  protected lazy val mongoTuning: MongoTuning = MongoTuning.from(processConfiguration)
 
   // ── Users ─────────────────────────────────────────────────────────────────
   // `users` + `userStates` come off `Country.usersDbName` rather than this
@@ -46,7 +49,7 @@ trait MongoWiring { self: Wiring =>
   // already talking to.
   lazy val usersConnection: MongoConnection = Wiring.usersConnection(
     ownDbName   = mongoAddress.databaseFor(country),
-    usersDbName = models.Country.usersDbName(env, mongoAddress.databaseFor(country)),
+    usersDbName = models.Country.usersDbName(processConfiguration.usersDatabase, mongoAddress.databaseFor(country)),
     own         = mongoConnection,
-    openUsers   = MongoConnection.forDatabase(mongoAddress.uri, _, mongoRequired, env, sharedClient = mongoSharedClient))
+    openUsers   = MongoConnection.forDatabase(mongoAddress.uri, _, mongoRequired, mongoTuning, sharedClient = mongoSharedClient))
 }

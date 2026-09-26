@@ -43,7 +43,7 @@ import scala.concurrent.duration._
 class ProdCoverageIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
+  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
 
   private val database = MongoClient(Env.fromProcess().get("MONGODB_URI").get).getDatabase(s"prod_coverage_spec_${System.nanoTime()}")
 

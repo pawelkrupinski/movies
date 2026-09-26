@@ -74,7 +74,7 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
       "/external_ids"                 -> Mk2ExternalIds,
       "/credits"                      -> Mk2Credits
     ), getOnly = true),
-    apiKey = Some("stub")
+    apiKey = Some(settings.TmdbApiKey("stub"))
   )
 
   // ── Step 1: clients DO fetch the film from their fixtures ─────────────────

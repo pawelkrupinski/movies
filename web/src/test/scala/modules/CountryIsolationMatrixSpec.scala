@@ -69,7 +69,7 @@ class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers {
    *  the JVM sees it. */
   private def asDeployment[T](country: Country)(body: DeploymentWiring => T): T = {
     val wiring = new DeploymentWiring(country, corpus, Now, tools.Env.of("KINOWO_COUNTRY" -> decoy(country).code))
-    withClue("the decoy environment must name the other country: ")(Country.fromEnv(wiring.env) shouldBe decoy(country))
+    withClue("the decoy environment must name the other country: ")(new settings.ProcessConfiguration(wiring.env).country shouldBe decoy(country))
     wiring.boot()
     body(wiring)
   }

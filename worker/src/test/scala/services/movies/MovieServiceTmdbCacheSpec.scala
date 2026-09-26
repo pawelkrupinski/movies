@@ -20,7 +20,7 @@ class MovieServiceTmdbCacheSpec extends AnyFlatSpec with Matchers {
 
   import TheVisitorOnTmdb._
 
-  private def tmdb(http: RoutingHttpFetch): TmdbClient = new TmdbClient(http = http, apiKey = Some("stub"))
+  private def tmdb(http: RoutingHttpFetch): TmdbClient = new TmdbClient(http = http, apiKey = Some(settings.TmdbApiKey("stub")))
 
   /** How many title searches `http` served — what the cache exists to save. */
   private def searches(http: RoutingHttpFetch): Int = http.calls.count(_._2.contains(SearchPath))

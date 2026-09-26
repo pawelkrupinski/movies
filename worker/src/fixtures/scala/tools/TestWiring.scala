@@ -100,7 +100,7 @@ trait TestWiring extends WorkerWiring {
   // to enqueue the whole deferred-detail corpus (the prod per-tick cap would
   // truncate the snapshot). The cap is a prod burst-shedding lever, not a
   // correctness gate, so the fixture runs it uncapped.
-  override def maxDetailEnqueuePerTick: Int = Int.MaxValue
+  override def maxDetailEnqueuePerTick: settings.DetailMaxEnqueuePerTick = settings.DetailMaxEnqueuePerTick(Int.MaxValue)
 
   // No Filmweb fallback in tests: pin the id map empty so fixture replay never
   // resolves (one GET per Filmweb city) or fetches Filmweb live. Eligible scrapers
@@ -116,7 +116,7 @@ trait TestWiring extends WorkerWiring {
   // The fixture replay doesn't need a real key (the URL's
   // `api_key` query parameter is stripped from the fixture fingerprint via
   // `RecordingHttpFetch.stableQueryFingerprint`), so any non-empty string works.
-  override lazy val tmdbClient: TmdbClient = new TmdbClient(enrichmentFetch, apiKey = Some("test-api-key"))
+  override lazy val tmdbClient: TmdbClient = new TmdbClient(enrichmentFetch, apiKey = Some(settings.TmdbApiKey("test-api-key")))
 
   // Resolve TMDB INLINE in fixture replay. Production dispatches single-movie
   // resolution as a `ResolveTmdb` task (drained by the TaskWorker), but the
@@ -334,7 +334,7 @@ trait TestWiring extends WorkerWiring {
   /** The enrichment reaper's per-tick cap is a burst-shedding lever in production;
    *  a harness that drives ONE sweep to quiescence wants the whole corpus offered,
    *  exactly as `maxDetailEnqueuePerTick` already does for detail. */
-  override def maxEnrichmentEnqueuePerTick: Int = Int.MaxValue
+  override def maxEnrichmentEnqueuePerTick: settings.EnrichmentMaxEnqueuePerTick = settings.EnrichmentMaxEnqueuePerTick(Int.MaxValue)
 
   /**
    * Refresh every film's ratings by DRIVING PRODUCTION'S OWN PATH: the enrichment

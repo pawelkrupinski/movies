@@ -21,11 +21,11 @@ import scala.concurrent.duration._
  *  watcher runs, then a valid row, which must still be delivered. Each runs in its own database. */
 class ChangeStreamMalformedDocumentIntegrationSpec extends AnyFlatSpec with Matchers {
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
+  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
 
   private val uri = Env.fromProcess().get("MONGODB_URI").get
 
-  private val target = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
+  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
   private def insertRaw(db: MongoDatabase, collection: String, doc: Document): Unit =
     Await.result(db.getCollection[Document](collection).insertOne(doc).toFuture(), 10.seconds)
 

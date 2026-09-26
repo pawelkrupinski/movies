@@ -42,7 +42,7 @@ class ArchiveReplayWiring(
   fixtureDirectory: String,
   // The directory that tree lives under — the repository's own unless the suite's root
   // resolved another (KINOWO_FIXTURE_ROOT, through `FixtureRoot.fromEnv`).
-  fixtureRoot:      clients.tools.FixtureRoot,
+  fixtureRoot:      settings.FixtureRoot,
   // Some(...) makes the run HERMETIC: the wire itself is replaced (see `realHttpLeaf`),
   // so nothing the recorded tree and remembered verdicts cannot answer is fetched, and
   // every such request is named here instead. None is the RECORDING run, which fills
@@ -50,8 +50,8 @@ class ArchiveReplayWiring(
   hermetic:         Option[MissingFixtures] = None,
   // The suite's configuration — the process's for a convergence leg, which is where TMDB's
   // key comes from; an empty one for a unit spec. Handed in: the wiring never asks the process.
-  configuration:    Env = Env.of()
-) extends WorkerWiring(country, env = configuration) with TestWiring {
+  environment:      Env = Env.of()
+) extends WorkerWiring(country, env = environment) with TestWiring {
 
   /** The one seam a hermetic run changes. Every chain above the wire — fixtures first,
    *  remembered verdicts, recorder, throttles, breakers — is built exactly as the
@@ -181,7 +181,7 @@ class ArchiveReplayWiring(
    *  ever reaching the fetch: a leg with 6,906 recorded fixtures and no cache resolved 0
    *  of 892 films in 55 seconds, all three specs GREEN over a corpus with no metadata in
    *  it. There is no "nowhere to ask" any more, so there is no branch to drift. */
-  override lazy val tmdbClient: TmdbClient = new TmdbClient(enrichmentFetch, apiKey = env.get("TMDB_API_KEY"), language = country.language)
+  override lazy val tmdbClient: TmdbClient = new TmdbClient(enrichmentFetch, apiKey = configuration.tmdbApiKey, language = country.language)
 
   // Production's storage SHAPE either way — showtimes in `screenings`, slots in
   // `movie_slots`, neither inlined on the `movies` row. A fake that inlined everything
@@ -256,8 +256,8 @@ object ArchiveReplayWiring {
    *  place the tree is allowed to grow. */
   val HermeticVar = "KINOWO_CONVERGENCE_HERMETIC"
 
-  /** Whether `env` asks for a hermetic leg ([[HermeticVar]]). */
-  def hermeticIn(env: Env): Boolean = env.get(HermeticVar).exists(_.trim.equalsIgnoreCase("true"))
+  /** Whether the run's configuration asks for a hermetic leg ([[HermeticVar]]). */
+  def hermeticIn(configuration: settings.ProcessConfiguration): Boolean = configuration.hermeticReplay.value
 
   /**
    * The fixture tree a country's replay reads and records: `enrichment-pl`,
@@ -271,9 +271,9 @@ object ArchiveReplayWiring {
    * a corpus with no metadata in it, reported as a pass. A directory that does not exist
    * yet is simply an empty one; the first run fills it and every later run replays it.
    *
-   * Resolved from the `env` a suite hands in — its own composition root — and passed to
+   * Resolved from the configuration a suite hands in — its own composition root — and passed to
    * the wiring as a value.
    */
-  def fixtureDirectory(country: Country, env: Env): String =
-    env.get(FixturesVar).filter(_.nonEmpty).getOrElse(s"enrichment-${country.code}")
+  def fixtureDirectory(country: Country, configuration: settings.ProcessConfiguration): String =
+    configuration.enrichmentFixtureTree.fold(s"enrichment-${country.code}")(_.value)
 }

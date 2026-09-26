@@ -148,7 +148,7 @@ class ZyteClientSpec extends AnyFlatSpec with Matchers {
     // Zyte uses Basic auth with the API key as username and an empty
     // password — verify the encoding shape so a refactor can't quietly
     // start sending `key` without the trailing colon.
-    val header  = ZyteClient.basicAuth("test-key-123")
+    val header  = ZyteClient.basicAuth(settings.ZyteApiKey("test-key-123"))
     val encoded = header.stripPrefix("Basic ")
     val decoded = new String(Base64.getDecoder.decode(encoded), StandardCharsets.UTF_8)
     decoded shouldBe "test-key-123:"

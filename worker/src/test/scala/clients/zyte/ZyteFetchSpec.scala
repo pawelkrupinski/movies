@@ -17,7 +17,7 @@ import java.net.http.HttpClient
  */
 class ZyteFetchSpec extends AnyFlatSpec with Matchers {
 
-  private class RecordingZyteClient extends ZyteClient(HttpClient.newHttpClient(), "k") {
+  private class RecordingZyteClient extends ZyteClient(HttpClient.newHttpClient(), settings.ZyteApiKey("k")) {
     var gets:    List[String]           = Nil
     var warms:   List[(String, String)] = Nil // (cookieSourceUrl, sessionId)
     var fetches: List[(String, String)] = Nil // (targetUrl,      sessionId)

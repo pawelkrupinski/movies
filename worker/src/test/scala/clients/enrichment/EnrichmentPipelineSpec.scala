@@ -84,7 +84,7 @@ class EnrichmentPipelineSpec extends AnyFlatSpec with Matchers {
         "/search/movie" -> Mk2TmdbSearch,
         "/external_ids" -> Mk2TmdbExternalIds
       )),
-      apiKey = Some("stub")
+      apiKey = Some(settings.TmdbApiKey("stub"))
     )
     val filmweb = new FilmwebClient(
       http = stubFetch(Map(

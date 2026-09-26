@@ -3,7 +3,8 @@ package services.auth
 import play.api.libs.json.Json
 import tools.HttpFetch
 
-class GoogleTokenValidator(http: HttpFetch, clientId: String) {
+class GoogleTokenValidator(http: HttpFetch, googleClientId: settings.GoogleClientId) {
+  private val clientId = googleClientId.value
 
   def validate(idToken: String): OauthProfile = {
     val body = http.get(s"https://oauth2.googleapis.com/tokeninfo?id_token=${GoogleOauthProvider.urlEncode(idToken)}")

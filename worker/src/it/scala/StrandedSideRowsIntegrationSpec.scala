@@ -15,7 +15,7 @@ import java.time.LocalDateTime
 class StrandedSideRowsIntegrationSpec extends AnyFlatSpec with Matchers {
   private val uri = Env.fromProcess().get("MONGODB_URI").get
 
-  private val target = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
+  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
   private val tomorrow = Seq(Showtime(LocalDateTime.now.plusDays(1), bookingUrl = None))
   private def slotKey(title: String) = s"multikino␟$title"
   private def film(title: String): MovieRecord = MovieRecord(data = Map[Source, SourceData](

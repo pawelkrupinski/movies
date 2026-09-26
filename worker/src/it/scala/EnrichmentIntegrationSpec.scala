@@ -26,7 +26,7 @@ class EnrichmentIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
 
   assume(Env.fromProcess().get("TMDB_API_KEY").isDefined, "TMDB_API_KEY not set")
 
-  private lazy val tmdb = new TmdbClient(new RealHttpFetch, apiKey = tools.Env.fromProcess().get("TMDB_API_KEY"))
+  private lazy val tmdb = new TmdbClient(new RealHttpFetch, apiKey = settings.ProcessConfiguration.resolve().tmdbApiKey)
   private lazy val imdb = new ImdbClient(new RealHttpFetch)
 
   // TMDB and IMDb both answer `None` when they throttle us, exactly as they do when a

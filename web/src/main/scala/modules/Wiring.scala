@@ -36,6 +36,10 @@ trait Wiring
   // override source into it.
   def env: tools.Env
 
+  // Every setting the web wiring reads, typed — resolved over `env`, so an admin override
+  // installed into it reaches a value read per use (the page tags, say) without a restart.
+  lazy val processConfiguration: settings.ProcessConfiguration = new settings.ProcessConfiguration(env)
+
   // The ONE country this deployment serves. Resolved from the process by `AppLoader` —
   // the composition root — and handed in; nothing in the wiring reads it from the
   // environment. Every component that differs by country takes it from this member, so a
@@ -109,8 +113,8 @@ object Wiring {
    *  the mirror is unreachable (then that connection is simply disabled and
    *  /debug renders empty). Unset → the shared `prod` connection. `prod` is
    *  by-name so a configured mirror never forces the primary connection here. */
-  def debugMirrorConnection(mirrorUri: Option[String],
-                            openMirror: String => MongoConnection,
+  def debugMirrorConnection(mirrorUri: Option[settings.MirrorMongoUri],
+                            openMirror: settings.MirrorMongoUri => MongoConnection,
                             prod: => MongoConnection): MongoConnection =
     mirrorUri.fold(prod)(openMirror)
 
@@ -126,9 +130,9 @@ object Wiring {
    *  shared-account decision: get it backwards and every country silently keeps
    *  its own private copy of every account again, and no page renders any
    *  differently until someone switches country. */
-  def usersConnection(ownDbName: String,
-                      usersDbName: String,
+  def usersConnection(ownDbName: settings.MongoDatabaseName,
+                      usersDbName: settings.MongoDatabaseName,
                       own: => MongoConnection,
-                      openUsers: String => MongoConnection): MongoConnection =
+                      openUsers: settings.MongoDatabaseName => MongoConnection): MongoConnection =
     if (usersDbName == ownDbName) own else openUsers(usersDbName)
 }

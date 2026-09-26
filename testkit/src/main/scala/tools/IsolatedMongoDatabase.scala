@@ -59,7 +59,7 @@ object IsolatedMongoDatabase {
    *  leak, because the drop is in a `finally`. */
   def open(target: IntegrationMongoTarget, purpose: String): IsolatedMongoDatabase = {
     target.requireThrowaway()
-    val client = MongoClient(target.uri)
+    val client = MongoClient(target.uri.value)
     new IsolatedMongoDatabase(client, client.getDatabase(nameFor(purpose)))
   }
 
@@ -68,7 +68,7 @@ object IsolatedMongoDatabase {
    *  orphan database per failed run. */
   def withDatabase[A](target: IntegrationMongoTarget, purpose: String)(body: MongoDatabase => A): A = {
     target.requireThrowaway()
-    val client = MongoClient(target.uri)
+    val client = MongoClient(target.uri.value)
     val name   = nameFor(purpose)
     try {
       val database = client.getDatabase(name)

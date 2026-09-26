@@ -23,7 +23,7 @@ object MultikinoProxyDiag {
   def main(args: Array[String]): Unit = {
     tools.ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
     tools.IssuerCertificateFetching.Enabled.applyToJvm()
-    ResidentialProxy.fromEnv(tools.Env.fromProcess()) match {
+    ResidentialProxy.fromConfiguration(_root_.settings.ProcessConfiguration.resolve()) match {
       case None => println("set KINOWO_PROXY_USER / KINOWO_PROXY_PASS")
       case Some(config) =>
         val rounds = if (args.nonEmpty) args(0).toInt else 2

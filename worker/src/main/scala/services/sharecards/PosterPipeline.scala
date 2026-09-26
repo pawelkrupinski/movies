@@ -327,8 +327,8 @@ class VipsPosterShrinker(
 object VipsPosterShrinker {
   /** The `vips` binary in the first of `searchPath`'s directories that has one — the
    *  process's PATH, which its root resolved (`ProcessConfiguration.executableSearchPath`). */
-  def locate(searchPath: Seq[Path]): Option[String] =
-    searchPath.iterator.map(_.resolve("vips")).find(Files.isExecutable).map(_.toString)
+  def locate(searchPath: settings.ExecutableSearchPath): Option[String] =
+    searchPath.value.iterator.map(_.resolve("vips")).find(Files.isExecutable).map(_.toString)
 
   /** Why a vips child for a known image format failed: the cap (the shell could not set it — exit
    *  97 — or libjpeg / glib ran out of memory, which aborts on a signal or says so), else the file. */
@@ -354,10 +354,6 @@ object PosterPipeline {
 
   /** The vips child's address-space cap — see [[VipsPosterShrinker]] for the measurements. */
   val DefaultDecodeMemoryCapMb: Long = 256L
-
-  /** `KINOWO_SHARE_CARD_DECODE_MEMORY_MB` from `env`, else [[DefaultDecodeMemoryCapMb]]. */
-  def decodeMemoryCapMbFrom(env: tools.Env): Long =
-    env.positiveLong("KINOWO_SHARE_CARD_DECODE_MEMORY_MB", DefaultDecodeMemoryCapMb)
 
   /** The largest progressive JPEG coefficient buffer sent to vips: the cap less the ~170 MB of
    *  address space vips needs around the buffer (measured under a `ulimit -v`: 68 MB of coefficients

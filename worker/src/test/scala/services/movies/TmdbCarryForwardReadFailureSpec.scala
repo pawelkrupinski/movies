@@ -36,7 +36,7 @@ class TmdbCarryForwardReadFailureSpec extends AnyFlatSpec with Matchers {
     data = Map[Source, SourceData](CinemaCityPoznanPlaza -> SourceData(title = Some(Title))))
 
   private def serviceOver(cache: MovieCache) =
-    new MovieService(cache, new InProcessEventBus(), new TmdbClient(http = RoutingHttpFetch.getOnly(Routes), apiKey = Some("stub")),
+    new MovieService(cache, new InProcessEventBus(), new TmdbClient(http = RoutingHttpFetch.getOnly(Routes), apiKey = Some(settings.TmdbApiKey("stub"))),
       tmdbIdCache = ResolutionCache.passthrough)
 
   "a TMDB resolve whose carry-forward read FAILS" should

@@ -62,11 +62,11 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
 
   private val uri = Env.fromProcess().get("MONGODB_URI")
   assume(uri.isDefined, "MONGODB_URI not set")
-  IntegrationMongo.requireThrowaway(tools.Env.fromProcess())
+  IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
 
   /** Where the countries' `enrichment-<cc>` trees live: KINOWO_FIXTURE_ROOT when
    *  `scripts/hard-clusters.sh` names one, else the repository's own. */
-  private val FixtureRoot = clients.tools.FixtureRoot.fromEnv(Env.fromProcess())
+  private val FixtureRoot = _root_.settings.ProcessConfiguration.resolve().fixtureRoot
   private val Recording = Env.fromProcess().get("KINOWO_HARD_CLUSTERS_RECORD").exists(v => v == "1" || v.equalsIgnoreCase("true"))
 
   /** Fixed, so an order dependence fails the same way on every run. */
@@ -117,13 +117,13 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
   private def wiringFor(country: Country, label: String, wrap: HttpFetch => HttpFetch = identity,
                         movableClock: Option[MutableClock] = None): (ArchiveReplayWiring, ConvergenceStorage) = {
     val normalizer = TitleNormalizer.forCountry(country)
-    val storage    = ConvergenceStorage.mongo(IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, s"hc-${country.code}-$label", normalizer)
+    val storage    = ConvergenceStorage.mongo(IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, s"hc-${country.code}-$label", normalizer)
     storages.synchronized(storages += storage)
     val rows = CorpusFixture.read(HardClusters.corpusKey(country))
     CorpusFixture.seedInto(storage.archive, rows)
     val fetch    = wrap(responses(country))
     val language = country.language
-    val w = new ArchiveReplayWiring(country, storage.archive, None, storage, ArchiveReplayWiring.fixtureDirectory(country, Env.fromProcess()), FixtureRoot, configuration = Env.fromProcess()) {
+    val w = new ArchiveReplayWiring(country, storage.archive, None, storage, ArchiveReplayWiring.fixtureDirectory(country, _root_.settings.ProcessConfiguration.resolve()), FixtureRoot, environment = Env.fromProcess()) {
       override lazy val clock: java.time.Clock = movableClock.getOrElse(java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC))
       // Ordering, not timing: the whole cascade on the calling thread, so the only
       // nondeterminism left is the seeded arrival order.
@@ -137,7 +137,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
       override lazy val uptimeMonitor = new services.UptimeMonitor(None, clock = clock)
       // The outage pass refuses on purpose; its retries need not sleep through it.
       override lazy val tmdbClient: TmdbClient =
-        new TmdbClient(fetch, apiKey = Some("hard-clusters"), language = language,
+        new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("hard-clusters")), language = language,
           retrySleep = if (movableClock.isDefined) (_: Long) => () else Thread.sleep)
     }
     (w, storage)

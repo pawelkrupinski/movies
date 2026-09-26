@@ -27,7 +27,7 @@ import tools.{CorpusFixture, CorpusSample, CountryScrapeCorpus, Env, ProdCoverag
 object RecordCorpusFixture {
 
   def main(args: Array[String]): Unit = {
-    val country = args.headOption.flatMap(code => Country.all.find(_.code == code)).getOrElse(Country.fromEnv(tools.Env.fromProcess()))
+    val country = args.headOption.flatMap(code => Country.all.find(_.code == code)).getOrElse(_root_.settings.ProcessConfiguration.resolve().country)
     val uri = Env.fromProcess().get("KINOWO_CONVERGENCE_SCRAPES_URI").orElse(Env.fromProcess().get("MONGODB_URI")).getOrElse {
       System.err.println("[corpus] set KINOWO_CONVERGENCE_SCRAPES_URI (or MONGODB_URI) to the archive source")
       sys.exit(1)

@@ -53,7 +53,7 @@ class TmdbDeadCandidateIdSpec extends AnyFlatSpec with Matchers {
     data = Map[Source, SourceData](CinemaCityPoznanPlaza -> SourceData(title = Some(Title))))
 
   private def serviceOver(cache: MovieCache, http: GetOnlyHttpFetch, ids: ResolutionCache) =
-    new MovieService(cache, new InProcessEventBus(), new TmdbClient(http = http, apiKey = Some("stub")),
+    new MovieService(cache, new InProcessEventBus(), new TmdbClient(http = http, apiKey = Some(settings.TmdbApiKey("stub"))),
       tmdbIdCache = ids)
 
   "a search hit whose TMDB id no longer exists" should

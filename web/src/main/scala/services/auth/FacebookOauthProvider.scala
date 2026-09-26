@@ -25,7 +25,9 @@ import services.auth.GoogleOauthProvider.{formEncode, urlEncode}
  * companion — these two providers are the only OAuth callers and
  * sharing the URL-build helpers avoids a third copy.
  */
-class FacebookOauthProvider(http: HttpFetch, appId: String, appSecret: String) extends OauthProvider {
+class FacebookOauthProvider(http: HttpFetch, facebookAppId: settings.FacebookAppId, facebookAppSecret: settings.FacebookAppSecret) extends OauthProvider {
+  private val appId     = facebookAppId.value
+  private val appSecret = facebookAppSecret.value
   import FacebookOauthProvider._
 
   def name: String = "facebook"

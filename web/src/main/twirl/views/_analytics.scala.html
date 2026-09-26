@@ -1,4 +1,4 @@
-@(measurementId: Option[String])
+@(measurementId: Option[_root_.settings.GoogleAnalyticsMeasurementId])
 @*
    Google Analytics 4 page tag. Driven by `GA_MEASUREMENT_ID` (the
    `G-XXXXXXXX` measurement id on the GA4 property settings page).
@@ -12,12 +12,12 @@
 *@
 @measurementId match {
   case Some(id) => {
-<script async src="https://www.googletagmanager.com/gtag/js?id=@id"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=@id.value"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-  gtag('config', '@id');
+  gtag('config', '@id.value');
 </script>
   }
   case None => {}

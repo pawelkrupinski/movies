@@ -33,7 +33,7 @@ class ResolutionCorporaSpec extends AnyFlatSpec with Matchers with ScalaCheckPro
   /** Routes tried IN ORDER, first fragment contained in the URL wins; anything
    *  unrouted is an empty TMDB answer, so a scenario states only what it needs. */
   private def tmdbOf(routes: (String, String)*) =
-    new TmdbClient(http = RoutingHttpFetch.getOnly(routes :+ ("" -> """{"results":[],"crew":[]}""")), apiKey = Some("stub"))
+    new TmdbClient(http = RoutingHttpFetch.getOnly(routes :+ ("" -> """{"results":[],"crew":[]}""")), apiKey = Some(settings.TmdbApiKey("stub")))
 
   private def search(tmdb: TmdbClient) =
     new TmdbCandidateSearch(tmdb, titleNormalizer, ResolutionCache.passthrough, letterboxdIdResolver = None, wikidata = None)

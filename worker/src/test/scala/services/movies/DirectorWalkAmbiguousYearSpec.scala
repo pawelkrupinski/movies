@@ -47,7 +47,7 @@ class DirectorWalkAmbiguousYearSpec extends AnyFlatSpec with Matchers {
         |{"id":$ToyStory5,"title":"Toy Story 5","release_date":"2026-06-17","department":"Directing"}
         |]}""".stripMargin
     )),
-    apiKey = Some("stub")
+    apiKey = Some(settings.TmdbApiKey("stub"))
   )
 
   "director-walk over a director with two same-year credits and no title match" should

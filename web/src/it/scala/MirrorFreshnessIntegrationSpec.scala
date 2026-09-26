@@ -25,7 +25,7 @@ class MirrorFreshnessIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   // A database of its own (`IsolatedMongoDatabase` refuses a real cluster), so the
   // newest stamp is one this spec wrote, not whatever a co-running suite last touched.
-  private val isolated = IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "mirror-freshness")
+  private val isolated = IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "mirror-freshness")
   private val db       = isolated.database
 
   private val older      = Date.from(java.time.Instant.parse("2099-08-30T08:03:00Z"))

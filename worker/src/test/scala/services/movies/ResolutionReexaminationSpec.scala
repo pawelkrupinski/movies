@@ -34,7 +34,7 @@ class ResolutionReexaminationSpec extends AnyFlatSpec with Matchers {
     s"/movie/$Other/external_ids" -> s"""{"id":$Other,"imdb_id":"tt0000001"}""",
     s"/movie/$Id?"                -> details(Id, "Coś za mną chodzi"),
     s"/movie/$Other?"             -> details(Other, "Coś za mną chodzi"))),
-    apiKey = Some("stub"))
+    apiKey = Some(settings.TmdbApiKey("stub")))
 
   private def resolvedRow: MovieRecord = MovieRecord(
     tmdbId = Some(Id), imdbId = Some("tt3235888"), imdbRating = Some(6.8), rottenTomatoes = Some(95),
@@ -89,7 +89,7 @@ class ResolutionReexaminationSpec extends AnyFlatSpec with Matchers {
     val nothing = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "/search/"                 -> """{"results":[]}""",
       s"/movie/$Id/external_ids" -> s"""{"id":$Id,"imdb_id":"tt3235888"}""",
-      s"/movie/$Id?"             -> details(Id, "Coś za mną chodzi"))), apiKey = Some("stub"))
+      s"/movie/$Id?"             -> details(Id, "Coś za mną chodzi"))), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), nothing)
 
     service.reexamineResolution(key)

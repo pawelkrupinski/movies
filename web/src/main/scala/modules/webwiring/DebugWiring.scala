@@ -27,7 +27,7 @@ trait DebugWiring { self: Wiring =>
   // Whether the /debug stacks below are reading a COPY. Gates the navbar's
   // mirror-age badge: with no mirror configured every page reads the source, so
   // there is nothing that could be behind and nothing to render.
-  private lazy val readingThroughMirror: Boolean = env.get("MONGODB_MOVIES_MIRROR_URI").isDefined
+  private lazy val readingThroughMirror: Boolean = processConfiguration.mirrorMongoUri.isDefined
   // How far behind that copy is. A sync that stops serves a page which renders,
   // times itself `now`, and is silently hours old — so the pages say their own
   // age (services.MirrorFreshness).
@@ -67,16 +67,16 @@ trait DebugWiring { self: Wiring =>
   // debug switch stays off. The root's `stop()` closes it.
   protected lazy val debugExtraClient: Option[org.mongodb.scala.MongoClient] =
     if (environmentMode == Mode.Prod || models.Country.switchable.sizeIs <= 1) None
-    else env.get("MONGODB_MOVIES_MIRROR_URI")
-      .map(MongoConnection.sharedClientFor(_, Some(MongoConnection.LocalMirrorTimeout), MongoConnection.maxPoolSizeFrom(env)))
-      .orElse(MongoConnection.sharedClientAt(mongoAddress, env))
+    else processConfiguration.mirrorMongoUri
+      .map(mirror => MongoConnection.sharedClientFor(mirror.value, Some(MongoConnection.LocalMirrorTimeout), mongoTuning.maxPoolSize.value))
+      .orElse(MongoConnection.sharedClientAt(mongoAddress, mongoTuning))
   private lazy val debugExtraStacks: Seq[(models.Country, MongoConnection, DebugStack)] =
     debugExtraClient.toSeq.flatMap { client =>
       models.Country.switchable.filterNot(_ == country).map { country =>
         val conn       = Wiring.debugMirrorConnection(
-          env.get("MONGODB_MOVIES_MIRROR_URI"),
+          processConfiguration.mirrorMongoUri,
           MongoConnection.mirrorForDb(_, country.mongoDb, sharedClient = Some(client)),
-          MongoConnection.forDatabase(mongoAddress.uri, country.mongoDb, required = false, env, sharedClient = Some(client)))
+          MongoConnection.forDatabase(mongoAddress.uri, settings.MongoDatabaseName(country.mongoDb), required = false, mongoTuning, sharedClient = Some(client)))
         val screenings = new services.movies.MongoScreeningsRepository(conn.database)
         val slots      = new services.movies.MongoSlotsRepository(conn.database)
         val reader     = new MongoReadModelRepository(conn.database)

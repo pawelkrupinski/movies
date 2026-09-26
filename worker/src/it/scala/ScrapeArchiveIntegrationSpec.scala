@@ -33,7 +33,7 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
 
   // A database of its own: the archive row is keyed by the cinema's name, which any other
   // suite archiving a Multikino scrape would share.
-  private val isolated = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "scrape-archive")
+  private val isolated = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "scrape-archive")
   private val db       = isolated.database
 
   override protected def afterAll(): Unit = try isolated.drop() finally super.afterAll()

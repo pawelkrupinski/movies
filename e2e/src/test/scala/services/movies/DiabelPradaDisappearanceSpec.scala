@@ -58,7 +58,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
       "/external_ids"               -> PradaExternalIds,
       "/credits"                    -> PradaCredits
     ), getOnly = true),
-    apiKey = Some("stub")
+    apiKey = Some(settings.TmdbApiKey("stub"))
   )
 
   // ── Fixture extracts ──────────────────────────────────────────────────────

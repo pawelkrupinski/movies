@@ -1,7 +1,9 @@
 package modules.wiring
 
+import settings.{AlertRoute, TelegramRoute, FilmwebDropThreshold, ProcessConfiguration, StagingStuckScanInterval, StagingStuckThreshold}
+
 import modules.WorkerWiring
-import services.alerts.{FilmwebDropAlerter, StagingStuckAlerter, TelegramNotifier, TelegramRoute}
+import services.alerts.{FilmwebDropAlerter, StagingStuckAlerter, TelegramNotifier}
 import services.cinemas.common.ScrapeOutcomeListener
 import services.metrics.EnvGatedFeature
 
@@ -15,13 +17,12 @@ import scala.concurrent.duration.FiniteDuration
  *  See reference_fallback_telegram_channel. */
 trait AlertingWiring { self: WorkerWiring =>
 
-  private def notifierFor(route: TelegramRoute): TelegramNotifier =
-    new TelegramNotifier(httoFetch, route.token, route.chatId, route.topicId)
+  private def notifierFor(route: TelegramRoute): TelegramNotifier = new TelegramNotifier(httoFetch, route)
 
   // Telegram alerter for fallback ENTER / RECOVERED events. Posts to the dedicated
   // "Fallback to Filmweb" topic when a topic id is set.
   protected lazy val fallbackTelegramNotifier: Option[TelegramNotifier] =
-    AlertingWiring.fallbackRoute(env.get).toOption.map(notifierFor)
+    configuration.telegramRoute(AlertRoute.FilmwebFallback).toOption.map(notifierFor)
 
   // Telegram alerter for the OTHER half of the Filmweb story: a venue whose sole
   // source IS Filmweb (no own-site fallback possible) going empty/404 because
@@ -29,9 +30,9 @@ trait AlertingWiring { self: WorkerWiring =>
   // the dedicated "Filmweb Drops Cinemas" channel; off unless its chat id is set,
   // so CI / local without secrets raise no alerts.
   protected lazy val filmwebDropAlerter: Option[FilmwebDropAlerter] =
-    AlertingWiring.filmwebDropRoute(env.get).toOption.filter(_ => filmwebEnabled).map { route =>
+    configuration.telegramRoute(AlertRoute.FilmwebDrop).toOption.filter(_ => filmwebEnabled).map { route =>
       new FilmwebDropAlerter(filmwebOnlyCinemas, notifierFor(route).send,
-        env.positiveInt("KINOWO_FILMWEB_DROP_THRESHOLD", 3))
+        configuration.filmwebDropThreshold(FilmwebDropThreshold(3)).value)
     }
 
   // The single drop-watcher shared across every UptimeRecordingScraper wrap (it
@@ -45,15 +46,15 @@ trait AlertingWiring { self: WorkerWiring =>
   // else the shared "Kinowo Monitoring" group (KINOWO_FALLBACK_TG_CHAT_ID), so it
   // works on prod without a new secret; off in CI / local without any chat id.
   protected lazy val stagingStuckAlerter: Option[StagingStuckAlerter] =
-    AlertingWiring.stagingStuckRoute(env.get).toOption.map { route =>
+    configuration.telegramRoute(AlertRoute.StagingStuck).toOption.map { route =>
       new StagingStuckAlerter(stagingRepository, notifierFor(route).send,
-        stuckThreshold = FiniteDuration(env.positiveLong("KINOWO_STAGING_STUCK_MINUTES", 60L), TimeUnit.MINUTES),
-        interval       = FiniteDuration(env.positiveLong("KINOWO_STAGING_STUCK_SCAN_MINUTES", 10L), TimeUnit.MINUTES))
+        stuckThreshold = configuration.stagingStuckThreshold(StagingStuckThreshold(FiniteDuration(60L, TimeUnit.MINUTES))).value,
+        interval       = configuration.stagingStuckScanInterval(StagingStuckScanInterval(FiniteDuration(10L, TimeUnit.MINUTES))).value)
     }
 
   /** Which of this country's alerters are wired, read from the same routes as the
    *  alerters above so the gauge and the wiring cannot disagree. */
-  lazy val alerterFeatures: Seq[EnvGatedFeature] = AlertingWiring.alerters(env.get, filmwebEnabled)
+  lazy val alerterFeatures: Seq[EnvGatedFeature] = AlertingWiring.alerters(configuration, filmwebEnabled)
 
   /** Publish [[alerterFeatures]] and WARN, naming the missing keys, for any that is off. */
   def reportAlerters(): Unit = {
@@ -63,24 +64,13 @@ trait AlertingWiring { self: WorkerWiring =>
 }
 
 object AlertingWiring {
-  def fallbackRoute(read: String => Option[String]): Either[Seq[String], TelegramRoute] =
-    TelegramRoute.resolve(read, Seq("KINOWO_FALLBACK_TG_CHAT_ID"), "KINOWO_FALLBACK_TG_TOPIC_ID")
-
-  def filmwebDropRoute(read: String => Option[String]): Either[Seq[String], TelegramRoute] =
-    TelegramRoute.resolve(read, Seq("KINOWO_FILMWEB_DROP_TG_CHAT_ID"), "KINOWO_FILMWEB_DROP_TG_TOPIC_ID")
-
-  def stagingStuckRoute(read: String => Option[String]): Either[Seq[String], TelegramRoute] =
-    TelegramRoute.resolve(read, Seq("KINOWO_STAGING_STUCK_TG_CHAT_ID", "KINOWO_FALLBACK_TG_CHAT_ID"),
-      "KINOWO_STAGING_STUCK_TG_TOPIC_ID")
-
   /** Every alerter this country runs, on or off. The Filmweb two are left out where
    *  Filmweb is not wired at all: off by design there, and a 0 would page for nothing. */
-  def alerters(read: String => Option[String], filmwebEnabled: Boolean): Seq[EnvGatedFeature] = {
+  def alerters(configuration: ProcessConfiguration, filmwebEnabled: Boolean): Seq[EnvGatedFeature] = {
+    def feature(name: String, route: AlertRoute) = EnvGatedFeature.from(name, configuration.telegramRoute(route))
     val filmweb =
-      if (filmwebEnabled) Seq(
-        EnvGatedFeature.from("filmweb_fallback", fallbackRoute(read)),
-        EnvGatedFeature.from("filmweb_drop", filmwebDropRoute(read)))
+      if (filmwebEnabled) Seq(feature("filmweb_fallback", AlertRoute.FilmwebFallback), feature("filmweb_drop", AlertRoute.FilmwebDrop))
       else Nil
-    filmweb :+ EnvGatedFeature.from("staging_stuck", stagingStuckRoute(read))
+    filmweb :+ feature("staging_stuck", AlertRoute.StagingStuck)
   }
 }

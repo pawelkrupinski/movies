@@ -3,7 +3,6 @@ package services.sharecards
 import models.{CityPath, Country}
 import play.api.Logging
 import services.readmodel.{FilmSlugs, ReadModelReader}
-import tools.Env
 
 import java.net.URI
 import java.net.URLEncoder
@@ -19,12 +18,12 @@ trait FacebookGraph {
 
 /** The Graph API's re-scrape (`POST /?id=<url>&scrape=true`) with an app access token. The token
  *  travels in the form body, not the query string, so no URL that reaches a log carries it. */
-class HttpFacebookGraph(appId: String, appSecret: String, tls: javax.net.ssl.SSLContext) extends FacebookGraph {
+class HttpFacebookGraph(appId: settings.FacebookAppId, appSecret: settings.FacebookAppSecret, tls: javax.net.ssl.SSLContext) extends FacebookGraph {
   private val client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).sslContext(tls).build()
 
   def scrape(url: String): Either[String, Unit] = {
     def enc(s: String) = URLEncoder.encode(s, StandardCharsets.UTF_8)
-    val body = s"id=${enc(url)}&scrape=true&access_token=${enc(s"$appId|$appSecret")}"
+    val body = s"id=${enc(url)}&scrape=true&access_token=${enc(s"${appId.value}|${appSecret.value}")}"
     try {
       val request = HttpRequest.newBuilder(URI.create("https://graph.facebook.com/")).timeout(Duration.ofSeconds(20))
         .header("Content-Type", "application/x-www-form-urlencoded").POST(HttpRequest.BodyPublishers.ofString(body)).build()
@@ -37,8 +36,8 @@ class HttpFacebookGraph(appId: String, appSecret: String, tls: javax.net.ssl.SSL
 object FacebookGraph {
   /** The Graph client when the worker has the app's credentials (`FACEBOOK_APP_ID` +
    *  `FACEBOOK_APP_SECRET`, the web's login names), else None — re-scraping is then a no-op. */
-  def fromEnv(env: Env, tls: javax.net.ssl.SSLContext): Option[FacebookGraph] =
-    for { id <- env.get("FACEBOOK_APP_ID"); secret <- env.get("FACEBOOK_APP_SECRET") } yield new HttpFacebookGraph(id, secret, tls)
+  def fromConfiguration(configuration: settings.ProcessConfiguration, tls: javax.net.ssl.SSLContext): Option[FacebookGraph] =
+    for { id <- configuration.facebookAppId; secret <- configuration.facebookAppSecret } yield new HttpFacebookGraph(id, secret, tls)
 }
 
 /**

@@ -284,7 +284,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       Seq("drafthouse.com", "www.showcasecinemas.com", "www.landmarktheatres.com")
     chainHosts.foreach { host =>
       withClue(s"$host has no HostPolicy pace row, so it is UNPACED: ") {
-        _root_.tools.RateLimitedHttpFetch.configuredInterval(_root_.tools.Env.of())(s"https://$host/") should not be empty
+        _root_.tools.RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(_root_.tools.Env.of()))(s"https://$host/") should not be empty
       }
     }
   }
@@ -366,7 +366,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   it should "pace every Ocine ticketing host" in {
     (OcineHosts.values ++ UnlistedOcine.map(_._3).flatMap(CinemaScraper.hostsOf(_))).foreach { host =>
       withClue(s"$host has no HostPolicy pace row, so it is UNPACED: ") {
-        _root_.tools.RateLimitedHttpFetch.configuredInterval(_root_.tools.Env.of())(s"https://$host/api/v1/sessions") should not be empty
+        _root_.tools.RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(_root_.tools.Env.of()))(s"https://$host/api/v1/sessions") should not be empty
       }
     }
   }

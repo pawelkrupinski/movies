@@ -6,8 +6,8 @@ import tools.RoutingHttpFetch
 
 class GoogleOauthProviderSpec extends AnyFlatSpec with Matchers {
 
-  private val Client = "TEST_CLIENT_ID.apps.googleusercontent.com"
-  private val Secret = "TEST_SECRET"
+  private val Client = settings.GoogleClientId("TEST_CLIENT_ID.apps.googleusercontent.com")
+  private val Secret = settings.GoogleClientSecret("TEST_SECRET")
 
   private def scripted(replies: Map[String, String]) = new RoutingHttpFetch(replies)
 

@@ -91,6 +91,6 @@ object RateLimitedHttpFetch {
   /** The pacing interval for `url`'s host, read off the one per-host policy table
    *  ([[HostPolicies]]) so a paced host is a DATA row like any
    *  other host override — never an if-branch here. */
-  def configuredInterval(env: Env): String => Option[FiniteDuration] =
-    url => HostPolicies.requestIntervalFor(url, env).map(_.toMillis.millis)
+  def configuredInterval(configuration: settings.ProcessConfiguration): String => Option[FiniteDuration] =
+    url => HostPolicies.requestIntervalFor(url, configuration).map(_.toMillis.millis)
 }

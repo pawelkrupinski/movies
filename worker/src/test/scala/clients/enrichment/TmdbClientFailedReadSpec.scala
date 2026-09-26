@@ -12,7 +12,7 @@ import clients.TmdbClient
 class TmdbClientFailedReadSpec extends AnyFlatSpec with Matchers {
 
   // 403: a real failure (a block), and not transient, so the client does not retry it.
-  private val client = new TmdbClient(new FailingHttpFetch(403), apiKey = Some("test-key"))
+  private val client = new TmdbClient(new FailingHttpFetch(403), apiKey = Some(settings.TmdbApiKey("test-key")))
 
   "TmdbClient" should "throw, not answer empty, when the credits read fails" in {
     an[Exception] should be thrownBy client.crewIds(1)

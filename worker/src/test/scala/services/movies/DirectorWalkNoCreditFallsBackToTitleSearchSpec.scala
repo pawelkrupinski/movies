@@ -47,7 +47,7 @@ class DirectorWalkNoCreditFallsBackToTitleSearchSpec extends AnyFlatSpec with Ma
       // But the title (scoped to the cinema's year) is an exact, unambiguous hit.
       "/search/movie"  -> s"""{"results":[{"id":$QueenBudapest86,"title":"$Title","original_title":"$Title","release_date":"1987-01-01","popularity":3.0}]}""",
       s"/movie/$QueenBudapest86?" -> s"""{"id":$QueenBudapest86,"title":"$Title","original_title":"$Title","release_date":"1987-01-01","runtime":85,"credits":{"crew":[],"cast":[]}}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val row = MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some(Title), director = Seq(Director), releaseYear = Some(1987))))
 
@@ -74,7 +74,7 @@ class DirectorWalkNoCreditFallsBackToTitleSearchSpec extends AnyFlatSpec with Ma
         |{"id":$QueenBudapest86,"title":"$Title","original_title":"$Title","release_date":"1987-01-01","popularity":3.0},
         |{"id":222222,"title":"$Title","original_title":"$Title","release_date":"1987-06-06","popularity":1.0}
         |]}""".stripMargin
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val row = MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some(Title), director = Seq(Director), releaseYear = Some(1987))))
 

@@ -27,7 +27,7 @@ import java.time.{Instant, LocalDateTime}
 class RetryResolveServingIntegrationSpec extends AnyFlatSpec with Matchers {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
+  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
 
   private object NoMatchTmdb extends GetOnlyHttpFetch {
     override def get(url: String): String = """{"results":[]}"""
@@ -38,7 +38,7 @@ class RetryResolveServingIntegrationSpec extends AnyFlatSpec with Matchers {
       import corpus._
       val title      = "__retry-resolve-serving__"
       val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-      val service    = new MovieService(cache, new InProcessEventBus(), new TmdbClient(http = NoMatchTmdb, apiKey = Some("stub")))
+      val service    = new MovieService(cache, new InProcessEventBus(), new TmdbClient(http = NoMatchTmdb, apiKey = Some(settings.TmdbApiKey("stub"))))
       val key        = cache.keyOf(title, None)
       val when       = LocalDateTime.now().plusDays(3).withHour(20).withMinute(0).withSecond(0).withNano(0)
       val removals   = new java.util.concurrent.atomic.AtomicInteger(0)

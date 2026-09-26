@@ -4,8 +4,9 @@ import com.sun.net.httpserver.HttpServer
 import models.Country
 import org.mongodb.scala.MongoClient
 import play.api.Logging
-import services.MongoConnection
-import tools.{Env, ExecutionBudget, IssuerCertificateFetching, ProcessConfiguration, ProxyTunnelAuthentication}
+import services.{MongoConnection, MongoTuning}
+import settings.{HealthPort, ProcessConfiguration}
+import tools.{ExecutionBudget, IssuerCertificateFetching, ProxyTunnelAuthentication}
 
 import java.net.InetSocketAddress
 import java.time.Instant
@@ -34,7 +35,7 @@ object WorkerMain extends Logging {
     // The process's config and the typed values resolved from it, HERE, once — the only
     // place in the worker that asks the process anything; every wiring below is handed them.
     val process = ProcessConfiguration.resolve()
-    val commit  = process.commit
+    val commit  = process.commit.value
     logger.info(s"Worker starting — commit $commit")
 
     // Bring up /health BEFORE the scrape+enrich boot. The first full scrape +
@@ -44,7 +45,7 @@ object WorkerMain extends Logging {
     // If wiring init throws (e.g. Mongo unreachable) we stop /health and exit
     // non-zero so the failure still surfaces as a crash-loop rather than a
     // healthy-but-idle worker.
-    val port   = process.port(default = 9000)
+    val port   = process.healthPort(HealthPort(9000)).value
     val liveness = new BootLiveness
     val health   = startHealthServer(port, liveness)
     logger.info(s"Worker health up on :$port/health — booting scrape/enrich…")
@@ -59,7 +60,8 @@ object WorkerMain extends Logging {
     // EnvConfigService starts) the admin overrides. Built ONCE here and handed to
     // every country's wiring, so a flip reaches all of them.
     val env          = process.env
-    val countries    = resolveCountries(env)
+    val countries    = process.workerCountries.value
+    process.unknownCountryCodes.foreach(code => logger.warn(s"Unknown country code '${code.value}' in KINOWO_COUNTRIES — skipping."))
     // Refuse a configuration this process cannot normalise correctly, before any
     // wiring touches the corpus.
     unsupportedCountries(countries).foreach { why =>
@@ -67,15 +69,15 @@ object WorkerMain extends Logging {
       health.stop(0)
       sys.exit(1)
     }
-    val sharedBudget: ExecutionBudget = WorkerWiring.backgroundBudgetFrom(env)
-    val sharedClient: Option[MongoClient] = MongoConnection.sharedClientAt(process.mongoAddress, env)
+    val sharedBudget: ExecutionBudget = WorkerWiring.backgroundBudgetFrom(process)
+    val sharedClient: Option[MongoClient] = MongoConnection.sharedClientAt(process.mongoAddress, MongoTuning.from(process))
     // ONE metrics bundle for the whole JVM: a single Prometheus registry + one set
     // of metric objects (each tagged with a `country` label), shared by every
     // country's wiring. This is what fixes the earlier "primary country's registry
     // only, others headless" gap — every country writes its own `country="…"` slice
     // and ALL of them surface on the single /metrics endpoint below.
     val workerMetrics = new services.metrics.WorkerMetrics(
-      countries.map(_.code), env.positiveInt("KINOWO_WORKER_POOL_SIZE", 4))
+      countries.map(_.code), process.workerPoolSize(modules.wiring.TaskQueueWiring.DefaultWorkerPoolSize).value)
     // ONE poster-shrink gate for the JVM: the vips child it bounds shares the pod's
     // memory cgroup with every country's renders.
     val posterShrinkGate = services.sharecards.VipsPosterShrinker.newGate()
@@ -91,7 +93,7 @@ object WorkerMain extends Logging {
         workerMetrics.start() // process-level JVM/native samplers, once
         // Process-wide secrets, so reported once rather than per country: gauge + WARN for
         // any integration a missing one has quietly switched off.
-        val integrations = modules.wiring.WorkerIntegrations.features(env.get)
+        val integrations = modules.wiring.WorkerIntegrations.features(process)
         workerMetrics.envGatedFeatures.recordIntegrations(integrations)
         services.metrics.EnvGatedFeature.disabledWarning("integration", integrations).foreach(w => logger.warn(w))
         ws
@@ -108,7 +110,7 @@ object WorkerMain extends Logging {
     val fleet = new WorkerFleet(wirings.map(_.livenessWatchdog))
     // Process-wide config (KINOWO_HEAP_DUMP_DIR), so it reads the same on every
     // wiring — one dump dir per machine, not per country.
-    val heapDumpDir = wirings.head.heapDumpDir
+    val heapDumpDir = wirings.head.heapDumpDirectory.value.toString
     logger.info("Worker up — scraping/enriching")
 
     // Register /metrics now that every country's queue + metrics are live: one
@@ -147,25 +149,6 @@ object WorkerMain extends Logging {
       }
     }))
     done.await()
-  }
-
-  /** The countries this worker instance runs, from `KINOWO_COUNTRIES` (comma-
-   *  separated codes), defaulting to just [[Country.default]] so a single-country
-   *  deploy needs no new env var. Unknown codes are logged and skipped; an empty
-   *  or all-unknown list falls back to the default so the worker never boots with
-   *  zero countries. */
-  private def resolveCountries(env: Env): Seq[Country] = {
-    val codes = env.get("KINOWO_COUNTRIES")
-      .map(_.split(",").iterator.map(_.trim).filter(_.nonEmpty).toList)
-      .filter(_.nonEmpty)
-      .getOrElse(List(Country.default.code))
-    val resolved = codes.flatMap { code =>
-      Country.byCode(code).orElse {
-        logger.warn(s"Unknown country code '$code' in KINOWO_COUNTRIES — skipping.")
-        None
-      }
-    }.distinct
-    if (resolved.isEmpty) Seq(Country.default) else resolved
   }
 
   /** Why this worker must NOT boot with the countries it was given, or None when

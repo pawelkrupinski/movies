@@ -24,7 +24,7 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
       "query=Michel+Franco"        -> """{"results":[{"id":5000,"name":"Michel Franco","known_for_department":"Directing"}]}""",
       "/person/5000/movie_credits" -> s"""{"crew":[{"id":$Dreams,"title":"Dreams","original_title":"Dreams: Sueños","release_date":"2025-07-10","department":"Directing","popularity":6.2}]}""",
       s"/movie/$Dreams?"           -> s"""{"id":$Dreams,"title":"Dreams","original_title":"Dreams: Sueños","release_date":"2025-07-10","runtime":98,"credits":{"crew":[{"job":"Director","name":"Michel Franco"}],"cast":[]}}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val row = MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some("Dreams"), director = Seq("Michel Franco"), runtimeMinutes = Some(98))))
 
@@ -50,7 +50,7 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
         |]}""".stripMargin,
       s"/movie/$low?"              -> details(low, "2026-01-28"),
       s"/movie/$high?"             -> details(high, "2025-10-01")
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val cachedHigh = new ResolutionCache {
       def getOrResolve(hintKey: String)(resolve: => Option[String]): Option[String] = Some(high.toString)
     }
@@ -81,7 +81,7 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
         |]}""".stripMargin,
       s"/movie/$resolved?"           -> details(resolved, "2025-03-01"),
       s"/movie/$namesakes?"          -> details(namesakes, "2024-11-20")
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val cachedResolved = new ResolutionCache {
       def getOrResolve(hintKey: String)(resolve: => Option[String]): Option[String] = Some(resolved.toString)
     }
@@ -98,7 +98,7 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
         |{"id":1,"title":"Guru","original_title":"Guru","release_date":"2026-01-01","popularity":5.0},
         |{"id":2,"title":"Guru","original_title":"Gourou","release_date":"2025-01-01","popularity":4.0}
         |]}""".stripMargin
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val row = MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some("Guru"))))
 
     search(tmdb).resolve("Guru", None, row, originalTitle = None, director = None) shouldBe None
@@ -127,7 +127,7 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
           |]}""".stripMargin,
       "query=Catching+Fire" ->
         """{"results":[{"id":999,"title":"The Hunger Games: Sunrise on the Reaping","release_date":"2026-11-18"}]}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val row = MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some("The Hunger Games: Catching Fire"))))
 
@@ -148,7 +148,7 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
       "query=Kino+przyjazne+sensorycznie%3A+drzewo+magii" -> """{"results":[]}""",
       "query=drzewo+magii" ->
         s"""{"results":[{"id":$DrzewoMagii,"title":"Drzewo magii","original_title":"The Magic Faraway Tree","release_date":"2026-11-20"}]}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val row = MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some("Kino przyjazne sensorycznie: drzewo magii"))))
 
@@ -170,7 +170,7 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
     val tmdb = new TmdbClient(http = RoutingHttpFetch.getOnly(Map(
       "query=%D0%9F%D0%BE%D1%81%D1%96%D0%BF%D0%B0%D0%BA%D0%B8+%D1%96+%D0%9C%D0%BE%D0%BD%D1%81%D1%82%D1%80%D1%8F%D0%BA%D0%B8" ->
         s"""{"results":[{"id":$MinionkiIStraszydla,"title":"Minionki i straszydła","original_title":"Minions & Monsters","release_date":"2026-08-01"}]}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val row = MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some("Посіпаки і Монстряки"))))
 
@@ -203,7 +203,7 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
         |{"id":101299,"title":"The Hunger Games: Catching Fire","original_title":"The Hunger Games: Catching Fire","release_date":"2013-11-15","department":"Directing","popularity":23.5},
         |{"id":$SunriseOnTheReaping,"title":"The Hunger Games: Sunrise on the Reaping","original_title":"The Hunger Games: Sunrise on the Reaping","release_date":"2026-11-18","department":"Directing","popularity":40.0}
         |]}""".stripMargin
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val row = MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some("The Hunger Games: Catching Fire"),
         director = Seq("Francis Lawrence"), releaseYear = Some(2026))))
@@ -234,7 +234,7 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
       "query=Tom+Holland&"          -> """{"results":[{"id":9001,"name":"Tom Holland","known_for_department":"Directing"}]}""",
       "/person/9001/movie_credits"  -> s"""{"crew":[{"id":$ChildsPlay,"title":"Chucky - die Mörderpuppe","original_title":"Child's Play","release_date":"1988-11-09","department":"Directing","popularity":10.0}]}""",
       s"/movie/$ChildsPlay?"        -> s"""{"id":$ChildsPlay,"title":"Chucky - die Mörderpuppe","original_title":"Child's Play","release_date":"1988-11-09","runtime":87,"credits":{"crew":[{"job":"Director","name":"Tom Holland"}],"cast":[]}}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val row = MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some("Chucky - die Mörderpuppe"), originalTitle = Some("Child's Play"),
         director = Seq("Tom Holland (II)"), runtimeMinutes = Some(87))))

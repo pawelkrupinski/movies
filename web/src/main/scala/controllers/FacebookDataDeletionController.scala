@@ -32,13 +32,13 @@ class FacebookDataDeletionController(
   cc:              ControllerComponents,
   // The deployment's country: its brand on the pages, and their language when the link names none.
   country:         models.Country,
-  appSecret:       Option[String],
+  appSecret:       Option[settings.FacebookAppSecret],
   userRepository:        UserRepository,
   accountDeletion: AccountDeletion
 ) extends AbstractController(cc) with Logging {
 
   def callback(): Action[AnyContent] = Action { request =>
-    appSecret match {
+    appSecret.map(_.value) match {
       case None =>
         logger.error("Facebook data-deletion callback hit but FACEBOOK_APP_SECRET is unset")
         ServiceUnavailable(Json.obj("error" -> "Facebook integration not configured"))

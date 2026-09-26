@@ -1,11 +1,12 @@
 package modules.wiring
 
+import settings.{PosterDecodeMemoryCap, ShareCardBackfillBatch, ShareCardBackfillMaxBacklog, ShareCardStorageBudget}
+
 import modules.WorkerWiring
 import services.readmodel.ShareCardLedger
 import services.sharecards.*
 import services.tasks.{ClaimedEnqueueReaper, TaskHandler, TaskType}
 
-import java.nio.file.Path
 import scala.concurrent.duration.*
 
 /** ── Film share cards ─────────────────────────────────────────────────────────
@@ -19,13 +20,13 @@ import scala.concurrent.duration.*
 trait ShareCardWiring { self: WorkerWiring =>
 
   lazy val shareCardStore: ShareCardStore =
-    new ShareCardStore(Path.of(env.get("KINOWO_SHARE_CARD_DIR").getOrElse("/share-cards").replace("{cc}", country.code)))
+    new ShareCardStore(configuration.shareCardDirectory.forCountry(country))
 
   lazy val shareCardsEnabled: Boolean = shareCardStore.usable
 
   lazy val shareCardMetrics: ShareCardMetrics = workerMetrics.shareCardSeries.forCountry(country.code)
 
-  lazy val shareCardBudgetBytes: Long = env.positiveLong("KINOWO_SHARE_CARD_BUDGET_MB", 1024L) * 1024 * 1024
+  lazy val shareCardBudget: ShareCardStorageBudget = configuration.shareCardStorageBudget(ShareCardStorageBudget(1024L * 1024 * 1024))
 
   /** Posters download directly, except a Cloudflare-blocked site's, which go through the egress
    *  its scrapes use: Multikino 403s the worker's IP on every poster as on its pages. That route
@@ -39,8 +40,9 @@ trait ShareCardWiring { self: WorkerWiring =>
    *  other country's renders. */
   lazy val posterShrinker: VipsPosterShrinker =
     new VipsPosterShrinker(
-      binary      = VipsPosterShrinker.locate(new tools.ProcessConfiguration(env).executableSearchPath),
-      memoryCapMb = PosterPipeline.decodeMemoryCapMbFrom(env), gate = posterShrinkGate)
+      binary      = VipsPosterShrinker.locate(configuration.executableSearchPath),
+      memoryCapMb = configuration.posterDecodeMemoryCap(PosterDecodeMemoryCap(PosterPipeline.DefaultDecodeMemoryCapMb)).megabytes,
+      gate        = posterShrinkGate)
 
   lazy val shareCardService: ShareCardService = new ShareCardService(
     country, shareCardStore,
@@ -51,13 +53,13 @@ trait ShareCardWiring { self: WorkerWiring =>
   lazy val shareCardLedger: ShareCardLedger = if (shareCardsEnabled) shareCardService else ShareCardLedger.none
 
   lazy val shareCardJanitor: ShareCardJanitor = new ShareCardJanitor(
-    shareCardStore, readModelRepository, shareCardBudgetBytes, shareCardMetrics, clock,
+    shareCardStore, readModelRepository, shareCardBudget.bytes, shareCardMetrics, clock,
     refresh = readModelProjector.refreshShareCard)
 
   lazy val shareCardBackfill: ShareCardBackfill =
     new ShareCardBackfill(shareCardService, readModelRepository, taskQueue, shareCardMetrics, clock,
-      batch      = env.positiveInt("KINOWO_SHARE_CARD_BACKFILL_BATCH", ShareCardBackfill.DefaultBatch),
-      maxBacklog = env.positiveInt("KINOWO_SHARE_CARD_BACKFILL_MAX_BACKLOG", ShareCardBackfill.DefaultMaxBacklog))
+      batch      = configuration.shareCardBackfillBatch(ShareCardBackfillBatch(ShareCardBackfill.DefaultBatch)).value,
+      maxBacklog = configuration.shareCardBackfillMaxBacklog(ShareCardBackfillMaxBacklog(ShareCardBackfill.DefaultMaxBacklog)).value)
 
   lazy val shareCardFollowUp: ShareCardFollowUp =
     new ShareCardFollowUp(shareCardStore, shareCardService.superseded, readModelProjector.refreshShareCard, readModelProjector.releaseShareCardHold)
@@ -69,7 +71,7 @@ trait ShareCardWiring { self: WorkerWiring =>
       new ShareCardBackfillHandler(shareCardBackfill),
       new PruneShareCardsHandler(shareCardJanitor),
       new ReleaseShareCardHoldHandler(() => readModelProjector.releaseExpiredHolds()),
-      new RescrapeShareCardHandler(new ShareCardRescraper(FacebookGraph.fromEnv(env, tlsContext), readModelRepository, country, shareCardMetrics, clock)))
+      new RescrapeShareCardHandler(new ShareCardRescraper(FacebookGraph.fromConfiguration(configuration, tlsContext), readModelRepository, country, shareCardMetrics, clock)))
 
   /** The recurring enqueues: a backfill tick every minute (first three minutes after boot), the
    *  budget pass every ten, the full prune daily (first five minutes after boot). Each window is

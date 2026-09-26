@@ -18,7 +18,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class AdminAction(
   override val parser: BodyParser[AnyContent],
   userRepository:            UserRepository,
-  adminAllowlist:      Set[String]
+  adminAllowlist:      settings.AdminAllowlist
 )(implicit val executionContext: ExecutionContext)
     extends ActionBuilder[Request, AnyContent] {
 
@@ -27,7 +27,7 @@ class AdminAction(
       Future.successful(Results.Unauthorized("Not logged in."))
     else
       scala.util.Try(SignedInUser(request, userRepository)) match {
-        case scala.util.Success(user) if user.exists(_.email.exists(adminAllowlist.contains)) => block(request)
+        case scala.util.Success(user) if user.exists(_.email.exists(adminAllowlist.value.contains)) => block(request)
         case scala.util.Success(_) => Future.successful(Results.Forbidden("Not an admin."))
         // Unreadable, not "not an admin": answered as every session lookup is.
         case scala.util.Failure(e: SignedInUser.LookupFailed) => Future.successful(SignedInUser.answering(throw e))

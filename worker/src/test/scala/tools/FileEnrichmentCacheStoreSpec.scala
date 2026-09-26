@@ -110,7 +110,7 @@ class FileEnrichmentCacheStoreSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "sit inside the fixture tree, so the artifact carries it" in {
-    FileEnrichmentCacheStore.beside(clients.tools.FixtureRoot.RepositoryRelative, "enrichment-pl").toString should
+    FileEnrichmentCacheStore.beside(settings.FixtureRoot.RepositoryRelative, "enrichment-pl").toString should
       endWith ("test/resources/fixtures/enrichment-pl/.enrichment-cache")
   }
 }

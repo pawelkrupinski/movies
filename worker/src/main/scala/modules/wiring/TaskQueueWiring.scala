@@ -1,5 +1,7 @@
 package modules.wiring
 
+import settings.{HeapDumpDirectory, LivenessStaleAfter, WorkerPoolSize}
+
 import modules.WorkerWiring
 import services.events.TaskFinished
 import services.freshness.{FreshnessStore, MongoFreshnessStore}
@@ -57,10 +59,10 @@ trait TaskQueueWiring { self: WorkerWiring =>
   // the number of scrapes/enrichments in flight at once is hard-capped at the
   // pool size and a backlog can't peg the box. (Replaces the old single batch
   // poller that claimed up to 20 tasks per tick onto a shared-budget EC.)
-  def workerPoolSize: Int = env.positiveInt("KINOWO_WORKER_POOL_SIZE", 4)
+  def workerPoolSize: WorkerPoolSize = configuration.workerPoolSize(TaskQueueWiring.DefaultWorkerPoolSize)
   lazy val taskWorker = new TaskWorker(
     taskQueue, Seq(scrapeCinemaHandler, enrichDetailsHandler, scrapeChunkHandler, scrapeChunkReduceHandler) ++ ratingHandlers ++ operatorHandlers ++ stagingHandlers ++ shareCardHandlers ++ auditHandlers,
-    poolSize = workerPoolSize,
+    poolSize = workerPoolSize.value,
     // The SAME composite credit-throttle signal the reapers read, so the pool
     // duty-cycles in lockstep with the enqueue-backoff under a credit crunch.
     // Each completed task announces itself so StagingReaper can chain the next
@@ -82,10 +84,15 @@ trait TaskQueueWiring { self: WorkerWiring =>
   // heap to the Fly volume (so a leak-vs-too-tight analysis is possible offline) and
   // exits non-zero so Fly reschedules. Threshold sits several heartbeat intervals
   // above the 1-min pulse so GC jitter never trips it.
-  def livenessStaleMinutes: Long = env.positiveLong("KINOWO_WORKER_LIVENESS_STALE_MINUTES", 5L)
-  def heapDumpDir: String        = env.get("KINOWO_HEAP_DUMP_DIR").getOrElse("/data/heapdumps")
+  def livenessStaleAfter: LivenessStaleAfter = configuration.livenessStaleAfter(LivenessStaleAfter(5.minutes))
+  def heapDumpDirectory: HeapDumpDirectory   = configuration.heapDumpDirectory
   lazy val livenessWatchdog = new LivenessWatchdog(
     lastBeatMillis     = () => workerHeartbeat.lastTickMillis,
-    stalenessThreshold = livenessStaleMinutes.minutes,
-    onWedged           = () => { tools.HeapDumper.dump(heapDumpDir); sys.exit(70) })
+    stalenessThreshold = livenessStaleAfter.value,
+    onWedged           = () => { tools.HeapDumper.dump(heapDumpDirectory.value.toString); sys.exit(70) })
+}
+
+object TaskQueueWiring {
+  /** `KINOWO_WORKER_POOL_SIZE`'s compiled-in default. */
+  val DefaultWorkerPoolSize: WorkerPoolSize = WorkerPoolSize(4)
 }

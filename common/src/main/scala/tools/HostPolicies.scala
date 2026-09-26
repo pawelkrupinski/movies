@@ -1,5 +1,7 @@
 package tools
 
+import settings.{HostPace, PaceKnob, ProcessConfiguration}
+
 import java.net.URI
 import java.time.Duration
 
@@ -16,7 +18,7 @@ import java.time.Duration
  *  across every thread. `None` (the default) means unpaced: the host absorbs
  *  our natural concurrency, so only a host we structurally out-run names one.
  *
- *  `paceKnob` names an [[Env]] key that overrides `minRequestInterval` at
+ *  `paceKnob` names the `/admin/config` knob that overrides `minRequestInterval` at
  *  RUNTIME. A host whose tolerance we don't know (nobody publishes one) can
  *  only be tuned empirically — push the pace until the 429s stop — and doing
  *  that through redeploys costs a worker restart and a cold JVM per attempt.
@@ -36,7 +38,7 @@ final case class HostPolicy(
   connectTimeout: Duration = HostPolicies.DefaultConnectTimeout,
   requestTimeout: Duration = HostPolicies.DefaultRequestTimeout,
   minRequestInterval: Option[Duration] = None,
-  paceKnob: Option[String] = None,
+  paceKnob: Option[settings.PaceKnob] = None,
   headers: Map[String, String] = Map.empty,
 )
 
@@ -154,7 +156,7 @@ object HostPolicies {
     HostPolicy(
       Set("filmstarts.de"),
       minRequestInterval = Some(Duration.ofMillis(1400)),
-      paceKnob           = Some("KINOWO_FILMSTARTS_PACE_MS"),
+      paceKnob           = Some(PaceKnob.Filmstarts),
     ),
 
     // SensaCine (Webedia ES). Spain's 594 venues reach the SAME client Germany
@@ -184,7 +186,7 @@ object HostPolicies {
     HostPolicy(
       Set("sensacine.com"),
       minRequestInterval = Some(Duration.ofMillis(1400)),
-      paceKnob           = Some("KINOWO_SENSACINE_PACE_MS"),
+      paceKnob           = Some(PaceKnob.Sensacine),
     ),
 
     // Flicks (www.flicks.co.uk) — 500 UK venues, each fanning out one sessions
@@ -220,7 +222,7 @@ object HostPolicies {
     HostPolicy(
       Set("flicks.co.uk"),
       minRequestInterval = Some(Duration.ofMillis(200)),
-      paceKnob           = Some("KINOWO_FLICKS_PACE_MS"),
+      paceKnob           = Some(PaceKnob.Flicks),
     ),
     // Flicks' US market (`flicks.us`) — the SAME platform on a different ccTLD,
     // and it needs its own row precisely BECAUSE it is a different host.
@@ -273,7 +275,7 @@ object HostPolicies {
     HostPolicy(
       Set("flicks.us"),
       minRequestInterval = Some(Duration.ofMillis(200)),
-      paceKnob           = Some("KINOWO_FLICKS_US_PACE_MS"),
+      paceKnob           = Some(PaceKnob.FlicksUs),
     ),
 
     // ── US mid-tier chain origins ────────────────────────────────────────────
@@ -302,17 +304,17 @@ object HostPolicies {
     HostPolicy(
       Set("drafthouse.com"),
       minRequestInterval = Some(Duration.ofMillis(500)),
-      paceKnob           = Some("KINOWO_ALAMO_PACE_MS"),
+      paceKnob           = Some(PaceKnob.Alamo),
     ),
     HostPolicy(
       Set("showcasecinemas.com"),
       minRequestInterval = Some(Duration.ofMillis(500)),
-      paceKnob           = Some("KINOWO_SHOWCASE_US_PACE_MS"),
+      paceKnob           = Some(PaceKnob.ShowcaseUs),
     ),
     HostPolicy(
       Set("landmarktheatres.com"),
       minRequestInterval = Some(Duration.ofMillis(500)),
-      paceKnob           = Some("KINOWO_LANDMARK_PACE_MS"),
+      paceKnob           = Some(PaceKnob.Landmark),
     ),
 
     // ── Ocine (Spain) venue ticketing servers ────────────────────────────────
@@ -335,7 +337,7 @@ object HostPolicies {
         "urbancaleido", "urbanxmadrid", "vendrell", "vilaseca")
         .map(venue => s"tickets.ocine$venue.es"),
       minRequestInterval = Some(Duration.ofMillis(1000)),
-      paceKnob           = Some("KINOWO_OCINE_PACE_MS"),
+      paceKnob           = Some(PaceKnob.Ocine),
     ),
 
     // Kino Sfinks (Kraków) — its per-screening detail pages
@@ -378,19 +380,18 @@ object HostPolicies {
    *  `paceKnob` flip on `/admin/config` takes effect without a worker restart.
    *  The read is a map lookup against the override cache — cheap enough to sit
    *  on the request path, and it only runs for the few hosts that are paced. */
-  def requestIntervalFor(url: String, env: Env): Option[Duration] =
-    policyFor(url).flatMap(tunedInterval(_, env))
+  def requestIntervalFor(url: String, configuration: ProcessConfiguration): Option[Duration] =
+    policyFor(url).flatMap(tunedInterval(_, configuration))
 
   /** A policy's live pace: its knob's current value if it names one, else the
-   *  compiled-in default. `env.positiveLong` ignores a non-positive or
+   *  compiled-in default. The resolver ignores a non-positive or
    *  unparseable override, so a fat-fingered `0` falls back to the default
    *  rather than silently unpacing a host we know we out-run. */
-  private def tunedInterval(policy: HostPolicy, env: Env): Option[Duration] =
+  private def tunedInterval(policy: HostPolicy, configuration: ProcessConfiguration): Option[Duration] =
     policy.paceKnob match {
-      case None      => policy.minRequestInterval
-      case Some(key) =>
-        val compiledIn = policy.minRequestInterval.map(_.toMillis).getOrElse(0L)
-        Some(Duration.ofMillis(env.positiveLong(key, compiledIn)))
+      case None       => policy.minRequestInterval
+      case Some(knob) =>
+        Some(configuration.hostPace(knob, HostPace(policy.minRequestInterval.getOrElse(Duration.ZERO))).value)
     }
 
   /** The connect (TCP+TLS handshake) budget for `url`: the matching host policy's,

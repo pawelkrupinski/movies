@@ -20,7 +20,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 class LetterboxdResolveSpec extends AnyFlatSpec with Matchers {
 
   private def tmdbStub(routes: (String, String)*): TmdbClient =
-    new TmdbClient(http = RoutingHttpFetch.getOnly(routes), apiKey = Some("stub"))
+    new TmdbClient(http = RoutingHttpFetch.getOnly(routes), apiKey = Some(settings.TmdbApiKey("stub")))
 
   // A row OMDb backfill would leave behind: one cinema slot, a recovered imdbId,
   // no tmdbId. Fuzzy search already failed on this title.

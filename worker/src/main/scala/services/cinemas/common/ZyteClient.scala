@@ -38,7 +38,7 @@ import java.util.Base64
  * Errors bubble as `RuntimeException`. Callers (`ZyteFetch` →
  * `FallbackHttpFetch`) catch and fall through to the next backend.
  */
-class ZyteClient(httpClient: HttpClient, apiKey: String) extends Logging {
+class ZyteClient(httpClient: HttpClient, apiKey: settings.ZyteApiKey) extends Logging {
   import ZyteClient._
 
   /** GET `targetUrl` via Zyte in a single extract call — no cookie warm-up.
@@ -176,8 +176,8 @@ object ZyteClient {
   /** Zyte authenticates with Basic auth where the API key is the username
    *  and the password is empty — see documents.zyte.com/zyte-api/usage.
    */
-  def basicAuth(apiKey: String): String =
-    "Basic " + Base64.getEncoder.encodeToString(s"$apiKey:".getBytes(StandardCharsets.UTF_8))
+  def basicAuth(apiKey: settings.ZyteApiKey): String =
+    "Basic " + Base64.getEncoder.encodeToString(s"${apiKey.value}:".getBytes(StandardCharsets.UTF_8))
 }
 
 /** The ORIGIN's non-2xx status, relayed by Zyte — the origin's verdict, so an

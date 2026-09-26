@@ -15,7 +15,7 @@ class VenueRosterIntegrationSpec extends AnyFlatSpec with Matchers {
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   private val uri = Env.fromProcess().get("MONGODB_URI").get
 
-  private val target = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
+  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
   private val tomorrow = Seq(Showtime(LocalDateTime.now.plusDays(1).withNano(0), bookingUrl = None))
   private val film     = "odyseja|2026"
   private val polish   = CinemaShowing(KinoEtiuda, "odyseja").displayName

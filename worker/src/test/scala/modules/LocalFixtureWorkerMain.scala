@@ -1,8 +1,9 @@
 package modules
 
-import clients.tools.{FakeHttpFetch, FixtureRoot}
+import clients.tools.FakeHttpFetch
 import services.tasks.{DetailReaper, ScrapeReaper}
 import services.MongoAddress
+import settings.{FixtureRoot, MongoDatabaseName, MongoUri, ProcessConfiguration}
 import tools.{Env, HttpFetch}
 
 import java.time.LocalDate
@@ -32,14 +33,14 @@ object LocalFixtureWorkerMain {
   private[modules] val DefaultMongoDb  = "kinowo_local"
 
   def main(args: Array[String]): Unit = {
-    val env              = Env.fromProcess()
-    val mongo            = localMongo(key => Option(System.getenv(key)), env)
-    val fixtureRoot      = fixtureRootFor(env, new java.io.File(".").getCanonicalFile)
-    val fixtureDirectory = env.get("KINOWO_FIXTURE_DIR").getOrElse("today")
+    val process          = ProcessConfiguration.resolve()
+    val mongo            = localMongo(key => Option(System.getenv(key)), process)
+    val fixtureRoot      = fixtureRootFor(process, new java.io.File(".").getCanonicalFile)
+    val fixtureDirectory = process.localStackFixtureDirectory.fold("today")(_.value)
     println(s"[local-fixture-worker] replaying HTTP from ${fixtureRoot.of(fixtureDirectory)} " +
-      s"into Mongo ${mongo.uri.getOrElse("?")} db=${mongo.database.getOrElse("?")}")
+      s"into Mongo ${mongo.uri.fold("?")(_.value)} db=${mongo.database.fold("?")(_.value)}")
 
-    val wiring = new FixtureWorkerWiring(fixtureDirectory, mongo, fixtureRoot, env)
+    val wiring = new FixtureWorkerWiring(fixtureDirectory, mongo, fixtureRoot, process.env)
     wiring.start()
     println("[local-fixture-worker] started — scraping the fixture corpus into the local read model. Ctrl-C to stop.")
 
@@ -57,24 +58,25 @@ object LocalFixtureWorkerMain {
    *  the `localStack` defaults. `.env.local`'s own MONGODB_URI — prod — never counts, which
    *  is why the process environment is asked separately from `env`. Handed to the wiring as
    *  its address; nothing rewrites the process's MONGODB_URI to get it there. */
-  private[modules] def localMongo(processEnvironment: String => Option[String], env: Env): MongoAddress =
+  private[modules] def localMongo(processEnvironment: String => Option[String], configuration: ProcessConfiguration): MongoAddress =
     MongoAddress(
-      uri      = Some(processEnvironment("MONGODB_URI").filter(_.nonEmpty)
-        .getOrElse(env.get("KINOWO_LOCAL_MONGO_URI").getOrElse(DefaultMongoUri))),
-      database = Some(processEnvironment("MONGODB_DB").filter(_.nonEmpty)
-        .getOrElse(env.get("KINOWO_LOCAL_MONGO_DB").getOrElse(DefaultMongoDb))))
+      uri      = Some(processEnvironment("MONGODB_URI").filter(_.nonEmpty).map(MongoUri(_))
+        .getOrElse(configuration.localStackMongoUri.fold(MongoUri(DefaultMongoUri))(uri => MongoUri(uri.value)))),
+      database = Some(processEnvironment("MONGODB_DB").filter(_.nonEmpty).map(MongoDatabaseName(_))
+        .getOrElse(configuration.localStackDatabase.fold(MongoDatabaseName(DefaultMongoDb))(database => MongoDatabaseName(database.value)))))
 
   /** Where the fixture corpus lives. `bgRunMain` forks with CWD = the worker module
    *  directory, but the corpus is `test/resources/fixtures/…` under the repository root, so
    *  walk up from `workingDirectory` to the directory holding it — unless KINOWO_FIXTURE_ROOT
    *  already names one. Handed to the wiring's fetches rather than set as a property. */
-  private[modules] def fixtureRootFor(env: Env, workingDirectory: java.io.File): FixtureRoot =
-    env.get("KINOWO_FIXTURE_ROOT").filter(_.nonEmpty).map(FixtureRoot(_)).getOrElse {
-      Iterator.iterate(workingDirectory)(_.getParentFile).takeWhile(_ != null)
-        .map(new java.io.File(_, FixtureRoot.RepositoryRelative.directory))
-        .find(_.isDirectory)
-        .fold(FixtureRoot.RepositoryRelative)(directory => FixtureRoot(directory.getPath))
-    }
+  private[modules] def fixtureRootFor(configuration: ProcessConfiguration, workingDirectory: java.io.File): FixtureRoot = {
+    val configured = configuration.fixtureRoot
+    if (configured != FixtureRoot.RepositoryRelative) configured
+    else Iterator.iterate(workingDirectory)(_.getParentFile).takeWhile(_ != null)
+      .map(_.toPath.resolve(FixtureRoot.RepositoryRelative.value))
+      .find(java.nio.file.Files.isDirectory(_))
+      .fold(FixtureRoot.RepositoryRelative)(FixtureRoot(_))
+  }
 }
 
 /**
@@ -102,7 +104,7 @@ class FixtureWorkerWiring(fixtureDirectory: String, localMongo: MongoAddress, fi
   // corpus is a localStack restart away.)
   override lazy val scrapeReaper =
     new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore,
-      interval = 24.hours, initialDelay = initialScrapeDelaySeconds.seconds, runStore = scheduledRunStore)
+      interval = 24.hours, initialDelay = initialScrapeDelay.value, runStore = scheduledRunStore)
   override lazy val detailReaper =
     new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore, eventBus,
       tickInterval = 24.hours, runStore = scheduledRunStore)

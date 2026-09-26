@@ -6,7 +6,8 @@ import modules.wiring.{AlertingWiring, ChunkScrapeWiring, CorpusWiring, DetailWi
 import services.cinemas.common.CinemaClientMarkers
 import services.events.{EventBus, InProcessEventBus}
 import services.freshness.{Freshness, FreshnessKind}
-import services.{Drainable, MongoAddress, MongoConnection, UptimeMonitor}
+import services.{Drainable, MongoAddress, MongoConnection, MongoTuning, UptimeMonitor}
+import settings.{BackgroundConcurrency, MongoDatabaseName, ProcessConfiguration, ScrapeFreshness}
 import services.cadence.RatingCadence
 import services.metrics.WorkerMetrics
 import services.tasks.{DueWindow, VenueCadenceStore}
@@ -43,7 +44,7 @@ class WorkerWiring(
     // so all countries draw run permits from one Semaphore/cap rather than each
     // spinning its own (see `backgroundBudget`). Defaulted so a single-country
     // boot / test constructs its own.
-    injectedBackgroundBudget: ExecutionBudget = WorkerWiring.backgroundBudgetFrom(Env.of()),
+    injectedBackgroundBudget: ExecutionBudget = new SharedExecutionBudget(WorkerWiring.DefaultBackgroundConcurrency.value),
     // ONE shared `MongoClient` across countries: each country binds its OWN
     // database view (`country.mongoDb`) on this single client. `None` → this
     // wiring builds (and closes) its own client at its `mongoAddress`, the
@@ -74,11 +75,16 @@ class WorkerWiring(
     with MetricsWiring with TaskQueueWiring with StagingWiring with AlertingWiring with OperatorWiring with ShareCardWiring
     with InvariantAuditWiring {
 
+  /** Every setting this wiring reads, typed — resolved over its `env` (the process's in
+   *  production, an empty one in a test wiring), so a flip installed into that Env reaches
+   *  a value read per use. */
+  lazy val configuration: ProcessConfiguration = new ProcessConfiguration(env)
+
   /** The metrics bundle this wiring records into: the shared injected one, or a
    *  self-owned single-country bundle when none was injected (lone boot / test). */
   val workerMetrics: WorkerMetrics =
     injectedWorkerMetrics.getOrElse(
-      WorkerMetrics.singleCountry(country, workerPoolSize))
+      WorkerMetrics.singleCountry(country, workerPoolSize.value))
   lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database, clock = clock,
     ttlMismatches = workerMetrics.ttlIndexMismatches)
 
@@ -109,25 +115,24 @@ class WorkerWiring(
   lazy val eventBus: EventBus = new InProcessEventBus()
 
   // ── Mongo ─────────────────────────────────────────────────────────────────
-  // Where this worker's Mongo is — resolved from its env HERE, the composition root, and
-  // nowhere below it. The local stack overrides it with its own local address instead of
-  // rewriting the process's MONGODB_URI.
-  lazy val mongoAddress: MongoAddress = MongoAddress.fromEnv(env)
+  // Where this worker's Mongo is — resolved HERE, the composition root, and nowhere below
+  // it. The local stack overrides it with its own local address instead of rewriting the
+  // process's MONGODB_URI.
+  lazy val mongoAddress: MongoAddress = configuration.mongoAddress
 
   // This country's Mongo database — an explicit database on the address still wins for
   // local dev, else the country's own. `protected def` so a test can read the derivation
   // without opening a connection.
-  protected def mongoDbName: String = mongoAddress.databaseFor(country)
+  protected def mongoDbName: MongoDatabaseName = mongoAddress.databaseFor(country)
 
   // The worker is the writer — Mongo is mandatory (opt out only for local dev
   // with MONGODB_OPTIONAL=true). Bound to THIS country's database, on the shared
   // `MongoClient` when WorkerMain injected one — and claimed for this country before
   // anything can prune or write against it (see [[services.DatabaseOwner]]).
   lazy val mongoConnection: MongoConnection = {
-    val optedOut = env.flag("MONGODB_OPTIONAL")
     MongoConnection.forCountry(country, mongoAddress.copy(database = Some(mongoDbName)),
-      required = MongoConnection.isRequired(testMode = false, optedOut = optedOut), env = env,
-      sharedClient = sharedMongoClient)
+      required = MongoConnection.isRequired(testMode = false, optedOut = configuration.mongoOptional.value),
+      tuning = MongoTuning.from(configuration), sharedClient = sharedMongoClient)
   }
 
   /** The one clock a no-match `TmdbAttempt` is stamped from — `MovieService` on the
@@ -139,7 +144,9 @@ class WorkerWiring(
   // The per-venue cadence override `scrapeDueWindow` reads and `ScrapeFreshnessPolicy`
   // writes after every landed scrape — see `VenueScrapeCadence`. Country-scoped
   // (this wiring IS one country), like `scrapeDueWindow` itself.
-  val venueCadenceStore = new VenueCadenceStore(Freshness.scrapeTtlFrom(env))
+  /** `KINOWO_SCRAPE_FRESHNESS_MINUTES` — how long a venue's scrape stays fresh. */
+  lazy val scrapeFreshness: ScrapeFreshness = configuration.scrapeFreshness(Freshness.DefaultScrapeFreshness)
+  val venueCadenceStore = new VenueCadenceStore(scrapeFreshness.value)
   // ONE shared due schedule backs both the scrape reaper (enqueue) and the scrape
   // handler (pickup re-gate), so they agree on what's due and a cinema's scrapes
   // spread across the freshness window instead of falling due in a lockstep wave.
@@ -147,7 +154,7 @@ class WorkerWiring(
   // most cinemas get the country's own cadence (the store's own fallback), but a
   // venue whose freshest listing runs dry sooner gets a shorter one — see
   // `VenueScrapeCadence`.
-  val scrapeDueWindow = new DueWindow(venueCadenceStore.periodFor, Freshness.scrapeTtlFrom(env))
+  val scrapeDueWindow = new DueWindow(venueCadenceStore.periodFor, scrapeFreshness.value)
   // Shared detail refresh schedule. Its period IS the DetailEnrich TTL, read from
   // `Freshness.ttlFor` rather than repeated as a literal here: `CachingDetailFetch`'s
   // own TTL is defined as "shorter than this window" and pinned by a spec against
@@ -318,6 +325,10 @@ object WorkerWiring {
 
   /** The background concurrency budget every country's wiring shares, sized by
    *  `KINOWO_BG_CONCURRENCY` (default 4 — see `backgroundBudget`). */
-  def backgroundBudgetFrom(env: Env): ExecutionBudget =
-    new SharedExecutionBudget(env.positiveInt("KINOWO_BG_CONCURRENCY", 4))
+  /** `KINOWO_BG_CONCURRENCY`'s compiled-in default. */
+  val DefaultBackgroundConcurrency: BackgroundConcurrency = BackgroundConcurrency(4)
+
+  /** The ONE background budget a process shares across its countries' wirings. */
+  def backgroundBudgetFrom(configuration: ProcessConfiguration): ExecutionBudget =
+    new SharedExecutionBudget(configuration.backgroundConcurrency(DefaultBackgroundConcurrency).value)
 }

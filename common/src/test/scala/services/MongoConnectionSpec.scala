@@ -134,14 +134,14 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   // prod connection (database None → fall back) instead of blocking boot — only
   // /debug needs it.
   "MongoConnection.fromUri with required = false" should "disable (database None) on an unusable URI instead of throwing" in {
-    val connection = MongoConnection.fromUri(MalformedUri, "kinowo", required = false, tools.Env.of())
+    val connection = MongoConnection.fromUri(settings.MirrorMongoUri(MalformedUri), settings.MongoDatabaseName("kinowo"), required = false, MongoTuning.Default)
     connection.database shouldBe None
     connection.close()
   }
 
   "MongoConnection.fromUri with required = true" should "throw on an unusable URI" in {
     val exception = intercept[IllegalStateException] {
-      MongoConnection.fromUri(MalformedUri, "kinowo", required = true, tools.Env.of())
+      MongoConnection.fromUri(settings.MirrorMongoUri(MalformedUri), settings.MongoDatabaseName("kinowo"), required = true, MongoTuning.Default)
     }
     exception.getMessage should include ("required")
   }
@@ -206,13 +206,13 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     maxSize should be > 0
   }
 
-  // The pool cap is read from the Env the wiring hands over, not a process-global
-  // frozen at class init — so an injected value reaches the client settings.
-  it should "take the pool cap from the injected Env" in {
-    val cap = MongoConnection.maxPoolSizeFrom(tools.Env.of("KINOWO_MONGO_MAX_POOL_SIZE" -> "9"))
-    cap shouldBe 9
-    MongoConnection.clientSettings(ValidUri, maxPoolSize = cap).getConnectionPoolSettings.getMaxSize shouldBe 9
-    MongoConnection.maxPoolSizeFrom(tools.Env.of()) shouldBe 25
+  // The pool cap is resolved from the configuration the root hands over, not a process-global
+  // frozen at class init — so a configured value reaches the client settings.
+  it should "take the pool cap from the resolved configuration" in {
+    val cap = tuning("KINOWO_MONGO_MAX_POOL_SIZE" -> "9").maxPoolSize
+    cap shouldBe settings.MongoMaxPoolSize(9)
+    MongoConnection.clientSettings(ValidUri, maxPoolSize = cap.value).getConnectionPoolSettings.getMaxSize shouldBe 9
+    tuning().maxPoolSize shouldBe settings.MongoMaxPoolSize(25)
   }
 
   it should "let a URI that names its own maxPoolSize win, like compressors" in {
@@ -275,26 +275,31 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   // Boot-probe timeout. The old value was a hard-coded 10s; a slow/recovering
   // Mongo blew past it, crash-looped the boot, and Fly stopped the web machine
   // (2026-06-06). It's now `DefaultProbeTimeout` (30s), overridable via
-  // `MONGODB_PROBE_TIMEOUT_SECONDS` and parsed by `parseProbeTimeout`.
+  // `MONGODB_PROBE_TIMEOUT_SECONDS` (resolved into `MongoTuning`).
   "MongoConnection.DefaultProbeTimeout" should "stay above the old 10s ceiling that crash-looped the boot" in {
     MongoConnection.DefaultProbeTimeout.toSeconds should be > 10L
   }
 
-  "MongoConnection.parseProbeTimeout" should "default when the override is absent" in {
-    MongoConnection.parseProbeTimeout(None) shouldBe MongoConnection.DefaultProbeTimeout
+  private def tuning(vars: (String, String)*): MongoTuning =
+    MongoTuning.from(new settings.ProcessConfiguration(tools.Env.of(vars*)))
+  private def probeTimeout(raw: String*): scala.concurrent.duration.FiniteDuration =
+    tuning(raw.map("MONGODB_PROBE_TIMEOUT_SECONDS" -> _)*).probeTimeout.value
+
+  "The Mongo probe timeout" should "default when the override is absent" in {
+    probeTimeout() shouldBe MongoConnection.DefaultProbeTimeout
   }
 
   it should "honour a positive second count from the override" in {
-    MongoConnection.parseProbeTimeout(Some("45")) shouldBe 45.seconds
+    probeTimeout("45") shouldBe 45.seconds
   }
 
   it should "fall back to the default on non-numeric input" in {
-    MongoConnection.parseProbeTimeout(Some("soon")) shouldBe MongoConnection.DefaultProbeTimeout
+    probeTimeout("soon") shouldBe MongoConnection.DefaultProbeTimeout
   }
 
   it should "fall back to the default on a non-positive count" in {
-    MongoConnection.parseProbeTimeout(Some("0"))  shouldBe MongoConnection.DefaultProbeTimeout
-    MongoConnection.parseProbeTimeout(Some("-5")) shouldBe MongoConnection.DefaultProbeTimeout
+    probeTimeout("0")  shouldBe MongoConnection.DefaultProbeTimeout
+    probeTimeout("-5") shouldBe MongoConnection.DefaultProbeTimeout
   }
 
   // ── The /debug mirror's cross-language contract ─────────────────────────────

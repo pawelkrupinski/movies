@@ -122,7 +122,7 @@ object RecordDirectorWalkFixtures {
     // Safe for the corpus: `FakeHttpFetch`/`RecordingHttpFetch` strip `api_key`
     // out of the fixture fingerprint, so a file recorded under the real key is
     // the same file replay looks up under the stub one.
-    val realKey = tools.Env.fromProcess().get("TMDB_API_KEY").filter(_.nonEmpty).getOrElse(
+    val realKey = _root_.settings.ProcessConfiguration.resolve().tmdbApiKey.getOrElse(
       sys.error("TMDB_API_KEY not set — add it to .env.local (this script records against live TMDB)."))
 
     val wiring = new FixtureTestWiring(Fixture) {

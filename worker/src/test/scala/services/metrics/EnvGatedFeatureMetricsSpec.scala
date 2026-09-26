@@ -8,7 +8,7 @@ import org.scalatest.matchers.should.Matchers
  *  off — present either way, so an alert compares a value rather than a sample's presence. */
 class EnvGatedFeatureMetricsSpec extends AnyFlatSpec with Matchers {
 
-  private val off = EnvGatedFeature("filmweb_drop", Seq("KINOWO_FILMWEB_DROP_TG_CHAT_ID"))
+  private val off = EnvGatedFeature("filmweb_drop", Seq(settings.MissingSetting("KINOWO_FILMWEB_DROP_TG_CHAT_ID")))
   private val on  = EnvGatedFeature("staging_stuck", Nil)
 
   "EnvGatedFeatureMetrics" should "export each alerter as 1 or 0 under its country" in {
@@ -21,7 +21,7 @@ class EnvGatedFeatureMetricsSpec extends AnyFlatSpec with Matchers {
 
   it should "export each integration as 1 or 0" in {
     val registry = new PrometheusRegistry()
-    new EnvGatedFeatureMetrics(registry).recordIntegrations(Seq(EnvGatedFeature("sentry", Seq("SENTRY_DSN")), EnvGatedFeature("tmdb", Nil)))
+    new EnvGatedFeatureMetrics(registry).recordIntegrations(Seq(EnvGatedFeature("sentry", Seq(settings.MissingSetting("SENTRY_DSN"))), EnvGatedFeature("tmdb", Nil)))
     val text = PrometheusExposition.render(registry)
     PrometheusExposition.sample(text, "kinowo_worker_integration_enabled", """integration="sentry"""") shouldBe Some(0.0)
     PrometheusExposition.sample(text, "kinowo_worker_integration_enabled", """integration="tmdb"""") shouldBe Some(1.0)

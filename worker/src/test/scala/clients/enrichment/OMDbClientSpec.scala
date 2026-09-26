@@ -12,7 +12,7 @@ class OMDbClientSpec extends AnyFlatSpec with Matchers {
     val urls = scala.collection.mutable.ListBuffer.empty[String]
     def get(url: String): String = { urls += url; f(url) }
   }
-  private def client(f: String => String, key: Option[String] = Some("k")) =
+  private def client(f: String => String, key: Option[settings.OmdbApiKey] = Some(settings.OmdbApiKey("k"))) =
     new OMDbClient(new FnFetch(f), apiKey = key)
 
   private def tParam(url: String): String =
@@ -34,7 +34,7 @@ class OMDbClientSpec extends AnyFlatSpec with Matchers {
 
   it should "restrict the search to type=movie (never a series)" in {
     val fetch = new FnFetch(_ => """{"Response":"False"}""")
-    new OMDbClient(fetch, apiKey = Some("k")).findImdbId(Seq("Bodyguard"), None, Set.empty)
+    new OMDbClient(fetch, apiKey = Some(settings.OmdbApiKey("k"))).findImdbId(Seq("Bodyguard"), None, Set.empty)
     fetch.urls.head should include ("type=movie")
   }
 
@@ -89,7 +89,7 @@ class OMDbClientSpec extends AnyFlatSpec with Matchers {
 
   it should "NOT walk (no ?s= call) when we have no director to corroborate with" in {
     val fetch = new FnFetch(url => if (url.contains("?s=")) fail("must not search without a director") else """{"Response":"False"}""")
-    new OMDbClient(fetch, apiKey = Some("k")).findImdbId(Seq("Whatever"), None, Set.empty) shouldBe None
+    new OMDbClient(fetch, apiKey = Some(settings.OmdbApiKey("k"))).findImdbId(Seq("Whatever"), None, Set.empty) shouldBe None
   }
 
   // ── feature gate ─────────────────────────────────────────────────────────────
@@ -120,7 +120,7 @@ class OMDbClientSpec extends AnyFlatSpec with Matchers {
 
   it should "hit the documented endpoint with the id, tomatoes flag and key" in {
     val fetch = new FnFetch(_ => """{"tomatoURL":"https://www.rottentomatoes.com/m/x","Response":"True"}""")
-    new OMDbClient(fetch, apiKey = Some("abc123")).rottenTomatoesUrl("tt5089534")
+    new OMDbClient(fetch, apiKey = Some(settings.OmdbApiKey("abc123"))).rottenTomatoesUrl("tt5089534")
     fetch.urls.head shouldBe "https://www.omdbapi.com/?i=tt5089534&tomatoes=true&apikey=abc123"
   }
 

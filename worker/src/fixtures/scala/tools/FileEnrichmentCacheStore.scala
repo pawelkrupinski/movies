@@ -103,7 +103,7 @@ object FileEnrichmentCacheStore {
    *  tarball the convergence leg already publishes carries the cache with it and
    *  neither has to be restored separately from the other. Dot-prefixed so it can't
    *  be mistaken for a recorded host directory. */
-  def beside(root: clients.tools.FixtureRoot, fixtureDirectory: String): Path =
+  def beside(root: settings.FixtureRoot, fixtureDirectory: String): Path =
     Paths.get(root.of(fixtureDirectory)).resolve(CacheDirectoryName)
 
   /** Named once, because two other things depend on it: the workflow greps the tarball

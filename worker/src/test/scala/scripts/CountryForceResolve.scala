@@ -31,7 +31,7 @@ object CountryForceResolve {
   def main(args: Array[String]): Unit = {
     val country = args.headOption.flatMap(Country.byCode).getOrElse(Country.UnitedKingdom)
     val dbName  = country.mongoDb
-    val conn    = MongoConnection.forCountry(country, services.MongoAddress.fromEnv(tools.Env.fromProcess()).copy(database = Some(dbName)), required = true, env = tools.Env.fromProcess())
+    val conn    = { val process = _root_.settings.ProcessConfiguration.resolve(); MongoConnection.forCountry(country, process.mongoAddress.copy(database = Some(_root_.settings.MongoDatabaseName(dbName))), required = true, services.MongoTuning.from(process)) }
     val db = conn.database.getOrElse {
       println(s"Could not open $dbName — is the Mongo tunnel up (scripts/local-mirror/prod-tunnel.sh) and MONGODB_URI set?")
       sys.exit(1)

@@ -86,7 +86,7 @@ object ConcurrentInstances {
    *  afterwards, with every pod's client closed first. */
   def withInstances[A](target: IntegrationMongoTarget, suite: String, count: Int = 2)(body: Seq[Instance] => A): A =
     IntegrationCorpusDatabase.withDatabase(target, suite) { db =>
-      val instances = (1 to count).map(i => new Instance(s"pod-$i", target.uri, db.name))
+      val instances = (1 to count).map(i => new Instance(s"pod-$i", target.uri.value, db.name))
       try body(instances) finally instances.foreach(_.close())
     }
 
@@ -98,7 +98,8 @@ object ConcurrentInstances {
 
   /** The seed round 1 is drawn from — fixed, so a run is reproducible, and overridable to replay
    *  (or to explore) other interleavings. */
-  def baseSeed(env: Env): Long = env.get("KINOWO_RACE_SEED").flatMap(_.toLongOption).getOrElse(20260924L)
+  def baseSeed(configuration: settings.ProcessConfiguration): Long =
+    configuration.raceSeed(settings.RaceSeed(20260924L)).value
 
   /** Run `body` for `count` rounds, each with its own seed (from [[baseSeed]], which the spec
    *  resolves); a failure names the round and seed. */

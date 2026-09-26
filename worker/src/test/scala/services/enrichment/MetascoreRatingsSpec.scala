@@ -181,7 +181,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
       def get(url: String): String =
         if (url.contains("/movie/671?")) tmdbBody
         else UpstreamNotFound(url)
-    }, apiKey = Some("stub"))
+    }, apiKey = Some(settings.TmdbApiKey("stub")))
 
     val repository = new InMemoryMovieRepository(Seq(
       ("Harry Potter i Kamień filozoficzny", Some(2001), MovieRecord(

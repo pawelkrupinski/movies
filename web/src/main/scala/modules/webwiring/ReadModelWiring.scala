@@ -36,8 +36,8 @@ trait ReadModelWiring { self: Wiring =>
   // and every /debug load on the driver's 30s default.
   lazy val movieMirrorConnection: MongoConnection =
     Wiring.debugMirrorConnection(
-      env.get("MONGODB_MOVIES_MIRROR_URI"),
-      MongoConnection.fromUri(_, mongoAddress.databaseFor(country), required = false, env,
+      processConfiguration.mirrorMongoUri,
+      MongoConnection.fromUri(_, mongoAddress.databaseFor(country), required = false, mongoTuning,
         probeTimeout           = Some(MongoConnection.LocalMirrorTimeout),
         serverSelectionTimeout = Some(MongoConnection.LocalMirrorTimeout)),
       mongoConnection)
@@ -63,7 +63,9 @@ trait ReadModelWiring { self: Wiring =>
     screenings = Some(screeningsRepository), slots = Some(slotsRepository),
     normalizer = titleNormalizer, decodeFailures = webDecodeFailureMetrics)
   lazy val readModelRepository: ReadModelReader = new MongoReadModelRepository(mongoConnection.database, decodeFailures = webDecodeFailureMetrics)
-  lazy val webReadModel: WebReadModel = new WebReadModel(readModelRepository, env)
+  lazy val webReadModel: WebReadModel = new WebReadModel(readModelRepository,
+    reloadInterval    = processConfiguration.readModelReloadInterval(WebReadModel.DefaultReloadInterval),
+    coldRetryInterval = processConfiguration.readModelColdRetryInterval(WebReadModel.DefaultColdRetryInterval))
 
   // Reads come straight from the read model; enrichment + projection happen in
   // the worker process.

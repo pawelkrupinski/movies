@@ -13,7 +13,7 @@ class DatabaseOwnerIntegrationSpec extends AnyFlatSpec with Matchers {
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   private val uri = Env.fromProcess().get("MONGODB_URI").get
 
-  private val target = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
+  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
   "a database" should "be claimed by its first country and refuse every other" in
     tools.IntegrationCorpusDatabase.withDatabase(target, "database-owner") { db =>
       val owner = new DatabaseOwner(db)
@@ -33,7 +33,7 @@ class DatabaseOwnerIntegrationSpec extends AnyFlatSpec with Matchers {
   // both stamp it, the last write winning while the first worker kept running.
   it should "let exactly one of two countries claiming it at once win" in
     tools.IntegrationCorpusDatabase.withDatabase(target, "database-owner-race") { db =>
-      tools.ConcurrentInstances.rounds(20, tools.ConcurrentInstances.baseSeed(Env.fromProcess())) { round =>
+      tools.ConcurrentInstances.rounds(20, tools.ConcurrentInstances.baseSeed(_root_.settings.ProcessConfiguration.resolve())) { round =>
         new DatabaseOwner(db).owner().foreach(_ => db.getCollection(DatabaseOwner.Collection)
           .drop().toFuture().pipe(scala.concurrent.Await.result(_, scala.concurrent.duration.Duration(10, "s"))))
         val claims = tools.ConcurrentInstances.race(Seq(Country.Poland, Country.Germany)

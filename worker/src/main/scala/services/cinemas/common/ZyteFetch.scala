@@ -1,6 +1,6 @@
 package services.cinemas.common
 
-import tools.{Env, GetOnlyHttpFetch}
+import tools.GetOnlyHttpFetch
 
 import java.time.Clock
 import scala.concurrent.duration._
@@ -50,10 +50,7 @@ object ZyteFetch {
    *  Zyte session's server-side lifetime so reuse usually hits a live session;
    *  if it's stale the fetch's 401 triggers a re-warm + retry anyway, so this is
    *  a cost knob, not a correctness one. Tunable via KINOWO_ZYTE_SESSION_TTL_SECONDS
-   *  ([[sessionTtlFrom]]). */
+   *  (resolved by `settings.ProcessConfiguration.zyteSessionTtl`). */
   val DefaultSessionTtl: FiniteDuration = 480.seconds
 
-  /** `KINOWO_ZYTE_SESSION_TTL_SECONDS` from `env`, else [[DefaultSessionTtl]]. */
-  def sessionTtlFrom(env: Env): FiniteDuration =
-    env.positiveLong("KINOWO_ZYTE_SESSION_TTL_SECONDS", DefaultSessionTtl.toSeconds).seconds
 }

@@ -50,7 +50,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
       s"/movie/$DreamsTmdb/external_ids"  -> s"""{"id":$DreamsTmdb,"imdb_id":"tt31710990"}""",
       s"/movie/$DreamsTmdb"               -> s"""{"id":$DreamsTmdb,"title":"Dreams","original_title":"Dreams: Sueños","release_date":"2025-07-10","runtime":98}"""
     )),
-    apiKey = Some("stub"))
+    apiKey = Some(settings.TmdbApiKey("stub")))
 
   "a resolved row whose cinema reports a different director" should "re-resolve instead of verifying against its own Tmdb slot" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
@@ -140,7 +140,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
       s"/movie/$Dalloway/credits"   -> """{"crew":[{"job":"Director","name":"Yann Gozlan","original_name":"Yann Gozlan"}]}""",
       s"/movie/$Dalloway/external_ids" -> s"""{"id":$Dalloway,"imdb_id":"tt00000000"}""",
       s"/movie/$Dalloway"           -> s"""{"id":$Dalloway,"title":"Dalloway","original_title":"Dalloway","release_date":"2025-09-17","runtime":100}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val existing = MovieRecord(data = Map[Source, SourceData](
@@ -185,7 +185,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
         |]}""".stripMargin,
       "/movie/1429318/external_ids"   -> """{"id":1429318,"imdb_id":"tt27577097"}""",
       "/movie/1429318"                -> """{"id":1429318,"title":"Bez wyjścia","original_title":"어쩔수가없다","release_date":"2025-09-24","runtime":139}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val existing = MovieRecord(data = Map[Source, SourceData](
@@ -226,7 +226,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
         |{"id":949623,"title":"Lombard","original_title":"Lombard",
         | "release_date":"2025-11-04","department":"Directing","job":"Director","popularity":3.0}
         |]}""".stripMargin
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val existing = MovieRecord(data = Map[Source, SourceData](
@@ -258,7 +258,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
         |]}""".stripMargin,
       "/movie/19120/external_ids" -> """{"id":19120,"imdb_id":"tt0059229"}""",
       "/movie/19120"              -> """{"id":19120,"title":"Giulietta degli spiriti","original_title":"Giulietta degli spiriti","release_date":"1965-10-22","runtime":137}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val existing = MovieRecord(data = Map[Source, SourceData](
@@ -296,7 +296,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
         |]}""".stripMargin,
       "/movie/1143973?"            -> """{"id":1143973,"title":"Il Maestro","original_title":"Il Maestro","release_date":"2025-09-01","runtime":125}""",
       "/movie/1143973/external_ids" -> """{"id":1143973,"imdb_id":"tt30000001"}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val existing = MovieRecord(data = Map[Source, SourceData](
@@ -321,7 +321,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
         | "release_date":"2025-11-04","department":"Directing","job":"Director","popularity":3.0}
         |]}""".stripMargin,
       "/movie/949623?" -> """{"id":949623,"title":"Lombard","original_title":"Lombard","release_date":"2025-11-04","runtime":78}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val existing = MovieRecord(data = Map[Source, SourceData](
@@ -352,7 +352,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
         |]}""".stripMargin,
       "/movie/1459612?"             -> """{"id":1459612,"title":"Мавка. Справжній міф","original_title":"Мавка. Справжній міф","release_date":"2026-01-01","runtime":90}""",
       "/movie/1459612/external_ids" -> """{"id":1459612,"imdb_id":"tt30000002"}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     // Runtime deliberately disagrees (100 vs 90) so only the transliterated
@@ -401,7 +401,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
       // fetch failure — the point is that it resolved, confidently, to the original.
       "/movie/350/external_ids"     -> """{"id":350,"imdb_id":"tt0458352"}""",
       "/movie/350?"                 -> """{"id":350,"title":"Diabeł ubiera się u Prady","original_title":"The Devil Wears Prada","release_date":"2006-06-30","runtime":109}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     // No year anywhere — the state a row is in before the cinema that publishes
@@ -441,7 +441,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
       "/movie/131634?"             -> """{"id":131634,"title":"The Hunger Games: Mockingjay - Part 1","original_title":"The Hunger Games: Mockingjay - Part 1","release_date":"2014-11-20","runtime":123}""",
       "/movie/131635/external_ids" -> """{"id":131635,"imdb_id":"tt1951266"}""",
       "/movie/131635?"             -> """{"id":131635,"title":"The Hunger Games: Mockingjay - Part 2","original_title":"The Hunger Games: Mockingjay - Part 2","release_date":"2015-11-19","runtime":137}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     // A typo'd cinema spelling ("Prt" for "Part") matches neither credit's title
@@ -489,7 +489,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
       // the wrong instalment.
       "/movie/131634/external_ids" -> """{"id":131634,"imdb_id":"tt1951265"}""",
       "/movie/131634?"             -> """{"id":131634,"title":"The Hunger Games: Mockingjay - Part 1","original_title":"The Hunger Games: Mockingjay - Part 1","release_date":"2014-11-20","runtime":123}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     // Dropping "Part 1"/"Part 2" entirely: too far from either exact title
@@ -531,7 +531,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
       // the wrong instalment.
       "/movie/131635/external_ids" -> """{"id":131635,"imdb_id":"tt1951266"}""",
       "/movie/131635?"             -> """{"id":131635,"title":"The Hunger Games: Mockingjay - Part 2","original_title":"The Hunger Games: Mockingjay - Part 2","release_date":"2015-11-19","runtime":137}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     // "Catching Fire" is nowhere near either Mockingjay title for `titleClose`, so
@@ -569,7 +569,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
       // would make `NoWallClockInTestsSpec` flag every cache this file builds.
       "/movie/1003596/external_ids" -> """{"id":1003596,"imdb_id":"tt21357150"}""",
       "/movie/1003596?"             -> """{"id":1003596,"title":"Avengers: Doomsday","original_title":"Avengers: Doomsday","release_date":"2026-01-01"}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val existing = MovieRecord(data = Map[Source, SourceData](
@@ -606,7 +606,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
         |]}""".stripMargin,
       "/movie/1140521/external_ids" -> """{"id":1140521,"imdb_id":"tt21276604"}""",
       "/movie/1140521?"             -> """{"id":1140521,"title":"Drzewo magii","original_title":"The Magic Faraway Tree","release_date":"2025-12-12","runtime":96}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val existing = MovieRecord(data = Map[Source, SourceData](
@@ -631,7 +631,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
         | "release_date":"2025-03-03","department":"Writing","job":"Writer","popularity":4.0}
         |]}""".stripMargin,
       "/movie/555001?" -> """{"id":555001,"title":"Coś zupełnie innego","original_title":"Something Else Entirely","release_date":"2025-03-03","runtime":140}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     // Shares no word with the credit, and the runtime disagrees (96 vs 140).
@@ -663,7 +663,7 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
         |]}""".stripMargin,
       "/movie/332562/external_ids" -> """{"id":332562,"imdb_id":"tt1517451"}""",
       "/movie/332562"              -> """{"id":332562,"title":"Narodziny gwiazdy","original_title":"A Star Is Born","release_date":"2018-10-03","runtime":136}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val existing = MovieRecord(data = Map[Source, SourceData](

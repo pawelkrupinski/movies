@@ -44,7 +44,7 @@ class RememberedMissRetriggerSpec extends AnyFlatSpec with Matchers {
     val http    = new CountingTmdb
     val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val bus     = new InProcessEventBus()
-    val service = new MovieService(cache, bus, new TmdbClient(http = http, apiKey = Some("stub")))
+    val service = new MovieService(cache, bus, new TmdbClient(http = http, apiKey = Some(settings.TmdbApiKey("stub"))))
     bus.subscribe(service.onMovieDetailsComplete)
 
     val key = cache.keyOf(Title, Year)

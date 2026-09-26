@@ -51,7 +51,7 @@ class RetryResolveKeepsRowReadySpec extends AnyFlatSpec with Matchers {
     val readModel  = new InMemoryReadModelRepository()
     val projector  = new ReadModelProjector(repository, readModel, readModel, clock = specClock)
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = specClock)
-    val service    = new MovieService(cache, new InProcessEventBus(), new TmdbClient(http = http, apiKey = Some("stub")), clock = specClock)
+    val service    = new MovieService(cache, new InProcessEventBus(), new TmdbClient(http = http, apiKey = Some(settings.TmdbApiKey("stub"))), clock = specClock)
     val key        = cache.keyOf(Title, None)
     // Every row state the change stream shows, in order — what the projector sees.
     val streamed   = scala.collection.mutable.Buffer.empty[Boolean]

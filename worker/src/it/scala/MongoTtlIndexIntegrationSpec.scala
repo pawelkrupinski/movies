@@ -41,7 +41,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
 
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
+  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
 
   /** Distinct logical operations the driver issued, by command name — keyed by
    *  `operationId`, NOT counted per wire message. `createIndexes`/`dropIndexes`
@@ -81,7 +81,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
   // A database of its own (named per suite, since this client needs the listener above),
   // dropped whole in `afterAll` — including the `uptimeBuckets` the UptimeMonitor case drops
   // and re-creates, which in the shared database belonged to every other suite too.
-  private val database: MongoDatabase = client.getDatabase(tools.IntegrationCorpusDatabase.named(tools.IntegrationMongoTarget.fromEnv(tools.Env.fromProcess()).get, "ttl-index"))
+  private val database: MongoDatabase = client.getDatabase(tools.IntegrationCorpusDatabase.named(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "ttl-index"))
 
   private def sent(command: String): Int = Option(commands.get(command)).map(_.size()).getOrElse(0)
   private def forget(): Unit            = commands.clear()

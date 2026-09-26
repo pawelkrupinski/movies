@@ -50,7 +50,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
 
   private def tmdbStub() = new TmdbClient(
     http = new RoutingHttpFetch(Map("/search/movie" -> Mk2Search, "/external_ids" -> Mk2ExternalIds)),
-    apiKey = Some("stub")
+    apiKey = Some(settings.TmdbApiKey("stub"))
   )
 
   // ── the async TMDB stage writes the resolved row to the cache ──
@@ -74,7 +74,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   it should "record what a search that found nothing consumed, on the row it searched for" in {
     val emptyTmdb = new TmdbClient(
       http = new RoutingHttpFetch(Map("/search/movie" -> """{"results":[]}""")),
-      apiKey = Some("stub")
+      apiKey = Some(settings.TmdbApiKey("stub"))
     )
     val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer)
     val key     = cache.keyOf("Unknown Title", None)
@@ -90,7 +90,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   it should "persist tmdbNoMatch on a definitive no-match so the held-back row becomes ready to project" in {
     val emptyTmdb = new TmdbClient(
       http = new RoutingHttpFetch(Map("/search/movie" -> """{"results":[]}""")),
-      apiKey = Some("stub")
+      apiKey = Some(settings.TmdbApiKey("stub"))
     )
     // An already-scraped (cinema-side) row TMDB will fail to match — the real
     // flow always has the row present before the stage runs.
@@ -159,7 +159,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       "/search/movie" -> Mk2Search,
       "/external_ids" -> """{"id":931285, "imdb_id":""}"""   // ← cross-reference dropped
     ))
-    val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
+    val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(
       cache, new InProcessEventBus(),
       tmdb
@@ -191,7 +191,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       "/search/movie" -> Mk2Search,
       "/external_ids" -> """{"id":931285, "imdb_id":""}"""
     ))
-    val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
+    val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(
       cache, new InProcessEventBus(),
       tmdb
@@ -288,7 +288,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       "/movie/931285/credits" -> """{"id":931285,"crew":[{"id":1,"name":"Simon McQuoid","job":"Director","department":"Directing"}]}""",
       "/external_ids" -> Mk2ExternalIds
     ))
-    val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
+    val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some(settings.TmdbApiKey("stub")))
     val service  = new MovieService(cache, bus, tmdb)
     bus.subscribe(service.onMovieDetailsComplete)
 
@@ -341,7 +341,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       "/movie/1648927/external_ids"   -> frostExternalIds,
       "/movie/1648927?"               -> frostDetails
     ))
-    val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
+    val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some(settings.TmdbApiKey("stub")))
     val service  = new MovieService(cache, bus, tmdb)
     bus.subscribe(service.onMovieDetailsComplete)
 
@@ -386,7 +386,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     cache.put(key, MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy)))
 
     val service = new MovieService(
-      cache, new InProcessEventBus(), new TmdbClient(http = new RoutingHttpFetch(Map("/search/movie" -> """{"results":[]}""")), apiKey = Some("stub"))
+      cache, new InProcessEventBus(), new TmdbClient(http = new RoutingHttpFetch(Map("/search/movie" -> """{"results":[]}""")), apiKey = Some(settings.TmdbApiKey("stub")))
     )
 
     service.retryUnresolvedTmdb()
@@ -413,7 +413,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
 
     // TMDB stub throws on any call — we assert the retry never reaches it for an
     // already-resolved row (no /search/movie lands).
-    val deadTmdb = new TmdbClient(http = deadFetch, apiKey = Some("stub"))
+    val deadTmdb = new TmdbClient(http = deadFetch, apiKey = Some(settings.TmdbApiKey("stub")))
     val service  = new MovieService(cache, new InProcessEventBus(), deadTmdb)
 
     noException should be thrownBy service.retryUnresolvedTmdb()
@@ -477,7 +477,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // A recording TMDB http: if the stage ran it would hit /search/movie. We
     // assert it never does — the already-resolved row short-circuits.
     val tmdbHttp = new RoutingHttpFetch(Map("/search/movie" -> Mk2Search, "/external_ids" -> Mk2ExternalIds))
-    val service = new MovieService(cache, bus, new TmdbClient(http = tmdbHttp, apiKey = Some("stub")))
+    val service = new MovieService(cache, bus, new TmdbClient(http = tmdbHttp, apiKey = Some(settings.TmdbApiKey("stub"))))
     bus.subscribe(service.onMovieDetailsComplete)
 
     bus.publish(MovieDetailsComplete("Mortal Kombat II", Some(2026)))

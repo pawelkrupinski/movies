@@ -23,7 +23,7 @@ class ScheduledRunStoreIntegrationSpec extends AnyFlatSpec with Matchers with Be
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   // A database of its own (`IsolatedMongoDatabase` refuses a real cluster), dropped in afterAll.
-  private val isolated = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "scheduled-run-store")
+  private val isolated = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "scheduled-run-store")
   private val coll     = isolated.database
     .getCollection[Document]("__integration_test_scheduled_runs")
 

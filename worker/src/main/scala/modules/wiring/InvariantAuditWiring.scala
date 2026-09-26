@@ -1,5 +1,7 @@
 package modules.wiring
 
+import settings.{ReadModelAuditSample, ShareCardAuditSample}
+
 import modules.WorkerWiring
 import services.readmodel.ReadModelContentAudit
 import services.sharecards.ShareCardAudit
@@ -19,13 +21,13 @@ trait InvariantAuditWiring { self: WorkerWiring =>
   lazy val readModelContentAudit: RecheckedAudit =
     new RecheckedAudit("read-model-content", TaskType.AuditReadModelContent, taskQueue,
       workerMetrics.readModelContentAudit.forCountry(country.code), clock,
-      sampleSize = env.positiveInt("KINOWO_READMODEL_AUDIT_SAMPLE", 50))(
+      sampleSize = configuration.readModelAuditSample(ReadModelAuditSample(50)).value)(
       ReadModelContentAudit.differences(_, movieRepository, readModelRepository))
 
   lazy val shareCardAudit: RecheckedAudit =
     new RecheckedAudit("share-card", TaskType.AuditShareCards, taskQueue,
       workerMetrics.shareCardAudit.forCountry(country.code), clock,
-      sampleSize = env.positiveInt("KINOWO_SHARE_CARD_AUDIT_SAMPLE", 50))(
+      sampleSize = configuration.shareCardAuditSample(ShareCardAuditSample(50)).value)(
       ShareCardAudit.check(_, readModelRepository, shareCardStore))
 
   lazy val auditHandlers: Seq[TaskHandler] =

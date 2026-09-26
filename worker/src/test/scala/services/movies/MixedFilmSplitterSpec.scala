@@ -145,7 +145,7 @@ class MixedFilmSplitterSpec extends AnyFlatSpec with Matchers {
     val service    = new MovieService(cache, new InProcessEventBus(),
       new TmdbClient(http = new tools.GetOnlyHttpFetch {
         override def get(url: String): String = """{"results":[]}"""
-      }, apiKey = Some("stub")),
+      }, apiKey = Some(settings.TmdbApiKey("stub"))),
       staging = Some(staging))
 
     cache.put(cache.keyOf("Joanna d'Arc", Some(2025)), MovieRecord(data = Map[Source, SourceData](
@@ -339,7 +339,7 @@ class MixedFilmSplitterSpec extends AnyFlatSpec with Matchers {
     val service    = new MovieService(cache, new InProcessEventBus(),
       new TmdbClient(http = new tools.GetOnlyHttpFetch {
         override def get(url: String): String = """{"results":[]}"""
-      }, apiKey = Some("stub")),
+      }, apiKey = Some(settings.TmdbApiKey("stub"))),
       staging = Some(staging))
 
     cache.put(cache.keyOf("It", Some(2017)), MovieRecord(data = Map[Source, SourceData](

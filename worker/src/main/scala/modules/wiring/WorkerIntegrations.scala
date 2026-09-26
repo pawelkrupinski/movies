@@ -1,10 +1,11 @@
 package modules.wiring
 
 import services.metrics.EnvGatedFeature
+import settings.{GatedIntegration, ProcessConfiguration}
 
 /**
  * The worker's external integrations that a missing secret switches off WITHOUT failing the
- * boot — each reads `env.get(…)` and quietly runs without when it is `None`. All of them are
+ * boot — each reads its setting (`settings.GatedIntegration`) and quietly runs without when it is unset. All of them are
  * set in production (worker-secrets, plus the two Facebook keys picked from web-secrets), so
  * any one reading off there is a degraded pipeline nobody would otherwise be told about:
  *
@@ -22,11 +23,6 @@ import services.metrics.EnvGatedFeature
  */
 object WorkerIntegrations {
 
-  def features(read: String => Option[String]): Seq[EnvGatedFeature] = Seq(
-    EnvGatedFeature.requiring("tmdb", Seq("TMDB_API_KEY"), read),
-    EnvGatedFeature.requiring("omdb", Seq("OMDB_API_KEY"), read),
-    EnvGatedFeature.requiring("residential_proxy", Seq("KINOWO_PROXY_USER", "KINOWO_PROXY_PASS"), read),
-    EnvGatedFeature.requiring("zyte", Seq("ZYTE_API_KEY"), read),
-    EnvGatedFeature.requiring("sentry", Seq("SENTRY_DSN"), read),
-    EnvGatedFeature.requiring("facebook_rescrape", Seq("FACEBOOK_APP_ID", "FACEBOOK_APP_SECRET"), read))
+  def features(configuration: ProcessConfiguration): Seq[EnvGatedFeature] =
+    GatedIntegration.values.toSeq.map(integration => EnvGatedFeature(integration.featureName, configuration.missingFor(integration)))
 }

@@ -94,13 +94,13 @@ class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
     val holding = Files.createTempDirectory("vips-")
     val binary  = Files.createFile(holding.resolve("vips"),
       PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwxr-xr-x")))
-    VipsPosterShrinker.locate(Seq(empty, holding)) shouldBe Some(binary.toString)
-    VipsPosterShrinker.locate(Seq(empty)) shouldBe None
-    VipsPosterShrinker.locate(Nil) shouldBe None
+    VipsPosterShrinker.locate(settings.ExecutableSearchPath(Seq(empty, holding))) shouldBe Some(binary.toString)
+    VipsPosterShrinker.locate(settings.ExecutableSearchPath(Seq(empty))) shouldBe None
+    VipsPosterShrinker.locate(settings.ExecutableSearchPath(Nil)) shouldBe None
   }
 
   "The progressive pre-check" should "let a real 2764×4096 progressive poster render" in {
-    val vips = VipsPosterShrinker.locate(tools.ProcessConfiguration.resolve().executableSearchPath)
+    val vips = VipsPosterShrinker.locate(settings.ProcessConfiguration.resolve().executableSearchPath)
     assume(vips.isDefined, "vips is not installed")
     val dir = Files.createTempDirectory("progressive-")
     def run(args: String*): Unit = new ProcessBuilder((vips.get +: args)*).inheritIO().start().waitFor() shouldBe 0

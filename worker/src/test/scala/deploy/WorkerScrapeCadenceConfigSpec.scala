@@ -137,7 +137,7 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     // lengthens the sweep; shortening the cadence shrinks the budget. Assert the
     // invariant rather than the arithmetic, so either can move as long as the
     // sweep still fits.
-    val pace     = RateLimitedHttpFetch.configuredInterval(tools.Env.of())("https://www.filmstarts.de/kinoprogramm/kino/A0006/")
+    val pace     = RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(tools.Env.of()))("https://www.filmstarts.de/kinoprogramm/kino/A0006/")
     val cadence  = cadenceOf(workerOverlay("de")).map(_.toInt).map(_.minutes)
     val requests = Country.Germany.cities.flatMap(_.cinemas).distinct.size * RequestsPerGermanVenue
 
@@ -162,7 +162,7 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     // are own-site-primary (only reaching flicks after 6h of a failing primary), so
     // the paced origin carries 500. Assert the INVARIANT the way DE's test does, so
     // the pace and the cadence can each move as long as the sweep still fits.
-    val pace    = RateLimitedHttpFetch.configuredInterval(tools.Env.of())("https://www.flicks.co.uk/cinema/sessions/x/2026-07-31/")
+    val pace    = RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(tools.Env.of()))("https://www.flicks.co.uk/cinema/sessions/x/2026-07-31/")
     val cadence = cadenceOf(workerOverlay("uk")).map(_.toInt).map(_.minutes)
 
     withClue("Flicks must stay paced — unpaced fan-out is what drew the 429s: ") {
@@ -189,7 +189,7 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     // The fact that changed: Flicks earned a HostPolicies pace row, coupling the
     // cadence above to it exactly as DE's is to Filmstarts'. A dropped pace row
     // would silently reopen the 429 bursts (panel-14) and the venue-day drops.
-    RateLimitedHttpFetch.configuredInterval(tools.Env.of())("https://www.flicks.co.uk/cinema/sessions/x/2026-07-31/") should not be empty
+    RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(tools.Env.of()))("https://www.flicks.co.uk/cinema/sessions/x/2026-07-31/") should not be empty
   }
 
   "the US worker" should "scrape on a cadence its paced Flicks sweep can drain within" in {
@@ -200,7 +200,7 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     // stalling connections and plateaus at ~3-5 req/s whatever the concurrency, so a
     // shorter interval buys latency, not throughput. The only lever left is the
     // cadence, which is why this country's is 840min and not the UK's 420.
-    val pace    = RateLimitedHttpFetch.configuredInterval(tools.Env.of())("https://www.flicks.us/cinema/sessions/x/2026-08-30/")
+    val pace    = RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(tools.Env.of()))("https://www.flicks.us/cinema/sessions/x/2026-08-30/")
     val cadence = cadenceOf(workerOverlay("us")).map(_.toInt).map(_.minutes)
 
     withClue("flicks.us must stay paced — an UNPACED host is the condition that drew the UK's 429 storm, here at 6x the venue count: ") {
@@ -243,7 +243,7 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     // (250 -> 500 -> 1000 -> 1400ms) finding what a Webedia origin tolerates
     // sustained; starting Spain there costs sweep length and risks nothing, and
     // KINOWO_SENSACINE_PACE_MS retunes it live.
-    val pace = RateLimitedHttpFetch.configuredInterval(tools.Env.of())(
+    val pace = RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(tools.Env.of()))(
       "https://www.sensacine.com/_/showtimes/theater-E0291/d-2026-09-02/p-1/")
     val cadence = cadenceOf(workerOverlay("es")).map(_.toInt).map(_.minutes)
 
@@ -276,8 +276,8 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     // thing keeping their request budgets apart is that the pace gate and the 429
     // back-off both bucket by full hostname. Assert they resolve to separate rows
     // rather than one matching both.
-    val es = RateLimitedHttpFetch.configuredInterval(tools.Env.of())("https://www.sensacine.com/cines/cine/E0291/")
-    val de = RateLimitedHttpFetch.configuredInterval(tools.Env.of())("https://www.filmstarts.de/kinoprogramm/kino/A0263/")
+    val es = RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(tools.Env.of()))("https://www.sensacine.com/cines/cine/E0291/")
+    val de = RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(tools.Env.of()))("https://www.filmstarts.de/kinoprogramm/kino/A0263/")
     es should not be empty
     de should not be empty
     // Equal TODAY (Spain adopted its sibling's number), but they are separate knobs:

@@ -87,7 +87,7 @@ class WebServingWiringSpec extends AnyFlatSpec with Matchers {
     "use the configured local mirror unconditionally — no prod fall-back even when unreachable" in {
     val mirror = stubConnection("mirror") // database = None, i.e. an unreachable mirror
     val prod   = stubConnection("prod")
-    val chosen = Wiring.debugMirrorConnection(Some("mongodb://127.0.0.1:9/x"), _ => mirror, prod)
+    val chosen = Wiring.debugMirrorConnection(Some(settings.MirrorMongoUri("mongodb://127.0.0.1:9/x")), _ => mirror, prod)
     (chosen eq mirror) shouldBe true
   }
 
@@ -99,7 +99,7 @@ class WebServingWiringSpec extends AnyFlatSpec with Matchers {
 
   it should "not force the prod connection when a mirror URI is configured" in {
     var prodForced = false
-    Wiring.debugMirrorConnection(Some("mongodb://127.0.0.1:9/x"), _ => stubConnection("mirror"),
+    Wiring.debugMirrorConnection(Some(settings.MirrorMongoUri("mongodb://127.0.0.1:9/x")), _ => stubConnection("mirror"),
       { prodForced = true; stubConnection("prod") })
     prodForced shouldBe false
   }

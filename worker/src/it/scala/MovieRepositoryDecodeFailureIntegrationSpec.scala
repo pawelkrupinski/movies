@@ -19,7 +19,7 @@ class MovieRepositoryDecodeFailureIntegrationSpec extends AnyFlatSpec with Match
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   private val uri = Env.fromProcess().get("MONGODB_URI").get
 
-  private val target = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
+  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
   "the movies repository" should "count a document it cannot decode, on a point read and on the corpus scan" in
     tools.IntegrationCorpusDatabase.withDatabase(target, "movies-decode-failure") { db =>
       val counted    = scala.collection.mutable.ListBuffer.empty[String]

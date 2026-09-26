@@ -109,13 +109,14 @@ object SharedUsersMigration {
 
   def main(args: Array[String]): Unit = {
     val write  = args.contains("--write")
-    val target = Env.fromProcess().get("MONGODB_USERS_DB").map(_.trim).filter(_.nonEmpty).getOrElse {
+    val process = _root_.settings.ProcessConfiguration.resolve()
+    val target  = process.usersDatabase.map(_.value).getOrElse {
       println("MONGODB_USERS_DB is not set — nothing to migrate INTO. Refusing to guess.")
       sys.exit(1)
     }
 
     // One client for every database view, the way the app itself does it.
-    val client = MongoConnection.sharedClientAt(services.MongoAddress.fromEnv(tools.Env.fromProcess()), tools.Env.fromProcess()).getOrElse {
+    val client = MongoConnection.sharedClientAt(process.mongoAddress, services.MongoTuning.from(process)).getOrElse {
       println("MONGODB_URI is not set.")
       sys.exit(1)
     }

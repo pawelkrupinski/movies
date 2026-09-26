@@ -1,5 +1,7 @@
 package modules.wiring
 
+import settings.{StagingPromoteInitialDelay, StagingPromoteInterval}
+
 import modules.WorkerWiring
 import services.events.StagingFilmEnriched
 import services.staging.{FoldOnStagingEnriched, MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
@@ -38,11 +40,13 @@ trait StagingWiring { self: WorkerWiring =>
     new StagingResolveImdbIdHandler(stagingSteps),
     new StagingFoldHandler(title => eventBus.publish(StagingFilmEnriched(title)))
   )
-  private val StagingReaperInitialDelay = env.positiveLong("KINOWO_STAGING_PROMOTE_INITIAL_SECONDS", 30L)
-  private val StagingReaperInterval     = env.positiveLong("KINOWO_STAGING_PROMOTE_SECONDS", 120L)
+  private val StagingReaperInitialDelay =
+    configuration.stagingPromoteInitialDelay(StagingPromoteInitialDelay(FiniteDuration(30L, TimeUnit.SECONDS)))
+  private val StagingReaperInterval     =
+    configuration.stagingPromoteInterval(StagingPromoteInterval(FiniteDuration(120L, TimeUnit.SECONDS)))
   lazy val stagingReaper = new StagingReaper(stagingSteps, taskQueue, stagingRepository,
-    interval     = FiniteDuration(StagingReaperInterval, TimeUnit.SECONDS),
-    initialDelay = FiniteDuration(StagingReaperInitialDelay, TimeUnit.SECONDS),
+    interval     = StagingReaperInterval.value,
+    initialDelay = StagingReaperInitialDelay.value,
     runStore     = scheduledRunStore,
     metrics      = taskMetrics)
 }

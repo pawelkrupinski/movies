@@ -20,7 +20,7 @@ class ReadModelFindCardIntegrationSpec extends AnyFlatSpec with Matchers {
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
 
   "findCard" should "read back every card of the corpus, its screenings and nothing else, and compare equal to what was written" in {
-    IntegrationCorpusDatabase.withDatabase(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "readmodel-findcard") { db =>
+    IntegrationCorpusDatabase.withDatabase(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "readmodel-findcard") { db =>
       val rm       = new MongoReadModelRepository(Some(db))
       val snapshot = ReadModelSnapshot.parse(ReadModelSnapshot.read())
       ReadModelSnapshot.loadInto(rm, ReadModelSnapshot.read())

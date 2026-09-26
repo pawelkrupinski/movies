@@ -31,7 +31,7 @@ class TmdbSlotRefillSpec extends AnyFlatSpec with Matchers {
          |"genres":[{"id":27,"name":"Horror"}],"credits":{"crew":[{"job":"Director","name":"David Robert Mitchell"}],"cast":[]}}""".stripMargin)
      else Map.empty[String, String]) ++
     Map(s"/movie/$Id/external_ids" -> s"""{"id":$Id,"imdb_id":"tt3235888","wikidata_id":"Q17012047"}""")),
-    apiKey = Some("stub"))
+    apiKey = Some(settings.TmdbApiKey("stub")))
 
   private def slotless: MovieRecord = MovieRecord(
     tmdbId = Some(Id), imdbId = Some("tt3235888"), imdbRating = Some(6.8), filmwebRating = Some(6.5),

@@ -16,7 +16,7 @@ import scala.concurrent.duration._
 class UniqueTmdbIdIntegrationSpec extends AnyFlatSpec with Matchers {
   private val uri = Env.fromProcess().get("MONGODB_URI").get
 
-  private val target = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
+  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
   private def row(title: String): MovieRecord =
     MovieRecord(tmdbId = Some(4242), data = Map[Source, SourceData](
       Tmdb      -> SourceData(title = Some(title), releaseYear = Some(2026)),

@@ -1,5 +1,7 @@
 package services.alerts
 
+import settings.{TelegramBotToken, TelegramChatId, TelegramRoute, TelegramTopicId}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.GetOnlyHttpFetch
@@ -14,7 +16,7 @@ class TelegramNotifierSpec extends AnyFlatSpec with Matchers {
 
   "TelegramNotifier" should "build a sendMessage URL with chat id, topic and URL-encoded text" in {
     val http = new CapturingFetch
-    new TelegramNotifier(http, "BOT:TOKEN", chatId = -1003950886618L, topicId = Some(2)).send("Kino Praha down → Filmweb")
+    new TelegramNotifier(http, TelegramRoute(TelegramBotToken("BOT:TOKEN"), TelegramChatId(-1003950886618L), Some(TelegramTopicId(2)))).send("Kino Praha down → Filmweb")
 
     http.url should startWith ("https://api.telegram.org/botBOT:TOKEN/sendMessage?")
     http.url should include ("chat_id=-1003950886618")
@@ -24,13 +26,13 @@ class TelegramNotifierSpec extends AnyFlatSpec with Matchers {
 
   it should "omit message_thread_id when no topic is set" in {
     val http = new CapturingFetch
-    new TelegramNotifier(http, "T", chatId = 123L, topicId = None).send("hi")
+    new TelegramNotifier(http, TelegramRoute(TelegramBotToken("T"), TelegramChatId(123L), None)).send("hi")
     http.url should include ("chat_id=123")
     http.url should not include "message_thread_id"
   }
 
   it should "swallow a delivery failure (never throw into the scrape tick)" in {
     val boom = new GetOnlyHttpFetch { def get(u: String): String = throw new RuntimeException("network down") }
-    noException should be thrownBy new TelegramNotifier(boom, "T", 1L, None).send("x")
+    noException should be thrownBy new TelegramNotifier(boom, TelegramRoute(TelegramBotToken("T"), TelegramChatId(1L), None)).send("x")
   }
 }

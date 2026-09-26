@@ -168,7 +168,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val cache  = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Varavu", Some(2026), noTmdb)), normalizer = titleNormalizer), normalizer = titleNormalizer)
     val omdb   = new OMDbClient(RoutingHttpFetch.getOnly(Seq("?t=" ->
       """{"Title":"Varavu","Year":"2026","imdbID":"tt37963237","Director":"Shaji Kailas","Response":"True"}""")),
-      apiKey = Some("stub"))
+      apiKey = Some(settings.OmdbApiKey("stub")))
     val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
       omdb = Some(omdb))
 

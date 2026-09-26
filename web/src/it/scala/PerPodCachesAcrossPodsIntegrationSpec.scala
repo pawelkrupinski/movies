@@ -27,7 +27,7 @@ import scala.concurrent.duration._
 class PerPodCachesAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers {
 
   assume(tools.Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(tools.Env.fromProcess())
+  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
 
   private val clock = Clock.fixed(Instant.parse("2026-06-01T10:00:00Z"), ZoneOffset.UTC)
   // Well inside anything a stream needs, far below the 10-minute TTL that bounds a stall.
@@ -42,7 +42,7 @@ class PerPodCachesAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers {
    *  A, and the `Last-Modified` A answered it with — once A's own cache holds it, so the fast
    *  path is what answers from here on. */
   private def withWarmCache(suite: String, cacheTtl: FiniteDuration)(body: (UserStatePod, UserStatePod, String, String) => Unit): Unit =
-    ConcurrentInstances.withInstances(tools.IntegrationMongoTarget.fromEnv(tools.Env.fromProcess()).get, suite) { instances =>
+    ConcurrentInstances.withInstances(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, suite) { instances =>
       val users = new InMemoryUserRepository
       val Seq(a, b) = instances.map(instance => new UserStatePod(instance.database, users, clock, cacheTtl = cacheTtl))
       try {
@@ -86,7 +86,7 @@ class PerPodCachesAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers {
       Seq(Showtime(LocalDateTime.of(2026, 6, 2, hour, 0), None)))
 
   "every web pod's per-city validator" should "move, and serve the change, when the worker writes that city" in
-    ConcurrentInstances.withInstances(tools.IntegrationMongoTarget.fromEnv(tools.Env.fromProcess()).get, "per-city-validator-two-pods", count = 3) { instances =>
+    ConcurrentInstances.withInstances(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "per-city-validator-two-pods", count = 3) { instances =>
       val Seq(podA, podB, worker) = instances
       val writer = new MongoReadModelRepository(Some(worker.database))
       writer.upsertMovie(film)

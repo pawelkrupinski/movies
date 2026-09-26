@@ -4,7 +4,7 @@ import org.mongodb.scala.MongoDatabase
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
 import services.readmodel.{MongoReadModelRepository, ReadModelProjector}
-import tools.{Env, IntegrationCorpusDatabase}
+import tools.IntegrationCorpusDatabase
 
 /** The production storage split — `movies` + `screenings` + `movie_slots` — with the real
  *  read model and a projector over it, in a database of the suite's own (the projector reads
@@ -29,7 +29,7 @@ final class ProjectedMongoCorpus(db: MongoDatabase) {
 object ProjectedMongoCorpus {
   /** Run `body` over a fresh corpus database named for `suite`, dropped afterwards. */
   def withCorpus[A](suite: String)(body: ProjectedMongoCorpus => A): A =
-    IntegrationCorpusDatabase.withDatabase(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, suite) { db =>
+    IntegrationCorpusDatabase.withDatabase(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, suite) { db =>
       val corpus = new ProjectedMongoCorpus(db)
       try body(corpus) finally corpus.close()
     }

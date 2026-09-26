@@ -8,7 +8,7 @@ import tools.{GetOnlyHttpFetch, RealHttpFetch}
 
 class TmdbClientSpec extends AnyFlatSpec with Matchers {
 
-  private val client = new TmdbClient(new RealHttpFetch, apiKey = tools.Env.fromProcess().get("TMDB_API_KEY"))
+  private val client = new TmdbClient(new RealHttpFetch, apiKey = settings.ProcessConfiguration.resolve().tmdbApiKey)
 
   "parseSearchResults" should "extract id, title, year, popularity from a TMDB search response" in {
     val json =
@@ -78,7 +78,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
   // exact-title matches over year-distance.
 
   private def fakeClient(responses: Map[String, String]): TmdbClient =
-    new TmdbClient(http = tools.RoutingHttpFetch.getOnly(responses), apiKey = Some("fake"))
+    new TmdbClient(http = tools.RoutingHttpFetch.getOnly(responses), apiKey = Some(settings.TmdbApiKey("fake")))
 
   "findByImdbId" should "parse a TMDB /find response into a SearchResult (Girl Climber)" in {
     val findBody =
@@ -206,7 +206,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
         if (url.contains("/movie/42?language=en-GB")) english
         else throw new RuntimeException(s"expected an en-GB request, got: $url")
     }
-    val ukClient = new TmdbClient(http = fake, apiKey = Some("fake"),
+    val ukClient = new TmdbClient(http = fake, apiKey = Some(settings.TmdbApiKey("fake")),
       language = java.util.Locale.forLanguageTag("en-GB"))
     val d = ukClient.fullDetails(42).get
     d.synopsis  shouldBe Some("Seduction and revenge among the French aristocracy.")
@@ -451,7 +451,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     val body  = scala.io.Source.fromInputStream(
       getClass.getClassLoader.getResourceAsStream("fixtures/tmdb/search_lalka_2026.json")).mkString
     val fetch = new StubFetch(body)
-    val hit   = new TmdbClient(fetch, apiKey = Some("stub")).searchYearExactTop("Lalka", Some(2026))
+    val hit   = new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("stub"))).searchYearExactTop("Lalka", Some(2026))
 
     withClue(s"fetched ${fetch.lastUrl}: ")(fetch.lastUrl should include ("/search/movie"))
     hit shouldBe None
@@ -468,7 +468,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
         | "popularity":2.5181,"overview":"Nowa adaptacja powieści Bolesława Prusa o tym samym tytule."}
         |]}""".stripMargin
     val fetch = new StubFetch(body)
-    new TmdbClient(fetch, apiKey = Some("stub")).searchYearExactTop("Lalka", Some(2026)) shouldBe
+    new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("stub"))).searchYearExactTop("Lalka", Some(2026)) shouldBe
       Some(TmdbClient.SearchResult(1321666, "Lalka", Some("Lalka"), Some(2026), 2.5181,
         Some("Nowa adaptacja powieści Bolesława Prusa o tym samym tytule.")))
   }
@@ -482,7 +482,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     val body  = FixtureFile.read(
       "test/resources/fixtures/08-06-2026/api.themoviedb.org/3/movie/365398/credits.0")
     val fetch = new StubFetch(body)
-    val ids   = new TmdbClient(fetch, apiKey = Some("stub")).crewIds(365398)
+    val ids   = new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("stub"))).crewIds(365398)
 
     withClue(s"fetched ${fetch.lastUrl}: ")(fetch.lastUrl should include ("/movie/365398/credits"))
     // The whole crew, not only the Director: a venue crediting the film's OTHER
@@ -497,6 +497,6 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     val fetch = new GetOnlyHttpFetch {
       override def get(url: String): String = throw new tools.HttpStatusException(404, "GET", url, None)
     }
-    new TmdbClient(fetch, apiKey = Some("stub")).crewIds(365398) shouldBe empty
+    new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("stub"))).crewIds(365398) shouldBe empty
   }
 }

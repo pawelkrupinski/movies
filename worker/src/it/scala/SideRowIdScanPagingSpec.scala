@@ -24,7 +24,7 @@ import scala.jdk.CollectionConverters._
 class SideRowIdScanPagingSpec extends AnyFlatSpec with Matchers {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
+  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
 
   private val PageSize = 3
   private val Films    = 8
@@ -39,7 +39,7 @@ class SideRowIdScanPagingSpec extends AnyFlatSpec with Matchers {
       })
       .build()
     val client = MongoClient(settings)
-    val db     = client.getDatabase(tools.IntegrationCorpusDatabase.named(tools.IntegrationMongoTarget.fromEnv(tools.Env.fromProcess()).get, "side-row-id-paging"))
+    val db     = client.getDatabase(tools.IntegrationCorpusDatabase.named(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "side-row-id-paging"))
     try {
       val screenings = new MongoScreeningsRepository(Some(db), findAllBatchSize = PageSize)
       val slots      = new MongoSlotsRepository(Some(db), findAllBatchSize = PageSize)

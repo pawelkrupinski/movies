@@ -19,7 +19,7 @@ import scala.concurrent.duration._
 class MongoAuthExchangeCodeStoreIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
+  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
 
   private val DbName = "kinowo_it_authexchangecodes"
   private lazy val client: MongoClient = MongoClient(Env.fromProcess().get("MONGODB_URI").get)

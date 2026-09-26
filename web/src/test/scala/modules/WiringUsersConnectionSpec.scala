@@ -20,6 +20,8 @@ import services.MongoConnection
  * renders, every spec still passes, and the only symptom is an account that
  * does not exist one country over.
  */
+import settings.MongoDatabaseName
+
 class WiringUsersConnectionSpec extends AnyFlatSpec with Matchers {
 
   // A connection with no URI never dials Mongo — `MongoConnection.init` logs and
@@ -30,13 +32,13 @@ class WiringUsersConnectionSpec extends AnyFlatSpec with Matchers {
 
   private class RecordingOpen {
     var opened: List[String] = Nil
-    val open: String => MongoConnection = name => { opened = opened :+ name; disabled(name) }
+    val open: MongoDatabaseName => MongoConnection = name => { opened = opened :+ name.value; disabled(name.value) }
   }
 
   "Wiring.usersConnection" should "reuse the deployment's own connection when no users database is configured" in {
     val own    = disabled("kinowo_uk")
     val opener = new RecordingOpen
-    val got    = Wiring.usersConnection("kinowo_uk", "kinowo_uk", own, opener.open)
+    val got    = Wiring.usersConnection(MongoDatabaseName("kinowo_uk"), MongoDatabaseName("kinowo_uk"), own, opener.open)
 
     (got eq own) shouldBe true
     // The point of reusing it: no second boot probe, and no second close() to
@@ -47,7 +49,7 @@ class WiringUsersConnectionSpec extends AnyFlatSpec with Matchers {
   it should "open a second view, on the users database, when one is configured" in {
     val own    = disabled("kinowo_uk")
     val opener = new RecordingOpen
-    val got    = Wiring.usersConnection("kinowo_uk", "kinowo_users", own, opener.open)
+    val got    = Wiring.usersConnection(MongoDatabaseName("kinowo_uk"), MongoDatabaseName("kinowo_users"), own, opener.open)
 
     (got eq own) shouldBe false
     opener.opened shouldBe List("kinowo_users")
@@ -58,7 +60,7 @@ class WiringUsersConnectionSpec extends AnyFlatSpec with Matchers {
   it should "send every country to ONE users database, whatever its own corpus is" in {
     val landedOn = models.Country.all.map { country =>
       val opener = new RecordingOpen
-      Wiring.usersConnection(country.mongoDb, "kinowo_users", disabled(country.mongoDb), opener.open)
+      Wiring.usersConnection(MongoDatabaseName(country.mongoDb), MongoDatabaseName("kinowo_users"), disabled(country.mongoDb), opener.open)
       opener.opened
     }
     landedOn.distinct shouldBe List(List("kinowo_users"))
@@ -71,7 +73,7 @@ class WiringUsersConnectionSpec extends AnyFlatSpec with Matchers {
   it should "not duplicate the connection when the users database is this country's own" in {
     val own    = disabled("kinowo")
     val opener = new RecordingOpen
-    (Wiring.usersConnection("kinowo", "kinowo", own, opener.open) eq own) shouldBe true
+    (Wiring.usersConnection(MongoDatabaseName("kinowo"), MongoDatabaseName("kinowo"), own, opener.open) eq own) shouldBe true
     opener.opened shouldBe empty
   }
 }

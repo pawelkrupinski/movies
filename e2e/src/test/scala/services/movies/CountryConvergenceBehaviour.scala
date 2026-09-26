@@ -133,10 +133,10 @@ abstract class CountryConvergenceBehaviour(
    * (`Record scrape fixtures`) run without it, and they are what writes the tree.
    */
   private lazy val missingFixtures: Option[MissingFixtures] =
-    Option.when(ArchiveReplayWiring.hermeticIn(Env.fromProcess()))(new MissingFixtures)
+    Option.when(ArchiveReplayWiring.hermeticIn(_root_.settings.ProcessConfiguration.resolve()))(new MissingFixtures)
 
   private def recordCorpusProvenance(rows: Seq[services.scrapes.ArchivedScrape]): Unit = {
-    val provenance = CorpusProvenance.of(corpusKey, rows, Env.fromProcess().get)
+    val provenance = CorpusProvenance.of(corpusKey, rows, _root_.settings.ProcessConfiguration.resolve())
     corpusProvenance = Some(provenance)
     info(s"${country.displayName}: ${provenance.verdict}")
     Env.fromProcess().get("GITHUB_STEP_SUMMARY").foreach { summary =>
@@ -164,7 +164,7 @@ abstract class CountryConvergenceBehaviour(
    * could not produce it because the database was never there to disagree.
    */
   private lazy val storage: ConvergenceStorage =
-    ConvergenceStorage.fromEnv(Env.fromProcess(), s"convergence-$corpusKey", TitleNormalizer.forCountry(country))
+    ConvergenceStorage.fromConfiguration(_root_.settings.ProcessConfiguration.resolve(), s"convergence-$corpusKey", TitleNormalizer.forCountry(country))
 
   /** The per-pass databases, so `afterAll` can drop them. Each is isolated; none may
    *  outlive the run. */
@@ -225,11 +225,11 @@ abstract class CountryConvergenceBehaviour(
   /** The same tree [[ArchiveReplayWiring]] replays and records into, asked the same way,
    *  so the cache lands BESIDE the corpus it belongs to rather than beside whichever
    *  directory this file happened to name. */
-  private lazy val fixtureDirectory: String = ArchiveReplayWiring.fixtureDirectory(country, Env.fromProcess())
+  private lazy val fixtureDirectory: String = ArchiveReplayWiring.fixtureDirectory(country, _root_.settings.ProcessConfiguration.resolve())
 
   /** Where that tree lives — the repository's own unless KINOWO_FIXTURE_ROOT names another;
    *  resolved here, the suite being the run's root, and handed to everything that reads it. */
-  private lazy val fixtureRoot: clients.tools.FixtureRoot = clients.tools.FixtureRoot.fromEnv(Env.fromProcess())
+  private lazy val fixtureRoot: settings.FixtureRoot = _root_.settings.ProcessConfiguration.resolve().fixtureRoot
 
   /** Age the recorded responses out before anything reads them, so a rating captured
    *  once isn't replayed for ever. The verdict cache expires itself on read; this is the
@@ -404,7 +404,7 @@ abstract class CountryConvergenceBehaviour(
     // The identity resolver's per-listing query set (docs/design/identity-resolver.md §9), when
     // asked for: a RECORDING leg files every answer into the tree it then pins, a HERMETIC one
     // names each the tree lacks below. Off by default — a tree recorded without it lacks them.
-    if (IdentityLookupSweep.enabledFromEnv)
+    if (IdentityLookupSweep.enabledIn(_root_.settings.ProcessConfiguration.resolve()))
       info(s"${country.displayName}: identity resolver lookups — ${IdentityLookupSweep.over(w, country)}")
     info(s"${country.displayName}: " + missingFixtures.fold("RECORDING run — requests the tree lacks are fetched live and recorded")(
       m => s"HERMETIC run — ${m.size} request(s) the recorded tree could not answer"))
@@ -1060,7 +1060,7 @@ abstract class CountryConvergenceBehaviour(
     // The pass's own scope for the phase log, matching its database's suffix so a line
     // in the interleaved output of `Passes` concurrent replays names which pass wrote it.
     val scope = s"${country.code}p${seed - OrderSeed}"
-    val passStorage = ConvergenceStorage.fromEnv(Env.fromProcess(), scope, TitleNormalizer.forCountry(country))
+    val passStorage = ConvergenceStorage.fromConfiguration(_root_.settings.ProcessConfiguration.resolve(), scope, TitleNormalizer.forCountry(country))
     passStorages.synchronized(passStorages += passStorage)
     val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage, fixtureDirectory, fixtureRoot, missingFixtures, Env.fromProcess()) {
       override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget

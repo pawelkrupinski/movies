@@ -42,7 +42,7 @@ class TmdbReenrichResetSpec extends AnyFlatSpec with Matchers {
       s"/movie/$Correct/external_ids" -> s"""{"id":$Correct,"imdb_id":"tt6751668"}""",
       s"/movie/$Wrong/external_ids"   -> s"""{"id":$Wrong,"imdb_id":"tt0084472"}"""
     )),
-    apiKey = Some("stub")
+    apiKey = Some(settings.TmdbApiKey("stub"))
   )
 
   // A row self-locked at |1982: the resolved Tmdb slot carries 1982, the cinema slot
@@ -105,7 +105,7 @@ class TmdbReenrichResetSpec extends AnyFlatSpec with Matchers {
     }
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val service = new MovieService(cache, new InProcessEventBus(), new TmdbClient(
-      http = RoutingHttpFetch.getOnly(Seq("search/movie" -> """{"results":[]}""")), apiKey = Some("stub")))
+      http = RoutingHttpFetch.getOnly(Seq("search/movie" -> """{"results":[]}""")), apiKey = Some(settings.TmdbApiKey("stub"))))
 
     noException should be thrownBy
       service.resolveTmdbOnce(stored, Some(2024), originalTitle = None, director = None, mode = services.tasks.ResolveMode.Force)

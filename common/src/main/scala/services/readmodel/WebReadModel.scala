@@ -3,7 +3,9 @@ package services.readmodel
 import models.{Cinema, City, CityScreening, ResolvedMovie}
 import play.api.Logging
 import services.Stoppable
-import tools.{DaemonExecutors, Env}
+import settings.{ReadModelColdRetryInterval, ReadModelReloadInterval}
+import scala.concurrent.duration.DurationInt
+import tools.DaemonExecutors
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import scala.jdk.CollectionConverters._
@@ -28,9 +30,10 @@ import scala.util.Try
  */
 class WebReadModel(
     reader: ReadModelReader,
-    // The process config the backstop / cold-retry cadences are read from. Defaulted to an
-    // empty Env (the compiled-in cadences) for specs; the web wiring passes its root's instance.
-    env: Env = Env.of()) extends Stoppable with Logging {
+    // The backstop reload and the cold-start retry cadences (`KINOWO_READMODEL_RELOAD_SECONDS` /
+    // `…_COLD_RETRY_SECONDS`, resolved by the web root); the compiled-in ones for specs.
+    reloadInterval:    ReadModelReloadInterval    = WebReadModel.DefaultReloadInterval,
+    coldRetryInterval: ReadModelColdRetryInterval = WebReadModel.DefaultColdRetryInterval) extends Stoppable with Logging {
 
   private val movies = new ConcurrentHashMap[String, ResolvedMovie]()
   // citySlug -> (screeningId -> CityScreening). The per-city bucket is the
@@ -375,10 +378,10 @@ class WebReadModel(
   // ── Lifecycle ───────────────────────────────────────────────────────────────
 
   private val scheduler       = DaemonExecutors.scheduler("web-read-model")
-  private val BackstopSeconds  = env.positiveLong("KINOWO_READMODEL_RELOAD_SECONDS", 1800L)
+  private val BackstopSeconds  = reloadInterval.value.toSeconds
   // Far tighter than the backstop because the state it recovers from is a blank site, not
   // drift. Cheap enough to run at this cadence precisely because it probes with a count.
-  private val ColdRetrySeconds = env.positiveLong("KINOWO_READMODEL_COLD_RETRY_SECONDS", 30L)
+  private val ColdRetrySeconds = coldRetryInterval.value.toSeconds
   @volatile private var movieWatch:     Option[StreamSubscription] = None
   @volatile private var screeningWatch: Option[StreamSubscription] = None
 
@@ -408,4 +411,9 @@ class WebReadModel(
     screeningWatch.foreach(h => Try(h.close()))
     scheduler.shutdown()
   }
+}
+
+object WebReadModel {
+  val DefaultReloadInterval: ReadModelReloadInterval       = ReadModelReloadInterval(30.minutes)
+  val DefaultColdRetryInterval: ReadModelColdRetryInterval = ReadModelColdRetryInterval(30.seconds)
 }

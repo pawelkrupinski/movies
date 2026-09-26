@@ -54,7 +54,7 @@ class WrongLanguageSlotReresolveSpec extends AnyFlatSpec with Matchers {
            | "release_date":"2026-05-22","runtime":121,"genres":[],"production_countries":[],
            | "credits":{"crew":[{"job":"Director","name":"Jon Favreau"}],"cast":[]}}""".stripMargin
     )),
-    apiKey   = Some("stub"),
+    apiKey   = Some(settings.TmdbApiKey("stub")),
     language = Country.Germany.language
   )
 

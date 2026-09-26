@@ -49,7 +49,7 @@ class DirectorWalkNoReleaseYearSpec extends AnyFlatSpec with Matchers {
       s"/movie/$Stub?" -> s"""{"id":$Stub,"title":"The Square","original_title":"The Square",
         |"credits":{"crew":[{"id":$PersonId,"name":"Kim Bo-sol","job":"Director"}]}}""".stripMargin
     )),
-    apiKey = Some("stub")
+    apiKey = Some(settings.TmdbApiKey("stub"))
   )
 
   "a director-walk hit whose TMDB credit has no release year" should

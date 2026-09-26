@@ -30,7 +30,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 class ConvergenceStorageIntegrationSpec extends AnyFlatSpec with Matchers {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
+  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
 
   /** The 2026-08-04 regression, in the layer that can catch it in seconds rather
    *  than in an hour-long corpus replay.
@@ -52,7 +52,7 @@ class ConvergenceStorageIntegrationSpec extends AnyFlatSpec with Matchers {
    *  replay harness was simply never held to it. */
   it should "key through the country it was built for, not the single-country default" in {
     val de = ConvergenceStorage.mongo(
-      tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "normalizer-scope-spec",
+      tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "normalizer-scope-spec",
       services.movies.TitleNormalizer.forCountry(models.Country.Germany))
     try {
       withClue("a German leg must not fold ' & ' to the Polish ' i ': ") {
@@ -66,7 +66,7 @@ class ConvergenceStorageIntegrationSpec extends AnyFlatSpec with Matchers {
   }
 
   "a Mongo convergence storage" should "expose one database to its repositories and its connection alike" in {
-    val storage = ConvergenceStorage.mongo(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "storage-agreement-spec", titleNormalizer)
+    val storage = ConvergenceStorage.mongo(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "storage-agreement-spec", titleNormalizer)
     try {
       storage.staging.upsert(Multikino, "Ghost In The Shell", Some(2017), MovieRecord())
 

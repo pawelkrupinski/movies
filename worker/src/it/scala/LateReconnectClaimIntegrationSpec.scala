@@ -22,7 +22,7 @@ import scala.concurrent.duration._
 class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with Eventually {
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   private val uri      = Env.fromProcess().get("MONGODB_URI").get
-  private val mongoTarget = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
+  private val mongoTarget = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
   private val target   = URI.create(uri.replace("mongodb://", "http://"))
   private val patience = PatienceConfig(timeout = Span(30, Seconds), interval = Span(1, Seconds))
 

@@ -69,7 +69,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
         |]}""".stripMargin,
       s"/movie/$TmdbId/external_ids" -> s"""{"id":$TmdbId,"imdb_id":"$ImdbId"}"""
     )),
-    apiKey = Some("stub")
+    apiKey = Some(settings.TmdbApiKey("stub"))
   )
 
   // Helios slot shape — minimal SourceData with director populated.
@@ -85,7 +85,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
 
   private def silentTmdb: TmdbClient = new TmdbClient(http = new GetOnlyHttpFetch {
     override def get(url: String): String = throw new RuntimeException(s"TMDB should not be called: $url")
-  }, apiKey = Some("stub"))
+  }, apiKey = Some(settings.TmdbApiKey("stub")))
 
   "needsTmdbResolution (bus path)" should "search again when a fresh director hint changes what would be searched" in {
     val repository  = new InMemoryMovieRepository(normalizer = titleNormalizer)
@@ -131,7 +131,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     val later = Instant.parse("2026-09-07T12:00:00Z")
     val emptyTmdb = new TmdbClient(http = new GetOnlyHttpFetch {
       override def get(url: String): String = """{"results":[]}"""
-    }, apiKey = Some("stub"))
+    }, apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, bus, emptyTmdb, clock = Clock.fixed(later, ZoneOffset.UTC))
     bus.subscribe(service.onMovieDetailsComplete)
 
@@ -211,7 +211,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
       "query=Possession"          -> """{"results":[{"id":21484,"title":"Possession","original_title":"Possession","release_date":"1981-05-27","popularity":9.0}]}""",
       "/search/movie"             -> """{"results":[]}""",
       "/movie/21484/external_ids" -> """{"id":21484,"imdb_id":"tt0082933"}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, bus, tmdb)
     bus.subscribe(service.onMovieDetailsComplete)
 
@@ -239,7 +239,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
       "query=Backrooms"           -> """{"results":[{"id":1083381,"title":"Backrooms","original_title":"Backrooms","release_date":"2026-01-01","popularity":9.0}]}""",
       "/search/movie"             -> """{"results":[]}""",
       "/movie/1083381/external_ids" -> """{"id":1083381,"imdb_id":"tt9999999"}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     // The staging row's key title ("Premiera") misses TMDB; only the Helios slot's
@@ -296,7 +296,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
         |]}""".stripMargin,
       "/movie/1134463/external_ids"      -> """{"id":1134463,"imdb_id":"tt31710990"}""",
       "/movie/1228682/external_ids"      -> """{"id":1228682,"imdb_id":"tt30810787"}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     // Production's row shape: ONE cinema slot naming Michel Franco, and three
@@ -340,7 +340,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
       "year=1982"                 -> """{"results":[{"id":118257,"title":"Room 666","original_title":"Chambre 666","release_date":"1982-05-01","popularity":5.0}]}""",
       "/search/movie"             -> """{"results":[{"id":1,"title":"A"},{"id":2,"title":"B"}]}""",
       "/movie/118257/external_ids" -> """{"id":118257,"imdb_id":"tt0083727"}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     // No row year — exactly what a diverted newcomer has. The year lives on the slot,
@@ -391,7 +391,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
         |]}""".stripMargin,
       "/movie/1646379/external_ids" -> """{"id":1646379,"imdb_id":"tt42003610"}""",
       "/movie/1731866/external_ids" -> """{"id":1731866,"imdb_id":null}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     // Production's row shape: the cinemas report only "Mistyczka"; the derived
@@ -434,7 +434,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
         |]}""".stripMargin,
       "/movie/1646379/external_ids" -> """{"id":1646379,"imdb_id":"tt42003610"}""",
       "/movie/1731866/external_ids" -> """{"id":1731866,"imdb_id":null}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     // Two venues call it "Mistyczka"; one lists the other film under a programme
@@ -473,7 +473,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
         |]}""".stripMargin,
       "/movie/100/external_ids" -> """{"id":100,"imdb_id":null}""",
       "/movie/900/external_ids" -> """{"id":900,"imdb_id":null}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     // Two venues name "Freak Show", both only through the accessibility banner; one
@@ -504,7 +504,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
           if (url.contains("/search/movie")) """{"results":[]}"""
           else if (url.contains("/search/person")) s"""{"results":[{"id":$PersonId,"known_for_department":"Directing"}]}"""
           else throw failure
-      }, apiKey = Some("stub"))
+      }, apiKey = Some(settings.TmdbApiKey("stub")))
       new MovieService(cache, new InProcessEventBus(), tmdb)
     }
     val existing = MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(director = Seq(Director))))

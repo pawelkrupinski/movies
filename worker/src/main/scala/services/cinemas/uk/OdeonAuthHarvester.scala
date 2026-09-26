@@ -102,9 +102,9 @@ object OdeonAuthHarvester {
    *  (which [[ZyteClient]] uses and base64-encodes), `browserHtml` comes back as a
    *  plain UTF-8 string. `None` when no key is set or the call fails. Each call is a
    *  paid Zyte request, so its outcome goes to `meter` — the paid-egress counter. */
-  def zyteFetchPage(apiKey: Option[String], pageUrl: String = OdeonPageUrl,
+  def zyteFetchPage(apiKey: Option[settings.ZyteApiKey], pageUrl: String = OdeonPageUrl,
                     meter: HttpOutcomeRecorder = HttpOutcomeRecorder.noop): Option[String] =
-    apiKey.filter(_.nonEmpty).flatMap { key =>
+    apiKey.flatMap { key =>
       meteredBrowserHtml(meter) {
         val client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build()
         val body   = Json.obj("url" -> pageUrl, "browserHtml" -> true).toString

@@ -606,13 +606,15 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   }
 
   "Country.usersDbName" should "read MONGODB_USERS_DB from the environment" in {
-    Country.usersDbName(Env.of("MONGODB_USERS_DB" -> "kinowo_users_probe"), Country.Germany.mongoDb) shouldBe "kinowo_users_probe"
+    Country.usersDbName(new settings.ProcessConfiguration(Env.of("MONGODB_USERS_DB" -> "kinowo_users_probe")).usersDatabase,
+      settings.MongoDatabaseName(Country.Germany.mongoDb)) shouldBe settings.MongoDatabaseName("kinowo_users_probe")
   }
 
   // The deployment's own database is handed in, never re-derived from KINOWO_COUNTRY: the
   // serving country is the wiring's to know, and a second read of the environment is how a
   // test wiring booted as one country used to reach another's database.
   it should "fall back to the deployment's own database it is handed when it is unset" in {
-    Country.usersDbName(Env.of("KINOWO_COUNTRY" -> "uk"), Country.Germany.mongoDb) shouldBe Country.Germany.mongoDb
+    Country.usersDbName(new settings.ProcessConfiguration(Env.of("KINOWO_COUNTRY" -> "uk")).usersDatabase,
+      settings.MongoDatabaseName(Country.Germany.mongoDb)) shouldBe settings.MongoDatabaseName(Country.Germany.mongoDb)
   }
 }

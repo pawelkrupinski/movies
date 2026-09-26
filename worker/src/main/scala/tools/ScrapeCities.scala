@@ -21,14 +21,4 @@ object ScrapeCities {
    *  from `City.all` so a newly modelled city is scraped automatically, without
    *  re-spelling the list here, in the wiring, or in the test seams. */
   val allCities: Set[String] = City.all.map(_.slug).toSet
-
-  /** The set of enabled city slugs (lowercased) parsed from `envValue`, or
-   *  `default` when the override is unset, blank, or has no usable tokens.
-   *  Tokens are trimmed + lowercased and empties dropped, so
-   *  `" Poznan , wroclaw ,"` → `Set("poznan", "wroclaw")`. */
-  def enabled(envValue: Option[String], default: Set[String]): Set[String] =
-    envValue
-      .map(_.split(",").iterator.map(_.trim.toLowerCase).filter(_.nonEmpty).toSet)
-      .filter(_.nonEmpty)
-      .getOrElse(default)
 }

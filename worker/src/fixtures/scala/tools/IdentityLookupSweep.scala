@@ -79,7 +79,7 @@ object IdentityLookupSweep {
    *  the tree lacks, a HERMETIC one fails on each by name (`CountryConvergenceBehaviour`). */
   val EnvVar = "KINOWO_IDENTITY_LOOKUPS"
 
-  def enabledFromEnv: Boolean = Env.fromProcess().get(EnvVar).exists(_.trim.equalsIgnoreCase("true"))
+  def enabledIn(configuration: settings.ProcessConfiguration): Boolean = configuration.identityLookupSweep.value
 
   /** The sweep over a booted replay wiring: its archived listings, its venues' detail
    *  enrichers, and a `MovieService` over its own TMDB client — built WITHOUT the wiring's

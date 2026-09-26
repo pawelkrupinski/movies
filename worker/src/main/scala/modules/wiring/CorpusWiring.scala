@@ -1,5 +1,8 @@
 package modules.wiring
 
+import scala.concurrent.duration.DurationInt
+import settings.{BootHydrateRetryInterval, CacheRehydrateInterval}
+
 import modules.WorkerWiring
 import services.movies.{CaffeineMovieCache, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, RetiredVenueRows, ScreeningTokens, VenueRoster, ScreeningsRepository, SlotsRepository, StrandedSideRowsCleanup, TitleNormalizer, UnscreenedCleanup}
 
@@ -77,11 +80,11 @@ trait CorpusWiring { self: WorkerWiring =>
       scrapeGuardLedger = new services.scrapes.MongoScrapeGuardLedger(mongoConnection.database),
       // The process's one intern pool, shared with every other country's cache.
       stringPool = workerMetrics.stringPool,
-      bootHydrateMaxAttempts = env.get("KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS").flatMap(_.toIntOption).getOrElse(0),
-      bootHydrateRetryMillis = env.positiveLong("KINOWO_BOOT_HYDRATE_RETRY_MS", 1000L),
+      bootHydrateMaxAttempts = configuration.bootHydrateMaxAttempts,
+      bootHydrateRetry       = configuration.bootHydrateRetryInterval(BootHydrateRetryInterval(1.second)),
       maxConsecutiveGuardRejections =
-        services.movies.ScrapeHealth.maxRejectionsFor(services.freshness.Freshness.scrapeTtlFrom(env)),
-      env = env)
+        services.movies.ScrapeHealth.maxRejectionsFor(scrapeFreshness.value),
+      rehydrateInterval = configuration.cacheRehydrateInterval(CacheRehydrateInterval(6.hours)))
 
   // This deployment's badge vocabulary. One instance, shared by every path that
   // writes a `Showtime.format`, so the cache and the two detail-merge paths

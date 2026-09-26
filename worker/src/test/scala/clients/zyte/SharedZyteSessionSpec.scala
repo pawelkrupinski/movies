@@ -29,7 +29,7 @@ class SharedZyteSessionSpec extends AnyFlatSpec with Matchers {
   /** Records warm/fetch calls; `failFetchOnce` makes the first fetch throw to
    *  exercise the session-died path. */
   private class RecordingClient(failFetchOnce: Boolean = false)
-      extends ZyteClient(HttpClient.newHttpClient(), "k") {
+      extends ZyteClient(HttpClient.newHttpClient(), settings.ZyteApiKey("k")) {
     var warms:   List[String] = Nil // sessionIds warmed
     var fetches: List[String] = Nil // sessionIds fetched under
     private var failsLeft = if (failFetchOnce) 1 else 0
@@ -78,7 +78,7 @@ class SharedZyteSessionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "propagate a warm failure so the surrounding FallbackHttpFetch can roll to direct" in {
-    val client = new ZyteClient(HttpClient.newHttpClient(), "k") {
+    val client = new ZyteClient(HttpClient.newHttpClient(), settings.ZyteApiKey("k")) {
       override def warm(cookieSourceUrl: String, sessionId: String): Unit =
         throw new RuntimeException("Zyte warm-up returned upstream status=403")
       override def fetchWithSession(targetUrl: String, sessionId: String): String = "BODY"

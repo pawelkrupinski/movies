@@ -3,7 +3,9 @@ package services.auth
 import play.api.libs.json.Json
 import tools.HttpFetch
 
-class FacebookTokenValidator(http: HttpFetch, appId: String, appSecret: String) {
+class FacebookTokenValidator(http: HttpFetch, facebookAppId: settings.FacebookAppId, facebookAppSecret: settings.FacebookAppSecret) {
+  private val appId     = facebookAppId.value
+  private val appSecret = facebookAppSecret.value
 
   def validate(accessToken: String): OauthProfile = {
     val debugUrl = s"https://graph.facebook.com/debug_token" +

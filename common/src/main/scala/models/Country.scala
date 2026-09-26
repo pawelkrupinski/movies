@@ -3,7 +3,6 @@ package models
 import java.text.Collator
 import java.util.Locale
 
-import tools.Env
 
 /**
  * A country of cinema repertoire — the scope ABOVE [[City]]. Until now Poland
@@ -21,7 +20,7 @@ import tools.Env
  *     ([[filmwebEnabled]] — a new country won't use Filmweb at all).
  *
  * A WEB deployment serves exactly ONE country, picked once at boot from
- * `KINOWO_COUNTRY` ([[fromEnv]]); the WORKER may instantiate its object graph
+ * `KINOWO_COUNTRY` (resolved by `settings.ProcessConfiguration`); the WORKER may instantiate its object graph
  * once per country and iterate [[all]]. Nothing reads a global "current
  * country" — the resolved `Country` is passed down from the composition root.
  */
@@ -308,7 +307,7 @@ object Country {
   }
 
   /** Every country the codebase knows about. A worker iterates this; a web
-   *  deployment picks one via [[fromEnv]]. */
+   *  deployment picks one via `KINOWO_COUNTRY` (`settings.ProcessConfiguration.country`). */
   val all: Seq[Country] = Seq(Poland, UnitedKingdom, Germany, UnitedStates, Spain)
 
   /** The fallback country when `KINOWO_COUNTRY` is unset — keeps single-country
@@ -413,10 +412,6 @@ object Country {
   private lazy val byCity: Map[City, Country] =
     all.flatMap(c => c.cities.map(_ -> c)).toMap
 
-  /** The country THIS process serves, from `KINOWO_COUNTRY` (default: Poland).
-   *  A web deployment resolves it once at boot; the worker uses [[all]] instead. */
-  def fromEnv(env: Env): Country = env.get("KINOWO_COUNTRY").flatMap(byCode).getOrElse(default)
-
   /** The database holding the SHARED `users` + `userStates` collections.
    *
    *  Everything else about a deployment is per country -- its films, its cities,
@@ -437,7 +432,8 @@ object Country {
    *  Identity makes the move safe: [[models.User]]`.id` is the lowercased email,
    *  so the same person already carries the same key in every database and
    *  merging them is a union rather than a re-key. */
-  def usersDbName(env: Env, ownDb: String): String = usersDbNameFrom(env.get("MONGODB_USERS_DB"), ownDb)
+  def usersDbName(usersDb: Option[settings.UsersDatabaseName], ownDb: settings.MongoDatabaseName): settings.MongoDatabaseName =
+    settings.MongoDatabaseName(usersDbNameFrom(usersDb.map(_.value), ownDb.value))
 
   /** Pure core of [[usersDbName]] -- the precedence, testable without touching
    *  the environment. A blank or whitespace-only variable counts as UNSET rather

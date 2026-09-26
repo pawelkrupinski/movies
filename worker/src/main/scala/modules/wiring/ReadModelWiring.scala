@@ -1,5 +1,7 @@
 package modules.wiring
 
+import settings.ShareCardFirstHold
+
 import modules.WorkerWiring
 import services.readmodel.{MongoReadModelDerivationMarker, MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
 
@@ -13,6 +15,8 @@ trait ReadModelWiring { self: WorkerWiring =>
   // `InMemoryReadModelRepository` (Mongo-free fixture replay).
   lazy val readModelRepository: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(mongoConnection.database, decodeFailures = taskMetrics)
   lazy val readModelProjector = new ReadModelProjector(movieRepository, readModelRepository, readModelRepository, taskMetrics,
-    shareCards = shareCardLedger, firstCardHold = ReadModelProjector.firstCardHoldFrom(env), clock = clock, env = env,
+    shareCards = shareCardLedger, firstCardHold = configuration.shareCardFirstHold(ShareCardFirstHold(ReadModelProjector.DefaultFirstCardHold)), clock = clock,
+    pruneInterval  = configuration.readModelPruneInterval(ReadModelProjector.DefaultPruneInterval),
+    pruneBootDelay = configuration.readModelPruneBootDelay(ReadModelProjector.DefaultPruneBootDelay),
     derivationMarker = new MongoReadModelDerivationMarker(mongoConnection.database, clock))
 }

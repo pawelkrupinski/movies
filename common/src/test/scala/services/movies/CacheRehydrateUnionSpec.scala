@@ -1,5 +1,6 @@
 package services.movies
 
+import scala.concurrent.duration.DurationInt
 import models.{CinemaCityKinepolis, MovieRecord, Multikino, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -179,12 +180,12 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
 
   "boot hydrate" should "retry an empty findAll (Mongo not ready) so quiescent rows still load" in {
     val cache = new CaffeineMovieCache(
-      flakeyRepository(base), bootHydrateMaxAttempts = 5, bootHydrateRetryMillis = 20, normalizer = titleNormalizer)
+      flakeyRepository(base), bootHydrateMaxAttempts = settings.BootHydrateMaxAttempts(5), bootHydrateRetry = settings.BootHydrateRetryInterval(20.millis), normalizer = titleNormalizer)
     cache.entries should have size 1   // boot retried past the empty first findAll
   }
 
   it should "give up after the configured attempts on a genuinely empty repository" in {
-    val cache = new CaffeineMovieCache(repositoryOf(), bootHydrateMaxAttempts = 3, bootHydrateRetryMillis = 5, normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repositoryOf(), bootHydrateMaxAttempts = settings.BootHydrateMaxAttempts(3), bootHydrateRetry = settings.BootHydrateRetryInterval(5.millis), normalizer = titleNormalizer)
     cache.entries should have size 0  // no rows, and it didn't hang
   }
 }

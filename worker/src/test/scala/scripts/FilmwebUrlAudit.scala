@@ -42,7 +42,7 @@ object FilmwebUrlAudit {
       sys.exit(1)
     }
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb    = new TmdbClient(new RealHttpFetch, apiKey = tools.Env.fromProcess().get("TMDB_API_KEY"))
+    val tmdb    = new TmdbClient(new RealHttpFetch, apiKey = settings.ProcessConfiguration.resolve().tmdbApiKey)
     val filmweb = new FilmwebClient(new RealHttpFetch)
     val ratings = new FilmwebRatings(cache, tmdb, filmweb)
 

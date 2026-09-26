@@ -31,7 +31,7 @@ class DeniedCandidateSpec extends AnyFlatSpec with Matchers {
                                        |"credits":{"crew":[{"job":"Director","name":"Kim Jeong-hwan"}],"cast":[]}}""".stripMargin,
       "/search/movie"            -> """{"results":[]}""",
       "/search/person"           -> """{"results":[]}"""
-    )), apiKey = Some("stub"))
+    )), apiKey = Some(settings.TmdbApiKey("stub")))
     val service = new MovieService(new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer),
       normalizer = titleNormalizer), new InProcessEventBus(), tmdb)
 

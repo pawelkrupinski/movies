@@ -33,7 +33,7 @@ class UnreadableSignedInUserSpec extends AnyFlatSpec with Matchers {
       "me"             -> auth.me()(signedIn("GET", "/api/me")),
       "revokeSessions" -> auth.revokeSessions()(signedIn("POST", "/api/me/sessions/revoke")),
       "ssoStart"       -> auth.ssoStart()(signedIn("GET", s"/auth/sso/start?to=${Country.UnitedKingdom.webUrl.get}")),
-      "admin"          -> new AdminAction(Helpers.stubBodyParser(), users, Set("alice@example.com"))
+      "admin"          -> new AdminAction(Helpers.stubBodyParser(), users, settings.AdminAllowlist(Set("alice@example.com")))
                             .async(_ => Future.successful(Results.Ok("admin")))(signedIn("GET", "/admin"))
     ).foreach { case (name, result) =>
       withClue(s"$name: ") {

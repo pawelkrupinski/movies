@@ -1,10 +1,11 @@
 package modules.wiring
 
+import settings.ScrapeChunkSpread
+
 import modules.WorkerWiring
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, FallbackEligibility}
 import services.tasks.{ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, MongoChunkScrapeStore, ScrapeCadence, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeInFlight}
 
-import scala.concurrent.duration.DurationLong
 
 /** ── Chunked (map-reduce) scrape machinery ──────────────────────────────────
  *  A chunked cinema (ChunkedCinemaScraper) is scraped as one ScrapeChunk task
@@ -35,10 +36,9 @@ trait ChunkScrapeWiring { self: WorkerWiring =>
   // pins the pool under strict oldest-first claim and starves the evenly-enqueued rating
   // refreshes behind it. Sized in ScrapeCadence; the planner clamps it under the run
   // stale timeout. See ChunkScrapePlanner.chunkSpread.
-  def scrapeChunkSpreadMinutes: Long =
-    env.positiveLong("KINOWO_SCRAPE_CHUNK_SPREAD_MINUTES", ScrapeCadence.ChunkEnqueueSpread.toMinutes)
+  def scrapeChunkSpread: ScrapeChunkSpread = configuration.scrapeChunkSpread(ScrapeChunkSpread(ScrapeCadence.ChunkEnqueueSpread))
   lazy val chunkScrapePlanner       = new ChunkScrapePlanner(chunkScrapers, chunkScrapeStore, taskQueue, publishScrape,
-    scrapeFreshnessPolicy, chunkSpread = scrapeChunkSpreadMinutes.minutes)
+    scrapeFreshnessPolicy, chunkSpread = scrapeChunkSpread.value)
   lazy val scrapeChunkHandler       = new ScrapeChunkHandler(chunkScrapers, chunkScrapeStore)
   lazy val scrapeChunkReduceHandler = new ScrapeChunkReduceHandler(chunkScrapers, chunkScrapeStore, publishScrape,
     scrapeFreshnessPolicy)

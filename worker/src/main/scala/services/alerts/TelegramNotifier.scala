@@ -14,11 +14,11 @@ import scala.util.Try
  * failure is logged, never thrown — an alert must never break the scrape tick
  * that triggered it.
  */
-class TelegramNotifier(http: HttpFetch, botToken: String, chatId: Long, topicId: Option[Long]) extends Logging {
+class TelegramNotifier(http: HttpFetch, route: settings.TelegramRoute) extends Logging {
   def send(text: String): Unit =
     Try {
-      val url = s"https://api.telegram.org/bot$botToken/sendMessage?chat_id=$chatId" +
-        topicId.fold("")(t => s"&message_thread_id=$t") +
+      val url = s"https://api.telegram.org/bot${route.token.value}/sendMessage?chat_id=${route.chatId.value}" +
+        route.topicId.fold("")(topic => s"&message_thread_id=${topic.value}") +
         s"&text=${URLEncoder.encode(text, StandardCharsets.UTF_8)}"
       http.get(url)
       ()

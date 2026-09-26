@@ -52,7 +52,7 @@ class DirectorWalkYearDriftSpec extends AnyFlatSpec with Matchers {
         |]}""".stripMargin,
       s"/movie/$Correct/external_ids" -> s"""{"id":$Correct,"imdb_id":""}"""
     )),
-    apiKey = Some("stub")
+    apiKey = Some(settings.TmdbApiKey("stub"))
   )
 
   "a film whose TMDB release year drifts from the cinema's production year" should

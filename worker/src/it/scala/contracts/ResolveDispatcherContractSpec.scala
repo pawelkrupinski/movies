@@ -36,7 +36,7 @@ class ResolveDispatcherContractSpec extends AnyFlatSpec with Matchers with Befor
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
 
-  private lazy val isolatedDatabase = IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "resolve-dispatcher-contract")
+  private lazy val isolatedDatabase = IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "resolve-dispatcher-contract")
 
   private lazy val database = isolatedDatabase.database
   override protected def afterAll(): Unit = try isolatedDatabase.drop() finally super.afterAll()

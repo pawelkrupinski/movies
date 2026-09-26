@@ -42,7 +42,7 @@ object FilmwebReset {
       sys.exit(1)
     }
 
-    val tmdb    = new TmdbClient(new RealHttpFetch, apiKey = tools.Env.fromProcess().get("TMDB_API_KEY"))
+    val tmdb    = new TmdbClient(new RealHttpFetch, apiKey = settings.ProcessConfiguration.resolve().tmdbApiKey)
     val filmweb = new FilmwebClient(new RealHttpFetch)
 
     // ── Phase 1: snapshot, then wipe FW fields on every row ────────────────

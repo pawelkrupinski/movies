@@ -30,16 +30,16 @@ import scala.util.Try
  * Feature gate: the `OMDB_API_KEY` secret. Unset → every method short-circuits
  * to `None` WITHOUT any HTTP call (the TmdbClient pattern).
  */
-// `apiKey` is OMDB_API_KEY — defaulted from the process for tools and specs; the
-// worker wiring passes its composition root's Env's value. Unset turns the backfill off.
-class OMDbClient(http: HttpFetch, apiKey: Option[String]) {
+// `apiKey` is OMDB_API_KEY — handed in: the worker wiring passes its resolved value, a spec its
+// stub. Unset turns the backfill off.
+class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey]) {
   import OMDbClient._
 
   /** Resolve an IMDb id for a film. Tries each title spelling in turn (pass the
    *  original/English title first — OMDb is an English DB). None when the key is
    *  unset (no HTTP), nothing is corroborated, or every call fails. */
   def findImdbId(titles: Seq[String], year: Option[Int], directors: Set[String]): Option[String] =
-    apiKey.flatMap { key =>
+    apiKey.map(_.value).flatMap { key =>
       titles.map(_.trim).filter(_.nonEmpty).distinct.iterator
         .flatMap(t => resolveTitle(t, year, directors, key).iterator)
         .nextOption()
@@ -79,7 +79,7 @@ class OMDbClient(http: HttpFetch, apiKey: Option[String]) {
   /** Recover the canonical Rotten Tomatoes URL for an imdb id — OMDb's
    *  `tomatoURL`, present only when OMDb holds RT data for the film. */
   def rottenTomatoesUrl(imdbId: String): Option[String] =
-    apiKey.flatMap { key =>
+    apiKey.map(_.value).flatMap { key =>
       if (imdbId.trim.isEmpty) None
       else {
         val js = Try(Json.parse(http.get(idUrl(imdbId.trim, key)))).getOrElse(JsNull)

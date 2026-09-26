@@ -66,20 +66,20 @@ class PosterColourSpaceSpec extends AnyFlatSpec with Matchers {
   for ((what, poster) <- posters) {
     s"$what" should "render through the JDK decode" in rendersThrough(new VipsPosterShrinker(binary = None), poster)
     it should "render through vips" in {
-      val vips = VipsPosterShrinker.locate(tools.ProcessConfiguration.resolve().executableSearchPath)
+      val vips = VipsPosterShrinker.locate(settings.ProcessConfiguration.resolve().executableSearchPath)
       assume(vips.isDefined, "vips is not installed")
       rendersThrough(new VipsPosterShrinker(binary = vips), poster)
     }
   }
 
   "A CMYK JPEG" should "render through vips" in {
-    val vips = VipsPosterShrinker.locate(tools.ProcessConfiguration.resolve().executableSearchPath)
+    val vips = VipsPosterShrinker.locate(settings.ProcessConfiguration.resolve().executableSearchPath)
     assume(vips.isDefined, "vips is not installed")
     rendersThrough(new VipsPosterShrinker(binary = vips), () => cmykJpeg(vips.get))
   }
 
   it should "render through the JDK decode" in {
-    val vips = VipsPosterShrinker.locate(tools.ProcessConfiguration.resolve().executableSearchPath)
+    val vips = VipsPosterShrinker.locate(settings.ProcessConfiguration.resolve().executableSearchPath)
     assume(vips.isDefined, "vips is needed to make the CMYK fixture")
     val cmyk = cmykJpeg(vips.get)
     rendersThrough(new VipsPosterShrinker(binary = None), () => cmyk)

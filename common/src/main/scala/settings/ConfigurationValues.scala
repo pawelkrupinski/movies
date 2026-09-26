@@ -1,0 +1,128 @@
+package settings
+
+import java.nio.file.Path
+import scala.concurrent.duration.FiniteDuration
+
+// One type per configuration value [[ProcessConfiguration]] resolves, so the compiler decides
+// what may be passed where: a TMDB key cannot be handed to OMDb, a users database cannot open
+// as the corpus, a settle interval cannot pace the enrichment reaper. Each is unwrapped
+// (`.value`) only at the boundary that needs the raw value — the HTTP header, the driver call,
+// the scheduler, the log line.
+
+// ── Deployment ────────────────────────────────────────────────────────────────
+/** `KINOWO_COUNTRIES` — the countries a worker process runs (codes resolved to countries). */
+final case class WorkerCountries(value: Seq[models.Country]) extends AnyVal
+/** A `KINOWO_COUNTRIES` code that names no country — reported, then skipped. */
+final case class UnknownCountryCode(value: String) extends AnyVal
+/** A setting an integration or alerter needs and does not have — its key, and why when it is
+ *  set but unusable (`KEY (not a number)`). */
+final case class MissingSetting(value: String) extends AnyVal
+/** `COMMIT_SHA` — the commit the running image was built from. */
+final case class CommitSha(value: String) extends AnyVal
+/** `GITHUB_SHA` — the commit a CI tool run is reporting on. */
+final case class GithubCommitSha(value: String) extends AnyVal
+/** `PORT` — the port the worker's /health + /metrics server listens on. */
+final case class HealthPort(value: Int) extends AnyVal
+/** `PATH` — the directories an executable (vips) is looked for in, in order. */
+final case class ExecutableSearchPath(value: Seq[Path]) extends AnyVal
+/** `KINOWO_RETIRED` — this web deployment only redirects to where its country moved. */
+final case class RetiredDeployment(value: Boolean) extends AnyVal
+/** `APP_MODE` — an explicit override of the mode Play derived for itself. */
+enum ApplicationMode { case Development, Test, Production }
+
+// ── Mongo ─────────────────────────────────────────────────────────────────────
+/** `MONGODB_URI` — the cluster this process's corpus lives on. */
+final case class MongoUri(value: String) extends AnyVal
+/** `MONGODB_DB` — an explicit corpus database, overriding the country's own. Also the
+ *  name every connection is opened with once resolved (see `MongoAddress.databaseFor`). */
+final case class MongoDatabaseName(value: String) extends AnyVal
+/** `MONGODB_USERS_DB` — the database holding the SHARED `users` + `userStates`. */
+final case class UsersDatabaseName(value: String) extends AnyVal {
+  def database: MongoDatabaseName = MongoDatabaseName(value)
+}
+/** `MONGODB_MOVIES_MIRROR_URI` — the local read-mirror /debug reads instead of the tunnel. */
+final case class MirrorMongoUri(value: String) extends AnyVal
+/** `MONGODB_PROBE_TIMEOUT_SECONDS` — how long a boot waits for Mongo to answer. */
+final case class MongoProbeTimeout(value: FiniteDuration) extends AnyVal
+/** `KINOWO_MONGO_MAX_POOL_SIZE` — connections per MongoClient. */
+final case class MongoMaxPoolSize(value: Int) extends AnyVal
+/** `MONGODB_OPTIONAL` — a local dev's opt-out of the required-Mongo boot check. */
+final case class MongoOptional(value: Boolean) extends AnyVal
+
+// ── Third-party credentials and ids ─────────────────────────────────────────────
+/** `TMDB_API_KEY` (a v3 key or a v4 read token). */
+final case class TmdbApiKey(value: String) extends AnyVal
+/** `OMDB_API_KEY`. */
+final case class OmdbApiKey(value: String) extends AnyVal
+/** `ZYTE_API_KEY`. */
+final case class ZyteApiKey(value: String) extends AnyVal
+/** `KINOWO_PROXY_USER` — the residential egress's user. */
+final case class ProxyUser(value: String) extends AnyVal
+/** `KINOWO_PROXY_PASS` — the residential egress's password. */
+final case class ProxyPassword(value: String) extends AnyVal
+/** `FACEBOOK_APP_ID` — the Facebook app sign-in and the share-card re-scrape run as. */
+final case class FacebookAppId(value: String) extends AnyVal
+/** `FACEBOOK_APP_SECRET`. */
+final case class FacebookAppSecret(value: String) extends AnyVal
+/** `FB_APP_ID` — the `fb:app_id` a page's Open Graph block carries. */
+final case class FacebookPageAppId(value: String) extends AnyVal
+/** `GA_MEASUREMENT_ID` — the GA4 property pages report to. */
+final case class GoogleAnalyticsMeasurementId(value: String) extends AnyVal
+/** `SENTRY_LOADER_URL` — the Sentry loader script a page embeds. */
+final case class SentryLoaderUrl(value: String) extends AnyVal
+/** `SENTRY_DSN` — read by logback's Sentry appender itself; resolved here only to report
+ *  whether the integration is on. */
+final case class SentryDsn(value: String) extends AnyVal
+/** `GOOGLE_CLIENT_ID`. */
+final case class GoogleClientId(value: String) extends AnyVal
+/** `GOOGLE_CLIENT_SECRET`. */
+final case class GoogleClientSecret(value: String) extends AnyVal
+/** `APPLE_BUNDLE_ID` — the iOS app Sign in with Apple tokens must be issued for. */
+final case class AppleBundleId(value: String) extends AnyVal
+/** `ADMIN_ALLOWLIST` — the emails allowed onto the operational pages. */
+final case class AdminAllowlist(value: Set[String]) extends AnyVal
+/** `TELEGRAM_BOT_TOKEN` — the bot every alerter posts as. */
+final case class TelegramBotToken(value: String) extends AnyVal
+/** A Telegram chat an alerter posts to (`KINOWO_*_TG_CHAT_ID`). */
+final case class TelegramChatId(value: Long) extends AnyVal
+/** A forum topic within that chat (`KINOWO_*_TG_TOPIC_ID`). */
+final case class TelegramTopicId(value: Long) extends AnyVal
+
+// ── Worker storage ─────────────────────────────────────────────────────────────
+/** `KINOWO_SHARE_CARD_DIR` — where rendered share cards are kept; `{cc}` is the country. */
+final case class ShareCardDirectoryTemplate(value: String) extends AnyVal {
+  def forCountry(country: models.Country): Path = Path.of(value.replace("{cc}", country.code))
+}
+/** `KINOWO_HEAP_DUMP_DIR` — where an on-demand or watchdog heap dump is written. */
+final case class HeapDumpDirectory(value: Path) extends AnyVal
+/** `KINOWO_SCRAPE_CITIES` — the city slugs a worker scrapes, overriding every modelled city. */
+final case class ScrapeCitySlugs(value: Set[String]) extends AnyVal
+
+// ── Test and replay harness ─────────────────────────────────────────────────────
+/** `KINOWO_LOCAL_MONGO_URI` — the local stack's Mongo. */
+final case class LocalStackMongoUri(value: String) extends AnyVal
+/** `KINOWO_LOCAL_MONGO_DB` — the local stack's database. */
+final case class LocalStackDatabaseName(value: String) extends AnyVal
+/** `KINOWO_FIXTURE_DIR` — the fixture tree the local stack's worker replays. */
+final case class LocalStackFixtureDirectory(value: String) extends AnyVal
+/** `KINOWO_ALLOW_REMOTE_IT` — an integration run deliberately allowed onto a credentialed
+ *  cluster. */
+final case class RemoteIntegrationAllowed(value: Boolean) extends AnyVal
+/** `KINOWO_RACE_SEED` — the seed round 1 of a concurrency spec is drawn from. */
+final case class RaceSeed(value: Long) extends AnyVal
+/** `KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES` — the fixture tree a convergence replay uses. */
+final case class EnrichmentFixtureTree(value: String) extends AnyVal
+/** `KINOWO_CONVERGENCE_HERMETIC` — a convergence leg refuses every request it cannot replay. */
+final case class HermeticReplay(value: Boolean) extends AnyVal
+/** `KINOWO_IDENTITY_LOOKUPS` — the convergence leg sweeps identity lookups. */
+final case class IdentityLookupSweepEnabled(value: Boolean) extends AnyVal
+/** `KINOWO_CONVERGENCE_CORPUS_RUN` — the CI run that recorded the replayed corpus. */
+final case class CorpusRunId(value: String) extends AnyVal
+/** `KINOWO_CONVERGENCE_CORPUS_RECORDED_AT`. */
+final case class CorpusRecordedAt(value: String) extends AnyVal
+/** `KINOWO_CONVERGENCE_GREEN_CORPUS_RUN` — the run that recorded the last green corpus. */
+final case class GreenCorpusRunId(value: String) extends AnyVal
+/** `KINOWO_CONVERGENCE_GREEN_CORPUS_RECORDED_AT`. */
+final case class GreenCorpusRecordedAt(value: String) extends AnyVal
+/** `KINOWO_CONVERGENCE_GREEN_CORPUS_DIR` — where that green corpus was restored to. */
+final case class GreenCorpusDirectory(value: Path) extends AnyVal

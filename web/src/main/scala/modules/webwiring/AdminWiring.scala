@@ -26,8 +26,7 @@ trait AdminWiring { self: Wiring =>
   // (unset) → nobody is authorised, so those pages are closed by default. The
   // shared AdminAction gate resolves the session's user UUID and checks its email
   // against this set.
-  lazy val adminAllowlist: Set[String] =
-    env.get("ADMIN_ALLOWLIST").map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet).getOrElse(Set.empty)
+  lazy val adminAllowlist: settings.AdminAllowlist = processConfiguration.adminAllowlist
   lazy val adminAction = new AdminAction(controllerComponents.parsers.anyContent, userRepository, adminAllowlist)(using controllerComponents.executionContext)
 
   // ── Task queue (read-only here) ─────────────────────────────────────────────
@@ -50,6 +49,7 @@ trait AdminWiring { self: Wiring =>
     overrides    = new services.config.MongoEnvOverrideStore(mongoConnection.database),
     registry     = new services.config.MongoEnvRegistryStore(mongoConnection.database),
     env          = env,
-    tickInterval = scala.concurrent.duration.Duration(env.positiveLong("KINOWO_CONFIG_REFRESH_SECONDS", 30L), "seconds"))
+    tickInterval = processConfiguration.configRefreshInterval(
+      settings.ConfigRefreshInterval(scala.concurrent.duration.Duration(30L, "seconds"))).value)
   lazy val envConfigController = new EnvConfigController(controllerComponents, adminAction, envConfigService)
 }

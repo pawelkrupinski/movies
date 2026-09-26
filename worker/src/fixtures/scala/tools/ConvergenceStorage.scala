@@ -86,8 +86,8 @@ object ConvergenceStorage {
    * exact shape of the enrichment gate that resolved 0 of 892 films while three specs
    * passed. An unreachable database fails the run rather than degrading it.
    */
-  def fromEnv(env: Env, purpose: String, normalizer: TitleNormalizer): ConvergenceStorage =
-    IntegrationMongoTarget.fromEnv(env).filter(_.uri.nonEmpty)
+  def fromConfiguration(configuration: settings.ProcessConfiguration, purpose: String, normalizer: TitleNormalizer): ConvergenceStorage =
+    IntegrationMongoTarget.from(configuration)
       .map(target => mongo(target, purpose, normalizer))
       .getOrElse(throw new IllegalStateException(
         "MONGODB_URI is not set. This suite runs on a real database only — there is no " +
@@ -113,7 +113,7 @@ object ConvergenceStorage {
     // reached `movies`, the suite reported `resolved NOTHING — 0 films`, and nothing
     // anywhere was in error — each half was doing exactly what it was told.
     val isolated = IsolatedMongoDatabase.open(target, purpose)
-    new MongoConvergenceStorage(isolated, target.uri, isolated.database.name, normalizer)
+    new MongoConvergenceStorage(isolated, target.uri.value, isolated.database.name, normalizer)
   }
 
   private final class MongoConvergenceStorage(isolated: IsolatedMongoDatabase, uri: String, name: String,

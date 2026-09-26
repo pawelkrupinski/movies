@@ -1,6 +1,5 @@
 package services.freshness
 
-import tools.Env
 
 import scala.concurrent.duration._
 
@@ -56,16 +55,14 @@ object Freshness {
   /** The compiled-in cinema-scrape freshness window. */
   val DefaultScrapeTtl: FiniteDuration = 60.minutes
 
-  /** The cinema-scrape freshness window for every venue, tunable via
-   *  `KINOWO_SCRAPE_FRESHNESS_MINUTES` (default [[DefaultScrapeTtl]]). Read by the
-   *  worker wiring from its process [[Env]]; that is the value the scrape cadence
-   *  (`VenueCadenceStore`, `DueWindow`) and the landing guard's grace run on. */
-  def scrapeTtlFrom(env: Env): FiniteDuration =
-    env.positiveLong("KINOWO_SCRAPE_FRESHNESS_MINUTES", DefaultScrapeTtl.toMinutes).minutes
+  /** [[DefaultScrapeTtl]] as the `KINOWO_SCRAPE_FRESHNESS_MINUTES` knob's default — the value
+   *  the worker's root resolves and the scrape cadence (`VenueCadenceStore`, `DueWindow`) and
+   *  the landing guard's grace run on. */
+  val DefaultScrapeFreshness: settings.ScrapeFreshness = settings.ScrapeFreshness(DefaultScrapeTtl)
 
   def ttlFor(kind: FreshnessKind): Option[FiniteDuration] = kind match {
     // The compiled-in window: no `isFresh` caller asks about scrapes (the cadence
-    // runs on the wiring's `scrapeTtlFrom(env)` via DueWindow instead).
+    // runs on the wiring's resolved `ScrapeFreshness` via DueWindow instead).
     case CinemaScrape  => Some(DefaultScrapeTtl)
     case DetailEnrich  => Some(6.hours)
     case ImdbRating    => Some(4.hours)

@@ -7,32 +7,28 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
  * A feature the worker wires only when its environment configuration is present, and the
  * keys whose absence switched it off.
  *
- * WHY THIS EXISTS. Wiring a feature as `for { key <- Env.get(…) } yield …` turns a missing
+ * WHY THIS EXISTS. Wiring a feature as `for { key <- configuration.someKey } yield …` turns a missing
  * secret into a `None`, and a `None` into a feature that simply is not there — no error, no
  * log line, nothing on a dashboard. When the workers moved from Fly to k3s the Telegram chat
  * ids were left behind, and all three in-app alerters (Filmweb fallback, Filmweb drops,
  * staging stuck) were off for weeks with nothing noticing. Every such feature now reports
  * itself here: a gauge that reads 0 while it is off, and a WARN at boot naming the key.
  */
-final case class EnvGatedFeature(name: String, missing: Seq[String]) {
+final case class EnvGatedFeature(name: String, missing: Seq[settings.MissingSetting]) {
   def enabled: Boolean = missing.isEmpty
 }
 
 object EnvGatedFeature {
 
-  /** `name`, wired only when every one of `keys` resolves through `read`. */
-  def requiring(name: String, keys: Seq[String], read: String => Option[String]): EnvGatedFeature =
-    EnvGatedFeature(name, keys.filter(key => read(key).isEmpty))
-
-  /** `name`, reporting the keys a resolution said were missing (none when it resolved). */
-  def from(name: String, resolved: Either[Seq[String], ?]): EnvGatedFeature =
+  /** `name`, reporting the settings a resolution said were missing (none when it resolved). */
+  def from(name: String, resolved: Either[Seq[settings.MissingSetting], ?]): EnvGatedFeature =
     EnvGatedFeature(name, resolved.left.getOrElse(Nil))
 
   /** The boot WARN for the disabled ones among `features`, or None when all are on. */
   def disabledWarning(kind: String, features: Seq[EnvGatedFeature]): Option[String] =
     Option(features.filterNot(_.enabled))
       .filter(_.nonEmpty)
-      .map(_.map(f => s"$kind ${f.name} is OFF: missing ${f.missing.mkString(", ")}").mkString("; "))
+      .map(_.map(f => s"$kind ${f.name} is OFF: missing ${f.missing.map(_.value).mkString(", ")}").mkString("; "))
 }
 
 /**

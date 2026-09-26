@@ -13,14 +13,14 @@ class CountryDatabaseClaimIntegrationSpec extends AnyFlatSpec with Matchers {
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   private val uri = Env.fromProcess().get("MONGODB_URI").get
 
-  private val target = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
+  private val target = tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get
   "MongoConnection.forCountry" should "refuse a database another country owns, and claim an unowned one" in
     tools.IntegrationCorpusDatabase.withDatabase(target, "country-db-claim") { db =>
-      val polish = MongoConnection.forCountry(Country.Poland, MongoAddress(Some(uri), Some(db.name)), required = true, env = Env.fromProcess())
+      val polish = MongoConnection.forCountry(Country.Poland, MongoAddress(Some(settings.MongoUri(uri)), Some(settings.MongoDatabaseName(db.name))), required = true, MongoTuning.Default)
       try new DatabaseOwner(db).owner() shouldBe Some(Country.Poland.code)
       finally polish.close()
 
-      val refused = the[IllegalStateException] thrownBy MongoConnection.forCountry(Country.Germany, MongoAddress(Some(uri), Some(db.name)), required = true, env = Env.fromProcess())
+      val refused = the[IllegalStateException] thrownBy MongoConnection.forCountry(Country.Germany, MongoAddress(Some(settings.MongoUri(uri)), Some(settings.MongoDatabaseName(db.name))), required = true, MongoTuning.Default)
       refused.getMessage should include (Country.Poland.code)
     }
 }

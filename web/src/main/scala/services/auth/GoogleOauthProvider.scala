@@ -28,7 +28,9 @@ import java.nio.charset.StandardCharsets
  * round-trip win. The /userinfo call is one extra HTTP request and
  * we already pay it once per login (sessions persist).
  */
-class GoogleOauthProvider(http: HttpFetch, clientId: String, clientSecret: String) extends OauthProvider {
+class GoogleOauthProvider(http: HttpFetch, googleClientId: settings.GoogleClientId, googleClientSecret: settings.GoogleClientSecret) extends OauthProvider {
+  private val clientId     = googleClientId.value
+  private val clientSecret = googleClientSecret.value
   import GoogleOauthProvider._
 
   def name: String = "google"

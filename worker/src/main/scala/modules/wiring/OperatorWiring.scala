@@ -1,5 +1,7 @@
 package modules.wiring
 
+import settings.ConfigRefreshInterval
+
 import modules.WorkerWiring
 import services.config.{EnvConfigService, MongoEnvOverrideStore, MongoEnvRegistryStore}
 import services.tasks.{BulkRefreshHandler, BulkRefreshResult, BulkTaskResultStore, MongoBulkTaskResultStore, ResolveImdbIdHandler, ResolveTmdbHandler, TaskHandler, TaskType}
@@ -19,7 +21,7 @@ trait OperatorWiring { self: WorkerWiring =>
     overrides = new MongoEnvOverrideStore(mongoConnection.database),
     registry  = new MongoEnvRegistryStore(mongoConnection.database),
     env          = env,
-    tickInterval = env.positiveLong("KINOWO_CONFIG_REFRESH_SECONDS", 30L).seconds)
+    tickInterval = configuration.configRefreshInterval(ConfigRefreshInterval(30.seconds)).value)
 
   // Persists each operator-triggered bulk-refresh outcome so it survives the task
   // doc's instant deletion and the web `/tasks` page can show it. Written here by

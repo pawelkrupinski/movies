@@ -235,7 +235,7 @@ object ProxiedAfterDirectFetchProbe {
     if (policy != ProxiedAfterDirectFetchSpec.NoPolicy) ProxyTunnelAuthentication.valueOf(policy).applyToJvm()
     val outcome = Try {
       println(s"direct: ${new RealHttpFetch().get(directUrl)}")
-      val proxied = new RealHttpFetch(Some(RealHttpFetch.ProxyConfig("127.0.0.1", Seq(proxyPort.toInt), user, password)))
+      val proxied = new RealHttpFetch(Some(RealHttpFetch.ProxyConfig("127.0.0.1", Seq(proxyPort.toInt), settings.ProxyUser(user), settings.ProxyPassword(password))))
       println(s"proxied: ${proxied.get(proxiedUrl)}")
     }
     outcome.failed.foreach(_.printStackTrace(System.out))

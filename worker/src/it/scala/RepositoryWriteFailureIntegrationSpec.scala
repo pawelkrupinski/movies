@@ -31,9 +31,9 @@ import scala.concurrent.duration._
 class RepositoryWriteFailureIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
+  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
 
-  private val isolatedDb = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "repository-write-failure-spec")
+  private val isolatedDb = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "repository-write-failure-spec")
 
   private val db = isolatedDb.database
   private def await[T](f: scala.concurrent.Future[T]): T = Await.result(f, 30.seconds)
@@ -94,7 +94,7 @@ class RepositoryWriteFailureIntegrationSpec extends AnyFlatSpec with Matchers wi
   // failure with "0 rows" and a WARN, and nothing counted it. A VIEW under the collection's
   // name is a namespace Mongo refuses to delete from, with everything else healthy.
   "a side collection's bulk delete that Mongo refuses" should "be counted, and report no rows removed" in {
-    val isolatedViewDb = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "repository-delete-failure-spec")
+    val isolatedViewDb = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "repository-delete-failure-spec")
     val viewDb = isolatedViewDb.database
     try {
       await(viewDb.createCollection("backing").toFuture())

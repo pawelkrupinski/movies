@@ -23,7 +23,7 @@ class PageTagsSpec extends AnyFlatSpec with Matchers {
         Helios -> SourceData(
           title = Some("Testowy Film"), releaseYear = Some(2024),
           showtimes = Seq(models.Showtime(TestMovieController.now.plusHours(2), None, None, Nil)))))
-    TestMovieController.build(Seq(("Testowy Film", Some(2024), rec)), pageTags = () => PageTags.from(env))._1
+    TestMovieController.build(Seq(("Testowy Film", Some(2024), rec)), pageTags = () => PageTags.from(new settings.ProcessConfiguration(env)))._1
   }
 
   private def fbAppIdOf(html: String): Option[String] =

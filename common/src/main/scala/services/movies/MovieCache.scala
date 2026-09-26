@@ -6,9 +6,11 @@ import play.api.Logging
 import services.Stoppable
 import services.cinemas.CountryNames
 import services.events.{EventBus, InProcessEventBus}
-import tools.{DaemonExecutors, Env}
+import settings.{BootHydrateMaxAttempts, BootHydrateRetryInterval, CacheRehydrateInterval}
+import tools.DaemonExecutors
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
+import scala.concurrent.duration.DurationInt
 import scala.util.Try
 
 /**
@@ -251,8 +253,8 @@ class CaffeineMovieCache(
   // cold start pay nothing. Prod turns it on via the Fly env
   // `KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS` so a not-ready Mongo at boot can't leave
   // the cache empty (see `bootHydrate`).
-  bootHydrateMaxAttempts: Int  = 0,
-  bootHydrateRetryMillis: Long = 1000L,
+  bootHydrateMaxAttempts: BootHydrateMaxAttempts   = BootHydrateMaxAttempts(0),
+  bootHydrateRetry:       BootHydrateRetryInterval = BootHydrateRetryInterval(1.second),
   // A genuinely-NEW film (one whose `sanitize(title)` group isn't already in
   // `movies`) is diverted to this staging sink — one row per `cinema|title|year`
   // — to incubate until TMDB concludes, instead of landing in the merged
@@ -319,9 +321,9 @@ class CaffeineMovieCache(
   // verbatim to it. The worker hands every country's cache the process's one pool (owned by
   // `WorkerMetrics`, whose gauges read it); a lone cache — tests included — gets its own.
   val stringPool: StringPool = new StringPool,
-  // The process config the backstop rehydrate interval is read from. Defaulted to an empty
-  // Env (the compiled-in interval) for specs; the worker wiring passes its root's instance.
-  env: Env = Env.of()
+  // The backstop rehydrate (`KINOWO_CACHE_REHYDRATE_SECONDS`, resolved by the worker's root);
+  // the compiled-in 6 hours for specs.
+  rehydrateInterval: CacheRehydrateInterval = CacheRehydrateInterval(6.hours)
 ) extends MovieCache with LandingStore with Stoppable with Logging {
 
   // Supplies `CacheKey.apply` throughout this class, so a key can never be built
@@ -476,9 +478,9 @@ class CaffeineMovieCache(
 
   private def bootHydrate(): Unit = {
     var attempt = 0
-    while (rehydrate() == 0 && attempt < bootHydrateMaxAttempts) {
+    while (rehydrate() == 0 && attempt < bootHydrateMaxAttempts.value) {
       attempt += 1
-      Try(Thread.sleep(bootHydrateRetryMillis))
+      Try(Thread.sleep(bootHydrateRetry.value.toMillis))
     }
   }
 
@@ -1541,7 +1543,7 @@ class CaffeineMovieCache(
   // tests don't), so unit tests still get a single one-shot hydrate at
   // construction unless they opt into the live sync.
   private val refreshScheduler        = DaemonExecutors.scheduler("movie-cache-refresh")
-  private val BackstopIntervalSeconds = env.positiveLong("KINOWO_CACHE_REHYDRATE_SECONDS", 21600L)
+  private val BackstopIntervalSeconds = rehydrateInterval.value.toSeconds
   @volatile private var watchHandle: Option[AutoCloseable] = None
 
   /** Apply one out-of-band upsert from the change stream to the in-memory cache.

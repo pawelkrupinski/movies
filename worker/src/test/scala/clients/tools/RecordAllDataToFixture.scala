@@ -1,6 +1,6 @@
 package clients.tools
 
-import tools.{DaemonExecutors, Env, HttpFetch, RealHttpFetch, TestWiring}
+import tools.{DaemonExecutors, HttpFetch, RealHttpFetch, TestWiring}
 import services.movies.InMemoryMovieRepository
 import services.cinemas.common.ZyteFallback
 import services.cinemas.pl.MultikinoClient
@@ -93,9 +93,9 @@ final class RecordAllDataToFixture extends TestWiring {
   // URL no matter which leg (Zyte or direct) served it. Guarded by
   // `RecorderZyteCaptureSpec`.
   override lazy val multikinoFetch: HttpFetch =
-    new RecordingHttpFetch(captureDate, MultikinoClient.fetchFor(new RealHttpFetch(), ZyteFallback.newHttpClient(), Env.fromProcess()))
+    new RecordingHttpFetch(captureDate, MultikinoClient.fetchFor(new RealHttpFetch(), ZyteFallback.newHttpClient(), _root_.settings.ProcessConfiguration.resolve()))
   override lazy val biletynaFetch: HttpFetch =
-    new RecordingHttpFetch(captureDate, ZyteFallback.fetchFor(new RealHttpFetch(), ZyteFallback.newHttpClient(), Env.fromProcess()))
+    new RecordingHttpFetch(captureDate, ZyteFallback.fetchFor(new RealHttpFetch(), ZyteFallback.newHttpClient(), _root_.settings.ProcessConfiguration.resolve()))
 
   // TestWiring stubs the TMDB key to "test-api-key" (fine for replay, where the
   // fixture filename strips api_key). But RECORDING fires the real request, so
@@ -103,7 +103,7 @@ final class RecordAllDataToFixture extends TestWiring {
   // 401s and no enrichment is captured. The recorded filename is still
   // key-agnostic (RecordingHttpFetch strips api_key), so replay is unaffected.
   override lazy val tmdbClient: clients.TmdbClient =
-    new clients.TmdbClient(httoFetch, apiKey = sys.env.get("TMDB_API_KEY"))
+    new clients.TmdbClient(httoFetch, apiKey = _root_.settings.ProcessConfiguration.resolve().tmdbApiKey)
 
   def run(): Unit = {
     // 1. Production-shape pass: every cinema scrape fires (bare), the enqueued

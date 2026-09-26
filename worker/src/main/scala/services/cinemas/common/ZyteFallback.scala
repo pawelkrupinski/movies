@@ -1,6 +1,6 @@
 package services.cinemas.common
 
-import tools.{CountingHttpFetch, Env, FallbackHttpFetch, HttpFetch, HttpOutcomeRecorder}
+import tools.{CountingHttpFetch, FallbackHttpFetch, HttpFetch, HttpOutcomeRecorder}
 
 import java.net.http.HttpClient
 import java.time.Duration
@@ -16,9 +16,9 @@ import java.time.Duration
  * (biletyna). Extracted from `MultikinoClient.fetchFor` once a second caller
  * (Kino Kameralne) needed the same chain.
  *
- * The key (`ZYTE_API_KEY`) and the session TTL come from the [[tools.Env]] the
- * caller hands in — the composition root's in production, a fixed `Env.of(…)` in
- * a spec, so both branches are testable even where CI sets the key.
+ * The key (`ZYTE_API_KEY`) and the session TTL come from the configuration the caller
+ * hands in — the composition root's in production, one over a fixed `Env.of(…)` in a
+ * spec, so both branches are testable even where CI sets the key.
  *
  * `zyteHttp` is the JDK client the Zyte API calls go through — built by the
  * composition root ([[newHttpClient]]) and handed in, by name, so it is only built
@@ -29,12 +29,13 @@ object ZyteFallback {
   def fetchFor(
     direct:       HttpFetch,
     zyteHttp:     => HttpClient,
-    env:          Env,
+    configuration: settings.ProcessConfiguration,
     cookieSource: Option[String] = None,
     meter:        HttpOutcomeRecorder = HttpOutcomeRecorder.noop
   ): HttpFetch =
-    chain(env.get("ZYTE_API_KEY").map(k =>
-      new ZyteFetch(new ZyteClient(zyteHttp, k), cookieSource, ZyteFetch.sessionTtlFrom(env))), direct, meter)
+    chain(configuration.zyteApiKey.map(key =>
+      new ZyteFetch(new ZyteClient(zyteHttp, key), cookieSource,
+        configuration.zyteSessionTtl(settings.ZyteSessionTtl(ZyteFetch.DefaultSessionTtl)).value)), direct, meter)
 
   /** Zyte (when there is a Zyte leg) → `direct`, with every Zyte attempt's
    *  outcome going to `meter` — the paid-egress counter; `direct` is free and is

@@ -32,14 +32,14 @@ class ShareCardsAcrossWorkersIntegrationSpec extends AnyFlatSpec with Matchers {
       (bytes(bytes.length - 2) & 0xff) == 0xff && (bytes(bytes.length - 1) & 0xff) == 0xd9
 
   "two workers rendering one film's card at once" should "leave the latest version, and never let a reader see a torn file" in
-    ConcurrentInstances.withInstances(tools.IntegrationMongoTarget.fromEnv(tools.Env.fromProcess()).get, "share-cards-two-workers") { instances =>
+    ConcurrentInstances.withInstances(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "share-cards-two-workers") { instances =>
       val store = tempStore()
       val services = instances.map { instance =>
         val posters = new ShareCardPosters(store, new CountingDownload(), newJavaShrinker(), ShareCardMetrics.noop)
         val queue   = new MongoTaskQueue(Some(instance.database))
         (new ShareCardService(Country.default, store, posters, queue, ShareCardMetrics.noop, clockAt(T0)), queue)
       }
-      rounds(4, tools.ConcurrentInstances.baseSeed(tools.Env.fromProcess())) { round =>
+      rounds(4, tools.ConcurrentInstances.baseSeed(_root_.settings.ProcessConfiguration.resolve())) { round =>
         val id     = f"frolling${round.number}%02d"
         val older  = film(id = id)
         val newer  = film(id = id, ratings = ratings.copy(imdb = Some(8.4)))

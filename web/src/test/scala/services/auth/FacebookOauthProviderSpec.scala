@@ -6,8 +6,8 @@ import tools.RoutingHttpFetch
 
 class FacebookOauthProviderSpec extends AnyFlatSpec with Matchers {
 
-  private val AppId  = "1234567890"
-  private val Secret = "FB_APP_SECRET"
+  private val AppId  = settings.FacebookAppId("1234567890")
+  private val Secret = settings.FacebookAppSecret("FB_APP_SECRET")
 
   // Facebook's flow is GET-only — `getOnly = true` makes any accidental
   // POST throw rather than silently routing through the same map.

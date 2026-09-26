@@ -28,7 +28,7 @@ class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
     s"""{"id":$id,"title":"$title","original_title":"$title","release_date":"$date","popularity":$pop}"""
 
   private def tmdb(routes: (String, String)*): TmdbClient =
-    new TmdbClient(http = RoutingHttpFetch.getOnly(routes), apiKey = Some("stub"))
+    new TmdbClient(http = RoutingHttpFetch.getOnly(routes), apiKey = Some(settings.TmdbApiKey("stub")))
 
   // A bare-title row: one cinema slot, no year, no director, no original title.
   private def bareRow(title: String): CaffeineMovieCache = {

@@ -46,7 +46,7 @@ class TmdbReleaseDatesClientSpec extends AnyFlatSpec with Matchers {
   }
 
   private def client(fetch: GetOnlyHttpFetch, language: Locale) =
-    new TmdbClient(fetch, apiKey = Some("test-key"), language = language)
+    new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("test-key")), language = language)
 
   "the release-dates endpoint" should "yield the DEPLOYMENT country's certification from a real payload" in {
     val gb = new RecordingFetch(Map(((_: String).contains("/release_dates")) -> releaseDates))

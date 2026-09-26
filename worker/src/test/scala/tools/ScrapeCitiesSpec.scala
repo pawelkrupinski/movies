@@ -3,10 +3,12 @@ package tools
 import models.City
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import settings.{ProcessConfiguration, ScrapeCitySlugs}
 
 class ScrapeCitiesSpec extends AnyFlatSpec with Matchers {
 
-  private val default = Set("poznan")
+  private def scrapeCities(vars: (String, String)*): Option[ScrapeCitySlugs] =
+    new ProcessConfiguration(Env.of(vars*)).scrapeCitySlugs
 
   "ScrapeCities.allCities (the production default)" should "be every modelled city, not a gated subset" in {
     // Guards the city limit staying removed: every City.all slug — including the
@@ -17,29 +19,18 @@ class ScrapeCitiesSpec extends AnyFlatSpec with Matchers {
     ScrapeCities.allCities.size shouldBe City.all.size
   }
 
-  it should "be the set scraped when the override is unset (no limit by default)" in {
-    ScrapeCities.enabled(None, ScrapeCities.allCities) shouldBe City.all.map(_.slug).toSet
-  }
-
-  "ScrapeCities.enabled" should "fall back to the default when the override is unset" in {
-    ScrapeCities.enabled(None, default) shouldBe Set("poznan")
-  }
-
-  it should "fall back to the default when the override is blank or has no tokens" in {
-    ScrapeCities.enabled(Some(""), default)    shouldBe Set("poznan")
-    ScrapeCities.enabled(Some("  , "), default) shouldBe Set("poznan")
+  "The KINOWO_SCRAPE_CITIES override" should "be absent when unset, blank or naming nothing, so the default stands" in {
+    scrapeCities() shouldBe None
+    scrapeCities("KINOWO_SCRAPE_CITIES" -> "") shouldBe None
+    scrapeCities("KINOWO_SCRAPE_CITIES" -> "  , ") shouldBe None
   }
 
   it should "parse a comma-separated list, trimmed and lowercased" in {
-    ScrapeCities.enabled(Some(" Poznan , wroclaw ,"), default) shouldBe Set("poznan", "wroclaw")
+    scrapeCities("KINOWO_SCRAPE_CITIES" -> " Poznan , wroclaw ,") shouldBe Some(ScrapeCitySlugs(Set("poznan", "wroclaw")))
   }
 
-  it should "enable all three when listed" in {
-    ScrapeCities.enabled(Some("poznan,wroclaw,warszawa"), default) shouldBe
-      Set("poznan", "wroclaw", "warszawa")
-  }
-
-  it should "let the override REPLACE the default (not merge) — e.g. wroclaw only" in {
-    ScrapeCities.enabled(Some("wroclaw"), default) shouldBe Set("wroclaw")
+  it should "name exactly the listed cities — it REPLACES the default rather than merging" in {
+    scrapeCities("KINOWO_SCRAPE_CITIES" -> "poznan,wroclaw,warszawa") shouldBe Some(ScrapeCitySlugs(Set("poznan", "wroclaw", "warszawa")))
+    scrapeCities("KINOWO_SCRAPE_CITIES" -> "wroclaw") shouldBe Some(ScrapeCitySlugs(Set("wroclaw")))
   }
 }

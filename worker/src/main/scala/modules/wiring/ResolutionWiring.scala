@@ -1,12 +1,13 @@
 package modules.wiring
 
+import settings.{SettleInterval, TmdbRetryMaxEnqueuePerTick}
+
 import modules.WorkerWiring
 import services.enrichment.{CinemetaClient, ImdbIdResolver}
 import services.movies.{MovieService, QueueResolveDispatcher}
 import services.resolution.{MongoResolutionStore, ResolutionCache, ResolutionOutcome, UnresolvedPolicy, WriteThroughResolutionCache}
 import services.tasks.{CrewConfirmation, SettleReaper, UnresolvedTmdbReaper}
 
-import scala.concurrent.duration.{DurationLong, FiniteDuration}
 
 /** Identity resolution: the TMDB stage (`MovieService`), IMDb-id recovery, the
  *  per-source resolution caches a forced re-enrich clears, and the reapers that
@@ -34,7 +35,7 @@ trait ResolutionWiring { self: WorkerWiring =>
     wikidata = Some(wikidataClient),
     letterboxdIdResolver = Some(letterboxdIdResolver),
     // Same OMDB_API_KEY gate as `omdbBackfill` — the OMDb rung is inert when unset.
-    omdb = env.get("OMDB_API_KEY").map(_ => omdbClient),
+    omdb = configuration.omdbApiKey.map(_ => omdbClient),
     // Cinemeta needs no key — always wired as the final free rung.
     cinemeta = Some(new CinemetaClient(enrichmentFetch)))
 
@@ -102,10 +103,9 @@ trait ResolutionWiring { self: WorkerWiring =>
   // `displayTitle`, so settling right after it re-keyed the spelling-variant rows —
   // the per-deploy flap. Now the load is a pure read and this reaper re-asserts the
   // one-row-per-film invariant once per the SAME 30-min window (cluster-claimed).
-  def settleIntervalSeconds: FiniteDuration =
-    env.positiveLong("KINOWO_SETTLE_INTERVAL_SECONDS", SettleReaper.DefaultInterval.toSeconds).seconds
+  def settleInterval: SettleInterval = configuration.settleInterval(SettleInterval(SettleReaper.DefaultInterval))
   lazy val settleReaper = new SettleReaper(() => movieService.settle(),
-    interval = settleIntervalSeconds, runStore = scheduledRunStore)
+    interval = settleInterval.value, runStore = scheduledRunStore)
 
   // Re-tries unresolved-TMDB rows once per 24h, phase-spread across the period —
   // the queue-era replacement for MovieService's old daily, all-at-once
@@ -114,7 +114,8 @@ trait ResolutionWiring { self: WorkerWiring =>
   // shared-CPU credit). `retryResolve` dispatches each due row's ResolveTmdb past
   // its remembered miss, which stays stored so the row keeps its card meanwhile. Cap bounds a clock-jump/cold burst the same way the rating
   // reaper does — the leftover stays due and re-tries next period.
-  def maxTmdbRetryEnqueuePerTick: Int = env.positiveLong("KINOWO_TMDB_RETRY_MAX_ENQUEUE_PER_TICK", 100L).toInt
+  def maxTmdbRetryEnqueuePerTick: TmdbRetryMaxEnqueuePerTick =
+    configuration.tmdbRetryMaxEnqueuePerTick(TmdbRetryMaxEnqueuePerTick(100))
   lazy val unresolvedTmdbReaper = new UnresolvedTmdbReaper(movieCache, movieService.retryResolve,
     // `reexamineResolution` + `country` drive the stale-language and misresolution
     // sweeps: a row whose Tmdb slot was fetched in another deployment's language gets its
@@ -127,7 +128,7 @@ trait ResolutionWiring { self: WorkerWiring =>
     // correct row can lose its resolution. Runtime disagreements pass straight
     // through — they compare numbers, not names.
     confirmContradiction = crewConfirmation.confirmed,
-    maxEnqueuePerTick = maxTmdbRetryEnqueuePerTick,
+    maxEnqueuePerTick = maxTmdbRetryEnqueuePerTick.value,
     runStore = scheduledRunStore)
 
   lazy val crewConfirmation: CrewConfirmation = new CrewConfirmation(new CrewConfirmation.Credits {

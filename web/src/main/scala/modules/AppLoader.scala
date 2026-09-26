@@ -9,7 +9,8 @@ import play.api.routing.sird._
 import play.api._
 import models.Country
 import services.MongoAddress
-import tools.{Env, IssuerCertificateFetching, ProcessConfiguration}
+import settings.{ApplicationMode, ProcessConfiguration}
+import tools.{Env, IssuerCertificateFetching}
 import play.filters.HttpFiltersComponents
 import play.filters.cors.CORSComponents
 import play.filters.gzip.GzipFilterComponents
@@ -39,13 +40,11 @@ class AppLoader extends ApplicationLoader {
     //   - tests                              → Mode.Test
     // Forcing Dev when APP_MODE is unset was leaking debug pages on fly because
     // we had no APP_MODE configured there — Play's own Prod was being overridden.
-    val mode = process.applicationMode.map(_.toLowerCase) match {
-      case Some("prod" | "production") => Mode.Prod
-      case Some("test")                => Mode.Test
-      case Some("dev" | "development") => Mode.Dev
-      case None                        => context.environment.mode
-      case Some(other)                 =>
-        throw new IllegalArgumentException(s"Unknown APP_MODE: $other (expected dev|test|prod)")
+    val mode = process.applicationMode match {
+      case Some(ApplicationMode.Production)  => Mode.Prod
+      case Some(ApplicationMode.Test)        => Mode.Test
+      case Some(ApplicationMode.Development) => Mode.Dev
+      case None                              => context.environment.mode
     }
     val adjusted = context.copy(environment = context.environment.copy(mode = mode))
     LoggerConfigurator(adjusted.environment.classLoader)
@@ -58,7 +57,7 @@ class AppLoader extends ApplicationLoader {
     // configured alongside it: the country already knows its live address
     // (`Country.webOrigin`), and a second spelling of it is a second thing to
     // get wrong.
-    if (env.flag("KINOWO_RETIRED")) new RetiredComponents(mounted, country).application
+    if (process.retiredDeployment.value) new RetiredComponents(mounted, country).application
     else                            new AppComponents(mounted, env, country, process.mongoAddress).application
   }
 }

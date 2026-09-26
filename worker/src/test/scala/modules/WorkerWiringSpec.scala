@@ -56,7 +56,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
       extends WorkerWiring(c, b, env = e) {
     override lazy val mongoConnection: MongoConnection =
       new MongoConnection(uri = None, dbName = "unused", required = false)
-    def dbNameForTest: String              = mongoDbName
+    def dbNameForTest: String              = mongoDbName.value
     def defaultScrapeCitiesForTest: Set[String] = scrapeCitiesDefault
   }
 
@@ -143,8 +143,8 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
   // flippable knob), so this guards the wiring value the composition root supplies.
   it should "wire both reapers with a sub-5-minute tick interval so enqueues stay flat" in {
     val wiring = new SpyWiring
-    wiring.enrichmentTickInterval should be <= (1.minute: FiniteDuration)
-    wiring.detailTickInterval     should be <= (1.minute: FiniteDuration)
+    wiring.enrichmentTickInterval.value should be <= (1.minute: FiniteDuration)
+    wiring.detailTickInterval.value     should be <= (1.minute: FiniteDuration)
     wiring.stop()
   }
 
@@ -205,9 +205,9 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
       tools.Env.of("MONGODB_DB" -> "kinowo_probe_db", "KINOWO_SCRAPE_TASKS_PER_VENUE" -> "3"))
     val plain = new Probe(Country.Poland, budget)
     tuned.dbNameForTest       shouldBe "kinowo_probe_db"
-    tuned.scrapeTasksPerVenue shouldBe 3
+    tuned.scrapeTasksPerVenue shouldBe settings.ScrapeTasksPerVenue(3)
     plain.dbNameForTest       shouldBe Country.Poland.mongoDb
-    plain.scrapeTasksPerVenue shouldBe 1
+    plain.scrapeTasksPerVenue shouldBe settings.ScrapeTasksPerVenue(1)
   }
 
   // A wiring that only forces the pure, no-I/O catalog derivations (`detailEnrichers`)

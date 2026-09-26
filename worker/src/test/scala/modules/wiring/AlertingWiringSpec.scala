@@ -3,6 +3,7 @@ package modules.wiring
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.metrics.EnvGatedFeature
+import settings.{MissingSetting, ProcessConfiguration}
 
 /**
  * The worker's Telegram alerters are wired only when their env vars are present, and
@@ -13,6 +14,8 @@ import services.metrics.EnvGatedFeature
  */
 class AlertingWiringSpec extends AnyFlatSpec with Matchers {
 
+  private def resolved(vars: Map[String, String]) = new ProcessConfiguration(tools.Env.of(vars.toSeq*))
+
   private val tokenOnly = Map("TELEGRAM_BOT_TOKEN" -> "bot:token")
 
   private val afterTheGitopsFix = tokenOnly ++ Map(
@@ -22,20 +25,20 @@ class AlertingWiringSpec extends AnyFlatSpec with Matchers {
     "KINOWO_FILMWEB_DROP_TG_TOPIC_ID" -> "5")
 
   "AlertingWiring.alerters" should "report every alerter off, naming its missing key, on the env k3s shipped with" in {
-    AlertingWiring.alerters(tokenOnly.get, filmwebEnabled = true) shouldBe Seq(
-      EnvGatedFeature("filmweb_fallback", Seq("KINOWO_FALLBACK_TG_CHAT_ID")),
-      EnvGatedFeature("filmweb_drop", Seq("KINOWO_FILMWEB_DROP_TG_CHAT_ID")),
-      EnvGatedFeature("staging_stuck", Seq("KINOWO_STAGING_STUCK_TG_CHAT_ID or KINOWO_FALLBACK_TG_CHAT_ID")))
+    AlertingWiring.alerters(resolved(tokenOnly), filmwebEnabled = true) shouldBe Seq(
+      EnvGatedFeature("filmweb_fallback", Seq(MissingSetting("KINOWO_FALLBACK_TG_CHAT_ID"))),
+      EnvGatedFeature("filmweb_drop", Seq(MissingSetting("KINOWO_FILMWEB_DROP_TG_CHAT_ID"))),
+      EnvGatedFeature("staging_stuck", Seq(MissingSetting("KINOWO_STAGING_STUCK_TG_CHAT_ID or KINOWO_FALLBACK_TG_CHAT_ID"))))
   }
 
   it should "report every alerter on once the chat ids are back" in {
-    val alerters = AlertingWiring.alerters(afterTheGitopsFix.get, filmwebEnabled = true)
+    val alerters = AlertingWiring.alerters(resolved(afterTheGitopsFix), filmwebEnabled = true)
     alerters.map(_.name) shouldBe Seq("filmweb_fallback", "filmweb_drop", "staging_stuck")
     alerters.filterNot(_.enabled) shouldBe empty
   }
 
   it should "not report the Filmweb alerters at all for a country that has no Filmweb path" in {
     // Off by design there, not by misconfiguration: exporting a 0 would page for nothing.
-    AlertingWiring.alerters(afterTheGitopsFix.get, filmwebEnabled = false).map(_.name) shouldBe Seq("staging_stuck")
+    AlertingWiring.alerters(resolved(afterTheGitopsFix), filmwebEnabled = false).map(_.name) shouldBe Seq("staging_stuck")
   }
 }

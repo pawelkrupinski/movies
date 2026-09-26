@@ -56,7 +56,7 @@ class WebWiringClockSpec extends AnyFlatSpec with Matchers {
     val wiring = new ClockedWiring
     wiring.uptimeMonitor.recordSuccess("Probe")
     contentAsString(wiring.metricsController.metrics(FakeRequest())) should include (
-      s"""kinowo_uptime_recent_successes{country="${models.Country.fromEnv(tools.Env.fromProcess()).code}",service="Probe"} 1""")
+      s"""kinowo_uptime_recent_successes{country="${models.Country.default.code}",service="Probe"} 1""")
   }
 
   "the wiring's UptimeController" should "draw its bars up to the wiring clock's bucket" in {
@@ -70,7 +70,7 @@ class WebWiringClockSpec extends AnyFlatSpec with Matchers {
   "the wiring's DebugController" should "age the read-mirror on the wiring clock" in {
     val wiring = new ClockedWiring {
       override lazy val debugCountries: DebugCountries = DebugCountries.of(
-        new DebugStack(models.Country.fromEnv(tools.Env.fromProcess()), movieRepository, stagingRepository, taskQueue, ratingCadenceReader,
+        new DebugStack(models.Country.default, movieRepository, stagingRepository, taskQueue, ratingCadenceReader,
           enrichmentAttemptReader, () => Seq.empty, () => Seq.empty, () => Pinned,
           mirrorFreshness = () => Some(Pinned.minusSeconds(300))),
         Map.empty, devMode = true)
