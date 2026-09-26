@@ -36,7 +36,9 @@ import scala.collection.mutable
  *           solved by [[ConstraintSolver]] (cannot wins; an ambiguous node stays alone, A2);
  *        2. GROUP-LEVEL VOTING: a cluster no member of which accepted a film scores its members'
  *           evidence POOLED into one listing (the heaviest title, the modal year, every director),
- *           and the winner, if accepted, becomes every member's film;
+ *           and the winner, if accepted, becomes every member's film. A winner some members' own
+ *           evidence denies is not a veto of the whole cluster: those members split off and the
+ *           rest take it when their own pooled facts carry it (`vote`);
  *        3. the constraints are re-solved with those films, and each final cluster is a
  *           [[ResolverDecision]] with its confidence, basis and explanation.
  *
@@ -467,6 +469,29 @@ object IdentityResolver {
       else if (topHit(ranked).exists(_._1.c.tmdbId == s.c.tmdbId)) " as its exact top hit"
       else " with the ranking priors lending, never withdrawing"
 
+    /** The GROUP VOTE of a cluster no member matched alone: each voting member → the film and its
+     *  confidence. The pooled scoring marks a film denied when ANY member's own evidence denies it
+     *  (`FamilyScope.pooled`). When that vetoes the cluster's best film but the cluster's POOLED
+     *  facts (the modal year, the median runtime, every director — weighted by listings) still carry
+     *  it, the denying members are split off instead — the rest vote without them, and their
+     *  denial becomes a cannot-link to the film the rest take ("denies-film"), so no cluster holds both. The rest take the film only
+     *  when their OWN pooled facts carry it past the calibration's cut by themselves — at least one
+     *  published fact compared (`IdentityMeasures.comparesAFact`), and `factsProbability`, without
+     *  the ranking priors, clearing the cut: bare siblings never outvote a member's denial on a title
+     *  and the database's ranking. */
+    def carriedByOwnFacts(s: Scored): Boolean =
+      IdentityMeasures.comparesAFact(ListingFilm, s.measures) && calibration.showsRatings(factsProbability(s.measures))
+    def vote(cluster: Seq[Node], scope: FamilyScope): Seq[(String, (Int, Double))] = {
+      def to(voters: Seq[Node], accepted: (Scored, Double)) = voters.map(n => n.id -> (accepted._1.c.tmdbId, accepted._2))
+      val ranked = scope.pooled(cluster)
+      acceptedOf(ranked).map(to(cluster, _)).getOrElse(ranked.headOption.filter(s => s.denied && carriedByOwnFacts(s)).toSeq.flatMap { vetoed =>
+        val rest = cluster.filterNot(n => scope.of(n).exists(o => o.c.tmdbId == vetoed.c.tmdbId && o.denied))
+        Option.when(rest.nonEmpty && rest.size < cluster.size)(rest).flatMap(rest => acceptedOf(scope.pooled(rest))
+          .filter { case (s, _) => s.c.tmdbId == vetoed.c.tmdbId && carriedByOwnFacts(s) }
+          .map(to(rest, _))).getOrElse(Nil)
+      })
+    }
+
     def decide(cluster: Seq[Node], scope: FamilyScope, filmOf: String => Option[Int], accepted: Map[String, Int],
                voted: Map[String, (Int, Double)], edges: Seq[ResolverEdge], clusterIndex: Map[String, Int]): ResolverDecision = {
       val films = cluster.flatMap(n => filmOf(n.id)).distinct
@@ -525,9 +550,7 @@ object IdentityResolver {
       // Group-level voting over the clusters no member matched alone.
       val voted: Map[String, (Int, Double)] =
         if (mutation == Mutation.NoVoting) Map.empty
-        else roundA.filter(_.forall(n => !accepted.contains(n.id))).flatMap { cluster =>
-          acceptedOf(scope.pooled(cluster)).toSeq.flatMap { case (s, confidence) => cluster.map(n => n.id -> (s.c.tmdbId, confidence)) }
-        }.toMap
+        else roundA.filter(_.forall(n => !accepted.contains(n.id))).flatMap(vote(_, scope)).toMap
       val filmOf: String => Option[Int] = id => accepted.get(id).orElse(voted.get(id).map(_._1))
       val edges    = edgesOf(members, filmOf)
       val clusters = solve(members, edges)

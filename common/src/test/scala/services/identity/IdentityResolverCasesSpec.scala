@@ -385,6 +385,45 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.violations shouldBe 0
   }
 
+  "One member's own denial" should "split that member off, not veto the film for its credited siblings" in {
+    // UK, "Ozzy & Black Sabbath: Back to the Beginning": most venues credit the film's director and
+    // runtime; one credits another director and a runtime the record contradicts — not apart from
+    // its siblings on what they publish, but denying the film for itself — and pooled, that denial
+    // used to veto the film for every sibling. The denier stays off it.
+    val films    = Seq(F(1515139, "Back to the Beginning", 2026, "Paul Dugdale", 100, 20))
+    val credited = Seq(Multikino, Helios, KinoApollo).map(listing(_, "Back to the Beginning", Some(2026), Some("Paul Dugdale"), Some(100)))
+    val denier   = listing(Rialto, "Back to the Beginning", None, Some("Tim Van Someren"), Some(140))
+    val r = resolve(credited :+ denier, films)
+    val shown = (credited :+ denier).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")
+    withClue(shown) {
+      credited.foreach(l => r.decisionOf(l.key).film shouldBe Some(1515139))
+      r.decisionOf(denier.key).film should not be Some(1515139)
+      together(r, credited.head, denier) shouldBe false
+    }
+    r.violations shouldBe 0
+  }
+
+  it should "still veto the film when the whole cluster's pooled facts deny it" in {
+    // PL, a 2026 double bill beside the same director's older "Basia": the members that publish a
+    // year deny the old film on it; the rest publish none. Pooled — the modal year, the median
+    // runtime — the cluster itself denies it, so the yearless rest must not take it on the director.
+    val films   = Seq(F(1, "Back to the Beginning", 2026, "Paul Dugdale", 100, 20))
+    val rest    = listing(Multikino, "Back to the Beginning", None, Some("Paul Dugdale"), Some(100))
+    val deniers = Seq(Helios, KinoApollo).map(listing(_, "Back to the Beginning", Some(1990), None, Some(140)))
+    val r = resolve(rest +: deniers, films)
+    (rest +: deniers).foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe None))
+  }
+
+  it should "still veto the film for bare siblings whose own facts cannot carry it" in {
+    // The same denial beside listings that publish only the title: nothing of their own names the
+    // film, so the database's ranking alone never outvotes the credited member.
+    val films  = Seq(F(1515139, "Back to the Beginning", 2026, "Paul Dugdale", 100, 20))
+    val bare   = Seq(Multikino, Helios, KinoApollo).map(listing(_, "Back to the Beginning"))
+    val denier = listing(Rialto, "Back to the Beginning", None, Some("Tim Van Someren"), Some(140))
+    val r = resolve(bare :+ denier, films)
+    (bare :+ denier).foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe None))
+  }
+
   /** The shipped artefact without its evidence classes: what a bare title scores signal by signal. */
   private val withoutClasses = IdentityCalibration.resolver.copy(evidenceClasses = Nil)
   /** The shipped artefact with one evidence class: an exact top hit with at most `rivals` same-titled rivals. */
