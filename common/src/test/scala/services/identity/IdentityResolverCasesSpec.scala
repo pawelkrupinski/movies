@@ -275,6 +275,18 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  "A re-release titled with its screening year" should "not veto the film its credited siblings name" in {
+    // 951 US venues list the 1939 film; some spell it "Gone With The Wind (2026)" — the re-release's
+    // year, which a bracket year is as often as the film's. A bracket year agrees; it never denies
+    // (the label rule's own asymmetry, `IdentityMeasures.ownAgreement`).
+    val films = Seq(F(770, "Gone with the Wind", 1939, "Victor Fleming", 238, 20))
+    val credited = Seq(Multikino, Helios).map(listing(_, "Gone with the Wind", director = Some("Victor Fleming"), runtime = Some(238)))
+    val dated    = Seq(KinoApollo, Rialto).map(listing(_, "Gone With The Wind (2026)"))
+    val r = IdentityResolver.resolve(credited ++ dated, new Table(films), normalizer, IdentityCalibration.resolver)
+    (credited ++ dated).foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(770)))
+    r.violations shouldBe 0
+  }
+
   /** The shipped artefact without its evidence classes: what a bare title scores signal by signal. */
   private val withoutClasses = IdentityCalibration.resolver.copy(evidenceClasses = Nil)
   /** The shipped artefact with one evidence class: an exact top hit with at most `rivals` same-titled rivals. */

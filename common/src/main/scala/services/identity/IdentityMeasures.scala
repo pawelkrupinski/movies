@@ -382,6 +382,12 @@ object IdentityMeasures {
       (memo.getOrElseUpdate((group, f), backingVenues(f, groups(group))) - ownVenue).size
   }
 
+  /** Measures that only ever AGREE with a film, never deny it: a year in a title is as often a
+   *  re-release's screening year ("Gone With The Wind (2026)") as the film's, so the label rule
+   *  ([[ownAgreement]]) reads it only when it agrees — and a veto reads it the same way. The table
+   *  still weighs it both ways in the probability. */
+  val AgreesOnly: Set[String] = Set("titleYear.delta")
+
   /** Categories whose evidence cannot weaken as the listing carries more of the other side, per
    *  measure, strongest first: a decoration carries the film's whole title, an overlap some of its
    *  words, `none` nothing. The calibration fits their weights under this order

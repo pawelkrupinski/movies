@@ -153,8 +153,12 @@ object IdentityResolver {
      *  film the listing's facts do not contradict is never vetoed merely for ranking second in
      *  TMDB's search or for having same-titled rivals: that is ambiguity, not evidence of a
      *  different film. */
-    def factsProbability(measures: Map[String, Measure]): Double =
-      calibration.scopes(ListingFilm).calibration(calibration.scopes(ListingFilm).prior + ownContributions(measures))
+    def factsProbability(measures: Map[String, Measure]): Double = {
+      // A measure that only AGREES (`IdentityMeasures.AgreesOnly`) never pushes toward a veto.
+      val veto = calibration.contributions(ListingFilm, measures).collect {
+        case (name, w) if !Priors(name) && !(IdentityMeasures.AgreesOnly(name) && w < 0) => w }.sum
+      calibration.scopes(ListingFilm).calibration(calibration.scopes(ListingFilm).prior + veto)
+    }
     /** Each listing banner's house, from every node's season-production candidates
      *  (`IdentityMeasures.housesOf`); a season production must be of it when it is known. */
     val houseOf: Map[String, String] = IdentityMeasures.housesOf(nodes.flatMap { n =>
