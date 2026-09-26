@@ -73,10 +73,11 @@ class DevServerHeapCanarySpec extends AnyFlatSpec with Matchers {
     // "Local web server (:9000)" is the banner on the 2026-09-04 run that OOMed), so
     // a canary it does not use protects nothing. Kept as ONE definition of the heap
     // number rather than a second -J flag here that could drift from the wrapper.
-    val runWeb = RepoFile.read("tools/devpanel/scripts/run-web.sh")
-    runWeb should include("scripts/dev-server.sh")
-    withClue("run-web.sh must not dispatch a bare `sbt web/run`, which runs at the shared 4g: ")(
-      runWeb should not include "\" sbt web/run")
+    val devpanel = RepoFile.read("tools/devpanel/scripts/devpanel.py")
+    val runWeb = devpanel.substring(devpanel.indexOf("def run_web("), devpanel.indexOf("def run_local_stack("))
+    runWeb should include("\"./scripts/dev-server.sh\"")
+    withClue("run_web must not dispatch a bare `sbt web/run`, which runs at the shared 4g: ")(
+      runWeb should not include "\"web/run\"")
   }
 
   it should "stay clear of the dev server's own measured high-water mark" in {

@@ -5,7 +5,7 @@
 // panel; a menu-bar (☰) icon brings it back (left-click) or quits it
 // (right-click) — so it can be tucked away without quitting.
 //
-// Every action runs its script as a background subprocess, streaming live
+// Every action runs `scripts/devpanel.py <action>` as a background subprocess, streaming live
 // output into an in-panel console. There are two consoles:
 //   • Web    — shared by the two server actions; KEEPS its scrollback across
 //              runs (long-lived servers you want to keep watching).
@@ -16,7 +16,7 @@
 // selectable and ⌘C copies it.
 //
 // Long-press (or right-click) any button to pick which git worktree to run the
-// task in; the chosen path is handed to the script via DEVPANEL_REPO_ROOT.
+// task in; the chosen path is handed to devpanel.py via DEVPANEL_REPO_ROOT.
 //
 // Some rows are split buttons (the web servers, the local-DB actions): a main
 // button plus a ▾ that drops down the grouped options. The main button's
@@ -83,7 +83,7 @@ enum LocalHostIp {
 
 // MARK: - Command runner (streams a subprocess)
 
-/// Runs a shell script as a child process, streaming merged stdout+stderr to
+/// Runs a command as a child process, streaming merged stdout+stderr to
 /// `onOutput` and the exit code to `onExit`, both on `callbackQueue`.
 final class CommandRunner {
     private let callbackQueue: DispatchQueue
@@ -189,8 +189,7 @@ final class ConsoleView: NSObject {
     private let reapsWorkerOnStop: Bool
     private let titleText: String
     var onLayoutChange: (() -> Void)?
-    /// Absolute path to the action scripts dir (for reaping the fixture worker
-    /// via lib.sh's kill_stale_worker). Set by the app delegate after init.
+    /// Absolute path to the dir holding devpanel.py. Set by the app delegate after init.
     var scriptsDir = ""
 
     init(title: String, clearsOnRun: Bool, reapsWorkerOnStop: Bool = false) {
@@ -262,7 +261,7 @@ final class ConsoleView: NSObject {
         scroll.isHidden = true
     }
 
-    func run(scriptPath: String, label: String, repoRoot: String?) {
+    func run(actionName: String, label: String, repoRoot: String?) {
         runner?.stop()
         if clearsOnRun { textView.string = "" }
         setExpanded(true)
@@ -281,7 +280,7 @@ final class ConsoleView: NSObject {
         }
         self.runner = r
         let env = repoRoot.map { ["DEVPANEL_REPO_ROOT": $0] }
-        r.run(executable: "/bin/bash", arguments: ["-lc", "exec bash \"\(scriptPath)\""], environment: env)
+        r.run(executable: "/bin/bash", arguments: ["-lc", devpanelCommand(scriptsDir, actionName)], environment: env)
     }
 
     func stop() { doStop() }
@@ -291,8 +290,8 @@ final class ConsoleView: NSObject {
     /// Stop the running action AND, for the web console, reap a stale fixture
     /// worker. The web+worker stack forks the worker (LocalFixtureWorkerMain)
     /// into its own process tree via sbt's bgRunMain, so SIGTERM-ing the
-    /// script's process group leaves it running; kill_stale_worker (lib.sh)
-    /// pattern-kills it the same way the action scripts do at launch.
+    /// action's process group leaves it running; devpanel.py's reap-worker
+    /// pattern-kills it the same way the web actions do at launch.
     private func doStop() {
         runner?.stop()
         if reapsWorkerOnStop { reapStaleWorker() }
@@ -300,10 +299,9 @@ final class ConsoleView: NSObject {
 
     private func reapStaleWorker() {
         guard !scriptsDir.isEmpty else { return }
-        let lib = (scriptsDir as NSString).appendingPathComponent("lib.sh")
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/bin/bash")
-        p.arguments = ["-lc", "source \"\(lib)\"; kill_stale_worker"]
+        p.arguments = ["-lc", devpanelCommand(scriptsDir, "reap-worker")]
         let pipe = Pipe()
         p.standardOutput = pipe
         p.standardError = pipe
@@ -349,10 +347,18 @@ final class ConsoleView: NSObject {
 
 private enum Console { case web, device }
 
+/// The login-shell line that runs one devpanel.py action. A login shell so the
+/// action sees the terminal's PATH/SDK setup (sbt, java); the system python so
+/// it runs without Homebrew.
+func devpanelCommand(_ scriptsDir: String, _ actionName: String) -> String {
+    let script = (scriptsDir as NSString).appendingPathComponent("devpanel.py")
+    return "exec /usr/bin/python3 \"\(script)\" \(actionName)"
+}
+
 private struct Action {
     let title: String
     let subtitle: String
-    let script: String
+    let actionName: String
     let console: Console
 }
 
@@ -372,8 +378,8 @@ private struct ButtonGroup {
 
     /// The (title, subtitle) for the main button: the remembered option's, or
     /// the group placeholder when nothing valid is remembered.
-    func label(forSelectedScript script: String?) -> (title: String, subtitle: String) {
-        if let s = script, let a = options.first(where: { $0.script == s }) {
+    func label(forSelectedAction actionName: String?) -> (title: String, subtitle: String) {
+        if let s = actionName, let a = options.first(where: { $0.actionName == s }) {
             return (a.title, a.subtitle)
         }
         return (title, subtitle)
@@ -383,24 +389,31 @@ private struct ButtonGroup {
 private let groups: [ButtonGroup] = [
     ButtonGroup(title: "Android → device", subtitle: "build · install · launch", defaultsKey: nil,
                 options: [Action(title: "Android → device", subtitle: "build · install · launch",
-                                 script: "deploy-android.sh", console: .device)]),
+                                 actionName: "deploy-android", console: .device)]),
     ButtonGroup(title: "iOS → device", subtitle: "build · install · launch", defaultsKey: nil,
                 options: [Action(title: "iOS → device", subtitle: "build · install · launch",
-                                 script: "deploy-ios.sh", console: .device)]),
+                                 actionName: "deploy-ios", console: .device)]),
     ButtonGroup(title: "Web servers", subtitle: "▾ web/run · localStack", defaultsKey: "group.webServers",
                 options: [Action(title: "Web server", subtitle: "sbt web/run · :9000",
-                                 script: "run-web.sh", console: .web),
+                                 actionName: "run-web", console: .web),
                           Action(title: "Web + worker", subtitle: "sbt localStack · fixtures",
-                                 script: "run-local-stack.sh", console: .web)]),
+                                 actionName: "run-local-stack", console: .web)]),
     ButtonGroup(title: "Kill web + worker", subtitle: "free :9000 · reap worker", defaultsKey: nil,
                 options: [Action(title: "Kill web + worker", subtitle: "free :9000 · reap worker",
-                                 script: "kill-stack.sh", console: .web)]),
+                                 actionName: "kill-stack", console: .web)]),
     ButtonGroup(title: "Reset local corpus", subtitle: "drop kinowo_local · re-scrape", defaultsKey: nil,
                 options: [Action(title: "Reset local corpus", subtitle: "drop kinowo_local · re-scrape",
-                                 script: "reset-local-corpus.sh", console: .web)]),
+                                 actionName: "reset-local-corpus", console: .web)]),
 ]
 
 private let allActions: [Action] = groups.flatMap { $0.options }
+
+/// A remembered split-button choice. Choices saved before the actions moved
+/// to devpanel.py are script names ("run-web.sh"); read those as the action.
+func savedActionName(_ raw: String?) -> String? {
+    guard let raw = raw else { return nil }
+    return raw.hasSuffix(".sh") ? String(raw.dropLast(3)) : raw
+}
 
 private let defaultExpandedWidth: CGFloat = 380
 
@@ -432,6 +445,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         installMenu()
         installStatusItem()
         webConsole.scriptsDir = scriptsDir
+        deviceConsole.scriptsDir = scriptsDir
         loadGroupSelections()
 
         let content = NSStackView()
@@ -613,7 +627,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func button(for action: Action) -> NSButton {
         let b = paletteButton(title: action.title, subtitle: action.subtitle,
                               action: #selector(run(_:)), longPress: #selector(longPress(_:)))
-        b.identifier = NSUserInterfaceItemIdentifier(action.script)
+        b.identifier = NSUserInterfaceItemIdentifier(action.actionName)
         b.toolTip = "Click to run · long-press or right-click to pick a worktree"
         return b
     }
@@ -651,7 +665,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func refreshMainButton(_ group: ButtonGroup) {
         guard let key = group.defaultsKey, let b = groupMainButtons[key] else { return }
-        let (t, s) = group.label(forSelectedScript: groupSelection[key])
+        let (t, s) = group.label(forSelectedAction: groupSelection[key])
         b.attributedTitle = twoLineTitle(t, s)
     }
 
@@ -736,9 +750,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // MARK: running
 
     @objc private func run(_ sender: NSButton) {
-        guard let script = sender.identifier?.rawValue else { return }
-        if suppressClick.remove(script) != nil { return }   // long-press already handled it
-        start(script: script, repoRoot: nil)
+        guard let actionName = sender.identifier?.rawValue else { return }
+        if suppressClick.remove(actionName) != nil { return }   // long-press already handled it
+        start(actionName: actionName, repoRoot: nil)
     }
 
     // MARK: split-button groups
@@ -748,8 +762,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func loadGroupSelections() {
         for group in groups {
             guard let key = group.defaultsKey,
-                  let saved = UserDefaults.standard.string(forKey: key),
-                  group.options.contains(where: { $0.script == saved }) else { continue }
+                  let saved = savedActionName(UserDefaults.standard.string(forKey: key)),
+                  group.options.contains(where: { $0.actionName == saved }) else { continue }
             groupSelection[key] = saved
         }
     }
@@ -759,8 +773,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc private func runGroup(_ sender: NSButton) {
         guard let key = sender.identifier?.rawValue, let group = splitGroup(key) else { return }
         if suppressClick.remove(key) != nil { return }      // long-press already handled it
-        if let script = groupSelection[key] {
-            start(script: script, repoRoot: nil)
+        if let actionName = groupSelection[key] {
+            start(actionName: actionName, repoRoot: nil)
         } else {
             popUpGroupMenu(group, from: sender)
         }
@@ -775,11 +789,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     /// refreshes the main label, and runs it.
     @objc private func chooseGroupOption(_ item: NSMenuItem) {
         guard let info = item.representedObject as? [String: String],
-              let key = info["key"], let script = info["script"] else { return }
-        groupSelection[key] = script
-        UserDefaults.standard.set(script, forKey: key)
+              let key = info["key"], let actionName = info["action"] else { return }
+        groupSelection[key] = actionName
+        UserDefaults.standard.set(actionName, forKey: key)
         if let group = splitGroup(key) { refreshMainButton(group) }
-        start(script: script, repoRoot: nil)
+        start(actionName: actionName, repoRoot: nil)
     }
 
     /// Long-press the main button: pick a worktree for the remembered option, or
@@ -789,8 +803,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
               let key = button.identifier?.rawValue else { return }
         suppressClick.insert(key)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { self.suppressClick.remove(key) }
-        if let script = groupSelection[key] {
-            worktreeMenu(forScript: script).popUp(positioning: nil, at: gr.location(in: button), in: button)
+        if let actionName = groupSelection[key] {
+            worktreeMenu(forAction: actionName).popUp(positioning: nil, at: gr.location(in: button), in: button)
         } else if let group = splitGroup(key) {
             popUpGroupMenu(group, from: button)
         }
@@ -806,39 +820,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         for opt in group.options {
             let item = NSMenuItem(title: opt.title, action: #selector(chooseGroupOption(_:)), keyEquivalent: "")
             item.target = self
-            item.representedObject = ["key": key, "script": opt.script]
-            item.state = (groupSelection[key] == opt.script) ? .on : .off
+            item.representedObject = ["key": key, "action": opt.actionName]
+            item.state = (groupSelection[key] == opt.actionName) ? .on : .off
             menu.addItem(item)
         }
         return menu
     }
 
-    private func start(script: String, repoRoot: String?) {
-        guard !scriptsDir.isEmpty, let action = allActions.first(where: { $0.script == script }) else {
+    private func start(actionName: String, repoRoot: String?) {
+        guard !scriptsDir.isEmpty, let action = allActions.first(where: { $0.actionName == actionName }) else {
             NSSound.beep(); return
         }
-        let path = (scriptsDir as NSString).appendingPathComponent(script)
         let console = action.console == .web ? webConsole : deviceConsole
-        console.run(scriptPath: path, label: action.title, repoRoot: repoRoot)
+        console.run(actionName: actionName, label: action.title, repoRoot: repoRoot)
     }
 
     // MARK: worktree picker
 
     @objc private func longPress(_ gr: NSPressGestureRecognizer) {
         guard gr.state == .began, let button = gr.view as? NSButton,
-              let script = button.identifier?.rawValue else { return }
-        suppressClick.insert(script)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { self.suppressClick.remove(script) }
-        worktreeMenu(forScript: script).popUp(positioning: nil, at: gr.location(in: button), in: button)
+              let actionName = button.identifier?.rawValue else { return }
+        suppressClick.insert(actionName)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { self.suppressClick.remove(actionName) }
+        worktreeMenu(forAction: actionName).popUp(positioning: nil, at: gr.location(in: button), in: button)
     }
 
     @objc private func runOnWorktree(_ item: NSMenuItem) {
-        guard let info = item.representedObject as? [String: String], let script = info["script"] else { return }
+        guard let info = item.representedObject as? [String: String], let actionName = info["action"] else { return }
         let root = (info["root"]?.isEmpty == false) ? info["root"] : nil
-        start(script: script, repoRoot: root)
+        start(actionName: actionName, repoRoot: root)
     }
 
-    private func worktreeMenu(forScript script: String) -> NSMenu {
+    private func worktreeMenu(forAction actionName: String) -> NSMenu {
         let menu = NSMenu()
         let header = NSMenuItem(title: "Run on worktree:", action: nil, keyEquivalent: "")
         header.isEnabled = false
@@ -849,7 +862,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let item = NSMenuItem(title: isMain ? "\(wt.name)  (main)" : wt.name,
                                   action: #selector(runOnWorktree(_:)), keyEquivalent: "")
             item.target = self
-            item.representedObject = ["script": script, "root": isMain ? "" : wt.path]
+            item.representedObject = ["action": actionName, "root": isMain ? "" : wt.path]
             menu.addItem(item)
         }
         if trees.isEmpty {
@@ -939,7 +952,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
 // Headless self-test: drives the real CommandRunner — output streaming AND the
 // environment passthrough the worktree picker relies on — then exits 0/1. Lets
-// test.sh verify the runtime path without a GUI/click.
+// test_devpanel.py verify the runtime path without a GUI/click.
 if ProcessInfo.processInfo.environment["DEVPANEL_SELFTEST"] == "1" {
     func runOnce(_ exec: String, _ args: [String], _ env: [String: String]?) -> (String, Int32) {
         let q = DispatchQueue(label: "devpanel.selftest")
@@ -963,22 +976,29 @@ if ProcessInfo.processInfo.environment["DEVPANEL_SELFTEST"] == "1" {
         if s2 != 0 || !o2.contains("ROOT=/tmp/devpanel-selftest-root") { break }
     }
 
+    // The real action command line reaches devpanel.py (an unknown action
+    // prints its usage and exits 2), when the test passes the scripts dir.
+    let scriptsDir = ProcessInfo.processInfo.environment["DEVPANEL_SELFTEST_SCRIPTS"] ?? ""
+    let (o3, s3) = runOnce("/bin/bash", ["-c", devpanelCommand(scriptsDir, "bogus")], nil)
     let streamOK = s1 == 0 && o1.contains("SELFTEST_OK")
         && s2 == 0 && o2.contains("ROOT=/tmp/devpanel-selftest-root")
+        && s3 == 2 && o3.contains("usage: devpanel.py")
 
     // Split-button identity logic: default state shows the group placeholder;
     // a remembered (or freshly persisted) option shows that option's label; an
     // unknown script falls back to the placeholder.
     let web = groups.first { $0.defaultsKey == "group.webServers" }!
-    let labelOK = web.label(forSelectedScript: nil).title == "Web servers"
-        && web.label(forSelectedScript: "run-local-stack.sh").title == "Web + worker"
-        && web.label(forSelectedScript: "bogus.sh").title == "Web servers"
+    let labelOK = web.label(forSelectedAction: nil).title == "Web servers"
+        && web.label(forSelectedAction: "run-local-stack").title == "Web + worker"
+        && web.label(forSelectedAction: "bogus").title == "Web servers"
     let suite = "devpanel.selftest.\(getpid())"
     let ud = UserDefaults(suiteName: suite)!
-    ud.set("run-local-stack.sh", forKey: "group.webServers")
-    let persistOK = ud.string(forKey: "group.webServers") == "run-local-stack.sh"
-        && web.label(forSelectedScript: ud.string(forKey: "group.webServers")).title == "Web + worker"
+    ud.set("run-local-stack", forKey: "group.webServers")
+    let persistOK = ud.string(forKey: "group.webServers") == "run-local-stack"
+        && web.label(forSelectedAction: ud.string(forKey: "group.webServers")).title == "Web + worker"
     UserDefaults.standard.removePersistentDomain(forName: suite)
+    let migrateOK = savedActionName("run-local-stack.sh") == "run-local-stack"
+        && savedActionName("run-web") == "run-web" && savedActionName(nil) == nil
 
     // LAN-IP selection rule: site-local wins over a public address regardless of
     // order, loopback is never offered, and a lone non-loopback is the fallback.
@@ -993,10 +1013,10 @@ if ProcessInfo.processInfo.environment["DEVPANEL_SELFTEST"] == "1" {
         && LocalHostIp.isSiteLocal("172.16.0.1") && LocalHostIp.isSiteLocal("172.31.9.9")
         && !LocalHostIp.isSiteLocal("172.15.0.1") && !LocalHostIp.isSiteLocal("172.32.0.1")
 
-    let ok = streamOK && labelOK && persistOK && ipOK
-    print(ok ? "SELFTEST_OK stream+env+groups+ip status=\(s1),\(s2)"
-             : "SELFTEST_FAIL stream=\(streamOK) label=\(labelOK) persist=\(persistOK) ip=\(ipOK) "
-               + "o1=\(o1.debugDescription) o2=\(o2.debugDescription) st=\(s1),\(s2)")
+    let ok = streamOK && labelOK && persistOK && migrateOK && ipOK
+    print(ok ? "SELFTEST_OK stream+env+groups+migrate+ip status=\(s1),\(s2)"
+             : "SELFTEST_FAIL stream=\(streamOK) label=\(labelOK) persist=\(persistOK) migrate=\(migrateOK) ip=\(ipOK) "
+               + "o1=\(o1.debugDescription) o2=\(o2.debugDescription) o3=\(o3.debugDescription) st=\(s1),\(s2),\(s3)")
     exit(ok ? 0 : 1)
 }
 

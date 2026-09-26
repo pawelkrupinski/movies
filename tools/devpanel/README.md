@@ -1,14 +1,16 @@
 # DevPanel
 
 A small always-on-top macOS palette that floats over your desktop with six
-buttons for the movies repo. Every action streams its live output into an
-in-panel console.
+buttons for the movies repo. Each button runs one action of
+`scripts/devpanel.py` (stdlib Python, run with the system `/usr/bin/python3`)
+and streams its live output into an in-panel console. The actions also run
+from a terminal: `python3 tools/devpanel/scripts/devpanel.py deploy-ios`.
 
 | Button         | Runs                          | Console |
 |----------------|-------------------------------|---------|
 | Android → device | wait-for-unlock → `cd android && ./gradlew runOnDevice` | Device |
 | iOS → device     | wait-for-unlock → `xcodebuild build` → `devicectl install` → `devicectl launch` | Device |
-| Web server       | frees :9000 + reaps a stale fixture worker → `sbt web/run`            | Web |
+| Web server       | frees :9000 + reaps a stale fixture worker → `scripts/dev-server.sh` (`sbt web/run` on a narrowed heap) | Web |
 | Web + worker     | frees :9000 + reaps a stale fixture worker → `sbt localStack` (web + fixture worker, local Mongo :27018) | Web |
 | Kill web + worker | stops the running web action (SIGTERMs its process group) then frees :9000 + reaps the forked fixture worker | Web |
 | Reset local corpus | `scripts/reset-corpus.sh --local --yes` (drops the kinowo_local corpus collections so a local worker re-scrapes) | Web |
@@ -33,7 +35,7 @@ width you set. Log text is selectable and **⌘C** copies it (⌘A selects all).
 ## Run on a worktree
 
 **Long-press** (or **right-click**) any button to pick which git worktree to
-run the task in. The chosen path is handed to the script via
+run the task in. The chosen path is handed to devpanel.py via
 `DEVPANEL_REPO_ROOT`; a plain click runs against the main checkout.
 
 ## Wait for phone unlock
@@ -75,7 +77,7 @@ bar (a ☰ slider icon):
   *Quit* menu — the way to quit while the panel is hidden.
 - The panel's **`✕`** still quits outright.
 
-The absolute path to `scripts/` is baked into the app's Info.plist at build
+The absolute path to `scripts/` (where `devpanel.py` lives) is baked into the app's Info.plist at build
 time, so the `.app` works even if copied to `/Applications`. **Re-run the build
 if you move the repo.**
 
@@ -102,12 +104,13 @@ if you move the repo.**
 ## Tests
 
 ```bash
-bash tools/devpanel/test.sh
+bash tools/devpanel/test.sh      # = python3 -m unittest tools/devpanel/test_devpanel.py
 ```
 
-Asserts each script dispatches the intended command(s) (`DEVPANEL_PRINT_ONLY=1`)
-including the unlock + worktree-override steps, checks the iOS lock-error
-classifier against the real captured failure text and the `unlockedSinceBoot`
-parser, checks `free_port` frees a port, bash-syntax-checks the scripts, then
-compiles the Swift app and runs its headless self-test — which drives the real
-`CommandRunner` output-streaming + `DEVPANEL_REPO_ROOT` env path.
+`test_devpanel.py` runs every action against `ScriptedHost` — the `Host` seam
+with scripted adb / devicectl replies (including a real captured
+`devicectl list devices`), so device picking, the unlock waits and the retry on
+a locked launch are tested without a phone. `free_port` / `kill_pattern` run
+against real processes. It then compiles the Swift app and runs its headless
+self-test, which drives the real `CommandRunner` (output streaming, the
+`DEVPANEL_REPO_ROOT` env path, and the actual `devpanel.py` command line).
