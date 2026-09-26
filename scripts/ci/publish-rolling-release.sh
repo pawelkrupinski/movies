@@ -2,7 +2,7 @@
 # Point a rolling prerelease — and its git tag — at this commit and replace its assets.
 #
 # An UPSERT, never delete + recreate: deleting the release (with --cleanup-tag) opens a window
-# in which the tag does not exist, which is what the 2026-09-04 403 hit. `view` decides edit vs
+# in which the tag does not exist, which is what the 2026-09-04 403 hit. `view` decides whether to
 # create; it goes through gh-release.sh so a transient failure of the check is retried, and only
 # gh's "release not found" is read as missing — never a 403, which a create would only repeat
 # against the existing tag.

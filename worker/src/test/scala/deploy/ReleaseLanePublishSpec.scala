@@ -50,9 +50,12 @@ class ReleaseLanePublishSpec extends AnyFlatSpec with Matchers {
     for (tag <- Seq("android-latest", "android-tune-latest")) withClue(s"$tag: ") {
       android should include (s"scripts/ci/publish-rolling-release.sh\" $tag")
     }
-    for (verb <- Seq("view", "edit", "create", "upload"))
+    for (verb <- Seq("view", "create", "upload"))
       rollingPublish should include (s"\"$$release\" $verb")
     rollingPublish should include ("--clobber")
+    // An existing release is never edited: `release edit` drew GitHub's intermittent 403 under
+    // Contents: write, and nothing it wrote was needed (see publish-rolling-release.sh).
+    rollingPublish should not include ("\"$release\" edit")
   }
 
   "every workflow and composite action" should "write GitHub releases only through the retrying gh-release.sh" in {
