@@ -716,7 +716,7 @@ Cineworld from an IP it serves. No recording from a runner can close them.
 7. **Family-size ceiling.** The US wide releases reach 3,179 listings. The resolve is O(nodes)
    per family, but a pathological bridge could join two blockbusters. Should there be a size alarm
    on `FamilyClosure.merges`?
-8. **The US shadow diff** is still missing; ES has landed (236 of 236 identical). The replay boot
+8. **The US shadow diff** — *answered in §15: booted the convergence-leg way (`bootCorpus`), US takes 342–583 s.* Originally: the diff was missing; ES has landed (236 of 236 identical). The replay boot
    (`PipelineReplay`, one staging advance per venue) did not finish US's 4,452 venues in 65
    minutes. Options: advance staging per *batch* of venues, or diff against the pipeline output
    the US convergence leg already produces rather than booting a second time. Until one lands,
@@ -838,6 +838,10 @@ Chrome: it pins the ticked listing, removes the pin, and shows a refusal.
 - The resolver must read pins through `ListingConstraints.pinned` (§13.1): add `blockKeys` to the
   family keys, solve `mustLinks` as tier 0, apply `admits` to its derived edges, and resolve each
   listing through `resolvedFilm`.
+  *Done on `identity-resolver` (§15):* `ResolverDecision` implements `Decision`, and
+  `IdentityResolver.resolve(…, pins = ListingConstraints.pinned(pins))` does all four (a pinned
+  listing's decision has basis `Pinned` and confidence 1). `ShadowDecisions` is still `none`:
+  persisting a shadow run's decisions for it to read is open.
 
 ---
 
@@ -1385,3 +1389,149 @@ Bare-listing home (must-link): of 460191 labelled exact-title pairs where a side
 
 Contradicted production filings: 1471 listings on 59 tmdbIds (`contradicted-prod-resolutions.tsv`); 59 imdb / rating-page cross-check mismatches (`prod-cross-check-mismatches.tsv`).
 
+---
+
+## 15. Phase 2: the shadow resolver — results (2026-09-26, branch `identity-resolver`)
+
+### 15.1 What was built
+
+Production code that serves nothing (no wiring reads it):
+
+- `common/.../services/identity/`:
+  - `IdentityModel`: `Listing` (a `ListingKey` plus the raw row), `Evidence`, `Hit`, `FilmFacts`, `Candidate`, `Answer` (`Known` / `Unknown`), `CandidateQuery`, and the `IdentityLookups` trait. The trait is minimal and exists for reconciliation with phase 1's observation types.
+  - `CandidateQueries`: the query set. For every title shape (the title, the original title, and each delimited segment from `SearchTitles`) it issues a search with the stated year and one without, plus every credited director's filmography.
+  - `Signals`, `IdentityWeights`: general signals only, with "missing" as a value of its own. The weights and thresholds are data, loaded from `identity-weights.json` (the calibration artefact) and falling back to `services/identity/interim-weights.json`.
+  - `IdentityResolver`:
+    - families: the block closure, plus segment keys and matched ids;
+    - candidates are scored only along an evidence path;
+    - a node accepts a match on its **confidence**, p(best) × Π(1 − p(rival));
+    - venue agreement is a confidence-weighted vote;
+    - `ConstraintSolver` (A2), then group-level voting over pooled evidence, then a re-solve;
+    - output is `ResolverDecision`s (implementing curation's `Decision`), each with a confidence, a basis, an explanation and its contradictions; curation pins are read through `ListingConstraints.pinned`.
+  - `IdAssigner` (A4), and `ListingConstraints.learnedCannotLink`: a generic evaluator for data-driven cannot-links. When the artefact carries learned cannot-links the resolver uses them; the old pipeline never reads them. `ListingConstraints.statedYearsApart` is new.
+- `worker/.../services/identity/TmdbIdentityLookups` implements the trait over raw TMDB primitives (`TmdbClient.search` is new) and the venues' detail pages. A replay gap becomes `Unknown`, not "no film".
+- Tests:
+  - `common/src/test/.../identity/`: the properties on generated corpora, each beside its mutation (A1 lazy lookups, P1 first-wins, A3 narrowed families, A4 input-order tie-break, NoVoting), plus the hand-built incident cases. 37 tests, about 45 s.
+  - `worker/src/it/scala/IdentityShadowIntegrationSpec` compares the resolver with the pipeline, head to head. The hard clusters always run (about 90 s on itAll). The full corpora are opt-in.
+  - `scripts.IdentityInterimFit`, with its spec, is the reproducible interim fit.
+
+Reproduce:
+
+```
+# the five hard clusters (itAll):
+MONGODB_URI=mongodb://localhost:28017 sbt "worker/IntegrationTest/testOnly integration.IdentityShadowIntegrationSpec"
+# + the five full corpora (recorder run 36153174348):
+KINOWO_IDENTITY_FULL=es,de,pl,uk,us KINOWO_IDENTITY_CORPUS_DIR=<cinema-scrapes-<cc>.json.gz dir> \
+KINOWO_FIXTURE_ROOT=<real enrichment-<cc> dirs> KINOWO_IDENTITY_OUT=<out> …same… (sbt -J-Xmx16g)
+# interim weights from the datasets the run wrote:
+sbt "worker/Test/runMain scripts.IdentityInterimFit out.json --exclude director,runtime,country,imdb --threshold bayes <out>/full-*-dataset.tsv"
+```
+
+The pipeline side is booted the way the convergence legs boot it (`bootCorpus`, then the settle pair, staging, conclusion and projection), so the US diff now exists. The US boot took 342–583 s, against more than 65 min for the proof's per-venue replay. Listings are mapped to pipeline films by slot, with the year and director discriminator the slot fold uses.
+
+### 15.2 Head to head (full corpora; hard clusters in the spec output)
+
+Weights: `interim-pipeline-6ad0b89d`, a logistic fit on train families against the pipeline's answers. Ground truth for accuracy is the **corroborated** label: the node's one candidate its own evidence backs with at least two independent signals and nothing against it. Accuracy is measured on held-out families only (one fold in five).
+
+| | PL old / new | UK old / new | DE old / new | US old / new | ES old / new |
+|---|---|---|---|---|---|
+| listings | 10,138 | 29,400 | 19,636 | 99,774 | 4,491 |
+| films (with tmdb) | 1,138 (751) / 1,265 (598) | 1,546 (1,484) / 1,577 (1,352) | 1,693 (1,653) / 1,695 (1,572) | 2,275 (2,195) / 2,304 (2,031) | 236 (232) / 236 (215) |
+| identical clusters | 1,000 | 1,497 | 1,691 | 2,239 | 233 |
+| cannot-linked pairs in a cluster (P3) | – / **0** | – / **0** | – / **0** | – / **0** | – / **0** |
+| order variants (permutations + split arrivals) | – / 0 of 3 | – / 0 of 3 | – / 0 of 3 | – / 0 of 3 | – / 0 of 3 |
+| listings matched (coverage) | 94.2% / 86.8% | 90.4% / 72.0% | 99.0% / 97.2% | 92.9% / 86.8% | 93.9% / 93.3% |
+| accuracy of matched, held-out corroborated | 100% / 100% (224) | 98.2% / 99.8% (1,995) | 100% / 99.9% (3,101) | 99.9% / 99.9% (16,245) | 100% / 100% (543) |
+| matched films a listing's own evidence contradicts | 74/751 (9.9%) / 37/598 (6.2%) | 84/1,484 (5.7%) / 49/1,352 (3.6%) | 88/1,653 (5.3%) / 60/1,572 (3.8%) | 95/2,195 (4.3%) / 59/2,031 (2.9%) | 16/232 (6.9%) / 10/215 (4.7%) |
+| historical checks, pass–fail | 4–2 / 4–2 | 4–0 / 3–1 | 3–0 / 3–0 | 6–1 / 7–0 | – |
+| seconds (boot / resolve) | 70 / 20 | 117 / 8 | 68 / 6 | 342 / 11 | 16 / 1 |
+
+Hard clusters: P3 was 0 and order variance was 0 of 21 on all five corpora. The historical checks regress once on hc-pl (Avengers "Dogrywka") and once on hc-uk (Mockingjay Part 2 (2026)).
+
+On matched films, the pipeline and the resolver are about equally accurate: 98.2–100% against 99.8–100%. What the resolver loses is coverage, 1 to 18 points.
+
+### 15.3 Label-free scorecard
+
+- **Contradiction rate** (the venue's own year, director or runtime against the matched film): lower for the resolver on all five corpora, by 1.4–3.7 points. Wrong ratings are shown exactly on these contradicted matches, so fewer of them means fewer wrong ratings.
+- **Cross-country agreement.** 955 director-credited titles appear in two or more corpora. Titles resolved to different films across countries: pipeline 9, resolver 5.
+- **Perturbation recovery** (decorated, re-dated, re-cased and deburred copies of a confident match): PL 119/136, UK 152/156, DE 160/160, US 147/152, ES 160/160. Measured for the resolver only; the pipeline side needs a re-boot per perturbation.
+- **Simulated 30% TMDB outage.** No listing moved to a *different* film (0 on all five corpora). Affected listings became unmatched instead: PL 356, UK 3,197, DE 3,685, US 18,228, ES 785. With best-probability acceptance, 1,090 UK listings moved to another film; the confidence rule removed that.
+- **Stability over time and churn.** P2 holds by construction: a pure function, 0 id changes on identical input (property-tested). Consecutive recorded days were not replayed, because only one recorded day per corpus exists locally.
+- **Cross-source consistency** (IMDb, Wikidata, RT/MC/Filmweb) and **rating outliers** are not measurable offline. The rating pages were recorded only for the pipeline's own films, so the resolver's other films have none to compare.
+- **Disagreements adjudicated on evidence alone.** Each cell (the listings one pipeline film and one resolver cluster share) is judged by the listings' corroboration of each side's film:
+
+  | | resolver right | pipeline right | both wrong | undecidable |
+  |---|---|---|---|---|
+  | PL | 9 | 99 | 0 | 140 |
+  | UK | 16 | 84 | 0 | 69 |
+  | DE | 7 | 62 | 0 | 26 |
+  | US | 10 | 94 | 0 | 93 |
+  | ES | 2 | 12 | 0 | 5 |
+
+  "Pipeline right" is almost always a listing the resolver left **unmatched** while the pipeline's film is corroborated: a coverage loss, not a wrong match. The undecidable cases are listings that publish nothing but a title. The full lists are in `<out>/<corpus>-report.txt`.
+
+The label-free measures agree with the labelled verdict. The resolver is at least as precise and more stable (lower contradiction rate, no moves under an outage, better cross-country agreement), but it covers less.
+
+### 15.4 Historical checks (test labels only; never resolver inputs)
+
+- **Resolver right, pipeline wrong:**
+  - Così fan tutte is not Brass 1992 (PL).
+  - Schaffner's "Planet of the Apes" is apart from Burton's (US).
+- **Both pass:**
+  - Samson/Met (PL);
+  - Happy Together (PL);
+  - Skarpetek 3 vs 4 (PL);
+  - A Star Is Born 1954/1976/2018 (US);
+  - It Ends with Us (US);
+  - It 1990/2017 (US; fixed on this branch by `statedYearsApart`);
+  - the Hunger Games instalments (UK/US);
+  - Belle 2013/2021 (UK);
+  - Sinn und Sinnlichkeit (DE);
+  - Bad Apples (DE);
+  - "Zärtlich kreist die Faust" is not 10728 (DE).
+- **Both fail:** the decorated Lalka spellings (PL). The resolver puts Kawalski-credited listings on 1321666 and leaves the bare ones unmatched.
+- **Regressions:**
+  - "Avengers: Koniec gry. Dogrywka (re-release)" (PL): no delimiter separates the title from "Dogrywka", so there is no evidence path.
+  - "Mockingjay – Part 2 (2026)" (UK): its yearless search is a replay gap, and `statedYearsApart` keeps it apart from 2015.
+- **Undecidable:** Opętanie. The resolver answers 21484 (Żuławski, 1981); the pipeline answers 958160 (1973).
+
+### 15.5 Phase-2 gate
+
+| criterion | status |
+|---|---|
+| 0 cannot-link violations | **met**: 0 on 10 corpora and on 40 generated × 21 presentations |
+| order independence | **met**: 0 variants (21 per hard cluster, 3 per full corpus, 21 × 40 generated) |
+| no regressions vs today except known-wrong | **not met**: 2 historical regressions, and 351 evidence-adjudicated "pipeline right" disagreements, mostly coverage |
+| cutover gate: accuracy ≥, determinism >, coverage within margin | accuracy of matched ≥ (UK +1.6 pts); determinism better; **coverage fails**: −0.6 (ES) to −18.4 (UK) points |
+
+**Why coverage fails, and what closes it:**
+
+1. **Recording gaps (phase 1).** The trees cannot answer 45–78% of the resolver's own queries, and 88–93% of its candidates' film records. On the full corpora:
+
+   | | queries unanswerable | film records unanswerable |
+   |---|---|---|
+   | PL | 2,638 / 5,553 | 9,201 / 9,976 |
+   | UK | 2,508 / 4,072 | 19,137 / 20,631 |
+   | DE | 6,417 / 8,173 | 19,249 / 20,957 |
+   | US | 3,368 / 5,440 | 24,092 / 26,355 |
+   | ES | 1,112 / 1,370 | 3,473 / 3,704 |
+
+   The pipeline's own queries are answered because they were recorded.
+2. **Recording bias in the signals.** Director, runtime and country facts exist only for the film the pipeline picked, so an unmasked fit learned "director known ⇒ pick it", and gave director **mismatch** a positive weight. The interim fit masks those signals. With a phase-1 recording of every candidate's record, they can be fitted honestly. They are what separates same-titled films (the Lalka 1321666 vs 1309396 class).
+3. The interim threshold is the Bayes boundary, 0.5. The calibration artefact's derived threshold replaces it.
+
+Re-run this section's commands once phase 1's recording pass is pinned and `identity-weights.json` has landed. The spec reads the artefact automatically.
+
+### 15.6 Hardcoding that remains in the identity decision
+
+| what | where | why it is still there | general replacement |
+|---|---|---|---|
+| Title rule tables: 29 base rules (16 per-cinema) and 214 extra rules (77 programme-prefix banners, 124 strip patterns, 13 unifications) | `TitleNormalizer` / `titlerules`, via `ScrapeListing.cleanTitle`, `sanitize`, `searchQuery`, `apiQuery` | query strings must match what was recorded, and block keys use the same forms; changing them now only turns answers into gaps | the segment decomposition already in place, plus banner detection from data (a segment attached to many distinct films at a venue), then re-record the raw-title queries |
+| `FormatTags` format vocabulary (8 tokens) | `ScrapeListing.cleanTitle` | as above | the same banner-by-co-occurrence signal |
+| `SequelMarker` franchise table (Hunger Games, Bring It On) and ordinal word lists | inside `describeDifferentFilms`, the listing-listing cannot-link when no learned rules exist | the calibration's learned listing-listing rules have not landed | learned cannot-links (the evaluator exists); different instalments already split through "different-films", because their candidates differ |
+| `YearWindow` 2 / 1 / 5, the runtime buckets 5 / 15, the "3+" year bucket | `ListingConstraints` predicates, `statedYearsApart`, `Signals` buckets | the bucket edges are discretisation; the weights on them are fitted | learned bin edges and learned cannot-link thresholds from the artefact |
+| `CountryNames` (153 entries) | the country signal | spelling normalisation, not identity knowledge | none needed; the signal is masked in the interim fit |
+| Interim acceptance threshold 0.5 | `interim-weights.json` | the Bayes boundary, because pipeline-agreement fitting degenerates | the calibration artefact's derived threshold |
+| The evidence-path rule (a candidate is scored only when the listing's own query named it or its title relates) | `IdentityResolver.reachable` | structural pruning, with no constant | none needed |
+
+The resolver has no per-title, per-venue, per-chain or per-franchise rule of its own. Every constant above is inherited from the constraint model or the normaliser, and a learned counterpart for it is pending.
