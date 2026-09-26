@@ -20,10 +20,12 @@ import services.movies.{ListingKey, StoredMovieRecord, TitleNormalizer}
 object CutoverProperties {
 
   /** The stored films as the order-independence check compares them: listings, TMDB film, key and
-   *  title, with the film id when `withIds` (a boot from nothing numbers films by their listings). */
+   *  title, with the film id when `withIds` (a boot from nothing numbers films by their listings).
+   *  Without ids, a key's twin disambiguator — the film's counter, so its history — is left out too. */
   def films(tick: ProjectionTick, withIds: Boolean): Set[String] =
     tick.plan.toSeq.flatMap(_.films).map { f =>
-      (if (withIds) s"${f.id} " else "") + s"${f.record.tmdbId.getOrElse("—")} ${f.key} '${f.title}' " +
+      val key = if (withIds) f.key else f.key.replaceFirst("~\\d+\\|", "~|")
+      (if (withIds) s"${f.id} " else "") + s"${f.record.tmdbId.getOrElse("—")} $key '${f.title}' " +
         f.members.map(ListingKey.serialised).sorted.mkString("[", ", ", "]")
     }.toSet
 
