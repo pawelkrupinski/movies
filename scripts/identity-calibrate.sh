@@ -19,7 +19,9 @@
 # The report formats numbers in the JVM locale: the command pins it to en-US ("0.97", not "0,97").
 #
 # Usage:
-#   CORPORA=… FIXTURES=… PROD=… [REPORT=…] [EPSILON=certified|<rate>] scripts/identity-calibrate.sh [--extract-prod]
+#   CORPORA=… FIXTURES=… PROD=… [REPORT=…] [EPSILON=certified|<rate>] [CASES=<jsonl>] [WEIGHTS=… LABELS=…] scripts/identity-calibrate.sh [--extract-prod]
+#   CASES lists {"listingKey","tmdbId","name"} whose probabilities the report shows under both the
+#   naive-Bayes and the joint model (evaluation only). WEIGHTS/LABELS redirect the two artefacts.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -42,4 +44,4 @@ if [[ "${1:-}" == "--extract-prod" ]]; then
   done
 fi
 
-sbt -J-Xmx12g -J-Duser.language=en -J-Duser.country=US -batch "worker/Test/runMain scripts.IdentityCalibrate --corpora $CORPORA --fixtures $FIXTURES --prod $PROD --report $REPORT --epsilon $EPSILON --version $VERSION ${COUNTRIES:+--countries $COUNTRIES}"
+sbt -J-Xmx12g -J-Duser.language=en -J-Duser.country=US -batch "worker/Test/runMain scripts.IdentityCalibrate --corpora $CORPORA --fixtures $FIXTURES --prod $PROD --report $REPORT --epsilon $EPSILON --version $VERSION ${COUNTRIES:+--countries $COUNTRIES} ${CASES:+--cases $CASES} ${WEIGHTS:+--weights $WEIGHTS} ${LABELS:+--labels $LABELS}"

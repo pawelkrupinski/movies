@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
 import java.util.zip.GZIPOutputStream
 import scala.collection.mutable
+import scala.jdk.CollectionConverters.*
 import scala.util.hashing.MurmurHash3
 
 /**
@@ -46,7 +47,8 @@ import scala.util.hashing.MurmurHash3
 object IdentityCalibrate {
 
   final case class Config(corpora: Path, fixtures: Path, hardClusters: Path, prod: Option[Path], weightsOut: Path,
-                          labelsOut: Path, reportDir: Path, epsilon: Option[Double], countries: Seq[String], version: String)
+                          labelsOut: Path, reportDir: Path, epsilon: Option[Double], countries: Seq[String], version: String,
+                          cases: Option[Path] = None)
 
   def main(args: Array[String]): Unit = {
     val opts = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap
@@ -63,7 +65,10 @@ object IdentityCalibrate {
       // relaxes that to a bound on the false-veto rate.
       epsilon      = opts.get("epsilon").filter(_ != "certified").map(_.toDouble),
       countries    = opts.get("countries").map(_.split(",").toSeq).getOrElse(Country.all.map(_.code)),
-      version      = opts.getOrElse("version", "unversioned"))
+      version      = opts.getOrElse("version", "unversioned"),
+      // A JSONL of {"listingKey", "tmdbId", "name"}: cases whose two models' probabilities the
+      // report lists side by side — evaluation only, never an input to a weight.
+      cases        = path("cases"))
     run(cfg)
   }
 
@@ -387,6 +392,10 @@ object IdentityCalibrate {
     def probability(m: Map[String, Measure]): Double = calibration(logOdds(m))
   }
 
+  /** One listing-film model measured on the held-out split, and at its own show cut. */
+  final case class ModelScore(name: String, fitted: Fitted, auc: Double, logLoss: Double, cut: Double, wrong: Int, shown: Int,
+                              recall: Double)
+
   /** A split's labelled pairs as independent units: each distinct (unit, score, label) once. */
   def units(rows: Seq[Row], split: String, score: Map[String, Measure] => Double): Seq[(Double, Boolean)] =
     rows.iterator.filter(_.split == split).flatMap(r => r.label(Set.empty).map(y => (r.unit, score(r.measures), y)))
@@ -640,7 +649,7 @@ object IdentityCalibrate {
     def ruleRows(rows: Int => Seq[Row]): Seq[Row] = rows(1)
 
     val lf2 = lfRows(2); val ll2 = llRows(2)
-    val lfFit = fit(IdentityMeasures.ListingFilm, LfSignals, lf2)
+    val lfNb = fit(IdentityMeasures.ListingFilm, LfSignals, lf2)
     val llFit = fit(IdentityMeasures.ListingListing, LlSignals, ll2)
     val lfFit3 = fit(IdentityMeasures.ListingFilm, LfSignals, lfRows(3))
     val llFit3 = fit(IdentityMeasures.ListingListing, LlSignals, llRows(3))
@@ -672,6 +681,61 @@ object IdentityCalibrate {
     line()
     line(f"Today's measured wrong rate: ${contradictedUnits.size} contradicted of ${contradictedUnits.size + corroboratedUnits.size} decisive production filings, counted per family and film = ${100 * todayWrong}%.2f%% (per listing: ${contradicted.size} of ${contradicted.size + corroborated2}).")
     line()
+
+    // ── naive Bayes against the joint candidate, on the held-out split ──
+    // The evaluated units of the show cut: every labelled pair plus production's CONTRADICTED
+    // filings, which are exactly the wrong ratings served today (see the show-ratings threshold).
+    val contradictedPairs: Seq[Row] = data.flatMap(_.lf).filter(p => evidence.get(p.obs).exists(e => e.contradicted && e.tmdbId == p.tmdbId))
+      .map(p => Row(split(p.obs), familyOf(p.obs), s"${familyOf(p.obs)}|${p.tmdbId}", obsAll(p.obs).country, p.measures, _ => Some(false)))
+    val shownRows = lf2 ++ contradictedPairs
+    def wrongAt(ds: Seq[(Double, Boolean)], t: Double) = { val acc = ds.filter(_._1 >= t); (acc.count(!_._2), acc.size) }
+    val lfJoint = IdentityJointFit.fit(lfNb, lf2, LfSignals.filter(corroboratorOf(_).isEmpty).toSet, IdentityMeasures.EvidenceOrder)
+    val candidates = Seq("naive Bayes" -> lfNb, "joint (logistic)" -> lfJoint).map { case (name, f) =>
+      val cal = units(shownRows, "calibration", f.probability); val test = units(shownRows, "test", f.probability)
+      val cut = cal.map(_._1).distinct.sorted.find { t => val (w, n) = wrongAt(cal, t); n > 0 && upper95(w, n) <= todayWrong }.getOrElse(1.0)
+      val (w, n) = wrongAt(test, cut)
+      val h = units(lf2, "test", f.logOdds).map { case (x, y) => (x, f.calibration(x), y) }
+      val logLoss = -h.map { case (_, p, y) => math.log(math.max(1e-12, if (y) p else 1 - p)) }.sum / h.size
+      ModelScore(name, f, auc(h.map(x => x._1 -> x._3)), logLoss, cut, w, n, test.count(x => x._2 && x._1 >= cut).toDouble / math.max(1, test.count(_._2)))
+    }
+    val Seq(nbScore, jointScore) = candidates
+    // Kept: the joint fit when it is the better probability model on the held-out split (lower
+    // log-loss, no lower AUC) AND its show cut's held-out wrong share stays within today's rate.
+    val jointWins = jointScore.logLoss < nbScore.logLoss && jointScore.auc >= nbScore.auc &&
+      jointScore.shown > 0 && jointScore.wrong.toDouble / jointScore.shown <= todayWrong
+    val lfFit = if (jointWins) lfJoint else lfNb
+    line("### Listing ↔ film model: naive Bayes against the joint candidate")
+    line()
+    line("| model | held-out AUC | held-out log-loss | show cut | held-out wrong of shown | recall at the cut |")
+    line("|---|---|---|---|---|---|")
+    candidates.foreach(c => line(f"| ${c.name} | ${c.auc}%.4f | ${c.logLoss}%.4f | ${c.cut}%.4f | ${c.wrong} of ${c.shown} | ${100 * c.recall}%.1f%% |"))
+    line()
+    line(s"Kept: **${if (jointWins) "joint (logistic)" else "naive Bayes"}** (rule: lower held-out log-loss, no lower AUC, held-out wrong share at its cut within today's rate).")
+    line()
+    line("| free signal cell | naive Bayes | joint |")
+    line("|---|---|---|")
+    lfNb.tables.zip(lfJoint.tables).filter(t => corroboratorOf(t._1.signal).isEmpty).foreach { case (a, b) =>
+      a.weights.categories.toSeq.sortBy(_._1).foreach { case (v, w) => line(f"| ${a.signal}=$v | $w%+.2f | ${b.weights.categories(v)}%+.2f |") }
+      a.weights.bins.zip(b.weights.bins).foreach { case (x, y) => line(f"| ${a.signal} ${x.atLeast.fold("")(l => f"≥$l%.1f")} ${x.atMost.fold("")(h => f"≤$h%.1f")} | ${x.weight}%+.2f | ${y.weight}%+.2f |") }
+      a.weights.missing.toSeq.sortBy(_._1).foreach { case (m, w) => line(f"| ${a.signal}=missing:$m | $w%+.2f | ${b.weights.missing(m)}%+.2f |") }
+    }
+    line()
+    cfg.cases.foreach { path =>
+      val byKey = obsAll.values.groupBy(_.listingKey)
+      val pairs = data.flatMap(_.lf).groupBy(p => p.obs)
+      line("| case | listing | film | naive Bayes p | joint p | shown under each |")
+      line("|---|---|---|---|---|---|")
+      Files.readAllLines(path).asScala.filter(_.trim.nonEmpty).map(Json.parse).foreach { js =>
+        val (key, film, name) = ((js \ "listingKey").as[String], (js \ "tmdbId").as[Int], (js \ "name").asOpt[String].getOrElse(""))
+        byKey.get(key).flatMap(_.headOption).flatMap(o => pairs.get(o.idx).flatMap(_.find(_.tmdbId == film)).map(o -> _)) match {
+          case Some((o, p)) =>
+            val (a, b) = (lfNb.probability(p.measures), lfJoint.probability(p.measures))
+            line(f"| $name | ${o.listing.title} @ ${o.venue} | $film | $a%.3f | $b%.3f | ${if (a >= nbScore.cut) "yes" else "no"} / ${if (b >= jointScore.cut) "yes" else "no"} |")
+          case None => line(s"| $name | $key | $film | — | — | not among the calibration's pairs |")
+        }
+      }
+      line()
+    }
 
     // ── signal tables ──
     def tables(f: Fitted, title: String): Unit = {
@@ -744,12 +808,8 @@ object IdentityCalibrate {
     // which are exactly the wrong ratings served today. The cut is the lowest whose wrong share
     // on the calibration split stays within today's measured wrong rate; the held-out split
     // reports what it does.
-    val contradictedPairs: Seq[Row] = data.flatMap(_.lf).filter(p => evidence.get(p.obs).exists(e => e.contradicted && e.tmdbId == p.tmdbId))
-      .map(p => Row(split(p.obs), familyOf(p.obs), s"${familyOf(p.obs)}|${p.tmdbId}", obsAll(p.obs).country, p.measures, _ => Some(false)))
-    val shownRows = lf2 ++ contradictedPairs
     def shown(which: String): Seq[(Double, Boolean)] = units(shownRows, which, lfFit.probability)
     val calShown = shown("calibration"); val testShown = shown("test")
-    def wrongAt(ds: Seq[(Double, Boolean)], t: Double) = { val acc = ds.filter(_._1 >= t); (acc.count(!_._2), acc.size) }
     // The lowest cut whose wrong share's one-sided 95% upper bound (not its point estimate, which
     // the held-out split does not reproduce) stays within today's rate.
     val showT = calShown.map(_._1).distinct.sorted.find { t => val (w, n) = wrongAt(calShown, t); n > 0 && upper95(w, n) <= todayWrong }.getOrElse(1.0)
