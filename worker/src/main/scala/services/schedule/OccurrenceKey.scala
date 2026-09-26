@@ -18,10 +18,10 @@ object OccurrenceKey {
   /** The occurrence id active at `nowMillis` for a job firing every `period`,
    *  `offset` past the epoch-aligned boundary. Stable across machines for any
    *  instant in the same window. */
-  def at(job: String, nowMillis: Long, period: FiniteDuration, offset: FiniteDuration): String = {
-    val periodMillis = period.toMillis
-    val offsetMillis = offset.toMillis
-    val boundary = Math.floorDiv(nowMillis - offsetMillis, periodMillis) * periodMillis + offsetMillis
-    s"$job@${java.time.Instant.ofEpochMilli(boundary)}"
-  }
+  def at(job: String, nowMillis: Long, period: FiniteDuration, offset: FiniteDuration): String =
+    s"$job@${java.time.Instant.ofEpochMilli(windowStart(nowMillis, period, offset))}"
+
+  /** The start, in epoch millis, of the window `nowMillis` falls in. */
+  def windowStart(nowMillis: Long, period: FiniteDuration, offset: FiniteDuration): Long =
+    Math.floorDiv(nowMillis - offset.toMillis, period.toMillis) * period.toMillis + offset.toMillis
 }

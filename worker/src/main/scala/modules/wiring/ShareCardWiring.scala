@@ -74,8 +74,8 @@ trait ShareCardWiring { self: WorkerWiring =>
       new RescrapeShareCardHandler(new ShareCardRescraper(FacebookGraph.fromConfiguration(configuration, tlsContext), readModelRepository, country, shareCardMetrics, clock)))
 
   /** The recurring enqueues: a backfill tick every minute (first three minutes after boot), the
-   *  budget pass every ten, the full prune daily (first five minutes after boot). Each window is
-   *  claimed, so one replica enqueues it. */
+   *  budget pass every ten, the full prune daily at 03:00 UTC (or five minutes after a boot that
+   *  finds that day's prune never ran). Each window is claimed, so one replica enqueues it. */
   lazy val shareCardReapers: Seq[ClaimedEnqueueReaper] =
     if (!shareCardsEnabled) Nil
     else {
@@ -89,6 +89,12 @@ trait ShareCardWiring { self: WorkerWiring =>
           10.minutes, 4.minutes, scheduledRunStore, clock),
         new ClaimedEnqueueReaper("share-card-prune",
           enqueue(TaskType.PruneShareCards, "share-card-prune", Map(PruneShareCardsHandler.ModeKey -> PruneShareCardsHandler.Daily)),
-          24.hours, 5.minutes, scheduledRunStore, clock))
+          24.hours, 5.minutes, scheduledRunStore, clock, ClaimedEnqueueReaper.Timing.Aligned(ShareCardWiring.DailyPruneAt)))
     }
+}
+
+object ShareCardWiring {
+  /** When the daily share-card prune runs, past midnight UTC: a fixed time, so its burst of
+   *  deletions lands at one place on the dashboard however the day's deploys fall. */
+  val DailyPruneAt: FiniteDuration = 3.hours
 }

@@ -2151,7 +2151,7 @@
     {
       "id": 39,
       "title": "Share-card deletions — by kind and reason",
-      "description": "`kinowo_worker_share_cards_pruned_total{kind,reason}`: files deleted. Each film has at most three -- its card, base and poster, each overwritten in place by a re-render, so nothing is ever superseded. retired = the files of a film dropped from the read model (at once, by the projection) or off the screens (the daily prune); budget = evicted oldest-first to get under the budget; temp = an abandoned write older than the one-hour grace. Nothing younger than an hour is ever deleted, and no file of a film web_movies points a card at. The daily prune's burst is normal; a steady budget line means the directory lives at its budget.",
+      "description": "`kinowo_worker_share_cards_pruned_total{kind,reason}`: files deleted. Each film has at most three -- its card, base and poster, each overwritten in place by a re-render, so nothing is ever superseded. retired = the files of a film dropped from the read model (at once, by the projection) or off the screens (the daily prune); budget = evicted oldest-first to get under the budget; temp = an abandoned write older than the one-hour grace. Nothing younger than an hour is ever deleted, and no file of a film web_movies points a card at. The daily prune's burst, just after 03:00 UTC (or five minutes after a boot that finds that day's prune never ran), is normal; a steady budget line means the directory lives at its budget.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
