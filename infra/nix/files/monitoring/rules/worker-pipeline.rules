@@ -281,17 +281,12 @@ groups:
       # every path that sets a hold is bounded by the cap, so its healthy ceiling is 1800 and
       # anything above it is a hold nothing in the code should have produced.
       #
-      # EXCEPT RescrapeShareCard, which was not a hold but a SCHEDULE: each Facebook re-scrape was
-      # enqueued 10 seconds after the last, so after a burst the last one sat hours out. Nothing
-      # enqueues the type any more (re-scrapes moved to the fleet's queue, FacebookRescrapeDrain);
-      # the exception stays only until the tasks queued before that move have run.
-      #
       # 1860 is the cap plus a minute for the gap between the pod that released the task and the
       # pod that samples it. `max by` because every worker pod of a country samples the same queue.
       # The hold falls one second per second, so `for: 2m` fires only for a task parked at least
       # 2m past the cap and rides over a single odd sample.
       - alert: WorkerTaskParkedTooLong
-        expr: max by (country, task_type) (kinowo_worker_queue_parked_max_seconds{task_type!="RescrapeShareCard"}) > 1860
+        expr: max by (country, task_type) (kinowo_worker_queue_parked_max_seconds) > 1860
         for: 2m
         labels:
           severity: warning

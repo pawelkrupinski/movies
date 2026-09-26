@@ -47,17 +47,6 @@ class ReleaseShareCardHoldHandler(releaseExpiredHolds: () => Unit) extends TaskH
   def handle(task: Task): HandlerOutcome = { releaseExpiredHolds(); HandlerOutcome.Done }
 }
 
-/** `RescrapeShareCard`: a re-scrape task queued before re-scrapes moved to the fleet's queue
- *  ([[FacebookRescrapeQueue]]) — handed over to it. Nothing enqueues the type any more; once no
- *  worker's queue holds one, the type, this handler and the parked-task alert's exception for it go. */
-class RescrapeShareCardHandler(rescrapes: ShareCardRescrapes, clock: java.time.Clock) extends TaskHandler {
-  val taskType: TaskType = TaskType.RescrapeShareCard
-  def handle(task: Task): HandlerOutcome =
-    task.payload.get("filmId").fold[HandlerOutcome](HandlerOutcome.Skipped) { filmId =>
-      rescrapes.request(filmId, clock.instant()); HandlerOutcome.Done
-    }
-}
-
 /**
  * What a finished render sets off, on the task framework's completion event: re-project the film,
  * so its `web_movies` document points at the new card — and, for a card the first-publish gate is

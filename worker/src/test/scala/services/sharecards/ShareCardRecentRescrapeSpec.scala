@@ -2,7 +2,6 @@ package services.sharecards
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.tasks.TaskType
 import ShareCardTestKit.*
 
 import java.time.Instant
@@ -46,7 +45,7 @@ class ShareCardRecentRescrapeSpec extends AnyFlatSpec with Matchers {
   it should "leave nothing on the task queue: the card renders never wait behind re-scrapes" in {
     val (rig, movie) = rigWith(now = T0, published = Some(T0.minusSeconds(86400)))
     rerate(rig, movie)
-    drain(rig.queue).map(_.taskType) should not contain TaskType.RescrapeShareCard
+    drain(rig.queue) shouldBe empty
   }
 
   "The landing of a pending film's card" should "queue each film once in the fleet's queue" in {

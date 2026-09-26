@@ -243,11 +243,10 @@ object WorkerTaskMetrics {
     // The mirror of the head-of-line age: that one counts only CLAIMABLE rows, so a task the
     // queue holds back is invisible to it by design. This is the longest remaining hold among
     // the held-back rows — never more than TaskWorker.MaxBackoff unless something parked a
-    // task past the cap (alerted as WorkerTaskParkedTooLong), or it is a RescrapeShareCard queued
-    // before re-scrapes moved to the fleet's queue — a spaced-out schedule rather than a hold.
+    // task past the cap (alerted as WorkerTaskParkedTooLong).
     private val parkedMax = Gauge.builder()
       .name("kinowo_worker_queue_parked_max_seconds")
-      .help("Longest remaining hold, in seconds, among waiting tasks per country and type that the queue is holding back (retry backoff, a Deferred's instant, a staggered chunk not yet due); 0 when none is held. Bounded by TaskWorker.MaxBackoff (1800s) for every hold the queue sets, so a value above it means a task parked past the cap — except a RescrapeShareCard queued before re-scrapes moved to the fleet's queue, SCHEDULED 10s apart. Sampled from the bounded active snapshot.")
+      .help("Longest remaining hold, in seconds, among waiting tasks per country and type that the queue is holding back (retry backoff, a Deferred's instant, a staggered chunk not yet due); 0 when none is held. Bounded by TaskWorker.MaxBackoff (1800s) for every hold the queue sets, so a value above it means a task parked past the cap. Sampled from the bounded active snapshot.")
       .labelNames("country", "task_type")
       .register(registry)
 

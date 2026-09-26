@@ -108,8 +108,7 @@ trait ShareCardWiring { self: WorkerWiring =>
       new RenderShareCardHandler(shareCardService),
       new ShareCardBackfillHandler(shareCardBackfill),
       new PruneShareCardsHandler(shareCardJanitor),
-      new ReleaseShareCardHoldHandler(() => readModelProjector.releaseExpiredHolds()),
-      new RescrapeShareCardHandler(shareCardRescrapes, clock))
+      new ReleaseShareCardHoldHandler(() => readModelProjector.releaseExpiredHolds()))
 
   /** The recurring enqueues: a backfill tick every minute (first three minutes after boot), the
    *  budget pass every ten, the full prune daily at 03:00 UTC (or five minutes after a boot that

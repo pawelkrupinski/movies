@@ -55,12 +55,11 @@ object TaskType {
   // Film share cards (the worker renders them to a directory Caddy serves — see
   // `services.sharecards`). A render per (film, language, input hash); the backfill tick that
   // feeds renders in bounded batches; the daily prune and the frequent budget pass; the end of a
-  // first-publish hold; and a Facebook re-scrape of a film published before its card existed.
+  // first-publish hold. (Facebook re-scrapes are not tasks: see `FacebookRescrapeDrain`.)
   case object RenderShareCard      extends TaskType { val name = "RenderShareCard"      }
   case object ShareCardBackfill    extends TaskType { val name = "ShareCardBackfill"    }
   case object PruneShareCards      extends TaskType { val name = "PruneShareCards"      }
   case object ReleaseShareCardHold extends TaskType { val name = "ReleaseShareCardHold" }
-  case object RescrapeShareCard    extends TaskType { val name = "RescrapeShareCard"    }
 
   // Runtime invariants checked by sample (see `services.tasks.RecheckedAudit`): an hourly sample
   // and, fifteen minutes later, the re-check of whatever it found — the same type, the ids in its
@@ -73,7 +72,7 @@ object TaskType {
         RefreshAllTmdb, RefreshAllImdb, RefreshAllFilmweb, RefreshAllMetacritic, RefreshAllRt, RefreshAllOmdb, SettleNow,
         StagingDetail, StagingResolveTmdb, StagingResolveImdbId, StagingFold,
         ScrapeChunk, ScrapeChunkReduce,
-        RenderShareCard, ShareCardBackfill, PruneShareCards, ReleaseShareCardHold, RescrapeShareCard,
+        RenderShareCard, ShareCardBackfill, PruneShareCards, ReleaseShareCardHold,
         AuditReadModelContent, AuditShareCards)
 
   def byName(s: String): Option[TaskType] = all.find(_.name == s)
