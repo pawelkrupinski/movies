@@ -72,7 +72,10 @@ class ReadModelProjector(
   awaitStreamApplied: ChangeStreamLiveness => Unit = ReadModelProjector.awaitStreamApplied(_),
   // Which derivation the stored read model was last re-projected whole under — see
   // [[ReadModelDerivationMarker]] and `advanceDerivationPass`. `none` owes no pass.
-  derivationMarker: ReadModelDerivationMarker = ReadModelDerivationMarker.none
+  derivationMarker: ReadModelDerivationMarker = ReadModelDerivationMarker.none,
+  // Confidence-gated ratings (identity phase 3): what each card's ratings are served as. `off`
+  // — the card as projected — unless the worker's composition root switches it on.
+  ratingGate: services.identity.RatingGate = services.identity.RatingGate.off
 ) extends Stoppable with Logging {
   // The projection keys rows by the repository's own `_id` formula, so it must
   // fold titles with the same rules the repository writes under — take them from
@@ -376,14 +379,15 @@ class ReadModelProjector(
     // every projection recomputed, and the miss rate never decayed. Keying per row makes each
     // row's entry its own.
     val rowKey = stored.id.value
-    val hash   = ReadModelProjection.metadataHash(stored)
+    // The gate's version is part of the key: a new gate must not reuse cards gated by the old one.
+    val hash   = (ReadModelProjection.metadataHash(stored), ratingGate.version).##
     val venues = partition.venuesAll
     val movies = lastMetadata.get(rowKey) match {
       case Some((cachedHash, cached)) if cachedHash == hash && venues.sizeIs == cached.size =>
         metrics.recordMetadataProjection(reused = true)
         cached
       case _ =>
-        val recomputed = partition.moviesAll
+        val recomputed = partition.moviesAll.map(ratingGate(stored, _))
         lastMetadata.update(rowKey, hash -> recomputed)
         metrics.recordMetadataProjection(reused = false)
         recomputed

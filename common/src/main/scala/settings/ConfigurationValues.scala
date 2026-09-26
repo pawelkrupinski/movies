@@ -114,6 +114,9 @@ final case class RaceSeed(value: Long) extends AnyVal
 final case class EnrichmentFixtureTree(value: String) extends AnyVal
 /** `KINOWO_CONVERGENCE_HERMETIC` — a convergence leg refuses every request it cannot replay. */
 final case class HermeticReplay(value: Boolean) extends AnyVal
+/** `KINOWO_IDENTITY_RATING_GATE` — the identity phase-3 staged-migration switch: cards below the
+ *  calibrated identity confidence are served without ratings. Off by default. */
+final case class IdentityRatingGateEnabled(value: Boolean) extends AnyVal
 /** `KINOWO_IDENTITY_LOOKUPS` — the convergence leg sweeps identity lookups. */
 final case class IdentityLookupSweepEnabled(value: Boolean) extends AnyVal
 /** `KINOWO_CONVERGENCE_CORPUS_RUN` — the CI run that recorded the replayed corpus. */

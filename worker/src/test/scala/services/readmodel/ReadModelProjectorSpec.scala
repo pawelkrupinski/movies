@@ -107,6 +107,29 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     projector.stop(); metered.stop()
   }
 
+  // Confidence-gated ratings (docs/design/identity-resolver.md, phase 3): the gate the worker's
+  // composition root passes is what the stored card carries — and a new gate re-projects rather
+  // than reusing the card the metadata memo holds under the old one.
+  "a rating gate" should "decide the ratings the stored card carries, even when the row's metadata is unchanged" in {
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
+    val rm         = new InMemoryReadModelRepository()
+    var withhold   = false
+    val gate = new services.identity.RatingGate {
+      def apply(stored: StoredMovieRecord, movie: ResolvedMovie): ResolvedMovie =
+        if (withhold) services.identity.RatingGate.withheld(movie) else movie
+      def version: Int = if (withhold) 1 else 0
+    }
+    val projector = new ReadModelProjector(repository, rm, rm, clock = specClock, ratingGate = gate)
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    projector.onMovieUpsert(repository.findAll().head)
+    rm.findCard(fid).flatMap(_.movie).flatMap(_.ratings.imdb) shouldBe Some(8.0)
+
+    withhold = true
+    projector.onMovieUpsert(repository.findAll().head)
+    rm.findCard(fid).flatMap(_.movie).map(_.ratings.imdb) shouldBe Some(None)
+    projector.stop()
+  }
+
   "the first projection of a row" should "write the movie document before its screenings" in {
     val (projector, _, rm) = fixture()
     projector.onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00")))))

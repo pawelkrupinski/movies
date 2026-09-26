@@ -568,4 +568,13 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     withClue("the Letterboxd rung was never consulted: ") { asked.get() shouldBe "tt5555555" }
     wiring.stop()
   }
+
+  // Confidence-gated ratings are a staged-migration switch (identity phase 3): nothing the
+  // resolver computes may reach the read model until the composition root is told so.
+  "the rating gate" should "be off unless KINOWO_IDENTITY_RATING_GATE switches it on" in {
+    val budget = new SharedExecutionBudget(4)
+    new Probe(Country.Poland, budget).ratingGate shouldBe theSameInstanceAs(services.identity.RatingGate.off)
+    new Probe(Country.Poland, budget, tools.Env.of("KINOWO_IDENTITY_RATING_GATE" -> "true")).ratingGate should not be
+      theSameInstanceAs(services.identity.RatingGate.off)
+  }
 }

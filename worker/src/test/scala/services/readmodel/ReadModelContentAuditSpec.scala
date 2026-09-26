@@ -50,6 +50,22 @@ class ReadModelContentAuditSpec extends AnyFlatSpec with Matchers {
     projector.stop()
   }
 
+  "a card the rating gate withheld" should "match when audited with the gate the projector ran" in {
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
+    val rm         = new InMemoryReadModelRepository()
+    val withholdAll = new services.identity.RatingGate {
+      def apply(stored: services.movies.StoredMovieRecord, movie: ResolvedMovie) = services.identity.RatingGate.withheld(movie)
+      val version = 1
+    }
+    val projector  = new ReadModelProjector(repository, rm, rm, clock = tools.SpecClock.Pinned, ratingGate = withholdAll)
+    repository.upsert("Foo", Some(2024), record(8.0, Seq(at("2026-06-12T20:00"))))
+    projector.onMovieUpsert(repository.findAll().head)
+    val card = cardOf(repository)
+    ReadModelContentAudit.differences(card, repository, rm, withholdAll) shouldBe Some(Nil)
+    audit(card, repository, rm).get should contain ("ratings")   // the ungated projection differs
+    projector.stop()
+  }
+
   "a lost change event" should "leave a stale card the audit names field by field, until the content check repairs it" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = new InMemoryReadModelRepository()

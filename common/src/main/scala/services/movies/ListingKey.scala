@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{Cinema, CinemaMovie}
+import models.{Cinema, CinemaMovie, SourceData}
 
 /**
  * A venue's LISTING, identified by what the venue itself published — never by a title the
@@ -42,14 +42,19 @@ object ListingKey {
 
   /** The key of `cm` as `cinema` lists it. Directors are sorted, because a venue's credit
    *  order is presentation, not identity; blank page and names count as absent. */
-  def of(cinema: Cinema, cm: CinemaMovie): ListingKey = {
-    val raw = cm.movie.rawTitle.getOrElse(cm.movie.title)
-    cm.filmUrl.map(_.trim).filter(_.nonEmpty) match {
-      case Some(page) => Native(cinema.displayName, page, raw)
-      case None       => Published(cinema.displayName, raw, cm.movie.releaseYear,
-        cm.director.map(_.trim).filter(_.nonEmpty).distinct.sorted)
+  def of(cinema: Cinema, cm: CinemaMovie): ListingKey =
+    of(cinema, cm.filmUrl, cm.movie.rawTitle.getOrElse(cm.movie.title), cm.movie.releaseYear, cm.director)
+
+  /** The key of the listing a stored venue `slot` holds — the same fields [[of]] reads, as the
+   *  landing copied them onto the slot. */
+  def ofSlot(cinema: Cinema, slot: SourceData): ListingKey =
+    of(cinema, slot.filmUrl, slot.rawTitle.orElse(slot.title).getOrElse(""), slot.releaseYear, slot.director)
+
+  private def of(cinema: Cinema, page: Option[String], raw: String, year: Option[Int], directors: Seq[String]): ListingKey =
+    page.map(_.trim).filter(_.nonEmpty) match {
+      case Some(p) => Native(cinema.displayName, p, raw)
+      case None    => Published(cinema.displayName, raw, year, directors.map(_.trim).filter(_.nonEmpty).distinct.sorted)
     }
-  }
 
   implicit val ordering: Ordering[ListingKey] = Ordering.by {
     case Native(v, id, raw)          => (v, 0, id, raw, "", "")

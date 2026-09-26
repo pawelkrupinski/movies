@@ -681,18 +681,22 @@ case class MovieRecord(
 
   /** Display-time URL: validated stored URL if we have one, else an on-the-fly
    *  search URL (for legacy records that pre-date URL persistence). */
-  def metacriticHref(fallbackTitle: String): String = metacriticUrl.getOrElse {
-    val encodedQuery = java.net.URLEncoder.encode(originalTitle.getOrElse(fallbackTitle), "UTF-8")
-    s"https://www.metacritic.com/search/$encodedQuery/?category=2"
-  }
+  def metacriticHref(fallbackTitle: String): String =
+    metacriticUrl.getOrElse(RatingSearchUrls.metacritic(originalTitle.getOrElse(fallbackTitle)))
 
-  def rottenTomatoesHref(fallbackTitle: String): String = rottenTomatoesUrl.getOrElse {
-    val encodedQuery = java.net.URLEncoder.encode(originalTitle.getOrElse(fallbackTitle), "UTF-8")
-    s"https://www.rottentomatoes.com/search?search=$encodedQuery"
-  }
+  def rottenTomatoesHref(fallbackTitle: String): String =
+    rottenTomatoesUrl.getOrElse(RatingSearchUrls.rottenTomatoes(originalTitle.getOrElse(fallbackTitle)))
 
-  def filmwebHref(fallbackTitle: String): String = filmwebUrl.getOrElse {
-    val encodedQuery = java.net.URLEncoder.encode(originalTitle.getOrElse(fallbackTitle), "UTF-8")
-    s"https://www.filmweb.pl/search?query=$encodedQuery"
-  }
+  def filmwebHref(fallbackTitle: String): String =
+    filmwebUrl.getOrElse(RatingSearchUrls.filmweb(originalTitle.getOrElse(fallbackTitle)))
+}
+
+/** Each rating site's SEARCH page for a title: the click-through when no direct page is known,
+ *  and what a card whose identity is in doubt links to instead of a page that may be another
+ *  film's (`services.identity.RatingGate`). */
+object RatingSearchUrls {
+  private def q(title: String) = java.net.URLEncoder.encode(title, "UTF-8")
+  def metacritic(title: String): String     = s"https://www.metacritic.com/search/${q(title)}/?category=2"
+  def rottenTomatoes(title: String): String = s"https://www.rottentomatoes.com/search?search=${q(title)}"
+  def filmweb(title: String): String        = s"https://www.filmweb.pl/search?query=${q(title)}"
 }

@@ -216,6 +216,8 @@ final class ProcessConfiguration(val env: Env) {
     ReadModelReloadInterval(seconds("KINOWO_READMODEL_RELOAD_SECONDS", default.value))
   def readModelColdRetryInterval(default: ReadModelColdRetryInterval): ReadModelColdRetryInterval =
     ReadModelColdRetryInterval(seconds("KINOWO_READMODEL_COLD_RETRY_SECONDS", default.value))
+  /** `KINOWO_IDENTITY_RATING_GATE` (`1` or `true`) — confidence-gated ratings; off unless set. */
+  def identityRatingGate: IdentityRatingGateEnabled = IdentityRatingGateEnabled(env.flag("KINOWO_IDENTITY_RATING_GATE"))
   def readModelAuditSample(default: ReadModelAuditSample): ReadModelAuditSample =
     ReadModelAuditSample(count("KINOWO_READMODEL_AUDIT_SAMPLE", default.value))
 

@@ -1,6 +1,7 @@
 package services.readmodel
 
 import models.{CityScreening, ResolvedMovie}
+import services.identity.RatingGate
 import services.movies.{FilmId, MovieRepository}
 
 /**
@@ -16,6 +17,9 @@ import services.movies.{FilmId, MovieRepository}
  * what it wrote, not with what the store holds; this reads the store, so a write the memo
  * believes landed and the store does not hold is visible here too.
  *
+ * The expected card passes through the same [[RatingGate]] the projector runs, so a card whose
+ * ratings the gate withheld is not a difference.
+ *
  * `shareCard` / `shareCardPending` are left out: the projection does not derive them (the
  * projector fills them from the share-card directory, see `ReadModelProjector.gate`), and the
  * share-card audit checks the first against the disk.
@@ -25,14 +29,15 @@ object ReadModelContentAudit {
   /** The card's differences, named — `Some(Nil)` when it matches — or None when it cannot be
    *  judged: a read failed, or its row no longer projects this card (unready, re-keyed, gone),
    *  which is the prune's and the heal's business and already has its own signals. */
-  def differences(cardId: String, movies: MovieRepository, reader: ReadModelReader): Option[Seq[String]] = {
+  def differences(cardId: String, movies: MovieRepository, reader: ReadModelReader,
+                  ratingGate: RatingGate = RatingGate.off): Option[Seq[String]] = {
     val (row, readable) = movies.findByIdChecked(FilmId(rowIdOf(cardId)))
     for {
       stored   <- row.filter(_ => readable).filter(_.record.readyToProject)
       expected <- ReadModelProjection.projectAll(stored, movies.normalizer).find(_._1._id == cardId)
       card     <- reader.findCard(cardId)
       movie    <- card.movie
-    } yield differences(expected, (movie, card.screenings))
+    } yield differences(expected.copy(_1 = ratingGate(stored, expected._1)), (movie, card.screenings))
   }
 
   /** The source row a card comes from: its id up to a display-title variant's `~` (see
