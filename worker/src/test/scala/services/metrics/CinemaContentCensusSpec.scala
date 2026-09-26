@@ -42,7 +42,7 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
     protected def storeSuccess(c: Cinema, city: Option[String], s: services.scrapes.SuccessfulScrape): Unit = ()
     protected def storeBarren(c: Cinema, city: Option[String], a: services.scrapes.BarrenAttempt): Unit     = ()
     def find(cinema: Cinema): Option[ArchivedScrape] = None
-    def findAll(): Seq[ArchivedScrape]               = Seq.empty
+    def scan(consume: Seq[ArchivedScrape] => Unit): Boolean = true
     def lastContentAt(): Map[String, Option[Instant]] = stamps
   }
 

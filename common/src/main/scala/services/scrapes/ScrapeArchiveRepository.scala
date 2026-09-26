@@ -170,9 +170,24 @@ trait ScrapeArchiveRepository {
 
   def find(cinema: Cinema): Option[ArchivedScrape]
 
-  /** Every archived scrape. The replay/repopulate entry point — the corpus is a
-   *  few thousand rows, so this is a bounded read, unlike the film collections. */
-  def findAll(): Seq[ArchivedScrape]
+  /** Every archived scrape, handed to `consume` a page at a time, in no promised order; `true`
+   *  when the whole archive was read. A page is the caller's to keep or drop: a caller that
+   *  reduces each page (the identity shadow, turning rows into listings) never holds the whole
+   *  archive's parsed films at once — tens of kilobytes a venue, hundreds of megabytes a country.
+   *
+   *  On `false` the pages already handed over are a PARTIAL archive, and the caller must not
+   *  mistake them for a smaller one — a failed read is not data ([[findAll]]). */
+  def scan(consume: Seq[ArchivedScrape] => Unit): Boolean
+
+  /** Every archived scrape, all at once — the replay/repopulate entry point, for a caller that
+   *  needs the rows themselves; one that only reduces them should [[scan]]. Empty on an
+   *  INCOMPLETE read, not the rows it managed to get: a partial archive looks exactly like a
+   *  smaller one, and it nearly wrote a corpus FIXTURE missing 45 of 281 venues — a truncated
+   *  read that would then have been replayed as authoritative on every future run. */
+  def findAll(): Seq[ArchivedScrape] = {
+    val rows = Seq.newBuilder[ArchivedScrape]
+    if (scan(rows ++= _)) rows.result() else Seq.empty
+  }
 
   /** When each archived cinema last produced ANY films, keyed by display name.
    *  Absent from the map, or `None`, both mean the same thing: no content-bearing
@@ -220,7 +235,7 @@ object ScrapeArchiveRepository {
     protected def storeSuccess(cinema: Cinema, city: Option[String], scrape: SuccessfulScrape): Unit = ()
     protected def storeBarren(cinema: Cinema, city: Option[String], attempt: BarrenAttempt): Unit    = ()
     def find(cinema: Cinema): Option[ArchivedScrape] = None
-    def findAll(): Seq[ArchivedScrape]               = Seq.empty
+    def scan(consume: Seq[ArchivedScrape] => Unit): Boolean = true
     def lastContentAt(): Map[String, Option[Instant]] = Map.empty
   }
 }
@@ -249,8 +264,10 @@ class InMemoryScrapeArchiveRepository extends ScrapeArchiveRepository {
   def find(cinema: Cinema): Option[ArchivedScrape] =
     byCinema.synchronized(byCinema.get(cinema.displayName))
 
-  def findAll(): Seq[ArchivedScrape] =
-    byCinema.synchronized(byCinema.values.toSeq)
+  def scan(consume: Seq[ArchivedScrape] => Unit): Boolean = {
+    consume(byCinema.synchronized(byCinema.values.toSeq))
+    true
+  }
 
   // No projection to make here — the rows are already in memory, so reading the
   // stamp off each is the whole job. The Mongo one earns its own query.

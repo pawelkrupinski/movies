@@ -181,10 +181,8 @@ class WorkerWiring(
     tools.DaemonExecutors.boundedEC(s"identity-shadow-lookups-${country.code}", 1)
 
   /** The shadow run's listing set: every listing of the scrape archive's latest scrape per live venue. */
-  def shadowListings(): Seq[services.identity.Listing] = {
-    val live = cinemaScrapers.map(_.cinema).toSet
-    services.identity.Listing.corpus(scrapeArchive.findAll().filter(row => live(row.cinema)).map(row => row.cinema -> row.films), titleNormalizer)
-  }
+  def shadowListings(): Seq[services.identity.Listing] =
+    services.identity.ArchiveListings.read(scrapeArchive, cinemaScrapers.map(_.cinema).toSet, titleNormalizer)
 
   // ── Filmweb (per-country) ───────────────────────────────────────────────────
   // Whether the Filmweb rating + fallback path is wired at all — a per-country

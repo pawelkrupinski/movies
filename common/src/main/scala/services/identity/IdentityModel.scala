@@ -61,7 +61,15 @@ object Listing {
    *  erases ("Sinn und Sinnlichkeit" 1995 beside 2026). The resolver's listing set, wherever the
    *  listings come from: the live scrape archive (the shadow run) or a recorded corpus. */
   def corpus(byCinema: Iterable[(Cinema, Seq[CinemaMovie])], normalizer: TitleNormalizer): Seq[Listing] =
-    byCinema.toSeq.flatMap { case (cinema, films) => films.map(of(cinema, _, normalizer)) }.sorted.distinctBy(_.key)
+    distinct(all(byCinema, normalizer))
+
+  /** Every listing of `byCinema`, keys not yet made unique — what [[corpus]] reduces with [[distinct]]. */
+  def all(byCinema: Iterable[(Cinema, Seq[CinemaMovie])], normalizer: TitleNormalizer): Seq[Listing] =
+    byCinema.toSeq.flatMap { case (cinema, films) => films.map(of(cinema, _, normalizer)) }
+
+  /** One listing per key, the smallest by the total order, in that order. The order being total,
+   *  reducing parts of a listing set first and their union after gives the same set. */
+  def distinct(listings: Seq[Listing]): Seq[Listing] = listings.sorted.distinctBy(_.key)
 }
 
 /** What a venue's own detail page adds to its listing: only the identity fields. */

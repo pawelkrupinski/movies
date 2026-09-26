@@ -219,31 +219,7 @@ class MongoScrapeArchiveRepository(
       .flatten.flatMap(StoredScrapeDto.toDomain)
   }
 
-  /**
-   * Every archived scrape, read in keyset-paged batches rather than through one
-   * unbounded `find()`.
-   *
-   * The unbounded form did not merely run slowly on a large archive — it CRASHED.
-   * A single cursor over a big collection recurses the async driver's per-message
-   * completion chain deep enough to throw `StackOverflowError` on a driver I/O
-   * thread (see [[services.movies.KeysetScan]], which exists because `movies` and
-   * `screenings` hit exactly this). The crash lands on an uncaught I/O thread, not
-   * on the caller's `Await`, so nothing here catches it: the future simply never
-   * completes and the caller sees a 120s timeout with no cause attached. That is
-   * precisely what the country-convergence legs saw against Germany's 1,518-row
-   * archive — nine consecutive timeouts and two `StackOverflowError`s in threads
-   * nobody was watching — and it will reach any caller as a country's archive grows.
-   *
-   * Paging caps how many rows one cursor delivers, keeping the completion chain
-   * shallow. Each batch is an independently retried, idempotent `_id > afterId`
-   * query, so a partial failure costs a page rather than the whole read.
-   *
-   * Still best-effort, like every read here: an incomplete scan logs and returns
-   * what it got. Callers that cannot tolerate a short read must check for
-   * emptiness themselves — `CountryConvergenceBehaviour` refuses to seed a corpus
-   * from one.
-   */
-  /** Paged exactly like `findAll` and for the same reason — the row COUNT, not
+  /** Paged exactly like `scan` and for the same reason — the row COUNT, not
    *  the row size, is what recurses the driver's completion chain into a
    *  StackOverflowError — but projected down to `_id` + `scrapedAt` so a reading
    *  that only wants timestamps doesn't drag every archived film across with it.
@@ -283,9 +259,30 @@ class MongoScrapeArchiveRepository(
     }
   }.toMap
 
-  def findAll(): Seq[ArchivedScrape] = coll.toSeq.flatMap { c =>
-    val collected = Seq.newBuilder[StoredScrapeDto]
-    val complete  = services.movies.KeysetScan.scan[StoredScrapeDto](
+  /**
+   * Every archived scrape, read in keyset-paged batches rather than through one
+   * unbounded `find()`, each page decoded and handed over before the next is fetched.
+   *
+   * The unbounded form did not merely run slowly on a large archive — it CRASHED.
+   * A single cursor over a big collection recurses the async driver's per-message
+   * completion chain deep enough to throw `StackOverflowError` on a driver I/O
+   * thread (see [[services.movies.KeysetScan]], which exists because `movies` and
+   * `screenings` hit exactly this). The crash lands on an uncaught I/O thread, not
+   * on the caller's `Await`, so nothing here catches it: the future simply never
+   * completes and the caller sees a 120s timeout with no cause attached. That is
+   * precisely what the country-convergence legs saw against Germany's 1,518-row
+   * archive — nine consecutive timeouts and two `StackOverflowError`s in threads
+   * nobody was watching — and it will reach any caller as a country's archive grows.
+   *
+   * Paging caps how many rows one cursor delivers, keeping the completion chain
+   * shallow. Each batch is an independently retried, idempotent `_id > afterId`
+   * query, so a partial failure costs a page rather than the whole read.
+   *
+   * Still best-effort, like every read here: an incomplete scan logs and answers
+   * `false`, which `findAll` turns into an empty archive.
+   */
+  def scan(consume: Seq[ArchivedScrape] => Unit): Boolean = coll.forall { c =>
+    services.movies.KeysetScan.scan[StoredScrapeDto](
       label          = "ScrapeArchiveRepository keyset batch",
       batchSize      = MongoScrapeArchiveRepository.FindAllBatchSize,
       // Budget enough retries to outlast a tunnel restart. The proxy dies mid-run
@@ -302,23 +299,9 @@ class MongoScrapeArchiveRepository(
           60.seconds)
       },
       onIncomplete   = exception =>
-        logger.warn(s"ScrapeArchiveRepository.findAll incomplete after retries: " +
-          s"${exception.getClass.getSimpleName}: ${exception.getMessage}")
-    )(batch => collected ++= batch)
-
-    // Empty on an INCOMPLETE scan, matching `MongoReadModelRepository.pagedFindAll`.
-    // Returning what a partial scan happened to collect is the subtler half of "a
-    // failed read is not data": it looks like a smaller archive rather than a
-    // failure, and callers cannot tell. It nearly wrote a corpus FIXTURE missing 45
-    // of 281 venues — a truncated read that would then have been replayed as
-    // authoritative on every future run. A caller that wants what it managed to get
-    // should ask for pages itself.
-    if (complete) collected.result().flatMap(StoredScrapeDto.toDomain)
-    else {
-      logger.warn(s"ScrapeArchiveRepository.findAll discarding ${collected.result().size} row(s) from an " +
-        "incomplete scan — returning empty so a partial archive is never mistaken for a smaller one")
-      Seq.empty
-    }
+        logger.warn(s"ScrapeArchiveRepository.scan incomplete after retries — the rows read so far are a partial " +
+          s"archive, not a smaller one: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
+    )(page => consume(page.flatMap(StoredScrapeDto.toDomain)))
   }
 
   /** Every archive operation is best-effort: it records something that already

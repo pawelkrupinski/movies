@@ -118,7 +118,8 @@ class ShadowIdentityReaperIntegrationSpec extends AnyFlatSpec with Matchers with
       val runs    = new ShadowRunStore(MongoShadowRunBackend.writer(database, new TtlIndexMismatches), clock)
       val metrics = new Recorded
       val reaper  = new ShadowIdentityReaper(
-        listings      = () => services.identity.Listing.corpus(w.archivedListings, c.normalizer),
+        // Production's own listing read: the worker's scrape archive, streamed a page at a time.
+        listings      = () => w.shadowListings(),
         pipelineFilms = () => w.movieCache.snapshot(),
         // Another key than the offline client's: the observations are keyed with credentials masked.
         lookups       = () => ObservedIdentityLookups.over(observations,
@@ -154,6 +155,7 @@ class ShadowIdentityReaperIntegrationSpec extends AnyFlatSpec with Matchers with
 
       withClue(s"[${c.label}] ") {
         c.fetch.requests.get() shouldBe requests
+        w.shadowListings() shouldBe listings
         metrics.crossingCount shouldBe Some(0)
         val persisted = run.clusters.map(_.decision)
         val firstDifference = persisted.zipAll(offline.decisions, null, null).find { case (a, b) => a != b }

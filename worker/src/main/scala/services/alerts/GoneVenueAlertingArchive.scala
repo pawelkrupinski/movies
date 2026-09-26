@@ -49,7 +49,7 @@ final class GoneVenueAlertingArchive(
   }
 
   override def find(cinema: Cinema): Option[ArchivedScrape]  = underlying.find(cinema)
-  override def findAll(): Seq[ArchivedScrape]                = underlying.findAll()
+  override def scan(consume: Seq[ArchivedScrape] => Unit): Boolean = underlying.scan(consume)
   override def lastContentAt(): Map[String, Option[Instant]] = underlying.lastContentAt()
   override def close(): Unit                                 = underlying.close()
 }
