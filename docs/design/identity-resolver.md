@@ -482,9 +482,131 @@ Dispatch it (it records live, so it is not run from a laptop):
 gh workflow run "Record scrape fixtures" --ref main -f identity-lookups=true
 ```
 
-The cron run leaves the flag off, so nothing changes for the nightly recording. Once one run
-with the flag has pinned its pair, the proof's full-corpus replay should report 0 gaps on all five
-countries; that is phase 1's first acceptance check.
+The flag is on by default for a dispatch and always on for the nightly cron, and a hermetic leg
+replaying a tree recorded with it runs the sweep too (§9a). Once one run with it has pinned its
+pair, the phase-1 gate (`IdentityQueryCoverageIntegrationSpec`, §9a) should report 0 gaps on all
+five countries.
+
+---
+
+## 9a. Phase 1 (programme): observations
+
+The programme's phase 1 (the brief's numbering; §8's "Phase 1: shadow mode" is the resolver's
+own shadow run, which reads what this phase stores) turns the evidence into data.
+
+### What is stored
+
+`services.observations` (worker). Two kinds of observation, both immutable and timestamped:
+
+| kind | key | content | collection |
+|---|---|---|---|
+| listing | `ListingKey` (§4) | the listing as the venue published it, WITHOUT showtimes | `obs_listings` |
+| lookup | `LookupQuery`: method, credential-masked URL, POST-body fingerprint | the answer: a body, bytes, or a failure with its status | `obs_lookups` |
+
+- `LookupQuery` is the same key the recorded trees' verdict cache and `RecordedResponses` use
+  (`CachingEnrichmentFetch.keyOf` now delegates to it, and the cache's `CachedResponse` IS
+  `LookupAnswer`), so an observation, a fixture and a remembered verdict of one request are one
+  key.
+- A venue's per-film detail is a lookup keyed `DETAIL <page> <venue>`, holding the parsed
+  `FilmDetail` (some venues assemble a detail from several requests).
+- Showtimes are not evidence of which film a listing is and change daily: they stay in
+  `cinema_scrapes`, and phase 4 keys them by `ListingKey`.
+
+`ObservationStore` owns every rule, above a storage seam with a Mongo and an in-memory backend
+(`ObservationStoreBehaviour` runs the same cases over both):
+
+- a new observation is written only when the content differs from the key's current one; the
+  same answer seen again restamps `lastSeenAt`. Content is never rewritten.
+- A transient failure (timeout, 5xx, 429) never supersedes a definitive answer — a failed read
+  is not data. It is kept when nothing better is known, so the question is on record.
+
+### Capture
+
+One decorator per seam, generic over everything that passes it — no per-source or per-venue
+code: `ObservingHttpFetch` on `lookupFetch` (the enrich-phase chain every metadata, rating and
+resolution client now draws from), `ObservingDetailEnricher` on every `DetailEnricher`, and
+`ObservingScrapeArchive` on the runner's archive. Each returns or rethrows exactly what it wraps,
+and a store failure never fails the observed call.
+
+`KINOWO_OBSERVATION_CAPTURE=true` turns it on (a staged-migration switch at the composition root,
+off by default). `ObservationCaptureEndToEndSpec` boots the recorded corpus with capture on and
+requires `expected-schedules.txt` and the read-model snapshot to come out exactly as with it off;
+a capture that changes one exception type fails it.
+
+### Retention
+
+One rule for every observation, with one number derived from the pipeline, not chosen:
+
+- `LongestReaskPeriod` = the longest of the freshness windows (`Freshness.ttlFor`) and the
+  rating cadence's ceiling (`RatingCadence.MaxInterval`): 4 days today.
+- `Window` = 2 × that = 8 days, so one missed cycle (a deploy, an open breaker) never expires a
+  live key.
+- The current observation of a key expires a window after it was last OBSERVED or last READ.
+  A read renews: the shadow resolver re-reads each live family's lookups every tick, so a TMDB
+  answer the pipeline never re-asks (the resolution memo is permanent) stays as long as a live
+  listing needs it, and ages out a window after the last listing that needed it left.
+- A superseded observation expires a window after its replacement, so every change can be
+  compared with what it replaced for a full re-ask cycle.
+- The store stamps `expireAt`; Mongo's TTL index (`expireAfterSeconds = 0`, reconciled by
+  `MongoTtlIndex`) deletes. The window lives in the data, so changing the rule never rebuilds
+  the index. No job, no manual step. Reads filter by the same stamp, so TTL lag is invisible.
+
+Volume, estimated from the recorded trees, which are one full lookup set per country: 0.3–2.5 GB
+uncompressed, about 4.5× smaller gzipped (ES: 320 MB, 5,410 responses → 71 MB). So the current
+lookups are roughly 70–550 MB per country, plus superseded versions for one window. Capture
+should be turned on one worker at a time, ES first, watching `obs_lookups`' storage size.
+
+### The gate
+
+`IdentityQueryCoverage` measures, per corpus, how much of the resolver's query set the recorded
+answers serve. The query set is `IdentityLookupSweep`'s, a function of the listing set alone:
+every listing's own detail page, and the TMDB resolve of every distinct evidence.
+
+- A logical lookup is answerable when every HTTP request it made was served; a remembered 404
+  counts.
+- The gate is met at 100% of lookups on every corpus.
+- `IdentityQueryCoverageIntegrationSpec` (itAll) runs it on the five hard-cluster corpora
+  always, and on the five full corpora when `KINOWO_IDENTITY_FULL` names them. `KINOWO_IDENTITY_GATE=strict`
+  fails on any gap.
+
+On 2026-09-26, against recorder run 36153174348's trees:
+
+| corpus | lookups answerable | requests served | gaps |
+|---|---|---|---|
+| hc-pl | 174 / 183 (95.1%) | 280 / 289 | 9, all TMDB searches |
+| hc-uk, hc-de, hc-us, hc-es | 100% | 100% | 0 |
+| full-pl | 6,031 / 6,242 (96.6%) | 8,188 / 8,388 | 200: TMDB 185, kinonh.pl 13, kinopodbaranami.pl 2 |
+| full-uk | 6,781 / 6,793 (99.8%) | 8,518 / 8,535 | 17, all TMDB |
+| full-de | 1,695 / 1,697 (99.9%) | 9,915 / 9,917 | 2: TMDB person searches (Bryan Coyne, SABU) |
+| full-us | 2,507 / 2,524 (99.3%) | 11,839 / 11,857 | 18, all TMDB |
+| full-es | 237 / 237 (100%) | 1,451 / 1,451 | 0: gate met |
+
+Every gap is a query the resolver makes and the pipeline never did. PL, DE and US match the
+proof's counts. UK does not: the proof counted 123 Cineworld box-office detail requests as gaps,
+but they are held. The recording answered them 403 (the API refuses a CI runner), and the recorded
+chain files that verdict under the request's BYTES key. The proof's chain had no recorder layer,
+so it never read them. Being held is not the same as being evidence: a remembered failed read
+replays deterministically and still says nothing about the film. The gate prints those
+separately ("served by a remembered failed read"). UK's 123 can only be closed by recording
+Cineworld from an IP it serves. No recording from a runner can close them.
+
+### Keeping it met, automatically
+
+- `Record scrape fixtures` runs the sweep in every recording leg: always on the nightly cron,
+  and by default on a dispatch. A recording files each gap's answer into the tree it pins.
+  `IdentityQueryCoverageIntegrationSpec` checks, with `KINOWO_IDENTITY_RECORD_CHECK=<cc>` over a
+  scratch copy of a tree, that the recording leg's own chain asks the service for every gap and
+  for nothing already recorded, and that the gate is then met. On a clone of PL's tree it asked
+  the 200 gaps plus 3 follow-ons (two TMDB person credits and one search, reachable only once a
+  gap is answered), and the gate then read 6,242 / 6,242.
+- A recording that ran the sweep leaves `.identity-lookups` at its tree's root. A hermetic
+  verdict leg replaying such a tree runs the sweep too, and fails on any gap by name. So every
+  verdict leg enforces the gate from the first pinned recording on, and no leg is failed for
+  replaying a tree recorded before the sweep existed.
+- The hard-cluster responses are recorded from the trees (`scripts/hard-clusters.sh record`),
+  and that record mode now asks the sweep's queries as well. Once a tree recorded with the sweep
+  is pinned, one re-record closes hc-pl's 9.
+- The resolver's round-2 pooled queries (§7b) join the gate by joining `IdentityLookupSweep`.
 
 ---
 

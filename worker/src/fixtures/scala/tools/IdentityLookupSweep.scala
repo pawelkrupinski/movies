@@ -81,16 +81,33 @@ object IdentityLookupSweep {
 
   def enabledIn(configuration: settings.ProcessConfiguration): Boolean = configuration.identityLookupSweep.value
 
+  /** Left at the root of a tree whose recording ran the sweep: the tree answers the resolver's
+   *  query set, so a HERMETIC leg replaying it runs the sweep too — and fails on any gap. That
+   *  is what keeps the phase-1 gate enforced by every verdict leg without anyone turning it on,
+   *  and without failing a leg that replays a tree recorded before the sweep existed. */
+  val RecordedMarker = ".identity-lookups"
+
+  /** Whether a leg runs the sweep: when asked to, or when it replays a tree recorded with it. */
+  def runsIn(requested: Boolean, hermetic: Boolean, treeRoot: java.nio.file.Path): Boolean =
+    requested || (hermetic && java.nio.file.Files.exists(treeRoot.resolve(RecordedMarker)))
+
+  /** Mark `treeRoot` as recorded with the sweep — by a RECORDING leg, once the sweep has run. */
+  def markRecorded(treeRoot: java.nio.file.Path): Unit = {
+    java.nio.file.Files.createDirectories(treeRoot)
+    java.nio.file.Files.writeString(treeRoot.resolve(RecordedMarker), "the identity resolver's query set is recorded in this tree\n")
+    ()
+  }
+
   /** The sweep over a booted replay wiring: its archived listings, its venues' detail
    *  enrichers, and a `MovieService` over its own TMDB client — built WITHOUT the wiring's
    *  resolution memo (the constructor's passthrough default), so every evidence issues the
    *  requests a memo-free resolver replay will. Both clients fetch through the wiring's
    *  recording chain, which is what files the answers into the leg's tree. */
-  def over(w: ArchiveReplayWiring, country: models.Country): Summary = {
+  def over(w: ArchiveReplayWiring, country: models.Country, onLookup: String => Unit = _ => ()): Summary = {
     val service = new services.movies.MovieService(w.movieCache, w.eventBus, w.tmdbClient, clock = w.clock,
       letterboxdIdResolver = Some(w.letterboxdIdResolver), wikidata = Some(w.wikidataClient))
     try run(w.archivedListings, w.detailEnrichers, service.resolveStagingRecord,
-      CountryScrapeCorpus.cinemasOf(country).minBy(_.displayName), w.movieCache.normalizer)
+      CountryScrapeCorpus.cinemasOf(country).minBy(_.displayName), w.movieCache.normalizer, onLookup)
     finally service.stop()
   }
 
@@ -104,19 +121,25 @@ object IdentityLookupSweep {
     }.distinctBy(_.sortKey).sortBy(_.sortKey)
 
   /** Issue the whole query set. `slotCinema` is the fixed venue every resolve's slot sits on —
-   *  pick it by a rule of the catalogue (the country's first venue by name), never of the corpus. */
+   *  pick it by a rule of the catalogue (the country's first venue by name), never of the corpus.
+   *  `onLookup` hears each logical lookup's name as soon as it has been issued — the lookups run
+   *  one at a time, so a caller can attribute every request in between to it. */
   def run(archived: Map[Cinema, Seq[CinemaMovie]], enrichers: Seq[DetailEnricher],
           resolve: (String, Option[Int], MovieRecord) => Option[MovieRecord], slotCinema: Cinema,
-          normalizer: TitleNormalizer): Summary = {
+          normalizer: TitleNormalizer, onLookup: String => Unit = _ => ()): Summary = {
     val all       = listings(archived, normalizer)
     val enricher  = enrichers.map(e => e.cinema -> e).toMap
     val detailed  = scala.collection.mutable.LinkedHashMap.empty[(String, String), Try[Option[FilmDetail]]]
     def detailOf(l: Listing): Option[FilmDetail] = (l.page, enricher.get(l.cinema)) match {
-      case (Some(page), Some(e)) => detailed.getOrElseUpdate((l.cinema.displayName, page), Try(e.fetchFilmDetail(page))).toOption.flatten
+      case (Some(page), Some(e)) => detailed.getOrElseUpdate((l.cinema.displayName, page), {
+        val answer = Try(e.fetchFilmDetail(page)); onLookup(s"detail ${l.cinema.displayName} $page"); answer
+      }).toOption.flatten
       case _                     => None
     }
     val evidences = all.map(l => Evidence.of(l, detailOf(l))).distinctBy(_.key).sortBy(_.key)
-    val answers   = evidences.map(e => Try(resolve(e.cleanTitle, e.year, e.record(slotCinema, normalizer))))
+    val answers   = evidences.map { e =>
+      val answer = Try(resolve(e.cleanTitle, e.year, e.record(slotCinema, normalizer))); onLookup(s"resolve ${e.key}"); answer
+    }
     Summary(all.size, detailed.size, detailed.values.count(_.isFailure), evidences.size, answers.count(_.isFailure),
       answers.count(_.toOption.flatten.exists(_.tmdbId.isDefined)))
   }

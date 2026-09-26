@@ -70,4 +70,19 @@ class IdentityLookupSweepSpec extends AnyFlatSpec with Matchers {
     val (_, _, resolves) = sweep(corpus)
     resolves.flatMap(_._3).flatMap(Source.cinemaOf).distinct shouldBe Seq(CinemaCity)
   }
+
+  "a leg" should "run the sweep when asked, or when it replays a tree recorded with it — never on an unmarked tree unasked" in {
+    val root = java.nio.file.Files.createTempDirectory("identity-sweep-tree")
+    try {
+      IdentityLookupSweep.runsIn(requested = false, hermetic = true, root) shouldBe false
+      IdentityLookupSweep.runsIn(requested = true, hermetic = false, root) shouldBe true
+      IdentityLookupSweep.markRecorded(root)
+      IdentityLookupSweep.runsIn(requested = false, hermetic = true, root) shouldBe true
+      // A RECORDING leg is never switched on by the mark: recording the sweep is asked for.
+      IdentityLookupSweep.runsIn(requested = false, hermetic = false, root) shouldBe false
+    } finally {
+      java.nio.file.Files.deleteIfExists(root.resolve(IdentityLookupSweep.RecordedMarker))
+      java.nio.file.Files.deleteIfExists(root)
+    }
+  }
 }

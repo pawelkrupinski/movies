@@ -401,11 +401,17 @@ abstract class CountryConvergenceBehaviour(
              s"says anything about them:\n  ${w.scrapeFailures.asScala.take(8).mkString("\n  ")}\n") {
       w.scrapeFailures.asScala shouldBe empty
     }
-    // The identity resolver's per-listing query set (docs/design/identity-resolver.md §9), when
-    // asked for: a RECORDING leg files every answer into the tree it then pins, a HERMETIC one
-    // names each the tree lacks below. Off by default — a tree recorded without it lacks them.
-    if (IdentityLookupSweep.enabledIn(configuration))
+    // The identity resolver's per-listing query set (docs/design/identity-resolver.md §9): a
+    // RECORDING leg asked for it files every answer into the tree it then pins and marks the tree;
+    // a HERMETIC leg runs it whenever its tree carries that mark, and names each gap below — so
+    // every verdict leg enforces the phase-1 gate on a tree recorded with it, and a tree recorded
+    // before it existed is not failed for lacking it.
+    val treeRoot = java.nio.file.Paths.get(fixtureRoot.of(fixtureDirectory))
+    if (IdentityLookupSweep.runsIn(IdentityLookupSweep.enabledIn(configuration),
+        missingFixtures.isDefined, treeRoot)) {
       info(s"${country.displayName}: identity resolver lookups — ${IdentityLookupSweep.over(w, country)}")
+      if (missingFixtures.isEmpty) IdentityLookupSweep.markRecorded(treeRoot)
+    }
     info(s"${country.displayName}: " + missingFixtures.fold("RECORDING run — requests the tree lacks are fetched live and recorded")(
       m => s"HERMETIC run — ${m.size} request(s) the recorded tree could not answer"))
     requireHermetic()

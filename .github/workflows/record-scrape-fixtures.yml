@@ -47,10 +47,11 @@ on:
                 description: >-
                     Also record the identity resolver's per-listing lookups (every listing's own
                     detail page and TMDB resolve — docs/design/identity-resolver.md §9) into each
-                    country's tree. Off on the nightly cron.
+                    country's tree. ON by default and always on the nightly cron, so the phase-1
+                    gate stays met as the corpus moves; untick only to bisect a recording.
                 required: false
                 type: boolean
-                default: false
+                default: true
 
 concurrency:
     group: record-scrape-fixtures-${{ github.ref }}
@@ -243,7 +244,9 @@ jobs:
         with:
             mode:           record
             corpus-run:     ${{ github.run_id }}
-            identity-lookups: ${{ inputs.identity-lookups == true }}
+            # Every scheduled run records the resolver's query set too (a schedule has no
+            # inputs, so it cannot read the dispatch default): the gate is kept met, not met once.
+            identity-lookups: ${{ github.event_name == 'schedule' || inputs.identity-lookups == true }}
             country:        ${{ matrix.country }}
             code:           ${{ matrix.code }}
             sample-command: ${{ matrix.sample }}
