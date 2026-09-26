@@ -52,6 +52,15 @@ class FacebookRescrapeStoreContractSpec extends AnyFlatSpec with Matchers with B
       store.waitingPages("us") shouldBe 2
     }
 
+    it should s"[$name] hold a waiting entry to the later of two requests' due times, never the earlier" in {
+      val store = fresh(cls)
+      store.add(Seq(film("f", t0.plusSeconds(60))))
+      store.add(Seq(film("f", t0.plusSeconds(110)))) shouldBe 0
+      store.add(Seq(film("f", t0.plusSeconds(30)))) shouldBe 0
+      store.claim("us", RescrapeKind.Film, t0.plusSeconds(109), 1.minute) shouldBe None
+      store.claim("us", RescrapeKind.Film, t0.plusSeconds(110), 1.minute).map(_.target) shouldBe Some(RescrapeTarget.FilmPages("us", "f"))
+    }
+
     it should s"[$name] hand out the country's oldest due entry of the kind, leased" in {
       val store = fresh(cls)
       store.add(Seq(page("late", t0.plusSeconds(30)), page("early"), page("uk", country = "uk"), film("f")))
@@ -78,14 +87,27 @@ class FacebookRescrapeStoreContractSpec extends AnyFlatSpec with Matchers with B
 
     it should s"[$name] give out each slot once, and none while held" in {
       val store = fresh(cls)
-      store.takeSlot(t0, 20.seconds) shouldBe true
-      store.takeSlot(t0.plusSeconds(19), 20.seconds) shouldBe false
-      store.takeSlot(t0.plusSeconds(20), 20.seconds) shouldBe true
+      store.takeSlot(t0, 20.seconds, 5.seconds) shouldBe true                          // fresh: next at t0+15
+      store.takeSlot(t0.plusSeconds(14), 20.seconds, 5.seconds) shouldBe false
+      store.takeSlot(t0.plusSeconds(15), 20.seconds, 5.seconds) shouldBe true
       store.holdSlots(t0.plusSeconds(3600))
-      store.takeSlot(t0.plusSeconds(3599), 20.seconds) shouldBe false
+      store.takeSlot(t0.plusSeconds(3599), 20.seconds, 5.seconds) shouldBe false
       store.holdSlots(t0.plusSeconds(100))                                            // never pulls a hold in
-      store.takeSlot(t0.plusSeconds(3599), 20.seconds) shouldBe false
-      store.takeSlot(t0.plusSeconds(3600), 20.seconds) shouldBe true
+      store.takeSlot(t0.plusSeconds(3599), 20.seconds, 5.seconds) shouldBe false
+      store.takeSlot(t0.plusSeconds(3600), 20.seconds, 5.seconds) shouldBe true
+    }
+
+    it should s"[$name] keep the slots a schedule: a late taker does not push the next slot back" in {
+      val store = fresh(cls)
+      store.takeSlot(t0, 20.seconds, 5.seconds) shouldBe true                          // next: t0+15
+      store.takeSlot(t0.plusSeconds(15), 20.seconds, 5.seconds) shouldBe true          // on time: next t0+35
+      store.takeSlot(t0.plusSeconds(39), 20.seconds, 5.seconds) shouldBe true          // 4 s late: next stays t0+55
+      store.takeSlot(t0.plusSeconds(54), 20.seconds, 5.seconds) shouldBe false
+      store.takeSlot(t0.plusSeconds(55), 20.seconds, 5.seconds) shouldBe true
+      // Idle for ten minutes: at most `slack` banked, so the one after is 15 s on, not a burst.
+      store.takeSlot(t0.plusSeconds(655), 20.seconds, 5.seconds) shouldBe true
+      store.takeSlot(t0.plusSeconds(669), 20.seconds, 5.seconds) shouldBe false
+      store.takeSlot(t0.plusSeconds(670), 20.seconds, 5.seconds) shouldBe true
     }
   }
 }

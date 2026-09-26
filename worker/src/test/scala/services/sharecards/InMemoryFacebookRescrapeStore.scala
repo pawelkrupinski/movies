@@ -12,9 +12,14 @@ class InMemoryFacebookRescrapeStore extends FacebookRescrapeStore {
 
   def add(added: Seq[RescrapeEntry]): Int = synchronized {
     added.count { e =>
-      val fresh = !entries.contains(e.key)
-      if (fresh) entries(e.key) = (e.copy(attempts = 0), e.notBefore)
-      fresh
+      entries.get(e.key) match {
+        case Some((waiting, enqueued)) =>
+          if (e.notBefore.isAfter(waiting.notBefore)) entries(e.key) = (waiting.copy(notBefore = e.notBefore), enqueued)
+          false
+        case None =>
+          entries(e.key) = (e.copy(attempts = 0), e.notBefore)
+          true
+      }
     }
   }
 
@@ -41,9 +46,12 @@ class InMemoryFacebookRescrapeStore extends FacebookRescrapeStore {
       entries(claimed.key) = (claimed.copy(notBefore = at, attempts = if (countAttempt) claimed.attempts else claimed.attempts - 1), enqueued))
   }
 
-  def takeSlot(now: Instant, spacing: FiniteDuration): Boolean = synchronized {
+  def takeSlot(now: Instant, spacing: FiniteDuration, slack: FiniteDuration): Boolean = synchronized {
     val due = nextSlot.forall(!_.isAfter(now))
-    if (due) nextSlot = Some(now.plusMillis(spacing.toMillis))
+    if (due) {
+      val floor = now.minusMillis(slack.toMillis)
+      nextSlot = Some(nextSlot.filter(_.isAfter(floor)).getOrElse(floor).plusMillis(spacing.toMillis))
+    }
     due
   }
 

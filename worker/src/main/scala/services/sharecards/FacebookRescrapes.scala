@@ -3,6 +3,7 @@ package services.sharecards
 import com.mongodb.MongoWriteException
 import com.mongodb.client.model.{FindOneAndUpdateOptions, ReturnDocument, UpdateOptions}
 import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.bson.{BsonArray, BsonDateTime, BsonInt64, BsonString}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Filters, Indexes, Sorts, Updates}
 import play.api.Logging
@@ -27,8 +28,8 @@ import scala.util.{Failure, Success, Try}
  *
  * Now a film is one entry ([[RescrapeTarget.FilmPages]]); the drain expands it into one entry per
  * page ([[RescrapeTarget.Page]]), and each page is sent on its own slot of the fleet-wide quota
- * ([[FacebookRescrapeDrain.Spacing]] apart, whichever country sends). An entry already waiting
- * absorbs a second request for the same film or page. A page that fails retries alone; a rate
+ * ([[FacebookRescrapeDrain.Spacing]] apart on average, whichever country sends). An entry already
+ * waiting absorbs a second request for the same film or page, and waits for the later of the two. A page that fails retries alone; a rate
  * limit pushes the quota's next slot out for the whole fleet.
  */
 sealed trait RescrapeTarget { def key: String }
@@ -61,7 +62,9 @@ final case class RescrapeEntry(country: String, target: RescrapeTarget, notBefor
 /** Where the fleet's re-scrapes wait, and the quota they share. Storage only: what to do with an
  *  entry is [[FacebookRescrapeDrain]]'s. */
 trait FacebookRescrapeStore {
-  /** Add each entry unless one with its key is waiting already; how many were added. */
+  /** Add each entry unless one with its key is waiting already — that one is then due no sooner
+   *  than either asked (a second request names a newer card, which needs its own wait); how many
+   *  were added. */
   def add(entries: Seq[RescrapeEntry]): Int
   /** True when the country has an entry of `kind` due at `now`. */
   def hasDue(country: String, kind: RescrapeKind, now: Instant): Boolean
@@ -72,8 +75,10 @@ trait FacebookRescrapeStore {
   def complete(claimed: RescrapeEntry): Unit
   /** Put a claimed entry back, due at `at`; `countAttempt = false` gives the claim back. */
   def retry(claimed: RescrapeEntry, at: Instant, countAttempt: Boolean): Unit
-  /** Take the quota's next slot: true, and the next slot is `now + spacing`, when it was due. */
-  def takeSlot(now: Instant, spacing: FiniteDuration): Boolean
+  /** Take the quota's next slot, true when it was due. Slots are a SCHEDULE: the one after comes
+   *  `spacing` after this one, or after `now - slack` if that is later — so a taker a few seconds
+   *  late does not push every later slot back, and an idle quota banks at most `slack`. */
+  def takeSlot(now: Instant, spacing: FiniteDuration, slack: FiniteDuration): Boolean
   /** No slot before `until`, whatever was due. */
   def holdSlots(until: Instant): Unit
   /** The country's waiting pages. */
@@ -110,7 +115,7 @@ class MongoFacebookRescrapeStore(collection: MongoCollection[Document]) extends 
     }
     await(collection.updateOne(Filters.eq("_id", entry.key), Updates.combine(
       Updates.setOnInsert("country", entry.country), Updates.setOnInsert("kind", entry.kind.name), target,
-      Updates.setOnInsert("notBefore", date(entry.notBefore)), Updates.setOnInsert("enqueuedAt", date(entry.notBefore)),
+      Updates.max("notBefore", date(entry.notBefore)), Updates.setOnInsert("enqueuedAt", date(entry.notBefore)),
       Updates.setOnInsert("attempts", 0)), new UpdateOptions().upsert(true)).toFuture()).getUpsertedId != null
   }
 
@@ -136,10 +141,16 @@ class MongoFacebookRescrapeStore(collection: MongoCollection[Document]) extends 
     ()
   }
 
-  def takeSlot(now: Instant, spacing: FiniteDuration): Boolean =
+  // An update PIPELINE, so the next slot is computed from the one taken, in the same write:
+  // nextSlot = max(nextSlot, now - slack) + spacing. On the first insert `$nextSlot` is missing,
+  // which `$max` ranks below any date.
+  def takeSlot(now: Instant, spacing: FiniteDuration, slack: FiniteDuration): Boolean =
     Try(await(collection.updateOne(
       Filters.and(Filters.eq("_id", QuotaId), Filters.lte("nextSlot", date(now))),
-      Updates.set("nextSlot", date(now.plusMillis(spacing.toMillis))), new UpdateOptions().upsert(true)).toFuture())) match {
+      Seq(Document("$set" -> Document("nextSlot" -> Document("$add" -> BsonArray(
+        Document("$max" -> BsonArray(BsonString("$nextSlot"), BsonDateTime(now.toEpochMilli - slack.toMillis))),
+        BsonInt64(spacing.toMillis)))))),
+      new UpdateOptions().upsert(true)).toFuture())) match {
       case Success(_)                                                            => true
       case Failure(e: MongoWriteException) if MongoErrors.isDuplicateKey(e)      => false
       case Failure(e)                                                            => throw e
@@ -231,7 +242,7 @@ class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, 
 
   private def sendPage(): Unit = {
     val now = clock.instant()
-    if (store.hasDue(country, RescrapeKind.Page, now) && store.takeSlot(now, Spacing))
+    if (store.hasDue(country, RescrapeKind.Page, now) && store.takeSlot(now, Spacing, TickEvery))
       store.claim(country, RescrapeKind.Page, now, Lease).foreach { page =>
         val url = page.target match { case RescrapeTarget.Page(u) => u; case other => other.key }
         graph.scrape(url) match {
@@ -276,8 +287,9 @@ class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, 
 }
 
 object FacebookRescrapeDrain {
-  /** The fleet's pace: one request every 20 s across every country — 180 an hour, well above the
-   *  steady ~20–60 an hour, so a burst drains in hours rather than being refused in minutes. */
+  /** The fleet's pace: one request every 20 s across every country on average, never two closer
+   *  than 15 s (the slot schedule's [[TickEvery]] of slack) — 180 an hour, well above the steady
+   *  ~20–60 an hour, so a burst drains in hours rather than being refused in minutes. */
   val Spacing: FiniteDuration = 20.seconds
   /** How often each country looks for due work. Under [[Spacing]], so one country alone keeps up
    *  with the quota. */

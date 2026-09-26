@@ -21,11 +21,12 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
 
   private val T0 = Instant.parse("2026-09-25T16:18:00Z")
 
-  /** Records each request with the instant it was made; answers from `answer`. */
-  private final class RecordingGraph(clock: MutableClock, answer: String => FacebookScrape = _ => FacebookScrape.Accepted)
-      extends FacebookGraph {
+  /** Records each request with the instant it was made; answers from `answer`, taking `latency`
+   *  of the clock to do it, as a real request does. */
+  private final class RecordingGraph(clock: MutableClock, answer: String => FacebookScrape = _ => FacebookScrape.Accepted,
+                                     latency: java.time.Duration = java.time.Duration.ZERO) extends FacebookGraph {
     val sent = collection.mutable.Buffer.empty[(Instant, String)]
-    def scrape(url: String): FacebookScrape = { sent += clock.instant() -> url; answer(url) }
+    def scrape(url: String): FacebookScrape = { sent += clock.instant() -> url; clock.advance(latency); answer(url) }
   }
 
   /** A film's pages — on its country's own host, as every country's are. */
@@ -34,10 +35,11 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
 
   /** Two countries' workers on one store and one clock, each with its own graph (its own app
    *  credentials — the same app), each film having `cities` pages. */
-  private final class Fleet(cities: Int, answer: String => FacebookScrape = _ => FacebookScrape.Accepted) {
+  private final class Fleet(cities: Int, answer: String => FacebookScrape = _ => FacebookScrape.Accepted,
+                            latency: java.time.Duration = java.time.Duration.ZERO) {
     val clock = new MutableClock(T0)
     val store = new InMemoryFacebookRescrapeStore
-    val graph = new RecordingGraph(clock, answer)
+    val graph = new RecordingGraph(clock, answer, latency)
     val series = new ShareCardMetrics.Series(Seq("us", "uk"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
     val drains: Map[String, FacebookRescrapeDrain] = Seq("us", "uk").map(cc =>
       cc -> new FacebookRescrapeDrain(store, graph, pagesOf(_, cities, cc), cc, series.forCountry(cc), clock)).toMap
@@ -54,9 +56,22 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     fleet.run(30.minutes)
     val at = fleet.graph.sent.map(_._1).toSeq
     at.size shouldBe 80
-    at.zip(at.tail).map { case (a, b) => java.time.Duration.between(a, b).toMillis }.min should be >= Spacing.toMillis
+    at.zip(at.tail).map { case (a, b) => java.time.Duration.between(a, b).toMillis }.min should be >= (Spacing - TickEvery).toMillis
     fleet.graph.sent.map(_._2).toSet shouldBe (pagesOf("doctor-who", 40, "us") ++ pagesOf("doctor-who", 40, "uk")).toSet
     fleet.store.waiting shouldBe empty
+  }
+
+  // The drain ticks on a fixed DELAY, so a tick that sends starts the next one late by the
+  // request's own time. Slots handed out as "now + spacing" let every late tick push the schedule
+  // back: live on 2026-09-26 the backlog drained at ~133 pages an hour, not the quota's 180.
+  "A backlog" should "drain at the quota's pace, however long each request takes" in {
+    val fleet = new Fleet(cities = 60, latency = java.time.Duration.ofSeconds(2))
+    fleet.request("us", "film")
+    fleet.run(30.minutes)
+    val at   = fleet.graph.sent.map(_._1).toSeq.take(60)
+    val gaps = at.zip(at.tail).map { case (a, b) => java.time.Duration.between(a, b).toMillis }
+    gaps.sum.toDouble / gaps.size should be <= (Spacing.toMillis * 1.05)
+    gaps.min should be >= (Spacing - TickEvery).toMillis
   }
 
   "A second request for a film or page already waiting" should "be absorbed by the entry that waits" in {
@@ -68,6 +83,19 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     fleet.run(5.minutes)
     // The page already sent goes again (it shows the older card); the two that waited go once.
     fleet.graph.sent.map(_._2).toSeq.sorted shouldBe (pagesOf("film", 3) :+ pagesOf("film", 3).head).sorted
+  }
+
+  // Each request is due no sooner than when the card it names can be on web_movies. A second
+  // request for a film still waiting names a NEWER card: absorbed, it still has to wait for it.
+  it should "wait for the later of the two, so the newer card is on its pages when Facebook looks" in {
+    val fleet = new Fleet(cities = 1)
+    val queue = new FacebookRescrapeQueue(fleet.store, "us")
+    queue.request("film", T0.plusSeconds(60))
+    queue.request("film", T0.plusSeconds(110))
+    fleet.run(100.seconds)
+    fleet.graph.sent shouldBe empty
+    fleet.run(30.seconds)
+    fleet.graph.sent.map(_._2).toSeq shouldBe pagesOf("film", 1)
   }
 
   "A page Facebook refuses" should "be retried alone, after a back-off, and the others not re-sent" in {
