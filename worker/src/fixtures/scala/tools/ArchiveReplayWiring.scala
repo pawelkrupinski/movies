@@ -91,35 +91,15 @@ class ArchiveReplayWiring(
    * run saw for it, and a hermetic replay of the UK sample stopped on exactly that request.
    * Remembered, it replays the way it failed.
    */
-  override lazy val httoFetch: HttpFetch = {
-    val live = phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Scrape)
-    new FallbackHttpFetch(Seq(
-      "detail-fixtures" -> new clients.tools.FakeHttpFetch(fixtureDirectory, strict = true, foldYear = false, root = fixtureRoot),
-      "detail-live"     -> new clients.tools.RecordingHttpFetch(
-        fixtureDirectory, enrichmentCache.fold(live)(new CachingEnrichmentFetch(_, live)), foldYear = false, root = fixtureRoot)))
-  }
+  override lazy val httoFetch: HttpFetch =
+    ArchiveReplayWiring.recordedChain(fixtureDirectory, fixtureRoot, enrichmentCache,
+      phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Scrape), "detail-fixtures", "detail-live")
   override lazy val multikinoFetch: HttpFetch  = httoFetch
   override lazy val biletynaFetch: HttpFetch   = httoFetch
   override lazy val zyteFetch: HttpFetch       = httoFetch
   override lazy val flicksFetch: HttpFetch     = httoFetch
   override lazy val vueFetch: HttpFetch        = httoFetch
   override lazy val odeonFetch: HttpFetch      = httoFetch
-
-  /** Enrichment runs against the per-country cache when one is supplied.
-   *
-   *  Live enrichment used to be refused here on the grounds that a metadata lookup
-   *  answers on its own schedule and would make the fixpoint depend on data the
-   *  country may not have. The cache is what retires that objection: the first
-   *  pass fills it, every later pass replays it — failures included — so the
-   *  enrichment fields are as reproducible as the scraped ones and can take part
-   *  in the convergence claim rather than sitting it out as `None`.
-   *
-   *  The cache wraps the FULL enrich-phase chain (metering, throttle, breaker,
-   *  rate limit) rather than sitting under it, so a live fill is throttled exactly
-   *  as production would throttle it while a hit costs nothing. */
-  lazy val cachedEnrichmentFetch: Option[CachingEnrichmentFetch] =
-    enrichmentCache.map(cache =>
-      new CachingEnrichmentFetch(cache, phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Enrich)))
 
   /**
    * On-disk enrichment fixtures FIRST, live behind them, and whatever the live leg
@@ -152,22 +132,12 @@ class ArchiveReplayWiring(
    *    chain, where an inner leg fetches through its own client and would otherwise
    *    bypass the recorder. There is no such leg here.)
    */
-  override lazy val enrichmentFetch: HttpFetch = {
-    // The live leg is the CACHE when there is one, and the enrich-phase chain
-    // itself when there isn't. Without that second case "no cache" meant "offline
-    // behind the fixtures", so every URL the tree didn't already hold failed
-    // outright and was never recorded — which is precisely the state CI is now in,
-    // with the Mongo cache removed from the leg and the tree carrying determinism
-    // on its own. A tree that cannot grow re-misses the same URLs for ever.
-    val live   = cachedEnrichmentFetch.getOrElse(phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Enrich))
-    val replay = new clients.tools.FakeHttpFetch(fixtureDirectory, strict = true, foldYear = false, root = fixtureRoot)
+  override lazy val enrichmentFetch: HttpFetch =
     // Named for what it IS. Labelled "live", every cached 404 was reported as
     // `live: HTTP 404`, so a run answering entirely from remembered verdicts looked
     // exactly like one re-fetching every one of them.
-    new FallbackHttpFetch(Seq(
-      "enrichment-fixtures" -> replay,
-      "remembered-or-live"  -> new clients.tools.RecordingHttpFetch(fixtureDirectory, live, foldYear = false, root = fixtureRoot)))
-  }
+    ArchiveReplayWiring.recordedChain(fixtureDirectory, fixtureRoot, enrichmentCache,
+      phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Enrich), "enrichment-fixtures", "remembered-or-live")
 
   /** The real key and the country's own language — the enrichment is meant to be the one
    *  production would do. Overridden because `TestWiring` pins a stub key and the DEFAULT
@@ -276,4 +246,26 @@ object ArchiveReplayWiring {
    */
   def fixtureDirectory(country: Country, configuration: settings.ProcessConfiguration): String =
     configuration.enrichmentFixtureTree.fold(s"enrichment-${country.code}")(_.value)
+
+  /**
+   * The chain BOTH phases replay through: the recorded tree first, then — behind a recorder that
+   * writes back whatever arrives — the remembered verdicts, then `live`.
+   *
+   * The verdict cache wraps the FULL phase chain `live` (metering, throttle, breaker, rate limit)
+   * rather than sitting under it, so a live fill is throttled exactly as production would
+   * throttle it while a hit costs nothing. And the live leg is the CACHE when there is one, and
+   * the phase chain itself when there isn't: without that second case "no cache" meant "offline
+   * behind the fixtures", so every URL the tree didn't already hold failed outright and was
+   * never recorded, and a tree that cannot grow re-misses the same URLs for ever.
+   *
+   * One definition, because the recorder is load-bearing for what a verdict is keyed by: it
+   * fetches BYTES to write them, so every verdict it remembers is filed under the BYTES request.
+   * A chain built without it (the identity gate's first draft) reads none of them.
+   */
+  def recordedChain(fixtureDirectory: String, root: settings.FixtureRoot, cache: Option[EnrichmentCache], live: HttpFetch,
+                    fixturesLabel: String, liveLabel: String): HttpFetch =
+    new FallbackHttpFetch(Seq(
+      fixturesLabel -> new clients.tools.FakeHttpFetch(fixtureDirectory, strict = true, foldYear = false, root = root),
+      liveLabel     -> new clients.tools.RecordingHttpFetch(
+        fixtureDirectory, cache.fold(live)(new CachingEnrichmentFetch(_, live)), foldYear = false, root = root)))
 }

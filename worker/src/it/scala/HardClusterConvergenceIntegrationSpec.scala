@@ -1,6 +1,5 @@
 package integration
 
-import clients.TmdbClient
 import models.Country
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
@@ -72,7 +71,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
   private val storages = mutable.ListBuffer.empty[ConvergenceStorage]
 
   override def afterAll(): Unit = {
-    if (Recording) recordEachSpellingAlone()
+    if (Recording) { recordEachSpellingAlone(); recordIdentityLookups() }
     storages.synchronized(storages.foreach(s => Try(s.close())))
     if (Recording) responses.foreach { case (country, r) =>
       val path = r.write(RecordedResponses.pathFor(country.code))
@@ -112,30 +111,12 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
 
   private def wiringFor(country: Country, label: String, wrap: HttpFetch => HttpFetch = identity,
                         movableClock: Option[MutableClock] = None): (ArchiveReplayWiring, ConvergenceStorage) = {
-    val normalizer = TitleNormalizer.forCountry(country)
-    val storage    = ConvergenceStorage.mongo(mongoTarget, s"hc-${country.code}-$label", normalizer)
+    val storage = ConvergenceStorage.mongo(mongoTarget, s"hc-${country.code}-$label", TitleNormalizer.forCountry(country))
     storages.synchronized(storages += storage)
-    val rows = CorpusFixture.read(HardClusters.corpusKey(country))
-    CorpusFixture.seedInto(storage.archive, rows)
-    val fetch    = wrap(responses(country))
-    val language = country.language
-    val w = new ArchiveReplayWiring(country, storage.archive, None, storage, ArchiveReplayWiring.fixtureDirectory(country, configuration), FixtureRoot, environment = configuration.env) {
-      override lazy val clock: java.time.Clock = movableClock.getOrElse(java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC))
-      // Ordering, not timing: the whole cascade on the calling thread, so the only
-      // nondeterminism left is the seeded arrival order.
-      override lazy val backgroundBudget: ExecutionBudget = new SameThreadExecutionBudget
-      override lazy val httoFetch: HttpFetch       = fetch
-      override lazy val enrichmentFetch: HttpFetch = fetch
-      // A stub key: the answers are replayed, and a keyless client short-circuits
-      // before it reaches the fetch at all.
-      // Held in memory: its daemon flusher outlives the pass and would re-create the
-      // pass's database after `afterAll` dropped it. Uptime has no part in the claims.
-      override lazy val uptimeMonitor = new services.UptimeMonitor(None, clock = clock)
+    val w = FetchReplayWiring(country, storage, CorpusFixture.read(HardClusters.corpusKey(country)), wrap(responses(country)),
+      FixtureRoot, clock = movableClock.getOrElse(java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC)),
       // The outage pass refuses on purpose; its retries need not sleep through it.
-      override lazy val tmdbClient: TmdbClient =
-        new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("hard-clusters")), language = language,
-          retrySleep = if (movableClock.isDefined) (_: Long) => () else Thread.sleep)
-    }
+      retrySleep = if (movableClock.isDefined) (_: Long) => () else Thread.sleep, environment = configuration.env)
     (w, storage)
   }
 
@@ -226,6 +207,16 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
    * code never made — which a replay would answer 404, leaving the row unresolved and the
    * bug invisible. Resolving each spelling alone records those searches too.
    */
+  /** RECORD MODE: also ask the identity resolver's query set (`IdentityLookupSweep`) of each
+   *  country's clusters, so the responses file answers the phase-1 gate
+   *  (`IdentityQueryCoverageIntegrationSpec`) as well as this spec — whatever the tree holds. */
+  private def recordIdentityLookups(): Unit = countries.foreach { country =>
+    val storage = ConvergenceStorage.mongo(uri.get, s"hc-${country.code}-identity", TitleNormalizer.forCountry(country))
+    storages.synchronized(storages += storage)
+    val w = FetchReplayWiring(country, storage, CorpusFixture.read(HardClusters.corpusKey(country)), responses(country))
+    println(s"[${country.code}] identity resolver lookups: ${IdentityLookupSweep.over(w, country)}")
+  }
+
   private def recordEachSpellingAlone(): Unit = {
     val pool = Executors.newFixedThreadPool(8)
     implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(pool)
