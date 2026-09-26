@@ -52,7 +52,8 @@ case class FallbackState(
   nextPrimaryProbeAt:  Option[Instant],   // before this, serve the fallback without re-probing the primary
   updatedAt:           Instant,
   history:             List[FallbackEvent],
-  alerted:             Boolean = false    // ENTER page sent for the CURRENT spell — gates the recovery page so a grace-window recovery (never entered fallback) stays silent
+  alerted:             Boolean = false,   // ENTER page sent for the CURRENT spell — gates the recovery page so a grace-window recovery (never entered fallback) stays silent
+  failedRuns:          Int = 0            // separate failed primary runs in the CURRENT spell, for a run-counting grace (`FallbackAfter.FailedRuns`). Persisted like `failingSince`; cleared on any primary success.
 )
 
 object FallbackState {

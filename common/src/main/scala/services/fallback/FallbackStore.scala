@@ -108,7 +108,8 @@ object MongoFallbackStore {
     Updates.set("nextPrimaryProbeAt", s.nextPrimaryProbeAt.map(date).orNull),
     Updates.set("updatedAt", date(s.updatedAt)),
     Updates.set("history", s.history.map(eventToString).asJava),
-    Updates.set("alerted", s.alerted)
+    Updates.set("alerted", s.alerted),
+    Updates.set("failedRuns", s.failedRuns)
   )
 
   private[fallback] def fromDocument(document: Document): Option[FallbackState] =
@@ -130,7 +131,8 @@ object MongoFallbackStore {
         updatedAt           = instant("updatedAt").getOrElse(Instant.EPOCH),
         history             = Try(document.getList("history", classOf[String])).toOption.flatMap(Option(_))
                                 .fold(List.empty[FallbackEvent])(_.asScala.toList.flatMap(eventFromString)),
-        alerted             = Try(document.getBoolean("alerted", false)).getOrElse(false)
+        alerted             = Try(document.getBoolean("alerted", false)).getOrElse(false),
+        failedRuns          = Try(document.getInteger("failedRuns", 0)).getOrElse(0)
       )
     }
 }

@@ -8,7 +8,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.UptimeMonitor
 import services.cinemas.common.CinemaScraper
-import services.cinemas.common.SourceFallbackScraper
+import services.cinemas.common.{FallbackAfter, SourceFallbackScraper}
 
 import java.time.Instant
 import scala.concurrent.duration._
@@ -35,7 +35,10 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
     primaryPlan: Seq[Either[Throwable, Seq[CinemaMovie]]],
     filmweb:     Option[CinemaScraper],
     base:        FiniteDuration = 10.minutes,
-    grace:       FiniteDuration = 6.hours
+    grace:       FiniteDuration = 6.hours,
+    trigger:     Option[FallbackAfter] = None,
+    // Shared across harnesses to model a worker restart: a fresh scraper, the same persisted state.
+    val store:   InMemoryFallbackStore = new InMemoryFallbackStore
   ) {
     // Buckets follow the harness clock, so a tick moved into a later 15-minute
     // bucket is judged on its own; on the wall clock every tick shared one bucket.
@@ -44,7 +47,6 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
       def getZone: java.time.ZoneId              = java.time.ZoneOffset.UTC
       override def withZone(zone: java.time.ZoneId): java.time.Clock = this
     })
-    val store   = new InMemoryFallbackStore
     val primary = new FakeScraper(primaryPlan)
     var clock: Instant = Instant.parse("2026-06-10T08:00:00Z")
     val events = collection.mutable.ListBuffer.empty[(FallbackState, FallbackEvent)]
@@ -52,7 +54,7 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
       primary,
       fallback = () => filmweb, fallbackName = "Filmweb", fallbackRef = () => Some("2180"),
       monitor, store,
-      now = () => clock, baseBackoff = base, maxBackoff = 60.minutes, fallbackAfter = grace,
+      now = () => clock, baseBackoff = base, maxBackoff = 60.minutes, fallbackAfter = trigger.getOrElse(FallbackAfter.FailingFor(grace)),
       onEvent = (s, e) => events += ((s, e))
     )
     def bucket = monitor.history(Service).last   // newest: history is oldest-first
@@ -231,6 +233,43 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
     h.scraper.fetch() shouldBe OneMovie     // one throw, clock already past 6h → ENTER
     h.state.map(_.active) shouldBe Some(true)
     h.events.map(_._2.event) shouldBe List(FallbackEvent.Enter)
+  }
+
+  // A venue scraped every 10h would cross a 6h window on its SECOND failure; counting
+  // runs instead waits for several separate failures however far apart they fall.
+  private val ThreeRuns = Some(FallbackAfter.FailedRuns(3))
+
+  it should "with a failed-runs trigger, fall back on the Nth separate failed run however little time passed" in {
+    val h = new Harness(Seq(Left(boom)), Some(filmwebWith(OneMovie)), trigger = ThreeRuns)
+    h.tickSwallowing(); h.advance(1.minute)
+    h.tickSwallowing(); h.advance(1.minute)
+    h.events shouldBe empty                 // two failed runs: still riding it out
+    h.scraper.fetch() shouldBe OneMovie     // the third: served from the fallback
+    h.state.map(_.active) shouldBe Some(true)
+    h.events.map(_._2.event) shouldBe List(FallbackEvent.Enter)
+  }
+
+  it should "with a failed-runs trigger, not fall back on elapsed time alone" in {
+    val h = new Harness(Seq(Left(boom)), Some(filmwebWith(OneMovie)), trigger = ThreeRuns)
+    h.tickSwallowing(); h.advance(30.hours)
+    h.tickSwallowing()
+    h.events shouldBe empty
+    h.state.map(_.active) shouldBe Some(false)
+  }
+
+  it should "with a failed-runs trigger, restart the count after a healthy run" in {
+    val h = new Harness(Seq(Left(boom), Left(boom), Right(OneMovie), Left(boom), Left(boom)),
+      Some(filmwebWith(OneMovie)), trigger = ThreeRuns)
+    (1 to 5).foreach(_ => h.tickSwallowing())
+    h.events shouldBe empty                 // 2 failures, a success, 2 failures: never 3 in a row
+  }
+
+  it should "with a failed-runs trigger, carry the count across a worker restart" in {
+    val before = new Harness(Seq(Left(boom)), Some(filmwebWith(OneMovie)), trigger = ThreeRuns)
+    before.tickSwallowing(); before.tickSwallowing()
+    val after = new Harness(Seq(Left(boom)), Some(filmwebWith(OneMovie)), trigger = ThreeRuns, store = before.store)
+    after.scraper.fetch() shouldBe OneMovie
+    after.events.map(_._2.event) shouldBe List(FallbackEvent.Enter)
   }
 
   // ---- empty-primary handling ----

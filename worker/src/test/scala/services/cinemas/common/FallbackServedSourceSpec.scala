@@ -39,7 +39,7 @@ class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
       normalizer = titleNormalizer, scrapeGuardLedger = ledger, clock = DepthGuardTime.clock)
     val scraper = new SourceFallbackScraper(primary,
       fallback = () => Some(new Source(Fallback, listing)), fallbackName = "Filmweb", fallbackRef = () => Some("2180"),
-      new UptimeMonitor(clock = DepthGuardTime.clock), new InMemoryFallbackStore, fallbackAfter = Duration.Zero)
+      new UptimeMonitor(clock = DepthGuardTime.clock), new InMemoryFallbackStore, fallbackAfter = FallbackAfter.FailingFor(Duration.Zero))
     new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set.empty).run(scraper)
     ledger.get(Multikino).flatMap(_.sourceKey)
   }
@@ -79,7 +79,7 @@ class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
     val scraper = new SourceFallbackScraper(primary,
       fallback = () => Some(new Source(Fallback, films("Film 1", "Fallback Only")(2))), fallbackName = "Filmweb",
       fallbackRef = () => Some("2180"), new UptimeMonitor(clock = DepthGuardTime.clock), new InMemoryFallbackStore,
-      baseBackoff = Duration.Zero, fallbackAfter = Duration.Zero) // re-probe the primary on the very next tick
+      baseBackoff = Duration.Zero, fallbackAfter = FallbackAfter.FailingFor(Duration.Zero)) // re-probe the primary on the very next tick
     val runner  = new CinemaScrapeRunner(cache, new InProcessEventBus(), deferredCinemas = Set.empty)
     def stored(title: String): Int = repository.findAll().find(_.title.contains(title))
       .map(_.record.data.values.map(_.showtimes.size).sum).getOrElse(0)

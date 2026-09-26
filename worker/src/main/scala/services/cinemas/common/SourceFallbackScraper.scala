@@ -4,14 +4,15 @@ import models.CinemaMovie
 import services.UptimeMonitor
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore}
 
-import java.time.{Clock, Duration, Instant, ZoneOffset}
+import java.time.{Clock, Instant, ZoneOffset}
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
 /**
  * Decorator that serves showtimes from a SECONDARY source when the cinema's own
  * primary scraper has been failing continuously for [[fallbackAfter]] (default
- * 6h), and records the outcome — including the "served via <fallback>" flag —
+ * 6h; a venue on a long scrape cadence counts separate failed runs instead, see
+ * [[FallbackAfter]]), and records the outcome — including the "served via <fallback>" flag —
  * against the `UptimeMonitor`. It REPLACES `UptimeRecordingScraper` for venues
  * that have a fallback; its `primary` is the retry-only `RetryingCinemaScraper`.
  *
@@ -90,7 +91,7 @@ class SourceFallbackScraper(
   now:             () => Instant = () => Instant.now(),
   baseBackoff:     FiniteDuration = SourceFallbackScraper.DefaultBaseBackoff,
   maxBackoff:      FiniteDuration = SourceFallbackScraper.DefaultMaxBackoff,
-  fallbackAfter:   FiniteDuration = SourceFallbackScraper.DefaultFallbackAfter,
+  fallbackAfter:   FallbackAfter = FallbackAfter.FailingFor(SourceFallbackScraper.DefaultFallbackAfter),
   onEvent:         (FallbackState, FallbackEvent) => Unit = (_, _) => ()
 ) extends DelegatingCinemaScraper(primary) {
   import SourceFallbackScraper._
@@ -181,13 +182,14 @@ class SourceFallbackScraper(
   private def primaryServed(movies: Seq[CinemaMovie]): CinemaScraper.Scraped  = CinemaScraper.Scraped(movies, viaFallback = false)
   private def fallbackServed(movies: Seq[CinemaMovie]): CinemaScraper.Scraped = CinemaScraper.Scraped(movies, viaFallback = true)
 
-  /** Has the current continuous-failure run reached [[fallbackAfter]]?
-   *  `failingSince` is carried from the persisted state (or starts now), so the
-   *  clock survives worker restarts. */
-  private def graceElapsed(previous: Option[FallbackState], nowI: Instant): Boolean = {
-    val failingSince = previous.flatMap(_.failingSince).getOrElse(nowI)
-    Duration.between(failingSince, nowI).toMillis >= fallbackAfter.toMillis
-  }
+  /** Has the current failing spell, counting THIS failed run, reached [[fallbackAfter]]?
+   *  `failingSince` and `failedRuns` are carried from the persisted state (or start
+   *  now), so both survive worker restarts. */
+  private def graceElapsed(previous: Option[FallbackState], nowI: Instant): Boolean =
+    fallbackAfter.reached(
+      failingSince = previous.flatMap(_.failingSince).getOrElse(nowI),
+      failedRuns   = previous.map(_.failedRuns).getOrElse(0) + 1,
+      now          = nowI)
 
   private def runPrimary(): PrimaryOutcome = {
     val t0 = System.currentTimeMillis()
@@ -267,6 +269,7 @@ class SourceFallbackScraper(
       active              = false,
       fallbackSource = fallbackName, fallbackRef = fallbackRef(),
       failingSince        = base.failingSince.orElse(Some(nowI)),
+      failedRuns          = base.failedRuns + 1,
       lastReason          = Some(reason),
       consecutiveFailures = 0,             // backoff only matters once we're on fallback
       lastPrimaryProbeAt  = Some(nowI),
@@ -284,6 +287,7 @@ class SourceFallbackScraper(
       active              = true,
       fallbackSource = fallbackName, fallbackRef = fallbackRef(),
       failingSince        = base.failingSince.orElse(Some(nowI)),
+      failedRuns          = base.failedRuns + 1,
       since               = Some(nowI),
       lastReason          = Some(reason),
       consecutiveFailures = 1,
@@ -329,13 +333,13 @@ class SourceFallbackScraper(
       val event = FallbackEvent(nowI, FallbackEvent.Recovered, "primary recovered")
       val next = p.copy(
         active = false, lastReason = Some("primary recovered"), consecutiveFailures = 0,
-        failingSince = None, since = None, lastPrimaryProbeAt = Some(nowI), nextPrimaryProbeAt = None,
+        failingSince = None, failedRuns = 0, since = None, lastPrimaryProbeAt = Some(nowI), nextPrimaryProbeAt = None,
         updatedAt = nowI, history = (event :: p.history).take(FallbackState.MaxHistory)
       )
       store.put(next)
       onEvent(next, event)
     } else if (p.failingSince.isDefined) {
-      store.put(p.copy(failingSince = None, lastPrimaryProbeAt = Some(nowI), updatedAt = nowI))
+      store.put(p.copy(failingSince = None, failedRuns = 0, lastPrimaryProbeAt = Some(nowI), updatedAt = nowI))
     }
   }
 
