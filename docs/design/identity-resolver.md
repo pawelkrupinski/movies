@@ -1885,6 +1885,15 @@ the store holds.
 | full-de | 19,674 | 1,680 (1,673 / 0 / 7 / 0) | 0.6 s | 0.4 s | 768 MB | 3.3 MB |
 | full-es | 4,909 | 236 (235 / 0 / 1 / 0) | 0.4 s | 0.1 s | 155 MB | 0.8 MB |
 
+**Correction (§19):** the full-corpus rows above were measured on a replay that silently answered
+nothing (a symlinked fixture root failed `FakeHttpFetch`'s case-exact check, fixed since), so the
+pipeline resolved no film and the resolver had little to read. Re-measured on the real trees: a
+full-es tick 3.4 s wall, 3.2 s CPU, 8.4 GB allocated, 12,357 observations read (113 MB uncompressed);
+full-de 15.2 s, 14.6 s CPU, 36.9 GB allocated, 70,061 observations (489 MB uncompressed). The
+allocation is transient (bodies are parsed and dropped), but against a 448m (ES) / 640m (DE) heap the
+per-tick peak is worth watching (`kinowo_worker_identity_resolve_seconds`, the JVM heap panels). The
+equality with the offline resolver and the zero requests hold on the real trees too.
+
 Decisions equal the offline resolver's and zero requests on all nine (recorder run 36153174348's
 trees for the full corpora). "Allocated" is garbage, not retained heap: the run keeps nothing between
 ticks but the Mongo documents. Mongo is the uncompressed BSON `size` of one run (a run replaces the
