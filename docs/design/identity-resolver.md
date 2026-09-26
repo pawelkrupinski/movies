@@ -397,7 +397,14 @@ does it in rounds, each a function of the previous round's partition:
    runtimes that agree with the majority) and resolve the pooled evidence. The answer becomes an
    attribute of every member with no answer of its own, drawn as a tier-1 must-link to that
    TMDB id's component. A member's own answer always wins, and cannot-links still win over
-   everything.
+   everything. A pooled answer no member's title names — reached only by walking a credited
+   director's filmography — is taken only when no other eligible film fits the pooled facts as
+   well or is rated as high by the calibration: the walk is a path to candidates, never the reason
+   to pick one of a director's films over another the facts favour or cannot separate (measured on
+   recording 36224654409: it drops "Trzy kolory: Niebieski" → Czerwony and two Waszyński 1937
+   lectures → Dybuk, a tie with Znachor, and keeps every walked film the facts single out, e.g.
+   "Vincent. Legenda oceanu", "Osobliwy świat Hieronymusa Boscha"). Requiring EVERY member's title
+   to name the answer instead (C17, reverted) cost 110 right PL listings.
 3. Stop when Pk+1 = Pk.
 
 Order-independence: P0 is a function of the set (A2); a cluster's pooled evidence is a function

@@ -38,7 +38,9 @@ import scala.collection.mutable
  *           evidence POOLED into one listing (the heaviest title, the modal year, every director),
  *           and the winner, if accepted, becomes every member's film. A winner some members' own
  *           evidence denies is not a veto of the whole cluster: those members split off and the
- *           rest take it when their own pooled facts carry it (`vote`);
+ *           rest take it when their own pooled facts carry it (`vote`). A winner no member's title
+ *           names — only a credited director's filmography reached it — must also be the one
+ *           film the pooled facts and the calibration both rank first (`votedFor`);
  *        3. the constraints are re-solved with those films, and each final cluster is a
  *           [[ResolverDecision]] with its confidence, basis and explanation.
  *
@@ -330,6 +332,23 @@ object IdentityResolver {
           .orElse(topHit(ranked)))
     }
 
+    /** Does `n`'s own title evidence name `film`: its title searches returned it, or its title (a
+     *  whole spelling, its original title or a segment) names the film's? */
+    def titleNames(n: Node, film: Candidate): Boolean =
+      ownSearch(n.id).contains(film.tmdbId) ||
+        IdentityMeasures.NamingRelations(IdentityMeasures.titleRelation(n.evidence.measured, film.film).value)
+    /** The group vote over a cluster's POOLED scoring: the accepted film — but a film no member's
+     *  title names, which only a credited director's filmography reached, only when nothing else
+     *  the walk reached fits the pooled facts as well: every rival's own facts fit worse or equally,
+     *  and the calibration rates it strictly lower. A walk is a path to candidates; it cannot pick
+     *  among a director's films the listing's facts favour another of (a lecture on "Trzy kolory:
+     *  Niebieski" is not "Czerwony"), or that the calibration cannot tell apart. */
+    def votedFor(cluster: Seq[Node], ranked: Seq[Scored]): Option[(Scored, Double)] =
+      acceptedOf(ranked).filter { case (s, _) =>
+        cluster.exists(titleNames(_, s.c)) ||
+          ranked.filterNot(r => r.denied || (r eq s)).forall(r => r.p < s.p && ownEvidence(r) <= ownEvidence(s))
+      }
+
     // ── families ─────────────────────────────────────────────────────────────────────────
     def titleKeys(n: Node): Set[String] =
       FamilyClosure.blockKeys(n.evidence.cleanTitle, n.evidence.originalTitle, None, normalizer,
@@ -498,9 +517,9 @@ object IdentityResolver {
     def vote(cluster: Seq[Node], scope: FamilyScope): Seq[(String, (Int, Double))] = {
       def to(voters: Seq[Node], accepted: (Scored, Double)) = voters.map(n => n.id -> (accepted._1.c.tmdbId, accepted._2))
       val ranked = scope.pooled(cluster)
-      acceptedOf(ranked).map(to(cluster, _)).getOrElse(ranked.headOption.filter(s => s.denied && carriedByOwnFacts(s)).toSeq.flatMap { vetoed =>
+      votedFor(cluster, ranked).map(to(cluster, _)).getOrElse(ranked.headOption.filter(s => s.denied && carriedByOwnFacts(s)).toSeq.flatMap { vetoed =>
         val rest = cluster.filterNot(n => scope.of(n).exists(o => o.c.tmdbId == vetoed.c.tmdbId && o.denied))
-        Option.when(rest.nonEmpty && rest.size < cluster.size)(rest).flatMap(rest => acceptedOf(scope.pooled(rest))
+        Option.when(rest.nonEmpty && rest.size < cluster.size)(rest).flatMap(rest => votedFor(rest, scope.pooled(rest))
           .filter { case (s, _) => s.c.tmdbId == vetoed.c.tmdbId && carriedByOwnFacts(s) }
           .map(to(rest, _))).getOrElse(Nil)
       })

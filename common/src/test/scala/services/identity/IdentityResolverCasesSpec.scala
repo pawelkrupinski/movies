@@ -306,12 +306,47 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val bare     = Seq(Helios, KinoApollo).map(listing(_, "Candyman"))
   }
 
-  "The pooled vote" should "not choose a film only a director's filmography reached (known issue)" in {
+  "The pooled vote" should "not choose a walked film whose rival the listing's own facts fit better" in {
+    // An event whose title only mentions the film it screens, crediting the director and a
+    // runtime: TMDB's search names nothing, the director's filmography reaches two films. The
+    // listing's title shares a word with the less popular one; popularity alone must not hand it
+    // the other.
+    val walked = Seq(F(108, "Blue", 1993, "Krzysztof Kieślowski", 100, 3), F(110, "Red", 1994, "Krzysztof Kieślowski", 99, 40))
+    val event  = listing(KinoMuza, "Cinematographers: a Blue evening", director = Some("Krzysztof Kieślowski"), runtime = Some(100))
+    val r = resolve(Seq(event), walked)
+    withClue(r.decisionOf(event.key).render)(r.decisionOf(event.key).film should not be Some(110))
+  }
+
+  it should "still take a walked film its facts fit as well as any rival's, when the calibration rates it higher" in {
+    // PL, the Polish title of a documentary TMDB's search does not return: year and director fit
+    // both of the director's films that year; the calibration (their standing) prefers one.
+    val walked = Seq(F(431444, "The Curious World of Hieronymus Bosch", 2016, "David Bickerstaff", 90, 8),
+      F(381710, "Goya: Visions of Flesh and Blood", 2016, "David Bickerstaff", 90, 3))
+    val credited = listing(KinoMuza, "Osobliwy świat Hieronymusa Boscha", Some(2016), Some("David Bickerstaff"), Some(87))
+    val r = resolve(Seq(credited), walked)
+    withClue(r.decisionOf(credited.key).render)(r.decisionOf(credited.key).film shouldBe Some(431444))
+  }
+
+  it should "still take the one walked film the pooled facts single out, though no title names it" in {
+    // PL, the Polish title of a foreign film TMDB's search does not return: one listing credits the
+    // director (whose two films its facts alone cannot tell apart), a sibling publishes the year.
+    // Pooled, only one of the director's films fits — the walk reached it, the facts chose it.
+    val films    = Seq(F(677558, "The Last Whale Singer", 2025, "Reza Memari", 91, 5), F(2, "Jonah's Voyage", 2012, "Reza Memari", 91, 8))
+    val credited = listing(Multikino, "Vincent. Legenda oceanu", director = Some("Reza Memari"))
+    val dated    = listing(Helios, "Vincent. Legenda oceanu", Some(2025))
+    val r = resolve(Seq(credited, dated), films)
+    withClue(r.decisionOf(credited.key).render) {
+      Seq(credited, dated).map(l => r.decisionOf(l.key).film) shouldBe Seq.fill(2)(Some(677558))
+      r.decisionOf(credited.key).basis shouldBe ResolverDecision.Basis.PooledMatch
+    }
+  }
+
+  it should "not choose a film only a director's filmography reached (known issue)" in {
     // TMDB's search has no "Candyman"; walking Bernard Rose's filmography turns up two other films,
-    // whose director agrees with the credited listing and whose titles name nothing. The vote still
-    // hands one of them to the whole cluster. Narrowing the vote to films every member's title
-    // names fixed this but cost 110 right PL listings the pipeline reached through a director walk
-    // (Vincent. Legenda oceanu, Egon Schiele), so it was reverted; a narrower rule is owed.
+    // whose director agrees with the credited listing and whose titles name nothing. The listing's
+    // facts fit both equally (a title's bracket year only agrees, never denies), so the calibration's
+    // preference decides — the same shape that rightly picks a documentary among its director's
+    // films of one year. Telling them apart needs the bracket year to deny, which it does not yet.
     import Candyman.*
     val r = resolve(credited +: bare, walked)
     pendingUntilFixed {

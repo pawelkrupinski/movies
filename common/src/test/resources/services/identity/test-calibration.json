@@ -199,6 +199,24 @@
             }
           ],
           "missing": {}
+        },
+        "popularity.log2": {
+          "kind": "numeric",
+          "bins": [
+            {
+              "atMost": 1.5,
+              "weight": -1.5,
+              "positives": 0,
+              "negatives": 0
+            },
+            {
+              "atLeast": 1.5,
+              "weight": 0.0,
+              "positives": 0,
+              "negatives": 0
+            }
+          ],
+          "missing": {}
         }
       },
       "calibration": {
