@@ -2337,7 +2337,7 @@
       "id": 44,
       "type": "timeseries",
       "title": "Facebook re-scrapes waiting — film pages queued, by country",
-      "description": "`kinowo_worker_share_cards_rescrape_waiting`: pages each country has waiting in the fleet's re-scrape queue. At one request per 20 s fleet-wide the queue drains ~180 pages an hour, so a burst (a film showing in hundreds of cities, a template change re-drawing every recent film) shows as a ramp that falls over hours. Flat and non-zero for over an hour = the fleet is holding for Facebook's rate limit (see rate_limited on the panel to the left).",
+      "description": "`kinowo_worker_share_cards_rescrape_waiting`: pages each country has waiting in the fleet's re-scrape queue. At one request per 20 s fleet-wide the queue drains ~180 pages an hour, so a burst (a film showing in hundreds of cities, a template change re-drawing every recent film) shows as a ramp that falls over hours. Flat and non-zero for over an hour = the fleet is holding for Facebook's rate limit (see rate_limited on the panel to the left). A backlog that is no smaller than it was three to four hours ago, for another hour, pages as ShareCardRescrapesNotDraining.",
       "datasource": {
         "type": "prometheus",
         "uid": "local-prometheus"

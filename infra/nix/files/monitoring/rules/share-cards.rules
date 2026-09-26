@@ -179,3 +179,39 @@ groups:
             the city fallback card and coverage falls. The `reason` label names the input change
             that queued the failing renders, and the worker logs `share card: <film> could not be
             drawn: <exception>`. After a deploy, suspect the template, the fonts or libvips.
+
+      # THE FACEBOOK RE-SCRAPE QUEUE NOT DRAINING. Every country's worker drains ONE fleet queue
+      # (kinowo.facebook_rescrapes) at one page per 20 s, ~180 an hour, so a healthy backlog -- even
+      # the thousands of pages a template change queues -- falls by ~540 over three hours, and a
+      # rate-limit hold (the whole fleet waits an hour) only pauses it. A backlog that was there for
+      # the whole hour three to four hours ago, and is now at least as big as that hour's peak, held
+      # for another hour, is a queue that is stuck (Facebook refusing hold after hold, the drain
+      # threads dead, the collection unwritable) or filling faster than the quota empties it.
+      #
+      # "Was there for the whole hour" is what keeps a FRESH burst quiet: an empty queue that gets a
+      # thousand pages is bigger than it was three hours ago for the three hours it takes to drain.
+      # Summed over countries because the quota is shared; `max by (country)` first because every
+      # replica of a country reads the same queue.
+      - alert: ShareCardRescrapesNotDraining
+        expr: >-
+          sum(max by (country) (last_over_time(kinowo_worker_share_cards_rescrape_waiting[10m]))) > 0
+          and
+          sum(max by (country) (last_over_time(kinowo_worker_share_cards_rescrape_waiting[10m])))
+            >= sum(max by (country) (max_over_time(kinowo_worker_share_cards_rescrape_waiting[1h] offset 3h)))
+          and
+          sum(max by (country) (min_over_time(kinowo_worker_share_cards_rescrape_waiting[1h] offset 3h))) > 0
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value }} Facebook re-scrape pages are waiting, and the queue has not shrunk in over four hours"
+          description: >-
+            `kinowo_worker_share_cards_rescrape_waiting`, summed over countries, has had a backlog for
+            over four hours and is no smaller than its peak three to four hours ago: the fleet's
+            Facebook re-scrape queue is not draining. At one page per 20 s it should fall by ~180 an hour. Look at
+            `kinowo_worker_share_cards_rescrape_total` by outcome: all `rate_limited` is Facebook
+            refusing the app (the log line names its code); all `failed` is the Graph API refusing
+            the pages themselves; nothing at all is the drain not running (search the worker log for
+            "re-scrape drain failed" or "Facebook re-scrapes are OFF"). `sent` still counting while
+            the queue grows is demand above the quota -- a flood of card changes; see
+            `kinowo_worker_share_cards_render_total` by reason.

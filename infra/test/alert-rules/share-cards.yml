@@ -270,3 +270,80 @@ tests:
       - eval_time: 90m
         alertname: ShareCardRendersFailing
         exp_alerts: []
+
+  # RE-SCRAPES NOT DRAINING: a backlog stuck flat (the drain dead, or Facebook refusing hold after
+  # hold) -- two replicas of us publishing the same queue (counted once), one of them through a
+  # restart gap, plus uk. Quiet at 3h30m (no four-hour history yet), fires once the flat backlog
+  # has outlasted the three-hour look-back plus the hour's `for:`.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_share_cards_rescrape_waiting{country="us",instance="w1",job="kinowo-worker"}'
+        values: '186x120 stale _x2 186x180'
+      - series: 'kinowo_worker_share_cards_rescrape_waiting{country="us",instance="w2",job="kinowo-worker"}'
+        values: '186x303'
+      - series: 'kinowo_worker_share_cards_rescrape_waiting{country="uk",instance="w1",job="kinowo-worker"}'
+        values: '50x303'
+    alert_rule_test:
+      - eval_time: 210m
+        alertname: ShareCardRescrapesNotDraining
+        exp_alerts: []
+      - eval_time: 250m
+        alertname: ShareCardRescrapesNotDraining
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "236 Facebook re-scrape pages are waiting, and the queue has not shrunk in over four hours"
+              description: "`kinowo_worker_share_cards_rescrape_waiting`, summed over countries, has had a backlog for over four hours and is no smaller than its peak three to four hours ago: the fleet's Facebook re-scrape queue is not draining. At one page per 20 s it should fall by ~180 an hour. Look at `kinowo_worker_share_cards_rescrape_total` by outcome: all `rate_limited` is Facebook refusing the app (the log line names its code); all `failed` is the Graph API refusing the pages themselves; nothing at all is the drain not running (search the worker log for \"re-scrape drain failed\" or \"Facebook re-scrapes are OFF\"). `sent` still counting while the queue grows is demand above the quota -- a flood of card changes; see `kinowo_worker_share_cards_render_total` by reason."
+
+  # RE-SCRAPES NOT DRAINING: pages still being sent, but arriving faster than the quota empties
+  # the queue -- it grows by a page a minute. Fires.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_share_cards_rescrape_waiting{country="us",instance="w1",job="kinowo-worker"}'
+        values: '100+1x300'
+    alert_rule_test:
+      - eval_time: 300m
+        alertname: ShareCardRescrapesNotDraining
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "400 Facebook re-scrape pages are waiting, and the queue has not shrunk in over four hours"
+              description: "`kinowo_worker_share_cards_rescrape_waiting`, summed over countries, has had a backlog for over four hours and is no smaller than its peak three to four hours ago: the fleet's Facebook re-scrape queue is not draining. At one page per 20 s it should fall by ~180 an hour. Look at `kinowo_worker_share_cards_rescrape_total` by outcome: all `rate_limited` is Facebook refusing the app (the log line names its code); all `failed` is the Graph API refusing the pages themselves; nothing at all is the drain not running (search the worker log for \"re-scrape drain failed\" or \"Facebook re-scrapes are OFF\"). `sent` still counting while the queue grows is demand above the quota -- a flood of card changes; see `kinowo_worker_share_cards_render_total` by reason."
+
+  # QUIET: a template change's long backlog draining at the quota's pace (3 a minute) for hours,
+  # and a backlog that sits out a one-hour rate-limit hold and then drains.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_share_cards_rescrape_waiting{country="us",instance="w1",job="kinowo-worker"}'
+        values: '2000-3x480'
+    alert_rule_test:
+      - eval_time: 480m
+        alertname: ShareCardRescrapesNotDraining
+        exp_alerts: []
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_share_cards_rescrape_waiting{country="uk",instance="w1",job="kinowo-worker"}'
+        values: '600x60 600-3x200 0x100'
+    alert_rule_test:
+      - eval_time: 240m
+        alertname: ShareCardRescrapesNotDraining
+        exp_alerts: []
+      - eval_time: 360m
+        alertname: ShareCardRescrapesNotDraining
+        exp_alerts: []
+
+  # QUIET: a FRESH burst on an empty queue. Three hours on it is bigger than it was three hours
+  # ago (empty), but it was not a backlog then: draining at the quota's pace, it never fires.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_share_cards_rescrape_waiting{country="us",instance="w1",job="kinowo-worker"}'
+        values: '0x240 1500-3x480'
+    alert_rule_test:
+      - eval_time: 420m
+        alertname: ShareCardRescrapesNotDraining
+        exp_alerts: []
+      - eval_time: 700m
+        alertname: ShareCardRescrapesNotDraining
+        exp_alerts: []
