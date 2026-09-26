@@ -31,8 +31,9 @@
 # gets the same flag in build.sbt; the two TestJvmSpecs guard both.
 -Djava.awt.headless=true
 # Format numbers the way production does. Twirl's `f"…%.1f"` uses the JVM's
-# default locale: prod's image sets none ("6.4"), while a dev Mac's `en_PL`
-# gave "6,4". PageTest renders inside THIS JVM, so its snapshots flipped
-# between the two. Guarded by the TestJvmSpecs, like headless above.
+# default locale: prod's image (eclipse-temurin, LANG/LC_ALL=en_US.UTF-8) gives
+# "6.4", while a dev Mac's `en_PL` gave "6,4". PageTest renders inside THIS JVM,
+# so its snapshots flipped between the two. The pin matches prod's en_US.
+# Guarded by the TestJvmSpecs, like headless above.
 -Duser.language=en
 -Duser.country=US
