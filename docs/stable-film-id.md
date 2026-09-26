@@ -86,6 +86,11 @@ rest is the key itself.
    (`MovieCache.putAs`, `MergeReason.ImdbIdentity`). Every edge the settle
    knows is now asked when the screening lands; the settle is the self-heal.
 
+5. DUAL WRITE (identity programme phase 4) — `movie_slots` and `screenings` rows carry
+   `listingKey`, the venue listing they belong to, beside `(filmId, slotKey)`; nothing reads it
+   yet. The backfill and the measured ID-seeding review are in
+   `docs/design/identity-resolver.md` §16.
+
 ## Where the landing lives
 
 `MovieCache` is being split along its three responsibilities, one seam at a time,

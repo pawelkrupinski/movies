@@ -154,6 +154,8 @@ final case class IdentityGateStrict(value: Boolean) extends AnyVal
 /** `KINOWO_IDENTITY_FULL` — the full recorded corpora the identity gate measures. */
 final case class IdentityFullCorpora(value: Set[models.Country]) extends AnyVal
 final case class IdentityShadowOutput(value: Path) extends AnyVal
+/** `KINOWO_IDENTITY_SEED_FILMS` — today's films as listing-key sets, the ID-seeding review's previous assignment. */
+final case class IdentitySeedFilms(value: Path) extends AnyVal
 final case class IdentityShadowPermutations(value: Int) extends AnyVal
 /** `KINOWO_IDENTITY_RECORD_CHECK` — the country whose recording pass the identity gate checks. */
 final case class IdentityRecordCheck(value: models.Country) extends AnyVal

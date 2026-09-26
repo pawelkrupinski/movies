@@ -1,0 +1,86 @@
+# ID seeding review, full-de: 1685 production films (19860 listing keys), 1680 resolver clusters over 19674 listings (resolve 1s)
+today's listing keys found in the corpus: 19581 of 19860 (98.6%); raw listings the slot fold hides behind another listing's slot: 0
+films that keep their id: 1647
+
+## films no cluster overlaps (their listings are not in the corpus): 31
+  - lalaland|2016: 2 listing(s), e.g. LOTTO Hamburg SchanzenKino Open Air: 'La La Land' (2016) [Damien Chazelle]; Open Air Kino am Olympiasee: 'La La Land' (2016) [Damien Chazelle]
+  - amoresperros|2000: 1 listing(s), e.g. Freiluftkino Kreuzberg: 'Amores Perros' (2000) [Alejandro González Iñárritu]
+  - bloodsinners|2025: 1 listing(s), e.g. Kasseler Open Air Sommerfilm: 'Blood & Sinners' (2025) [Ryan Coogler]
+  - bugonia|2025: 1 listing(s), e.g. Kasseler Open Air Sommerfilm: 'Bugonia' (2025) [Yorgos Lanthimos]
+  - cheyennethismustbetheplace|2011: 1 listing(s), e.g. Alabama-Kino: 'Cheyenne - This Must Be The Place' (2011) [Paolo Sorrentino]
+  - crazystupidlove|2011: 1 listing(s), e.g. Open Air Kino am Olympiasee: 'Crazy Stupid Love' (2011) [Glenn Ficarra, John Requa]
+  - dermedicus2|2025: 1 listing(s), e.g. LOTTO Hamburg SchanzenKino Open Air: 'Der Medicus 2' (2025) [Philipp Stölzl]
+  - dieletztengluhwurmchen|1988: 1 listing(s), e.g. Open Air Kino am Olympiasee: 'Die letzten Glühwürmchen' (1988) [Isao Takahata]
+  - dreimeteruberdemhimmel|2010: 1 listing(s), e.g. LOTTO Hamburg SchanzenKino Open Air: 'Drei Meter über dem Himmel' (2010) [Fernando González Molina]
+  - evildeadburn|2026: 1 listing(s), e.g. Filmpalast Cine-World: 'Evil Dead Burn' (2026) [Sébastien Vaniček]
+  - f0e5638e30575a97: 1 listing(s), e.g. Eifel-Film-Bühne: 'Der Lorax' (2012) [Chris Renaud]
+  - f1derfilm|2025: 1 listing(s), e.g. LOTTO Hamburg SchanzenKino Open Air: 'F1 - Der Film' (2025) [Joseph Kosinski]
+  - f373f8f87fb6f068: 1 listing(s), e.g. Programmkino Ost: 'Semillas - Bis der Regen fällt' (2025) [Eliana Niño Oviedo]
+  - f7bdeb574d8b9086: 1 listing(s), e.g. Kino am Tegernsee: 'Kanaren 27° 29° N - Acht Inseln - Acht Welten' (2021) [Stefan Erdmann]
+  - f7f377f2b4657ec0: 1 listing(s), e.g. Programmkino Ost: 'Zoomania 2' (2025) [Byron Howard, Jared Bush]
+  - fac51458b9f1521d: 1 listing(s), e.g. Zentralkino Dresden: 'Hausu' (1977) [Nobuhiko Ôbayashi]
+  - facf50a188a81b23: 1 listing(s), e.g. Wandelhalle Reinhardshausen: 'Happy Burnout' (2017) [André Erkau]
+  - ff91eb446875aee2: 1 listing(s), e.g. Filmmuseum München: 'Die schwarze Natter' (1947) [Delmer Daves]
+  - flow|2024: 1 listing(s), e.g. Alabama-Kino: 'Flow' (2024) [Gints Zilbalodis]
+  - furimmereinteilvondirremindersofhim|2026: 1 listing(s), e.g. LOTTO Hamburg SchanzenKino Open Air: 'Für immer ein Teil von dir - Reminders Of Him' (2026) [Vanessa Caswill]
+
+## films merged away (a larger film's id won their cluster): 7
+  - f7ff540af55d2f19 → primetime|2026: 4 listing(s), e.g. Cine-World: 'Prime Time' (2021) [Jakub Piatek]; Cinetech das Erlebniskino Rheine: 'Prime Time' (2021) [Jakub Piatek]
+  - derkleinerabesocke|2012 → derkleinerabesockesuchenachdemverlorenenschatz|2019: 2 listing(s), e.g. Stadtkino Trostberg: 'Der kleine Rabe Socke' (2012) [Sandor Jesse, Ute von Münchow-Pohl]; Universum-City Karlsruhe: 'Der kleine Rabe Socke' (2012) [Sandor Jesse, Ute von Münchow-Pohl]
+  - f98567d64602fc48 → billie|2026: 2 listing(s), e.g. Kino-Center Husum: 'Billie – Legende des Jazz' (2020) [James Erskine]; Staufen-Movieplex: 'Billie – Legende des Jazz' (2020) [James Erskine]
+  - f4d07fec6aa746e1 → derkleinemaulwurf|1968: 1 listing(s), e.g. Filmtheater Schauburg: 'Der kleine Maulwurf - seine schönsten Abenteuer' (1975) [Zdeněk Miler]
+  - f903aa248894f7f6 → f6a89c13f1f98e99: 1 listing(s), e.g. Kommunales Kino - Im Alten Wiehrebahnhof: 'Ida' (2023) [Brandon Gotto]
+  - f9eca2e1a2770b8a → f2fdb15c487fa11a: 1 listing(s), e.g. Kommunales Kino Pforzheim: 'Heimsuchung' (2023) [Achmed Abdel-Salam]
+  - vergesseneweltjurassicpark|1997 → jurassicpark|1993: 1 listing(s), e.g. LichtBlick Heide: 'Vergessene Welt - Jurassic Park' (1997) [Steven Spielberg]
+
+## films the resolver splits over two or more clusters: 13
+  - dasgewisseetwas|2026 (635) → [633 listing(s), e.g. Admiral Filmpalast Nürnberg: 'Das gewisse Etwas' (2026) [Marc Rothemund]; Adria Filmtheater Steglitz: 'Das gewisse Etwas' (2026) [Marc Rothemund]] + [1 listing(s), e.g. Weidenhof Kino: 'Das gewisse Etwas' (1948) [Robert B. Sinclair]]
+  - morgenwarkrieg|2026 (23) → [22 listing(s), e.g. Audi Programmkino: 'Morgen war Krieg' (2026) [Nicolas Ehret]; Bali-Kino: 'Morgen war Krieg' (2026) [Nicolas Ehret]] + [1 listing(s), e.g. Babylon (Mitte): 'Morgen war Krieg' (1987) [Yuriy Kara]]
+  - f91896642c4b6500 (8) → [7 listing(s), e.g. Apollo Hannover: 'Pettersson und Findus Mitmachkino 2' (2024) [Benjamín Lorenzo, Dirk Hampel, Mirko Drilling]; Burgtheater Ratzeburg: 'Pettersson und Findus Mitmachkino 2' (2024) [Benjamín Lorenzo, Dirk Hampel, Mirko Drilling]] + [1 listing(s), e.g. Kulturzentrum auf dem Moritzhof: 'Winterabenteuer mit Pettersson und Findus' (2022) [Benjamín Lorenzo, Dirk Hampel, Mirko Dreiling]]
+  - doncamilloundpeppone|1952 (6) → [5 listing(s), e.g. Cinema Wuppertal: 'Don Camillo und Peppone' (1952) [Julien Duvivier]; Kamino: 'Don Camillo und Peppone' (1952) [Julien Duvivier]] + [1 listing(s), e.g. Kino im Druckluft: 'Genosse Don Camillo' (1965) [Luigi Comencini]]
+  - thenorth|2025 (6) → [5 listing(s), e.g. Camillo-Sommerkino im Rathaushof: 'The North' (2025) [Bart Schrijver]; CamilloKino: 'The North' (2025) [Bart Schrijver]] + [1 listing(s), e.g. Off Broadway: 'The North Drift - Plastik in Strömen' (2022) [Steffen Krones]]
+  - fausteinedeutschevolkssage|1926 (4) → [3 listing(s), e.g. Hochhaus Lichtspiele: 'Faust - Eine deutsche Volkssage' (1926) [F.W. Murnau]; Karlstorkino: 'Faust - Eine deutsche Volkssage' (1926) [F.W. Murnau]] + [1 listing(s), e.g. Kulturfabrik Meda: 'Zärtlich kreist die Faust' (1990) [Hilde Bechert, Klaus Dexel]]
+  - diedrei|2019 (3) → [2 listing(s), e.g. Zeltkino Hiddensee: 'Die Drei !!!' (2019) [Viviane Andereggen]; kino achteinhalb: 'Die Drei !!!' (2019) [Viviane Andereggen]] + [1 listing(s), e.g. KiKuBi: 'Die Drei von der Tankstelle' (1930) [Wilhelm Thiele]]
+  - f4a4b138b1f20249 (3) → [2 listing(s), e.g. Neues Regina: 'Der Pate' (1972) [Francis Ford Coppola]; Residenz - Astor Filmlounge: 'Der Pate' (1972) [Francis Ford Coppola]] + [1 listing(s), e.g. Neues Regina: 'Der Pate, Epilog: Der Tod von Michael Corleone' (2020) [Francis Ford Coppola]]
+  - f0ac56db928e0bfc (2) → [1 listing(s), e.g. IL KINO: 'Camouflage' (2014) [Andreas Kessler, Stephan Kämpf]] + [1 listing(s), e.g. Kino Krokodil: 'Camouflage' (2016) [Imge Özbilge]]
+  - f767659262836236 (2) → [1 listing(s), e.g. Casablanca Nürnberg: 'Bibi Blocksberg' (2002) [Hermine Huntgeburth]] + [1 listing(s), e.g. Kulturzentrum auf dem Moritzhof: 'Bibi Blocksberg - Eene Meene Eins, Zwei, Drei!' (1997) [Gerhard Hahn, Royce Ramos]]
+  - f897cda539832608 (2) → [1 listing(s), e.g. Magic Cinema im Europa Park: 'Grand Prix Of Europe' (2025) [Waldemar Fast]] + [1 listing(s), e.g. Werkstattkino e.V.: 'Grand Prix' (1966) [John Frankenheimer]]
+  - f8e3adbfc616dc0a (2) → [1 listing(s), e.g. Bambi &amp; Camera: 'La Boum - Die Fete' (1980) [Claude Pinoteau]] + [1 listing(s), e.g. Lichtblick-Kino: 'The Party: Nature Morte' (1991) [Cynthia Beatt]]
+  - thefastandthefurious|2001 (2) → [1 listing(s), e.g. Central Theater Osterholz-Scharmbeck: 'The Fast And The Furious: Tokyo Drift' (2006) [Justin Lin]] + [1 listing(s), e.g. Cineplex Gotha: 'The Fast and the Furious' (2001) [Rob Cohen]]
+
+## clusters that get a fresh id, overlapping a film that went elsewhere: 13
+  - 1 listing(s), e.g. Babylon (Mitte): 'Morgen war Krieg' (1987) [Yuriy Kara] — overlaps morgenwarkrieg|2026
+  - 1 listing(s), e.g. Cineplex Gotha: 'The Fast and the Furious' (2001) [Rob Cohen] — overlaps thefastandthefurious|2001
+  - 2 listing(s), e.g. Erbacher Lichtspiele: 'Das gewisse Etwas' (1948) [Robert B. Sinclair]; Weidenhof Kino: 'Das gewisse Etwas' (1948) [Robert B. Sinclair] — overlaps dasgewisseetwas|2026
+  - 1 listing(s), e.g. KiKuBi: 'Die Drei von der Tankstelle' (1930) [Wilhelm Thiele] — overlaps diedrei|2019
+  - 1 listing(s), e.g. Kino Krokodil: 'Camouflage' (2016) [Imge Özbilge] — overlaps f0ac56db928e0bfc
+  - 1 listing(s), e.g. Kino im Druckluft: 'Genosse Don Camillo' (1965) [Luigi Comencini] — overlaps doncamilloundpeppone|1952
+  - 1 listing(s), e.g. Kulturfabrik Meda: 'Zärtlich kreist die Faust' (1990) [Hilde Bechert, Klaus Dexel] — overlaps fausteinedeutschevolkssage|1926
+  - 1 listing(s), e.g. Kulturzentrum auf dem Moritzhof: 'Bibi Blocksberg - Eene Meene Eins, Zwei, Drei!' (1997) [Gerhard Hahn, Royce Ramos] — overlaps f767659262836236
+  - 1 listing(s), e.g. Kulturzentrum auf dem Moritzhof: 'Winterabenteuer mit Pettersson und Findus' (2022) [Benjamín Lorenzo, Dirk Hampel, Mirko Dreiling] — overlaps f91896642c4b6500
+  - 1 listing(s), e.g. Lichtblick-Kino: 'The Party: Nature Morte' (1991) [Cynthia Beatt] — overlaps f8e3adbfc616dc0a
+  - 1 listing(s), e.g. Neues Regina: 'Der Pate, Epilog: Der Tod von Michael Corleone' (2020) [Francis Ford Coppola] — overlaps f4a4b138b1f20249
+  - 1 listing(s), e.g. Off Broadway: 'The North Drift - Plastik in Strömen' (2022) [Steffen Krones] — overlaps thenorth|2025
+  - 1 listing(s), e.g. Werkstattkino e.V.: 'Grand Prix' (1966) [John Frankenheimer] — overlaps f897cda539832608
+
+## clusters that get a fresh id, overlapping no production film: 20
+  - 1 listing(s), e.g. ARTE Freiluftkino Kulturforum: 'Natürlich blond!' (2001) [Robert Luketic]
+  - 1 listing(s), e.g. Apollo Hannover: 'Hannah Arendt - Denken ist gefährlich' (2025) [Chana Gazit, Jeff Bieber, Maia E. Harris]
+  - 1 listing(s), e.g. Brennessel-Programmkino: 'Lemmy Caution gegen Alpha 60' (1965) [Jean-Luc Godard]
+  - 1 listing(s), e.g. Filmforum im Museum Ludwig: 'Lady' (2025) [Samuel Abrahams]
+  - 1 listing(s), e.g. Freiluftkino Kreuzberg: 'The History Of Sound' (2025) [Oliver Hermanus]
+  - 1 listing(s), e.g. IMAX Speyer: 'A Beautiful Planet - Ein IMAX 3D-Erlebnis' (2016) [Toni Myers]
+  - 1 listing(s), e.g. IMAX Speyer: 'Journey to the South Pacific' (2013) [Greg MacGillivray, Stephen Judson]
+  - 1 listing(s), e.g. KiKuBi: 'Der Hochstapler - Roofman' (2025) [Derek Cianfrance]
+  - 1 listing(s), e.g. Kino- und Kulturverein: 'Terje Vigen' (1917) [Victor Sjöstrom]
+  - 1 listing(s), e.g. Kommunales Kino Pforzheim: 'Nightborn' (2026) [Hanna Bergholm]
+  - 1 listing(s), e.g. Movieworld: 'Memory' (2023) [Michel Franco]
+  - 1 listing(s), e.g. Savoy (Bordesholm): 'Der Geschmack von Apfelkernen' (2012) [Vivian Naefe]
+  - 1 listing(s), e.g. Schlosstheater Münster: 'Drive - Keiner schlägt härter' (1997) [Steve Wang]
+  - 1 listing(s), e.g. Studio-Kino: 'Heute Ruhetag' (1976) [Peter Hill]
+  - 1 listing(s), e.g. Uferpalast Führt: 'Die Mama und die Hure' (1972) [Jean Eustache]
+  - 1 listing(s), e.g. Uferpalast Führt: 'Die drei Zeitalter' (1923) [Buster Keaton, Edward F. Cline]
+  - 1 listing(s), e.g. Uferpalast Führt: 'Einer flog über das Kuckucksnest' (1975) [Milos Forman]
+  - 1 listing(s), e.g. Uferpalast Führt: 'Meine kleinen Geliebten' (1974) [Jean Eustache]
+  - 1 listing(s), e.g. Yorck Kino (Kreuzberg): 'Drive' (2011) [Nicolas Winding Refn]
+  - 1 listing(s), e.g. Zentralkino Dresden: 'Die Waldläufer' (1978) [Jean-François Stévenin]

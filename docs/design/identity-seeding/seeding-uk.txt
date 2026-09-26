@@ -1,0 +1,80 @@
+# ID seeding review, full-uk: 1515 production films (30244 listing keys), 1563 resolver clusters over 30302 listings (resolve 2s)
+today's listing keys found in the corpus: 30126 of 30244 (99.6%); raw listings the slot fold hides behind another listing's slot: 0
+films that keep their id: 1503
+
+## films no cluster overlaps (their listings are not in the corpus): 1
+  - f7511a66e0ca67a6: 1 listing(s), e.g. Broadway Letchworth: 'How To Live On Earth'
+
+## films merged away (a larger film's id won their cluster): 11
+  - rbo202627tosca| → rbocinemaseason202627tosca|: 83 listing(s), e.g. Vue Cinemas Accrington: 'RBO 2026/27: Tosca'; Vue Cinemas Barrow: 'RBO 2026/27: Tosca'
+  - rbocinemaseason202627lafanciulladelwest| → metopera202627lafanciulladelwest|: 46 listing(s), e.g. Act One Cinema Acton: 'RBO Cinema Season 2026-27: La Fanciulla Del West'; Aldeburgh Cinema: 'RBO Cinema Season 2026-27: La Fanciulla Del West'
+  - f1603adf485de0d6 → metopera202627macbeth|: 24 listing(s), e.g. Act One Cinema Acton: 'RBO Cinema Season 2026-27: Macbeth'; Astoria Cinema Ayr: 'RBO Cinema Season 2026-27: Macbeth'
+  - f0201669f88fa506 → thetransformersthemovie40thanniversary|1986: 15 listing(s), e.g. Showcase Bristol Avonmeads: 'Transformers: The Movie 40th Anniversary (+Optimus Prime: Awakening)'; Showcase Cinema Cardiff: 'Transformers: The Movie 40th Anniversary (+Optimus Prime: Awakening)'
+  - f6482ce2e2b03e6c → ff9682dec3985ae2: 13 listing(s), e.g. Showcase Bristol Avonmeads: 'Lalka (The Doll)'; Showcase Cinema Dudley: 'Lalka (The Doll)'
+  - thehungergamesmockingjaypart1|2014 → hungergamesballadofsongbirdssnakes|2026: 9 listing(s), e.g. Brunswick Moviebowl Londonderry: 'The Hunger Games: Mockingjay - Part 1'; Central Cinema Fakenham: 'The Hunger Games: Mockingjay - Part 1'
+  - fd7b23913b0dee56 → f73025049a20e129: 8 listing(s), e.g. Vue Cinemas Birmingham: 'Acharya (Nepali)'; Vue Cinemas Dagenham: 'Acharya (Nepali)'
+  - f683390e1f85705e → f371064d6467e591: 2 listing(s), e.g. Cultplex Manchester: 'Horror of Dracula'; Filmhouse Edinburgh: 'Horror of Dracula'
+  - fd9e2b814b62fb1a → fda50e1f12914c99: 2 listing(s), e.g. Odeon Cinema Acton: 'Vibe'; Odeon Luxe Leicester: 'Vibe'
+  - fe43f661f90e7f8b → memberspreviewsenseandsensibility|2026: 1 listing(s), e.g. Everyman Cinema Harrogate: 'Relaxed Screening: Sense and Sensibility'
+  - zog|2018 → f57353208b0aa2ef: 1 listing(s), e.g. Barbican London: 'Zog'
+
+## films the resolver splits over two or more clusters: 43
+  - shaunthesheepthebeastofmossybottom|2026 (625) → [610 listing(s), e.g. Abbeygate Bury St Edmunds: 'Shaun the Sheep: The Beast of Mossy Bottom'; Aberystwyth Arts Centre: 'Shaun the Sheep: The Beast of Mossy Bottom'] + [15 listing(s), e.g. Showcase Bristol Avonmeads: 'Shaun The Sheep: The Beast of Mossy Bottom - Sensory Friendly Screening'; Showcase Cinema Cardiff: 'Shaun The Sheep: The Beast of Mossy Bottom - Sensory Friendly Screening']
+  - memberspreviewsenseandsensibility|2026 (619) → [331 listing(s), e.g. Cineworld (Queens Link) Aberdeen: 'Sense and Sensibility'; Cineworld (Shaw Ridge) Swindon: 'Sense and Sensibility'] + [288 listing(s), e.g. Aldeburgh Cinema: 'Sense and Sensibility (2026)'; Alexandra Newton Abbot: 'Sense and Sensibility (2026)']
+  - residentevil|2026 (534) → [196 listing(s), e.g. Arc Cinema Beeston: 'Resident Evil (2026)'; Arc Cinema Blackpool: 'Resident Evil (2026)'] + [148 listing(s), e.g. Cineworld (Queens Link) Aberdeen: 'Resident Evil'; Cineworld (Shaw Ridge) Swindon: 'Resident Evil'] + [101 listing(s), e.g. Odeon Birmingham New Street: 'Resident Evil'; Odeon Cabot Circus: 'Resident Evil'] + [88 listing(s), e.g. Vue Cinemas Accrington: 'Resident Evil'; Vue Cinemas Altrincham: 'Resident Evil']
+  - rbocinemaseason202627carmen|2023 (495) → [480 listing(s), e.g. Abbeygate Bury St Edmunds: 'RBO Cinema Season 2026-27: Carmen'; Act One Cinema Acton: 'RBO Cinema Season 2026-27: Carmen'] + [15 listing(s), e.g. Elite Cinema and Theatre Ashbourne: 'Royal Opera House: Carmen'; Filmhouse Newlyn: 'Royal Opera House: Carmen']
+  - avengersendgameencore|2019 (477) → [462 listing(s), e.g. Arc Cinema Beeston: 'Avengers: Endgame'; Arc Cinema Blackpool: 'Avengers: Endgame'] + [15 listing(s), e.g. Showcase Bristol Avonmeads: 'Avengers: Endgame Encore - Sensory Friendly Screen'; Showcase Cinema Cardiff: 'Avengers: Endgame Encore - Sensory Friendly Screen']
+  - digger|2026 (471) → [470 listing(s), e.g. Arc Cinema Beeston: 'Digger'; Arc Cinema Blackpool: 'Digger'] + [1 listing(s), e.g. Odeon Luxe Leicester Square: 'Digger Presented in VistaVision']
+  - theodyssey|2026 (291) → [290 listing(s), e.g. Atrium East Grinstead: 'The Odyssey'; BFI London IMAX: 'The Odyssey'] + [1 listing(s), e.g. Cineworld Leicester Square: 'The Odyssey: The IMAX Experience']
+  - rbocinemaseason202627romeoandjuliet|2013 (255) → [206 listing(s), e.g. Abbeygate Bury St Edmunds: 'RBO Cinema Season 2026-27: Romeo and Juliet'; Act One Cinema Acton: 'RBO Cinema Season 2026-27: Romeo and Juliet'] + [49 listing(s), e.g. Everyman Bath: 'Royal Ballet and Opera: Romeo and Juliet'; Everyman Brentford: 'Royal Ballet and Opera: Romeo and Juliet']
+  - weregoingonabearhuntthetigerwhocametotea|2016 (254) → [171 listing(s), e.g. Arts Picturehouse Cambridge: 'We're Going on a Bear Hunt + The Tiger Who Came to Tea'; Brunswick Moviebowl Londonderry: 'We're Going on a Bear Hunt + The Tiger Who Came to Tea'] + [83 listing(s), e.g. Odeon Birmingham New Street: 'We're Going on a Bear Hunt+Tiger Who Came to...'; Odeon Cabot Circus: 'We're Going on a Bear Hunt+Tiger Who Came to...']
+  - ff3e423c3e916d4d (157) → [87 listing(s), e.g. Cineworld (Queens Link) Aberdeen: 'Girls Like Girls Unlimited Screening'; Cineworld (Shaw Ridge) Swindon: 'Girls Like Girls Unlimited Screening'] + [70 listing(s), e.g. Duke's at Komedia Picturehouse: 'Girls Like Girls'; Macrobert Art Centre Stirling: 'Girls Like Girls']
+  - donniedarko|2001 (135) → [69 listing(s), e.g. BFI London IMAX: 'Donnie Darko'; Broadway Letchworth: 'Donnie Darko'] + [32 listing(s), e.g. Everyman Bath: 'Throwback: Donnie Darko (25th Anniversary)'; Everyman Brentford: 'Throwback: Donnie Darko (25th Anniversary)']
+  - metoperacosifantuttemozart|2014 (118) → [117 listing(s), e.g. Abbeygate Bury St Edmunds: 'Met Opera 2026-27: Così fan tutte'; Arts Picturehouse Cambridge: 'Met Opera 2026-27: Così fan tutte'] + [1 listing(s), e.g. Broadway Cinema Nottingham: 'MetOpera: Così Fan Tutte']
+  - scream|1996 (113) → [76 listing(s), e.g. Arc Cinema Beeston: 'Scream (1996)'; Arc Cinema Blackpool: 'Scream (1996)'] + [1 listing(s), e.g. Prince Charles London: 'Scream 2'] + [1 listing(s), e.g. Prince Charles London: 'Scream 3'] + [1 listing(s), e.g. Prince Charles London: 'Scream 4']
+  - thedevilwearsprada2|2006 (108) → [107 listing(s), e.g. Broadway Cinema Villa Marina: 'The Devil Wears Prada 2'; Carlton Cinema Westgate-on-Sea: 'The Devil Wears Prada 2'] + [1 listing(s), e.g. Empire Theatre Halstead: 'The Devil Wears Prada']
+  - thehungergamestheballadofsongbirdsandsnakes|2023 (91) → [85 listing(s), e.g. Vue Cinemas Altrincham: 'The Hunger Games: The Ballad of Songbirds and Snakes (2023)'; Vue Cinemas Barrow: 'The Hunger Games: The Ballad of Songbirds and Snakes (2023)'] + [5 listing(s), e.g. Lonsdale Alhambra Penrith: 'The Hunger Games: The Ballad of Songbirds & Snakes'; Lumiere Romford: 'The Hunger Games: The Ballad of Songbirds & Snakes']
+  - f5bf1da2d4ff904c (83) → [63 listing(s), e.g. Odeon Birmingham New Street: 'The Hunger Games: Mockingjay - Part 2 (2026)'; Odeon Cabot Circus: 'The Hunger Games: Mockingjay - Part 2 (2026)'] + [20 listing(s), e.g. Everyman Cheltenham: 'De Gaulle: Part 2 - Liberte'; Everyman Cinema Altrincham: 'De Gaulle: Part 2 - Liberte']
+  - fd5ddc7a008b872f (74) → [71 listing(s), e.g. Arc Cinema Preston: 'The Paradise'; Cineworld (Queens Link) Aberdeen: 'The Paradise'] + [3 listing(s), e.g. Odeon Luxe Glasgow: 'The Paradise (Hindi)'; Odeon Luxe Leeds-Bradford: 'The Paradise (Hindi)']
+  - moana|2026 (67) → [66 listing(s), e.g. Arc Cinema Preston: 'Moana (2026)'; Arc Cinema Rotherham: 'Moana (2026)'] + [1 listing(s), e.g. Empire Theatre Halstead: 'Moana: Sing-Along']
+  - royalballetandoperatosca|2025 (64) → [49 listing(s), e.g. Everyman Bath: 'Royal Ballet and Opera: Tosca'; Everyman Brentford: 'Royal Ballet and Opera: Tosca'] + [15 listing(s), e.g. Aldeburgh Cinema: 'Royal Ballet & Opera 2025-26: Tosca'; Elite Cinema and Theatre Ashbourne: 'Royal Ballet & Opera 2025-26: Tosca']
+  - theomen|2006 (58) → [54 listing(s), e.g. Cineworld (Queens Link) Aberdeen: 'The Omen'; Cineworld (Shaw Ridge) Swindon: 'The Omen'] + [4 listing(s), e.g. Brewery Arts Centre Kendal: 'The Omen (2006)'; Chiswick Cinema: 'The Omen (2006)']
+
+## clusters that get a fresh id, overlapping a film that went elsewhere: 45
+  - 15 listing(s), e.g. Aldeburgh Cinema: 'Royal Ballet & Opera 2025-26: Tosca'; Elite Cinema and Theatre Ashbourne: 'Royal Ballet & Opera 2025-26: Tosca' — overlaps royalballetandoperatosca|2025
+  - 288 listing(s), e.g. Aldeburgh Cinema: 'Sense and Sensibility (2026)'; Alexandra Newton Abbot: 'Sense and Sensibility (2026)' — overlaps memberspreviewsenseandsensibility|2026
+  - 4 listing(s), e.g. Barbican London: 'Matilda (1996)'; Broadway Cinema Nottingham: 'Matilda (1996)' — overlaps matilda|1996
+  - 4 listing(s), e.g. Brewery Arts Centre Kendal: 'The Omen (2006)'; Chiswick Cinema: 'The Omen (2006)' — overlaps theomen|2006
+  - 1 listing(s), e.g. Broadway Cinema Nottingham: 'MetOpera: Così Fan Tutte' — overlaps metoperacosifantuttemozart|2014
+  - 148 listing(s), e.g. Cineworld (Queens Link) Aberdeen: 'Resident Evil'; Cineworld (Shaw Ridge) Swindon: 'Resident Evil' — overlaps residentevil|2026
+  - 1 listing(s), e.g. Cineworld Leicester Square: 'The Odyssey: The IMAX Experience' — overlaps theodyssey|2026
+  - 1 listing(s), e.g. Curzon Canterbury Riverside: 'Parasite (Black and White version)' — overlaps parasite|2019
+  - 1 listing(s), e.g. Curzon Cinema Clevedon: 'Frozen: Sing-Along' — overlaps frozen|2013
+  - 2 listing(s), e.g. Curzon Cinema Clevedon: 'Shrek'; Filmhouse Edinburgh: 'Shrek' — overlaps shrek|2001
+  - 5 listing(s), e.g. Duke of York's Picturehouse Brighton: 'Tabby McTat'; Little Theatre Picturehouse: 'Tabby McTat' — overlaps f9b2a56fbd35868b
+  - 70 listing(s), e.g. Duke's at Komedia Picturehouse: 'Girls Like Girls'; Macrobert Art Centre Stirling: 'Girls Like Girls' — overlaps ff3e423c3e916d4d
+  - 15 listing(s), e.g. Elite Cinema and Theatre Ashbourne: 'Royal Opera House: Carmen'; Filmhouse Newlyn: 'Royal Opera House: Carmen' — overlaps rbocinemaseason202627carmen|2023
+  - 1 listing(s), e.g. Empire Theatre Halstead: 'Moana: Sing-Along' — overlaps moana|2026
+  - 1 listing(s), e.g. Empire Theatre Halstead: 'The Devil Wears Prada' — overlaps thedevilwearsprada2|2006
+  - 49 listing(s), e.g. Everyman Bath: 'Royal Ballet and Opera: Romeo and Juliet'; Everyman Brentford: 'Royal Ballet and Opera: Romeo and Juliet' — overlaps rbocinemaseason202627romeoandjuliet|2013
+  - 32 listing(s), e.g. Everyman Bath: 'Throwback: Donnie Darko (25th Anniversary)'; Everyman Brentford: 'Throwback: Donnie Darko (25th Anniversary)' — overlaps donniedarko|2001
+  - 1 listing(s), e.g. Everyman Screen on the Green Islington: 'Blue Velvet (40th Anniversary) | A Fictional Selves Special Screening' — overlaps bluevelvet|1986
+  - 1 listing(s), e.g. Everyman Screen on the Green Islington: 'Ken Russell's The Devils presented by Deeper Into Movies' — overlaps kenrussellsthedevils|1971
+  - 1 listing(s), e.g. Filmhouse Edinburgh: 'Children of the Wicker Man' — overlaps thewickerman|1973
+
+## clusters that get a fresh id, overlapping no production film: 15
+  - 1 listing(s), e.g. Brewery Arts Centre Kendal: 'The Hunger Games: Sunrise on the Reaping'
+  - 1 listing(s), e.g. Broadway Cinema Nottingham: 'Mayhem (2017)'
+  - 1 listing(s), e.g. Castle Cinema Hackney: 'The Last of England'
+  - 1 listing(s), e.g. Corn Exchange Cinema King's Lynn: 'The Postman Always Rings Twice (1981)'
+  - 1 listing(s), e.g. Hyde Park Picture House: 'Team America: World Police'
+  - 1 listing(s), e.g. Quad Derby: 'Brazil'
+  - 1 listing(s), e.g. Quad Derby: 'Citizen Jane: Battle for the City'
+  - 1 listing(s), e.g. Quad Derby: 'High-Rise'
+  - 1 listing(s), e.g. Quad Derby: 'The Human Scale'
+  - 1 listing(s), e.g. Radway Sidmouth: 'Far from Heaven (2002)'
+  - 1 listing(s), e.g. Rooftop Film Club Peckham (Bussey Building): 'The Wolf of Wall Street'
+  - 1 listing(s), e.g. Station Cinema Richmond: 'Katherine Jenkins: Christmas Spectacular'
+  - 1 listing(s), e.g. The Old Court Windsor: 'Halloween Spooktacular'
+  - 1 listing(s), e.g. Warwick Arts Centre Coventry: 'Fisherman's Friends'
+  - 1 listing(s), e.g. Warwick Arts Centre Coventry: 'Juliet & Romeo'

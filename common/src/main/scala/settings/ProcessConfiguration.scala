@@ -306,6 +306,10 @@ final class ProcessConfiguration(val env: Env) {
    *  dataset, else `target/identity-shadow`. */
   def identityShadowOutput: IdentityShadowOutput =
     IdentityShadowOutput(Path.of(text("KINOWO_IDENTITY_OUT").getOrElse("target/identity-shadow")))
+  /** `KINOWO_IDENTITY_SEED_FILMS` — a directory of `films-<cc>.json`, today's films as sets of listing
+   *  keys (`scripts.ListingKeyBackfill --export`), that the ID-seeding review assigns ids from. */
+  def identitySeedFilms: Option[IdentitySeedFilms] =
+    text("KINOWO_IDENTITY_SEED_FILMS").map(dir => IdentitySeedFilms(Path.of(dir)))
   /** `KINOWO_IDENTITY_PERMUTATIONS` — arrival orders the identity shadow run replays a FULL corpus
    *  in (the hard clusters always take 21). */
   def identityShadowPermutations: IdentityShadowPermutations =

@@ -442,6 +442,8 @@ for the resolver's query set (§9).
   and share card. The table of films that map to no cluster, or to two, is the migration's
   review list.
 - `movie_slots` / `screenings` gain a `listingKey` field, backfilled. Nothing reads it yet.
+- Landed (as programme phase 4): the dual write, the backfill tool and the measured ID-seeding
+  review. The evidence store is phase 1's observation store. See §16.
 
 ### Phase 3: cutover, per country
 
@@ -1622,3 +1624,126 @@ The learned `title in {none,overlap} AND venue in {same}` rule fired on several 
 ```
 KINOWO_IDENTITY_FULL=es,de,pl,uk,us KINOWO_IDENTITY_CORPUS_DIR=… KINOWO_FIXTURE_ROOT=… sbt "worker/IntegrationTest/testOnly integration.IdentityShadowIntegrationSpec"
 ```
+
+---
+
+## 16. Programme phase 4: stable IDs, dual write (2026-09-26, branch `identity-phase4`)
+
+This is the programme's phase 4 and §8's "Phase 2: stable IDs and data migration". Everything
+here is additive. Nothing reads the new field, and no FilmId changes.
+
+### 16.1 What landed
+
+- **The stored form.** `ListingKey.serialised` / `ListingKey.parse` are NUL-joined, total and
+  injective. It is the same string the observation store keys listings by (it replaces
+  `ListingObservation.keyString`), so a slot and its listing observations join on it.
+- **One derivation.** `ListingKey.ofSlotRow(slotKey, slot)` computes the key from the stored row.
+  `None` means the row is not a venue listing:
+  - an enrichment slot;
+  - a retired venue;
+  - a chain's network-level detail slot (`CinemaCityChain`, `CineworldChain`, `RegalChain`: a
+    `Cinema` that is not in `Cinema.all`).
+
+  On prod those detail slots carry no title, so as "listings" they collapsed every film onto
+  one key per chain and director: 24 false collisions (UK 14, PL 2, US 8).
+- **The dual write.**
+  - `movie_slots`: `StoredSlotDto.of` stamps `listingKey` from the row itself, so every slot
+    write carries it, including the merge move.
+  - `screenings`: a row is now `ListedShowtimes(showtimes, listingKey)`.
+    `ScreeningsSplit.screeningsOf` / `slotOps` give each row its slot's key. A merge
+    (`SideCollectionMove`) carries the key it had. The write compares keys too, so a listing
+    whose key moves under unchanged showtimes (a page-less venue correcting its year) is
+    rewritten on the next whole-record write.
+  - Serving reads (`findForFilmChecked`, `findAll`) are unchanged.
+- **Guards.**
+  - `ListingKeyDualWriteIntegrationSpec` (itAll, raw documents) checks each repository write
+    path: the upsert (the landing, the fold's completion, a re-key's retitle), the per-slot
+    patch, a key change, and the merge move. It then boots the PL hard-cluster corpus through
+    the whole pipeline and checks that every slot and screenings row carries its slot's key.
+    With the stamp removed, both tests fail.
+  - `ListingKeyWritePathLintSpec` keeps new write paths on the factories. Rows are built only
+    by `StoredSlotDto.of` / `StoredScreeningsDto.of`. Screenings payloads are built only in the
+    split. The side collections are written only by their repositories. Run against the
+    pre-change `SlotsRepository`, the lint fails.
+- **Backfill.** `scripts.ListingKeyBackfill` (worker Test).
+  - The plan is pure and tested (`ListingKeyBackfillSpec`).
+  - It is a DRY RUN by default. `--apply` makes conditional `$set` writes, each only if the row
+    still holds the key the scan read. `--export <dir>` writes each film's key set and the
+    collision list.
+  - Run it per country, only **after** the dual write is deployed. A pre-phase-4 worker
+    rewrites rows whole and would drop the field. Each stamped row re-projects its film once.
+- **ID seeding.** `services.identity.IdSeeding` runs `IdAssigner` with today's films as the
+  previous assignment, then names the review list (`IdSeedingSpec`, including order
+  independence).
+  - Today's FilmIds are strings, so they are ranked onto the counter largest film first: on a
+    contested cluster, the film more showtimes hang off keeps its id.
+  - `IdentitySeedingIntegrationSpec` (opt-in: `KINOWO_IDENTITY_SEED_FILMS` plus the full-corpus
+    settings) measures it.
+
+### 16.2 Backfill, measured read-only on prod (2026-09-26 12:25)
+
+| | movie_slots rows | to stamp | no venue listing | screenings rows | to stamp | no keyed slot | listing-key collisions |
+|---|---|---|---|---|---|---|---|
+| PL | 12,458 | 10,049 | 2,409 | 10,046 | 10,046 | 0 | **0** |
+| UK | 33,370 | 30,244 | 3,126 | 30,244 | 30,244 | 0 | **0** |
+| DE | 23,286 | 19,862 | 3,424 | 19,849 | 19,844 | 5 | **0** |
+| US | 106,354 | 101,860 | 4,494 | 101,860 | 101,860 | 0 | **0** |
+| ES | 5,388 | 4,937 | 451 | 4,937 | 4,937 | 0 | **0** |
+
+- No stored slot shares a listing key with another, in any country.
+- The Belle / Planet of the Apes class (two listings folded into one slot) cannot be seen from
+  stored slots. `ListingKeyCorpusSpec` covers it on the corpora, and the fold hides no film
+  pair since `venueCreditsApart`.
+- The 5 DE rows are July leftovers under the pre-rename wire key `Cineworld␟…` (`backrooms`,
+  `rose`, `spaceballs`, `supergirl`, `vaiana`). They now resolve to `CineworldChain`, and
+  their showtimes are past. They are cleanup candidates, and are left unstamped.
+
+### 16.3 ID seeding review (today's prod films × resolver clusters, recording run 36224654409)
+
+| | films | clusters | keep id | no cluster | merged away | split | fresh (film went elsewhere) | fresh (no prod film) | today's keys in corpus | listings the fold hides |
+|---|---|---|---|---|---|---|---|---|---|---|
+| PL | 1,110 | 1,314 | 1,085 | 3 | 22 | 102 | 221 | 8 | 99.5% | 73 |
+| UK | 1,515 | 1,563 | 1,503 | 1 | 11 | 43 | 45 | 15 | 99.6% | 0 |
+| DE | 1,685 | 1,680 | 1,647 | 31 | 7 | 13 | 13 | 20 | 98.6% | 0 |
+| US | 2,280 | 2,339 | 2,262 | 11 | 7 | 57 | 73 | 4 | 99.4% | 0 |
+| ES | 233 | 236 | 230 | 2 | 1 | 4 | 4 | 2 | 99.3% | 0 |
+
+The lists, with 20 examples each, are in `docs/design/identity-seeding/seeding-<cc>.txt`.
+
+- The gate check passes on all five: every film keeps its id or is on the list.
+- "No cluster" films are listings the corpus (recorded at 06:50) no longer holds. By 12:25 they
+  were scraped (for example, a one-off PL event).
+- The "split" and "fresh (film went elsewhere)" rows are mostly the resolver's under-merge that
+  §15.5 measured as coverage. The largest PL example is `lalka|2026` (608 listings), cut into
+  393 + 51 ("Kino Kobiet") + 50 (Sa…) + decorated spellings "LALKA 2D PL". Also: the Ukrainian
+  dubs of "Resident Evil", and every "DKF: …" / "Klub Konesera: …" banner listing.
+- "Merged away" is mostly the resolver joining a decorated one-listing row to its film. That is
+  right: "Carmen | metropolitan opera", "Camille i kameleon - zestaw", and "Potyag Chervona ruta
+  - UA" (18 listings) onto `pociagczerwonaruta|2026`.
+
+Seeding this assignment today would move listings off their current URL for PL 221 clusters and
+retire 22 PL film ids. The other countries: UK 45 / 11, DE 13 / 7, US 73 / 7, ES 4 / 1.
+
+### 16.4 What remains before dual READS
+
+1. Deploy the dual write, then run `ListingKeyBackfill --apply` per country (ES → DE → UK → US
+   → PL). Re-run the dry run: "to stamp" must be 0.
+2. A shadow read, which is §10's phase-2 acceptance. For every listing, the rows found by
+   `listingKey` must equal the rows found by the slot key. It is not built. It needs a
+   `listingKey` index on both collections, and a gauge or alert for unstamped rows.
+3. **The slot fold hides listings.** `ScrapeListing.prepare` folds a venue's same-film rows into
+   one slot, which stores only the representative listing's key. In PL, 73 raw listings sit
+   behind another listing's slot. A read by their key finds nothing until slots are one per
+   listing: the fold moves into the projection's display merge (§4).
+4. Resolver coverage (§15.5). Seeding now would re-id 221 PL clusters split off `lalka`,
+   `obcy`, `tony` and similar. The split/fresh columns are the measure to drive to near zero
+   before any FilmId is assigned by overlap.
+5. A persistent FilmId map. `IdAssigner` works over `Long` counters, and today's ids are
+   strings. The seeding needs a stored string ↔ counter map, or `IdAssigner` over opaque ids,
+   before it can write.
+6. `web_screenings` is not keyed. A `CityScreening` merges a venue's slots, so phase 5's
+   projection writes it keyed `(FilmId, ListingKey)`.
+7. Clean up the 5 stale DE `Cineworld␟…` rows.
+
+Hardcoding added: none. The chain-slot exclusion reads `Cinema.all` membership, the model's own
+venue roster. The seeding's largest-film-first rank is a rule over the data, not a constant.

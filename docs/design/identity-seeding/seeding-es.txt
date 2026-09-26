@@ -1,0 +1,26 @@
+# ID seeding review, full-es: 233 production films (4937 listing keys), 236 resolver clusters over 4909 listings (resolve 0s)
+today's listing keys found in the corpus: 4901 of 4937 (99.3%); raw listings the slot fold hides behind another listing's slot: 0
+films that keep their id: 230
+
+## films no cluster overlaps (their listings are not in the corpus): 2
+  - f6301958cf023d15: 1 listing(s), e.g. Sala d''actes Ajuntament: 'Raya y el último dragón' (2021) [Don Hall]
+  - fcd81bb0c875d855: 1 listing(s), e.g. CineCiutat: 'Donnie Darko' (2001) [Richard Kelly]
+
+## films merged away (a larger film's id won their cluster): 1
+  - fa10d9d0baf07d75 → vengadoresendgamereestreno|2026: 26 listing(s), e.g. Ocine Arenys: 'Vengadores: Endgame'; Ocine Blanes: 'Vengadores: Endgame'
+
+## films the resolver splits over two or more clusters: 4
+  - laodisea|2026 (184) → [176 listing(s), e.g. Abc El Saler: 'La Odisea' (2026) [Christopher Nolan]; Abc Elx: 'La Odisea' (2026) [Christopher Nolan]] + [7 listing(s), e.g. Cine Palafox Zaragoza: 'La Odisea: The IMAX Experience' (2026) [Christopher Nolan]; Cinesa Diagonal Mar: 'La Odisea: The IMAX Experience' (2026) [Christopher Nolan]]
+  - vaiana|2026 (8) → [7 listing(s), e.g. Al-Andalus Mega Ocio: 'Vaiana' (2026) [Thomas Kail]; Cines Aragonia: 'Vaiana' (2026) [Thomas Kail]] + [1 listing(s), e.g. Ocine Gavarres: 'Vaiana: Live action']
+  - fbad6afb759c0425 (2) → [1 listing(s), e.g. Cines MN4: 'El caballero oscuro' (2008) [Christopher Nolan]] + [1 listing(s), e.g. Cines MN4: 'El caballero oscuro. La leyenda renace' (2012) [Christopher Nolan]]
+  - laluz|2026 (2) → [1 listing(s), e.g. Cines Los Llanos Zinemak: 'La luz que imaginamos' (2024) [Payal Kapadia]] + [1 listing(s), e.g. Cines Odeón: 'La luz' (2026) [Fernando Franco]]
+
+## clusters that get a fresh id, overlapping a film that went elsewhere: 4
+  - 7 listing(s), e.g. Cine Palafox Zaragoza: 'La Odisea: The IMAX Experience' (2026) [Christopher Nolan]; Cinesa Diagonal Mar: 'La Odisea: The IMAX Experience' (2026) [Christopher Nolan] — overlaps laodisea|2026
+  - 1 listing(s), e.g. Cines MN4: 'El caballero oscuro. La leyenda renace' (2012) [Christopher Nolan] — overlaps fbad6afb759c0425
+  - 1 listing(s), e.g. Cines Odeón: 'La luz' (2026) [Fernando Franco] — overlaps laluz|2026
+  - 1 listing(s), e.g. Ocine Gavarres: 'Vaiana: Live action' — overlaps vaiana|2026
+
+## clusters that get a fresh id, overlapping no production film: 2
+  - 1 listing(s), e.g. Abc El Saler: 'Dos estafadores y una mujer' (1987) [Barry Levinson]
+  - 1 listing(s), e.g. Sala d''actes Ajuntament: 'El maestro que prometió el mar' (2023) [Patricia Font]

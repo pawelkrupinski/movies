@@ -1,0 +1,75 @@
+# ID seeding review, full-us: 2280 production films (101860 listing keys), 2339 resolver clusters over 101398 listings (resolve 2s)
+today's listing keys found in the corpus: 101249 of 101860 (99.4%); raw listings the slot fold hides behind another listing's slot: 0
+films that keep their id: 2262
+
+## films no cluster overlaps (their listings are not in the corpus): 11
+  - f0da2c14a630402d: 1 listing(s), e.g. Des Moines Fleur Cinema & Café: 'The Greasy Strangler'
+  - f0ed125e35bb7bc0: 1 listing(s), e.g. The Roxy Theater Missoula: 'Pumpkinhead'
+  - f558a52395cd00ec: 1 listing(s), e.g. Gateway Film Center: 'The Ranger'
+  - f6a3d7206fff84f6: 1 listing(s), e.g. Regal Edwards Fairfield: 'Breeder'
+  - f6db0c7478f4735b: 1 listing(s), e.g. Alamo Drafthouse Lakeline: 'Charlie's Angels (2000)'
+  - f76ce4c4343a518c: 1 listing(s), e.g. Alamo Drafthouse New Mission: 'Troll (1986)'
+  - f7d13a478bba15d8: 1 listing(s), e.g. Alamo Drafthouse Downtown LA: 'Chopper'
+  - f81b816d65255b68: 1 listing(s), e.g. Alamo Drafthouse Downtown LA: 'Vampire Circus'
+  - f8236bfc883293b3: 1 listing(s), e.g. Alamo Drafthouse Downtown LA: 'A Desert'
+  - f8c28cb6b1b7109c: 1 listing(s), e.g. B&B Theatres Joplin 7: 'Diggers'
+  - fa741f21f3d38caa: 1 listing(s), e.g. 13-24 Drive In Wabash: 'The Conjuring 3: The Devil Made Me Do It'
+
+## films merged away (a larger film's id won their cluster): 7
+  - thevanishing|1988 → feb383d5448328e6: 2 listing(s), e.g. Alamo Drafthouse Indianapolis: 'The Vanishing'; Syndicated Bar & Theatre: 'The Vanishing (1988)'
+  - bonnieandclydethemusical|2025 → hadestownthemusical|2026: 1 listing(s), e.g. Bryn Mawr Film Institute: 'Bonnie and Clyde: The Musical'
+  - f4874bd466cad694 → hadestownthemusical|2026: 1 listing(s), e.g. Alamo Drafthouse Wrigleyville: 'The Musical'
+  - f7ae495223025033 → f3a68b66f1dca202: 1 listing(s), e.g. Caribbean Cinemas Plaza Las Américas: 'Gone'
+  - fce5191e0b668085 → thewolfman|1941: 1 listing(s), e.g. Michigan Theater Ann Arbor: 'The Wolfman'
+  - thegreatgatsby|2013 → f47879cd50340f42: 1 listing(s), e.g. All South County Cinemas: 'The Great Gatsby'
+  - thelostworldjurassicpark|1997 → jurassicpark|1993: 1 listing(s), e.g. Frida Cinema Santa Ana: 'The Lost World: Jurassic Park'
+
+## films the resolver splits over two or more clusters: 57
+  - residentevil|2026 (3190) → [3152 listing(s), e.g. 24:1 Cinema St Louis: 'Resident Evil (2026)'; 2nd Street Cinema Beaumont: 'Resident Evil (2026)'] + [37 listing(s), e.g. Blackstone Valley 14 Millbury: 'Resident Evil'; Island 16 Holtsville: 'Resident Evil'] + [1 listing(s), e.g. Enzian Theater: 'Resident Evil (2002)']
+  - avengersendgame|2019 (2771) → [2720 listing(s), e.g. 2nd Street Cinema Beaumont: 'Avengers: Endgame'; 61 Drive In Theatre: 'Avengers: Endgame'] + [51 listing(s), e.g. Alamo Drafthouse Brooklyn: 'Avengers Endgame: Encore'; Alamo Drafthouse City Foundry: 'Avengers Endgame: Encore']
+  - verity|2026 (2534) → [2500 listing(s), e.g. 2nd Street Cinema Beaumont: 'Verity'; 4 Star Cinema Kilgore: 'Verity'] + [29 listing(s), e.g. Blackstone Valley 14 Millbury: 'Verity Early Access'; Island 16 Holtsville: 'Verity Early Access']
+  - avengersdoomsday|2026 (2456) → [2444 listing(s), e.g. 2nd Street Cinema Beaumont: 'Avengers: Doomsday'; ACX Aksarben Cinema: 'Avengers: Doomsday'] + [12 listing(s), e.g. Blackstone Valley 14 Millbury: 'Avengers: Doomsday RealD 3D Fan Event'; Island 16 Holtsville: 'Avengers: Doomsday RealD 3D Fan Event']
+  - streetfighter|2026 (2019) → [1971 listing(s), e.g. 2nd Street Cinema Beaumont: 'Street Fighter (2026)'; ACX Aksarben Cinema: 'Street Fighter (2026)'] + [35 listing(s), e.g. Alamo Drafthouse Brooklyn: 'Street Fighter (2026)'; Alamo Drafthouse Cedars Dallas: 'Street Fighter (2026)'] + [4 listing(s), e.g. Landmark Glendale 12: 'Street Fighter'; Landmark Scottsdale Quarter Theatre: 'Street Fighter']
+  - princessmononoke|1997 (1180) → [1160 listing(s), e.g. AMC 34th Street 14: 'Princess Mononoke'; AMC Ahwatukee 24: 'Princess Mononoke'] + [10 listing(s), e.g. Blackstone Valley 14 Millbury: 'Princess Mononoke - Studio Ghibli Fest 2026'; Island 16 Holtsville: 'Princess Mononoke - Studio Ghibli Fest 2026'] + [5 listing(s), e.g. Alamo Drafthouse Charlottesville: 'Princess Mononoke (Dubbed)'; Alamo Drafthouse Crystal City: 'Princess Mononoke (Dubbed)'] + [5 listing(s), e.g. Alamo Drafthouse Charlottesville: 'Princess Mononoke (Subtitled)'; Alamo Drafthouse Crystal City: 'Princess Mononoke (Subtitled)']
+  - spiritedaway|2001 (1178) → [1158 listing(s), e.g. AMC 34th Street 14: 'Spirited Away'; AMC Ahwatukee 24: 'Spirited Away'] + [10 listing(s), e.g. Blackstone Valley 14 Millbury: 'Spirited Away 25th Anniversary - Studio Ghibli Fest 2026'; Island 16 Holtsville: 'Spirited Away 25th Anniversary - Studio Ghibli Fest 2026'] + [5 listing(s), e.g. Alamo Drafthouse Charlottesville: 'Spirited Away (Subtitled)'; Alamo Drafthouse Crystal City: 'Spirited Away (Subtitled)'] + [5 listing(s), e.g. Alamo Drafthouse Charlottesville: 'Spirited Away (Dubbed)'; Alamo Drafthouse Crystal City: 'Spirited Away (Dubbed)']
+  - dunepartthree|2026 (1078) → [1076 listing(s), e.g. 2nd Street Cinema Beaumont: 'Dune: Part Three'; ACX Aksarben Cinema: 'Dune: Part Three'] + [1 listing(s), e.g. Showcase Springdale: 'Dune: Part Three Insider Screenings']
+  - themaltesefalcon|1941 (883) → [882 listing(s), e.g. AMC Ahwatukee 24: 'The Maltese Falcon'; AMC Alderwood Mall 16 Lynnwood: 'The Maltese Falcon'] + [1 listing(s), e.g. Alamo Drafthouse Corpus Christi: 'SPECIAL EVENT: THE MALTESE FALCON (1941) - 85TH ANNIVERSARY']
+  - f10401cf8eb0f536 (872) → [836 listing(s), e.g. AMC 34th Street 14: 'Sense and Sensibility (2026)'; AMC 9+CO 10 Denver: 'Sense and Sensibility (2026)'] + [1 listing(s), e.g. Landmark Ritz Five: 'Sense and Sensibility']
+  - abeautifulmind|2001 (866) → [865 listing(s), e.g. AMC Ahwatukee 24: 'A Beautiful Mind'; AMC Alderwood Mall 16 Lynnwood: 'A Beautiful Mind'] + [1 listing(s), e.g. Alamo Drafthouse Corpus Christi: 'SPECIAL EVENT: A BEAUTIFUL MIND - 25TH ANNIVERSARY']
+  - shaunthesheepthebeastofmossybottom|2026 (806) → [799 listing(s), e.g. 2nd Street Cinema Beaumont: 'Shaun the Sheep: The Beast of Mossy Bottom'; AMC Alderwood Mall 16 Lynnwood: 'Shaun the Sheep: The Beast of Mossy Bottom'] + [6 listing(s), e.g. Alamo Drafthouse Lake Highlands: 'Shaun the Sheep: The Beast of Mossy Botton'; Alamo Drafthouse Lakeline: 'Shaun the Sheep: The Beast of Mossy Botton']
+  - metopera202627macbeth|2025 (659) → [638 listing(s), e.g. AMC 19th St. East 6: 'Met Opera 2026-27: Macbeth'; AMC Ahwatukee 24: 'Met Opera 2026-27: Macbeth'] + [21 listing(s), e.g. Blackstone Valley 14 Millbury: 'The Metropolitan Opera: Macbeth (2026)'; Island 16 Holtsville: 'The Metropolitan Opera: Macbeth (2026)']
+  - ninetofive|1980 (640) → [615 listing(s), e.g. ACX Cinema Elkhorn 12+: '9 to 5'; AMC 34th Street 14: '9 to 5'] + [2 listing(s), e.g. Showcase Lowell: 'Nine to Five (9 to 5)'; Showcase Warwick: 'Nine to Five (9 to 5)']
+  - itsawonderfullife|1946 (565) → [555 listing(s), e.g. AMC Ahwatukee 24: 'It's a Wonderful Life'; AMC Alderwood Mall 16 Lynnwood: 'It's a Wonderful Life'] + [9 listing(s), e.g. Blackstone Valley 14 Millbury: 'It’s A Wonderful Life 80th Anniversary'; Island 16 Holtsville: 'It’s A Wonderful Life 80th Anniversary'] + [1 listing(s), e.g. Alamo Drafthouse Corpus Christi: 'SPECIAL EVENT: IT'S A WONDERFUL LIFE - 80TH ANNIVERSARY']
+  - halloween|1978 (516) → [500 listing(s), e.g. Alamance Crossing Staduim 16 Burlington: 'Halloween (1978)'; Alamo Drafthouse Brooklyn: 'Halloween (1978)'] + [10 listing(s), e.g. Cinepolis NW Austin: 'Halloween (2018)'; Cinepolis Polk County: 'Halloween (2018)'] + [3 listing(s), e.g. Cinepolis Euless: 'Halloween (2007)'; Cinepolis Mansfield: 'Halloween (2007)'] + [1 listing(s), e.g. Hamilton Theatre: 'Goosebumps 2: Haunted Halloween']
+  - fe53ad5f5d575425 (461) → [429 listing(s), e.g. AMC Ahwatukee 24: 'Ninja Scroll'; AMC Alderwood Mall 16 Lynnwood: 'Ninja Scroll'] + [16 listing(s), e.g. Alamo Drafthouse Denton: 'Ninja Scroll (Dubbed)'; Alamo Drafthouse Indianapolis: 'Ninja Scroll (Dubbed)'] + [16 listing(s), e.g. Alamo Drafthouse Denton: 'Ninja Scroll (Subtitled)'; Alamo Drafthouse Indianapolis: 'Ninja Scroll (Subtitled)']
+  - thething|1982 (330) → [328 listing(s), e.g. Alamo Drafthouse Charlottesville: 'The Thing (1982)'; Alamo Drafthouse Crystal City: 'The Thing (1982)'] + [1 listing(s), e.g. Alamo Drafthouse Sloans Lake: 'TERROR TUESDAY: THE THING (1982)']
+  - poltergeist|1982 (261) → [256 listing(s), e.g. Academy Theater Portland: 'Poltergeist (1982)'; Bay Theater Seal Beach: 'Poltergeist (1982)'] + [2 listing(s), e.g. Alamo Drafthouse Cedars Dallas: 'Poltergeist (1982)'; Alamo Drafthouse New Mission: 'Poltergeist (1982)']
+  - cabinfever4kdirectorscut|2003 (247) → [236 listing(s), e.g. Regal Alamo Quarry San Antonio: 'Cabin Fever'; Regal Aliante: 'Cabin Fever'] + [11 listing(s), e.g. Landmark Atlantic Plumbing Cinema: 'Cabin Fever 4K Director's Cut'; Landmark Century Centre Chicago: 'Cabin Fever 4K Director's Cut']
+
+## clusters that get a fresh id, overlapping a film that went elsewhere: 73
+  - 10 listing(s), e.g. 4 Star Theatre San Francisco: 'Nosferatu (1922)'; Amherst Cinema (Amherst) (Massachusetts): 'Nosferatu (1922)' — overlaps nosferatu|1922
+  - 5 listing(s), e.g. 400 Theater: 'The Mummy (1932)'; Galaxy Cannery: 'The Mummy (1932)' — overlaps f9538b9b7690ca67
+  - 51 listing(s), e.g. Alamo Drafthouse Brooklyn: 'Avengers Endgame: Encore'; Alamo Drafthouse City Foundry: 'Avengers Endgame: Encore' — overlaps avengersendgame|2019
+  - 35 listing(s), e.g. Alamo Drafthouse Brooklyn: 'Street Fighter (2026)'; Alamo Drafthouse Cedars Dallas: 'Street Fighter (2026)' — overlaps streetfighter|2026
+  - 2 listing(s), e.g. Alamo Drafthouse Cedars Dallas: 'Poltergeist (1982)'; Alamo Drafthouse New Mission: 'Poltergeist (1982)' — overlaps poltergeist|1982
+  - 5 listing(s), e.g. Alamo Drafthouse Charlottesville: 'Mean Girls (2004)'; Alamo Drafthouse Crystal City: 'Mean Girls (2004)' — overlaps meangirls|2004
+  - 5 listing(s), e.g. Alamo Drafthouse Charlottesville: 'Michael Mann's Manhunter: The Final Cut'; Alamo Drafthouse Crystal City: 'Michael Mann's Manhunter: The Final Cut' — overlaps michael|2026
+  - 5 listing(s), e.g. Alamo Drafthouse Charlottesville: 'Nosferatu (1922)'; Alamo Drafthouse DC Bryant Street: 'Nosferatu (1922)' — overlaps nosferatu|1922
+  - 5 listing(s), e.g. Alamo Drafthouse Charlottesville: 'Princess Mononoke (Dubbed)'; Alamo Drafthouse Crystal City: 'Princess Mononoke (Dubbed)' — overlaps princessmononoke|1997
+  - 5 listing(s), e.g. Alamo Drafthouse Charlottesville: 'Princess Mononoke (Subtitled)'; Alamo Drafthouse Crystal City: 'Princess Mononoke (Subtitled)' — overlaps princessmononoke|1997
+  - 6 listing(s), e.g. Alamo Drafthouse Charlottesville: 'Psycho (1960)'; Alamo Drafthouse Crystal City: 'Psycho (1960)' — overlaps psycho|1960
+  - 5 listing(s), e.g. Alamo Drafthouse Charlottesville: 'Scooby-Doo on Zombie Island'; Alamo Drafthouse Crystal City: 'Scooby-Doo on Zombie Island' — overlaps scoobydoo|2002
+  - 5 listing(s), e.g. Alamo Drafthouse Charlottesville: 'Scream (1996)'; Alamo Drafthouse Crystal City: 'Scream (1996)' — overlaps scream|1996
+  - 5 listing(s), e.g. Alamo Drafthouse Charlottesville: 'Spirited Away (Subtitled)'; Alamo Drafthouse Crystal City: 'Spirited Away (Subtitled)' — overlaps spiritedaway|2001
+  - 5 listing(s), e.g. Alamo Drafthouse Charlottesville: 'Spirited Away (Dubbed)'; Alamo Drafthouse Crystal City: 'Spirited Away (Dubbed)' — overlaps spiritedaway|2001
+  - 1 listing(s), e.g. Alamo Drafthouse Corpus Christi: 'SPECIAL EVENT: A BEAUTIFUL MIND - 25TH ANNIVERSARY' — overlaps abeautifulmind|2001
+  - 1 listing(s), e.g. Alamo Drafthouse Corpus Christi: 'SPECIAL EVENT: IT'S A WONDERFUL LIFE - 80TH ANNIVERSARY' — overlaps itsawonderfullife|1946
+  - 1 listing(s), e.g. Alamo Drafthouse Corpus Christi: 'SPECIAL EVENT: THE MALTESE FALCON (1941) - 85TH ANNIVERSARY' — overlaps themaltesefalcon|1941
+  - 16 listing(s), e.g. Alamo Drafthouse Denton: 'Ninja Scroll (Dubbed)'; Alamo Drafthouse Indianapolis: 'Ninja Scroll (Dubbed)' — overlaps fe53ad5f5d575425
+  - 16 listing(s), e.g. Alamo Drafthouse Denton: 'Ninja Scroll (Subtitled)'; Alamo Drafthouse Indianapolis: 'Ninja Scroll (Subtitled)' — overlaps fe53ad5f5d575425
+
+## clusters that get a fresh id, overlapping no production film: 4
+  - 1 listing(s), e.g. 13-24 Drive In Wabash: 'Happy Gilmore'
+  - 1 listing(s), e.g. Gateway Film Center: 'High Art'
+  - 1 listing(s), e.g. Historic Crest Theatre Fresno: 'Mars Attacks!'
+  - 1 listing(s), e.g. Princeton Garden Theatre: 'How to Train Your Dragon (2010)'
