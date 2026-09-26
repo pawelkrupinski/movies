@@ -57,9 +57,12 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
 
   "A bare listing its own evidence cannot separate between two films" should
     "follow its title's credited siblings, not the database's popularity ranking" in {
-    // Two 2026 films TMDB titles "Lalka"; the more popular one is not the one the venues credit.
-    val films = Seq(F(1, "Lalka", 2026, "Maciej Kawalski", 150, 5), F(2, "Lalka", 2026, "Someone Else", 95, 80))
-    val credited = Seq(Multikino, Helios).map(listing(_, "Lalka", Some(2026), Some("Maciej Kawalski")))
+    // Four 2026 films TMDB titles "Lalka"; the one the venue credits ranks LAST in the search, so
+    // on ranking priors alone a bare listing scores it below the cannot-link cut — which is
+    // ambiguity, not evidence of another film, and must not veto it.
+    val films = Seq(F(1, "Lalka", 2026, "Maciej Kawalski", 150, 5), F(2, "Lalka", 2026, "Someone Else", 95, 80),
+      F(3, "Lalka", 2026, "A Third", 100, 60), F(4, "Lalka", 2026, "A Fourth", 90, 40))
+    val credited = Seq(Multikino).map(listing(_, "Lalka", Some(2026), Some("Maciej Kawalski")))
     val bare     = Seq(KinoApollo, KinoMuza, Rialto).map(listing(_, "Lalka"))
     val r = resolve(credited ++ bare, films)
     r.decisionOf(credited.head.key).film shouldBe Some(1)
@@ -71,7 +74,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val films = Seq(F(1954, "A Star Is Born", 1954, "George Cukor", 176), F(1976, "A Star Is Born", 1976, "Frank Pierson", 139),
       F(2018, "A Star Is Born", 2018, "Bradley Cooper", 136, 60))
     val old  = listing(Multikino, "A Star Is Born", Some(1954), Some("George Cukor"))
-    val mid  = listing(Rialto, "A Star Is Born", Some(1976))
+    val mid  = listing(Rialto, "A Star Is Born", Some(1976), Some("Frank Pierson"))
     val cur  = Seq(Helios, KinoApollo).map(listing(_, "A Star Is Born", Some(2018), Some("Bradley Cooper")))
     val bare = listing(KinoMuza, "A Star Is Born")
     val r = resolve(Seq(old, mid, bare) ++ cur, films)

@@ -34,7 +34,15 @@ object IdentityHistoricalChecks {
     case Report(s: Sel)
   }
 
-  final case class Check(country: String, name: String, expect: Expect)
+  final case class Check(country: String, name: String, expect: Expect) {
+    def selectors: Seq[Sel] = expect match {
+      case Expect.Apart(a, b)     => Seq(a, b)
+      case Expect.Film(s, _)      => Seq(s)
+      case Expect.NotFilm(s, _)   => Seq(s)
+      case Expect.NotYear(s, _)   => Seq(s)
+      case Expect.Report(s)       => Seq(s)
+    }
+  }
 
   val All: Seq[Check] = {
     import Expect._

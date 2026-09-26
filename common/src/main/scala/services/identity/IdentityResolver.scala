@@ -22,8 +22,8 @@ import scala.collection.mutable
  *      query named it, or a film title relates to its title) with the calibrated model
  *      ([[IdentityCalibration]] over [[IdentityMeasures]] — the same measurements the weights were
  *      fitted on, including `venues.corroborating`, the family's venue co-occurrence). A candidate
- *      a node's evidence DENIES (`ListingConstraints.learned`: a learned rule, or a probability
- *      below the certified cut) is not eligible. A node ACCEPTS its best candidate ALONE when the
+ *      a node's evidence DENIES (`ListingConstraints.learned`: a learned rule, or its OWN facts'
+ *      probability below the certified cut) is not eligible. A node ACCEPTS its best candidate ALONE when the
  *      calibrated probability clears the calibration's cut AND its own facts (not TMDB's ranking)
  *      favour it over the runner-up; otherwise it follows its cluster. Then:
  *        1. constraint edges between nodes sharing a block key — must-links by tier (0 pinned, 1
@@ -139,6 +139,19 @@ object IdentityResolver {
     // ── scoring ──────────────────────────────────────────────────────────────────────────
     final case class Scored(c: Candidate, p: Double, measures: Map[String, Measure], denied: Boolean)
 
+    /** What the LISTING'S OWN facts contribute — the title, year, director, runtime, original
+     *  title and country measures — as opposed to the film database's ranking priors (search rank,
+     *  popularity, rivals) and the family's pooled count (`venues.corroborating`). */
+    val Priors = Set("search.rank", "popularity.log2", "rivals", "venues.corroborating")
+    def ownContributions(measures: Map[String, Measure]): Double =
+      calibration.contributions(ListingFilm, measures).collect { case (name, w) if !Priors(name) => w }.sum
+    /** The calibrated probability on the listing's own facts alone — what a cannot-link reads. A
+     *  film the listing's facts do not contradict is never vetoed merely for ranking second in
+     *  TMDB's search or for having same-titled rivals: that is ambiguity, not evidence of a
+     *  different film. */
+    def factsProbability(measures: Map[String, Measure]): Double =
+      calibration.scopes(ListingFilm).calibration(calibration.scopes(ListingFilm).prior + ownContributions(measures))
+
     /** The listings of a family by title key, with their venues: `venues.corroborating`'s group. */
     final class FamilyScope(members: Seq[Node]) {
       val pool: Seq[Candidate] = members.flatMap(m => ownSearch(m.id).keys ++ ownWalk(m.id)).distinct.sorted.map(candidateById)
@@ -159,7 +172,8 @@ object IdentityResolver {
           val measures = IdentityMeasures.listingFilm(l, c.film, ranks.get(c.tmdbId), rivals,
             IdentityMeasures.corroboratingVenues(c.film, group, venue))
           val p = calibration.probability(ListingFilm, measures)
-          Scored(c, p, measures, deniedByPins(c.tmdbId) || ListingConstraints.learned(calibration, ListingFilm, measures, p).isDefined)
+          Scored(c, p, measures, deniedByPins(c.tmdbId) ||
+            ListingConstraints.learned(calibration, ListingFilm, measures, factsProbability(measures)).isDefined)
         }.sortBy(s => (-s.p, s.c.tmdbId))
       }
 
@@ -196,12 +210,7 @@ object IdentityResolver {
     def acceptedOf(ranked: Seq[Scored]): Option[(Scored, Double)] =
       ranked.find(!_.denied).map(b => b -> b.p).filter(x => calibration.showsRatings(x._2))
 
-    /** What the LISTING'S OWN facts contribute — the title, year, director, runtime, original
-     *  title and country measures — as opposed to the film database's ranking priors (search rank,
-     *  popularity, rivals) and the family's pooled count (`venues.corroborating`). */
-    val Priors = Set("search.rank", "popularity.log2", "rivals", "venues.corroborating")
-    def ownEvidence(s: Scored): Double =
-      calibration.contributions(ListingFilm, s.measures).collect { case (name, w) if !Priors(name) => w }.sum
+    def ownEvidence(s: Scored): Double = ownContributions(s.measures)
     /** A node accepts a film ON ITS OWN only when its own facts favour it over the runner-up: a
      *  bare "Lalka" beside two 2026 "Lalka"s, told apart only by TMDB's popularity ranking, is not
      *  decided alone — it follows the film its title's credited siblings chose (the cluster's), or
@@ -246,7 +255,7 @@ object IdentityResolver {
         // A film this node has no evidence path to: its own evidence against the film's record.
         candidateById.get(film).exists { c =>
           val m = IdentityMeasures.listingFilm(n.evidence.measured, c.film, None, 0, 0)
-          ListingConstraints.learned(calibration, ListingFilm, m, calibration.probability(ListingFilm, m)).isDefined
+          ListingConstraints.learned(calibration, ListingFilm, m, factsProbability(m)).isDefined
         }
       })(_.denied)
 

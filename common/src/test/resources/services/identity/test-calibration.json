@@ -59,7 +59,7 @@
         "director": {
           "kind": "categorical",
           "categories": {
-            "same_person": 3.0,
+            "same_person": 5.0,
             "shared_name": 0.5,
             "different": -3.0,
             "incomparable": 0.0
@@ -95,23 +95,30 @@
           "kind": "numeric",
           "bins": [
             {
-              "weight": 0.8,
+              "weight": 1.4,
               "positives": 0,
               "negatives": 0,
               "atMost": 1.5
             },
             {
-              "weight": 0.0,
+              "weight": -2.1,
               "positives": 0,
               "negatives": 0,
               "atLeast": 1.5,
-              "atMost": 3.5
+              "atMost": 2.5
             },
             {
-              "weight": -0.5,
+              "weight": -4.3,
               "positives": 0,
               "negatives": 0,
-              "atLeast": 3.5
+              "atLeast": 2.5,
+              "atMost": 8.5
+            },
+            {
+              "weight": -5.9,
+              "positives": 0,
+              "negatives": 0,
+              "atLeast": 8.5
             }
           ],
           "missing": {
@@ -179,7 +186,7 @@
           "probability": 0.5
         },
         "cannotLink": {
-          "probability": 0.02
+          "probability": 0.085
         }
       }
     },
