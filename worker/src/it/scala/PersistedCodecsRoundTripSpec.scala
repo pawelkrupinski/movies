@@ -41,11 +41,11 @@ class PersistedCodecsRoundTripSpec extends AnyFlatSpec with Matchers {
   }
 
   "MovieCodecs" should "write and read back every persisted type unchanged" in
-    survives(PersistedRoundTrip.registry[MovieCodecs.OmittingNone, MovieCodecs.WritingNone](MovieCodecs.registry, dropped))
+    survives(PersistedRoundTrip.registry[MovieCodecs.OmittingNone, MovieCodecs.WritingNone](tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, MovieCodecs.registry, dropped))
 
   "ReadModelCodecs" should "write and read back every persisted type unchanged" in
-    survives(PersistedRoundTrip.registry[ReadModelCodecs.OmittingNone, ReadModelCodecs.WritingNone](ReadModelCodecs.registry, dropped))
+    survives(PersistedRoundTrip.registry[ReadModelCodecs.OmittingNone, ReadModelCodecs.WritingNone](tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, ReadModelCodecs.registry, dropped))
 
   "ScrapeArchiveCodecs" should "write and read back every persisted type unchanged" in
-    survives(PersistedRoundTrip.registry[ScrapeArchiveCodecs.OmittingNone, ScrapeArchiveCodecs.WritingNone](ScrapeArchiveCodecs.registry, dropped))
+    survives(PersistedRoundTrip.registry[ScrapeArchiveCodecs.OmittingNone, ScrapeArchiveCodecs.WritingNone](tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, ScrapeArchiveCodecs.registry, dropped))
 }

@@ -31,7 +31,7 @@ import scala.concurrent.duration._
 class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway()
+  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
 
   private val uri = Env.fromProcess().get("MONGODB_URI").get
 

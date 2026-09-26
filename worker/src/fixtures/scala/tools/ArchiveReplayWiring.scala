@@ -47,8 +47,11 @@ class ArchiveReplayWiring(
   // so nothing the recorded tree and remembered verdicts cannot answer is fetched, and
   // every such request is named here instead. None is the RECORDING run, which fills
   // those gaps live and writes them down for the hermetic runs that follow.
-  hermetic:         Option[MissingFixtures] = None
-) extends WorkerWiring(country) with TestWiring {
+  hermetic:         Option[MissingFixtures] = None,
+  // The suite's configuration — the process's for a convergence leg, which is where TMDB's
+  // key comes from; an empty one for a unit spec. Handed in: the wiring never asks the process.
+  configuration:    Env = Env.of()
+) extends WorkerWiring(country, env = configuration) with TestWiring {
 
   /** The one seam a hermetic run changes. Every chain above the wire — fixtures first,
    *  remembered verdicts, recorder, throttles, breakers — is built exactly as the
@@ -178,7 +181,7 @@ class ArchiveReplayWiring(
    *  ever reaching the fetch: a leg with 6,906 recorded fixtures and no cache resolved 0
    *  of 892 films in 55 seconds, all three specs GREEN over a corpus with no metadata in
    *  it. There is no "nowhere to ask" any more, so there is no branch to drift. */
-  override lazy val tmdbClient: TmdbClient = new TmdbClient(enrichmentFetch, language = country.language)
+  override lazy val tmdbClient: TmdbClient = new TmdbClient(enrichmentFetch, apiKey = env.get("TMDB_API_KEY"), language = country.language)
 
   // Production's storage SHAPE either way — showtimes in `screenings`, slots in
   // `movie_slots`, neither inlined on the `movies` row. A fake that inlined everything

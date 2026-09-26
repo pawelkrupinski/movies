@@ -40,9 +40,9 @@ class RollingWorkersFoldIntegrationSpec extends AnyFlatSpec with Matchers {
 
   "two workers of one country landing and folding one film at once" should
     "leave one film, carrying every cinema either roster scraped, and consume all of staging" in
-    ConcurrentInstances.withInstances("rolling-workers-fold") { instances =>
+    ConcurrentInstances.withInstances(tools.IntegrationMongoTarget.fromEnv(tools.Env.fromProcess()).get, "rolling-workers-fold") { instances =>
       val workers = instances.map(FoldFixture.on)
-      rounds(8) { round =>
+      rounds(8, tools.ConcurrentInstances.baseSeed(tools.Env.fromProcess())) { round =>
         val title  = film(round.number)
         val tmdbId = 612000 + round.number
         val oldRoster = Seq(Landing(Multikino, title), Landing(Helios, title), Landing(Helios, s"Ladies Night - $title"))
@@ -76,7 +76,7 @@ class RollingWorkersFoldIntegrationSpec extends AnyFlatSpec with Matchers {
   // even of an identical index, leaves a window with no uniqueness in which the OTHER pod's writes
   // are unguarded (the userStates boot did exactly this until e098b3b62).
   "a worker booting while another serves" should "rebuild no index the corpus already carries" in
-    ConcurrentInstances.withInstances("rolling-workers-boot") { instances =>
+    ConcurrentInstances.withInstances(tools.IntegrationMongoTarget.fromEnv(tools.Env.fromProcess()).get, "rolling-workers-boot") { instances =>
       def boot(worker: FoldFixture.Handles): Unit = {
         worker.splitAwareRepository.enabled shouldBe true
         worker.slots.findForFilm("warm-up")
@@ -85,7 +85,7 @@ class RollingWorkersFoldIntegrationSpec extends AnyFlatSpec with Matchers {
       }
       val Seq(old, fresh) = instances.map(FoldFixture.on)
       boot(old)
-      rounds(3) { round =>
+      rounds(3, tools.ConcurrentInstances.baseSeed(tools.Env.fromProcess())) { round =>
         val serving = () => { old.seedStagingRow(Helios.displayName, film(round.number), Some(2026), 613000 + round.number); old.folder().foldGroup(film(round.number)); () }
         successes(race(Seq(() => boot(fresh), serving), Some(round)))
         val drops = for {

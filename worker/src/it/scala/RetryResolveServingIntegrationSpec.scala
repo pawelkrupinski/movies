@@ -27,7 +27,7 @@ import java.time.{Instant, LocalDateTime}
 class RetryResolveServingIntegrationSpec extends AnyFlatSpec with Matchers {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway()
+  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
 
   private object NoMatchTmdb extends GetOnlyHttpFetch {
     override def get(url: String): String = """{"results":[]}"""

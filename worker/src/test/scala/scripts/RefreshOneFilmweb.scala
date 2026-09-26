@@ -16,7 +16,7 @@ object RefreshOneFilmweb {
     val repository  = AmbientMovieRepository.open()
     if (!repository.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val ratings = new FilmwebRatings(cache, new TmdbClient(new RealHttpFetch), new FilmwebClient(new RealHttpFetch))
+    val ratings = new FilmwebRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = tools.Env.fromProcess().get("TMDB_API_KEY")), new FilmwebClient(new RealHttpFetch))
 
     def show(label: String): Unit =
       repository.findAll().find(r => r.title == title && r.year == year).foreach { r =>

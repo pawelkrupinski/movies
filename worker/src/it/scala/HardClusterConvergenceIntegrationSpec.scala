@@ -62,7 +62,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
 
   private val uri = Env.fromProcess().get("MONGODB_URI")
   assume(uri.isDefined, "MONGODB_URI not set")
-  IntegrationMongo.requireThrowaway()
+  IntegrationMongo.requireThrowaway(tools.Env.fromProcess())
 
   /** Where the countries' `enrichment-<cc>` trees live: KINOWO_FIXTURE_ROOT when
    *  `scripts/hard-clusters.sh` names one, else the repository's own. */
@@ -117,13 +117,13 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
   private def wiringFor(country: Country, label: String, wrap: HttpFetch => HttpFetch = identity,
                         movableClock: Option[MutableClock] = None): (ArchiveReplayWiring, ConvergenceStorage) = {
     val normalizer = TitleNormalizer.forCountry(country)
-    val storage    = ConvergenceStorage.mongo(uri.get, s"hc-${country.code}-$label", normalizer)
+    val storage    = ConvergenceStorage.mongo(IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, s"hc-${country.code}-$label", normalizer)
     storages.synchronized(storages += storage)
     val rows = CorpusFixture.read(HardClusters.corpusKey(country))
     CorpusFixture.seedInto(storage.archive, rows)
     val fetch    = wrap(responses(country))
     val language = country.language
-    val w = new ArchiveReplayWiring(country, storage.archive, None, storage, ArchiveReplayWiring.fixtureDirectory(country, Env.fromProcess()), FixtureRoot) {
+    val w = new ArchiveReplayWiring(country, storage.archive, None, storage, ArchiveReplayWiring.fixtureDirectory(country, Env.fromProcess()), FixtureRoot, configuration = Env.fromProcess()) {
       override lazy val clock: java.time.Clock = movableClock.getOrElse(java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC))
       // Ordering, not timing: the whole cascade on the calling thread, so the only
       // nondeterminism left is the seeded arrival order.

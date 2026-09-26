@@ -23,10 +23,11 @@ import scala.concurrent.duration._
 class IntegrationCorpusDatabaseIntegrationSpec extends AnyFlatSpec with Matchers {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway()
+  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
 
   private val uri = Env.fromProcess().get("MONGODB_URI").get
 
+  private val target = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
   private def databaseNames(client: MongoClient): Seq[String] =
     Await.result(client.listDatabaseNames().toFuture(), 30.seconds)
 
@@ -37,7 +38,7 @@ class IntegrationCorpusDatabaseIntegrationSpec extends AnyFlatSpec with Matchers
   "a corpus database" should "be dropped by the time its scope returns" in {
     val client = MongoClient(uri)
     try {
-      val name = IntegrationCorpusDatabase.withDatabase(uri, "drop-probe") { database =>
+      val name = IntegrationCorpusDatabase.withDatabase(target, "drop-probe") { database =>
         seed(client, database.name)
         withClue("the seeded database must exist while the scope is open: ")(
           databaseNames(client) should contain(database.name))
@@ -53,7 +54,7 @@ class IntegrationCorpusDatabaseIntegrationSpec extends AnyFlatSpec with Matchers
     val client = MongoClient(uri)
     try {
       var name = ""
-      a[RuntimeException] should be thrownBy IntegrationCorpusDatabase.withDatabase(uri, "drop-probe-failing") { database =>
+      a[RuntimeException] should be thrownBy IntegrationCorpusDatabase.withDatabase(target, "drop-probe-failing") { database =>
         name = database.name
         seed(client, database.name)
         throw new RuntimeException("the body failed")
@@ -67,6 +68,6 @@ class IntegrationCorpusDatabaseIntegrationSpec extends AnyFlatSpec with Matchers
 
   it should "keep the configured database as its prefix, so the throwaway guard still recognises it" in {
     val base = Env.fromProcess().get("MONGODB_DB").getOrElse("kinowo")
-    IntegrationCorpusDatabase.named("drop-probe") shouldBe s"${base}_drop-probe"
+    IntegrationCorpusDatabase.named(target, "drop-probe") shouldBe s"${base}_drop-probe"
   }
 }

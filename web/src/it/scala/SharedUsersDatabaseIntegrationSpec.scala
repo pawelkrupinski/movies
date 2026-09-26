@@ -34,7 +34,7 @@ class SharedUsersDatabaseIntegrationSpec extends AnyFlatSpec with Matchers with 
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   // Never against a real cluster: this spec creates and DROPS whole databases.
-  tools.IntegrationMongo.requireThrowaway()
+  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
 
   // Own prefix so the drop in `afterAll` can never reach a database another spec
   // (or a local dev's corpus) is using.

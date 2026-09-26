@@ -63,10 +63,9 @@ object IntegrationMongo {
            |
            |Deliberately targeting a throwaway REMOTE? Set $OverrideVar=1.""".stripMargin)
 
-  /** The guard as the specs call it: reads `MONGODB_URI` / the override from `Env`. */
-  def requireThrowaway(): Unit =
-    Env.fromProcess().get("MONGODB_URI").foreach(uri =>
-      requireThrowaway(uri, Env.fromProcess().get(OverrideVar).exists(v => v == "1" || v.equalsIgnoreCase("true"))))
+  /** The guard as the specs call it, over the `Env` the spec resolved: its cluster and override,
+   *  when it names a cluster at all. */
+  def requireThrowaway(env: Env): Unit = IntegrationMongoTarget.fromEnv(env).foreach(_.requireThrowaway())
 
   /** Hide the password before the URI reaches a test log / CI transcript. */
   def redact(uri: String): String =

@@ -14,7 +14,7 @@ class UserCodecsRoundTripSpec extends AnyFlatSpec with Matchers {
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
 
   "UserCodecs" should "write and read back every persisted type unchanged" in {
-    val (covered, findings) = PersistedRoundTrip.registry[UserCodecs.OmittingNone, UserCodecs.WritingNone](UserCodecs.registry, Set.empty)
+    val (covered, findings) = PersistedRoundTrip.registry[UserCodecs.OmittingNone, UserCodecs.WritingNone](tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, UserCodecs.registry, Set.empty)
     withClue(s"round-tripped ${covered.mkString(", ")}:\n  ${findings.mkString("\n  ")}\n")(findings shouldBe empty)
   }
 }

@@ -38,7 +38,9 @@ trait ShareCardWiring { self: WorkerWiring =>
   /** Shrinks each poster to the card's slot — through the process's one gate, shared with every
    *  other country's renders. */
   lazy val posterShrinker: VipsPosterShrinker =
-    new VipsPosterShrinker(memoryCapMb = PosterPipeline.decodeMemoryCapMbFrom(env), gate = posterShrinkGate)
+    new VipsPosterShrinker(
+      binary      = VipsPosterShrinker.locate(new tools.ProcessConfiguration(env).executableSearchPath),
+      memoryCapMb = PosterPipeline.decodeMemoryCapMbFrom(env), gate = posterShrinkGate)
 
   lazy val shareCardService: ShareCardService = new ShareCardService(
     country, shareCardStore,

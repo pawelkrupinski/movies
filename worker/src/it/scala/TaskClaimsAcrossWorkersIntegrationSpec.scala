@@ -28,9 +28,9 @@ class TaskClaimsAcrossWorkersIntegrationSpec extends AnyFlatSpec with Matchers {
   private val Lease = 5.minutes
 
   "two workers draining one queue while a reaper sweeps" should "run every task exactly once, never two at once" in
-    ConcurrentInstances.withInstances("task-claims-two-workers") { instances =>
+    ConcurrentInstances.withInstances(tools.IntegrationMongoTarget.fromEnv(tools.Env.fromProcess()).get, "task-claims-two-workers") { instances =>
       val queues = instances.map(instance => new MongoTaskQueue(Some(instance.database)))
-      rounds(4) { round =>
+      rounds(4, tools.ConcurrentInstances.baseSeed(tools.Env.fromProcess())) { round =>
         val keys = (1 to 30).map(i => s"scrape|round-${round.number}-$i")
         keys.foreach(key => queues(round.random.nextInt(2)).enqueue(TaskType.ScrapeCinema, key, submittedAt = Now))
 
@@ -63,7 +63,7 @@ class TaskClaimsAcrossWorkersIntegrationSpec extends AnyFlatSpec with Matchers {
   // handed its task to the other worker. Its late `complete` must not delete the task out from
   // under the worker now running it — that task would be lost if the second run then failed.
   "a late complete from a worker whose lease was reaped" should "not remove the task the other worker now holds" in
-    ConcurrentInstances.withInstances("task-claims-reaped-lease") { instances =>
+    ConcurrentInstances.withInstances(tools.IntegrationMongoTarget.fromEnv(tools.Env.fromProcess()).get, "task-claims-reaped-lease") { instances =>
       val Seq(first, second) = instances.map(instance => new MongoTaskQueue(Some(instance.database)))
       first.enqueue(TaskType.ScrapeCinema, "scrape|reaped", submittedAt = Now)
       val stalled = first.claim("worker-1", 1.minute, Now).get
@@ -80,9 +80,9 @@ class TaskClaimsAcrossWorkersIntegrationSpec extends AnyFlatSpec with Matchers {
   // Every recurring sweep (the reapers, the backfills) runs on ONE machine per occurrence: each
   // worker claims the occurrence id, and only the first insert wins (7b83a67d8).
   "two workers claiming the same scheduled occurrences at once" should "each run a disjoint half, together all of them" in
-    ConcurrentInstances.withInstances("scheduled-runs-two-workers") { instances =>
+    ConcurrentInstances.withInstances(tools.IntegrationMongoTarget.fromEnv(tools.Env.fromProcess()).get, "scheduled-runs-two-workers") { instances =>
       val stores = instances.map(instance => new MongoScheduledRunStore(instance.database.getCollection("scheduledRuns")))
-      rounds(4) { round =>
+      rounds(4, tools.ConcurrentInstances.baseSeed(tools.Env.fromProcess())) { round =>
         val occurrences = (1 to 25).map(i => s"sweep|round-${round.number}|$i")
         val claimed = successes(race(stores.map(store => () => occurrences.filter(store.claim)), Some(round)))
         claimed.flatten.sorted shouldBe occurrences.sorted

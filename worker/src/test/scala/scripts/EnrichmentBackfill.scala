@@ -42,7 +42,7 @@ object EnrichmentBackfill {
     // now live in their dedicated ratings classes; the script invokes them
     // directly per row so a single backfill pass covers everything.
     val cache       = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    val tmdb        = new TmdbClient(new RealHttpFetch)
+    val tmdb        = new TmdbClient(new RealHttpFetch, apiKey = tools.Env.fromProcess().get("TMDB_API_KEY"))
     val imdbRatings = new ImdbRatings(cache, new ImdbClient(new RealHttpFetch))
     val mcRatings   = new MetascoreRatings(cache, tmdb, new MetacriticClient(new RealHttpFetch))
     val rtRatings   = new RottenTomatoesRatings(cache, tmdb, new RottenTomatoesClient(new RealHttpFetch))

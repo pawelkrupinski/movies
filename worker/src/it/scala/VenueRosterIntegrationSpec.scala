@@ -15,6 +15,7 @@ class VenueRosterIntegrationSpec extends AnyFlatSpec with Matchers {
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   private val uri = Env.fromProcess().get("MONGODB_URI").get
 
+  private val target = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
   private val tomorrow = Seq(Showtime(LocalDateTime.now.plusDays(1).withNano(0), bookingUrl = None))
   private val film     = "odyseja|2026"
   private val polish   = CinemaShowing(KinoEtiuda, "odyseja").displayName
@@ -22,7 +23,7 @@ class VenueRosterIntegrationSpec extends AnyFlatSpec with Matchers {
   private val other    = CinemaShowing(CineworldFeltham, "other").displayName
 
   "A roster-scoped Mongo side store" should "never write a row under a venue outside the country" in
-    tools.IntegrationCorpusDatabase.withDatabase(uri, "venue-roster") { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(target, "venue-roster") { db =>
       val roster     = VenueRoster.of(Country.Poland)
       val screenings = new MongoScreeningsRepository(Some(db), roster = roster)
       val slots      = new MongoSlotsRepository(Some(db), roster = roster)
@@ -38,7 +39,7 @@ class VenueRosterIntegrationSpec extends AnyFlatSpec with Matchers {
     }
 
   it should "keep a foreign row already on disk as it is, rather than prune or rewrite it" in
-    tools.IntegrationCorpusDatabase.withDatabase(uri, "venue-roster-kept") { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(target, "venue-roster-kept") { db =>
       val stale      = SourceData(title = Some("The Odyssey"))
       val unscoped   = new MongoSlotsRepository(Some(db))
       val slots      = new MongoSlotsRepository(Some(db), roster = VenueRoster.of(Country.Poland))

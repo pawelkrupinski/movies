@@ -27,9 +27,9 @@ import scala.util.{Failure, Try}
 class StagingBatchUpsertIntegrationSpec extends AnyFlatSpec with Matchers with org.scalatest.BeforeAndAfterAll {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway()
+  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
 
-  private val isolatedDb = tools.IsolatedMongoDatabase.open(Env.fromProcess().get("MONGODB_URI").get, "staging-batch-spec")
+  private val isolatedDb = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "staging-batch-spec")
 
   private val db = isolatedDb.database
   override protected def afterAll(): Unit = {

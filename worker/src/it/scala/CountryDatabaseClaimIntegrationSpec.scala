@@ -13,8 +13,9 @@ class CountryDatabaseClaimIntegrationSpec extends AnyFlatSpec with Matchers {
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   private val uri = Env.fromProcess().get("MONGODB_URI").get
 
+  private val target = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
   "MongoConnection.forCountry" should "refuse a database another country owns, and claim an unowned one" in
-    tools.IntegrationCorpusDatabase.withDatabase(uri, "country-db-claim") { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(target, "country-db-claim") { db =>
       val polish = MongoConnection.forCountry(Country.Poland, MongoAddress(Some(uri), Some(db.name)), required = true, env = Env.fromProcess())
       try new DatabaseOwner(db).owner() shouldBe Some(Country.Poland.code)
       finally polish.close()

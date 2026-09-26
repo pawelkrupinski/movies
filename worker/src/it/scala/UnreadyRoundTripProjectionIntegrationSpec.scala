@@ -31,7 +31,7 @@ import java.time.{Instant, LocalDateTime}
 class UnreadyRoundTripProjectionIntegrationSpec extends AnyFlatSpec with Matchers {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway()
+  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
 
   private val year = Some(2026)
 

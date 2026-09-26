@@ -17,6 +17,7 @@ import scala.concurrent.duration._
  *  every write since the collection existed and was indexed by nothing. */
 class MovieRepositoryUpdatedSinceIntegrationSpec extends AnyFlatSpec with Matchers {
   private val uri  = Env.fromProcess().get("MONGODB_URI").get
+  private val target = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
   private val when = java.time.LocalDateTime.now().plusDays(2).withHour(18).withMinute(0).withSecond(0).withNano(0)
 
   private def row(title: String, tmdbId: Int): MovieRecord =
@@ -24,7 +25,7 @@ class MovieRepositoryUpdatedSinceIntegrationSpec extends AnyFlatSpec with Matche
       Multikino -> SourceData(title = Some(title), releaseYear = Some(2026), showtimes = Seq(Showtime(when, None)))))
 
   "the movies collection" should "index updatedAt and scan the rows written after an instant, stitched" in
-    tools.IntegrationCorpusDatabase.withDatabase(uri, "updated-since") { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(target, "updated-since") { db =>
       val screenings = new MongoScreeningsRepository(Some(db))
       val slots      = new MongoSlotsRepository(Some(db))
       val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), slots = Some(slots),

@@ -97,7 +97,7 @@ class ShareCardPostersSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "refuse a real 8000×12000 progressive JPEG before decoding it, with the worker's memory untouched" in {
-    val vips = VipsPosterShrinker.locate()
+    val vips = VipsPosterShrinker.locate(tools.ProcessConfiguration.resolve().executableSearchPath)
     assume(vips.isDefined, "vips is not installed")
     val dir  = Files.createTempDirectory("giant-poster-")
     val big  = dir.resolve("big.jpg")

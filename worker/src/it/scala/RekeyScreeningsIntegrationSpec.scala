@@ -34,9 +34,10 @@ import scala.concurrent.duration._
 class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway()
+  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
 
   private val uri = Env.fromProcess().get("MONGODB_URI").get
+  private val target = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
   // Its own corpus: this suite hydrates a `CaffeineMovieCache` over the WHOLE `movies`
   // collection and settles it, which is not survivable for a neighbouring suite's rows.
   // Dropped when each leg's scope closes, so a run leaves no `*_rekey-screenings` behind.
@@ -48,7 +49,7 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
   private val when   = java.time.LocalDateTime.now().plusDays(3).withHour(20).withMinute(0).withSecond(0).withNano(0)
 
   it should "keep a film's showtimes when the settle re-keys it onto its embedded year" in
-    tools.IntegrationCorpusDatabase.withDatabase(uri, CorpusSuite) { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(target, CorpusSuite) { db =>
     val screenings = new MongoScreeningsRepository(Some(db))
     val slots      = new MongoSlotsRepository(Some(db))
     val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer)
@@ -103,7 +104,7 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
           "updatedAt" -> java.util.Date.from(java.time.Instant.now())),
         new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), 10.seconds))
 
-      tools.IntegrationCorpusDatabase.withDatabase(uri, CorpusSuite) { own =>
+      tools.IntegrationCorpusDatabase.withDatabase(target, CorpusSuite) { own =>
         val cache = new CaffeineMovieCache(new MongoMovieRepository(
           Some(own),
           screenings = Some(new MongoScreeningsRepository(Some(own))),

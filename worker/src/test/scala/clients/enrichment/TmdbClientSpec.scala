@@ -8,7 +8,7 @@ import tools.{GetOnlyHttpFetch, RealHttpFetch}
 
 class TmdbClientSpec extends AnyFlatSpec with Matchers {
 
-  private val client = new TmdbClient(new RealHttpFetch)
+  private val client = new TmdbClient(new RealHttpFetch, apiKey = tools.Env.fromProcess().get("TMDB_API_KEY"))
 
   "parseSearchResults" should "extract id, title, year, popularity from a TMDB search response" in {
     val json =

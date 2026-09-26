@@ -33,7 +33,7 @@ object OmdbBackfillRun {
       println("OMDB_API_KEY not set — OMDb backfill is off.")
       sys.exit(1)
     }
-    val omdb = new OMDbClient(new RealHttpFetch)
+    val omdb = new OMDbClient(new RealHttpFetch, tools.Env.fromProcess().get("OMDB_API_KEY"))
 
     // Paginated read (200/batch) — a single 800-doc `findAll` over the flyctl
     // proxy intermittently blows its 60s cap; `foreachRecord` is robust.

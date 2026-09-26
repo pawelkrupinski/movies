@@ -4,8 +4,8 @@ import com.sun.net.httpserver.HttpServer
 import models.Country
 import org.mongodb.scala.MongoClient
 import play.api.Logging
-import services.{MongoAddress, MongoConnection}
-import tools.{Env, ExecutionBudget, IssuerCertificateFetching, ProxyTunnelAuthentication}
+import services.MongoConnection
+import tools.{Env, ExecutionBudget, IssuerCertificateFetching, ProcessConfiguration, ProxyTunnelAuthentication}
 
 import java.net.InetSocketAddress
 import java.time.Instant
@@ -31,7 +31,10 @@ object WorkerMain extends Logging {
     // AIA intermediate fetching some cinema hosts' broken chains need (IssuerCertificateFetching).
     ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
     IssuerCertificateFetching.Enabled.applyToJvm()
-    val commit = Option(System.getenv("COMMIT_SHA")).getOrElse("unknown")
+    // The process's config and the typed values resolved from it, HERE, once — the only
+    // place in the worker that asks the process anything; every wiring below is handed them.
+    val process = ProcessConfiguration.resolve()
+    val commit  = process.commit
     logger.info(s"Worker starting — commit $commit")
 
     // Bring up /health BEFORE the scrape+enrich boot. The first full scrape +
@@ -41,7 +44,7 @@ object WorkerMain extends Logging {
     // If wiring init throws (e.g. Mongo unreachable) we stop /health and exit
     // non-zero so the failure still surfaces as a crash-loop rather than a
     // healthy-but-idle worker.
-    val port   = Option(System.getenv("PORT")).map(_.toInt).getOrElse(9000)
+    val port   = process.port(default = 9000)
     val liveness = new BootLiveness
     val health   = startHealthServer(port, liveness)
     logger.info(s"Worker health up on :$port/health — booting scrape/enrich…")
@@ -55,7 +58,7 @@ object WorkerMain extends Logging {
     // The process's config — env vars, `.env.local`, and (once each wiring's
     // EnvConfigService starts) the admin overrides. Built ONCE here and handed to
     // every country's wiring, so a flip reaches all of them.
-    val env          = Env.fromProcess()
+    val env          = process.env
     val countries    = resolveCountries(env)
     // Refuse a configuration this process cannot normalise correctly, before any
     // wiring touches the corpus.
@@ -65,7 +68,7 @@ object WorkerMain extends Logging {
       sys.exit(1)
     }
     val sharedBudget: ExecutionBudget = WorkerWiring.backgroundBudgetFrom(env)
-    val sharedClient: Option[MongoClient] = MongoConnection.sharedClientAt(MongoAddress.fromEnv(env), env)
+    val sharedClient: Option[MongoClient] = MongoConnection.sharedClientAt(process.mongoAddress, env)
     // ONE metrics bundle for the whole JVM: a single Prometheus registry + one set
     // of metric objects (each tagged with a `country` label), shared by every
     // country's wiring. This is what fixes the earlier "primary country's registry

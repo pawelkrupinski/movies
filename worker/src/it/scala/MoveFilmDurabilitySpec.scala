@@ -20,12 +20,12 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 class MoveFilmDurabilitySpec extends AnyFlatSpec with Matchers {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway()
+  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
 
   private val when = java.time.LocalDateTime.now().plusDays(2).withHour(19).withMinute(0).withSecond(0).withNano(0)
 
   it should "keep the old rows when the copy to the new id did not land" in {
-    tools.IsolatedMongoDatabase.withDatabase(Env.fromProcess().get("MONGODB_URI").get, "move-film-durability") { db =>
+    tools.IsolatedMongoDatabase.withDatabase(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "move-film-durability") { db =>
       val screenings = new UnwritableScreeningsRepository
       screenings.seed("moveprobe|", Map(Multikino.displayName -> Seq(Showtime(when, None))))
       screenings.findForFilm("moveprobe|") should not be empty

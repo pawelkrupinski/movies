@@ -40,9 +40,9 @@ import scala.concurrent.duration._
 class MoviesWriteSkippedWhenUnchangedIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway()
+  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
 
-  private val isolatedDb = tools.IsolatedMongoDatabase.open(Env.fromProcess().get("MONGODB_URI").get, "movies-write-skip-spec")
+  private val isolatedDb = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "movies-write-skip-spec")
 
   private val db = isolatedDb.database
   override protected def afterAll(): Unit = {

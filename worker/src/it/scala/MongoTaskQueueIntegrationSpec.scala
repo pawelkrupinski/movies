@@ -23,7 +23,7 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   // A database of its own (`IsolatedMongoDatabase` refuses a real cluster), dropped in afterAll.
-  private val isolated = tools.IsolatedMongoDatabase.open(Env.fromProcess().get("MONGODB_URI").get, "mongo-task-queue")
+  private val isolated = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "mongo-task-queue")
   private val db = isolated.database
     .withCodecRegistry(MovieCodecs.registry)
   private val collName = "__integration_test_tasks"

@@ -38,9 +38,8 @@ import scala.util.Try
  */
 class TmdbClient(
   http: HttpFetch,
-  // TMDB_API_KEY. Defaulted from the process for tools and specs; the worker
-  // wiring passes its composition root's Env's value.
-  apiKey: Option[String] = tools.Env.fromProcess().get("TMDB_API_KEY"),
+  // TMDB_API_KEY — handed in: the worker wiring passes its Env's value, a spec its stub.
+  apiKey: Option[String],
   // The deployment's language, threaded into every localized TMDB request so a
   // non-Polish deployment gets non-Polish overview/genres/titles. Exposed as a
   // `val` so the enrichment (`MovieService`) can canonicalise the country names

@@ -32,7 +32,7 @@ import scala.util.Try
  */
 // `apiKey` is OMDB_API_KEY — defaulted from the process for tools and specs; the
 // worker wiring passes its composition root's Env's value. Unset turns the backfill off.
-class OMDbClient(http: HttpFetch, apiKey: Option[String] = tools.Env.fromProcess().get("OMDB_API_KEY")) {
+class OMDbClient(http: HttpFetch, apiKey: Option[String]) {
   import OMDbClient._
 
   /** Resolve an IMDb id for a film. Tries each title spelling in turn (pass the

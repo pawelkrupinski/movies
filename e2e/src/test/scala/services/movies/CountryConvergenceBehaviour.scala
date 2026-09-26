@@ -164,7 +164,7 @@ abstract class CountryConvergenceBehaviour(
    * could not produce it because the database was never there to disagree.
    */
   private lazy val storage: ConvergenceStorage =
-    ConvergenceStorage.fromEnv(s"convergence-$corpusKey", TitleNormalizer.forCountry(country))
+    ConvergenceStorage.fromEnv(Env.fromProcess(), s"convergence-$corpusKey", TitleNormalizer.forCountry(country))
 
   /** The per-pass databases, so `afterAll` can drop them. Each is isolated; none may
    *  outlive the run. */
@@ -378,7 +378,7 @@ abstract class CountryConvergenceBehaviour(
     val archive = storage.archive
     val seeded   = seedArchive(archive)
     val merges   = new RecordingMergeMetrics
-    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), storage, fixtureDirectory, fixtureRoot, missingFixtures) {
+    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), storage, fixtureDirectory, fixtureRoot, missingFixtures, Env.fromProcess()) {
       override lazy val clock: java.time.Clock = CountryConvergenceBehaviour.this.clock
       // `mergeMetrics` is the ONLY thing this override exists to change, so it overrides the
       // seam and never the cache: a rebuilt cache silently drops whatever it forgets — it lost
@@ -1060,9 +1060,9 @@ abstract class CountryConvergenceBehaviour(
     // The pass's own scope for the phase log, matching its database's suffix so a line
     // in the interleaved output of `Passes` concurrent replays names which pass wrote it.
     val scope = s"${country.code}p${seed - OrderSeed}"
-    val passStorage = ConvergenceStorage.fromEnv(scope, TitleNormalizer.forCountry(country))
+    val passStorage = ConvergenceStorage.fromEnv(Env.fromProcess(), scope, TitleNormalizer.forCountry(country))
     passStorages.synchronized(passStorages += passStorage)
-    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage, fixtureDirectory, fixtureRoot, missingFixtures) {
+    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage, fixtureDirectory, fixtureRoot, missingFixtures, Env.fromProcess()) {
       override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
     }
     val ready = mutable.ListBuffer.empty[MovieDetailsComplete]

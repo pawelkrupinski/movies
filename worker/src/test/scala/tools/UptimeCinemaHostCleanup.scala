@@ -40,7 +40,7 @@ object UptimeCinemaHostCleanup {
    *  can't drift from what `MonitoringHttpFetch` suppresses. A no-op `http` is
    *  fine: building the catalog only constructs client objects — it fetches
    *  nothing — and `scrapeHosts` reads their declared hosts. */
-  def cinemaHosts: Set[String] = new CinemaScraperCatalog(new RealHttpFetch()).scrapeHosts
+  def cinemaHosts: Set[String] = new CinemaScraperCatalog(new RealHttpFetch(), env = tools.Env.fromProcess()).scrapeHosts
 
   def main(args: Array[String]): Unit = {
     val hosts = cinemaHosts

@@ -43,7 +43,7 @@ class WorkerWiring(
     // so all countries draw run permits from one Semaphore/cap rather than each
     // spinning its own (see `backgroundBudget`). Defaulted so a single-country
     // boot / test constructs its own.
-    injectedBackgroundBudget: ExecutionBudget = WorkerWiring.backgroundBudgetFrom(Env.fromProcess()),
+    injectedBackgroundBudget: ExecutionBudget = WorkerWiring.backgroundBudgetFrom(Env.of()),
     // ONE shared `MongoClient` across countries: each country binds its OWN
     // database view (`country.mongoDb`) on this single client. `None` → this
     // wiring builds (and closes) its own client at its `mongoAddress`, the
@@ -65,8 +65,10 @@ class WorkerWiring(
     // The process's config (env vars + admin overrides) every knob in this wiring
     // reads. `WorkerMain` builds ONE and hands the same instance to every country's
     // wiring, so the override source EnvConfigService installs reaches all of them.
-    // Defaulted so a single-country test wiring reads the process environment.
-    val env: Env = Env.fromProcess()) extends play.api.Logging
+    // Defaulted to an EMPTY Env for test wirings — hermetic: every knob on its compiled-in
+    // default, whatever the shell or `.env.local` holds. A run that wants the process's
+    // (a convergence leg, a recorder) passes the one its root resolved.
+    val env: Env = Env.of()) extends play.api.Logging
     with HttpWiring with EgressWiring with ScrapeWiring with ChunkScrapeWiring with DetailWiring
     with CorpusWiring with ResolutionWiring with RatingsWiring with ReadModelWiring
     with MetricsWiring with TaskQueueWiring with StagingWiring with AlertingWiring with OperatorWiring with ShareCardWiring

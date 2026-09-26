@@ -18,7 +18,7 @@ class ReadModelDerivationMarkerIntegrationSpec extends AnyFlatSpec with Matchers
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
 
   "the Mongo derivation marker" should "read nothing from a fresh database and read back what was last recorded" in {
-    IsolatedMongoDatabase.withDatabase(Env.fromProcess().get("MONGODB_URI").get, "derivation-marker") { db =>
+    IsolatedMongoDatabase.withDatabase(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "derivation-marker") { db =>
       val clock  = Clock.fixed(Instant.parse("2026-09-25T00:00:00Z"), ZoneOffset.UTC)
       val marker = new MongoReadModelDerivationMarker(Some(db), clock)
       marker.recorded().get shouldBe None

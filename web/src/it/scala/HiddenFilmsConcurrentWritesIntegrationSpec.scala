@@ -28,12 +28,12 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway()
+  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
 
   private val Prefix = "__integration-test-hide-"
   // Every write's reported outcome, as (userId-free) (endpoint, outcome) pairs.
   private val outcomes = new ConcurrentLinkedQueue[(String, String)]()
-  private val isolated = IsolatedMongoDatabase.open(Env.fromProcess().get("MONGODB_URI").get, "hidden-films-concurrent")
+  private val isolated = IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "hidden-films-concurrent")
   private val database = isolated.database
   private val states = new MongoUserStateRepository(Some(database),
     writeOutcomes = (endpoint: String, outcome: String) => { outcomes.add(endpoint -> outcome); () })

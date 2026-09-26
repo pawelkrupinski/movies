@@ -9,7 +9,7 @@ import play.api.routing.sird._
 import play.api._
 import models.Country
 import services.MongoAddress
-import tools.{Env, IssuerCertificateFetching}
+import tools.{Env, IssuerCertificateFetching, ProcessConfiguration}
 import play.filters.HttpFiltersComponents
 import play.filters.cors.CORSComponents
 import play.filters.gzip.GzipFilterComponents
@@ -27,6 +27,11 @@ class AppLoader extends ApplicationLoader {
   override def load(context: Context): Application = {
     // Before any TLS handshake the application makes — see IssuerCertificateFetching.
     IssuerCertificateFetching.Enabled.applyToJvm()
+    // The process's config — env vars, `.env.local`, and (once EnvConfigService starts) the
+    // admin overrides — and the typed values resolved from it, HERE, once: the only place in
+    // the web tier that asks the process anything. Everything below is handed them.
+    val process = ProcessConfiguration.resolve()
+    val env     = process.env
     // APP_MODE is an *override*; when unset we trust the mode Play already
     // baked into the Context. That works out to:
     //   - `sbt run`                          → Mode.Dev  (debug routes on)
@@ -34,7 +39,7 @@ class AppLoader extends ApplicationLoader {
     //   - tests                              → Mode.Test
     // Forcing Dev when APP_MODE is unset was leaking debug pages on fly because
     // we had no APP_MODE configured there — Play's own Prod was being overridden.
-    val mode = sys.env.get("APP_MODE").map(_.toLowerCase) match {
+    val mode = process.applicationMode.map(_.toLowerCase) match {
       case Some("prod" | "production") => Mode.Prod
       case Some("test")                => Mode.Test
       case Some("dev" | "development") => Mode.Dev
@@ -45,13 +50,7 @@ class AppLoader extends ApplicationLoader {
     val adjusted = context.copy(environment = context.environment.copy(mode = mode))
     LoggerConfigurator(adjusted.environment.classLoader)
       .foreach(_.configure(adjusted.environment))
-    // The process's config — env vars, `.env.local`, and (once EnvConfigService
-    // starts) the admin overrides. Built once here, handed to the whole wiring.
-    // The typed values the wiring takes are resolved from it HERE, once — the only place
-    // in the web tier that asks the environment which country it serves or where its
-    // Mongo is.
-    val env     = Env.fromProcess()
-    val country = Country.fromEnv(env)
+    val country = process.country
     val mounted = AppLoader.mountedAt(adjusted, country)
     // KINOWO_RETIRED picks a DIFFERENT composition root, not a different code
     // path inside the usual one — see `RetiredComponents` for why a retired host
@@ -60,7 +59,7 @@ class AppLoader extends ApplicationLoader {
     // (`Country.webOrigin`), and a second spelling of it is a second thing to
     // get wrong.
     if (env.flag("KINOWO_RETIRED")) new RetiredComponents(mounted, country).application
-    else                            new AppComponents(mounted, env, country, MongoAddress.fromEnv(env)).application
+    else                            new AppComponents(mounted, env, country, process.mongoAddress).application
   }
 }
 

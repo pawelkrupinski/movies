@@ -16,13 +16,14 @@ import scala.concurrent.duration._
 class UniqueTmdbIdIntegrationSpec extends AnyFlatSpec with Matchers {
   private val uri = Env.fromProcess().get("MONGODB_URI").get
 
+  private val target = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
   private def row(title: String): MovieRecord =
     MovieRecord(tmdbId = Some(4242), data = Map[Source, SourceData](
       Tmdb      -> SourceData(title = Some(title), releaseYear = Some(2026)),
       Multikino -> SourceData(title = Some(title), releaseYear = Some(2026))))
 
   "the movies collection" should "refuse a second document claiming a tmdbId another one holds, and leave unresolved rows alone" in
-    tools.IntegrationCorpusDatabase.withDatabase(uri, "unique-tmdbid") { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(target, "unique-tmdbid") { db =>
       val repository = new MongoMovieRepository(Some(db), normalizer = titleNormalizer)
       try {
         repository.enabled shouldBe true
@@ -49,7 +50,7 @@ class UniqueTmdbIdIntegrationSpec extends AnyFlatSpec with Matchers {
   // The stored key is the lookup identity (see `FilmId`): one document per key, the
   // cache refuses a second at write time and the store refuses the one a race lets by.
   it should "refuse a second document under a key another film already holds" in
-    tools.IntegrationCorpusDatabase.withDatabase(uri, "unique-key") { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(target, "unique-key") { db =>
       val repository = new MongoMovieRepository(Some(db), normalizer = titleNormalizer)
       try {
         repository.enabled shouldBe true

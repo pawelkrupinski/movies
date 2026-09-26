@@ -280,7 +280,8 @@ trait PosterShrinker {
  * built without one gets a gate of its own.
  */
 class VipsPosterShrinker(
-  binary:        Option[String] = VipsPosterShrinker.locate(),
+  // The `vips` binary, if any — see [[VipsPosterShrinker.locate]]; None decodes on the JDK.
+  binary:        Option[String],
   memoryCapMb:   Long           = PosterPipeline.DefaultDecodeMemoryCapMb,
   timeoutMillis: Long           = 30000L,
   val gate:      PosterDecodeGate = VipsPosterShrinker.newGate()
@@ -324,10 +325,10 @@ class VipsPosterShrinker(
 }
 
 object VipsPosterShrinker {
-  /** The `vips` binary on the PATH, if any. */
-  def locate(): Option[String] =
-    sys.env.getOrElse("PATH", "").split(java.io.File.pathSeparator).iterator
-      .map(dir => Path.of(dir, "vips")).find(Files.isExecutable).map(_.toString)
+  /** The `vips` binary in the first of `searchPath`'s directories that has one — the
+   *  process's PATH, which its root resolved (`ProcessConfiguration.executableSearchPath`). */
+  def locate(searchPath: Seq[Path]): Option[String] =
+    searchPath.iterator.map(_.resolve("vips")).find(Files.isExecutable).map(_.toString)
 
   /** Why a vips child for a known image format failed: the cap (the shell could not set it — exit
    *  97 — or libjpeg / glib ran out of memory, which aborts on a signal or says so), else the file. */

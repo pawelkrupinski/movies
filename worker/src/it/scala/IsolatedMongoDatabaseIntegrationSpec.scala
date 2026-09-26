@@ -13,14 +13,15 @@ import scala.concurrent.duration._
 class IsolatedMongoDatabaseIntegrationSpec extends AnyFlatSpec with Matchers {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway()
+  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
 
   private def await[A](f: scala.concurrent.Future[A]): A = Await.result(f, 30.seconds)
 
   "An isolated database" should "drop only itself, and tolerate being dropped twice" in {
     val uri    = Env.fromProcess().get("MONGODB_URI").get
-    val first  = IsolatedMongoDatabase.open(uri, "isolated-handle-first")
-    val second = IsolatedMongoDatabase.open(uri, "isolated-handle-second")
+    val target = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
+    val first  = IsolatedMongoDatabase.open(target, "isolated-handle-first")
+    val second = IsolatedMongoDatabase.open(target, "isolated-handle-second")
     val admin  = MongoClient(uri)
     try {
       Seq(first, second).foreach(i => await(i.database.getCollection("probe").insertOne(Document("_id" -> 1)).toFuture()))

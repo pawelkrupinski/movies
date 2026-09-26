@@ -24,7 +24,7 @@ class FreshnessStoreIntegrationSpec extends AnyFlatSpec with Matchers {
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
 
   "MongoFreshnessStore boot hydrate" should "page the enrichment phase across batch boundaries, loading every stamp" in
-    IsolatedMongoDatabase.withDatabase(Env.fromProcess().get("MONGODB_URI").get, "freshness-store") { db =>
+    IsolatedMongoDatabase.withDatabase(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "freshness-store") { db =>
       val coll = db.getCollection("freshness")
       val ids  = (0 until 5).map(i => s"__it-freshness-page-${i}__")
       val at   = new Date()

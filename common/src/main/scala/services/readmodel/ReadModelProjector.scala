@@ -62,9 +62,9 @@ class ReadModelProjector(
   // No default: the rolling content check numbers its slice by this clock, so a spec left on the
   // wall clock re-projected its row in the half-hours that row's slice came up (Main red, 2026-09-25).
   clock:     java.time.Clock,
-  // The process config its prune cadence is read from.
-  // Defaulted for specs; the worker wiring passes its composition root's instance.
-  env:       Env = Env.fromProcess(),
+  // The process config its prune cadence is read from. Defaulted to an empty Env (the
+  // compiled-in cadence) for specs; the worker wiring passes its composition root's instance.
+  env:       Env = Env.of(),
   // Blocks until the change stream has applied what it had in flight when a sweep let go of the
   // lock — what tells a heal the stream would have made anyway from a real miss (see `verdictOnHeals`).
   awaitStreamApplied: ChangeStreamLiveness => Unit = ReadModelProjector.awaitStreamApplied(_),

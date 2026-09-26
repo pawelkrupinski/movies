@@ -40,8 +40,9 @@ object RosterAudit {
     // the residential proxy, and the JDK reads this once — see ProxyTunnelAuthentication.
     ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
     IssuerCertificateFetching.Enabled.applyToJvm()
+    val process = ProcessConfiguration.resolve()
     val http    = new RealHttpFetch()
-    val catalog = new CinemaScraperCatalog(http)
+    val catalog = new CinemaScraperCatalog(http, env = process.env)
     val venues  = RosterSourceReader.venuesOf(Country.Poland.cities, slug => catalog.byCity.getOrElse(slug, Nil))
     println(s"RosterAudit: ${venues.size} Polish venue source pages to read")
 
@@ -55,7 +56,7 @@ object RosterAudit {
     val chainVenues = RosterSourceReader.chainVenuesOf(Country.Poland.cities, slug => catalog.byCity.getOrElse(slug, Nil))
     println(s"RosterAudit: ${chainVenues.size} Polish chain venues to look up in ${ChainDirectory.all.size} chain venue lists")
     val today = LocalDate.now(ZoneId.of("Europe/Warsaw"))
-    val chainEgress = ChainListEgress.fromEnv(http, tools.Env.fromProcess())
+    val chainEgress = ChainListEgress.fromEnv(http, process.env)
     val chainResults = chainVenues.groupMap(_._1)(v => v._2 -> v._3).toSeq.map { case (directory, venues) =>
       RosterSourceReader.readDirectory(chainEgress.fetchFor(directory), today)(directory, venues).left.map(chainEgress.judged)
     }

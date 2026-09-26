@@ -78,23 +78,24 @@ object ConvergenceStorage {
     scala.concurrent.duration.DurationInt(10).seconds
 
   /**
-   * Mongo from `MONGODB_URI`, or a failure — never a fallback.
+   * Mongo from `env`'s `MONGODB_URI` (the suite's own Env, resolved at its root), or a
+   * failure — never a fallback.
    *
    * Deliberately not silent. A suite that falls back to memory when it cannot connect is
    * a suite that reports success for a run that tested half of what it says it did — the
    * exact shape of the enrichment gate that resolved 0 of 892 films while three specs
    * passed. An unreachable database fails the run rather than degrading it.
    */
-  def fromEnv(purpose: String, normalizer: TitleNormalizer): ConvergenceStorage =
-    Env.fromProcess().get("MONGODB_URI").filter(_.nonEmpty)
-      .map(uri => mongo(uri, purpose, normalizer))
+  def fromEnv(env: Env, purpose: String, normalizer: TitleNormalizer): ConvergenceStorage =
+    IntegrationMongoTarget.fromEnv(env).filter(_.uri.nonEmpty)
+      .map(target => mongo(target, purpose, normalizer))
       .getOrElse(throw new IllegalStateException(
         "MONGODB_URI is not set. This suite runs on a real database only — there is no " +
         "in-memory storage any more, because a claim proved against a map is not a claim " +
         "about the pipeline that ships. Start one with `scripts/convergence-local.sh <code>`, " +
         "or name an existing throwaway."))
 
-  /** A uniquely-named throwaway database on `uri`, dropped by [[ConvergenceStorage.close]].
+  /** A uniquely-named throwaway database on `target`, dropped by [[ConvergenceStorage.close]].
    *  Unique per run so the three country legs — and anything else on the `it` layer —
    *  can share one cluster without colliding, including with a re-run of themselves. */
   /** `normalizer` is REQUIRED, never a process-wide default: this storage
@@ -103,7 +104,7 @@ object ConvergenceStorage {
    *  German and UK legs keyed their corpora through the Polish " & " -> " i "
    *  unification — `wallaceigromitthecurseofthewererabbit` in a UK corpus (2026-08-04).
    *  Naming the country here is what makes that a compile-time question. */
-  def mongo(uri: String, purpose: String, normalizer: TitleNormalizer): ConvergenceStorage = {
+  def mongo(target: IntegrationMongoTarget, purpose: String, normalizer: TitleNormalizer): ConvergenceStorage = {
     // The name is taken FROM the opened database, never generated a second time.
     // `IsolatedMongoDatabase.nameFor` embeds `System.nanoTime()`, so calling it again for
     // the connection produced a DIFFERENT database from the one the repositories were
@@ -111,8 +112,8 @@ object ConvergenceStorage {
     // the other, found none, and correctly reported nothing to fold. The corpus never
     // reached `movies`, the suite reported `resolved NOTHING — 0 films`, and nothing
     // anywhere was in error — each half was doing exactly what it was told.
-    val isolated = IsolatedMongoDatabase.open(uri, purpose)
-    new MongoConvergenceStorage(isolated, uri, isolated.database.name, normalizer)
+    val isolated = IsolatedMongoDatabase.open(target, purpose)
+    new MongoConvergenceStorage(isolated, target.uri, isolated.database.name, normalizer)
   }
 
   private final class MongoConvergenceStorage(isolated: IsolatedMongoDatabase, uri: String, name: String,

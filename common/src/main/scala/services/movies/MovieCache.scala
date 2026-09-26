@@ -319,9 +319,9 @@ class CaffeineMovieCache(
   // verbatim to it. The worker hands every country's cache the process's one pool (owned by
   // `WorkerMetrics`, whose gauges read it); a lone cache — tests included — gets its own.
   val stringPool: StringPool = new StringPool,
-  // The process config the backstop rehydrate interval is read from. Defaulted for
-  // specs; the worker wiring passes its composition root's instance.
-  env: Env = Env.fromProcess()
+  // The process config the backstop rehydrate interval is read from. Defaulted to an empty
+  // Env (the compiled-in interval) for specs; the worker wiring passes its root's instance.
+  env: Env = Env.of()
 ) extends MovieCache with LandingStore with Stoppable with Logging {
 
   // Supplies `CacheKey.apply` throughout this class, so a key can never be built

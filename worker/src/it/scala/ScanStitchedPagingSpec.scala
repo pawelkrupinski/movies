@@ -26,7 +26,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 class ScanStitchedPagingSpec extends AnyFlatSpec with Matchers {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway()
+  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
 
   private val when = java.time.LocalDateTime.now().plusDays(2).withHour(18).withMinute(0).withSecond(0).withNano(0)
 
@@ -37,7 +37,7 @@ class ScanStitchedPagingSpec extends AnyFlatSpec with Matchers {
   it should "page the side-collection reads instead of preloading them whole" in {
     // In a database of its own, dropped (and its client closed) even when a repository's
     // constructor throws — each opens a change-stream watcher, so construction can fail.
-    tools.IsolatedMongoDatabase.withDatabase(Env.fromProcess().get("MONGODB_URI").get, "scan-stitched-paging") { db =>
+    tools.IsolatedMongoDatabase.withDatabase(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "scan-stitched-paging") { db =>
       val screenings = new MongoScreeningsRepository(Some(db))
       val realSlots  = new MongoSlotsRepository(Some(db))
       val slots      = new CountingSlotsRepository(realSlots)

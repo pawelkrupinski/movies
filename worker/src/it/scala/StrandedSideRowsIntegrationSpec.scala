@@ -15,13 +15,14 @@ import java.time.LocalDateTime
 class StrandedSideRowsIntegrationSpec extends AnyFlatSpec with Matchers {
   private val uri = Env.fromProcess().get("MONGODB_URI").get
 
+  private val target = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
   private val tomorrow = Seq(Showtime(LocalDateTime.now.plusDays(1), bookingUrl = None))
   private def slotKey(title: String) = s"multikino␟$title"
   private def film(title: String): MovieRecord = MovieRecord(data = Map[Source, SourceData](
     Multikino -> SourceData(title = Some(title), releaseYear = Some(2026), showtimes = tomorrow)))
 
   "deleteStrandedSideRows" should "remove exactly the rows whose film has no movies document" in
-    tools.IntegrationCorpusDatabase.withDatabase(uri, "stranded-side-rows") { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(target, "stranded-side-rows") { db =>
       val screenings = new MongoScreeningsRepository(Some(db))
       val slots      = new MongoSlotsRepository(Some(db))
       // One id per page, so the live-id scan has to page (two films ⇒ three fetches).

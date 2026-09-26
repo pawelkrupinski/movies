@@ -89,6 +89,7 @@ object FilmwebDiff {
   def main(args: Array[String]): Unit = {
     // Before any handshake — see IssuerCertificateFetching.
     IssuerCertificateFetching.Enabled.applyToJvm()
+    val process = ProcessConfiguration.resolve()
     val daysAhead = args.headOption.flatMap(a => Try(a.toInt).toOption).getOrElse(3)
     val now       = LocalDateTime.now(ZoneId.of("Europe/Warsaw"))
     val today     = now.toLocalDate
@@ -109,7 +110,7 @@ object FilmwebDiff {
     val http     = new RealHttpFetch()
     // Filmweb is Polish-only, so a Filmweb title is a Polish title by definition.
     val titles   = services.movies.TitleNormalizer.forCountry(models.Country.Poland)
-    val catalog  = new CinemaScraperCatalog(http, today = today, titles = titles)
+    val catalog  = new CinemaScraperCatalog(http, today = today, titles = titles, env = process.env)
     val resolver = new FilmwebCinemaIdResolver(http)
 
     val out = new StringBuilder
@@ -204,7 +205,7 @@ object FilmwebDiff {
       date        = today.toString,
       generatedAt = Instant.now().toString,
       windowDays  = daysAhead,
-      commit      = sys.env.getOrElse("GITHUB_SHA", "unknown")
+      commit      = process.env.currentValue("GITHUB_SHA").getOrElse("unknown")
     )
     val json = Json.prettyPrint(FilmwebDiffJson.render((diffs ++ unresolvedDiffs).map(cinemaResult), meta))
     writeFile(jsonPath, json + "\n") match {

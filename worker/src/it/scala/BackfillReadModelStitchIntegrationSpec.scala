@@ -37,7 +37,7 @@ class BackfillReadModelStitchIntegrationSpec extends AnyFlatSpec with Matchers w
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
 
-  private val isolated = IsolatedMongoDatabase.open(Env.fromProcess().get("MONGODB_URI").get, "backfill-readmodel-stitch")
+  private val isolated = IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "backfill-readmodel-stitch")
   private val db       = isolated.database
 
   private val Title = "Backfill Stitch Probe"

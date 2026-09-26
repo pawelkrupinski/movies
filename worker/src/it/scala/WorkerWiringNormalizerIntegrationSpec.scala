@@ -35,7 +35,8 @@ class WorkerWiringNormalizerIntegrationSpec extends AnyFlatSpec with BeforeAndAf
   /** A real wiring on a database of its own, so nothing it touches is shared. */
   private def isolated(forCountry: Country): WorkerWiring = {
     val ownDatabase = s"kinowo_it_wiring_${forCountry.code}"
-    val wiring = new WorkerWiring(forCountry) {
+    // The run's own Env (its MONGODB_URI): a wiring built without one is hermetic and dials nothing.
+    val wiring = new WorkerWiring(forCountry, env = tools.Env.fromProcess()) {
       override protected def mongoDbName: String = ownDatabase
     }
     built += wiring

@@ -44,11 +44,12 @@ object FoldFixture {
   /** Refuse to run against anything but a throwaway Mongo, and skip when none is configured. */
   def requireThrowawayMongo(): Unit = {
     assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-    tools.IntegrationMongo.requireThrowaway()
+    tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
   }
 
   private def uri = Env.fromProcess().get("MONGODB_URI").get
 
+  private def target = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
   private val Timeout = 10.seconds
   private def now     = java.util.Date.from(java.time.Instant.now())
 
@@ -123,7 +124,7 @@ object FoldFixture {
    *  did — including when it threw. `suite` names it; give each spec a distinct one, since two
    *  suites sharing a name would share a database and be back where this started. */
   def withFold[A](suite: String)(test: Handles => A): A =
-    IntegrationCorpusDatabase.withDatabase(uri, suite) { db =>
+    IntegrationCorpusDatabase.withDatabase(target, suite) { db =>
       test(new Handles(db, new MongoConnection(Some(uri), db.name, required = false)))
     }
 }

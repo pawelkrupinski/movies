@@ -29,14 +29,14 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   // Never against a real cluster: these specs write and drop databases, and
   // `.env.local` aims MONGODB_URI at the prod tunnel. See `IntegrationMongo`.
-  tools.IntegrationMongo.requireThrowaway()
+  tools.IntegrationMongo.requireThrowaway(Env.fromProcess())
 
   // THE SPEC'S OWN DATABASE. Most cases here open a change stream, and a stream watches its
   // whole collection: in the shared `it` database every sibling spec's write reaches it — and a
   // sibling's `screenings` row with no `filmId` once ENDED one (the 2026-09-24 flake that found
   // the undecodable-post-image bug, see `ChangeStreamMalformedDocumentIntegrationSpec`). Dropped
   // in `afterAll`.
-  private val isolatedSpecDb     = tools.IsolatedMongoDatabase.open(Env.fromProcess().get("MONGODB_URI").get, "movie-repository-spec")
+  private val isolatedSpecDb     = tools.IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "movie-repository-spec")
   private val specDb = isolatedSpecDb.database
   private val repository = new MongoMovieRepository(Some(specDb), normalizer = titleNormalizer)
 
@@ -367,7 +367,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     // change-stream decode failure, then unrelated specs sharing the runner's mongod
     // tripping on driver-session-pool errors in the same window. See
     // IsolatedMongoDatabase's own doc comment.
-    tools.IsolatedMongoDatabase.withDatabase(Env.fromProcess().get("MONGODB_URI").get, "movies-resume-spec") { db =>
+    tools.IsolatedMongoDatabase.withDatabase(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "movies-resume-spec") { db =>
       val repo1   = new MongoMovieRepository(Some(db), persistResumeToken = true, normalizer = titleNormalizer)
       val idA     = StoredMovieRecord.keyFor("__integration-test-resume-A__", Some(1909), titleNormalizer)
       val gotA    = new CountDownLatch(1)
@@ -518,7 +518,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     // parallelExecution` can ring (and, if its shape doesn't decode, break). This
     // exact test flaked in CI (2026-09-19) with a `SideCollectionWatch` decode
     // failure ("Missing field: filmId") on this collection.
-    tools.IsolatedMongoDatabase.withDatabase(Env.fromProcess().get("MONGODB_URI").get, "screenings-resume-spec") { db =>
+    tools.IsolatedMongoDatabase.withDatabase(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "screenings-resume-spec") { db =>
       def at(h: Int): Seq[Showtime] = Seq(Showtime(LocalDateTime.of(2099, 1, 1, h, 0), bookingUrl = Some("https://book")))
 
       val filmA = "__it-screenings-resume-A__"
@@ -1092,7 +1092,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     import java.util.concurrent.{CountDownLatch, TimeUnit}
     // ITS OWN DATABASE: this test's change stream watches the whole `screenings` collection,
     // and in the shared one every sibling spec's write is decoded by it (see the poison below).
-    tools.IsolatedMongoDatabase.withDatabase(Env.fromProcess().get("MONGODB_URI").get, "split-reads-spec") { db =>
+    tools.IsolatedMongoDatabase.withDatabase(tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get, "split-reads-spec") { db =>
     val scr    = new MongoScreeningsRepository(Some(db))
     val repo   = new MongoMovieRepository(Some(db), screenings = Some(scr), normalizer = titleNormalizer)
     val plain  = new MongoMovieRepository(Some(db), normalizer = titleNormalizer) // no stitch → sees the raw movies doc

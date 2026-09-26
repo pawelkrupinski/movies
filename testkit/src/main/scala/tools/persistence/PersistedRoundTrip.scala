@@ -6,7 +6,7 @@ import org.bson.{BsonDocument, BsonDocumentReader, BsonDocumentWriter}
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoDatabase, SingleObservableFuture}
 
-import tools.{Env, IsolatedMongoDatabase}
+import tools.{IntegrationMongoTarget, IsolatedMongoDatabase}
 
 import scala.compiletime.{erasedValue, summonInline}
 import scala.concurrent.Await
@@ -28,8 +28,8 @@ object PersistedRoundTrip {
   /** Round-trip BOTH of a registry's lists ([[services.PersistedCodecs.OmittingNone]] and
    *  `WritingNone`) in a throwaway database of their own, dropped afterwards. Returns the
    *  types covered and the findings. */
-  inline def registry[OmittingNone <: Tuple, WritingNone <: Tuple](registry: CodecRegistry, dropped: Set[String]): (List[String], Seq[String]) =
-    val findings = IsolatedMongoDatabase.withDatabase(Env.fromProcess().get("MONGODB_URI").get, "persisted-codecs") { database =>
+  inline def registry[OmittingNone <: Tuple, WritingNone <: Tuple](target: IntegrationMongoTarget, registry: CodecRegistry, dropped: Set[String]): (List[String], Seq[String]) =
+    val findings = IsolatedMongoDatabase.withDatabase(target, "persisted-codecs") { database =>
       all[OmittingNone](registry, database, dropped) ++ all[WritingNone](registry, database, dropped)
     }
     (names[OmittingNone] ++ names[WritingNone], findings)

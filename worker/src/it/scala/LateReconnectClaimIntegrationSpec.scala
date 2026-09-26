@@ -22,11 +22,12 @@ import scala.concurrent.duration._
 class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with Eventually {
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   private val uri      = Env.fromProcess().get("MONGODB_URI").get
+  private val mongoTarget = tools.IntegrationMongoTarget.fromEnv(Env.fromProcess()).get
   private val target   = URI.create(uri.replace("mongodb://", "http://"))
   private val patience = PatienceConfig(timeout = Span(30, Seconds), interval = Span(1, Seconds))
 
   "a reconnect after an unreachable boot" should "claim the database before publishing it, and refuse another country's" in
-    tools.IntegrationCorpusDatabase.withDatabase(uri, "late-reconnect-claim") { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "late-reconnect-claim") { db =>
       new DatabaseOwner(db).claim(Country.Poland)
       val port = freePort()
       val via  = s"mongodb://127.0.0.1:$port/?directConnection=true&connectTimeoutMS=300"
@@ -49,7 +50,7 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
   // error mid role change, a command error — also ended the reconnect for good, leaving the
   // process degraded until something restarted it.
   "a reconnect that meets a failure other than another country's claim" should "keep retrying and recover" in
-    tools.IntegrationCorpusDatabase.withDatabase(uri, "late-reconnect-retry") { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "late-reconnect-retry") { db =>
       val attempts = new java.util.concurrent.atomic.AtomicInteger(0)
       val connection = new MongoConnection(Some(uri), db.name, required = true, probeTimeout = 2.seconds,
         onConnected = _ => attempts.incrementAndGet() match {
@@ -67,7 +68,7 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
   // every borrowing connection). A close landing while the reconnect's probe was in flight
   // made the reconnect close "its" client — the shared one, under every other country.
   "a reconnect that finds its connection closed" should "leave a shared client it does not own open" in
-    tools.IntegrationCorpusDatabase.withDatabase(uri, "late-reconnect-shared") { db =>
+    tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "late-reconnect-shared") { db =>
       val shared   = org.mongodb.scala.MongoClient(uri)
       val attempts = new java.util.concurrent.atomic.AtomicInteger(0)
       val probed   = new java.util.concurrent.CountDownLatch(1)

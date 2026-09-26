@@ -100,14 +100,14 @@ class CinemaScraperCatalog(
    *  in a primary-constructor default, but a secondary constructor can).
    *  `WorkerWiring` uses the primary ctor to inject its (possibly
    *  fixture-overridden) `multikinoFetch` / `biletynaFetch`. Each Zyte chain gets a
-   *  client of its own, built only if ZYTE_API_KEY is set — a diagnostic is not worth
-   *  a shared one. */
+   *  client of its own, built only if `env` carries ZYTE_API_KEY — a diagnostic is not worth
+   *  a shared one. `env` is the caller's: a tool's `main` passes the process's, a spec none. */
   def this(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
-           titles: TitleNormalizer = TitleNormalizer.forCountry(Country.default)) =
-    this(http, MultikinoClient.fetchFor(http, ZyteFallback.newHttpClient(), tools.Env.fromProcess()),
-      ZyteFallback.fetchFor(http, ZyteFallback.newHttpClient(), tools.Env.fromProcess()), today,
+           titles: TitleNormalizer = TitleNormalizer.forCountry(Country.default), env: tools.Env = tools.Env.of()) =
+    this(http, MultikinoClient.fetchFor(http, ZyteFallback.newHttpClient(), env),
+      ZyteFallback.fetchFor(http, ZyteFallback.newHttpClient(), env), today,
       (_, h, ttl) => new CachingDetailFetch(h, ttl),
-      zyteFetch = ZyteFallback.fetchFor(http, ZyteFallback.newHttpClient(), tools.Env.fromProcess()),
+      zyteFetch = ZyteFallback.fetchFor(http, ZyteFallback.newHttpClient(), env),
       // No residential proxy outside WorkerWiring — a diagnostic runs from a
       // developer's own (unblocked) IP, so plain `http` is the right default.
       flicksFetch = http, vueFetch = http, odeonFetch = http,

@@ -28,9 +28,9 @@ import scala.util.Try
  */
 class WebReadModel(
     reader: ReadModelReader,
-    // The process config the backstop / cold-retry cadences are read from. Defaulted
-    // for specs; the web wiring passes its composition root's instance.
-    env: Env = Env.fromProcess()) extends Stoppable with Logging {
+    // The process config the backstop / cold-retry cadences are read from. Defaulted to an
+    // empty Env (the compiled-in cadences) for specs; the web wiring passes its root's instance.
+    env: Env = Env.of()) extends Stoppable with Logging {
 
   private val movies = new ConcurrentHashMap[String, ResolvedMovie]()
   // citySlug -> (screeningId -> CityScreening). The per-city bucket is the
