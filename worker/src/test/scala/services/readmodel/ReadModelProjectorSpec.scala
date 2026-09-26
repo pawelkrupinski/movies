@@ -730,6 +730,31 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     m.projectCalls shouldBe 2
   }
 
+  // ReadModelProjectionTriggerUnaccounted compares projections against the three cursors' events,
+  // so every projection has to say which trigger asked for it: the heal checks were told apart
+  // after they fired it on 2026-09-19, and the content check and the derivation pass -- which
+  // fired it for DE, UK and PL on 2026-09-26 -- were still counted as if a change stream had
+  // asked. Only an event may land in the stream's share.
+  "the project-calls metric" should "name the trigger of every projection, and count only events as the stream's" in {
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
+    val m = new RecordingReadModelProjectionMetrics()
+    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+
+    projector.onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00")))))
+    m.projectTriggers.toSeq shouldBe Seq(ReadModelProjectionMetrics.ProjectTrigger.Stream)
+
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    projector.reconcile()
+    m.projectTriggers.drop(1).toSet shouldBe Set(ReadModelProjectionMetrics.ProjectTrigger.Reproject)
+
+    // Every row lands in exactly one of the 48 content slices, so 48 sweeps re-read each once.
+    val before = m.projectCalls
+    (1 to ReadModelProjector.ContentSlices).foreach(_ => projector.pruneOrphans())
+    m.projectCalls(ReadModelProjectionMetrics.ProjectTrigger.Content) shouldBe m.projectCalls - before
+    m.projectCalls(ReadModelProjectionMetrics.ProjectTrigger.Content) should be > 0
+    m.projectCalls(ReadModelProjectionMetrics.ProjectTrigger.Stream) shouldBe 1
+  }
+
   "the write-burst metric" should "time the write phase separately, and only for a row that reaches it" in {
     // Distinguishes "still computing" from "still writing" from "the event hadn't arrived
     // yet" for a slow multi-city projection — see `recordWriteBurst`'s doc.
@@ -1065,15 +1090,16 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
 
     booted.start()
 
-    m.healChecks.toSeq shouldBe Seq(ReadModelProjectionMetrics.HealTrigger.Boot -> 2)   // both looked at
+    m.projectCalls(ReadModelProjectionMetrics.ProjectTrigger.Heal) shouldBe 2           // both looked at
     m.heals.toSeq      shouldBe Seq(ReadModelProjectionMetrics.HealTrigger.Boot -> 1)   // one written for
     booted.stop()
   }
 
-  // The meter exists to be SUBTRACTED from readmodel_project_calls, so it must count exactly the
-  // projections a heal made -- not the rows the slots-only scan named. A row gone by the time the
-  // heal reads it whole (deleted or re-keyed in between) is never projected, and counting it made
-  // ReadModelProjectionTriggerUnaccounted subtract projections that never happened.
+  // The heals' share of readmodel_project_calls must be exactly the projections a heal made --
+  // not the rows the slots-only scan named. A row gone by the time the heal reads it whole
+  // (deleted or re-keyed in between) is never projected, and the heal-check meter this share
+  // replaced once counted it, so ReadModelProjectionTriggerUnaccounted subtracted projections
+  // that never happened.
   it should "meter only the rows it actually projected, not one that vanished before it was read" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer) {
       override def findByIdChecked(id: services.movies.FilmId): (Option[StoredMovieRecord], Boolean) = {
@@ -1091,8 +1117,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
 
     booted.start()                                      // both uncarded; Bar vanishes before its read
 
-    m.healChecks.toSeq shouldBe Seq(ReadModelProjectionMetrics.HealTrigger.Boot -> 1)
-    m.healChecks.map(_._2).sum shouldBe m.projectCalls
+    m.projectCalls(ReadModelProjectionMetrics.ProjectTrigger.Heal) shouldBe 1
+    m.projectCalls shouldBe 1
     booted.stop()
   }
 

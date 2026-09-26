@@ -85,14 +85,13 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   def recordDriftWrites(documents: Int): Unit                   = series.recordDriftWrites(countryCode, documents)
   def recordCatchUp(rows: Int): Unit                            = series.recordCatchUp(countryCode, rows)
   def recordCardWrite(changed: Set[String]): Unit               = series.recordCardWrite(countryCode, changed)
-  def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit =
-    series.recordProject(countryCode, wallSeconds, cpuSeconds)
+  def recordProject(trigger: ReadModelProjectionMetrics.ProjectTrigger, wallSeconds: Double, cpuSeconds: Double): Unit =
+    series.recordProject(countryCode, trigger, wallSeconds, cpuSeconds)
   def recordWriteBurst(seconds: Double): Unit                    = series.recordWriteBurst(countryCode, seconds)
   def recordMetadataProjection(reused: Boolean): Unit           = series.recordMetadataProjection(countryCode, reused)
   def recordVenueProjection(rebuilt: Int, reused: Int): Unit     = series.recordVenueProjection(countryCode, rebuilt, reused)
   def recordReconcileSweep(kind: String, didWork: Boolean): Unit = series.recordReconcileSweep(countryCode, kind, didWork)
   def recordHeal(trigger: String, rows: Int): Unit              = series.recordHeal(countryCode, trigger, rows)
-  def recordHealCheck(trigger: String, rows: Int): Unit         = series.recordHealCheck(countryCode, trigger, rows)
 
   // ── StagingMetrics ──────────────────────────────────────────────────────────
   def recordNewcomerKick(groupRows: Int): Unit = series.recordStagingNewcomerKick(countryCode, groupRows)
@@ -339,12 +338,6 @@ object WorkerTaskMetrics {
       .labelNames("country", "trigger")
       .register(registry)
 
-    private val readModelHealChecks = Counter.builder()
-      .name("kinowo_worker_readmodel_heal_checks")
-      .help("Ready source rows a read-model heal pass re-projected since boot, whether or not it wrote anything, by country and trigger (sweep|boot). The heals' share of readmodel_project_calls: projections no change-stream event asked for, which ReadModelProjectionTriggerUnaccounted subtracts before comparing against the cursors' events. Mostly the slots-only view's phantoms (a spent slot read as an absent venue), ~260 rows per PL worker start (2026-09-19). Not a defect count: readmodel_heals counts the looks that wrote.")
-      .labelNames("country", "trigger")
-      .register(registry)
-
     private val readModelCardWrites = Counter.builder()
       .name("kinowo_worker_readmodel_card_writes")
       .help("web_movies card documents written since boot, by country and cause. new=no card existed; one of title|poster|facts|synopsis|synopsis-by-city|ratings|trailers|age-rating=exactly that part of the card moved (facts = runtime, year, genres, countries, directors, cast); multiple=more than one part moved (see readmodel_card_rewrite_parts for which). The synopsis-by-city line answers whether moving that map (44% of card bytes in the fixture read model) to its own collection would spare the read model any card rewrites: near zero means the split saves bytes per document but not writes.")
@@ -387,8 +380,8 @@ object WorkerTaskMetrics {
 
     private val readModelProjectCalls = Counter.builder()
       .name("kinowo_worker_readmodel_project_calls")
-      .help("Source rows projected (projectAll invoked) since boot, by country — the throughput denominator for readmodel_project_duration_seconds. Driven by the incremental change-stream path (the periodic full reproject sweep was retired).")
-      .labelNames("country")
+      .help("Source rows projected (projectAll invoked) since boot, by country and trigger — the throughput denominator for readmodel_project_duration_seconds. trigger=stream is a change-stream event (any of the three cursors) and the only share ReadModelProjectionTriggerUnaccounted compares against the cursors' events; heal|catch-up|content|derivation|share-card|hold-release|reproject re-project rows no event asked for, by design. derivation is the whole corpus once per worker after a ReadModelProjection.DerivationVersion change (every read-model snapshot regeneration): on 2026-09-26 five such deploys inside an hour held DE/UK/PL at 1-2/s over their events for an hour.")
+      .labelNames("country", "trigger")
       .register(registry)
 
     private val readModelMetadataProjections = Counter.builder()
@@ -544,8 +537,9 @@ object WorkerTaskMetrics {
         readModelDriftWrites.labelValues(c).inc(0.0)   // zero is the healthy reading, so it must be drawn
         readModelCatchUpRows.labelValues(c).inc(0.0) // ditto — zero is the healthy reading, so it must be drawn
         ReadModelProjectionMetrics.HealTriggers.foreach(t => readModelHeals.labelValues(c, t).inc(0.0)) // ditto
-        ReadModelProjectionMetrics.HealTriggers.foreach(t => readModelHealChecks.labelValues(c, t).inc(0.0)) // drawn so the rule can subtract it
-        readModelProjectCalls.labelValues(c).inc(0.0)     // materialize at 0 so the counter series (+ its _created) exists from boot
+        // Every trigger at 0 from boot: ReadModelProjectionTriggerUnaccounted reads `stream` alone,
+        // and a series that does not exist yet makes it silent rather than compare against zero.
+        ReadModelProjectionMetrics.ProjectTrigger.values.foreach(t => readModelProjectCalls.labelValues(c, t.label).inc(0.0))
         readModelProjectCpu.labelValues(c).inc(0.0)       // ditto — the CPU-attribution counter the drivers panel stacks
         readModelProjectDuration.labelValues(c).observe(0.0) // materialize the histogram (_sum/_count/_bucket) from boot — no Grafana gap
         readModelWriteBurst.labelValues(c).observe(0.0)      // ditto — the write-phase half of that same answer
@@ -608,18 +602,15 @@ object WorkerTaskMetrics {
     def recordHeal(country: String, trigger: String, rows: Int): Unit =
       if (rows > 0) readModelHeals.labelValues(country, trigger).inc(rows.toDouble)
 
-    def recordHealCheck(country: String, trigger: String, rows: Int): Unit =
-      if (rows > 0) readModelHealChecks.labelValues(country, trigger).inc(rows.toDouble)
-
     def recordCardWrite(country: String, changed: Set[String]): Unit = {
       readModelCardWrites.labelValues(country, ReadModelProjectionMetrics.cardWriteCause(changed)).inc()
       changed.foreach(part => readModelCardRewriteParts.labelValues(country, part).inc())
     }
 
-    def recordProject(country: String, wallSeconds: Double, cpuSeconds: Double): Unit = {
+    def recordProject(country: String, trigger: ReadModelProjectionMetrics.ProjectTrigger, wallSeconds: Double, cpuSeconds: Double): Unit = {
       readModelProjectDuration.labelValues(country).observe(math.max(0.0, wallSeconds))
       readModelProjectCpu.labelValues(country).inc(math.max(0.0, cpuSeconds))
-      readModelProjectCalls.labelValues(country).inc()
+      readModelProjectCalls.labelValues(country, trigger.label).inc()
     }
 
     def recordWriteBurst(country: String, seconds: Double): Unit =

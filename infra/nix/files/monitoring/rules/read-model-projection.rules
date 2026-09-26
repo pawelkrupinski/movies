@@ -70,23 +70,23 @@ groups:
       # them is deployed. That is the safe direction, and `ReadModelProjectionMetricsAbsent` below
       # is what notices the metrics have gone entirely.
       #
-      # THE HEALS' LOOKS ARE A TRIGGER TOO, and are subtracted. The boot check and the prune sweep
-      # re-project every ready row the slots-only scan reads as short a card or a venue -- and a
-      # spent slot always reads as a short venue, so each PL worker start re-projects ~260 rows no
-      # event asked for. Six rollouts between 11:13 and 12:05Z on 2026-09-19 put ~0.8/s of them in
-      # the window against ~0.1/s of events, and this fired at 12:25Z for a trigger that was known,
-      # just not metered. `readmodel_heal_checks` meters it; `or on (country) 0 * ...` keeps a
-      # worker that does not export it yet comparing as before instead of going silent.
+      # ONLY `trigger="stream"` IS COMPARED. Every projection names what asked for it, and the
+      # projector has seven ways to re-project a row that NO event asked for, by design: the heals
+      # (boot check + prune sweep), the prune sweep's catch-up and its rolling content slice, the
+      # derivation pass, share cards landing, first-publish holds ending, and the backfill. Each one
+      # counted in the stream's share was a known trigger the rule read as an unknown one. The
+      # heals fired it on 2026-09-19 (six PL rollouts, ~260 boot re-projections each) and were
+      # subtracted; the DERIVATION PASS -- the whole corpus in ~8 minutes, once per worker after any
+      # read-model snapshot regeneration -- fired it on 2026-09-26 for DE, UK and PL after five such
+      # deploys inside an hour (00:04-00:55Z). So the rule no longer subtracts triggers one at a time: it compares
+      # the stream's own share, and a caller of `project` cannot compile without naming its trigger
+      # (`ReadModelProjectionMetrics.ProjectTrigger`). A FOURTH cursor still lands in `stream` and
+      # still fires this until its events are metered -- which is what the rule is for.
       - alert: ReadModelProjectionTriggerUnaccounted
         expr: >-
           (
             (
-              sum by (country) (rate(kinowo_worker_readmodel_project_calls_total[30m]))
-              - (
-                sum by (country) (rate(kinowo_worker_readmodel_heal_checks_total[30m]))
-                or on (country)
-                0 * sum by (country) (rate(kinowo_worker_readmodel_project_calls_total[30m]))
-              )
+              sum by (country) (rate(kinowo_worker_readmodel_project_calls_total{trigger="stream"}[30m]))
             )
             > 3 * (
               sum by (country) (rate(kinowo_worker_movie_change_events_total[30m]))
@@ -104,18 +104,17 @@ groups:
         annotations:
           summary: "{{ $labels.country }} is projecting {{ $value | printf \"%.2f\" }}/s more than its change streams can explain"
           description: >-
-            `readmodel_project_calls_total`, less the heal passes' re-projections
-            (`readmodel_heal_checks_total`), is running more than 3x the combined rate of the three
-            cursors that are supposed to drive it, so something is projecting rows that no metered
-            change-stream event asked for. Panel 47 on the application dashboard plots all four
-            series together and panel 48 draws the sum. Check, in order: whether a FOURTH trigger
-            has been added and not metered (that is what this rule exists to catch -- the
-            `screenings` cursor itself was unmetered until 2026-09-05 and cost an evening);
-            whether `ReadModelProjector.reconcile` is being called by something other than a
-            backfill script (the scheduled sweep re-projects nothing and logs "reprojected 0
-            doc(s)", so its log line settles that in one grep); and whether a cursor is reopening
-            in a loop, which replays its resume token and inflates projections without inflating
-            the event counters proportionally.
+            `readmodel_project_calls_total{trigger="stream"}` -- the projections the change
+            streams asked for -- is running more than 3x the combined rate of the three cursors'
+            metered events, so something is projecting rows through the stream path that no
+            metered event explains. Panel 47 on the application dashboard plots the events beside
+            the projections split by trigger, and panel 48 draws the sums. Check, in order: whether
+            a FOURTH cursor has been added and its events not metered (that is what this rule
+            exists to catch -- the `screenings` cursor itself was unmetered until 2026-09-05 and
+            cost an evening); whether something new calls `ReadModelProjector.onMovieUpsert`
+            besides the change-stream watch; and whether a cursor is reopening in a loop, which
+            replays its resume token and inflates projections without inflating the event
+            counters proportionally.
 
       # -----------------------------------------------------------------------------------------
       # THE READ MODEL IS DROPPING FILMS FASTER THAN RE-KEYING EXPLAINS.

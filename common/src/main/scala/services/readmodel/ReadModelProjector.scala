@@ -82,7 +82,7 @@ class ReadModelProjector(
   // it rather than accepting a second, separately-wired copy that could disagree.
   private val normalizer: services.movies.TitleNormalizer = movieRepository.normalizer
 
-  import ReadModelProjectionMetrics.{HealTrigger, Op, PruneReason, ReconcileKind, RetireReason, Target}
+  import ReadModelProjectionMetrics.{HealTrigger, Op, ProjectTrigger, PruneReason, ReconcileKind, RetireReason, Target}
   import ReadModelProjector.{ContentSlices, DerivationPass, DerivationPassTickSeconds}
 
   // Diff state for minimal writes: the CONTENT HASH of the last-projected document per
@@ -161,7 +161,7 @@ class ReadModelProjector(
   def onMovieUpsert(stored: StoredMovieRecord): Unit =
     lock.synchronized {
       appliedSinceSweep.foreach(_ += stored.id.value)
-      projectRow(stored)
+      projectRow(stored, ProjectTrigger.Stream)
       // A second way out of a first-publish hold besides the task scheduled for its end: that
       // task may be claimed by a replica other than the one holding the card.
       // A row it could not read keeps its hold for the next sweep — see `releaseExpired`.
@@ -182,7 +182,8 @@ class ReadModelProjector(
   }
 
   /** Caller holds `lock`. [[project]] a row read whole. */
-  private def projectRow(row: StoredMovieRecord): Int = project(ReadModelProjection.partition(row, normalizer))
+  private def projectRow(row: StoredMovieRecord, trigger: ProjectTrigger): Int =
+    project(ReadModelProjection.partition(row, normalizer), trigger)
 
   // Caller holds `lock`. Project the row and write only what changed, movie
   // document before screenings. A row whose enrichment hasn't concluded
@@ -193,7 +194,7 @@ class ReadModelProjector(
    *  0 when the projection was byte-identical to what's already stored. The
    *  reconcile sweep sums this to know whether a full re-projection caught
    *  anything the change stream missed. */
-  private def project(partition: ReadModelProjection.Partition): Int = {
+  private def project(partition: ReadModelProjection.Partition, trigger: ProjectTrigger): Int = {
     val rowId = partition.stored.id.value
     if (!partition.stored.record.readyToProject) {
       healedClean.remove(rowId)
@@ -214,6 +215,7 @@ class ReadModelProjector(
     val variants  = projectReusingMetadata(partition).map { (movie, venues) => (movie, planScreenings(movie._id, venues)) }
     dropHoldsNotProducedBy(rowId, variants.map(_._1._id).toSet)
     metrics.recordProject(
+      trigger,
       wallSeconds = (System.nanoTime() - wallStart) / 1e9,
       cpuSeconds  = (cpuClock.nanos() - cpuStart) / 1e9
     )
@@ -312,7 +314,7 @@ class ReadModelProjector(
     // A card held for its share card and published by the render landing is in flight like a
     // stream event: a sweep between the two found it absent (see `verdictOnHeals`).
     appliedSinceSweep.foreach(_ += row)
-    movieRepository.findById(services.movies.FilmId(row)).foreach(projectRow)
+    movieRepository.findById(services.movies.FilmId(row)).foreach(projectRow(_, ProjectTrigger.ShareCard))
   }
 
   /** End the hold on card `filmId` now — its card can't be made (every poster failed for good) —
@@ -320,7 +322,7 @@ class ReadModelProjector(
   def releaseShareCardHold(filmId: String): Unit = lock.synchronized {
     held.get(filmId).foreach { card =>
       held.update(filmId, card.copy(until = clock.millis()))
-      movieRepository.findById(services.movies.FilmId(card.row)).foreach(projectRow)
+      movieRepository.findById(services.movies.FilmId(card.row)).foreach(projectRow(_, ProjectTrigger.HoldRelease))
     }
   }
 
@@ -342,7 +344,7 @@ class ReadModelProjector(
     val rows = held.valuesIterator.filter(_.until <= now).map(_.row).toSet
     rows.filter { row =>
       movieRepository.findByIdChecked(services.movies.FilmId(row)) match {
-        case (Some(whole), _) => projectRow(whole); false
+        case (Some(whole), _) => projectRow(whole, ProjectTrigger.HoldRelease); false
         case (None, true)     => dropHoldsNotProducedBy(row, Set.empty); false             // gone: nothing to publish
         case (None, false)    => true                                                       // unreadable: keep the hold
       }
@@ -537,7 +539,6 @@ class ReadModelProjector(
       if (reproject) None else Try(reader.findAllScreeningRefsChecked()).toOption.collect { case (refs, true) => refs }
     val screeningsBefore = screeningRefsBefore.map(_.map(_._id).toSet)
     val healed = scala.collection.mutable.ArrayBuffer.empty[String]
-    var healChecks = 0
     // The REPROJECT needs showtimes — it writes them. The PRUNE never looks at one: it
     // computes ids, and `filmIds` derives those from the cinema SLOTS, which the slots-only
     // scan still stitches. So the frequent, scheduled sweep no longer pulls the whole
@@ -555,7 +556,7 @@ class ReadModelProjector(
         liveRowIds  += row.id
         if (!lastCardsByRow.contains(row.id.value)) lastCardsByRow.update(row.id.value, ids.toSet)
         if (reproject)
-          continuing(s"read-model $kind: a row failed to project")(reprojected += project(partition))
+          continuing(s"read-model $kind: a row failed to project")(reprojected += project(partition, ProjectTrigger.Reproject))
         else if (cardsRead) {
           val metadataHash = ReadModelProjection.metadataHash(row)
           val absentCards  = ids.filterNot(cardsBefore)
@@ -565,7 +566,6 @@ class ReadModelProjector(
           if (absentCards.nonEmpty || absentVenues.nonEmpty)
             continuing(s"read-model $kind: a row missing a projection failed to project") {
               heal(row.id, metadataHash, absentCards, absentVenues).foreach { repaired =>
-                healChecks += 1
                 if (repaired) healed += row.id.value
               }
             }
@@ -634,7 +634,7 @@ class ReadModelProjector(
     // partition the corpus rather than sampling it, and every row is reached.
     if (!reproject && scanComplete) {
       val slice   = math.floorMod(sweepCount, ContentSlices.toLong).toInt
-      val drifted = reprojectSlice(liveRowIds, slice, s"$kind sweep")._1
+      val drifted = reprojectSlice(liveRowIds, slice, s"$kind sweep", ProjectTrigger.Content)._1
       if (drifted > 0)
         logger.warn(s"read-model $kind sweep: content check slice $slice of $ContentSlices rewrote $drifted document(s) — " +
           "a stored projection had drifted from what the source projects to, which the id-only sweeps cannot see.")
@@ -652,7 +652,7 @@ class ReadModelProjector(
       val complete = movieRepository.foreachRecordUpdatedSince(since) { row =>
         if (row.record.readyToProject)
           continuing(s"read-model $kind: a row written since the change stream last delivered failed to project") {
-            projectRow(row); caughtUp += 1
+            projectRow(row, ProjectTrigger.CatchUp); caughtUp += 1
           }.getOrElse { failed = true }
       }
       if (complete && !failed) liveness.caughtUp(ChangeStreamLiveness.Movies, readFrom)
@@ -665,7 +665,6 @@ class ReadModelProjector(
     // the change stream can't deliver. Surfaced as kinowo_worker_readmodel_reconcile_sweeps.
     val didWork = reprojected > 0 || prunedFilms > 0 || prunedScreenings > 0
     if (!reproject) metrics.recordReconcileSweep(ReconcileKind.Prune, didWork)
-    metrics.recordHealCheck(HealTrigger.Sweep, healChecks)
     logger.info(s"read-model $kind sweep: reprojected $reprojected doc(s), pruned $prunedFilms film(s) + " +
       s"$prunedScreenings orphan screening(s)${if (scanComplete) "" else " [scan INCOMPLETE — prune skipped]"}.")
     healed.toSeq
@@ -717,13 +716,14 @@ class ReadModelProjector(
   /** Caller holds `lock`. Re-project every row of `rowIds` in content slice `slice`, each read
    *  whole by id: the documents written, and whether every row was read and projected (a row
    *  gone since `rowIds` was taken counts as done — its cards are the prune's). */
-  private def reprojectSlice(rowIds: Iterable[services.movies.FilmId], slice: Int, what: String): (Int, Boolean) = {
+  private def reprojectSlice(rowIds: Iterable[services.movies.FilmId], slice: Int, what: String,
+                             trigger: ProjectTrigger): (Int, Boolean) = {
     var written  = 0
     var complete = true
     rowIds.iterator.filter(ReadModelProjector.contentSliceOf(_) == slice).foreach { id =>
       val projected = continuing(s"read-model $what: a row in content slice $slice failed to project") {
         movieRepository.findByIdChecked(id) match {
-          case (Some(row), _) => written += projectRow(row)
+          case (Some(row), _) => written += projectRow(row, trigger)
           case (None, true)   => ()
           case (None, false)  => complete = false
         }
@@ -769,7 +769,7 @@ class ReadModelProjector(
   def advanceDerivationPass(): Unit = lock.synchronized {
     derivationPass match {
       case running: DerivationPass.Running =>
-        val (written, complete) = reprojectSlice(running.rows, running.nextSlice, "derivation pass")
+        val (written, complete) = reprojectSlice(running.rows, running.nextSlice, "derivation pass", ProjectTrigger.Derivation)
         val next = running.copy(nextSlice = running.nextSlice + 1, written = running.written + written,
                                 complete = running.complete && complete)
         derivationPass =
@@ -871,7 +871,6 @@ class ReadModelProjector(
       continuing(s"read model: healing $id at boot failed")(lock.synchronized(heal(id, metadataHash, absentCards, absentVenues)))
         .flatten.map(id.value -> _) }
     val healed = projected.collect { case (id, true) => id }
-    metrics.recordHealCheck(HealTrigger.Boot, projected.size)
     if (healed.nonEmpty) {
       metrics.recordHeal(HealTrigger.Boot, healed.size)
       logger.warn(s"read model: projected ${healed.size} ready row(s) missing a card or a venue at boot" +
@@ -901,14 +900,12 @@ class ReadModelProjector(
    *  worker start.
    *
    *  `None` when nothing was projected -- the row is gone by the time it is read whole, or no
-   *  longer ready -- so the heal-check meter counts exactly the projections a heal made, which
-   *  is what `ReadModelProjectionTriggerUnaccounted` subtracts from `readmodel_project_calls`;
-   *  otherwise whether the absence was repaired. */
+   *  longer ready; otherwise whether the absence was repaired. */
   private def heal(id: services.movies.FilmId, metadataHash: Int, absentCards: Seq[String], absentVenues: Seq[String]): Option[Boolean] = {
     absentCards.foreach(forgetCard)
     absentVenues.foreach(forgetScreening)
     movieRepository.findById(id).flatMap { whole =>
-      projectRow(whole)
+      projectRow(whole, ProjectTrigger.Heal)
       // Forgotten above, so remembered now only if this projection produced and wrote it.
       val written  = (venue: String) => lastScreenings.valuesIterator.exists(_.contains(venue))
       val repaired = absentCards.exists(lastMovie.contains) || absentVenues.exists(written)

@@ -2,6 +2,7 @@ package tools
 
 import io.prometheus.metrics.model.snapshots.Labels
 import services.movies.{CountingScreeningsRepository, CountingSlotsRepository}
+import services.readmodel.ReadModelProjectionMetrics
 
 import scala.concurrent.duration._
 
@@ -28,10 +29,10 @@ object FixpointPass {
 
   /** The counter families that are work, not state. Gauges are excluded by construction
    *  (only counters are read); durations, latencies and census counts are excluded here
-   *  because a no-op pass legitimately moves them — and so is `readmodel_project_calls`,
+   *  because a no-op pass legitimately moves them — and so is most of `readmodel_project_calls`,
    *  because the prune sweep re-projects one rolling slice of the corpus every run BY
    *  DESIGN (the content-drift check). What a projection wrote is `readmodel_writes`;
-   *  a heal that looks without writing (the `dfe62a96c` loop) is `readmodel_heal_checks`. */
+   *  a heal that looks without writing (the `dfe62a96c` loop) is its `trigger="heal"` share. */
   val WorkFamilies: Set[String] = Set(
     "kinowo_worker_merges",
     "kinowo_worker_rekeys",
@@ -41,7 +42,7 @@ object FixpointPass {
     "kinowo_worker_readmodel_cards_retired",
     "kinowo_worker_readmodel_catchup_rows",
     "kinowo_worker_readmodel_heals",
-    "kinowo_worker_readmodel_heal_checks",
+    "kinowo_worker_readmodel_project_calls",
     "kinowo_worker_readmodel_card_writes",
     "kinowo_worker_readmodel_drift_writes",
     "kinowo_worker_staging_newcomer_kicks",
@@ -65,6 +66,7 @@ object FixpointPass {
     case "kinowo_worker_tasks_enqueued"   =>
       labels.get("result") == "added" && !StampedTaskTypes.contains(labels.get("task_type"))
     case "kinowo_worker_screenings_writes" => labels.get("outcome") == "written"
+    case "kinowo_worker_readmodel_project_calls" => labels.get("trigger") == ReadModelProjectionMetrics.ProjectTrigger.Heal.label
     case _                                => true
   }
 

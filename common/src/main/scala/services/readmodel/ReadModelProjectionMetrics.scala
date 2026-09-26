@@ -54,7 +54,7 @@ trait ReadModelProjectionMetrics {
    *  throttled box steal inflates it further — it read 45.9 centi-cores against an
    *  18.0 centi-core process total on `kinowo-worker-uk` (2026-07-28), which is what
    *  made it useless for the credit-floor diagnosis it was added for. */
-  def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit
+  def recordProject(trigger: ReadModelProjectionMetrics.ProjectTrigger, wallSeconds: Double, cpuSeconds: Double): Unit
 
   /** The WRITE half of one `project()` call — wall-clock spent in `writer.upsertMovie`/
    *  `writer.upsertScreening`/`writer.deleteScreening` for a single source row, once its
@@ -110,14 +110,6 @@ trait ReadModelProjectionMetrics {
    *  had queued behind the sweep (2026-09-23, US: three such rows paged ReadModelHealsRecurring). */
   def recordHeal(trigger: String, rows: Int): Unit
 
-  /** `rows` ready rows a heal pass re-projected — WHETHER OR NOT it wrote anything — found by
-   *  the prune sweep or the boot check. Not a defect count (that is [[recordHeal]]): it is the
-   *  heals' share of `readmodel_project_calls`, the projections no change-stream event asked
-   *  for, which `ReadModelProjectionTriggerUnaccounted` must not mistake for an unmetered
-   *  trigger. Most are the slots-only view's phantoms, a spent slot read as an absent venue:
-   *  ~260 rows each PL worker start, and six rollouts in an hour on 2026-09-19 fired that rule. */
-  def recordHealCheck(trigger: String, rows: Int): Unit
-
   /** One card document written, by what moved it: `changed` is the set of card parts
    *  ([[ReadModelProjectionMetrics.CardPart]]) that differ from the card written before,
    *  empty for a card that had none. The single-part share per part says what actually
@@ -141,6 +133,32 @@ object ReadModelProjectionMetrics {
   object RetireReason { val VariantGone = "variant-gone"; val RowDeleted = "row-deleted"; val RowUnready = "row-unready" }
   /** Which pass healed a row: the scheduled prune sweep, or the check `start()` runs at boot. */
   object HealTrigger { val Sweep = "sweep"; val Boot = "boot" }
+  /** What asked for one projection — the `trigger` label on `readmodel_project_calls`.
+   *  `ReadModelProjectionTriggerUnaccounted` compares only the `stream` share against the three
+   *  change-stream cursors' events: every other trigger re-projects rows no event asked for, BY
+   *  DESIGN, and each one that was not told apart has fired that rule. The heals did on
+   *  2026-09-19; the derivation pass — the whole corpus in eight minutes, once per worker after
+   *  any snapshot regeneration — did on 2026-09-26 for DE, UK and PL after five such deploys
+   *  inside an hour. A new way to call `project` has to name itself here, so it cannot hide in the
+   *  stream's share. */
+  enum ProjectTrigger(val label: String) {
+    /** A change-stream event: `onMovieUpsert`, from any of the three cursors. */
+    case Stream      extends ProjectTrigger("stream")
+    /** The boot check or the prune sweep, for a row whose card or venue the read model lacks. */
+    case Heal        extends ProjectTrigger("heal")
+    /** The prune sweep's re-read of rows written after the movies cursor last delivered. */
+    case CatchUp     extends ProjectTrigger("catch-up")
+    /** The rolling content check's slice, once per prune sweep. */
+    case Content     extends ProjectTrigger("content")
+    /** The whole-corpus pass a change of `ReadModelProjection.DerivationVersion` owes. */
+    case Derivation  extends ProjectTrigger("derivation")
+    /** A rendered share card landing, re-projected so its card picks it up. */
+    case ShareCard   extends ProjectTrigger("share-card")
+    /** A first-publish hold ending: expired, or its card can never be made. */
+    case HoldRelease extends ProjectTrigger("hold-release")
+    /** `reconcile`, the one-shot whole-corpus seed/backfill. */
+    case Reproject   extends ProjectTrigger("reproject")
+  }
   /** `outcome` label values for the metadata-projection counter. */
   object MetadataOutcome { val Reused = "reused"; val Recomputed = "recomputed" }
   object VenueOutcome { val Rebuilt = "rebuilt"; val Reused = "reused" }
@@ -174,14 +192,13 @@ object ReadModelProjectionMetrics {
     def recordFilmPruned(reason: String, count: Int): Unit        = ()
     def recordCardRetired(reason: String): Unit                   = ()
     def recordDriftWrites(documents: Int): Unit                   = ()
-    def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit = ()
+    def recordProject(trigger: ReadModelProjectionMetrics.ProjectTrigger, wallSeconds: Double, cpuSeconds: Double): Unit = ()
     def recordWriteBurst(seconds: Double): Unit                       = ()
     def recordMetadataProjection(reused: Boolean): Unit           = ()
     def recordVenueProjection(rebuilt: Int, reused: Int): Unit     = ()
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = ()
     def recordCatchUp(rows: Int): Unit                              = ()
     def recordHeal(trigger: String, rows: Int): Unit                = ()
-    def recordHealCheck(trigger: String, rows: Int): Unit           = ()
     def recordCardWrite(changed: Set[String]): Unit                 = ()
   }
 }

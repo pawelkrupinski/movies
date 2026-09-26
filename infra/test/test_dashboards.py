@@ -287,16 +287,21 @@ class ApplicationDashboardCoverage(unittest.TestCase):
         self.assertTrue(any(needle in q for q in self.queries),
                         "no panel on apps/application-health.json queries %r" % needle)
 
-    def test_it_shows_every_projection_trigger_the_alert_subtracts(self):
-        # ReadModelProjectionTriggerUnaccounted compares projections against the three cursors
-        # LESS the heal passes' re-projections (2026-09-19: six PL rollouts, ~260 boot-check
-        # re-projections each, fired it for a trigger no panel drew). Panels 47 and 48 are where
-        # its description sends the reader, so both must draw the heal checks beside the calls.
+    def test_it_shows_every_projection_trigger_the_alert_leaves_out(self):
+        # ReadModelProjectionTriggerUnaccounted compares only the change stream's projections
+        # against the three cursors; every other trigger re-projects rows no event asked for (the
+        # heals fired it on 2026-09-19, the derivation pass on 2026-09-26, each before it had a line
+        # of its own). Panels 47 and 48 are where its description sends the reader, so both must draw the
+        # projections that are NOT the stream's beside the rest.
         panels = {p.get("id"): p for p in query_panels(self.document)}
-        for panel_id in (47, 48):
-            exprs = [t.get("expr") or "" for t in panels[panel_id].get("targets", [])]
-            self.assertTrue(any("kinowo_worker_readmodel_heal_checks_total" in e for e in exprs),
-                            "panel %d does not draw readmodel_heal_checks" % panel_id)
+        exprs = {panel_id: [t.get("expr") or "" for t in panels[panel_id].get("targets", [])]
+                 for panel_id in (47, 48)}
+        self.assertTrue(any("sum by (trigger) (rate(kinowo_worker_readmodel_project_calls_total" in e
+                            for e in exprs[47]),
+                        "panel 47 does not split readmodel_project_calls by trigger")
+        self.assertTrue(any("kinowo_worker_readmodel_project_calls_total" in e and 'trigger!="stream"' in e
+                            for e in exprs[48]),
+                        "panel 48 does not draw the projections no event asked for")
 
     def test_it_shows_the_database_host_resources(self):
         for metric in ("node_cpu_seconds_total", "node_memory_MemAvailable_bytes",

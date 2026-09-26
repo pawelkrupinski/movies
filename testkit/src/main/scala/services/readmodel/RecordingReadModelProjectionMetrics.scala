@@ -11,7 +11,9 @@ final class RecordingReadModelProjectionMetrics extends ReadModelProjectionMetri
   val writeBurstSeconds = scala.collection.mutable.Buffer.empty[Double]
   var metadataReused = 0
   var metadataRecomputed = 0
+  val projectTriggers = scala.collection.mutable.Buffer.empty[ReadModelProjectionMetrics.ProjectTrigger]
   def projectCalls: Int = projectDurations.size
+  def projectCalls(trigger: ReadModelProjectionMetrics.ProjectTrigger): Int = projectTriggers.count(_ == trigger)
   def recordWrite(target: String, op: String, count: Int): Unit = writes((target, op)) += count
   val pruneReasons = scala.collection.mutable.Buffer.empty[String]
   def recordFilmPruned(reason: String, count: Int): Unit        = { prunes += count; pruneReasons += reason }
@@ -19,7 +21,8 @@ final class RecordingReadModelProjectionMetrics extends ReadModelProjectionMetri
   def recordCardRetired(reason: String): Unit                   = retired += reason
   val driftWrites = scala.collection.mutable.Buffer.empty[Int]
   def recordDriftWrites(documents: Int): Unit                    = driftWrites += documents
-  def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit = {
+  def recordProject(trigger: ReadModelProjectionMetrics.ProjectTrigger, wallSeconds: Double, cpuSeconds: Double): Unit = {
+    projectTriggers   += trigger
     projectDurations  += wallSeconds
     projectCpuSeconds += cpuSeconds
   }
@@ -33,8 +36,6 @@ final class RecordingReadModelProjectionMetrics extends ReadModelProjectionMetri
   def recordCatchUp(rows: Int): Unit                             = caughtUp += rows
   val heals = scala.collection.mutable.Buffer.empty[(String, Int)]
   def recordHeal(trigger: String, rows: Int): Unit               = heals += (trigger -> rows)
-  val healChecks = scala.collection.mutable.Buffer.empty[(String, Int)]
-  def recordHealCheck(trigger: String, rows: Int): Unit          = healChecks += (trigger -> rows)
   val cardWrites = scala.collection.mutable.Buffer.empty[Set[String]]
   def recordCardWrite(changed: Set[String]): Unit                = cardWrites += changed
 }

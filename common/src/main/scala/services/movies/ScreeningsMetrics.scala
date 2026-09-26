@@ -15,7 +15,7 @@ package services.movies
  *
  *  - `recordChangeEvent(op)` — one screenings change-stream event, by operation. Added to
  *    the `movies` rate this is the projector's REAL input rate, and the denominator
- *    `readmodel_project_calls_total` should be read against. Projections outrunning the
+ *    `readmodel_project_calls_total{trigger="stream"}` should be read against. Projections outrunning the
  *    sum of both cursors would be the projector re-entering itself — a different bug, and
  *    one that was indistinguishable from this one while half the input was invisible.
  *  - `recordWrite(outcome, count)` — one attempted slot write, `written` or `unchanged`.

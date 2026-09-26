@@ -17,7 +17,7 @@ tests:
   # actually rendered it -- and it is also what a THIRD, unmetered trigger would look like.
   - interval: 1m
     input_series:
-      - series: 'kinowo_worker_readmodel_project_calls_total{country="de",job="kinowo-worker"}'
+      - series: 'kinowo_worker_readmodel_project_calls_total{country="de",job="kinowo-worker",trigger="stream"}'
         values: '0+120x180'
       - series: 'kinowo_worker_movie_change_events_total{country="de",job="kinowo-worker",op="update"}'
         values: '0+2.4x180'
@@ -39,7 +39,7 @@ tests:
               country: de
             exp_annotations:
               summary: "de is projecting 2.00/s more than its change streams can explain"
-              description: "`readmodel_project_calls_total`, less the heal passes' re-projections (`readmodel_heal_checks_total`), is running more than 3x the combined rate of the three cursors that are supposed to drive it, so something is projecting rows that no metered change-stream event asked for. Panel 47 on the application dashboard plots all four series together and panel 48 draws the sum. Check, in order: whether a FOURTH trigger has been added and not metered (that is what this rule exists to catch -- the `screenings` cursor itself was unmetered until 2026-09-05 and cost an evening); whether `ReadModelProjector.reconcile` is being called by something other than a backfill script (the scheduled sweep re-projects nothing and logs \"reprojected 0 doc(s)\", so its log line settles that in one grep); and whether a cursor is reopening in a loop, which replays its resume token and inflates projections without inflating the event counters proportionally."
+              description: "`readmodel_project_calls_total{trigger=\"stream\"}` -- the projections the change streams asked for -- is running more than 3x the combined rate of the three cursors' metered events, so something is projecting rows through the stream path that no metered event explains. Panel 47 on the application dashboard plots the events beside the projections split by trigger, and panel 48 draws the sums. Check, in order: whether a FOURTH cursor has been added and its events not metered (that is what this rule exists to catch -- the `screenings` cursor itself was unmetered until 2026-09-05 and cost an evening); whether something new calls `ReadModelProjector.onMovieUpsert` besides the change-stream watch; and whether a cursor is reopening in a loop, which replays its resume token and inflates projections without inflating the event counters proportionally."
 
   # THE SAME EVENING, ONCE THE SECOND CURSOR IS COUNTED. Identical projection rate, but the
   # screenings cursor now reports the ~2 events/s that were driving it. One event, one projection:
@@ -47,7 +47,7 @@ tests:
   # fire here -- this is the case that decides whether the rule is worth having.
   - interval: 1m
     input_series:
-      - series: 'kinowo_worker_readmodel_project_calls_total{country="de",job="kinowo-worker"}'
+      - series: 'kinowo_worker_readmodel_project_calls_total{country="de",job="kinowo-worker",trigger="stream"}'
         values: '0+120x180'
       - series: 'kinowo_worker_movie_change_events_total{country="de",job="kinowo-worker",op="update"}'
         values: '0+2.4x180'
@@ -66,7 +66,7 @@ tests:
   # it only ever looks upward.
   - interval: 1m
     input_series:
-      - series: 'kinowo_worker_readmodel_project_calls_total{country="us",job="kinowo-worker"}'
+      - series: 'kinowo_worker_readmodel_project_calls_total{country="us",job="kinowo-worker",trigger="stream"}'
         values: '0+4x180'
       - series: 'kinowo_worker_movie_change_events_total{country="us",job="kinowo-worker",op="update"}'
         values: '0+6x180'
@@ -85,7 +85,7 @@ tests:
   # every night for nothing.
   - interval: 1m
     input_series:
-      - series: 'kinowo_worker_readmodel_project_calls_total{country="pl",job="kinowo-worker"}'
+      - series: 'kinowo_worker_readmodel_project_calls_total{country="pl",job="kinowo-worker",trigger="stream"}'
         values: '0+3x180'
       - series: 'kinowo_worker_movie_change_events_total{country="pl",job="kinowo-worker",op="update"}'
         values: '0+0x180'
@@ -103,7 +103,7 @@ tests:
   # floor, so only the ratio keeps it quiet.
   - interval: 1m
     input_series:
-      - series: 'kinowo_worker_readmodel_project_calls_total{country="us",job="kinowo-worker"}'
+      - series: 'kinowo_worker_readmodel_project_calls_total{country="us",job="kinowo-worker",trigger="stream"}'
         values: '0+78x180'
       - series: 'kinowo_worker_movie_change_events_total{country="us",job="kinowo-worker",op="update"}'
         values: '0+6x180'
@@ -116,19 +116,17 @@ tests:
         alertname: ReadModelProjectionTriggerUnaccounted
         exp_alerts: []
 
-  # A DEPLOY STORM'S HEAL CHECKS ARE A METERED TRIGGER. 2026-09-19 11:13-12:05Z: the PL worker
+  # A DEPLOY STORM'S HEAL CHECKS ARE THEIR OWN TRIGGER. 2026-09-19 11:13-12:05Z: the PL worker
   # rolled six times, and every boot's heal check re-projected ~260 rows (spent slots the
   # slots-only scan reads as absent venues) before any cursor delivered — ~0.8/s over the 30m
   # window against ~0.1/s of change events, and this fired at 12:25Z. Those projections are
-  # counted by `readmodel_heal_checks`, so they are accounted for, not unmetered: nothing fires.
+  # counted under `trigger="heal"`, not the stream's share, so nothing fires.
   - interval: 1m
     input_series:
-      - series: 'kinowo_worker_readmodel_project_calls_total{country="pl",job="kinowo-worker"}'
-        values: '0+60x180'
-      - series: 'kinowo_worker_readmodel_heal_checks_total{country="pl",job="kinowo-worker",trigger="boot"}'
+      - series: 'kinowo_worker_readmodel_project_calls_total{country="pl",job="kinowo-worker",trigger="stream"}'
+        values: '0+12x180'
+      - series: 'kinowo_worker_readmodel_project_calls_total{country="pl",job="kinowo-worker",trigger="heal"}'
         values: '0+48x180'
-      - series: 'kinowo_worker_readmodel_heal_checks_total{country="pl",job="kinowo-worker",trigger="sweep"}'
-        values: '0+0x180'
       - series: 'kinowo_worker_movie_change_events_total{country="pl",job="kinowo-worker",op="update"}'
         values: '0+3x180'
       - series: 'kinowo_worker_screenings_change_events_total{country="pl",job="kinowo-worker",op="update"}'
@@ -140,13 +138,36 @@ tests:
         alertname: ReadModelProjectionTriggerUnaccounted
         exp_alerts: []
 
-  # …BUT ONLY THE HEAL CHECKS. The same country with the same heal checks and 1 more
-  # projection/s nothing accounts for still pages, for exactly that excess.
+  # THE DERIVATION PASS IS ITS OWN TRIGGER TOO. 2026-09-26: five deploys inside an hour
+  # (00:04-00:55Z), each carrying a new projection derivation version, and every worker re-projected its whole corpus once per deploy, a
+  # content slice per tick -- DE at ~2/s, UK ~1.6/s, PL ~0.8/s over their events -- and this
+  # fired for all three. Counted under `trigger="derivation"`, it is not the stream's doing.
   - interval: 1m
     input_series:
-      - series: 'kinowo_worker_readmodel_project_calls_total{country="pl",job="kinowo-worker"}'
-        values: '0+120x180'
-      - series: 'kinowo_worker_readmodel_heal_checks_total{country="pl",job="kinowo-worker",trigger="boot"}'
+      - series: 'kinowo_worker_readmodel_project_calls_total{country="de",job="kinowo-worker",trigger="stream"}'
+        values: '0+6x180'
+      - series: 'kinowo_worker_readmodel_project_calls_total{country="de",job="kinowo-worker",trigger="derivation"}'
+        values: '0+126x180'
+      - series: 'kinowo_worker_readmodel_project_calls_total{country="de",job="kinowo-worker",trigger="content"}'
+        values: '0+1x180'
+      - series: 'kinowo_worker_movie_change_events_total{country="de",job="kinowo-worker",op="update"}'
+        values: '0+3x180'
+      - series: 'kinowo_worker_screenings_change_events_total{country="de",job="kinowo-worker",op="update"}'
+        values: '0+3x180'
+      - series: 'kinowo_worker_movie_slots_change_events_total{country="de",job="kinowo-worker",op="update"}'
+        values: '0+0x180'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: ReadModelProjectionTriggerUnaccounted
+        exp_alerts: []
+
+  # …BUT ONLY THE NAMED TRIGGERS. The same heal checks beside 1 more STREAM projection/s than
+  # the cursors' events explain still pages, for exactly the stream's share.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_readmodel_project_calls_total{country="pl",job="kinowo-worker",trigger="stream"}'
+        values: '0+72x180'
+      - series: 'kinowo_worker_readmodel_project_calls_total{country="pl",job="kinowo-worker",trigger="heal"}'
         values: '0+48x180'
       - series: 'kinowo_worker_movie_change_events_total{country="pl",job="kinowo-worker",op="update"}'
         values: '0+3x180'
@@ -163,7 +184,7 @@ tests:
               country: pl
             exp_annotations:
               summary: "pl is projecting 1.20/s more than its change streams can explain"
-              description: "`readmodel_project_calls_total`, less the heal passes' re-projections (`readmodel_heal_checks_total`), is running more than 3x the combined rate of the three cursors that are supposed to drive it, so something is projecting rows that no metered change-stream event asked for. Panel 47 on the application dashboard plots all four series together and panel 48 draws the sum. Check, in order: whether a FOURTH trigger has been added and not metered (that is what this rule exists to catch -- the `screenings` cursor itself was unmetered until 2026-09-05 and cost an evening); whether `ReadModelProjector.reconcile` is being called by something other than a backfill script (the scheduled sweep re-projects nothing and logs \"reprojected 0 doc(s)\", so its log line settles that in one grep); and whether a cursor is reopening in a loop, which replays its resume token and inflates projections without inflating the event counters proportionally."
+              description: "`readmodel_project_calls_total{trigger=\"stream\"}` -- the projections the change streams asked for -- is running more than 3x the combined rate of the three cursors' metered events, so something is projecting rows through the stream path that no metered event explains. Panel 47 on the application dashboard plots the events beside the projections split by trigger, and panel 48 draws the sums. Check, in order: whether a FOURTH cursor has been added and its events not metered (that is what this rule exists to catch -- the `screenings` cursor itself was unmetered until 2026-09-05 and cost an evening); whether something new calls `ReadModelProjector.onMovieUpsert` besides the change-stream watch; and whether a cursor is reopening in a loop, which replays its resume token and inflates projections without inflating the event counters proportionally."
 
   # THE TRIPWIRE. With the projection counter gone the rule above is a comparison against nothing,
   # so it is silent -- and silence is what a well-behaved projector looks like too.

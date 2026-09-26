@@ -45,8 +45,9 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
   private def staleCards(rm: InMemoryReadModelRepository): Int = rm.findAllMovies().count(_.posterUrl.contains(OldPoster))
 
   private def booted(repository: InMemoryMovieRepository, rm: InMemoryReadModelRepository,
-                     marker: ReadModelDerivationMarker): ReadModelProjector = {
-    val projector = new ReadModelProjector(repository, rm, rm, derivationMarker = marker, clock = tools.SpecClock.Pinned)
+                     marker: ReadModelDerivationMarker,
+                     metrics: ReadModelProjectionMetrics = ReadModelProjectionMetrics.noop): ReadModelProjector = {
+    val projector = new ReadModelProjector(repository, rm, rm, metrics, derivationMarker = marker, clock = tools.SpecClock.Pinned)
     projector.start()   // seeds its memo from the store, as a restart does
     projector
   }
@@ -67,6 +68,24 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
 
     staleCards(rm) shouldBe 0
     marker.current shouldBe Some(ReadModelProjection.DerivationVersion)
+    projector.stop()
+  }
+
+  // The pass re-projects the whole corpus with no change-stream event behind any of it, so it must
+  // not land in the stream's share of readmodel_project_calls: on 2026-09-26 five deploys inside an hour, each
+  // carrying a new derivation version, ran it on every worker, and ReadModelProjectionTriggerUnaccounted
+  // fired for DE, UK and PL at 1-2 projections/s over their events.
+  "the derivation pass" should "meter its projections as its own trigger, never as the change stream's" in {
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
+    val rm         = derivedByOldCode(repository)
+    val metrics    = new RecordingReadModelProjectionMetrics()
+    val projector  = booted(repository, rm, new InMemoryReadModelDerivationMarker(Some("an-older-derivation")), metrics)
+
+    projector.pruneOrphans()
+    (1 to 48).foreach(_ => projector.advanceDerivationPass())
+
+    metrics.projectCalls(ReadModelProjectionMetrics.ProjectTrigger.Derivation) shouldBe Films.size
+    metrics.projectCalls(ReadModelProjectionMetrics.ProjectTrigger.Stream) shouldBe 0
     projector.stop()
   }
 
