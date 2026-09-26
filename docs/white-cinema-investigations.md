@@ -414,6 +414,34 @@ wiring wrapped every eligible non-chain venue in a "Filmweb" `SourceFallbackScra
 in every country. The Filmweb wrapper is now gated on `Country.filmwebEnabled`
 (Poland only), so non-PL single venues get the plain uptime recorder.
 
+### The other long-404ing venues (DE 30, US 3, ES 2) — 12 retired, the rest settled
+
+Every venue whose archive row had answered 404/410 since 2026-08-31 was checked for
+closure (own site, local press) and for a Filmstarts re-listing under a new id.
+
+- **Retired as closed** (`CountrySpec` guards each id/name): DE `A0908` Kino Deutsches
+  Haus, `A0680` Kino Idstein, `A2708` Kino im Badehaus Masserberg, `A1688` Lichtwerk
+  Schmallenberg, `A0613` Hof-Theater Sigmaringen, `A0119` Burgtheater Gummersbach,
+  `A0100` Kino Center Friedberg, `A0726` Kulturhaus Gotha, `A1547` Löwen-Lichtspiele
+  Kenzingen (re-add if the town's planned reopening happens); ES `E0778` Yelmo Vialia
+  Albacete, `E1013` Cine Mota del Cuervo; US Alamo Drafthouse Naples (the metro keeps
+  `/naples/` through a `MetroDisplayNames` pin).
+- **Duplicate**: `A1824` Kinomobil Besigheim — Filmstarts re-listed it as `A0793`,
+  already rostered.
+- **Operating, dropped by Filmstarts — `needs-human` only if a source is wanted**:
+  Heimgarten Oberammergau, Holi Öhringen, Kinett Kusel, Filmpalast Lingen (`G02Q9`
+  redirects to a dead `A0390`), KUKI Schlüchtern, Instituto Cervantes Hamburg + Berlin,
+  Luxor Schwetzingen, Kino-Center Rendsburg, Loßburg, Wathlingen, Maxhütte-Haidhof,
+  Lichtwerk Schwandorf, AJZ Chemnitz, Kurtheater Bad Sooden-Allendorf. Eight of these
+  have a kinoprogramm.com page and are served by the German fallback once their
+  Filmstarts scrape has failed three separate runs; the rest have no source.
+- **Operating, dropped by flicks.us**: ACME Screening Room Lambertville, Acme Theatre
+  Riverton — both still screening on their own sites.
+- **Unclear, left rostered**: LOTTO Hamburg Autokino, Kulturkirche St. Stephani,
+  Lu-Li Sommernachtskino, Kino am Seffersbach, Kino in den Felsengängen (seasonal).
+
+Do not re-diagnose these; re-check only the unclear ones next season.
+
 ## 2026-09-19
 
 **Eighth all-five-country sweep.** Newest bucket ~2026-09-19 08:00 UTC. Same
