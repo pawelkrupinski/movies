@@ -151,17 +151,20 @@ object IdentityCalibrate {
     val members = groups.view.mapValues(_.map(i => obs(i).venue -> obs(i).listing)).toMap
 
     val backing = new IdentityMeasures.VenueBacking(members)
+    // The houses the banners bill, learned from the pools as the resolver learns them from its candidates.
+    val houses = IdentityMeasures.Houses.learn(obs.indices.flatMap(i =>
+      IdentityMeasures.Houses.evidence(obs(i).listing, pools(i).toSeq.sortBy(_._1).map(_._2._2))))
 
     val lf = Seq.newBuilder[LfPair]
     obs.indices.foreach { i =>
       val o = obs(i); val pool = pools(i); val g = IdentityMeasures.key(o.listing.title)
-      val closeTitles = pool.map { case (id, (_, f)) => id -> IdentityMeasures.titleRelation(o.listing, f).value }
+      val closeTitles = pool.map { case (id, (_, f)) => id -> IdentityMeasures.titleRelation(o.listing, f, houses).value }
       val close = closeTitles.count { case (_, r) => IdentityMeasures.Rivalling(r) }
       pool.foreach { case (id, (rank, f)) =>
         val own = closeTitles(id)
         val rivals = close - (if (IdentityMeasures.Rivalling(own)) 1 else 0)
         val venues = backing.corroborating(g, f, o.venue)
-        lf += LfPair(o.idx, id, IdentityMeasures.listingFilm(o.listing, f, rank, rivals, venues))
+        lf += LfPair(o.idx, id, IdentityMeasures.listingFilm(o.listing, f, rank, rivals, venues, houses))
       }
     }
     val lfPairs = lf.result()

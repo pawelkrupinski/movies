@@ -239,6 +239,67 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.violations shouldBe 0
   }
 
+  it should "take its own house's record of the work once the database returns it" in {
+    // TMDB does file RBO's 2026/27 Manon; a search for the work and its season returns both houses'.
+    val films = Seq(F(1702782, "Royal Ballet & Opera 2026/27: Swan Lake", 2027, "", 0, 3),
+      F(1702778, "Royal Ballet & Opera 2026/27: Alice's Adventures in Wonderland", 2027, "", 0, 3),
+      F(1702757, "Royal Ballet & Opera 2026/27: Manon", 2026, "", 0, 1),
+      F(1703631, "The Metropolitan Opera 2026/27: Manon", 2027, "", 0, 5))
+    def rbo(work: String) = Seq(Helios, KinoApollo).map(listing(_, s"RBO Cinema Season 2026-27: $work"))
+    val rboManon = rbo("Manon")
+    val r = resolve(rbo("Swan Lake") ++ rbo("Alice's Adventures in Wonderland") ++ rboManon, films)
+    rboManon.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(1702757)))
+    r.violations shouldBe 0
+  }
+
+  "A house spelled unlike its records" should "take the house's record of the work, as its banner's other works do" in {
+    // US and UK venues bill the National Theatre's broadcasts "NT Live: …"; TMDB files them as
+    // "National Theatre Live: …". Which house "NT Live" is, is what its works' records say — the
+    // same house bills every one of them — never a list of houses or of abbreviations.
+    val films = Seq(F(1352026, "National Theatre Live: The Importance of Being Earnest", 2025, "", 0, 2),
+      F(1401957, "National Theatre Live: Dr. Strangelove", 2025, "", 0, 2),
+      F(1598661, "National Theatre Live: The Playboy of the Western World", 2025, "", 170, 2),
+      F(36019, "The Playboy of the Western World", 1962, "Brian Desmond Hurst", 100, 5))
+    def nt(work: String, runtime: Option[Int] = None) = Seq(Helios, KinoApollo).map(listing(_, s"NT Live: $work", runtime = runtime))
+    val (earnest, strangelove, playboy) = (nt("The Importance of Being Earnest"), nt("Dr. Strangelove"),
+      nt("The Playboy of the Western World", Some(172)))
+    val hurst = listing(Rialto, "The Playboy of the Western World", Some(1962), Some("Brian Desmond Hurst"))
+    val r = resolve(earnest ++ strangelove ++ playboy :+ hurst, films)
+    val shown = (earnest ++ strangelove ++ playboy).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")
+    withClue(shown) {
+      earnest.map(l => r.decisionOf(l.key).film) shouldBe Seq.fill(2)(Some(1352026))
+      strangelove.map(l => r.decisionOf(l.key).film) shouldBe Seq.fill(2)(Some(1401957))
+      playboy.map(l => r.decisionOf(l.key).film) shouldBe Seq.fill(2)(Some(1598661))
+    }
+    r.decisionOf(hurst.key).film shouldBe Some(36019)
+    r.violations shouldBe 0
+  }
+
+  it should "not take a house's record for a banner only one of whose works that house bills" in {
+    // A programme banner is not a house because one of its films has a house's record: "Throwback"
+    // shows Hurst's Playboy, and the National Theatre's record of the play is another film.
+    val films = Seq(F(1598661, "National Theatre Live: The Playboy of the Western World", 2025, "", 170, 2),
+      F(36019, "The Playboy of the Western World", 1962, "Brian Desmond Hurst", 100, 5))
+    val throwback = Seq(Helios, KinoApollo).map(listing(_, "Throwback: The Playboy of the Western World"))
+    val r = resolve(throwback, films)
+    throwback.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film should not be Some(1598661)))
+  }
+
+  "A banner spelling its house" should "be that house, though another house's records bill more of its works" in {
+    // PL: "Carmen | metropolitan opera: live in hd 2026/27". TMDB files no Met Carmen this season,
+    // only RBO's, and both houses' Così: by co-occurrence the banner would be RBO's. Its own words
+    // name the Metropolitan Opera — the house whose banner shares words no rival's does.
+    val films = Seq(F(1703620, "The Metropolitan Opera 2026/27: Così fan tutte", 2026, "", 0, 5),
+      F(1702775, "Royal Ballet & Opera 2026/27: Così fan tutte", 2026, "", 0, 3),
+      F(1702759, "Royal Ballet & Opera 2026/27: Carmen", 2026, "", 0, 3))
+    val cosi   = listing(Multikino, "Cosi fan tutte | metropolitan opera: live in hd 2026/27")
+    val carmen = listing(Multikino, "Carmen | metropolitan opera: live in hd 2026/27")
+    val r = resolve(Seq(cosi, carmen), films)
+    withClue(r.decisionOf(cosi.key).render)(r.decisionOf(cosi.key).film shouldBe Some(1703620))
+    withClue(r.decisionOf(carmen.key).render)(r.decisionOf(carmen.key).film should not be Some(1702759))
+    r.violations shouldBe 0
+  }
+
   "Three films under one title" should "stay three, and a bare listing joins neither of the dated ones by title alone" in {
     val films = Seq(F(1954, "A Star Is Born", 1954, "George Cukor", 176), F(1976, "A Star Is Born", 1976, "Frank Pierson", 139),
       F(2018, "A Star Is Born", 2018, "Bradley Cooper", 136, 60))

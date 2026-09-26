@@ -160,24 +160,19 @@ object IdentityResolver {
         case (name, w) if !Priors(name) && !(IdentityMeasures.AgreesOnly(name) && w < 0) => w }.sum
       calibration.scopes(ListingFilm).calibration(calibration.scopes(ListingFilm).prior + veto)
     }
-    /** Each listing banner's house, from every node's season-production candidates
-     *  (`IdentityMeasures.housesOf`); a season production must be of it when it is known. */
-    val houseOf: Map[String, String] = IdentityMeasures.housesOf(nodes.flatMap { n =>
-      val l = n.evidence.measured
-      IdentityMeasures.listingBanner(l).toSeq.flatMap(lb => (ownSearch(n.id).keys ++ ownWalk(n.id)).toSeq.distinct.flatMap { id =>
-        val f = candidateById(id).film
-        Option.when(IdentityMeasures.namesSeasonProduction(l, f))((IdentityMeasures.filmBanner(f), IdentityMeasures.seasonWork(l, f)))
-          .collect { case (Some(fb), Some(w)) => (lb, fb, w) }
-      })
+    /** Which house each listing banner is, learned from how every node's candidates bill its works
+     *  (`IdentityMeasures.Houses`): the title relation reads a record of the listing's house as
+     *  naming it, and a season production must be of it when it is known. */
+    val houses: IdentityMeasures.Houses = IdentityMeasures.Houses.learn(nodes.flatMap { n =>
+      IdentityMeasures.Houses.evidence(n.evidence.measured, (ownSearch(n.id).keys ++ ownWalk(n.id)).toSeq.distinct.sorted.map(candidateById(_).film))
     })
     def namesItsSeasonProduction(l: IdentityMeasures.Listing, f: IdentityMeasures.Film): Boolean =
-      IdentityMeasures.namesSeasonProduction(l, f) &&
-        IdentityMeasures.listingBanner(l).flatMap(houseOf.get).forall(house => IdentityMeasures.filmBanner(f).contains(house))
+      IdentityMeasures.namesSeasonProduction(l, f) && !IdentityMeasures.billing(l, f).exists(houses.other)
 
     /** Does the listing's own evidence rule the film out: a learned cannot-link, its facts'
      *  probability below the certified cut (both on [[vetoingMeasures]]), a season its title names
      *  that the film is not of, or its season's production of its work by ANOTHER house than its
-     *  banner's (`houseOf`). */
+     *  banner's (`houses`). */
     def evidenceDenies(l: IdentityMeasures.Listing, f: IdentityMeasures.Film, measures: Map[String, Measure]): Boolean = {
       val vetoing = vetoingMeasures(l, measures)
       ListingConstraints.seasonsApart(l.seasonYear, IdentityMeasures.filmSeason(f), f.year).isDefined ||
@@ -208,14 +203,14 @@ object IdentityResolver {
        *  evidence rules out (`ListingConstraints.learnedListingFilm`), which are never eligible. */
       def score(l: IdentityMeasures.Listing, venue: String, ranks: Map[Int, Int], walked: Set[Int],
                 deniedByPins: Int => Boolean): Seq[Scored] = {
-        val relation  = pool.map(c => c.tmdbId -> IdentityMeasures.titleRelation(l, c.film).value).toMap
+        val relation  = pool.map(c => c.tmdbId -> IdentityMeasures.titleRelation(l, c.film, houses).value).toMap
         val reachable = pool.filter(c => ranks.contains(c.tmdbId) || walked(c.tmdbId) || IdentityMeasures.NamingRelations(relation(c.tmdbId)))
         val close     = reachable.count(c => IdentityMeasures.Rivalling(relation(c.tmdbId)))
         val group     = IdentityMeasures.key(l.title)
         reachable.map { c =>
           val rivals   = close - (if (IdentityMeasures.Rivalling(relation(c.tmdbId))) 1 else 0)
           val measures = IdentityMeasures.listingFilm(l, c.film, ranks.get(c.tmdbId), rivals,
-            backing.corroborating(group, c.film, venue))
+            backing.corroborating(group, c.film, venue), houses)
           val p = calibration.probability(ListingFilm, measures)
           Scored(c, p, measures, deniedByPins(c.tmdbId) || evidenceDenies(l, c.film, measures), l, ranks.get(c.tmdbId),
             namesItsSeasonProduction(l, c.film))
@@ -415,7 +410,7 @@ object IdentityResolver {
       scopeOf(n).of(n).find(_.c.tmdbId == film).fold(pins.deniedFilms(n.listings.head.key)(film) || {
         // A film this node has no evidence path to: its own evidence against the film's record.
         candidateById.get(film).exists { c =>
-          evidenceDenies(n.evidence.measured, c.film, IdentityMeasures.listingFilm(n.evidence.measured, c.film, None, 0, 0))
+          evidenceDenies(n.evidence.measured, c.film, IdentityMeasures.listingFilm(n.evidence.measured, c.film, None, 0, 0, houses))
         }
       })(_.denied)
 
