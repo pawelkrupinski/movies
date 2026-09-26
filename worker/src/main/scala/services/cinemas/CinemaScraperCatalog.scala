@@ -252,6 +252,14 @@ class CinemaScraperCatalog(
     // every ticket for the cinema and for the CKiS concert hall's film nights.
     KinoPolonez                 -> "https://biletyna.pl/Skierniewice/Kinoteatr-Polonez",
     KinoCKiSSkierniewice        -> "https://biletyna.pl/Skierniewice/Centrum-Kultury-i-Sztuki-Sala-koncertowa",
+    // Filmweb had fallen out of step with the box office for these six by
+    // 2026-09-26 (one or two stray slots against a full biletyna week).
+    KinoGiewont                 -> "https://biletyna.pl/Zakopane/Kino-Giewont",
+    KinoKulturaWolomin          -> "https://biletyna.pl/Wolomin/Kino-Kultura",
+    KinoCentrumWadowice         -> "https://biletyna.pl/Wadowice/Wadowickie-Centrum-Kultury",
+    KinoLen                     -> "https://biletyna.pl/Zyrardow/Kino-Len",
+    KinoApolloDzialdowo         -> "https://biletyna.pl/Dzialdowo/Miejski-Dom-Kultury",
+    KinoZaRogiemChmielno        -> "https://biletyna.pl/Chmielno/Kino-za-Rogiem-w-Chmielnie",
     KinoKameralne               -> "https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe",
     KinoTur                     -> "https://biletyna.pl/Turek/Kino-Tur",
     KinoMok                     -> "https://biletyna.pl/Zagorow/Gminny-Osrodek-Kultury",
@@ -687,7 +695,7 @@ class CinemaScraperCatalog(
   private val skierniewiceScrapers = Seq(
     biletyna(KinoPolonez),   // Skierniewice
     biletyna(KinoCKiSSkierniewice),   // Skierniewice
-    filmweb(1812, KinoLen),   // Żyrardów
+    biletyna(KinoLen),   // Żyrardów
     filmweb(2332, KinoRomaRawa),   // Rawa Mazowiecka
     filmweb(1519, KinoFenix),   // Łowicz
   )
@@ -700,7 +708,7 @@ class CinemaScraperCatalog(
     filmweb(1921, KinoKosmosMlawa),   // Mława
     bilety24("https://www.bilety24.pl/kino/organizator/miejski-dom-kultury-im-stanislawa-ostoi-kotkowskiego-w-przasnyszu-1482", KinoSwiatowidPrzasnysz),   // Przasnysz
     bilety24("https://www.bilety24.pl/kino/organizator/miejski-dom-kultury-w-makowie-mazowieckim-1485", KinoMDKMakow),   // Maków Mazowiecki
-    filmweb(2353, KinoApolloDzialdowo),   // Działdowo
+    biletyna(KinoApolloDzialdowo),   // Działdowo
   )
   private val wielunScrapers = Seq(
     filmweb(2034, KinoSyrena),   // Wieluń
@@ -728,7 +736,7 @@ class CinemaScraperCatalog(
   )
   private val zakopaneScrapers = Seq(
     filmweb(1273, KinoSokolZakopane),   // Zakopane
-    filmweb(1280, KinoGiewont),   // Zakopane
+    biletyna(KinoGiewont),   // Zakopane
     filmweb(2336, KinoMiejsce),   // Zakopane
     bilety24("https://www.bilety24.pl/kino/organizator/centrum-kultury-sportu-i-promocji-w-rabce-zdroju-625", KinoSniezkaRabka),   // Rabka-Zdrój
     msi(KinoStopiak),   // Nowy Targ — own site links bilety.stopiakcinema.pl, a standard MSI portal
@@ -2106,7 +2114,7 @@ class CinemaScraperCatalog(
     ),
     "bielsko-biala" -> Seq(
       biletyna(KinoPromyk),   // Bystra
-      filmweb(486, KinoCentrumWadowice),   // Wadowice
+      biletyna(KinoCentrumWadowice),   // Wadowice
       cinemaCity("1098", CinemaCityCieszyn),   // Cieszyn
       filmweb(2412, KinoCKiF),   // Sucha Beskidzka
     ),
@@ -2122,7 +2130,7 @@ class CinemaScraperCatalog(
       filmweb(1683, KinoGrojeckiOsrodekKultury),   // Grójec
       filmweb(1860, KinoUciecha),   // Góra Kalwaria
       helios(HeliosNuxt.Wolomin),   // Wołomin
-      filmweb(2420, KinoKulturaWolomin),   // Wołomin
+      biletyna(KinoKulturaWolomin),   // Wołomin
       filmweb(2079, KinoTeatrKurtyna),   // Sulejówek
       multikino("0039", MultikinoPruszkow),   // Pruszków
       filmweb(3137, KinoCKiSPruszkow),   // Pruszków
@@ -2181,7 +2189,7 @@ class CinemaScraperCatalog(
       biletyna(TeatrAtelier),   // Sopot
       biletyna(KinoCKGniewino),   // Gniewino
       filmweb(1835, KinoWCK),   // Wejherowo
-      filmweb(3122, KinoZaRogiemChmielno),   // Chmielno
+      biletyna(KinoZaRogiemChmielno),   // Chmielno
       bilety24("https://www.bilety24.pl/kino/organizator/kino-zeglarz-1224", KinoZeglarz),   // Jastarnia
       bilety24("https://www.bilety24.pl/kino/organizator/kartuskie-centrum-kultury-w-kartuzach-1364", KinoKCK),   // Kartuzy
       bilety24("https://www.bilety24.pl/kino/organizator/centrum-kultury-i-sportu-w-pruszczu-gdanskim-1569", KinoCKiSPruszczGdanski),   // Pruszcz Gdański

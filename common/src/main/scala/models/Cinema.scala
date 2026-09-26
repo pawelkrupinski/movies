@@ -556,7 +556,7 @@ case object KinoSDK extends Cinema("Kino SDK", "SDK")   // Sanok — bilety.sdks
 case object KinoMOKPolice extends Cinema("Kino MOK Police", "MOK Police")   // Police — filmweb 307
 case object KinoEva extends Cinema("Kino Eva", "Eva")   // Międzyzdroje — filmweb 1662
 // bielsko-biala
-case object KinoCentrumWadowice extends Cinema("Kino Centrum Wadowice", "Centrum Wadowice")   // Wadowice — filmweb 486
+case object KinoCentrumWadowice extends Cinema("Kino Centrum Wadowice", "Centrum Wadowice")   // Wadowice — biletyna Wadowickie-Centrum-Kultury
 case object CinemaCityCieszyn extends Cinema("Cinema City Cieszyn", "Cieszyn")   // Cieszyn — Cinema City API
 case object KinoCKiF extends Cinema("Kino CKiF", "CKiF")   // Sucha Beskidzka — filmweb 2412
 // warszawa
@@ -565,7 +565,7 @@ case object KinoCentrumKulturyBlonie extends Cinema("Kino Centrum Kultury Błoni
 case object KinoGrojeckiOsrodekKultury extends Cinema("Grójecki Ośrodek Kultury", "Grójec")   // Grójec — filmweb 1683
 case object KinoUciecha extends Cinema("Kino Uciecha", "Uciecha")   // Góra Kalwaria — filmweb 1860
 case object HeliosWolomin extends Cinema("Helios Wołomin", "Helios Wołomin")   // Wołomin — Helios REST
-case object KinoKulturaWolomin extends Cinema("Kino Kultura Wołomin", "Kultura Wołomin")   // Wołomin — filmweb 2420
+case object KinoKulturaWolomin extends Cinema("Kino Kultura Wołomin", "Kultura Wołomin")   // Wołomin — biletyna Kino-Kultura
 case object KinoTeatrKurtyna extends Cinema("Kino-Teatr Kurtyna", "Kurtyna")   // Sulejówek — filmweb 2079
 case object MultikinoPruszkow extends Cinema("Multikino Pruszków", "Multikino Pruszków")   // Pruszków — Multikino API
 case object KinoCKiSPruszkow extends Cinema("Kino CKiS Pruszków", "CKiS Pruszków")   // Pruszków — filmweb 3137
@@ -608,7 +608,7 @@ case object KinoZdrojBusko extends Cinema("Kino Zdrój Busko", "Zdrój")   // Bu
 case object KinoMuzaWloszczowa extends Cinema("Kino Muza Włoszczowa", "Muza Włoszczowa")   // Włoszczowa — filmweb 1482
 // trojmiasto
 case object KinoWCK extends Cinema("Wejherowskie Centrum Kultury", "WCK Wejherowo")   // Wejherowo — filmweb 1835
-case object KinoZaRogiemChmielno extends Cinema("Kino za Rogiem Chmielno", "Chmielno")   // Chmielno — filmweb 3122
+case object KinoZaRogiemChmielno extends Cinema("Kino za Rogiem Chmielno", "Chmielno")   // Chmielno — biletyna Kino-za-Rogiem-w-Chmielnie
 case object KinoZeglarz extends Cinema("Kino Żeglarz", "Żeglarz")   // Jastarnia — bilety24
 case object KinoKCK extends Cinema("Kino Kartuskie Centrum Kultury", "KCK Kartuzy")   // Kartuzy — bilety24
 case object KinoCKiSPruszczGdanski extends Cinema("Kino CKiS Pruszcz Gdański", "Pruszcz Gdański")   // Pruszcz Gdański — bilety24
@@ -703,7 +703,7 @@ case object KinoRenesans extends Cinema("Kino Renesans", "Renesans")   // Ryki �
 // skierniewice
 case object KinoPolonez extends Cinema("Kino Polonez", "Polonez")   // Skierniewice — biletyna Kinoteatr-Polonez
 case object KinoCKiSSkierniewice extends Cinema("Kino CKiS Skierniewice", "CKiS")   // Skierniewice — biletyna CKiS Sala koncertowa
-case object KinoLen extends Cinema("Kino Len", "Len")   // Żyrardów — filmweb 1812
+case object KinoLen extends Cinema("Kino Len", "Len")   // Żyrardów — biletyna Kino-Len
 case object KinoRomaRawa extends Cinema("Kino Roma Rawa Mazowiecka", "Roma")   // Rawa Mazowiecka — filmweb 2332
 case object KinoFenix extends Cinema("Kino Fenix", "Fenix")   // Łowicz — filmweb 1519
 // starogard-gdanski
@@ -714,7 +714,7 @@ case object KinoLydynia extends Cinema("Kino Łydynia", "Łydynia")   // Ciechan
 case object KinoKosmosMlawa extends Cinema("Kino Kosmos Mława", "Kosmos")   // Mława — filmweb 1921
 case object KinoSwiatowidPrzasnysz extends Cinema("Kino Światowid Przasnysz", "Światowid")   // Przasnysz — bilety24
 case object KinoMDKMakow extends Cinema("Kino MDK Maków Mazowiecki", "MDK Maków")   // Maków Mazowiecki — bilety24
-case object KinoApolloDzialdowo extends Cinema("Kino Apollo Działdowo", "Apollo")   // Działdowo — filmweb 2353
+case object KinoApolloDzialdowo extends Cinema("Kino Apollo Działdowo", "Apollo")   // Działdowo — biletyna Miejski-Dom-Kultury
 // wielun
 case object KinoSyrena extends Cinema("Kino-Teatr Syrena", "Syrena")   // Wieluń — filmweb 2034
 case object KinoTeatrSieradz extends Cinema("Kino Teatr Sieradz", "Sieradz")   // Sieradz — filmweb 2333
@@ -736,7 +736,7 @@ case object KinoGwiazdaKetrzyn extends Cinema("Kino Gwiazda Kętrzyn", "Gwiazda"
 case object KinoZodiak extends Cinema("Kino Zodiak", "Zodiak")   // Mrągowo — filmweb 1701
 // zakopane
 case object KinoSokolZakopane extends Cinema("Kino Sokół Zakopane", "Sokół")   // Zakopane — filmweb 1273
-case object KinoGiewont extends Cinema("Kino Giewont", "Giewont")   // Zakopane — filmweb 1280
+case object KinoGiewont extends Cinema("Kino Giewont", "Giewont")   // Zakopane — biletyna Kino-Giewont
 case object KinoMiejsce extends Cinema("Kino Miejsce", "Miejsce")   // Zakopane — filmweb 2336
 case object KinoSniezkaRabka extends Cinema("Kino Śnieżka Rabka", "Śnieżka")   // Rabka-Zdrój — bilety24
 // wyszkow

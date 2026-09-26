@@ -1,14 +1,14 @@
 package clients
 
 import clients.tools.FakeHttpFetch
-import models.{City, Country, AdaKinoStudyjne, KinoCKiSSkierniewice, KinoPolonez, KinoZacheta, KinoKoneckieCentrumKultury, KinoBaszta, KinoNadWarta, KinoEcho, KinoMewaBudzyn, UsRoster, HeliosSiedlce, KinoGiewont, KinoMuranow, KinoWCKWalcz, MultikinoPruszkow, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
+import models.{City, Country, AdaKinoStudyjne, KinoKulturaWolomin, KinoCentrumWadowice, KinoLen, KinoApolloDzialdowo, KinoZaRogiemChmielno, KinoCKiSSkierniewice, KinoPolonez, KinoZacheta, KinoKoneckieCentrumKultury, KinoBaszta, KinoNadWarta, KinoEcho, KinoMewaBudzyn, UsRoster, HeliosSiedlce, KinoGiewont, KinoMuranow, KinoWCKWalcz, MultikinoPruszkow, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{ChainFlicksFallback, CinemaScraperCatalog}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.cinemas.common.{CinemaScraper, FlicksClient, FlicksMarket, GatsbyBoxOfficeClient, MultiListingScraper}
-import services.cinemas.pl.{Bilety24OrganizerClient, FilmwebShowtimesClient, HeliosClient, MultikinoClient}
+import services.cinemas.pl.{BiletynaClient, Bilety24OrganizerClient, FilmwebShowtimesClient, HeliosClient, MultikinoClient}
 import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
 import services.cinemas.uk.CineworldClient
 import services.cinemas.us.{AmcClient, RegalClient}
@@ -110,6 +110,33 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     slot.bookingUrl.value shouldBe "https://biletyna.pl/film/Krajobraz-po-bitwie-1970?eid=694150#opis"
     movies.size should be <= 9   // the page's 9 ScreeningEvents; its 19 concerts/plays stay out
   }
+
+  // Six biletyna-ticketed venues whose Filmweb listing had fallen out of step
+  // with the box office: green on one or two stray slots while biletyna sold
+  // their real week (the `thin` uptime flag found them, 2026-09-26). Each now
+  // reads its own biletyna place page. Street addresses were matched against
+  // Filmweb's /info for each. Fixtures captured live 2026-09-26.
+  private val desyncedFilmwebVenues = Seq(
+    (KinoGiewont, "resident evil", java.time.LocalDateTime.of(2026, 9, 29, 19, 50),
+      "https://biletyna.pl/film/Resident-Evil?eid=704440#opis"),
+    (KinoKulturaWolomin, "folwark zwierzęcy", java.time.LocalDateTime.of(2026, 9, 29, 15, 0),
+      "https://biletyna.pl/film/Folwark-zwierzecy?eid=704317#opis"),
+    (KinoCentrumWadowice, "lalka", java.time.LocalDateTime.of(2026, 10, 4, 19, 0),
+      "https://biletyna.pl/film/Lalka-2026?eid=695958#opis"),
+    (KinoLen, "lalka", java.time.LocalDateTime.of(2026, 10, 6, 17, 0),
+      "https://biletyna.pl/film/Lalka-2026?eid=699411#opis"),
+    (KinoApolloDzialdowo, "tedi i magiczna lampa", java.time.LocalDateTime.of(2026, 10, 1, 16, 0),
+      "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=702412#opis"),
+    (KinoZaRogiemChmielno, "wojna z dziadkiem", java.time.LocalDateTime.of(2026, 9, 30, 13, 0),
+      "https://biletyna.pl/film/Wojna-z-dziadkiem?eid=699434#opis"),
+  )
+  for ((cinema, title, when, booking) <- desyncedFilmwebVenues)
+    it should s"route ${cinema.displayName} through its biletyna place page, not Filmweb" in {
+      val movies = catalog(biletyna = "biletyna-filmweb-desynced").all.find(_.cinema == cinema).value.fetch()
+      movies.map(_.cinema).toSet shouldBe Set(cinema)
+      val film = movies.find(_.movie.title.toLowerCase.contains(title)).value
+      film.showtimes.find(_.dateTime == when).value.bookingUrl.value shouldBe booking
+    }
 
   // Kino Fenomen (WDK) is iframe639.biletyna.pl — a biletyna host whose per-film
   // /artist/view/id detail pages 403 our Fly IP behind Cloudflare, so its deferred
@@ -556,7 +583,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     c.byCity("pruszkow").find(_.cinema == MultikinoPruszkow).value shouldBe a [MultikinoClient]
     c.byCity(pageOf(HeliosSiedlce)).find(_.cinema == HeliosSiedlce).value shouldBe a [HeliosClient]
     c.byCity(pageOf(KinoWCKWalcz)).find(_.cinema == KinoWCKWalcz).value shouldBe a [Bilety24OrganizerClient]
-    c.byCity(pageOf(KinoGiewont)).find(_.cinema == KinoGiewont).value shouldBe a [FilmwebShowtimesClient]
+    c.byCity(pageOf(KinoGiewont)).find(_.cinema == KinoGiewont).value shouldBe a [BiletynaClient]
   }
 
   // `MonitoringHttpFetch` suppresses these hosts so cinema scrapes don't

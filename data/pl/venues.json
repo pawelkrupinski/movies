@@ -2027,7 +2027,7 @@
   "cinemaObject": "KinoZaRogiemChmielno",
   "displayName": "Kino za Rogiem Chmielno",
   "town": "Chmielno",
-  "annotation": "Chmielno — filmweb 3122"
+  "annotation": "Chmielno — biletyna Kino-za-Rogiem-w-Chmielnie"
  },
  {
   "citySlug": "koscierzyna",
@@ -2356,7 +2356,7 @@
   "cinemaObject": "KinoApolloDzialdowo",
   "displayName": "Kino Apollo Działdowo",
   "town": "Działdowo",
-  "annotation": "Działdowo — filmweb 2353"
+  "annotation": "Działdowo — biletyna Miejski-Dom-Kultury"
  },
  {
   "citySlug": "mlawa",
@@ -3308,7 +3308,7 @@
   "cinemaObject": "KinoCentrumWadowice",
   "displayName": "Kino Centrum Wadowice",
   "town": "Wadowice",
-  "annotation": "Wadowice — filmweb 486"
+  "annotation": "Wadowice — biletyna Wadowickie-Centrum-Kultury"
  },
  {
   "citySlug": "wadowice",
@@ -3427,7 +3427,7 @@
   "cinemaObject": "KinoKulturaWolomin",
   "displayName": "Kino Kultura Wołomin",
   "town": "Wołomin",
-  "annotation": "Wołomin — filmweb 2420"
+  "annotation": "Wołomin — biletyna Kino-Kultura"
  },
  {
   "citySlug": "wolomin",
@@ -3469,7 +3469,7 @@
   "cinemaObject": "KinoGiewont",
   "displayName": "Kino Giewont",
   "town": "Zakopane",
-  "annotation": "Zakopane — filmweb 1280"
+  "annotation": "Zakopane — biletyna Kino-Giewont"
  },
  {
   "citySlug": "zakopane",
@@ -3644,7 +3644,7 @@
   "cinemaObject": "KinoLen",
   "displayName": "Kino Len",
   "town": "Żyrardów",
-  "annotation": "Żyrardów — filmweb 1812"
+  "annotation": "Żyrardów — biletyna Kino-Len"
  },
  {
   "citySlug": "zyrardow",
