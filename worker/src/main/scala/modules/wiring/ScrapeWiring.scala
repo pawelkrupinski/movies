@@ -95,9 +95,8 @@ trait ScrapeWiring { self: WorkerWiring =>
   // per Filmweb-listed city), guarded so a network/resolver failure yields no
   // fallback rather than a boot failure; cinemas Filmweb doesn't list simply have
   // no fallback available. Test wirings pin this empty so fixture replay never
-  // resolves or fetches Filmweb live (see TestWiring). Also empty for a country
-  // whose Filmweb path is off — an empty id map makes every SourceFallbackScraper
-  // short-circuit to the primary's real outcome (identical to no fallback).
+  // resolves or fetches Filmweb live (see TestWiring). A country whose Filmweb path
+  // is off gets no Filmweb wrapper at all (`recordingScraper`), not merely an empty map.
   protected lazy val filmwebFallbackIds: Map[Cinema, Int] =
     if (!filmwebEnabled) Map.empty
     else scala.util.Try(new FilmwebCinemaIdResolver(httoFetch).resolveAll())
@@ -183,8 +182,10 @@ trait ScrapeWiring { self: WorkerWiring =>
   /** Wrap a scrape source with the outcome recorder + its fallback source:
    *   - a chain venue → Flicks as the aggregator fallback, on the market its
    *     catalogue entry names (flicks.co.uk for the UK chains, flicks.us for AMC);
-   *   - else an eligible single venue → Filmweb;
-   *   - else the plain uptime recorder.
+   *   - else an eligible single venue in a Filmweb country (Poland) → Filmweb;
+   *   - else the plain uptime recorder. Outside Poland Filmweb lists nothing to fall
+   *     back to, so a Filmweb wrapper there could only page "Filmweb has nothing to
+   *     serve" for a venue it never could have covered.
    *  One source-neutral [[SourceFallbackScraper]] serves both feeds; `fallbackName`
    *  drives the /uptime label + Telegram text. Extracted so the chunked reduce step
    *  (`publishScrape`) records uptime + falls back exactly like a live scrape.
@@ -200,7 +201,7 @@ trait ScrapeWiring { self: WorkerWiring =>
           fallbackName = "Flicks",
           fallbackRef  = () => Some(slug),
           uptimeMonitor, filmwebFallbackStore, now = () => clock.instant(), onEvent = filmwebFallbackOnEvent)
-      case None if eligible =>
+      case None if eligible && filmwebEnabled =>
         new SourceFallbackScraper(inner,
           fallback     = () => filmwebFallbackFor(inner.cinema),
           fallbackName = "Filmweb",

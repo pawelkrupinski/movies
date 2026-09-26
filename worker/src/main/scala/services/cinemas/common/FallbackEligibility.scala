@@ -14,6 +14,8 @@ import services.cinemas.pl.FilmwebShowtimesClient
  *     feed back to Filmweb is moot.
  *
  * Everything else — the ordinary single-venue HTML/JSON scrapers — is eligible.
+ * Eligibility is only half the gate: the wiring also requires a Filmweb country
+ * (`Country.filmwebEnabled`, Poland only) before it attaches the fallback.
  */
 object FallbackEligibility {
   def eligible(s: CinemaScraper): Boolean =

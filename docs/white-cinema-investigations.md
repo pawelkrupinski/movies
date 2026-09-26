@@ -390,6 +390,21 @@ there was no 09-26 yet. Discarded.) **NovoCine Leiro 3D** (E0847) is
 
 ---
 
+### Mephisto Augsburg (`A1560`) — `fixed` (retired)
+
+Paged as UNCOVERED ("down 1656h and Filmweb has nothing to serve either"). The
+venue is gone: Filmstarts 404s the id (its sibling Mephisto Ulm, `A1559`, still
+answers 200), mephisto-augsburg.de now serves a betting-affiliate page, and the
+cinema closed at the end of January 2026 after ARB Kino GmbH went insolvent. The
+Staatstheater Augsburg is turning the hall into a stage. Removed from
+`data/germany/regions.json` and `GermanRosterData` (1,529 → **1,528**), and
+added to `CountrySpec`'s delisted-id guard.
+
+The page itself was wrong too. A German venue has no Filmweb fallback, but the
+wiring wrapped every eligible non-chain venue in a "Filmweb" `SourceFallbackScraper`
+in every country. The Filmweb wrapper is now gated on `Country.filmwebEnabled`
+(Poland only), so non-PL single venues get the plain uptime recorder.
+
 ## 2026-09-19
 
 **Eighth all-five-country sweep.** Newest bucket ~2026-09-19 08:00 UTC. Same
