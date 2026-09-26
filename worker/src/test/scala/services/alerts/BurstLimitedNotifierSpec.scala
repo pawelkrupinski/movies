@@ -15,7 +15,7 @@ class BurstLimitedNotifierSpec extends AnyFlatSpec with Matchers {
   private class Harness {
     val clock    = new MutableClock(Instant.parse("2026-09-26T12:00:00Z"))
     val sent     = ListBuffer.empty[String]
-    val notifier = new BurstLimitedNotifier(message => { sent += message; () }, AlertBurst(3, 1.hour), clock)
+    val notifier = new BurstLimitedNotifier(message => { sent += message; () }, AlertBurst(3, 1.hour), clock, "ENTER")
   }
 
   "BurstLimitedNotifier" should "pass pages through while under the limit" in {
@@ -30,6 +30,7 @@ class BurstLimitedNotifierSpec extends AnyFlatSpec with Matchers {
     h.sent should have size 4
     h.sent.take(3).toList shouldBe List("page 1", "page 2", "page 3")
     h.sent(3) should include ("/uptime")
+    h.sent(3) should include ("ENTER")    // says WHICH pages it is holding
   }
 
   it should "count what it held when the next window opens" in {
@@ -39,5 +40,17 @@ class BurstLimitedNotifierSpec extends AnyFlatSpec with Matchers {
     h.notifier.send("later")
     h.sent.drop(4).toList.head should include ("7")   // pages 4..10 were held
     h.sent.last shouldBe "later"
+  }
+
+  // An outage's ENTER flood must not spend the budget the pages that close it out
+  // — RECOVERED, and the one-off gone-venue page — need: each kind has its own.
+  "BurstLimitedPager" should "give each kind of page its own budget" in {
+    val clock = new MutableClock(Instant.parse("2026-09-26T12:00:00Z"))
+    val sent  = ListBuffer.empty[String]
+    val pager = new BurstLimitedPager(message => { sent += message; () }, AlertBurst(3, 1.hour), clock)
+    (1 to 10).foreach(i => pager.pagerFor("ENTER")(s"enter $i"))
+    pager.pagerFor("RECOVERED")("recovered 1")
+    pager.pagerFor("gone-venue")("gone 1")
+    sent should contain allOf ("recovered 1", "gone 1")
   }
 }

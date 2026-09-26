@@ -3,7 +3,7 @@ package modules.wiring
 import settings.{AlertRoute, TelegramRoute, FilmwebDropThreshold, ProcessConfiguration, StagingStuckScanInterval, StagingStuckThreshold}
 
 import modules.WorkerWiring
-import services.alerts.{AlertBurst, BurstLimitedNotifier, FilmwebDropAlerter, StagingStuckAlerter, TelegramNotifier}
+import services.alerts.{AlertBurst, BurstLimitedPager, FilmwebDropAlerter, StagingStuckAlerter, TelegramNotifier}
 import services.cinemas.common.ScrapeOutcomeListener
 import services.metrics.EnvGatedFeature
 
@@ -24,14 +24,15 @@ trait AlertingWiring { self: WorkerWiring =>
   protected lazy val fallbackTelegramNotifier: Option[TelegramNotifier] =
     configuration.telegramRoute(AlertRoute.FilmwebFallback).toOption.map(notifierFor)
 
-  // Every per-venue fallback page (ENTER / RECOVERED / UNCOVERED, and the gone-venue
-  // page) shares ONE burst limit: an aggregator outage hands every venue on it over at
-  // once, and a thousand pages bury the one that means something.
-  protected lazy val fallbackPager: String => Unit = {
-    val limited = fallbackTelegramNotifier.map(notifier =>
-      new BurstLimitedNotifier(notifier.send, AlertBurst(10, FiniteDuration(1L, TimeUnit.HOURS)), clock))
-    message => limited.foreach(_.send(message))
-  }
+  // Per-venue fallback pages are burst-limited PER KIND (ENTER / RECOVERED /
+  // UNCOVERED / the gone-venue page): an aggregator outage hands every venue on it
+  // over at once, and a thousand pages bury the one that means something.
+  private lazy val fallbackPagers: Option[BurstLimitedPager] =
+    fallbackTelegramNotifier.map(notifier =>
+      new BurstLimitedPager(notifier.send, AlertBurst(10, FiniteDuration(1L, TimeUnit.HOURS)), clock))
+
+  protected def fallbackPager(kind: String): String => Unit =
+    message => fallbackPagers.foreach(_.pagerFor(kind)(message))
 
   // Telegram alerter for the OTHER half of the Filmweb story: a venue whose sole
   // source IS Filmweb (no own-site fallback possible) going empty/404 because

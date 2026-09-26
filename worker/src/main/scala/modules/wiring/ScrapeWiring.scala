@@ -141,7 +141,7 @@ trait ScrapeWiring { self: WorkerWiring =>
   // (put() runs before onEvent), so no store round-trip is needed.
   protected def filmwebFallbackOnEvent: (FallbackState, FallbackEvent) => Unit =
     (state, event) => {
-      FallbackAlert.messageFor(state, event).foreach(fallbackPager)
+      FallbackAlert.messageFor(state, event).foreach(fallbackPager(event.event))
       uptimeMonitor.tagService(state.cinema, CinemaClientMarkers.tagsFor(clientMarkers.get(state.cinema), sourceUrls.get(state.cinema), state.active))
     }
 
@@ -290,7 +290,7 @@ trait ScrapeWiring { self: WorkerWiring =>
     new GoneVenueAlertingArchive(
       observationStore.fold(scrapeArchive)(new ObservingScrapeArchive(scrapeArchive, _)),
       venuesPagedElsewhere,
-      fallbackPager))
+      fallbackPager("gone-venue")))
 
   /** Every cinema's last consolidated scrape, kept for replay/repopulate. One row
    *  per cinema in THIS country's database, replaced on each successful scrape. */
