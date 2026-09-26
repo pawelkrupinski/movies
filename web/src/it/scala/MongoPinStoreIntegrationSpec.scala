@@ -14,9 +14,9 @@ import java.time.{Clock, Instant, ZoneOffset}
 class MongoPinStoreIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway()
+  tools.IntegrationMongo.requireThrowaway(_root_.settings.ProcessConfiguration.resolve())
 
-  private val isolated = IsolatedMongoDatabase.open(Env.fromProcess().get("MONGODB_URI").get, "identity-pins")
+  private val isolated = IsolatedMongoDatabase.open(tools.IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get, "identity-pins")
   private val pins     = new Pins(new MongoPinStore(Some(isolated.database)),
     Clock.fixed(Instant.parse("2026-09-26T12:00:00Z"), ZoneOffset.UTC))
 
