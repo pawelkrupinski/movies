@@ -121,6 +121,41 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       sameVenue = false, sharedChainId = None)("runtime.delta") shouldBe Number(0)
   }
 
+  "a director credited in another script" should "be compared in Latin letters, not read as incomparable" in {
+    // TMDB credits a film's director in the deployment language's name for them, which is often
+    // the native one ("毕赣", "Яков Протазанов"); the venue prints the Latin spelling.
+    IdentityMeasures.directorRelation(Seq("Bi Gan"), Seq("毕赣")) shouldBe Category("same_person")
+    IdentityMeasures.directorRelation(Seq("Giorgos Lanthimos"), Seq("Γιώργος Λάνθιμος")) shouldBe Category("same_person")
+    IdentityMeasures.directorRelation(Seq("Kira Muratova"), Seq("Кира Муратова")) shouldBe Category("same_person")
+    // A transliteration convention apart (Yakov / Akov): the surname is shared.
+    IdentityMeasures.directorRelation(Seq("Yakov Protazanov"), Seq("Яков Протазанов")) shouldBe Category("shared_name")
+    IdentityMeasures.directorRelation(Seq("Ljubomir Stefanov"), Seq("Љубомир Стефанов")) shouldBe Category("shared_name")
+    IdentityMeasures.directorRelation(Seq("Ljubomir Stefanov", "Tamara Kotevska"), Seq("Љубомир Стефанов", "Тамара Котевска")) shouldBe
+      Category("same_person")
+  }
+
+  it should "still tell different people apart, as a disagreement across scripts of its own" in {
+    // A mismatch after transliteration is weaker than a Latin-to-Latin one (a Japanese reading of
+    // Kanji is not its pinyin), so the calibration weighs it apart from `different`.
+    IdentityMeasures.directorRelation(Seq("Bi Gan"), Seq("张艺谋")) shouldBe Category("different_script")
+    IdentityMeasures.directorRelation(Seq("Kira Muratova"), Seq("Андрей Тарковский")) shouldBe Category("different_script")
+    // Both in one script: compared as ever.
+    IdentityMeasures.directorRelation(Seq("Wong Kar Wai"), Seq("Kim Jeong-hwan")) shouldBe Category("different")
+    IdentityMeasures.directorRelation(Seq("Кира Муратова"), Seq("Кира Муратова")) shouldBe Category("same_person")
+  }
+
+  "a decorated original title" should "read as naming the film, as a decorated title does, not as a word overlap" in {
+    val yourName = Seq("Twoje imię", "君の名は。", "Your Name.")
+    IdentityMeasures.originalTitleRelation(Some("Your Name (re-release)"), yourName) shouldBe Category("segment")
+    IdentityMeasures.originalTitleRelation(Some("Your Name"), yourName) shouldBe Category("match")
+    IdentityMeasures.originalTitleRelation(Some("Ken Russell's The Devils"), Seq("The Devils")) shouldBe Category("decorated")
+    IdentityMeasures.originalTitleRelation(Some("It"), Seq("It Ends with Us")) shouldBe Category("fragment")
+    IdentityMeasures.originalTitleRelation(Some("Stalker"), Seq("Solaris")) shouldBe Category("disjoint")
+    // The listing-film measure reads it the same way.
+    measures(Listing("Twoje imię", originalTitle = Some("Your Name (re-release)")),
+      Film("Twoje imię", Some("君の名は。"), alternativeTitles = Seq("Your Name.")))("originalTitle") shouldBe Category("segment")
+  }
+
   "a listing's exact top hits" should "be the films its title names exactly that a title search returned FIRST" in {
     val listing = Listing("Godzilla vs. Megalon")
     val megalon = Film("Godzilla vs. Megalon", year = Some(1973))

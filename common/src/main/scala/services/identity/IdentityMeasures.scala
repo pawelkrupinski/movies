@@ -140,32 +140,51 @@ object IdentityMeasures {
   private def latin(names: Iterable[String]): Boolean =
     names.exists(_.exists(c => Character.isLetter(c) && Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN))
 
+  /** A name in Latin letters: ICU's general Any-Latin transliteration, then to ASCII. Pinyin for
+   *  Han, ISO-style for Cyrillic, Greek, Georgian, …: no table of names. One instance per thread
+   *  (an ICU transliterator is not documented as safe to share). */
+  private val toLatin = ThreadLocal.withInitial(() => com.ibm.icu.text.Transliterator.getInstance("Any-Latin; Latin-ASCII"))
+  private def latinized(name: String): String = toLatin.get.transliterate(name)
+
+  private def byName(pa: Set[String], pb: Set[String], disagree: String): Category =
+    if ((pa intersect pb).nonEmpty) Category("same_person")
+    else {
+      val wa = pa.flatMap(_.split(" ")).filter(_.length >= 3)
+      val wb = pb.flatMap(_.split(" ")).filter(_.length >= 3)
+      Category(if ((wa intersect wb).nonEmpty) "shared_name" else disagree)
+    }
+
   /** How two credit lists relate: one person in common, a shared name word only (a surname, a
-   *  transliteration), nobody in common, or incomparable (one side not in Latin script). */
+   *  transliteration), or nobody in common. Credits in different scripts (a venue's "Bi Gan",
+   *  TMDB's "毕赣") are compared in Latin letters ([[latinized]]); nobody in common THERE is
+   *  `different_script`, its own category, since a transliteration can miss a person a Latin
+   *  spelling names (a Japanese reading of Kanji is not its pinyin). `incomparable` only when a
+   *  side has no name left to compare in Latin letters. */
   def directorRelation(a: Seq[String], b: Seq[String]): Measure = {
     val (pa, pb) = (people(a), people(b))
     if (pa.isEmpty) MissingListing
     else if (pb.isEmpty) MissingFilm
-    else if ((pa intersect pb).nonEmpty) Category("same_person")
-    else if (latin(a) != latin(b)) Category("incomparable")
+    else if (latin(a) == latin(b)) byName(pa, pb, "different")
     else {
-      val wa = pa.flatMap(_.split(" ")).filter(_.length >= 3)
-      val wb = pb.flatMap(_.split(" ")).filter(_.length >= 3)
-      if ((wa intersect wb).nonEmpty) Category("shared_name") else Category("different")
+      val (la, lb) = (people(a.map(latinized)), people(b.map(latinized)))
+      if (la.isEmpty || lb.isEmpty) Category("incomparable") else byName(la, lb, "different_script")
     }
   }
 
   /** The shapes a listing's title can name a film by: the whole title, its raw form, and each
    *  programme-banner segment (`SearchTitles.candidates`: `|`, ` - `, a first `: `, …). */
   def titleShapes(l: Listing): Seq[String] = {
-    val first = (Seq(l.title) ++ l.rawTitle ++ SearchTitles.candidates(l.title, l.originalTitle) ++
-      l.rawTitle.toSeq.flatMap(SearchTitles.candidates(_, None))).map(_.trim).filter(_.nonEmpty).distinct
-    // Each part a split leaves is de-decorated in turn ("Throwback: Donnie Darko (25th Anniversary)"
-    // → "Donnie Darko (25th Anniversary)" → "Donnie Darko"), to a fixpoint: every shape still a
-    // whole delimited piece of the listing's own title.
-    Iterator.iterate(first)(shapes => (shapes ++ shapes.flatMap(SearchTitles.candidates(_, None))).map(_.trim).filter(_.nonEmpty).distinct)
-      .sliding(2).collectFirst { case Seq(a, b) if a == b => a }.get
+    shapes(Seq(l.title) ++ l.rawTitle ++ SearchTitles.candidates(l.title, l.originalTitle) ++
+      l.rawTitle.toSeq.flatMap(SearchTitles.candidates(_, None)))
   }
+
+  /** `titles` and every part a split leaves, each de-decorated in turn ("Throwback: Donnie Darko
+   *  (25th Anniversary)" → "Donnie Darko (25th Anniversary)" → "Donnie Darko"), to a fixpoint:
+   *  every shape still a whole delimited piece of one of the titles. */
+  private def shapes(titles: Seq[String]): Seq[String] =
+    Iterator.iterate(titles.map(_.trim).filter(_.nonEmpty).distinct)(s =>
+        (s ++ s.flatMap(SearchTitles.candidates(_, None))).map(_.trim).filter(_.nonEmpty).distinct)
+      .sliding(2).collectFirst { case Seq(a, b) if a == b => a }.get
 
   private def jaccard(a: Set[String], b: Set[String]): Double =
     if (a.isEmpty || b.isEmpty) 0.0 else (a intersect b).size.toDouble / (a union b).size
@@ -184,27 +203,36 @@ object IdentityMeasures {
   def titleRelation(l: Listing, f: Film): Category = titleRelation(l, f, seasonProductions = true)
 
   private def titleRelation(l: Listing, f: Film, seasonProductions: Boolean): Category = {
-    val own    = (Seq(l.title) ++ l.rawTitle).map(key).filter(_.nonEmpty).toSet
-    val shapes = titleShapes(l).map(key).filter(_.nonEmpty).toSet
-    val primary  = key(f.title)
-    val original = f.originalTitle.map(key).filter(_.nonEmpty).toSet
-    val alts     = f.alternativeTitles.map(key).filter(_.nonEmpty).toSet
-    val all      = original ++ alts + primary
-    if (own.contains(primary)) Category("exact")
-    else if (own.exists(original.contains)) Category("original")
-    else if (own.exists(alts.contains)) Category("alternative")
-    else if (shapes.exists(all.contains) || (seasonProductions && namesSeasonProduction(l, f))) Category("segment")
-    else {
-      val ls = (Seq(l.title) ++ l.rawTitle).map(words).filter(_.nonEmpty)
-      val fs = (Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles).map(words).filter(_.nonEmpty)
-      if (ls.exists(a => fs.exists(b => TitleContainment.isTokenRun(b, a)))) Category("decorated")
-      else if (ls.exists(a => fs.exists(b => TitleContainment.isTokenRun(a, b)))) Category("fragment")
-      else if (ls.exists(a => fs.exists(b => jaccard(a.toSet, b.toSet) > 0))) Category("overlap")
-      else Category("none")
-    }
+    val ls  = Seq(l.title) ++ l.rawTitle
+    val fs  = Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles
+    val own = ls.map(key).filter(_.nonEmpty).toSet
+    if (own.contains(key(f.title))) Category("exact")
+    else if (f.originalTitle.map(key).exists(own)) Category("original")
+    else if (f.alternativeTitles.map(key).exists(own)) Category("alternative")
+    else containment(ls, titleShapes(l), fs, seasonProductions && namesSeasonProduction(l, f)).getOrElse(
+      if (ls.map(words).exists(a => fs.map(words).exists(b => jaccard(a.toSet, b.toSet) > 0))) Category("overlap") else Category("none"))
   }
 
-  /** The listing's own ORIGINAL title against every title of the other side. */
+  /** How one side's titles name the other's once no whole title matches: a whole delimited piece
+   *  of them (a banner segment, the title without a trailing bracket — `segment`, from `shapes`),
+   *  the other's title as a token run along one edge of one of them (`decorated`: "Ken Russell's
+   *  The Devils"), or one of them as a run along one edge of the other's (`fragment`: "It" beside
+   *  "It Ends with Us"). `alsoSegment` is another reason to read a segment (the title relation's
+   *  season production), asked only when no shape matches. ONE definition for the title and the
+   *  original-title relations. */
+  private def containment(own: Seq[String], shapes: Seq[String], others: Seq[String], alsoSegment: => Boolean = false): Option[Category] = {
+    val otherKeys = others.map(key).filter(_.nonEmpty).toSet
+    val ow = own.map(words).filter(_.nonEmpty)
+    val fw = others.map(words).filter(_.nonEmpty)
+    if (shapes.map(key).exists(otherKeys) || alsoSegment) Some(Category("segment"))
+    else if (ow.exists(a => fw.exists(b => TitleContainment.isTokenRun(b, a)))) Some(Category("decorated"))
+    else if (ow.exists(a => fw.exists(b => TitleContainment.isTokenRun(a, b)))) Some(Category("fragment"))
+    else None
+  }
+
+  /** The listing's own ORIGINAL title against every title of the other side: the same title, a
+   *  decorated or delimited spelling of one ([[containment]], as the title relation reads it: "Your
+   *  Name (re-release)" is `segment` of "Your Name."), a shared long word, or nothing. */
   def originalTitleRelation(original: Option[String], otherTitles: Seq[String]): Measure =
     original.map(_.trim).filter(_.nonEmpty) match {
       case None => MissingListing
@@ -212,7 +240,7 @@ object IdentityMeasures {
         val others = otherTitles.map(_.trim).filter(_.nonEmpty)
         if (others.isEmpty) MissingFilm
         else if (others.map(key).contains(key(o))) Category("match")
-        else {
+        else containment(Seq(o), shapes(Seq(o)), others).getOrElse {
           val ow = words(o).filter(_.length >= 4).toSet
           if (others.exists(t => (words(t).filter(_.length >= 4).toSet intersect ow).nonEmpty)) Category("overlap")
           else Category("disjoint")

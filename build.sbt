@@ -133,6 +133,9 @@ lazy val common = (project in file("common"))
       // webp ImageReader for the share-card compositor (tools.OgCardRenderer +
       // PosterDecode), which only the worker renders cards with now: the web links to them.
       imageioWebp,
+      // ICU's Any-Latin transliteration: the identity measures compare a director credited in
+      // another script (TMDB's "毕赣") with a venue's Latin spelling ("Bi Gan"). The JDK has none.
+      Dependencies.icu4j,
       // Prometheus client. Lives here, not in one app, because BOTH deployed
       // JVMs expose exposition text on their own /metrics: the worker's task
       // pipeline and the web app's uptime/served gauges + JVM resource
