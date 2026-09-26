@@ -1,7 +1,7 @@
 @import controllers.FilmSchedule
 @import controllers.BrowseHref
 @import services.movies.TrailerEmbed
-@(film: FilmSchedule, canonicalUrl: String, ogDescription: String, ogImageUrl: String = "", minifier: tools.Minifier, oauthProviders: Set[String] = Set.empty, otherCities: Seq[(models.City, String)] = Seq.empty, pageTags: controllers.PageTags = controllers.PageTags.none)(implicit city: models.City, messages: play.api.i18n.Messages)
+@(film: FilmSchedule, canonicalUrl: String, ogDescription: String, ogImageUrl: String = "", minifier: tools.Minifier, oauthProviders: Set[String] = Set.empty, otherCities: Seq[(models.City, String)] = Seq.empty, pageTags: controllers.PageTags = controllers.PageTags.none, pinnedToday: Option[java.time.LocalDate] = None)(implicit city: models.City, messages: play.api.i18n.Messages)
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
 <head>
@@ -59,7 +59,7 @@
 </head>
 <body>
 
-@_sharedJsConfig(Seq.empty, Map.empty[String, String], oauthProviders)
+@_sharedJsConfig(Seq.empty, Map.empty[String, String], oauthProviders, pinnedToday)
 <script src="@routes.Assets.versioned("js/i18n.js")"></script>
 <script src="@routes.Assets.versioned("js/shared.js")"></script>
 

@@ -61,7 +61,7 @@ object MobileScreenshots {
 
       val pills = city.cinemaPillMap
       val indexHtml: String = views.html.repertoire(
-        schedules, cinemas, pills, devMode = false, minifier = tools.Minify,
+        schedules, cinemas, pills, devMode = false, minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
         oauthProviders = noOauth, renderedAt = now
       ).body
 
@@ -75,7 +75,7 @@ object MobileScreenshots {
         sys.exit(3)
       }
       val filmHtml: String = views.html.film(
-        filmSchedule, "http://test.local/movie", "", minifier = tools.Minify
+        filmSchedule, "http://test.local/movie", "", minifier = tools.Minify, pinnedToday = wiring.pinnedToday
       ).body
       val filmQuery = "/movie/" + tools.Slugify(filmTitle)
 

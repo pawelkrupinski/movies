@@ -1,4 +1,4 @@
-@(allCinemas: Seq[String], cinemaPills: Map[String, String], oauthProviders: Set[String])(implicit city: models.City, messages: play.api.i18n.Messages)
+@(allCinemas: Seq[String], cinemaPills: Map[String, String], oauthProviders: Set[String], pinnedToday: Option[java.time.LocalDate] = None)(implicit city: models.City, messages: play.api.i18n.Messages)
 @*
    Inline-`<script>` block that emits the page-bound JS constants
    the externalized `shared.js` reads at top level:
@@ -54,11 +54,11 @@
      (DAY2/MONTHS/_showtimeNoun). Translated UI strings live in the pack
      below instead — see `JsLocale`'s own doc. *@
   const KINOWO_LOCALE       = @Html(controllers.JsLocale.json(messages));
-  @* Page-test ONLY (never emitted in prod): FixtureTestWiring sets this system
-     property to the fixture's capture date, pinning shared.js "today" so the
-     `#date-filter` day assertions don't age out as the real clock advances past
-     the recorded corpus. Absent in prod → shared.js falls back to `new Date()`. *@
-  @Html(sys.props.get("kinowo.pinnedToday").map(d => s"""window.KINOWO_PINNED_TODAY = "$d";""").getOrElse(""))
+  @* Page-test ONLY (never emitted in prod): a fixture render passes its corpus's
+     capture date as `pinnedToday`, pinning shared.js "today" so the `#date-filter`
+     day assertions don't age out as the real clock advances past the recorded
+     corpus. None in prod → shared.js falls back to `new Date()`. *@
+  @Html(pinnedToday.map(d => s"""window.KINOWO_PINNED_TODAY = "$d";""").getOrElse(""))
 </script>
 @* All four `messages*` bundles, flattened to one JSON object, generated at
    build time from the bundles themselves (`I18nPackGenerator`, wired into

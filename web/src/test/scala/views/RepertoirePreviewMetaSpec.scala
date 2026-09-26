@@ -12,12 +12,12 @@ import testsupport.TestMessages.given
 // slug's card.
 class RepertoirePreviewMetaSpec extends AnyFlatSpec with Matchers {
 
-  private def render(city: models.City): String = {
+  private def render(city: models.City, pinnedToday: Option[java.time.LocalDate] = None): String = {
     implicit val c: models.City = city
     views.html.repertoire(
       films = Nil, allCinemas = Nil, cinemaPills = Map.empty,
       devMode = false, minifier = tools.Minify, oauthProviders = Set.empty,
-      renderedAt = java.time.LocalDateTime.of(2026, 6, 8, 0, 0),
+      renderedAt = java.time.LocalDateTime.of(2026, 6, 8, 0, 0), pinnedToday = pinnedToday,
     ).body
   }
 
@@ -33,5 +33,13 @@ class RepertoirePreviewMetaSpec extends AnyFlatSpec with Matchers {
     render(Wroclaw) should include ("og-wroclaw.jpg")
     render(Poznan) should not include "og-home.jpg"
     render(Poznan) should not include "og-image.png"
+  }
+
+  // The client's "today" is pinned only by a render that is HANDED a date — a fixture render
+  // passing its corpus's capture day. Production passes none, whatever any JVM property says.
+  "the page's client-side today" should "be pinned only to a date the render is handed" in {
+    render(Poznan, pinnedToday = Some(java.time.LocalDate.of(2026, 6, 8))) should include (
+      """window.KINOWO_PINNED_TODAY = "2026-06-08";""")
+    render(Poznan) should not include "KINOWO_PINNED_TODAY"
   }
 }

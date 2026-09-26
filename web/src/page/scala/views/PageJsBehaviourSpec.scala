@@ -131,7 +131,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       val pills = city.cinemaPillMap
       val indexHtml: String = views.html.repertoire(
-        schedules, cinemas, pills, devMode = false, minifier = tools.Minify,
+        schedules, cinemas, pills, devMode = false, minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
         oauthProviders = noOauth, renderedAt = now
       ).body
 
@@ -145,7 +145,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           case Some(s) =>
             views.html.film(s, s"http://test.local/movie/$slug",
               ogDescription = "", ogImageUrl = controllers.ShareCardUrl.forFilm(s.resolved, city),
-              minifier = tools.Minify).body
+              minifier = tools.Minify, pinnedToday = wiring.pinnedToday).body
           case None    => "<html><body>Film not found</body></html>"
         }
       // The first fixture film once the worker has drawn its share card: `og:image` names the
@@ -154,7 +154,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         val s = schedules.head
         val withCard = s.copy(resolved = s.resolved.copy(shareCard = Some(PageJsBehaviourSpec.ShareCardFile)))
         views.html.film(withCard, "http://test.local/movie-share-card", ogDescription = "",
-          ogImageUrl = controllers.ShareCardUrl.forFilm(withCard.resolved, city), minifier = tools.Minify).body
+          ogImageUrl = controllers.ShareCardUrl.forFilm(withCard.resolved, city), minifier = tools.Minify, pinnedToday = wiring.pinnedToday).body
       }
       // A purpose-built /movie render for the cinema-fold test: the Poznań
       // fixture corpus tops out at a handful of venues a day, but the fold
@@ -162,13 +162,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // first schedule and re-seat its single day at 12 distinct cinemas.
       val manyCinemasHtml: String = views.html.film(
         tools.ManyCinemaFilm(schedules.head), "http://test.local/movie-many",
-        ogDescription = "", minifier = tools.Minify).body
+        ogDescription = "", minifier = tools.Minify, pinnedToday = wiring.pinnedToday).body
       // Isolated /movie render carrying two sibling-city links — drives the
       // "W innych miastach" popup without depending on the fixture corpus
       // actually having a cross-city duplicate on hand.
       val otherCitiesHtml: String = views.html.film(
         schedules.head, "http://test.local/movie-other-cities",
-        ogDescription = "", minifier = tools.Minify,
+        ogDescription = "", minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
         otherCities = Seq(
           models.Wroclaw -> "/wroclaw/movie/example-slug",
           models.Warszawa -> "/warszawa/movie/example-slug",
@@ -179,7 +179,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // can be driven without a real city's worth of scraped data.
       val manyShowtimesSchedules = tools.ManyShowtimesCity(schedules, now)
       val manyShowtimesHtml: String = views.html.repertoire(
-        manyShowtimesSchedules, cinemas, pills, devMode = false, minifier = tools.Minify,
+        manyShowtimesSchedules, cinemas, pills, devMode = false, minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
         oauthProviders = noOauth, renderedAt = now,
         isLargeCity = controllers.MovieControllerService.totalShowtimes(manyShowtimesSchedules) >
           controllers.MovieControllerService.LargeCityShowtimeThreshold
@@ -189,7 +189,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // format axes, just the hidden-films set — so it needs its own coverage;
       // nothing else on the page-test side renders this template.
       val browseHtml: String = views.html.browse(
-        schedules, "Filmy", minifier = tools.Minify, oauthProviders = noOauth
+        schedules, "Filmy", minifier = tools.Minify, pinnedToday = wiring.pinnedToday, oauthProviders = noOauth
       ).body
       // The signed-in index — WHICH IS THE SAME HTML AS THE SIGNED-OUT ONE.
       // Nothing server-rendered names a visitor any more (that is what lets the
@@ -203,7 +203,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // UserStateController, and let the boot reconcile (first-login union vs.
       // server-authoritative replace) be driven over CDP.
       val loggedInHtml: String = views.html.repertoire(
-        schedules, cinemas, pills, devMode = false, minifier = tools.Minify,
+        schedules, cinemas, pills, devMode = false, minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
         oauthProviders = Set("google"), renderedAt = now
       ).body
       val meJson =

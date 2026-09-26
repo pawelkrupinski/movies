@@ -1,5 +1,5 @@
 @import controllers.FilmSchedule
-@(films: Seq[FilmSchedule], heading: String, minifier: tools.Minifier, oauthProviders: Set[String], pageUrl: String = "", pageTags: controllers.PageTags = controllers.PageTags.none, canonicalUrl: String = "", robots: String = "")(implicit city: models.City, messages: play.api.i18n.Messages)
+@(films: Seq[FilmSchedule], heading: String, minifier: tools.Minifier, oauthProviders: Set[String], pageUrl: String = "", pageTags: controllers.PageTags = controllers.PageTags.none, canonicalUrl: String = "", robots: String = "", pinnedToday: Option[java.time.LocalDate] = None)(implicit city: models.City, messages: play.api.i18n.Messages)
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
 <head>
@@ -45,7 +45,7 @@
 
 @_loginModal(oauthProviders)
 
-@_sharedJsConfig(Seq.empty, Map.empty[String, String], oauthProviders)
+@_sharedJsConfig(Seq.empty, Map.empty[String, String], oauthProviders, pinnedToday)
 <script src="@routes.Assets.versioned("js/i18n.js")"></script>
 <script src="@routes.Assets.versioned("js/shared.js")"></script>
 

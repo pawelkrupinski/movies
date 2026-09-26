@@ -35,7 +35,7 @@ class JvmDefaultsLintSpec extends AnyFlatSpec with Matchers {
     val root = RepoRoot.dir.toPath
     for {
       module <- Seq("common", "testkit", "worker", "web", "e2e")
-      layer  <- Seq("test", "it", "page")
+      layer  <- Seq("test", "it", "page", "fixtures")
       dir     = root.resolve(s"$module/src/$layer")
       if Files.isDirectory(dir)
       file   <- Files.walk(dir).iterator().asScala.filter(_.toString.endsWith(".scala")).toSeq

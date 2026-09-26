@@ -56,17 +56,17 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   override protected def heliosToday: java.time.LocalDate =
     fixtureDate.getOrElse(super.heliosToday)
 
-  // Pin the CLIENT's notion of "today" (shared.js `dateBounds()`) to the fixture's
-  // capture day for every page-test render off this wiring — the in-JVM
-  // PageJsBehaviourSpec / PageSnapshotSpec renders AND the FixtureServerMain
-  // (Playwright + mobile LocalServer) server. The rendered film cards carry
-  // absolute fixture dates (June 2026), but the browser's real clock keeps
+  // The CLIENT's notion of "today" (shared.js `dateBounds()`) for every page-test
+  // render off this wiring — the in-JVM PageJsBehaviourSpec / PageSnapshotSpec
+  // renders AND the FixtureServerMain (Playwright + mobile LocalServer) server,
+  // each of which hands it to the template as `pinnedToday`. The rendered film cards
+  // carry absolute fixture dates (June 2026), but the browser's real clock keeps
   // advancing, so a `?date=today`/`tomorrow`/`week` filter matches ZERO aged-out
   // cards a few weeks after capture — silently failing the day-filter JS specs.
-  // `_sharedJsConfig` reads this property and emits `window.KINOWO_PINNED_TODAY`
-  // ONLY when it's set; prod never constructs FixtureTestWiring, so prod keeps the
-  // real `new Date()` (correct for pages cached across midnight).
-  fixtureDate.foreach(d => System.setProperty("kinowo.pinnedToday", d.toString))
+  // `_sharedJsConfig` emits `window.KINOWO_PINNED_TODAY` ONLY when it is given one;
+  // production passes none and keeps the real `new Date()` (correct for pages cached
+  // across midnight).
+  def pinnedToday: Option[java.time.LocalDate] = fixtureDate
 
   // Route Multikino through the same `FakeHttpFetch` as every other cinema —
   // single override point. The base `TestWiring` inherits production's
