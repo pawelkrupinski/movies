@@ -599,3 +599,119 @@ countries; that is phase 1's first acceptance check.
    minutes. Options: advance staging per *batch* of venues, or diff against the pipeline output
    the US convergence leg already produces rather than booting a second time. Until one lands,
    US rests on its hard cluster alone and cannot pass phase 1.
+
+---
+
+## 13. Curation: pins, confidence-gated ratings, the admin view
+
+Program phase 3 (the program brief numbers its phases 1 observations, 2 shadow resolver,
+3 curation, 4 stable ids, 5 cutover, 6 deletion; §8 above predates that numbering). Everything
+here is data or pure code, and nothing reaches what production serves: the rating gate is off at
+the composition root and the shadow source is empty until the resolver's shadow run lands.
+
+Design constraints: minimum human involvement and no hardcoding. Pins are a rarely used escape
+hatch, not a workflow; no pin is seeded in production; the rating threshold is derived from data;
+there is no per-title, per-venue or per-franchise rule anywhere.
+
+### 13.1 Pins
+
+`services.identity.Pin` (common): a claim over a set of `ListingKey`s, with author, reason and
+time. Three claims:
+
+| claim | meaning | what the resolver gets |
+|---|---|---|
+| `IsFilm(tmdbId)` | these listings are this film | the film overrides each listing's own lookup answer; the listings are must-linked to each other and to every other listing pinned to that film |
+| `SameFilm` | these listings are one film | must-links between them |
+| `NeverFilm(tmdbId)` | these listings are never this film | that answer is dropped from their lookups; a cannot-link to every listing whose film it is |
+
+A pin's id is its content (SHA-256 of the claim over the sorted listing set), so re-asserting it
+is refused rather than duplicated, and the id is the same everywhere.
+
+**Into the constraint model.** `ListingConstraints.pinned(pins)` returns `PinConstraints`, the
+adapter the resolver consumes:
+
+- `resolvedFilm(key, looked)`: the pinned film, else the listing's own answer unless denied;
+- `blockKeys(key)`: a `pin:<group>` key per pinned group plus `id:<tmdbId>` for pinned and denied
+  films, added to `FamilyClosure.blockKeys`. Every pin edge therefore joins two listings of one
+  family, and the closure stays complete (§5);
+- `mustLinks`: each pinned group as a star from its smallest key, reason `MustLink.Pinned`, to
+  be solved as the strongest tier (tier 0);
+- `cannotLinks(keys, filmOf)`: `CannotLink.PinnedNotFilm` edges, given the resolver's per-listing
+  films;
+- `admits(edge)`: pins beat derived rules. A derived cannot-link inside a pinned group is
+  dropped, and so is a derived must-link between two differently pinned films or onto a denied
+  film.
+
+All of it is a function of the pin set (`PinConstraintsSpec` checks order independence).
+
+**Consistency.** `Pins` (the rules above the `PinStore` seam) refuses a malformed pin (no
+listing, a one-listing `SameFilm`, a non-positive TMDB id, no author or reason), a duplicate, and
+any pin that makes the set contradict itself: a group pinned to two films, or to a film one of its
+listings is pinned never to be. Stores: `MongoPinStore` (collection `identity_pins`, written only
+from the admin page) and `InMemoryPinStore`.
+
+`KnownCasePins` (common test sources only) holds realistic pins for the undecidable and
+wrong-but-stable cases of §7 (Opętanie "klasyka w 4k", the Met's Samson broadcast, the
+Mockingjay – Part 2 (2026) rerelease, the decorated Lalka spellings). It is a test fixture for the
+constraint shape and is never written to production.
+
+### 13.2 Confidence-gated ratings
+
+A film whose identity decision is below a threshold is served with no ratings, no IMDb link, the
+search page of each other rating site, and the unrated sort key (`RatingGate.withheld`), rather
+than ratings that may belong to another film. Title, showtimes and everything the venues
+published are untouched.
+
+- **Pure core.** `RatingGate.gate(movie, confidence, calibration)`. No decision or no calibration
+  withholds nothing. A film's confidence is the minimum over the decisions its listings belong
+  to (`confidenceOf`): a film spanning two clusters is only as sure as the weaker one. The
+  listings of a stored row come from its venue slots (`ListingKey.ofSlot`).
+- **Calibration, not a constant.** `ConfidenceCalibration.calibrate` takes the labelled shadow
+  diff: every decision whose correctness is known, either because the pipeline agrees or because a
+  reviewed verdict on the known-issues list (§10) says right or wrong. It picks the cut that
+  misclassifies the fewest of them (wrong shown plus right withheld). On a tie it takes the lower
+  cut, which withholds less, so with no evidence either way a film keeps its ratings. Without
+  labelled data there is no threshold and nothing is withheld. Only the order of confidences
+  matters, so the resolver's score does not have to be a probability, and a change in how the
+  resolver scores is re-calibrated by the next labelled run. The labelled set comes from the
+  shadow diff's categories (§7a): identical films are correct, category-1 splits the pipeline
+  got right are wrong, and category 2–4 cases carry their reviewed verdict. The admin view shows
+  the resulting cut and its confusion counts.
+- **Wiring, off.** `ReadModelProjector(ratingGate = …)` applies the gate to every card it
+  projects. The gate's `version` is part of the metadata-reuse key, so a new gate re-projects
+  instead of reusing cards gated under the old one. `ReadModelContentAudit` projects through the
+  same gate, so a withheld card is not reported as drift. The worker's `ReadModelWiring` passes
+  `RatingGate.off` unless `KINOWO_IDENTITY_RATING_GATE=true`. When on, it snapshots
+  `shadowDecisions` at boot, and that is `ShadowDecisions.none` until the resolver's shadow run
+  lands, so even a switched-on gate withholds nothing today. This is a staged-migration switch
+  (allowed here per the program brief), to be removed at cutover.
+- **Open.** Posters, synopsis and credits also come from the matched film and are equally
+  suspect below the threshold. The gate covers ratings and rating links only, as specified.
+  Whether to extend it is a question for the cutover phase.
+
+### 13.3 The admin view
+
+`/admin/identity` (web, `IdentityAdminController`): `AdminAction`-gated like `/admin/config`. Its
+two pin POSTs are declared `Auth.Admin` / `CrossSiteFilter` in `RouteProtectionMatrixSpec`. It is
+a read-only diagnostic of the latest shadow decisions:
+
+- **Contradicted**: decisions with constraint pressure (`Decision.contradictions`: a must-link a
+  cannot-link refused, an ambiguous node left alone);
+- **Below the rating threshold**: the decisions the calibrated gate would withhold;
+- each with the resolver's own `explanation`, plus the current calibration.
+
+Pins can be created (tick listings, or paste listing JSON) and removed there, for emergencies.
+There is no queue and nothing expects routine review. The page is covered by
+`IdentityAdminControllerSpec` and by `IdentityAdminPageSpec`, which drives the real page script in
+Chrome: it pins the ticked listing, removes the pin, and shows a refusal.
+
+### 13.4 Reconciliation with the other phases
+
+- `Decision` and `ShadowDecisions` (common, `services.identity`) are minimal stand-ins. The
+  resolver branch owns `Decision`: when it lands, its type replaces or extends this trait (fields
+  used: `listings`, `tmdbId`, `confidence`, `explanation`, `contradictions`), and a
+  `ShadowDecisions` reading its shadow report replaces `ShadowDecisions.none` in both wirings
+  (web `AdminWiring`, worker `ReadModelWiring`).
+- The resolver must read pins through `ListingConstraints.pinned` (§13.1): add `blockKeys` to the
+  family keys, solve `mustLinks` as tier 0, apply `admits` to its derived edges, and resolve each
+  listing through `resolvedFilm`.
