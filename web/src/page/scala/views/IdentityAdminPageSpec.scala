@@ -22,7 +22,7 @@ import java.time.{Clock, Instant, ZoneOffset}
  *
  * Skips gracefully when Chrome isn't installed, same as the other PageTest specs.
  */
-class IdentityAdminPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class IdentityAdminPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.SuiteConfiguration {
 
   private val pins = new Pins(new InMemoryPinStore, Clock.fixed(Instant.parse("2026-09-26T12:00:00Z"), ZoneOffset.UTC))
   private val controller = new IdentityAdminController(Helpers.stubControllerComponents(), TestAdminAction(),
@@ -53,7 +53,7 @@ class IdentityAdminPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfte
   private var server: TestHttpServer = _
 
   override def beforeAll(): Unit = {
-    chrome = Chrome.tryStart()
+    chrome = Chrome.tryStart(configuration.cdpBrowserBinary)
     if (chrome.nonEmpty) server = new TestHttpServer(
       { case "/admin/identity" => contentAsString(controller.index(admin(FakeRequest("GET", "/admin/identity")))) },
       dynamicRoute = post)
