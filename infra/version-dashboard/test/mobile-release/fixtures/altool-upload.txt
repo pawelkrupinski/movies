@@ -1,0 +1,9 @@
+Running altool at path '/Applications/Xcode.app/Contents/SharedFrameworks/ContentDelivery.framework/Resources/altool'...
+
+2026-09-22 13:15:39.085  INFO: [ContentDelivery.Uploader.7C8EC41280] 
+==========================================
+UPLOAD SUCCEEDED with no errors
+Delivery UUID: e352007c-db06-4c71-9d33-a9a5aab21183
+Transferred 4246843 bytes in 5.227 seconds (812.48KB/s, 6.500Mbps)
+==========================================
+No errors uploading archive at '/Users/pawel/projects/movies/ios/build/release/export/Kinowo.ipa'.

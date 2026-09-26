@@ -45,7 +45,7 @@ function executor(events: string[], ran: Ran[], gradleExit = 0): Executor {
     if (argv[0]?.endsWith("ios-release.sh")) {
       const logDir = join(options.cwd as string, "ios", "build", "release");
       mkdirSync(logDir, { recursive: true });
-      writeFileSync(join(logDir, "upload.log"), fixture("altool-upload.log"));
+      writeFileSync(join(logDir, "upload.log"), fixture("altool-upload.txt"));
       options.onLine?.("\u001b[32m✓\u001b[0m uploaded");
     }
     if (argv[0] === "./gradlew") return { ...ok(), code: gradleExit };

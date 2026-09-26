@@ -50,7 +50,7 @@ describe("planIosVersion", () => {
 
 describe("builds", () => {
   it("takes the build id from altool's real upload log", () => {
-    expect(deliveryUuid(fixture("altool-upload.log"))).toBe(BUILD);
+    expect(deliveryUuid(fixture("altool-upload.txt"))).toBe(BUILD);
     expect(deliveryUuid("UPLOAD FAILED")).toBeNull();
   });
 
