@@ -78,14 +78,11 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("common/src/main/scala/services/UptimeSync.scala", "poll",
       "Try(document.get(\"durationSumMs\").map(_.asNumber().longValue()).getOrElse(0L)).getOrElse(0L),") ->
       "an optional field's default while decoding one document: absent on documents written before the field existed",
-    ("common/src/main/scala/services/UptimeSync.scala", "poll",
-      "Try(document.getBoolean(\"fallback\", false)).getOrElse(false)") ->
+    ("common/src/main/scala/services/UptimeSync.scala", "flag",
+      "Try(document.getBoolean(field, false)).getOrElse(false)") ->
       "an optional field's default while decoding one document: absent on documents written before the field existed",
     ("common/src/main/scala/services/UptimeSync.scala", "hydrate",
       "bucket.durationSumMs.addAndGet(Try(document.get(\"durationSumMs\").map(_.asNumber().longValue()).getOrElse(0L)).getOrElse(0L))") ->
-      "an optional field's default while decoding one document: absent on documents written before the field existed",
-    ("common/src/main/scala/services/UptimeSync.scala", "hydrate",
-      "if (Try(document.getBoolean(\"fallback\", false)).getOrElse(false)) bucket.fallback.set(true)") ->
       "an optional field's default while decoding one document: absent on documents written before the field existed",
     ("common/src/main/scala/services/fallback/FallbackStore.scala", "instant",
       "active              = Try(document.getBoolean(\"active\", false)).getOrElse(false),") ->

@@ -52,7 +52,8 @@ private[services] final class UptimeSync(
             Try(document.get("durationSumMs").map(_.asNumber().longValue()).getOrElse(0L)).getOrElse(0L),
             document.getInteger("durationCount", 0),
             Try(document.getList("errors", classOf[String])).toOption.fold(Seq.empty[String])(_.asScala.toSeq),
-            Try(document.getBoolean("fallback", false)).getOrElse(false)
+            flag(document, "fallback"),
+            flag(document, "thin")
           )
       }
     }
@@ -86,7 +87,8 @@ private[services] final class UptimeSync(
         Try(document.getList("errors", classOf[String])).toOption.foreach { errs =>
           errs.asScala.take(MaxErrorsPerBucket).foreach(bucket.errors.add)
         }
-        if (Try(document.getBoolean("fallback", false)).getOrElse(false)) bucket.fallback.set(true)
+        if (flag(document, "fallback")) bucket.fallback.set(true)
+        if (flag(document, "thin")) bucket.thin.set(true)
         count += 1
       }
     }
@@ -102,7 +104,7 @@ private[services] final class UptimeSync(
     service: String, rawTimestamp: Long,
     successes: Int, failures: Int, zeroes: Int,
     durationSumMs: Long, durationCount: Int,
-    errors: Seq[String], fallback: Boolean = false
+    errors: Seq[String], fallback: Boolean = false, thin: Boolean = false
   ): Unit = {
     val timestamp = bucketTimestamp(rawTimestamp)
     val serviceBuckets = bucketsOf(buckets, service)
@@ -115,13 +117,15 @@ private[services] final class UptimeSync(
       bucket.durationSumMs.get() != durationSumMs ||
       bucket.durationCount.get() != durationCount ||
       bucket.errors.asScala.toSeq != cappedErrors ||
-      bucket.fallback.get() != fallback
+      bucket.fallback.get() != fallback ||
+      bucket.thin.get() != thin
     bucket.successes.set(successes)
     bucket.failures.set(failures)
     bucket.zeroes.set(zeroes)
     bucket.durationSumMs.set(durationSumMs)
     bucket.durationCount.set(durationCount)
     bucket.fallback.set(fallback)
+    bucket.thin.set(thin)
     bucket.errors.clear()
     cappedErrors.foreach(bucket.errors.add)
     dropExpired(serviceBuckets, timestamp)
@@ -131,6 +135,11 @@ private[services] final class UptimeSync(
 
 private[services] object UptimeSync {
   import UptimeMonitor._
+
+  /** A bucket's optional boolean marker (`fallback`, `thin`): false when the
+   *  document predates the field. */
+  private def flag(document: Document, field: String): Boolean =
+    Try(document.getBoolean(field, false)).getOrElse(false)
 
   /** The poll only needs buckets that can still change. Writes only ever land in
    *  the CURRENT 15-min slot (see `UptimeMonitor.currentBucket`), so a bucket is

@@ -1566,6 +1566,13 @@ object City {
 
   def forCinema(cinema: Cinema): Option[City] = cinemaToCity.get(cinema)
 
+  /** The venue's own wall-clock time. `Showtime.dateTime` is city-local, so a bare
+   *  UTC "now" would misjudge every non-Polish venue by its zone offset. Falls back
+   *  to the clock's own zone for a cinema no city lists (defensive; every scraped
+   *  cinema is in some city's roster in practice). */
+  def localNow(cinema: Cinema, clock: java.time.Clock): java.time.LocalDateTime =
+    java.time.LocalDateTime.now(clock.withZone(forCinema(cinema).map(_.zoneId).getOrElse(clock.getZone)))
+
   /** [[all]] ordered alphabetically by display name under Polish collation, so
    *  the UI city pickers read A→Z with `Ł` after `L`, `Ó` after `O`, etc.
    *  rather than dumping the diacritic letters at the end (code-point order).

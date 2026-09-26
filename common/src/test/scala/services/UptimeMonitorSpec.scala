@@ -457,6 +457,45 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     monitor.drainDirty().head.fallback    shouldBe false
   }
 
+  // A green scrape with nothing in the next 72 hours (see NearTermProgramme) is
+  // still a success, but the bucket carries `thin` so /uptime can mark the bar.
+  // The /uptime classifier reads a thin green bucket as its own keyword, so three
+  // thin scrapes in a row can be pulled into their own triage section.
+  "recentStatuses" should "report a thin green bucket as \"thin\"" in {
+    val monitor = new UptimeMonitor(clock = specClock)
+    monitor.recordSuccess("Kino Polonez", 20L, thin = true)
+    monitor.recentStatuses("Kino Polonez", 3) shouldBe Seq("thin")
+  }
+
+  "recordSuccess with thin" should "stay green, mark the bucket thin, and carry it into the flushed write" in {
+    val monitor = new UptimeMonitor(clock = specClock)
+    monitor.recordSuccess("Kino Polonez", 20L, thin = true)
+    val bucket = monitor.history("Kino Polonez").head
+    bucket.status shouldBe "green"
+    bucket.thin   shouldBe true
+    monitor.drainDirty().head.thin shouldBe true
+  }
+
+  it should "leave thin false for an ordinary success" in {
+    val monitor = new UptimeMonitor(clock = specClock)
+    monitor.recordSuccess("Kino Polonez", 20L)
+    monitor.history("Kino Polonez").head.thin shouldBe false
+  }
+
+  "an external bucket update" should "propagate the thin flag and fire listeners when it flips" in {
+    val monitor = new UptimeMonitor(clock = specClock)
+    var notifications = 0
+    monitor.addListener((_, _) => notifications += 1)
+    val timestamp = UptimeMonitor.bucketTimestamp(specClock.millis())
+    monitor.sync.applyExternalUpdate("Kino Polonez", timestamp,
+      successes = 1, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty, thin = true)
+    monitor.history("Kino Polonez").head.thin shouldBe true
+    monitor.sync.applyExternalUpdate("Kino Polonez", timestamp,
+      successes = 1, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty, thin = false)
+    monitor.history("Kino Polonez").head.thin shouldBe false
+    notifications shouldBe 2
+  }
+
   // The web process learns a cinema is on Filmweb fallback only via the worker's
   // bucket write it polls — so the flag must survive applyExternalUpdate, and a
   // flip in the flag must be treated as a change so the /uptime SSE updates.

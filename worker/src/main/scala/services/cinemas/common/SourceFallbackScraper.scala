@@ -4,7 +4,7 @@ import models.CinemaMovie
 import services.UptimeMonitor
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore}
 
-import java.time.{Duration, Instant}
+import java.time.{Clock, Duration, Instant, ZoneOffset}
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
@@ -115,7 +115,7 @@ class SourceFallbackScraper(
       previous.foreach(p => store.put(p.copy(updatedAt = nowI)))
       fwResult match {
         case scala.util.Success(fwMovies) if showtimeCount(fwMovies) > 0 =>
-          monitor.recordFallbackSuccess(service, fwMs); fallbackServed(fwMovies)
+          monitor.recordFallbackSuccess(service, fwMs, thin(fwMovies)); fallbackServed(fwMovies)
         case scala.util.Success(_) =>
           monitor.recordEmpty(service, fwMs); primaryServed(Seq.empty)
         case scala.util.Failure(t) =>
@@ -125,7 +125,7 @@ class SourceFallbackScraper(
       runPrimary() match {
         case PrimaryOutcome.Healthy(movies, ms) =>
           endFailingSpell(previous, nowI)
-          monitor.recordSuccess(service, ms)
+          monitor.recordSuccess(service, ms, thin(movies))
           primaryServed(movies)
 
         case PrimaryOutcome.Threw(t) =>
@@ -143,9 +143,9 @@ class SourceFallbackScraper(
             if (active) markPrimaryDown(previous, nowI, EmptyReason)  // already on fallback: still a failed re-probe
             monitor.recordEmpty(service, ms); primaryServed(movies)
           } else if (active) {
-            markPrimaryDown(previous, nowI, EmptyReason); monitor.recordFallbackSuccess(service, fwMs); fallbackServed(fwMovies)
+            markPrimaryDown(previous, nowI, EmptyReason); monitor.recordFallbackSuccess(service, fwMs, thin(fwMovies)); fallbackServed(fwMovies)
           } else if (graceElapsed(previous, nowI)) {
-            enterFallback(previous, nowI, EmptyReason); monitor.recordFallbackSuccess(service, fwMs); fallbackServed(fwMovies)
+            enterFallback(previous, nowI, EmptyReason); monitor.recordFallbackSuccess(service, fwMs, thin(fwMovies)); fallbackServed(fwMovies)
           } else {
             recordGraceFailure(previous, nowI, EmptyReason); monitor.recordEmpty(service, ms); primaryServed(movies)
           }
@@ -164,14 +164,19 @@ class SourceFallbackScraper(
     if (active) {
       val (fwMovies, fwMs, fwServed) = tryFallback()
       markPrimaryDown(previous, nowI, reason)
-      if (fwServed) { monitor.recordFallbackSuccess(service, fwMs); fallbackServed(fwMovies) } else keepPrimaryOutcome
+      if (fwServed) { monitor.recordFallbackSuccess(service, fwMs, thin(fwMovies)); fallbackServed(fwMovies) } else keepPrimaryOutcome
     } else if (graceElapsed(previous, nowI)) {
       val (fwMovies, fwMs, fwServed) = tryFallback()
-      if (fwServed) { enterFallback(previous, nowI, reason); monitor.recordFallbackSuccess(service, fwMs); fallbackServed(fwMovies) }
+      if (fwServed) { enterFallback(previous, nowI, reason); monitor.recordFallbackSuccess(service, fwMs, thin(fwMovies)); fallbackServed(fwMovies) }
       else { recordUncovered(previous, nowI, reason); keepPrimaryOutcome }
     } else {
       recordGraceFailure(previous, nowI, reason); keepPrimaryOutcome
     }
+
+  /** Whether what this tick served held no near-term screening ([[NearTermProgramme]]),
+   *  judged on the same injected clock as the fallback's own state machine. */
+  private def thin(movies: Seq[CinemaMovie]): Boolean =
+    NearTermProgramme.isThin(cinema, movies, Clock.fixed(now(), ZoneOffset.UTC))
 
   private def primaryServed(movies: Seq[CinemaMovie]): CinemaScraper.Scraped  = CinemaScraper.Scraped(movies, viaFallback = false)
   private def fallbackServed(movies: Seq[CinemaMovie]): CinemaScraper.Scraped = CinemaScraper.Scraped(movies, viaFallback = true)

@@ -1,6 +1,6 @@
 @import controllers.{FallbackRow, FlaggedRow, ServiceRow}
 @import services.UptimeMonitor
-@(failing: Seq[FlaggedRow], gone: Seq[FlaggedRow], zero: Seq[FlaggedRow], onFallback: Seq[FallbackRow], cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow], hiddenHealthyCinemas: Int = 0, current: models.Country)
+@(failing: Seq[FlaggedRow], gone: Seq[FlaggedRow], zero: Seq[FlaggedRow], onFallback: Seq[FallbackRow], cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow], hiddenHealthyCinemas: Int = 0, thin: Seq[FlaggedRow] = Seq.empty, current: models.Country)
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -72,6 +72,11 @@
        the slot has (it's still a success, so usually green). */
     .bar.fallback { box-shadow: inset 0 0 0 1.5px #c9962b; }
     .ov-fallback  { color: #c9962b; font-size: 11px; margin-top: 4px; }
+    /* Thin: the scrape returned screenings, but none in the next 72h — a feed that
+       stopped carrying the programme can hold a stray far-off slot and never go
+       white. An outline, not a box-shadow, so it coexists with the fallback ring. */
+    .bar.thin { outline: 1.5px dashed #b07cd8; outline-offset: -1.5px; }
+    .ov-thin  { color: #b07cd8; font-size: 11px; margin-top: 4px; }
     .bar:hover  { opacity: 0.7; }
     /* A cinema's deferred-detail enrichment health, subordinate to its scrape row:
        indented, muted, with shorter bars. Same colour classes as any bar. */
@@ -98,6 +103,7 @@
     .tag-fallback { background: #2b2410; color: #e0b341; border-color: #4d3f18; }
     .leading-fail h2 { color: #e74c3c; }
     .leading-zero h2 { color: #c9c9c9; }
+    .leading-thin h2 { color: #b07cd8; }
     /* Gone-upstream block: same collapsed <details> treatment as the fallback one
        below, in a muted grey — these rows are red but inert, and must not read as
        louder than the Failing section above them. */
@@ -175,7 +181,7 @@
     @_countrySwitch("/uptime", current)
   </div>
 
-  @if(failing.isEmpty && gone.isEmpty && zero.isEmpty && cinemasByCity.isEmpty && services.isEmpty && other.isEmpty && hiddenHealthyCinemas == 0) {
+  @if(failing.isEmpty && gone.isEmpty && zero.isEmpty && thin.isEmpty && cinemasByCity.isEmpty && services.isEmpty && other.isEmpty && hiddenHealthyCinemas == 0) {
     <p class="empty-msg">No data yet — bars will appear after the first scrape cycle.</p>
   }
 
@@ -190,6 +196,17 @@
     <div class="leading-zero">
       <h2>No screenings — last 3 scrapes</h2>
       @for(f <- zero) { @flaggedRow(f) }
+    </div>
+  }
+
+  @*  Green, but every recent scrape held screenings only past the next 72h — a
+      feed that stopped carrying the programme can keep a stray far-off slot and
+      never go white (Kino Polonez, 2026-09-26). Also true of a venue whose next
+      film really is days away, so this is a queue to check, not a list of bugs. *@
+  @if(thin.nonEmpty) {
+    <div class="leading-zero leading-thin">
+      <h2>Nothing in the next 72h — last 3 scrapes</h2>
+      @for(f <- thin) { @flaggedRow(f) }
     </div>
   }
 
@@ -260,6 +277,7 @@
     <div class="legend-item"><div class="legend-swatch" style="background:#f5f5f5"></div> no screenings</div>
     <div class="legend-item"><div class="legend-swatch" style="background:#5a7560"></div> no data</div>
     <div class="legend-item"><div class="legend-swatch" style="background:#2ecc40;box-shadow:inset 0 0 0 2px #c9962b"></div> <a href="#fallback" style="color:#c9962b">served via aggregator ↑</a></div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#2ecc40;outline:1.5px dashed #b07cd8;outline-offset:-1.5px"></div> nothing in the next 72h</div>
   </div>
 
   <div id="overlay"></div>
@@ -269,7 +287,7 @@
       Slot labels are shared across services; `data` holds only buckets that
       recorded something, so a bar with no entry is the "no data" case.  *@
   <script type="application/json" id="uptime-bars">@Html(controllers.UptimeBarPayload(
-    failing.map(_.row) ++ gone.map(_.row) ++ zero.map(_.row) ++ cinemasByCity.flatMap(_._2) ++ services ++ other))</script>
+    failing.map(_.row) ++ gone.map(_.row) ++ zero.map(_.row) ++ thin.map(_.row) ++ cinemasByCity.flatMap(_._2) ++ services ++ other))</script>
 
   <script>
     var overlay = document.getElementById('overlay');
@@ -280,7 +298,7 @@
 
     // A bucket with no entry never recorded anything — that IS "no data", and the
     // bar already renders grey for it. Keeps the payload to real activity only.
-    var EMPTY_BUCKET = {status:'empty', successes:0, failures:0, zeroes:0, errors:[], fallback:false};
+    var EMPTY_BUCKET = {status:'empty', successes:0, failures:0, zeroes:0, errors:[], fallback:false, thin:false};
 
     function attachBarHover(el) {
       el.addEventListener('mouseenter', function(ev) {
@@ -295,6 +313,7 @@
           + '<div class="ov-time">' + esc(slot.dateLabel) + ', ' + esc(slot.timeFrom) + ' – ' + esc(slot.timeTo) + '</div>'
           + '<div class="ov-status ' + d.status + '">' + statusLabels[d.status] + '</div>'
           + (d.fallback ? '<div class="ov-fallback">↳ served via Filmweb</div>' : '')
+          + (d.thin ? '<div class="ov-thin">↳ screenings, but nothing in the next 72h</div>' : '')
           + '<div class="ov-counts"><span class="ov-ok">' + d.successes + ' ok</span>'
           + '<span class="ov-fail">' + d.failures + ' failed</span>'
           + (d.zeroes ? '<span class="ov-zero">' + d.zeroes + ' empty</span>' : '')
@@ -355,8 +374,12 @@
       barSlots[ts] = {timeFrom: d.timeFrom, timeTo: d.timeTo, dateLabel: d.dateLabel};
       (barDetail[d.service] = barDetail[d.service] || {})[ts] = {
         status: d.status, successes: d.successes, failures: d.failures,
-        zeroes: d.zeroes, errors: d.errors, fallback: d.fallback
+        zeroes: d.zeroes, errors: d.errors, fallback: d.fallback, thin: d.thin
       };
+    }
+
+    function barClass(d) {
+      return 'bar ' + d.status + (d.fallback ? ' fallback' : '') + (d.thin ? ' thin' : '');
     }
 
     function applyUpdate(d) {
@@ -368,7 +391,7 @@
         var barsDiv = row.querySelector('.bars');
         var bar = barsDiv.querySelector('.bar[data-ts="' + timestamp + '"]');
         if (bar) {
-          bar.className = 'bar ' + d.status + (d.fallback ? ' fallback' : '');
+          bar.className = barClass(d);
         } else {
           // A live frame only arrives for a bucket that HAD activity, so a
           // service idle for a few slots (a cinema on ~hourly cadence, a quiet
@@ -388,7 +411,7 @@
             if (t < floor) t = floor;
             for (; t < newTs; t += BUCKET_MS) barsDiv.appendChild(makeBar(t, 'bar empty'));
           }
-          barsDiv.appendChild(makeBar(newTs, 'bar ' + d.status + (d.fallback ? ' fallback' : '')));
+          barsDiv.appendChild(makeBar(newTs, barClass(d)));
           while (barsDiv.children.length > @UptimeMonitor.MaxBuckets) barsDiv.removeChild(barsDiv.firstElementChild);
         }
       });
@@ -429,7 +452,7 @@
     </div>
     <div class="bars">
       @for(b <- s.bars) {
-        <div class="bar @b.status@if(b.fallback){ fallback}" data-ts="@b.bucketTimestamp"></div>
+        <div class="bar @b.status@if(b.fallback){ fallback}@if(b.thin){ thin}" data-ts="@b.bucketTimestamp"></div>
       }
     </div>
     <div class="latency" title="avg successful call latency — last 1h / all retained">
@@ -453,7 +476,7 @@
     <div class="name" title="@s.name">↳ enrichment</div>
     <div class="bars">
       @for(b <- s.bars) {
-        <div class="bar @b.status@if(b.fallback){ fallback}" data-ts="@b.bucketTimestamp"></div>
+        <div class="bar @b.status@if(b.fallback){ fallback}@if(b.thin){ thin}" data-ts="@b.bucketTimestamp"></div>
       }
     </div>
     <div class="latency" title="avg successful detail-fetch latency — last 1h / all retained">

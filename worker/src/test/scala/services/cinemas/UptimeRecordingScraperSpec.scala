@@ -54,6 +54,25 @@ class UptimeRecordingScraperSpec extends AnyFlatSpec with Matchers {
     bucket.status    shouldBe "red"
   }
 
+  // OneMovie screens 2026-06-10 18:00 (Warsaw). A green scrape whose screenings
+  // all sit past the next 72 hours is still green, but its bucket is marked `thin`
+  // so /uptime can show it — the Polonez shape (four pre-sale slots, nothing near).
+  it should "mark a green scrape thin when none of its showtimes fall in the next 72 hours" in {
+    val monitor = new UptimeMonitor()
+    val fourDaysBefore = java.time.Clock.fixed(java.time.Instant.parse("2026-06-06T10:00:00Z"), java.time.ZoneOffset.UTC)
+    new UptimeRecordingScraper(ScriptedCinemaScraper(List(Right(OneMovie))), monitor, clock = fourDaysBefore).fetch()
+    val bucket = monitor.history(Multikino.displayName).head
+    bucket.status shouldBe "green"
+    bucket.thin   shouldBe true
+  }
+
+  it should "not mark a green scrape thin when a showtime falls in the next 72 hours" in {
+    val monitor = new UptimeMonitor()
+    val sameDay = java.time.Clock.fixed(java.time.Instant.parse("2026-06-10T08:00:00Z"), java.time.ZoneOffset.UTC)
+    new UptimeRecordingScraper(ScriptedCinemaScraper(List(Right(OneMovie))), monitor, clock = sameDay).fetch()
+    monitor.history(Multikino.displayName).head.thin shouldBe false
+  }
+
   // The split's regression guard: retry swallows the blip and returns success,
   // so the recorder sees only the green outcome — no yellow bar for a recovered
   // tick, exactly as the pre-split single class did.

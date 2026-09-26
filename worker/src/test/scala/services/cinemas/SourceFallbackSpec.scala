@@ -71,6 +71,24 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers {
     h.primary.calls shouldBe 1            // filmweb never consulted
   }
 
+  // Thin is judged on whatever was served: a healthy primary whose only screening
+  // is past the next 72 hours (Harness clock is 2026-06-06 here, OneMovie screens
+  // 06-10) stays green, marked thin.
+  it should "mark a healthy primary's far-future-only listing thin, still green" in {
+    val h = new Harness(Seq(Right(OneMovie)), Some(filmwebWith(OneMovie)))
+    h.clock = Instant.parse("2026-06-06T08:00:00Z")
+    h.scraper.fetch() shouldBe OneMovie
+    h.bucket.status   shouldBe "green"
+    h.bucket.thin     shouldBe true
+    h.bucket.fallback shouldBe false
+  }
+
+  it should "not mark a healthy primary with a screening today thin" in {
+    val h = new Harness(Seq(Right(OneMovie)), Some(filmwebWith(OneMovie)))
+    h.scraper.fetch()
+    h.bucket.thin shouldBe false
+  }
+
   // ---- grace window: ride out short outages on last-good data, don't fall back yet ----
 
   it should "RE-RAISE (not fall back) on the first throw — inside the grace window Filmweb is never consulted" in {

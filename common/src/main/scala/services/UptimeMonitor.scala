@@ -151,20 +151,26 @@ class UptimeMonitor(
   def addListener(f: BucketListener): Unit = { listeners.add(f); () }
   def removeListener(f: BucketListener): Unit = { listeners.remove(f); () }
 
-  def recordSuccess(service: String): Unit = recordSuccess(service, None, fallback = false)
+  def recordSuccess(service: String): Unit = countSuccess(service, None, fallback = false, thin = false)
 
   /** Record a successful call along with how long it took, so the uptime page
-   *  can show per-service average latency (1h + total). */
-  def recordSuccess(service: String, durationMs: Long): Unit = recordSuccess(service, Some(durationMs), fallback = false)
+   *  can show per-service average latency (1h + total). For a cinema scrape,
+   *  `thin` says the listing held screenings but none in the near term (see
+   *  `NearTermProgramme` in the worker): still a success, so the bar stays green,
+   *  but /uptime marks it — a feed that stopped carrying a venue's programme can
+   *  keep a stray far-off slot and never go white. */
+  def recordSuccess(service: String, durationMs: Long, thin: Boolean = false): Unit =
+    countSuccess(service, Some(durationMs), fallback = false, thin)
 
   /** Record a success that was served via the Filmweb fallback — the primary
    *  scrape failed or came back empty, so the showtimes came from Filmweb. Counts
    *  as a success (the user got data) but also marks the bucket `fallback`, so the
-   *  /uptime bar can show "served via Filmweb" rather than a plain green. */
-  def recordFallbackSuccess(service: String, durationMs: Long): Unit =
-    recordSuccess(service, Some(durationMs), fallback = true)
+   *  /uptime bar can show "served via Filmweb" rather than a plain green. `thin`
+   *  as for [[recordSuccess]], judged on what the fallback served. */
+  def recordFallbackSuccess(service: String, durationMs: Long, thin: Boolean = false): Unit =
+    countSuccess(service, Some(durationMs), fallback = true, thin)
 
-  private def recordSuccess(service: String, durationMs: Option[Long], fallback: Boolean): Unit = {
+  private def countSuccess(service: String, durationMs: Option[Long], fallback: Boolean, thin: Boolean): Unit = {
     val bucket = currentBucket(service)
     bucket.successes.incrementAndGet()
     durationMs.foreach { ms =>
@@ -172,6 +178,7 @@ class UptimeMonitor(
       bucket.durationCount.incrementAndGet()
     }
     if (fallback) bucket.fallback.set(true)
+    if (thin) bucket.thin.set(true)
     bucket.dirty.set(true)
     notifyListeners(service, bucket)
   }
@@ -225,9 +232,7 @@ class UptimeMonitor(
   def history(service: String): Seq[BucketSnapshot] = {
     val buckets = data.get(service)
     if (buckets == null) Seq.empty
-    else buckets.values().asScala.toSeq.map(b =>
-      BucketSnapshot(b.timestamp, b.successes.get(), b.failures.get(), b.zeroes.get(), b.errors.asScala.toSeq, b.fallback.get())
-    )
+    else buckets.values().asScala.toSeq.map(_.snapshot)
   }
 
   /** The status keywords of the most recent `limit` buckets that recorded any
@@ -235,7 +240,9 @@ class UptimeMonitor(
    *  needs, and it deliberately does not build the row's bar series: the US
    *  registers one service per venue (5,031), so materialising all 96 slots for
    *  every service just to decide which few are red is ~484k objects — enough to
-   *  OOM-kill the web pod, which is what it did on 2026-08-31. */
+   *  OOM-kill the web pod, which is what it did on 2026-08-31. A green bucket
+   *  whose success was `thin` reads as "thin" here, so the classifier can pull a
+   *  run of them into their own section. */
   def recentStatuses(service: String, limit: Int): Seq[String] = {
     val buckets = data.get(service)
     if (buckets == null) Seq.empty
@@ -246,7 +253,7 @@ class UptimeMonitor(
       while (taken < limit && it.hasNext) {
         val b = it.next()
         val status = BucketSnapshot(b.timestamp, b.successes.get(), b.failures.get(), b.zeroes.get(), Seq.empty).status
-        if (status != "empty") { out += status; taken += 1 }
+        if (status != "empty") { out += (if (status == "green" && b.thin.get()) "thin" else status); taken += 1 }
       }
       out.result().reverse   // walked newest-first; callers want oldest→newest
     }
@@ -352,7 +359,7 @@ class UptimeMonitor(
           out += BucketWrite(service, b.timestamp,
             b.successes.get(), b.failures.get(), b.zeroes.get(),
             b.durationSumMs.get(), b.durationCount.get(),
-            b.errors.asScala.toList, b.fallback.get())
+            b.errors.asScala.toList, b.fallback.get(), b.thin.get())
       }
     }
     out.result()
@@ -379,7 +386,8 @@ class UptimeMonitor(
         Updates.set("durationSumMs", bw.durationSumMs),
         Updates.set("durationCount", bw.durationCount),
         Updates.set("errors", bw.errors.asJava),
-        Updates.set("fallback", bw.fallback)
+        Updates.set("fallback", bw.fallback),
+        Updates.set("thin", bw.thin)
       ),
       new UpdateOptions().upsert(true)
     ).subscribe(
@@ -390,7 +398,7 @@ class UptimeMonitor(
 
   private def notifyListeners(service: String, bucket: Bucket): Unit =
     if (!listeners.isEmpty) {
-      val snap = BucketSnapshot(bucket.timestamp, bucket.successes.get(), bucket.failures.get(), bucket.zeroes.get(), bucket.errors.asScala.toSeq, bucket.fallback.get())
+      val snap = bucket.snapshot
       listeners.forEach(f => Try(f(service, snap)))
     }
 
@@ -514,6 +522,13 @@ object UptimeMonitor {
     // counts as a success (the user got showtimes), so `status` stays green —
     // this just lets the /uptime page mark the bar "served via Filmweb".
     val fallback = new AtomicBoolean(false)
+    // Sticky within the slot, like `fallback`: set when a successful scrape in
+    // this bucket held screenings but none in the near term. Status stays green;
+    // /uptime marks the bar so a feed that kept one stray far-off slot shows.
+    val thin = new AtomicBoolean(false)
+
+    def snapshot: BucketSnapshot =
+      BucketSnapshot(timestamp, successes.get(), failures.get(), zeroes.get(), errors.asScala.toSeq, fallback.get(), thin.get())
   }
 
   /** One service's counts over a time window — the whole of what the Prometheus
@@ -526,10 +541,11 @@ object UptimeMonitor {
     service: String, bucketTimestamp: Long,
     successes: Int, failures: Int, zeroes: Int,
     durationSumMs: Long, durationCount: Int,
-    errors: List[String], fallback: Boolean = false
+    errors: List[String], fallback: Boolean = false, thin: Boolean = false
   )
 
-  case class BucketSnapshot(timestamp: Long, successes: Int, failures: Int, zeroes: Int, errors: Seq[String], fallback: Boolean = false) {
+  case class BucketSnapshot(timestamp: Long, successes: Int, failures: Int, zeroes: Int, errors: Seq[String],
+                            fallback: Boolean = false, thin: Boolean = false) {
     // Precedence: a failure dominates (red/yellow); a real success means green
     // even alongside a zero-result call in the same slot; only when every
     // non-failed call came back empty does the slot read "zero" (white). An

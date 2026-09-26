@@ -127,11 +127,6 @@ private[movies] final class ScrapeLanding(
   private def persistGuardState(cinema: Cinema, before: ScrapeGuardState, after: ScrapeGuardState): Unit =
     if (after != before) guardLedger.put(cinema, after)
 
-  /** The venue's own wall-clock time — `Showtime.dateTime` is city-local, so a bare UTC
-   *  "now" would misjudge every non-Polish venue by its zone offset. */
-  private def localNow(cinema: Cinema): java.time.LocalDateTime =
-    java.time.LocalDateTime.now(clock.withZone(models.City.forCinema(cinema).map(_.zoneId).getOrElse(clock.getZone)))
-
   /** The slot key for one cinema's report of a film under a given shown title.
    *  Every cinema slot is keyed by `(cinema, sanitize(title))` so a venue can hold
    *  several title-variant slots of one film (the original + a dubbed/decorated
@@ -249,7 +244,7 @@ private[movies] final class ScrapeLanding(
     // showtime is nothing the guard can protect, and counting it let a venue stuck on
     // a stale listing (Braniewo's Baszta, still measured against another town's
     // programme) keep a baseline that had long since run out.
-    val now                  = localNow(cinema)
+    val now                  = models.City.localNow(cinema, clock)
     val knownCinemaShowtimes = corpusIndex.slotsOf(cinema).map { case (_, _, sd) =>
       ShowtimesDigest.upcomingShowtimeCount(sd, now) }.sum
     val batchShowtimes       = movies.iterator.map(_.showtimes.count(_.dateTime.isAfter(now))).sum

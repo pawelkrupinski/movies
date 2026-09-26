@@ -177,6 +177,24 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     cinemasByCity.flatMap(_._2).map(_.name) should not contain cinema
   }
 
+  // Green on its last 3 scrapes, but each one held no screening in the next 72h —
+  // the Polonez shape. Its own triage section, so it shows even where a large
+  // roster hides healthy rows.
+  it should "promote a cinema whose last 3 scrapes were all thin into the thin section" in {
+    val statuses = statusesFrom(Map(cinema -> Seq("thin", "thin", "thin")))
+    val sections = controller.groupRows(Set(cinema), statuses, noErrors, fakeRow)
+    sections.thin.map(_.row.name) should contain(cinema)
+    sections.zero shouldBe empty
+    sections.cinemasByCity.flatMap(_._2).map(_.name) should not contain cinema
+  }
+
+  it should "keep a cinema healthy when only some of its last 3 scrapes were thin" in {
+    val statuses = statusesFrom(Map(cinema -> Seq("green", "thin", "thin")))
+    val sections = controller.groupRows(Set(cinema), statuses, noErrors, fakeRow)
+    sections.thin shouldBe empty
+    sections.cinemasByCity.flatMap(_._2).map(_.name) should contain(cinema)
+  }
+
   it should "keep a healthy cinema in its city group, out of triage" in {
     val statuses = statusesFrom(Map(cinema -> Seq("green", "green", "green")))
     val sections = controller.groupRows(Set(cinema), statuses, noErrors, fakeRow)

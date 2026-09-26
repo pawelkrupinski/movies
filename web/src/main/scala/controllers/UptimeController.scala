@@ -84,6 +84,10 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
   // them. The section it feeds is still called "gone upstream".
   private case object Missing extends Health
   private case object Zero    extends Health
+  // Green, but every recent scrape held no screening in the next 72h — a feed that
+  // stopped carrying the programme and kept a stray far-off slot (Kino Polonez,
+  // 2026-09-26). Least severe of the flagged verdicts.
+  private case object Thin    extends Health
   private case object Healthy extends Health
 
   private val warsawZone = ZoneId.of("Europe/Warsaw")
@@ -92,13 +96,11 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
 
   /** One rendered bar, with its bucket window stamped in Warsaw time. Shared by
    *  the full-page render and the live SSE feed so both label a bucket the same. */
-  private def barData(service: String, bucketTimestamp: Long, status: String,
-                      successes: Int, failures: Int, zeroes: Int, errors: Seq[String],
-                      fallback: Boolean = false): BarData = {
-    val from = Instant.ofEpochMilli(bucketTimestamp)
-    val to   = Instant.ofEpochMilli(bucketTimestamp + BucketDurationMs)
-    BarData(service, bucketTimestamp, timeFmt.format(from), timeFmt.format(to), dateFmt.format(from),
-      status, successes, failures, zeroes, errors, fallback)
+  private def barData(service: String, b: UptimeMonitor.BucketSnapshot): BarData = {
+    val from = Instant.ofEpochMilli(b.timestamp)
+    val to   = Instant.ofEpochMilli(b.timestamp + BucketDurationMs)
+    BarData(service, b.timestamp, timeFmt.format(from), timeFmt.format(to), dateFmt.format(from),
+      b.status, b.successes, b.failures, b.zeroes, b.errors, b.fallback, b.thin)
   }
 
   def index: Action[AnyContent] = adminAction {
@@ -110,10 +112,7 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
     def barsFor(serviceName: String): Seq[BarData] = {
       val history = monitor.history(serviceName).map(b => b.timestamp -> b).toMap
       slots.map { timestamp =>
-        history.get(timestamp) match {
-          case Some(b) => barData(serviceName, timestamp, b.status, b.successes, b.failures, b.zeroes, b.errors, b.fallback)
-          case None    => barData(serviceName, timestamp, "empty", 0, 0, 0, Seq.empty)
-        }
+        barData(serviceName, history.getOrElse(timestamp, UptimeMonitor.BucketSnapshot(timestamp, 0, 0, 0, Seq.empty)))
       }
     }
 
@@ -123,7 +122,7 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
     val sections = groupRows(active, monitor.recentStatuses(_, RecentScrapes),
       monitor.recentErrors(_, RecentScrapes), row)
     Ok(views.html.uptime(sections.failing, sections.gone, sections.zero, activeFallbacks(), sections.cinemasByCity,
-      sections.services, sections.other, sections.hiddenHealthyCinemas, current = country))
+      sections.services, sections.other, sections.hiddenHealthyCinemas, thin = sections.thin, current = country))
   }
 
   /** Cinemas CURRENTLY served by Filmweb because their own scraper is down/empty,
@@ -208,6 +207,7 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
       failing = flaggedAs(Failing),
       gone = flaggedAs(Missing),
       zero = flaggedAs(Zero),
+      thin = flaggedAs(Thin),
       cinemasByCity = cinemasByCity,
       services = serviceVerdicts.collect { case (n, Healthy) => row(n) },
       other = otherVerdicts.collect { case (n, Healthy) => row(n) },
@@ -217,7 +217,7 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
 
   /** Classify a bar series by its last `RecentScrapes` buckets that recorded any
    *  activity (ignoring untouched "empty" slots): all red ⇒ Failing, all white
-   *  ⇒ Zero, anything else (any success, or no activity at all) ⇒ Healthy. A lone
+   *  ⇒ Zero, all green-but-thin ⇒ Thin, anything else (any success, or no activity at all) ⇒ Healthy. A lone
    *  red blip among greens stays Healthy; a brand-new service that has only ever
    *  failed is Failing from its first bucket. Yellow (partial failure) is NOT
    *  failing. */
@@ -226,6 +226,7 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
     if (recent.isEmpty) Healthy
     else if (recent.forall(_ == "red")) Failing
     else if (recent.forall(_ == "zero")) Zero
+    else if (recent.forall(_ == "thin")) Thin
     else Healthy
   }
 
@@ -261,6 +262,7 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
     if (a == Failing || b == Failing) Failing
     else if (a == Missing || b == Missing) Missing
     else if (a == Zero || b == Zero) Zero
+    else if (a == Thin || b == Thin) Thin
     else Healthy
 
   def stream: Action[AnyContent] = adminAction {
@@ -278,8 +280,7 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
       .preMaterialize()
 
     val listener: BucketListener = { (service, snapshot) =>
-      queue.offer(barData(service, snapshot.timestamp, snapshot.status,
-        snapshot.successes, snapshot.failures, snapshot.zeroes, snapshot.errors, snapshot.fallback))
+      queue.offer(barData(service, snapshot))
       ()
     }
     monitor.addListener(listener)
@@ -391,7 +392,9 @@ case class BarData(
   failures: Int,
   zeroes: Int,
   errors: Seq[String],
-  fallback: Boolean = false
+  fallback: Boolean = false,
+  // A green scrape with no screening in the near term (the worker's NearTermProgramme).
+  thin: Boolean = false
 )
 
 object BarData {
@@ -406,7 +409,8 @@ object BarData {
     "failures"  -> b.failures,
     "zeroes"    -> b.zeroes,
     "errors"    -> b.errors,
-    "fallback"  -> b.fallback
+    "fallback"  -> b.fallback,
+    "thin"      -> b.thin
   )
 }
 
@@ -445,7 +449,8 @@ object UptimeBarPayload {
           "failures"  -> b.failures,
           "zeroes"    -> b.zeroes,
           "errors"    -> b.errors,
-          "fallback"  -> b.fallback
+          "fallback"  -> b.fallback,
+          "thin"      -> b.thin
         )
       })
     }.filter(_._2.value.nonEmpty).toMap
@@ -516,6 +521,8 @@ case class UptimeSections(
   // "something broke and someone should look".
   gone: Seq[FlaggedRow],
   zero: Seq[FlaggedRow],
+  // Green on every recent scrape, each with nothing in the next 72h (see Thin).
+  thin: Seq[FlaggedRow],
   cinemasByCity: Seq[(String, Seq[ServiceRow])],
   services: Seq[ServiceRow],
   other: Seq[ServiceRow],

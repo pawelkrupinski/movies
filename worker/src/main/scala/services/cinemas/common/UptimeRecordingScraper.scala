@@ -3,6 +3,7 @@ package services.cinemas.common
 import models.CinemaMovie
 import services.UptimeMonitor
 
+import java.time.Clock
 import scala.util.control.NonFatal
 
 /**
@@ -16,7 +17,8 @@ import scala.util.control.NonFatal
  *             screenings" bar). A cinema that's up but silently returning
  *             nothing — an upstream layout change, an empty repertoire page —
  *             is a real failure mode a green bar would hide.
- *  - any screenings → a success (a green bar).
+ *  - any screenings → a success (a green bar), marked `thin` when none of them
+ *             falls in the near term ([[NearTermProgramme]]).
  *
  * Wrapped OUTSIDE `RetryingCinemaScraper`, so the failed attempts a retry
  * recovers from never reach here — only the tick's final outcome is recorded.
@@ -27,7 +29,8 @@ import scala.util.control.NonFatal
 class UptimeRecordingScraper(
   delegate: CinemaScraper,
   monitor:  UptimeMonitor,
-  listener: ScrapeOutcomeListener = ScrapeOutcomeListener.NoOp
+  listener: ScrapeOutcomeListener = ScrapeOutcomeListener.NoOp,
+  clock:    Clock = Clock.systemUTC()
 ) extends DelegatingCinemaScraper(delegate) {
 
   // Forward the tick's outcome to the listener alongside the monitor stamp,
@@ -51,7 +54,7 @@ class UptimeRecordingScraper(
       monitor.recordEmpty(cinema.displayName, ms)
       notifyOutcome(ScrapeOutcome.Empty)
     } else {
-      monitor.recordSuccess(cinema.displayName, ms)
+      monitor.recordSuccess(cinema.displayName, ms, thin = NearTermProgramme.isThin(cinema, result, clock))
       notifyOutcome(ScrapeOutcome.Success)
     }
     result

@@ -45,8 +45,13 @@ class UptimeLiveBarsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAl
     BarData("DetailSvc", idleTs, "09:45", "10:00", "13 Jul", "empty", 0, 0, 0, Seq.empty),
   ))
 
+  // A green bucket whose scrape held no screening in the next 72 hours
+  // (services.cinemas.common.NearTermProgramme) — the Polonez shape.
+  private val thinRow = ServiceRow("ThinSvc", Seq(
+    BarData("ThinSvc", lastTs, "09:45", "10:00", "13 Jul", "green", 1, 0, 0, Seq.empty, thin = true)))
+
   private val uptimeHtml: String =
-    views.html.uptime(Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq(row, detailRow), current = models.Country.Poland).body
+    views.html.uptime(Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq(row, detailRow, thinRow), current = models.Country.Poland).body
 
   private var chrome: Option[Chrome] = None
   private var server: TestHttpServer = _
@@ -144,6 +149,28 @@ class UptimeLiveBarsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAl
 
       text should include ("9 ok")
       text should not include ("connect timeout")  // the stale error is replaced
+    }
+  }
+
+  // A thin scrape stays green but must not read as a healthy one: the bar gets
+  // its own marker and the tooltip says why.
+  "a thin /uptime bar" should "render marked and explain itself on hover" in {
+    onUptime { page =>
+      val sel = s"""document.querySelector('.row[data-service="ThinSvc"] .bar[data-ts="$lastTs"]')"""
+      page.evalString(s"$sel.className") should (include ("green") and include ("thin"))
+      page.eval(hover("ThinSvc", lastTs))
+      page.evalString(overlayText) should include ("nothing in the next 72h")
+    }
+  }
+
+  it should "pick up the thin marker from a live SSE frame" in {
+    onUptime { page =>
+      page.eval(
+        s"applyUpdate({service:'TestSvc',bucketTs:$lastTs,status:'green',fallback:false,thin:true," +
+        "successes:1,failures:0,zeroes:0,errors:[],timeFrom:'a',timeTo:'b',dateLabel:'c'})")
+      page.evalString(s"${barSel(lastTs)}.className") should include ("thin")
+      page.eval(hover("TestSvc", lastTs))
+      page.evalString(overlayText) should include ("nothing in the next 72h")
     }
   }
 }
