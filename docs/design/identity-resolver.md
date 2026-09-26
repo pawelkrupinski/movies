@@ -784,30 +784,43 @@ search page of each other rating site, and the unrated sort key (`RatingGate.wit
 than ratings that may belong to another film. Title, showtimes and everything the venues
 published are untouched.
 
-- **Pure core.** `RatingGate.gate(movie, confidence, calibration)`. No decision or no calibration
-  withholds nothing. A film's confidence is the minimum over the decisions its listings belong
-  to (`confidenceOf`): a film spanning two clusters is only as sure as the weaker one. The
-  listings of a stored row come from its venue slots (`ListingKey.ofSlot`).
-- **Calibration, not a constant.** `ConfidenceCalibration.calibrate` takes the labelled shadow
-  diff: every decision whose correctness is known, either because the pipeline agrees or because a
-  reviewed verdict on the known-issues list (§10) says right or wrong. It picks the cut that
-  misclassifies the fewest of them (wrong shown plus right withheld). On a tie it takes the lower
-  cut, which withholds less, so with no evidence either way a film keeps its ratings. Without
-  labelled data there is no threshold and nothing is withheld. Only the order of confidences
-  matters, so the resolver's score does not have to be a probability, and a change in how the
-  resolver scores is re-calibrated by the next labelled run. The labelled set comes from the
-  shadow diff's categories (§7a): identical films are correct, category-1 splits the pipeline
-  got right are wrong, and category 2–4 cases carry their reviewed verdict. The admin view shows
-  the resulting cut and its confusion counts.
+- **Scored from the row's own evidence.** `RatingGate.fromEvidence(IdentityCalibration.default)`
+  reads each stored row through `StoredIdentityConfidence`: the TMDB slot is the film, each venue
+  slot (with its detail-page facts) a listing, measured by the calibration's own
+  `IdentityMeasures.listingFilm` — title, original title, year, director, runtime, country, and
+  `venues.corroborating` over the row's venues sharing the title key. The measures only the
+  concluding TMDB search knew (`IdentityMeasures.RankingPriors`: rank, popularity, rivals) are not
+  stored and weigh nothing. The film's confidence is its best-evidenced listing's
+  `IdentityCalibration.probability`; below the artefact's `showRatings` threshold (fitted, §14)
+  the card is withheld. `tmdbBasis` is never read — most rows predate it. A row with no TMDB slot
+  or no venue slot has nothing to measure and keeps its card. So a title-only match stays a match,
+  and keeps its ratings exactly when some venue's facts back it: Kino 1410's "Samson i dalila |
+  metropolitan opera: live in hd 2026/27" (no year, director or runtime, against DeMille's 1949
+  film) is withheld; a Back to the Future III whose venues state 1990, 118 min and Zemeckis is
+  shown; an exact title with no other fact anywhere scores ≈0.18 and is withheld, as a namesake
+  would have the same evidence (`StoredIdentityConfidenceSpec`).
+- **Why not the shadow decisions.** The first cut gated on the shadow resolver's persisted
+  decisions, with a threshold `ConfidenceCalibration` fitted from its labelled diff. Those
+  decisions were never persisted (`ShadowDecisions.none`), so a switched-on gate withheld nothing.
+  `ConfidenceCalibration` now only draws the admin view's low-confidence line (§13.3).
+- **Measure before switching.** `scripts.IdentityGateImpact` replays a read-only export of
+  production rows through the same gate and reports, per country, what it would hide and how many
+  of those the labelled set corroborates (false hides) or contradicts. Measured 2026-09-26 on
+  listed, rated films: PL 199/710 hidden (28%; labels: 1 corroborated, 1 contradicted, 197
+  unlabelled), UK 33/1373 (2.4%; 2/2/29), DE 9/1544 (0.6%; 1/1/7), US 86/2132 (4.0%; 0/1/85),
+  ES 2/209 (1.0%). The labels cover few of the hidden films; unlabelled PL and US hides include
+  plainly right matches that small venues list by bare title (Fellini's "Osiem i pół", Alamo's
+  "Kill Bill"), so those countries are not switched. Rows with a tmdbId but no stored TMDB slot
+  (PL 15, UK 26, DE 52) are not scored.
 - **Wiring, off.** `ReadModelProjector(ratingGate = …)` applies the gate to every card it
   projects. The gate's `version` is part of the metadata-reuse key, so a new gate re-projects
   instead of reusing cards gated under the old one. `ReadModelContentAudit` projects through the
   same gate, so a withheld card is not reported as drift. The worker's `ReadModelWiring` passes
   `RatingGate.off` unless `KINOWO_IDENTITY_RATING_GATE=true`
-  (`ProcessConfiguration.identityRatingGate`, a typed `IdentityRatingGateEnabled`). When on, it snapshots
-  `shadowDecisions` at boot, and that is `ShadowDecisions.none` until the resolver's shadow run
-  lands, so even a switched-on gate withholds nothing today. This is a staged-migration switch
-  (allowed here per the program brief), to be removed at cutover.
+  (`ProcessConfiguration.identityRatingGate`, a typed `IdentityRatingGateEnabled`), and
+  `RatingGate.fromEvidence` when it is. The switch is read per worker process, so it is flipped
+  per country in that country's worker env. This is a staged-migration switch (allowed here per
+  the program brief), to be removed at cutover.
 - **Open.** Posters, synopsis and credits also come from the matched film and are equally
   suspect below the threshold. The gate covers ratings and rating links only, as specified.
   Whether to extend it is a question for the cutover phase.
@@ -820,7 +833,7 @@ a read-only diagnostic of the latest shadow decisions:
 
 - **Contradicted**: decisions with constraint pressure (`Decision.contradictions`: a must-link a
   cannot-link refused, an ambiguous node left alone);
-- **Below the rating threshold**: the decisions the calibrated gate would withhold;
+- **Below the rating threshold**: the decisions below the cut `ConfidenceCalibration` fits from the labelled shadow diff;
 - each with the resolver's own `explanation`, plus the current calibration.
 
 Pins can be created (tick listings, or paste listing JSON) and removed there, for emergencies.
@@ -833,8 +846,8 @@ Chrome: it pins the ticked listing, removes the pin, and shows a refusal.
 - `Decision` and `ShadowDecisions` (common, `services.identity`) are minimal stand-ins. The
   resolver branch owns `Decision`: when it lands, its type replaces or extends this trait (fields
   used: `listings`, `tmdbId`, `confidence`, `explanation`, `contradictions`), and a
-  `ShadowDecisions` reading its shadow report replaces `ShadowDecisions.none` in both wirings
-  (web `AdminWiring`, worker `ReadModelWiring`).
+  `ShadowDecisions` reading its shadow report replaces `ShadowDecisions.none` in the web
+  `AdminWiring` (the worker's rating gate scores stored evidence instead, §13.2).
 - The resolver must read pins through `ListingConstraints.pinned` (§13.1): add `blockKeys` to the
   family keys, solve `mustLinks` as tier 0, apply `admits` to its derived edges, and resolve each
   listing through `resolvedFilm`.

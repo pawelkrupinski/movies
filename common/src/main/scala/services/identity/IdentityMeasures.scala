@@ -51,6 +51,11 @@ object IdentityMeasures {
   val ListingFilm    = "listing-film"
   val ListingListing = "listing-listing"
 
+  /** The listing-film measures that are the film DATABASE'S ranking of its search, not anything
+   *  a listing published: where the film ranked, how popular it is, how many same-titled rivals
+   *  it has. */
+  val RankingPriors: Set[String] = Set("search.rank", "popularity.log2", "rivals")
+
   // ── keys ─────────────────────────────────────────────────────────────────────────────
 
   /** A title or name as a comparison key: accents folded, lowercased, every non-letter and

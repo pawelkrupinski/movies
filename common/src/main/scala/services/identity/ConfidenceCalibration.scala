@@ -1,13 +1,14 @@
 package services.identity
 
 /**
- * Where the rating gate draws its line — derived from data, never a hand-picked constant
- * (docs/design/identity-resolver.md, "Confidence-gated ratings").
+ * Where the identity admin view draws its low-confidence line over the shadow resolver's
+ * decisions — derived from data, never a hand-picked constant. (The served rating gate reads the
+ * calibration artefact's own threshold instead: [[RatingGate.fromEvidence]].)
  *
  * The input is the labelled shadow diff: every decision whose correctness is known (the
  * pipeline agrees, or a reviewed known-issues verdict says right or wrong), with its confidence.
- * The threshold is the cut that misclassifies the fewest of them — a decision below it has its
- * ratings withheld, so the ideal cut withholds exactly the wrong ones and shows exactly the right
+ * The threshold is the cut that misclassifies the fewest of them — a decision below it is listed
+ * as low-confidence, so the ideal cut withholds exactly the wrong ones and shows exactly the right
  * ones. Where the classes overlap, the cut minimises (wrong shown + right withheld); on a tie it
  * takes the LOWER cut, withholding less: with no evidence either way, the film keeps its ratings.
  *

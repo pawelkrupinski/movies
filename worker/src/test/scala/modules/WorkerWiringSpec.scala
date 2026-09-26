@@ -577,4 +577,18 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     new Probe(Country.Poland, budget, tools.Env.of("KINOWO_IDENTITY_RATING_GATE" -> "true")).ratingGate should not be
       theSameInstanceAs(services.identity.RatingGate.off)
   }
+
+  it should "when switched on, withhold a title-only match no venue's facts back — scored from the row alone" in {
+    import models._
+    val normalizer = services.movies.SingleCountryNormalizer.titleNormalizer
+    val relay = "Samson i dalila | metropolitan opera: live in hd 2026/27"
+    val stored = services.movies.StoredMovieRecord.synthesised(relay, None, MovieRecord(
+      imdbRating = Some(6.8), imdbId = Some("tt0041838"), tmdbId = Some(29993), data = Map[Source, SourceData](
+        Kino1410 -> SourceData(title = Some(relay), rawTitle = Some(relay)),
+        Tmdb     -> SourceData(title = Some("Samson i Dalia"), originalTitle = Some("Samson and Delilah"), releaseYear = Some(1949),
+                      runtimeMinutes = Some(131), director = Seq("Cecil B. DeMille"), countries = Seq("USA")))), normalizer)
+    val movie = services.readmodel.ReadModelProjection.resolve(stored, normalizer)
+    val gate = new Probe(Country.Poland, new SharedExecutionBudget(4), tools.Env.of("KINOWO_IDENTITY_RATING_GATE" -> "true")).ratingGate
+    gate(stored, movie) shouldBe services.identity.RatingGate.withheld(movie)
+  }
 }

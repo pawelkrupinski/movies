@@ -142,7 +142,7 @@ object IdentityResolver {
     /** What the LISTING'S OWN facts contribute — the title, year, director, runtime, original
      *  title and country measures — as opposed to the film database's ranking priors (search rank,
      *  popularity, rivals) and the family's pooled count (`venues.corroborating`). */
-    val Priors = Set("search.rank", "popularity.log2", "rivals", "venues.corroborating")
+    val Priors = IdentityMeasures.RankingPriors + "venues.corroborating"
     def ownContributions(measures: Map[String, Measure]): Double =
       calibration.contributions(ListingFilm, measures).collect { case (name, w) if !Priors(name) => w }.sum
     /** The calibrated probability on the listing's own facts alone — what a cannot-link reads. A

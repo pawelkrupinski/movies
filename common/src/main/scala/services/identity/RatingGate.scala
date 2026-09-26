@@ -1,8 +1,7 @@
 package services.identity
 
 import models.{RatingSearchUrls, ResolvedMovie, ResolvedRatings}
-import services.identity.ConfidenceCalibration.Calibration
-import services.movies.{ListingKey, StoredMovieRecord}
+import services.movies.StoredMovieRecord
 
 /**
  * CONFIDENCE-GATED RATINGS (docs/design/identity-resolver.md, "Confidence-gated ratings"): a
@@ -10,9 +9,11 @@ import services.movies.{ListingKey, StoredMovieRecord}
  * no direct rating links — only each site's search page — rather than ratings that may be
  * another film's. The title, showtimes and everything the venues published are untouched.
  *
- * Off in production: `ReadModelProjector` takes [[RatingGate.off]] unless the worker's
- * composition root sets `KINOWO_IDENTITY_RATING_GATE`, and even then the gate withholds nothing
- * until the resolver's shadow run supplies decisions and labelled verdicts.
+ * The confidence is the calibration artefact's probability over the row's own stored evidence
+ * ([[StoredIdentityConfidence]]), and the line is the artefact's `showRatings` threshold — both
+ * fitted by `scripts.IdentityCalibrate`, neither set by hand. Off in production:
+ * `ReadModelProjector` takes [[RatingGate.off]] unless the worker's composition root sets
+ * `KINOWO_IDENTITY_RATING_GATE`.
  */
 trait RatingGate {
   /** The card as served: `movie` itself, or with its ratings withheld. */
@@ -29,36 +30,15 @@ object RatingGate {
     val version = 0
   }
 
-  /** A gate over ONE snapshot of the shadow resolver's output: its decisions, and the threshold
-   *  calibrated from its labelled verdicts. */
-  def fromShadow(shadow: ShadowDecisions): RatingGate = {
-    val decisions   = shadow.latest()
-    val calibration = ConfidenceCalibration.calibrate(shadow.verdicts())
-    val byListing   = decisions.flatMap(d => d.listings.map(_ -> d)).toMap
-    new RatingGate {
-      def apply(stored: StoredMovieRecord, movie: ResolvedMovie): ResolvedMovie =
-        gate(movie, confidenceOf(listingsOf(stored), byListing), calibration)
-      val version = (decisions.map(d => (d.listings, d.confidence)).toSet, calibration).## | 1
-    }
+  /** The gate over each row's own stored evidence ([[StoredIdentityConfidence]]): a row whose
+   *  calibrated confidence is below the artefact's display threshold is withheld. A row with
+   *  nothing to measure (no TMDB record, no venue listing) keeps its card. */
+  def fromEvidence(calibration: IdentityCalibration): RatingGate = new RatingGate {
+    def apply(stored: StoredMovieRecord, movie: ResolvedMovie): ResolvedMovie =
+      if (StoredIdentityConfidence.of(stored.record, calibration).exists(p => !calibration.showsRatings(p))) withheld(movie)
+      else movie
+    val version = calibration.## | 1
   }
-
-  /** The listings a stored row serves, one per venue slot. */
-  def listingsOf(stored: StoredMovieRecord): Set[ListingKey] =
-    stored.record.cinemaShowings.map { case (cinema, slot) => ListingKey.ofSlot(cinema, slot) }.toSet
-
-  /** The confidence of the film made of `listings`: its least confident decision's — a film
-   *  spanning several resolver clusters is only as sure as its weakest. None when the resolver
-   *  decided none of them. */
-  def confidenceOf(listings: Set[ListingKey], decisions: Seq[Decision]): Option[Double] =
-    confidenceOf(listings, decisions.flatMap(d => d.listings.map(_ -> d)).toMap)
-
-  private def confidenceOf(listings: Set[ListingKey], byListing: Map[ListingKey, Decision]): Option[Double] =
-    listings.flatMap(byListing.get).map(_.confidence).minOption
-
-  /** Pure: `movie`, withheld when its confidence is below the calibrated threshold. No decision
-   *  or no calibration withholds nothing. */
-  def gate(movie: ResolvedMovie, confidence: Option[Double], calibration: Option[Calibration]): ResolvedMovie =
-    if (confidence.exists(c => calibration.exists(_.gates(c)))) withheld(movie) else movie
 
   /** `movie` with no rating, no IMDb link, each site's search page for the others, and the
    *  unrated sort key. */

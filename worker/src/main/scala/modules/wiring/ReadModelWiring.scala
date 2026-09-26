@@ -3,7 +3,7 @@ package modules.wiring
 import settings.ShareCardFirstHold
 
 import modules.WorkerWiring
-import services.identity.{RatingGate, ShadowDecisions}
+import services.identity.{IdentityCalibration, RatingGate}
 import services.readmodel.{MongoReadModelDerivationMarker, MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
 
 /** ── Denormalised read model (web_movies + web_screenings) ───────────────────
@@ -22,12 +22,9 @@ trait ReadModelWiring { self: WorkerWiring =>
     derivationMarker = new MongoReadModelDerivationMarker(mongoConnection.database, clock),
     ratingGate = ratingGate)
 
-  // ── Identity phase 3: confidence-gated ratings (docs/design/identity-resolver.md) ──────
-  // A staged-migration switch, off by default: on, a card whose identity decision is below the
-  // threshold calibrated from the shadow diff is served without ratings. The resolver's shadow
-  // output has not landed, so `shadowDecisions` is empty and even a switched-on gate withholds
-  // nothing yet. The gate snapshots the shadow at boot.
-  lazy val shadowDecisions: ShadowDecisions = ShadowDecisions.none
+  // ── Identity phase 3: confidence-gated ratings (docs/design/identity-resolver.md §15) ──────
+  // A staged-migration switch, off by default: on, a card whose stored evidence the calibration
+  // artefact scores below its display threshold is served without ratings.
   lazy val ratingGate: RatingGate =
-    if (configuration.identityRatingGate.value) RatingGate.fromShadow(shadowDecisions) else RatingGate.off
+    if (configuration.identityRatingGate.value) RatingGate.fromEvidence(IdentityCalibration.default) else RatingGate.off
 }
