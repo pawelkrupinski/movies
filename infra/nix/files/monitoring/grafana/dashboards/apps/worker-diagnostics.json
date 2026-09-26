@@ -2686,6 +2686,144 @@
           "legendFormat": "{{country}} shadow {{outcome}}"
         }
       ]
+    },
+    {
+      "id": 48,
+      "title": "Identity cutover — films and listings per path; canary",
+      "description": "`kinowo_worker_identity_cutover_films` / `kinowo_worker_identity_cutover_listings`: what the last identity projection of a CUT-OVER country (KINOWO_IDENTITY_CUTOVER, docs/design/identity-cutover-runbook.md) stored and resolved; path=projection. A country on the old landing/staging/settle path exports none — its films are `kinowo_worker_corpus_movies`. `kinowo_worker_identity_cutover_canary`: the projection's films by relation to the films stored BEFORE it (the shadow diff's relations). On a cutover's first projection that is the old path's films — the old-vs-new canary; afterwards anything but identical is a regrouping about to be written. Panel only; the runbook's acceptance reads it.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 273
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country, path) (kinowo_worker_identity_cutover_films{country=~\"$country\"})",
+          "legendFormat": "{{country}} films ({{path}})"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country, path) (kinowo_worker_identity_cutover_listings{country=~\"$country\"})",
+          "legendFormat": "{{country}} listings ({{path}})"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country, relation) (kinowo_worker_identity_cutover_canary{country=~\"$country\"})",
+          "legendFormat": "{{country}} canary {{relation}}"
+        }
+      ]
+    },
+    {
+      "id": 49,
+      "title": "Identity cutover — regroupings, refusals and projection seconds",
+      "description": "`kinowo_worker_identity_regroupings_total`: per projection, previous films merged into another, split over two or more, listings moved to another film id, fresh ids, retired ids. On an unchanged listing set merge/split/move stay at 0 (P2) — §10's churn acceptance for a cut-over country; fresh/retire follow the venues' programmes. `kinowo_worker_identity_projection_refusals_total`: projections refused (crossing, unreadablemap, shrink past ProjectionGuard's 2% of cards / 0.5% of showtimes) — the stored films kept serving. `kinowo_worker_identity_projection_seconds`: the last projection's duration.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 273
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country, kind) (increase(kinowo_worker_identity_regroupings_total{country=~\"$country\"}[1h]))",
+          "legendFormat": "{{country}} {{kind}} /h"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country, reason) (increase(kinowo_worker_identity_projection_refusals_total{country=~\"$country\"}[1h]))",
+          "legendFormat": "{{country}} refused {{reason}} /h"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country) (kinowo_worker_identity_projection_seconds{country=~\"$country\"})",
+          "legendFormat": "{{country}} projection s"
+        }
+      ]
     }
   ],
   "description": "Why a worker is misbehaving, once the application-health dashboard has told you that one is. There are FIVE workers — pl, uk, de, us and es, each its own k3s Deployment — so every panel is scoped by the Country variable and carries the country in its legend; pick one to isolate it, or All to compare. Memory (heap, NMT native categories, the off-book gap, buffers, and the pod's real cgroup limit from kube-state-metrics), CPU split by JIT and GC, GC frequency, restarts, resolution-cache hit rates, and the error shape of the outbound HTTP the scrape and enrichment phases depend on. All from each worker's own /metrics on k3s via local-prometheus. There is no CPU-credit panel: shared-CPU credit was a Fly billing concept and the whole throttle path it drove was deleted on 2026-09-04, so no series behind it exists. · NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still — the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",

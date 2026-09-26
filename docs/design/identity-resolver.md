@@ -454,6 +454,7 @@ for the resolver's query set (§9).
   writes films and slots keyed `(FilmId, ListingKey)`.
 - The order is ES → DE → UK → US → PL, smallest and cleanest shadow diff first. PL goes last
   because it has the most decorated spellings and is where under-merge costs most.
+- *Built, off everywhere — see §18 and `docs/design/identity-cutover-runbook.md`.*
 
 ### Phase 4: delete the old stages
 
@@ -1886,3 +1887,72 @@ lookups the capture never observed. The resolver's yearless searches, director w
 records are mostly questions the pipeline never asks, and the shadow run asks no service, so in
 production most nodes stay `Unknown` until those questions are observed. The diff then measures the
 resolver on the pipeline's evidence, not its own.
+
+---
+
+## 18. Programme phase 5: per-country cutover (2026-09-26, branch `identity-phase5`)
+
+Built and tested; **off for every country**. The runbook (preconditions, the gitops line, reading
+it, rollback, per-country blockers, the phase-6 deletion list) is
+`docs/design/identity-cutover-runbook.md`.
+
+### 18.1 What landed
+
+- **The switch.** `KINOWO_IDENTITY_CUTOVER` (`ProcessConfiguration.identityCutover`, a typed
+  `IdentityCutoverCountries`), read only by `modules.wiring.IdentityCutoverWiring`. Off, every
+  country is wired as before; on, the scrape runner's sink, the settle tick, the task handlers and
+  the reapers started are the projection's.
+- **The evidence.** `ListingIntake` (common, pure): the landing's scrape-health rules (empty,
+  fallback, rewire, depth, breadth) decide a venue's ACCEPTED listing instead of which slots to
+  write. `IdentityListingIntake` keeps it in `identity_listings` (the archive's shape and rules),
+  reading `cinema_scrapes`' last listing for a venue it has none for — how a cutover starts.
+- **The projection.** `IdentityProjectionPlan` (common, pure) and `IdentityProjection` (worker):
+  1. stored films → listing sets (the slot's own `ListingKey`, else `PipelineFilms`), numbered
+     through `identity_film_ids` (`FilmIdCounters.covering`: a legacy `title|year` id keeps its
+     counter);
+  2. the resolver's clusters, one per TMDB film (`movies`' unique `tmdbId`), get ids by overlap
+     (`IdAssigner`); a fresh id is minted as today (`FilmId.fresh`) and appended to the map;
+  3. each film's slots are its listings' rows unioned per slot (`ScrapeListing.prepare`, the
+     extracted `CinemaSlotBuilder`), every showtime kept (P4), over the previous film's
+     enrichment when the TMDB film is unchanged and over none when it changed; a cluster matching
+     no film is concluded (`tmdbAttempt` "identity-resolver");
+  4. `ProjectionGuard` (§11): refused if > 2% of cards or > 0.5% of upcoming showtimes would go,
+     for 3 projections running;
+  5. a film new to its TMDB id gets its details BY ID (`MovieService.withFilmDetails`, shared with
+     `refillTmdbSlot`), then title / year / key; two films of one title and year are
+     `title|year` (older) and `title~<counter>|year`;
+  6. only changed films are written, through `MovieCache.writeProjected` / `retireProjected` (no
+     identity gate; the unique indexes decide write order), and a film whose TMDB answer changed
+     is announced to IMDb-id recovery and ratings (`announceResolvedNewMovie`).
+- **Lookups.** `CutoverIdentityLookups`: `TmdbIdentityLookups` over the observation store first
+  and the pipeline's own observed fetch / detail enrichers for a gap.
+- **Metrics** (`IdentityCutoverMetrics`, charted on worker-diagnostics):
+  `kinowo_worker_identity_cutover_films|listings{country,path}`,
+  `kinowo_worker_identity_regroupings_total{country,kind}`,
+  `kinowo_worker_identity_cutover_canary{country,relation}` (the shadow diff's relations, against
+  the films stored before each projection), `kinowo_worker_identity_projection_refusals_total`,
+  `kinowo_worker_identity_projection_seconds`.
+
+### 18.2 Proof
+
+- Switch off: `FilmScheduleEndToEndSpec` (`expected-schedules.txt`, the read-model snapshot) and the
+  page snapshots unchanged.
+- `IdentityCutoverEndToEndSpec` (e2e): the recorded Poznań corpus with Poland cut over — 4,802
+  listings → 720 films (342 matched), 955 cards served, ratings fetched; P3, P4; a projection over
+  its own output writes nothing (P2). It found two P2 breaks on the way (the details builder
+  dropped `searchTitle`; the canary compared resolver clusters instead of stored films).
+- `IdentityCutoverIntegrationSpec` (itAll), all five hard-cluster corpora cut over: P1 (two orders,
+  ids included; half-then-full arrival, same films), P2, P3, P4, the switch-over keeping every id
+  `IdAssigner` gives the old path's films, and switching back serving every showtime.
+
+| hard clusters | listings | films (matched) | old path → projection: ids kept, regroupings (merge, split, move, fresh, retire) | canary identical / split / merged / moved |
+|---|---|---|---|---|
+| ES | 44 | 9 (9) | 9 → 9: 9, (0, 0, 0, 0, 0) | 9 / 0 / 0 / 0 |
+| DE | 45 | 11 (10) | 11 → 11: 11, (0, 0, 0, 0, 0) | 11 / 0 / 0 / 0 |
+| UK | 78 | 24 (13) | 25 → 24: 24, (1, 0, 5, 0, 1) | 21 / 0 / 1 / 2 |
+| US | 107 | 36 (25) | 31 → 36: 31, (0, 3, 6, 5, 0) | 26 / 8 / 0 / 2 |
+| PL | 147 | 49 (19) | 24 → 49: 23, (2, 7, 32, 26, 1) | 13 / 33 / 2 / 1 |
+
+Hardcoding added: none in the identity decision. `ProjectionGuard`'s 2% / 0.5% are §11's rollout
+thresholds, its grace the scrape guards' own constant.
+
