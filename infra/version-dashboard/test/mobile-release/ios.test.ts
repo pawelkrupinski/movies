@@ -87,7 +87,13 @@ describe("submitIos", () => {
       "PATCH /v1/reviewSubmissions/sub-1": null,
       "GET /v1/appStoreVersions/draft": { data: { id: "draft", attributes: { appStoreState: "WAITING_FOR_REVIEW" } } },
     });
-    expect(await submitIos(asc, { version: "2.0.11", buildId: BUILD, notes: notesFrom(new Map()), overwriteNotes: false }, pace)).toBe("sub-1");
+    const lines: string[] = [];
+    expect(await submitIos(asc, { version: "2.0.11", buildId: BUILD, notes: notesFrom(new Map()), overwriteNotes: false }, { ...pace, log: (line) => lines.push(line) })).toBe("sub-1");
+    // Apple lists no build at all until processing starts (minutes); that wait must not be silent.
+    expect(lines.slice(0, 2)).toEqual([
+      `build ${BUILD} waiting for Apple to pick up the upload (not listed yet)`,
+      `build ${BUILD} PROCESSING`,
+    ]);
     expect(asc.writes()).toEqual([
       { method: "PATCH", path: "/v1/appStoreVersions/draft", body: { data: { type: "appStoreVersions", id: "draft", attributes: { versionString: "2.0.11" } } } },
       { method: "PATCH", path: "/v1/appStoreVersions/draft/relationships/build", body: { data: { type: "builds", id: BUILD } } },

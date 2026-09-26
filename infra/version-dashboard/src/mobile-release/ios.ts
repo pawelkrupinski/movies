@@ -115,7 +115,10 @@ export async function waitForBuild(asc: AscApi, buildId: string, pace: Pace): Pr
     try {
       build = (await asc.get(`/v1/builds/${buildId}`)) as typeof build;
     } catch (error) {
-      if (error instanceof HttpError && error.status === 404) return null;
+      if (error instanceof HttpError && error.status === 404) {
+        pace.log(`build ${buildId} waiting for Apple to pick up the upload (not listed yet)`);
+        return null;
+      }
       throw error;
     }
     const state = text(build.data?.attributes?.["processingState"]);
@@ -124,7 +127,7 @@ export async function waitForBuild(asc: AscApi, buildId: string, pace: Pace): Pr
       return true;
     }
     if (state === "FAILED" || state === "INVALID") throw new Error(`build ${buildId} is ${state}`);
-    pace.log(`build ${buildId} ${state || "not visible yet"}`);
+    pace.log(`build ${buildId} ${state || "listed, no processing state yet"}`);
     return null;
   });
 }
