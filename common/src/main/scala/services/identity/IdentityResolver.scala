@@ -155,10 +155,26 @@ object IdentityResolver {
      *  different film. */
     def factsProbability(measures: Map[String, Measure]): Double =
       calibration.scopes(ListingFilm).calibration(calibration.scopes(ListingFilm).prior + ownContributions(measures))
+    /** Each listing banner's house, from every node's season-production candidates
+     *  (`IdentityMeasures.housesOf`); a season production must be of it when it is known. */
+    val houseOf: Map[String, String] = IdentityMeasures.housesOf(nodes.flatMap { n =>
+      val l = n.evidence.measured
+      IdentityMeasures.listingBanner(l).toSeq.flatMap(lb => (ownSearch(n.id).keys ++ ownWalk(n.id)).toSeq.distinct.flatMap { id =>
+        val f = candidateById(id).film
+        Option.when(IdentityMeasures.namesSeasonProduction(l, f))((IdentityMeasures.filmBanner(f), IdentityMeasures.seasonWork(l, f)))
+          .collect { case (Some(fb), Some(w)) => (lb, fb, w) }
+      })
+    })
+    def namesItsSeasonProduction(l: IdentityMeasures.Listing, f: IdentityMeasures.Film): Boolean =
+      IdentityMeasures.namesSeasonProduction(l, f) &&
+        IdentityMeasures.listingBanner(l).flatMap(houseOf.get).forall(house => IdentityMeasures.filmBanner(f).contains(house))
+
     /** Does the listing's own evidence rule the film out: a learned cannot-link, its facts'
-     *  probability below the certified cut, or a season its title names that the film is not of. */
+     *  probability below the certified cut, a season its title names that the film is not of, or
+     *  its season's production of its work by ANOTHER house than its banner's (`houseOf`). */
     def evidenceDenies(l: IdentityMeasures.Listing, f: IdentityMeasures.Film, measures: Map[String, Measure]): Boolean =
       ListingConstraints.seasonsApart(l.seasonYear, IdentityMeasures.filmSeason(f), f.year).isDefined ||
+        (IdentityMeasures.namesSeasonProduction(l, f) && !namesItsSeasonProduction(l, f)) ||
         ListingConstraints.learnedListingFilm(calibration, measures, factsProbability(measures)).isDefined
 
     /** The listings of a family by title key, with their venues: `venues.corroborating`'s group. */
@@ -183,7 +199,7 @@ object IdentityResolver {
             backing.corroborating(group, c.film, venue))
           val p = calibration.probability(ListingFilm, measures)
           Scored(c, p, measures, deniedByPins(c.tmdbId) || evidenceDenies(l, c.film, measures), l, ranks.get(c.tmdbId),
-            IdentityMeasures.namesSeasonProduction(l, c.film))
+            namesItsSeasonProduction(l, c.film))
         }.sortBy(s => (-s.p, s.c.tmdbId))
       }
 

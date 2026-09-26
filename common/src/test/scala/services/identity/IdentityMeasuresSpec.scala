@@ -84,6 +84,15 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       withClue(s"$venue ${f.year}")(backing.corroborating("candyman", f, venue) shouldBe IdentityMeasures.corroboratingVenues(f, group, venue))
   }
 
+  "a season title's banner" should "be how it spells its house, and a banner's house the one most of its works name" in {
+    IdentityMeasures.listingBanner(Listing("RBO Cinema Season 2026-27: Manon")) shouldBe Some("rbocinemaseason")
+    IdentityMeasures.filmBanner(Film("The Metropolitan Opera 2026/27: Manon")) shouldBe Some("themetropolitanopera")
+    IdentityMeasures.listingBanner(Listing("Manon")) shouldBe None
+    val named = Seq(("rbo", "royal", "swanlake"), ("rbo", "royal", "alice"), ("rbo", "met", "manon"), ("rbo", "royal", "swanlake"),
+      ("met", "met", "manon"), ("tie", "royal", "a"), ("tie", "met", "b"))
+    IdentityMeasures.housesOf(named) shouldBe Map("rbo" -> "royal", "met" -> "met")
+  }
+
   "title shapes" should "de-decorate the parts a banner leaves, as well as the whole title" in {
     // "Throwback: Donnie Darko (25th Anniversary)": the banner split leaves "Donnie Darko (25th
     // Anniversary)", whose trailing bracket is itself a decoration.

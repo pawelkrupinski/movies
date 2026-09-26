@@ -74,10 +74,38 @@ object IdentityMeasures {
    *  own delimiters (`SearchTitles.candidates`) on both sides; a segment carrying the season is
    *  the banner, never the work. */
   def namesSeasonProduction(l: Listing, f: Film): Boolean =
-    l.seasonYear.exists(s => filmSeason(f).contains(s)) && {
-      def works(titles: Seq[String]) = titles.filter(t => seasonYear(Seq(t)).isEmpty).map(key).filter(_.nonEmpty).toSet
-      (works(titleShapes(l)) intersect works(filmTitles(f).flatMap(SearchTitles.candidates(_, None)))).nonEmpty
+    l.seasonYear.exists(s => filmSeason(f).contains(s)) && seasonWork(l, f).isDefined
+
+  /** The BANNER of a season title — the title without its season and without the works its own
+   *  delimiters split off ("RBO Cinema Season 2026-27: Manon" → `rbocinemaseason`, "The
+   *  Metropolitan Opera 2026/27: Manon" → `themetropolitanopera`): how the title spells its house. */
+  def listingBanner(l: Listing): Option[String] = banner(Seq(l.title) ++ l.rawTitle, titleShapes(l))
+  def filmBanner(f: Film): Option[String] = banner(filmTitles(f), filmTitles(f).flatMap(SearchTitles.candidates(_, None)))
+  private def banner(titles: Seq[String], shapes: Seq[String]): Option[String] = {
+    val works = shapes.filter(t => seasonYear(Seq(t)).isEmpty).map(key).filter(_.nonEmpty).distinct.sortBy(w => (-w.length, w))
+    titles.filter(t => seasonYear(Seq(t)).isDefined).map(t => works.foldLeft(key(withoutSeasons(t)))((k, w) => k.replace(w, "")))
+      .filter(_.nonEmpty).distinct.minByOption(k => (k.length, k))
+  }
+
+  /** The house each listing banner spells, read from the season productions its works' titles
+   *  name: `(listing banner, film banner, work)` triples, one per season-production candidate. A
+   *  banner's house is the film banner naming the most of its DISTINCT works, when strictly more
+   *  than any other — "RBO Cinema Season" is Royal Ballet & Opera because its Swan Lake and Alice
+   *  are, though TMDB files its Manon only under the Met. No banner is known in advance. */
+  def housesOf(named: Iterable[(String, String, String)]): Map[String, String] =
+    named.toSeq.distinct.groupBy(_._1).flatMap { case (listingBanner, xs) =>
+      xs.groupMapReduce(_._2)(_ => 1)(_ + _).toSeq.sortBy { case (b, n) => (-n, b) } match {
+        case Seq((house, _))                          => Some(listingBanner -> house)
+        case (house, a) +: (_, b) +: _ if a > b       => Some(listingBanner -> house)
+        case _                                        => None
+      }
     }
+
+  /** The work a listing and a film's titles share outside the season (`namesSeasonProduction`). */
+  def seasonWork(l: Listing, f: Film): Option[String] = {
+    def works(titles: Seq[String]) = titles.filter(t => seasonYear(Seq(t)).isEmpty).map(key).filter(_.nonEmpty).toSet
+    (works(titleShapes(l)) intersect works(filmTitles(f).flatMap(SearchTitles.candidates(_, None)))).toSeq.sorted.headOption
+  }
 
   /** `t` with every season removed, so a season's end year is never read as a bracketed year. */
   def withoutSeasons(t: String): String =

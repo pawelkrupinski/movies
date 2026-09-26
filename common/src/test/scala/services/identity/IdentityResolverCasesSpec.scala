@@ -157,6 +157,27 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(r.decisionOf(opera.key).render)(r.decisionOf(opera.key).film shouldBe None)
   }
 
+  it should "not take another house's record of its work, when its banner's other works name its own house" in {
+    // UK venues list the Royal Ballet & Opera season as "RBO Cinema Season 2026-27: …"; TMDB files
+    // RBO's Swan Lake and Alice, but its Manon only under the Met. Which house a banner is, is what
+    // its other works' records say — never a list of houses.
+    val films = Seq(F(1702782, "Royal Ballet & Opera 2026/27: Swan Lake", 2027, "", 0, 3),
+      F(1702778, "Royal Ballet & Opera 2026/27: Alice's Adventures in Wonderland", 2027, "", 0, 3),
+      F(1703631, "The Metropolitan Opera 2026/27: Manon", 2027, "", 0, 5),
+      F(1703622, "The Metropolitan Opera 2026/27: Macbeth", 2026, "", 0, 5))
+    def rbo(work: String) = Seq(Helios, KinoApollo).map(listing(_, s"RBO Cinema Season 2026-27: $work"))
+    def met(work: String) = Seq(Multikino, Rialto).map(listing(_, s"Met Opera 2026-27: $work"))
+    val (swan, alice, rboManon) = (rbo("Swan Lake"), rbo("Alice's Adventures in Wonderland"), rbo("Manon"))
+    val (metManon, metMacbeth)  = (met("Manon"), met("Macbeth"))
+    val r = resolve(swan ++ alice ++ rboManon ++ metManon ++ metMacbeth, films)
+    swan.map(l => r.decisionOf(l.key).film) shouldBe Seq.fill(2)(Some(1702782))
+    alice.map(l => r.decisionOf(l.key).film) shouldBe Seq.fill(2)(Some(1702778))
+    metManon.map(l => r.decisionOf(l.key).film) shouldBe Seq.fill(2)(Some(1703631))
+    rboManon.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film should not be Some(1703631)))
+    together(r, rboManon.head, metManon.head) shouldBe false
+    r.violations shouldBe 0
+  }
+
   "Three films under one title" should "stay three, and a bare listing joins neither of the dated ones by title alone" in {
     val films = Seq(F(1954, "A Star Is Born", 1954, "George Cukor", 176), F(1976, "A Star Is Born", 1976, "Frank Pierson", 139),
       F(2018, "A Star Is Born", 2018, "Bradley Cooper", 136, 60))
