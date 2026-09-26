@@ -46,7 +46,7 @@ import scala.util.Try
  * production, the fixture fake in tests.
  *
  * @parameter http    HTTP client (the biletyna fetch seam in production).
- * @parameter page   The venue's biletyna place page, e.g.
+ * @parameter page    The venue's biletyna place page, e.g.
  *                `https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe`.
  * @parameter cinema  The [[Cinema]] source tag attached to every [[CinemaMovie]].
  */

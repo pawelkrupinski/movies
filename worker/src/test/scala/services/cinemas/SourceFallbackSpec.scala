@@ -37,7 +37,13 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
     base:        FiniteDuration = 10.minutes,
     grace:       FiniteDuration = 6.hours
   ) {
-    val monitor = new UptimeMonitor()
+    // Buckets follow the harness clock, so a tick moved into a later 15-minute
+    // bucket is judged on its own; on the wall clock every tick shared one bucket.
+    val monitor = new UptimeMonitor(clock = new java.time.Clock {
+      def instant(): Instant                     = clock
+      def getZone: java.time.ZoneId              = java.time.ZoneOffset.UTC
+      override def withZone(zone: java.time.ZoneId): java.time.Clock = this
+    })
     val store   = new InMemoryFallbackStore
     val primary = new FakeScraper(primaryPlan)
     var clock: Instant = Instant.parse("2026-06-10T08:00:00Z")
@@ -49,7 +55,7 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
       now = () => clock, baseBackoff = base, maxBackoff = 60.minutes, fallbackAfter = grace,
       onEvent = (s, e) => events += ((s, e))
     )
-    def bucket = monitor.history(Service).head
+    def bucket = monitor.history(Service).last   // newest: history is oldest-first
     def state  = store.get(Service)
     def advance(d: FiniteDuration): Unit = clock = clock.plusMillis(d.toMillis)
     /** The Telegram pages that would actually go out — what each onEvent resolves
@@ -128,8 +134,10 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
   // The two remaining Filmweb-serving paths, each pinned by where the clock sits
   // relative to the stored next re-probe: before it, Filmweb is served without
   // touching the primary; after it, a primary that still throws falls back again.
+  // A 30-minute backoff puts both ticks in a later bucket than the one entering
+  // the fallback set, so each bucket's flags are that tick's own.
   private def onFallbackAfterAThrow(): Harness = {
-    val h = new Harness(Seq(Left(boom)), Some(filmwebWith(OneMovie)))
+    val h = new Harness(Seq(Left(boom)), Some(filmwebWith(OneMovie)), base = 30.minutes)
     h.clock = Instant.parse("2026-06-06T08:00:00Z")
     h.tickSwallowing()
     h.advance(6.hours + 1.minute)
@@ -141,8 +149,10 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
   it should "mark a Filmweb listing thin when it's served before the primary is due a re-probe" in {
     val h = onFallbackAfterAThrow()
     val primaryCalls = h.primary.calls
+    val entered = h.bucket.timestamp
     h.clock = h.state.flatMap(_.nextPrimaryProbeAt).value.minusSeconds(60)
     h.scraper.fetch() shouldBe OneMovie
+    h.bucket.timestamp should not be entered  // this tick's own bucket
     h.primary.calls shouldBe primaryCalls   // the primary was left alone
     h.bucket.fallback shouldBe true
     h.bucket.thin     shouldBe true
@@ -151,8 +161,10 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
   it should "mark a Filmweb listing thin when a re-probed primary still throws" in {
     val h = onFallbackAfterAThrow()
     val primaryCalls = h.primary.calls
+    val entered = h.bucket.timestamp
     h.clock = h.state.flatMap(_.nextPrimaryProbeAt).value.plusSeconds(60)
     h.scraper.fetch() shouldBe OneMovie
+    h.bucket.timestamp should not be entered  // this tick's own bucket
     h.primary.calls shouldBe primaryCalls + 1   // re-probed, threw, Filmweb served
     h.bucket.fallback shouldBe true
     h.bucket.thin     shouldBe true
