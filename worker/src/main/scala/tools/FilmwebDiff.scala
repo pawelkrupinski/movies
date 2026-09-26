@@ -87,6 +87,8 @@ object FilmwebDiff {
   )
 
   def main(args: Array[String]): Unit = {
+    // Before any handshake — see IssuerCertificateFetching.
+    IssuerCertificateFetching.Enabled.applyToJvm()
     val daysAhead = args.headOption.flatMap(a => Try(a.toInt).toOption).getOrElse(3)
     val now       = LocalDateTime.now(ZoneId.of("Europe/Warsaw"))
     val today     = now.toLocalDate

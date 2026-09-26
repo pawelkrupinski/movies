@@ -28,6 +28,7 @@ object RefreshExternalFixtures {
   def main(args: Array[String]): Unit = {
     // Its wiring may tunnel through the residential proxy — see ProxyTunnelAuthentication.
     tools.ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
+    tools.IssuerCertificateFetching.Enabled.applyToJvm()
     new RefreshExternalFixtures().run()
   }
 }

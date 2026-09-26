@@ -5,7 +5,7 @@ import models.Country
 import org.mongodb.scala.MongoClient
 import play.api.Logging
 import services.{MongoAddress, MongoConnection}
-import tools.{Env, ExecutionBudget, ProxyTunnelAuthentication}
+import tools.{Env, ExecutionBudget, IssuerCertificateFetching, ProxyTunnelAuthentication}
 
 import java.net.InetSocketAddress
 import java.time.Instant
@@ -27,8 +27,10 @@ object WorkerMain extends Logging {
   def main(args: Array[String]): Unit = {
     // FIRST, before anything touches java.net.http: the residential egress tunnels HTTPS
     // through an authenticated proxy, which the JDK's default refuses — see
-    // ProxyTunnelAuthentication for why this is the process's to set, once.
+    // ProxyTunnelAuthentication for why this is the process's to set, once. Likewise the
+    // AIA intermediate fetching some cinema hosts' broken chains need (IssuerCertificateFetching).
     ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
+    IssuerCertificateFetching.Enabled.applyToJvm()
     val commit = Option(System.getenv("COMMIT_SHA")).getOrElse("unknown")
     logger.info(s"Worker starting — commit $commit")
 

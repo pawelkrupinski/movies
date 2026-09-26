@@ -39,6 +39,7 @@ object RosterAudit {
     // Before the ~170 direct reads below: the chain lists that follow them tunnel through
     // the residential proxy, and the JDK reads this once — see ProxyTunnelAuthentication.
     ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
+    IssuerCertificateFetching.Enabled.applyToJvm()
     val http    = new RealHttpFetch()
     val catalog = new CinemaScraperCatalog(http)
     val venues  = RosterSourceReader.venuesOf(Country.Poland.cities, slug => catalog.byCity.getOrElse(slug, Nil))

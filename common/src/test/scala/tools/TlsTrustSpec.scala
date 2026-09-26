@@ -91,11 +91,6 @@ class TlsTrustSpec extends AnyFlatSpec with Matchers {
     subjects.size should be > 50
   }
 
-  it should "enable AIA intermediate fetching for servers that ship a broken chain" in {
-    TlsTrust // force object init
-    System.getProperty("com.sun.security.enableAIAcaIssuers") shouldBe "true"
-  }
-
   it should "pin kinoroma.zabrze.pl's exact expired leaf" in {
     val leaf = TlsTrust.pinnedExpiredLeafs
       .find(_.getSubjectX500Principal.getName.contains("kinoroma.zabrze.pl"))

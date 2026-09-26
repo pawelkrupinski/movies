@@ -9,7 +9,7 @@ import play.api.routing.sird._
 import play.api._
 import models.Country
 import services.MongoAddress
-import tools.Env
+import tools.{Env, IssuerCertificateFetching}
 import play.filters.HttpFiltersComponents
 import play.filters.cors.CORSComponents
 import play.filters.gzip.GzipFilterComponents
@@ -25,6 +25,8 @@ import scala.concurrent.Future
  */
 class AppLoader extends ApplicationLoader {
   override def load(context: Context): Application = {
+    // Before any TLS handshake the application makes — see IssuerCertificateFetching.
+    IssuerCertificateFetching.Enabled.applyToJvm()
     // APP_MODE is an *override*; when unset we trust the mode Play already
     // baked into the Context. That works out to:
     //   - `sbt run`                          → Mode.Dev  (debug routes on)

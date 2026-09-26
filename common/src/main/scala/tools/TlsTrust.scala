@@ -26,7 +26,8 @@ import scala.util.{Try, Using}
  *      intermediates that don't include its real issuer. The leaf's actual
  *      issuer is reachable two ways, and we bundle BOTH so neither is a single
  *      point of failure:
- *        a. `enableAIAcaIssuers` (set below) lets the JVM fetch the missing
+ *        a. `enableAIAcaIssuers` ([[IssuerCertificateFetching]], applied by each
+ *           process's `main`) lets the JVM fetch the missing
  *           intermediate from the leaf's Authority-Information-Access URL —
  *           durable across the upstream rotating that intermediate, but it is a
  *           SYNCHRONOUS network fetch to certum.pl on every cold handshake. When
@@ -71,13 +72,6 @@ import scala.util.{Try, Using}
  * [[PinnedExpiredLeafResources]], so it doesn't widen trust for anything else.
  */
 object TlsTrust extends Logging {
-
-  // Read by the JDK's PKIX path builder at validation time: when a server omits
-  // an intermediate, fetch it from the cert's AIA caIssuers URL. Off by default.
-  // Set before the first TLS handshake (this object is touched when a context is
-  // built, at wiring time, ahead of any scrape). A JVM-wide switch by nature: the
-  // property is the JDK's, read by every path builder in the process.
-  System.setProperty("com.sun.security.enableAIAcaIssuers", "true")
 
   /** Classpath-absolute paths of PEM certs to add as trust anchors on top of the
    *  default store: the two Certum roots the JDK omits (RSA `Certum Trusted Root
