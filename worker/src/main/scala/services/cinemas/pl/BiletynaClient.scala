@@ -15,8 +15,9 @@ import scala.util.Try
  * Generic client for any cinema ticketed through the biletyna.pl platform. The
  * venue's place page (`biletyna.pl/<City>/<Venue>`) is server-rendered and
  * carries a single `<script type="application/ld+json">` block: a schema.org
- * `Place` whose `events` array is the full programme, one `ScreeningEvent` per
- * screening. Everything we need is in it — no per-film detail fetch:
+ * `Place` whose `events` array lists the programme (up to the cap below), one
+ * `ScreeningEvent` per screening. Everything we need is in it — no per-film
+ * detail fetch:
  *   - `name`      → film title (some venues publish a descriptive
  *                   `„Title" | reżyseria: Director | Country Year` form; see
  *                   [[BiletynaClient.parseTitle]])
@@ -36,10 +37,9 @@ import scala.util.Try
  * booking link, since the feed can omit an event the page still shows.
  *
  * One instance per venue, captured by its `pageUrl` + `cinema`, so adding a
- * biletyna-hosted cinema is a new catalog line, not a new client (OCP). Known
- * venues: ADA Kino Studyjne (Warszawa), Kino Kameralne Cafe (Gdańsk) and Kino
- * Pegaz / WCK (Wodzisław Śląski — previously scraped from Filmweb, which had
- * silently gone empty for it).
+ * biletyna-hosted cinema is a new catalog line, not a new client (OCP); the
+ * catalog's `biletynaPages` lists them. Several were previously scraped from
+ * Filmweb, which had silently gone empty or stale for them.
  *
  * biletyna.pl 403s our datacenter IP (Cloudflare waiting-room), so the catalog
  * routes these through the `bnFetch` seam — Zyte's residential egress in
@@ -224,14 +224,19 @@ object BiletynaClient {
     if (pageEventCount(html) < PageEventCap) Seq.empty
     else {
       val hall = HallFilter.findFirstMatchIn(html)
-        .flatMap(m => (Json.parse(m.group(1)) \ "0" \ "hall_id").asOpt[Long])
+        .flatMap(m => (Json.parse(m.group(1)) \ "0" \ "hall_id").asOpt[Long]).map(HallId(_))
         .getOrElse(throw new IllegalStateException(s"$pageUrl lists $PageEventCap events but names no hall to page the rest from"))
       val origin = CinemaScraper.hostsOf(pageUrl).headOption.fold(BiletynaOrigin)(host => s"https://$host")
       @annotation.tailrec
       def fetchFrom(page: Int, acc: Vector[JsValue]): Vector[JsValue] = {
         if (page > MaxFeedPages)
-          throw new IllegalStateException(s"$pageUrl: event feed for hall $hall did not end after $MaxFeedPages pages")
-        val records = feedRecords(http.get(s"$origin/ajax/events?params%5Bh%5D=$hall&h=$hall&ipp=$FeedPageSize&page=$page"))
+          throw new IllegalStateException(s"$pageUrl: event feed for hall ${hall.value} did not end after $MaxFeedPages pages")
+        val records = feedRecords(pageUrl, http.get(
+          s"$origin/ajax/events?params%5Bh%5D=${hall.value}&h=${hall.value}&ipp=$FeedPageSize&page=$page"))
+        // Records none of which read (a renamed field, a new date format) would
+        // cut the venue at 50 again as surely as an error would.
+        if (records.nonEmpty && records.flatMap(parseFeedEvent).isEmpty)
+          throw new IllegalStateException(s"$pageUrl: none of the ${records.size} records on event-feed page $page parse")
         if (records.size < FeedPageSize) acc ++ records else fetchFrom(page + 1, acc ++ records)
       }
       fetchFrom(1, Vector.empty)
@@ -243,12 +248,18 @@ object BiletynaClient {
       Try(Json.parse(block)).toOption.flatMap(json => (json \ "events").asOpt[JsArray]).fold(0)(_.value.size)
     }.sum
 
-  private def feedRecords(json: String): Seq[JsValue] =
-    (Json.parse(json) \ "events").toOption.toSeq.flatMap {
+  /** One feed page's records: an object keyed by event id, or an array. A reply
+   *  with `status: false` or without `events` is a failed read, not an empty page. */
+  private def feedRecords(pageUrl: String, json: String): Seq[JsValue] = {
+    val reply = Json.parse(json)
+    if ((reply \ "status").asOpt[Boolean].contains(false))
+      throw new IllegalStateException(s"$pageUrl: event feed answered status false: ${json.take(200)}")
+    (reply \ "events").as[JsValue] match {
       case o: JsObject => o.values.toSeq
       case a: JsArray  => a.value.toSeq
-      case _           => Seq.empty
+      case other       => throw new IllegalStateException(s"$pageUrl: event feed's events is neither an object nor an array: $other")
     }
+  }
 
   /** The feed's `category_id` for each schema.org `@type` the place page stamps
    *  on the same event — measured over every catalogued venue on 2026-09-26
@@ -278,6 +289,11 @@ object BiletynaClient {
       title     = title,
       dateTime  = dt,
       url       = s"$BiletynaOrigin$film?eid=$eventId#opis",
-      poster    = (ev \ "thumb_file_id").asOpt[Long].map(id => s"$BiletynaOrigin/file/get/id/$id")
+      // 0 is the feed's "no artwork", not a poster.
+      poster    = (ev \ "thumb_file_id").asOpt[Long].filter(_ > 0).map(id => s"$BiletynaOrigin/file/get/id/$id")
     )
 }
+
+/** A biletyna hall id — the `h` its place page's `get_filter` names and its
+ *  event feed is keyed by. */
+final case class HallId(value: Long) extends AnyVal

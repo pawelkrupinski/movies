@@ -7,7 +7,7 @@ import clients.tools.FakeHttpFetch
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import play.api.libs.json.JsString
-import services.cinemas.pl.SystemBiletowyClient
+import services.cinemas.pl.{EventCategory, Institution, SystemBiletowyClient}
 
 import java.time.LocalDateTime
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -25,8 +25,8 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
 
   private val http = new FakeHttpFetch("visualsoft")
 
-  private def client(base: String, cinema: Cinema, filmGroups: Set[String] = Set.empty,
-                     institution: Option[String] = None) =
+  private def client(base: String, cinema: Cinema, filmGroups: Set[EventCategory] = Set.empty,
+                     institution: Option[Institution] = None) =
     new SystemBiletowyClient(http, base, cinema, titles = titleNormalizer, filmGroups = filmGroups,
       institution = institution)
 
@@ -67,8 +67,10 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
     it should s"read a real screening off the feed — ${cinema.displayName}" in {
       val movies = client(base, cinema).fetch()
       movies.map(_.cinema).toSet shouldBe Set(cinema)
-      val film = movies.find(_.movie.title.toLowerCase.contains(title)).value
-      film.showtimes.find(_.dateTime == when).value.bookingUrl.value shouldBe booking
+      // Every row carrying the title: a programme suffix ("… Tani Poniedziałek")
+      // keeps a film's screening on a row of its own.
+      val showtimes = movies.filter(_.movie.title.toLowerCase.contains(title)).flatMap(_.showtimes)
+      showtimes.find(_.dateTime == when).value.bookingUrl.value shouldBe booking
     }
   }
 
@@ -95,7 +97,7 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
   // ── Scopes: instances selling more than one venue's events ─────────────────
 
   it should "keep only BCKino's film events, peeling their 'BCKino – ' prefix" in {
-    val movies = client("https://bck.systembiletowy.pl", KinoBCKBytom, filmGroups = Set("BCKino")).fetch()
+    val movies = client("https://bck.systembiletowy.pl", KinoBCKBytom, filmGroups = Set(EventCategory("BCKino"))).fetch()
     movies.map(_.movie.title) should contain("Koniec imprezy")
     all(movies.map(_.movie.title.toLowerCase)) should not include "bckino"
     // The instance's 47 other events — "BECEK CZYTA" readings, workshops — stay out.
@@ -103,7 +105,7 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
   }
 
   it should "keep only Kino Frajda's Imprezy SDK events, dropping Chorzów's own" in {
-    val movies = client("https://bilety.chck.pl", KinoFrajda, filmGroups = Set("Imprezy SDK")).fetch()
+    val movies = client("https://bilety.chck.pl", KinoFrajda, filmGroups = Set(EventCategory("Imprezy SDK"))).fetch()
     movies.map(_.movie.title.toLowerCase).exists(_.contains("zagadka klary muu")) shouldBe true
     // "KOSZMAREK" screens at both: 10-20 as "Imprezy ChCK", 10-24 as "Imprezy SDK".
     val koszmarek = movies.find(_.movie.title.toLowerCase.contains("koszmarek")).value.showtimes.map(_.dateTime)
@@ -112,7 +114,7 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
   }
 
   it should "scope Oświęcim's instance to Nasze Kino, dropping the culture centre's concerts and plays" in {
-    val movies = client("https://ock.systembiletowy.pl", KinoNaszeKino, institution = Some("Nasze Kino")).fetch()
+    val movies = client("https://ock.systembiletowy.pl", KinoNaszeKino, institution = Some(Institution("Nasze Kino"))).fetch()
     movies.map(_.movie.title.toLowerCase).exists(_.contains("mistyczka")) shouldBe true
     // A comedy play and a concert sold by the centre on the same instance; the
     // old HTML scrape let "Ale kino, czyli muzyka filmowa…" through as a film.
@@ -121,8 +123,8 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
   }
 
   it should "split the one Mikro instance between its two screens" in {
-    val mikro     = client("https://bilety.kinomikro.pl", KinoMikro, institution = Some("Kino Mikro")).fetch()
-    val bronowice = client("https://bilety.kinomikro.pl", MikroBronowice, institution = Some("Mikro Bronowice")).fetch()
+    val mikro     = client("https://bilety.kinomikro.pl", KinoMikro, institution = Some(Institution("Kino Mikro"))).fetch()
+    val bronowice = client("https://bilety.kinomikro.pl", MikroBronowice, institution = Some(Institution("Mikro Bronowice"))).fetch()
     mikro.map(_.cinema).toSet shouldBe Set(KinoMikro)
     bronowice.map(_.cinema).toSet shouldBe Set(MikroBronowice)
     mikro.find(_.movie.title == "Orlando").value.showtimes.map(_.dateTime) should
@@ -134,19 +136,19 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
   }
 
   it should "give the two Mikro screens distinct source keys" in {
-    val mikro     = client("https://bilety.kinomikro.pl", KinoMikro, institution = Some("Kino Mikro"))
-    val bronowice = client("https://bilety.kinomikro.pl", MikroBronowice, institution = Some("Mikro Bronowice"))
+    val mikro     = client("https://bilety.kinomikro.pl", KinoMikro, institution = Some(Institution("Kino Mikro")))
+    val bronowice = client("https://bilety.kinomikro.pl", MikroBronowice, institution = Some(Institution("Mikro Bronowice")))
     mikro.sourceKey should not be bronowice.sourceKey
   }
 
   it should "keep a screening's wall-clock time across the CEST→CET switch" in {
     // "2026-10-29T21:00:00+01:00" on the Mikro feed.
-    client("https://bilety.kinomikro.pl", KinoMikro, institution = Some("Kino Mikro")).fetch()
+    client("https://bilety.kinomikro.pl", KinoMikro, institution = Some(Institution("Kino Mikro"))).fetch()
       .flatMap(_.showtimes).map(_.dateTime) should contain(LocalDateTime.of(2026, 10, 29, 21, 0))
   }
 
   it should "parse the director out of the event description, stopping at the next label" in {
-    val mikro = client("https://bilety.kinomikro.pl", KinoMikro, institution = Some("Kino Mikro")).fetch()
+    val mikro = client("https://bilety.kinomikro.pl", KinoMikro, institution = Some(Institution("Kino Mikro"))).fetch()
     // `Reżyseria: François Ozon  Występują: Benjamin Voisin, …`
     mikro.find(_.movie.title == "Obcy").value.director shouldBe Seq("François Ozon")
     // `Reżyseria: Louis Malle  Muzyka: Miles Davis  Scenariusz: …`
@@ -172,5 +174,13 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
     directorOf("<div>Reżyseria: Joel Coen, Ethan Coen</div><div>Gatunek dramat</div>") shouldBe
       Seq("Joel Coen", "Ethan Coen")
     directorOf("<div>Gatunek: dramat</div>") shouldBe empty
+  }
+
+  // Casing is repaired only where the source shouts: a mixed-case title is the
+  // venue's own spelling and stays as given.
+  it should "down-case a shouted title but keep a mixed-case one as given" in {
+    client("https://bilety.kino.bochnia.pl", KinoRegis).fetch().map(_.movie.title) should contain("Marsupilami")
+    client("https://bilety.kinomikro.pl", KinoMikro, institution = Some(Institution("Kino Mikro"))).fetch().map(_.movie.title) should
+      contain("Birthday Party")
   }
 }

@@ -140,7 +140,7 @@ object FilmwebDiff {
     emit(s"Cinemas compared: ${ourScrapers.size}")
     emit("")
 
-    // OUR side fans out across many independent hosts (bok.waw.pl, kinomikro.pl,
+    // OUR side fans out across many independent hosts (bok.waw.pl, bilety.kinomikro.pl,
     // helios.pl, …), so it parallelises freely — each scraper already throttles
     // its own per-cinema detail fetches via ParallelDetailFetch. Pre-fetch all
     // of them on a bounded pool so the slow scrapers (Bok now walks a week of

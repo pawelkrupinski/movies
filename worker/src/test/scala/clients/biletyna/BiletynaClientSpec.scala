@@ -33,11 +33,11 @@ class BiletynaClientSpec
       AdaKinoStudyjne: Cinema, "Posłani", LocalDateTime.of(2026, 6, 7, 15, 0),
       "https://biletyna.pl/film/Poslani?eid=665826#opis"),
     ("Kino Kameralne Cafe", "kino-kameralne", "https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe",
-      KinoKameralne, "Mikey i Nicky (1976)", LocalDateTime.of(2026, 6, 6, 18, 0),
-      "https://biletyna.pl/film/Mikey-i-Nicky-1976?eid=667728#opis"),
+      KinoKameralne, "Lalka (2026)", LocalDateTime.of(2026, 10, 1, 17, 45),
+      "https://biletyna.pl/film/Lalka-2026?eid=700436#opis"),
     ("Kino Pegaz Wodzisław", "kino-pegaz", "https://biletyna.pl/Wodzislaw-Slaski/Wodzislawskie-Centrum-Kultury",
-      KinoPegaz, "Piękność dnia", LocalDateTime.of(2026, 6, 9, 20, 0),
-      "https://biletyna.pl/film/Pieknosc-dnia?eid=666810#opis"),
+      KinoPegaz, "Spa Weekend", LocalDateTime.of(2026, 10, 6, 20, 0),
+      "https://biletyna.pl/film/Spa-Weekend?eid=702234#opis"),
     // Kinoteatr Rondo publishes the descriptive title form
     // `„Title" | reżyseria: Director | Country Year`; the pinned title is the
     // clean form the client splits out of it (metadata lifted out in the test
@@ -107,7 +107,7 @@ class BiletynaClientSpec
     val movies = new BiletynaClient(
       new FakeHttpFetch("kino-kameralne"), "https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe", KinoKameralne
     ).fetch()
-    val film = movies.find(_.movie.title == "Mikey i Nicky (1976)").value
+    val film = movies.find(_.movie.title == "Lalka (2026)").value
     film.movie.rawTitle shouldBe None
     film.director shouldBe empty
   }
@@ -241,5 +241,13 @@ class BiletynaClientSpec
     val http = new tools.GetOnlyHttpFetch { def get(url: String): String = page }
     an[IllegalStateException] should be thrownBy
       new BiletynaClient(http, "https://biletyna.pl/Zyrardow/Kino-Len", KinoLen).fetch()
+  }
+
+  // The feed marks a film with no artwork as `thumb_file_id: 0`; that is not a
+  // poster, and `/file/get/id/0` must not stand in for one.
+  it should "leave a feed-only film without artwork posterless" in {
+    val polonez = new BiletynaClient(new FakeHttpFetch("biletyna-skierniewice"),
+      "https://biletyna.pl/Skierniewice/Kinoteatr-Polonez", KinoPolonez).fetch()
+    polonez.find(_.movie.title.startsWith("Verity")).value.posterUrl shouldBe None
   }
 }

@@ -32,7 +32,7 @@ object ReadModelProjection {
    *  and `ReadModelDerivationVersionSpec` fails with the new value whenever that snapshot is
    *  regenerated — so updating it is mechanical, never a judgment about whether a change
    *  "counts". Change it only by copying that spec's value. */
-  val DerivationVersion: String = "babbb4c442ee4497"
+  val DerivationVersion: String = "2b3aef8d690fea26"
 
   /** The film identity: the source row's permanent [[services.movies.FilmId]], as is.
    *

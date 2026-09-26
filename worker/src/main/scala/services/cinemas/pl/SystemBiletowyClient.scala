@@ -47,15 +47,15 @@ import scala.util.Try
  * adding a VisualSoft-hosted cinema is a catalog line, not a new client (OCP).
  */
 class SystemBiletowyClient(http: HttpFetch, baseUrl: String, override val cinema: Cinema,
-                           titles: TitleNormalizer, filmGroups: Set[String] = Set.empty,
-                           institution: Option[String] = None)
+                           titles: TitleNormalizer, filmGroups: Set[EventCategory] = Set.empty,
+                           institution: Option[Institution] = None)
     extends CinemaScraper with OnlyMovieEventsFilter {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(baseUrl)
   override def sourceUrl: Option[String] = Some(baseUrl)
   // Two venues on one instance share its URL; the institution tells them apart.
   override def sourceKey: Option[String] =
-    super.sourceKey.map(key => institution.fold(key)(name => s"$key#$name"))
+    super.sourceKey.map(key => institution.fold(key)(venue => s"$key#${venue.name}"))
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] =
     SystemBiletowyClient.parse(feed(), cinema, baseUrl, titles, filmGroups, institution)
@@ -93,11 +93,13 @@ object SystemBiletowyClient {
     """(?i)[-–—]\s*Film\b(?=\s+(?:2D|3D|IMAX|4DX|dolby|atmos|dubbing|dubb|dub|napisy|nap|lektor|lek)\b)""".r
 
   def parse(json: String, cinema: Cinema, baseUrl: String, titles: TitleNormalizer,
-            filmGroups: Set[String] = Set.empty, institution: Option[String] = None): Seq[CinemaMovie] = {
-    val records = (Json.parse(json) \ "repertoires").toOption.toSeq.flatMap {
+            filmGroups: Set[EventCategory] = Set.empty, institution: Option[Institution] = None): Seq[CinemaMovie] = {
+    // `repertoires` is an object keyed by screening id, or `[]` when nothing is
+    // on. A body without it — an error object, a proxy's HTML — is a failed read.
+    val records = (Json.parse(json) \ "repertoires").as[JsValue] match {
       case o: JsObject => o.values.toSeq
       case a: JsArray  => a.value.toSeq
-      case _           => Seq.empty
+      case other       => throw new IllegalStateException(s"$baseUrl: repertoires is neither an object nor an array: $other")
     }
     def absolute(path: String) = if (path.startsWith("http")) path else baseUrl + path
 
@@ -105,10 +107,12 @@ object SystemBiletowyClient {
       val group = (r \ "event" \ "category").asOpt[String].getOrElse("")
       for {
         rawTitle <- (r \ "title").asOpt[String]
-        if institution.forall(name => (r \ "location" \ "institution_name").asOpt[String].contains(name))
-        if filmGroups.isEmpty || filmGroups.contains(group)
+        if institution.forall(venue => (r \ "location" \ "institution_name").asOpt[String].contains(venue.name))
+        if filmGroups.isEmpty || filmGroups.contains(EventCategory(group))
+        // The trailing `dubbing`/`napisy`/… tag is peeled into the showtime's
+        // format so a film's dubbed and subtitled screenings fold onto one row.
         peeled    = FilmBoilerplate.replaceFirstIn(stripGroupPrefix(rawTitle.trim, group), "")
-        title     = titles.cinemaClean(cinema.slug, cleanTitle(peeled))
+        title     = titles.cinemaClean(cinema.slug, recase(ScraperParse.stripFormatTags(peeled)))
         if title.nonEmpty
         dateTime <- (r \ "date").asOpt[String].flatMap(d => Try(OffsetDateTime.parse(d).toLocalDateTime).toOption)
       } yield RawSlot(
@@ -140,11 +144,16 @@ object SystemBiletowyClient {
     }
   }
 
-  /** Drop the trailing `dubbing`/`napisy`/… version tag (so the same film's
-   *  dubbed and subtitled screenings merge into one row) and sentence-case the
-   *  result. Tag stripping is shared with the other portal clients. */
-  private[cinemas] def cleanTitle(raw: String): String =
-    ScraperParse.sentenceCase(ScraperParse.stripFormatTags(raw))
+  /** Sentence-case a title that shouts — any word of two or more letters all in
+   *  capitals ("LALKA", "LUNA I ROZGADANA ŚWINKA Tani Poniedziałek") — and keep
+   *  one that doesn't as the venue spelled it ("Birthday Party"). */
+  private def recase(title: String): String = {
+    val shouts = title.split("\\s+").exists { word =>
+      val letters = word.filter(_.isLetter)
+      letters.length >= 2 && letters.forall(_.isUpper)
+    }
+    if (shouts) ScraperParse.sentenceCase(title) else title
+  }
 
   /** Peel a "<group> – "/"<group> - " prefix a mixed-category venue's own
    *  listing glues onto its title ("BCKino – Kandydaci śmierci" → "Kandydaci
@@ -176,3 +185,11 @@ object SystemBiletowyClient {
     }
   }
 }
+
+/** A venue's `location.institution_name` on a VisualSoft instance that sells
+ *  more than one venue's events ("Kino Mikro", "Nasze Kino"). */
+final case class Institution(name: String) extends AnyVal
+
+/** An `event.category` on a VisualSoft instance that tags its events by kind
+ *  ("BCKino" beside "Warsztaty"). */
+final case class EventCategory(name: String) extends AnyVal

@@ -1,10 +1,10 @@
 package services.cinemas
 
 import clients.tools.UrlFragmentHttpFetch
-import models.{CinemaCityPoznanPlaza, KinoDiana, KinoJOK}
+import models.{CinemaCityPoznanPlaza, KinoDiana, KinoFarys, KinoJOK, KinoLen}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.pl.{Cinema1Client, CinemaCityClient, FilmwebShowtimesClient, KinoCentrumCswClient, KinoJOKClient}
+import services.cinemas.pl.{BiletynaClient, Cinema1Client, CinemaCityClient, FilmwebShowtimesClient, KinoCentrumCswClient, KinoJOKClient, SystemBiletowyClient}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import java.time.LocalDate
@@ -66,5 +66,37 @@ class ListingParseFailureSpec extends AnyFlatSpec with Matchers {
     }
     an[Exception] should be thrownBy
       new FilmwebShowtimesClient(errorPages, 2352, KinoDiana, daysAhead = 2, today = day).fetch()
+  }
+
+  // A VisualSoft instance answers a feed it can't serve with {"error": …}. The
+  // advanced feed's missing-template error is the one that means "ask the plain
+  // feed"; any other error body, or one from the plain feed too, is a failed read.
+  "SystemBiletowyClient.parse" should "throw on an error or unparseable body but read an empty programme as no screenings" in {
+    an[Exception] should be thrownBy SystemBiletowyClient.parse(ErrorPage, KinoFarys, "https://kfb.example", titleNormalizer)
+    an[Exception] should be thrownBy
+      SystemBiletowyClient.parse("""{"error":"Internal error","code":500}""", KinoFarys, "https://kfb.example", titleNormalizer)
+    SystemBiletowyClient.parse("""{"meta":{"nbResults":0},"repertoires":[]}""", KinoFarys, "https://kfb.example", titleNormalizer) shouldBe empty
+  }
+
+  "SystemBiletowyClient" should "fail the scrape when the plain feed errors too" in {
+    val missingTemplate = """{"error":"The template \"listAdvancedSuccess.json.php\" does not exist or is unreadable in \"\".","code":200}"""
+    val http = new UrlFragmentHttpFetch(Seq("advanced=1" -> missingTemplate, "list.json" -> """{"error":"Internal error","code":500}"""))
+    an[Exception] should be thrownBy new SystemBiletowyClient(http, "https://kfb.example", KinoFarys, titleNormalizer).fetch()
+  }
+
+  // A full biletyna place page (50 events) is topped up from the hall's event
+  // feed. A feed that answers with an error, or with records none of which
+  // parse, would otherwise cut the venue at 50 again without a trace.
+  private val fullPlacePage = new clients.tools.FakeHttpFetch("biletyna-filmweb-desynced").get("https://biletyna.pl/Zyrardow/Kino-Len")
+  private def lenWithFeed(feed: String) =
+    new BiletynaClient(new UrlFragmentHttpFetch(Seq("/ajax/events" -> feed, "Kino-Len" -> fullPlacePage)),
+      "https://biletyna.pl/Zyrardow/Kino-Len", KinoLen)
+
+  "BiletynaClient" should "fail the scrape when a full page's event feed answers with an error" in {
+    an[Exception] should be thrownBy lenWithFeed("""{"status":false,"message":"error"}""").fetch()
+  }
+
+  it should "fail the scrape when a full page's event feed holds records none of which parse" in {
+    an[Exception] should be thrownBy lenWithFeed("""{"status":true,"events":[{"event_id":1,"artist_name":"X","event_date":"soon"}]}""").fetch()
   }
 }

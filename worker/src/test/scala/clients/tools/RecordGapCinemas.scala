@@ -39,7 +39,7 @@ object RecordGapCinemas {
     report("Kino Spójnia (Aleksandrów)")(new KinoSpojniaClient(record("kino-spojnia"), KinoSpojnia).fetch().size)
     report("Kino Ślęża (Sobótka)")(new KinoSlezaClient(record("kino-sleza"), KinoSleza).fetch().size)
     report("Cyfrowe Kino (Środa Śl.)")(new CyfroweKinoClient(record("cyfrowe-kino"), KinoCyfroweKino, titles = titleNormalizer).fetch().size)
-    report("Kino Kuźnica (Suchedniów)")(new SystemBiletowyClient(record("kino-kuznica"), "https://shd.systembiletowy.pl", KinoKuznica, titles = titleNormalizer).fetch().size)
+    report("Kino Kuźnica (Suchedniów)")(new SystemBiletowyClient(record("visualsoft"), "https://shd.systembiletowy.pl", KinoKuznica, titles = titleNormalizer).fetch().size)
     // ── Lublin ──
     report("Kino CK Lublin")(new Bilety24Client(record("kino-ck-lublin"), "https://ck-lublin.bilety24.pl", KinoCkLublin, titles = titleNormalizer).fetch().size)
     // ── Częstochowa / Radom ──
@@ -63,7 +63,7 @@ object RecordGapCinemas {
     // ── Wave 3: more Filmweb-dropped venues, on existing platform clients ──
     report("Kino Centrum (Skarżysko)")(new MsiClient(record("kino-centrum-skarzysko"), "https://bilet-mck.skarzysko.pl", KinoCentrumSkarzyskoKamienna).fetch().size)
     report("Nowe Kino Warszawa (Gostynin)")(new MsiClient(record("nowe-kino-warszawa"), "https://bilety.mck-gostynin.pl", KinoNoweKinoWarszawa).fetch().size)
-    report("Farys (Biecz)")(new SystemBiletowyClient(record("kino-farys"), "https://kfb.systembiletowy.pl", KinoFarys, titles = titleNormalizer).fetch().size)
+    report("Farys (Biecz)")(new SystemBiletowyClient(record("visualsoft"), "https://kfb.systembiletowy.pl", KinoFarys, titles = titleNormalizer).fetch().size)
     val b24 = "https://www.bilety24.pl/kino/organizator"
     report("Kino CK (Jędrzejów)")(new Bilety24OrganizerClient(record("kino-ck"), s"$b24/centrum-kultury-w-jedrzejowie-1458", KinoCK, titles = titleNormalizer).fetch().size)
     report("Metalowiec (Kraśnik)")(new Bilety24OrganizerClient(record("kino-metalowiec"), s"$b24/centrum-kultury-i-promocji-w-krasniku-1529", KinoMetalowiec, titles = titleNormalizer).fetch().size)

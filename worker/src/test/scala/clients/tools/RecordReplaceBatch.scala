@@ -55,6 +55,6 @@ object RecordReplaceBatch {
     // ── Per-client fixtures for the new specs ──
     println("--- spec fixtures ---")
     rep("ekobilet spec (Meduza)")(new EkobiletClient(record("kino-meduza"), "opolskielamy", KinoMeduza, today).fetch().size)
-    rep("systembiletowy-alt spec")(new SystemBiletowyClient(record("kino-pckul"), "https://bilety.pckul.pl", KinoPckulKino, titles = titleNormalizer).fetch().size)
+    rep("systembiletowy-alt spec")(new SystemBiletowyClient(record("visualsoft"), "https://bilety.pckul.pl", KinoPckulKino, titles = titleNormalizer).fetch().size)
   }
 }

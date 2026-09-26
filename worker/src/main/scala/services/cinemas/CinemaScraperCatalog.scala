@@ -213,7 +213,7 @@ class CinemaScraperCatalog(
       mvcPath = venue.mvcPath, titlePrefix = venue.titlePrefix, titleSuffix = venue.titleSuffix)
   }
 
-  // biletyna.pl venue pages (44, plus Końskie's two below). biletyna.pl 403s our datacenter IP (Cloudflare
+  // biletyna.pl venue pages (plus Końskie's two below). biletyna.pl 403s our datacenter IP (Cloudflare
   // waiting-room), so every one routes through `bnFetch` — Zyte's residential
   // egress in prod, the fixture fake in tests.
   private val biletynaPages: Map[Cinema, String] = Map(
@@ -308,12 +308,16 @@ class CinemaScraperCatalog(
     KinoKadrStaszow -> "https://sta.systembiletowy.pl",
     KinoBieszczadzkiDK -> "https://bdk.systembiletowy.pl",
     Kino1410        -> "https://kht.systembiletowy.pl",
+    KinoMikro       -> "https://bilety.kinomikro.pl",
+    MikroBronowice  -> "https://bilety.kinomikro.pl",
     KinoCKiBNowaSarzyna -> "https://oks.systembiletowy.pl",
   )
   // Instances that also sell someone else's events, scoped to the venue's own
   // `location.institution_name` (see SystemBiletowyClient).
-  private val systemBiletowyInstitutions: Map[Cinema, String] = Map(
-    KinoNaszeKino -> "Nasze Kino",   // Oświęcim's culture centre sells its concerts on the same instance
+  private val systemBiletowyInstitutions: Map[Cinema, Institution] = Map(
+    KinoNaszeKino  -> Institution("Nasze Kino"),   // Oświęcim's culture centre sells its concerts on the same instance
+    KinoMikro      -> Institution("Kino Mikro"),   // the two Mikro screens share one instance
+    MikroBronowice -> Institution("Mikro Bronowice"),
   )
   private def systemBiletowy(cinema: Cinema): SystemBiletowyClient =
     new SystemBiletowyClient(http, systemBiletowyPortals(cinema), cinema, titles = titles,
@@ -412,8 +416,8 @@ class CinemaScraperCatalog(
     cinemaCity("1076", CinemaCityKazimierz),
     cinemaCity("1064", CinemaCityZakopianka),
     multikino("0005", MultikinoKrakow),
-    new SystemBiletowyClient(http, "https://bilety.kinomikro.pl", KinoMikro, titles = titles, institution = Some("Kino Mikro")),
-    new SystemBiletowyClient(http, "https://bilety.kinomikro.pl", MikroBronowice, titles = titles, institution = Some("Mikro Bronowice")),
+    systemBiletowy(KinoMikro),
+    systemBiletowy(MikroBronowice),
     new KinoSfinksClient(http, KinoSfinks),
     new KinoPodBaranamiClient(http, KinoPodBaranami, today),
     new KinoKijowClient(http, KinoKijow, today, titles = titles),
@@ -587,7 +591,7 @@ class CinemaScraperCatalog(
   // prefix. Verified screening 2026-09-23.
   private val bytomScrapers        = Seq(
     cinemaCity("1092", CinemaCityBytom),
-    new SystemBiletowyClient(http, "https://bck.systembiletowy.pl", KinoBCKBytom, titles = titles, filmGroups = Set("BCKino")),
+    new SystemBiletowyClient(http, "https://bck.systembiletowy.pl", KinoBCKBytom, titles = titles, filmGroups = Set(EventCategory("BCKino"))),
   )
   private val dabrowaGorniczaScrapers = Seq(helios(HeliosNuxt.DabrowaGornicza), new VisualTicketClient(http, "https://bilety.palac.art.pl", KinoKadr, locationId = 2))
   private val nowySaczScrapers     = Seq(helios(HeliosNuxt.NowySacz), bilety24("https://www.bilety24.pl/kino/organizator/malopolskie-centrum-kultury-sokol-w-nowym-saczu-1225", KinoSokol))
@@ -2294,7 +2298,7 @@ class CinemaScraperCatalog(
       // systembiletowy portal with Chorzowskie Centrum Kultury's own events —
       // filmGroups keeps only the "Imprezy SDK" rows, same pattern as
       // KinoBCKBytom below but with this venue's own data-group value.
-      new SystemBiletowyClient(http, "https://bilety.chck.pl", KinoFrajda, titles = titles, filmGroups = Set("Imprezy SDK")),   // Chorzów
+      new SystemBiletowyClient(http, "https://bilety.chck.pl", KinoFrajda, titles = titles, filmGroups = Set(EventCategory("Imprezy SDK"))),   // Chorzów
     ),
     "ostrowiec-swietokrzyski" -> Seq(
       systemBiletowy(KinoKadrStaszow),   // Staszów
