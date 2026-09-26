@@ -681,7 +681,8 @@ published are untouched.
   projects. The gate's `version` is part of the metadata-reuse key, so a new gate re-projects
   instead of reusing cards gated under the old one. `ReadModelContentAudit` projects through the
   same gate, so a withheld card is not reported as drift. The worker's `ReadModelWiring` passes
-  `RatingGate.off` unless `KINOWO_IDENTITY_RATING_GATE=true`. When on, it snapshots
+  `RatingGate.off` unless `KINOWO_IDENTITY_RATING_GATE=true`
+  (`ProcessConfiguration.identityRatingGate`, a typed `IdentityRatingGateEnabled`). When on, it snapshots
   `shadowDecisions` at boot, and that is `ShadowDecisions.none` until the resolver's shadow run
   lands, so even a switched-on gate withholds nothing today. This is a staged-migration switch
   (allowed here per the program brief), to be removed at cutover.
