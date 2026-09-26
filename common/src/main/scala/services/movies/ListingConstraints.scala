@@ -47,6 +47,12 @@ object ListingConstraints {
     /** An admin pinned the listing as never this film (`services.identity.PinClaim.NeverFilm`):
      *  it cannot share a film with any listing that is that film. */
     case PinnedNotFilm
+    /** Two listings state years further apart than a production-to-release gap ("It (1990)" and
+     *  "IT (2017)"), and no film matched ties them. The identity resolver's; the incremental
+     *  pipeline files such rows apart in its staging fold instead. */
+    case StatedYearsApart
+    /** A rule LEARNED from corroborated films (the identity resolver's artefact), by name. */
+    case Learned(rule: String)
   }
 
   /** Why two pieces of evidence must be one film, where the rule is not a title or TMDB edge
@@ -119,6 +125,43 @@ object ListingConstraints {
     def credited(ds: Seq[String]) = ds.exists(_.trim.nonEmpty)
     Option.when(credited(a) && credited(b) && !MixedFilmDetector.creditSamePerson(a, b, normalizer))(CannotLink.VenueCreditsApart)
   }
+
+  /** The years two listings state (their own field, else their title's bracket), when they are
+   *  further apart than `YearWindow.ProductionToRelease`. */
+  def statedYearsApart(a: Option[Int], b: Option[Int]): Option[CannotLink] =
+    (a, b) match {
+      case (Some(x), Some(y)) if math.abs(x - y) > services.resolution.YearWindow.ProductionToRelease => Some(CannotLink.StatedYearsApart)
+      case _                                                                                          => None
+    }
+
+  // ── learned cannot-links (the identity resolver's data-driven rules) ─────────────────
+
+  /** One condition on a named signal: its categorical value is one of `in`, or its number lies in
+   *  [`atLeast`, `atMost`]. A signal the evidence does not carry fails every condition — missing
+   *  evidence never vetoes. */
+  final case class LearnedCondition(signal: String, in: Seq[String] = Nil, atLeast: Option[Double] = None,
+                                    atMost: Option[Double] = None)
+
+  /** A cannot-link rule as DATA: every condition holds → the two pieces of evidence are not one
+   *  film. `scope` names what the signals compare ("listing-film": a listing against a candidate
+   *  film; "listing-listing": two listings). `falseVetoRate` and `support` are what the
+   *  calibration measured when it learned the rule — kept beside it so a reader can see what the
+   *  rule costs. */
+  final case class LearnedCannotLink(name: String, scope: String, all: Seq[LearnedCondition],
+                                     falseVetoRate: Double, support: Int)
+
+  /** The first learned rule of `scope` whose every condition holds on the signals, by the rules'
+   *  own order. The resolver's generic evaluator: no predicate here names a film property, the
+   *  rules do. The incremental pipeline does not read learned rules — it keeps the predicates
+   *  above, so nothing it serves changes while the resolver runs in shadow. */
+  def learnedCannotLink(rules: Seq[LearnedCannotLink], scope: String, category: String => Option[String],
+                        number: String => Option[Double]): Option[CannotLink] =
+    rules.iterator.filter(_.scope == scope).find(_.all.forall { c =>
+      (c.in.isEmpty || category(c.signal).exists(c.in.contains)) &&
+        (c.atLeast.isEmpty && c.atMost.isEmpty ||
+          number(c.signal).exists(x => c.atLeast.forall(x >= _) && c.atMost.forall(x <= _))) &&
+        (c.in.nonEmpty || c.atLeast.nonEmpty || c.atMost.nonEmpty)
+    }).map(r => CannotLink.Learned(r.name))
 
   // ── must-links ───────────────────────────────────────────────────────────────────────
 

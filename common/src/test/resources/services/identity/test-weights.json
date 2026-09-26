@@ -1,0 +1,33 @@
+{
+  "version": "test-fixture-1",
+  "weights": {
+    "bias": -3.0,
+    "title=exact": 2.5,
+    "title=original": 2.0,
+    "title=segment": 1.5,
+    "title=none": -2.0,
+    "year=0": 2.0,
+    "year=1-2": 0.5,
+    "year=3+": -3.5,
+    "year=3+bracket": -0.5,
+    "director=match": 3.0,
+    "director=mismatch": -3.0,
+    "runtime=0-5": 2.0,
+    "runtime=6-15": -0.3,
+    "runtime=16+": -3.0,
+    "rank=1": 0.8,
+    "rank=4+": -0.5,
+    "source=search+walk": 1.0,
+    "source=search": 0.5,
+    "source=walk": 0.5,
+    "source=family": -0.3,
+    "rivals": -8.0,
+    "popularity.share": 1.5,
+    "venues.agreeing": 4.0,
+    "venues.count": 0.5
+  },
+  "threshold": 0.5,
+  "provenance": {
+    "purpose": "unit-test fixture: fixed so the specs do not move when the calibration does"
+  }
+}

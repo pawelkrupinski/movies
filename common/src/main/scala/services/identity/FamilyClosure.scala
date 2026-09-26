@@ -30,11 +30,18 @@ object FamilyClosure {
   final case class Crossing[K](edge: Edge[K], familyOfA: Option[Int], familyOfB: Option[Int])
 
   /** The block keys of one listing's evidence. Blank forms are no key: two listings whose
-   *  titles sanitise to nothing must not share a family through the empty string. */
+   *  titles sanitise to nothing must not share a family through the empty string.
+   *
+   *  `segments` are the delimited parts of the title a listing publishes around a programme
+   *  banner or a decoration ("Oficjalna premiera: Lalka" → "Oficjalna premiera", "Lalka"), keyed
+   *  in the search-form namespace so a segment meets a plain listing's whole title. They put a
+   *  decorated spelling in its plain sibling's family — which is what lets the resolver's
+   *  group-level signals reach it — without drawing any edge by themselves. */
   def blockKeys(cleanTitle: String, originalTitle: Option[String], tmdbId: Option[Int],
-                normalizer: TitleNormalizer): Set[String] = {
+                normalizer: TitleNormalizer, segments: Seq[String] = Nil): Set[String] = {
     def titleKeys(t: String) = Seq("t:" + normalizer.sanitize(t), "q:" + normalizer.searchQuery(t))
-    (titleKeys(cleanTitle) ++ originalTitle.toSeq.flatMap(titleKeys) ++ tmdbId.map(id => s"id:$id"))
+    (titleKeys(cleanTitle) ++ originalTitle.toSeq.flatMap(titleKeys) ++ segments.map(s => "q:" + normalizer.searchQuery(s)) ++
+      tmdbId.map(id => s"id:$id"))
       .filterNot(_.endsWith(":")).toSet
   }
 

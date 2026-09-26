@@ -1,0 +1,39 @@
+{
+  "version" : "interim-pipeline-6ad0b89d",
+  "weights" : {
+    "source=search" : -1.5776,
+    "rank=none" : -0.3746,
+    "rank=1" : 0.7825,
+    "title=segment" : -0.3433,
+    "year=3+" : -1.973,
+    "venues.count" : 2.2662,
+    "title=none" : 0.3474,
+    "venues.agreeing" : 2.2595,
+    "source=walk" : 0.6152,
+    "rank=2-3" : 0.0289,
+    "source=search+walk" : 1.9522,
+    "source=family" : -0.9898,
+    "year=0" : 2.6292,
+    "rank=4+" : -0.4369,
+    "title=exact" : 0.3023,
+    "year=3+bracket" : -1.9412,
+    "year=missing" : 0.715,
+    "bias" : -6.6826,
+    "popularity.share" : 1.6421,
+    "title=original" : -0.3064,
+    "rivals" : -4.0414,
+    "title.containment" : 5.5184,
+    "year=1-2" : 0.5701
+  },
+  "threshold" : 0.5,
+  "cannotLinks" : [ ],
+  "provenance" : {
+    "fit" : "L2 logistic regression (lambda 1.0, 25 Newton steps) on 133999 train rows, labels=pipeline",
+    "datasets" : "full-de-dataset.tsv,full-es-dataset.tsv,full-pl-dataset.tsv,full-uk-dataset.tsv,full-us-dataset.tsv",
+    "status" : "INTERIM: replaced by the calibration artefact identity-weights.json",
+    "threshold" : "0.5: the Bayes boundary — accept a match the model finds more likely right than not. Fitting it on pipeline agreement drives it to the grid's floor, because the pipeline almost never answers 'no film'",
+    "train" : "6426/7128 nodes agree",
+    "heldOut" : "1404/1513 nodes agree (families hashed into 5 folds, fold 0 held out)",
+    "excluded" : "director,runtime,country,imdb"
+  }
+}
