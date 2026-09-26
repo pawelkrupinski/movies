@@ -106,14 +106,23 @@ final class CommandRunner {
         p.standardOutput = pipe
         p.standardError = pipe
 
+        let drained = DispatchSemaphore(value: 0)
         pipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
-            guard !data.isEmpty else { return }
+            guard !data.isEmpty else {          // EOF: every writer has closed the pipe
+                handle.readabilityHandler = nil
+                drained.signal()
+                return
+            }
             let text = String(decoding: data, as: UTF8.self)
             self?.callbackQueue.async { self?.onOutput?(text) }
         }
         p.terminationHandler = { [weak self] proc in
-            pipe.fileHandleForReading.readabilityHandler = nil
+            // What the child printed just before exiting can still be in the
+            // pipe; wait for EOF so it reaches onOutput before onExit. Bounded,
+            // because a forked grandchild (sbt's bgRun worker) can hold the pipe
+            // open long after the action itself has exited.
+            _ = drained.wait(timeout: .now() + 1)
             self?.process = nil
             self?.callbackQueue.async { self?.onExit?(proc.terminationStatus) }
         }
@@ -945,8 +954,15 @@ if ProcessInfo.processInfo.environment["DEVPANEL_SELFTEST"] == "1" {
     }
 
     let (o1, s1) = runOnce("/bin/sh", ["-c", "printf 'SELFTEST_OK\\n'"], nil)
-    let (o2, s2) = runOnce("/bin/sh", ["-c", "printf 'ROOT=%s\\n' \"$DEVPANEL_REPO_ROOT\""],
+    // Repeated: output printed right before exit used to be dropped when the
+    // exit won the race against the pipe reader (rarely, hence the repeats).
+    var (o2, s2) = ("", Int32(0))
+    for _ in 0..<200 {
+        (o2, s2) = runOnce("/bin/sh", ["-c", "printf 'ROOT=%s\\n' \"$DEVPANEL_REPO_ROOT\""],
                            ["DEVPANEL_REPO_ROOT": "/tmp/devpanel-selftest-root"])
+        if s2 != 0 || !o2.contains("ROOT=/tmp/devpanel-selftest-root") { break }
+    }
+
     let streamOK = s1 == 0 && o1.contains("SELFTEST_OK")
         && s2 == 0 && o2.contains("ROOT=/tmp/devpanel-selftest-root")
 
