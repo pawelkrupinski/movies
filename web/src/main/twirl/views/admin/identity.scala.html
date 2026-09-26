@@ -4,10 +4,10 @@
 
 @decisionRows(decisions: Seq[Decision], id: String) = {
   <table id="@id">
-    <thead><tr><th></th><th>Listing</th><th>Film</th><th>Confidence</th><th>Why</th></tr></thead>
+    <thead><tr><th></th><th class="sortable" data-sort="listing">Listing</th><th>Film</th><th class="sortable" data-sort="confidence" data-dir="asc">Confidence</th><th>Why</th></tr></thead>
     <tbody>
     @for(d <- decisions) {
-      <tr class="decision">
+      <tr class="decision" data-listing="@d.listings.toSeq.sorted.headOption.fold("")(k => s"${k.venue} — ${k.rawTitle}")" data-confidence="@d.confidence">
         <td></td>
         <td>
           @for(k <- d.listings.toSeq.sorted) {
@@ -53,6 +53,10 @@
     input, select, textarea { font: inherit; background: #000; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 3px 6px; }
     textarea { width: 100%; max-width: 760px; height: 3.5em; }
     button { font: inherit; cursor: pointer; background: #1c1c1c; color: #ccc; border: 1px solid #333; border-radius: 4px; padding: 3px 9px; }
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable:hover { color: #aaa; }
+    th[data-dir="asc"]::after { content: " ▲"; }
+    th[data-dir="desc"]::after { content: " ▼"; }
     button.unpin { color: #c97a7a; border-color: #5a2d2d; }
   </style>
 </head>
@@ -128,6 +132,18 @@
       if (!isNaN(tmdb)) body.tmdbId = tmdb;
       post("@routes.IdentityAdminController.createPin()", body);
     };
+    // Click a sortable header to order its table by that column; clicking it again flips the direction.
+    // The server renders rows by ascending confidence, which the Confidence header's initial arrow shows.
+    document.querySelectorAll("th.sortable").forEach(th => th.onclick = () => {
+      const table = th.closest("table"), key = th.dataset.sort;
+      const dir = th.dataset.dir === "asc" ? "desc" : "asc";
+      table.querySelectorAll("th.sortable").forEach(h => delete h.dataset.dir);
+      th.dataset.dir = dir;
+      const value = key === "confidence" ? (tr => parseFloat(tr.dataset.confidence)) : (tr => tr.dataset.listing);
+      const compare = key === "confidence" ? ((a, b) => a - b) : ((a, b) => a.localeCompare(b));
+      const tbody = table.tBodies[0];
+      [...tbody.rows].sort((a, b) => (dir === "asc" ? 1 : -1) * compare(value(a), value(b))).forEach(tr => tbody.appendChild(tr));
+    });
     document.querySelectorAll(".unpin").forEach(b => b.onclick = () => post("@routes.IdentityAdminController.removePin()", { id: b.dataset.id }));
   </script>
 </body>
