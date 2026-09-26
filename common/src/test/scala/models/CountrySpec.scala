@@ -114,12 +114,23 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.UnitedStates.cities.map(_.slug) should contain allOf (
       "los-angeles", "new-york", "houston", "district-of-columbia", "san-juan")
     Country.UnitedStates.bySlug.get("california") shouldBe None
-    // Every place carries venues, and the roster totals 5,030 (5,031 less one feedless venue) — this was a
+    // Every place carries venues, and the roster totals 5,029 (5,031 less one feedless venue and the
+    // closed Alamo Drafthouse Naples) — this was a
     // re-key, not a re-harvest. That corpus is ~6x the UK's, the fact that drives
     // the US worker's 840-minute cadence rather than the UK's 420 (a ~10h sweep
     // has to fit inside its own cadence).
     all(Country.UnitedStates.cities.map(_.cinemas.size)) should be > 0
-    Country.UnitedStates.cities.flatMap(_.cinemas).size shouldBe 5030
+    Country.UnitedStates.cities.flatMap(_.cinemas).size shouldBe 5029
+  }
+
+  // Alamo Drafthouse Naples closed on 2026-09-09. Without it most of Southwest
+  // Florida's venues are filed under Fort Myers, and the metro would have moved from
+  // /naples/ to /fort-myers/, stranding its projected screenings for a whole cycle.
+  it should "keep Southwest Florida at /naples/ after Alamo Drafthouse Naples closed" in {
+    val naples = Country.UnitedStates.bySlug.get("naples").getOrElse(fail("no /naples/ page"))
+    naples.cinemas.map(_.displayName) should contain ("Regal Hollywood Naples")
+    naples.cinemas.map(_.displayName) should not contain "Alamo Drafthouse Naples"
+    Country.UnitedStates.bySlug.get("fort-myers") shouldBe None
   }
 
   /** Every place in `group` in its country's own collation — the order a reader
@@ -442,6 +453,13 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   //   A1824 Kinomobil Besigheim — Filmstarts re-listed it as A0793, already rostered
   // Most of that day's other 404s are cinemas still running that Filmstarts
   // dropped (kino.de / kino-zeit list them) — not closures, so they stay.
+  // city-coords.json put "Frankfurt (Oder)" at Frankfurt am Main's coordinates, so
+  // clustering filed its CineStar under Frankfurt am Main, 450 km from the cinema.
+  it should "list CineStar Frankfurt (Oder) under Frankfurt an der Oder, not Frankfurt am Main" in {
+    def regionOf(name: String) = GermanRoster.regions.find(_.cinemas.exists(_.displayName == name)).map(_.slug)
+    regionOf("CineStar Frankfurt (Oder)") shouldBe Some("frankfurt-an-der-oder")
+  }
+
   it should "not carry the Filmstarts theater ids that were delisted upstream" in {
     val delisted = Set("A0743", "G01C9", "A2843", "A2165", "A1560",
       "A0908", "A0680", "A2708", "A1688", "A0613", "A0119", "A0100", "A0726", "A1547", "A1824")

@@ -101,7 +101,6 @@ object UsChainVenues {
     "Alamo Drafthouse Lower Manhattan" -> AlamoVenue("lower-manhattan", "America/New_York"),
     "Alamo Drafthouse Mountain View" -> AlamoVenue("mountain-view", "America/Los_Angeles"),
     "Alamo Drafthouse Mueller" -> AlamoVenue("mueller", "America/Chicago"),
-    "Alamo Drafthouse Naples" -> AlamoVenue("naples", "America/New_York"),
     "Alamo Drafthouse New Mission" -> AlamoVenue("new-mission", "America/Los_Angeles"),
     "Alamo Drafthouse One Loudoun" -> AlamoVenue("one-loudoun", "America/New_York"),
     "Alamo Drafthouse Park North" -> AlamoVenue("park-north", "America/Chicago"),

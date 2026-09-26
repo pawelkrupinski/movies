@@ -1968,6 +1968,11 @@ object UsRoster {
   private val MetroDisplayNames = Map(
     "San Francisco" -> "San Francisco Bay Area",
     "Mammoth Lakes" -> "Eastern Sierra",
+    // Southwest Florida clustered as "Naples" until Alamo Drafthouse Naples closed
+    // (2026-09-09); without it most of the metro's venues are filed under Fort
+    // Myers, which would move the page from /naples/ to /fort-myers/ and strand its
+    // projected screenings until the next US scrape cycle. The metro spans both.
+    "Fort Myers"    -> "Naples",
   )
 
   /** Below this many venues a state is ONE place rather than a list of metros.

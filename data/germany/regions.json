@@ -618,7 +618,6 @@
       "Friedrichsdorf",
       "Ginsheim-Gustavsburg",
       "Frankfurt",
-      "Frankfurt (Oder)",
       "Hanau",
       "Langen",
       "Neu-Isenburg",
@@ -923,12 +922,6 @@
         "name": "Instituto Cervantes - Frankfurt",
         "city": "Frankfurt",
         "displayName": "Instituto Cervantes - Frankfurt"
-      },
-      {
-        "theaterId": "A0343",
-        "name": "CineStar Frankfurt (Oder)",
-        "city": "Frankfurt (Oder)",
-        "displayName": "CineStar Frankfurt (Oder)"
       },
       {
         "theaterId": "A2613",
@@ -9667,12 +9660,19 @@
     "bundesland": "Brandenburg",
     "cities": [
       "Frankfurt an der Oder",
+      "Frankfurt (Oder)",
       "Fürstenwalde",
       "Fürstenwalde an der Spree",
       "Beeskow",
       "Bad Saarow"
     ],
     "cinemas": [
+      {
+        "theaterId": "A0343",
+        "name": "CineStar Frankfurt (Oder)",
+        "city": "Frankfurt (Oder)",
+        "displayName": "CineStar Frankfurt (Oder)"
+      },
       {
         "theaterId": "A2371",
         "name": "Kleines Kino",

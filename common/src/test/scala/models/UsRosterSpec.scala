@@ -32,8 +32,8 @@ class UsRosterSpec extends AnyFlatSpec with Matchers {
 
   it should "hold every venue exactly once — a re-key, not a re-harvest" in {
     val venues = City.usCities.flatMap(_.cinemas)
-    venues should have size 5030
-    venues.distinct should have size 5030
+    venues should have size 5029
+    venues.distinct should have size 5029
   }
 
   // Flicks' only feed for the Pickwick in Syracuse IN is Park Ridge IL's Veezi site (216/216

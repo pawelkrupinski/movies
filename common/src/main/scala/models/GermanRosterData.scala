@@ -108,7 +108,7 @@ private[models] object GermanRosterData {
     ("Movieland", "Movieland", "A0671", Some("/kino/erkner/movieland-76362")),
     ("CineStar Wildau", "CineStar Wildau", "A0330", Some("/kino/wildau-bei-koenigs-wusterhausen/cinestar-38777"))
   ))
-  private def r_frankfurt_am_main: R = ("frankfurt-am-main", "Frankfurt am Main", "Hessen", 50.11552, 8.68417, Seq("Frankfurt am Main", "Wiesbaden", "Mainz", "Darmstadt", "Offenbach am Main", "Rodgau", "Dreieich", "Hofheim am Taunus", "Bad Vilbel", "Dietzenbach", "Mörfelden-Walldorf", "Kelkheim", "Friedrichsdorf", "Ginsheim-Gustavsburg", "Frankfurt", "Frankfurt (Oder)", "Hanau", "Langen", "Neu-Isenburg", "Kelkheim (Taunus)", "Weiterstadt", "Idstein", "Pfungstadt", "Gross-Gerau", "Bad Soden am Taunus", "Eschborn", "Karben", "Nidderau", "Kronberg im Taunus", "Eppstein", "Rödermark"), Seq(
+  private def r_frankfurt_am_main: R = ("frankfurt-am-main", "Frankfurt am Main", "Hessen", 50.11552, 8.68417, Seq("Frankfurt am Main", "Wiesbaden", "Mainz", "Darmstadt", "Offenbach am Main", "Rodgau", "Dreieich", "Hofheim am Taunus", "Bad Vilbel", "Dietzenbach", "Mörfelden-Walldorf", "Kelkheim", "Friedrichsdorf", "Ginsheim-Gustavsburg", "Frankfurt", "Hanau", "Langen", "Neu-Isenburg", "Kelkheim (Taunus)", "Weiterstadt", "Idstein", "Pfungstadt", "Gross-Gerau", "Bad Soden am Taunus", "Eschborn", "Karben", "Nidderau", "Kronberg im Taunus", "Eppstein", "Rödermark"), Seq(
     ("ASTOR Film Lounge MyZeil", "ASTOR Film Lounge MyZeil", "A2913", Some("/kino/frankfurt-am-main/astor-film-lounge-myzeill-81761")),
     ("CineStar Frankfurt am Main - Metropolis", "CineStar Frankfurt am Main - Metropolis", "A0378", Some("/kino/frankfurt-am-main/cinestar-metropolis-43378")),
     ("Cinema am Rossmarkt", "Cinema am Rossmarkt", "A0261", None),
@@ -157,7 +157,6 @@ private[models] object GermanRosterData {
     ("Burg-Lichtspiele (Ginsheim-Gustavsburg)", "Burg-Lichtspiele (Ginsheim-Gustavsburg)", "A0868", Some("/kino/ginsheimgustavsburg/burglichtspiele-32066")),
     ("Open Air Kino Ginsheim-Gustavsburg", "Open Air Kino Ginsheim-Gustavsburg", "A2084", None),
     ("Instituto Cervantes - Frankfurt", "Instituto Cervantes - Frankfurt", "A2908", None),
-    ("CineStar Frankfurt (Oder)", "CineStar Frankfurt (Oder)", "A0343", Some("/kino/frankfurt-oder/cinestar-36056")),
     ("Kinopolis Hanau", "Kinopolis Hanau", "A2613", Some("/kino/hanau/kinopolis-80297")),
     ("Lichtburg Kinos", "Lichtburg Kinos", "A1534", None),
     ("Drive In Autokino Gravenbruch", "Drive In Autokino Gravenbruch", "A1398", Some("/kino/neuisenburg/drive-in-autokino-frankfurt-gravenbruch-32193")),
@@ -1517,7 +1516,8 @@ private[models] object GermanRosterData {
     ("Luna-Filmtheater", "Luna-Filmtheater", "A1549", Some("/kino/metzingen/lunafilmtheater-32849")),
     ("Kinomobil Stuttgart - BIO-Café Zimt und Zunder", "Kinomobil Stuttgart - BIO-Café Zimt und Zunder", "A0814", None)
   ))
-  private def r_frankfurt_an_der_oder: R = ("frankfurt-an-der-oder", "Frankfurt an der Oder", "Brandenburg", 52.34714, 14.55062, Seq("Frankfurt an der Oder", "Fürstenwalde", "Fürstenwalde an der Spree", "Beeskow", "Bad Saarow"), Seq(
+  private def r_frankfurt_an_der_oder: R = ("frankfurt-an-der-oder", "Frankfurt an der Oder", "Brandenburg", 52.34714, 14.55062, Seq("Frankfurt an der Oder", "Frankfurt (Oder)", "Fürstenwalde", "Fürstenwalde an der Spree", "Beeskow", "Bad Saarow"), Seq(
+    ("CineStar Frankfurt (Oder)", "CineStar Frankfurt (Oder)", "A0343", Some("/kino/frankfurt-oder/cinestar-36056")),
     ("Kleines Kino", "Kleines Kino", "A2371", None),
     ("Filmtheater Union", "Filmtheater Union", "A2383", Some("/kino/fuerstenwalde-spree/filmtheater-union-31527")),
     ("Open Air Kino Parkbühne", "Open Air Kino Parkbühne", "A2449", None),
