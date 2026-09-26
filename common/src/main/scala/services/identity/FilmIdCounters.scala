@@ -7,6 +7,7 @@ import play.api.Logging
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 /** One film's entry in the FilmId map: today's opaque string id (legacy `title|year` or `f…`) and
@@ -123,18 +124,18 @@ final class MongoFilmIdCounterStore(database: MongoDatabase) extends FilmIdCount
         (Seq.empty, false)
     }
 
-  /** Unordered inserts: a duplicate `_id` or `counter` is refused by the store and the rest land. */
+  /** Unordered inserts: a duplicate `_id` or `counter` is refused by the store and the rest land.
+   *  Any other failure throws — the seeding tool must not read it as "nothing to add". */
   def insert(entries: Seq[FilmIdCounter]): Int =
     if (entries.isEmpty) 0
-    else Try { counterIndex; Await.result(coll.insertMany(entries.map(e => Document("_id" -> e.filmId, "counter" -> e.counter)),
-      InsertManyOptions().ordered(false)).toFuture(), 120.seconds) } match {
-      case Success(result) => result.getInsertedIds.size()
-      case Failure(bulk: com.mongodb.MongoBulkWriteException) =>
+    else try {
+      counterIndex
+      Await.result(coll.insertMany(entries.map(e => Document("_id" -> e.filmId, "counter" -> e.counter)),
+        InsertManyOptions().ordered(false)).toFuture(), 120.seconds).getInsertedIds.size()
+    } catch {
+      case bulk: com.mongodb.MongoBulkWriteException if bulk.getWriteErrors.asScala.forall(_.getCode == 11000) =>
         logger.warn(s"${MongoFilmIdCounterStore.Collection}: ${bulk.getWriteErrors.size()} entr(ies) refused as already mapped")
         bulk.getWriteResult.getInsertedCount
-      case Failure(exception) =>
-        logger.warn(s"${MongoFilmIdCounterStore.Collection}: insert failed: ${exception.getMessage}")
-        0
     }
 }
 
