@@ -40,9 +40,9 @@ class ShareCardBackfill(
   queue:      TaskQueue,
   metrics:    ShareCardMetrics,
   clock:      Clock,
-  batch:      Int            = ShareCardBackfill.DefaultBatch,
-  maxBacklog: Int            = ShareCardBackfill.DefaultMaxBacklog,
-  sweepEvery: FiniteDuration = 24.hours
+  batch:      settings.ShareCardBackfillBatch = settings.ShareCardBackfillBatch(ShareCardBackfill.DefaultBatch),
+  maxBacklog: settings.ShareCardBackfillMaxBacklog = settings.ShareCardBackfillMaxBacklog(ShareCardBackfill.DefaultMaxBacklog),
+  sweepEvery: ShareCardBackfill.SweepInterval = ShareCardBackfill.SweepInterval(24.hours)
 ) extends Logging {
   import ShareCardBackfill.Swept
 
@@ -58,11 +58,11 @@ class ShareCardBackfill(
   /** One tick: sweep when due, publish coverage, enqueue the next batch. Returns how many renders
    *  it enqueued. */
   def tick(): Int = synchronized {
-    if (lastSweep.forall(at => !clock.instant().isBefore(at.plusMillis(sweepEvery.toMillis)))) sweep()
+    if (lastSweep.forall(at => !clock.instant().isBefore(at.plusMillis(sweepEvery.value.toMillis)))) sweep()
     forgetRetired()
     if (expected.nonEmpty) metrics.coverage(expected.count(covered).toDouble / expected.size)
     Try(queue.waitingCount(TaskType.RenderShareCard)).toOption.fold(0) { backlog =>
-      val room          = math.min(batch, maxBacklog - backlog)
+      val room          = math.min(batch.value, maxBacklog.value - backlog)
       val (next, later) = pending.filterNot(covered).splitAt(math.max(room, 0))
       pending = later
       // `lacksPoster` holds only while the card on disk is still the sweep's inputs' own.
@@ -113,6 +113,9 @@ class ShareCardBackfill(
 }
 
 object ShareCardBackfill {
+
+  /** How often the backfill re-reads every film's card inputs from scratch. */
+  final case class SweepInterval(value: FiniteDuration) extends AnyVal
   private final case class Swept(inputs: ShareCardInputs, cardAtSweep: Option[String], sweptAt: Instant)
 
   /** Renders enqueued per tick at most (`KINOWO_SHARE_CARD_BACKFILL_BATCH`). */

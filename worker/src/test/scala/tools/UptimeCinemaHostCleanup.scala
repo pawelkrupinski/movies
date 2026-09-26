@@ -46,7 +46,7 @@ object UptimeCinemaHostCleanup {
   def main(args: Array[String]): Unit = {
     val configuration = _root_.settings.ProcessConfiguration.resolve()
     val hosts = cinemaHosts(configuration)
-    val connection = MongoConnection.forProcess(configuration, required = false)
+    val connection = MongoConnection.forProcess(configuration, required = services.MongoRequirement.Optional)
     try {
       val db = connection.database.getOrElse {
         println("MONGODB_URI not set — nothing to do.")

@@ -128,15 +128,15 @@ object ConvergenceStorage {
 
     private val shared = Some(isolated.database)
 
-    // `required = true` so an unreachable database FAILS the run: a convergence leg that
+    // `required = services.MongoRequirement.Required` so an unreachable database FAILS the run: a convergence leg that
     // degraded to no-Mongo would report success for a run that tested half of what it
     // says it did. And a short server-selection cap because this is a container on
     // localhost — if it isn't there, it isn't coming, and the driver's 30s default just
     // turns a misconfiguration into a hang. (The production default is deliberately long
     // to ride out a recovering replica-set node; nothing here has one.)
     override lazy val connection = new MongoConnection(
-      uri = Some(uri), dbName = name, required = true,
-      serverSelectionTimeout = Some(ConvergenceStorage.LocalServerSelectionTimeout))
+      uri = Some(settings.MongoUri(uri)), dbName = settings.MongoDatabaseName(name), required = services.MongoRequirement.Required,
+      serverSelectionTimeout = Some(MongoConnection.ServerSelectionTimeout(ConvergenceStorage.LocalServerSelectionTimeout)))
 
     // Wired with `screenings`/`slots` exactly as `WorkerWiring` does, so a leg exercises
     // production's STORAGE SHAPE and not merely its logic: showtimes in `screenings`, the

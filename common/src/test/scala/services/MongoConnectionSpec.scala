@@ -8,9 +8,9 @@ import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
 /**
- * The boot-failure contract: with `required = true` (production), a missing
+ * The boot-failure contract: with `required = services.MongoRequirement.Required` (production), a missing
  * or unreachable Mongo must throw out of construction so the app refuses to
- * start. With `required = false` (dev / tests) the same conditions disable
+ * start. With `required = services.MongoRequirement.Optional` (dev / tests) the same conditions disable
  * the connection and `database` is `None`.
  *
  * Both failure cases use inputs that fail synchronously (absent URI, or a
@@ -22,16 +22,16 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   // `mongodb://`-less string → the driver rejects it on parse, before any IO.
   private val MalformedUri = "not-a-mongo-uri"
 
-  "MongoConnection with required = true" should "throw when MONGODB_URI is absent" in {
+  "MongoConnection with required = services.MongoRequirement.Required" should "throw when MONGODB_URI is absent" in {
     val exception = intercept[IllegalStateException] {
-      new MongoConnection(uri = None, dbName = "kinowo", required = true)
+      new MongoConnection(uri = None, dbName = settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Required)
     }
     exception.getMessage should include ("required")
   }
 
   it should "throw when the connection can't be established" in {
     val exception = intercept[IllegalStateException] {
-      new MongoConnection(uri = Some(MalformedUri), dbName = "kinowo", required = true)
+      new MongoConnection(uri = Some(settings.MongoUri(MalformedUri)), dbName = settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Required)
     }
     exception.getMessage should include ("required")
   }
@@ -73,14 +73,14 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   // The behavioural gate: an unreachable-but-well-formed Mongo must NOT abort boot
   // even when `required`. Port 1 is reserved and refuses/blackholes immediately, so
   // the probe fails fast without touching a real cluster.
-  "MongoConnection with required = true against an UNREACHABLE server" should
+  "MongoConnection with required = services.MongoRequirement.Required against an UNREACHABLE server" should
     "start degraded rather than refuse to boot" in {
     val connection = new MongoConnection(
-      uri                    = Some("mongodb://127.0.0.1:1/?connectTimeoutMS=150&socketTimeoutMS=150"),
-      dbName                 = "kinowo",
-      required               = true,
-      probeTimeout           = 3.seconds,
-      serverSelectionTimeout = Some(200.millis))
+      uri                    = Some(settings.MongoUri("mongodb://127.0.0.1:1/?connectTimeoutMS=150&socketTimeoutMS=150")),
+      dbName                 = settings.MongoDatabaseName("kinowo"),
+      required               = services.MongoRequirement.Required,
+      probeTimeout           = settings.MongoProbeTimeout(3.seconds),
+      serverSelectionTimeout = Some(MongoConnection.ServerSelectionTimeout(200.millis)))
     withClue("an unreachable Mongo must leave the app bootable (port bound, degraded) — not crash-loop: ") {
       connection.database shouldBe None
     }
@@ -96,11 +96,11 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     val died   = new java.util.concurrent.atomic.AtomicReference[Throwable]()
     val thread = new java.util.concurrent.atomic.AtomicReference[Thread]()
     val connection = new MongoConnection(
-      uri                    = Some("mongodb://127.0.0.1:1/?connectTimeoutMS=150&socketTimeoutMS=150"),
-      dbName                 = "kinowo",
-      required               = true,
-      probeTimeout           = 3.seconds,
-      serverSelectionTimeout = Some(200.millis),
+      uri                    = Some(settings.MongoUri("mongodb://127.0.0.1:1/?connectTimeoutMS=150&socketTimeoutMS=150")),
+      dbName                 = settings.MongoDatabaseName("kinowo"),
+      required               = services.MongoRequirement.Required,
+      probeTimeout           = settings.MongoProbeTimeout(3.seconds),
+      serverSelectionTimeout = Some(MongoConnection.ServerSelectionTimeout(200.millis)),
       startReconnect         = (name, reconnect) => {
         val t = new Thread(reconnect, name)
         t.setDaemon(true)
@@ -116,32 +116,32 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     } finally connection.close()
   }
 
-  "MongoConnection with required = false" should "disable (database None) when MONGODB_URI is absent" in {
-    val connection = new MongoConnection(uri = None, dbName = "kinowo", required = false)
+  "MongoConnection with required = services.MongoRequirement.Optional" should "disable (database None) when MONGODB_URI is absent" in {
+    val connection = new MongoConnection(uri = None, dbName = settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Optional)
     connection.database shouldBe None
     connection.close()  // idempotent no-op when nothing was opened
   }
 
   it should "disable (database None) when the connection can't be established" in {
-    val connection = new MongoConnection(uri = Some(MalformedUri), dbName = "kinowo", required = false)
+    val connection = new MongoConnection(uri = Some(settings.MongoUri(MalformedUri)), dbName = settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Optional)
     connection.database shouldBe None
     connection.close()
   }
 
   // fromUri builds a SECOND connection from an explicit URI (the /debug local
   // read-mirror, MONGODB_MOVIES_MIRROR_URI) rather than MONGODB_URI. Wiring
-  // builds it with required = false so a bad/unreachable mirror degrades to the
+  // builds it with required = services.MongoRequirement.Optional so a bad/unreachable mirror degrades to the
   // prod connection (database None → fall back) instead of blocking boot — only
   // /debug needs it.
-  "MongoConnection.fromUri with required = false" should "disable (database None) on an unusable URI instead of throwing" in {
-    val connection = MongoConnection.fromUri(settings.MirrorMongoUri(MalformedUri), settings.MongoDatabaseName("kinowo"), required = false, MongoTuning.Default)
+  "MongoConnection.fromUri with required = services.MongoRequirement.Optional" should "disable (database None) on an unusable URI instead of throwing" in {
+    val connection = MongoConnection.fromUri(settings.MirrorMongoUri(MalformedUri), settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Optional, MongoTuning.Default)
     connection.database shouldBe None
     connection.close()
   }
 
-  "MongoConnection.fromUri with required = true" should "throw on an unusable URI" in {
+  "MongoConnection.fromUri with required = services.MongoRequirement.Required" should "throw on an unusable URI" in {
     val exception = intercept[IllegalStateException] {
-      MongoConnection.fromUri(settings.MirrorMongoUri(MalformedUri), settings.MongoDatabaseName("kinowo"), required = true, MongoTuning.Default)
+      MongoConnection.fromUri(settings.MirrorMongoUri(MalformedUri), settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Required, MongoTuning.Default)
     }
     exception.getMessage should include ("required")
   }
@@ -242,7 +242,7 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   // wants prod tolerant of a slow/recovering node).
   it should "cap server-selection at the given timeout (the /debug mirror) when one is passed" in {
     val timeoutMs = MongoConnection
-      .clientSettings(ValidUri, serverSelectionTimeout = Some(3.seconds))
+      .clientSettings(ValidUri, serverSelectionTimeout = Some(MongoConnection.ServerSelectionTimeout(3.seconds)))
       .getClusterSettings.getServerSelectionTimeout(MILLISECONDS)
     timeoutMs shouldBe 3000L
   }
@@ -261,15 +261,15 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
 
   // The mode/opt-out → required policy used by Wiring.
   "MongoConnection.isRequired" should "require Mongo outside test mode by default" in {
-    MongoConnection.isRequired(testMode = false, optedOut = false) shouldBe true
+    MongoConnection.isRequired(testMode = false, optedOut = settings.MongoOptional(false)) shouldBe MongoRequirement.Required
   }
 
   it should "never require Mongo in test mode" in {
-    MongoConnection.isRequired(testMode = true, optedOut = false) shouldBe false
+    MongoConnection.isRequired(testMode = true, optedOut = settings.MongoOptional(false)) shouldBe MongoRequirement.Optional
   }
 
   it should "let a local opt-out disable the requirement outside tests" in {
-    MongoConnection.isRequired(testMode = false, optedOut = true) shouldBe false
+    MongoConnection.isRequired(testMode = false, optedOut = settings.MongoOptional(true)) shouldBe MongoRequirement.Optional
   }
 
   // Boot-probe timeout. The old value was a hard-coded 10s; a slow/recovering

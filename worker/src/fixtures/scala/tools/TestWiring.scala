@@ -38,7 +38,7 @@ trait TestWiring extends WorkerWiring {
   // reproduced on CI (no tunnel there). Disabling it here makes every test
   // wiring deterministic regardless of the local environment.
   override lazy val mongoConnection: MongoConnection =
-    new MongoConnection(uri = None, dbName = "kinowo", required = false)
+    new MongoConnection(uri = None, dbName = settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Optional)
 
   // Run the adaptive-timeout scrape inline on the calling thread, so the
   // deterministic record-all-then-publish harness (`runOneScrapeTick`) and the

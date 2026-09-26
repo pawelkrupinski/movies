@@ -30,7 +30,7 @@ import scala.concurrent.duration.*
 class ShareCardJanitor(
   store:       ShareCardStore,
   reader:      ReadModelReader,
-  budgetBytes: Long,
+  budget:      settings.ShareCardStorageBudget,
   metrics:     ShareCardMetrics,
   clock:       Clock,
   // Re-project a film whose card the prune retired while its document still pointed at it.
@@ -77,9 +77,9 @@ class ShareCardJanitor(
     val remaining    = files.filterNot(file => deleted(file.path))
     val currentBytes = remaining.filter(file => !file.temp && current(file)).groupMapReduce(_.kind)(_.bytes)(_ + _)
     var total = remaining.iterator.map(_.bytes).sum
-    if (total > budgetBytes && complete) {
+    if (total > budget.bytes && complete) {
       val it = remaining.filter(file => !file.temp && old(file) && !current(file)).sortBy(_.modified).iterator
-      while (total > budgetBytes && it.hasNext) {
+      while (total > budget.bytes && it.hasNext) {
         val file = it.next()
         delete(file, PruneReason.Budget)
         if (deleted(file.path)) total -= file.bytes
@@ -90,15 +90,15 @@ class ShareCardJanitor(
       bytesByKind   = kept.groupMapReduce(_.kind)(_.bytes)(_ + _),
       filesByKind   = kept.groupMapReduce(_.kind)(_ => 1L)(_ + _),
       currentByKind = currentBytes,
-      budgetBytes   = budgetBytes)
+      budgetBytes   = budget.bytes)
     val report = ShareCardJanitor.Report(counts.toMap, kept.iterator.map(_.bytes).sum, currentBytes.values.sum, complete)
-    if (report.currentBytes > budgetBytes)
+    if (report.currentBytes > budget.bytes)
       logger.error(s"share cards: the ${report.currentBytes} bytes of CURRENT cards, bases and posters alone exceed the " +
-        s"$budgetBytes-byte budget — nothing more can be pruned; raise KINOWO_SHARE_CARD_BUDGET_MB.")
+        s"$budget.bytes-byte budget — nothing more can be pruned; raise KINOWO_SHARE_CARD_BUDGET_MB.")
     if (!complete) logger.warn("share cards: web_movies/web_screenings read incomplete — pruned abandoned temp files only.")
     if (daily || counts.nonEmpty)
       logger.info(s"share cards ${if (daily) "prune" else "budget"}: deleted ${counts.toSeq.sorted.map { case (r, n) => s"$r=$n" }.mkString(", ")}; " +
-        s"${report.bytes} bytes on disk (${report.currentBytes} current) of $budgetBytes budget.")
+        s"${report.bytes} bytes on disk (${report.currentBytes} current) of $budget.bytes budget.")
     report
   }
 }

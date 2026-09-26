@@ -19,7 +19,7 @@ class ShareCardConcurrencySpec extends AnyFlatSpec with Matchers {
     val first = new Rig(store = store)
     val second = new Rig(store = store)
     val readModel = new InMemoryReadModelRepository
-    val janitors = Seq(first, second).map(rig => new ShareCardJanitor(store, readModel, budgetBytes = 1, rig.metrics, rig.clock, _ => ()))
+    val janitors = Seq(first, second).map(rig => new ShareCardJanitor(store, readModel, budget = settings.ShareCardStorageBudget(1), rig.metrics, rig.clock, _ => ()))
     val films = (1 to 12).map(i => film(id = f"frace$i%02d", poster = s"https://cdn.example/p${i % 3}.jpg"))
 
     val pool  = Executors.newFixedThreadPool(4)

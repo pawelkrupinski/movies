@@ -38,7 +38,7 @@ object GenreLanguageAudit {
     val country = args.headOption.flatMap(Country.byCode).getOrElse(Country.Germany)
     val filter  = args.drop(1).headOption
     val dbName  = country.mongoDb
-    val conn    = { val process = _root_.settings.ProcessConfiguration.resolve(); MongoConnection.forDatabase(process.mongoAddress.uri, _root_.settings.MongoDatabaseName(dbName), required = true, services.MongoTuning.from(process)) }
+    val conn    = { val process = _root_.settings.ProcessConfiguration.resolve(); MongoConnection.forDatabase(process.mongoAddress.uri, _root_.settings.MongoDatabaseName(dbName), required = services.MongoRequirement.Required, services.MongoTuning.from(process)) }
     val db = conn.database.getOrElse {
       println(s"Could not open $dbName — is the tunnel up (scripts/local-mirror/prod-tunnel.sh)?")
       sys.exit(1)

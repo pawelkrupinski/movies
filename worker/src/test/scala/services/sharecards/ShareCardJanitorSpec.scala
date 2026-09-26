@@ -47,7 +47,7 @@ class ShareCardJanitorSpec extends AnyFlatSpec with Matchers {
     val blind = new InMemoryReadModelRepository {
       override def findAllShareCardRefsChecked() = (Seq.empty, false)
     }
-    new ShareCardJanitor(store, blind, budgetBytes = 1, metrics, clock, _ => ()).prune().deleted shouldBe empty
+    new ShareCardJanitor(store, blind, budget = settings.ShareCardStorageBudget(1), metrics, clock, _ => ()).prune().deleted shouldBe empty
     filmFiles("fgone") shouldBe 3
   }
 
@@ -83,7 +83,7 @@ object ShareCardJanitorSpec {
     val young: Instant = T0.minusSeconds(600)
 
     def janitor(budget: Long = 1L << 30, refresh: String => Unit = _ => ()) =
-      new ShareCardJanitor(store, readModel, budget, metrics, clock, refresh)
+      new ShareCardJanitor(store, readModel, settings.ShareCardStorageBudget(budget), metrics, clock, refresh)
 
     def path(name: String): Path = store.root.resolve(name)
     def put(name: String, modified: Instant, size: Int = 10): Unit = {

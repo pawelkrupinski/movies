@@ -39,7 +39,7 @@ class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
   private def whileShrinking(gate: tools.PosterDecodeGate)(body: => Unit): Unit = {
     val (bin, started, release) = blockingVips()
     val poster = Files.write(Files.createTempFile("poster-", ".jpg"), posterJpeg)
-    val holder = new Thread(() => { new VipsPosterShrinker(binary = Some(bin), gate = gate).coverSlot(poster); () })
+    val holder = new Thread(() => { new VipsPosterShrinker(binary = Some(VipsPosterShrinker.Binary(bin)), gate = gate).coverSlot(poster); () })
     holder.start()
     try {
       val deadline = System.nanoTime() + 5_000_000_000L
@@ -94,7 +94,7 @@ class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
     val holding = Files.createTempDirectory("vips-")
     val binary  = Files.createFile(holding.resolve("vips"),
       PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwxr-xr-x")))
-    VipsPosterShrinker.locate(settings.ExecutableSearchPath(Seq(empty, holding))) shouldBe Some(binary.toString)
+    VipsPosterShrinker.locate(settings.ExecutableSearchPath(Seq(empty, holding))) shouldBe Some(VipsPosterShrinker.Binary(binary.toString))
     VipsPosterShrinker.locate(settings.ExecutableSearchPath(Seq(empty))) shouldBe None
     VipsPosterShrinker.locate(settings.ExecutableSearchPath(Nil)) shouldBe None
   }
@@ -103,7 +103,7 @@ class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
     val vips = VipsPosterShrinker.locate(settings.ProcessConfiguration.resolve().executableSearchPath)
     assume(vips.isDefined, "vips is not installed")
     val dir = Files.createTempDirectory("progressive-")
-    def run(args: String*): Unit = new ProcessBuilder((vips.get +: args)*).inheritIO().start().waitFor() shouldBe 0
+    def run(args: String*): Unit = new ProcessBuilder((vips.get.value +: args)*).inheritIO().start().waitFor() shouldBe 0
     run("gaussnoise", dir.resolve("n.v").toString, "2764", "4096")
     run("cast", dir.resolve("n.v").toString, dir.resolve("u.v").toString, "uchar")
     run("jpegsave", dir.resolve("u.v").toString, dir.resolve("p.jpg").toString, "--interlace", "--Q", "85", "--subsample-mode", "off")
@@ -112,20 +112,20 @@ class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
 
   "A giant progressive JPEG" should "be routed away by its header, never decoded" in {
     val (bin, ran) = fakeVips(exit = 0)
-    new VipsPosterShrinker(binary = Some(bin)).coverSlot(PosterMemoryCapSpec.jpegHeader(8000, 12000, progressive = true)) shouldBe Left(PosterFailure.ProgressiveEstimate)
+    new VipsPosterShrinker(binary = Some(VipsPosterShrinker.Binary(bin))).coverSlot(PosterMemoryCapSpec.jpegHeader(8000, 12000, progressive = true)) shouldBe Left(PosterFailure.ProgressiveEstimate)
     Files.exists(ran) shouldBe false
   }
 
   it should "leave a normal-sized progressive poster to vips" in {
     val (bin, ran) = fakeVips(exit = 1)
-    new VipsPosterShrinker(binary = Some(bin)).coverSlot(PosterMemoryCapSpec.jpegHeader(780, 1144, progressive = true))
+    new VipsPosterShrinker(binary = Some(VipsPosterShrinker.Binary(bin))).coverSlot(PosterMemoryCapSpec.jpegHeader(780, 1144, progressive = true))
     Files.exists(ran) shouldBe true
   }
 
   "A vips child that hits its cap" should "fail only itself: no decode of the same poster in the JVM" in {
     val (bin, ran) = fakeVips(exit = 134)                              // SIGABRT, as libjpeg's "Insufficient memory"
     val poster = Files.write(Files.createTempFile("poster-", ".jpg"), posterJpeg)
-    new VipsPosterShrinker(binary = Some(bin)).coverSlot(poster) shouldBe Left(PosterFailure.VipsCap)
+    new VipsPosterShrinker(binary = Some(VipsPosterShrinker.Binary(bin))).coverSlot(poster) shouldBe Left(PosterFailure.VipsCap)
     Files.exists(ran) shouldBe true
   }
 

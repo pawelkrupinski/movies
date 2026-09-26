@@ -27,7 +27,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 object DropAllMovies {
 
   def main(args: Array[String]): Unit = {
-    val conn   = MongoConnection.forProcess(_root_.settings.ProcessConfiguration.resolve(), required = true)
+    val conn   = MongoConnection.forProcess(_root_.settings.ProcessConfiguration.resolve(), required = services.MongoRequirement.Required)
     val db     = conn.database.getOrElse { println("Could not open the database — nothing to drop."); sys.exit(1) }
     val dbName = db.name
 

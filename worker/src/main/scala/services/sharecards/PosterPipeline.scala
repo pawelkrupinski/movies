@@ -11,6 +11,7 @@ import java.nio.file.{Files, Path}
 import java.time.Duration
 import java.util.concurrent.TimeUnit
 import javax.imageio.{IIOImage, ImageIO, ImageWriteParam}
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.util.{Try, Using}
 
 /** Smaller renditions of a poster URL to try before the original, where the source offers one —
@@ -200,7 +201,6 @@ class RememberedFailurePosterDownload(delegate: PosterDownload, dir: Path, clock
 }
 
 object RememberedFailurePosterDownload {
-  import scala.concurrent.duration.*
   /** A poster the origin refused: it will not start working tomorrow. */
   val RefusedFor: FiniteDuration = 14.days
   /** Any other failure (a timeout, a 5xx, the proxy): long enough that the daily backfill skips it. */
@@ -281,32 +281,32 @@ trait PosterShrinker {
  */
 class VipsPosterShrinker(
   // The `vips` binary, if any — see [[VipsPosterShrinker.locate]]; None decodes on the JDK.
-  binary:        Option[String],
-  memoryCapMb:   Long           = PosterPipeline.DefaultDecodeMemoryCapMb,
-  timeoutMillis: Long           = 30000L,
+  binary:        Option[VipsPosterShrinker.Binary],
+  memoryCap:     settings.PosterDecodeMemoryCap = settings.PosterDecodeMemoryCap(PosterPipeline.DefaultDecodeMemoryCapMb),
+  timeout:       VipsPosterShrinker.Timeout     = VipsPosterShrinker.Timeout(30.seconds),
   val gate:      PosterDecodeGate = VipsPosterShrinker.newGate()
 ) extends PosterShrinker with Logging {
 
   def coverSlot(file: Path): Either[String, BufferedImage] =
     JpegHeader.read(file) match {
-      case Some(header) if header.progressive && header.coefficientBytes > PosterPipeline.progressiveCoefficientBudget(memoryCapMb) =>
+      case Some(header) if header.progressive && header.coefficientBytes > PosterPipeline.progressiveCoefficientBudget(memoryCap.megabytes) =>
         Left(PosterFailure.ProgressiveEstimate)
       case _ => gate.withPermit(binary.fold(javaDecode(file))(vips(_, file)))
     }
 
-  private def vips(bin: String, file: Path): Either[String, BufferedImage] = {
+  private def vips(binary: VipsPosterShrinker.Binary, file: Path): Either[String, BufferedImage] = {
     val out = Files.createTempFile("poster-slot-", ".png")
     val log = Files.createTempFile("poster-vips-", ".log")
     try {
       // The cap FAILS CLOSED: a Linux shell that cannot set it runs no child. macOS never honours
       // `ulimit -v`, so a developer's machine runs uncapped (time limit and gate only).
-      val script = s"""ulimit -c 0; ulimit -v ${memoryCapMb * 1024} 2>/dev/null || [ "$$(uname)" = Darwin ] || exit 97; exec "$$0" thumbnail "$$1" "$$2" ${OgCardRenderer.PosterSlotWidth} --height ${OgCardRenderer.PosterSlotHeight} --crop centre"""
-      val process = new ProcessBuilder("/bin/sh", "-c", script, bin, file.toString, out.toString)
+      val script = s"""ulimit -c 0; ulimit -v ${memoryCap.megabytes * 1024} 2>/dev/null || [ "$$(uname)" = Darwin ] || exit 97; exec "$$0" thumbnail "$$1" "$$2" ${OgCardRenderer.PosterSlotWidth} --height ${OgCardRenderer.PosterSlotHeight} --crop centre"""
+      val process = new ProcessBuilder("/bin/sh", "-c", script, binary.value, file.toString, out.toString)
         .redirectErrorStream(true).redirectOutput(log.toFile)
       process.environment().put("VIPS_CONCURRENCY", "1")
       process.environment().put("MALLOC_ARENA_MAX", "1")
       val child = process.start()
-      if (!child.waitFor(timeoutMillis, TimeUnit.MILLISECONDS)) {
+      if (!child.waitFor(timeout.value.toMillis, TimeUnit.MILLISECONDS)) {
         child.destroyForcibly()
         Left(PosterFailure.Timeout)
       } else if (child.exitValue() != 0) {
@@ -327,8 +327,13 @@ class VipsPosterShrinker(
 object VipsPosterShrinker {
   /** The `vips` binary in the first of `searchPath`'s directories that has one — the
    *  process's PATH, which its root resolved (`ProcessConfiguration.executableSearchPath`). */
-  def locate(searchPath: settings.ExecutableSearchPath): Option[String] =
-    searchPath.value.iterator.map(_.resolve("vips")).find(Files.isExecutable).map(_.toString)
+  def locate(searchPath: settings.ExecutableSearchPath): Option[Binary] =
+    searchPath.value.iterator.map(_.resolve("vips")).find(Files.isExecutable).map(path => Binary(path.toString))
+
+  /** The `vips` executable a shrink runs as a child process. */
+  final case class Binary(value: String) extends AnyVal
+  /** How long one vips child may run before it is killed and the shrink fails. */
+  final case class Timeout(value: FiniteDuration) extends AnyVal
 
   /** Why a vips child for a known image format failed: the cap (the shell could not set it — exit
    *  97 — or libjpeg / glib ran out of memory, which aborts on a signal or says so), else the file. */

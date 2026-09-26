@@ -41,7 +41,7 @@ trait ShareCardWiring { self: WorkerWiring =>
   lazy val posterShrinker: VipsPosterShrinker =
     new VipsPosterShrinker(
       binary      = VipsPosterShrinker.locate(configuration.executableSearchPath),
-      memoryCapMb = configuration.posterDecodeMemoryCap(PosterDecodeMemoryCap(PosterPipeline.DefaultDecodeMemoryCapMb)).megabytes,
+      memoryCap   = configuration.posterDecodeMemoryCap(PosterDecodeMemoryCap(PosterPipeline.DefaultDecodeMemoryCapMb)),
       gate        = posterShrinkGate)
 
   lazy val shareCardService: ShareCardService = new ShareCardService(
@@ -53,13 +53,13 @@ trait ShareCardWiring { self: WorkerWiring =>
   lazy val shareCardLedger: ShareCardLedger = if (shareCardsEnabled) shareCardService else ShareCardLedger.none
 
   lazy val shareCardJanitor: ShareCardJanitor = new ShareCardJanitor(
-    shareCardStore, readModelRepository, shareCardBudget.bytes, shareCardMetrics, clock,
+    shareCardStore, readModelRepository, shareCardBudget, shareCardMetrics, clock,
     refresh = readModelProjector.refreshShareCard)
 
   lazy val shareCardBackfill: ShareCardBackfill =
     new ShareCardBackfill(shareCardService, readModelRepository, taskQueue, shareCardMetrics, clock,
-      batch      = configuration.shareCardBackfillBatch(ShareCardBackfillBatch(ShareCardBackfill.DefaultBatch)).value,
-      maxBacklog = configuration.shareCardBackfillMaxBacklog(ShareCardBackfillMaxBacklog(ShareCardBackfill.DefaultMaxBacklog)).value)
+      batch      = configuration.shareCardBackfillBatch(ShareCardBackfillBatch(ShareCardBackfill.DefaultBatch)),
+      maxBacklog = configuration.shareCardBackfillMaxBacklog(ShareCardBackfillMaxBacklog(ShareCardBackfill.DefaultMaxBacklog)))
 
   lazy val shareCardFollowUp: ShareCardFollowUp =
     new ShareCardFollowUp(shareCardStore, shareCardService.superseded, readModelProjector.refreshShareCard, readModelProjector.releaseShareCardHold)

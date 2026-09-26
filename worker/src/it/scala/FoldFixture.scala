@@ -111,7 +111,7 @@ object FoldFixture {
   /** One worker pod's fold handles over a database it shares with other pods
    *  (`tools.ConcurrentInstances`): its own client, so its sessions and transactions are its own. */
   def on(target: IntegrationMongoTarget)(instance: tools.ConcurrentInstances.Instance): Handles =
-    new Handles(instance.database, new MongoConnection(Some(target.uri.value), instance.database.name, required = false,
+    new Handles(instance.database, new MongoConnection(Some(target.uri), settings.MongoDatabaseName(instance.database.name), required = services.MongoRequirement.Optional,
       sharedClient = Some(instance.client)))
 
   /** Run `test` against a database of this suite's own, dropped afterwards whatever the test
@@ -119,6 +119,6 @@ object FoldFixture {
    *  suites sharing a name would share a database and be back where this started. */
   def withFold[A](target: IntegrationMongoTarget, suite: String)(test: Handles => A): A =
     IntegrationCorpusDatabase.withDatabase(target, suite) { db =>
-      test(new Handles(db, new MongoConnection(Some(target.uri.value), db.name, required = false)))
+      test(new Handles(db, new MongoConnection(Some(target.uri), settings.MongoDatabaseName(db.name), required = services.MongoRequirement.Optional)))
     }
 }

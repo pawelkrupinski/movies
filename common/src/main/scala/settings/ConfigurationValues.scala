@@ -41,7 +41,10 @@ final case class UsersDatabaseName(value: String) extends AnyVal {
   def database: MongoDatabaseName = MongoDatabaseName(value)
 }
 /** `MONGODB_MOVIES_MIRROR_URI` — the local read-mirror /debug reads instead of the tunnel. */
-final case class MirrorMongoUri(value: String) extends AnyVal
+final case class MirrorMongoUri(value: String) extends AnyVal {
+  /** The mirror is a Mongo cluster like any other, once chosen. */
+  def asMongoUri: MongoUri = MongoUri(value)
+}
 /** `MONGODB_PROBE_TIMEOUT_SECONDS` — how long a boot waits for Mongo to answer. */
 final case class MongoProbeTimeout(value: FiniteDuration) extends AnyVal
 /** `KINOWO_MONGO_MAX_POOL_SIZE` — connections per MongoClient. */

@@ -28,8 +28,8 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
       new DatabaseOwner(db).claim(Country.Poland)
       val port = freePort()
       val via  = s"mongodb://127.0.0.1:$port/?directConnection=true&connectTimeoutMS=300"
-      def open(country: Country) = new MongoConnection(Some(via), db.name, required = true,
-        probeTimeout = 2.seconds, serverSelectionTimeout = Some(500.millis),
+      def open(country: Country) = new MongoConnection(Some(settings.MongoUri(via)), settings.MongoDatabaseName(db.name), required = services.MongoRequirement.Required,
+        probeTimeout = settings.MongoProbeTimeout(2.seconds), serverSelectionTimeout = Some(MongoConnection.ServerSelectionTimeout(500.millis)),
         onConnected = MongoConnection.claimFor(country))
       val german = open(Country.Germany)
       val polish = open(Country.Poland)
@@ -49,7 +49,7 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
   "a reconnect that meets a failure other than another country's claim" should "keep retrying and recover" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "late-reconnect-retry") { db =>
       val attempts = new java.util.concurrent.atomic.AtomicInteger(0)
-      val connection = new MongoConnection(Some(mongoTarget.uri.value), db.name, required = true, probeTimeout = 2.seconds,
+      val connection = new MongoConnection(Some(mongoTarget.uri), settings.MongoDatabaseName(db.name), required = services.MongoRequirement.Required, probeTimeout = settings.MongoProbeTimeout(2.seconds),
         onConnected = _ => attempts.incrementAndGet() match {
           case 1 => throw new com.mongodb.MongoTimeoutException("unreachable at boot")
           case 2 => throw new IllegalArgumentException("refused once, for a reason no claim gave")
@@ -71,7 +71,7 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
       val probed   = new java.util.concurrent.CountDownLatch(1)
       @volatile var connection: MongoConnection = null
       try {
-        connection = new MongoConnection(Some(mongoTarget.uri.value), db.name, required = true, probeTimeout = 2.seconds,
+        connection = new MongoConnection(Some(mongoTarget.uri), settings.MongoDatabaseName(db.name), required = services.MongoRequirement.Required, probeTimeout = settings.MongoProbeTimeout(2.seconds),
           sharedClient = Some(shared),
           onConnected = _ =>
             if (attempts.incrementAndGet() == 1) throw new com.mongodb.MongoTimeoutException("unreachable at boot")

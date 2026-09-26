@@ -70,7 +70,7 @@ class ShareCardAuditSpec extends AnyFlatSpec with Matchers with org.scalatest.Lo
     card("fgone", v1); pointAt("fgone", v1)                                  // a film off the screens
     Files.setLastModifiedTime(store.cardPath("fgone"), FileTime.from(T0.minusSeconds(2 * 3600)))
     def prune(refresh: String => Unit): Unit =
-      new ShareCardJanitor(store, readModel, 1L << 30, ShareCardMetrics.noop, clockAt(T0), refresh).prune()
+      new ShareCardJanitor(store, readModel, settings.ShareCardStorageBudget(1L << 30), ShareCardMetrics.noop, clockAt(T0), refresh).prune()
   }
 
   "a card the daily prune retired" should "leave no document pointing at it" in new Retired {

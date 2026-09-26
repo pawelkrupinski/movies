@@ -72,7 +72,7 @@ class ShareCardBaseSpec extends AnyFlatSpec with Matchers {
     rig.readModel.upsertMovie(movie.copy(shareCard = rig.service.current(movie)))
     def age(dir: Path): Unit = Files.list(dir).iterator.asScala.foreach(Files.setLastModifiedTime(_, FileTime.from(T0.minusSeconds(7200))))
     age(rig.store.root); age(rig.store.root.resolve(ShareCardStore.BaseDir)); age(rig.store.root.resolve(ShareCardStore.PosterDir))
-    val tight = new ShareCardJanitor(rig.store, rig.readModel, 1L, rig.metrics, rig.clock, _ => ()).enforceBudget()
+    val tight = new ShareCardJanitor(rig.store, rig.readModel, settings.ShareCardStorageBudget(1L), rig.metrics, rig.clock, _ => ()).enforceBudget()
     tight.currentBytes shouldBe rig.store.list().map(_.bytes).sum
     bases(rig.store) should have size 1
   }

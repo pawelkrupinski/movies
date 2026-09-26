@@ -127,7 +127,7 @@ object ReresolveSelfLockedRows {
   def main(args: Array[String]): Unit = {
     val apply = args.contains("--apply")
     val wanted = targets(args.toSeq, lockedTo)
-    val conn  = MongoConnection.forProcess(_root_.settings.ProcessConfiguration.resolve(), required = true)
+    val conn  = MongoConnection.forProcess(_root_.settings.ProcessConfiguration.resolve(), required = services.MongoRequirement.Required)
     val db = conn.database.getOrElse {
       println("Could not open the database — is the Mongo tunnel up and MONGODB_URI set?")
       sys.exit(1)

@@ -25,7 +25,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 class StagingFolderSilenceSpec extends AnyFlatSpec with Matchers {
 
   "a staging folder that cannot reach Mongo" should "fail loudly rather than report an empty fold" in {
-    val disabled = new MongoConnection(uri = None, dbName = "kinowo", required = false)
+    val disabled = new MongoConnection(uri = None, dbName = settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Optional)
 
     val failure = the [IllegalStateException] thrownBy new MongoStagingFolder(disabled, normalizer = titleNormalizer,
       movieRepository = new services.movies.InMemoryMovieRepository(normalizer = titleNormalizer))

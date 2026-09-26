@@ -37,9 +37,9 @@ trait ReadModelWiring { self: Wiring =>
   lazy val movieMirrorConnection: MongoConnection =
     Wiring.debugMirrorConnection(
       processConfiguration.mirrorMongoUri,
-      MongoConnection.fromUri(_, mongoAddress.databaseFor(country), required = false, mongoTuning,
-        probeTimeout           = Some(MongoConnection.LocalMirrorTimeout),
-        serverSelectionTimeout = Some(MongoConnection.LocalMirrorTimeout)),
+      MongoConnection.fromUri(_, mongoAddress.databaseFor(country), required = services.MongoRequirement.Optional, mongoTuning,
+        probeTimeout           = Some(settings.MongoProbeTimeout(MongoConnection.LocalMirrorTimeout)),
+        serverSelectionTimeout = Some(MongoConnection.ServerSelectionTimeout(MongoConnection.LocalMirrorTimeout))),
       mongoConnection)
   // Showtimes split: /debug's movieRepository is read-only, so it only needs the
   // read-stitch — re-inject showtimes from `screenings` on the same connection it

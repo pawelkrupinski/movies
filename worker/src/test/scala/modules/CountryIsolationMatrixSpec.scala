@@ -42,7 +42,7 @@ class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers {
   /** A wiring over a disabled Mongo whose network leaf refuses every call. */
   private class IsolationProbe(c: Country) extends WorkerWiring(c, new SameThreadExecutionBudget) {
     override lazy val mongoConnection: MongoConnection =
-      new MongoConnection(uri = None, dbName = "unused", required = false)
+      new MongoConnection(uri = None, dbName = settings.MongoDatabaseName("unused"), required = services.MongoRequirement.Optional)
     override protected def realHttpLeaf: HttpFetch = new HttpFetch {
       def get(url: String): String = throw new java.io.IOException(s"no network in this spec: $url")
       def post(url: String, body: String, contentType: String): String = get(url)

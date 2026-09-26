@@ -3,7 +3,7 @@ package services
 import com.mongodb.{ConnectionString, MongoCompressor}
 import org.mongodb.scala.{ClientSession, MongoClient, MongoClientSettings, MongoDatabase, SingleObservableFuture}
 import play.api.Logging
-import settings.{MirrorMongoUri, MongoDatabaseName, MongoUri, ProcessConfiguration}
+import settings.{MirrorMongoUri, MongoDatabaseName, MongoMaxPoolSize, MongoProbeTimeout, MongoUri, ProcessConfiguration}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -47,15 +47,15 @@ import scala.util.{Failure, Success, Try}
  * no-op when it borrowed the database from here.
  */
 class MongoConnection(
-    uri: Option[String],
-    dbName: String,
-    required: Boolean,
-    probeTimeout: FiniteDuration = MongoConnection.DefaultProbeTimeout,
+    uri: Option[MongoUri],
+    dbName: MongoDatabaseName,
+    required: MongoRequirement,
+    probeTimeout: MongoProbeTimeout = MongoProbeTimeout(MongoConnection.DefaultProbeTimeout),
     // Caps the driver's per-request server-selection wait. `None` keeps the
     // driver default (30s) — what the prod cluster wants, to ride out a slow /
     // recovering node. The loopback `/debug` mirror passes a short cap so a dead
     // mirror fails fast instead of wedging every read on the 30s default.
-    serverSelectionTimeout: Option[FiniteDuration] = None,
+    serverSelectionTimeout: Option[MongoConnection.ServerSelectionTimeout] = None,
     // An externally-owned `MongoClient` to bind this database view to, SHARED
     // across several per-country connections on one cluster. When set we do NOT
     // build or `close()` a client — the owner (WorkerMain) does — so N countries
@@ -78,7 +78,9 @@ class MongoConnection(
     startReconnect: (String, Runnable) => Unit = MongoConnection.startDaemon,
     // Connections in the pool this connection builds for itself (unused when it
     // borrows `sharedClient`) — see [[MongoTuning]].
-    maxPoolSize: Int = MongoConnection.DefaultMaxPoolSize) extends Logging {
+    maxPoolSize: MongoMaxPoolSize = MongoMaxPoolSize(MongoConnection.DefaultMaxPoolSize)) extends Logging {
+
+  private val connectionRequired = required == MongoRequirement.Required
 
   // Stops the background reconnect. Without it a closed connection keeps probing
   // — and could publish a live client into a connection its owner has already
@@ -104,7 +106,7 @@ class MongoConnection(
   // HERE, once `initResult` is assigned — the reconnect loop reads it straight away,
   // and started from inside `init` it could read the unassigned field, die on an NPE,
   // and leave the connection degraded for good.
-  if (required && initResult._2.isEmpty) uri.foreach(retryInBackground)
+  if (connectionRequired && initResult._2.isEmpty) uri.map(_.value).foreach(retryInBackground)
 
   /** The shared `MongoDatabase` view — pre-bound to `dbName`. Repos
    *  `.withCodecRegistry(...)` it. `None` only when `required` is false and
@@ -127,15 +129,15 @@ class MongoConnection(
    *  Mongo rejects transactions; the caller degrades to a non-transactional fold.
    *  The caller owns `close()`-ing the returned session. */
   def startSession(): Option[ClientSession] =
-    initResult._1.map(c => Await.result(c.startSession().toFuture(), probeTimeout))
+    initResult._1.map(c => Await.result(c.startSession().toFuture(), probeTimeout.value))
 
   /** One connect attempt: build (or borrow) the client and PROBE it. Shared by the
    *  boot path and the background retry so both mean exactly the same thing by
    *  "connected" — a probe that actually round-tripped, not a constructed client. */
   private def connect(connectionString: String): Try[(MongoClient, MongoDatabase)] = Try {
     val client = sharedClient.getOrElse(
-      MongoClient(MongoConnection.clientSettings(connectionString, serverSelectionTimeout, maxPoolSize)))
-    val db     = client.getDatabase(dbName)
+      MongoClient(MongoConnection.clientSettings(connectionString, serverSelectionTimeout, maxPoolSize.value)))
+    val db     = client.getDatabase(dbName.value)
     // Touch the database to surface connectivity errors at boot
     // (same `countDocuments`-against-a-known-collection probe the
     // old per-repository init used). Picking `movies` here because it
@@ -143,10 +145,10 @@ class MongoConnection(
     // round-trips fine. The wait is `probeTimeout` (default 30s) rather
     // than the old hard-coded 10s — see `DefaultProbeTimeout`.
     try {
-      Await.result(db.getCollection("movies").countDocuments().toFuture(), probeTimeout)
+      Await.result(db.getCollection("movies").countDocuments().toFuture(), probeTimeout.value)
       onConnected(db)
     } catch { case e: Throwable => if (sharedClient.isEmpty) client.close(); throw e }
-    logger.info(s"MongoConnection connected to $dbName")
+    logger.info(s"MongoConnection connected to ${dbName.value}")
     (client, db)
   }
 
@@ -158,7 +160,7 @@ class MongoConnection(
    *  that failed stays disabled, as before. */
   private def retryInBackground(connectionString: String): Unit =
     startReconnect(
-      s"mongo-reconnect-$dbName",
+      s"mongo-reconnect-${dbName.value}",
       () => {
         var waitSeconds = 5L
         var givenUp     = false
@@ -171,7 +173,7 @@ class MongoConnection(
                 // probe was in flight, and publishing here would hand the owner a
                 // client it will never close. One step with `close()` — see there.
                 val published = publishLock.synchronized { if (!closed) initResult = (Some(client), Some(db)); !closed }
-                if (published) logger.info(s"MongoConnection to $dbName RECOVERED — serving from the database again.")
+                if (published) logger.info(s"MongoConnection to ${dbName.value} RECOVERED — serving from the database again.")
                 else if (sharedClient.isEmpty) client.close()
               case Failure(exception: DatabaseOwnershipConflict) =>
                 // Reachable, but refused for good — the `onConnected` claim found another
@@ -180,20 +182,20 @@ class MongoConnection(
                 // is retried, as before the claim existed — giving up left the process
                 // degraded until something restarted it.
                 givenUp = true
-                logger.error(s"MongoConnection to $dbName reconnected but was REFUSED (${exception.getMessage}) — " +
+                logger.error(s"MongoConnection to ${dbName.value} reconnected but was REFUSED (${exception.getMessage}) — " +
                   "staying degraded, nothing will be read from or written to it.")
               case Failure(exception) =>
                 waitSeconds = math.min(waitSeconds * 2, 60L)
-                logger.warn(s"MongoConnection to $dbName still unreachable (${exception.getMessage}) — " +
+                logger.warn(s"MongoConnection to ${dbName.value} still unreachable (${exception.getMessage}) — " +
                   s"retrying in ${waitSeconds}s.")
             }
         }
       })
 
   private def init(): (Option[MongoClient], Option[MongoDatabase]) =
-    uri match {
+    uri.map(_.value) match {
       case None =>
-        if (required)
+        if (connectionRequired)
           throw new IllegalStateException(
             "MONGODB_URI is not set but a Mongo connection is required — refusing to start.")
         logger.info("MONGODB_URI not set — MongoConnection disabled.")
@@ -216,12 +218,12 @@ class MongoConnection(
             // let the health check pass, and reconnect in the background once the
             // cluster answers. A MISCONFIGURATION still aborts: nothing about a bad URI
             // or bad credentials fixes itself, so failing loudly at boot is right.
-            if (required && !MongoConnection.isTransient(exception))
+            if (connectionRequired && !MongoConnection.isTransient(exception))
               throw new IllegalStateException(
                 s"MongoConnection init failed and a Mongo connection is required — refusing to start: ${exception.getMessage}$hint",
                 exception)
-            if (required)
-              logger.error(s"MongoConnection to $dbName is UNREACHABLE (${exception.getMessage}) — " +
+            if (connectionRequired)
+              logger.error(s"MongoConnection to ${dbName.value} is UNREACHABLE (${exception.getMessage}) — " +
                 s"starting DEGRADED rather than crash-looping; retrying in the background.$hint")
             else
               logger.error(s"MongoConnection init failed (${exception.getMessage}) — disabled.$hint")
@@ -231,6 +233,9 @@ class MongoConnection(
 }
 
 object MongoConnection extends Logging {
+
+  /** How long a request waits for the driver to select a server before failing. */
+  final case class ServerSelectionTimeout(value: FiniteDuration) extends AnyVal
   /** The production reconnect starter: a daemon thread, so it never holds shutdown open. */
   def startDaemon(name: String, body: Runnable): Unit = {
     val thread = new Thread(body, name)
@@ -243,7 +248,8 @@ object MongoConnection extends Logging {
    *  `MONGODB_OPTIONAL`). Kept boolean-only — no Play `Mode`, no env reads —
    *  so the services layer doesn't depend on the framework and the rule
    *  stays trivially unit-testable. */
-  def isRequired(testMode: Boolean, optedOut: Boolean): Boolean = !testMode && !optedOut
+  def isRequired(testMode: Boolean, optedOut: settings.MongoOptional): MongoRequirement =
+    if (!testMode && !optedOut.value) MongoRequirement.Required else MongoRequirement.Optional
 
   /** Is this init failure worth waiting out? Pure classifier, and the other half of
    *  the boot-failure decision alongside [[isRequired]].
@@ -293,24 +299,18 @@ object MongoConnection extends Logging {
 
   /** The process's own corpus connection — its [[MongoAddress]], its country's database —
    *  for a one-off script's `main`, which IS its own composition root; a wiring is handed its
-   *  address and country instead. `required = true` turns a missing or unreachable Mongo into
+   *  address and country instead. `required = services.MongoRequirement.Required` turns a missing or unreachable Mongo into
    *  a hard boot failure instead of silent degradation. */
-  def forProcess(configuration: ProcessConfiguration, required: Boolean): MongoConnection =
+  def forProcess(configuration: ProcessConfiguration, required: MongoRequirement): MongoConnection =
     forDatabase(configuration.mongoAddress.uri, configuration.mongoAddress.databaseFor(configuration.country),
       required, MongoTuning.from(configuration))
 
   /** A connection to an EXPLICIT database on the cluster at `uri`, optionally bound to a
    *  `sharedClient` so several database views reuse ONE pool — the web wiring's own corpus,
    *  its shared users database and each /debug country. */
-  def forDatabase(uri: Option[MongoUri], database: MongoDatabaseName, required: Boolean, tuning: MongoTuning,
+  def forDatabase(uri: Option[MongoUri], database: MongoDatabaseName, required: MongoRequirement, tuning: MongoTuning,
       sharedClient: Option[MongoClient] = None): MongoConnection =
-    new MongoConnection(
-      uri.map(_.value),
-      database.value,
-      required,
-      tuning.probeTimeout.value,
-      sharedClient = sharedClient,
-      maxPoolSize = tuning.maxPoolSize.value)
+    new MongoConnection(uri, database, required, tuning.probeTimeout, sharedClient = sharedClient, maxPoolSize = tuning.maxPoolSize)
 
   /** [[forDatabase]] for a process that WRITES `country`'s corpus — the worker and every
    *  `worker/Test/runMain scripts.*` tool that writes — at `country`'s database on
@@ -320,16 +320,10 @@ object MongoConnection extends Logging {
    *  `kinowo` under a German run — how DE/UK rows reached the Polish corpus) is refused
    *  with an `IllegalStateException` instead of written into. The claim runs on every
    *  successful connect, including a background reconnect after an unreachable boot. */
-  def forCountry(country: models.Country, address: MongoAddress, required: Boolean, tuning: MongoTuning,
+  def forCountry(country: models.Country, address: MongoAddress, required: MongoRequirement, tuning: MongoTuning,
       sharedClient: Option[MongoClient] = None): MongoConnection =
-    new MongoConnection(
-      address.uri.map(_.value),
-      address.databaseFor(country).value,
-      required,
-      tuning.probeTimeout.value,
-      sharedClient = sharedClient,
-      onConnected = claimFor(country),
-      maxPoolSize = tuning.maxPoolSize.value)
+    new MongoConnection(address.uri, address.databaseFor(country), required, tuning.probeTimeout,
+      sharedClient = sharedClient, onConnected = claimFor(country), maxPoolSize = tuning.maxPoolSize)
 
   /** The [[MongoConnection]] `onConnected` hook of a writer of `country`'s corpus. */
   def claimFor(country: models.Country): MongoDatabase => Unit = new DatabaseOwner(_).claim(country)
@@ -340,14 +334,14 @@ object MongoConnection extends Logging {
    *  connection then degrades on its own. The caller OWNS `close()`-ing the returned
    *  client, after every connection that borrowed it is closed. */
   def sharedClientAt(address: MongoAddress, tuning: MongoTuning): Option[MongoClient] =
-    address.uri.map(uri => sharedClientFor(uri.value, None, tuning.maxPoolSize.value))
+    address.uri.map(sharedClientFor(_, None, tuning.maxPoolSize))
 
   /** Like [[sharedClientAt]] but against an EXPLICIT URI — the `/debug`
    *  read-mirror, whose several per-country database views share one pool the
    *  same way the prod per-country connections do. The caller OWNS `close()`. */
-  def sharedClientFor(uri: String, serverSelectionTimeout: Option[FiniteDuration] = None,
-      maxPoolSize: Int = DefaultMaxPoolSize): MongoClient =
-    MongoClient(clientSettings(uri, serverSelectionTimeout, maxPoolSize))
+  def sharedClientFor(uri: MongoUri, serverSelectionTimeout: Option[ServerSelectionTimeout] = None,
+      maxPoolSize: MongoMaxPoolSize = MongoMaxPoolSize(DefaultMaxPoolSize)): MongoClient =
+    MongoClient(clientSettings(uri.value, serverSelectionTimeout, maxPoolSize.value))
 
   /** The local mirror database holding `prodDb`'s synced copy.
    *
@@ -368,11 +362,11 @@ object MongoConnection extends Logging {
    *  not slow. */
   def mirrorForDb(uri: MirrorMongoUri, prodDb: String, sharedClient: Option[MongoClient] = None): MongoConnection =
     new MongoConnection(
-      Some(uri.value),
-      mirrorDbFor(prodDb),
-      required               = false,
-      probeTimeout           = LocalMirrorTimeout,
-      serverSelectionTimeout = Some(LocalMirrorTimeout),
+      Some(uri.asMongoUri),
+      MongoDatabaseName(mirrorDbFor(prodDb)),
+      required               = MongoRequirement.Optional,
+      probeTimeout           = MongoProbeTimeout(LocalMirrorTimeout),
+      serverSelectionTimeout = Some(ServerSelectionTimeout(LocalMirrorTimeout)),
       sharedClient           = sharedClient)
 
   /** Build from an explicit URI rather than the process's [[MongoAddress]] — for a
@@ -389,17 +383,17 @@ object MongoConnection extends Logging {
   def fromUri(
       uri: MirrorMongoUri,
       fallbackDatabase: MongoDatabaseName,
-      required: Boolean,
+      required: MongoRequirement,
       tuning: MongoTuning,
-      probeTimeout: Option[FiniteDuration] = None,
-      serverSelectionTimeout: Option[FiniteDuration] = None): MongoConnection =
+      probeTimeout: Option[MongoProbeTimeout] = None,
+      serverSelectionTimeout: Option[ServerSelectionTimeout] = None): MongoConnection =
     new MongoConnection(
-      Some(uri.value),
-      databaseFromUri(uri.value, fallbackDatabase.value),
+      Some(uri.asMongoUri),
+      MongoDatabaseName(databaseFromUri(uri.value, fallbackDatabase.value)),
       required,
-      probeTimeout.getOrElse(tuning.probeTimeout.value),
+      probeTimeout.getOrElse(tuning.probeTimeout),
       serverSelectionTimeout,
-      maxPoolSize = tuning.maxPoolSize.value)
+      maxPoolSize = tuning.maxPoolSize)
 
   /** Database name for an explicit-URI connection: the URI's own path (e.g.
    *  `…/kinowo_prod_mirror`), so the `/debug` mirror lives in a different
@@ -435,7 +429,7 @@ object MongoConnection extends Logging {
 
   private[services] def clientSettings(
       connectionString: String,
-      serverSelectionTimeout: Option[FiniteDuration] = None,
+      serverSelectionTimeout: Option[MongoConnection.ServerSelectionTimeout] = None,
       maxPoolSize: Int = DefaultMaxPoolSize): MongoClientSettings = {
     val cs      = new ConnectionString(connectionString)
     val builder = MongoClientSettings.builder().applyConnectionString(cs)
@@ -460,7 +454,7 @@ object MongoConnection extends Logging {
       builder.applyToConnectionPoolSettings { b => b.maxSize(maxPoolSize); () }
     serverSelectionTimeout.foreach { timeout =>
       builder.applyToClusterSettings { b =>
-        b.serverSelectionTimeout(timeout.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS); ()
+        b.serverSelectionTimeout(timeout.value.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS); ()
       }
     }
     builder.build()

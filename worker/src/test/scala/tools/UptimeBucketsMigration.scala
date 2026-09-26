@@ -74,7 +74,7 @@ object UptimeBucketsMigration {
       .toSeq
 
   def main(args: Array[String]): Unit = {
-    val connection = MongoConnection.forProcess(_root_.settings.ProcessConfiguration.resolve(), required = false)
+    val connection = MongoConnection.forProcess(_root_.settings.ProcessConfiguration.resolve(), required = services.MongoRequirement.Optional)
     try {
       val db = connection.database.getOrElse {
         println("MONGODB_URI not set — nothing to do.")

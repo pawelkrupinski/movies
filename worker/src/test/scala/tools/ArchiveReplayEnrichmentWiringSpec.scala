@@ -89,7 +89,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
    */
   private final class FetchOnlyStorage extends tools.ConvergenceStorage {
     override val describe = "unit-spec doubles (enrichment fetch only)"
-    override lazy val connection  = new services.MongoConnection(uri = None, dbName = "kinowo", required = false)
+    override lazy val connection  = new services.MongoConnection(uri = None, dbName = settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Optional)
     override lazy val screenings  = new services.movies.InMemoryScreeningsRepository
     override lazy val slots       = new services.movies.InMemorySlotsRepository
     override lazy val movies      = new services.movies.InMemoryMovieRepository(

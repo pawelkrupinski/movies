@@ -44,7 +44,7 @@ class WorkerWiring(
     // so all countries draw run permits from one Semaphore/cap rather than each
     // spinning its own (see `backgroundBudget`). Defaulted so a single-country
     // boot / test constructs its own.
-    injectedBackgroundBudget: ExecutionBudget = new SharedExecutionBudget(WorkerWiring.DefaultBackgroundConcurrency.value),
+    injectedBackgroundBudget: ExecutionBudget = SharedExecutionBudget.forBackground(WorkerWiring.DefaultBackgroundConcurrency),
     // ONE shared `MongoClient` across countries: each country binds its OWN
     // database view (`country.mongoDb`) on this single client. `None` → this
     // wiring builds (and closes) its own client at its `mongoAddress`, the
@@ -143,7 +143,7 @@ class WorkerWiring(
   // anything can prune or write against it (see [[services.DatabaseOwner]]).
   lazy val mongoConnection: MongoConnection = {
     MongoConnection.forCountry(country, mongoAddress.copy(database = Some(mongoDbName)),
-      required = MongoConnection.isRequired(testMode = false, optedOut = configuration.mongoOptional.value),
+      required = MongoConnection.isRequired(testMode = false, optedOut = configuration.mongoOptional),
       tuning = MongoTuning.from(configuration), sharedClient = sharedMongoClient)
   }
 
@@ -342,5 +342,5 @@ object WorkerWiring {
 
   /** The ONE background budget a process shares across its countries' wirings. */
   def backgroundBudgetFrom(configuration: ProcessConfiguration): ExecutionBudget =
-    new SharedExecutionBudget(configuration.backgroundConcurrency(DefaultBackgroundConcurrency).value)
+    SharedExecutionBudget.forBackground(configuration.backgroundConcurrency(DefaultBackgroundConcurrency))
 }

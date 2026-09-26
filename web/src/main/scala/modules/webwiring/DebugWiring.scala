@@ -68,7 +68,7 @@ trait DebugWiring { self: Wiring =>
   protected lazy val debugExtraClient: Option[org.mongodb.scala.MongoClient] =
     if (environmentMode == Mode.Prod || models.Country.switchable.sizeIs <= 1) None
     else processConfiguration.mirrorMongoUri
-      .map(mirror => MongoConnection.sharedClientFor(mirror.value, Some(MongoConnection.LocalMirrorTimeout), mongoTuning.maxPoolSize.value))
+      .map(mirror => MongoConnection.sharedClientFor(mirror.asMongoUri, Some(MongoConnection.ServerSelectionTimeout(MongoConnection.LocalMirrorTimeout)), mongoTuning.maxPoolSize))
       .orElse(MongoConnection.sharedClientAt(mongoAddress, mongoTuning))
   private lazy val debugExtraStacks: Seq[(models.Country, MongoConnection, DebugStack)] =
     debugExtraClient.toSeq.flatMap { client =>
@@ -76,7 +76,7 @@ trait DebugWiring { self: Wiring =>
         val conn       = Wiring.debugMirrorConnection(
           processConfiguration.mirrorMongoUri,
           MongoConnection.mirrorForDb(_, country.mongoDb, sharedClient = Some(client)),
-          MongoConnection.forDatabase(mongoAddress.uri, settings.MongoDatabaseName(country.mongoDb), required = false, mongoTuning, sharedClient = Some(client)))
+          MongoConnection.forDatabase(mongoAddress.uri, settings.MongoDatabaseName(country.mongoDb), required = services.MongoRequirement.Optional, mongoTuning, sharedClient = Some(client)))
         val screenings = new services.movies.MongoScreeningsRepository(conn.database)
         val slots      = new services.movies.MongoSlotsRepository(conn.database)
         val reader     = new MongoReadModelRepository(conn.database)

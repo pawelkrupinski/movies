@@ -2,7 +2,7 @@ package modules.webwiring
 
 import modules.Wiring
 import play.api.Mode
-import services.{MongoConnection, MongoTuning}
+import services.{MongoConnection, MongoRequirement, MongoTuning}
 
 /** ── Mongo ─────────────────────────────────────────────────────────────────
  *  The one `MongoClient` this process opens, and the two database views on it:
@@ -12,8 +12,8 @@ trait MongoWiring { self: Wiring =>
   // A missing/unreachable Mongo is a hard boot failure everywhere except tests
   // (opt back into silent-degrade with MONGODB_OPTIONAL=true) — see
   // `MongoConnection`.
-  protected lazy val mongoRequired: Boolean = {
-    MongoConnection.isRequired(environmentMode == Mode.Test, processConfiguration.mongoOptional.value)
+  protected lazy val mongoRequired: MongoRequirement = {
+    MongoConnection.isRequired(environmentMode == Mode.Test, processConfiguration.mongoOptional)
   }
 
   // ONE MongoClient behind every database view this process opens — this

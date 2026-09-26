@@ -23,7 +23,7 @@ class ShareCardBackfillSpec extends AnyFlatSpec with Matchers {
     seed(rig, 3)
     readModel.failingReads = true
     readModel.screeningsReadable = true               // only web_movies is unreadable
-    val backfill = new ShareCardBackfill(rig.service, rig.readModel, rig.queue, rig.metrics, rig.clock, batch = 20, maxBacklog = 30)
+    val backfill = new ShareCardBackfill(rig.service, rig.readModel, rig.queue, rig.metrics, rig.clock, batch = settings.ShareCardBackfillBatch(20), maxBacklog = settings.ShareCardBackfillMaxBacklog(30))
     backfill.tick() shouldBe 0
 
     readModel.healReads()
@@ -34,7 +34,7 @@ class ShareCardBackfillSpec extends AnyFlatSpec with Matchers {
     val rig = new Rig
     seed(rig, 50)
     rig.readModel.upsertMovie(film(id = "foffscreen"))                     // no screenings: no card
-    val backfill = new ShareCardBackfill(rig.service, rig.readModel, rig.queue, rig.metrics, rig.clock, batch = 20, maxBacklog = 30)
+    val backfill = new ShareCardBackfill(rig.service, rig.readModel, rig.queue, rig.metrics, rig.clock, batch = settings.ShareCardBackfillBatch(20), maxBacklog = settings.ShareCardBackfillMaxBacklog(30))
     backfill.tick() shouldBe 20
     backfill.tick() shouldBe 10                                             // 30 waiting: the cap
     backfill.tick() shouldBe 0
@@ -50,7 +50,7 @@ class ShareCardBackfillSpec extends AnyFlatSpec with Matchers {
     val films = seed(rig, 4)
     val series = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
     val metrics = series.forCountry("pl")
-    val backfill = new ShareCardBackfill(rig.service, rig.readModel, rig.queue, metrics, rig.clock, batch = 1, maxBacklog = 10)
+    val backfill = new ShareCardBackfill(rig.service, rig.readModel, rig.queue, metrics, rig.clock, batch = settings.ShareCardBackfillBatch(1), maxBacklog = settings.ShareCardBackfillMaxBacklog(10))
     backfill.tick() shouldBe 1
     films.take(2).foreach(m => rig.service.render(rig.service.inputs(m), Seq(ShareCardReason.Backfill)))
     backfill.tick() shouldBe 1
@@ -63,7 +63,7 @@ class ShareCardBackfillSpec extends AnyFlatSpec with Matchers {
     val rig = new Rig
     val films = seed(rig, 3)
     val series = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
-    val backfill = new ShareCardBackfill(rig.service, rig.readModel, rig.queue, series.forCountry("pl"), rig.clock, batch = 1, maxBacklog = 10)
+    val backfill = new ShareCardBackfill(rig.service, rig.readModel, rig.queue, series.forCountry("pl"), rig.clock, batch = settings.ShareCardBackfillBatch(1), maxBacklog = settings.ShareCardBackfillMaxBacklog(10))
     backfill.tick() shouldBe 1                                               // the sweep: all three missing
     drain(rig.queue)
     // The second film's rating moved after the sweep; the projection rendered its card for the
@@ -86,7 +86,7 @@ class ShareCardBackfillSpec extends AnyFlatSpec with Matchers {
     val films = seed(rig, 4)
     films.foreach(m => rig.service.render(rig.service.inputs(m), Seq(ShareCardReason.NewFilm)))
     val series = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
-    val backfill = new ShareCardBackfill(rig.service, rig.readModel, rig.queue, series.forCountry("pl"), rig.clock, batch = 5, maxBacklog = 10)
+    val backfill = new ShareCardBackfill(rig.service, rig.readModel, rig.queue, series.forCountry("pl"), rig.clock, batch = settings.ShareCardBackfillBatch(5), maxBacklog = settings.ShareCardBackfillMaxBacklog(10))
     backfill.tick() shouldBe 0
     series.coverageFor("pl") shouldBe 1.0
 
