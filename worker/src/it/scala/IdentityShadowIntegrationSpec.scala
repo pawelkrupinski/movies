@@ -196,8 +196,10 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         report.line(s"[${c.label}] check '${check.name}': resolver $r, pipeline $p")
         if (r == IdentityHistoricalChecks.Verdict.Fail)
           withEvidence.filter { case (l, e) => check.selectors.exists(_(l, e)) }
-            .flatMap { case (l, _) => decisionOf.get(l.key) }.distinct.take(6)
-            .foreach(d => report.line(s"    ${d.members.head.rawTitle}: ${d.render}"))
+            .flatMap { case (l, _) => decisionOf.get(l.key) }.distinct
+            .sortBy(d => -withEvidence.count { case (l, e) => d.listings(l.key) && check.selectors.count(_(l, e)) > 0 }).take(6)
+            .foreach(d => report.line(s"    ${d.members.head.rawTitle}: ${d.render}\n      members: " +
+              withEvidence.collect { case (l, e) if d.listings(l.key) && check.selectors.exists(_(l, e)) => l.rawTitle }.distinct.take(8).mkString(" | ")))
         def tally(system: String, v: IdentityHistoricalChecks.Verdict) = {
           val (pass, fail, na) = checkTally.getOrElse(system, (0, 0, 0))
           checkTally(system) = v match {

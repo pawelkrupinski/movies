@@ -1400,7 +1400,7 @@ Production code that serves nothing (no wiring reads it):
 - `common/.../services/identity/`:
   - `IdentityModel`: `Listing` (a `ListingKey` plus the raw row), `Evidence`, `Hit`, `FilmFacts`, `Candidate`, `Answer` (`Known` / `Unknown`), `CandidateQuery`, and the `IdentityLookups` trait. The trait is minimal and exists for reconciliation with phase 1's observation types.
   - `CandidateQueries`: the query set. For every title shape (the title, the original title, and each delimited segment from `SearchTitles`) it issues a search with the stated year and one without, plus every credited director's filmography.
-  - `Signals`, `IdentityWeights`: general signals only, with "missing" as a value of its own. The weights and thresholds are data, loaded from `identity-weights.json` (the calibration artefact) and falling back to `services/identity/interim-weights.json`.
+  - Scoring (since round 2, §15.7): the calibration's own `IdentityMeasures` and `IdentityCalibration` over `identity-weights.json`. One loader and one format, no interim weights.
   - `IdentityResolver`:
     - families: the block closure, plus segment keys and matched ids;
     - candidates are scored only along an evidence path;
@@ -1413,7 +1413,6 @@ Production code that serves nothing (no wiring reads it):
 - Tests:
   - `common/src/test/.../identity/`: the properties on generated corpora, each beside its mutation (A1 lazy lookups, P1 first-wins, A3 narrowed families, A4 input-order tie-break, NoVoting), plus the hand-built incident cases. 37 tests, about 45 s.
   - `worker/src/it/scala/IdentityShadowIntegrationSpec` compares the resolver with the pipeline, head to head. The hard clusters always run (about 90 s on itAll). The full corpora are opt-in.
-  - `scripts.IdentityInterimFit`, with its spec, is the reproducible interim fit.
 
 Reproduce:
 
@@ -1423,15 +1422,13 @@ MONGODB_URI=mongodb://localhost:28017 sbt "worker/IntegrationTest/testOnly integ
 # + the five full corpora (recorder run 36153174348):
 KINOWO_IDENTITY_FULL=es,de,pl,uk,us KINOWO_IDENTITY_CORPUS_DIR=<cinema-scrapes-<cc>.json.gz dir> \
 KINOWO_FIXTURE_ROOT=<real enrichment-<cc> dirs> KINOWO_IDENTITY_OUT=<out> …same… (sbt -J-Xmx16g)
-# interim weights from the datasets the run wrote:
-sbt "worker/Test/runMain scripts.IdentityInterimFit out.json --exclude director,runtime,country,imdb --threshold bayes <out>/full-*-dataset.tsv"
 ```
 
 The pipeline side is booted the way the convergence legs boot it (`bootCorpus`, then the settle pair, staging, conclusion and projection), so the US diff now exists. The US boot took 342–583 s, against more than 65 min for the proof's per-venue replay. Listings are mapped to pipeline films by slot, with the year and director discriminator the slot fold uses.
 
 ### 15.2 Head to head (full corpora; hard clusters in the spec output)
 
-Weights: `interim-pipeline-6ad0b89d`, a logistic fit on train families against the pipeline's answers. Ground truth for accuracy is the **corroborated** label: the node's one candidate its own evidence backs with at least two independent signals and nothing against it. Accuracy is measured on held-out families only (one fold in five).
+*Round 1 — superseded by §15.7.* Weights: `interim-pipeline-6ad0b89d`, a logistic fit on train families against the pipeline's answers. Ground truth for accuracy is the **corroborated** label: the node's one candidate its own evidence backs with at least two independent signals and nothing against it. Accuracy is measured on held-out families only (one fold in five).
 
 | | PL old / new | UK old / new | DE old / new | US old / new | ES old / new |
 |---|---|---|---|---|---|
@@ -1529,9 +1526,66 @@ Re-run this section's commands once phase 1's recording pass is pinned and `iden
 | Title rule tables: 29 base rules (16 per-cinema) and 214 extra rules (77 programme-prefix banners, 124 strip patterns, 13 unifications) | `TitleNormalizer` / `titlerules`, via `ScrapeListing.cleanTitle`, `sanitize`, `searchQuery`, `apiQuery` | query strings must match what was recorded, and block keys use the same forms; changing them now only turns answers into gaps | the segment decomposition already in place, plus banner detection from data (a segment attached to many distinct films at a venue), then re-record the raw-title queries |
 | `FormatTags` format vocabulary (8 tokens) | `ScrapeListing.cleanTitle` | as above | the same banner-by-co-occurrence signal |
 | `SequelMarker` franchise table (Hunger Games, Bring It On) and ordinal word lists | inside `describeDifferentFilms`, the listing-listing cannot-link when no learned rules exist | the calibration's learned listing-listing rules have not landed | learned cannot-links (the evaluator exists); different instalments already split through "different-films", because their candidates differ |
-| `YearWindow` 2 / 1 / 5, the runtime buckets 5 / 15, the "3+" year bucket | `ListingConstraints` predicates, `statedYearsApart`, `Signals` buckets | the bucket edges are discretisation; the weights on them are fitted | learned bin edges and learned cannot-link thresholds from the artefact |
-| `CountryNames` (153 entries) | the country signal | spelling normalisation, not identity knowledge | none needed; the signal is masked in the interim fit |
-| Interim acceptance threshold 0.5 | `interim-weights.json` | the Bayes boundary, because pipeline-agreement fitting degenerates | the calibration artefact's derived threshold |
+| `YearWindow` constants | the incremental pipeline's predicates only; since round 2 the resolver's vetoes are the artefact's learned rules and cuts | — | done (§15.7) |
+| The prior/fact split of the measures (`search.rank`, `popularity.log2`, `rivals`, `venues.corroborating` are priors) | `IdentityResolver.Priors` | a classification of the calibration's measure names, not a weight or threshold | the calibration could publish it in the artefact |
 | The evidence-path rule (a candidate is scored only when the listing's own query named it or its title relates) | `IdentityResolver.reachable` | structural pruning, with no constant | none needed |
 
 The resolver has no per-title, per-venue, per-chain or per-franchise rule of its own. Every constant above is inherited from the constraint model or the normaliser, and a learned counterpart for it is pending.
+
+### 15.7 Round 2 (2026-09-26): calibrated weights, the recorded query set, re-measured
+
+**What changed:**
+
+- The resolver scores with `IdentityCalibration` over `IdentityMeasures`, which is the artefact and the measurement definitions the weights were fitted on. `Signals`, `IdentityWeights`, the interim weights and `scripts.IdentityInterimFit` are deleted.
+- The calibration and the resolver now share one definition each of:
+  - the search shapes (`IdentityMeasures.searchQueries`);
+  - the venue co-occurrence count (`corroboratingVenues`);
+  - own-evidence agreement (`ownAgreement`);
+  - the TMDB record parser (`TmdbFilmRecord`).
+- `IdentityLookupSweep` **is** a resolve over the recording chains. It asks exactly the resolver's candidate searches, filmographies, detail pages and candidate identity records (`TmdbClient.identityRecord`). Its tree marker is versioned as `.identity-lookups-v2`.
+- Cannot-links are the artefact's learned rules and certified cuts, reached through `ListingConstraints.learned`. The probability cut reads the listing's **own facts** only, not the ranking priors. A candidate is not vetoed for ranking second in TMDB's search.
+- A node accepts a film **alone** only when its own facts favour it over the runner-up. Otherwise it follows the film its cluster's credited members chose, or the pooled vote. The confidence is the calibrated probability.
+- A decorated spelling joins its plain sibling through a whole-segment must-link (tier 4).
+- An unmatched decision now says why: `NoCandidate`, `NoEvidence`, `Vetoed` or `BelowThreshold`.
+
+**Measured locally before the resolver-query recording.** Inputs: corpora and trees of recorder run 36212620541. Labels: the calibration's `split == test` corroborated labels. The trees still lack most of the resolver's own queries: the phase-1 gate on the new query set is 11–37% of lookups answerable, and 91–94% of candidate records are unanswerable.
+
+| | PL | UK | DE | US | ES |
+|---|---|---|---|---|---|
+| held-out labelled listings | 1,615 | 4,025 | 6,379 | 22,026 | 1,501 |
+| accuracy of matched, old / new | 100 / 94.5% | 100 / 99.8% | 100 / 100% | 100 / 98.9% | 83.7 / 83.7% |
+| labelled recall, old / new | 100 / 94.4% | 93.9 / **98.0%** | 100 / 99.2% | 100 / 97.2% | 83.7 / 83.6% |
+| listings on a *contradicted* production filing, old / new | 1 / 0 | 0 / 0 | **154 / 0** | 0 / 0 | 0 / 0 |
+| matched films a listing's facts contradict, old / new | 8 / 1 | 0 / 0 | 4 / 0 | 0 / 0 | 0 / 0 |
+| unmatched: NoEvidence / NoCandidate / Vetoed / BelowThreshold | 346 / 345 / 392 / 150 | 1,049 / 383 / 3,910 / 955 | 599 / 1 / 235 / 10 | 7,041 / 211 / 1,513 / 2,914 | 56 / 0 / 9 / 45 |
+
+- Cannot-link violations are 0 on all 10 corpora. Order variants are 0 of 21 on the hard clusters and 0 of 3 on the full corpora.
+- Cross-country disagreement: pipeline 9, resolver 13, out of 957 director-credited titles.
+
+Old accuracy is 100% partly by construction, because the labels are production filings corroborated twice.
+
+**Remaining wrong matches, from the evidence:**
+
+| case | listings | what went wrong | whose fix |
+|---|---|---|---|
+| PL "Lalka" | 88 | Bare listings still pool to 1309396 over Kawalski's 1321666. The rival's record was not answerable, so no director tells them apart. | coverage |
+| US "Ken Russell's The Devils" | 245 | Matched to *Tommy* (11326) through the director walk (same director, same 111-minute runtime). The artefact weighs `title=contains` (−4.31) *below* `title=none` (−4.08). | calibration |
+| ES "Vengadores: Endgame (Reestreno)" | 244 | The label says 1003596, *Avengers: Doomsday*. The resolver's 299534, *Endgame*, is right, so this is a label error. | calibration |
+
+**The historical regressions:**
+
+- **Avengers "Dogrywka" (PL)**: coverage. The decision is `NoEvidence`: both of its searches are unanswerable in the trees.
+- **Mockingjay Part 1 and Part 2 "(2026)" (UK)**: weights plus coverage.
+  - The bracketed re-release year 2026 reads as the film's year (`year.delta=0`, +3.05), and Francis Lawrence directed both films (+5.27).
+  - Together these outweigh `title=overlap` (−3.48), so both rereleases land on *Sunrise on the Reaping* (1300968, 2026).
+  - The 2015 film's candidates for these title shapes are unanswered gaps.
+  - General fix, for the calibration: measure a bracket year separately from a published year field. The calibration may confirm that re-release brackets carry little weight.
+- **Skarpetek 3 vs 4 (PL)**, new in this round: coverage. "…skarpetek 4. Do roboty! – zestaw" has a detail page crediting the shared crew, so it lands on film 3, whose record is known. Film 4's record (1735319) is a gap, so its director cannot compete.
+
+The learned `title in {none,overlap} AND venue in {same}` rule fired on several PL bundle listings. It is certified at a 0.11% false-veto rate, so it stays.
+
+**Next:** re-run this section once the `identity-lookups=true` recording of the resolver's query set is pinned:
+
+```
+KINOWO_IDENTITY_FULL=es,de,pl,uk,us KINOWO_IDENTITY_CORPUS_DIR=… KINOWO_FIXTURE_ROOT=… sbt "worker/IntegrationTest/testOnly integration.IdentityShadowIntegrationSpec"
+```
