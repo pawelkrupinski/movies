@@ -46,13 +46,13 @@ class IdentityLookupSweepSpec extends AnyFlatSpec with Matchers {
   private def sweep(archived: Map[Cinema, Seq[CinemaMovie]]) = {
     val source = new Recording
     val names  = scala.collection.mutable.ArrayBuffer.empty[String]
-    val summary = IdentityLookupSweep.run(IdentityLookupSweep.listings(archived, titleNormalizer), source, titleNormalizer, names += _)
+    val summary = IdentityLookupSweep.run(services.identity.Listing.corpus(archived, titleNormalizer), source, titleNormalizer, names += _)
     (summary, source.asked.toSeq, names.toSeq)
   }
 
   "the sweep" should "ask exactly the resolver's questions: every listing's CandidateQueries, its detail page, and every named film's record" in {
     val (summary, asked, names) = sweep(corpus)
-    val listings = IdentityLookupSweep.listings(corpus, titleNormalizer)
+    val listings = services.identity.Listing.corpus(corpus, titleNormalizer)
     // What the resolver's own definitions say it must ask, derived from the SAME functions.
     val source = new Recording
     val evidences = listings.map(l => Evidence.of(l, if (source.hasDetail(l)) source.detail(l).toOption.flatten else None))

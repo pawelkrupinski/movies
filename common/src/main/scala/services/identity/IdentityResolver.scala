@@ -71,8 +71,8 @@ object IdentityResolver {
       (if (evidence.directors.nonEmpty) s" {${evidence.directors.mkString(", ")}}" else "") + s" ×$weight"
   }
 
-  /** Thrown when an edge crosses a family: a rule was added without its block key. */
-  final class FamilyCrossing(message: String) extends IllegalStateException(message)
+  /** Thrown when `count` edges cross a family: a rule was added without its block key. */
+  final class FamilyCrossing(val count: Int, message: String) extends IllegalStateException(message)
 
   /** Title relations close enough that a candidate a node's own queries did not name is still
    *  scored for it (an evidence path through the title). */
@@ -378,7 +378,7 @@ object IdentityResolver {
     // edge between two families means the scoping would silently drop it, so the resolve stops.
     val roundAEdges = edgesOf(nodes, acceptedAll.get)
     val crossings = FamilyClosure.crossings(familyOf, roundAEdges.map(e => FamilyClosure.Edge(e.a, e.b, e.must, e.reason)))
-    if (crossings.nonEmpty) throw new FamilyCrossing(s"${crossings.size} edge(s) cross a family, e.g. ${crossings.head}")
+    if (crossings.nonEmpty) throw new FamilyCrossing(crossings.size, s"${crossings.size} edge(s) cross a family, e.g. ${crossings.head}")
     val roundAByFamily = roundAEdges.groupBy(e => familyOf(e.a))
 
     val finalEdges = mutable.ArrayBuffer.empty[ResolverEdge]

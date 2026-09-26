@@ -54,11 +54,13 @@ trait AdminWiring { self: Wiring =>
   lazy val envConfigController = new EnvConfigController(controllerComponents, adminAction, envConfigService)
 
   // Film identity (phase 3 of docs/design/identity-resolver.md): the admin diagnostic and the
-  // emergency pins. The pins are written here and read by nothing in production yet — the
-  // resolver consumes them once it runs. `shadowDecisions` is the resolver's shadow output;
-  // until that lands the page lists no decisions.
+  // emergency pins. The pins are written here; the worker's shadow run (`KINOWO_IDENTITY_SHADOW`)
+  // reads them, and `shadowDecisions` reads back the latest run it persisted — nothing while the
+  // country's shadow run is off.
   lazy val identityPins = new services.identity.Pins(new services.identity.MongoPinStore(mongoConnection.database), clock)
-  lazy val shadowDecisions: services.identity.ShadowDecisions = services.identity.ShadowDecisions.none
+  lazy val shadowDecisions: services.identity.ShadowDecisions = new services.identity.ShadowRunStore(
+    mongoConnection.database.fold[services.identity.ShadowRunBackend](new services.identity.InMemoryShadowRunBackend)(
+      services.identity.MongoShadowRunBackend.reader), clock)
   lazy val identityAdminController =
     new IdentityAdminController(controllerComponents, adminAction, userRepository, identityPins, shadowDecisions)
 }

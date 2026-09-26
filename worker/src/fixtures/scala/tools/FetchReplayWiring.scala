@@ -36,8 +36,8 @@ object FetchReplayWiring {
       override lazy val uptimeMonitor = new services.UptimeMonitor(None, clock = clock)
       // A stub key: the answers are replayed, and a keyless client short-circuits
       // before it reaches the fetch at all.
-      override lazy val tmdbClient: TmdbClient =
-        new TmdbClient(lookupFetch, apiKey = Some(settings.TmdbApiKey("replay")), language = language, retrySleep = retrySleep)
+      override def tmdbClientOver(http: HttpFetch): TmdbClient =
+        new TmdbClient(http, apiKey = Some(settings.TmdbApiKey("replay")), language = language, retrySleep = retrySleep)
     }
   }
 }

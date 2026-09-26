@@ -426,9 +426,10 @@ for the resolver's query set (§9).
   main. Its edges are drawn from `ListingConstraints`.
 - A `ShadowIdentityReaper` runs `resolve` per family, after each settle tick, over the live
   corpus and the lookup caches. It issues **no** new lookups in prod (a gap is an "unknown"
-  node), writes nothing but a `identity_shadow` report collection, and exports gauges:
-  `kinowo_identity_shadow_films{relation="identical|split|merged|moved"}`,
-  `kinowo_identity_family_crossings`, and `kinowo_identity_resolve_seconds`.
+  node), writes nothing but its shadow collections, and exports gauges. *Built — see §16*: the
+  collections are `identity_shadow_decisions` and `identity_shadow_diff`, and the gauges follow the
+  worker's naming (`kinowo_worker_identity_shadow_films{country,relation}`,
+  `kinowo_worker_identity_family_crossings{country}`, `kinowo_worker_identity_resolve_seconds{country}`).
 - CI: every convergence leg also runs the resolver on its corpus and writes the shadow diff as an
   artifact. `IdentityResolverCorpusIntegrationSpec` moves to itAll.
 
@@ -817,7 +818,7 @@ published are untouched.
   same 1 of 47 contradicted.
 - **Why not the shadow decisions.** The first cut gated on the shadow resolver's persisted
   decisions, with a threshold `ConfidenceCalibration` fitted from its labelled diff. Those
-  decisions were never persisted (`ShadowDecisions.none`), so a switched-on gate withheld nothing.
+  decisions were not persisted then (`ShadowDecisions.none`), so a switched-on gate withheld nothing.
   `ConfidenceCalibration` now only draws the admin view's low-confidence line (§13.3).
 - **Measure before switching.** `scripts.IdentityGateImpact` replays a read-only export of
   production rows through the same gate (with `--trees`, measuring rows that store no search from
@@ -875,8 +876,9 @@ Chrome: it pins the ticked listing, removes the pin, and shows a refusal.
   listing through `resolvedFilm`.
   *Done on `identity-resolver` (§15):* `ResolverDecision` implements `Decision`, and
   `IdentityResolver.resolve(…, pins = ListingConstraints.pinned(pins))` does all four (a pinned
-  listing's decision has basis `Pinned` and confidence 1). `ShadowDecisions` is still `none`:
-  persisting a shadow run's decisions for it to read is open.
+  listing's decision has basis `Pinned` and confidence 1).
+  *Done since (§16):* the shadow run persists each run's decisions (`ShadowRunStore`), the web
+  `AdminWiring` reads them back through `ShadowDecisions`, and `ShadowDecisions.none` is gone.
 
 ---
 

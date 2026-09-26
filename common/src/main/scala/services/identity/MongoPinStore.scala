@@ -1,16 +1,14 @@
 package services.identity
 
 import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonNull, BsonString, BsonValue}
+import org.mongodb.scala.bson.{BsonInt32, BsonNull, BsonValue}
 import org.mongodb.scala.model.{Filters, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
-import services.movies.ListingKey
 
 import java.time.Instant
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
@@ -50,7 +48,7 @@ object MongoPinStore {
       "_id"       -> pin.id,
       "kind"      -> kind,
       "tmdbId"    -> tmdbId.fold[BsonValue](BsonNull())(BsonInt32(_)),
-      "listings"  -> BsonArray.fromIterable(pin.listings.map(encodeListing)),
+      "listings"  -> ListingKeyBson.encodeAll(pin.listings),
       "author"    -> pin.author,
       "reason"    -> pin.reason,
       "createdAt" -> pin.createdAt.toString)
@@ -64,24 +62,7 @@ object MongoPinStore {
       case "same-film"  => PinClaim.SameFilm
       case "never-film" => PinClaim.NeverFilm(tmdbId.get)
     }
-    Pin(doc.getArray("listings").getValues.asScala.toSeq.map(v => decodeListing(v.asDocument)), claim,
+    Pin(ListingKeyBson.decodeAll(doc.getArray("listings")), claim,
       doc.getString("author").getValue, doc.getString("reason").getValue, Instant.parse(doc.getString("createdAt").getValue))
   }.toOption
-
-  private def encodeListing(k: ListingKey): BsonDocument = k match {
-    case ListingKey.Native(venue, page, raw) =>
-      new BsonDocument().append("venue", BsonString(venue)).append("page", BsonString(page)).append("rawTitle", BsonString(raw))
-    case ListingKey.Published(venue, raw, year, directors) =>
-      new BsonDocument().append("venue", BsonString(venue)).append("rawTitle", BsonString(raw))
-        .append("year", year.fold[BsonValue](BsonNull())(BsonInt32(_)))
-        .append("directors", BsonArray.fromIterable(directors.map(BsonString(_))))
-  }
-
-  private def decodeListing(d: BsonDocument): ListingKey = {
-    val venue = d.getString("venue").getValue
-    val raw   = d.getString("rawTitle").getValue
-    if (d.containsKey("page")) ListingKey.Native(venue, d.getString("page").getValue, raw)
-    else ListingKey.Published(venue, raw, Option(d.get("year")).filter(_.isInt32).map(_.asInt32.getValue),
-      d.getArray("directors").getValues.asScala.toSeq.map(_.asString.getValue))
-  }
 }

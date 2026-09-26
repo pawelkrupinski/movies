@@ -1,6 +1,5 @@
 package tools
 
-import models.{Cinema, CinemaMovie}
 import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures,
   IdentityResolver, Listing, TmdbIdentityLookups}
 import services.movies.TitleNormalizer
@@ -52,10 +51,6 @@ object IdentityLookupSweep {
     ()
   }
 
-  /** Every raw listing of `archived` — `ScrapeListing.prepare`'s per-title fold NOT applied, because
-   *  the resolver reads the rows it erases ("Sinn und Sinnlichkeit" 1995 beside 2026) — one per key. */
-  def listings(archived: Map[Cinema, Seq[CinemaMovie]], normalizer: TitleNormalizer): Seq[Listing] =
-    archived.toSeq.flatMap { case (cinema, films) => films.map(Listing.of(cinema, _, normalizer)) }.sorted.distinctBy(_.key)
 
   /** The sweep over a booted replay wiring: its archived listings, its venues' detail enrichers
    *  and its TMDB client, both fetching through the wiring's recording chain — which is what files
@@ -63,7 +58,7 @@ object IdentityLookupSweep {
    *  been issued (they run one at a time), so a caller can attribute every request to it. */
   def over(w: ArchiveReplayWiring, onLookup: String => Unit = _ => ()): Summary = {
     val normalizer = w.movieCache.normalizer
-    run(listings(w.archivedListings, normalizer), new TmdbIdentityLookups(w.tmdbClient, w.detailEnrichers), normalizer, onLookup)
+    run(Listing.corpus(w.archivedListings, normalizer), new TmdbIdentityLookups(w.tmdbClient, w.detailEnrichers), normalizer, onLookup)
   }
 
   /** Issue the resolver's whole query set against `lookups`. */

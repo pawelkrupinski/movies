@@ -1,9 +1,8 @@
 package integration
 
-import models.{CinemaShowing, Country, SourceData, Tmdb}
+import models.{Country, SourceData, Tmdb}
 import services.identity._
-import services.movies.{ListingConstraints, ListingKey, ScrapeListing, TitleNormalizer}
-import services.resolution.YearWindow
+import services.movies.{ListingKey, TitleNormalizer}
 import services.scrapes.ArchivedScrape
 import tools._
 
@@ -32,6 +31,8 @@ object IdentityShadow {
     override def post(url: String, body: String, contentType: String): String = { requests.incrementAndGet(); inner.post(url, body, contentType) }
   }
 
+  /** `misses` counts every request the recording could not answer, each time it is asked — so a
+   *  lookup that meets a gap is `Unknown` however often the gap was met before. */
   final class Corpus(val label: String, val country: Country, val rows: Seq[ArchivedScrape], rawFetch: HttpFetch,
                      val misses: () => Long, val missedKeys: () => Seq[String]) {
     val normalizer: TitleNormalizer = TitleNormalizer.forCountry(country)
@@ -42,7 +43,7 @@ object IdentityShadow {
   def hardClusters(only: Option[Set[String]]): Seq[Corpus] =
     Country.all.filter(c => CorpusFixture.exists(HardClusters.corpusKey(c)) && only.forall(_.contains(c.code))).map { c =>
       val r = RecordedResponses.replaying(RecordedResponses.pathFor(c.code))
-      new Corpus(s"hc-${c.code}", c, CorpusFixture.read(HardClusters.corpusKey(c)), r, () => r.missedKeys.size.toLong, () => r.missedKeys)
+      new Corpus(s"hc-${c.code}", c, CorpusFixture.read(HardClusters.corpusKey(c)), r, () => r.misses.toLong, () => r.missedKeys)
     }
 
   /** The full recorded corpora: `cinema-scrapes-<cc>.json.gz` in `corpusDir`, each replayed from
@@ -60,11 +61,12 @@ object IdentityShadow {
           override def put(key: String, response: CachedResponse): Unit = ()
         }
         val cache = new EnrichmentCache(store, clock = () => TestWiring.FixedInstant.toEpochMilli)
+        val leaf  = new GapLeaf(missing)
         cache.preload()
         val fetch = new FallbackHttpFetch(Seq(
           "tree"  -> new clients.tools.FakeHttpFetch(tree, strict = true, foldYear = false, root = root),
-          "cache" -> new CachingEnrichmentFetch(cache, new GapLeaf(missing))))
-        new Corpus(s"full-${c.code}", c, CorpusFixture.readFrom(path), fetch, () => missing.size.toLong, () => missing.keys.map(_._2))
+          "cache" -> new CachingEnrichmentFetch(cache, leaf)))
+        new Corpus(s"full-${c.code}", c, CorpusFixture.readFrom(path), fetch, () => leaf.met, () => missing.keys.map(_._2))
       }
     }
 
@@ -72,9 +74,12 @@ object IdentityShadow {
    *  NAMED in `missing` and answered EMPTY, as a remembered 404 would be. A hermetic leaf throws
    *  instead, and on the US corpus one such throw inside a director walk aborted the whole boot;
    *  the shadow comparison wants the pipeline's answer with the gap, not no answer. The resolver
-   *  still sees every gap as `Unknown` (through `missing`). */
+   *  still sees every gap as `Unknown` through `met`, which counts EVERY gap met — `missing`
+   *  names each once, so counting it would read a repeated gap as the empty answer. */
   final class GapLeaf(missing: MissingFixtures) extends HttpFetch {
-    private def gap(method: String, url: String): Unit = missing.record(s"$method $url", s"$method $url")
+    private val gaps = new java.util.concurrent.atomic.AtomicLong()
+    def met: Long = gaps.get()
+    private def gap(method: String, url: String): Unit = { gaps.incrementAndGet(); missing.record(s"$method $url", s"$method $url") }
     override def get(url: String): String = { gap("GET", url); "{}" }
     override def get(url: String, headers: Map[String, String]): String = { gap("GET", url); "{}" }
     override def getBytes(url: String): Array[Byte] = { gap("BYTES", url); Array.emptyByteArray }
@@ -111,38 +116,20 @@ object IdentityShadow {
       PipelineFilm(f.id.value, f.record.tmdbId,
         f.record.tmdbId.map(_ => IdentityMeasures.Film(tmdb.flatMap(_.title).getOrElse(f.title), tmdb.flatMap(_.originalTitle), Nil,
           tmdb.flatMap(_.releaseYear), tmdb.flatMap(_.runtimeMinutes), tmdb.map(_.director).filter(_.nonEmpty), None)),
-        f.record.data.toSeq.collect { case (cs: CinemaShowing, sd) => (cs.cinema.displayName, cs.titleKey, sd) })
+        PipelineFilms.slotsOf(f))
     }.sortBy(_.key)
   }
 
-  /** Each listing's pipeline film, found by its slot: the venue and the slot key its title folds
-   *  to, and — where one venue's two films share that key (Belle 2013/2021) — the slot whose own
-   *  year and directors the listing's agree with, the discriminator the slot fold itself splits
-   *  on (`ScrapeListing.filmsOf`). A listing still in staging has no film. */
-  def pipelineFilmOf(listings: Seq[Listing], films: Seq[PipelineFilm], normalizer: TitleNormalizer): Map[ListingKey, Int] = {
-    val bySlot = films.zipWithIndex.flatMap { case (f, i) => f.slots.map { case (v, k, sd) => (v, k) -> (i, sd) } }.groupMap(_._1)(_._2)
-    listings.flatMap { l =>
-      bySlot.get((l.venue, normalizer.sanitize(l.cleanTitle))).flatMap {
-        case Seq((i, _)) => Some(i)
-        case several =>
-          val year = l.year.orElse(services.movies.EmbeddedYear.of(l.rawTitle, l.cleanTitle))
-          val fits = several.filter { case (_, sd) =>
-            val slotYear = ScrapeListing.yearOf(sd)
-            (year.isEmpty || slotYear.isEmpty || math.abs(year.get - slotYear.get) <= YearWindow.ProductionToRelease) &&
-              ListingConstraints.venueCreditsApart(l.directors, sd.director, normalizer).isEmpty
-          }
-          (if (fits.nonEmpty) fits else several).map(_._1).minOption
-      }.map(l.key -> _)
-    }.toMap
-  }
+  /** Each listing's pipeline film (`PipelineFilms`, the rule the production shadow diff uses). */
+  def pipelineFilmOf(listings: Seq[Listing], films: Seq[PipelineFilm], normalizer: TitleNormalizer): Map[ListingKey, Int] =
+    PipelineFilms.assign(listings, films.zipWithIndex.map { case (f, i) => i -> f.slots }, normalizer)
 
   // ── the resolver ──────────────────────────────────────────────────────────────────────
 
   /** The corpus's raw listings — never `ScrapeListing.prepare`'s folded rows, which hide the very
    *  listings a venue lists twice. */
   def listingsOf(w: ArchiveReplayWiring, normalizer: TitleNormalizer): Seq[Listing] =
-    w.archivedListings.toSeq.flatMap { case (cinema, films) => films.map(Listing.of(cinema, _, normalizer)) }
-      .sorted.distinctBy(_.key)
+    Listing.corpus(w.archivedListings, normalizer)
 
   /** [[IdentityLookups]] with every answer memoised, so the permutation runs pay each lookup
    *  once. The memo changes how often the source is reached, never what the resolver ISSUES. */

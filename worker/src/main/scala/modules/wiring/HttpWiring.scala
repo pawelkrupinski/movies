@@ -94,7 +94,10 @@ trait HttpWiring { self: WorkerWiring =>
   // ── External API clients ──────────────────────────────────────────────────
   // All draw from `lookupFetch` (the `enrich` phase) so their attempts tally under the
   // `enrich` phase, apart from the cinema-facing scrapers/resolvers which use `httoFetch`.
-  lazy val tmdbClient = new TmdbClient(lookupFetch, apiKey = configuration.tmdbApiKey, language = country.language)
+  lazy val tmdbClient: TmdbClient = tmdbClientOver(lookupFetch)
+  /** The deployment's TMDB client (key, language) over `http` — the pipeline's over `lookupFetch`,
+   *  and the identity shadow run's over the observation store, so the two ask the same requests. */
+  def tmdbClientOver(http: HttpFetch): TmdbClient = new TmdbClient(http, apiKey = configuration.tmdbApiKey, language = country.language)
   lazy val filmwebClient = new FilmwebClient(lookupFetch)
   lazy val imdbClient = new ImdbClient(lookupFetch)
   lazy val metacriticClient = new MetacriticClient(lookupFetch)

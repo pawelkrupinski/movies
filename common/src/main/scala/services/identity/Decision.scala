@@ -7,8 +7,8 @@ import services.movies.ListingKey
  * it is, and why (docs/design/identity-resolver.md, "Pure two-stage resolution").
  *
  * The shape curation reads (the admin view). The resolver's own verdict,
- * [[ResolverDecision]], implements it; [[ShadowDecisions]] is still `none` in both wirings until a
- * shadow run's decisions are persisted for it to read.
+ * [[ResolverDecision]], implements it; the shadow run persists them ([[ShadowRunStore]]), and the
+ * admin view reads them back through [[ShadowDecisions]].
  */
 trait Decision {
   /** The cluster: every listing the resolver put in this film. */
@@ -93,21 +93,3 @@ final case class Resolution(decisions: Seq[ResolverDecision], nodes: Int, family
 
 /** One constraint edge between two nodes (named by their smallest listing's sort key). */
 final case class ResolverEdge(a: String, b: String, must: Boolean, tier: Int, reason: String)
-
-/** Where curation reads the resolver's latest decisions and its labelled shadow diff. The
- *  resolver's shadow run writes both; until it lands, [[ShadowDecisions.none]] is wired and
- *  every consumer degrades to "nothing decided" (the admin view lists nothing). */
-trait ShadowDecisions {
-  /** Every decision of the latest shadow resolve. */
-  def latest(): Seq[Decision]
-  /** The latest shadow diff's decisions whose correctness is known — the pipeline agreeing, or
-   *  a reviewed known-issues verdict — as the calibration input of the admin view's cut. */
-  def verdicts(): Seq[ConfidenceCalibration.Sample]
-}
-
-object ShadowDecisions {
-  val none: ShadowDecisions = new ShadowDecisions {
-    def latest(): Seq[Decision]                         = Nil
-    def verdicts(): Seq[ConfidenceCalibration.Sample] = Nil
-  }
-}

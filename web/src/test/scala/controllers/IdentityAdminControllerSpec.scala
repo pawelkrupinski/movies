@@ -6,7 +6,8 @@ import play.api.libs.json.{JsObject, Json}
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
 import services.identity.ConfidenceCalibration.Sample
-import services.identity.{Decision, InMemoryPinStore, PinClaim, Pins, ShadowDecisions}
+import services.identity.{Decision, InMemoryPinStore, PinClaim, PipelineFilmRef, Pins, ResolverDecision, ShadowCluster, ShadowDecisions,
+  ShadowRelation, ShadowRetention, ShadowRun, ShadowRunStore}
 import services.movies.ListingKey
 
 import java.time.{Clock, Instant, ZoneOffset}
@@ -20,7 +21,7 @@ class IdentityAdminControllerSpec extends AnyFlatSpec with Matchers {
   import IdentityAdminControllerSpec._
 
   private def fixture(shadow: ShadowDecisions = Shadow) = {
-    val pins = new Pins(new InMemoryPinStore, Clock.fixed(Instant.parse("2026-09-26T12:00:00Z"), ZoneOffset.UTC))
+    val pins = new Pins(new InMemoryPinStore, Now)
     (new IdentityAdminController(Helpers.stubControllerComponents(), TestAdminAction(), TestAdminAction.adminRepository, pins, shadow), pins)
   }
 
@@ -39,8 +40,24 @@ class IdentityAdminControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "say the gate withholds nothing when there is no labelled shadow data" in {
-    val (c, _) = fixture(ShadowDecisions.none)
+    val (c, _) = fixture(ShadowRunStore.inMemory(Now))
     contentAsString(c.index.apply(admin)) should include ("no labelled shadow data")
+  }
+
+  it should "list the decisions of the latest persisted shadow run, cut by the run's own verdicts" in {
+    val store = ShadowRunStore.inMemory(Now)
+    def cluster(title: String, film: Int, confidence: Double, relation: ShadowRelation, contradictions: Seq[String] = Nil) =
+      ShadowCluster(ResolverDecision(Seq(ListingKey.Published("Kino Amok", title, None, Nil)), Some(film), confidence,
+        ResolverDecision.Basis.OwnMatch, Seq(s"why $title"), contradictions), 0, Some(relation), Seq(PipelineFilmRef(title, Some(film))))
+    store.record(ShadowRun(Now.instant(), Seq(
+      cluster("Lalka", 1321666, 0.95, ShadowRelation.Identical, Seq("a cannot-link held 'Lalka' ×3 apart")),
+      cluster("Opętanie", 21484, 0.3, ShadowRelation.Moved),
+      cluster("Belle", 11, 0.6, ShadowRelation.Identical)), Nil), ShadowRetention(scala.concurrent.duration.Duration(8, "days")))
+    val page = contentAsString(fixture(store)._1.index.apply(admin))
+    page should include ("a cannot-link held")   // contradicted
+    page should include ("why Opętanie")         // below the cut the run's verdicts draw (0.3 wrong, 0.6 right)
+    page should not include ("why Belle")        // confident and uncontested
+    page should include ("threshold 0.6")
   }
 
   it should "refuse an anonymous caller and a non-admin" in {
@@ -88,6 +105,8 @@ class IdentityAdminControllerSpec extends AnyFlatSpec with Matchers {
 }
 
 object IdentityAdminControllerSpec {
+  val Now: Clock = Clock.fixed(Instant.parse("2026-09-26T12:00:00Z"), ZoneOffset.UTC)
+
   final case class D(listings: Set[ListingKey], tmdbId: Option[Int], confidence: Double, explanation: Seq[String],
                      contradictions: Seq[String]) extends Decision
 

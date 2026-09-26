@@ -137,7 +137,7 @@ class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers wit
       override lazy val clock: java.time.Clock = java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC)
       override lazy val backgroundBudget: ExecutionBudget = new SameThreadExecutionBudget
       override lazy val uptimeMonitor = new services.UptimeMonitor(None, clock = clock)
-      override lazy val tmdbClient: clients.TmdbClient = new clients.TmdbClient(lookupFetch, apiKey = Some(_root_.settings.TmdbApiKey("replay")), language = language)
+      override def tmdbClientOver(http: HttpFetch): clients.TmdbClient = new clients.TmdbClient(http, apiKey = Some(_root_.settings.TmdbApiKey("replay")), language = language)
     }
     info(s"recording pass: ${IdentityLookupSweep.over(recording)}")
 

@@ -123,6 +123,10 @@ final case class HermeticReplay(value: Boolean) extends AnyVal
 /** `KINOWO_IDENTITY_RATING_GATE` — the identity phase-3 staged-migration switch: cards below the
  *  calibrated identity confidence are served without ratings. Off by default. */
 final case class IdentityRatingGateEnabled(value: Boolean) extends AnyVal
+/** `KINOWO_IDENTITY_SHADOW` — the identity resolver's shadow run (docs/design/identity-resolver.md §8):
+ *  a staged-migration switch, off by default, that resolves the live corpus from the observation
+ *  store after each settle and writes only the shadow collections. */
+final case class IdentityShadowEnabled(value: Boolean) extends AnyVal
 /** `KINOWO_IDENTITY_LOOKUPS` — the convergence leg sweeps identity lookups. */
 final case class IdentityLookupSweepEnabled(value: Boolean) extends AnyVal
 /** `KINOWO_CONVERGENCE_CORPUS_RUN` — the CI run that recorded the replayed corpus. */

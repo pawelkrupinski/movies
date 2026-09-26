@@ -104,8 +104,10 @@ trait ResolutionWiring { self: WorkerWiring =>
   // the per-deploy flap. Now the load is a pure read and this reaper re-asserts the
   // one-row-per-film invariant once per the SAME 30-min window (cluster-claimed).
   def settleInterval: SettleInterval = configuration.settleInterval(SettleInterval(SettleReaper.DefaultInterval))
-  lazy val settleReaper = new SettleReaper(() => movieService.settle(),
-    interval = settleInterval, runStore = scheduledRunStore)
+  // The identity shadow run rides the same claimed tick, AFTER the settle, so it diffs against the
+  // settled films; it never fails the settle (`tickQuietly`).
+  def settleTick(): Unit = { movieService.settle(); shadowIdentityReaper.foreach(_.tickQuietly()) }
+  lazy val settleReaper = new SettleReaper(() => settleTick(), interval = settleInterval, runStore = scheduledRunStore)
 
   // Re-tries unresolved-TMDB rows once per 24h, phase-spread across the period —
   // the queue-era replacement for MovieService's old daily, all-at-once

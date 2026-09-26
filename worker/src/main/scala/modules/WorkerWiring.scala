@@ -100,6 +100,42 @@ class WorkerWiring(
     mongoConnection.database.filter(_ => configuration.observationCapture.value)
       .map(db => services.observations.MongoObservationBackend.store(db, clock, workerMetrics.ttlIndexMismatches))
 
+  // ── Identity shadow run ─────────────────────────────────────────────────────
+  // The identity resolver over the live corpus, after each settle tick (`settleReaper`), from
+  // the observations alone (docs/design/identity-resolver.md §8): `KINOWO_IDENTITY_SHADOW`, a
+  // staged-migration switch, off by default. It writes only `identity_shadow_decisions` /
+  // `identity_shadow_diff` and the `kinowo_worker_identity_*` gauges, and reaches no external
+  // service — its lookups are the store's (`ObservedIdentityLookups`), so it answers from what the
+  // capture (`KINOWO_OBSERVATION_CAPTURE`) filed. With the capture off it still reads what is
+  // there; the store instance is the capture's when both are on.
+  lazy val identityObservations: Option[services.observations.ObservationStore] =
+    observationStore.orElse(mongoConnection.database.filter(_ => configuration.identityShadow.value)
+      .map(db => services.observations.MongoObservationBackend.store(db, clock, workerMetrics.ttlIndexMismatches)))
+
+  /** Where the shadow run persists its runs: this country's shadow collections (in memory
+   *  without a database). */
+  lazy val shadowRuns: services.identity.ShadowRunStore = new services.identity.ShadowRunStore(
+    mongoConnection.database.fold[services.identity.ShadowRunBackend](new services.identity.InMemoryShadowRunBackend)(
+      services.identity.MongoShadowRunBackend.writer(_, workerMetrics.ttlIndexMismatches)), clock)
+
+  lazy val shadowIdentityReaper: Option[services.identity.ShadowIdentityReaper] = {
+    import services.identity._
+    identityObservations.filter(_ => configuration.identityShadow.value).map(store => new ShadowIdentityReaper(
+      listings      = () => {
+        val live = cinemaScrapers.map(_.cinema).toSet
+        Listing.corpus(scrapeArchive.findAll().filter(row => live(row.cinema)).map(row => row.cinema -> row.films), titleNormalizer)
+      },
+      pipelineFilms = () => movieCache.snapshot(),
+      lookups       = () => ObservedIdentityLookups.over(store, tmdbClientOver, detailEnrichers),
+      pins          = new MongoPinStore(mongoConnection.database),
+      normalizer    = titleNormalizer,
+      calibration   = IdentityCalibration.default,
+      runs          = shadowRuns,
+      retention     = ShadowRetention(services.observations.ObservationRetention.Window),
+      metrics       = workerMetrics.identityShadow.forCountry(country.code),
+      clock         = clock))
+  }
+
   // ── Filmweb (per-country) ───────────────────────────────────────────────────
   // Whether the Filmweb rating + fallback path is wired at all — a per-country
   // decision ([[Country.filmwebEnabled]]). A non-Filmweb country runs the whole

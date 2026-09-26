@@ -578,6 +578,30 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
       theSameInstanceAs(services.identity.RatingGate.off)
   }
 
+  // The identity shadow run is a staged-migration switch too: nothing resolves in shadow — and no
+  // shadow collection is written — until the composition root is told so.
+  "the identity shadow run" should "be wired only when KINOWO_IDENTITY_SHADOW switches it on" in {
+    val budget = new SharedExecutionBudget(4)
+    def probe(env: tools.Env) = new Probe(Country.Spain, budget, env) {
+      override lazy val observationStore: Option[services.observations.ObservationStore] =
+        Some(services.observations.ObservationStore.inMemory(clock))
+    }
+    probe(tools.Env.of()).shadowIdentityReaper shouldBe None
+    probe(tools.Env.of("KINOWO_IDENTITY_SHADOW" -> "true")).shadowIdentityReaper shouldBe defined
+    // With nothing observed to read (no capture, no database) there is nothing to resolve from.
+    new Probe(Country.Spain, budget, tools.Env.of("KINOWO_IDENTITY_SHADOW" -> "true")).shadowIdentityReaper shouldBe None
+  }
+
+  it should "run after each settle tick, and persist its run" in {
+    val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4), tools.Env.of("KINOWO_IDENTITY_SHADOW" -> "true")) {
+      override lazy val observationStore: Option[services.observations.ObservationStore] =
+        Some(services.observations.ObservationStore.inMemory(clock))
+    }
+    wiring.shadowRuns.latestRun() shouldBe None
+    wiring.settleTick()
+    wiring.shadowRuns.latestRun() shouldBe defined
+  }
+
   it should "when switched on, withhold a title-only match no venue's facts back — scored from the row alone" in {
     import models._
     val normalizer = services.movies.SingleCountryNormalizer.titleNormalizer

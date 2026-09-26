@@ -88,6 +88,9 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   val shareCardAudit: services.tasks.RecheckedAudit.Series =
     new services.tasks.RecheckedAudit.Series("kinowo_worker_share_cards", "share-card pointer", countryCodes, registry)
 
+  // The identity resolver's shadow run, per country — see IdentityShadowMetrics.
+  val identityShadow: IdentityShadowMetrics = new IdentityShadowMetrics(registry)
+
   // Per-request outcome of the PAID egress legs (Zyte, Decodo) — see PaidEgressMetrics.
   val paidEgress: PaidEgressMetrics = new PaidEgressMetrics(countryCodes, registry)
 

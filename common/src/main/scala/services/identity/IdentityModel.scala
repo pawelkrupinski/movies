@@ -55,6 +55,13 @@ object Listing {
     countries     = cm.movie.countries.map(_.trim).filter(_.nonEmpty).distinct.sorted)
 
   implicit val ordering: Ordering[Listing] = Ordering.by(_.sortKey)
+
+  /** Every raw listing of `byCinema`, one per key (the smallest by the total order) —
+   *  `ScrapeListing.prepare`'s per-title fold NOT applied, because the resolver reads the rows it
+   *  erases ("Sinn und Sinnlichkeit" 1995 beside 2026). The resolver's listing set, wherever the
+   *  listings come from: the live scrape archive (the shadow run) or a recorded corpus. */
+  def corpus(byCinema: Iterable[(Cinema, Seq[CinemaMovie])], normalizer: TitleNormalizer): Seq[Listing] =
+    byCinema.toSeq.flatMap { case (cinema, films) => films.map(of(cinema, _, normalizer)) }.sorted.distinctBy(_.key)
 }
 
 /** What a venue's own detail page adds to its listing: only the identity fields. */

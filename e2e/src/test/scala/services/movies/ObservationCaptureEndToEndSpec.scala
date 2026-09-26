@@ -3,19 +3,23 @@ package services.movies
 import models.Poznan
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.identity.ShadowTick
 import services.observations.ObservationStore
-import tools.{FixtureTestWiring, ReadModelSnapshot, TestWiring}
+import services.scrapes.{InMemoryScrapeArchiveRepository, ScrapeArchiveRepository}
+import settings.ProcessConfiguration
+import tools.{Env, FixtureTestWiring, HttpFetch, ReadModelSnapshot, TestWiring}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 import java.time.{Clock, LocalDateTime, ZoneOffset}
 
 /**
- * The identity program's shadow capture must not change what the pipeline makes
- * (docs/design/identity-resolver.md, "Phase 1"). The whole recorded corpus, booted with capture
- * ON, must render byte-identically to the snapshots `FilmScheduleEndToEndSpec` pins with it OFF
- * — `expected-schedules.txt` and the read-model snapshot — while the store fills with every
- * listing, external lookup and venue detail the boot made.
+ * The identity program's shadow capture AND shadow run must not change what the pipeline makes
+ * (docs/design/identity-resolver.md §8, §9a). The whole recorded corpus, booted with capture ON
+ * and the shadow run switched on and ticked after the boot, must render byte-identically to the
+ * snapshots `FilmScheduleEndToEndSpec` pins with both OFF — `expected-schedules.txt` and the
+ * read-model snapshot — while the store fills with every listing, external lookup and venue
+ * detail the boot made, and the shadow run resolves the corpus from those alone.
  */
 class ObservationCaptureEndToEndSpec extends AnyFlatSpec with Matchers {
 
@@ -23,13 +27,30 @@ class ObservationCaptureEndToEndSpec extends AnyFlatSpec with Matchers {
 
   private lazy val store = ObservationStore.inMemory(Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC))
 
-  private lazy val wiring: FixtureTestWiring = {
+  private val requests = new java.util.concurrent.atomic.AtomicLong()
+
+  private lazy val shadow: (FixtureTestWiring, ShadowTick, Long) = {
     val w = new FixtureTestWiring("08-06-2026") {
+      override lazy val configuration: ProcessConfiguration = new ProcessConfiguration(Env.of("KINOWO_IDENTITY_SHADOW" -> "true"))
       override lazy val observationStore: Option[ObservationStore] = Some(store)
+      // The fixture wiring's archive is Mongo's, disabled here: an in-memory one keeps the scrapes
+      // the shadow run reads its listing set from.
+      override lazy val scrapeArchive: ScrapeArchiveRepository = new InMemoryScrapeArchiveRepository
+      // Every request the wiring makes, counted — the fixture replay underneath is unchanged.
+      override lazy val httoFetch: HttpFetch = new HttpFetch {
+        private val replay = new clients.tools.FakeHttpFetch(fixture)
+        override def get(url: String): String = { requests.incrementAndGet(); replay.get(url) }
+        override def get(url: String, headers: Map[String, String]): String = { requests.incrementAndGet(); replay.get(url, headers) }
+        override def getBytes(url: String): Array[Byte] = { requests.incrementAndGet(); replay.getBytes(url) }
+        override def post(url: String, body: String, contentType: String): String = { requests.incrementAndGet(); replay.post(url, body, contentType) }
+      }
     }
     w.bootStartup()
-    w
+    val before = requests.get()
+    val tick   = w.shadowIdentityReaper.getOrElse(fail("the shadow run is not wired")).tick()
+    (w, tick, requests.get() - before)
   }
+  private def wiring: FixtureTestWiring = shadow._1
 
   "shadow capture" should "leave the whole-corpus schedules byte-identical to the capture-off snapshot" in {
     val expected = new String(Files.readAllBytes(Paths.get("test/resources/fixtures/08-06-2026/expected-schedules.txt")),
@@ -56,5 +77,17 @@ class ObservationCaptureEndToEndSpec extends AnyFlatSpec with Matchers {
     val lookups = store.currentLookups()
     lookups.map(_.query.host).toSet should contain allOf ("api.themoviedb.org", "caching.graphql.imdb.com", "www.filmweb.pl", "www.rottentomatoes.com")
     lookups.count(_.query.key.startsWith("DETAIL ")) should be > 0
+  }
+
+  it should "have resolved the corpus in shadow from the observations alone, without a request" in {
+    val (_, tick, requests) = shadow
+    requests shouldBe 0
+    tick.crossings shouldBe 0
+    val run = tick.run.getOrElse(fail("no shadow run"))
+    info(s"shadow run over the capture: ${tick.listings} listings → ${run.clusters.size} clusters " +
+      s"(${tick.films.toSeq.sortBy(_._1.ordinal).map { case (r, n) => s"${r.label} $n" }.mkString(", ")}), " +
+      s"${run.clusters.count(_.decision.film.isDefined)} matched; ${tick.gaps} lookups the capture never observed")
+    tick.listings should be > 0
+    run.clusters.map(_.decision.members.size).sum shouldBe tick.listings
   }
 }
