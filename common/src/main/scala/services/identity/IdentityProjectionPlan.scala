@@ -50,8 +50,8 @@ final case class ProjectionPlan(films: Seq[ProjectedFilm], retired: Seq[FilmId],
  * phase 3 = programme phase 5), as pure functions of the accepted listings, the resolver's
  * decisions over them, the films stored before, and the persisted FilmId map:
  *
- *  1. every stored film is the set of today's listings its slots hold (`PipelineFilms`, the shadow
- *     diff's own mapping), numbered through the FilmId map ([[FilmIdCounters]], largest film first
+ *  1. every stored film is the set of today's listings its slots hold (the slot's own listing key,
+ *     else the shadow diff's mapping by slot, `PipelineFilms`), numbered through the FilmId map ([[FilmIdCounters]], largest film first
  *     for a film not yet mapped) — so a legacy `title|year` id keeps its counter and its URL;
  *  2. the resolver's clusters, with the clusters of one TMDB film joined (`movies` holds one
  *     document per film — its unique `tmdbId` index), get ids by OVERLAP ([[IdAssigner]]): a merge
@@ -87,7 +87,13 @@ object IdentityProjectionPlan {
     val storedById = stored.map(r => r.id.value -> r).toMap
 
     // 1. The stored films as listing sets, numbered.
-    val previousOf: Map[ListingKey, PipelineFilmRef] = PipelineFilms.of(byKey.values.map(_.listing).toSeq, stored, normalizer)
+    // A listing is on the stored film whose slot it IS (the slot's own listing key); a listing no slot
+    // names — one a venue's same-title fold hid behind another's slot — on the film holding its slot.
+    val slotOwner: Map[ListingKey, PipelineFilmRef] = stored.flatMap { r =>
+      r.record.data.flatMap { case (source, slot) => ListingKey.ofSource(source, slot).map(_ -> PipelineFilmRef(r.id.value, r.record.tmdbId)) }
+    }.groupMapReduce(_._1)(_._2)((a, b) => if (a.id <= b.id) a else b)
+    val previousOf: Map[ListingKey, PipelineFilmRef] =
+      PipelineFilms.of(byKey.values.map(_.listing).toSeq, stored, normalizer) ++ slotOwner.filter { case (k, _) => byKey.contains(k) }
     val previousFilms: Seq[IdSeeding.Film] = previousOf.toSeq.groupMap(_._2.id)(_._1).toSeq
       .map { case (id, ls) => IdSeeding.Film(id, ls.toSet) }.sortBy(_.id)
     val covered   = counters.covering(previousFilms)
@@ -134,7 +140,12 @@ object IdentityProjectionPlan {
       fresh   = drafts.count(_.inherited.isEmpty),
       retired = retired.size)
     val placed = previousFilms.map(_.id).toSet
-    ProjectionDraft(drafts, retired, retired.filterNot(id => placed(id.value)), covered, additions, regroupings, ShadowDiff.counts(ShadowDiff.of(resolution, previousOf)._1))
+    // The canary compares the films as STORED — one per TMDB film — with the films before.
+    val asStored = resolution.copy(decisions = clusters.map { case (members, film) =>
+      ResolverDecision(members.toSeq.sorted, film, 1.0, ResolverDecision.Basis.OwnMatch, Nil)
+    })
+    ProjectionDraft(drafts, retired, retired.filterNot(id => placed(id.value)), covered, additions, regroupings,
+      ShadowDiff.counts(ShadowDiff.of(asStored, previousOf)._1))
   }
 
   /** Choose every film's title, year and key, and mint the id of every fresh one. `taken` says

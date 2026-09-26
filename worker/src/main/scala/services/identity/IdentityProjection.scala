@@ -116,7 +116,9 @@ final class IdentityProjection(
 
   private def write(resolution: Resolution, draft: ProjectionDraft, stored: Seq[StoredMovieRecord], listings: Int, started: Long): ProjectionTick = {
     val detailed = draft.copy(drafts = draft.drafts.map { d =>
-      d.needsDetails.fold(d)(film => Try(details(d.record, film)).toOption.flatten.fold(d)(r => d.copy(record = r)))
+      // The details builder owns the TMDB side; what the projection derived stays the projection's.
+      d.needsDetails.fold(d)(film => Try(details(d.record, film)).toOption.flatten.fold(d)(r =>
+        d.copy(record = r.copy(searchTitle = d.record.searchTitle, retainedSynopses = d.record.retainedSynopses))))
     })
     val storedIds = stored.map(_.id).toSet
     val plan      = IdentityProjectionPlan.finish(detailed, normalizer, storedIds)
