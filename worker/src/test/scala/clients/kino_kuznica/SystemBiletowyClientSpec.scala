@@ -2,289 +2,175 @@ package clients.kino_kuznica
 
 import org.scalatest.OptionValues
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.prop.TableDrivenPropertyChecks
 import clients.tools.FakeHttpFetch
-import models.{Kino1410, KinoBCKBytom, KinoBieszczadzkiDK, KinoCKiBNowaSarzyna, KinoCentrum3D, KinoFarys, KinoFrajda, KinoKadrStaszow, KinoKawiarnia, KinoKuznica, KinoOrzelUstrzyki, KinoPckulKino, KinoRegis}
+import models._
 import org.scalatest.flatspec.AnyFlatSpec
+import play.api.libs.json.JsString
 import services.cinemas.pl.SystemBiletowyClient
 
 import java.time.LocalDateTime
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
-/** Replays the recorded `shd.systembiletowy.pl/index.php` repertoire (the
- *  Suchedniów cultural centre's Kino Kuźnica instance) through the generic
- *  systembiletowy client.
+/** Replays every VisualSoft instance's `service.php/repertoire/list.json` feed,
+ *  captured live 2026-09-26 into `fixtures/visualsoft/`, through the one generic
+ *  client.
  *
- *  Kino Kuźnica was previously scraped from Filmweb, whose API had silently
- *  gone empty for it (every poll returned `[]`) though the cinema is open —
- *  this fixture is the proof its programme is real and reachable on its own
- *  ticketing portal. */
-class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValues {
+ *  The client used to scrape each instance's `index.php` in one of four HTML
+ *  skins, which drifted independently (Bochnia's titles moved from `h3` to `h2`
+ *  on ~2026-09-21 and the venue read empty for five days). Against these
+ *  fixtures the HTML client fails outright: it asks for `index.php`, which is
+ *  not recorded here. */
+class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValues with TableDrivenPropertyChecks {
 
-  private val movies =
-    new SystemBiletowyClient(new FakeHttpFetch("kino-kuznica"), "https://shd.systembiletowy.pl", KinoKuznica, titles = titleNormalizer).fetch()
+  private val http = new FakeHttpFetch("visualsoft")
 
-  "SystemBiletowyClient" should "return a non-empty, single-cinema film list" in {
-    movies should not be empty
-    movies.map(_.cinema).toSet shouldBe Set(KinoKuznica)
-    all(movies.map(_.showtimes)) should not be empty
+  private def client(base: String, cinema: Cinema, filmGroups: Set[String] = Set.empty,
+                     institution: Option[String] = None) =
+    new SystemBiletowyClient(http, base, cinema, titles = titleNormalizer, filmGroups = filmGroups,
+      institution = institution)
+
+  // (instance, cinema, title fragment, screening, exact booking link)
+  private val venues = Table(
+    ("base", "cinema", "title", "when", "booking"),
+    ("https://kgl.systembiletowy.pl", KinoKawiarnia, "zapomniana wyspa", LocalDateTime.of(2026, 10, 8, 16, 30),
+      "https://kgl.systembiletowy.pl/kup-bilet/zapomniana-wyspa-2026-10-08-16-30"),
+    ("https://shd.systembiletowy.pl", KinoKuznica, "lalka", LocalDateTime.of(2026, 10, 2, 19, 0),
+      "https://shd.systembiletowy.pl/kup-bilet/lalka-premiera-2026-10-02-16-00-1"),
+    ("https://bilety.pckul.pl", KinoPckulKino, "marsupilami", LocalDateTime.of(2026, 10, 10, 14, 0),
+      "https://bilety.pckul.pl/kup-bilet/marsupilami-2026-10-09-14-00-2"),
+    ("https://bilety.mok.zory.pl", KinoNaStarowce, "misja zeus", LocalDateTime.of(2026, 10, 1, 14, 0),
+      "https://bilety.mok.zory.pl/kup-bilet/100-dni-misja-zeus-2026-10-01-14-00"),
+    ("https://kck.systembiletowy.pl", KinoCentrum3D, "lalka", LocalDateTime.of(2026, 10, 3, 15, 45),
+      "https://kck.systembiletowy.pl/kup-bilet/lalka-2026-10-03-15-45"),
+    ("https://bilety.kino.bochnia.pl", KinoRegis, "dzień dziecka", LocalDateTime.of(2026, 10, 3, 17, 30),
+      "https://bilety.kino.bochnia.pl/kup-bilet/dzien-dziecka-ksiedza-jana-kaczkowskiego-2026-10-03-17-30"),
+    ("https://ckp.systembiletowy.pl", KinoKalejdoskop, "zapomniana wyspa", LocalDateTime.of(2026, 10, 3, 12, 0),
+      "https://ckp.systembiletowy.pl/kup-bilet/zapomniana-wyspa-2026-10-03-12-00"),
+    ("https://sta.systembiletowy.pl", KinoKadrStaszow, "lalka", LocalDateTime.of(2026, 10, 2, 20, 20),
+      "https://sta.systembiletowy.pl/kup-bilet/lalka-2026-10-02-20-20"),
+    ("https://bdk.systembiletowy.pl", KinoBieszczadzkiDK, "obcy", LocalDateTime.of(2026, 10, 9, 18, 0),
+      "https://bdk.systembiletowy.pl/kup-bilet/obcy-2d-napisy-pl-2026-10-09-18-00"),
+    ("https://kht.systembiletowy.pl", Kino1410, "vivaldi i ja", LocalDateTime.of(2026, 10, 10, 19, 0),
+      "https://kht.systembiletowy.pl/kup-bilet/vivaldi-i-ja-2026-10-10-19-00"),
+    ("https://oks.systembiletowy.pl", KinoCKiBNowaSarzyna, "lalka", LocalDateTime.of(2026, 10, 16, 18, 30),
+      "https://oks.systembiletowy.pl/kup-bilet/lalka-2026-10-16-15-30-1"),
+    // The two instances without the advanced template: the plain feed, with the
+    // booking link built from the screening id.
+    ("https://kfb.systembiletowy.pl", KinoFarys, "misja zeus", LocalDateTime.of(2026, 9, 27, 17, 0),
+      "https://kfb.systembiletowy.pl/index.php/repertoire.html?id=7599"),
+    ("https://udk.systembiletowy.pl", KinoOrzelUstrzyki, "podręcznik dla suprbohaterów", LocalDateTime.of(2026, 10, 2, 17, 0),
+      "https://udk.systembiletowy.pl/index.php/repertoire.html?id=1128"),
+  )
+
+  forAll(venues) { (base, cinema, title, when, booking) =>
+    it should s"read a real screening off the feed — ${cinema.displayName}" in {
+      val movies = client(base, cinema).fetch()
+      movies.map(_.cinema).toSet shouldBe Set(cinema)
+      val film = movies.find(_.movie.title.toLowerCase.contains(title)).value
+      film.showtimes.find(_.dateTime == when).value.bookingUrl.value shouldBe booking
+    }
   }
 
-  it should "merge a film's dubbing + napisy screenings into one row" in {
-    // The fixture lists "… MANDALORIAN & GROGU  dubbing" and "… napisy" as
-    // separate rows; stripping the version tag must fold them into ONE film
-    // carrying both the 16:00 (dubbed) and 18:30 (subtitled) screenings on 06-12.
-    val mandalorian = movies.filter(_.movie.title.toLowerCase.contains("mandalorian"))
-    mandalorian.size shouldBe 1
-    val times = mandalorian.head.showtimes.map(_.dateTime)
-    times should contain(LocalDateTime.of(2026, 6, 12, 16, 0))
-    times should contain(LocalDateTime.of(2026, 6, 12, 18, 30))
+  "SystemBiletowyClient" should "merge a film's dubbed and subtitled screenings into one row carrying each format" in {
+    // "OBCY (2D, NAPISY PL)" and its dubbed twin fold onto one "Obcy".
+    val obcy = client("https://bdk.systembiletowy.pl", KinoBieszczadzkiDK).fetch()
+      .filter(_.movie.title.toLowerCase.startsWith("obcy"))
+    obcy.map(_.movie.title) shouldBe Seq("Obcy")
+    obcy.head.showtimes.map(_.format).toSet should contain(List("2D", "NAP"))
   }
 
-  it should "carry a per-screening booking link" in {
-    movies.flatMap(_.showtimes).flatMap(_.bookingUrl).head should include("repertoire.html?id=")
+  it should "peel Kino Orzeł's '-Film 2D dubbing' boilerplate into the format" in {
+    val film = client("https://udk.systembiletowy.pl", KinoOrzelUstrzyki).fetch()
+      .find(_.movie.title.toLowerCase.startsWith("podręcznik")).value
+    film.movie.title shouldBe "Podręcznik dla suprbohaterów"
+    film.showtimes.head.format should contain allOf ("2D", "DUB")
   }
 
-  // ── Kino Farys (Biecz, the kfb.systembiletowy.pl instance) ──────────────────
-  private val farys =
-    new SystemBiletowyClient(new FakeHttpFetch("kino-farys"), "https://kfb.systembiletowy.pl", KinoFarys, titles = titleNormalizer).fetch()
-
-  "SystemBiletowyClient (Farys)" should "parse the Biecz instance off the same client" in {
-    farys should not be empty
-    farys.map(_.cinema).toSet shouldBe Set(KinoFarys)
-    val film = farys.find(_.movie.title.toLowerCase.contains("willow")).value
-    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 12, 15, 0))
+  it should "carry the poster the advanced feed names" in {
+    client("https://bilety.kino.bochnia.pl", KinoRegis).fetch().flatMap(_.posterUrl).head should
+      startWith("https://bilety.kino.bochnia.pl/uploads/")
   }
 
-  // ── Alternate div.event-item skin (Kino PCKul, Pszczyna) ────────────────────
-  private val pckul =
-    new SystemBiletowyClient(new FakeHttpFetch("kino-pckul"), "https://bilety.pckul.pl", KinoPckulKino, titles = titleNormalizer).fetch()
+  // ── Scopes: instances selling more than one venue's events ─────────────────
 
-  "SystemBiletowyClient (alt skin)" should "parse the div.event-item Bootstrap skin" in {
-    pckul should not be empty
-    pckul.map(_.cinema).toSet shouldBe Set(KinoPckulKino)
-    val film = pckul.find(_.movie.title.toLowerCase.contains("mumbo jumbo")).value
-    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 10, 13, 30))
+  it should "keep only BCKino's film events, peeling their 'BCKino – ' prefix" in {
+    val movies = client("https://bck.systembiletowy.pl", KinoBCKBytom, filmGroups = Set("BCKino")).fetch()
+    movies.map(_.movie.title) should contain("Koniec imprezy")
+    all(movies.map(_.movie.title.toLowerCase)) should not include "bckino"
+    // The instance's 47 other events — "BECEK CZYTA" readings, workshops — stay out.
+    movies.flatMap(_.showtimes).size shouldBe 6
   }
 
-  // ── Current `/css/visual9` skin: div.event-item[data-date][data-time] ─────────
-  // The vendor's latest UI carries the ISO date + time as data attributes and the
-  // title in `.event-title` (an h3; Bochnia's is an h2 since ~09-21). These three
-  // venues were each previously scraped from Filmweb (cinema ids 117 / 1513 /
-  // 1294) — the fixtures (recorded into the 08-06-2026 corpus, replayed here)
-  // prove each programme is real and reachable on its own VisualSoft portal, served under both the vendor subdomain
-  // (kgl/kck.systembiletowy.pl) and a venue's own domain (bilety.kino.bochnia.pl).
-  private def visual9(base: String, cinema: models.Cinema) =
-    new SystemBiletowyClient(new FakeHttpFetch("08-06-2026"), base, cinema, titles = titleNormalizer).fetch()
-
-  "SystemBiletowyClient (visual9 skin)" should "parse Kino Kawiarnia (kgl.systembiletowy.pl)" in {
-    val movies = visual9("https://kgl.systembiletowy.pl", KinoKawiarnia)
-    movies should not be empty
-    movies.map(_.cinema).toSet shouldBe Set(KinoKawiarnia)
-    val film = movies.find(_.movie.title.toLowerCase.contains("toy story")).value
-    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 17, 17, 0))
+  it should "keep only Kino Frajda's Imprezy SDK events, dropping Chorzów's own" in {
+    val movies = client("https://bilety.chck.pl", KinoFrajda, filmGroups = Set("Imprezy SDK")).fetch()
+    movies.map(_.movie.title.toLowerCase).exists(_.contains("zagadka klary muu")) shouldBe true
+    // "KOSZMAREK" screens at both: 10-20 as "Imprezy ChCK", 10-24 as "Imprezy SDK".
+    val koszmarek = movies.find(_.movie.title.toLowerCase.contains("koszmarek")).value.showtimes.map(_.dateTime)
+    koszmarek should contain(LocalDateTime.of(2026, 10, 24, 15, 0))
+    koszmarek should not contain LocalDateTime.of(2026, 10, 20, 17, 0)
   }
 
-  it should "parse Centrum 3D Kalisz (kck.systembiletowy.pl)" in {
-    val movies = visual9("https://kck.systembiletowy.pl", KinoCentrum3D)
-    movies should not be empty
-    movies.map(_.cinema).toSet shouldBe Set(KinoCentrum3D)
-    val film = movies.find(_.movie.title.toLowerCase.contains("kumotry")).value
-    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 17, 18, 0))
+  it should "scope Oświęcim's instance to Nasze Kino, dropping the culture centre's concerts and plays" in {
+    val movies = client("https://ock.systembiletowy.pl", KinoNaszeKino, institution = Some("Nasze Kino")).fetch()
+    movies.map(_.movie.title.toLowerCase).exists(_.contains("mistyczka")) shouldBe true
+    // A comedy play and a concert sold by the centre on the same instance; the
+    // old HTML scrape let "Ale kino, czyli muzyka filmowa…" through as a film.
+    movies.map(_.movie.title.toLowerCase).exists(_.contains("dobrze się kłamie")) shouldBe false
+    movies.map(_.movie.title.toLowerCase).exists(_.contains("ale kino, czyli muzyka filmowa")) shouldBe false
   }
 
-  it should "parse Regis Bochnia on a venue's own domain + strip the /napisy/ tag" in {
-    val movies = visual9("https://bilety.kino.bochnia.pl", KinoRegis)
-    movies should not be empty
-    movies.map(_.cinema).toSet shouldBe Set(KinoRegis)
-    // "STRASZNY FILM /napisy/" → version tag stripped, sentence-cased, so the
-    // dubbed + subtitled screenings of one film fold into a single row.
-    val film = movies.find(_.movie.title.toLowerCase.contains("dzień objawienia")).value
-    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 17, 17, 0))
-    // booking link is the VisualSoft kup-bilet deep link
-    film.showtimes.flatMap(_.bookingUrl).head should include("kup-bilet")
+  it should "split the one Mikro instance between its two screens" in {
+    val mikro     = client("https://bilety.kinomikro.pl", KinoMikro, institution = Some("Kino Mikro")).fetch()
+    val bronowice = client("https://bilety.kinomikro.pl", MikroBronowice, institution = Some("Mikro Bronowice")).fetch()
+    mikro.map(_.cinema).toSet shouldBe Set(KinoMikro)
+    bronowice.map(_.cinema).toSet shouldBe Set(MikroBronowice)
+    mikro.find(_.movie.title == "Orlando").value.showtimes.map(_.dateTime) should
+      contain(LocalDateTime.of(2026, 9, 28, 16, 45))
+    // "Marsupilami- dubbing" is Bronowice-only, folded onto its film with DUB.
+    val marsupilami = bronowice.find(_.movie.title == "Marsupilami").value
+    all(marsupilami.showtimes.map(_.format)) should contain("DUB")
+    mikro.map(_.movie.title) should not contain "Marsupilami"
   }
 
-  // Bochnia's instance re-skinned around 2026-09-21 so the event title renders
-  // as `h2.event-title` instead of `h3` — everything else on the visual9 row
-  // (data-date/data-time, kup-bilet link) unchanged. The heading-level-pinned
-  // selector read zero rows off 66 live screenings, so the venue went white.
-  // Captured live 2026-09-26.
-  it should "parse Regis Bochnia after its titles moved from h3 to h2" in {
-    val movies = new SystemBiletowyClient(
-      new FakeHttpFetch("kino-regis-bochnia"), "https://bilety.kino.bochnia.pl", KinoRegis,
-      titles = titleNormalizer).fetch()
-    movies.map(_.cinema).toSet shouldBe Set(KinoRegis)
-    val film = movies.find(_.movie.title.toLowerCase.contains("marsupilami")).value
-    film.showtimes.map(_.dateTime) should contain allOf (
-      LocalDateTime.of(2026, 9, 26, 16, 0), LocalDateTime.of(2026, 9, 27, 16, 0))
-    film.showtimes.flatMap(_.bookingUrl).head should include("kup-bilet")
+  it should "give the two Mikro screens distinct source keys" in {
+    val mikro     = client("https://bilety.kinomikro.pl", KinoMikro, institution = Some("Kino Mikro"))
+    val bronowice = client("https://bilety.kinomikro.pl", MikroBronowice, institution = Some("Mikro Bronowice"))
+    mikro.sourceKey should not be bronowice.sourceKey
   }
 
-  // Kino Kadr (Staszów, sta.systembiletowy.pl) — found in the 2026-09-23
-  // nearby-towns sweep (assigned to Ostrowiec Świętokrzyski's catchment) and
-  // verified against the live site: real dated screenings through mid-October
-  // 2026, on the same visual9 skin as Kawiarnia/Centrum 3D/Regis above. Its own
-  // fixture directory (not the shared 08-06-2026 corpus the other visual9
-  // venues replay), captured live 2026-09-23.
-  "SystemBiletowyClient (visual9 skin)" should "parse Kino Kadr Staszów (sta.systembiletowy.pl)" in {
-    val movies = new SystemBiletowyClient(
-      new FakeHttpFetch("kino-kadr-staszow"), "https://sta.systembiletowy.pl", KinoKadrStaszow,
-      titles = titleNormalizer).fetch()
-    movies should not be empty
-    movies.map(_.cinema).toSet shouldBe Set(KinoKadrStaszow)
-    val film = movies.find(_.movie.title.toLowerCase.contains("psi patrol")).value
-    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 9, 25, 15, 40))
-    film.showtimes.flatMap(_.bookingUrl).head should include("kup-bilet")
+  it should "keep a screening's wall-clock time across the CEST→CET switch" in {
+    // "2026-10-29T21:00:00+01:00" on the Mikro feed.
+    client("https://bilety.kinomikro.pl", KinoMikro, institution = Some("Kino Mikro")).fetch()
+      .flatMap(_.showtimes).map(_.dateTime) should contain(LocalDateTime.of(2026, 10, 29, 21, 0))
   }
 
-  it should "carry the stripped language onto each showing as a format badge, merging the editions" in {
-    // The version tag was already stripped from the title; now it's also surfaced
-    // as a per-screening format, so the dubbed + subtitled showings share one row
-    // AND keep their language.
-    val html =
-      """<div class="event-item" data-date="2026-07-02" data-time="18:00">
-        |<h3 class="event-title">Toy Story 5 - dubbing</h3><a href="/kup-bilet/1">buy</a></div>
-        |<div class="event-item" data-date="2026-07-02" data-time="20:00">
-        |<h3 class="event-title">Toy Story 5 - napisy</h3><a href="/kup-bilet/2">buy</a></div>""".stripMargin
-    val movies = SystemBiletowyClient.parse(html, KinoKawiarnia, "https://kawiarnia.systembiletowy.pl", titleNormalizer)
-    movies should have size 1
-    movies.head.movie.title.toLowerCase        should include("toy story 5")
-    movies.head.showtimes.map(_.format).toSet shouldBe Set(List("DUB"), List("NAP"))
+  it should "parse the director out of the event description, stopping at the next label" in {
+    val mikro = client("https://bilety.kinomikro.pl", KinoMikro, institution = Some("Kino Mikro")).fetch()
+    // `Reżyseria: François Ozon  Występują: Benjamin Voisin, …`
+    mikro.find(_.movie.title == "Obcy").value.director shouldBe Seq("François Ozon")
+    // `Reżyseria: Louis Malle  Muzyka: Miles Davis  Scenariusz: …`
+    mikro.find(_.movie.title == "Windą na szafot").value.director shouldBe Seq("Louis Malle")
+    // `Reżyseria: Sam Raimi | Produkcja: USA, 1987 | …`
+    mikro.find(_.movie.title == "Martwe zło 2").value.director shouldBe Seq("Sam Raimi")
   }
 
-  // ── BCKino (Bytom) — visual9 skin, but the venue also sells theatre/
-  // workshops/concerts through the same listing, tagged by a `data-group`
-  // attribute per event ("BCKino" for films). `filmGroups` keeps only those and
-  // peels the "BCKino – " title prefix the listing glues on. ──────────────────
-  private val bck =
-    new SystemBiletowyClient(new FakeHttpFetch("bck-bytom"), "https://bck.systembiletowy.pl", KinoBCKBytom,
-      titles = titleNormalizer, filmGroups = Set("BCKino")).fetch()
-
-  "SystemBiletowyClient (filmGroups)" should "keep only the events in the given data-group, stripping its title prefix" in {
-    bck should not be empty
-    bck.map(_.cinema).toSet shouldBe Set(KinoBCKBytom)
-    val film = bck.find(_.movie.title.toLowerCase.contains("kandydaci")).value
-    film.movie.title.toLowerCase should not include "bckino"
-    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 9, 23, 18, 0))
+  // Director layouts not showing in the recorded weeks, through the public parser.
+  private def directorOf(description: String): Seq[String] = {
+    val json =
+      s"""{"repertoires":{"1":{"id":1,"title":"Probe","date":"2026-10-15T18:00:00+02:00",
+         |"event":{"description":${JsString(description)}}}}}""".stripMargin
+    SystemBiletowyClient.parse(json, KinoMikro, "https://x.example", titleNormalizer).head.director
   }
 
-  it should "drop the venue's non-film events (workshops, book club, concerts, author talks)" in {
-    // "BAŚKA tworzy: Słoik mocy" (data-group="Warsztaty") and the reading-club
-    // "BECEK CZYTA" events carry no film-vocabulary the national classifier
-    // would catch — only the data-group filter keeps them out.
-    bck.map(_.movie.title.toLowerCase).exists(_.contains("baśka")) shouldBe false
-    bck should have size 8   // the 8 events tagged data-group="BCKino" in the fixture
+  "SystemBiletowyClient.parse" should "read a no-colon director terminated by the next label" in {
+    directorOf("<div>Reżyseria George Sluizer</div><div>Obsada Bernard-Pierre Donnadieu</div>") shouldBe
+      Seq("George Sluizer")
   }
 
-  // ── Kino Orzeł (Ustrzyki Dolne) — the "repertoire-once" skin: one
-  // div.repertoire-once.row per screening, with a "-Film"/"- Film" boilerplate
-  // word ahead of the format tag. ─────────────────────────────────────────────
-  private val orzel =
-    new SystemBiletowyClient(new FakeHttpFetch("kino-orzel-ustrzyki"), "https://udk.systembiletowy.pl", KinoOrzelUstrzyki,
-      titles = titleNormalizer).fetch()
-
-  "SystemBiletowyClient (repertoire-once skin)" should "parse the Ustrzyki Dolne instance, stripping the '-Film' boilerplate" in {
-    orzel should not be empty
-    orzel.map(_.cinema).toSet shouldBe Set(KinoOrzelUstrzyki)
-    val film = orzel.find(_.movie.title.toLowerCase.contains("mistyczka")).value
-    film.movie.title.toLowerCase should not include "film"
-    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 10, 4, 19, 0))
-    film.showtimes.flatMap(_.bookingUrl).head should include("repertoire.html?id=")
-  }
-
-  it should "peel the dubbing/2D format tags off a '- Film' suffixed title into a format badge" in {
-    val film = orzel.find(_.movie.title.toLowerCase.contains("podręcznik")).value
-    film.showtimes.map(_.format) should contain(List("2D", "DUB"))
-    // 03.10 dubbed screening + the same film's 02.10 screening merge onto one row.
-    film.showtimes.map(_.dateTime) should contain allOf (
-      LocalDateTime.of(2026, 10, 2, 17, 0), LocalDateTime.of(2026, 10, 3, 17, 0)
-    )
-  }
-
-  // ── Bieszczadzki Dom Kultury (Lesko, bdk.systembiletowy.pl) — found in the
-  // 2026-09-23 nearby-towns sweep (assigned to Przemyśl's catchment) and
-  // verified against the live site: real dated screenings through end of
-  // October 2026, on the same visual9 skin as Kawiarnia/Centrum 3D/Regis
-  // above. Its own fixture directory, captured live 2026-09-23. ─────────────
-  "SystemBiletowyClient (visual9 skin)" should "parse Bieszczadzki Dom Kultury Lesko (bdk.systembiletowy.pl)" in {
-    val movies = new SystemBiletowyClient(
-      new FakeHttpFetch("bdk-systembiletowy"), "https://bdk.systembiletowy.pl", KinoBieszczadzkiDK,
-      titles = titleNormalizer).fetch()
-    movies should not be empty
-    movies.map(_.cinema).toSet shouldBe Set(KinoBieszczadzkiDK)
-    val film = movies.find(_.movie.title.toLowerCase.contains("tony")).value
-    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 9, 25, 18, 30))
-    film.showtimes.flatMap(_.bookingUrl).head should include("kup-bilet")
-  }
-
-  it should "carry the NAP/2D format badge for Bieszczadzki Dom Kultury's subtitled screenings" in {
-    val movies = new SystemBiletowyClient(
-      new FakeHttpFetch("bdk-systembiletowy"), "https://bdk.systembiletowy.pl", KinoBieszczadzkiDK,
-      titles = titleNormalizer).fetch()
-    val film = movies.find(_.movie.title.toLowerCase.contains("obcy")).value
-    film.showtimes.map(_.format).toSet shouldBe Set(List("2D", "NAP"))
-  }
-  // ── Kino 1410 (Toruń) — same "repertoire-once" skin as Kino Orzeł, white-
-  // labeled at kht.systembiletowy.pl. Its own site (kino1410.pl) sells almost
-  // entirely "event cinema" broadcasts (André Rieu, Met Opera) with the odd
-  // real film/classic-restoration screening mixed in; no per-event category
-  // marker exists on this portal (`cat-` is always empty), so the ordinary
-  // OnlyMovieEventsFilter title classifier does the filtering, same as every
-  // other venue. 2026-09-23 nearby-towns sweep. ────────────────────────────
-  private val kino1410 =
-    new SystemBiletowyClient(new FakeHttpFetch("kino-1410"), "https://kht.systembiletowy.pl", Kino1410,
-      titles = titleNormalizer).fetch()
-
-  "SystemBiletowyClient (Kino 1410)" should "parse a real film screening off the Toruń instance" in {
-    kino1410 should not be empty
-    kino1410.map(_.cinema).toSet shouldBe Set(Kino1410)
-    val film = kino1410.find(_.movie.title.toLowerCase.contains("opętanie")).value
-    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 9, 25, 19, 0))
-    film.showtimes.flatMap(_.bookingUrl).head should include("repertoire.html?id=")
-  }
-  it should "keep the André Rieu broadcast (a live-event marker vetoed by the screened-broadcast rule)" in {
-    // "koncert" is an EventMarkers hit, but NonMovieEventClassifier's broadcast
-    // veto ("andre rieu") keeps it — this is screened content, not a live gig.
-    kino1410.map(_.movie.title.toLowerCase).exists(_.contains("andré rieu")) shouldBe true
-  }
-  // ── Kino Frajda (Chorzów, Starochorzowski Dom Kultury) — the visual9 skin,
-  // shared with Chorzowskie Centrum Kultury's OWN events on the same portal.
-  // filmGroups = Set("Imprezy SDK") keeps only Kino Frajda's rows (ChCK's are
-  // tagged "Imprezy ChCK"); the SDK group itself still mixes in workshops next
-  // to films, same shape as BCKino above. 2026-09-23 nearby-towns sweep. ────
-  private val frajda =
-    new SystemBiletowyClient(new FakeHttpFetch("kino-frajda"), "https://bilety.chck.pl", KinoFrajda,
-      titles = titleNormalizer, filmGroups = Set("Imprezy SDK")).fetch()
-  "SystemBiletowyClient (Kino Frajda)" should "keep only the Imprezy SDK events, dropping ChCK's" in {
-    frajda should not be empty
-    frajda.map(_.cinema).toSet shouldBe Set(KinoFrajda)
-    val film = frajda.find(_.movie.title.toLowerCase.contains("kumple z dżungli")).value
-    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 9, 24, 17, 0))
-    // "BABINIEC" (a ChCK theatre performance, data-group="Imprezy ChCK") must
-    // not leak into Kino Frajda's feed.
-    frajda.map(_.movie.title.toLowerCase).exists(_.contains("babiniec")) shouldBe false
-  }
-  it should "pin a second real screening" in {
-    val film = frajda.find(_.movie.title.toLowerCase.contains("ćma")).value
-    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 9, 25, 18, 0))
-  }
-  // ── Kino CKiB (Nowa Sarzyna, oks.systembiletowy.pl) — the SAME
-  // "repertoire-once" skin as Kino Orzeł above, but this vendor instance links
-  // its booking button as `/index.php/kup-bilet/…` instead of
-  // `repertoire.html?id=N`; the venue's own site (kino.ckib.eu) is a WordPress
-  // front end that re-publishes this portal's schedule and deep-links its
-  // booking buttons here, so scraping the portal directly is the more
-  // structured of the two. ───────────────────────────────────────────────────
-  private val ckib =
-    new SystemBiletowyClient(new FakeHttpFetch("kino-ckib-nowa-sarzyna"), "https://oks.systembiletowy.pl", KinoCKiBNowaSarzyna,
-      titles = titleNormalizer).fetch()
-
-  "SystemBiletowyClient (repertoire-once skin, kup-bilet variant)" should "parse the Nowa Sarzyna instance" in {
-    ckib should not be empty
-    ckib.map(_.cinema).toSet shouldBe Set(KinoCKiBNowaSarzyna)
-    val film = ckib.find(_.movie.title.toLowerCase.contains("dzień dziecka")).value
-    film.showtimes.map(_.dateTime) should contain allOf (
-      LocalDateTime.of(2026, 10, 2, 18, 30), LocalDateTime.of(2026, 10, 4, 18, 30)
-    )
+  it should "split co-directors and return no director when the Reżyseria marker is absent" in {
+    directorOf("<div>Reżyseria: Joel Coen, Ethan Coen</div><div>Gatunek dramat</div>") shouldBe
+      Seq("Joel Coen", "Ethan Coen")
+    directorOf("<div>Gatunek: dramat</div>") shouldBe empty
   }
 }

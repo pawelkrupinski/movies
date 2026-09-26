@@ -285,7 +285,7 @@ class CinemaScraperCatalog(
       KinoKoneckieCentrumKultury, room = Some("sala widowiskowa")),
   ))
 
-  // systembiletowy.pl installs (9), by portal base URL.
+  // systembiletowy.pl installs, by portal base URL.
   private val systemBiletowyPortals: Map[Cinema, String] = Map(
     KinoKawiarnia   -> "https://kgl.systembiletowy.pl",
     KinoKuznica     -> "https://shd.systembiletowy.pl",
@@ -301,8 +301,14 @@ class CinemaScraperCatalog(
     Kino1410        -> "https://kht.systembiletowy.pl",
     KinoCKiBNowaSarzyna -> "https://oks.systembiletowy.pl",
   )
+  // Instances that also sell someone else's events, scoped to the venue's own
+  // `location.institution_name` (see SystemBiletowyClient).
+  private val systemBiletowyInstitutions: Map[Cinema, String] = Map(
+    KinoNaszeKino -> "Nasze Kino",   // Oświęcim's culture centre sells its concerts on the same instance
+  )
   private def systemBiletowy(cinema: Cinema): SystemBiletowyClient =
-    new SystemBiletowyClient(http, systemBiletowyPortals(cinema), cinema, titles = titles)
+    new SystemBiletowyClient(http, systemBiletowyPortals(cinema), cinema, titles = titles,
+      institution = systemBiletowyInstitutions.get(cinema))
 
   // Venues on their own `<venue>.bilety24.pl` subdomain (7) — as opposed to the
   // organiser listings on bilety24.pl itself that `bilety24` above builds.
@@ -397,8 +403,8 @@ class CinemaScraperCatalog(
     cinemaCity("1076", CinemaCityKazimierz),
     cinemaCity("1064", CinemaCityZakopianka),
     multikino("0005", MultikinoKrakow),
-    new KinoMikroClient(http, "Kino Mikro", KinoMikro),
-    new KinoMikroClient(http, "Mikro Bronowice", MikroBronowice),
+    new SystemBiletowyClient(http, "https://bilety.kinomikro.pl", KinoMikro, titles = titles, institution = Some("Kino Mikro")),
+    new SystemBiletowyClient(http, "https://bilety.kinomikro.pl", MikroBronowice, titles = titles, institution = Some("Mikro Bronowice")),
     new KinoSfinksClient(http, KinoSfinks),
     new KinoPodBaranamiClient(http, KinoPodBaranami, today),
     new KinoKijowClient(http, KinoKijow, today, titles = titles),
