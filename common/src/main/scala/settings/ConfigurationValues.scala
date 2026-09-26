@@ -192,6 +192,12 @@ final case class IdentityShadowOutput(value: Path) extends AnyVal
 /** `KINOWO_IDENTITY_SEED_FILMS` — today's films as listing-key sets, the ID-seeding review's previous assignment. */
 final case class IdentitySeedFilms(value: Path) extends AnyVal
 final case class IdentityShadowPermutations(value: Int) extends AnyVal
+/** `KINOWO_IDENTITY_PIPELINE_CACHE` — where the identity shadow run keeps each corpus's booted
+ *  pipeline answers, so resolver variants measure against one boot. */
+final case class IdentityPipelineCache(value: Path) extends AnyVal
+/** `KINOWO_IDENTITY_ROBUSTNESS=off` — the identity shadow run skips its re-resolving robustness
+ *  measures (arrival orders, outage, perturbation). */
+final case class IdentityShadowRobustness(value: Boolean) extends AnyVal
 /** `KINOWO_IDENTITY_RECORD_CHECK` — the country whose recording pass the identity gate checks. */
 final case class IdentityRecordCheck(value: models.Country) extends AnyVal
 /** `CDP_BROWSER_BIN` — the browser the page tests drive over CDP. */

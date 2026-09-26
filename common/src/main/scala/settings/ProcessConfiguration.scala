@@ -336,6 +336,13 @@ final class ProcessConfiguration(val env: Env) {
    *  in (the hard clusters always take 21). */
   def identityShadowPermutations: IdentityShadowPermutations =
     IdentityShadowPermutations(text("KINOWO_IDENTITY_PERMUTATIONS").flatMap(_.toIntOption).getOrElse(3))
+  /** `KINOWO_IDENTITY_PIPELINE_CACHE` — a directory of booted pipeline answers per corpus: read
+   *  when a corpus's file is there, written after a boot when it is not. */
+  def identityPipelineCache: Option[IdentityPipelineCache] =
+    text("KINOWO_IDENTITY_PIPELINE_CACHE").map(dir => IdentityPipelineCache(Path.of(dir)))
+  /** `KINOWO_IDENTITY_ROBUSTNESS=off` — skip the robustness measures that resolve a corpus again. */
+  def identityShadowRobustness: IdentityShadowRobustness =
+    IdentityShadowRobustness(!text("KINOWO_IDENTITY_ROBUSTNESS").contains("off"))
   /** `KINOWO_IDENTITY_RECORD_CHECK` — the country whose recording pass the identity gate checks
    *  against a scratch fixture root. */
   def identityRecordCheck: Option[IdentityRecordCheck] =

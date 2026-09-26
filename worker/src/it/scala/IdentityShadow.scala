@@ -120,6 +120,42 @@ object IdentityShadow {
     }.sortBy(_.key)
   }
 
+  /** One corpus's booted pipeline, as the resolver side reads it: its films (without their slots),
+   *  each listing's film, and what the boot cost. Kept on disk (`KINOWO_IDENTITY_PIPELINE_CACHE`)
+   *  so several resolver builds measure against ONE boot of today's pipeline. */
+  final case class BootedPipeline(films: Seq[PipelineFilm], filmOf: Map[ListingKey, Int], seconds: Double, requests: Long,
+                                  unanswerable: Long)
+
+  object BootedPipeline {
+    import play.api.libs.json._
+    private def filmJson(f: IdentityMeasures.Film): JsObject = Json.obj("title" -> f.title, "originalTitle" -> f.originalTitle,
+      "year" -> f.year, "runtime" -> f.runtime, "directors" -> f.directors)
+    private def filmFrom(js: JsValue): IdentityMeasures.Film = IdentityMeasures.Film((js \ "title").as[String],
+      (js \ "originalTitle").asOpt[String], Nil, (js \ "year").asOpt[Int], (js \ "runtime").asOpt[Int], (js \ "directors").asOpt[Seq[String]], None)
+
+    /** Keys by their rendered form: the listing keys a corpus produces render uniquely. */
+    def write(path: Path, b: BootedPipeline): Unit = {
+      val js = Json.obj(
+        "films" -> b.films.map(f => Json.obj("key" -> f.key, "tmdbId" -> f.tmdbId, "film" -> f.film.map(filmJson))),
+        "filmOf" -> JsObject(b.filmOf.toSeq.map { case (k, i) => k.toString -> JsNumber(i) }),
+        "seconds" -> b.seconds, "requests" -> b.requests, "unanswerable" -> b.unanswerable)
+      Files.createDirectories(path.getParent)
+      val out = new java.util.zip.GZIPOutputStream(Files.newOutputStream(path))
+      try out.write(Json.stringify(js).getBytes(java.nio.charset.StandardCharsets.UTF_8)) finally out.close()
+    }
+
+    def read(path: Path, listings: Seq[Listing]): BootedPipeline = {
+      val in = new java.util.zip.GZIPInputStream(Files.newInputStream(path))
+      val js = try Json.parse(in) finally in.close()
+      val byName = listings.map(l => l.key.toString -> l.key).toMap
+      val filmOf = (js \ "filmOf").as[JsObject].value.toMap.map { case (k, i) =>
+        byName.getOrElse(k, throw new IllegalStateException(s"$path names a listing the corpus does not list: $k")) -> i.as[Int] }
+      BootedPipeline((js \ "films").as[Seq[JsValue]].map(f =>
+          PipelineFilm((f \ "key").as[String], (f \ "tmdbId").asOpt[Int], (f \ "film").asOpt[JsValue].filter(_ != JsNull).map(filmFrom), Nil)),
+        filmOf, (js \ "seconds").as[Double], (js \ "requests").as[Long], (js \ "unanswerable").as[Long])
+    }
+  }
+
   /** Each listing's pipeline film (`PipelineFilms`, the rule the production shadow diff uses). */
   def pipelineFilmOf(listings: Seq[Listing], films: Seq[PipelineFilm], normalizer: TitleNormalizer): Map[ListingKey, Int] =
     PipelineFilms.assign(listings, films.zipWithIndex.map { case (f, i) => i -> f.slots }, normalizer)

@@ -58,6 +58,9 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     hardClusters(configuration.hardClusterCountries.map(_.value.map(_.code))) ++
       configuration.identityCorpusDirectory.toSeq.flatMap(d => IdentityShadow.full(configuration.identityFullCorpora.value, d.value, fixtureRoot))
   private val permutations = configuration.identityShadowPermutations.value
+  private val pipelineCache = configuration.identityPipelineCache
+  /** Off for a resolver-variant run: the measures below that resolve the corpus again. */
+  private val robustness = configuration.identityShadowRobustness.value
 
   /** One corpus's measurements, for the summary table. */
   private final case class Row(label: String, listings: Int, nodes: Int, families: Int,
@@ -79,14 +82,23 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     "The shadow resolver" should s"hold the phase-2 gate and be measured against the pipeline on ${c.label}" in {
       val report = new Report(out.resolve(s"${c.label}-report.txt"))
       val w = wiring(mongoTarget, c, storages, fixtureRoot, configuration.env)
-      val missesBeforeBoot = c.misses()
-      val (films, bootSeconds) = timed(bootPipeline(w))
-      val pipelineRequests = c.fetch.requests.get()
       val listings = listingsOf(w, c.normalizer)
-      val pipelineOf = pipelineFilmOf(listings, films, c.normalizer)
+      // Today's pipeline, booted once per corpus: read from the cache when a run already booted it.
+      val cached = pipelineCache.map(_.value.resolve(s"${c.label}.json.gz"))
+      val earlier = cached.filter(Files.isRegularFile(_))
+      val booted = earlier.fold {
+        val missesBeforeBoot = c.misses()
+        val (films, seconds) = timed(bootPipeline(w))
+        val b = BootedPipeline(films, pipelineFilmOf(listings, films, c.normalizer), seconds, c.fetch.requests.get(),
+          (c.misses() - missesBeforeBoot).toLong)
+        cached.foreach(BootedPipeline.write(_, b))
+        b
+      }(BootedPipeline.read(_, listings))
+      val (films, pipelineOf, bootSeconds, pipelineRequests) = (booted.films, booted.filmOf, booted.seconds, booted.requests)
       report.line(f"[${c.label}] ${listings.size} listings at ${listings.map(_.venue).distinct.size} venues; pipeline: ${films.size} films " +
         f"(${films.count(_.tmdbId.isDefined)} with a tmdbId) in $bootSeconds%.0fs, $pipelineRequests HTTP requests, " +
-        s"${c.misses() - missesBeforeBoot} unanswerable; ${listings.count(l => !pipelineOf.contains(l.key))} listings on no pipeline film")
+        s"${booted.unanswerable} unanswerable; ${listings.count(l => !pipelineOf.contains(l.key))} listings on no pipeline film" +
+        earlier.fold("")(p => s" (booted earlier: $p)"))
 
       // ── the resolver ─────────────────────────────────────────────────────────────────
       val source = new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language,
@@ -270,7 +282,7 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       // ── determinism: permutations and split arrivals ──────────────────────────────────
       def signature(r: Resolution) = r.decisions.map(d => (d.listings, d.film, math.round(d.confidence * 1e9))).toSet
       val reference = signature(resolution)
-      val n = if (c.isHardCluster) 21 else permutations
+      val n = if (!robustness) 0 else if (c.isHardCluster) 21 else permutations
       val variants = (1 to n).count { s =>
         val rnd = new Random(s.toLong)
         val shuffled = rnd.shuffle(listings)
@@ -280,7 +292,7 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       report.line(s"[${c.label}] determinism: $variants of $n presentations (permutations and split arrivals) differ from the sorted one")
 
       // ── robustness: a 30% TMDB outage ─────────────────────────────────────────────────
-      val outaged = IdentityResolver.resolve(listings, new Outage(lookups, 0.3), c.normalizer, calibration)
+      val outaged = if (robustness) IdentityResolver.resolve(listings, new Outage(lookups, 0.3), c.normalizer, calibration) else resolution
       val (lost, moved) = listings.map(_.key).foldLeft((0, 0)) { case ((l, m), k) =>
         (decisionOf(k).film, outaged.decisionOf(k).film) match {
           case (Some(a), Some(b)) if a != b => (l, m + 1)
@@ -292,7 +304,8 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         s"${outaged.violations} cannot-linked pairs inside a cluster")
 
       // ── perturbation recovery (resolver): decorate a confidently matched listing ───────
-      val sample = new Random(7).shuffle(resolution.decisions.filter(d => d.film.isDefined && calibration.showsRatings(d.confidence))).take(40)
+      val sample = new Random(7).shuffle(resolution.decisions.filter(d => d.film.isDefined && calibration.showsRatings(d.confidence)))
+        .take(if (robustness) 40 else 0)
       val transforms: Seq[String => String] = Seq(t => s"Pokaz specjalny: $t", t => s"$t (2026)",
         _.toUpperCase(java.util.Locale.ROOT), t => tools.TextNormalization.deburr(t))
       val familyListings = listings.groupBy(l => resolution.familyOf(l.key))
