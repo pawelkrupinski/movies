@@ -296,6 +296,16 @@ final class ProcessConfiguration(val env: Env) {
   /** `KINOWO_IDENTITY_CORPUS_DIR` — recorded corpora the listing-key spec widens its sweep to. */
   def identityCorpusDirectory: Option[IdentityCorpusDirectory] =
     text("KINOWO_IDENTITY_CORPUS_DIR").map(dir => IdentityCorpusDirectory(Path.of(dir)))
+  /** `KINOWO_IDENTITY_GATE=strict` — the identity query-coverage gate fails on any gap, not just reports it. */
+  def identityGateStrict: IdentityGateStrict = IdentityGateStrict(text("KINOWO_IDENTITY_GATE").contains("strict"))
+  /** `KINOWO_IDENTITY_FULL` — comma-separated codes of the full recorded corpora the identity gate
+   *  measures besides the hard clusters; codes naming no country are dropped. */
+  def identityFullCorpora: IdentityFullCorpora =
+    IdentityFullCorpora(text("KINOWO_IDENTITY_FULL").toSeq.flatMap(_.split(",")).map(_.trim.toLowerCase).flatMap(Country.byCode).toSet)
+  /** `KINOWO_IDENTITY_RECORD_CHECK` — the country whose recording pass the identity gate checks
+   *  against a scratch fixture root. */
+  def identityRecordCheck: Option[IdentityRecordCheck] =
+    text("KINOWO_IDENTITY_RECORD_CHECK").map(_.trim.toLowerCase).flatMap(Country.byCode).map(IdentityRecordCheck(_))
 
   /** `CDP_BROWSER_BIN` — the Chrome/Edge binary the page tests drive, over the usual install paths. */
   def cdpBrowserBinary: Option[CdpBrowserBinary] = fact("CDP_BROWSER_BIN").map(bin => CdpBrowserBinary(Path.of(bin)))

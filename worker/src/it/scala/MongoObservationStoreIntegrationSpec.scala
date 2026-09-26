@@ -5,24 +5,19 @@ import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import services.TtlIndexMismatches
 import services.observations.{MongoObservationBackend, ObservationStore, ObservationStoreBehaviour}
-import tools.{Env, IntegrationCorpusDatabase, MutableClock}
+import tools.{IntegrationCorpusDatabase, IntegrationMongoSuite, MutableClock}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
 /** The observation store's rules over the Mongo backend — the same cases `ObservationStoreSpec`
  *  runs in memory, against the shadow collections' real codecs, indexes and queries. */
-class MongoObservationStoreIntegrationSpec extends ObservationStoreBehaviour with BeforeAndAfterAll {
-
-  private val configuration = _root_.settings.ProcessConfiguration.resolve()
-  private val target        = tools.IntegrationMongoTarget.from(configuration)
-  assume(target.isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway(configuration)
+class MongoObservationStoreIntegrationSpec extends ObservationStoreBehaviour with BeforeAndAfterAll with IntegrationMongoSuite {
 
   private val client = MongoClient(MongoClientSettings.builder()
-    .applyConnectionString(new ConnectionString(Env.fromProcess().get("MONGODB_URI").get))
+    .applyConnectionString(new ConnectionString(mongoTarget.uri.value))
     .codecRegistry(MongoClient.DEFAULT_CODEC_REGISTRY).build())
-  private val database: MongoDatabase = client.getDatabase(IntegrationCorpusDatabase.named(target.get, "observations"))
+  private val database: MongoDatabase = client.getDatabase(IntegrationCorpusDatabase.named(mongoTarget, "observations"))
   private val mismatches = new TtlIndexMismatches
 
   protected def newStore(clock: MutableClock): ObservationStore = {

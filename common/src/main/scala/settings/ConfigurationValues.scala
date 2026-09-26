@@ -146,6 +146,12 @@ final case class HardClusterCountries(value: Set[models.Country]) extends AnyVal
 final case class HardClusterDump(value: Boolean) extends AnyVal
 /** `KINOWO_IDENTITY_CORPUS_DIR` — recorded corpora the listing-key spec sweeps. */
 final case class IdentityCorpusDirectory(value: Path) extends AnyVal
+/** `KINOWO_IDENTITY_GATE=strict` — the identity query-coverage gate fails on any gap. */
+final case class IdentityGateStrict(value: Boolean) extends AnyVal
+/** `KINOWO_IDENTITY_FULL` — the full recorded corpora the identity gate measures. */
+final case class IdentityFullCorpora(value: Set[models.Country]) extends AnyVal
+/** `KINOWO_IDENTITY_RECORD_CHECK` — the country whose recording pass the identity gate checks. */
+final case class IdentityRecordCheck(value: models.Country) extends AnyVal
 /** `CDP_BROWSER_BIN` — the browser the page tests drive over CDP. */
 final case class CdpBrowserBinary(value: Path) extends AnyVal
 /** `KINOWO_OG_BASE` — the origin the share-card generator screenshots. */

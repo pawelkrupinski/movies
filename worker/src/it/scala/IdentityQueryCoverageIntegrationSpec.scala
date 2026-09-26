@@ -8,7 +8,7 @@ import services.movies.TitleNormalizer
 import services.scrapes.ArchivedScrape
 import tools._
 
-import java.nio.file.{Files, Paths}
+import java.nio.file.Files
 import scala.collection.mutable
 import scala.util.Try
 
@@ -29,16 +29,10 @@ import scala.util.Try
  * -f identity-lookups=true`), not by a code change — the hermetic legs that replay that recording
  * with the sweep on are where CI enforces it.
  */
-class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with IntegrationMongoSuite {
 
-  private val env           = Env.fromProcess()
-  private val configuration = _root_.settings.ProcessConfiguration.resolve()
-  private val mongo         = IntegrationMongoTarget.from(configuration)
-  assume(mongo.isDefined, "MONGODB_URI not set")
-  IntegrationMongo.requireThrowaway(configuration)
-  private val fixtureRoot   = configuration.fixtureRoot
-
-  private val strict   = env.get("KINOWO_IDENTITY_GATE").contains("strict")
+  private val fixtureRoot = configuration.fixtureRoot
+  private val strict      = configuration.identityGateStrict.value
   private val storages = mutable.ListBuffer.empty[ConvergenceStorage]
 
   override def afterAll(): Unit = {
@@ -58,9 +52,9 @@ class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers wit
     }
 
   private val full: Seq[Corpus] = {
-    val wanted = env.get("KINOWO_IDENTITY_FULL").toSeq.flatMap(_.split(",")).map(_.trim.toLowerCase).filter(_.nonEmpty)
-    val dir    = env.get("KINOWO_IDENTITY_CORPUS_DIR").map(Paths.get(_))
-    Country.all.filter(c => wanted.contains(c.code)).flatMap { c =>
+    val wanted = configuration.identityFullCorpora.value
+    val dir    = configuration.identityCorpusDirectory.map(_.value)
+    Country.all.filter(wanted).flatMap { c =>
       dir.map(_.resolve(s"cinema-scrapes-${c.code}.json.gz")).filter(Files.exists(_)).map { path =>
         Corpus(s"full-${c.code}", c, CorpusFixture.readFrom(path), () => {
           val missing = new MissingFixtures
@@ -83,7 +77,7 @@ class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers wit
   }
 
   private def measure(corpus: Corpus, suffix: String = ""): IdentityQueryCoverage.Coverage = {
-    val storage = ConvergenceStorage.mongo(mongo.get, s"idq-${corpus.label}$suffix", TitleNormalizer.forCountry(corpus.country))
+    val storage = ConvergenceStorage.mongo(mongoTarget, s"idq-${corpus.label}$suffix", TitleNormalizer.forCountry(corpus.country))
     storages.synchronized(storages += storage)
     val (fetch, missed)     = corpus.recording()
     val (coverage, summary) = IdentityQueryCoverage.measure(corpus.label, corpus.country, storage, corpus.rows, fetch, missed)
@@ -113,9 +107,9 @@ class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers wit
    * copy (`cp -Rc` clones a tree for free on APFS).
    */
   "a recording pass" should "ask the service every request the recording lacks and none it holds, after which the gate is met" in {
-    val code = env.get("KINOWO_IDENTITY_RECORD_CHECK").map(_.trim.toLowerCase).filter(_.nonEmpty)
-    assume(code.isDefined, "KINOWO_IDENTITY_RECORD_CHECK not set")
-    val corpus = full.find(_.country.code == code.get).getOrElse(fail(s"no full corpus for ${code.get} (KINOWO_IDENTITY_FULL)"))
+    val check = configuration.identityRecordCheck
+    assume(check.isDefined, "KINOWO_IDENTITY_RECORD_CHECK not set")
+    val corpus = full.find(_.country == check.get.value).getOrElse(fail(s"no full corpus for ${check.get.value.code} (KINOWO_IDENTITY_FULL)"))
     val before = measure(corpus, "-before")
 
     val asked = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
@@ -130,7 +124,7 @@ class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers wit
       override def post(url: String, body: String, contentType: String): String = refuse(url, Some(body))
     }
     val country = corpus.country
-    val storage = ConvergenceStorage.mongo(mongo.get, s"idq-${corpus.label}-record", TitleNormalizer.forCountry(country))
+    val storage = ConvergenceStorage.mongo(mongoTarget, s"idq-${corpus.label}-record", TitleNormalizer.forCountry(country))
     storages.synchronized(storages += storage)
     CorpusFixture.seedInto(storage.archive, corpus.rows)
     val cache = new EnrichmentCache(new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(fixtureRoot, s"enrichment-${country.code}")),
