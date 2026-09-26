@@ -19,20 +19,22 @@ class ConcurrentCandidateProbeSpec extends AnyFlatSpec with Matchers {
     ConcurrentCandidateProbe.firstMatch("t", Seq(1, 2, 3))(_ => None) shouldBe None
   }
 
-  // The whole point: N candidates run CONCURRENTLY, so N probes each blocking
-  // for `delay` complete in about one `delay`, not N of them summed.
+  // The whole point: N candidates run CONCURRENTLY. Each probe arrives at an
+  // N-party latch and waits for the others there, so every probe gets through
+  // only if all N are in flight at once; run one at a time, the first would
+  // stall on the latch until the timeout. Structural, so no wall-clock
+  // ceiling for a loaded CI machine to blow (the old "< 300ms" check measured
+  // 1084ms mid-testUnit on 2026-09-26 and failed while the code was fine).
   it should "run every candidate's probe concurrently rather than one at a time" in {
-    val delay = 150
     val candidates = 1 to 4
-    val start = System.nanoTime() / 1000000
-    ConcurrentCandidateProbe.firstMatch("t", candidates.toSeq) { c =>
-      Thread.sleep(delay.toLong)
+    val allInFlight = new java.util.concurrent.CountDownLatch(candidates.size)
+    val metAll = new java.util.concurrent.atomic.AtomicInteger(0)
+    ConcurrentCandidateProbe.firstMatch("t", candidates.toSeq) { _ =>
+      allInFlight.countDown()
+      if (allInFlight.await(10, java.util.concurrent.TimeUnit.SECONDS)) metAll.incrementAndGet()
       None
     }
-    val elapsed = System.nanoTime() / 1000000 - start
-    // Sequential would take ~4*150=600ms; concurrent should land near one
-    // delay. Generous ceiling to absorb scheduling jitter in CI.
-    elapsed should be < (delay * candidates.size / 2).toLong
+    metAll.get shouldBe candidates.size
   }
 
   // The correctness guarantee ConcurrentCandidateProbe exists for: a candidate
