@@ -100,6 +100,12 @@ class TmdbClient(
     parseSearchResults(httpGet(url, auth))
   }
 
+  /** Every result of ONE title search, in TMDB's order — year-scoped when a year is given. The
+   *  identity resolver's candidate lookup (`services.identity.TmdbIdentityLookups`), which scores
+   *  every result itself rather than asking this client to pick one. */
+  def search(title: String, year: Option[Int]): Seq[TmdbClient.SearchResult] =
+    authHeader.map(searchOnce(title, year, _)).getOrElse(Nil)
+
   /** Resolve ONLY when the title search is unambiguous — exactly one result.
    *  Used when the title is the only signal we have (no year / director /
    *  original-title hint): with several same-title films we'd otherwise fall to

@@ -302,6 +302,14 @@ final class ProcessConfiguration(val env: Env) {
    *  measures besides the hard clusters; codes naming no country are dropped. */
   def identityFullCorpora: IdentityFullCorpora =
     IdentityFullCorpora(text("KINOWO_IDENTITY_FULL").toSeq.flatMap(_.split(",")).map(_.trim.toLowerCase).flatMap(Country.byCode).toSet)
+  /** `KINOWO_IDENTITY_OUT` — where the identity shadow run writes its reports and calibration
+   *  dataset, else `target/identity-shadow`. */
+  def identityShadowOutput: IdentityShadowOutput =
+    IdentityShadowOutput(Path.of(text("KINOWO_IDENTITY_OUT").getOrElse("target/identity-shadow")))
+  /** `KINOWO_IDENTITY_PERMUTATIONS` — arrival orders the identity shadow run replays a FULL corpus
+   *  in (the hard clusters always take 21). */
+  def identityShadowPermutations: IdentityShadowPermutations =
+    IdentityShadowPermutations(text("KINOWO_IDENTITY_PERMUTATIONS").flatMap(_.toIntOption).getOrElse(3))
   /** `KINOWO_IDENTITY_RECORD_CHECK` — the country whose recording pass the identity gate checks
    *  against a scratch fixture root. */
   def identityRecordCheck: Option[IdentityRecordCheck] =
