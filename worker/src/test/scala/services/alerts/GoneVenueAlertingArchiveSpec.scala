@@ -26,6 +26,10 @@ class GoneVenueAlertingArchiveSpec extends AnyFlatSpec with Matchers {
         listingComplete = true, films = Seq.empty, error = Some(error)))
       run += 1
     }
+    /** A retry of the last run, a minute after it — the reaper's immediate retries. */
+    def retry(cinema: Cinema = KinoMuza): Unit =
+      archive.record(ScrapeAttempt(cinema, Cinema.cityOf(cinema), Start.plusSeconds((run - 1) * 36000L + 60),
+        listingComplete = true, films = Seq.empty, error = Some(Gone)))
     def emptyRun(cinema: Cinema = KinoMuza): Unit = {
       archive.record(ScrapeAttempt(cinema, Cinema.cityOf(cinema), Start.plusSeconds(run * 36000L),
         listingComplete = true, films = Seq.empty))
@@ -45,6 +49,15 @@ class GoneVenueAlertingArchiveSpec extends AnyFlatSpec with Matchers {
   it should "page only once per failing spell" in {
     val h = new Harness
     (1 to 6).foreach(_ => h.failRun())
+    h.pages should have size 1
+  }
+
+  // Retries of the third run keep the count AT three; paging on "is three" paged
+  // once per retry — up to three times for one venue after a restart.
+  it should "page once for the third run, not again for its retries" in {
+    val h = new Harness
+    (1 to 3).foreach(_ => h.failRun())
+    h.retry(); h.retry()
     h.pages should have size 1
   }
 

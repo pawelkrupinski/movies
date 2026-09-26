@@ -18,8 +18,9 @@ import java.time.Instant
  * aggregator outage (5xx, 403, timeouts) fails every venue it lists at once, and
  * one page per venue would bury the one that means something.
  *
- * Pages exactly when the count REACHES the threshold, so a spell pages once and a
- * later spell (after any run that fetched) can page again, with no state of its own.
+ * Pages on the attempt whose run brings the count ONTO the threshold — not on the
+ * retries of that run, which leave it there — so a spell pages once and a later
+ * spell (after any run that fetched) can page again, with no state of its own.
  */
 final class GoneVenueAlertingArchive(
   underlying:         ScrapeArchiveRepository,
@@ -35,8 +36,12 @@ final class GoneVenueAlertingArchive(
     underlying.record(ScrapeAttempt(cinema, city, scrape.at, scrape.listingComplete, scrape.films))
 
   protected def storeBarren(cinema: Cinema, city: Option[String], attempt: BarrenAttempt): Unit = {
+    val watched = attempt.outcome == ScrapeOutcome.Failed && !pagedElsewhere(cinema.displayName)
+    // The count before this attempt, so only the attempt that MOVES it onto the
+    // threshold pages: the retries of that run leave it there, and would page again.
+    val before  = if (watched) underlying.find(cinema).flatMap(_.lastBarren).flatMap(_.failedRuns) else None
     underlying.record(ScrapeAttempt(cinema, city, attempt.at, listingComplete = true, films = Nil, error = attempt.error))
-    if (attempt.outcome == ScrapeOutcome.Failed && !pagedElsewhere(cinema.displayName))
+    if (watched && !before.contains(FailedRuns))
       // Read back rather than re-derive, so the count paged on is the one the archive
       // holds. Neither step can fail the scrape: the Mongo archive's reads and the
       // Telegram send each handle their own failures.
