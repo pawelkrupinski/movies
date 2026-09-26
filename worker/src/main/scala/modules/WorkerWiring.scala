@@ -88,6 +88,18 @@ class WorkerWiring(
   lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database, clock = clock,
     ttlMismatches = workerMetrics.ttlIndexMismatches)
 
+  // ── Identity observations (shadow) ──────────────────────────────────────────
+  // The identity program's evidence store (docs/design/identity-resolver.md, "Phase 1"):
+  // when `KINOWO_OBSERVATION_CAPTURE` is on, every external lookup (`lookupFetch`), every venue
+  // detail (`detailEnrichers`) and every scraped listing (`cinemaScrapeRunner`'s archive) is
+  // also kept in this country's `obs_listings` / `obs_lookups`, which nothing serving reads.
+  // OFF by default — a staged-migration switch, the one kind of flag the design allows — and
+  // invisible either way: `ObservationCaptureEndToEndSpec` holds the corpus byte-identical
+  // with it on. Retention needs no job: expiry is a TTL on a stamp the store computes.
+  lazy val observationStore: Option[services.observations.ObservationStore] =
+    mongoConnection.database.filter(_ => configuration.observationCapture.value)
+      .map(db => services.observations.MongoObservationBackend.store(db, clock, workerMetrics.ttlIndexMismatches))
+
   // ── Filmweb (per-country) ───────────────────────────────────────────────────
   // Whether the Filmweb rating + fallback path is wired at all — a per-country
   // decision ([[Country.filmwebEnabled]]). A non-Filmweb country runs the whole

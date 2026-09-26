@@ -69,7 +69,9 @@ class CinemaScrapeRunner(
     touched
   }
 
-  private def archive(scraper: CinemaScraper, movies: Seq[CinemaMovie], error: Option[String]): Unit =
+  /** File one scrape attempt in the archive — the runner's own step, public so a harness that
+   *  drives the scrape itself (`TestWiring.runOneScrapeTick`) archives exactly as `run` does. */
+  def archive(scraper: CinemaScraper, movies: Seq[CinemaMovie], error: Option[String]): Unit =
     scrapeArchive.record(ScrapeAttempt(
       cinema          = scraper.cinema,
       city            = Cinema.cityOf(scraper.cinema),

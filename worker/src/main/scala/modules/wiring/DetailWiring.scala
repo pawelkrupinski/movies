@@ -28,8 +28,12 @@ trait DetailWiring { self: WorkerWiring =>
   // (confirmed live via /metrics: `country="pl"` recording real successes/
   // failures for a UK-only chain) even though no Polish cinema is a Cineworld
   // venue.
+  //
+  // Observed when the identity program's shadow capture is on (`observationStore`), so every
+  // path that fetches a detail — the handler, the reaper's enqueue, staging — records it.
   lazy val detailEnrichers: Seq[DetailEnricher] =
     countryScrapers.collect { case de: DetailEnricher => de }
+      .map(de => observationStore.fold(de)(new services.observations.ObservingDetailEnricher(de, _)))
 
   /** Cinemas that defer per-film detail AND whose detail supplies TMDB hints —
    *  a film one of these scrapes (with a detail filmUrl) waits for its

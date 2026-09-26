@@ -48,6 +48,9 @@ final case class MongoProbeTimeout(value: FiniteDuration) extends AnyVal
 final case class MongoMaxPoolSize(value: Int) extends AnyVal
 /** `MONGODB_OPTIONAL` — a local dev's opt-out of the required-Mongo boot check. */
 final case class MongoOptional(value: Boolean) extends AnyVal
+/** `KINOWO_OBSERVATION_CAPTURE` — the identity program's shadow observation capture
+ *  (docs/design/identity-resolver.md §9a), a staged-migration switch that is off by default. */
+final case class ObservationCapture(value: Boolean) extends AnyVal
 
 // ── Third-party credentials and ids ─────────────────────────────────────────────
 /** `TMDB_API_KEY` (a v3 key or a v4 read token). */

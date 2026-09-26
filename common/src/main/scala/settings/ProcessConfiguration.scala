@@ -152,6 +152,9 @@ final class ProcessConfiguration(val env: Env) {
   def mongoMaxPoolSize(default: MongoMaxPoolSize): MongoMaxPoolSize = MongoMaxPoolSize(count("KINOWO_MONGO_MAX_POOL_SIZE", default.value))
   def mongoOptional: MongoOptional = MongoOptional(env.flag("MONGODB_OPTIONAL"))
 
+  /** `KINOWO_OBSERVATION_CAPTURE` (`true` / `1`); off when unset. */
+  def observationCapture: ObservationCapture = ObservationCapture(env.flag("KINOWO_OBSERVATION_CAPTURE"))
+
   def backgroundConcurrency(default: BackgroundConcurrency): BackgroundConcurrency =
     BackgroundConcurrency(count("KINOWO_BG_CONCURRENCY", default.value))
   def workerPoolSize(default: WorkerPoolSize): WorkerPoolSize = WorkerPoolSize(count("KINOWO_WORKER_POOL_SIZE", default.value))

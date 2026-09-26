@@ -246,7 +246,10 @@ trait ScrapeWiring { self: WorkerWiring =>
   // ScrapeCinemaHandler. Detail enqueue is event-driven (DetailTaskEnqueuer off
   // CinemaMovieAdded) plus the DetailReaper backstop; the runner publishes
   // MovieDetailsComplete only for rows that don't await deferred detail.
-  lazy val cinemaScrapeRunner = new CinemaScrapeRunner(movieCache, eventBus, deferredDetailCinemas, scrapeArchive)
+  // The runner archives through the observing archive when the identity program's shadow
+  // capture is on (`observationStore`): every scraped listing becomes an observation too.
+  lazy val cinemaScrapeRunner = new CinemaScrapeRunner(movieCache, eventBus, deferredDetailCinemas,
+    observationStore.fold(scrapeArchive)(new services.observations.ObservingScrapeArchive(scrapeArchive, _)))
 
   /** Every cinema's last consolidated scrape, kept for replay/repopulate. One row
    *  per cinema in THIS country's database, replaced on each successful scrape. */

@@ -11,7 +11,6 @@ import tools.{FixpointPass, FixtureTestWiring, ReadModelSnapshot}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
-import java.util.Locale
 import java.time.{LocalDate, LocalDateTime}
 import scala.collection.mutable
 
@@ -98,16 +97,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
   // tmdbId/imdbId live on the worker's `MovieRecord`. Join back to it by film
   // id so this spec can still assert the full pipeline (worker merge + web
   // render) end to end.
-  // A record can project to SEVERAL cards (one per shown title — the read-model
-  // split), so map EVERY variant film id back to its (shared) source record, not
-  // just the dominant one. A dub card and its base card both join to the one record.
-  // Read the corpus from the REPOSITORY (its showtimes are authoritative — stitched from
-  // `screenings` under the read-split), NOT `movieCache.snapshot()`, whose resident records
-  // are stripped of showtime lists (index-only cache).
-  private lazy val recordByFilmId: Map[String, MovieRecord] =
-    wiring.movieRepository.findAll().flatMap { r =>
-      services.readmodel.ReadModelProjection.filmIds(r, titleNormalizer).map(_ -> r.record)
-    }.toMap
+  private lazy val recordByFilmId: Map[String, MovieRecord] = ScheduleCorpusText.recordsByFilmId(wiring)
   private def recordFor(s: FilmSchedule): Option[MovieRecord] = recordByFilmId.get(s.resolved._id)
 
   "the full enrichment pipeline" should
@@ -352,7 +342,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     // through code review before being trusted. To regenerate after a
     // legitimate change: delete the file and re-run.
     val snapshotPath = Paths.get("test/resources/fixtures/08-06-2026/expected-schedules.txt")
-    val actual = renderSchedules(schedules)
+    val actual = ScheduleCorpusText.render(schedules, recordFor)
     if (!Files.exists(snapshotPath)) {
       Files.write(snapshotPath, actual.getBytes(StandardCharsets.UTF_8))
       fail(s"Snapshot didn't exist — wrote ${snapshotPath}. Review the contents, commit, and re-run.")
@@ -430,70 +420,6 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     withClue(s"two settled documents share a tmdbId — the shape the partial unique `tmdbId_1` index exists to refuse: $tmdbIdDuplicates\n") {
       tmdbIdDuplicates shouldBe empty
     }
-  }
-
-  /** Render every FilmSchedule into a deterministic multi-line block. One
-   *  block per film, separated by blank lines; films sorted alphabetically
-   *  by display title. Each block lists every field a viewer of the `/`
-   *  card would see (title, runtime, year, poster, synopsis size, cast,
-   *  director, per-cinema deep-links) plus every enrichment value (tmdbId,
-   *  imdbId, ratings, MC/RT/FW URLs, per-cinema slot provenance) plus the
-   *  full per-(date, cinema) showtime list with room + format tokens. */
-  private def renderSchedules(schedules: Seq[FilmSchedule]): String =
-    schedules.sortBy(s => (s.movie.title.toLowerCase(Locale.ROOT), s.movie.releaseYear)).map(renderOne).mkString("\n\n")
-
-  private def renderOne(s: FilmSchedule): String = {
-    val e = recordFor(s)
-    val cinemaUrls = s.cinemaFilmUrls.sortBy(_._1.displayName)
-      .map { case (c, u) => s"${c.displayName} = $u" }
-    val scrapes = e.map(_.cinemaData.toSeq
-      .sortBy { case (c, sd) => (c.displayName, sd.title.getOrElse(""), sd.releaseYear.getOrElse(Int.MinValue)) }
-      .map { case (c, sd) =>
-        s"${c.displayName} / ${sd.title.getOrElse("—")} / ${sd.releaseYear.map(_.toString).getOrElse("—")}"
-      })
-      .getOrElse(Nil)
-    // `cinemaTitles` is the set of raw spellings each cinema reported.
-    // `displayTitle` is the picker's choice across that set — the
-    // canonical form that `MovieController.toSchedules` writes into
-    // `Movie.title` (and therefore the `=== TITLE ===` header above).
-    // Showing both makes the picker's behaviour explicit per film.
-    val cinemaTitles = e.map(_.evidence.titles.toSeq.sorted).getOrElse(Nil)
-    val showings = s.showings.sortBy(_._1).flatMap { case (date, byCinema) =>
-      byCinema.sortBy(_.cinema.displayName).map { sht =>
-        val slots = sht.showtimes.sortBy(_.dateTime).map { st =>
-          val room   = st.room.fold("")(r => s" $r")
-          val format = if (st.format.isEmpty) "" else s" ${st.format.mkString("/")}"
-          s"${st.dateTime.toLocalTime}$room$format"
-        }.mkString(" · ")
-        f"  $date  ${sht.cinema.displayName}%-28s  $slots"
-      }
-    }
-    val lines = Seq(
-      s"=== ${s.movie.title} ===",
-      s"displayTitle:      ${s.movie.title}",
-      s"cinemaTitles:      ${if (cinemaTitles.isEmpty) "—" else cinemaTitles.mkString(" | ")}",
-      s"runtimeMinutes:    ${s.movie.runtimeMinutes.map(_.toString).getOrElse("—")}",
-      s"releaseYear:       ${s.movie.releaseYear.map(_.toString).getOrElse("—")}",
-      s"countries:         ${if (s.movie.countries.isEmpty) "—" else s.movie.countries.mkString(", ")}",
-      s"posterUrl:         ${s.posterUrl.getOrElse("—")}",
-      s"synopsis.length:   ${s.synopsis.map(_.length.toString).getOrElse("—")}",
-      s"cast:              ${if (s.cast.nonEmpty) s.cast.mkString(", ") else "—"}",
-      s"director:          ${if (s.director.nonEmpty) s.director.mkString(", ") else "—"}",
-      s"tmdbId:            ${e.flatMap(_.tmdbId).map(_.toString).getOrElse("—")}",
-      s"imdbId:            ${e.flatMap(_.imdbId).getOrElse("—")}",
-      s"originalTitle:     ${e.flatMap(_.originalTitle).getOrElse("—")}",
-      s"imdbRating:        ${e.flatMap(_.imdbRating).map(_.toString).getOrElse("—")}",
-      s"metascore:         ${e.flatMap(_.metascore).map(_.toString).getOrElse("—")}",
-      s"rottenTomatoes:    ${e.flatMap(_.rottenTomatoes).map(_.toString).getOrElse("—")}",
-      s"filmwebRating:     ${e.flatMap(_.filmwebRating).map(_.toString).getOrElse("—")}",
-      s"metacriticUrl:     ${e.flatMap(_.metacriticUrl).getOrElse("—")}",
-      s"rottenTomatoesUrl: ${e.flatMap(_.rottenTomatoesUrl).getOrElse("—")}",
-      s"filmwebUrl:        ${e.flatMap(_.filmwebUrl).getOrElse("—")}"
-    ) ++
-      (if (cinemaUrls.nonEmpty) Seq("cinemaFilmUrls:") ++ cinemaUrls.map("  " + _) else Seq("cinemaFilmUrls:    —")) ++
-      (if (scrapes.nonEmpty) Seq("cinemaScrapes:") ++ scrapes.map("  " + _) else Seq("cinemaScrapes:     —")) ++
-      Seq("showings:") ++ showings
-    lines.mkString("\n")
   }
 
   // A dub variant ("Straszny film ukraiński dubbing") and its base ("Straszny

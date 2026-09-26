@@ -96,6 +96,10 @@ final class ObservationStore(
   def currentListings(): Seq[ListingObservation] =
     listings.allCurrent().filter(live(clock.instant())).flatMap(toListing)
 
+  /** Every live lookup answer. Not a read in the renewing sense: nothing consumes them here. */
+  def currentLookups(): Seq[LookupObservation] =
+    lookups.allCurrent().filter(live(clock.instant())).map(toLookup)
+
   def close(): Unit = { listings.close(); lookups.close() }
 
   private def live(now: Instant)(o: StoredObservation): Boolean = o.expireAt.isAfter(now)

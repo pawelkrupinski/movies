@@ -116,7 +116,7 @@ trait TestWiring extends WorkerWiring {
   // The fixture replay doesn't need a real key (the URL's
   // `api_key` query parameter is stripped from the fixture fingerprint via
   // `RecordingHttpFetch.stableQueryFingerprint`), so any non-empty string works.
-  override lazy val tmdbClient: TmdbClient = new TmdbClient(enrichmentFetch, apiKey = Some(settings.TmdbApiKey("test-api-key")))
+  override lazy val tmdbClient: TmdbClient = new TmdbClient(lookupFetch, apiKey = Some(settings.TmdbApiKey("test-api-key")))
 
   // Resolve TMDB INLINE in fixture replay. Production dispatches single-movie
   // resolution as a `ResolveTmdb` task (drained by the TaskWorker), but the
@@ -234,7 +234,11 @@ trait TestWiring extends WorkerWiring {
     var done    = 0
     cinemaScrapers.foreach { scraper =>
       try {
-        val touched = movieCache.recordCinemaScrape(scraper.cinema, scraper.fetch())
+        val movies  = scraper.fetch()
+        // Archived as the runner's `run` archives — which is also where the identity
+        // program's shadow capture observes each listing (`ObservationCaptureEndToEndSpec`).
+        cinemaScrapeRunner.archive(scraper, movies, error = None)
+        val touched = movieCache.recordCinemaScrape(scraper.cinema, movies)
         // `classify` marks rows that await deferred detail `detailPending` (held
         // back, no event yet) and returns the ready-now MovieDetailsComplete.
         ready ++= cinemaScrapeRunner.classify(scraper.cinema, touched)
