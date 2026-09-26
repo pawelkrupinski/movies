@@ -22,13 +22,13 @@ class MongoPinStoreIntegrationSpec extends AnyFlatSpec with Matchers with Before
 
   override protected def afterAll(): Unit = try isolated.drop() finally super.afterAll()
 
-  private val a = ListingKey.Published("Kino A", "Film | klasyka w 4k", None, Nil)
-  private val b = ListingKey.Native("Kino B", "https://b/film", "Film")
+  private val first  = ListingKey.Published("Kino A", "Film | klasyka w 4k", None, Nil)
+  private val second = ListingKey.Native("Kino B", "https://b/film", "Film")
 
   "a pin" should "be read back whole, refused a second time, and gone once removed" in {
-    val pin = pins.add(Seq(a, b), PinClaim.SameFilm, "admin@example.com", "one film").toOption.get
+    val pin = pins.add(Seq(first, second), PinClaim.SameFilm, "admin@example.com", "one film").toOption.get
     pins.all() shouldBe Seq(pin)
-    pins.add(Seq(b, a), PinClaim.SameFilm, "admin@example.com", "again").isLeft shouldBe true
+    pins.add(Seq(second, first), PinClaim.SameFilm, "admin@example.com", "again").isLeft shouldBe true
     pins.all() should have size 1
     pins.remove(pin.id) shouldBe true
     pins.all() shouldBe empty
