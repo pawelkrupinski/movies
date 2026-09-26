@@ -104,12 +104,6 @@ class TmdbClient(
     parseSearchResults(httpGet(url, auth))
   }
 
-  /** Every result of ONE title search, most popular first — year-scoped when a year is given. The
-   *  identity resolver's candidate lookup (`services.identity.TmdbIdentityLookups`), which scores
-   *  every result itself rather than asking this client to pick one. */
-  def search(title: String, year: Option[Int]): Seq[TmdbClient.SearchResult] =
-    authHeader.map(searchOnce(title, year, _)).getOrElse(Nil)
-
   /** One yearless title search in TMDB's OWN order, not re-sorted by popularity: where a film
    *  ranks in it is identity evidence (`IdentityMeasures.titleSearch`), measured exactly as the
    *  calibration measured it on recorded answers. `None` without a key; a failed request throws. */

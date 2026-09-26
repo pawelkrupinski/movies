@@ -43,7 +43,9 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, enrichers: Seq[DetailEnricher]
     }
 
   override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = query match {
-    case CandidateQuery.Title(text)    => answered(tmdb.search(text, None).map(hit))
+    case CandidateQuery.Title(text)    =>
+      // TMDB's OWN order: a film's rank in it is the `search.rank` measure, fitted on that order.
+      answered(tmdb.searchAsRanked(text).getOrElse(throw new IllegalStateException("no TMDB key")).map(hit))
     case CandidateQuery.Director(name)    =>
       // Every person the name could mean, each with what they directed — or, with no directing
       // credit, wrote (a venue may print the writer): the walk the pipeline makes, without its pick.

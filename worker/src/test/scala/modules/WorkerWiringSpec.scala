@@ -617,7 +617,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     val otherHosts = store.currentLookups().map(_.query.host).toSet
     withClue("rating / enrichment lookups observed: ")(otherHosts shouldBe empty)
 
-    attempt(wiring.tmdbClient.search("Dune", None))
+    attempt(wiring.tmdbClient.searchAsRanked("Dune"))
     attempt(wiring.detailEnrichers.head.fetchFilmDetail("dune"))
     val observed = store.currentLookups().map(_.query)
     observed.map(_.host).toSet should contain ("api.themoviedb.org")
