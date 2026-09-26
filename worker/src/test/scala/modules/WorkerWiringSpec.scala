@@ -627,17 +627,20 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.stop()
   }
 
-  it should "run after each settle tick, and persist its run" in {
+  "the identity shadow run" should "tick on its own claimed schedule, not the settle's, and persist its run" in {
     val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4), tools.Env.of("KINOWO_IDENTITY_SHADOW" -> "true")) {
       override lazy val observationStore: Option[services.observations.ObservationStore] =
         Some(services.observations.ObservationStore.inMemory(clock))
     }
-    wiring.shadowRuns.latestRun() shouldBe None
     wiring.settleTick()
+    wiring.shadowRuns.latestRun() shouldBe None
+    wiring.identityShadowSchedule.map(_.tickIfClaimed()) shouldBe Some(true)
     wiring.shadowRuns.latestRun() shouldBe defined
+    // Off, there is no schedule at all.
+    new Probe(Country.Spain, new SharedExecutionBudget(4)).identityShadowSchedule shouldBe None
   }
 
-  it should "when switched on, withhold a title-only match no venue's facts back — scored from the row alone" in {
+  "the rating gate, switched on," should "withhold a title-only match no venue's facts back — scored from the row alone" in {
     import models._
     val normalizer = services.movies.SingleCountryNormalizer.titleNormalizer
     val relay = "Samson i dalila | metropolitan opera: live in hd 2026/27"

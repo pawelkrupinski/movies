@@ -101,7 +101,7 @@ class WorkerWiring(
       .map(db => services.observations.MongoObservationBackend.store(db, clock, workerMetrics.ttlIndexMismatches))
 
   // ── Identity shadow run ─────────────────────────────────────────────────────
-  // The identity resolver over the live corpus, after each settle tick (`settleReaper`), from
+  // The identity resolver over the live corpus, on its own claimed schedule (`identityShadowSchedule`), from
   // the observations alone (docs/design/identity-resolver.md §8): `KINOWO_IDENTITY_SHADOW`, a
   // staged-migration switch, off by default. It writes only `identity_shadow_decisions` /
   // `identity_shadow_diff` and the `kinowo_worker_identity_*` gauges, and reaches no external
@@ -135,6 +135,17 @@ class WorkerWiring(
       metrics       = workerMetrics.identityShadow.forCountry(country.code),
       clock         = clock))
   }
+
+  // The shadow run's OWN schedule — not the settle's: the settle is a self-heal near-no-op, and the
+  // shadow diffs against the pipeline's films as they are when it ticks (`movieCache.snapshot()`).
+  // One claimed window per `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` (30 min), first a few minutes
+  // after boot so the hydrate has loaded the films it diffs against.
+  def identityShadowInterval: settings.IdentityShadowInterval =
+    configuration.identityShadowInterval(WorkerWiring.DefaultIdentityShadowInterval)
+  def identityShadowTick(): Unit = shadowIdentityReaper.foreach(_.tickQuietly())
+  lazy val identityShadowSchedule: Option[services.tasks.ClaimedPeriodicTask] = shadowIdentityReaper.map(_ =>
+    new services.tasks.ClaimedPeriodicTask("identity-shadow", () => identityShadowTick(), identityShadowInterval.value,
+      configuration.identityShadowInitialDelay(WorkerWiring.DefaultIdentityShadowInitialDelay).value, scheduledRunStore, clock))
 
   // ── Filmweb (per-country) ───────────────────────────────────────────────────
   // Whether the Filmweb rating + fallback path is wired at all — a per-country
@@ -303,6 +314,7 @@ class WorkerWiring(
     // are not started, and neither is staging's below.
     if (!identityCutover) { unresolvedTmdbReaper.start(); detailReaper.start() }
     settleReaper.start()
+    identityShadowSchedule.foreach(_.start())
     omdbBackfillReaper.foreach(_.start())
     shareCardReapers.foreach(_.start())
     startFacebookRescrapes()
@@ -356,6 +368,7 @@ class WorkerWiring(
     unresolvedTmdbReaper.stop()
     detailReaper.stop()
     settleReaper.stop()
+    identityShadowSchedule.foreach(_.stop())
     omdbBackfillReaper.foreach(_.stop())
     shareCardReapers.foreach(_.stop())
     stopFacebookRescrapes()
@@ -382,6 +395,14 @@ object WorkerWiring {
    *  `KINOWO_BG_CONCURRENCY` (default 4 — see `backgroundBudget`). */
   /** `KINOWO_BG_CONCURRENCY`'s compiled-in default. */
   val DefaultBackgroundConcurrency: BackgroundConcurrency = BackgroundConcurrency(4)
+
+  /** The identity shadow run's cadence: the settle's former 30 minutes, which its cost (§17: at
+   *  most seconds a tick) was measured against. */
+  val DefaultIdentityShadowInterval: settings.IdentityShadowInterval =
+    settings.IdentityShadowInterval(scala.concurrent.duration.Duration(30, "minutes"))
+  /** Long enough after boot for the synchronous hydrate to have loaded the films the diff reads. */
+  val DefaultIdentityShadowInitialDelay: settings.IdentityShadowInitialDelay =
+    settings.IdentityShadowInitialDelay(scala.concurrent.duration.Duration(5, "minutes"))
 
   /** The ONE background budget a process shares across its countries' wirings. */
   def backgroundBudgetFrom(configuration: ProcessConfiguration): ExecutionBudget =

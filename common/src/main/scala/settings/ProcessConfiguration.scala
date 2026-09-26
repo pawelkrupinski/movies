@@ -227,6 +227,10 @@ final class ProcessConfiguration(val env: Env) {
   def identityRatingGate: IdentityRatingGateEnabled = IdentityRatingGateEnabled(env.flag("KINOWO_IDENTITY_RATING_GATE"))
   /** `KINOWO_IDENTITY_SHADOW` (`1` or `true`) — the identity resolver's shadow run; off unless set. */
   def identityShadow: IdentityShadowEnabled = IdentityShadowEnabled(env.flag("KINOWO_IDENTITY_SHADOW"))
+  def identityShadowInterval(default: IdentityShadowInterval): IdentityShadowInterval =
+    IdentityShadowInterval(seconds("KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS", default.value))
+  def identityShadowInitialDelay(default: IdentityShadowInitialDelay): IdentityShadowInitialDelay =
+    IdentityShadowInitialDelay(seconds("KINOWO_IDENTITY_SHADOW_INITIAL_DELAY_SECONDS", default.value))
   /** `KINOWO_IDENTITY_CUTOVER` — the countries whose identity is decided by the resolver's projection
    *  instead of the landing / staging / settle path (docs/design/identity-resolver.md §8, phase 5):
    *  comma-separated codes, unknown ones ignored. Empty — every country on the old path — unless set. */

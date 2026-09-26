@@ -133,6 +133,11 @@ final case class IdentityRatingGateEnabled(value: Boolean) extends AnyVal
  *  a staged-migration switch, off by default, that resolves the live corpus from the observation
  *  store after each settle and writes only the shadow collections. */
 final case class IdentityShadowEnabled(value: Boolean) extends AnyVal
+/** `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` — how often the identity shadow run resolves (its own
+ *  claimed window, independent of the settle). */
+final case class IdentityShadowInterval(value: scala.concurrent.duration.FiniteDuration) extends AnyVal
+/** `KINOWO_IDENTITY_SHADOW_INITIAL_DELAY_SECONDS` — how long after boot the first shadow run waits. */
+final case class IdentityShadowInitialDelay(value: scala.concurrent.duration.FiniteDuration) extends AnyVal
 /** `KINOWO_IDENTITY_CUTOVER` — the identity phase-5 staged-migration switch: the countries whose
  *  films are the resolver's projection (docs/design/identity-resolver.md §8, "cutover, per country").
  *  Chosen once, at the worker's composition root. Empty by default. */

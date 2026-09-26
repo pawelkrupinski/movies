@@ -424,7 +424,7 @@ for the resolver's query set (§9).
   test code into `worker/src/main/scala/services/identity`. The prototype's `Listing` becomes
   `ListingKey` plus the raw row. Its `Evidence` becomes `IdentityLookupSweep.Evidence`, lifted to
   main. Its edges are drawn from `ListingConstraints`.
-- A `ShadowIdentityReaper` runs `resolve` per family, after each settle tick, over the live
+- A `ShadowIdentityReaper` runs `resolve` per family, on its own schedule (§17), over the live
   corpus and the lookup caches. It issues **no** new lookups in prod (a gap is an "unknown"
   node), writes nothing but its shadow collections, and exports gauges. *Built — see §17*: the
   collections are `identity_shadow_decisions` and `identity_shadow_diff`, and the gauges follow the
@@ -1826,8 +1826,11 @@ Still blocking dual reads:
 
 ### 17.1 What runs
 
-`ShadowIdentityReaper` (worker, `services.identity`) rides the settle tick (`ResolutionWiring.settleTick`:
-the whole-corpus settle, then the shadow run, on the same cluster-claimed 30-minute window). Each tick:
+`ShadowIdentityReaper` (worker, `services.identity`) runs on its own cluster-claimed schedule
+(`WorkerWiring.identityShadowSchedule`, a `ClaimedPeriodicTask` shared in shape with the settle's:
+every `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS`, 30 min, first 5 min after boot). It first rode the
+settle tick, which made a newly switched-on country wait for the next settle slot and coupled a
+self-heal near-no-op to it. Each tick:
 
 - **Listings**: every listing of the scrape archive's latest scrape per live venue (`Listing.corpus`,
   the same function the offline harness and the recording sweep use).

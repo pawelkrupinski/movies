@@ -2,15 +2,10 @@ package services.tasks
 
 import settings.SettleInterval
 
-import play.api.Logging
-import services.Stoppable
-import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
-import tools.DaemonExecutors
+import services.schedule.{AlwaysClaimScheduledRunStore, ScheduledRunStore}
 
 import java.time.Clock
-import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * Periodically re-asserts the cache's one-row-per-film invariant by running the
@@ -43,34 +38,7 @@ class SettleReaper(
   initialDelay: SettleReaper.InitialDelay = SettleReaper.InitialDelay(SettleReaper.DefaultInitialDelay),
   runStore:     ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:        Clock = Clock.systemUTC()
-) extends Stoppable with Logging {
-
-  private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("settle-reaper")
-
-  def start(): Unit = {
-    scheduleNext(initialDelay.value)
-    logger.info(s"SettleReaper started: whole-corpus settle once per ${interval.value.toSeconds}s.")
-  }
-
-  /** Self-rescheduling tick: settle, then schedule the next reading `interval`
-   *  afresh — so an interval flip applies on the next cycle. */
-  private def scheduleNext(delay: FiniteDuration): Unit = {
-    scheduler.schedule(new Runnable {
-      def run(): Unit = { Try(tickIfClaimed()); scheduleNext(interval.value) }
-    }, delay.toMillis, TimeUnit.MILLISECONDS)
-    ()
-  }
-
-  /** Settle only if this machine wins the current window's occurrence claim —
-   *  otherwise another machine is settling this window, so skip. Returns true when
-   *  it settled. Package-private so tests can drive it directly. */
-  private[tasks] def tickIfClaimed(): Boolean = {
-    val key = OccurrenceKey.at("settle", clock.millis(), interval.value, 0.seconds)
-    if (runStore.claim(key)) { settle(); true } else false
-  }
-
-  override def stop(): Unit = { scheduler.shutdown(); () }
-}
+) extends ClaimedPeriodicTask("settle", settle, interval.value, initialDelay.value, runStore, clock)
 
 object SettleReaper {
 
