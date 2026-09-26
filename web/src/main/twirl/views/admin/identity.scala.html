@@ -1,0 +1,134 @@
+@import controllers.IdentityAdminController.{Page, claimLabel, listingJson}
+@import services.identity.Decision
+@(page: Page)
+
+@decisionRows(decisions: Seq[Decision], id: String) = {
+  <table id="@id">
+    <thead><tr><th></th><th>Listing</th><th>Film</th><th>Confidence</th><th>Why</th></tr></thead>
+    <tbody>
+    @for(d <- decisions) {
+      <tr class="decision">
+        <td></td>
+        <td>
+          @for(k <- d.listings.toSeq.sorted) {
+            <label class="listing"><input type="checkbox" class="pick" data-listing="@listingJson(k).toString"> @k.venue — @k.rawTitle</label>
+          }
+        </td>
+        <td class="mono">@d.tmdbId.fold("unresolved")(id => s"tmdb $id")</td>
+        <td class="mono">@{f"${d.confidence}%.2f"}</td>
+        <td>
+          @for(c <- d.contradictions) { <div class="contra">@c</div> }
+          @for(e <- d.explanation) { <div class="muted">@e</div> }
+        </td>
+      </tr>
+    }
+    </tbody>
+  </table>
+  @if(decisions.isEmpty) { <div class="empty">None.</div> }
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Identity — Kinowo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font: 13px/1.4 monospace; background: #0d0d0d; color: #ccc; padding: 24px; }
+    h1 { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+    h2 { font-size: 13px; color: #fff; margin: 22px 0 8px; }
+    .sub { color: #666; font-size: 11px; margin-bottom: 12px; max-width: 760px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+      color: #666; font-weight: 600; padding: 6px 10px; border-bottom: 1px solid #1a1a1a; }
+    td { padding: 6px 10px; border-bottom: 1px solid #141414; vertical-align: top; }
+    .listing { display: block; }
+    .mono { color: #ddd; }
+    .muted, .empty { color: #666; }
+    .contra { color: #f0ad4e; }
+    #status { color: #777; font-size: 11px; margin-left: 10px; }
+    #status.err { color: #c0392b; }
+    .form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+    input, select, textarea { font: inherit; background: #000; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 3px 6px; }
+    textarea { width: 100%; max-width: 760px; height: 3.5em; }
+    button { font: inherit; cursor: pointer; background: #1c1c1c; color: #ccc; border: 1px solid #333; border-radius: 4px; padding: 3px 9px; }
+    button.unpin { color: #c97a7a; border-color: #5a2d2d; }
+  </style>
+</head>
+<body>
+  <h1>Identity</h1>
+  <div class="sub">
+    The identity resolver's latest shadow decisions that are contradicted or below the rating
+    gate's threshold, with the resolver's own reasons. Diagnostic only — nothing here needs
+    routine review. A pin is the escape hatch for a case the evidence cannot decide.
+  </div>
+  <div id="calibration" class="sub">
+    @page.calibration.fold {
+      Rating gate: no labelled shadow data, so no threshold — the gate withholds nothing.
+    } { c =>
+      Rating gate: threshold @{if (c.threshold.isInfinite) "∞" else c.threshold.toString}, calibrated on the labelled shadow diff —
+      withholds @c.gatedWrong wrong and @c.gatedCorrect right, shows @c.shownCorrect right and @c.shownWrong wrong.
+    }
+  </div>
+
+  <h2>Contradicted</h2>
+  @decisionRows(page.contradicted, "contradicted")
+
+  <h2>Below the rating threshold</h2>
+  @decisionRows(page.lowConfidence, "low-confidence")
+
+  <h2>Pins</h2>
+  <table id="pins">
+    <thead><tr><th>Claim</th><th>Listings</th><th>Author</th><th>Reason</th><th>Since</th><th></th></tr></thead>
+    <tbody>
+    @for(p <- page.pins) {
+      <tr class="pin" data-id="@p.id">
+        <td class="mono">@claimLabel(p.claim)</td>
+        <td>@for(k <- p.listings) { <div>@k.venue — @k.rawTitle</div> }</td>
+        <td>@p.author</td>
+        <td>@p.reason</td>
+        <td class="muted">@p.createdAt.toString</td>
+        <td><button class="unpin" data-id="@p.id">remove</button></td>
+      </tr>
+    }
+    </tbody>
+  </table>
+  @if(page.pins.isEmpty) { <div class="empty">No pins.</div> }
+
+  <h2>Pin the ticked listings</h2>
+  <div class="form">
+    <select id="kind">
+      <option value="is-film">are TMDB film</option>
+      <option value="same-film">are one film</option>
+      <option value="never-film">are never TMDB film</option>
+    </select>
+    <input id="tmdb" type="number" placeholder="tmdb id">
+    <input id="reason" placeholder="reason" size="40">
+    <button id="pin">Pin</button>
+    <span id="status"></span>
+  </div>
+  <textarea id="extra" placeholder='More listings, as a JSON array: [{"venue":"…","rawTitle":"…","page":"…"}]'></textarea>
+
+  <script>
+    function setStatus(msg, cls) { const s = document.getElementById("status"); s.textContent = msg; s.className = cls || ""; }
+    async function post(path, body) {
+      const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify(body) });
+      if (r.ok) { location.reload(); return; }
+      const j = await r.json().catch(() => ({}));
+      setStatus(j.error || ("failed (" + r.status + ")"), "err");
+    }
+    document.getElementById("pin").onclick = () => {
+      let listings = [...document.querySelectorAll(".pick:checked")].map(b => JSON.parse(b.dataset.listing));
+      const extra = document.getElementById("extra").value.trim();
+      if (extra) { try { listings = listings.concat(JSON.parse(extra)); } catch (e) { setStatus("the extra listings are not JSON", "err"); return; } }
+      const body = { kind: document.getElementById("kind").value, reason: document.getElementById("reason").value, listings: listings };
+      const tmdb = parseInt(document.getElementById("tmdb").value, 10);
+      if (!isNaN(tmdb)) body.tmdbId = tmdb;
+      post("@routes.IdentityAdminController.createPin()", body);
+    };
+    document.querySelectorAll(".unpin").forEach(b => b.onclick = () => post("@routes.IdentityAdminController.removePin()", { id: b.dataset.id }));
+  </script>
+</body>
+</html>

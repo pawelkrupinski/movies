@@ -1,13 +1,13 @@
 package modules.webwiring
 
-import controllers.{AdminAction, EnvConfigController, TasksController, UptimeController}
+import controllers.{AdminAction, EnvConfigController, IdentityAdminController, TasksController, UptimeController}
 import modules.Wiring
 import services.UptimeMonitor
 import services.fallback.{FallbackStore, MongoFallbackStore}
 import services.tasks.{BulkTaskResultStore, MongoBulkTaskResultStore, MongoTaskQueue, TaskQueue}
 
 /** ── Operator pages ────────────────────────────────────────────────────────
- *  What sits behind the `AdminAction` gate: /uptime, /tasks and /admin/config,
+ *  What sits behind the `AdminAction` gate: /uptime, /tasks, /admin/config and /admin/identity,
  *  and the read-only views of worker-owned state they render. */
 trait AdminWiring { self: Wiring =>
 
@@ -52,4 +52,13 @@ trait AdminWiring { self: Wiring =>
     tickInterval = processConfiguration.configRefreshInterval(
       settings.ConfigRefreshInterval(scala.concurrent.duration.Duration(30L, "seconds"))).value)
   lazy val envConfigController = new EnvConfigController(controllerComponents, adminAction, envConfigService)
+
+  // Film identity (phase 3 of docs/design/identity-resolver.md): the admin diagnostic and the
+  // emergency pins. The pins are written here and read by nothing in production yet — the
+  // resolver consumes them once it runs. `shadowDecisions` is the resolver's shadow output;
+  // until that lands the page lists no decisions.
+  lazy val identityPins = new services.identity.Pins(new services.identity.MongoPinStore(mongoConnection.database), clock)
+  lazy val shadowDecisions: services.identity.ShadowDecisions = services.identity.ShadowDecisions.none
+  lazy val identityAdminController =
+    new IdentityAdminController(controllerComponents, adminAction, userRepository, identityPins, shadowDecisions)
 }
