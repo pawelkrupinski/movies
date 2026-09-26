@@ -258,13 +258,26 @@ object IdentityMeasures {
    *  whose OWN facts back `f` — a title naming it, and its exact year or a credit of its director —
    *  other than `ownVenue`: the `venues.corroborating` count. */
   def corroboratingVenues(f: Film, group: Seq[(String, Listing)], ownVenue: String): Int =
+    (backingVenues(f, group) - ownVenue).size
+
+  /** Every venue of `group` whose own facts back `f` ([[corroboratingVenues]] before the asking
+   *  venue is taken out): one answer per title group and film, so a caller scoring every member of
+   *  a wide release can ask once. */
+  def backingVenues(f: Film, group: Seq[(String, Listing)]): Set[String] =
     group.iterator.filter { case (_, l) =>
       // The venue's title must NAME the film: a year or a director alone backs every film of that
       // year or that director, and the walk of a director's filmography turns up all of them.
       NamingRelations(titleRelation(l, f).value) && (
         l.statedYear.exists(y => f.year.contains(y)) ||
           f.directors.exists(ds => directorRelation(l.directors, ds) == Category("same_person")))
-    }.map(_._1).toSet.-(ownVenue).size
+    }.map(_._1).toSet
+
+  /** Categories whose evidence cannot weaken as the listing carries more of the other side, per
+   *  measure, strongest first: a decoration carries the film's whole title, an overlap some of its
+   *  words, `none` nothing. The calibration fits their weights under this order
+   *  (`IdentityCalibrate.inOrder`) — an ORDER, never a weight; categories it leaves out are placed by
+   *  the data alone. */
+  val EvidenceOrder: Map[String, Seq[String]] = Map("title" -> Seq("decorated", "overlap", "none"))
 
   /** Title relations that name a film: the listing's title is (a spelling of) the film's. */
   val NamingRelations: Set[String] = Set("exact", "original", "alternative", "segment", "decorated")

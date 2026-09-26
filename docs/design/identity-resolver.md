@@ -971,6 +971,17 @@ missing values are forced to 0 because they mark how the recorded data was SAMPL
 from the title search), and the artefact says so beside each. The summed log-odds go through an
 isotonic map fitted on the calibration split.
 
+A categorical signal whose categories carry more or less of the other side is fitted under that
+ORDER (`IdentityMeasures.EvidenceOrder`): the title relation's `decorated` (the film's whole title
+along one edge of the listing's) ≥ `overlap` (some shared words) ≥ `none`. Adjacent categories that
+violate it are pooled and weighed from their summed counts (pool-adjacent-violators: the maximum-
+likelihood ratios under the order); the report still shows each category's own counts. The
+unconstrained round-2 fit had put `contains` (−4.31) below `overlap` (−3.48) and `none` (−4.08), so a
+same-director film with an unrelated title outscored the film a decorated listing names ("Ken
+Russell's The Devils" → *Tommy*, "Trainspotting. 30 rocznica" → *T2*). `fragment` (the listing's
+title along one edge of the film's: "It" beside "It Ends with Us") and the naming categories stay
+outside the order: a fragment is the opposite evidence, so the data alone places it.
+
 ### 14.4 Thresholds, from data
 
 - **Today's wrong rate**: 60 contradicted of 6,217 decisive production filings per unit =
@@ -1041,6 +1052,7 @@ runtime or year differs at all (`runtime.delta >= 1 AND venue in {same}`: 26% he
 | delimiter set of banner segments | `SearchTitles.candidates` | reused, not new | learn segments from co-occurring spellings |
 | ≤ 20 listing pairs per member in blocks over 41 | pair sampling | cost | none needed: sampling does not bias a unit-counted estimate |
 | 4 neutral missing values | fitting | sampling artefacts of the recorded trees | fetch every candidate's details in the recording pass (§9), then fit them |
+| title order `decorated ≥ overlap ≥ none` | `IdentityMeasures.EvidenceOrder` | more of the film's title named is never weaker evidence; an order, never a weight | derive the order from the relations' own containment (a category whose matches imply another's ranks above it) |
 
 ### 14.8 Findings for healing (production, read-only)
 

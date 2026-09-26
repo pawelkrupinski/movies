@@ -44,6 +44,18 @@ class IdentityCalibrationSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "weigh a category naming more of the other side no lower than one naming less, in every scope" in {
+    // IdentityMeasures.EvidenceOrder, fitted by pool-adjacent-violators in IdentityCalibrate: an
+    // unconstrained table once put "Ken Russell's The Devils" (decorated) below Tommy (no shared word).
+    for ((scope, m) <- model.scopes; (signal, order) <- IdentityMeasures.EvidenceOrder; w <- m.signals.get(signal)) {
+      val weights = order.flatMap(c => w.categories.get(c).map(c -> _))
+      weights.sliding(2).foreach {
+        case Seq((stronger, a), (weaker, b)) => withClue(s"$scope $signal: $stronger $a vs $weaker $b")(a should be >= b)
+        case _                               => ()
+      }
+    }
+  }
+
   it should "weigh missing evidence as its own value, never as agreement" in {
     val bare = Listing("Anything")
     val m = IdentityMeasures.listingFilm(bare, Film("Anything", year = Some(2020)), None, 0, 0)

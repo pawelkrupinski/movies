@@ -142,6 +142,10 @@ object IdentityCalibrate {
     val groups: Map[String, IndexedSeq[Int]] = obs.indices.groupBy(i => IdentityMeasures.key(obs(i).listing.title))
     val members = groups.view.mapValues(_.map(i => obs(i).venue -> obs(i).listing)).toMap
 
+    // A wide release lists one title at thousands of venues with one candidate pool: which venues
+    // back a candidate is one answer per title group and film, not one per member.
+    val backing = mutable.HashMap.empty[(String, Film), Set[String]]
+
     val lf = Seq.newBuilder[LfPair]
     obs.indices.foreach { i =>
       val o = obs(i); val pool = pools(i); val g = IdentityMeasures.key(o.listing.title)
@@ -150,7 +154,7 @@ object IdentityCalibrate {
       pool.foreach { case (id, (rank, f)) =>
         val own = closeTitles(id)
         val rivals = close - (if (IdentityMeasures.Rivalling(own)) 1 else 0)
-        val venues = IdentityMeasures.corroboratingVenues(f, members(g), o.venue)
+        val venues = (backing.getOrElseUpdate((g, f), IdentityMeasures.backingVenues(f, members(g))) - o.venue).size
         lf += LfPair(o.idx, id, IdentityMeasures.listingFilm(o.listing, f, rank, rivals, venues))
       }
     }
@@ -349,12 +353,34 @@ object IdentityCalibrate {
       val cats = lab.collect { case (Some(Category(v)), y) => v -> y }.groupMapReduce(_._1)(p => if (p._2) (1, 0) else (0, 1))((a, b) => (a._1 + b._1, a._2 + b._2))
       val cells = cats.size + missing.size
       val miss = missing.map { case (s, (p, n)) => s -> (if (Neutral.contains(signal -> s)) 0.0 else llr(p, n, totP, totN, cells)) }
+      val weighed = inOrder(cats, IdentityMeasures.EvidenceOrder.getOrElse(signal, Nil), llr(_, _, totP, totN, cells))
       Table(signal, SignalWeights("categorical",
-        categories = cats.map { case (v, (p, n)) => v -> llr(p, n, totP, totN, cells) },
+        categories = weighed.map { case (v, (p, n)) => v -> llr(p, n, totP, totN, cells) },
         missing = miss,
         counts = cats.map { case (v, (p, n)) => v -> Seq(p, n) } ++ missing.map { case (s, (p, n)) => s"missing:$s" -> Seq(p, n) },
         neutral = missing.keys.flatMap(s => Neutral.get(signal -> s).map(s -> _)).toMap), totP, totN)
     }
+  }
+
+  /** A categorical signal's counts fitted under its evidence order (strongest category first,
+   *  `IdentityMeasures.EvidenceOrder`) by pool-adjacent-violators: while a weaker category's ratio
+   *  beats a stronger one's, the two are weighed as one cell from their summed counts — the
+   *  maximum-likelihood ratios under the order. Categories outside the order keep their own counts;
+   *  the table still reports each category's own. */
+  def inOrder(cats: Map[String, (Int, Int)], order: Seq[String], ratio: (Int, Int) => Double): Map[String, (Int, Int)] = {
+    val blocks = mutable.ArrayBuffer.empty[(Seq[String], Int, Int)]
+    def violated = blocks.size > 1 && {
+      val (_, p1, n1) = blocks(blocks.size - 2); val (_, p2, n2) = blocks.last
+      ratio(p2, n2) > ratio(p1, n1)
+    }
+    order.filter(cats.contains).foreach { c =>
+      blocks += ((Seq(c), cats(c)._1, cats(c)._2))
+      while (violated) {
+        val (cb, pb, nb) = blocks.remove(blocks.size - 1); val (ca, pa, na) = blocks.remove(blocks.size - 1)
+        blocks += ((ca ++ cb, pa + pb, na + nb))
+      }
+    }
+    cats ++ blocks.flatMap { case (cs, p, n) => cs.map(_ -> (p, n)) }
   }
 
   final case class Fitted(scope: String, tables: Seq[Table], prior: Double, calibration: Calibration) {
