@@ -254,11 +254,12 @@ groups:
             twice under two names, or two venues wired to one upstream listing. cross_city (95%+,
             no city in common): one venue's feed listed under another's name. The worker's WARN
             line "duplicate-venue census ({{ $labels.country }}, {{ $labels.scope }})" names the
-            pairs. Compare each pair's booking links and sources in CinemaScraperCatalog: one
-            upstream programme behind two names is a wiring bug to fix (or a venue with no feed
-            of its own to drop); a chain genuinely running one programme in two towns goes on
-            `services.cinemas.roster.DistinctVenuePairs` with its reason, which clears it here and
-            in the offline roster audit alike.
+            pairs. A pair whose shared showtimes book through each venue's own links is cleared before
+            it is counted, so what is left books the same sessions or has no links on one side. Check
+            its sources in CinemaScraperCatalog: one upstream programme behind two names is a wiring bug
+            to fix (or a venue with no feed of its own to drop); two real venues programmed alike with
+            no links to tell them apart go on `services.cinemas.roster.DistinctVenuePairs` with the
+            reason, which clears them here and in the offline roster audit alike.
 
       # -----------------------------------------------------------------------------------------
       # A COUNTRY'S SCRAPES ARE FAILING, NOT COMING BACK EMPTY.

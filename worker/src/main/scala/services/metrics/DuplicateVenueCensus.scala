@@ -30,6 +30,14 @@ import java.time.{Clock, LocalDateTime, ZoneOffset}
  * showtimes in two unrelated towns happen by chance. A pair on [[DistinctVenuePairs]] (shared
  * with the offline audit) is genuinely two screens, in either scope.
  *
+ * A programme match alone mostly finds chain-mates — Cineworld, Phoenix Theatres, Caribbean
+ * Cinemas run one grid estate-wide — so a match is kept only when the booking links do not
+ * prove two venues ([[bookedApart]]): chain-mates book every shared showtime through their own
+ * site or cinema code (Cineworld 097-* vs 084-*, 356 of 356), while a mis-filed feed carries
+ * the other venue's very session (the Syracuse IN Pickwick booked Park Ridge's Veezi purchase
+ * ids, on a regional mirror host), and a screen listed twice through a source with no links
+ * (Kino Etiuda OBK, off Filmweb) has nothing to tell it apart.
+ *
  * Rides the shared [[WorkerCorpusScan]] pass, so it costs no reads of its own. Each start time
  * is folded to one primitive `Long` per (film, minute) — no boxing — because the US pass holds
  * ~4,000 venues' programmes at once. The pairs found are logged when they CHANGE, so the alert
@@ -52,22 +60,28 @@ class DuplicateVenueCensus(pairs: Gauge, country: Country, clock: Clock = Clock.
   def startSample(): CorpusRowSampler = new CorpusRowSampler {
     private val now       = LocalDateTime.now(clock.withZone(zone))
     private val programme = scala.collection.mutable.HashMap.empty[Cinema, scala.collection.mutable.ArrayBuilder.ofLong]
+    private val booked    = scala.collection.mutable.HashMap.empty[Cinema, scala.collection.mutable.ArrayBuilder.ofLong]
 
     def accept(row: StoredMovieRecord): Unit = {
       val film = row.id.value.hashCode.toLong << 32
       row.record.cinemaShowings.foreach { case (cinema, slot) =>
         slot.showtimes.foreach { showtime =>
-          if (showtime.isUpcoming(now))
-            programme.getOrElseUpdate(cinema, new scala.collection.mutable.ArrayBuilder.ofLong)
-              .addOne(film | (showtime.dateTime.toEpochSecond(ZoneOffset.UTC) / 60 & 0xffffffffL))
+          if (showtime.isUpcoming(now)) {
+            val key = film | (showtime.dateTime.toEpochSecond(ZoneOffset.UTC) / 60 & 0xffffffffL)
+            programme.getOrElseUpdate(cinema, new scala.collection.mutable.ArrayBuilder.ofLong).addOne(key)
+            showtime.bookingUrl.foreach(url =>
+              booked.getOrElseUpdate(cinema, new scala.collection.mutable.ArrayBuilder.ofLong).addOne(bookingKey(key, url)))
+          }
         }
       }
     }
 
     def publish(scanComplete: Boolean): Unit = if (scanComplete) {
-      val sets = programme.view.mapValues(b => sortedDistinct(b.result())).toMap
-      publishScope(SameCity, overlapping(sets, cityVenues), MinOverlap, "one screen listed twice?")
-      publishScope(CrossCity, overlappingAcrossCities(sets, cityVenues), CrossCityMinOverlap,
+      val sets     = programme.view.mapValues(b => sortedDistinct(b.result())).toMap
+      val bookings = booked.view.mapValues(b => sortedDistinct(b.result())).toMap
+      def listedOnce(pair: (Cinema, Cinema)): Boolean = !bookedApart(pair._1, pair._2, sets, bookings)
+      publishScope(SameCity, overlapping(sets, cityVenues).filter(listedOnce), MinOverlap, "one screen listed twice?")
+      publishScope(CrossCity, overlappingAcrossCities(sets, cityVenues).filter(listedOnce), CrossCityMinOverlap,
         "one venue's feed under another's name?")
     }
 
@@ -99,6 +113,11 @@ object DuplicateVenueCensus {
   val CrossCityMinOverlap: Double = 0.95
   val CrossCityMinShowtimes: Int  = 20
 
+  /** The share of each venue's showtimes that must carry a booking link for the links to judge the
+   *  pair, and the share of the shared showtimes whose links must differ to clear it. */
+  val MinBooked: Double         = 0.5
+  val MinBookedApart: Double    = 0.5
+
   val SameCity  = "same_city"
   val CrossCity = "cross_city"
   val Scopes: Seq[String] = Seq(SameCity, CrossCity)
@@ -106,7 +125,7 @@ object DuplicateVenueCensus {
   def gauge(registry: PrometheusRegistry): Gauge =
     Gauge.builder()
       .name(Name)
-      .help("Pairs of roster venues whose upcoming (film, start time) programmes are (nearly) the same, per country and scope. scope=same_city: two venues of one city overlapping by 90%+ of the larger programme — one screen listed twice under two names, which the name-based roster audit cannot see. scope=cross_city: two venues sharing no city, each with 20+ showtimes, overlapping by 95%+ — one venue's feed listed under another's name. Venues with fewer than 5 upcoming showtimes are skipped; pairs on DistinctVenuePairs are genuinely two screens. Zero is healthy; the worker's WARN line names the pairs. Off the shared 5-min corpus scan. Alerted by DuplicateVenueListing.")
+      .help("Pairs of roster venues whose upcoming (film, start time) programmes are (nearly) the same, per country and scope. scope=same_city: two venues of one city overlapping by 90%+ of the larger programme — one screen listed twice under two names, which the name-based roster audit cannot see. scope=cross_city: two venues sharing no city, each with 20+ showtimes, overlapping by 95%+ — one venue's feed listed under another's name. Venues with fewer than 5 upcoming showtimes are skipped; a pair whose shared showtimes book through each venue's own links, and pairs on DistinctVenuePairs, are genuinely two venues. Zero is healthy; the worker's WARN line names the pairs. Off the shared 5-min corpus scan. Alerted by DuplicateVenueListing.")
       .labelNames("country", "scope")
       .register(registry)
 
@@ -162,6 +181,30 @@ object DuplicateVenueCensus {
         Some(if (a.displayName <= b.displayName) (a, b) else (b, a))
       else None
     }.toSet
+  }
+
+  /** Whether two venues whose programmes match book those showtimes through visibly different
+   *  links — two listings upstream, so two venues. Each needs links on [[MinBooked]] of its
+   *  showtimes (a venue without them cannot be told apart, so the match stands), and at least
+   *  [[MinBookedApart]] of the shared showtimes must lack a same-link twin on the other venue. */
+  private[metrics] def bookedApart(a: Cinema, b: Cinema, programmes: Map[Cinema, Array[Long]], bookings: Map[Cinema, Array[Long]]): Boolean = {
+    val (as, bs)     = (programmes.getOrElse(a, Array.emptyLongArray), programmes.getOrElse(b, Array.emptyLongArray))
+    val (ab, bb)     = (bookings.getOrElse(a, Array.emptyLongArray), bookings.getOrElse(b, Array.emptyLongArray))
+    val linked       = ab.length >= MinBooked * as.length && bb.length >= MinBooked * bs.length
+    val common       = shared(as, bs)
+    linked && common - shared(ab, bb) >= MinBookedApart * common
+  }
+
+  /** One showtime's (film, minute) key folded with its booking link's path and query — the part
+   *  naming the venue and the session. Scheme and host are dropped: one ticketing backend serves
+   *  one session from regional mirrors (Veezi's ticketing.us. and ticketing.useast.). */
+  private[metrics] def bookingKey(key: Long, url: String): Long = {
+    val afterScheme = url.indexOf("://")
+    val path        = if (afterScheme < 0) url else url.indexOf('/', afterScheme + 3) match {
+      case -1 => ""
+      case i  => url.substring(i)
+    }
+    key * 0x9e3779b97f4a7c15L + path.hashCode
   }
 
   /** `keys` sorted and de-duplicated in place, primitive throughout. */

@@ -16,7 +16,8 @@ import play.api.Logging
  * in different towns (in the second block, different CITIES — the census's cross-city scope),
  * and their showtimes book through two different per-venue ticketing ids, so the upstream
  * holds two listings that a small chain (or an operator running two screens) happens to
- * programme alike. Generated-roster venues (Germany, Spain, the US) have no case
+ * programme alike. Since 2026-09-26 the census clears such a pair itself when the booking links
+ * differ, so an entry is needed only when one venue carries none. Generated-roster venues (Germany, Spain, the US) have no case
  * object, so they are named by the display name they are stored under — and a
  * name a roster regeneration dropped is logged and skipped, never a failed load.
  */
@@ -68,31 +69,11 @@ object DistinctVenuePairs extends Logging {
     ("Legacy Theatre Shenandoah", "Royal 3 Cinema Le Mars"),
     // RMC Stadium, Jacksonville and Waterloo IL: formovietickets rtn 39924 vs 14446
     ("RMC Jacksonville", "RMC Waterloo Cinema"),
-    // Auburn and Canandaigua NY: formovietickets chain rochester, rtn 104446 vs 346993
-    ("Auburn Movieplex", "Canandaigua Theaters"),
     // Two small-town twins 500 miles apart, East Jamestown TN and Laurinburg NC: Flicks venues
     // castle-twin-jamestown vs cinema-laurinburg, 21 vs 22 showtimes of the same three wide
-    // releases on different day calendars (checked 2026-09-25)
+    // releases on different day calendars (checked 2026-09-25). Listed by hand because Laurinburg
+    // carries no booking links, so the census cannot tell the two apart by them.
     ("Castle Twin Jamestown", "Cinema Laurinburg"),
-    // Dersa in Damme and Kinocenter Rahden, 90 km apart: Filmstarts theatres A0438 vs A1730
-    ("Dersa Kino-Center", "Kinocenter Rahden"),
-  )
-
-  /** Chains that programme EVERY house alike, by the display-name prefix their venues share: any
-   *  two of them are two venues, whichever pairs a given week's slate happens to push over the bar.
-   *  Listing such a chain pair by pair would mean hundreds of entries, and missing one re-fires. */
-  private val uniformChains: Seq[String] = Seq(
-    // Caribbean Cinemas' ~28 Puerto Rico houses, most filed under the San Juan metro: each books
-    // through its own home.caribbeancinemas.com/<venue>/checkout (checked 2026-09-24).
-    "Caribbean Cinemas ",
-    // Phoenix Theatres' one grid across its Michigan, Tennessee, Kentucky, Indiana houses: each is its
-    // own Flicks venue (Governors Square 580 vs Laurel Park 615 vs Mall of Monroe 571 showtimes of
-    // the same six films, checked 2026-09-25), and the census found a new pair on each of two days.
-    "Phoenix Theatres ",
-    // Cineworld's UK estate, on one template since the 2026-09-17 relaunch: 57 pairs of its 87
-    // venues shared 75%+ of their programme on 2026-09-25 (Ely / St Neots 92%, both filed under
-    // Cambridgeshire), each booking through its own site's session ids (097-* vs 084-*).
-    "Cineworld ",
   )
 
   /** Names in [[byName]] the roster no longer holds — a regeneration renamed or dropped the
@@ -106,7 +87,7 @@ object DistinctVenuePairs extends Logging {
   val all: Set[Set[Cinema]] = cased ++ resolved._1
 
   def contains(a: Cinema, b: Cinema): Boolean =
-    all(Set(a, b)) || a != b && uniformChains.exists(chain => a.displayName.startsWith(chain) && b.displayName.startsWith(chain))
+    all(Set(a, b))
 
   /** Each named pair whose venues `lookup` finds, and every name it does not. */
   private[services] def resolve(named: Seq[(String, String)], lookup: String => Option[Cinema]): (Set[Set[Cinema]], Seq[String]) = {

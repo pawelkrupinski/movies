@@ -1,10 +1,11 @@
 package services.metrics
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.{Cinema, City, Country, KinoMikro, MikroBronowice, MovieRecord, Source}
+import models.{Cinema, City, Country, KinoMikro, MikroBronowice, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.StoredMovieRecord
+import tools.Slugify
 
 import java.time.LocalDateTime
 
@@ -17,8 +18,10 @@ import java.time.LocalDateTime
  * Pinned: a same-city pair at 90% overlap counts, one below does not; a pair in two cities does
  * not count at that bar (a chain's national programme is not one screen) but does in the
  * cross-city scope at 95% with 20+ showtimes (one venue's feed under another's name), found
- * exactly among a crowd; a tiny programme cannot match by coincidence; the shared allowlist
- * clears every known pair in its scope; and a partial scan publishes nothing.
+ * exactly among a crowd; a tiny programme cannot match by coincidence; a pair whose showtimes book
+ * through each venue's own links is two venues, while one booking the same sessions (on any
+ * host) or a venue with no links still counts; the shared allowlist clears every known pair in
+ * its scope; and a partial scan publishes nothing.
  */
 class DuplicateVenueCensusSpec extends AnyFlatSpec with Matchers {
   import CorpusMetricsFixtures.{clock, now, slot}
@@ -36,6 +39,16 @@ class DuplicateVenueCensusSpec extends AnyFlatSpec with Matchers {
   private def row(title: String, slots: (Source, Seq[LocalDateTime])*): StoredMovieRecord =
     StoredMovieRecord.synthesised(title, Some(2026), MovieRecord(tmdbId = Some(1), data = slots.map { case (s, t) => s -> slot(t*) }.toMap), services.movies.SingleCountryNormalizer.titleNormalizer)
 
+  /** `times`, each booked through `url` of its index — a venue's own session links. */
+  private def linked(times: Seq[LocalDateTime], url: Int => String): SourceData =
+    SourceData(title = Some("x"), showtimes = times.zipWithIndex.map { case (t, i) => Showtime(t, Some(url(i))) })
+
+  private def linkedRow(title: String, slots: (Source, SourceData)*): StoredMovieRecord =
+    StoredMovieRecord.synthesised(title, Some(2026), MovieRecord(tmdbId = Some(1), data = slots.toMap), services.movies.SingleCountryNormalizer.titleNormalizer)
+
+  /** A session link at venue `code` on its ticketing backend. */
+  private def session(code: String, host: String = "tickets.example.com"): Int => String = i => s"https://$host/$code/purchase/$i"
+
   private def census(rows: Seq[StoredMovieRecord], complete: Boolean = true, preset: Option[Double] = None,
                      country: Country = Country.Poland, scope: String = DuplicateVenueCensus.SameCity): Double = {
     val gauge  = DuplicateVenueCensus.gauge(new PrometheusRegistry())
@@ -50,14 +63,16 @@ class DuplicateVenueCensusSpec extends AnyFlatSpec with Matchers {
   private def crossCity(rows: StoredMovieRecord*): Double = census(rows, scope = DuplicateVenueCensus.CrossCity)
 
   /** The pairs, named as the generated rosters store them, that the census still counts when each
-   *  pair lists one identical 20-showtime programme -- in the scope the roster puts them in. */
-  private def countedPairs(country: Country, pairs: Seq[(String, String)]): Seq[String] =
+   *  pair lists one identical 20-showtime programme -- in the scope the roster puts them in --
+   *  each venue booking through the link `links` gives it, or none. */
+  private def countedPairs(country: Country, pairs: Seq[(String, String)], links: String => Option[Int => String] = _ => None): Seq[String] =
     pairs.flatMap { case (a, b) =>
       val (x, y) = (Cinema.byDisplayName(a), Cinema.byDisplayName(b))
       val scope =
         if ((citiesOf(country, x) intersect citiesOf(country, y)).nonEmpty) DuplicateVenueCensus.SameCity
         else DuplicateVenueCensus.CrossCity
-      val counted = census(Seq(row("Foo", x -> times(20), y -> times(20))), country = country, scope = scope)
+      def slotOf(name: String) = links(name).fold(slot(times(20)*))(linked(times(20), _))
+      val counted = census(Seq(linkedRow("Foo", x -> slotOf(a), y -> slotOf(b))), country = country, scope = scope)
       Option.when(counted != 0.0)(s"$a / $b ($scope): $counted")
     }
 
@@ -84,6 +99,32 @@ class DuplicateVenueCensusSpec extends AnyFlatSpec with Matchers {
     // Positive control: without the allowlist they WOULD pair — one city lists both.
     Country.Poland.cities.exists(c => c.cinemas.contains(KinoMikro) && c.cinemas.contains(MikroBronowice)) shouldBe true
     census(Seq(row("Foo", KinoMikro -> times(10), MikroBronowice -> times(10)))) shouldBe 0.0
+  }
+
+  it should "not count a pair whose shared showtimes each book through the venue's own session links" in {
+    census(Seq(linkedRow("Foo", first -> linked(times(10), session("097")), second -> linked(times(10), session("084"))))) shouldBe 0.0
+    crossCity(linkedRow("Foo", first -> linked(times(20), session("097")), elsewhere -> linked(times(20), session("084")))) shouldBe 0.0
+  }
+
+  // The Syracuse IN Pickwick, 2026-09-23: Flicks booked it through the Park Ridge IL Pickwick's
+  // Veezi purchase ids, served from a regional mirror — ticketing.useast. vs ticketing.us. — so
+  // the links differ as strings but name the same session.
+  it should "still count a pair booking the same sessions, whatever host serves them" in {
+    val pickwick = (host: String) => (i: Int) => s"https://$host/purchase/5085$i?siteToken=pickwick"
+    crossCity(linkedRow("Foo", first -> linked(times(20), pickwick("ticketing.useast.veezi.com")),
+      elsewhere -> linked(times(20), pickwick("ticketing.us.veezi.com")))) shouldBe 1.0
+  }
+
+  // Kino Etiuda OBK (a Filmweb organiser listing, no links) repeated Kino Etiuda (bilety24).
+  it should "still count a pair where one venue carries no booking links, which cannot tell them apart" in {
+    census(Seq(linkedRow("Foo", first -> linked(times(10), session("etiuda")), second -> slot(times(10)*)))) shouldBe 1.0
+  }
+
+  it should "clear a pair only when at least half the shared showtimes book apart" in {
+    def split(apart: Int) = linkedRow("Foo", first -> linked(times(20), session("a")),
+      elsewhere -> linked(times(20), i => if (i < apart) session("b")(i) else session("a")(i)))
+    crossCity(split(9)) shouldBe 1.0
+    crossCity(split(10)) shouldBe 0.0
   }
 
   "The cross-city scope" should "count two venues sharing no city whose programmes are 95%+ the same" in {
@@ -133,7 +174,7 @@ class DuplicateVenueCensusSpec extends AnyFlatSpec with Matchers {
   // both scopes): Caribbean Cinemas' Puerto Rico houses, which the roster files under one metro
   // city and the chain programmes alike island-wide, rotating which pairs cross the bar — each
   // books through its own home.caribbeancinemas.com/<venue>/checkout — and Auburn/Canandaigua NY,
-  // formovietickets chain rochester rtn 104446 vs 346993.
+  // formovietickets chain rochester rtn 104446 vs 346993. Each books through its own links.
   it should "not count two houses of a chain that programmes all of them alike, nor Auburn and Canandaigua" in {
     val counted = countedPairs(Country.UnitedStates, Seq(
       "Caribbean Cinemas Plaza Escorial" -> "Caribbean Cinemas Plaza Guayama",
@@ -141,7 +182,8 @@ class DuplicateVenueCensusSpec extends AnyFlatSpec with Matchers {
       "Caribbean Cinemas Plaza Cayey" -> "Caribbean Cinemas The Outlet 66",
       "Caribbean Cinemas Arecibo" -> "Caribbean Cinemas Western Plaza",
       "Caribbean Cinemas Aguadilla Mall" -> "Caribbean Cinemas Metro",
-      "Auburn Movieplex" -> "Canandaigua Theaters"))
+      "Auburn Movieplex" -> "Canandaigua Theaters"),
+      name => Some(session(Slugify.stable(name))))
     withClue(counted.mkString("\n")) { counted shouldBe empty }
   }
 
@@ -152,15 +194,18 @@ class DuplicateVenueCensusSpec extends AnyFlatSpec with Matchers {
   // Dersa's Damme house and Kinocenter Rahden, 90 km apart (Filmstarts theatres A0438 vs A1730);
   // and two small-town twins 500 miles apart, Castle Twin in East Jamestown TN and Cinema
   // Laurinburg NC (Flicks castle-twin-jamestown vs cinema-laurinburg, 21 vs 22 showtimes of the
-  // same three wide releases on different day calendars, checked 2026-09-25).
+  // same three wide releases on different day calendars, checked 2026-09-25). Phoenix (cinemacode
+  // 009 / 001 / 002) and Dersa/Rahden book through their own links; Laurinburg carries none, so
+  // that pair stays on the allowlist.
   it should "not count two Phoenix Theatres houses, Dersa and Kinocenter Rahden, nor Castle Twin and Cinema Laurinburg" in {
+    val ownLinks = (name: String) => Some(session(Slugify.stable(name)))
     val counted =
       countedPairs(Country.UnitedStates, Seq(
         "Phoenix Theatres Governors Square" -> "Phoenix Theatres Mall of Monroe",
         "Phoenix Theatres Laurel Park" -> "Phoenix Theatres Mall of Monroe",
-        "Phoenix Theatres Danville 8" -> "Phoenix Theatres New Albany 16",
-        "Castle Twin Jamestown" -> "Cinema Laurinburg")) ++
-        countedPairs(Country.Germany, Seq("Dersa Kino-Center" -> "Kinocenter Rahden"))
+        "Phoenix Theatres Danville 8" -> "Phoenix Theatres New Albany 16"), ownLinks) ++
+        countedPairs(Country.UnitedStates, Seq("Castle Twin Jamestown" -> "Cinema Laurinburg")) ++
+        countedPairs(Country.Germany, Seq("Dersa Kino-Center" -> "Kinocenter Rahden"), ownLinks)
     withClue(counted.mkString("\n")) { counted shouldBe empty }
   }
 
@@ -174,7 +219,8 @@ class DuplicateVenueCensusSpec extends AnyFlatSpec with Matchers {
     val counted = countedPairs(Country.UnitedKingdom, Seq(
       "Cineworld Ely" -> "Cineworld St Neots",
       "Cineworld Huntingdon" -> "Cineworld St Neots",
-      "Cineworld Shrewsbury" -> "Cineworld Weston-super-Mare"))
+      "Cineworld Shrewsbury" -> "Cineworld Weston-super-Mare"),
+      name => Some(session(Slugify.stable(name), host = "web.cineworld.co.uk")))
     withClue(counted.mkString("\n")) { counted shouldBe empty }
   }
 
