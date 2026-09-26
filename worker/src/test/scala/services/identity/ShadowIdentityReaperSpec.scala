@@ -13,7 +13,7 @@ import scala.concurrent.duration._
 class ShadowIdentityReaperSpec extends AnyFlatSpec with Matchers {
 
   private val normalizer = SingleCountryNormalizer.titleNormalizer
-  private val calibration = IdentityCalibration.default
+  private val calibration = IdentityCalibration.resolver
 
   private def listing(venue: Cinema): Listing =
     Listing(venue, ListingKey.Published(venue.displayName, "Lalka", Some(2026), Seq("Maciej Kawalski")), "Lalka", "Lalka", "Lalka",

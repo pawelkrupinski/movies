@@ -805,7 +805,13 @@ search page of each other rating site, and the unrated sort key (`RatingGate.wit
 than ratings that may belong to another film. Title, showtimes and everything the venues
 published are untouched.
 
-- **Scored from the row's own evidence.** `RatingGate.fromEvidence(IdentityCalibration.default)`
+- **Its own, pinned artefact.** The gate reads `identity-weights-gate.json`
+  (`IdentityCalibration.ratingGate`), a copy of the artefact it was measured and switched on with
+  (DE, ES). No refit writes it: the resolver's refits (§14) move weights that also moved the gate —
+  the r4 refit would have raised DE's false hides from 0 to 9. It changes only by a deliberate copy
+  after `scripts.IdentityGateImpact --weights <candidate>` measures the candidate per country, with
+  `RatingGateArtefactSpec`'s pin (version and SHA-256) updated in the same commit.
+- **Scored from the row's own evidence.** `RatingGate.fromEvidence(IdentityCalibration.ratingGate)`
   reads each stored row through `StoredIdentityConfidence`: the TMDB slot is the film, each venue
   slot (with its detail-page facts) a listing, measured by the calibration's own
   `IdentityMeasures.listingFilm` — title, original title, year, director, runtime, country, and
@@ -910,7 +916,8 @@ reproducible script. Nothing in it is hand-tuned; §14.7 lists the constants tha
 
 | artefact | what |
 |---|---|
-| `common/src/main/resources/identity-weights.json` | per scope (`listing-film`, `listing-listing`): a prior and one log-likelihood-ratio weight per signal value (numeric signals in data-derived bins), an isotonic calibration map, the show-ratings and cannot-link thresholds with their held-out errors; plus the learned cannot-link rules with their measured false-veto rates; plus provenance |
+| `common/src/main/resources/identity-weights.json` | the RESOLVER's artefact (`IdentityCalibration.resolver`), the only one a refit writes: per scope (`listing-film`, `listing-listing`): a prior and one log-likelihood-ratio weight per signal value (numeric signals in data-derived bins), an isotonic calibration map, the show-ratings and cannot-link thresholds with their held-out errors; plus the learned cannot-link rules with their measured false-veto rates; plus provenance |
+| `common/src/main/resources/identity-weights-gate.json` | the live rating gate's PINNED artefact (`IdentityCalibration.ratingGate`, §13.2) — never written by a refit |
 | `test/resources/fixtures/identity/identity-labels.json.gz` | the labelled set (142,503 listings: corroborated or contradicted, with split and family) and the held-out listing pairs; the resolver's benchmark reads only `split == "test"` |
 | `services.identity.IdentityMeasures` | the measurements (pure, primitives in): title relation, original-title relation, signed year delta, director relation, runtime delta, country, search rank, popularity, rivals, corroborating venues; listing-listing adds venue and chain id. Both the calibration and the resolver call it, so the fitted weights and the scored values are one definition |
 | `services.identity.IdentityCalibration` | loads the artefact and evaluates it: `logOdds`, `probability`, `explain`, `showsRatings`, `forbidsLink`, `cannotLink` (a generic evaluator of the rules as data) |

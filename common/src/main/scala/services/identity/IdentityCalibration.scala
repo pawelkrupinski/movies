@@ -163,14 +163,23 @@ object IdentityCalibration {
   implicit val classFormat: OFormat[EvidenceClass]       = Json.using[Json.WithDefaultValues].format[EvidenceClass]
   implicit val format: OFormat[IdentityCalibration]      = Json.using[Json.WithDefaultValues].format[IdentityCalibration]
 
-  /** Where the artefact sits on the classpath (common/src/main/resources). */
-  val ResourcePath = "identity-weights.json"
+  /** The RESOLVER's artefact on the classpath (common/src/main/resources): what
+   *  `scripts/identity-calibrate.sh` writes, refitted as the resolver improves. */
+  val ResolverResourcePath = "identity-weights.json"
+  /** The LIVE RATING GATE's artefact (`RatingGate.fromEvidence`): a PINNED copy of the artefact
+   *  the gate was measured and switched on with. No refit writes it — a resolver refit moved the
+   *  gate's false hides in DE from 0 to 9 — so it changes only by a deliberate copy, with the
+   *  gate's impact measured first (`scripts.IdentityGateImpact`). */
+  val RatingGateResourcePath = "identity-weights-gate.json"
 
-  def fromResource(path: String = ResourcePath): Option[IdentityCalibration] =
+  def fromResource(path: String): Option[IdentityCalibration] =
     Option(getClass.getClassLoader.getResourceAsStream(path)).map { in =>
       try Json.parse(in).as[IdentityCalibration] finally in.close()
     }
 
-  lazy val default: IdentityCalibration =
-    fromResource().getOrElse(throw new IllegalStateException(s"$ResourcePath is not on the classpath"))
+  private def required(path: String): IdentityCalibration =
+    fromResource(path).getOrElse(throw new IllegalStateException(s"$path is not on the classpath"))
+
+  lazy val resolver: IdentityCalibration   = required(ResolverResourcePath)
+  lazy val ratingGate: IdentityCalibration = required(RatingGateResourcePath)
 }

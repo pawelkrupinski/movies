@@ -47,7 +47,7 @@ object IdentityEvidenceClasses {
     derive(
       fixtures = Paths.get(opts.getOrElse("fixtures", sys.error("--fixtures <dir of enrichment-<cc>/ trees>"))),
       labels   = Paths.get(opts.getOrElse("labels", "test/resources/fixtures/identity/identity-labels.json.gz")),
-      weights  = Paths.get(opts.getOrElse("weights", "common/src/main/resources/identity-weights.json")),
+      weights  = opts.get("weights").map(Paths.get(_)).getOrElse(IdentityCalibrate.ResolverArtefact),
       source   = opts.getOrElse("source", "the trees under --fixtures"))
   }
 

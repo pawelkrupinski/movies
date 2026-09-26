@@ -26,7 +26,10 @@ import scala.jdk.CollectionConverters.*
  * measure) — what a backfill would store — and `--plan <dir>` writes those measurements as
  * `title-searches-<cc>.jsonl` for `scripts/identity-gate/backfill-title-searches.js`.
  *
- *   sbt "worker/Test/runMain scripts.IdentityGateImpact [--trees DIR] [--plan DIR] rows-pl.jsonl rows-uk.jsonl …"
+ * The gate reads its own pinned artefact (`IdentityCalibration.ratingGate`); `--weights <json>`
+ * measures a candidate artefact instead, BEFORE it is copied over the pinned one.
+ *
+ *   sbt "worker/Test/runMain scripts.IdentityGateImpact [--weights JSON] [--trees DIR] [--plan DIR] rows-pl.jsonl rows-uk.jsonl …"
  */
 object IdentityGateImpact {
 
@@ -62,7 +65,9 @@ object IdentityGateImpact {
     def option(name: String) = argv.sliding(2).collectFirst { case Array(`name`, v) => Paths.get(v) }
     val trees = option("--trees"); val plan = option("--plan")
     val args  = argv.zipWithIndex.filterNot { case (a, i) => a.startsWith("--") || (i > 0 && argv(i - 1).startsWith("--")) }.map(_._1)
-    val calibration = IdentityCalibration.default
+    // The gate's pinned artefact, or a candidate one (`--weights <json>`) measured before any copy.
+    val calibration = option("--weights").fold(IdentityCalibration.ratingGate)(p =>
+      Json.parse(Files.readAllBytes(p)).as[IdentityCalibration])
     val labelled    = labels(Paths.get("test/resources/fixtures/identity/identity-labels.json.gz"))
     println(s"calibration ${calibration.version}; showRatings threshold " +
       calibration.scopes(IdentityMeasures.ListingFilm).thresholds("showRatings").probability)

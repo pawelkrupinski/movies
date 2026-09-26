@@ -83,7 +83,7 @@ object IdentityResolver {
    *  replaces a listing's own match, a denied one is never eligible, a pinned group is must-linked
    *  above every derived tier, and a derived edge the pins contradict is dropped. */
   def resolve(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
-              calibration: IdentityCalibration = IdentityCalibration.default,
+              calibration: IdentityCalibration = IdentityCalibration.resolver,
               pins: PinConstraints = PinConstraints(Nil)): Resolution =
     resolveWith(listings, lookups, normalizer, calibration, Mutation.None, pins)
 

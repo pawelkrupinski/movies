@@ -30,7 +30,7 @@ object IdentitySearchEvidence {
 
   def main(args: Array[String]): Unit = {
     val fixtures    = Paths.get(args(0))
-    val calibration = IdentityCalibration.default
+    val calibration = IdentityCalibration.resolver
     val in = new GZIPInputStream(Files.newInputStream(Paths.get("test/resources/fixtures/identity/identity-labels.json.gz")))
     val labels = try Json.parse(in) finally in.close()
     val listings = (labels \ "listings").as[Seq[JsValue]].filter { l =>

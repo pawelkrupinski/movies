@@ -42,7 +42,7 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
   private def fill(store: ObservationStore, service: HttpFetch, rate: Int = 600, sleeps: mutable.Buffer[Long] = mutable.Buffer.empty,
                    rounds: mutable.Buffer[ShadowLookupRound] = mutable.Buffer.empty) =
     new ShadowLookupFill(() => listings, store, new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()), service, Nil,
-      normalizer, IdentityCalibration.default, IdentityShadowLookupRate(rate), IdentityShadowInterval(30.minutes), rounds += _,
+      normalizer, IdentityCalibration.resolver, IdentityShadowLookupRate(rate), IdentityShadowInterval(30.minutes), rounds += _,
       DaemonExecutors.directExecutor(), sleeps += _)
 
   private def store() = ObservationStore.inMemory(Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC))

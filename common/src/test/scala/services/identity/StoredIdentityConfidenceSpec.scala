@@ -12,7 +12,7 @@ import services.readmodel.ReadModelProjection
  *  shapes production stores for real title-only matches, right and wrong. */
 class StoredIdentityConfidenceSpec extends AnyFlatSpec with Matchers {
 
-  private val calibration = IdentityCalibration.default
+  private val calibration = IdentityCalibration.ratingGate
   private val gate        = RatingGate.fromEvidence(calibration)
 
   private def tmdb(title: String, original: String, year: Int, runtime: Int, director: String, country: String,

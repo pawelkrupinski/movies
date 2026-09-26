@@ -243,8 +243,19 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     d.explanation.exists(_.startsWith("best rejected candidate")) shouldBe true
   }
 
+  "Nowe Horyzonty's 83-minute Your Name re-release" should "take Shinkai's film under the shipped artefact (known regression, pending)" in {
+    // §15.8: the r5 artefact VETOES it on its own facts (0.06 < the certified cut) and takes a bare
+    // sibling down with it. Pending, so the refit that decides it right flips this red.
+    val films = Seq(F(372058, "Twoje imię", 2016, "Makoto Shinkai", 106, 30))
+    val nh = Listing(KinoMuza, ListingKey.Published(KinoMuza.displayName, "Twoje imię", None, Seq("Makoto Shinkai")), "Twoje imię",
+      "Twoje imię", "Twoje imię", None, Seq("Makoto Shinkai"), Some(83), None, Some("Your Name (re-release)"))
+    pendingUntilFixed {
+      IdentityResolver.resolve(Seq(nh), new Table(films), normalizer, IdentityCalibration.resolver).decisionOf(nh.key).film shouldBe Some(372058)
+    }
+  }
+
   /** The shipped artefact without its evidence classes: what a bare title scores signal by signal. */
-  private val withoutClasses = IdentityCalibration.default.copy(evidenceClasses = Nil)
+  private val withoutClasses = IdentityCalibration.resolver.copy(evidenceClasses = Nil)
   /** The shipped artefact with one evidence class: an exact top hit with at most `rivals` same-titled rivals. */
   private def withTopHitClass(rivals: Double, base: IdentityCalibration = withoutClasses): IdentityCalibration = {
     import IdentityCalibration.{Condition, EvidenceClass}
@@ -340,6 +351,6 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
 
   "The calibration" should "load from an artefact in its own format, the fixture as the real one" in {
     weights.version shouldBe "test-fixture-2"
-    IdentityCalibration.default.scopes.keySet shouldBe weights.scopes.keySet
+    IdentityCalibration.resolver.scopes.keySet shouldBe weights.scopes.keySet
   }
 }

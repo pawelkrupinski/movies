@@ -26,5 +26,5 @@ trait ReadModelWiring { self: WorkerWiring =>
   // A staged-migration switch, off by default: on, a card whose stored evidence the calibration
   // artefact scores below its display threshold is served without ratings.
   lazy val ratingGate: RatingGate =
-    if (configuration.identityRatingGate.value) RatingGate.fromEvidence(IdentityCalibration.default) else RatingGate.off
+    if (configuration.identityRatingGate.value) RatingGate.fromEvidence(IdentityCalibration.ratingGate) else RatingGate.off
 }

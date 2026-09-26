@@ -46,7 +46,7 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     super.afterAll()
   }
 
-  private val calibration = IdentityCalibration.default
+  private val calibration = IdentityCalibration.resolver
   private val out     = configuration.identityShadowOutput.value
   /** Every disagreement cell, one JSONL per country (`<out>/identity-disagreements/<cc>.jsonl`). */
   private val disagreementsDir = {

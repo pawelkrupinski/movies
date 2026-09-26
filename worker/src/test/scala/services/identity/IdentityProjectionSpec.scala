@@ -50,7 +50,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     val projection = new IdentityProjection(
       listings = () => intake.listings(programme.keys.toSeq), lookups = () => NoFilms, pins = new InMemoryPinStore, cache = cache,
       filmIds = filmIds, details = (_, _) => None, announce = (k, _) => { announced += k; () }, normalizer = normalizer,
-      calibration = IdentityCalibration.default, slots = new CinemaSlotBuilder(Country.Poland.language, new StringPool),
+      calibration = IdentityCalibration.resolver, slots = new CinemaSlotBuilder(Country.Poland.language, new StringPool),
       tokens = ScreeningTokens.of(Country.Poland), metrics = IdentityProjectionMetrics.noop, clock = clock)
 
     def scrape(listings: Map[Cinema, Seq[CinemaMovie]]): Unit = listings.foreach { case (c, fs) =>

@@ -1,173 +1,125 @@
 {
-  "version" : "calibration-2026-09-26",
+  "version" : "calibration-2026-09-26-r5",
   "scopes" : {
     "listing-film" : {
-      "prior" : -1.0821443137709252,
+      "prior" : -2.264109870948828,
       "signals" : {
         "originalTitle" : {
           "kind" : "categorical",
           "categories" : {
-            "overlap" : -3.4399169127659075,
-            "disjoint" : -3.10410332922301,
-            "match" : 1.5448631530009445
+            "fragment" : -4.532143908704964,
+            "segment" : -2.519101680966706,
+            "match" : 1.6279114583055194,
+            "overlap" : -3.1077714864880157,
+            "decorated" : -1.0953177575963533,
+            "disjoint" : -2.9436180270487453
           },
           "bins" : [ ],
           "missing" : {
-            "listing" : 0.07315953342406956
+            "listing" : -0.013605872790733775
           },
           "counts" : {
-            "overlap" : [ 62, 1634 ],
-            "disjoint" : [ 32, 607 ],
-            "match" : [ 3082, 551 ],
-            "missing:listing" : [ 2176, 1696 ]
+            "missing:listing" : [ 2182, 16472 ],
+            "fragment" : [ 12, 8651 ],
+            "segment" : [ 5, 508 ],
+            "match" : [ 3191, 4665 ],
+            "overlap" : [ 34, 5746 ],
+            "decorated" : [ 9, 211 ],
+            "disjoint" : [ 31, 4452 ]
           },
           "neutral" : { }
         },
         "country" : {
           "kind" : "categorical",
           "categories" : {
-            "mismatch" : -1.567408985160096,
-            "match" : 2.7184777209032505
+            "mismatch" : -4.31035918019672,
+            "match" : 0.6913038571698381
           },
           "bins" : [ ],
           "missing" : {
             "film" : 0,
-            "listing" : 0.11419981532112533,
-            "unmapped" : 0.24273818364311328
+            "listing" : -0.03334242135204524,
+            "unmapped" : 0.6497920051820936
           },
           "counts" : {
-            "mismatch" : [ 20, 76 ],
-            "missing:listing" : [ 2604, 1808 ],
-            "missing:unmapped" : [ 56, 34 ],
-            "match" : [ 3047, 156 ],
-            "missing:film" : [ 10, 2391 ]
+            "mismatch" : [ 20, 11516 ],
+            "missing:listing" : [ 2624, 20470 ],
+            "missing:unmapped" : [ 57, 226 ],
+            "match" : [ 3155, 11924 ],
+            "missing:film" : [ 0, 58 ]
           },
           "neutral" : {
             "film" : "the candidate's details were not fetched in the recorded trees"
           }
         },
-        "venues.corroborating" : {
+        "titleYear.delta" : {
           "kind" : "numeric",
           "categories" : { },
           "bins" : [ {
+            "atMost" : -0.5,
+            "weight" : -4.698681960773014,
+            "positives" : 0,
+            "negatives" : 413
+          }, {
+            "atLeast" : -0.5,
             "atMost" : 0.5,
-            "weight" : -1.362283933569844,
-            "positives" : 919,
-            "negatives" : 2587
+            "weight" : 2.8120593854189924,
+            "positives" : 89,
+            "negatives" : 40
           }, {
             "atLeast" : 0.5,
-            "atMost" : 1.5,
-            "weight" : 1.287619342275928,
-            "positives" : 857,
-            "negatives" : 170
-          }, {
-            "atLeast" : 1.5,
             "atMost" : 2.5,
-            "weight" : 3.975932461335048,
-            "positives" : 1072,
-            "negatives" : 14
+            "weight" : -0.5675666098472663,
+            "positives" : 3,
+            "negatives" : 46
           }, {
             "atLeast" : 2.5,
-            "atMost" : 15.5,
-            "weight" : 3.263277339715252,
-            "positives" : 743,
-            "negatives" : 20
+            "atMost" : 19.5,
+            "weight" : -4.307026738904422,
+            "positives" : 0,
+            "negatives" : 279
           }, {
-            "atLeast" : 15.5,
-            "atMost" : 23.5,
-            "weight" : 1.7735940490338802,
-            "positives" : 69,
-            "negatives" : 8
-          }, {
-            "atLeast" : 23.5,
-            "atMost" : 33.5,
-            "weight" : 3.783207324132716,
-            "positives" : 30,
-            "negatives" : 0
-          }, {
-            "atLeast" : 33.5,
-            "atMost" : 34.5,
-            "weight" : -0.32766654004059514,
+            "atLeast" : 19.5,
+            "atMost" : 26.5,
+            "weight" : -2.0378660414276553,
             "positives" : 2,
-            "negatives" : 2
+            "negatives" : 144
           }, {
-            "atLeast" : 34.5,
-            "atMost" : 45.5,
-            "weight" : 4.226210351559946,
-            "positives" : 47,
-            "negatives" : 0
-          }, {
-            "atLeast" : 45.5,
-            "atMost" : 47.5,
-            "weight" : -0.8384921638065865,
-            "positives" : 1,
-            "negatives" : 2
-          }, {
-            "atLeast" : 47.5,
-            "atMost" : 185.5,
-            "weight" : 3.60415909268373,
-            "positives" : 76,
-            "negatives" : 1
-          }, {
-            "atLeast" : 185.5,
-            "atMost" : 211.5,
-            "weight" : 0.9452991357722915,
-            "positives" : 12,
-            "negatives" : 3
-          }, {
-            "atLeast" : 211.5,
-            "atMost" : 617.5,
-            "weight" : 4.307062448189041,
-            "positives" : 51,
-            "negatives" : 0
-          }, {
-            "atLeast" : 617.5,
-            "atMost" : 630.5,
-            "weight" : -0.32766654004059603,
-            "positives" : 1,
-            "negatives" : 1
-          }, {
-            "atLeast" : 630.5,
-            "atMost" : 1222,
-            "weight" : 3.0396292899458786,
-            "positives" : 14,
-            "negatives" : 0
-          }, {
-            "atLeast" : 1222,
-            "atMost" : 1405.5,
-            "weight" : -1.1749644004277995,
-            "positives" : 1,
-            "negatives" : 3
-          }, {
-            "atLeast" : 1405.5,
-            "weight" : 2.616772439125845,
-            "positives" : 9,
-            "negatives" : 0
+            "atLeast" : 26.5,
+            "weight" : -4.7202138931064965,
+            "positives" : 0,
+            "negatives" : 422
           } ],
-          "missing" : { },
-          "counts" : { },
+          "missing" : {
+            "film" : -2.809191003051624,
+            "listing" : 0.02843550489063036
+          },
+          "counts" : {
+            "missing:film" : [ 0, 62 ],
+            "missing:listing" : [ 3197, 23407 ]
+          },
           "neutral" : { }
         },
         "director" : {
           "kind" : "categorical",
           "categories" : {
-            "same_person" : 5.266314644420019,
-            "incomparable" : -0.6028848550465407,
-            "shared_name" : 3.1426899427439405,
-            "different" : -3.3977241862211423
+            "same_person" : 4.21630593631471,
+            "different_script" : -3.1019721264896005,
+            "shared_name" : 1.285771219315647,
+            "different" : -5.667443976179321
           },
           "bins" : [ ],
           "missing" : {
             "film" : 0,
-            "listing" : -1.181975812981106
+            "listing" : -0.2979802696754805
           },
           "counts" : {
-            "same_person" : [ 3079, 14 ],
-            "different" : [ 7, 204 ],
-            "shared_name" : [ 63, 2 ],
-            "missing:listing" : [ 115, 343 ],
-            "missing:film" : [ 18, 2429 ],
-            "incomparable" : [ 1, 2 ]
+            "same_person" : [ 3186, 341 ],
+            "different" : [ 9, 19964 ],
+            "shared_name" : [ 61, 123 ],
+            "missing:listing" : [ 114, 1120 ],
+            "different_script" : [ 3, 565 ],
+            "missing:film" : [ 10, 2481 ]
           },
           "neutral" : {
             "film" : "the candidate's credits were not fetched in the recorded trees (only candidates the pipeline examined have them), so missingness marks the sampling, not the film"
@@ -178,82 +130,142 @@
           "categories" : { },
           "bins" : [ {
             "atMost" : 0.5,
-            "weight" : 5.693458490045552,
-            "positives" : 2863,
-            "negatives" : 6
+            "weight" : 4.167289943213761,
+            "positives" : 2955,
+            "negatives" : 329
           }, {
             "atLeast" : 0.5,
             "atMost" : 1.5,
-            "weight" : 3.6742117413829356,
-            "positives" : 906,
-            "negatives" : 15
+            "weight" : 2.4878887141130237,
+            "positives" : 922,
+            "negatives" : 551
           }, {
             "atLeast" : 1.5,
+            "atMost" : 2.5,
+            "weight" : 1.1196054596642937,
+            "positives" : 239,
+            "negatives" : 562
+          }, {
+            "atLeast" : 2.5,
+            "atMost" : 3.5,
+            "weight" : 0.6951583396014112,
+            "positives" : 157,
+            "negatives" : 565
+          }, {
+            "atLeast" : 3.5,
+            "atMost" : 4.5,
+            "weight" : 0.9488666347446024,
+            "positives" : 177,
+            "negatives" : 494
+          }, {
+            "atLeast" : 4.5,
+            "atMost" : 5.5,
+            "weight" : 0.4551994131336432,
+            "positives" : 128,
+            "negatives" : 586
+          }, {
+            "atLeast" : 5.5,
             "atMost" : 6.5,
-            "weight" : 2.0870284836357165,
-            "positives" : 747,
-            "negatives" : 62
+            "weight" : -0.02545950230392524,
+            "positives" : 73,
+            "negatives" : 542
           }, {
             "atLeast" : 6.5,
-            "atMost" : 11.5,
-            "weight" : 0.8134255607087044,
-            "positives" : 125,
-            "negatives" : 37
+            "atMost" : 10.5,
+            "weight" : -0.92712912016896,
+            "positives" : 116,
+            "negatives" : 2118
           }, {
-            "atLeast" : 11.5,
-            "atMost" : 35.5,
-            "weight" : -0.7846588033202728,
-            "positives" : 98,
-            "negatives" : 145
+            "atLeast" : 10.5,
+            "atMost" : 15.5,
+            "weight" : -1.7869185400939922,
+            "positives" : 55,
+            "negatives" : 2384
           }, {
-            "atLeast" : 35.5,
-            "atMost" : 36.5,
-            "weight" : -3.439061702610191,
+            "atLeast" : 15.5,
+            "atMost" : 17.5,
+            "weight" : -2.5080715010192023,
+            "positives" : 9,
+            "negatives" : 839
+          }, {
+            "atLeast" : 17.5,
+            "atMost" : 18.5,
+            "weight" : -4.642622008240918,
             "positives" : 0,
-            "negatives" : 10
+            "negatives" : 373
           }, {
-            "atLeast" : 36.5,
+            "atLeast" : 18.5,
+            "atMost" : 20.5,
+            "weight" : -1.923312356405459,
+            "positives" : 16,
+            "negatives" : 812
+          }, {
+            "atLeast" : 20.5,
+            "atMost" : 42.5,
+            "weight" : -3.2630737007225186,
+            "positives" : 35,
+            "negatives" : 6674
+          }, {
+            "atLeast" : 42.5,
+            "atMost" : 44.5,
+            "weight" : -4.854186057610954,
+            "positives" : 0,
+            "negatives" : 461
+          }, {
+            "atLeast" : 44.5,
+            "atMost" : 47.5,
+            "weight" : -2.163626329996543,
+            "positives" : 10,
+            "negatives" : 657
+          }, {
+            "atLeast" : 47.5,
+            "atMost" : 49.5,
+            "weight" : -4.744361518131793,
+            "positives" : 0,
+            "negatives" : 413
+          }, {
+            "atLeast" : 49.5,
             "atMost" : 50.5,
-            "weight" : -0.9580086221381814,
-            "positives" : 18,
-            "negatives" : 32
+            "weight" : -2.084533741159327,
+            "positives" : 3,
+            "negatives" : 202
           }, {
             "atLeast" : 50.5,
             "atMost" : 55.5,
-            "weight" : -3.8910468263532483,
+            "weight" : -5.517086225168813,
             "positives" : 0,
-            "negatives" : 16
+            "negatives" : 895
           }, {
             "atLeast" : 55.5,
-            "atMost" : 63.5,
-            "weight" : -1.196885737411706,
-            "positives" : 6,
-            "negatives" : 14
+            "atMost" : 62.5,
+            "weight" : -3.0954610253283326,
+            "positives" : 7,
+            "negatives" : 1192
           }, {
-            "atLeast" : 63.5,
-            "atMost" : 75,
-            "weight" : -3.2277526089429847,
+            "atLeast" : 62.5,
+            "atMost" : 76.5,
+            "weight" : -6.6446807331027795,
             "positives" : 0,
-            "negatives" : 8
+            "negatives" : 2765
           }, {
-            "atLeast" : 75,
-            "atMost" : 78,
-            "weight" : 0.7040730237813406,
+            "atLeast" : 76.5,
+            "atMost" : 77.5,
+            "weight" : -3.026018816606233,
             "positives" : 1,
-            "negatives" : 0
+            "negatives" : 222
           }, {
-            "atLeast" : 78,
-            "weight" : -4.599231884277734,
+            "atLeast" : 77.5,
+            "weight" : -7.827956277560444,
             "positives" : 0,
-            "negatives" : 33
+            "negatives" : 9029
           } ],
           "missing" : {
             "film" : 0,
-            "listing" : -1.2835460378124555
+            "listing" : -0.0799339697382524
           },
           "counts" : {
-            "missing:film" : [ 40, 2433 ],
-            "missing:listing" : [ 241, 587 ]
+            "missing:film" : [ 29, 2750 ],
+            "missing:listing" : [ 240, 1874 ]
           },
           "neutral" : {
             "film" : "the candidate's details were not fetched in the recorded trees"
@@ -264,32 +276,56 @@
           "categories" : { },
           "bins" : [ {
             "atMost" : 1.5,
-            "weight" : 1.4231584112735929,
-            "positives" : 327,
-            "negatives" : 66
+            "weight" : 3.4755478870917447,
+            "positives" : 2715,
+            "negatives" : 552
           }, {
             "atLeast" : 1.5,
             "atMost" : 2.5,
-            "weight" : -2.0916557719238016,
-            "positives" : 28,
-            "negatives" : 194
+            "weight" : -0.5264234845758122,
+            "positives" : 191,
+            "negatives" : 2131
           }, {
             "atLeast" : 2.5,
+            "atMost" : 3.5,
+            "weight" : -1.5741515763705713,
+            "positives" : 58,
+            "negatives" : 1856
+          }, {
+            "atLeast" : 3.5,
+            "atMost" : 4.5,
+            "weight" : -2.120480079238035,
+            "positives" : 30,
+            "negatives" : 1671
+          }, {
+            "atLeast" : 4.5,
             "atMost" : 8.5,
-            "weight" : -4.34126190273994,
-            "positives" : 14,
-            "negatives" : 938
+            "weight" : -2.7998496484530797,
+            "positives" : 51,
+            "negatives" : 5567
           }, {
             "atLeast" : 8.5,
-            "weight" : -5.918749829805682,
-            "positives" : 4,
-            "negatives" : 1410
+            "atMost" : 14.5,
+            "weight" : -3.98503395931127,
+            "positives" : 18,
+            "negatives" : 6542
+          }, {
+            "atLeast" : 14.5,
+            "atMost" : 16.5,
+            "weight" : -6.355002681624277,
+            "positives" : 0,
+            "negatives" : 1891
+          }, {
+            "atLeast" : 16.5,
+            "weight" : -4.396405382915013,
+            "positives" : 6,
+            "negatives" : 3468
           } ],
           "missing" : {
             "not-returned" : 0
           },
           "counts" : {
-            "missing:not-returned" : [ 2867, 122 ]
+            "missing:not-returned" : [ 618, 589 ]
           },
           "neutral" : {
             "not-returned" : "negatives are drawn from the title search itself, so only a positive can be absent from it: the value marks the sampling"
@@ -298,24 +334,26 @@
         "title" : {
           "kind" : "categorical",
           "categories" : {
-            "segment" : -0.04487127533084179,
-            "overlap" : -3.4781345965166555,
-            "original" : 3.1092361202377385,
-            "alternative" : 2.2652926626069325,
-            "exact" : 1.3281991344099087,
-            "none" : -4.075301131273307,
-            "contains" : -4.313935693335533
+            "fragment" : -5.578431545438268,
+            "segment" : -0.12489105868822348,
+            "overlap" : -3.949212880477848,
+            "original" : 2.701524913093641,
+            "decorated" : -0.13981964078558384,
+            "none" : -4.180834766404833,
+            "alternative" : 1.707083581427598,
+            "exact" : 1.4973326777913625
           },
           "bins" : [ ],
           "missing" : { },
           "counts" : {
-            "segment" : [ 329, 264 ],
-            "overlap" : [ 37, 932 ],
-            "original" : [ 306, 10 ],
-            "alternative" : [ 420, 33 ],
-            "exact" : [ 3100, 630 ],
-            "none" : [ 5, 248 ],
-            "contains" : [ 19, 1118 ]
+            "fragment" : [ 5, 9703 ],
+            "segment" : [ 334, 2526 ],
+            "overlap" : [ 26, 9167 ],
+            "original" : [ 327, 146 ],
+            "decorated" : [ 13, 103 ],
+            "none" : [ 4, 1962 ],
+            "alternative" : [ 444, 537 ],
+            "exact" : [ 3176, 4737 ]
           },
           "neutral" : { }
         },
@@ -323,59 +361,53 @@
           "kind" : "numeric",
           "categories" : { },
           "bins" : [ {
-            "atMost" : -7.5,
-            "weight" : -7.578506109588576,
-            "positives" : 0,
-            "negatives" : 866
-          }, {
-            "atLeast" : -7.5,
             "atMost" : -2.5,
-            "weight" : -4.156905805082108,
-            "positives" : 2,
-            "negatives" : 141
+            "weight" : -6.85052816202477,
+            "positives" : 1,
+            "negatives" : 10561
           }, {
             "atLeast" : -2.5,
             "atMost" : -1.5,
-            "weight" : -0.7200150507846397,
+            "weight" : -1.1085186573121701,
             "positives" : 19,
-            "negatives" : 35
+            "negatives" : 440
           }, {
             "atLeast" : -1.5,
             "atMost" : -0.5,
-            "weight" : 1.4953554289808602,
-            "positives" : 294,
-            "negatives" : 58
+            "weight" : 1.2789558290991008,
+            "positives" : 299,
+            "negatives" : 621
           }, {
             "atLeast" : -0.5,
             "atMost" : 0.5,
-            "weight" : 3.053746532138819,
-            "positives" : 3073,
-            "negatives" : 128
+            "weight" : 3.395743567225055,
+            "positives" : 3179,
+            "negatives" : 794
           }, {
             "atLeast" : 0.5,
             "atMost" : 1.5,
-            "weight" : -1.09206416197296,
+            "weight" : -1.242191924094553,
             "positives" : 19,
-            "negatives" : 51
+            "negatives" : 503
           }, {
             "atLeast" : 1.5,
             "atMost" : 7.5,
-            "weight" : -4.9713633618164055,
+            "weight" : -4.900975540031261,
             "positives" : 2,
-            "negatives" : 319
+            "negatives" : 2505
           }, {
             "atLeast" : 7.5,
-            "weight" : -7.830205153258839,
+            "weight" : -7.767188091466415,
             "positives" : 0,
-            "negatives" : 1114
+            "negatives" : 8804
           } ],
           "missing" : {
-            "film" : -3.908327947715403,
-            "listing" : -0.11535855718814902
+            "film" : -4.065054216127688,
+            "listing" : -0.04617253540177191
           },
           "counts" : {
-            "missing:film" : [ 3, 154 ],
-            "missing:listing" : [ 1448, 1440 ]
+            "missing:film" : [ 3, 1520 ],
+            "missing:listing" : [ 1523, 11895 ]
           },
           "neutral" : { }
         },
@@ -384,20 +416,32 @@
           "categories" : { },
           "bins" : [ {
             "atMost" : 0.5,
-            "weight" : 1.7812096868656284,
-            "positives" : 2992,
-            "negatives" : 531
+            "weight" : 1.5347283706149453,
+            "positives" : 2269,
+            "negatives" : 3929
           }, {
             "atLeast" : 0.5,
-            "atMost" : 2.5,
-            "weight" : -2.0557207095588534,
-            "positives" : 157,
-            "negatives" : 1297
+            "atMost" : 3.5,
+            "weight" : -0.7238806649837114,
+            "positives" : 910,
+            "negatives" : 15086
           }, {
-            "atLeast" : 2.5,
-            "weight" : -2.9222909627753477,
-            "positives" : 80,
-            "negatives" : 1577
+            "atLeast" : 3.5,
+            "atMost" : 5.5,
+            "weight" : -0.906701985071614,
+            "positives" : 201,
+            "negatives" : 4008
+          }, {
+            "atLeast" : 5.5,
+            "atMost" : 6.5,
+            "weight" : -1.3750450782776449,
+            "positives" : 42,
+            "negatives" : 1350
+          }, {
+            "atLeast" : 6.5,
+            "weight" : -0.8971361053706426,
+            "positives" : 268,
+            "negatives" : 5290
           } ],
           "missing" : { },
           "counts" : { },
@@ -408,145 +452,307 @@
           "categories" : { },
           "bins" : [ {
             "atMost" : -2.5,
-            "weight" : 0.9632012393297096,
+            "weight" : 0.38847125554957174,
             "positives" : 7,
-            "negatives" : 2
+            "negatives" : 37
           }, {
             "atLeast" : -2.5,
             "atMost" : -1.5,
-            "weight" : -2.7554924774946534,
-            "positives" : 9,
-            "negatives" : 130
+            "weight" : -3.1034080072297456,
+            "positives" : 10,
+            "negatives" : 1724
           }, {
             "atLeast" : -1.5,
             "atMost" : -0.5,
-            "weight" : -1.9310034094221626,
-            "positives" : 108,
-            "negatives" : 653
+            "weight" : -2.0413374993096793,
+            "positives" : 115,
+            "negatives" : 6558
           }, {
             "atLeast" : -0.5,
             "atMost" : 0.5,
-            "weight" : -0.8269662953620951,
-            "positives" : 471,
-            "negatives" : 941
+            "weight" : -0.8892911875138638,
+            "positives" : 482,
+            "negatives" : 8657
           }, {
             "atLeast" : 0.5,
             "atMost" : 1.5,
-            "weight" : 0.1793921886543033,
-            "positives" : 666,
-            "negatives" : 486
+            "weight" : 0.28186954047711876,
+            "positives" : 700,
+            "negatives" : 3896
           }, {
             "atLeast" : 1.5,
-            "atMost" : 3.5,
-            "weight" : 1.2361131133291519,
-            "positives" : 1310,
-            "negatives" : 332
+            "atMost" : 2.5,
+            "weight" : 1.289467362408622,
+            "positives" : 697,
+            "negatives" : 1416
           }, {
-            "atLeast" : 3.5,
+            "atLeast" : 2.5,
+            "atMost" : 4.5,
+            "weight" : 1.7379221285664161,
+            "positives" : 1020,
+            "negatives" : 1323
+          }, {
+            "atLeast" : 4.5,
             "atMost" : 6.5,
-            "weight" : 0.9459594328952032,
-            "positives" : 517,
-            "negatives" : 175
+            "weight" : 2.1453327849263504,
+            "positives" : 160,
+            "negatives" : 138
           }, {
             "atLeast" : 6.5,
-            "weight" : 2.7733098472259607,
+            "weight" : 3.1720290091599272,
             "positives" : 27,
-            "negatives" : 1
+            "negatives" : 8
           } ],
           "missing" : { },
           "counts" : { },
+          "neutral" : { }
+        },
+        "venues.corroborating" : {
+          "kind" : "numeric",
+          "categories" : { },
+          "bins" : [ {
+            "atMost" : 0.5,
+            "weight" : -1.3840366917600364,
+            "positives" : 995,
+            "negatives" : 23410
+          }, {
+            "atLeast" : 0.5,
+            "atMost" : 1.5,
+            "weight" : 3.256059774683664,
+            "positives" : 878,
+            "negatives" : 199
+          }, {
+            "atLeast" : 1.5,
+            "atMost" : 9.5,
+            "weight" : 4.932538360243039,
+            "positives" : 1730,
+            "negatives" : 73
+          }, {
+            "atLeast" : 9.5,
+            "atMost" : 13.5,
+            "weight" : 6.67893288182486,
+            "positives" : 67,
+            "negatives" : 0
+          }, {
+            "atLeast" : 13.5,
+            "atMost" : 16.5,
+            "weight" : 3.7195682524417437,
+            "positives" : 38,
+            "negatives" : 5
+          }, {
+            "atLeast" : 16.5,
+            "atMost" : 152.5,
+            "weight" : 6.211592369998609,
+            "positives" : 211,
+            "negatives" : 2
+          }, {
+            "atLeast" : 152.5,
+            "atMost" : 155.5,
+            "weight" : -0.42356647394978886,
+            "positives" : 0,
+            "negatives" : 4
+          }, {
+            "atLeast" : 155.5,
+            "atMost" : 185.5,
+            "weight" : 4.7180970825528705,
+            "positives" : 9,
+            "negatives" : 0
+          }, {
+            "atLeast" : 185.5,
+            "atMost" : 192.5,
+            "weight" : 2.3614447682885498,
+            "positives" : 4,
+            "negatives" : 2
+          }, {
+            "atLeast" : 192.5,
+            "atMost" : 614.5,
+            "weight" : 6.51859023174968,
+            "positives" : 57,
+            "negatives" : 0
+          }, {
+            "atLeast" : 614.5,
+            "atMost" : 623.5,
+            "weight" : 1.7736581033864312,
+            "positives" : 1,
+            "negatives" : 1
+          }, {
+            "atLeast" : 623.5,
+            "atMost" : 1218,
+            "weight" : 5.270165664852911,
+            "positives" : 16,
+            "negatives" : 0
+          }, {
+            "atLeast" : 1218,
+            "atMost" : 1401.5,
+            "weight" : 1.2628324796204407,
+            "positives" : 1,
+            "negatives" : 2
+          }, {
+            "atLeast" : 1401.5,
+            "weight" : 4.7180970825528705,
+            "positives" : 9,
+            "negatives" : 0
+          } ],
+          "missing" : { },
+          "counts" : { },
+          "neutral" : { }
+        },
+        "season.delta" : {
+          "kind" : "numeric",
+          "categories" : { },
+          "bins" : [ {
+            "atMost" : -0.5,
+            "weight" : -3.469169487385151,
+            "positives" : 0,
+            "negatives" : 118
+          }, {
+            "atLeast" : -0.5,
+            "weight" : 3.6083285661840803,
+            "positives" : 7,
+            "negatives" : 1
+          } ],
+          "missing" : {
+            "film" : 0.05298050469466631,
+            "listing" : 0.002567522913873166
+          },
+          "counts" : {
+            "missing:film" : [ 0, 3 ],
+            "missing:listing" : [ 3210, 23635 ]
+          },
           "neutral" : { }
         }
       },
       "calibration" : {
         "method" : "isotonic",
-        "logOdds" : [ -18.893734477024648, -4.366443659035254, -2.571056743650161, -1.8587145311512936, -1.383344666775149, 0.7444202569321268, 2.79927736658196, 7.08558305748796, 11.209648503904146, 16.61891074899682, 22.58160375771679 ],
-        "probabilities" : [ 0.00021105951878429716, 0.08928571428571429, 0.2777777777777778, 0.35, 0.5, 0.5625, 0.8611111111111112, 0.9277777777777778, 0.985, 0.9986213235294118, 0.9997129735935706 ]
+        "logOdds" : [ -26.846953497299737, -3.4467894718282794, -1.3314001770984822, 0.274729028893235, 1.6680779228140103, 3.76095930829841, 5.310201834363467, 6.255325733809316, 7.849373626593605, 18.815245326221405 ],
+        "probabilities" : [ 0.00002541037759821111, 0.034722222222222224, 0.08333333333333333, 0.35, 0.4166666666666667, 0.625, 0.625, 0.8541666666666666, 0.8793103448275862, 0.9998333888703765 ]
       },
       "thresholds" : {
         "showRatings" : {
-          "probability" : 0.3575270091450078,
+          "probability" : 0.37461213471689647,
           "measured" : {
-            "targetWrongRate" : 0.009650957053241113,
-            "heldOutWrongRate" : 0.011235955056179775,
-            "heldOutRecall" : 0.9988417882788974
+            "targetWrongRate" : 0.013186472230840832,
+            "heldOutWrongRate" : 0.010758331146680662,
+            "heldOutRecall" : 0.9978824775013234
           },
           "basis" : "lowest cut whose wrong share (labelled pairs + production's contradicted filings, per unit) on the calibration split has a one-sided 95% upper bound within today's measured wrong rate"
         },
         "cannotLink" : {
-          "probability" : 0.084821903703108,
+          "probability" : 0.03262845787228345,
           "measured" : {
-            "heldOutDifferent" : 2674,
-            "heldOutFalseVetoUpper95" : 0.0006263258981148106,
-            "heldOutTrueVeto" : 0.9554973821989529,
-            "heldOutFalseVeto" : 0,
-            "heldOutSame" : 4317
+            "heldOutDifferent" : 25572,
+            "heldOutFalseVetoUpper95" : 0.001598422441355602,
+            "heldOutTrueVeto" : 0.992961051149695,
+            "heldOutFalseVeto" : 0.0005293806246691371,
+            "heldOutSame" : 3778
           },
           "basis" : "certified: below every same-film unit of the calibration split"
         }
       }
     },
     "listing-listing" : {
-      "prior" : 5.084238368399812,
+      "prior" : 5.031547527443716,
       "signals" : {
         "chainId" : {
           "kind" : "categorical",
           "categories" : {
-            "same" : 4.973906920462785,
-            "different" : -5.956070156245574
+            "same" : 4.999038844767485,
+            "different" : -5.99799820209429
           },
           "bins" : [ ],
           "missing" : {
-            "no-shared-namespace" : -0.048815783781026245
+            "no-shared-namespace" : -0.03130619130839302
           },
           "counts" : {
-            "same" : [ 1116, 0 ],
-            "different" : [ 2, 62 ],
-            "missing:no-shared-namespace" : [ 2919, 198 ]
+            "same" : [ 1105, 0 ],
+            "different" : [ 2, 67 ],
+            "missing:no-shared-namespace" : [ 2955, 204 ]
           },
           "neutral" : { }
         },
         "originalTitle" : {
           "kind" : "categorical",
           "categories" : {
-            "overlap" : -2.9435858417127814,
-            "disjoint" : -1.010372021063819,
-            "match" : 1.4306083621304895
+            "fragment" : -2.440606390891421,
+            "segment" : -2.99143734927111,
+            "match" : 1.3376427682802723,
+            "overlap" : -3.236082863205909,
+            "decorated" : -2.767428371680472,
+            "disjoint" : -1.0212392814975073
           },
           "bins" : [ ],
           "missing" : {
-            "film" : -0.8360716505662804,
-            "listing" : -0.06802816513539711
+            "film" : -0.6059218769463315,
+            "listing" : -0.029592867408211432
           },
           "counts" : {
-            "missing:listing" : [ 2138, 84 ],
-            "overlap" : [ 63, 44 ],
-            "disjoint" : [ 251, 25 ],
-            "match" : [ 2548, 22 ],
-            "missing:film" : [ 158, 13 ]
+            "missing:listing" : [ 2137, 89 ],
+            "fragment" : [ 22, 10 ],
+            "segment" : [ 10, 8 ],
+            "overlap" : [ 29, 30 ],
+            "match" : [ 2577, 27 ],
+            "missing:film" : [ 127, 9 ],
+            "decorated" : [ 8, 5 ],
+            "disjoint" : [ 252, 28 ]
+          },
+          "neutral" : { }
+        },
+        "season.delta" : {
+          "kind" : "categorical",
+          "categories" : { },
+          "bins" : [ ],
+          "missing" : {
+            "listing" : 0
+          },
+          "counts" : {
+            "missing:listing" : [ 2957, 215 ]
+          },
+          "neutral" : { }
+        },
+        "titleYear.delta" : {
+          "kind" : "numeric",
+          "categories" : { },
+          "bins" : [ {
+            "atMost" : 2,
+            "weight" : 2.593283513063586,
+            "positives" : 87,
+            "negatives" : 0
+          }, {
+            "atLeast" : 2,
+            "weight" : -5.136451818321464,
+            "positives" : 0,
+            "negatives" : 6
+          } ],
+          "missing" : {
+            "film" : -1.2028038616304166,
+            "listing" : 0.07189026096161577
+          },
+          "counts" : {
+            "missing:film" : [ 84, 21 ],
+            "missing:listing" : [ 2889, 205 ]
           },
           "neutral" : { }
         },
         "director" : {
           "kind" : "categorical",
           "categories" : {
-            "same_person" : 2.756351308152785,
-            "incomparable" : 1.0228368157111305,
-            "shared_name" : 2.2034622560400754,
-            "different" : -5.174421644375948
+            "same_person" : 2.6117432800382594,
+            "different_script" : 0.8491403951016592,
+            "shared_name" : 2.1484233792319203,
+            "different" : -5.0161341662401675
           },
           "bins" : [ ],
           "missing" : {
             "film" : 0,
-            "listing" : -2.256166407129665
+            "listing" : -2.224510315544787
           },
           "counts" : {
-            "same_person" : [ 2759, 12 ],
-            "different" : [ 7, 94 ],
-            "shared_name" : [ 63, 0 ],
-            "missing:listing" : [ 106, 72 ],
-            "missing:film" : [ 44, 33 ],
-            "incomparable" : [ 19, 0 ]
+            "same_person" : [ 2788, 14 ],
+            "different" : [ 9, 101 ],
+            "shared_name" : [ 60, 0 ],
+            "missing:listing" : [ 101, 66 ],
+            "different_script" : [ 16, 0 ],
+            "missing:film" : [ 44, 30 ]
           },
           "neutral" : {
             "film" : "the candidate's credits were not fetched in the recorded trees (only candidates the pipeline examined have them), so missingness marks the sampling, not the film"
@@ -557,82 +763,88 @@
           "categories" : { },
           "bins" : [ {
             "atMost" : 0.5,
-            "weight" : 3.090919022473283,
-            "positives" : 2590,
+            "weight" : 3.1360901877193994,
+            "positives" : 2626,
             "negatives" : 8
           }, {
             "atLeast" : 0.5,
             "atMost" : 1.5,
-            "weight" : 1.7176550837269637,
-            "positives" : 810,
+            "weight" : 1.7527195803172688,
+            "positives" : 813,
             "negatives" : 10
           }, {
             "atLeast" : 1.5,
             "atMost" : 6.5,
-            "weight" : 0.12677532141411918,
-            "positives" : 778,
-            "negatives" : 49
+            "weight" : 0.10580222457476007,
+            "positives" : 798,
+            "negatives" : 53
           }, {
             "atLeast" : 6.5,
             "atMost" : 11.5,
-            "weight" : -1.373847980861897,
-            "positives" : 124,
-            "negatives" : 35
+            "weight" : -1.3464469851683112,
+            "positives" : 127,
+            "negatives" : 36
           }, {
             "atLeast" : 11.5,
+            "atMost" : 16.5,
+            "weight" : -2.4415977794665533,
+            "positives" : 55,
+            "negatives" : 47
+          }, {
+            "atLeast" : 16.5,
             "atMost" : 18.5,
-            "weight" : -2.5408453894029037,
-            "positives" : 59,
-            "negatives" : 54
+            "weight" : -3.535520727771277,
+            "positives" : 4,
+            "negatives" : 11
           }, {
             "atLeast" : 18.5,
             "atMost" : 20.5,
-            "weight" : -0.6427055166162772,
-            "positives" : 25,
-            "negatives" : 3
+            "weight" : -0.987813176744246,
+            "positives" : 22,
+            "negatives" : 4
           }, {
             "atLeast" : 20.5,
             "atMost" : 24.5,
-            "weight" : -2.6286210002852894,
-            "positives" : 17,
-            "negatives" : 17
+            "weight" : -2.840873171836097,
+            "positives" : 14,
+            "negatives" : 18
           }, {
             "atLeast" : 24.5,
-            "atMost" : 28.5,
-            "weight" : -5.243580778321487,
-            "positives" : 1,
-            "negatives" : 20
+            "atMost" : 26.5,
+            "weight" : -5.8161269140465475,
+            "positives" : 0,
+            "negatives" : 12
           }, {
-            "atLeast" : 28.5,
+            "atLeast" : 26.5,
             "atMost" : 51.5,
-            "weight" : -2.986833223542908,
-            "positives" : 32,
-            "negatives" : 46
+            "weight" : -3.0259190943661745,
+            "positives" : 35,
+            "negatives" : 54
           }, {
             "atLeast" : 51.5,
             "atMost" : 55.5,
-            "weight" : -6.239538912929513,
+            "weight" : -6.1525991506677595,
             "positives" : 0,
-            "negatives" : 18
+            "negatives" : 17
           }, {
             "atLeast" : 55.5,
             "atMost" : 65.5,
-            "weight" : -2.9309018721582225,
+            "weight" : -3.059874611126459,
             "positives" : 8,
-            "negatives" : 11
+            "negatives" : 13
           }, {
             "atLeast" : 65.5,
-            "weight" : -5.792688588658495,
+            "weight" : -5.8161269140465475,
             "positives" : 1,
-            "negatives" : 35
+            "negatives" : 37
           } ],
           "missing" : {
             "film" : 0,
-            "listing" : -0.3337579533851538
+            "listing" : -0.38389712991224334
           },
           "counts" : {
-            "missing:film" : [ 121, 12 ],
-            "missing:listing" : [ 193, 19 ]
+            "missing:film" : [ 116, 11 ],
+            "missing:listing" : [ 187, 20 ]
           },
           "neutral" : {
             "film" : "the candidate's details were not fetched in the recorded trees"
@@ -641,20 +853,20 @@
         "title" : {
           "kind" : "categorical",
           "categories" : {
-            "segment" : 0.3585410584465354,
-            "exact" : 1.8285563798959639,
-            "overlap" : -5.097040430215291,
-            "none" : -1.5636055961565924,
-            "contains" : -2.1884335327390603
+            "fragment" : -2.4090699207957798,
+            "segment" : 0.2696383220224152,
+            "exact" : 1.7994310324930582,
+            "overlap" : -4.962219731326161,
+            "none" : -4.962219731326161
           },
           "bins" : [ ],
           "missing" : { },
           "counts" : {
-            "segment" : [ 748, 36 ],
-            "exact" : [ 2809, 31 ],
-            "overlap" : [ 14, 165 ],
-            "none" : [ 4, 1 ],
-            "contains" : [ 26, 16 ]
+            "fragment" : [ 19, 15 ],
+            "segment" : [ 760, 41 ],
+            "exact" : [ 2834, 33 ],
+            "overlap" : [ 11, 167 ],
+            "none" : [ 5, 1 ]
           },
           "neutral" : { }
         },
@@ -663,72 +875,78 @@
           "categories" : { },
           "bins" : [ {
             "atMost" : 0.5,
-            "weight" : 2.329443673354292,
-            "positives" : 2627,
+            "weight" : 2.3636145956001187,
+            "positives" : 2633,
             "negatives" : 14
           }, {
             "atLeast" : 0.5,
             "atMost" : 1.5,
-            "weight" : 0.5569770880951301,
-            "positives" : 292,
+            "weight" : 0.5990712443428614,
+            "positives" : 295,
             "negatives" : 9
           }, {
             "atLeast" : 1.5,
             "atMost" : 2.5,
-            "weight" : -1.771583491302176,
+            "weight" : -1.7396935052286868,
             "positives" : 16,
             "negatives" : 5
           }, {
             "atLeast" : 2.5,
+            "atMost" : 6.5,
+            "weight" : -6.551877860601104,
+            "positives" : 0,
+            "negatives" : 20
+          }, {
+            "atLeast" : 6.5,
             "atMost" : 8.5,
-            "weight" : -4.856111263639298,
-            "positives" : 3,
-            "negatives" : 25
+            "weight" : -3.936918082564907,
+            "positives" : 2,
+            "negatives" : 7
           }, {
             "atLeast" : 8.5,
-            "weight" : -7.6823801353427035,
+            "weight" : -7.6824928803553885,
             "positives" : 0,
-            "negatives" : 61
+            "negatives" : 63
           } ],
           "missing" : {
-            "film" : -1.7624925196009245,
-            "listing" : -0.21889839546052525
+            "film" : -1.991007933509593,
+            "listing" : -0.24437866761948301
           },
           "counts" : {
-            "missing:film" : [ 110, 36 ],
-            "missing:listing" : [ 1438, 101 ]
+            "missing:film" : [ 73, 31 ],
+            "missing:listing" : [ 1505, 112 ]
           },
           "neutral" : { }
         },
         "venue" : {
           "kind" : "categorical",
           "categories" : {
-            "same" : -5.294327287778556,
-            "different" : 0.3636656939097852
+            "same" : -5.286687736826875,
+            "different" : 0.35563404629134604
           },
           "bins" : [ ],
           "missing" : { },
           "counts" : {
-            "same" : [ 4, 87 ],
-            "different" : [ 2925, 198 ]
+            "same" : [ 4, 89 ],
+            "different" : [ 2957, 208 ]
           },
           "neutral" : { }
         }
       },
       "calibration" : {
         "method" : "isotonic",
-        "logOdds" : [ -11.022360578559685, -3.3829692910056464, 0.08984442928220192, 2.8012582030237025, 3.6066190819348636, 7.602760124212709, 14.71337486948097 ],
-        "probabilities" : [ 0.004310344827586207, 0.023809523809523805, 0.3125, 0.8863636363636364, 0.8863636363636364, 0.9923312883435583, 0.9998289428669176 ]
+        "logOdds" : [ -8.352235271698564, 0.49037544733894284, 1.540330862333943, 2.8453528473742162, 13.8148114216348 ],
+        "probabilities" : [ 0.002777777777777778, 0.2916666666666667, 0.5, 0.9107142857142857, 0.9998447204968944 ]
       },
       "thresholds" : {
         "cannotLink" : {
-          "probability" : 0.018440322057989837,
+          "probability" : 0.26837364760822474,
           "measured" : {
-            "heldOutDifferent" : 343,
-            "heldOutFalseVetoUpper95" : 0.001431125206639745,
-            "heldOutTrueVeto" : 0.6268221574344023,
-            "heldOutFalseVeto" : 0.00047393364928909954,
-            "heldOutSame" : 4220
+            "heldOutDifferent" : 348,
+            "heldOutFalseVetoUpper95" : 0.004385533205915124,
+            "heldOutTrueVeto" : 0.9367816091954023,
+            "heldOutFalseVeto" : 0.00268685881778212,
+            "heldOutSame" : 4094
           },
           "basis" : "certified: below every same-film unit of the calibration split"
         }
@@ -736,146 +954,107 @@
     }
   },
   "cannotLinks" : [ {
-    "name" : "title in {none,overlap} AND year.distance >= 3",
-    "scope" : "listing-film",
-    "all" : [ {
-      "signal" : "title",
-      "in" : [ "none", "overlap" ]
-    }, {
-      "signal" : "year.distance",
-      "in" : [ ],
-      "atLeast" : 3
-    } ],
-    "falseVetoRate" : 0,
-    "support" : 461,
-    "falseVetoBound" : 0.0019389732820595871,
-    "trueVetoRate" : 0.3316546762589928,
-    "positives" : 1828,
-    "negatives" : 1390,
-    "origin" : "derived"
-  }, {
-    "name" : "director in {different} AND year.distance >= 32",
+    "name" : "director in {different} AND runtime.delta >= 54",
     "scope" : "listing-film",
     "all" : [ {
       "signal" : "director",
       "in" : [ "different" ]
     }, {
-      "signal" : "year.distance",
+      "signal" : "runtime.delta",
       "in" : [ ],
-      "atLeast" : 32
+      "atLeast" : 54
     } ],
-    "falseVetoRate" : 0.0005482456140350877,
-    "support" : 43,
-    "falseVetoBound" : 0.0019394196979301947,
-    "trueVetoRate" : 0.031409788166544925,
-    "positives" : 1824,
-    "negatives" : 1369,
+    "falseVetoRate" : 0.0005274261603375527,
+    "support" : 4505,
+    "falseVetoBound" : 0.001876348067034589,
+    "trueVetoRate" : 0.31243498162147165,
+    "positives" : 1896,
+    "negatives" : 14419,
     "origin" : "derived"
   }, {
-    "name" : "year.distance >= 49",
-    "scope" : "listing-film",
-    "all" : [ {
-      "signal" : "year.distance",
-      "in" : [ ],
-      "atLeast" : 49
-    } ],
-    "falseVetoRate" : 0,
-    "support" : 118,
-    "falseVetoBound" : 0.0019389732820595871,
-    "trueVetoRate" : 0.08489208633093526,
-    "positives" : 1828,
-    "negatives" : 1390,
-    "origin" : "derived"
-  }, {
-    "name" : "runtime.delta >= 18 AND year.distance >= 16",
+    "name" : "runtime.delta >= 11 AND title in {none,overlap}",
     "scope" : "listing-film",
     "all" : [ {
       "signal" : "runtime.delta",
       "in" : [ ],
-      "atLeast" : 18
-    }, {
-      "signal" : "year.distance",
-      "in" : [ ],
-      "atLeast" : 16
-    } ],
-    "falseVetoRate" : 0,
-    "support" : 27,
-    "falseVetoBound" : 0.0019389732820595871,
-    "trueVetoRate" : 0.019424460431654675,
-    "positives" : 1828,
-    "negatives" : 1390,
-    "origin" : "derived"
-  }, {
-    "name" : "originalTitle in {disjoint} AND year.distance >= 2",
-    "scope" : "listing-film",
-    "all" : [ {
-      "signal" : "originalTitle",
-      "in" : [ "disjoint" ]
-    }, {
-      "signal" : "year.distance",
-      "in" : [ ],
-      "atLeast" : 2
-    } ],
-    "falseVetoRate" : 0,
-    "support" : 332,
-    "falseVetoBound" : 0.0019488421461399208,
-    "trueVetoRate" : 0.2411038489469862,
-    "positives" : 1821,
-    "negatives" : 1377,
-    "origin" : "derived"
-  }, {
-    "name" : "runtime.delta >= 38 AND title in {none,overlap}",
-    "scope" : "listing-film",
-    "all" : [ {
-      "signal" : "runtime.delta",
-      "in" : [ ],
-      "atLeast" : 38
+      "atLeast" : 11
     }, {
       "signal" : "title",
       "in" : [ "none", "overlap" ]
     } ],
-    "falseVetoRate" : 0.0005473453749315818,
-    "support" : 2,
-    "falseVetoBound" : 0.0019385270716538088,
-    "trueVetoRate" : 0.0014388489208633094,
-    "positives" : 1827,
-    "negatives" : 1390,
+    "falseVetoRate" : 0,
+    "support" : 4877,
+    "falseVetoBound" : 0.001876348067034589,
+    "trueVetoRate" : 0.3358584119550995,
+    "positives" : 1896,
+    "negatives" : 14521,
     "origin" : "derived"
   }, {
-    "name" : "originalTitle in {disjoint} AND runtime.delta >= 11",
+    "name" : "runtime.delta >= 7 AND year.distance >= 4",
     "scope" : "listing-film",
     "all" : [ {
-      "signal" : "originalTitle",
-      "in" : [ "disjoint" ]
-    }, {
       "signal" : "runtime.delta",
       "in" : [ ],
-      "atLeast" : 11
+      "atLeast" : 7
+    }, {
+      "signal" : "year.distance",
+      "in" : [ ],
+      "atLeast" : 4
     } ],
     "falseVetoRate" : 0,
-    "support" : 16,
-    "falseVetoBound" : 0.0019403131466338146,
-    "trueVetoRate" : 0.011502516175413372,
-    "positives" : 1825,
-    "negatives" : 1391,
+    "support" : 9055,
+    "falseVetoBound" : 0.001876348067034589,
+    "trueVetoRate" : 0.6228933067345395,
+    "positives" : 1896,
+    "negatives" : 14537,
     "origin" : "derived"
   }, {
-    "name" : "title in {none} AND year.distance >= 2",
+    "name" : "title in {none,overlap} AND year.distance >= 2",
     "scope" : "listing-film",
     "all" : [ {
       "signal" : "title",
-      "in" : [ "none" ]
+      "in" : [ "none", "overlap" ]
     }, {
       "signal" : "year.distance",
       "in" : [ ],
       "atLeast" : 2
     } ],
     "falseVetoRate" : 0,
-    "support" : 126,
-    "falseVetoBound" : 0.0019389732820595871,
-    "trueVetoRate" : 0.09064748201438849,
-    "positives" : 1828,
-    "negatives" : 1390,
+    "support" : 4781,
+    "falseVetoBound" : 0.0018788591141944114,
+    "trueVetoRate" : 0.33024797955377494,
+    "positives" : 1895,
+    "negatives" : 14477,
+    "origin" : "derived"
+  }, {
+    "name" : "runtime.delta >= 81",
+    "scope" : "listing-film",
+    "all" : [ {
+      "signal" : "runtime.delta",
+      "in" : [ ],
+      "atLeast" : 81
+    } ],
+    "falseVetoRate" : 0.0010548523206751054,
+    "support" : 3271,
+    "falseVetoBound" : 0.001876348067034589,
+    "trueVetoRate" : 0.22525996832174092,
+    "positives" : 1896,
+    "negatives" : 14521,
+    "origin" : "derived"
+  }, {
+    "name" : "year.distance >= 27",
+    "scope" : "listing-film",
+    "all" : [ {
+      "signal" : "year.distance",
+      "in" : [ ],
+      "atLeast" : 27
+    } ],
+    "falseVetoRate" : 0,
+    "support" : 4920,
+    "falseVetoBound" : 0.0018788591141944114,
+    "trueVetoRate" : 0.339849416315535,
+    "positives" : 1895,
+    "negatives" : 14477,
     "origin" : "derived"
   }, {
     "name" : "country in {mismatch} AND year.distance >= 2",
@@ -889,29 +1068,48 @@
       "atLeast" : 2
     } ],
     "falseVetoRate" : 0,
-    "support" : 32,
-    "falseVetoBound" : 0.0019389732820595871,
-    "trueVetoRate" : 0.02302158273381295,
-    "positives" : 1828,
-    "negatives" : 1390,
+    "support" : 5689,
+    "falseVetoBound" : 0.0018788591141944114,
+    "trueVetoRate" : 0.3929681563859916,
+    "positives" : 1895,
+    "negatives" : 14477,
     "origin" : "derived"
   }, {
-    "name" : "runtime.delta >= 82",
+    "name" : "director in {different} AND originalTitle in {disjoint}",
     "scope" : "listing-film",
     "all" : [ {
-      "signal" : "runtime.delta",
-      "in" : [ ],
-      "atLeast" : 82
+      "signal" : "director",
+      "in" : [ "different" ]
+    }, {
+      "signal" : "originalTitle",
+      "in" : [ "disjoint" ]
     } ],
-    "falseVetoRate" : 0.0010946907498631637,
-    "support" : 6,
-    "falseVetoBound" : 0.0019385270716538088,
-    "trueVetoRate" : 0.004316546762589928,
-    "positives" : 1827,
-    "negatives" : 1390,
+    "falseVetoRate" : 0.0005299417064122947,
+    "support" : 2418,
+    "falseVetoBound" : 0.001882638311936998,
+    "trueVetoRate" : 0.1679399916655091,
+    "positives" : 1887,
+    "negatives" : 14398,
     "origin" : "derived"
   }, {
-    "name" : "country in {mismatch} AND runtime.delta >= 21",
+    "name" : "director in {different} AND title in {none}",
+    "scope" : "listing-film",
+    "all" : [ {
+      "signal" : "director",
+      "in" : [ "different" ]
+    }, {
+      "signal" : "title",
+      "in" : [ "none" ]
+    } ],
+    "falseVetoRate" : 0,
+    "support" : 1133,
+    "falseVetoBound" : 0.001878440139710538,
+    "trueVetoRate" : 0.0785768777307719,
+    "positives" : 1895,
+    "negatives" : 14419,
+    "origin" : "derived"
+  }, {
+    "name" : "country in {mismatch} AND runtime.delta >= 16",
     "scope" : "listing-film",
     "all" : [ {
       "signal" : "country",
@@ -919,14 +1117,50 @@
     }, {
       "signal" : "runtime.delta",
       "in" : [ ],
-      "atLeast" : 21
+      "atLeast" : 16
     } ],
     "falseVetoRate" : 0,
-    "support" : 22,
-    "falseVetoBound" : 0.0019385270716538088,
-    "trueVetoRate" : 0.015827338129496403,
-    "positives" : 1827,
-    "negatives" : 1390,
+    "support" : 4183,
+    "falseVetoBound" : 0.001876348067034589,
+    "trueVetoRate" : 0.28806556022312513,
+    "positives" : 1896,
+    "negatives" : 14521,
+    "origin" : "derived"
+  }, {
+    "name" : "originalTitle in {disjoint} AND runtime.delta >= 11",
+    "scope" : "listing-film",
+    "all" : [ {
+      "signal" : "originalTitle",
+      "in" : [ "disjoint" ]
+    }, {
+      "signal" : "runtime.delta",
+      "in" : [ ],
+      "atLeast" : 11
+    } ],
+    "falseVetoRate" : 0,
+    "support" : 1974,
+    "falseVetoBound" : 0.001878440139710538,
+    "trueVetoRate" : 0.13593168984988294,
+    "positives" : 1893,
+    "negatives" : 14522,
+    "origin" : "derived"
+  }, {
+    "name" : "originalTitle in {disjoint} AND year.distance >= 2",
+    "scope" : "listing-film",
+    "all" : [ {
+      "signal" : "originalTitle",
+      "in" : [ "disjoint" ]
+    }, {
+      "signal" : "year.distance",
+      "in" : [ ],
+      "atLeast" : 2
+    } ],
+    "falseVetoRate" : 0,
+    "support" : 2372,
+    "falseVetoBound" : 0.0018877009552790644,
+    "trueVetoRate" : 0.16455081512313563,
+    "positives" : 1885,
+    "negatives" : 14415,
     "origin" : "derived"
   }, {
     "name" : "country in {mismatch} AND originalTitle in {disjoint}",
@@ -938,12 +1172,82 @@
       "signal" : "originalTitle",
       "in" : [ "disjoint" ]
     } ],
-    "falseVetoRate" : 0.000547945205479452,
-    "support" : 13,
-    "falseVetoBound" : 0.0019403131466338146,
-    "trueVetoRate" : 0.009345794392523364,
-    "positives" : 1825,
-    "negatives" : 1391,
+    "falseVetoRate" : 0,
+    "support" : 1799,
+    "falseVetoBound" : 0.0018805368827923383,
+    "trueVetoRate" : 0.12439496611810262,
+    "positives" : 1892,
+    "negatives" : 14462,
+    "origin" : "derived"
+  }, {
+    "name" : "runtime.delta >= 7 AND title in {none}",
+    "scope" : "listing-film",
+    "all" : [ {
+      "signal" : "runtime.delta",
+      "in" : [ ],
+      "atLeast" : 7
+    }, {
+      "signal" : "title",
+      "in" : [ "none" ]
+    } ],
+    "falseVetoRate" : 0,
+    "support" : 1017,
+    "falseVetoBound" : 0.001876348067034589,
+    "trueVetoRate" : 0.07003649886371462,
+    "positives" : 1896,
+    "negatives" : 14521,
+    "origin" : "derived"
+  }, {
+    "name" : "country in {mismatch} AND title in {none}",
+    "scope" : "listing-film",
+    "all" : [ {
+      "signal" : "country",
+      "in" : [ "mismatch" ]
+    }, {
+      "signal" : "title",
+      "in" : [ "none" ]
+    } ],
+    "falseVetoRate" : 0,
+    "support" : 546,
+    "falseVetoBound" : 0.001878440139710538,
+    "trueVetoRate" : 0.03775672498444091,
+    "positives" : 1895,
+    "negatives" : 14461,
+    "origin" : "derived"
+  }, {
+    "name" : "director in {different} AND title in {none,overlap}",
+    "scope" : "listing-listing",
+    "all" : [ {
+      "signal" : "director",
+      "in" : [ "different" ]
+    }, {
+      "signal" : "title",
+      "in" : [ "none", "overlap" ]
+    } ],
+    "falseVetoRate" : 0,
+    "support" : 62,
+    "falseVetoBound" : 0.002133021167115176,
+    "trueVetoRate" : 0.21602787456445993,
+    "positives" : 1760,
+    "negatives" : 287,
+    "origin" : "derived"
+  }, {
+    "name" : "chainId in {different} AND year.delta >= 1",
+    "scope" : "listing-listing",
+    "all" : [ {
+      "signal" : "chainId",
+      "in" : [ "different" ]
+    }, {
+      "signal" : "year.delta",
+      "in" : [ ],
+      "atLeast" : 1
+    } ],
+    "falseVetoRate" : 0,
+    "support" : 24,
+    "falseVetoBound" : 0.0021172845457020513,
+    "trueVetoRate" : 0.08333333333333333,
+    "positives" : 1779,
+    "negatives" : 288,
     "origin" : "derived"
   }, {
     "name" : "chainId in {different} AND title in {none,overlap}",
@@ -955,15 +1259,15 @@
       "signal" : "title",
       "in" : [ "none", "overlap" ]
     } ],
-    "falseVetoRate" : 0.0017162471395881006,
-    "support" : 28,
-    "falseVetoBound" : 0.002143298566757402,
-    "trueVetoRate" : 0.1033210332103321,
-    "positives" : 1748,
-    "negatives" : 271,
+    "falseVetoRate" : 0.0016910935738444193,
+    "support" : 31,
+    "falseVetoBound" : 0.0021193020175380903,
+    "trueVetoRate" : 0.1076388888888889,
+    "positives" : 1774,
+    "negatives" : 288,
     "origin" : "derived"
   }, {
-    "name" : "runtime.delta >= 2 AND year.delta >= 16",
+    "name" : "runtime.delta >= 2 AND year.delta >= 4",
     "scope" : "listing-listing",
     "all" : [ {
       "signal" : "runtime.delta",
@@ -972,32 +1276,14 @@
     }, {
       "signal" : "year.delta",
       "in" : [ ],
-      "atLeast" : 16
+      "atLeast" : 4
     } ],
-    "falseVetoRate" : 0.0005701254275940707,
-    "support" : 17,
-    "falseVetoBound" : 0.0021386615074970973,
-    "trueVetoRate" : 0.06273062730627306,
-    "positives" : 1754,
-    "negatives" : 271,
-    "origin" : "derived"
-  }, {
-    "name" : "chainId in {different} AND runtime.delta >= 1",
-    "scope" : "listing-listing",
-    "all" : [ {
-      "signal" : "chainId",
-      "in" : [ "different" ]
-    }, {
-      "signal" : "runtime.delta",
-      "in" : [ ],
-      "atLeast" : 1
-    } ],
-    "falseVetoRate" : 0.001142857142857143,
-    "support" : 34,
-    "falseVetoBound" : 0.002143298566757402,
-    "trueVetoRate" : 0.12546125461254612,
-    "positives" : 1750,
-    "negatives" : 271,
+    "falseVetoRate" : 0.0011198208286674132,
+    "support" : 44,
+    "falseVetoBound" : 0.002109753114150109,
+    "trueVetoRate" : 0.1527777777777778,
+    "positives" : 1786,
+    "negatives" : 288,
     "origin" : "derived"
   }, {
     "name" : "runtime.delta >= 51 AND title in {none,overlap}",
@@ -1010,65 +1296,12 @@
       "signal" : "title",
       "in" : [ "none", "overlap" ]
     } ],
-    "falseVetoRate" : 0.0005714285714285715,
-    "support" : 50,
-    "falseVetoBound" : 0.002143298566757402,
-    "trueVetoRate" : 0.18450184501845018,
-    "positives" : 1750,
-    "negatives" : 271,
-    "origin" : "derived"
-  }, {
-    "name" : "director in {different} AND year.delta >= 32",
-    "scope" : "listing-listing",
-    "all" : [ {
-      "signal" : "director",
-      "in" : [ "different" ]
-    }, {
-      "signal" : "year.delta",
-      "in" : [ ],
-      "atLeast" : 32
-    } ],
-    "falseVetoRate" : 0.0005810575246949448,
-    "support" : 12,
-    "falseVetoBound" : 0.002176862202282568,
-    "trueVetoRate" : 0.045283018867924525,
-    "positives" : 1721,
-    "negatives" : 265,
-    "origin" : "derived"
-  }, {
-    "name" : "title in {none,overlap} AND year.delta >= 16",
-    "scope" : "listing-listing",
-    "all" : [ {
-      "signal" : "title",
-      "in" : [ "none", "overlap" ]
-    }, {
-      "signal" : "year.delta",
-      "in" : [ ],
-      "atLeast" : 16
-    } ],
-    "falseVetoRate" : 0,
-    "support" : 8,
-    "falseVetoBound" : 0.0021386615074970973,
-    "trueVetoRate" : 0.02952029520295203,
-    "positives" : 1752,
-    "negatives" : 271,
-    "origin" : "derived"
-  }, {
-    "name" : "director in {different} AND originalTitle in {disjoint}",
-    "scope" : "listing-listing",
-    "all" : [ {
-      "signal" : "director",
-      "in" : [ "different" ]
-    }, {
-      "signal" : "originalTitle",
-      "in" : [ "disjoint" ]
-    } ],
-    "falseVetoRate" : 0.0005763688760806917,
-    "support" : 22,
-    "falseVetoBound" : 0.002152633272615086,
-    "trueVetoRate" : 0.09649122807017543,
-    "positives" : 1735,
-    "negatives" : 228,
+    "falseVetoRate" : 0.0005614823133071309,
+    "support" : 52,
+    "falseVetoBound" : 0.0021132611033395144,
+    "trueVetoRate" : 0.18055555555555555,
+    "positives" : 1781,
+    "negatives" : 288,
     "origin" : "derived"
   }, {
     "name" : "title in {none,overlap} AND venue in {same}",
@@ -1080,45 +1313,12 @@
       "signal" : "venue",
       "in" : [ "same" ]
     } ],
-    "falseVetoRate" : 0.0011441647597254005,
-    "support" : 59,
-    "falseVetoBound" : 0.002143298566757402,
-    "trueVetoRate" : 0.2177121771217712,
-    "positives" : 1748,
-    "negatives" : 271,
-    "origin" : "derived"
-  }, {
-    "name" : "year.delta >= 47",
-    "scope" : "listing-listing",
-    "all" : [ {
-      "signal" : "year.delta",
-      "in" : [ ],
-      "atLeast" : 47
-    } ],
-    "falseVetoRate" : 0,
-    "support" : 7,
-    "falseVetoBound" : 0.0021386615074970973,
-    "trueVetoRate" : 0.025830258302583026,
-    "positives" : 1752,
-    "negatives" : 271,
-    "origin" : "derived"
-  }, {
-    "name" : "runtime.delta >= 1 AND venue in {same}",
-    "scope" : "listing-listing",
-    "all" : [ {
-      "signal" : "runtime.delta",
-      "in" : [ ],
-      "atLeast" : 1
-    }, {
-      "signal" : "venue",
-      "in" : [ "same" ]
-    } ],
-    "falseVetoRate" : 0,
-    "support" : 71,
-    "falseVetoBound" : 0.002143298566757402,
-    "trueVetoRate" : 0.26199261992619927,
-    "positives" : 1750,
-    "negatives" : 271,
+    "falseVetoRate" : 0.0011273957158962795,
+    "support" : 58,
+    "falseVetoBound" : 0.0021193020175380903,
+    "trueVetoRate" : 0.2013888888888889,
+    "positives" : 1774,
+    "negatives" : 288,
     "origin" : "derived"
   }, {
     "name" : "runtime.delta >= 81",
@@ -1128,48 +1328,80 @@
       "in" : [ ],
       "atLeast" : 81
     } ],
-    "falseVetoRate" : 0.0017142857142857142,
-    "support" : 9,
-    "falseVetoBound" : 0.002143298566757402,
-    "trueVetoRate" : 0.033210332103321034,
-    "positives" : 1750,
-    "negatives" : 271,
+    "falseVetoRate" : 0.0016844469399213925,
+    "support" : 10,
+    "falseVetoBound" : 0.0021132611033395144,
+    "trueVetoRate" : 0.034722222222222224,
+    "positives" : 1781,
+    "negatives" : 288,
     "origin" : "derived"
   }, {
-    "name" : "originalTitle in {disjoint} AND year.delta >= 3",
+    "name" : "year.delta >= 27",
     "scope" : "listing-listing",
     "all" : [ {
-      "signal" : "originalTitle",
-      "in" : [ "disjoint" ]
-    }, {
       "signal" : "year.delta",
       "in" : [ ],
-      "atLeast" : 3
+      "atLeast" : 27
     } ],
     "falseVetoRate" : 0,
-    "support" : 10,
-    "falseVetoBound" : 0.0021469190938546165,
-    "trueVetoRate" : 0.043478260869565216,
-    "positives" : 1744,
-    "negatives" : 230,
+    "support" : 20,
+    "falseVetoBound" : 0.0021172845457020513,
+    "trueVetoRate" : 0.06944444444444445,
+    "positives" : 1779,
+    "negatives" : 288,
     "origin" : "derived"
   }, {
-    "name" : "chainId in {different} AND year.delta >= 16",
+    "name" : "director in {different} AND originalTitle in {disjoint}",
     "scope" : "listing-listing",
     "all" : [ {
-      "signal" : "chainId",
+      "signal" : "director",
       "in" : [ "different" ]
     }, {
+      "signal" : "originalTitle",
+      "in" : [ "disjoint" ]
+    } ],
+    "falseVetoRate" : 0.0005685048322910744,
+    "support" : 28,
+    "falseVetoBound" : 0.0021289377520593935,
+    "trueVetoRate" : 0.11764705882352941,
+    "positives" : 1759,
+    "negatives" : 238,
+    "origin" : "derived"
+  }, {
+    "name" : "venue in {same} AND year.delta >= 1",
+    "scope" : "listing-listing",
+    "all" : [ {
+      "signal" : "venue",
+      "in" : [ "same" ]
+    }, {
       "signal" : "year.delta",
       "in" : [ ],
-      "atLeast" : 16
+      "atLeast" : 1
     } ],
     "falseVetoRate" : 0,
-    "support" : 8,
-    "falseVetoBound" : 0.0021386615074970973,
-    "trueVetoRate" : 0.02952029520295203,
-    "positives" : 1752,
-    "negatives" : 271,
+    "support" : 41,
+    "falseVetoBound" : 0.0021172845457020513,
+    "trueVetoRate" : 0.1423611111111111,
+    "positives" : 1779,
+    "negatives" : 288,
+    "origin" : "derived"
+  }, {
+    "name" : "director in {different} AND runtime.delta >= 62",
+    "scope" : "listing-listing",
+    "all" : [ {
+      "signal" : "director",
+      "in" : [ "different" ]
+    }, {
+      "signal" : "runtime.delta",
+      "in" : [ ],
+      "atLeast" : 62
+    } ],
+    "falseVetoRate" : 0.0005665722379603399,
+    "support" : 12,
+    "falseVetoBound" : 0.0021274104992718068,
+    "trueVetoRate" : 0.041811846689895474,
+    "positives" : 1765,
+    "negatives" : 287,
     "origin" : "derived"
   }, {
     "name" : "director in {different} AND venue in {same}",
@@ -1181,12 +1413,30 @@
       "signal" : "venue",
       "in" : [ "same" ]
     } ],
-    "falseVetoRate" : 0.0005767012687427913,
-    "support" : 33,
-    "falseVetoBound" : 0.002157331183664311,
-    "trueVetoRate" : 0.12267657992565056,
-    "positives" : 1734,
-    "negatives" : 269,
+    "falseVetoRate" : 0.0005681818181818182,
+    "support" : 43,
+    "falseVetoBound" : 0.002133021167115176,
+    "trueVetoRate" : 0.14982578397212543,
+    "positives" : 1760,
+    "negatives" : 287,
+    "origin" : "derived"
+  }, {
+    "name" : "title in {none,overlap} AND year.delta >= 3",
+    "scope" : "listing-listing",
+    "all" : [ {
+      "signal" : "title",
+      "in" : [ "none", "overlap" ]
+    }, {
+      "signal" : "year.delta",
+      "in" : [ ],
+      "atLeast" : 3
+    } ],
+    "falseVetoRate" : 0,
+    "support" : 24,
+    "falseVetoBound" : 0.0021172845457020513,
+    "trueVetoRate" : 0.08333333333333333,
+    "positives" : 1779,
+    "negatives" : 288,
     "origin" : "derived"
   } ],
   "evidenceClasses" : [ {
@@ -1204,14 +1454,14 @@
       "in" : [ ],
       "atMost" : 0.5
     } ],
-    "probability" : 0.994132355243458,
+    "probability" : 0.9936346557812068,
     "measured" : {
-      "fittingWrongUpper" : 0.005867644756541977,
-      "heldOutUnits" : 811,
+      "fittingWrongUpper" : 0.006365344218793241,
+      "heldOutUnits" : 809,
       "heldOutWrong" : 4,
-      "fittingUnits" : 1884,
+      "fittingUnits" : 1893,
       "fittingWrong" : 4,
-      "targetWrongRate" : 0.009650957053241113
+      "targetWrongRate" : 0.013186472230840832
     },
     "basis" : "a listing's exact top hit (its whole title names the film exactly and a title search returned it first) as a class, measured on bare titles replayed through the recorded searches: its wrong share on the fitting splits has a Bonferroni-corrected one-sided 95% upper bound within the wrong rate ratings are shown at; the probability is one minus it"
   } ],
@@ -1221,9 +1471,9 @@
     "splits" : "family = listings joined by title key or production film; murmur3(smallest ListingKey) mod 10: 0-4 train, 5-6 calibration, 7-9 test",
     "labels" : "production tmdbId corroborated by >= 2 independent signals (year ±1, director, original title, >= 2 other venues), none denying; negatives = the listing's other title-search results",
     "epsilonBasis" : "certified: every rule fired on NO same-film unit of the fitting splits; epsilon is the largest Bonferroni-corrected upper bound that certifies (the tightest the data can prove)",
-    "evidenceClasses" : "scripts.IdentityEvidenceClasses: the labels above, replayed stripped to their titles through the recorded title searches of recorder run 36224654409 (the resolver-query recording)",
+    "evidenceClasses" : "scripts.IdentityEvidenceClasses: the labels above, replayed stripped to their titles through the recorded title searches of recording-36224654409-trees",
     "script" : "scripts/identity-calibrate.sh (worker/Test/runMain scripts.IdentityCalibrate)",
-    "epsilon" : "0.002176862202282568",
-    "todayWrongRate" : "0,00965"
+    "epsilon" : "0.002133021167115176",
+    "todayWrongRate" : "0.01319"
   }
 }

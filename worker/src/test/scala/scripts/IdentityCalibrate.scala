@@ -46,6 +46,9 @@ import scala.util.hashing.MurmurHash3
  */
 object IdentityCalibrate {
 
+  /** Where a refit writes: the RESOLVER's artefact, never the rating gate's pinned one. */
+  val ResolverArtefact: Path = Paths.get("common/src/main/resources", IdentityCalibration.ResolverResourcePath)
+
   final case class Config(corpora: Path, fixtures: Path, hardClusters: Path, prod: Option[Path], weightsOut: Path,
                           labelsOut: Path, reportDir: Path, epsilon: Option[Double], countries: Seq[String], version: String,
                           cases: Option[Path] = None)
@@ -58,7 +61,7 @@ object IdentityCalibrate {
       fixtures     = path("fixtures").getOrElse(sys.error("--fixtures <dir of enrichment-<cc>/ trees>")),
       hardClusters = path("hard-clusters").getOrElse(Paths.get("test/resources/fixtures/corpus")),
       prod         = path("prod"),
-      weightsOut   = path("weights").getOrElse(Paths.get("common/src/main/resources/identity-weights.json")),
+      weightsOut   = path("weights").getOrElse(ResolverArtefact),
       labelsOut    = path("labels").getOrElse(Paths.get("test/resources/fixtures/identity/identity-labels.json.gz")),
       reportDir    = path("report").getOrElse(Paths.get("target/identity-calibration")),
       // Default "certified": a cannot-link must never have fired on a same-film unit. A number

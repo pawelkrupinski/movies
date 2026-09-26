@@ -110,7 +110,7 @@ class ShadowIdentityReaperIntegrationSpec extends AnyFlatSpec with Matchers with
         new TmdbClient(new ObservingHttpFetch(new GapsFail(c.fetch, c.misses), observations),
           apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language, retrySleep = (_: Long) => ()),
         w.detailEnrichers.map(e => new ObservingDetailEnricher(new DetailGapsFail(e, c.misses), observations)), c.misses)
-      val offline = IdentityResolver.resolve(listings, offlineSource, c.normalizer, IdentityCalibration.default)
+      val offline = IdentityResolver.resolve(listings, offlineSource, c.normalizer, IdentityCalibration.resolver)
 
       // 2. one production tick over the store alone
       Seq(ShadowRunStore.DecisionsCollection, ShadowRunStore.DiffCollection)
@@ -126,7 +126,7 @@ class ShadowIdentityReaperIntegrationSpec extends AnyFlatSpec with Matchers with
           new TmdbClient(_, apiKey = Some(settings.TmdbApiKey("shadow-key")), language = c.country.language), w.detailEnrichers),
         pins          = new InMemoryPinStore,
         normalizer    = c.normalizer,
-        calibration   = IdentityCalibration.default,
+        calibration   = IdentityCalibration.resolver,
         runs          = runs,
         retention     = ShadowRetention(services.observations.ObservationRetention.Window),
         metrics       = metrics,

@@ -63,7 +63,7 @@ object IdentityLookupSweep {
 
   /** Issue the resolver's whole query set against `lookups`. */
   def run(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
-          onLookup: String => Unit = _ => (), calibration: IdentityCalibration = IdentityCalibration.default): Summary = {
+          onLookup: String => Unit = _ => (), calibration: IdentityCalibration = IdentityCalibration.resolver): Summary = {
     val named = new Named(lookups, onLookup)
     val r = IdentityResolver.resolve(listings, named, normalizer, calibration)
     Summary(listings.size, named.details, r.unknownDetails, r.queries.size, r.unknownQueries, r.filmLookups, r.unknownFilms)
