@@ -203,14 +203,14 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     c.flicksFallbackSlugs.get(CineworldSheffield).value.market shouldBe FlicksMarket.UnitedKingdom
     // Cineworld 87 + Vue 88 + Showcase 16 + Everyman 50 + Odeon 101 = 342 UK,
     // plus the US chain venues that are reachable without Zyte:
-    //   Alamo 40 + Landmark 26 + Showcase US 13 = 79.
+    //   Alamo 39 + Landmark 26 + Showcase US 13 = 78 (Alamo Naples closed 9 Sep 2026).
     // Every one of them is own-site PRIMARY with flicks.us kept as the fallback, so
     // this total moves whenever a chain is added, dropped, or a venue map changes.
     // Odeon was 102 until Basingstoke closed on 31 Aug 2026 and Odeon dropped it
     // from its own estate — see OdeonVenueMapSpec.
     // AMC and Regal are NOT among them — see the US chain test below for why.
     ChainFlicksFallback.ukSlugs should have size 342
-    c.flicksFallbackSlugs should have size 342 + 79
+    c.flicksFallbackSlugs should have size 342 + 78
 
     // Regal stays ON the aggregator, and must NOT carry a fallback entry either —
     // a flicks primary with a flicks fallback would just re-fetch the same URL on
@@ -271,7 +271,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     val usFallbacks = c.flicksFallbackSlugs.filter { case (cin, _) =>
       UsChainVenues.all.contains(cin.displayName)
     }
-    usFallbacks should have size 79
+    usFallbacks should have size 78
     // Every US chain venue falls back to the US market, never the UK one.
     all(usFallbacks.values.map(_.market).toSeq) shouldBe FlicksMarket.UnitedStates
     // …and to the very slug it used to be catalogued under, derived rather than
@@ -292,7 +292,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     withClue("these UsChainVenues names match no US roster venue, so they silently stay on flicks.us: ") {
       unknown shouldBe empty
     }
-    UsChainVenues.all should have size 79
+    UsChainVenues.all should have size 78
   }
 
   // A NEW CHAIN ORIGIN MUST ARRIVE PACED. HostPolicy rows match by host SUFFIX, so
