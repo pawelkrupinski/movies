@@ -110,14 +110,10 @@ object CachingEnrichmentFetch {
   private val asBody: PartialFunction[CachedResponse, String] = { case CachedResponse.Body(text) => text }
 
   /** `METHOD <credential-masked url>`, plus a body fingerprint where the body is
-   *  what distinguishes two calls. */
-  def keyOf(method: String, url: String, body: Option[String] = None): String = {
-    val masked = RedactedUrl(url)
-    body match {
-      case None       => s"$method $masked"
-      case Some(text) => s"$method $masked ${Integer.toHexString(text.hashCode)}"
-    }
-  }
+   *  what distinguishes two calls — the one canonical request key, shared with the lookup
+   *  observations (`services.observations.LookupQuery`). */
+  def keyOf(method: String, url: String, body: Option[String] = None): String =
+    services.observations.LookupQuery.of(method, url, body).key
 
   /** Reconstruct the exception a cached failure stands for. A status-bearing
    *  failure comes back as the same typed [[HttpStatusException]] with the same
@@ -128,15 +124,10 @@ object CachingEnrichmentFetch {
     case None       => new CachedEnrichmentFailure(failed.message)
   }
 
-  /** What to remember about a failure. Status-bearing failures keep their code;
-   *  everything else (a timeout, a reset socket) keeps its class name in the
-   *  message so a puzzling cached miss can still be diagnosed a day later. */
-  def failureOf(failure: Throwable, method: String): CachedResponse.Failed = failure match {
-    case status: HttpStatusException =>
-      CachedResponse.Failed(Some(status.code), status.method, status.getMessage)
-    case other =>
-      CachedResponse.Failed(None, method, s"${other.getClass.getName}: ${other.getMessage}")
-  }
+  /** What to remember about a failure — the observation store's rule, so a remembered verdict
+   *  and an observed one encode a failure identically. */
+  def failureOf(failure: Throwable, method: String): CachedResponse.Failed =
+    services.observations.LookupAnswer.failureOf(failure, method)
 }
 
 /** A replayed non-HTTP failure — a timeout or connection error the cache saw on an

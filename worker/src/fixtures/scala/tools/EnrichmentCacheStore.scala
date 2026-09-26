@@ -12,12 +12,10 @@ package tools
  * pass, which is both the slow half of the sweep and the half most likely to
  * answer differently the second time.
  */
-sealed trait CachedResponse
-object CachedResponse {
-  final case class Body(text: String)                                           extends CachedResponse
-  final case class Bytes(base64: String)                                        extends CachedResponse
-  final case class Failed(status: Option[Int], method: String, message: String) extends CachedResponse
-}
+type CachedResponse = services.observations.LookupAnswer
+/** The same shape a lookup OBSERVATION keeps (`services.observations.LookupAnswer`): a remembered
+ *  answer and an observed one are one type, so neither can drift from the other. */
+val CachedResponse: services.observations.LookupAnswer.type = services.observations.LookupAnswer
 
 /**
  * Where an [[EnrichmentCache]]'s remembered responses live between runs.
