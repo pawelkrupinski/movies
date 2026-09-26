@@ -409,7 +409,7 @@ abstract class CountryConvergenceBehaviour(
     val treeRoot = java.nio.file.Paths.get(fixtureRoot.of(fixtureDirectory))
     if (IdentityLookupSweep.runsIn(IdentityLookupSweep.enabledIn(configuration),
         missingFixtures.isDefined, treeRoot)) {
-      info(s"${country.displayName}: identity resolver lookups — ${IdentityLookupSweep.over(w, country)}")
+      info(s"${country.displayName}: identity resolver lookups — ${IdentityLookupSweep.over(w)}")
       if (missingFixtures.isEmpty) IdentityLookupSweep.markRecorded(treeRoot)
     }
     info(s"${country.displayName}: " + missingFixtures.fold("RECORDING run — requests the tree lacks are fetched live and recorded")(

@@ -1,91 +1,44 @@
 package tools
 
-import models.{Cinema, CinemaMovie, CinemaShowing, MovieRecord, Source, SourceData}
-import services.cinemas.common.{DetailEnricher, FilmDetail}
-import services.movies.{ScrapeListing, TitleNormalizer}
-
-import scala.util.Try
+import models.{Cinema, CinemaMovie}
+import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures,
+  IdentityResolver, Listing, TmdbIdentityLookups}
+import services.movies.TitleNormalizer
 
 /**
  * The identity resolver's QUERY SET over one corpus, issued once, so a recording pass captures
  * every answer the resolver will ask a replay for (docs/design/identity-resolver.md, "Recording
  * the resolver's queries").
  *
- * The pipeline resolves a MERGED group's evidence; the resolver resolves each listing's OWN
- * evidence, under query shapes the pipeline never makes. Against recorder run 36153174348's
- * trees that left PL 200, UK 140 (123 of them Cineworld's detail API), US 18 and DE 2 requests
- * unanswered, each replayed as a remembered 404 — a definitive no-match the live answer might
- * not have been. Run through a recording leg's fetch chain, this sweep fills exactly those.
- *
- * The set, a function of the listing SET alone (never of arrival order or of a memo):
- *
- *  1. every raw listing — `ScrapeListing.prepare`'s per-title fold NOT applied, because the
- *     resolver reads the rows it erases ("Sinn und Sinnlichkeit" 1995 beside 2026) — in the total
- *     order of [[Listing.sortKey]];
- *  2. the venue's detail page of each listing that has one at a venue with a `DetailEnricher`,
- *     once per (venue, page);
- *  3. `MovieService.resolveStagingRecord` of each DISTINCT [[Evidence]] (listing merged with its
- *     own detail, listing values winning), in [[Evidence.key]] order, on a slot of ONE fixed
- *     catalogue venue so the answer is a function of the evidence and not of the venue.
- *
- * `resolve` must not memoise across calls (pass a `MovieService` built with
- * `ResolutionCache.passthrough`): a memo hit skips the very requests a memo-free replay makes.
+ * The sweep IS a resolve: it runs `IdentityResolver` itself over the corpus's raw listings, with
+ * `TmdbIdentityLookups` over the wiring's recording chains. So it asks exactly what the resolver
+ * asks — every listing's own detail page, every `CandidateQueries` search (the calibration's
+ * `IdentityMeasures.searchQueries`, yearless) and director filmography, and the identity record
+ * (`TmdbClient.identityRecord`) of every film any of them names — and nothing else. There is no
+ * second list to drift from the first. A function of the listing SET alone (A1): never of arrival
+ * order or of a memo.
  */
 object IdentityLookupSweep {
 
-  /** One raw listing, as the resolver reads it. */
-  final case class Listing(cinema: Cinema, rawTitle: String, cleanTitle: String, year: Option[Int],
-                           directors: Seq[String], runtime: Option[Int], page: Option[String],
-                           originalTitle: Option[String]) {
-    /** A TOTAL order: every field, so two different listings never tie. */
-    lazy val sortKey: String =
-      Seq(cinema.displayName, rawTitle, cleanTitle, year.fold("")(_.toString), directors.mkString(","),
-        runtime.fold("")(_.toString), page.getOrElse(""), originalTitle.getOrElse("")).mkString("\u0000")
-  }
-
-  /** A listing's evidence once its own detail page is merged in. Venue-free on purpose: two
-   *  venues publishing the same evidence ask the same question. */
-  final case class Evidence(cleanTitle: String, rawTitle: String, year: Option[Int], directors: Seq[String],
-                            runtime: Option[Int], originalTitle: Option[String]) {
-    lazy val key: String =
-      Seq(cleanTitle, rawTitle, year.fold("")(_.toString), directors.sorted.mkString(","),
-        runtime.fold("")(_.toString), originalTitle.getOrElse("")).mkString("\u0000")
-
-    /** The staging record the resolve reads: one slot of `cinema` carrying this evidence. */
-    def record(cinema: Cinema, normalizer: TitleNormalizer): MovieRecord =
-      MovieRecord(data = Map[Source, SourceData](CinemaShowing.keyFor(cinema, cleanTitle, normalizer) ->
-        SourceData(title = Some(cleanTitle), rawTitle = Some(rawTitle), originalTitle = originalTitle,
-          director = directors, runtimeMinutes = runtime, releaseYear = year)))
-  }
-
-  object Evidence {
-    def of(listing: Listing, detail: Option[FilmDetail]): Evidence = Evidence(
-      cleanTitle    = listing.cleanTitle,
-      rawTitle      = listing.rawTitle,
-      year          = listing.year.orElse(detail.flatMap(_.releaseYear)),
-      directors     = if (listing.directors.nonEmpty) listing.directors else detail.map(_.director).getOrElse(Nil),
-      runtime       = listing.runtime.filter(_ > 0).orElse(detail.flatMap(_.runtimeMinutes).filter(_ > 0)),
-      originalTitle = listing.originalTitle.orElse(detail.flatMap(_.originalTitle)))
-  }
-
-  final case class Summary(listings: Int, detailLookups: Int, detailFailures: Int, resolves: Int, resolveFailures: Int,
-                           resolved: Int) {
+  final case class Summary(listings: Int, details: Int, detailsUnanswered: Int, queries: Int, queriesUnanswered: Int,
+                           films: Int, filmsUnanswered: Int) {
     override def toString: String =
-      s"$listings listing(s): $detailLookups detail lookup(s) ($detailFailures failed), " +
-        s"$resolves resolve(s) ($resolveFailures failed, $resolved matched a film)"
+      s"$listings listing(s): $details detail page(s) ($detailsUnanswered unanswered), $queries candidate quer(ies) " +
+        s"($queriesUnanswered unanswered), $films film record(s) ($filmsUnanswered unanswered)"
   }
-
-  /** Set to `true` to run the sweep in a convergence leg: a RECORDING leg records every answer
-   *  the tree lacks, a HERMETIC one fails on each by name (`CountryConvergenceBehaviour`). */
-  val EnvVar = "KINOWO_IDENTITY_LOOKUPS"
 
   def enabledIn(configuration: settings.ProcessConfiguration): Boolean = configuration.identityLookupSweep.value
 
   /** Left at the root of a tree whose recording ran the sweep: the tree answers the resolver's
    *  query set, so a HERMETIC leg replaying it runs the sweep too — and fails on any gap. That
    *  is what keeps the phase-1 gate enforced by every verdict leg without anyone turning it on,
-   *  and without failing a leg that replays a tree recorded before the sweep existed. */
-  val RecordedMarker = ".identity-lookups"
+   *  and without failing a leg that replays a tree recorded before the sweep existed.
+   *
+   *  VERSIONED by the query set: `-v2` is the resolver's own set (calibrated search shapes,
+   *  filmographies, identity records). A tree marked for the earlier set (`.identity-lookups`,
+   *  the per-evidence `resolveStagingRecord`) does not answer it, so its hermetic legs do not run
+   *  the sweep until a recording re-marks the tree. */
+  val RecordedMarker = ".identity-lookups-v2"
 
   /** Whether a leg runs the sweep: when asked to, or when it replays a tree recorded with it. */
   def runsIn(requested: Boolean, hermetic: Boolean, treeRoot: java.nio.file.Path): Boolean =
@@ -94,53 +47,42 @@ object IdentityLookupSweep {
   /** Mark `treeRoot` as recorded with the sweep — by a RECORDING leg, once the sweep has run. */
   def markRecorded(treeRoot: java.nio.file.Path): Unit = {
     java.nio.file.Files.createDirectories(treeRoot)
-    java.nio.file.Files.writeString(treeRoot.resolve(RecordedMarker), "the identity resolver's query set is recorded in this tree\n")
+    java.nio.file.Files.writeString(treeRoot.resolve(RecordedMarker),
+      "the identity resolver's query set (IdentityResolver over TmdbIdentityLookups) is recorded in this tree\n")
     ()
   }
 
-  /** The sweep over a booted replay wiring: its archived listings, its venues' detail
-   *  enrichers, and a `MovieService` over its own TMDB client — built WITHOUT the wiring's
-   *  resolution memo (the constructor's passthrough default), so every evidence issues the
-   *  requests a memo-free resolver replay will. Both clients fetch through the wiring's
-   *  recording chain, which is what files the answers into the leg's tree. */
-  def over(w: ArchiveReplayWiring, country: models.Country, onLookup: String => Unit = _ => ()): Summary = {
-    val service = new services.movies.MovieService(w.movieCache, w.eventBus, w.tmdbClient, clock = w.clock,
-      letterboxdIdResolver = Some(w.letterboxdIdResolver), wikidata = Some(w.wikidataClient))
-    try run(w.archivedListings, w.detailEnrichers, service.resolveStagingRecord,
-      CountryScrapeCorpus.cinemasOf(country).minBy(_.displayName), w.movieCache.normalizer, onLookup)
-    finally service.stop()
+  /** Every raw listing of `archived` — `ScrapeListing.prepare`'s per-title fold NOT applied, because
+   *  the resolver reads the rows it erases ("Sinn und Sinnlichkeit" 1995 beside 2026) — one per key. */
+  def listings(archived: Map[Cinema, Seq[CinemaMovie]], normalizer: TitleNormalizer): Seq[Listing] =
+    archived.toSeq.flatMap { case (cinema, films) => films.map(Listing.of(cinema, _, normalizer)) }.sorted.distinctBy(_.key)
+
+  /** The sweep over a booted replay wiring: its archived listings, its venues' detail enrichers
+   *  and its TMDB client, both fetching through the wiring's recording chain — which is what files
+   *  the answers into the leg's tree. `onLookup` hears each logical lookup's name as soon as it has
+   *  been issued (they run one at a time), so a caller can attribute every request to it. */
+  def over(w: ArchiveReplayWiring, onLookup: String => Unit = _ => ()): Summary = {
+    val normalizer = w.movieCache.normalizer
+    run(listings(w.archivedListings, normalizer), new TmdbIdentityLookups(w.tmdbClient, w.detailEnrichers), normalizer, onLookup)
   }
 
-  /** Every raw listing of `archived`, distinct, in the total order. */
-  def listings(archived: Map[Cinema, Seq[CinemaMovie]], normalizer: TitleNormalizer): Seq[Listing] =
-    archived.toSeq.flatMap { case (cinema, films) =>
-      films.map { cm =>
-        Listing(cinema, cm.movie.rawTitle.getOrElse(cm.movie.title), ScrapeListing.cleanTitle(cinema, cm.movie.title, normalizer)._1,
-          cm.movie.releaseYear, cm.director, cm.movie.runtimeMinutes, cm.filmUrl, cm.movie.originalTitle)
-      }
-    }.distinctBy(_.sortKey).sortBy(_.sortKey)
+  /** Issue the resolver's whole query set against `lookups`. */
+  def run(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
+          onLookup: String => Unit = _ => (), calibration: IdentityCalibration = IdentityCalibration.default): Summary = {
+    val named = new Named(lookups, onLookup)
+    val r = IdentityResolver.resolve(listings, named, normalizer, calibration)
+    Summary(listings.size, named.details, r.unknownDetails, r.queries.size, r.unknownQueries, r.filmLookups, r.unknownFilms)
+  }
 
-  /** Issue the whole query set. `slotCinema` is the fixed venue every resolve's slot sits on —
-   *  pick it by a rule of the catalogue (the country's first venue by name), never of the corpus.
-   *  `onLookup` hears each logical lookup's name as soon as it has been issued — the lookups run
-   *  one at a time, so a caller can attribute every request in between to it. */
-  def run(archived: Map[Cinema, Seq[CinemaMovie]], enrichers: Seq[DetailEnricher],
-          resolve: (String, Option[Int], MovieRecord) => Option[MovieRecord], slotCinema: Cinema,
-          normalizer: TitleNormalizer, onLookup: String => Unit = _ => ()): Summary = {
-    val all       = listings(archived, normalizer)
-    val enricher  = enrichers.map(e => e.cinema -> e).toMap
-    val detailed  = scala.collection.mutable.LinkedHashMap.empty[(String, String), Try[Option[FilmDetail]]]
-    def detailOf(l: Listing): Option[FilmDetail] = (l.page, enricher.get(l.cinema)) match {
-      case (Some(page), Some(e)) => detailed.getOrElseUpdate((l.cinema.displayName, page), {
-        val answer = Try(e.fetchFilmDetail(page)); onLookup(s"detail ${l.cinema.displayName} $page"); answer
-      }).toOption.flatten
-      case _                     => None
+  /** `inner`, announcing each lookup by name once it returns. */
+  private final class Named(inner: IdentityLookups, onLookup: String => Unit) extends IdentityLookups {
+    var details = 0
+    private def named[A](name: String)(answer: Answer[A]): Answer[A] = { onLookup(name); answer }
+    override def hasDetail(l: Listing): Boolean = inner.hasDetail(l)
+    override def detail(l: Listing): Answer[Option[DetailFacts]] = {
+      details += 1; named(s"detail ${l.venue} ${l.page.getOrElse("")}")(inner.detail(l))
     }
-    val evidences = all.map(l => Evidence.of(l, detailOf(l))).distinctBy(_.key).sortBy(_.key)
-    val answers   = evidences.map { e =>
-      val answer = Try(resolve(e.cleanTitle, e.year, e.record(slotCinema, normalizer))); onLookup(s"resolve ${e.key}"); answer
-    }
-    Summary(all.size, detailed.size, detailed.values.count(_.isFailure), evidences.size, answers.count(_.isFailure),
-      answers.count(_.toOption.flatten.exists(_.tmdbId.isDefined)))
+    override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = named(s"query ${q.sortKey.replace('\u0000', ' ')}")(inner.candidates(q))
+    override def film(id: Int): Answer[Option[IdentityMeasures.Film]] = named(s"film $id")(inner.film(id))
   }
 }

@@ -215,7 +215,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
       s"hc-${country.code}-identity", TitleNormalizer.forCountry(country))
     storages.synchronized(storages += storage)
     val w = FetchReplayWiring(country, storage, CorpusFixture.read(HardClusters.corpusKey(country)), responses(country))
-    println(s"[${country.code}] identity resolver lookups: ${IdentityLookupSweep.over(w, country)}")
+    println(s"[${country.code}] identity resolver lookups: ${IdentityLookupSweep.over(w)}")
   }
 
   private def recordEachSpellingAlone(): Unit = {

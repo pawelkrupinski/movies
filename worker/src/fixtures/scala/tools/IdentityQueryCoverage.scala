@@ -10,8 +10,9 @@ import scala.collection.mutable
  * The identity program's PHASE-1 GATE (docs/design/identity-resolver.md, "Phase 1"): what
  * fraction of the resolver's query set the recorded answers can serve, per corpus.
  *
- * The query set is [[IdentityLookupSweep]]'s — every listing's own detail page and the TMDB
- * resolve of every distinct evidence, a function of the listing set alone — and it is the same
+ * The query set is [[IdentityLookupSweep]]'s — the identity resolver's own: every listing's detail
+ * page, every candidate search and filmography, and every candidate's identity record, a function
+ * of the listing set alone — and it is the same
  * set a recording leg run with `KINOWO_IDENTITY_LOOKUPS=true` records, so a gap reported here
  * is exactly what that recording fills.
  *
@@ -93,7 +94,7 @@ object IdentityQueryCoverage {
               fetch: HttpFetch, missed: () => Request => Boolean): (Coverage, IdentityLookupSweep.Summary) = {
     val log     = new RequestLog(fetch)
     val wiring  = FetchReplayWiring(country, storage, rows, log)
-    val summary = IdentityLookupSweep.over(wiring, country, log.cut)
+    val summary = IdentityLookupSweep.over(wiring, log.cut)
     (of(label, log.byLookup, missed()), summary)
   }
 }

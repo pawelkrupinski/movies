@@ -139,7 +139,7 @@ class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers wit
       override lazy val uptimeMonitor = new services.UptimeMonitor(None, clock = clock)
       override lazy val tmdbClient: clients.TmdbClient = new clients.TmdbClient(lookupFetch, apiKey = Some(_root_.settings.TmdbApiKey("replay")), language = language)
     }
-    info(s"recording pass: ${IdentityLookupSweep.over(recording, country)}")
+    info(s"recording pass: ${IdentityLookupSweep.over(recording)}")
 
     import scala.jdk.CollectionConverters._
     val wired  = asked.asScala.toSet
