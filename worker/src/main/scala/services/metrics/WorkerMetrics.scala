@@ -90,6 +90,8 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
 
   // The identity resolver's shadow run, per country — see IdentityShadowMetrics.
   val identityShadow: IdentityShadowMetrics = new IdentityShadowMetrics(registry)
+  // A cut-over country's identity projection — see IdentityCutoverMetrics.
+  val identityCutover: IdentityCutoverMetrics = new IdentityCutoverMetrics(registry)
 
   // Per-request outcome of the PAID egress legs (Zyte, Decodo) — see PaidEgressMetrics.
   val paidEgress: PaidEgressMetrics = new PaidEgressMetrics(countryCodes, registry)

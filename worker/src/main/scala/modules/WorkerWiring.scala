@@ -2,7 +2,7 @@ package modules
 
 import org.mongodb.scala.MongoClient
 import models.Country
-import modules.wiring.{AlertingWiring, ChunkScrapeWiring, CorpusWiring, DetailWiring, EgressWiring, HttpWiring, InvariantAuditWiring, MetricsWiring, OperatorWiring, RatingsWiring, ReadModelWiring, ResolutionWiring, ScrapeWiring, ShareCardWiring, StagingWiring, TaskQueueWiring}
+import modules.wiring.{AlertingWiring, ChunkScrapeWiring, CorpusWiring, DetailWiring, EgressWiring, HttpWiring, IdentityCutoverWiring, InvariantAuditWiring, MetricsWiring, OperatorWiring, RatingsWiring, ReadModelWiring, ResolutionWiring, ScrapeWiring, ShareCardWiring, StagingWiring, TaskQueueWiring}
 import services.cinemas.common.CinemaClientMarkers
 import services.events.{EventBus, InProcessEventBus}
 import services.freshness.{Freshness, FreshnessKind}
@@ -73,7 +73,7 @@ class WorkerWiring(
     with HttpWiring with EgressWiring with ScrapeWiring with ChunkScrapeWiring with DetailWiring
     with CorpusWiring with ResolutionWiring with RatingsWiring with ReadModelWiring
     with MetricsWiring with TaskQueueWiring with StagingWiring with AlertingWiring with OperatorWiring with ShareCardWiring
-    with InvariantAuditWiring {
+    with InvariantAuditWiring with IdentityCutoverWiring {
 
   /** Every setting this wiring reads, typed — resolved over its `env` (the process's in
    *  production, an empty one in a test wiring), so a flip installed into that Env reaches
@@ -120,7 +120,7 @@ class WorkerWiring(
 
   lazy val shadowIdentityReaper: Option[services.identity.ShadowIdentityReaper] = {
     import services.identity._
-    identityObservations.filter(_ => configuration.identityShadow.value).map(store => new ShadowIdentityReaper(
+    identityObservations.filter(_ => configuration.identityShadow.value && !identityCutover).map(store => new ShadowIdentityReaper(
       listings      = () => {
         val live = cinemaScrapers.map(_.cinema).toSet
         Listing.corpus(scrapeArchive.findAll().filter(row => live(row.cinema)).map(row => row.cinema -> row.films), titleNormalizer)
@@ -298,8 +298,10 @@ class WorkerWiring(
     // wedged-but-alive JVM the throttle watchdog can't see.
     livenessWatchdog.start()
     enrichmentReaper.start()
-    unresolvedTmdbReaper.start()
-    detailReaper.start()
+    // A cut-over country's identity is the projection's (`IdentityCutoverWiring`): the old path's
+    // reapers — the TMDB retry / concluding and the deferred detail that feeds the TMDB resolve —
+    // are not started, and neither is staging's below.
+    if (!identityCutover) { unresolvedTmdbReaper.start(); detailReaper.start() }
     settleReaper.start()
     omdbBackfillReaper.foreach(_.start())
     shareCardReapers.foreach(_.start())
@@ -312,8 +314,7 @@ class WorkerWiring(
     // Incubate pending_movies through the queue: newcomers and every step run off
     // events (subscribed above); this periodic tick only backstops stalled chains.
     // The TaskWorker (above) drains the steps.
-    stagingReaper.start()
-    stagingStuckAlerter.foreach(_.start())
+    if (!identityCutover) { stagingReaper.start(); stagingStuckAlerter.foreach(_.start()) }
     // Say so, loudly, for any alerter a missing env var has wired off (gauge + WARN).
     reportAlerters()
     // Census the corpus for the /metrics gauges (off-band, read-only paged scan):

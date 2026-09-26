@@ -77,7 +77,7 @@ trait CorpusWiring { self: WorkerWiring =>
       scrapeLandingMetrics = taskMetrics,
       // Durable, so the guards' grace and each venue's recorded source survive a
       // rollout — held in memory they reset on every pod change.
-      scrapeGuardLedger = new services.scrapes.MongoScrapeGuardLedger(mongoConnection.database),
+      scrapeGuardLedger = scrapeGuardLedger,
       // The process's one intern pool, shared with every other country's cache.
       stringPool = workerMetrics.stringPool,
       bootHydrateMaxAttempts = configuration.bootHydrateMaxAttempts,
@@ -85,6 +85,10 @@ trait CorpusWiring { self: WorkerWiring =>
       maxConsecutiveGuardRejections =
         services.movies.ScrapeHealth.maxRejectionsFor(scrapeFreshness),
       rehydrateInterval = configuration.cacheRehydrateInterval(CacheRehydrateInterval(6.hours)))
+
+  /** Where the scrape guards keep each venue's state — the landing's, or a cut-over country's
+   *  listing intake's: one ledger, so a country switched between paths keeps one count. */
+  lazy val scrapeGuardLedger: services.movies.ScrapeGuardLedger = new services.scrapes.MongoScrapeGuardLedger(mongoConnection.database)
 
   // This deployment's badge vocabulary. One instance, shared by every path that
   // writes a `Showtime.format`, so the cache and the two detail-merge paths

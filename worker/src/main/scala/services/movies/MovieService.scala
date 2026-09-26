@@ -978,13 +978,22 @@ class MovieService(
 
   /** Fetch a resolved row's `Tmdb` slot by its own id and write it through the resolution
    *  builder, ratings and cinemas carried forward. False when TMDB could not answer. */
-  private def rewriteTmdbSlot(key: CacheKey, e: MovieRecord): Boolean = {
-    val tmdbId = e.tmdbId.get
-    tmdb.fullDetails(tmdbId).exists { details =>
-      val ids = Try(tmdb.externalIds(tmdbId)).getOrElse(TmdbClient.ExternalIds(e.imdbId, e.wikidataId))
-      cache.putIfPresent(key, cur => buildResolvedRecord(tmdbId, hit = None, ids, Some(details), cur, basis = None))
+  private def rewriteTmdbSlot(key: CacheKey, e: MovieRecord): Boolean =
+    detailsOf(e.tmdbId.get, e).exists(withDetails => cache.putIfPresent(key, withDetails))
+
+  /** `existing` carrying TMDB film `tmdbId`'s details — fetched BY ID, never a search — through the
+   *  builder a resolution writes with, ratings and cinemas carried forward. `None` when TMDB could
+   *  not answer. What the identity projection (phase 5) fills a film the resolver named with. */
+  def withFilmDetails(existing: MovieRecord, tmdbId: Int): Option[MovieRecord] =
+    detailsOf(tmdbId, existing).map(_(existing))
+
+  /** The resolution builder applied with `tmdbId`'s fetched details, the cross-reference ids falling
+   *  back to `row`'s when TMDB's own lookup fails. */
+  private def detailsOf(tmdbId: Int, row: MovieRecord): Option[MovieRecord => MovieRecord] =
+    tmdb.fullDetails(tmdbId).map { details =>
+      val ids = Try(tmdb.externalIds(tmdbId)).getOrElse(TmdbClient.ExternalIds(row.imdbId, row.wikidataId))
+      cur => buildResolvedRecord(tmdbId, hit = None, ids, Some(details), cur, basis = None)
     }
-  }
 
   /** Dispatch a row's TMDB resolution with its `data`-merged director +
    *  originalTitle hints (the only path `directorWalk` can fire on for films

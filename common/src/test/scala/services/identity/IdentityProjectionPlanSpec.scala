@@ -158,6 +158,13 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     p.films.find(_.key == "lalka|2026").get.members.toSet shouldBe a.map(_.listing.key).toSet
   }
 
+  "A venue printing one listing twice" should "keep both rows' showtimes on the film (P4)" in {
+    val twice = Seq(row(Multikino, "Lalka", Some(2026), hours = Seq(0)), row(Multikino, "Lalka", Some(2026), hours = Seq(48)))
+    twice.map(_.listing.key).distinct.size shouldBe 1
+    val p = plan(twice, resolution(decision(Some(1), twice.head)))
+    p.films.head.record.data.values.flatMap(_.showtimes).map(_.dateTime).toSet shouldBe Set(start, start.plusHours(48))
+  }
+
   "The plan" should "not depend on the order the listings, decisions or stored films arrive in (P1)" in {
     val r = resolution(decision(Some(1), lalka*), decision(None, obcy*))
     val once = plan(lalka ++ obcy, r)

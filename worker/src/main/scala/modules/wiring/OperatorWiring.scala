@@ -46,7 +46,7 @@ trait OperatorWiring { self: WorkerWiring =>
     new BulkRefreshHandler(TaskType.RefreshAllImdb,       "IMDb",       () => { imdbIdCache.forgetAll(); imdbRatings.refreshAllNow() },         bulkTaskResultStore),
     new BulkRefreshHandler(TaskType.RefreshAllMetacritic, "Metacritic", () => { mcLinkCache.forgetAll(); metascoreRatings.refreshAllNow() },    bulkTaskResultStore),
     new BulkRefreshHandler(TaskType.RefreshAllRt,         "RT",         () => { rtLinkCache.forgetAll(); rottenTomatoesRatings.refreshAllNow() }, bulkTaskResultStore),
-    new BulkRefreshHandler(TaskType.SettleNow,            "Settle",     () => { movieService.settle(); BulkRefreshResult.message("consolidation complete") }, bulkTaskResultStore),
+    new BulkRefreshHandler(TaskType.SettleNow,            "Settle",     () => { identityProjection.fold(movieService.settle())(_.tickQuietly()); BulkRefreshResult.message("consolidation complete") }, bulkTaskResultStore),
     new ResolveTmdbHandler(movieService.resolveTmdbOnce),
     // Movies-path IMDb-id recovery as a task (was inline off ImdbIdMissing) — so
     // the merge-retrigger path can re-kick it; resolveSync writes the id, and the

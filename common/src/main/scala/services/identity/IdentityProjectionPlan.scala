@@ -33,10 +33,11 @@ final case class FilmDraft(counter: Long, inherited: Option[FilmId], members: Se
 final case class ProjectedFilm(id: FilmId, counter: Long, title: String, year: Option[Int], key: String,
                                record: MovieRecord, members: Seq[ListingKey])
 
-/** Everything one projection decides before anything is fetched: the drafts, the ids retired, the
- *  FilmId map extended over the previous films, the regroupings, and the canary — how the resolver's
+/** Everything one projection decides before anything is fetched: the drafts, the ids retired (and
+ *  among them the `vanished` ones — stored films no published listing is on any more), the FilmId
+ *  map extended over the previous films, the regroupings, and the canary — how the resolver's
  *  clusters relate to the films stored before it ran ([[ShadowDiff]]'s relations). */
-final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], counters: FilmIdCounters,
+final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], vanished: Seq[FilmId], counters: FilmIdCounters,
                                  additions: Seq[FilmIdCounter], regroupings: Regroupings, canary: Map[ShadowRelation, Int])
 
 /** A projection ready to write: the films (every key unique, every TMDB id on one film), the ids to
@@ -76,8 +77,13 @@ object IdentityProjectionPlan {
 
   def draft(listings: Seq[ProjectedListing], resolution: Resolution, stored: Seq[StoredMovieRecord], counters: FilmIdCounters,
             normalizer: TitleNormalizer, slots: CinemaSlotBuilder, tokens: ScreeningTokens, at: Instant): ProjectionDraft = {
-    val byKey: Map[ListingKey, ProjectedListing] =
-      listings.sortBy(_.listing).distinctBy(_.listing.key).map(p => p.listing.key -> p).toMap
+    // One listing per key — the smallest by the total order, as the resolver takes it — carrying the
+    // showtimes of every row published under that key, so a venue printing one listing twice loses none.
+    val byKey: Map[ListingKey, ProjectedListing] = listings.groupBy(_.listing.key).map { case (key, rows) =>
+      val first = rows.minBy(_.listing)
+      key -> (if (rows.sizeIs == 1) first
+              else first.copy(row = first.row.copy(showtimes = MovieRecordMerge.dedupShowtimes(rows.flatMap(_.row.showtimes)))))
+    }
     val storedById = stored.map(r => r.id.value -> r).toMap
 
     // 1. The stored films as listing sets, numbered.
@@ -127,7 +133,8 @@ object IdentityProjectionPlan {
       moves   = previousOf.count { case (l, ref) => newIdOf.get(l).map(c => previousIdOf(c).getOrElse(s"#$c")) != Some(ref.id) },
       fresh   = drafts.count(_.inherited.isEmpty),
       retired = retired.size)
-    ProjectionDraft(drafts, retired, covered, additions, regroupings, ShadowDiff.counts(ShadowDiff.of(resolution, previousOf)._1))
+    val placed = previousFilms.map(_.id).toSet
+    ProjectionDraft(drafts, retired, retired.filterNot(id => placed(id.value)), covered, additions, regroupings, ShadowDiff.counts(ShadowDiff.of(resolution, previousOf)._1))
   }
 
   /** Choose every film's title, year and key, and mint the id of every fresh one. `taken` says

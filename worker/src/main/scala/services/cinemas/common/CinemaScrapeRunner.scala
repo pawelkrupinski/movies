@@ -3,7 +3,7 @@ package services.cinemas.common
 import models.{Cinema, CinemaMovie}
 import play.api.Logging
 import services.events.{EventBus, MovieDetailsComplete}
-import services.movies.{CacheKey, MovieCache}
+import services.movies.{CacheKey, MovieCache, ScrapeSink}
 import services.cinemas.pl.FilmwebShowtimesClient
 import services.scrapes.{ScrapeArchiveRepository, ScrapeAttempt}
 
@@ -38,8 +38,14 @@ class CinemaScrapeRunner(
   // Keeps each cinema's last consolidated listing so it can be replayed later
   // (into a test, into an empty database) without re-scraping. Defaults to the
   // no-op store so specs and scripts that don't care needn't wire one.
-  scrapeArchive:   ScrapeArchiveRepository = ScrapeArchiveRepository.empty
+  scrapeArchive:   ScrapeArchiveRepository = ScrapeArchiveRepository.empty,
+  // Where the scrape goes after it is archived: `movieCache`'s landing, unless the country is cut
+  // over to the identity projection (docs/design/identity-resolver.md §8, phase 5), whose intake
+  // takes the listing as the venue's published one and places nothing itself.
+  landing:         Option[ScrapeSink] = None
 ) extends Logging {
+
+  private val sink: ScrapeSink = landing.getOrElse(movieCache)
 
   def run(scraper: CinemaScraper): Seq[(CinemaMovie, CacheKey, Boolean)] = {
     val cinema: Cinema = scraper.cinema
@@ -60,7 +66,7 @@ class CinemaScrapeRunner(
     // scrape, and a chunked one arrives as a `PreScrapedCinemaScraper` wrapping
     // the already-reduced chunks.
     archive(scraper, movies, error = None)
-    val touched = movieCache.recordCinemaScrape(cinema, movies, scraper.listingIsComplete, scraper.sourceKey, viaFallback)
+    val touched = sink.recordCinemaScrape(cinema, movies, scraper.listingIsComplete, scraper.sourceKey, viaFallback)
     val events   = classify(cinema, touched)
     val elapsed  = System.currentTimeMillis() - t0
     val awaiting = touched.count(_._3) - events.size

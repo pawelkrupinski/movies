@@ -148,11 +148,16 @@ object ScrapeArchiveCodecs extends PersistedCodecs {
  * side-record of a scrape that has already happened, so a failed write must
  * never break the scrape that produced it. The next scrape rewrites the row.
  */
-class MongoScrapeArchiveRepository(sharedDb: Option[MongoDatabase]) extends ScrapeArchiveRepository with Logging {
+class MongoScrapeArchiveRepository(
+  sharedDb:   Option[MongoDatabase],
+  // `cinema_scrapes`, unless the same rules keep another venue-keyed listing set (the identity
+  // projection's accepted listings, `IdentityListingIntake.Collection`).
+  collection: String = ScrapeArchiveRepository.Collection
+) extends ScrapeArchiveRepository with Logging {
 
   private lazy val coll: Option[MongoCollection[StoredScrapeDto]] = sharedDb.map { db =>
     val c = db.withCodecRegistry(ScrapeArchiveCodecs.registry)
-      .getCollection[StoredScrapeDto](ScrapeArchiveRepository.Collection)
+      .getCollection[StoredScrapeDto](collection)
       .withWriteConcern(WriteConcern.W1.withJournal(false))
     // Supports "which cinemas have gone stale / are failing" reads without
     // scanning; the collection is small enough that nothing else needs an index.

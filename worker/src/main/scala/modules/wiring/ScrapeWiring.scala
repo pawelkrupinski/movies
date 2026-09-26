@@ -290,7 +290,8 @@ trait ScrapeWiring { self: WorkerWiring =>
     new GoneVenueAlertingArchive(
       observationStore.fold(scrapeArchive)(new ObservingScrapeArchive(scrapeArchive, _)),
       venuesPagedElsewhere,
-      fallbackPager("gone-venue")))
+      fallbackPager("gone-venue")),
+    landing = identityListingIntake)
 
   /** Every cinema's last consolidated scrape, kept for replay/repopulate. One row
    *  per cinema in THIS country's database, replaced on each successful scrape. */

@@ -264,6 +264,26 @@ trait TestWiring extends WorkerWiring {
     lastTickThrew = Some(now)
   }
 
+  /** A CUT-OVER country's boot (docs/design/identity-resolver.md §8, phase 5; the wiring must run with
+   *  `KINOWO_IDENTITY_CUTOVER` naming its country): every venue scraped into the listing intake
+   *  through the production runner, then one identity projection and the enrichment it announces. */
+  def bootCutover(): services.identity.ProjectionTick = {
+    cinemaScrapers.foreach { scraper =>
+      try { cinemaScrapeRunner.run(scraper); () }
+      catch { case e: Exception => scrapeFailures.add(s"${scraper.cinema.displayName}: $e"); () }
+    }
+    projectIdentity()
+  }
+
+  /** One identity projection of a cut-over country, then the enrichment chain it kicked (IMDb-id
+   *  recovery, ratings) worked to quiescence, as the TaskWorker would. */
+  def projectIdentity(): services.identity.ProjectionTick = {
+    val tick = identityProjection.getOrElse(throw new IllegalStateException(s"${country.code} is not cut over")).tick()
+    drainServices()
+    enrichRatingsSync()
+    tick
+  }
+
   /** Conclude what PRODUCTION would conclude, and nothing else: one whole period of
    *  `UnresolvedTmdbReaper` — the sweep production runs continuously — with the resolves it
    *  enqueues worked as the TaskWorker works them. A row TMDB answers is resolved or

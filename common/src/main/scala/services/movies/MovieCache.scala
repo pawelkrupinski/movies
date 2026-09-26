@@ -101,6 +101,19 @@ trait MovieCacheReader {
 }
 
 /**
+ * Where a venue's fresh scrape goes: `MovieCache` lands it (the landing / staging path), a cut-over
+ * country's `IdentityListingIntake` takes it as the venue's published listing for the identity
+ * projection (docs/design/identity-resolver.md §8, phase 5). Returns the rows it placed on a film
+ * and whether each is new there — nothing, for a sink that places none itself.
+ */
+trait ScrapeSink {
+  def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie],
+                         listingIsComplete: Boolean = true,
+                         sourceKey: Option[String] = None,
+                         viaFallback: Boolean = false): Seq[(CinemaMovie, CacheKey, Boolean)]
+}
+
+/**
  * In-memory enrichment store with write-through to the underlying `MovieRepository`.
  * Adds the mutating surface on top of `MovieCacheReader`.
  *
@@ -109,7 +122,7 @@ trait MovieCacheReader {
  * the production implementation; tests can swap in any other implementation if
  * they ever need to.
  */
-trait MovieCache extends MovieCacheReader {
+trait MovieCache extends MovieCacheReader with ScrapeSink {
   /** Apply one cinema's fresh scrape to the cache. Returns one
    *  `(CinemaMovie, CacheKey, isNew)` triple per input movie WHOSE SLOT WAS WRITTEN —
    *  a listing whose write was skipped (its stored row could not be read) yields none,
@@ -133,10 +146,10 @@ trait MovieCache extends MovieCacheReader {
    *  films it does not list, and leaves the guards' state alone. A fallback serves exactly
    *  when the primary is broken and is usually thinner, so pruning on it retired a venue's
    *  films on every outage and restored them on every recovery. */
-  def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie],
-                         listingIsComplete: Boolean = true,
-                         sourceKey: Option[String] = None,
-                         viaFallback: Boolean = false): Seq[(CinemaMovie, CacheKey, Boolean)]
+  override def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie],
+                                  listingIsComplete: Boolean = true,
+                                  sourceKey: Option[String] = None,
+                                  viaFallback: Boolean = false): Seq[(CinemaMovie, CacheKey, Boolean)]
 
   /** Reload the positive cache from the repository: drop every in-memory positive
    *  entry, then `repository.findAll()` and put each row. Returns the number of
@@ -145,6 +158,14 @@ trait MovieCache extends MovieCacheReader {
 
   // ── Internal write surface (services.* only) ─────────────────────────────
   private[services] def put(key: CacheKey, e: MovieRecord): WriteOutcome
+  /** The identity projection's write (docs/design/identity-resolver.md §8, phase 5): film `id` AS
+   *  the resolver made it, stored under `key`. No identity gate — no tmdbId or imdbId fold — because
+   *  the projection, not the write, decides identity; the store's unique `key` and `tmdbId` indexes
+   *  still refuse a second holder (`WriteOutcome.IdentityHeld`). A write under a new key retitles
+   *  the film: its old key leaves the cache with it. */
+  private[services] def writeProjected(id: FilmId, key: CacheKey, e: MovieRecord): WriteOutcome
+  /** Remove film `id` — one the projection retired — with its side rows, from the store and the cache. */
+  private[services] def retireProjected(id: FilmId): WriteOutcome
   private[services] def putIfPresent(key: CacheKey, updater: MovieRecord => MovieRecord): Boolean
   /** Settle-path persistence for the title-embedded year: re-key every yearless
    *  row whose cinema-slot titles carry an unambiguous delimited `EmbeddedYear`
@@ -651,6 +672,31 @@ class CaffeineMovieCache(
    *  canonicaliser. */
   private def canonicalRank(k: CacheKey): (Boolean, Int, String) =
     FilmCanonicalizer.canonicalRank(k)
+
+  private[services] def writeProjected(id: FilmId, key: CacheKey, e: MovieRecord): WriteOutcome =
+    corpusIndex.idOf(key).filter(_ != id) match {
+      case Some(_) => WriteOutcome.IdentityHeld
+      case None => repository.writeFence.writing(id) {
+        val clean   = withoutZeroRatings(e)
+        val outcome = repository.upsert(id, key, clean)
+        if (outcome == WriteOutcome.Written) {
+          corpusIndex.keyOf(id).filter(_ != key).foreach(evict)
+          store(key, forCache(clean), id)
+          touch()
+        }
+        outcome
+      }
+    }
+
+  private[services] def retireProjected(id: FilmId): WriteOutcome = {
+    val outcome = repository.delete(id)
+    if (outcome == WriteOutcome.Written) {
+      corpusIndex.keyOf(id).foreach(evict)
+      RemovalAudit.filmRemoved("identity.projection", id.value, reason = "retired-by-overlap")
+      touch()
+    }
+    outcome
+  }
 
   private[services] def canonicalKeyFor(key: CacheKey): Option[CacheKey] = {
     // The index's per-title map, not a walk of the whole cache: this runs up to four
