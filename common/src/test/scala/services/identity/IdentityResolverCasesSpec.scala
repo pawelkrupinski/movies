@@ -30,9 +30,11 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
         films.filter(f => want.nonEmpty && want.subsetOf(words(f.title))).sortBy(-_.popularity).map(hit)
       case CandidateQuery.Director(name) => films.filter(_.director == name).map(hit)
     })
+    // A record crediting nobody (an empty director) and with no runtime (0), as a broadcast's is.
     override def film(id: Int): Answer[Option[IdentityMeasures.Film]] =
       Answer.Known(films.find(_.id == id).map(f =>
-        IdentityMeasures.Film(f.title, None, Nil, Some(f.year), Some(f.runtime), Some(Seq(f.director)), None, Some(f.popularity))))
+        IdentityMeasures.Film(f.title, None, Nil, Some(f.year), Some(f.runtime).filter(_ > 0), Some(Seq(f.director).filter(_.nonEmpty)),
+          None, Some(f.popularity))))
   }
 
   private def listing(venue: Cinema, title: String, year: Option[Int] = None, director: Option[String] = None,
@@ -112,6 +114,47 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val r = resolve(season +: bare, films)
     (season +: bare).foreach(l => withClue(l.title + "\n" + (season +: bare).map(x => r.decisionOf(x.key).render).distinct.mkString("\n"))(r.decisionOf(l.key).film should not be Some(29993)))
     r.violations shouldBe 0
+  }
+
+  "A broadcast naming its season" should "take its season's production record, never a namesake film of another year" in {
+    // The Met's 2026/27 "Silent Night": TMDB files the season's production as a film of its own,
+    // crediting nobody, beside John Woo's 2023 action film — which ranks first and matches the
+    // work's name exactly. A venue listing Woo's film keeps it.
+    val films = Seq(F(891699, "Silent Night", 2023, "John Woo", 104, 60),
+      F(1707867, "The Metropolitan Opera 2026/27: Silent Night", 2027, "", 0, 1))
+    val met  = Seq(Multikino, Helios).map(listing(_, "Met Opera 2026-27: Silent Night")) :+
+      listing(KinoMuza, "OPERA 2026/2027 - SILENT NIGHT - RETRANSMISJA")
+    val woo  = listing(Rialto, "Silent Night", Some(2023), Some("John Woo"), Some(104))
+    val r = resolve(met :+ woo, films)
+    met.foreach(l => withClue(l.title + ": " + r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(1707867)))
+    r.decisionOf(woo.key).film shouldBe Some(891699)
+    together(r, met.head, woo) shouldBe false
+    r.violations shouldBe 0
+  }
+
+  it should "stay apart from another season's broadcast of the same work, and not take its record" in {
+    // The Royal Ballet's 2024/25 "The Nutcracker" has a record; its 2026/27 one does not yet. A
+    // bare "The Nutcracker" is a segment of both seasons' titles.
+    val films = Seq(F(1300037, "Royal Ballet & Opera 2024/25: The Nutcracker", 2024, "", 0, 3),
+      F(149385, "The Nutcracker", 1985, "Carroll Ballard", 89, 20))
+    val old  = listing(Multikino, "Royal Ballet & Opera 2024/25: The Nutcracker")
+    val next = Seq(Helios, KinoApollo).map(listing(_, "RBO Cinema Season 2026-27: The Nutcracker"))
+    val bare = listing(Rialto, "The Nutcracker")
+    val r = resolve(Seq(old, bare) ++ next, films)
+    r.decisionOf(old.key).film shouldBe Some(1300037)
+    next.foreach { l =>
+      withClue(r.decisionOf(l.key).render) { Seq(Some(1300037), Some(149385)) should not contain r.decisionOf(l.key).film }
+      together(r, old, l) shouldBe false
+    }
+    r.violations shouldBe 0
+  }
+
+  it should "take neither of two houses' records of its work in its season when nothing it publishes tells them apart" in {
+    val films = Seq(F(1, "The Metropolitan Opera 2026/27: Carmen", 2027, "", 0, 5),
+      F(2, "Royal Ballet & Opera 2026/27: Carmen", 2027, "", 0, 3))
+    val opera = listing(Multikino, "OPERA 2026/2027 - CARMEN")
+    val r = resolve(Seq(opera), films)
+    withClue(r.decisionOf(opera.key).render)(r.decisionOf(opera.key).film shouldBe None)
   }
 
   "Three films under one title" should "stay three, and a bare listing joins neither of the dated ones by title alone" in {

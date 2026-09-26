@@ -137,7 +137,10 @@ object IdentityResolver {
     val candidateById: Map[Int, Candidate] = hitsById.map { case (id, hs) => id -> Candidate.of(id, hs, records(id).toOption.flatten) }
 
     // ── scoring ──────────────────────────────────────────────────────────────────────────
-    final case class Scored(c: Candidate, p: Double, measures: Map[String, Measure], denied: Boolean)
+    /** `seasonProduction`: the film's record names the listing's season production
+     *  (`IdentityMeasures.namesSeasonProduction`). */
+    final case class Scored(c: Candidate, p: Double, measures: Map[String, Measure], denied: Boolean,
+                            seasonProduction: Boolean = false)
 
     /** What the LISTING'S OWN facts contribute — the title, year, director, runtime, original
      *  title and country measures — as opposed to the film database's ranking priors (search rank,
@@ -151,6 +154,11 @@ object IdentityResolver {
      *  different film. */
     def factsProbability(measures: Map[String, Measure]): Double =
       calibration.scopes(ListingFilm).calibration(calibration.scopes(ListingFilm).prior + ownContributions(measures))
+    /** Does the listing's own evidence rule the film out: a learned cannot-link, its facts'
+     *  probability below the certified cut, or a season its title names that the film is not of. */
+    def evidenceDenies(l: IdentityMeasures.Listing, f: IdentityMeasures.Film, measures: Map[String, Measure]): Boolean =
+      ListingConstraints.seasonsApart(l.seasonYear, IdentityMeasures.filmSeason(f), f.year).isDefined ||
+        ListingConstraints.learnedListingFilm(calibration, measures, factsProbability(measures)).isDefined
 
     /** The listings of a family by title key, with their venues: `venues.corroborating`'s group. */
     final class FamilyScope(members: Seq[Node]) {
@@ -172,8 +180,8 @@ object IdentityResolver {
           val measures = IdentityMeasures.listingFilm(l, c.film, ranks.get(c.tmdbId), rivals,
             IdentityMeasures.corroboratingVenues(c.film, group, venue))
           val p = calibration.probability(ListingFilm, measures)
-          Scored(c, p, measures, deniedByPins(c.tmdbId) ||
-            ListingConstraints.learnedListingFilm(calibration, measures, factsProbability(measures)).isDefined)
+          Scored(c, p, measures, deniedByPins(c.tmdbId) || evidenceDenies(l, c.film, measures),
+            IdentityMeasures.namesSeasonProduction(l, c.film))
         }.sortBy(s => (-s.p, s.c.tmdbId))
       }
 
@@ -206,18 +214,34 @@ object IdentityResolver {
      *  on the scale the rating gate reads. Rivals are already in it (the `rivals` measure). */
     def confidenceOf(ranked: Seq[Scored], film: Int): Double =
       ranked.filterNot(_.denied).find(_.c.tmdbId == film).fold(0.0)(_.p)
-    /** The best eligible candidate, when the calibration accepts it. */
-    def acceptedOf(ranked: Seq[Scored]): Option[(Scored, Double)] =
-      ranked.find(!_.denied).map(b => b -> b.p).filter(x => calibration.showsRatings(x._2))
-
     def ownEvidence(s: Scored): Double = ownContributions(s.measures)
+    /** The eligible candidate whose record names the listing's SEASON PRODUCTION — the season and
+     *  the work its title names. `None`: no candidate does. `Some(Some(x))`: `x` is the listing's
+     *  film on that identity, whatever the calibrated probability (the fitted weights do not read a
+     *  season yet): a season names its production as a published year names a film, and the
+     *  namesakes it rules out are already denied (`ListingConstraints.seasonsApart`).
+     *  `Some(None)`: two records do (two houses' stagings of one work in one season) and the
+     *  listing's own facts favour neither — ambiguity, so nothing is taken, on the season or on
+     *  the database's ranking. The confidence stays the calibrated probability. */
+    def seasonProductionOf(ranked: Seq[Scored]): Option[Option[(Scored, Double)]] =
+      ranked.filter(s => !s.denied && s.seasonProduction).sortBy(s => (-ownEvidence(s), s.c.tmdbId)) match {
+        case Seq()        => None
+        case Seq(one)     => Some(Some(one -> one.p))
+        case a +: b +: _  => Some(Option.when(ownEvidence(a) > ownEvidence(b))(a -> a.p))
+      }
+    /** The listing's season production, else the best eligible candidate when the calibration
+     *  accepts it. */
+    def acceptedOf(ranked: Seq[Scored]): Option[(Scored, Double)] =
+      seasonProductionOf(ranked).getOrElse(ranked.find(!_.denied).map(b => b -> b.p).filter(x => calibration.showsRatings(x._2)))
+
     /** A node accepts a film ON ITS OWN only when its own facts favour it over the runner-up: a
      *  bare "Lalka" beside two 2026 "Lalka"s, told apart only by TMDB's popularity ranking, is not
      *  decided alone — it follows the film its title's credited siblings chose (the cluster's), or
      *  the pooled vote. */
     def acceptedAlone(ranked: Seq[Scored]): Option[(Scored, Double)] = {
       val eligible = ranked.filterNot(_.denied)
-      acceptedOf(ranked).filter { case (best, _) => eligible.lift(1).forall(r => ownEvidence(best) > ownEvidence(r)) }
+      seasonProductionOf(ranked).getOrElse(acceptedOf(ranked).filter { case (best, _) =>
+        eligible.lift(1).forall(r => ownEvidence(best) > ownEvidence(r)) })
     }
 
     // ── families ─────────────────────────────────────────────────────────────────────────
@@ -286,8 +310,7 @@ object IdentityResolver {
       scopeOf(n).of(n).find(_.c.tmdbId == film).fold(pins.deniedFilms(n.listings.head.key)(film) || {
         // A film this node has no evidence path to: its own evidence against the film's record.
         candidateById.get(film).exists { c =>
-          val m = IdentityMeasures.listingFilm(n.evidence.measured, c.film, None, 0, 0)
-          ListingConstraints.learnedListingFilm(calibration, m, factsProbability(m)).isDefined
+          evidenceDenies(n.evidence.measured, c.film, IdentityMeasures.listingFilm(n.evidence.measured, c.film, None, 0, 0))
         }
       })(_.denied)
 
@@ -299,11 +322,15 @@ object IdentityResolver {
         for (x <- sorted.iterator; y <- sorted.iterator if x < y) yield (x, y)
       }.toSeq.distinct.sorted.map { case (i, j) => (members(i), members(j)) }
     }
-    // The two listings' own evidence apart (the learned "listing-listing" scope).
+    // The two listings' own evidence apart: the seasons their titles name, or the learned
+    // "listing-listing" scope.
     def listingsApart(x: Node, y: Node): Option[String] = {
-      val m = IdentityMeasures.listingListing(x.evidence.measured, y.evidence.measured,
-        sameVenue = (x.venues intersect y.venues).nonEmpty, sharedChainId = None)
-      ListingConstraints.learned(calibration, ListingListing, m, calibration.probability(ListingListing, m)).map(_.toString)
+      val (a, b) = (x.evidence.measured, y.evidence.measured)
+      lazy val m = IdentityMeasures.listingListing(a, b, sameVenue = (x.venues intersect y.venues).nonEmpty, sharedChainId = None)
+      ListingConstraints.seasonsApart(a.seasonYear, b.seasonYear, b.year)
+        .orElse(ListingConstraints.seasonsApart(b.seasonYear, a.seasonYear, a.year))
+        .orElse(ListingConstraints.learned(calibration, ListingListing, m, calibration.probability(ListingListing, m)))
+        .map(_.toString)
     }
 
     // The pins' own edges between `members`, and the derived edges they leave standing.

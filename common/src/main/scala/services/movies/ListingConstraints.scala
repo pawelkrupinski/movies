@@ -47,6 +47,9 @@ object ListingConstraints {
     /** An admin pinned the listing as never this film (`services.identity.PinClaim.NeverFilm`):
      *  it cannot share a film with any listing that is that film. */
     case PinnedNotFilm
+    /** A title naming a SEASON ("2026/27") lists that season's production: another season, or a
+     *  film dated outside the season's two years, is another production ([[seasonsApart]]). */
+    case SeasonsApart
     /** A rule LEARNED from corroborated films (`identity-weights.json`), by name. */
     case Learned(rule: String)
   }
@@ -121,6 +124,17 @@ object ListingConstraints {
     def credited(ds: Seq[String]) = ds.exists(_.trim.nonEmpty)
     Option.when(credited(a) && credited(b) && !MixedFilmDetector.creditSamePerson(a, b, normalizer))(CannotLink.VenueCreditsApart)
   }
+
+  /** A listing whose title names a SEASON (`season`, its first year: "2026/27" → 2026) against
+   *  another piece of evidence: a film, or another listing. The season is the listing's own
+   *  statement of WHEN its production runs — a year and the next, which is what makes it a season
+   *  — so the other side is another production when it names another season, or is dated outside
+   *  those two years: the Met's 2026/27 "Silent Night" is not John Woo's 2023 film, the Royal
+   *  Ballet's 2026/27 "The Nutcracker" not its 2024/25 one. `otherYear` is a film's year or a
+   *  listing's PUBLISHED year, never a year its title brackets. The identity resolver's rule; the
+   *  incremental pipeline does not read it. */
+  def seasonsApart(season: Option[Int], otherSeason: Option[Int], otherYear: Option[Int]): Option[CannotLink] =
+    season.flatMap(s => Option.when(otherSeason.exists(_ != s) || otherYear.exists(y => y < s || y > s + 1))(CannotLink.SeasonsApart))
 
   // ── learned cannot-links (the identity resolver's, from the calibration artefact) ──────
 

@@ -34,6 +34,23 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     measures(Listing("Retrospektywa 1990-1999"), film)("season.delta") shouldBe Missing("listing")
   }
 
+  "a film record of a broadcast's season production" should "be a segment of the listing's title, and only for a film" in {
+    val met = Listing("Met Opera 2026-27: Samson et Dalila")
+    val record = Film("The Metropolitan Opera 2026/27: Samson et Dalila", year = Some(2026))
+    IdentityMeasures.namesSeasonProduction(met, record) shouldBe true
+    IdentityMeasures.titleRelation(met, record) shouldBe Category("segment")
+    IdentityMeasures.namesSeasonProduction(Listing("Samson i dalila | metropolitan opera: live in hd 2026/27"),
+      record.copy(alternativeTitles = Seq("The Metropolitan Opera 2026/27: Samson i Dalila"))) shouldBe true
+    // Another season, another work of the season, or no season on one side: not its production.
+    IdentityMeasures.titleRelation(met, record.copy(title = "The Metropolitan Opera 2025/26: Samson et Dalila")) shouldBe Category("overlap")
+    IdentityMeasures.namesSeasonProduction(met, Film("The Metropolitan Opera 2026/27: Macbeth")) shouldBe false
+    IdentityMeasures.namesSeasonProduction(Listing("Samson et Dalila"), record) shouldBe false
+    // Two listings' banners do not say which house staged the work: the Met's and the RBO's
+    // "Carmen" of one season are not one production by title.
+    IdentityMeasures.listingListing(Listing("Met Opera 2026-27: Carmen"), Listing("RBO Cinema Season 2026-27: Carmen"),
+      sameVenue = false, sharedChainId = None)("title") shouldBe Category("overlap")
+  }
+
   "a title containing another" should "say which way: the listing decorates the film, or is a fragment of a longer title" in {
     IdentityMeasures.titleRelation(Listing("Ken Russell's The Devils"), Film("The Devils")) shouldBe Category("decorated")
     IdentityMeasures.titleRelation(Listing("It"), Film("It Ends with Us")) shouldBe Category("fragment")

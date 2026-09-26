@@ -51,6 +51,17 @@ class ListingConstraintsSpec extends AnyFlatSpec with Matchers {
     ListingConstraints.keepsIncumbentHome(None, Some(234)) shouldBe false
   }
 
+  "a title naming a season" should "cannot-link another season, or a year outside the season's two" in {
+    ListingConstraints.seasonsApart(Some(2026), None, Some(2023)) shouldBe Some(CannotLink.SeasonsApart)
+    ListingConstraints.seasonsApart(Some(2026), Some(2024), Some(2026)) shouldBe Some(CannotLink.SeasonsApart)
+    ListingConstraints.seasonsApart(Some(2026), None, Some(2028)) shouldBe Some(CannotLink.SeasonsApart)
+    ListingConstraints.seasonsApart(Some(2026), Some(2026), Some(2027)) shouldBe None
+    ListingConstraints.seasonsApart(Some(2026), None, Some(2026)) shouldBe None
+    // Nothing to compare: no season on the listing, or nothing dated on the other side.
+    ListingConstraints.seasonsApart(None, Some(2024), Some(1949)) shouldBe None
+    ListingConstraints.seasonsApart(Some(2026), None, None) shouldBe None
+  }
+
   "two rows one venue lists under one title" should "cannot-link only when their directors share no person" in {
     ListingConstraints.venueCreditsApart(Seq("Franklin J. Schaffner"), Seq("Tim Burton"), normalizer) shouldBe
       Some(CannotLink.VenueCreditsApart)

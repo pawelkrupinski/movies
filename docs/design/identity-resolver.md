@@ -294,9 +294,15 @@ From the shadow diff:
   guessing. The resolver makes the guess stable (P1/P2) and visible: the ambiguity rule leaves a
   truly two-sided node alone. A prior such as "at a first-run venue, a bare title is the current
   release" would be a policy, and is an open question.
-- *Opera and event broadcasts*: the Met's and RBO's "Macbeth" are joined by a venue's
-  `originalTitle`, and "Così fan tutte" is fragmented. These belong to the undecidable class
-  until a broadcast has an identity of its own.
+- *Opera and event broadcasts*: a broadcast is a production — (house, season, work) — not a
+  film. Where its title names a SEASON ("Met Opera 2026-27: Macbeth"), the resolver takes the film
+  database's record of that season's production of the work (a `segment` title relation, accepted
+  on the season alone when it is the one such record; two houses' records of one work in one
+  season are left ambiguous) and cannot-links any film or listing of another season or dated
+  outside the season's two years (`ListingConstraints.seasonsApart`), which also stops a
+  conductor's or stage director's credit walking to another production. Broadcasts whose titles
+  name no season (NT Live, concert and stage captures, live viewings) still fall to the general
+  title and walk rules; the house is not read from a banner's words.
 
 ---
 
@@ -1588,6 +1594,7 @@ Re-run this section's commands once phase 1's recording pass is pinned and `iden
 | `FormatTags` format vocabulary (8 tokens) | `ScrapeListing.cleanTitle` | as above | the same banner-by-co-occurrence signal |
 | `SequelMarker` franchise table (Hunger Games, Bring It On) and ordinal word lists | inside `describeDifferentFilms`, the listing-listing cannot-link when no learned rules exist | the calibration's learned listing-listing rules have not landed | learned cannot-links (the evaluator exists); different instalments already split through "different-films", because their candidates differ |
 | `YearWindow` constants | the incremental pipeline's predicates only; since round 2 the resolver's vetoes are the artefact's learned rules and cuts | — | done (§15.7) |
+| The season pattern: a year and the next ("2026/27", "2026-2027"), and a season's production spanning those two years | `IdentityMeasures.seasonYear`, `ListingConstraints.seasonsApart`, `IdentityResolver.seasonProductionOf` | the fitted weights do not read `season.delta` yet, so a season's production is accepted and its out-of-season namesakes vetoed structurally | refit with `season.delta` and let the learned cannot-links and weights replace the veto and the acceptance; tell houses apart by learning banner aliases from which record each banner's other works matched |
 | The prior/fact split of the measures (`search.rank`, `popularity.log2`, `rivals`, `venues.corroborating` are priors) | `IdentityResolver.Priors` | a classification of the calibration's measure names, not a weight or threshold | the calibration could publish it in the artefact |
 | The evidence-path rule (a candidate is scored only when the listing's own query named it or its title relates) | `IdentityResolver.reachable` | structural pruning, with no constant | none needed |
 

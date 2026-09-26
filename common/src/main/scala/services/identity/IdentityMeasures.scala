@@ -49,6 +49,23 @@ object IdentityMeasures {
       case Seq(one) => Some(one)
       case _        => None
     }
+  /** The season a film's own titles name ("The Metropolitan Opera 2026/27: Macbeth"). */
+  def filmSeason(f: Film): Option[Int] = seasonYear(filmTitles(f))
+
+  private def filmTitles(f: Film): Seq[String] = Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles
+
+  /** Does the film's own title name the listing's SEASON PRODUCTION: both name the same season,
+   *  and they share a whole title segment outside it — the work. "Met Opera 2026-27: Samson et
+   *  Dalila" and the film database's "The Metropolitan Opera 2026/27: Samson et Dalila" are one
+   *  season's production of one work, however each spells the house. Segments are the listing's
+   *  own delimiters (`SearchTitles.candidates`) on both sides; a segment carrying the season is
+   *  the banner, never the work. */
+  def namesSeasonProduction(l: Listing, f: Film): Boolean =
+    l.seasonYear.exists(s => filmSeason(f).contains(s)) && {
+      def works(titles: Seq[String]) = titles.filter(t => seasonYear(Seq(t)).isEmpty).map(key).filter(_.nonEmpty).toSet
+      (works(titleShapes(l)) intersect works(filmTitles(f).flatMap(SearchTitles.candidates(_, None)))).nonEmpty
+    }
+
   /** `t` with every season removed, so a season's end year is never read as a bracketed year. */
   def withoutSeasons(t: String): String =
     Season.replaceAllIn(t, m => if (seasonStart(m).isDefined) " " else scala.util.matching.Regex.quoteReplacement(m.matched))
@@ -145,8 +162,15 @@ object IdentityMeasures {
    *  of the listing's (`decorated`: "Ken Russell's The Devils"), the listing's title as a run along
    *  one edge of the film's (`fragment`: "It" beside "It Ends with Us"), some shared words, or
    *  nothing. The two containments are opposite evidence — a decoration names the film, a fragment
-   *  names a shorter, often different one — so they are measured apart. */
-  def titleRelation(l: Listing, f: Film): Category = {
+   *  names a shorter, often different one — so they are measured apart.
+   *
+   *  A film record of the listing's season production ([[namesSeasonProduction]]) is a
+   *  `segment`: the listing's work segment is the record's, under the same season. Only a FILM's
+   *  record says so — two listings' banners do not tell one house from another (the Met's and the
+   *  Royal Opera's "Carmen" of one season), so `listingListing` does not read it. */
+  def titleRelation(l: Listing, f: Film): Category = titleRelation(l, f, seasonProductions = true)
+
+  private def titleRelation(l: Listing, f: Film, seasonProductions: Boolean): Category = {
     val own    = (Seq(l.title) ++ l.rawTitle).map(key).filter(_.nonEmpty).toSet
     val shapes = titleShapes(l).map(key).filter(_.nonEmpty).toSet
     val primary  = key(f.title)
@@ -156,7 +180,7 @@ object IdentityMeasures {
     if (own.contains(primary)) Category("exact")
     else if (own.exists(original.contains)) Category("original")
     else if (own.exists(alts.contains)) Category("alternative")
-    else if (shapes.exists(all.contains)) Category("segment")
+    else if (shapes.exists(all.contains) || (seasonProductions && namesSeasonProduction(l, f))) Category("segment")
     else {
       val ls = (Seq(l.title) ++ l.rawTitle).map(words).filter(_.nonEmpty)
       val fs = (Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles).map(words).filter(_.nonEmpty)
@@ -336,7 +360,7 @@ object IdentityMeasures {
    */
   def listingListing(a: Listing, b: Listing, sameVenue: Boolean, sharedChainId: Option[Boolean]): Map[String, Measure] = {
     val fb = asFilm(b)
-    val title = titleRelation(a, fb) match {
+    val title = titleRelation(a, fb, seasonProductions = false) match {
       case Category("original") | Category("alternative") => Category("exact")
       case other                                          => other
     }
