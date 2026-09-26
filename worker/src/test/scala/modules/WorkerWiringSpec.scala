@@ -79,7 +79,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "hand every country's movie cache the one intern pool the metrics bundle publishes" in {
-    val shared = services.metrics.WorkerMetrics.singleCountry(Country.default, poolSize = 1)
+    val shared = services.metrics.WorkerMetrics.singleCountry(Country.default, poolSize = settings.WorkerPoolSize(1))
     def wiringOn(metrics: services.metrics.WorkerMetrics) =
       new WorkerWiring(Country.default, injectedWorkerMetrics = Some(metrics)) with TestWiring
     val (first, second) = (wiringOn(shared), wiringOn(shared))

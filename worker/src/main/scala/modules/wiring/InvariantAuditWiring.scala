@@ -21,13 +21,13 @@ trait InvariantAuditWiring { self: WorkerWiring =>
   lazy val readModelContentAudit: RecheckedAudit =
     new RecheckedAudit("read-model-content", TaskType.AuditReadModelContent, taskQueue,
       workerMetrics.readModelContentAudit.forCountry(country.code), clock,
-      sampleSize = configuration.readModelAuditSample(ReadModelAuditSample(50)).value)(
+      sampleSize = configuration.readModelAuditSample(ReadModelAuditSample(50)))(
       ReadModelContentAudit.differences(_, movieRepository, readModelRepository, ratingGate))
 
   lazy val shareCardAudit: RecheckedAudit =
     new RecheckedAudit("share-card", TaskType.AuditShareCards, taskQueue,
       workerMetrics.shareCardAudit.forCountry(country.code), clock,
-      sampleSize = configuration.shareCardAuditSample(ShareCardAuditSample(50)).value)(
+      sampleSize = configuration.shareCardAuditSample(ShareCardAuditSample(50)))(
       ShareCardAudit.check(_, readModelRepository, shareCardStore))
 
   lazy val auditHandlers: Seq[TaskHandler] =

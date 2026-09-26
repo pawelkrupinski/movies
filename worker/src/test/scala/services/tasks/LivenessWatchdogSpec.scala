@@ -12,7 +12,7 @@ class LivenessWatchdogSpec extends AnyFlatSpec with Matchers {
 
   private def watchdog(beat: () => Long, clock: () => Long, onWedged: () => Unit = () => ()) =
     new LivenessWatchdog(
-      lastBeatMillis = beat, stalenessThreshold = 5.minutes, onWedged = onWedged, now = clock)
+      lastBeatMillis = beat, stalenessThreshold = settings.LivenessStaleAfter(5.minutes), onWedged = onWedged, now = clock)
 
   "isWedged" should "be false while the heartbeat is fresh" in {
     var clock = start

@@ -144,7 +144,7 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
    *  likely to be forgotten. */
   private lazy val workerFamilies: Seq[String] =
     WorkerMetrics
-      .singleCountry(Country.Poland, poolSize = 1)
+      .singleCountry(Country.Poland, poolSize = settings.WorkerPoolSize(1))
       .registry
       .scrape()
       .asScala

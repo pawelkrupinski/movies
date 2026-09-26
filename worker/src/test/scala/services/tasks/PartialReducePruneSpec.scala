@@ -78,7 +78,7 @@ class PartialReducePruneSpec extends AnyFlatSpec with Matchers {
     val chunkH  = new ScrapeChunkHandler(map, store, clk)
     val reduceH = new ScrapeChunkReduceHandler(map, store, publish, policy, clk)
     val coord   = new ChunkScrapeCoordinator(store, queue)
-    def reaper(c: Clock) = new ChunkScrapeReaper(store, queue, coord, staleAfter = stale, clock = c)
+    def reaper(c: Clock) = new ChunkScrapeReaper(store, queue, coord, staleAfter = services.tasks.ChunkScrapePlanner.RunTimeout(stale), clock = c)
 
     def drain(at: Instant = now): Unit = {
       var next = queue.claim("w", 30.seconds, at)

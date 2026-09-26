@@ -81,7 +81,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
       synopsis = None, cast = Nil, director = Nil, showtimes = Seq(Showtime(nowLocal.plusHours(2), None))))
     val scraper      = new FakeScraper(Multikino, thin)
     val freshness    = new InMemoryFreshnessStore
-    val venueCadence = new VenueCadenceStore(countryDefault = 14.hours)
+    val venueCadence = new VenueCadenceStore(countryDefault = settings.ScrapeFreshness(14.hours))
     val dueWindow    = new DueWindow(venueCadence.periodFor, 14.hours)
     val venueKey     = ScrapeCinemaHandler.dedupKey(Multikino)
     val policy = new ScrapeFreshnessPolicy(freshness, clock = fixedClock, venueCadence = Some(venueCadence))

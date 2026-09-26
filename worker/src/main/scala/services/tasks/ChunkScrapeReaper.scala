@@ -25,9 +25,9 @@ class ChunkScrapeReaper(
   store:        ChunkScrapeStore,
   queue:        TaskQueue,
   coordinator:  ChunkScrapeCoordinator,
-  interval:     FiniteDuration    = 1.minute,
-  initialDelay: FiniteDuration    = 45.seconds,
-  staleAfter:   FiniteDuration    = ChunkScrapePlanner.DefaultRunTimeout,
+  interval:     ChunkScrapeReaper.TickInterval = ChunkScrapeReaper.TickInterval(1.minute),
+  initialDelay: ChunkScrapeReaper.InitialDelay = ChunkScrapeReaper.InitialDelay(45.seconds),
+  staleAfter:   ChunkScrapePlanner.RunTimeout = ChunkScrapePlanner.RunTimeout(ChunkScrapePlanner.DefaultRunTimeout),
   runStore:     ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:        Clock             = Clock.systemUTC()
 ) extends Stoppable with Logging {
@@ -36,12 +36,12 @@ class ChunkScrapeReaper(
 
   def start(): Unit = {
     scheduler.scheduleWithFixedDelay(() => Try(tickIfClaimed()),
-      initialDelay.toMillis, interval.toMillis, TimeUnit.MILLISECONDS)
-    logger.info(s"ChunkScrapeReaper started — sweeping chunked-scrape runs every ${interval.toSeconds}s (first in ${initialDelay.toSeconds}s).")
+      initialDelay.value.toMillis, interval.value.toMillis, TimeUnit.MILLISECONDS)
+    logger.info(s"ChunkScrapeReaper started — sweeping chunked-scrape runs every ${interval.value.toSeconds}s (first in ${initialDelay.value.toSeconds}s).")
   }
 
   private[tasks] def tickIfClaimed(): Int = {
-    val key = OccurrenceKey.at("chunk-scrape", clock.millis(), interval, 0.seconds)
+    val key = OccurrenceKey.at("chunk-scrape", clock.millis(), interval.value, 0.seconds)
     if (runStore.claim(key)) tick() else 0
   }
 
@@ -52,7 +52,7 @@ class ChunkScrapeReaper(
     val n = store.activeRuns().count { run =>
       val complete = run.expectedKeys.toSet.subsetOf(store.storedKeys(run.cinema, run.runId))
       if (complete) coordinator.maybeReduce(run.cinema, run.runId)
-      else if (run.isStale(now, staleAfter)) {
+      else if (run.isStale(now, staleAfter.value)) {
         logger.warn(s"${run.cinema} run ${run.runId} abandoned (${store.storedKeys(run.cinema, run.runId).size}/${run.expectedKeys.size} chunks) — partial reduce")
         queue.enqueue(TaskType.ScrapeChunkReduce, ChunkScrapeKeys.reduceDedup(run.cinema, run.runId),
           ChunkScrapeKeys.reducePayload(run.cinema, run.runId)) == EnqueueResult.Added
@@ -63,4 +63,11 @@ class ChunkScrapeReaper(
   }
 
   override def stop(): Unit = { scheduler.shutdown(); () }
+}
+
+object ChunkScrapeReaper {
+  /** How often the backstop sweeps for finished or abandoned chunked runs. */
+  final case class TickInterval(value: FiniteDuration) extends AnyVal
+  /** How long after `start()` the first sweep runs. */
+  final case class InitialDelay(value: FiniteDuration) extends AnyVal
 }

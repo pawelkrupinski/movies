@@ -24,7 +24,7 @@ class RecheckedAuditSpec extends AnyFlatSpec with Matchers with org.scalatest.Lo
     var broken   = Set.empty[String]
     var unknown  = Set.empty[String]
     val audit    = new RecheckedAudit("spec", TaskType.AuditReadModelContent, queue, series.forCountry("pl"),
-      Clock.fixed(now, ZoneOffset.UTC), sampleSize, random = new Random(7))(id =>
+      Clock.fixed(now, ZoneOffset.UTC), settings.ReadModelAuditSample(sampleSize), random = new Random(7))(id =>
       if (unknown(id)) None else Some(if (broken(id)) Seq(s"$id is wrong") else Nil))
     def counts: (Double, Double, Double) = series.counts("pl")
     /** Every queued task, claimed at `at`. */

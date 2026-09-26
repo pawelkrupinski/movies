@@ -1,5 +1,7 @@
 package services.alerts
 
+import settings.{StagingStuckScanInterval, StagingStuckThreshold}
+
 import play.api.Logging
 import services.Stoppable
 import services.staging.{StagingRecord, StagingRepository}
@@ -42,8 +44,8 @@ import scala.util.Try
 class StagingStuckAlerter(
   stagingRepository:    StagingRepository,
   notify:         String => Unit,  // deliver one alert message (e.g. TelegramNotifier.send)
-  stuckThreshold: FiniteDuration = 1.hour,
-  interval:       FiniteDuration = 10.minutes,
+  stuckThreshold: StagingStuckThreshold = StagingStuckThreshold(1.hour),
+  interval:       StagingStuckScanInterval = StagingStuckScanInterval(10.minutes),
   clock:          Clock          = Clock.systemUTC()
 ) extends Stoppable with Logging {
 
@@ -55,8 +57,8 @@ class StagingStuckAlerter(
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("staging-stuck-alerter")
 
   def start(): Unit = {
-    scheduler.scheduleWithFixedDelay(() => Try(runOnce()), interval.toMillis, interval.toMillis, TimeUnit.MILLISECONDS)
-    logger.info(s"StagingStuckAlerter started — alerting on staging rows unresolved > ${stuckThreshold.toMinutes}m, scanning every ${interval.toMinutes}m.")
+    scheduler.scheduleWithFixedDelay(() => Try(runOnce()), interval.value.toMillis, interval.value.toMillis, TimeUnit.MILLISECONDS)
+    logger.info(s"StagingStuckAlerter started — alerting on staging rows unresolved > ${stuckThreshold.value.toMinutes}m, scanning every ${interval.value.toMinutes}m.")
   }
 
   override def stop(): Unit = { scheduler.shutdown(); () }
@@ -88,7 +90,7 @@ class StagingStuckAlerter(
       alerted.remove(id)
     }
 
-    val cutoff = now.minusMillis(stuckThreshold.toMillis)
+    val cutoff = now.minusMillis(stuckThreshold.value.toMillis)
     val newlyStuck = unresolved.filter { r =>
       val since = firstSeenUnresolved.getOrElseUpdate(idOf(r), now)
       // Crossed the threshold (first-seen at or before the cutoff) AND not yet
@@ -101,7 +103,7 @@ class StagingStuckAlerter(
     else {
       val message = alertText(newlyStuck)
       notify(message)
-      logger.warn(s"StagingStuckAlerter: ${newlyStuck.size} film(s) unresolved in staging > ${stuckThreshold.toMinutes}m.")
+      logger.warn(s"StagingStuckAlerter: ${newlyStuck.size} film(s) unresolved in staging > ${stuckThreshold.value.toMinutes}m.")
       Some(message)
     }
   }
@@ -123,6 +125,6 @@ class StagingStuckAlerter(
         val cinemas = group.map(_.cinema.displayName).distinct.sorted.mkString(", ")
         s"• $title${year.fold("")(y => s" ($y)")} — $cinemas"
       }
-    s"🎬⏳ Stuck in staging > ${stuckThreshold.toMinutes}m (unenriched / TMDB-unresolved):\n" + bullets.mkString("\n")
+    s"🎬⏳ Stuck in staging > ${stuckThreshold.value.toMinutes}m (unenriched / TMDB-unresolved):\n" + bullets.mkString("\n")
   }
 }

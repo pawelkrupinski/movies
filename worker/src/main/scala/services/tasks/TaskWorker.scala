@@ -1,5 +1,7 @@
 package services.tasks
 
+import settings.WorkerPoolSize
+
 import services.Stoppable
 import services.metrics.TaskObserver
 import services.metrics.WorkerTaskMetrics.Outcome
@@ -68,12 +70,12 @@ trait TaskHandler {
 class TaskWorker(
   queue:             TaskQueue,
   handlers:          Seq[TaskHandler],
-  processingTimeout: FiniteDuration = 5.minutes,
-  retryBackoff:      FiniteDuration = 2.seconds,
-  idleBackstop:      FiniteDuration = 30.seconds,
-  poolSize:          Int            = TaskWorker.DefaultPoolSize,
-  reapInterval:      FiniteDuration = 30.seconds,
-  maxAttempts:       Int            = TaskWorker.DefaultMaxAttempts,
+  processingTimeout: TaskWorker.ProcessingTimeout = TaskWorker.ProcessingTimeout(5.minutes),
+  retryBackoff:      TaskWorker.RetryBackoff = TaskWorker.RetryBackoff(2.seconds),
+  idleBackstop:      TaskWorker.IdleBackstop = TaskWorker.IdleBackstop(30.seconds),
+  poolSize:          WorkerPoolSize = WorkerPoolSize(TaskWorker.DefaultPoolSize),
+  reapInterval:      TaskWorker.ReapInterval = TaskWorker.ReapInterval(30.seconds),
+  maxAttempts:       TaskWorker.MaxAttempts = TaskWorker.MaxAttempts(TaskWorker.DefaultMaxAttempts),
   // Invoked with the task the instant it completes successfully (Done/Skipped),
   // never on a reschedule. The composition root wires this to publish a
   // `TaskFinished` event so consumers (e.g. StagingReaper) can chain follow-up
@@ -120,15 +122,15 @@ class TaskWorker(
     // waiting; ring so the freed work is picked up now, not at the next backstop.
     reaper.scheduleWithFixedDelay(
       () => Try { if (queue.reapExpiredLeases(clock.instant()) > 0) doorbell.ring() },
-      reapInterval.toMillis, reapInterval.toMillis, TimeUnit.MILLISECONDS)
-    (0 until poolSize).foreach { i =>
+      reapInterval.value.toMillis, reapInterval.value.toMillis, TimeUnit.MILLISECONDS)
+    (0 until poolSize.value).foreach { i =>
       val id = s"$baseId-$i"
       val t  = new Thread(() => runLoop(id), s"task-worker-$i")
       t.setDaemon(true)
       t.start()
       workers += t
     }
-    logger.info(s"TaskWorker started ($poolSize worker(s) $baseId-0..${poolSize - 1}, ${byType.size} handler(s), push=${watchHandle.isDefined}, idle-backstop ${idleBackstop.toSeconds}s, reap ${reapInterval.toSeconds}s).")
+    logger.info(s"TaskWorker started (${poolSize.value} worker(s) $baseId-0..${poolSize.value - 1}, ${byType.size} handler(s), push=${watchHandle.isDefined}, idle-backstop ${idleBackstop.value.toSeconds}s, reap ${reapInterval.value.toSeconds}s).")
   }
 
   /** One worker slot: claim a task, run it to completion, claim the next.
@@ -163,8 +165,8 @@ class TaskWorker(
       val since = doorbell.generation
       Try(claimAndRun(workerId)).getOrElse(PollResult.Idle) match {
         case PollResult.Completed => ()                              // got work — claim the next immediately
-        case PollResult.Returned  => sleepFor(retryBackoff.toMillis) // bounded retry; ignore the doorbell
-        case PollResult.Idle      => doorbell.awaitSince(since, idleBackstop.toMillis)
+        case PollResult.Returned  => sleepFor(retryBackoff.value.toMillis) // bounded retry; ignore the doorbell
+        case PollResult.Idle      => doorbell.awaitSince(since, idleBackstop.value.toMillis)
       }
     } catch {
       case _: InterruptedException => Thread.interrupted(); ()
@@ -180,7 +182,7 @@ class TaskWorker(
    *  completion — one task, then return. Package-private so tests can drive a
    *  worker deterministically without spinning up threads. */
   private[tasks] def claimAndRun(workerId: String): PollResult =
-    queue.claim(workerId, processingTimeout, clock.instant()) match {
+    queue.claim(workerId, processingTimeout.value, clock.instant()) match {
       case None       => PollResult.Idle
       case Some(task) =>
         // Baton: this claim consumed one task, so wake one more parked worker in
@@ -210,7 +212,7 @@ class TaskWorker(
         case Success(Done)    => completeWith(task, workerId, Outcome.Done, millis)
         case Success(Skipped) => completeWith(task, workerId, Outcome.Skipped, millis)
         case Success(Reschedule(err)) =>
-          if (task.attempts >= maxAttempts) exhaust(task, workerId, err, millis)
+          if (task.attempts >= maxAttempts.value) exhaust(task, workerId, err, millis)
           else {
             queue.release(task.id, workerId, err, Some(backoffUntil(task.attempts)))
             observer.onFinished(task, Outcome.Rescheduled, millis)
@@ -234,7 +236,7 @@ class TaskWorker(
           PollResult.Completed
         case Failure(exception) =>
           logger.warn(s"Task ${task.taskType.name}/${task.dedupKey} failed: ${exception.getMessage}")
-          if (task.attempts >= maxAttempts) exhaust(task, workerId, Some(exception.getMessage), millis)
+          if (task.attempts >= maxAttempts.value) exhaust(task, workerId, Some(exception.getMessage), millis)
           else {
             queue.release(task.id, workerId, Some(exception.getMessage), Some(backoffUntil(task.attempts)))
             observer.onFinished(task, Outcome.Failed, millis)
@@ -293,6 +295,18 @@ class TaskWorker(
 }
 
 object TaskWorker {
+
+  /** How long a claimed task may run before its lease is taken back. */
+  final case class ProcessingTimeout(value: FiniteDuration) extends AnyVal
+  /** How long a failed task waits before it may be claimed again. */
+  final case class RetryBackoff(value: FiniteDuration) extends AnyVal
+  /** How long an idle worker sleeps before polling the queue again, whatever it was told. */
+  final case class IdleBackstop(value: FiniteDuration) extends AnyVal
+  /** How often expired leases are reaped back onto the queue. */
+  final case class ReapInterval(value: FiniteDuration) extends AnyVal
+  /** How many attempts a task gets before it is parked as failed. */
+  final case class MaxAttempts(value: Int) extends AnyVal
+
   /** A failure a retry can only replay: a violated `require` / an argument the code
    *  itself rejected (ES "La luz", 2026-09-21: `rekey requires same normalised
    *  cleanTitle`, 12 identical attempts over 1h45m). EXACTLY `IllegalArgumentException`,

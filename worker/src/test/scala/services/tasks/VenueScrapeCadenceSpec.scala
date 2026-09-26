@@ -77,19 +77,19 @@ class VenueScrapeCadenceSpec extends AnyFlatSpec with Matchers {
   }
 
   "VenueCadenceStore" should "answer the country default for a venue it has never recorded" in {
-    val store = new VenueCadenceStore(countryDefault = 14.hours)
+    val store = new VenueCadenceStore(countryDefault = settings.ScrapeFreshness(14.hours))
     store.periodFor("scrape|Never Seen") shouldBe 14.hours
   }
 
   it should "answer the shortened period once a thin scrape is recorded" in {
-    val store = new VenueCadenceStore(countryDefault = 14.hours)
+    val store = new VenueCadenceStore(countryDefault = settings.ScrapeFreshness(14.hours))
     store.record("scrape|Cinema One Antlers", remainingHorizon = 7.hours)
     store.periodFor("scrape|Cinema One Antlers") shouldBe 3.5.hours
     store.periodFor("scrape|Some Other Venue") shouldBe 14.hours
   }
 
   it should "widen back toward the default once the same venue reports more runway" in {
-    val store = new VenueCadenceStore(countryDefault = 14.hours)
+    val store = new VenueCadenceStore(countryDefault = settings.ScrapeFreshness(14.hours))
     store.record("scrape|Slickrock Cinema Moab", remainingHorizon = 10.minutes)
     store.periodFor("scrape|Slickrock Cinema Moab") shouldBe VenueScrapeCadence.MinInterval
     store.record("scrape|Slickrock Cinema Moab", remainingHorizon = 28.days)

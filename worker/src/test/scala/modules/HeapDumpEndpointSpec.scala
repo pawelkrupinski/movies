@@ -16,9 +16,9 @@ import java.net.{HttpURLConnection, InetSocketAddress, URI}
  */
 class HeapDumpEndpointSpec extends AnyFlatSpec with Matchers {
 
-  private def withEndpoint(dump: String => Option[String])(body: String => Unit): Unit = {
+  private def withEndpoint(dump: settings.HeapDumpDirectory => Option[String])(body: String => Unit): Unit = {
     val server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0)
-    WorkerMain.addHeapDumpEndpoint(server, "/tmp/does-not-matter", dump)
+    WorkerMain.addHeapDumpEndpoint(server, settings.HeapDumpDirectory(java.nio.file.Path.of("/tmp/does-not-matter")), dump)
     server.start()
     try body(s"http://127.0.0.1:${server.getAddress.getPort}/heapdump")
     finally server.stop(0)
@@ -36,7 +36,7 @@ class HeapDumpEndpointSpec extends AnyFlatSpec with Matchers {
 
   "POST /heapdump" should "take a dump and report where it landed" in {
     var askedFor: Option[String] = None
-    withEndpoint({ dir => askedFor = Some(dir); Some(s"$dir/wedge-1.hprof") }) { url =>
+    withEndpoint({ directory => askedFor = Some(directory.value.toString); Some(s"${directory.value}/wedge-1.hprof") }) { url =>
       val (status, body) = call(url, "POST")
       status shouldBe 200
       body   should include ("wedge-1.hprof")

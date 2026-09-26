@@ -62,7 +62,7 @@ trait TaskQueueWiring { self: WorkerWiring =>
   def workerPoolSize: WorkerPoolSize = configuration.workerPoolSize(TaskQueueWiring.DefaultWorkerPoolSize)
   lazy val taskWorker = new TaskWorker(
     taskQueue, Seq(scrapeCinemaHandler, enrichDetailsHandler, scrapeChunkHandler, scrapeChunkReduceHandler) ++ ratingHandlers ++ operatorHandlers ++ stagingHandlers ++ shareCardHandlers ++ auditHandlers,
-    poolSize = workerPoolSize.value,
+    poolSize = workerPoolSize,
     // The SAME composite credit-throttle signal the reapers read, so the pool
     // duty-cycles in lockstep with the enqueue-backoff under a credit crunch.
     // Each completed task announces itself so StagingReaper can chain the next
@@ -88,8 +88,8 @@ trait TaskQueueWiring { self: WorkerWiring =>
   def heapDumpDirectory: HeapDumpDirectory   = configuration.heapDumpDirectory
   lazy val livenessWatchdog = new LivenessWatchdog(
     lastBeatMillis     = () => workerHeartbeat.lastTickMillis,
-    stalenessThreshold = livenessStaleAfter.value,
-    onWedged           = () => { tools.HeapDumper.dump(heapDumpDirectory.value.toString); sys.exit(70) })
+    stalenessThreshold = livenessStaleAfter,
+    onWedged           = () => { tools.HeapDumper.dump(heapDumpDirectory); sys.exit(70) })
 }
 
 object TaskQueueWiring {

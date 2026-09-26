@@ -35,7 +35,7 @@ object ZyteFallback {
   ): HttpFetch =
     chain(configuration.zyteApiKey.map(key =>
       new ZyteFetch(new ZyteClient(zyteHttp, key), cookieSource,
-        configuration.zyteSessionTtl(settings.ZyteSessionTtl(ZyteFetch.DefaultSessionTtl)).value)), direct, meter)
+        configuration.zyteSessionTtl(settings.ZyteSessionTtl(ZyteFetch.DefaultSessionTtl)))), direct, meter)
 
   /** Zyte (when there is a Zyte leg) → `direct`, with every Zyte attempt's
    *  outcome going to `meter` — the paid-egress counter; `direct` is free and is

@@ -24,7 +24,7 @@ import models.Country
  * Built once in [[modules.WorkerMain]] and injected into every wiring; a
  * single-country boot / test uses [[WorkerMetrics.singleCountry]].
  */
-class WorkerMetrics(countryCodes: Seq[String], poolSize: Int) {
+class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize) {
 
   val registry: PrometheusRegistry = new PrometheusRegistry()
 
@@ -65,7 +65,7 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: Int) {
     cacheRegistrations.add(WorkerCacheMetrics.Registration(country, cache, read))
 
   // The registered-once task-pipeline metric objects, shared across countries.
-  val taskSeries: WorkerTaskMetrics.Series = new WorkerTaskMetrics.Series(poolSize, countryCodes, registry)
+  val taskSeries: WorkerTaskMetrics.Series = new WorkerTaskMetrics.Series(poolSize.value, countryCodes, registry)
 
   // Per-attempt outbound-HTTP outcome counter (kinowo_worker_http_total), one
   // registered-once family with a leading `country` label; each wiring binds its
@@ -128,6 +128,6 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: Int) {
 object WorkerMetrics {
   /** A single-country bundle — the default for a one-country boot and for the
    *  wiring/test constructs that don't inject a shared one. */
-  def singleCountry(country: Country, poolSize: Int): WorkerMetrics =
+  def singleCountry(country: Country, poolSize: settings.WorkerPoolSize): WorkerMetrics =
     new WorkerMetrics(Seq(country.code), poolSize)
 }

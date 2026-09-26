@@ -5,7 +5,7 @@ import models.Country
 import org.mongodb.scala.MongoClient
 import play.api.Logging
 import services.{MongoConnection, MongoTuning}
-import settings.{HealthPort, ProcessConfiguration}
+import settings.{HealthPort, HeapDumpDirectory, ProcessConfiguration}
 import tools.{ExecutionBudget, IssuerCertificateFetching, ProxyTunnelAuthentication}
 
 import java.net.InetSocketAddress
@@ -77,7 +77,7 @@ object WorkerMain extends Logging {
     // only, others headless" gap — every country writes its own `country="…"` slice
     // and ALL of them surface on the single /metrics endpoint below.
     val workerMetrics = new services.metrics.WorkerMetrics(
-      countries.map(_.code), process.workerPoolSize(modules.wiring.TaskQueueWiring.DefaultWorkerPoolSize).value)
+      countries.map(_.code), process.workerPoolSize(modules.wiring.TaskQueueWiring.DefaultWorkerPoolSize))
     // ONE poster-shrink gate for the JVM: the vips child it bounds shares the pod's
     // memory cgroup with every country's renders.
     val posterShrinkGate = services.sharecards.VipsPosterShrinker.newGate()
@@ -110,7 +110,7 @@ object WorkerMain extends Logging {
     val fleet = new WorkerFleet(wirings.map(_.livenessWatchdog))
     // Process-wide config (KINOWO_HEAP_DUMP_DIR), so it reads the same on every
     // wiring — one dump dir per machine, not per country.
-    val heapDumpDir = wirings.head.heapDumpDirectory.value.toString
+    val heapDumpDir = wirings.head.heapDumpDirectory
     logger.info("Worker up — scraping/enriching")
 
     // Register /metrics now that every country's queue + metrics are live: one
@@ -127,8 +127,8 @@ object WorkerMain extends Logging {
     liveness.becomes(() => fleet.isAlive)
     // Ensure the heap-dump volume dir exists so the JVM's HeapDumpOnOutOfMemoryError
     // (hard-OOM path) and the watchdog (death-spiral path) both have somewhere to write.
-    try java.nio.file.Files.createDirectories(java.nio.file.Paths.get(heapDumpDir))
-    catch { case e: Throwable => logger.warn(s"Could not create heap-dump dir $heapDumpDir: ${e.getMessage}") }
+    try java.nio.file.Files.createDirectories(heapDumpDir.value)
+    catch { case e: Throwable => logger.warn(s"Could not create heap-dump dir ${heapDumpDir.value}: ${e.getMessage}") }
 
     val done = new CountDownLatch(1)
     Runtime.getRuntime.addShutdownHook(new Thread(() => {
@@ -211,8 +211,8 @@ object WorkerMain extends Logging {
    *  hundred MB to the volume, so it must not be reachable by a stray GET from a
    *  health-checker or a link-prefetch. `dump` is injected so the endpoint is testable
    *  without dumping the test JVM's own heap. */
-  private[modules] def addHeapDumpEndpoint(server: HttpServer, dir: String,
-                                           dump: String => Option[String] = tools.HeapDumper.dump(_)): Unit = {
+  private[modules] def addHeapDumpEndpoint(server: HttpServer, dir: HeapDumpDirectory,
+                                           dump: HeapDumpDirectory => Option[String] = tools.HeapDumper.dump(_)): Unit = {
     server.createContext("/heapdump", exchange => {
       val (status, text) =
         if (exchange.getRequestMethod != "POST") (405, "POST to take a heap dump (it stops the world)")

@@ -1,5 +1,7 @@
 package services.cinemas.common
 
+import settings.ZyteSessionTtl
+
 import tools.GetOnlyHttpFetch
 
 import java.time.Clock
@@ -20,11 +22,11 @@ import scala.concurrent.duration._
 class ZyteFetch(
   client:       ZyteClient,
   cookieSource: Option[String],
-  sessionTtl:   FiniteDuration = ZyteFetch.DefaultSessionTtl,
+  sessionTtl:   ZyteSessionTtl = ZyteSessionTtl(ZyteFetch.DefaultSessionTtl),
   clock:        Clock = Clock.systemUTC()
 ) extends GetOnlyHttpFetch {
   private val session: Option[SharedZyteSession] =
-    cookieSource.map(src => new SharedZyteSession(client, src, sessionTtl, clock))
+    cookieSource.map(src => new SharedZyteSession(client, src, sessionTtl.value, clock))
 
   override def get(url: String): String =
     session.fold(client.get(url))(_.get(url))

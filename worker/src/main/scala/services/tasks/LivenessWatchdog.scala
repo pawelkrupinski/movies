@@ -1,5 +1,7 @@
 package services.tasks
 
+import settings.LivenessStaleAfter
+
 import play.api.Logging
 import services.Stoppable
 import tools.DaemonExecutors
@@ -37,9 +39,9 @@ import scala.util.Try
  */
 class LivenessWatchdog(
   lastBeatMillis:     () => Long,
-  stalenessThreshold: FiniteDuration,
+  stalenessThreshold: LivenessStaleAfter,
   onWedged:           () => Unit,
-  checkEvery:         FiniteDuration = 1.minute,
+  checkEvery:         LivenessWatchdog.CheckInterval = LivenessWatchdog.CheckInterval(1.minute),
   now:                () => Long     = () => System.currentTimeMillis()
 ) extends Stoppable with Logging {
 
@@ -52,7 +54,7 @@ class LivenessWatchdog(
    *  `now` and `lastBeatMillis` — the unit under test. */
   private[tasks] def isWedged(): Boolean = {
     val last = lastBeatMillis()
-    last > 0L && (now() - last) >= stalenessThreshold.toMillis
+    last > 0L && (now() - last) >= stalenessThreshold.value.toMillis
   }
 
   /** True while the worker's heartbeat is fresh — read by `/health`. */
@@ -62,16 +64,21 @@ class LivenessWatchdog(
   private[tasks] def check(): Unit =
     if (isWedged() && fired.compareAndSet(false, true)) {
       val staleSeconds = (now() - lastBeatMillis()) / 1000
-      logger.error(s"Worker heartbeat stale for ${staleSeconds}s (> ${stalenessThreshold.toSeconds}s) — the JVM is " +
+      logger.error(s"Worker heartbeat stale for ${staleSeconds}s (> ${stalenessThreshold.value.toSeconds}s) — the JVM is " +
         s"wedged (heartbeat thread starved/dead, e.g. a heap death-spiral); restarting the machine so Fly reschedules " +
         s"on the non-zero exit and a fresh boot clears the heap and reconnects Mongo.")
       onWedged()
     }
 
   def start(): Unit = {
-    scheduler.scheduleWithFixedDelay(() => Try(check()), checkEvery.toMillis, checkEvery.toMillis, TimeUnit.MILLISECONDS)
-    logger.info(s"LivenessWatchdog armed: restart if the heartbeat is stale > ${stalenessThreshold.toSeconds}s (checked every ${checkEvery.toSeconds}s).")
+    scheduler.scheduleWithFixedDelay(() => Try(check()), checkEvery.value.toMillis, checkEvery.value.toMillis, TimeUnit.MILLISECONDS)
+    logger.info(s"LivenessWatchdog armed: restart if the heartbeat is stale > ${stalenessThreshold.value.toSeconds}s (checked every ${checkEvery.value.toSeconds}s).")
   }
 
   def stop(): Unit = { scheduler.shutdownNow(); () }
+}
+
+object LivenessWatchdog {
+  /** How often the watchdog checks the heartbeat. */
+  final case class CheckInterval(value: FiniteDuration) extends AnyVal
 }

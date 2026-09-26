@@ -84,7 +84,7 @@ class WorkerWiring(
    *  self-owned single-country bundle when none was injected (lone boot / test). */
   val workerMetrics: WorkerMetrics =
     injectedWorkerMetrics.getOrElse(
-      WorkerMetrics.singleCountry(country, workerPoolSize.value))
+      WorkerMetrics.singleCountry(country, workerPoolSize))
   lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database, clock = clock,
     ttlMismatches = workerMetrics.ttlIndexMismatches)
 
@@ -158,7 +158,7 @@ class WorkerWiring(
   // (this wiring IS one country), like `scrapeDueWindow` itself.
   /** `KINOWO_SCRAPE_FRESHNESS_MINUTES` — how long a venue's scrape stays fresh. */
   lazy val scrapeFreshness: ScrapeFreshness = configuration.scrapeFreshness(Freshness.DefaultScrapeFreshness)
-  val venueCadenceStore = new VenueCadenceStore(scrapeFreshness.value)
+  val venueCadenceStore = new VenueCadenceStore(scrapeFreshness)
   // ONE shared due schedule backs both the scrape reaper (enqueue) and the scrape
   // handler (pickup re-gate), so they agree on what's due and a cinema's scrapes
   // spread across the freshness window instead of falling due in a lockstep wave.

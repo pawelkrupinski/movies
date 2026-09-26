@@ -27,7 +27,7 @@ class ScrapeFreshnessPolicySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "shorten the venue's own cadence when a thin runway is reported" in {
-    val store  = new VenueCadenceStore(countryDefault = 14.hours)
+    val store  = new VenueCadenceStore(countryDefault = settings.ScrapeFreshness(14.hours))
     val policy = new ScrapeFreshnessPolicy(new InMemoryFreshnessStore, clock = clock, venueCadence = Some(store))
     policy.succeeded(venueKey, Some(7.hours))
     store.periodFor(venueKey) shouldBe 3.5.hours
@@ -37,7 +37,7 @@ class ScrapeFreshnessPolicySpec extends AnyFlatSpec with Matchers {
     // The GoneUpstream skip path: no listing was fetched at all, so there is
     // nothing to measure. Must not silently reset a venue's already-shortened
     // cadence back to the country default.
-    val store  = new VenueCadenceStore(countryDefault = 14.hours)
+    val store  = new VenueCadenceStore(countryDefault = settings.ScrapeFreshness(14.hours))
     val policy = new ScrapeFreshnessPolicy(new InMemoryFreshnessStore, clock = clock, venueCadence = Some(store))
     store.record(venueKey, remainingHorizon = 7.hours)
     policy.succeeded(venueKey)
@@ -45,7 +45,7 @@ class ScrapeFreshnessPolicySpec extends AnyFlatSpec with Matchers {
   }
 
   "skipped" should "never touch the venue cadence, matching succeeded's own no-horizon case" in {
-    val store  = new VenueCadenceStore(countryDefault = 14.hours)
+    val store  = new VenueCadenceStore(countryDefault = settings.ScrapeFreshness(14.hours))
     val policy = new ScrapeFreshnessPolicy(new InMemoryFreshnessStore, clock = clock, venueCadence = Some(store))
     store.record(venueKey, remainingHorizon = 7.hours)
     policy.skipped(venueKey)

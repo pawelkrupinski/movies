@@ -1,5 +1,7 @@
 package services.alerts
 
+import settings.FilmwebDropThreshold
+
 import models.Cinema
 import services.cinemas.common.{ScrapeOutcome, ScrapeOutcomeListener}
 
@@ -33,7 +35,7 @@ import scala.collection.concurrent.TrieMap
 class FilmwebDropAlerter(
   filmwebCinemas: Set[String],     // displayNames of the Filmweb-backed venues
   notify:         String => Unit,  // deliver one alert line (e.g. TelegramNotifier.send)
-  threshold:      Int             = 3
+  threshold:      FilmwebDropThreshold = FilmwebDropThreshold(3)
 ) extends ScrapeOutcomeListener {
 
   private val everServed = TrieMap.empty[String, Unit]   // venue has served data this lifetime
@@ -52,7 +54,7 @@ class FilmwebDropAlerter(
         val streak = downStreak.getOrElse(name, 0) + 1
         downStreak.update(name, streak)
         // putIfAbsent returns None the first crossing → alert once until recovery.
-        if (everServed.contains(name) && streak >= threshold && alerted.putIfAbsent(name, ()).isEmpty)
+        if (everServed.contains(name) && streak >= threshold.value && alerted.putIfAbsent(name, ()).isEmpty)
           notify(alertText(cinema, outcome, streak))
     }
   }

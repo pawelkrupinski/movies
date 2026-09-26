@@ -140,20 +140,20 @@ class ScrapeHealthSpec extends AnyFlatSpec with Matchers {
   }
 
   "maxRejectionsFor" should "leave Poland's own cadence at the full three-tick grace" in {
-    ScrapeHealth.maxRejectionsFor(60.minutes) shouldBe 3
+    ScrapeHealth.maxRejectionsFor(settings.ScrapeFreshness(60.minutes)) shouldBe 3
   }
 
   it should "cap the slower countries at one tick, so the hold can't outlast a shallow venue's runway" in {
     // es/Multicines Zamora (420min cadence): held three rejected ticks (21h) while
     // its SensaCine-advertised 3-day window ran dry after 13h30m — the guard's own
     // grace outlasted the corpus it was protecting.
-    ScrapeHealth.maxRejectionsFor(420.minutes) shouldBe 1  // es + uk
-    ScrapeHealth.maxRejectionsFor(600.minutes) shouldBe 1  // de
-    ScrapeHealth.maxRejectionsFor(840.minutes) shouldBe 1  // us
+    ScrapeHealth.maxRejectionsFor(settings.ScrapeFreshness(420.minutes)) shouldBe 1  // es + uk
+    ScrapeHealth.maxRejectionsFor(settings.ScrapeFreshness(600.minutes)) shouldBe 1  // de
+    ScrapeHealth.maxRejectionsFor(settings.ScrapeFreshness(840.minutes)) shouldBe 1  // us
   }
 
   it should "never drop below one tick, however long the cadence" in {
-    ScrapeHealth.maxRejectionsFor(30.hours) shouldBe 1
+    ScrapeHealth.maxRejectionsFor(settings.ScrapeFreshness(30.hours)) shouldBe 1
   }
 
   it should "let a caller lower the depth guard's own grace to match" in {

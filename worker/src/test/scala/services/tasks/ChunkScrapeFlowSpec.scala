@@ -65,7 +65,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
                          val store: InMemoryChunkScrapeStore = new InMemoryChunkScrapeStore) {
     val queue     = new InMemoryTaskQueue
     val freshness = new InMemoryFreshnessStore
-    val venueCadence = new VenueCadenceStore(venueCadenceDefault)
+    val venueCadence = new VenueCadenceStore(settings.ScrapeFreshness(venueCadenceDefault))
     val published = mutable.ListBuffer.empty[Seq[CinemaMovie]]
     val publishScrape: CinemaScraper => Unit = s => { published += scala.util.Try(s.fetch()).getOrElse(Seq.empty); () }
     private val map = Map(cinemaName -> (scraper: ChunkedCinemaScraper))
@@ -74,7 +74,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     val chunkH  = new ScrapeChunkHandler(map, store, clock)
     val reduceH = new ScrapeChunkReduceHandler(map, store, publishScrape, policy, clock)
     val coord   = new ChunkScrapeCoordinator(store, queue)
-    def reaper(c: Clock) = new ChunkScrapeReaper(store, queue, coord, staleAfter = stale, clock = c)
+    def reaper(c: Clock) = new ChunkScrapeReaper(store, queue, coord, staleAfter = services.tasks.ChunkScrapePlanner.RunTimeout(stale), clock = c)
 
     /** Claim+handle every currently-claimable task once; on a finished ScrapeChunk
      *  fire the coordinator (as the EventBus subscription does in prod). Rescheduled

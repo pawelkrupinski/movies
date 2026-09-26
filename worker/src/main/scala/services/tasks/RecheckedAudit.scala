@@ -1,5 +1,7 @@
 package services.tasks
 
+import settings.AuditSample
+
 import io.prometheus.metrics.core.metrics.Counter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import play.api.Logging
@@ -33,8 +35,8 @@ final class RecheckedAudit(
   queue:        TaskQueue,
   metrics:      RecheckedAudit.Metrics,
   clock:        Clock,
-  sampleSize:   Int,
-  recheckAfter: FiniteDuration = RecheckedAudit.RecheckAfter,
+  sampleSize:   AuditSample,
+  recheckAfter: RecheckedAudit.RecheckDelay = RecheckedAudit.RecheckDelay(RecheckedAudit.RecheckAfter),
   random:       Random         = new Random()
 )(check: String => Option[Seq[String]]) extends Logging {
   import RecheckedAudit.*
@@ -43,7 +45,7 @@ final class RecheckedAudit(
    *  queued for the re-check. */
   def sample(ids: Seq[String]): Seq[String] = {
     // Twice the sample drawn at most, so a run over ids that mostly cannot be judged still ends.
-    val judged   = random.shuffle(ids).iterator.take(sampleSize * 2).flatMap(id => check(id).map(id -> _)).take(sampleSize).toSeq
+    val judged   = random.shuffle(ids).iterator.take(sampleSize.value * 2).flatMap(id => check(id).map(id -> _)).take(sampleSize.value).toSeq
     val suspects = judged.collect { case (id, problems) if problems.nonEmpty => id }
     metrics.audited(judged.size)
     metrics.suspected(suspects.size)
@@ -54,12 +56,12 @@ final class RecheckedAudit(
       val dedupKey = s"$name-recheck"
       val fields   = Map(s"$IdsKey.${java.util.UUID.randomUUID()}" -> suspects.mkString(Separator))
       val queued = queue.enqueue(taskType, dedupKey, fields,
-        submittedAt = clock.instant(), notBefore = Some(clock.instant().plusMillis(recheckAfter.toMillis))) match {
+        submittedAt = clock.instant(), notBefore = Some(clock.instant().plusMillis(recheckAfter.value.toMillis))) match {
         case EnqueueResult.Duplicate if queue.amendWaiting(dedupKey, fields) => "joined the waiting re-check"
         case EnqueueResult.Duplicate => "NOT queued: the re-check is running"
         case other                   => other.toString
       }
-      logger.info(s"$name audit: ${suspects.size} of ${judged.size} sampled differ, re-checked in ${recheckAfter.toMinutes}m " +
+      logger.info(s"$name audit: ${suspects.size} of ${judged.size} sampled differ, re-checked in ${recheckAfter.value.toMinutes}m " +
         s"($queued): ${suspects.take(LoggedIds).mkString(", ")}")
     }
     suspects
@@ -71,7 +73,7 @@ final class RecheckedAudit(
     val confirmed = ids.flatMap(id => check(id).filter(_.nonEmpty).map(id -> _))
     metrics.confirmed(confirmed.size)
     confirmed.take(LoggedIds).foreach { case (id, problems) =>
-      logger.warn(s"$name audit: $id still differs ${recheckAfter.toMinutes}m after it was first seen: ${problems.mkString("; ")}")
+      logger.warn(s"$name audit: $id still differs ${recheckAfter.value.toMinutes}m after it was first seen: ${problems.mkString("; ")}")
     }
     if (confirmed.sizeIs > LoggedIds) logger.warn(s"$name audit: ${confirmed.size - LoggedIds} more confirmed, not listed.")
     confirmed
@@ -92,6 +94,10 @@ final class RecheckedAudit(
 }
 
 object RecheckedAudit {
+
+  /** How long a suspect finding waits before it is re-checked and counted. */
+  final case class RecheckDelay(value: FiniteDuration) extends AnyVal
+
   /** The ids a re-check task carries — every sample's that joined it — or None for a sample task. */
   private def carriedIds(payload: Map[String, String]): Option[Seq[String]] = {
     val fields = payload.collect { case (k, v) if k == IdsKey || k.startsWith(s"$IdsKey.") => v }

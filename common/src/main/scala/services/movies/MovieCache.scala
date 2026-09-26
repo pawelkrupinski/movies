@@ -306,7 +306,7 @@ class CaffeineMovieCache(
   // MINUTES`, read once here rather than by `ScrapeLanding` itself so the guards'
   // pure functions stay pure) — see `ScrapeHealth.maxRejectionsFor` for why a flat
   // "3" isn't safe for the slower-cadence countries.
-  maxConsecutiveGuardRejections: Int = ScrapeHealth.maxRejectionsFor(services.freshness.Freshness.DefaultScrapeTtl),
+  maxConsecutiveGuardRejections: Int = ScrapeHealth.maxRejectionsFor(services.freshness.Freshness.DefaultScrapeFreshness),
   // Guard-verdict + silent-write-skip counters, forwarded verbatim to `ScrapeLanding`
   // — see `ScrapeLandingMetrics`. No-op for web/tests; the worker wires `WorkerTaskMetrics`.
   scrapeLandingMetrics: ScrapeLandingMetrics = ScrapeLandingMetrics.noop,

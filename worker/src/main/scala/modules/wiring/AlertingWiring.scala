@@ -32,7 +32,7 @@ trait AlertingWiring { self: WorkerWiring =>
   protected lazy val filmwebDropAlerter: Option[FilmwebDropAlerter] =
     configuration.telegramRoute(AlertRoute.FilmwebDrop).toOption.filter(_ => filmwebEnabled).map { route =>
       new FilmwebDropAlerter(filmwebOnlyCinemas, notifierFor(route).send,
-        configuration.filmwebDropThreshold(FilmwebDropThreshold(3)).value)
+        configuration.filmwebDropThreshold(FilmwebDropThreshold(3)))
     }
 
   // The single drop-watcher shared across every UptimeRecordingScraper wrap (it
@@ -48,8 +48,8 @@ trait AlertingWiring { self: WorkerWiring =>
   protected lazy val stagingStuckAlerter: Option[StagingStuckAlerter] =
     configuration.telegramRoute(AlertRoute.StagingStuck).toOption.map { route =>
       new StagingStuckAlerter(stagingRepository, notifierFor(route).send,
-        stuckThreshold = configuration.stagingStuckThreshold(StagingStuckThreshold(FiniteDuration(60L, TimeUnit.MINUTES))).value,
-        interval       = configuration.stagingStuckScanInterval(StagingStuckScanInterval(FiniteDuration(10L, TimeUnit.MINUTES))).value)
+        stuckThreshold = configuration.stagingStuckThreshold(StagingStuckThreshold(FiniteDuration(60L, TimeUnit.MINUTES))),
+        interval       = configuration.stagingStuckScanInterval(StagingStuckScanInterval(FiniteDuration(10L, TimeUnit.MINUTES))))
     }
 
   /** Which of this country's alerters are wired, read from the same routes as the

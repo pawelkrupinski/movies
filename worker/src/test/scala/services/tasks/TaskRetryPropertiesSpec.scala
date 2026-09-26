@@ -41,7 +41,7 @@ class TaskRetryPropertiesSpec extends AnyFlatSpec with Matchers {
     val clock  = new MutableClock(t0)
     val queue  = new InMemoryTaskQueue
     queue.enqueue(TaskType.ResolveTmdb, "resolve-tmdb|x|2026", submittedAt = t0)
-    val worker = new TaskWorker(queue, Seq(handler), maxAttempts = maxAttempts, clock = clock)
+    val worker = new TaskWorker(queue, Seq(handler), maxAttempts = services.tasks.TaskWorker.MaxAttempts(maxAttempts), clock = clock)
     var claims = 0
     var ticks  = 0
     while (ticks < maxClaims && queue.countByState().nonEmpty) {

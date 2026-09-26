@@ -94,7 +94,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers with
     ProjectedMongoCorpus.withCorpus(mongoTarget, "projection_fixpoint") { corpus =>
       import corpus.{databaseName, readModel, repository}
       val country   = models.Country.Poland
-      val metrics   = services.metrics.WorkerMetrics.singleCountry(country, poolSize = 1)
+      val metrics   = services.metrics.WorkerMetrics.singleCountry(country, poolSize = settings.WorkerPoolSize(1))
       val projector = new services.readmodel.ReadModelProjector(repository, readModel, readModel, metrics.taskMetricsFor(country), clock = tools.SpecClock.Pinned)
       val id        = StoredMovieRecord.keyFor(fixpointTitle, year, titleNormalizer)
       val projecting = repository.watchUpserts(projector.onMovieUpsert)

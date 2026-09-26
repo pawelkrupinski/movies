@@ -50,7 +50,7 @@ trait AdminWiring { self: Wiring =>
     registry     = new services.config.MongoEnvRegistryStore(mongoConnection.database),
     env          = env,
     tickInterval = processConfiguration.configRefreshInterval(
-      settings.ConfigRefreshInterval(scala.concurrent.duration.Duration(30L, "seconds"))).value)
+      settings.ConfigRefreshInterval(scala.concurrent.duration.Duration(30L, "seconds"))))
   lazy val envConfigController = new EnvConfigController(controllerComponents, adminAction, envConfigService)
 
   // Film identity (phase 3 of docs/design/identity-resolver.md): the admin diagnostic and the

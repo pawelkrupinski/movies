@@ -1,5 +1,7 @@
 package services.tasks
 
+import settings.ScrapeFreshness
+
 import models.{Cinema, CinemaMovie, City}
 
 import java.time.{Clock, Duration => JDuration}
@@ -78,15 +80,15 @@ object VenueScrapeCadence {
  * this third party. `key` is the scrape dedup key ([[ScrapeCinemaHandler.dedupKey]]),
  * so it lines up with what `DueWindow.isDue` is already called with.
  */
-class VenueCadenceStore(countryDefault: FiniteDuration) {
+class VenueCadenceStore(countryDefault: ScrapeFreshness) {
   private val overrides = TrieMap.empty[String, FiniteDuration]
 
   /** Record this venue's freshly observed runway, deriving and storing the
    *  period it implies. */
   def record(key: String, remainingHorizon: FiniteDuration): Unit =
-    overrides.put(key, VenueScrapeCadence.periodFor(remainingHorizon, countryDefault))
+    overrides.put(key, VenueScrapeCadence.periodFor(remainingHorizon, countryDefault.value))
 
   /** The period `DueWindow` should use for `key` — the country default until a
    *  scrape has recorded a shorter one. */
-  def periodFor(key: String): FiniteDuration = overrides.getOrElse(key, countryDefault)
+  def periodFor(key: String): FiniteDuration = overrides.getOrElse(key, countryDefault.value)
 }

@@ -100,8 +100,11 @@ object ScrapeHealth {
    *  Cloudflare challenge, a proxy 503), never more than the tick-count ceiling
    *  above. At PL's 60min cadence this returns 3, unchanged; every slower country
    *  drops to 1. */
-  def maxRejectionsFor(scrapeTtl: FiniteDuration, targetHoldCap: FiniteDuration = 3.hours): Int =
-    math.max(1, (targetHoldCap / scrapeTtl).toInt) min MaxConsecutiveDepthRejections
+  def maxRejectionsFor(scrapeFreshness: settings.ScrapeFreshness, targetHoldCap: HoldCap = HoldCap(3.hours)): Int =
+    math.max(1, (targetHoldCap.value / scrapeFreshness.value).toInt) min MaxConsecutiveDepthRejections
+
+  /** The longest a rejected venue's grace may hold its slots, in wall-clock time. */
+  final case class HoldCap(value: FiniteDuration) extends AnyVal
 
   /** The BREADTH axis: is the fresh batch implausibly small against the slots the
    *  venue already holds? If so the end-of-tick prune is skipped — the films this

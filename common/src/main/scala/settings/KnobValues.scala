@@ -79,8 +79,10 @@ final case class ReadModelPruneBootDelay(value: FiniteDuration) extends AnyVal
 final case class ReadModelReloadInterval(value: FiniteDuration) extends AnyVal
 /** `KINOWO_READMODEL_COLD_RETRY_SECONDS`. */
 final case class ReadModelColdRetryInterval(value: FiniteDuration) extends AnyVal
+/** How many rows one pass of a rechecked audit samples — either audit's own knob. */
+sealed trait AuditSample extends Any { def value: Int }
 /** `KINOWO_READMODEL_AUDIT_SAMPLE`. */
-final case class ReadModelAuditSample(value: Int) extends AnyVal
+final case class ReadModelAuditSample(value: Int) extends AnyVal with AuditSample
 
 // ── Share cards ─────────────────────────────────────────────────────────────────
 /** `KINOWO_SHARE_CARD_BUDGET_MB` — the card store's disk budget, in bytes. */
@@ -94,7 +96,7 @@ final case class PosterDecodeMemoryCap(megabytes: Long) extends AnyVal
 /** `KINOWO_SHARE_CARD_FIRST_HOLD_SECONDS` — how long a new card waits for its share card. */
 final case class ShareCardFirstHold(value: FiniteDuration) extends AnyVal
 /** `KINOWO_SHARE_CARD_AUDIT_SAMPLE`. */
-final case class ShareCardAuditSample(value: Int) extends AnyVal
+final case class ShareCardAuditSample(value: Int) extends AnyVal with AuditSample
 
 // ── Mongo ─────────────────────────────────────────────────────────────────────
 // (MongoProbeTimeout, MongoMaxPoolSize, MongoOptional live with the Mongo values.)

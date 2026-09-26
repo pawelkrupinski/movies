@@ -22,7 +22,7 @@ class FilmwebDropAlerterSpec extends AnyFlatSpec with Matchers {
   private def newAlerter(threshold: Int = 3): (FilmwebDropAlerter, ListBuffer[String]) = {
     val sent = ListBuffer.empty[String]
     val record: String => Unit = s => { sent += s; () }
-    (new FilmwebDropAlerter(watched, record, threshold), sent)
+    (new FilmwebDropAlerter(watched, record, settings.FilmwebDropThreshold(threshold)), sent)
   }
 
   private def feed(a: FilmwebDropAlerter, c: Cinema, outcomes: ScrapeOutcome*): Unit =

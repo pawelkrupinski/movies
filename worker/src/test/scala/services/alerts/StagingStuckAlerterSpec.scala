@@ -43,7 +43,7 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
   private def newAlerter(repository: InMemoryStagingRepository, clock: MutableClock)
   : (StagingStuckAlerter, ListBuffer[String]) = {
     val sent = ListBuffer.empty[String]
-    (new StagingStuckAlerter(repository, s => { sent += s; () }, stuckThreshold = 1.hour, clock = clock), sent)
+    (new StagingStuckAlerter(repository, s => { sent += s; () }, stuckThreshold = settings.StagingStuckThreshold(1.hour), clock = clock), sent)
   }
 
   "StagingStuckAlerter" should "alert once after a row stays unresolved past the threshold" in {

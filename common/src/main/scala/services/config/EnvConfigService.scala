@@ -1,5 +1,7 @@
 package services.config
 
+import settings.ConfigRefreshInterval
+
 import play.api.Logging
 import services.Stoppable
 import tools.{DaemonExecutors, Env}
@@ -32,7 +34,7 @@ class EnvConfigService(
   // The process's config: overrides are installed into it, and its registry of
   // read knobs is what gets published.
   env:            Env,
-  tickInterval:   FiniteDuration = 30.seconds,
+  tickInterval:   ConfigRefreshInterval = ConfigRefreshInterval(30.seconds),
   isSecret:       String => Boolean = EnvKnobClassifier.isSecret
 ) extends Stoppable with Logging {
 
@@ -42,8 +44,8 @@ class EnvConfigService(
   def start(): Unit = {
     env.installOverrides(overrides.lookup)
     scheduler.scheduleWithFixedDelay(
-      () => Try(publishTick()), 0L, tickInterval.toSeconds, TimeUnit.SECONDS)
-    logger.info(s"EnvConfigService[$app] started: overrides installed, publishing every ${tickInterval.toSeconds}s.")
+      () => Try(publishTick()), 0L, tickInterval.value.toSeconds, TimeUnit.SECONDS)
+    logger.info(s"EnvConfigService[$app] started: overrides installed, publishing every ${tickInterval.value.toSeconds}s.")
   }
 
   /** Refresh overrides from the store, then republish this process's knobs. */

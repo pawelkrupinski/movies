@@ -4,7 +4,7 @@ import com.sun.management.HotSpotDiagnosticMXBean
 import play.api.Logging
 
 import java.lang.management.ManagementFactory
-import java.nio.file.{Files, Paths}
+import java.nio.file.Files
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -22,16 +22,16 @@ import scala.util.{Failure, Success, Try}
  * swallowed so it never blocks the restart that actually recovers the worker.
  *
  * `dumpHeap` won't overwrite an existing file, so the filename carries a
- * caller-supplied millis stamp; `dir` is created if absent (the Fly volume mount).
+ * caller-supplied millis stamp; `directory` is created if absent (the Fly volume mount).
  */
 object HeapDumper extends Logging {
 
-  /** Write a live-objects HPROF dump to `dir/wedge-<millis>.hprof`. Returns the
+  /** Write a live-objects HPROF dump to `directory/wedge-<millis>.hprof`. Returns the
    *  path on success, None on any failure. */
-  def dump(dir: String, now: () => Long = () => System.currentTimeMillis()): Option[String] =
+  def dump(directory: settings.HeapDumpDirectory, now: () => Long = () => System.currentTimeMillis()): Option[String] =
     Try {
-      Files.createDirectories(Paths.get(dir))
-      val path = Paths.get(dir, s"wedge-${now()}.hprof").toString
+      Files.createDirectories(directory.value)
+      val path = directory.value.resolve(s"wedge-${now()}.hprof").toString
       val bean = ManagementFactory.newPlatformMXBeanProxy(
         ManagementFactory.getPlatformMBeanServer,
         "com.sun.management:type=HotSpotDiagnostic",
@@ -44,7 +44,7 @@ object HeapDumper extends Logging {
         logger.error(s"HeapDumper: wrote wedged-heap dump to $path")
         Some(path)
       case Failure(e) =>
-        logger.error(s"HeapDumper: heap dump to $dir failed (${e.getClass.getSimpleName}: ${e.getMessage}) — continuing to restart without it.")
+        logger.error(s"HeapDumper: heap dump to ${directory.value} failed (${e.getClass.getSimpleName}: ${e.getMessage}) — continuing to restart without it.")
         None
     }
 }

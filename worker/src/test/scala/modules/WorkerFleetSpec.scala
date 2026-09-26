@@ -24,7 +24,7 @@ class WorkerFleetSpec extends AnyFlatSpec with Matchers {
   private def watchdog(ageMillis: Long) =
     new LivenessWatchdog(
       lastBeatMillis     = () => start - ageMillis,
-      stalenessThreshold = 5.minutes,
+      stalenessThreshold = settings.LivenessStaleAfter(5.minutes),
       onWedged           = () => (),
       now                = () => start)
 

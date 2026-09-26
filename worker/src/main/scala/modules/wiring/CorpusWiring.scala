@@ -83,7 +83,7 @@ trait CorpusWiring { self: WorkerWiring =>
       bootHydrateMaxAttempts = configuration.bootHydrateMaxAttempts,
       bootHydrateRetry       = configuration.bootHydrateRetryInterval(BootHydrateRetryInterval(1.second)),
       maxConsecutiveGuardRejections =
-        services.movies.ScrapeHealth.maxRejectionsFor(scrapeFreshness.value),
+        services.movies.ScrapeHealth.maxRejectionsFor(scrapeFreshness),
       rehydrateInterval = configuration.cacheRehydrateInterval(CacheRehydrateInterval(6.hours)))
 
   // This deployment's badge vocabulary. One instance, shared by every path that

@@ -53,7 +53,7 @@ class GrafanaCorpusIntegritySpec extends AnyFlatSpec with Matchers {
    *  they'd be absent from the render for a reason that has nothing to do with
    *  the naming this spec is checking. */
   private lazy val exposed: String = {
-    val metrics = WorkerMetrics.singleCountry(Country.Poland, poolSize = 1)
+    val metrics = WorkerMetrics.singleCountry(Country.Poland, poolSize = settings.WorkerPoolSize(1))
     new WorkerCorpusMetrics(metrics.corpusGauge, Country.Poland.code)
     new WorkerSourceFilmsMetrics(metrics.servedGauge, Country.Poland.code, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer)
     new WorkerShowtimesMetrics(metrics.showtimesGauge, Country.Poland.code, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer)

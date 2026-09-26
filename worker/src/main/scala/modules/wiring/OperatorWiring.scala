@@ -21,7 +21,7 @@ trait OperatorWiring { self: WorkerWiring =>
     overrides = new MongoEnvOverrideStore(mongoConnection.database),
     registry  = new MongoEnvRegistryStore(mongoConnection.database),
     env          = env,
-    tickInterval = configuration.configRefreshInterval(ConfigRefreshInterval(30.seconds)).value)
+    tickInterval = configuration.configRefreshInterval(ConfigRefreshInterval(30.seconds)))
 
   // Persists each operator-triggered bulk-refresh outcome so it survives the task
   // doc's instant deletion and the web `/tasks` page can show it. Written here by
