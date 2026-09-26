@@ -74,18 +74,23 @@ class ConcurrentCandidateProbeSpec extends AnyFlatSpec with Matchers {
   // fallbacks at once). Batching into rounds trades some latency for a hard
   // cap on concurrent memory.
   it should "cap concurrent probes at maxConcurrent, running the rest in later rounds" in {
-    val delay = 150
-    val candidates = 1 to 4
-    val start = System.nanoTime() / 1000000
-    ConcurrentCandidateProbe.firstMatch("t", candidates.toSeq, maxConcurrent = 2) { c =>
-      Thread.sleep(delay.toLong)
+    // Counted, not timed: the peak number of probes in flight at once. A round's
+    // two probes meet at a 2-party barrier, so they are provably in flight
+    // together; a cap that let more through would push the peak past 2. (A
+    // wall-clock bound here failed under a loaded testUnit, as the unbounded
+    // case's did.)
+    val inFlight = new java.util.concurrent.atomic.AtomicInteger(0)
+    val peak     = new java.util.concurrent.atomic.AtomicInteger(0)
+    val ran      = new java.util.concurrent.atomic.AtomicInteger(0)
+    val pair     = new java.util.concurrent.CyclicBarrier(2)
+    ConcurrentCandidateProbe.firstMatch("t", (1 to 4).toSeq, maxConcurrent = 2) { _ =>
+      peak.accumulateAndGet(inFlight.incrementAndGet(), math.max)
+      pair.await(10, java.util.concurrent.TimeUnit.SECONDS)
+      inFlight.decrementAndGet(); ran.incrementAndGet()
       None
     }
-    val elapsed = System.nanoTime() / 1000000 - start
-    // 4 candidates at 2-at-a-time is 2 rounds of ~150ms — comfortably more than
-    // one round (the unbounded case) and comfortably less than 4 sequential.
-    elapsed should be >= delay.toLong
-    elapsed should be < (delay * candidates.size).toLong
+    ran.get  shouldBe 4
+    peak.get shouldBe 2
   }
 
   it should "still return the highest-priority match across round boundaries" in {

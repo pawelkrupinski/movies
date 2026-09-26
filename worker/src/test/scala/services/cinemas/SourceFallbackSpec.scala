@@ -13,7 +13,7 @@ import services.cinemas.common.SourceFallbackScraper
 import java.time.Instant
 import scala.concurrent.duration._
 
-class SourceFallbackSpec extends AnyFlatSpec with Matchers {
+class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.OptionValues {
 
   private val Service = Multikino.displayName
 
@@ -121,6 +121,39 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers {
     h.state.map(_.active) shouldBe Some(true)
     h.advance(20.minutes)                   // the 15-min bucket rolls over
     h.scraper.fetch() shouldBe OneMovie     // served again from the fallback
+    h.bucket.fallback shouldBe true
+    h.bucket.thin     shouldBe true
+  }
+
+  // The two remaining Filmweb-serving paths, each pinned by where the clock sits
+  // relative to the stored next re-probe: before it, Filmweb is served without
+  // touching the primary; after it, a primary that still throws falls back again.
+  private def onFallbackAfterAThrow(): Harness = {
+    val h = new Harness(Seq(Left(boom)), Some(filmwebWith(OneMovie)))
+    h.clock = Instant.parse("2026-06-06T08:00:00Z")
+    h.tickSwallowing()
+    h.advance(6.hours + 1.minute)
+    h.scraper.fetch()                       // enters the fallback
+    h.state.map(_.active) shouldBe Some(true)
+    h
+  }
+
+  it should "mark a Filmweb listing thin when it's served before the primary is due a re-probe" in {
+    val h = onFallbackAfterAThrow()
+    val primaryCalls = h.primary.calls
+    h.clock = h.state.flatMap(_.nextPrimaryProbeAt).value.minusSeconds(60)
+    h.scraper.fetch() shouldBe OneMovie
+    h.primary.calls shouldBe primaryCalls   // the primary was left alone
+    h.bucket.fallback shouldBe true
+    h.bucket.thin     shouldBe true
+  }
+
+  it should "mark a Filmweb listing thin when a re-probed primary still throws" in {
+    val h = onFallbackAfterAThrow()
+    val primaryCalls = h.primary.calls
+    h.clock = h.state.flatMap(_.nextPrimaryProbeAt).value.plusSeconds(60)
+    h.scraper.fetch() shouldBe OneMovie
+    h.primary.calls shouldBe primaryCalls + 1   // re-probed, threw, Filmweb served
     h.bucket.fallback shouldBe true
     h.bucket.thin     shouldBe true
   }
