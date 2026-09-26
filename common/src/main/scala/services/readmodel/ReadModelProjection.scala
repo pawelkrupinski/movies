@@ -1,7 +1,7 @@
 package services.readmodel
 
 import models._
-import services.movies.{StoredMovieRecord, TitleNormalizer, TrailerEmbed}
+import services.movies.{ListingKey, StoredMovieRecord, TitleNormalizer, TrailerEmbed}
 
 /**
  * Pure projection from a stored `MovieRecord` row to the denormalised read
@@ -168,7 +168,12 @@ object ReadModelProjection {
     /** Over the fields the row reads, spelled out: `SourceData`'s own hash deliberately
      *  leaves its showtimes out (identity is showtime-agnostic), so hashing the slots whole
      *  would call a showtime change "unchanged" — exactly the change this must see. */
-    def inputHash: Int = (fid, city.slug, cinema.displayName, slots.map(slot => (slot.filmUrl, slot.showtimes))).##
+    def inputHash: Int = (fid, city.slug, cinema.displayName, slots.map(slot => (slot.filmUrl, slot.showtimes)), listingKeys).##
+
+    /** The venue listings this row's showtimes come from — the slot stamp's own derivation, so a
+     *  row and the side rows it was projected from name the same listings. */
+    private lazy val listingKeys: Seq[String] =
+      slots.flatMap(ListingKey.ofVenueSlot(cinema, _)).map(ListingKey.serialised).distinct.sorted
 
     /** Showtimes are sorted into a canonical order so the row is a pure function of the
      *  showtime SET, not of upstream scrape order. */
@@ -181,7 +186,8 @@ object ReadModelProjection {
       // the link does not blank an address the other slot still carries.
       filmUrl   = slots.iterator.flatMap(_.filmUrl).nextOption(),
       showtimes = slots.flatMap(_.showtimes).distinct
-        .sortBy(st => (st.dateTime.toString, st.bookingUrl.getOrElse(""), st.format.mkString(",")))
+        .sortBy(st => (st.dateTime.toString, st.bookingUrl.getOrElse(""), st.format.mkString(","))),
+      listingKeys = listingKeys
     )
   }
 

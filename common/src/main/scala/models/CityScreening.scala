@@ -14,6 +14,12 @@ package models
  *
  * `_id` is `${filmId}|${city}|${cinema}`; `filmId` joins to
  * [[ResolvedMovie]]`._id`.
+ *
+ * `listingKeys` is the identity migration's dual write into the read model
+ * (docs/design/identity-resolver.md §16): the serialised [[services.movies.ListingKey]] of every
+ * venue listing whose showtimes this row carries — sorted, and more than one where the venue's
+ * slots of the film are unioned here. Nothing reads it yet; it is what lets the cutover key a
+ * served screening by `(FilmId, ListingKey)` instead of by title.
  */
 case class CityScreening(
   _id:       String,
@@ -24,7 +30,8 @@ case class CityScreening(
   cinema:    String,
   // The cinema's deep-link to this film, when it reports one.
   filmUrl:   Option[String],
-  showtimes: Seq[Showtime]
+  showtimes: Seq[Showtime],
+  listingKeys: Seq[String] = Seq.empty
 ) {
   /** Readable alias for the Mongo `_id`. */
   def id: String = _id

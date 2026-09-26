@@ -81,6 +81,20 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
       ReadModelProjection.screeningsAll(renamedStored, titleNormalizer).flatten.map(r => (r._id, r.showtimes))
   }
 
+  // The identity migration's dual write into the read model (§16): the row names every listing
+  // its showtimes come from — here two, since the venue's two slots are unioned into one row —
+  // by the same key the slots' side rows are stamped with, whatever order the record holds them in.
+  it should "carry the listing key of every slot it unions, as the side rows are stamped" in {
+    val expected = renamedVenue.data.toSeq
+      .flatMap { case (source, slot) => services.movies.StoredSlotDto.listingKeyOf(source.displayName, slot) }.sorted
+    expected should have size 2
+    val reversed = StoredMovieRecord.fromStorage(
+      "terminator2dziensadu|1991", renamedVenue.copy(data = renamedVenue.data.toSeq.reverse.toMap), titleNormalizer)
+    Seq(renamedStored, reversed).foreach { stored =>
+      ReadModelProjection.screeningsAll(stored, titleNormalizer).flatten.map(_.listingKeys) shouldBe Seq(expected)
+    }
+  }
+
   private val id     = s"${titleNormalizer.sanitize("Skazani na Shawshank")}|1994"
   private val stored = StoredMovieRecord.fromStorage(id, record, titleNormalizer)
 

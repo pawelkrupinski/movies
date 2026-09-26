@@ -43,7 +43,9 @@ final case class Derivation(version: DerivationVersion, scope: DerivationScope)
  */
 object ReadModelDerivation {
   val History: Seq[Derivation] = Seq(
-    Derivation(DerivationVersion("2b3aef8d690fea26"), DerivationScope.Full))
+    Derivation(DerivationVersion("2b3aef8d690fea26"), DerivationScope.Full),
+    // web_screenings rows carry the listing keys of the slots they union (identity phase 4, §16).
+    Derivation(DerivationVersion("e90186e6b0473c75"), DerivationScope.Full))
 
   def current: DerivationVersion = History.last.version
 
