@@ -34,13 +34,14 @@ object FamilyClosure {
    *
    *  `segments` are the delimited parts of the title a listing publishes around a programme
    *  banner or a decoration ("Oficjalna premiera: Lalka" → "Oficjalna premiera", "Lalka"), keyed
-   *  in the search-form namespace so a segment meets a plain listing's whole title. They put a
+   *  in the sanitised-title namespace (case- and punctuation-blind) so a segment meets a plain
+   *  listing's whole title however either is cased. They put a
    *  decorated spelling in its plain sibling's family — which is what lets the resolver's
    *  group-level signals reach it — without drawing any edge by themselves. */
   def blockKeys(cleanTitle: String, originalTitle: Option[String], tmdbId: Option[Int],
                 normalizer: TitleNormalizer, segments: Seq[String] = Nil): Set[String] = {
     def titleKeys(t: String) = Seq("t:" + normalizer.sanitize(t), "q:" + normalizer.searchQuery(t))
-    (titleKeys(cleanTitle) ++ originalTitle.toSeq.flatMap(titleKeys) ++ segments.map(s => "q:" + normalizer.searchQuery(s)) ++
+    (titleKeys(cleanTitle) ++ originalTitle.toSeq.flatMap(titleKeys) ++ segments.map(s => "t:" + normalizer.sanitize(s)) ++
       tmdbId.map(id => s"id:$id"))
       .filterNot(_.endsWith(":")).toSet
   }

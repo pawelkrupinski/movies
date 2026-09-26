@@ -27,9 +27,31 @@ object IdentityMeasures {
   final case class Listing(title: String, rawTitle: Option[String] = None, originalTitle: Option[String] = None,
                            year: Option[Int] = None, runtime: Option[Int] = None, directors: Seq[String] = Nil,
                            countries: Seq[String] = Nil) {
+    private def titles: Seq[String] = rawTitle.toSeq :+ title
+    /** The season the title names ("2026/27"), by its first year. */
+    lazy val seasonYear: Option[Int] = IdentityMeasures.seasonYear(titles)
+    /** A year the venue put in its title as a delimited annotation ("(2026)"), outside any season. */
+    lazy val titleYear: Option[Int] = EmbeddedYear.ofAll(titles.map(IdentityMeasures.withoutSeasons), Int.MaxValue)
     /** The venue's own year: its field, else the one its title brackets. */
-    def statedYear: Option[Int] = year.orElse(EmbeddedYear.ofAll(rawTitle.toSeq :+ title, Int.MaxValue))
+    def statedYear: Option[Int] = year.orElse(titleYear)
   }
+
+  /** A SEASON written into a title — "2026/27", "2026-27", "2026/2027", "2026–2027": a year and the
+   *  next, which is how a broadcast or programme series names its run, never a film's year. */
+  private val Season = """(?<![\p{N}])((?:18|19|20)\d{2})\s*[/–—-]\s*(\d{4}|\d{2})(?![\p{N}])""".r
+  private def seasonStart(m: scala.util.matching.Regex.Match): Option[Int] = {
+    val start = m.group(1).toInt
+    val end   = m.group(2)
+    Option.when((end.length == 4 && end.toInt == start + 1) || (end.length == 2 && end.toInt == (start + 1) % 100))(start)
+  }
+  def seasonYear(titles: Seq[String]): Option[Int] =
+    titles.iterator.flatMap(Season.findAllMatchIn).flatMap(seasonStart).toSeq.distinct match {
+      case Seq(one) => Some(one)
+      case _        => None
+    }
+  /** `t` with every season removed, so a season's end year is never read as a bracketed year. */
+  def withoutSeasons(t: String): String =
+    Season.replaceAllIn(t, m => if (seasonStart(m).isDefined) " " else scala.util.matching.Regex.quoteReplacement(m.matched))
 
   /** What TMDB says about a candidate film. `directors`/`countries` are `None` when the film's
    *  details were not fetched, which is not the same as TMDB crediting nobody. `countries` are
@@ -96,8 +118,11 @@ object IdentityMeasures {
     if (a.isEmpty || b.isEmpty) 0.0 else (a intersect b).size.toDouble / (a union b).size
 
   /** How the listing's title names the film: its localised title exactly, its original title,
-   *  an alternative title, one whole banner segment, a token run along one edge (a decoration),
-   *  some shared words, or nothing. */
+   *  an alternative title, one whole banner segment, the film's title as a token run along one edge
+   *  of the listing's (`decorated`: "Ken Russell's The Devils"), the listing's title as a run along
+   *  one edge of the film's (`fragment`: "It" beside "It Ends with Us"), some shared words, or
+   *  nothing. The two containments are opposite evidence — a decoration names the film, a fragment
+   *  names a shorter, often different one — so they are measured apart. */
   def titleRelation(l: Listing, f: Film): Category = {
     val own    = (Seq(l.title) ++ l.rawTitle).map(key).filter(_.nonEmpty).toSet
     val shapes = titleShapes(l).map(key).filter(_.nonEmpty).toSet
@@ -112,8 +137,8 @@ object IdentityMeasures {
     else {
       val ls = (Seq(l.title) ++ l.rawTitle).map(words).filter(_.nonEmpty)
       val fs = (Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles).map(words).filter(_.nonEmpty)
-      if (ls.exists(a => fs.exists(b => TitleContainment.isTokenRun(b, a) || TitleContainment.isTokenRun(a, b))))
-        Category("contains")
+      if (ls.exists(a => fs.exists(b => TitleContainment.isTokenRun(b, a)))) Category("decorated")
+      else if (ls.exists(a => fs.exists(b => TitleContainment.isTokenRun(a, b)))) Category("fragment")
       else if (ls.exists(a => fs.exists(b => jaccard(a.toSet, b.toSet) > 0))) Category("overlap")
       else Category("none")
     }
@@ -166,6 +191,13 @@ object IdentityMeasures {
     case (Some(x), Some(y)) => Number((x - y).toDouble)
   }
 
+  /** The film's year minus a year the listing's title carries. */
+  private def filmMinus(film: Option[Int], listing: Option[Int]): Measure = (listing, film) match {
+    case (None, _)          => MissingListing
+    case (_, None)          => MissingFilm
+    case (Some(l), Some(f)) => Number((f - l).toDouble)
+  }
+
   private def absDelta(a: Option[Int], b: Option[Int]): Measure = delta(a, b) match {
     case Number(d) => Number(math.abs(d))
     case other     => other
@@ -212,7 +244,10 @@ object IdentityMeasures {
    *  agree (a year within one, the same director, the original title) and those that deny it. */
   def ownAgreement(m: Map[String, Measure]): (Set[String], Set[String]) = {
     val agree = Set.newBuilder[String]; val deny = Set.newBuilder[String]
+    // A published year agrees or denies; a year in the title only agrees — a bracket is as often
+    // a re-release's year as the film's.
     m.get("year.distance").foreach { case Number(d) => if (d <= 1) agree += "year" else deny += "year"; case _ => }
+    m.get("titleYear.delta").foreach { case Number(d) if math.abs(d) <= 1 => agree += "year"; case _ => }
     m.get("director").foreach { case Category(c) => if (c == "same_person") agree += "director" else if (c == "different") deny += "director"; case _ => }
     m.get("originalTitle").foreach { case Category(c) => if (c == "match") agree += "originalTitle" else if (c == "disjoint") deny += "originalTitle"; case _ => }
     (agree.result(), deny.result())
@@ -233,8 +268,10 @@ object IdentityMeasures {
     Map(
       "title"          -> titleRelation(l, f),
       "originalTitle"  -> originalTitleRelation(l.originalTitle, Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles),
-      "year.delta"     -> delta(l.statedYear, f.year),
-      "year.distance"  -> absDelta(l.statedYear, f.year),
+      "year.delta"     -> delta(l.year, f.year),
+      "year.distance"  -> absDelta(l.year, f.year),
+      "titleYear.delta" -> filmMinus(f.year, l.titleYear),
+      "season.delta"   -> filmMinus(f.year, l.seasonYear),
       "director"       -> f.directors.fold[Measure](if (l.directors.exists(_.trim.nonEmpty)) MissingFilm else MissingListing)(
                             directorRelation(l.directors, _)),
       "runtime.delta"  -> absDelta(l.runtime.filter(_ > 0), f.runtime.filter(_ > 0)),
@@ -268,7 +305,9 @@ object IdentityMeasures {
                            case (None, _)           => MissingListing
                            case (_, None)           => MissingFilm
                          }),
-      "year.delta"    -> absDelta(a.statedYear, b.statedYear),
+      "year.delta"    -> absDelta(a.year, b.year),
+      "titleYear.delta" -> absDelta(a.titleYear, b.titleYear),
+      "season.delta"  -> absDelta(a.seasonYear, b.seasonYear),
       "director"      -> directorRelation(a.directors, b.directors),
       "runtime.delta" -> absDelta(a.runtime.filter(_ > 0), b.runtime.filter(_ > 0)),
       "venue"         -> Category(if (sameVenue) "same" else "different"),

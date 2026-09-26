@@ -70,6 +70,17 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.violations shouldBe 0
   }
 
+  "A broadcast's bare listing" should "not take an old film its title-linked sibling's season denies" in {
+    // The Met's 2026/27 "Samson et Dalila": one venue names the season, another lists the bare
+    // title. TMDB's search for the Polish title returns only DeMille's 1949 film.
+    val films  = Seq(F(29993, "Samson i Dalila", 1949, "Cecil B. DeMille", 131, 20))
+    val season = listing(Multikino, "Samson i dalila | metropolitan opera: live in hd 2026/27")
+    val bare   = Seq(Helios, KinoApollo).map(listing(_, "Samson i Dalila"))
+    val r = resolve(season +: bare, films)
+    (season +: bare).foreach(l => withClue(l.title + "\n" + (season +: bare).map(x => r.decisionOf(x.key).render).distinct.mkString("\n"))(r.decisionOf(l.key).film should not be Some(29993)))
+    r.violations shouldBe 0
+  }
+
   "Three films under one title" should "stay three, and a bare listing joins neither of the dated ones by title alone" in {
     val films = Seq(F(1954, "A Star Is Born", 1954, "George Cukor", 176), F(1976, "A Star Is Born", 1976, "Frank Pierson", 139),
       F(2018, "A Star Is Born", 2018, "Bradley Cooper", 136, 60))

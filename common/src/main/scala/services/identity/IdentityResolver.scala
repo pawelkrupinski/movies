@@ -76,7 +76,7 @@ object IdentityResolver {
 
   /** Title relations close enough that a candidate a node's own queries did not name is still
    *  scored for it (an evidence path through the title). */
-  private val Reaching = Set("exact", "original", "alternative", "segment", "contains")
+  private val Reaching = Set("exact", "original", "alternative", "segment", "decorated")
 
   /** `pins` are the curation's hard constraints (`ListingConstraints.pinned`): a pinned film
    *  replaces a listing's own match, a denied one is never eligible, a pinned group is must-linked
@@ -181,7 +181,7 @@ object IdentityResolver {
         score(n.evidence.measured, n.venue, ownSearch(n.id), ownWalk(n.id), pins.deniedFilms(n.listings.head.key)))
 
       /** The cluster's members read as ONE listing: the title most of its listings carry (the
-       *  smaller node on a tie), the year most of them state, every director and country, the
+       *  smaller node on a tie), the year most of them publish (a title's bracket or season stays the lead title's own measure), every director and country, the
        *  median runtime, the modal original title, and every candidate any of them named. */
       def pooled(cluster: Seq[Node]): Seq[Scored] = {
         def modal[A: Ordering](values: Seq[(A, Int)]): Option[A] =
@@ -189,7 +189,7 @@ object IdentityResolver {
         val lead     = cluster.sortBy(n => (-n.weight, n.id)).head
         val runtimes = cluster.flatMap(n => n.evidence.runtime.toSeq.flatMap(r => Seq.fill(n.weight)(r))).sorted
         val listing  = lead.evidence.measured.copy(
-          year          = modal(cluster.flatMap(n => n.evidence.statedYear.map(_ -> n.weight))),
+          year          = modal(cluster.flatMap(n => n.evidence.year.map(_ -> n.weight))),
           originalTitle = modal(cluster.flatMap(n => n.evidence.originalTitle.map(_ -> n.weight))),
           directors     = cluster.flatMap(_.evidence.directors).distinct.sorted,
           runtime       = runtimes.lift(runtimes.size / 2),
@@ -230,6 +230,35 @@ object IdentityResolver {
         if (mutation == Mutation.NarrowFamilies) Set("t:" + normalizer.sanitize(n.evidence.cleanTitle))
         else titleKeys(n) ++ ids.getOrElse(n.id, Set.empty[Int]).map(i => s"id:$i"))).toMap)
 
+    val sanitized  = (s: String) => normalizer.sanitize(s)
+    val searchForm = (s: String) => normalizer.searchQuery(s)
+    val segmentsOf: Map[String, Set[String]] = nodes.map(n => n.id ->
+      (IdentityMeasures.titleShapes(n.evidence.measured).map(sanitized).toSet - sanitized(n.evidence.cleanTitle)).filter(_.nonEmpty)).toMap
+    def segmentOf(whole: Node, decorated: Node): Boolean =
+      segmentsOf(decorated.id).contains(sanitized(whole.evidence.cleanTitle))
+    /** Do two nodes' titles must-link them (tiers 2–4: same sanitised title, same search form,
+     *  an original title naming the other, or one a whole segment of the other)? */
+    def titleLinked(x: Node, y: Node): Boolean = {
+      val (ex, ey) = (x.evidence, y.evidence)
+      val originals = (ex.originalTitle ++ ey.originalTitle).map(sanitized).filter(_.nonEmpty).toSet
+      (sanitized(ex.cleanTitle).nonEmpty && sanitized(ex.cleanTitle) == sanitized(ey.cleanTitle)) ||
+        (searchForm(ex.cleanTitle).nonEmpty && searchForm(ex.cleanTitle) == searchForm(ey.cleanTitle)) ||
+        originals.contains(sanitized(ex.cleanTitle)) || originals.contains(sanitized(ey.cleanTitle)) ||
+        segmentOf(x, y) || segmentOf(y, x)
+    }
+
+    /** A node's ALONE acceptance, withdrawn when a title-linked sibling that accepted nothing itself
+     *  DENIES the film: a bare "Samson i Dalila" beside the same venue family's "…: live in hd
+     *  2026/27" has no evidence of its own against DeMille's 1949 film, but its sibling's season
+     *  is. The node then goes to the group vote with its siblings, where every member's denial holds. */
+    def withoutSiblingDenials(members: Seq[Node], scope: FamilyScope,
+                              alone: Map[String, (Scored, Double)]): Map[String, (Scored, Double)] =
+      alone.filter { case (id, (best, _)) =>
+        val n = nodeById(id)
+        !members.exists(y => y.id != id && !alone.contains(y.id) && titleLinked(n, y) &&
+          scope.of(y).exists(o => o.c.tmdbId == best.c.tmdbId && o.denied))
+      }
+
     // Families: the closure over title keys and the films members accept, grown until stable —
     // a node matching a film another family's listings match joins that family, and its pool.
     var matchedIds = Map.empty[String, Set[Int]]
@@ -239,7 +268,10 @@ object IdentityResolver {
     var stable     = false
     while (!stable) {
       scopes = nodes.groupBy(n => familyOf(n.id)).map { case (f, ms) => f -> new FamilyScope(ms.sortBy(_.id)) }
-      bestOf = nodes.flatMap(n => acceptedAlone(scopes(familyOf(n.id)).of(n)).map(n.id -> _)).toMap
+      bestOf = nodes.groupBy(n => familyOf(n.id)).toSeq.flatMap { case (f, members) =>
+        val scope = scopes(f)
+        withoutSiblingDenials(members, scope, members.flatMap(n => acceptedAlone(scope.of(n)).map(n.id -> _)).toMap)
+      }.toMap
       val grown = nodes.map(n => n.id -> (matchedIds.getOrElse(n.id, Set.empty[Int]) ++ bestOf.get(n.id).map(_._1.c.tmdbId) ++
         pinnedFilm.get(n.id))).toMap
       stable = grown == matchedIds || mutation == Mutation.NarrowFamilies
@@ -259,8 +291,6 @@ object IdentityResolver {
       })(_.denied)
 
     // ── B. global assignment, per family ─────────────────────────────────────────────────
-    val sanitized  = (s: String) => normalizer.sanitize(s)
-    val searchForm = (s: String) => normalizer.searchQuery(s)
     def pairsSharingAKey(members: Seq[Node]): Seq[(Node, Node)] = {
       val index = members.zipWithIndex.flatMap { case (n, i) => blockKeysOf(n.id).map(_ -> i) }.groupMap(_._1)(_._2)
       index.values.iterator.flatMap { is =>
@@ -288,10 +318,6 @@ object IdentityResolver {
     def admitted(e: ResolverEdge): Boolean =
       pins.admits(FamilyClosure.Edge(nodeById(e.a).listings.head.key, nodeById(e.b).listings.head.key, e.must, e.reason))
 
-    val segmentsOf: Map[String, Set[String]] = nodes.map(n => n.id ->
-      (IdentityMeasures.titleShapes(n.evidence.measured).map(searchForm).toSet - searchForm(n.evidence.cleanTitle)).filter(_.nonEmpty)).toMap
-    def segmentOf(whole: Node, decorated: Node): Boolean =
-      segmentsOf(decorated.id).contains(searchForm(whole.evidence.cleanTitle))
 
     def edgesOf(members: Seq[Node], filmOf: String => Option[Int]): Seq[ResolverEdge] =
       pinEdges(members, filmOf) ++ pairsSharingAKey(members).flatMap { case (x, y) =>
