@@ -400,9 +400,9 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
   // rows projecting differently is the one thing that names a new derivation and owes every worker
   // a pass. Rows that merely moved (a scraper, a fixture) are rewritten with the derivation kept.
   it should "match the checked-in derivation corpus, naming a new derivation only when the projection moved" in {
-    val regeneration = ReadModelDerivationCorpus.regenerate(
-      wiring.movieRepository.findAll(), wiring.titleNormalizer, ReadModelDerivationCorpus.readCheckedIn())
-    if (!ReadModelDerivationCorpus.readCheckedIn().contains(regeneration.rowsText -> regeneration.hashesText)) {
+    val checkedIn    = ReadModelDerivationCorpus.readCheckedIn()
+    val regeneration = ReadModelDerivationCorpus.regenerate(wiring.movieRepository.findAll(), wiring.titleNormalizer, checkedIn)
+    if (!checkedIn.contains(regeneration.rowsText -> regeneration.hashesText)) {
       ReadModelDerivationCorpus.write(regeneration)
       if (regeneration.bumped)
         fail((if (regeneration.moved.isEmpty) "No derivation corpus was checked in to compare against" else

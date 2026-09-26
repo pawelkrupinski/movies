@@ -296,10 +296,18 @@ class ReadModelProjector(
         pendingCards += id
         logger.warn(s"share card: published $id without its card — none was ready within ${firstCardHold.value.toSeconds}s.")
       }
-      val shareCard = shareCards.current(projected)
-      if (shareCard.nonEmpty && pendingCards.remove(id)) shareCards.onPendingCardLanded(id)
-      Some(projected.copy(shareCard = shareCard, shareCardPending = pendingCards.contains(id)))
+      Some(withShareCard(projected))
     }
+  }
+
+  /** Caller holds `lock`. `projected` as the read model serves it: its current share card filled
+   *  in. A card published pending (see `gate`) whose share card has landed since stops being
+   *  pending, and the ledger hears of it. */
+  private def withShareCard(projected: ResolvedMovie): ResolvedMovie = {
+    val id        = projected._id
+    val shareCard = shareCards.current(projected)
+    if (shareCard.nonEmpty && pendingCards.remove(id)) shareCards.onPendingCardLanded(id)
+    projected.copy(shareCard = shareCard, shareCardPending = pendingCards.contains(id))
   }
 
   /** Caller holds `lock`. Forget the first-publish holds on `rowId`'s cards that its projection no
@@ -638,7 +646,7 @@ class ReadModelProjector(
     // partition the corpus rather than sampling it, and every row is reached.
     if (!reproject && scanComplete) {
       val slice   = math.floorMod(sweepCount, ContentSlices.toLong).toInt
-      val drifted = reprojectSlice(liveRowIds, slice, s"$kind sweep", ProjectTrigger.Content)._1
+      val drifted = reprojectSlice(liveRowIds, slice, s"$kind sweep", movieRepository.findByIdChecked, projectRow(_, ProjectTrigger.Content))._1
       if (drifted > 0)
         logger.warn(s"read-model $kind sweep: content check slice $slice of $ContentSlices rewrote $drifted document(s) — " +
           "a stored projection had drifted from what the source projects to, which the id-only sweeps cannot see.")
@@ -717,36 +725,18 @@ class ReadModelProjector(
     verdictOnHeals(healed)
   }
 
-  /** Caller holds `lock`. Re-project every row of `rowIds` in content slice `slice`, each read
-   *  whole by id: the documents written, and whether every row was read and projected (a row
-   *  gone since `rowIds` was taken counts as done — its cards are the prune's). */
+  /** Caller holds `lock`. Re-project every row of `rowIds` in content slice `slice`, each `read` by
+   *  id and handed to `project`: the documents written, and whether every row was read and
+   *  projected (a row gone since `rowIds` was taken counts as done — its cards are the prune's). */
   private def reprojectSlice(rowIds: Iterable[services.movies.FilmId], slice: Int, what: String,
-                             trigger: ProjectTrigger): (Int, Boolean) = {
+                             read: services.movies.FilmId => (Option[StoredMovieRecord], Boolean),
+                             project: StoredMovieRecord => Int): (Int, Boolean) = {
     var written  = 0
     var complete = true
     rowIds.iterator.filter(ReadModelProjector.contentSliceOf(_) == slice).foreach { id =>
       val projected = continuing(s"read-model $what: a row in content slice $slice failed to project") {
-        movieRepository.findByIdChecked(id) match {
-          case (Some(row), _) => written += projectRow(row, trigger)
-          case (None, true)   => ()
-          case (None, false)  => complete = false
-        }
-      }
-      if (projected.isEmpty) complete = false
-    }
-    (written, complete)
-  }
-
-  /** Caller holds `lock`. [[reprojectSlice]] for a derivation that moved only what a CARD shows:
-   *  each row read slots-only — no `screenings` read — and only its cards re-projected
-   *  ([[projectCards]]). Same contract: the documents written, and whether every row was read. */
-  private def reprojectCardsOfSlice(rowIds: Iterable[services.movies.FilmId], slice: Int): (Int, Boolean) = {
-    var written  = 0
-    var complete = true
-    rowIds.iterator.filter(ReadModelProjector.contentSliceOf(_) == slice).foreach { id =>
-      val projected = continuing(s"read-model derivation pass: a row in content slice $slice failed to project its cards") {
-        movieRepository.findByIdWithSlotsChecked(id) match {
-          case (Some(row), _) => written += projectCards(ReadModelProjection.partition(row, normalizer))
+        read(id) match {
+          case (Some(row), _) => written += project(row)
           case (None, true)   => ()
           case (None, false)  => complete = false
         }
@@ -773,7 +763,7 @@ class ReadModelProjector(
     var written = 0
     cards.filter(card => lastMovie.contains(card._id) && !held.contains(card._id)).foreach { projected =>
       val id     = projected._id
-      val movie  = projected.copy(shareCard = shareCards.current(projected), shareCardPending = pendingCards.contains(id))
+      val movie  = withShareCard(projected)
       val hash   = CardHash.of(movie)
       val before = lastMovie.get(id)
       if (!before.contains(hash)) {
@@ -834,9 +824,15 @@ class ReadModelProjector(
   def advanceDerivationPass(): Unit = lock.synchronized {
     derivationPass match {
       case running: DerivationPass.Running =>
+        // A cards-only derivation reads each row slots-only — no `screenings` read — and
+        // re-projects its cards alone (`projectCards`).
         val (written, complete) =
-          if (running.scope == DerivationScope.Cards) reprojectCardsOfSlice(running.rows, running.nextSlice)
-          else reprojectSlice(running.rows, running.nextSlice, "derivation pass", ProjectTrigger.Derivation)
+          if (running.scope == DerivationScope.Cards)
+            reprojectSlice(running.rows, running.nextSlice, "derivation pass (cards)",
+                           movieRepository.findByIdWithSlotsChecked, row => projectCards(ReadModelProjection.partition(row, normalizer)))
+          else
+            reprojectSlice(running.rows, running.nextSlice, "derivation pass",
+                           movieRepository.findByIdChecked, projectRow(_, ProjectTrigger.Derivation))
         val next = running.copy(nextSlice = running.nextSlice + 1, written = running.written + written,
                                 complete = running.complete && complete)
         // Only while every slice so far was complete: a restart then resumes after the last one,

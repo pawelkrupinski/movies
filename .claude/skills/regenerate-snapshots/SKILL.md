@@ -147,6 +147,12 @@ nothing checked in the spec cannot compare, names a `full` derivation, and every
 re-projects its whole corpus for it. `ReadModelDerivationVersionSpec` also catches a projection
 change in seconds without the pipeline: the checked-in rows must project to the recorded hashes.
 
+To FORCE a pass the corpus cannot see (a derivation change no fixture row exercises), append a
+new `Derivation(DerivationVersion("<any new value>"), DerivationScope.Full)` to
+`ReadModelDerivation.History` AND write the same version and scope into the header line of
+`read-model-derivation-hashes.tsv` (`# derivation <version> full`). Regeneration keeps a header
+while nothing moves, so the two stay in step.
+
 Then regenerate the `expected-*.html` per the section above if rendering shifted,
 and commit all of them together with the production change. Consumers fall back
 to the full pipeline boot when the file is absent, so a forgotten regen is slow,

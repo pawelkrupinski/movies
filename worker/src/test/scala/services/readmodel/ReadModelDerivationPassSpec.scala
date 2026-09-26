@@ -271,4 +271,35 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     marker.current shouldBe Some("an-older-derivation")
     projector.stop()
   }
+
+  // A card published by an expired hold carries `shareCardPending` until its share card lands; the
+  // next projection through `gate` clears it and tells the ledger. The cards-only pass once filled
+  // the share card in by itself and kept the flag, so a card with its image still read as pending.
+  "a cards-only pass over a card published pending" should "clear the flag once its share card has landed, as a projection does" in {
+    val repository = new ReadCountingMovieRepository
+    val rm         = derivedByOldCode(repository)
+    val pending    = rm.findAllMovies().head._id
+    rm.upsertMovie(rm.findAllMovies().find(_._id == pending).get.copy(shareCardPending = true))
+    val landed     = scala.collection.mutable.Buffer.empty[String]
+    val ledger     = new ShareCardLedger {
+      def current(movie: ResolvedMovie): Option[String]          = Option.when(movie._id == pending)("/cards/landed.png")
+      def readyToPublish(movie: ResolvedMovie): Boolean          = true
+      def requestFirstCard(movie: ResolvedMovie, until: java.time.Instant): Unit = ()
+      def onPendingCardLanded(filmId: String): Unit              = landed += filmId
+      def onProjected(movie: ResolvedMovie, screened: Boolean): Unit = ()
+      def onRetired(filmId: String): Unit                        = ()
+    }
+    val marker    = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"))
+    val projector = new ReadModelProjector(repository, rm, rm, derivationMarker = marker, clock = tools.SpecClock.Pinned,
+                                           derivationHistory = history(DerivationScope.Cards), shareCards = ledger)
+    projector.start()
+    projector.pruneOrphans()
+    (1 to 48).foreach(_ => projector.advanceDerivationPass())
+
+    val card = rm.findAllMovies().find(_._id == pending).get
+    card.shareCard shouldBe Some("/cards/landed.png")
+    card.shareCardPending shouldBe false
+    landed.toSeq shouldBe Seq(pending)
+    projector.stop()
+  }
 }

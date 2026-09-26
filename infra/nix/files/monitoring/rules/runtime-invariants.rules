@@ -169,7 +169,9 @@ groups:
             first sweep 5 minutes after boot); a pass that could not read every row says so and
             runs again next sweep. If none ran and the differing fields are what a recent deploy
             changed, the fixture corpus did not exercise that change, so no new derivation was
-            named: append one to ReadModelDerivation.History (full scope) and redeploy.
+            named: force one by appending a new Derivation(..., DerivationScope.Full) to
+            ReadModelDerivation.History and writing the same version and scope into the header of
+            read-model-derivation-hashes.tsv, then redeploy.
             A card the rolling content check has not reached yet is repaired within a day; one
             that stays wrong while its row does not change is a write the projector believes
             landed and the store did not keep (the swallowed-write bug fixed in dfaba5ba8) --
