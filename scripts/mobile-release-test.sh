@@ -75,4 +75,25 @@ check "Android hardcodes no versionName" "0" \
 check "Android reads mobile-version.txt" "1" \
   "$(grep -c 'rootProject.file("../mobile-version.txt")' "$GRADLE")"
 
+# ── --here commits the bump in place, cutting no branch ──────────────────────
+# mobile-ship.sh bumps inside a detached release worktree and pushes HEAD to main
+# itself; a release/mobile-<v> branch there would be one more local ref to strand.
+# Run against a throwaway copy of the two files it edits, never this checkout.
+HERE_REPO="$SCRATCH/here-repo"
+mkdir -p "$HERE_REPO/scripts" "$HERE_REPO/ios/Kinowo.xcodeproj"
+cp "$HERE/mobile-release.sh" "$HERE/log.sh" "$HERE_REPO/scripts/"
+cp "$VERSION_FILE" "$HERE_REPO/mobile-version.txt"
+cp "$PBXPROJ" "$HERE_REPO/ios/Kinowo.xcodeproj/project.pbxproj"
+git -C "$HERE_REPO" init -q -b main
+git -C "$HERE_REPO" -c user.name=t -c user.email=t@t add -A
+git -C "$HERE_REPO" -c user.name=t -c user.email=t@t commit -q -m base
+git -C "$HERE_REPO" checkout -q --detach
+GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t \
+  "$HERE_REPO/scripts/mobile-release.sh" 99.0.0 --here >/dev/null 2>&1
+check "--here bumps mobile-version.txt" "99.0.0" "$(tr -d '\n' < "$HERE_REPO/mobile-version.txt")"
+check "--here commits on HEAD" "Release mobile 99.0.0" "$(git -C "$HERE_REPO" log -1 --format=%s)"
+check "--here leaves HEAD detached" "HEAD" "$(git -C "$HERE_REPO" rev-parse --abbrev-ref HEAD)"
+check "--here cuts no release branch" "" "$(git -C "$HERE_REPO" branch --list 'release/*')"
+check "--here leaves the tree clean" "" "$(git -C "$HERE_REPO" status --porcelain)"
+
 spec_summary

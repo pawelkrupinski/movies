@@ -3,6 +3,8 @@
 # Cut a mobile release: one version, one branch, both platforms.
 #
 #   scripts/mobile-release.sh 1.1.0     # bump, sync both projects, branch + commit
+#   scripts/mobile-release.sh 1.1.0 --here  # same, but commit on the current HEAD
+#                                       # (mobile-ship.sh, which pushes it to main itself)
 #   scripts/mobile-release.sh --sync    # just re-sync both projects to the current
 #                                       # mobile-version.txt (no branch, no commit)
 #   scripts/mobile-release.sh --show    # print what each side currently says
@@ -89,6 +91,8 @@ case "${1:-}" in
 esac
 
 VERSION="$1"
+HERE_ONLY=0
+[ "${2:-}" = "--here" ] && HERE_ONLY=1
 valid_version "$VERSION" || die "'$VERSION' is not a dotted numeric version (e.g. 1.1.0)"
 
 CURRENT="$(current_version)"
@@ -100,12 +104,12 @@ CURRENT="$(current_version)"
   die "$VERSION is not newer than the current $CURRENT"
 
 BRANCH="release/mobile-$VERSION"
-git -C "$REPO_ROOT" rev-parse --verify --quiet "$BRANCH" >/dev/null &&
+[ "$HERE_ONLY" -eq 1 ] || ! git -C "$REPO_ROOT" rev-parse --verify --quiet "$BRANCH" >/dev/null ||
   die "$BRANCH already exists — delete it or pick another version"
 require_clean_tree "$REPO_ROOT" "working tree is dirty; commit or stash before cutting a release"
 
 say "$CURRENT → $VERSION"
-git -C "$REPO_ROOT" checkout -q -b "$BRANCH"
+[ "$HERE_ONLY" -eq 1 ] || git -C "$REPO_ROOT" checkout -q -b "$BRANCH"
 printf '%s\n' "$VERSION" > "$VERSION_FILE"
 sync_ios "$VERSION"
 ok "android → versionName $VERSION (reads mobile-version.txt at build time)"
@@ -115,6 +119,6 @@ git -C "$REPO_ROOT" commit -q -m "Release mobile $VERSION
 
 Both stores ship this one version: Android reads mobile-version.txt at
 configuration time, the Xcode project is synced from it here."
-ok "branch $BRANCH, committed"
+if [ "$HERE_ONLY" -eq 1 ]; then ok "committed on $(git -C "$REPO_ROOT" rev-parse --short HEAD)"; else ok "branch $BRANCH, committed"; fi
 echo
 show
