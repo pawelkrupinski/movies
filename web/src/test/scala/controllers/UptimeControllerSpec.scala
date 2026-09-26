@@ -271,6 +271,20 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     cinemasByCity shouldBe empty
   }
 
+  // The thin section scales with the roster like the healthy one: a feed change
+  // that left most of a large country thin would otherwise build a 96-slot row
+  // for every venue — the load that OOM-killed the US web pod on 2026-08-31.
+  it should "collapse the thin section past the same render cap, building no rows for it" in {
+    val us = models.Country.UnitedStates
+    val venues = us.cities.flatMap(_.cinemas).map(_.displayName)
+    var built = 0
+    val counting: String => ServiceRow = n => { built += 1; fakeRow(n) }
+    val sections = controllerFor(us).groupRows(venues.toSet, _ => Seq("thin", "thin", "thin"), noErrors, counting)
+    sections.thin shouldBe empty
+    sections.hiddenThin shouldBe venues.distinct.size
+    built should be < 100
+  }
+
   it should "still surface a failing venue from a large roster" in {
     val us = models.Country.UnitedStates
     val venues = us.cities.flatMap(_.cinemas).map(_.displayName)
@@ -287,7 +301,12 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     cinemasByCity.flatMap(_._2).map(_.name) should contain(cinema)
   }
 
-  "the rendered /uptime page" should "show a bespoke client's marker as just \"Custom\", with the city on hover" in {
+  "the rendered /uptime page" should "say how many thin venues it left out" in {
+    val html = views.html.uptime(Nil, Nil, Nil, Nil, Nil, Nil, Nil, hiddenThin = 812, current = models.Country.UnitedStates).body
+    html should include ("812 venues with nothing in the next 72h not listed")
+  }
+
+  it should "show a bespoke client's marker as just \"Custom\", with the city on hover" in {
     val failing = Seq(FlaggedRow(
       ServiceRow("Kino Rialto", bars("red", "red", "red"), tags = Set("custom:RialtoClient")),
       Some("Poznań")))

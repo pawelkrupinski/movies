@@ -1,6 +1,6 @@
 @import controllers.{FallbackRow, FlaggedRow, ServiceRow}
 @import services.UptimeMonitor
-@(failing: Seq[FlaggedRow], gone: Seq[FlaggedRow], zero: Seq[FlaggedRow], onFallback: Seq[FallbackRow], cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow], hiddenHealthyCinemas: Int = 0, thin: Seq[FlaggedRow] = Seq.empty, current: models.Country)
+@(failing: Seq[FlaggedRow], gone: Seq[FlaggedRow], zero: Seq[FlaggedRow], onFallback: Seq[FallbackRow], cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow], hiddenHealthyCinemas: Int = 0, thin: Seq[FlaggedRow] = Seq.empty, hiddenThin: Int = 0, current: models.Country)
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -181,7 +181,7 @@
     @_countrySwitch("/uptime", current)
   </div>
 
-  @if(failing.isEmpty && gone.isEmpty && zero.isEmpty && thin.isEmpty && cinemasByCity.isEmpty && services.isEmpty && other.isEmpty && hiddenHealthyCinemas == 0) {
+  @if(failing.isEmpty && gone.isEmpty && zero.isEmpty && thin.isEmpty && hiddenThin == 0 && cinemasByCity.isEmpty && services.isEmpty && other.isEmpty && hiddenHealthyCinemas == 0) {
     <p class="empty-msg">No data yet — bars will appear after the first scrape cycle.</p>
   }
 
@@ -208,6 +208,9 @@
       <h2>Nothing in the next 72h — last 3 scrapes</h2>
       @for(f <- thin) { @flaggedRow(f) }
     </div>
+  }
+  @if(hiddenThin > 0) {
+    <p class="collapsed-msg">@hiddenThin venues with nothing in the next 72h not listed — too many to render every venue's history.</p>
   }
 
   @*  Red rows whose every recorded error is a 404 — the venue's page is gone, not

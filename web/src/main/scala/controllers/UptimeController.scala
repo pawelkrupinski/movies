@@ -63,8 +63,9 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
   // buckets that recorded anything ≈ "the last few scrapes".
   private val RecentScrapes = 3
 
-  // Above this many HEALTHY cinema rows the by-city section is dropped and only
-  // its count is reported. One uptime service per venue means the section scales
+  // Above this many rows a section whose size scales with the roster — the
+  // healthy by-city section, and the thin one — is dropped and only its count is
+  // reported. One uptime service per venue means the section scales
   // with the roster, and each rendered row carries all 96 of its 15-min slots:
   // the US (5,031 venues) is ~484k bar objects plus the same again as HTML and
   // once more as the page's SSE bootstrap JSON. That OOM-killed the US web pod on
@@ -73,8 +74,9 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
   // Nothing is lost by hiding them: the triage sections above already carry every
   // row that is failing or returning nothing, which is what the page is read for.
   // 500 keeps Poland (~60) and the UK (343) rendering as before; Germany (1,529)
-  // and the US collapse.
-  private val MaxHealthyCinemaRows = 500
+  // and the US collapse. Thin rows (51 PL / 16 US on 2026-09-26) sit far below it,
+  // but a feed change that left most of a country thin would not.
+  private val MaxRenderedRows = 500
   private sealed trait Health
   private case object Failing extends Health
   // Red, but for a reason no one can act on: the venue's page is a 404. Split out
@@ -122,7 +124,8 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
     val sections = groupRows(active, monitor.recentStatuses(_, RecentScrapes),
       monitor.recentErrors(_, RecentScrapes), row)
     Ok(views.html.uptime(sections.failing, sections.gone, sections.zero, activeFallbacks(), sections.cinemasByCity,
-      sections.services, sections.other, sections.hiddenHealthyCinemas, thin = sections.thin, current = country))
+      sections.services, sections.other, sections.hiddenHealthyCinemas, thin = sections.thin,
+      hiddenThin = sections.hiddenThin, current = country))
   }
 
   /** Cinemas CURRENTLY served by Filmweb because their own scraper is down/empty,
@@ -147,7 +150,7 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
    *  section and is asked for all of them; `row` builds the 96-slot bar series and
    *  is asked ONLY for rows that survive into a rendered section. Collapsing them
    *  back into one is what made the page cost one bar series per registered
-   *  service — see MaxHealthyCinemaRows. */
+   *  service — see MaxRenderedRows. */
   private[controllers] def groupRows(active: Set[String], statusesOf: String => Seq[String],
                                      errorsOf: String => Seq[String],
                                      row: String => ServiceRow): UptimeSections = {
@@ -192,10 +195,10 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
         otherVerdicts.collect { case (n, h) if h == verdict => FlaggedRow(row(n), None) }
 
     // The remainder (healthy / mixed) keeps its normal home — up to a point. Past
-    // MaxHealthyCinemaRows the by-city section is DROPPED rather than rendered:
+    // MaxRenderedRows the by-city section is DROPPED rather than rendered:
     // see the constant for why a US-sized roster cannot be put on the page.
     val healthyCinemas = cinemaVerdicts.collect { case (city, dn, Healthy) => city -> dn }
-    val collapsed = healthyCinemas.sizeIs > MaxHealthyCinemaRows
+    val collapsed = healthyCinemas.sizeIs > MaxRenderedRows
     val cinemasByCity =
       if (collapsed) Seq.empty
       else byCity.flatMap { case (city, _) =>
@@ -203,11 +206,16 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
         Option.when(rows.nonEmpty)(city -> rows)
       }
 
+    // Counted over verdicts, before any row is built, for the same reason.
+    val thinCount = (cinemaVerdicts.map(_._3) ++ serviceVerdicts.map(_._2) ++ otherVerdicts.map(_._2)).count(_ == Thin)
+    val thinCollapsed = thinCount > MaxRenderedRows
+
     UptimeSections(
       failing = flaggedAs(Failing),
       gone = flaggedAs(Missing),
       zero = flaggedAs(Zero),
-      thin = flaggedAs(Thin),
+      thin = if (thinCollapsed) Seq.empty else flaggedAs(Thin),
+      hiddenThin = if (thinCollapsed) thinCount else 0,
       cinemasByCity = cinemasByCity,
       services = serviceVerdicts.collect { case (n, Healthy) => row(n) },
       other = otherVerdicts.collect { case (n, Healthy) => row(n) },
@@ -528,5 +536,7 @@ case class UptimeSections(
   other: Seq[ServiceRow],
   // Healthy cinemas deliberately NOT rendered because the roster is too large.
   // 0 whenever the by-city section is shown in full.
-  hiddenHealthyCinemas: Int = 0
+  hiddenHealthyCinemas: Int = 0,
+  // Thin rows not rendered for the same reason; 0 whenever the section is shown.
+  hiddenThin: Int = 0
 )
