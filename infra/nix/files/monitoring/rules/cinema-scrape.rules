@@ -240,7 +240,10 @@ groups:
       # Measured against prod on 2026-09-23 it would have fired in five countries; every pair is
       # now either fixed at its source (Koło's Kino nad Wartą repeating Konin's; the Syracuse
       # Pickwick; Braniewo's Baszta repeating Środa's, fixed that morning) or on
-      # `DistinctVenuePairs` with its ticketing evidence (chain-mates in both scopes).
+      # `DistinctVenuePairs` with its ticketing evidence (chain-mates in both scopes). Since
+      # 2026-09-26 the census itself clears a pair whose shared showtimes book through each
+      # venue's own session links; all three true duplicates above carried the SAME session links
+      # (one bilety24 organiser page, one Veezi site), so they would still count.
       - alert: DuplicateVenueListing
         expr: max by (country, scope) (last_over_time(kinowo_worker_duplicate_venue_pairs[10m])) > 0
         for: 24h

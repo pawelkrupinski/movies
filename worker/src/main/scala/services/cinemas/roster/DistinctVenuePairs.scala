@@ -17,9 +17,10 @@ import play.api.Logging
  * and their showtimes book through two different per-venue ticketing ids, so the upstream
  * holds two listings that a small chain (or an operator running two screens) happens to
  * programme alike. Since 2026-09-26 the census clears such a pair itself when the booking links
- * differ, so an entry is needed only when one venue carries none. Generated-roster venues (Germany, Spain, the US) have no case
- * object, so they are named by the display name they are stored under — and a
- * name a roster regeneration dropped is logged and skipped, never a failed load.
+ * differ, so a new entry is needed only when a venue carries none. Generated-roster venues
+ * (Germany, Spain, the US) have no case object, so they are named by the display name they are
+ * stored under — and a name a roster regeneration dropped is logged and skipped, never a failed
+ * load.
  */
 object DistinctVenuePairs extends Logging {
   private val cased: Set[Set[Cinema]] = Set(

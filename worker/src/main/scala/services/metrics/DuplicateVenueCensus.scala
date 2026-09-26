@@ -115,8 +115,8 @@ object DuplicateVenueCensus {
 
   /** The share of each venue's showtimes that must carry a booking link for the links to judge the
    *  pair, and the share of the shared showtimes whose links must differ to clear it. */
-  val MinBooked: Double         = 0.5
-  val MinBookedApart: Double    = 0.5
+  val MinBooked: Double      = 0.5
+  val MinBookedApart: Double = 0.5
 
   val SameCity  = "same_city"
   val CrossCity = "cross_city"
@@ -188,11 +188,12 @@ object DuplicateVenueCensus {
    *  showtimes (a venue without them cannot be told apart, so the match stands), and at least
    *  [[MinBookedApart]] of the shared showtimes must lack a same-link twin on the other venue. */
   private[metrics] def bookedApart(a: Cinema, b: Cinema, programmes: Map[Cinema, Array[Long]], bookings: Map[Cinema, Array[Long]]): Boolean = {
-    val (as, bs)     = (programmes.getOrElse(a, Array.emptyLongArray), programmes.getOrElse(b, Array.emptyLongArray))
-    val (ab, bb)     = (bookings.getOrElse(a, Array.emptyLongArray), bookings.getOrElse(b, Array.emptyLongArray))
-    val linked       = ab.length >= MinBooked * as.length && bb.length >= MinBooked * bs.length
-    val common       = shared(as, bs)
-    linked && common - shared(ab, bb) >= MinBookedApart * common
+    def of(sets: Map[Cinema, Array[Long]], venue: Cinema) = sets.getOrElse(venue, Array.emptyLongArray)
+    val (showsA, showsB) = (of(programmes, a), of(programmes, b))
+    val (linksA, linksB) = (of(bookings, a), of(bookings, b))
+    val linked           = linksA.length >= MinBooked * showsA.length && linksB.length >= MinBooked * showsB.length
+    val common           = shared(showsA, showsB)
+    linked && common - shared(linksA, linksB) >= MinBookedApart * common
   }
 
   /** One showtime's (film, minute) key folded with its booking link's path and query — the part
