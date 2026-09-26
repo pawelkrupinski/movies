@@ -2,7 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.IdentityMeasures.{Category, Film, Listing, Missing, Number}
+import services.identity.IdentityMeasures.{Category, Film, Listing, ListingListing, Missing, Number}
 
 /** What the calibrated score reads must separate facts that mean different things: a venue's
  *  published year, a year the venue put in its title, a season a broadcast names, and whether a
@@ -105,13 +105,38 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       "director", "runtime.delta", "country")
     val film = Film("The Last Whale Singer", year = Some(2025), directors = Some(Seq("Reza Memari")))
     // A title and nothing else: no fact to compare, whatever the titles' relation.
-    IdentityMeasures.comparesAFact(measures(Listing("Vincent. Legenda oceanu"), film)) shouldBe false
-    IdentityMeasures.comparesAFact(measures(Listing("Donnie Darko 25th Anniversary"), Film("Donnie Darko"))) shouldBe false
+    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent. Legenda oceanu"), film)) shouldBe false
+    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Donnie Darko 25th Anniversary"), Film("Donnie Darko"))) shouldBe false
     // A published fact the film cannot be compared on (no year in its record) is not a comparison.
-    IdentityMeasures.comparesAFact(measures(Listing("Vincent", year = Some(2025)), Film("Vincent"))) shouldBe false
-    IdentityMeasures.comparesAFact(measures(Listing("Vincent", year = Some(1975)), film)) shouldBe true
-    IdentityMeasures.comparesAFact(measures(Listing("Vincent (1975)"), film)) shouldBe true
-    IdentityMeasures.comparesAFact(measures(Listing("Vincent", originalTitle = Some("Vincent")), film)) shouldBe true
+    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent", year = Some(2025)), Film("Vincent"))) shouldBe false
+    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent", year = Some(1975)), film)) shouldBe true
+    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent (1975)"), film)) shouldBe true
+    IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent", originalTitle = Some("Vincent")), film)) shouldBe true
+  }
+
+  private def pair(a: Listing, b: Listing) = IdentityMeasures.listingListing(a, b, sameVenue = false, sharedChainId = None)
+
+  "two listings' title relation" should "read one title as a whole delimited piece of the other's in either order" in {
+    def title(a: String, b: String) = pair(Listing(a), Listing(b))("title")
+    title("Astra Seniora - Lalka", "Lalka") shouldBe Category("segment")
+    title("Lalka", "Astra Seniora - Lalka") shouldBe Category("segment")
+    title("Tony", "Kino bez barier: Tony (AD + CC)") shouldBe Category("segment")
+    // A token run that is no delimited piece stays what it was, and two banners' shared words are
+    // no segment of either title.
+    title("It", "It Ends with Us") shouldBe Category("fragment")
+    title("Kino bez barier: Tony", "Kino bez barier: Lalka") shouldBe Category("overlap")
+  }
+
+  "two listings' comparable facts" should "be every listing-listing measure but the title relation and the venue" in {
+    IdentityMeasures.ListingFactMeasures shouldBe Set("originalTitle", "year.delta", "titleYear.delta", "season.delta",
+      "director", "runtime.delta", "chainId")
+    // A fact one side publishes and the other does not — a year in one's bracket, the other's field —
+    // is no comparison.
+    IdentityMeasures.comparesAFact(ListingListing, pair(Listing("Lalka (2026)"),
+      Listing("Filmowy Klub Seniora: LALKA", year = Some(2026), directors = Seq("Maciej Kawalski")))) shouldBe false
+    IdentityMeasures.comparesAFact(ListingListing, pair(Listing("Lalka", year = Some(2026)), Listing("Lalka | PREMIERA", year = Some(2026)))) shouldBe true
+    IdentityMeasures.comparesAFact(ListingListing, pair(Listing("Lalka", directors = Seq("Maciej Kawalski")),
+      Listing("Lalka", directors = Seq("Wojciech Has")))) shouldBe true
   }
 
   "a runtime a title brackets with a minute mark" should "be the listing's runtime when it publishes none" in {

@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.IdentityMeasures.{ListingFilm, ListingListing, Measure}
+import services.identity.IdentityMeasures.{ListingFilm, Measure}
 import services.movies.{ListingConstraints, ListingKey, TitleNormalizer}
 
 import scala.collection.mutable
@@ -31,7 +31,8 @@ import scala.collection.mutable
  *           same accepted film, 2 same sanitised title, 3 same search form or original title, 4 one's
  *           title a delimited segment of the other's) and
  *           cannot-links (different accepted films; a node denying the other's film; the two
- *           listings' own evidence apart, `ListingConstraints.learned` on "listing-listing") —
+ *           listings' own evidence apart, `ListingConstraints.learnedListingListing`: a learned rule
+ *           or the "listing-listing" cut, only when the two compare a fact both published) —
  *           solved by [[ConstraintSolver]] (cannot wins; an ambiguous node stays alone, A2);
  *        2. GROUP-LEVEL VOTING: a cluster no member of which accepted a film scores its members'
  *           evidence POOLED into one listing (the heaviest title, the modal year, every director),
@@ -373,13 +374,13 @@ object IdentityResolver {
       }.toSeq.distinct.sorted.map { case (i, j) => (members(i), members(j)) }
     }
     // The two listings' own evidence apart: the seasons their titles name, or the learned
-    // "listing-listing" scope.
+    // "listing-listing" scope when they compare a fact both published.
     def listingsApart(x: Node, y: Node): Option[String] = {
       val (a, b) = (x.evidence.measured, y.evidence.measured)
       lazy val m = IdentityMeasures.listingListing(a, b, sameVenue = (x.venues intersect y.venues).nonEmpty, sharedChainId = None)
       ListingConstraints.seasonsApart(a.seasonYear, b.seasonYear, b.year)
         .orElse(ListingConstraints.seasonsApart(b.seasonYear, a.seasonYear, a.year))
-        .orElse(ListingConstraints.learned(calibration, ListingListing, m, calibration.probability(ListingListing, m)))
+        .orElse(ListingConstraints.learnedListingListing(calibration, m))
         .map(_.toString)
     }
 

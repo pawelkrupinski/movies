@@ -159,8 +159,32 @@ object ListingConstraints {
   def learnedListingFilm(calibration: services.identity.IdentityCalibration,
                          measures: Map[String, services.identity.IdentityMeasures.Measure],
                          probability: Double): Option[CannotLink] =
-    if (!services.identity.IdentityMeasures.comparesAFact(measures)) None
-    else learned(calibration, services.identity.IdentityMeasures.ListingFilm, measures, probability)
+    learnedOnFacts(calibration, services.identity.IdentityMeasures.ListingFilm, measures, probability)
+
+  /** [[learned]] for two LISTINGS (the "listing-listing" scope): the pair is kept apart only by
+   *  the facts both published. Two listings that publish nothing comparable — "Tony" beside "Kino
+   *  bez barier: Tony (AD + CC)", or beside a title stating its year in a bracket where the other
+   *  states it in a field — are scored by their titles (and venues) alone, and that never vetoes:
+   *  the veto otherwise outranks the title must-link that joins a decorated spelling to its plain
+   *  sibling's film. Nor does it when one title carries the other's whole ([[IdentityMeasures.ContainingRelations]])
+   *  and the facts they compare do not, together, weigh against one film: one venue's "Lalka (2026)"
+   *  beside its "Lalka (2026) | seans DKF Projekcja", the same year in each, is one film however
+   *  heavily one venue's two spellings weigh against it. A fact that does weigh against — Sheri
+   *  Hagen's 2025 "Billie" beside James Erskine's 2020 "Billie – Legende des Jazz" — still vetoes. */
+  def learnedListingListing(calibration: services.identity.IdentityCalibration,
+                            measures: Map[String, services.identity.IdentityMeasures.Measure]): Option[CannotLink] = {
+    import services.identity.IdentityMeasures.{Category, ContainingRelations, ListingListing, comparedFacts}
+    val onlyNamesDiffer = measures.get("title").exists { case Category(c) => ContainingRelations(c); case _ => false } &&
+      calibration.contributions(ListingListing, comparedFacts(ListingListing, measures)).map(_._2).sum >= 0
+    if (onlyNamesDiffer) None
+    else learnedOnFacts(calibration, ListingListing, measures, calibration.probability(ListingListing, measures))
+  }
+
+  private def learnedOnFacts(calibration: services.identity.IdentityCalibration, scope: String,
+                             measures: Map[String, services.identity.IdentityMeasures.Measure],
+                             probability: => Double): Option[CannotLink] =
+    if (!services.identity.IdentityMeasures.comparesAFact(scope, measures)) None
+    else learned(calibration, scope, measures, probability)
 
   // ── must-links ───────────────────────────────────────────────────────────────────────
 

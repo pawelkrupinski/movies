@@ -90,6 +90,67 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.violations shouldBe 0
   }
 
+  /** The fixture calibration with a listing-listing cannot-link cut strict enough that two
+   *  listings whose titles only overlap fall below it, as the production cut does. */
+  private val strictPairCut = weights.copy(scopes = weights.scopes.updatedWith(IdentityMeasures.ListingListing)(_.map(s =>
+    s.copy(thresholds = s.thresholds.updated("cannotLink", IdentityCalibration.Threshold(0.5))))))
+
+  "A bare listing beside its credited decorated siblings" should
+    "take their film when the two publish no fact to compare" in {
+    // PL, ADA Kino Studyjne's bare "Tony": every other venue lists it under a programme banner
+    // with an access-format suffix. The pair's titles only overlap one way round, but nothing the
+    // bare one publishes can contradict its siblings, so the pair's score is no veto and the
+    // title-segment must-link joins them. (The bare listing's venue sorts first, so the pair is
+    // measured from its side: the order the veto used to depend on.)
+    val films     = Seq(F(1329016, "Tony", 2026, "Matt Johnson", 106, 5), F(2, "Tony", 2003, "Someone Else", 90, 8))
+    val decorated = Seq(Multikino, KinoMuza).map(listing(_, "Kino bez barier: Tony (AD + CC)", Some(2026), Some("Matt Johnson")))
+    val bare      = listing(Helios, "Tony")
+    val r = IdentityResolver.resolve(decorated :+ bare, new Table(films), normalizer, strictPairCut)
+    withClue((decorated :+ bare).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(decorated.head.key).film shouldBe Some(1329016)
+      r.decisionOf(bare.key).film shouldBe Some(1329016)
+      together(r, decorated.head, bare) shouldBe true
+    }
+    r.violations shouldBe 0
+  }
+
+  it should "stay apart from them when a year it publishes contradicts theirs" in {
+    val films     = Seq(F(1329016, "Tony", 2026, "Matt Johnson", 106, 5), F(2, "Tony", 2003, "Someone Else", 90, 8))
+    val decorated = Seq(Multikino, KinoMuza).map(listing(_, "Kino bez barier: Tony (AD + CC)", Some(2026), Some("Matt Johnson")))
+    val dated     = listing(Helios, "Tony", Some(2003))
+    val r = IdentityResolver.resolve(decorated :+ dated, new Table(films), normalizer, strictPairCut)
+    r.decisionOf(decorated.head.key).film shouldBe Some(1329016)
+    together(r, decorated.head, dated) shouldBe false
+    r.decisionOf(dated.key).film should not be Some(1329016)
+    r.violations shouldBe 0
+  }
+
+  "Two listings no film database answers for" should
+    "stay apart when the years and directors they publish contradict, with no film to tell them apart" in {
+    // DE production shadow, lookups still sparse: Sheri Hagen's "Billie" (2025) and James Erskine's
+    // "Billie – Legende des Jazz" (2020). The shorter title is a whole segment of the longer, which
+    // must-links them; their own facts are what keep them apart, film or no film.
+    val hagen   = Seq(Multikino, Helios).map(listing(_, "Billie", Some(2025), Some("Sheri Hagen"), Some(101)))
+    val erskine = Seq(KinoMuza, Rialto).map(listing(_, "Billie – Legende des Jazz", Some(2020), Some("James Erskine"), Some(98)))
+    for (cut <- Seq(weights, strictPairCut)) {
+      val r = IdentityResolver.resolve(hagen ++ erskine, new Table(Nil), normalizer, cut)
+      together(r, hagen.head, hagen(1)) shouldBe true
+      together(r, erskine.head, erskine(1)) shouldBe true
+      together(r, hagen.head, erskine.head) shouldBe false
+      r.violations shouldBe 0
+    }
+  }
+
+  it should "join a decorated spelling to its plain sibling when neither publishes a fact to compare" in {
+    val plain     = listing(Helios, "Lalka")
+    val decorated = listing(KinoMuza, "Astra Seniora - Lalka")
+    for (cut <- Seq(weights, strictPairCut)) {
+      val r = IdentityResolver.resolve(Seq(plain, decorated), new Table(Nil), normalizer, cut)
+      together(r, plain, decorated) shouldBe true
+      r.violations shouldBe 0
+    }
+  }
+
   "A bare listing its own evidence cannot separate between two films" should
     "follow its title's credited siblings, not the database's popularity ranking" in {
     // Four 2026 films TMDB titles "Lalka"; the one the venue credits ranks LAST in the search, so

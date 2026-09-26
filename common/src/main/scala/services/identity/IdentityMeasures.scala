@@ -147,11 +147,32 @@ object IdentityMeasures {
   lazy val FactMeasures: Set[String] =
     listingFilm(Listing(""), Film(""), None, 0, 0).keySet -- RankingPriors -- PooledMeasures - "title"
 
-  /** Does this listing-film measurement set compare at least one fact the listing published (a
-   *  fact measure that is not missing on either side)? When it does not, the only evidence
-   *  against the film is how the two titles relate — a score, never a veto. */
-  def comparesAFact(m: Map[String, Measure]): Boolean =
-    m.exists { case (name, v) => FactMeasures(name) && !v.isInstanceOf[Missing] }
+  /** The listing-listing measure that says WHERE the two listings are (one venue or two), not
+   *  anything either published about its film. */
+  val PlacementMeasures: Set[String] = Set("venue")
+
+  /** The listing-listing measures that compare a FACT both listings published beside their titles —
+   *  a year (field, bracket or season), a director, a runtime, an original title, a chain's id:
+   *  every measure but the title relation and the placement. Derived from [[listingListing]]
+   *  itself, as [[FactMeasures]] is from [[listingFilm]]. */
+  lazy val ListingFactMeasures: Set[String] =
+    listingListing(Listing(""), Listing(""), sameVenue = false, sharedChainId = None).keySet -- PlacementMeasures - "title"
+
+  /** Does this measurement set of `scope` compare at least one fact (a fact measure that is not
+   *  missing on either side)? When it does not, the only evidence against the pair is how the two
+   *  titles relate (and, for two listings, where they are) — a score, never a veto. */
+  def comparesAFact(scope: String, m: Map[String, Measure]): Boolean = comparedFacts(scope, m).nonEmpty
+
+  /** The facts this measurement set of `scope` compares: its fact measures missing on neither side. */
+  def comparedFacts(scope: String, m: Map[String, Measure]): Map[String, Measure] = {
+    val facts = if (scope == ListingListing) ListingFactMeasures else FactMeasures
+    m.filter { case (name, v) => facts(name) && !v.isInstanceOf[Missing] }
+  }
+
+  /** The title relations under which one title carries the other's WHOLE — the same title, a
+   *  delimited piece of it, or a token run along one edge — so the two differ only by what one
+   *  adds around the other, never by words each has that the other lacks (`overlap`, `none`). */
+  val ContainingRelations: Set[String] = Set("exact", "segment", "decorated", "fragment")
 
   // ── keys ─────────────────────────────────────────────────────────────────────────────
 
@@ -451,10 +472,14 @@ object IdentityMeasures {
    * namespace).
    */
   def listingListing(a: Listing, b: Listing, sameVenue: Boolean, sharedChainId: Option[Boolean]): Map[String, Measure] = {
-    val fb = asFilm(b)
-    val title = titleRelation(a, fb, seasonProductions = false) match {
-      case Category("original") | Category("alternative") => Category("exact")
-      case other                                          => other
+    // Two listings name each other the same way whichever is measured first: when one's title is a
+    // whole delimited piece of the other's ("Lalka" and "Astra Seniora - Lalka", in either order)
+    // the pair is a `segment`, as the resolver's title-segment must-link reads it — measured one
+    // way only, the plain spelling first read as a `fragment` or an `overlap` of its decorated one.
+    val title = (titleRelation(a, asFilm(b), seasonProductions = false), titleRelation(b, asFilm(a), seasonProductions = false)) match {
+      case (Category("original") | Category("alternative"), _) => Category("exact")
+      case (forward, backward) if forward != Category("exact") && backward == Category("segment") => backward
+      case (forward, _)                                        => forward
     }
     Map(
       "title"         -> title,

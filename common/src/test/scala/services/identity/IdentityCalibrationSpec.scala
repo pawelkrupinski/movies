@@ -206,6 +206,45 @@ class IdentityCalibrationSpec extends AnyFlatSpec with Matchers {
       sameVenue = false) should be > 0.5
   }
 
+  private def listingsApart(a: Listing, b: Listing, sameVenue: Boolean) =
+    services.movies.ListingConstraints.learnedListingListing(model, IdentityMeasures.listingListing(a, b, sameVenue, sharedChainId = None))
+
+  "a learned listing-listing cannot-link" should "never keep apart two listings that compare no fact both published" in {
+    // PL: a bare or bannered spelling beside its credited decorated siblings — the title relation
+    // (and where they are) is all the pair measures, and that is a score, never a veto.
+    listingsApart(Listing("Tony"), Listing("Kino bez barier: Tony (AD + CC)", year = Some(2026), directors = Seq("Matt Johnson")),
+      sameVenue = false) shouldBe None
+    listingsApart(Listing("Lalka (2026)"), Listing("Filmowy Klub Seniora: LALKA", year = Some(2026), directors = Seq("Maciej Kawalski")),
+      sameVenue = false) shouldBe None
+    listingsApart(Listing("Wajda: Re-wizje. Bez znieczulenia"), Listing("BEZ ZNIECZULENIA (1978) | „PRZEGLĄD WAJDA: re-wizje”"),
+      sameVenue = false) shouldBe None
+  }
+
+  it should "never keep apart one venue's two spellings, one carrying the other's whole title, whose facts agree" in {
+    // PL, one venue's "Lalka (2026)" and "Lalka (2026) | seans DKF Projekcja": the same year in
+    // each, and a venue listing two spellings is all that weighs against one film.
+    listingsApart(Listing("Lalka (2026)"), Listing("Lalka (2026) | seans DKF Projekcja", year = Some(2026)), sameVenue = true) shouldBe None
+    listingsApart(Listing("Pucio kocha zwierzaki", year = Some(2026), runtime = Some(60)),
+      Listing("PUCIO KOCHA ZWIERZAKI 2D DUB. SPS", year = Some(2026), runtime = Some(60)), sameVenue = true) shouldBe None
+  }
+
+  it should "still keep apart two listings a fact both published contradicts" in {
+    listingsApart(Listing("Lalka", year = Some(2026), runtime = Some(162)), Listing("Lalka (ale to horror)", year = Some(2025), runtime = Some(82)),
+      sameVenue = true) shouldBe defined
+    // UK, one venue's two live-viewing events: the same crew and running time, and titles naming two
+    // cities — the venue lists them apart.
+    listingsApart(Listing("BTS 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING", runtime = Some(195), directors = Seq("Jungjae HA")),
+      Listing("BTS 'ARIRANG' IN SÃO PAULO: LIVE VIEWING", runtime = Some(195), directors = Seq("Jungjae HA")), sameVenue = true) shouldBe defined
+    // DE: Sheri Hagen's "Billie" (2025) and James Erskine's "Billie – Legende des Jazz" (2020) — the
+    // shorter title a whole segment of the longer, measured in either order, a year and a director apart.
+    val hagen   = Listing("Billie", year = Some(2025), directors = Seq("Sheri Hagen"))
+    val erskine = Listing("Billie – Legende des Jazz", year = Some(2020), directors = Seq("James Erskine"))
+    listingsApart(hagen, erskine, sameVenue = false) shouldBe defined
+    listingsApart(erskine, hagen, sameVenue = false) shouldBe defined
+    // The director alone, when one states its year in a bracket and the other in a field.
+    listingsApart(hagen, Listing("Billie – Legende des Jazz (2020)", directors = Seq("James Erskine")), sameVenue = false) shouldBe defined
+  }
+
   "a listing's title search" should "rank the film at its best over the listing's own queries and count the films its title names as closely" in {
     val l = Listing("Kill Bill", rawTitle = Some("Kill Bill: The Whole Bloody Affair"))
     val answers = Map(
