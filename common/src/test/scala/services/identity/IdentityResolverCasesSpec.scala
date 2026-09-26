@@ -173,6 +173,24 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     off.decisionOf(byYear.key).film shouldBe None
   }
 
+  "The pooled vote" should "never choose a film only a director's filmography reached, for a credited or a bare member" in {
+    // TMDB's search has no "Candyman"; walking Bernard Rose's filmography turns up two other films,
+    // whose director agrees with the credited listing and whose titles name nothing. Its own facts
+    // cannot choose between them, so the listing goes to the vote with its bare siblings.
+    val walked    = Seq(F(353927, "Inside Out 4", 1992, "Bernard Rose", 99, 3), F(2, "Paperhouse", 1988, "Bernard Rose", 92, 5))
+    val credited  = listing(Multikino, "Candyman (1992)", director = Some("Bernard Rose"))
+    val bare      = Seq(Helios, KinoApollo).map(listing(_, "Candyman"))
+    val r = resolve(credited +: bare, walked)
+    (credited +: bare).foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe None))
+    r.decisionOf(credited.key).basis should not be ResolverDecision.Basis.BelowThreshold
+
+    // The film the title names, once the database has it, is still found — the walk is not what
+    // decides it.
+    val named = resolve(credited +: bare, walked :+ F(9529, "Candyman", 1992, "Bernard Rose", 99, 20))
+    (credited +: bare).map(l => named.decisionOf(l.key).film) shouldBe Seq.fill(3)(Some(9529))
+    named.violations shouldBe 0
+  }
+
   "A listing the evidence cannot place" should "stay unmatched, and say which candidate it refused" in {
     val films = Seq(F(1, "Opętanie", 1981, "Andrzej Żuławski", 124), F(2, "Opętanie", 1973, "Someone Else", 90))
     val bare = listing(Multikino, "Opętanie")

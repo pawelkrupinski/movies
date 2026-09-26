@@ -109,6 +109,23 @@ object IdentityDisagreements {
             "contradicted = two or more denials; the side with more agreeing minus contradicted listings wins"))))
   }
 
+  private def filmFacts(id: Int, f: services.identity.IdentityMeasures.Film): JsObject =
+    Json.obj("tmdbId" -> id, "title" -> f.title, "originalTitle" -> f.originalTitle, "year" -> f.year, "runtime" -> f.runtime,
+      "directors" -> f.directors)
+
+  /** EVERY listing's outcome on both sides, one line each, so two runs (a baseline and a candidate
+   *  resolver) can be diffed listing by listing. */
+  def listingJson(country: String, corpus: String, l: Listing, e: Evidence, pipeline: Option[FilmAnswer], cluster: Int,
+                  decision: ResolverDecision, resolution: Resolution, label: Option[IdentityShadow.Label]): JsObject =
+    Json.obj("country" -> country, "corpus" -> corpus, "key" -> l.key.toString, "venue" -> l.venue, "rawTitle" -> l.rawTitle,
+      "originalTitle" -> e.originalTitle, "year" -> e.year, "statedYear" -> e.statedYear, "directors" -> e.directors,
+      "runtime" -> e.runtime,
+      "pipeline" -> pipeline.fold[JsValue](JsNull)(a => filmFacts(a.tmdbId, a.film)),
+      "resolver" -> decision.film.flatMap(id => resolution.films.get(id).map(filmFacts(id, _))).getOrElse[JsValue](JsNull),
+      "cluster" -> cluster, "basis" -> decision.basis.toString, "confidence" -> decision.confidence,
+      "explanation" -> decision.explanation.take(4),
+      "label" -> label.fold[JsValue](JsNull)(x => Json.obj("tmdbId" -> x.tmdbId, "corroborated" -> x.corroborated)))
+
   def write(path: Path, lines: Seq[JsObject]): Unit = {
     Files.createDirectories(path.getParent)
     Files.writeString(path, lines.map(Json.stringify).mkString("", "\n", if (lines.isEmpty) "" else "\n"), StandardCharsets.UTF_8,

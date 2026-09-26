@@ -227,6 +227,9 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         }
       }
       IdentityDisagreements.write(disagreementsDir.resolve(s"${c.country.code}.jsonl"), cellLines.map(_._4))
+      IdentityDisagreements.write(disagreementsDir.resolve(s"listings-${c.label}.jsonl"), listings.map(l =>
+        IdentityDisagreements.listingJson(c.country.code, if (c.isHardCluster) "hc" else "full", l, evidenceOf(l.key), pipelineFilm(l.key),
+          clusterIndex(l.key), decisionOf(l.key), resolution, heldOutLabels.get(l.key.toString))))
       val unlabelledCells = cellLines.filter { case (_, _, ks, _) => ks.forall(k => !heldOutLabels.contains(k.toString)) }
       val adjudicated = unlabelledCells.groupMapReduce(_._2.verdict)(_ => 1)(_ + _)
       val pipelineRightMoved = unlabelledCells.filter { case (kind, adj, _, _) => kind == "moved" && adj.verdict == "pipeline-right" }
