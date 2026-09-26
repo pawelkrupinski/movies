@@ -3,7 +3,7 @@ package modules.wiring
 import settings.{AlertRoute, TelegramRoute, FilmwebDropThreshold, ProcessConfiguration, StagingStuckScanInterval, StagingStuckThreshold}
 
 import modules.WorkerWiring
-import services.alerts.{FilmwebDropAlerter, StagingStuckAlerter, TelegramNotifier}
+import services.alerts.{AlertBurst, BurstLimitedNotifier, FilmwebDropAlerter, StagingStuckAlerter, TelegramNotifier}
 import services.cinemas.common.ScrapeOutcomeListener
 import services.metrics.EnvGatedFeature
 
@@ -23,6 +23,15 @@ trait AlertingWiring { self: WorkerWiring =>
   // "Fallback to Filmweb" topic when a topic id is set.
   protected lazy val fallbackTelegramNotifier: Option[TelegramNotifier] =
     configuration.telegramRoute(AlertRoute.FilmwebFallback).toOption.map(notifierFor)
+
+  // Every per-venue fallback page (ENTER / RECOVERED / UNCOVERED, and the gone-venue
+  // page) shares ONE burst limit: an aggregator outage hands every venue on it over at
+  // once, and a thousand pages bury the one that means something.
+  protected lazy val fallbackPager: String => Unit = {
+    val limited = fallbackTelegramNotifier.map(notifier =>
+      new BurstLimitedNotifier(notifier.send, AlertBurst(10, FiniteDuration(1L, TimeUnit.HOURS)), clock))
+    message => limited.foreach(_.send(message))
+  }
 
   // Telegram alerter for the OTHER half of the Filmweb story: a venue whose sole
   // source IS Filmweb (no own-site fallback possible) going empty/404 because
