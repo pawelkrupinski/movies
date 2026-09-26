@@ -397,11 +397,7 @@ does it in rounds, each a function of the previous round's partition:
    runtimes that agree with the majority) and resolve the pooled evidence. The answer becomes an
    attribute of every member with no answer of its own, drawn as a tier-1 must-link to that
    TMDB id's component. A member's own answer always wins, and cannot-links still win over
-   everything. The vote chooses only among films every member's own title evidence names (its
-   title search returned the film, or its title relates to one of the film's titles): a director's
-   filmography is a path to candidates, never the reason for one, so a credited member's walk
-   cannot hand its director's other films to the cluster (Candyman → *Inside Out 4*, Cars →
-   *Toy Story 2*).
+   everything.
 3. Stop when Pk+1 = Pk.
 
 Order-independence: P0 is a function of the set (A2); a cluster's pooled evidence is a function

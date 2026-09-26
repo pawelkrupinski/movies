@@ -61,8 +61,7 @@ object ResolverDecision {
     case OwnMatch
     /** No member accepted a film alone; the cluster's POOLED evidence did (group-level voting). */
     case PooledMatch
-    /** Unmatched: no candidate at all — every query answered, none named a film this evidence reaches
-     *  (for the group vote: a film every member's title names, not only a director's filmography). */
+    /** Unmatched: no candidate at all — every query answered, none named a film this evidence reaches. */
     case NoCandidate
     /** Unmatched: no candidate, and some of the cluster's queries could not be answered. */
     case NoEvidence

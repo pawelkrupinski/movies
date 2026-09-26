@@ -35,11 +35,7 @@ import scala.collection.mutable
  *           solved by [[ConstraintSolver]] (cannot wins; an ambiguous node stays alone, A2);
  *        2. GROUP-LEVEL VOTING: a cluster no member of which accepted a film scores its members'
  *           evidence POOLED into one listing (the heaviest title, the modal year, every director),
- *           and the winner, if accepted, becomes every member's film. The vote chooses only among
- *           films EVERY member's own title evidence names (its title search returned it, or its
- *           title relates to the film's): a director's filmography is a path to candidates, never
- *           a reason on its own — pooled, one credited member's walk would otherwise pick another
- *           film by the same director for every bare sibling;
+ *           and the winner, if accepted, becomes every member's film;
  *        3. the constraints are re-solved with those films, and each final cluster is a
  *           [[ResolverDecision]] with its confidence, basis and explanation.
  *
@@ -444,25 +440,13 @@ object IdentityResolver {
       ConstraintSolver.solveAs(presented.map(_.id), cs, presentation).map(_.map(nodeById))
     }
 
-    /** Does `n`'s own title evidence name `film` — its title searches returned it, or its title
-     *  (a whole spelling, its original title or a segment) names the film's? A film only a
-     *  director's filmography reached does not qualify. */
-    def titleNames(n: Node, film: Candidate): Boolean =
-      ownSearch(n.id).contains(film.tmdbId) ||
-        IdentityMeasures.NamingRelations(IdentityMeasures.titleRelation(n.evidence.measured, film.film).value)
-    /** The cluster's pooled scoring, narrowed to the films every member's title names: what the
-     *  group vote chooses among. */
-    def votable(cluster: Seq[Node], scope: FamilyScope): Seq[Scored] =
-      scope.pooled(cluster).filter(s => cluster.forall(titleNames(_, s.c)))
-
     def decide(cluster: Seq[Node], scope: FamilyScope, filmOf: String => Option[Int], accepted: Map[String, Int],
                voted: Map[String, (Int, Double)], edges: Seq[ResolverEdge], clusterIndex: Map[String, Int]): ResolverDecision = {
       val films = cluster.flatMap(n => filmOf(n.id)).distinct
       require(films.sizeIs <= 1, s"a cluster holds two films ${films.mkString(",")}: a cannot-link was not drawn")
       val film    = films.headOption
       val pinned  = film.isDefined && cluster.exists(n => pinnedFilm.contains(n.id))
-      // An unmatched cluster is explained by the films its vote could choose among.
-      val scored  = if (film.isDefined) scope.pooled(cluster) else votable(cluster, scope)
+      val scored  = scope.pooled(cluster)
       val eligible = scored.filterNot(_.denied)
       val confidence =
         if (pinned) 1.0
@@ -515,7 +499,7 @@ object IdentityResolver {
       val voted: Map[String, (Int, Double)] =
         if (mutation == Mutation.NoVoting) Map.empty
         else roundA.filter(_.forall(n => !accepted.contains(n.id))).flatMap { cluster =>
-          acceptedOf(votable(cluster, scope)).toSeq.flatMap { case (s, confidence) => cluster.map(n => n.id -> (s.c.tmdbId, confidence)) }
+          acceptedOf(scope.pooled(cluster)).toSeq.flatMap { case (s, confidence) => cluster.map(n => n.id -> (s.c.tmdbId, confidence)) }
         }.toMap
       val filmOf: String => Option[Int] = id => accepted.get(id).orElse(voted.get(id).map(_._1))
       val edges    = edgesOf(members, filmOf)
