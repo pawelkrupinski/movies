@@ -30,14 +30,14 @@ describe("planRelease", () => {
 
   it("ships both under the next version once the app code changed", () => {
     const plan = planRelease(input({ appUnchangedSince: () => false }));
-    expect(plan).toMatchObject({ kind: "ship", decision: { version: "2.0.10", bump: true }, platforms: ["ios", "android"] });
+    expect(plan).toMatchObject({ kind: "ship", decision: { version: "2.0.10", bump: true } });
   });
 
   it("does not trust a store version with no tag naming its commit", () => {
     expect(planRelease(input({ tags: new Map([["mobile-ios-2.0.9", RELEASED_SHA]]) }))).toMatchObject({ kind: "ship", decision: { version: "2.0.10" } });
   });
 
-  it("finishes Android alone when iOS is in review with main's version and code", () => {
+  it("ships BOTH, under main's still-unreleased version, when iOS is already in review with it", () => {
     const plan = planRelease(input({
       onMain: "2.0.10",
       ios: iosStateFrom(ascVersions(["v10", "2.0.10", "WAITING_FOR_REVIEW", "2026-09-25"], ["v9", "2.0.9", "READY_FOR_SALE", "2026-09-20"])),
@@ -46,10 +46,10 @@ describe("planRelease", () => {
         ["mobile-android-2.0.9", OLD_SHA],
       ]),
     }));
-    expect(plan).toMatchObject({ kind: "ship", decision: { version: "2.0.10", bump: false }, platforms: ["android"] });
+    expect(plan).toMatchObject({ kind: "ship", decision: { version: "2.0.10", bump: false } });
   });
 
-  it("finishes iOS alone when Android promoted main's version and the App Store refused it", () => {
+  it("ships BOTH one version up when Android already released main's version and iOS did not", () => {
     const plan = planRelease(input({
       onMain: "2.0.10",
       ios: iosStateFrom(ascVersions(["v10", "2.0.10", "PREPARE_FOR_SUBMISSION", "2026-09-25"], ["v9", "2.0.9", "READY_FOR_SALE", "2026-09-20"])),
@@ -59,7 +59,7 @@ describe("planRelease", () => {
         ["mobile-android-2.0.10", RELEASED_SHA],
       ]),
     }));
-    expect(plan).toMatchObject({ kind: "ship", decision: { version: "2.0.10", bump: false }, platforms: ["ios"] });
+    expect(plan).toMatchObject({ kind: "ship", decision: { version: "2.0.11", bump: true } });
   });
 
   it("ships both when the half-finished version was built from older code", () => {
@@ -69,7 +69,7 @@ describe("planRelease", () => {
       tags: new Map([["mobile-android-2.0.10", OLD_SHA]]),
       appUnchangedSince: () => false,
     }));
-    expect(plan).toMatchObject({ kind: "ship", decision: { version: "2.0.11" }, platforms: ["ios", "android"] });
+    expect(plan).toMatchObject({ kind: "ship", decision: { version: "2.0.11" } });
   });
 
   it("ships anyway with --force or --version", () => {

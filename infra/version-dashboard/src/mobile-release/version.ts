@@ -1,16 +1,17 @@
 /**
- * Which version number a release ships under.
+ * Which version number a release ships under -- ONE number for both stores, always.
  *
- * mobile-version.txt on main is only the number the last bump asked for. Whether it is still
- * free to ship depends on the stores: once a version has reached users (or Apple has approved it)
- * on either store, shipping new code under it would make one number mean two apps. So the choice
- * is made from what both stores say, in this order:
+ * mobile-version.txt on main is only the number the last bump asked for. Once a version has
+ * reached users (or Apple has approved it) on EITHER store it is spent: shipping new code under it
+ * would make one number mean two apps. So:
  *
- *   1. main's version, when neither store has released it -- a bump already committed, or a
- *      release that stopped half way (built, uploaded, never submitted).
- *   2. a version a store holds but has not released, newer than everything released -- an iOS
- *      draft or a submission still in review, picked up rather than skipped past.
- *   3. otherwise the patch after the newest version either store or main has ever named.
+ *   1. main's version, when it is newer than everything either store has released -- a bump
+ *      already committed, or a release that stopped before anything went public;
+ *   2. otherwise the SMALLEST version above both stores' newest release (the next patch of the
+ *      higher of the two), so the stores converge on one number and none is skipped.
+ *
+ * An unreleased App Store draft or in-review record does not steer the number: it is renamed to
+ * whatever this picks (see ios.ts), so a stray draft at 2.0.12 cannot make the release skip 2.0.10.
  */
 
 const VERSION = /^\d+(\.\d+){0,2}$/;
@@ -48,8 +49,6 @@ export interface VersionEvidence {
   readonly onMain: string;
   /** Versions that reached users or were approved: iOS live/approved records, anything in Play production. */
   readonly released: readonly string[];
-  /** Versions a store holds that have NOT been released: an iOS draft or in-review record, a Play testing-track release. */
-  readonly unreleased: readonly string[];
 }
 
 export interface VersionDecision {
@@ -72,9 +71,7 @@ export function decideVersion(evidence: VersionEvidence, requested?: string): Ve
     if (compareVersions(requested, evidence.onMain) < 0) throw new Error(`${requested} is older than main's ${evidence.onMain}`);
     return decision(requested, "requested");
   }
-  if (shippable(evidence.onMain)) return decision(evidence.onMain, `main's ${evidence.onMain} has not been released by either store`);
-  const pending = newest(evidence.unreleased.filter(shippable));
-  if (pending !== null) return decision(pending, `picking up ${pending}, which a store holds but has not released`);
-  const next = nextPatch(newest([evidence.onMain, ...evidence.released, ...evidence.unreleased]) ?? evidence.onMain);
-  return decision(next, `${evidence.onMain} is already released; bumping to ${next}`);
+  if (shippable(evidence.onMain)) return decision(evidence.onMain, `main's ${evidence.onMain} is newer than anything either store released`);
+  const next = nextPatch(newestReleased ?? evidence.onMain);
+  return decision(next, `${newestReleased} is the newest release on either store; bumping both to ${next}`);
 }

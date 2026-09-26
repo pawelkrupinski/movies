@@ -6,11 +6,13 @@
 #   scripts/mobile-ship.sh               # do it
 #   scripts/mobile-ship.sh --help        # --version, --force, --notes-dir
 #
-# Picks the version from what main and both stores say (main's version if neither store has
-# released it; an unreleased App Store draft or in-review version if there is one; else the next
-# patch, committed and pushed to main), builds both apps in parallel from that one commit,
-# submits iOS for review and promotes Android to production. A rerun after a failure resumes:
-# already-uploaded builds are reused and a platform that already shipped the version is skipped.
+# Always ships BOTH stores under ONE version: main's, when it is newer than anything either
+# store has released; otherwise the smallest version above both stores' newest release (the
+# next patch of the higher one), committed and pushed to main. An unsubmitted or in-review App
+# Store version is reused and renamed to that number rather than steering it. Both apps are
+# built in parallel from that one commit; iOS is submitted for review, then Android is promoted
+# to production. A rerun reuses builds already uploaded for the version from the same commit,
+# and leaves an App Store review alone when it already holds that version and build.
 #
 # The logic is TypeScript beside the /mobile dashboard, which already holds the App Store Connect
 # and Play clients: infra/version-dashboard/src/mobile-release/.

@@ -236,13 +236,23 @@ export interface IosSubmission {
   readonly overwriteNotes: boolean;
 }
 
-/** Everything after the upload. Returns the review submission id. */
-export async function submitIos(asc: AscApi, release: IosSubmission, pace: Pace): Promise<string> {
+/**
+ * Everything after the upload. Returns the review submission id, or null when Apple is already
+ * reviewing this version with this build -- a rerun must not cancel that and lose its queue place.
+ */
+export async function submitIos(asc: AscApi, release: IosSubmission, pace: Pace): Promise<string | null> {
   await waitForBuild(asc, release.buildId, pace);
   pace.log(`build ${release.buildId} VALID`);
   // Re-read now, not at the start of the run: the build took minutes, and the plan has to act on
   // the records as they are, not as they were before the archive.
   const plan = planIosVersion(await inspectIos(asc), release.version);
+  if (plan.kind === "reuse" && plan.cancelReview && plan.record.versionString === release.version) {
+    const attached = (await asc.get(`/v1/appStoreVersions/${plan.record.id}/build`)) as { data?: { id?: string } | null };
+    if (attached.data?.id === release.buildId) {
+      pace.log(`${release.version} is already ${plan.record.state} with build ${release.buildId}; leaving it`);
+      return null;
+    }
+  }
   const versionId = await versionRecordFor(asc, plan, release.version, pace);
   await asc.send("PATCH", `/v1/appStoreVersions/${versionId}/relationships/build`, { data: { type: "builds", id: release.buildId } });
   pace.log(`build attached to ${release.version}`);

@@ -106,18 +106,16 @@ export function describeInspection(inspection: Inspection): string[] {
     `Play        ${storeVersion(inspection, "android") ?? "none"}${android.unreleased.length ? `  (testing tracks: ${android.unreleased.join(", ")})` : ""}`,
   ];
   if (plan.kind === "nothing") return [...lines, `→ nothing to release: ${plan.reason}`];
-  const { decision, platforms } = plan;
+  const { decision } = plan;
   lines.push(`→ ${decision.version}: ${decision.reason}${decision.bump ? ` (main will be bumped to ${decision.version})` : ""}`);
-  if (platforms.includes("ios")) {
-    let iosPlan: string;
-    try {
-      iosPlan = describeIosPlan(planIosVersion(ios, decision.version), decision.version);
-    } catch (error) {
-      iosPlan = `BLOCKED: ${(error as Error).message}`;
-    }
-    lines.push(`  iOS      archive + upload → ${iosPlan} → submit for review`);
+  let iosPlan: string;
+  try {
+    iosPlan = describeIosPlan(planIosVersion(ios, decision.version), decision.version);
+  } catch (error) {
+    iosPlan = `BLOCKED: ${(error as Error).message}`;
   }
-  if (platforms.includes("android")) lines.push(`  Android  build + upload to internal → promote to production`);
+  lines.push(`  iOS      archive + upload → ${iosPlan} → submit for review`);
+  lines.push(`  Android  build + upload to internal → promote to production`);
   return lines;
 }
 
@@ -153,8 +151,7 @@ export async function release(deps: ReleaseDeps, options: ReleaseOptions): Promi
   const { plan } = inspection;
   if (plan.kind === "nothing" || options.dryRun) return;
   const { version } = plan.decision;
-  const wants = (platform: Platform) => plan.platforms.includes(platform);
-  if (wants("ios")) planIosVersion(inspection.ios, version); // throws on an approved-but-unreleased record, before any build
+  planIosVersion(inspection.ios, version); // throws on an approved-but-unreleased record, before any build
 
   const git = new Git(deps);
   const worktree = join(deps.workDir, `kinowo-mobile-release-${version}`);
@@ -166,40 +163,33 @@ export async function release(deps: ReleaseDeps, options: ReleaseOptions): Promi
   let releaseSha = inspection.mainSha;
   if (plan.decision.bump) releaseSha = await bumpMain(deps, git, worktree, version);
 
-  const tags = inspection.tags;
-  const resumable = (platform: Platform) => !plan.decision.bump && tags.get(tagName(platform, version)) === releaseSha;
-  let iosBuildId: string | undefined;
-  let androidVersionCode: number | undefined;
-  const lanes: Promise<void>[] = [];
-  if (wants("ios")) {
-    lanes.push((async () => {
+  // A build already uploaded for this version from this very commit is reused, not rebuilt: that
+  // is how a run that stopped before anything went public picks up where it left off.
+  const resumable = (platform: Platform) => !plan.decision.bump && inspection.tags.get(tagName(platform, version)) === releaseSha;
+  const [ios, android] = await Promise.allSettled([
+    (async () => {
       const resumed = resumable("ios") ? await existingBuild(deps.asc, version) : null;
-      iosBuildId = resumed ?? (await buildIos(deps, worktree, logs));
-      log(`[ios] ${resumed ? "resuming with already-uploaded" : "uploaded"} build ${iosBuildId}`);
-    })());
-  }
-  if (wants("android")) {
-    lanes.push((async () => {
+      const buildId = resumed ?? (await buildIos(deps, worktree, logs));
+      log(`[ios] ${resumed ? "resuming with already-uploaded" : "uploaded"} build ${buildId}`);
+      return buildId;
+    })(),
+    (async () => {
       const resumed = resumable("android") ? internalBuildFor(inspection.android, version) : null;
-      androidVersionCode = resumed ?? (await buildAndroid(deps, worktree, logs, version, releaseSha, nextVersionCode(inspection.android, deps.nowSeconds())));
-      log(`[android] ${resumed ? "resuming with internal-track" : "uploaded"} version code ${androidVersionCode}`);
-    })());
-  }
-  const outcomes = await Promise.allSettled(lanes);
-  const failures = outcomes.flatMap((outcome) => (outcome.status === "rejected" ? [outcome.reason as Error] : []));
-  if (failures.length) {
-    throw new Error(`build failed, nothing submitted or promoted (worktree kept at ${worktree}, logs in ${logs}):\n  ${failures.map((error) => error.message).join("\n  ")}`);
+      const versionCode = resumed ?? (await buildAndroid(deps, worktree, logs, version, releaseSha, nextVersionCode(inspection.android, deps.nowSeconds())));
+      log(`[android] ${resumed ? "resuming with internal-track" : "uploaded"} version code ${versionCode}`);
+      return versionCode;
+    })(),
+  ]);
+  if (ios.status === "rejected" || android.status === "rejected") {
+    const failures = [ios, android].flatMap((outcome) => (outcome.status === "rejected" ? [(outcome.reason as Error).message] : []));
+    throw new Error(`build failed, nothing submitted or promoted (worktree kept at ${worktree}, logs in ${logs}):\n  ${failures.join("\n  ")}`);
   }
 
   const pace = { sleep: deps.sleep, log: (line: string) => log(`[ios] ${line}`) };
-  if (iosBuildId !== undefined) {
-    await submitIos(deps.asc, { version, buildId: iosBuildId, notes: options.notes, overwriteNotes: options.overwriteNotes }, pace);
-  }
-  if (androidVersionCode !== undefined) {
-    await promoteAndroid(deps.play, { version, versionCode: androidVersionCode, notes: options.notes }, (line) => log(`[android] ${line}`));
-  }
+  await submitIos(deps.asc, { version, buildId: ios.value, notes: options.notes, overwriteNotes: options.overwriteNotes }, pace);
+  await promoteAndroid(deps.play, { version, versionCode: android.value, notes: options.notes }, (line) => log(`[android] ${line}`));
   await git.run(["worktree", "remove", "--force", worktree]);
-  log(`released ${version} from ${releaseSha.slice(0, 9)} (${plan.platforms.join(" + ")})`);
+  log(`released ${version} to both stores from ${releaseSha.slice(0, 9)}`);
 }
 
 /**

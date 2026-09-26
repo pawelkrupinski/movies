@@ -105,6 +105,7 @@ describe("submitIos", () => {
     const asc = new FakeAsc({
       [`GET /v1/builds/${BUILD}`]: validBuild,
       [`GET ${VERSIONS}`]: ascVersions(["inreview", "2.0.10", "WAITING_FOR_REVIEW", "2026-09-25"]),
+      "GET /v1/appStoreVersions/inreview/build": { data: { type: "builds", id: "an-older-build" } },
       [`GET ${OPEN}`]: { data: [{ id: "sub-old" }] },
       "PATCH /v1/reviewSubmissions/sub-old": null,
       "GET /v1/appStoreVersions/inreview": (_: unknown, hit: number) => ({ data: { id: "inreview", attributes: { appStoreState: hit === 1 ? "WAITING_FOR_REVIEW" : "DEVELOPER_REJECTED" } } }),
@@ -120,6 +121,16 @@ describe("submitIos", () => {
       "PATCH /v1/appStoreVersions/inreview/relationships/build",
       "PATCH /v1/reviewSubmissions/sub-draft",
     ]);
+  });
+
+  it("leaves a review alone when it already holds this version and this build", async () => {
+    const asc = new FakeAsc({
+      [`GET /v1/builds/${BUILD}`]: validBuild,
+      [`GET ${VERSIONS}`]: ascVersions(["inreview", "2.0.10", "WAITING_FOR_REVIEW", "2026-09-25"]),
+      "GET /v1/appStoreVersions/inreview/build": { data: { type: "builds", id: BUILD } },
+    });
+    expect(await submitIos(asc, { version: "2.0.10", buildId: BUILD, notes: notesFrom(new Map()), overwriteNotes: false }, pace)).toBeNull();
+    expect(asc.writes()).toEqual([]);
   });
 
   it("creates the record when every version is released, and passes Apple's readiness refusal on", async () => {

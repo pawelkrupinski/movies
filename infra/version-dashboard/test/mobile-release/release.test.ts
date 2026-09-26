@@ -104,7 +104,7 @@ describe("release", () => {
     const ran: Ran[] = [];
     const d = deps(events, ran);
     await release(d, { ...options, dryRun: true });
-    expect(d.lines.join("\n")).toContain("→ 2.0.10: 2.0.9 is already released; bumping to 2.0.10 (main will be bumped to 2.0.10)");
+    expect(d.lines.join("\n")).toContain("→ 2.0.10: 2.0.9 is the newest release on either store; bumping both to 2.0.10 (main will be bumped to 2.0.10)");
     expect(d.lines.join("\n")).toContain("iOS      archive + upload → create App Store version 2.0.10 → submit for review");
     expect(ran.map((r) => r.argv.join(" ")).filter((line) => /worktree|push|gradlew|release\.sh/.test(line))).toEqual([]);
     expect(d.asc.writes()).toEqual([]);
@@ -135,7 +135,7 @@ describe("release", () => {
     expect(at("push")).toBeLessThan(at("./gradlew"));
     expect(at("PATCH /v1/reviewSubmissions/sub")).toBeLessThan(at("PUT /edits/edit-2/tracks/production"));
     expect(events.at(-1)).toContain("git worktree remove --force");
-    expect(d.lines.at(-1)).toBe(`released 2.0.10 from ${BUMP_SHA.slice(0, 9)} (ios + android)`);
+    expect(d.lines.at(-1)).toBe(`released 2.0.10 to both stores from ${BUMP_SHA.slice(0, 9)}`);
   });
 
   it("submits and promotes nothing when either build fails", async () => {

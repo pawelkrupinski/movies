@@ -1,13 +1,12 @@
 /**
  * What a run does, decided from main and both stores before anything is built.
  *
- * Three outcomes:
  *   - NOTHING: both stores already carry a build of main's current app code (ios/, android/ and
  *     mobile-version.txt unchanged since the commit each store's version was built from).
- *   - FINISH: one store carries main's version built from the current app code and the other does
- *     not -- a run that stopped half way (an App Store 409, a Play outage). Only the missing side is
- *     done, under the SAME version, so the two stores stay one version = one commit.
- *   - SHIP: both stores, under the version decideVersion picks.
+ *   - SHIP: BOTH stores, always, under the one version decideVersion picks. A run that stopped
+ *     half way is not finished on one side only: if a store released the version, the version is
+ *     spent and both move up to the next one; if neither did, both ship it (reusing whatever
+ *     builds were already uploaded -- see release.ts).
  *
  * "Which commit a store's version was built from" is the mobile-<platform>-<version> tag the build
  * lanes push (tag-mobile-release.sh), so a store version with no tag is never treated as current.
@@ -37,7 +36,7 @@ export interface PlanInput {
 
 export type Plan =
   | { readonly kind: "nothing"; readonly reason: string }
-  | { readonly kind: "ship"; readonly decision: VersionDecision; readonly platforms: readonly Platform[] };
+  | { readonly kind: "ship"; readonly decision: VersionDecision };
 
 export const tagName = (platform: Platform, version: string) => `mobile-${platform}-${version}`;
 
@@ -64,25 +63,7 @@ export function planRelease(input: PlanInput): Plan {
     if (ios !== null && android !== null) {
       return { kind: "nothing", reason: `both stores already carry main's app code (iOS ${ios}, Android ${android})` };
     }
-    const finished = ios ?? android;
-    const missing: Platform = ios === null ? "ios" : "android";
-    // Only when the other store has NOT released it: released from code no tag vouches for, the
-    // version is spent there, and shipping again under it would make one number two apps.
-    if (finished !== null && finished === input.onMain && !input[missing].released.includes(finished)) {
-      return {
-        kind: "ship",
-        decision: { version: finished, bump: false, reason: `finishing ${finished}: ${missing === "ios" ? "Android" : "iOS"} already has it from this code` },
-        platforms: [missing],
-      };
-    }
   }
-  const decision = decideVersion(
-    {
-      onMain: input.onMain,
-      released: [...input.ios.released, ...input.android.released],
-      unreleased: [...(input.ios.pending ? [input.ios.pending.versionString] : []), ...input.android.unreleased],
-    },
-    input.requested,
-  );
-  return { kind: "ship", decision, platforms: PLATFORMS };
+  const decision = decideVersion({ onMain: input.onMain, released: [...input.ios.released, ...input.android.released] }, input.requested);
+  return { kind: "ship", decision };
 }
