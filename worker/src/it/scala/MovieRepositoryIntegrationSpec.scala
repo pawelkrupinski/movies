@@ -924,17 +924,20 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val repo     = new MongoScreeningsRepository(Some(db), metrics = sink)
     val film     = "__it-screenings-noop__"
     val after    = "__it-screenings-noop-tripwire__"
+    val drain    = "__it-screenings-noop-drain__"
     val slot     = "Multikino␟M"
     def at(h: Int) = Seq(Showtime(LocalDateTime.of(2099, 1, 1, h, 0), None))
 
     val rings    = new AtomicInteger(0)
     val warmed   = new CountDownLatch(1)
     val tripwire = new CountDownLatch(1)
+    val drained  = new CountDownLatch(1)
     // Both latches and the counter are fed from ONE watcher, so they see one cursor's
     // ordering. Nothing here reads Mongo — the callback runs on the driver's event loop.
     val handle   = repo.watchApplied { (fid, applied) =>
       if (fid == film)  { rings.incrementAndGet(); warmed.countDown() }
       if (fid == after) tripwire.countDown()
+      if (fid == drain) drained.countDown()
       applied()
     }
     handle should not be empty
@@ -944,6 +947,12 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       awaitStreamLive("a warm-up event", warmed.await(1, TimeUnit.SECONDS)) { hour =>
         repo.upsertSlot(film, slot, ListedShowtimes(at(hour % 23 + 1), None))
       }
+
+      // A warm-up pass whose event was slow can have been followed by another pass, whose event is
+      // still in flight: counting from here would charge it to the no-op writes. One cursor
+      // delivers in order, so once a later write's event is back every warm-up event is too.
+      repo.upsertSlot(drain, slot, ListedShowtimes(at(6), None))
+      withClue("the drain write never arrived: ")(drained.await(30, TimeUnit.SECONDS) shouldBe true)
 
       val settled = repo.findForFilm(film)(slot)
       rings.set(0); sink.reset()
@@ -968,7 +977,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         sink.wrote(ScreeningsMetrics.Outcome.Written)   shouldBe 1 // only the tripwire
       }
     } finally {
-      handle.foreach(_.close()); repo.deleteFilm(film); repo.deleteFilm(after)
+      handle.foreach(_.close()); repo.deleteFilm(film); repo.deleteFilm(after); repo.deleteFilm(drain)
       repo.close()
     }
   }
