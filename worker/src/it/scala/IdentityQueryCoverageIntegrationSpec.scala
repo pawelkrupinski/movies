@@ -31,10 +31,12 @@ import scala.util.Try
  */
 class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
-  private val env = Env.fromProcess()
-  private val uri = env.get("MONGODB_URI")
-  assume(uri.isDefined, "MONGODB_URI not set")
-  IntegrationMongo.requireThrowaway()
+  private val env           = Env.fromProcess()
+  private val configuration = _root_.settings.ProcessConfiguration.resolve()
+  private val mongo         = IntegrationMongoTarget.from(configuration)
+  assume(mongo.isDefined, "MONGODB_URI not set")
+  IntegrationMongo.requireThrowaway(configuration)
+  private val fixtureRoot   = configuration.fixtureRoot
 
   private val strict   = env.get("KINOWO_IDENTITY_GATE").contains("strict")
   private val storages = mutable.ListBuffer.empty[ConvergenceStorage]
@@ -65,7 +67,7 @@ class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers wit
           val tree    = s"enrichment-${c.code}"
           // The remembered verdicts are READ, never written: this measures the recording.
           val verdicts = new EnrichmentCacheStore {
-            private val files = new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(tree), FileEnrichmentCacheStore.NeverExpires)
+            private val files = new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(fixtureRoot, tree), FileEnrichmentCacheStore.NeverExpires)
             override def loadAll(): Map[String, CachedResponse] = files.loadAll()
             override def put(key: String, response: CachedResponse): Unit = ()
           }
@@ -73,7 +75,7 @@ class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers wit
             transients = EnrichmentCache.Transients.Replayed)
           cache.preload()
           // The replay chain itself, over a wire that refuses and names each request.
-          val fetch = ArchiveReplayWiring.recordedChain(tree, Some(cache), new HermeticHttpLeaf(missing), "tree", "verdicts")
+          val fetch = ArchiveReplayWiring.recordedChain(tree, fixtureRoot, Some(cache), new HermeticHttpLeaf(missing), "tree", "verdicts")
           (fetch, () => { val missed = missing.keys.map(_._1).toSet; r => missed(r.fixtureKey) })
         })
       }
@@ -81,7 +83,7 @@ class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers wit
   }
 
   private def measure(corpus: Corpus, suffix: String = ""): IdentityQueryCoverage.Coverage = {
-    val storage = ConvergenceStorage.mongo(uri.get, s"idq-${corpus.label}$suffix", TitleNormalizer.forCountry(corpus.country))
+    val storage = ConvergenceStorage.mongo(mongo.get, s"idq-${corpus.label}$suffix", TitleNormalizer.forCountry(corpus.country))
     storages.synchronized(storages += storage)
     val (fetch, missed)     = corpus.recording()
     val (coverage, summary) = IdentityQueryCoverage.measure(corpus.label, corpus.country, storage, corpus.rows, fetch, missed)
@@ -128,20 +130,20 @@ class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers wit
       override def post(url: String, body: String, contentType: String): String = refuse(url, Some(body))
     }
     val country = corpus.country
-    val storage = ConvergenceStorage.mongo(uri.get, s"idq-${corpus.label}-record", TitleNormalizer.forCountry(country))
+    val storage = ConvergenceStorage.mongo(mongo.get, s"idq-${corpus.label}-record", TitleNormalizer.forCountry(country))
     storages.synchronized(storages += storage)
     CorpusFixture.seedInto(storage.archive, corpus.rows)
-    val cache = new EnrichmentCache(new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(s"enrichment-${country.code}")),
+    val cache = new EnrichmentCache(new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(fixtureRoot, s"enrichment-${country.code}")),
       clock = () => TestWiring.FixedInstant.toEpochMilli, persistSuccesses = false,
       transients = EnrichmentCache.Transients.Recorded)
     cache.preload()
     val language = country.language
-    val recording = new ArchiveReplayWiring(country, storage.archive, Some(cache), storage) {
+    val recording = new ArchiveReplayWiring(country, storage.archive, Some(cache), storage, s"enrichment-${country.code}", fixtureRoot) {
       override protected def realHttpLeaf: HttpFetch = wire
       override lazy val clock: java.time.Clock = java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC)
       override lazy val backgroundBudget: ExecutionBudget = new SameThreadExecutionBudget
       override lazy val uptimeMonitor = new services.UptimeMonitor(None, clock = clock)
-      override lazy val tmdbClient: clients.TmdbClient = new clients.TmdbClient(lookupFetch, apiKey = Some("replay"), language = language)
+      override lazy val tmdbClient: clients.TmdbClient = new clients.TmdbClient(lookupFetch, apiKey = Some(_root_.settings.TmdbApiKey("replay")), language = language)
     }
     info(s"recording pass: ${IdentityLookupSweep.over(recording, country)}")
 

@@ -14,13 +14,15 @@ import scala.concurrent.duration._
  *  runs in memory, against the shadow collections' real codecs, indexes and queries. */
 class MongoObservationStoreIntegrationSpec extends ObservationStoreBehaviour with BeforeAndAfterAll {
 
-  assume(Env.fromProcess().get("MONGODB_URI").isDefined, "MONGODB_URI not set")
-  tools.IntegrationMongo.requireThrowaway()
+  private val configuration = _root_.settings.ProcessConfiguration.resolve()
+  private val target        = tools.IntegrationMongoTarget.from(configuration)
+  assume(target.isDefined, "MONGODB_URI not set")
+  tools.IntegrationMongo.requireThrowaway(configuration)
 
   private val client = MongoClient(MongoClientSettings.builder()
     .applyConnectionString(new ConnectionString(Env.fromProcess().get("MONGODB_URI").get))
     .codecRegistry(MongoClient.DEFAULT_CODEC_REGISTRY).build())
-  private val database: MongoDatabase = client.getDatabase(IntegrationCorpusDatabase.named("observations"))
+  private val database: MongoDatabase = client.getDatabase(IntegrationCorpusDatabase.named(target.get, "observations"))
   private val mismatches = new TtlIndexMismatches
 
   protected def newStore(clock: MutableClock): ObservationStore = {

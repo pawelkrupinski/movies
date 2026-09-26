@@ -38,13 +38,16 @@ object IdentityQueryCoverage {
 
     def gapsByHost: Seq[(String, Int)] = gaps.groupBy(_.host).view.mapValues(_.size).toSeq.sortBy { case (h, n) => (-n, h) }
 
-    def line: String =
-      f"$label%-8s lookups $answerableLookups%,d/$lookups%,d answerable (${lookupShare * 100}%.2f%%), " +
-        f"requests $answeredRequests%,d/$requests%,d served (${requestShare * 100}%.2f%%" +
-        (if (failedReads.isEmpty) ")" else s", ${failedReads.size} of them by a remembered failed read: " +
-          failedReads.groupBy(_.host).view.mapValues(_.size).toSeq.sortBy(-_._2).map { case (h, n) => s"$h $n" }.mkString(", ") + ")") +
-        (if (met) " — GATE MET" else s" — ${gaps.size} gap(s): " +
-          gapsByHost.map { case (h, n) => s"$h $n" }.mkString(", ") + "; e.g. " + gaps.take(3).map(_.query).mkString(" | "))
+    def line: String = {
+      def pct(share: Double) = String.format(java.util.Locale.ROOT, "%.2f%%", share * 100)
+      def n(count: Int)      = String.format(java.util.Locale.ROOT, "%,d", count)
+      def byHost(rs: Seq[Request]) =
+        rs.groupBy(_.host).view.mapValues(_.size).toSeq.sortBy { case (h, c) => (-c, h) }.map { case (h, c) => s"$h $c" }.mkString(", ")
+      f"$label%-8s lookups ${n(answerableLookups)}/${n(lookups)} answerable (${pct(lookupShare)}), " +
+        s"requests ${n(answeredRequests)}/${n(requests)} served (${pct(requestShare)}" +
+        (if (failedReads.isEmpty) ")" else s", ${failedReads.size} of them by a remembered failed read: ${byHost(failedReads)})") +
+        (if (met) " — GATE MET" else s" — ${gaps.size} gap(s): ${byHost(gaps)}; e.g. " + gaps.take(3).map(_.query).mkString(" | "))
+    }
   }
 
   /** Coverage from the requests each lookup made (distinct requests, the order the sweep issued

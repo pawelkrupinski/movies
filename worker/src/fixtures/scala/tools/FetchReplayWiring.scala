@@ -15,7 +15,7 @@ import java.time.{Clock, ZoneOffset}
 object FetchReplayWiring {
 
   def apply(country: Country, storage: ConvergenceStorage, rows: Seq[ArchivedScrape], fetch: HttpFetch,
-            fixtureRoot: settings.FixtureRoot,
+            fixtureRoot: settings.FixtureRoot = settings.FixtureRoot.RepositoryRelative,
             clock: Clock = Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC),
             retrySleep: Long => Unit = Thread.sleep, environment: Env = Env.of()): ArchiveReplayWiring = {
     CorpusFixture.seedInto(storage.archive, rows)

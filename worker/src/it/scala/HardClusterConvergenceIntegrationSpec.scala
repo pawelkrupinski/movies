@@ -211,7 +211,8 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
    *  country's clusters, so the responses file answers the phase-1 gate
    *  (`IdentityQueryCoverageIntegrationSpec`) as well as this spec — whatever the tree holds. */
   private def recordIdentityLookups(): Unit = countries.foreach { country =>
-    val storage = ConvergenceStorage.mongo(uri.get, s"hc-${country.code}-identity", TitleNormalizer.forCountry(country))
+    val storage = ConvergenceStorage.mongo(IntegrationMongoTarget.from(_root_.settings.ProcessConfiguration.resolve()).get,
+      s"hc-${country.code}-identity", TitleNormalizer.forCountry(country))
     storages.synchronized(storages += storage)
     val w = FetchReplayWiring(country, storage, CorpusFixture.read(HardClusters.corpusKey(country)), responses(country))
     println(s"[${country.code}] identity resolver lookups: ${IdentityLookupSweep.over(w, country)}")
