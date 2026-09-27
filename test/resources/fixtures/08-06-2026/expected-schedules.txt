@@ -2586,7 +2586,7 @@ cinemaScrapes:
   Kino Muza / Erupcja / 2025
   Kino NCKF EC1 / Erupcja / —
   Kino Pałacowe / Erupcja / 2025
-  Kino Rejs / Erupcja / —
+  Kino Rejs / Erupcja / 2026
   Kino Spektrum / Erupcja / —
   Kino Studyjne Kadr / Erupcja / —
   Kino U-jazdowski / Erupcja / 2025
@@ -4976,7 +4976,7 @@ cinemaScrapes:
   Kino Kultura / Milcząca przyjaciółka / —
   Kino Luna / Milcząca przyjaciółka / —
   Kino Malta Charlie Monroe / Milcząca przyjaciółka / —
-  Kino Meduza / Milcząca przyjaciółka / —
+  Kino Meduza / Milcząca przyjaciółka / 2025
   Kino Muranów / Milcząca przyjaciółka / 2025
   Kino Muza / Milcząca przyjaciółka / 2025
   Kino Muzeum / MILCZĄCA PRZYJACIÓŁKA / 2025

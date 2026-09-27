@@ -48,6 +48,15 @@ class NoveKinoClientSpec extends AnyFlatSpec with Matchers {
     d.trailerUrl shouldBe Some("https://www.youtube.com/watch?v=CdoTYdt4GQE")
   }
 
+  it should "read the runtime off the film page's 'Czas trwania' row, and none where the page omits it" in {
+    // The same film's two presentation pages: the subtitled one (id=19692) lists
+    // "Czas trwania: 120 minut"; the dubbed one (id=19185) has no such row.
+    client.fetchFilmDetail("https://www.novekino.pl/kina/atlantic/film.php?id=19692")
+      .getOrElse(fail("no detail for id=19692")).runtimeMinutes shouldBe Some(120)
+    client.fetchFilmDetail("https://www.novekino.pl/kina/atlantic/film.php?id=19185")
+      .getOrElse(fail("no detail for id=19185")).runtimeMinutes shouldBe None
+  }
+
   it should "keep every paragraph of the synopsis, not just the first" in {
     // `section.text_panel` wraps an "Opis filmu" header `<div>` followed by the
     // prose paragraphs; the old `selectFirst("section.text_panel p")` kept only

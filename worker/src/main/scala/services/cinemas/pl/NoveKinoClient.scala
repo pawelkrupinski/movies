@@ -16,8 +16,8 @@ import scala.util.Try
  * `repertuar.php` shows one day; the day picker links to `?data=YYYY-MM-DD` for
  * the rest. Every showtime anchor carries its own absolute `data-day` + time +
  * buy link, so the schedule is read straight off the listing pages; the
- * `film.php?id=` page adds director / year / countries / genres / synopsis
- * (runtime isn't published anywhere — TMDB supplies it). Parameterised by the
+ * `film.php?id=` page adds director / cast / year / countries / genres /
+ * runtime ("Czas trwania: 120 minut") / synopsis. Parameterised by the
  * cinema's URL slug so one client serves any Nove Kino venue.
  */
 class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema
@@ -90,6 +90,7 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema
         synopsis    = detail.synopsis,
         cast        = detail.cast,
         director    = detail.director,
+        runtimeMinutes = detail.runtime,
         releaseYear = detail.year,
         countries   = detail.countries,
         genres      = detail.genres,
@@ -138,9 +139,11 @@ object NoveKinoClient {
   def after(desc: String, label: String): Option[String] =
     s"(?i)$label:\\s*([^\\n]+?)(?:\\s{2,}|gatunek:|produkcja:|$$)".r.findFirstMatchIn(desc).map(_.group(1).trim).filter(_.nonEmpty)
 
-  final case class Detail(year: Option[Int], countries: Seq[String], genres: Seq[String],
+  final case class Detail(year: Option[Int], runtime: Option[Int], countries: Seq[String], genres: Seq[String],
                           director: Seq[String], cast: Seq[String], synopsis: Option[String], trailer: Option[String])
-  object Detail { val empty: Detail = Detail(None, Seq.empty, Seq.empty, Seq.empty, Seq.empty, None, None) }
+
+  /** The "Czas trwania" value's minute count: "120 minut", "82 minuty". */
+  private val RuntimeMinutes = """(\d+)\s*min""".r
 
   private def dd(document: org.jsoup.nodes.Document, label: String): Option[String] =
     ScraperParse.ddField(document, label)
@@ -149,6 +152,7 @@ object NoveKinoClient {
     val document = Jsoup.parse(html)
     Detail(
       year      = dd(document, "rok produkcji").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
+      runtime   = dd(document, "czas trwania").flatMap(RuntimeMinutes.findFirstMatchIn).flatMap(_.group(1).toIntOption),
       countries = dd(document, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
       genres    = dd(document, "gatunek").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)).map(tools.TextNormalization.titleCaseIfAllLower),
       director  = dd(document, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
