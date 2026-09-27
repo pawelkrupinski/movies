@@ -1114,25 +1114,6 @@
     "ageRating" : "5",
     "shareCardPending" : false
   }, {
-    "_id" : "f10650928cfa3f36",
-    "title" : "Kopciuszek",
-    "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Kopciuszek/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Kopciuszek",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Kopciuszek"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : {
-      "jastrzebie-zdroj" : "“Kopciuszek”"
-    },
-    "shareCardPending" : false
-  }, {
     "_id" : "f1075a183d988106",
     "title" : "Pan zabawka",
     "posterUrl" : "https://biletyna.pl/file/get/id/367405",
@@ -4932,25 +4913,6 @@
     "weightedRating" : 0,
     "synopsisByCity" : {
       "warszawa" : "Pellizza zapisał się w historii sztuki nie tylko jako mistrz koloru i światła, lecz także jako artysta o niezwykłej zdolności wnikliwego portretowania ludzkiej duszy i społeczeństwa."
-    },
-    "shareCardPending" : false
-  }, {
-    "_id" : "f41deb8df3367faf",
-    "title" : "Maryja. Matka Papieża 2D Pl",
-    "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Maryja.+Matka+Papie%C5%BCa+2D+Pl/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Maryja.+Matka+Papie%C5%BCa+2D+Pl",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Maryja.+Matka+Papie%C5%BCa+2D+Pl"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : {
-      "swidnica" : "Pierwszy film ukazujący mistyczną relację Karola Wojtyły z Matką Bożą. To Ona prowadziła Jana Pawła II przez wszystkie dni jego pontyfikatu. W filmie ukazane są uznane objawienia Maryjne, w których ważnym elementem jest aktualne zagrożenie ze strony Rosji. Od wypełnienia orędzi Matki Bożej zależy przyszłość świata."
     },
     "shareCardPending" : false
   }, {
@@ -18854,25 +18816,6 @@
     "ageRating" : "12",
     "shareCardPending" : false
   }, {
-    "_id" : "fd1579e8a2c3c7bc",
-    "title" : "Przedpremiera: Niesamowite przygody skarpetek 3. Ale Kosmos! | 2D | PL",
-    "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Przedpremiera%3A+Niesamowite+przygody+skarpetek+3.+Ale+Kosmos%21+%7C+2D+%7C+PL/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Przedpremiera%3A+Niesamowite+przygody+skarpetek+3.+Ale+Kosmos%21+%7C+2D+%7C+PL",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Przedpremiera%3A+Niesamowite+przygody+skarpetek+3.+Ale+Kosmos%21+%7C+2D+%7C+PL"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : {
-      "krynica-zdroj" : "Czy skarpetka może zostać przebiegłym szeryfem, genialnym detektywem lub… międzygalaktycznym podróżnikiem? Oczywiście! W najnowszej odsłonie kinowych przygód ulubione urwisy z szuflady wyruszają na podbój nieznanych światów. Od pojedynków w samo południe, przez wybiegi mody, aż po rakiety startujące w stronę gwiazd – każda opowieść to zastrzyk pozytywnej energii i abstrakcyjnego humoru, który rozbawi do łez zarówno dzieci, jak i dorosłych."
-    },
-    "shareCardPending" : false
-  }, {
     "_id" : "fd18091e18502a42",
     "title" : "Matrix",
     "fallbackPosterUrls" : [ ],
@@ -19243,6 +19186,25 @@
     "weightedRating" : 0,
     "synopsisByCity" : { },
     "ageRating" : "16",
+    "shareCardPending" : false
+  }, {
+    "_id" : "fd840893683f05e7",
+    "title" : "Przedpremiera: Niesamowite przygody skarpetek 3. Ale Kosmos!",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Przedpremiera%3A+Niesamowite+przygody+skarpetek+3.+Ale+Kosmos%21/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Przedpremiera%3A+Niesamowite+przygody+skarpetek+3.+Ale+Kosmos%21",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Przedpremiera%3A+Niesamowite+przygody+skarpetek+3.+Ale+Kosmos%21"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : {
+      "krynica-zdroj" : "Czy skarpetka może zostać przebiegłym szeryfem, genialnym detektywem lub… międzygalaktycznym podróżnikiem? Oczywiście! W najnowszej odsłonie kinowych przygód ulubione urwisy z szuflady wyruszają na podbój nieznanych światów. Od pojedynków w samo południe, przez wybiegi mody, aż po rakiety startujące w stronę gwiazd – każda opowieść to zastrzyk pozytywnej energii i abstrakcyjnego humoru, który rozbawi do łez zarówno dzieci, jak i dorosłych."
+    },
     "shareCardPending" : false
   }, {
     "_id" : "fd9b654998ae29f8",
@@ -20155,7 +20117,8 @@
     "weightedRating" : 6.4,
     "synopsisByCity" : {
       "warszawa" : "Pierwszy film ukazujący mistyczną relację Karola Wojtyły z Matką Bożą. To Ona prowadziła Jana Pawła II przez wszystkie dni jego pontyfikatu. W filmie ukazane są uznane objawienia Maryjne, w których ważnym elementem jest aktualne zagrożenie ze strony Rosji. Od wypełnienia orędzi Matki Bożej zależy przyszłość świata.",
-      "kielce" : "Maryja. Matka Papieża to pierwszy film, który odsłania mistyczną więź między św. Janem Pawłem II a Matką Bożą. To opowieść o relacji, która była sercem jego życia i drogą do świętości. W filmie Maryja nie jest jedynie adresatką papieskiego „Totus Tuus”, lecz przede wszystkim prawdziwą Matką i przewodniczką nieustannie obecną w przełomowych i dramatycznych momentach XX wieku oraz w osobistych zmaganiach Karola Wojtyły. Szczególne miejsce zajmuje wątek objawień fatimskich i ujawnionej przez papieża III Tajemnicy Fatimskiej, odnoszącej się do zagrożenia ze strony Rosji i duchowej walki toczącej się w świecie. Maryja. Matka Papieża ukazuje wyraźnie, że duchowa droga św. Jana Pawła II wyrastała z głęboko zakorzenionej polskiej maryjności, z wiary narodu, który przez wieki zawierzał swoje losy Matce Bożej. Papież nie tylko z tej tradycji wyrósł, lecz także nadał jej nowy, uniwersalny wymiar, ukazując światu maryjność jako drogę zawierzenia, odwagi i nadziei."
+      "kielce" : "Maryja. Matka Papieża to pierwszy film, który odsłania mistyczną więź między św. Janem Pawłem II a Matką Bożą. To opowieść o relacji, która była sercem jego życia i drogą do świętości. W filmie Maryja nie jest jedynie adresatką papieskiego „Totus Tuus”, lecz przede wszystkim prawdziwą Matką i przewodniczką nieustannie obecną w przełomowych i dramatycznych momentach XX wieku oraz w osobistych zmaganiach Karola Wojtyły. Szczególne miejsce zajmuje wątek objawień fatimskich i ujawnionej przez papieża III Tajemnicy Fatimskiej, odnoszącej się do zagrożenia ze strony Rosji i duchowej walki toczącej się w świecie. Maryja. Matka Papieża ukazuje wyraźnie, że duchowa droga św. Jana Pawła II wyrastała z głęboko zakorzenionej polskiej maryjności, z wiary narodu, który przez wieki zawierzał swoje losy Matce Bożej. Papież nie tylko z tej tradycji wyrósł, lecz także nadał jej nowy, uniwersalny wymiar, ukazując światu maryjność jako drogę zawierzenia, odwagi i nadziei.",
+      "swidnica" : "Pierwszy film ukazujący mistyczną relację Karola Wojtyły z Matką Bożą. To Ona prowadziła Jana Pawła II przez wszystkie dni jego pontyfikatu. W filmie ukazane są uznane objawienia Maryjne, w których ważnym elementem jest aktualne zagrożenie ze strony Rosji. Od wypełnienia orędzi Matki Bożej zależy przyszłość świata."
     },
     "ageRating" : "13",
     "shareCardPending" : false
@@ -33654,18 +33617,6 @@
     } ],
     "listingKeys" : [ "N\u0000Cinema City Gliwice\u0000https://www.cinema-city.pl/filmy/niesamowite-przygody-skarpetek/7251d2r\u0000Niesamowite przygody skarpetek" ]
   }, {
-    "_id" : "f10650928cfa3f36|jastrzebie-zdroj|Centrum",
-    "filmId" : "f10650928cfa3f36",
-    "city" : "jastrzebie-zdroj",
-    "cinema" : "Centrum",
-    "filmUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/kopciuszek-62541",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-16T10:00:00",
-      "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/kopciuszek-62541/628449-bilety-na-spektakl",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Centrum\u0000https://ekobilet.pl/kino-centrum-jastrzebiezdrj/kopciuszek-62541\u0000Kopciuszek" ]
-  }, {
     "_id" : "f1075a183d988106|tczew|Żuławski Ośrodek Kultury",
     "filmId" : "f1075a183d988106",
     "city" : "tczew",
@@ -37659,9 +37610,9 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-10T17:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/diabel-ubiera-sie-u-prady-2--2d-napisy-62358/629434-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     } ],
-    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/diabel-ubiera-sie-u-prady-2--2d-napisy-62358\u0000Diabeł ubiera się u Prady 2" ]
+    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/diabel-ubiera-sie-u-prady-2--2d-napisy-62358\u0000Diabeł ubiera się u Prady 2 - 2D napisy" ]
   }, {
     "_id" : "f15ec75f88ed98ac|szczecin|Helios Outlet Park",
     "filmId" : "f15ec75f88ed98ac",
@@ -40502,29 +40453,29 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-12T10:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/david-2d-dubb-62672/629373-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-13T10:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/david-2d-dubb-62672/629435-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-14T10:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/david-2d-dubb-62672/629436-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-15T10:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/david-2d-dubb-62672/629437-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-16T10:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/david-2d-dubb-62672/629438-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-17T10:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/david-2d-dubb-62672/629439-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     } ],
-    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/david-2d-dubb-62672\u0000David" ]
+    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/david-2d-dubb-62672\u0000David 2D dubb" ]
   }, {
     "_id" : "f1fd6bf686658a90|warszawa|Kino Wisła",
     "filmId" : "f1fd6bf686658a90",
@@ -42527,13 +42478,13 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-10T16:00:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/kurozajac-i-swiatynia-swistaka-2d-dubb-62713/630236-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-11T16:00:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/kurozajac-i-swiatynia-swistaka-2d-dubb-62713/630237-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     } ],
-    "listingKeys" : [ "N\u0000Centrum\u0000https://ekobilet.pl/kino-centrum-jastrzebiezdrj/kurozajac-i-swiatynia-swistaka-2d-dubb-62713\u0000Kurozając i świątynia Świstaka" ]
+    "listingKeys" : [ "N\u0000Centrum\u0000https://ekobilet.pl/kino-centrum-jastrzebiezdrj/kurozajac-i-swiatynia-swistaka-2d-dubb-62713\u0000Kurozając i świątynia Świstaka 2D dubb" ]
   }, {
     "_id" : "f2ccdedef6559607|katowice|Cinema City Punkt 44",
     "filmId" : "f2ccdedef6559607",
@@ -43051,9 +43002,9 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-10T10:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/kurozajac-i-swiatynia-swistaka-2d-dubb-62354/627200-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     } ],
-    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/kurozajac-i-swiatynia-swistaka-2d-dubb-62354\u0000Kurozając i świątynia Świstaka" ]
+    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/kurozajac-i-swiatynia-swistaka-2d-dubb-62354\u0000Kurozając i świątynia Świstaka 2D dubb" ]
   }, {
     "_id" : "f2ccdedef6559607|szczecin|Helios Outlet Park",
     "filmId" : "f2ccdedef6559607",
@@ -49386,18 +49337,6 @@
     } ],
     "listingKeys" : [ "N\u0000Kino Muranów\u0000https://kinomuranow.pl/film/malujac-dusze-xx-wieku-pellizza-z-volpedo\u0000Malując duszę XX wieku: Pellizza z Volpedo" ]
   }, {
-    "_id" : "f41deb8df3367faf|swidnica|Kino MOKiS",
-    "filmId" : "f41deb8df3367faf",
-    "city" : "swidnica",
-    "cinema" : "Kino MOKiS",
-    "filmUrl" : "https://ekobilet.pl/mokis-bielawa/maryja-matka-papieza--2d-pl-62633",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-10T12:30:00",
-      "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/maryja-matka-papieza--2d-pl-62633/629822-bilety-na-film",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/maryja-matka-papieza--2d-pl-62633\u0000Maryja. Matka Papieża 2D PL" ]
-  }, {
     "_id" : "f4206c7a2d29e6e7|krakow|Kino Paradox",
     "filmId" : "f4206c7a2d29e6e7",
     "city" : "krakow",
@@ -51884,21 +51823,21 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-17T16:00:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/toy-story-5-2d-dubb-62882/630682-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-17T18:00:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/toy-story-5-2d-dubb-62882/630683-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-18T16:00:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/toy-story-5-2d-dubb-62882/630685-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-18T18:00:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/toy-story-5-2d-dubb-62882/630684-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     } ],
-    "listingKeys" : [ "N\u0000Centrum\u0000https://ekobilet.pl/kino-centrum-jastrzebiezdrj/toy-story-5-2d-dubb-62882\u0000Toy Story 5" ]
+    "listingKeys" : [ "N\u0000Centrum\u0000https://ekobilet.pl/kino-centrum-jastrzebiezdrj/toy-story-5-2d-dubb-62882\u0000Toy Story 5 2D dubb" ]
   }, {
     "_id" : "f43cfaf264dae97c|jastrzebie-zdroj|Teatr Elektryczny",
     "filmId" : "f43cfaf264dae97c",
@@ -59443,121 +59382,121 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-19T15:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-premiera-2d-dubb-62635/629378-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-19T17:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-premiera-2d-dubb-62635/629416-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-20T15:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-premiera-2d-dubb-62635/629406-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-20T17:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-premiera-2d-dubb-62635/629407-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-21T15:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-premiera-2d-dubb-62635/629408-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-21T17:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-premiera-2d-dubb-62635/629409-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-22T15:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-premiera-2d-dubb-62635/629410-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-22T17:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-premiera-2d-dubb-62635/629411-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-23T15:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-premiera-2d-dubb-62635/629412-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-23T17:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-premiera-2d-dubb-62635/629413-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-24T15:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-premiera-2d-dubb-62635/629414-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-24T17:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-premiera-2d-dubb-62635/629415-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-26T10:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-2d-dubb-62635/629388-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-26T15:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-2d-dubb-62635/629389-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-26T17:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-2d-dubb-62635/629390-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-27T10:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-2d-dubb-62635/629391-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-27T15:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-2d-dubb-62635/629392-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-27T17:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-2d-dubb-62635/629393-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-28T10:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-2d-dubb-62635/629394-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-28T15:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-2d-dubb-62635/629395-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-28T17:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-2d-dubb-62635/629396-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-29T10:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-2d-dubb-62635/629397-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-29T15:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-2d-dubb-62635/629398-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-29T17:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-2d-dubb-62635/629399-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-30T10:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-2d-dubb-62635/629400-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-30T15:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-2d-dubb-62635/629401-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-30T17:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-2d-dubb-62635/629402-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-07-01T10:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-2d-dubb-62635/629403-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-07-01T15:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/toy-story-5-2d-dubb-62635/629404-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     } ],
-    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/toy-story-5-premiera-2d-dubb-62635\u0000Toy Story 5" ]
+    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/toy-story-5-premiera-2d-dubb-62635\u0000Toy Story 5 2D dubb" ]
   }, {
     "_id" : "f43cfaf264dae97c|swidnik|Kino Lewart",
     "filmId" : "f43cfaf264dae97c",
@@ -89614,13 +89553,13 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-10T18:00:00",
       "bookingUrl" : "https://ekobilet.pl/opolskielamy/kopnelabym-cie-gdybym-mogla-2d-napisy-62222/630526-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-11T18:00:00",
       "bookingUrl" : "https://ekobilet.pl/opolskielamy/kopnelabym-cie-gdybym-mogla-2d-napisy-62222/630527-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     } ],
-    "listingKeys" : [ "N\u0000Kino Meduza\u0000https://ekobilet.pl/opolskielamy/kopnelabym-cie-gdybym-mogla-2d-napisy-62222\u0000Kopnęłabym cię, gdybym mogła" ]
+    "listingKeys" : [ "N\u0000Kino Meduza\u0000https://ekobilet.pl/opolskielamy/kopnelabym-cie-gdybym-mogla-2d-napisy-62222\u0000Kopnęłabym cię, gdybym mogła 2D napisy" ]
   }, {
     "_id" : "f63cab9285191fbd|poznan|Kino Malta Charlie Monroe",
     "filmId" : "f63cab9285191fbd",
@@ -92074,13 +92013,13 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-10T17:30:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/mandalorian-i-grogu-2d-dubb-62636/630242-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-11T17:30:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/mandalorian-i-grogu-2d-dubb-62636/630243-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     } ],
-    "listingKeys" : [ "N\u0000Centrum\u0000https://ekobilet.pl/kino-centrum-jastrzebiezdrj/mandalorian-i-grogu-2d-dubb-62636\u0000Mandalorian i Grogu" ]
+    "listingKeys" : [ "N\u0000Centrum\u0000https://ekobilet.pl/kino-centrum-jastrzebiezdrj/mandalorian-i-grogu-2d-dubb-62636\u0000Mandalorian i Grogu 2D dubb" ]
   }, {
     "_id" : "f68920d7572b4f7c|jelenia-gora|Helios Jelenia Góra",
     "filmId" : "f68920d7572b4f7c",
@@ -96715,9 +96654,9 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-10T15:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/mandalorian-i-grogu-2d-dubb-62316/629429-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     } ],
-    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/mandalorian-i-grogu-2d-dubb-62316\u0000Mandalorian i Grogu" ]
+    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/mandalorian-i-grogu-2d-dubb-62316\u0000Mandalorian i Grogu 2D dubb" ]
   }, {
     "_id" : "f68920d7572b4f7c|swiebodzin|Kino ŚDK",
     "filmId" : "f68920d7572b4f7c",
@@ -131763,53 +131702,53 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-12T17:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/dzien-objawienia-premiera-2d-napisy-62634/629377-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-13T17:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/dzien-objawienia-premiera-2d-napisy-62634/629488-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-14T17:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/dzien-objawienia-premiera-2d-napisy-62634/629489-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-15T17:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/dzien-objawienia-premiera-2d-napisy-62634/629490-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-16T17:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/dzien-objawienia-premiera-2d-napisy-62634/629491-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-17T17:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/dzien-objawienia-premiera-2d-napisy-62634/629492-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-19T19:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/dzien-objawienia-2d-napisy-62634/629380-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-20T19:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/dzien-objawienia-2d-napisy-62634/629381-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-21T19:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/dzien-objawienia-2d-napisy-62634/629382-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-22T19:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/dzien-objawienia-2d-napisy-62634/629383-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-23T19:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/dzien-objawienia-2d-napisy-62634/629384-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-24T19:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/dzien-objawienia-2d-napisy-62634/629385-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     } ],
-    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/dzien-objawienia-premiera-2d-napisy-62634\u0000Dzień Objawienia" ]
+    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/dzien-objawienia-premiera-2d-napisy-62634\u0000Dzień Objawienia 2D napisy" ]
   }, {
     "_id" : "f983bbf0f521d075|swidnik|Kino Lewart",
     "filmId" : "f983bbf0f521d075",
@@ -147073,25 +147012,25 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-26T20:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/straszny-film-2d-napisy-62716/629585-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-27T20:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/straszny-film-2d-napisy-62716/629695-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-28T20:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/straszny-film-2d-napisy-62716/629696-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-29T20:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/straszny-film-2d-napisy-62716/629697-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-30T20:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/straszny-film-2d-napisy-62716/629698-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     } ],
-    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/straszny-film-2d-napisy-62716\u0000Straszny film" ]
+    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/straszny-film-2d-napisy-62716\u0000Straszny film 2D napisy" ]
   }, {
     "_id" : "f9ee904a88e18fbe|swidnik|Kino Lewart",
     "filmId" : "f9ee904a88e18fbe",
@@ -151209,29 +151148,29 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-26T12:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/poslani-2d-lektor-62692/629379-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "LEK" ]
     }, {
       "dateTime" : "2026-06-27T12:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/poslani-2d-lektor-62692/629496-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "LEK" ]
     }, {
       "dateTime" : "2026-06-28T12:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/poslani-2d-lektor-62692/629497-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "LEK" ]
     }, {
       "dateTime" : "2026-06-29T12:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/poslani-2d-lektor-62692/629498-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "LEK" ]
     }, {
       "dateTime" : "2026-06-30T12:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/poslani-2d-lektor-62692/629499-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "LEK" ]
     }, {
       "dateTime" : "2026-07-01T12:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/poslani-2d-lektor-62692/629500-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "LEK" ]
     } ],
-    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/poslani-2d-lektor-62692\u0000Posłani" ]
+    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/poslani-2d-lektor-62692\u0000Posłani 2D lektor" ]
   }, {
     "_id" : "fa046e3ce7a9010d|szczecin|Helios Outlet Park",
     "filmId" : "fa046e3ce7a9010d",
@@ -155854,13 +155793,13 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-10T17:00:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/tom-i-jerry-przygoda-w-muzeum--2d--dubbing-62712/630254-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-11T17:00:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/tom-i-jerry-przygoda-w-muzeum--2d--dubbing-62712/630255-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     } ],
-    "listingKeys" : [ "N\u0000Centrum\u0000https://ekobilet.pl/kino-centrum-jastrzebiezdrj/tom-i-jerry-przygoda-w-muzeum--2d--dubbing-62712\u0000Tom i Jerry: Przygoda w muzeum" ]
+    "listingKeys" : [ "N\u0000Centrum\u0000https://ekobilet.pl/kino-centrum-jastrzebiezdrj/tom-i-jerry-przygoda-w-muzeum--2d--dubbing-62712\u0000Tom i Jerry: Przygoda w muzeum | 2D | Dubbing" ]
   }, {
     "_id" : "fa8fd9c2e0cde60f|jelenia-gora|Helios Jelenia Góra",
     "filmId" : "fa8fd9c2e0cde60f",
@@ -157019,37 +156958,37 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-10T16:15:00",
       "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/tom-i-jerry-przygoda-w-muzeum--2d--dubbing-62491/630488-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-11T16:15:00",
       "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/tom-i-jerry-przygoda-w-muzeum--2d--dubbing-62491/630487-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-12T16:15:00",
       "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/tom-i-jerry-przygoda-w-muzeum--2d--dubbing-62491/630892-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-13T16:15:00",
       "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/tom-i-jerry-przygoda-w-muzeum--2d--dubbing-62491/630891-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-14T16:15:00",
       "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/tom-i-jerry-przygoda-w-muzeum--2d--dubbing-62491/630890-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-16T16:15:00",
       "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/tom-i-jerry-przygoda-w-muzeum--2d--dubbing-62491/630889-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-17T16:15:00",
       "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/tom-i-jerry-przygoda-w-muzeum--2d--dubbing-62491/630888-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-18T16:15:00",
       "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/tom-i-jerry-przygoda-w-muzeum--2d--dubbing-62491/630887-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     } ],
-    "listingKeys" : [ "N\u0000Jaworzyna\u0000https://ekobilet.pl/kino-jaworzyna/tom-i-jerry-przygoda-w-muzeum--2d--dubbing-62491\u0000Tom i Jerry: Przygoda w muzeum" ]
+    "listingKeys" : [ "N\u0000Jaworzyna\u0000https://ekobilet.pl/kino-jaworzyna/tom-i-jerry-przygoda-w-muzeum--2d--dubbing-62491\u0000Tom i Jerry: Przygoda w muzeum | 2D | Dubbing" ]
   }, {
     "_id" : "fa8fd9c2e0cde60f|kutno|Kino KDK",
     "filmId" : "fa8fd9c2e0cde60f",
@@ -159216,53 +159155,53 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-12T15:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/tom-i-jerry-przygoda-w-muzeum-2d-dubb-62691/629376-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-13T15:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/tom-i-jerry-przygoda-w-muzeum-2d-dubb-62691/629477-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-14T15:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/tom-i-jerry-przygoda-w-muzeum-2d-dubb-62691/629478-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-15T15:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/tom-i-jerry-przygoda-w-muzeum-2d-dubb-62691/629479-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-16T15:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/tom-i-jerry-przygoda-w-muzeum-2d-dubb-62691/629480-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-17T15:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/tom-i-jerry-przygoda-w-muzeum-2d-dubb-62691/629481-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-19T10:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/tom-i-jerry-przygoda-w-muzeum-2d-dubb-62691/629482-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-20T10:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/tom-i-jerry-przygoda-w-muzeum-2d-dubb-62691/629483-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-21T10:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/tom-i-jerry-przygoda-w-muzeum-2d-dubb-62691/629484-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-22T10:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/tom-i-jerry-przygoda-w-muzeum-2d-dubb-62691/629485-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-23T10:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/tom-i-jerry-przygoda-w-muzeum-2d-dubb-62691/629486-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-24T10:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/tom-i-jerry-przygoda-w-muzeum-2d-dubb-62691/629487-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     } ],
-    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/tom-i-jerry-przygoda-w-muzeum-2d-dubb-62691\u0000Tom i Jerry: Przygoda w muzeum" ]
+    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/tom-i-jerry-przygoda-w-muzeum-2d-dubb-62691\u0000Tom i Jerry: Przygoda w muzeum 2D dubb" ]
   }, {
     "_id" : "fa8fd9c2e0cde60f|swidnik|Kino Lewart",
     "filmId" : "fa8fd9c2e0cde60f",
@@ -169153,25 +169092,25 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-12T17:45:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/drzewo-magii--2d--dubbing-62879/630681-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-13T17:45:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/drzewo-magii--2d--dubbing-62879/630699-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-14T17:45:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/drzewo-magii--2d--dubbing-62879/630700-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-15T17:45:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/drzewo-magii--2d--dubbing-62879/630701-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-16T17:45:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/drzewo-magii--2d--dubbing-62879/630702-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     } ],
-    "listingKeys" : [ "N\u0000Centrum\u0000https://ekobilet.pl/kino-centrum-jastrzebiezdrj/drzewo-magii--2d--dubbing-62879\u0000Drzewo magii" ]
+    "listingKeys" : [ "N\u0000Centrum\u0000https://ekobilet.pl/kino-centrum-jastrzebiezdrj/drzewo-magii--2d--dubbing-62879\u0000Drzewo magii | 2D | Dubbing" ]
   }, {
     "_id" : "fba5ca9e1f6601c6|jelenia-gora|Helios Jelenia Góra",
     "filmId" : "fba5ca9e1f6601c6",
@@ -183371,46 +183310,6 @@
     } ],
     "listingKeys" : [ "N\u0000Kino Muranów\u0000https://kinomuranow.pl/film/ruchomy-zamek-hauru\u0000Ruchomy zamek Hauru" ]
   }, {
-    "_id" : "fd1579e8a2c3c7bc|krynica-zdroj|Jaworzyna",
-    "filmId" : "fd1579e8a2c3c7bc",
-    "city" : "krynica-zdroj",
-    "cinema" : "Jaworzyna",
-    "filmUrl" : "https://ekobilet.pl/kino-jaworzyna/przedpremiera-niesamowite-przygody-skarpetek-3-ale-kosmos--2d--pl-62693",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-10T14:30:00",
-      "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/przedpremiera-niesamowite-przygody-skarpetek-3-ale-kosmos--2d--pl-62693/630485-bilety-na-film",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-11T14:30:00",
-      "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/przedpremiera-niesamowite-przygody-skarpetek-3-ale-kosmos--2d--pl-62693/630486-bilety-na-film",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-12T14:30:00",
-      "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/przedpremiera-niesamowite-przygody-skarpetek-3-ale-kosmos--2d--pl-62693/630881-bilety-na-film",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-13T14:30:00",
-      "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/przedpremiera-niesamowite-przygody-skarpetek-3-ale-kosmos--2d--pl-62693/630882-bilety-na-film",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-14T14:30:00",
-      "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/przedpremiera-niesamowite-przygody-skarpetek-3-ale-kosmos--2d--pl-62693/630883-bilety-na-film",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-16T14:30:00",
-      "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/przedpremiera-niesamowite-przygody-skarpetek-3-ale-kosmos--2d--pl-62693/630884-bilety-na-film",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-17T14:30:00",
-      "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/przedpremiera-niesamowite-przygody-skarpetek-3-ale-kosmos--2d--pl-62693/630885-bilety-na-film",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-18T14:30:00",
-      "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/przedpremiera-niesamowite-przygody-skarpetek-3-ale-kosmos--2d--pl-62693/630886-bilety-na-film",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Jaworzyna\u0000https://ekobilet.pl/kino-jaworzyna/przedpremiera-niesamowite-przygody-skarpetek-3-ale-kosmos--2d--pl-62693\u0000Przedpremiera: Niesamowite przygody skarpetek 3. Ale Kosmos! | 2D | PL" ]
-  }, {
     "_id" : "fd18091e18502a42|gliwice|Kino Amok",
     "filmId" : "fd18091e18502a42",
     "city" : "gliwice",
@@ -192931,6 +192830,46 @@
     } ],
     "listingKeys" : [ "N\u0000KinoPort\u0000https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/\u0000Proces" ]
   }, {
+    "_id" : "fd840893683f05e7|krynica-zdroj|Jaworzyna",
+    "filmId" : "fd840893683f05e7",
+    "city" : "krynica-zdroj",
+    "cinema" : "Jaworzyna",
+    "filmUrl" : "https://ekobilet.pl/kino-jaworzyna/przedpremiera-niesamowite-przygody-skarpetek-3-ale-kosmos--2d--pl-62693",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-10T14:30:00",
+      "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/przedpremiera-niesamowite-przygody-skarpetek-3-ale-kosmos--2d--pl-62693/630485-bilety-na-film",
+      "format" : [ "2D" ]
+    }, {
+      "dateTime" : "2026-06-11T14:30:00",
+      "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/przedpremiera-niesamowite-przygody-skarpetek-3-ale-kosmos--2d--pl-62693/630486-bilety-na-film",
+      "format" : [ "2D" ]
+    }, {
+      "dateTime" : "2026-06-12T14:30:00",
+      "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/przedpremiera-niesamowite-przygody-skarpetek-3-ale-kosmos--2d--pl-62693/630881-bilety-na-film",
+      "format" : [ "2D" ]
+    }, {
+      "dateTime" : "2026-06-13T14:30:00",
+      "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/przedpremiera-niesamowite-przygody-skarpetek-3-ale-kosmos--2d--pl-62693/630882-bilety-na-film",
+      "format" : [ "2D" ]
+    }, {
+      "dateTime" : "2026-06-14T14:30:00",
+      "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/przedpremiera-niesamowite-przygody-skarpetek-3-ale-kosmos--2d--pl-62693/630883-bilety-na-film",
+      "format" : [ "2D" ]
+    }, {
+      "dateTime" : "2026-06-16T14:30:00",
+      "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/przedpremiera-niesamowite-przygody-skarpetek-3-ale-kosmos--2d--pl-62693/630884-bilety-na-film",
+      "format" : [ "2D" ]
+    }, {
+      "dateTime" : "2026-06-17T14:30:00",
+      "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/przedpremiera-niesamowite-przygody-skarpetek-3-ale-kosmos--2d--pl-62693/630885-bilety-na-film",
+      "format" : [ "2D" ]
+    }, {
+      "dateTime" : "2026-06-18T14:30:00",
+      "bookingUrl" : "https://ekobilet.pl/kino-jaworzyna/przedpremiera-niesamowite-przygody-skarpetek-3-ale-kosmos--2d--pl-62693/630886-bilety-na-film",
+      "format" : [ "2D" ]
+    } ],
+    "listingKeys" : [ "N\u0000Jaworzyna\u0000https://ekobilet.pl/kino-jaworzyna/przedpremiera-niesamowite-przygody-skarpetek-3-ale-kosmos--2d--pl-62693\u0000Przedpremiera: Niesamowite przygody skarpetek 3. Ale Kosmos! | 2D | PL" ]
+  }, {
     "_id" : "fd9b654998ae29f8|warszawa|Kinoteka",
     "filmId" : "fd9b654998ae29f8",
     "city" : "warszawa",
@@ -194503,6 +194442,18 @@
     } ],
     "listingKeys" : [ "N\u0000Kino Bajka\u0000https://kinobajka.pl/film_do_repertuaru/maryja-matka-papieza/\u0000Maryja. Matka Papieża" ]
   }, {
+    "_id" : "fe23e41bedb2d7a2|swidnica|Kino MOKiS",
+    "filmId" : "fe23e41bedb2d7a2",
+    "city" : "swidnica",
+    "cinema" : "Kino MOKiS",
+    "filmUrl" : "https://ekobilet.pl/mokis-bielawa/maryja-matka-papieza--2d-pl-62633",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-10T12:30:00",
+      "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/maryja-matka-papieza--2d-pl-62633/629822-bilety-na-film",
+      "format" : [ "2D" ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/maryja-matka-papieza--2d-pl-62633\u0000Maryja. Matka Papieża 2D PL" ]
+  }, {
     "_id" : "fe23e41bedb2d7a2|warszawa|Kino Wisła",
     "filmId" : "fe23e41bedb2d7a2",
     "city" : "warszawa",
@@ -195597,13 +195548,13 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-10T19:00:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/milosc-w-czasach-apokalipsy-2d-napisy-62793/630259-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-11T19:00:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/milosc-w-czasach-apokalipsy-2d-napisy-62793/630260-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     } ],
-    "listingKeys" : [ "N\u0000Centrum\u0000https://ekobilet.pl/kino-centrum-jastrzebiezdrj/milosc-w-czasach-apokalipsy-2d-napisy-62793\u0000Miłość w czasach apokalipsy" ]
+    "listingKeys" : [ "N\u0000Centrum\u0000https://ekobilet.pl/kino-centrum-jastrzebiezdrj/milosc-w-czasach-apokalipsy-2d-napisy-62793\u0000Miłość w czasach apokalipsy 2D napisy" ]
   }, {
     "_id" : "feb57a2d0c3ee401|swidnica|Kino MOKiS",
     "filmId" : "feb57a2d0c3ee401",
@@ -195613,77 +195564,77 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-12T12:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/milosc-w-czasach-apokalipsy-2d-napisy-62690/629375-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-12T20:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/milosc-w-czasach-apokalipsy-2d-napisy-62690/629470-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-13T12:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/milosc-w-czasach-apokalipsy-2d-napisy-62690/629457-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-13T20:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/milosc-w-czasach-apokalipsy-2d-napisy-62690/629458-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-14T12:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/milosc-w-czasach-apokalipsy-2d-napisy-62690/629459-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-14T20:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/milosc-w-czasach-apokalipsy-2d-napisy-62690/629460-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-15T12:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/milosc-w-czasach-apokalipsy-2d-napisy-62690/629461-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-15T20:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/milosc-w-czasach-apokalipsy-2d-napisy-62690/629462-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-16T12:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/milosc-w-czasach-apokalipsy-2d-napisy-62690/629463-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-16T20:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/milosc-w-czasach-apokalipsy-2d-napisy-62690/629464-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-17T12:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/milosc-w-czasach-apokalipsy-2d-napisy-62690/629465-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-17T20:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/milosc-w-czasach-apokalipsy-2d-napisy-62690/629466-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-19T12:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/milosc-w-czasach-apokalipsy-2d-napisy-62690/629467-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-20T12:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/milosc-w-czasach-apokalipsy-2d-napisy-62690/629472-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-21T12:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/milosc-w-czasach-apokalipsy-2d-napisy-62690/629473-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-22T12:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/milosc-w-czasach-apokalipsy-2d-napisy-62690/629474-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-23T12:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/milosc-w-czasach-apokalipsy-2d-napisy-62690/629475-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-24T12:30:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/milosc-w-czasach-apokalipsy-2d-napisy-62690/629476-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     } ],
-    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/milosc-w-czasach-apokalipsy-2d-napisy-62690\u0000Miłość w czasach apokalipsy" ]
+    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/milosc-w-czasach-apokalipsy-2d-napisy-62690\u0000Miłość w czasach apokalipsy 2D napisy" ]
   }, {
     "_id" : "feb57a2d0c3ee401|trojmiasto|Kino Spektrum",
     "filmId" : "feb57a2d0c3ee401",
@@ -195872,25 +195823,25 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-12T16:00:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/niesamowita-historia-mumbo-jumbo-2d-dub-62878/630680-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-13T16:00:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/niesamowita-historia-mumbo-jumbo-2d-dub-62878/630690-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-14T16:00:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/niesamowita-historia-mumbo-jumbo-2d-dub-62878/630691-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-15T16:00:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/niesamowita-historia-mumbo-jumbo-2d-dub-62878/630692-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     }, {
       "dateTime" : "2026-06-16T16:00:00",
       "bookingUrl" : "https://ekobilet.pl/kino-centrum-jastrzebiezdrj/niesamowita-historia-mumbo-jumbo-2d-dub-62878/630693-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "DUB" ]
     } ],
-    "listingKeys" : [ "N\u0000Centrum\u0000https://ekobilet.pl/kino-centrum-jastrzebiezdrj/niesamowita-historia-mumbo-jumbo-2d-dub-62878\u0000Niesamowita historia Mumbo Jumbo" ]
+    "listingKeys" : [ "N\u0000Centrum\u0000https://ekobilet.pl/kino-centrum-jastrzebiezdrj/niesamowita-historia-mumbo-jumbo-2d-dub-62878\u0000Niesamowita historia Mumbo Jumbo 2D DUB" ]
   }, {
     "_id" : "feb88969c63ea2d3|kedzierzyn-kozle|Kino Twierdza",
     "filmId" : "feb88969c63ea2d3",
@@ -197550,9 +197501,9 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-10T20:00:00",
       "bookingUrl" : "https://ekobilet.pl/mokis-bielawa/mortal-kombat-ii-2d-napisy-62632/629456-bilety-na-film",
-      "format" : [ ]
+      "format" : [ "2D", "NAP" ]
     } ],
-    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/mortal-kombat-ii-2d-napisy-62632\u0000Mortal Kombat II" ]
+    "listingKeys" : [ "N\u0000Kino MOKiS\u0000https://ekobilet.pl/mokis-bielawa/mortal-kombat-ii-2d-napisy-62632\u0000Mortal Kombat II 2D napisy" ]
   }, {
     "_id" : "ff45f3e5d7dd80ab|trojmiasto|Helios Forum",
     "filmId" : "ff45f3e5d7dd80ab",
