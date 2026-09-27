@@ -252,6 +252,12 @@ class CinemaScraperCatalog(
     // every ticket for the cinema and for the CKiS concert hall's film nights.
     KinoPolonez                 -> "https://biletyna.pl/Skierniewice/Kinoteatr-Polonez",
     KinoCKiSSkierniewice        -> "https://biletyna.pl/Skierniewice/Centrum-Kultury-i-Sztuki-Sala-koncertowa",
+    // Filmweb (3137 / 1532) had gone empty for both by 2026-09-27 while each kept
+    // selling its film nights on biletyna. CKiS Pruszków screens in the Centrum
+    // Dziedzictwa Kulturowego hall; Grajewo's "Dom Kultury" is the Grajewskie
+    // Centrum Kultury, whose page mixes films with concerts and plays.
+    KinoCKiSPruszkow            -> "https://biletyna.pl/Pruszkow/Sala-widowiskowa-Centrum-Dziedzictwa-Kulturowego",
+    KinoDomKulturyGrajewo       -> "https://biletyna.pl/Grajewo/Grajewskie-Centrum-Kultury",
     // Filmweb had fallen out of step with the box office for these six by
     // 2026-09-26 (one or two stray slots against a full biletyna week).
     KinoGiewont                 -> "https://biletyna.pl/Zakopane/Kino-Giewont",
@@ -690,7 +696,7 @@ class CinemaScraperCatalog(
     filmweb(1644, KinoCKZambrow),   // Zambrów
     filmweb(1743, KinoOstrovia),   // Ostrów Mazowiecka
     filmweb(2348, KinoWars),   // Wysokie Mazowieckie
-    filmweb(1532, KinoDomKulturyGrajewo),   // Grajewo
+    biletyna(KinoDomKulturyGrajewo),   // Grajewo
   )
   private val pulawyScrapers = Seq(
     filmweb(311, KinoSybilla),   // Puławy
@@ -2136,7 +2142,7 @@ class CinemaScraperCatalog(
       biletyna(KinoKulturaWolomin),   // Wołomin
       filmweb(2079, KinoTeatrKurtyna),   // Sulejówek
       multikino("0039", MultikinoPruszkow),   // Pruszków
-      filmweb(3137, KinoCKiSPruszkow),   // Pruszków
+      biletyna(KinoCKiSPruszkow),   // Pruszków
       helios(HeliosNuxt.Legionowo),   // Legionowo
       filmweb(2340, KinoOaza),   // Otwock
     ),

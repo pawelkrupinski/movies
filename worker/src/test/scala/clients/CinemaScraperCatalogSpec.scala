@@ -1,7 +1,7 @@
 package clients
 
 import clients.tools.FakeHttpFetch
-import models.{City, Country, AdaKinoStudyjne, KinoKulturaWolomin, KinoCentrumWadowice, KinoLen, KinoApolloDzialdowo, KinoZaRogiemChmielno, KinoCKiSSkierniewice, KinoPolonez, KinoZacheta, KinoKoneckieCentrumKultury, KinoBaszta, KinoNadWarta, KinoEcho, KinoMewaBudzyn, UsRoster, HeliosSiedlce, KinoGiewont, KinoMuranow, KinoWCKWalcz, MultikinoPruszkow, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
+import models.{City, Country, AdaKinoStudyjne, KinoCKiSPruszkow, KinoDomKulturyGrajewo, KinoKulturaWolomin, KinoCentrumWadowice, KinoLen, KinoApolloDzialdowo, KinoZaRogiemChmielno, KinoCKiSSkierniewice, KinoPolonez, KinoZacheta, KinoKoneckieCentrumKultury, KinoBaszta, KinoNadWarta, KinoEcho, KinoMewaBudzyn, UsRoster, HeliosSiedlce, KinoGiewont, KinoMuranow, KinoWCKWalcz, MultikinoPruszkow, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -136,6 +136,27 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       movies.map(_.cinema).toSet shouldBe Set(cinema)
       val film = movies.find(_.movie.title.toLowerCase.contains(title)).value
       film.showtimes.find(_.dateTime == when).value.bookingUrl.value shouldBe booking
+    }
+
+  // Two venues Filmweb (3137 / 1532) had gone empty for by 2026-09-27 — three
+  // straight empty scrapes — while each kept selling its film nights on
+  // biletyna. CKiS Pruszków's page is past the place page's 50-event cap, so
+  // its later screenings come off the paginated feed; Grajewo's page mixes the
+  // films with concerts and plays that must stay out. Fixtures captured live
+  // 2026-09-27.
+  private val emptyFilmwebVenues = Seq(
+    (KinoCKiSPruszkow, "Lalka (2026)", java.time.LocalDateTime.of(2026, 10, 30, 19, 0),
+      "https://biletyna.pl/film/Lalka-2026?eid=707060#opis"),
+    (KinoDomKulturyGrajewo, "Niebo nad Normandią", java.time.LocalDateTime.of(2026, 10, 11, 19, 0),
+      "https://biletyna.pl/film/Niebo-nad-Normandia?eid=706160#opis"),
+  )
+  for ((cinema, title, when, booking) <- emptyFilmwebVenues)
+    it should s"route ${cinema.displayName} through its biletyna place page, not an empty Filmweb" in {
+      val movies = catalog(biletyna = "biletyna-filmweb-empty").all.find(_.cinema == cinema).value.fetch()
+      movies.map(_.cinema).toSet shouldBe Set(cinema)
+      movies.find(_.movie.title == title).value.showtimes
+        .find(_.dateTime == when).value.bookingUrl.value shouldBe booking
+      all (movies.flatMap(_.showtimes).flatMap(_.bookingUrl)) should not include "/koncert/"
     }
 
   // Kino Fenomen (WDK) is iframe639.biletyna.pl — a biletyna host whose per-film

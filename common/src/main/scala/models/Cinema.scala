@@ -568,7 +568,7 @@ case object HeliosWolomin extends Cinema("Helios Wołomin", "Helios Wołomin")  
 case object KinoKulturaWolomin extends Cinema("Kino Kultura Wołomin", "Kultura Wołomin")   // Wołomin — biletyna Kino-Kultura
 case object KinoTeatrKurtyna extends Cinema("Kino-Teatr Kurtyna", "Kurtyna")   // Sulejówek — filmweb 2079
 case object MultikinoPruszkow extends Cinema("Multikino Pruszków", "Multikino Pruszków")   // Pruszków — Multikino API
-case object KinoCKiSPruszkow extends Cinema("Kino CKiS Pruszków", "CKiS Pruszków")   // Pruszków — filmweb 3137
+case object KinoCKiSPruszkow extends Cinema("Kino CKiS Pruszków", "CKiS Pruszków")   // Pruszków — biletyna CDK Sala widowiskowa
 case object HeliosLegionowo extends Cinema("Helios Legionowo", "Helios Legionowo")   // Legionowo — Helios REST
 case object KinoOaza extends Cinema("Kino Oaza", "Oaza")   // Otwock — filmweb 2340
 // lodz
@@ -696,7 +696,7 @@ case object KinoJantar extends Cinema("Kino Jantar", "Jantar")   // Ostrołęka 
 case object KinoCKZambrow extends Cinema("Kino Centrum Kultury Zambrów", "Zambrów")   // Zambrów — filmweb 1644
 case object KinoOstrovia extends Cinema("Kino Ostrovia", "Ostrovia")   // Ostrów Mazowiecka — filmweb 1743
 case object KinoWars extends Cinema("Kino Wars", "Wars")   // Wysokie Mazowieckie — filmweb 2348
-case object KinoDomKulturyGrajewo extends Cinema("Kino Dom Kultury Grajewo", "Grajewo")   // Grajewo — filmweb 1532
+case object KinoDomKulturyGrajewo extends Cinema("Kino Dom Kultury Grajewo", "Grajewo")   // Grajewo — biletyna Grajewskie Centrum Kultury
 // pulawy
 case object KinoSybilla extends Cinema("Kino Sybilla", "Sybilla")   // Puławy — filmweb 311
 case object KinoRenesans extends Cinema("Kino Renesans", "Renesans")   // Ryki — filmweb 2089
