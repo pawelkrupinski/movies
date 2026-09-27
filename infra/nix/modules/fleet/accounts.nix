@@ -24,6 +24,7 @@ let
   # delete the old line -- because the deploy that removes a key is applied by that same key.
   operatorKeys = [
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJew5N81VkQghbNbGSpGXk5LPsZG3TkWRwFtPo5lrVVg pawel.krupinski@gmail.com"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG0cBPBe5YH/lkLZ4cnGnmO/XpMQiDS7IScDZWHU2TCn pawel.krupinski@gmail.com interim 2026-09-27 (post-incident)"
   ];
 in
 {
