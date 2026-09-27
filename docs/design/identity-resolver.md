@@ -451,6 +451,16 @@ title's group beside the listing's own, in the resolver and the calibration alik
 "Mistyczka 2D PL" is a bare "Mistyczka", and without them it would take the more popular namesake.
 No word list: a new venue's decoration is learned by the next refit.
 
+Measured together (recording 36224654409, production-faithful house root, against
+`m-head2-house`): PL +62 listings on the old pipeline's film (≈43 by identical-title sharing:
+"Vincent. Legenda oceanu" ×29, "Vivaldi i ja" ×15; ≈19 by decorations: "100 dni: Misja Zeus 2D PL",
+"Mistyczka 2D PL", "Róża |DKF", "… Edukacja Młode Horyzonty", …) plus 3 "Vivaldi i ja" programme
+spellings moved onto Primavera off nothing or Stabat Mater; UK +34 ("(4DX Rewind) Shrek"); DE, ES
+and US unchanged; no new wrong match, no right match lost, 0 cannot-link violations. Not reached: a
+decoration seen around one film only ("Girls Like Girls Unlimited Screening", "Verity Early
+Access") is not learned, and the PL André Rieu spellings still relate to the English-titled record
+only by `overlap`.
+
 ---
 
 ## 8. Migration plan
