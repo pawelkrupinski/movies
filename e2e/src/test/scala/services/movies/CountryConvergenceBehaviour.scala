@@ -404,13 +404,19 @@ abstract class CountryConvergenceBehaviour(
     // The identity resolver's per-listing query set (docs/design/identity-resolver.md §9): a
     // RECORDING leg asked for it files every answer into the tree it then pins and marks the tree;
     // a HERMETIC leg runs it whenever its tree carries that mark, and names each gap below — so
-    // every verdict leg enforces the phase-1 gate on a tree recorded with it, and a tree recorded
-    // before it existed is not failed for lacking it.
+    // every verdict leg enforces the phase-1 gate on a tree recorded with it, and neither a tree
+    // recorded before the sweep existed nor one recorded before the resolver's latest query change
+    // is failed for lacking what its recording was never asked.
     val treeRoot = java.nio.file.Paths.get(fixtureRoot.of(fixtureDirectory))
-    if (IdentityLookupSweep.runsIn(IdentityLookupSweep.enabledIn(configuration),
-        missingFixtures.isDefined, treeRoot)) {
-      info(s"${country.displayName}: identity resolver lookups — ${IdentityLookupSweep.over(w)}")
-      if (missingFixtures.isEmpty) IdentityLookupSweep.markRecorded(treeRoot)
+    val sweepRequested = IdentityLookupSweep.enabledIn(configuration)
+    if (IdentityLookupSweep.runsIn(sweepRequested, missingFixtures.isDefined, treeRoot)) {
+      val asked = scala.collection.mutable.ArrayBuffer.empty[String]
+      // Run because the tree is marked, a hermetic leg asks only what the tree's recording asked
+      // (`IdentityLookupSweep.RecordedMarker`), so a resolver query added since then is never a
+      // request of this leg. Asked for by name, it asks the whole set: that is the coverage check.
+      val recorded = if (sweepRequested || missingFixtures.isEmpty) None else IdentityLookupSweep.recordedIn(treeRoot)
+      info(s"${country.displayName}: identity resolver lookups — ${IdentityLookupSweep.over(w, asked += _, recorded)}")
+      if (missingFixtures.isEmpty) IdentityLookupSweep.markRecorded(treeRoot, asked)
     }
     info(s"${country.displayName}: " + missingFixtures.fold("RECORDING run — requests the tree lacks are fetched live and recorded")(
       m => s"HERMETIC run — ${m.size} request(s) the recorded tree could not answer"))

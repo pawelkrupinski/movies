@@ -20,34 +20,49 @@ import services.movies.TitleNormalizer
 object IdentityLookupSweep {
 
   final case class Summary(listings: Int, details: Int, detailsUnanswered: Int, queries: Int, queriesUnanswered: Int,
-                           films: Int, filmsUnanswered: Int) {
+                           films: Int, filmsUnanswered: Int, unrecorded: Int = 0) {
     override def toString: String =
       s"$listings listing(s): $details detail page(s) ($detailsUnanswered unanswered), $queries candidate quer(ies) " +
-        s"($queriesUnanswered unanswered), $films film record(s) ($filmsUnanswered unanswered)"
+        s"($queriesUnanswered unanswered), $films film record(s) ($filmsUnanswered unanswered)" +
+        (if (unrecorded > 0) s"; $unrecorded lookup(s) the tree was recorded without, not asked — the resolver's " +
+          "query set moved since the recording, and the next recording files them" else "")
   }
 
   def enabledIn(configuration: settings.ProcessConfiguration): Boolean = configuration.identityLookupSweep.value
 
-  /** Left at the root of a tree whose recording ran the sweep: the tree answers the resolver's
-   *  query set, so a HERMETIC leg replaying it runs the sweep too — and fails on any gap. That
-   *  is what keeps the phase-1 gate enforced by every verdict leg without anyone turning it on,
-   *  and without failing a leg that replays a tree recorded before the sweep existed.
+  /** Left at the root of a tree whose recording ran the sweep, holding the NAME of every lookup the
+   *  recording asked, one per line. A HERMETIC leg replaying the tree runs the sweep too, and fails
+   *  on any gap — which keeps the phase-1 gate enforced by every verdict leg without anyone turning
+   *  it on.
    *
-   *  VERSIONED by the query set: `-v2` is the resolver's own set (calibrated search shapes,
-   *  filmographies, identity records). A tree marked for the earlier set (`.identity-lookups`,
-   *  the per-evidence `resolveStagingRecord`) does not answer it, so its hermetic legs do not run
-   *  the sweep until a recording re-marks the tree. */
-  val RecordedMarker = ".identity-lookups-v2"
+   *  The list is what versions the mark by the query set. A hermetic leg asks only the lookups it
+   *  names: a question the resolver has learned to ask since the recording (a new search shape, a
+   *  season query) is answered unknown and counted as `unrecorded`, never requested. So a change to
+   *  the resolver's queries can never turn a verdict leg red on a tree recorded before it, and never
+   *  makes the leg issue a request its recording did not — the next recording asks and files it.
+   *  Before the list (`-v2` and the unversioned `.identity-lookups`) the version was a number bumped
+   *  by hand, and a query-set change that forgot to bump it failed every hermetic leg until the
+   *  nightly recording caught up; a tree carrying only such a mark does not run the sweep. */
+  val RecordedMarker = ".identity-lookups-v3"
 
   /** Whether a leg runs the sweep: when asked to, or when it replays a tree recorded with it. */
   def runsIn(requested: Boolean, hermetic: Boolean, treeRoot: java.nio.file.Path): Boolean =
     requested || (hermetic && java.nio.file.Files.exists(treeRoot.resolve(RecordedMarker)))
 
-  /** Mark `treeRoot` as recorded with the sweep — by a RECORDING leg, once the sweep has run. */
-  def markRecorded(treeRoot: java.nio.file.Path): Unit = {
+  /** The lookups `treeRoot`'s recording asked (its [[RecordedMarker]]), when it was recorded with the sweep. */
+  def recordedIn(treeRoot: java.nio.file.Path): Option[Set[String]] = {
+    val marker = treeRoot.resolve(RecordedMarker)
+    Option.when(java.nio.file.Files.exists(marker))(
+      scala.jdk.CollectionConverters.ListHasAsScala(java.nio.file.Files.readAllLines(marker)).asScala.filter(_.nonEmpty).toSet)
+  }
+
+  /** Mark `treeRoot` as recorded with the sweep that asked `asked` — by a RECORDING leg, once the
+   *  sweep has run. A tree is recorded by more than one leg (the sample, then the full leg over the
+   *  same tree), so the names already there are kept: the tree answers every one of them. */
+  def markRecorded(treeRoot: java.nio.file.Path, asked: Iterable[String]): Unit = {
     java.nio.file.Files.createDirectories(treeRoot)
-    java.nio.file.Files.writeString(treeRoot.resolve(RecordedMarker),
-      "the identity resolver's query set (IdentityResolver over TmdbIdentityLookups) is recorded in this tree\n")
+    val names = (recordedIn(treeRoot).getOrElse(Set.empty) ++ asked).toSeq.sorted
+    java.nio.file.Files.writeString(treeRoot.resolve(RecordedMarker), names.mkString("", "\n", "\n"))
     ()
   }
 
@@ -55,24 +70,34 @@ object IdentityLookupSweep {
   /** The sweep over a booted replay wiring: its archived listings, its venues' detail enrichers
    *  and its TMDB client, both fetching through the wiring's recording chain — which is what files
    *  the answers into the leg's tree. `onLookup` hears each logical lookup's name as soon as it has
-   *  been issued (they run one at a time), so a caller can attribute every request to it. */
-  def over(w: ArchiveReplayWiring, onLookup: String => Unit = _ => ()): Summary = {
+   *  been issued (they run one at a time), so a caller can attribute every request to it. With
+   *  `recorded` (a hermetic replay of a marked tree), a lookup it does not name is not issued. */
+  def over(w: ArchiveReplayWiring, onLookup: String => Unit = _ => (), recorded: Option[Set[String]] = None): Summary = {
     val normalizer = w.movieCache.normalizer
-    run(Listing.corpus(w.archivedListings, normalizer), new TmdbIdentityLookups(w.tmdbClient, w.detailEnrichers), normalizer, onLookup)
+    run(Listing.corpus(w.archivedListings, normalizer), new TmdbIdentityLookups(w.tmdbClient, w.detailEnrichers), normalizer,
+      onLookup, recorded = recorded)
   }
 
-  /** Issue the resolver's whole query set against `lookups`. */
+  /** Issue the resolver's whole query set against `lookups` — or, with `recorded`, the part of it
+   *  those lookup names cover (the rest answered unknown and counted as `unrecorded`). */
   def run(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
-          onLookup: String => Unit = _ => (), calibration: IdentityCalibration = IdentityCalibration.resolver): Summary = {
-    val named = new Named(lookups, onLookup)
+          onLookup: String => Unit = _ => (), calibration: IdentityCalibration = IdentityCalibration.resolver,
+          recorded: Option[Set[String]] = None): Summary = {
+    val named = new Named(lookups, onLookup, recorded)
     val r = IdentityResolver.resolve(listings, named, normalizer, calibration)
-    Summary(listings.size, named.details, r.unknownDetails, r.queries.size, r.unknownQueries, r.filmLookups, r.unknownFilms)
+    Summary(listings.size, named.details, r.unknownDetails, r.queries.size, r.unknownQueries, r.filmLookups, r.unknownFilms,
+      named.unrecorded)
   }
 
-  /** `inner`, announcing each lookup by name once it returns. */
-  private final class Named(inner: IdentityLookups, onLookup: String => Unit) extends IdentityLookups {
-    var details = 0
-    private def named[A](name: String)(answer: Answer[A]): Answer[A] = { onLookup(name); answer }
+  /** `inner`, announcing each lookup by name once it returns — and, with `recorded`, answering a
+   *  lookup it does not name as unknown without asking `inner`. */
+  private final class Named(inner: IdentityLookups, onLookup: String => Unit, recorded: Option[Set[String]]) extends IdentityLookups {
+    var details    = 0
+    var unrecorded = 0
+    private def named[A](name: String)(answer: => Answer[A]): Answer[A] =
+      val line = name.replaceAll("[\r\n]", " ") // one name per line of the marker
+      if (recorded.exists(!_(line))) { unrecorded += 1; Answer.Unknown }
+      else { val a = answer; onLookup(line); a }
     override def hasDetail(l: Listing): Boolean = inner.hasDetail(l)
     override def detail(l: Listing): Answer[Option[DetailFacts]] = {
       details += 1; named(s"detail ${l.venue} ${l.page.getOrElse("")}")(inner.detail(l))
