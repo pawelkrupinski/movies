@@ -488,6 +488,20 @@ title's group beside the listing's own, in the resolver and the calibration alik
 "Mistyczka 2D PL" is a bare "Mistyczka", and without them it would take the more popular namesake.
 No word list: a new venue's decoration is learned by the next refit.
 
+**Titles venues publish for a record.** TMDB titles some records in one language only: André Rieu's
+2026 Maastricht concert is "André Rieu's 2026 Summer Concert: Viva Maastricht!" in the PL locale
+too, so every "Andre Rieu. Niech żyje Maastricht!" relates to it by a few shared words (`overlap`,
+5%), Cinema City's — crediting the production company and the Netherlands — denied it on its own
+facts, and the bare listings, title-linked to both clusters, followed neither. Multikino's detail
+page publishes the English title as the original: a venue's pairing of its title with an original
+that names ONE record exactly is that record's title in the venue's language
+(`IdentityMeasures.venueTitles`), read as one of its alternative titles by the resolver and the
+calibration alike. Only when unanimous (venues giving one title two originals — "La invitación" as
+"The Invitation" and "The Invite" — name two films by it), only when the original names exactly one
+of the candidates (a PL "Niebo nad Normandią", originally "Pressure", names one of nine
+"Pressure"s: the facts pick it, the other eight gain nothing), and only when the title does not
+name the record already ("Coraline (2009)" is a dated spelling, not a translation).
+
 Measured together (recording 36224654409, production-faithful house root, against
 `m-head2-house`): PL +62 listings on the old pipeline's film (≈43 by identical-title sharing:
 "Vincent. Legenda oceanu" ×29, "Vivaldi i ja" ×15; ≈19 by decorations: "100 dni: Misja Zeus 2D PL",
@@ -1732,6 +1746,7 @@ Re-run this section's commands once phase 1's recording pass is pinned and `iden
 | The evidence-path rule (a candidate is scored only when the listing's own query named it or its title relates) | `IdentityResolver.reachable` | structural pruning, with no constant | none needed |
 | An instalment number: an Arabic numeral of at most three digits (four are a year), or a Roman one from I to XXXIX closing a delimited piece of the title | `IdentityMeasures.numbered` | a grammar, not a list: "2", "II" and "Part 2" are 2; L/C/D/M and a mid-piece "i" (Polish "and") spell words | none needed; its weight is fitted (`numeral`) |
 | Two films named apart by PLACE: every naming piece of each placed in the title at spans that share no word | `IdentityMeasures.namedApart` | a structural relation of the title's words, no constant | none needed |
+| A venue's title for a record: its original title names exactly one candidate, unanimously | `IdentityMeasures.venueTitles` | structural; "one record" and "unanimous" are the only counts | none needed |
 | The confidence of a title family's "clear" majority: the one-sided 95% Wilson lower bound of its venue share, against the show-ratings cut | `IdentityResolver.familyMajority`, `RateBounds` | the same one-sided 95% the calibration certifies its thresholds at; the cut is the artefact's | none needed |
 
 The resolver has no per-title, per-venue, per-chain or per-franchise rule of its own. Every constant above is inherited from the constraint model or the normaliser, and a learned counterpart for it is pending.

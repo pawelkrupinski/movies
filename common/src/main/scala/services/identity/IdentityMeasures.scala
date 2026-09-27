@@ -505,6 +505,39 @@ object IdentityMeasures {
     ca.exists(x => cb.exists(y => (x intersect y).isEmpty))
   }
 
+  /** The titles VENUES publish for film records, beside the record's own: a listing whose original
+   *  title names one record exactly publishes its own title as that record's title in its language
+   *  — an alternative title the record may lack (TMDB titles André Rieu's 2026 Maastricht concert
+   *  in English only; Multikino lists it as "Andre Rieu. Niech żyje Maastricht!", originally "Andre
+   *  Rieu's 2026 Summer Concert: Viva Maastricht!"). Read so only when
+   *  - every listing of the title that publishes a different original title publishes the same one:
+   *    venues giving one title two originals ("La invitación" as "The Invitation" and "The Invite")
+   *    name two films by it;
+   *  - that original is the title or original title of exactly ONE of `films`: "Niebo nad
+   *    Normandią", originally "Pressure", names one of nine "Pressure"s, and which one is the
+   *    listing's facts' to tell, not a title the other eight gain; and
+   *  - the title does not name the record already ([[NamingRelations]]): "Coraline (2009)",
+   *    originally "Coraline", is a dated spelling of the record's title, not a translation.
+   *  Keyed by film id, each title once (its smallest spelling), sorted: a function of the two sets. */
+  def venueTitles(listings: Iterable[Listing], films: Iterable[(Int, Film)]): Map[Int, Seq[String]] = {
+    val translated = listings.iterator.flatMap(l => l.originalTitle.map(o => (key(l.title), key(o), l.title)))
+      .filter { case (t, o, _) => t.nonEmpty && o.nonEmpty && t != o }.toSeq
+    val unanimous = translated.groupMap(_._1)(_._2).collect { case (t, os) if os.distinct.sizeIs == 1 => t -> os.head }
+    val spelling  = translated.groupMapReduce(_._1)(_._3)((a, b) => if (a <= b) a else b)
+    val filmsByKey = films.toSeq.flatMap { case (id, f) => (Seq(f.title) ++ f.originalTitle).map(key).filter(_.nonEmpty).distinct.map(_ -> (id, f)) }
+      .groupMap(_._1)(_._2)
+    unanimous.toSeq.flatMap { case (t, o) =>
+      filmsByKey.getOrElse(o, Nil).distinctBy(_._1) match {
+        case Seq((id, f)) if !NamingRelations(titleRelation(Listing(spelling(t)), f).value) => Some(id -> spelling(t))
+        case _                                                                               => None
+      }
+    }.groupMap(_._1)(_._2).map { case (id, ts) => id -> ts.distinct.sorted }
+  }
+
+  /** `f` with the titles venues publish for it ([[venueTitles]]) among its alternative titles. */
+  def withVenueTitles(f: Film, titles: Seq[String]): Film =
+    if (titles.isEmpty) f else f.copy(alternativeTitles = f.alternativeTitles ++ titles)
+
   /** The listing's own ORIGINAL title against every title of the other side: the same title, a
    *  decorated or delimited spelling of one ([[containment]], as the title relation reads it: "Your
    *  Name (re-release)" is `segment` of "Your Name."), a shared long word, or nothing. */

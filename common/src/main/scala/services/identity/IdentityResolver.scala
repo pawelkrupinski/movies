@@ -172,7 +172,11 @@ object IdentityResolver {
       }.toMap.withDefaultValue(Set.empty)
     val hitsById = nodes.flatMap(n => queriesOf(n.id).flatMap(q => answers(q).toOption.getOrElse(Nil))).groupBy(_.tmdbId)
     val records  = hitsById.keys.toSeq.sorted.map(id => id -> lookups.film(id)).toMap
-    val candidateById: Map[Int, Candidate] = hitsById.map { case (id, hs) => id -> Candidate.of(id, hs, records(id).toOption.flatten) }
+    val recorded: Map[Int, Candidate] = hitsById.map { case (id, hs) => id -> Candidate.of(id, hs, records(id).toOption.flatten) }
+    // Each record with the titles the venues publish for it (`IdentityMeasures.venueTitles`).
+    val venueTitles = IdentityMeasures.venueTitles(nodes.map(_.evidence.measured), recorded.toSeq.sortBy(_._1).map { case (id, c) => id -> c.film })
+    val candidateById: Map[Int, Candidate] = recorded.map { case (id, c) =>
+      id -> c.copy(film = IdentityMeasures.withVenueTitles(c.film, venueTitles.getOrElse(id, Nil))) }
 
     // ── scoring ──────────────────────────────────────────────────────────────────────────
     /** A candidate scored for `listing`, which its own title searches ranked at `rank` (best,

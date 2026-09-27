@@ -427,4 +427,28 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.namedApart(Listing("Romeo + Juliet"), Film("Romeo + Juliet"), Film("Romeo")) shouldBe false
     IdentityMeasures.namedApart(Listing("Fast & Furious"), Film("Fast & Furious"), Film("Furious")) shouldBe false
   }
+
+  "the titles venues publish for a record" should "be a title published beside one of its titles as the original, when unanimous" in {
+    val concert = Film("André Rieu's 2026 Summer Concert: Viva Maastricht!")
+    val listings = Seq(
+      Listing("Andre Rieu. Niech żyje Maastricht!", originalTitle = Some("Andre Rieu's 2026 Summer Concert: Viva Maastricht!")),
+      Listing("André Rieu. Niech żyje Maastricht!"),
+      // An original title repeating the listing's own title translates nothing.
+      Listing("Nosferatu", originalTitle = Some("Nosferatu")))
+    IdentityMeasures.venueTitles(listings, Seq(1 -> concert, 2 -> Film("Nosferatu"))) shouldBe
+      Map(1 -> Seq("Andre Rieu. Niech żyje Maastricht!"))
+    IdentityMeasures.titleRelation(Listing("André Rieu. Niech żyje Maastricht!"),
+      IdentityMeasures.withVenueTitles(concert, Seq("Andre Rieu. Niech żyje Maastricht!"))) shouldBe Category("alternative")
+    // Two venues giving one title two originals name two films by it: it translates neither.
+    val invitation = Seq(Listing("La invitación", originalTitle = Some("The Invitation")), Listing("La invitación", originalTitle = Some("The Invite")))
+    IdentityMeasures.venueTitles(invitation, Seq(1 -> Film("The Invitation"), 2 -> Film("The Invite"))) shouldBe Map.empty
+    // A record already titled so gains nothing, nor one the title names already.
+    IdentityMeasures.venueTitles(Seq(Listing("Diuna", originalTitle = Some("Dune"))), Seq(1 -> Film("Diuna", Some("Dune")))) shouldBe Map.empty
+    IdentityMeasures.venueTitles(Seq(Listing("Coraline (2009)", originalTitle = Some("Coraline"))), Seq(1 -> Film("Coraline"))) shouldBe Map.empty
+    // An original naming several records names none of them: the facts pick among namesakes.
+    IdentityMeasures.venueTitles(Seq(Listing("Niebo nad Normandią", originalTitle = Some("Pressure"))),
+      Seq(1 -> Film("Pressure"), 2 -> Film("Pressure"))) shouldBe Map.empty
+    IdentityMeasures.venueTitles(Seq(Listing("Diabły", originalTitle = Some("The Devils"))),
+      Seq(31767 -> Film("Diabły", Some("The Devils")), 1491681 -> Film("The Devils"))) shouldBe Map.empty
+  }
 }

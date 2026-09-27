@@ -18,7 +18,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   /** `searched`: TMDB's search returns the film (a record its index misses is reached only by the
    *  IMDb id IMDb lists under its title). */
   private final case class F(id: Int, title: String, year: Int, director: String, runtime: Int, popularity: Double = 10.0,
-                             alternatives: Seq[String] = Nil, searched: Boolean = true)
+                             alternatives: Seq[String] = Nil, searched: Boolean = true, countries: Seq[String] = Nil)
 
   /** A film database of `films`: search by all-words containment of a title or an alternative title,
    *  the directors' filmographies, the films IMDb lists under a title (its own, exactly), and each
@@ -39,7 +39,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     override def film(id: Int): Answer[Option[IdentityMeasures.Film]] =
       Answer.Known(films.find(_.id == id).map(f =>
         IdentityMeasures.Film(f.title, None, f.alternatives, Some(f.year), Some(f.runtime).filter(_ > 0), Some(Seq(f.director).filter(_.nonEmpty)),
-          None, Some(f.popularity))))
+          Some(f.countries).filter(_.nonEmpty), Some(f.popularity))))
   }
 
   private def listing(venue: Cinema, title: String, year: Option[Int] = None, director: Option[String] = None,
@@ -752,6 +752,28 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val premiere = listing(KinoMuza, "Oficjalna premiera: Lalka")
     val r = shipped(credited :+ premiere, films)
     withClue(r.decisionOf(premiere.key).render)(r.decisionOf(premiere.key).film shouldBe Some(1321666))
+  }
+
+  "A title a venue publishes beside a record's own title as its original" should
+    "name that record wherever the title is listed" in {
+    // PL, André Rieu's 2026 Maastricht concert: TMDB titles it in English only, so "Andre Rieu. Niech
+    // żyje Maastricht!" relates to it by a few shared words (`overlap`, 5.1%). Multikino's detail
+    // page publishes the English title as the original: the Polish title is that record's title in
+    // Polish at Cinema City too, which credits the production company and the country the concert
+    // is staged in (the Netherlands; TMDB's origin is Belgium): read by those shared words, its own
+    // facts denied the record, and the bare listings, title-linked to both, followed neither.
+    val films = Seq(F(1702801, "André Rieu's 2026 Summer Concert: Viva Maastricht!", 2026, "", 0, 0.5, countries = Seq("BE")))
+    val multikino = Seq(Multikino, Helios).map(listing(_, "Andre Rieu. Niech żyje Maastricht!", runtime = Some(185))
+      .copy(originalTitle = Some("Andre Rieu's 2026 Summer Concert: Viva Maastricht!")))
+    val cinemaCity = listing(KinoApollo, "Andre Rieu. Niech żyje Maastricht!", Some(2026), Some("André Rieu Productions"), Some(185))
+      .copy(countries = Seq("Holandia"))
+    val bare       = Seq(KinoMuza, Rialto).map(listing(_, "André Rieu. Niech żyje Maastricht!"))
+    val all = multikino ++ Seq(cinemaCity) ++ bare
+    val r = shipped(all, films)
+    withClue(all.map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      all.foreach(l => r.decisionOf(l.key).film shouldBe Some(1702801))
+    }
+    r.violations shouldBe 0
   }
 
   "A listing whose title and credited director name one film" should "not take another film of that director its title does not name" in {

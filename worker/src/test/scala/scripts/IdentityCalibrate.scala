@@ -131,7 +131,7 @@ object IdentityCalibrate {
     println(s"[$cc] ${obs.size} listings (${obs.groupMapReduce(_.source)(_ => 1)(_ + _)}), ${prod.films.size} production films")
 
     // Candidate pools: every film the listing's own title queries returned, best rank kept.
-    val pools: IndexedSeq[Map[Int, (Option[Int], Film)]] = obs.map { o =>
+    val searched: IndexedSeq[Map[Int, (Option[Int], Film)]] = obs.map { o =>
       val hits = queries(o.listing).flatMap(q => answers.search(q).toSeq.flatMap(_.zipWithIndex))
       val ranked = hits.groupMapReduce(_._1.id)(h => h)((a, b) => if (a._2 <= b._2) a else b)
       val fromSearch = ranked.map { case (id, (hit, rank)) =>
@@ -146,6 +146,10 @@ object IdentityCalibrate {
       val pool = fromSearch ++ known
       proposed.fold(pool)(p => if (pool.contains(p._1)) pool else pool + (p._1 -> (None, p._2)))
     }
+    // Each record with the titles the venues publish for it, as the resolver reads its candidates.
+    val venueTitles = IdentityMeasures.venueTitles(obs.map(_.listing),
+      searched.flatMap(_.toSeq.map { case (id, (_, f)) => id -> f }).sortBy(_._1).distinctBy(_._1))
+    val pools = searched.map(_.map { case (id, (rank, f)) => id -> (rank, IdentityMeasures.withVenueTitles(f, venueTitles.getOrElse(id, Nil))) })
 
     // Venue co-occurrence: per title group, which venues' own facts back each candidate.
     val groups: Map[String, IndexedSeq[Int]] = obs.indices.groupBy(i => IdentityMeasures.key(obs(i).listing.title))
